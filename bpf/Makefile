@@ -9,7 +9,12 @@ LLC_FLAGS   := -march=bpf -mcpu=probe -mattr=dwarfris
 CLANG  ?= clang
 LLC    ?= llc
 
-all: $(BPF)
+all: copy $(BPF)
+
+UNAME_R := $(shell uname -r)
+
+copy:
+	cp ./include/$(UNAME_R)/vmlinux.h ./
 
 bpf_tcpmon.ll: bpf_tcpmon.c $(LIB)
 	@$(ECHO_CC)
