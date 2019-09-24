@@ -17,7 +17,7 @@
 package bpf
 
 /*
-#cgo CFLAGS: -I ../../bpf/bpf-loader/ -I ../../bpf/
+#cgo CFLAGS: -I ../../bpf/
 #cgo LDFLAGS: -L ../../libs/ -lbpf
 
 #include <string.h>
