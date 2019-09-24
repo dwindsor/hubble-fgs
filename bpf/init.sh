@@ -1,5 +1,6 @@
 DIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" >/dev/null 2>&1 && pwd )"
 
+mkdir bins
 for d in `find ./include/ -type d | awk '{if(NR>1)print}'`; do 
 	make clean
 	dir=`echo $d | awk 'BEGIN { FS = "/" } ; {print $NF}';` 

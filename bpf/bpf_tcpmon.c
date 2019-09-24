@@ -55,7 +55,9 @@ int event_ipv4_connect(struct pt_regs *ctx)
 			probe_read(&msg.kube.net_ns, sizeof(msg.kube.net_ns), &(net_ns->ns.inum));
 	}
 
+#ifdef BPF_FUNC_get_current_cgroup_id
 	msg.kube.cgrpid = get_current_cgroup_id();
+#endif
 	probe_read(&cgroups, sizeof(cgroups), &(task->cgroups));
 	if (cgroups) {
 		probe_read(&subsys, sizeof(subsys), &(cgroups->subsys[0]));

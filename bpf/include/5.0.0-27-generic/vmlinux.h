@@ -1,3 +1,4 @@
+// Ubuntu 19.04 Linux 5.0.0-29-generic
 typedef signed char __s8;
 
 typedef unsigned char __u8;
