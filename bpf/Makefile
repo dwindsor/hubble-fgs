@@ -1,7 +1,7 @@
 .PHONY: all
 
 BPF = bpf_tcpmon.o bpf_execve.o
-FLAGS := -I. -Wall -Werror -Wno-unknown-warning-option -O2 -g
+FLAGS := -I. -Wall -Werror -Wno-unknown-warning-option -O2
 
 CLANG_FLAGS += ${FLAGS} -target bpf -emit-llvm -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types
 LLC_FLAGS   := -march=bpf -mcpu=probe -mattr=dwarfris
