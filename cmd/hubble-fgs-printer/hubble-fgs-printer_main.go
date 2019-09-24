@@ -1,7 +1,8 @@
 package main
 
 import (
-	"github.com/covalentio/hubble-fgs/pkg/observer"
+	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/covalentio/hubble-fgs/pkg/reader"
 
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -14,8 +15,8 @@ var (
 )
 
 func hubbleFGSPrinter() {
-	kprobe := observer.NewObserverKprobe(observerDir)
-	kprobe.ObserverReceiver()
+	log := logger.GetLogger()
+	reader.ObserverReceiver(log)
 }
 
 func init() {
