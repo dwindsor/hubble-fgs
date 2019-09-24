@@ -96,10 +96,6 @@ func (k *ObserverKprobe) ObserverReceiver() error {
 }
 
 func (k *ObserverKprobe) observerListeners(msg *bpf.MsgIPv4TcpConnect) {
-	defer func() {
-		k.RemoveListener(c)
-	}()
-
 	for _, c := range k.listeners {
 		enc := gob.NewEncoder(c)
 		if err := enc.Encode(msg); err != nil {
