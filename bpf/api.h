@@ -7,11 +7,6 @@
  * a couple of useful helper functions, map/section ABI (bpf_elf.h),
  * misc macros and some eBPF specific LLVM built-ins.
  */
-
-//#include "type_mapper.h"
-//#include "byteorder.h"
-//#include <linux/bpf.h>
-
 #include "bpf_elf.h"
 
 #ifndef TC_ACT_OK
@@ -211,6 +206,7 @@ static uint64_t BPF_FUNC(get_current_task);
 static uint64_t BPF_FUNC(get_current_cgroup_id); 
 static uint64_t BPF_FUNC(get_current_uid_gid);
 static uint64_t BPF_FUNC(get_current_pid_tgid);
+static int BPF_FUNC(get_current_comm, char *buf, uint32_t size); 
 
 static int BPF_FUNC(perf_event_output, void *ctx, void *map, uint64_t flags, void *data, uint64_t size);
 /** LLVM built-ins, mem*() routines work for constant size */

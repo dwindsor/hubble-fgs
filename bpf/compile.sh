@@ -1,1 +1,0 @@
-clang -I. -I /usr/include/linux/ -Wno-compare-distinct-pointer-types -D__TARGET_ARCH_X86 -O2 -g -target bpf -emit-llvm -S -c tcpmon.c -o - | llc -march=bpf -mcpu=probe -mattr=dwarfris -filetype=obj -o tcpmon.o

@@ -1,1 +1,16 @@
-FGS: Fine Guidance Sensors
+Hubble-FGS: The Hubble Fine Guidance Sensors
+
+"
+The Fine Guidance Sensor (FGS) is an optical sensor used on the Hubble Space
+Telescope to provide pointing information for the spacecraft and as a scientific
+instrument for astrometric science
+"
+
+
+Docker
+----------
+
+To run docker image,
+
+# make image
+# docker run --privileged -i -t covalentio/hubble-fgs /bin/bash

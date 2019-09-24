@@ -1,6 +1,11 @@
 /* Docker IDs are unique at first 12 characters -- tbd confirm */
 #define DOCKER_ID_LENGTH 12
 
+#define MAXARGS 4
+#define ARGSIZE 16
+#define PROGSIZE 64
+#define TASK_COMM_LEN 128
+
 /* Msg Types */
 enum msg_ops {
 	MSG_OP_UNDEF,
@@ -10,28 +15,32 @@ enum msg_ops {
 
 /* Msg Layout */
 struct msg_common {
-	__u64 timestamp;
 	__u8  op;
+	__u8  pad[3];
 };
 
 struct msg_pid {
 	__u32 pid;
 	__u32 uid;
+	char filename[PROGSIZE];
+	char args[MAXARGS][ARGSIZE];
 };
 
 struct msg_ipv4_tuple {
 	__u32 saddr;
 	__u32 daddr;
-	__u8  proto;
 	__u16 dport;
 	__u16 sport;
+	__u8  proto;
+	__u8  pad[7];
 };
 
 struct msg_k8s {
-	unsigned int net_ns;
-	__u64        cgrpid;
-	char         docker_id[DOCKER_ID_LENGTH+1];
-	int          cid;
+	__u32 net_ns;
+	__u32 cid;
+	__u64 cgrpid;
+	char  docker_id[DOCKER_ID_LENGTH+1];
+	char  pad[3];
 };
 
 // separate data structs for ipv4 and ipv6
@@ -45,3 +54,23 @@ struct msg_ipv4_tcp_connect {
 struct event {
 	int event;
 };
+
+struct event_execve {
+	__u32 pid;
+	char filename[PROGSIZE];
+	char args[MAXARGS][ARGSIZE];
+};
+
+struct {
+	unsigned int (*type)[BPF_MAP_TYPE_LRU_HASH];
+	unsigned int (*key_size)[sizeof(__u32)];
+	unsigned int (*value_size)[sizeof(struct event_execve)];
+	unsigned int (*max_entries)[4096];
+} execve_map __attribute__((section((".maps")), used));
+
+#define bpf_printk(fmt, ...)				\
+({							\
+	char ____fmt[] = fmt;				\
+	trace_printk(____fmt, sizeof(____fmt),	\
+			 ##__VA_ARGS__);		\
+})
