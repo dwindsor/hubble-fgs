@@ -15,53 +15,6 @@
 package bpf
 
 const (
-	DOCKER_ID_LENGTH = 13
-
-	MSG_OP_UNDEF           = 0
-	MSG_OP_IPV4_TCPCONNECT = 1
-
-	MAXARGS  = 4
-	ARGSIZE  = 16
-	PROGSIZE = 64
-)
-
-type MsgCommon struct {
-	Op  uint8
-	Pad [3]uint8
-}
-
-type MsgPid struct {
-	PID      uint32
-	UID      uint32
-	Filename [PROGSIZE]byte
-	Args     [MAXARGS][ARGSIZE]byte
-}
-
-type MsgIPv4Tuple struct {
-	SAddr uint32
-	DAddr uint32
-	DPort uint16
-	SPort uint16
-	Proto uint8
-	Pad   [7]uint8
-}
-
-type MsgK8s struct {
-	NetNS  uint32
-	Cid    uint32
-	Cgrpid uint64
-	Docker [DOCKER_ID_LENGTH]byte
-	Pad    [3]uint8
-}
-
-type MsgIPv4TcpConnect struct {
-	Common MsgCommon
-	Pid    MsgPid
-	Tuple  MsgIPv4Tuple
-	Kube   MsgK8s
-}
-
-const (
 	EventsMapName = "/sys/fs/bpf/tcpmon/kprobe_tcp_events"
 
 	PERF_TYPE_SOFTWARE = 1

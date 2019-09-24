@@ -15,7 +15,7 @@
 package reader
 
 import (
-	"github.com/covalentio/hubble-fgs/pkg/bpf"
+	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
 
 	"encoding/binary"
@@ -36,7 +36,7 @@ func swapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
 }
 
-func ObserverIPV4TCPConnectPrinter(msg *bpf.MsgIPv4TcpConnect, log *zap.Logger) {
+func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnect, log *zap.Logger) {
 	var args []string
 
 	for i := 0; i < 4; i++ {
@@ -69,7 +69,7 @@ func ObserverReceiver(log *zap.Logger) error {
 
 	for {
 		dec := gob.NewDecoder(conn)
-		var IPv4TCPConnectMsg bpf.MsgIPv4TcpConnect
+		var IPv4TCPConnectMsg api.MsgIPv4TcpConnect
 
 		err = dec.Decode(&IPv4TCPConnectMsg)
 		if err != nil {

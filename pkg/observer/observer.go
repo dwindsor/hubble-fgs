@@ -15,6 +15,7 @@
 package observer
 
 import (
+	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
@@ -54,11 +55,11 @@ var (
 	log *zap.Logger
 )
 
-func (k *ObserverKprobe) observerListeners(msg *bpf.MsgIPv4TcpConnect) {
+func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnect) {
 	for _, c := range k.listeners {
 		enc := gob.NewEncoder(c)
 		if err := enc.Encode(msg); err != nil {
-			log.Warn("Write failure")
+			log.Debug("Write failure")
 		}
 	}
 }
@@ -82,8 +83,8 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	var op uint8 = data[0]
 
 	switch op {
-	case bpf.MSG_OP_IPV4_TCPCONNECT:
-		m := bpf.MsgIPv4TcpConnect{}
+	case api.MSG_OP_IPV4_TCPCONNECT:
+		m := api.MsgIPv4TcpConnect{}
 		err := binary.Read(bytes.NewReader(data), binary.LittleEndian, &m)
 		if err != nil {
 			panic(err)
