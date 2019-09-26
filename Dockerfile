@@ -4,7 +4,7 @@ COPY . ./
 RUN ldconfig && make clean && make hubble-fgs
 
 FROM quay.io/cilium/cilium-runtime:2019-09-04
-RUN groupadd -f hubble && mkdir /var/lib/hubble-fgs/
+RUN groupadd -f hubble && mkdir /var/lib/hubble-fgs/ && mkdir /var/run/hubble-fgs/
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/libs/libbpf.so.0 /usr/lib/
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/bpf/bins/* /var/lib/hubble-fgs/

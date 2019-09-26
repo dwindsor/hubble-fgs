@@ -1,12 +1,31 @@
 #include "vmlinux.h"
+
+#ifndef bpf_map_def
+struct bpf_map_def {
+	unsigned int type;
+	unsigned int key_size;
+	unsigned int value_size;
+	unsigned int max_entries;
+	unsigned int map_flags;
+};
+#endif
+
 #include "api.h"
 #include "hubble_msg.h"
 
+#ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_PERF_EVENT_ARRAY];
 	unsigned int (*key_size)[sizeof(int)];
 	unsigned int (*value_size)[sizeof(struct event)];
 } tcpmon_map __attribute__((section((".maps")), used));
+#else
+struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
+	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct event),
+};
+#endif
 
 #define BPF_F_INDEX_MASK		0xffffffffULL
 #define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK

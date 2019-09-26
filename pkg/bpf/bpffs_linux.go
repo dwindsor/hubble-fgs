@@ -31,6 +31,9 @@ var (
 	// Path to where bpffs is mounted
 	mapRoot = "/sys/fs/bpf/"
 
+	// Path to where debugfs is mounted
+	debugFSRoot = "/sys/kernel/debug/"
+
 	// Prefix for all maps (default: tc/globals)
 	mapPrefix = "tcpmon"
 
@@ -124,25 +127,23 @@ var (
 )
 
 // mountFS mounts the BPFFS filesystem into the desired mapRoot directory.
-func mountFS() error {
-	fmt.Printf("Mounting BPF filesystem at %s", mapRoot)
-
-	mapRootStat, err := os.Stat(mapRoot)
+func mountFS(root, kind string) error {
+	mapRootStat, err := os.Stat(root)
 	if err != nil {
 		if os.IsNotExist(err) {
-			if err := os.MkdirAll(mapRoot, 0755); err != nil {
-				return fmt.Errorf("unable to create bpf mount directory: %s", err)
+			if err := os.MkdirAll(root, 0755); err != nil {
+				return fmt.Errorf("unable to create %s mount directory: %s", kind, err)
 			}
 		} else {
-			return fmt.Errorf("failed to stat the mount path %s: %s", mapRoot, err)
+			return fmt.Errorf("failed to stat the mount path %s: %s", root, err)
 
 		}
 	} else if !mapRootStat.IsDir() {
-		return fmt.Errorf("%s is a file which is not a directory", mapRoot)
+		return fmt.Errorf("%s is a file which is not a directory", root)
 	}
 
-	if err := syscall.Mount(mapRoot, mapRoot, "bpf", 0, ""); err != nil {
-		return fmt.Errorf("failed to mount %s: %s", mapRoot, err)
+	if err := syscall.Mount(root, root, kind, 0, ""); err != nil {
+		return fmt.Errorf("failed to mount %s %s: %s", root, kind, err)
 	}
 	return nil
 }
@@ -179,7 +180,7 @@ func checkOrMountCustomLocation(bpfRoot string) error {
 	// If the custom location has no mount, let's mount BPFFS there.
 	if !mounted {
 		SetMapRoot(bpfRoot)
-		if err := mountFS(); err != nil {
+		if err := mountFS(mapRoot, "bpf"); err != nil {
 			return err
 		}
 
@@ -194,6 +195,28 @@ func checkOrMountCustomLocation(bpfRoot string) error {
 
 	fmt.Printf("Detected mounted BPF filesystem at %s", mapRoot)
 
+	return nil
+}
+
+func checkOrMountDebugFSDefaultLocations() error {
+	// Check whether /sys/fs/bpf has a BPFFS mount.
+	mounted, debugfsInstance, err := mountinfo.IsMountFS(mountinfo.FilesystemTypeDebugFS, debugFSRoot)
+	if err != nil {
+		return err
+	}
+
+	// If /sys/kernel/debug is not mounted at all, we should mount
+	// DebugFS there.
+	if !mounted {
+		if err := mountFS(debugFSRoot, mountinfo.FilesystemTypeDebugFS); err != nil {
+			return err
+		}
+
+		return nil
+	}
+	if !debugfsInstance {
+		return fmt.Errorf("instance exists with othe type")
+	}
 	return nil
 }
 
@@ -219,7 +242,7 @@ func checkOrMountDefaultLocations() error {
 	// If /sys/fs/bpf is not mounted at all, we should mount
 	// BPFFS there.
 	if !mounted {
-		if err := mountFS(); err != nil {
+		if err := mountFS(mapRoot, "bpf"); err != nil {
 			return err
 		}
 
@@ -249,7 +272,7 @@ func checkOrMountDefaultLocations() error {
 			return err
 		}
 		if !cMounted {
-			if err := mountFS(); err != nil {
+			if err := mountFS(mapRoot, "bpf"); err != nil {
 				return err
 			}
 		} else if !cBpffsInstance {
@@ -293,4 +316,8 @@ func CheckOrMountFS(bpfRoot string) {
 			fmt.Printf("Unable to mount BPF filesystem, %s", err)
 		}
 	})
+}
+
+func CheckOrMountDebugFS() error {
+	return checkOrMountDebugFSDefaultLocations()
 }

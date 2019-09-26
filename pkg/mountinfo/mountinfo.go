@@ -27,6 +27,7 @@ const (
 	// FilesystemType names for filesystem which are used in /proc/pid/mountinfo
 	FilesystemTypeBPFFS   = "bpf"
 	FilesystemTypeCgroup2 = "cgroup2"
+	FilesystemTypeDebugFS = "debugfs"
 
 	mountInfoFilepath = "/proc/self/mountinfo"
 )

@@ -61,12 +61,21 @@ struct event_execve {
 	char args[MAXARGS][ARGSIZE];
 };
 
+#ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_LRU_HASH];
 	unsigned int (*key_size)[sizeof(__u32)];
 	unsigned int (*value_size)[sizeof(struct event_execve)];
 	unsigned int (*max_entries)[4096];
 } execve_map __attribute__((section((".maps")), used));
+#else
+struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
+	.type = BPF_MAP_TYPE_LRU_HASH,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(struct event_execve),
+	.max_entries = 4095,
+};
+#endif
 
 #define bpf_printk(fmt, ...)				\
 ({							\

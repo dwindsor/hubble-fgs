@@ -55,8 +55,16 @@ int kprobe_loader(const char *prog,
 		return -1;
 	}
 
+	bpf_object__for_each_map(map_bpf, obj) {
+		const struct bpf_map_def *def = bpf_map__def(map_bpf);
+
+		fprintf(stderr, "map: type %u key_size %u value_size %u max %u flags %u\n",
+			def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
+	}
+
 	bpf_object__for_each_program(prog_bpf, obj) {
 		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
+		fprintf(stderr, "program: kern_version: %u", bpf_object__kversion(obj));
 	}
 
 	if (execve_fd) {
@@ -77,11 +85,18 @@ int kprobe_loader(const char *prog,
 	err = bpf_object__load(obj);
 	//err = bpf_prog_load(prog, BPF_PROG_TYPE_KPROBE, &obj, &fd);
 	if (err < 0) {
-		fprintf(stderr, "bpf_object__load: failed %i\n", err);
+		char errstr[256];
+
+		libbpf_strerror(err, errstr, sizeof(errstr));
+		fprintf(stderr, "bpf_object__load: failed %i: %s\n", err, errstr);
 		return -1;
 	}
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
+	if (!prog_bpf) {
+		fprintf(stderr, "bpf_object__find__: null pointer\n");
+		return -1;
+	}
 	err = libbpf_get_error(prog_bpf);
 	if (err) {
 		fprintf(stderr, "bpf_object_find: failed\n");
@@ -101,7 +116,7 @@ int kprobe_loader(const char *prog,
 		bpf_map__unpin(map_bpf, __map);
 		err = bpf_map__pin(map_bpf, __map);
 		if (err < 0) {
-			fprintf(stderr, "bpf_prog_pin: failed %i\n", err);
+			fprintf(stderr, "bpf_prog_pin: failed (%s) %i\n", __label_map, err);
 			return -1;
 		}
 		map_fd = bpf_map__fd(map_bpf);
