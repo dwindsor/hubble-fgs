@@ -1,4 +1,9 @@
-// Ubuntu 19.04 Linux 5.0.0-29-generic
+// Kernel version annotation
+#define VMLINUX_KERNEL_VERSION 0x50000
+// Kernel has syscall wrapper
+#define VMLINUX_KERNEL_HAS_SYSCALL_WRAPPER
+
+// Ubuntu 19.04 Linux 5.0.0-27-generic
 typedef signed char __s8;
 
 typedef unsigned char __u8;

@@ -34,12 +34,13 @@ import (
 )
 
 var (
-	ObserverExecve__program   string
-	observerExecve__attach    = "__x64_sys_execve"
-	observerExecve__label     = "kprobe/__x64_sys_execve"
-	observerExecve__prog      = "kprobe_execve"
-	observerExecve__map       = "kprobe_execve_map"
-	observerExecve__map_label = "execve_map"
+	ObserverExecve__program    string
+	observerExecve__x64_attach = "__x64_sys_execve"
+	observerExecve__attach     = "sys_execve"
+	observerExecve__label      = "kprobe/sys_execve"
+	observerExecve__prog       = "kprobe_execve"
+	observerExecve__map        = "kprobe_execve_map"
+	observerExecve__map_label  = "execve_map"
 
 	ObserverTCPConnect__program   string
 	observerTCPConnect__attach    = "tcp_connect"
@@ -112,15 +113,30 @@ func isCtxDone(ctx context.Context) bool {
 }
 
 func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
-	err, execve_fd := bpf.LoadKprobe(
+	var execve_fd int
+	var err error
+
+	err, execve_fd = bpf.LoadKprobe(
 		ObserverExecve__program,
-		observerExecve__attach,
+		observerExecve__x64_attach,
 		observerExecve__label,
 		k.bpfDir+observerExecve__prog,
 		k.bpfDir+observerExecve__map,
 		observerExecve__map_label, 0)
 	if err != nil {
-		return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
+		/* If we fail attach with __x64_sys_execve variant try again with
+		 * sys_execve variant.
+		 */
+		err, execve_fd = bpf.LoadKprobe(
+			ObserverExecve__program,
+			observerExecve__attach,
+			observerExecve__label,
+			k.bpfDir+observerExecve__prog,
+			k.bpfDir+observerExecve__map,
+			observerExecve__map_label, 0)
+		if err != nil {
+			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
+		}
 	}
 	k.execve_fd = execve_fd
 	return nil

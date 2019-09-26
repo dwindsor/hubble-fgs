@@ -12,7 +12,7 @@ struct {
 #define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
-int  _version __attribute__((section(("version")), used)) = 1;
+int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
@@ -37,6 +37,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
        	tgid = get_current_pid_tgid();
 	msg.pid.pid = tgid >> 32;
 	msg.pid.uid = get_current_uid_gid();
+
+	bpf_printk("tcpmon %u\n", msg.pid.pid);
 
 	skp = (void *)((ctx)->di);
 

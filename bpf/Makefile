@@ -1,4 +1,4 @@
-.PHONY: all
+.PHONY: all copy
 
 BPF = bpf_tcpmon.o bpf_execve.o
 FLAGS := -I. -Wall -Werror -Wno-unknown-warning-option -O2
@@ -9,7 +9,7 @@ LLC_FLAGS   := -march=bpf -mcpu=probe -mattr=dwarfris
 CLANG  ?= clang
 LLC    ?= llc
 
-all: copy $(BPF)
+all: $(BPF)
 
 UNAME_R := $(shell uname -r)
 

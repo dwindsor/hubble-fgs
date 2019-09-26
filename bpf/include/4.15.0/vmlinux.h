@@ -1,3 +1,6 @@
+// Kernel version annotation
+#define VMLINUX_KERNEL_VERSION 0x40f00
+
 // minikube Buildroot 2018.08.3 linux 4.15.0
 typedef unsigned char __u8;
 

@@ -4,7 +4,10 @@ BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
 
-all: hubble-fgs hubble-fgs-printer
+all: headers hubble-fgs hubble-fgs-printer
+
+headers:
+	cd ./bpf && make copy && make && cd ../
 
 hubble-fgs:
 	$(GO) build ./cmd/hubble-fgs/
@@ -29,4 +32,4 @@ image:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs:$(DOCKER_IMAGE_TAG)"
 
-.PHONY: all clean image install lint hubble-fgs
+.PHONY: headers all clean image install lint hubble-fgs

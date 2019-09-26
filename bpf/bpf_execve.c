@@ -3,12 +3,16 @@
 #include "hubble_msg.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
-int  _version __attribute__((section(("version")), used)) = 1;
+int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 
 __attribute__((section(("kprobe/__x64_sys_execve")), used))
 int event_exec(struct pt_regs *__ctx)
 {
-	struct pt_regs *ctx = (struct pt_regs *)(__ctx->di);
+#ifdef VMLINUX_KERNEL_HAS_SYSCALL_WRAPPER
+	struct pt_regs *ctx = (struct pt_regs *) __ctx->di;
+#else
+	struct pt_regs *ctx = __ctx;
+#endif
 	struct event_execve event = {0};
 	struct task_struct *task;
 	char *filename;
