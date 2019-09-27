@@ -10,6 +10,7 @@ for d in `find ./include/ -type d | awk '{if(NR>1)print}'`; do
 	make
 	cp ./bpf_tcpmon.o ./bins/bpf_tcpmon_${dir}.o
 	cp ./bpf_execve.o ./bins/bpf_execve_${dir}.o
+	cp ./bpf_execveat.o ./bins/bpf_execveat_${dir}.o
 	echo "cp ./bpf_execve.o ./bins/bpf_execve_${dir}.o"
 done
 make clean

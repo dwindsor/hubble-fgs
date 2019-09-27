@@ -54,6 +54,14 @@ var (
 	observerExecve__map        = "kprobe_execve_map"
 	observerExecve__map_label  = "execve_map"
 
+	ObserverExecveat__program    string
+	observerExecveat__x64_attach = "__x64_sys_execveat"
+	observerExecveat__attach     = "sys_execveat"
+	observerExecveat__label      = "kprobe/sys_execveat"
+	observerExecveat__prog       = "kprobe_execveat"
+	observerExecveat__map        = "kprobe_execve_map"
+	observerExecveat__map_label  = "execve_map"
+
 	ObserverTCPConnect__program   string
 	observerTCPConnect__attach    = "tcp_connect"
 	observerTCPConnect__label     = "kprobe/tcp_connect"
@@ -151,6 +159,31 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 		}
 	}
 	k.execve_fd = execve_fd
+
+	err, _ = bpf.LoadKprobe(
+		ObserverExecveat__program,
+		observerExecveat__x64_attach,
+		observerExecveat__label,
+		k.bpfDir+observerExecveat__prog,
+		k.bpfDir+observerExecveat__map,
+		observerExecveat__map_label,
+		k.execve_fd)
+	if err != nil {
+		/* If we fail attach with __x64_sys_execve variant try again with
+		 * sys_execve variant.
+		 */
+		err, _ = bpf.LoadKprobe(
+			ObserverExecveat__program,
+			observerExecveat__attach,
+			observerExecveat__label,
+			k.bpfDir+observerExecveat__prog,
+			k.bpfDir+observerExecveat__map,
+			observerExecveat__map_label,
+			k.execve_fd)
+		if err != nil {
+			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
+		}
+	}
 	return nil
 }
 

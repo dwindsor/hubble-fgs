@@ -16,8 +16,8 @@ struct bpf_map_def {
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 
-__attribute__((section(("kprobe/sys_execve")), used))
-int event_execve(struct pt_regs *__ctx)
+__attribute__((section(("kprobe/sys_execveat")), used))
+int event_execveat(struct pt_regs *__ctx)
 {
 #ifdef VMLINUX_KERNEL_HAS_SYSCALL_WRAPPER
 	struct pt_regs *ctx = (struct pt_regs *) __ctx->di;
@@ -32,11 +32,11 @@ int event_execve(struct pt_regs *__ctx)
 	task = (struct task_struct *)get_current_task();
 
 	event.pid = (get_current_pid_tgid() >> 32);
-	probe_read(&filename, sizeof(filename), &ctx->di);
+	probe_read(&filename, sizeof(filename), &ctx->si);
 	if (!filename)
 		return 0;
 	probe_read_str(event.filename, sizeof(event.filename), filename);
-	probe_read(&args, sizeof(args), &ctx->si);
+	probe_read(&args, sizeof(args), &ctx->dx);
 	if (args) {
 		int i = 0;
 
