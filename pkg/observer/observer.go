@@ -25,15 +25,27 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
+	"strconv"
+	"strings"
 	"syscall"
 	"time"
+	"unsafe"
 
 	"go.uber.org/zap"
 )
 
+const (
+	Progsize = 64
+	MaxArgs  = 4
+	ArgSize  = 16
+)
+
 var (
+	procFileSystem = "/proc/"
+
 	ObserverExecve__program    string
 	observerExecve__x64_attach = "__x64_sys_execve"
 	observerExecve__attach     = "sys_execve"
@@ -190,6 +202,80 @@ func (k *ObserverKprobe) createDir() {
 	os.Mkdir(k.bpfDir, os.ModeDir)
 }
 
+type ObserverProcs struct {
+	pid  uint32
+	name string
+	args []string
+}
+
+type ExecveKey struct {
+	Pid uint32
+}
+
+type ExecveValue struct {
+	Pid      uint32
+	Filename [Progsize]byte
+	Args     [MaxArgs][ArgSize]byte
+}
+
+func (k *ExecveKey) String() string             { return fmt.Sprintf("key=%d", k.Pid) }
+func (k *ExecveKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
+func (k *ExecveKey) NewValue() bpf.MapValue     { return &ExecveValue{} }
+func (k *ExecveKey) DeepCopyMapKey() bpf.MapKey { return &ExecveKey{k.Pid} }
+
+func (v *ExecveValue) String() string                 { return fmt.Sprintf("value=%d %s %s", v.Pid, v.Filename, v.Args) }
+func (v *ExecveValue) GetValuePtr() unsafe.Pointer    { return unsafe.Pointer(v) }
+func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue { return &ExecveValue{Pid: v.Pid} } // TBD
+
+func getRunningProcs() []ObserverProcs {
+	var procs []ObserverProcs
+	procFS, _ := ioutil.ReadDir(procFileSystem)
+
+	for _, d := range procFS {
+		if d.IsDir() == false {
+			continue
+		}
+		cmdline, err := ioutil.ReadFile("/proc/" + d.Name() + "/cmdline")
+		if err != nil {
+			continue
+		}
+		if string(cmdline) == "" {
+			continue
+		}
+
+		pid, err := strconv.ParseUint(d.Name(), 10, 32)
+		if err != nil {
+			continue
+		}
+		cmds := strings.Split(string(cmdline), "--")
+		p := ObserverProcs{pid: uint32(pid), name: cmds[0], args: cmds[1:]}
+		procs = append(procs, p)
+	}
+
+	m, err := bpf.OpenMap("/sys/fs/bpf/tcpmon/kprobe_execve_map")
+	if err != nil {
+		panic(err)
+	}
+	for _, p := range procs {
+		k := &ExecveKey{Pid: p.pid}
+		v := &ExecveValue{
+			Pid: p.pid,
+		}
+		copy(v.Filename[:], p.name)
+		for i, a := range p.args {
+			if i < MaxArgs {
+				copy(v.Args[i][:], a)
+			}
+		}
+		m.Update(k, v)
+	}
+	return procs
+}
+
+func (k *ObserverKprobe) populateExecve(ctx context.Context) {
+	getRunningProcs()
+}
+
 type ObserverKprobe struct {
 	bpfDir    string
 	execve_fd int
@@ -199,6 +285,7 @@ type ObserverKprobe struct {
 func (k *ObserverKprobe) Start() {
 	k.createDir()
 	k.observerLoadExecve(context.TODO())
+	k.populateExecve(context.TODO())
 	k.observerLoadEvents(context.TODO()) // events must be last to load to link with maps
 }
 
