@@ -26,13 +26,13 @@ import (
 	"go.uber.org/zap"
 )
 
-func getIP(i uint32) net.IP {
+func GetIP(i uint32) net.IP {
 	ip := make(net.IP, 4)
 	binary.LittleEndian.PutUint32(ip, i)
 	return ip
 }
 
-func swapByte(b uint16) uint16 {
+func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
 }
 
@@ -53,10 +53,10 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnect, log *zap.Logger) 
 		zap.String("prog", strings.Trim(string(msg.Pid.Filename[:]), "\u0000")),
 		zap.Strings("args", args),
 		zap.Uint8("proto", msg.Tuple.Proto),
-		zap.String("saddr", getIP(msg.Tuple.SAddr).String()),
+		zap.String("saddr", GetIP(msg.Tuple.SAddr).String()),
 		zap.Uint16("sport", msg.Tuple.SPort),
-		zap.String("daddr", getIP(msg.Tuple.DAddr).String()),
-		zap.Uint16("dport", swapByte(msg.Tuple.DPort)),
+		zap.String("daddr", GetIP(msg.Tuple.DAddr).String()),
+		zap.Uint16("dport", SwapByte(msg.Tuple.DPort)),
 	)
 }
 
