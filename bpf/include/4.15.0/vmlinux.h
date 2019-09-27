@@ -1,6 +1,9 @@
 // Kernel version annotation
 #define VMLINUX_KERNEL_VERSION 0x40f00
 
+#define CGROUPS_OFFSET 2096 // pahole debug_info read
+#define CGROUPS_KN_OFFSET 232 // pahole debug_info read
+
 // minikube Buildroot 2018.08.3 linux 4.15.0
 typedef unsigned char __u8;
 

@@ -48,6 +48,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	struct cgroup_subsys_state *subsys;
 	struct event_execve *execve;
 
+	char *addr;
+
 	__u64 tgid;
 	const char *name;
 
@@ -56,8 +58,6 @@ int event_ipv4_connect(struct pt_regs *ctx)
        	tgid = get_current_pid_tgid();
 	msg.pid.pid = tgid >> 32;
 	msg.pid.uid = get_current_uid_gid();
-
-	bpf_printk("tcpmon %u\n", msg.pid.pid);
 
 	skp = (void *)((ctx)->di);
 
@@ -79,14 +79,37 @@ int event_ipv4_connect(struct pt_regs *ctx)
 #ifdef BPF_FUNC_get_current_cgroup_id
 	msg.kube.cgrpid = get_current_cgroup_id();
 #endif
-	probe_read(&cgroups, sizeof(cgroups), &(task->cgroups));
+/* Pahole bug does not convert to btf correctly with arbitrary byte holes not
+ * near a cacheline. To work-around this we can specify a define with the
+ * CGROUPS_OFFSET we read directly out of debug_info section. Note other
+ * reads, subsys[], cgroup are the first element of the structure so we can
+ * "just" read those. Then cid, kn, and name all appear to be before byte
+ * holes on kernels I checked so leave them alone for now.
+ *
+ * Todo, fix pahole to avoid doing extra steps to lookup offsets.
+ */
+#ifdef CGROUPS_OFFSET
+	addr = (void *)task;
+	addr += CGROUPS_OFFSET;
+#else
+	addr = (void *)&(task->cgroups);
+#endif
+	probe_read(&cgroups, sizeof(cgroups), addr);
 	if (cgroups) {
 		probe_read(&subsys, sizeof(subsys), &(cgroups->subsys[0]));
 		if (subsys) {
 			probe_read(&cgrp, sizeof(cgrp), &(subsys->cgroup));
 			if (cgrp) {
+#if 0
 				probe_read(&msg.kube.cid, sizeof(msg.kube.cid), &(cgrp->id)); 
-				probe_read(&kn, sizeof(cgrp->kn), &(cgrp->kn));
+#endif
+#ifdef CGROUPS_KN_OFFSET
+				addr = (void *)(cgrp);
+				addr += CGROUPS_KN_OFFSET;
+#else
+				addr = (void *)&(cgrp->kn);
+#endif
+				probe_read(&kn, sizeof(cgrp->kn), addr);
 				if (kn) {
 					probe_read(&name, sizeof(name), &(kn->name));
 					if (name)
