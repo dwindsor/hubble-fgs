@@ -25,9 +25,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/cilium/cilium/pkg/bpf/binary"
-	"github.com/cilium/cilium/pkg/byteorder"
-	"github.com/cilium/cilium/pkg/lock"
+	"github.com/covalentio/hubble-fgs/pkg/lock"
 
 	"golang.org/x/sys/unix"
 )
@@ -454,24 +452,6 @@ func LookupElement(fd int, key, value unsafe.Pointer) error {
 	}
 
 	return LookupElementFromPointers(fd, uintptr(unsafe.Pointer(&uba)), unsafe.Sizeof(uba))
-}
-
-// ConvertKeyValue converts key and value from bytes to given Golang struct pointers.
-func ConvertKeyValue(bKey []byte, bValue []byte, key MapKey, value MapValue) (MapKey, MapValue, error) {
-
-	if len(bKey) > 0 {
-		if err := binary.Read(bKey, byteorder.Native, key); err != nil {
-			return nil, nil, fmt.Errorf("Unable to convert key: %s", err)
-		}
-	}
-
-	if len(bValue) > 0 {
-		if err := binary.Read(bValue, byteorder.Native, value); err != nil {
-			return nil, nil, fmt.Errorf("Unable to convert value: %s", err)
-		}
-	}
-
-	return key, value, nil
 }
 
 func (m *Map) exist() (bool, error) {

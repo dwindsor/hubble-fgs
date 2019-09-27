@@ -143,6 +143,14 @@
 
 [[projects]]
   branch = "master"
+  digest = "1:382bb5a7fb4034db3b6a2d19e5a4a6bcf52f4750530603c01ca18a172fa3089b"
+  name = "golang.org/x/sync"
+  packages = ["semaphore"]
+  pruneopts = "UT"
+  revision = "cd5d95a43a6e21273425c7ae415d3df9ea832eeb"
+
+[[projects]]
+  branch = "master"
   digest = "1:ec9d9815894f067c7878330735b9e4dfa6dc61234d2ba136b60a1436d6b5ea94"
   name = "golang.org/x/sys"
   packages = ["unix"]
@@ -179,6 +187,7 @@
     "github.com/spf13/cobra",
     "github.com/spf13/viper",
     "go.uber.org/zap",
+    "golang.org/x/sync/semaphore",
     "golang.org/x/sys/unix",
   ]
   solver-name = "gps-cdcl"
