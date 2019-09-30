@@ -20,8 +20,8 @@ const (
 	MSG_OP_UNDEF           = 0
 	MSG_OP_IPV4_TCPCONNECT = 1
 
-	MAXARGS  = 4
-	ARGSIZE  = 16
+	MAXARGS  = 5
+	ARGSIZE  = 32
 	PROGSIZE = 64
 )
 
