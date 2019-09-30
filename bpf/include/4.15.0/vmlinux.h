@@ -4,6 +4,9 @@
 #define CGROUPS_OFFSET 2096 // pahole debug_info read
 #define CGROUPS_KN_OFFSET 232 // pahole debug_info read
 
+#define PARENT_OFFSET 1272 // pahole debug info
+#define PARENT_PID_OFFSET 1256 // pahole debug info
+
 // minikube Buildroot 2018.08.3 linux 4.15.0
 typedef unsigned char __u8;
 

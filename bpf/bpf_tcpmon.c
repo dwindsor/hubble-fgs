@@ -36,7 +36,7 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
 {
-	struct msg_ipv4_tcp_connect msg = {0};
+	struct msg_ipv4_tcp_connect msg = {};
 	struct sock *skp;
 
 	struct task_struct *task;
@@ -52,6 +52,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 
 	__u64 tgid;
 	const char *name;
+	__u32 pid;
+	int i;
 
 	msg.common.op = MSG_OP_IPV4_TCPCONNECT;
 
@@ -121,10 +123,33 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		}
 	}
  
-	execve = map_lookup_elem(&execve_map, &msg.pid.pid);
-	if (execve) {
-		memcpy(msg.pid.filename, execve->filename, sizeof(msg.pid.filename));
-		memcpy(msg.pid.args, execve->args, sizeof(char) * MAXARGS * ARGSIZE);
+	pid = msg.pid.pid;
+	for (i = 0; i < 4; i++) {
+		execve = map_lookup_elem(&execve_map, &pid);
+		if (execve) {
+			memcpy(msg.pid.filename, execve->filename, sizeof(msg.pid.filename));
+			memcpy(msg.pid.args, execve->args, sizeof(char) * MAXARGS * ARGSIZE);
+			break;
+		} else { // try parent links
+			__u32 pid = 0;
+
+#ifdef PARENT_OFFSET
+			addr = (void *)task;
+			addr += PARENT_OFFSET;
+#else
+			addr = (void *)&(task->parent);
+#endif
+			probe_read(&task, sizeof(task), addr);
+			if (!task)
+				break;
+#ifdef PARENT_PID_OFFSET
+			addr = (void *)(task);
+			addr += PARENT_PID_OFFSET;
+#else
+			addr = (void *)&(task->pid);
+#endif
+			probe_read(&pid, sizeof(pid), addr);
+		}
 	}
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &msg, sizeof(msg));
