@@ -15,7 +15,7 @@
 package api
 
 const (
-	DOCKER_ID_LENGTH = 13
+	DOCKER_ID_LENGTH = 14
 
 	MSG_OP_UNDEF           = 0
 	MSG_OP_IPV4_TCPCONNECT = 1

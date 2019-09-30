@@ -1,5 +1,5 @@
 /* Docker IDs are unique at first 12 characters -- tbd confirm */
-#define DOCKER_ID_LENGTH 12
+#define DOCKER_ID_LENGTH 13
 
 #define MAXARGS 4
 #define ARGSIZE 16
