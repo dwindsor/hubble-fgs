@@ -39,12 +39,12 @@ import (
 
 const (
 	Progsize = 64
-	MaxArgs  = 4
-	ArgSize  = 16
+	MaxArgs  = 5
+	ArgSize  = 32
 )
 
 var (
-	procFileSystem = "/proc/"
+	ProcFS = "/proc/"
 
 	ObserverExecve__program    string
 	observerExecve__x64_attach = "__x64_sys_execve"
@@ -262,13 +262,13 @@ func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue { return &ExecveValue{Pid:
 
 func getRunningProcs() []ObserverProcs {
 	var procs []ObserverProcs
-	procFS, _ := ioutil.ReadDir(procFileSystem)
+	procFS, _ := ioutil.ReadDir(ProcFS)
 
 	for _, d := range procFS {
 		if d.IsDir() == false {
 			continue
 		}
-		cmdline, err := ioutil.ReadFile("/proc/" + d.Name() + "/cmdline")
+		cmdline, err := ioutil.ReadFile(ProcFS + d.Name() + "/cmdline")
 		if err != nil {
 			continue
 		}

@@ -56,6 +56,8 @@ func init() {
 		"bpf-execveat", "./bpf/bpf_execveat.o", "Location of bpf_execveat.o program")
 	flags.StringVar(&observer.ObserverTCPConnect__program,
 		"bpf-tcpmon", "./bpf/bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
+	flags.StringVar(&observer.ProcFS,
+		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
 	viper.BindPFlags(flags)
 }
 
