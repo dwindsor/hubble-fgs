@@ -13,4 +13,4 @@ Docker
 To run docker image,
 
 # make image
-# docker run --privileged -i -t covalentio/hubble-fgs /bin/bash
+# docker run --name hubble-fgs --privileged -v /proc/:/procRoot -ti docker.pkg.github.com/covalentio/hubble-fgs/hubble-fgs:1.0
