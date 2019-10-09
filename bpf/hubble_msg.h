@@ -21,6 +21,7 @@ struct msg_common {
 
 struct msg_pid {
 	__u32 pid;
+	__u32 parent;
 	__u32 uid;
 	char filename[PROGSIZE];
 	char args[MAXARGS][ARGSIZE];

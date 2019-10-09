@@ -31,10 +31,11 @@ type MsgCommon struct {
 }
 
 type MsgPid struct {
-	PID      uint32
-	UID      uint32
-	Filename [PROGSIZE]byte
-	Args     [MAXARGS][ARGSIZE]byte
+	PID       uint32
+	ParentPid uint32
+	UID       uint32
+	Filename  [PROGSIZE]byte
+	Args      [MAXARGS][ARGSIZE]byte
 }
 
 type MsgIPv4Tuple struct {

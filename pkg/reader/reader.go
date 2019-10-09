@@ -49,6 +49,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnect, log *zap.Logger) 
 
 	log.Debug("KprobeEvent",
 		zap.Uint32("pid", msg.Pid.PID),
+		zap.Uint32("parent", msg.Pid.ParentPid),
 		zap.Uint32("uid", msg.Pid.UID),
 		zap.String("prog", strings.Trim(string(msg.Pid.Filename[:]), "\u0000")),
 		zap.Strings("args", args),

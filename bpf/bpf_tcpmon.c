@@ -45,7 +45,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	struct net *net_ns;
 	struct kernfs_node *kn;
 	struct cgroup_subsys_state *subsys;
-	struct event_execve *execve;
+	struct event_execve *execve = 0;
 
 	char *addr;
 
@@ -123,15 +123,24 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	}
  
 	pid = msg.pid.pid;
+#pragma unroll
 	for (i = 0; i < 4; i++) {
 		execve = map_lookup_elem(&execve_map, &pid);
 		if (execve) {
 			memcpy(msg.pid.filename, execve->filename, sizeof(msg.pid.filename));
 			memcpy(msg.pid.args, execve->args, sizeof(char) * MAXARGS * ARGSIZE);
-			break;
-		} else { // try parent links
-			__u32 pid = 0;
+		}
 
+		/* The strange if (!!) { ... break}; is here to convince the
+		 * clang unroll logic to in-fact unroll this block. What is
+		 * somewhat odd is converting to if (1) { ... } which should
+		 * still work causes this error.
+		 *  bpf_tcpmon.c:36:5: error: loop not unrolled: the optimizer \
+		 *  was unable to perform the requested transformation; the    \
+		 *  transformation might be disabled or specified as part of   \
+		 *  an unsupported transformation ordering
+		 */
+		if (!execve || !msg.pid.parent) {
 #ifdef PARENT_OFFSET
 			addr = (void *)task;
 			addr += PARENT_OFFSET;
@@ -148,6 +157,11 @@ int event_ipv4_connect(struct pt_regs *ctx)
 			addr = (void *)&(task->pid);
 #endif
 			probe_read(&pid, sizeof(pid), addr);
+			if (!msg.pid.parent) {
+				msg.pid.parent = pid;
+			}
+			if (execve)
+				break;
 		}
 	}
 
