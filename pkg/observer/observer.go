@@ -80,7 +80,7 @@ func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnect) {
 	for _, c := range k.listeners {
 		enc := gob.NewEncoder(c)
 		if err := enc.Encode(msg); err != nil {
-			log.Debug("Write failure")
+			log.Debug("Write failure", zap.Error(err))
 		}
 	}
 }
