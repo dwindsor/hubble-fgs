@@ -1,5 +1,3 @@
-// Kernel version annotation
-#define VMLINUX_KERNEL_VERSION 0x50000
 // Kernel has syscall wrapper
 #define VMLINUX_KERNEL_HAS_SYSCALL_WRAPPER
 

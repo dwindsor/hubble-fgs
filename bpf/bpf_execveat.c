@@ -14,7 +14,6 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 
 __attribute__((section(("kprobe/sys_execveat")), used))
 int event_execveat(struct pt_regs *__ctx)

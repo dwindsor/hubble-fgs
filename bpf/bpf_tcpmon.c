@@ -31,7 +31,6 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
 #define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
