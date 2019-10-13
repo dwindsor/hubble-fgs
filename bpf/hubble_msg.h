@@ -1,10 +1,9 @@
 /* Docker IDs are unique at first 12 characters -- tbd confirm */
-#define DOCKER_ID_LENGTH 13
+#define DOCKER_ID_LENGTH 14
 
 #define MAXARGS 5
 #define ARGSIZE 32
 #define PROGSIZE 64
-#define TASK_COMM_LEN 128
 
 /* Msg Types */
 enum msg_ops {
@@ -40,7 +39,7 @@ struct msg_k8s {
 	__u32 net_ns;
 	__u32 cid;
 	__u64 cgrpid;
-	char  docker_id[DOCKER_ID_LENGTH+1];
+	char  docker_id[DOCKER_ID_LENGTH];
 	char  pad[3];
 };
 

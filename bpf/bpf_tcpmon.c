@@ -115,7 +115,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 					probe_read(&name, sizeof(name), &(kn->name));
 					if (name)
 						probe_read_str(msg.kube.docker_id,
-							       DOCKER_ID_LENGTH,
+							       DOCKER_ID_LENGTH - 1,
 							       name);
 				}
 			}
