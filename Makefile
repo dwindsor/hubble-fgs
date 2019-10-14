@@ -10,6 +10,7 @@ headers:
 	cd ./bpf && make copy && make && cd ../
 
 hubble-fgs:
+	make -C ./bpf clean && make -C ./bpf copy && make -C ./bpf
 	$(GO) build ./cmd/hubble-fgs/
 
 hubble-fgs-image:

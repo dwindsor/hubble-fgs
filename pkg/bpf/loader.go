@@ -83,7 +83,6 @@ int kprobe_loader(const char *prog,
 	}
 
 	err = bpf_object__load(obj);
-	//err = bpf_prog_load(prog, BPF_PROG_TYPE_KPROBE, &obj, &fd);
 	if (err < 0) {
 		char errstr[256];
 

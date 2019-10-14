@@ -1,8 +1,8 @@
 /* Docker IDs are unique at first 12 characters -- tbd confirm */
 #define DOCKER_ID_LENGTH 14
 
-#define MAXARGS 5
-#define ARGSIZE 32
+#define MAXARGS 10
+#define ARGSIZE 64
 #define PROGSIZE 64
 
 /* Msg Types */

@@ -30,12 +30,28 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
 #define BPF_F_INDEX_MASK		0xffffffffULL
 #define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
 
+#ifdef BTF
+struct {
+	unsigned int (*type)[BPF_MAP_TYPE_PERCPU_ARRAY];
+	unsigned int (*key_size)[sizeof(__u32)];
+	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_connect)];
+	unsigned int (*max_entries)[1];
+} connect_map_store __attribute__((section((".maps")), used));
+#else
+struct bpf_map_def __attribute__((section("maps"), used)) connect_map_store = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(struct msg_ipv4_tcp_connect),
+	.max_entries = 1,
+};
+#endif
+
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
 {
-	struct msg_ipv4_tcp_connect msg = {};
+	struct msg_ipv4_tcp_connect *msg;
 	struct sock *skp;
 
 	struct task_struct *task;
@@ -54,19 +70,25 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	__u32 pid;
 	int i;
 
-	msg.common.op = MSG_OP_IPV4_TCPCONNECT;
+	__u32 zero = 0;
+
+	msg = map_lookup_elem(&connect_map_store, &zero);
+	if (!msg)
+		return 0;
+
+	msg->common.op = MSG_OP_IPV4_TCPCONNECT;
 
        	tgid = get_current_pid_tgid();
-	msg.pid.pid = tgid >> 32;
-	msg.pid.uid = get_current_uid_gid();
+	msg->pid.pid = tgid >> 32;
+	msg->pid.uid = get_current_uid_gid();
 
 	skp = (void *)((ctx)->di);
 
-	probe_read(&msg.tuple.proto, sizeof(msg.tuple.proto), &(skp->__sk_common.skc_family));
-	probe_read(&msg.tuple.saddr, sizeof(msg.tuple.saddr), &(skp->__sk_common.skc_rcv_saddr));
-	probe_read(&msg.tuple.daddr, sizeof(msg.tuple.daddr), &(skp->__sk_common.skc_daddr));
-	probe_read(&msg.tuple.dport, sizeof(msg.tuple.dport), &(skp->__sk_common.skc_dport));
-	probe_read(&msg.tuple.sport, sizeof(msg.tuple.sport), &(skp->__sk_common.skc_num));
+	probe_read(&msg->tuple.proto, sizeof(msg->tuple.proto), &(skp->__sk_common.skc_family));
+	probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), &(skp->__sk_common.skc_rcv_saddr));
+	probe_read(&msg->tuple.daddr, sizeof(msg->tuple.daddr), &(skp->__sk_common.skc_daddr));
+	probe_read(&msg->tuple.dport, sizeof(msg->tuple.dport), &(skp->__sk_common.skc_dport));
+	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), &(skp->__sk_common.skc_num));
 
 	task = (struct task_struct *)get_current_task();
 
@@ -74,11 +96,11 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	if (nsproxy) {
 		probe_read(&net_ns, sizeof(net_ns), &(nsproxy->net_ns));
 		if (net_ns)
-			probe_read(&msg.kube.net_ns, sizeof(msg.kube.net_ns), &(net_ns->ns.inum));
+			probe_read(&msg->kube.net_ns, sizeof(msg->kube.net_ns), &(net_ns->ns.inum));
 	}
 
 #ifdef BPF_FUNC_get_current_cgroup_id
-	msg.kube.cgrpid = get_current_cgroup_id();
+	msg->kube.cgrpid = get_current_cgroup_id();
 #endif
 /* Pahole bug does not convert to btf correctly with arbitrary byte holes not
  * near a cacheline. To work-around this we can specify a define with the
@@ -102,7 +124,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 			probe_read(&cgrp, sizeof(cgrp), &(subsys->cgroup));
 			if (cgrp) {
 #if 0
-				probe_read(&msg.kube.cid, sizeof(msg.kube.cid), &(cgrp->id)); 
+				probe_read(&msg->kube.cid, sizeof(msg.kube.cid), &(cgrp->id)); 
 #endif
 #ifdef CGROUPS_KN_OFFSET
 				addr = (void *)(cgrp);
@@ -114,7 +136,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 				if (kn) {
 					probe_read(&name, sizeof(name), &(kn->name));
 					if (name)
-						probe_read_str(msg.kube.docker_id,
+						probe_read_str(msg->kube.docker_id,
 							       DOCKER_ID_LENGTH - 1,
 							       name);
 				}
@@ -122,13 +144,13 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		}
 	}
  
-	pid = msg.pid.pid;
+	pid = msg->pid.pid;
 #pragma unroll
 	for (i = 0; i < 4; i++) {
 		execve = map_lookup_elem(&execve_map, &pid);
 		if (execve) {
-			memcpy(msg.pid.filename, execve->filename, sizeof(msg.pid.filename));
-			memcpy(msg.pid.args, execve->args, sizeof(char) * MAXARGS * ARGSIZE);
+			memcpy(msg->pid.filename, execve->filename, sizeof(msg->pid.filename));
+			memcpy(msg->pid.args, execve->args, sizeof(char) * MAXARGS * ARGSIZE);
 		}
 
 		/* The strange if (!!) { ... break}; is here to convince the
@@ -140,7 +162,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		 *  transformation might be disabled or specified as part of   \
 		 *  an unsupported transformation ordering
 		 */
-		if (!execve || !msg.pid.parent) {
+		if (!execve || !msg->pid.parent) {
 #ifdef PARENT_OFFSET
 			addr = (void *)task;
 			addr += PARENT_OFFSET;
@@ -157,14 +179,14 @@ int event_ipv4_connect(struct pt_regs *ctx)
 			addr = (void *)&(task->pid);
 #endif
 			probe_read(&pid, sizeof(pid), addr);
-			if (!msg.pid.parent) {
-				msg.pid.parent = pid;
+			if (!msg->pid.parent) {
+				msg->pid.parent = pid;
 			}
 			if (execve)
 				break;
 		}
 	}
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &msg, sizeof(msg));
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(*msg));
 	return 0;
 }
