@@ -1,6 +1,8 @@
 package main
 
 import (
+	"fmt"
+
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 
@@ -16,12 +18,14 @@ var (
 
 func hubbleFGSPrinter() {
 	log := logger.GetLogger()
-	reader.ObserverReceiver(log)
+	if err := reader.ObserverReceiver(log); err != nil {
+		fmt.Printf("ObserverReceiver failed: %s\n", err)
+	}
 }
 
 func init() {
 	cmd = &cobra.Command{
-		Use:   "hubble-fgs SOURCE_DIR BUCKET",
+		Use:   "hubble-fgs-printer",
 		Short: "Hubble FGS",
 		Run: func(cmd *cobra.Command, args []string) {
 			hubbleFGSPrinter()

@@ -54,7 +54,6 @@ func ServeEvents(k *observer.ObserverKprobe, ctx context.Context, path string) (
 		if conn != nil {
 			k.AddListener(conn)
 		}
-
 	}
 	return server, nil
 }
