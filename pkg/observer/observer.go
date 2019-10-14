@@ -280,7 +280,7 @@ func getRunningProcs() []ObserverProcs {
 		if err != nil {
 			continue
 		}
-		cmds := strings.Split(string(cmdline), "--")
+		cmds := strings.Split(string(cmdline), "\u0000")
 		p := ObserverProcs{pid: uint32(pid), name: cmds[0], args: cmds[1:]}
 		procs = append(procs, p)
 	}
