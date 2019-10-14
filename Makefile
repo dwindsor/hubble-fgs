@@ -12,6 +12,9 @@ headers:
 hubble-fgs:
 	$(GO) build ./cmd/hubble-fgs/
 
+hubble-fgs-image:
+	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs/
+
 hubble-fgs-printer:
 	$(GO) build ./cmd/hubble-fgs-printer/
 
