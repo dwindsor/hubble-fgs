@@ -12,6 +12,7 @@ struct bpf_map_def {
 #endif
 
 #include "hubble_msg.h"
+#include "bpf_events.h"
 
 #ifdef BTF
 struct {
@@ -41,38 +42,14 @@ int event_execveat(struct pt_regs *__ctx)
 	struct pt_regs *ctx = __ctx;
 #endif
 	struct event_execve *event;
-	struct task_struct *task;
-	char *filename;
-	char **args;
-	__u32 pid, zero = 0;
+	__u32 zero = 0;
 
-	task = (struct task_struct *)get_current_task();
-
-	pid = (get_current_pid_tgid() >> 32);
 	event = map_lookup_elem(&execveat_map_store, &zero);
 	if (!event)
 		return 0;
-	event->pid = pid;
-
-	probe_read(&filename, sizeof(filename), &ctx->si);
-	if (!filename)
-		return 0;
-	probe_read_str(event->filename, sizeof(event->filename), filename);
-	probe_read(&args, sizeof(args), &ctx->dx);
-	if (args) {
-		unsigned int i = 0;
-
-#pragma unroll
-		for (i = 0; i < MAXARGS; i++) {
-			char *arg;
-
-			probe_read(&arg, sizeof(arg), &args[i+1]);
-			if (!arg)
-				break;
-			probe_read_str(&event->args[i], sizeof(event->args[i]), arg);
-		}
-	}
-
+	event->pid = (get_current_pid_tgid() >> 32);
+	event_filename_builder(event, &ctx->si);
+	event_filename_builder(event, &ctx->dx);
 	map_update_elem(&execve_map, &event->pid, event, 0);
 	return 0;
 }
