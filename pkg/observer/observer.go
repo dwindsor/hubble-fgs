@@ -100,6 +100,28 @@ func (k *ObserverKprobe) RemoveListener(conn net.Conn) {
 	}
 }
 
+func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
+	var i int
+	var ss string
+
+	unix := &api.MsgIPv4TcpConnectUnix{}
+	unix.Common = m.Common
+	unix.Tuple = m.Tuple
+	unix.Kube = m.Kube
+
+	unix.Pid.PID = m.Pid.Curr.PID
+	unix.Pid.ParentPid = m.Pid.ParentPid
+	unix.Pid.Filename = string(m.Pid.Curr.Filename[:])
+	s := strings.Split(string(m.Pid.Curr.Args[:]), "\u0000")
+	for i, ss = range s {
+		if ss == "" {
+			break
+		}
+	}
+	unix.Pid.Args = s[:i]
+	return unix
+}
+
 func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	data := msg.DataCopy()
 	var op uint8 = data[0]
@@ -111,7 +133,8 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		if err != nil {
 			panic(err)
 		}
-		reader.ObserverIPV4TCPConnectPrinter(&m, log)
+		msgUnix := msgToUnix(&m)
+		reader.ObserverIPV4TCPConnectPrinter(msgUnix, log)
 		k.observerListeners(&m)
 	}
 }
@@ -247,19 +270,25 @@ type ExecveKey struct {
 }
 
 type ExecveValue struct {
-	Pid      uint32
-	Filename [Progsize]byte
-	Args     [MaxArgs][ArgSize]byte
+	Common api.MsgCommon
+	Pid    api.MsgPid
+	Tuple  api.MsgIPv4Tuple
+	Kube   api.MsgK8s
 }
 
 func (k *ExecveKey) String() string             { return fmt.Sprintf("key=%d", k.Pid) }
 func (k *ExecveKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *ExecveKey) NewValue() bpf.MapValue     { return &ExecveValue{} }
 func (k *ExecveKey) DeepCopyMapKey() bpf.MapKey { return &ExecveKey{k.Pid} }
 
-func (v *ExecveValue) String() string                 { return fmt.Sprintf("value=%d %s %s", v.Pid, v.Filename, v.Args) }
-func (v *ExecveValue) GetValuePtr() unsafe.Pointer    { return unsafe.Pointer(v) }
-func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue { return &ExecveValue{Pid: v.Pid} } // TBD
+func (k *ExecveKey) NewValue() bpf.MapValue { return &ExecveValue{} }
+
+func (v *ExecveValue) String() string {
+	return fmt.Sprintf("value=%d %s %s", v.Pid.Curr.PID, v.Pid.Curr.Filename, v.Pid.Curr.Args)
+}
+func (v *ExecveValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
+func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue {
+	return &ExecveValue{}
+} // TBD
 
 func getRunningProcs() []ObserverProcs {
 	var procs []ObserverProcs
@@ -292,15 +321,10 @@ func getRunningProcs() []ObserverProcs {
 	}
 	for _, p := range procs {
 		k := &ExecveKey{Pid: p.pid}
-		v := &ExecveValue{
-			Pid: p.pid,
-		}
-		copy(v.Filename[:], p.name)
-		for i, a := range p.args {
-			if i < MaxArgs {
-				copy(v.Args[i][:], a)
-			}
-		}
+		v := &ExecveValue{}
+		v.Pid.Curr.PID = p.pid
+		copy(v.Pid.Curr.Filename[:], p.name)
+		copy(v.Pid.Curr.Args[:], strings.Join(p.args, "\u0000"))
 		m.Update(k, v)
 	}
 	return procs

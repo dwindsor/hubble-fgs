@@ -26,6 +26,7 @@ install:
 
 clean:
 	rm -f $(TARGET)
+	make -C ./bpf clean
 
 lint:
 	golint -set_exit_status $$(go list ./...)

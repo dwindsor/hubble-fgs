@@ -51,36 +51,56 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
 {
-	struct msg_ipv4_tcp_connect *msg;
-	struct sock *skp;
+	struct msg_ipv4_tcp_connect *msg = 0;
 
 	struct task_struct *task;
+
+	struct sock *skp;
 	struct nsproxy *nsproxy;
 	struct css_set *cgroups;
 	struct cgroup *cgrp;
 	struct net *net_ns;
 	struct kernfs_node *kn;
 	struct cgroup_subsys_state *subsys;
-	struct event_execve *execve = 0;
 
 	char *addr;
 
-	__u64 tgid;
 	const char *name;
 	__u32 pid;
 	int i;
 
-	__u32 zero = 0;
+	task = (struct task_struct *)get_current_task();
+	pid = get_current_pid_tgid() >> 32;
+#pragma unroll
+	for (i = 0; i < 4; i++) {
+		if (!msg) {
+			msg = map_lookup_elem(&execve_map, &pid);
+#ifdef PARENT_OFFSET
+			addr = (void *)task;
+			addr += PARENT_OFFSET;
+#else
+			addr = (void *)&(task->parent);
+#endif
+			probe_read(&task, sizeof(task), addr);
+			if (!task)
+				break;
+#ifdef PARENT_PID_OFFSET
+			addr = (void *)(task);
+			addr += PARENT_PID_OFFSET;
+#else
+			addr = (void *)&(task->pid);
+#endif
+			probe_read(&pid, sizeof(pid), addr);
+		}
+		if (msg)
+			break;
+	}
 
-	msg = map_lookup_elem(&connect_map_store, &zero);
 	if (!msg)
 		return 0;
 
 	msg->common.op = MSG_OP_IPV4_TCPCONNECT;
-
-       	tgid = get_current_pid_tgid();
-	msg->pid.pid = tgid >> 32;
-	msg->pid.uid = get_current_uid_gid();
+	msg->pid.curr.uid = get_current_uid_gid();
 
 	skp = (void *)((ctx)->di);
 
@@ -89,8 +109,6 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	probe_read(&msg->tuple.daddr, sizeof(msg->tuple.daddr), &(skp->__sk_common.skc_daddr));
 	probe_read(&msg->tuple.dport, sizeof(msg->tuple.dport), &(skp->__sk_common.skc_dport));
 	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), &(skp->__sk_common.skc_num));
-
-	task = (struct task_struct *)get_current_task();
 
 	probe_read(&nsproxy, sizeof(nsproxy), &(task->nsproxy));
 	if (nsproxy) {
@@ -123,9 +141,6 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		if (subsys) {
 			probe_read(&cgrp, sizeof(cgrp), &(subsys->cgroup));
 			if (cgrp) {
-#if 0
-				probe_read(&msg->kube.cid, sizeof(msg.kube.cid), &(cgrp->id)); 
-#endif
 #ifdef CGROUPS_KN_OFFSET
 				addr = (void *)(cgrp);
 				addr += CGROUPS_KN_OFFSET;
@@ -141,49 +156,6 @@ int event_ipv4_connect(struct pt_regs *ctx)
 							       name);
 				}
 			}
-		}
-	}
- 
-	pid = msg->pid.pid;
-#pragma unroll
-	for (i = 0; i < 4; i++) {
-		execve = map_lookup_elem(&execve_map, &pid);
-		if (execve) {
-			memcpy(msg->pid.filename, execve->filename, sizeof(msg->pid.filename));
-			memcpy(msg->pid.args, execve->args, sizeof(char) * MAXARGS * ARGSIZE);
-		}
-
-		/* The strange if (!!) { ... break}; is here to convince the
-		 * clang unroll logic to in-fact unroll this block. What is
-		 * somewhat odd is converting to if (1) { ... } which should
-		 * still work causes this error.
-		 *  bpf_tcpmon.c:36:5: error: loop not unrolled: the optimizer \
-		 *  was unable to perform the requested transformation; the    \
-		 *  transformation might be disabled or specified as part of   \
-		 *  an unsupported transformation ordering
-		 */
-		if (!execve || !msg->pid.parent) {
-#ifdef PARENT_OFFSET
-			addr = (void *)task;
-			addr += PARENT_OFFSET;
-#else
-			addr = (void *)&(task->parent);
-#endif
-			probe_read(&task, sizeof(task), addr);
-			if (!task)
-				break;
-#ifdef PARENT_PID_OFFSET
-			addr = (void *)(task);
-			addr += PARENT_PID_OFFSET;
-#else
-			addr = (void *)&(task->pid);
-#endif
-			probe_read(&pid, sizeof(pid), addr);
-			if (!msg->pid.parent) {
-				msg->pid.parent = pid;
-			}
-			if (execve)
-				break;
 		}
 	}
 

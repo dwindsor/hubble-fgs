@@ -1,9 +1,14 @@
 /* Docker IDs are unique at first 12 characters -- tbd confirm */
 #define DOCKER_ID_LENGTH 14
 
-#define MAXARGS 10
-#define ARGSIZE 64
 #define PROGSIZE 64
+
+#define ARGSBUFFER 4096
+#define ARGSMASK 0x7ff
+#define ARGSIZE  2048
+#define ARGSSIZEMASK 0x7ff
+#define MAXARGS 10
+
 
 /* Msg Types */
 enum msg_ops {
@@ -18,12 +23,16 @@ struct msg_common {
 	__u8  pad[3];
 };
 
-struct msg_pid {
+struct event_execve {
 	__u32 pid;
-	__u32 parent;
 	__u32 uid;
 	char filename[PROGSIZE];
-	char args[MAXARGS][ARGSIZE];
+	char args[ARGSBUFFER];
+};
+
+struct msg_pid {
+	__u32 parent;
+	struct event_execve curr;
 };
 
 struct msg_ipv4_tuple {
@@ -55,24 +64,18 @@ struct event {
 	int event;
 };
 
-struct event_execve {
-	__u32 pid;
-	char filename[PROGSIZE];
-	char args[MAXARGS][ARGSIZE];
-};
-
 #ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_LRU_HASH];
 	unsigned int (*key_size)[sizeof(__u32)];
-	unsigned int (*value_size)[sizeof(struct event_execve)];
+	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_connect)];
 	unsigned int (*max_entries)[4096];
 } execve_map __attribute__((section((".maps")), used));
 #else
 struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
 	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct event_execve),
+	.value_size = sizeof(struct msg_ipv4_tcp_connect),
 	.max_entries = 4095,
 };
 #endif

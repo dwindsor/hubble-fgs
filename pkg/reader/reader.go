@@ -36,23 +36,13 @@ func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
 }
 
-func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnect, log *zap.Logger) {
-	var args []string
-
-	for i := 0; i < 4; i++ {
-		str := strings.Trim(string(msg.Pid.Args[i][:]), "\u0000")
-		if str == "" {
-			continue
-		}
-		args = append(args, str)
-	}
-
+func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
 	log.Debug("KprobeEvent",
 		zap.Uint32("pid", msg.Pid.PID),
 		zap.Uint32("parent", msg.Pid.ParentPid),
 		zap.Uint32("uid", msg.Pid.UID),
 		zap.String("prog", strings.Trim(string(msg.Pid.Filename[:]), "\u0000")),
-		zap.Strings("args", args),
+		zap.Strings("args", msg.Pid.Args),
 		zap.Uint8("proto", msg.Tuple.Proto),
 		zap.String("saddr", GetIP(msg.Tuple.SAddr).String()),
 		zap.Uint16("sport", msg.Tuple.SPort),
@@ -71,7 +61,7 @@ func ObserverReceiver(log *zap.Logger) error {
 
 	for {
 		dec := gob.NewDecoder(conn)
-		var IPv4TCPConnectMsg api.MsgIPv4TcpConnect
+		var IPv4TCPConnectMsg api.MsgIPv4TcpConnectUnix
 
 		err = dec.Decode(&IPv4TCPConnectMsg)
 		if err != nil {

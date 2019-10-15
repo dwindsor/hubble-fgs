@@ -20,8 +20,11 @@ const (
 	MSG_OP_UNDEF           = 0
 	MSG_OP_IPV4_TCPCONNECT = 1
 
-	MAXARGS  = 10
-	ARGSIZE  = 64
+	MAXARGS = 10
+	ARGSIZE = 64
+
+	ARGSBUFFER = 4096
+
 	PROGSIZE = 64
 )
 
@@ -30,12 +33,24 @@ type MsgCommon struct {
 	Pad [3]uint8
 }
 
+type MsgExec struct {
+	PID      uint32
+	UID      uint32
+	Filename [PROGSIZE]byte
+	Args     [ARGSBUFFER]byte
+}
+
 type MsgPid struct {
+	ParentPid uint32
+	Curr      MsgExec
+}
+
+type MsgPidUnix struct {
 	PID       uint32
 	ParentPid uint32
 	UID       uint32
-	Filename  [PROGSIZE]byte
-	Args      [MAXARGS][ARGSIZE]byte
+	Filename  string
+	Args      []string
 }
 
 type MsgIPv4Tuple struct {
@@ -58,6 +73,13 @@ type MsgK8s struct {
 type MsgIPv4TcpConnect struct {
 	Common MsgCommon
 	Pid    MsgPid
+	Tuple  MsgIPv4Tuple
+	Kube   MsgK8s
+}
+
+type MsgIPv4TcpConnectUnix struct {
+	Common MsgCommon
+	Pid    MsgPidUnix
 	Tuple  MsgIPv4Tuple
 	Kube   MsgK8s
 }
