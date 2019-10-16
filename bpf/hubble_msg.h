@@ -66,17 +66,17 @@ struct event {
 
 #ifdef BTF
 struct {
-	unsigned int (*type)[BPF_MAP_TYPE_LRU_HASH];
+	unsigned int (*type)[BPF_MAP_TYPE_ARRAY];
 	unsigned int (*key_size)[sizeof(__u32)];
 	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_connect)];
-	unsigned int (*max_entries)[4096];
+	unsigned int (*max_entries)[32768];
 } execve_map __attribute__((section((".maps")), used));
 #else
 struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
-	.type = BPF_MAP_TYPE_LRU_HASH,
+	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct msg_ipv4_tcp_connect),
-	.max_entries = 4095,
+	.max_entries = 32768,
 };
 #endif
 

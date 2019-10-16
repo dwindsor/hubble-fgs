@@ -14,23 +14,6 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "bpf_events.h"
 
-#ifdef BTF
-struct {
-	unsigned int (*type)[BPF_MAP_TYPE_PERCPU_ARRAY];
-	unsigned int (*key_size)[sizeof(__u32)];
-	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_connect)];
-	unsigned int (*max_entries)[1];
-} execveat_map_store __attribute__((section((".maps")), used));
-#else
-struct bpf_map_def __attribute__((section("maps"), used)) execveat_map_store = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_connect),
-	.max_entries = 1,
-};
-#endif
-
-
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
 __attribute__((section(("kprobe/sys_execveat")), used))
@@ -42,14 +25,14 @@ int event_execveat(struct pt_regs *__ctx)
 	struct pt_regs *ctx = __ctx;
 #endif
 	struct msg_ipv4_tcp_connect *event;
-	__u32 zero = 0;
+	__u32 pid;
 
-	event = map_lookup_elem(&execveat_map_store, &zero);
+	pid  = (get_current_pid_tgid() >> 32);
+	event = map_lookup_elem(&execve_map, &pid);
 	if (!event)
 		return 0;
-	event->pid.curr.pid = (get_current_pid_tgid() >> 32);
+	event->pid.curr.pid = pid;
 	event_filename_builder(&event->pid.curr, &ctx->si);
 	event_filename_builder(&event->pid.curr, &ctx->dx);
-	map_update_elem(&execve_map, &event->pid.curr.pid, event, 0);
 	return 0;
 }
