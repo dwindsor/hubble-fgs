@@ -15,7 +15,7 @@
 package api
 
 const (
-	DOCKER_ID_LENGTH = 14
+	DOCKER_ID_LENGTH = 16
 
 	MSG_OP_UNDEF           = 0
 	MSG_OP_IPV4_TCPCONNECT = 1
@@ -67,7 +67,6 @@ type MsgK8s struct {
 	Cid    uint32
 	Cgrpid uint64
 	Docker [DOCKER_ID_LENGTH]byte
-	Pad    [3]uint8
 }
 
 type MsgIPv4TcpConnect struct {

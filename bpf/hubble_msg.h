@@ -1,5 +1,5 @@
 /* Docker IDs are unique at first 12 characters -- tbd confirm */
-#define DOCKER_ID_LENGTH 14
+#define DOCKER_ID_LENGTH 16
 
 #define PROGSIZE 64
 
@@ -49,7 +49,6 @@ struct msg_k8s {
 	__u32 cid;
 	__u64 cgrpid;
 	char  docker_id[DOCKER_ID_LENGTH];
-	char  pad[3];
 };
 
 // separate data structs for ipv4 and ipv6

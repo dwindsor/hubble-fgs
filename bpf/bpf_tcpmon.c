@@ -101,6 +101,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 
 	msg->common.op = MSG_OP_IPV4_TCPCONNECT;
 	msg->pid.curr.uid = get_current_uid_gid();
+	msg->pid.parent = pid;
 
 	skp = (void *)((ctx)->di);
 
@@ -129,6 +130,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
  *
  * Todo, fix pahole to avoid doing extra steps to lookup offsets.
  */
+	task = (struct task_struct *)get_current_task();
 #ifdef CGROUPS_OFFSET
 	addr = (void *)task;
 	addr += CGROUPS_OFFSET;
@@ -152,7 +154,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 					probe_read(&name, sizeof(name), &(kn->name));
 					if (name)
 						probe_read_str(msg->kube.docker_id,
-							       DOCKER_ID_LENGTH - 1,
+							       DOCKER_ID_LENGTH,
 							       name);
 				}
 			}
