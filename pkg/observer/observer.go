@@ -76,7 +76,7 @@ var (
 	log *zap.Logger
 )
 
-func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnect) {
+func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
 	for _, c := range k.listeners {
 		enc := gob.NewEncoder(c)
 		if err := enc.Encode(msg); err != nil {
@@ -139,7 +139,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 		msgUnix := msgToUnix(&m)
 		reader.ObserverIPV4TCPConnectPrinter(msgUnix, log)
-		k.observerListeners(&m)
+		k.observerListeners(msgUnix)
 	}
 }
 
