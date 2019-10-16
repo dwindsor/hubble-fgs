@@ -100,10 +100,25 @@ func (k *ObserverKprobe) RemoveListener(conn net.Conn) {
 	}
 }
 
-func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
+func execToUnix(m *api.MsgExec) api.MsgExecUnix {
 	var i int
 	var ss string
 
+	exec := api.MsgExecUnix{}
+
+	exec.PID = m.PID
+	exec.Filename = strings.Trim(string(m.Filename[:]), "\u0000")
+	s := strings.Split(string(m.Args[:]), "\u0000")
+	for i, ss = range s {
+		if ss == "" {
+			break
+		}
+	}
+	exec.Args = s[:i]
+	return exec
+}
+
+func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 	unix := &api.MsgIPv4TcpConnectUnix{}
 	unix.Common = m.Common
 	unix.Tuple = m.Tuple
@@ -113,16 +128,9 @@ func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 	unix.Kube.Cgrpid = m.Kube.Cgrpid
 	unix.Kube.Docker = strings.Trim(string(m.Kube.Docker[:]), "\u0000")
 
-	unix.Pid.ParentPid = m.Pid.ParentPid
-	unix.Pid.Curr.PID = m.Pid.Curr.PID
-	unix.Pid.Curr.Filename = strings.Trim(string(m.Pid.Curr.Filename[:]), "\u0000")
-	s := strings.Split(string(m.Pid.Curr.Args[:]), "\u0000")
-	for i, ss = range s {
-		if ss == "" {
-			break
-		}
-	}
-	unix.Pid.Curr.Args = s[:i]
+	unix.Pid.Parent = execToUnix(&(m.Pid.Parent))
+	unix.Pid.Curr = execToUnix(&m.Pid.Curr)
+
 	return unix
 }
 

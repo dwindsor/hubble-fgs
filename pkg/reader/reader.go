@@ -37,8 +37,11 @@ func SwapByte(b uint16) uint16 {
 
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
 	log.Debug("KprobeEvent",
+		zap.Uint32("parent-pid", msg.Pid.Parent.PID),
+		zap.Uint32("parent-uid", msg.Pid.Parent.UID),
+		zap.String("parent-prog", msg.Pid.Parent.Filename),
+		zap.Strings("parent-args", msg.Pid.Parent.Args),
 		zap.Uint32("pid", msg.Pid.Curr.PID),
-		zap.Uint32("parent", msg.Pid.ParentPid),
 		zap.Uint32("uid", msg.Pid.Curr.UID),
 		zap.String("prog", msg.Pid.Curr.Filename),
 		zap.Strings("args", msg.Pid.Curr.Args),

@@ -42,8 +42,8 @@ type MsgExec struct {
 }
 
 type MsgPid struct {
-	ParentPid uint32
-	Curr      MsgExec
+	Parent MsgExec
+	Curr   MsgExec
 }
 
 type MsgIPv4Tuple struct {
@@ -78,8 +78,8 @@ type MsgExecUnix struct {
 }
 
 type MsgPidUnix struct {
-	ParentPid uint32
-	Curr      MsgExecUnix
+	Parent MsgExecUnix
+	Curr   MsgExecUnix
 }
 
 type MsgK8sUnix struct {

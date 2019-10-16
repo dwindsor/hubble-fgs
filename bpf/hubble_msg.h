@@ -31,7 +31,7 @@ struct event_execve {
 };
 
 struct msg_pid {
-	__u32 parent;
+	struct event_execve parent;
 	struct event_execve curr;
 };
 

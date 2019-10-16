@@ -12,6 +12,7 @@ struct bpf_map_def {
 
 #include "api.h"
 #include "hubble_msg.h"
+#include "bpf_events.h"
 
 #ifdef BTF
 struct {
@@ -64,44 +65,16 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	struct cgroup_subsys_state *subsys;
 
 	char *addr;
-
 	const char *name;
-	__u32 pid;
-	int i;
 
-	task = (struct task_struct *)get_current_task();
-	pid = get_current_pid_tgid() >> 32;
-#pragma unroll
-	for (i = 0; i < 4; i++) {
-		if (!msg) {
-			msg = map_lookup_elem(&execve_map, &pid);
-#ifdef PARENT_OFFSET
-			addr = (void *)task;
-			addr += PARENT_OFFSET;
-#else
-			addr = (void *)&(task->parent);
-#endif
-			probe_read(&task, sizeof(task), addr);
-			if (!task)
-				break;
-#ifdef PARENT_PID_OFFSET
-			addr = (void *)(task);
-			addr += PARENT_PID_OFFSET;
-#else
-			addr = (void *)&(task->pid);
-#endif
-			probe_read(&pid, sizeof(pid), addr);
-		}
-		if (msg)
-			break;
-	}
+	__u32 ppid;
 
+	msg = event_find_curr(&ppid);
 	if (!msg)
 		return 0;
 
 	msg->common.op = MSG_OP_IPV4_TCPCONNECT;
 	msg->pid.curr.uid = get_current_uid_gid();
-	msg->pid.parent = pid;
 
 	skp = (void *)((ctx)->di);
 
@@ -111,6 +84,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	probe_read(&msg->tuple.dport, sizeof(msg->tuple.dport), &(skp->__sk_common.skc_dport));
 	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), &(skp->__sk_common.skc_num));
 
+	task = (struct task_struct *)get_current_task();
 	probe_read(&nsproxy, sizeof(nsproxy), &(task->nsproxy));
 	if (nsproxy) {
 		probe_read(&net_ns, sizeof(net_ns), &(nsproxy->net_ns));
