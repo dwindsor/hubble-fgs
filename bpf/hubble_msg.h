@@ -7,7 +7,7 @@
 #define ARGSMASK 0x7ff
 #define ARGSIZE  2048
 #define ARGSSIZEMASK 0x7ff
-#define MAXARGS 10
+#define MAXARGS 20
 
 
 /* Msg Types */
