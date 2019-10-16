@@ -107,18 +107,22 @@ func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 	unix := &api.MsgIPv4TcpConnectUnix{}
 	unix.Common = m.Common
 	unix.Tuple = m.Tuple
-	unix.Kube = m.Kube
 
-	unix.Pid.PID = m.Pid.Curr.PID
+	unix.Kube.NetNS = m.Kube.NetNS
+	unix.Kube.Cid = m.Kube.Cid
+	unix.Kube.Cgrpid = m.Kube.Cgrpid
+	unix.Kube.Docker = strings.Trim(string(m.Kube.Docker[:]), "\u0000")
+
 	unix.Pid.ParentPid = m.Pid.ParentPid
-	unix.Pid.Filename = string(m.Pid.Curr.Filename[:])
+	unix.Pid.Curr.PID = m.Pid.Curr.PID
+	unix.Pid.Curr.Filename = strings.Trim(string(m.Pid.Curr.Filename[:]), "\u0000")
 	s := strings.Split(string(m.Pid.Curr.Args[:]), "\u0000")
 	for i, ss = range s {
 		if ss == "" {
 			break
 		}
 	}
-	unix.Pid.Args = s[:i]
+	unix.Pid.Curr.Args = s[:i]
 	return unix
 }
 

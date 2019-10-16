@@ -21,7 +21,6 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"net"
-	"strings"
 
 	"go.uber.org/zap"
 )
@@ -38,17 +37,17 @@ func SwapByte(b uint16) uint16 {
 
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
 	log.Debug("KprobeEvent",
-		zap.Uint32("pid", msg.Pid.PID),
+		zap.Uint32("pid", msg.Pid.Curr.PID),
 		zap.Uint32("parent", msg.Pid.ParentPid),
-		zap.Uint32("uid", msg.Pid.UID),
-		zap.String("prog", strings.Trim(string(msg.Pid.Filename[:]), "\u0000")),
-		zap.Strings("args", msg.Pid.Args),
+		zap.Uint32("uid", msg.Pid.Curr.UID),
+		zap.String("prog", msg.Pid.Curr.Filename),
+		zap.Strings("args", msg.Pid.Curr.Args),
 		zap.Uint8("proto", msg.Tuple.Proto),
 		zap.String("saddr", GetIP(msg.Tuple.SAddr).String()),
 		zap.Uint16("sport", msg.Tuple.SPort),
 		zap.String("daddr", GetIP(msg.Tuple.DAddr).String()),
 		zap.Uint16("dport", SwapByte(msg.Tuple.DPort)),
-		zap.String("DockerID", strings.Trim(string(msg.Kube.Docker[:]), "\u0000")),
+		zap.String("DockerID", msg.Kube.Docker),
 	)
 }
 
