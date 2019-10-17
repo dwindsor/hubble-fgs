@@ -1,5 +1,5 @@
 // Kernel version annotation
-#define VMLINUX_KERNEL_VERSION 0x40f00
+#define VMLINUX_KERNEL_VERSION 0x40f12
 
 #define CGROUPS_OFFSET 3192 // pahole debug_info read
 #define CGROUPS_KN_OFFSET 232 // pahole debug_info read
