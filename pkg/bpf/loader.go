@@ -64,7 +64,7 @@ int kprobe_loader(const char *prog,
 
 	bpf_object__for_each_program(prog_bpf, obj) {
 		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
-		fprintf(stderr, "program: kern_version: %u", bpf_object__kversion(obj));
+		fprintf(stderr, "program: kern_version: %u\n", bpf_object__kversion(obj));
 	}
 
 	if (execve_fd) {
