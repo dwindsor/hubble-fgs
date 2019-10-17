@@ -48,6 +48,9 @@ struct bpf_map_def __attribute__((section("maps"), used)) connect_map_store = {
 #endif
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
+#ifdef VMLINUX_KERNEL_VERSION
+int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+#endif
 
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)

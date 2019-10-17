@@ -15,6 +15,9 @@ struct bpf_map_def {
 #include "bpf_events.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
+#ifdef VMLINUX_KERNEL_VERSION
+int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+#endif
 
 __attribute__((section(("kprobe/sys_execve")), used))
 int event_execve(struct pt_regs *__ctx)
