@@ -69,6 +69,14 @@ var (
 	observerTCPConnect__map       = "kprobe_tcp_events"
 	observerTCPConnect__map_label = "tcpmon_map"
 
+	ObserverTCPConnectRet__program    string
+	observerTCPConnectRet__x64_attach = "__x64_sys_connect"
+	observerTCPConnectRet__attach     = "tcp_connect"
+	observerTCPConnectRet__label      = "kretprobe/sys_connect"
+	observerTCPConnectRet__prog       = "kretprobe_sys_connect"
+	observerTCPConnectRet__map        = observerTCPConnect__map
+	observerTCPConnectRet__map_label  = observerTCPConnect__map_label
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -120,6 +128,7 @@ func execToUnix(m *api.MsgExec) api.MsgExecUnix {
 
 func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 	unix := &api.MsgIPv4TcpConnectUnix{}
+
 	unix.Common = m.Common
 	unix.Tuple = m.Tuple
 
@@ -131,6 +140,7 @@ func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 	unix.Pid.Parent = execToUnix(&(m.Pid.Parent))
 	unix.Pid.Curr = execToUnix(&m.Pid.Curr)
 
+	unix.Return = m.Return
 	return unix
 }
 
@@ -139,7 +149,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	var op uint8 = data[0]
 
 	switch op {
-	case api.MSG_OP_IPV4_TCPCONNECT:
+	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET:
 		m := api.MsgIPv4TcpConnect{}
 		err := binary.Read(bytes.NewReader(data), binary.LittleEndian, &m)
 		if err != nil {
@@ -178,7 +188,7 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 		observerExecve__label,
 		k.bpfDir+observerExecve__prog,
 		k.bpfDir+observerExecve__map,
-		observerExecve__map_label, 0)
+		observerExecve__map_label, false, 0, 0)
 	if err != nil {
 		/* If we fail attach with __x64_sys_execve variant try again with
 		 * sys_execve variant.
@@ -189,7 +199,7 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 			observerExecve__label,
 			k.bpfDir+observerExecve__prog,
 			k.bpfDir+observerExecve__map,
-			observerExecve__map_label, 0)
+			observerExecve__map_label, false, 0, 0)
 		if err != nil {
 			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
 		}
@@ -203,7 +213,7 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 		k.bpfDir+observerExecveat__prog,
 		k.bpfDir+observerExecveat__map,
 		observerExecveat__map_label,
-		k.execve_fd)
+		false, k.execve_fd, 0)
 	if err != nil {
 		/* If we fail attach with __x64_sys_execve variant try again with
 		 * sys_execve variant.
@@ -215,7 +225,7 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 			k.bpfDir+observerExecveat__prog,
 			k.bpfDir+observerExecveat__map,
 			observerExecveat__map_label,
-			k.execve_fd)
+			false, k.execve_fd, 0)
 		if err != nil {
 			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
 		}
@@ -224,18 +234,43 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 }
 
 func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
-	err, _ := bpf.LoadKprobe(
+	fmt.Printf("\nLoad connectRet\n")
+
+	err, tcp_events := bpf.LoadKprobe(
 		ObserverTCPConnect__program,
 		observerTCPConnect__attach,
 		observerTCPConnect__label,
 		k.bpfDir+observerTCPConnect__prog,
 		k.bpfDir+observerTCPConnect__map,
 		observerTCPConnect__map_label,
-		k.execve_fd)
+		false, k.execve_fd, 0)
 	if err != nil {
 		return fmt.Errorf("failed kprobe events LoadKprobe: %s\n", err)
 	}
+	k.tcp_events_fd = tcp_events
+	err, _ = bpf.LoadKprobe(
+		ObserverTCPConnectRet__program,
+		observerTCPConnectRet__x64_attach,
+		observerTCPConnectRet__label,
+		k.bpfDir+observerTCPConnectRet__prog,
+		k.bpfDir+observerTCPConnectRet__map,
+		observerTCPConnectRet__map_label,
+		true, k.execve_fd, tcp_events)
+	if err != nil {
+		err, _ = bpf.LoadKprobe(
+			ObserverTCPConnectRet__program,
+			observerTCPConnectRet__attach,
+			observerTCPConnectRet__label,
+			k.bpfDir+observerTCPConnectRet__prog,
+			k.bpfDir+observerTCPConnectRet__map,
+			observerTCPConnectRet__map_label,
+			true, k.execve_fd, tcp_events)
+		if err != nil {
+			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
+		}
+	}
 
+	fmt.Printf("\nDone connectRet\n")
 	c := bpf.DefaultPerfEventConfig()
 	e, err := bpf.NewPerCpuEvents(c)
 	if err != nil {
@@ -347,9 +382,10 @@ func (k *ObserverKprobe) populateExecve(ctx context.Context) {
 }
 
 type ObserverKprobe struct {
-	bpfDir    string
-	execve_fd int
-	listeners []net.Conn
+	bpfDir        string
+	execve_fd     int
+	tcp_events_fd int
+	listeners     []net.Conn
 }
 
 func (k *ObserverKprobe) Start() {

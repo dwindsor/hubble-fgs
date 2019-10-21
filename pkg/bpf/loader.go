@@ -41,7 +41,9 @@ int kprobe_loader(const char *prog,
 	  	  const char *__prog,
 	  	  const char *__map,
 	  	  const char *__label_map,
-	  	  const int execve_fd) {
+		  const bool retprobe,
+	  	  const int execve_fd,
+	  	  const int tcp_events_fd) {
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
 	struct bpf_object *obj, *execve_obj;
@@ -80,6 +82,23 @@ int kprobe_loader(const char *prog,
 			fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
 			return -1;
 		}
+	}
+
+	if (tcp_events_fd) {
+		map = bpf_object__find_map_by_name(obj, "tcpmon_map");
+		err = libbpf_get_error(map);
+		if (err) {
+			fprintf(stderr, "bpf_object__find_map_by_name: (kprobe_tcp_events)\n");
+			return -1;
+		}
+
+		fprintf(stderr, "tcp_events_fd %i map kprobe_tcp_events\n", tcp_events_fd);
+		err = bpf_map__reuse_fd(map, tcp_events_fd);
+		if (err) {
+			fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
+			return -1;
+		}
+		fprintf(stderr, "tcp_events_fd map reused\n");
 	}
 
 	err = bpf_object__load(obj);
@@ -121,7 +140,7 @@ int kprobe_loader(const char *prog,
 		map_fd = bpf_map__fd(map_bpf);
 	}
 
-	prog_attach = bpf_program__attach_kprobe(prog_bpf, false, attach);
+	prog_attach = bpf_program__attach_kprobe(prog_bpf, retprobe, attach);
 	err = libbpf_get_error(prog_attach);
 	if (err) {
 		fprintf(stderr, "bpf_program__attach_kprobe: failed\n");
@@ -142,15 +161,17 @@ import (
 	"fmt"
 )
 
-func LoadKprobe(object, attach, __label, __prog, __map, __map_label string, execve_fd int) (error, int) {
+func LoadKprobe(object, attach, __label, __prog, __map, __map_label string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
 	o := C.CString(object)
 	a := C.CString(attach)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	m := C.CString(__map)
 	ml := C.CString(__map_label)
+	ret := C.bool(retprobe)
 	fd := C.int(execve_fd)
-	loader_fd := C.kprobe_loader(o, a, l, p, m, ml, fd)
+	tcp := C.int(tcp_fd)
+	loader_fd := C.kprobe_loader(o, a, l, p, m, ml, ret, fd, tcp)
 	if int(loader_fd) < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loader_fd, object), 0
 	}

@@ -14,39 +14,6 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "bpf_events.h"
 
-#ifdef BTF
-struct {
-	unsigned int (*type)[BPF_MAP_TYPE_PERF_EVENT_ARRAY];
-	unsigned int (*key_size)[sizeof(int)];
-	unsigned int (*value_size)[sizeof(struct event)];
-} tcpmon_map __attribute__((section((".maps")), used));
-#else
-struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
-	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct event),
-};
-#endif
-
-#define BPF_F_INDEX_MASK		0xffffffffULL
-#define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
-
-#ifdef BTF
-struct {
-	unsigned int (*type)[BPF_MAP_TYPE_PERCPU_ARRAY];
-	unsigned int (*key_size)[sizeof(__u32)];
-	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_connect)];
-	unsigned int (*max_entries)[1];
-} connect_map_store __attribute__((section((".maps")), used));
-#else
-struct bpf_map_def __attribute__((section("maps"), used)) connect_map_store = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_connect),
-	.max_entries = 1,
-};
-#endif
-
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
@@ -70,7 +37,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	char *addr;
 	const char *name;
 
-	__u32 ppid;
+	__u32 ppid = 0;
 
 	msg = event_find_curr(&ppid);
 	if (!msg)

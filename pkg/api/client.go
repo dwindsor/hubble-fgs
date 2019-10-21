@@ -17,8 +17,9 @@ package api
 const (
 	DOCKER_ID_LENGTH = 16
 
-	MSG_OP_UNDEF           = 0
-	MSG_OP_IPV4_TCPCONNECT = 1
+	MSG_OP_UNDEF              = 0
+	MSG_OP_IPV4_TCPCONNECT    = 1
+	MSG_OP_IPV4_TCPCONNECTRET = 2
 
 	MAXARGS = 20
 	ARGSIZE = 64
@@ -67,6 +68,7 @@ type MsgIPv4TcpConnect struct {
 	Pid    MsgPid
 	Tuple  MsgIPv4Tuple
 	Kube   MsgK8s
+	Return int64
 }
 
 // API between Userspace hubble-fgs Golang agent and Unix domain socket listener
@@ -94,4 +96,5 @@ type MsgIPv4TcpConnectUnix struct {
 	Pid    MsgPidUnix
 	Tuple  MsgIPv4Tuple
 	Kube   MsgK8sUnix
+	Return int64
 }

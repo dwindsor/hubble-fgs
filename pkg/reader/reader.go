@@ -37,6 +37,7 @@ func SwapByte(b uint16) uint16 {
 
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
 	log.Debug("KprobeEvent",
+		zap.Uint8("op", msg.Common.Op),
 		zap.Uint32("parent-pid", msg.Pid.Parent.PID),
 		zap.Uint32("parent-uid", msg.Pid.Parent.UID),
 		zap.String("parent-prog", msg.Pid.Parent.Filename),
@@ -51,6 +52,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.String("daddr", GetIP(msg.Tuple.DAddr).String()),
 		zap.Uint16("dport", SwapByte(msg.Tuple.DPort)),
 		zap.String("DockerID", msg.Kube.Docker),
+		zap.Int64("return", msg.Return),
 	)
 }
 

@@ -14,6 +14,7 @@
 enum msg_ops {
 	MSG_OP_UNDEF,
 	MSG_OP_IPV4_TCPCONNECT,
+	MSG_OP_IPV4_TCPCONNECTRET,
 	MSG_OP_MAX,
 };
 
@@ -57,6 +58,7 @@ struct msg_ipv4_tcp_connect {
 	struct msg_pid        pid;
 	struct msg_ipv4_tuple tuple;
 	struct msg_k8s	      kube;
+	unsigned long int     ret;
 };
 
 struct event {
@@ -78,6 +80,23 @@ struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
 	.max_entries = 32768,
 };
 #endif
+
+#ifdef BTF
+struct {
+	unsigned int (*type)[BPF_MAP_TYPE_PERF_EVENT_ARRAY];
+	unsigned int (*key_size)[sizeof(int)];
+	unsigned int (*value_size)[sizeof(struct event)];
+} tcpmon_map __attribute__((section((".maps")), used));
+#else
+struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
+	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct event),
+};
+#endif
+
+#define BPF_F_INDEX_MASK		0xffffffffULL
+#define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
 
 #define bpf_printk(fmt, ...)				\
 ({							\

@@ -1,6 +1,6 @@
 .PHONY: all copy
 
-BPF = bpf_tcpmon.o bpf_execve.o bpf_execveat.o
+BPF = bpf_tcpmon.o bpf_tcpmonret.o bpf_execve.o bpf_execveat.o
 FLAGS := -I. -Wall -Werror -Wno-unknown-warning-option -O2
 
 CLANG_FLAGS += ${FLAGS} -target bpf -emit-llvm -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types
@@ -21,6 +21,14 @@ bpf_tcpmon.ll: bpf_tcpmon.c $(LIB)
 	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
 bpf_tcpmon.o: bpf_tcpmon.ll
+	@$(ECHO_CC)
+	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
+
+bpf_tcpmonret.ll: bpf_tcpmonret.c $(LIB)
+	@$(ECHO_CC)
+	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
+
+bpf_tcpmonret.o: bpf_tcpmonret.ll
 	@$(ECHO_CC)
 	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
 

@@ -255,7 +255,7 @@ func DefaultPerfEventConfig() *PerfEventConfig {
 		SampleType:   PERF_SAMPLE_RAW,
 		WakeupEvents: 1,
 		NumCpus:      runtime.NumCPU(),
-		NumPages:     8,
+		NumPages:     32,
 	}
 }
 
