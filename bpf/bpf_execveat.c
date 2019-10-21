@@ -27,7 +27,7 @@ int event_execveat(struct pt_regs *__ctx)
 #else
 	struct pt_regs *ctx = __ctx;
 #endif
-	struct msg_ipv4_tcp_connect *event;
+	struct msg_ipv4_tcp_connect *event, *parent;
 	__u32 pid;
 
 	pid  = (get_current_pid_tgid() >> 32);
@@ -36,6 +36,10 @@ int event_execveat(struct pt_regs *__ctx)
 		return 0;
 	event->pid.curr.pid = pid;
 	event_filename_builder(&event->pid.curr, &ctx->si);
-	event_filename_builder(&event->pid.curr, &ctx->dx);
+	event_args_builder(&event->pid.curr, &ctx->dx);
+	parent = event_find_parent();
+	if (!parent)
+		return 0;
+	event_copy_parent(event, parent);
 	return 0;
 }
