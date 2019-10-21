@@ -52,7 +52,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.Uint16("sport", msg.Tuple.SPort),
 		zap.String("daddr", GetIP(msg.Tuple.DAddr).String()),
 		zap.Uint16("dport", SwapByte(msg.Tuple.DPort)),
-		zap.String("DockerID", msg.Kube.Docker),
+		zap.String("ContainerID", msg.Kube.Docker),
 		zap.Int64("return", msg.Return),
 	)
 }
