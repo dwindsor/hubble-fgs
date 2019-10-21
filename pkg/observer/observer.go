@@ -71,7 +71,7 @@ var (
 
 	ObserverTCPConnectRet__program    string
 	observerTCPConnectRet__x64_attach = "__x64_sys_connect"
-	observerTCPConnectRet__attach     = "tcp_connect"
+	observerTCPConnectRet__attach     = "sys_connect"
 	observerTCPConnectRet__label      = "kretprobe/sys_connect"
 	observerTCPConnectRet__prog       = "kretprobe_sys_connect"
 	observerTCPConnectRet__map        = observerTCPConnect__map

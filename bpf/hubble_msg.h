@@ -3,10 +3,10 @@
 
 #define PROGSIZE 64
 
-#define ARGSBUFFER 4096
-#define ARGSMASK 0x7ff
-#define ARGSIZE  2048
-#define ARGSSIZEMASK 0x7ff
+#define ARGSBUFFER 2048
+#define ARGSMASK 0x3ff
+#define ARGSIZE  1024
+#define ARGSSIZEMASK 0x3ff
 #define MAXARGS 20
 
 

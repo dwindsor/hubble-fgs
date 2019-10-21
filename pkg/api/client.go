@@ -21,12 +21,9 @@ const (
 	MSG_OP_IPV4_TCPCONNECT    = 1
 	MSG_OP_IPV4_TCPCONNECTRET = 2
 
-	MAXARGS = 20
-	ARGSIZE = 64
-
-	ARGSBUFFER = 4096
-
-	PROGSIZE = 64
+	MAXARGS    = 20
+	ARGSBUFFER = 2048
+	PROGSIZE   = 64
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
