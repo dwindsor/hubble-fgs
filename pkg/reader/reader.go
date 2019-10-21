@@ -20,7 +20,9 @@ import (
 
 	"encoding/binary"
 	"encoding/gob"
+	"golang.org/x/sys/unix"
 	"net"
+	"syscall"
 
 	"go.uber.org/zap"
 )
@@ -36,6 +38,8 @@ func SwapByte(b uint16) uint16 {
 }
 
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
+	e := syscall.Errno(uintptr(-msg.Return))
+
 	log.Debug("KprobeEvent",
 		zap.Uint8("op", msg.Common.Op),
 		zap.Uint64("ktime", msg.Common.Ktime),
@@ -53,7 +57,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.String("daddr", GetIP(msg.Tuple.DAddr).String()),
 		zap.Uint16("dport", SwapByte(msg.Tuple.DPort)),
 		zap.String("ContainerID", msg.Kube.Docker),
-		zap.Int64("return", msg.Return),
+		zap.String("return", unix.ErrnoName(e)),
 	)
 }
 
