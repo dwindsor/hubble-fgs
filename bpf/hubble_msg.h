@@ -21,7 +21,8 @@ enum msg_ops {
 /* Msg Layout */
 struct msg_common {
 	__u8  op;
-	__u8  pad[3];
+	__u8  pad[7];
+	__u64 ktime;
 };
 
 struct event_execve {
@@ -42,7 +43,7 @@ struct msg_ipv4_tuple {
 	__u16 dport;
 	__u16 sport;
 	__u8  proto;
-	__u8  pad[7];
+	__u8  pad[11];
 };
 
 struct msg_k8s {

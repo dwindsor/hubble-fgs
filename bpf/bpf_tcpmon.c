@@ -44,6 +44,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		return 0;
 
 	msg->common.op = MSG_OP_IPV4_TCPCONNECT;
+	msg->common.ktime = ktime_get_ns();
 	msg->pid.curr.uid = get_current_uid_gid();
 
 	skp = (void *)((ctx)->di);
