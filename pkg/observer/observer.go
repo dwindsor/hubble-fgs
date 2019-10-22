@@ -32,6 +32,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"unicode/utf8"
 	"unsafe"
 
 	"go.uber.org/zap"
@@ -108,24 +109,6 @@ func (k *ObserverKprobe) RemoveListener(conn net.Conn) {
 	}
 }
 
-func execToUnix(m *api.MsgExec) api.MsgExecUnix {
-	var i int
-	var ss string
-
-	exec := api.MsgExecUnix{}
-
-	exec.PID = m.PID
-	exec.Filename = strings.Trim(string(m.Filename[:]), "\u0000")
-	s := strings.Split(string(m.Args[:]), "\u0000")
-	for i, ss = range s {
-		if ss == "" {
-			break
-		}
-	}
-	exec.Args = s[:i]
-	return exec
-}
-
 func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 	unix := &api.MsgIPv4TcpConnectUnix{}
 
@@ -137,25 +120,51 @@ func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 	unix.Kube.Cgrpid = m.Kube.Cgrpid
 	unix.Kube.Docker = strings.Trim(string(m.Kube.Docker[:]), "\u0000")
 
-	unix.Pid.Parent = execToUnix(&(m.Pid.Parent))
-	unix.Pid.Curr = execToUnix(&m.Pid.Curr)
-
 	unix.Return = m.Return
 	return unix
+}
+
+func execParse(reader *bytes.Reader) api.MsgExecUnix {
+	execUnix := api.MsgExecUnix{}
+	exec := api.MsgExec{}
+
+	if err := binary.Read(reader, binary.LittleEndian, &exec); err != nil {
+		panic(err)
+	}
+
+	execUnix.PID = exec.PID
+	execUnix.UID = exec.UID
+
+	size := exec.Size - 16
+	args := make([]byte, size)
+	if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
+		panic(err)
+	}
+
+	cmdArgs := bytes.Split(args, []byte{0x00})
+	execUnix.Filename = string(cmdArgs[0])
+	execUnix.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
+
+	return execUnix
 }
 
 func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	data := msg.DataCopy()
 	var op uint8 = data[0]
 
+	r := bytes.NewReader(data)
+
 	switch op {
 	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET:
 		m := api.MsgIPv4TcpConnect{}
-		err := binary.Read(bytes.NewReader(data), binary.LittleEndian, &m)
+		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
 			panic(err)
 		}
 		msgUnix := msgToUnix(&m)
+		msgUnix.Pid.Parent = execParse(r)
+		msgUnix.Pid.Curr = execParse(r)
+
 		reader.ObserverIPV4TCPConnectPrinter(msgUnix, log)
 		k.observerListeners(msgUnix)
 	}
@@ -234,8 +243,6 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 }
 
 func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
-	fmt.Printf("\nLoad connectRet\n")
-
 	err, tcp_events := bpf.LoadKprobe(
 		ObserverTCPConnect__program,
 		observerTCPConnect__attach,
@@ -270,7 +277,6 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 		}
 	}
 
-	fmt.Printf("\nDone connectRet\n")
 	c := bpf.DefaultPerfEventConfig()
 	e, err := bpf.NewPerCpuEvents(c)
 	if err != nil {
@@ -284,6 +290,7 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 		todo, err := e.Poll(pollTimeout)
 		switch {
 		case isCtxDone(stopCtx):
+			log.Debug("isCtxDone completed\n")
 			return nil
 
 		case err == syscall.EBADF:
@@ -307,20 +314,35 @@ func (k *ObserverKprobe) createDir() {
 }
 
 type ObserverProcs struct {
-	pid  uint32
-	name string
-	args []string
+	psize uint32
+	puid  uint32
+	ppid  uint32
+	ppad  uint32
+	pargs []byte
+	size  uint32
+	uid   uint32
+	pid   uint32
+	pad   uint32
+	args  []byte
 }
 
 type ExecveKey struct {
 	Pid uint32
 }
 
-type ExecveValue struct {
+type ExecveValueL struct {
 	Common api.MsgCommon
-	Pid    api.MsgPid
 	Tuple  api.MsgIPv4Tuple
 	Kube   api.MsgK8s
+	Return uint64
+}
+
+type ExecveValue struct {
+	Common api.MsgCommon
+	Tuple  api.MsgIPv4Tuple
+	Kube   api.MsgK8s
+	Return uint64
+	Args   [api.ARGSBUFFER]byte
 }
 
 func (k *ExecveKey) String() string             { return fmt.Sprintf("key=%d", k.Pid) }
@@ -330,12 +352,24 @@ func (k *ExecveKey) DeepCopyMapKey() bpf.MapKey { return &ExecveKey{k.Pid} }
 func (k *ExecveKey) NewValue() bpf.MapValue { return &ExecveValue{} }
 
 func (v *ExecveValue) String() string {
-	return fmt.Sprintf("value=%d %s %s", v.Pid.Curr.PID, v.Pid.Curr.Filename, v.Pid.Curr.Args)
+	return fmt.Sprintf("value=%d %s", 0, "")
 }
 func (v *ExecveValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue {
 	return &ExecveValue{}
 } // TBD
+
+func stringToUTF8(s []byte) []byte {
+	var utf8Cursor int = 0
+	var i int = 0
+
+	for i < len(s) {
+		r, size := utf8.DecodeRune(s[i:])
+		utf8Cursor += utf8.EncodeRune(s[utf8Cursor:], r)
+		i += size
+	}
+	return s
+}
 
 func getRunningProcs() []ObserverProcs {
 	var procs []ObserverProcs
@@ -352,13 +386,32 @@ func getRunningProcs() []ObserverProcs {
 		if string(cmdline) == "" {
 			continue
 		}
-
+		statline, err := ioutil.ReadFile(ProcFS + d.Name() + "/stat")
+		if err != nil {
+			continue
+		}
 		pid, err := strconv.ParseUint(d.Name(), 10, 32)
 		if err != nil {
 			continue
 		}
-		cmds := strings.Split(string(cmdline), "\u0000")
-		p := ObserverProcs{pid: uint32(pid), name: cmds[0], args: cmds[1:]}
+
+		stats := strings.Split(string(statline), " ")
+		ppid := stats[3]
+		_ppid, err := strconv.ParseUint(ppid, 10, 32)
+		if err != nil {
+			continue
+		}
+		pcmdline, err := ioutil.ReadFile(ProcFS + ppid + "/cmdline")
+		if err != nil {
+			continue
+		}
+
+		pcmdsUTF := stringToUTF8(pcmdline)
+		cmdsUTF := stringToUTF8(cmdline)
+
+		p := ObserverProcs{ppid: uint32(_ppid), pargs: pcmdsUTF, pid: uint32(pid), args: cmdsUTF}
+		p.size = uint32(4 + 4 + 4 + 4 + len(p.args))
+		p.psize = uint32(4 + 4 + 4 + 4 + len(p.pargs))
 		procs = append(procs, p)
 	}
 
@@ -367,11 +420,30 @@ func getRunningProcs() []ObserverProcs {
 		panic(err)
 	}
 	for _, p := range procs {
+		off := 0
+
 		k := &ExecveKey{Pid: p.pid}
 		v := &ExecveValue{}
-		v.Pid.Curr.PID = p.pid
-		copy(v.Pid.Curr.Filename[:], p.name)
-		copy(v.Pid.Curr.Args[:], strings.Join(p.args, "\u0000"))
+
+		binary.LittleEndian.PutUint32(v.Args[off:], p.psize)
+		off += 4
+		binary.LittleEndian.PutUint32(v.Args[off:], p.ppid)
+		off += 4
+		binary.LittleEndian.PutUint32(v.Args[off:], p.puid)
+		off += 4
+		binary.LittleEndian.PutUint32(v.Args[off:], p.ppad)
+		off += 4
+		off += copy(v.Args[off:], p.pargs)
+
+		binary.LittleEndian.PutUint32(v.Args[off:], p.size)
+		off += 4
+		binary.LittleEndian.PutUint32(v.Args[off:], p.pid)
+		off += 4
+		binary.LittleEndian.PutUint32(v.Args[off:], p.uid)
+		off += 4
+		binary.LittleEndian.PutUint32(v.Args[off:], p.pad)
+		off += 4
+		off += copy(v.Args[off:], p.args)
 		m.Update(k, v)
 	}
 	return procs
@@ -392,7 +464,9 @@ func (k *ObserverKprobe) Start() {
 	k.createDir()
 	k.observerLoadExecve(context.TODO())
 	k.populateExecve(context.TODO())
-	k.observerLoadEvents(context.TODO()) // events must be last to load to link with maps
+	if err := k.observerLoadEvents(context.TODO()); err != nil {
+		fmt.Printf("observerLoadEvents failed: %s", err)
+	}
 }
 
 func NewObserverKprobe(bpfDir string) *ObserverKprobe {

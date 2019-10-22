@@ -29,15 +29,16 @@ const (
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
 type MsgCommon struct {
 	Op    uint8
-	Pad   [7]uint8
+	Pad   [3]uint8
+	Size  uint32
 	Ktime uint64
 }
 
 type MsgExec struct {
-	PID      uint32
-	UID      uint32
-	Filename [PROGSIZE]byte
-	Args     [ARGSBUFFER]byte
+	Size uint32
+	PID  uint32
+	UID  uint32
+	Pad  uint32
 }
 
 type MsgPid struct {
@@ -63,7 +64,6 @@ type MsgK8s struct {
 
 type MsgIPv4TcpConnect struct {
 	Common MsgCommon
-	Pid    MsgPid
 	Tuple  MsgIPv4Tuple
 	Kube   MsgK8s
 	Return int64
@@ -74,7 +74,7 @@ type MsgExecUnix struct {
 	PID      uint32
 	UID      uint32
 	Filename string
-	Args     []string
+	Args     string
 }
 
 type MsgPidUnix struct {
@@ -91,8 +91,8 @@ type MsgK8sUnix struct {
 
 type MsgIPv4TcpConnectUnix struct {
 	Common MsgCommon
-	Pid    MsgPidUnix
 	Tuple  MsgIPv4Tuple
 	Kube   MsgK8sUnix
 	Return int64
+	Pid    MsgPidUnix
 }

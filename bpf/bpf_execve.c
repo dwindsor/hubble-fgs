@@ -27,19 +27,35 @@ int event_execve(struct pt_regs *__ctx)
 #else
 	struct pt_regs *ctx = __ctx;
 #endif
-	struct msg_ipv4_tcp_connect *event, *parent;
+	struct msg_ipv4_tcp_connect *event, *parent_event;
+	struct event_execve *curr, *parent;
+	unsigned int offset;
+	int size = 0;
 	__u32 pid;
 
 	pid = (get_current_pid_tgid() >> 32);
 	event = map_lookup_elem(&execve_map, &pid);
 	if (!event)
 		return 0;
-	event->pid.curr.pid = pid;
-	event_filename_builder(&event->pid.curr, &ctx->di);
-	event_args_builder(&event->pid.curr, &ctx->si);
-	parent = event_find_parent();
-	if (!parent)
+	parent = (struct event_execve *)&event->pid;
+	parent_event = event_find_parent();
+	if (parent_event) {
+		size = event_copy_execve(parent,
+					 (struct event_execve *)&parent_event->pid);
+	} else {
+		size = offsetof(struct event_execve, args);
+		parent->size = size;
+		parent->pid = parent->uid;
+	}
+
+	size &= ARGSSIZEMASK;
+	if (size < 0)
 		return 0;
-	event_copy_parent(event, parent);
+
+	curr = (void *)&event->pid + size;
+	curr->pid = pid;
+	offset = event_filename_builder(curr, &ctx->di);
+	size = event_args_builder(curr, offset, &ctx->si);
+	curr->size = size + offsetof(struct event_execve, args);
 	return 0;
 }

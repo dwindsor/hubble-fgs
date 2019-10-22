@@ -23,6 +23,7 @@ __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_connect *msg = 0;
+	struct event_execve *curr, *parent;
 
 	struct task_struct *task;
 
@@ -38,6 +39,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	const char *name;
 
 	__u32 ppid = 0;
+	size_t size;
 
 	msg = event_find_curr(&ppid);
 	if (!msg)
@@ -45,7 +47,15 @@ int event_ipv4_connect(struct pt_regs *ctx)
 
 	msg->common.op = MSG_OP_IPV4_TCPCONNECT;
 	msg->common.ktime = ktime_get_ns();
-	msg->pid.curr.uid = get_current_uid_gid();
+	parent = (struct event_execve *)&msg->pid;
+
+	size = parent->size;
+	size &= ARGSSIZEMASK;
+	if (size < 0)
+		size = 0;
+	curr = (void *)parent + size;
+
+	curr->uid = get_current_uid_gid();
 
 	skp = (void *)((ctx)->di);
 
@@ -106,6 +116,10 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		}
 	}
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(*msg));
+	size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
+	if (size > sizeof(*msg))
+		size = sizeof(*msg);
+	msg->common.size = size;
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, size);
 	return 0;
 }

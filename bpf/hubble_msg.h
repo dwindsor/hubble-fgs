@@ -4,9 +4,9 @@
 #define PROGSIZE 64
 
 #define ARGSBUFFER 2048
-#define ARGSMASK 0x3ff
-#define ARGSIZE  1024
-#define ARGSSIZEMASK 0x3ff
+#define ARGSMASK 0x1ff
+#define ARGSIZE 512
+#define ARGSSIZEMASK 0x1ff
 #define MAXARGS 20
 
 
@@ -21,15 +21,17 @@ enum msg_ops {
 /* Msg Layout */
 struct msg_common {
 	__u8  op;
-	__u8  pad[7];
+	__u8  pad[3];
+	__u32 size;
 	__u64 ktime;
 };
 
 struct event_execve {
+	__u32 size;
 	__u32 pid;
 	__u32 uid;
-	char filename[PROGSIZE];
-	char args[ARGSBUFFER];
+	__u32 pad;
+	char *args;
 };
 
 struct msg_pid {
@@ -56,10 +58,10 @@ struct msg_k8s {
 // separate data structs for ipv4 and ipv6
 struct msg_ipv4_tcp_connect {
 	struct msg_common     common;
-	struct msg_pid        pid;
 	struct msg_ipv4_tuple tuple;
 	struct msg_k8s	      kube;
 	unsigned long int     ret;
+	char      	      pid[ARGSBUFFER];
 };
 
 struct event {

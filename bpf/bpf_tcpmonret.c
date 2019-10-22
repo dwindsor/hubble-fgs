@@ -35,7 +35,10 @@ int event_ret_ipv4_connect(struct pt_regs *ctx)
 	msg->ret = ctx->ax;
 	msg->common.op = MSG_OP_IPV4_TCPCONNECTRET;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, sizeof(*msg));
+	if (msg->common.size > sizeof(*msg))
+		msg->common.size = sizeof(*msg);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, msg->common.size);
 	msg->common.op = MSG_OP_UNDEF;
+	msg->ret = 0;
 	return 0;
 }

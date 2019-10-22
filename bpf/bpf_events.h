@@ -1,20 +1,26 @@
 #ifndef _BPF_EVENTS_H
 #define _BPF_EVENTS_H
 
-static inline void event_filename_builder(struct event_execve *event, void *pfilename)
+static inline unsigned int event_filename_builder(struct event_execve *event, void *pfilename)
 {
+	char *earg = (void*)event + offsetof(struct event_execve, args);
+	unsigned int size = ARGSIZE;
 	char *filename;
 
 	probe_read(&filename, sizeof(filename), pfilename);
-	if (filename)
-		probe_read_str(event->filename, sizeof(event->filename), filename);
+	if (filename) {
+		size = probe_read_str(earg, size, filename);
+	} else {
+		size = 0;
+	}
+	return size;
 }
 
-static inline void event_args_builder(struct event_execve *event, void *pargs)
+static inline int event_args_builder(struct event_execve *event, unsigned int offset, void *pargs)
 {
-	char **args;
+	char *earg = (void*)event + offsetof(struct event_execve, args);
 	const unsigned int length = ARGSIZE;
-	unsigned int offset = 0;
+	char **args;
 
 	probe_read(&args, sizeof(args), pargs);
 	if (args) {
@@ -34,24 +40,35 @@ static inline void event_args_builder(struct event_execve *event, void *pargs)
 				continue;
 			}
 			if (size > 0)
-				offset += probe_read_str(&event->args[offset&ARGSMASK], size&ARGSSIZEMASK, arg);
+				offset += probe_read_str(&earg[offset&ARGSMASK], size&ARGSSIZEMASK, arg);
 		}
-
-		event->args[offset&ARGSMASK] = 0x00;
 	}
+	event->size = offset;
+	return event->size;
 }
 
-static inline void event_copy_parent(struct msg_ipv4_tcp_connect *dst,
-				     struct msg_ipv4_tcp_connect *src)
+static inline int event_copy_execve(struct event_execve *dst,
+				    struct event_execve *src)
 {
-	dst->pid.parent.pid = src->pid.curr.pid;
-	dst->pid.parent.uid = src->pid.curr.uid;
-	probe_read_str(&dst->pid.parent.filename,
-		       sizeof(dst->pid.parent.filename),
-		       &src->pid.curr.filename);
-	probe_read_str(&dst->pid.parent.args,
-		       sizeof(dst->pid.parent.args),
-		       &src->pid.curr.args);
+	char *edst = (void*)dst + offsetof(struct event_execve, args);
+	char *esrc;
+	int size = src->size;
+
+	size &= ARGSSIZEMASK;
+	if (size < 0)
+		size = 0;
+	src = (void*)src + size;
+	esrc = (void*)src + offsetof(struct event_execve, args);
+
+	dst->size = src->size;
+	dst->pid = src->pid;
+	dst->uid = src->uid;
+	size = dst->size;
+	size &= ARGSSIZEMASK;
+	if (size < 0)
+		size = 0;
+	probe_read(edst, size, esrc);
+	return dst->size;
 }
 
 static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
@@ -64,9 +81,6 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 
 #pragma unroll
 	for (i = 0; i < 4; i++) {
-		msg = map_lookup_elem(&execve_map, &pid);
-		if (msg && i > 0)
-			break;
 #ifdef PARENT_OFFSET
 		addr = (void *)task;
 		addr += PARENT_OFFSET;
@@ -83,6 +97,10 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 		addr = (void *)&(task->pid);
 #endif
 		probe_read(&pid, sizeof(pid), addr);
+
+		msg = map_lookup_elem(&execve_map, &pid);
+		if (msg)
+			break;
 	}
 	return msg;
 }
@@ -90,11 +108,12 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 static inline struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
-	__u32 pid = get_current_pid_tgid() >> 32;
+	__u32 cpid, pid = get_current_pid_tgid() >> 32;
 	struct msg_ipv4_tcp_connect *msg = 0;
 	char *addr;
 	int i;
 
+	cpid = pid;
 #pragma unroll
 	for (i = 0; i < 4; i++) {
 		if (!msg) {
