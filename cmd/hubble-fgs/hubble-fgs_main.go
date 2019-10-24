@@ -44,7 +44,7 @@ func hubbleFGSExecute() {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	configureResourceLimits()
-	kprobe := observer.NewObserverKprobe(observerDir)
+	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("debug"))
 	go server.ServeEvents(kprobe, ctx, defaults.DefaultUnixSock)
 	kprobe.Start()
 }
@@ -60,7 +60,7 @@ func init() {
 
 	flags := cmd.PersistentFlags()
 
-	flags.BoolP("debug", "d", true, "Enable debug messages")
+	flags.BoolP("debug", "d", false, "Enable debug messages")
 	flags.StringVar(&observer.ObserverExecve__program,
 		"bpf-execve", "./bpf/bpf_execve.o", "Location of bpf_execve.o program")
 	flags.StringVar(&observer.ObserverExecveat__program,

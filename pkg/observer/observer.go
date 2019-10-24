@@ -18,6 +18,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/covalentio/hubble-fgs/pkg/reader"
 
 	"bytes"
 	"context"
@@ -168,6 +169,10 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		msgUnix := msgToUnix(&m)
 		msgUnix.Pid.Parent = execParse(r)
 		msgUnix.Pid.Curr = execParse(r)
+
+		if k.prettyPrinter {
+			reader.ObserverIPV4TCPConnectPrinter(msgUnix, log)
+		}
 
 		k.observerListeners(msgUnix)
 	}
@@ -460,6 +465,7 @@ type ObserverKprobe struct {
 	bpfDir        string
 	execve_fd     int
 	tcp_events_fd int
+	prettyPrinter bool
 	listeners     []net.Conn
 }
 
@@ -472,10 +478,11 @@ func (k *ObserverKprobe) Start() {
 	}
 }
 
-func NewObserverKprobe(bpfDir string) *ObserverKprobe {
+func NewObserverKprobe(bpfDir string, pretty bool) *ObserverKprobe {
 	log = logger.GetLogger()
 	return &ObserverKprobe{
-		bpfDir: bpfDir,
+		bpfDir:        bpfDir,
+		prettyPrinter: pretty,
 	}
 }
 
