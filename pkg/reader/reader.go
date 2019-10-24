@@ -22,6 +22,7 @@ import (
 	"encoding/gob"
 	"golang.org/x/sys/unix"
 	"net"
+	"strings"
 	"syscall"
 
 	"go.uber.org/zap"
@@ -37,6 +38,17 @@ func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
 }
 
+func replaceNewLines(s string, c rune) string {
+	r := []rune(s)
+
+	for i, _r := range r {
+		if _r == 0x0000 {
+			r[i] = c
+		}
+	}
+	return strings.TrimSpace(string(r))
+}
+
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
 	e := syscall.Errno(uintptr(-msg.Return))
 
@@ -46,11 +58,11 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.Uint32("parent-pid", msg.Pid.Parent.PID),
 		zap.Uint32("parent-uid", msg.Pid.Parent.UID),
 		zap.String("parent-prog", msg.Pid.Parent.Filename),
-		zap.String("parent-args", msg.Pid.Parent.Args),
+		zap.String("parent-args", replaceNewLines(msg.Pid.Parent.Args, rune(0x0020))),
 		zap.Uint32("pid", msg.Pid.Curr.PID),
 		zap.Uint32("uid", msg.Pid.Curr.UID),
 		zap.String("prog", msg.Pid.Curr.Filename),
-		zap.String("args", msg.Pid.Curr.Args),
+		zap.String("args", replaceNewLines(msg.Pid.Curr.Args, rune(0x0020))),
 		zap.Uint8("proto", msg.Tuple.Proto),
 		zap.String("saddr", GetIP(msg.Tuple.SAddr).String()),
 		zap.Uint16("sport", msg.Tuple.SPort),
