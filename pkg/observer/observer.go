@@ -45,6 +45,10 @@ const (
 )
 
 var (
+	LostCntr  = 0
+	ErrorCntr = 0
+	RecvCntr  = 0
+
 	ProcFS = "/proc/"
 
 	ObserverExecve__program    string
@@ -152,6 +156,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	data := msg.DataDirect()
 	var op uint8 = data[0]
 
+	RecvCntr++
 	r := bytes.NewReader(data)
 
 	switch op {
@@ -171,11 +176,11 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 }
 
 func observerLost(msg *bpf.PerfEventLost, cpu int) {
-	fmt.Printf("msg -- event lost\n")
+	LostCntr = LostCntr + 1
 }
 
 func observerError(msg *bpf.PerfEvent) {
-	fmt.Printf("msg -- event error\n")
+	ErrorCntr++
 }
 
 func isCtxDone(ctx context.Context) bool {
@@ -474,4 +479,8 @@ func NewObserverKprobe(bpfDir string) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir: bpfDir,
 	}
+}
+
+func PrintStats() {
+	fmt.Printf("Observer Stats: errors %d lost %d recvd %d\n", ErrorCntr, LostCntr, RecvCntr)
 }

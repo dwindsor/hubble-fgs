@@ -10,6 +10,9 @@ import (
 
 	"context"
 	"math"
+	"os"
+	"os/signal"
+	"syscall"
 
 	"golang.org/x/sys/unix"
 )
@@ -28,6 +31,14 @@ func configureResourceLimits() error {
 }
 
 func hubbleFGSExecute() {
+	sigs := make(chan os.Signal, 1)
+	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	go func() {
+		<-sigs
+		observer.PrintStats()
+		os.Exit(1)
+	}()
+
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	bpf.CheckOrMountFS("")
