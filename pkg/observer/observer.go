@@ -149,7 +149,7 @@ func execParse(reader *bytes.Reader) api.MsgExecUnix {
 }
 
 func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
-	data := msg.DataCopy()
+	data := msg.DataDirect()
 	var op uint8 = data[0]
 
 	r := bytes.NewReader(data)
