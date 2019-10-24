@@ -18,7 +18,6 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
-	"github.com/covalentio/hubble-fgs/pkg/reader"
 
 	"bytes"
 	"context"
@@ -170,7 +169,6 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		msgUnix.Pid.Parent = execParse(r)
 		msgUnix.Pid.Curr = execParse(r)
 
-		reader.ObserverIPV4TCPConnectPrinter(msgUnix, log)
 		k.observerListeners(msgUnix)
 	}
 }
