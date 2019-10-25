@@ -1,9 +1,18 @@
 #ifndef _BPF_EVENTS_H
 #define _BPF_EVENTS_H
 
+static inline void compiler_barrier(void) {
+	asm volatile("" ::: "memory");
+}
+
 static inline unsigned int validate_arg_size(int size)
 {
+	/* Kernels pre 4.15 do not track min values on '&' so we have
+	 * the additional <0 check but need to ensure the '&' happens
+	 * first to avoid verifier losing track of min value.
+	 */
 	size &= ARGSSIZEMASK;
+	compiler_barrier();
 	if (size < 0)
 		size = 0;
 	return size;
@@ -11,6 +20,13 @@ static inline unsigned int validate_arg_size(int size)
 
 static inline void validate_msg_size(struct msg_ipv4_tcp_connect *msg)
 {
+	/* validate_msg_size() calls need to happen near caller using the
+	 * size. Otherwise, depending on kernel version, the verifier may
+	 * lose track of the size bounds. Place a compiler barrier herer
+	 * otherwise clang will likely place this check near other msg
+	 * population calls which can be significant distance away.
+	 */
+	compiler_barrier();
 	if (msg->common.size > sizeof(*msg))
 		msg->common.size = sizeof(*msg);
 }
