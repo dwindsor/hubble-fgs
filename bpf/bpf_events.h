@@ -5,97 +5,165 @@ static inline void compiler_barrier(void) {
 	asm volatile("" ::: "memory");
 }
 
-static inline unsigned int validate_arg_size(int size)
+static inline int64_t validate_arg_size(int64_t size)
 {
-	/* Kernels pre 4.15 do not track min values on '&' so we have
-	 * the additional <0 check but need to ensure the '&' happens
-	 * first to avoid verifier losing track of min value.
-	 */
-	size &= ARGSSIZEMASK;
 	compiler_barrier();
-	if (size < 0)
-		size = 0;
+	/* Kernels pre 4.15 do not track min values on '&' so we do
+	 * the more explicit greather than followed by less than
+	 * check to accumulate min/max bounds. Size can not be zero
+	 * else older kernels will throw an error on probe_read() we
+	 * require a event_execve header regardless so ensure size
+	 * accounts for this at minimum.
+	 */
+	if (size >= BUFFER)
+		size = BUFFER;
+	if (size < offsetof(struct event_execve, args))
+		size = offsetof(struct event_execve, args);
+	compiler_barrier();
 	return size;
 }
 
-static inline void validate_msg_size(struct msg_ipv4_tcp_connect *msg)
+static inline int64_t validate_msg_size(int64_t size)
 {
+	size_t max = sizeof(struct msg_ipv4_tcp_connect);
+
 	/* validate_msg_size() calls need to happen near caller using the
 	 * size. Otherwise, depending on kernel version, the verifier may
-	 * lose track of the size bounds. Place a compiler barrier herer
+	 * lose track of the size bounds. Place a compiler barrier here
 	 * otherwise clang will likely place this check near other msg
-	 * population calls which can be significant distance away.
+	 * population calls which can be significant distance away resulting
+	 * in losing bounds on older kernels where bounds are not tracked
+	 * as rigorously.
 	 */
 	compiler_barrier();
-	if (msg->common.size > sizeof(*msg))
-		msg->common.size = sizeof(*msg);
+	if (size > max)
+		size = max;
+	if (size < 1)
+		size = 1;
+	compiler_barrier();
+	return size;
 }
 
-static inline unsigned int event_filename_builder(struct event_execve *event, void *pfilename)
+static inline void event_filename_builder(struct event_execve *pid,
+					  void *pfilename)
 {
-	char *earg = (void*)event + offsetof(struct event_execve, args);
-	unsigned int size = ARGSIZE;
+	struct event_execve *curr;
+	int64_t psize, size = 0;
 	char *filename;
+	char *earg;
+
+	/* This is a bit parnoid but was previously having trouble on
+	 * 4.14 kernels tracking offset of curr through filename_builder
+	 * resulting in a a verifier error. We can optimize this a bit
+	 * later perhaps and push as an argument.
+	 */
+	psize = validate_arg_size(pid->size);
+	curr = (void *)pid + psize;
+	earg = (void *)pid + psize + offsetof(struct event_execve, args);
 
 	probe_read(&filename, sizeof(filename), pfilename);
 	if (filename) {
-		size = probe_read_str(earg, size, filename);
-	} else {
-		size = 0;
+		size = probe_read_str(earg, MAXARGLENGTH - 1, filename);
 	}
-	return size;
+	curr->size = size + offsetof(struct event_execve, args);
 }
 
-static inline int event_args_builder(struct event_execve *event, unsigned int offset, void *pargs)
+#define PROBE_ARG_READ(i)	     			\
+	"r3 = %[args];"					\
+	"r3 += " i ";"		     			\
+	"r2 = 8;"		     			\
+	"r1 = %[arg];"					\
+	"call 4;"					\
+	"r1 = %[arg];"					\
+	"r3 = *(u64 *)(r1 + 0);"			\
+	"if r3 == 0 goto %l[a];"			\
+	"r4 = *(u32 *)(%[curr] + 0);"			\
+	"if r4 < 0 goto %l[a];"				\
+	"if r4 > 1024 goto %l[a];"			\
+	"r1 = %[earg];"					\
+	"r1 += r4;"					\
+	"r2 = 100;"					\
+	"call 45;"					\
+	"r4 = *(u32 *)(%[curr] + 0);"			\
+	"r0 += r4;"					\
+	"*(u32 *)(%[curr] + 0) = r0;"
+
+/* To ensure reading args will work across multiple kernels and pass verifier we
+ * code it as an asm block to make it friendly for verifiers. Otherwise, the C
+ * code became far too fragile and even small refactors had potential to break
+ * some kernel version with whatever set of fixes that kernel has. Not everyone
+ * is even using LTS kernels so we get kernels with verifier in strange states.
+ * I'm looking at you 4.15 kernel running in minikube!
+ */
+static inline int probe_arg_read(struct event_execve *c, char *earg, char **args)
 {
-	char *earg = (void*)event + offsetof(struct event_execve, args);
-	const unsigned int length = ARGSIZE;
+		volatile char *arg;
+
+		asm volatile goto (
+				PROBE_ARG_READ("8")
+				PROBE_ARG_READ("16")
+				PROBE_ARG_READ("24")
+				PROBE_ARG_READ("32")
+				PROBE_ARG_READ("40")
+			:
+			: [earg]         "ri"(earg),
+			  [arg]          "ri"(&arg),
+			  [args]	 "ri"(args),
+			  [curr]	 "ri"(c)
+			: "r0", "r1", "r2", "r3", "r4", "r5"
+			: a);
+a:
+	return 0;
+}
+
+/* event_args_builder: copies args into char *buffer
+ * event: pointer to event storage
+ * pargs: kernel address of args structure
+ *
+ * returns: void, because we are using asm_goto here we can't easily
+ * also provide return values. To avoid having to try and introspect
+ * what happened here this routine should always return with a good
+ * event msg that could be passed to userspace.
+ */
+static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *pargs)
+{
+	struct event_execve *p, *c;
+	int64_t base;
 	char **args;
+	int err;
 
 	probe_read(&args, sizeof(args), pargs);
-	if (args) {
-		unsigned int i = 0;
-		bool done = 0;
+	if (!args)
+		return;
 
-#pragma clang loop unroll(full)
-		for (i = 0; !done && i < 8; i++) {
-			char *arg;
-			int size = length - offset - 1;
+	/* Calculate absolute offset into buffer */
+	p = (struct event_execve *)event->pid;
+	base = validate_arg_size(p->size);
+	c = (struct event_execve *)((void *)p + base);
+	c->size += base;
+	compiler_barrier();
 
-			if (done)
-				continue;
-			probe_read(&arg, sizeof(arg), &args[i+1]);
-			if (!arg) {
-				done = 1;
-				continue;
-			}
-			if (size > 0)
-				offset += probe_read_str(&earg[offset&ARGSMASK], size&ARGSSIZEMASK, arg);
-		}
-	}
-	event->size = offset;
-	return event->size;
+	err = probe_arg_read(c, (char*)p, args);
+	if (err)
+		goto out;
+out:
+	return;
 }
 
-static inline int event_copy_execve(struct event_execve *dst,
-				    struct event_execve *src)
+static inline int64_t event_copy_execve(struct event_execve *dst,
+					struct event_execve *src)
 {
-	char *edst = (void*)dst + offsetof(struct event_execve, args);
-	char *esrc;
-	int size = src->size;
+	struct event_execve *esrc;
+	int64_t size;
 
-	size &= ARGSSIZEMASK;
-	if (size < 0)
-		size = 0;
-	src = (void*)src + size;
-	esrc = (void*)src + offsetof(struct event_execve, args);
-
-	dst->size = src->size;
-	dst->pid = src->pid;
-	dst->uid = src->uid;
-	size = validate_arg_size(dst->size);
-	probe_read(edst, size, esrc);
-	return dst->size;
+	size = validate_arg_size(src->size);
+	esrc = (void*)src + size;
+	compiler_barrier();
+	size = validate_arg_size(esrc->size);
+	compiler_barrier();
+	probe_read(dst, size, esrc);
+	// must be size (NOT dst->size) because size is sanitized and int64_t
+	return size;
 }
 
 static inline struct msg_ipv4_tcp_connect *event_find_parent(void)

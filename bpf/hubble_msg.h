@@ -1,14 +1,96 @@
-/* Docker IDs are unique at first 12 characters -- tbd confirm */
+/* These are your sizing variables. Because we are running in BPF and must
+ * be bounded in terms of loop iterations and memory usage we have to set
+ * worse case bounds.
+ *
+ * For tuning the following values can be easily changed with memory and
+ * instruction count tradeoffs,
+ *
+ *  MAXARGS - more or less arguments on command line
+ *  MAXARGLENGTH - max length of any individual arg
+ *  BUFFER - this is the total number of bytes per pid consumed for args
+ *
+ * If buffer is full before maxargs and/or maxarglength is consumed then
+ * processing stops.
+ */
+
+/* Docker IDs are unique at first 12 characters, but 16 is nice 2Bytes */
 #define DOCKER_ID_LENGTH 16
-
-#define PROGSIZE 64
-
-#define ARGSBUFFER 2048
-#define ARGSMASK 0x1ff
-#define ARGSIZE 512
-#define ARGSSIZEMASK 0x1ff
+/* Max number of args to parse */
 #define MAXARGS 20
+/* Max length of any given arg */
+#define MAXARGLENGTH 100
+/* This is the absolute buffer size for args and filenames including some
+ * extra head room so we can append last args string to buffer. The extra
+ * headroom is an unfortunate result of bounds on offset/size in
+ * event_args_builder().
+ *
+ * For example given an offset bounds
+ *
+ *   offset <- (0, 100)
+ *
+ * We will read into the buffer using this offset giving a max offset
+ * of eargs + 100.
+ *
+ *   args[offset] <- (0, 100)
+ *
+ * Now we want to read this with call 45 aka probe_read_str as follows,
+ * where 'kernel_struct_arg' is the kernel data struct we are reading.
+ *
+ *   probe_read_str(args[offset], size, kernel_struct_arg)
+ *
+ * But we have a bit of a problem determining if 'size' is out of array
+ * range. The math would be,
+ *
+ *   size = length - offset
+ *
+ * Giving the remainder of the buffer,
+ *
+ * args          offset             length
+ *    |---------------|------------------|
+ *
+ *                    |-------size-------|
+ *
+ * But verifier math works on bounds so bounds analysis of size is the
+ * following,
+ *
+ *   length = 1024
+ *   offset = (0, 100)
+ *
+ *   size = length - offset
+ *   size = (1024) - (0, 100)
+ *   size <- (924, 1124)
+ *
+ * And verifier throws an error because args[offset + size] with bounds
+ * anaylsis,
+ *
+ *   args_(max)[100 + 1024] = args_(max)[1124]
+ *
+ * To circumvent this, at least until we teach the verifier about
+ * dependent variables, create a maxarg value and pad arg buffer with
+ * it. Giving a args buffer of size 'length + pad' with above bounds
+ * analysis,
+ *
+ *   size = length - offset
+ *   size = (1024) - (0, 100)
+ *   if size > pad goto done
+ *   size <- (924, 1124) // 1124 < length + pad
+ *
+ * Phew all clear now?
+ */
+#define BUFFER 1024
+#define PADDED_BUFFER (BUFFER + MAXARGLENGTH + 16 + 16)
+/* This is the usable buffer size for args and filenames. It is calculated
+ * as the (BUFFER SIZE - sizeof(parent) - sizeof(curr) but unfortunately
+ * preprocess doesn't know types so we do it manually without sizeof().
+ */
+#define ARGSBUFFER (BUFFER - 16 - 16)
+/* 1024 + - 16 - 16 = 1024 - 32*/
+#define __ASM_ARGSBUFFER 992
+#define ARGSBUFFERMASK (ARGSBUFFER - 1)
+#define MAXARGMASK (MAXARG - 1)
 
+#define XSTR(s) STR(s)
+#define STR(s) #s
 
 /* Msg Types */
 enum msg_ops {
@@ -26,6 +108,9 @@ struct msg_common {
 	__u64 ktime;
 };
 
+/* Manually linked to ARGSBUFFER if this changes then please also change
+ * ARGSBUFFER.
+ */
 struct event_execve {
 	__u32 size;
 	__u32 pid;
@@ -61,7 +146,7 @@ struct msg_ipv4_tcp_connect {
 	struct msg_ipv4_tuple tuple;
 	struct msg_k8s	      kube;
 	unsigned long int     ret;
-	char      	      pid[ARGSBUFFER];
+	char      	      pid[PADDED_BUFFER];
 };
 
 struct event {

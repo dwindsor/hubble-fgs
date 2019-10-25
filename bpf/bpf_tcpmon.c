@@ -39,7 +39,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	const char *name;
 
 	__u32 ppid = 0;
-	size_t size;
+	uint64_t size;
 
 	msg = event_find_curr(&ppid);
 	if (!msg)
@@ -52,6 +52,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
 
+	msg->common.size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
 	curr->uid = get_current_uid_gid();
 
 	skp = (void *)((ctx)->di);
@@ -113,8 +114,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		}
 	}
 
-	msg->common.size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
-	validate_msg_size(msg);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, msg->common.size);
-	return 0;
+	size = validate_msg_size(msg->common.size);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, size);
+	return 1;
 }

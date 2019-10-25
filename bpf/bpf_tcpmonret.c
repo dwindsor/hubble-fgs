@@ -24,6 +24,7 @@ int event_ret_ipv4_connect(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_connect *msg = 0;
 	__u32 ppid = 0;
+	uint64_t size;
 
 	msg = event_find_curr(&ppid);
 	if (!msg)
@@ -35,8 +36,8 @@ int event_ret_ipv4_connect(struct pt_regs *ctx)
 	msg->ret = ctx->ax;
 	msg->common.op = MSG_OP_IPV4_TCPCONNECTRET;
 
-	validate_msg_size(msg);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, msg->common.size);
+	size = validate_msg_size(msg->common.size);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, size);
 	msg->common.op = MSG_OP_UNDEF;
 	msg->ret = 0;
 	return 0;

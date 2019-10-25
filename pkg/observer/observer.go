@@ -245,8 +245,8 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 		observerExecveat__x64_attach,
 		observerExecveat__label,
 		k.bpfDir+observerExecveat__prog,
-		k.bpfDir+observerExecveat__map,
-		observerExecveat__map_label,
+		"",
+		"",
 		false, k.execve_fd, 0)
 	if err != nil {
 		/* If we fail attach with __x64_sys_execve variant try again with
@@ -257,8 +257,8 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 			observerExecveat__attach,
 			observerExecveat__label,
 			k.bpfDir+observerExecveat__prog,
-			k.bpfDir+observerExecveat__map,
-			observerExecveat__map_label,
+			"",
+			"",
 			false, k.execve_fd, 0)
 		if err != nil {
 			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
@@ -277,7 +277,7 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 		observerTCPConnect__map_label,
 		false, k.execve_fd, 0)
 	if err != nil {
-		return fmt.Errorf("failed kprobe events LoadKprobe: %s\n", err)
+		return fmt.Errorf("failed kprobe TCPConnect LoadKprobe: %s\n", err)
 	}
 	k.tcp_events_fd = tcp_events
 	err, _ = bpf.LoadKprobe(
@@ -285,8 +285,8 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 		observerTCPConnectRet__x64_attach,
 		observerTCPConnectRet__label,
 		k.bpfDir+observerTCPConnectRet__prog,
-		k.bpfDir+observerTCPConnectRet__map,
-		observerTCPConnectRet__map_label,
+		"",
+		"",
 		true, k.execve_fd, tcp_events)
 	if err != nil {
 		err, _ = bpf.LoadKprobe(
@@ -294,11 +294,11 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 			observerTCPConnectRet__attach,
 			observerTCPConnectRet__label,
 			k.bpfDir+observerTCPConnectRet__prog,
-			k.bpfDir+observerTCPConnectRet__map,
-			observerTCPConnectRet__map_label,
+			"",
+			"",
 			true, k.execve_fd, tcp_events)
 		if err != nil {
-			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
+			fmt.Printf("Warning kprobe TCPConnectRet LoadKprobe: %s\n", err)
 		}
 	}
 

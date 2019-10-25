@@ -73,7 +73,7 @@ int kprobe_loader(const char *prog,
 		map = bpf_object__find_map_by_name(obj, "execve_map");
 		err = libbpf_get_error(map);
 		if (err) {
-			fprintf(stderr, "bpf_object__find_map_by_name: (execve_map)\n");
+			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(execve_map)\n", prog);
 			return -1;
 		}
 
@@ -88,7 +88,7 @@ int kprobe_loader(const char *prog,
 		map = bpf_object__find_map_by_name(obj, "tcpmon_map");
 		err = libbpf_get_error(map);
 		if (err) {
-			fprintf(stderr, "bpf_object__find_map_by_name: (kprobe_tcp_events)\n");
+			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(kprobe_tcp_events)\n", prog);
 			return -1;
 		}
 
@@ -127,14 +127,19 @@ int kprobe_loader(const char *prog,
 		map_bpf = bpf_object__find_map_by_name(obj, __label_map);
 		err = libbpf_get_error(map_bpf);
 		if (err) {
-			fprintf(stderr, "bpf_object__find_map_by_name: (%s) failed", __label_map);
+			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(%s) failed", prog, __label_map);
+			return -1;
+		}
+
+		if (!map_bpf) {
+			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(%s) null\n", prog, __label_map);
 			return -1;
 		}
 
 		bpf_map__unpin(map_bpf, __map);
 		err = bpf_map__pin(map_bpf, __map);
 		if (err < 0) {
-			fprintf(stderr, "bpf_prog_pin: failed (%s) %i\n", __label_map, err);
+			fprintf(stderr, "bpf_map_pin: failed obj(%s) map(%s) %i\n", prog, __label_map, err);
 			return -1;
 		}
 		map_fd = bpf_map__fd(map_bpf);
@@ -143,7 +148,7 @@ int kprobe_loader(const char *prog,
 	prog_attach = bpf_program__attach_kprobe(prog_bpf, retprobe, attach);
 	err = libbpf_get_error(prog_attach);
 	if (err) {
-		fprintf(stderr, "bpf_program__attach_kprobe: failed\n");
+		fprintf(stderr, "bpf_program__attach_kprobe: failed (%s)\n", prog);
 		return -1;
 	}
 
