@@ -48,10 +48,7 @@ int event_execveat(struct pt_regs *__ctx)
 		parent->pid = parent->uid = 0;
 	}
 
-	size &= ARGSSIZEMASK;
-	if (size < 0)
-		return 0;
-
+	size = validate_arg_size(size);
 	curr = (void *)&event->pid + size;
 	curr->pid = pid;
 	offset = event_filename_builder(curr, &ctx->di);

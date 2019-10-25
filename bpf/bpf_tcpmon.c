@@ -49,10 +49,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	msg->common.ktime = ktime_get_ns();
 	parent = (struct event_execve *)&msg->pid;
 
-	size = parent->size;
-	size &= ARGSSIZEMASK;
-	if (size < 0)
-		size = 0;
+	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
 
 	curr->uid = get_current_uid_gid();
@@ -116,10 +113,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		}
 	}
 
-	size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
-	if (size > sizeof(*msg))
-		size = sizeof(*msg);
-	msg->common.size = size;
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, size);
+	msg->common.size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
+	validate_msg_size(msg);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, msg->common.size);
 	return 0;
 }

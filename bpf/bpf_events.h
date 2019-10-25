@@ -1,6 +1,20 @@
 #ifndef _BPF_EVENTS_H
 #define _BPF_EVENTS_H
 
+static inline unsigned int validate_arg_size(int size)
+{
+	size &= ARGSSIZEMASK;
+	if (size < 0)
+		size = 0;
+	return size;
+}
+
+static inline void validate_msg_size(struct msg_ipv4_tcp_connect *msg)
+{
+	if (msg->common.size > sizeof(*msg))
+		msg->common.size = sizeof(*msg);
+}
+
 static inline unsigned int event_filename_builder(struct event_execve *event, void *pfilename)
 {
 	char *earg = (void*)event + offsetof(struct event_execve, args);
@@ -63,10 +77,7 @@ static inline int event_copy_execve(struct event_execve *dst,
 	dst->size = src->size;
 	dst->pid = src->pid;
 	dst->uid = src->uid;
-	size = dst->size;
-	size &= ARGSSIZEMASK;
-	if (size < 0)
-		size = 0;
+	size = validate_arg_size(dst->size);
 	probe_read(edst, size, esrc);
 	return dst->size;
 }
