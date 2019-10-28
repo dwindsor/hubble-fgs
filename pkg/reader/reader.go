@@ -75,18 +75,17 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 
 func ObserverReceiver(log *zap.Logger) error {
 	conn, err := net.Dial("unix", defaults.DefaultUnixSock)
-
 	if err != nil {
 		return err
 	}
 
+	dec := gob.NewDecoder(conn)
 	for {
-		dec := gob.NewDecoder(conn)
 		var IPv4TCPConnectMsg api.MsgIPv4TcpConnectUnix
 
 		err = dec.Decode(&IPv4TCPConnectMsg)
 		if err != nil {
-			return err
+			continue
 		}
 
 		ObserverIPV4TCPConnectPrinter(&IPv4TCPConnectMsg, log)
