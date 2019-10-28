@@ -128,12 +128,22 @@ func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 	return unix
 }
 
-func execParse(reader *bytes.Reader) api.MsgExecUnix {
+func nopMsgExecUnix() api.MsgExecUnix {
+	execUnix := api.MsgExecUnix{}
+
+	execUnix.PID = 0
+	execUnix.UID = 0
+	execUnix.Filename = "<enomem>"
+	execUnix.Args = "<enomem>"
+	return execUnix
+}
+
+func execParse(reader *bytes.Reader) (api.MsgExecUnix, error) {
 	execUnix := api.MsgExecUnix{}
 	exec := api.MsgExec{}
 
 	if err := binary.Read(reader, binary.LittleEndian, &exec); err != nil {
-		panic(err)
+		return execUnix, err
 	}
 
 	execUnix.PID = exec.PID
@@ -142,14 +152,14 @@ func execParse(reader *bytes.Reader) api.MsgExecUnix {
 	size := exec.Size - 16
 	args := make([]byte, size)
 	if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
-		panic(err)
+		return execUnix, err
 	}
 
 	cmdArgs := bytes.Split(args, []byte{0x00})
 	execUnix.Filename = string(cmdArgs[0])
 	execUnix.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
 
-	return execUnix
+	return execUnix, nil
 }
 
 func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
@@ -167,8 +177,15 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			panic(err)
 		}
 		msgUnix := msgToUnix(&m)
-		msgUnix.Pid.Parent = execParse(r)
-		msgUnix.Pid.Curr = execParse(r)
+		msgUnix.Pid.Parent, err = execParse(r)
+		if err != nil {
+			msgUnix.Pid.Parent = nopMsgExecUnix()
+		}
+
+		msgUnix.Pid.Curr, err = execParse(r)
+		if err != nil {
+			msgUnix.Pid.Curr = nopMsgExecUnix()
+		}
 
 		if k.prettyPrinter {
 			reader.ObserverIPV4TCPConnectPrinter(msgUnix, log)
