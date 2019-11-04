@@ -45,7 +45,8 @@ int event_execve(struct pt_regs *__ctx)
 	} else {
 		psize = offsetof(struct event_execve, args);
 		parent->size = psize;
-		parent->pid = parent->uid = 0;
+		parent->pid = event_find_parent_pid();
+		parent->uid = 0;
 	}
 
 	event_filename_builder(parent, &ctx->di);

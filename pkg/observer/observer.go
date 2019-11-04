@@ -151,14 +151,18 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, error) {
 	execUnix.UID = exec.UID
 
 	size := exec.Size - 16
-	args := make([]byte, size)
-	if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
-		return execUnix, err
-	}
+	if size > api.ARGSBUFFER {
+		exec.Size = 16
+	} else {
+		args := make([]byte, size)
+		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
+			return execUnix, err
+		}
 
-	cmdArgs := bytes.Split(args, []byte{0x00})
-	execUnix.Filename = string(cmdArgs[0])
-	execUnix.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
+		cmdArgs := bytes.Split(args, []byte{0x00})
+		execUnix.Filename = string(cmdArgs[0])
+		execUnix.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
+	}
 
 	return execUnix, nil
 }
@@ -175,7 +179,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		m := api.MsgIPv4TcpConnect{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
-			panic(err)
+			break
 		}
 		msgUnix := msgToUnix(&m)
 		msgUnix.Pid.Parent, err = execParse(r)

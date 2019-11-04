@@ -166,6 +166,18 @@ static inline int64_t event_copy_execve(struct event_execve *dst,
 	return size;
 }
 
+static inline __u32 event_find_parent_pid(void)
+{
+	struct task_struct *task = (struct task_struct *)get_current_task();
+	__u32 pid;
+
+	probe_read(&task, sizeof(task), &task->parent);
+	if (!task)
+		return 0;
+	probe_read(&pid, sizeof(pid), &task->pid);
+	return pid;
+}
+
 static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
@@ -194,10 +206,13 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 		probe_read(&pid, sizeof(pid), addr);
 
 		msg = map_lookup_elem(&execve_map, &pid);
-		if (msg)
-			break;
+		if (msg) {
+			struct event_execve *p = (struct event_execve *)msg->pid;
+			if (p->size != 0)
+				return msg;
+		}
 	}
-	return msg;
+	return 0;
 }
 
 static inline struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid)
