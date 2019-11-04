@@ -25165,7 +25165,7 @@ enum kmsg_dump_reason {
 
 struct warn_args {
 	const char *fmt;
-	va_list args;
+	//va_list args;
 	long: 64;
 	long: 64;
 	long: 64;
