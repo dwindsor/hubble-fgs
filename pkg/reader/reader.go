@@ -38,7 +38,7 @@ func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
 }
 
-func replaceNewLines(s string, c rune) string {
+func ReplaceNewLines(s string, c rune) string {
 	r := []rune(s)
 
 	for i, _r := range r {
@@ -58,11 +58,11 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.Uint32("parent-pid", msg.Pid.Parent.PID),
 		zap.Uint32("parent-uid", msg.Pid.Parent.UID),
 		zap.String("parent-prog", msg.Pid.Parent.Filename),
-		zap.String("parent-args", replaceNewLines(msg.Pid.Parent.Args, rune(0x0020))),
+		zap.String("parent-args", ReplaceNewLines(msg.Pid.Parent.Args, rune(0x0020))),
 		zap.Uint32("pid", msg.Pid.Curr.PID),
 		zap.Uint32("uid", msg.Pid.Curr.UID),
 		zap.String("prog", msg.Pid.Curr.Filename),
-		zap.String("args", replaceNewLines(msg.Pid.Curr.Args, rune(0x0020))),
+		zap.String("args", ReplaceNewLines(msg.Pid.Curr.Args, rune(0x0020))),
 		zap.Uint8("proto", msg.Tuple.Proto),
 		zap.String("saddr", GetIP(msg.Tuple.SAddr).String()),
 		zap.Uint16("sport", msg.Tuple.SPort),
