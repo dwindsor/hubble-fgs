@@ -28,6 +28,7 @@ import (
 	"io/ioutil"
 	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"syscall"
@@ -396,6 +397,13 @@ func stringToUTF8(s []byte) []byte {
 	return s
 }
 
+func prependPath(s string, b []byte) []byte {
+	split := strings.Split(string(b), "\u0000")
+	split[0] = s
+	fullCmd := strings.Join(split[0:], "\u0000")
+	return []byte(fullCmd)
+}
+
 func getRunningProcs() []ObserverProcs {
 	var procs []ObserverProcs
 	procFS, _ := ioutil.ReadDir(ProcFS)
@@ -431,7 +439,21 @@ func getRunningProcs() []ObserverProcs {
 			continue
 		}
 
+		execPath, err := filepath.EvalSymlinks(ProcFS + d.Name() + "/exe")
+		if err != nil {
+			fmt.Printf("err evalsyms %s: %s\n", d.Name(), err)
+			continue
+		}
+		pexecPath, err := filepath.EvalSymlinks(ProcFS + ppid + "/exe")
+		if err != nil {
+			fmt.Printf("err evalsyms %s: %s\n", ppid, err)
+			continue
+		}
+
+		pcmdline = prependPath(pexecPath, pcmdline)
 		pcmdsUTF := stringToUTF8(pcmdline)
+
+		cmdline = prependPath(execPath, cmdline)
 		cmdsUTF := stringToUTF8(cmdline)
 
 		p := ObserverProcs{ppid: uint32(_ppid), pargs: pcmdsUTF, pid: uint32(pid), args: cmdsUTF}
