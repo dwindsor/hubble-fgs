@@ -79,10 +79,10 @@ static inline void event_filename_builder(struct event_execve *pid,
 	"if r3 == 0 goto %l[a];"			\
 	"r4 = *(u32 *)(%[curr] + 0);"			\
 	"if r4 < 0 goto %l[a];"				\
-	"if r4 > 1024 goto %l[a];"			\
+	"if r4 > " XSTR(BUFFER) " goto %l[a];"		\
 	"r1 = %[earg];"					\
 	"r1 += r4;"					\
-	"r2 = 100;"					\
+	"r2 = " XSTR(MAXARGLENGTH) ";"			\
 	"call 45;"					\
 	"r4 = *(u32 *)(%[curr] + 0);"			\
 	"r0 += r4;"					\
