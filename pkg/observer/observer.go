@@ -440,20 +440,15 @@ func getRunningProcs() []ObserverProcs {
 		}
 
 		execPath, err := filepath.EvalSymlinks(ProcFS + d.Name() + "/exe")
-		if err != nil {
-			fmt.Printf("err evalsyms %s: %s\n", d.Name(), err)
-			continue
+		if execPath != "" {
+			cmdline = prependPath(execPath, cmdline)
 		}
 		pexecPath, err := filepath.EvalSymlinks(ProcFS + ppid + "/exe")
-		if err != nil {
-			fmt.Printf("err evalsyms %s: %s\n", ppid, err)
-			continue
+		if pexecPath != "" {
+			pcmdline = prependPath(pexecPath, pcmdline)
 		}
 
-		pcmdline = prependPath(pexecPath, pcmdline)
 		pcmdsUTF := stringToUTF8(pcmdline)
-
-		cmdline = prependPath(execPath, cmdline)
 		cmdsUTF := stringToUTF8(cmdline)
 
 		p := ObserverProcs{ppid: uint32(_ppid), pargs: pcmdsUTF, pid: uint32(pid), args: cmdsUTF}
