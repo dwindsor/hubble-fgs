@@ -48,7 +48,7 @@ int kprobe_loader(const char *prog,
 	struct bpf_link *prog_attach;
 	struct bpf_object *obj, *execve_obj;
 	struct bpf_map *map_bpf, *map, *execve_map;
-	int fd, map_fd, err;
+	int fd, err, map_fd = 0;
 
 	obj = bpf_object__open(prog);
 	err = libbpf_get_error(obj);
