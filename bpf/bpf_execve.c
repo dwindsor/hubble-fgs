@@ -46,6 +46,7 @@ int event_execve(struct pt_regs *__ctx)
 		psize = offsetof(struct event_execve, args);
 		parent->size = psize;
 		parent->pid = event_find_parent_pid();
+		parent->flags = EVENT_MISS;
 		parent->uid = 0;
 	}
 

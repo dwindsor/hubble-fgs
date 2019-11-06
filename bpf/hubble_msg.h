@@ -92,6 +92,12 @@
 #define XSTR(s) STR(s)
 #define STR(s) #s
 
+/* Msg flags */
+#define EVENT_MISS     0x00
+#define EVENT_EXECVE   0x01
+#define EVENT_EXECVEAT 0x02
+#define EVENT_PROCFS   0x04
+
 /* Msg Types */
 enum msg_ops {
 	MSG_OP_UNDEF,
@@ -103,7 +109,7 @@ enum msg_ops {
 /* Msg Layout */
 struct msg_common {
 	__u8  op;
-	__u8  pad[3];
+	__u8 pad[3];
 	__u32 size;
 	__u64 ktime;
 };
@@ -115,7 +121,7 @@ struct event_execve {
 	__u32 size;
 	__u32 pid;
 	__u32 uid;
-	__u32 pad;
+	__u32 flags;
 	char *args;
 };
 

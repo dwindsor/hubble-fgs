@@ -24,6 +24,14 @@ const (
 	ARGSBUFFER = 1024 + 100 + 32
 )
 
+// Msg Flag Definitions
+const (
+	EventMiss     = 0x00
+	EventExecve   = 0x01
+	EventExecveAt = 0x02
+	EventProcFS   = 0x04
+)
+
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
 type MsgCommon struct {
 	Op    uint8
@@ -33,10 +41,10 @@ type MsgCommon struct {
 }
 
 type MsgExec struct {
-	Size uint32
-	PID  uint32
-	UID  uint32
-	Pad  uint32
+	Size  uint32
+	PID   uint32
+	UID   uint32
+	Flags uint32
 }
 
 type MsgPid struct {
@@ -71,6 +79,7 @@ type MsgIPv4TcpConnect struct {
 type MsgExecUnix struct {
 	PID      uint32
 	UID      uint32
+	Flags    uint32
 	Filename string
 	Args     string
 }

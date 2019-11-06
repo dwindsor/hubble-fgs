@@ -46,6 +46,7 @@ int event_execveat(struct pt_regs *__ctx)
 		parent->size = psize;
 		parent->pid = event_find_parent_pid();
 		parent->uid = 0;
+		parent->flags = EVENT_MISS;
 	}
 
 	event_filename_builder(parent, &ctx->di);

@@ -149,6 +149,7 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, error) {
 
 	execUnix.PID = exec.PID
 	execUnix.UID = exec.UID
+	execUnix.Flags = exec.Flags
 
 	size := exec.Size - 16
 	if size > api.ARGSBUFFER {
@@ -344,16 +345,16 @@ func (k *ObserverKprobe) createDir() {
 }
 
 type ObserverProcs struct {
-	psize uint32
-	puid  uint32
-	ppid  uint32
-	ppad  uint32
-	pargs []byte
-	size  uint32
-	uid   uint32
-	pid   uint32
-	pad   uint32
-	args  []byte
+	psize  uint32
+	puid   uint32
+	ppid   uint32
+	pflags uint32
+	pargs  []byte
+	size   uint32
+	uid    uint32
+	pid    uint32
+	flags  uint32
+	args   []byte
 }
 
 type ExecveKey struct {
@@ -455,7 +456,9 @@ func getRunningProcs() []ObserverProcs {
 		pcmdsUTF := stringToUTF8(pcmdline)
 		cmdsUTF := stringToUTF8(cmdline)
 
-		p := ObserverProcs{ppid: uint32(_ppid), pargs: pcmdsUTF, pid: uint32(pid), args: cmdsUTF}
+		p := ObserverProcs{
+			ppid: uint32(_ppid), pargs: pcmdsUTF, pflags: api.EventProcFS,
+			pid: uint32(pid), args: cmdsUTF, flags: api.EventProcFS}
 		p.size = uint32(4 + 4 + 4 + 4 + len(p.args))
 		p.psize = uint32(4 + 4 + 4 + 4 + len(p.pargs))
 		procs = append(procs, p)
@@ -490,7 +493,7 @@ func getRunningProcs() []ObserverProcs {
 		if err := putU32(p.puid); err != nil {
 			continue
 		}
-		if err := putU32(p.ppad); err != nil {
+		if err := putU32(p.pflags); err != nil {
 			continue
 		}
 		off += copy(v.Args[off:], p.pargs)
@@ -503,7 +506,7 @@ func getRunningProcs() []ObserverProcs {
 		if err := putU32(p.uid); err != nil {
 			continue
 		}
-		if err := putU32(p.pad); err != nil {
+		if err := putU32(p.flags); err != nil {
 			continue
 		}
 		off += copy(v.Args[off:], p.args)

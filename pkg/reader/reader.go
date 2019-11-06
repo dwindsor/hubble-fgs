@@ -49,6 +49,24 @@ func ReplaceNewLines(s string, c rune) string {
 	return strings.TrimSpace(string(r))
 }
 
+func DecodeCommonFlags(flags uint32) string {
+	s := ""
+
+	if flags == 0 {
+		s += "miss "
+	}
+	if (flags & api.EventExecve) != 0 {
+		s += "execve "
+	}
+	if (flags & api.EventExecveAt) != 0 {
+		s += "execveat "
+	}
+	if (flags & api.EventProcFS) != 0 {
+		s += "procFS "
+	}
+	return s
+}
+
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
 	e := syscall.Errno(uintptr(-msg.Return))
 
@@ -57,10 +75,12 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.Uint64("ktime", msg.Common.Ktime),
 		zap.Uint32("parent-pid", msg.Pid.Parent.PID),
 		zap.Uint32("parent-uid", msg.Pid.Parent.UID),
+		zap.String("parent-flags", DecodeCommonFlags(msg.Pid.Parent.Flags)),
 		zap.String("parent-prog", msg.Pid.Parent.Filename),
 		zap.String("parent-args", ReplaceNewLines(msg.Pid.Parent.Args, rune(0x0020))),
 		zap.Uint32("pid", msg.Pid.Curr.PID),
 		zap.Uint32("uid", msg.Pid.Curr.UID),
+		zap.String("flags", DecodeCommonFlags(msg.Pid.Curr.Flags)),
 		zap.String("prog", msg.Pid.Curr.Filename),
 		zap.String("args", ReplaceNewLines(msg.Pid.Curr.Args, rune(0x0020))),
 		zap.Uint8("proto", msg.Tuple.Proto),
