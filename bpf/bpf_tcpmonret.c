@@ -18,6 +18,9 @@ struct bpf_map_def {
 #define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
+#ifdef VMLINUX_KERNEL_VERSION
+int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+#endif
 
 __attribute__((section(("kretprobe/sys_connect")), used))
 int event_ret_ipv4_connect(struct pt_regs *ctx)
