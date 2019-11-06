@@ -471,24 +471,41 @@ func getRunningProcs() []ObserverProcs {
 		k := &ExecveKey{Pid: p.pid}
 		v := &ExecveValue{}
 
-		binary.LittleEndian.PutUint32(v.Args[off:], p.psize)
-		off += 4
-		binary.LittleEndian.PutUint32(v.Args[off:], p.ppid)
-		off += 4
-		binary.LittleEndian.PutUint32(v.Args[off:], p.puid)
-		off += 4
-		binary.LittleEndian.PutUint32(v.Args[off:], p.ppad)
-		off += 4
-		off += copy(v.Args[off:], p.pargs)
+		putU32 := func(val uint32) error {
+			if off+4 > api.ARGSBUFFER {
+				return fmt.Errorf("out of range")
+			}
 
-		binary.LittleEndian.PutUint32(v.Args[off:], p.size)
-		off += 4
-		binary.LittleEndian.PutUint32(v.Args[off:], p.pid)
-		off += 4
-		binary.LittleEndian.PutUint32(v.Args[off:], p.uid)
-		off += 4
-		binary.LittleEndian.PutUint32(v.Args[off:], p.pad)
-		off += 4
+			binary.LittleEndian.PutUint32(v.Args[off:], val)
+			off += 4
+			return nil
+		}
+
+		if err := putU32(p.psize); err != nil {
+			continue
+		}
+		if err := putU32(p.ppid); err != nil {
+			continue
+		}
+		if err := putU32(p.puid); err != nil {
+			continue
+		}
+		if err := putU32(p.ppad); err != nil {
+			continue
+		}
+		off += copy(v.Args[off:], p.pargs)
+		if err := putU32(p.size); err != nil {
+			continue
+		}
+		if err := putU32(p.pid); err != nil {
+			continue
+		}
+		if err := putU32(p.uid); err != nil {
+			continue
+		}
+		if err := putU32(p.pad); err != nil {
+			continue
+		}
 		off += copy(v.Args[off:], p.args)
 		m.Update(k, v)
 	}
