@@ -21,7 +21,7 @@ const (
 	MSG_OP_IPV4_TCPCONNECT    = 1
 	MSG_OP_IPV4_TCPCONNECTRET = 2
 
-	ARGSBUFFER = 1024 + 100 + 32
+	ARGSBUFFER = 1024 + 16
 )
 
 // Msg Flag Definitions
