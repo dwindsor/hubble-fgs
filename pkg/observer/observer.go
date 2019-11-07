@@ -469,9 +469,11 @@ func getRunningProcs() []ObserverProcs {
 			need := (p.size + p.psize + 16 + 16) - api.ARGSBUFFER
 			for i = 0; i < need; i++ {
 				if len(p.pargs) > len(p.args) {
+					p.pflags |= api.EventTruncArgs
 					p.pargs = p.pargs[:len(p.pargs)-1]
 					p.psize--
 				} else {
+					p.flags |= api.EventTruncArgs
 					p.args = p.args[:len(p.args)-1]
 					p.size--
 				}
