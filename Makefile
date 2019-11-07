@@ -29,6 +29,9 @@ clean:
 	rm -f $(TARGET)
 	make -C ./bpf clean
 
+test:
+	go test -cover $$(go list ./...)
+
 lint:
 	golint -set_exit_status $$(go list ./...)
 
