@@ -461,6 +461,23 @@ func getRunningProcs() []ObserverProcs {
 			pid: uint32(pid), args: cmdsUTF, flags: api.EventProcFS}
 		p.size = uint32(4 + 4 + 4 + 4 + len(p.args))
 		p.psize = uint32(4 + 4 + 4 + 4 + len(p.pargs))
+		/* If we can't fit this in the buffer lets trim some parts and
+		 * make it fit.
+		 */
+		if p.size+p.psize > api.ARGSBUFFER {
+			var i uint32
+			need := (p.size + p.psize + 16 + 16) - api.ARGSBUFFER
+			for i = 0; i < need; i++ {
+				if len(p.pargs) > len(p.args) {
+					p.pargs = p.pargs[:len(p.pargs)-1]
+					p.psize--
+				} else {
+					p.args = p.args[:len(p.args)-1]
+					p.size--
+				}
+			}
+		}
+
 		procs = append(procs, p)
 	}
 
@@ -474,6 +491,10 @@ func getRunningProcs() []ObserverProcs {
 		k := &ExecveKey{Pid: p.pid}
 		v := &ExecveValue{}
 
+		/* In theory we trim'd this above to fit but lets be paranoid
+		 * because I already screwed this up once and crashing fgs is
+		 * not so friendly.
+		 */
 		putU32 := func(val uint32) error {
 			if off+4 > api.ARGSBUFFER {
 				return fmt.Errorf("out of range")
@@ -510,6 +531,7 @@ func getRunningProcs() []ObserverProcs {
 			continue
 		}
 		off += copy(v.Args[off:], p.args)
+		v.Common.Size = 1
 		m.Update(k, v)
 	}
 	return procs
