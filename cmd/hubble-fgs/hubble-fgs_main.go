@@ -9,12 +9,9 @@ import (
 	"github.com/spf13/viper"
 
 	"context"
-	"math"
 	"os"
 	"os/signal"
 	"syscall"
-
-	"golang.org/x/sys/unix"
 )
 
 var (
@@ -22,13 +19,6 @@ var (
 
 	cmd *cobra.Command
 )
-
-func configureResourceLimits() error {
-	return unix.Setrlimit(unix.RLIMIT_MEMLOCK, &unix.Rlimit{
-		Cur: math.MaxUint64,
-		Max: math.MaxUint64,
-	})
-}
 
 func hubbleFGSExecute() {
 	sigs := make(chan os.Signal, 1)
@@ -43,7 +33,7 @@ func hubbleFGSExecute() {
 	defer cancel()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
-	configureResourceLimits()
+	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("debug"))
 	go server.ServeEvents(kprobe, ctx, defaults.DefaultUnixSock)
 	kprobe.Start()

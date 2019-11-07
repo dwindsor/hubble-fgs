@@ -1,0 +1,54 @@
+package observer
+
+import (
+	"bytes"
+	"context"
+	"os"
+	"strings"
+	"syscall"
+	"testing"
+
+	"github.com/covalentio/hubble-fgs/pkg/bpf"
+)
+
+var (
+	observerTestDir = "/sys/fs/bpf/testObserver/"
+)
+
+func TestMain(m *testing.M) {
+	bpf.CheckOrMountFS("")
+	bpf.CheckOrMountDebugFS()
+	bpf.ConfigureResourceLimits()
+	exitCode := m.Run()
+	os.Exit(exitCode)
+}
+
+func TestObjectLoad(t *testing.T) {
+	var uts syscall.Utsname
+
+	if err := syscall.Uname(&uts); err != nil {
+		t.Fatalf("sys.Uname error: %s", err)
+	}
+
+	buf := make([]byte, 65)
+	for i, b := range uts.Release {
+		buf[i] = byte(b)
+	}
+	uname := strings.TrimSpace(string(bytes.Trim(buf, "\x00")))
+	ObserverExecve__program = "../../bpf/bins/bpf_execve_" + uname + ".o"
+	ObserverExecveat__program = "../../bpf/bins/bpf_execveat_" + uname + ".o"
+	ObserverTCPConnect__program = "../../bpf/bins/bpf_tcpmon_" + uname + ".o"
+	ObserverTCPConnectRet__program = "../../bpf/bins/bpf_tcpmonret_" + uname + ".o"
+
+	kprobe := NewObserverKprobe(observerTestDir, false)
+	kprobe.createDir()
+	if err := kprobe.observerLoadExecve(context.TODO()); err != nil {
+		kprobe.deleteProgs()
+		t.Fatalf("observerLoadExecve error: %s", err)
+	}
+	if err := kprobe.observerLoadEvents(context.TODO()); err != nil {
+		kprobe.deleteProgs()
+		t.Fatalf("observerLoadEvents error: %s", err)
+	}
+	kprobe.deleteProgs()
+}
