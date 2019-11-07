@@ -45,6 +45,7 @@ static inline int64_t validate_msg_size(int64_t size)
 }
 
 static inline void event_filename_builder(struct event_execve *pid,
+					  __u32 curr_pid, __u32 flags,
 					  void *pfilename)
 {
 	struct event_execve *curr;
@@ -65,6 +66,8 @@ static inline void event_filename_builder(struct event_execve *pid,
 	if (filename) {
 		size = probe_read_str(earg, MAXARGLENGTH - 1, filename);
 	}
+	curr->flags = flags;
+	curr->pid = curr_pid;
 	curr->size = size + offsetof(struct event_execve, args);
 }
 

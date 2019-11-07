@@ -50,7 +50,7 @@ int event_execve(struct pt_regs *__ctx)
 		parent->uid = 0;
 	}
 
-	event_filename_builder(parent, &ctx->di);
+	event_filename_builder(parent, pid, EVENT_EXECVE, &ctx->di);
 	event_args_builder(event, &ctx->si);
 	return 0;
 }

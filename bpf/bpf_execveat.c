@@ -49,7 +49,7 @@ int event_execveat(struct pt_regs *__ctx)
 		parent->flags = EVENT_MISS;
 	}
 
-	event_filename_builder(parent, &ctx->di);
+	event_filename_builder(parent, pid, EVENT_EXECVEAT, &ctx->di);
 	event_args_builder(event, &ctx->si);
 	return 0;
 }
