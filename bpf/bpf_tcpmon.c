@@ -42,10 +42,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	uint64_t size;
 
 	msg = event_find_curr(&ppid);
-	if (!msg) {
-		bpf_printk("find current pid missing %d\n", ppid);
+	if (!msg)
 		return 0;
-	}
 
 	msg->common.op = MSG_OP_IPV4_TCPCONNECT;
 	msg->common.ktime = ktime_get_ns();
