@@ -15,8 +15,8 @@ static inline int64_t validate_arg_size(int64_t size)
 	 * require a event_execve header regardless so ensure size
 	 * accounts for this at minimum.
 	 */
-	if (size >= BUFFER)
-		size = BUFFER;
+	if (size >= BUFFER + offsetof(struct event_execve, args))
+		size = BUFFER + offsetof(struct event_execve, args);
 	if (size < offsetof(struct event_execve, args))
 		size = offsetof(struct event_execve, args);
 	compiler_barrier();
@@ -39,7 +39,7 @@ static inline int64_t validate_msg_size(int64_t size)
 	if (size > max)
 		size = max;
 	if (size < 1)
-		size = 1;
+		size = offsetof(struct msg_ipv4_tcp_connect, pid);
 	compiler_barrier();
 	return size;
 }
