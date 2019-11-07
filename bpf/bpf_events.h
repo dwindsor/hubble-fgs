@@ -147,6 +147,7 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 	if (err)
 		goto out;
 out:
+	c->size -= base;
 	return;
 }
 
