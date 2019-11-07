@@ -208,11 +208,9 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 		addr = (void *)&(task->pid);
 #endif
 		probe_read(&pid, sizeof(pid), addr);
-
 		msg = map_lookup_elem(&execve_map, &pid);
 		if (msg) {
-			struct event_execve *p = (struct event_execve *)msg->pid;
-			if (p->size != 0)
+			if (msg->common.size != 0)
 				return msg;
 		}
 	}
@@ -249,8 +247,10 @@ static inline struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid)
 #endif
 			probe_read(&pid, sizeof(pid), addr);
 		}
-		if (msg)
-			break;
+		if (msg) {
+			if (msg->common.size != 0)
+				break;
+		}
 	}
 	*ppid = pid;
 	return msg;
