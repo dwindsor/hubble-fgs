@@ -89,11 +89,6 @@ static inline void event_filename_builder(struct event_execve *pid,
 	"r1 += r4;"					\
 	"r2 = " XSTR(MAXARGLENGTH) ";"			\
 	"call 45;"					\
-	"r5 = *(u32 *)(%[curr] + 12);"			\
-	"r4 = r0;"					\
-	"r4 ^= " XSTR(MAXARGLENGTH) ";"                 \
-	"r5 |= r4;"					\
-	"*(u32 *)(%[curr] + 12) = r5;"			\
 	"r4 = *(u32 *)(%[curr] + 0);"			\
 	"r0 += r4;"					\
 	"*(u32 *)(%[curr] + 0) = r0;"
@@ -139,7 +134,6 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 {
 	struct event_execve *p, *c;
 	int64_t base;
-	__u32 flags;
 	char **args;
 	int err;
 
@@ -153,17 +147,11 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 	c = (struct event_execve *)((void *)p + base);
 	c->size += base;
 	/* We use flags in asm to indicate overflow */
-	flags = c->flags;
-	c->flags = 0;
 	compiler_barrier();
-
 	err = probe_arg_read(c, (char*)p, args);
 	if (err)
 		goto out;
 out:
-	if (c->flags)
-		c->flags = EVENT_TRUNC_ARGS;
-	c->flags |= flags;
 	c->size -= base;
 	return;
 }
