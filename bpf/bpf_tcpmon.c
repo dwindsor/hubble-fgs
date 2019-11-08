@@ -38,10 +38,11 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	char *addr;
 	const char *name;
 
+	bool walker = 0;
 	__u32 ppid = 0;
 	uint64_t size;
 
-	msg = event_find_curr(&ppid);
+	msg = event_find_curr(&ppid, &walker);
 	if (!msg)
 		return 0;
 
@@ -54,6 +55,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 
 	msg->common.size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
 	curr->uid = get_current_uid_gid();
+	if (walker)
+		curr->flags |= EVENT_TASK_WALK;
 
 	skp = (void *)((ctx)->di);
 

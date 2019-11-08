@@ -70,6 +70,9 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventTruncArgs) != 0 {
 		s += "truncArgs "
 	}
+	if (flags & api.EventTaskWalk) != 0 {
+		s += "taskWalk "
+	}
 	return s
 }
 

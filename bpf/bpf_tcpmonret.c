@@ -28,8 +28,9 @@ int event_ret_ipv4_connect(struct pt_regs *ctx)
 	struct msg_ipv4_tcp_connect *msg = 0;
 	__u32 ppid = 0;
 	uint64_t size;
+	bool walker;
 
-	msg = event_find_curr(&ppid);
+	msg = event_find_curr(&ppid, &walker);
 	if (!msg)
 		return 0;
 

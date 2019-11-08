@@ -89,11 +89,6 @@ static inline void event_filename_builder(struct event_execve *pid,
 	"r1 += r4;"					\
 	"r2 = " XSTR(MAXARGLENGTH) ";"			\
 	"call 45;"					\
-	"r5 = *(u32 *)(%[curr] + 12);"			\
-	"r4 = r0;"					\
-	"r4 ^= " XSTR(MAXARGLENGTH) ";"                 \
-	"r5 |= r4;"					\
-	"*(u32 *)(%[curr] + 12) = r5;"			\
 	"r4 = *(u32 *)(%[curr] + 0);"			\
 	"r0 += r4;"					\
 	"*(u32 *)(%[curr] + 0) = r0;"
@@ -139,7 +134,6 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 {
 	struct event_execve *p, *c;
 	int64_t base;
-	__u32 flags;
 	char **args;
 	int err;
 
@@ -153,17 +147,11 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 	c = (struct event_execve *)((void *)p + base);
 	c->size += base;
 	/* We use flags in asm to indicate overflow */
-	flags = c->flags;
-	c->flags = 0;
 	compiler_barrier();
-
 	err = probe_arg_read(c, (char*)p, args);
 	if (err)
 		goto out;
 out:
-	if (c->flags)
-		c->flags = EVENT_TRUNC_ARGS;
-	c->flags |= flags;
 	c->size -= base;
 	return;
 }
@@ -231,40 +219,41 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 	return 0;
 }
 
-static inline struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid)
+static inline
+struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,bool *walked)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
-	__u32 cpid, pid = get_current_pid_tgid() >> 32;
+	__u32 pid = get_current_pid_tgid() >> 32;
 	struct msg_ipv4_tcp_connect *msg = 0;
 	char *addr;
 	int i;
 
-	cpid = pid;
 #pragma unroll
 	for (i = 0; i < 4; i++) {
-		if (!msg) {
-			msg = map_lookup_elem(&execve_map, &pid);
+		msg = map_lookup_elem(&execve_map, &pid);
+		if (!msg)
+			break;
+		if (msg->common.size != 0)
+			break;
+		else
+			msg = 0;
+		*walked = 1;
 #ifdef PARENT_OFFSET
-			addr = (void *)task;
-			addr += PARENT_OFFSET;
+		addr = (void *)task;
+		addr += PARENT_OFFSET;
 #else
-			addr = (void *)&(task->parent);
+		addr = (void *)&(task->parent);
 #endif
-			probe_read(&task, sizeof(task), addr);
-			if (!task)
-				break;
+		probe_read(&task, sizeof(task), addr);
+		if (!task)
+			break;
 #ifdef PARENT_PID_OFFSET
-			addr = (void *)(task);
-			addr += PARENT_PID_OFFSET;
+		addr = (void *)(task);
+		addr += PARENT_PID_OFFSET;
 #else
-			addr = (void *)&(task->pid);
+		addr = (void *)&(task->pid);
 #endif
-			probe_read(&pid, sizeof(pid), addr);
-		}
-		if (msg) {
-			if (msg->common.size != 0)
-				break;
-		}
+		probe_read(&pid, sizeof(pid), addr);
 	}
 	*ppid = pid;
 	return msg;
