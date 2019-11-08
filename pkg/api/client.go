@@ -32,6 +32,7 @@ const (
 	EventProcFS        = 0x04
 	EventTruncFilename = 0x08
 	EventTruncArgs     = 0x10
+	EventTaskWalk      = 0x20
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent

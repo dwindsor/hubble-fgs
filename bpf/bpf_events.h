@@ -231,7 +231,8 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 	return 0;
 }
 
-static inline struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid)
+static inline
+struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,bool *walked)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
@@ -248,6 +249,7 @@ static inline struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid)
 			break;
 		else
 			msg = 0;
+		*walked = 1;
 #ifdef PARENT_OFFSET
 		addr = (void *)task;
 		addr += PARENT_OFFSET;

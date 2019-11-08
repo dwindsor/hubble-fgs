@@ -99,6 +99,7 @@
 #define EVENT_PROCFS   0x04
 #define EVENT_TRUNC_FILENAME 0x08
 #define EVENT_TRUNC_ARGS     0x10
+#define EVENT_TASK_WALK      0x20
 
 /* Msg Types */
 enum msg_ops {
