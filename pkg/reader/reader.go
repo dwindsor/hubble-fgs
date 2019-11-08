@@ -64,6 +64,12 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventProcFS) != 0 {
 		s += "procFS "
 	}
+	if (flags & api.EventTruncFilename) != 0 {
+		s += "truncFilename "
+	}
+	if (flags & api.EventTruncArgs) != 0 {
+		s += "truncArgs "
+	}
 	return s
 }
 

@@ -87,14 +87,14 @@ var (
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
 
-	log *zap.Logger
+	zlog *zap.Logger
 )
 
 func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
 	for _, c := range k.listeners {
 		enc := gob.NewEncoder(c)
 		if err := enc.Encode(msg); err != nil {
-			log.Debug("Write failure removing Listener", zap.Error(err))
+			zlog.Debug("Write failure removing Listener", zap.Error(err))
 			k.RemoveListener(c)
 		}
 	}
@@ -194,7 +194,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 
 		if k.prettyPrinter {
-			reader.ObserverIPV4TCPConnectPrinter(msgUnix, log)
+			reader.ObserverIPV4TCPConnectPrinter(msgUnix, zlog)
 		}
 
 		k.observerListeners(msgUnix)
@@ -307,6 +307,13 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 			fmt.Printf("Warning kprobe TCPConnectRet LoadKprobe: %s\n", err)
 		}
 	}
+	return nil
+}
+
+func (k *ObserverKprobe) runEvents(stopCtx context.Context) error {
+	if err := k.observerLoadEvents(stopCtx); err != nil {
+		return err
+	}
 
 	c := bpf.DefaultPerfEventConfig()
 	e, err := bpf.NewPerCpuEvents(c)
@@ -321,19 +328,19 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 		todo, err := e.Poll(pollTimeout)
 		switch {
 		case isCtxDone(stopCtx):
-			log.Debug("isCtxDone completed\n")
+			zlog.Debug("isCtxDone completed\n")
 			return nil
 
 		case err == syscall.EBADF:
 			return fmt.Errorf("kprobe events syscall.EBADF: %s", err)
 
 		case err != nil:
-			log.Warn("kprobe events poll: ", zap.Error(err))
+			zlog.Warn("kprobe events poll: ", zap.Error(err))
 			continue
 		}
 		if todo > 0 {
 			if err := e.ReadAll(receiveEvent, observerLost, observerError); err != nil {
-				log.Warn("kprobe events read: ", zap.Error(err))
+				zlog.Warn("kprobe events read: ", zap.Error(err))
 			}
 		}
 	}
@@ -469,9 +476,11 @@ func getRunningProcs() []ObserverProcs {
 			need := (p.size + p.psize + 16 + 16) - api.ARGSBUFFER
 			for i = 0; i < need; i++ {
 				if len(p.pargs) > len(p.args) {
+					p.pflags |= api.EventTruncArgs
 					p.pargs = p.pargs[:len(p.pargs)-1]
 					p.psize--
 				} else {
+					p.flags |= api.EventTruncArgs
 					p.args = p.args[:len(p.args)-1]
 					p.size--
 				}
@@ -553,13 +562,23 @@ func (k *ObserverKprobe) Start() {
 	k.createDir()
 	k.observerLoadExecve(context.TODO())
 	k.populateExecve(context.TODO())
-	if err := k.observerLoadEvents(context.TODO()); err != nil {
+	if err := k.runEvents(context.TODO()); err != nil {
 		fmt.Printf("observerLoadEvents failed: %s", err)
 	}
 }
 
+func (k *ObserverKprobe) deleteProgs() {
+	os.Remove(k.bpfDir + observerExecve__prog)
+	os.Remove(k.bpfDir + observerExecveat__map)
+	os.Remove(k.bpfDir + observerExecveat__prog)
+	os.Remove(k.bpfDir + observerTCPConnect__prog)
+	os.Remove(k.bpfDir + observerTCPConnect__map)
+	os.Remove(k.bpfDir + observerTCPConnectRet__prog)
+	os.Remove(k.bpfDir)
+}
+
 func NewObserverKprobe(bpfDir string, pretty bool) *ObserverKprobe {
-	log = logger.GetLogger()
+	zlog = logger.GetLogger()
 	return &ObserverKprobe{
 		bpfDir:        bpfDir,
 		prettyPrinter: pretty,

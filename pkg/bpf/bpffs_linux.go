@@ -18,6 +18,7 @@ package bpf
 
 import (
 	"fmt"
+	"math"
 	"os"
 	"path/filepath"
 	"sync"
@@ -25,6 +26,8 @@ import (
 
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
 	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
+
+	"golang.org/x/sys/unix"
 )
 
 var (
@@ -320,4 +323,11 @@ func CheckOrMountFS(bpfRoot string) {
 
 func CheckOrMountDebugFS() error {
 	return checkOrMountDebugFSDefaultLocations()
+}
+
+func ConfigureResourceLimits() error {
+	return unix.Setrlimit(unix.RLIMIT_MEMLOCK, &unix.Rlimit{
+		Cur: math.MaxUint64,
+		Max: math.MaxUint64,
+	})
 }
