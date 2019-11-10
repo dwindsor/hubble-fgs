@@ -258,4 +258,44 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,bool *walked)
 	*ppid = pid;
 	return msg;
 }
+
+#ifdef USE_HASH_MAP
+static inline void map_update_hash(struct msg_ipv4_tcp_connect *event,
+				   __u32 pid)
+{
+	struct event_execve *parent = (struct event_execve *)event->pid;
+	struct event_execve *curr;
+	uint64_t size;
+
+	curr = (void *)parent + validate_arg_size(parent->size);
+	size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
+	size = validate_msg_size(size);
+	map_update_elem(&execve_map, &pid, event, 0);
+}
+
+static inline struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
+{
+	struct msg_ipv4_tcp_connect *event;
+
+	event = map_lookup_elem(&execve_map, &pid);
+	if (!event) {
+		int zero = 0;
+
+		event = map_lookup_elem(&msg_ipv4_tcp_map, &zero);
+		if (!event)
+			return 0;
+	}
+	return event;
+}
+#else
+static inline void map_update_hash(struct msg_ipv4_tcp_connect *event,
+				   __u32 pid)
+{
+}
+
+static inline struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
+{
+	return map_lookup_elem(&execve_map, &pid);
+}
+#endif
 #endif // _BPF_EVENTS_H

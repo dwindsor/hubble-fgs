@@ -29,29 +29,30 @@ int event_execve(struct pt_regs *__ctx)
 #endif
 	struct msg_ipv4_tcp_connect *event, *parent_event;
 	struct event_execve *parent;
-	int64_t psize = 0;
+	int64_t size = 0;
 	__u32 pid;
 
 	pid = (get_current_pid_tgid() >> 32);
-	event = map_lookup_elem(&execve_map, &pid);
-	if (!event) {
+	event = map_lookup_event(pid);
+	if (!event)
 		return 0;
-	}
 	parent = (struct event_execve *)event->pid;
 	parent_event = event_find_parent();
 	if (parent_event) {
-		psize = event_copy_execve(parent,
+		size = event_copy_execve(parent,
 					  (struct event_execve *)&parent_event->pid);
 	} else {
-		psize = offsetof(struct event_execve, args);
-		parent->size = psize;
+		size = offsetof(struct event_execve, args);
+		parent->size = size;
 		parent->pid = event_find_parent_pid();
 		parent->flags = EVENT_MISS;
 		parent->uid = 0;
 	}
 
+
 	event->common.size = 1; // stand end until we complete calculation from tcpmon
 	event_filename_builder(parent, pid, EVENT_EXECVE, &ctx->di);
 	event_args_builder(event, &ctx->si);
+	map_update_hash(event, pid);
 	return 0;
 }
