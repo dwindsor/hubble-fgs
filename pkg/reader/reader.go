@@ -53,7 +53,7 @@ func DecodeCommonFlags(flags uint32) string {
 	s := ""
 
 	if flags == 0 {
-		s += "miss "
+		s += " "
 	}
 	if (flags & api.EventExecve) != 0 {
 		s += "execve "
@@ -72,6 +72,9 @@ func DecodeCommonFlags(flags uint32) string {
 	}
 	if (flags & api.EventTaskWalk) != 0 {
 		s += "taskWalk "
+	}
+	if (flags & api.EventMiss) != 0 {
+		s += "miss "
 	}
 	return s
 }
