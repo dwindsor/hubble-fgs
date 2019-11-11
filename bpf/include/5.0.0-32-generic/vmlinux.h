@@ -1,4 +1,5 @@
 #define VMLINUX_KERNEL_HAS_SYSCALL_WRAPPER
+#define USE_HASH_MAP
 
 typedef signed char __s8;
 
