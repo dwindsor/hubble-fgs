@@ -36,11 +36,11 @@ int event_execveat(struct pt_regs *__ctx)
 	event = map_lookup_elem(&execve_map, &pid);
 	if (!event)
 		return 0;
-	parent = (struct event_execve *)&event->pid;
+	parent = (struct event_execve *)event->pid;
 	parent_event = event_find_parent();
 	if (parent_event) {
 		psize = event_copy_execve(parent,
-					 (struct event_execve *)&parent_event->pid);
+					  (struct event_execve *)&parent_event->pid);
 	} else {
 		psize = offsetof(struct event_execve, args);
 		parent->size = psize;
