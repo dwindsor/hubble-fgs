@@ -121,6 +121,24 @@ a:
 	return 0;
 }
 
+static inline __u32 get_auid(void)
+{
+	struct task_struct *task = (struct task_struct *)get_current_task();
+	__u32 auid = 0;
+#ifdef AUDIT_STRUCT
+	struct audit_task_info *audit;
+
+	probe_read(&audit, sizeof(audit), &task->audit);
+	if (audit) {
+		probe_read(&auid, sizeof(auid), &audit->loginuid);
+	}
+#else
+	probe_read(&auid, sizeof(auid), &task->loginuid.val);
+#endif
+	return auid;
+}
+
+
 /* event_args_builder: copies args into char *buffer
  * event: pointer to event storage
  * pargs: kernel address of args structure
@@ -145,6 +163,7 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 	p = (struct event_execve *)event->pid;
 	base = validate_arg_size(p->size);
 	c = (struct event_execve *)((void *)p + base);
+	c->auid = get_auid();
 	c->size += base;
 	/* We use flags in asm to indicate overflow */
 	compiler_barrier();
@@ -258,7 +277,6 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,bool *walked)
 	*ppid = pid;
 	return msg;
 }
-
 #ifdef USE_HASH_MAP
 static inline void map_update_hash(struct msg_ipv4_tcp_connect *event,
 				   __u32 pid)

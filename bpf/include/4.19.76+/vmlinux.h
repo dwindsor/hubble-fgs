@@ -1,6 +1,7 @@
 // GKE
 #define VMLINUX_KERNEL_VERSION 0x4134C
 #define USE_HASH_MAP
+#define AUDIT_STRUCT
 
 typedef signed char __s8;
 
