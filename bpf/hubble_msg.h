@@ -166,7 +166,6 @@ struct event {
 	int event;
 };
 
-#ifdef USE_HASH_MAP
 #ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_PERFCPU_ARRAY];
@@ -182,6 +181,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) msg_ipv4_tcp_map = {
 	.max_entries = 1,
 };
 #endif // BTF
+
+#ifdef USE_HASH_MAP
 #ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_HASH];
@@ -198,6 +199,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
 };
 #endif // BTF
 #else  // USE_HASH_MAP
+
 #ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_ARRAY];
