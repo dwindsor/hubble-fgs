@@ -26,13 +26,15 @@ const (
 
 // Msg Flag Definitions
 const (
-	EventMiss          = 0x00
+	EventUnknown       = 0x00
 	EventExecve        = 0x01
 	EventExecveAt      = 0x02
 	EventProcFS        = 0x04
 	EventTruncFilename = 0x08
 	EventTruncArgs     = 0x10
 	EventTaskWalk      = 0x20
+	EventMiss          = 0x40
+	EventNeedsAUID     = 0x80
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent

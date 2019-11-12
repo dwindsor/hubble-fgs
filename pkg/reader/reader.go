@@ -76,6 +76,9 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventMiss) != 0 {
 		s += "miss "
 	}
+	if (flags & api.EventNeedsAUID) != 0 {
+		s += "auid "
+	}
 	return s
 }
 
