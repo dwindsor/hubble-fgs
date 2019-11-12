@@ -124,10 +124,18 @@ a:
 static inline __u32 get_auid(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
-	__u32 pid;
+	__u32 auid = 0;
+#ifdef AUDIT_STRUCT
+	struct audit_task_info *audit;
 
-	probe_read(&pid, sizeof(pid), &task->loginuid.val);
-	return pid;
+	probe_read(&audit, sizeof(audit), &task->audit);
+	if (audit) {
+		probe_read(&auid, sizeof(auid), &audit->loginuid);
+	}
+#else
+	probe_read(&auid, sizeof(auid), &task->loginuid.val);
+#endif
+	return auid;
 }
 
 
