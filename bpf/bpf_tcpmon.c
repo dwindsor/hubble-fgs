@@ -50,9 +50,20 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	msg->common.ktime = ktime_get_ns();
 	parent = (struct event_execve *)&msg->pid;
 
+	if (parent->flags & EVENT_NEEDS_AUID) {
+		__u32 flags = parent->flags & ~EVENT_NEEDS_AUID;
+
+		parent->auid = get_auid();
+		parent->flags = flags;
+	}
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
+	if (curr->flags & EVENT_NEEDS_AUID) {
+		__u32 flags = curr->flags & ~EVENT_NEEDS_AUID;
 
+		curr->auid = get_auid();
+		curr->flags = flags;
+	}
 	msg->common.size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
 	curr->uid = get_current_uid_gid();
 	if (walker)
