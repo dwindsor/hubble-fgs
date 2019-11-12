@@ -150,10 +150,11 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, error) {
 	execUnix.PID = exec.PID
 	execUnix.UID = exec.UID
 	execUnix.Flags = exec.Flags
+	execUnix.AUID = exec.AUID
 
-	size := exec.Size - 16
+	size := exec.Size - 24
 	if size > api.ARGSBUFFER {
-		exec.Size = 16
+		exec.Size = 24
 	} else {
 		args := make([]byte, size)
 		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
@@ -355,11 +356,15 @@ type ObserverProcs struct {
 	psize  uint32
 	puid   uint32
 	ppid   uint32
+	pauid  uint32
+	ppad   uint32
 	pflags uint32
 	pargs  []byte
 	size   uint32
 	uid    uint32
 	pid    uint32
+	auid   uint32
+	pad    uint32
 	flags  uint32
 	args   []byte
 }
@@ -466,14 +471,14 @@ func getRunningProcs() []ObserverProcs {
 		p := ObserverProcs{
 			ppid: uint32(_ppid), pargs: pcmdsUTF, pflags: api.EventProcFS,
 			pid: uint32(pid), args: cmdsUTF, flags: api.EventProcFS}
-		p.size = uint32(4 + 4 + 4 + 4 + len(p.args))
-		p.psize = uint32(4 + 4 + 4 + 4 + len(p.pargs))
+		p.size = uint32(4 + 4 + 4 + 4 + 4 + 4 + len(p.args))
+		p.psize = uint32(4 + 4 + 4 + 4 + 4 + 4 + len(p.pargs))
 		/* If we can't fit this in the buffer lets trim some parts and
 		 * make it fit.
 		 */
 		if p.size+p.psize > api.ARGSBUFFER {
 			var i uint32
-			need := (p.size + p.psize + 16 + 16) - api.ARGSBUFFER
+			need := (p.size + p.psize + 24 + 24) - api.ARGSBUFFER
 			for i = 0; i < need; i++ {
 				if len(p.pargs) > len(p.args) {
 					p.pflags |= api.EventTruncArgs
@@ -523,6 +528,12 @@ func getRunningProcs() []ObserverProcs {
 		if err := putU32(p.puid); err != nil {
 			continue
 		}
+		if err := putU32(p.pauid); err != nil {
+			continue
+		}
+		if err := putU32(p.ppad); err != nil {
+			continue
+		}
 		if err := putU32(p.pflags); err != nil {
 			continue
 		}
@@ -534,6 +545,12 @@ func getRunningProcs() []ObserverProcs {
 			continue
 		}
 		if err := putU32(p.uid); err != nil {
+			continue
+		}
+		if err := putU32(p.auid); err != nil {
+			continue
+		}
+		if err := putU32(p.pad); err != nil {
 			continue
 		}
 		if err := putU32(p.flags); err != nil {

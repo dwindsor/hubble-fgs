@@ -46,10 +46,11 @@ int event_execveat(struct pt_regs *__ctx)
 		parent->size = size;
 		parent->pid = event_find_parent_pid();
 		parent->uid = 0;
+		parent->auid = get_auid();
 		parent->flags = EVENT_MISS;
 	}
 
-	event->common.size = 1; // stand end until we complete calculation from tcpmon
+	event->common.size = 1; // stand-in until we complete calculation from tcpmon
 	event_filename_builder(parent, pid, EVENT_EXECVEAT, &ctx->di);
 	event_args_builder(event, &ctx->si);
 	map_update_hash(event, pid);

@@ -47,6 +47,8 @@ type MsgExec struct {
 	Size  uint32
 	PID   uint32
 	UID   uint32
+	AUID  uint32
+	Pad   uint32
 	Flags uint32
 }
 
@@ -82,6 +84,8 @@ type MsgIPv4TcpConnect struct {
 type MsgExecUnix struct {
 	PID      uint32
 	UID      uint32
+	AUID     uint32
+	pad      uint32
 	Flags    uint32
 	Filename string
 	Args     string
