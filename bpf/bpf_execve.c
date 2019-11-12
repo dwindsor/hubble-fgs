@@ -29,7 +29,6 @@ int event_execve(struct pt_regs *__ctx)
 #endif
 	struct msg_ipv4_tcp_connect *event, *parent_event;
 	struct event_execve *parent;
-	int64_t size = 0;
 	__u32 pid;
 
 	pid = (get_current_pid_tgid() >> 32);
@@ -38,17 +37,11 @@ int event_execve(struct pt_regs *__ctx)
 		return 0;
 	parent = (struct event_execve *)event->pid;
 	parent_event = event_find_parent();
-	if (parent_event) {
-		size = event_copy_execve(parent,
-					  (struct event_execve *)&parent_event->pid);
-	} else {
-		size = offsetof(struct event_execve, args);
-		parent->size = size;
-		parent->pid = event_find_parent_pid();
-		parent->auid = get_auid();
-		parent->flags = EVENT_MISS;
-		parent->uid = 0;
-	}
+	if (parent_event)
+		event_copy_execve(parent,
+				  (struct event_execve *)&parent_event->pid);
+	else
+		event_minimal_parent(parent);
 
 	event->common.size = 1; // stand-in until we complete calculation from tcpmon
 	event_filename_builder(parent, pid, EVENT_EXECVE, &ctx->di);

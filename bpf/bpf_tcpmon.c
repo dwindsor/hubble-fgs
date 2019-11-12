@@ -43,8 +43,26 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	uint64_t size;
 
 	msg = event_find_curr(&ppid, &walker);
-	if (!msg)
-		return 0;
+	if (!msg) {
+		struct msg_ipv4_tcp_connect *parent_event;
+		struct event_execve *parent;
+		int zero = 0;
+
+		msg = map_lookup_elem(&msg_ipv4_tcp_map, &zero);
+		if (!msg)
+			return 0;
+		parent = (struct event_execve *)msg->pid;
+		parent_event = event_find_parent();
+		if (parent_event)
+			event_copy_execve(parent,
+					  (struct event_execve *)&parent_event->pid);
+		else
+			event_minimal_parent(parent);
+		size = validate_arg_size(parent->size);
+		curr = (void *)parent + size;
+		msg->common.size = 1;
+		event_minimal_curr(curr);
+	}
 
 	msg->common.op = MSG_OP_IPV4_TCPCONNECT;
 	msg->common.ktime = ktime_get_ns();

@@ -121,10 +121,13 @@ a:
 	return 0;
 }
 
-static inline __u32 get_auid(void)
+static inline __u32 __get_auid(struct task_struct *task)
 {
-	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 auid = 0;
+
+	if (!task)
+		return auid;
+
 #ifdef AUDIT_STRUCT
 	struct audit_task_info *audit;
 
@@ -138,6 +141,29 @@ static inline __u32 get_auid(void)
 	return auid;
 }
 
+static inline __u32 get_auid(void)
+{
+	struct task_struct *task = (struct task_struct *)get_current_task();
+
+	return __get_auid(task);
+}
+
+static inline struct task_struct *get_parent(void)
+{
+	struct task_struct *task = (struct task_struct *)get_current_task();
+
+	probe_read(&task, sizeof(task), &task->parent);
+	if (!task)
+		return 0;
+	return task;
+}
+
+static inline __u32 get_parent_auid(void)
+{
+	struct task_struct *task = get_parent();
+
+	return __get_auid(task);
+}
 
 /* event_args_builder: copies args into char *buffer
  * event: pointer to event storage
@@ -193,10 +219,9 @@ static inline int64_t event_copy_execve(struct event_execve *dst,
 
 static inline __u32 event_find_parent_pid(void)
 {
-	struct task_struct *task = (struct task_struct *)get_current_task();
+	struct task_struct *task = get_parent();
 	__u32 pid;
 
-	probe_read(&task, sizeof(task), &task->parent);
 	if (!task)
 		return 0;
 	probe_read(&pid, sizeof(pid), &task->pid);
@@ -277,6 +302,30 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,bool *walked)
 	*ppid = pid;
 	return msg;
 }
+
+
+static inline void event_minimal_parent(struct event_execve *event)
+{
+	__u32 size = offsetof(struct event_execve, args);
+
+	event->size = size;
+	event->pid = event_find_parent_pid();
+	event->auid = get_parent_auid();
+	event->flags = EVENT_MISS;
+	event->uid = 0;
+}
+
+static inline void event_minimal_curr(struct event_execve *event)
+{
+	__u32 size = offsetof(struct event_execve, args);
+
+	event->size = size;
+	event->pid = (get_current_pid_tgid() >> 32);
+	event->auid = get_auid();
+	event->flags = EVENT_MISS;
+	event->uid = 0;
+}
+
 #ifdef USE_HASH_MAP
 static inline void map_update_hash(struct msg_ipv4_tcp_connect *event,
 				   __u32 pid)
