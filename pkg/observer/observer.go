@@ -92,25 +92,27 @@ var (
 
 func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
 	for _, c := range k.listeners {
-		enc := gob.NewEncoder(c)
-		if err := enc.Encode(msg); err != nil {
+		if err := c.encoder.Encode(msg); err != nil {
 			zlog.Debug("Write failure removing Listener", zap.Error(err))
-			k.RemoveListener(c)
+			k.RemoveListener(c.conn)
 		}
 	}
 }
 
 func (k *ObserverKprobe) AddListener(conn net.Conn) {
-	k.listeners = append(k.listeners, conn)
+	channel := ObserverChannel{}
+	channel.encoder = gob.NewEncoder(conn)
+	channel.conn = conn
+	k.listeners = append(k.listeners, channel)
 }
 
 func (k *ObserverKprobe) RemoveListener(conn net.Conn) {
 	for i, c := range k.listeners {
-		if c == conn {
+		if c.conn == conn {
 			fmt.Printf("delete listener %v\n", conn)
 			k.listeners = append(k.listeners[:i], k.listeners[i+1:]...)
 		}
-		fmt.Printf("walking listener %v\n", c)
+		fmt.Printf("walking listener %v\n", conn)
 	}
 }
 
@@ -567,12 +569,17 @@ func (k *ObserverKprobe) populateExecve(ctx context.Context) {
 	getRunningProcs()
 }
 
+type ObserverChannel struct {
+	conn    net.Conn
+	encoder *gob.Encoder
+}
+
 type ObserverKprobe struct {
 	bpfDir        string
 	execve_fd     int
 	tcp_events_fd int
 	prettyPrinter bool
-	listeners     []net.Conn
+	listeners     []ObserverChannel
 }
 
 func (k *ObserverKprobe) Start() {
