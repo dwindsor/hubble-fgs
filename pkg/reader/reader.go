@@ -82,6 +82,9 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventErrorFilename) != 0 {
 		s += "errorFilename "
 	}
+	if (flags & api.EventErrorArgs) != 0 {
+		s += "errorArgs "
+	}
 	return s
 }
 

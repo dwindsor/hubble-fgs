@@ -36,6 +36,7 @@ const (
 	EventMiss          = 0x40
 	EventNeedsAUID     = 0x80
 	EventErrorFilename = 0x100
+	EventErrorArgs     = 0x200
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
