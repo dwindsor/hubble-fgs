@@ -65,9 +65,13 @@ static inline void event_filename_builder(struct event_execve *pid,
 	probe_read(&filename, sizeof(filename), pfilename);
 	if (filename) {
 		size = probe_read_str(earg, MAXARGLENGTH - 1, filename);
+		if (size < 0) {
+			flags |= EVENT_ERROR_FILENAME;
+			size = 0;
+		} else if (size == MAXARGLENGTH - 1) {
+			flags |= EVENT_TRUNC_FILENAME;
+		}
 	}
-	if (size == MAXARGLENGTH - 1)
-		flags |= EVENT_TRUNC_FILENAME;
 	curr->flags = flags;
 	curr->pid = curr_pid;
 	curr->size = size + offsetof(struct event_execve, args);

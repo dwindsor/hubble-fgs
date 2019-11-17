@@ -102,6 +102,7 @@
 #define EVENT_TASK_WALK      0x20
 #define EVENT_MISS	     0x40
 #define EVENT_NEEDS_AUID     0x80
+#define EVENT_ERROR_FILENAME 0x100
 
 /* Msg Types */
 enum msg_ops {
