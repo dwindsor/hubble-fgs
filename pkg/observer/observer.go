@@ -134,6 +134,7 @@ func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
 func nopMsgExecUnix() api.MsgExecUnix {
 	execUnix := api.MsgExecUnix{}
 
+	execUnix.Size = 0
 	execUnix.PID = 0
 	execUnix.UID = 0
 	execUnix.Filename = "<enomem>"
@@ -149,6 +150,7 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, error) {
 		return execUnix, err
 	}
 
+	execUnix.Size = exec.Size
 	execUnix.PID = exec.PID
 	execUnix.UID = exec.UID
 	execUnix.Flags = exec.Flags

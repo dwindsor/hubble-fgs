@@ -86,6 +86,7 @@ type MsgIPv4TcpConnect struct {
 
 // API between Userspace hubble-fgs Golang agent and Unix domain socket listener
 type MsgExecUnix struct {
+	Size     uint32
 	PID      uint32
 	UID      uint32
 	AUID     uint32
