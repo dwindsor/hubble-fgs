@@ -24,6 +24,7 @@ import (
 	"net"
 	"strings"
 	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -88,12 +89,27 @@ func DecodeCommonFlags(flags uint32) string {
 	return s
 }
 
+func DecodeKtime(ktime int64) (time.Time, error) {
+	clk := int32(unix.CLOCK_MONOTONIC)
+	currentTime := unix.Timespec{}
+	if err := unix.ClockGettime(clk, &currentTime); err != nil {
+		return time.Time{}, err
+	}
+	diff := ktime - currentTime.Nano()
+	return time.Now().Add(time.Duration(diff)), nil
+}
+
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
 	e := syscall.Errno(uintptr(-msg.Return))
+	/* In the event of an error time is {0} so will be obvious at printer time
+	 * and its not clear what to do with this error so ignore it for now.
+	 */
+	eventTime, _ := DecodeKtime(int64(msg.Common.Ktime))
 
 	log.Debug("KprobeEvent",
 		zap.Uint8("op", msg.Common.Op),
 		zap.Uint64("ktime", msg.Common.Ktime),
+		zap.Time("walltime", eventTime),
 		zap.Uint32("parent-size", msg.Pid.Parent.Size),
 		zap.Uint32("parent-pid", msg.Pid.Parent.PID),
 		zap.Uint32("parent-auid", msg.Pid.Parent.AUID),
