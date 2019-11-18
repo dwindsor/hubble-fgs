@@ -65,9 +65,13 @@ static inline void event_filename_builder(struct event_execve *pid,
 	probe_read(&filename, sizeof(filename), pfilename);
 	if (filename) {
 		size = probe_read_str(earg, MAXARGLENGTH - 1, filename);
+		if (size < 0) {
+			flags |= EVENT_ERROR_FILENAME;
+			size = 0;
+		} else if (size == MAXARGLENGTH - 1) {
+			flags |= EVENT_TRUNC_FILENAME;
+		}
 	}
-	if (size == MAXARGLENGTH - 1)
-		flags |= EVENT_TRUNC_FILENAME;
 	curr->flags = flags;
 	curr->pid = curr_pid;
 	curr->size = size + offsetof(struct event_execve, args);
@@ -81,14 +85,15 @@ static inline void event_filename_builder(struct event_execve *pid,
 	"call 4;"					\
 	"r1 = %[arg];"					\
 	"r3 = *(u64 *)(r1 + 0);"			\
-	"if r3 == 0 goto %l[a];"			\
+	"if r3 == 0 goto %l[c];"			\
 	"r4 = *(u32 *)(%[curr] + 0);"			\
-	"if r4 < 0 goto %l[a];"				\
-	"if r4 > " XSTR(BUFFER) " goto %l[a];"		\
+	"if r4 s< 0 goto %l[a];"			\
+	"if r4 s> " XSTR(BUFFER) " goto %l[b];"		\
 	"r1 = %[earg];"					\
 	"r1 += r4;"					\
 	"r2 = " XSTR(MAXARGLENGTH) ";"			\
 	"call 45;"					\
+	"if r0 s< 0 goto %l[a];"			\
 	"r4 = *(u32 *)(%[curr] + 0);"			\
 	"r0 += r4;"					\
 	"*(u32 *)(%[curr] + 0) = r0;"
@@ -100,25 +105,30 @@ static inline void event_filename_builder(struct event_execve *pid,
  * is even using LTS kernels so we get kernels with verifier in strange states.
  * I'm looking at you 4.15 kernel running in minikube!
  */
-static inline int probe_arg_read(struct event_execve *c, char *earg, char **args)
+static inline void probe_arg_read(struct event_execve *c, char *earg, char **args)
 {
-		volatile char *arg;
+	volatile char *arg;
 
-		asm volatile goto (
-				PROBE_ARG_READ("8")
-				PROBE_ARG_READ("16")
-				PROBE_ARG_READ("24")
-				PROBE_ARG_READ("32")
-				PROBE_ARG_READ("40")
-			:
-			: [earg]         "ri"(earg),
-			  [arg]          "ri"(&arg),
-			  [args]	 "ri"(args),
-			  [curr]	 "ri"(c)
-			: "r0", "r1", "r2", "r3", "r4", "r5"
-			: a);
+	asm volatile goto (
+			PROBE_ARG_READ("8")
+			PROBE_ARG_READ("16")
+			PROBE_ARG_READ("24")
+			PROBE_ARG_READ("32")
+			PROBE_ARG_READ("40")
+		:
+		: [earg]         "ri"(earg),
+		  [arg]          "ri"(&arg),
+		  [args]	 "ri"(args),
+		  [curr]	 "ri"(c)
+		: "r0", "r1", "r2", "r3", "r4", "r5"
+		: a, b, c);
+c:
+	return;
+b:
+	c->flags |= EVENT_TRUNC_ARGS;
+	return;
 a:
-	return 0;
+	c->flags |= EVENT_ERROR_ARGS;
 }
 
 static inline __u32 __get_auid(struct task_struct *task)
@@ -179,7 +189,6 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 	struct event_execve *p, *c;
 	int64_t base;
 	char **args;
-	int err;
 
 	probe_read(&args, sizeof(args), pargs);
 	if (!args)
@@ -193,10 +202,7 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 	c->size += base;
 	/* We use flags in asm to indicate overflow */
 	compiler_barrier();
-	err = probe_arg_read(c, (char*)p, args);
-	if (err)
-		goto out;
-out:
+	probe_arg_read(c, (char*)p, args);
 	c->size -= base;
 	return;
 }

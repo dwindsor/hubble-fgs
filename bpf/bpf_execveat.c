@@ -44,9 +44,10 @@ int event_execveat(struct pt_regs *__ctx)
 	else
 		event_minimal_parent(parent);
 
-	event->common.size = 1; // stand-in until we complete calculation from tcpmon
 	event_filename_builder(parent, pid, EVENT_EXECVEAT, &ctx->di);
 	event_args_builder(event, &ctx->si);
+	compiler_barrier();
+	event->common.size = 1; // stand-in until we complete calculation from tcpmon
 	map_update_hash(event, pid);
 	return 0;
 }
