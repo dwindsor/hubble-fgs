@@ -25,10 +25,10 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
-	"golang.org/x/sys/unix"
 	"io/ioutil"
 	"net"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strconv"
 	"strings"
@@ -44,6 +44,8 @@ const (
 	Progsize = 64
 	MaxArgs  = 5
 	ArgSize  = 32
+
+	nanoPerSeconds = 1000000000
 )
 
 var (
@@ -429,11 +431,31 @@ func prependPath(s string, b []byte) []byte {
 	return []byte(fullCmd)
 }
 
+func getClkTck() (uint64, error) {
+	cmd := exec.Command("getconf", "CLK_TCK")
+	out := new(bytes.Buffer)
+	cmd.Stdout = out
+	if err := cmd.Run(); err != nil {
+		return 0, fmt.Errorf("command getconf failed: %s\n", err)
+	}
+	clktck, err := strconv.ParseUint(strings.TrimSpace(out.String()), 10, 64)
+	if err != nil {
+		return 0, fmt.Errorf("command getconf parse failed: %s\n", err)
+	}
+	return clktck, nil
+}
+
 func getRunningProcs() []ObserverProcs {
 	var procs []ObserverProcs
 	procFS, _ := ioutil.ReadDir(ProcFS)
 
 	for _, d := range procFS {
+		clktck, err := getClkTck()
+		if err != nil {
+			fmt.Printf("Warning: procFS wallclock time may be inaccurate. %s\n", err)
+			clktck = 1
+		}
+
 		if d.IsDir() == false {
 			continue
 		}
@@ -459,11 +481,28 @@ func getRunningProcs() []ObserverProcs {
 		if err != nil {
 			continue
 		}
+		_ktime := stats[21]
+		ktime, err := strconv.ParseUint(_ktime, 10, 64)
+		if err != nil {
+			ktime = 0
+		}
+		ktime = (ktime / clktck) * nanoPerSeconds
+
 		pcmdline, err := ioutil.ReadFile(ProcFS + ppid + "/cmdline")
 		if err != nil {
 			continue
 		}
-
+		pstatline, err := ioutil.ReadFile(ProcFS + ppid + "/stat")
+		if err != nil {
+			continue
+		}
+		pstats := strings.Split(string(pstatline), " ")
+		_pktime := pstats[21]
+		pktime, err := strconv.ParseUint(_pktime, 10, 64)
+		if err != nil {
+			pktime = 0
+		}
+		pktime = (pktime / clktck) * nanoPerSeconds
 		execPath, err := filepath.EvalSymlinks(ProcFS + d.Name() + "/exe")
 		if execPath != "" {
 			cmdline = prependPath(execPath, cmdline)
@@ -476,15 +515,8 @@ func getRunningProcs() []ObserverProcs {
 		pcmdsUTF := stringToUTF8(pcmdline)
 		cmdsUTF := stringToUTF8(cmdline)
 
-		ktime := uint64(0)
-		currentTime := unix.Timespec{}
-		if err := unix.ClockGettime(int32(unix.CLOCK_MONOTONIC), &currentTime); err != nil {
-			ktime = 0
-		} else {
-			ktime = uint64(currentTime.Nano())
-		}
 		p := ObserverProcs{
-			ppid: uint32(_ppid), pargs: pcmdsUTF, pflags: api.EventProcFS | api.EventNeedsAUID, pktime: ktime,
+			ppid: uint32(_ppid), pargs: pcmdsUTF, pflags: api.EventProcFS | api.EventNeedsAUID, pktime: pktime,
 			pid: uint32(pid), args: cmdsUTF, flags: api.EventProcFS | api.EventNeedsAUID, ktime: ktime}
 		p.size = uint32(api.SIZEOF_EXECVE + len(p.args))
 		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs))
