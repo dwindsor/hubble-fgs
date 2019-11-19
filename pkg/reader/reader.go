@@ -24,6 +24,7 @@ import (
 	"net"
 	"strings"
 	"syscall"
+	"time"
 
 	"go.uber.org/zap"
 )
@@ -88,17 +89,35 @@ func DecodeCommonFlags(flags uint32) string {
 	return s
 }
 
+func DecodeKtime(ktime int64) (time.Time, error) {
+	clk := int32(unix.CLOCK_MONOTONIC)
+	currentTime := unix.Timespec{}
+	if err := unix.ClockGettime(clk, &currentTime); err != nil {
+		return time.Time{}, err
+	}
+	diff := ktime - currentTime.Nano()
+	return time.Now().Add(time.Duration(diff)), nil
+}
+
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
 	e := syscall.Errno(uintptr(-msg.Return))
+	/* In the event of an error time is {0} so will be obvious at printer time
+	 * and its not clear what to do with this error so ignore it for now.
+	 */
+	eventTime, _ := DecodeKtime(int64(msg.Common.Ktime))
+	parentTime, _ := DecodeKtime(int64(msg.Pid.Parent.Ktime))
+	childTime, _ := DecodeKtime(int64(msg.Pid.Curr.Ktime))
 
 	log.Debug("KprobeEvent",
 		zap.Uint8("op", msg.Common.Op),
-		zap.Uint64("ktime", msg.Common.Ktime),
+		zap.Uint64("connect-ktime", msg.Common.Ktime),
+		zap.Time("connect-walltime", eventTime),
 		zap.Uint32("parent-size", msg.Pid.Parent.Size),
 		zap.Uint32("parent-pid", msg.Pid.Parent.PID),
 		zap.Uint32("parent-auid", msg.Pid.Parent.AUID),
 		zap.Uint32("parent-uid", msg.Pid.Parent.UID),
 		zap.String("parent-flags", DecodeCommonFlags(msg.Pid.Parent.Flags)),
+		zap.Time("parent-walltime", parentTime),
 		zap.String("parent-prog", msg.Pid.Parent.Filename),
 		zap.String("parent-args", ReplaceNewLines(msg.Pid.Parent.Args, rune(0x0020))),
 		zap.Uint32("size", msg.Pid.Curr.Size),
@@ -106,6 +125,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.Uint32("auid", msg.Pid.Curr.AUID),
 		zap.Uint32("uid", msg.Pid.Curr.UID),
 		zap.String("flags", DecodeCommonFlags(msg.Pid.Curr.Flags)),
+		zap.Time("walltime", childTime),
 		zap.String("prog", msg.Pid.Curr.Filename),
 		zap.String("args", ReplaceNewLines(msg.Pid.Curr.Args, rune(0x0020))),
 		zap.Uint8("proto", msg.Tuple.Proto),

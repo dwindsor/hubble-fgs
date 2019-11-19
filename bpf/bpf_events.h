@@ -74,6 +74,7 @@ static inline void event_filename_builder(struct event_execve *pid,
 	}
 	curr->flags = flags;
 	curr->pid = curr_pid;
+	curr->ktime = ktime_get_ns();
 	curr->size = size + offsetof(struct event_execve, args);
 }
 

@@ -25,6 +25,7 @@ import (
 	"encoding/binary"
 	"encoding/gob"
 	"fmt"
+	"golang.org/x/sys/unix"
 	"io/ioutil"
 	"net"
 	"os"
@@ -154,11 +155,12 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, error) {
 	execUnix.PID = exec.PID
 	execUnix.UID = exec.UID
 	execUnix.Flags = exec.Flags
+	execUnix.Ktime = exec.Ktime
 	execUnix.AUID = exec.AUID
 
-	size := exec.Size - 24
+	size := exec.Size - api.SIZEOF_EXECVE
 	if size > api.ARGSBUFFER {
-		exec.Size = 24
+		exec.Size = api.SIZEOF_EXECVE
 	} else {
 		args := make([]byte, size)
 		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
@@ -363,6 +365,7 @@ type ObserverProcs struct {
 	pauid  uint32
 	ppad   uint32
 	pflags uint32
+	pktime uint64
 	pargs  []byte
 	size   uint32
 	uid    uint32
@@ -370,6 +373,7 @@ type ObserverProcs struct {
 	auid   uint32
 	pad    uint32
 	flags  uint32
+	ktime  uint64
 	args   []byte
 }
 
@@ -472,17 +476,24 @@ func getRunningProcs() []ObserverProcs {
 		pcmdsUTF := stringToUTF8(pcmdline)
 		cmdsUTF := stringToUTF8(cmdline)
 
+		ktime := uint64(0)
+		currentTime := unix.Timespec{}
+		if err := unix.ClockGettime(int32(unix.CLOCK_MONOTONIC), &currentTime); err != nil {
+			ktime = 0
+		} else {
+			ktime = uint64(currentTime.Nano())
+		}
 		p := ObserverProcs{
-			ppid: uint32(_ppid), pargs: pcmdsUTF, pflags: api.EventProcFS | api.EventNeedsAUID,
-			pid: uint32(pid), args: cmdsUTF, flags: api.EventProcFS | api.EventNeedsAUID}
-		p.size = uint32(4 + 4 + 4 + 4 + 4 + 4 + len(p.args))
-		p.psize = uint32(4 + 4 + 4 + 4 + 4 + 4 + len(p.pargs))
+			ppid: uint32(_ppid), pargs: pcmdsUTF, pflags: api.EventProcFS | api.EventNeedsAUID, pktime: ktime,
+			pid: uint32(pid), args: cmdsUTF, flags: api.EventProcFS | api.EventNeedsAUID, ktime: ktime}
+		p.size = uint32(api.SIZEOF_EXECVE + len(p.args))
+		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs))
 		/* If we can't fit this in the buffer lets trim some parts and
 		 * make it fit.
 		 */
 		if p.size+p.psize > api.ARGSBUFFER {
 			var i uint32
-			need := (p.size + p.psize + 24 + 24) - api.ARGSBUFFER
+			need := (p.size + p.psize + api.SIZEOF_EXECVE + api.SIZEOF_EXECVE) - api.ARGSBUFFER
 			for i = 0; i < need; i++ {
 				if len(p.pargs) > len(p.args) {
 					p.pflags |= api.EventTruncArgs
@@ -523,6 +534,15 @@ func getRunningProcs() []ObserverProcs {
 			return nil
 		}
 
+		putU64 := func(val uint64) error {
+			if off+8 > api.ARGSBUFFER {
+				return fmt.Errorf("out of range")
+			}
+			binary.LittleEndian.PutUint64(v.Args[off:], val)
+			off += 8
+			return nil
+		}
+
 		if err := putU32(p.psize); err != nil {
 			continue
 		}
@@ -539,6 +559,9 @@ func getRunningProcs() []ObserverProcs {
 			continue
 		}
 		if err := putU32(p.pflags); err != nil {
+			continue
+		}
+		if err := putU64(p.pktime); err != nil {
 			continue
 		}
 		off += copy(v.Args[off:], p.pargs)
@@ -558,6 +581,9 @@ func getRunningProcs() []ObserverProcs {
 			continue
 		}
 		if err := putU32(p.flags); err != nil {
+			continue
+		}
+		if err := putU64(p.ktime); err != nil {
 			continue
 		}
 		off += copy(v.Args[off:], p.args)

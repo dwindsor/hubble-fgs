@@ -21,7 +21,8 @@ const (
 	MSG_OP_IPV4_TCPCONNECT    = 1
 	MSG_OP_IPV4_TCPCONNECTRET = 2
 
-	ARGSBUFFER = 1024 + 16
+	ARGSBUFFER    = 1024 + 16
+	SIZEOF_EXECVE = 32
 )
 
 // Msg Flag Definitions
@@ -54,6 +55,7 @@ type MsgExec struct {
 	AUID  uint32
 	Pad   uint32
 	Flags uint32
+	Ktime uint64
 }
 
 type MsgPid struct {
@@ -92,6 +94,7 @@ type MsgExecUnix struct {
 	AUID     uint32
 	pad      uint32
 	Flags    uint32
+	Ktime    uint64
 	Filename string
 	Args     string
 }

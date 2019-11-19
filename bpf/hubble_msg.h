@@ -78,13 +78,13 @@
  * Phew all clear now?
  */
 #define BUFFER 1024
-#define PADDED_BUFFER (BUFFER + MAXARGLENGTH + 24 + 24)
+#define SIZEOF_EVENT 32
+#define PADDED_BUFFER (BUFFER + MAXARGLENGTH + SIZEOF_EVENT + SIZEOF_EVENT)
 /* This is the usable buffer size for args and filenames. It is calculated
  * as the (BUFFER SIZE - sizeof(parent) - sizeof(curr) but unfortunately
  * preprocess doesn't know types so we do it manually without sizeof().
  */
-#define ARGSBUFFER (BUFFER - 24 - 24)
-/* 1024 + - 24 - 24 = 1024 - 48 */
+#define ARGSBUFFER (BUFFER - SIZEOF_EVENT - SIZEOF_EVENT)
 #define __ASM_ARGSBUFFER 976
 #define ARGSBUFFERMASK (ARGSBUFFER - 1)
 #define MAXARGMASK (MAXARG - 1)
@@ -121,8 +121,8 @@ struct msg_common {
 	__u64 ktime;
 };
 
-/* Manually linked to ARGSBUFFER if this changes then please also change
- * ARGSBUFFER.
+/* Manually linked to ARGSBUFFER and PADDED_BUFFER if this changes then please
+ * also changeo SIZEOF_EVENT.
  */
 struct event_execve {
 	__u32 size;
@@ -131,6 +131,7 @@ struct event_execve {
 	__u32 auid;
 	__u32 pad;
 	__u32 flags;
+	__u64 ktime;
 	char *args;
 };
 
