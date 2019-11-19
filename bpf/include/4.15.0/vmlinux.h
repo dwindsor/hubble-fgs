@@ -7,6 +7,8 @@
 #define PARENT_OFFSET 1272 // pahole debug info
 #define PARENT_PID_OFFSET 1256 // pahole debug info
 
+#define AUID_OFFSET 1848
+
 // minikube Buildroot 2018.08.3 linux 4.15.0
 typedef unsigned char __u8;
 
