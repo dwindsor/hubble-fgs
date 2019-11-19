@@ -146,9 +146,18 @@ static inline __u32 __get_auid(struct task_struct *task)
 	if (audit) {
 		probe_read(&auid, sizeof(auid), &audit->loginuid);
 	}
+#else // AUDIT_STRUCT
+	char *addr;
+
+#ifdef AUID_OFFSET
+	addr = (void *)task;
+	addr += AUID_OFFSET;
 #else
-	probe_read(&auid, sizeof(auid), &task->loginuid.val);
-#endif
+	addr = (void *)&(task->loginuid.val);
+#endif // AUID_OFFSET
+	probe_read(&auid, sizeof(auid), addr);
+#endif // AUDIT_STRUCT
+
 	return auid;
 }
 
