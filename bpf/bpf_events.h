@@ -44,7 +44,144 @@ static inline int64_t validate_msg_size(int64_t size)
 	return size;
 }
 
-static inline void event_filename_builder(struct event_execve *pid,
+static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve *pid)
+{
+	struct task_struct *current = (struct task_struct *)get_current_task();
+	struct dentry *dentry, *parent, *vfsmnt_dentry;
+	char *pcwd, *cwd, zero = 0x00;
+	int64_t offset, psize, csize;
+	const unsigned char *dname;
+	struct event_execve *curr;
+	struct vfsmount *vfsmnt;
+	const struct qstr *name;
+	struct path root, pwd;
+	struct fs_struct *fs;
+	int64_t cwdsize;
+	int i;
+
+	/* Collect offset into cwd location. We expect this to be run
+	 * after filename is copied but before args. Anywhere else and
+	 * this will likely break.
+	 */
+	psize = validate_arg_size(pid->size);
+	curr = (void *)pid + psize;
+	csize = curr->size;
+	if (csize < 0)
+		return 0;
+	if (csize > (offsetof(struct event_execve, args) + MAXARGLENGTH))
+		return 0;
+	/* Despite psize being bounded above this is required to convince
+	 * certain verifiers we have room for string. But, its fine to do
+	 * an over-estimate here because we need room for args as well.
+	 */
+	if (psize + csize > BUFFER - CWD_MAX)
+		return 0;
+	/* Barrier required to ensure checks are before read */
+	compiler_barrier();
+	cwd = (void *)pid + psize + csize;
+
+	probe_read(&fs, sizeof(fs), &current->fs);
+	if (!fs)
+		return 0;
+
+	probe_read(&root, sizeof(root), &fs->root);
+	probe_read(&pwd, sizeof(pwd), &fs->pwd);
+
+	dentry = pwd.dentry;
+	vfsmnt = pwd.mnt;
+	probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), &vfsmnt->mnt_root);
+
+#define CWD_LOOP_CNT 20
+#pragma unroll
+	/* Clang unroll logic does not like multiple if branches with returns
+	 * it will throw a warning that unroll aborted in this case. However,
+	 * continue's can be OK if they only manipulate induction variable.
+	 * So terminate loop by pushing induction variable to end of loop.
+	 * Maybe other code variants would work this is the cleanest I could
+	 * come up with running clang 10+.
+	 *
+	 * See ./fs/d_path.c for details on dentry and paths.
+	 */
+	for (cwdsize = 0, i = 0; i < CWD_LOOP_CNT; i++) {
+		char slash = '/';
+		int64_t  ret;
+
+		if (!dentry) {
+			i = CWD_LOOP_CNT;
+			continue;
+		}
+		probe_read(&parent, sizeof(parent), &dentry->d_parent);
+		if (!parent) {
+			i = CWD_LOOP_CNT;
+			continue;
+		}
+
+		if (dentry == parent) {
+			i = CWD_LOOP_CNT;
+			continue;
+		}
+		if (vfsmnt_dentry && dentry == vfsmnt_dentry) {
+			i = CWD_LOOP_CNT;
+			continue;
+		}
+		name = &dentry->d_name;
+		dentry = parent;
+		probe_read(&dname, sizeof(dname), &name->name);
+		if (cwdsize < 0 || cwdsize > CWD_MAX) {
+			i = CWD_LOOP_CNT;
+			continue;
+		}
+
+		/* Ensure we have enough room to copy CWD_MAX size
+		 * elments into buffer otherwise abort.
+		 */
+		offset = psize + csize + cwdsize;
+		if (offset > PADDED_BUFFER - CWD_MAX - 1) {
+			i = CWD_LOOP_CNT;
+			continue;
+		}
+		compiler_barrier();
+		pcwd = (void*)pid + offset;
+		/* probe_read is required on older kernels where direct
+		 * assignment fails when offset into map_value_pointer
+		 * is not tracked correctly.
+		 */
+		probe_read(pcwd, 1, &slash);
+		pcwd++;
+		ret = probe_read_str(pcwd, CWD_MAX, dname);
+		if (ret < 0) {
+			i = CWD_LOOP_CNT;
+			continue;
+		}
+		cwdsize += ret;
+	}
+
+	/* Terminate with extra 0x00 to deliminate cwd from args the compiler
+	 * ended up shuffling registers around here and losing bounds so we
+	 * wrote this in asm. TBD fix verifier.
+	 */
+	offset = psize + csize + cwdsize;
+	asm volatile goto (
+	  "r2 = %[offset];"
+	  "if r2 > 1024 goto %l[a];"
+	  "if r2 < 1 goto %l[a];"
+	  "r1 = %[pid]; "
+	  "r1 += r2;"
+	  "r2 = 1;"
+	  "r3 = %[zero];"
+	  "call 4;"
+	:
+	: [offset]	"ri"(offset),
+	  [pid]		"ri"(pid),
+	  [zero]	"ri"(&zero)
+	: "r0", "r1", "r2", "r3", "r4", "r5"
+	: a);
+	cwdsize += 1;
+a:
+	return cwdsize;
+}
+
+static inline  __attribute__((always_inline)) void event_filename_builder(struct event_execve *pid,
 					  __u32 curr_pid, __u32 flags,
 					  void *pfilename)
 {
@@ -76,6 +213,7 @@ static inline void event_filename_builder(struct event_execve *pid,
 	curr->pid = curr_pid;
 	curr->ktime = ktime_get_ns();
 	curr->size = size + offsetof(struct event_execve, args);
+	curr->size += getcwd(pid);
 }
 
 #define PROBE_ARG_READ(i)	     			\
