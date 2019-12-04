@@ -550,8 +550,11 @@ func getRunningProcs() []ObserverProcs {
 		cmdsUTF := stringToUTF8(cmdline)
 
 		p := ObserverProcs{
-			ppid: uint32(_ppid), pargs: pcmdsUTF, pflags: api.EventProcFS | api.EventNeedsAUID, pktime: pktime,
-			pid: uint32(pid), args: cmdsUTF, flags: api.EventProcFS | api.EventNeedsAUID, ktime: ktime}
+			ppid: uint32(_ppid), pargs: pcmdsUTF,
+			pflags: api.EventProcFS | api.EventNeedsAUID, pktime: pktime,
+
+			pid: uint32(pid), args: cmdsUTF,
+			flags: api.EventProcFS | api.EventNeedsAUID, ktime: ktime}
 		p.size = uint32(api.SIZEOF_EXECVE + len(p.args))
 		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs))
 		/* If we can't fit this in the buffer lets trim some parts and

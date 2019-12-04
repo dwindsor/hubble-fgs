@@ -77,9 +77,10 @@
  *
  * Phew all clear now?
  */
+#define CWD_MAX 256
 #define BUFFER 1024
 #define SIZEOF_EVENT 32
-#define PADDED_BUFFER (BUFFER + MAXARGLENGTH + SIZEOF_EVENT + SIZEOF_EVENT)
+#define PADDED_BUFFER (BUFFER + MAXARGLENGTH + SIZEOF_EVENT + SIZEOF_EVENT + CWD_MAX)
 /* This is the usable buffer size for args and filenames. It is calculated
  * as the (BUFFER SIZE - sizeof(parent) - sizeof(curr) but unfortunately
  * preprocess doesn't know types so we do it manually without sizeof().
@@ -163,7 +164,8 @@ struct msg_ipv4_tcp_connect {
 	struct msg_k8s	      kube;
 	unsigned long int     ret;
 	char      	      pid[PADDED_BUFFER];
-};
+} __attribute__((packed));
+
 
 struct event {
 	int event;
