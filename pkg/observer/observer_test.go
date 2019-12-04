@@ -37,6 +37,7 @@ func TestObjectLoad(t *testing.T) {
 	uname := strings.TrimSpace(string(bytes.Trim(buf, "\x00")))
 	ObserverExecve__program = "../../bpf/bins/bpf_execve_" + uname + ".o"
 	ObserverExecveat__program = "../../bpf/bins/bpf_execveat_" + uname + ".o"
+	ObserverFork__program = "../../bpf/bins/bpf_fork_" + uname + ".o"
 	ObserverTCPConnect__program = "../../bpf/bins/bpf_tcpmon_" + uname + ".o"
 	ObserverTCPConnectRet__program = "../../bpf/bins/bpf_tcpmonret_" + uname + ".o"
 

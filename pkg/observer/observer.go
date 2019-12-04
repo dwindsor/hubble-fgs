@@ -71,6 +71,14 @@ var (
 	observerExecveat__map        = "kprobe_execve_map"
 	observerExecveat__map_label  = "execve_map"
 
+	ObserverFork__program    string
+	observerFork__x64_attach = "__x64_sys_fork"
+	observerFork__attach     = "sys_fork"
+	observerFork__label      = "kprobe/sys_fork"
+	observerFork__prog       = "kprobe_fork"
+	observerFork__map        = "kprobe_execve_map"
+	observerFork__map_label  = "execve_map"
+
 	ObserverTCPConnect__program   string
 	observerTCPConnect__attach    = "tcp_connect"
 	observerTCPConnect__label     = "kprobe/tcp_connect"
@@ -279,6 +287,32 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
 		}
 	}
+
+	err, _ = bpf.LoadKprobe(
+		ObserverFork__program,
+		observerFork__x64_attach,
+		observerFork__label,
+		k.bpfDir+observerFork__prog,
+		"",
+		"",
+		false, k.execve_fd, 0)
+	if err != nil {
+		/* If we fail attach with __x64_sys_execve variant try again with
+		 * sys_execve variant.
+		 */
+		err, _ = bpf.LoadKprobe(
+			ObserverFork__program,
+			observerFork__attach,
+			observerFork__label,
+			k.bpfDir+observerExecveat__prog,
+			"",
+			"",
+			false, k.execve_fd, 0)
+		if err != nil {
+			return fmt.Errorf("failed kprobe fork LoadKprobe: %s\n", err)
+		}
+	}
+
 	return nil
 }
 
