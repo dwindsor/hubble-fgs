@@ -55,6 +55,8 @@ func init() {
 		"bpf-execve", "./bpf/bpf_execve.o", "Location of bpf_execve.o program")
 	flags.StringVar(&observer.ObserverExecveat__program,
 		"bpf-execveat", "./bpf/bpf_execveat.o", "Location of bpf_execveat.o program")
+	flags.StringVar(&observer.ObserverFork__program,
+		"bpf-fork", "./bpf/bpf_fork.o", "Location of bpf_fork.o program")
 	flags.StringVar(&observer.ObserverTCPConnect__program,
 		"bpf-tcpmon", "./bpf/bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
 	flags.StringVar(&observer.ObserverTCPConnectRet__program,
