@@ -111,8 +111,7 @@ func ArgsDecoder(s string, flags uint32) string {
 		dirs[i], dirs[opp] = dirs[opp], dirs[i]
 	}
 	argTokens[0] = strings.Join(dirs, "/")
-	sz := len(argTokens[0])
-	argTokens[0] = "/" + argTokens[0][0:sz-1]
+	argTokens[0] = "/" + argTokens[0][0:]
 	args = strings.Join(argTokens, " ")
 	return args
 }
