@@ -51,42 +51,38 @@ func ReplaceNewLines(s string, c rune) string {
 }
 
 func DecodeCommonFlags(flags uint32) string {
-	s := ""
-
-	if flags == 0 {
-		s += " "
-	}
+	var s []string
 	if (flags & api.EventExecve) != 0 {
-		s += "execve "
+		s = append(s, "execve")
 	}
 	if (flags & api.EventExecveAt) != 0 {
-		s += "execveat "
+		s = append(s, "execveat")
 	}
 	if (flags & api.EventProcFS) != 0 {
-		s += "procFS "
+		s = append(s, "procFS")
 	}
 	if (flags & api.EventTruncFilename) != 0 {
-		s += "truncFilename "
+		s = append(s, "truncFilename")
 	}
 	if (flags & api.EventTruncArgs) != 0 {
-		s += "truncArgs "
+		s = append(s, "truncArgs")
 	}
 	if (flags & api.EventTaskWalk) != 0 {
-		s += "taskWalk "
+		s = append(s, "taskWalk")
 	}
 	if (flags & api.EventMiss) != 0 {
-		s += "miss "
+		s = append(s, "miss")
 	}
 	if (flags & api.EventNeedsAUID) != 0 {
-		s += "auid "
+		s = append(s, "auid")
 	}
 	if (flags & api.EventErrorFilename) != 0 {
-		s += "errorFilename "
+		s = append(s, "errorFilename")
 	}
 	if (flags & api.EventErrorArgs) != 0 {
-		s += "errorArgs "
+		s = append(s, "errorArgs")
 	}
-	return s
+	return strings.Join(s, " ")
 }
 
 func DecodeKtime(ktime int64) (time.Time, error) {
