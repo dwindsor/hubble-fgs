@@ -1,5 +1,9 @@
 // Kernel version annotation
 #define VMLINUX_KERNEL_VERSION 0x4134C
+#define USE_HASH_MAP
+#define VMLINUX_KERNEL_HAS_SYSCALL_WRAPPER
+
+// minikube 4.19
 
 typedef signed char __s8;
 
