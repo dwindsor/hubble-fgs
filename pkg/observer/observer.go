@@ -479,6 +479,89 @@ func getClkTck() (uint64, error) {
 	return clktck, nil
 }
 
+func writeExecveMap(procs []ObserverProcs) {
+	m, err := bpf.OpenMap("/sys/fs/bpf/tcpmon/kprobe_execve_map")
+	if err != nil {
+		panic(err)
+	}
+	for _, p := range procs {
+		off := 0
+
+		k := &ExecveKey{Pid: p.pid}
+		v := &ExecveValue{}
+
+		/* In theory we trim'd this above to fit but lets be paranoid
+		 * because I already screwed this up once and crashing fgs is
+		 * not so friendly.
+		 */
+		putU32 := func(val uint32) error {
+			if off+4 > api.ARGSBUFFER {
+				return fmt.Errorf("out of range")
+			}
+
+			binary.LittleEndian.PutUint32(v.Args[off:], val)
+			off += 4
+			return nil
+		}
+
+		putU64 := func(val uint64) error {
+			if off+8 > api.ARGSBUFFER {
+				return fmt.Errorf("out of range")
+			}
+			binary.LittleEndian.PutUint64(v.Args[off:], val)
+			off += 8
+			return nil
+		}
+
+		if err := putU32(p.psize); err != nil {
+			continue
+		}
+		if err := putU32(p.ppid); err != nil {
+			continue
+		}
+		if err := putU32(p.puid); err != nil {
+			continue
+		}
+		if err := putU32(p.pauid); err != nil {
+			continue
+		}
+		if err := putU32(p.ppad); err != nil {
+			continue
+		}
+		if err := putU32(p.pflags); err != nil {
+			continue
+		}
+		if err := putU64(p.pktime); err != nil {
+			continue
+		}
+		off += copy(v.Args[off:], p.pargs)
+		if err := putU32(p.size); err != nil {
+			continue
+		}
+		if err := putU32(p.pid); err != nil {
+			continue
+		}
+		if err := putU32(p.uid); err != nil {
+			continue
+		}
+		if err := putU32(p.auid); err != nil {
+			continue
+		}
+		if err := putU32(p.pad); err != nil {
+			continue
+		}
+		if err := putU32(p.flags); err != nil {
+			continue
+		}
+		if err := putU64(p.ktime); err != nil {
+			continue
+		}
+		off += copy(v.Args[off:], p.args)
+		v.Common.Size = 1
+		m.Update(k, v)
+	}
+}
+
 func getRunningProcs() []ObserverProcs {
 	var procs []ObserverProcs
 	procFS, _ := ioutil.ReadDir(ProcFS)
@@ -579,86 +662,7 @@ func getRunningProcs() []ObserverProcs {
 		procs = append(procs, p)
 	}
 
-	m, err := bpf.OpenMap("/sys/fs/bpf/tcpmon/kprobe_execve_map")
-	if err != nil {
-		panic(err)
-	}
-	for _, p := range procs {
-		off := 0
-
-		k := &ExecveKey{Pid: p.pid}
-		v := &ExecveValue{}
-
-		/* In theory we trim'd this above to fit but lets be paranoid
-		 * because I already screwed this up once and crashing fgs is
-		 * not so friendly.
-		 */
-		putU32 := func(val uint32) error {
-			if off+4 > api.ARGSBUFFER {
-				return fmt.Errorf("out of range")
-			}
-
-			binary.LittleEndian.PutUint32(v.Args[off:], val)
-			off += 4
-			return nil
-		}
-
-		putU64 := func(val uint64) error {
-			if off+8 > api.ARGSBUFFER {
-				return fmt.Errorf("out of range")
-			}
-			binary.LittleEndian.PutUint64(v.Args[off:], val)
-			off += 8
-			return nil
-		}
-
-		if err := putU32(p.psize); err != nil {
-			continue
-		}
-		if err := putU32(p.ppid); err != nil {
-			continue
-		}
-		if err := putU32(p.puid); err != nil {
-			continue
-		}
-		if err := putU32(p.pauid); err != nil {
-			continue
-		}
-		if err := putU32(p.ppad); err != nil {
-			continue
-		}
-		if err := putU32(p.pflags); err != nil {
-			continue
-		}
-		if err := putU64(p.pktime); err != nil {
-			continue
-		}
-		off += copy(v.Args[off:], p.pargs)
-		if err := putU32(p.size); err != nil {
-			continue
-		}
-		if err := putU32(p.pid); err != nil {
-			continue
-		}
-		if err := putU32(p.uid); err != nil {
-			continue
-		}
-		if err := putU32(p.auid); err != nil {
-			continue
-		}
-		if err := putU32(p.pad); err != nil {
-			continue
-		}
-		if err := putU32(p.flags); err != nil {
-			continue
-		}
-		if err := putU64(p.ktime); err != nil {
-			continue
-		}
-		off += copy(v.Args[off:], p.args)
-		v.Common.Size = 1
-		m.Update(k, v)
-	}
+	writeExecveMap(procs)
 	return procs
 }
 
