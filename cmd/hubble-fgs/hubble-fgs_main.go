@@ -9,6 +9,7 @@ import (
 	"github.com/spf13/viper"
 
 	"context"
+	"fmt"
 	"os"
 	"os/signal"
 	"syscall"
@@ -20,7 +21,7 @@ var (
 	cmd *cobra.Command
 )
 
-func hubbleFGSExecute() {
+func hubbleFGSExecute() error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 	go func() {
@@ -36,7 +37,7 @@ func hubbleFGSExecute() {
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("debug"))
 	go server.ServeEvents(kprobe, ctx, defaults.DefaultUnixSock)
-	kprobe.Start()
+	return kprobe.Start()
 }
 
 func init() {
@@ -44,7 +45,9 @@ func init() {
 		Use:   "hubble-fgs SOURCE_DIR BUCKET",
 		Short: "Hubble FGS",
 		Run: func(cmd *cobra.Command, args []string) {
-			hubbleFGSExecute()
+			if err := hubbleFGSExecute(); err != nil {
+				fmt.Printf("%s", err)
+			}
 		},
 	}
 

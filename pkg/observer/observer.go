@@ -679,13 +679,16 @@ type ObserverKprobe struct {
 	listeners     []ObserverChannel
 }
 
-func (k *ObserverKprobe) Start() {
+func (k *ObserverKprobe) Start() error {
 	k.createDir()
-	k.observerLoadExecve(context.TODO())
+	if err := k.observerLoadExecve(context.TODO()); err != nil {
+		return fmt.Errorf("observerLoadExecve error: %s\n", err)
+	}
 	k.populateExecve(context.TODO())
 	if err := k.runEvents(context.TODO()); err != nil {
-		fmt.Printf("observerLoadEvents failed: %s", err)
+		return fmt.Errorf("observerLoadEvents failed: %s", err)
 	}
+	return nil
 }
 
 func (k *ObserverKprobe) deleteProgs() {
