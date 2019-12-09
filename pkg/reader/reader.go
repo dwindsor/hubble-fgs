@@ -95,10 +95,10 @@ func DecodeKtime(ktime int64) (time.Time, error) {
 	return time.Now().Add(time.Duration(diff)), nil
 }
 
-func ArgsDecoder(s string, flags uint32) string {
+func ArgsDecoder(s string, flags uint32) (string, string) {
 	args := ReplaceNewLines(s, rune(0x0020))
 	if flags&api.EventProcFS != 0 {
-		return args
+		return args, ""
 	}
 	argTokens := strings.Split(args, " ")
 	dirs := strings.Split(argTokens[0], "/")
@@ -106,10 +106,14 @@ func ArgsDecoder(s string, flags uint32) string {
 		opp := len(dirs) - 1 - i
 		dirs[i], dirs[opp] = dirs[opp], dirs[i]
 	}
-	argTokens[0] = strings.Join(dirs, "/")
-	argTokens[0] = "/" + argTokens[0][0:]
-	args = strings.Join(argTokens, " ")
-	return args
+	cwd := strings.Join(dirs, "/")
+	cwd = "/" + cwd
+	if len(argTokens) > 1 {
+		args = strings.Join(argTokens[1:], " ")
+	} else {
+		args = ""
+	}
+	return args, cwd
 }
 
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
@@ -120,6 +124,9 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 	eventTime, _ := DecodeKtime(int64(msg.Common.Ktime))
 	parentTime, _ := DecodeKtime(int64(msg.Pid.Parent.Ktime))
 	childTime, _ := DecodeKtime(int64(msg.Pid.Curr.Ktime))
+
+	parentArgs, parentCWD := ArgsDecoder(msg.Pid.Parent.Args, msg.Pid.Parent.Flags)
+	childArgs, childCWD := ArgsDecoder(msg.Pid.Curr.Args, msg.Pid.Curr.Flags)
 
 	log.Debug("KprobeEvent",
 		zap.Uint8("op", msg.Common.Op),
@@ -132,7 +139,8 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.String("parent-flags", DecodeCommonFlags(msg.Pid.Parent.Flags)),
 		zap.Time("parent-walltime", parentTime),
 		zap.String("parent-prog", msg.Pid.Parent.Filename),
-		zap.String("parent-args", ArgsDecoder(msg.Pid.Parent.Args, msg.Pid.Parent.Flags)),
+		zap.String("parent-cwd", parentCWD),
+		zap.String("parent-args", parentArgs),
 		zap.Uint32("size", msg.Pid.Curr.Size),
 		zap.Uint32("pid", msg.Pid.Curr.PID),
 		zap.Uint32("auid", msg.Pid.Curr.AUID),
@@ -140,7 +148,8 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.String("flags", DecodeCommonFlags(msg.Pid.Curr.Flags)),
 		zap.Time("walltime", childTime),
 		zap.String("prog", msg.Pid.Curr.Filename),
-		zap.String("args", ArgsDecoder(msg.Pid.Curr.Args, msg.Pid.Curr.Flags)),
+		zap.String("cwd", childCWD),
+		zap.String("args", childArgs),
 		zap.Uint8("proto", msg.Tuple.Proto),
 		zap.String("saddr", GetIP(msg.Tuple.SAddr).String()),
 		zap.Uint16("sport", msg.Tuple.SPort),
