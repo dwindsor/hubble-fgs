@@ -35,11 +35,11 @@ func TestObjectLoad(t *testing.T) {
 		buf[i] = byte(b)
 	}
 	uname := strings.TrimSpace(string(bytes.Trim(buf, "\x00")))
-	ObserverExecve__program = "../../bpf/bins/bpf_execve_" + uname + ".o"
-	ObserverExecveat__program = "../../bpf/bins/bpf_execveat_" + uname + ".o"
-	ObserverFork__program = "../../bpf/bins/bpf_fork_" + uname + ".o"
-	ObserverTCPConnect__program = "../../bpf/bins/bpf_tcpmon_" + uname + ".o"
-	ObserverTCPConnectRet__program = "../../bpf/bins/bpf_tcpmonret_" + uname + ".o"
+	ObserverExecve.Observer__program = "../../bpf/bins/bpf_execve_" + uname + ".o"
+	ObserverExecveat.Observer__program = "../../bpf/bins/bpf_execveat_" + uname + ".o"
+	ObserverFork.Observer__program = "../../bpf/bins/bpf_fork_" + uname + ".o"
+	ObserverTCPConnect.Observer__program = "../../bpf/bins/bpf_tcpmon_" + uname + ".o"
+	ObserverTCPConnectRet.Observer__program = "../../bpf/bins/bpf_tcpmonret_" + uname + ".o"
 
 	kprobe := NewObserverKprobe(observerTestDir, false)
 	kprobe.createDir()

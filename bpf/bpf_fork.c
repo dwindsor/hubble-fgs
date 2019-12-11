@@ -19,7 +19,7 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section(("kprobe/sys_fork")), used))
+__attribute__((section(("kprobe/sys_pid_clear")), used))
 int event_fork(struct pt_regs *__ctx)
 {
 	struct msg_ipv4_tcp_connect *event;
