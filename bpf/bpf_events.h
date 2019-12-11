@@ -409,10 +409,8 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 #endif
 		probe_read(&pid, sizeof(pid), addr);
 		msg = map_lookup_elem(&execve_map, &pid);
-		if (msg) {
-			if (msg->common.size != 0)
+		if (msg && msg->common.size != 0)
 				return msg;
-		}
 	}
 	return 0;
 }
@@ -429,9 +427,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,bool *walked)
 #pragma unroll
 	for (i = 0; i < 4; i++) {
 		msg = map_lookup_elem(&execve_map, &pid);
-		if (!msg)
-			break;
-		if (msg->common.size != 0)
+		if (msg && msg->common.size != 0)
 			break;
 		else
 			msg = 0;
