@@ -38,6 +38,8 @@ func TestObjectLoad(t *testing.T) {
 	ObserverExecve.Observer__program = "../../bpf/bins/bpf_execve_" + uname + ".o"
 	ObserverExecveat.Observer__program = "../../bpf/bins/bpf_execveat_" + uname + ".o"
 	ObserverFork.Observer__program = "../../bpf/bins/bpf_fork_" + uname + ".o"
+	ObserverVfork.Observer__program = "../../bpf/bins/bpf_fork_" + uname + ".o"
+	ObserverClone.Observer__program = "../../bpf/bins/bpf_fork_" + uname + ".o"
 	ObserverTCPConnect.Observer__program = "../../bpf/bins/bpf_tcpmon_" + uname + ".o"
 	ObserverTCPConnectRet.Observer__program = "../../bpf/bins/bpf_tcpmonret_" + uname + ".o"
 
