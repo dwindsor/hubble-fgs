@@ -48,6 +48,18 @@ const (
 	nanoPerSeconds = 1000000000
 )
 
+type bpfLoad struct {
+	Observer__program    string
+	observer__x64_attach string
+	observer__attach     string
+	observer__label      string
+	observer__prog       string
+	observer__map        string
+	observer__map_label  string
+
+	errorFatal bool
+}
+
 var (
 	LostCntr  = 0
 	ErrorCntr = 0
@@ -55,44 +67,82 @@ var (
 
 	ProcFS = "/proc/"
 
-	ObserverExecve__program    string
-	observerExecve__x64_attach = "__x64_sys_execve"
-	observerExecve__attach     = "sys_execve"
-	observerExecve__label      = "kprobe/sys_execve"
-	observerExecve__prog       = "kprobe_execve"
-	observerExecve__map        = "kprobe_execve_map"
-	observerExecve__map_label  = "execve_map"
+	ObserverExecve = bpfLoad{
+		"",
+		"__x64_sys_execve",
+		"sys_execve",
+		"kprobe/sys_execve",
+		"kprobe_execve",
+		"kprobe_execve_map",
+		"execve_map",
+		true,
+	}
 
-	ObserverExecveat__program    string
-	observerExecveat__x64_attach = "__x64_sys_execveat"
-	observerExecveat__attach     = "sys_execveat"
-	observerExecveat__label      = "kprobe/sys_execveat"
-	observerExecveat__prog       = "kprobe_execveat"
-	observerExecveat__map        = "kprobe_execve_map"
-	observerExecveat__map_label  = "execve_map"
+	ObserverExecveat = bpfLoad{
+		"",
+		"__x64_sys_execveat",
+		"sys_execveat",
+		"kprobe/sys_execveat",
+		"kprobe_execveat",
+		"kprobe_execve_map",
+		"execve_map",
+		true,
+	}
 
-	ObserverFork__program    string
-	observerFork__x64_attach = "__x64_sys_fork"
-	observerFork__attach     = "sys_fork"
-	observerFork__label      = "kprobe/sys_fork"
-	observerFork__prog       = "kprobe_fork"
-	observerFork__map        = "kprobe_execve_map"
-	observerFork__map_label  = "execve_map"
+	ObserverFork = bpfLoad{
+		"",
+		"__x64_sys_fork",
+		"sys_fork",
+		"kprobe/sys_pid_clear",
+		"kprobe_pid_clear",
+		"kprobe_execve_map",
+		"execve_map",
+		true,
+	}
 
-	ObserverTCPConnect__program   string
-	observerTCPConnect__attach    = "tcp_connect"
-	observerTCPConnect__label     = "kprobe/tcp_connect"
-	observerTCPConnect__prog      = "kprobe_tcp_connect"
-	observerTCPConnect__map       = "kprobe_tcp_events"
-	observerTCPConnect__map_label = "tcpmon_map"
+	ObserverVfork = bpfLoad{
+		"",
+		"__x64_sys_vfork",
+		"sys_vfork",
+		"kprobe/sys_pid_clear",
+		"kprobe_pid_clear",
+		"kprobe_execve_map",
+		"execve_map",
+		true,
+	}
 
-	ObserverTCPConnectRet__program    string
-	observerTCPConnectRet__x64_attach = "__x64_sys_connect"
-	observerTCPConnectRet__attach     = "sys_connect"
-	observerTCPConnectRet__label      = "kretprobe/sys_connect"
-	observerTCPConnectRet__prog       = "kretprobe_sys_connect"
-	observerTCPConnectRet__map        = observerTCPConnect__map
-	observerTCPConnectRet__map_label  = observerTCPConnect__map_label
+	ObserverClone = bpfLoad{
+		"",
+		"__x64_sys_clone",
+		"sys_clone",
+		"kprobe/sys_pid_clear",
+		"kprobe_pid_clear",
+		"kprobe_execve_map",
+		"execve_map",
+		true,
+	}
+
+	ObserverTCPConnect = bpfLoad{
+		"",
+		"tcp_connect",
+		"tcp_connect",
+		"kprobe/tcp_connect",
+		"kprobe_tcp_connect",
+		"kprobe_tcp_events",
+		"tcpmon_map",
+		true,
+	}
+
+	ObserverTCPConnectRet = bpfLoad{
+		"",
+		"__x64_sys_connect",
+		"sys_connect",
+		"kretprobe/sys_connect",
+		"kretprobe_sys_connect",
+		ObserverTCPConnect.observer__map,
+		ObserverTCPConnect.observer__map_label,
+		false,
+	}
 
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
@@ -235,121 +285,72 @@ func isCtxDone(ctx context.Context) bool {
 	}
 }
 
-func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
-	var execve_fd int
-	var err error
-
-	err, execve_fd = bpf.LoadKprobe(
-		ObserverExecve__program,
-		observerExecve__x64_attach,
-		observerExecve__label,
-		k.bpfDir+observerExecve__prog,
-		k.bpfDir+observerExecve__map,
-		observerExecve__map_label, false, 0, 0)
+func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Context) (int, error) {
+	fmt.Printf("prog %s execve_fd %d tcp events fd %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd)
+	err, execve_fd := bpf.LoadKprobe(
+		load.Observer__program,
+		load.observer__x64_attach,
+		load.observer__label,
+		k.bpfDir+load.observer__prog,
+		k.bpfDir+load.observer__map,
+		load.observer__map_label, false, k.execve_fd, k.tcp_events_fd)
 	if err != nil {
 		/* If we fail attach with __x64_sys_execve variant try again with
 		 * sys_execve variant.
 		 */
 		err, execve_fd = bpf.LoadKprobe(
-			ObserverExecve__program,
-			observerExecve__attach,
-			observerExecve__label,
-			k.bpfDir+observerExecve__prog,
-			k.bpfDir+observerExecve__map,
-			observerExecve__map_label, false, 0, 0)
-		if err != nil {
-			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
+			load.Observer__program,
+			load.observer__attach,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			k.bpfDir+load.observer__map,
+			load.observer__map_label, false, k.execve_fd, k.tcp_events_fd)
+		if err != nil && load.errorFatal {
+			return 0, fmt.Errorf("failed kprobe %s LoadKprobe: %s\n", load.Observer__program, err)
 		}
 	}
+	return execve_fd, nil
+}
+
+func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
+	k.tcp_events_fd = 0
+	k.execve_fd = 0
+	execve_fd, err := k.observerLoadInstance(ObserverExecve, stopCtx)
+	if err != nil {
+		return err
+	}
+
 	k.execve_fd = execve_fd
 
-	err, _ = bpf.LoadKprobe(
-		ObserverExecveat__program,
-		observerExecveat__x64_attach,
-		observerExecveat__label,
-		k.bpfDir+observerExecveat__prog,
-		"",
-		"",
-		false, k.execve_fd, 0)
-	if err != nil {
-		/* If we fail attach with __x64_sys_execve variant try again with
-		 * sys_execve variant.
-		 */
-		err, _ = bpf.LoadKprobe(
-			ObserverExecveat__program,
-			observerExecveat__attach,
-			observerExecveat__label,
-			k.bpfDir+observerExecveat__prog,
-			"",
-			"",
-			false, k.execve_fd, 0)
-		if err != nil {
-			return fmt.Errorf("failed kprobe execve LoadKprobe: %s\n", err)
-		}
+	if _, err := k.observerLoadInstance(ObserverExecveat, stopCtx); err != nil {
+		return err
 	}
 
-	err, _ = bpf.LoadKprobe(
-		ObserverFork__program,
-		observerFork__x64_attach,
-		observerFork__label,
-		k.bpfDir+observerFork__prog,
-		"",
-		"",
-		false, k.execve_fd, 0)
-	if err != nil {
-		/* If we fail attach with __x64_sys_execve variant try again with
-		 * sys_execve variant.
-		 */
-		err, _ = bpf.LoadKprobe(
-			ObserverFork__program,
-			observerFork__attach,
-			observerFork__label,
-			k.bpfDir+observerExecveat__prog,
-			"",
-			"",
-			false, k.execve_fd, 0)
-		if err != nil {
-			return fmt.Errorf("failed kprobe fork LoadKprobe: %s\n", err)
-		}
+	if _, err := k.observerLoadInstance(ObserverFork, stopCtx); err != nil {
+		return err
+	}
+
+	if _, err := k.observerLoadInstance(ObserverVfork, stopCtx); err != nil {
+		return err
+	}
+
+	if _, err := k.observerLoadInstance(ObserverClone, stopCtx); err != nil {
+		return err
 	}
 
 	return nil
 }
 
 func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
-	err, tcp_events := bpf.LoadKprobe(
-		ObserverTCPConnect__program,
-		observerTCPConnect__attach,
-		observerTCPConnect__label,
-		k.bpfDir+observerTCPConnect__prog,
-		k.bpfDir+observerTCPConnect__map,
-		observerTCPConnect__map_label,
-		false, k.execve_fd, 0)
+	tcp_events, err := k.observerLoadInstance(ObserverTCPConnect, stopCtx)
 	if err != nil {
-		return fmt.Errorf("failed kprobe TCPConnect LoadKprobe: %s\n", err)
+		return err
 	}
 	k.tcp_events_fd = tcp_events
-	err, _ = bpf.LoadKprobe(
-		ObserverTCPConnectRet__program,
-		observerTCPConnectRet__x64_attach,
-		observerTCPConnectRet__label,
-		k.bpfDir+observerTCPConnectRet__prog,
-		"",
-		"",
-		true, k.execve_fd, tcp_events)
-	if err != nil {
-		err, _ = bpf.LoadKprobe(
-			ObserverTCPConnectRet__program,
-			observerTCPConnectRet__attach,
-			observerTCPConnectRet__label,
-			k.bpfDir+observerTCPConnectRet__prog,
-			"",
-			"",
-			true, k.execve_fd, tcp_events)
-		if err != nil {
-			fmt.Printf("Warning kprobe TCPConnectRet LoadKprobe: %s\n", err)
-		}
+	if _, err := k.observerLoadInstance(ObserverTCPConnectRet, stopCtx); err != nil {
+		return err
 	}
+
 	return nil
 }
 
@@ -696,12 +697,12 @@ func (k *ObserverKprobe) Start() error {
 }
 
 func (k *ObserverKprobe) deleteProgs() {
-	os.Remove(k.bpfDir + observerExecve__prog)
-	os.Remove(k.bpfDir + observerExecveat__map)
-	os.Remove(k.bpfDir + observerExecveat__prog)
-	os.Remove(k.bpfDir + observerTCPConnect__prog)
-	os.Remove(k.bpfDir + observerTCPConnect__map)
-	os.Remove(k.bpfDir + observerTCPConnectRet__prog)
+	os.Remove(k.bpfDir + ObserverExecve.observer__prog)
+	os.Remove(k.bpfDir + ObserverExecveat.observer__map)
+	os.Remove(k.bpfDir + ObserverExecveat.observer__prog)
+	os.Remove(k.bpfDir + ObserverTCPConnect.observer__prog)
+	os.Remove(k.bpfDir + ObserverTCPConnect.observer__map)
+	os.Remove(k.bpfDir + ObserverTCPConnectRet.observer__prog)
 	os.Remove(k.bpfDir)
 }
 

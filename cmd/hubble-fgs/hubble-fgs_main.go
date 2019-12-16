@@ -54,15 +54,19 @@ func init() {
 	flags := cmd.PersistentFlags()
 
 	flags.BoolP("debug", "d", false, "Enable debug messages")
-	flags.StringVar(&observer.ObserverExecve__program,
+	flags.StringVar(&observer.ObserverExecve.Observer__program,
 		"bpf-execve", "./bpf/bpf_execve.o", "Location of bpf_execve.o program")
-	flags.StringVar(&observer.ObserverExecveat__program,
+	flags.StringVar(&observer.ObserverExecveat.Observer__program,
 		"bpf-execveat", "./bpf/bpf_execveat.o", "Location of bpf_execveat.o program")
-	flags.StringVar(&observer.ObserverFork__program,
-		"bpf-fork", "./bpf/bpf_fork.o", "Location of bpf_fork.o program")
-	flags.StringVar(&observer.ObserverTCPConnect__program,
+	flags.StringVar(&observer.ObserverFork.Observer__program,
+		"bpf-fork", "./bpf/bpf_fork.o", "Location of fork bpf program")
+	flags.StringVar(&observer.ObserverVfork.Observer__program,
+		"bpf-vfork", "./bpf/bpf_fork.o", "Location of vfork bpf program")
+	flags.StringVar(&observer.ObserverClone.Observer__program,
+		"bpf-clone", "./bpf/bpf_fork.o", "Location of clone bpf program")
+	flags.StringVar(&observer.ObserverTCPConnect.Observer__program,
 		"bpf-tcpmon", "./bpf/bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
-	flags.StringVar(&observer.ObserverTCPConnectRet__program,
+	flags.StringVar(&observer.ObserverTCPConnectRet.Observer__program,
 		"bpf-tcpmonret", "./bpf/bpf_tcpmonret.o", "Location of bpf_tcpmon.o program")
 	flags.StringVar(&observer.ProcFS,
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
