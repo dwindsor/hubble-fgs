@@ -111,17 +111,6 @@ var (
 		true,
 	}
 
-	ObserverClone = bpfLoad{
-		"",
-		"__x64_sys_clone",
-		"sys_clone",
-		"kprobe/sys_pid_clear",
-		"kprobe_pid_clear",
-		"kprobe_execve_map",
-		"execve_map",
-		true,
-	}
-
 	ObserverTCPConnect = bpfLoad{
 		"",
 		"tcp_connect",
@@ -331,10 +320,6 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 	}
 
 	if _, err := k.observerLoadInstance(ObserverVfork, stopCtx); err != nil {
-		return err
-	}
-
-	if _, err := k.observerLoadInstance(ObserverClone, stopCtx); err != nil {
 		return err
 	}
 

@@ -62,8 +62,6 @@ func init() {
 		"bpf-fork", "./bpf/bpf_fork.o", "Location of fork bpf program")
 	flags.StringVar(&observer.ObserverVfork.Observer__program,
 		"bpf-vfork", "./bpf/bpf_fork.o", "Location of vfork bpf program")
-	flags.StringVar(&observer.ObserverClone.Observer__program,
-		"bpf-clone", "./bpf/bpf_fork.o", "Location of clone bpf program")
 	flags.StringVar(&observer.ObserverTCPConnect.Observer__program,
 		"bpf-tcpmon", "./bpf/bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
 	flags.StringVar(&observer.ObserverTCPConnectRet.Observer__program,
