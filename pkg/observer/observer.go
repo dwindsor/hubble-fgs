@@ -91,20 +91,9 @@ var (
 
 	ObserverFork = bpfLoad{
 		"",
-		"__x64_sys_fork",
-		"sys_fork",
-		"kprobe/sys_pid_clear",
-		"kprobe_pid_clear",
-		"kprobe_execve_map",
-		"execve_map",
-		true,
-	}
-
-	ObserverVfork = bpfLoad{
-		"",
-		"__x64_sys_vfork",
-		"sys_vfork",
-		"kprobe/sys_pid_clear",
+		"wake_up_new_task",
+		"wake_up_new_task",
+		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
 		"kprobe_execve_map",
 		"execve_map",
@@ -316,10 +305,6 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 	}
 
 	if _, err := k.observerLoadInstance(ObserverFork, stopCtx); err != nil {
-		return err
-	}
-
-	if _, err := k.observerLoadInstance(ObserverVfork, stopCtx); err != nil {
 		return err
 	}
 
