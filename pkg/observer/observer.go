@@ -57,6 +57,7 @@ type bpfLoad struct {
 	observer__map        string
 	observer__map_label  string
 
+	retProbe   bool
 	errorFatal bool
 }
 
@@ -75,6 +76,7 @@ var (
 		"kprobe_execve",
 		"kprobe_execve_map",
 		"execve_map",
+		false,
 		true,
 	}
 
@@ -86,39 +88,19 @@ var (
 		"kprobe_execveat",
 		"kprobe_execve_map",
 		"execve_map",
+		false,
 		true,
 	}
 
 	ObserverFork = bpfLoad{
 		"",
-		"__x64_sys_fork",
-		"sys_fork",
-		"kprobe/sys_pid_clear",
+		"wake_up_new_task",
+		"wake_up_new_task",
+		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
 		"kprobe_execve_map",
 		"execve_map",
-		true,
-	}
-
-	ObserverVfork = bpfLoad{
-		"",
-		"__x64_sys_vfork",
-		"sys_vfork",
-		"kprobe/sys_pid_clear",
-		"kprobe_pid_clear",
-		"kprobe_execve_map",
-		"execve_map",
-		true,
-	}
-
-	ObserverClone = bpfLoad{
-		"",
-		"__x64_sys_clone",
-		"sys_clone",
-		"kprobe/sys_pid_clear",
-		"kprobe_pid_clear",
-		"kprobe_execve_map",
-		"execve_map",
+		false,
 		true,
 	}
 
@@ -130,6 +112,7 @@ var (
 		"kprobe_tcp_connect",
 		"kprobe_tcp_events",
 		"tcpmon_map",
+		false,
 		true,
 	}
 
@@ -141,7 +124,8 @@ var (
 		"kretprobe_sys_connect",
 		ObserverTCPConnect.observer__map,
 		ObserverTCPConnect.observer__map_label,
-		false,
+		true,
+		true,
 	}
 
 	observerTimeout = 5 * time.Minute
@@ -293,7 +277,7 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		load.observer__label,
 		k.bpfDir+load.observer__prog,
 		k.bpfDir+load.observer__map,
-		load.observer__map_label, false, k.execve_fd, k.tcp_events_fd)
+		load.observer__map_label, load.retProbe, k.execve_fd, k.tcp_events_fd)
 	if err != nil {
 		/* If we fail attach with __x64_sys_execve variant try again with
 		 * sys_execve variant.
@@ -304,7 +288,7 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
 			k.bpfDir+load.observer__map,
-			load.observer__map_label, false, k.execve_fd, k.tcp_events_fd)
+			load.observer__map_label, load.retProbe, k.execve_fd, k.tcp_events_fd)
 		if err != nil && load.errorFatal {
 			return 0, fmt.Errorf("failed kprobe %s LoadKprobe: %s\n", load.Observer__program, err)
 		}
@@ -327,14 +311,6 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 	}
 
 	if _, err := k.observerLoadInstance(ObserverFork, stopCtx); err != nil {
-		return err
-	}
-
-	if _, err := k.observerLoadInstance(ObserverVfork, stopCtx); err != nil {
-		return err
-	}
-
-	if _, err := k.observerLoadInstance(ObserverClone, stopCtx); err != nil {
 		return err
 	}
 
