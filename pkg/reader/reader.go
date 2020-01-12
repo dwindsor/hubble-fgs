@@ -101,7 +101,7 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 		return args, ""
 	}
 	argTokens := strings.Split(args, " ")
-	dirs := strings.Split(argTokens[0], "/")
+	dirs := strings.Split(argTokens[len(argTokens)-1], "/")
 	for i := len(dirs)/2 - 1; i >= 0; i-- {
 		opp := len(dirs) - 1 - i
 		dirs[i], dirs[opp] = dirs[opp], dirs[i]
@@ -109,7 +109,7 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	cwd := strings.Join(dirs, "/")
 	cwd = "/" + cwd
 	if len(argTokens) > 1 {
-		args = strings.Join(argTokens[1:], " ")
+		args = strings.Join(argTokens[0:len(argTokens)-1], " ")
 	} else {
 		args = ""
 	}

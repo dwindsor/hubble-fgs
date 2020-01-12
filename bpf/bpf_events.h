@@ -293,7 +293,6 @@ static inline  __attribute__((always_inline)) void event_filename_builder(struct
 	curr->pid = curr_pid;
 	curr->ktime = ktime_get_ns();
 	curr->size = size + offsetof(struct event_execve, args);
-	curr->size += getcwd(pid, curr_pid);
 }
 
 #define PROBE_ARG_READ(i)	     			\
@@ -380,6 +379,16 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 	probe_arg_read(c, (char*)p, args);
 	c->size -= base;
 	return;
+}
+
+static inline void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
+{
+	struct event_execve *c;
+	int64_t psize;
+
+	psize = validate_arg_size(pid->size);
+	c = (void *)pid + psize;
+	c->size += getcwd(pid, c->pid);
 }
 
 static inline int64_t event_copy_execve(struct event_execve *dst,
