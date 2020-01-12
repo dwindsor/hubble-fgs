@@ -44,9 +44,89 @@ static inline int64_t validate_msg_size(int64_t size)
 	return size;
 }
 
-static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve *pid)
+static inline __u32 __get_auid(struct task_struct *task)
 {
-	struct task_struct *current = (struct task_struct *)get_current_task();
+	__u32 auid = 0;
+
+	if (!task)
+		return auid;
+
+#ifdef AUDIT_STRUCT
+	struct audit_task_info *audit;
+
+	probe_read(&audit, sizeof(audit), &task->audit);
+	if (audit) {
+		probe_read(&auid, sizeof(auid), &audit->loginuid);
+	}
+#else // AUDIT_STRUCT
+	char *addr;
+
+#ifdef AUID_OFFSET
+	addr = (void *)task;
+	addr += AUID_OFFSET;
+#else
+	addr = (void *)&(task->loginuid.val);
+#endif // AUID_OFFSET
+	probe_read(&auid, sizeof(auid), addr);
+#endif // AUDIT_STRUCT
+
+	return auid;
+}
+
+static inline __u32 get_auid(void)
+{
+	struct task_struct *task = (struct task_struct *)get_current_task();
+
+	return __get_auid(task);
+}
+
+static inline struct task_struct *get_parent(void)
+{
+	struct task_struct *task = (struct task_struct *)get_current_task();
+
+	probe_read(&task, sizeof(task), &task->parent);
+	if (!task)
+		return 0;
+	return task;
+}
+
+static inline __u32 get_parent_auid(void)
+{
+	struct task_struct *task = get_parent();
+
+	return __get_auid(task);
+}
+
+static inline __attribute__((always_inline))
+struct task_struct *get_task_from_pid(__u32 pid)
+{
+	struct task_struct *task = (struct task_struct *)get_current_task();
+	__u32 cpid = 0;
+	int i;
+
+#define TASK_PID_LOOP 20
+#pragma unroll
+	for (i = 0; i < TASK_PID_LOOP; i++) {
+		if (!task) {
+			i = TASK_PID_LOOP;
+			continue;
+		}
+		probe_read(&cpid, sizeof(cpid), &task->pid);
+		if (cpid == pid) {
+			i = TASK_PID_LOOP;
+			continue;
+		}
+		task = get_parent();
+	}
+	if (cpid != pid)
+		return 0;
+	return task;
+}
+
+static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve *pid,
+							    __u32 proc_pid)
+{
+	struct task_struct *task = get_task_from_pid(proc_pid);
 	struct dentry *dentry, *parent, *vfsmnt_dentry;
 	char *pcwd, *cwd, zero = 0x00;
 	int64_t offset, psize, csize;
@@ -80,7 +160,7 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 	compiler_barrier();
 	cwd = (void *)pid + psize + csize;
 
-	probe_read(&fs, sizeof(fs), &current->fs);
+	probe_read(&fs, sizeof(fs), &task->fs);
 	if (!fs)
 		return 0;
 
@@ -213,7 +293,7 @@ static inline  __attribute__((always_inline)) void event_filename_builder(struct
 	curr->pid = curr_pid;
 	curr->ktime = ktime_get_ns();
 	curr->size = size + offsetof(struct event_execve, args);
-	curr->size += getcwd(pid);
+	curr->size += getcwd(pid, curr_pid);
 }
 
 #define PROBE_ARG_READ(i)	     			\
@@ -268,59 +348,6 @@ b:
 	return;
 a:
 	c->flags |= EVENT_ERROR_ARGS;
-}
-
-static inline __u32 __get_auid(struct task_struct *task)
-{
-	__u32 auid = 0;
-
-	if (!task)
-		return auid;
-
-#ifdef AUDIT_STRUCT
-	struct audit_task_info *audit;
-
-	probe_read(&audit, sizeof(audit), &task->audit);
-	if (audit) {
-		probe_read(&auid, sizeof(auid), &audit->loginuid);
-	}
-#else // AUDIT_STRUCT
-	char *addr;
-
-#ifdef AUID_OFFSET
-	addr = (void *)task;
-	addr += AUID_OFFSET;
-#else
-	addr = (void *)&(task->loginuid.val);
-#endif // AUID_OFFSET
-	probe_read(&auid, sizeof(auid), addr);
-#endif // AUDIT_STRUCT
-
-	return auid;
-}
-
-static inline __u32 get_auid(void)
-{
-	struct task_struct *task = (struct task_struct *)get_current_task();
-
-	return __get_auid(task);
-}
-
-static inline struct task_struct *get_parent(void)
-{
-	struct task_struct *task = (struct task_struct *)get_current_task();
-
-	probe_read(&task, sizeof(task), &task->parent);
-	if (!task)
-		return 0;
-	return task;
-}
-
-static inline __u32 get_parent_auid(void)
-{
-	struct task_struct *task = get_parent();
-
-	return __get_auid(task);
 }
 
 /* event_args_builder: copies args into char *buffer
