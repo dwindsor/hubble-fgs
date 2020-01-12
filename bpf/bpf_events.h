@@ -123,140 +123,125 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	return task;
 }
 
+#define PWD__D_VSFMNT    8
+#define PWD__D_DENTRY    8
+#define DENTRY__D_PARENT 24
+#define DENTRY__D_NAME   40
+
+#define CWD_DENTRY_REG "r9"
+#define CWD_VFSMNT_DENTRY_REG "r6"
+#define CWD_OFFSET_REG "r7"
+
+#define PROBE_CWD_READ_LOOP_HEADER				\
+	CWD_DENTRY_REG " = *(u64 *)%[dentry];"			\
+	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];"		\
+	CWD_OFFSET_REG " = *(u32 *)%[offset];"
+
+#define PROBE_CWD_READ	  	   			\
+	/* if (!dentry) { break; } */			\
+	"r3 = " CWD_DENTRY_REG ";"			\
+	"if r3 == 0 goto %l[a];"			\
+	/* probe_read(&parent, sizeof(parent), &dentry->d_parent); */ \
+	"r3 += " XSTR(DENTRY__D_PARENT) ";"		\
+	"r2 = 8;"					\
+	"r1 = %[ptr];"					\
+	"call 4;"					\
+	/* if (!parent) { break; } */			\
+	"r4 = *(u64 *)(%[ptr] + 0);"			\
+	"if r4 == 0x0 goto %l[a];"			\
+	/* if (vfsmnt_dentry && dentry == vfsmnt_dentry) { */ \
+	"if " CWD_VFSMNT_DENTRY_REG " == " CWD_DENTRY_REG " goto %l[a];" \
+	/* name = &dentry->d_name; */			\
+	/* dentry = parent; */				\
+	/* probe_read(&dname, sizeof(dname), &name->name); */ \
+	"r3 = " CWD_DENTRY_REG ";"			\
+	"r3 += " XSTR(DENTRY__D_NAME) ";"		\
+	CWD_DENTRY_REG " = r4;" /* r9 = parent */	\
+	"r1 = %[ptr];"					\
+	"r2 = 8;"					\
+	"call 4;"					\
+	/* pcwd = curr + offset */			\
+	/* probe_read(pcwd, 1, &slash); */		\
+	"r1 = *(u64 *)%[pid];"				\
+	"if " CWD_OFFSET_REG " < 0 goto %l[a];"	\
+	"if " CWD_OFFSET_REG " > 1188 goto %l[a];"	\
+	"r1 += " CWD_OFFSET_REG ";"\
+	"r2 = 1;"					\
+	"r3 = *(u64 *)%[slash];"			\
+	"call 4;"					\
+	/* pcwd++; */					\
+	/* ret = probe_read_str(pcwd, CWD_MAX, dname); */ \
+	CWD_OFFSET_REG " += 1;"				\
+	"r1 = *(u64 *)%[pid];"				\
+	"if " CWD_OFFSET_REG " < 0 goto %l[a];"	\
+	"if " CWD_OFFSET_REG " > 1188 goto %l[a];"	\
+	"r1 += " CWD_OFFSET_REG ";"			\
+	"r2 = " XSTR(CWD_MAX) ";"			\
+	"r3 = *(u64 *)(%[ptr] + 0);"			\
+	"call 45;"					\
+	/* if (ret < 0) { */				\
+	/* cwdsize += ret */				\
+	"if r0 < 1 goto %l[a];"				\
+	"r0 -= 1;"					\
+	CWD_OFFSET_REG " += r0;"			\
+	"r3 = *(u64 *)%[curr];"				\
+	"*(u64 *)(r3 + 0) = " CWD_OFFSET_REG ";"
+
 static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve *curr,
+							    struct event_execve *pid,
+							    __u32 offset,
 							    __u32 proc_pid)
 {
 	struct task_struct *task = get_task_from_pid(proc_pid);
-	struct dentry *dentry, *parent, *vfsmnt_dentry;
-	char *pcwd, *cwd, zero = 0x00;
-	int64_t offset, csize;
-	const unsigned char *dname;
+	struct dentry *dentry, *vfsmnt_dentry;
 	struct vfsmount *vfsmnt;
-	const struct qstr *name;
-	struct path root, pwd;
+	struct path pwd;
 	struct fs_struct *fs;
-	int64_t cwdsize;
-	int i;
-
-	csize = curr->size;
-	if (csize < 0)
-		return 0;
-	if (csize > (offsetof(struct event_execve, args) + MAXARGLENGTH))
-		return 0;
-	/* Ensure we have at least CWD_MAX to fix CWD. Unfortunately BPF
-	 * verifier is not good at handling sliding max buffer sizes
-	 * so we have to reserve space.
-	 */
-	if (csize > SIZEOF_EVENT + BUFFER - CWD_MAX)
-		return 0;
-
-	/* Barrier required to ensure checks are before read */
-	compiler_barrier();
-	cwd = (void *)curr + csize;
+	void *ptr;
+	char slash = '/';
+	char *pslash = &slash;
+	__u32 n, orig_size = curr->size, orig_offset = offset;
 
 	probe_read(&fs, sizeof(fs), &task->fs);
 	if (!fs)
 		return 0;
 
-	probe_read(&root, sizeof(root), &fs->root);
 	probe_read(&pwd, sizeof(pwd), &fs->pwd);
-
 	dentry = pwd.dentry;
 	vfsmnt = pwd.mnt;
 	probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), &vfsmnt->mnt_root);
 
-#define CWD_LOOP_CNT 20
-#pragma unroll
-	/* Clang unroll logic does not like multiple if branches with returns
-	 * it will throw a warning that unroll aborted in this case. However,
-	 * continue's can be OK if they only manipulate induction variable.
-	 * So terminate loop by pushing induction variable to end of loop.
-	 * Maybe other code variants would work this is the cleanest I could
-	 * come up with running clang 10+.
-	 *
-	 * See ./fs/d_path.c for details on dentry and paths.
-	 */
-	for (cwdsize = 0, i = 0; i < CWD_LOOP_CNT; i++) {
-		char slash = '/';
-		int64_t  ret;
-
-		if (!dentry) {
-			i = CWD_LOOP_CNT;
-			continue;
-		}
-		probe_read(&parent, sizeof(parent), &dentry->d_parent);
-		if (!parent) {
-			i = CWD_LOOP_CNT;
-			continue;
-		}
-
-		if (dentry == parent) {
-			i = CWD_LOOP_CNT;
-			continue;
-		}
-		if (vfsmnt_dentry && dentry == vfsmnt_dentry) {
-			i = CWD_LOOP_CNT;
-			continue;
-		}
-		name = &dentry->d_name;
-		dentry = parent;
-		probe_read(&dname, sizeof(dname), &name->name);
-		if (cwdsize < 0 || cwdsize > CWD_MAX) {
-			i = CWD_LOOP_CNT;
-			continue;
-		}
-
-		/* Ensure we have enough room to copy CWD_MAX size
-		 * elments into buffer otherwise abort.
-		 */
-		offset = csize + cwdsize;
-		if (offset > PADDED_BUFFER - CWD_MAX - 1) {
-			i = CWD_LOOP_CNT;
-			continue;
-		}
-		if (offset < SIZEOF_EVENT) {
-			i = CWD_LOOP_CNT;
-			continue;
-		}
-		compiler_barrier();
-		pcwd = (void*)curr + offset;
-		/* probe_read is required on older kernels where direct
-		 * assignment fails when offset into map_value_pointer
-		 * is not tracked correctly.
-		 */
-		probe_read(pcwd, 1, &slash);
-		pcwd++;
-		ret = probe_read_str(pcwd, CWD_MAX, dname);
-		if (ret < 0) {
-			i = CWD_LOOP_CNT;
-			continue;
-		}
-		cwdsize += ret;
-	}
-
-	/* Terminate with extra 0x00 to deliminate cwd from args the compiler
-	 * ended up shuffling registers around here and losing bounds so we
-	 * wrote this in asm. TBD fix verifier.
-	 */
-	offset = csize + cwdsize;
 	asm volatile goto (
-	  "r2 = %[offset];"
-	  "if r2 > 1024 goto %l[a];"
-	  "if r2 < 1 goto %l[a];"
-	  "r1 = %[curr]; "
-	  "r1 += r2;"
-	  "r2 = 1;"
-	  "r3 = %[zero];"
-	  "call 4;"
-	:
-	: [offset]	"ri"(offset),
-	  [curr]	"ri"(curr),
-	  [zero]	"ri"(&zero)
-	: "r0", "r1", "r2", "r3", "r4", "r5"
-	: a);
-	cwdsize += 1;
+			PROBE_CWD_READ_LOOP_HEADER
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+			PROBE_CWD_READ
+		:
+		: [curr]   "=m"(curr),
+		  [pid]    "=m"(pid),
+		  [vfsmnt] "m"(vfsmnt_dentry),
+		  [dentry] "m"(dentry),
+		  [ptr]    "+r"(&ptr),
+		  [slash]  "m"(pslash),
+		  [offset] "+m"(offset)
+		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9"
+		: a);
 a:
-	return cwdsize;
+	n = curr->size - orig_offset;
+	curr->size = orig_size + n;
+	return 0;
 }
 
 static inline  __attribute__((always_inline)) void event_filename_builder(struct event_execve *pid,
@@ -386,7 +371,7 @@ static inline void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
 
 	psize = validate_arg_size(pid->size);
 	c = (void *)pid + psize;
-	c->size += getcwd(c, c->pid);
+	getcwd(c, pid, psize + c->size, c->pid);
 }
 
 static inline int64_t event_copy_execve(struct event_execve *dst,
