@@ -123,15 +123,14 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	return task;
 }
 
-static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve *pid,
+static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve *curr,
 							    __u32 proc_pid)
 {
 	struct task_struct *task = get_task_from_pid(proc_pid);
 	struct dentry *dentry, *parent, *vfsmnt_dentry;
 	char *pcwd, *cwd, zero = 0x00;
-	int64_t offset, psize, csize;
+	int64_t offset, csize;
 	const unsigned char *dname;
-	struct event_execve *curr;
 	struct vfsmount *vfsmnt;
 	const struct qstr *name;
 	struct path root, pwd;
@@ -139,26 +138,21 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 	int64_t cwdsize;
 	int i;
 
-	/* Collect offset into cwd location. We expect this to be run
-	 * after filename is copied but before args. Anywhere else and
-	 * this will likely break.
-	 */
-	psize = validate_arg_size(pid->size);
-	curr = (void *)pid + psize;
 	csize = curr->size;
 	if (csize < 0)
 		return 0;
 	if (csize > (offsetof(struct event_execve, args) + MAXARGLENGTH))
 		return 0;
-	/* Despite psize being bounded above this is required to convince
-	 * certain verifiers we have room for string. But, its fine to do
-	 * an over-estimate here because we need room for args as well.
+	/* Ensure we have at least CWD_MAX to fix CWD. Unfortunately BPF
+	 * verifier is not good at handling sliding max buffer sizes
+	 * so we have to reserve space.
 	 */
-	if (psize + csize > BUFFER - CWD_MAX)
+	if (csize > SIZEOF_EVENT + BUFFER - CWD_MAX)
 		return 0;
+
 	/* Barrier required to ensure checks are before read */
 	compiler_barrier();
-	cwd = (void *)pid + psize + csize;
+	cwd = (void *)curr + csize;
 
 	probe_read(&fs, sizeof(fs), &task->fs);
 	if (!fs)
@@ -215,13 +209,17 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 		/* Ensure we have enough room to copy CWD_MAX size
 		 * elments into buffer otherwise abort.
 		 */
-		offset = psize + csize + cwdsize;
+		offset = csize + cwdsize;
 		if (offset > PADDED_BUFFER - CWD_MAX - 1) {
 			i = CWD_LOOP_CNT;
 			continue;
 		}
+		if (offset < SIZEOF_EVENT) {
+			i = CWD_LOOP_CNT;
+			continue;
+		}
 		compiler_barrier();
-		pcwd = (void*)pid + offset;
+		pcwd = (void*)curr + offset;
 		/* probe_read is required on older kernels where direct
 		 * assignment fails when offset into map_value_pointer
 		 * is not tracked correctly.
@@ -240,19 +238,19 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 	 * ended up shuffling registers around here and losing bounds so we
 	 * wrote this in asm. TBD fix verifier.
 	 */
-	offset = psize + csize + cwdsize;
+	offset = csize + cwdsize;
 	asm volatile goto (
 	  "r2 = %[offset];"
 	  "if r2 > 1024 goto %l[a];"
 	  "if r2 < 1 goto %l[a];"
-	  "r1 = %[pid]; "
+	  "r1 = %[curr]; "
 	  "r1 += r2;"
 	  "r2 = 1;"
 	  "r3 = %[zero];"
 	  "call 4;"
 	:
 	: [offset]	"ri"(offset),
-	  [pid]		"ri"(pid),
+	  [curr]	"ri"(curr),
 	  [zero]	"ri"(&zero)
 	: "r0", "r1", "r2", "r3", "r4", "r5"
 	: a);
@@ -388,7 +386,7 @@ static inline void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
 
 	psize = validate_arg_size(pid->size);
 	c = (void *)pid + psize;
-	c->size += getcwd(pid, c->pid);
+	c->size += getcwd(c, c->pid);
 }
 
 static inline int64_t event_copy_execve(struct event_execve *dst,
