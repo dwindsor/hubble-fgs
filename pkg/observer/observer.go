@@ -140,6 +140,18 @@ var (
 		true,
 	}
 
+	ObserverListen = bpfLoad{
+		"",
+		"__x64_sys_listen",
+		"sys_listen",
+		"kprobe/sys_listen",
+		"kprobe_sys_listen",
+		ObserverTCPConnect.observer__map,
+		ObserverTCPConnect.observer__map_label,
+		false,
+		true,
+	}
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -239,7 +251,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	r := bytes.NewReader(data)
 
 	switch op {
-	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET, api.MSG_OP_IPV4_BIND:
+	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET, api.MSG_OP_IPV4_BIND, api.MSG_OP_IPV4_LISTEN:
 		m := api.MsgIPv4TcpConnect{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
@@ -336,11 +348,15 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 	}
 	k.tcp_events_fd = tcp_events
 
+	if _, err := k.observerLoadInstance(ObserverTCPConnectRet, stopCtx); err != nil {
+		return err
+	}
+
 	if _, err := k.observerLoadInstance(ObserverBind, stopCtx); err != nil {
 		return err
 	}
 
-	if _, err := k.observerLoadInstance(ObserverTCPConnectRet, stopCtx); err != nil {
+	if _, err := k.observerLoadInstance(ObserverListen, stopCtx); err != nil {
 		return err
 	}
 
