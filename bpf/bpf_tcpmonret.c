@@ -32,19 +32,10 @@ int event_ret_ipv4_connect(struct pt_regs *ctx)
 	__u32 pid;
 
 	pid = (get_current_pid_tgid() >> 32);
-
-	msg = event_find_curr(&ppid, &walker);
+	msg = event_find_curr(&ppid, 0, &walker);
 	if (!msg) {
-		bpf_printk("pid could not find curr %u\n", pid);
 		return 0;
 	}
-
-	/*
-	if (msg->common.op == MSG_OP_UNDEF) {
-		bpf_printk("pid msg op undef curr %u\n", pid);
-		return 0;
-	}
-	*/
 
 	msg->ret = ctx->ax;
 	msg->common.op = MSG_OP_IPV4_TCPCONNECTRET;

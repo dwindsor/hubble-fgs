@@ -436,8 +436,32 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 	return 0;
 }
 
+static inline void event_minimal_parent(struct event_execve *event)
+{
+	__u32 size = offsetof(struct event_execve, args);
+
+	event->size = size;
+	event->pid = event_find_parent_pid();
+	event->auid = get_parent_auid();
+	event->flags = EVENT_MISS;
+	event->uid = 0;
+}
+
+static inline void event_minimal_curr(struct event_execve *event)
+{
+	__u32 size = offsetof(struct event_execve, args);
+
+	event->size = size;
+	event->pid = (get_current_pid_tgid() >> 32);
+	event->auid = get_auid();
+	event->flags = EVENT_MISS;
+	event->uid = 0;
+}
+
 static inline
-struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,bool *walked)
+struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
+					     struct bpf_map_def *map,
+					     bool *walked)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
@@ -471,30 +495,120 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,bool *walked)
 		probe_read(&pid, sizeof(pid), addr);
 	}
 	*ppid = pid;
+
+	if (!msg && map) {
+		struct msg_ipv4_tcp_connect *parent_event;
+		struct event_execve *parent, *curr;
+		int zero = 0;
+		ssize_t size;
+
+		msg = map_lookup_elem(map, &zero);
+		if (!msg)
+			return 0;
+		parent = (struct event_execve *)msg->pid;
+		parent_event = event_find_parent();
+		if (parent_event)
+			event_copy_execve(parent,
+					  (struct event_execve *)&parent_event->pid);
+		else
+			event_minimal_parent(parent);
+		size = validate_arg_size(parent->size);
+		curr = (void *)parent + size;
+		msg->common.size = 1;
+		event_minimal_curr(curr);
+	}
 	return msg;
 }
 
-
-static inline void event_minimal_parent(struct event_execve *event)
+/* Pahole bug does not convert to btf correctly with arbitrary byte holes not
+ * near a cacheline. To work-around this we can specify a define with the
+ * CGROUPS_OFFSET we read directly out of debug_info section. Note other
+ * reads, subsys[], cgroup are the first element of the structure so we can
+ * "just" read those. Then cid, kn, and name all appear to be before byte
+ * holes on kernels I checked so leave them alone for now.
+ *
+ * Todo, fix pahole to avoid doing extra steps to lookup offsets.
+ * Edit: pahole has been fixed need to update toolchain.
+ */
+static inline void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 {
-	__u32 size = offsetof(struct event_execve, args);
+	struct cgroup_subsys_state *subsys;
+	struct event_execve *curr, *parent;
+	struct task_struct *task;
+	struct nsproxy *nsproxy;
+	struct css_set *cgroups;
+	struct kernfs_node *kn;
+	struct cgroup *cgrp;
+	struct net *net_ns;
+	const char *name;
+	ssize_t size;
+	char *addr;
 
-	event->size = size;
-	event->pid = event_find_parent_pid();
-	event->auid = get_parent_auid();
-	event->flags = EVENT_MISS;
-	event->uid = 0;
-}
+	msg->common.op = op;
+	msg->common.ktime = ktime_get_ns();
+	parent = (struct event_execve *)&msg->pid;
 
-static inline void event_minimal_curr(struct event_execve *event)
-{
-	__u32 size = offsetof(struct event_execve, args);
+	if (parent->flags & EVENT_NEEDS_AUID) {
+		__u32 flags = parent->flags & ~EVENT_NEEDS_AUID;
 
-	event->size = size;
-	event->pid = (get_current_pid_tgid() >> 32);
-	event->auid = get_auid();
-	event->flags = EVENT_MISS;
-	event->uid = 0;
+		parent->auid = get_auid();
+		parent->flags = flags;
+	}
+	size = validate_arg_size(parent->size);
+	curr = (void *)parent + size;
+	if (curr->flags & EVENT_NEEDS_AUID) {
+		__u32 flags = curr->flags & ~EVENT_NEEDS_AUID;
+
+		curr->auid = get_auid();
+		curr->flags = flags;
+	}
+	msg->common.size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
+	curr->uid = get_current_uid_gid();
+	if (walker)
+		curr->flags |= EVENT_TASK_WALK;
+
+	task = (struct task_struct *)get_current_task();
+	probe_read(&nsproxy, sizeof(nsproxy), &(task->nsproxy));
+	if (nsproxy) {
+		probe_read(&net_ns, sizeof(net_ns), &(nsproxy->net_ns));
+		if (net_ns)
+			probe_read(&msg->kube.net_ns, sizeof(msg->kube.net_ns), &(net_ns->ns.inum));
+	}
+
+	task = (struct task_struct *)get_current_task();
+#ifdef CGROUPS_OFFSET
+	addr = (void *)task;
+	addr += CGROUPS_OFFSET;
+#else
+	addr = (void *)&(task->cgroups);
+#endif
+	probe_read(&cgroups, sizeof(cgroups), addr);
+	if (cgroups) {
+		probe_read(&subsys, sizeof(subsys), &(cgroups->subsys[0]));
+		if (subsys) {
+			probe_read(&cgrp, sizeof(cgrp), &(subsys->cgroup));
+			if (cgrp) {
+#ifdef CGROUPS_KN_OFFSET
+				addr = (void *)(cgrp);
+				addr += CGROUPS_KN_OFFSET;
+#else
+				addr = (void *)&(cgrp->kn);
+#endif
+				probe_read(&kn, sizeof(cgrp->kn), addr);
+				if (kn) {
+					probe_read(&name, sizeof(name), &(kn->name));
+					if (name)
+						probe_read_str(msg->kube.docker_id,
+							       DOCKER_ID_LENGTH,
+							       name);
+				}
+			}
+		}
+	}
+#ifdef BPF_FUNC_get_current_cgroup_id
+	msg->kube.cgrpid = get_current_cgroup_id();
+#endif
+
 }
 
 #ifdef USE_HASH_MAP

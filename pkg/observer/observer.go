@@ -130,8 +130,8 @@ var (
 
 	ObserverBind = bpfLoad{
 		"",
-		"__inet_bind",
-		"__inet_bind",
+		"inet_bind",
+		"inet_bind",
 		"kprobe/sys_bind",
 		"kprobe_sys_bind",
 		ObserverTCPConnect.observer__map,
