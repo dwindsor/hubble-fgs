@@ -128,6 +128,18 @@ var (
 		true,
 	}
 
+	ObserverBind = bpfLoad{
+		"",
+		"__inet_bind",
+		"__inet_bind",
+		"kprobe/sys_bind",
+		"kprobe_sys_bind",
+		ObserverTCPConnect.observer__map,
+		ObserverTCPConnect.observer__map_label,
+		false,
+		true,
+	}
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -227,7 +239,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	r := bytes.NewReader(data)
 
 	switch op {
-	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET:
+	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET, api.MSG_OP_IPV4_BIND:
 		m := api.MsgIPv4TcpConnect{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
@@ -323,6 +335,11 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 		return err
 	}
 	k.tcp_events_fd = tcp_events
+
+	if _, err := k.observerLoadInstance(ObserverBind, stopCtx); err != nil {
+		return err
+	}
+
 	if _, err := k.observerLoadInstance(ObserverTCPConnectRet, stopCtx); err != nil {
 		return err
 	}
@@ -678,6 +695,7 @@ func (k *ObserverKprobe) deleteProgs() {
 	os.Remove(k.bpfDir + ObserverExecveat.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnect.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnect.observer__map)
+	os.Remove(k.bpfDir + ObserverBind.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnectRet.observer__prog)
 	os.Remove(k.bpfDir)
 }

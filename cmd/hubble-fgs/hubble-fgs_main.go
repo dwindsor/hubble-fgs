@@ -64,6 +64,8 @@ func init() {
 		"bpf-tcpmon", "./bpf/bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
 	flags.StringVar(&observer.ObserverTCPConnectRet.Observer__program,
 		"bpf-tcpmonret", "./bpf/bpf_tcpmonret.o", "Location of bpf_tcpmon.o program")
+	flags.StringVar(&observer.ObserverBind.Observer__program,
+		"bpf-bind", "./bpf/bpf_bind.o", "Location of bpf_bind.o program")
 	flags.StringVar(&observer.ProcFS,
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
 	viper.BindPFlags(flags)
