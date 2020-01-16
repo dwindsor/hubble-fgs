@@ -106,6 +106,7 @@
 #define EVENT_ERROR_FILENAME 0x100
 #define EVENT_ERROR_ARGS     0x200
 #define EVENT_NEEDS_CWD      0x400
+#define EVENT_NO_CWD_SUPPORT 0x800
 
 /* Msg Types */
 enum msg_ops {

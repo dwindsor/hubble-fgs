@@ -670,6 +670,8 @@ func getRunningProcs() []ObserverProcs {
 			} else {
 				deduct = need
 			}
+			p.pflags = p.pflags & ^uint32(api.EventNeedsCWD)
+			p.pflags = p.pflags | api.EventNoCWDSupport
 			p.psize -= deduct
 			need -= deduct
 			if need > api.MAX_SIZEOF_CWD {
@@ -678,6 +680,8 @@ func getRunningProcs() []ObserverProcs {
 				deduct = need
 			}
 			p.size -= deduct
+			p.flags = p.flags & ^uint32(api.EventNeedsCWD)
+			p.flags = p.pflags | api.EventNoCWDSupport
 			need -= deduct
 
 			for i = 0; i < need; i++ {

@@ -124,11 +124,6 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	return task;
 }
 
-#define PWD__D_VSFMNT    8
-#define PWD__D_DENTRY    8
-#define DENTRY__D_PARENT 24
-#define DENTRY__D_NAME   40
-
 #define CWD_DENTRY_REG "r9"
 #define CWD_VFSMNT_DENTRY_REG "r6"
 #define CWD_OFFSET_REG "r7"
@@ -143,7 +138,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"r3 = " CWD_DENTRY_REG ";"			\
 	"if r3 == 0 goto %l[a];"			\
 	/* probe_read(&parent, sizeof(parent), &dentry->d_parent); */ \
-	"r3 += " XSTR(DENTRY__D_PARENT) ";"		\
+	"r3 += %[dentry_parent];"			\
 	"r2 = 8;"					\
 	"r1 = %[ptr];"					\
 	"call 4;"					\
@@ -156,7 +151,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	/* dentry = parent; */				\
 	/* probe_read(&dname, sizeof(dname), &name->name); */ \
 	"r3 = " CWD_DENTRY_REG ";"			\
-	"r3 += " XSTR(DENTRY__D_NAME) ";"		\
+	"r3 += %[dentry_name];"				\
 	CWD_DENTRY_REG " = r4;" /* r9 = parent */	\
 	"r1 = %[ptr];"					\
 	"r2 = 8;"					\
@@ -203,6 +198,7 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 	char slash = '/';
 	char *pslash = &slash;
 	__u32 orig_size = curr->size, orig_offset = offset;
+	int dentry_parent, dentry_name;
 
 	probe_read(&fs, sizeof(fs), &task->fs);
 	if (!fs)
@@ -212,6 +208,9 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 	dentry = pwd.dentry;
 	vfsmnt = pwd.mnt;
 	probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), &vfsmnt->mnt_root);
+
+	dentry_parent = offsetof(struct dentry, d_parent);
+	dentry_name = offsetof(struct dentry, d_name) + offsetof(struct qstr, name);
 
 	asm volatile goto (
 			PROBE_CWD_READ_LOOP_HEADER
@@ -237,7 +236,9 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 		  [dentry] "m"(dentry),
 		  [ptr]    "+r"(&ptr),
 		  [slash]  "m"(pslash),
-		  [offset] "+m"(offset)
+		  [offset] "+m"(offset),
+		  [dentry_parent] "i"(dentry_parent),
+		  [dentry_name] "i"(dentry_name)
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9"
 		: a);
 a:
@@ -568,10 +569,9 @@ static inline void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op
 
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
-
-	if (parent->flags & EVENT_NEEDS_CWD) {
-		getcwd(parent, parent, parent->size - CWD_MAX, parent->pid, 1);
-		parent->flags = parent->flags & ~EVENT_NEEDS_CWD;
+	if (curr->flags & EVENT_NEEDS_CWD) {
+		getcwd(curr, parent, parent->size + curr->size - CWD_MAX, curr->pid, 1);
+		curr->flags = curr->flags & ~EVENT_NEEDS_CWD;
 	}
 	if (curr->flags & EVENT_NEEDS_AUID) {
 		__u32 flags = curr->flags & ~EVENT_NEEDS_AUID;

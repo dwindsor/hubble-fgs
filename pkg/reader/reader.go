@@ -82,6 +82,9 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventErrorArgs) != 0 {
 		s = append(s, "errorArgs")
 	}
+	if (flags & api.EventNoCWDSupport) != 0 {
+		s = append(s, "nocwd")
+	}
 	return strings.Join(s, " ")
 }
 
@@ -97,6 +100,9 @@ func DecodeKtime(ktime int64) (time.Time, error) {
 
 func ArgsDecoder(s string, flags uint32) (string, string) {
 	args := ReplaceNewLines(s, rune(0x0020))
+	if (flags & api.EventNoCWDSupport) != 0 {
+		return args, ""
+	}
 	argTokens := strings.Split(args, " ")
 	dirs := strings.Split(argTokens[len(argTokens)-1], "/")
 	for i := len(dirs)/2 - 1; i >= 0; i-- {
