@@ -191,7 +191,8 @@ struct task_struct *get_task_from_pid(__u32 pid)
 static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve *curr,
 							    struct event_execve *pid,
 							    __u32 offset,
-							    __u32 proc_pid)
+							    __u32 proc_pid,
+							    bool prealloc)
 {
 	struct task_struct *task = get_task_from_pid(proc_pid);
 	struct dentry *dentry, *vfsmnt_dentry;
@@ -201,7 +202,7 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 	void *ptr;
 	char slash = '/';
 	char *pslash = &slash;
-	__u32 n, orig_size = curr->size, orig_offset = offset;
+	__u32 orig_size = curr->size, orig_offset = offset;
 
 	probe_read(&fs, sizeof(fs), &task->fs);
 	if (!fs)
@@ -240,8 +241,14 @@ static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve 
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9"
 		: a);
 a:
-	n = curr->size - orig_offset;
-	curr->size = orig_size + n;
+	/* If the size was preallocated from user space side (ProcFS entry)
+	 * then we need to keep the same size so we can find parent/child
+	 * entries.
+	 */
+	if (prealloc)
+		curr->size = orig_size;
+	else
+		curr->size = orig_size + (curr->size - orig_offset);
 	return 0;
 }
 
@@ -373,7 +380,7 @@ void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
 
 	psize = validate_arg_size(pid->size);
 	c = (void *)pid + psize;
-	getcwd(c, pid, psize + c->size, c->pid);
+	getcwd(c, pid, psize + c->size, c->pid, 0);
 }
 
 static inline int64_t event_copy_execve(struct event_execve *dst,
@@ -548,14 +555,24 @@ static inline void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op
 	msg->common.ktime = ktime_get_ns();
 	parent = (struct event_execve *)&msg->pid;
 
+	if (parent->flags & EVENT_NEEDS_CWD) {
+		getcwd(parent, parent, parent->size - CWD_MAX, parent->pid, 1);
+		parent->flags = parent->flags & ~EVENT_NEEDS_CWD;
+	}
 	if (parent->flags & EVENT_NEEDS_AUID) {
 		__u32 flags = parent->flags & ~EVENT_NEEDS_AUID;
 
 		parent->auid = get_auid();
 		parent->flags = flags;
 	}
+
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
+
+	if (parent->flags & EVENT_NEEDS_CWD) {
+		getcwd(parent, parent, parent->size - CWD_MAX, parent->pid, 1);
+		parent->flags = parent->flags & ~EVENT_NEEDS_CWD;
+	}
 	if (curr->flags & EVENT_NEEDS_AUID) {
 		__u32 flags = curr->flags & ~EVENT_NEEDS_AUID;
 
@@ -608,7 +625,6 @@ static inline void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op
 #ifdef BPF_FUNC_get_current_cgroup_id
 	msg->kube.cgrpid = get_current_cgroup_id();
 #endif
-
 }
 
 #ifdef USE_HASH_MAP

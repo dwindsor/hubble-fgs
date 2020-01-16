@@ -23,8 +23,9 @@ const (
 	MSG_OP_IPV4_BIND          = 3
 	MSG_OP_IPV4_LISTEN        = 4
 
-	ARGSBUFFER    = 1024 + 16
-	SIZEOF_EXECVE = 32
+	ARGSBUFFER     = 1024 + 16
+	SIZEOF_EXECVE  = 32
+	MAX_SIZEOF_CWD = 256
 )
 
 // Msg Flag Definitions
@@ -40,6 +41,7 @@ const (
 	EventNeedsAUID     = 0x80
 	EventErrorFilename = 0x100
 	EventErrorArgs     = 0x200
+	EventNeedsCWD      = 0x400
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent

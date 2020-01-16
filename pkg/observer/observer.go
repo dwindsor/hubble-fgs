@@ -499,6 +499,7 @@ func writeExecveMap(procs []ObserverProcs) {
 
 		k := &ExecveKey{Pid: p.pid}
 		v := &ExecveValue{}
+		cwd := make([]byte, api.MAX_SIZEOF_CWD)
 
 		/* In theory we trim'd this above to fit but lets be paranoid
 		 * because I already screwed this up once and crashing fgs is
@@ -545,6 +546,7 @@ func writeExecveMap(procs []ObserverProcs) {
 			continue
 		}
 		off += copy(v.Args[off:], p.pargs)
+		off += copy(v.Args[off:], cwd)
 		if err := putU32(p.size); err != nil {
 			continue
 		}
@@ -567,6 +569,7 @@ func writeExecveMap(procs []ObserverProcs) {
 			continue
 		}
 		off += copy(v.Args[off:], p.args)
+		off += copy(v.Args[off:], cwd)
 		v.Common.Size = 1
 		m.Update(k, v)
 	}
@@ -644,18 +647,39 @@ func getRunningProcs() []ObserverProcs {
 
 		p := ObserverProcs{
 			ppid: uint32(_ppid), pargs: pcmdsUTF,
-			pflags: api.EventProcFS | api.EventNeedsAUID, pktime: pktime,
-
-			pid: uint32(pid), args: cmdsUTF,
-			flags: api.EventProcFS | api.EventNeedsAUID, ktime: ktime}
-		p.size = uint32(api.SIZEOF_EXECVE + len(p.args))
-		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs))
+			pflags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
+			pktime: pktime,
+			pid:    uint32(pid), args: cmdsUTF,
+			flags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
+			ktime: ktime}
+		p.size = uint32(api.SIZEOF_EXECVE + len(p.args) + api.MAX_SIZEOF_CWD)
+		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs) + api.MAX_SIZEOF_CWD)
 		/* If we can't fit this in the buffer lets trim some parts and
 		 * make it fit.
 		 */
 		if p.size+p.psize > api.ARGSBUFFER {
 			var i uint32
+			var deduct uint32
+
 			need := (p.size + p.psize + api.SIZEOF_EXECVE + api.SIZEOF_EXECVE) - api.ARGSBUFFER
+			// First consume CWD space from parent because this speculative extra space
+			// next try to consume CWD space from child and finally start truncating args
+			// if necessary.
+			if need > api.MAX_SIZEOF_CWD {
+				deduct = api.MAX_SIZEOF_CWD
+			} else {
+				deduct = need
+			}
+			p.psize -= deduct
+			need -= deduct
+			if need > api.MAX_SIZEOF_CWD {
+				deduct = api.MAX_SIZEOF_CWD
+			} else {
+				deduct = need
+			}
+			p.size -= deduct
+			need -= deduct
+
 			for i = 0; i < need; i++ {
 				if len(p.pargs) > len(p.args) {
 					p.pflags |= api.EventTruncArgs
