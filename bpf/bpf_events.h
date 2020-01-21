@@ -24,7 +24,8 @@ int64_t validate_arg_size(int64_t size)
 	return size;
 }
 
-static inline int64_t validate_msg_size(int64_t size)
+static inline __attribute__((always_inline))
+int64_t validate_msg_size(int64_t size)
 {
 	size_t max = sizeof(struct msg_ipv4_tcp_connect);
 
@@ -45,7 +46,8 @@ static inline int64_t validate_msg_size(int64_t size)
 	return size;
 }
 
-static inline __u32 __get_auid(struct task_struct *task)
+static inline __attribute__((always_inline))
+__u32 __get_auid(struct task_struct *task)
 {
 	__u32 auid = 0;
 
@@ -74,14 +76,16 @@ static inline __u32 __get_auid(struct task_struct *task)
 	return auid;
 }
 
-static inline __u32 get_auid(void)
+static inline __attribute__((always_inline))
+__u32 get_auid(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 
 	return __get_auid(task);
 }
 
-static inline struct task_struct *get_parent(void)
+static inline __attribute__((always_inline))
+struct task_struct *get_parent(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 
@@ -91,7 +95,8 @@ static inline struct task_struct *get_parent(void)
 	return task;
 }
 
-static inline __u32 get_parent_auid(void)
+static inline __attribute__((always_inline))
+__u32 get_parent_auid(void)
 {
 	struct task_struct *task = get_parent();
 
@@ -183,11 +188,9 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"r3 = *(u64 *)%[curr];"				\
 	"*(u64 *)(r3 + 0) = " CWD_OFFSET_REG ";"
 
-static inline __attribute__((always_inline)) int64_t getcwd(struct event_execve *curr,
-							    struct event_execve *pid,
-							    __u32 offset,
-							    __u32 proc_pid,
-							    bool prealloc)
+static inline __attribute__((always_inline))
+int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
+	       __u32 offset, __u32 proc_pid, bool prealloc)
 {
 	struct task_struct *task = get_task_from_pid(proc_pid);
 	struct dentry *dentry, *vfsmnt_dentry;
@@ -253,9 +256,10 @@ a:
 	return 0;
 }
 
-static inline  __attribute__((always_inline)) void event_filename_builder(struct event_execve *pid,
-					  __u32 curr_pid, __u32 flags,
-					  void *pfilename)
+static inline __attribute__((always_inline))
+void event_filename_builder(struct event_execve *pid,
+			    __u32 curr_pid, __u32 flags,
+			    void *pfilename)
 {
 	struct event_execve *curr;
 	int64_t psize, size = 0;
@@ -315,7 +319,8 @@ static inline  __attribute__((always_inline)) void event_filename_builder(struct
  * is even using LTS kernels so we get kernels with verifier in strange states.
  * I'm looking at you 4.15 kernel running in minikube!
  */
-static inline void probe_arg_read(struct event_execve *c, char *earg, char **args)
+static inline __attribute__((always_inline))
+void probe_arg_read(struct event_execve *c, char *earg, char **args)
 {
 	volatile char *arg;
 
@@ -350,7 +355,8 @@ a:
  * what happened here this routine should always return with a good
  * event msg that could be passed to userspace.
  */
-static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *pargs)
+static inline __attribute__((always_inline))
+void event_args_builder(struct msg_ipv4_tcp_connect *event, void *pargs)
 {
 	struct event_execve *p, *c;
 	int64_t base;
@@ -384,8 +390,9 @@ void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
 	getcwd(c, pid, psize + c->size, c->pid, 0);
 }
 
-static inline int64_t event_copy_execve(struct event_execve *dst,
-					struct event_execve *src)
+static inline __attribute__((always_inline))
+int64_t event_copy_execve(struct event_execve *dst,
+			  struct event_execve *src)
 {
 	struct event_execve *esrc;
 	int64_t size;
@@ -400,7 +407,8 @@ static inline int64_t event_copy_execve(struct event_execve *dst,
 	return size;
 }
 
-static inline __u32 event_find_parent_pid(void)
+static inline __attribute__((always_inline))
+__u32 event_find_parent_pid(void)
 {
 	struct task_struct *task = get_parent();
 	__u32 pid;
@@ -411,7 +419,8 @@ static inline __u32 event_find_parent_pid(void)
 	return pid;
 }
 
-static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
+static inline __attribute__((always_inline))
+struct msg_ipv4_tcp_connect *event_find_parent(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
@@ -444,7 +453,8 @@ static inline struct msg_ipv4_tcp_connect *event_find_parent(void)
 	return 0;
 }
 
-static inline void event_minimal_parent(struct event_execve *event)
+static inline __attribute__((always_inline))
+void event_minimal_parent(struct event_execve *event)
 {
 	__u32 size = offsetof(struct event_execve, args);
 
@@ -455,7 +465,8 @@ static inline void event_minimal_parent(struct event_execve *event)
 	event->uid = 0;
 }
 
-static inline void event_minimal_curr(struct event_execve *event)
+static inline __attribute__((always_inline))
+void event_minimal_curr(struct event_execve *event)
 {
 	__u32 size = offsetof(struct event_execve, args);
 
@@ -466,7 +477,7 @@ static inline void event_minimal_curr(struct event_execve *event)
 	event->uid = 0;
 }
 
-static inline
+static inline __attribute__((always_inline))
 struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 					     struct bpf_map_def *map,
 					     bool *walked)
@@ -538,7 +549,8 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
  * Todo, fix pahole to avoid doing extra steps to lookup offsets.
  * Edit: pahole has been fixed need to update toolchain.
  */
-static inline void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
+static inline __attribute__((always_inline))
+void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 {
 	struct cgroup_subsys_state *subsys;
 	struct event_execve *curr, *parent;
@@ -628,8 +640,9 @@ static inline void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op
 }
 
 #ifdef USE_HASH_MAP
-static inline void map_update_hash(struct msg_ipv4_tcp_connect *event,
-				   __u32 pid)
+static inline __attribute__((always_inline))
+void map_update_hash(struct msg_ipv4_tcp_connect *event,
+		     __u32 pid)
 {
 	struct event_execve *parent = (struct event_execve *)event->pid;
 	struct event_execve *curr;
@@ -641,7 +654,8 @@ static inline void map_update_hash(struct msg_ipv4_tcp_connect *event,
 	map_update_elem(&execve_map, &pid, event, 0);
 }
 
-static inline struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
+static inline __attribute__((always_inline))
+struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
 {
 	struct msg_ipv4_tcp_connect *event;
 
@@ -656,12 +670,14 @@ static inline struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
 	return event;
 }
 #else
-static inline void map_update_hash(struct msg_ipv4_tcp_connect *event,
-				   __u32 pid)
+static inline __attribute__((always_inline))
+void map_update_hash(struct msg_ipv4_tcp_connect *event,
+		     __u32 pid)
 {
 }
 
-static inline struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
+static inline __attribute__((always_inline))
+struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
 {
 	return map_lookup_elem(&execve_map, &pid);
 }
