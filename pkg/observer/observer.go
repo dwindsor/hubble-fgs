@@ -128,6 +128,30 @@ var (
 		true,
 	}
 
+	ObserverBind = bpfLoad{
+		"",
+		"inet_bind",
+		"inet_bind",
+		"kprobe/sys_bind",
+		"kprobe_sys_bind",
+		ObserverTCPConnect.observer__map,
+		ObserverTCPConnect.observer__map_label,
+		false,
+		true,
+	}
+
+	ObserverListen = bpfLoad{
+		"",
+		"__x64_sys_listen",
+		"sys_listen",
+		"kprobe/sys_listen",
+		"kprobe_sys_listen",
+		ObserverTCPConnect.observer__map,
+		ObserverTCPConnect.observer__map_label,
+		false,
+		true,
+	}
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -227,7 +251,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	r := bytes.NewReader(data)
 
 	switch op {
-	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET:
+	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET, api.MSG_OP_IPV4_BIND, api.MSG_OP_IPV4_LISTEN:
 		m := api.MsgIPv4TcpConnect{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
@@ -323,7 +347,16 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 		return err
 	}
 	k.tcp_events_fd = tcp_events
+
 	if _, err := k.observerLoadInstance(ObserverTCPConnectRet, stopCtx); err != nil {
+		return err
+	}
+
+	if _, err := k.observerLoadInstance(ObserverBind, stopCtx); err != nil {
+		return err
+	}
+
+	if _, err := k.observerLoadInstance(ObserverListen, stopCtx); err != nil {
 		return err
 	}
 
@@ -466,6 +499,7 @@ func writeExecveMap(procs []ObserverProcs) {
 
 		k := &ExecveKey{Pid: p.pid}
 		v := &ExecveValue{}
+		cwd := make([]byte, api.MAX_SIZEOF_CWD)
 
 		/* In theory we trim'd this above to fit but lets be paranoid
 		 * because I already screwed this up once and crashing fgs is
@@ -512,6 +546,7 @@ func writeExecveMap(procs []ObserverProcs) {
 			continue
 		}
 		off += copy(v.Args[off:], p.pargs)
+		off += copy(v.Args[off:], cwd)
 		if err := putU32(p.size); err != nil {
 			continue
 		}
@@ -534,6 +569,7 @@ func writeExecveMap(procs []ObserverProcs) {
 			continue
 		}
 		off += copy(v.Args[off:], p.args)
+		off += copy(v.Args[off:], cwd)
 		v.Common.Size = 1
 		m.Update(k, v)
 	}
@@ -611,18 +647,43 @@ func getRunningProcs() []ObserverProcs {
 
 		p := ObserverProcs{
 			ppid: uint32(_ppid), pargs: pcmdsUTF,
-			pflags: api.EventProcFS | api.EventNeedsAUID, pktime: pktime,
-
-			pid: uint32(pid), args: cmdsUTF,
-			flags: api.EventProcFS | api.EventNeedsAUID, ktime: ktime}
-		p.size = uint32(api.SIZEOF_EXECVE + len(p.args))
-		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs))
+			pflags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
+			pktime: pktime,
+			pid:    uint32(pid), args: cmdsUTF,
+			flags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
+			ktime: ktime}
+		p.size = uint32(api.SIZEOF_EXECVE + len(p.args) + api.MAX_SIZEOF_CWD)
+		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs) + api.MAX_SIZEOF_CWD)
 		/* If we can't fit this in the buffer lets trim some parts and
 		 * make it fit.
 		 */
 		if p.size+p.psize > api.ARGSBUFFER {
 			var i uint32
+			var deduct uint32
+
 			need := (p.size + p.psize + api.SIZEOF_EXECVE + api.SIZEOF_EXECVE) - api.ARGSBUFFER
+			// First consume CWD space from parent because this speculative extra space
+			// next try to consume CWD space from child and finally start truncating args
+			// if necessary.
+			if need > api.MAX_SIZEOF_CWD {
+				deduct = api.MAX_SIZEOF_CWD
+			} else {
+				deduct = need
+			}
+			p.pflags = p.pflags & ^uint32(api.EventNeedsCWD)
+			p.pflags = p.pflags | api.EventNoCWDSupport
+			p.psize -= deduct
+			need -= deduct
+			if need > api.MAX_SIZEOF_CWD {
+				deduct = api.MAX_SIZEOF_CWD
+			} else {
+				deduct = need
+			}
+			p.size -= deduct
+			p.flags = p.flags & ^uint32(api.EventNeedsCWD)
+			p.flags = p.pflags | api.EventNoCWDSupport
+			need -= deduct
+
 			for i = 0; i < need; i++ {
 				if len(p.pargs) > len(p.args) {
 					p.pflags |= api.EventTruncArgs
@@ -678,6 +739,7 @@ func (k *ObserverKprobe) deleteProgs() {
 	os.Remove(k.bpfDir + ObserverExecveat.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnect.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnect.observer__map)
+	os.Remove(k.bpfDir + ObserverBind.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnectRet.observer__prog)
 	os.Remove(k.bpfDir)
 }

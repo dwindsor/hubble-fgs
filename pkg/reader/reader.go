@@ -82,6 +82,9 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventErrorArgs) != 0 {
 		s = append(s, "errorArgs")
 	}
+	if (flags & api.EventNoCWDSupport) != 0 {
+		s = append(s, "nocwd")
+	}
 	return strings.Join(s, " ")
 }
 
@@ -97,11 +100,11 @@ func DecodeKtime(ktime int64) (time.Time, error) {
 
 func ArgsDecoder(s string, flags uint32) (string, string) {
 	args := ReplaceNewLines(s, rune(0x0020))
-	if flags&api.EventProcFS != 0 {
+	if (flags & api.EventNoCWDSupport) != 0 {
 		return args, ""
 	}
 	argTokens := strings.Split(args, " ")
-	dirs := strings.Split(argTokens[0], "/")
+	dirs := strings.Split(argTokens[len(argTokens)-1], "/")
 	for i := len(dirs)/2 - 1; i >= 0; i-- {
 		opp := len(dirs) - 1 - i
 		dirs[i], dirs[opp] = dirs[opp], dirs[i]
@@ -109,11 +112,18 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	cwd := strings.Join(dirs, "/")
 	cwd = "/" + cwd
 	if len(argTokens) > 1 {
-		args = strings.Join(argTokens[1:], " ")
+		args = strings.Join(argTokens[0:len(argTokens)-1], " ")
 	} else {
 		args = ""
 	}
 	return args, cwd
+}
+
+func GetSport(sport uint16, op uint8) uint16 {
+	if op == api.MSG_OP_IPV4_BIND {
+		return SwapByte(sport)
+	}
+	return sport
 }
 
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
@@ -152,7 +162,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.String("args", childArgs),
 		zap.Uint8("proto", msg.Tuple.Proto),
 		zap.String("saddr", GetIP(msg.Tuple.SAddr).String()),
-		zap.Uint16("sport", msg.Tuple.SPort),
+		zap.Uint16("sport", GetSport(msg.Tuple.SPort, msg.Common.Op)),
 		zap.String("daddr", GetIP(msg.Tuple.DAddr).String()),
 		zap.Uint16("dport", SwapByte(msg.Tuple.DPort)),
 		zap.String("ContainerID", msg.Kube.Docker),

@@ -9,4 +9,4 @@ COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs-printer /usr/bin/
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/libs/libbpf.so.0 /usr/lib/
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/bpf/bins/* /var/lib/hubble-fgs/
-CMD ["sh", "-c", "/usr/bin/hubble-fgs --procfs=/procRoot/ --bpf-execveat=/var/lib/hubble-fgs/bpf_execveat_`uname -r`.o --bpf-execve=/var/lib/hubble-fgs/bpf_execve_`uname -r`.o --bpf-fork=/var/lib/hubble-fgs/bpf_fork_`uname -r`.o --bpf-tcpmon=/var/lib/hubble-fgs/bpf_tcpmon_`uname -r`.o --bpf-tcpmonret=/var/lib/hubble-fgs/bpf_tcpmonret_`uname -r`.o"]
+CMD ["sh", "-c", "/usr/bin/hubble-fgs --procfs=/procRoot/ --bpf-execveat=/var/lib/hubble-fgs/bpf_execveat_`uname -r`.o --bpf-execve=/var/lib/hubble-fgs/bpf_execve_`uname -r`.o --bpf-fork=/var/lib/hubble-fgs/bpf_fork_`uname -r`.o --bpf-tcpmon=/var/lib/hubble-fgs/bpf_tcpmon_`uname -r`.o --bpf-tcpmonret=/var/lib/hubble-fgs/bpf_tcpmonret_`uname -r`.o --bpf-bind=/var/lib/hubble-fgs/bpf_bind_`uname -r`.o --bpf-listen=/var/lib/hubble-fgs/bpf_listen_`uname -r`.o"]

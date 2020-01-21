@@ -40,6 +40,8 @@ func TestObjectLoad(t *testing.T) {
 	ObserverFork.Observer__program = "../../bpf/bins/bpf_fork_" + uname + ".o"
 	ObserverTCPConnect.Observer__program = "../../bpf/bins/bpf_tcpmon_" + uname + ".o"
 	ObserverTCPConnectRet.Observer__program = "../../bpf/bins/bpf_tcpmonret_" + uname + ".o"
+	ObserverBind.Observer__program = "../../bpf/bins/bpf_bind_" + uname + ".o"
+	ObserverListen.Observer__program = "../../bpf/bins/bpf_listen_" + uname + ".o"
 
 	kprobe := NewObserverKprobe(observerTestDir, false)
 	kprobe.createDir()
