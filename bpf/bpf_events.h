@@ -5,7 +5,8 @@ static inline void compiler_barrier(void) {
 	asm volatile("" ::: "memory");
 }
 
-static inline int64_t validate_arg_size(int64_t size)
+static inline __attribute__((always_inline))
+int64_t validate_arg_size(int64_t size)
 {
 	compiler_barrier();
 	/* Kernels pre 4.15 do not track min values on '&' so we do
@@ -364,7 +365,8 @@ static inline void event_args_builder(struct msg_ipv4_tcp_connect *event, void *
 	return;
 }
 
-static inline void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
+static inline __attribute__((always_inline))
+void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
 {
 	struct event_execve *c;
 	int64_t psize;
