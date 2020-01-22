@@ -211,12 +211,12 @@ func nopMsgExecUnix() api.MsgExecUnix {
 	return execUnix
 }
 
-func execParse(reader *bytes.Reader) (api.MsgExecUnix, error) {
+func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 	execUnix := api.MsgExecUnix{}
 	exec := api.MsgExec{}
 
 	if err := binary.Read(reader, binary.LittleEndian, &exec); err != nil {
-		return execUnix, err
+		return execUnix, true, err
 	}
 
 	execUnix.Size = exec.Size
@@ -228,24 +228,32 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, error) {
 
 	size := exec.Size - api.SIZEOF_EXECVE
 	if size > api.ARGSBUFFER {
+		err := fmt.Errorf("msg exec size larger than argsbuffer")
 		exec.Size = api.SIZEOF_EXECVE
+		execUnix.Args = "enomem enomem"
+		execUnix.Filename = "enomem"
+		return execUnix, false, err
 	} else {
 		args := make([]byte, size)
 		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
-			return execUnix, err
+			execUnix.Size = api.SIZEOF_EXECVE
+			execUnix.Args = "enomem enomem"
+			execUnix.Filename = "enomem"
+			return execUnix, false, err
+		} else {
+			cmdArgs := bytes.Split(args, []byte{0x00})
+			execUnix.Filename = string(cmdArgs[0])
+			execUnix.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
 		}
-
-		cmdArgs := bytes.Split(args, []byte{0x00})
-		execUnix.Filename = string(cmdArgs[0])
-		execUnix.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
 	}
 
-	return execUnix, nil
+	return execUnix, false, nil
 }
 
 func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	data := msg.DataDirect()
 	var op uint8 = data[0]
+	var empty bool
 
 	RecvCntr++
 	r := bytes.NewReader(data)
@@ -258,13 +266,13 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			break
 		}
 		msgUnix := msgToUnix(&m)
-		msgUnix.Pid.Parent, err = execParse(r)
-		if err != nil {
+		msgUnix.Pid.Parent, empty, err = execParse(r)
+		if err != nil && empty {
 			msgUnix.Pid.Parent = nopMsgExecUnix()
 		}
 
-		msgUnix.Pid.Curr, err = execParse(r)
-		if err != nil {
+		msgUnix.Pid.Curr, empty, err = execParse(r)
+		if err != nil && empty {
 			msgUnix.Pid.Curr = nopMsgExecUnix()
 		}
 
@@ -662,33 +670,27 @@ func getRunningProcs() []ObserverProcs {
 		 * make it fit.
 		 */
 		if p.size+p.psize > api.ARGSBUFFER {
-			var i uint32
 			var deduct uint32
+			var need int32
 
-			need := (p.size + p.psize) - api.ARGSBUFFER
+			need = int32((p.size + p.psize) - api.ARGSBUFFER)
 			// First consume CWD space from parent because this speculative extra space
 			// next try to consume CWD space from child and finally start truncating args
 			// if necessary.
-			if need > api.MAX_SIZEOF_CWD {
-				deduct = api.MAX_SIZEOF_CWD
-			} else {
-				deduct = need
-			}
+			deduct = api.MAX_SIZEOF_CWD
 			p.pflags = p.pflags & ^uint32(api.EventNeedsCWD)
 			p.pflags = p.pflags | api.EventNoCWDSupport
 			p.psize -= deduct
-			need -= deduct
-			if need > api.MAX_SIZEOF_CWD {
+			need -= int32(deduct)
+			if need > 0 {
 				deduct = api.MAX_SIZEOF_CWD
-			} else {
-				deduct = need
+				p.size -= deduct
+				p.flags = p.flags & ^uint32(api.EventNeedsCWD)
+				p.flags = p.flags | api.EventNoCWDSupport
+				need -= int32(deduct)
 			}
-			p.size -= deduct
-			p.flags = p.flags & ^uint32(api.EventNeedsCWD)
-			p.flags = p.pflags | api.EventNoCWDSupport
-			need -= deduct
 
-			for i = 0; i < need; i++ {
+			for i := int32(0); i < need; i++ {
 				if len(p.pargs) > len(p.args) {
 					p.pflags |= api.EventTruncArgs
 					p.pargs = p.pargs[:len(p.pargs)-1]
