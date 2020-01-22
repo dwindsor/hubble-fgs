@@ -85,6 +85,9 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventNoCWDSupport) != 0 {
 		s = append(s, "nocwd")
 	}
+	if (flags & api.EventRootCWD) != 0 {
+		s = append(s, "rootcwd")
+	}
 	return strings.Join(s, " ")
 }
 
@@ -102,6 +105,9 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	args := ReplaceNewLines(s, rune(0x0020))
 	if (flags & api.EventNoCWDSupport) != 0 {
 		return args, ""
+	}
+	if (flags & api.EventRootCWD) != 0 {
+		return args, "/"
 	}
 	argTokens := strings.Split(args, " ")
 	dirs := strings.Split(argTokens[len(argTokens)-1], "/")

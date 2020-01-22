@@ -546,7 +546,9 @@ func writeExecveMap(procs []ObserverProcs) {
 			continue
 		}
 		off += copy(v.Args[off:], p.pargs)
-		off += copy(v.Args[off:], cwd)
+		if (p.pflags & api.EventNeedsCWD) != 0 {
+			off += copy(v.Args[off:], cwd)
+		}
 		if err := putU32(p.size); err != nil {
 			continue
 		}
@@ -569,7 +571,9 @@ func writeExecveMap(procs []ObserverProcs) {
 			continue
 		}
 		off += copy(v.Args[off:], p.args)
-		off += copy(v.Args[off:], cwd)
+		if (p.flags & api.EventNeedsCWD) != 0 {
+			off += copy(v.Args[off:], cwd)
+		}
 		v.Common.Size = 1
 		m.Update(k, v)
 	}
@@ -661,7 +665,7 @@ func getRunningProcs() []ObserverProcs {
 			var i uint32
 			var deduct uint32
 
-			need := (p.size + p.psize + api.SIZEOF_EXECVE + api.SIZEOF_EXECVE) - api.ARGSBUFFER
+			need := (p.size + p.psize) - api.ARGSBUFFER
 			// First consume CWD space from parent because this speculative extra space
 			// next try to consume CWD space from child and finally start truncating args
 			// if necessary.
