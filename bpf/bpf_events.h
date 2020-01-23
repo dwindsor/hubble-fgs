@@ -136,7 +136,9 @@ struct task_struct *get_task_from_pid(__u32 pid)
 #define PROBE_CWD_READ_LOOP_HEADER				\
 	CWD_DENTRY_REG " = *(u64 *)%[dentry];"			\
 	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];"		\
-	CWD_OFFSET_REG " = *(u32 *)%[offset];"
+	CWD_OFFSET_REG " = *(u32 *)%[offset];"			\
+	"r3 = *(u64 *)%[curr];"					\
+	"*(u64 *)(r3 + 0) = " CWD_OFFSET_REG ";"
 
 #define PROBE_CWD_READ	  	   			\
 	/* if (!dentry) { break; } */			\
@@ -164,8 +166,8 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	/* pcwd = curr + offset */			\
 	/* probe_read(pcwd, 1, &slash); */		\
 	"r1 = *(u64 *)%[pid];"				\
-	"if " CWD_OFFSET_REG " < 0 goto %l[a];"	\
-	"if " CWD_OFFSET_REG " > 1188 goto %l[a];"	\
+	"if " CWD_OFFSET_REG " s< 0 goto %l[a];"	\
+	"if " CWD_OFFSET_REG " s> 1188 goto %l[a];"	\
 	"r1 += " CWD_OFFSET_REG ";"\
 	"r2 = 1;"					\
 	"r3 = *(u64 *)%[slash];"			\
@@ -182,7 +184,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"call 45;"					\
 	/* if (ret < 0) { */				\
 	/* cwdsize += ret */				\
-	"if r0 < 1 goto %l[a];"				\
+	"if r0 s< 1 goto %l[a];"				\
 	"r0 -= 1;"					\
 	CWD_OFFSET_REG " += r0;"			\
 	"r3 = *(u64 *)%[curr];"				\
@@ -204,8 +206,10 @@ int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
 	int dentry_parent, dentry_name;
 
 	probe_read(&fs, sizeof(fs), &task->fs);
-	if (!fs)
+	if (!fs) {
+		curr->flags |= EVENT_ERROR_CWD;
 		return 0;
+	}
 
 	probe_read(&pwd, sizeof(pwd), &fs->pwd);
 	dentry = pwd.dentry;
@@ -245,6 +249,11 @@ int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9"
 		: a);
 a:
+	// Unfortunate special case for '/' where nothing was added we need
+	// to truncate with '\n' for parser.
+	if (curr->size == orig_offset)
+		curr->flags |= EVENT_ROOT_CWD;
+
 	/* If the size was preallocated from user space side (ProcFS entry)
 	 * then we need to keep the same size so we can find parent/child
 	 * entries.
@@ -569,7 +578,7 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 	parent = (struct event_execve *)&msg->pid;
 
 	if (parent->flags & EVENT_NEEDS_CWD) {
-		getcwd(parent, parent, parent->size - CWD_MAX, parent->pid, 1);
+		getcwd(parent, parent, parent->size - CWD_MAX + 1, parent->pid, 1);
 		parent->flags = parent->flags & ~EVENT_NEEDS_CWD;
 	}
 	if (parent->flags & EVENT_NEEDS_AUID) {
@@ -582,7 +591,7 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
 	if (curr->flags & EVENT_NEEDS_CWD) {
-		getcwd(curr, parent, parent->size + curr->size - CWD_MAX, curr->pid, 1);
+		getcwd(curr, parent, parent->size + curr->size - CWD_MAX + 1, curr->pid, 1);
 		curr->flags = curr->flags & ~EVENT_NEEDS_CWD;
 	}
 	if (curr->flags & EVENT_NEEDS_AUID) {
