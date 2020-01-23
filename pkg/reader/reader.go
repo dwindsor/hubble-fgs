@@ -148,7 +148,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 	childArgs, childCWD := ArgsDecoder(msg.Pid.Curr.Args, msg.Pid.Curr.Flags)
 
 	log.Debug("KprobeEvent",
-		zap.Uint8("op", msg.Common.Op),
+		zap.String("op", api.OpCode(msg.Common.Op).String()),
 		zap.Uint64("connect-ktime", msg.Common.Ktime),
 		zap.Time("connect-walltime", eventTime),
 		zap.Uint32("parent-size", msg.Pid.Parent.Size),

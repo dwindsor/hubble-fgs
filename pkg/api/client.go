@@ -55,6 +55,25 @@ type MsgCommon struct {
 	Ktime uint64
 }
 
+type OpCode int
+
+const (
+	MsgOpUndef = iota
+	MsgOpIPv4TCPConnect
+	MsgOpIPv4TCPConnectReturn
+	MsgOpIPv4Bind
+	MsgOpIPv4Listen
+)
+
+func (op OpCode) String() string {
+	return [...]string{
+		"Undef",
+		"TCPConnect",
+		"TCPConnectReturn",
+		"TCPBind",
+		"TCPListen"}[op]
+}
+
 type MsgExec struct {
 	Size  uint32
 	PID   uint32
