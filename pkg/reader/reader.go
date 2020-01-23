@@ -88,6 +88,9 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventRootCWD) != 0 {
 		s = append(s, "rootcwd")
 	}
+	if (flags & api.EventErrorCWD) != 0 {
+		s = append(s, "errorCWD")
+	}
 	return strings.Join(s, " ")
 }
 

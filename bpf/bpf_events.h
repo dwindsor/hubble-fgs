@@ -206,8 +206,10 @@ int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
 	int dentry_parent, dentry_name;
 
 	probe_read(&fs, sizeof(fs), &task->fs);
-	if (!fs)
+	if (!fs) {
+		curr->flags |= EVENT_ERROR_CWD;
 		return 0;
+	}
 
 	probe_read(&pwd, sizeof(pwd), &fs->pwd);
 	dentry = pwd.dentry;

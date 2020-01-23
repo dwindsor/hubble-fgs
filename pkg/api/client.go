@@ -44,6 +44,7 @@ const (
 	EventNeedsCWD      = 0x400
 	EventNoCWDSupport  = 0x800
 	EventRootCWD       = 0x1000
+	EventErrorCWD      = 0x2000
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
