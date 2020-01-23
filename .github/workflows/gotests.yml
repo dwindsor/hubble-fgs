@@ -25,4 +25,3 @@ jobs:
         sudo -E go get -u github.com/golang/dep/cmd/dep
         sudo -E go get -u golang.org/x/lint/golint
         sudo -E dep check
-        sudo -E make test
