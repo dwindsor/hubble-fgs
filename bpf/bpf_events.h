@@ -578,8 +578,10 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 	parent = (struct event_execve *)&msg->pid;
 
 	if (parent->flags & EVENT_NEEDS_CWD) {
-		getcwd(parent, parent, parent->size - CWD_MAX + 1, parent->pid, 1);
-		parent->flags = parent->flags & ~EVENT_NEEDS_CWD;
+		int err = getcwd(parent, parent, parent->size - CWD_MAX + 1, parent->pid, 1);
+
+		if (!err)
+			parent->flags = parent->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
 	}
 	if (parent->flags & EVENT_NEEDS_AUID) {
 		__u32 flags = parent->flags & ~EVENT_NEEDS_AUID;
@@ -591,8 +593,10 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
 	if (curr->flags & EVENT_NEEDS_CWD) {
-		getcwd(curr, parent, parent->size + curr->size - CWD_MAX + 1, curr->pid, 1);
-		curr->flags = curr->flags & ~EVENT_NEEDS_CWD;
+		int err = getcwd(curr, parent, parent->size + curr->size - CWD_MAX + 1, curr->pid, 1);
+
+		if (!err)
+			parent->flags = parent->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
 	}
 	if (curr->flags & EVENT_NEEDS_AUID) {
 		__u32 flags = curr->flags & ~EVENT_NEEDS_AUID;
