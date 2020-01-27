@@ -85,20 +85,20 @@ __u32 get_auid(void)
 }
 
 static inline __attribute__((always_inline))
-struct task_struct *get_parent(void)
+struct task_struct *get_parent(struct task_struct *t)
 {
-	struct task_struct *task = (struct task_struct *)get_current_task();
+	struct task_struct *task;
 
-	probe_read(&task, sizeof(task), &task->parent);
+	probe_read(&task, sizeof(task), &t->parent);
 	if (!task)
 		return 0;
 	return task;
 }
 
 static inline __attribute__((always_inline))
-__u32 get_parent_auid(void)
+__u32 get_parent_auid(struct task_struct *t)
 {
-	struct task_struct *task = get_parent();
+	struct task_struct *task = get_parent(t);
 
 	return __get_auid(task);
 }
@@ -117,12 +117,12 @@ struct task_struct *get_task_from_pid(__u32 pid)
 			i = TASK_PID_LOOP;
 			continue;
 		}
-		probe_read(&cpid, sizeof(cpid), &task->pid);
+		probe_read(&cpid, sizeof(cpid), &task->tgid);
 		if (cpid == pid) {
 			i = TASK_PID_LOOP;
 			continue;
 		}
-		task = get_parent();
+		task = get_parent(task);
 	}
 	if (cpid != pid)
 		return 0;
@@ -138,7 +138,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];"		\
 	CWD_OFFSET_REG " = *(u32 *)%[offset];"			\
 	"r3 = *(u64 *)%[curr];"					\
-	"*(u64 *)(r3 + 0) = " CWD_OFFSET_REG ";"
+	"*(u32 *)(r3 + 0) = " CWD_OFFSET_REG ";"
 
 #define PROBE_CWD_READ	  	   			\
 	/* if (!dentry) { break; } */			\
@@ -188,7 +188,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"r0 -= 1;"					\
 	CWD_OFFSET_REG " += r0;"			\
 	"r3 = *(u64 *)%[curr];"				\
-	"*(u64 *)(r3 + 0) = " CWD_OFFSET_REG ";"
+	"*(u32 *)(r3 + 0) = " CWD_OFFSET_REG ";"
 
 static inline __attribute__((always_inline))
 int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
@@ -417,14 +417,14 @@ int64_t event_copy_execve(struct event_execve *dst,
 }
 
 static inline __attribute__((always_inline))
-__u32 event_find_parent_pid(void)
+__u32 event_find_parent_pid(struct task_struct *t)
 {
-	struct task_struct *task = get_parent();
+	struct task_struct *task = get_parent(t);
 	__u32 pid;
 
 	if (!task)
 		return 0;
-	probe_read(&pid, sizeof(pid), &task->pid);
+	probe_read(&pid, sizeof(pid), &task->tgid);
 	return pid;
 }
 
@@ -452,7 +452,7 @@ struct msg_ipv4_tcp_connect *event_find_parent(void)
 		addr = (void *)(task);
 		addr += PARENT_PID_OFFSET;
 #else
-		addr = (void *)&(task->pid);
+		addr = (void *)&(task->tgid);
 #endif
 		probe_read(&pid, sizeof(pid), addr);
 		msg = map_lookup_elem(&execve_map, &pid);
@@ -463,13 +463,13 @@ struct msg_ipv4_tcp_connect *event_find_parent(void)
 }
 
 static inline __attribute__((always_inline))
-void event_minimal_parent(struct event_execve *event)
+void event_minimal_parent(struct event_execve *event, struct task_struct *task)
 {
 	__u32 size = offsetof(struct event_execve, args);
 
 	event->size = size;
-	event->pid = event_find_parent_pid();
-	event->auid = get_parent_auid();
+	event->pid = event_find_parent_pid(task);
+	event->auid = get_parent_auid(task);
 	event->flags = EVENT_MISS;
 	event->uid = 0;
 }
@@ -518,7 +518,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 		addr = (void *)(task);
 		addr += PARENT_PID_OFFSET;
 #else
-		addr = (void *)&(task->pid);
+		addr = (void *)&(task->tgid);
 #endif
 		probe_read(&pid, sizeof(pid), addr);
 	}
@@ -539,7 +539,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 			event_copy_execve(parent,
 					  (struct event_execve *)&parent_event->pid);
 		else
-			event_minimal_parent(parent);
+			event_minimal_parent(parent, task);
 		size = validate_arg_size(parent->size);
 		curr = (void *)parent + size;
 		msg->common.size = 1;
@@ -578,8 +578,10 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 	parent = (struct event_execve *)&msg->pid;
 
 	if (parent->flags & EVENT_NEEDS_CWD) {
-		getcwd(parent, parent, parent->size - CWD_MAX + 1, parent->pid, 1);
-		parent->flags = parent->flags & ~EVENT_NEEDS_CWD;
+		int err = getcwd(parent, parent, parent->size - CWD_MAX + 1, parent->pid, 1);
+
+		if (!err)
+			parent->flags = parent->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
 	}
 	if (parent->flags & EVENT_NEEDS_AUID) {
 		__u32 flags = parent->flags & ~EVENT_NEEDS_AUID;
@@ -591,8 +593,10 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
 	if (curr->flags & EVENT_NEEDS_CWD) {
-		getcwd(curr, parent, parent->size + curr->size - CWD_MAX + 1, curr->pid, 1);
-		curr->flags = curr->flags & ~EVENT_NEEDS_CWD;
+		int err = getcwd(curr, parent, parent->size + curr->size - CWD_MAX + 1, curr->pid, 1);
+
+		if (!err)
+			parent->flags = parent->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
 	}
 	if (curr->flags & EVENT_NEEDS_AUID) {
 		__u32 flags = curr->flags & ~EVENT_NEEDS_AUID;
