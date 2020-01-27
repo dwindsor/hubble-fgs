@@ -117,7 +117,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 			i = TASK_PID_LOOP;
 			continue;
 		}
-		probe_read(&cpid, sizeof(cpid), &task->pid);
+		probe_read(&cpid, sizeof(cpid), &task->tgid);
 		if (cpid == pid) {
 			i = TASK_PID_LOOP;
 			continue;
@@ -424,7 +424,7 @@ __u32 event_find_parent_pid(struct task_struct *t)
 
 	if (!task)
 		return 0;
-	probe_read(&pid, sizeof(pid), &task->pid);
+	probe_read(&pid, sizeof(pid), &task->tgid);
 	return pid;
 }
 
@@ -452,7 +452,7 @@ struct msg_ipv4_tcp_connect *event_find_parent(void)
 		addr = (void *)(task);
 		addr += PARENT_PID_OFFSET;
 #else
-		addr = (void *)&(task->pid);
+		addr = (void *)&(task->tgid);
 #endif
 		probe_read(&pid, sizeof(pid), addr);
 		msg = map_lookup_elem(&execve_map, &pid);
@@ -518,7 +518,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 		addr = (void *)(task);
 		addr += PARENT_PID_OFFSET;
 #else
-		addr = (void *)&(task->pid);
+		addr = (void *)&(task->tgid);
 #endif
 		probe_read(&pid, sizeof(pid), addr);
 	}
