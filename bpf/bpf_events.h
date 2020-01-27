@@ -85,20 +85,20 @@ __u32 get_auid(void)
 }
 
 static inline __attribute__((always_inline))
-struct task_struct *get_parent(void)
+struct task_struct *get_parent(struct task_struct *t)
 {
-	struct task_struct *task = (struct task_struct *)get_current_task();
+	struct task_struct *task;
 
-	probe_read(&task, sizeof(task), &task->parent);
+	probe_read(&task, sizeof(task), &t->parent);
 	if (!task)
 		return 0;
 	return task;
 }
 
 static inline __attribute__((always_inline))
-__u32 get_parent_auid(void)
+__u32 get_parent_auid(struct task_struct *t)
 {
-	struct task_struct *task = get_parent();
+	struct task_struct *task = get_parent(t);
 
 	return __get_auid(task);
 }
@@ -122,7 +122,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 			i = TASK_PID_LOOP;
 			continue;
 		}
-		task = get_parent();
+		task = get_parent(task);
 	}
 	if (cpid != pid)
 		return 0;
@@ -417,9 +417,9 @@ int64_t event_copy_execve(struct event_execve *dst,
 }
 
 static inline __attribute__((always_inline))
-__u32 event_find_parent_pid(void)
+__u32 event_find_parent_pid(struct task_struct *t)
 {
-	struct task_struct *task = get_parent();
+	struct task_struct *task = get_parent(t);
 	__u32 pid;
 
 	if (!task)
@@ -463,13 +463,13 @@ struct msg_ipv4_tcp_connect *event_find_parent(void)
 }
 
 static inline __attribute__((always_inline))
-void event_minimal_parent(struct event_execve *event)
+void event_minimal_parent(struct event_execve *event, struct task_struct *task)
 {
 	__u32 size = offsetof(struct event_execve, args);
 
 	event->size = size;
-	event->pid = event_find_parent_pid();
-	event->auid = get_parent_auid();
+	event->pid = event_find_parent_pid(task);
+	event->auid = get_parent_auid(task);
 	event->flags = EVENT_MISS;
 	event->uid = 0;
 }
@@ -539,7 +539,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 			event_copy_execve(parent,
 					  (struct event_execve *)&parent_event->pid);
 		else
-			event_minimal_parent(parent);
+			event_minimal_parent(parent, task);
 		size = validate_arg_size(parent->size);
 		curr = (void *)parent + size;
 		msg->common.size = 1;

@@ -27,6 +27,7 @@ int event_execve(struct pt_regs *__ctx)
 #else
 	struct pt_regs *ctx = __ctx;
 #endif
+	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct msg_ipv4_tcp_connect *event, *parent_event;
 	struct event_execve *parent;
 	__u32 pid;
@@ -41,7 +42,7 @@ int event_execve(struct pt_regs *__ctx)
 		event_copy_execve(parent,
 				  (struct event_execve *)&parent_event->pid);
 	else
-		event_minimal_parent(parent);
+		event_minimal_parent(parent, task);
 
 	event_filename_builder(parent, pid, EVENT_EXECVE, &ctx->di);
 	event_args_builder(event, &ctx->si);
