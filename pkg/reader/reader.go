@@ -109,6 +109,9 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	if (flags & api.EventNoCWDSupport) != 0 {
 		return args, ""
 	}
+	if (flags & api.EventErrorCWD) != 0 {
+		return args, ""
+	}
 	if (flags & api.EventRootCWD) != 0 {
 		return args, "/"
 	}
