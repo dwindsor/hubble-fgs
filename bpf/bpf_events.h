@@ -138,7 +138,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];"		\
 	CWD_OFFSET_REG " = *(u32 *)%[offset];"			\
 	"r3 = *(u64 *)%[curr];"					\
-	"*(u64 *)(r3 + 0) = " CWD_OFFSET_REG ";"
+	"*(u32 *)(r3 + 0) = " CWD_OFFSET_REG ";"
 
 #define PROBE_CWD_READ	  	   			\
 	/* if (!dentry) { break; } */			\
@@ -188,7 +188,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"r0 -= 1;"					\
 	CWD_OFFSET_REG " += r0;"			\
 	"r3 = *(u64 *)%[curr];"				\
-	"*(u64 *)(r3 + 0) = " CWD_OFFSET_REG ";"
+	"*(u32 *)(r3 + 0) = " CWD_OFFSET_REG ";"
 
 static inline __attribute__((always_inline))
 int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
