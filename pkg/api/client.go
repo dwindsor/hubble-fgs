@@ -22,6 +22,7 @@ const (
 	MSG_OP_IPV4_TCPCONNECTRET = 2
 	MSG_OP_IPV4_BIND          = 3
 	MSG_OP_IPV4_LISTEN        = 4
+	MSG_OP_EXECVE             = 5
 
 	ARGSBUFFER     = 1024 + 16
 	SIZEOF_EXECVE  = 32
@@ -63,6 +64,7 @@ const (
 	MsgOpIPv4TCPConnectReturn
 	MsgOpIPv4Bind
 	MsgOpIPv4Listen
+	MsgOpExecve
 )
 
 func (op OpCode) String() string {
@@ -71,7 +73,8 @@ func (op OpCode) String() string {
 		"TCPConnect",
 		"TCPConnectReturn",
 		"TCPBind",
-		"TCPListen"}[op]
+		"TCPListen",
+		"Execve"}[op]
 }
 
 type MsgExec struct {

@@ -262,7 +262,11 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	r := bytes.NewReader(data)
 
 	switch op {
-	case api.MSG_OP_IPV4_TCPCONNECT, api.MSG_OP_IPV4_TCPCONNECTRET, api.MSG_OP_IPV4_BIND, api.MSG_OP_IPV4_LISTEN:
+	case api.MSG_OP_IPV4_TCPCONNECT,
+		api.MSG_OP_IPV4_TCPCONNECTRET,
+		api.MSG_OP_IPV4_BIND,
+		api.MSG_OP_IPV4_LISTEN,
+		api.MSG_OP_EXECVE:
 		m := api.MsgIPv4TcpConnect{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
