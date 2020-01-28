@@ -15,7 +15,7 @@
 package bpf
 
 const (
-	EventsMapName = "/sys/fs/bpf/tcpmon/kprobe_tcp_events"
+	EventsMapName = "/sys/fs/bpf/tcpmon/tcpmon_map"
 
 	PERF_TYPE_SOFTWARE = 1
 
