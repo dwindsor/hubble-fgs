@@ -35,12 +35,66 @@ package bpf
 
 #define NUM_PAGES 8
 
+int kprobe_map_loader(const char *prog, const char *__map, const char *__label_map)
+{
+	struct bpf_program *prog_bpf;
+	struct bpf_map *map_bpf;
+	struct bpf_object *obj;
+	int err, map_fd;
+
+	obj = bpf_object__open(prog);
+	err = libbpf_get_error(obj);
+	if (err) {
+		fprintf(stderr, "bpf_object__open_xattr: %i %s\n", err, prog);
+		return -1;
+	}
+
+	bpf_object__for_each_map(map_bpf, obj) {
+		const struct bpf_map_def *def = bpf_map__def(map_bpf);
+
+		fprintf(stderr, "map: type %u key_size %u value_size %u max %u flags %u\n",
+			def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
+	}
+
+	bpf_object__for_each_program(prog_bpf, obj) {
+		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
+		fprintf(stderr, "program: kern_version: %u\n", bpf_object__kversion(obj));
+	}
+
+	err = bpf_object__load(obj);
+	if (err < 0) {
+		char errstr[256];
+
+		libbpf_strerror(err, errstr, sizeof(errstr));
+		fprintf(stderr, "bpf_object__load: failed %i: %s\n", err, errstr);
+		return -1;
+	}
+
+	map_bpf = bpf_object__find_map_by_name(obj, __label_map);
+	err = libbpf_get_error(map_bpf);
+	if (err) {
+		fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(%s) failed", prog, __label_map);
+		return err;
+	}
+
+	if (!map_bpf) {
+		fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(%s) null\n", prog, __label_map);
+		return -1;
+	}
+
+	bpf_map__unpin(map_bpf, __map);
+	err = bpf_map__pin(map_bpf, __map);
+	if (err < 0) {
+		fprintf(stderr, "bpf_map_pin: failed obj(%s) map(%s) %i\n", prog, __label_map, err);
+		return err;
+	}
+	return bpf_map__fd(map_bpf);
+}
+
 int kprobe_loader(const char *prog,
 		  const char *attach,
 		  const char *label,
 	  	  const char *__prog,
-	  	  const char *__map,
-	  	  const char *__label_map,
 		  const bool retprobe,
 	  	  const int execve_fd,
 	  	  const int tcp_events_fd) {
@@ -123,28 +177,6 @@ int kprobe_loader(const char *prog,
 
 	bpf_program__unpin(prog_bpf, __prog);
 
-	if (strcmp(__map, "") != 0) {
-		map_bpf = bpf_object__find_map_by_name(obj, __label_map);
-		err = libbpf_get_error(map_bpf);
-		if (err) {
-			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(%s) failed", prog, __label_map);
-			return -1;
-		}
-
-		if (!map_bpf) {
-			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(%s) null\n", prog, __label_map);
-			return -1;
-		}
-
-		bpf_map__unpin(map_bpf, __map);
-		err = bpf_map__pin(map_bpf, __map);
-		if (err < 0) {
-			fprintf(stderr, "bpf_map_pin: failed obj(%s) map(%s) %i\n", prog, __label_map, err);
-			return -1;
-		}
-		map_fd = bpf_map__fd(map_bpf);
-	}
-
 	prog_attach = bpf_program__attach_kprobe(prog_bpf, retprobe, attach);
 	err = libbpf_get_error(prog_attach);
 	if (err) {
@@ -166,17 +198,28 @@ import (
 	"fmt"
 )
 
-func LoadKprobe(object, attach, __label, __prog, __map, __map_label string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+func LoadAndPinMaps(__prog, __map, __map_label string) (int, error) {
+	p := C.CString(__prog)
+	m := C.CString(__map)
+	ml := C.CString(__map_label)
+
+	fd := C.kprobe_map_loader(p, m, ml)
+	fdInt := int(fd)
+	if fdInt < 0 {
+		return 0, fmt.Errorf("Unalbe to pin map: %d (%s %s %s)\n", fdInt, p, m, ml)
+	}
+	return fdInt, nil
+}
+
+func LoadKprobeProgram(object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
 	o := C.CString(object)
 	a := C.CString(attach)
 	l := C.CString(__label)
 	p := C.CString(__prog)
-	m := C.CString(__map)
-	ml := C.CString(__map_label)
 	ret := C.bool(retprobe)
 	fd := C.int(execve_fd)
 	tcp := C.int(tcp_fd)
-	loader_fd := C.kprobe_loader(o, a, l, p, m, ml, ret, fd, tcp)
+	loader_fd := C.kprobe_loader(o, a, l, p, ret, fd, tcp)
 	if int(loader_fd) < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loader_fd, object), 0
 	}

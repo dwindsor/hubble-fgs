@@ -54,8 +54,6 @@ type bpfLoad struct {
 	observer__attach     string
 	observer__label      string
 	observer__prog       string
-	observer__map        string
-	observer__map_label  string
 
 	retProbe   bool
 	errorFatal bool
@@ -68,14 +66,15 @@ var (
 
 	ProcFS = "/proc/"
 
+	BPFMaps = []string{"execve_map", "tcpmon_map"}
+
 	ObserverExecve = bpfLoad{
 		"",
 		"__x64_sys_execve",
 		"sys_execve",
 		"kprobe/sys_execve",
 		"kprobe_execve",
-		"kprobe_execve_map",
-		"execve_map",
+
 		false,
 		true,
 	}
@@ -86,8 +85,7 @@ var (
 		"sys_execveat",
 		"kprobe/sys_execveat",
 		"kprobe_execveat",
-		"kprobe_execve_map",
-		"execve_map",
+
 		false,
 		true,
 	}
@@ -98,8 +96,7 @@ var (
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
-		"kprobe_execve_map",
-		"execve_map",
+
 		false,
 		true,
 	}
@@ -110,8 +107,7 @@ var (
 		"tcp_connect",
 		"kprobe/tcp_connect",
 		"kprobe_tcp_connect",
-		"kprobe_tcp_events",
-		"tcpmon_map",
+
 		false,
 		true,
 	}
@@ -122,8 +118,7 @@ var (
 		"sys_connect",
 		"kretprobe/sys_connect",
 		"kretprobe_sys_connect",
-		ObserverTCPConnect.observer__map,
-		ObserverTCPConnect.observer__map_label,
+
 		true,
 		true,
 	}
@@ -134,8 +129,7 @@ var (
 		"inet_bind",
 		"kprobe/sys_bind",
 		"kprobe_sys_bind",
-		ObserverTCPConnect.observer__map,
-		ObserverTCPConnect.observer__map_label,
+
 		false,
 		true,
 	}
@@ -146,8 +140,6 @@ var (
 		"sys_listen",
 		"kprobe/sys_listen",
 		"kprobe_sys_listen",
-		ObserverTCPConnect.observer__map,
-		ObserverTCPConnect.observer__map_label,
 		false,
 		true,
 	}
@@ -301,48 +293,64 @@ func isCtxDone(ctx context.Context) bool {
 	}
 }
 
-func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Context) (int, error) {
+func (k *ObserverKprobe) observerLoadMaps(program string, stopCtx context.Context) error {
+
+	for _, m := range BPFMaps {
+		pin := k.bpfDir + m
+		fd, err := bpf.LoadAndPinMaps(program, pin, m)
+		fmt.Printf("(%d, %s): LoadAndPinMaps(%s, %s, %s)\n", fd, err, program, pin, m)
+
+		if err != nil {
+			return fmt.Errorf("failed kprobe load map (%s): %s\n", fd, err)
+		}
+		if m == "execve_map" {
+			k.execve_fd = fd
+		} else if m == "tcpmon_map" {
+			k.tcp_events_fd = fd
+		}
+	}
+	return nil
+}
+
+func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Context) error {
 	fmt.Printf("prog %s execve_fd %d tcp events fd %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd)
-	err, execve_fd := bpf.LoadKprobe(
+	err, _ := bpf.LoadKprobeProgram(
 		load.Observer__program,
 		load.observer__x64_attach,
 		load.observer__label,
 		k.bpfDir+load.observer__prog,
-		k.bpfDir+load.observer__map,
-		load.observer__map_label, load.retProbe, k.execve_fd, k.tcp_events_fd)
+		load.retProbe, k.execve_fd, k.tcp_events_fd)
 	if err != nil {
 		/* If we fail attach with __x64_sys_execve variant try again with
 		 * sys_execve variant.
 		 */
-		err, execve_fd = bpf.LoadKprobe(
+		err, _ = bpf.LoadKprobeProgram(
 			load.Observer__program,
 			load.observer__attach,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
-			k.bpfDir+load.observer__map,
-			load.observer__map_label, load.retProbe, k.execve_fd, k.tcp_events_fd)
+			load.retProbe, k.execve_fd, k.tcp_events_fd)
 		if err != nil && load.errorFatal {
-			return 0, fmt.Errorf("failed kprobe %s LoadKprobe: %s\n", load.Observer__program, err)
+			return fmt.Errorf("failed kprobe %s LoadKprobeProgram: %s\n", load.Observer__program, err)
 		}
 	}
-	return execve_fd, nil
+	return nil
 }
 
 func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
-	k.tcp_events_fd = 0
-	k.execve_fd = 0
-	execve_fd, err := k.observerLoadInstance(ObserverExecve, stopCtx)
-	if err != nil {
+	/* Assumption observer__program execve contains all maps */
+	if err := k.observerLoadMaps(ObserverExecve.Observer__program, stopCtx); err != nil {
 		return err
 	}
 
-	k.execve_fd = execve_fd
-
-	if _, err := k.observerLoadInstance(ObserverExecveat, stopCtx); err != nil {
+	if err := k.observerLoadInstance(ObserverExecve, stopCtx); err != nil {
+		return err
+	}
+	if err := k.observerLoadInstance(ObserverExecveat, stopCtx); err != nil {
 		return err
 	}
 
-	if _, err := k.observerLoadInstance(ObserverFork, stopCtx); err != nil {
+	if err := k.observerLoadInstance(ObserverFork, stopCtx); err != nil {
 		return err
 	}
 
@@ -350,21 +358,17 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 }
 
 func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
-	tcp_events, err := k.observerLoadInstance(ObserverTCPConnect, stopCtx)
-	if err != nil {
+	if err := k.observerLoadInstance(ObserverTCPConnect, stopCtx); err != nil {
 		return err
 	}
-	k.tcp_events_fd = tcp_events
-
-	if _, err := k.observerLoadInstance(ObserverTCPConnectRet, stopCtx); err != nil {
+	if err := k.observerLoadInstance(ObserverTCPConnectRet, stopCtx); err != nil {
 		return err
 	}
-
-	if _, err := k.observerLoadInstance(ObserverBind, stopCtx); err != nil {
+	if err := k.observerLoadInstance(ObserverBind, stopCtx); err != nil {
 		return err
 	}
 
-	if _, err := k.observerLoadInstance(ObserverListen, stopCtx); err != nil {
+	if err := k.observerLoadInstance(ObserverListen, stopCtx); err != nil {
 		return err
 	}
 
@@ -498,7 +502,7 @@ func getClkTck() (uint64, error) {
 }
 
 func writeExecveMap(procs []ObserverProcs) {
-	m, err := bpf.OpenMap("/sys/fs/bpf/tcpmon/kprobe_execve_map")
+	m, err := bpf.OpenMap("/sys/fs/bpf/tcpmon/execve_map")
 	if err != nil {
 		panic(err)
 	}
@@ -741,12 +745,13 @@ func (k *ObserverKprobe) Start() error {
 
 func (k *ObserverKprobe) deleteProgs() {
 	os.Remove(k.bpfDir + ObserverExecve.observer__prog)
-	os.Remove(k.bpfDir + ObserverExecveat.observer__map)
 	os.Remove(k.bpfDir + ObserverExecveat.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnect.observer__prog)
-	os.Remove(k.bpfDir + ObserverTCPConnect.observer__map)
 	os.Remove(k.bpfDir + ObserverBind.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnectRet.observer__prog)
+	for _, m := range BPFMaps {
+		os.Remove(k.bpfDir + m)
+	}
 	os.Remove(k.bpfDir)
 }
 
