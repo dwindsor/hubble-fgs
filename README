@@ -10,7 +10,10 @@ instrument for astrometric science
 Docker
 ----------
 
-To run docker image,
+To run docker image with custom BTF link btf in /var/lib/hubble-fgs/btf as shown
+below. If BTF link is omitted hubble-fgs will attempt to search for it in the
+list of known kernels using the running kernels `uname -r`. If it is still not
+found an error will be reported.
 
 # make image
-# docker run --name hubble-fgs --privileged -v /proc/:/procRoot -ti docker.pkg.github.com/covalentio/hubble-fgs/hubble-fgs:1.0
+# docker run --name hubble-fgs --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti docker.pkg.github.com/covalentio/hubble-fgs/hubble-fgs:1.0
