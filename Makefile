@@ -7,10 +7,10 @@ DOCKER_IMAGE_TAG ?= latest
 all: headers hubble-fgs hubble-fgs-printer
 
 headers:
-	cd ./bpf && make copy && make && cd ../
+	cd ./bpf && make && cd ../
 
 hubble-fgs:
-	make -C ./bpf clean && make -C ./bpf copy && make -C ./bpf
+	make -C ./bpf clean && make -C ./bpf
 	$(GO) build ./cmd/hubble-fgs/
 
 hubble-fgs-image:
