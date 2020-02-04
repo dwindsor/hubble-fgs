@@ -132,7 +132,7 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 }
 
 func GetSport(sport uint16, op uint8) uint16 {
-	if op == api.MSG_OP_IPV4_BIND {
+	if op == api.MSG_OP_IPV4_BIND || op == api.MSG_OP_IPV4_LISTEN {
 		return SwapByte(sport)
 	}
 	return sport
