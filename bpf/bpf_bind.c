@@ -37,14 +37,9 @@ int event_bind(struct pt_regs *ctx)
 
 	probe_read(&in_addr, sizeof(in_addr), &ctx->si);
 	if (in_addr) {
-		__u8 family = 0;
-
-		probe_read(&family, sizeof(family), &in_addr->sin_family);
-		if (family == AF_INET || family == AF_UNSPEC) {
-			probe_read(&msg->tuple.proto, sizeof(msg->tuple.proto), &(in_addr->sin_family));
-			probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), &(in_addr->sin_addr.s_addr));
-			probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), &(in_addr->sin_port));
-		}
+		probe_read(&msg->tuple.proto, sizeof(msg->tuple.proto), &(in_addr->sin_family));
+		probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), &(in_addr->sin_addr.s_addr));
+		probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), &(in_addr->sin_port));
 	}
 	event_get_task_info(msg, MSG_OP_IPV4_BIND, walker);
 	size = validate_msg_size(msg->common.size);
