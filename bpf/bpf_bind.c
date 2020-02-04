@@ -27,9 +27,6 @@ int event_bind(struct pt_regs *ctx)
 	struct sockaddr_in *in_addr;
 	bool walker = 0;
 
-#define AF_UNSPEC 0
-#define AF_INET 2
-
 	msg = event_find_curr(&ppid, &msg_ipv4_tcp_map, &walker);
 	if (!msg)
 		return 0;
