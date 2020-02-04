@@ -15,6 +15,7 @@ for d in `find ${BPF_DIR}/include/ -type d | awk '{if(NR>1)print}'`; do
 	cp ${BPF_DIR}/bpf_execveat.o ${BPF_DIR}/bins/bpf_execveat_${dir}.o
 	cp ${BPF_DIR}/bpf_fork.o ${BPF_DIR}/bins/bpf_fork_${dir}.o
 	cp ${BPF_DIR}/bpf_bind.o ${BPF_DIR}/bins/bpf_bind_${dir}.o
+	cp ${BPF_DIR}/bpf_get_port.o ${BPF_DIR}/bins/bpf_get_port_${dir}.o
 	cp ${BPF_DIR}/bpf_listen.o ${BPF_DIR}/bins/bpf_listen_${dir}.o
 	echo "cp ${BPF_DIR}/bpf_execve.o ${BPF_DIR}/bins/bpf_execve_${dir}.o"
 done
