@@ -29,7 +29,10 @@ import (
 	"go.uber.org/zap"
 )
 
-func GetIP(i uint32) net.IP {
+func GetIP(i uint32, op uint8) net.IP {
+	if op == api.MSG_OP_IPV4_BIND || op == api.MSG_OP_IPV4_LISTEN {
+		return net.IPv4zero
+	}
 	ip := make(net.IP, 4)
 	binary.LittleEndian.PutUint32(ip, i)
 	return ip
@@ -135,7 +138,14 @@ func GetSport(sport uint16, op uint8) uint16 {
 	if op == api.MSG_OP_IPV4_BIND {
 		return SwapByte(sport)
 	}
+
 	return sport
+}
+func GetDport(dport uint16, op uint8) uint16 {
+	if op == api.MSG_OP_IPV4_BIND || op == api.MSG_OP_IPV4_LISTEN {
+		return 0
+	}
+	return SwapByte(dport)
 }
 
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
@@ -150,8 +160,10 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 	parentArgs, parentCWD := ArgsDecoder(msg.Pid.Parent.Args, msg.Pid.Parent.Flags)
 	childArgs, childCWD := ArgsDecoder(msg.Pid.Curr.Args, msg.Pid.Curr.Flags)
 
+	op := msg.Common.Op
+
 	log.Debug("KprobeEvent",
-		zap.String("op", api.OpCode(msg.Common.Op).String()),
+		zap.String("op", api.OpCode(op).String()),
 		zap.Uint64("connect-ktime", msg.Common.Ktime),
 		zap.Time("connect-walltime", eventTime),
 		zap.Uint32("parent-size", msg.Pid.Parent.Size),
@@ -173,10 +185,10 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.String("cwd", childCWD),
 		zap.String("args", childArgs),
 		zap.Uint8("proto", msg.Tuple.Proto),
-		zap.String("saddr", GetIP(msg.Tuple.SAddr).String()),
-		zap.Uint16("sport", GetSport(msg.Tuple.SPort, msg.Common.Op)),
-		zap.String("daddr", GetIP(msg.Tuple.DAddr).String()),
-		zap.Uint16("dport", SwapByte(msg.Tuple.DPort)),
+		zap.String("saddr", GetIP(msg.Tuple.SAddr, op).String()),
+		zap.Uint16("sport", GetSport(msg.Tuple.SPort, op)),
+		zap.String("daddr", GetIP(msg.Tuple.DAddr, op).String()),
+		zap.Uint16("dport", GetDport(msg.Tuple.DPort, op)),
 		zap.String("ContainerID", msg.Kube.Docker),
 		zap.String("return", unix.ErrnoName(e)),
 	)

@@ -22,14 +22,10 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/sys_bind")), used))
 int event_bind(struct pt_regs *ctx)
 {
+	__u32 ppid = 0, pid = (get_current_pid_tgid() >> 32);
 	struct msg_ipv4_tcp_connect *msg = 0;
 	struct sockaddr_in *in_addr;
 	bool walker = 0;
-	__u32 ppid = 0;
-	uint64_t size;
-
-#define AF_UNSPEC 0
-#define AF_INET 2
 
 	msg = event_find_curr(&ppid, &msg_ipv4_tcp_map, &walker);
 	if (!msg)
@@ -41,8 +37,7 @@ int event_bind(struct pt_regs *ctx)
 		probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), &(in_addr->sin_addr.s_addr));
 		probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), &(in_addr->sin_port));
 	}
-	event_get_task_info(msg, MSG_OP_IPV4_BIND, walker);
-	size = validate_msg_size(msg->common.size);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, size);
+	msg->common.size = 1; // stand-in until we complete calculation from listen
+	map_update_hash(msg, pid);
 	return 1;
 }

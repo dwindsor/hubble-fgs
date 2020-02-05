@@ -134,6 +134,17 @@ var (
 		true,
 	}
 
+	ObserverGetPort = bpfLoad{
+		"",
+		"inet_bind_hash",
+		"inet_bind_hash",
+		"kprobe/inet_bind_hash",
+		"kprobe_inet_bind_hash",
+
+		false,
+		true,
+	}
+
 	ObserverListen = bpfLoad{
 		"",
 		"__x64_sys_listen",
@@ -365,6 +376,10 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 		return err
 	}
 	if err := k.observerLoadInstance(ObserverBind, stopCtx); err != nil {
+		return err
+	}
+
+	if err := k.observerLoadInstance(ObserverGetPort, stopCtx); err != nil {
 		return err
 	}
 
@@ -748,6 +763,7 @@ func (k *ObserverKprobe) deleteProgs() {
 	os.Remove(k.bpfDir + ObserverExecveat.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnect.observer__prog)
 	os.Remove(k.bpfDir + ObserverBind.observer__prog)
+	os.Remove(k.bpfDir + ObserverGetPort.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnectRet.observer__prog)
 	for _, m := range BPFMaps {
 		os.Remove(k.bpfDir + m)
