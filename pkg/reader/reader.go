@@ -30,7 +30,7 @@ import (
 )
 
 func GetIP(i uint32, op uint8) net.IP {
-	if op == api.MSG_OP_IPV4_BIND || op == api.MSG_OP_IPV4_LISTEN {
+	if op == api.MSG_OP_IPV4_BIND {
 		return net.IPv4zero
 	}
 	ip := make(net.IP, 4)
@@ -134,11 +134,7 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	return args, cwd
 }
 
-func GetSport(sport uint16, op uint8) uint16 {
-	if op == api.MSG_OP_IPV4_BIND {
-		return SwapByte(sport)
-	}
-
+func GetSport(sport uint16) uint16 {
 	return sport
 }
 func GetDport(dport uint16, op uint8) uint16 {
@@ -186,7 +182,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 		zap.String("args", childArgs),
 		zap.Uint8("proto", msg.Tuple.Proto),
 		zap.String("saddr", GetIP(msg.Tuple.SAddr, op).String()),
-		zap.Uint16("sport", GetSport(msg.Tuple.SPort, op)),
+		zap.Uint16("sport", GetSport(msg.Tuple.SPort)),
 		zap.String("daddr", GetIP(msg.Tuple.DAddr, op).String()),
 		zap.Uint16("dport", GetDport(msg.Tuple.DPort, op)),
 		zap.String("ContainerID", msg.Kube.Docker),
