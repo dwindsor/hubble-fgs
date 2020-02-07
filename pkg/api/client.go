@@ -147,3 +147,5 @@ type MsgIPv4TcpConnectUnix struct {
 	Return int64
 	Pid    MsgPidUnix
 }
+
+var MsgUnixSize uint32 = 640
