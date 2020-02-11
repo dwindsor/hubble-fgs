@@ -64,7 +64,8 @@ var (
 	ErrorCntr = 0
 	RecvCntr  = 0
 
-	ProcFS = "/proc/"
+	ProcFS       = "/proc/"
+	EnableExecve = false
 
 	BPFMaps = []string{"execve_map", "tcpmon_map"}
 
@@ -176,6 +177,9 @@ func (k *ObserverKprobe) AddListener(conn net.Conn) {
 	channel.encoder = gob.NewEncoder(conn)
 	channel.conn = conn
 	k.listeners = append(k.listeners, channel)
+	if EnableExecve {
+		k.getRunningProcs(false, true)
+	}
 }
 
 func (k *ObserverKprobe) RemoveListener(conn net.Conn) {
@@ -288,6 +292,90 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 
 		k.observerListeners(msgUnix)
+	}
+}
+
+func getCWD(pid uint32) (string, uint32, error) {
+	flags := uint32(0)
+	pidstr := fmt.Sprint(pid)
+	cwd, err := filepath.EvalSymlinks(ProcFS + pidstr + "/cwd")
+	if err != nil {
+		return "", flags, err
+	}
+
+	if cwd == "/" {
+		cwd = " "
+		flags |= api.EventRootCWD
+	}
+	return cwd, flags, nil
+}
+
+func procsFilename(args []byte) (string, string) {
+	cmdArgs := bytes.Split(args, []byte{0x00})
+	filename := string(cmdArgs[0])
+	cmds := string(bytes.Join(cmdArgs[1:], []byte{0x00}))
+	return cmds, filename
+}
+
+func procsDockerID(pid uint32) string {
+	pidstr := fmt.Sprint(pid)
+	cgroups, err := ioutil.ReadFile(ProcFS + pidstr + "/cgroup")
+	if err != nil {
+		return ""
+	}
+	docker := strings.SplitAfter(string(cgroups), "docker/")
+	if len(docker) == 1 { // no docker cgroups
+		return ""
+	}
+	return strings.SplitAfter(docker[1], "\n")[0][0:12]
+}
+
+func (k *ObserverKprobe) pushExecveEvents(procs []ObserverProcs) {
+	for _, p := range procs {
+		pargs, pfilename := procsFilename(p.pargs)
+		pcwd, pflags, err := getCWD(p.ppid)
+		if err == nil {
+			pargs = pargs + " " + pcwd
+		}
+
+		args, filename := procsFilename(p.args)
+		cwd, flags, err := getCWD(p.pid)
+		if err == nil {
+			args = args + " " + cwd
+		}
+
+		m := api.MsgIPv4TcpConnectUnix{}
+		m.Common.Op = api.MSG_OP_EXECVE
+		m.Common.Ktime = 0
+		m.Common.Size = api.MsgUnixSize + p.psize + p.size
+
+		m.Kube.NetNS = 0
+		m.Kube.Cid = 0
+		m.Kube.Cgrpid = 0
+		m.Kube.Docker = procsDockerID(p.pid)
+
+		m.Pid.Parent.Size = p.psize
+		m.Pid.Parent.PID = p.ppid
+		m.Pid.Parent.UID = p.puid
+		m.Pid.Parent.AUID = p.pauid
+		m.Pid.Parent.Flags = p.pflags | pflags
+		m.Pid.Parent.Ktime = p.pktime
+		m.Pid.Parent.Filename = pfilename
+		m.Pid.Parent.Args = pargs
+
+		m.Pid.Curr.Size = p.size
+		m.Pid.Curr.PID = p.pid
+		m.Pid.Curr.UID = p.uid
+		m.Pid.Curr.AUID = p.auid
+		m.Pid.Curr.Flags = p.flags | flags
+		m.Pid.Curr.Ktime = p.ktime
+		m.Pid.Curr.Filename = filename
+		m.Pid.Curr.Args = args
+
+		if k.prettyPrinter {
+			reader.ObserverIPV4TCPConnectPrinter(&m, zlog)
+		}
+		k.observerListeners(&m)
 	}
 }
 
@@ -610,7 +698,7 @@ func writeExecveMap(procs []ObserverProcs) {
 	}
 }
 
-func getRunningProcs() []ObserverProcs {
+func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 	var procs []ObserverProcs
 	procFS, _ := ioutil.ReadDir(ProcFS)
 
@@ -729,12 +817,17 @@ func getRunningProcs() []ObserverProcs {
 		procs = append(procs, p)
 	}
 
-	writeExecveMap(procs)
+	if write {
+		writeExecveMap(procs)
+	}
+	if push {
+		k.pushExecveEvents(procs)
+	}
 	return procs
 }
 
 func (k *ObserverKprobe) populateExecve(ctx context.Context) {
-	getRunningProcs()
+	k.getRunningProcs(true, false)
 }
 
 type ObserverChannel struct {
