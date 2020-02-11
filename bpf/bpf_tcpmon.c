@@ -23,11 +23,11 @@ __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_connect *msg = 0;
+	__u32 ppid = 0, pid = 0;
 	struct sock *skp;
 	bool walker = 0;
-	__u32 ppid = 0;
-	uint64_t size;
 
+	pid = (get_current_pid_tgid() >> 32);
 	msg = event_find_curr(&ppid, &msg_ipv4_tcp_map, &walker);
 	if (!msg)
 		return 0;
@@ -40,7 +40,6 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), &(skp->__sk_common.skc_num));
 
 	event_get_task_info(msg, MSG_OP_IPV4_TCPCONNECT, walker);
-	size = validate_msg_size(msg->common.size);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg, size);
+	map_update_hash(msg, pid);
 	return 1;
 }
