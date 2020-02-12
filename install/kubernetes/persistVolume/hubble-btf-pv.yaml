@@ -1,0 +1,15 @@
+kind: PersistentVolume
+apiVersion: v1
+metadata:
+  name: hubble-fgs-btf
+  labels:
+    type: local
+  namespace: isovalent
+spec:
+  storageClassName: local
+  capacity:
+    storage: 1Gi
+  accessModes:
+    - ReadOnlyMany
+  hostPath:
+    path: "/var/lib/hubble-fgs/btf/"

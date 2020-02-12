@@ -4,21 +4,23 @@ BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
 
-all: headers hubble-fgs hubble-fgs-printer
+all: headers hubble-bpf hubble-fgs hubble-fgs-printer
 
 headers:
 	cd ./bpf && make && cd ../
 
+hubble-bpf:
+	make -C ./bpf
+
 hubble-fgs:
-	make -C ./bpf clean && make -C ./bpf
 	$(GO) build ./cmd/hubble-fgs/
+
+hubble-fgs-printer:
+	$(GO) build ./cmd/hubble-fgs-printer/
 
 hubble-fgs-image:
 	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs/
 	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs-printer/
-
-hubble-fgs-printer:
-	$(GO) build ./cmd/hubble-fgs-printer/
 
 install:
 	groupadd -f hubble
@@ -36,7 +38,6 @@ lint:
 	golint -set_exit_status $$(go list ./...)
 
 image:
-	make -C ./bpf clean && make -C ./bpf
 	$(CONTAINER_ENGINE) build -t "covalentio/hubble-fgs:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs:$(DOCKER_IMAGE_TAG)"
