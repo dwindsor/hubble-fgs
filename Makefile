@@ -36,7 +36,7 @@ lint:
 	golint -set_exit_status $$(go list ./...)
 
 image:
-	cd ./bpf && ./init.sh && cd ../
+	make -C ./bpf clean && make -C ./bpf
 	$(CONTAINER_ENGINE) build -t "covalentio/hubble-fgs:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs:$(DOCKER_IMAGE_TAG)"
