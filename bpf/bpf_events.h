@@ -1,6 +1,10 @@
 #ifndef _BPF_EVENTS_H
 #define _BPF_EVENTS_H
 
+#define _(P) (__builtin_preserve_access_index(P))
+
+#include "bpf_core_read.h"
+
 static inline void compiler_barrier(void) {
 	asm volatile("" ::: "memory");
 }
@@ -54,24 +58,16 @@ __u32 __get_auid(struct task_struct *task)
 	if (!task)
 		return auid;
 
-#ifdef AUDIT_STRUCT
-	struct audit_task_info *audit;
+	if (bpf_core_field_exists(task->loginuid)) {
+		probe_read(&auid, sizeof(auid), _(&task->loginuid.val));
+	} else {
+		struct audit_task_info *audit;
 
-	probe_read(&audit, sizeof(audit), &task->audit);
-	if (audit) {
-		probe_read(&auid, sizeof(auid), &audit->loginuid);
+		probe_read(&audit, sizeof(audit), _(&task->audit));
+		if (audit) {
+			probe_read(&auid, sizeof(auid), _(&audit->loginuid));
+		}
 	}
-#else // AUDIT_STRUCT
-	char *addr;
-
-#ifdef AUID_OFFSET
-	addr = (void *)task;
-	addr += AUID_OFFSET;
-#else
-	addr = (void *)&(task->loginuid.val);
-#endif // AUID_OFFSET
-	probe_read(&auid, sizeof(auid), addr);
-#endif // AUDIT_STRUCT
 
 	return auid;
 }
