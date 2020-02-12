@@ -54,6 +54,7 @@ func init() {
 	flags := cmd.PersistentFlags()
 
 	flags.BoolP("debug", "d", false, "Enable debug messages")
+	flags.StringVar(&observer.ObserverBTF, "btf", "", "Location of btf")
 	flags.StringVar(&observer.ObserverExecve.Observer__program,
 		"bpf-execve", "./bpf/bpf_execve.o", "Location of bpf_execve.o program")
 	flags.StringVar(&observer.ObserverExecveat.Observer__program,

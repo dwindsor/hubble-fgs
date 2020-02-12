@@ -35,8 +35,9 @@ package bpf
 
 #define NUM_PAGES 8
 
-int kprobe_map_loader(const char *prog, const char *__map, const char *__label_map)
+int kprobe_map_loader(const char *btf, const char *prog, const char *__map, const char *__label_map)
 {
+	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
 	struct bpf_map *map_bpf;
 	struct bpf_object *obj;
@@ -61,7 +62,9 @@ int kprobe_map_loader(const char *prog, const char *__map, const char *__label_m
 		fprintf(stderr, "program: kern_version: %u\n", bpf_object__kversion(obj));
 	}
 
-	err = bpf_object__load(obj);
+	attr.obj = obj;
+	attr.target_btf_path = btf;
+	err = bpf_object__load_xattr(&attr);
 	if (err < 0) {
 		char errstr[256];
 
@@ -91,13 +94,15 @@ int kprobe_map_loader(const char *prog, const char *__map, const char *__label_m
 	return bpf_map__fd(map_bpf);
 }
 
-int kprobe_loader(const char *prog,
+int kprobe_loader(const char *btf,
+		  const char *prog,
 		  const char *attach,
 		  const char *label,
 	  	  const char *__prog,
 		  const bool retprobe,
 	  	  const int execve_fd,
 	  	  const int tcp_events_fd) {
+	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
 	struct bpf_object *obj, *execve_obj;
@@ -155,7 +160,9 @@ int kprobe_loader(const char *prog,
 		fprintf(stderr, "tcp_events_fd map reused\n");
 	}
 
-	err = bpf_object__load(obj);
+	attr.obj = obj;
+	attr.target_btf_path = btf;
+	err = bpf_object__load_xattr(&attr);
 	if (err < 0) {
 		char errstr[256];
 
@@ -198,12 +205,13 @@ import (
 	"fmt"
 )
 
-func LoadAndPinMaps(__prog, __map, __map_label string) (int, error) {
+func LoadAndPinMaps(__btf, __prog, __map, __map_label string) (int, error) {
+	btf := C.CString(__btf)
 	p := C.CString(__prog)
 	m := C.CString(__map)
 	ml := C.CString(__map_label)
 
-	fd := C.kprobe_map_loader(p, m, ml)
+	fd := C.kprobe_map_loader(btf, p, m, ml)
 	fdInt := int(fd)
 	if fdInt < 0 {
 		return 0, fmt.Errorf("Unalbe to pin map: %d (%s %s %s)\n", fdInt, p, m, ml)
@@ -211,7 +219,8 @@ func LoadAndPinMaps(__prog, __map, __map_label string) (int, error) {
 	return fdInt, nil
 }
 
-func LoadKprobeProgram(object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+func LoadKprobeProgram(__btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+	btf := C.CString(__btf)
 	o := C.CString(object)
 	a := C.CString(attach)
 	l := C.CString(__label)
@@ -219,9 +228,10 @@ func LoadKprobeProgram(object, attach, __label, __prog string, retprobe bool, ex
 	ret := C.bool(retprobe)
 	fd := C.int(execve_fd)
 	tcp := C.int(tcp_fd)
-	loader_fd := C.kprobe_loader(o, a, l, p, ret, fd, tcp)
-	if int(loader_fd) < 0 {
-		return fmt.Errorf("Unable to kprobe load: %d %s", loader_fd, object), 0
+	loader_fd := C.kprobe_loader(btf, o, a, l, p, ret, fd, tcp)
+	loaderInt := int(loader_fd)
+	if loaderInt < 0 {
+		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
 	}
-	return nil, int(loader_fd)
+	return nil, loaderInt
 }
