@@ -35,7 +35,7 @@ package bpf
 
 #define NUM_PAGES 8
 
-int kprobe_map_loader(const char *btf, const char *prog, const char *__map, const char *__label_map)
+int kprobe_map_loader(int version, const char *btf, const char *prog, const char *__map, const char *__label_map)
 {
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
@@ -57,13 +57,9 @@ int kprobe_map_loader(const char *btf, const char *prog, const char *__map, cons
 			def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
 	}
 
-	bpf_object__for_each_program(prog_bpf, obj) {
-		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
-		fprintf(stderr, "program: kern_version: %u\n", bpf_object__kversion(obj));
-	}
-
 	attr.obj = obj;
 	attr.target_btf_path = btf;
+	attr.kern_version = version;
 	err = bpf_object__load_xattr(&attr);
 	if (err < 0) {
 		char errstr[256];
@@ -71,6 +67,11 @@ int kprobe_map_loader(const char *btf, const char *prog, const char *__map, cons
 		libbpf_strerror(err, errstr, sizeof(errstr));
 		fprintf(stderr, "bpf_object__load: failed %i: %s\n", err, errstr);
 		return -1;
+	}
+
+	bpf_object__for_each_program(prog_bpf, obj) {
+		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
+		fprintf(stderr, "program: kern_version: %u\n", bpf_object__kversion(obj));
 	}
 
 	map_bpf = bpf_object__find_map_by_name(obj, __label_map);
@@ -94,7 +95,8 @@ int kprobe_map_loader(const char *btf, const char *prog, const char *__map, cons
 	return bpf_map__fd(map_bpf);
 }
 
-int kprobe_loader(const char *btf,
+int kprobe_loader(const int version,
+		  const char *btf,
 		  const char *prog,
 		  const char *attach,
 		  const char *label,
@@ -124,6 +126,7 @@ int kprobe_loader(const char *btf,
 	}
 
 	bpf_object__for_each_program(prog_bpf, obj) {
+
 		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
 		fprintf(stderr, "program: kern_version: %u\n", bpf_object__kversion(obj));
 	}
@@ -162,6 +165,7 @@ int kprobe_loader(const char *btf,
 
 	attr.obj = obj;
 	attr.target_btf_path = btf;
+	attr.kern_version = version;
 	err = bpf_object__load_xattr(&attr);
 	if (err < 0) {
 		char errstr[256];
@@ -205,13 +209,14 @@ import (
 	"fmt"
 )
 
-func LoadAndPinMaps(__btf, __prog, __map, __map_label string) (int, error) {
+func LoadAndPinMaps(__version int, __btf, __prog, __map, __map_label string) (int, error) {
+	version := C.int(__version)
 	btf := C.CString(__btf)
 	p := C.CString(__prog)
 	m := C.CString(__map)
 	ml := C.CString(__map_label)
 
-	fd := C.kprobe_map_loader(btf, p, m, ml)
+	fd := C.kprobe_map_loader(version, btf, p, m, ml)
 	fdInt := int(fd)
 	if fdInt < 0 {
 		return 0, fmt.Errorf("Unalbe to pin map: %d (%s %s %s)\n", fdInt, p, m, ml)
@@ -219,7 +224,8 @@ func LoadAndPinMaps(__btf, __prog, __map, __map_label string) (int, error) {
 	return fdInt, nil
 }
 
-func LoadKprobeProgram(__btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+func LoadKprobeProgram(__version int, __btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+	version := C.int(__version)
 	btf := C.CString(__btf)
 	o := C.CString(object)
 	a := C.CString(attach)
@@ -228,7 +234,7 @@ func LoadKprobeProgram(__btf, object, attach, __label, __prog string, retprobe b
 	ret := C.bool(retprobe)
 	fd := C.int(execve_fd)
 	tcp := C.int(tcp_fd)
-	loader_fd := C.kprobe_loader(btf, o, a, l, p, ret, fd, tcp)
+	loader_fd := C.kprobe_loader(version, btf, o, a, l, p, ret, fd, tcp)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0

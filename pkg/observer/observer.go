@@ -65,8 +65,9 @@ var (
 	ErrorCntr = 0
 	RecvCntr  = 0
 
-	ProcFS       = "/proc/"
-	EnableExecve = false
+	ProcFS        = "/proc/"
+	KernelVersion = ""
+	EnableExecve  = false
 
 	ObserverBTF string
 	BPFMaps     = []string{"execve_map", "tcpmon_map"}
@@ -399,10 +400,21 @@ func isCtxDone(ctx context.Context) bool {
 }
 
 func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.Context) error {
+	var version int
+
+	if KernelVersion != "" {
+		__version, err := strconv.ParseInt(KernelVersion, 10, 32)
+		if err != nil {
+			return fmt.Errorf("failed kprobe %s invalid kernel version specified: %s\n", program, KernelVersion)
+		}
+		version = int(__version)
+	} else {
+		version = 0
+	}
 
 	for _, m := range BPFMaps {
 		pin := k.bpfDir + m
-		fd, err := bpf.LoadAndPinMaps(btf, program, pin, m)
+		fd, err := bpf.LoadAndPinMaps(version, btf, program, pin, m)
 		fmt.Printf("(%d, %s): LoadAndPinMaps(%s, %s, %s)\n", fd, err, program, pin, m)
 
 		if err != nil {
@@ -419,7 +431,7 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 
 func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Context) error {
 	var btf string
-	fmt.Printf("prog %s execve_fd %d tcp events fd %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd)
+	var version int
 
 	if load.Observer__btf == "" {
 		btf = ObserverBTF
@@ -427,7 +439,19 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		btf = load.Observer__btf
 	}
 
+	if KernelVersion != "" {
+		__version, err := strconv.ParseInt(KernelVersion, 10, 32)
+		if err != nil {
+			return fmt.Errorf("failed kprobe %s invalid kernel version specified: %s\n", load.Observer__program, KernelVersion)
+		}
+		version = int(__version)
+	} else {
+		version = 0
+	}
+
+	fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
 	err, _ := bpf.LoadKprobeProgram(
+		version,
 		btf,
 		load.Observer__program,
 		load.observer__x64_attach,
@@ -439,6 +463,7 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		 * sys_execve variant.
 		 */
 		err, _ = bpf.LoadKprobeProgram(
+			version,
 			btf,
 			load.Observer__program,
 			load.observer__attach,

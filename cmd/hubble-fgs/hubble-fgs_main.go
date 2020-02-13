@@ -73,6 +73,7 @@ func init() {
 		"bpf-listen", "./bpf/bpf_listen.o", "Location of bpf_listen.o program")
 	flags.StringVar(&observer.ProcFS,
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
+	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")
 	flags.BoolVarP(&observer.EnableExecve, "execve", "e", false, "Enable execve events")
 	viper.BindPFlags(flags)
 }
