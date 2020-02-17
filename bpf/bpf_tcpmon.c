@@ -40,6 +40,5 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), _(&(skp->__sk_common.skc_num)));
 
 	event_get_task_info(msg, MSG_OP_IPV4_TCPCONNECT, walker);
-	map_update_hash(msg, pid);
 	return 1;
 }

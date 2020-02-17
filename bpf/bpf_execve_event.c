@@ -50,7 +50,6 @@ int event_execve(struct pt_regs *__ctx)
 	event_args_builder(event, &ctx->si);
 	event_cwd_builder(parent, pid);
 	compiler_barrier();
-	map_update_hash(event, pid);
 	event_get_task_info(event, MSG_OP_EXECVE, walker);
 	size = validate_msg_size(event->common.size);
 	perf_event_output(__ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
