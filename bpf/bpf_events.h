@@ -51,9 +51,11 @@ int64_t validate_msg_size(int64_t size)
 }
 
 static inline __attribute__((always_inline))
-__u32 __get_auid(struct task_struct *task)
+__u64 __get_auid(struct task_struct *task)
 {
-	__u32 auid = 0;
+	// u64 to convince compiler to do 64bit loads early kernels do not
+	// support 32bit loads from stack, e.g. r1 = *(u32 *)(r10 -8).
+	__u64 auid = 0;
 
 	if (!task)
 		return auid;
@@ -65,7 +67,7 @@ __u32 __get_auid(struct task_struct *task)
 
 		probe_read(&audit, sizeof(audit), _(&task->audit));
 		if (audit) {
-			probe_read(&auid, sizeof(auid), _(&audit->loginuid));
+			probe_read(&auid, sizeof(__u32), _(&audit->loginuid));
 		}
 	}
 
@@ -92,7 +94,7 @@ struct task_struct *get_parent(struct task_struct *t)
 }
 
 static inline __attribute__((always_inline))
-__u32 get_parent_auid(struct task_struct *t)
+__u64 get_parent_auid(struct task_struct *t)
 {
 	struct task_struct *task = get_parent(t);
 
