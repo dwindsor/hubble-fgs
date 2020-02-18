@@ -13,8 +13,7 @@ $ popd
 (1) Create disk storage
 
 $ gcloud beta compute --project $PROJECT disks create btf-pd \
-     --size 1 --type pd-standard                             \
-     --replica-zones "us-west1,us-west1"
+     --size 1 --type pd-standard --zones=us-west1-a
 
 (2) Apply persistent storage claim
 
