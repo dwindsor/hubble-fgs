@@ -4,7 +4,8 @@ COPY . ./
 RUN make clean && make hubble-fgs-image
 
 FROM docker.io/library/alpine:3.10
-RUN addgroup hubble && mkdir /var/lib/hubble-fgs/ && mkdir /var/run/hubble-fgs/
+RUN addgroup hubble && mkdir /var/lib/hubble-fgs/ && mkdir /var/run/hubble-fgs/ \
+ && apk add --no-cache bash curl jq
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs-printer /usr/bin/
 COPY --from=builder /go/src/github.com/covalentio/hubble-fgs/libs/libbpf.so.0 /usr/lib/
