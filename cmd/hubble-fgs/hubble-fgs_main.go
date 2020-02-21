@@ -74,6 +74,7 @@ func init() {
 	flags.StringVar(&observer.ProcFS,
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
 	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")
+	flags.IntVar(&observer.Verbosity, "verbose", 0, "set verbosity level")
 	flags.BoolVarP(&observer.EnableExecve, "execve", "e", false, "Enable execve events")
 	viper.BindPFlags(flags)
 }

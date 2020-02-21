@@ -70,6 +70,7 @@ var (
 	EnableExecve  = false
 
 	ObserverBTF string
+	Verbosity   int
 	BPFMaps     = []string{"execve_map", "tcpmon_map"}
 
 	ObserverExecve = bpfLoad{
@@ -414,7 +415,7 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 
 	for _, m := range BPFMaps {
 		pin := k.bpfDir + m
-		fd, err := bpf.LoadAndPinMaps(version, btf, program, pin, m)
+		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, program, pin, m)
 		fmt.Printf("(%d, %s): LoadAndPinMaps(%s, %s, %s)\n", fd, err, program, pin, m)
 
 		if err != nil {
@@ -451,7 +452,7 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 
 	fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
 	err, _ := bpf.LoadKprobeProgram(
-		version,
+		version, Verbosity,
 		btf,
 		load.Observer__program,
 		load.observer__x64_attach,
@@ -463,7 +464,7 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		 * sys_execve variant.
 		 */
 		err, _ = bpf.LoadKprobeProgram(
-			version,
+			version, Verbosity,
 			btf,
 			load.Observer__program,
 			load.observer__attach,

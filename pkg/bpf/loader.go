@@ -35,13 +35,27 @@ package bpf
 
 #define NUM_PAGES 8
 
-int kprobe_map_loader(int version, const char *btf, const char *prog, const char *__map, const char *__label_map)
+static int __print(enum libbpf_print_level level __attribute__((unused)),
+		   const char *format, va_list args)
+{
+	return vfprintf(stderr, format, args);
+}
+
+int kprobe_map_loader(const int version,
+		      const int verbosity,
+		      const char *btf,
+		      const char *prog,
+		      const char *__map,
+		      const char *__label_map)
 {
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
 	struct bpf_map *map_bpf;
 	struct bpf_object *obj;
 	int err, map_fd;
+
+	if (verbosity)
+		libbpf_set_print(__print);
 
 	obj = bpf_object__open(prog);
 	err = libbpf_get_error(obj);
@@ -96,6 +110,7 @@ int kprobe_map_loader(int version, const char *btf, const char *prog, const char
 }
 
 int kprobe_loader(const int version,
+		  const int verbosity,
 		  const char *btf,
 		  const char *prog,
 		  const char *attach,
@@ -110,6 +125,9 @@ int kprobe_loader(const int version,
 	struct bpf_object *obj, *execve_obj;
 	struct bpf_map *map_bpf, *map, *execve_map;
 	int fd, err, map_fd = 0;
+
+	if (verbosity)
+		libbpf_set_print(__print);
 
 	obj = bpf_object__open(prog);
 	err = libbpf_get_error(obj);
@@ -209,14 +227,15 @@ import (
 	"fmt"
 )
 
-func LoadAndPinMaps(__version int, __btf, __prog, __map, __map_label string) (int, error) {
+func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_label string) (int, error) {
 	version := C.int(__version)
+	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
 	p := C.CString(__prog)
 	m := C.CString(__map)
 	ml := C.CString(__map_label)
 
-	fd := C.kprobe_map_loader(version, btf, p, m, ml)
+	fd := C.kprobe_map_loader(version, verbosity, btf, p, m, ml)
 	fdInt := int(fd)
 	if fdInt < 0 {
 		return 0, fmt.Errorf("Unalbe to pin map: %d (%s %s %s)\n", fdInt, p, m, ml)
@@ -224,8 +243,9 @@ func LoadAndPinMaps(__version int, __btf, __prog, __map, __map_label string) (in
 	return fdInt, nil
 }
 
-func LoadKprobeProgram(__version int, __btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
 	version := C.int(__version)
+	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
 	o := C.CString(object)
 	a := C.CString(attach)
@@ -234,7 +254,7 @@ func LoadKprobeProgram(__version int, __btf, object, attach, __label, __prog str
 	ret := C.bool(retprobe)
 	fd := C.int(execve_fd)
 	tcp := C.int(tcp_fd)
-	loader_fd := C.kprobe_loader(version, btf, o, a, l, p, ret, fd, tcp)
+	loader_fd := C.kprobe_loader(version, verbosity, btf, o, a, l, p, ret, fd, tcp)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
