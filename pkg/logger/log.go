@@ -31,10 +31,7 @@ func GetLogger() *zap.Logger {
 	once.Do(func() {
 		var err error
 		if viper.GetBool("debug") {
-			log, err = zap.NewDevelopment()
-			if err != nil {
-				panic(err)
-			}
+			log = zap.NewExample()
 		} else {
 			log, err = zap.NewProduction()
 			if err != nil {
