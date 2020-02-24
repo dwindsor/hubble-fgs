@@ -22,10 +22,10 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/inet_bind_hash")), used))
 int event_bind_hash(struct pt_regs *ctx)
 {
-	__u32 ppid = 0, pid = (get_current_pid_tgid() >> 32);
 	struct msg_ipv4_tcp_connect *msg = 0;
 	unsigned short port;
 	bool walker = 0;
+	__u32 ppid = 0;
 
 	msg = event_find_curr(&ppid, &msg_ipv4_tcp_map, &walker);
 	if (!msg)
@@ -33,6 +33,5 @@ int event_bind_hash(struct pt_regs *ctx)
 
 	probe_read(&port, sizeof(port), &ctx->dx);
 	msg->tuple.sport = port;
-	map_update_hash(msg, pid);
 	return 1;
 }

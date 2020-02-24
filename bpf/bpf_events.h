@@ -1,6 +1,10 @@
 #ifndef _BPF_EVENTS_H
 #define _BPF_EVENTS_H
 
+#define _(P) (__builtin_preserve_access_index(P))
+
+#include "bpf_core_read.h"
+
 static inline void compiler_barrier(void) {
 	asm volatile("" ::: "memory");
 }
@@ -47,31 +51,25 @@ int64_t validate_msg_size(int64_t size)
 }
 
 static inline __attribute__((always_inline))
-__u32 __get_auid(struct task_struct *task)
+__u64 __get_auid(struct task_struct *task)
 {
-	__u32 auid = 0;
+	// u64 to convince compiler to do 64bit loads early kernels do not
+	// support 32bit loads from stack, e.g. r1 = *(u32 *)(r10 -8).
+	__u64 auid = 0;
 
 	if (!task)
 		return auid;
 
-#ifdef AUDIT_STRUCT
-	struct audit_task_info *audit;
+	if (bpf_core_field_exists(task->loginuid)) {
+		probe_read(&auid, sizeof(auid), _(&task->loginuid.val));
+	} else {
+		struct audit_task_info *audit;
 
-	probe_read(&audit, sizeof(audit), &task->audit);
-	if (audit) {
-		probe_read(&auid, sizeof(auid), &audit->loginuid);
+		probe_read(&audit, sizeof(audit), _(&task->audit));
+		if (audit) {
+			probe_read(&auid, sizeof(__u32), _(&audit->loginuid));
+		}
 	}
-#else // AUDIT_STRUCT
-	char *addr;
-
-#ifdef AUID_OFFSET
-	addr = (void *)task;
-	addr += AUID_OFFSET;
-#else
-	addr = (void *)&(task->loginuid.val);
-#endif // AUID_OFFSET
-	probe_read(&auid, sizeof(auid), addr);
-#endif // AUDIT_STRUCT
 
 	return auid;
 }
@@ -89,14 +87,14 @@ struct task_struct *get_parent(struct task_struct *t)
 {
 	struct task_struct *task;
 
-	probe_read(&task, sizeof(task), &t->parent);
+	probe_read(&task, sizeof(task), _(&t->parent));
 	if (!task)
 		return 0;
 	return task;
 }
 
 static inline __attribute__((always_inline))
-__u32 get_parent_auid(struct task_struct *t)
+__u64 get_parent_auid(struct task_struct *t)
 {
 	struct task_struct *task = get_parent(t);
 
@@ -117,7 +115,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 			i = TASK_PID_LOOP;
 			continue;
 		}
-		probe_read(&cpid, sizeof(cpid), &task->tgid);
+		probe_read(&cpid, sizeof(cpid), _(&task->tgid));
 		if (cpid == pid) {
 			i = TASK_PID_LOOP;
 			continue;
@@ -145,7 +143,8 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"r3 = " CWD_DENTRY_REG ";"			\
 	"if r3 == 0 goto %l[a];"			\
 	/* probe_read(&parent, sizeof(parent), &dentry->d_parent); */ \
-	"r3 += %[dentry_parent];"			\
+	"r2 = *(u32 *)%[dentry_parent];"		\
+	"r3 += r2;"					\
 	"r2 = 8;"					\
 	"r1 = %[ptr];"					\
 	"call 4;"					\
@@ -158,7 +157,8 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	/* dentry = parent; */				\
 	/* probe_read(&dname, sizeof(dname), &name->name); */ \
 	"r3 = " CWD_DENTRY_REG ";"			\
-	"r3 += %[dentry_name];"				\
+	"r2 = *(u32 *)%[dentry_name];"			\
+	"r3 += r2;"					\
 	CWD_DENTRY_REG " = r4;" /* r9 = parent */	\
 	"r1 = %[ptr];"					\
 	"r2 = 8;"					\
@@ -190,6 +190,9 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"r3 = *(u64 *)%[curr];"				\
 	"*(u32 *)(r3 + 0) = " CWD_OFFSET_REG ";"
 
+#define offsetof_btf(s, memb) \
+	((size_t)((char *)_(&((s *)0)->memb) - (char *)0))
+
 static inline __attribute__((always_inline))
 int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
 	       __u32 offset, __u32 proc_pid, bool prealloc)
@@ -204,20 +207,26 @@ int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
 	char *pslash = &slash;
 	__u32 orig_size = curr->size, orig_offset = offset;
 	int dentry_parent, dentry_name;
+	/* Verify complains if this is not a constant (compiler optimizes
+	 * us into a corner ottherwise). So for now note qstr->name is 8
+	 * bytes into struct on all kernels we use.
+	 */
+	const int qstr = 8;
 
-	probe_read(&fs, sizeof(fs), &task->fs);
+	probe_read(&fs, sizeof(fs), _(&task->fs));
 	if (!fs) {
 		curr->flags |= EVENT_ERROR_CWD;
 		return 0;
 	}
 
-	probe_read(&pwd, sizeof(pwd), &fs->pwd);
+	probe_read(&pwd, sizeof(pwd), _(&fs->pwd));
 	dentry = pwd.dentry;
 	vfsmnt = pwd.mnt;
-	probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), &vfsmnt->mnt_root);
+	probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), _(&vfsmnt->mnt_root));
 
-	dentry_parent = offsetof(struct dentry, d_parent);
-	dentry_name = offsetof(struct dentry, d_name) + offsetof(struct qstr, name);
+	dentry_parent = offsetof_btf(struct dentry, d_parent);
+	dentry_name = offsetof_btf(struct dentry, d_name);
+	dentry_name += qstr;
 
 	asm volatile goto (
 			PROBE_CWD_READ_LOOP_HEADER
@@ -244,8 +253,8 @@ int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
 		  [ptr]    "+r"(&ptr),
 		  [slash]  "m"(pslash),
 		  [offset] "+m"(offset),
-		  [dentry_parent] "i"(dentry_parent),
-		  [dentry_name] "i"(dentry_name)
+		  [dentry_parent] "m"(dentry_parent),
+		  [dentry_name] "m"(dentry_name)
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9"
 		: a);
 a:
@@ -424,7 +433,7 @@ __u32 event_find_parent_pid(struct task_struct *t)
 
 	if (!task)
 		return 0;
-	probe_read(&pid, sizeof(pid), &task->tgid);
+	probe_read(&pid, sizeof(pid), _(&task->tgid));
 	return pid;
 }
 
@@ -434,27 +443,14 @@ struct msg_ipv4_tcp_connect *event_find_parent(void)
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
 	struct msg_ipv4_tcp_connect *msg = 0;
-	char *addr;
 	int i;
 
 #pragma unroll
 	for (i = 0; i < 4; i++) {
-#ifdef PARENT_OFFSET
-		addr = (void *)task;
-		addr += PARENT_OFFSET;
-#else
-		addr = (void *)&(task->parent);
-#endif
-		probe_read(&task, sizeof(task), addr);
+		probe_read(&task, sizeof(task), _(&task->parent));
 		if (!task)
 			break;
-#ifdef PARENT_PID_OFFSET
-		addr = (void *)(task);
-		addr += PARENT_PID_OFFSET;
-#else
-		addr = (void *)&(task->tgid);
-#endif
-		probe_read(&pid, sizeof(pid), addr);
+		probe_read(&pid, sizeof(pid), _(&task->tgid));
 		msg = map_lookup_elem(&execve_map, &pid);
 		if (msg && msg->common.size != 0)
 				return msg;
@@ -494,7 +490,6 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
 	struct msg_ipv4_tcp_connect *msg = 0;
-	char *addr;
 	int i;
 
 #pragma unroll
@@ -505,22 +500,10 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 		else
 			msg = 0;
 		*walked = 1;
-#ifdef PARENT_OFFSET
-		addr = (void *)task;
-		addr += PARENT_OFFSET;
-#else
-		addr = (void *)&(task->parent);
-#endif
-		probe_read(&task, sizeof(task), addr);
+		probe_read(&task, sizeof(task), _(&task->parent));
 		if (!task)
 			break;
-#ifdef PARENT_PID_OFFSET
-		addr = (void *)(task);
-		addr += PARENT_PID_OFFSET;
-#else
-		addr = (void *)&(task->tgid);
-#endif
-		probe_read(&pid, sizeof(pid), addr);
+		probe_read(&pid, sizeof(pid), _(&task->tgid));
 	}
 	*ppid = pid;
 
@@ -571,7 +554,6 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 	struct net *net_ns;
 	const char *name;
 	ssize_t size;
-	char *addr;
 
 	msg->common.op = op;
 	msg->common.ktime = ktime_get_ns();
@@ -610,35 +592,23 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 		curr->flags |= EVENT_TASK_WALK;
 
 	task = (struct task_struct *)get_current_task();
-	probe_read(&nsproxy, sizeof(nsproxy), &(task->nsproxy));
+	probe_read(&nsproxy, sizeof(nsproxy), _(&task->nsproxy));
 	if (nsproxy) {
-		probe_read(&net_ns, sizeof(net_ns), &(nsproxy->net_ns));
+		probe_read(&net_ns, sizeof(net_ns), _(&nsproxy->net_ns));
 		if (net_ns)
-			probe_read(&msg->kube.net_ns, sizeof(msg->kube.net_ns), &(net_ns->ns.inum));
+			probe_read(&msg->kube.net_ns, sizeof(msg->kube.net_ns), _(&net_ns->ns.inum));
 	}
 
 	task = (struct task_struct *)get_current_task();
-#ifdef CGROUPS_OFFSET
-	addr = (void *)task;
-	addr += CGROUPS_OFFSET;
-#else
-	addr = (void *)&(task->cgroups);
-#endif
-	probe_read(&cgroups, sizeof(cgroups), addr);
+	probe_read(&cgroups, sizeof(cgroups), _(&task->cgroups));
 	if (cgroups) {
-		probe_read(&subsys, sizeof(subsys), &(cgroups->subsys[0]));
+		probe_read(&subsys, sizeof(subsys), _(&cgroups->subsys[0]));
 		if (subsys) {
-			probe_read(&cgrp, sizeof(cgrp), &(subsys->cgroup));
+			probe_read(&cgrp, sizeof(cgrp), _(&subsys->cgroup));
 			if (cgrp) {
-#ifdef CGROUPS_KN_OFFSET
-				addr = (void *)(cgrp);
-				addr += CGROUPS_KN_OFFSET;
-#else
-				addr = (void *)&(cgrp->kn);
-#endif
-				probe_read(&kn, sizeof(cgrp->kn), addr);
+				probe_read(&kn, sizeof(cgrp->kn), _(&cgrp->kn));
 				if (kn) {
-					probe_read(&name, sizeof(name), &(kn->name));
+					probe_read(&name, sizeof(name), _(&kn->name));
 					if (name)
 						probe_read_str(msg->kube.docker_id,
 							       DOCKER_ID_LENGTH,
@@ -654,20 +624,6 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 
 #ifdef USE_HASH_MAP
 static inline __attribute__((always_inline))
-void map_update_hash(struct msg_ipv4_tcp_connect *event,
-		     __u32 pid)
-{
-	struct event_execve *parent = (struct event_execve *)event->pid;
-	struct event_execve *curr;
-	uint64_t size;
-
-	curr = (void *)parent + validate_arg_size(parent->size);
-	size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
-	size = validate_msg_size(size);
-	map_update_elem(&execve_map, &pid, event, 0);
-}
-
-static inline __attribute__((always_inline))
 struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
 {
 	struct msg_ipv4_tcp_connect *event;
@@ -679,6 +635,7 @@ struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
 		event = map_lookup_elem(&msg_ipv4_tcp_map, &zero);
 		if (!event)
 			return 0;
+		map_update_elem(&execve_map, &pid, event, 0);
 	}
 	return event;
 }

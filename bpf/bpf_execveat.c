@@ -50,6 +50,5 @@ int event_execveat(struct pt_regs *__ctx)
 	event_cwd_builder(parent, pid);
 	compiler_barrier();
 	event->common.size = 1; // stand-in until we complete calculation from tcpmon
-	map_update_hash(event, pid);
 	return 0;
 }

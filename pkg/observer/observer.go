@@ -49,6 +49,7 @@ const (
 )
 
 type bpfLoad struct {
+	Observer__btf        string
 	Observer__program    string
 	observer__x64_attach string
 	observer__attach     string
@@ -64,13 +65,16 @@ var (
 	ErrorCntr = 0
 	RecvCntr  = 0
 
-	ProcFS       = "/proc/"
-	EnableExecve = false
+	ProcFS        = "/proc/"
+	KernelVersion = ""
+	EnableExecve  = false
 
-	BPFMaps = []string{"execve_map", "tcpmon_map"}
+	ObserverBTF string
+	Verbosity   int
+	BPFMaps     = []string{"execve_map", "tcpmon_map"}
 
 	ObserverExecve = bpfLoad{
-		"",
+		"", "",
 		"__x64_sys_execve",
 		"sys_execve",
 		"kprobe/sys_execve",
@@ -81,7 +85,7 @@ var (
 	}
 
 	ObserverExecveat = bpfLoad{
-		"",
+		"", "",
 		"__x64_sys_execveat",
 		"sys_execveat",
 		"kprobe/sys_execveat",
@@ -92,7 +96,7 @@ var (
 	}
 
 	ObserverFork = bpfLoad{
-		"",
+		"", "",
 		"wake_up_new_task",
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
@@ -103,7 +107,7 @@ var (
 	}
 
 	ObserverTCPConnect = bpfLoad{
-		"",
+		"", "",
 		"tcp_connect",
 		"tcp_connect",
 		"kprobe/tcp_connect",
@@ -114,7 +118,7 @@ var (
 	}
 
 	ObserverTCPConnectRet = bpfLoad{
-		"",
+		"", "",
 		"__x64_sys_connect",
 		"sys_connect",
 		"kretprobe/sys_connect",
@@ -125,7 +129,7 @@ var (
 	}
 
 	ObserverBind = bpfLoad{
-		"",
+		"", "",
 		"inet_bind",
 		"inet_bind",
 		"kprobe/sys_bind",
@@ -136,7 +140,7 @@ var (
 	}
 
 	ObserverGetPort = bpfLoad{
-		"",
+		"", "",
 		"inet_bind_hash",
 		"inet_bind_hash",
 		"kprobe/inet_bind_hash",
@@ -147,7 +151,7 @@ var (
 	}
 
 	ObserverListen = bpfLoad{
-		"",
+		"", "",
 		"__x64_sys_listen",
 		"sys_listen",
 		"kprobe/sys_listen",
@@ -396,11 +400,22 @@ func isCtxDone(ctx context.Context) bool {
 	}
 }
 
-func (k *ObserverKprobe) observerLoadMaps(program string, stopCtx context.Context) error {
+func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.Context) error {
+	var version int
+
+	if KernelVersion != "" {
+		__version, err := strconv.ParseInt(KernelVersion, 10, 32)
+		if err != nil {
+			return fmt.Errorf("failed kprobe %s invalid kernel version specified: %s\n", program, KernelVersion)
+		}
+		version = int(__version)
+	} else {
+		version = 0
+	}
 
 	for _, m := range BPFMaps {
 		pin := k.bpfDir + m
-		fd, err := bpf.LoadAndPinMaps(program, pin, m)
+		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, program, pin, m)
 		fmt.Printf("(%d, %s): LoadAndPinMaps(%s, %s, %s)\n", fd, err, program, pin, m)
 
 		if err != nil {
@@ -416,8 +431,29 @@ func (k *ObserverKprobe) observerLoadMaps(program string, stopCtx context.Contex
 }
 
 func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Context) error {
-	fmt.Printf("prog %s execve_fd %d tcp events fd %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd)
+	var btf string
+	var version int
+
+	if load.Observer__btf == "" {
+		btf = ObserverBTF
+	} else {
+		btf = load.Observer__btf
+	}
+
+	if KernelVersion != "" {
+		__version, err := strconv.ParseInt(KernelVersion, 10, 32)
+		if err != nil {
+			return fmt.Errorf("failed kprobe %s invalid kernel version specified: %s\n", load.Observer__program, KernelVersion)
+		}
+		version = int(__version)
+	} else {
+		version = 0
+	}
+
+	fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
 	err, _ := bpf.LoadKprobeProgram(
+		version, Verbosity,
+		btf,
 		load.Observer__program,
 		load.observer__x64_attach,
 		load.observer__label,
@@ -428,6 +464,8 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		 * sys_execve variant.
 		 */
 		err, _ = bpf.LoadKprobeProgram(
+			version, Verbosity,
+			btf,
 			load.Observer__program,
 			load.observer__attach,
 			load.observer__label,
@@ -441,8 +479,19 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 }
 
 func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
+	var btf string
+
+	if ObserverExecve.Observer__btf == "" {
+		btf = ObserverBTF
+	} else {
+		btf = ObserverExecve.Observer__btf
+	}
+
 	/* Assumption observer__program execve contains all maps */
-	if err := k.observerLoadMaps(ObserverExecve.Observer__program, stopCtx); err != nil {
+	if err := k.observerLoadMaps(
+		btf,
+		ObserverExecve.Observer__program,
+		stopCtx); err != nil {
 		return err
 	}
 
@@ -843,8 +892,18 @@ type ObserverKprobe struct {
 	listeners     []ObserverChannel
 }
 
+func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
+	if ObserverBTF == "" {
+		return fmt.Errorf("No BTF target found\n")
+	}
+	return nil
+}
+
 func (k *ObserverKprobe) Start() error {
 	k.createDir()
+	if err := k.observerFindBTF(context.TODO()); err != nil {
+		return fmt.Errorf("observerFindBTF error: %s\n", err)
+	}
 	if err := k.observerLoadExecve(context.TODO()); err != nil {
 		return fmt.Errorf("observerLoadExecve error: %s\n", err)
 	}

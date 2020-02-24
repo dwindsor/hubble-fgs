@@ -35,6 +35,5 @@ int event_wake_up_new_task(struct pt_regs *ctx)
 	if (!event)
 		return 0;
 	event->common.size = 0;
-	map_update_hash(event, pid);
 	return 0;
 }

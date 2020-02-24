@@ -54,6 +54,7 @@ func init() {
 	flags := cmd.PersistentFlags()
 
 	flags.BoolP("debug", "d", false, "Enable debug messages")
+	flags.StringVar(&observer.ObserverBTF, "btf", "", "Location of btf")
 	flags.StringVar(&observer.ObserverExecve.Observer__program,
 		"bpf-execve", "./bpf/bpf_execve.o", "Location of bpf_execve.o program")
 	flags.StringVar(&observer.ObserverExecveat.Observer__program,
@@ -72,6 +73,8 @@ func init() {
 		"bpf-listen", "./bpf/bpf_listen.o", "Location of bpf_listen.o program")
 	flags.StringVar(&observer.ProcFS,
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
+	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")
+	flags.IntVar(&observer.Verbosity, "verbose", 0, "set verbosity level")
 	flags.BoolVarP(&observer.EnableExecve, "execve", "e", false, "Enable execve events")
 	viper.BindPFlags(flags)
 }

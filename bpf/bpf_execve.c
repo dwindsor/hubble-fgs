@@ -22,15 +22,21 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/sys_execve")), used))
 int event_execve(struct pt_regs *__ctx)
 {
-#ifdef VMLINUX_KERNEL_HAS_SYSCALL_WRAPPER
-	struct pt_regs *ctx = (struct pt_regs *) __ctx->di;
-#else
-	struct pt_regs *ctx = __ctx;
-#endif
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct msg_ipv4_tcp_connect *event, *parent_event;
 	struct event_execve *parent;
+	struct xdp_buff *kver_pivot, __kver_pivot;
+	struct pt_regs *ctx;
+	int exists;
 	__u32 pid;
+
+	kver_pivot = &__kver_pivot;
+	exists = bpf_core_field_exists(kver_pivot->handle);
+	if (exists) {
+		ctx = (struct pt_regs *) __ctx->di;
+	} else {
+		ctx = __ctx;
+	}
 
 	pid = (get_current_pid_tgid() >> 32);
 	event = map_lookup_event(pid);
@@ -49,6 +55,5 @@ int event_execve(struct pt_regs *__ctx)
 	event_cwd_builder(parent, pid);
 	compiler_barrier();
 	event->common.size = 1; // stand-in until we complete calculation from tcpmon
-	map_update_hash(event, pid);
 	return 0;
 }

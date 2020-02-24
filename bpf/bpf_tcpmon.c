@@ -33,13 +33,12 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		return 0;
 
 	skp = (void *)((ctx)->di);
-	probe_read(&msg->tuple.proto, sizeof(msg->tuple.proto), &(skp->__sk_common.skc_family));
-	probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), &(skp->__sk_common.skc_rcv_saddr));
-	probe_read(&msg->tuple.daddr, sizeof(msg->tuple.daddr), &(skp->__sk_common.skc_daddr));
-	probe_read(&msg->tuple.dport, sizeof(msg->tuple.dport), &(skp->__sk_common.skc_dport));
-	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), &(skp->__sk_common.skc_num));
+	probe_read(&msg->tuple.proto, sizeof(msg->tuple.proto), _(&(skp->__sk_common.skc_family)));
+	probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
+	probe_read(&msg->tuple.daddr, sizeof(msg->tuple.daddr), _(&(skp->__sk_common.skc_daddr)));
+	probe_read(&msg->tuple.dport, sizeof(msg->tuple.dport), _(&(skp->__sk_common.skc_dport)));
+	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), _(&(skp->__sk_common.skc_num)));
 
 	event_get_task_info(msg, MSG_OP_IPV4_TCPCONNECT, walker);
-	map_update_hash(msg, pid);
 	return 1;
 }

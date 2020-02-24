@@ -1,0 +1,38 @@
+GKE INSTALL (tbd)
+===========
+
+Rough manual setup to add BTF to persistent storage for FGS.
+
+(0) Build BTF for image
+
+$ HTTPS_IMAGE = http://launchpadlibrarian.net/442283852/linux-image-unsigned-4.15.0-1044-gke-dbgsym_4.15.0-1044.46_amd64.ddeb
+$ pushd ./contrib/vmlinux-builder
+$ ./btf-builder.sh $HTTPS_IMAGE
+$ popd
+
+(1) Create disk storage
+
+$ gcloud beta compute --project $PROJECT disks create btf-pd \
+     --size 1 --type pd-standard --zones=us-west1-a
+
+(2) Apply persistent storage claim
+
+$ pushd ./install/kubernetes/persistVolumes
+$ kubectl apply -f hubble-btf-pv.yaml
+$ kubectl apply -f hubble-btf-pvc.yaml
+
+(3) Copy BTF to disk
+
+$ gcloud beta compute --project $PROJECT scp --zone "us-west1-a" \
+     ~/go/src/github.com/covalentio/hubble-fgs/contrib/vmlinux-builder/btf \
+     gke-my-cluster-default-pool-ab1fc632-f7dc:/var/lib/hubble-fgs/btf/
+
+(4) Add mount to hubble.yaml
+
+ - name: hubble-fgs-btf
+   mountPath: "/var/lib/hubble-fgs/btf/"
+
+ volumes:
+ - name: hubble-fgs-btf
+   persistentVolumeClaim:
+     claimName: hubble-fgs-btf
