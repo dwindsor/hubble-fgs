@@ -1,7 +1,7 @@
 .PHONY: all copy
 
 BPF = bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o bpf_execve.o bpf_execve_event.o bpf_execveat.o bpf_fork.o bpf_get_port.o
-FLAGS := -I. -Wall -Werror -Wno-unknown-warning-option -O2
+FLAGS := -I. -I/usr/include/x86_64-linux-gnu/ -Wall -Werror -Wno-unknown-warning-option -O2
 
 CLANG_FLAGS += ${FLAGS} -target bpf -emit-llvm -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -g
 LLC_FLAGS   := -march=bpf -mcpu=probe -mattr=dwarfris
