@@ -15,17 +15,14 @@ struct bpf_map_def {
 #include "bpf_events.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
-#ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
-#endif
 
 __attribute__((section(("kprobe/sys_execve")), used))
 int event_execve(struct pt_regs *__ctx)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct msg_ipv4_tcp_connect *event, *parent_event;
-	struct event_execve *parent;
 	struct xdp_buff *kver_pivot, __kver_pivot;
+	struct event_execve *parent;
 	struct pt_regs *ctx;
 	int exists;
 	__u32 pid;

@@ -752,6 +752,11 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 	procFS, _ := ioutil.ReadDir(ProcFS)
 
 	for _, d := range procFS {
+		var pcmdline, pstatline []byte
+		var pstats []string
+		var pktime uint64
+		var pexecPath string
+
 		clktck, err := getClkTck()
 		if err != nil {
 			fmt.Printf("Warning: procFS wallclock time may be inaccurate. %s\n", err)
@@ -770,10 +775,12 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		}
 		statline, err := ioutil.ReadFile(ProcFS + d.Name() + "/stat")
 		if err != nil {
+			fmt.Printf("ReadFile: %s /stat error\n", ProcFS+d.Name()+"/cmdline")
 			continue
 		}
 		pid, err := strconv.ParseUint(d.Name(), 10, 32)
 		if err != nil {
+			fmt.Printf("ReadFile: %s /parseuint error\n", ProcFS+d.Name()+"/cmdline")
 			continue
 		}
 
@@ -781,8 +788,9 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		ppid := stats[3]
 		_ppid, err := strconv.ParseUint(ppid, 10, 32)
 		if err != nil {
-			continue
+			_ppid = 0 // 0 pid indicates no known parent
 		}
+
 		_ktime := stats[21]
 		ktime, err := strconv.ParseUint(_ktime, 10, 64)
 		if err != nil {
@@ -790,28 +798,46 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		}
 		ktime = (ktime / clktck) * nanoPerSeconds
 
-		pcmdline, err := ioutil.ReadFile(ProcFS + ppid + "/cmdline")
-		if err != nil {
-			continue
-		}
-		pstatline, err := ioutil.ReadFile(ProcFS + ppid + "/stat")
-		if err != nil {
-			continue
-		}
-		pstats := strings.Split(string(pstatline), " ")
-		_pktime := pstats[21]
-		pktime, err := strconv.ParseUint(_pktime, 10, 64)
-		if err != nil {
+		if _ppid != 0 {
+			var err error
+
+			pcmdline, err = ioutil.ReadFile(ProcFS + ppid + "/cmdline")
+			if err != nil {
+				fmt.Printf("ReadFile: %s /cmdline error\n", ProcFS+d.Name()+"/cmdline")
+				continue
+			}
+
+			pstatline, err = ioutil.ReadFile(ProcFS + ppid + "/stat")
+			if err != nil {
+				fmt.Printf("ReadFile: %s /stat error\n", ProcFS+d.Name()+"/cmdline")
+				continue
+			}
+			pstats = strings.Split(string(pstatline), " ")
+			_pktime := pstats[21]
+			pktime, err := strconv.ParseUint(_pktime, 10, 64)
+			if err != nil {
+				pktime = 0
+			}
+			pktime = (pktime / clktck) * nanoPerSeconds
+		} else {
+			pcmdline = nil
+			pstatline = nil
+			pstats = nil
 			pktime = 0
 		}
-		pktime = (pktime / clktck) * nanoPerSeconds
+
 		execPath, err := filepath.EvalSymlinks(ProcFS + d.Name() + "/exe")
 		if execPath != "" {
 			cmdline = prependPath(execPath, cmdline)
 		}
-		pexecPath, err := filepath.EvalSymlinks(ProcFS + ppid + "/exe")
-		if pexecPath != "" {
-			pcmdline = prependPath(pexecPath, pcmdline)
+
+		if _ppid != 0 {
+			pexecPath, _ = filepath.EvalSymlinks(ProcFS + ppid + "/exe")
+			if pexecPath != "" {
+				pcmdline = prependPath(pexecPath, pcmdline)
+			}
+		} else {
+			pexecPath = ""
 		}
 
 		pcmdsUTF := stringToUTF8(pcmdline)
