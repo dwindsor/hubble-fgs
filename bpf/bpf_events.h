@@ -564,7 +564,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
  * Edit: pahole has been fixed need to update toolchain.
  */
 static inline __attribute__((always_inline))
-void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
+void __event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker, bool cwd_always)
 {
 	struct cgroup_subsys_state *subsys;
 	struct event_execve *curr, *parent;
@@ -596,7 +596,7 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
-	if (curr->flags & EVENT_NEEDS_CWD) {
+	if (cwd_always || curr->flags & EVENT_NEEDS_CWD) {
 		int err = getcwd(curr, parent, parent->size + curr->size - CWD_MAX + 1, curr->pid, 1);
 
 		if (!err)
@@ -642,6 +642,12 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 #ifdef BPF_FUNC_get_current_cgroup_id
 	msg->kube.cgrpid = get_current_cgroup_id();
 #endif
+}
+
+static inline __attribute__((always_inline))
+void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
+{
+	__event_get_task_info(msg, op, walker, false);
 }
 
 #ifdef USE_HASH_MAP
