@@ -355,6 +355,7 @@ void probe_arg_read(struct event_execve *c, char *earg, char **args)
 		  [curr]	 "ri"(c)
 		: "r0", "r1", "r2", "r3", "r4", "r5"
 		: a, b, c);
+	c->flags |= EVENT_TRUNC_ARGS;
 c:
 	return;
 b:
