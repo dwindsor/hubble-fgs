@@ -309,9 +309,31 @@ void event_filename_builder(struct event_execve *pid,
 	curr->size = size + offsetof(struct event_execve, args);
 }
 
-#define PROBE_ARG_READ(i)	     			\
-	"r3 = %[args];"					\
-	"r3 += " i ";"		     			\
+#define PROBE_ARG_HEADER				\
+	"%[index] = 0;"
+
+#define PROBE_ARG_READ5 \
+	PROBE_ARG_READ  \
+	PROBE_ARG_READ  \
+	PROBE_ARG_READ  \
+	PROBE_ARG_READ  \
+	PROBE_ARG_READ  \
+
+#define PROBE_ARG_READ10 \
+	PROBE_ARG_READ5  \
+	PROBE_ARG_READ5
+
+#define PROBE_ARG_READ50 \
+	PROBE_ARG_READ10 \
+	PROBE_ARG_READ10 \
+	PROBE_ARG_READ10 \
+	PROBE_ARG_READ10 \
+	PROBE_ARG_READ10
+
+#define PROBE_ARG_READ		     			\
+	"r3 = *(u64 *)%[args];"				\
+	"%[index] += 8;"				\
+	"r3 += %[index];"	     			\
 	"r2 = 8;"		     			\
 	"r1 = %[arg];"					\
 	"call 4;"					\
@@ -321,7 +343,7 @@ void event_filename_builder(struct event_execve *pid,
 	"r4 = *(u32 *)(%[curr] + 0);"			\
 	"if r4 s< 0 goto %l[a];"			\
 	"if r4 s> " XSTR(BUFFER) " goto %l[b];"		\
-	"r1 = %[earg];"					\
+	"r1 = *(u64 *)%[earg];"				\
 	"r1 += r4;"					\
 	"r2 = " XSTR(MAXARGLENGTH) ";"			\
 	"call 45;"					\
@@ -341,17 +363,16 @@ static inline __attribute__((always_inline))
 void probe_arg_read(struct event_execve *c, char *earg, char **args)
 {
 	volatile char *arg;
+	int index = 0;
 
 	asm volatile goto (
-			PROBE_ARG_READ("8")
-			PROBE_ARG_READ("16")
-			PROBE_ARG_READ("24")
-			PROBE_ARG_READ("32")
-			PROBE_ARG_READ("40")
+			PROBE_ARG_HEADER
+			PROBE_ARG_READ50
 		:
-		: [earg]         "ri"(earg),
+		: [index]    	 "+r"(&index),
+		  [earg]         "m"(earg),
 		  [arg]          "ri"(&arg),
-		  [args]	 "ri"(args),
+		  [args]	 "m"(args),
 		  [curr]	 "ri"(c)
 		: "r0", "r1", "r2", "r3", "r4", "r5"
 		: a, b, c);
