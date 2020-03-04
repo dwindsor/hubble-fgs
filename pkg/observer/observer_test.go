@@ -1,10 +1,8 @@
 package observer
 
 import (
-	"bytes"
 	"context"
 	"os"
-	"strings"
 	"syscall"
 	"testing"
 
@@ -34,14 +32,15 @@ func TestObjectLoad(t *testing.T) {
 	for i, b := range uts.Release {
 		buf[i] = byte(b)
 	}
-	uname := strings.TrimSpace(string(bytes.Trim(buf, "\x00")))
-	ObserverExecve.Observer__program = "../../bpf/bins/bpf_execve_" + uname + ".o"
-	ObserverExecveat.Observer__program = "../../bpf/bins/bpf_execveat_" + uname + ".o"
-	ObserverFork.Observer__program = "../../bpf/bins/bpf_fork_" + uname + ".o"
-	ObserverTCPConnect.Observer__program = "../../bpf/bins/bpf_tcpmon_" + uname + ".o"
-	ObserverTCPConnectRet.Observer__program = "../../bpf/bins/bpf_tcpmonret_" + uname + ".o"
-	ObserverBind.Observer__program = "../../bpf/bins/bpf_bind_" + uname + ".o"
-	ObserverListen.Observer__program = "../../bpf/bins/bpf_listen_" + uname + ".o"
+	ObserverExecve.Observer__program = "../../bpf/bpf_execve.o"
+	ObserverExecveat.Observer__program = "../../bpf/bpf_execveat.o"
+	ObserverFork.Observer__program = "../../bpf/bpf_fork.o"
+	ObserverTCPConnect.Observer__program = "../../bpf/bpf_tcpmon.o"
+	ObserverTCPConnectRet.Observer__program = "../../bpf/bpf_tcpmonret.o"
+	ObserverBind.Observer__program = "../../bpf/bpf_bind.o"
+	ObserverGetPort.Observer__program = "../../bpf/bpf_get_port.o"
+	ObserverListen.Observer__program = "../../bpf/bpf_listen.o"
+	ObserverBTF = "../../bpf/btf"
 
 	kprobe := NewObserverKprobe(observerTestDir, false)
 	kprobe.createDir()

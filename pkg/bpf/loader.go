@@ -238,7 +238,7 @@ func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_labe
 	fd := C.kprobe_map_loader(version, verbosity, btf, p, m, ml)
 	fdInt := int(fd)
 	if fdInt < 0 {
-		return 0, fmt.Errorf("Unalbe to pin map: %d (%s %s %s)\n", fdInt, p, m, ml)
+		return 0, fmt.Errorf("Unalbe to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
 	}
 	return fdInt, nil
 }

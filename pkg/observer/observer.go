@@ -419,7 +419,7 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 		fmt.Printf("(%d, %s): LoadAndPinMaps(%s, %s, %s)\n", fd, err, program, pin, m)
 
 		if err != nil {
-			return fmt.Errorf("failed kprobe load map (%s): %s\n", fd, err)
+			return fmt.Errorf("failed kprobe load map (%d): %s\n", fd, err)
 		}
 		if m == "execve_map" {
 			k.execve_fd = fd
