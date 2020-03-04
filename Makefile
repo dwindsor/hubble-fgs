@@ -42,4 +42,9 @@ image:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs:$(DOCKER_IMAGE_TAG)"
 
+image-btf:
+	$(CONTAINER_ENGINE) build -f Dockerfile.btf -t "covalentio/hubble-fgs:${DOCKER_IMAGE_TAG}" .
+	$(QUIET)echo "Push like this when ready:"
+	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs:$(DOCKER_IMAGE_TAG)"
+
 .PHONY: headers all clean image install lint hubble-fgs
