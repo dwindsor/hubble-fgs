@@ -14,13 +14,25 @@ jobs:
       env:
         GOPATH: /home/runner/work/hubble-fgs/hubble-fgs/go
       run: |
+        docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
         sudo apt install libelf-dev
         export PATH=/opt/hostedtoolcache/go/1.13.4/x64/bin:${GOPATH}/bin:${PATH}
-        export LD_LIBRARY_PATH=/home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs/libs/
+        docker run --name libbpf quay.io/isovalent/hubble-libbpf:2020-03-04
+        docker run --name llvm quay.io/isovalent/hubble-llvm:2020-02-25
+        sudo -E echo "copy build tools from images"
+        sudo -E docker cp libbpf:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.0.7 /usr/local/lib/
+        sudo -E docker cp libbpf:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
+        sudo -E docker cp llvm:/usr/local/bin/clang-10 /usr/local/bin/clang
+        sudo -E docker cp llvm:/usr/local/bin/llc /usr/local/bin/
+        export PATH=/usr/local/bin:$PATH
         sudo sed -i '/secure_path/d' /etc/sudoers
         sudo sed -i '/env_reset/d' /etc/sudoers
         cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs
         sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
+        echo `which clang`
+        echo `which llc`
+        echo `clang --version`
+        make hubble-bpf
         sudo -E echo "run go tests: " `uname -a`
         sudo -E go get -u github.com/golang/dep/cmd/dep
         sudo -E go get -u golang.org/x/lint/golint

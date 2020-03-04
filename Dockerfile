@@ -12,6 +12,8 @@ COPY . ./
 FROM quay.io/cilium/cilium-builder:2019-09-04 as hubble-builder
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /usr/local/lib/
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
 RUN make hubble-fgs-image
 
 FROM docker.io/library/alpine:3.10
@@ -22,7 +24,6 @@ RUN addgroup hubble	       && \
     apk add --no-cache bash curl jq
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs-printer /usr/bin/
-COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/libs/libbpf.so.0 /usr/lib/
 COPY --from=bpf-builder /go/src/github.com/covalentio/hubble-fgs/bpf/*.o /var/lib/hubble-fgs/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /var/lib/hubble-fgs/libs/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /var/lib/hubble-fgs/libs/
