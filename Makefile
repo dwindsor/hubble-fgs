@@ -32,7 +32,7 @@ clean:
 	make -C ./bpf clean
 
 test:
-	go test -cover $$(go list ./...)
+	$(GO) test $(GOFLAGS) -cover $$(go list $(GOFLAGS) ./...)
 
 lint:
 	golint -set_exit_status $$(go list ./...)

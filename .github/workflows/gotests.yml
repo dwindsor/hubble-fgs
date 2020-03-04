@@ -21,7 +21,9 @@ jobs:
         sudo sed -i '/env_reset/d' /etc/sudoers
         sudo -E cp /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs/libs/* /usr/lib/
         cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs
+        sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
         sudo -E echo "run go tests: " `uname -a`
         sudo -E go get -u github.com/golang/dep/cmd/dep
         sudo -E go get -u golang.org/x/lint/golint
         sudo -E dep check
+        sudo -E make test
