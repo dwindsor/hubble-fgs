@@ -19,7 +19,6 @@ jobs:
         export LD_LIBRARY_PATH=/home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs/libs/
         sudo sed -i '/secure_path/d' /etc/sudoers
         sudo sed -i '/env_reset/d' /etc/sudoers
-        sudo -E cp /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs/libs/* /usr/lib/
         cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs
         sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
         sudo -E echo "run go tests: " `uname -a`
