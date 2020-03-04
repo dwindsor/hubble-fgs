@@ -38,6 +38,8 @@ import (
 	"unsafe"
 
 	"go.uber.org/zap"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -46,6 +48,9 @@ const (
 	ArgSize  = 32
 
 	nanoPerSeconds = 1000000000
+
+	varRunHubbleFGS = "/var/run/hubble-fgs/"
+	localBTFFile    = "./bpf/btf"
 )
 
 type bpfLoad struct {
@@ -918,8 +923,31 @@ type ObserverKprobe struct {
 	listeners     []ObserverChannel
 }
 
+func btfFileExists(file string) error {
+	_, err := os.Stat(file)
+	return err
+}
+
 func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 	if ObserverBTF == "" {
+		var uname unix.Utsname
+
+		err := unix.Uname(&uname)
+		if err != nil {
+			return fmt.Errorf("BTF search: failed uname, %s\n", err)
+		}
+		n := bytes.IndexByte(uname.Release[:], 0)
+		runFile := varRunHubbleFGS + "vmlinux-" + string(uname.Release[:n])
+		if _, err := os.Stat(runFile); err == nil {
+			ObserverBTF = runFile
+			return nil
+		}
+
+		if _, err := os.Stat(localBTFFile); err == nil {
+			ObserverBTF = localBTFFile
+			return nil
+		}
+
 		return fmt.Errorf("No BTF target found\n")
 	}
 	return nil
