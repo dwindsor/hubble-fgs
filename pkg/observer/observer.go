@@ -50,6 +50,7 @@ const (
 	nanoPerSeconds = 1000000000
 
 	varRunHubbleFGS = "/var/run/hubble-fgs/"
+	varLibHubbleFGS = "/var/lib/hubble-fgs/"
 	localBTFFile    = "./bpf/btf"
 	defaultBPFPath  = "./bpf/"
 )
@@ -946,8 +947,16 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 		}
 		last := strings.Split(p.Observer__program, "/")
 		filename := last[len(last)-1]
-		if _, err := os.Stat(defaultBPFPath + filename); err == nil {
-			p.Observer__program = defaultBPFPath + filename
+
+		path := varLibHubbleFGS + filename
+		if _, err := os.Stat(path); err == nil {
+			p.Observer__program = path
+			continue
+		}
+
+		path = defaultBPFPath + filename
+		if _, err := os.Stat(path); err == nil {
+			p.Observer__program = path
 			continue
 		}
 		return fmt.Errorf("observer Program '%s' can not be found\n", p.Observer__program)
