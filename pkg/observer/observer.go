@@ -51,6 +51,7 @@ const (
 
 	varRunHubbleFGS = "/var/run/hubble-fgs/"
 	localBTFFile    = "./bpf/btf"
+	defaultBPFPath  = "./bpf/"
 )
 
 type bpfLoad struct {
@@ -170,6 +171,16 @@ var (
 	pollTimeout     = 5000
 
 	zlog *zap.Logger
+
+	observerPrograms = []*bpfLoad{
+		&ObserverExecve,
+		&ObserverExecveat,
+		&ObserverFork,
+		&ObserverTCPConnect,
+		&ObserverTCPConnectRet,
+		&ObserverBind,
+		&ObserverGetPort,
+		&ObserverListen}
 )
 
 func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
@@ -928,6 +939,22 @@ func btfFileExists(file string) error {
 	return err
 }
 
+func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
+	for _, p := range observerPrograms {
+		if _, err := os.Stat(p.Observer__program); err == nil {
+			continue
+		}
+		last := strings.Split(p.Observer__program, "/")
+		filename := last[len(last)-1]
+		if _, err := os.Stat(defaultBPFPath + filename); err == nil {
+			p.Observer__program = defaultBPFPath + filename
+			continue
+		}
+		return fmt.Errorf("observer Program '%s' can not be found\n", p.Observer__program)
+	}
+	return nil
+}
+
 func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 	if ObserverBTF == "" {
 		var uname unix.Utsname
@@ -957,6 +984,9 @@ func (k *ObserverKprobe) Start() error {
 	k.createDir()
 	if err := k.observerFindBTF(context.TODO()); err != nil {
 		return fmt.Errorf("observerFindBTF error: %s\n", err)
+	}
+	if err := k.observerFindProgs(context.TODO()); err != nil {
+		return fmt.Errorf("observerFindProgs error: %s\n", err)
 	}
 	if err := k.observerLoadExecve(context.TODO()); err != nil {
 		return fmt.Errorf("observerLoadExecve error: %s\n", err)
