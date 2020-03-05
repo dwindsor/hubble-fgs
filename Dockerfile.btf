@@ -16,6 +16,12 @@ COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
 RUN make hubble-fgs-image
 
+FROM quay.io/isovalent/hubble-fgs-bins:2020-03-04 as hubble-fgs-btf
+WORKDIR /go/src/github.com/covalentio/hubble-fgs
+COPY . ./
+RUN mkdir bins && \
+    cp /var/run/hubble-fgs/* ./bins/
+
 FROM docker.io/library/alpine:3.10
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
@@ -25,6 +31,7 @@ RUN addgroup hubble	       && \
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs-printer /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/covalentio/hubble-fgs/bpf/*.o /var/lib/hubble-fgs/
+COPY --from=hubble-fgs-btf /go/src/github.com/covalentio/hubble-fgs/bins/* /var/run/hubble-fgs/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /var/lib/hubble-fgs/libs/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /var/lib/hubble-fgs/libs/
-CMD ["sh", "-c", "/usr/bin/hubble-fgs --procfs=/procRoot/"]
+CMD ["sh", "-c", "/usr/bin/hubble-fgs --procfs=/procRoot/ --bpf-execveat=/var/lib/hubble-fgs/bpf_execveat.o --bpf-execve=/var/lib/hubble-fgs/bpf_execve.o --bpf-fork=/var/lib/hubble-fgs/bpf_fork.o --bpf-tcpmon=/var/lib/hubble-fgs/bpf_tcpmon.o --bpf-tcpmonret=/var/lib/hubble-fgs/bpf_tcpmonret.o --bpf-bind=/var/lib/hubble-fgs/bpf_bind.o --bpf-get-port=/var/lib/hubble-fgs/bpf_get_port.o --bpf-listen=/var/lib/hubble-fgs/bpf_listen.o --btf=/var/lib/hubble-fgs/btf/btf"]

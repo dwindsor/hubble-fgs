@@ -16,7 +16,8 @@ import (
 )
 
 var (
-	observerDir = "/sys/fs/bpf/tcpmon/"
+	observerDir     = "/sys/fs/bpf/tcpmon/"
+	varRunHubbleFGS = "/var/run/hubble-fgs/"
 
 	cmd *cobra.Command
 )
@@ -56,21 +57,21 @@ func init() {
 	flags.BoolP("debug", "d", false, "Enable debug messages")
 	flags.StringVar(&observer.ObserverBTF, "btf", "", "Location of btf")
 	flags.StringVar(&observer.ObserverExecve.Observer__program,
-		"bpf-execve", "./bpf/bpf_execve.o", "Location of bpf_execve.o program")
+		"bpf-execve", varRunHubbleFGS+"bpf_execve.o", "Location of bpf_execve.o program")
 	flags.StringVar(&observer.ObserverExecveat.Observer__program,
-		"bpf-execveat", "./bpf/bpf_execveat.o", "Location of bpf_execveat.o program")
+		"bpf-execveat", varRunHubbleFGS+"bpf_execveat.o", "Location of bpf_execveat.o program")
 	flags.StringVar(&observer.ObserverFork.Observer__program,
-		"bpf-fork", "./bpf/bpf_fork.o", "Location of fork bpf program")
+		"bpf-fork", varRunHubbleFGS+"./bpf/bpf_fork.o", "Location of fork bpf program")
 	flags.StringVar(&observer.ObserverTCPConnect.Observer__program,
-		"bpf-tcpmon", "./bpf/bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
+		"bpf-tcpmon", varRunHubbleFGS+"bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
 	flags.StringVar(&observer.ObserverTCPConnectRet.Observer__program,
-		"bpf-tcpmonret", "./bpf/bpf_tcpmonret.o", "Location of bpf_tcpmon.o program")
+		"bpf-tcpmonret", varRunHubbleFGS+"bpf_tcpmonret.o", "Location of bpf_tcpmon.o program")
 	flags.StringVar(&observer.ObserverBind.Observer__program,
-		"bpf-bind", "./bpf/bpf_bind.o", "Location of bpf_bind.o program")
+		"bpf-bind", varRunHubbleFGS+"bpf_bind.o", "Location of bpf_bind.o program")
 	flags.StringVar(&observer.ObserverGetPort.Observer__program,
-		"bpf-get-port", "./bpf/bpf_get_port.o", "Location of bpf_get_port.o program")
+		"bpf-get-port", varRunHubbleFGS+"bpf_get_port.o", "Location of bpf_get_port.o program")
 	flags.StringVar(&observer.ObserverListen.Observer__program,
-		"bpf-listen", "./bpf/bpf_listen.o", "Location of bpf_listen.o program")
+		"bpf-listen", varRunHubbleFGS+"bpf_listen.o", "Location of bpf_listen.o program")
 	flags.StringVar(&observer.ProcFS,
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
 	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")

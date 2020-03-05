@@ -38,6 +38,8 @@ import (
 	"unsafe"
 
 	"go.uber.org/zap"
+
+	"golang.org/x/sys/unix"
 )
 
 const (
@@ -46,6 +48,10 @@ const (
 	ArgSize  = 32
 
 	nanoPerSeconds = 1000000000
+
+	varRunHubbleFGS = "/var/run/hubble-fgs/"
+	localBTFFile    = "./bpf/btf"
+	defaultBPFPath  = "./bpf/"
 )
 
 type bpfLoad struct {
@@ -165,6 +171,16 @@ var (
 	pollTimeout     = 5000
 
 	zlog *zap.Logger
+
+	observerPrograms = []*bpfLoad{
+		&ObserverExecve,
+		&ObserverExecveat,
+		&ObserverFork,
+		&ObserverTCPConnect,
+		&ObserverTCPConnectRet,
+		&ObserverBind,
+		&ObserverGetPort,
+		&ObserverListen}
 )
 
 func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
@@ -918,8 +934,47 @@ type ObserverKprobe struct {
 	listeners     []ObserverChannel
 }
 
+func btfFileExists(file string) error {
+	_, err := os.Stat(file)
+	return err
+}
+
+func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
+	for _, p := range observerPrograms {
+		if _, err := os.Stat(p.Observer__program); err == nil {
+			continue
+		}
+		last := strings.Split(p.Observer__program, "/")
+		filename := last[len(last)-1]
+		if _, err := os.Stat(defaultBPFPath + filename); err == nil {
+			p.Observer__program = defaultBPFPath + filename
+			continue
+		}
+		return fmt.Errorf("observer Program '%s' can not be found\n", p.Observer__program)
+	}
+	return nil
+}
+
 func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 	if ObserverBTF == "" {
+		var uname unix.Utsname
+
+		err := unix.Uname(&uname)
+		if err != nil {
+			return fmt.Errorf("BTF search: failed uname, %s\n", err)
+		}
+		n := bytes.IndexByte(uname.Release[:], 0)
+		runFile := varRunHubbleFGS + "vmlinux-" + string(uname.Release[:n])
+		if _, err := os.Stat(runFile); err == nil {
+			ObserverBTF = runFile
+			return nil
+		}
+
+		if _, err := os.Stat(localBTFFile); err == nil {
+			ObserverBTF = localBTFFile
+			return nil
+		}
+
 		return fmt.Errorf("No BTF target found\n")
 	}
 	return nil
@@ -929,6 +984,9 @@ func (k *ObserverKprobe) Start() error {
 	k.createDir()
 	if err := k.observerFindBTF(context.TODO()); err != nil {
 		return fmt.Errorf("observerFindBTF error: %s\n", err)
+	}
+	if err := k.observerFindProgs(context.TODO()); err != nil {
+		return fmt.Errorf("observerFindProgs error: %s\n", err)
 	}
 	if err := k.observerLoadExecve(context.TODO()); err != nil {
 		return fmt.Errorf("observerLoadExecve error: %s\n", err)
