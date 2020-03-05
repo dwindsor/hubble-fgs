@@ -53,6 +53,9 @@ const (
 	varLibHubbleFGS = "/var/lib/hubble-fgs/"
 	localBTFFile    = "./bpf/btf"
 	defaultBPFPath  = "./bpf/"
+
+	execveEventProg = "bpf_execve_event.o"
+	execveProg      = "bpf_execve.o"
 )
 
 type bpfLoad struct {
@@ -941,6 +944,14 @@ func btfFileExists(file string) error {
 }
 
 func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
+	if ObserverExecve.Observer__program == "" {
+		if EnableExecve {
+			ObserverExecve.Observer__program = varLibHubbleFGS + execveEventProg
+		} else {
+			ObserverExecve.Observer__program = varLibHubbleFGS + execveProg
+		}
+	}
+
 	for _, p := range observerPrograms {
 		if _, err := os.Stat(p.Observer__program); err == nil {
 			continue
