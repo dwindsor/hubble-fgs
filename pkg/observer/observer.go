@@ -49,7 +49,6 @@ const (
 
 	nanoPerSeconds = 1000000000
 
-	varRunHubbleFGS = "/var/run/hubble-fgs/"
 	varLibHubbleFGS = "/var/lib/hubble-fgs/"
 	localBTFFile    = "./bpf/btf"
 	defaultBPFPath  = "./bpf/"
@@ -984,7 +983,7 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 			return fmt.Errorf("BTF search: failed uname, %s\n", err)
 		}
 		n := bytes.IndexByte(uname.Release[:], 0)
-		runFile := varRunHubbleFGS + "vmlinux-" + string(uname.Release[:n])
+		runFile := varLibHubbleFGS + "vmlinux-" + string(uname.Release[:n])
 		if _, err := os.Stat(runFile); err == nil {
 			ObserverBTF = runFile
 			return nil

@@ -17,7 +17,6 @@ import (
 
 var (
 	observerDir     = "/sys/fs/bpf/tcpmon/"
-	varRunHubbleFGS = "/var/run/hubble-fgs/"
 	varLibHubbleFGS = "/var/lib/hubble-fgs/"
 
 	cmd *cobra.Command
