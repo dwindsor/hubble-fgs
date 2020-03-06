@@ -20,7 +20,7 @@ FROM quay.io/isovalent/hubble-fgs-bins:2020-03-04 as hubble-fgs-btf
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 RUN mkdir bins && \
-    cp /var/lib/hubble-fgs/* ./bins/
+    cp /var/run/hubble-fgs/* ./bins/
 
 FROM docker.io/library/alpine:3.10
 RUN addgroup hubble	       && \
