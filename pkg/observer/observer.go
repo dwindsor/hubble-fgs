@@ -419,17 +419,41 @@ func isCtxDone(ctx context.Context) bool {
 	}
 }
 
-func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.Context) error {
-	var version int
+func kernelStringToNumeric(ver string) int64 {
+	vers := strings.Split(ver, ".")
+	a, erra := strconv.ParseInt(vers[0], 10, 32)
+	b, errb := strconv.ParseInt(vers[1], 10, 32)
+	c, errc := strconv.ParseInt(vers[2], 10, 32)
+	if erra != nil || errb != nil || errc != nil {
+		return 0
+	}
+	return ((a << 16) + (b << 8) + c)
+}
+
+func getKernelVersion() (int, error) {
+	var version int = 0
 
 	if KernelVersion != "" {
 		__version, err := strconv.ParseInt(KernelVersion, 10, 32)
 		if err != nil {
-			return fmt.Errorf("failed kprobe %s invalid kernel version specified: %s\n", program, KernelVersion)
+			return version, fmt.Errorf("invalid kernel version specified: %s\n", KernelVersion)
 		}
 		version = int(__version)
 	} else {
-		version = 0
+		if versionSig, err := ioutil.ReadFile(ProcFS + "/version_signature"); err == nil {
+			versionStrings := strings.Fields(string(versionSig))
+			version = int(kernelStringToNumeric(versionStrings[len(versionStrings)-1]))
+		} else {
+			version = 0
+		}
+	}
+	return version, nil
+}
+
+func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.Context) error {
+	version, err := getKernelVersion()
+	if err != nil {
+		return err
 	}
 
 	for _, m := range BPFMaps {
@@ -451,7 +475,6 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 
 func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Context) error {
 	var btf string
-	var version int
 
 	if load.Observer__btf == "" {
 		btf = ObserverBTF
@@ -459,18 +482,13 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		btf = load.Observer__btf
 	}
 
-	if KernelVersion != "" {
-		__version, err := strconv.ParseInt(KernelVersion, 10, 32)
-		if err != nil {
-			return fmt.Errorf("failed kprobe %s invalid kernel version specified: %s\n", load.Observer__program, KernelVersion)
-		}
-		version = int(__version)
-	} else {
-		version = 0
+	version, err := getKernelVersion()
+	if err != nil {
+		return err
 	}
 
 	fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
-	err, _ := bpf.LoadKprobeProgram(
+	err, _ = bpf.LoadKprobeProgram(
 		version, Verbosity,
 		btf,
 		load.Observer__program,
