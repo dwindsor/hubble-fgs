@@ -15,23 +15,25 @@ struct bpf_map_def {
 #include "bpf_events.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
-#ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
-#endif
 
 __attribute__((section(("kprobe/sys_execveat")), used))
 int event_execveat(struct pt_regs *__ctx)
 {
-#ifdef VMLINUX_KERNEL_HAS_SYSCALL_WRAPPER
-	struct pt_regs *ctx = (struct pt_regs *) __ctx->di;
-#else
-	struct pt_regs *ctx = __ctx;
-#endif
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct msg_ipv4_tcp_connect *event, *parent_event;
+	struct xdp_buff *kver_pivot, __kver_pivot;
 	struct event_execve *parent;
-	int64_t size = 0;
+	struct pt_regs *ctx;
+	int exists;
 	__u32 pid;
+
+	kver_pivot = &__kver_pivot;
+	exists = bpf_core_field_exists(kver_pivot->handle);
+	if (exists) {
+		ctx = (struct pt_regs *) __ctx->di;
+	} else {
+		ctx = __ctx;
+	}
 
 	pid = (get_current_pid_tgid() >> 32);
 	event = map_lookup_event(pid);
@@ -40,8 +42,8 @@ int event_execveat(struct pt_regs *__ctx)
 	parent = (struct event_execve *)event->pid;
 	parent_event = event_find_parent();
 	if (parent_event)
-		size = event_copy_execve(parent,
-					 (struct event_execve *)&parent_event->pid);
+		event_copy_execve(parent,
+				 (struct event_execve *)&parent_event->pid);
 	else
 		event_minimal_parent(parent, task);
 
