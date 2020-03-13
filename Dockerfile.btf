@@ -16,7 +16,7 @@ COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
 RUN make hubble-fgs-image
 
-FROM quay.io/isovalent/hubble-fgs-bins:2020-03-04 as hubble-fgs-btf
+FROM quay.io/isovalent/hubble-fgs-bins:2020-03-13 as hubble-fgs-btf
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 RUN mkdir bins && \
