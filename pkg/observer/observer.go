@@ -459,7 +459,7 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 	for _, m := range BPFMaps {
 		pin := k.bpfDir + m
 		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, program, pin, m)
-		fmt.Printf("(%d, %s): LoadAndPinMaps(%s, %s, %s)\n", fd, err, program, pin, m)
+		fmt.Printf("LoadAndPinMaps(%s, %s, %s)\n", program, pin, m)
 
 		if err != nil {
 			return fmt.Errorf("failed kprobe load map (%d): %s\n", fd, err)
