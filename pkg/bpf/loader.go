@@ -41,6 +41,11 @@ static int __print(enum libbpf_print_level level __attribute__((unused)),
 	return vfprintf(stderr, format, args);
 }
 
+static int __quiet(enum libbpf_print_level level __attribute__((unused)),
+		   const char *format, va_list args)
+{
+}
+
 int kprobe_map_loader(const int version,
 		      const int verbosity,
 		      const char *btf,
@@ -54,8 +59,10 @@ int kprobe_map_loader(const int version,
 	struct bpf_object *obj;
 	int err, map_fd;
 
-	if (verbosity)
+	if (verbosity > 1)
 		libbpf_set_print(__print);
+	else
+		libbpf_set_print(__quiet);
 
 	obj = bpf_object__open(prog);
 	err = libbpf_get_error(obj);
@@ -67,8 +74,10 @@ int kprobe_map_loader(const int version,
 	bpf_object__for_each_map(map_bpf, obj) {
 		const struct bpf_map_def *def = bpf_map__def(map_bpf);
 
-		fprintf(stderr, "map: type %u key_size %u value_size %u max %u flags %u\n",
-			def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
+		if (verbosity)
+			fprintf(stderr, "map: type %u key_size %u value_size %u max %u flags %u\n",
+				def->type, def->key_size, def->value_size,
+				def->max_entries, def->map_flags);
 	}
 
 	attr.obj = obj;
@@ -79,31 +88,42 @@ int kprobe_map_loader(const int version,
 		char errstr[256];
 
 		libbpf_strerror(err, errstr, sizeof(errstr));
-		fprintf(stderr, "bpf_object__load: failed %i: %s\n", err, errstr);
+		fprintf(stderr,
+			"bpf_object__load: failed %i: %s\n",
+			err, errstr);
 		return -1;
 	}
 
 	bpf_object__for_each_program(prog_bpf, obj) {
 		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
-		fprintf(stderr, "program: kern_version: %u\n", bpf_object__kversion(obj));
+		if (verbosity)
+			fprintf(stderr,
+				"program: kern_version: %u\n",
+				bpf_object__kversion(obj));
 	}
 
 	map_bpf = bpf_object__find_map_by_name(obj, __label_map);
 	err = libbpf_get_error(map_bpf);
 	if (err) {
-		fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(%s) failed", prog, __label_map);
+		fprintf(stderr,
+			"bpf_object__find_map_by_name: obj(%s) map(%s) failed",
+			prog, __label_map);
 		return err;
 	}
 
 	if (!map_bpf) {
-		fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(%s) null\n", prog, __label_map);
+		fprintf(stderr,
+			"bpf_object__find_map_by_name: obj(%s) map(%s) null\n",
+			prog, __label_map);
 		return -1;
 	}
 
 	bpf_map__unpin(map_bpf, __map);
 	err = bpf_map__pin(map_bpf, __map);
 	if (err < 0) {
-		fprintf(stderr, "bpf_map_pin: failed obj(%s) map(%s) %i\n", prog, __label_map, err);
+		fprintf(stderr,
+		       "bpf_map_pin: failed obj(%s) map(%s) %i\n",
+		       prog, __label_map, err);
 		return err;
 	}
 	return bpf_map__fd(map_bpf);
@@ -126,7 +146,7 @@ int kprobe_loader(const int version,
 	struct bpf_map *map_bpf, *map, *execve_map;
 	int fd, err, map_fd = 0;
 
-	if (verbosity)
+	if (verbosity > 1)
 		libbpf_set_print(__print);
 
 	obj = bpf_object__open(prog);
@@ -139,14 +159,18 @@ int kprobe_loader(const int version,
 	bpf_object__for_each_map(map_bpf, obj) {
 		const struct bpf_map_def *def = bpf_map__def(map_bpf);
 
-		fprintf(stderr, "map: type %u key_size %u value_size %u max %u flags %u\n",
-			def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
+		if (verbosity)
+			fprintf(stderr,
+				"map: type %u key_size %u value_size %u max %u flags %u\n",
+				def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
 	}
 
 	bpf_object__for_each_program(prog_bpf, obj) {
-
 		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
-		fprintf(stderr, "program: kern_version: %u\n", bpf_object__kversion(obj));
+		if (verbosity)
+			fprintf(stderr,
+				"program: kern_version: %u\n",
+				bpf_object__kversion(obj));
 	}
 
 	if (execve_fd) {
@@ -168,17 +192,17 @@ int kprobe_loader(const int version,
 		map = bpf_object__find_map_by_name(obj, "tcpmon_map");
 		err = libbpf_get_error(map);
 		if (err) {
-			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(kprobe_tcp_events)\n", prog);
+			fprintf(stderr,
+				"bpf_object__find_map_by_name: obj(%s) map(kprobe_tcp_events)\n",
+				prog);
 			return -1;
 		}
 
-		fprintf(stderr, "tcp_events_fd %i map kprobe_tcp_events\n", tcp_events_fd);
 		err = bpf_map__reuse_fd(map, tcp_events_fd);
 		if (err) {
 			fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
 			return -1;
 		}
-		fprintf(stderr, "tcp_events_fd map reused\n");
 	}
 
 	attr.obj = obj;
@@ -209,7 +233,9 @@ int kprobe_loader(const int version,
 	prog_attach = bpf_program__attach_kprobe(prog_bpf, retprobe, attach);
 	err = libbpf_get_error(prog_attach);
 	if (err) {
-		fprintf(stderr, "bpf_program__attach_kprobe: failed (%s)\n", prog);
+		// Expected error when attach point probe is happening
+		if (verbosity)
+			fprintf(stderr, "bpf_program__attach_kprobe: failed (%s)\n", prog);
 		return -1;
 	}
 
@@ -238,7 +264,7 @@ func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_labe
 	fd := C.kprobe_map_loader(version, verbosity, btf, p, m, ml)
 	fdInt := int(fd)
 	if fdInt < 0 {
-		return 0, fmt.Errorf("Unalbe to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
+		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
 	}
 	return fdInt, nil
 }
