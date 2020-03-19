@@ -434,11 +434,7 @@ func getKernelVersion() (int, error) {
 	var version int = 0
 
 	if KernelVersion != "" {
-		__version, err := strconv.ParseInt(KernelVersion, 10, 32)
-		if err != nil {
-			return version, fmt.Errorf("invalid kernel version specified: %s\n", KernelVersion)
-		}
-		version = int(__version)
+		version = int(kernelStringToNumeric(KernelVersion))
 	} else {
 		if versionSig, err := ioutil.ReadFile(ProcFS + "/version_signature"); err == nil {
 			versionStrings := strings.Fields(string(versionSig))
