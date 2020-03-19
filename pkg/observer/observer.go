@@ -440,7 +440,22 @@ func getKernelVersion() (int, error) {
 			versionStrings := strings.Fields(string(versionSig))
 			version = int(kernelStringToNumeric(versionStrings[len(versionStrings)-1]))
 		} else {
-			version = 0
+			var uname unix.Utsname
+
+			err := unix.Uname(&uname)
+			if err != nil {
+				// On error default to bpf discovery which
+				// will work in many cases, notable exception
+				// is the cloud vendors and others that mangle
+				// the kernel version string.
+				return 0, nil
+			}
+			n := bytes.IndexByte(uname.Release[:], 0)
+			// vendors like to define kernel 4.14.128-foo but
+			// everything after '-' is meaningless from BPF
+			// side so toss it out.
+			release := strings.Split(string(uname.Release[:n]), "-")
+			version = int(kernelStringToNumeric(release[0]))
 		}
 	}
 	return version, nil
