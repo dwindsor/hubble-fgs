@@ -65,9 +65,11 @@ __u64 __get_auid(struct task_struct *task)
 	} else {
 		struct audit_task_info *audit;
 
-		probe_read(&audit, sizeof(audit), _(&task->audit));
-		if (audit) {
-			probe_read(&auid, sizeof(__u32), _(&audit->loginuid));
+		if (bpf_core_field_exists(task->audit)) {
+			probe_read(&audit, sizeof(audit), _(&task->audit));
+			if (audit) {
+				probe_read(&auid, sizeof(__u32), _(&audit->loginuid));
+			}
 		}
 	}
 
