@@ -18,6 +18,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
 
+	"bytes"
 	"encoding/binary"
 	"encoding/gob"
 	"golang.org/x/sys/unix"
@@ -40,17 +41,6 @@ func GetIP(i uint32, op uint8) net.IP {
 
 func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
-}
-
-func ReplaceNewLines(s string, c rune) string {
-	r := []rune(s)
-
-	for i, _r := range r {
-		if _r == 0x0000 {
-			r[i] = c
-		}
-	}
-	return strings.TrimSpace(string(r))
 }
 
 func DecodeCommonFlags(flags uint32) string {
@@ -107,29 +97,52 @@ func DecodeKtime(ktime int64) (time.Time, error) {
 	return time.Now().Add(time.Duration(diff)), nil
 }
 
+func argsDecoderTrim(r rune) bool {
+	if r == 0x00 {
+		return true
+	}
+	return false
+}
+
 func ArgsDecoder(s string, flags uint32) (string, string) {
-	args := ReplaceNewLines(s, rune(0x0020))
+	var b []byte
+	var cwd string
+	args := ""
+
+	b = append(b, 0x00)
+	argTokens := bytes.Split(bytes.TrimRightFunc([]byte(s), argsDecoderTrim), b)
+
 	if (flags & api.EventNoCWDSupport) != 0 {
-		return args, ""
-	}
-	if (flags & api.EventErrorCWD) != 0 {
-		return args, ""
-	}
-	if (flags & api.EventRootCWD) != 0 {
-		return args, "/"
-	}
-	argTokens := strings.Split(args, " ")
-	dirs := strings.Split(argTokens[len(argTokens)-1], "/")
-	for i := len(dirs)/2 - 1; i >= 0; i-- {
-		opp := len(dirs) - 1 - i
-		dirs[i], dirs[opp] = dirs[opp], dirs[i]
-	}
-	cwd := strings.Join(dirs, "/")
-	cwd = "/" + cwd
-	if len(argTokens) > 1 {
-		args = strings.Join(argTokens[0:len(argTokens)-1], " ")
+		cwd = ""
+	} else if (flags & api.EventErrorCWD) != 0 {
+		cwd = ""
+	} else if (flags & api.EventRootCWD) != 0 {
+		cwd = "/"
 	} else {
-		args = ""
+		dirs := strings.Split(string(argTokens[len(argTokens)-1]), "/")
+		for i := len(dirs)/2 - 1; i >= 0; i-- {
+			opp := len(dirs) - 1 - i
+			dirs[i], dirs[opp] = dirs[opp], dirs[i]
+		}
+		cwd = strings.Join(dirs, "/")
+		cwd = "/" + cwd
+	}
+
+	if len(argTokens) > 1 {
+		for i, a := range argTokens {
+			if i == len(argTokens)-1 {
+				continue
+			}
+			if strings.Contains(string(a), " ") {
+				args = args + " \"" + string(a) + "\""
+			} else {
+				if args == "" {
+					args = string(a)
+				} else {
+					args = args + " " + string(a)
+				}
+			}
+		}
 	}
 	return args, cwd
 }
