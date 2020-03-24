@@ -599,10 +599,28 @@ void __event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walke
 	size = validate_arg_size(parent->size);
 	curr = (void *)parent + size;
 	if (cwd_always || curr->flags & EVENT_NEEDS_CWD) {
-		int err = getcwd(curr, parent, parent->size + curr->size - CWD_MAX + 1, curr->pid, 1);
+		__u32 offset;
+		int err;
+		bool prealloc = false;
 
-		if (!err)
-			parent->flags = parent->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
+		/* In the cwd always case we have no reserved memory for
+		 * CWD so insert CWD directly after the curr->size. In
+		 * EVENT_NEEDS_CWD case this is a procFS entry that we
+		 * need to insert CWD for and memory has been reserved
+		 * already. Finally if ERROR_CWD flag is set skip there
+		 * is no point in continuing to bang on it if its not
+		 * working.
+		 */
+		offset = parent->size + curr->size;
+		if (!cwd_always) {
+			offset -= CWD_MAX + 1;
+			prealloc = true;
+		}
+		if (!(curr->flags & EVENT_ERROR_CWD)) {
+			err = getcwd(curr, parent, offset, curr->pid, prealloc);
+			if (!err)
+				curr->flags = curr->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
+		}
 	}
 	if (curr->flags & EVENT_NEEDS_AUID) {
 		__u32 flags = curr->flags & ~EVENT_NEEDS_AUID;
