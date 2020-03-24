@@ -107,10 +107,19 @@ func argsDecoderTrim(r rune) bool {
 func ArgsDecoder(s string, flags uint32) (string, string) {
 	var b []byte
 	var cwd string
+	var hasCWD int
 	args := ""
 
 	b = append(b, 0x00)
 	argTokens := bytes.Split(bytes.TrimRightFunc([]byte(s), argsDecoderTrim), b)
+	flagsOR := ((flags & api.EventNoCWDSupport) |
+		(flags & api.EventErrorCWD) |
+		(flags & api.EventRootCWD))
+	if flagsOR == 0 {
+		hasCWD = 1
+	} else {
+		hasCWD = 0
+	}
 
 	if (flags & api.EventNoCWDSupport) != 0 {
 		cwd = ""
@@ -128,9 +137,9 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 		cwd = "/" + cwd
 	}
 
-	if len(argTokens) > 1 {
+	if len(argTokens) > hasCWD {
 		for i, a := range argTokens {
-			if i == len(argTokens)-1 {
+			if i == len(argTokens)-hasCWD {
 				continue
 			}
 			if strings.Contains(string(a), " ") {
