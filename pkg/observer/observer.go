@@ -70,10 +70,6 @@ type bpfLoad struct {
 }
 
 var (
-	LostCntr  = 0
-	ErrorCntr = 0
-	RecvCntr  = 0
-
 	ProcFS        = "/proc/"
 	KernelVersion = ""
 	EnableExecve  = false
@@ -285,7 +281,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	var op uint8 = data[0]
 	var empty bool
 
-	RecvCntr++
+	k.recvCntr++
 	r := bytes.NewReader(data)
 
 	switch op {
@@ -402,12 +398,12 @@ func (k *ObserverKprobe) pushExecveEvents(procs []ObserverProcs) {
 	}
 }
 
-func observerLost(msg *bpf.PerfEventLost, cpu int) {
-	LostCntr = LostCntr + 1
+func (k *ObserverKprobe) observerLost(msg *bpf.PerfEventLost, cpu int) {
+	k.lostCntr++
 }
 
-func observerError(msg *bpf.PerfEvent) {
-	ErrorCntr++
+func (k *ObserverKprobe) observerError(msg *bpf.PerfEvent) {
+	k.errorCntr++
 }
 
 func isCtxDone(ctx context.Context) bool {
@@ -584,14 +580,15 @@ func (k *ObserverKprobe) runEvents(stopCtx context.Context) error {
 		return err
 	}
 
-	c := bpf.DefaultPerfEventConfig()
-	e, err := bpf.NewPerCpuEvents(c)
+	e, err := bpf.NewPerCpuEvents(k.perfConfig)
 	if err != nil {
 		return fmt.Errorf("failed kprobe events NewPerCpuEvents: %s\n", err)
 	}
 	defer e.CloseAll()
 
 	receiveEvent := k.receiveEvent
+	observerLost := k.observerLost
+	observerError := k.observerError
 
 	for !isCtxDone(stopCtx) {
 		todo, err := e.Poll(pollTimeout)
@@ -964,6 +961,11 @@ type ObserverKprobe struct {
 	tcp_events_fd int
 	prettyPrinter bool
 	listeners     []ObserverChannel
+	perfConfig    *bpf.PerfEventConfig
+	/* Statistics */
+	lostCntr  int
+	errorCntr int
+	recvCntr  int
 }
 
 func btfFileExists(file string) error {
@@ -1040,6 +1042,7 @@ func (k *ObserverKprobe) Start() error {
 		return fmt.Errorf("observerLoadExecve error: %s\n", err)
 	}
 	k.populateExecve(context.TODO())
+	k.perfConfig = bpf.DefaultPerfEventConfig()
 	if err := k.runEvents(context.TODO()); err != nil {
 		return fmt.Errorf("observerLoadEvents failed: %s", err)
 	}
@@ -1067,6 +1070,6 @@ func NewObserverKprobe(bpfDir string, pretty bool) *ObserverKprobe {
 	}
 }
 
-func PrintStats() {
-	fmt.Printf("Observer Stats: errors %d lost %d recvd %d\n", ErrorCntr, LostCntr, RecvCntr)
+func (k *ObserverKprobe) PrintStats() {
+	fmt.Printf("Observer Stats: errors %d lost %d recvd %d\n", k.errorCntr, k.lostCntr, k.recvCntr)
 }

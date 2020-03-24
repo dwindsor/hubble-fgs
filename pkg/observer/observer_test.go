@@ -5,6 +5,7 @@ import (
 	"os"
 	"syscall"
 	"testing"
+	"time"
 
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 )
@@ -21,7 +22,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func TestObjectLoad(t *testing.T) {
+func getDefaultObserver(t *testing.T) *ObserverKprobe {
 	var uts syscall.Utsname
 
 	if err := syscall.Uname(&uts); err != nil {
@@ -42,15 +43,44 @@ func TestObjectLoad(t *testing.T) {
 	ObserverListen.Observer__program = "../../bpf/bpf_listen.o"
 	ObserverBTF = "../../bpf/btf"
 
-	kprobe := NewObserverKprobe(observerTestDir, false)
+	return NewObserverKprobe(observerTestDir, false)
+}
+
+func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	kprobe.createDir()
 	if err := kprobe.observerLoadExecve(context.TODO()); err != nil {
 		kprobe.deleteProgs()
 		t.Fatalf("observerLoadExecve error: %s", err)
 	}
+}
+
+func loadEvents(t *testing.T, kprobe *ObserverKprobe) {
 	if err := kprobe.observerLoadEvents(context.TODO()); err != nil {
 		kprobe.deleteProgs()
 		t.Fatalf("observerLoadEvents error: %s", err)
 	}
+}
+
+func TestObjectLoad(t *testing.T) {
+	kprobe := getDefaultObserver(t)
+	loadObserver(t, kprobe)
+	loadEvents(t, kprobe)
 	kprobe.deleteProgs()
+}
+
+func TestConnectEvent(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	defer cancel()
+
+	kprobe := getDefaultObserver(t)
+	loadObserver(t, kprobe)
+
+	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
+	kprobe.perfConfig.MapName = observerTestDir + "tcpmon_map"
+	if err := kprobe.runEvents(ctx); err != nil {
+		kprobe.deleteProgs()
+		t.Fatalf("runEvents error: %s", err)
+	}
+	kprobe.deleteProgs()
+	kprobe.PrintStats()
 }

@@ -25,11 +25,6 @@ var (
 func hubbleFGSExecute() error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	go func() {
-		<-sigs
-		observer.PrintStats()
-		os.Exit(1)
-	}()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
@@ -37,6 +32,13 @@ func hubbleFGSExecute() error {
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("debug"))
+
+	go func() {
+		<-sigs
+		kprobe.PrintStats()
+		os.Exit(1)
+	}()
+
 	go server.ServeEvents(kprobe, ctx, defaults.DefaultUnixSock)
 	return kprobe.Start()
 }
