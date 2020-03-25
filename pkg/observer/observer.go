@@ -279,8 +279,9 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	data := msg.DataDirect()
 	var op uint8 = data[0]
-	var empty bool
+	var empty, res bool
 
+	res = true
 	k.recvCntr++
 	r := bytes.NewReader(data)
 
@@ -306,11 +307,20 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			msgUnix.Pid.Curr = nopMsgExecUnix()
 		}
 
+		if k.msgFilter != nil {
+			res = k.msgFilter(msgUnix)
+		}
+
+		if res {
+			k.filterPass++
+			k.observerListeners(msgUnix)
+		} else {
+			k.filterDrop++
+		}
+		/* Keeping pretty printer because it helps debugging filters */
 		if k.prettyPrinter {
 			reader.ObserverIPV4TCPConnectPrinter(msgUnix, zlog)
 		}
-
-		k.observerListeners(msgUnix)
 	}
 }
 
@@ -575,17 +585,19 @@ func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 	return nil
 }
 
-func (k *ObserverKprobe) runEvents(stopCtx context.Context) error {
+func (k *ObserverKprobe) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, error) {
 	if err := k.observerLoadEvents(stopCtx); err != nil {
-		return err
+		return nil, err
 	}
 
 	e, err := bpf.NewPerCpuEvents(k.perfConfig)
 	if err != nil {
-		return fmt.Errorf("failed kprobe events NewPerCpuEvents: %s\n", err)
+		return nil, fmt.Errorf("failed kprobe events NewPerCpuEvents: %s\n", err)
 	}
-	defer e.CloseAll()
+	return e, nil
+}
 
+func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) error {
 	receiveEvent := k.receiveEvent
 	observerLost := k.observerLost
 	observerError := k.observerError
@@ -610,6 +622,16 @@ func (k *ObserverKprobe) runEvents(stopCtx context.Context) error {
 			}
 		}
 	}
+	return nil
+}
+
+func (k *ObserverKprobe) runEvents(stopCtx context.Context) error {
+	e, err := k.__runEvents(stopCtx)
+	if err != nil {
+		return err
+	}
+	defer e.CloseAll()
+	k.__loopEvents(stopCtx, e)
 	return nil
 }
 
@@ -955,6 +977,8 @@ type ObserverChannel struct {
 	encoder *gob.Encoder
 }
 
+type MsgFilter func(*api.MsgIPv4TcpConnectUnix) bool
+
 type ObserverKprobe struct {
 	bpfDir        string
 	execve_fd     int
@@ -963,9 +987,17 @@ type ObserverKprobe struct {
 	listeners     []ObserverChannel
 	perfConfig    *bpf.PerfEventConfig
 	/* Statistics */
-	lostCntr  int
-	errorCntr int
-	recvCntr  int
+	lostCntr   int
+	errorCntr  int
+	recvCntr   int
+	filterPass int
+	filterDrop int
+	/* Filters */
+	msgFilter MsgFilter
+}
+
+func defaultFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
+	return true
 }
 
 func btfFileExists(file string) error {
@@ -1071,5 +1103,10 @@ func NewObserverKprobe(bpfDir string, pretty bool) *ObserverKprobe {
 }
 
 func (k *ObserverKprobe) PrintStats() {
-	fmt.Printf("Observer Stats: errors %d lost %d recvd %d\n", k.errorCntr, k.lostCntr, k.recvCntr)
+	fmt.Printf("Observer Stats: errors %d lost %d recvd %d filterPass %d filterDrop %d\n",
+		k.errorCntr, k.lostCntr, k.recvCntr, k.filterPass, k.filterDrop)
+}
+
+func (k *ObserverKprobe) AttachFilter(f MsgFilter) {
+	k.msgFilter = f
 }
