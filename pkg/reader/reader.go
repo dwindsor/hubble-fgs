@@ -39,10 +39,6 @@ func GetIP(i uint32, op uint8) net.IP {
 	return ip
 }
 
-func SwapByte(b uint16) uint16 {
-	return (b << 8) | (b >> 8)
-}
-
 func DecodeCommonFlags(flags uint32) string {
 	var s []string
 	if (flags & api.EventExecve) != 0 {
@@ -104,6 +100,15 @@ func argsDecoderTrim(r rune) bool {
 	return false
 }
 
+func SwapPath(path string) string {
+	dirs := strings.Split(path, "/")
+	for i := len(dirs)/2 - 1; i >= 0; i-- {
+		opp := len(dirs) - 1 - i
+		dirs[i], dirs[opp] = dirs[opp], dirs[i]
+	}
+	return strings.Join(dirs, "/")
+}
+
 func ArgsDecoder(s string, flags uint32) (string, string) {
 	var b []byte
 	var cwd string
@@ -128,13 +133,7 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	} else if (flags & api.EventRootCWD) != 0 {
 		cwd = "/"
 	} else {
-		dirs := strings.Split(string(argTokens[len(argTokens)-1]), "/")
-		for i := len(dirs)/2 - 1; i >= 0; i-- {
-			opp := len(dirs) - 1 - i
-			dirs[i], dirs[opp] = dirs[opp], dirs[i]
-		}
-		cwd = strings.Join(dirs, "/")
-		cwd = "/" + cwd
+		cwd = "/" + SwapPath(string(argTokens[len(argTokens)-1]))
 	}
 
 	if len(argTokens) > hasCWD {
@@ -163,7 +162,7 @@ func GetDport(dport uint16, op uint8) uint16 {
 	if op == api.MSG_OP_IPV4_BIND || op == api.MSG_OP_IPV4_LISTEN {
 		return 0
 	}
-	return SwapByte(dport)
+	return api.SwapByte(dport)
 }
 
 func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {

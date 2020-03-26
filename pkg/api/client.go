@@ -149,3 +149,7 @@ type MsgIPv4TcpConnectUnix struct {
 }
 
 var MsgUnixSize uint32 = 640
+
+func SwapByte(b uint16) uint16 {
+	return (b << 8) | (b >> 8)
+}
