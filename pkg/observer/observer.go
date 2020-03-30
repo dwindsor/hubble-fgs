@@ -436,25 +436,29 @@ func kernelStringToNumeric(ver string) int64 {
 	return ((a << 16) + (b << 8) + c)
 }
 
-func getKernelVersion() (int, error) {
+func getKernelVersion() (int, string, error) {
 	var version int = 0
+	var verStr string = ""
 
 	if KernelVersion != "" {
 		version = int(kernelStringToNumeric(KernelVersion))
+		verStr = KernelVersion
 	} else {
 		if versionSig, err := ioutil.ReadFile(ProcFS + "/version_signature"); err == nil {
 			versionStrings := strings.Fields(string(versionSig))
 			version = int(kernelStringToNumeric(versionStrings[len(versionStrings)-1]))
+			verStr = versionStrings[len(versionStrings)-1]
 		} else {
 			var uname unix.Utsname
 
 			err := unix.Uname(&uname)
 			if err != nil {
+				verStr = "unknown"
 				// On error default to bpf discovery which
 				// will work in many cases, notable exception
 				// is the cloud vendors and others that mangle
 				// the kernel version string.
-				return 0, nil
+				return 0, verStr, nil
 			}
 			n := bytes.IndexByte(uname.Release[:], 0)
 			// vendors like to define kernel 4.14.128-foo but
@@ -462,13 +466,14 @@ func getKernelVersion() (int, error) {
 			// side so toss it out.
 			release := strings.Split(string(uname.Release[:n]), "-")
 			version = int(kernelStringToNumeric(release[0]))
+			verStr = release[0]
 		}
 	}
-	return version, nil
+	return version, verStr, nil
 }
 
 func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.Context) error {
-	version, err := getKernelVersion()
+	version, _, err := getKernelVersion()
 	if err != nil {
 		return err
 	}
@@ -476,7 +481,9 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 	for _, m := range BPFMaps {
 		pin := k.bpfDir + m
 		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, program, pin, m)
-		fmt.Printf("LoadAndPinMaps(%s, %s, %s)\n", program, pin, m)
+		if Verbosity > 0 {
+			fmt.Printf("LoadAndPinMaps(%s, %s, %s)\n", program, pin, m)
+		}
 
 		if err != nil {
 			return fmt.Errorf("failed kprobe load map (%d): %s\n", fd, err)
@@ -499,12 +506,14 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		btf = load.Observer__btf
 	}
 
-	version, err := getKernelVersion()
+	version, _, err := getKernelVersion()
 	if err != nil {
 		return err
 	}
 
-	fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
+	if Verbosity > 0 {
+		fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
+	}
 	err, _ = bpf.LoadKprobeProgram(
 		version, Verbosity,
 		btf,
@@ -526,7 +535,8 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 			k.bpfDir+load.observer__prog,
 			load.retProbe, k.execve_fd, k.tcp_events_fd)
 		if err != nil && load.errorFatal {
-			return fmt.Errorf("failed kprobe %s LoadKprobeProgram: %s\n", load.Observer__program, err)
+			return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d LoadKprobeProgram: %s\n",
+				load.Observer__program, k.execve_fd, k.tcp_events_fd, version, err)
 		}
 	}
 	return nil
@@ -540,6 +550,9 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 	} else {
 		btf = ObserverExecve.Observer__btf
 	}
+
+	_, verStr, _ := getKernelVersion()
+	fmt.Printf("Loading kernel version %s\n", verStr)
 
 	/* Assumption observer__program execve contains all maps */
 	if err := k.observerLoadMaps(
@@ -589,6 +602,7 @@ func (k *ObserverKprobe) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents
 	if err := k.observerLoadEvents(stopCtx); err != nil {
 		return nil, err
 	}
+	fmt.Printf("hubble-fgs, loaded BPF maps and events successfully.\n")
 
 	e, err := bpf.NewPerCpuEvents(k.perfConfig)
 	if err != nil {
@@ -602,6 +616,7 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 	observerLost := k.observerLost
 	observerError := k.observerError
 
+	fmt.Printf("hubble-fgs, listening for events...\n")
 	for !isCtxDone(stopCtx) {
 		todo, err := e.Poll(pollTimeout)
 		switch {
@@ -1032,7 +1047,7 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 			p.Observer__program = path
 			continue
 		}
-		return fmt.Errorf("observer Program '%s' can not be found\n", p.Observer__program)
+		return fmt.Errorf("Observer Program '%s' can not be found\n", p.Observer__program)
 	}
 	return nil
 }
@@ -1043,7 +1058,7 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 
 		err := unix.Uname(&uname)
 		if err != nil {
-			return fmt.Errorf("BTF search: failed uname, %s\n", err)
+			return fmt.Errorf("Kernel version lookup (uname -r) failing. Use '--kernel' to set manually: %s\n", err)
 		}
 		n := bytes.IndexByte(uname.Release[:], 0)
 		runFile := varLibHubbleFGS + "vmlinux-" + string(uname.Release[:n])
@@ -1057,7 +1072,7 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 			return nil
 		}
 
-		return fmt.Errorf("No BTF target found\n")
+		return fmt.Errorf("Kernel version '%s' BTF search failed kernel is not white listed. Use --btf option to specify BTF path and/or '--kernel' to specify kernel version.", uname.Release[:n])
 	}
 	return nil
 }
@@ -1065,18 +1080,18 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 func (k *ObserverKprobe) Start() error {
 	k.createDir()
 	if err := k.observerFindBTF(context.TODO()); err != nil {
-		return fmt.Errorf("observerFindBTF error: %s\n", err)
+		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
 	}
 	if err := k.observerFindProgs(context.TODO()); err != nil {
-		return fmt.Errorf("observerFindProgs error: %s\n", err)
+		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
 	}
 	if err := k.observerLoadExecve(context.TODO()); err != nil {
-		return fmt.Errorf("observerLoadExecve error: %s\n", err)
+		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
 	k.populateExecve(context.TODO())
 	k.perfConfig = bpf.DefaultPerfEventConfig()
 	if err := k.runEvents(context.TODO()); err != nil {
-		return fmt.Errorf("observerLoadEvents failed: %s", err)
+		return fmt.Errorf("hubble-fgs, Aborting runtime error. %s", err)
 	}
 	return nil
 }
