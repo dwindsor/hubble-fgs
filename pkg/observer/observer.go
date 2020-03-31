@@ -30,6 +30,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"regexp"
 	"strconv"
 	"strings"
 	"syscall"
@@ -832,6 +833,7 @@ func writeExecveMap(procs []ObserverProcs) {
 func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 	var procs []ObserverProcs
 	procFS, _ := ioutil.ReadDir(ProcFS)
+	r := regexp.MustCompile(`[^\s\(]+|(\({1,2}[^\)]*\){1,2})`)
 
 	for _, d := range procFS {
 		var pcmdline, pstatline []byte
@@ -866,7 +868,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			continue
 		}
 
-		stats := strings.Split(string(statline), " ")
+		stats := r.FindAllString(string(statline), -1)
 		ppid := stats[3]
 		_ppid, err := strconv.ParseUint(ppid, 10, 32)
 		if err != nil {
@@ -876,6 +878,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		_ktime := stats[21]
 		ktime, err := strconv.ParseUint(_ktime, 10, 64)
 		if err != nil {
+			fmt.Printf("Warning: Ktime parsing error: %s: %s : %s\n", _ktime, ProcFS+ppid+"/stat", err)
 			ktime = 0
 		}
 		ktime = (ktime / clktck) * nanoPerSeconds
@@ -898,6 +901,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			_pktime := pstats[21]
 			pktime, err := strconv.ParseUint(_pktime, 10, 64)
 			if err != nil {
+				fmt.Printf("Warning: Parent ktime parsing error: %s: %s : %s\n", _pktime, ProcFS+ppid+"/stat", err)
 				pktime = 0
 			}
 			pktime = (pktime / clktck) * nanoPerSeconds
