@@ -135,9 +135,9 @@ struct msg_common {
 struct event_execve {
 	__u32 size;
 	__u32 pid;
+	__u32 nspid;
 	__u32 uid;
 	__u32 auid;
-	__u32 pad;
 	__u32 flags;
 	__u64 ktime;
 	char *args;

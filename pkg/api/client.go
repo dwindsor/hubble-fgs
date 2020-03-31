@@ -80,9 +80,9 @@ func (op OpCode) String() string {
 type MsgExec struct {
 	Size  uint32
 	PID   uint32
+	NSPID uint32
 	UID   uint32
 	AUID  uint32
-	Pad   uint32
 	Flags uint32
 	Ktime uint64
 }
@@ -119,6 +119,7 @@ type MsgIPv4TcpConnect struct {
 type MsgExecUnix struct {
 	Size     uint32
 	PID      uint32
+	NSPID    uint32
 	UID      uint32
 	AUID     uint32
 	pad      uint32

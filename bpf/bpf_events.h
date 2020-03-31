@@ -277,6 +277,33 @@ a:
 }
 
 static inline __attribute__((always_inline))
+__u32 get_task_pid_vnr(void)
+{
+	struct task_struct *task = (struct task_struct *)get_current_task();
+	unsigned int level;
+	struct upid upid;
+	struct pid *pid;
+	int upid_sz;
+
+	if (bpf_core_field_exists(task->thread_pid)) {
+		probe_read(&pid, sizeof(pid), _(&task->thread_pid));
+		if (!pid) {
+			return -1;
+		}
+	} else {
+		struct pid_link link;
+		int link_sz = bpf_core_field_size(task->pids);
+
+		probe_read(&link, link_sz, (void *)_(&task->pids) + (PIDTYPE_PID * link_sz));
+		pid = link.pid;
+	}
+	upid_sz = bpf_core_field_size(pid->numbers[0]);
+	probe_read(&level, sizeof(level), _(&pid->level));
+	probe_read(&upid, upid_sz, (void *)_(&pid->numbers) + (level * upid_sz));
+	return upid.nr;
+}
+
+static inline __attribute__((always_inline))
 void event_filename_builder(struct event_execve *pid,
 			    __u32 curr_pid, __u32 flags,
 			    void *pfilename)
@@ -307,6 +334,7 @@ void event_filename_builder(struct event_execve *pid,
 	}
 	curr->flags = flags;
 	curr->pid = curr_pid;
+	curr->nspid = get_task_pid_vnr();
 	curr->ktime = ktime_get_ns();
 	curr->size = size + offsetof(struct event_execve, args);
 }

@@ -232,6 +232,7 @@ func nopMsgExecUnix() api.MsgExecUnix {
 
 	execUnix.Size = 0
 	execUnix.PID = 0
+	execUnix.NSPID = 0
 	execUnix.UID = 0
 	execUnix.Filename = "<enomem>"
 	execUnix.Args = "<enomem>"
@@ -248,6 +249,7 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 
 	execUnix.Size = exec.Size
 	execUnix.PID = exec.PID
+	execUnix.NSPID = exec.NSPID
 	execUnix.UID = exec.UID
 	execUnix.Flags = exec.Flags
 	execUnix.Ktime = exec.Ktime
@@ -386,6 +388,7 @@ func (k *ObserverKprobe) pushExecveEvents(procs []ObserverProcs) {
 
 		m.Pid.Parent.Size = p.psize
 		m.Pid.Parent.PID = p.ppid
+		m.Pid.Parent.NSPID = p.pnspid
 		m.Pid.Parent.UID = p.puid
 		m.Pid.Parent.AUID = p.pauid
 		m.Pid.Parent.Flags = p.pflags | pflags
@@ -395,6 +398,7 @@ func (k *ObserverKprobe) pushExecveEvents(procs []ObserverProcs) {
 
 		m.Pid.Curr.Size = p.size
 		m.Pid.Curr.PID = p.pid
+		m.Pid.Curr.NSPID = p.nspid
 		m.Pid.Curr.UID = p.uid
 		m.Pid.Curr.AUID = p.auid
 		m.Pid.Curr.Flags = p.flags | flags
@@ -659,16 +663,16 @@ type ObserverProcs struct {
 	psize  uint32
 	puid   uint32
 	ppid   uint32
+	pnspid uint32
 	pauid  uint32
-	ppad   uint32
 	pflags uint32
 	pktime uint64
 	pargs  []byte
 	size   uint32
 	uid    uint32
 	pid    uint32
+	nspid  uint32
 	auid   uint32
-	pad    uint32
 	flags  uint32
 	ktime  uint64
 	args   []byte
@@ -781,13 +785,13 @@ func writeExecveMap(procs []ObserverProcs) {
 		if err := putU32(p.ppid); err != nil {
 			continue
 		}
+		if err := putU32(p.pnspid); err != nil {
+			continue
+		}
 		if err := putU32(p.puid); err != nil {
 			continue
 		}
 		if err := putU32(p.pauid); err != nil {
-			continue
-		}
-		if err := putU32(p.ppad); err != nil {
 			continue
 		}
 		if err := putU32(p.pflags); err != nil {
@@ -806,13 +810,13 @@ func writeExecveMap(procs []ObserverProcs) {
 		if err := putU32(p.pid); err != nil {
 			continue
 		}
+		if err := putU32(p.nspid); err != nil {
+			continue
+		}
 		if err := putU32(p.uid); err != nil {
 			continue
 		}
 		if err := putU32(p.auid); err != nil {
-			continue
-		}
-		if err := putU32(p.pad); err != nil {
 			continue
 		}
 		if err := putU32(p.flags); err != nil {
@@ -830,6 +834,31 @@ func writeExecveMap(procs []ObserverProcs) {
 	}
 }
 
+func getPIDNS(filename string) uint32 {
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		fmt.Printf("ReadFile: %s error: %s\n", filename, err)
+		return 0
+	}
+	statuslines := strings.Split(string(file), "\n")
+	for _, line := range statuslines {
+		if strings.Contains(line, "NStgid:") {
+			fields := strings.Fields(line)
+			if len(fields) < 3 {
+				return 0
+			}
+			pidField := fields[len(fields)-1]
+			pid, err := strconv.ParseUint(pidField, 10, 32)
+			if err != nil {
+				fmt.Printf("Warning: NStgid parser failed %s: %s\n", filename, err)
+				return 0
+			}
+			return uint32(pid)
+		}
+	}
+	return 0
+}
+
 func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 	var procs []ObserverProcs
 	procFS, _ := ioutil.ReadDir(ProcFS)
@@ -840,6 +869,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		var pstats []string
 		var pktime uint64
 		var pexecPath string
+		var pnspid uint32
 
 		clktck, err := getClkTck()
 		if err != nil {
@@ -882,6 +912,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			ktime = 0
 		}
 		ktime = (ktime / clktck) * nanoPerSeconds
+		nspid := getPIDNS(ProcFS + d.Name() + "/status")
 
 		if _ppid != 0 {
 			var err error
@@ -905,11 +936,13 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 				pktime = 0
 			}
 			pktime = (pktime / clktck) * nanoPerSeconds
+			pnspid = getPIDNS(ProcFS + ppid + "/status")
 		} else {
 			pcmdline = nil
 			pstatline = nil
 			pstats = nil
 			pktime = 0
+			pnspid = 0
 		}
 
 		execPath, err := filepath.EvalSymlinks(ProcFS + d.Name() + "/exe")
@@ -930,10 +963,10 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		cmdsUTF := stringToUTF8(cmdline)
 
 		p := ObserverProcs{
-			ppid: uint32(_ppid), pargs: pcmdsUTF,
+			ppid: uint32(_ppid), pnspid: pnspid, pargs: pcmdsUTF,
 			pflags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
 			pktime: pktime,
-			pid:    uint32(pid), args: cmdsUTF,
+			pid:    uint32(pid), nspid: nspid, args: cmdsUTF,
 			flags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
 			ktime: ktime}
 		p.size = uint32(api.SIZEOF_EXECVE + len(p.args) + api.MAX_SIZEOF_CWD)

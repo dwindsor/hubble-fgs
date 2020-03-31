@@ -831,6 +831,20 @@ struct audit_task_info {
 	kuid_t loginuid;
 };
 
+enum pid_type {
+	PIDTYPE_PID = 0,
+	PIDTYPE_TGID = 1,
+	PIDTYPE_PGID = 2,
+	PIDTYPE_SID = 3,
+	PIDTYPE_MAX = 4,
+};
+
+struct pid_link
+{
+	struct hlist_node node;
+	struct pid *pid;
+};
+
 struct task_struct {
 	struct thread_info thread_info;
 	volatile long int state;
@@ -905,6 +919,7 @@ struct task_struct {
 	struct list_head ptraced;
 	struct list_head ptrace_entry;
 	struct pid *thread_pid;
+	struct pid_link pids[PIDTYPE_MAX]; // old school pid refs
 	struct hlist_node pid_links[4];
 	struct list_head thread_group;
 	struct list_head thread_node;
@@ -3577,14 +3592,6 @@ enum rw_hint {
 	WRITE_LIFE_MEDIUM = 3,
 	WRITE_LIFE_LONG = 4,
 	WRITE_LIFE_EXTREME = 5,
-};
-
-enum pid_type {
-	PIDTYPE_PID = 0,
-	PIDTYPE_TGID = 1,
-	PIDTYPE_PGID = 2,
-	PIDTYPE_SID = 3,
-	PIDTYPE_MAX = 4,
 };
 
 struct fown_struct {
