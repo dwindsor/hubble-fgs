@@ -897,7 +897,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 				fmt.Printf("ReadFile: %s /stat error\n", ProcFS+d.Name()+"/cmdline")
 				continue
 			}
-			pstats = strings.Split(string(pstatline), " ")
+			pstats = r.FindAllString(string(pstatline), -1)
 			_pktime := pstats[21]
 			pktime, err := strconv.ParseUint(_pktime, 10, 64)
 			if err != nil {
