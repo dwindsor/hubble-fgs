@@ -899,7 +899,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			}
 			pstats = r.FindAllString(string(pstatline), -1)
 			_pktime := pstats[21]
-			pktime, err := strconv.ParseUint(_pktime, 10, 64)
+			pktime, err = strconv.ParseUint(_pktime, 10, 64)
 			if err != nil {
 				fmt.Printf("Warning: Parent ktime parsing error: %s: %s : %s\n", _pktime, ProcFS+ppid+"/stat", err)
 				pktime = 0
