@@ -80,6 +80,7 @@ func init() {
 	flags.IntVar(&observer.Verbosity, "verbose", 0, "set verbosity level")
 	flags.BoolVarP(&observer.EnableExecve, "execve", "e", false, "Enable execve events")
 	viper.BindPFlags(flags)
+	flags.BoolVarP(&observer.SetPidMax, "set-pid-max", "", false, "Configures pid_max procFS requirements on startup")
 }
 
 func hubbleFGSMain() {

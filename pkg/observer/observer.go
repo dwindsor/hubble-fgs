@@ -75,6 +75,7 @@ type bpfLoad struct {
 var (
 	ProcFS        = "/proc/"
 	KernelVersion = ""
+	SetPidMax     = false
 	EnableExecve  = false
 
 	ObserverBTF string
@@ -1074,6 +1075,15 @@ func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
 		return false, fmt.Errorf("pidMax parsing failed: %s\n", err)
 	}
 	if pids > MaxSupportedPids {
+		if SetPidMax == true {
+			procPid := []byte("32768")
+			err := ioutil.WriteFile(filename, procPid, 0)
+			if err != nil {
+				return false, fmt.Errorf("set-max-pid failed: %s\n", err)
+			}
+			fmt.Printf("hubble-fgs, Configured max_pid %d -> %d\n", pids, MaxSupportedPids)
+			return true, nil
+		}
 		return false, fmt.Errorf("Current pid_max (%d) greater than max supported pids (%d). 4.19+ kernel required to support all features with current pid_max. Either use --set-pid-max to have hubble-fgs configure pid or upgrade kernel.", pids, MaxSupportedPids)
 	}
 	return true, nil
