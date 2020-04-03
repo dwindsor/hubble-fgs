@@ -34,6 +34,8 @@ package bpf
 #include "hubble_msg.h"
 
 #define NUM_PAGES 8
+// hash map only added updates from map value in 4.18
+#define MIN_HASH_VERSION 266752
 
 static int __print(enum libbpf_print_level level __attribute__((unused)),
 		   const char *format, va_list args)
@@ -55,7 +57,9 @@ int kprobe_map_loader(const int version,
 {
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
+	char *name = "execve_map";
 	struct bpf_map *map_bpf;
+	struct bpf_map_def *map_def;
 	struct bpf_object *obj;
 	int err, map_fd;
 
@@ -70,6 +74,17 @@ int kprobe_map_loader(const int version,
 		fprintf(stderr, "bpf_object__open_xattr: %i %s\n", err, prog);
 		return -1;
 	}
+
+	map_bpf = bpf_object__find_map_by_name(obj, name);
+	err = libbpf_get_error(map_bpf);
+	if (err) {
+		fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(execve_map)\n", prog);
+		return -1;
+	}
+
+	map_def = (struct bpf_map_def *)bpf_map__def(map_bpf);
+	if (version > MIN_HASH_VERSION)
+		map_def->type = BPF_MAP_TYPE_HASH;
 
 	bpf_object__for_each_map(map_bpf, obj) {
 		const struct bpf_map_def *def = bpf_map__def(map_bpf);
@@ -174,7 +189,9 @@ int kprobe_loader(const int version,
 	}
 
 	if (execve_fd) {
-		map = bpf_object__find_map_by_name(obj, "execve_map");
+		char *name = "execve_map";
+
+		map = bpf_object__find_map_by_name(obj, name);
 		err = libbpf_get_error(map);
 		if (err) {
 			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(execve_map)\n", prog);
@@ -186,6 +203,11 @@ int kprobe_loader(const int version,
 			fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
 			return -1;
 		}
+		if (verbosity)
+			fprintf(stderr, "bpf_map__reused_fd, %s = %d\n", name, execve_fd);
+	} else {
+		if (verbosity)
+			fprintf(stderr, "bpf_map create execve_map.");
 	}
 
 	if (tcp_events_fd) {
@@ -203,6 +225,11 @@ int kprobe_loader(const int version,
 			fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
 			return -1;
 		}
+		if (verbosity)
+			fprintf(stderr, "bpf_map__reused_fd, tcpmon_map = %d\n", tcp_events_fd);
+	} else {
+		if (verbosity)
+			fprintf(stderr, "bpf_map create tcpmon_map.");
 	}
 
 	attr.obj = obj;

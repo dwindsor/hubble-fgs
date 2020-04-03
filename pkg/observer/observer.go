@@ -78,9 +78,10 @@ var (
 	SetPidMax     = false
 	EnableExecve  = false
 
-	ObserverBTF string
-	Verbosity   int
-	BPFMaps     = []string{"execve_map", "tcpmon_map"}
+	ObserverBTF  string
+	Verbosity    int
+	BPFArrayMaps = []string{"execve_map", "tcpmon_map"}
+	BPFHashMaps  = []string{"execve_map", "tcpmon_map"}
 
 	ObserverExecve = bpfLoad{
 		"", "",
@@ -480,7 +481,24 @@ func getKernelVersion() (int, string, error) {
 	return version, verStr, nil
 }
 
+func getKernelMaps() ([]string, error) {
+	version, _, err := getKernelVersion()
+	if err != nil {
+		return nil, fmt.Errorf("Get supported maps failed: %s\n", err)
+	}
+	minHashMapVersion := int(kernelStringToNumeric("4.18.0"))
+	if version >= minHashMapVersion {
+		return BPFHashMaps, nil
+	}
+	return BPFArrayMaps, nil
+}
+
 func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.Context) error {
+	BPFMaps, err := getKernelMaps()
+	if err != nil {
+		return err
+	}
+
 	version, _, err := getKernelVersion()
 	if err != nil {
 		return err
@@ -496,7 +514,7 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 		if err != nil {
 			return fmt.Errorf("failed kprobe load map (%d): %s\n", fd, err)
 		}
-		if m == "execve_map" {
+		if strings.Contains(m, "execve_") == true {
 			k.execve_fd = fd
 		} else if m == "tcpmon_map" {
 			k.tcp_events_fd = fd
@@ -1180,7 +1198,11 @@ func (k *ObserverKprobe) deleteProgs() {
 	os.Remove(k.bpfDir + ObserverBind.observer__prog)
 	os.Remove(k.bpfDir + ObserverGetPort.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnectRet.observer__prog)
-	for _, m := range BPFMaps {
+	maps, err := getKernelMaps()
+	if err != nil {
+		fmt.Printf("Deleting maps failed: %s\n", err)
+	}
+	for _, m := range maps {
 		os.Remove(k.bpfDir + m)
 	}
 	os.Remove(k.bpfDir)

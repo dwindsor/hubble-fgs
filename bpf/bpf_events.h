@@ -51,6 +51,47 @@ int64_t validate_msg_size(int64_t size)
 }
 
 static inline __attribute__((always_inline))
+struct msg_ipv4_tcp_connect *map_lookup_hash(__u32 pid)
+{
+	struct msg_ipv4_tcp_connect *event;
+
+	event = map_lookup_elem(&execve_map, &pid);
+	if (!event) {
+		int zero = 0;
+
+		event = map_lookup_elem(&msg_ipv4_tcp_map, &zero);
+		if (!event)
+			return 0;
+		map_update_elem(&execve_map, &pid, event, 0);
+	}
+	return event;
+}
+
+static inline __attribute__((always_inline))
+struct msg_ipv4_tcp_connect *map_lookup_array(__u32 pid)
+{
+	return map_lookup_elem(&execve_map, &pid);
+}
+
+static inline __attribute__((always_inline))
+struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
+{
+	struct xdp_buff *kver_pivot, __kver_pivot;
+	int exists;
+
+	kver_pivot = &__kver_pivot;
+	/* xdp_buff->handle was added in v4.18 so we use it to decide if
+	 * we have verifier fix for using map_values with map_update helper.
+	 */
+	exists = bpf_core_field_exists(kver_pivot->handle);
+	if (exists) {
+		return map_lookup_hash(pid);
+	} else {
+		return map_lookup_array(pid);
+	}
+}
+
+static inline __attribute__((always_inline))
 __u64 __get_auid(struct task_struct *task)
 {
 	// u64 to convince compiler to do 64bit loads early kernels do not
@@ -503,7 +544,7 @@ struct msg_ipv4_tcp_connect *event_find_parent(void)
 		if (!task)
 			break;
 		probe_read(&pid, sizeof(pid), _(&task->tgid));
-		msg = map_lookup_elem(&execve_map, &pid);
+		msg = map_lookup_event(pid);
 		if (msg && msg->common.size != 0)
 				return msg;
 	}
@@ -546,7 +587,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 
 #pragma unroll
 	for (i = 0; i < 4; i++) {
-		msg = map_lookup_elem(&execve_map, &pid);
+		msg = map_lookup_event(pid);
 		if (msg && msg->common.size != 0)
 			break;
 		else
@@ -565,7 +606,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 		int zero = 0;
 		ssize_t size;
 
-		msg = map_lookup_elem(map, &zero);
+		msg = map_lookup_event(zero);
 		if (!msg)
 			return 0;
 		parent = (struct event_execve *)msg->pid;
@@ -697,35 +738,4 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 {
 	__event_get_task_info(msg, op, walker, false);
 }
-
-#ifdef USE_HASH_MAP
-static inline __attribute__((always_inline))
-struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
-{
-	struct msg_ipv4_tcp_connect *event;
-
-	event = map_lookup_elem(&execve_map, &pid);
-	if (!event) {
-		int zero = 0;
-
-		event = map_lookup_elem(&msg_ipv4_tcp_map, &zero);
-		if (!event)
-			return 0;
-		map_update_elem(&execve_map, &pid, event, 0);
-	}
-	return event;
-}
-#else
-static inline __attribute__((always_inline))
-void map_update_hash(struct msg_ipv4_tcp_connect *event,
-		     __u32 pid)
-{
-}
-
-static inline __attribute__((always_inline))
-struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
-{
-	return map_lookup_elem(&execve_map, &pid);
-}
-#endif
 #endif // _BPF_EVENTS_H

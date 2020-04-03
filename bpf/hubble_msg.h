@@ -194,24 +194,6 @@ struct bpf_map_def __attribute__((section("maps"), used)) msg_ipv4_tcp_map = {
 };
 #endif // BTF
 
-#ifdef USE_HASH_MAP
-#ifdef BTF
-struct {
-	unsigned int (*type)[BPF_MAP_TYPE_HASH];
-	unsigned int (*key_size)[sizeof(__u32)];
-	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_connect)];
-	unsigned int (*max_entries)[32768];
-} execve_map __attribute__((section((".maps")), used));
-#else
-struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_connect),
-	.max_entries = 32768,
-};
-#endif // BTF
-#else  // USE_HASH_MAP
-
 #ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_ARRAY];
@@ -227,7 +209,6 @@ struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
 	.max_entries = 32768,
 };
 #endif // BTF
-#endif // USE_HASH_MAP
 
 #ifdef BTF
 struct {

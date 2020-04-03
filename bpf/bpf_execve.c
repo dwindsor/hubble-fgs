@@ -28,6 +28,9 @@ int event_execve(struct pt_regs *__ctx)
 	__u32 pid;
 
 	kver_pivot = &__kver_pivot;
+	/* xdp_buff->handle was added in v4.18 so we use it to decide if
+	 * we should use ctx pointer or not.
+	 */
 	exists = bpf_core_field_exists(kver_pivot->handle);
 	if (exists) {
 		ctx = (struct pt_regs *) __ctx->di;
