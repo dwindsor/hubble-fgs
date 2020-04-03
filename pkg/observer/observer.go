@@ -48,6 +48,8 @@ const (
 	MaxArgs  = 5
 	ArgSize  = 32
 
+	MaxSupportedPids = 32768
+
 	nanoPerSeconds = 1000000000
 
 	varLibHubbleFGS = "/var/lib/hubble-fgs/"
@@ -1052,6 +1054,31 @@ func defaultFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
 	return true
 }
 
+func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
+	version, _, err := getKernelVersion()
+	if err != nil {
+		return false, fmt.Errorf("Kernel version lookup failed, required for requirements check.\n")
+	}
+	minVersion := int(kernelStringToNumeric("4.19.0"))
+	if version >= minVersion {
+		return true, nil
+	}
+	filename := ProcFS + "/sys/kernel/pid_max"
+	pidMax, err := ioutil.ReadFile(filename)
+	if err != nil {
+		return false, fmt.Errorf("ReadFile: %s error: %s\n", filename, err)
+	}
+	pidString := strings.Fields(string(pidMax))
+	pids, err := strconv.ParseUint(pidString[0], 10, 32)
+	if err != nil {
+		return false, fmt.Errorf("pidMax parsing failed: %s\n", err)
+	}
+	if pids > MaxSupportedPids {
+		return false, fmt.Errorf("Current pid_max (%d) greater than max supported pids (%d). 4.19+ kernel required to support all features with current pid_max. Either use --set-pid-max to have hubble-fgs configure pid or upgrade kernel.", pids, MaxSupportedPids)
+	}
+	return true, nil
+}
+
 func btfFileExists(file string) error {
 	_, err := os.Stat(file)
 	return err
@@ -1121,6 +1148,9 @@ func (k *ObserverKprobe) Start() error {
 	}
 	if err := k.observerFindProgs(context.TODO()); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
+	}
+	if _, err := k.observerMinReqs(context.TODO()); err != nil {
+		return fmt.Errorf("hubble-fgs, Aborting minimum pid requirements not met. %s\n", err)
 	}
 	if err := k.observerLoadExecve(context.TODO()); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
