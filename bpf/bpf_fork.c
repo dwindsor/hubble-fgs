@@ -23,8 +23,9 @@ __attribute__((section(("kprobe/wake_up_new_task")), used))
 int event_wake_up_new_task(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_connect *event;
+	struct event_execve *parent;
 	struct task_struct *task;
-	u32 pid;
+	u32 pid = 0;
 
 	probe_read(&task, sizeof(task), &ctx->di);
 	if (!task)
@@ -34,6 +35,9 @@ int event_wake_up_new_task(struct pt_regs *ctx)
 	event = map_lookup_event(pid);
 	if (!event)
 		return 0;
+
+	parent = (struct event_execve *)event->pid;
+	event->common.flags = EVENT_COMMON_FLAG_CLONE;
 	event->common.size = 0;
 	return 0;
 }

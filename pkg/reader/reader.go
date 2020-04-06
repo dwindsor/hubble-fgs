@@ -80,6 +80,9 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventErrorCWD) != 0 {
 		s = append(s, "errorCWD")
 	}
+	if (flags & api.EventClone) != 0 {
+		s = append(s, "clone")
+	}
 	return strings.Join(s, " ")
 }
 

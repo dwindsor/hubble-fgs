@@ -57,6 +57,9 @@ int event_execve(struct pt_regs *__ctx)
 	compiler_barrier();
 	__event_get_task_info(event, MSG_OP_EXECVE, walker, true);
 	size = validate_msg_size(event->common.size);
+	if (event->common.flags)
+		event_set_clone(parent);
+	event->common.flags = 0;
 	perf_event_output(__ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 	return 0;
 }

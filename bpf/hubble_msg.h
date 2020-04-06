@@ -109,6 +109,7 @@
 #define EVENT_NO_CWD_SUPPORT 0x800
 #define EVENT_ROOT_CWD	     0x1000
 #define EVENT_ERROR_CWD	     0x2000
+#define EVENT_CLONE	     0x4000
 
 /* Msg Types */
 enum msg_ops {
@@ -121,10 +122,13 @@ enum msg_ops {
 	MSG_OP_MAX,
 };
 
+#define EVENT_COMMON_FLAG_CLONE 0x01
+
 /* Msg Layout */
 struct msg_common {
 	__u8  op;
-	__u8 pad[3];
+	__u8 flags; // internal flags not exported
+	__u8 pad[2];
 	__u32 size;
 	__u64 ktime;
 };

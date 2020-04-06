@@ -54,6 +54,9 @@ int event_execve(struct pt_regs *__ctx)
 	event_args_builder(event, &ctx->si);
 	event_cwd_builder(parent, pid);
 	compiler_barrier();
+	if (event->common.flags)
+		event_set_clone(parent);
 	event->common.size = 1; // stand-in until we complete calculation from tcpmon
+	event->common.flags = 0;
 	return 0;
 }

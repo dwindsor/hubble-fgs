@@ -504,6 +504,17 @@ void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
 }
 
 static inline __attribute__((always_inline))
+void event_set_clone(struct event_execve *pid)
+{
+	struct event_execve *c;
+	int64_t psize;
+
+	psize = validate_arg_size(pid->size);
+	c = (void *)pid + psize;
+	c->flags |= EVENT_CLONE;
+}
+
+static inline __attribute__((always_inline))
 int64_t event_copy_execve(struct event_execve *dst,
 			  struct event_execve *src)
 {
@@ -548,7 +559,7 @@ struct msg_ipv4_tcp_connect *event_find_parent(void)
 		probe_read(&pid, sizeof(pid), _(&task->tgid));
 		msg = map_lookup_event(pid);
 		if (msg && msg->common.size != 0)
-				return msg;
+			return msg;
 	}
 	return 0;
 }
