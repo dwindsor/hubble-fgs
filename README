@@ -15,5 +15,14 @@ below. If BTF link is omitted hubble-fgs will attempt to search for it in the
 list of known kernels using the running kernels `uname -r`. If it is still not
 found an error will be reported.
 
+To build the image with metadata use
+
+# make image-btf
+
+To build without metadata this will require users to include metadtata manually.
+
 # make image
-# docker run --name hubble-fgs --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti docker.pkg.github.com/covalentio/hubble-fgs/hubble-fgs:1.0
+
+To run image in docker,
+
+# docker run --name hubble-fgs --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti quay.io/isovalent/hubble-fgs
