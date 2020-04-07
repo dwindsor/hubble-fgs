@@ -314,7 +314,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 
 		if k.msgFilter != nil {
-			res = k.msgFilter(msgUnix)
+			res = k.msgFilter(msgUnix, k)
 		}
 
 		if res {
@@ -1049,7 +1049,7 @@ type ObserverChannel struct {
 	encoder *gob.Encoder
 }
 
-type MsgFilter func(*api.MsgIPv4TcpConnectUnix) bool
+type MsgFilter func(*api.MsgIPv4TcpConnectUnix, *ObserverKprobe) bool
 
 type ObserverKprobe struct {
 	bpfDir        string

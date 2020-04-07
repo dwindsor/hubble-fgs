@@ -100,7 +100,7 @@ func TestObjectLoad(t *testing.T) {
 	kprobe.deleteProgs()
 }
 
-func curlFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
+func curlFilter(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	var curlMsg api.MsgIPv4TcpConnectUnix
 
 	ip := net.ParseIP("127.0.0.1")
@@ -124,10 +124,10 @@ func curlFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
 	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + path
 	curlMsg.Pid.Parent.PID = uint32(os.Getpid())
 
-	return api.CompareStrict(msg, &curlMsg)
+	return k.CompareStrict(msg, &curlMsg)
 }
 
-func curlExecFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
+func curlExecFilter(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	var curlMsg api.MsgIPv4TcpConnectUnix
 
 	path, err := os.Getwd()
@@ -145,7 +145,7 @@ func curlExecFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
 	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + path
 	curlMsg.Pid.Parent.PID = uint32(os.Getpid())
 
-	return api.CompareStrict(msg, &curlMsg)
+	return k.CompareStrict(msg, &curlMsg)
 }
 
 func execWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
