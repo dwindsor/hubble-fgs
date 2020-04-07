@@ -200,6 +200,9 @@ func (k *ObserverKprobe) AddListener(conn net.Conn) {
 	channel.encoder = gob.NewEncoder(conn)
 	channel.conn = conn
 	k.listeners = append(k.listeners, channel)
+	if Verbosity > 0 {
+		fmt.Printf("add listener %v\n", conn)
+	}
 	if k.enableExecve {
 		k.getRunningProcs(false, true)
 	}
@@ -208,10 +211,11 @@ func (k *ObserverKprobe) AddListener(conn net.Conn) {
 func (k *ObserverKprobe) RemoveListener(conn net.Conn) {
 	for i, c := range k.listeners {
 		if c.conn == conn {
-			fmt.Printf("delete listener %v\n", conn)
+			if Verbosity > 0 {
+				fmt.Printf("delete listener %v\n", conn)
+			}
 			k.listeners = append(k.listeners[:i], k.listeners[i+1:]...)
 		}
-		fmt.Printf("walking listener %v\n", conn)
 	}
 }
 
