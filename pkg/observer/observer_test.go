@@ -29,7 +29,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func getDefaultObserver(t *testing.T, pretty bool) *ObserverKprobe {
+func getDefaultObserver(t *testing.T, execve, pretty bool) *ObserverKprobe {
 	var uts syscall.Utsname
 
 	if err := syscall.Uname(&uts); err != nil {
@@ -40,7 +40,11 @@ func getDefaultObserver(t *testing.T, pretty bool) *ObserverKprobe {
 	for i, b := range uts.Release {
 		buf[i] = byte(b)
 	}
-	ObserverExecve.Observer__program = "../../bpf/bpf_execve.o"
+	if execve {
+		ObserverExecve.Observer__program = "../../bpf/bpf_execve_event.o"
+	} else {
+		ObserverExecve.Observer__program = "../../bpf/bpf_execve.o"
+	}
 	ObserverExecveat.Observer__program = "../../bpf/bpf_execveat.o"
 	ObserverFork.Observer__program = "../../bpf/bpf_fork.o"
 	ObserverTCPConnect.Observer__program = "../../bpf/bpf_tcpmon.o"
@@ -50,7 +54,12 @@ func getDefaultObserver(t *testing.T, pretty bool) *ObserverKprobe {
 	ObserverListen.Observer__program = "../../bpf/bpf_listen.o"
 	ObserverBTF = "../../bpf/btf"
 
-	return NewObserverKprobe(observerTestDir, pretty)
+	kprobe := NewObserverKprobe(observerTestDir, execve, pretty)
+	loadObserver(t, kprobe)
+
+	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
+	kprobe.perfConfig.MapName = observerTestDir + "tcpmon_map"
+	return kprobe
 }
 
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
@@ -68,8 +77,24 @@ func loadEvents(t *testing.T, kprobe *ObserverKprobe) {
 	}
 }
 
+func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKprobe, ctx context.Context) {
+	exitWG.Add(1)
+	execWG.Add(1)
+	go func() {
+		defer exitWG.Done()
+		e, err := kprobe.__runEvents(ctx)
+		if err != nil {
+			kprobe.deleteProgs()
+			t.Fatalf("runEvents error: %s", err)
+		}
+		defer e.CloseAll()
+		execWG.Done()
+		kprobe.__loopEvents(ctx, e)
+	}()
+}
+
 func TestObjectLoad(t *testing.T) {
-	kprobe := getDefaultObserver(t, false)
+	kprobe := getDefaultObserver(t, false, false)
 	loadObserver(t, kprobe)
 	loadEvents(t, kprobe)
 	kprobe.deleteProgs()
@@ -102,43 +127,65 @@ func curlFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
 	return api.CompareStrict(msg, &curlMsg)
 }
 
-func execCurl(args string) {
+func curlExecFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
+	var curlMsg api.MsgIPv4TcpConnectUnix
+
+	path, err := os.Getwd()
+	if err != nil {
+		return false
+	}
+	path = reader.SwapPath(path)
+	path = path[:len(path)-1]
+
+	curlMsg.Common.Op = api.MSG_OP_EXECVE
+	curlMsg.Tuple.DAddr = 0
+	curlMsg.Tuple.DPort = 0
+	curlMsg.Tuple.Proto = 0
+	curlMsg.Pid.Curr.Filename = "/usr/bin/curl"
+	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + path
+	curlMsg.Pid.Parent.PID = uint32(os.Getpid())
+
+	return api.CompareStrict(msg, &curlMsg)
+}
+
+func execWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
+	execWG.Wait()
 	cmd := exec.Command("/usr/bin/curl", args)
 	err := cmd.Run()
 	fmt.Printf("cmd %v err %v\n", cmd, err)
+	exitWG.Wait()
 }
 
-func TestConnectEvent(t *testing.T) {
-	var exitWG, execWG sync.WaitGroup
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
-	defer cancel()
-
-	kprobe := getDefaultObserver(t, true)
-	loadObserver(t, kprobe)
-
-	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
-	kprobe.perfConfig.MapName = observerTestDir + "tcpmon_map"
-	kprobe.AttachFilter(curlFilter)
-
-	exitWG.Add(1)
-	execWG.Add(1)
-	go func() {
-		defer exitWG.Done()
-		e, err := kprobe.__runEvents(ctx)
-		if err != nil {
-			kprobe.deleteProgs()
-			t.Fatalf("runEvents error: %s", err)
-		}
-		defer e.CloseAll()
-		execWG.Done()
-		kprobe.__loopEvents(ctx, e)
-	}()
-	execWG.Wait()
-	execCurl("127.0.0.1")
-	exitWG.Wait()
+func testDone(t *testing.T, kprobe *ObserverKprobe) {
 	kprobe.deleteProgs()
 	kprobe.PrintStats()
 	if kprobe.filterPass < 1 {
 		t.Fail()
 	}
+}
+
+func TestConnectEvent(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	kprobe := getDefaultObserver(t, false, true)
+	kprobe.AttachFilter(curlFilter)
+
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWGCurl(&execWG, &exitWG, "127.0.0.1")
+	testDone(t, kprobe)
+}
+
+func TestExecEvent(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	kprobe := getDefaultObserver(t, true, true)
+	kprobe.AttachFilter(curlExecFilter)
+
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWGCurl(&execWG, &exitWG, "127.0.0.1")
+	testDone(t, kprobe)
 }

@@ -31,7 +31,7 @@ func hubbleFGSExecute() error {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
-	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("debug"))
+	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("execve"), viper.GetBool("debug"))
 
 	go func() {
 		<-sigs
@@ -78,7 +78,7 @@ func init() {
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
 	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")
 	flags.IntVar(&observer.Verbosity, "verbose", 0, "set verbosity level")
-	flags.BoolVarP(&observer.EnableExecve, "execve", "e", false, "Enable execve events")
+	flags.BoolP("execve", "e", false, "Enable execve events")
 	viper.BindPFlags(flags)
 	flags.BoolVarP(&observer.SetPidMax, "set-pid-max", "", false, "Configures pid_max procFS requirements on startup")
 }

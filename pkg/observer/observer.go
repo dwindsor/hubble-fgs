@@ -76,7 +76,6 @@ var (
 	ProcFS        = "/proc/"
 	KernelVersion = ""
 	SetPidMax     = false
-	EnableExecve  = false
 
 	ObserverBTF  string
 	Verbosity    int
@@ -201,7 +200,7 @@ func (k *ObserverKprobe) AddListener(conn net.Conn) {
 	channel.encoder = gob.NewEncoder(conn)
 	channel.conn = conn
 	k.listeners = append(k.listeners, channel)
-	if EnableExecve {
+	if k.enableExecve {
 		k.getRunningProcs(false, true)
 	}
 }
@@ -1059,6 +1058,7 @@ type ObserverKprobe struct {
 	prettyPrinter bool
 	listeners     []ObserverChannel
 	perfConfig    *bpf.PerfEventConfig
+	enableExecve  bool
 	/* Statistics */
 	lostCntr   int
 	errorCntr  int
@@ -1114,7 +1114,7 @@ func btfFileExists(file string) error {
 
 func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 	if ObserverExecve.Observer__program == "" {
-		if EnableExecve {
+		if k.enableExecve {
 			ObserverExecve.Observer__program = varLibHubbleFGS + execveEventProg
 		} else {
 			ObserverExecve.Observer__program = varLibHubbleFGS + execveProg
@@ -1208,10 +1208,11 @@ func (k *ObserverKprobe) deleteProgs() {
 	os.Remove(k.bpfDir)
 }
 
-func NewObserverKprobe(bpfDir string, pretty bool) *ObserverKprobe {
+func NewObserverKprobe(bpfDir string, execve, pretty bool) *ObserverKprobe {
 	zlog = logger.GetLogger()
 	return &ObserverKprobe{
 		bpfDir:        bpfDir,
+		enableExecve:  execve,
 		prettyPrinter: pretty,
 	}
 }
