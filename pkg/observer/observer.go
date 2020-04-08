@@ -1084,7 +1084,7 @@ type ObserverKprobe struct {
 	filterPass int
 	filterDrop int
 	/* Filters */
-	msgFilter []MsgFilter
+	msgFilter []*MsgFilter
 }
 
 func defaultFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
@@ -1240,6 +1240,6 @@ func (k *ObserverKprobe) PrintStats() {
 		k.errorCntr, k.lostCntr, k.recvCntr, k.filterPass, k.filterDrop)
 }
 
-func (k *ObserverKprobe) AttachFilter(f MsgFilter) {
+func (k *ObserverKprobe) AttachFilter(f *MsgFilter) {
 	k.msgFilter = append(k.msgFilter, f)
 }

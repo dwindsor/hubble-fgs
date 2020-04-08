@@ -84,7 +84,9 @@ func (k *ObserverKprobe) CompareMsgExecStrict(x, y *api.MsgExecUnix) bool {
 		return false
 	}
 	if y.Flags != 0 && y.Flags != x.Flags {
+		k.Printf("y.Filename != x.Filename %s != %s\n", y.Filename, x.Filename)
 		k.Printf("y.Flags != x.Flags %d != %d\n", y.Flags, x.Flags)
+		k.Printf("y.Args %s != x.Args %s\n", y.Args, x.Args)
 		return false
 	}
 	if y.Ktime != 0 && y.Ktime != x.Ktime {
