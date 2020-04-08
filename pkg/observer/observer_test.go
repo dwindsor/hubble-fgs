@@ -100,7 +100,7 @@ func TestObjectLoad(t *testing.T) {
 	kprobe.deleteProgs()
 }
 
-func curlFilter(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+func curlFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	var curlMsg api.MsgIPv4TcpConnectUnix
 
 	ip := net.ParseIP("127.0.0.1")
@@ -127,7 +127,7 @@ func curlFilter(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	return k.CompareStrict(msg, &curlMsg)
 }
 
-func curlExecFilter(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+func curlExecFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	var curlMsg api.MsgIPv4TcpConnectUnix
 
 	path, err := os.Getwd()
@@ -170,7 +170,7 @@ func TestConnectEvent(t *testing.T) {
 	defer cancel()
 
 	kprobe := getDefaultObserver(t, false, true)
-	kprobe.AttachFilter(curlFilter)
+	kprobe.AttachFilter(MsgFilter{run: curlFilterR})
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
@@ -183,7 +183,7 @@ func TestExecEvent(t *testing.T) {
 	defer cancel()
 
 	kprobe := getDefaultObserver(t, true, true)
-	kprobe.AttachFilter(curlExecFilter)
+	kprobe.AttachFilter(MsgFilter{run: curlExecFilterR})
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")

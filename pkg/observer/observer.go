@@ -313,16 +313,28 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			msgUnix.Pid.Curr = nopMsgExecUnix()
 		}
 
-		if k.msgFilter != nil {
-			res = k.msgFilter(msgUnix, k)
+		pass := true
+		/* OR filter together */
+		for _, f := range k.msgFilter {
+			res = f.run(msgUnix, k)
+
+			if res {
+				f.filterPass++
+				pass = true
+				break
+			} else {
+				f.filterDrop++
+				pass = false
+			}
 		}
 
-		if res {
-			k.filterPass++
+		if pass {
 			k.observerListeners(msgUnix)
+			k.filterPass++
 		} else {
 			k.filterDrop++
 		}
+
 		/* Keeping pretty printer because it helps debugging filters */
 		if k.prettyPrinter {
 			reader.ObserverIPV4TCPConnectPrinter(msgUnix, zlog)
@@ -1049,7 +1061,13 @@ type ObserverChannel struct {
 	encoder *gob.Encoder
 }
 
-type MsgFilter func(*api.MsgIPv4TcpConnectUnix, *ObserverKprobe) bool
+type MsgFilterRun func(*api.MsgIPv4TcpConnectUnix, *ObserverKprobe) bool
+
+type MsgFilter struct {
+	run        MsgFilterRun
+	filterPass int
+	filterDrop int
+}
 
 type ObserverKprobe struct {
 	bpfDir        string
@@ -1066,7 +1084,7 @@ type ObserverKprobe struct {
 	filterPass int
 	filterDrop int
 	/* Filters */
-	msgFilter MsgFilter
+	msgFilter []MsgFilter
 }
 
 func defaultFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
@@ -1223,5 +1241,5 @@ func (k *ObserverKprobe) PrintStats() {
 }
 
 func (k *ObserverKprobe) AttachFilter(f MsgFilter) {
-	k.msgFilter = f
+	k.msgFilter = append(k.msgFilter, f)
 }
