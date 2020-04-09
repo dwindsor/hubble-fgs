@@ -7,7 +7,7 @@ import (
 )
 
 func (k *ObserverKprobe) Printf(format string, a ...interface{}) (n int, err error) {
-	if Verbosity > 4 {
+	if Verbosity < 4 {
 		return 0, nil
 	}
 
