@@ -20,6 +20,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 
+	"bufio"
 	"bytes"
 	"context"
 	"encoding/binary"
@@ -58,6 +59,8 @@ const (
 
 	execveEventProg = "bpf_execve_event.o"
 	execveProg      = "bpf_execve.o"
+
+	TCP_PROC_STATE_LISTEN = 10
 )
 
 type bpfLoad struct {
@@ -203,9 +206,7 @@ func (k *ObserverKprobe) AddListener(conn net.Conn) {
 	if Verbosity > 0 {
 		fmt.Printf("add listener %v\n", conn)
 	}
-	if k.enableExecve {
-		k.getRunningProcs(false, true)
-	}
+	k.getRunningProcs(false, k.enableExecve)
 }
 
 func (k *ObserverKprobe) RemoveListener(conn net.Conn) {
@@ -381,55 +382,134 @@ func procsDockerID(pid uint32) string {
 	return strings.SplitAfter(docker[1], "\n")[0][0:12]
 }
 
-func (k *ObserverKprobe) pushExecveEvents(procs []ObserverProcs) {
-	for _, p := range procs {
-		pargs, pfilename := procsFilename(p.pargs)
-		pcwd, pflags, err := getCWD(p.ppid)
-		if err == nil {
-			pargs = pargs + " " + pcwd
+func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntries map[uint32]procTCPEntry) {
+	pid := msg.Pid.Curr.PID
+
+	fdDir := fmt.Sprintf("%s/%d/fd", ProcFS, pid)
+	procFD, err := ioutil.ReadDir(fdDir)
+	if err != nil {
+		fmt.Printf("Warning: ReadDir %d/fd/ failed: %s\n", pid, err)
+	}
+	for _, d := range procFD {
+		socket, err := os.Readlink(fdDir + "/" + d.Name())
+		if err != nil {
+			fmt.Printf("Warning: readlink error %s: %s\n", d.Name(), err)
 		}
+		if strings.Contains(socket, "socket") == true {
+			fields := strings.Split(socket, ":")
+			inode := fields[1]
+			inode = strings.TrimRight(inode, "]")
+			inode = strings.TrimLeft(inode, "[")
+			inodeEntry, err := strconv.ParseUint(inode, 10, 32)
+			if err != nil {
+				fmt.Printf("Warning: tcpEntry inode not parsable: %s\n", inode)
+			} else {
+				entry := tcpEntries[uint32(inodeEntry)]
+				msg.Tuple.SAddr = entry.localIP
+				msg.Tuple.DAddr = entry.remoteIP
+				msg.Tuple.DPort = entry.remotePort
+				msg.Tuple.SPort = entry.localPort
+				msg.Tuple.Proto = 2
 
-		args, filename := procsFilename(p.args)
-		cwd, flags, err := getCWD(p.pid)
-		if err == nil {
-			args = args + " " + cwd
+				if entry.state == 0 {
+					continue
+				}
+
+				if entry.state == TCP_PROC_STATE_LISTEN {
+					msg.Common.Op = api.MsgOpIPv4Listen
+				} else {
+					msg.Common.Op = api.MsgOpIPv4TCPConnect
+				}
+
+				if k.prettyPrinter {
+					reader.ObserverIPV4TCPConnectPrinter(msg, zlog)
+				}
+				k.observerListeners(msg)
+			}
 		}
+	}
+}
 
-		m := api.MsgIPv4TcpConnectUnix{}
-		m.Common.Op = api.MSG_OP_EXECVE
-		m.Common.Ktime = 0
-		m.Common.Size = api.MsgUnixSize + p.psize + p.size
+func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
+	pargs, pfilename := procsFilename(p.pargs)
+	pcwd, pflags, err := getCWD(p.ppid)
+	if err == nil {
+		pargs = pargs + " " + pcwd
+	}
 
-		m.Kube.NetNS = 0
-		m.Kube.Cid = 0
-		m.Kube.Cgrpid = 0
-		m.Kube.Docker = procsDockerID(p.pid)
+	args, filename := procsFilename(p.args)
+	cwd, flags, err := getCWD(p.pid)
+	if err == nil {
+		args = args + " " + cwd
+	}
 
-		m.Pid.Parent.Size = p.psize
-		m.Pid.Parent.PID = p.ppid
-		m.Pid.Parent.NSPID = p.pnspid
-		m.Pid.Parent.UID = p.puid
-		m.Pid.Parent.AUID = p.pauid
-		m.Pid.Parent.Flags = p.pflags | pflags
-		m.Pid.Parent.Ktime = p.pktime
-		m.Pid.Parent.Filename = pfilename
-		m.Pid.Parent.Args = pargs
+	m := api.MsgIPv4TcpConnectUnix{}
+	m.Common.Op = api.MSG_OP_EXECVE
+	m.Common.Ktime = 0
+	m.Common.Size = api.MsgUnixSize + p.psize + p.size
 
-		m.Pid.Curr.Size = p.size
-		m.Pid.Curr.PID = p.pid
-		m.Pid.Curr.NSPID = p.nspid
-		m.Pid.Curr.UID = p.uid
-		m.Pid.Curr.AUID = p.auid
-		m.Pid.Curr.Flags = p.flags | flags
-		m.Pid.Curr.Ktime = p.ktime
-		m.Pid.Curr.Filename = filename
-		m.Pid.Curr.Args = args
+	m.Kube.NetNS = 0
+	m.Kube.Cid = 0
+	m.Kube.Cgrpid = 0
+	m.Kube.Docker = procsDockerID(p.pid)
 
-		if k.prettyPrinter {
-			reader.ObserverIPV4TCPConnectPrinter(&m, zlog)
-		}
+	m.Pid.Parent.Size = p.psize
+	m.Pid.Parent.PID = p.ppid
+	m.Pid.Parent.NSPID = p.pnspid
+	m.Pid.Parent.UID = p.puid
+	m.Pid.Parent.AUID = p.pauid
+	m.Pid.Parent.Flags = p.pflags | pflags
+	m.Pid.Parent.Ktime = p.pktime
+	m.Pid.Parent.Filename = pfilename
+	m.Pid.Parent.Args = pargs
+
+	m.Pid.Curr.Size = p.size
+	m.Pid.Curr.PID = p.pid
+	m.Pid.Curr.NSPID = p.nspid
+	m.Pid.Curr.UID = p.uid
+	m.Pid.Curr.AUID = p.auid
+	m.Pid.Curr.Flags = p.flags | flags
+	m.Pid.Curr.Ktime = p.ktime
+	m.Pid.Curr.Filename = filename
+	m.Pid.Curr.Args = args
+
+	if k.prettyPrinter {
+		reader.ObserverIPV4TCPConnectPrinter(&m, zlog)
+	}
+	if pushExecve {
 		k.observerListeners(&m)
 	}
+	/* Collect any existing TCP sockets on PID and generate events. */
+	k.pushTCPEvents(&m, tcpEntries)
+}
+
+func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
+	for _, p := range procs {
+		k.pushExecveEvents(p, tcpEntries, pushExecve)
+	}
+}
+
+type procTCPEntry struct {
+	id                   int
+	localIP              uint32
+	localPort            uint16
+	remoteIP             uint32
+	remotePort           uint16
+	state                uint32
+	txq                  int
+	rxq                  int
+	timerActive          int
+	jiffiesExpire        uint64
+	jiffiesRTO           uint64
+	uid                  uint32
+	unansweredProbes     uint32
+	inode                uint32
+	socketRefCount       uint32
+	locationSocketMemory uint64
+	retransTimeout       uint64
+	predictedTick        uint64
+	congestionWindow     uint64
+	slowstartThresh      uint64
 }
 
 func (k *ObserverKprobe) observerLost(msg *bpf.PerfEventLost, cpu int) {
@@ -896,10 +976,78 @@ func getPIDNS(filename string) uint32 {
 	return 0
 }
 
+func stringToTCPEntry(s string) *procTCPEntry {
+	var entry procTCPEntry
+
+	fields := strings.Fields(s)
+
+	id, _ := strconv.ParseUint(strings.TrimRight(fields[0], ":"), 10, 32)
+	local := strings.Split(fields[1], ":")
+	remote := strings.Split(fields[2], ":")
+	localIP, err := strconv.ParseUint(local[0], 16, 32)
+	if err != nil {
+		fmt.Printf("Warning: localIP parse error: %s\n", err)
+	}
+	localPort, err := strconv.ParseUint(local[1], 16, 16)
+	if err != nil {
+		fmt.Printf("Warning: localPort parse error: %s\n", err)
+	}
+	remoteIP, err := strconv.ParseUint(remote[0], 16, 32)
+	if err != nil {
+		fmt.Printf("Warning: remoteIP parse error: %s\n", err)
+	}
+	remotePort, err := strconv.ParseUint(remote[1], 16, 16)
+	if err != nil {
+		fmt.Printf("Warning: remotePort parse error: %s\n", err)
+	}
+	state, err := strconv.ParseUint(fields[3], 16, 32)
+	if err != nil {
+		fmt.Printf("Warning: TCP state parse error: %s\n", err)
+	}
+	inode, err := strconv.ParseUint(fields[9], 10, 32)
+	if err != nil {
+		fmt.Printf("Warning: inode parse error: %s\n", err)
+	}
+
+	entry.id = int(id)
+	entry.inode = uint32(inode)
+	entry.localIP = uint32(localIP)
+	entry.localPort = uint16(localPort)
+	entry.remoteIP = uint32(remoteIP)
+	entry.remotePort = uint16(remotePort)
+	entry.state = uint32(state)
+
+	return &entry
+}
+
+func (k *ObserverKprobe) getTCPConnections() (map[uint32]procTCPEntry, error) {
+	entryMap := make(map[uint32]procTCPEntry)
+
+	tcp, err := os.Open(ProcFS + "/net/tcp")
+	if err != nil {
+		return nil, err
+	}
+	scanner := bufio.NewScanner(tcp)
+	scanner.Scan()
+	for scanner.Scan() {
+		entry := stringToTCPEntry(scanner.Text())
+		entryMap[entry.inode] = *entry
+	}
+	if err := scanner.Err(); err != nil {
+		return nil, err
+	}
+	return entryMap, nil
+}
+
 func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 	var procs []ObserverProcs
 	procFS, _ := ioutil.ReadDir(ProcFS)
 	r := regexp.MustCompile(`[^\s\(]+|(\({1,2}[^\)]*\){1,2})`)
+
+	entryMap, err := k.getTCPConnections()
+	if err != nil {
+		fmt.Printf("Warning: failed to parse and build proc net map. Will not post connections started before hubble-fgs.\n")
+	}
 
 	for _, d := range procFS {
 		var pcmdline, pstatline []byte
@@ -1051,9 +1199,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 	if write {
 		writeExecveMap(procs)
 	}
-	if push {
-		k.pushExecveEvents(procs)
-	}
+	k.pushEvents(procs, entryMap, push)
 	return procs
 }
 
