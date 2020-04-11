@@ -489,8 +489,9 @@ func getKernelVersion() (int, string, error) {
 			// everything after '-' is meaningless from BPF
 			// side so toss it out.
 			release := strings.Split(string(uname.Release[:n]), "-")
-			version = int(kernelStringToNumeric(release[0]))
 			verStr = release[0]
+			numeric := strings.TrimRight(verStr, "+")
+			version = int(kernelStringToNumeric(numeric))
 		}
 	}
 	return version, verStr, nil
