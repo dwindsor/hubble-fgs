@@ -190,10 +190,12 @@ var (
 )
 
 func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
-	for _, c := range k.listeners {
-		if err := c.encoder.Encode(msg); err != nil {
-			zlog.Debug("Write failure removing Listener", zap.Error(err))
-			k.RemoveListener(c.conn)
+	if pass := k.runFilters(msg); pass {
+		for _, c := range k.listeners {
+			if err := c.encoder.Encode(msg); err != nil {
+				zlog.Debug("Write failure removing Listener", zap.Error(err))
+				k.RemoveListener(c.conn)
+			}
 		}
 	}
 }
@@ -287,12 +289,35 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 	return execUnix, false, nil
 }
 
+func (k *ObserverKprobe) runFilters(msgUnix *api.MsgIPv4TcpConnectUnix) bool {
+	pass := true
+	for _, f := range k.msgFilter {
+		res := f.run(msgUnix, k)
+
+		if res {
+			f.filterPass++
+			pass = true
+			break
+		} else {
+			f.filterDrop++
+			pass = false
+		}
+	}
+
+	if pass {
+		k.filterPass++
+	} else {
+		k.filterDrop++
+	}
+
+	return pass
+}
+
 func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	data := msg.DataDirect()
 	var op uint8 = data[0]
-	var empty, res bool
+	var empty bool
 
-	res = true
 	k.recvCntr++
 	r := bytes.NewReader(data)
 
@@ -318,28 +343,8 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			msgUnix.Pid.Curr = nopMsgExecUnix()
 		}
 
-		pass := true
 		/* OR filter together */
-		for _, f := range k.msgFilter {
-			res = f.run(msgUnix, k)
-
-			if res {
-				f.filterPass++
-				pass = true
-				break
-			} else {
-				f.filterDrop++
-				pass = false
-			}
-		}
-
-		if pass {
-			k.observerListeners(msgUnix)
-			k.filterPass++
-		} else {
-			k.filterDrop++
-		}
-
+		k.observerListeners(msgUnix)
 		/* Keeping pretty printer because it helps debugging filters */
 		if k.prettyPrinter {
 			reader.ObserverIPV4TCPConnectPrinter(msgUnix, zlog)
@@ -424,6 +429,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 				if k.prettyPrinter {
 					reader.ObserverIPV4TCPConnectPrinter(msg, zlog)
 				}
+
 				k.observerListeners(msg)
 			}
 		}
