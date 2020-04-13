@@ -205,12 +205,40 @@ func ncListenR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	var filterMsg api.MsgIPv4TcpConnectUnix
 
 	ncPath, _ := exec.LookPath("nc.traditional")
-	filterMsg.Common.Op = api.MSG_OP_EXECVE
 	filterMsg.Common.Op = api.MSG_OP_IPV4_LISTEN
 	filterMsg.Tuple.SPort = 8081
 	filterMsg.Tuple.Proto = 2
 	filterMsg.Pid.Curr.Filename = ncPath
 	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00/" + cwdPath()
+	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+
+	return k.CompareStrict(msg, &filterMsg)
+}
+
+func ncExecRunningR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+	var filterMsg api.MsgIPv4TcpConnectUnix
+
+	path, _ := os.Getwd()
+	ncPath, _ := exec.LookPath("nc.traditional")
+	filterMsg.Common.Op = api.MSG_OP_EXECVE
+	filterMsg.Pid.Curr.Filename = ncPath
+	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00 " + path
+	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+
+	return k.CompareStrict(msg, &filterMsg)
+}
+
+func ncListenRunningR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
+	var filterMsg api.MsgIPv4TcpConnectUnix
+
+	path, _ := os.Getwd()
+	ncPath, _ := exec.LookPath("nc.traditional")
+	filterMsg.Common.Op = api.MSG_OP_IPV4_LISTEN
+	filterMsg.Tuple.SPort = 8081
+	filterMsg.Tuple.Proto = 2
+	filterMsg.Pid.Curr.Filename = ncPath
+	/* Put Args in format received by existing event */
+	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00 " + path
 	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
 
 	return k.CompareStrict(msg, &filterMsg)
@@ -291,5 +319,28 @@ func TestExecEventClone(t *testing.T) {
 	filterPassCheck(t, &ncListen, 1)
 	filterPassCheck(t, &ncConnect, 1)
 	filterPassCheck(t, &ncExecCloneFilter, 1)
+	testDone(t, kprobe)
+}
+
+func TestExistingListenEvent(t *testing.T) {
+	/* Start server before creating kprobe */
+	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
+	cmdServer.Start()
+
+	/* Create kprobe */
+	kprobe := getDefaultObserver(t, true, false)
+
+	ncExecFilter := MsgFilter{run: ncExecRunningR}
+	ncListen := MsgFilter{run: ncListenRunningR}
+	kprobe.AttachFilter(&ncExecFilter)
+	kprobe.AttachFilter(&ncListen)
+
+	kprobe.getRunningProcs(false, true)
+
+	if cmdServer != nil {
+		cmdServer.Process.Kill()
+	}
+	filterPassCheck(t, &ncExecFilter, 1)
+	filterPassCheck(t, &ncListen, 1)
 	testDone(t, kprobe)
 }
