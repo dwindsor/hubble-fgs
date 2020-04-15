@@ -16,29 +16,16 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
-__attribute__((section(("kprobe/sys_execve")), used))
-int event_execve(struct pt_regs *__ctx)
+__attribute__((section(("tracepoint/sys_execve")), used))
+int event_execve(struct sched_execve_args *ctx)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct msg_ipv4_tcp_connect *event, *parent_event;
-	struct xdp_buff *kver_pivot, __kver_pivot;
 	struct event_execve *parent;
-	struct pt_regs *ctx;
 	bool walker = 0;
 	uint64_t size;
-	int exists;
 	__u32 pid;
-
-	kver_pivot = &__kver_pivot;
-	/* xdp_buff->handle was added in v4.18 so we use it to decide if
-	 * we should use ctx pointer or not.
-	 */
-	exists = bpf_core_field_exists(kver_pivot->handle);
-	if (exists) {
-		ctx = (struct pt_regs *) __ctx->di;
-	} else {
-		ctx = __ctx;
-	}
+	unsigned short fileoff;
 
 	pid = (get_current_pid_tgid() >> 32);
 	event = map_lookup_event(pid);
@@ -52,14 +39,15 @@ int event_execve(struct pt_regs *__ctx)
 	else
 		event_minimal_parent(parent, task);
 
-	event_filename_builder(parent, pid, EVENT_EXECVE, &ctx->di);
-	event_args_builder(event, &ctx->si);
+	fileoff = ctx->filename & 0xFFFF;
+	event_filename_builder(parent, pid, EVENT_EXECVE, (char *)ctx + fileoff);
+	event_args_builder(event);
 	compiler_barrier();
 	__event_get_task_info(event, MSG_OP_EXECVE, walker, true);
 	size = validate_msg_size(event->common.size);
 	if (event->common.flags)
 		event_set_clone(parent);
 	event->common.flags = 0;
-	perf_event_output(__ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 	return 0;
 }

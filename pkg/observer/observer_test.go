@@ -45,7 +45,6 @@ func getDefaultObserver(t *testing.T, execve, pretty bool) *ObserverKprobe {
 	} else {
 		ObserverExecve.Observer__program = "../../bpf/bpf_execve.o"
 	}
-	ObserverExecveat.Observer__program = "../../bpf/bpf_execveat.o"
 	ObserverFork.Observer__program = "../../bpf/bpf_fork.o"
 	ObserverTCPConnect.Observer__program = "../../bpf/bpf_tcpmon.o"
 	ObserverTCPConnectRet.Observer__program = "../../bpf/bpf_tcpmonret.o"

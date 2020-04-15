@@ -144,49 +144,10 @@ int kprobe_map_loader(const int version,
 	return bpf_map__fd(map_bpf);
 }
 
-int kprobe_loader(const int version,
-		  const int verbosity,
-		  const char *btf,
-		  const char *prog,
-		  const char *attach,
-		  const char *label,
-	  	  const char *__prog,
-		  const bool retprobe,
-	  	  const int execve_fd,
-	  	  const int tcp_events_fd) {
-	struct bpf_object_load_attr attr = {0};
-	struct bpf_program *prog_bpf;
-	struct bpf_link *prog_attach;
-	struct bpf_object *obj, *execve_obj;
-	struct bpf_map *map_bpf, *map, *execve_map;
-	int fd, err, map_fd = 0;
-
-	if (verbosity > 1)
-		libbpf_set_print(__print);
-
-	obj = bpf_object__open(prog);
-	err = libbpf_get_error(obj);
-	if (err) {
-		fprintf(stderr, "bpf_object__open_xattr: %i %s\n", err, prog);
-		return -1;
-	}
-
-	bpf_object__for_each_map(map_bpf, obj) {
-		const struct bpf_map_def *def = bpf_map__def(map_bpf);
-
-		if (verbosity)
-			fprintf(stderr,
-				"map: type %u key_size %u value_size %u max %u flags %u\n",
-				def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
-	}
-
-	bpf_object__for_each_program(prog_bpf, obj) {
-		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
-		if (verbosity)
-			fprintf(stderr,
-				"program: kern_version: %u\n",
-				bpf_object__kversion(obj));
-	}
+int bpf_loader_set_map(struct bpf_object *obj, int execve_fd, int tcp_events_fd, int verbosity)
+{
+	struct bpf_map *map;
+	int err = 0;
 
 	if (execve_fd) {
 		char *name = "execve_map";
@@ -194,7 +155,7 @@ int kprobe_loader(const int version,
 		map = bpf_object__find_map_by_name(obj, name);
 		err = libbpf_get_error(map);
 		if (err) {
-			fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(execve_map)\n", prog);
+			fprintf(stderr, "bpf_object__find_map_by_name: obj map(execve_map)\n");
 			return -1;
 		}
 
@@ -215,8 +176,7 @@ int kprobe_loader(const int version,
 		err = libbpf_get_error(map);
 		if (err) {
 			fprintf(stderr,
-				"bpf_object__find_map_by_name: obj(%s) map(kprobe_tcp_events)\n",
-				prog);
+				"bpf_object__find_map_by_name: obj map(kprobe_tcp_events)\n");
 			return -1;
 		}
 
@@ -231,6 +191,147 @@ int kprobe_loader(const int version,
 		if (verbosity)
 			fprintf(stderr, "bpf_map create tcpmon_map.");
 	}
+	return err;
+}
+
+
+void bpf_loader_print_maps(struct bpf_object *obj, int verbosity)
+{
+	struct bpf_map *map_bpf;
+
+	bpf_object__for_each_map(map_bpf, obj) {
+		const struct bpf_map_def *def = bpf_map__def(map_bpf);
+
+		if (verbosity)
+			fprintf(stderr,
+				"map: type %u key_size %u value_size %u max %u flags %u\n",
+				def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
+	}
+}
+
+
+void bpf_loader_programs(struct bpf_object *obj, int type, int verbosity) {
+	struct bpf_program *prog_bpf;
+
+	bpf_object__for_each_program(prog_bpf, obj) {
+		bpf_program__set_type(prog_bpf, type);
+		if (verbosity)
+			fprintf(stderr,
+				"program: kern_version: %u\n",
+				bpf_object__kversion(obj));
+	}
+}
+
+int tracepoint_loader(const int version,
+		      const int verbosity,
+		      const char *btf,
+		      const char *prog,
+		      const char *attach,
+		      const char *label,
+		      const char *__prog,
+		      const bool retprobe,
+		      const int execve_fd,
+		      const int tcp_events_fd) {
+	struct bpf_object_load_attr attr = {0};
+	struct bpf_program *prog_bpf;
+	struct bpf_link *prog_attach;
+	struct bpf_object *obj, *execve_obj;
+	struct bpf_map *map, *execve_map;
+	int fd, err, map_fd = 0;
+
+	if (verbosity > 1)
+		libbpf_set_print(__print);
+
+	obj = bpf_object__open(prog);
+	err = libbpf_get_error(obj);
+	if (err) {
+		fprintf(stderr, "bpf_object__open_xattr: %i %s\n", err, prog);
+		return -1;
+	}
+
+
+	bpf_loader_print_maps(obj, verbosity);
+	bpf_loader_programs(obj, BPF_PROG_TYPE_TRACEPOINT, verbosity);
+
+	err = bpf_loader_set_map(obj, execve_fd, tcp_events_fd, verbosity);
+	if (err)
+		return err;
+
+	attr.obj = obj;
+	attr.target_btf_path = btf;
+	attr.kern_version = version;
+	err = bpf_object__load_xattr(&attr);
+	if (err < 0) {
+		char errstr[256];
+
+		libbpf_strerror(err, errstr, sizeof(errstr));
+		fprintf(stderr, "bpf_object__load: failed %i: %s\n", err, errstr);
+		return -1;
+	}
+
+	prog_bpf = bpf_object__find_program_by_title(obj, label);
+	if (!prog_bpf) {
+		fprintf(stderr, "bpf_object__find__: null pointer\n");
+		return -1;
+	}
+	err = libbpf_get_error(prog_bpf);
+	if (err) {
+		fprintf(stderr, "bpf_object_find: failed\n");
+		return -1;
+	}
+
+	bpf_program__unpin(prog_bpf, __prog);
+
+	prog_attach = bpf_program__attach_tracepoint(prog_bpf, "sched", "sched_process_exec");
+	err = libbpf_get_error(prog_attach);
+	if (err) {
+		// Expected error when attach point probe is happening
+		if (verbosity)
+			fprintf(stderr, "bpf_program__attach_tracepoint: failed (%s)\n", prog);
+		return -1;
+	}
+
+	err = bpf_program__pin(prog_bpf, __prog);
+	if (err < 0) {
+		fprintf(stderr, "bpf_prog_pin: failed %i\n", err);
+		return -1;
+	}
+	return map_fd;
+}
+
+int kprobe_loader(const int version,
+		  const int verbosity,
+		  const char *btf,
+		  const char *prog,
+		  const char *attach,
+		  const char *label,
+	  	  const char *__prog,
+		  const bool retprobe,
+	  	  const int execve_fd,
+	  	  const int tcp_events_fd) {
+	struct bpf_object_load_attr attr = {0};
+	struct bpf_program *prog_bpf;
+	struct bpf_link *prog_attach;
+	struct bpf_object *obj, *execve_obj;
+	struct bpf_map *map, *execve_map;
+	int fd, err, map_fd = 0;
+
+	if (verbosity > 1)
+		libbpf_set_print(__print);
+
+	obj = bpf_object__open(prog);
+	err = libbpf_get_error(obj);
+	if (err) {
+		fprintf(stderr, "bpf_object__open_xattr: %i %s\n", err, prog);
+		return -1;
+	}
+
+	bpf_loader_print_maps(obj, verbosity);
+	bpf_loader_programs(obj, BPF_PROG_TYPE_KPROBE, verbosity);
+
+	err = bpf_loader_set_map(obj, execve_fd, tcp_events_fd, verbosity);
+	if (err)
+		return err;
 
 	attr.obj = obj;
 	attr.target_btf_path = btf;
@@ -294,6 +395,25 @@ func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_labe
 		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
 	}
 	return fdInt, nil
+}
+
+func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+	version := C.int(__version)
+	verbosity := C.int(__verbosity)
+	btf := C.CString(__btf)
+	o := C.CString(object)
+	a := C.CString(attach)
+	l := C.CString(__label)
+	p := C.CString(__prog)
+	ret := C.bool(retprobe)
+	fd := C.int(execve_fd)
+	tcp := C.int(tcp_fd)
+	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a, l, p, ret, fd, tcp)
+	loaderInt := int(loader_fd)
+	if loaderInt < 0 {
+		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
+	}
+	return nil, loaderInt
 }
 
 func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {

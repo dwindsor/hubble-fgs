@@ -349,11 +349,10 @@ __u32 get_task_pid_vnr(void)
 static inline __attribute__((always_inline))
 void event_filename_builder(struct event_execve *pid,
 			    __u32 curr_pid, __u32 flags,
-			    void *pfilename)
+			    void *filename)
 {
 	struct event_execve *curr;
 	int64_t psize, size = 0;
-	char *filename;
 	char *earg;
 
 	/* This is a bit parnoid but was previously having trouble on
@@ -365,17 +364,12 @@ void event_filename_builder(struct event_execve *pid,
 	curr = (void *)pid + psize;
 	earg = (void *)pid + psize + offsetof(struct event_execve, args);
 
-	probe_read(&filename, sizeof(filename), pfilename);
-	if (filename) {
-		size = probe_read_str(earg, MAXARGLENGTH - 1, filename);
-		if (size < 0) {
-			flags |= EVENT_ERROR_FILENAME;
-			size = 0;
-		} else if (size == MAXARGLENGTH - 1) {
-			flags |= EVENT_TRUNC_FILENAME;
-		}
-	} else {
+	size = probe_read_str(earg, MAXARGLENGTH - 1, filename);
+	if (size < 0) {
 		flags |= EVENT_ERROR_FILENAME;
+		size = 0;
+	} else if (size == MAXARGLENGTH - 1) {
+		flags |= EVENT_TRUNC_FILENAME;
 	}
 	curr->flags = flags;
 	curr->pid = curr_pid;
@@ -405,16 +399,15 @@ void event_filename_builder(struct event_execve *pid,
 	PROBE_ARG_READ10 \
 	PROBE_ARG_READ10
 
-#define PROBE_ARG_READ		     			\
+/* The first argument is the command from cmdline but we already report the
+ * filename so its redundant lets walk past it. Do we still need end check?
+ * Left for now until we analyze a bit.
+ */
+#define PROBE_PAST_CMD					\
 	"r3 = *(u64 *)%[args];"				\
-	"%[index] += 8;"				\
-	"r3 += %[index];"	     			\
-	"r2 = 8;"		     			\
-	"r1 = %[arg];"					\
-	"call 4;"					\
-	"r1 = %[arg];"					\
-	"r3 = *(u64 *)(r1 + 0);"			\
-	"if r3 == 0 goto %l[c];"			\
+	"r3 += %[offset];"				\
+	"r4 = *(u64 *)%[end];"				\
+	"if r4 <= r3 goto %l[c];"			\
 	"r4 = *(u32 *)(%[curr] + 0);"			\
 	"if r4 s< 0 goto %l[a];"			\
 	"if r4 s> " XSTR(BUFFER) " goto %l[b];"		\
@@ -423,6 +416,22 @@ void event_filename_builder(struct event_execve *pid,
 	"r2 = " XSTR(MAXARGLENGTH) ";"			\
 	"call 45;"					\
 	"if r0 s< 0 goto %l[a];"			\
+	"%[offset] += r0;"
+
+#define PROBE_ARG_READ		     			\
+	"r3 = *(u64 *)%[args];"				\
+	"r3 += %[offset];"				\
+	"r4 = *(u64 *)%[end];"				\
+	"if r4 <= r3 goto %l[c];"			\
+	"r4 = *(u32 *)(%[curr] + 0);"			\
+	"if r4 s< 0 goto %l[a];"			\
+	"if r4 s> " XSTR(BUFFER) " goto %l[b];"		\
+	"r1 = *(u64 *)%[earg];"				\
+	"r1 += r4;"					\
+	"r2 = " XSTR(MAXARGLENGTH) ";"			\
+	"call 45;"					\
+	"if r0 s< 0 goto %l[a];"			\
+	"%[offset] += r0;"				\
 	"r4 = *(u32 *)(%[curr] + 0);"			\
 	"r0 += r4;"					\
 	"*(u32 *)(%[curr] + 0) = r0;"
@@ -435,20 +444,19 @@ void event_filename_builder(struct event_execve *pid,
  * I'm looking at you 4.15 kernel running in minikube!
  */
 static inline __attribute__((always_inline))
-void probe_arg_read(struct event_execve *c, char *earg, char **args)
+void probe_arg_read(struct event_execve *c, char *earg, char *args, char *end_args)
 {
-	volatile char *arg;
-	int index = 0;
+	int off = 0;
 
 	asm volatile goto (
-			PROBE_ARG_HEADER
+			PROBE_PAST_CMD
 			PROBE_ARG_READ50
 		:
-		: [index]    	 "+r"(&index),
-		  [earg]         "m"(earg),
-		  [arg]          "ri"(&arg),
+		: [earg]         "m"(earg),
 		  [args]	 "m"(args),
-		  [curr]	 "ri"(c)
+		  [end]		 "m"(end_args),
+		  [curr]	 "ri"(c),
+		  [offset]	 "r"(off)
 		: "r0", "r1", "r2", "r3", "r4", "r5"
 		: a, b, c);
 	c->flags |= EVENT_TRUNC_ARGS;
@@ -471,11 +479,12 @@ a:
  * event msg that could be passed to userspace.
  */
 static inline __attribute__((always_inline))
-void event_args_builder(struct msg_ipv4_tcp_connect *event, void *pargs)
+void event_args_builder(struct msg_ipv4_tcp_connect *event)
 {
+	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct event_execve *p, *c;
+	struct mm_struct *mm;
 	int64_t base;
-	char **args;
 
 	/* Calculate absolute offset into buffer */
 	p = (struct event_execve *)event->pid;
@@ -485,11 +494,14 @@ void event_args_builder(struct msg_ipv4_tcp_connect *event, void *pargs)
 	c->size += base;
 	/* We use flags in asm to indicate overflow */
 	compiler_barrier();
-	probe_read(&args, sizeof(args), pargs);
-	if (!args) {
-		c->flags |= EVENT_ERROR_ARGS;
-	} else {
-		probe_arg_read(c, (char*)p, args);
+	probe_read(&mm, sizeof(mm), _(&task->mm));
+	if (mm) {
+		long unsigned int start_stack, end_stack;
+
+		probe_read(&start_stack, sizeof(start_stack), _(&mm->arg_start));
+		probe_read(&end_stack, sizeof(start_stack), _(&mm->arg_end));
+		if (start_stack && end_stack)
+			probe_arg_read(c, (char*)p, (char *)start_stack, (char *)end_stack);
 	}
 	c->size -= base;
 	return;

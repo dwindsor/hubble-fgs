@@ -237,3 +237,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
 	trace_printk(____fmt, sizeof(____fmt),	\
 			 ##__VA_ARGS__);		\
 })
+
+/* tracepoint args */
+struct sched_execve_args {
+	unsigned short common_type;
+	unsigned char common_flags;
+	unsigned char common_preempt_count;
+	int common_pid;
+	int filename;
+	int pid;
+	int old_pid;
+};

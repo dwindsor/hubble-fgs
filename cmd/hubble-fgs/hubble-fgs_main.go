@@ -60,8 +60,6 @@ func init() {
 	flags.StringVar(&observer.ObserverBTF, "btf", "", "Location of btf")
 	flags.StringVar(&observer.ObserverExecve.Observer__program,
 		"bpf-execve", "", "Location of bpf_execve.o program")
-	flags.StringVar(&observer.ObserverExecveat.Observer__program,
-		"bpf-execveat", "bpf_execveat.o", "Location of bpf_execveat.o program")
 	flags.StringVar(&observer.ObserverFork.Observer__program,
 		"bpf-fork", "bpf_fork.o", "Location of fork bpf program")
 	flags.StringVar(&observer.ObserverTCPConnect.Observer__program,

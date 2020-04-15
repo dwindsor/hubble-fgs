@@ -73,6 +73,7 @@ type bpfLoad struct {
 
 	retProbe   bool
 	errorFatal bool
+	tracepoint bool
 }
 
 var (
@@ -87,23 +88,13 @@ var (
 
 	ObserverExecve = bpfLoad{
 		"", "",
-		"__x64_sys_execve",
-		"sys_execve",
-		"kprobe/sys_execve",
-		"kprobe_execve",
+		"sched",
+		"sched_process_exec",
+		"tracepoint/sys_execve",
+		"event_execve",
 
 		false,
 		true,
-	}
-
-	ObserverExecveat = bpfLoad{
-		"", "",
-		"__x64_sys_execveat",
-		"sys_execveat",
-		"kprobe/sys_execveat",
-		"kprobe_execveat",
-
-		false,
 		true,
 	}
 
@@ -116,6 +107,7 @@ var (
 
 		false,
 		true,
+		false,
 	}
 
 	ObserverTCPConnect = bpfLoad{
@@ -127,6 +119,7 @@ var (
 
 		false,
 		true,
+		false,
 	}
 
 	ObserverTCPConnectRet = bpfLoad{
@@ -138,6 +131,7 @@ var (
 
 		true,
 		true,
+		false,
 	}
 
 	ObserverBind = bpfLoad{
@@ -149,6 +143,7 @@ var (
 
 		false,
 		true,
+		false,
 	}
 
 	ObserverGetPort = bpfLoad{
@@ -160,6 +155,7 @@ var (
 
 		false,
 		true,
+		false,
 	}
 
 	ObserverListen = bpfLoad{
@@ -170,6 +166,7 @@ var (
 		"kprobe_sys_listen",
 		false,
 		true,
+		false,
 	}
 
 	observerTimeout = 5 * time.Minute
@@ -180,7 +177,6 @@ var (
 
 	observerPrograms = []*bpfLoad{
 		&ObserverExecve,
-		&ObserverExecveat,
 		&ObserverFork,
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
@@ -642,6 +638,22 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 	if Verbosity > 0 {
 		fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
 	}
+	if load.tracepoint {
+		err, _ = bpf.LoadTracingProgram(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			load.observer__x64_attach,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			load.retProbe, k.execve_fd, k.tcp_events_fd)
+		if err != nil {
+			return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d LoadTracingProgram: %s\n",
+				load.Observer__program, k.execve_fd, k.tcp_events_fd, version, err)
+		}
+		return nil
+	}
+
 	err, _ = bpf.LoadKprobeProgram(
 		version, Verbosity,
 		btf,
@@ -691,9 +703,6 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 	}
 
 	if err := k.observerLoadInstance(ObserverExecve, stopCtx); err != nil {
-		return err
-	}
-	if err := k.observerLoadInstance(ObserverExecveat, stopCtx); err != nil {
 		return err
 	}
 
@@ -1368,7 +1377,6 @@ func (k *ObserverKprobe) Start() error {
 
 func (k *ObserverKprobe) deleteProgs() {
 	os.Remove(k.bpfDir + ObserverExecve.observer__prog)
-	os.Remove(k.bpfDir + ObserverExecveat.observer__prog)
 	os.Remove(k.bpfDir + ObserverTCPConnect.observer__prog)
 	os.Remove(k.bpfDir + ObserverBind.observer__prog)
 	os.Remove(k.bpfDir + ObserverGetPort.observer__prog)
