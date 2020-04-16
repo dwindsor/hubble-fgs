@@ -374,6 +374,8 @@ void event_filename_builder(struct event_execve *pid,
 		} else if (size == MAXARGLENGTH - 1) {
 			flags |= EVENT_TRUNC_FILENAME;
 		}
+	} else {
+		flags |= EVENT_ERROR_FILENAME;
 	}
 	curr->flags = flags;
 	curr->pid = curr_pid;
@@ -475,10 +477,6 @@ void event_args_builder(struct msg_ipv4_tcp_connect *event, void *pargs)
 	int64_t base;
 	char **args;
 
-	probe_read(&args, sizeof(args), pargs);
-	if (!args)
-		return;
-
 	/* Calculate absolute offset into buffer */
 	p = (struct event_execve *)event->pid;
 	base = validate_arg_size(p->size);
@@ -487,7 +485,12 @@ void event_args_builder(struct msg_ipv4_tcp_connect *event, void *pargs)
 	c->size += base;
 	/* We use flags in asm to indicate overflow */
 	compiler_barrier();
-	probe_arg_read(c, (char*)p, args);
+	probe_read(&args, sizeof(args), pargs);
+	if (!args) {
+		c->flags |= EVENT_ERROR_ARGS;
+	} else {
+		probe_arg_read(c, (char*)p, args);
+	}
 	c->size -= base;
 	return;
 }
