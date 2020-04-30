@@ -33,9 +33,11 @@ int event_ret_ipv4_connect(struct pt_regs *ctx)
 
 	pid = (get_current_pid_tgid() >> 32);
 	msg = event_find_curr(&ppid, 0, &walker);
-	if (!msg) {
+	if (!msg)
 		return 0;
-	}
+
+	if (msg->common.op != MSG_OP_IPV4_TCPCONNECT)
+		return 0;
 
 	msg->ret = ctx->ax;
 	msg->common.op = MSG_OP_IPV4_TCPCONNECTRET;
