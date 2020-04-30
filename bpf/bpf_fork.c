@@ -31,7 +31,7 @@ int event_wake_up_new_task(struct pt_regs *ctx)
 	if (!task)
 		return 0;
 
-	probe_read(&pid, sizeof(pid), _(&task->tgid));
+	probe_read(&pid, sizeof(pid), _(&task->pid));
 	event = map_lookup_event(pid);
 	if (!event)
 		return 0;
