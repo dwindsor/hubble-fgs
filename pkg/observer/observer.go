@@ -348,19 +348,25 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	}
 }
 
-func getCWD(pid uint32) (string, uint32, error) {
+func getCWD(pid uint32) (string, uint32) {
 	flags := uint32(0)
 	pidstr := fmt.Sprint(pid)
-	cwd, err := filepath.EvalSymlinks(ProcFS + pidstr + "/cwd")
+
+	if pid == 0 {
+		return "", flags
+	}
+
+	cwd, err := os.Readlink(ProcFS + pidstr + "/cwd")
 	if err != nil {
-		return "", flags, err
+		flags |= api.EventRootCWD | api.EventErrorCWD
+		return " ", flags
 	}
 
 	if cwd == "/" {
 		cwd = " "
 		flags |= api.EventRootCWD
 	}
-	return cwd, flags, nil
+	return cwd, flags
 }
 
 func procsFilename(args []byte) (string, string) {
@@ -434,14 +440,14 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 
 func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
 	pargs, pfilename := procsFilename(p.pargs)
-	pcwd, pflags, err := getCWD(p.ppid)
-	if err == nil {
+	pcwd, pflags := getCWD(p.ppid)
+	if (pflags & api.EventRootCWD) == 0 {
 		pargs = pargs + " " + pcwd
 	}
 
 	args, filename := procsFilename(p.args)
-	cwd, flags, err := getCWD(p.pid)
-	if err == nil {
+	cwd, flags := getCWD(p.pid)
+	if (flags & api.EventRootCWD) == 0 {
 		args = args + " " + cwd
 	}
 
