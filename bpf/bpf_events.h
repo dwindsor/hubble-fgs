@@ -77,18 +77,20 @@ static inline __attribute__((always_inline))
 struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
 {
 	struct xdp_buff *kver_pivot, __kver_pivot;
-	int exists;
+	int exists1, exists2;
 
 	kver_pivot = &__kver_pivot;
 	/* xdp_buff->handle was added in v4.18 so we use it to decide if
 	 * we have verifier fix for using map_values with map_update helper.
+	 * But, then it was removed in 5.8 so use txq for 5.8+ feature
+	 * detection.
 	 */
-	exists = bpf_core_field_exists(kver_pivot->handle);
-	if (exists) {
+	exists1 = bpf_core_field_exists(kver_pivot->handle);
+	exists2 = bpf_core_field_exists(kver_pivot->txq);
+	if (exists1 || exists2)
 		return map_lookup_hash(pid);
-	} else {
+	else
 		return map_lookup_array(pid);
-	}
 }
 
 static inline __attribute__((always_inline))
@@ -618,8 +620,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 		msg = map_lookup_event(pid);
 		if (msg && msg->common.size != 0)
 			break;
-		else
-			msg = 0;
+		msg = 0;
 		*walked = 1;
 		probe_read(&task, sizeof(task), _(&task->parent));
 		if (!task)

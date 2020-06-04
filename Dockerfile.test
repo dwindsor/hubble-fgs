@@ -1,0 +1,15 @@
+FROM quay.io/isovalent/hubble-libbpf:2020-03-04 as hubble-libbpf
+WORKDIR /go/src/github.com/covalentio/hubble-fgs
+COPY . ./
+
+FROM golang:1.14
+RUN apt update
+RUN apt install -y linux-libc-dev rpm2cpio cpio git flex bison autoconf libelf-dev bc netcat-traditional
+WORKDIR /go/src/github.com/covalentio/hubble-fgs
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /usr/local/lib/
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
+RUN ln -s /usr/local/lib/libbpf.so /usr/local/lib/libbpf.so.0
+CMD LD_LIBRARY_PATH=/usr/local/lib/ go test -v ./pkg/observer/
+
+ENV FGS_BTF=/var/lib/hubble-fgs/btf
+ENV FGS_PROCFS=/procRoot/

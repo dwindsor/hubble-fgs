@@ -37854,6 +37854,8 @@ struct xdp_buff {
 	void *data_hard_start;
 	long unsigned int handle;
 	struct xdp_rxq_info *rxq;
+	struct xdp_rxq_info *txq;
+	u32 frame_sz;
 };
 
 enum net_device_flags {

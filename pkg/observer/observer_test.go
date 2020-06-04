@@ -1,12 +1,16 @@
 package observer
 
 import (
+	"bytes"
 	"context"
 	"encoding/binary"
 	"fmt"
+	"io/ioutil"
 	"net"
 	"os"
 	"os/exec"
+	"strconv"
+	"strings"
 	"sync"
 	"syscall"
 	"testing"
@@ -14,6 +18,7 @@ import (
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
+	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 )
 
@@ -51,7 +56,16 @@ func getDefaultObserver(t *testing.T, execve, pretty bool) *ObserverKprobe {
 	ObserverBind.Observer__program = "../../bpf/bpf_bind.o"
 	ObserverGetPort.Observer__program = "../../bpf/bpf_get_port.o"
 	ObserverListen.Observer__program = "../../bpf/bpf_listen.o"
-	ObserverBTF = "../../bpf/btf"
+	btf := os.Getenv("FGS_BTF")
+	if btf != "" {
+		ObserverBTF = btf
+	} else {
+		ObserverBTF = "../../bpf/btf"
+	}
+	procfs := os.Getenv("FGS_PROCFS")
+	if procfs != "" {
+		ProcFS = procfs
+	}
 
 	kprobe := NewObserverKprobe(observerTestDir, execve, pretty)
 	loadObserver(t, kprobe)
@@ -99,11 +113,30 @@ func TestObjectLoad(t *testing.T) {
 	kprobe.deleteProgs()
 }
 
+func removeMountPoint(dir string) string {
+	var accum string
+
+	dirs := strings.Split(dir, "/")
+	for _, i := range dirs {
+		accum += "/" + i
+		pt, _, err := mountinfo.IsMountFS("", accum)
+		if err != nil || pt == true {
+			accum = ""
+		}
+	}
+	return accum
+}
+
 func cwdPath() string {
-	path, err := os.Getwd()
+	pathb := make([]byte, 1000)
+
+	_, err := syscall.Getcwd(pathb)
 	if err != nil {
 		return ""
 	}
+	pathb = bytes.Trim(pathb, "\x00")
+	path := string(pathb)
+	path = removeMountPoint(path)
 	path = reader.SwapPath(path)
 	path = path[:len(path)-1]
 	return path
@@ -121,6 +154,29 @@ func localIP() uint32 {
 	return ipToInt("127.0.0.1")
 }
 
+func getMyPid() uint32 {
+	if procfs := os.Getenv("FGS_PROCFS"); procfs != "" {
+		procFS, _ := ioutil.ReadDir(procfs)
+		for _, d := range procFS {
+			if d.IsDir() == false {
+				continue
+			}
+			cmdline, err := ioutil.ReadFile(ProcFS + d.Name() + "/cmdline")
+			if err != nil {
+				continue
+			}
+			if strings.Contains(string(cmdline), "go-build") {
+				pid, err := strconv.ParseUint(d.Name(), 10, 32)
+				if err != nil {
+					continue
+				}
+				return uint32(pid)
+			}
+		}
+	}
+	return uint32(os.Getpid())
+}
+
 func curlFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	var curlMsg api.MsgIPv4TcpConnectUnix
 
@@ -130,7 +186,7 @@ func curlFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	curlMsg.Tuple.Proto = 2
 	curlMsg.Pid.Curr.Filename = "/usr/bin/curl"
 	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + cwdPath()
-	curlMsg.Pid.Parent.PID = uint32(os.Getpid())
+	curlMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &curlMsg)
 }
@@ -141,7 +197,7 @@ func curlExecFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	curlMsg.Common.Op = api.MSG_OP_EXECVE
 	curlMsg.Pid.Curr.Filename = "/usr/bin/curl"
 	curlMsg.Pid.Curr.Args = "127.0.0.1\x00/" + cwdPath()
-	curlMsg.Pid.Parent.PID = uint32(os.Getpid())
+	curlMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &curlMsg)
 }
@@ -195,7 +251,7 @@ func ncExecFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	filterMsg.Common.Op = api.MSG_OP_EXECVE
 	filterMsg.Pid.Curr.Filename = ncPath
 	filterMsg.Pid.Curr.Args = "127.0.0.1\x008081\x00-e\x00/bin/sh\x00/" + cwdPath()
-	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+	filterMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &filterMsg)
 }
@@ -209,7 +265,7 @@ func ncListenR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	filterMsg.Tuple.Proto = 2
 	filterMsg.Pid.Curr.Filename = ncPath
 	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00/" + cwdPath()
-	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+	filterMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &filterMsg)
 }
@@ -222,7 +278,7 @@ func ncExecRunningR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	filterMsg.Common.Op = api.MSG_OP_EXECVE
 	filterMsg.Pid.Curr.Filename = ncPath
 	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00 " + path
-	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+	filterMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &filterMsg)
 }
@@ -238,7 +294,7 @@ func ncListenRunningR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	filterMsg.Pid.Curr.Filename = ncPath
 	/* Put Args in format received by existing event */
 	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00 " + path
-	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+	filterMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &filterMsg)
 }
@@ -250,7 +306,7 @@ func ncExecRunningRootR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool 
 	filterMsg.Common.Op = api.MSG_OP_EXECVE
 	filterMsg.Pid.Curr.Filename = ncPath
 	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00"
-	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+	filterMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &filterMsg)
 }
@@ -264,7 +320,7 @@ func ncListenRunningRootR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) boo
 	filterMsg.Tuple.Proto = 2
 	filterMsg.Pid.Curr.Filename = ncPath
 	filterMsg.Pid.Curr.Args = "-nvlp\x008081\x00"
-	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+	filterMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &filterMsg)
 }
@@ -279,7 +335,7 @@ func ncConnectR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool {
 	filterMsg.Tuple.Proto = 2
 	filterMsg.Pid.Curr.Filename = ncPath
 	filterMsg.Pid.Curr.Args = "127.0.0.1\x008081\x00-e\x00/bin/sh\x00/" + cwdPath()
-	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+	filterMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &filterMsg)
 }
@@ -291,7 +347,7 @@ func ncExecCloneFilterR(msg *api.MsgIPv4TcpConnectUnix, k *ObserverKprobe) bool 
 	filterMsg.Pid.Curr.Filename = "/bin/sh"
 	filterMsg.Pid.Curr.Args = "/" + cwdPath()
 	filterMsg.Pid.Curr.Flags = api.EventExecve
-	filterMsg.Pid.Parent.PID = uint32(os.Getpid())
+	filterMsg.Pid.Parent.PID = getMyPid()
 
 	return k.CompareStrict(msg, &filterMsg)
 }

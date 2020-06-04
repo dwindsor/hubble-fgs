@@ -25,4 +25,44 @@ To build without metadata this will require users to include metadtata manually.
 
 To run image in docker,
 
-# docker run --name hubble-fgs --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti quay.io/isovalent/hubble-fgs
+# docker run --name hubble-fgs --env FGS_BTF=/var/lib/hubble-fgs/btf --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti quay.io/isovalent/hubble-fgs
+
+
+Testing
+---------
+
+To build a docker image for running go tests, (note below 'docker run' pulls
+in current code directory this just gets us golang and some tools needed to
+run hubble-fgs go tests)
+
+# docker build --label katafgs --tag katafgs:latest .
+
+To test locally:
+
+# go test .
+
+To run tests in docker:
+
+# docker run -ti --name test --privileged -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs covalentio/hubble-fgs-test
+
+To run tests in kata-container with hosted kernel we can use kata-img to see
+kernel currently selected,
+
+$ kata-img
+* vmlinuz-bpf-next_hubble
+  vmlinuz-kata-linux-4.19.125-79_hubble
+  vmlinuz-kata-linux-5.4.44-79_hubble
+
+Then the following 'docker run' command will launch above kernel and run go
+tests,
+
+# docker run --runtime=kata-runtime -ti --name test --privileged -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs covalentio/hubble-fgs-test
+
+Some environment variables impact where fgs will look for procFS and BTF data.
+The defaults are,
+
+ export FGS_BTF=/var/lib/hubble-fgs/btf
+ export FGS_PROCFS=/procRoot/
+
+These are set from Dockerfile.test and will work with above 'docker run' command
+but can be reconfigured if needed. Happy testing.
