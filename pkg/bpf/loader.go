@@ -18,7 +18,7 @@ package bpf
 
 /*
 #cgo CFLAGS: -I ../../bpf/
-#cgo LDFLAGS: -L ../../libs/ -lbpf -lelf -lz
+#cgo LDFLAGS: -lbpf -lelf -lz
 
 #include <string.h>
 #include <sched.h>
@@ -296,7 +296,7 @@ int tracepoint_loader(const int version,
 		fprintf(stderr, "bpf_prog_pin: failed %i\n", err);
 		return -1;
 	}
-	return map_fd;
+	return bpf_link_fd(prog_attach);
 }
 
 int kprobe_loader(const int version,
@@ -372,7 +372,7 @@ int kprobe_loader(const int version,
 		fprintf(stderr, "bpf_prog_pin: failed %i\n", err);
 		return -1;
 	}
-	return map_fd;
+	return bpf_link_fd(prog_attach);
 }
 */
 import "C"

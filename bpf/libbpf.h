@@ -220,6 +220,8 @@ LIBBPF_API void bpf_program__unload(struct bpf_program *prog);
 
 struct bpf_link;
 
+LIBBPF_API int bpf_link_fd(struct bpf_link *link);
+
 LIBBPF_API void bpf_link__disconnect(struct bpf_link *link);
 LIBBPF_API int bpf_link__destroy(struct bpf_link *link);
 

@@ -36,6 +36,7 @@ func hubbleFGSExecute() error {
 	go func() {
 		<-sigs
 		kprobe.PrintStats()
+		kprobe.RemovePrograms()
 		os.Exit(1)
 	}()
 

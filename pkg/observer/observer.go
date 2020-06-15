@@ -74,6 +74,8 @@ type bpfLoad struct {
 	retProbe   bool
 	errorFatal bool
 	tracepoint bool
+
+	tracefd int
 }
 
 var (
@@ -96,6 +98,8 @@ var (
 		false,
 		true,
 		true,
+
+		-1,
 	}
 
 	ObserverFork = bpfLoad{
@@ -108,6 +112,8 @@ var (
 		false,
 		true,
 		false,
+
+		-1,
 	}
 
 	ObserverTCPConnect = bpfLoad{
@@ -120,6 +126,8 @@ var (
 		false,
 		true,
 		false,
+
+		-1,
 	}
 
 	ObserverTCPConnectRet = bpfLoad{
@@ -132,6 +140,8 @@ var (
 		true,
 		true,
 		false,
+
+		-1,
 	}
 
 	ObserverBind = bpfLoad{
@@ -144,6 +154,8 @@ var (
 		false,
 		true,
 		false,
+
+		-1,
 	}
 
 	ObserverGetPort = bpfLoad{
@@ -156,6 +168,8 @@ var (
 		false,
 		true,
 		false,
+
+		-1,
 	}
 
 	ObserverListen = bpfLoad{
@@ -164,9 +178,12 @@ var (
 		"sys_listen",
 		"kprobe/sys_listen",
 		"kprobe_sys_listen",
+
 		false,
 		true,
 		false,
+
+		-1,
 	}
 
 	observerTimeout = 5 * time.Minute
@@ -627,7 +644,7 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 	return nil
 }
 
-func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Context) error {
+func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Context) error {
 	var btf string
 
 	if load.Observer__btf == "" {
@@ -645,7 +662,7 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
 	}
 	if load.tracepoint {
-		err, _ = bpf.LoadTracingProgram(
+		err, fd := bpf.LoadTracingProgram(
 			version, Verbosity,
 			btf,
 			load.Observer__program,
@@ -657,10 +674,11 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 			return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d LoadTracingProgram: %s\n",
 				load.Observer__program, k.execve_fd, k.tcp_events_fd, version, err)
 		}
+		load.tracefd = fd
 		return nil
 	}
 
-	err, _ = bpf.LoadKprobeProgram(
+	err, fd := bpf.LoadKprobeProgram(
 		version, Verbosity,
 		btf,
 		load.Observer__program,
@@ -672,7 +690,7 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 		/* If we fail attach with __x64_sys_execve variant try again with
 		 * sys_execve variant.
 		 */
-		err, _ = bpf.LoadKprobeProgram(
+		err, fd = bpf.LoadKprobeProgram(
 			version, Verbosity,
 			btf,
 			load.Observer__program,
@@ -685,6 +703,7 @@ func (k *ObserverKprobe) observerLoadInstance(load bpfLoad, stopCtx context.Cont
 				load.Observer__program, k.execve_fd, k.tcp_events_fd, version, err)
 		}
 	}
+	load.tracefd = fd
 	return nil
 }
 
@@ -708,11 +727,11 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 		return err
 	}
 
-	if err := k.observerLoadInstance(ObserverExecve, stopCtx); err != nil {
+	if err := k.observerLoadInstance(&ObserverExecve, stopCtx); err != nil {
 		return err
 	}
 
-	if err := k.observerLoadInstance(ObserverFork, stopCtx); err != nil {
+	if err := k.observerLoadInstance(&ObserverFork, stopCtx); err != nil {
 		return err
 	}
 
@@ -720,21 +739,21 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 }
 
 func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
-	if err := k.observerLoadInstance(ObserverTCPConnect, stopCtx); err != nil {
+	if err := k.observerLoadInstance(&ObserverTCPConnect, stopCtx); err != nil {
 		return err
 	}
-	if err := k.observerLoadInstance(ObserverTCPConnectRet, stopCtx); err != nil {
+	if err := k.observerLoadInstance(&ObserverTCPConnectRet, stopCtx); err != nil {
 		return err
 	}
-	if err := k.observerLoadInstance(ObserverBind, stopCtx); err != nil {
-		return err
-	}
-
-	if err := k.observerLoadInstance(ObserverGetPort, stopCtx); err != nil {
+	if err := k.observerLoadInstance(&ObserverBind, stopCtx); err != nil {
 		return err
 	}
 
-	if err := k.observerLoadInstance(ObserverListen, stopCtx); err != nil {
+	if err := k.observerLoadInstance(&ObserverGetPort, stopCtx); err != nil {
+		return err
+	}
+
+	if err := k.observerLoadInstance(&ObserverListen, stopCtx); err != nil {
 		return err
 	}
 
@@ -1381,12 +1400,22 @@ func (k *ObserverKprobe) Start() error {
 	return nil
 }
 
-func (k *ObserverKprobe) deleteProgs() {
-	os.Remove(k.bpfDir + ObserverExecve.observer__prog)
-	os.Remove(k.bpfDir + ObserverTCPConnect.observer__prog)
-	os.Remove(k.bpfDir + ObserverBind.observer__prog)
-	os.Remove(k.bpfDir + ObserverGetPort.observer__prog)
-	os.Remove(k.bpfDir + ObserverTCPConnectRet.observer__prog)
+func removeTracepoint(fd int) {
+	PERF_EVENT_IOC_DISABLE := uint(0x2401)
+	err := unix.IoctlSetInt(fd, PERF_EVENT_IOC_DISABLE, 0)
+	if err != nil && Verbosity > 1 {
+		fmt.Printf("Warning failed tracepoint removal: %s", err)
+	}
+	unix.Close(fd)
+}
+
+func (k *ObserverKprobe) RemovePrograms() {
+	for _, l := range observerPrograms {
+		os.Remove(k.bpfDir + l.observer__prog)
+		if l.tracefd >= 0 {
+			removeTracepoint(l.tracefd)
+		}
+	}
 	maps, err := getKernelMaps()
 	if err != nil {
 		fmt.Printf("Deleting maps failed: %s\n", err)

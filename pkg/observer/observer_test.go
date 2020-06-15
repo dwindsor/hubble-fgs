@@ -78,14 +78,14 @@ func getDefaultObserver(t *testing.T, execve, pretty bool) *ObserverKprobe {
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	kprobe.createDir()
 	if err := kprobe.observerLoadExecve(context.TODO()); err != nil {
-		kprobe.deleteProgs()
+		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadExecve error: %s", err)
 	}
 }
 
 func loadEvents(t *testing.T, kprobe *ObserverKprobe) {
 	if err := kprobe.observerLoadEvents(context.TODO()); err != nil {
-		kprobe.deleteProgs()
+		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadEvents error: %s", err)
 	}
 }
@@ -97,7 +97,7 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 		defer exitWG.Done()
 		e, err := kprobe.__runEvents(ctx)
 		if err != nil {
-			kprobe.deleteProgs()
+			kprobe.RemovePrograms()
 			t.Fatalf("runEvents error: %s", err)
 		}
 		defer e.CloseAll()
@@ -110,7 +110,7 @@ func TestObjectLoad(t *testing.T) {
 	kprobe := getDefaultObserver(t, false, false)
 	loadObserver(t, kprobe)
 	loadEvents(t, kprobe)
-	kprobe.deleteProgs()
+	kprobe.RemovePrograms()
 }
 
 func removeMountPoint(dir string) string {
@@ -211,7 +211,7 @@ func execWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
 }
 
 func testDone(t *testing.T, kprobe *ObserverKprobe) {
-	kprobe.deleteProgs()
+	kprobe.RemovePrograms()
 	kprobe.PrintStats()
 	if kprobe.filterPass < 1 {
 		t.Fail()

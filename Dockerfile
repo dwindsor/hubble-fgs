@@ -5,15 +5,18 @@ RUN apt update
 RUN apt install -y linux-libc-dev
 RUN make hubble-bpf
 
-FROM quay.io/isovalent/hubble-libbpf:2020-03-04 as hubble-libbpf
+FROM quay.io/isovalent/hubble-libbpf:latest as hubble-libbpf
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 
 FROM quay.io/cilium/cilium-builder:2019-09-04 as hubble-builder
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.0.7 /usr/local/lib/
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
+RUN ldconfig /usr/local/ && export LD_LIBRARY_PATH=/usr/local/lib/
 RUN make hubble-fgs-image
 
 FROM docker.io/library/alpine:3.10
@@ -25,6 +28,8 @@ RUN addgroup hubble	       && \
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs-printer /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/covalentio/hubble-fgs/bpf/*.o /var/lib/hubble-fgs/
-COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /var/lib/hubble-fgs/libs/
-COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /var/lib/hubble-fgs/libs/
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.0.7 /usr/local/lib/
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 /usr/local/lib/
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /usr/local/lib/
+COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
 CMD ["sh", "-c", "/usr/bin/hubble-fgs --procfs=/procRoot/"]
