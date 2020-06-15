@@ -87,7 +87,12 @@ struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
 	 */
 	exists1 = bpf_core_field_exists(kver_pivot->handle);
 	exists2 = bpf_core_field_exists(kver_pivot->txq);
-	if (exists1 || exists2)
+	/* This incantation works around a patching bug in libbpf where
+	 * if (exsts1 || exists2) fails.
+	 */
+	if (exists1)
+		return map_lookup_hash(pid);
+	else if (exists2)
 		return map_lookup_hash(pid);
 	else
 		return map_lookup_array(pid);
