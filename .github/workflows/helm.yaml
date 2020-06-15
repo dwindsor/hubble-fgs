@@ -1,0 +1,17 @@
+name: Helm
+on:
+  push:
+    branches:
+      - master
+  pull_request:
+    branches:
+    - master
+jobs:
+  quick-install:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v2
+      - name: Validate that quick-install.yaml is up to date.
+        run: |
+          make quick-install
+          git diff --exit-code

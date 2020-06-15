@@ -1,0 +1,59 @@
+---
+# Source: hubble-fgs/templates/daemonset.yaml
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: hubble-fgs
+  namespace: kube-system
+spec:
+  selector:
+    matchLabels:
+      k8s-app: hubble-fgs
+  template:
+    metadata:
+      labels:
+        k8s-app: hubble-fgs
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "k8s-app"
+                    operator: In
+                    values:
+                      - cilium
+              topologyKey: "kubernetes.io/hostname"
+              namespaces:
+                - cilium
+                - kube-system
+      containers:
+        - name: hubble-fgs
+          command:
+            - /usr/bin/hubble-fgs
+          args:
+            - --procfs=/procRoot/
+            - --set-pid-max
+            - -e
+          image: quay.io/isovalent/hubble-fgs:latest
+          imagePullPolicy: Always
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: "/var/run/hubble-fgs"
+              name: fgs
+            - mountPath: "/procRoot/"
+              name: fgs-proc
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 1
+      tolerations:
+        - operator: Exists
+      volumes:
+        - hostPath:
+            path: /var/run/hubble-fgs
+            type: DirectoryOrCreate
+          name: fgs
+        - hostPath:
+            path: /proc/
+            type: Directory
+          name: fgs-proc

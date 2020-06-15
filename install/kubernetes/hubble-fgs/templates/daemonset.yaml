@@ -1,0 +1,61 @@
+apiVersion: apps/v1
+kind: DaemonSet
+metadata:
+  name: {{ .Chart.Name }}
+  namespace: {{ .Release.Namespace }}
+spec:
+  selector:
+    matchLabels:
+      k8s-app: {{ .Chart.Name }}
+  template:
+    metadata:
+      labels:
+        k8s-app: {{ .Chart.Name }}
+    spec:
+      affinity:
+        podAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            - labelSelector:
+                matchExpressions:
+                  - key: "k8s-app"
+                    operator: In
+                    values:
+                      - cilium
+              topologyKey: "kubernetes.io/hostname"
+              namespaces:
+                - cilium
+                - kube-system
+      containers:
+        - name: {{ .Chart.Name }}
+          command:
+            - /usr/bin/hubble-fgs
+          args:
+            - --procfs=/procRoot/
+            - --set-pid-max
+            - -e
+          image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
+          imagePullPolicy: {{ .Values.image.pullPolicy }}
+          securityContext:
+            privileged: true
+          volumeMounts:
+            - mountPath: "/var/run/hubble-fgs"
+              name: fgs
+            - mountPath: "/procRoot/"
+              name: fgs-proc
+{{- if .Values.resources }}
+          resources:
+{{- toYaml .Values.resources | trim | nindent 10 }}
+{{- end }}
+      restartPolicy: Always
+      terminationGracePeriodSeconds: 1
+      tolerations:
+        - operator: Exists
+      volumes:
+        - hostPath:
+            path: /var/run/hubble-fgs
+            type: DirectoryOrCreate
+          name: fgs
+        - hostPath:
+            path: /proc/
+            type: Directory
+          name: fgs-proc

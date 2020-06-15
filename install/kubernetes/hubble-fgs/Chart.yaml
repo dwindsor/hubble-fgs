@@ -1,0 +1,11 @@
+apiVersion: v1
+name: hubble-fgs
+version: 0.0.1
+appVersion: 0.0.1
+tillerVersion: ">=2.7.2"
+description: Helm chart for the Hubble FGS
+keywords:
+  - fgs
+sources:
+  - https://github.com/covalentio/hubble-fgs
+engine: gotpl

@@ -52,4 +52,7 @@ image-test:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
 
-.PHONY: headers all clean image install lint hubble-fgs
+quick-install:
+	helm template ./install/kubernetes/hubble-fgs --namespace kube-system > ./install/kubernetes/quick-install.yaml
+
+.PHONY: headers all clean image install lint hubble-fgs quick-install
