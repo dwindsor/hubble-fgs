@@ -416,7 +416,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 	}
 	for _, d := range procFD {
 		socket, err := os.Readlink(fdDir + "/" + d.Name())
-		if err != nil {
+		if err != nil && Verbosity > 0 {
 			fmt.Printf("Warning: readlink error %s: %s\n", d.Name(), err)
 		}
 		if strings.Contains(socket, "socket") == true {
