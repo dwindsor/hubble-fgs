@@ -38,23 +38,26 @@ spec:
           securityContext:
             privileged: true
           volumeMounts:
-            - mountPath: "/var/run/hubble-fgs"
-              name: fgs
+            - mountPath: "/var/run/cilium"
+              name: run
             - mountPath: "/procRoot/"
               name: fgs-proc
 {{- if .Values.resources }}
           resources:
 {{- toYaml .Values.resources | trim | nindent 10 }}
 {{- end }}
+          env:
+          - name: FGS_SOCKET_PATH
+            value: "/var/run/cilium/hubble-fgs.sock"
       restartPolicy: Always
       terminationGracePeriodSeconds: 1
       tolerations:
         - operator: Exists
       volumes:
         - hostPath:
-            path: /var/run/hubble-fgs
-            type: DirectoryOrCreate
-          name: fgs
+            path: /var/run/cilium
+            type: Directory
+          name: run
         - hostPath:
             path: /proc/
             type: Directory

@@ -219,7 +219,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 }
 
 func ObserverReceiver(log *zap.Logger) error {
-	conn, err := net.Dial("unix", defaults.DefaultUnixSock)
+	conn, err := net.Dial("unix", defaults.GetSocketPath())
 	if err != nil {
 		return err
 	}

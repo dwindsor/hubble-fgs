@@ -40,7 +40,7 @@ func hubbleFGSExecute() error {
 		os.Exit(1)
 	}()
 
-	go server.ServeEvents(kprobe, ctx, defaults.DefaultUnixSock)
+	go server.ServeEvents(kprobe, ctx, defaults.GetSocketPath())
 	return kprobe.Start()
 }
 
