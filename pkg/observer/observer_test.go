@@ -68,6 +68,9 @@ func getDefaultObserver(t *testing.T, execve, pretty bool) *ObserverKprobe {
 	}
 
 	kprobe := NewObserverKprobe(observerTestDir, execve, pretty)
+	if testing.Verbose() {
+		Verbosity = 4
+	}
 	loadObserver(t, kprobe)
 
 	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
