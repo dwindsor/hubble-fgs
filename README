@@ -56,7 +56,10 @@ $ kata-img
 Then the following 'docker run' command will launch above kernel and run go
 tests,
 
-# docker run --runtime=kata-runtime -ti --name test --privileged -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs covalentio/hubble-fgs-test
+# docker run --runtime=kata-runtime -ti --name test --cap-add all --ulimit memlock=-1:-1 \
+        -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf \
+        -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs \
+        -v /proc:/procRoot covalentio/hubble-fgs-test
 
 Some environment variables impact where fgs will look for procFS and BTF data.
 The defaults are,
