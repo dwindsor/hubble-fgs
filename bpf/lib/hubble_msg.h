@@ -110,6 +110,7 @@
 #define EVENT_ROOT_CWD	     0x1000
 #define EVENT_ERROR_CWD	     0x2000
 #define EVENT_CLONE	     0x4000
+#define EVENT_ERROR_SOCK     0x8000
 
 /* Msg Types */
 enum msg_ops {

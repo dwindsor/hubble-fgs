@@ -19,11 +19,14 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section(("kprobe/tcp_connect")), used))
-int event_ipv4_connect(struct pt_regs *ctx)
+__attribute__((section(("kprobe/__inet_stream_connect")), used))
+int event_stream_connect(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_connect *msg = 0;
 	__u32 ppid = 0, pid = 0;
+	struct sockaddr *uaddr;
+	struct sockaddr_in *in;
+	struct socket *sockp;
 	struct sock *skp;
 	bool walker = 0;
 
@@ -32,11 +35,17 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	if (!msg)
 		return 0;
 
-	skp = (void *)((ctx)->di);
-	probe_read(&msg->tuple.proto, sizeof(msg->tuple.proto), _(&(skp->__sk_common.skc_family)));
-	probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), _(&(skp->__sk_common.skc_num)));
-
+	sockp = (void *)((ctx)->di);
+	probe_read(&skp, sizeof(skp), _(&(sockp->sk)));
+	if (!skp) {
+		msg->common.flags |= EVENT_ERROR_SOCK;
+		goto out;
+	}
+	uaddr = (void *)((ctx)->si);
+	in = (struct sockaddr_in *)uaddr;
+	probe_read(&msg->tuple.daddr, sizeof(msg->tuple.daddr), _(&(in->sin_addr)));
+	probe_read(&msg->tuple.dport, sizeof(msg->tuple.dport), _(&(in->sin_port)));
+out:
 	event_get_task_info(msg, MSG_OP_IPV4_TCPCONNECT, walker);
 	return 1;
 }

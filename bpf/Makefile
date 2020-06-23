@@ -1,6 +1,6 @@
 .PHONY: all
 
-BPF = bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o bpf_get_port.o \
+BPF = bpf_stream_connect.o bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o bpf_get_port.o \
       bpf_execve.o bpf_execve_event.o \
       bpf_fork.o
 

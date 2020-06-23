@@ -65,6 +65,8 @@ func init() {
 		"bpf-fork", "bpf_fork.o", "Location of fork bpf program")
 	flags.StringVar(&observer.ObserverTCPConnect.Observer__program,
 		"bpf-tcpmon", "bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
+	flags.StringVar(&observer.ObserverStreamConnect.Observer__program,
+		"bpf-stream-connect", "bpf_stream_connect.o", "Location of bpf_stream_connect.o program")
 	flags.StringVar(&observer.ObserverTCPConnectRet.Observer__program,
 		"bpf-tcpmonret", "bpf_tcpmonret.o", "Location of bpf_tcpmon.o program")
 	flags.StringVar(&observer.ObserverBind.Observer__program,

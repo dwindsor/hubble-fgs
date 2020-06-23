@@ -116,6 +116,20 @@ var (
 		-1,
 	}
 
+	ObserverStreamConnect = bpfLoad{
+		"", "",
+		"__inet_stream_connect",
+		"__inet_stream_connect",
+		"kprobe/__inet_stream_connect",
+		"kprobe__inet_stream_connect",
+
+		false,
+		true,
+		false,
+
+		-1,
+	}
+
 	ObserverTCPConnect = bpfLoad{
 		"", "",
 		"tcp_connect",
@@ -197,6 +211,7 @@ var (
 		&ObserverFork,
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
+		&ObserverStreamConnect,
 		&ObserverBind,
 		&ObserverGetPort,
 		&ObserverListen}
@@ -740,6 +755,9 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 
 func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
 	if err := k.observerLoadInstance(&ObserverTCPConnect, stopCtx); err != nil {
+		return err
+	}
+	if err := k.observerLoadInstance(&ObserverStreamConnect, stopCtx); err != nil {
 		return err
 	}
 	if err := k.observerLoadInstance(&ObserverTCPConnectRet, stopCtx); err != nil {
