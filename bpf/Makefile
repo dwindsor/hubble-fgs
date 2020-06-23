@@ -1,9 +1,18 @@
-.PHONY: all copy
+.PHONY: all
 
-BPF = bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o bpf_execve.o bpf_execve_event.o bpf_fork.o bpf_get_port.o
-FLAGS := -I. -I/usr/include/x86_64-linux-gnu/ -Wall -Werror -Wno-unknown-warning-option -O2
+BPF = bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o bpf_get_port.o \
+      bpf_execve.o bpf_execve_event.o \
+      bpf_fork.o
 
-CLANG_FLAGS += ${FLAGS} -target bpf -emit-llvm -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -g
+IDIR = ./include/
+LDIR = ./lib
+DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
+
+FLAGS := -I. -I/usr/include/x86_64-linux-gnu/ \
+	 -Wall -Werror \
+	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
+	 -O2
+CLANG_FLAGS += ${FLAGS} -I ${IDIR} -I ${LDIR} -target bpf -emit-llvm -g
 LLC_FLAGS   := -march=bpf -mcpu=probe -mattr=dwarfris
 
 CLANG  ?= clang
@@ -11,75 +20,8 @@ LLC    ?= llc
 
 all: $(BPF)
 
-UNAME_R := $(shell uname -r)
-
-copy:
-	cp ./include/$(UNAME_R)/vmlinux.h ./
-
-bpf_tcpmon.ll: bpf_tcpmon.c $(LIB)
-	@$(ECHO_CC)
-	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
-
-bpf_tcpmon.o: bpf_tcpmon.ll
-	@$(ECHO_CC)
-	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
-
-bpf_tcpmonret.ll: bpf_tcpmonret.c $(LIB)
-	@$(ECHO_CC)
-	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
-
-bpf_tcpmonret.o: bpf_tcpmonret.ll
-	@$(ECHO_CC)
-	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
-
-bpf_bind.ll: bpf_bind.c $(LIB)
-	@$(ECHO_CC)
-	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
-
-bpf_bind.o: bpf_bind.ll
-	@$(ECHO_CC)
-	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
-
-bpf_get_port.ll: bpf_get_port.c $(LIB)
-	@$(ECHO_CC)
-	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
-
-bpf_get_port.o: bpf_get_port.ll
-	@$(ECHO_CC)
-	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
-
-bpf_listen.ll: bpf_listen.c $(LIB)
-	@$(ECHO_CC)
-	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
-
-bpf_listen.o: bpf_listen.ll
-	@$(ECHO_CC)
-	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
-
-bpf_execve.ll: bpf_execve.c $(LIB)
-	@$(ECHO_CC)
-	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
-
-bpf_execve.o: bpf_execve.ll
-	@$(ECHO_CC)
-	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
-
-bpf_execve_event.ll: bpf_execve_event.c $(LIB)
-	@$(ECHO_CC)
-	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
-
-bpf_execve_event.o: bpf_execve_event.ll
-	@$(ECHO_CC)
-	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
-
-
-bpf_fork.ll: bpf_fork.c $(LIB)
-	@$(ECHO_CC)
-	$(QUIET) ${CLANG} ${CLANG_FLAGS} -c $< -o $@
-
-bpf_fork.o: bpf_fork.ll
-	@$(ECHO_CC)
-	$(QUIET) ${LLC} ${LLC_FLAGS} -filetype=obj -o $@ $(patsubst %.o,%.ll,$@)
+$(BPF): %.o: %.c
+	${CLANG} ${CLANG_FLAGS} -c $< -o - | ${LLC} ${LLC_FLAGS} -filetype=obj -o $@
 
 clean:
 	@$(ECHO_CLEAN)
