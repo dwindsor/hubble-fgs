@@ -36,6 +36,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	probe_read(&msg->tuple.proto, sizeof(msg->tuple.proto), _(&(skp->__sk_common.skc_family)));
 	probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
 	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), _(&(skp->__sk_common.skc_num)));
+	probe_read(&msg->tuple.post_daddr, sizeof(msg->tuple.post_daddr), _(&(skp->__sk_common.skc_daddr)));
+	probe_read(&msg->tuple.post_dport, sizeof(msg->tuple.post_dport), _(&(skp->__sk_common.skc_dport)));
 
 	event_get_task_info(msg, MSG_OP_IPV4_TCPCONNECT, walker);
 	return 1;

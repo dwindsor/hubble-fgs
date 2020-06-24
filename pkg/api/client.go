@@ -179,12 +179,14 @@ type MsgPid struct {
 }
 
 type MsgIPv4Tuple struct {
-	SAddr uint32
-	DAddr uint32
-	DPort uint16
-	SPort uint16
-	Proto uint8
-	Pad   [11]uint8
+	SAddr     uint32
+	DAddr     uint32
+	DPort     uint16
+	SPort     uint16
+	Proto     uint8
+	PostDAddr uint32
+	PostDPort uint16
+	Pad       [5]uint8
 }
 
 type MsgK8s struct {

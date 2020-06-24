@@ -159,8 +159,10 @@ struct msg_ipv4_tuple {
 	__u16 dport;
 	__u16 sport;
 	__u8  proto;
-	__u8  pad[11];
-};
+	__u32 post_daddr;
+	__u16 post_dport;
+	__u8  pad[5];
+} __attribute__((packed));
 
 struct msg_k8s {
 	__u32 net_ns;
