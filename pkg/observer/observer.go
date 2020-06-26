@@ -69,7 +69,8 @@ type bpfLoad struct {
 
 	retProbe   bool
 	errorFatal bool
-	tracepoint bool
+
+	probeType string
 
 	tracefd int
 }
@@ -79,8 +80,10 @@ var (
 	KernelVersion = ""
 	SetPidMax     = false
 
-	ObserverBTF  string
-	Verbosity    int
+	ObserverBTF string
+	Verbosity   int
+
+	BPFTLSMaps   = []string{""}
 	BPFArrayMaps = []string{"execve_map", "tcpmon_map"}
 	BPFHashMaps  = []string{"execve_map", "tcpmon_map"}
 
@@ -93,7 +96,7 @@ var (
 
 		false,
 		true,
-		true,
+		"tracepoint",
 
 		-1,
 	}
@@ -107,7 +110,7 @@ var (
 
 		false,
 		true,
-		false,
+		"kprobe",
 
 		-1,
 	}
@@ -121,7 +124,7 @@ var (
 
 		false,
 		true,
-		false,
+		"kprobe",
 
 		-1,
 	}
@@ -135,7 +138,7 @@ var (
 
 		false,
 		true,
-		false,
+		"kprobe",
 
 		-1,
 	}
@@ -149,7 +152,7 @@ var (
 
 		true,
 		true,
-		false,
+		"kprobe",
 
 		-1,
 	}
@@ -163,7 +166,7 @@ var (
 
 		false,
 		true,
-		false,
+		"kprobe",
 
 		-1,
 	}
@@ -177,7 +180,7 @@ var (
 
 		false,
 		true,
-		false,
+		"kprobe",
 
 		-1,
 	}
@@ -191,7 +194,7 @@ var (
 
 		false,
 		true,
-		false,
+		"kprobe",
 
 		-1,
 	}
@@ -615,6 +618,13 @@ func getKernelMaps() ([]string, error) {
 	return BPFArrayMaps, nil
 }
 
+func (k *ObserverKprobe) getSockmapMaps() ([]string, error) {
+	if k.enableTLS == false {
+		return nil, nil
+	}
+	return BPFTLSMaps, nil
+}
+
 func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.Context) error {
 	BPFMaps, err := getKernelMaps()
 	if err != nil {
@@ -639,6 +649,23 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 			k.tcp_events_fd = fd
 		}
 	}
+
+	BPFMaps, err = k.getSockmapMaps()
+	if err != nil {
+		return err
+	}
+	for _, m := range BPFMaps {
+		pin := k.bpfDir + m
+		fd, err := bpf.LoadAndPinSockmapMaps(version, Verbosity, btf, program, pin, m)
+		if Verbosity > 0 {
+			fmt.Printf("LoadAndPinSockmapMaps(%s, %s, %s)\n", program, pin, m)
+		}
+
+		if err != nil {
+			return fmt.Errorf("failed kprobe load map (%d): %s\n", fd, err)
+		}
+		k.sockmap_fd = fd
+	}
 	return nil
 }
 
@@ -650,7 +677,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else {
 		attach = load.observer__attach
 	}
-	if load.tracepoint {
+	if load.probeType == "tracepoint" {
 		return bpf.LoadTracingProgram(
 			version, Verbosity,
 			btf,
@@ -659,15 +686,32 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
 			load.retProbe, k.execve_fd, k.tcp_events_fd)
+	} else if load.probeType == "sockops" {
+		return bpf.LoadSockopsProgram(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			k.execve_fd, k.tcp_events_fd, k.sockmap_fd)
+	} else if load.probeType == "skmsg" {
+		return bpf.LoadSkmsgProgram(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			k.execve_fd, k.tcp_events_fd, k.sockmap_fd)
+	} else {
+		return bpf.LoadKprobeProgram(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			attach,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			load.retProbe, k.execve_fd, k.tcp_events_fd)
 	}
-	return bpf.LoadKprobeProgram(
-		version, Verbosity,
-		btf,
-		load.Observer__program,
-		attach,
-		load.observer__label,
-		k.bpfDir+load.observer__prog,
-		load.retProbe, k.execve_fd, k.tcp_events_fd)
 }
 
 func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Context) error {
@@ -686,7 +730,7 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 	}
 
 	k.log.Debugf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
-	if load.tracepoint {
+	if load.probeType == "tracepoint" {
 		err, fd = k.loadInstance(load, version, Verbosity, btf, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
 			removeTracepoint(load.tracefd)
@@ -1268,10 +1312,12 @@ type ObserverKprobe struct {
 	bpfDir        string
 	execve_fd     int
 	tcp_events_fd int
+	sockmap_fd    int
 	prettyPrinter bool
 	listeners     map[Listener]struct{}
 	perfConfig    *bpf.PerfEventConfig
 	enableExecve  bool
+	enableTLS     bool
 	/* Statistics */
 	lostCntr   int
 	errorCntr  int
@@ -1431,10 +1477,11 @@ func (k *ObserverKprobe) RemovePrograms() {
 	os.Remove(k.bpfDir)
 }
 
-func NewObserverKprobe(bpfDir string, execve, pretty bool) *ObserverKprobe {
+func NewObserverKprobe(bpfDir string, execve, tls, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:        bpfDir,
 		enableExecve:  execve,
+		enableTLS:     tls,
 		prettyPrinter: pretty,
 		listeners:     make(map[Listener]struct{}),
 		log:           logger.GetLogger(),

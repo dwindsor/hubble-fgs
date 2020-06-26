@@ -31,7 +31,7 @@ func hubbleFGSExecute() error {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
-	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("execve"), viper.GetBool("debug"))
+	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("execve"), viper.GetBool("tls"), viper.GetBool("debug"))
 
 	err := os.Remove(defaults.GetSocketPath())
 	if err != nil && !os.IsNotExist(err) {
@@ -92,6 +92,7 @@ func init() {
 	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")
 	flags.IntVar(&observer.Verbosity, "verbose", 0, "set verbosity level")
 	flags.BoolP("execve", "e", false, "Enable execve events")
+	flags.BoolP("tls", "t", false, "Enable tls events")
 	viper.BindPFlags(flags)
 	flags.BoolVarP(&observer.SetPidMax, "set-pid-max", "", false, "Configures pid_max procFS requirements on startup")
 }
