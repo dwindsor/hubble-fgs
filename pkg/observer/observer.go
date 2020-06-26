@@ -659,8 +659,37 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 	return nil
 }
 
+func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf string, x64 bool) (error, int) {
+	var attach string
+
+	if x64 {
+		attach = load.observer__x64_attach
+	} else {
+		attach = load.observer__attach
+	}
+	if load.tracepoint {
+		return bpf.LoadTracingProgram(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			attach,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			load.retProbe, k.execve_fd, k.tcp_events_fd)
+	}
+	return bpf.LoadKprobeProgram(
+		version, Verbosity,
+		btf,
+		load.Observer__program,
+		attach,
+		load.observer__label,
+		k.bpfDir+load.observer__prog,
+		load.retProbe, k.execve_fd, k.tcp_events_fd)
+}
+
 func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Context) error {
 	var btf string
+	var fd int
 
 	if load.Observer__btf == "" {
 		btf = ObserverBTF
@@ -677,45 +706,26 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 		fmt.Printf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
 	}
 	if load.tracepoint {
-		err, fd := bpf.LoadTracingProgram(
-			version, Verbosity,
-			btf,
-			load.Observer__program,
-			load.observer__x64_attach,
-			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			load.retProbe, k.execve_fd, k.tcp_events_fd)
-		if err != nil {
-			return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d LoadTracingProgram: %s\n",
-				load.Observer__program, k.execve_fd, k.tcp_events_fd, version, err)
+		err, fd = k.loadInstance(load, version, Verbosity, btf, true)
+		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
+			removeTracepoint(load.tracefd)
+			err, fd = k.loadInstance(load, version, Verbosity, btf, true)
 		}
-		load.tracefd = fd
-		return nil
-	}
-
-	err, fd := bpf.LoadKprobeProgram(
-		version, Verbosity,
-		btf,
-		load.Observer__program,
-		load.observer__x64_attach,
-		load.observer__label,
-		k.bpfDir+load.observer__prog,
-		load.retProbe, k.execve_fd, k.tcp_events_fd)
-	if err != nil {
-		/* If we fail attach with __x64_sys_execve variant try again with
-		 * sys_execve variant.
-		 */
-		err, fd = bpf.LoadKprobeProgram(
-			version, Verbosity,
-			btf,
-			load.Observer__program,
-			load.observer__attach,
-			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			load.retProbe, k.execve_fd, k.tcp_events_fd)
-		if err != nil && load.errorFatal {
-			return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d LoadKprobeProgram: %s\n",
-				load.Observer__program, k.execve_fd, k.tcp_events_fd, version, err)
+		if err != nil {
+			return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d err %d LoadTracingProgram: %s\n",
+				load.Observer__program, k.execve_fd, k.tcp_events_fd, version, fd, err)
+		}
+	} else {
+		err, fd = k.loadInstance(load, version, Verbosity, btf, true)
+		if err != nil {
+			/* If we fail attach with __x64_sys_execve variant try again with
+			 * sys_execve variant.
+			 */
+			err, fd = k.loadInstance(load, version, Verbosity, btf, false)
+			if err != nil && load.errorFatal {
+				return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d LoadKprobeProgram: %s\n",
+					load.Observer__program, k.execve_fd, k.tcp_events_fd, version, err)
+			}
 		}
 	}
 	load.tracefd = fd

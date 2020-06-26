@@ -72,14 +72,14 @@ int kprobe_map_loader(const int version,
 	err = libbpf_get_error(obj);
 	if (err) {
 		fprintf(stderr, "bpf_object__open_xattr: %i %s\n", err, prog);
-		return -1;
+		return err;
 	}
 
 	map_bpf = bpf_object__find_map_by_name(obj, name);
 	err = libbpf_get_error(map_bpf);
 	if (err) {
 		fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(execve_map)\n", prog);
-		return -1;
+		return err;
 	}
 
 	map_def = (struct bpf_map_def *)bpf_map__def(map_bpf);
@@ -106,7 +106,7 @@ int kprobe_map_loader(const int version,
 		fprintf(stderr,
 			"bpf_object__load: failed %i: %s\n",
 			err, errstr);
-		return -1;
+		return err;
 	}
 
 	bpf_object__for_each_program(prog_bpf, obj) {
@@ -156,13 +156,13 @@ int bpf_loader_set_map(struct bpf_object *obj, int execve_fd, int tcp_events_fd,
 		err = libbpf_get_error(map);
 		if (err) {
 			fprintf(stderr, "bpf_object__find_map_by_name: obj map(execve_map)\n");
-			return -1;
+			return err;
 		}
 
 		err = bpf_map__reuse_fd(map, execve_fd);
 		if (err) {
 			fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
-			return -1;
+			return err;
 		}
 		if (verbosity)
 			fprintf(stderr, "bpf_map__reused_fd, %s = %d\n", name, execve_fd);
@@ -177,13 +177,13 @@ int bpf_loader_set_map(struct bpf_object *obj, int execve_fd, int tcp_events_fd,
 		if (err) {
 			fprintf(stderr,
 				"bpf_object__find_map_by_name: obj map(kprobe_tcp_events)\n");
-			return -1;
+			return err;
 		}
 
 		err = bpf_map__reuse_fd(map, tcp_events_fd);
 		if (err) {
 			fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
-			return -1;
+			return err;
 		}
 		if (verbosity)
 			fprintf(stderr, "bpf_map__reused_fd, tcpmon_map = %d\n", tcp_events_fd);
@@ -246,7 +246,7 @@ int tracepoint_loader(const int version,
 	err = libbpf_get_error(obj);
 	if (err) {
 		fprintf(stderr, "bpf_object__open_xattr: %i %s\n", err, prog);
-		return -1;
+		return err;
 	}
 
 
@@ -266,7 +266,7 @@ int tracepoint_loader(const int version,
 
 		libbpf_strerror(err, errstr, sizeof(errstr));
 		fprintf(stderr, "bpf_object__load: failed %i: %s\n", err, errstr);
-		return -1;
+		return err;
 	}
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
@@ -277,7 +277,7 @@ int tracepoint_loader(const int version,
 	err = libbpf_get_error(prog_bpf);
 	if (err) {
 		fprintf(stderr, "bpf_object_find: failed\n");
-		return -1;
+		return err;
 	}
 
 	bpf_program__unpin(prog_bpf, __prog);
@@ -288,13 +288,13 @@ int tracepoint_loader(const int version,
 		// Expected error when attach point probe is happening
 		if (verbosity)
 			fprintf(stderr, "bpf_program__attach_tracepoint: failed (%s)\n", prog);
-		return -1;
+		return err;
 	}
 
 	err = bpf_program__pin(prog_bpf, __prog);
 	if (err < 0) {
 		fprintf(stderr, "bpf_prog_pin: failed %i\n", err);
-		return -1;
+		return err;
 	}
 	return bpf_link_fd(prog_attach);
 }
@@ -411,7 +411,7 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a, l, p, ret, fd, tcp)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
-		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
+		return fmt.Errorf("Unable to tracepoint load: %d %s", loaderInt, object), loaderInt
 	}
 	return nil, loaderInt
 }
