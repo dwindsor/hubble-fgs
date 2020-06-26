@@ -83,7 +83,7 @@ var (
 	ObserverBTF string
 	Verbosity   int
 
-	BPFTLSMaps   = []string{""}
+	BPFTLSMaps   = []string{"fgs_sock_map"}
 	BPFArrayMaps = []string{"execve_map", "tcpmon_map"}
 	BPFHashMaps  = []string{"execve_map", "tcpmon_map"}
 
@@ -195,6 +195,20 @@ var (
 		false,
 		true,
 		"kprobe",
+
+		-1,
+	}
+
+	ObserverSockopsEstablished = bpfLoad{
+		"", "",
+		"sockops",
+		"sockops",
+		"sockops/tls_sockops",
+		"sockops_tls_sockops",
+
+		false,
+		true,
+		"sockops",
 
 		-1,
 	}

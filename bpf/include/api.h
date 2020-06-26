@@ -196,13 +196,11 @@ static int BPF_FUNC2(skb_event_output, struct __sk_buff *skb, void *map, uint64_
 		     const void *data, uint32_t size) = (void *)BPF_FUNC_perf_event_output;
 
 /* Sockops and SK_MSG helpers */
-#if 0
 static int BPF_FUNC(sock_map_update, struct bpf_sock_ops *skops, void *map, uint32_t key,  uint64_t flags);
 static int BPF_FUNC(sock_hash_update, struct bpf_sock_ops *skops, void *map, void *key,  uint64_t flags);
 static int BPF_FUNC(msg_redirect_hash, struct sk_msg_md *md, void *map, void *key, uint64_t flags);
 
 static int BPF_FUNC(fib_lookup, void *ctx, struct bpf_fib_lookup *params, uint32_t plen, uint32_t flags);
-#endif
 
 static int BPF_FUNC(probe_read, void *dst, uint32_t size, const void *src); 
 static int BPF_FUNC(probe_read_str, void *dst, int size, const void *src); 
