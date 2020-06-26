@@ -19,12 +19,12 @@ COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a 
 RUN ldconfig /usr/local/; export LD_LIBRARY_PATH=/usr/local/lib/
 RUN make hubble-fgs-image
 
-FROM docker.io/library/alpine:3.10
+FROM docker.io/library/alpine:3.12
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
     mkdir /var/run/hubble-fgs/ && \
     mkdir libs		       && \
-    apk add --no-cache bash curl jq
+    apk add --no-cache --update bash curl jq
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs-printer /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/covalentio/hubble-fgs/bpf/*.o /var/lib/hubble-fgs/

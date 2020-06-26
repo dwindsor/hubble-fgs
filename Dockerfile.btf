@@ -25,7 +25,7 @@ COPY . ./
 RUN mkdir bins && \
     cp /var/run/hubble-fgs/* ./bins/
 
-FROM docker.io/library/alpine:3.10
+FROM docker.io/library/alpine:3.12
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
     mkdir /var/run/hubble-fgs/ && \
