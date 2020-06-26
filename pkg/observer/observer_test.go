@@ -112,7 +112,6 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 
 func TestObjectLoad(t *testing.T) {
 	kprobe := getDefaultObserver(t, false, false)
-	loadObserver(t, kprobe)
 	loadEvents(t, kprobe)
 	kprobe.RemovePrograms()
 }
