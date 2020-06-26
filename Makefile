@@ -4,6 +4,8 @@ BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
 
+KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
+
 all: headers hubble-bpf hubble-fgs hubble-fgs-printer
 
 headers:
@@ -35,10 +37,12 @@ test:
 	$(GO) test $(GOFLAGS) -cover $$(go list $(GOFLAGS) ./...)
 
 test-kernels:
+	kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
+	${KATA_RUNNER}
 	kata-img vmlinuz-kata-linux-4.19.125-79_hubble
-	docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
+	${KATA_RUNNER}
 	kata-img vmlinuz-kata-linux-5.4.44-79_hubble
-	docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
+	${KATA_RUNNER}
 
 lint:
 	golint -set_exit_status $$(go list ./...)
