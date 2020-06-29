@@ -89,6 +89,8 @@ func init() {
 		"bpf-listen", "bpf_listen.o", "Location of bpf_listen.o program")
 	flags.StringVar(&observer.ObserverSockopsEstablished.Observer__program,
 		"bpf-sockops", "bpf_sockops.o", "Location of bpf_sockops.o program")
+	flags.StringVar(&observer.ObserverSkmsgTLS.Observer__program,
+		"bpf-skmsg-tls", "bpf_skmsg_tls.o", "Location of bpf_skmsg_tls.o program")
 	flags.StringVar(&observer.ProcFS,
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
 	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")

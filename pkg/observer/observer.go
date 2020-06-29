@@ -215,6 +215,20 @@ var (
 		-1,
 	}
 
+	ObserverSkmsgTLS = bpfLoad{
+		"", "",
+		"skmsg",
+		"skmsg",
+		"skmsg/tls",
+		"skmsg_tls",
+
+		false,
+		true,
+		"skmsg",
+
+		-1,
+	}
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -228,7 +242,8 @@ var (
 		&ObserverBind,
 		&ObserverGetPort,
 		&ObserverListen,
-		&ObserverSockopsEstablished}
+		&ObserverSockopsEstablished,
+		&ObserverSkmsgTLS}
 
 	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve}
 	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve}
@@ -700,6 +715,9 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.bpfDir+load.observer__prog,
 			k.execve_fd, k.tcp_events_fd, k.sockmap_fd)
 	} else if load.probeType == "skmsg" {
+		if !k.enableTLS {
+			return nil, 0
+		}
 		return bpf.LoadSkmsgProgram(
 			version, Verbosity,
 			btf,
