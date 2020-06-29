@@ -151,10 +151,8 @@ static int BPF_FUNC(clone_redirect, struct __sk_buff *skb, int ifindex,
 		    uint32_t flags);
 
 /* Packet manipulation */
-#if 0
 static int BPF_FUNC(skb_load_bytes_relative, struct __sk_buff *skb, uint32_t off,
 		    void *to, uint32_t len, uint32_t hdr);
-#endif
 static int BPF_FUNC(skb_load_bytes, struct __sk_buff *skb, uint32_t off,
 		    void *to, uint32_t len);
 static int BPF_FUNC(skb_store_bytes, struct __sk_buff *skb, uint32_t off,
@@ -199,6 +197,7 @@ static int BPF_FUNC2(skb_event_output, struct __sk_buff *skb, void *map, uint64_
 static int BPF_FUNC(sock_map_update, struct bpf_sock_ops *skops, void *map, uint32_t key,  uint64_t flags);
 static int BPF_FUNC(sock_hash_update, struct bpf_sock_ops *skops, void *map, void *key,  uint64_t flags);
 static int BPF_FUNC(msg_redirect_hash, struct sk_msg_md *md, void *map, void *key, uint64_t flags);
+static int BPF_FUNC(msg_pull_data, struct sk_msg_md *md, __u32 start, __u32 end, __u64 flags);
 
 static int BPF_FUNC(fib_lookup, void *ctx, struct bpf_fib_lookup *params, uint32_t plen, uint32_t flags);
 

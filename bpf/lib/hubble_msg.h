@@ -120,6 +120,7 @@ enum msg_ops {
 	MSG_OP_IPV4_BIND,
 	MSG_OP_IPV4_LISTEN,
 	MSG_OP_EXECVE,
+	MSG_OP_TLS,
 	MSG_OP_MAX,
 };
 
@@ -171,15 +172,42 @@ struct msg_k8s {
 	char  docker_id[DOCKER_ID_LENGTH];
 };
 
+#define EXT_SERVER_NAME_LENGTH 32
+#define EXT_VERSION_LENGTH 16
+
+struct msg_tls {
+	__u16 version;
+	__u16 length;
+	__u8  type;
+	__u8  _pad[3];
+	__u8  sni[EXT_SERVER_NAME_LENGTH];
+	__u8  supported_versions[EXT_VERSION_LENGTH];
+	__u64 cipher;
+};
+
 // separate data structs for ipv4 and ipv6
 struct msg_ipv4_tcp_connect {
 	struct msg_common     common;
 	struct msg_ipv4_tuple tuple;
-	struct msg_k8s	      kube;
+	struct msg_k8s kube;
 	unsigned long int     ret;
 	char      	      pid[PADDED_BUFFER];
 } __attribute__((packed));
 
+struct msg_tls_ipv4 {
+	__u32 saddr;
+	__u32 daddr;
+	__u16 dport;
+	__u16 sport;
+	__u8  proto;
+	__u8  pad[3];
+} __attribute__((packed));
+
+struct msg_tls_event {
+	struct msg_common     common;
+	struct msg_tls_ipv4   tuple;
+	struct msg_tls	      tls;
+} __attribute__((packed));
 
 struct event {
 	int event;
