@@ -207,8 +207,8 @@ int kprobe_map_loader(const int version,
 	err = bpf_map__pin(map_bpf, __map);
 	if (err < 0) {
 		fprintf(stderr,
-		       "bpf_map_pin: failed obj(%s) map(%s) %i\n",
-		       prog, __label_map, err);
+		       "bpf_map_pin: failed obj(%s) map(%s) pin %s err %i\n",
+		       prog, __label_map, __map, err);
 		return err;
 	}
 	return bpf_map__fd(map_bpf);

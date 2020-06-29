@@ -75,6 +75,12 @@ type bpfLoad struct {
 	tracefd int
 }
 
+type ObserverMap struct {
+	mapName string
+	mapType string
+	bpf     *bpfLoad
+}
+
 var (
 	ProcFS        = "/proc/"
 	KernelVersion = ""
@@ -82,10 +88,6 @@ var (
 
 	ObserverBTF string
 	Verbosity   int
-
-	BPFTLSMaps   = []string{"fgs_sock_map"}
-	BPFArrayMaps = []string{"execve_map", "tcpmon_map"}
-	BPFHashMaps  = []string{"execve_map", "tcpmon_map"}
 
 	ObserverExecve = bpfLoad{
 		"", "",
@@ -225,7 +227,18 @@ var (
 		&ObserverStreamConnect,
 		&ObserverBind,
 		&ObserverGetPort,
-		&ObserverListen}
+		&ObserverListen,
+		&ObserverSockopsEstablished}
+
+	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve}
+	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve}
+	ObserverSockMap   = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished}
+
+	observerMaps = []*ObserverMap{
+		&ObserverExecveMap,
+		&ObserverTCPMonMap,
+		&ObserverSockMap,
+	}
 )
 
 func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
@@ -620,65 +633,40 @@ func getKernelVersion() (int, string, error) {
 	return version, verStr, nil
 }
 
-func getKernelMaps() ([]string, error) {
-	version, _, err := getKernelVersion()
-	if err != nil {
-		return nil, fmt.Errorf("Get supported maps failed: %s\n", err)
-	}
-	minHashMapVersion := int(kernelStringToNumeric("4.18.0"))
-	if version >= minHashMapVersion {
-		return BPFHashMaps, nil
-	}
-	return BPFArrayMaps, nil
-}
-
-func (k *ObserverKprobe) getSockmapMaps() ([]string, error) {
-	if k.enableTLS == false {
-		return nil, nil
-	}
-	return BPFTLSMaps, nil
-}
-
-func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.Context) error {
-	BPFMaps, err := getKernelMaps()
-	if err != nil {
-		return err
-	}
-
+func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) error {
 	version, _, err := getKernelVersion()
 	if err != nil {
 		return err
 	}
 
-	for _, m := range BPFMaps {
-		pin := k.bpfDir + m
-		k.log.Debugf("LoadAndPinMaps(%s, %s, %s)\n", program, pin, m)
-		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, program, pin, m)
-		if err != nil {
-			return fmt.Errorf("failed kprobe load map (%d): %s\n", fd, err)
+	for _, m := range observerMaps {
+		var fd int
+		var err error
+
+		pin := k.bpfDir + m.mapName
+
+		if m.mapType == "sockops" {
+			if k.enableTLS {
+				fd, err = bpf.LoadAndPinSockmapMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName)
+			}
+		} else {
+			fd, err = bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName)
 		}
-		if strings.Contains(m, "execve_") == true {
-			k.execve_fd = fd
-		} else if m == "tcpmon_map" {
+		k.log.Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
+		if err != nil {
+			return fmt.Errorf("failed %d load map (%s): %s\n", fd, m.mapType, err)
+		}
+
+		// TODO: build this into the structure so we can avoid
+		// the switch.
+		switch m.mapName {
+		case "fgs_sock_map":
+			k.sockmap_fd = fd
+		case "tcpmon_map":
 			k.tcp_events_fd = fd
+		case "execve_map":
+			k.execve_fd = fd
 		}
-	}
-
-	BPFMaps, err = k.getSockmapMaps()
-	if err != nil {
-		return err
-	}
-	for _, m := range BPFMaps {
-		pin := k.bpfDir + m
-		fd, err := bpf.LoadAndPinSockmapMaps(version, Verbosity, btf, program, pin, m)
-		if Verbosity > 0 {
-			fmt.Printf("LoadAndPinSockmapMaps(%s, %s, %s)\n", program, pin, m)
-		}
-
-		if err != nil {
-			return fmt.Errorf("failed kprobe load map (%d): %s\n", fd, err)
-		}
-		k.sockmap_fd = fd
 	}
 	return nil
 }
@@ -701,6 +689,9 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.bpfDir+load.observer__prog,
 			load.retProbe, k.execve_fd, k.tcp_events_fd)
 	} else if load.probeType == "sockops" {
+		if !k.enableTLS {
+			return nil, 0
+		}
 		return bpf.LoadSockopsProgram(
 			version, Verbosity,
 			btf,
@@ -784,10 +775,7 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 	k.log.Infof("Loading kernel version %s", verStr)
 
 	/* Assumption observer__program execve contains all maps */
-	if err := k.observerLoadMaps(
-		btf,
-		ObserverExecve.Observer__program,
-		stopCtx); err != nil {
+	if err := k.observerLoadMaps(btf, stopCtx); err != nil {
 		return err
 	}
 
@@ -1481,12 +1469,9 @@ func (k *ObserverKprobe) RemovePrograms() {
 			removeTracepoint(l.tracefd)
 		}
 	}
-	maps, err := getKernelMaps()
-	if err != nil {
-		k.log.WithError(err).Warnf("Deleting maps failed")
-	}
-	for _, m := range maps {
-		os.Remove(k.bpfDir + m)
+
+	for _, m := range observerMaps {
+		os.Remove(k.bpfDir + m.mapName)
 	}
 	os.Remove(k.bpfDir)
 }
