@@ -219,6 +219,9 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.Fi
 	}).Debug()
 }
 
+func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
+}
+
 func ObserverReceiver(log logrus.FieldLogger) error {
 	conn, err := net.Dial("unix", defaults.GetSocketPath())
 	if err != nil {

@@ -59,6 +59,7 @@ func getDefaultObserver(t *testing.T, execve, tls, pretty bool) *ObserverKprobe 
 	ObserverListen.Observer__program = "../../bpf/bpf_listen.o"
 	ObserverSockopsEstablished.Observer__program = "../../bpf/bpf_sockops.o"
 	ObserverSkmsgTLS.Observer__program = "../../bpf/bpf_skmsg_tls.o"
+	ObserverCgrpIngress.Observer__program = "../../bpf/bpf_cgrp_in_tls.o"
 
 	btf := os.Getenv("FGS_BTF")
 	if btf != "" {

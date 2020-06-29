@@ -229,6 +229,20 @@ var (
 		-1,
 	}
 
+	ObserverCgrpIngress = bpfLoad{
+		"", "",
+		"cgroup_skb",
+		"cgroup_skb",
+		"cgroup_skb/ingress",
+		"cgroup_skb_ingress",
+
+		false,
+		true,
+		"cgrp_ingress",
+
+		-1,
+	}
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -243,7 +257,8 @@ var (
 		&ObserverGetPort,
 		&ObserverListen,
 		&ObserverSockopsEstablished,
-		&ObserverSkmsgTLS}
+		&ObserverSkmsgTLS,
+		&ObserverCgrpIngress}
 
 	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve}
 	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve}
@@ -686,6 +701,10 @@ func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) e
 			if k.enableTLS {
 				fd, err = bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName)
 			}
+		} else if m.mapType == "cgrp_ingress" {
+			if k.enableTLS {
+				fd, err = bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName)
+			}
 		} else {
 			fd, err = bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName)
 		}
@@ -751,6 +770,9 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.mapDir,
 			k.execve_fd, k.tcp_events_fd, k.sockmap_fd)
 	} else {
+		if load.probeType == "cgrp_ingress" && !k.enableTLS {
+			return nil, 0
+		}
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
 			btf,

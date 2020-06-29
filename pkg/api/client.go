@@ -60,9 +60,13 @@ const (
 	// store for later use by above events.
 	MSG_OP_EXECVE = 5
 
+	MSG_OP_TLS = 6
+
 	ARGSBUFFER     = 1024 + 16
 	SIZEOF_EXECVE  = 32
 	MAX_SIZEOF_CWD = 256
+
+	SNI_BUFFER_SIZE = 32
 )
 
 // Msg Flag Definitions
@@ -138,6 +142,14 @@ const (
 	EventClone = 0x4000
 )
 
+// TLS supported version 8bit codes
+const (
+	TLSVersion13 = 0x0403
+	TLSVersion12 = 0x0303
+	TLSVersion11 = 0x0203
+	TLSVersion10 = 0x0103
+)
+
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
 type MsgCommon struct {
 	Op    uint8
@@ -164,7 +176,8 @@ func (op OpCode) String() string {
 		"TCPConnectReturn",
 		"TCPBind",
 		"TCPListen",
-		"Execve"}[op]
+		"Execve",
+		"TLS"}[op]
 }
 
 type MsgExec struct {
@@ -250,6 +263,31 @@ type MsgIPv4TcpConnectUnix struct {
 }
 
 var MsgUnixSize uint32 = 640
+
+type MsgTLSIPv4 struct {
+	SAddr uint32
+	DAddr uint32
+	DPort uint16
+	SPort uint16
+	Proto uint8
+	Pad   [3]uint8
+}
+
+type MsgTLS struct {
+	Version           uint16
+	Length            uint16
+	Type              uint8
+	Pad               [3]uint8
+	SNI               [32]uint8
+	SupportedVersions [16]uint8
+	Cipher            uint64
+}
+
+type MsgTLSEvent struct {
+	Common MsgCommon
+	Tuple  MsgTLSIPv4
+	TLS    MsgTLS
+}
 
 func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
