@@ -779,48 +779,16 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 		return err
 	}
 
-	if err := k.observerLoadInstance(&ObserverExecve, stopCtx); err != nil {
-		return err
+	for _, p := range observerPrograms {
+		if err := k.observerLoadInstance(p, stopCtx); err != nil {
+			return err
+		}
 	}
-
-	if err := k.observerLoadInstance(&ObserverFork, stopCtx); err != nil {
-		return err
-	}
-
-	return nil
-}
-
-func (k *ObserverKprobe) observerLoadEvents(stopCtx context.Context) error {
-	if err := k.observerLoadInstance(&ObserverTCPConnect, stopCtx); err != nil {
-		return err
-	}
-	if err := k.observerLoadInstance(&ObserverStreamConnect, stopCtx); err != nil {
-		return err
-	}
-	if err := k.observerLoadInstance(&ObserverTCPConnectRet, stopCtx); err != nil {
-		return err
-	}
-	if err := k.observerLoadInstance(&ObserverBind, stopCtx); err != nil {
-		return err
-	}
-
-	if err := k.observerLoadInstance(&ObserverGetPort, stopCtx); err != nil {
-		return err
-	}
-
-	if err := k.observerLoadInstance(&ObserverListen, stopCtx); err != nil {
-		return err
-	}
-
+	k.log.Infof("hubble-fgs, loaded BPF maps and events successfully.\n")
 	return nil
 }
 
 func (k *ObserverKprobe) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, error) {
-	if err := k.observerLoadEvents(stopCtx); err != nil {
-		return nil, err
-	}
-	k.log.Infof("Loaded BPF maps and events successfully.")
-
 	e, err := bpf.NewPerCpuEvents(k.perfConfig)
 	if err != nil {
 		return nil, fmt.Errorf("failed kprobe events NewPerCpuEvents: %s\n", err)
