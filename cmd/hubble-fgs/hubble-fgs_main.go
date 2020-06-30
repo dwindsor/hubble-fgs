@@ -31,7 +31,7 @@ func hubbleFGSExecute() error {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
-	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("execve"), viper.GetBool("tls"), viper.GetBool("debug"))
+	kprobe := observer.NewObserverKprobe(observerDir, observerDir, viper.GetBool("execve"), viper.GetBool("tls"), viper.GetBool("debug"))
 
 	err := os.Remove(defaults.GetSocketPath())
 	if err != nil && !os.IsNotExist(err) {

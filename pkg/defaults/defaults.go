@@ -20,6 +20,12 @@ const (
 	// DefaultMapRoot is the default path where BPFFS should be mounted
 	DefaultMapRoot = "/sys/fs/bpf"
 
+	// DefaultMapDir is the default path where FGS maps should be pinneded
+	DefaultMapDir = "/sys/fs/bpf/tcpmon"
+
+	// DefaultEventMap is the default name of the Event map
+	DefaultEventMap = "tcpmon"
+
 	// DefaultMapRootFallback is the path which is used when /sys/fs/bpf has
 	// a mount, but with the other filesystem than BPFFS.
 	DefaultMapRootFallback = "/run/cilium/bpffs"

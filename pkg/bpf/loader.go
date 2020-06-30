@@ -29,6 +29,7 @@ package bpf
 #include <fcntl.h>
 #include <sys/stat.h>
 #include <sys/types.h>
+#include <errno.h>
 
 #include "libbpf.h"
 #include "libbpf__bpf.h"
@@ -214,43 +215,34 @@ int kprobe_map_loader(const int version,
 	return bpf_map__fd(map_bpf);
 }
 
-int __bpf_loader_set_map(struct bpf_object *obj, int fd, char *name, int verbosity)
+int bpf_loader_set_map(struct bpf_object *obj, const char *mapdir, int verbosity)
 {
 	struct bpf_map *map;
-	int err = 0;
 
-	map = bpf_object__find_map_by_name(obj, name);
-	err = libbpf_get_error(map);
-	if (err) {
-		fprintf(stderr, "bpf_object__find_map_by_name: obj map(%s)\n", name);
-		return -1;
+	bpf_object__for_each_map(map, obj) {
+		const char *name = bpf_map__name(map);
+		char pinfd[512];
+		int fd, err;
+
+		errno = 0;
+		strncpy(pinfd, mapdir, sizeof(pinfd));
+		strncat(pinfd, name, sizeof(pinfd) - 1);
+		fd = bpf_obj_get(pinfd);
+		if (fd < 0) {
+			if (verbosity)
+				fprintf(stderr, "bpf_map %s not found, use program local\n", pinfd);
+			continue;
+		}
+
+		err = bpf_map__reuse_fd(map, fd);
+		if (err) {
+			fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
+			return err;
+		}
+		if (verbosity)
+			fprintf(stderr, "bpf_map__reused_fd, %s = %d\n", pinfd, fd);
 	}
-
-	err = bpf_map__reuse_fd(map, fd);
-	if (err) {
-		fprintf(stderr, "bpf_map__reuse_fd(map, fd): %i\n", err);
-		return -1;
-	}
-	if (verbosity)
-		fprintf(stderr, "bpf_map__reused_fd, %s = %d\n", name, fd);
-
-	return err;
-}
-
-int bpf_loader_set_map(struct bpf_object *obj,
-		       int execve_fd, int tcp_events_fd, int sockmap_fd,
-		       int verbosity)
-{
-	int err_execve, err_events, err_sockmap;
-
-	if (execve_fd)
-		err_execve = __bpf_loader_set_map(obj, execve_fd, "execve_map", verbosity);
-	if (tcp_events_fd)
-		err_events = __bpf_loader_set_map(obj, tcp_events_fd, "tcpmon_map", verbosity);
-	if (sockmap_fd)
-		err_sockmap = __bpf_loader_set_map(obj, sockmap_fd, "fgs_sock_map", verbosity);
-
-	return (err_execve < 0 || err_events < 0 || err_sockmap < 0) ? -1 : 0;
+	return 0;
 }
 
 void bpf_loader_print_maps(struct bpf_object *obj, int verbosity)
@@ -285,6 +277,7 @@ static struct bpf_object *__loader(const int version,
 		    const char *btf,
 		    const char *prog,
 		    const int type,
+		    const char *mapdir,
 		    const int execve_fd,
 		    const int tcp_events_fd,
 		    const int sockmap_fd)
@@ -305,9 +298,9 @@ static struct bpf_object *__loader(const int version,
 
 	bpf_loader_print_maps(obj, verbosity);
 	bpf_loader_programs(obj, type, verbosity);
-	err = bpf_loader_set_map(obj, execve_fd, tcp_events_fd, sockmap_fd, verbosity);
+	err = bpf_loader_set_map(obj, mapdir, verbosity);
 	if (err) {
-		fprintf(stderr, "bpf_loader_set_map: failed set_map, %s\n", prog);
+		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
 		return NULL;
 	}
 
@@ -388,6 +381,7 @@ int skmsg_loader(const int version,
 		 const char *prog,
 		 const char *label,
 		 const char *__prog,
+		 const char *mapDir,
 		 const int execve_fd,
 		 const int tcp_events_fd,
 		 const int sockmap_fd)
@@ -395,6 +389,7 @@ int skmsg_loader(const int version,
 	int err;
 	struct bpf_object *obj = __loader(version, verbosity,
 					  btf, prog, BPF_PROG_TYPE_SK_MSG,
+					  mapDir,
 					  execve_fd, tcp_events_fd, sockmap_fd);
 
 	if (!obj)
@@ -414,6 +409,7 @@ int sockops_loader(const int version,
 		   const char *prog,
 		   const char *label,
 		   const char *__prog,
+		   const char *mapdir,
 		   const int execve_fd,
 		   const int tcp_events_fd,
 		   const int sockmap_fd)
@@ -437,9 +433,11 @@ int sockops_loader(const int version,
 
 	bpf_loader_print_maps(obj, verbosity);
 	bpf_loader_programs(obj, BPF_PROG_TYPE_SOCK_OPS, verbosity);
-	err = bpf_loader_set_map(obj, execve_fd, tcp_events_fd, sockmap_fd, verbosity);
-	if (err)
+	err = bpf_loader_set_map(obj, mapdir, verbosity);
+	if (err) {
+		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
 		return err;
+	}
 
 	attr.obj = obj;
 	attr.target_btf_path = btf;
@@ -464,6 +462,7 @@ int tracepoint_loader(const int version,
 		      const char *attach,
 		      const char *label,
 		      const char *__prog,
+		      const char *mapdir,
 		      const bool retprobe,
 		      const int execve_fd,
 		      const int tcp_events_fd) {
@@ -487,10 +486,11 @@ int tracepoint_loader(const int version,
 
 	bpf_loader_print_maps(obj, verbosity);
 	bpf_loader_programs(obj, BPF_PROG_TYPE_TRACEPOINT, verbosity);
-
-	err = bpf_loader_set_map(obj, execve_fd, tcp_events_fd, 0, verbosity);
-	if (err)
+	err = bpf_loader_set_map(obj, mapdir, verbosity);
+	if (err) {
+		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
 		return err;
+	}
 
 	attr.obj = obj;
 	attr.target_btf_path = btf;
@@ -541,6 +541,7 @@ int kprobe_loader(const int version,
 		  const char *attach,
 		  const char *label,
 	  	  const char *__prog,
+		  const char *mapdir,
 		  const bool retprobe,
 	  	  const int execve_fd,
 	  	  const int tcp_events_fd) {
@@ -563,10 +564,11 @@ int kprobe_loader(const int version,
 
 	bpf_loader_print_maps(obj, verbosity);
 	bpf_loader_programs(obj, BPF_PROG_TYPE_KPROBE, verbosity);
-
-	err = bpf_loader_set_map(obj, execve_fd, tcp_events_fd, 0, verbosity);
-	if (err)
+	err = bpf_loader_set_map(obj, mapdir, verbosity);
+	if (err) {
+		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
 		return err;
+	}
 
 	attr.obj = obj;
 	attr.target_btf_path = btf;
@@ -648,17 +650,18 @@ func LoadAndPinSockmapMaps(__version, __verbosity int, __btf, __prog, __map, __m
 	return fdInt, nil
 }
 
-func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __prog string, execve_fd, tcp_fd, sock_fd int) (error, int) {
+func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string, execve_fd, tcp_fd, sock_fd int) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
 	fd := C.int(execve_fd)
 	tcp := C.int(tcp_fd)
 	sock := C.int(sock_fd)
-	loader_fd := C.sockops_loader(version, verbosity, btf, o, l, p, fd, tcp, sock)
+	loader_fd := C.sockops_loader(version, verbosity, btf, o, l, p, mapdir, fd, tcp, sock)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
@@ -666,17 +669,18 @@ func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __pr
 	return nil, loaderInt
 }
 
-func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog string, execve_fd, tcp_fd, sock_fd int) (error, int) {
+func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string, execve_fd, tcp_fd, sock_fd int) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
 	fd := C.int(execve_fd)
 	tcp := C.int(tcp_fd)
 	sock := C.int(sock_fd)
-	loader_fd := C.skmsg_loader(version, verbosity, btf, o, l, p, fd, tcp, sock)
+	loader_fd := C.skmsg_loader(version, verbosity, btf, o, l, p, mapdir, fd, tcp, sock)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
@@ -684,7 +688,7 @@ func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog
 	return nil, loaderInt
 }
 
-func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __label, __prog, __mapdir string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
@@ -692,10 +696,11 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	a := C.CString(attach)
 	l := C.CString(__label)
 	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
 	ret := C.bool(retprobe)
 	fd := C.int(execve_fd)
 	tcp := C.int(tcp_fd)
-	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a, l, p, ret, fd, tcp)
+	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a, l, p, mapdir, ret, fd, tcp)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to tracepoint load: %d %s", loaderInt, object), loaderInt
@@ -703,7 +708,7 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	return nil, loaderInt
 }
 
-func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __label, __prog string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __label, __prog, __mapdir string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
@@ -711,10 +716,11 @@ func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __labe
 	a := C.CString(attach)
 	l := C.CString(__label)
 	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
 	ret := C.bool(retprobe)
 	fd := C.int(execve_fd)
 	tcp := C.int(tcp_fd)
-	loader_fd := C.kprobe_loader(version, verbosity, btf, o, a, l, p, ret, fd, tcp)
+	loader_fd := C.kprobe_loader(version, verbosity, btf, o, a, l, p, mapdir, ret, fd, tcp)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0

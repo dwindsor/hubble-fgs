@@ -57,6 +57,9 @@ func getDefaultObserver(t *testing.T, execve, tls, pretty bool) *ObserverKprobe 
 	ObserverBind.Observer__program = "../../bpf/bpf_bind.o"
 	ObserverGetPort.Observer__program = "../../bpf/bpf_get_port.o"
 	ObserverListen.Observer__program = "../../bpf/bpf_listen.o"
+	ObserverSockopsEstablished.Observer__program = "../../bpf/bpf_sockops.o"
+	ObserverSkmsgTLS.Observer__program = "../../bpf/bpf_skmsg_tls.o"
+
 	btf := os.Getenv("FGS_BTF")
 	if btf != "" {
 		ObserverBTF = btf
@@ -68,7 +71,7 @@ func getDefaultObserver(t *testing.T, execve, tls, pretty bool) *ObserverKprobe 
 		ProcFS = procfs
 	}
 
-	kprobe := NewObserverKprobe(observerTestDir, execve, tls, pretty)
+	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, execve, tls, pretty)
 	if testing.Verbose() {
 		Verbosity = 4
 	}

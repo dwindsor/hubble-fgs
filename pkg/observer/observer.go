@@ -217,10 +217,10 @@ var (
 
 	ObserverSkmsgTLS = bpfLoad{
 		"", "",
-		"skmsg",
-		"skmsg",
-		"skmsg/tls",
-		"skmsg_tls",
+		"sk_msg",
+		"sk_msg",
+		"sk_msg/tls",
+		"sk_msg_tls",
 
 		false,
 		true,
@@ -248,11 +248,13 @@ var (
 	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve}
 	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve}
 	ObserverSockMap   = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished}
+	ObserverTLSMap    = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS}
 
 	observerMaps = []*ObserverMap{
 		&ObserverExecveMap,
 		&ObserverTCPMonMap,
 		&ObserverSockMap,
+		&ObserverTLSMap,
 	}
 )
 
@@ -381,6 +383,22 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	r := bytes.NewReader(data)
 
 	switch op {
+	/*
+		case api.MSG_OP_TLS:
+			m := api.MsgTLSEvent{}
+			err := binary.Read(r, binary.LittleEndian, &m)
+			if err != nil {
+				break
+			}
+	*/
+	/* OR filter together */
+	//k.observerListeners(msgUnix)
+	/* Keeping pretty printer because it helps debugging filters */
+	/*
+		if k.prettyPrinter {
+			reader.ObserverTLSPrinter(&m, k.log)
+		}
+	*/
 	case api.MSG_OP_IPV4_TCPCONNECT,
 		api.MSG_OP_IPV4_TCPCONNECTRET,
 		api.MSG_OP_IPV4_BIND,
@@ -658,11 +676,15 @@ func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) e
 		var fd int
 		var err error
 
-		pin := k.bpfDir + m.mapName
+		pin := k.mapDir + m.mapName
 
 		if m.mapType == "sockops" {
 			if k.enableTLS {
 				fd, err = bpf.LoadAndPinSockmapMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName)
+			}
+		} else if m.mapType == "skmsg" {
+			if k.enableTLS {
+				fd, err = bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName)
 			}
 		} else {
 			fd, err = bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName)
@@ -702,6 +724,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			attach,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
+			k.mapDir,
 			load.retProbe, k.execve_fd, k.tcp_events_fd)
 	} else if load.probeType == "sockops" {
 		if !k.enableTLS {
@@ -713,6 +736,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
+			k.mapDir,
 			k.execve_fd, k.tcp_events_fd, k.sockmap_fd)
 	} else if load.probeType == "skmsg" {
 		if !k.enableTLS {
@@ -724,6 +748,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
+			k.mapDir,
 			k.execve_fd, k.tcp_events_fd, k.sockmap_fd)
 	} else {
 		return bpf.LoadKprobeProgram(
@@ -733,6 +758,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			attach,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
+			k.mapDir,
 			load.retProbe, k.execve_fd, k.tcp_events_fd)
 	}
 }
@@ -855,6 +881,7 @@ func (k *ObserverKprobe) runEvents(stopCtx context.Context) error {
 
 func (k *ObserverKprobe) createDir() {
 	os.Mkdir(k.bpfDir, os.ModeDir)
+	os.Mkdir(k.mapDir, os.ModeDir)
 }
 
 type ObserverProcs struct {
@@ -1298,6 +1325,7 @@ type MsgFilter struct {
 
 type ObserverKprobe struct {
 	bpfDir        string
+	mapDir        string
 	execve_fd     int
 	tcp_events_fd int
 	sockmap_fd    int
@@ -1457,14 +1485,16 @@ func (k *ObserverKprobe) RemovePrograms() {
 	}
 
 	for _, m := range observerMaps {
-		os.Remove(k.bpfDir + m.mapName)
+		os.Remove(k.mapDir + m.mapName)
 	}
 	os.Remove(k.bpfDir)
+	os.Remove(k.mapDir)
 }
 
-func NewObserverKprobe(bpfDir string, execve, tls, pretty bool) *ObserverKprobe {
+func NewObserverKprobe(bpfDir, mapDir string, execve, tls, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:        bpfDir,
+		mapDir:        mapDir,
 		enableExecve:  execve,
 		enableTLS:     tls,
 		prettyPrinter: pretty,
