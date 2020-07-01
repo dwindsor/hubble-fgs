@@ -767,6 +767,17 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
 			k.mapDir)
+	} else if load.probeType == "cgrp_ingress" {
+		if !k.enableTLS {
+			return nil, 0
+		}
+		return bpf.LoadCgroupProgram(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			k.mapDir)
 	} else {
 		if load.probeType == "cgrp_ingress" && !k.enableTLS {
 			return nil, 0

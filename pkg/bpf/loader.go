@@ -401,7 +401,8 @@ int sockops_loader(const int version,
 		   const char *prog,
 		   const char *label,
 		   const char *__prog,
-		   const char *mapdir)
+		   const char *mapdir,
+		   const int prog_type, const int attach_type)
 {
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_link *prog_attach;
@@ -421,7 +422,7 @@ int sockops_loader(const int version,
 	}
 
 	bpf_loader_print_maps(obj, verbosity);
-	bpf_loader_programs(obj, BPF_PROG_TYPE_SOCK_OPS, verbosity);
+	bpf_loader_programs(obj, prog_type, verbosity);
 	err = bpf_loader_set_map(obj, mapdir, verbosity);
 	if (err) {
 		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
@@ -441,7 +442,7 @@ int sockops_loader(const int version,
 	}
 
 	bpf_loader_pin(obj, label, __prog);
-	return bpf_link(cgroup_path, __prog, BPF_CGROUP_SOCK_OPS);
+	return bpf_link(cgroup_path, __prog, attach_type);
 }
 
 int tracepoint_loader(const int version,
@@ -637,7 +638,7 @@ func LoadAndPinSockmapMaps(__version, __verbosity int, __btf, __prog, __map, __m
 	return fdInt, nil
 }
 
-func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+func LoadProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string, __prog_type, __attach_type int) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
@@ -645,12 +646,28 @@ func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __pr
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	loader_fd := C.sockops_loader(version, verbosity, btf, o, l, p, mapdir)
+	pt := C.int(__prog_type)
+	at := C.int(__attach_type)
+	loader_fd := C.sockops_loader(version, verbosity, btf, o, l, p, mapdir, pt, at)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
 	}
 	return nil, loaderInt
+}
+
+func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+	prog_type := 13  // BPF_PROG_TYPE_SOCK_OPS
+	attach_type := 3 // BPF_CGROUP_SOCK_OPS
+
+	return LoadProgram(__version, __verbosity, __btf, object, __label, __prog, __mapdir, prog_type, attach_type)
+}
+
+func LoadCgroupProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
+	attach_type := 0 // BPF_CGROUP_INET_INGRESS
+
+	return LoadProgram(__version, __verbosity, __btf, object, __label, __prog, __mapdir, prog_type, attach_type)
 }
 
 func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
