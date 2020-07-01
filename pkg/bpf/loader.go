@@ -276,11 +276,8 @@ static struct bpf_object *__loader(const int version,
 		    const int verbosity,
 		    const char *btf,
 		    const char *prog,
-		    const int type,
 		    const char *mapdir,
-		    const int execve_fd,
-		    const int tcp_events_fd,
-		    const int sockmap_fd)
+		    const int type)
 {
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_object *obj;
@@ -381,16 +378,11 @@ int skmsg_loader(const int version,
 		 const char *prog,
 		 const char *label,
 		 const char *__prog,
-		 const char *mapDir,
-		 const int execve_fd,
-		 const int tcp_events_fd,
-		 const int sockmap_fd)
+		 const char *mapdir)
 {
 	int err;
 	struct bpf_object *obj = __loader(version, verbosity,
-					  btf, prog, BPF_PROG_TYPE_SK_MSG,
-					  mapDir,
-					  execve_fd, tcp_events_fd, sockmap_fd);
+					  btf, prog, mapdir, BPF_PROG_TYPE_SK_MSG);
 
 	if (!obj)
 		return -1;
@@ -409,10 +401,7 @@ int sockops_loader(const int version,
 		   const char *prog,
 		   const char *label,
 		   const char *__prog,
-		   const char *mapdir,
-		   const int execve_fd,
-		   const int tcp_events_fd,
-		   const int sockmap_fd)
+		   const char *mapdir)
 {
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_link *prog_attach;
@@ -463,9 +452,8 @@ int tracepoint_loader(const int version,
 		      const char *label,
 		      const char *__prog,
 		      const char *mapdir,
-		      const bool retprobe,
-		      const int execve_fd,
-		      const int tcp_events_fd) {
+		      const bool retprobe)
+{
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
@@ -542,9 +530,8 @@ int kprobe_loader(const int version,
 		  const char *label,
 	  	  const char *__prog,
 		  const char *mapdir,
-		  const bool retprobe,
-	  	  const int execve_fd,
-	  	  const int tcp_events_fd) {
+		  const bool retprobe)
+{
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
@@ -650,7 +637,7 @@ func LoadAndPinSockmapMaps(__version, __verbosity int, __btf, __prog, __map, __m
 	return fdInt, nil
 }
 
-func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string, execve_fd, tcp_fd, sock_fd int) (error, int) {
+func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
@@ -658,10 +645,7 @@ func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __pr
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	fd := C.int(execve_fd)
-	tcp := C.int(tcp_fd)
-	sock := C.int(sock_fd)
-	loader_fd := C.sockops_loader(version, verbosity, btf, o, l, p, mapdir, fd, tcp, sock)
+	loader_fd := C.sockops_loader(version, verbosity, btf, o, l, p, mapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
@@ -669,7 +653,7 @@ func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __pr
 	return nil, loaderInt
 }
 
-func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string, execve_fd, tcp_fd, sock_fd int) (error, int) {
+func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
@@ -677,10 +661,7 @@ func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	fd := C.int(execve_fd)
-	tcp := C.int(tcp_fd)
-	sock := C.int(sock_fd)
-	loader_fd := C.skmsg_loader(version, verbosity, btf, o, l, p, mapdir, fd, tcp, sock)
+	loader_fd := C.skmsg_loader(version, verbosity, btf, o, l, p, mapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
@@ -688,7 +669,7 @@ func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog
 	return nil, loaderInt
 }
 
-func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __label, __prog, __mapdir string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
@@ -698,9 +679,7 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
 	ret := C.bool(retprobe)
-	fd := C.int(execve_fd)
-	tcp := C.int(tcp_fd)
-	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a, l, p, mapdir, ret, fd, tcp)
+	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a, l, p, mapdir, ret)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to tracepoint load: %d %s", loaderInt, object), loaderInt
@@ -708,7 +687,7 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	return nil, loaderInt
 }
 
-func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __label, __prog, __mapdir string, retprobe bool, execve_fd int, tcp_fd int) (error, int) {
+func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
@@ -718,9 +697,7 @@ func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __labe
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
 	ret := C.bool(retprobe)
-	fd := C.int(execve_fd)
-	tcp := C.int(tcp_fd)
-	loader_fd := C.kprobe_loader(version, verbosity, btf, o, a, l, p, mapdir, ret, fd, tcp)
+	loader_fd := C.kprobe_loader(version, verbosity, btf, o, a, l, p, mapdir, ret)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0

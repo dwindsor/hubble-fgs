@@ -744,7 +744,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
 			k.mapDir,
-			load.retProbe, k.execve_fd, k.tcp_events_fd)
+			load.retProbe)
 	} else if load.probeType == "sockops" {
 		if !k.enableTLS {
 			return nil, 0
@@ -755,8 +755,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
-			k.mapDir,
-			k.execve_fd, k.tcp_events_fd, k.sockmap_fd)
+			k.mapDir)
 	} else if load.probeType == "skmsg" {
 		if !k.enableTLS {
 			return nil, 0
@@ -767,8 +766,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
-			k.mapDir,
-			k.execve_fd, k.tcp_events_fd, k.sockmap_fd)
+			k.mapDir)
 	} else {
 		if load.probeType == "cgrp_ingress" && !k.enableTLS {
 			return nil, 0
@@ -781,7 +779,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
 			k.mapDir,
-			load.retProbe, k.execve_fd, k.tcp_events_fd)
+			load.retProbe)
 	}
 }
 
