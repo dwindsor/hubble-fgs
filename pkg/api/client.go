@@ -14,6 +14,10 @@
 
 package api
 
+import (
+	"encoding/binary"
+)
+
 const (
 	DOCKER_ID_LENGTH = 16
 
@@ -179,14 +183,22 @@ type MsgPid struct {
 }
 
 type MsgIPv4Tuple struct {
-	SAddr     uint32
-	DAddr     uint32
-	DPort     uint16
-	SPort     uint16
-	Proto     uint8
-	PostDAddr uint32
-	PostDPort uint16
-	Pad       [5]uint8
+	SAddr uint32
+	DAddr uint32
+	DPort uint16
+	SPort uint16
+	Proto uint8
+	// define as uint8 otherwise padding in struct breaks
+	PostData [6]uint8
+	Pad      [5]uint8
+}
+
+func (m *MsgIPv4Tuple) GetPostDAddr() uint32 {
+	return binary.LittleEndian.Uint32(m.PostData[0:4])
+}
+
+func (m *MsgIPv4Tuple) GetPostDPort() uint16 {
+	return binary.LittleEndian.Uint16(m.PostData[4:6])
 }
 
 type MsgK8s struct {
