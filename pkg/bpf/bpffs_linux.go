@@ -37,6 +37,9 @@ var (
 	// Path to where debugfs is mounted
 	debugFSRoot = "/sys/kernel/debug/"
 
+	// Path to where cgroup2 is mounted
+	cgroup2Root = "/run/hubble-fgs/cgroup2"
+
 	// Prefix for all maps (default: tc/globals)
 	mapPrefix = "tcpmon"
 
@@ -223,6 +226,28 @@ func checkOrMountDebugFSDefaultLocations() error {
 	return nil
 }
 
+func checkOrMountCgroupDefaultLocation() error {
+	// Check whether /run/hubble-fgs/cgroup2 has a mount.
+	mounted, cgroupInstance, err := mountinfo.IsMountFS(mountinfo.FilesystemTypeCgroup2, cgroup2Root)
+	if err != nil {
+		return err
+	}
+
+	// If /run/hubble-fgs/cgroup2/ is not mounted at all, we should mount
+	// cgroup2 there.
+	if !mounted {
+		_ = os.Mkdir(cgroup2Root, os.ModeDir)
+		if err := mountFS(cgroup2Root, mountinfo.FilesystemTypeCgroup2); err != nil {
+			return err
+		}
+		return nil
+	}
+	if !cgroupInstance {
+		return fmt.Errorf("instance exists with other type")
+	}
+	return nil
+}
+
 // checkOrMountDefaultLocations tries to check or mount the BPF filesystem in
 // standard locations, which are:
 // - /sys/fs/bpf
@@ -323,6 +348,10 @@ func CheckOrMountFS(bpfRoot string) {
 
 func CheckOrMountDebugFS() error {
 	return checkOrMountDebugFSDefaultLocations()
+}
+
+func CheckOrMountCgroup2() error {
+	return checkOrMountCgroupDefaultLocation()
 }
 
 func ConfigureResourceLimits() error {

@@ -409,7 +409,7 @@ int sockops_loader(const int version,
 	struct bpf_object *obj, *execve_obj;
 	struct bpf_map *map, *execve_map;
 	int cg_fd, bpf_fd, fd, err, map_fd = 0;
-	char *cgroup_path = "/run/hubble-fgs/cgroupv2";
+	char *cgroup_path = "/run/hubble-fgs/cgroup2";
 
 	if (verbosity > 1)
 		libbpf_set_print(__print);

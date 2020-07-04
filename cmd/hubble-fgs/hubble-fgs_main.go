@@ -26,10 +26,14 @@ var (
 func hubbleFGSExecute() error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
+	tls := viper.GetBool("tls")
 
 	ctx, cancel := context.WithCancel(context.Background())
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
+	if tls {
+		bpf.CheckOrMountCgroup2()
+	}
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, viper.GetBool("execve"), viper.GetBool("tls"), viper.GetBool("debug"))
 
