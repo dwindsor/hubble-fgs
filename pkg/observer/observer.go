@@ -243,6 +243,20 @@ var (
 		-1,
 	}
 
+	ObserverTLSEvent = bpfLoad{
+		"", "",
+		"tcp_v4_fill_cb",
+		"tcp_v4_fill_cb",
+		"kprobe/tcp_v4_fill_cb",
+		"kprobe_tcp_v4_fill_cb",
+
+		false,
+		true,
+		"kprobe",
+
+		-1,
+	}
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -258,7 +272,8 @@ var (
 		&ObserverListen,
 		&ObserverSockopsEstablished,
 		&ObserverSkmsgTLS,
-		&ObserverCgrpIngress}
+		&ObserverCgrpIngress,
+		&ObserverTLSEvent}
 
 	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve}
 	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve}
@@ -398,22 +413,18 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	r := bytes.NewReader(data)
 
 	switch op {
-	/*
-		case api.MSG_OP_TLS:
-			m := api.MsgTLSEvent{}
-			err := binary.Read(r, binary.LittleEndian, &m)
-			if err != nil {
-				break
-			}
-	*/
-	/* OR filter together */
-	//k.observerListeners(msgUnix)
-	/* Keeping pretty printer because it helps debugging filters */
-	/*
+	case api.MSG_OP_TLS:
+		m := api.MsgTLSEvent{}
+		err := binary.Read(r, binary.LittleEndian, &m)
+		if err != nil {
+			break
+		}
+		/* OR filter together */
+		//k.observerListeners(msgUnix)
+		/* Keeping pretty printer because it helps debugging filters */
 		if k.prettyPrinter {
 			reader.ObserverTLSPrinter(&m, k.log)
 		}
-	*/
 	case api.MSG_OP_IPV4_TCPCONNECT,
 		api.MSG_OP_IPV4_TCPCONNECTRET,
 		api.MSG_OP_IPV4_BIND,
