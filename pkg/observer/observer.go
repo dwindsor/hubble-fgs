@@ -288,6 +288,15 @@ var (
 	}
 )
 
+func (k *ObserverKprobe) observerListenersTLS(msg *api.MsgTLSEvent) {
+	for listener, _ := range k.listeners {
+		if err := listener.Notify(msg); err != nil {
+			k.log.Debug("Write failure removing Listener")
+			k.RemoveListener(listener)
+		}
+	}
+}
+
 func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
 	if pass := k.runFilters(msg); pass {
 		for listener, _ := range k.listeners {

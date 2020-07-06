@@ -18,7 +18,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
+	"fmt"
 	"net"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
@@ -219,9 +221,6 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.Fi
 	}).Debug()
 }
 
-func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
-}
-
 func ObserverReceiver(log logrus.FieldLogger) error {
 	conn, err := net.Dial("unix", defaults.GetSocketPath())
 	if err != nil {
@@ -239,4 +238,90 @@ func ObserverReceiver(log logrus.FieldLogger) error {
 
 		ObserverIPV4TCPConnectPrinter(&IPv4TCPConnectMsg, log)
 	}
+}
+
+func GetTLSCipher(cipherCode uint64) string {
+	switch cipherCode {
+	case 0x1302:
+		return "TLS_AES_256_GCM_SHA384"
+	case 0x1303:
+		return "TLS_CHACHA20_POLY1305_SHA256"
+	case 0x1301:
+		return "TLS_AES_128_GCM_SHA256"
+	default:
+		return fmt.Sprintf("%x", cipherCode)
+	}
+}
+
+func GetTLSVersion(version uint16) string {
+	switch version {
+	case 0x0403:
+		return "TLS 1.3"
+	case 0x0303:
+		return "TLS 1.2"
+	case 0x0203:
+		return "TLS 1.1"
+	case 0x0103:
+		return "TLS 1.0"
+	default:
+		return fmt.Sprintf("%x", version)
+	}
+}
+
+func GetTLSSNI(sni [32]byte) (string, string) {
+	typeSNI := "unknown"
+	switch sni[2] {
+	case 0:
+		typeSNI = "host_name"
+	}
+	nameLength := binary.BigEndian.Uint16(sni[3:5])
+	if nameLength > api.SNI_BUFFER_SIZE-5 {
+		nameLength = api.SNI_BUFFER_SIZE - 5
+	}
+	return typeSNI, string(sni[5 : 5+nameLength])
+}
+
+func GetTLSSupportedVersions(vers [16]byte) string {
+	var s []string
+
+	length := int(vers[0])
+	if length > 16 {
+		length = 16
+	}
+	for i := 1; i < length; i += 2 {
+		t := binary.LittleEndian.Uint16(vers[i : i+2])
+
+		switch t {
+		case api.TLSVersion13:
+			s = append(s, "TLS1.3")
+		case api.TLSVersion12:
+			s = append(s, "TLS1.2")
+		case api.TLSVersion11:
+			s = append(s, "TLS1.1")
+		case api.TLSVersion10:
+			s = append(s, "TLS1.0")
+		case 0:
+		default:
+			s = append(s, "unknown("+strconv.FormatUint(uint64(t), 10)+")")
+		}
+	}
+	return strings.Join(s, " ")
+}
+
+func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
+	op := msg.Common.Op
+	typeSNI, nameSNI := GetTLSSNI(msg.TLS.SNI)
+
+	log.WithFields(logrus.Fields{
+		"op":                    api.OpCode(op).String(),
+		"proto":                 msg.Tuple.Proto,
+		"saddr":                 GetIP(msg.Tuple.SAddr, op).String(),
+		"sport":                 GetSport(msg.Tuple.SPort),
+		"daddr":                 GetIP(msg.Tuple.DAddr, op).String(),
+		"TLS-Version":           GetTLSVersion(msg.TLS.Version),
+		"SNI-Type":              typeSNI,
+		"SNI-Name":              nameSNI,
+		"TLS-SupportedVersions": GetTLSSupportedVersions(msg.TLS.SupportedVersions),
+		"cipher":                GetTLSCipher(msg.TLS.Cipher),
+	}).Debug()
 }
