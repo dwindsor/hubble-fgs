@@ -17,28 +17,22 @@ package logger
 import (
 	"sync"
 
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"
-	"go.uber.org/zap"
 )
 
 var (
-	log  *zap.Logger
+	log  *logrus.Logger
 	once sync.Once
 )
 
 // GetLogger returns the logger properly set up accordingly with the debug flag.
-func GetLogger() *zap.Logger {
+func GetLogger() logrus.FieldLogger {
 	once.Do(func() {
-		var err error
+		log = logrus.New()
 		if viper.GetBool("debug") {
-			log = zap.NewExample()
-		} else {
-			log, err = zap.NewProduction()
-			if err != nil {
-				panic(err)
-			}
+			log.SetLevel(logrus.DebugLevel)
 		}
 	})
-
 	return log
 }

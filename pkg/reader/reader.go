@@ -15,19 +15,18 @@
 package reader
 
 import (
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/defaults"
-
 	"bytes"
 	"encoding/binary"
 	"encoding/gob"
-	"golang.org/x/sys/unix"
 	"net"
 	"strings"
 	"syscall"
 	"time"
 
-	"go.uber.org/zap"
+	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/defaults"
+	"github.com/sirupsen/logrus"
+	"golang.org/x/sys/unix"
 )
 
 func GetIP(i uint32, op uint8) net.IP {
@@ -168,7 +167,7 @@ func GetDport(dport uint16, op uint8) uint16 {
 	return api.SwapByte(dport)
 }
 
-func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logger) {
+func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.FieldLogger) {
 	e := syscall.Errno(uintptr(-msg.Return))
 	/* In the event of an error time is {0} so will be obvious at printer time
 	 * and its not clear what to do with this error so ignore it for now.
@@ -182,45 +181,45 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log *zap.Logg
 
 	op := msg.Common.Op
 
-	log.Debug("KprobeEvent",
-		zap.String("op", api.OpCode(op).String()),
-		zap.Uint64("connect-ktime", msg.Common.Ktime),
-		zap.Time("connect-walltime", eventTime),
-		zap.Uint32("parent-size", msg.Pid.Parent.Size),
-		zap.Uint32("parent-pid", msg.Pid.Parent.PID),
-		zap.Uint32("parent-nspid", msg.Pid.Parent.NSPID),
-		zap.Uint32("parent-auid", msg.Pid.Parent.AUID),
-		zap.Uint32("parent-uid", msg.Pid.Parent.UID),
-		zap.String("parent-flags", DecodeCommonFlags(msg.Pid.Parent.Flags)),
-		zap.Uint64("parent-ktime", msg.Pid.Parent.Ktime),
-		zap.Time("parent-walltime", parentTime),
-		zap.String("parent-prog", msg.Pid.Parent.Filename),
-		zap.String("parent-cwd", parentCWD),
-		zap.String("parent-args", parentArgs),
-		zap.Uint32("size", msg.Pid.Curr.Size),
-		zap.Uint32("pid", msg.Pid.Curr.PID),
-		zap.Uint32("nspid", msg.Pid.Curr.NSPID),
-		zap.Uint32("auid", msg.Pid.Curr.AUID),
-		zap.Uint32("uid", msg.Pid.Curr.UID),
-		zap.String("flags", DecodeCommonFlags(msg.Pid.Curr.Flags)),
-		zap.Uint64("ktime", msg.Pid.Curr.Ktime),
-		zap.Time("walltime", childTime),
-		zap.String("prog", msg.Pid.Curr.Filename),
-		zap.String("cwd", childCWD),
-		zap.String("args", childArgs),
-		zap.Uint8("proto", msg.Tuple.Proto),
-		zap.String("saddr", GetIP(msg.Tuple.SAddr, op).String()),
-		zap.Uint16("sport", GetSport(msg.Tuple.SPort)),
-		zap.String("daddr", GetIP(msg.Tuple.DAddr, op).String()),
-		zap.String("odaddr", GetIP(msg.Tuple.GetPostDAddr(), op).String()),
-		zap.Uint16("dport", GetDport(msg.Tuple.DPort, op)),
-		zap.Uint16("odport", GetDport(msg.Tuple.GetPostDPort(), op)),
-		zap.String("ContainerID", msg.Kube.Docker),
-		zap.String("return", unix.ErrnoName(e)),
-	)
+	log.WithFields(logrus.Fields{
+		"op":               api.OpCode(op).String(),
+		"connect-ktime":    msg.Common.Ktime,
+		"connect-walltime": eventTime,
+		"parent-size":      msg.Pid.Parent.Size,
+		"parent-pid":       msg.Pid.Parent.PID,
+		"parent-nspid":     msg.Pid.Parent.NSPID,
+		"parent-auid":      msg.Pid.Parent.AUID,
+		"parent-uid":       msg.Pid.Parent.UID,
+		"parent-flags":     DecodeCommonFlags(msg.Pid.Parent.Flags),
+		"parent-ktime":     msg.Pid.Parent.Ktime,
+		"parent-walltime":  parentTime,
+		"parent-prog":      msg.Pid.Parent.Filename,
+		"parent-cwd":       parentCWD,
+		"parent-args":      parentArgs,
+		"size":             msg.Pid.Curr.Size,
+		"pid":              msg.Pid.Curr.PID,
+		"nspid":            msg.Pid.Curr.NSPID,
+		"auid":             msg.Pid.Curr.AUID,
+		"uid":              msg.Pid.Curr.UID,
+		"flags":            DecodeCommonFlags(msg.Pid.Curr.Flags),
+		"ktime":            msg.Pid.Curr.Ktime,
+		"walltime":         childTime,
+		"prog":             msg.Pid.Curr.Filename,
+		"cwd":              childCWD,
+		"args":             childArgs,
+		"proto":            msg.Tuple.Proto,
+		"saddr":            GetIP(msg.Tuple.SAddr, op).String(),
+		"sport":            GetSport(msg.Tuple.SPort),
+		"daddr":            GetIP(msg.Tuple.DAddr, op).String(),
+		"odaddr":           GetIP(msg.Tuple.GetPostDAddr(), op).String(),
+		"dport":            GetDport(msg.Tuple.DPort, op),
+		"odport":           GetDport(msg.Tuple.GetPostDPort(), op),
+		"container-id":     msg.Kube.Docker,
+		"return":           unix.ErrnoName(e),
+	}).Debug()
 }
 
-func ObserverReceiver(log *zap.Logger) error {
+func ObserverReceiver(log logrus.FieldLogger) error {
 	conn, err := net.Dial("unix", defaults.GetSocketPath())
 	if err != nil {
 		return err

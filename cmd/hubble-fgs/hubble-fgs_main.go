@@ -1,18 +1,18 @@
 package main
 
 import (
+	"context"
+	"os"
+	"os/signal"
+	"syscall"
+
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
+	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
 	"github.com/covalentio/hubble-fgs/pkg/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
-
-	"context"
-	"fmt"
-	"os"
-	"os/signal"
-	"syscall"
 )
 
 var (
@@ -50,7 +50,7 @@ func init() {
 		Short: "Hubble FGS",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := hubbleFGSExecute(); err != nil {
-				fmt.Printf("%s", err)
+				logger.GetLogger().WithError(err).Fatal("Failed to start hubble-fgs")
 			}
 		},
 	}

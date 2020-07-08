@@ -1,11 +1,10 @@
 package main
 
 import (
-	"fmt"
+	"os"
 
-	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
-
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -17,9 +16,13 @@ var (
 )
 
 func hubbleFGSPrinter() {
-	log := logger.GetLogger()
+	// Use JSON formatter for hubble-fgs-printer.
+	log := logrus.New()
+	log.SetFormatter(&logrus.JSONFormatter{})
+	log.SetLevel(logrus.DebugLevel)
+	log.SetOutput(os.Stdout)
 	if err := reader.ObserverReceiver(log); err != nil {
-		fmt.Printf("ObserverReceiver failed: %s\n", err)
+		log.WithError(err).Fatal("ObserverReceiver failed")
 	}
 }
 

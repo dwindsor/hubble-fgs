@@ -54,6 +54,8 @@ github.com/hashicorp/hcl/json/token
 github.com/iancoleman/strcase
 # github.com/inconshreveable/mousetrap v1.0.0
 github.com/inconshreveable/mousetrap
+# github.com/konsorten/go-windows-terminal-sequences v1.0.1
+github.com/konsorten/go-windows-terminal-sequences
 # github.com/lyft/protoc-gen-star v0.4.10
 github.com/lyft/protoc-gen-star
 github.com/lyft/protoc-gen-star/lang/go
@@ -67,8 +69,9 @@ github.com/mitchellh/protoc-gen-go-json
 github.com/mitchellh/protoc-gen-go-json/gen
 # github.com/pelletier/go-toml v1.2.0
 github.com/pelletier/go-toml
-# github.com/pkg/errors v0.9.1
+# github.com/sirupsen/logrus v1.4.2
 ## explicit
+github.com/sirupsen/logrus
 # github.com/spf13/afero v1.1.2
 github.com/spf13/afero
 github.com/spf13/afero/mem
@@ -84,19 +87,6 @@ github.com/spf13/pflag
 # github.com/spf13/viper v1.3.2
 ## explicit
 github.com/spf13/viper
-# go.uber.org/atomic v1.6.0
-go.uber.org/atomic
-# go.uber.org/multierr v1.5.0
-## explicit
-go.uber.org/multierr
-# go.uber.org/zap v1.10.0
-## explicit
-go.uber.org/zap
-go.uber.org/zap/buffer
-go.uber.org/zap/internal/bufferpool
-go.uber.org/zap/internal/color
-go.uber.org/zap/internal/exit
-go.uber.org/zap/zapcore
 # golang.org/x/lint v0.0.0-20200302205851-738671d3881b
 golang.org/x/lint
 golang.org/x/lint/golint

@@ -25,12 +25,13 @@ import (
 	"syscall"
 
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
+	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
-
 	"golang.org/x/sys/unix"
 )
 
 var (
+	log = logger.GetLogger()
 	// Path to where bpffs is mounted
 	mapRoot = "/sys/fs/bpf/"
 
@@ -84,7 +85,7 @@ func mapPathFromMountInfo(name string) string {
 	readMountInfo.Do(func() {
 		mountInfos, err := mountinfo.GetMountInfo()
 		if err != nil {
-			fmt.Printf("Could not get mount info for map root lookup")
+			log.WithError(err).Warn("Could not get mount info for map root lookup")
 		}
 
 		for _, mountInfo := range mountInfos {
@@ -94,7 +95,7 @@ func mapPathFromMountInfo(name string) string {
 			}
 		}
 
-		fmt.Printf("Could not find BPF map root")
+		log.Warn("Could not find BPF map root")
 	})
 
 	return filepath.Join(mountInfoPrefix, name)
@@ -196,7 +197,7 @@ func checkOrMountCustomLocation(bpfRoot string) error {
 		return fmt.Errorf("mount in the custom directory %s has a different filesystem than BPFFS", bpfRoot)
 	}
 
-	fmt.Printf("Detected mounted BPF filesystem at %s", mapRoot)
+	log.Debugf("Detected mounted BPF filesystem at %s", mapRoot)
 
 	return nil
 }
@@ -262,7 +263,7 @@ func checkOrMountDefaultLocations() error {
 		// such as the connection tracking table of the BPF programs to
 		// be released which will cause all connections into local
 		// containers to be dropped. User is going to be warned.
-		fmt.Printf("BPF filesystem is going to be mounted automatically "+
+		log.Warnf("BPF filesystem is going to be mounted automatically "+
 			"in %s. However, it probably means that Cilium is running "+
 			"inside container and BPFFS is not mounted on the host. "+
 			"for more information, see: https://cilium.link/err-bpf-mount",
@@ -279,11 +280,11 @@ func checkOrMountDefaultLocations() error {
 				return err
 			}
 		} else if !cBpffsInstance {
-			fmt.Printf("%s is mounted but has a different filesystem than BPFFS", defaults.DefaultMapRootFallback)
+			log.Warnf("%s is mounted but has a different filesystem than BPFFS", defaults.DefaultMapRootFallback)
 		}
 	}
 
-	fmt.Printf("Detected mounted BPF filesystem at %s", mapRoot)
+	log.Debugf("Detected mounted BPF filesystem at %s", mapRoot)
 
 	return nil
 }
@@ -316,7 +317,7 @@ func checkOrMountFS(bpfRoot string) error {
 func CheckOrMountFS(bpfRoot string) {
 	mountOnce.Do(func() {
 		if err := checkOrMountFS(bpfRoot); err != nil {
-			fmt.Printf("Unable to mount BPF filesystem, %s", err)
+			log.WithError(err).Warn("Unable to mount BPF filesystem")
 		}
 	})
 }
