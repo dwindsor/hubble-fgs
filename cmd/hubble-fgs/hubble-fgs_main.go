@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"net"
 	"os"
 	"os/signal"
 	"syscall"
@@ -27,21 +28,32 @@ func hubbleFGSExecute() error {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, viper.GetBool("execve"), viper.GetBool("debug"))
 
+	err := os.Remove(defaults.GetSocketPath())
+	if err != nil && !os.IsNotExist(err) {
+		return err
+	}
+	s, err := net.Listen("unix", defaults.GetSocketPath())
+	if err != nil {
+		return err
+	}
 	go func() {
 		<-sigs
 		kprobe.PrintStats()
 		kprobe.RemovePrograms()
+		cancel()
+		if err = s.Close(); err != nil {
+			logger.GetLogger().WithError(err).Warn("Failed to close socket")
+		}
 		os.Exit(1)
 	}()
 
-	go server.ServeEvents(kprobe, ctx, defaults.GetSocketPath())
-	return kprobe.Start()
+	go server.ServeEvents(kprobe, ctx, s)
+	return kprobe.Start(ctx)
 }
 
 func init() {

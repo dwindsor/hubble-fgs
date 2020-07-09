@@ -14,12 +14,11 @@
 package server
 
 import (
-	"github.com/covalentio/hubble-fgs/pkg/observer"
-
 	"context"
-	"fmt"
 	"net"
-	"os"
+
+	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/covalentio/hubble-fgs/pkg/observer"
 )
 
 func isCtxDone(ctx context.Context) bool {
@@ -31,29 +30,18 @@ func isCtxDone(ctx context.Context) bool {
 	}
 }
 
-func ServeEvents(k *observer.ObserverKprobe, ctx context.Context, path string) (net.Listener, error) {
-	os.Remove(path)
-	server, err := net.Listen("unix", path)
-	if err != nil {
-		return nil, fmt.Errorf("failed net.Listen: %s: %s\n", path, err)
-	}
-
-	for !isCtxDone(ctx) {
-		conn, err := server.Accept()
-		switch {
-		case isCtxDone(ctx) && conn != nil:
-			k.RemoveListener(conn)
-			conn.Close()
-			return nil, fmt.Errorf("ServeEvents ctx close\n")
-		case isCtxDone(ctx) && conn == nil:
-			k.RemoveListener(conn)
-			return nil, fmt.Errorf("ServeEvents nil connection\n")
-		case err != nil:
+// ServeEvents accepts connections and adds them to ObserverKprobe. Note that this function blocks
+// on net.Listener.Accept() call. It's up to the caller to make this function return by cancelling
+// the context and then closing the net.Listener so that net.Listener.Accept() returns.
+func ServeEvents(k *observer.ObserverKprobe, ctx context.Context, listener net.Listener) {
+	for {
+		conn, err := listener.Accept()
+		if isCtxDone(ctx) {
+			return
+		} else if err != nil {
+			logger.GetLogger().WithError(err).Warn("Accept failed")
 			continue
 		}
-		if conn != nil {
-			k.AddListener(conn)
-		}
+		k.AddListener(observer.NewObserverChannel(conn))
 	}
-	return server, nil
 }

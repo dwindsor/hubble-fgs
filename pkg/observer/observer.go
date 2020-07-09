@@ -19,10 +19,8 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
-	"encoding/gob"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -216,30 +214,26 @@ var (
 
 func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
 	if pass := k.runFilters(msg); pass {
-		for _, c := range k.listeners {
-			if err := c.encoder.Encode(msg); err != nil {
+		for listener, _ := range k.listeners {
+			if err := listener.Notify(msg); err != nil {
 				log.WithError(err).Debug("Write failure removing Listener")
-				k.RemoveListener(c.conn)
+				k.RemoveListener(listener)
 			}
 		}
 	}
 }
 
-func (k *ObserverKprobe) AddListener(conn net.Conn) {
-	channel := ObserverChannel{}
-	channel.encoder = gob.NewEncoder(conn)
-	channel.conn = conn
-	k.listeners = append(k.listeners, channel)
-	log.Debugf("Add listener %v", conn)
+func (k *ObserverKprobe) AddListener(listener Listener) {
+	log.WithField("listener", listener).Debug("Add listener")
+	k.listeners[listener] = true
 	k.getRunningProcs(false, k.enableExecve)
 }
 
-func (k *ObserverKprobe) RemoveListener(conn net.Conn) {
-	for i, c := range k.listeners {
-		if c.conn == conn {
-			log.Debugf("Delete listener %v", conn)
-			k.listeners = append(k.listeners[:i], k.listeners[i+1:]...)
-		}
+func (k *ObserverKprobe) RemoveListener(listener Listener) {
+	log.WithField("listener", listener).Debug("Delete listener")
+	delete(k.listeners, listener)
+	if err := listener.Close(); err != nil {
+		log.WithError(err).Warn("failed to close listener")
 	}
 }
 
@@ -1263,11 +1257,6 @@ func (k *ObserverKprobe) populateExecve(ctx context.Context) {
 	k.getRunningProcs(true, false)
 }
 
-type ObserverChannel struct {
-	conn    net.Conn
-	encoder *gob.Encoder
-}
-
 type MsgFilterRun func(*api.MsgIPv4TcpConnectUnix, *ObserverKprobe) bool
 
 type MsgFilter struct {
@@ -1281,7 +1270,7 @@ type ObserverKprobe struct {
 	execve_fd     int
 	tcp_events_fd int
 	prettyPrinter bool
-	listeners     []ObserverChannel
+	listeners     map[Listener]bool
 	perfConfig    *bpf.PerfEventConfig
 	enableExecve  bool
 	/* Statistics */
@@ -1394,23 +1383,23 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 	return nil
 }
 
-func (k *ObserverKprobe) Start() error {
+func (k *ObserverKprobe) Start(ctx context.Context) error {
 	k.createDir()
-	if err := k.observerFindBTF(context.TODO()); err != nil {
+	if err := k.observerFindBTF(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
 	}
-	if err := k.observerFindProgs(context.TODO()); err != nil {
+	if err := k.observerFindProgs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
 	}
-	if _, err := k.observerMinReqs(context.TODO()); err != nil {
+	if _, err := k.observerMinReqs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting minimum pid requirements not met. %s\n", err)
 	}
-	if err := k.observerLoadExecve(context.TODO()); err != nil {
+	if err := k.observerLoadExecve(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
-	k.populateExecve(context.TODO())
+	k.populateExecve(ctx)
 	k.perfConfig = bpf.DefaultPerfEventConfig()
-	if err := k.runEvents(context.TODO()); err != nil {
+	if err := k.runEvents(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting runtime error. %s", err)
 	}
 	return nil
@@ -1447,6 +1436,7 @@ func NewObserverKprobe(bpfDir string, execve, pretty bool) *ObserverKprobe {
 		bpfDir:        bpfDir,
 		enableExecve:  execve,
 		prettyPrinter: pretty,
+		listeners:     make(map[Listener]bool),
 	}
 }
 
