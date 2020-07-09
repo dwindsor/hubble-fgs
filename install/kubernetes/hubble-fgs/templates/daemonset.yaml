@@ -47,6 +47,10 @@ spec:
 {{- toYaml .Values.resources | trim | nindent 10 }}
 {{- end }}
           env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
           - name: FGS_SOCKET_PATH
             value: "/var/run/cilium/hubble-fgs.sock"
       restartPolicy: Always

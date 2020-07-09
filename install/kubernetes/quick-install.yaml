@@ -45,6 +45,10 @@ spec:
             - mountPath: "/procRoot/"
               name: fgs-proc
           env:
+          - name: NODE_NAME
+            valueFrom:
+              fieldRef:
+                fieldPath: spec.nodeName
           - name: FGS_SOCKET_PATH
             value: "/var/run/cilium/hubble-fgs.sock"
       restartPolicy: Always
