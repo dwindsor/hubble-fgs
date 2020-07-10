@@ -5,6 +5,7 @@ BPF = bpf_stream_connect.o bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o 
       bpf_fork.o
 
 IDIR = ./include/
+LIBBPF = ./libbpf/
 LDIR = ./lib
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
@@ -12,7 +13,7 @@ FLAGS := -I. -I/usr/include/x86_64-linux-gnu/ \
 	 -Wall -Werror \
 	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
 	 -O2
-CLANG_FLAGS += ${FLAGS} -I ${IDIR} -I ${LDIR} -target bpf -emit-llvm -g
+CLANG_FLAGS += ${FLAGS} -I ${LIBBPF} -I ${IDIR} -I ${LDIR} -target bpf -emit-llvm -g
 LLC_FLAGS   := -march=bpf -mcpu=probe -mattr=dwarfris
 
 CLANG  ?= clang
