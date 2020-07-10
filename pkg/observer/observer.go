@@ -36,6 +36,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -199,8 +200,6 @@ var (
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
 
-	log = logger.GetLogger()
-
 	observerPrograms = []*bpfLoad{
 		&ObserverExecve,
 		&ObserverFork,
@@ -216,7 +215,7 @@ func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
 	if pass := k.runFilters(msg); pass {
 		for listener, _ := range k.listeners {
 			if err := listener.Notify(msg); err != nil {
-				log.WithError(err).Debug("Write failure removing Listener")
+				k.log.WithError(err).Debug("Write failure removing Listener")
 				k.RemoveListener(listener)
 			}
 		}
@@ -224,16 +223,16 @@ func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
 }
 
 func (k *ObserverKprobe) AddListener(listener Listener) {
-	log.WithField("listener", listener).Debug("Add listener")
+	k.log.WithField("listener", listener).Debug("Add listener")
 	k.listeners[listener] = true
 	k.getRunningProcs(false, k.enableExecve)
 }
 
 func (k *ObserverKprobe) RemoveListener(listener Listener) {
-	log.WithField("listener", listener).Debug("Delete listener")
+	k.log.WithField("listener", listener).Debug("Delete listener")
 	delete(k.listeners, listener)
 	if err := listener.Close(); err != nil {
-		log.WithError(err).Warn("failed to close listener")
+		k.log.WithError(err).Warn("failed to close listener")
 	}
 }
 
@@ -362,7 +361,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		k.observerListeners(msgUnix)
 		/* Keeping pretty printer because it helps debugging filters */
 		if k.prettyPrinter {
-			reader.ObserverIPV4TCPConnectPrinter(msgUnix, log)
+			reader.ObserverIPV4TCPConnectPrinter(msgUnix, k.log)
 		}
 	}
 }
@@ -414,12 +413,12 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 	fdDir := fmt.Sprintf("%s/%d/fd", ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)
 	if err != nil {
-		log.WithError(err).Warnf("ReadDir %d/fd/ failed", pid)
+		k.log.WithError(err).Warnf("ReadDir %d/fd/ failed", pid)
 	}
 	for _, d := range procFD {
 		socket, err := os.Readlink(fdDir + "/" + d.Name())
 		if err != nil && Verbosity > 0 {
-			log.WithError(err).Warnf("Readlink error %s", d.Name())
+			k.log.WithError(err).Warnf("Readlink error %s", d.Name())
 		}
 		if strings.Contains(socket, "socket") == true {
 			fields := strings.Split(socket, ":")
@@ -428,7 +427,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 			inode = strings.TrimLeft(inode, "[")
 			inodeEntry, err := strconv.ParseUint(inode, 10, 32)
 			if err != nil {
-				log.WithError(err).Warnf("tcpEntry inode not parsable: %s", inode)
+				k.log.WithError(err).Warnf("tcpEntry inode not parsable: %s", inode)
 			} else {
 				entry := tcpEntries[uint32(inodeEntry)]
 				msg.Tuple.SAddr = entry.localIP
@@ -448,7 +447,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 				}
 
 				if k.prettyPrinter {
-					reader.ObserverIPV4TCPConnectPrinter(msg, log)
+					reader.ObserverIPV4TCPConnectPrinter(msg, k.log)
 				}
 
 				k.observerListeners(msg)
@@ -501,7 +500,7 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Pid.Curr.Args = args
 
 	if k.prettyPrinter {
-		reader.ObserverIPV4TCPConnectPrinter(&m, log)
+		reader.ObserverIPV4TCPConnectPrinter(&m, k.log)
 	}
 	if pushExecve {
 		k.observerListeners(&m)
@@ -629,7 +628,7 @@ func (k *ObserverKprobe) observerLoadMaps(btf, program string, stopCtx context.C
 
 	for _, m := range BPFMaps {
 		pin := k.bpfDir + m
-		log.Debugf("LoadAndPinMaps(%s, %s, %s)\n", program, pin, m)
+		k.log.Debugf("LoadAndPinMaps(%s, %s, %s)\n", program, pin, m)
 		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, program, pin, m)
 		if err != nil {
 			return fmt.Errorf("failed kprobe load map (%d): %s\n", fd, err)
@@ -686,7 +685,7 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 		return err
 	}
 
-	log.Debugf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
+	k.log.Debugf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
 	if load.tracepoint {
 		err, fd = k.loadInstance(load, version, Verbosity, btf, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
@@ -724,7 +723,7 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 	}
 
 	_, verStr, _ := getKernelVersion()
-	log.Infof("Loading kernel version %s", verStr)
+	k.log.Infof("Loading kernel version %s", verStr)
 
 	/* Assumption observer__program execve contains all maps */
 	if err := k.observerLoadMaps(
@@ -774,7 +773,7 @@ func (k *ObserverKprobe) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents
 	if err := k.observerLoadEvents(stopCtx); err != nil {
 		return nil, err
 	}
-	log.Infof("Loaded BPF maps and events successfully.")
+	k.log.Infof("Loaded BPF maps and events successfully.")
 
 	e, err := bpf.NewPerCpuEvents(k.perfConfig)
 	if err != nil {
@@ -788,24 +787,24 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 	observerLost := k.observerLost
 	observerError := k.observerError
 
-	log.Info("Listening for events...")
+	k.log.Info("Listening for events...")
 	for !isCtxDone(stopCtx) {
 		todo, err := e.Poll(pollTimeout)
 		switch {
 		case isCtxDone(stopCtx):
-			log.Debug("isCtxDone completed")
+			k.log.Debug("isCtxDone completed")
 			return nil
 
 		case err == syscall.EBADF:
 			return fmt.Errorf("kprobe events syscall.EBADF: %s", err)
 
 		case err != nil:
-			log.WithError(err).Warn("kprobe events poll failed")
+			k.log.WithError(err).Warn("kprobe events poll failed")
 			continue
 		}
 		if todo > 0 {
 			if err := e.ReadAll(receiveEvent, observerLost, observerError); err != nil {
-				log.WithError(err).Warn("kprobe events read failed")
+				k.log.WithError(err).Warn("kprobe events read failed")
 			}
 		}
 	}
@@ -1004,7 +1003,7 @@ func writeExecveMap(procs []ObserverProcs) {
 func getPIDNS(filename string) uint32 {
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
-		log.WithError(err).Warnf("ReadFile failed: %s", filename)
+		logger.GetLogger().WithError(err).Warnf("ReadFile failed: %s", filename)
 		return 0
 	}
 	statuslines := strings.Split(string(file), "\n")
@@ -1017,7 +1016,7 @@ func getPIDNS(filename string) uint32 {
 			pidField := fields[len(fields)-1]
 			pid, err := strconv.ParseUint(pidField, 10, 32)
 			if err != nil {
-				log.WithError(err).Warnf("NStgid parser failed %s", filename)
+				logger.GetLogger().WithError(err).Warnf("NStgid parser failed %s", filename)
 				return 0
 			}
 			return uint32(pid)
@@ -1036,27 +1035,27 @@ func stringToTCPEntry(s string) *procTCPEntry {
 	remote := strings.Split(fields[2], ":")
 	localIP, err := strconv.ParseUint(local[0], 16, 32)
 	if err != nil {
-		log.WithError(err).Warn("localIP parse error")
+		logger.GetLogger().WithError(err).Warn("localIP parse error")
 	}
 	localPort, err := strconv.ParseUint(local[1], 16, 16)
 	if err != nil {
-		log.WithError(err).Warn("localPort parse error")
+		logger.GetLogger().WithError(err).Warn("localPort parse error")
 	}
 	remoteIP, err := strconv.ParseUint(remote[0], 16, 32)
 	if err != nil {
-		log.WithError(err).Warn("remoteIP parse error")
+		logger.GetLogger().WithError(err).Warn("remoteIP parse error")
 	}
 	remotePort, err := strconv.ParseUint(remote[1], 16, 16)
 	if err != nil {
-		log.WithError(err).Warn("remotePort parse error")
+		logger.GetLogger().WithError(err).Warn("remotePort parse error")
 	}
 	state, err := strconv.ParseUint(fields[3], 16, 32)
 	if err != nil {
-		log.WithError(err).Warn("TCP state parse error")
+		logger.GetLogger().WithError(err).Warn("TCP state parse error")
 	}
 	inode, err := strconv.ParseUint(fields[9], 10, 32)
 	if err != nil {
-		log.WithError(err).Warn("inode parse error")
+		logger.GetLogger().WithError(err).Warn("inode parse error")
 	}
 
 	entry.id = int(id)
@@ -1096,7 +1095,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 
 	entryMap, err := k.getTCPConnections()
 	if err != nil {
-		log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
+		k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
 	}
 
 	for _, d := range procFS {
@@ -1108,7 +1107,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 
 		clktck, err := getClkTck()
 		if err != nil {
-			log.WithError(err).Warn("procFS wallclock time may be inaccurate")
+			k.log.WithError(err).Warn("procFS wallclock time may be inaccurate")
 			clktck = 1
 		}
 
@@ -1124,12 +1123,12 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		}
 		statline, err := ioutil.ReadFile(ProcFS + d.Name() + "/stat")
 		if err != nil {
-			log.WithError(err).Warnf("ReadFile: %s /stat error", ProcFS+d.Name()+"/cmdline")
+			k.log.WithError(err).Warnf("ReadFile: %s /stat error", ProcFS+d.Name()+"/cmdline")
 			continue
 		}
 		pid, err := strconv.ParseUint(d.Name(), 10, 32)
 		if err != nil {
-			log.WithError(err).Warnf("ReadFile: %s /parseuint error", ProcFS+d.Name()+"/cmdline")
+			k.log.WithError(err).Warnf("ReadFile: %s /parseuint error", ProcFS+d.Name()+"/cmdline")
 			continue
 		}
 
@@ -1143,7 +1142,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		_ktime := stats[21]
 		ktime, err := strconv.ParseUint(_ktime, 10, 64)
 		if err != nil {
-			log.WithError(err).Warnf("Ktime parsing error: %s: %s", _ktime, ProcFS+ppid+"/stat")
+			k.log.WithError(err).Warnf("Ktime parsing error: %s: %s", _ktime, ProcFS+ppid+"/stat")
 			ktime = 0
 		}
 		ktime = (ktime / clktck) * nanoPerSeconds
@@ -1154,20 +1153,20 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 
 			pcmdline, err = ioutil.ReadFile(ProcFS + ppid + "/cmdline")
 			if err != nil {
-				log.WithError(err).Warnf("ReadFile: %s /cmdline error\n", ProcFS+d.Name()+"/cmdline")
+				k.log.WithError(err).Warnf("ReadFile: %s /cmdline error\n", ProcFS+d.Name()+"/cmdline")
 				continue
 			}
 
 			pstatline, err = ioutil.ReadFile(ProcFS + ppid + "/stat")
 			if err != nil {
-				log.WithError(err).Warnf("ReadFile: %s /stat error\n", ProcFS+d.Name()+"/cmdline")
+				k.log.WithError(err).Warnf("ReadFile: %s /stat error\n", ProcFS+d.Name()+"/cmdline")
 				continue
 			}
 			pstats = r.FindAllString(string(pstatline), -1)
 			_pktime := pstats[21]
 			pktime, err = strconv.ParseUint(_pktime, 10, 64)
 			if err != nil {
-				log.WithError(err).Warnf("Warning: Parent ktime parsing error: %s: %s", _pktime, ProcFS+ppid+"/stat")
+				k.log.WithError(err).Warnf("Warning: Parent ktime parsing error: %s: %s", _pktime, ProcFS+ppid+"/stat")
 				pktime = 0
 			}
 			pktime = (pktime / clktck) * nanoPerSeconds
@@ -1281,6 +1280,7 @@ type ObserverKprobe struct {
 	filterDrop int
 	/* Filters */
 	msgFilter []*MsgFilter
+	log       logrus.FieldLogger
 }
 
 func defaultFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
@@ -1313,7 +1313,7 @@ func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
 			if err != nil {
 				return false, fmt.Errorf("set-max-pid failed: %s\n", err)
 			}
-			log.Infof("Configured max_pid %d -> %d", pids, MaxSupportedPids)
+			k.log.Infof("Configured max_pid %d -> %d", pids, MaxSupportedPids)
 			return true, nil
 		}
 		return false, fmt.Errorf("Current pid_max (%d) greater than max supported pids (%d). 4.19+ kernel required to support all features with current pid_max. Either use --set-pid-max to have hubble-fgs configure pid or upgrade kernel.", pids, MaxSupportedPids)
@@ -1409,7 +1409,7 @@ func removeTracepoint(fd int) {
 	PERF_EVENT_IOC_DISABLE := uint(0x2401)
 	err := unix.IoctlSetInt(fd, PERF_EVENT_IOC_DISABLE, 0)
 	if err != nil && Verbosity > 1 {
-		log.WithError(err).Warnf("Warning failed tracepoint removal")
+		logger.GetLogger().WithError(err).Warnf("Warning failed tracepoint removal")
 	}
 	unix.Close(fd)
 }
@@ -1423,7 +1423,7 @@ func (k *ObserverKprobe) RemovePrograms() {
 	}
 	maps, err := getKernelMaps()
 	if err != nil {
-		log.WithError(err).Warnf("Deleting maps failed")
+		k.log.WithError(err).Warnf("Deleting maps failed")
 	}
 	for _, m := range maps {
 		os.Remove(k.bpfDir + m)
@@ -1437,11 +1437,12 @@ func NewObserverKprobe(bpfDir string, execve, pretty bool) *ObserverKprobe {
 		enableExecve:  execve,
 		prettyPrinter: pretty,
 		listeners:     make(map[Listener]bool),
+		log:           logger.GetLogger(),
 	}
 }
 
 func (k *ObserverKprobe) PrintStats() {
-	log.Infof("Observer Stats: errors %d lost %d recvd %d filterPass %d filterDrop %d",
+	k.log.Infof("Observer Stats: errors %d lost %d recvd %d filterPass %d filterDrop %d",
 		k.errorCntr, k.lostCntr, k.recvCntr, k.filterPass, k.filterDrop)
 }
 
