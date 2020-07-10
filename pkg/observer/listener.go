@@ -11,10 +11,12 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
+
 package observer
 
 import (
 	"encoding/gob"
+	"io"
 	"net"
 )
 
@@ -22,8 +24,9 @@ import (
 type Listener interface {
 	// Notify gets called for each events from ObserverKprobe.
 	Notify(msg interface{}) error
+
 	// Close the listener.
-	Close() error
+	io.Closer
 }
 
 // ObserverChannel is a Listener that gob encodes events and sends them to a

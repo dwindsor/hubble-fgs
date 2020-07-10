@@ -224,7 +224,7 @@ func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
 
 func (k *ObserverKprobe) AddListener(listener Listener) {
 	k.log.WithField("listener", listener).Debug("Add listener")
-	k.listeners[listener] = true
+	k.listeners[listener] = struct{}{}
 	k.getRunningProcs(false, k.enableExecve)
 }
 
@@ -1269,7 +1269,7 @@ type ObserverKprobe struct {
 	execve_fd     int
 	tcp_events_fd int
 	prettyPrinter bool
-	listeners     map[Listener]bool
+	listeners     map[Listener]struct{}
 	perfConfig    *bpf.PerfEventConfig
 	enableExecve  bool
 	/* Statistics */
@@ -1436,7 +1436,7 @@ func NewObserverKprobe(bpfDir string, execve, pretty bool) *ObserverKprobe {
 		bpfDir:        bpfDir,
 		enableExecve:  execve,
 		prettyPrinter: pretty,
-		listeners:     make(map[Listener]bool),
+		listeners:     make(map[Listener]struct{}),
 		log:           logger.GetLogger(),
 	}
 }
