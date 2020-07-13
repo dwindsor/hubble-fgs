@@ -58,12 +58,12 @@ static int __quiet(enum libbpf_print_level level __attribute__((unused)),
 {
 }
 
-int sockmap_map_loader(const int version,
-		       const int verbosity,
-		       const char *btf,
-		       const char *prog,
-		       const char *__map,
-		       const char *__label_map)
+int fgs_map_loader(const int version,
+		   const int verbosity,
+		   const char *btf,
+		   const char *prog,
+		   const char *__map,
+		   const char *__label_map)
 {
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
@@ -114,93 +114,6 @@ int sockmap_map_loader(const int version,
 		fprintf(stderr,
 		       "bpf_map__pin: failed obj(%s) map(%s) %i\n",
 		       prog, __label_map, err);
-		return err;
-	}
-	return bpf_map__fd(map_bpf);
-}
-
-int kprobe_map_loader(const int version,
-		      const int verbosity,
-		      const char *btf,
-		      const char *prog,
-		      const char *__map,
-		      const char *__label_map)
-{
-	struct bpf_object_load_attr attr = {0};
-	struct bpf_program *prog_bpf;
-	char *name = "execve_map";
-	struct bpf_map *map_bpf;
-	struct bpf_map_def *map_def;
-	struct bpf_object *obj;
-	int err, map_fd;
-
-	if (verbosity > 1)
-		libbpf_set_print(__print);
-	else
-		libbpf_set_print(__quiet);
-
-	obj = bpf_object__open(prog);
-	err = libbpf_get_error(obj);
-	if (err) {
-		fprintf(stderr, "bpf_object__open: %i %s\n", err, prog);
-		return err;
-	}
-
-	map_bpf = bpf_object__find_map_by_name(obj, name);
-	err = libbpf_get_error(map_bpf);
-	if (err) {
-		fprintf(stderr, "bpf_object__find_map_by_name: obj(%s) map(execve_map)\n", prog);
-		return err;
-	}
-
-	map_def = (struct bpf_map_def *)bpf_map__def(map_bpf);
-	if (version > MIN_HASH_VERSION)
-		map_def->type = BPF_MAP_TYPE_HASH;
-
-	attr.obj = obj;
-	attr.target_btf_path = btf;
-	attr.kern_version = version;
-	err = bpf_object__load_xattr(&attr);
-	if (err < 0) {
-		char errstr[256];
-
-		libbpf_strerror(err, errstr, sizeof(errstr));
-		fprintf(stderr,
-			"bpf_object__load_xattr: failed %i: %s\n",
-			err, errstr);
-		return err;
-	}
-
-	bpf_object__for_each_program(prog_bpf, obj) {
-		bpf_program__set_type(prog_bpf, BPF_PROG_TYPE_KPROBE);
-		if (verbosity)
-			fprintf(stderr,
-				"program: kern_version: %u\n",
-				bpf_object__kversion(obj));
-	}
-
-	map_bpf = bpf_object__find_map_by_name(obj, __label_map);
-	err = libbpf_get_error(map_bpf);
-	if (err) {
-		fprintf(stderr,
-			"bpf_object__find_map_by_name: obj(%s) map(%s) failed",
-			prog, __label_map);
-		return err;
-	}
-
-	if (!map_bpf) {
-		fprintf(stderr,
-			"bpf_object__find_map_by_name: obj(%s) map(%s) null\n",
-			prog, __label_map);
-		return -1;
-	}
-
-	bpf_map__unpin(map_bpf, __map);
-	err = bpf_map__pin(map_bpf, __map);
-	if (err < 0) {
-		fprintf(stderr,
-		       "bpf_map_pin: failed obj(%s) map(%s) pin %s err %i\n",
-		       prog, __label_map, __map, err);
 		return err;
 	}
 	return bpf_map__fd(map_bpf);
@@ -586,7 +499,7 @@ func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_labe
 	m := C.CString(__map)
 	ml := C.CString(__map_label)
 
-	fd := C.kprobe_map_loader(version, verbosity, btf, p, m, ml)
+	fd := C.fgs_map_loader(version, verbosity, btf, p, m, ml)
 	fdInt := int(fd)
 	if fdInt < 0 {
 		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
@@ -602,7 +515,7 @@ func LoadAndPinSockmapMaps(__version, __verbosity int, __btf, __prog, __map, __m
 	m := C.CString(__map)
 	ml := C.CString(__map_label)
 
-	fd := C.sockmap_map_loader(version, verbosity, btf, p, m, ml)
+	fd := C.fgs_map_loader(version, verbosity, btf, p, m, ml)
 	fdInt := int(fd)
 	if fdInt < 0 {
 		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
