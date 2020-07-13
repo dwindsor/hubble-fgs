@@ -22,3 +22,19 @@ affinity:
       namespaces:
       - cilium
       - kube-system
+
+# FGS puts processes in an LRU cache. The cache is used to find ancestors for subsequently exec'ed
+# processes.
+processCacheSize: 32768
+
+# Path to the JSON export file. Set it to an empty string to disable JSON export altogether.
+exportFilename: /var/log/hubble-fgs.log
+
+# Size in megabytes at which to rotate JSON export files.
+exportFileMaxSizeMB: 10
+
+# Number of rotated files to retain.
+exportFileMaxBackups: 5
+
+# Compress rotated JSON export files.
+exportFileCompress: true

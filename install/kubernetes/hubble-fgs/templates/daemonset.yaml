@@ -25,6 +25,11 @@ spec:
             - --set-pid-max
             - -e
             - -t
+            - --process-cache-size={{ .Values.processCacheSize }}
+            - --export-filename={{ .Values.exportFilename }}
+            - --export-file-max-size-mb={{ .Values.exportFileMaxSizeMB }}
+            - --export-file-max-backups={{ .Values.exportFileMaxBackups }}
+            - --export-file-compress={{ .Values.exportFileCompress }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:

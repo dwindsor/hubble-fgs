@@ -16,6 +16,10 @@ type File interface {
 	// Descriptor returns the underlying descriptor for the proto file
 	Descriptor() *descriptor.FileDescriptorProto
 
+	// Dependents returns all files where the given file was directly or
+	// transitively imported.
+	Dependents() []File
+
 	// Services returns the services from this proto file.
 	Services() []Service
 
@@ -29,6 +33,10 @@ type File interface {
 
 	setPackage(p Package)
 
+	addFileDependency(fl File)
+
+	addDependent(fl File)
+
 	addService(s Service)
 
 	addPackageSourceCodeInfo(info SourceCodeInfo)
@@ -40,6 +48,9 @@ type file struct {
 	pkg                     Package
 	enums                   []Enum
 	defExts                 []Extension
+	dependents              []File
+	dependentsCache         []File
+	fileDependencies        []File
 	msgs                    []Message
 	srvs                    []Service
 	buildTarget             bool
@@ -90,6 +101,9 @@ func (f *file) Services() []Service {
 func (f *file) Imports() (i []File) {
 	// Mapping for avoiding duplicate entries
 	importMap := make(map[string]File, len(f.AllMessages())+len(f.srvs))
+	for _, fl := range f.fileDependencies {
+		importMap[fl.Name().String()] = fl
+	}
 	for _, m := range f.AllMessages() {
 		for _, imp := range m.Imports() {
 			importMap[imp.File().Name().String()] = imp
@@ -104,6 +118,24 @@ func (f *file) Imports() (i []File) {
 		i = append(i, imp)
 	}
 	return
+}
+
+func (f *file) Dependents() []File {
+	if f.dependentsCache == nil {
+		set := make(map[string]File)
+		for _, fl := range f.dependents {
+			set[fl.Name().String()] = fl
+			for _, d := range fl.Dependents() {
+				set[d.Name().String()] = d
+			}
+		}
+
+		f.dependentsCache = make([]File, 0, len(set))
+		for _, d := range set {
+			f.dependentsCache = append(f.dependentsCache, d)
+		}
+	}
+	return f.dependentsCache
 }
 
 func (f *file) Extension(desc *proto.ExtensionDesc, ext interface{}) (bool, error) {
@@ -159,6 +191,14 @@ func (f *file) setPackage(pkg Package) { f.pkg = pkg }
 func (f *file) addEnum(e Enum) {
 	e.setParent(f)
 	f.enums = append(f.enums, e)
+}
+
+func (f *file) addFileDependency(fl File) {
+	f.fileDependencies = append(f.fileDependencies, fl)
+}
+
+func (f *file) addDependent(fl File) {
+	f.dependents = append(f.dependents, fl)
 }
 
 func (f *file) addMessage(m Message) {

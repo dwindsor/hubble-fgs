@@ -2,6 +2,7 @@ package main
 
 import (
 	"context"
+	"encoding/json"
 	"net"
 	"os"
 	"os/signal"
@@ -9,11 +10,14 @@ import (
 
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
+	"github.com/covalentio/hubble-fgs/pkg/grpc"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
 	"github.com/covalentio/hubble-fgs/pkg/server"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -21,6 +25,12 @@ var (
 	varLibHubbleFGS = "/var/lib/hubble-fgs/"
 
 	cmd *cobra.Command
+
+	processCacheSize     int
+	exportFilename       string
+	exportFileMaxSizeMB  int
+	exportFileMaxBackups int
+	exportFileCompress   bool
 )
 
 func hubbleFGSExecute() error {
@@ -58,6 +68,21 @@ func hubbleFGSExecute() error {
 	}()
 
 	go server.ServeEvents(kprobe, ctx, s)
+
+	if exportFilename != "" {
+		encoder := json.NewEncoder(&lumberjack.Logger{
+			Filename:   exportFilename,
+			MaxSize:    exportFileMaxSizeMB,
+			MaxBackups: exportFileMaxBackups,
+			Compress:   exportFileCompress,
+		})
+		processManager, err := grpc.NewProcessManager(logrus.New(), encoder, processCacheSize)
+		if err != nil {
+			return err
+		}
+		kprobe.AddListener(processManager)
+	}
+
 	return kprobe.Start(ctx)
 }
 
@@ -106,8 +131,13 @@ func init() {
 	flags.IntVar(&observer.Verbosity, "verbose", 0, "set verbosity level")
 	flags.BoolP("execve", "e", false, "Enable execve events")
 	flags.BoolP("tls", "t", false, "Enable tls events")
-	viper.BindPFlags(flags)
 	flags.BoolVarP(&observer.SetPidMax, "set-pid-max", "", false, "Configures pid_max procFS requirements on startup")
+	flags.IntVar(&processCacheSize, "process-cache-size", 32768, "Size of the process cache")
+	flags.StringVar(&exportFilename, "export-filename", "", "Filename for JSON export. Disabled by default")
+	flags.IntVar(&exportFileMaxSizeMB, "export-file-max-size-mb", 10, "Size in MB for rotating JSON export files")
+	flags.IntVar(&exportFileMaxBackups, "export-file-max-backups", 5, "Number of rotated JSON export files to retain")
+	flags.BoolVar(&exportFileCompress, "export-file-compress", true, "Compress rotated JSON export files")
+	viper.BindPFlags(flags)
 }
 
 func hubbleFGSMain() {
