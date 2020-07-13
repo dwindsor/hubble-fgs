@@ -193,7 +193,6 @@ static inline __attribute__((always_inline))
 struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16 max, void *data_end, struct msg_tls *tls)
 {
 	__u16 extlength, exttype;
-	bool abort = false;
 	void *dst = 0;
 
 	if ((void *)extension + 4 > data_end)
@@ -217,14 +216,15 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16
 	/* Force compiler to use same register for min/max bound generators */
 	asm volatile (
 		"%[extlength] &= 0x7fff;\n"
-		"if %[extlength] < 255 goto +1;\n"
-	         "%[abort] = 1;\n"
-		: [abort] "+r"(abort), [extlength] "+r"(extlength)
+		"if %[extlength] >= 255 goto +3;\n"
+		"%[extlength] += 4;\n"
+		"%[extension] += %[extlength];\n"
+		"goto + 1;\n"
+		"%[extension] = 0;\n"
+		: [extlength] "+r"(extlength),
+		  [extension] "+r"(extension)
 		:  :);
-
-	if (!abort)
-		return (void *)extension + extlength + 4;
-	return 0;
+	return extension;
 }
 
 static inline __attribute__((always_inline))
