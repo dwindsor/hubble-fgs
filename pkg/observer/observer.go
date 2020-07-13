@@ -59,6 +59,12 @@ const (
 	TCP_PROC_STATE_LISTEN = 10
 )
 
+type shouldLoad func(k *ObserverKprobe) bool
+
+func alwaysLoad(k *ObserverKprobe) bool { return true }
+func neverLoad(k *ObserverKprobe) bool  { return false }
+func isTLSLoad(k *ObserverKprobe) bool  { return k.enableTLS }
+
 type bpfLoad struct {
 	Observer__btf        string
 	Observer__program    string
@@ -71,6 +77,7 @@ type bpfLoad struct {
 	errorFatal bool
 
 	probeType string
+	load      shouldLoad
 
 	tracefd int
 }
@@ -99,6 +106,7 @@ var (
 		false,
 		true,
 		"tracepoint",
+		alwaysLoad,
 
 		-1,
 	}
@@ -113,6 +121,7 @@ var (
 		false,
 		true,
 		"kprobe",
+		alwaysLoad,
 
 		-1,
 	}
@@ -127,6 +136,7 @@ var (
 		false,
 		true,
 		"kprobe",
+		alwaysLoad,
 
 		-1,
 	}
@@ -141,6 +151,7 @@ var (
 		false,
 		true,
 		"kprobe",
+		alwaysLoad,
 
 		-1,
 	}
@@ -155,6 +166,7 @@ var (
 		true,
 		true,
 		"kprobe",
+		alwaysLoad,
 
 		-1,
 	}
@@ -169,6 +181,7 @@ var (
 		false,
 		true,
 		"kprobe",
+		alwaysLoad,
 
 		-1,
 	}
@@ -183,6 +196,7 @@ var (
 		false,
 		true,
 		"kprobe",
+		alwaysLoad,
 
 		-1,
 	}
@@ -197,6 +211,7 @@ var (
 		false,
 		true,
 		"kprobe",
+		alwaysLoad,
 
 		-1,
 	}
@@ -211,6 +226,7 @@ var (
 		false,
 		true,
 		"sockops",
+		isTLSLoad,
 
 		-1,
 	}
@@ -225,6 +241,7 @@ var (
 		false,
 		true,
 		"skmsg",
+		isTLSLoad,
 
 		-1,
 	}
@@ -239,6 +256,7 @@ var (
 		false,
 		true,
 		"cgrp_ingress",
+		isTLSLoad,
 
 		-1,
 	}
@@ -253,6 +271,7 @@ var (
 		false,
 		true,
 		"kprobe",
+		isTLSLoad,
 
 		-1,
 	}
@@ -766,9 +785,6 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.mapDir,
 			load.retProbe)
 	} else if load.probeType == "sockops" {
-		if !k.enableTLS {
-			return nil, 0
-		}
 		return bpf.LoadSockopsProgram(
 			version, Verbosity,
 			btf,
@@ -777,9 +793,6 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.bpfDir+load.observer__prog,
 			k.mapDir)
 	} else if load.probeType == "skmsg" {
-		if !k.enableTLS {
-			return nil, 0
-		}
 		return bpf.LoadSkmsgProgram(
 			version, Verbosity,
 			btf,
@@ -788,9 +801,6 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.bpfDir+load.observer__prog,
 			k.mapDir)
 	} else if load.probeType == "cgrp_ingress" {
-		if !k.enableTLS {
-			return nil, 0
-		}
 		return bpf.LoadCgroupProgram(
 			version, Verbosity,
 			btf,
@@ -799,9 +809,6 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.bpfDir+load.observer__prog,
 			k.mapDir)
 	} else {
-		if load.probeType == "cgrp_ingress" && !k.enableTLS {
-			return nil, 0
-		}
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
 			btf,
@@ -875,6 +882,9 @@ func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
 	}
 
 	for _, p := range observerPrograms {
+		if p.load(k) == false {
+			continue
+		}
 		if err := k.observerLoadInstance(p, stopCtx); err != nil {
 			return err
 		}
