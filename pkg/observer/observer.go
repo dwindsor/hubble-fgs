@@ -751,17 +751,6 @@ func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) e
 		if err != nil {
 			return fmt.Errorf("failed %d load map (%s): %s\n", fd, m.mapType, err)
 		}
-
-		// TODO: build this into the structure so we can avoid
-		// the switch.
-		switch m.mapName {
-		case "fgs_sock_map":
-			k.sockmap_fd = fd
-		case "tcpmon_map":
-			k.tcp_events_fd = fd
-		case "execve_map":
-			k.execve_fd = fd
-		}
 	}
 	return nil
 }
@@ -836,7 +825,7 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 		return err
 	}
 
-	k.log.Debugf("prog %s execve_fd %d tcp events fd %d kern_version %d\n", load.Observer__program, k.execve_fd, k.tcp_events_fd, version)
+	k.log.Debugf("prog %s kern_version %d\n", load.Observer__program, version)
 	if load.probeType == "tracepoint" {
 		err, fd = k.loadInstance(load, version, Verbosity, btf, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
@@ -844,8 +833,8 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 			err, fd = k.loadInstance(load, version, Verbosity, btf, true)
 		}
 		if err != nil {
-			return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d err %d LoadTracingProgram: %s\n",
-				load.Observer__program, k.execve_fd, k.tcp_events_fd, version, fd, err)
+			return fmt.Errorf("Failed prog %s kern_version %d err %d LoadTracingProgram: %s\n",
+				load.Observer__program, version, fd, err)
 		}
 	} else {
 		err, fd = k.loadInstance(load, version, Verbosity, btf, true)
@@ -855,8 +844,8 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 			 */
 			err, fd = k.loadInstance(load, version, Verbosity, btf, false)
 			if err != nil && load.errorFatal {
-				return fmt.Errorf("Failed prog %s execve_fd %d tcp events fd %d kern_version %d LoadKprobeProgram: %s\n",
-					load.Observer__program, k.execve_fd, k.tcp_events_fd, version, err)
+				return fmt.Errorf("Failed prog %s kern_version %d LoadKprobeProgram: %s\n",
+					load.Observer__program, version, err)
 			}
 		}
 	}
@@ -1387,9 +1376,6 @@ type MsgFilter struct {
 type ObserverKprobe struct {
 	bpfDir        string
 	mapDir        string
-	execve_fd     int
-	tcp_events_fd int
-	sockmap_fd    int
 	prettyPrinter bool
 	listeners     map[Listener]struct{}
 	perfConfig    *bpf.PerfEventConfig
