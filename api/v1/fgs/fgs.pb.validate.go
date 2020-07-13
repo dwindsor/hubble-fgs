@@ -135,7 +135,15 @@ func (m *Container) Validate() error {
 		}
 	}
 
-	// no validation rules for Pid
+	if v, ok := interface{}(m.GetPid()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ContainerValidationError{
+				field:  "Pid",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	return nil
 }
@@ -281,9 +289,25 @@ func (m *Process) Validate() error {
 
 	// no validation rules for ExecId
 
-	// no validation rules for Pid
+	if v, ok := interface{}(m.GetPid()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessValidationError{
+				field:  "Pid",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
-	// no validation rules for Uid
+	if v, ok := interface{}(m.GetUid()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessValidationError{
+				field:  "Uid",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	// no validation rules for Cwd
 
@@ -303,7 +327,15 @@ func (m *Process) Validate() error {
 		}
 	}
 
-	// no validation rules for Auid
+	if v, ok := interface{}(m.GetAuid()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessValidationError{
+				field:  "Auid",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	if v, ok := interface{}(m.GetPod()).(interface{ Validate() error }); ok {
 		if err := v.Validate(); err != nil {
@@ -404,11 +436,27 @@ func (m *ProcessConnect) Validate() error {
 
 	// no validation rules for SourceIp
 
-	// no validation rules for SourcePort
+	if v, ok := interface{}(m.GetSourcePort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessConnectValidationError{
+				field:  "SourcePort",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	// no validation rules for DestinationIp
 
-	// no validation rules for DestinationPort
+	if v, ok := interface{}(m.GetDestinationPort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessConnectValidationError{
+				field:  "DestinationPort",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	return nil
 }
@@ -497,7 +545,15 @@ func (m *ProcessListen) Validate() error {
 
 	// no validation rules for Ip
 
-	// no validation rules for Port
+	if v, ok := interface{}(m.GetPort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessListenValidationError{
+				field:  "Port",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	return nil
 }

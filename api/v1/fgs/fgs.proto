@@ -15,6 +15,7 @@
 syntax = "proto3";
 
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/wrappers.proto";
 
 package fgs;
 
@@ -30,7 +31,7 @@ message Container {
     // Start time of the container.
     google.protobuf.Timestamp start_time = 4;
     // PID in the container namespace.
-    string pid = 5;
+    google.protobuf.UInt32Value pid = 5;
 }
 
 message Pod {
@@ -43,14 +44,14 @@ message Pod {
 message Process {
     // Exec ID uniquely identifies the process over time across all the nodes in the cluster.
     string exec_id = 1;
-    string pid = 2;
-    string uid = 3;
+    google.protobuf.UInt32Value pid = 2;
+    google.protobuf.UInt32Value uid = 3;
     string cwd = 4;
     string binary = 5;
     string arguments = 6;
     string flags = 7;
     google.protobuf.Timestamp start_time = 8;
-    string auid = 9;
+    google.protobuf.UInt32Value auid = 9;
     Pod pod = 10;
     string parent_exec_id = 11;
 }
@@ -59,9 +60,9 @@ message ProcessConnect {
     Process process = 1;
     Process parent = 2;
     string source_ip = 3;
-    uint32 source_port = 4;
+    google.protobuf.UInt32Value source_port = 4;
     string destination_ip = 5;
-    uint32 destination_port = 6;
+    google.protobuf.UInt32Value destination_port = 6;
     repeated string destination_names = 7;
 }
 
@@ -69,7 +70,7 @@ message ProcessListen {
     Process process = 1;
     Process parent = 2;
     string ip = 3;
-    string port = 4;
+    google.protobuf.UInt32Value port = 4;
 }
 
 message ProcessExec {
