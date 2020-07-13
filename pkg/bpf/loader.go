@@ -157,15 +157,6 @@ int kprobe_map_loader(const int version,
 	if (version > MIN_HASH_VERSION)
 		map_def->type = BPF_MAP_TYPE_HASH;
 
-	bpf_object__for_each_map(map_bpf, obj) {
-		const struct bpf_map_def *def = bpf_map__def(map_bpf);
-
-		if (verbosity)
-			fprintf(stderr, "map: type %u key_size %u value_size %u max %u flags %u\n",
-				def->type, def->key_size, def->value_size,
-				def->max_entries, def->map_flags);
-	}
-
 	attr.obj = obj;
 	attr.target_btf_path = btf;
 	attr.kern_version = version;
@@ -245,21 +236,6 @@ int bpf_loader_set_map(struct bpf_object *obj, const char *mapdir, int verbosity
 	return 0;
 }
 
-void bpf_loader_print_maps(struct bpf_object *obj, int verbosity)
-{
-	struct bpf_map *map_bpf;
-
-	bpf_object__for_each_map(map_bpf, obj) {
-		const struct bpf_map_def *def = bpf_map__def(map_bpf);
-
-		if (verbosity)
-			fprintf(stderr,
-				"map: type %u key_size %u value_size %u max %u flags %u\n",
-				def->type, def->key_size, def->value_size, def->max_entries, def->map_flags);
-	}
-}
-
-
 void bpf_loader_programs(struct bpf_object *obj, int type, int verbosity) {
 	struct bpf_program *prog_bpf;
 
@@ -293,7 +269,6 @@ static struct bpf_object *__loader(const int version,
 		return NULL;
 	}
 
-	bpf_loader_print_maps(obj, verbosity);
 	bpf_loader_programs(obj, type, verbosity);
 	err = bpf_loader_set_map(obj, mapdir, verbosity);
 	if (err) {
@@ -421,7 +396,6 @@ int sockops_loader(const int version,
 		return err;
 	}
 
-	bpf_loader_print_maps(obj, verbosity);
 	bpf_loader_programs(obj, prog_type, verbosity);
 	err = bpf_loader_set_map(obj, mapdir, verbosity);
 	if (err) {
@@ -473,7 +447,6 @@ int tracepoint_loader(const int version,
 	}
 
 
-	bpf_loader_print_maps(obj, verbosity);
 	bpf_loader_programs(obj, BPF_PROG_TYPE_TRACEPOINT, verbosity);
 	err = bpf_loader_set_map(obj, mapdir, verbosity);
 	if (err) {
@@ -550,7 +523,6 @@ int kprobe_loader(const int version,
 		return -1;
 	}
 
-	bpf_loader_print_maps(obj, verbosity);
 	bpf_loader_programs(obj, BPF_PROG_TYPE_KPROBE, verbosity);
 	err = bpf_loader_set_map(obj, mapdir, verbosity);
 	if (err) {
