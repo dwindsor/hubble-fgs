@@ -9,3 +9,16 @@ image:
 
 resources: {}
 
+affinity:
+  podAffinity:
+    requiredDuringSchedulingIgnoredDuringExecution:
+    - labelSelector:
+        matchExpressions:
+        - key: "k8s-app"
+          operator: In
+          values:
+            - cilium
+      topologyKey: "kubernetes.io/hostname"
+      namespaces:
+      - cilium
+      - kube-system

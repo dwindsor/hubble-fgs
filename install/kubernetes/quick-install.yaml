@@ -17,24 +17,25 @@ spec:
       affinity:
         podAffinity:
           requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: "k8s-app"
-                    operator: In
-                    values:
-                      - cilium
-              topologyKey: "kubernetes.io/hostname"
-              namespaces:
+          - labelSelector:
+              matchExpressions:
+              - key: k8s-app
+                operator: In
+                values:
                 - cilium
-                - kube-system
+            namespaces:
+            - cilium
+            - kube-system
+            topologyKey: kubernetes.io/hostname
       containers:
         - name: hubble-fgs
           command:
             - /usr/bin/hubble-fgs
           args:
-            - --procfs=/procRoot/
+            - --procfs=/procRoot
             - --set-pid-max
             - -e
+            - -t
           image: quay.io/isovalent/hubble-fgs:latest
           imagePullPolicy: Always
           securityContext:
@@ -42,7 +43,7 @@ spec:
           volumeMounts:
             - mountPath: "/var/run/cilium"
               name: run
-            - mountPath: "/procRoot/"
+            - mountPath: "/procRoot"
               name: fgs-proc
           env:
           - name: NODE_NAME
@@ -58,7 +59,7 @@ spec:
       volumes:
         - hostPath:
             path: /var/run/cilium
-            type: Directory
+            type: DirectoryOrCreate
           name: run
         - hostPath:
             path: /proc/

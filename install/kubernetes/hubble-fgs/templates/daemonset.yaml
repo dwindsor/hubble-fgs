@@ -12,27 +12,19 @@ spec:
       labels:
         k8s-app: {{ .Chart.Name }}
     spec:
+{{- if .Values.affinity }}
       affinity:
-        podAffinity:
-          requiredDuringSchedulingIgnoredDuringExecution:
-            - labelSelector:
-                matchExpressions:
-                  - key: "k8s-app"
-                    operator: In
-                    values:
-                      - cilium
-              topologyKey: "kubernetes.io/hostname"
-              namespaces:
-                - cilium
-                - kube-system
+{{ toYaml .Values.affinity | indent 8 }}
+{{- end }}
       containers:
         - name: {{ .Chart.Name }}
           command:
             - /usr/bin/hubble-fgs
           args:
-            - --procfs=/procRoot/
+            - --procfs=/procRoot
             - --set-pid-max
             - -e
+            - -t
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
@@ -40,7 +32,7 @@ spec:
           volumeMounts:
             - mountPath: "/var/run/cilium"
               name: run
-            - mountPath: "/procRoot/"
+            - mountPath: "/procRoot"
               name: fgs-proc
 {{- if .Values.resources }}
           resources:
@@ -60,7 +52,7 @@ spec:
       volumes:
         - hostPath:
             path: /var/run/cilium
-            type: Directory
+            type: DirectoryOrCreate
           name: run
         - hostPath:
             path: /proc/
