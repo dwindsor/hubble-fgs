@@ -69,3 +69,45 @@ The defaults are,
 
 These are set from Dockerfile.test and will work with above 'docker run' command
 but can be reconfigured if needed. Happy testing.
+
+Adding Events
+=============
+
+Adding new events should be straight forward. We may not be there yet, but it should be
+a goal. The following basic steps are needed to add a new event feature.
+
+1. Add BPF program in ./bpf with Makefile update. When your event is ready to be
+   pushed to userspace use the 'tcpmon_map' and perf_event_output helper. See an
+   example in ./bpf/bpf_execve_event.c.
+
+2. Next you will need to add an observer object in observer.go, see ObserverBind,
+   ObserverExecve, etc. This part tells the golang user space to load the BPF
+   program you wrote above.
+
+   Specifically, add the object to the list of programs named observerPrograms. Additionally,
+   if a pinned map is needed add it to observerMaps. If a map is not listed here each
+   BPF instance will create its own copy.
+
+3. At this point events your program will be loaded and events will be pushed from kernel
+   to userspace. The next step is to write the logic to consume the event and pretty print
+   it and/or push over socket to hubble or json exporter.
+
+   Review existing event handlers in receiveEvent(). Then extend receiveEvent() with
+   your event logic. The userspace event definitions are in ./pkg/client/api.go and the
+   kernel side defintions are in ./bpf/lib/hubble_msg.h
+
+   Create a pretty printer in reader pkg.
+
+4. Teach hubble-fgs_main.go about the new bpf program.
+
+5. TBD ship message over Unix socket currently only single type accepted will fix
+   soon.
+
+
+Work that would be nice to have, but is not critical yet. First we should abstract
+pretty printers and message generators to an interface and include in the observer
+object. This way folks creating events can completely avoid editing core code.
+
+At the moment hubble-fgs_main.go needs a link to the program name. Reasonable defaults
+should be added so we can skip this step. It is a bit useful to replace a program
+on a system with a new test program, but its also a bit annoying on the code side.
