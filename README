@@ -43,10 +43,16 @@ To test locally:
 
 To run tests in docker:
 
-# docker run -ti --name test --privileged -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs covalentio/hubble-fgs-test
+# docker run -ti --name test --privileged -v $GOPATH/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs covalentio/hubble-fgs-test
+
+To use kata containers for testing, please have a look at
+[`hubble-builder/kata-tester`](https://github.com/covalentio/hubble-builder/tree/master/kata-tester),
+which is also where the [`kata-img`
+script](https://github.com/covalentio/hubble-builder/blob/master/kata-tester/contrib/kata-img)
+can be found.
 
 To run tests in kata-container with hosted kernel we can use kata-img to see
-kernel currently selected,
+which kernel is currently selected:
 
 $ kata-img
 * vmlinuz-bpf-next_hubble
@@ -58,7 +64,7 @@ tests,
 
 # docker run --runtime=kata-runtime -ti --name test --cap-add all --ulimit memlock=-1:-1 \
         -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf \
-        -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs \
+        -v $GOPATH/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs \
         -v /proc:/procRoot covalentio/hubble-fgs-test
 
 Some environment variables impact where fgs will look for procFS and BTF data.
