@@ -41,6 +41,7 @@ func hubbleFGSExecute() error {
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
+	os.Mkdir(defaults.DefaultRunDir, os.ModeDir)
 	s, err := net.Listen("unix", defaults.GetSocketPath())
 	if err != nil {
 		return err
