@@ -93,17 +93,17 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 	int len = copy, off = 0;
 	uint64_t tmp, ptr;
 
-	asm volatile goto (
+	asm volatile (
 		"%[len] &= 0xff;\n"
 		"%[off] &= 0xff;\n"
 		"%[ptr] = %[ext];\n"
 		// Default abort case
-		"if %[len] > 32 goto %l[done];\n"
+		"if %[len] > 32 goto 1f;\n"
 		// 32B case
 		"if %[len] < 32 goto +14\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 32;\n"
-		"if %[tmp] > %[end] goto %l[done];\n"
+		"if %[tmp] > %[end] goto 1f;\n"
 		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
 		"*(u64 *)(%[sni] + 0) = %[tmp];\n"
 		"%[tmp] = *(u64 *)(%[ptr] +8);\n"
@@ -119,7 +119,7 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 		"if %[len] < 16 goto +10\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 16;\n"
-		"if %[tmp] > %[end] goto %l[done];\n"
+		"if %[tmp] > %[end] goto 1f\n"
 		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
 		"*(u64 *)(%[sni] + 0) = %[tmp];\n"
 		"%[tmp] = *(u64 *)(%[ptr] +8);\n"
@@ -131,7 +131,7 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 		"if %[len] < 8 goto +8\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 8;\n"
-		"if %[tmp] > %[end] goto %l[done];\n"
+		"if %[tmp] > %[end] goto 1f;\n"
 		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
 		"*(u64 *)(%[sni] + 0) = %[tmp];\n"
 		"%[ptr] += 8;\n"
@@ -141,7 +141,7 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 		"if %[len] < 4 goto +8\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 4;\n"
-		"if %[tmp] > %[end] goto %l[done];\n"
+		"if %[tmp] > %[end] goto 1f;\n"
 		"%[tmp] = *(u32 *)(%[ptr] +0);\n"
 		"*(u32 *)(%[sni] + 0) = %[tmp];\n"
 		"%[len] -= 4;\n"
@@ -151,7 +151,7 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 		"if %[len] < 3 goto +10;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 3;\n"
-		"if %[tmp] > %[end] goto %l[done];\n"
+		"if %[tmp] > %[end] goto 1f;\n"
 		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
 		"*(u8 *)(%[sni] + 0) = %[tmp];\n"
 		"%[tmp] = *(u8 *)(%[ptr] +1);\n"
@@ -163,7 +163,7 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 		"if %[len] < 2 goto +8;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 2;\n"
-		"if %[tmp] > %[end] goto %l[done];\n"
+		"if %[tmp] > %[end] goto 1f;\n"
 		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
 		"*(u8 *)(%[sni] + 0) = %[tmp];\n"
 		"%[tmp] = *(u8 *)(%[ptr] +1);\n"
@@ -173,10 +173,11 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 		"if %[len] < 1 goto +6;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 1;\n"
-		"if %[tmp] > %[end] goto %l[done];\n"
+		"if %[tmp] > %[end] goto 1f;\n"
 		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
 		"*(u8 *)(%[sni] + 0) = %[tmp];\n"
 		"%[len] -= 1;\n"
+		"1:;\n"
 		: [tmp] "+r"(tmp),
 		  [ptr] "+r"(ptr),
 	 	  [off] "+r"(off),
@@ -184,11 +185,8 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 		  [sni] "+r"(sni),
 		  [end] "+r"(end)
 		:
-		  [ext] "r"(ext)
-		:: done);
+		  [ext] "r"(ext):);
 	return copy - len;
-done:
-	return -1;
 }
 
 static inline __attribute__((always_inline))
