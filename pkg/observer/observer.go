@@ -83,9 +83,10 @@ type bpfLoad struct {
 }
 
 type ObserverMap struct {
-	mapName string
-	mapType string
-	bpf     *bpfLoad
+	mapName   string
+	mapType   string
+	bpf       *bpfLoad
+	shouldPin shouldLoad
 }
 
 var (
@@ -294,10 +295,10 @@ var (
 		&ObserverCgrpIngress,
 		&ObserverTLSEvent}
 
-	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve}
-	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve}
-	ObserverSockMap   = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished}
-	ObserverTLSMap    = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS}
+	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, alwaysLoad}
+	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, alwaysLoad}
+	ObserverSockMap   = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, isTLSLoad}
+	ObserverTLSMap    = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS, isTLSLoad}
 
 	observerMaps = []*ObserverMap{
 		&ObserverExecveMap,
@@ -729,6 +730,10 @@ func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) e
 	for _, m := range observerMaps {
 		var fd int
 		var err error
+
+		if m.shouldPin(k) == false {
+			continue
+		}
 
 		pin := k.mapDir + m.mapName
 
