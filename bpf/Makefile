@@ -17,8 +17,10 @@ FLAGS := -I. -I/usr/include/x86_64-linux-gnu/ \
 	 -Wall -Werror \
 	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
 	 -O2
+
 CLANG_FLAGS += ${FLAGS} -I ${LIBBPF} -I ${IDIR} -I ${LDIR} -target bpf -emit-llvm -g
-LLC_FLAGS   := -march=bpf -mcpu=probe -mattr=dwarfris
+LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
+
 
 CLANG  ?= clang
 LLC    ?= llc
