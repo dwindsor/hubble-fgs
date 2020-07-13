@@ -34,7 +34,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func getDefaultObserver(t *testing.T, execve, pretty bool) *ObserverKprobe {
+func getDefaultObserver(t *testing.T, execve, tls, pretty bool) *ObserverKprobe {
 	var uts syscall.Utsname
 
 	if err := syscall.Uname(&uts); err != nil {
@@ -68,7 +68,7 @@ func getDefaultObserver(t *testing.T, execve, pretty bool) *ObserverKprobe {
 		ProcFS = procfs
 	}
 
-	kprobe := NewObserverKprobe(observerTestDir, execve, pretty)
+	kprobe := NewObserverKprobe(observerTestDir, execve, tls, pretty)
 	if testing.Verbose() {
 		Verbosity = 4
 	}
@@ -84,13 +84,6 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	if err := kprobe.observerLoadExecve(context.TODO()); err != nil {
 		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadExecve error: %s", err)
-	}
-}
-
-func loadEvents(t *testing.T, kprobe *ObserverKprobe) {
-	if err := kprobe.observerLoadEvents(context.TODO()); err != nil {
-		kprobe.RemovePrograms()
-		t.Fatalf("observerLoadEvents error: %s", err)
 	}
 }
 
@@ -111,8 +104,8 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 }
 
 func TestObjectLoad(t *testing.T) {
-	kprobe := getDefaultObserver(t, false, false)
-	loadEvents(t, kprobe)
+	kprobe := getDefaultObserver(t, false, false, false)
+	kprobe.observerLoadExecve(context.TODO())
 	kprobe.RemovePrograms()
 }
 
@@ -226,7 +219,7 @@ func TestConnectEvent(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	kprobe := getDefaultObserver(t, false, true)
+	kprobe := getDefaultObserver(t, false, false, true)
 	kprobe.AttachFilter(&MsgFilter{run: curlFilterR})
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
@@ -239,7 +232,7 @@ func TestExecEvent(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	kprobe := getDefaultObserver(t, true, true)
+	kprobe := getDefaultObserver(t, true, false, true)
 	kprobe.AttachFilter(&MsgFilter{run: curlExecFilterR})
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
@@ -367,7 +360,7 @@ func TestExecEventClone(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	kprobe := getDefaultObserver(t, true, true)
+	kprobe := getDefaultObserver(t, true, false, true)
 
 	ncExecFilter := MsgFilter{run: ncExecFilterR}
 	ncListen := MsgFilter{run: ncListenR}
@@ -412,7 +405,7 @@ func TestExistingListenEvent(t *testing.T) {
 	cmdServer.Start()
 
 	/* Create kprobe */
-	kprobe := getDefaultObserver(t, true, false)
+	kprobe := getDefaultObserver(t, true, false, false)
 
 	ncExecFilter := MsgFilter{run: ncExecRunningR}
 	ncListen := MsgFilter{run: ncListenRunningR}
@@ -442,7 +435,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create kprobe */
-	kprobe := getDefaultObserver(t, true, false)
+	kprobe := getDefaultObserver(t, true, false, false)
 
 	ncExecFilter := MsgFilter{run: ncExecRunningRootR}
 	ncListen := MsgFilter{run: ncListenRunningRootR}
