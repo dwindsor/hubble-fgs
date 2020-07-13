@@ -341,7 +341,7 @@ int bpf_link(char *target, const char *source, int type)
 
 	err = bpf_prog_attach(source_fd, target_fd, type, 0);
 	if (err) {
-		fprintf(stderr, "bpf_program__attach: failed (%s->%s) err %i\n", source, target, err);
+		fprintf(stderr, "bpf_prog_attach: failed (%s->%s) err %i\n", source, target, err);
 		return -1;
 	}
 	return 0;
@@ -355,19 +355,19 @@ int bpf_loader_pin(struct bpf_object *obj,
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
-		fprintf(stderr, "bpf_object__find__: can't find %s\n", label);
+		fprintf(stderr, "bpf_object__find_program_by_title: can't find %s\n", label);
 		return -1;
 	}
 	err = libbpf_get_error(prog_bpf);
 	if (err) {
-		fprintf(stderr, "bpf_object_find: failed\n");
+		fprintf(stderr, "bpf_object__find_program_by_title: failed\n");
 		return -1;
 	}
 
 	bpf_program__unpin(prog_bpf, __prog);
 	err = bpf_program__pin(prog_bpf, __prog);
 	if (err < 0) {
-		fprintf(stderr, "bpf_prog_pin: failed %i\n", err);
+		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
 		return -1;
 	}
 }
@@ -495,12 +495,12 @@ int tracepoint_loader(const int version,
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
-		fprintf(stderr, "bpf_object__find__: null pointer\n");
+		fprintf(stderr, "bpf_object__find_program_by_title: null pointer\n");
 		return -1;
 	}
 	err = libbpf_get_error(prog_bpf);
 	if (err) {
-		fprintf(stderr, "bpf_object_find: failed\n");
+		fprintf(stderr, "bpf_object__find_program_by_title: failed\n");
 		return err;
 	}
 
@@ -517,7 +517,7 @@ int tracepoint_loader(const int version,
 
 	err = bpf_program__pin(prog_bpf, __prog);
 	if (err < 0) {
-		fprintf(stderr, "bpf_prog_pin: failed %i\n", err);
+		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
 		return err;
 	}
 	return bpf_link_fd(prog_attach);
@@ -566,18 +566,18 @@ int kprobe_loader(const int version,
 		char errstr[256];
 
 		libbpf_strerror(err, errstr, sizeof(errstr));
-		fprintf(stderr, "bpf_object__load: failed %i: %s\n", err, errstr);
+		fprintf(stderr, "bpf_object__load_xattr: failed %i: %s\n", err, errstr);
 		return -1;
 	}
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
-		fprintf(stderr, "bpf_object__find__: null pointer\n");
+		fprintf(stderr, "bpf_object__find_program_by_title: null pointer\n");
 		return -1;
 	}
 	err = libbpf_get_error(prog_bpf);
 	if (err) {
-		fprintf(stderr, "bpf_object_find: failed\n");
+		fprintf(stderr, "bpf_object__find_program_by_title: failed\n");
 		return -1;
 	}
 
@@ -594,7 +594,7 @@ int kprobe_loader(const int version,
 
 	err = bpf_program__pin(prog_bpf, __prog);
 	if (err < 0) {
-		fprintf(stderr, "bpf_prog_pin: failed %i\n", err);
+		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
 		return -1;
 	}
 	return bpf_link_fd(prog_attach);
