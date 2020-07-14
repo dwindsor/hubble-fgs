@@ -116,7 +116,20 @@ int fgs_map_loader(const int version,
 		       prog, __label_map, err);
 		return err;
 	}
-	return bpf_map__fd(map_bpf);
+	err = bpf_map__fd(map_bpf);
+	if (err < 0) {
+		fprintf(stderr,
+			"bpf_map__fd: failed obj(%s) map(%s) %i\n",
+			prog, __label_map, err);
+		return err;
+	}
+	err = bpf_object__unload(obj);
+	if (err < 0) {
+		fprintf(stderr,
+			"bpf_objecT__unload: failed obj(%s) map(%s) %i\n",
+			prog, __label_map, err);
+	}
+	return err;
 }
 
 int bpf_loader_set_map(struct bpf_object *obj, const char *mapdir, int verbosity)
