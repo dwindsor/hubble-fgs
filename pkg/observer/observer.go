@@ -561,7 +561,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 				if entry.state == TCP_PROC_STATE_LISTEN {
 					msg.Common.Op = api.MsgOpIPv4Listen
 				} else {
-					msg.Common.Op = api.MsgOpIPv4TCPConnect
+					msg.Common.Op = api.MsgOpIPv4TCPConnectReturn
 				}
 
 				if k.prettyPrinter {
