@@ -24,15 +24,32 @@ import (
 var (
 	log  *logrus.Logger
 	once sync.Once
+
+	strToLogrusLevel = map[string]logrus.Level{
+		"panic": logrus.PanicLevel,
+		"fatal": logrus.FatalLevel,
+		"error": logrus.ErrorLevel,
+		"warn":  logrus.WarnLevel,
+		"info":  logrus.InfoLevel,
+		"debug": logrus.DebugLevel,
+		"trace": logrus.TraceLevel,
+	}
 )
+
+func getLogLevel() logrus.Level {
+	if level, ok := strToLogrusLevel[viper.GetString("log-level")]; ok {
+		return level
+	} else if viper.GetBool("debug") {
+		return logrus.DebugLevel
+	}
+	return logrus.InfoLevel
+}
 
 // GetLogger returns the logger properly set up accordingly with the debug flag.
 func GetLogger() logrus.FieldLogger {
 	once.Do(func() {
 		log = logrus.New()
-		if viper.GetBool("debug") {
-			log.SetLevel(logrus.DebugLevel)
-		}
+		log.SetLevel(getLogLevel())
 	})
 	return log
 }

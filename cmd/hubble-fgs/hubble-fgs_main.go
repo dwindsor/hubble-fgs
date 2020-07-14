@@ -137,6 +137,7 @@ func init() {
 	flags.IntVar(&exportFileMaxSizeMB, "export-file-max-size-mb", 10, "Size in MB for rotating JSON export files")
 	flags.IntVar(&exportFileMaxBackups, "export-file-max-backups", 5, "Number of rotated JSON export files to retain")
 	flags.BoolVar(&exportFileCompress, "export-file-compress", true, "Compress rotated JSON export files")
+	flags.String("log-level", "info", "Set log level")
 	viper.BindPFlags(flags)
 }
 
