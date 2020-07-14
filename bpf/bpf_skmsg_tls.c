@@ -23,8 +23,6 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.max_entries = 32000,
 };
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
-
 __attribute__((section(("sk_msg/tls")), used))
 int bpf_sk_msg_tls(struct sk_msg_md *skmsg)
 {

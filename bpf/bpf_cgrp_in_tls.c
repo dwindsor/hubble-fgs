@@ -44,5 +44,3 @@ int bpf_cgroup_skb_ingress_tls(struct __sk_buff *skb)
 		bpf_parse_tls_skb(skb, event);
 	return 1;
 }
-
-char _license[] __attribute__((section(("license")), used)) = "GPL";

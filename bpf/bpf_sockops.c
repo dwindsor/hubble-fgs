@@ -22,8 +22,6 @@ static inline void compiler_barrier(void) {
 /* Hard coding policy until we have policy map in place. */
 #define TLS_PORT 443
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
-
 static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 {
 	struct sock_key key = {};
