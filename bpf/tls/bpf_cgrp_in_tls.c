@@ -14,7 +14,7 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "bpf_sockops.h"
-#include "tls/parser.h"
+#include "parser.h"
 
 #define TLS_TYPE_HELLO 22
 #define TLS_TYPE_DONE 0xff

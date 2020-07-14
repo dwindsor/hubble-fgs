@@ -14,7 +14,7 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "bpf_sockops.h"
-#include "tls/parser.h"
+#include "parser.h"
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.type = BPF_MAP_TYPE_HASH,

@@ -1,9 +1,12 @@
 .PHONY: all
 
-BPF = bpf_stream_connect.o bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o bpf_get_port.o \
-      bpf_execve.o bpf_execve_event.o \
-      bpf_sockops.o bpf_skmsg_tls.o bpf_cgrp_in_tls.o bpf_event_tls.o \
-      bpf_fork.o
+TLSDIR := tls/
+NETWORKINGDIR := networking/
+PROCESSDIR := process/
+
+TLS = bpf_sockops.o bpf_skmsg_tls.o bpf_cgrp_in_tls.o bpf_event_tls.o
+NETWORKING = bpf_stream_connect.o bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o bpf_get_port.o
+PROCESS = bpf_execve.o bpf_execve_event.o bpf_fork.o
 
 IDIR = ./include/
 LIBBPF = ./libbpf/
@@ -20,9 +23,15 @@ LLC_FLAGS   := -march=bpf -mcpu=probe -mattr=dwarfris
 CLANG  ?= clang
 LLC    ?= llc
 
-all: $(BPF)
+all: $(NETWORKING) ${PROCESS} ${TLS}
 
-$(BPF): %.o: %.c
+$(NETWORKING): %.o: ${NETWORKINGDIR}%.c
+	${CLANG} ${CLANG_FLAGS} -c $< -o - | ${LLC} ${LLC_FLAGS} -filetype=obj -o $@
+
+$(PROCESS): %.o: ${PROCESSDIR}%.c
+	${CLANG} ${CLANG_FLAGS} -c $< -o - | ${LLC} ${LLC_FLAGS} -filetype=obj -o $@
+
+$(TLS): %.o: ${TLSDIR}%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o - | ${LLC} ${LLC_FLAGS} -filetype=obj -o $@
 
 clean:
@@ -30,4 +39,3 @@ clean:
 	$(QUIET) $(foreach TARGET,$(SUBDIRS), \
 		$(MAKE) -C $(TARGET) clean)
 	$(QUIET)rm -fr *.o *.ll *.i *.s
-	$(QUIET)rm -f $(TARGET)
