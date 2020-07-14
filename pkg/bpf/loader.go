@@ -258,6 +258,7 @@ int bpf_loader_pin(struct bpf_object *obj,
 		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
 		return -1;
 	}
+	return err;
 }
 
 int skmsg_loader(const int version,
