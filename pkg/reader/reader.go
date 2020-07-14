@@ -218,7 +218,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.Fi
 		"odport":           GetDport(msg.Tuple.GetPostDPort(), op),
 		"container-id":     msg.Kube.Docker,
 		"return":           unix.ErrnoName(e),
-	}).Trace()
+	}).Warn()
 }
 
 func ObserverReceiver(log logrus.FieldLogger) error {
@@ -323,5 +323,5 @@ func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
 		"SNI-Name":              nameSNI,
 		"TLS-SupportedVersions": GetTLSSupportedVersions(msg.TLS.SupportedVersions),
 		"cipher":                GetTLSCipher(msg.TLS.Cipher),
-	}).Debug()
+	}).Warn()
 }

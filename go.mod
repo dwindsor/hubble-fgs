@@ -16,6 +16,7 @@ require (
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.6.1
 	github.com/stretchr/testify v1.5.1
+	github.com/vishvananda/netlink v1.1.1-0.20200210222539-bfba8e4149db
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
@@ -31,5 +32,6 @@ require (
 replace (
 	github.com/miekg/dns => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3
 	github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
-	k8s.io/client-go => github.com/cilium/client-go v0.0.0-20200217141255-96fd08586691
+	github.com/vishvananda/netlink => github.com/jrfastab/netlink v1.1.1
+	k8s.io/client-go => github.com/cilium/client-go v0.0.0-20200525133704-d13039a12d08
 )

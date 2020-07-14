@@ -37,6 +37,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
 
@@ -107,9 +108,10 @@ func NameToProgType(n string) int {
 
 type shouldLoad func(k *ObserverKprobe) bool
 
-func alwaysLoad(k *ObserverKprobe) bool { return true }
-func neverLoad(k *ObserverKprobe) bool  { return false }
-func isTLSLoad(k *ObserverKprobe) bool  { return k.enableTLS }
+func alwaysLoad(k *ObserverKprobe) bool  { return true }
+func neverLoad(k *ObserverKprobe) bool   { return false }
+func isTLSLoad(k *ObserverKprobe) bool   { return k.enableTLS }
+func isTLSTCLoad(k *ObserverKprobe) bool { return k.enableTLSTC }
 
 type bpfLoad struct {
 	Observer__btf        string
@@ -324,6 +326,36 @@ var (
 		-1,
 	}
 
+	ObserverTLSTCIngress = bpfLoad{
+		"", "bpf_tc_ingress.o",
+		"ingress_tcp",
+		"ingress_tcp",
+		"tc/ingress_tcp",
+		"tc_ingress_tcp",
+
+		false,
+		true,
+		"tc_ingress",
+		isTLSTCLoad,
+
+		-1,
+	}
+
+	ObserverTLSTCEgress = bpfLoad{
+		"", "bpf_tc_egress.o",
+		"egress_tcp",
+		"egress_tcp",
+		"tc/egress_tcp",
+		"tc_egress_tcp",
+
+		false,
+		true,
+		"tc_egress",
+		isTLSTCLoad,
+
+		-1,
+	}
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -340,10 +372,13 @@ var (
 		&ObserverSockopsEstablished,
 		&ObserverSkmsgTLS,
 		&ObserverCgrpIngress,
-		&ObserverTLSEvent}
+		&ObserverTLSEvent,
+		&ObserverTLSTCEgress,
+		&ObserverTLSTCIngress}
 
 	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, alwaysLoad}
 	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, alwaysLoad}
+	ObserverTCTLSMap  = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, isTLSTCLoad}
 	ObserverSockMap   = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, isTLSLoad}
 	ObserverTLSMap    = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS, isTLSLoad}
 
@@ -352,6 +387,7 @@ var (
 		&ObserverTCPMonMap,
 		&ObserverSockMap,
 		&ObserverTLSMap,
+		&ObserverTCTLSMap,
 	}
 )
 
@@ -836,6 +872,34 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
 			k.mapDir)
+	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
+		err, fd := bpf.LoadTC(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			k.mapDir)
+		if err != nil {
+			return err, fd
+		}
+		links, err := netlink.LinkList()
+		if err != nil {
+			return err, 0
+		}
+		for _, link := range links {
+			if link.Attrs().Name == "lo" {
+				continue
+			}
+			k.log.Infof("Attaching %s to device %s", load.probeType, link.Attrs().Name)
+			isIngress := "tc_ingress" == load.probeType
+			err = bpf.QdiscTCInsert(link.Attrs().Name, isIngress)
+			if err != nil {
+				return err, 0
+			}
+			bpf.AttachTCIngress(fd, link.Attrs().Name, isIngress)
+		}
+		return nil, 0
 	} else {
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
@@ -1414,13 +1478,16 @@ type MsgFilter struct {
 }
 
 type ObserverKprobe struct {
-	bpfDir        string
-	mapDir        string
+	/* Configuration */
+	bpfDir     string
+	mapDir     string
+	listeners  map[Listener]struct{}
+	perfConfig *bpf.PerfEventConfig
+	/* Features */
 	prettyPrinter bool
-	listeners     map[Listener]struct{}
-	perfConfig    *bpf.PerfEventConfig
 	enableExecve  bool
 	enableTLS     bool
+	enableTLSTC   bool
 	/* Statistics */
 	lostCntr   int
 	errorCntr  int
@@ -1572,12 +1639,13 @@ func (k *ObserverKprobe) RemovePrograms() {
 	os.Remove(k.mapDir)
 }
 
-func NewObserverKprobe(bpfDir, mapDir string, execve, tls, pretty bool) *ObserverKprobe {
+func NewObserverKprobe(bpfDir, mapDir string, execve, tls, tlstc, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:        bpfDir,
 		mapDir:        mapDir,
 		enableExecve:  execve,
 		enableTLS:     tls,
+		enableTLSTC:   tlstc,
 		prettyPrinter: pretty,
 		listeners:     make(map[Listener]struct{}),
 		log:           logger.GetLogger(),

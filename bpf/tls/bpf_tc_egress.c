@@ -11,12 +11,11 @@ struct bpf_map_def {
 };
 #endif
 
-#define SK_MSG
-
 #include "hubble_msg.h"
 #include "bpf_events.h"
-#include "bpf_sockops.h"
 #include "parser.h"
+
+char _license[] __attribute__((section(("license")), used)) = "GPL";
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.type = BPF_MAP_TYPE_HASH,
@@ -25,19 +24,26 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.max_entries = 32000,
 };
 
-__attribute__((section(("sk_msg/tls")), used))
-int bpf_sk_msg_tls(struct sk_msg_md *skmsg)
+__attribute__((section(("tc/egress_tcp")), used))
+int event_tc_egress_tcp(struct __sk_buff *skb)
 {
+	void *data_end = (void *)(long)skb->data_end;
+	void *data = (void *)(long)skb->data;
 	struct msg_tls_event event = {0};
+	struct tcphdr *tcp;
+	void *payload;
+	int off = 0;
 
+	tcp = skb_tls_key(data, data_end, &off, &event.tuple);
+	if (!tcp)
+		return SK_PASS;
+	payload = skb_tcp_payload(tcp, &off, data_end);
+	if (!payload)
+		return SK_PASS;
 	event.common.op = MSG_OP_TLS;
 	event.tls.type = 0;
-	bpf_parse_tls(skmsg, (void *)(long)skmsg->data, 0, (void *)(long)skmsg->data_end, &event.tls);
+	bpf_parse_tls(skb, payload, off, data_end, &event.tls);
 	if (event.tls.type == TLS_TYPE_HELLO) {
-		event.tuple.daddr = skmsg->remote_ip4;
-		event.tuple.saddr = skmsg->local_ip4;
-		event.tuple.dport = skmsg->remote_port;
-		event.tuple.sport = skmsg->local_port;
 		map_update_elem(&tls_map, &event.tuple, &event.tls, 0);
 	}
 	return SK_PASS;

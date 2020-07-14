@@ -147,6 +147,11 @@ int fgs_map_loader(const int version,
 	return err;
 }
 
+int __bpf_obj_get(const char *file)
+{
+	return bpf_obj_get(file);
+}
+
 int bpf_loader_set_map(struct bpf_object *obj, const char *mapdir, int verbosity)
 {
 	struct bpf_map *map;
@@ -275,6 +280,29 @@ int bpf_loader_pin(struct bpf_object *obj,
 		return -1;
 	}
 	return err;
+}
+
+int tc_loader(const int version,
+		   const int verbosity,
+		   const char *btf,
+		   const char *prog,
+		   const char *label,
+		   const char *__prog,
+		   const char *mapdir)
+{
+	struct bpf_object *obj;
+	int err;
+
+	obj = __loader(version, verbosity, btf, prog, mapdir, BPF_PROG_TYPE_SCHED_CLS);
+	if (!obj)
+		return -1;
+
+	err = bpf_loader_pin(obj, label, __prog);
+	if (err) {
+		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
+		return err;
+	}
+	return bpf_obj_get(__prog);
 }
 
 int fgs_loader(const int version,
@@ -438,6 +466,9 @@ import "C"
 
 import (
 	"fmt"
+
+	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 )
 
 func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_label string, __prog_type int) (int, error) {
@@ -539,4 +570,90 @@ func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __labe
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
 	}
 	return nil, loaderInt
+}
+
+func QdiscTCInsert(linkName string, ingress bool) error {
+	link, err := netlink.LinkByName(linkName)
+	if err != nil {
+		return fmt.Errorf("LinkByName failed (%s): %s\n", linkName, err)
+	}
+
+	qdiscs, err := netlink.QdiscList(link)
+	if err != nil {
+		return fmt.Errorf("QdiscList failed (%s): %s\n", linkName, err)
+	}
+	// If the qdisc exists nothing to do so return nil
+	for _, qdisc := range qdiscs {
+		_, clsact := qdisc.(*netlink.Clsact)
+		if clsact {
+			return nil
+		}
+	}
+
+	qdisc := &netlink.Clsact{
+		QdiscAttrs: netlink.QdiscAttrs{
+			LinkIndex: link.Attrs().Index,
+			Handle:    netlink.MakeHandle(0xffff, 0),
+			Parent:    netlink.HANDLE_INGRESS,
+		},
+	}
+	if err := netlink.QdiscAdd(qdisc); err != nil {
+		return fmt.Errorf("QdiscAdd failed (%s): %s\n", linkName, err)
+	}
+	return nil
+}
+
+func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
+	var parent uint32
+	var name string
+
+	link, err := netlink.LinkByName(linkName)
+	if err != nil {
+		return fmt.Errorf("LinkByName failed (%s): %s\n", linkName, err), 0
+	}
+
+	if ingress {
+		parent = netlink.HANDLE_MIN_INGRESS
+		name = "fgs-ingress"
+	} else {
+		parent = netlink.HANDLE_MIN_EGRESS
+		name = "fgs-egress"
+	}
+
+	filterAttrs := netlink.FilterAttrs{
+		LinkIndex: link.Attrs().Index,
+		Parent:    parent,
+		Handle:    netlink.MakeHandle(0, 1),
+		Protocol:  unix.ETH_P_ALL,
+		Priority:  1,
+	}
+	filter := &netlink.BpfFilter{
+		FilterAttrs:  filterAttrs,
+		Fd:           progFd,
+		Name:         name,
+		DirectAction: false,
+	}
+	if filter.Fd < 0 {
+		return fmt.Errorf("BpfFilter failed (%s): %d\n", linkName, filter.Fd), 0
+	}
+	if err = netlink.FilterReplace(filter); err != nil {
+		return fmt.Errorf("FilterAdd failed (%s): %s\n", linkName, err), 0
+	}
+	return err, 0
+}
+
+func LoadTC(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+	version := C.int(__version)
+	verbosity := C.int(__verbosity)
+	btf := C.CString(__btf)
+	o := C.CString(object)
+	l := C.CString(__label)
+	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
+	loader_fd := C.tc_loader(version, verbosity, btf, o, l, p, mapdir)
+	loaderFd := int(loader_fd)
+	if loaderFd < 0 {
+		return fmt.Errorf("Unable to load tc program: %d %s", loaderFd, object), 0
+	}
+	return nil, loaderFd
 }
