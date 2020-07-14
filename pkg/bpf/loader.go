@@ -261,39 +261,17 @@ int bpf_loader_pin(struct bpf_object *obj,
 	return err;
 }
 
-int skmsg_loader(const int version,
-		 const int verbosity,
-		 const char *btf,
-		 const char *prog,
-		 const char *label,
-		 const char *__prog,
-		 const char *mapdir)
-{
-	int err;
-	struct bpf_object *obj;
-
-	obj = __loader(version, verbosity, btf, prog, mapdir, BPF_PROG_TYPE_SK_MSG);
-	if (!obj)
-		return -1;
-
-	err = bpf_loader_pin(obj, label, __prog);
-	if (err) {
-		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
-		return err;
-	}
-	return bpf_link("/sys/fs/bpf/tcpmon/fgs_sock_map", __prog, BPF_SK_MSG_VERDICT);
-}
-
-int sockops_loader(const int version,
+int fgs_loader(const int version,
 		   const int verbosity,
 		   const char *btf,
 		   const char *prog,
 		   const char *label,
 		   const char *__prog,
 		   const char *mapdir,
-		   const int prog_type, const int attach_type)
+		   char *link_path,
+		   const int prog_type,
+		   const int attach_type)
 {
-	char *cgroup_path = "/run/hubble-fgs/cgroup2";
 	struct bpf_object *obj;
 	int err;
 
@@ -306,7 +284,40 @@ int sockops_loader(const int version,
 		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
 		return err;
 	}
-	return bpf_link(cgroup_path, __prog, attach_type);
+	return bpf_link(link_path, __prog, attach_type);
+}
+
+int skmsg_loader(const int version,
+		 const int verbosity,
+		 const char *btf,
+		 const char *prog,
+		 const char *label,
+		 const char *__prog,
+		 const char *mapdir)
+{
+	char *path = "/sys/fs/bpf/tcpmon/fgs_sock_map";
+	const int type = BPF_PROG_TYPE_SK_MSG;
+	const int attach = BPF_SK_MSG_VERDICT;
+
+	return fgs_loader(version, verbosity, btf, prog, label,
+	                  __prog, mapdir, path, type, attach);
+}
+
+
+int sockops_loader(const int version,
+		   const int verbosity,
+		   const char *btf,
+		   const char *prog,
+		   const char *label,
+		   const char *__prog,
+		   const char *mapdir,
+		   const int prog_type,
+		   const int attach_type)
+{
+	char *path = "/run/hubble-fgs/cgroup2";
+
+	return fgs_loader(version, verbosity, btf, prog, label,
+	                  __prog, mapdir, path, prog_type, attach_type);
 }
 
 int tracepoint_loader(const int version,
