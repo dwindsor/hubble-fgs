@@ -71,10 +71,11 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpConnectUnix) {
 			Time:     ktimeToProto(msg.Pid.Curr.Ktime),
 		}
 	default:
-		pm.log.WithField("opcode", msg.Common.Op).Debug("ignore msg with opcode")
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+		return
 	}
 	if err := pm.encoder.Encode(res); err != nil {
-		pm.log.WithError(err).WithField("msg", msg).Warn("failed to encode")
+		pm.log.WithError(err).WithField("msg", res).Warn("failed to encode")
 	}
 }
 

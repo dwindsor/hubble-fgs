@@ -218,7 +218,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.Fi
 		"odport":           GetDport(msg.Tuple.GetPostDPort(), op),
 		"container-id":     msg.Kube.Docker,
 		"return":           unix.ErrnoName(e),
-	}).Debug()
+	}).Trace()
 }
 
 func ObserverReceiver(log logrus.FieldLogger) error {

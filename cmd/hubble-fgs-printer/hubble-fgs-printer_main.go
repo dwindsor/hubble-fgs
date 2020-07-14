@@ -19,7 +19,7 @@ func hubbleFGSPrinter() {
 	// Use JSON formatter for hubble-fgs-printer.
 	log := logrus.New()
 	log.SetFormatter(&logrus.JSONFormatter{})
-	log.SetLevel(logrus.DebugLevel)
+	log.SetLevel(logrus.TraceLevel)
 	log.SetOutput(os.Stdout)
 	if err := reader.ObserverReceiver(log); err != nil {
 		log.WithError(err).Fatal("ObserverReceiver failed")
