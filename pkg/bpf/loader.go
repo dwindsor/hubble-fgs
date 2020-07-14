@@ -270,9 +270,9 @@ int skmsg_loader(const int version,
 		 const char *mapdir)
 {
 	int err;
-	struct bpf_object *obj = __loader(version, verbosity,
-					  btf, prog, mapdir, BPF_PROG_TYPE_SK_MSG);
+	struct bpf_object *obj;
 
+	obj = __loader(version, verbosity, btf, prog, mapdir, BPF_PROG_TYPE_SK_MSG);
 	if (!obj)
 		return -1;
 
@@ -293,43 +293,19 @@ int sockops_loader(const int version,
 		   const char *mapdir,
 		   const int prog_type, const int attach_type)
 {
-	struct bpf_object_load_attr attr = {0};
-	struct bpf_link *prog_attach;
-	struct bpf_object *obj, *execve_obj;
-	struct bpf_map *map, *execve_map;
-	int cg_fd, bpf_fd, fd, err, map_fd = 0;
 	char *cgroup_path = "/run/hubble-fgs/cgroup2";
+	struct bpf_object *obj;
+	int err;
 
-	if (verbosity > 1)
-		libbpf_set_print(__print);
+	obj = __loader(version, verbosity, btf, prog, mapdir, prog_type);
+	if (!obj)
+		return -1;
 
-	obj = bpf_object__open(prog);
-	err = libbpf_get_error(obj);
+	err = bpf_loader_pin(obj, label, __prog);
 	if (err) {
-		fprintf(stderr, "bpf_object__open: %i %s\n", err, prog);
+		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
 		return err;
 	}
-
-	bpf_loader_programs(obj, prog_type, verbosity);
-	err = bpf_loader_set_map(obj, mapdir, verbosity);
-	if (err) {
-		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
-		return err;
-	}
-
-	attr.obj = obj;
-	attr.target_btf_path = btf;
-	attr.kern_version = version;
-	err = bpf_object__load_xattr(&attr);
-	if (err < 0) {
-		char errstr[256];
-
-		libbpf_strerror(err, errstr, sizeof(errstr));
-		fprintf(stderr, "bpf_object__load_xattr: failed %i: %s\n", err, errstr);
-		return err;
-	}
-
-	bpf_loader_pin(obj, label, __prog);
 	return bpf_link(cgroup_path, __prog, attach_type);
 }
 
@@ -343,42 +319,14 @@ int tracepoint_loader(const int version,
 		      const char *mapdir,
 		      const bool retprobe)
 {
-	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
-	struct bpf_object *obj, *execve_obj;
-	struct bpf_map *map, *execve_map;
-	int fd, err, map_fd = 0;
+	struct bpf_object *obj;
+	int err;
 
-	if (verbosity > 1)
-		libbpf_set_print(__print);
-
-	obj = bpf_object__open(prog);
-	err = libbpf_get_error(obj);
-	if (err) {
-		fprintf(stderr, "bpf_object__open: %i %s\n", err, prog);
-		return err;
-	}
-
-
-	bpf_loader_programs(obj, BPF_PROG_TYPE_TRACEPOINT, verbosity);
-	err = bpf_loader_set_map(obj, mapdir, verbosity);
-	if (err) {
-		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
-		return err;
-	}
-
-	attr.obj = obj;
-	attr.target_btf_path = btf;
-	attr.kern_version = version;
-	err = bpf_object__load_xattr(&attr);
-	if (err < 0) {
-		char errstr[256];
-
-		libbpf_strerror(err, errstr, sizeof(errstr));
-		fprintf(stderr, "bpf_object__load_xattr: failed %i: %s\n", err, errstr);
-		return err;
-	}
+	obj = __loader(version, verbosity, btf, prog, mapdir, BPF_PROG_TYPE_TRACEPOINT);
+	if (!obj)
+		return -1;
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
@@ -420,41 +368,14 @@ int kprobe_loader(const int version,
 		  const char *mapdir,
 		  const bool retprobe)
 {
-	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
-	struct bpf_object *obj, *execve_obj;
-	struct bpf_map *map, *execve_map;
-	int fd, err, map_fd = 0;
+	struct bpf_object *obj;
+	int err;
 
-	if (verbosity > 1)
-		libbpf_set_print(__print);
-
-	obj = bpf_object__open(prog);
-	err = libbpf_get_error(obj);
-	if (err) {
-		fprintf(stderr, "bpf_object__open: %i %s\n", err, prog);
+	obj = __loader(version, verbosity, btf, prog, mapdir, BPF_PROG_TYPE_KPROBE);
+	if (!obj)
 		return -1;
-	}
-
-	bpf_loader_programs(obj, BPF_PROG_TYPE_KPROBE, verbosity);
-	err = bpf_loader_set_map(obj, mapdir, verbosity);
-	if (err) {
-		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
-		return err;
-	}
-
-	attr.obj = obj;
-	attr.target_btf_path = btf;
-	attr.kern_version = version;
-	err = bpf_object__load_xattr(&attr);
-	if (err < 0) {
-		char errstr[256];
-
-		libbpf_strerror(err, errstr, sizeof(errstr));
-		fprintf(stderr, "bpf_object__load_xattr: failed %i: %s\n", err, errstr);
-		return -1;
-	}
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
