@@ -9,19 +9,24 @@ image:
 
 resources: {}
 
-affinity:
-  podAffinity:
-    requiredDuringSchedulingIgnoredDuringExecution:
-    - labelSelector:
-        matchExpressions:
-        - key: "k8s-app"
-          operator: In
-          values:
-            - cilium
-      topologyKey: "kubernetes.io/hostname"
-      namespaces:
-      - cilium
-      - kube-system
+# Define affinity for the FGS daemonset.
+#
+# For example, to deploy FGS only on nodes where Cilium is running:
+#
+#  affinity:
+#    podAffinity:
+#      requiredDuringSchedulingIgnoredDuringExecution:
+#        - labelSelector:
+#            matchExpressions:
+#              - key: "k8s-app"
+#                operator: In
+#                values:
+#                  - cilium
+#          topologyKey: "kubernetes.io/hostname"
+#          namespaces:
+#            - cilium
+#            - kube-system
+affinity: {}
 
 # FGS puts processes in an LRU cache. The cache is used to find ancestors for subsequently exec'ed
 # processes.
@@ -38,3 +43,6 @@ exportFileMaxBackups: 5
 
 # Compress rotated JSON export files.
 exportFileCompress: true
+
+# Access Kubernetes API to associate FGS events with Kubernetes pods.
+enableK8sAPI: true
