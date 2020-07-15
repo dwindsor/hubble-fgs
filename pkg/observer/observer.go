@@ -492,7 +492,7 @@ func getCWD(pid uint32) (string, uint32) {
 		return "", flags
 	}
 
-	cwd, err := os.Readlink(ProcFS + pidstr + "/cwd")
+	cwd, err := os.Readlink(filepath.Join(ProcFS, pidstr, "cwd"))
 	if err != nil {
 		flags |= api.EventRootCWD | api.EventErrorCWD
 		return " ", flags
@@ -514,7 +514,7 @@ func procsFilename(args []byte) (string, string) {
 
 func procsDockerID(pid uint32) string {
 	pidstr := fmt.Sprint(pid)
-	cgroups, err := ioutil.ReadFile(ProcFS + pidstr + "/cgroup")
+	cgroups, err := ioutil.ReadFile(filepath.Join(ProcFS, pidstr, "cgroup"))
 	if err != nil {
 		return ""
 	}
@@ -1228,21 +1228,21 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		if d.IsDir() == false {
 			continue
 		}
-		cmdline, err := ioutil.ReadFile(ProcFS + d.Name() + "/cmdline")
+		cmdline, err := ioutil.ReadFile(filepath.Join(ProcFS, d.Name(), "cmdline"))
 		if err != nil {
 			continue
 		}
 		if string(cmdline) == "" {
 			continue
 		}
-		statline, err := ioutil.ReadFile(ProcFS + d.Name() + "/stat")
+		statline, err := ioutil.ReadFile(filepath.Join(ProcFS, d.Name(), "stat"))
 		if err != nil {
-			k.log.WithError(err).Warnf("ReadFile: %s /stat error", ProcFS+d.Name()+"/cmdline")
+			k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(ProcFS, d.Name(), "cmdline"))
 			continue
 		}
 		pid, err := strconv.ParseUint(d.Name(), 10, 32)
 		if err != nil {
-			k.log.WithError(err).Warnf("ReadFile: %s /parseuint error", ProcFS+d.Name()+"/cmdline")
+			k.log.WithError(err).Warnf("ReadFile: %s /parseuint error", filepath.Join(ProcFS, d.Name(), "cmdline"))
 			continue
 		}
 
@@ -1256,35 +1256,35 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		_ktime := stats[21]
 		ktime, err := strconv.ParseUint(_ktime, 10, 64)
 		if err != nil {
-			k.log.WithError(err).Warnf("Ktime parsing error: %s: %s", _ktime, ProcFS+ppid+"/stat")
+			k.log.WithError(err).Warnf("Ktime parsing error: %s: %s", _ktime, filepath.Join(ProcFS, ppid, "stat"))
 			ktime = 0
 		}
 		ktime = (ktime / clktck) * nanoPerSeconds
-		nspid := getPIDNS(ProcFS + d.Name() + "/status")
+		nspid := getPIDNS(filepath.Join(ProcFS, d.Name(), "status"))
 
 		if _ppid != 0 {
 			var err error
 
-			pcmdline, err = ioutil.ReadFile(ProcFS + ppid + "/cmdline")
+			pcmdline, err = ioutil.ReadFile(filepath.Join(ProcFS, ppid, "cmdline"))
 			if err != nil {
-				k.log.WithError(err).Warnf("ReadFile: %s /cmdline error\n", ProcFS+d.Name()+"/cmdline")
+				k.log.WithError(err).Warnf("ReadFile: %s /cmdline error\n", filepath.Join(ProcFS, d.Name(), "cmdline"))
 				continue
 			}
 
-			pstatline, err = ioutil.ReadFile(ProcFS + ppid + "/stat")
+			pstatline, err = ioutil.ReadFile(filepath.Join(ProcFS, ppid, "stat"))
 			if err != nil {
-				k.log.WithError(err).Warnf("ReadFile: %s /stat error\n", ProcFS+d.Name()+"/cmdline")
+				k.log.WithError(err).Warnf("ReadFile: %s /stat error\n", filepath.Join(ProcFS, d.Name(), "cmdline"))
 				continue
 			}
 			pstats = r.FindAllString(string(pstatline), -1)
 			_pktime := pstats[21]
 			pktime, err = strconv.ParseUint(_pktime, 10, 64)
 			if err != nil {
-				k.log.WithError(err).Warnf("Warning: Parent ktime parsing error: %s: %s", _pktime, ProcFS+ppid+"/stat")
+				k.log.WithError(err).Warnf("Warning: Parent ktime parsing error: %s: %s", _pktime, filepath.Join(ProcFS, ppid, "stat"))
 				pktime = 0
 			}
 			pktime = (pktime / clktck) * nanoPerSeconds
-			pnspid = getPIDNS(ProcFS + ppid + "/status")
+			pnspid = getPIDNS(filepath.Join(ProcFS, ppid, "status"))
 		} else {
 			pcmdline = nil
 			pstatline = nil
@@ -1293,13 +1293,13 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			pnspid = 0
 		}
 
-		execPath, err := filepath.EvalSymlinks(ProcFS + d.Name() + "/exe")
+		execPath, err := filepath.EvalSymlinks(filepath.Join(ProcFS, d.Name(), "exe"))
 		if execPath != "" {
 			cmdline = prependPath(execPath, cmdline)
 		}
 
 		if _ppid != 0 {
-			pexecPath, _ = filepath.EvalSymlinks(ProcFS + ppid + "/exe")
+			pexecPath, _ = filepath.EvalSymlinks(filepath.Join(ProcFS, ppid, "exe"))
 			if pexecPath != "" {
 				pcmdline = prependPath(pexecPath, pcmdline)
 			}
@@ -1358,6 +1358,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 
 		procs = append(procs, p)
 	}
+	k.log.Infof("Read ProcFS %s appended %d/%d entries\n", ProcFS, len(procs), len(procFS))
 
 	if write {
 		writeExecveMap(procs)
