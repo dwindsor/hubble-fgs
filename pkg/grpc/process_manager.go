@@ -27,6 +27,7 @@ type ProcessManager struct {
 	pidMap   map[uint32]string
 	encoder  *json.Encoder
 	nodeName string
+	watcher  K8sResourceWatcher
 }
 
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
@@ -34,6 +35,7 @@ func NewProcessManager(
 	log logrus.FieldLogger,
 	encoder *json.Encoder,
 	processCacheSize int,
+	watcher K8sResourceWatcher,
 ) (*ProcessManager, error) {
 	processCache, err := lru.New(processCacheSize)
 	if err != nil {
@@ -45,6 +47,7 @@ func NewProcessManager(
 		pidMap:   make(map[uint32]string),
 		encoder:  encoder,
 		nodeName: os.Getenv("NODE_NAME"),
+		watcher:  watcher,
 	}, nil
 }
 
@@ -276,6 +279,18 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 	if containerID == "" {
 		return nil
 	}
+	pod, container, ok := pm.watcher.FindPod(containerID)
+	if !ok {
+		pm.log.WithField("container id", containerID).Trace("failed to get pod")
+		return nil
+	}
+	var startTime *timestamp.Timestamp
+	var err error
+	if container.State.Running != nil {
+		if startTime, err = ptypes.TimestampProto(container.State.Running.StartedAt.Time); err != nil {
+			pm.log.WithField("container", container).Warn("failed to convert start time")
+		}
+	}
 	// Don't set container PIDs if it's zero.
 	var containerPID *wrappers.UInt32Value
 	if process.NSPID > 0 {
@@ -284,9 +299,17 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 		}
 	}
 	return &fgs.Pod{
+		Namespace: pod.Namespace,
+		Name:      pod.Name,
 		Container: &fgs.Container{
-			Id:  containerID,
-			Pid: containerPID,
+			Id:   container.ContainerID,
+			Pid:  containerPID,
+			Name: container.Name,
+			Image: &fgs.Image{
+				Id:   container.ImageID,
+				Name: container.Image,
+			},
+			StartTime: startTime,
 		},
 	}
 }

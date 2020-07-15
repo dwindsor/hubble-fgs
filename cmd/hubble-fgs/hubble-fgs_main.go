@@ -7,6 +7,7 @@ import (
 	"os"
 	"os/signal"
 	"syscall"
+	"time"
 
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
@@ -14,10 +15,11 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
 	"github.com/covalentio/hubble-fgs/pkg/server"
-	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"gopkg.in/natefinch/lumberjack.v2"
+	"k8s.io/client-go/kubernetes"
+	"k8s.io/client-go/rest"
 )
 
 var (
@@ -31,6 +33,7 @@ var (
 	exportFileMaxSizeMB  int
 	exportFileMaxBackups int
 	exportFileCompress   bool
+	enableK8sAPI         bool
 )
 
 func hubbleFGSExecute() error {
@@ -76,14 +79,32 @@ func hubbleFGSExecute() error {
 			MaxBackups: exportFileMaxBackups,
 			Compress:   exportFileCompress,
 		})
-		processManager, err := grpc.NewProcessManager(logrus.New(), encoder, processCacheSize)
+		watcher, err := getWatcher(enableK8sAPI)
+		if err != nil {
+			return err
+		}
+		processManager, err := grpc.NewProcessManager(logger.GetLogger(), encoder, processCacheSize, watcher)
 		if err != nil {
 			return err
 		}
 		kprobe.AddListener(processManager)
 	}
-
 	return kprobe.Start(ctx)
+}
+
+func getWatcher(enableK8sAPI bool) (grpc.K8sResourceWatcher, error) {
+	if enableK8sAPI {
+		logger.GetLogger().Info("Enabling Kubernetes API")
+		config, err := rest.InClusterConfig()
+		if err != nil {
+			return nil, err
+		}
+		k8sClient := kubernetes.NewForConfigOrDie(config)
+		return grpc.NewK8sWatcher(k8sClient, 60*time.Second), nil
+
+	}
+	logger.GetLogger().Info("Disabling Kubernetes API")
+	return grpc.NewFakeK8sWatcher(nil), nil
 }
 
 func init() {
@@ -138,6 +159,7 @@ func init() {
 	flags.IntVar(&exportFileMaxBackups, "export-file-max-backups", 5, "Number of rotated JSON export files to retain")
 	flags.BoolVar(&exportFileCompress, "export-file-compress", true, "Compress rotated JSON export files")
 	flags.String("log-level", "info", "Set log level")
+	flags.BoolVar(&enableK8sAPI, "enable-k8s-api", false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
 	viper.BindPFlags(flags)
 }
 
