@@ -1,4 +1,7 @@
-.PHONY: all
+.PHONY: all clean
+.SUFFIXES:
+
+SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
 
 TLSDIR := tls/
 NETWORKINGDIR := networking/
@@ -25,19 +28,35 @@ LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
 CLANG  ?= clang
 LLC    ?= llc
 
-all: $(NETWORKING) ${PROCESS} ${TLS}
+OBJSDIR       := objs/
 
-$(NETWORKING): %.o: ${NETWORKINGDIR}%.c
-	${CLANG} ${CLANG_FLAGS} -c $< -o - | ${LLC} ${LLC_FLAGS} -filetype=obj -o $@
+TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
+NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
+PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
+OBJS          := $(TLSOBJ) $(NETWORKINGOBJ) $(PROCESSOBJ)
 
-$(PROCESS): %.o: ${PROCESSDIR}%.c
-	${CLANG} ${CLANG_FLAGS} -c $< -o - | ${LLC} ${LLC_FLAGS} -filetype=obj -o $@
+all: $(OBJS)
 
-$(TLS): %.o: ${TLSDIR}%.c
-	${CLANG} ${CLANG_FLAGS} -c $< -o - | ${LLC} ${LLC_FLAGS} -filetype=obj -o $@
+# NB: https://www.gnu.org/software/make/manual/html_node/Prerequisite-Types.html
+$(OBJS): | $(OBJSDIR)
+
+$(OBJSDIR):
+	mkdir $(OBJSDIR)
+
+objs/%.ll: $(TLSDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -c $< -o $@
+
+objs/%.ll: $(NETWORKINGDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -c $< -o $@
+
+objs/%.ll: $(PROCESSDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -c $< -o $@
+
+objs/%.o: objs/%.ll
+	${LLC} ${LLC_FLAGS} -filetype=obj $< -o $@
 
 clean:
 	@$(ECHO_CLEAN)
 	$(QUIET) $(foreach TARGET,$(SUBDIRS), \
 		$(MAKE) -C $(TARGET) clean)
-	$(QUIET)rm -fr *.o *.ll *.i *.s
+	$(QUIET)rm -f $(OBJSDIR)*.{o,ll,i,s}

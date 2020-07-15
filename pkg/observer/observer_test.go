@@ -46,21 +46,21 @@ func getDefaultObserver(t *testing.T, execve, tls, pretty bool) *ObserverKprobe 
 		buf[i] = byte(b)
 	}
 	if execve {
-		ObserverExecve.Observer__program = "../../bpf/bpf_execve_event.o"
+		ObserverExecve.Observer__program = "../../bpf/objs/bpf_execve_event.o"
 	} else {
-		ObserverExecve.Observer__program = "../../bpf/bpf_execve.o"
+		ObserverExecve.Observer__program = "../../bpf/objs/bpf_execve.o"
 	}
-	ObserverFork.Observer__program = "../../bpf/bpf_fork.o"
-	ObserverTCPConnect.Observer__program = "../../bpf/bpf_tcpmon.o"
-	ObserverStreamConnect.Observer__program = "../../bpf/bpf_stream_connect.o"
-	ObserverTCPConnectRet.Observer__program = "../../bpf/bpf_tcpmonret.o"
-	ObserverBind.Observer__program = "../../bpf/bpf_bind.o"
-	ObserverGetPort.Observer__program = "../../bpf/bpf_get_port.o"
-	ObserverListen.Observer__program = "../../bpf/bpf_listen.o"
-	ObserverSockopsEstablished.Observer__program = "../../bpf/bpf_sockops.o"
-	ObserverSkmsgTLS.Observer__program = "../../bpf/bpf_skmsg_tls.o"
-	ObserverCgrpIngress.Observer__program = "../../bpf/bpf_cgrp_in_tls.o"
-	ObserverTLSEvent.Observer__program = "../../bpf/bpf_event_tls.o"
+	ObserverFork.Observer__program = "../../bpf/objs/bpf_fork.o"
+	ObserverTCPConnect.Observer__program = "../../bpf/objs/bpf_tcpmon.o"
+	ObserverStreamConnect.Observer__program = "../../bpf/objs/bpf_stream_connect.o"
+	ObserverTCPConnectRet.Observer__program = "../../bpf/objs/bpf_tcpmonret.o"
+	ObserverBind.Observer__program = "../../bpf/objs/bpf_bind.o"
+	ObserverGetPort.Observer__program = "../../bpf/objs/bpf_get_port.o"
+	ObserverListen.Observer__program = "../../bpf/objs/bpf_listen.o"
+	ObserverSockopsEstablished.Observer__program = "../../bpf/objs/bpf_sockops.o"
+	ObserverSkmsgTLS.Observer__program = "../../bpf/objs/bpf_skmsg_tls.o"
+	ObserverCgrpIngress.Observer__program = "../../bpf/objs/bpf_cgrp_in_tls.o"
+	ObserverTLSEvent.Observer__program = "../../bpf/objs/bpf_event_tls.o"
 
 	btf := os.Getenv("FGS_BTF")
 	if btf != "" {

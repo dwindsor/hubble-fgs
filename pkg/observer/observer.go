@@ -51,7 +51,7 @@ const (
 
 	varLibHubbleFGS = "/var/lib/hubble-fgs/"
 	localBTFFile    = "./bpf/btf"
-	defaultBPFPath  = "./bpf/"
+	defaultBPFPath  = "./bpf/objs/"
 
 	execveEventProg = "bpf_execve_event.o"
 	execveProg      = "bpf_execve.o"
