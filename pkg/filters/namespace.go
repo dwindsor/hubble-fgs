@@ -24,7 +24,7 @@ import (
 
 func filterByNamespace(namespaces []string) hubbleFilters.FilterFunc {
 	return func(ev *v1.Event) bool {
-		process := getProcess(ev)
+		process := GetProcess(ev)
 		if process == nil {
 			return false
 		}

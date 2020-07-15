@@ -89,3 +89,23 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 		}, pod)
 	assert.Nil(t, endpoint)
 }
+
+func Test_sanitizeEvent(t *testing.T) {
+	res := fgs.GetEventsResponse{
+		Event: &fgs.GetEventsResponse_ProcessConnect{
+			ProcessConnect: &fgs.ProcessConnect{
+				Process: &fgs.Process{
+					Pod: &fgs.Pod{
+						Container: &fgs.Container{
+							LivenessExecProbe:  []string{"a", "b"},
+							ReadinessExecProbe: []string{"c", "d"},
+						},
+					},
+				},
+			},
+		},
+	}
+	removeInternalFields(&res)
+	assert.Nil(t, res.GetProcessConnect().Process.Pod.Container.LivenessExecProbe)
+	assert.Nil(t, res.GetProcessConnect().Process.Pod.Container.ReadinessExecProbe)
+}

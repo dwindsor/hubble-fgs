@@ -34,7 +34,7 @@ func filterByBinaryRegex(binaryPatterns []string) (hubbleFilters.FilterFunc, err
 		binaries = append(binaries, query)
 	}
 	return func(ev *v1.Event) bool {
-		process := getProcess(ev)
+		process := GetProcess(ev)
 		if process == nil {
 			return false
 		}

@@ -22,6 +22,7 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
+	coreV1 "k8s.io/api/core/v1"
 )
 
 // ProcessManager maintains a cache of processes from fgs exec events.
@@ -117,6 +118,14 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpConnectUnix) *fgs.
 	return res
 }
 
+func removeInternalFields(event interface{}) {
+	process := filters.GetProcess(&v1.Event{Event: event})
+	if process != nil && process.Pod != nil && process.Pod.Container != nil {
+		process.Pod.Container.LivenessExecProbe = nil
+		process.Pod.Container.ReadinessExecProbe = nil
+	}
+}
+
 // Notify implements Listener.Notify.
 func (pm *ProcessManager) Notify(event interface{}) error {
 	var processedEvent interface{}
@@ -131,6 +140,10 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	if !hubbleFilters.Apply(pm.allowList, pm.denyList, &v1.Event{Event: processedEvent}) {
 		return nil
 	}
+	// There are some fields that are only meant to be used internally for filtering such as
+	// liveness_exec_probe and readiness_exec_probe. Remove these fields before updating metrics
+	// and exporting to JSON.
+	removeInternalFields(processedEvent)
 	metrics.ProcessEvent(processedEvent)
 	if processedEvent != nil {
 		if err := pm.encoder.Encode(processedEvent); err != nil {
@@ -386,6 +399,7 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 		return nil, nil
 	}
 	var startTime *timestamp.Timestamp
+	livenessProbe, readinessProbe := getProbes(pod, container)
 	var err error
 	if container.State.Running != nil {
 		if startTime, err = ptypes.TimestampProto(container.State.Running.StartedAt.Time); err != nil {
@@ -417,7 +431,25 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 				Id:   container.ImageID,
 				Name: container.Image,
 			},
-			StartTime: startTime,
+			StartTime:          startTime,
+			LivenessExecProbe:  livenessProbe,
+			ReadinessExecProbe: readinessProbe,
 		},
 	}, endpoint
+}
+
+func getExecCommand(probe *coreV1.Probe) []string {
+	if probe != nil && probe.Exec != nil {
+		return probe.Exec.Command
+	}
+	return nil
+}
+
+func getProbes(pod *coreV1.Pod, containerStatus *coreV1.ContainerStatus) ([]string, []string) {
+	for _, container := range pod.Spec.Containers {
+		if container.Name == containerStatus.Name {
+			return getExecCommand(container.LivenessProbe), getExecCommand(container.ReadinessProbe)
+		}
+	}
+	return nil, nil
 }

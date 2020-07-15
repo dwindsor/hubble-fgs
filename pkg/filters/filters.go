@@ -90,10 +90,11 @@ func BuildFilterList(ctx context.Context, ff []*fgs.Filter, filterFuncs []OnBuil
 // Filters is the list of default filters
 var Filters = []OnBuildFilter{
 	&BinaryRegexFilter{},
+	&HealthCheckFilter{},
 	&NamespaceFilter{},
 }
 
-func getProcess(event *v1.Event) *fgs.Process {
+func GetProcess(event *v1.Event) *fgs.Process {
 	if event == nil {
 		return (*fgs.Process)(nil)
 	}

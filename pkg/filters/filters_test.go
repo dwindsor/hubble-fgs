@@ -18,17 +18,20 @@ import (
 	"testing"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestParseFilterList(t *testing.T) {
 	f := `{"namespace":["kube-system",""]}
+{"health_check":true}
 {"binary_regex":["kube.*","iptables"]}
 {"binary_regex":["/usr/sbin/.*"],"namespace":["default"]}`
 	filterProto, err := ParseFilterList(f)
 	assert.NoError(t, err)
 	assert.Equal(t, []*fgs.Filter{
 		{Namespace: []string{"kube-system", ""}},
+		{HealthCheck: &wrappers.BoolValue{Value: true}},
 		{BinaryRegex: []string{"kube.*", "iptables"}},
 		{BinaryRegex: []string{"/usr/sbin/.*"}, Namespace: []string{"default"}},
 	}, filterProto)

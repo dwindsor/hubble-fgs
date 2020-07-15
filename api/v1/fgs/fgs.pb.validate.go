@@ -1027,6 +1027,16 @@ func (m *Filter) Validate() error {
 		return nil
 	}
 
+	if v, ok := interface{}(m.GetHealthCheck()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return FilterValidationError{
+				field:  "HealthCheck",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
 	return nil
 }
 
