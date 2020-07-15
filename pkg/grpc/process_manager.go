@@ -10,6 +10,7 @@ import (
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
@@ -51,7 +52,7 @@ func NewProcessManager(
 	}, nil
 }
 
-func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpConnectUnix) {
+func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpConnectUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_IPV4_TCPCONNECTRET:
@@ -75,20 +76,24 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpConnectUnix) {
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
-		return
 	}
-	if err := pm.encoder.Encode(res); err != nil {
-		pm.log.WithError(err).WithField("msg", res).Warn("failed to encode")
-	}
+	return res
 }
 
 // Notify implements Listener.Notify.
 func (pm *ProcessManager) Notify(event interface{}) error {
+	var processedEvent interface{}
 	switch msg := event.(type) {
 	case *api.MsgIPv4TcpConnectUnix:
-		pm.handleTCPMessage(msg)
+		processedEvent = pm.handleTCPMessage(msg)
 	default:
-		return pm.encoder.Encode(event)
+		processedEvent = event
+	}
+	metrics.ProcessEvent(processedEvent)
+	if processedEvent != nil {
+		if err := pm.encoder.Encode(processedEvent); err != nil {
+			pm.log.WithError(err).WithField("msg", processedEvent).Warn("failed to encode")
+		}
 	}
 	return nil
 }

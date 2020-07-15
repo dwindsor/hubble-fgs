@@ -13,6 +13,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
 	"github.com/covalentio/hubble-fgs/pkg/grpc"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
 	"github.com/covalentio/hubble-fgs/pkg/server"
 	"github.com/spf13/cobra"
@@ -33,6 +34,7 @@ var (
 	exportFileMaxBackups int
 	exportFileCompress   bool
 	enableK8sAPI         bool
+	metricsServer        string
 )
 
 func hubbleFGSExecute() error {
@@ -70,6 +72,9 @@ func hubbleFGSExecute() error {
 	}()
 
 	go server.ServeEvents(kprobe, ctx, s)
+	if metricsServer != "" {
+		go metrics.EnableMetrics(metricsServer)
+	}
 
 	if exportFilename != "" {
 		encoder := json.NewEncoder(&lumberjack.Logger{
@@ -137,6 +142,7 @@ func init() {
 	flags.BoolVar(&exportFileCompress, "export-file-compress", true, "Compress rotated JSON export files")
 	flags.String("log-level", "info", "Set log level")
 	flags.BoolVar(&enableK8sAPI, "enable-k8s-api", false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
+	flags.StringVar(&metricsServer, "metrics-server", "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
 	viper.BindPFlags(flags)
 }
 

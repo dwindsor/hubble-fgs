@@ -7,13 +7,13 @@ require (
 	github.com/envoyproxy/protoc-gen-validate v0.4.0
 	github.com/fsnotify/fsnotify v1.4.10-0.20200417215612-7f4cf4dd2b52 // indirect
 	github.com/golang/protobuf v1.3.2
-	github.com/google/go-cmp v0.4.0 // indirect
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334 // indirect
 	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
 	github.com/lyft/protoc-gen-star v0.4.14 // indirect
 	github.com/mitchellh/protoc-gen-go-json v0.0.0-20200414201540-069933b8c834
 	github.com/pelletier/go-toml v1.4.0 // indirect
+	github.com/prometheus/client_golang v1.5.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v1.0.0
 	github.com/spf13/viper v1.6.1
