@@ -49,13 +49,6 @@ const (
 
 	nanoPerSeconds = 1000000000
 
-	varLibHubbleFGS = "/var/lib/hubble-fgs/"
-	localBTFFile    = "./bpf/btf"
-	defaultBPFPath  = "./bpf/objs/"
-
-	execveEventProg = "bpf_execve_event.o"
-	execveProg      = "bpf_execve.o"
-
 	TCP_PROC_STATE_LISTEN = 10
 )
 
@@ -94,6 +87,7 @@ var (
 	KernelVersion = ""
 	SetPidMax     = false
 
+	HubbleLib   string
 	ObserverBTF string
 	Verbosity   int
 
@@ -113,7 +107,7 @@ var (
 	}
 
 	ObserverFork = bpfLoad{
-		"", "",
+		"", "bpf_fork.o",
 		"wake_up_new_task",
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
@@ -128,7 +122,7 @@ var (
 	}
 
 	ObserverStreamConnect = bpfLoad{
-		"", "",
+		"", "bpf_stream_connect.o",
 		"__inet_stream_connect",
 		"__inet_stream_connect",
 		"kprobe/__inet_stream_connect",
@@ -143,7 +137,7 @@ var (
 	}
 
 	ObserverTCPConnect = bpfLoad{
-		"", "",
+		"", "bpf_tcpmon.o",
 		"tcp_connect",
 		"tcp_connect",
 		"kprobe/tcp_connect",
@@ -158,7 +152,7 @@ var (
 	}
 
 	ObserverTCPConnectRet = bpfLoad{
-		"", "",
+		"", "bpf_tcpmonret.o",
 		"__x64_sys_connect",
 		"sys_connect",
 		"kretprobe/sys_connect",
@@ -173,7 +167,7 @@ var (
 	}
 
 	ObserverBind = bpfLoad{
-		"", "",
+		"", "bpf_bind.o",
 		"inet_bind",
 		"inet_bind",
 		"kprobe/sys_bind",
@@ -188,7 +182,7 @@ var (
 	}
 
 	ObserverGetPort = bpfLoad{
-		"", "",
+		"", "bpf_get_port.o",
 		"inet_bind_hash",
 		"inet_bind_hash",
 		"kprobe/inet_bind_hash",
@@ -203,7 +197,7 @@ var (
 	}
 
 	ObserverListen = bpfLoad{
-		"", "",
+		"", "bpf_listen.o",
 		"__x64_sys_listen",
 		"sys_listen",
 		"kprobe/sys_listen",
@@ -218,7 +212,7 @@ var (
 	}
 
 	ObserverSockopsEstablished = bpfLoad{
-		"", "",
+		"", "bpf_sockops.o",
 		"sockops",
 		"sockops",
 		"sockops/tls_sockops",
@@ -233,7 +227,7 @@ var (
 	}
 
 	ObserverSkmsgTLS = bpfLoad{
-		"", "",
+		"", "bpf_skmsg_tls.o",
 		"sk_msg",
 		"sk_msg",
 		"sk_msg/tls",
@@ -248,7 +242,7 @@ var (
 	}
 
 	ObserverCgrpIngress = bpfLoad{
-		"", "",
+		"", "bpf_cgrp_in_tls.o",
 		"cgroup_skb",
 		"cgroup_skb",
 		"cgroup_skb/ingress",
@@ -263,7 +257,7 @@ var (
 	}
 
 	ObserverTLSEvent = bpfLoad{
-		"", "",
+		"", "bpf_event_tls.o",
 		"tcp_v4_fill_cb",
 		"tcp_v4_fill_cb",
 		"kprobe/tcp_v4_fill_cb",
@@ -1442,12 +1436,10 @@ func btfFileExists(file string) error {
 }
 
 func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
-	if ObserverExecve.Observer__program == "" {
-		if k.enableExecve {
-			ObserverExecve.Observer__program = varLibHubbleFGS + execveEventProg
-		} else {
-			ObserverExecve.Observer__program = varLibHubbleFGS + execveProg
-		}
+	if k.enableExecve {
+		ObserverExecve.Observer__program = HubbleLib + "bpf_execve_event.o"
+	} else {
+		ObserverExecve.Observer__program = HubbleLib + "bpf_execve.o"
 	}
 
 	for _, p := range observerPrograms {
@@ -1457,17 +1449,12 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 		last := strings.Split(p.Observer__program, "/")
 		filename := last[len(last)-1]
 
-		path := varLibHubbleFGS + filename
+		path := HubbleLib + filename
 		if _, err := os.Stat(path); err == nil {
 			p.Observer__program = path
 			continue
 		}
 
-		path = defaultBPFPath + filename
-		if _, err := os.Stat(path); err == nil {
-			p.Observer__program = path
-			continue
-		}
 		return fmt.Errorf("Observer Program '%s' can not be found\n", p.Observer__program)
 	}
 	return nil
@@ -1482,14 +1469,15 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 			return fmt.Errorf("Kernel version lookup (uname -r) failing. Use '--kernel' to set manually: %s\n", err)
 		}
 		n := bytes.IndexByte(uname.Release[:], 0)
-		runFile := varLibHubbleFGS + "vmlinux-" + string(uname.Release[:n])
+		runFile := HubbleLib + "vmlinux-" + string(uname.Release[:n])
 		if _, err := os.Stat(runFile); err == nil {
 			ObserverBTF = runFile
 			return nil
 		}
 
-		if _, err := os.Stat(localBTFFile); err == nil {
-			ObserverBTF = localBTFFile
+		runFile = HubbleLib + "btf"
+		if _, err := os.Stat(runFile); err == nil {
+			ObserverBTF = runFile
 			return nil
 		}
 

@@ -23,8 +23,7 @@ import (
 )
 
 var (
-	observerDir     = "/sys/fs/bpf/tcpmon/"
-	varLibHubbleFGS = "/var/lib/hubble-fgs/"
+	observerDir = "/sys/fs/bpf/tcpmon/"
 
 	cmd *cobra.Command
 
@@ -121,31 +120,9 @@ func init() {
 	flags := cmd.PersistentFlags()
 
 	flags.BoolP("debug", "d", false, "Enable debug messages")
+	flags.StringVar(&observer.HubbleLib, "hubble-lib", "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
 	flags.StringVar(&observer.ObserverBTF, "btf", "", "Location of btf")
-	flags.StringVar(&observer.ObserverExecve.Observer__program,
-		"bpf-execve", "", "Location of bpf_execve.o program")
-	flags.StringVar(&observer.ObserverFork.Observer__program,
-		"bpf-fork", "bpf_fork.o", "Location of fork bpf program")
-	flags.StringVar(&observer.ObserverTCPConnect.Observer__program,
-		"bpf-tcpmon", "bpf_tcpmon.o", "Location of bpf_tcpmon.o program")
-	flags.StringVar(&observer.ObserverStreamConnect.Observer__program,
-		"bpf-stream-connect", "bpf_stream_connect.o", "Location of bpf_stream_connect.o program")
-	flags.StringVar(&observer.ObserverTCPConnectRet.Observer__program,
-		"bpf-tcpmonret", "bpf_tcpmonret.o", "Location of bpf_tcpmon.o program")
-	flags.StringVar(&observer.ObserverBind.Observer__program,
-		"bpf-bind", "bpf_bind.o", "Location of bpf_bind.o program")
-	flags.StringVar(&observer.ObserverGetPort.Observer__program,
-		"bpf-get-port", "bpf_get_port.o", "Location of bpf_get_port.o program")
-	flags.StringVar(&observer.ObserverListen.Observer__program,
-		"bpf-listen", "bpf_listen.o", "Location of bpf_listen.o program")
-	flags.StringVar(&observer.ObserverSockopsEstablished.Observer__program,
-		"bpf-sockops", "bpf_sockops.o", "Location of bpf_sockops.o program")
-	flags.StringVar(&observer.ObserverSkmsgTLS.Observer__program,
-		"bpf-skmsg-tls", "bpf_skmsg_tls.o", "Location of bpf_skmsg_tls.o program")
-	flags.StringVar(&observer.ObserverCgrpIngress.Observer__program,
-		"bpf-ingress-tls", "bpf_cgrp_in_tls.o", "Location of bpf_cgrp_in_tls.o program")
-	flags.StringVar(&observer.ObserverTLSEvent.Observer__program,
-		"bpf-event-tls", "bpf_event_tls.o", "Location of bpf_event_tls.o program")
+
 	flags.StringVar(&observer.ProcFS,
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
 	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")
