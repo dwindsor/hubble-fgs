@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
+	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
 	"github.com/covalentio/hubble-fgs/pkg/grpc"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
@@ -35,6 +36,7 @@ var (
 	exportFileCompress   bool
 	enableK8sAPI         bool
 	metricsServer        string
+	enableCiliumAPI      bool
 )
 
 func hubbleFGSExecute() error {
@@ -87,7 +89,11 @@ func hubbleFGSExecute() error {
 		if err != nil {
 			return err
 		}
-		processManager, err := grpc.NewProcessManager(logger.GetLogger(), encoder, processCacheSize, watcher)
+		ciliumState, err := cilium.GetCiliumState(enableCiliumAPI, ctx)
+		if err != nil {
+			return err
+		}
+		processManager, err := grpc.NewProcessManager(logger.GetLogger(), encoder, processCacheSize, watcher, ciliumState)
 		if err != nil {
 			return err
 		}
@@ -143,6 +149,7 @@ func init() {
 	flags.String("log-level", "info", "Set log level")
 	flags.BoolVar(&enableK8sAPI, "enable-k8s-api", false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
 	flags.StringVar(&metricsServer, "metrics-server", "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
+	flags.BoolVar(&enableCiliumAPI, "enable-cilium-api", false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
 	viper.BindPFlags(flags)
 }
 

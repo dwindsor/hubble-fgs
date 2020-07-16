@@ -35,6 +35,9 @@ spec:
 {{- if .Values.enableK8sAPI }}
             - --enable-k8s-api
 {{- end }}
+{{- if .Values.enableCiliumAPI }}
+            - --enable-cilium-api
+{{- end }}
 {{- if .Values.metricsServer }}
             - --metrics-server={{ .Values.metricsServer }}
 {{- end }}

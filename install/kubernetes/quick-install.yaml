@@ -66,6 +66,7 @@ spec:
             - --export-file-max-backups=5
             - --export-file-compress=true
             - --enable-k8s-api
+            - --enable-cilium-api
             - --metrics-server=:2112
           image: quay.io/isovalent/hubble-fgs:latest
           imagePullPolicy: Always

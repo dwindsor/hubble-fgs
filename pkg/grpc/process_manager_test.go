@@ -22,6 +22,7 @@ import (
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/sirupsen/logrus"
@@ -55,9 +56,12 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 		},
 	}
 	pods := []interface{}{&podA}
-	pm, err := NewProcessManager(logrus.New(), json.NewEncoder(ioutil.Discard), 10, NewFakeK8sWatcher(pods))
+	pm, err := NewProcessManager(logrus.New(), json.NewEncoder(ioutil.Discard), 10, NewFakeK8sWatcher(pods), cilium.GetFakeCiliumState())
 	assert.NoError(t, err)
-	assert.Nil(t, pm.getPodInfo("container-id-not-found", &fgsAPI.MsgExecUnix{}))
+	pod, endpoint := pm.getPodInfo("container-id-not-found", &fgsAPI.MsgExecUnix{})
+	assert.Nil(t, pod)
+	assert.Nil(t, endpoint)
+	pod, endpoint = pm.getPodInfo("aaaaaaa", &fgsAPI.MsgExecUnix{NSPID: 1234})
 	assert.Equal(t,
 		&fgs.Pod{
 			Namespace: podA.Namespace,
@@ -75,6 +79,6 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 				},
 				Pid: &wrappers.UInt32Value{Value: 1234},
 			},
-		},
-		pm.getPodInfo("aaaaaaa", &fgsAPI.MsgExecUnix{NSPID: 1234}))
+		}, pod)
+	assert.Nil(t, endpoint)
 }

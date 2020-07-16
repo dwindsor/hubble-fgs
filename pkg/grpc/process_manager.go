@@ -7,6 +7,8 @@ import (
 	"os"
 	"strings"
 
+	v1 "github.com/cilium/hubble/pkg/api/v1"
+	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
@@ -25,10 +27,11 @@ type ProcessManager struct {
 	cache *lru.Cache
 	// pidMap is a map from PID to the most recent exec ID for the PID. This is used to find the parent
 	// of exec events without clone flag.
-	pidMap   map[uint32]string
-	encoder  *json.Encoder
-	nodeName string
-	watcher  K8sResourceWatcher
+	pidMap      map[uint32]string
+	encoder     *json.Encoder
+	nodeName    string
+	watcher     K8sResourceWatcher
+	ciliumState *cilium.State
 }
 
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
@@ -37,18 +40,20 @@ func NewProcessManager(
 	encoder *json.Encoder,
 	processCacheSize int,
 	watcher K8sResourceWatcher,
+	ciliumState *cilium.State,
 ) (*ProcessManager, error) {
 	processCache, err := lru.New(processCacheSize)
 	if err != nil {
 		return nil, err
 	}
 	return &ProcessManager{
-		log:      log,
-		cache:    processCache,
-		pidMap:   make(map[uint32]string),
-		encoder:  encoder,
-		nodeName: os.Getenv("NODE_NAME"),
-		watcher:  watcher,
+		log:         log,
+		cache:       processCache,
+		pidMap:      make(map[uint32]string),
+		encoder:     encoder,
+		nodeName:    os.Getenv("NODE_NAME"),
+		watcher:     watcher,
+		ciliumState: ciliumState,
 	}, nil
 }
 
@@ -124,7 +129,7 @@ func (pm *ProcessManager) getProcess(
 	process fgsAPI.MsgExecUnix,
 	containerID string,
 	parent fgsAPI.MsgExecUnix,
-) *fgs.Process {
+) (*fgs.Process, *v1.Endpoint) {
 	args, cwd := reader.ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
 	var err error
@@ -137,6 +142,7 @@ func (pm *ProcessManager) getProcess(
 	if err != nil {
 		pm.log.WithError(err).WithField("process", process).Warn("Failed to get exec ID for process")
 	}
+	protoPod, endpoint := pm.getPodInfo(containerID, &process)
 	return &fgs.Process{
 		Pid:          &wrappers.UInt32Value{Value: process.PID},
 		Uid:          &wrappers.UInt32Value{Value: process.UID},
@@ -146,15 +152,15 @@ func (pm *ProcessManager) getProcess(
 		Flags:        reader.DecodeCommonFlags(process.Flags),
 		StartTime:    ktimeToProto(process.Ktime),
 		Auid:         &wrappers.UInt32Value{Value: process.AUID},
-		Pod:          pm.getPodInfo(containerID, &process),
+		Pod:          protoPod,
 		ExecId:       execID,
 		ParentExecId: parentExecID,
-	}
+	}, endpoint
 }
 
 // Add converts an FGS exec event to protobuf format and adds the protobuf message to the cache.
 func (pm *ProcessManager) Add(event *fgsAPI.MsgIPv4TcpConnectUnix) *fgs.Process {
-	proc := pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent)
+	proc, _ := pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent)
 	pm.cache.Add(proc.ExecId, proc)
 	var parentExecID string
 	if proc.Pid != nil {
@@ -249,9 +255,11 @@ func (pm *ProcessManager) GetProcessListen(
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
+	process, _ := pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent)
+	parent, _ := pm.getProcess(event.Pid.Parent, "" /* no container ID for parent */, fgsAPI.MsgExecUnix{} /* no exec info for parent of parent */)
 	return &fgs.ProcessListen{
-		Process: pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent),
-		Parent:  pm.getProcess(event.Pid.Parent, "" /* no container ID for parent */, fgsAPI.MsgExecUnix{} /* no exec info for parent of parent */),
+		Process: process,
+		Parent:  parent,
 		Ip:      reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		Port:    port,
 	}
@@ -270,24 +278,32 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpConnectUnix)
 			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
 		}
 	}
+	process, endpoint := pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent)
+	parent, _ := pm.getProcess(event.Pid.Parent, "" /* no container ID for parent */, fgsAPI.MsgExecUnix{} /* no exec info for parent of parent */)
+	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
+	var destinationNames []string
+	if endpoint != nil {
+		destinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+	}
 	return &fgs.ProcessConnect{
-		Process:         pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent),
-		Parent:          pm.getProcess(event.Pid.Parent, "" /* no container ID for parent */, fgsAPI.MsgExecUnix{} /* no exec info for parent of parent */),
-		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
-		SourcePort:      sourcePort,
-		DestinationIp:   reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
-		DestinationPort: destinationPort,
+		Process:          process,
+		Parent:           parent,
+		SourceIp:         reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourcePort:       sourcePort,
+		DestinationIp:    destinationIP.String(),
+		DestinationPort:  destinationPort,
+		DestinationNames: destinationNames,
 	}
 }
 
-func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExecUnix) *fgs.Pod {
+func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExecUnix) (*fgs.Pod, *v1.Endpoint) {
 	if containerID == "" {
-		return nil
+		return nil, nil
 	}
 	pod, container, ok := pm.watcher.FindPod(containerID)
 	if !ok {
 		pm.log.WithField("container id", containerID).Trace("failed to get pod")
-		return nil
+		return nil, nil
 	}
 	var startTime *timestamp.Timestamp
 	var err error
@@ -296,6 +312,12 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 			pm.log.WithField("container", container).Warn("failed to convert start time")
 		}
 	}
+	endpoint, ok := pm.ciliumState.GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
+	var labels []string
+	if ok {
+		labels = endpoint.Labels
+	}
+
 	// Don't set container PIDs if it's zero.
 	var containerPID *wrappers.UInt32Value
 	if process.NSPID > 0 {
@@ -306,6 +328,7 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 	return &fgs.Pod{
 		Namespace: pod.Namespace,
 		Name:      pod.Name,
+		Labels:    labels,
 		Container: &fgs.Container{
 			Id:   container.ContainerID,
 			Pid:  containerPID,
@@ -316,5 +339,5 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 			},
 			StartTime: startTime,
 		},
-	}
+	}, endpoint
 }

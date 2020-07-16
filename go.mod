@@ -3,16 +3,14 @@ module github.com/covalentio/hubble-fgs
 go 1.14
 
 require (
+	github.com/cilium/cilium v1.7.0-rc2.0.20200311180626-711b37ed100c
+	github.com/cilium/hubble v0.5.1
 	github.com/ckaznocha/protoc-gen-lint v0.2.1
 	github.com/envoyproxy/protoc-gen-validate v0.4.0
 	github.com/fsnotify/fsnotify v1.4.10-0.20200417215612-7f4cf4dd2b52 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/iancoleman/strcase v0.0.0-20191112232945-16388991a334 // indirect
-	github.com/konsorten/go-windows-terminal-sequences v1.0.2 // indirect
-	github.com/lyft/protoc-gen-star v0.4.14 // indirect
 	github.com/mitchellh/protoc-gen-go-json v0.0.0-20200414201540-069933b8c834
-	github.com/pelletier/go-toml v1.4.0 // indirect
 	github.com/prometheus/client_golang v1.5.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v1.0.0
@@ -30,4 +28,8 @@ require (
 )
 
 // has to be in sync with both cilium and hubble overrides (mostly cilium).
-replace k8s.io/client-go => github.com/cilium/client-go v0.0.0-20200525133704-d13039a12d08
+replace (
+	github.com/miekg/dns => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3
+	github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
+	k8s.io/client-go => github.com/cilium/client-go v0.0.0-20200217141255-96fd08586691
+)
