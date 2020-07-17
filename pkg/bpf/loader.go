@@ -58,12 +58,25 @@ static int __quiet(enum libbpf_print_level level __attribute__((unused)),
 {
 }
 
+void bpf_loader_programs(struct bpf_object *obj, int type, int verbosity) {
+	struct bpf_program *prog_bpf;
+
+	bpf_object__for_each_program(prog_bpf, obj) {
+		bpf_program__set_type(prog_bpf, type);
+		if (verbosity)
+			fprintf(stderr,
+				"program: kern_version: %u\n",
+				bpf_object__kversion(obj));
+	}
+}
+
 int fgs_map_loader(const int version,
 		   const int verbosity,
 		   const char *btf,
 		   const char *prog,
 		   const char *__map,
-		   const char *__label_map)
+		   const char *__label_map,
+	   	   const int type)
 {
 	struct bpf_object_load_attr attr = {0};
 	struct bpf_program *prog_bpf;
@@ -83,6 +96,8 @@ int fgs_map_loader(const int version,
 		fprintf(stderr, "bpf_object__open: %i %s\n", err, prog);
 		return err;
 	}
+
+	bpf_loader_programs(obj, type, verbosity);
 
 	attr.obj = obj;
 	attr.target_btf_path = btf;
@@ -160,18 +175,6 @@ int bpf_loader_set_map(struct bpf_object *obj, const char *mapdir, int verbosity
 			fprintf(stderr, "bpf_map__reused_fd, %s = %d\n", pinfd, fd);
 	}
 	return 0;
-}
-
-void bpf_loader_programs(struct bpf_object *obj, int type, int verbosity) {
-	struct bpf_program *prog_bpf;
-
-	bpf_object__for_each_program(prog_bpf, obj) {
-		bpf_program__set_type(prog_bpf, type);
-		if (verbosity)
-			fprintf(stderr,
-				"program: kern_version: %u\n",
-				bpf_object__kversion(obj));
-	}
 }
 
 static struct bpf_object *__loader(const int version,
@@ -437,31 +440,16 @@ import (
 	"fmt"
 )
 
-func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_label string) (int, error) {
+func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_label string, __prog_type int) (int, error) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
 	p := C.CString(__prog)
 	m := C.CString(__map)
 	ml := C.CString(__map_label)
+	pt := C.int(__prog_type)
 
-	fd := C.fgs_map_loader(version, verbosity, btf, p, m, ml)
-	fdInt := int(fd)
-	if fdInt < 0 {
-		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
-	}
-	return fdInt, nil
-}
-
-func LoadAndPinSockmapMaps(__version, __verbosity int, __btf, __prog, __map, __map_label string) (int, error) {
-	version := C.int(__version)
-	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
-	p := C.CString(__prog)
-	m := C.CString(__map)
-	ml := C.CString(__map_label)
-
-	fd := C.fgs_map_loader(version, verbosity, btf, p, m, ml)
+	fd := C.fgs_map_loader(version, verbosity, btf, p, m, ml, pt)
 	fdInt := int(fd)
 	if fdInt < 0 {
 		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
