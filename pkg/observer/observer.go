@@ -532,7 +532,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			break
 		}
 		/* OR filter together */
-		//k.observerListeners(msgUnix)
+		k.observerListenersTLS(&m)
 		/* Keeping pretty printer because it helps debugging filters */
 		if k.prettyPrinter {
 			reader.ObserverTLSPrinter(&m, k.log)

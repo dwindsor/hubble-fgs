@@ -80,6 +80,16 @@ message ProcessExec {
     repeated Process ancestors = 3;
 }
 
+message Tls {
+    string source_ip = 1;
+    google.protobuf.UInt32Value source_port = 2;
+    string destination_ip = 3;
+    google.protobuf.UInt32Value destination_port = 4;
+    string supported_versions = 5;
+    string sni_type = 6;
+    string sni_name = 7;
+}
+
 service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
 }
@@ -91,6 +101,7 @@ message GetEventsResponse {
         ProcessExec process_exec = 1;
         ProcessConnect process_connect = 2;
         ProcessListen process_listen = 3;
+	Tls tls = 4;
     }
     // Name of the node where this event was observed.
     string node_name = 1000;

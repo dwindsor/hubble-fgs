@@ -712,6 +712,100 @@ var _ interface {
 	ErrorName() string
 } = ProcessExecValidationError{}
 
+// Validate checks the field values on Tls with the rules defined in the proto
+// definition for this message. If any rules are violated, an error is returned.
+func (m *Tls) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for SourceIp
+
+	if v, ok := interface{}(m.GetSourcePort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return TlsValidationError{
+				field:  "SourcePort",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for DestinationIp
+
+	if v, ok := interface{}(m.GetDestinationPort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return TlsValidationError{
+				field:  "DestinationPort",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for SupportedVersions
+
+	// no validation rules for SniType
+
+	// no validation rules for SniName
+
+	return nil
+}
+
+// TlsValidationError is the validation error returned by Tls.Validate if the
+// designated constraints aren't met.
+type TlsValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e TlsValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e TlsValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e TlsValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e TlsValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e TlsValidationError) ErrorName() string { return "TlsValidationError" }
+
+// Error satisfies the builtin error interface
+func (e TlsValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sTls.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = TlsValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = TlsValidationError{}
+
 // Validate checks the field values on GetEventsRequest with the rules defined
 // in the proto definition for this message. If any rules are violated, an
 // error is returned.
@@ -829,6 +923,18 @@ func (m *GetEventsResponse) Validate() error {
 			if err := v.Validate(); err != nil {
 				return GetEventsResponseValidationError{
 					field:  "ProcessListen",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *GetEventsResponse_Tls:
+
+		if v, ok := interface{}(m.GetTls()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsResponseValidationError{
+					field:  "Tls",
 					reason: "embedded message failed validation",
 					cause:  err,
 				}

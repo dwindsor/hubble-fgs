@@ -317,6 +317,7 @@ func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
 		"proto":                 msg.Tuple.Proto,
 		"saddr":                 GetIP(msg.Tuple.SAddr, op).String(),
 		"sport":                 GetSport(msg.Tuple.SPort),
+		"dport":                 msg.Tuple.DPort,
 		"daddr":                 GetIP(msg.Tuple.DAddr, op).String(),
 		"TLS-Version":           GetTLSVersion(msg.TLS.Version),
 		"SNI-Type":              typeSNI,

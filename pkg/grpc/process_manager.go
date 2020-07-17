@@ -57,6 +57,21 @@ func NewProcessManager(
 	}, nil
 }
 
+func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEvent) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_TLS:
+		res = &fgs.GetEventsResponse{
+			Event:    &fgs.GetEventsResponse_Tls{Tls: pm.GetTLS(msg)},
+			NodeName: pm.nodeName,
+			Time:     ktimeToProto(0), // tbd
+		}
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
 func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpConnectUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
@@ -89,6 +104,8 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpConnectUnix) *fgs.
 func (pm *ProcessManager) Notify(event interface{}) error {
 	var processedEvent interface{}
 	switch msg := event.(type) {
+	case *api.MsgTLSEvent:
+		processedEvent = pm.handleTLSMessage(msg)
 	case *api.MsgIPv4TcpConnectUnix:
 		processedEvent = pm.handleTCPMessage(msg)
 	default:
@@ -262,6 +279,31 @@ func (pm *ProcessManager) GetProcessListen(
 		Parent:  parent,
 		Ip:      reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		Port:    port,
+	}
+}
+
+// GetTLS converts TLSEvent from hubble-fgs to protobuf message.
+func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
+	var sourcePort, destinationPort *wrappers.UInt32Value
+	if event.Tuple.SPort != 0 {
+		sourcePort = &wrappers.UInt32Value{
+			Value: uint32(event.Tuple.SPort),
+		}
+	}
+	if event.Tuple.DPort != 0 {
+		destinationPort = &wrappers.UInt32Value{
+			Value: uint32(event.Tuple.DPort),
+		}
+	}
+	typeSNI, nameSNI := reader.GetTLSSNI(event.TLS.SNI)
+	return &fgs.Tls{
+		SourceIp:          reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourcePort:        sourcePort,
+		DestinationIp:     reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
+		DestinationPort:   destinationPort,
+		SupportedVersions: reader.GetTLSSupportedVersions(event.TLS.SupportedVersions),
+		SniName:           nameSNI,
+		SniType:           typeSNI,
 	}
 }
 

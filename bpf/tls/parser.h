@@ -484,7 +484,6 @@ void *skb_tls_key(void *data, void *data_end, int *off, struct msg_tls_ipv4 *key
 
 	key->dport = bpf_htons(tcphdr->dest);
 	key->sport = bpf_htons(tcphdr->source);
-	//key->dport = 0;
 
 	*off = tcp_off + sizeof(struct ethhdr);
 	return (void *) iphdr + tcp_off;
