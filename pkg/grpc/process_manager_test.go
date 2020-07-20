@@ -56,7 +56,14 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 		},
 	}
 	pods := []interface{}{&podA}
-	pm, err := NewProcessManager(logrus.New(), json.NewEncoder(ioutil.Discard), 10, NewFakeK8sWatcher(pods), cilium.GetFakeCiliumState())
+	pm, err := NewProcessManager(
+		logrus.New(),
+		json.NewEncoder(ioutil.Discard),
+		10,
+		NewFakeK8sWatcher(pods),
+		cilium.GetFakeCiliumState(),
+		nil,
+		nil)
 	assert.NoError(t, err)
 	pod, endpoint := pm.getPodInfo("container-id-not-found", &fgsAPI.MsgExecUnix{})
 	assert.Nil(t, pod)

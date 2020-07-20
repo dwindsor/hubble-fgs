@@ -1,6 +1,7 @@
 package grpc
 
 import (
+	"context"
 	"encoding/base64"
 	"encoding/json"
 	"fmt"
@@ -9,9 +10,11 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/hubble/pkg/cilium"
+	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/filters"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/golang/protobuf/ptypes"
@@ -32,6 +35,8 @@ type ProcessManager struct {
 	nodeName    string
 	watcher     K8sResourceWatcher
 	ciliumState *cilium.State
+	allowList   hubbleFilters.FilterFuncs
+	denyList    hubbleFilters.FilterFuncs
 }
 
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
@@ -41,8 +46,18 @@ func NewProcessManager(
 	processCacheSize int,
 	watcher K8sResourceWatcher,
 	ciliumState *cilium.State,
+	allowList []*fgs.Filter,
+	denyList []*fgs.Filter,
 ) (*ProcessManager, error) {
 	processCache, err := lru.New(processCacheSize)
+	if err != nil {
+		return nil, err
+	}
+	allowListFuncs, err := filters.BuildFilterList(context.Background(), allowList, filters.Filters)
+	if err != nil {
+		return nil, err
+	}
+	denyListFuncs, err := filters.BuildFilterList(context.Background(), denyList, filters.Filters)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +69,8 @@ func NewProcessManager(
 		nodeName:    os.Getenv("NODE_NAME"),
 		watcher:     watcher,
 		ciliumState: ciliumState,
+		allowList:   allowListFuncs,
+		denyList:    denyListFuncs,
 	}, nil
 }
 
@@ -110,6 +127,9 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleTCPMessage(msg)
 	default:
 		processedEvent = event
+	}
+	if !hubbleFilters.Apply(pm.allowList, pm.denyList, &v1.Event{Event: processedEvent}) {
+		return nil
 	}
 	metrics.ProcessEvent(processedEvent)
 	if processedEvent != nil {

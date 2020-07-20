@@ -108,3 +108,8 @@ message GetEventsResponse {
     // Timestamp at which this event was observed.
     google.protobuf.Timestamp time = 1001;
 }
+
+message Filter {
+    repeated string binary_regex = 1;
+    repeated string namespace = 2;
+}

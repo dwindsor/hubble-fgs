@@ -9,9 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
+	"github.com/covalentio/hubble-fgs/pkg/filters"
 	"github.com/covalentio/hubble-fgs/pkg/grpc"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
@@ -38,6 +40,18 @@ var (
 	metricsServer        string
 	enableCiliumAPI      bool
 )
+
+func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
+	allowList, err := filters.ParseFilterList(os.Getenv("EXPORT_ALLOW_LIST"))
+	if err != nil {
+		return nil, nil, err
+	}
+	denyList, err := filters.ParseFilterList(os.Getenv("EXPORT_DENY_LIST"))
+	if err != nil {
+		return nil, nil, err
+	}
+	return allowList, denyList, nil
+}
 
 func hubbleFGSExecute() error {
 	sigs := make(chan os.Signal, 1)
@@ -93,7 +107,11 @@ func hubbleFGSExecute() error {
 		if err != nil {
 			return err
 		}
-		processManager, err := grpc.NewProcessManager(logger.GetLogger(), encoder, processCacheSize, watcher, ciliumState)
+		allowList, denyList, err := getExportFilters()
+		if err != nil {
+			return err
+		}
+		processManager, err := grpc.NewProcessManager(logger.GetLogger(), encoder, processCacheSize, watcher, ciliumState, allowList, denyList)
 		if err != nil {
 			return err
 		}
