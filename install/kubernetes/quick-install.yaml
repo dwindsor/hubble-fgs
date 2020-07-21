@@ -84,6 +84,7 @@ spec:
                 fieldPath: spec.nodeName
           - name: FGS_SOCKET_PATH
             value: "/var/run/cilium/hubble-fgs.sock"
+      hostNetwork: true
       restartPolicy: Always
       terminationGracePeriodSeconds: 1
       tolerations:
