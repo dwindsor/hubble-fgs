@@ -41,6 +41,10 @@ func getProcessInfo(process *fgs.Process) (binary string, namespace string) {
 	return binary, namespace
 }
 
+func getTlsInfo(tls *fgs.Tls) (binary string, namespace string) {
+	return "", ""
+}
+
 func ProcessEvent(event interface{}) {
 	var eventType, namespace, binary string
 	switch ev := event.(type) {
@@ -55,6 +59,9 @@ func ProcessEvent(event interface{}) {
 		case *fgs.GetEventsResponse_ProcessListen:
 			binary, namespace = getProcessInfo(ev.GetProcessListen().GetProcess())
 			eventType = "process_listen"
+		case *fgs.GetEventsResponse_Tls:
+			binary, namespace = getTlsInfo(ev.GetTls())
+			eventType = "tls"
 		}
 	default:
 		eventType = "unknown"
