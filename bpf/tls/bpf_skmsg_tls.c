@@ -32,7 +32,7 @@ int bpf_sk_msg_tls(struct sk_msg_md *skmsg)
 
 	event.common.op = MSG_OP_TLS;
 	event.tls.type = 0;
-	bpf_parse_tls(skmsg, (void *)(long)skmsg->data, 0, (void *)(long)skmsg->data_end, &event.tls);
+	bpf_parse_tls(skmsg, (void *)(long)skmsg->data, 0, &event.tls);
 	if (event.tls.type == TLS_TYPE_HELLO) {
 		event.tuple.daddr = skmsg->remote_ip4;
 		event.tuple.saddr = skmsg->local_ip4;

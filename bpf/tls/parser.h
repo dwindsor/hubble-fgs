@@ -245,6 +245,63 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16
 
 static inline __attribute__((always_inline))
 #ifdef SK_MSG
+void *get_data(struct sk_msg_md *ctx, int off, int needed)
+{
+	int err = msg_pull_data(ctx, 0, off + needed, 0);
+#else
+void *get_data(struct __sk_buff *ctx, int off, int needed)
+{
+	int err = skb_pull_data(ctx, off + needed);
+#endif
+	void *data_end, *data, *tmp;
+
+	if (err)
+		return 0;
+
+	data_end = (void*)(long)ctx->data_end;
+	data = (void*)(long)ctx->data;
+	/* We need to advance the pointer to offset position and
+	 * then compare the new ptr + needed bytes to ensure we
+	 * haven't walked off the end of the pointer. But, order
+	 * matters here. This will smash the range value on the
+	 * packet and create a new ptrid. Consider,
+	 *
+	 * r3 = r2       // r2 is the data pkt pointer
+	 * r3 += off     // oops r3 is a new pkt pointer because off is not
+	 * r3 += needed  // required to be a const, so we have two pkts as
+	 *               // far as verifier is concerned, r2 and r3
+	 * if r3 > r1    // r1 is data_end so now r3 has a bounds, but r2
+	 *               // does not share these bounds
+	 * <--- snip --->
+	 * derference r2 later and verifier will fail because
+	 * we verified the bound on r3, but that is not the same
+	 * pointer as r2. To fix get our order of ops correct,
+	 *
+	 * r2 += off     // off need not be constant here. If its
+	 *               // not constant r2 will have a new pktid
+	 * r3 = r2       // Now r3 is r2 from verifier side
+	 * r3 += needed  // needed must be a fixed known constant, then
+	 *               // r3 and r2 are still the same pktid
+	 * if (r3 > r1)  // Now we have bounds on original r2 and r2!
+	 */
+	asm volatile (
+		"%[data] += %[off];\n"
+		"%[tmp] = %[data];\n"
+		"%[tmp] += %[needed];\n"
+		"if %[tmp] <= %[data_end] goto +1;\n"
+		"%[data] = 0;\n"
+		: [data] "+r"(data),
+		  [tmp] "+r"(tmp),
+		  [data_end] "+r"(data_end),
+		  [off] "+r"(off),
+		  [needed] "+r"(needed)
+		::);
+
+	return data;
+}
+
+static inline __attribute__((always_inline))
+#ifdef SK_MSG
 int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int payload_off, struct msg_tls *tls)
 #else
 int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls)
@@ -262,8 +319,12 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	payload = data + payload_off;
 
 	client_hello = payload + sizeof(struct tls_handshake_hdr);
-	if ((void*)client_hello + sizeof(struct tls_handshake_client_hello) > data_end)
-		return SK_PASS;
+	if ((void*)client_hello + sizeof(struct tls_handshake_client_hello) > data_end) {
+		client_hello = get_data(ctx, payload_off, sizeof(struct tls_handshake_client_hello));
+		if (!client_hello)
+			return SK_PASS;
+		data_end = (void *)(long)ctx->data_end;
+	}
 
 	/* If you (a) have lots of extensions and (b) don't put required extensions in
 	 * the front of the list go away we may drop your packets for fun.
@@ -277,23 +338,8 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	 * data cork until we get don't let users send us partial headers. Then max length
 	 * should follow us around.
 	 */
-	if ((void *)client_hello + maxlength > data_end) {
-#ifdef SK_MSG
-		int err = msg_pull_data(ctx, 0, maxlength, 0);
-#else
-		int err = skb_pull_data(ctx, payload_off + maxlength);
-#endif
-
-		if (err)
-			return SK_PASS;
-
-		data_end = (void*)(long)ctx->data_end;
-		data = (void*)(long)ctx->data;
-		payload = data + payload_off;
-		client_hello = payload + sizeof(struct tls_handshake_hdr);
-		if ((void *)client_hello + sizeof(struct tls_handshake_client_hello) > data_end)
-			return SK_PASS;
-	}
+	if ((void *)client_hello + maxlength > data_end)
+		return SK_PASS; // escape hatch too many tlvs!
 
 	compiler_barrier();
 	adv_session = client_hello->session_id_length;
@@ -410,15 +456,20 @@ int bpf_parse_tls_skb(struct __sk_buff *skb, struct msg_tls *tls)
 
 static inline __attribute__((always_inline))
 #ifdef SK_MSG
-int bpf_parse_tls(struct sk_msg_md *ctx, void *payload, int payload_off, void *data_end, struct msg_tls *tls)
+int bpf_parse_tls(struct sk_msg_md *ctx, void *payload, int payload_off, struct msg_tls *tls)
 #else
-int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, void *data_end, struct msg_tls *tls)
+int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, struct msg_tls *tls)
 #endif
 {
 	struct tls_hdr *hdr;
+	void *data_end = (void *)(long)ctx->data_end;
 
-	if (payload + sizeof(struct tls_hdr) > data_end)
-		return 0;
+	if (payload + sizeof(struct tls_hdr) > data_end) {
+		payload = get_data(ctx, payload_off, sizeof(struct tls_hdr));
+		if (!payload)
+			return -1;
+		data_end = (void *)(long)ctx->data_end;
+	}
 	hdr = (struct tls_hdr *)payload;
 
 	tls->type    = hdr->type;
@@ -428,8 +479,12 @@ int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, void *d
 	if (hdr->type == TLS_TYPE_HELLO) {
 		struct tls_handshake_hdr *handshake;
 
-		if (payload + sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr) > data_end)
+		if (payload + sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr) > data_end) {
 			return -1;
+			payload = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
+			if (payload)
+				return -1;
+		}
 		handshake = (struct tls_handshake_hdr *)(payload + sizeof(struct tls_hdr));
 		switch (handshake->type) {
 		case client_hello:
@@ -454,23 +509,34 @@ int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, void *d
 
 #define ETH_P_IP 0x800
 
+#ifndef SK_MSG
 static inline __attribute__((always_inline))
-void *skb_tls_key(void *data, void *data_end, int *off, struct msg_tls_ipv4 *key) {
+void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
+	void *data, *data_end;
 	struct tcphdr *tcphdr;
 	struct iphdr *iphdr;
 	struct ethhdr *eth;
 	__u8 tcp_off;
 	__u16 proto;
 
+	data = (void *)(long) skb->data;
+	data_end = (void *)(long) skb->data_end;
 	eth = data;
-	iphdr = data + sizeof(struct ethhdr);
-	if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
-		return 0;
+	/* TBD soon data, data_end, payload will be streamified and and
+	 * the extra data_end reset will be dropped.
+	 */
+	if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end) {
+		eth = get_data(skb, 0, sizeof(struct ethhdr) + sizeof(struct iphdr));
+		if (!eth)
+			return 0;
+		data_end = (void *)(long)skb->data_end;
+	}
 
 	proto = eth->h_proto;
 	if (proto != bpf_htons(ETH_P_IP))
 		return 0;
 
+	iphdr = (void *)eth + sizeof(struct ethhdr);
 	key->daddr = iphdr->daddr;
 	key->saddr = iphdr->saddr;
 	key->proto = 0;
@@ -479,24 +545,32 @@ void *skb_tls_key(void *data, void *data_end, int *off, struct msg_tls_ipv4 *key
 	tcp_off &= 0x0f;
 	tcp_off *= 4;
 	tcphdr = (void *)iphdr + tcp_off;
-	if (tcphdr + sizeof(struct tcphdr) > data_end)
-		return 0;
+	if (tcphdr + sizeof(struct tcphdr) > data_end) {
+		tcphdr = get_data(skb,
+				sizeof(struct ethhdr) + tcp_off, sizeof(struct tcphdr));
+		if (!tcphdr)
+			return 0;
+		data_end = (void *)(long)skb->data_end;
+	}
 
 	key->dport = bpf_htons(tcphdr->dest);
 	key->sport = bpf_htons(tcphdr->source);
-
 	*off = tcp_off + sizeof(struct ethhdr);
-	return (void *) iphdr + tcp_off;
+	return (void *)tcphdr;
 }
 
 static inline __attribute__((always_inline))
-void *skb_tcp_payload(struct tcphdr *tcphdr, int *offset, void *data_end)
+void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 {
+	void *data_end = (void *)(long)skb->data_end;
 	__u8 doff;
 
 	/* offset of doff + 4B read */
-	if ((void *)tcphdr + 16 > data_end)
-		return 0;
+	if ((void *)tcphdr + 16 > data_end) {
+		tcphdr = get_data(skb, *offset, 16);
+		if (!tcphdr)
+			return 0;
+	}
 	doff = tcphdr->doff;
 	doff *= 4;
 	/* Subtraction on pointers is only supported on newer kernels so we
@@ -505,3 +579,4 @@ void *skb_tcp_payload(struct tcphdr *tcphdr, int *offset, void *data_end)
 	*offset = *offset + doff;
 	return (void*)tcphdr + doff;
 }
+#endif

@@ -27,22 +27,20 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 __attribute__((section(("tc/egress_tcp")), used))
 int event_tc_egress_tcp(struct __sk_buff *skb)
 {
-	void *data_end = (void *)(long)skb->data_end;
-	void *data = (void *)(long)skb->data;
 	struct msg_tls_event event = {0};
 	struct tcphdr *tcp;
 	void *payload;
 	int off = 0;
 
-	tcp = skb_tls_key(data, data_end, &off, &event.tuple);
+	tcp = skb_tls_key(skb, &off, &event.tuple);
 	if (!tcp)
 		return SK_PASS;
-	payload = skb_tcp_payload(tcp, &off, data_end);
+	payload = skb_tcp_payload(skb, tcp, &off);
 	if (!payload)
 		return SK_PASS;
 	event.common.op = MSG_OP_TLS;
 	event.tls.type = 0;
-	bpf_parse_tls(skb, payload, off, data_end, &event.tls);
+	bpf_parse_tls(skb, payload, off, &event.tls);
 	if (event.tls.type == TLS_TYPE_HELLO) {
 		map_update_elem(&tls_map, &event.tuple, &event.tls, 0);
 	}
