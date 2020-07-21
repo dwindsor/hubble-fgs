@@ -830,6 +830,76 @@ func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) e
 	return nil
 }
 
+func (k *ObserverKprobe) getDefaultRouteLinks() ([]netlink.Link, error) {
+	var links []netlink.Link
+
+	nilDst := &netlink.Route{Dst: nil}
+	routes, err := netlink.RouteListFiltered(netlink.FAMILY_V4, nilDst, netlink.RT_FILTER_DST)
+	if err != nil {
+		k.log.WithError(err).Warn("RouteListFiltered failed:")
+		return nil, err
+	}
+	allLinks, err := netlink.LinkList()
+	if err != nil {
+		k.log.WithError(err).Warn("LinkList failed:")
+		return nil, err
+	}
+	for _, route := range routes {
+		for _, link := range allLinks {
+			if link.Attrs().Index == route.LinkIndex {
+				links = append(links, link)
+			}
+		}
+	}
+	return links, nil
+}
+
+func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int, btf string) (error, int) {
+	var attachLinks []netlink.Link
+
+	err, fd := bpf.LoadTC(version, Verbosity,
+		btf,
+		load.Observer__program,
+		load.observer__label,
+		k.bpfDir+load.observer__prog,
+		k.mapDir)
+	if err != nil {
+		return err, fd
+	}
+	if k.interfaces != "" {
+		links, err := netlink.LinkList()
+		if err != nil {
+			return err, 0
+		}
+		ifaceMatch := strings.Split(k.interfaces, ",")
+		for _, link := range links {
+			for _, m := range ifaceMatch {
+				add, err := regexp.MatchString(m, link.Attrs().Name)
+				if err != nil || !add {
+					continue
+				}
+				attachLinks = append(attachLinks, link)
+			}
+		}
+	} else {
+		attachLinks, err = k.getDefaultRouteLinks()
+		if err != nil {
+			return err, 0
+		}
+	}
+
+	for _, link := range attachLinks {
+		k.log.Infof("Attaching %s to device %s", load.probeType, link.Attrs().Name)
+		isIngress := "tc_ingress" == load.probeType
+		if err = bpf.QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
+			return err, 0
+		}
+		bpf.AttachTCIngress(fd, link.Attrs().Name, isIngress)
+	}
+
+	return nil, 0
+}
+
 func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf string, x64 bool) (error, int) {
 	var attach string
 
@@ -873,33 +943,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.bpfDir+load.observer__prog,
 			k.mapDir)
 	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
-		err, fd := bpf.LoadTC(
-			version, Verbosity,
-			btf,
-			load.Observer__program,
-			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			k.mapDir)
-		if err != nil {
-			return err, fd
-		}
-		links, err := netlink.LinkList()
-		if err != nil {
-			return err, 0
-		}
-		for _, link := range links {
-			if link.Attrs().Name == "lo" {
-				continue
-			}
-			k.log.Infof("Attaching %s to device %s", load.probeType, link.Attrs().Name)
-			isIngress := "tc_ingress" == load.probeType
-			err = bpf.QdiscTCInsert(link.Attrs().Name, isIngress)
-			if err != nil {
-				return err, 0
-			}
-			bpf.AttachTCIngress(fd, link.Attrs().Name, isIngress)
-		}
-		return nil, 0
+		return k.observerLoadTC(load, version, Verbosity, btf)
 	} else {
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
@@ -1481,6 +1525,7 @@ type ObserverKprobe struct {
 	/* Configuration */
 	bpfDir     string
 	mapDir     string
+	interfaces string
 	listeners  map[Listener]struct{}
 	perfConfig *bpf.PerfEventConfig
 	/* Features */
@@ -1639,10 +1684,11 @@ func (k *ObserverKprobe) RemovePrograms() {
 	os.Remove(k.mapDir)
 }
 
-func NewObserverKprobe(bpfDir, mapDir string, execve, tls, tlstc, pretty bool) *ObserverKprobe {
+func NewObserverKprobe(bpfDir, mapDir, interfaces string, execve, tls, tlstc, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:        bpfDir,
 		mapDir:        mapDir,
+		interfaces:    interfaces,
 		enableExecve:  execve,
 		enableTLS:     tls,
 		enableTLSTC:   tlstc,

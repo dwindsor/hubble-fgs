@@ -73,7 +73,7 @@ func getDefaultObserver(t *testing.T, execve, tls, tlstc, pretty bool) *Observer
 		ProcFS = procfs
 	}
 
-	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, execve, tls, tlstc, pretty)
+	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", execve, tls, tlstc, pretty)
 	if testing.Verbose() {
 		Verbosity = 4
 	}

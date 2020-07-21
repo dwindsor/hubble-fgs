@@ -39,6 +39,7 @@ var (
 	enableK8sAPI         bool
 	metricsServer        string
 	enableCiliumAPI      bool
+	networkInterfaces    string
 )
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
@@ -65,7 +66,11 @@ func hubbleFGSExecute() error {
 		bpf.CheckOrMountCgroup2()
 	}
 	bpf.ConfigureResourceLimits()
-	kprobe := observer.NewObserverKprobe(observerDir, observerDir, viper.GetBool("execve"), viper.GetBool("tls"), viper.GetBool("tlstc"), viper.GetBool("debug"))
+	kprobe := observer.NewObserverKprobe(observerDir, observerDir,
+		networkInterfaces,
+		viper.GetBool("execve"),
+		viper.GetBool("tls"), viper.GetBool("tlstc"),
+		viper.GetBool("debug"))
 
 	err := os.Remove(defaults.GetSocketPath())
 	if err != nil && !os.IsNotExist(err) {
@@ -169,6 +174,7 @@ func init() {
 	flags.BoolVar(&enableK8sAPI, "enable-k8s-api", false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
 	flags.StringVar(&metricsServer, "metrics-server", "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
 	flags.BoolVar(&enableCiliumAPI, "enable-cilium-api", false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
+	flags.StringVar(&networkInterfaces, "network-interfaces", "", "Comma separated list of regex expressions to use to apply protocol parsers")
 	viper.BindPFlags(flags)
 }
 
