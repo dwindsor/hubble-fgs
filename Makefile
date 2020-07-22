@@ -39,9 +39,9 @@ test:
 test-kernels:
 	kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
 	${KATA_RUNNER}
-	kata-img vmlinuz-kata-linux-4.19.125-79_hubble
+	kata-img vmlinuz-kata-linux-4.19.133-81_hubble
 	${KATA_RUNNER}
-	kata-img vmlinuz-kata-linux-5.4.44-79_hubble
+	kata-img vmlinuz-kata-linux-5.4.51-83_hubble
 	${KATA_RUNNER}
 
 lint:
