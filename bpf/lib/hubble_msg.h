@@ -207,7 +207,8 @@ struct msg_tls_ipv4 {
 struct msg_tls_event {
 	struct msg_common     common;
 	struct msg_tls_ipv4   tuple;
-	struct msg_tls	      tls;
+	struct msg_tls	      clienthello;
+	struct msg_tls	      serverhello;
 } __attribute__((packed));
 
 struct event {

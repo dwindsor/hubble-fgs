@@ -278,16 +278,17 @@ type MsgTLS struct {
 	Length            uint16
 	Type              uint8
 	Pad               [1]uint8
-	NegotiatedVersion uint16
+	LegacyyVersion    uint16
 	SNI               [32]uint8
 	SupportedVersions [16]uint8
 	Cipher            uint64
 }
 
 type MsgTLSEvent struct {
-	Common MsgCommon
-	Tuple  MsgTLSIPv4
-	TLS    MsgTLS
+	Common      MsgCommon
+	Tuple       MsgTLSIPv4
+	ClientHello MsgTLS
+	ServerHello MsgTLS
 }
 
 func SwapByte(b uint16) uint16 {

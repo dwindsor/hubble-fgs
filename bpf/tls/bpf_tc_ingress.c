@@ -50,16 +50,19 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 	key.dport = port;
 
 	event = map_lookup_elem(&tls_map, &key);
-	if (event && event->type == TLS_TYPE_HELLO) {
+	if (event && event->type == TLS_TYPE_HANDSHAKE) {
 		struct msg_tls_event post = {0};
 		void *payload;
+		int err;
 
-		post.tls = *event;
+		post.clienthello = *event;
 
 		payload = skb_tcp_payload(skb, tcp, &off);
 		if (!payload)
 			return TC_ACT_OK;
-		bpf_parse_tls(skb, payload, off, &post.tls);
+		err = bpf_parse_tls(skb, payload, off, &post.serverhello);
+		if (err)
+			return TC_ACT_OK;
 		post.tuple = key;
 		post.common.op = MSG_OP_TLS;
 		post.common.size = sizeof(struct msg_tls_event);

@@ -50,7 +50,7 @@ int event_ingress_tcp(struct pt_regs *ctx)
 	if (event && event->type) {
 		struct msg_tls_event post = {0};
 
-		post.tls = *event;
+		post.clienthello = *event;
 		post.tuple = key;
 		post.common.op = MSG_OP_TLS;
 		post.common.size = sizeof(struct msg_tls_event);

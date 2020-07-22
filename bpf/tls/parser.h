@@ -25,6 +25,13 @@ struct tls_handshake_client_hello {
 	__u8  session_id_length;
 } __attribute__((packed));
 
+struct tls_handshake_server_hello {
+	__u32 type:8;
+	__u32 length:24;
+	__u16 version;
+	struct tls_random random;
+	__u8  session_id_length;
+} __attribute__((packed));
 
 struct tls_extension {
 	__u16 type;
@@ -47,7 +54,7 @@ struct tls_extension {
 #define bpf_htonl(x)		__builtin_bswap32(x)
 #endif
 
-#define TLS_TYPE_HELLO 22
+#define TLS_TYPE_HANDSHAKE 22
 
 #define TLS_VERSION_13 0x0403
 #define TLS_VERSION_12 0x0303
@@ -77,9 +84,11 @@ int bpf_parse_tls_hello_request(struct sk_msg_md *msg)
 #define EXTENSION { \
 	if (extension > payload + maxlength) {			   \
 		goto extension_macro_out;			   \
-	} \
-	extension = bpf_parse_extension(extension, maxlength, data_end, tls); \
+	}							   \
+	extension = bpf_parse_extension(extension, &extension_length, data_end, tls); \
 	if (!extension)						   \
+		goto extension_macro_out;			   \
+	if ((int)extension_length < 0)				   \
 		goto extension_macro_out;			   \
 }
 
@@ -206,7 +215,7 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 }
 
 static inline __attribute__((always_inline))
-struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16 max, void *data_end, struct msg_tls *tls)
+struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16 *max, void *data_end, struct msg_tls *tls)
 {
 	__u16 extlength, exttype;
 	void *dst = 0;
@@ -216,6 +225,7 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16
 
 	extlength = bpf_htons(extension->length);
 	exttype = bpf_htons(extension->type);
+	*max -= extlength - 4;
 
 	switch (exttype) {
 	case EXT_SERVER_NAME:
@@ -302,15 +312,15 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 
 static inline __attribute__((always_inline))
 #ifdef SK_MSG
-int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int payload_off, struct msg_tls *tls)
+int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int payload_off, struct msg_tls *tls, bool client)
 #else
-int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls)
+int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls, bool client)
 #endif
 {
+	__u16 *cipher_length, adv_cipher, extension_length;
 	struct tls_handshake_client_hello *client_hello;
 	__u8 *compression, adv_compression, adv_session;
 	struct tls_extension *extension;
-	__u16 *cipher_length, adv_cipher;
 	volatile __u16 maxlength;
 	void *payload, *data, *data_end;
 
@@ -348,8 +358,13 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	cipher_length = (void *)client_hello + sizeof(struct tls_handshake_client_hello) + adv_session;
 	if (cipher_length + 2 > data_end)
 		return SK_PASS;
-	adv_cipher = *cipher_length;
-	adv_cipher = bpf_htons(adv_cipher);
+
+	if (client) {
+		adv_cipher = *cipher_length;
+		adv_cipher = bpf_htons(adv_cipher);
+	} else {
+		adv_cipher = 0;
+	}
 
 	adv_cipher &= 0x7fff;
 	if (adv_cipher > 255)
@@ -358,13 +373,22 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	compression = (void *)cipher_length + adv_cipher + 2;
 	if (compression + 1 > data_end)
 		return SK_PASS;
-	adv_compression = *compression;
+	if (client)
+		adv_compression = *compression;
+	else
+		adv_compression = 0;
 
 	compiler_barrier();
 	adv_compression &= 0x7f;
 	if (adv_compression > 255)
 		return SK_PASS;
-	extension = (void *)compression + adv_compression + 3;
+
+	extension = (void *)compression + adv_compression + 1;
+	if (extension + 2 > data_end)
+		return SK_PASS;
+
+	extension_length = *(u16 *)extension;
+	extension = (void *)extension + 2;
 	compiler_barrier();
 	maxlength = 0x7fff;
 	TWENTY_EXTENSIONS
@@ -372,12 +396,6 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	// For now we just parse extensions until we walk off the end of the
 	// packet so we just jump here when that happens.
 extension_macro_out:
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline))
-int bpf_parse_tls_server_hello(struct sk_msg_md *msg)
-{
 	return SK_PASS;
 }
 
@@ -476,8 +494,9 @@ int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, struct 
 	tls->length  = hdr->length;
 	tls->version = hdr->version;
 
-	if (hdr->type == TLS_TYPE_HELLO) {
+	if (hdr->type == TLS_TYPE_HANDSHAKE) {
 		struct tls_handshake_hdr *handshake;
+		bool client = false;
 
 		if (payload + sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr) > data_end) {
 			payload = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
@@ -487,11 +506,11 @@ int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, struct 
 		handshake = (struct tls_handshake_hdr *)(payload + sizeof(struct tls_hdr));
 		switch (handshake->type) {
 		case client_hello:
-			bpf_parse_tls_client_hello(ctx, payload_off, tls);
-			break;
-		/* Everything below here is a nop for skmsg types */
-		case hello_request:
+			client = true;
 		case server_hello:
+			bpf_parse_tls_client_hello(ctx, payload_off, tls, client);
+			break;
+		case hello_request:
 		case certificate:
 		case server_key_exchange:
 		case certificate_request:

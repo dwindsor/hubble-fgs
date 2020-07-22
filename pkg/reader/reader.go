@@ -281,14 +281,14 @@ func GetTLSSNI(sni [32]byte) (string, string) {
 	return typeSNI, string(sni[5 : 5+nameLength])
 }
 
-func GetTLSSupportedVersions(vers [16]byte) string {
+func GetTLSSupportedVersions(vers [16]byte, offset int) string {
 	var s []string
 
 	length := int(vers[0])
 	if length > 16 {
 		length = 16
 	}
-	for i := 1; i < length; i += 2 {
+	for i := offset; i < length; i += 2 {
 		t := binary.LittleEndian.Uint16(vers[i : i+2])
 
 		switch t {
@@ -310,19 +310,21 @@ func GetTLSSupportedVersions(vers [16]byte) string {
 
 func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
 	op := msg.Common.Op
-	typeSNI, nameSNI := GetTLSSNI(msg.TLS.SNI)
+	typeSNI, nameSNI := GetTLSSNI(msg.ClientHello.SNI)
 
 	log.WithFields(logrus.Fields{
-		"op":                    api.OpCode(op).String(),
-		"proto":                 msg.Tuple.Proto,
-		"saddr":                 GetIP(msg.Tuple.SAddr, op).String(),
-		"sport":                 GetSport(msg.Tuple.SPort),
-		"dport":                 msg.Tuple.DPort,
-		"daddr":                 GetIP(msg.Tuple.DAddr, op).String(),
-		"TLS-Version":           GetTLSVersion(msg.TLS.Version),
-		"SNI-Type":              typeSNI,
-		"SNI-Name":              nameSNI,
-		"TLS-SupportedVersions": GetTLSSupportedVersions(msg.TLS.SupportedVersions),
-		"cipher":                GetTLSCipher(msg.TLS.Cipher),
+		"op":                           api.OpCode(op).String(),
+		"proto":                        msg.Tuple.Proto,
+		"saddr":                        GetIP(msg.Tuple.SAddr, op).String(),
+		"sport":                        GetSport(msg.Tuple.SPort),
+		"dport":                        msg.Tuple.DPort,
+		"daddr":                        GetIP(msg.Tuple.DAddr, op).String(),
+		"Client-TLS-Version":           GetTLSVersion(msg.ClientHello.Version),
+		"Server-TLS-Version":           GetTLSVersion(msg.ServerHello.Version),
+		"SNI-Type":                     typeSNI,
+		"SNI-Name":                     nameSNI,
+		"Client-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ClientHello.SupportedVersions, 1),
+		"Server-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ServerHello.SupportedVersions, 0),
+		"cipher":                       GetTLSCipher(msg.ServerHello.Cipher),
 	}).Warn()
 }

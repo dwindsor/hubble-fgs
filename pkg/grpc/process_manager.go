@@ -315,14 +315,14 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 			Value: uint32(event.Tuple.DPort),
 		}
 	}
-	typeSNI, nameSNI := reader.GetTLSSNI(event.TLS.SNI)
+	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI)
 	return &fgs.Tls{
 		SourceIp:          reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:        sourcePort,
 		DestinationIp:     reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
 		DestinationPort:   destinationPort,
-		NegotiatedVersion: reader.GetTLSVersion(event.TLS.NegotiatedVersion),
-		SupportedVersions: reader.GetTLSSupportedVersions(event.TLS.SupportedVersions),
+		NegotiatedVersion: reader.GetTLSSupportedVersions(event.ServerHello.SupportedVersions, 0),
+		SupportedVersions: reader.GetTLSSupportedVersions(event.ClientHello.SupportedVersions, 1),
 		SniName:           nameSNI,
 		SniType:           typeSNI,
 	}
