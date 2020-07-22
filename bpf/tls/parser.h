@@ -480,7 +480,6 @@ int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, struct 
 		struct tls_handshake_hdr *handshake;
 
 		if (payload + sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr) > data_end) {
-			return -1;
 			payload = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
 			if (payload)
 				return -1;
