@@ -321,6 +321,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 		SourcePort:        sourcePort,
 		DestinationIp:     reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
 		DestinationPort:   destinationPort,
+		NegotiatedVersion: reader.GetTLSVersion(event.TLS.NegotiatedVersion),
 		SupportedVersions: reader.GetTLSSupportedVersions(event.TLS.SupportedVersions),
 		SniName:           nameSNI,
 		SniType:           typeSNI,

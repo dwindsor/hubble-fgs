@@ -743,6 +743,8 @@ func (m *Tls) Validate() error {
 		}
 	}
 
+	// no validation rules for NegotiatedVersion
+
 	// no validation rules for SupportedVersions
 
 	// no validation rules for SniType

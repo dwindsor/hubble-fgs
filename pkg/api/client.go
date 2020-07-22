@@ -277,7 +277,8 @@ type MsgTLS struct {
 	Version           uint16
 	Length            uint16
 	Type              uint8
-	Pad               [3]uint8
+	Pad               [1]uint8
+	NegotiatedVersion uint16
 	SNI               [32]uint8
 	SupportedVersions [16]uint8
 	Cipher            uint64

@@ -32,11 +32,14 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
 	struct msg_tls *event;
+	struct tcphdr *tcp;
 	int off = 0;
 	__u32 addr;
 	__u16 port;
 
-	skb_tls_key(skb, &off, &key);
+	tcp = skb_tls_key(skb, &off, &key);
+	if (!tcp)
+		return TC_ACT_OK;
 
 	addr = key.saddr;
 	key.saddr = key.daddr;
@@ -47,10 +50,16 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 	key.dport = port;
 
 	event = map_lookup_elem(&tls_map, &key);
-	if (event && event->type) {
+	if (event && event->type == TLS_TYPE_HELLO) {
 		struct msg_tls_event post = {0};
+		void *payload;
 
 		post.tls = *event;
+
+		payload = skb_tcp_payload(skb, tcp, &off);
+		if (!payload)
+			return TC_ACT_OK;
+		bpf_parse_tls(skb, payload, off, &post.tls);
 		post.tuple = key;
 		post.common.op = MSG_OP_TLS;
 		post.common.size = sizeof(struct msg_tls_event);
