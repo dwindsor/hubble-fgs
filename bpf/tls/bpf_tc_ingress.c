@@ -30,51 +30,21 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 __attribute__((section(("tc/ingress_tcp")), used))
 int event_tc_ingress_tcp(struct __sk_buff *skb)
 {
-	void *data_end, *data;
 	struct msg_tls_ipv4 key = {0};
 	struct msg_tls *event;
-	struct tcphdr *tcphdr;
-	struct iphdr *iphdr;
-	struct ethhdr *eth;
-	__u8 tcp_off;
-	__u16 proto;
+	int off = 0;
+	__u32 addr;
+	__u16 port;
 
-	data_end = (void *)(long)skb->data_end;
-	data = (void *)(long)skb->data;
-	eth = data;
-	iphdr = data + sizeof(struct ethhdr);
-	if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end)
-		return TC_ACT_OK;
+	skb_tls_key(skb, &off, &key);
 
-	proto = eth->h_proto;
-	if (proto != bpf_htons(ETH_P_IP))
-		return TC_ACT_OK;
+	addr = key.saddr;
+	key.saddr = key.daddr;
+	key.daddr = addr;
 
-	if (iphdr->protocol != 6)
-		return TC_ACT_OK;
-
-	key.daddr = iphdr->saddr;
-	key.saddr = iphdr->daddr;
-	key.proto = 0;
-
-	tcp_off = iphdr->ihl;
-	tcp_off &= 0x0f;
-	tcp_off *= 4;
-	tcphdr = (void *)iphdr + tcp_off;
-	if ((void *)tcphdr + sizeof(struct tcphdr) > data_end) {
-		int err = skb_pull_data(skb, sizeof(struct ethhdr) + tcp_off + sizeof(struct tcphdr));
-
-		if (err)
-			return TC_ACT_OK;
-		data = (void *)(long)skb->data;
-		data_end = (void *)(long)skb->data_end;
-		tcphdr = data + sizeof(struct ethhdr) + tcp_off;
-		if ((void *)tcphdr + sizeof(struct tcphdr) > data_end)
-			return TC_ACT_OK;
-	}
-
-	key.dport = bpf_htons(tcphdr->source);
-	key.sport = bpf_htons(tcphdr->dest);
+	port = key.sport;
+	key.sport = key.dport;
+	key.dport = port;
 
 	event = map_lookup_elem(&tls_map, &key);
 	if (event && event->type) {
