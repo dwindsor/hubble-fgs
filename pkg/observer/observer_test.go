@@ -20,11 +20,33 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
+
+	"golang.org/x/sys/unix"
 )
 
 var (
 	observerTestDir = "/sys/fs/bpf/testObserver/"
 )
+
+func minKernelVersion(kernel string) bool {
+	var uname unix.Utsname
+
+	if err := unix.Uname(&uname); err != nil {
+		return true
+	}
+	//n := bytes.IndexByte(uname.Release[:], 0)
+	// vendors like to define kernel 4.14.128-foo but
+	// everything after '-' is meaningless from BPF
+	// side so toss it out.
+	release := strings.Split(string(uname.Release[:]), "-")
+	numeric := strings.TrimRight(release[0], "+")
+	runningVersion := int(kernelStringToNumeric(numeric))
+	minVersion := int(kernelStringToNumeric(kernel))
+	if minVersion <= runningVersion {
+		return true
+	}
+	return false
+}
 
 func TestMain(m *testing.M) {
 	bpf.CheckOrMountFS("")
@@ -61,6 +83,8 @@ func getDefaultObserver(t *testing.T, execve, tls, tlstc, pretty bool) *Observer
 	ObserverSkmsgTLS.Observer__program = "../../bpf/objs/bpf_skmsg_tls.o"
 	ObserverCgrpIngress.Observer__program = "../../bpf/objs/bpf_cgrp_in_tls.o"
 	ObserverTLSEvent.Observer__program = "../../bpf/objs/bpf_event_tls.o"
+	ObserverTLSTCIngress.Observer__program = "../../bpf/objs/bpf_tc_ingress.o"
+	ObserverTLSTCEgress.Observer__program = "../../bpf/objs/bpf_tc_egress.o"
 
 	btf := os.Getenv("FGS_BTF")
 	if btf != "" {
@@ -455,4 +479,11 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	filterPassCheck(t, &ncExecFilter, 1)
 	filterPassCheck(t, &ncListen, 1)
 	testDone(t, kprobe)
+}
+
+func TestLoadTCTls(t *testing.T) {
+	if minKernelVersion("4.19.0") != true {
+		return
+	}
+	getDefaultObserver(t, true, false, true, false)
 }
