@@ -72,6 +72,13 @@ func hubbleFGSExecute() error {
 		viper.GetBool("tls"), viper.GetBool("tlstc"),
 		viper.GetBool("debug"))
 
+	/* Remove any stale programs, otherwise feature set change can cause
+	 * old programs to linger resulting in undefined behavior. And because
+	 * we recapture current running state from proc and/or have cache of
+	 * events no state should be lost/missed.
+	 */
+	kprobe.RemovePrograms()
+
 	err := os.Remove(defaults.GetSocketPath())
 	if err != nil && !os.IsNotExist(err) {
 		return err

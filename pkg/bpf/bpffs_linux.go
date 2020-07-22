@@ -32,10 +32,10 @@ import (
 
 var (
 	// Path to where bpffs is mounted
-	mapRoot = "/sys/fs/bpf/"
+	mapRoot = "/sys/fs/bpf"
 
 	// Path to where debugfs is mounted
-	debugFSRoot = "/sys/kernel/debug/"
+	debugFSRoot = "/sys/kernel/debug"
 
 	// Path to where cgroup2 is mounted
 	cgroup2Root = "/run/hubble-fgs/cgroup2"
