@@ -284,11 +284,17 @@ type MsgTLS struct {
 	Cipher            uint64
 }
 
+type MsgExecveKey struct {
+	Pid   uint32
+	Ktime uint64
+}
+
 type MsgTLSEvent struct {
 	Common      MsgCommon
 	Tuple       MsgTLSIPv4
 	ClientHello MsgTLS
 	ServerHello MsgTLS
+	ProcessKey  MsgExecveKey
 }
 
 func SwapByte(b uint16) uint16 {

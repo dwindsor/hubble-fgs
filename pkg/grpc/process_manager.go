@@ -252,17 +252,21 @@ func (pm *ProcessManager) getAncestors(proc *fgs.Process) []*fgs.Process {
 	return ancestors
 }
 
-// GetExecID returns the exec ID of a given process.
-func (pm *ProcessManager) GetExecID(proc *fgsAPI.MsgExecUnix) (string, error) {
+func (pm *ProcessManager) GetProcessID(pid uint32, ktime uint64) (string, error) {
 	builder := strings.Builder{}
 	encoder := base64.NewEncoder(base64.StdEncoding, &builder)
-	if _, err := encoder.Write([]byte(fmt.Sprintf("%s:%d:%d", pm.nodeName, proc.Ktime, proc.PID))); err != nil {
+	if _, err := encoder.Write([]byte(fmt.Sprintf("%s:%d:%d", pm.nodeName, ktime, pid))); err != nil {
 		return "", err
 	}
 	if err := encoder.Close(); err != nil {
 		return "", err
 	}
 	return builder.String(), nil
+}
+
+// GetExecID returns the exec ID of a given process.
+func (pm *ProcessManager) GetExecID(proc *fgsAPI.MsgExecUnix) (string, error) {
+	return pm.GetProcessID(proc.PID, proc.Ktime)
 }
 
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.
@@ -315,8 +319,18 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 			Value: uint32(event.Tuple.DPort),
 		}
 	}
+
+	processID, err := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if err != nil {
+		pm.log.WithError(err).Warn("TLS Failed to get exec process", event.ProcessKey.Pid)
+	}
+	entry, ok := pm.cache.Get(processID)
+	if !ok {
+		pm.log.WithField("id in TLS event", processID).Warn("process not found in cache")
+	}
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI)
 	return &fgs.Tls{
+		Process:           entry.(*fgs.Process),
 		SourceIp:          reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:        sourcePort,
 		DestinationIp:     reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),

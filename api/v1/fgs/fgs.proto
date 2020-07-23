@@ -81,14 +81,15 @@ message ProcessExec {
 }
 
 message Tls {
-    string source_ip = 1;
-    google.protobuf.UInt32Value source_port = 2;
-    string destination_ip = 3;
-    google.protobuf.UInt32Value destination_port = 4;
-    string negotiated_version = 5;
-    string supported_versions = 6;
-    string sni_type = 7;
-    string sni_name = 8;
+    Process process = 1;
+    string source_ip = 2;
+    google.protobuf.UInt32Value source_port = 3;
+    string destination_ip = 4;
+    google.protobuf.UInt32Value destination_port = 5;
+    string negotiated_version = 6;
+    string supported_versions = 7;
+    string sni_type = 8;
+    string sni_name = 9;
 }
 
 service FineGuidanceSensors {

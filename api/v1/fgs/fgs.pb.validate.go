@@ -719,6 +719,16 @@ func (m *Tls) Validate() error {
 		return nil
 	}
 
+	if v, ok := interface{}(m.GetProcess()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return TlsValidationError{
+				field:  "Process",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
 	// no validation rules for SourceIp
 
 	if v, ok := interface{}(m.GetSourcePort()).(interface{ Validate() error }); ok {
