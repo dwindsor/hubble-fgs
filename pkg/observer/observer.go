@@ -376,13 +376,18 @@ var (
 		&ObserverTLSTCEgress,
 		&ObserverTLSTCIngress}
 
-	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, alwaysLoad}
+	/* Event Ring map */
 	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, alwaysLoad}
-	ObserverTCTLSMap  = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, isTLSTCLoad}
-	ObserverSockMap   = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, isTLSLoad}
-	ObserverTLSMap    = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS, isTLSLoad}
+	/* Networking and Process Monitoring maps */
+	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, alwaysLoad}
+	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, alwaysLoad}
+	/* TLS maps */
+	ObserverTCTLSMap = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, isTLSTCLoad}
+	ObserverSockMap  = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, isTLSLoad}
+	ObserverTLSMap   = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS, isTLSLoad}
 
 	observerMaps = []*ObserverMap{
+		&ObserverSocketMap,
 		&ObserverExecveMap,
 		&ObserverTCPMonMap,
 		&ObserverSockMap,

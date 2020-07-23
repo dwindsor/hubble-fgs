@@ -772,4 +772,24 @@ void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
 {
 	__event_get_task_info(msg, op, walker, false);
 }
+
+static inline __attribute__((always_inline))
+struct event_execve *event_get_curr_execve(struct msg_ipv4_tcp_connect *msg)
+{
+	struct event_execve *p = (struct event_execve *)msg->pid;
+	int64_t base = validate_arg_size(p->size);
+	return (struct event_execve *)((void *)p + base);
+}
+
+static inline __attribute__((always_inline))
+void add_socketmap(struct msg_tls_ipv4 *tuple, struct msg_execve_key *v)
+{
+	map_update_elem(&socket_map, tuple, v, 0);
+}
+
+static inline __attribute__((always_inline))
+struct msg_execve_key *lookup_socketmap(struct msg_tls_ipv4 *tuple)
+{
+	return map_lookup_elem(&socket_map, tuple);
+}
 #endif // _BPF_EVENTS_H

@@ -204,11 +204,17 @@ struct msg_tls_ipv4 {
 	__u8  pad[3];
 } __attribute__((packed));
 
+struct msg_execve_key {
+	__u32 pid;
+	__u64 ktime;
+} __attribute__((packed));;
+
 struct msg_tls_event {
 	struct msg_common     common;
 	struct msg_tls_ipv4   tuple;
 	struct msg_tls	      clienthello;
 	struct msg_tls	      serverhello;
+	struct msg_execve_key execve;
 } __attribute__((packed));
 
 struct event {
@@ -258,6 +264,22 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct event),
+};
+#endif
+
+#ifdef BTF
+struct {
+	unsigned int (*type)[BPF_MAP_TYPE_HASH];
+	unsigned int (*key_size)[sizeof(struct msg_tls_ipv4)];
+	unsigned int (*value_size)[sizeof(struct msg_execve_key)];
+	unsigned int (*max_entries)[32768];
+} socket_map __attribute__((section((".maps")), used));
+#else
+struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(struct msg_tls_ipv4),
+	.value_size = sizeof(struct msg_execve_key),
+	.max_entries = 32768,
 };
 #endif
 

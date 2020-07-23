@@ -48,10 +48,12 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 	port = key.sport;
 	key.sport = key.dport;
 	key.dport = port;
+	key.proto = 0;
 
 	event = map_lookup_elem(&tls_map, &key);
 	if (event && event->type == TLS_TYPE_HANDSHAKE) {
 		struct msg_tls_event post = {0};
+		struct msg_execve_key *execve;
 		void *payload;
 		int err;
 
@@ -67,7 +69,12 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		post.common.op = MSG_OP_TLS;
 		post.common.size = sizeof(struct msg_tls_event);
 
-		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, &post, sizeof(struct msg_tls_event));
+		key.dport = bpf_htons(key.dport);
+		execve  = lookup_socketmap(&key);
+		if (execve)
+			post.execve = *execve;
+		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, &post,
+				  sizeof(struct msg_tls_event));
 		event->type = 0;
 	}
 
