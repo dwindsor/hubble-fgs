@@ -209,9 +209,12 @@ struct msg_tls_ipv4 {
 	__u8  pad[3];
 } __attribute__((packed));
 
+#define SOCKET_TLS_DONE 0x0001
+
 struct msg_execve_key {
 	__u32 pid;
 	__u64 ktime;
+	__u32 flags;
 } __attribute__((packed));;
 
 struct msg_tls_event {
