@@ -240,6 +240,41 @@ func ObserverReceiver(log logrus.FieldLogger) error {
 	}
 }
 
+func GetTLSAlertLevel(level uint8) string {
+	switch level {
+	case 0x00:
+		return ""
+	case 0x01:
+		return "warning"
+	case 0x02:
+		return "fatal"
+	default:
+		return fmt.Sprintf("0x%x", level)
+	}
+}
+
+func GetTLSAlertDescription(description uint8) string {
+	switch description {
+	case 0x0:
+		return ""
+	case 0x28:
+		return "handshake_failure"
+	default:
+		return fmt.Sprintf("0x%x", description)
+	}
+}
+
+func GetTLSAlert(level uint8, description uint8) string {
+	var s []string
+
+	if level == 0 {
+		return ""
+	}
+	s = append(s, GetTLSAlertLevel(level))
+	s = append(s, GetTLSAlertDescription(description))
+	return strings.Join(s, " ")
+}
+
 func GetTLSFlags(flags uint32) string {
 	var s []string
 

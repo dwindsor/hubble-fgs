@@ -100,6 +100,8 @@ message Tls {
     string server_flags = 12;
     string client_version = 13;
     string server_version = 14;
+    string client_alert = 15;
+    string server_alert = 16;
 }
 
 service FineGuidanceSensors {

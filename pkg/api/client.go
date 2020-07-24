@@ -288,13 +288,20 @@ type MsgTLS struct {
 	SNI               [32]uint8
 	SupportedVersions [16]uint8
 	Cipher            uint16
-	Pad2              [2]uint8
+	AlertLevel        uint8
+	AlertDescription  uint8
 	Flags             uint32
 }
 
 type MsgExecveKey struct {
 	Pid   uint32
 	Ktime uint64
+}
+
+type MsgTLSAlert struct {
+	Level       uint8
+	Description uint8
+	Count       uint16
 }
 
 type MsgTLSEvent struct {

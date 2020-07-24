@@ -11,6 +11,11 @@ struct tls_random {
 	__u8  random[28];
 } __attribute__((packed));
 
+struct tls_alert {
+	__u8 level;
+	__u8 description;
+} __attribute__((packed));
+
 struct tls_handshake_hdr {
 	__u32 type:8;
 	__u16 length;
@@ -54,6 +59,7 @@ struct tls_extension {
 #define bpf_htonl(x)		__builtin_bswap32(x)
 #endif
 
+#define TLS_TYPE_ALERT 21
 #define TLS_TYPE_HANDSHAKE 22
 
 #define TLS_VERSION_13 0x0403
@@ -479,9 +485,13 @@ int bpf_parse_tls_skb(struct __sk_buff *skb, struct msg_tls *tls)
 
 static inline __attribute__((always_inline))
 #ifdef SK_MSG
-int bpf_parse_tls(struct sk_msg_md *ctx, void *payload, int payload_off, struct msg_tls *tls)
+int bpf_parse_tls(struct sk_msg_md *ctx,
+		  void *payload, int payload_off,
+		  struct msg_tls *tls)
 #else
-int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, struct msg_tls *tls)
+int bpf_parse_tls(struct __sk_buff *ctx,
+		  void *payload, int payload_off,
+		  struct msg_tls *tls)
 #endif
 {
 	struct tls_hdr *hdr;
@@ -505,7 +515,7 @@ int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, struct 
 
 		if (payload + sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr) > data_end) {
 			payload = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
-			if (payload)
+			if (!payload)
 				return -1;
 		}
 		handshake = (struct tls_handshake_hdr *)(payload + sizeof(struct tls_hdr));
@@ -526,6 +536,17 @@ int bpf_parse_tls(struct __sk_buff *ctx, void *payload, int payload_off, struct 
 		default:
 			break;
 		}
+	} else if (hdr->type == TLS_TYPE_ALERT) {
+		struct tls_alert *tls_alert;
+
+		if (payload + sizeof(struct tls_hdr) + sizeof(struct tls_alert) > data_end) {
+			payload = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
+			if (!payload)
+				return -1;
+		}
+		tls_alert = (struct tls_alert *)(payload + sizeof(struct tls_hdr));
+		tls->alert_level = tls_alert->level;
+		tls->alert_description = tls_alert->description;
 	}
 	return 0;
 }

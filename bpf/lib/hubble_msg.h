@@ -187,7 +187,8 @@ struct msg_tls {
 	__u8  sni[EXT_SERVER_NAME_LENGTH];
 	__u8  supported_versions[EXT_VERSION_LENGTH];
 	__u16 cipher;
-	__u8 _pad2[2];
+	__u8  alert_level;
+	__u8  alert_description;
 	__u32 flags;
 };
 
@@ -215,7 +216,7 @@ struct msg_execve_key {
 	__u32 pid;
 	__u64 ktime;
 	__u32 flags;
-} __attribute__((packed));;
+} __attribute__((packed));
 
 struct msg_tls_event {
 	struct msg_common     common;
