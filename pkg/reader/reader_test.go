@@ -15,6 +15,7 @@
 package reader
 
 import (
+	"strings"
 	"testing"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
@@ -42,7 +43,7 @@ func TestDecodeCommonFlags(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			if got := DecodeCommonFlags(tt.args.flags); got != tt.want {
+			if got := strings.Join(DecodeCommonFlags(tt.args.flags), " "); got != tt.want {
 				t.Errorf("DecodeCommonFlags() = %v, want %v", got, tt.want)
 			}
 		})

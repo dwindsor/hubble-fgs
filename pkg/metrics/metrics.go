@@ -18,17 +18,36 @@ import (
 	"net/http"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
 )
 
+type ErrorType string
+
+const (
+	// Parent process was not found in the pid map for a process without the clone flag.
+	NoParentNoClone ErrorType = "no_parent_no_clone"
+)
+
 var (
-	eventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
+	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:        "isovalent_fgs_events_total",
 		Help:        "The total number of FGS events",
 		ConstLabels: nil,
 	}, []string{"type", "namespace", "binary"})
+	FlagCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:        "isovalent_fgs_flags_total",
+		Help:        "The total number of FGS flags. For internal use only.",
+		ConstLabels: nil,
+	}, []string{"type"})
+	ErrorCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:        "isovalent_fgs_errors_total",
+		Help:        "The total number of FGS errors. For internal use only.",
+		ConstLabels: nil,
+	}, []string{"type"})
 )
 
 func getProcessInfo(process *fgs.Process) (binary string, namespace string) {
@@ -45,9 +64,20 @@ func getTlsInfo(tls *fgs.Tls) (binary string, namespace string) {
 	return "", ""
 }
 
-func ProcessEvent(event interface{}) {
+func handleOriginalEvent(originalEvent interface{}) {
+	var flags uint32
+	switch msg := originalEvent.(type) {
+	case *api.MsgIPv4TcpConnectUnix:
+		flags = msg.Pid.Curr.Flags
+	}
+	for _, flag := range reader.DecodeCommonFlags(flags) {
+		FlagCount.WithLabelValues(flag).Inc()
+	}
+}
+
+func handleProcessedEvent(processedEvent interface{}) {
 	var eventType, namespace, binary string
-	switch ev := event.(type) {
+	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
 		switch ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessConnect:
@@ -66,7 +96,13 @@ func ProcessEvent(event interface{}) {
 	default:
 		eventType = "unknown"
 	}
-	eventsProcessed.WithLabelValues(eventType, namespace, binary).Inc()
+	EventsProcessed.WithLabelValues(eventType, namespace, binary).Inc()
+
+}
+
+func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
+	handleOriginalEvent(originalEvent)
+	handleProcessedEvent(processedEvent)
 }
 
 func EnableMetrics(address string) {

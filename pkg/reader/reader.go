@@ -40,7 +40,7 @@ func GetIP(i uint32, op uint8) net.IP {
 	return ip
 }
 
-func DecodeCommonFlags(flags uint32) string {
+func DecodeCommonFlags(flags uint32) []string {
 	var s []string
 	if (flags & api.EventExecve) != 0 {
 		s = append(s, "execve")
@@ -84,7 +84,7 @@ func DecodeCommonFlags(flags uint32) string {
 	if (flags & api.EventClone) != 0 {
 		s = append(s, "clone")
 	}
-	return strings.Join(s, " ")
+	return s
 }
 
 func DecodeKtime(ktime int64) (time.Time, error) {
@@ -192,7 +192,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.Fi
 		"parent-nspid":     msg.Pid.Parent.NSPID,
 		"parent-auid":      msg.Pid.Parent.AUID,
 		"parent-uid":       msg.Pid.Parent.UID,
-		"parent-flags":     DecodeCommonFlags(msg.Pid.Parent.Flags),
+		"parent-flags":     strings.Join(DecodeCommonFlags(msg.Pid.Parent.Flags), " "),
 		"parent-ktime":     msg.Pid.Parent.Ktime,
 		"parent-walltime":  parentTime,
 		"parent-prog":      msg.Pid.Parent.Filename,
@@ -203,7 +203,7 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.Fi
 		"nspid":            msg.Pid.Curr.NSPID,
 		"auid":             msg.Pid.Curr.AUID,
 		"uid":              msg.Pid.Curr.UID,
-		"flags":            DecodeCommonFlags(msg.Pid.Curr.Flags),
+		"flags":            strings.Join(DecodeCommonFlags(msg.Pid.Curr.Flags), " "),
 		"ktime":            msg.Pid.Curr.Ktime,
 		"walltime":         childTime,
 		"prog":             msg.Pid.Curr.Filename,

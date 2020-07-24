@@ -18,44 +18,46 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/covalentio/hubble-fgs/pkg/api"
+
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
-func TestProcessEvent(t *testing.T) {
-	assert.NoError(t, testutil.CollectAndCompare(eventsProcessed, strings.NewReader("")))
-	ProcessEvent(nil)
+func Test_handleProcessedEvent(t *testing.T) {
+	assert.NoError(t, testutil.CollectAndCompare(EventsProcessed, strings.NewReader("")))
+	handleProcessedEvent(nil)
 	// empty process
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{}}})
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{}}})
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{}}})
 
 	// empty pod
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
 		Process: &fgs.Process{Binary: "binary_a"},
 	}}})
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
 		Process: &fgs.Process{Binary: "binary_b"},
 	}}})
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
 		Process: &fgs.Process{Binary: "binary_c"},
 	}}})
 
 	// with pod
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
 		Process: &fgs.Process{
 			Binary: "binary_a",
 			Pod:    &fgs.Pod{Namespace: "namespace_a"},
 		},
 	}}})
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
 		Process: &fgs.Process{
 			Binary: "binary_b",
 			Pod:    &fgs.Pod{Namespace: "namespace_b"},
 		},
 	}}})
-	ProcessEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
 		Process: &fgs.Process{
 			Binary: "binary_c",
 			Pod:    &fgs.Pod{Namespace: "namespace_c"},
@@ -75,5 +77,24 @@ isovalent_fgs_events_total{binary="binary_b",namespace="namespace_b",type="proce
 isovalent_fgs_events_total{binary="binary_c",namespace="",type="process_listen"} 1
 isovalent_fgs_events_total{binary="binary_c",namespace="namespace_c",type="process_listen"} 1
 `)
-	assert.NoError(t, testutil.CollectAndCompare(eventsProcessed, expected))
+	assert.NoError(t, testutil.CollectAndCompare(EventsProcessed, expected))
+}
+
+func Test_handleOriginalEvent(t *testing.T) {
+	handleOriginalEvent(nil)
+	handleOriginalEvent(&api.MsgIPv4TcpConnectUnix{})
+	assert.NoError(t, testutil.CollectAndCompare(FlagCount, strings.NewReader("")))
+	handleOriginalEvent(&api.MsgIPv4TcpConnectUnix{
+		Pid: api.MsgPidUnix{
+			Curr: api.MsgExecUnix{
+				Flags: api.EventClone | api.EventExecve,
+			},
+		},
+	})
+	expected := strings.NewReader(`# HELP isovalent_fgs_flags_total The total number of FGS flags. For internal use only.
+# TYPE isovalent_fgs_flags_total counter
+isovalent_fgs_flags_total{type="clone"} 1
+isovalent_fgs_flags_total{type="execve"} 1
+`)
+	assert.NoError(t, testutil.CollectAndCompare(FlagCount, expected))
 }

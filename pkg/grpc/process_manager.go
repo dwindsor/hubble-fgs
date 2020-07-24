@@ -144,7 +144,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	// liveness_exec_probe and readiness_exec_probe. Remove these fields before updating metrics
 	// and exporting to JSON.
 	removeInternalFields(processedEvent)
-	metrics.ProcessEvent(processedEvent)
+	metrics.ProcessEvent(event, processedEvent)
 	if processedEvent != nil {
 		if err := pm.encoder.Encode(processedEvent); err != nil {
 			pm.log.WithError(err).WithField("msg", processedEvent).Warn("failed to encode")
@@ -199,7 +199,7 @@ func (pm *ProcessManager) getProcess(
 		Cwd:          cwd,
 		Binary:       process.Filename,
 		Arguments:    args,
-		Flags:        reader.DecodeCommonFlags(process.Flags),
+		Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
 		StartTime:    ktimeToProto(process.Ktime),
 		Auid:         &wrappers.UInt32Value{Value: process.AUID},
 		Pod:          protoPod,
@@ -224,10 +224,11 @@ func (pm *ProcessManager) Add(event *fgsAPI.MsgIPv4TcpConnectUnix) *fgs.Process 
 	// and use that as the parent.
 	entry, ok := pm.cache.Get(parentExecID)
 	if !ok {
+		metrics.ErrorCount.WithLabelValues(string(metrics.NoParentNoClone)).Inc()
 		pm.log.WithFields(logrus.Fields{
 			"parent exec id": parentExecID,
 			"process":        proc,
-		}).Warn("parent not found in cache")
+		}).Debug("parent not found in cache")
 		return proc
 	}
 	parent, ok := entry.(*fgs.Process)
