@@ -176,6 +176,7 @@ struct msg_k8s {
 #define EXT_VERSION_LENGTH 16
 
 #define TLS_COPY_ERROR 0x01
+#define TLS_MAX_TLVS   0x02
 
 struct msg_tls {
 	__u16 version;

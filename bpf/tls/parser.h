@@ -396,6 +396,7 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	compiler_barrier();
 	maxlength = 0x7fff;
 	TWENTY_EXTENSIONS
+	tls->flags |= TLS_MAX_TLVS;
 	//EXTENSION
 	// For now we just parse extensions until we walk off the end of the
 	// packet so we just jump here when that happens.

@@ -153,6 +153,7 @@ const (
 // TLS flags
 const (
 	TlsFlagCopyError = 0x0001
+	TlsFlagMaxTlvs   = 0x0002
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent

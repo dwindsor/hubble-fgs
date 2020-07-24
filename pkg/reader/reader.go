@@ -246,6 +246,9 @@ func GetTLSFlags(flags uint32) string {
 	if (flags & api.TlsFlagCopyError) != 0 {
 		s = append(s, "CopyError")
 	}
+	if (flags & api.TlsFlagMaxTlvs) != 0 {
+		s = append(s, "MaxTLVError")
+	}
 	return strings.Join(s, " ")
 }
 
