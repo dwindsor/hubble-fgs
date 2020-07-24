@@ -236,8 +236,11 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16
 		break;
 	}
 
-	if (dst)
+	if (dst) {
 		ext_copy(dst, data_end, (void *)extension + 4, extlength);
+		if (extlength > 32)
+			tls->flags |= TLS_COPY_ERROR;
+	}
 
 	/* Force compiler to use same register for min/max bound generators */
 	asm volatile (

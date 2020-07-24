@@ -150,6 +150,11 @@ const (
 	TLSVersion10 = 0x0103
 )
 
+// TLS flags
+const (
+	TlsFlagCopyError = 0x0001
+)
+
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
 type MsgCommon struct {
 	Op    uint8
@@ -282,7 +287,8 @@ type MsgTLS struct {
 	SNI               [32]uint8
 	SupportedVersions [16]uint8
 	Cipher            uint16
-	Pad2              [6]uint8
+	Pad2              [2]uint8
+	Flags             uint32
 }
 
 type MsgExecveKey struct {

@@ -763,6 +763,10 @@ func (m *Tls) Validate() error {
 
 	// no validation rules for Cipher
 
+	// no validation rules for ClientFlags
+
+	// no validation rules for ServerFlags
+
 	return nil
 }
 

@@ -91,6 +91,8 @@ message Tls {
     string sni_type = 8;
     string sni_name = 9;
     string cipher = 10;
+    string client_flags = 11;
+    string server_flags = 12;
 }
 
 service FineGuidanceSensors {

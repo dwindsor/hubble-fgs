@@ -175,6 +175,8 @@ struct msg_k8s {
 #define EXT_SERVER_NAME_LENGTH 32
 #define EXT_VERSION_LENGTH 16
 
+#define TLS_COPY_ERROR 0x01
+
 struct msg_tls {
 	__u16 version;
 	__u16 length;
@@ -184,7 +186,8 @@ struct msg_tls {
 	__u8  sni[EXT_SERVER_NAME_LENGTH];
 	__u8  supported_versions[EXT_VERSION_LENGTH];
 	__u16 cipher;
-	__u8 _pad2[6];
+	__u8 _pad2[2];
+	__u32 flags;
 };
 
 // separate data structs for ipv4 and ipv6

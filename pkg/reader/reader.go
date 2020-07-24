@@ -240,6 +240,15 @@ func ObserverReceiver(log logrus.FieldLogger) error {
 	}
 }
 
+func GetTLSFlags(flags uint32) string {
+	var s []string
+
+	if (flags & api.TlsFlagCopyError) != 0 {
+		s = append(s, "CopyError")
+	}
+	return strings.Join(s, " ")
+}
+
 func GetTLSCipher(cipherCode uint16) string {
 	switch api.SwapByte(cipherCode) {
 	case 0x1302:
