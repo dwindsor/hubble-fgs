@@ -767,6 +767,10 @@ func (m *Tls) Validate() error {
 
 	// no validation rules for ServerFlags
 
+	// no validation rules for ClientVersion
+
+	// no validation rules for ServerVersion
+
 	return nil
 }
 

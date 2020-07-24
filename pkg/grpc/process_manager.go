@@ -356,6 +356,8 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 		Cipher:            reader.GetTLSCipher(event.ServerHello.Cipher),
 		ClientFlags:       reader.GetTLSFlags(event.ClientHello.Flags),
 		ServerFlags:       reader.GetTLSFlags(event.ServerHello.Flags),
+		ClientVersion:     reader.GetTLSVersion(event.ClientHello.Version),
+		ServerVersion:     reader.GetTLSVersion(event.ServerHello.Version),
 	}
 }
 

@@ -24,7 +24,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_connect *msg = 0;
 	struct msg_tls_ipv4 tuple;
-	struct msg_execve_key v;
+	struct msg_execve_key v = {0};
 	struct event_execve *curr;
 	__u32 ppid = 0, pid = 0;
 	struct sock *skp;

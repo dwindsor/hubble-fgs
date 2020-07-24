@@ -98,6 +98,8 @@ message Tls {
     string cipher = 10;
     string client_flags = 11;
     string server_flags = 12;
+    string client_version = 13;
+    string server_version = 14;
 }
 
 service FineGuidanceSensors {
