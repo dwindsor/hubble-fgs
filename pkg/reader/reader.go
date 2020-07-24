@@ -240,8 +240,8 @@ func ObserverReceiver(log logrus.FieldLogger) error {
 	}
 }
 
-func GetTLSCipher(cipherCode uint64) string {
-	switch cipherCode {
+func GetTLSCipher(cipherCode uint16) string {
+	switch api.SwapByte(cipherCode) {
 	case 0x1302:
 		return "TLS_AES_256_GCM_SHA384"
 	case 0x1303:
@@ -249,7 +249,7 @@ func GetTLSCipher(cipherCode uint64) string {
 	case 0x1301:
 		return "TLS_AES_128_GCM_SHA256"
 	default:
-		return fmt.Sprintf("%x", cipherCode)
+		return fmt.Sprintf("0x%x", cipherCode)
 	}
 }
 

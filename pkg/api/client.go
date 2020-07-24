@@ -277,11 +277,12 @@ type MsgTLS struct {
 	Version           uint16
 	Length            uint16
 	Type              uint8
-	Pad               [1]uint8
+	Pad1              uint8
 	LegacyyVersion    uint16
 	SNI               [32]uint8
 	SupportedVersions [16]uint8
-	Cipher            uint64
+	Cipher            uint16
+	Pad2              [6]uint8
 }
 
 type MsgExecveKey struct {

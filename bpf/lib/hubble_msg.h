@@ -179,11 +179,12 @@ struct msg_tls {
 	__u16 version;
 	__u16 length;
 	__u8  type;
-	__u8  _pad[1];
-	__u16  negotiated_version;
+	__u8  _pad1;
+	__u16 negotiated_version;
 	__u8  sni[EXT_SERVER_NAME_LENGTH];
 	__u8  supported_versions[EXT_VERSION_LENGTH];
-	__u64 cipher;
+	__u16 cipher;
+	__u8 _pad2[6];
 };
 
 // separate data structs for ipv4 and ipv6

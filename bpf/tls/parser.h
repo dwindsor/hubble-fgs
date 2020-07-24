@@ -363,6 +363,7 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 		adv_cipher = *cipher_length;
 		adv_cipher = bpf_htons(adv_cipher);
 	} else {
+		tls->cipher = *(__u16*)cipher_length;
 		adv_cipher = 0;
 	}
 

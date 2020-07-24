@@ -90,6 +90,7 @@ message Tls {
     string supported_versions = 7;
     string sni_type = 8;
     string sni_name = 9;
+    string cipher = 10;
 }
 
 service FineGuidanceSensors {

@@ -761,6 +761,8 @@ func (m *Tls) Validate() error {
 
 	// no validation rules for SniName
 
+	// no validation rules for Cipher
+
 	return nil
 }
 
