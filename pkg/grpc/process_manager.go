@@ -338,13 +338,18 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 	if err != nil {
 		pm.log.WithError(err).Warn("TLS Failed to get exec process", event.ProcessKey.Pid)
 	}
-	entry, ok := pm.cache.Get(processID)
-	if !ok {
+	var proc *fgs.Process
+	if entry, ok := pm.cache.Get(processID); ok {
+		proc, ok = entry.(*fgs.Process)
+		if !ok {
+			pm.log.WithField("process entry", entry).Warn("invalid entry in process cache")
+		}
+	} else {
 		pm.log.WithField("id in TLS event", processID).Warn("process not found in cache")
 	}
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI)
 	return &fgs.Tls{
-		Process:           entry.(*fgs.Process),
+		Process:           proc,
 		SourceIp:          reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:        sourcePort,
 		DestinationIp:     reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
