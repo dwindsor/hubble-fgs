@@ -61,7 +61,7 @@ spec:
             - --set-pid-max
             - -e
             - --process-cache-size=32768
-            - --export-filename=/var/log/hubble-fgs.log
+            - --export-filename=/var/run/cilium/hubble-fgs.log
             - --export-file-max-size-mb=10
             - --export-file-max-backups=5
             - --export-file-compress=true
