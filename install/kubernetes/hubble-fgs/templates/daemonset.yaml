@@ -27,6 +27,7 @@ spec:
             - --procfs=/procRoot
             - --set-pid-max
             - -e
+            - --tlstc
             - --process-cache-size={{ .Values.processCacheSize }}
             - --export-filename={{ .Values.exportFilename }}
             - --export-file-max-size-mb={{ .Values.exportFileMaxSizeMB }}

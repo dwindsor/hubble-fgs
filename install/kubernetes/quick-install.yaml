@@ -60,6 +60,7 @@ spec:
             - --procfs=/procRoot
             - --set-pid-max
             - -e
+            - --tlstc
             - --process-cache-size=32768
             - --export-filename=/var/run/cilium/hubble-fgs.log
             - --export-file-max-size-mb=10
