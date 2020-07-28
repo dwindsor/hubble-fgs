@@ -54,7 +54,7 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 	if (!event)
 		return TC_ACT_OK;
 
-	if (is_tls_client_hello_handshake(event)) {
+	if (is_expected_tls_client_hello(event)) {
 		struct msg_tls_event post = {0};
 		struct msg_execve_key *execve;
 		void *payload;
@@ -69,7 +69,7 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		if (err)
 			return TC_ACT_OK;
 
-		if (!is_tls_server_hello_handshake(&post.serverhello))
+		if (!is_expected_tls_server_hello(&post.serverhello))
 			return TC_ACT_OK;
 
 		post.tuple = key;

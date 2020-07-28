@@ -502,6 +502,31 @@ bool is_tls_server_hello_handshake(struct msg_tls *tls)
 }
 
 static inline __attribute__((always_inline))
+bool is_tls_version(struct msg_tls *tls)
+{
+	switch (tls->version) {
+	case TLS_VERSION_12:
+	case TLS_VERSION_11:
+	case TLS_VERSION_10:
+		return true;
+	default:
+		return false;
+	}
+}
+
+static inline __attribute__((always_inline))
+bool is_expected_tls_client_hello(struct msg_tls *tls)
+{
+	return is_tls_client_hello_handshake(tls) && is_tls_version(tls);
+}
+
+static inline __attribute__((always_inline))
+bool is_expected_tls_server_hello(struct msg_tls *tls)
+{
+	return is_tls_server_hello_handshake(tls) && is_tls_version(tls);
+}
+
+static inline __attribute__((always_inline))
 #ifdef SK_MSG
 int bpf_parse_tls(struct sk_msg_md *ctx,
 		  void *payload, int payload_off,
