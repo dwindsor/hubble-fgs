@@ -328,7 +328,7 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 {
 	__u16 *cipher_length, adv_cipher, extension_length;
 	struct tls_handshake_client_hello *client_hello;
-	__u8 *compression, adv_compression, adv_session;
+	__u8 *session, *compression, adv_compression, adv_session;
 	struct tls_extension *extension;
 	volatile __u16 maxlength;
 	void *payload, *data, *data_end;
@@ -368,6 +368,15 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	if (cipher_length + 2 > data_end)
 		return SK_PASS;
 
+	session = (void*)client_hello + 6;
+	ext_copy(tls->session,
+		 data_end,
+		 (void *)session,
+		 32);
+	ext_copy(tls->session + 32,
+		 data_end,
+		 (void *)session + 32,
+		 32);
 	if (client) {
 		adv_cipher = *cipher_length;
 		adv_cipher = bpf_htons(adv_cipher);

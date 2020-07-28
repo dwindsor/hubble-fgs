@@ -190,6 +190,7 @@ struct msg_tls {
 	__u8  alert_level;
 	__u8  alert_description;
 	__u32 flags;
+	__u8  session[64];
 };
 
 // separate data structs for ipv4 and ipv6

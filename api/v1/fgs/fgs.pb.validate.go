@@ -775,6 +775,10 @@ func (m *Tls) Validate() error {
 
 	// no validation rules for ServerAlert
 
+	// no validation rules for ClientSession
+
+	// no validation rules for ServerSession
+
 	return nil
 }
 

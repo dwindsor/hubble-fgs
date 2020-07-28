@@ -240,6 +240,21 @@ func ObserverReceiver(log logrus.FieldLogger) error {
 	}
 }
 
+func GetTLSSession(session [64]uint8) string {
+	var s []string
+	size := session[32]
+	if size > 31 {
+		size = 31
+	}
+	if size == 0 {
+		return ""
+	}
+	for _, h := range session[32+1 : size+32] {
+		s = append(s, fmt.Sprintf("%02x", h))
+	}
+	return strings.Join(s, "")
+}
+
 func GetTLSAlertLevel(level uint8) string {
 	switch level {
 	case 0x00:

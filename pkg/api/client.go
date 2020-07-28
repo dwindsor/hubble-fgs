@@ -291,6 +291,7 @@ type MsgTLS struct {
 	AlertLevel        uint8
 	AlertDescription  uint8
 	Flags             uint32
+	Session           [64]uint8
 }
 
 type MsgExecveKey struct {

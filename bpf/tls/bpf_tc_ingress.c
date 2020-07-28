@@ -24,6 +24,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.max_entries = 32000,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) heap = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct msg_tls_event),
+	.max_entries = 1,
+};
+
 #define TLS_TYPE_HELLO 22
 #define ETH_P_IP 0x800
 
@@ -55,42 +62,46 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		return TC_ACT_OK;
 
 	if (is_expected_tls_client_hello(event)) {
-		struct msg_tls_event post = {0};
+		const int zero = 0;
+		struct msg_tls_event *post = map_lookup_elem(&heap, &zero);
 		struct msg_execve_key *execve;
 		void *payload;
 		int err;
 
-		post.clienthello = *event;
+		if (!post)
+			return TC_ACT_OK;
+
+		post->clienthello = *event;
 
 		payload = skb_tcp_payload(skb, tcp, &off);
 		if (!payload)
 			return TC_ACT_OK;
-		err = bpf_parse_tls(skb, payload, off, &post.serverhello);
+		err = bpf_parse_tls(skb, payload, off, &post->serverhello);
 		if (err)
 			return TC_ACT_OK;
 
-		if (!is_expected_tls_server_hello(&post.serverhello))
+		if (!is_expected_tls_server_hello(&post->serverhello))
 			return TC_ACT_OK;
 
-		post.tuple = key;
-		post.common.op = MSG_OP_TLS;
-		post.common.size = sizeof(struct msg_tls_event);
+		post->tuple = key;
+		post->common.op = MSG_OP_TLS;
+		post->common.size = sizeof(struct msg_tls_event);
 
 		key.dport = bpf_htons(key.dport);
 		execve  = lookup_socketmap(&key);
 		if (execve) {
-			post.execve = *execve;
+			post->execve = *execve;
 			execve->flags |= SOCKET_TLS_DONE;
 		}
 
-		if (!post.execve.flags ||
-		    post.serverhello.alert_level || post.clienthello.alert_level)
-			perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, &post,
+		if (!post->execve.flags ||
+		    post->serverhello.alert_level || post->clienthello.alert_level)
+			perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
 					  sizeof(struct msg_tls_event));
 		event->type = 0;
-		post.serverhello.alert_level = 0;
+		post->serverhello.alert_level = 0;
 		/* This is racy. We could erase a sender alert */
-		post.clienthello.alert_level = 0;
+		post->clienthello.alert_level = 0;
 	}
 	return TC_ACT_OK;
 }
