@@ -484,6 +484,24 @@ int bpf_parse_tls_skb(struct __sk_buff *skb, struct msg_tls *tls)
 }
 
 static inline __attribute__((always_inline))
+bool is_tls_handshake(struct msg_tls *tls)
+{
+	return tls->type == TLS_TYPE_HANDSHAKE;
+}
+
+static inline __attribute__((always_inline))
+bool is_tls_client_hello_handshake(struct msg_tls *tls)
+{
+	return is_tls_handshake(tls) && tls->subtype == client_hello;
+}
+
+static inline __attribute__((always_inline))
+bool is_tls_server_hello_handshake(struct msg_tls *tls)
+{
+	return is_tls_handshake(tls) && tls->subtype == server_hello;
+}
+
+static inline __attribute__((always_inline))
 #ifdef SK_MSG
 int bpf_parse_tls(struct sk_msg_md *ctx,
 		  void *payload, int payload_off,
@@ -519,6 +537,7 @@ int bpf_parse_tls(struct __sk_buff *ctx,
 				return -1;
 		}
 		handshake = (struct tls_handshake_hdr *)(payload + sizeof(struct tls_hdr));
+		tls->subtype = handshake->type;
 		switch (handshake->type) {
 		case client_hello:
 			client = true;

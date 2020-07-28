@@ -41,8 +41,7 @@ int event_tc_egress_tcp(struct __sk_buff *skb)
 	event.common.op = MSG_OP_TLS;
 	event.clienthello.type = 0;
 	bpf_parse_tls(skb, payload, off, &event.clienthello);
-	if (event.clienthello.type == TLS_TYPE_HANDSHAKE) {
+	if (is_tls_client_hello_handshake(&event.clienthello))
 		map_update_elem(&tls_map, &event.tuple, &event.clienthello, 0);
-	}
 	return SK_PASS;
 }

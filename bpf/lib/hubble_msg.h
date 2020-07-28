@@ -182,7 +182,7 @@ struct msg_tls {
 	__u16 version;
 	__u16 length;
 	__u8  type;
-	__u8  _pad1;
+	__u8  subtype;
 	__u16 negotiated_version;
 	__u8  sni[EXT_SERVER_NAME_LENGTH];
 	__u8  supported_versions[EXT_VERSION_LENGTH];
