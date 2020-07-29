@@ -169,17 +169,12 @@ func GetDport(dport uint16, op uint8) uint16 {
 	return api.SwapByte(dport)
 }
 
-func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.FieldLogger) {
+func ObserverIPV4TCPPrinter(msg *api.MsgIPv4TcpEventUnix, log logrus.FieldLogger) {
 	e := syscall.Errno(uintptr(-msg.Return))
 	/* In the event of an error time is {0} so will be obvious at printer time
 	 * and its not clear what to do with this error so ignore it for now.
 	 */
 	eventTime, _ := DecodeKtime(int64(msg.Common.Ktime))
-	parentTime, _ := DecodeKtime(int64(msg.Pid.Parent.Ktime))
-	childTime, _ := DecodeKtime(int64(msg.Pid.Curr.Ktime))
-
-	parentArgs, parentCWD := ArgsDecoder(msg.Pid.Parent.Args, msg.Pid.Parent.Flags)
-	childArgs, childCWD := ArgsDecoder(msg.Pid.Curr.Args, msg.Pid.Curr.Flags)
 
 	op := msg.Common.Op
 
@@ -187,28 +182,6 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.Fi
 		"op":               api.OpCode(op).String(),
 		"connect-ktime":    msg.Common.Ktime,
 		"connect-walltime": eventTime,
-		"parent-size":      msg.Pid.Parent.Size,
-		"parent-pid":       msg.Pid.Parent.PID,
-		"parent-nspid":     msg.Pid.Parent.NSPID,
-		"parent-auid":      msg.Pid.Parent.AUID,
-		"parent-uid":       msg.Pid.Parent.UID,
-		"parent-flags":     strings.Join(DecodeCommonFlags(msg.Pid.Parent.Flags), " "),
-		"parent-ktime":     msg.Pid.Parent.Ktime,
-		"parent-walltime":  parentTime,
-		"parent-prog":      msg.Pid.Parent.Filename,
-		"parent-cwd":       parentCWD,
-		"parent-args":      parentArgs,
-		"size":             msg.Pid.Curr.Size,
-		"pid":              msg.Pid.Curr.PID,
-		"nspid":            msg.Pid.Curr.NSPID,
-		"auid":             msg.Pid.Curr.AUID,
-		"uid":              msg.Pid.Curr.UID,
-		"flags":            strings.Join(DecodeCommonFlags(msg.Pid.Curr.Flags), " "),
-		"ktime":            msg.Pid.Curr.Ktime,
-		"walltime":         childTime,
-		"prog":             msg.Pid.Curr.Filename,
-		"cwd":              childCWD,
-		"args":             childArgs,
 		"proto":            msg.Tuple.Proto,
 		"saddr":            GetIP(msg.Tuple.SAddr, op).String(),
 		"sport":            GetSport(msg.Tuple.SPort),
@@ -216,7 +189,6 @@ func ObserverIPV4TCPConnectPrinter(msg *api.MsgIPv4TcpConnectUnix, log logrus.Fi
 		"odaddr":           GetIP(msg.Tuple.GetPostDAddr(), op).String(),
 		"dport":            GetDport(msg.Tuple.DPort, op),
 		"odport":           GetDport(msg.Tuple.GetPostDPort(), op),
-		"container-id":     msg.Kube.Docker,
 		"return":           unix.ErrnoName(e),
 	}).Warn()
 }
@@ -229,14 +201,14 @@ func ObserverReceiver(log logrus.FieldLogger) error {
 
 	dec := gob.NewDecoder(conn)
 	for {
-		var IPv4TCPConnectMsg api.MsgIPv4TcpConnectUnix
+		var IPv4TCPMsg api.MsgIPv4TcpEventUnix
 
-		err = dec.Decode(&IPv4TCPConnectMsg)
+		err = dec.Decode(&IPv4TCPMsg)
 		if err != nil {
 			continue
 		}
 
-		ObserverIPV4TCPConnectPrinter(&IPv4TCPConnectMsg, log)
+		ObserverIPV4TCPPrinter(&IPv4TCPMsg, log)
 	}
 }
 

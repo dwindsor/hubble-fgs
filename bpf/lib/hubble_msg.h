@@ -193,13 +193,30 @@ struct msg_tls {
 	__u8  session[64];
 };
 
+struct msg_execve_event {
+	struct msg_common common;
+	struct msg_k8s    kube;
+	char		  pid[PADDED_BUFFER];
+} __attribute__((packed));
+
+struct msg_execve_key {
+	__u32 pid;
+	__u64 ktime;
+} __attribute__((packed));
+
 // separate data structs for ipv4 and ipv6
-struct msg_ipv4_tcp_connect {
+struct msg_ipv4_tcp_event {
 	struct msg_common     common;
 	struct msg_ipv4_tuple tuple;
-	struct msg_k8s kube;
 	unsigned long int     ret;
-	char      	      pid[PADDED_BUFFER];
+	struct msg_execve_key key;
+} __attribute__((packed));
+
+struct msg_ipv4_tcp_key {
+	__u32 pid;
+	__u32 saddr;
+	__u16 sport;
+	__u16 pad;
 } __attribute__((packed));
 
 struct msg_tls_ipv4 {
@@ -212,12 +229,6 @@ struct msg_tls_ipv4 {
 } __attribute__((packed));
 
 #define SOCKET_TLS_DONE 0x0001
-
-struct msg_execve_key {
-	__u32 pid;
-	__u64 ktime;
-	__u32 flags;
-} __attribute__((packed));
 
 struct msg_tls_event {
 	struct msg_common     common;
@@ -234,15 +245,31 @@ struct event {
 #ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_PERFCPU_ARRAY];
-	unsigned int (*key_size)[sizeof(__u32)];
-	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_connect)];
+	unsigned int (*key_size)[sizeof(struct msg_ipv4_tcp_key)];
+	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_event)];
 	unsigned int (*max_entries)[1];
-} msg_ipv4_tcp_map __attribute__((section((".maps")), used));
+} ipv4_tcp_map __attribute__((section((".maps")), used));
 #else
-struct bpf_map_def __attribute__((section("maps"), used)) msg_ipv4_tcp_map = {
+struct bpf_map_def __attribute__((section("maps"), used)) ipv4_tcp_map = {
+	.type = BPF_MAP_TYPE_PERCPU_HASH,
+	.key_size = sizeof(struct msg_ipv4_tcp_key),
+	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.max_entries = 1,
+};
+#endif // BTF
+
+#ifdef BTF
+struct {
+	unsigned int (*type)[BPF_MAP_TYPE_PERFCPU_ARRAY];
+	unsigned int (*key_size)[sizeof(__u32)];
+	unsigned int (*value_size)[sizeof(struct msg_execve_event)];
+	unsigned int (*max_entries)[1];
+} msg_execve_heap_map __attribute__((section((".maps")), used));
+#else
+struct bpf_map_def __attribute__((section("maps"), used)) msg_execve_heap_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_connect),
+	.value_size = sizeof(struct msg_execve_event),
 	.max_entries = 1,
 };
 #endif // BTF
@@ -251,14 +278,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) msg_ipv4_tcp_map = {
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_ARRAY];
 	unsigned int (*key_size)[sizeof(__u32)];
-	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_connect)];
+	unsigned int (*value_size)[sizeof(struct msg_execve_event)];
 	unsigned int (*max_entries)[32768];
 } execve_map __attribute__((section((".maps")), used));
 #else
 struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_connect),
+	.value_size = sizeof(struct msg_execve_event),
 	.max_entries = 32768,
 };
 #endif // BTF

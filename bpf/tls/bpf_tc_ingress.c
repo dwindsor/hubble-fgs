@@ -89,18 +89,13 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 
 		key.dport = bpf_htons(key.dport);
 		execve  = lookup_socketmap(&key);
-		if (execve) {
+		if (execve)
 			post->execve = *execve;
-			execve->flags |= SOCKET_TLS_DONE;
-		}
 
-		if (!post->execve.flags ||
-		    post->serverhello.alert_level || post->clienthello.alert_level)
-			perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
-					  sizeof(struct msg_tls_event));
+		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
+				  sizeof(struct msg_tls_event));
 		event->type = 0;
 		post->serverhello.alert_level = 0;
-		/* This is racy. We could erase a sender alert */
 		post->clienthello.alert_level = 0;
 	}
 	return TC_ACT_OK;

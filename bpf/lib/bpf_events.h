@@ -29,9 +29,9 @@ int64_t validate_arg_size(int64_t size)
 }
 
 static inline __attribute__((always_inline))
-int64_t validate_msg_size(int64_t size)
+int64_t validate_msg_execve_size(int64_t size)
 {
-	size_t max = sizeof(struct msg_ipv4_tcp_connect);
+	size_t max = sizeof(struct msg_execve_event);
 
 	/* validate_msg_size() calls need to happen near caller using the
 	 * size. Otherwise, depending on kernel version, the verifier may
@@ -45,21 +45,21 @@ int64_t validate_msg_size(int64_t size)
 	if (size > max)
 		size = max;
 	if (size < 1)
-		size = offsetof(struct msg_ipv4_tcp_connect, pid);
+		size = offsetof(struct msg_execve_event, pid);
 	compiler_barrier();
 	return size;
 }
 
 static inline __attribute__((always_inline))
-struct msg_ipv4_tcp_connect *map_lookup_hash(__u32 pid)
+struct msg_execve_event *map_lookup_hash(__u32 pid)
 {
-	struct msg_ipv4_tcp_connect *event;
+	struct msg_execve_event *event;
 
 	event = map_lookup_elem(&execve_map, &pid);
 	if (!event) {
 		int zero = 0;
 
-		event = map_lookup_elem(&msg_ipv4_tcp_map, &zero);
+		event = map_lookup_elem(&msg_execve_heap_map, &zero);
 		if (!event)
 			return 0;
 		map_update_elem(&execve_map, &pid, event, 0);
@@ -68,13 +68,13 @@ struct msg_ipv4_tcp_connect *map_lookup_hash(__u32 pid)
 }
 
 static inline __attribute__((always_inline))
-struct msg_ipv4_tcp_connect *map_lookup_array(__u32 pid)
+struct msg_execve_event *map_lookup_array(__u32 pid)
 {
 	return map_lookup_elem(&execve_map, &pid);
 }
 
 static inline __attribute__((always_inline))
-struct msg_ipv4_tcp_connect *map_lookup_event(__u32 pid)
+struct msg_execve_event *map_lookup_event(__u32 pid)
 {
 	struct xdp_buff *kver_pivot, __kver_pivot;
 	int exists1, exists2;
@@ -486,7 +486,7 @@ a:
  * event msg that could be passed to userspace.
  */
 static inline __attribute__((always_inline))
-void event_args_builder(struct msg_ipv4_tcp_connect *event)
+void event_args_builder(struct msg_execve_event *event)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct event_execve *p, *c;
@@ -566,11 +566,11 @@ __u32 event_find_parent_pid(struct task_struct *t)
 }
 
 static inline __attribute__((always_inline))
-struct msg_ipv4_tcp_connect *event_find_parent(void)
+struct msg_execve_event *event_find_parent(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
-	struct msg_ipv4_tcp_connect *msg = 0;
+	struct msg_execve_event *msg = 0;
 	int i;
 
 #pragma unroll
@@ -611,13 +611,13 @@ void event_minimal_curr(struct event_execve *event)
 }
 
 static inline __attribute__((always_inline))
-struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
-					     struct bpf_map_def *map,
-					     bool *walked)
+struct msg_execve_event *event_find_curr(__u32 *ppid,
+					 struct bpf_map_def *map,
+					 bool *walked)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
-	struct msg_ipv4_tcp_connect *msg = 0;
+	struct msg_execve_event *msg = 0;
 	int i;
 
 #pragma unroll
@@ -635,7 +635,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
 	*ppid = pid;
 
 	if (!msg && map) {
-		struct msg_ipv4_tcp_connect *parent_event;
+		struct msg_execve_event *parent_event;
 		struct event_execve *parent, *curr;
 		int zero = 0;
 		ssize_t size;
@@ -669,7 +669,7 @@ struct msg_ipv4_tcp_connect *event_find_curr(__u32 *ppid,
  * Edit: pahole has been fixed need to update toolchain.
  */
 static inline __attribute__((always_inline))
-void __event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker, bool cwd_always)
+void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, bool cwd_always)
 {
 	struct cgroup_subsys_state *subsys;
 	struct event_execve *curr, *parent;
@@ -731,7 +731,7 @@ void __event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walke
 		curr->auid = get_auid();
 		curr->flags = flags;
 	}
-	msg->common.size = offsetof(struct msg_ipv4_tcp_connect, pid) + parent->size + curr->size;
+	msg->common.size = offsetof(struct msg_execve_event, pid) + parent->size + curr->size;
 	curr->uid = get_current_uid_gid();
 	if (walker)
 		curr->flags |= EVENT_TASK_WALK;
@@ -768,13 +768,13 @@ void __event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walke
 }
 
 static inline __attribute__((always_inline))
-void event_get_task_info(struct msg_ipv4_tcp_connect *msg, __u8 op, bool walker)
+void event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker)
 {
 	__event_get_task_info(msg, op, walker, false);
 }
 
 static inline __attribute__((always_inline))
-struct event_execve *event_get_curr_execve(struct msg_ipv4_tcp_connect *msg)
+struct event_execve *event_get_curr_execve(struct msg_execve_event *msg)
 {
 	struct event_execve *p = (struct event_execve *)msg->pid;
 	int64_t base = validate_arg_size(p->size);

@@ -22,42 +22,85 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
 {
-	struct msg_ipv4_tcp_connect *msg = 0;
-	struct msg_tls_ipv4 tuple;
-	struct msg_execve_key v = {0};
+	struct msg_execve_event *process = 0;
+	struct msg_ipv4_tcp_event value;
+	struct msg_ipv4_tcp_key key;
 	struct event_execve *curr;
 	__u32 ppid = 0, pid = 0;
 	struct sock *skp;
 	bool walker = 0;
+	uint64_t size;
+	__u32 daddr;
+	__u16 dport;
 
 	pid = (get_current_pid_tgid() >> 32);
-	msg = event_find_curr(&ppid, &msg_ipv4_tcp_map, &walker);
-	if (!msg)
+	process = event_find_curr(&ppid, 0, &walker);
+	if (!process)
 		return 0;
 
 	skp = (void *)((ctx)->di);
-	probe_read(&msg->tuple.proto, sizeof(msg->tuple.proto), _(&(skp->__sk_common.skc_family)));
-	probe_read(&msg->tuple.saddr, sizeof(msg->tuple.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&msg->tuple.sport, sizeof(msg->tuple.sport), _(&(skp->__sk_common.skc_num)));
-	probe_read(&msg->tuple.post_daddr, sizeof(msg->tuple.post_daddr), _(&(skp->__sk_common.skc_daddr)));
-	probe_read(&msg->tuple.post_dport, sizeof(msg->tuple.post_dport), _(&(skp->__sk_common.skc_dport)));
+	key.pid = pid;
+	key.pad = 0;
+	probe_read(&key.saddr, sizeof(key.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
+	probe_read(&key.sport, sizeof(key.sport), _(&(skp->__sk_common.skc_num)));
+	probe_read(&daddr, sizeof(daddr), _(&(skp->__sk_common.skc_daddr)));
+	probe_read(&dport, sizeof(dport), _(&(skp->__sk_common.skc_dport)));
 
-	event_get_task_info(msg, MSG_OP_IPV4_TCPCONNECT, walker);
-	tuple.saddr = msg->tuple.saddr;
-	tuple.daddr = msg->tuple.daddr;
-	tuple.dport = msg->tuple.dport;
-	tuple.sport = msg->tuple.sport;
-	tuple.proto = 0;
+	value.common.op = MSG_OP_IPV4_TCPCONNECTRET;
+	value.common.flags = 0;
+	value.common.pad[0] = 0;
+	value.common.pad[1] = 0;
+	value.common.size = sizeof(struct msg_ipv4_tcp_event);
+	value.common.ktime = ktime_get_ns();
+	
+	value.tuple.saddr = key.saddr;
+	value.tuple.daddr = daddr;
+	value.tuple.dport = dport;
+	value.tuple.sport = key.sport;
+	value.tuple.proto = 0;
+	value.tuple.post_daddr = 0; // After bpf-cgroup rewrites
+	value.tuple.post_dport = 0; // After bpf-cgroup rewrites
+	value.tuple.pad[0] = 0;
+	value.tuple.pad[1] = 0;
+	value.tuple.pad[2] = 0;
+	value.tuple.pad[3] = 0;
+	value.tuple.pad[4] = 0;
+
+	value.ret = 0; // Populated by kretprobe
+
+	value.key.pid = pid;
+	curr = event_get_curr_execve(process);
+	if (curr)
+		value.key.ktime = curr->ktime;
+	else
+		value.key.ktime = 0; // This is an error case
+	map_update_elem(&ipv4_tcp_map, &key, &value, 0);
+
+	size = sizeof(struct msg_ipv4_tcp_event);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
+
 	/* tuple is on the stack and verifier wont use stack in call happily
 	 * if its not initialized. Alternatively, without padding we are not
 	 * 32-bit aligned so we really do want it there.
 	 */
-	tuple.pad[0] = 0;
-	tuple.pad[1] = 0;
-	tuple.pad[2] = 0;
-	curr = event_get_curr_execve(msg);
-	v.pid = curr->pid;
-	v.ktime = curr->ktime;
-	add_socketmap(&tuple, &v);
+	{
+		struct msg_execve_key v = {0};
+		struct msg_tls_ipv4 tuple;
+
+		tuple.saddr = key.saddr;
+		tuple.daddr = daddr;
+		tuple.dport = dport;
+		tuple.sport = key.sport;
+		tuple.proto = 0;
+		tuple.pad[0] = 0;
+		tuple.pad[1] = 0;
+		tuple.pad[2] = 0;
+
+		v.pid = curr->pid;
+		v.ktime = curr->ktime;
+
+		add_socketmap(&tuple, &v);
+	}
+
 	return 1;
 }

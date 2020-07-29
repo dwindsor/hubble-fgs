@@ -253,10 +253,10 @@ var (
 
 	ObserverListen = bpfLoad{
 		"", "bpf_listen.o",
-		"__x64_sys_listen",
-		"sys_listen",
-		"kprobe/sys_listen",
-		"kprobe_sys_listen",
+		"__inet_hash",
+		"__inet_hash",
+		"kprobe/inet_hash",
+		"kprobe_inet_hash",
 
 		false,
 		true,
@@ -381,6 +381,7 @@ var (
 	/* Networking and Process Monitoring maps */
 	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, alwaysLoad}
 	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, alwaysLoad}
+	ObserverTcpMap    = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, alwaysLoad}
 	/* TLS maps */
 	ObserverTCTLSMap = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, isTLSTCLoad}
 	ObserverSockMap  = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, isTLSLoad}
@@ -405,7 +406,16 @@ func (k *ObserverKprobe) observerListenersTLS(msg *api.MsgTLSEvent) {
 	}
 }
 
-func (k *ObserverKprobe) observerListeners(msg *api.MsgIPv4TcpConnectUnix) {
+func (k *ObserverKprobe) observerListenersExecve(msg *api.MsgExecveEventUnix) {
+	for listener, _ := range k.listeners {
+		if err := listener.Notify(msg); err != nil {
+			k.log.Debug("Write failure removing Listener")
+			k.RemoveListener(listener)
+		}
+	}
+}
+
+func (k *ObserverKprobe) observerListenersTcp(msg *api.MsgIPv4TcpEventUnix) {
 	if pass := k.runFilters(msg); pass {
 		for listener, _ := range k.listeners {
 			if err := listener.Notify(msg); err != nil {
@@ -430,18 +440,25 @@ func (k *ObserverKprobe) RemoveListener(listener Listener) {
 	}
 }
 
-func msgToUnix(m *api.MsgIPv4TcpConnect) *api.MsgIPv4TcpConnectUnix {
-	unix := &api.MsgIPv4TcpConnectUnix{}
+func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
+	unix := &api.MsgExecveEventUnix{}
 
 	unix.Common = m.Common
-	unix.Tuple = m.Tuple
-
 	unix.Kube.NetNS = m.Kube.NetNS
 	unix.Kube.Cid = m.Kube.Cid
 	unix.Kube.Cgrpid = m.Kube.Cgrpid
 	unix.Kube.Docker = strings.Trim(string(m.Kube.Docker[:]), "\u0000")
+	return unix
+}
 
+func msgToTcpUnix(m *api.MsgIPv4Tcp) *api.MsgIPv4TcpEventUnix {
+	unix := &api.MsgIPv4TcpEventUnix{}
+
+	unix.Common = m.Common
+	unix.Tuple = m.Tuple
 	unix.Return = m.Return
+	unix.ProcessKey = m.ProcessKey
+
 	return unix
 }
 
@@ -497,7 +514,7 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 	return execUnix, false, nil
 }
 
-func (k *ObserverKprobe) runFilters(msgUnix *api.MsgIPv4TcpConnectUnix) bool {
+func (k *ObserverKprobe) runFilters(msgUnix *api.MsgIPv4TcpEventUnix) bool {
 	pass := true
 	for _, f := range k.msgFilter {
 		res := f.run(msgUnix, k)
@@ -542,17 +559,14 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		if k.prettyPrinter {
 			reader.ObserverTLSPrinter(&m, k.log)
 		}
-	case api.MSG_OP_IPV4_TCPCONNECT,
-		api.MSG_OP_IPV4_TCPCONNECTRET,
-		api.MSG_OP_IPV4_BIND,
-		api.MSG_OP_IPV4_LISTEN,
-		api.MSG_OP_EXECVE:
-		m := api.MsgIPv4TcpConnect{}
+	case api.MSG_OP_EXECVE:
+		m := api.MsgExecveEvent{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
+			fmt.Printf("api.MSG_OP_EXECVE binary read failur: %s\n", err)
 			break
 		}
-		msgUnix := msgToUnix(&m)
+		msgUnix := msgToExecveUnix(&m)
 		msgUnix.Pid.Parent, empty, err = execParse(r)
 		if err != nil && empty {
 			msgUnix.Pid.Parent = nopMsgExecUnix()
@@ -562,13 +576,18 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		if err != nil && empty {
 			msgUnix.Pid.Curr = nopMsgExecUnix()
 		}
-
-		/* OR filter together */
-		k.observerListeners(msgUnix)
-		/* Keeping pretty printer because it helps debugging filters */
-		if k.prettyPrinter {
-			reader.ObserverIPV4TCPConnectPrinter(msgUnix, k.log)
+		k.observerListenersExecve(msgUnix)
+	case api.MSG_OP_IPV4_TCPCONNECT,
+		api.MSG_OP_IPV4_TCPCONNECTRET,
+		api.MSG_OP_IPV4_BIND,
+		api.MSG_OP_IPV4_LISTEN:
+		m := api.MsgIPv4Tcp{}
+		err := binary.Read(r, binary.LittleEndian, &m)
+		if err != nil {
+			break
 		}
+		msgUnix := msgToTcpUnix(&m)
+		k.observerListenersTcp(msgUnix)
 	}
 }
 
@@ -613,8 +632,12 @@ func procsDockerID(pid uint32) string {
 	return strings.SplitAfter(docker[1], "\n")[0][0:12]
 }
 
-func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntries map[uint32]procTCPEntry) {
+func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry) {
 	pid := msg.Pid.Curr.PID
+	tcp := api.MsgIPv4TcpEventUnix{}
+
+	tcp.ProcessKey.Pid = pid
+	tcp.ProcessKey.Ktime = msg.Pid.Curr.Ktime
 
 	fdDir := fmt.Sprintf("%s/%d/fd", ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)
@@ -628,6 +651,9 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 		}
 		if strings.Contains(socket, "socket") == true {
 			fields := strings.Split(socket, ":")
+			if len(fields) < 2 {
+				continue
+			}
 			inode := fields[1]
 			inode = strings.TrimRight(inode, "]")
 			inode = strings.TrimLeft(inode, "[")
@@ -636,27 +662,23 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgIPv4TcpConnectUnix, tcpEntrie
 				k.log.WithError(err).Warnf("tcpEntry inode not parsable: %s", inode)
 			} else {
 				entry := tcpEntries[uint32(inodeEntry)]
-				msg.Tuple.SAddr = entry.localIP
-				msg.Tuple.DAddr = entry.remoteIP
-				msg.Tuple.DPort = entry.remotePort
-				msg.Tuple.SPort = entry.localPort
-				msg.Tuple.Proto = 2
+				tcp.Tuple.SAddr = entry.localIP
+				tcp.Tuple.DAddr = entry.remoteIP
+				tcp.Tuple.DPort = entry.remotePort
+				tcp.Tuple.SPort = entry.localPort
+				tcp.Tuple.Proto = 2
 
 				if entry.state == 0 {
 					continue
 				}
 
 				if entry.state == TCP_PROC_STATE_LISTEN {
-					msg.Common.Op = api.MsgOpIPv4Listen
+					tcp.Common.Op = api.MsgOpIPv4Listen
 				} else {
-					msg.Common.Op = api.MsgOpIPv4TCPConnectReturn
+					tcp.Common.Op = api.MsgOpIPv4TCPConnectReturn
 				}
 
-				if k.prettyPrinter {
-					reader.ObserverIPV4TCPConnectPrinter(msg, k.log)
-				}
-
-				k.observerListeners(msg)
+				k.observerListenersTcp(&tcp)
 			}
 		}
 	}
@@ -675,7 +697,7 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 		args = args + " " + cwd
 	}
 
-	m := api.MsgIPv4TcpConnectUnix{}
+	m := api.MsgExecveEventUnix{}
 	m.Common.Op = api.MSG_OP_EXECVE
 	m.Common.Ktime = 0
 	m.Common.Size = api.MsgUnixSize + p.psize + p.size
@@ -705,11 +727,8 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Pid.Curr.Filename = filename
 	m.Pid.Curr.Args = args
 
-	if k.prettyPrinter {
-		reader.ObserverIPV4TCPConnectPrinter(&m, k.log)
-	}
 	if pushExecve {
-		k.observerListeners(&m)
+		k.observerListenersExecve(&m)
 	}
 	/* Collect any existing TCP sockets on PID and generate events. */
 	k.pushTCPEvents(&m, tcpEntries)
@@ -1518,7 +1537,7 @@ func (k *ObserverKprobe) populateExecve(ctx context.Context) {
 	k.getRunningProcs(true, false)
 }
 
-type MsgFilterRun func(*api.MsgIPv4TcpConnectUnix, *ObserverKprobe) bool
+type MsgFilterRun func(*api.MsgIPv4TcpEventUnix, *ObserverKprobe) bool
 
 type MsgFilter struct {
 	run        MsgFilterRun
@@ -1549,7 +1568,7 @@ type ObserverKprobe struct {
 	log       logrus.FieldLogger
 }
 
-func defaultFilter(msg *api.MsgIPv4TcpConnectUnix) bool {
+func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
 	return true
 }
 

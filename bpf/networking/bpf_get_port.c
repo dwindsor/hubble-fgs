@@ -22,6 +22,7 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/inet_bind_hash")), used))
 int event_bind_hash(struct pt_regs *ctx)
 {
+#if 0
 	struct msg_ipv4_tcp_connect *msg = 0;
 	unsigned short port;
 	bool walker = 0;
@@ -33,5 +34,6 @@ int event_bind_hash(struct pt_regs *ctx)
 
 	probe_read(&port, sizeof(port), &ctx->dx);
 	msg->tuple.sport = port;
+#endif
 	return 1;
 }

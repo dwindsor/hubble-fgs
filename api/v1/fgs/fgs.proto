@@ -58,7 +58,8 @@ message Process {
     google.protobuf.Timestamp start_time = 8;
     google.protobuf.UInt32Value auid = 9;
     Pod pod = 10;
-    string parent_exec_id = 11;
+    string docker = 11;
+    string parent_exec_id = 12;
 }
 
 message ProcessConnect {

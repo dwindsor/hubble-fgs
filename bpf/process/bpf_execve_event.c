@@ -20,7 +20,7 @@ __attribute__((section(("tracepoint/sys_execve")), used))
 int event_execve(struct sched_execve_args *ctx)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
-	struct msg_ipv4_tcp_connect *event, *parent_event;
+	struct msg_execve_event *event, *parent_event;
 	struct event_execve *parent;
 	bool walker = 0;
 	uint64_t size;
@@ -44,7 +44,7 @@ int event_execve(struct sched_execve_args *ctx)
 	event_args_builder(event);
 	compiler_barrier();
 	__event_get_task_info(event, MSG_OP_EXECVE, walker, true);
-	size = validate_msg_size(event->common.size);
+	size = validate_msg_execve_size(event->common.size);
 	if (event->common.flags)
 		event_set_clone(parent);
 	event->common.flags = 0;

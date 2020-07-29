@@ -347,6 +347,8 @@ func (m *Process) Validate() error {
 		}
 	}
 
+	// no validation rules for Docker
+
 	// no validation rules for ParentExecId
 
 	return nil

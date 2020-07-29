@@ -85,27 +85,36 @@ func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEvent) *fgs.GetEventsR
 	return res
 }
 
-func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpConnectUnix) *fgs.GetEventsResponse {
+func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case api.MSG_OP_IPV4_TCPCONNECTRET:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: pm.GetProcessConnect(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Pid.Curr.Ktime),
-		}
-	case api.MSG_OP_IPV4_LISTEN:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: pm.GetProcessListen(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Pid.Curr.Ktime),
-		}
 	case api.MSG_OP_EXECVE:
 		proc := pm.Add(msg)
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: pm.GetProcessExec(proc)},
 			NodeName: pm.nodeName,
 			Time:     ktimeToProto(msg.Pid.Curr.Ktime),
+		}
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
+func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_IPV4_TCPCONNECTRET:
+		res = &fgs.GetEventsResponse{
+			Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: pm.GetProcessConnect(msg)},
+			NodeName: pm.nodeName,
+			Time:     ktimeToProto(msg.ProcessKey.Ktime),
+		}
+	case api.MSG_OP_IPV4_LISTEN:
+		res = &fgs.GetEventsResponse{
+			Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: pm.GetProcessListen(msg)},
+			NodeName: pm.nodeName,
+			Time:     ktimeToProto(msg.ProcessKey.Ktime),
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -127,7 +136,9 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	switch msg := event.(type) {
 	case *api.MsgTLSEvent:
 		processedEvent = pm.handleTLSMessage(msg)
-	case *api.MsgIPv4TcpConnectUnix:
+	case *api.MsgExecveEventUnix:
+		processedEvent = pm.handleExecveMessage(msg)
+	case *api.MsgIPv4TcpEventUnix:
 		processedEvent = pm.handleTCPMessage(msg)
 	default:
 		pm.log.WithField("event", event).Warn("unhandled event")
@@ -164,6 +175,42 @@ func ktimeToProto(ktime uint64) *timestamp.Timestamp {
 	}
 	return ts
 }
+func (pm *ProcessManager) getParentProcess(processID string) (*fgs.Process, *fgs.Process) {
+	var parent, process *fgs.Process
+	if entry, ok := pm.cache.Get(processID); ok {
+		process, _ = entry.(*fgs.Process)
+		if !ok {
+			pm.log.WithField("process entry", entry).Warn("invalid entry in process cache")
+		}
+	} else {
+		pm.log.WithField("id in event", processID).Warn("process not found in cache")
+		return nil, nil
+	}
+
+	if entry, ok := pm.cache.Get(process.ParentExecId); ok {
+		parent, ok = entry.(*fgs.Process)
+		if !ok {
+			pm.log.WithField("process entry", entry).Warn("invalid entry in process cache")
+		}
+	} else {
+		pm.log.WithField("id in event", process.ParentExecId).Warn("parent process not found in cache")
+		return process, nil
+	}
+	return process, parent
+}
+
+func (pm *ProcessManager) getProcessEndpoint(process *fgs.Process) *v1.Endpoint {
+	if process.Docker == "" {
+		return nil
+	}
+	pod, _, ok := pm.watcher.FindPod(process.Docker)
+	if !ok {
+		pm.log.WithField("container id", process.Docker).Trace("failed to get pod")
+		return nil
+	}
+	endpoint, _ := pm.ciliumState.GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
+	return endpoint
+}
 
 func (pm *ProcessManager) getProcess(
 	process fgsAPI.MsgExecUnix,
@@ -194,12 +241,13 @@ func (pm *ProcessManager) getProcess(
 		Auid:         &wrappers.UInt32Value{Value: process.AUID},
 		Pod:          protoPod,
 		ExecId:       execID,
+		Docker:       containerID,
 		ParentExecId: parentExecID,
 	}, endpoint
 }
 
 // Add converts an FGS exec event to protobuf format and adds the protobuf message to the cache.
-func (pm *ProcessManager) Add(event *fgsAPI.MsgIPv4TcpConnectUnix) *fgs.Process {
+func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *fgs.Process {
 	proc, _ := pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent)
 	pm.cache.Add(proc.ExecId, proc)
 	var parentExecID string
@@ -292,7 +340,7 @@ func (pm *ProcessManager) GetProcessExec(
 
 // GetProcessListen returns Listen protobuf message for a given process, including the ancestor list.
 func (pm *ProcessManager) GetProcessListen(
-	event *fgsAPI.MsgIPv4TcpConnectUnix,
+	event *fgsAPI.MsgIPv4TcpEventUnix,
 ) *fgs.ProcessListen {
 	var port *wrappers.UInt32Value
 	if event.Tuple.SPort != 0 {
@@ -300,12 +348,15 @@ func (pm *ProcessManager) GetProcessListen(
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
-	process, _ := pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent)
-	parent, _ := pm.getProcess(event.Pid.Parent, "" /* no container ID for parent */, fgsAPI.MsgExecUnix{} /* no exec info for parent of parent */)
+	processID, err := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if err != nil {
+		pm.log.WithError(err).Warn("Listen Failed to get exec process", event.ProcessKey.Pid)
+	}
+	process, parent := pm.getParentProcess(processID)
 	return &fgs.ProcessListen{
 		Process: process,
 		Parent:  parent,
-		Ip:      reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		Ip:      reader.GetIP(event.Tuple.SAddr, 0).String(),
 		Port:    port,
 	}
 }
@@ -361,7 +412,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 }
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpConnectUnix) *fgs.ProcessConnect {
+func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessConnect {
 	var sourcePort, destinationPort *wrappers.UInt32Value
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrappers.UInt32Value{
@@ -373,8 +424,23 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpConnectUnix)
 			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
 		}
 	}
-	process, endpoint := pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent)
-	parent, _ := pm.getProcess(event.Pid.Parent, "" /* no container ID for parent */, fgsAPI.MsgExecUnix{} /* no exec info for parent of parent */)
+
+	processID, err := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if err != nil {
+		pm.log.WithError(err).Warn("Connect Failed to get exec process", event.ProcessKey.Pid)
+	}
+	process, parent := pm.getParentProcess(processID)
+	if process == nil {
+		process = &fgs.Process{
+			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
+	}
+	if parent == nil {
+		parent = &fgs.Process{}
+	}
+	endpoint := pm.getProcessEndpoint(process)
+
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
 	var destinationNames []string
 	if endpoint != nil {

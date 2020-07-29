@@ -67,7 +67,7 @@ func getTlsInfo(tls *fgs.Tls) (binary string, namespace string) {
 func handleOriginalEvent(originalEvent interface{}) {
 	var flags uint32
 	switch msg := originalEvent.(type) {
-	case *api.MsgIPv4TcpConnectUnix:
+	case *api.MsgExecveEventUnix:
 		flags = msg.Pid.Curr.Flags
 	}
 	for _, flag := range reader.DecodeCommonFlags(flags) {

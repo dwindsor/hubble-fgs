@@ -22,7 +22,7 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/wake_up_new_task")), used))
 int event_wake_up_new_task(struct pt_regs *ctx)
 {
-	struct msg_ipv4_tcp_connect *event;
+	struct msg_execve_event *event;
 	struct event_execve *parent;
 	struct task_struct *task;
 	u32 pid = 0;

@@ -114,7 +114,7 @@ func (k *ObserverKprobe) ComparePidStrict(x, y *api.MsgPidUnix) bool {
 	return true
 }
 
-func (k *ObserverKprobe) CompareStrict(x, y *api.MsgIPv4TcpConnectUnix) bool {
+func (k *ObserverKprobe) CompareStrict(x, y *api.MsgIPv4TcpEventUnix) bool {
 	if res := k.CompareCommonStrict(&x.Common, &y.Common); res == false {
 		return false
 	}
@@ -123,9 +123,6 @@ func (k *ObserverKprobe) CompareStrict(x, y *api.MsgIPv4TcpConnectUnix) bool {
 		return false
 	}
 	if res := k.CompareK8sStrict(&x.Kube, &y.Kube); res == false {
-		return false
-	}
-	if res := k.ComparePidStrict(&x.Pid, &y.Pid); res == false {
 		return false
 	}
 	return true

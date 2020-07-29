@@ -25,6 +25,8 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kretprobe/sys_connect")), used))
 int event_ret_ipv4_connect(struct pt_regs *ctx)
 {
+	return 0;
+#if 0
 	struct msg_ipv4_tcp_connect *msg = 0;
 	__u32 ppid = 0;
 	uint64_t size;
@@ -47,4 +49,5 @@ int event_ret_ipv4_connect(struct pt_regs *ctx)
 	msg->common.op = MSG_OP_UNDEF;
 	msg->ret = 0;
 	return 0;
+#endif
 }

@@ -227,11 +227,11 @@ type MsgK8s struct {
 	Docker [DOCKER_ID_LENGTH]byte
 }
 
-type MsgIPv4TcpConnect struct {
-	Common MsgCommon
-	Tuple  MsgIPv4Tuple
-	Kube   MsgK8s
-	Return int64
+type MsgIPv4Tcp struct {
+	Common     MsgCommon
+	Tuple      MsgIPv4Tuple
+	Return     int64
+	ProcessKey MsgExecveKey
 }
 
 // API between Userspace hubble-fgs Golang agent and Unix domain socket listener
@@ -260,15 +260,26 @@ type MsgK8sUnix struct {
 	Docker string
 }
 
-type MsgIPv4TcpConnectUnix struct {
-	Common MsgCommon
-	Tuple  MsgIPv4Tuple
-	Kube   MsgK8sUnix
-	Return int64
-	Pid    MsgPidUnix
+type MsgIPv4TcpEventUnix struct {
+	Common     MsgCommon
+	Tuple      MsgIPv4Tuple
+	Kube       MsgK8sUnix
+	Return     int64
+	ProcessKey MsgExecveKey
 }
 
 var MsgUnixSize uint32 = 640
+
+type MsgExecveEvent struct {
+	Common MsgCommon
+	Kube   MsgK8s
+}
+
+type MsgExecveEventUnix struct {
+	Common MsgCommon
+	Kube   MsgK8sUnix
+	Pid    MsgPidUnix
+}
 
 type MsgTLSIPv4 struct {
 	SAddr uint32
