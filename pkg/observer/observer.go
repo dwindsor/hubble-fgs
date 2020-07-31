@@ -176,21 +176,6 @@ var (
 		-1,
 	}
 
-	ObserverStreamConnect = bpfLoad{
-		"", "bpf_stream_connect.o",
-		"__inet_stream_connect",
-		"__inet_stream_connect",
-		"kprobe/__inet_stream_connect",
-		"kprobe__inet_stream_connect",
-
-		false,
-		true,
-		"kprobe",
-		alwaysLoad,
-
-		-1,
-	}
-
 	ObserverTCPConnect = bpfLoad{
 		"", "bpf_tcpmon.o",
 		"tcp_connect",
@@ -214,36 +199,6 @@ var (
 		"kretprobe_sys_connect",
 
 		true,
-		true,
-		"kprobe",
-		alwaysLoad,
-
-		-1,
-	}
-
-	ObserverBind = bpfLoad{
-		"", "bpf_bind.o",
-		"inet_bind",
-		"inet_bind",
-		"kprobe/sys_bind",
-		"kprobe_sys_bind",
-
-		false,
-		true,
-		"kprobe",
-		alwaysLoad,
-
-		-1,
-	}
-
-	ObserverGetPort = bpfLoad{
-		"", "bpf_get_port.o",
-		"inet_bind_hash",
-		"inet_bind_hash",
-		"kprobe/inet_bind_hash",
-		"kprobe_inet_bind_hash",
-
-		false,
 		true,
 		"kprobe",
 		alwaysLoad,
@@ -365,9 +320,6 @@ var (
 		&ObserverFork,
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
-		&ObserverStreamConnect,
-		&ObserverBind,
-		&ObserverGetPort,
 		&ObserverListen,
 		&ObserverSockopsEstablished,
 		&ObserverSkmsgTLS,

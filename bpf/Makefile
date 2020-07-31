@@ -8,7 +8,7 @@ NETWORKINGDIR := networking/
 PROCESSDIR := process/
 
 TLS = bpf_sockops.o bpf_skmsg_tls.o bpf_cgrp_in_tls.o bpf_event_tls.o bpf_tc_ingress.o bpf_tc_egress.o
-NETWORKING = bpf_stream_connect.o bpf_tcpmon.o bpf_tcpmonret.o bpf_bind.o bpf_listen.o bpf_get_port.o
+NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o
 PROCESS = bpf_execve_event.o bpf_fork.o
 
 IDIR = ./include/
