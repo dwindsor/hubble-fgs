@@ -1,20 +1,19 @@
 package grpc
 
 import (
-	"context"
 	"encoding/base64"
-	"encoding/json"
 	"fmt"
 	"os"
 	"strings"
+	"sync"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/hubble/pkg/cilium"
-	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/filters"
+	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/golang/protobuf/ptypes"
@@ -25,40 +24,38 @@ import (
 	coreV1 "k8s.io/api/core/v1"
 )
 
+type listener interface {
+	notify(res *fgs.GetEventsResponse)
+}
+
+type notifier interface {
+	addListener(listener listener)
+	removeListener(listener listener)
+}
+
 // ProcessManager maintains a cache of processes from fgs exec events.
 type ProcessManager struct {
 	log   logrus.FieldLogger
 	cache *lru.Cache
 	// pidMap is a map from PID to the most recent exec ID for the PID. This is used to find the parent
 	// of exec events without clone flag.
-	pidMap      map[uint32]string
-	encoder     *json.Encoder
-	nodeName    string
-	watcher     K8sResourceWatcher
+	pidMap   map[uint32]string
+	nodeName string
+	watcher  K8sResourceWatcher
+	// synchronize access to the listeners map.
+	mux         sync.Mutex
+	listeners   map[listener]struct{}
 	ciliumState *cilium.State
-	allowList   hubbleFilters.FilterFuncs
-	denyList    hubbleFilters.FilterFuncs
 }
 
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
 func NewProcessManager(
 	log logrus.FieldLogger,
-	encoder *json.Encoder,
 	processCacheSize int,
 	watcher K8sResourceWatcher,
 	ciliumState *cilium.State,
-	allowList []*fgs.Filter,
-	denyList []*fgs.Filter,
 ) (*ProcessManager, error) {
 	processCache, err := lru.New(processCacheSize)
-	if err != nil {
-		return nil, err
-	}
-	allowListFuncs, err := filters.BuildFilterList(context.Background(), allowList, filters.Filters)
-	if err != nil {
-		return nil, err
-	}
-	denyListFuncs, err := filters.BuildFilterList(context.Background(), denyList, filters.Filters)
 	if err != nil {
 		return nil, err
 	}
@@ -66,12 +63,10 @@ func NewProcessManager(
 		log:         log,
 		cache:       processCache,
 		pidMap:      make(map[uint32]string),
-		encoder:     encoder,
 		nodeName:    os.Getenv("NODE_NAME"),
 		watcher:     watcher,
 		ciliumState: ciliumState,
-		allowList:   allowListFuncs,
-		denyList:    denyListFuncs,
+		listeners:   make(map[listener]struct{}),
 	}, nil
 }
 
@@ -128,17 +123,14 @@ func removeInternalFields(event interface{}) {
 
 // Notify implements Listener.Notify.
 func (pm *ProcessManager) Notify(event interface{}) error {
-	var processedEvent interface{}
+	var processedEvent *fgs.GetEventsResponse
 	switch msg := event.(type) {
 	case *api.MsgTLSEvent:
 		processedEvent = pm.handleTLSMessage(msg)
 	case *api.MsgIPv4TcpConnectUnix:
 		processedEvent = pm.handleTCPMessage(msg)
 	default:
-		processedEvent = event
-	}
-	if !hubbleFilters.Apply(pm.allowList, pm.denyList, &v1.Event{Event: processedEvent}) {
-		return nil
+		pm.log.WithField("event", event).Warn("unhandled event")
 	}
 	// There are some fields that are only meant to be used internally for filtering such as
 	// liveness_exec_probe and readiness_exec_probe. Remove these fields before updating metrics
@@ -146,9 +138,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	removeInternalFields(processedEvent)
 	metrics.ProcessEvent(event, processedEvent)
 	if processedEvent != nil {
-		if err := pm.encoder.Encode(processedEvent); err != nil {
-			pm.log.WithError(err).WithField("msg", processedEvent).Warn("failed to encode")
-		}
+		pm.notifyListeners(processedEvent)
 	}
 	return nil
 }
@@ -464,4 +454,26 @@ func getProbes(pod *coreV1.Pod, containerStatus *coreV1.ContainerStatus) ([]stri
 		}
 	}
 	return nil, nil
+}
+
+func (pm *ProcessManager) addListener(listener listener) {
+	logger.GetLogger().WithField("getEventsListener", listener).Debug("Adding a getEventsListener")
+	pm.mux.Lock()
+	defer pm.mux.Unlock()
+	pm.listeners[listener] = struct{}{}
+}
+
+func (pm *ProcessManager) removeListener(listener listener) {
+	logger.GetLogger().WithField("getEventsListener", listener).Debug("Removing a getEventsListener")
+	pm.mux.Lock()
+	defer pm.mux.Unlock()
+	delete(pm.listeners, listener)
+}
+
+func (pm *ProcessManager) notifyListeners(event *fgs.GetEventsResponse) {
+	pm.mux.Lock()
+	defer pm.mux.Unlock()
+	for l := range pm.listeners {
+		l.notify(event)
+	}
 }

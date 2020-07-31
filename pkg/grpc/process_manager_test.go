@@ -15,8 +15,6 @@
 package grpc
 
 import (
-	"encoding/json"
-	"io/ioutil"
 	"testing"
 	"time"
 
@@ -58,12 +56,9 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 	pods := []interface{}{&podA}
 	pm, err := NewProcessManager(
 		logrus.New(),
-		json.NewEncoder(ioutil.Discard),
 		10,
 		NewFakeK8sWatcher(pods),
-		cilium.GetFakeCiliumState(),
-		nil,
-		nil)
+		cilium.GetFakeCiliumState())
 	assert.NoError(t, err)
 	pod, endpoint := pm.getPodInfo("container-id-not-found", &fgsAPI.MsgExecUnix{})
 	assert.Nil(t, pod)

@@ -14,13 +14,14 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
 	"github.com/covalentio/hubble-fgs/pkg/filters"
-	"github.com/covalentio/hubble-fgs/pkg/grpc"
+	fgsGrpc "github.com/covalentio/hubble-fgs/pkg/grpc"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
 	"github.com/covalentio/hubble-fgs/pkg/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
+	"google.golang.org/grpc"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -40,6 +41,7 @@ var (
 	metricsServer        string
 	enableCiliumAPI      bool
 	networkInterfaces    string
+	serverAddress        string
 )
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
@@ -104,35 +106,71 @@ func hubbleFGSExecute() error {
 		go metrics.EnableMetrics(metricsServer)
 	}
 
-	if exportFilename != "" {
-		encoder := json.NewEncoder(&lumberjack.Logger{
-			Filename:   exportFilename,
-			MaxSize:    exportFileMaxSizeMB,
-			MaxBackups: exportFileMaxBackups,
-			Compress:   exportFileCompress,
-		})
-		watcher, err := getWatcher(enableK8sAPI)
-		if err != nil {
-			return err
-		}
-		ciliumState, err := cilium.GetCiliumState(enableCiliumAPI, ctx)
-		if err != nil {
-			return err
-		}
-		allowList, denyList, err := getExportFilters()
-		if err != nil {
-			return err
-		}
-		processManager, err := grpc.NewProcessManager(logger.GetLogger(), encoder, processCacheSize, watcher, ciliumState, allowList, denyList)
-		if err != nil {
-			return err
-		}
-		kprobe.AddListener(processManager)
+	watcher, err := getWatcher(enableK8sAPI)
+	if err != nil {
+		return err
 	}
+	ciliumState, err := cilium.GetCiliumState(enableCiliumAPI, ctx)
+	if err != nil {
+		return err
+	}
+	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState)
+	if err != nil {
+		return err
+	}
+	server := fgsGrpc.NewServer(processManager)
+	if err = Serve(ctx, serverAddress, server); err != nil {
+		return err
+	}
+	if exportFilename != "" {
+		if err = startExporter(ctx, server); err != nil {
+			return err
+		}
+	}
+	kprobe.AddListener(processManager)
 	return kprobe.Start(ctx)
 }
 
-func getWatcher(enableK8sAPI bool) (grpc.K8sResourceWatcher, error) {
+func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
+	allowList, denyList, err := getExportFilters()
+	if err != nil {
+		return err
+	}
+	writer := lumberjack.Logger{
+		Filename:   exportFilename,
+		MaxSize:    exportFileMaxSizeMB,
+		MaxBackups: exportFileMaxBackups,
+		Compress:   exportFileCompress,
+	}
+	logger.GetLogger().WithField("logger", writer).Info("Starting JSON exporter")
+	encoder := json.NewEncoder(&writer)
+	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
+	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder)
+	go exporter.Start()
+	return nil
+}
+
+func Serve(ctx context.Context, address string, server *fgsGrpc.Server) error {
+	grpcServer := grpc.NewServer()
+	fgs.RegisterFineGuidanceSensorsServer(grpcServer, server)
+	go func(address string) {
+		listener, err := net.Listen("tcp", address)
+		if err != nil {
+			logger.GetLogger().WithError(err).WithField("address", address).Fatal("Failed to start gRPC server")
+		}
+		logger.GetLogger().WithField("address", address).Info("Starting gRPC server")
+		if err = grpcServer.Serve(listener); err != nil {
+			logger.GetLogger().WithError(err).Error("Failed to close gRPC server")
+		}
+	}(address)
+	go func() {
+		<-ctx.Done()
+		grpcServer.Stop()
+	}()
+	return nil
+}
+
+func getWatcher(enableK8sAPI bool) (fgsGrpc.K8sResourceWatcher, error) {
 	if enableK8sAPI {
 		logger.GetLogger().Info("Enabling Kubernetes API")
 		config, err := rest.InClusterConfig()
@@ -140,11 +178,11 @@ func getWatcher(enableK8sAPI bool) (grpc.K8sResourceWatcher, error) {
 			return nil, err
 		}
 		k8sClient := kubernetes.NewForConfigOrDie(config)
-		return grpc.NewK8sWatcher(k8sClient, 60*time.Second), nil
+		return fgsGrpc.NewK8sWatcher(k8sClient, 60*time.Second), nil
 
 	}
 	logger.GetLogger().Info("Disabling Kubernetes API")
-	return grpc.NewFakeK8sWatcher(nil), nil
+	return fgsGrpc.NewFakeK8sWatcher(nil), nil
 }
 
 func init() {
@@ -182,6 +220,7 @@ func init() {
 	flags.StringVar(&metricsServer, "metrics-server", "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
 	flags.BoolVar(&enableCiliumAPI, "enable-cilium-api", false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
 	flags.StringVar(&networkInterfaces, "network-interfaces", "", "Comma separated list of regex expressions to use to apply protocol parsers")
+	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
 	viper.BindPFlags(flags)
 }
 
