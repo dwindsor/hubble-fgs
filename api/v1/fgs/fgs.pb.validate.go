@@ -844,6 +844,36 @@ func (m *GetEventsRequest) Validate() error {
 		return nil
 	}
 
+	for idx, item := range m.GetAllowList() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsRequestValidationError{
+					field:  fmt.Sprintf("AllowList[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	for idx, item := range m.GetDenyList() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsRequestValidationError{
+					field:  fmt.Sprintf("DenyList[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
 	return nil
 }
 

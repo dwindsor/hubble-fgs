@@ -110,7 +110,19 @@ service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
 }
 
-message GetEventsRequest {}
+message GetEventsRequest {
+    // allow_list specifies a list of filters to apply to only return certain
+    // events. If multiple filters are specified, at least one of them has to
+    // match for an event to be included in the results.
+    repeated Filter allow_list = 1;
+    // deny_list specifies a list of filters to apply to exclude certain events
+    // from the results. If multiple filters are specified, at least one of
+    // them has to match for an event to be excluded.
+    //
+    // If both allow_list and deny_list are specified, the results contain the
+    // set difference allow_list - deny_list.
+    repeated Filter deny_list = 2;
+}
 
 message GetEventsResponse {
     oneof event {
