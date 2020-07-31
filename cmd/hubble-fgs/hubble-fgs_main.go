@@ -18,7 +18,6 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
-	"github.com/covalentio/hubble-fgs/pkg/server"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -80,28 +79,15 @@ func hubbleFGSExecute() error {
 	 * events no state should be lost/missed.
 	 */
 	kprobe.RemovePrograms()
-
-	err := os.Remove(defaults.GetSocketPath())
-	if err != nil && !os.IsNotExist(err) {
-		return err
-	}
 	os.Mkdir(defaults.DefaultRunDir, os.ModeDir)
-	s, err := net.Listen("unix", defaults.GetSocketPath())
-	if err != nil {
-		return err
-	}
 	go func() {
 		<-sigs
 		kprobe.PrintStats()
 		kprobe.RemovePrograms()
 		cancel()
-		if err = s.Close(); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to close socket")
-		}
 		os.Exit(1)
 	}()
 
-	go server.ServeEvents(kprobe, ctx, s)
 	if metricsServer != "" {
 		go metrics.EnableMetrics(metricsServer)
 	}

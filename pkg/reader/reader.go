@@ -17,7 +17,6 @@ package reader
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/gob"
 	"fmt"
 	"net"
 	"strconv"
@@ -26,7 +25,6 @@ import (
 	"time"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/defaults"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -191,25 +189,6 @@ func ObserverIPV4TCPPrinter(msg *api.MsgIPv4TcpEventUnix, log logrus.FieldLogger
 		"odport":           GetDport(msg.Tuple.GetPostDPort(), op),
 		"return":           unix.ErrnoName(e),
 	}).Warn()
-}
-
-func ObserverReceiver(log logrus.FieldLogger) error {
-	conn, err := net.Dial("unix", defaults.GetSocketPath())
-	if err != nil {
-		return err
-	}
-
-	dec := gob.NewDecoder(conn)
-	for {
-		var IPv4TCPMsg api.MsgIPv4TcpEventUnix
-
-		err = dec.Decode(&IPv4TCPMsg)
-		if err != nil {
-			continue
-		}
-
-		ObserverIPV4TCPPrinter(&IPv4TCPMsg, log)
-	}
 }
 
 func GetTLSSession(session [64]uint8) string {

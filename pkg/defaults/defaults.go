@@ -14,8 +14,6 @@
 
 package defaults
 
-import "os"
-
 const (
 	// DefaultMapRoot is the default path where BPFFS should be mounted
 	DefaultMapRoot = "/sys/fs/bpf"
@@ -35,16 +33,4 @@ const (
 
 	// DefaultRunDir is the default run directory for runtime
 	DefaultRunDir = "/var/run/hubble-fgs/"
-
-	// DefaultUnixSock is the default sock name to listen for events
-	DefaultUnixSock = "hubble-fgs.sock"
 )
-
-// GetSocketPath returns the socket path. If FGS_SOCKET_PATH environment variable
-// is set, it overrides the default path.
-func GetSocketPath() string {
-	if path, ok := os.LookupEnv("FGS_SOCKET_PATH"); ok {
-		return path
-	}
-	return DefaultRunDir + DefaultUnixSock
-}
