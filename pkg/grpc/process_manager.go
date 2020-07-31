@@ -93,7 +93,7 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: pm.GetProcessExec(proc)},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Pid.Curr.Ktime),
+			Time:     ktimeToProto(msg.Process.Ktime),
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -221,13 +221,13 @@ func (pm *ProcessManager) getProcessEndpoint(process *fgs.Process) *v1.Endpoint 
 func (pm *ProcessManager) getProcess(
 	process fgsAPI.MsgExecUnix,
 	containerID string,
-	parent fgsAPI.MsgExecUnix,
+	parent fgsAPI.MsgExecveKey,
 ) (*fgs.Process, *v1.Endpoint) {
 	args, cwd := reader.ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
 	var err error
-	if parent.PID != 0 {
-		if parentExecID, err = pm.GetExecID(&parent); err != nil {
+	if parent.Pid != 0 {
+		if parentExecID, err = pm.GetExecIDFromKey(&parent); err != nil {
 			pm.log.WithError(err).WithField("parent", parent).Warn("Failed to get exec ID for parent")
 		}
 	}
@@ -254,7 +254,7 @@ func (pm *ProcessManager) getProcess(
 
 // Add converts an FGS exec event to protobuf format and adds the protobuf message to the cache.
 func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *fgs.Process {
-	proc, _ := pm.getProcess(event.Pid.Curr, event.Kube.Docker, event.Pid.Parent)
+	proc, _ := pm.getProcess(event.Process, event.Kube.Docker, event.Parent)
 	pm.cache.Add(proc.ExecId, proc)
 	var parentExecID string
 	if proc.Pid != nil {
@@ -325,6 +325,10 @@ func (pm *ProcessManager) GetProcessID(pid uint32, ktime uint64) (string, error)
 // GetExecID returns the exec ID of a given process.
 func (pm *ProcessManager) GetExecID(proc *fgsAPI.MsgExecUnix) (string, error) {
 	return pm.GetProcessID(proc.PID, proc.Ktime)
+}
+
+func (pm *ProcessManager) GetExecIDFromKey(key *fgsAPI.MsgExecveKey) (string, error) {
+	return pm.GetProcessID(key.Pid, key.Ktime)
 }
 
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.

@@ -23,9 +23,8 @@ __attribute__((section(("kprobe/inet_hash")), used))
 int event_sys_listen(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_event value = {0};
-	struct msg_execve_event *process = 0;
+	struct execve_map_value *process = 0;
 	struct msg_ipv4_tcp_key key;
-	struct event_execve *curr;
 	__u32 pid, ppid = 0;
 	struct sock *skp;
 	bool walker = 0;
@@ -46,15 +45,9 @@ int event_sys_listen(struct pt_regs *ctx)
 	value.common.op = MSG_OP_IPV4_LISTEN;
 	value.common.size = sizeof(struct msg_ipv4_tcp_event);
 	value.key.pid = pid;
-
-	curr = event_get_curr_execve(process);
-	if (curr)
-		value.key.ktime = curr->ktime;
-	else
-		value.key.ktime = 0; // This is an error case
+	value.key.ktime = process->key.ktime;
 
 	map_update_elem(&ipv4_tcp_map, &key, &value, 0);
-
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, sizeof(struct msg_ipv4_tcp_event));
 	return 0;
 }

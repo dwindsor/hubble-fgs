@@ -400,6 +400,7 @@ func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
 	unix.Kube.Cid = m.Kube.Cid
 	unix.Kube.Cgrpid = m.Kube.Cgrpid
 	unix.Kube.Docker = strings.Trim(string(m.Kube.Docker[:]), "\u0000")
+	unix.Parent = m.Parent
 	return unix
 }
 
@@ -431,6 +432,7 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 	exec := api.MsgExec{}
 
 	if err := binary.Read(reader, binary.LittleEndian, &exec); err != nil {
+		fmt.Printf("read error!\n")
 		return execUnix, true, err
 	}
 
@@ -450,7 +452,7 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 		execUnix.Filename = "enomem"
 		return execUnix, false, err
 	} else {
-		args := make([]byte, size)
+		args := make([]byte, size+2)
 		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
 			execUnix.Size = api.SIZEOF_EXECVE
 			execUnix.Args = "enomem enomem"
@@ -519,14 +521,9 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			break
 		}
 		msgUnix := msgToExecveUnix(&m)
-		msgUnix.Pid.Parent, empty, err = execParse(r)
+		msgUnix.Process, empty, err = execParse(r)
 		if err != nil && empty {
-			msgUnix.Pid.Parent = nopMsgExecUnix()
-		}
-
-		msgUnix.Pid.Curr, empty, err = execParse(r)
-		if err != nil && empty {
-			msgUnix.Pid.Curr = nopMsgExecUnix()
+			msgUnix.Process = nopMsgExecUnix()
 		}
 		k.observerListenersExecve(msgUnix)
 	case api.MSG_OP_IPV4_TCPCONNECT,
@@ -585,11 +582,11 @@ func procsDockerID(pid uint32) string {
 }
 
 func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry) {
-	pid := msg.Pid.Curr.PID
+	pid := msg.Process.PID
 	tcp := api.MsgIPv4TcpEventUnix{}
 
 	tcp.ProcessKey.Pid = pid
-	tcp.ProcessKey.Ktime = msg.Pid.Curr.Ktime
+	tcp.ProcessKey.Ktime = msg.Process.Ktime
 
 	fdDir := fmt.Sprintf("%s/%d/fd", ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)
@@ -637,12 +634,6 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 }
 
 func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
-	pargs, pfilename := procsFilename(p.pargs)
-	pcwd, pflags := getCWD(p.ppid)
-	if (pflags & api.EventRootCWD) == 0 {
-		pargs = pargs + " " + pcwd
-	}
-
 	args, filename := procsFilename(p.args)
 	cwd, flags := getCWD(p.pid)
 	if (flags & api.EventRootCWD) == 0 {
@@ -659,25 +650,18 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Kube.Cgrpid = 0
 	m.Kube.Docker = procsDockerID(p.pid)
 
-	m.Pid.Parent.Size = p.psize
-	m.Pid.Parent.PID = p.ppid
-	m.Pid.Parent.NSPID = p.pnspid
-	m.Pid.Parent.UID = p.puid
-	m.Pid.Parent.AUID = p.pauid
-	m.Pid.Parent.Flags = p.pflags | pflags
-	m.Pid.Parent.Ktime = p.pktime
-	m.Pid.Parent.Filename = pfilename
-	m.Pid.Parent.Args = pargs
+	m.Parent.Pid = p.ppid
+	m.Parent.Ktime = p.pktime
 
-	m.Pid.Curr.Size = p.size
-	m.Pid.Curr.PID = p.pid
-	m.Pid.Curr.NSPID = p.nspid
-	m.Pid.Curr.UID = p.uid
-	m.Pid.Curr.AUID = p.auid
-	m.Pid.Curr.Flags = p.flags | flags
-	m.Pid.Curr.Ktime = p.ktime
-	m.Pid.Curr.Filename = filename
-	m.Pid.Curr.Args = args
+	m.Process.Size = p.size
+	m.Process.PID = p.pid
+	m.Process.NSPID = p.nspid
+	m.Process.UID = p.uid
+	m.Process.AUID = p.auid
+	m.Process.Flags = p.flags | flags
+	m.Process.Ktime = p.ktime
+	m.Process.Filename = filename
+	m.Process.Args = args
 
 	if pushExecve {
 		k.observerListenersExecve(&m)
@@ -1081,14 +1065,16 @@ type ExecveKey struct {
 }
 
 type ExecveValueL struct {
-	Common api.MsgCommon
-	Kube   api.MsgK8s
+	Common      api.MsgCommon
+	Kube        api.MsgK8s
+	Parent      api.MsgExecveKey
+	ParentFlags uint64
 }
 
 type ExecveValue struct {
-	Common api.MsgCommon
-	Kube   api.MsgK8s
-	Args   [api.ARGSBUFFER]byte
+	Process api.MsgExecveKey
+	Parent  api.MsgExecveKey
+	Flags   uint32
 }
 
 func (k *ExecveKey) String() string             { return fmt.Sprintf("key=%d", k.Pid) }
@@ -1144,86 +1130,14 @@ func writeExecveMap(procs []ObserverProcs) {
 		panic(err)
 	}
 	for _, p := range procs {
-		off := 0
-
 		k := &ExecveKey{Pid: p.pid}
 		v := &ExecveValue{}
-		cwd := make([]byte, api.MAX_SIZEOF_CWD)
 
-		/* In theory we trim'd this above to fit but lets be paranoid
-		 * because I already screwed this up once and crashing fgs is
-		 * not so friendly.
-		 */
-		putU32 := func(val uint32) error {
-			if off+4 > api.ARGSBUFFER {
-				return fmt.Errorf("out of range")
-			}
+		v.Parent.Pid = p.ppid
+		v.Parent.Ktime = p.pktime
+		v.Process.Pid = p.pid
+		v.Process.Ktime = p.ktime
 
-			binary.LittleEndian.PutUint32(v.Args[off:], val)
-			off += 4
-			return nil
-		}
-
-		putU64 := func(val uint64) error {
-			if off+8 > api.ARGSBUFFER {
-				return fmt.Errorf("out of range")
-			}
-			binary.LittleEndian.PutUint64(v.Args[off:], val)
-			off += 8
-			return nil
-		}
-
-		if err := putU32(p.psize); err != nil {
-			continue
-		}
-		if err := putU32(p.ppid); err != nil {
-			continue
-		}
-		if err := putU32(p.pnspid); err != nil {
-			continue
-		}
-		if err := putU32(p.puid); err != nil {
-			continue
-		}
-		if err := putU32(p.pauid); err != nil {
-			continue
-		}
-		if err := putU32(p.pflags); err != nil {
-			continue
-		}
-		if err := putU64(p.pktime); err != nil {
-			continue
-		}
-		off += copy(v.Args[off:], p.pargs)
-		if (p.pflags & api.EventNeedsCWD) != 0 {
-			off += copy(v.Args[off:], cwd)
-		}
-		if err := putU32(p.size); err != nil {
-			continue
-		}
-		if err := putU32(p.pid); err != nil {
-			continue
-		}
-		if err := putU32(p.nspid); err != nil {
-			continue
-		}
-		if err := putU32(p.uid); err != nil {
-			continue
-		}
-		if err := putU32(p.auid); err != nil {
-			continue
-		}
-		if err := putU32(p.flags); err != nil {
-			continue
-		}
-		if err := putU64(p.ktime); err != nil {
-			continue
-		}
-		off += copy(v.Args[off:], p.args)
-		if (p.flags & api.EventNeedsCWD) != 0 {
-			off += copy(v.Args[off:], cwd)
-		}
-		v.Common.Size = 1
 		m.Update(k, v)
 	}
 }

@@ -51,15 +51,15 @@ int64_t validate_msg_execve_size(int64_t size)
 }
 
 static inline __attribute__((always_inline))
-struct msg_execve_event *map_lookup_hash(__u32 pid)
+struct execve_map_value *map_lookup_hash(__u32 pid)
 {
-	struct msg_execve_event *event;
+	struct execve_map_value *event;
 
 	event = map_lookup_elem(&execve_map, &pid);
 	if (!event) {
 		int zero = 0;
 
-		event = map_lookup_elem(&msg_execve_heap_map, &zero);
+		event = map_lookup_elem(&execve_value_heap_map, &zero);
 		if (!event)
 			return 0;
 		map_update_elem(&execve_map, &pid, event, 0);
@@ -68,13 +68,13 @@ struct msg_execve_event *map_lookup_hash(__u32 pid)
 }
 
 static inline __attribute__((always_inline))
-struct msg_execve_event *map_lookup_array(__u32 pid)
+struct execve_map_value *map_lookup_array(__u32 pid)
 {
 	return map_lookup_elem(&execve_map, &pid);
 }
 
 static inline __attribute__((always_inline))
-struct msg_execve_event *map_lookup_event(__u32 pid)
+struct execve_map_value *map_lookup_event(__u32 pid)
 {
 	struct xdp_buff *kver_pivot, __kver_pivot;
 	int exists1, exists2;
@@ -319,8 +319,6 @@ a:
 	 */
 	if (prealloc)
 		curr->size = orig_size;
-	else
-		curr->size = orig_size + (curr->size - orig_offset);
 	return 0;
 }
 
@@ -354,12 +352,11 @@ __u32 get_task_pid_vnr(void)
 }
 
 static inline __attribute__((always_inline))
-void event_filename_builder(struct event_execve *pid,
+void event_filename_builder(struct event_execve *curr,
 			    __u32 curr_pid, __u32 flags,
 			    void *filename)
 {
-	struct event_execve *curr;
-	int64_t psize, size = 0;
+	int64_t size = 0;
 	char *earg;
 
 	/* This is a bit parnoid but was previously having trouble on
@@ -367,9 +364,7 @@ void event_filename_builder(struct event_execve *pid,
 	 * resulting in a a verifier error. We can optimize this a bit
 	 * later perhaps and push as an argument.
 	 */
-	psize = validate_arg_size(pid->size);
-	curr = (void *)pid + psize;
-	earg = (void *)pid + psize + offsetof(struct event_execve, args);
+	earg = (void *)curr + offsetof(struct event_execve, args);
 
 	size = probe_read_str(earg, MAXARGLENGTH - 1, filename);
 	if (size < 0) {
@@ -491,14 +486,13 @@ void event_args_builder(struct msg_execve_event *event)
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct event_execve *p, *c;
 	struct mm_struct *mm;
-	int64_t base;
+	//int64_t base;
 
 	/* Calculate absolute offset into buffer */
-	p = (struct event_execve *)event->pid;
-	base = validate_arg_size(p->size);
-	c = (struct event_execve *)((void *)p + base);
+	c = (struct event_execve *)event->pid;
 	c->auid = get_auid();
-	c->size += base;
+	p = c;
+
 	/* We use flags in asm to indicate overflow */
 	compiler_barrier();
 	probe_read(&mm, sizeof(mm), _(&task->mm));
@@ -510,30 +504,20 @@ void event_args_builder(struct msg_execve_event *event)
 		if (start_stack && end_stack)
 			probe_arg_read(c, (char*)p, (char *)start_stack, (char *)end_stack);
 	}
-	c->size -= base;
+	//c->size -= base;
 	return;
 }
 
 static inline __attribute__((always_inline))
-void event_cwd_builder(struct event_execve *pid, __u32 curr_pid)
+void event_cwd_builder(struct event_execve *process, __u32 curr_pid)
 {
-	struct event_execve *c;
-	int64_t psize;
-
-	psize = validate_arg_size(pid->size);
-	c = (void *)pid + psize;
-	getcwd(c, pid, psize + c->size, c->pid, 0);
+	getcwd(process, process, process->size, process->pid, 0);
 }
 
 static inline __attribute__((always_inline))
 void event_set_clone(struct event_execve *pid)
 {
-	struct event_execve *c;
-	int64_t psize;
-
-	psize = validate_arg_size(pid->size);
-	c = (void *)pid + psize;
-	c->flags |= EVENT_CLONE;
+	pid->flags |= EVENT_CLONE;
 }
 
 static inline __attribute__((always_inline))
@@ -566,11 +550,11 @@ __u32 event_find_parent_pid(struct task_struct *t)
 }
 
 static inline __attribute__((always_inline))
-struct msg_execve_event *event_find_parent(void)
+struct execve_map_value *event_find_parent(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
-	struct msg_execve_event *msg = 0;
+	struct execve_map_value *value = 0;
 	int i;
 
 #pragma unroll
@@ -579,53 +563,45 @@ struct msg_execve_event *event_find_parent(void)
 		if (!task)
 			break;
 		probe_read(&pid, sizeof(pid), _(&task->tgid));
-		msg = map_lookup_event(pid);
-		if (msg && msg->common.size != 0)
-			return msg;
+		value = map_lookup_event(pid);
+		if (value && value->key.ktime != 0)
+			return value;
 	}
 	return 0;
 }
 
 static inline __attribute__((always_inline))
-void event_minimal_parent(struct event_execve *event, struct task_struct *task)
+void event_minimal_parent(struct msg_execve_event *event, struct task_struct *task)
 {
-	__u32 size = offsetof(struct event_execve, args);
-
-	event->size = size;
-	event->pid = event_find_parent_pid(task);
-	event->auid = get_parent_auid(task);
-	event->flags = EVENT_MISS;
-	event->uid = 0;
+	event->parent.pid = event_find_parent_pid(task);
+	event->parent.ktime = 0;
+	event->parent_flags = EVENT_MISS;
 }
 
 static inline __attribute__((always_inline))
-void event_minimal_curr(struct event_execve *event)
+void event_minimal_curr(struct execve_map_value *event)
 {
-	__u32 size = offsetof(struct event_execve, args);
-
-	event->size = size;
-	event->pid = (get_current_pid_tgid() >> 32);
-	event->auid = get_auid();
+	event->key.pid = (get_current_pid_tgid() >> 32);
+	event->key.ktime = 0; // should we insert a time?
 	event->flags = EVENT_MISS;
-	event->uid = 0;
 }
 
 static inline __attribute__((always_inline))
-struct msg_execve_event *event_find_curr(__u32 *ppid,
+struct execve_map_value *event_find_curr(__u32 *ppid,
 					 struct bpf_map_def *map,
 					 bool *walked)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
-	struct msg_execve_event *msg = 0;
+	struct execve_map_value *value = 0;
 	int i;
 
 #pragma unroll
 	for (i = 0; i < 4; i++) {
-		msg = map_lookup_event(pid);
-		if (msg && msg->common.size != 0)
+		value = map_lookup_event(pid);
+		if (value && value->key.ktime != 0)
 			break;
-		msg = 0;
+		value = 0;
 		*walked = 1;
 		probe_read(&task, sizeof(task), _(&task->parent));
 		if (!task)
@@ -634,28 +610,23 @@ struct msg_execve_event *event_find_curr(__u32 *ppid,
 	}
 	*ppid = pid;
 
-	if (!msg && map) {
-		struct msg_execve_event *parent_event;
-		struct event_execve *parent, *curr;
+	if (!value && map) {
+		struct execve_map_value *parent;
 		int zero = 0;
-		ssize_t size;
 
-		msg = map_lookup_event(zero);
-		if (!msg)
+		value = map_lookup_event(zero);
+		if (!value)
 			return 0;
-		parent = (struct event_execve *)msg->pid;
-		parent_event = event_find_parent();
-		if (parent_event)
-			event_copy_execve(parent,
-					  (struct event_execve *)&parent_event->pid);
-		else
-			event_minimal_parent(parent, task);
-		size = validate_arg_size(parent->size);
-		curr = (void *)parent + size;
-		msg->common.size = 1;
-		event_minimal_curr(curr);
+		parent = event_find_parent();
+		if (parent)
+			value->pkey = parent->pkey;
+		else {
+			value->pkey.ktime = 0;
+			value->pkey.pid = 0;
+		}
+		event_minimal_curr(value);
 	}
-	return msg;
+	return value;
 }
 
 /* Pahole bug does not convert to btf correctly with arbitrary byte holes not
@@ -672,7 +643,7 @@ static inline __attribute__((always_inline))
 void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, bool cwd_always)
 {
 	struct cgroup_subsys_state *subsys;
-	struct event_execve *curr, *parent;
+	struct event_execve *curr;
 	struct task_struct *task;
 	struct nsproxy *nsproxy;
 	struct css_set *cgroups;
@@ -680,27 +651,11 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 	struct cgroup *cgrp;
 	struct net *net_ns;
 	const char *name;
-	ssize_t size;
 
 	msg->common.op = op;
 	msg->common.ktime = ktime_get_ns();
-	parent = (struct event_execve *)&msg->pid;
+	curr = (struct event_execve *)&msg->pid;
 
-	if (parent->flags & EVENT_NEEDS_CWD) {
-		int err = getcwd(parent, parent, parent->size - CWD_MAX + 1, parent->pid, 1);
-
-		if (!err)
-			parent->flags = parent->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
-	}
-	if (parent->flags & EVENT_NEEDS_AUID) {
-		__u32 flags = parent->flags & ~EVENT_NEEDS_AUID;
-
-		parent->auid = get_auid();
-		parent->flags = flags;
-	}
-
-	size = validate_arg_size(parent->size);
-	curr = (void *)parent + size;
 	if (cwd_always || curr->flags & EVENT_NEEDS_CWD) {
 		__u32 offset;
 		int err;
@@ -714,13 +669,13 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 		 * is no point in continuing to bang on it if its not
 		 * working.
 		 */
-		offset = parent->size + curr->size;
+		offset = curr->size;
 		if (!cwd_always) {
 			offset -= CWD_MAX + 1;
 			prealloc = true;
 		}
 		if (!(curr->flags & EVENT_ERROR_CWD)) {
-			err = getcwd(curr, parent, offset, curr->pid, prealloc);
+			err = getcwd(curr, curr, offset, curr->pid, prealloc);
 			if (!err)
 				curr->flags = curr->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
 		}
@@ -731,7 +686,7 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 		curr->auid = get_auid();
 		curr->flags = flags;
 	}
-	msg->common.size = offsetof(struct msg_execve_event, pid) + parent->size + curr->size;
+	msg->common.size = offsetof(struct msg_execve_event, pid) + curr->size;
 	curr->uid = get_current_uid_gid();
 	if (walker)
 		curr->flags |= EVENT_TASK_WALK;
@@ -776,9 +731,7 @@ void event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker)
 static inline __attribute__((always_inline))
 struct event_execve *event_get_curr_execve(struct msg_execve_event *msg)
 {
-	struct event_execve *p = (struct event_execve *)msg->pid;
-	int64_t base = validate_arg_size(p->size);
-	return (struct event_execve *)((void *)p + base);
+	return (struct event_execve *)msg->pid;
 }
 
 static inline __attribute__((always_inline))

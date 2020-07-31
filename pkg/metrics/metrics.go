@@ -68,7 +68,7 @@ func handleOriginalEvent(originalEvent interface{}) {
 	var flags uint32
 	switch msg := originalEvent.(type) {
 	case *api.MsgExecveEventUnix:
-		flags = msg.Pid.Curr.Flags
+		flags = msg.Process.Flags
 	}
 	for _, flag := range reader.DecodeCommonFlags(flags) {
 		FlagCount.WithLabelValues(flag).Inc()

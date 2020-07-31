@@ -22,10 +22,9 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
 {
-	struct msg_execve_event *process = 0;
+	struct execve_map_value *process = 0;
 	struct msg_ipv4_tcp_event value;
 	struct msg_ipv4_tcp_key key;
-	struct event_execve *curr;
 	__u32 ppid = 0, pid = 0;
 	struct sock *skp;
 	bool walker = 0;
@@ -69,11 +68,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	value.ret = 0; // Populated by kretprobe
 
 	value.key.pid = pid;
-	curr = event_get_curr_execve(process);
-	if (curr)
-		value.key.ktime = curr->ktime;
-	else
-		value.key.ktime = 0; // This is an error case
+	memset(value.key.pad, 0, sizeof(value.key.pad));
+	value.key.ktime = process->key.ktime;
 	map_update_elem(&ipv4_tcp_map, &key, &value, 0);
 
 	size = sizeof(struct msg_ipv4_tcp_event);
@@ -96,8 +92,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		tuple.pad[1] = 0;
 		tuple.pad[2] = 0;
 
-		v.pid = curr->pid;
-		v.ktime = curr->ktime;
+		v.pid = process->key.pid;
+		v.ktime = process->key.ktime;
 
 		add_socketmap(&tuple, &v);
 	}

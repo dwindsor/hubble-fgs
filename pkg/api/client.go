@@ -196,11 +196,6 @@ type MsgExec struct {
 	Ktime uint64
 }
 
-type MsgPid struct {
-	Parent MsgExec
-	Curr   MsgExec
-}
-
 type MsgIPv4Tuple struct {
 	SAddr uint32
 	DAddr uint32
@@ -248,11 +243,6 @@ type MsgExecUnix struct {
 	Args     string
 }
 
-type MsgPidUnix struct {
-	Parent MsgExecUnix
-	Curr   MsgExecUnix
-}
-
 type MsgK8sUnix struct {
 	NetNS  uint32
 	Cid    uint32
@@ -271,14 +261,18 @@ type MsgIPv4TcpEventUnix struct {
 var MsgUnixSize uint32 = 640
 
 type MsgExecveEvent struct {
-	Common MsgCommon
-	Kube   MsgK8s
+	Common      MsgCommon
+	Kube        MsgK8s
+	Parent      MsgExecveKey
+	ParentFlags uint64
 }
 
 type MsgExecveEventUnix struct {
-	Common MsgCommon
-	Kube   MsgK8sUnix
-	Pid    MsgPidUnix
+	Common      MsgCommon
+	Kube        MsgK8sUnix
+	Parent      MsgExecveKey
+	ParentFlags uint64
+	Process     MsgExecUnix
 }
 
 type MsgTLSIPv4 struct {
@@ -307,6 +301,7 @@ type MsgTLS struct {
 
 type MsgExecveKey struct {
 	Pid   uint32
+	Pad   uint32
 	Ktime uint64
 }
 

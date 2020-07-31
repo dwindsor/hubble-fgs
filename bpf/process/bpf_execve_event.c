@@ -20,34 +20,55 @@ __attribute__((section(("tracepoint/sys_execve")), used))
 int event_execve(struct sched_execve_args *ctx)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
-	struct msg_execve_event *event, *parent_event;
-	struct event_execve *parent;
+	struct msg_execve_event *event;
+	struct execve_map_value *curr, *parent;
+	struct event_execve *execve;
 	bool walker = 0;
+	__u32 zero = 0;
 	uint64_t size;
 	__u32 pid;
 	unsigned short fileoff;
 
-	pid = (get_current_pid_tgid() >> 32);
-	event = map_lookup_event(pid);
+	event = map_lookup_elem(&execve_msg_heap_map, &zero);
 	if (!event)
 		return 0;
-	parent = (struct event_execve *)event->pid;
-	parent_event = event_find_parent();
-	if (parent_event)
-		event_copy_execve(parent,
-				  (struct event_execve *)&parent_event->pid);
-	else
-		event_minimal_parent(parent, task);
+	pid = (get_current_pid_tgid() >> 32);
+	parent = event_find_parent();
+	if (parent) {
+		bpf_printk("found %d parent key %d ktime %d\n", pid, parent->key.pid);
+		event->parent = parent->key;
+	} else {
+		event_minimal_parent(event, task);
+	}
 
+	execve = (struct event_execve *)event->pid;
 	fileoff = ctx->filename & 0xFFFF;
-	event_filename_builder(parent, pid, EVENT_EXECVE, (char *)ctx + fileoff);
+	event_filename_builder(execve, pid, EVENT_EXECVE, (char *)ctx + fileoff);
 	event_args_builder(event);
 	compiler_barrier();
 	__event_get_task_info(event, MSG_OP_EXECVE, walker, true);
-	size = validate_msg_execve_size(event->common.size);
-	if (event->common.flags)
-		event_set_clone(parent);
+
+	curr = map_lookup_event(pid);
+	if (curr && curr->flags) {
+		curr->key.pid = pid;
+		curr->key.ktime = execve->ktime;
+		curr->pkey = event->parent;
+		event_set_clone(execve);
+	}
+
 	event->common.flags = 0;
+	bpf_printk("post size %d %d\n",
+			sizeof(struct msg_common)
+			+ sizeof(struct msg_k8s)
+			+ sizeof(struct msg_execve_key)
+			+ sizeof(__u64),
+			execve->size);
+	size = validate_msg_execve_size(
+			sizeof(struct msg_common)
+			+ sizeof(struct msg_k8s)
+			+ sizeof(struct msg_execve_key)
+			+ sizeof(__u64) +
+			+  execve->size);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 	return 0;
 }

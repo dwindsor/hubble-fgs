@@ -22,8 +22,7 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 __attribute__((section(("kprobe/wake_up_new_task")), used))
 int event_wake_up_new_task(struct pt_regs *ctx)
 {
-	struct msg_execve_event *event;
-	struct event_execve *parent;
+	struct execve_map_value *value;
 	struct task_struct *task;
 	u32 pid = 0;
 
@@ -32,12 +31,9 @@ int event_wake_up_new_task(struct pt_regs *ctx)
 		return 0;
 
 	probe_read(&pid, sizeof(pid), _(&task->pid));
-	event = map_lookup_event(pid);
-	if (!event)
+	value = map_lookup_event(pid);
+	if (!value)
 		return 0;
-
-	parent = (struct event_execve *)event->pid;
-	event->common.flags = EVENT_COMMON_FLAG_CLONE;
-	event->common.size = 0;
+	value->flags = EVENT_COMMON_FLAG_CLONE;
 	return 0;
 }
