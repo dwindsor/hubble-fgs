@@ -1082,16 +1082,12 @@ type ExecveKey struct {
 
 type ExecveValueL struct {
 	Common api.MsgCommon
-	Tuple  api.MsgIPv4Tuple
 	Kube   api.MsgK8s
-	Return uint64
 }
 
 type ExecveValue struct {
 	Common api.MsgCommon
-	Tuple  api.MsgIPv4Tuple
 	Kube   api.MsgK8s
-	Return uint64
 	Args   [api.ARGSBUFFER]byte
 }
 

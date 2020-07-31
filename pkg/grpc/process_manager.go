@@ -175,15 +175,21 @@ func ktimeToProto(ktime uint64) *timestamp.Timestamp {
 	}
 	return ts
 }
-func (pm *ProcessManager) getParentProcess(processID string) (*fgs.Process, *fgs.Process) {
+func (pm *ProcessManager) getParentProcess(pid uint32, ktime uint64) (*fgs.Process, *fgs.Process) {
 	var parent, process *fgs.Process
+
+	processID, err := pm.GetProcessID(pid, ktime)
+	if err != nil {
+		pm.log.WithError(err).WithField("pid", pid).WithField("ktime", ktime).Warn("Listen Failed to get exec process")
+	}
+
 	if entry, ok := pm.cache.Get(processID); ok {
 		process, _ = entry.(*fgs.Process)
 		if !ok {
 			pm.log.WithField("process entry", entry).Warn("invalid entry in process cache")
 		}
 	} else {
-		pm.log.WithField("id in event", processID).Warn("process not found in cache")
+		pm.log.WithField("id in event", processID).WithField("pid", pid).WithField("ktime", ktime).Warn("process not found in cache")
 		return nil, nil
 	}
 
@@ -193,7 +199,7 @@ func (pm *ProcessManager) getParentProcess(processID string) (*fgs.Process, *fgs
 			pm.log.WithField("process entry", entry).Warn("invalid entry in process cache")
 		}
 	} else {
-		pm.log.WithField("id in event", process.ParentExecId).Warn("parent process not found in cache")
+		pm.log.WithField("id in event", process.ParentExecId).WithField("pid", pid).WithField("ktime", ktime).Warn("parent process not found in cache")
 		return process, nil
 	}
 	return process, parent
@@ -348,11 +354,7 @@ func (pm *ProcessManager) GetProcessListen(
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
-	processID, err := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	if err != nil {
-		pm.log.WithError(err).Warn("Listen Failed to get exec process", event.ProcessKey.Pid)
-	}
-	process, parent := pm.getParentProcess(processID)
+	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	return &fgs.ProcessListen{
 		Process: process,
 		Parent:  parent,
@@ -425,11 +427,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 		}
 	}
 
-	processID, err := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	if err != nil {
-		pm.log.WithError(err).Warn("Connect Failed to get exec process", event.ProcessKey.Pid)
-	}
-	process, parent := pm.getParentProcess(processID)
+	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		process = &fgs.Process{
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
