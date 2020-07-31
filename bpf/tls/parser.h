@@ -18,7 +18,7 @@ struct tls_alert {
 
 struct tls_handshake_hdr {
 	__u32 type:8;
-	__u16 length;
+	__u32 length:24;
 	__u16 version;
 } __attribute__((packed));
 
@@ -337,9 +337,9 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	data = (void *)(long)ctx->data;
 	payload = data + payload_off;
 
-	client_hello = payload + sizeof(struct tls_handshake_hdr);
+	client_hello = payload + sizeof(struct tls_hdr);
 	if ((void*)client_hello + sizeof(struct tls_handshake_client_hello) > data_end) {
-		client_hello = get_data(ctx, payload_off, sizeof(struct tls_handshake_client_hello));
+		client_hello = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_client_hello));
 		if (!client_hello)
 			return SK_PASS;
 		data_end = (void *)(long)ctx->data_end;
@@ -572,6 +572,7 @@ int bpf_parse_tls(struct __sk_buff *ctx,
 		}
 		handshake = (struct tls_handshake_hdr *)(payload + sizeof(struct tls_hdr));
 		tls->subtype = handshake->type;
+		tls->version = handshake->version;
 		switch (handshake->type) {
 		case client_hello:
 			client = true;
