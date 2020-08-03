@@ -142,4 +142,5 @@ message Filter {
     repeated string binary_regex = 1;
     repeated string namespace = 2;
     google.protobuf.BoolValue health_check = 3;
+    repeated uint32 pid = 4;
 }

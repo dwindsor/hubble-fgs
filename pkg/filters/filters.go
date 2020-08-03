@@ -92,6 +92,7 @@ var Filters = []OnBuildFilter{
 	&BinaryRegexFilter{},
 	&HealthCheckFilter{},
 	&NamespaceFilter{},
+	&PidFilter{},
 }
 
 func GetProcess(event *v1.Event) *fgs.Process {
