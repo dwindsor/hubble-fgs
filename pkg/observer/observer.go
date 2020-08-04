@@ -1124,8 +1124,8 @@ func getClkTck() (uint64, error) {
 	return clktck, nil
 }
 
-func writeExecveMap(procs []ObserverProcs) {
-	m, err := bpf.OpenMap("/sys/fs/bpf/tcpmon/execve_map")
+func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
+	m, err := bpf.OpenMap(filepath.Join(k.mapDir, ObserverExecveMap.mapName))
 	if err != nil {
 		panic(err)
 	}
@@ -1389,7 +1389,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 	k.log.Infof("Read ProcFS %s appended %d/%d entries\n", ProcFS, len(procs), len(procFS))
 
 	if write {
-		writeExecveMap(procs)
+		k.writeExecveMap(procs)
 	}
 	k.pushEvents(procs, entryMap, push)
 	return procs
