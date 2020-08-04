@@ -82,13 +82,11 @@ isovalent_fgs_events_total{binary="binary_c",namespace="namespace_c",type="proce
 
 func Test_handleOriginalEvent(t *testing.T) {
 	handleOriginalEvent(nil)
-	handleOriginalEvent(&api.MsgIPv4TcpConnectUnix{})
+	handleOriginalEvent(&api.MsgExecveEventUnix{})
 	assert.NoError(t, testutil.CollectAndCompare(FlagCount, strings.NewReader("")))
-	handleOriginalEvent(&api.MsgIPv4TcpConnectUnix{
-		Pid: api.MsgPidUnix{
-			Curr: api.MsgExecUnix{
-				Flags: api.EventClone | api.EventExecve,
-			},
+	handleOriginalEvent(&api.MsgExecveEventUnix{
+		Process: api.MsgExecUnix{
+			Flags: api.EventClone | api.EventExecve,
 		},
 	})
 	expected := strings.NewReader(`# HELP isovalent_fgs_flags_total The total number of FGS flags. For internal use only.
