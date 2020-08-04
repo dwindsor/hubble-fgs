@@ -93,6 +93,7 @@ var Filters = []OnBuildFilter{
 	&HealthCheckFilter{},
 	&NamespaceFilter{},
 	&PidFilter{},
+	&PidSetFilter{},
 }
 
 func GetProcess(event *v1.Event) *fgs.Process {
@@ -108,6 +109,27 @@ func GetProcess(event *v1.Event) *fgs.Process {
 			return res.ProcessExec.Process
 		case *fgs.GetEventsResponse_ProcessListen:
 			return res.ProcessListen.Process
+		default:
+			return (*fgs.Process)(nil)
+		}
+	default:
+		return (*fgs.Process)(nil)
+	}
+}
+
+func GetParent(event *v1.Event) *fgs.Process {
+	if event == nil {
+		return (*fgs.Process)(nil)
+	}
+	switch ev := event.Event.(type) {
+	case *fgs.GetEventsResponse:
+		switch res := ev.Event.(type) {
+		case *fgs.GetEventsResponse_ProcessConnect:
+			return res.ProcessConnect.Parent
+		case *fgs.GetEventsResponse_ProcessExec:
+			return res.ProcessExec.Parent
+		case *fgs.GetEventsResponse_ProcessListen:
+			return res.ProcessListen.Parent
 		default:
 			return (*fgs.Process)(nil)
 		}

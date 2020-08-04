@@ -143,4 +143,5 @@ message Filter {
     repeated string namespace = 2;
     google.protobuf.BoolValue health_check = 3;
     repeated uint32 pid = 4;
+    repeated uint32 pid_set = 5;
 }
