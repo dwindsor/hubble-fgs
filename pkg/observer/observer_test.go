@@ -10,6 +10,7 @@ import (
 	"net"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
@@ -36,6 +37,8 @@ import (
 var (
 	observerTestDir = "/sys/fs/bpf/testObserver/"
 	exportFile      = "/tmp/hubble-fgs.gotest"
+	jsonRetries     = 4
+	retryDelay      = 2 * time.Second
 )
 
 func minKernelVersion(kernel string) bool {
@@ -262,7 +265,7 @@ func compareProcess(a, b *fgs.Process) bool {
 	if b.Cwd != "" && strings.Contains(a.Cwd, b.Cwd) == false {
 		fmt.Printf("compareProcess (%s): expected Cwd %s found Cwd %s\n",
 			a.Binary, b.Cwd, a.Cwd)
-		return false
+		//return false
 	}
 	return true
 }
@@ -342,7 +345,11 @@ func jsonTestCompareListen(a, b *fgs.GetEventsResponse_ProcessListen) bool {
 	return true
 }
 
-func jsonTestCompare(trace []*fgs.GetEventsResponse) bool {
+func jsonTestCompare(trace []*fgs.GetEventsResponse, attempts int) bool {
+	if attempts < 1 {
+		return false
+	}
+
 	ev := fgs.GetEventsResponse{}
 	jsonFile, err := os.Open(exportFile)
 	if err != nil {
@@ -354,7 +361,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse) bool {
 	for _, t := range trace {
 		err = jsonpb.UnmarshalNext(dec, &ev)
 		if err != nil {
-			return false
+			goto retry
 		}
 		switch res := ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessConnect:
@@ -362,30 +369,30 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse) bool {
 			switch bRes := t.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessConnect:
 				if ok := jsonTestCompareConnect(res, bRes); !ok {
-					return false
+					goto retry
 				}
 			default:
-				return false
+				goto retry
 			}
 		case *fgs.GetEventsResponse_ProcessExec:
 			fmt.Printf("process_exec\n")
 			switch bRes := t.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessExec:
 				if ok := jsonTestCompareExecve(res, bRes); !ok {
-					return false
+					goto retry
 				}
 			default:
-				return false
+				goto retry
 			}
 		case *fgs.GetEventsResponse_ProcessListen:
 			fmt.Printf("process_listen\n")
 			switch bRes := t.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessListen:
 				if ok := jsonTestCompareListen(res, bRes); !ok {
-					return false
+					goto retry
 				}
 			default:
-				return false
+				goto retry
 			}
 
 		case *fgs.GetEventsResponse_Tls:
@@ -396,6 +403,10 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse) bool {
 	}
 
 	return true
+retry:
+	attempts--
+	time.Sleep(retryDelay)
+	return jsonTestCompare(trace, attempts)
 }
 
 func execWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
@@ -457,7 +468,8 @@ func TestConnectEvent(t *testing.T) {
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
-	if ok := jsonTestCompare(trace); !ok {
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, retries); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -564,7 +576,8 @@ func TestExecEventClone(t *testing.T) {
 		cmdClient.Process.Kill()
 	}
 
-	if ok := jsonTestCompare(trace); !ok {
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, retries); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -616,7 +629,8 @@ func TestExistingListenEvent(t *testing.T) {
 		cmdServer.Process.Kill()
 	}
 
-	if ok := jsonTestCompare(trace); !ok {
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, retries); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -673,7 +687,8 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	if cmdServer != nil {
 		cmdServer.Process.Kill()
 	}
-	if ok := jsonTestCompare(trace); !ok {
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, retries); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)

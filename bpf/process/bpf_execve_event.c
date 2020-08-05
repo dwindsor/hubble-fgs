@@ -34,12 +34,10 @@ int event_execve(struct sched_execve_args *ctx)
 		return 0;
 	pid = (get_current_pid_tgid() >> 32);
 	parent = event_find_parent();
-	if (parent) {
-		bpf_printk("found %d parent key %d ktime %d\n", pid, parent->key.pid);
+	if (parent)
 		event->parent = parent->key;
-	} else {
+	else
 		event_minimal_parent(event, task);
-	}
 
 	execve = (struct event_execve *)event->pid;
 	fileoff = ctx->filename & 0xFFFF;
@@ -57,12 +55,6 @@ int event_execve(struct sched_execve_args *ctx)
 	}
 
 	event->common.flags = 0;
-	bpf_printk("post size %d %d\n",
-			sizeof(struct msg_common)
-			+ sizeof(struct msg_k8s)
-			+ sizeof(struct msg_execve_key)
-			+ sizeof(__u64),
-			execve->size);
 	size = validate_msg_execve_size(
 			sizeof(struct msg_common)
 			+ sizeof(struct msg_k8s)

@@ -452,8 +452,9 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 		execUnix.Filename = "enomem"
 		return execUnix, false, err
 	} else {
-		args := make([]byte, size+2)
+		args := make([]byte, size) //+2)
 		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
+			fmt.Printf("binary reader error size %d exec.Size %d api %d\n", size, exec.Size, api.SIZEOF_EXECVE)
 			execUnix.Size = api.SIZEOF_EXECVE
 			execUnix.Args = "enomem enomem"
 			execUnix.Filename = "enomem"
