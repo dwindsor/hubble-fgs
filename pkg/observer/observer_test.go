@@ -227,7 +227,7 @@ func getMyPid() uint32 {
 			if d.IsDir() == false {
 				continue
 			}
-			cmdline, err := ioutil.ReadFile(ProcFS + d.Name() + "/cmdline")
+			cmdline, err := ioutil.ReadFile(filepath.Join(procfs, d.Name(), "/cmdline"))
 			if err != nil {
 				continue
 			}
