@@ -326,12 +326,14 @@ static inline __attribute__((always_inline))
 __u32 get_task_pid_vnr(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
+	int thread_pid_exists;
 	unsigned int level;
 	struct upid upid;
 	struct pid *pid;
 	int upid_sz;
 
-	if (bpf_core_field_exists(task->thread_pid)) {
+	thread_pid_exists = bpf_core_field_exists(task->thread_pid);
+	if (thread_pid_exists) {
 		probe_read(&pid, sizeof(pid), _(&task->thread_pid));
 		if (!pid) {
 			return 0;
@@ -340,6 +342,13 @@ __u32 get_task_pid_vnr(void)
 		struct pid_link link;
 		int link_sz = bpf_core_field_size(task->pids);
 
+		/* 4.14 verifier did not prune this branch even though we
+		 * have the if (0) above after BTF exists check. So it will
+		 * try to run this probe_read and throw an error. So lets
+		 * sanitize it for the verifier.
+		 */
+		if (!thread_pid_exists)
+			link_sz = 48; // voodoo magic, hard-code 48 to init stack
 		probe_read(&link, link_sz, (void *)_(&task->pids) + (PIDTYPE_PID * link_sz));
 		pid = link.pid;
 	}
