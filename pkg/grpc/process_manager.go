@@ -101,6 +101,21 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 	return res
 }
 
+func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_EXIT:
+		res = &fgs.GetEventsResponse{
+			Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: pm.GetProcessExit(msg)},
+			NodeName: pm.nodeName,
+			Time:     ktimeToProto(0), // tbd
+		}
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
 func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
@@ -140,6 +155,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleExecveMessage(msg)
 	case *api.MsgIPv4TcpEventUnix:
 		processedEvent = pm.handleTCPMessage(msg)
+	case *api.MsgExitEventUnix:
+		processedEvent = pm.handleExitMessage(msg)
 	default:
 		pm.log.WithField("event", event).Warn("unhandled event")
 	}
@@ -364,6 +381,21 @@ func (pm *ProcessManager) GetProcessListen(
 		Parent:  parent,
 		Ip:      reader.GetIP(event.Tuple.SAddr, 0).String(),
 		Port:    port,
+	}
+}
+
+// GetProcessExit returns Exit protobuf message for a given process.
+func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
+	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process == nil {
+		process = &fgs.Process{
+			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
+	}
+	return &fgs.ProcessExit{
+		Process: process,
+		Parent:  parent,
 	}
 }
 

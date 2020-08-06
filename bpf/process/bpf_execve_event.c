@@ -47,11 +47,13 @@ int event_execve(struct sched_execve_args *ctx)
 	__event_get_task_info(event, MSG_OP_EXECVE, walker, true);
 
 	curr = map_lookup_event(pid);
-	if (curr && curr->flags) {
+	if (curr) {
 		curr->key.pid = pid;
 		curr->key.ktime = execve->ktime;
 		curr->pkey = event->parent;
-		event_set_clone(execve);
+		if (curr->flags)
+			event_set_clone(execve);
+		curr->flags |= EVENT_EXECVE;
 	}
 
 	event->common.flags = 0;

@@ -148,11 +148,26 @@ var (
 	IgnoreMissingProgs bool
 
 	ObserverExecve = bpfLoad{
-		"", "",
-		"sched",
+		"", "bpf_execve_event.o",
+		"sched_process_exec",
 		"sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
+
+		false,
+		true,
+		"tracepoint",
+		alwaysLoad,
+
+		-1,
+	}
+
+	ObserverExit = bpfLoad{
+		"", "bpf_exit.o",
+		"sched_process_exit",
+		"sched_process_exit",
+		"tracepoint/sys_exit",
+		"event_exit",
 
 		false,
 		true,
@@ -318,6 +333,7 @@ var (
 
 	observerPrograms = []*bpfLoad{
 		&ObserverExecve,
+		&ObserverExit,
 		&ObserverFork,
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
@@ -383,6 +399,15 @@ func (k *ObserverKprobe) observerListenersExecve(msg *api.MsgExecveEventUnix) {
 	}
 }
 
+func (k *ObserverKprobe) observerListenersExit(msg *api.MsgExitEventUnix) {
+	for listener, _ := range k.listeners {
+		if err := listener.Notify(msg); err != nil {
+			k.log.Debug("Write failure removing Listener")
+			k.RemoveListener(listener)
+		}
+	}
+}
+
 func (k *ObserverKprobe) observerListenersTcp(msg *api.MsgIPv4TcpEventUnix) {
 	if pass := k.runFilters(msg); pass {
 		for listener, _ := range k.listeners {
@@ -418,6 +443,10 @@ func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
 	unix.Kube.Docker = strings.Trim(string(m.Kube.Docker[:]), "\u0000")
 	unix.Parent = m.Parent
 	return unix
+}
+
+func msgToExitUnix(m *api.MsgExitEvent) *api.MsgExitEventUnix {
+	return m
 }
 
 func msgToTcpUnix(m *api.MsgIPv4Tcp) *api.MsgIPv4TcpEventUnix {
@@ -534,7 +563,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		m := api.MsgExecveEvent{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
-			fmt.Printf("api.MSG_OP_EXECVE binary read failur: %s\n", err)
+			fmt.Printf("api.MSG_OP_EXECVE binary read failure: %s\n", err)
 			break
 		}
 		msgUnix := msgToExecveUnix(&m)
@@ -543,6 +572,15 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			msgUnix.Process = nopMsgExecUnix()
 		}
 		k.observerListenersExecve(msgUnix)
+	case api.MSG_OP_EXIT:
+		m := api.MsgExitEvent{}
+		err := binary.Read(r, binary.LittleEndian, &m)
+		if err != nil {
+			fmt.Printf("api.MSG_OP_EXIT binary read failure: %s\n", err)
+			break
+		}
+		msgUnix := msgToExitUnix(&m)
+		k.observerListenersExit(msgUnix)
 	case api.MSG_OP_IPV4_TCPCONNECT,
 		api.MSG_OP_IPV4_TCPCONNECTRET,
 		api.MSG_OP_IPV4_BIND,

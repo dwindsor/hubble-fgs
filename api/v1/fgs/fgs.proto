@@ -86,6 +86,11 @@ message ProcessExec {
     repeated Process ancestors = 3;
 }
 
+message ProcessExit {
+    Process process = 1;
+    Process parent = 2;
+}
+
 message Tls {
     Process process = 1;
     string source_ip = 2;
@@ -131,6 +136,7 @@ message GetEventsResponse {
         ProcessConnect process_connect = 2;
         ProcessListen process_listen = 3;
 	Tls tls = 4;
+	ProcessExit process_exit = 5;
     }
     // Name of the node where this event was observed.
     string node_name = 1000;

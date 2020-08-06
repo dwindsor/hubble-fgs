@@ -121,6 +121,7 @@ enum msg_ops {
 	MSG_OP_IPV4_LISTEN,
 	MSG_OP_EXECVE,
 	MSG_OP_TLS,
+	MSG_OP_EXIT,
 	MSG_OP_MAX,
 };
 
@@ -198,6 +199,11 @@ struct msg_execve_key {
 	__u8  pad[4];
 	__u64 ktime;
 } __attribute__((packed));
+
+struct msg_exit {
+	struct msg_common common;
+	struct msg_execve_key current;
+};
 
 struct msg_execve_event {
 	struct msg_common     common;

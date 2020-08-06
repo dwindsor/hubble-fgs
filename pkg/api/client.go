@@ -62,6 +62,8 @@ const (
 
 	MSG_OP_TLS = 6
 
+	MSG_OP_EXIT = 7
+
 	ARGSBUFFER     = 1024 + 16
 	SIZEOF_EXECVE  = 32
 	MAX_SIZEOF_CWD = 256
@@ -318,6 +320,13 @@ type MsgTLSEvent struct {
 	ServerHello MsgTLS
 	ProcessKey  MsgExecveKey
 }
+
+type MsgExitEvent struct {
+	Common     MsgCommon
+	ProcessKey MsgExecveKey
+}
+
+type MsgExitEventUnix = MsgExitEvent
 
 func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)

@@ -81,6 +81,7 @@ func getDefaultObserver(t *testing.T, execve, tls, tlstc, pretty bool) *Observer
 		buf[i] = byte(b)
 	}
 	ObserverExecve.Observer__program = "../../bpf/objs/bpf_execve_event.o"
+	ObserverExit.Observer__program = "../../bpf/objs/bpf_exit.o"
 	ObserverFork.Observer__program = "../../bpf/objs/bpf_fork.o"
 	ObserverTCPConnect.Observer__program = "../../bpf/objs/bpf_tcpmon.o"
 	ObserverTCPConnectRet.Observer__program = "../../bpf/objs/bpf_tcpmonret.o"

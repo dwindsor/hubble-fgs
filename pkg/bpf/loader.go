@@ -396,7 +396,7 @@ int tracepoint_loader(const int version,
 
 	bpf_program__unpin(prog_bpf, __prog);
 
-	prog_attach = bpf_program__attach_tracepoint(prog_bpf, "sched", "sched_process_exec");
+	prog_attach = bpf_program__attach_tracepoint(prog_bpf, "sched", attach);
 	err = libbpf_get_error(prog_attach);
 	if (err) {
 		// Expected error when attach point probe is happening
