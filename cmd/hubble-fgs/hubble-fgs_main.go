@@ -41,6 +41,7 @@ var (
 	enableCiliumAPI      bool
 	networkInterfaces    string
 	serverAddress        string
+	runStandalone        bool
 )
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
@@ -87,6 +88,10 @@ func hubbleFGSExecute() error {
 		cancel()
 		os.Exit(1)
 	}()
+
+	if runStandalone {
+		return kprobe.StartStandalone(ctx)
+	}
 
 	if metricsServer != "" {
 		go metrics.EnableMetrics(metricsServer)
@@ -208,6 +213,10 @@ func init() {
 	flags.StringVar(&networkInterfaces, "network-interfaces", "", "Comma separated list of regex expressions to use to apply protocol parsers")
 	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
 	viper.BindPFlags(flags)
+
+	// Options for debugging/development, not visible to users
+	flags.BoolVar(&runStandalone, "run-standalone", false, "Just start the observer and dump events to stdout")
+	flags.MarkHidden("run-standalone")
 }
 
 func hubbleFGSMain() {
