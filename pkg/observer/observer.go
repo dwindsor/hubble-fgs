@@ -142,9 +142,10 @@ var (
 	KernelVersion = ""
 	SetPidMax     = false
 
-	HubbleLib   string
-	ObserverBTF string
-	Verbosity   int
+	HubbleLib          string
+	ObserverBTF        string
+	Verbosity          int
+	IgnoreMissingProgs bool
 
 	ObserverExecve = bpfLoad{
 		"", "",
@@ -348,6 +349,21 @@ var (
 		&ObserverTCTLSMap,
 	}
 )
+
+func (k *ObserverKprobe) disableBpfLoad(bpf *bpfLoad) {
+
+	disableFn := func(k *ObserverKprobe) bool {
+		return false
+	}
+
+	bpf.load = disableFn
+	for _, om := range observerMaps {
+		if om.bpf == bpf {
+			logger.GetLogger().Infof("disabling map %s", om.mapName)
+			om.shouldPin = disableFn
+		}
+	}
+}
 
 func (k *ObserverKprobe) observerListenersTLS(msg *api.MsgTLSEvent) {
 	for listener, _ := range k.listeners {
@@ -961,7 +977,7 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 	return nil
 }
 
-func (k *ObserverKprobe) observerLoadExecve(stopCtx context.Context) error {
+func (k *ObserverKprobe) observerLoadProgs(stopCtx context.Context) error {
 	var btf string
 
 	if ObserverExecve.Observer__btf == "" {
@@ -1126,6 +1142,11 @@ func getClkTck() (uint64, error) {
 }
 
 func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
+
+	if !ObserverExecveMap.shouldPin(k) {
+		return
+	}
+
 	m, err := bpf.OpenMap(filepath.Join(k.mapDir, ObserverExecveMap.mapName))
 	if err != nil {
 		panic(err)
@@ -1494,6 +1515,12 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 			continue
 		}
 
+		if IgnoreMissingProgs {
+			logger.GetLogger().Warningf("failed to find BPF prog %s, but was told to ignore such errors. Disabling it and moving on.", p.Observer__program)
+			k.disableBpfLoad(p)
+			continue
+		}
+
 		return fmt.Errorf("Observer Program '%s' can not be found\n", p.Observer__program)
 	}
 	return nil
@@ -1536,7 +1563,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	if _, err := k.observerMinReqs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting minimum pid requirements not met. %s\n", err)
 	}
-	if err := k.observerLoadExecve(ctx); err != nil {
+	if err := k.observerLoadProgs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
 	k.populateExecve(ctx)

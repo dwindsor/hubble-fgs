@@ -217,6 +217,10 @@ func init() {
 	// Options for debugging/development, not visible to users
 	flags.BoolVar(&runStandalone, "run-standalone", false, "Just start the observer and dump events to stdout")
 	flags.MarkHidden("run-standalone")
+
+	flags.BoolVarP(&observer.IgnoreMissingProgs, "ignore-missing-progs", "", false, "Ignore missing BPF programs")
+	flags.MarkHidden("ignore-missing-progs")
+
 }
 
 func hubbleFGSMain() {

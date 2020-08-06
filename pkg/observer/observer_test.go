@@ -151,9 +151,9 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe) error {
 
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	kprobe.createDir()
-	if err := kprobe.observerLoadExecve(context.TODO()); err != nil {
+	if err := kprobe.observerLoadProgs(context.TODO()); err != nil {
 		kprobe.RemovePrograms()
-		t.Fatalf("observerLoadExecve error: %s", err)
+		t.Fatalf("observerLoadProgs error: %s", err)
 	}
 	kprobe.populateExecve(context.TODO())
 }
@@ -176,7 +176,7 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 
 func TestObjectLoad(t *testing.T) {
 	kprobe := getDefaultObserver(t, false, false, false, false)
-	kprobe.observerLoadExecve(context.TODO())
+	kprobe.observerLoadProgs(context.TODO())
 	kprobe.RemovePrograms()
 }
 
