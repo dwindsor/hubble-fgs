@@ -57,13 +57,11 @@ struct execve_map_value *map_lookup_hash(__u32 pid)
 
 	event = map_lookup_elem(&execve_map, &pid);
 	if (!event) {
-		int zero = 0;
+		struct execve_map_value value;
 
-		event = map_lookup_elem(&execve_value_heap_map, &zero);
-		if (!event)
-			return 0;
-		memset(event, 0, sizeof(struct execve_map_value));
-		map_update_elem(&execve_map, &pid, event, 0);
+		memset(&value, 0, sizeof(struct execve_map_value));
+		map_update_elem(&execve_map, &pid, &value, 0);
+		event = map_lookup_elem(&execve_map, &pid);
 	}
 	return event;
 }
@@ -77,26 +75,7 @@ struct execve_map_value *map_lookup_array(__u32 pid)
 static inline __attribute__((always_inline))
 struct execve_map_value *map_lookup_event(__u32 pid)
 {
-	struct xdp_buff *kver_pivot, __kver_pivot;
-	int exists1, exists2;
-
-	kver_pivot = &__kver_pivot;
-	/* xdp_buff->handle was added in v4.18 so we use it to decide if
-	 * we have verifier fix for using map_values with map_update helper.
-	 * But, then it was removed in 5.8 so use txq for 5.8+ feature
-	 * detection.
-	 */
-	exists1 = bpf_core_field_exists(kver_pivot->handle);
-	exists2 = bpf_core_field_exists(kver_pivot->txq);
-	/* This incantation works around a patching bug in libbpf where
-	 * if (exsts1 || exists2) fails.
-	 */
-	if (exists1)
-		return map_lookup_hash(pid);
-	else if (exists2)
-		return map_lookup_hash(pid);
-	else
-		return map_lookup_array(pid);
+	return map_lookup_hash(pid);
 }
 
 static inline __attribute__((always_inline))
@@ -104,7 +83,8 @@ void map_delete_array(__u32 pid)
 {
 	struct execve_map_value *v = map_lookup_array(pid);
 
-	v->flags = 0; // deleting array element is zero flags
+	if (v)
+		v->flags = 0; // deleting array element is zero flags
 }
 
 static inline __attribute__((always_inline))
@@ -116,26 +96,7 @@ void map_delete_hash(__u32 pid)
 static inline __attribute__((always_inline))
 void map_delete_event(__u32 pid)
 {
-	struct xdp_buff *kver_pivot, __kver_pivot;
-	int exists1, exists2;
-
-	kver_pivot = &__kver_pivot;
-	/* xdp_buff->handle was added in v4.18 so we use it to decide if
-	 * we have verifier fix for using map_values with map_update helper.
-	 * But, then it was removed in 5.8 so use txq for 5.8+ feature
-	 * detection.
-	 */
-	exists1 = bpf_core_field_exists(kver_pivot->handle);
-	exists2 = bpf_core_field_exists(kver_pivot->txq);
-	/* This incantation works around a patching bug in libbpf where
-	 * if (exsts1 || exists2) fails.
-	 */
-	if (exists1)
-		return map_delete_hash(pid);
-	else if (exists2)
-		return map_delete_hash(pid);
-	else
-		return map_delete_array(pid);
+	map_delete_hash(pid);
 }
 
 static inline __attribute__((always_inline))

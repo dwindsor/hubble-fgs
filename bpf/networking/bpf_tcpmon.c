@@ -67,7 +67,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 
 	value.ret = 0; // Populated by kretprobe
 
-	value.key.pid = pid;
+	value.key.pid = process->key.pid;
 	memset(value.key.pad, 0, sizeof(value.key.pad));
 	value.key.ktime = process->key.ktime;
 	map_update_elem(&ipv4_tcp_map, &key, &value, 0);
@@ -97,6 +97,5 @@ int event_ipv4_connect(struct pt_regs *ctx)
 
 		add_socketmap(&tuple, &v);
 	}
-
 	return 1;
 }
