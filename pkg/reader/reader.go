@@ -253,19 +253,6 @@ func GetTLSFlags(flags uint32) string {
 	return strings.Join(s, " ")
 }
 
-func GetTLSCipher(cipherCode uint16) string {
-	switch api.SwapByte(cipherCode) {
-	case 0x1302:
-		return "TLS_AES_256_GCM_SHA384"
-	case 0x1303:
-		return "TLS_CHACHA20_POLY1305_SHA256"
-	case 0x1301:
-		return "TLS_AES_128_GCM_SHA256"
-	default:
-		return fmt.Sprintf("0x%x", cipherCode)
-	}
-}
-
 func GetTLSVersion(version uint16) string {
 	switch version {
 	case 0x0403:
@@ -338,6 +325,6 @@ func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
 		"SNI-Name":                     nameSNI,
 		"Client-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ClientHello.SupportedVersions, 1),
 		"Server-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ServerHello.SupportedVersions, 0),
-		"cipher":                       GetTLSCipher(msg.ServerHello.Cipher),
+		"cipher":                       GetTLSCipher(api.SwapByte(msg.ServerHello.Cipher)),
 	}).Warn()
 }
