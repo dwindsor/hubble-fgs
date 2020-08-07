@@ -58,7 +58,6 @@ spec:
             - /usr/bin/hubble-fgs
           args:
             - --procfs=/procRoot
-            - -e
             - --tlstc
             - --process-cache-size=32768
             - --export-filename=/var/run/cilium/hubble-fgs.log

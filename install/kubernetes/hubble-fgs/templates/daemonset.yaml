@@ -25,7 +25,6 @@ spec:
             - /usr/bin/hubble-fgs
           args:
             - --procfs=/procRoot
-            - -e
             - --tlstc
             - --process-cache-size={{ .Values.processCacheSize }}
             - --export-filename={{ .Values.exportFilename }}

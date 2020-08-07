@@ -70,7 +70,6 @@ func hubbleFGSExecute() error {
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir,
 		networkInterfaces,
-		viper.GetBool("execve"),
 		viper.GetBool("tls"), viper.GetBool("tlstc"),
 		viper.GetBool("debug"))
 
@@ -197,7 +196,6 @@ func init() {
 		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
 	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")
 	flags.IntVar(&observer.Verbosity, "verbose", 0, "set verbosity level")
-	flags.BoolP("execve", "e", false, "Enable execve events")
 	flags.BoolP("tls", "t", false, "Enable tls events")
 	flags.BoolP("tlstc", "", false, "Enable TLS TC events")
 	flags.IntVar(&processCacheSize, "process-cache-size", 32768, "Size of the process cache")

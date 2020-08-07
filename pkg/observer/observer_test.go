@@ -69,7 +69,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func getDefaultObserver(t *testing.T, execve, tls, tlstc, pretty bool) *ObserverKprobe {
+func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
 	var uts syscall.Utsname
 
 	if err := syscall.Uname(&uts); err != nil {
@@ -104,7 +104,7 @@ func getDefaultObserver(t *testing.T, execve, tls, tlstc, pretty bool) *Observer
 		ProcFS = procfs
 	}
 
-	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", execve, tls, tlstc, pretty)
+	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", tls, tlstc, pretty)
 	if testing.Verbose() {
 		Verbosity = 0
 	}
@@ -176,7 +176,7 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 }
 
 func TestObjectLoad(t *testing.T) {
-	kprobe := getDefaultObserver(t, false, false, false, false)
+	kprobe := getDefaultObserver(t, false, false, false)
 	kprobe.observerLoadProgs(context.TODO())
 	kprobe.RemovePrograms()
 }
@@ -465,7 +465,7 @@ func TestConnectEvent(t *testing.T) {
 		},
 	}
 
-	kprobe := getDefaultObserver(t, true, false, false, true)
+	kprobe := getDefaultObserver(t, false, false, true)
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
@@ -550,7 +550,7 @@ func TestExecEventClone(t *testing.T) {
 		},
 	}
 
-	kprobe := getDefaultObserver(t, true, false, false, true)
+	kprobe := getDefaultObserver(t, false, false, true)
 
 	/* Verify initial KprobeEvent Execve "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
 	//	kprobe.AttachFilter(&ncExecFilter)
@@ -624,7 +624,7 @@ func TestExistingListenEvent(t *testing.T) {
 	cmdServer.Start()
 
 	/* Create kprobe */
-	kprobe := getDefaultObserver(t, true, false, false, false)
+	kprobe := getDefaultObserver(t, false, false, false)
 
 	if cmdServer != nil {
 		cmdServer.Process.Kill()
@@ -684,7 +684,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create kprobe */
-	kprobe := getDefaultObserver(t, true, false, false, false)
+	kprobe := getDefaultObserver(t, false, false, false)
 	if cmdServer != nil {
 		cmdServer.Process.Kill()
 	}
@@ -699,5 +699,5 @@ func TestLoadTCTls(t *testing.T) {
 	if minKernelVersion("4.19.0") != true {
 		return
 	}
-	getDefaultObserver(t, true, false, true, false)
+	getDefaultObserver(t, false, true, false)
 }

@@ -422,7 +422,7 @@ func (k *ObserverKprobe) observerListenersTcp(msg *api.MsgIPv4TcpEventUnix) {
 func (k *ObserverKprobe) AddListener(listener Listener) {
 	k.log.WithField("listener", listener).Debug("Add listener")
 	k.listeners[listener] = struct{}{}
-	k.getRunningProcs(false, k.enableExecve)
+	k.getRunningProcs(false, true)
 }
 
 func (k *ObserverKprobe) RemoveListener(listener Listener) {
@@ -1476,7 +1476,6 @@ type ObserverKprobe struct {
 	perfConfig *bpf.PerfEventConfig
 	/* Features */
 	prettyPrinter bool
-	enableExecve  bool
 	enableTLS     bool
 	enableTLSTC   bool
 	/* Statistics */
@@ -1495,7 +1494,7 @@ func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
 }
 
 func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
-	version, _, err := getKernelVersion()
+	_, _, err := getKernelVersion()
 	if err != nil {
 		return false, fmt.Errorf("Kernel version lookup failed, required for kprobe.\n")
 	}
@@ -1508,12 +1507,6 @@ func btfFileExists(file string) error {
 }
 
 func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
-	if k.enableExecve {
-		ObserverExecve.Observer__program = HubbleLib + "bpf_execve_event.o"
-	} else {
-		ObserverExecve.Observer__program = HubbleLib + "bpf_execve.o"
-	}
-
 	for _, p := range observerPrograms {
 		if _, err := os.Stat(p.Observer__program); err == nil {
 			continue
@@ -1610,12 +1603,11 @@ func (k *ObserverKprobe) RemovePrograms() {
 	os.Remove(k.mapDir)
 }
 
-func NewObserverKprobe(bpfDir, mapDir, interfaces string, execve, tls, tlstc, pretty bool) *ObserverKprobe {
+func NewObserverKprobe(bpfDir, mapDir, interfaces string, tls, tlstc, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:        bpfDir,
 		mapDir:        mapDir,
 		interfaces:    interfaces,
-		enableExecve:  execve,
 		enableTLS:     tls,
 		enableTLSTC:   tlstc,
 		prettyPrinter: pretty,
