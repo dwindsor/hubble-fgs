@@ -1497,33 +1497,7 @@ func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
 func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
 	version, _, err := getKernelVersion()
 	if err != nil {
-		return false, fmt.Errorf("Kernel version lookup failed, required for requirements check.\n")
-	}
-	minVersion := int(kernelStringToNumeric("4.19.0"))
-	if version >= minVersion {
-		return true, nil
-	}
-	filename := ProcFS + "/sys/kernel/pid_max"
-	pidMax, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return false, fmt.Errorf("ReadFile: %s error: %s\n", filename, err)
-	}
-	pidString := strings.Fields(string(pidMax))
-	pids, err := strconv.ParseUint(pidString[0], 10, 32)
-	if err != nil {
-		return false, fmt.Errorf("pidMax parsing failed: %s\n", err)
-	}
-	if pids > MaxSupportedPids {
-		if SetPidMax == true {
-			procPid := []byte("32768")
-			err := ioutil.WriteFile(filename, procPid, 0)
-			if err != nil {
-				return false, fmt.Errorf("set-max-pid failed: %s\n", err)
-			}
-			k.log.Infof("Configured max_pid %d -> %d", pids, MaxSupportedPids)
-			return true, nil
-		}
-		return false, fmt.Errorf("Current pid_max (%d) greater than max supported pids (%d). 4.19+ kernel required to support all features with current pid_max. Either use --set-pid-max to have hubble-fgs configure pid or upgrade kernel.", pids, MaxSupportedPids)
+		return false, fmt.Errorf("Kernel version lookup failed, required for kprobe.\n")
 	}
 	return true, nil
 }
@@ -1599,7 +1573,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
 	}
 	if _, err := k.observerMinReqs(ctx); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting minimum pid requirements not met. %s\n", err)
+		return fmt.Errorf("hubble-fgs, Aborting minimum requirements not met. %s\n", err)
 	}
 	if err := k.observerLoadProgs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)

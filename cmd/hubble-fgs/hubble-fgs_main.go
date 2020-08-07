@@ -200,7 +200,6 @@ func init() {
 	flags.BoolP("execve", "e", false, "Enable execve events")
 	flags.BoolP("tls", "t", false, "Enable tls events")
 	flags.BoolP("tlstc", "", false, "Enable TLS TC events")
-	flags.BoolVarP(&observer.SetPidMax, "set-pid-max", "", false, "Configures pid_max procFS requirements on startup")
 	flags.IntVar(&processCacheSize, "process-cache-size", 32768, "Size of the process cache")
 	flags.StringVar(&exportFilename, "export-filename", "", "Filename for JSON export. Disabled by default")
 	flags.IntVar(&exportFileMaxSizeMB, "export-file-max-size-mb", 10, "Size in MB for rotating JSON export files")

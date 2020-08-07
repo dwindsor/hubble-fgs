@@ -58,7 +58,6 @@ spec:
             - /usr/bin/hubble-fgs
           args:
             - --procfs=/procRoot
-            - --set-pid-max
             - -e
             - --tlstc
             - --process-cache-size=32768
