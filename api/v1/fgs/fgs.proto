@@ -144,10 +144,21 @@ message GetEventsResponse {
     google.protobuf.Timestamp time = 1001;
 }
 
+// EventType constants are based on the ones from pkg/api/client
+enum EventType {
+	UNDEF = 0;
+	PROCESS_CONNECT = 1;
+	PROCESS_LISTEN = 4;
+	PROCESS_EXEC = 5;
+	PROCESS_TLS = 6;
+	PROCESS_EXIT = 7;
+}
+
 message Filter {
     repeated string binary_regex = 1;
     repeated string namespace = 2;
     google.protobuf.BoolValue health_check = 3;
     repeated uint32 pid = 4;
     repeated uint32 pid_set = 5;
+    repeated EventType event_set = 6;
 }
