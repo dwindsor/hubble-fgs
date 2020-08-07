@@ -176,8 +176,17 @@ struct msg_k8s {
 #define EXT_SERVER_NAME_LENGTH 32
 #define EXT_VERSION_LENGTH 16
 
-#define TLS_COPY_ERROR 0x01
-#define TLS_MAX_TLVS   0x02
+/* TLS Flags */
+#define TLS_COPY_ERROR		  0x001
+#define TLS_MAX_TLVS		  0x002
+#define TLS_FRAME_TOO_LARGE	  0x004
+#define TLS_HELLO_MSG_MISS	  0x008
+#define TLS_CIPHER_ERROR	  0x010
+#define TLS_CIPHER_TOO_LARGE	  0x020
+#define TLS_COMPRESSION_ERROR     0x040
+#define TLS_COMPRESSION_TOO_LARGE 0x080
+#define TLS_EXT_ERROR		  0x100
+#define TLS_EXT_TOO_LARGE	  0x200
 
 struct msg_tls {
 	__u16 version;

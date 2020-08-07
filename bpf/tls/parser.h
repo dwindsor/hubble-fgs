@@ -89,13 +89,16 @@ int bpf_parse_tls_hello_request(struct sk_msg_md *msg)
 #define MAX_EXT_LENGTH 255
 #define EXTENSION { \
 	if (extension > payload + maxlength) {			   \
+		tls->flags |= TLS_EXT_TOO_LARGE;		   \
 		goto extension_macro_out;			   \
 	}							   \
 	extension = bpf_parse_extension(extension, &extension_length, data_end, tls); \
 	if (!extension)						   \
 		goto extension_macro_out;			   \
-	if ((int)extension_length < 0)				   \
+	if ((int)extension_length < 0) {			   \
+		tls->flags |= TLS_EXT_ERROR;			   \
 		goto extension_macro_out;			   \
+	}							   \
 }
 
 #define TWO_EXTENSIONS { \
@@ -340,8 +343,10 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	client_hello = payload + sizeof(struct tls_hdr);
 	if ((void*)client_hello + sizeof(struct tls_handshake_client_hello) > data_end) {
 		client_hello = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_client_hello));
-		if (!client_hello)
+		if (!client_hello) {
+			tls->flags |= TLS_HELLO_MSG_MISS;
 			return SK_PASS;
+		}
 		data_end = (void *)(long)ctx->data_end;
 	}
 
@@ -357,16 +362,20 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	 * data cork until we get don't let users send us partial headers. Then max length
 	 * should follow us around.
 	 */
-	if ((void *)client_hello + maxlength > data_end)
+	if ((void *)client_hello + maxlength > data_end) {
+		tls->flags |= TLS_FRAME_TOO_LARGE;
 		return SK_PASS; // escape hatch too many tlvs!
+	}
 
 	compiler_barrier();
 	adv_session = client_hello->session_id_length;
 	adv_session &= 0x7fff;
 
 	cipher_length = (void *)client_hello + sizeof(struct tls_handshake_client_hello) + adv_session;
-	if (cipher_length + 2 > data_end)
+	if (cipher_length + 2 > data_end) {
+		tls->flags |= TLS_CIPHER_ERROR;
 		return SK_PASS;
+	}
 
 	session = (void*)client_hello + 6;
 	ext_copy(tls->session,
@@ -386,12 +395,16 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	}
 
 	adv_cipher &= 0x7fff;
-	if (adv_cipher > 255)
+	if (adv_cipher > 255) {
+		tls->flags |= TLS_CIPHER_TOO_LARGE;
 		return SK_PASS;
+	}
 
 	compression = (void *)cipher_length + adv_cipher + 2;
-	if (compression + 1 > data_end)
+	if (compression + 1 > data_end) {
+		tls->flags |= TLS_COMPRESSION_ERROR;
 		return SK_PASS;
+	}
 	if (client)
 		adv_compression = *compression;
 	else
@@ -399,12 +412,16 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 
 	compiler_barrier();
 	adv_compression &= 0x7f;
-	if (adv_compression > 255)
+	if (adv_compression > 255) {
+		tls->flags |= TLS_COMPRESSION_TOO_LARGE;
 		return SK_PASS;
+	}
 
 	extension = (void *)compression + adv_compression + 1;
-	if (extension + 2 > data_end)
+	if (extension + 2 > data_end) {
+		tls->flags |= TLS_EXT_ERROR;
 		return SK_PASS;
+	}
 
 	extension_length = *(u16 *)extension;
 	extension = (void *)extension + 2;
@@ -412,7 +429,6 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	maxlength = 0x7fff;
 	TWENTY_EXTENSIONS
 	tls->flags |= TLS_MAX_TLVS;
-	//EXTENSION
 	// For now we just parse extensions until we walk off the end of the
 	// packet so we just jump here when that happens.
 extension_macro_out:

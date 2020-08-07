@@ -250,6 +250,33 @@ func GetTLSFlags(flags uint32) string {
 	if (flags & api.TlsFlagMaxTlvs) != 0 {
 		s = append(s, "MaxTLVError")
 	}
+	if (flags & api.TlsFlagFrameTooLarge) != 0 {
+		s = append(s, "FrameTooLarge")
+	}
+	if (flags & api.TlsFlagHelloMsgMiss) != 0 {
+		s = append(s, strings.Join(s, "HelloMsgMiss"))
+	}
+	if (flags & api.TlsFlagCipherError) != 0 {
+		s = append(s, strings.Join(s, "CipherError"))
+	}
+	if (flags & api.TlsFlagCipherTooLarge) != 0 {
+		s = append(s, strings.Join(s, "CipherTooLarge"))
+	}
+	if (flags & api.TlsFlagCompressionError) != 0 {
+		s = append(s, strings.Join(s, "CompressionError"))
+	}
+	if (flags & api.TlsFlagCompressionTooLarge) != 0 {
+		s = append(s, strings.Join(s, "CompressionTooLarge"))
+	}
+	if (flags & api.TlsFlagExtError) != 0 {
+		s = append(s, strings.Join(s, "ExtError"))
+	}
+	if (flags & api.TlsFlagExtError) != 0 {
+		s = append(s, strings.Join(s, "ExtError"))
+	}
+	if (flags & api.TlsFlagExtTooLarge) != 0 {
+		s = append(s, strings.Join(s, "ExtTooLarge"))
+	}
 	return strings.Join(s, " ")
 }
 
