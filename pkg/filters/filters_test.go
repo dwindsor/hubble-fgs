@@ -26,7 +26,9 @@ func TestParseFilterList(t *testing.T) {
 	f := `{"namespace":["kube-system",""]}
 {"health_check":true}
 {"binary_regex":["kube.*","iptables"]}
-{"binary_regex":["/usr/sbin/.*"],"namespace":["default"]}`
+{"binary_regex":["/usr/sbin/.*"],"namespace":["default"]}
+{"pid_set":[1]}
+{"event_set":["PROCESS_CONNECT", "PROCESS_LISTEN"]}`
 	filterProto, err := ParseFilterList(f)
 	assert.NoError(t, err)
 	assert.Equal(t, []*fgs.Filter{
@@ -34,6 +36,8 @@ func TestParseFilterList(t *testing.T) {
 		{HealthCheck: &wrappers.BoolValue{Value: true}},
 		{BinaryRegex: []string{"kube.*", "iptables"}},
 		{BinaryRegex: []string{"/usr/sbin/.*"}, Namespace: []string{"default"}},
+		{PidSet: []uint32{1}},
+		{EventSet: []fgs.EventType{fgs.EventType_PROCESS_CONNECT, fgs.EventType_PROCESS_LISTEN}},
 	}, filterProto)
 	_, err = ParseFilterList("invalid filter json")
 	assert.Error(t, err)
