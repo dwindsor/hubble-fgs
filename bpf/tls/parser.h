@@ -326,6 +326,7 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 #endif
 {
 	__u16 *cipher_length, adv_cipher;
+	int offset = payload_off;
 	struct tls_handshake_client_hello *client_hello;
 	__u8 *session, *compression, adv_compression, adv_session;
 	struct tls_extension *extension;
@@ -371,10 +372,10 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	adv_session = client_hello->session_id_length;
 	adv_session &= 0x7fff;
 
-	cipher_length = get_data(ctx,
-			payload_off + adv_session +
-			sizeof(struct tls_handshake_client_hello) +
-			sizeof(struct tls_hdr), 2);
+	offset = payload_off + adv_session +
+		sizeof(struct tls_handshake_client_hello) +
+		sizeof(struct tls_hdr);
+	cipher_length = get_data(ctx, offset, 2);
 	if (!cipher_length) {
 		tls->flags |= TLS_CIPHER_ERROR;
 		return SK_PASS;
