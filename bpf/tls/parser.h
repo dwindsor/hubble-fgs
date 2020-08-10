@@ -307,6 +307,10 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 	 * if (r3 > r1)  // Now we have bounds on original r2 and r2!
 	 */
 	asm volatile (
+		"if %[off] s< 2048 goto +1;\n"
+		"%[off] = 0;\n"
+		"if %[off] s>= 0 goto +1;\n"
+		"%[off] = 0;\n"
 		"%[data] += %[off];\n"
 		"%[tmp] = %[data];\n"
 		"%[tmp] += %[needed];\n"
