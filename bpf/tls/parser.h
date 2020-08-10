@@ -379,11 +379,18 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	adv_session = client_hello->session_id_length;
 	adv_session &= 0x7fff;
 
-	cipher_length = (void *)client_hello + sizeof(struct tls_handshake_client_hello) + adv_session;
-	if (cipher_length + 2 > data_end) {
+	cipher_length = get_data(ctx,
+			payload_off + adv_session +
+			sizeof(struct tls_handshake_client_hello) +
+			sizeof(struct tls_hdr), 2);
+	if (!cipher_length) {
 		tls->flags |= TLS_CIPHER_ERROR;
 		return SK_PASS;
 	}
+	data = (void *)(long)ctx->data;
+	data_end = (void *)(long)ctx->data_end;
+	payload = data + payload_off;
+	client_hello = payload + sizeof(struct tls_hdr);
 
 	session = (void*)client_hello + 6;
 	ext_copy(tls->session,
