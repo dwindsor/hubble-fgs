@@ -411,11 +411,14 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 		"%[adv_cipher] = 0;\n"
 		: [adv_cipher] "+r" (adv_cipher)::);
 
-	compression = (void *)cipher_length + adv_cipher + 2;
-	if (compression + 1 > data_end) {
+	offset += adv_cipher + 2;
+	compression = get_data(ctx, offset, 1);
+	if (!compression) {
 		tls->flags |= TLS_COMPRESSION_ERROR;
 		return SK_PASS;
 	}
+	data_end = (void *)(long)ctx->data_end;
+
 	if (client)
 		adv_compression = *compression;
 	else
