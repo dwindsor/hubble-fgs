@@ -164,6 +164,7 @@ const (
 	TlsFlagCompressionTooLarge = 0x0080
 	TlsFlagExtError            = 0x0100
 	TlsFlagExtTooLarge         = 0x0200
+	TlsFlagVersion             = 0x0400
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent

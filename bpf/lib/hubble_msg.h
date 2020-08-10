@@ -187,6 +187,7 @@ struct msg_k8s {
 #define TLS_COMPRESSION_TOO_LARGE 0x080
 #define TLS_EXT_ERROR		  0x100
 #define TLS_EXT_TOO_LARGE	  0x200
+#define TLS_VERSION		  0x400
 
 struct msg_tls {
 	__u16 version;

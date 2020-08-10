@@ -277,6 +277,9 @@ func GetTLSFlags(flags uint32) string {
 	if (flags & api.TlsFlagExtTooLarge) != 0 {
 		s = append(s, "ExtTooLarge")
 	}
+	if (flags & api.TlsFlagVersion) != 0 {
+		s = append(s, "ExtVersion")
+	}
 	return strings.Join(s, " ")
 }
 
@@ -310,10 +313,18 @@ func GetTLSSNI(sni [32]byte) (string, string) {
 
 func GetTLSSupportedVersions(vers [16]byte, offset int) string {
 	var s []string
+	var length int
 
-	length := int(vers[0])
-	if length > 16 {
-		length = 16
+	if offset == 1 {
+		length = int(vers[0])
+		if length > 16 {
+			length = 16
+		}
+	} else {
+		// serverHello supported versions extensions only has the
+		// single entry with the the negotiated version. And does
+		// not have a length field.
+		length = 2
 	}
 	for i := offset; i < length; i += 2 {
 		t := binary.LittleEndian.Uint16(vers[i : i+2])

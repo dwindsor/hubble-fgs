@@ -174,7 +174,6 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 	return data;
 }
 
-
 static inline __attribute__((always_inline))
 int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 {
@@ -295,6 +294,7 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 		break;
 	case EXT_SUPPORTED_VERSION:
 		dst = tls->supported_versions;
+		tls->flags |= TLS_VERSION;
 		break;
 	}
 
@@ -303,6 +303,10 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 		if (extlength > 32)
 			tls->flags |= TLS_COPY_ERROR;
 	}
+
+	/* Assuming SNI is first extension, per specification */
+	if (tls->flags & TLS_VERSION)
+		return 0;
 
 	/* Force compiler to use same register for min/max bound generators */
 	asm volatile (
@@ -325,7 +329,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int payload_off, struct ms
 int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls, bool client)
 #endif
 {
-	__u16 *cipher_length, adv_cipher;
+	__u16 *cipher_length, adv_cipher, extlength;
 	int offset = payload_off;
 	struct tls_handshake_client_hello *client_hello;
 	__u8 *session, *compression, adv_compression, adv_session;
@@ -417,7 +421,6 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 		tls->flags |= TLS_COMPRESSION_ERROR;
 		return SK_PASS;
 	}
-	data_end = (void *)(long)ctx->data_end;
 
 	if (client)
 		adv_compression = *compression;
@@ -431,19 +434,31 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 		return SK_PASS;
 	}
 
-	extension = (void *)compression + adv_compression + 1;
-	if (extension + 2 > data_end) {
+	offset += adv_compression + 1;
+	// pull in 2B of header plus 4B of first extension
+	extension = get_data(ctx, offset, 6);
+	if (!extension) {
 		tls->flags |= TLS_EXT_ERROR;
 		return SK_PASS;
 	}
 
+	extlength = *(u16 *)extension;
+	extlength = bpf_htons(extlength);
+	extlength += 2;
+	asm volatile (
+		"if %[extlength] > 4 goto +1;\n"
+		"%[extlength] = 0;\n"
+		: [extlength] "+r"(extlength)::);
+	extension = get_data(ctx, offset, extlength);
+	if (!extension) {
+		tls->flags |= TLS_EXT_ERROR;
+		return SK_PASS;
+	}
+	data_end = (void *)(long)ctx->data_end;
 	extension = (void *)extension + 2;
-	compiler_barrier();
 	maxlength = 0x7fff;
 	TWENTY_EXTENSIONS
 	tls->flags |= TLS_MAX_TLVS;
-	// For now we just parse extensions until we walk off the end of the
-	// packet so we just jump here when that happens.
 extension_macro_out:
 	return SK_PASS;
 }
