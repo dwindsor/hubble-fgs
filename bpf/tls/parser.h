@@ -88,17 +88,9 @@ int bpf_parse_tls_hello_request(struct sk_msg_md *msg)
 
 #define MAX_EXT_LENGTH 255
 #define EXTENSION { \
-	if (extension > payload + maxlength) {			   \
-		tls->flags |= TLS_EXT_TOO_LARGE;		   \
-		goto extension_macro_out;			   \
-	}							   \
-	extension = bpf_parse_extension(extension, &extension_length, data_end, tls); \
+	extension = bpf_parse_extension(extension, data_end, tls); \
 	if (!extension)						   \
 		goto extension_macro_out;			   \
-	if ((int)extension_length < 0) {			   \
-		tls->flags |= TLS_EXT_ERROR;			   \
-		goto extension_macro_out;			   \
-	}							   \
 }
 
 #define TWO_EXTENSIONS { \
@@ -286,7 +278,7 @@ int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
 }
 
 static inline __attribute__((always_inline))
-struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16 *max, void *data_end, struct msg_tls *tls)
+struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void *data_end, struct msg_tls *tls)
 {
 	__u16 extlength, exttype;
 	void *dst = 0;
@@ -296,7 +288,6 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, __u16
 
 	extlength = bpf_htons(extension->length);
 	exttype = bpf_htons(extension->type);
-	*max -= extlength - 4;
 
 	switch (exttype) {
 	case EXT_SERVER_NAME:
@@ -334,7 +325,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int payload_off, struct ms
 int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls, bool client)
 #endif
 {
-	__u16 *cipher_length, adv_cipher, extension_length;
+	__u16 *cipher_length, adv_cipher;
 	struct tls_handshake_client_hello *client_hello;
 	__u8 *session, *compression, adv_compression, adv_session;
 	struct tls_extension *extension;
@@ -410,11 +401,14 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 		adv_cipher = 0;
 	}
 
-	adv_cipher &= 0x7fff;
 	if (adv_cipher > 255) {
 		tls->flags |= TLS_CIPHER_TOO_LARGE;
 		return SK_PASS;
 	}
+	asm volatile (
+		"if %[adv_cipher] s> 0 goto +1;\n"
+		"%[adv_cipher] = 0;\n"
+		: [adv_cipher] "+r" (adv_cipher)::);
 
 	compression = (void *)cipher_length + adv_cipher + 2;
 	if (compression + 1 > data_end) {
@@ -439,7 +433,6 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 		return SK_PASS;
 	}
 
-	extension_length = *(u16 *)extension;
 	extension = (void *)extension + 2;
 	compiler_barrier();
 	maxlength = 0x7fff;
