@@ -338,6 +338,10 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 
 	data_end = (void *)(long)ctx->data_end;
 	data = (void *)(long)ctx->data;
+	asm volatile(
+		"if %[payload_off] s> 0 goto +1;\n"
+		"%[payload_off] = 0;\n"
+		: [payload_off] "+r"(payload_off)::);
 	payload = data + payload_off;
 
 	client_hello = payload + sizeof(struct tls_hdr);
