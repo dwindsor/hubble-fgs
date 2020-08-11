@@ -19,7 +19,6 @@ import (
 	"time"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -60,10 +59,10 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 		NewFakeK8sWatcher(pods),
 		cilium.GetFakeCiliumState())
 	assert.NoError(t, err)
-	pod, endpoint := pm.getPodInfo("container-id-not-found", &fgsAPI.MsgExecUnix{})
+	pod, endpoint := pm.getPodInfo("container-id-not-found", "", "", 0)
 	assert.Nil(t, pod)
 	assert.Nil(t, endpoint)
-	pod, endpoint = pm.getPodInfo("aaaaaaa", &fgsAPI.MsgExecUnix{NSPID: 1234})
+	pod, endpoint = pm.getPodInfo("aaaaaaa", "", "", 1234)
 	assert.Equal(t,
 		&fgs.Pod{
 			Namespace: podA.Namespace,
@@ -85,22 +84,54 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 	assert.Nil(t, endpoint)
 }
 
-func Test_sanitizeEvent(t *testing.T) {
-	res := fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessConnect{
-			ProcessConnect: &fgs.ProcessConnect{
-				Process: &fgs.Process{
-					Pod: &fgs.Pod{
-						Container: &fgs.Container{
-							LivenessExecProbe:  []string{"a", "b"},
-							ReadinessExecProbe: []string{"c", "d"},
+func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
+	var podA = corev1.Pod{
+		ObjectMeta: v1.ObjectMeta{
+			Name:      "pod-a",
+			Namespace: "namespace-a",
+		},
+		Spec: corev1.PodSpec{
+			Containers: []corev1.Container{
+				{
+					Name: "pod-a-container-a-name",
+					LivenessProbe: &corev1.Probe{
+						Handler: corev1.Handler{
+							Exec: &corev1.ExecAction{
+								Command: []string{"command", "arg-a", "arg-b"},
+							},
 						},
 					},
 				},
 			},
 		},
+		Status: corev1.PodStatus{
+			ContainerStatuses: []corev1.ContainerStatus{
+				{
+					Name:        "pod-a-container-a-name",
+					ContainerID: "docker://aaaaaaaaaaaaaaa",
+				},
+			},
+		},
 	}
-	removeInternalFields(&res)
-	assert.Nil(t, res.GetProcessConnect().Process.Pod.Container.LivenessExecProbe)
-	assert.Nil(t, res.GetProcessConnect().Process.Pod.Container.ReadinessExecProbe)
+	pods := []interface{}{&podA}
+	pm, err := NewProcessManager(
+		logrus.New(),
+		10,
+		NewFakeK8sWatcher(pods),
+		cilium.GetFakeCiliumState())
+	assert.NoError(t, err)
+	pod, endpoint := pm.getPodInfo("aaaaaaa", "/bin/command", "arg-a arg-b", 1234)
+	assert.Equal(t,
+		&fgs.Pod{
+			Namespace: podA.Namespace,
+			Name:      podA.Name,
+			Container: &fgs.Container{
+				Id:             podA.Status.ContainerStatuses[0].ContainerID,
+				Name:           podA.Status.ContainerStatuses[0].Name,
+				Image:          &fgs.Image{},
+				Pid:            &wrappers.UInt32Value{Value: 1234},
+				MaybeExecProbe: true,
+			},
+		}, pod)
+	assert.Nil(t, endpoint)
 }

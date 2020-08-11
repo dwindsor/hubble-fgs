@@ -183,6 +183,9 @@ github.com/iancoleman/strcase
 github.com/inconshreveable/mousetrap
 # github.com/json-iterator/go v1.1.9
 github.com/json-iterator/go
+# github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
+## explicit
+github.com/kballard/go-shellquote
 # github.com/konsorten/go-windows-terminal-sequences v1.0.2
 github.com/konsorten/go-windows-terminal-sequences
 # github.com/lyft/protoc-gen-star v0.4.14

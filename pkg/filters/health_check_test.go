@@ -21,24 +21,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_commandToStrings(t *testing.T) {
-	binary, args := commandToStrings(nil)
-	assert.Equal(t, "", binary)
-	assert.Equal(t, "", args)
-	binary, args = commandToStrings([]string{})
-	assert.Equal(t, "", binary)
-	assert.Equal(t, "", args)
-	binary, args = commandToStrings([]string{"a"})
-	assert.Equal(t, "a", binary)
-	assert.Equal(t, "", args)
-	binary, args = commandToStrings([]string{"a", "b"})
-	assert.Equal(t, "a", binary)
-	assert.Equal(t, "b", args)
-	binary, args = commandToStrings([]string{"a", "b", "c"})
-	assert.Equal(t, "a", binary)
-	assert.Equal(t, "b c", args)
-}
-
 func Test_canBeHealthCheck(t *testing.T) {
 	assert.False(t, canBeHealthCheck(nil))
 	assert.False(t, canBeHealthCheck(&fgs.Process{
@@ -57,40 +39,23 @@ func Test_canBeHealthCheck(t *testing.T) {
 			Container: &fgs.Container{},
 		},
 	}))
-	assert.False(t, canBeHealthCheck(&fgs.Process{
-		Binary:    "/usr/bin/myprogram",
-		Arguments: "arg-a arg-b arg-c",
-		Pod: &fgs.Pod{
-			Container: &fgs.Container{
-				LivenessExecProbe: []string{"myprogram", "arg-a", "arg-b"},
-			},
-		},
-	}))
-	assert.False(t, canBeHealthCheck(&fgs.Process{
-		Binary:    "/usr/bin/myprogram",
-		Arguments: "arg-a arg-b arg-c",
-		Pod: &fgs.Pod{
-			Container: &fgs.Container{
-				ReadinessExecProbe: []string{"myprogram", "arg-a", "arg-b"},
-			},
-		},
-	}))
 	assert.True(t, canBeHealthCheck(&fgs.Process{
-		Binary:    "/usr/bin/myprogram",
-		Arguments: "arg-a arg-b arg-c",
+		Binary:    "myprogram",
+		Arguments: "arg-a arg-b argc",
 		Pod: &fgs.Pod{
 			Container: &fgs.Container{
-				LivenessExecProbe: []string{"myprogram", "arg-a", "arg-b", "arg-c"},
+				MaybeExecProbe: true,
 			},
 		},
 	}))
-	assert.True(t, canBeHealthCheck(&fgs.Process{
-		Binary:    "/usr/bin/myprogram",
-		Arguments: "arg-a arg-b arg-c",
-		Pod: &fgs.Pod{
-			Container: &fgs.Container{
-				ReadinessExecProbe: []string{"myprogram", "arg-a", "arg-b", "arg-c"},
-			},
-		},
-	}))
+
+}
+
+func Test_maybeExecProbe(t *testing.T) {
+	assert.False(t, MaybeExecProbe("/usr/bin/myprogram", "arg-a arg-b arg-c", []string{"myprogram", "arg-a", "arg-b"}))
+	assert.True(t, MaybeExecProbe("/usr/bin/myprogram", "arg-a arg-b arg-c", []string{"myprogram", "arg-a", "arg-b", "arg-c"}))
+	assert.True(t, MaybeExecProbe(
+		"/bin/ash",
+		"-c \"! curl -s --fail --connect-timeout 5 -o /dev/null echo-a/private\"",
+		[]string{"ash", "-c", "! curl -s --fail --connect-timeout 5 -o /dev/null echo-a/private"}))
 }

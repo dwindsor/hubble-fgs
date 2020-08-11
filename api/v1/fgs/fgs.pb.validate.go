@@ -145,6 +145,8 @@ func (m *Container) Validate() error {
 		}
 	}
 
+	// no validation rules for MaybeExecProbe
+
 	return nil
 }
 

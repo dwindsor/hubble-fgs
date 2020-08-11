@@ -17,45 +17,39 @@ package filters
 import (
 	"context"
 	"path"
-	"strings"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	shell "github.com/kballard/go-shellquote"
 )
 
-func commandToStrings(command []string) (string, string) {
-	switch len(command) {
-	case 0:
-		return "", ""
-	case 1:
-		return command[0], ""
-	default:
-		return command[0], strings.Join(command[1:], " ")
+func MaybeExecProbe(binary string, args string, execProbe []string) bool {
+	argList, err := shell.Split(args)
+	if err != nil {
+		return false
 	}
+	processCommand := append([]string{path.Base(binary)}, argList...)
+	if len(execProbe) != len(processCommand) {
+		return false
+	}
+	for idx, val := range execProbe {
+		if val != processCommand[idx] {
+			return false
+		}
+	}
+	return true
 }
 
 func canBeHealthCheck(process *fgs.Process) bool {
-	if process != nil && process.Pod != nil && process.Pod.Container != nil {
-		binary, args := commandToStrings(process.Pod.Container.LivenessExecProbe)
-		if path.Base(binary) == path.Base(process.Binary) && args == process.Arguments {
-			return true
-		}
-		binary, args = commandToStrings(process.Pod.Container.ReadinessExecProbe)
-		if path.Base(binary) == path.Base(process.Binary) && args == process.Arguments {
-			return true
-		}
-	}
-	return false
+	return process != nil && process.Pod != nil && process.Pod.Container != nil && process.Pod.Container.MaybeExecProbe
 }
 
 func filterByHealthCheck(healthCheck bool) hubbleFilters.FilterFunc {
 	return func(ev *v1.Event) bool {
 		process := GetProcess(ev)
-		if healthCheck == canBeHealthCheck(process) {
-			return true
-		}
-		return false
+		parent := GetParent(ev)
+		return healthCheck == canBeHealthCheck(process) || healthCheck == canBeHealthCheck(parent)
 	}
 }
 

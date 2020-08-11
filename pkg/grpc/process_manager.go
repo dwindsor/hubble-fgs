@@ -137,14 +137,6 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.Ge
 	return res
 }
 
-func removeInternalFields(event interface{}) {
-	process := filters.GetProcess(&v1.Event{Event: event})
-	if process != nil && process.Pod != nil && process.Pod.Container != nil {
-		process.Pod.Container.LivenessExecProbe = nil
-		process.Pod.Container.ReadinessExecProbe = nil
-	}
-}
-
 // Notify implements Listener.Notify.
 func (pm *ProcessManager) Notify(event interface{}) error {
 	var processedEvent *fgs.GetEventsResponse
@@ -160,10 +152,6 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	default:
 		pm.log.WithField("event", event).Warn("unhandled event")
 	}
-	// There are some fields that are only meant to be used internally for filtering such as
-	// liveness_exec_probe and readiness_exec_probe. Remove these fields before updating metrics
-	// and exporting to JSON.
-	removeInternalFields(processedEvent)
 	metrics.ProcessEvent(event, processedEvent)
 	if processedEvent != nil {
 		pm.notifyListeners(processedEvent)
@@ -252,7 +240,7 @@ func (pm *ProcessManager) getProcess(
 	if err != nil {
 		pm.log.WithError(err).WithField("process", process).Warn("Failed to get exec ID for process")
 	}
-	protoPod, endpoint := pm.getPodInfo(containerID, &process)
+	protoPod, endpoint := pm.getPodInfo(containerID, process.Filename, args, process.NSPID)
 	return &fgs.Process{
 		Pid:          &wrappers.UInt32Value{Value: process.PID},
 		Uid:          &wrappers.UInt32Value{Value: process.UID},
@@ -491,7 +479,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 	}
 }
 
-func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExecUnix) (*fgs.Pod, *v1.Endpoint) {
+func (pm *ProcessManager) getPodInfo(containerID string, binary string, args string, nspid uint32) (*fgs.Pod, *v1.Endpoint) {
 	if containerID == "" {
 		return nil, nil
 	}
@@ -502,6 +490,8 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 	}
 	var startTime *timestamp.Timestamp
 	livenessProbe, readinessProbe := getProbes(pod, container)
+	maybeExecProbe := filters.MaybeExecProbe(binary, args, livenessProbe) ||
+		filters.MaybeExecProbe(binary, args, readinessProbe)
 	var err error
 	if container.State.Running != nil {
 		if startTime, err = ptypes.TimestampProto(container.State.Running.StartedAt.Time); err != nil {
@@ -516,9 +506,9 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 
 	// Don't set container PIDs if it's zero.
 	var containerPID *wrappers.UInt32Value
-	if process.NSPID > 0 {
+	if nspid > 0 {
 		containerPID = &wrappers.UInt32Value{
-			Value: process.NSPID,
+			Value: nspid,
 		}
 	}
 	return &fgs.Pod{
@@ -533,9 +523,8 @@ func (pm *ProcessManager) getPodInfo(containerID string, process *fgsAPI.MsgExec
 				Id:   container.ImageID,
 				Name: container.Image,
 			},
-			StartTime:          startTime,
-			LivenessExecProbe:  livenessProbe,
-			ReadinessExecProbe: readinessProbe,
+			StartTime:      startTime,
+			MaybeExecProbe: maybeExecProbe,
 		},
 	}, endpoint
 }
