@@ -72,6 +72,9 @@ spec:
           securityContext:
             privileged: true
           volumeMounts:
+            - mountPath: /sys/fs/bpf
+              mountPropagation: HostToContainer
+              name: bpf-maps
             - mountPath: "/var/run/cilium"
               name: run
             - mountPath: "/procRoot"
@@ -89,6 +92,10 @@ spec:
       tolerations:
         - operator: Exists
       volumes:
+        - hostPath:
+            path: /sys/fs/bpf
+            type: DirectoryOrCreate
+          name: bpf-maps
         - hostPath:
             path: /var/run/cilium
             type: DirectoryOrCreate
