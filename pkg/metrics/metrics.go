@@ -17,8 +17,10 @@ package metrics
 import (
 	"net/http"
 
+	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/filters"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -60,10 +62,6 @@ func getProcessInfo(process *fgs.Process) (binary string, namespace string) {
 	return binary, namespace
 }
 
-func getTlsInfo(tls *fgs.Tls) (binary string, namespace string) {
-	return "", ""
-}
-
 func handleOriginalEvent(originalEvent interface{}) {
 	var flags uint32
 	switch msg := originalEvent.(type) {
@@ -79,19 +77,18 @@ func handleProcessedEvent(processedEvent interface{}) {
 	var eventType, namespace, binary string
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
+		binary, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 		switch ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessConnect:
-			binary, namespace = getProcessInfo(ev.GetProcessConnect().GetProcess())
-			eventType = "process_connect"
+			eventType = fgs.EventType_PROCESS_CONNECT.String()
 		case *fgs.GetEventsResponse_ProcessExec:
-			binary, namespace = getProcessInfo(ev.GetProcessExec().GetProcess())
-			eventType = "process_exec"
+			eventType = fgs.EventType_PROCESS_EXEC.String()
 		case *fgs.GetEventsResponse_ProcessListen:
-			binary, namespace = getProcessInfo(ev.GetProcessListen().GetProcess())
-			eventType = "process_listen"
+			eventType = fgs.EventType_PROCESS_LISTEN.String()
 		case *fgs.GetEventsResponse_Tls:
-			binary, namespace = getTlsInfo(ev.GetTls())
-			eventType = "tls"
+			eventType = fgs.EventType_PROCESS_TLS.String()
+		case *fgs.GetEventsResponse_ProcessExit:
+			eventType = fgs.EventType_PROCESS_EXIT.String()
 		}
 	default:
 		eventType = "unknown"

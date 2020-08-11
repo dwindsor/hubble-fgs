@@ -32,6 +32,8 @@ func Test_handleProcessedEvent(t *testing.T) {
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{}}})
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{}}})
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{}}})
 
 	// empty pod
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
@@ -42,6 +44,12 @@ func Test_handleProcessedEvent(t *testing.T) {
 	}}})
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
 		Process: &fgs.Process{Binary: "binary_c"},
+	}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
+		Process: &fgs.Process{Binary: "binary_d"},
+	}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
+		Process: &fgs.Process{Binary: "binary_e"},
 	}}})
 
 	// with pod
@@ -63,19 +71,37 @@ func Test_handleProcessedEvent(t *testing.T) {
 			Pod:    &fgs.Pod{Namespace: "namespace_c"},
 		},
 	}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
+		Process: &fgs.Process{
+			Binary: "binary_d",
+			Pod:    &fgs.Pod{Namespace: "namespace_d"},
+		},
+	}}})
+	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
+		Process: &fgs.Process{
+			Binary: "binary_e",
+			Pod:    &fgs.Pod{Namespace: "namespace_e"},
+		},
+	}}})
 
 	expected := strings.NewReader(`# HELP isovalent_fgs_events_total The total number of FGS events
 # TYPE isovalent_fgs_events_total counter
-isovalent_fgs_events_total{binary="",namespace="",type="process_connect"} 1
-isovalent_fgs_events_total{binary="",namespace="",type="process_exec"} 1
-isovalent_fgs_events_total{binary="",namespace="",type="process_listen"} 1
+isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_CONNECT"} 1
+isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_EXEC"} 1
+isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_EXIT"} 1
+isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_LISTEN"} 1
+isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_TLS"} 1
 isovalent_fgs_events_total{binary="",namespace="",type="unknown"} 1
-isovalent_fgs_events_total{binary="binary_a",namespace="",type="process_connect"} 1
-isovalent_fgs_events_total{binary="binary_a",namespace="namespace_a",type="process_connect"} 1
-isovalent_fgs_events_total{binary="binary_b",namespace="",type="process_exec"} 1
-isovalent_fgs_events_total{binary="binary_b",namespace="namespace_b",type="process_exec"} 1
-isovalent_fgs_events_total{binary="binary_c",namespace="",type="process_listen"} 1
-isovalent_fgs_events_total{binary="binary_c",namespace="namespace_c",type="process_listen"} 1
+isovalent_fgs_events_total{binary="binary_a",namespace="",type="PROCESS_CONNECT"} 1
+isovalent_fgs_events_total{binary="binary_a",namespace="namespace_a",type="PROCESS_CONNECT"} 1
+isovalent_fgs_events_total{binary="binary_b",namespace="",type="PROCESS_EXEC"} 1
+isovalent_fgs_events_total{binary="binary_b",namespace="namespace_b",type="PROCESS_EXEC"} 1
+isovalent_fgs_events_total{binary="binary_c",namespace="",type="PROCESS_LISTEN"} 1
+isovalent_fgs_events_total{binary="binary_c",namespace="namespace_c",type="PROCESS_LISTEN"} 1
+isovalent_fgs_events_total{binary="binary_d",namespace="",type="PROCESS_TLS"} 1
+isovalent_fgs_events_total{binary="binary_d",namespace="namespace_d",type="PROCESS_TLS"} 1
+isovalent_fgs_events_total{binary="binary_e",namespace="",type="PROCESS_EXIT"} 1
+isovalent_fgs_events_total{binary="binary_e",namespace="namespace_e",type="PROCESS_EXIT"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(EventsProcessed, expected))
 }
