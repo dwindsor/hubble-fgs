@@ -42,6 +42,7 @@ var (
 	networkInterfaces    string
 	serverAddress        string
 	runStandalone        bool
+	ciliumBPF            string
 )
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
@@ -68,7 +69,7 @@ func hubbleFGSExecute() error {
 		bpf.CheckOrMountCgroup2()
 	}
 	bpf.ConfigureResourceLimits()
-	kprobe := observer.NewObserverKprobe(observerDir, observerDir,
+	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
 		networkInterfaces,
 		viper.GetBool("tls"), viper.GetBool("tlstc"),
 		viper.GetBool("debug"))
@@ -209,6 +210,7 @@ func init() {
 	flags.BoolVar(&enableCiliumAPI, "enable-cilium-api", false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
 	flags.StringVar(&networkInterfaces, "network-interfaces", "", "Comma separated list of regex expressions to use to apply protocol parsers")
 	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
+	flags.StringVar(&ciliumBPF, "cilium-bpf", "", "Cilium BPF directory")
 	viper.BindPFlags(flags)
 
 	// Options for debugging/development, not visible to users

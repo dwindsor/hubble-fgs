@@ -152,7 +152,10 @@ int __bpf_obj_get(const char *file)
 	return bpf_obj_get(file);
 }
 
-int bpf_loader_set_map(struct bpf_object *obj, const char *mapdir, int verbosity)
+int bpf_loader_set_map(struct bpf_object *obj,
+		       const char *mapdir,
+		       const char *ciliumdir,
+		       int verbosity)
 {
 	struct bpf_map *map;
 
@@ -166,9 +169,20 @@ int bpf_loader_set_map(struct bpf_object *obj, const char *mapdir, int verbosity
 		strncat(pinfd, name, sizeof(pinfd) - 1);
 		fd = bpf_obj_get(pinfd);
 		if (fd < 0) {
-			if (verbosity)
-				fprintf(stderr, "bpf_map %s not found, use program local\n", pinfd);
-			continue;
+			char ciliumfd[512];
+
+			if (ciliumdir) {
+				strncpy(ciliumfd, mapdir, sizeof(pinfd));
+				strncat(ciliumfd, name, sizeof(pinfd) - 1);
+
+				fd = bpf_obj_get(ciliumfd);
+			}
+
+			if (fd < 0) {
+				if (verbosity)
+					fprintf(stderr, "bpf_map %s not found, use program local\n", pinfd);
+				continue;
+			}
 		}
 
 		err = bpf_map__reuse_fd(map, fd);
@@ -187,6 +201,7 @@ static struct bpf_object *__loader(const int version,
 		    const char *btf,
 		    const char *prog,
 		    const char *mapdir,
+		    const char *ciliumdir,
 		    const int type)
 {
 	struct bpf_object_load_attr attr = {0};
@@ -204,7 +219,7 @@ static struct bpf_object *__loader(const int version,
 	}
 
 	bpf_loader_programs(obj, type, verbosity);
-	err = bpf_loader_set_map(obj, mapdir, verbosity);
+	err = bpf_loader_set_map(obj, mapdir, ciliumdir, verbosity);
 	if (err) {
 		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
 		return NULL;
@@ -288,12 +303,13 @@ int tc_loader(const int version,
 		   const char *prog,
 		   const char *label,
 		   const char *__prog,
-		   const char *mapdir)
+		   const char *mapdir,
+		   const char *ciliumdir)
 {
 	struct bpf_object *obj;
 	int err;
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, BPF_PROG_TYPE_SCHED_CLS);
+	obj = __loader(version, verbosity, btf, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
 	if (!obj)
 		return -1;
 
@@ -319,7 +335,7 @@ int fgs_loader(const int version,
 	struct bpf_object *obj;
 	int err;
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, prog_type);
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, prog_type);
 	if (!obj)
 		return -1;
 
@@ -379,7 +395,7 @@ int tracepoint_loader(const int version,
 	struct bpf_object *obj;
 	int err;
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, BPF_PROG_TYPE_TRACEPOINT);
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
 	if (!obj)
 		return -1;
 
@@ -428,7 +444,7 @@ int kprobe_loader(const int version,
 	struct bpf_object *obj;
 	int err;
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, BPF_PROG_TYPE_KPROBE);
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
 	if (!obj)
 		return -1;
 
@@ -642,7 +658,8 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
 	return err, 0
 }
 
-func LoadTC(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+func LoadTC(__version, __verbosity int,
+	__btf, object, __label, __prog, __mapdir, __ciliumdir string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
@@ -650,7 +667,8 @@ func LoadTC(__version, __verbosity int, __btf, object, __label, __prog, __mapdir
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	loader_fd := C.tc_loader(version, verbosity, btf, o, l, p, mapdir)
+	ciliumdir := C.CString(__ciliumdir)
+	loader_fd := C.tc_loader(version, verbosity, btf, o, l, p, mapdir, ciliumdir)
 	loaderFd := int(loader_fd)
 	if loaderFd < 0 {
 		return fmt.Errorf("Unable to load tc program: %d %s", loaderFd, object), 0

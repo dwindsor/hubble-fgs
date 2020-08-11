@@ -112,6 +112,7 @@ func alwaysLoad(k *ObserverKprobe) bool  { return true }
 func neverLoad(k *ObserverKprobe) bool   { return false }
 func isTLSLoad(k *ObserverKprobe) bool   { return k.enableTLS }
 func isTLSTCLoad(k *ObserverKprobe) bool { return k.enableTLSTC }
+func isExternal(k *ObserverKprobe) bool  { return false }
 
 type bpfLoad struct {
 	Observer__btf        string
@@ -359,6 +360,8 @@ var (
 	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, alwaysLoad}
 	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, alwaysLoad}
 	ObserverTlsStats    = ObserverMap{"tls_map_stats", "", &ObserverExecve, alwaysLoad}
+	/* Cilium maps */
+	ObserverCiliumSnat = ObserverMap{"cilium_snat_v4_external", "", &ObserverTCPConnect, isExternal}
 
 	observerMaps = []*ObserverMap{
 		&ObserverSocketMap,
@@ -370,6 +373,7 @@ var (
 		&ObserverExecveStats,
 		&ObserverSocketStats,
 		&ObserverTlsStats,
+		&ObserverCiliumSnat,
 	}
 )
 
@@ -885,7 +889,8 @@ func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int, b
 		load.Observer__program,
 		load.observer__label,
 		k.bpfDir+load.observer__prog,
-		k.mapDir)
+		k.mapDir,
+		k.ciliumDir)
 	if err != nil {
 		return err, fd
 	}
@@ -1479,6 +1484,7 @@ type ObserverKprobe struct {
 	/* Configuration */
 	bpfDir     string
 	mapDir     string
+	ciliumDir  string
 	interfaces string
 	listeners  map[Listener]struct{}
 	perfConfig *bpf.PerfEventConfig
@@ -1611,10 +1617,11 @@ func (k *ObserverKprobe) RemovePrograms() {
 	os.Remove(k.mapDir)
 }
 
-func NewObserverKprobe(bpfDir, mapDir, interfaces string, tls, tlstc, pretty bool) *ObserverKprobe {
+func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces string, tls, tlstc, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:        bpfDir,
 		mapDir:        mapDir,
+		ciliumDir:     ciliumDir,
 		interfaces:    interfaces,
 		enableTLS:     tls,
 		enableTLSTC:   tlstc,
