@@ -72,6 +72,7 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 			return TC_ACT_OK;
 
 		post->clienthello = *event;
+		memset(&post->serverhello, 0, sizeof(post->serverhello));
 
 		payload = skb_tcp_payload(skb, tcp, &off);
 		if (!payload)
