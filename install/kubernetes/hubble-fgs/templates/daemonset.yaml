@@ -60,6 +60,16 @@ spec:
                 fieldPath: spec.nodeName
           - name: FGS_SOCKET_PATH
             value: "/var/run/cilium/hubble-fgs.sock"
+{{- if .Values.exportAllowList }}
+          - name: EXPORT_ALLOW_LIST
+            value: |-
+{{- .Values.exportAllowList | trim | nindent 14 }}
+{{- end }}
+{{- if .Values.exportDenyList }}
+          - name: EXPORT_DENY_LIST
+            value: |-
+{{- .Values.exportDenyList | trim | nindent 14 }}
+{{- end }}
       hostNetwork: true
       restartPolicy: Always
       terminationGracePeriodSeconds: 1
