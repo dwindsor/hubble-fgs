@@ -41,7 +41,12 @@ int event_tc_egress_tcp(struct __sk_buff *skb)
 		return SK_PASS;
 	clienthello.type = 0;
 	bpf_parse_tls(skb, payload, off, &clienthello);
-	if (is_expected_tls_client_hello(&clienthello))
-		map_update_elem(&tls_map, &tuple, &clienthello, 0);
+	if (is_expected_tls_client_hello(&clienthello)) {
+		int err, zero = 0, *cntr;
+
+		err = map_update_elem(&tls_map, &tuple, &clienthello, 0);
+		if (!err && (cntr = map_lookup_elem(&tls_map_stats, &zero)))
+			*cntr = *cntr + 1;
+	}
 	return SK_PASS;
 }

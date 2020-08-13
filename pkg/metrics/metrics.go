@@ -50,6 +50,11 @@ var (
 		Help:        "The total number of FGS errors. For internal use only.",
 		ConstLabels: nil,
 	}, []string{"type"})
+	ExecveMapSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "isovalent_fgs_map_in_use_gauge",
+		Help:        "The total number of in-use entries per map.",
+		ConstLabels: nil,
+	}, []string{"map", "total"})
 )
 
 func getProcessInfo(process *fgs.Process) (binary string, namespace string) {

@@ -34,11 +34,16 @@ int bpf_sk_msg_tls(struct sk_msg_md *skmsg)
 	event.clienthello.type = 0;
 	bpf_parse_tls(skmsg, (void *)(long)skmsg->data, 0, &event.clienthello);
 	if (event.clienthello.type == TLS_TYPE_HANDSHAKE) {
+		int err, zero = 0, *cntr;
+
 		event.tuple.daddr = skmsg->remote_ip4;
 		event.tuple.saddr = skmsg->local_ip4;
 		event.tuple.dport = skmsg->remote_port;
 		event.tuple.sport = skmsg->local_port;
-		map_update_elem(&tls_map, &event.tuple, &event.clienthello, 0);
+
+		err = map_update_elem(&tls_map, &event.tuple, &event.clienthello, 0);
+		if (!err && (cntr = map_lookup_elem(&tls_map_stats, &zero)))
+			*cntr = *cntr + 1;
 	}
 	return SK_PASS;
 }

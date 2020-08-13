@@ -355,6 +355,10 @@ var (
 	ObserverTCTLSMap = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, isTLSTCLoad}
 	ObserverSockMap  = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, isTLSLoad}
 	ObserverTLSMap   = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS, isTLSLoad}
+	/* Internal statistics for debugging */
+	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, alwaysLoad}
+	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, alwaysLoad}
+	ObserverTlsStats    = ObserverMap{"tls_map_stats", "", &ObserverExecve, alwaysLoad}
 
 	observerMaps = []*ObserverMap{
 		&ObserverSocketMap,
@@ -363,6 +367,9 @@ var (
 		&ObserverSockMap,
 		&ObserverTLSMap,
 		&ObserverTCTLSMap,
+		&ObserverExecveStats,
+		&ObserverSocketStats,
+		&ObserverTlsStats,
 	}
 )
 
@@ -826,7 +833,6 @@ func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) e
 	}
 
 	for _, m := range observerMaps {
-		var fd int
 		var err error
 
 		if m.shouldPin(k) == false {
@@ -835,13 +841,15 @@ func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) e
 
 		pin := k.mapDir + m.mapName
 
-		fd, err = bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName,
+		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
 		k.log.Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
 		if err != nil {
 			return fmt.Errorf("failed %d load map (%s): %s\n", fd, m.mapType, err)
 		}
 	}
+
+	k.startUpdateMapMetrics()
 	return nil
 }
 

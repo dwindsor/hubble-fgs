@@ -382,3 +382,23 @@ struct sched_execve_args {
 	int pid;
 	int old_pid;
 };
+
+struct bpf_map_def __attribute__((section("maps"), used)) execve_map_stats = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(int),
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) socket_map_stats = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(int),
+	.max_entries = 1,
+};
+struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(int),
+	.max_entries = 1,
+};

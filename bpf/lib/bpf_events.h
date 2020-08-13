@@ -58,7 +58,11 @@ struct execve_map_value *map_lookup_hash(__u32 pid)
 	event = map_lookup_elem(&execve_map, &pid);
 	if (!event) {
 		struct execve_map_value value;
+		int zero = 0, *cntr;
 
+		if ((cntr = map_lookup_elem(&execve_map_stats, &zero))) {
+			*cntr = *cntr + 1;
+		}
 		memset(&value, 0, sizeof(struct execve_map_value));
 		map_update_elem(&execve_map, &pid, &value, 0);
 		event = map_lookup_elem(&execve_map, &pid);
@@ -90,7 +94,14 @@ void map_delete_array(__u32 pid)
 static inline __attribute__((always_inline))
 void map_delete_hash(__u32 pid)
 {
-	map_delete_elem(&execve_map, &pid);
+	int err = map_delete_elem(&execve_map, &pid);
+	int zero = 0, *cntr;
+
+	if (!err && (cntr = map_lookup_elem(&execve_map_stats, &zero))) {
+		/* We don't account for initial elements in map */
+		if (*cntr > 0)
+			*cntr = *cntr - 1;
+	}
 }
 
 static inline __attribute__((always_inline))
@@ -747,7 +758,11 @@ struct event_execve *event_get_curr_execve(struct msg_execve_event *msg)
 static inline __attribute__((always_inline))
 void add_socketmap(struct msg_tls_ipv4 *tuple, struct msg_execve_key *v)
 {
-	map_update_elem(&socket_map, tuple, v, 0);
+	int err = map_update_elem(&socket_map, tuple, v, 0);
+	int zero = 0, *cntr;
+
+	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
+		*cntr = *cntr + 1;
 }
 
 static inline __attribute__((always_inline))
