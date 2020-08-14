@@ -58,6 +58,8 @@ func (k *ObserverKprobe) startUpdateMapMetrics() {
 				sum += v.Value[cpu]
 			}
 			metrics.ExecveMapSize.WithLabelValues(m.mapName, strconv.Itoa(int(mapLink.MapInfo.MaxEntries))).Set(float64(sum))
+			mapLink.Close()
+			mapLinkStats.Close()
 		}
 	}
 
