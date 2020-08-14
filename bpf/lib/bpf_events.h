@@ -58,13 +58,12 @@ struct execve_map_value *map_lookup_hash(__u32 pid)
 	event = map_lookup_elem(&execve_map, &pid);
 	if (!event) {
 		struct execve_map_value value;
-		int zero = 0, *cntr;
+		int err, zero = 0, *cntr;
 
-		if ((cntr = map_lookup_elem(&execve_map_stats, &zero))) {
-			*cntr = *cntr + 1;
-		}
 		memset(&value, 0, sizeof(struct execve_map_value));
-		map_update_elem(&execve_map, &pid, &value, 0);
+		err = map_update_elem(&execve_map, &pid, &value, 0);
+		if (!err && (cntr = map_lookup_elem(&execve_map_stats, &zero)))
+			*cntr = *cntr + 1;
 		event = map_lookup_elem(&execve_map, &pid);
 	}
 	return event;
@@ -97,11 +96,8 @@ void map_delete_hash(__u32 pid)
 	int err = map_delete_elem(&execve_map, &pid);
 	int zero = 0, *cntr;
 
-	if (!err && (cntr = map_lookup_elem(&execve_map_stats, &zero))) {
-		/* We don't account for initial elements in map */
-		if (*cntr > 0)
-			*cntr = *cntr - 1;
-	}
+	if (!err && (cntr = map_lookup_elem(&execve_map_stats, &zero)))
+		*cntr = *cntr - 1;
 }
 
 static inline __attribute__((always_inline))
