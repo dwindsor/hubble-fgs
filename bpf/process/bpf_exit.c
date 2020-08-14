@@ -22,7 +22,7 @@ int event_exit(struct sched_execve_args *ctx)
 	struct execve_map_value *enter;
 	__u32 pid;
 
-	pid = get_current_pid_tgid() >> 32;
+	pid = get_current_pid_tgid() & 0xFFFFffff;
 	enter = map_lookup_event(pid);
 	if (!enter)
 		return 0;
