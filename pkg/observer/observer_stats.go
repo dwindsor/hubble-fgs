@@ -12,11 +12,11 @@ import (
 )
 
 type statKey struct {
-	Key int
+	Key int32
 }
 
 type statValue struct {
-	Value [64]int
+	Value [64]int32
 }
 
 func (k *statKey) String() string             { return fmt.Sprintf("key=%d", k.Key) }
@@ -53,7 +53,7 @@ func (k *ObserverKprobe) startUpdateMapMetrics() {
 			if !ok {
 				continue
 			}
-			sum := int(0)
+			sum := int32(0)
 			for cpu := int(0); cpu < runtime.NumCPU(); cpu++ {
 				sum += v.Value[cpu]
 			}
