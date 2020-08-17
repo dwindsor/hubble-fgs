@@ -15,9 +15,12 @@
 package filters
 
 import (
+	"context"
 	"testing"
 
+	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -58,4 +61,48 @@ func Test_maybeExecProbe(t *testing.T) {
 		"/bin/ash",
 		"-c \"! curl -s --fail --connect-timeout 5 -o /dev/null echo-a/private\"",
 		[]string{"ash", "-c", "! curl -s --fail --connect-timeout 5 -o /dev/null echo-a/private"}))
+}
+
+func Test_healthCheckFilter(t *testing.T) {
+	maybeHealthCheck, err := BuildFilterList(context.Background(),
+		[]*fgs.Filter{{HealthCheck: &wrappers.BoolValue{Value: true}}},
+		[]OnBuildFilter{&HealthCheckFilter{}})
+	assert.NoError(t, err)
+	notHealthCheck, err := BuildFilterList(context.Background(),
+		[]*fgs.Filter{{HealthCheck: &wrappers.BoolValue{Value: false}}},
+		[]OnBuildFilter{&HealthCheckFilter{}})
+	assert.NoError(t, err)
+
+	process := v1.Event{
+		Event: &fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Pod: &fgs.Pod{Container: &fgs.Container{
+					MaybeExecProbe: true,
+				}}}},
+			},
+		},
+	}
+	parent := v1.Event{
+		Event: &fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &fgs.ProcessConnect{Parent: &fgs.Process{Pod: &fgs.Pod{Container: &fgs.Container{
+					MaybeExecProbe: true,
+				}}}},
+			},
+		},
+	}
+	neither := v1.Event{
+		Event: &fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Pod: &fgs.Pod{Container: &fgs.Container{}}}},
+			},
+		},
+	}
+
+	assert.True(t, maybeHealthCheck.MatchOne(&process))
+	assert.True(t, maybeHealthCheck.MatchOne(&parent))
+	assert.False(t, maybeHealthCheck.MatchOne(&neither))
+	assert.False(t, notHealthCheck.MatchOne(&process))
+	assert.False(t, notHealthCheck.MatchOne(&parent))
+	assert.True(t, notHealthCheck.MatchOne(&neither))
 }
