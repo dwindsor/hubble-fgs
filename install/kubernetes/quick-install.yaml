@@ -66,6 +66,7 @@ spec:
             - --export-file-compress=true
             - --enable-k8s-api
             - --enable-cilium-api
+            - --cilium-bpf=/sys/fs/bpf/tc/globals/
             - --metrics-server=:2112
           image: quay.io/isovalent/hubble-fgs:latest
           imagePullPolicy: Always

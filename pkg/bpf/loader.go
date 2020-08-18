@@ -172,10 +172,17 @@ int bpf_loader_set_map(struct bpf_object *obj,
 			char ciliumfd[512];
 
 			if (ciliumdir) {
-				strncpy(ciliumfd, mapdir, sizeof(pinfd));
+				strncpy(ciliumfd, ciliumdir, sizeof(pinfd));
 				strncat(ciliumfd, name, sizeof(pinfd) - 1);
 
 				fd = bpf_obj_get(ciliumfd);
+				if (fd < 0) {
+					if (verbosity)
+						fprintf(stderr, "searched for Cilium bpf_map %s not found\n", ciliumfd);
+				} else {
+					if (verbosity)
+						fprintf(stderr, "found Cilium bpf_map %s\n", ciliumfd);
+				}
 			}
 
 			if (fd < 0) {
@@ -639,7 +646,7 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
 	filterAttrs := netlink.FilterAttrs{
 		LinkIndex: link.Attrs().Index,
 		Parent:    parent,
-		Handle:    netlink.MakeHandle(0, 1),
+		Handle:    netlink.MakeHandle(0, 2),
 		Protocol:  unix.ETH_P_ALL,
 		Priority:  1,
 	}
@@ -647,7 +654,7 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
 		FilterAttrs:  filterAttrs,
 		Fd:           progFd,
 		Name:         name,
-		DirectAction: false,
+		DirectAction: true,
 	}
 	if filter.Fd < 0 {
 		return fmt.Errorf("BpfFilter failed (%s): %d\n", linkName, filter.Fd), 0

@@ -31,6 +31,47 @@ struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 	.max_entries = 1,
 };
 
+struct nat_entry {
+	__u64 created;
+	__u64 host_local;	/* Only single bit used. */
+	__u64 pad1;		/* Future use. */
+	__u64 pad2;		/* Future use. */
+};
+
+struct ipv4_ct_tuple {
+	/* Address fields are reversed, i.e.,
+	 * these field names are correct for reply direction traffic. */
+	__be32		daddr;
+	__be32		saddr;
+	/* The order of dport+sport must not be changed!
+	 * These field names are correct for original direction traffic. */
+	__be16		dport;
+	__be16		sport;
+	__u8		nexthdr;
+	__u8		flags;
+} __attribute__((packed));
+
+struct ipv4_nat_entry {
+	struct nat_entry common;
+	union {
+		struct {
+			__be32 to_saddr;
+			__be16 to_sport;
+		};
+		struct {
+			__be32 to_daddr;
+			__be16 to_dport;
+		};
+	};
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) cilium_snat_v4_external = {
+	.type		= BPF_MAP_TYPE_LRU_HASH,
+	.key_size	= sizeof(struct ipv4_ct_tuple),
+	.value_size	= sizeof(struct ipv4_nat_entry),
+	.max_entries	= 1,
+};
+
 #define TLS_TYPE_HELLO 22
 #define ETH_P_IP 0x800
 
@@ -38,6 +79,8 @@ __attribute__((section(("tc/ingress_tcp")), used))
 int event_tc_ingress_tcp(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
+	struct ipv4_nat_entry *nat;
+	struct ipv4_ct_tuple ct = {0};
 	struct msg_tls *event;
 	struct tcphdr *tcp;
 	int off = 0;
@@ -46,8 +89,27 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 
 	tcp = skb_tls_key(skb, &off, &key);
 	if (!tcp)
-		return TC_ACT_OK;
+		return TC_ACT_UNSPEC;
 
+	/* Egress hook runs in-front of Cilium SNAT, so it used same IP addr pairs
+	 * as seen by socket. But, ingress hook is also running in front Cilium
+	 * SNAT so the TCP key is before NAT and needs to be translated using
+	 * the BPF map.
+	 */
+	ct.daddr = key.daddr;
+	ct.saddr = key.saddr;
+	ct.dport = bpf_htons(key.dport);
+	ct.sport = bpf_htons(key.sport);
+	ct.nexthdr = IPPROTO_TCP;
+	ct.flags = 1;
+
+	nat = map_lookup_elem(&cilium_snat_v4_external, &ct);
+	if (nat) {
+		key.daddr = nat->to_daddr;
+		key.dport = bpf_ntohs(nat->to_dport);
+	}
+
+	/* Swap key to match egress side */
 	addr = key.saddr;
 	key.saddr = key.daddr;
 	key.daddr = addr;
@@ -59,30 +121,31 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 
 	event = map_lookup_elem(&tls_map, &key);
 	if (!event)
-		return TC_ACT_OK;
+		return TC_ACT_UNSPEC;
 
 	if (is_expected_tls_client_hello(event)) {
-		const int zero = 0;
-		struct msg_tls_event *post = map_lookup_elem(&heap, &zero);
 		struct msg_execve_key *execve;
+		struct msg_tls_event *post;
+		const int zero = 0;
 		void *payload;
 		int err;
 
+		post = map_lookup_elem(&heap, &zero);
 		if (!post)
-			return TC_ACT_OK;
+			return TC_ACT_UNSPEC;
 
 		post->clienthello = *event;
 		memset(&post->serverhello, 0, sizeof(post->serverhello));
 
 		payload = skb_tcp_payload(skb, tcp, &off);
 		if (!payload)
-			return TC_ACT_OK;
+			return TC_ACT_UNSPEC;
 		err = bpf_parse_tls(skb, payload, off, &post->serverhello);
 		if (err)
-			return TC_ACT_OK;
+			return TC_ACT_UNSPEC;
 
 		if (!is_expected_tls_server_hello(&post->serverhello))
-			return TC_ACT_OK;
+			return TC_ACT_UNSPEC;
 
 		post->tuple = key;
 		post->common.op = MSG_OP_TLS;
@@ -99,5 +162,5 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		post->serverhello.alert_level = 0;
 		post->clienthello.alert_level = 0;
 	}
-	return TC_ACT_OK;
+	return TC_ACT_UNSPEC;
 }

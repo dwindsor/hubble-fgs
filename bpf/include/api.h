@@ -19,6 +19,7 @@
 #define TC_ACT_REPEAT           6
 #define TC_ACT_REDIRECT         7
 #endif
+#define TC_ACT_UNSPEC		-1
 
 /** Misc macros. */
 
