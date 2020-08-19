@@ -16,7 +16,7 @@ type statKey struct {
 }
 
 type statValue struct {
-	Value [64]int32
+	Value [64]int64 // kernel rounds up to 64bits so pretend its a 64bit here
 }
 
 func (k *statKey) String() string             { return fmt.Sprintf("key=%d", k.Key) }
@@ -53,7 +53,7 @@ func (k *ObserverKprobe) startUpdateMapMetrics() {
 			if !ok {
 				continue
 			}
-			sum := int32(0)
+			sum := int64(0)
 			for cpu := int(0); cpu < runtime.NumCPU(); cpu++ {
 				sum += v.Value[cpu]
 			}
