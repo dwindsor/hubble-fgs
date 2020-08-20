@@ -403,3 +403,19 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
 	.value_size = sizeof(__s64),
 	.max_entries = 1,
 };
+
+#ifndef bpf_ntohs
+#define bpf_ntohs(x)		__builtin_bswap16(x)
+#endif
+
+#ifndef bpf_htons
+#define bpf_htons(x)		__builtin_bswap16(x)
+#endif
+
+#ifndef bpf_ntohl
+#define bpf_ntohl(x)		__builtin_bswap32(x)
+#endif
+
+#ifndef bpf_htonl
+#define bpf_htonl(x)		__builtin_bswap32(x)
+#endif
