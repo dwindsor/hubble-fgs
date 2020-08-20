@@ -387,19 +387,19 @@ struct sched_execve_args {
 struct bpf_map_def __attribute__((section("maps"), used)) execve_map_stats = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__s32),
-	.value_size = sizeof(__s32),
+	.value_size = sizeof(__s64),
 	.max_entries = 1,
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) socket_map_stats = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__s32),
-	.value_size = sizeof(__s32),
+	.value_size = sizeof(__s64),
 	.max_entries = 1,
 };
 struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__s32),
-	.value_size = sizeof(__s32),
+	.value_size = sizeof(__s64),
 	.max_entries = 1,
 };
