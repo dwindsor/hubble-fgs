@@ -125,6 +125,12 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.Ge
 			NodeName: pm.nodeName,
 			Time:     ktimeToProto(msg.ProcessKey.Ktime),
 		}
+	case api.MSG_OP_IPV4_TCPCLOSE:
+		res = &fgs.GetEventsResponse{
+			Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: pm.GetProcessClose(msg)},
+			NodeName: pm.nodeName,
+			Time:     ktimeToProto(msg.ProcessKey.Ktime),
+		}
 	case api.MSG_OP_IPV4_LISTEN:
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: pm.GetProcessListen(msg)},
@@ -434,6 +440,48 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 		ServerAlert:       reader.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
 		ClientSession:     reader.GetTLSSession(event.ClientHello.Session),
 		ServerSession:     reader.GetTLSSession(event.ServerHello.Session),
+	}
+}
+
+// GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
+func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessClose {
+	var sourcePort, destinationPort *wrappers.UInt32Value
+	if event.Tuple.SPort != 0 {
+		sourcePort = &wrappers.UInt32Value{
+			Value: uint32(reader.GetSport(event.Tuple.SPort)),
+		}
+	}
+	if event.Tuple.DPort != 0 {
+		destinationPort = &wrappers.UInt32Value{
+			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
+		}
+	}
+
+	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process == nil {
+		process = &fgs.Process{
+			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
+	}
+	if parent == nil {
+		parent = &fgs.Process{}
+	}
+	endpoint := pm.getProcessEndpoint(process)
+
+	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
+	var destinationNames []string
+	if endpoint != nil {
+		destinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+	}
+	return &fgs.ProcessClose{
+		Process:          process,
+		Parent:           parent,
+		SourceIp:         reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourcePort:       sourcePort,
+		DestinationIp:    destinationIP.String(),
+		DestinationPort:  destinationPort,
+		DestinationNames: destinationNames,
 	}
 }
 

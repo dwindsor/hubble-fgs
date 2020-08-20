@@ -86,6 +86,8 @@ func handleProcessedEvent(processedEvent interface{}) {
 		switch ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessConnect:
 			eventType = fgs.EventType_PROCESS_CONNECT.String()
+		case *fgs.GetEventsResponse_ProcessClose:
+			eventType = fgs.EventType_PROCESS_CLOSE.String()
 		case *fgs.GetEventsResponse_ProcessExec:
 			eventType = fgs.EventType_PROCESS_EXEC.String()
 		case *fgs.GetEventsResponse_ProcessListen:

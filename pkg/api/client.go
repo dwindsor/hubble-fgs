@@ -64,6 +64,10 @@ const (
 
 	MSG_OP_EXIT = 7
 
+	MSG_OP_IPV4_TCPCLOSE = 8
+)
+
+const (
 	ARGSBUFFER     = 1024 + 16
 	SIZEOF_EXECVE  = 32
 	MAX_SIZEOF_CWD = 256

@@ -519,6 +519,115 @@ var _ interface {
 	ErrorName() string
 } = ProcessConnectValidationError{}
 
+// Validate checks the field values on ProcessClose with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *ProcessClose) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetProcess()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCloseValidationError{
+				field:  "Process",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetParent()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCloseValidationError{
+				field:  "Parent",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for SourceIp
+
+	if v, ok := interface{}(m.GetSourcePort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCloseValidationError{
+				field:  "SourcePort",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for DestinationIp
+
+	if v, ok := interface{}(m.GetDestinationPort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCloseValidationError{
+				field:  "DestinationPort",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// ProcessCloseValidationError is the validation error returned by
+// ProcessClose.Validate if the designated constraints aren't met.
+type ProcessCloseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ProcessCloseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ProcessCloseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ProcessCloseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ProcessCloseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ProcessCloseValidationError) ErrorName() string { return "ProcessCloseValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ProcessCloseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sProcessClose.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ProcessCloseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ProcessCloseValidationError{}
+
 // Validate checks the field values on ProcessListen with the rules defined in
 // the proto definition for this message. If any rules are violated, an error
 // is returned.
@@ -1096,6 +1205,18 @@ func (m *GetEventsResponse) Validate() error {
 			if err := v.Validate(); err != nil {
 				return GetEventsResponseValidationError{
 					field:  "ProcessExit",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *GetEventsResponse_ProcessClose:
+
+		if v, ok := interface{}(m.GetProcessClose()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsResponseValidationError{
+					field:  "ProcessClose",
 					reason: "embedded message failed validation",
 					cause:  err,
 				}

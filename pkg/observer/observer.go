@@ -610,6 +610,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		k.observerListenersExit(msgUnix)
 	case api.MSG_OP_IPV4_TCPCONNECT,
 		api.MSG_OP_IPV4_TCPCONNECTRET,
+		api.MSG_OP_IPV4_TCPCLOSE,
 		api.MSG_OP_IPV4_BIND,
 		api.MSG_OP_IPV4_LISTEN:
 		m := api.MsgIPv4Tcp{}
