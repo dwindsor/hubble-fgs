@@ -19,6 +19,13 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
+struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(struct msg_tls_ipv4),
+	.value_size = sizeof(struct msg_tls),
+	.max_entries = 32000,
+};
+
 __attribute__((section(("kprobe/tcp_close")), used))
 int event_ipv4_close(struct pt_regs *ctx)
 {
@@ -73,5 +80,6 @@ int event_ipv4_close(struct pt_regs *ctx)
 	size = sizeof(struct msg_ipv4_tcp_event);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
 	del_socketmap(&tuple);
+	map_delete_elem(&tls_map, &tuple);
 	return 1;
 }
