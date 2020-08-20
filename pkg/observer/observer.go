@@ -223,6 +223,21 @@ var (
 		-1,
 	}
 
+	ObserverTCPClose = bpfLoad{
+		"", "bpf_tcpclose.o",
+		"tcp_close",
+		"tcp_close",
+		"kprobe/tcp_close",
+		"kprobe_tcp_close",
+
+		false,
+		true,
+		"kprobe",
+		alwaysLoad,
+
+		-1,
+	}
+
 	ObserverListen = bpfLoad{
 		"", "bpf_listen.o",
 		"__inet_hash",
@@ -338,6 +353,7 @@ var (
 		&ObserverFork,
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
+		&ObserverTCPClose,
 		&ObserverListen,
 		&ObserverSockopsEstablished,
 		&ObserverSkmsgTLS,

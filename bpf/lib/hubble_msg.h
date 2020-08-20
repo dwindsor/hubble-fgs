@@ -122,6 +122,7 @@ enum msg_ops {
 	MSG_OP_EXECVE,
 	MSG_OP_TLS,
 	MSG_OP_EXIT,
+	MSG_OP_IPV4_TCPCLOSE,
 	MSG_OP_MAX,
 };
 

@@ -762,6 +762,16 @@ void add_socketmap(struct msg_tls_ipv4 *tuple, struct msg_execve_key *v)
 }
 
 static inline __attribute__((always_inline))
+void del_socketmap(struct msg_tls_ipv4 *tuple)
+{
+	int err = map_delete_elem(&socket_map, tuple);
+	int zero = 0, *cntr;
+
+	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
+		*cntr = *cntr - 1;
+}
+
+static inline __attribute__((always_inline))
 struct msg_execve_key *lookup_socketmap(struct msg_tls_ipv4 *tuple)
 {
 	return map_lookup_elem(&socket_map, tuple);
