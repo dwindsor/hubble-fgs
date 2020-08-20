@@ -85,6 +85,7 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
 	ObserverFork.Observer__program = "../../bpf/objs/bpf_fork.o"
 	ObserverTCPConnect.Observer__program = "../../bpf/objs/bpf_tcpmon.o"
 	ObserverTCPConnectRet.Observer__program = "../../bpf/objs/bpf_tcpmonret.o"
+	ObserverTCPClose.Observer__program = "../../bpf/objs/bpf_tcpclose.o"
 	ObserverListen.Observer__program = "../../bpf/objs/bpf_listen.o"
 	ObserverSockopsEstablished.Observer__program = "../../bpf/objs/bpf_sockops.o"
 	ObserverSkmsgTLS.Observer__program = "../../bpf/objs/bpf_skmsg_tls.o"
