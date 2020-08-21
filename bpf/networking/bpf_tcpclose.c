@@ -80,15 +80,11 @@ int event_ipv4_close(struct pt_regs *ctx)
 	if (process) {
 		value.key.pid = process->pid;
 		value.key.ktime = process->ktime;
-	} else {
-		value.key.pid = 0;
-		value.key.ktime = 0;
+
+		size = sizeof(struct msg_ipv4_tcp_event);
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
 	}
-
-	size = sizeof(struct msg_ipv4_tcp_event);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
 	del_socketmap(&tuple);
-
 	tuple.dport = bpf_htons(tuple.dport);
 	map_delete_elem(&tls_map, &tuple);
 	return 1;
