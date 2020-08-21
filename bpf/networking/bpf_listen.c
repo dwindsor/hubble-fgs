@@ -49,5 +49,25 @@ int event_sys_listen(struct pt_regs *ctx)
 
 	map_update_elem(&ipv4_tcp_map, &key, &value, 0);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, sizeof(struct msg_ipv4_tcp_event));
+
+	{
+		struct msg_execve_key v = {0};
+		struct msg_tls_ipv4 tuple;
+
+		tuple.saddr = key.saddr;
+		tuple.daddr = 0;
+		tuple.dport = 0;
+		tuple.sport = key.sport;
+		tuple.proto = 0;
+		tuple.pad[0] = 0;
+		tuple.pad[1] = 0;
+		tuple.pad[2] = 0;
+
+		v.pid = process->key.pid;
+		v.ktime = process->key.ktime;
+
+		add_socketmap(&tuple, &v);
+	}
+
 	return 0;
 }
