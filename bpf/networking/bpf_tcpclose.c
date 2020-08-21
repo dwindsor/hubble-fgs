@@ -26,7 +26,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.max_entries = 32000,
 };
 
-__attribute__((section(("kprobe/tcp_close")), used))
+__attribute__((section(("kprobe/tcp_set_state")), used))
 int event_ipv4_close(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_event value;
@@ -34,6 +34,12 @@ int event_ipv4_close(struct pt_regs *ctx)
 	struct msg_tls_ipv4 tuple;
 	struct sock *skp;
 	size_t size;
+	int state;
+
+
+	state = ctx->si;
+	if (state != TCP_CLOSE)
+		return 0;
 
 	skp = (void *)((ctx)->di);
 
@@ -68,14 +74,16 @@ int event_ipv4_close(struct pt_regs *ctx)
 	value.tuple.pad[4] = 0;
 
 	value.ret = 0; // Populated by kretprobe
+	memset(value.key.pad, 0, sizeof(value.key.pad));
 
 	process = lookup_socketmap(&tuple);
-	if (!process)
-		return 0;
-
-	memset(value.key.pad, 0, sizeof(value.key.pad));
-	value.key.pid = process->pid;
-	value.key.ktime = process->ktime;
+	if (process) {
+		value.key.pid = process->pid;
+		value.key.ktime = process->ktime;
+	} else {
+		value.key.pid = 0;
+		value.key.ktime = 0;
+	}
 
 	size = sizeof(struct msg_ipv4_tcp_event);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);

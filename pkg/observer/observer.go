@@ -225,10 +225,10 @@ var (
 
 	ObserverTCPClose = bpfLoad{
 		"", "bpf_tcpclose.o",
-		"tcp_close",
-		"tcp_close",
-		"kprobe/tcp_close",
-		"kprobe_tcp_close",
+		"tcp_set_state",
+		"tcp_set_state",
+		"kprobe/tcp_set_state",
+		"kprobe_tcp_set_state",
 
 		false,
 		true,
