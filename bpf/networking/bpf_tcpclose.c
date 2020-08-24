@@ -12,19 +12,13 @@ struct bpf_map_def {
 
 #include "api.h"
 #include "hubble_msg.h"
+#include "../tls/tls_map.h"
 #include "bpf_events.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
-
-struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct msg_tls),
-	.max_entries = 32000,
-};
 
 __attribute__((section(("kprobe/tcp_set_state")), used))
 int event_ipv4_close(struct pt_regs *ctx)
@@ -86,6 +80,6 @@ int event_ipv4_close(struct pt_regs *ctx)
 	}
 	del_socketmap(&tuple);
 	tuple.dport = bpf_htons(tuple.dport);
-	map_delete_elem(&tls_map, &tuple);
+	del_tlsmap(&tuple);
 	return 1;
 }

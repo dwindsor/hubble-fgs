@@ -13,16 +13,10 @@ struct bpf_map_def {
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "tls_map.h"
 #include "parser.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
-
-struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct msg_tls),
-	.max_entries = 32000,
-};
 
 struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
