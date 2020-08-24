@@ -69,3 +69,6 @@ enableCiliumAPI: true
 # Address to expose FGS prometheus metrics (e.g. ":2112"). Metrics server will be disabled if this
 # field is not set.
 metricsServer: ":2112"
+
+# enableTLSEvents enables TLS visibility.
+enableTLSEvents: true
