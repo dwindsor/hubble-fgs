@@ -33,6 +33,9 @@ spec:
             - --export-file-max-size-mb={{ .Values.exportFileMaxSizeMB }}
             - --export-file-max-backups={{ .Values.exportFileMaxBackups }}
             - --export-file-compress={{ .Values.exportFileCompress }}
+{{- if .Values.exportFileRotationInterval }}
+            - --export-file-rotation-interval={{ .Values.exportFileRotationInterval }}
+{{- end }}
 {{- if .Values.enableK8sAPI }}
             - --enable-k8s-api
 {{- end }}

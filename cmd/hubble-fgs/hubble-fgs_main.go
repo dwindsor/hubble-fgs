@@ -31,18 +31,19 @@ var (
 
 	cmd *cobra.Command
 
-	processCacheSize     int
-	exportFilename       string
-	exportFileMaxSizeMB  int
-	exportFileMaxBackups int
-	exportFileCompress   bool
-	enableK8sAPI         bool
-	metricsServer        string
-	enableCiliumAPI      bool
-	networkInterfaces    string
-	serverAddress        string
-	runStandalone        bool
-	ciliumBPF            string
+	processCacheSize           int
+	exportFilename             string
+	exportFileMaxSizeMB        int
+	exportFileRotationInterval time.Duration
+	exportFileMaxBackups       int
+	exportFileCompress         bool
+	enableK8sAPI               bool
+	metricsServer              string
+	enableCiliumAPI            bool
+	networkInterfaces          string
+	serverAddress              string
+	runStandalone              bool
+	ciliumBPF                  string
 )
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
@@ -134,6 +135,25 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 		Compress:   exportFileCompress,
 	}
 	logger.GetLogger().WithField("logger", writer).Info("Starting JSON exporter")
+	if exportFileRotationInterval != 0 {
+		logger.GetLogger().WithField("duration", exportFileRotationInterval).Info("Periodically rotating JSON export files")
+		go func() {
+			ticker := time.NewTicker(exportFileRotationInterval)
+			for {
+				select {
+				case <-ctx.Done():
+					return
+				case <-ticker.C:
+					if rotationErr := writer.Rotate(); rotationErr != nil {
+						logger.GetLogger().
+							WithError(rotationErr).
+							WithField("filename", exportFilename).
+							Warn("Failed to rotate JSON export file")
+					}
+				}
+			}
+		}()
+	}
 	encoder := json.NewEncoder(&writer)
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
 	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder)
@@ -202,6 +222,8 @@ func init() {
 	flags.IntVar(&processCacheSize, "process-cache-size", 32768, "Size of the process cache")
 	flags.StringVar(&exportFilename, "export-filename", "", "Filename for JSON export. Disabled by default")
 	flags.IntVar(&exportFileMaxSizeMB, "export-file-max-size-mb", 10, "Size in MB for rotating JSON export files")
+	flags.DurationVar(&exportFileRotationInterval, "export-file-rotation-interval", 0,
+		"Interval at which to rotate JSON export files in addition to rotating them by size")
 	flags.IntVar(&exportFileMaxBackups, "export-file-max-backups", 5, "Number of rotated JSON export files to retain")
 	flags.BoolVar(&exportFileCompress, "export-file-compress", true, "Compress rotated JSON export files")
 	flags.String("log-level", "info", "Set log level")

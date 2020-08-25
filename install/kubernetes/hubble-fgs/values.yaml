@@ -38,6 +38,11 @@ exportFilename: /var/run/cilium/hubble-fgs.log
 # Size in megabytes at which to rotate JSON export files.
 exportFileMaxSizeMB: 10
 
+# exportFileRotationInterval enables rotating JSON export files by time *in addition to*
+# file size specified by exportFileMaxSizeMB. The value must be in the format supported
+# by https://golang.org/pkg/time/#ParseDuration. Disabled by default.
+exportFileRotationInterval: ~
+
 # Number of rotated files to retain.
 exportFileMaxBackups: 5
 
