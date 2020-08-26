@@ -784,6 +784,8 @@ struct msg_execve_key *lookup_socketmap(struct msg_tls_ipv4 *tuple)
 static inline __attribute__((always_inline))
 int is_tuple_local(struct msg_tls_ipv4 *tuple)
 {
-	return tuple->daddr == 16777343;
+	return tuple->daddr == 16777343 || // daddr lo addr
+	       tuple->saddr == 16777343 || // saddr lo addr
+	       tuple->daddr == 0;          // listening socket no addr always local
 }
 #endif // _BPF_EVENTS_H

@@ -30,9 +30,8 @@ int event_ipv4_close(struct pt_regs *ctx)
 	size_t size;
 	int state;
 
-
 	state = ctx->si;
-	if (state != TCP_CLOSE)
+	if (state != TCP_CLOSE && state != TCP_ESTABLISHED)
 		return 0;
 
 	skp = (void *)((ctx)->di);
@@ -48,7 +47,6 @@ int event_ipv4_close(struct pt_regs *ctx)
 	tuple.pad[1] = 0;
 	tuple.pad[2] = 0;
 
-	value.common.op = MSG_OP_IPV4_TCPCLOSE;
 	value.common.flags = 0;
 	value.common.pad[0] = 0;
 	value.common.pad[1] = 0;
@@ -71,16 +69,56 @@ int event_ipv4_close(struct pt_regs *ctx)
 	value.ret = 0; // Populated by kretprobe
 	memset(value.key.pad, 0, sizeof(value.key.pad));
 
-	process = lookup_socketmap(&tuple);
-	if (process) {
-		value.key.pid = process->pid;
-		value.key.ktime = process->ktime;
+	if (state == TCP_CLOSE) {
+		if (!is_tuple_local(&tuple))
+			tuple.uid = 0;
+		process = lookup_socketmap(&tuple);
+		if (process) {
+			value.common.op = MSG_OP_IPV4_TCPCLOSE;
+			value.key.pid = process->pid;
+			value.key.ktime = process->ktime;
+			size = sizeof(struct msg_ipv4_tcp_event);
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
+		}
+	} else { // state == TCP_ESTABLISHED
+		__u32 daddr = tuple.daddr;
+		__u32 saddr = tuple.saddr;
+		__u16 dport = tuple.dport;
 
-		size = sizeof(struct msg_ipv4_tcp_event);
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
+		tuple.daddr = 0;
+		tuple.dport = 0;
+
+		/* First we search the tuple with saddr set then check for
+		 * any listening sockets with saddr 0.0.0.0. Listen sockets
+		 * always have a uid so only search key space with non-zero
+		 * uid.
+		 */
+		process = lookup_socketmap(&tuple);
+		if (!process) {
+			tuple.saddr = 0;
+			process = lookup_socketmap(&tuple);
+		}
+		if (process) {
+			value.common.op = MSG_OP_IPV4_TCPACCEPT;
+			value.key.pid = process->pid;
+			value.key.ktime = process->ktime;
+			size = sizeof(struct msg_ipv4_tcp_event);
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
+			tuple.daddr = daddr;
+			tuple.dport = dport;
+			tuple.saddr = saddr;
+			if (!is_tuple_local(&tuple))
+				tuple.uid = 0;
+			add_socketmap(&tuple, process);
+		}
 	}
-	del_socketmap(&tuple);
-	tuple.dport = bpf_htons(tuple.dport);
-	del_tlsmap(&tuple);
+
+	if (state == TCP_CLOSE) {
+		if (!is_tuple_local(&tuple))
+			tuple.uid = 0;
+		del_socketmap(&tuple);
+		tuple.dport = bpf_htons(tuple.dport);
+		map_delete_elem(&tls_map, &tuple);
+	}
 	return 1;
 }

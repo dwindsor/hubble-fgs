@@ -65,6 +65,8 @@ const (
 	MSG_OP_EXIT = 7
 
 	MSG_OP_IPV4_TCPCLOSE = 8
+
+	MSG_OP_IPV4_ACCEPT = 9
 )
 
 const (

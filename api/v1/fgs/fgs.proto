@@ -93,6 +93,16 @@ message ProcessListen {
     google.protobuf.UInt32Value port = 4;
 }
 
+message ProcessAccept {
+    Process process = 1;
+    Process parent = 2;
+    string source_ip = 3;
+    google.protobuf.UInt32Value source_port = 4;
+    string destination_ip = 5;
+    google.protobuf.UInt32Value destination_port = 6;
+    repeated string destination_names = 7;
+}
+
 message ProcessExec {
     Process process = 1;
     Process parent = 2;
@@ -152,6 +162,7 @@ message GetEventsResponse {
 	Tls tls = 4;
 	ProcessExit process_exit = 5;
         ProcessClose process_close = 6;
+	ProcessAccept process_accept = 7;
     }
     // Name of the node where this event was observed.
     string node_name = 1000;
@@ -168,6 +179,7 @@ enum EventType {
 	PROCESS_TLS = 6;
 	PROCESS_EXIT = 7;
 	PROCESS_CLOSE = 8;
+	PROCESS_ACCEPT = 9;
 }
 
 message Filter {
