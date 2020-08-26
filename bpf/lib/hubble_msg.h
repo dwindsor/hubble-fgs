@@ -244,6 +244,7 @@ struct msg_tls_ipv4 {
 	__u32 daddr;
 	__u16 dport;
 	__u16 sport;
+	__u64 uid;
 	__u8  proto;
 	__u8  pad[3];
 } __attribute__((packed));

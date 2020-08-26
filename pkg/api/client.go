@@ -295,6 +295,7 @@ type MsgTLSIPv4 struct {
 	DAddr uint32
 	DPort uint16
 	SPort uint16
+	Uid   uint64
 	Proto uint8
 	Pad   [3]uint8
 }

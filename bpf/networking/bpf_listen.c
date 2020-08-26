@@ -58,6 +58,7 @@ int event_sys_listen(struct pt_regs *ctx)
 		tuple.daddr = 0;
 		tuple.dport = 0;
 		tuple.sport = key.sport;
+		probe_read(&tuple.uid, sizeof(tuple.uid), _(&(skp->__sk_common.skc_net.net)));
 		tuple.proto = 0;
 		tuple.pad[0] = 0;
 		tuple.pad[1] = 0;
