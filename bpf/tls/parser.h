@@ -334,7 +334,7 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	struct tls_handshake_client_hello *client_hello;
 	__u8 *session, *compression, adv_compression, adv_session;
 	struct tls_extension *extension;
-	volatile __u16 maxlength;
+	volatile __u32 maxlength;
 	void *payload, *data, *data_end;
 
 	data_end = (void *)(long)ctx->data_end;
@@ -360,19 +360,12 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	/* If you (a) have lots of extensions and (b) don't put required extensions in
 	 * the front of the list go away we may drop your packets for fun.
 	 */
-	maxlength = client_hello->length;
-	maxlength &= 0x7fff;
+	maxlength = *(u32*)client_hello;
+	maxlength &= 0xFFFFFF00;
+	maxlength = bpf_ntohl(maxlength);
+	maxlength &= 0x7fffff;
 	if (maxlength > 1000)
 		maxlength = 1000;
-	/* We need pruning logic to work when we walk packet layout so do a bounds check
-	 * with max length here. If needed we pull in the data. If we really don't have the
-	 * data cork until we get don't let users send us partial headers. Then max length
-	 * should follow us around.
-	 */
-	if ((void *)client_hello + maxlength > data_end) {
-		tls->flags |= TLS_FRAME_TOO_LARGE;
-		return SK_PASS; // escape hatch too many tlvs!
-	}
 
 	compiler_barrier();
 	adv_session = client_hello->session_id_length;
