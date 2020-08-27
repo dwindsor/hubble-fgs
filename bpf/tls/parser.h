@@ -347,7 +347,9 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 
 	client_hello = payload + sizeof(struct tls_hdr);
 	if ((void*)client_hello + sizeof(struct tls_handshake_client_hello) > data_end) {
-		client_hello = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_client_hello));
+		client_hello = get_data(ctx,
+					payload_off + sizeof(struct tls_hdr),
+					sizeof(struct tls_handshake_client_hello));
 		if (!client_hello) {
 			tls->flags |= TLS_HELLO_MSG_MISS;
 			return SK_PASS;
