@@ -138,7 +138,9 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe) error {
 	}
 	encoder := json.NewEncoder(&writer)
 
-	f := fmt.Sprintf(`{"pid_set":[%d]}`, getMyPid())
+	// temporarily disable the allow list while we fixup TLS events
+	// to include parent reference as well
+	f := "" //fmt.Sprintf(`{"pid_set":[%d]}`, getMyPid())
 	allowList, err := filters.ParseFilterList(f)
 	if err != nil {
 		t.Fatalf("observerLoadExporter: %s\n", err)
@@ -255,13 +257,9 @@ func compareProcess(a, b *fgs.Process) bool {
 		return false
 	}
 	if b.Binary != "" && strings.Contains(a.Binary, b.Binary) == false {
-		fmt.Printf("compareProcess: expected binary %s found binary %s\n",
-			b.Binary, a.Binary)
 		return false
 	}
 	if b.Arguments != "" && strings.Contains(a.Arguments, b.Arguments) == false {
-		fmt.Printf("compareProcess (%s): expected binary %s found binary %s\n",
-			a.Binary, b.Arguments, a.Arguments)
 		return false
 	}
 	if b.Cwd != "" && strings.Contains(a.Cwd, b.Cwd) == false {
@@ -347,68 +345,105 @@ func jsonTestCompareListen(a, b *fgs.GetEventsResponse_ProcessListen) bool {
 	return true
 }
 
-func jsonTestCompare(trace []*fgs.GetEventsResponse, attempts int) bool {
+func jsonTestCompareTls(a, b *fgs.GetEventsResponse_Tls) bool {
+	aTls := a.Tls
+	bTls := b.Tls
+
+	if ok := compareProcess(aTls.Process, bTls.Process); !ok {
+		return false
+	}
+	if bTls.NegotiatedVersion != "" && bTls.NegotiatedVersion != aTls.NegotiatedVersion {
+		fmt.Printf("compareTls: expected NegotiatedVersion %s found NegotiatedVersion %s\n",
+			bTls.NegotiatedVersion, aTls.NegotiatedVersion)
+		return false
+	}
+	if bTls.ClientVersion != "" && bTls.ClientVersion != a.Tls.ClientVersion {
+		fmt.Printf("compareTls: expect ClientVersion %s found ClientVersion %s",
+			bTls.ClientVersion, aTls.ClientVersion)
+		return false
+	}
+	return true
+}
+
+func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts, found int) bool {
+	var err error
+
 	if attempts < 1 {
 		return false
 	}
 
 	ev := fgs.GetEventsResponse{}
-	jsonFile, err := os.Open(exportFile)
-	if err != nil {
-		return false
+	if jsonFile == nil {
+		fmt.Printf("NewFile\n")
+		jsonFile, err = os.Open(exportFile)
+		if err != nil {
+			return false
+		}
+		defer jsonFile.Close()
 	}
-	defer jsonFile.Close()
 
 	dec := json.NewDecoder(jsonFile)
-	for _, t := range trace {
-		err = jsonpb.UnmarshalNext(dec, &ev)
-		if err != nil {
-			goto retry
-		}
-		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessConnect:
-			fmt.Printf("process_connect\n")
-			switch bRes := t.Event.(type) {
+	for _, t := range trace[found:] {
+		for {
+			err = jsonpb.UnmarshalNext(dec, &ev)
+			if err != nil {
+				goto retry
+			}
+			switch res := ev.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessConnect:
-				if ok := jsonTestCompareConnect(res, bRes); !ok {
-					goto retry
+				fmt.Printf("process_connect\n")
+				switch bRes := t.Event.(type) {
+				case *fgs.GetEventsResponse_ProcessConnect:
+					if ok := jsonTestCompareConnect(res, bRes); ok {
+						found++
+						goto next
+					}
 				}
-			default:
-				goto retry
-			}
-		case *fgs.GetEventsResponse_ProcessExec:
-			fmt.Printf("process_exec\n")
-			switch bRes := t.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessExec:
-				if ok := jsonTestCompareExecve(res, bRes); !ok {
-					goto retry
+				fmt.Printf("process_exec\n")
+				switch bRes := t.Event.(type) {
+				case *fgs.GetEventsResponse_ProcessExec:
+					if ok := jsonTestCompareExecve(res, bRes); ok {
+						found++
+						goto next
+					}
 				}
-			default:
-				goto retry
-			}
-		case *fgs.GetEventsResponse_ProcessListen:
-			fmt.Printf("process_listen\n")
-			switch bRes := t.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessListen:
-				if ok := jsonTestCompareListen(res, bRes); !ok {
-					goto retry
+				fmt.Printf("process_listen\n")
+				switch bRes := t.Event.(type) {
+				case *fgs.GetEventsResponse_ProcessListen:
+					if ok := jsonTestCompareListen(res, bRes); ok {
+						found++
+						goto next
+					}
 				}
+			case *fgs.GetEventsResponse_Tls:
+				fmt.Printf("tls\n")
+				switch bRes := t.Event.(type) {
+				case *fgs.GetEventsResponse_Tls:
+					if ok := jsonTestCompareTls(res, bRes); ok {
+						found++
+						goto next
+					}
+				}
+			case *fgs.GetEventsResponse_ProcessExit:
+				fmt.Printf("process_exit\n")
+			case *fgs.GetEventsResponse_ProcessClose:
+				fmt.Printf("process_close\n")
 			default:
-				goto retry
+				fmt.Printf("unknown\n")
 			}
-
-		case *fgs.GetEventsResponse_Tls:
-			fmt.Printf("process_tls\n")
-		default:
-			fmt.Printf("unknown\n")
 		}
+	next:
 	}
 
-	return true
+	if found == len(trace) {
+		return true
+	}
 retry:
 	attempts--
 	time.Sleep(retryDelay)
-	return jsonTestCompare(trace, attempts)
+	return jsonTestCompare(trace, jsonFile, attempts, found)
 }
 
 func execWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
@@ -471,7 +506,7 @@ func TestConnectEvent(t *testing.T) {
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, retries); !ok {
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -579,7 +614,7 @@ func TestExecEventClone(t *testing.T) {
 	}
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, retries); !ok {
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -632,7 +667,7 @@ func TestExistingListenEvent(t *testing.T) {
 	}
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, retries); !ok {
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -690,7 +725,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 		cmdServer.Process.Kill()
 	}
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, retries); !ok {
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -700,5 +735,66 @@ func TestLoadTCTls(t *testing.T) {
 	if minKernelVersion("4.19.0") != true {
 		return
 	}
-	getDefaultObserver(t, false, true, false)
+	kprobe := getDefaultObserver(t, false, true, false)
+	testDone(t, kprobe)
+}
+
+func TestTCTls13(t *testing.T) {
+	if minKernelVersion("4.19.0") != true {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{
+						Binary:    "curl",
+						Arguments: "https://google.com"},
+					Parent: &fgs.Process{Binary: "go-build"},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &fgs.ProcessConnect{
+					Process: &fgs.Process{
+						Binary:    "curl",
+						Arguments: "https://google.com"},
+					Parent: &fgs.Process{
+						Binary: "go-build"},
+					DestinationPort: &wrappers.UInt32Value{Value: 443},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_Tls{
+				Tls: &fgs.Tls{
+					Process: &fgs.Process{
+						Binary:    "curl",
+						Arguments: "https://google.com"},
+					NegotiatedVersion: "TLS1.3",
+					ClientVersion:     "TLS 1.2",
+					ServerVersion:     "TLS 1.2",
+					SniType:           "host_name",
+					SniName:           "www.google.com",
+					ClientFlags:       "ExtVersion",
+					ServerFlags:       "ExtVersion",
+				},
+			},
+		},
+	}
+
+	kprobe := getDefaultObserver(t, false, true, false)
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWGCurl(&execWG, &exitWG, "https://google.com")
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
 }
