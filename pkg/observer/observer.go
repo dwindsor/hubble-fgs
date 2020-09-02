@@ -1583,7 +1583,7 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 			return nil
 		}
 
-		return fmt.Errorf("Kernel version '%s' BTF search failed kernel is not white listed. Use --btf option to specify BTF path and/or '--kernel' to specify kernel version.", uname.Release[:n])
+		return fmt.Errorf("Kernel version '%s' BTF search failed kernel is not included in supported list. Use --btf option to specify BTF path and/or '--kernel' to specify kernel version.", uname.Release[:n])
 	}
 	return nil
 }
