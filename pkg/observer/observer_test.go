@@ -345,6 +345,68 @@ func jsonTestCompareListen(a, b *fgs.GetEventsResponse_ProcessListen) bool {
 	return true
 }
 
+func jsonTestCompareAccept(a, b *fgs.GetEventsResponse_ProcessAccept) bool {
+	aAccept := a.ProcessAccept
+	bAccept := b.ProcessAccept
+
+	if ok := compareProcess(aAccept.Process, bAccept.Process); !ok {
+		return false
+	}
+	if ok := compareProcess(aAccept.Parent, bAccept.Parent); !ok {
+		return false
+	}
+	if bAccept.SourceIp != "" && bAccept.SourceIp != aAccept.SourceIp {
+		fmt.Printf("compareListen: expected IP %s found Ip %s\n",
+			bAccept.SourceIp, aAccept.SourceIp)
+		return false
+	}
+	if bAccept.SourcePort != nil &&
+		bAccept.SourcePort.Value != 0 &&
+		aAccept.SourcePort.Value != bAccept.SourcePort.Value {
+		fmt.Printf("compareListen: expect port %d found port %d",
+			bAccept.SourcePort.Value, aAccept.SourcePort.Value)
+		return false
+	}
+	return true
+}
+
+func jsonTestCompareClose(a, b *fgs.GetEventsResponse_ProcessClose) bool {
+	aClose := a.ProcessClose
+	bClose := b.ProcessClose
+
+	fmt.Printf("close binary: %s -- %s\n", aClose.Process.Binary, bClose.Process.Binary)
+	if ok := compareProcess(aClose.Process, bClose.Process); !ok {
+		return false
+	}
+	if ok := compareProcess(aClose.Parent, bClose.Parent); !ok {
+		return false
+	}
+	if bClose.SourceIp != "" && bClose.SourceIp != aClose.SourceIp {
+		fmt.Printf("compareClose: expected IP %s found Ip %s\n",
+			bClose.SourceIp, aClose.SourceIp)
+		return false
+	}
+	if bClose.SourcePort != nil &&
+		bClose.SourcePort.Value != 0 &&
+		aClose.SourcePort.Value != bClose.SourcePort.Value {
+		fmt.Printf("compareClose: expect port %d found port %d",
+			bClose.SourcePort.Value, aClose.SourcePort.Value)
+		return false
+	}
+	if bClose.DestinationIp != "" && bClose.DestinationIp != aClose.DestinationIp {
+		fmt.Printf("compareClose: expected IP %s found Ip %s\n",
+			bClose.DestinationIp, aClose.DestinationIp)
+		return false
+	}
+	if bClose.DestinationPort != nil &&
+		bClose.DestinationPort.Value != 0 &&
+		aClose.DestinationPort.Value != bClose.DestinationPort.Value {
+		fmt.Printf("compareClose: expect port %d found port %d",
+			bClose.DestinationPort.Value, aClose.DestinationPort.Value)
+		return false
+	}
+	return true
+}
 func jsonTestCompareTls(a, b *fgs.GetEventsResponse_Tls) bool {
 	aTls := a.Tls
 	bTls := b.Tls
@@ -419,7 +481,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 			}
 			switch res := ev.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessConnect:
-				fmt.Printf("process_connect\n")
+				fmt.Printf("process_connect looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_ProcessConnect:
 					if ok := jsonTestCompareConnect(res, bRes); ok {
@@ -428,7 +490,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 					}
 				}
 			case *fgs.GetEventsResponse_ProcessExec:
-				fmt.Printf("process_exec\n")
+				fmt.Printf("process_exec looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_ProcessExec:
 					if ok := jsonTestCompareExecve(res, bRes); ok {
@@ -437,7 +499,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 					}
 				}
 			case *fgs.GetEventsResponse_ProcessListen:
-				fmt.Printf("process_listen\n")
+				fmt.Printf("process_listen looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_ProcessListen:
 					if ok := jsonTestCompareListen(res, bRes); ok {
@@ -445,8 +507,17 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 						goto next
 					}
 				}
+			case *fgs.GetEventsResponse_ProcessAccept:
+				fmt.Printf("process_accept looking for %t\n", t.Event)
+				switch bRes := t.Event.(type) {
+				case *fgs.GetEventsResponse_ProcessAccept:
+					if ok := jsonTestCompareAccept(res, bRes); ok {
+						found++
+						goto next
+					}
+				}
 			case *fgs.GetEventsResponse_Tls:
-				fmt.Printf("tls\n")
+				fmt.Printf("tls looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_Tls:
 					if ok := jsonTestCompareTls(res, bRes); ok {
@@ -457,7 +528,14 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 			case *fgs.GetEventsResponse_ProcessExit:
 				fmt.Printf("process_exit\n")
 			case *fgs.GetEventsResponse_ProcessClose:
-				fmt.Printf("process_close\n")
+				fmt.Printf("process_close looking for %t\n", t.Event)
+				switch bRes := t.Event.(type) {
+				case *fgs.GetEventsResponse_ProcessClose:
+					if ok := jsonTestCompareClose(res, bRes); ok {
+						found++
+						goto next
+					}
+				}
 			default:
 				fmt.Printf("unknown\n")
 			}
@@ -880,6 +958,127 @@ func TestTCTls12(t *testing.T) {
 	kprobe := getDefaultObserver(t, false, true, false)
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
+}
+
+func TestListenAcceptClose(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	rcwd := cwdPath(true)
+	fcwd := cwdPath(false)
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{Binary: "go-build"},
+					Parent:  &fgs.Process{Binary: ""},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{
+						Binary:    "nc.traditional",
+						Arguments: "-nvlp 8081",
+						Cwd:       fcwd},
+					Parent: &fgs.Process{Binary: "go-build",
+						Cwd: rcwd},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessListen{
+				ProcessListen: &fgs.ProcessListen{
+					Process: &fgs.Process{
+						Binary:    "nc.traditional",
+						Arguments: "-nvlp 8081",
+						Cwd:       fcwd},
+					Parent: &fgs.Process{
+						Binary: "go-build",
+						Cwd:    rcwd},
+					Ip:   "0.0.0.0",
+					Port: &wrappers.UInt32Value{Value: 8081},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessAccept{
+				ProcessAccept: &fgs.ProcessAccept{
+					Process: &fgs.Process{
+						Binary:    "nc.traditional",
+						Arguments: "-nvlp 8081",
+						Cwd:       fcwd},
+					Parent: &fgs.Process{
+						Binary: "go-build",
+						Cwd:    rcwd},
+					SourceIp:   "127.0.0.1",
+					SourcePort: &wrappers.UInt32Value{Value: 8081},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessClose{
+				ProcessClose: &fgs.ProcessClose{
+					Process: &fgs.Process{
+						Binary:    "nc.traditional",
+						Arguments: "-nvlp 8081",
+						Cwd:       fcwd},
+					Parent: &fgs.Process{
+						Binary: "go-build",
+						Cwd:    rcwd},
+					SourceIp:   "0.0.0.0",
+					SourcePort: &wrappers.UInt32Value{Value: 8081},
+				},
+			},
+		},
+		/* I would also like to test this, but it goes into TIME_WAIT and then
+		 * eventually close and I don't want to wait for it. So we need some
+		 * go way to close the sockets.
+		 */
+		/*
+			&fgs.GetEventsResponse{
+				Event: &fgs.GetEventsResponse_ProcessClose{
+					ProcessClose: &fgs.ProcessClose{
+						Process: &fgs.Process{
+							Binary:    "nc.traditional",
+							Arguments: "-nvlp 8081",
+							Cwd:       fcwd},
+						Parent: &fgs.Process{
+							Binary: "go-build",
+							Cwd:    rcwd},
+						SourceIp:   "127.0.0.1",
+						SourcePort: &wrappers.UInt32Value{Value: 8081},
+					},
+				},
+			},
+		*/
+	}
+
+	kprobe := getDefaultObserver(t, false, false, true)
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+
+	execWG.Wait()
+	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
+	cmdServer.Start()
+	time.Sleep(1000 * time.Millisecond)
+	cmdClient := exec.Command("nc.traditional", "127.0.0.1", "8081")
+	cmdClient.Start()
+	exitWG.Wait()
+
+	if cmdClient != nil {
+		cmdClient.Process.Signal(syscall.SIGKILL)
+	}
+	if cmdServer != nil {
+		cmdServer.Process.Signal(syscall.SIGKILL)
+	}
 	retries := jsonRetries
 	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
