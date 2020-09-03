@@ -357,11 +357,39 @@ func jsonTestCompareTls(a, b *fgs.GetEventsResponse_Tls) bool {
 			bTls.NegotiatedVersion, aTls.NegotiatedVersion)
 		return false
 	}
+	if bTls.SupportedVersions != "" && bTls.SupportedVersions != aTls.SupportedVersions {
+		fmt.Printf("compareTls: expected SupportedVersion %s found SupportedVersion %s\n",
+			bTls.SupportedVersions, aTls.SupportedVersions)
+		return false
+	}
 	if bTls.ClientVersion != "" && bTls.ClientVersion != a.Tls.ClientVersion {
 		fmt.Printf("compareTls: expect ClientVersion %s found ClientVersion %s",
 			bTls.ClientVersion, aTls.ClientVersion)
 		return false
 	}
+	if bTls.SniName != "" && strings.Contains(bTls.SniName, aTls.SniName) == false {
+		fmt.Printf("compareTls: expected SniName %s found SniName %s",
+			bTls.SniName, bTls.SniName)
+		return false
+	}
+	if bTls.SniType != "" && bTls.SniType != aTls.SniType {
+		fmt.Printf("compareTls: expected SniType %s found SniType %s",
+			bTls.SniType, bTls.SniType)
+		return false
+	}
+
+	if bTls.ClientFlags != aTls.ClientFlags {
+		fmt.Printf("compareTls: expected ClientFlags %s found ClientFlags %s",
+			bTls.ClientFlags, bTls.ClientFlags)
+		return false
+	}
+
+	if bTls.ServerFlags != aTls.ServerFlags {
+		fmt.Printf("compareTls: expected ServerFlags %s found ServerFlags %s",
+			bTls.ServerFlags, bTls.ServerFlags)
+		return false
+	}
+
 	return true
 }
 
@@ -792,6 +820,66 @@ func TestTCTls13(t *testing.T) {
 	kprobe := getDefaultObserver(t, false, true, false)
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://google.com")
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
+}
+
+func TestTCTls12(t *testing.T) {
+	if minKernelVersion("4.19.0") != true {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{
+						Binary:    "curl",
+						Arguments: "https://tls-v1-2.badssl.com:1012/"},
+					Parent: &fgs.Process{Binary: "go-build"},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &fgs.ProcessConnect{
+					Process: &fgs.Process{
+						Binary:    "curl",
+						Arguments: "https://tls-v1-2.badssl.com:1012/"},
+					Parent: &fgs.Process{
+						Binary: "go-build"},
+					DestinationPort: &wrappers.UInt32Value{Value: 1012},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_Tls{
+				Tls: &fgs.Tls{
+					Process: &fgs.Process{
+						Binary:    "curl",
+						Arguments: "https://tls-v1-2.badssl.com:1012/"},
+					DestinationPort: &wrappers.UInt32Value{Value: 1012},
+					ClientVersion:   "TLS 1.2",
+					ServerVersion:   "TLS 1.2",
+					SniType:         "host_name",
+					SniName:         "tls-v1-2.badssl.com",
+					ClientFlags:     "ExtVersion",
+					ServerFlags:     "",
+				},
+			},
+		},
+	}
+
+	kprobe := getDefaultObserver(t, false, true, false)
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
 	retries := jsonRetries
 	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
