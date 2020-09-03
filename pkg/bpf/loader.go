@@ -199,6 +199,8 @@ int bpf_loader_set_map(struct bpf_object *obj,
 		}
 		if (verbosity)
 			fprintf(stderr, "bpf_map__reused_fd, %s = %d\n", pinfd, fd);
+
+		close(fd);
 	}
 	return 0;
 }

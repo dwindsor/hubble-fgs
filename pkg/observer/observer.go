@@ -1230,6 +1230,7 @@ func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
 
 		m.Update(k, v)
 	}
+	m.Close()
 }
 
 func getPIDNS(filename string) uint32 {
@@ -1308,6 +1309,7 @@ func (k *ObserverKprobe) getTCPConnections() (map[uint32]procTCPEntry, error) {
 	if err != nil {
 		return nil, err
 	}
+	defer tcp.Close()
 	scanner := bufio.NewScanner(tcp)
 	scanner.Scan()
 	for scanner.Scan() {
