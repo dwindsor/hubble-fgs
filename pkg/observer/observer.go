@@ -1062,7 +1062,6 @@ func (k *ObserverKprobe) observerLoadProgs(stopCtx context.Context) error {
 	_, verStr, _ := getKernelVersion()
 	k.log.Infof("Loading kernel version %s", verStr)
 
-	/* Assumption observer__program execve contains all maps */
 	if err := k.observerLoadMaps(btf, stopCtx); err != nil {
 		return err
 	}
