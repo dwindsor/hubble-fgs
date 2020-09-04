@@ -63,6 +63,8 @@ func (f *EventTypeFilter) OnBuildFilter(_ context.Context, ff *fgs.Filter) ([]hu
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessExit{})
 			case api.MSG_OP_IPV4_TCPCLOSE:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessClose{})
+			case api.MSG_OP_IPV4_ACCEPT:
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessAccept{})
 			default:
 				return nil, fmt.Errorf("Unknown EventType %s", s)
 			}
