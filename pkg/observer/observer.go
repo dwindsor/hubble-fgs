@@ -25,6 +25,7 @@ import (
 	"os/exec"
 	"path/filepath"
 	"regexp"
+	"sort"
 	"strconv"
 	"strings"
 	"syscall"
@@ -755,6 +756,9 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 }
 
 func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
+	sort.Slice(procs, func(i, j int) bool {
+		return procs[i].ppid < procs[j].ppid
+	})
 	for _, p := range procs {
 		k.pushExecveEvents(p, tcpEntries, pushExecve)
 	}
