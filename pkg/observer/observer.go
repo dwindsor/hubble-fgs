@@ -115,6 +115,48 @@ func isTLSLoad(k *ObserverKprobe) bool   { return k.enableTLS }
 func isTLSTCLoad(k *ObserverKprobe) bool { return k.enableTLSTC }
 func isExternal(k *ObserverKprobe) bool  { return false }
 
+// bpfLoadState represents the state of a BPF program or map
+//
+// NB: Currently there is no case where we attempt to load a program that is
+// already loaded. If this changes, we can use the count as a reference count
+// to track users of a bpf program.
+type bpfLoadState struct {
+	//   0: idle (not loaded)
+	//   1: loaded
+	//  -1: disabled
+	count int
+}
+
+func bpfLoadStateIdle() bpfLoadState {
+	return bpfLoadState{0}
+}
+
+func (s *bpfLoadState) isLoaded() bool {
+	return s.count > 0
+}
+
+func (s *bpfLoadState) isIdle() bool {
+	return s.count == 0
+}
+
+func (s bpfLoadState) isDisabled() bool {
+	return s.count == -1
+}
+
+func (s *bpfLoadState) setDisabled() {
+	if s.isLoaded() {
+		panic(fmt.Errorf("called setDisabled() while program is loaded (cnt: %d)", s.count))
+	}
+	s.count = -1
+}
+
+func (s *bpfLoadState) setLoaded() {
+	if !s.isIdle() {
+		panic(fmt.Errorf("called setLoaded() while program is not idle (cnt: %d)", s.count))
+	}
+	s.count = 1
+}
+
 type bpfLoad struct {
 	Observer__btf        string
 	Observer__program    string
@@ -127,16 +169,16 @@ type bpfLoad struct {
 	errorFatal bool
 
 	probeType string
-	load      shouldLoad
+	loadState bpfLoadState
 
 	tracefd int
 }
 
 type ObserverMap struct {
-	mapName   string
-	mapType   string
-	bpf       *bpfLoad
-	shouldPin shouldLoad
+	mapName  string
+	mapType  string
+	bpf      *bpfLoad
+	pinState bpfLoadState
 }
 
 var (
@@ -159,7 +201,7 @@ var (
 		false,
 		true,
 		"tracepoint",
-		alwaysLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -174,7 +216,7 @@ var (
 		false,
 		true,
 		"tracepoint",
-		alwaysLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -189,7 +231,7 @@ var (
 		false,
 		true,
 		"kprobe",
-		alwaysLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -204,7 +246,7 @@ var (
 		false,
 		true,
 		"kprobe",
-		alwaysLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -219,7 +261,7 @@ var (
 		true,
 		true,
 		"kprobe",
-		alwaysLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -234,7 +276,7 @@ var (
 		false,
 		true,
 		"kprobe",
-		alwaysLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -249,7 +291,7 @@ var (
 		false,
 		true,
 		"kprobe",
-		alwaysLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -264,7 +306,7 @@ var (
 		false,
 		true,
 		"sockops",
-		isTLSLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -279,7 +321,7 @@ var (
 		false,
 		true,
 		"skmsg",
-		isTLSLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -294,7 +336,7 @@ var (
 		false,
 		true,
 		"cgrp_ingress",
-		isTLSLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -309,7 +351,7 @@ var (
 		false,
 		true,
 		"kprobe",
-		isTLSLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -324,7 +366,7 @@ var (
 		false,
 		true,
 		"tc_ingress",
-		isTLSTCLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -339,7 +381,7 @@ var (
 		false,
 		true,
 		"tc_egress",
-		isTLSTCLoad,
+		bpfLoadStateIdle(),
 
 		-1,
 	}
@@ -348,7 +390,7 @@ var (
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
 
-	observerPrograms = []*bpfLoad{
+	observerAllPrograms = []*bpfLoad{
 		&ObserverExecve,
 		&ObserverExit,
 		&ObserverFork,
@@ -364,23 +406,23 @@ var (
 		&ObserverTLSTCIngress}
 
 	/* Event Ring map */
-	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, alwaysLoad}
+	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, bpfLoadStateIdle()}
 	/* Networking and Process Monitoring maps */
-	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, alwaysLoad}
-	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, alwaysLoad}
-	ObserverTcpMap    = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, alwaysLoad}
+	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, bpfLoadStateIdle()}
+	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, bpfLoadStateIdle()}
+	ObserverTcpMap    = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, bpfLoadStateIdle()} // NB: This seems to be unused?
 	/* TLS maps */
-	ObserverTCTLSMap = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, isTLSTCLoad}
-	ObserverSockMap  = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, isTLSLoad}
-	ObserverTLSMap   = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS, isTLSLoad}
+	ObserverTCTLSMap = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle()}
+	ObserverSockMap  = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle()}
+	ObserverTLSMap   = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS, bpfLoadStateIdle()}
 	/* Internal statistics for debugging */
-	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, alwaysLoad}
-	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, alwaysLoad}
-	ObserverTlsStats    = ObserverMap{"tls_map_stats", "", &ObserverExecve, alwaysLoad}
+	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
+	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
+	ObserverTlsStats    = ObserverMap{"tls_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
 	/* Cilium maps */
-	ObserverCiliumSnat = ObserverMap{"cilium_snat_v4_external", "", &ObserverTCPConnect, isExternal}
+	ObserverCiliumSnat = ObserverMap{"cilium_snat_v4_external", "", &ObserverTCPConnect, bpfLoadStateIdle()}
 
-	observerMaps = []*ObserverMap{
+	observerAllMaps = []*ObserverMap{
 		&ObserverSocketMap,
 		&ObserverExecveMap,
 		&ObserverTCPMonMap,
@@ -396,15 +438,11 @@ var (
 
 func (k *ObserverKprobe) disableBpfLoad(bpf *bpfLoad) {
 
-	disableFn := func(k *ObserverKprobe) bool {
-		return false
-	}
-
-	bpf.load = disableFn
-	for _, om := range observerMaps {
+	bpf.loadState.setDisabled()
+	for _, om := range observerAllMaps {
 		if om.bpf == bpf {
 			logger.GetLogger().Infof("disabling map %s", om.mapName)
-			om.shouldPin = disableFn
+			om.pinState.setDisabled()
 		}
 	}
 }
@@ -852,16 +890,22 @@ func getKernelVersion() (int, string, error) {
 	return version, verStr, nil
 }
 
-func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) error {
+func (k *ObserverKprobe) observerLoadSensorMaps(sensor *observerSensor, btf string, stopCtx context.Context) error {
 	version, _, err := getKernelVersion()
 	if err != nil {
 		return err
 	}
 
-	for _, m := range observerMaps {
+	for _, m := range sensor.maps {
 		var err error
 
-		if m.shouldPin(k) == false {
+		if m.pinState.isDisabled() {
+			k.log.Infof("hubble-fgs, map %s is disabled, skipping.\n", m.mapName)
+			continue
+		}
+
+		if m.pinState.isLoaded() {
+			k.log.Infof("hubble-fgs, map %s is already loaded, skipping.\n", m.mapName)
 			continue
 		}
 
@@ -875,7 +919,6 @@ func (k *ObserverKprobe) observerLoadMaps(btf string, stopCtx context.Context) e
 		}
 	}
 
-	k.startUpdateMapMetrics()
 	return nil
 }
 
@@ -1050,7 +1093,7 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 	return nil
 }
 
-func (k *ObserverKprobe) observerLoadProgs(stopCtx context.Context) error {
+func (k *ObserverKprobe) observerLoadSensor(sensor *observerSensor, stopCtx context.Context) error {
 	var btf string
 
 	if ObserverExecve.Observer__btf == "" {
@@ -1062,17 +1105,25 @@ func (k *ObserverKprobe) observerLoadProgs(stopCtx context.Context) error {
 	_, verStr, _ := getKernelVersion()
 	k.log.Infof("Loading kernel version %s", verStr)
 
-	if err := k.observerLoadMaps(btf, stopCtx); err != nil {
+	if err := k.observerLoadSensorMaps(sensor, btf, stopCtx); err != nil {
 		return err
 	}
 
-	for _, p := range observerPrograms {
-		if p.load(k) == false {
+	for _, p := range sensor.progs {
+		if p.loadState.isDisabled() {
+			k.log.Infof("hubble-fgs, prog %s is disabled, skipping.\n", p.Observer__program)
 			continue
 		}
+
+		if p.loadState.isLoaded() {
+			k.log.Infof("hubble-fgs, prog %s is already loaded, skipping.\n", p.Observer__program)
+			continue
+		}
+
 		if err := k.observerLoadInstance(p, stopCtx); err != nil {
 			return err
 		}
+		p.loadState.setLoaded()
 	}
 	k.log.Infof("hubble-fgs, loaded BPF maps and events successfully.\n")
 	return nil
@@ -1215,7 +1266,13 @@ func getClkTck() (uint64, error) {
 
 func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
 
-	if !ObserverExecveMap.shouldPin(k) {
+	if ObserverExecveMap.pinState.isDisabled() {
+		k.log.Infof("hubble-fgs, map %s is disabled, skipping.\n", ObserverExecveMap.mapName)
+		return
+	}
+
+	if ObserverExecveMap.pinState.isLoaded() {
+		k.log.Infof("hubble-fgs, map %s is already loaded, skipping.\n", ObserverExecveMap.mapName)
 		return
 	}
 
@@ -1503,6 +1560,16 @@ type MsgFilter struct {
 	filterDrop int
 }
 
+// observerSensor is a set of bpf programs and maps that are managed as a unit.
+//
+// Contrarily to low-level facilities like kprobes, sensors are ment to be
+// visible to end users.
+type observerSensor struct {
+	name  string
+	progs []*bpfLoad
+	maps  []*ObserverMap
+}
+
 type ObserverKprobe struct {
 	/* Configuration */
 	bpfDir     string
@@ -1530,6 +1597,66 @@ func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
 	return true
 }
 
+// createInitialObserverSensor retruns the observerSensor that is loaded at initialization time
+func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
+	progs := []*bpfLoad{
+		&ObserverExecve,
+		&ObserverExit,
+		&ObserverFork,
+		&ObserverTCPConnect,
+		&ObserverTCPConnectRet,
+		&ObserverTCPClose,
+		&ObserverListen,
+	}
+
+	maps := []*ObserverMap{
+		&ObserverTCPMonMap,
+		&ObserverExecveMap,
+		&ObserverSocketMap,
+		/* &ObserverTcpMap */
+		&ObserverExecveStats,
+		&ObserverSocketStats,
+		&ObserverTlsStats, // NB: Maybe this should be under k.enableTLS?
+	}
+
+	if k.enableTLS {
+		progs = append(progs,
+			&ObserverSockopsEstablished,
+			&ObserverSkmsgTLS,
+			&ObserverCgrpIngress,
+			&ObserverTLSEvent,
+		)
+
+		maps = append(maps,
+			&ObserverSockMap,
+			&ObserverTLSMap,
+		)
+	}
+
+	if k.enableTLSTC {
+		progs = append(progs,
+			&ObserverTLSTCEgress,
+			&ObserverTLSTCIngress,
+		)
+
+		maps = append(maps,
+			&ObserverTCTLSMap,
+		)
+	}
+
+	if false {
+		maps = append(maps,
+			&ObserverCiliumSnat,
+		)
+	}
+
+	return &observerSensor{
+		name:  "__main__",
+		progs: progs,
+		maps:  maps,
+	}
+}
+
 func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
 	_, _, err := getKernelVersion()
 	if err != nil {
@@ -1544,7 +1671,7 @@ func btfFileExists(file string) error {
 }
 
 func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
-	for _, p := range observerPrograms {
+	for _, p := range observerAllPrograms {
 		if _, err := os.Stat(p.Observer__program); err == nil {
 			continue
 		}
@@ -1605,9 +1732,13 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	if _, err := k.observerMinReqs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting minimum requirements not met. %s\n", err)
 	}
-	if err := k.observerLoadProgs(ctx); err != nil {
+
+	initialSensor := k.createInitialObserverSensor()
+	if err := k.observerLoadSensor(initialSensor, ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
+	k.startUpdateMapMetrics()
+
 	k.populateExecve(ctx)
 	k.perfConfig = bpf.DefaultPerfEventConfig()
 	if err := k.runEvents(ctx); err != nil {
@@ -1626,14 +1757,14 @@ func removeTracepoint(fd int) {
 }
 
 func (k *ObserverKprobe) RemovePrograms() {
-	for _, l := range observerPrograms {
+	for _, l := range observerAllPrograms {
 		os.Remove(k.bpfDir + l.observer__prog)
 		if l.tracefd >= 0 {
 			removeTracepoint(l.tracefd)
 		}
 	}
 
-	for _, m := range observerMaps {
+	for _, m := range observerAllMaps {
 		os.Remove(k.mapDir + m.mapName)
 	}
 	os.Remove(k.bpfDir)

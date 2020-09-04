@@ -30,7 +30,7 @@ func (s *statValue) DeepCopyMapValue() bpf.MapValue { return &statValue{s.Value}
 
 func (k *ObserverKprobe) startUpdateMapMetrics() {
 	update := func() {
-		for _, m := range observerMaps {
+		for _, m := range observerAllMaps {
 			pin := k.mapDir + m.mapName
 			pinStats := pin + "_stats"
 

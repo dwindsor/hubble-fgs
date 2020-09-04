@@ -155,7 +155,8 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe) error {
 
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	kprobe.createDir()
-	if err := kprobe.observerLoadProgs(context.TODO()); err != nil {
+	initialSensor := kprobe.createInitialObserverSensor()
+	if err := kprobe.observerLoadSensor(initialSensor, context.TODO()); err != nil {
 		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadProgs error: %s", err)
 	}
@@ -180,7 +181,8 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 
 func TestObjectLoad(t *testing.T) {
 	kprobe := getDefaultObserver(t, false, false, false)
-	kprobe.observerLoadProgs(context.TODO())
+	initialSensor := kprobe.createInitialObserverSensor()
+	kprobe.observerLoadSensor(initialSensor, context.TODO())
 	kprobe.RemovePrograms()
 }
 
