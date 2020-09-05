@@ -4,8 +4,10 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"strconv"
 	"strings"
 	"sync"
+	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/hubble/pkg/cilium"
@@ -59,7 +61,7 @@ func NewProcessManager(
 	if err != nil {
 		return nil, err
 	}
-	return &ProcessManager{
+	pm := &ProcessManager{
 		log:         log,
 		cache:       processCache,
 		pidMap:      make(map[uint32]string),
@@ -67,7 +69,21 @@ func NewProcessManager(
 		watcher:     watcher,
 		ciliumState: ciliumState,
 		listeners:   make(map[listener]struct{}),
-	}, nil
+	}
+	update := func() {
+		metrics.ExecveMapSize.WithLabelValues("processLru", strconv.Itoa(int(processCacheSize))).Set(float64(pm.cache.Len()))
+	}
+	ticker := time.NewTicker(60 * time.Second)
+	go func() {
+		for {
+			select {
+			case <-ticker.C:
+				update()
+			}
+		}
+	}()
+
+	return pm, nil
 }
 
 func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEvent) *fgs.GetEventsResponse {

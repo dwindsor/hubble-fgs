@@ -55,6 +55,11 @@ var (
 		Help:        "The total number of in-use entries per map.",
 		ConstLabels: nil,
 	}, []string{"map", "total"})
+	LruMapSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "isovalent_fgs_lru_in_use_gauge",
+		Help:        "The total number of LRU in-use entries.",
+		ConstLabels: nil,
+	}, []string{"map", "total"})
 )
 
 func getProcessInfo(process *fgs.Process) (binary string, namespace string) {
