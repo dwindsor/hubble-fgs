@@ -457,6 +457,27 @@ func jsonTestCompareTls(a, b *fgs.GetEventsResponse_Tls) bool {
 	return true
 }
 
+func eventTypeString(ev interface {}) string {
+	switch ev.(type) {
+		case *fgs.GetEventsResponse_ProcessConnect:
+			return "ProcessConnect"
+		case *fgs.GetEventsResponse_ProcessListen:
+			return "ProcessListen"
+		case *fgs.GetEventsResponse_ProcessAccept:
+			return "ProcessAccept"
+		case *fgs.GetEventsResponse_Tls:
+			return "Tls"
+		case *fgs.GetEventsResponse_ProcessExec:
+			return "ProcessExec"
+		case *fgs.GetEventsResponse_ProcessExit:
+			return "ProcessExit"
+		case *fgs.GetEventsResponse_ProcessClose:
+			return "ProcessClose"
+		default:
+			return fmt.Sprintf("<UNKNOWN:%T>", ev)
+	}
+}
+
 func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts, found int) bool {
 	var err error
 
@@ -466,7 +487,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 
 	ev := fgs.GetEventsResponse{}
 	if jsonFile == nil {
-		fmt.Printf("NewFile\n")
+		fmt.Printf("jsonTestCompare: openning: %s\n", exportFile)
 		jsonFile, err = os.Open(exportFile)
 		if err != nil {
 			return false
@@ -475,66 +496,69 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 	}
 
 	dec := json.NewDecoder(jsonFile)
-	for _, t := range trace[found:] {
+	for tidx, t := range trace[found:] {
 		for {
 			err = jsonpb.UnmarshalNext(dec, &ev)
 			if err != nil {
 				goto retry
 			}
+
+			evTyStr := eventTypeString(ev.Event)
+			trTyStr := eventTypeString(t.Event)
+			fmt.Printf("tidx=%d found=%d => got %s looking for %s (string match:%t)\n", tidx, found, evTyStr, trTyStr, evTyStr == trTyStr)
 			switch res := ev.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessConnect:
-				fmt.Printf("process_connect looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_ProcessConnect:
 					if ok := jsonTestCompareConnect(res, bRes); ok {
 						found++
+						fmt.Printf("\tFOUND IT!\n")
 						goto next
 					}
 				}
 			case *fgs.GetEventsResponse_ProcessExec:
-				fmt.Printf("process_exec looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_ProcessExec:
 					if ok := jsonTestCompareExecve(res, bRes); ok {
 						found++
+						fmt.Printf("\tFOUND IT!\n")
 						goto next
 					}
 				}
 			case *fgs.GetEventsResponse_ProcessListen:
-				fmt.Printf("process_listen looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_ProcessListen:
 					if ok := jsonTestCompareListen(res, bRes); ok {
 						found++
+						fmt.Printf("\tFOUND IT!\n")
 						goto next
 					}
 				}
 			case *fgs.GetEventsResponse_ProcessAccept:
-				fmt.Printf("process_accept looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_ProcessAccept:
 					if ok := jsonTestCompareAccept(res, bRes); ok {
 						found++
+						fmt.Printf("\tFOUND IT!\n")
 						goto next
 					}
 				}
 			case *fgs.GetEventsResponse_Tls:
-				fmt.Printf("tls looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_Tls:
 					if ok := jsonTestCompareTls(res, bRes); ok {
 						found++
+						fmt.Printf("\tFOUND IT!\n")
 						goto next
 					}
 				}
 			case *fgs.GetEventsResponse_ProcessExit:
-				fmt.Printf("process_exit\n")
 			case *fgs.GetEventsResponse_ProcessClose:
-				fmt.Printf("process_close looking for %t\n", t.Event)
 				switch bRes := t.Event.(type) {
 				case *fgs.GetEventsResponse_ProcessClose:
 					if ok := jsonTestCompareClose(res, bRes); ok {
 						found++
+						fmt.Printf("\tFOUND IT!\n")
 						goto next
 					}
 				}
@@ -546,6 +570,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 	}
 
 	if found == len(trace) {
+		fmt.Printf("\tFOUND ALL!\n")
 		return true
 	}
 retry:
