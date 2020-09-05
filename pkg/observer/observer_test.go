@@ -107,7 +107,7 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
 
 	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", tls, tlstc, pretty)
 	if testing.Verbose() {
-		Verbosity = 0
+		Verbosity = 1
 	}
 	loadExporter(t, kprobe)
 	loadObserver(t, kprobe)
