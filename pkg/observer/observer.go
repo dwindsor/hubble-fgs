@@ -151,8 +151,8 @@ func (s *bpfLoadState) setDisabled() {
 }
 
 func (s *bpfLoadState) setLoaded() {
-	if !s.isIdle() {
-		panic(fmt.Errorf("called setLoaded() while program is not idle (cnt: %d)", s.count))
+	if s.isDisabled() {
+		panic(fmt.Errorf("called setLoaded() while program is disabled (cnt: %d)", s.count))
 	}
 	s.count = 1
 }
@@ -904,11 +904,6 @@ func (k *ObserverKprobe) observerLoadSensorMaps(sensor *observerSensor, btf stri
 			continue
 		}
 
-		if m.pinState.isLoaded() {
-			k.log.Infof("hubble-fgs, map %s is already loaded, skipping.\n", m.mapName)
-			continue
-		}
-
 		pin := k.mapDir + m.mapName
 
 		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName,
@@ -917,6 +912,7 @@ func (k *ObserverKprobe) observerLoadSensorMaps(sensor *observerSensor, btf stri
 		if err != nil {
 			return fmt.Errorf("failed %d load map (%s): %s\n", fd, m.mapType, err)
 		}
+		k.log.Infof("hubble-fgs, map %s was loaded.\n", m.mapName)
 	}
 
 	return nil
@@ -1115,15 +1111,11 @@ func (k *ObserverKprobe) observerLoadSensor(sensor *observerSensor, stopCtx cont
 			continue
 		}
 
-		if p.loadState.isLoaded() {
-			k.log.Infof("hubble-fgs, prog %s is already loaded, skipping.\n", p.Observer__program)
-			continue
-		}
-
 		if err := k.observerLoadInstance(p, stopCtx); err != nil {
 			return err
 		}
 		p.loadState.setLoaded()
+		k.log.Infof("hubble-fgs, prog %s was loaded.\n", p.Observer__program)
 	}
 	k.log.Infof("hubble-fgs, loaded BPF maps and events successfully.\n")
 	return nil
