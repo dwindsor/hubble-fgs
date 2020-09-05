@@ -64,6 +64,7 @@ message Process {
     Pod pod = 10;
     string docker = 11;
     string parent_exec_id = 12;
+    uint32 refcnt = 13;
 }
 
 message ProcessConnect {

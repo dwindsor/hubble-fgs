@@ -82,7 +82,6 @@ func NewProcessManager(
 			}
 		}
 	}()
-
 	return pm, nil
 }
 
@@ -299,6 +298,7 @@ func (pm *ProcessManager) getProcess(
 		ExecId:       execID,
 		Docker:       containerID,
 		ParentExecId: parentExecID,
+		Refcnt:       1,
 	}, endpoint
 }
 
@@ -390,6 +390,10 @@ func (pm *ProcessManager) GetProcessExec(
 	if len(ancestors) >= 1 {
 		parent = ancestors[0]
 		ancestors = ancestors[1:]
+		parent.Refcnt++
+		for _, a := range ancestors {
+			a.Refcnt++
+		}
 	}
 	return &fgs.ProcessExec{
 		Process:   proc,
@@ -409,6 +413,12 @@ func (pm *ProcessManager) GetProcessListen(
 		}
 	}
 	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process != nil {
+		process.Refcnt++
+	}
+	if parent != nil {
+		process.Refcnt++
+	}
 	return &fgs.ProcessListen{
 		Process: process,
 		Parent:  parent,
@@ -424,6 +434,17 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		process = &fgs.Process{
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
+	} else {
+		process.Refcnt--
+		if process.Refcnt == 0 {
+			pm.cache.Remove(process)
+		}
+	}
+	if parent != nil {
+		parent.Refcnt--
+		if parent.Refcnt == 0 {
+			pm.cache.Remove(parent)
 		}
 	}
 	return &fgs.ProcessExit{
@@ -502,9 +523,19 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
+	} else {
+		process.Refcnt--
+		if process.Refcnt == 0 {
+			pm.cache.Remove(process)
+		}
 	}
 	if parent == nil {
 		parent = &fgs.Process{}
+	} else {
+		parent.Refcnt--
+		if parent.Refcnt == 0 {
+			pm.cache.Remove(parent)
+		}
 	}
 	endpoint := pm.getProcessEndpoint(process)
 
@@ -544,9 +575,13 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
+	} else {
+		process.Refcnt++
 	}
 	if parent == nil {
 		parent = &fgs.Process{}
+	} else {
+		parent.Refcnt++
 	}
 	endpoint := pm.getProcessEndpoint(process)
 
@@ -586,9 +621,13 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
+	} else {
+		process.Refcnt++
 	}
 	if parent == nil {
 		parent = &fgs.Process{}
+	} else {
+		parent.Refcnt++
 	}
 	endpoint := pm.getProcessEndpoint(process)
 

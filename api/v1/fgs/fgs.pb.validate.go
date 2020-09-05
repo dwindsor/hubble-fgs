@@ -353,6 +353,8 @@ func (m *Process) Validate() error {
 
 	// no validation rules for ParentExecId
 
+	// no validation rules for Refcnt
+
 	return nil
 }
 
