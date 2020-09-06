@@ -115,6 +115,8 @@ message ProcessExit {
     Process parent = 2;
 }
 
+message Test {}
+
 message Tls {
     Process process = 1;
     string source_ip = 2;
@@ -163,6 +165,8 @@ message GetEventsResponse {
 	ProcessExit process_exit = 5;
         ProcessClose process_close = 6;
 	ProcessAccept process_accept = 7;
+
+	Test test = 40000;
     }
     // Name of the node where this event was observed.
     string node_name = 1000;
@@ -180,6 +184,8 @@ enum EventType {
 	PROCESS_EXIT = 7;
 	PROCESS_CLOSE = 8;
 	PROCESS_ACCEPT = 9;
+
+	TEST = 254;
 }
 
 message Filter {

@@ -93,6 +93,7 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
 	ObserverTLSEvent.Observer__program = "../../bpf/objs/bpf_event_tls.o"
 	ObserverTLSTCIngress.Observer__program = "../../bpf/objs/bpf_tc_ingress.o"
 	ObserverTLSTCEgress.Observer__program = "../../bpf/objs/bpf_tc_egress.o"
+	ObserverLseekTest.Observer__program = "../../bpf/objs/bpf_lseek.o"
 
 	btf := os.Getenv("FGS_BTF")
 	if btf != "" {
@@ -457,24 +458,26 @@ func jsonTestCompareTls(a, b *fgs.GetEventsResponse_Tls) bool {
 	return true
 }
 
-func eventTypeString(ev interface {}) string {
+func eventTypeString(ev interface{}) string {
 	switch ev.(type) {
-		case *fgs.GetEventsResponse_ProcessConnect:
-			return "ProcessConnect"
-		case *fgs.GetEventsResponse_ProcessListen:
-			return "ProcessListen"
-		case *fgs.GetEventsResponse_ProcessAccept:
-			return "ProcessAccept"
-		case *fgs.GetEventsResponse_Tls:
-			return "Tls"
-		case *fgs.GetEventsResponse_ProcessExec:
-			return "ProcessExec"
-		case *fgs.GetEventsResponse_ProcessExit:
-			return "ProcessExit"
-		case *fgs.GetEventsResponse_ProcessClose:
-			return "ProcessClose"
-		default:
-			return fmt.Sprintf("<UNKNOWN:%T>", ev)
+	case *fgs.GetEventsResponse_ProcessConnect:
+		return "ProcessConnect"
+	case *fgs.GetEventsResponse_ProcessListen:
+		return "ProcessListen"
+	case *fgs.GetEventsResponse_ProcessAccept:
+		return "ProcessAccept"
+	case *fgs.GetEventsResponse_Tls:
+		return "Tls"
+	case *fgs.GetEventsResponse_ProcessExec:
+		return "ProcessExec"
+	case *fgs.GetEventsResponse_ProcessExit:
+		return "ProcessExit"
+	case *fgs.GetEventsResponse_ProcessClose:
+		return "ProcessClose"
+	case *fgs.GetEventsResponse_Test:
+		return "Test"
+	default:
+		return fmt.Sprintf("<UNKNOWN:%T>", ev)
 	}
 }
 
@@ -562,6 +565,15 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 						goto next
 					}
 				}
+
+			case *fgs.GetEventsResponse_Test:
+				switch t.Event.(type) {
+				case *fgs.GetEventsResponse_Test:
+					found++
+					fmt.Printf("\tFOUND IT!\n")
+					goto next
+				}
+
 			default:
 				fmt.Printf("unknown\n")
 			}
@@ -1106,6 +1118,36 @@ func TestListenAcceptClose(t *testing.T) {
 	if cmdServer != nil {
 		cmdServer.Process.Signal(syscall.SIGKILL)
 	}
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
+}
+
+func TestSensorLseekTest(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_Test{},
+		},
+	}
+
+	kprobe := getDefaultObserver(t, false, false, false)
+
+	progs := []*bpfLoad{&ObserverLseekTest}
+	maps := []*ObserverMap{}
+	sensor := &observerSensor{name: "lseekTest", progs: progs, maps: maps}
+	kprobe.observerLoadSensor(sensor, ctx)
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWG.Wait()
+
+	unix.Seek(-1, 0, 4444)
+	exitWG.Wait()
+
 	retries := jsonRetries
 	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()

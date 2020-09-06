@@ -386,6 +386,21 @@ var (
 		-1,
 	}
 
+	ObserverLseekTest = bpfLoad{
+		"", "bpf_lseek.o",
+		"syscalls/sys_enter_lseek",
+		"syscalls/sys_enter_lseek",
+		"tracepoint/sys_enter_lseek",
+		"test_lseek",
+
+		false,
+		true,
+		"tracepoint",
+		bpfLoadStateIdle(),
+
+		-1,
+	}
+
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
@@ -403,7 +418,10 @@ var (
 		&ObserverCgrpIngress,
 		&ObserverTLSEvent,
 		&ObserverTLSTCEgress,
-		&ObserverTLSTCIngress}
+		&ObserverTLSTCIngress,
+
+		&ObserverLseekTest,
+	}
 
 	/* Event Ring map */
 	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, bpfLoadStateIdle()}
@@ -485,6 +503,15 @@ func (k *ObserverKprobe) observerListenersTcp(msg *api.MsgIPv4TcpEventUnix) {
 	}
 }
 
+func (k *ObserverKprobe) observerListenersTest(msg *api.MsgTestEventUnix) {
+	for listener, _ := range k.listeners {
+		if err := listener.Notify(msg); err != nil {
+			k.log.Debug("Write failure removing Listener")
+			k.RemoveListener(listener)
+		}
+	}
+}
+
 func (k *ObserverKprobe) AddListener(listener Listener) {
 	k.log.WithField("listener", listener).Debug("Add listener")
 	k.listeners[listener] = struct{}{}
@@ -524,6 +551,10 @@ func msgToTcpUnix(m *api.MsgIPv4Tcp) *api.MsgIPv4TcpEventUnix {
 	unix.ProcessKey = m.ProcessKey
 
 	return unix
+}
+
+func msgToTestUnix(m *api.MsgTestEvent) *api.MsgTestEventUnix {
+	return m
 }
 
 func nopMsgExecUnix() api.MsgExecUnix {
@@ -660,7 +691,20 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 		msgUnix := msgToTcpUnix(&m)
 		k.observerListenersTcp(msgUnix)
+
+	case api.MSG_OP_TEST:
+		m := api.MsgTestEvent{}
+		err := binary.Read(r, binary.LittleEndian, &m)
+		if err != nil {
+			break
+		}
+		msgUnix := msgToTestUnix(&m)
+		k.observerListenersTest(msgUnix)
+
+	default:
+		k.log.Infof("unknown op ignored: %v \n", op)
 	}
+
 }
 
 func getCWD(pid uint32) (string, uint32) {

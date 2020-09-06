@@ -67,6 +67,9 @@ const (
 	MSG_OP_IPV4_TCPCLOSE = 8
 
 	MSG_OP_IPV4_ACCEPT = 9
+
+	// just for testing
+	MSG_OP_TEST = 254
 )
 
 const (
@@ -343,6 +346,12 @@ type MsgExitEvent struct {
 }
 
 type MsgExitEventUnix = MsgExitEvent
+
+type MsgTestEvent struct {
+	Common MsgCommon
+}
+
+type MsgTestEventUnix = MsgTestEvent
 
 func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)

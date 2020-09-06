@@ -116,6 +116,21 @@ func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetE
 	return res
 }
 
+func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_TEST:
+		res = &fgs.GetEventsResponse{
+			Event:    &fgs.GetEventsResponse_Test{Test: &fgs.Test{}},
+			NodeName: pm.nodeName,
+			Time:     ktimeToProto(0), // tbd
+		}
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
 func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
@@ -161,6 +176,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleTCPMessage(msg)
 	case *api.MsgExitEventUnix:
 		processedEvent = pm.handleExitMessage(msg)
+	case *api.MsgTestEventUnix:
+		processedEvent = pm.handleTestMessage(msg)
 	default:
 		pm.log.WithField("event", event).Warn("unhandled event")
 	}

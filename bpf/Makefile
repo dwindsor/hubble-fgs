@@ -6,10 +6,12 @@ SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
 TLSDIR := tls/
 NETWORKINGDIR := networking/
 PROCESSDIR := process/
+BPFTESTDIR := test/
 
 TLS = bpf_sockops.o bpf_skmsg_tls.o bpf_cgrp_in_tls.o bpf_event_tls.o bpf_tc_ingress.o bpf_tc_egress.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o
 PROCESS = bpf_execve_event.o bpf_fork.o bpf_exit.o
+BPFTEST = bpf_lseek.o
 
 IDIR = ./include/
 LIBBPF = ./libbpf/
@@ -33,7 +35,8 @@ OBJSDIR       := objs/
 TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
 NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
-OBJS          := $(TLSOBJ) $(NETWORKINGOBJ) $(PROCESSOBJ)
+TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
+OBJS          := $(TLSOBJ) $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
 
 all: $(OBJS)
 
@@ -51,6 +54,10 @@ objs/%.ll: $(NETWORKINGDIR)%.c
 
 objs/%.ll: $(PROCESSDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
+
+objs/%.ll: $(BPFTESTDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -c $< -o $@
+
 
 objs/%.o: objs/%.ll
 	${LLC} ${LLC_FLAGS} -filetype=obj $< -o $@
