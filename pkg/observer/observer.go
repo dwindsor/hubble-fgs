@@ -193,8 +193,8 @@ var (
 
 	ObserverExecve = bpfLoad{
 		"", "bpf_execve_event.o",
-		"sched_process_exec",
-		"sched_process_exec",
+		"sched/sched_process_exec",
+		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
 
@@ -208,8 +208,8 @@ var (
 
 	ObserverExit = bpfLoad{
 		"", "bpf_exit.o",
-		"sched_process_exit",
-		"sched_process_exit",
+		"sched/sched_process_exit",
+		"sched/sched_process_exit",
 		"tracepoint/sys_exit",
 		"event_exit",
 

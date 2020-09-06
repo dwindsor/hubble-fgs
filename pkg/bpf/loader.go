@@ -393,7 +393,8 @@ int tracepoint_loader(const int version,
 		      const int verbosity,
 		      const char *btf,
 		      const char *prog,
-		      const char *attach,
+		      const char *attach_category,
+		      const char *attach_name,
 		      const char *label,
 		      const char *__prog,
 		      const char *mapdir,
@@ -421,7 +422,7 @@ int tracepoint_loader(const int version,
 
 	bpf_program__unpin(prog_bpf, __prog);
 
-	prog_attach = bpf_program__attach_tracepoint(prog_bpf, "sched", attach);
+	prog_attach = bpf_program__attach_tracepoint(prog_bpf, attach_category, attach_name);
 	err = libbpf_get_error(prog_attach);
 	if (err) {
 		// Expected error when attach point probe is happening
@@ -491,6 +492,7 @@ import "C"
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
@@ -566,12 +568,17 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	verbosity := C.int(__verbosity)
 	btf := C.CString(__btf)
 	o := C.CString(object)
-	a := C.CString(attach)
+	aa := strings.Split(attach, "/")
+	if len(aa) != 2 {
+		return fmt.Errorf("tracepoint attach argument must be in the form category/tracepoint. Instead got: %s", attach), -1
+	}
+	a_category := C.CString(aa[0])
+	a_name := C.CString(aa[1])
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
 	ret := C.bool(retprobe)
-	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a, l, p, mapdir, ret)
+	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a_category, a_name, l, p, mapdir, ret)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to tracepoint load: %d %s", loaderInt, object), loaderInt
