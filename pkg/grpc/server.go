@@ -72,3 +72,8 @@ func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanc
 		}
 	}
 }
+
+func (s *Server) GetHealth(ctx context.Context, request *fgs.GetHealthStatusRequest) (*fgs.GetHealthStatusResponse, error) {
+	logger.GetLogger().WithField("request", request).Debug("Received a GetHealth request")
+	return getHealth()
+}

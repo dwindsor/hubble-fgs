@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"os"
 	"os/signal"
 	"time"
@@ -18,6 +19,7 @@ import (
 var (
 	observerDir   = "/sys/fs/bpf/tcpmon/"
 	serverAddress string
+	status        bool
 
 	cmd *cobra.Command
 )
@@ -31,7 +33,21 @@ func hubbleFGSPrinter() {
 	}
 	defer conn.Close()
 	client := fgs.NewFineGuidanceSensorsClient(conn)
-	getEvents(client)
+	if status {
+		getStatus(client)
+	} else {
+		getEvents(client)
+	}
+}
+
+func getStatus(client fgs.FineGuidanceSensorsClient) {
+	ctx, _ := context.WithCancel(context.Background())
+	response, err := client.GetHealth(ctx, &fgs.GetHealthStatusRequest{})
+	if err != nil {
+		fmt.Printf("status error: %s\n", err)
+		return
+	}
+	fmt.Printf("Health Status: %s\n", response.GetHealthStatus()[0].Details)
 }
 
 func getEvents(client fgs.FineGuidanceSensorsClient) {
@@ -75,6 +91,7 @@ func init() {
 	flags := cmd.PersistentFlags()
 	flags.BoolP("debug", "d", true, "Enable debug messages")
 	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
+	flags.BoolVar(&status, "status", false, "Print health status")
 	viper.BindPFlags(flags)
 }
 

@@ -226,6 +226,60 @@ func (msg *Tls) UnmarshalJSON(b []byte) error {
 }
 
 // MarshalJSON implements json.Marshaler
+func (msg *GetHealthStatusRequest) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	err := (&jsonpb.Marshaler{
+		EnumsAsInts:  false,
+		EmitDefaults: false,
+		OrigName:     true,
+	}).Marshal(&buf, msg)
+	return buf.Bytes(), err
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *GetHealthStatusRequest) UnmarshalJSON(b []byte) error {
+	return (&jsonpb.Unmarshaler{
+		AllowUnknownFields: false,
+	}).Unmarshal(bytes.NewReader(b), msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *HealthStatus) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	err := (&jsonpb.Marshaler{
+		EnumsAsInts:  false,
+		EmitDefaults: false,
+		OrigName:     true,
+	}).Marshal(&buf, msg)
+	return buf.Bytes(), err
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *HealthStatus) UnmarshalJSON(b []byte) error {
+	return (&jsonpb.Unmarshaler{
+		AllowUnknownFields: false,
+	}).Unmarshal(bytes.NewReader(b), msg)
+}
+
+// MarshalJSON implements json.Marshaler
+func (msg *GetHealthStatusResponse) MarshalJSON() ([]byte, error) {
+	var buf bytes.Buffer
+	err := (&jsonpb.Marshaler{
+		EnumsAsInts:  false,
+		EmitDefaults: false,
+		OrigName:     true,
+	}).Marshal(&buf, msg)
+	return buf.Bytes(), err
+}
+
+// UnmarshalJSON implements json.Unmarshaler
+func (msg *GetHealthStatusResponse) UnmarshalJSON(b []byte) error {
+	return (&jsonpb.Unmarshaler{
+		AllowUnknownFields: false,
+	}).Unmarshal(bytes.NewReader(b), msg)
+}
+
+// MarshalJSON implements json.Marshaler
 func (msg *GetEventsRequest) MarshalJSON() ([]byte, error) {
 	var buf bytes.Buffer
 	err := (&jsonpb.Marshaler{

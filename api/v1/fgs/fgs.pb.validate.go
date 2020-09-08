@@ -1209,6 +1209,226 @@ var _ interface {
 	ErrorName() string
 } = TlsValidationError{}
 
+// Validate checks the field values on GetHealthStatusRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *GetHealthStatusRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// GetHealthStatusRequestValidationError is the validation error returned by
+// GetHealthStatusRequest.Validate if the designated constraints aren't met.
+type GetHealthStatusRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetHealthStatusRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetHealthStatusRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetHealthStatusRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetHealthStatusRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetHealthStatusRequestValidationError) ErrorName() string {
+	return "GetHealthStatusRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetHealthStatusRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetHealthStatusRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetHealthStatusRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetHealthStatusRequestValidationError{}
+
+// Validate checks the field values on HealthStatus with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *HealthStatus) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Event
+
+	// no validation rules for Status
+
+	// no validation rules for Details
+
+	return nil
+}
+
+// HealthStatusValidationError is the validation error returned by
+// HealthStatus.Validate if the designated constraints aren't met.
+type HealthStatusValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e HealthStatusValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e HealthStatusValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e HealthStatusValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e HealthStatusValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e HealthStatusValidationError) ErrorName() string { return "HealthStatusValidationError" }
+
+// Error satisfies the builtin error interface
+func (e HealthStatusValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sHealthStatus.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = HealthStatusValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = HealthStatusValidationError{}
+
+// Validate checks the field values on GetHealthStatusResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *GetHealthStatusResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	for idx, item := range m.GetHealthStatus() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetHealthStatusResponseValidationError{
+					field:  fmt.Sprintf("HealthStatus[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// GetHealthStatusResponseValidationError is the validation error returned by
+// GetHealthStatusResponse.Validate if the designated constraints aren't met.
+type GetHealthStatusResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetHealthStatusResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetHealthStatusResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetHealthStatusResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetHealthStatusResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetHealthStatusResponseValidationError) ErrorName() string {
+	return "GetHealthStatusResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetHealthStatusResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetHealthStatusResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetHealthStatusResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetHealthStatusResponseValidationError{}
+
 // Validate checks the field values on GetEventsRequest with the rules defined
 // in the proto definition for this message. If any rules are violated, an
 // error is returned.

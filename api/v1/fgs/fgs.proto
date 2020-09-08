@@ -141,6 +141,33 @@ message Tls {
 
 service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
+    rpc GetHealth(GetHealthStatusRequest) returns (GetHealthStatusResponse) {}
+}
+
+enum HealthStatusType {
+ HEALTH_STATUS_TYPE_UNDEF  = 0;
+ HEALTH_STATUS_TYPE_STATUS = 1;
+}
+
+enum HealthStatusResult {
+ HEALTH_STATUS_UNDEF    = 0;
+ HEALTH_STATUS_RUNNING  = 1;
+ HEALTH_STATUS_STOPPED  = 2;
+ HEALTH_STATUS_ERROR    = 3;
+}
+
+message GetHealthStatusRequest {
+    repeated HealthStatusType event_set = 1;
+}
+
+message HealthStatus {
+	HealthStatusType event = 1;
+	HealthStatusResult status = 2;
+	string details = 3;
+}
+
+message GetHealthStatusResponse {
+	repeated HealthStatus health_status = 1;
 }
 
 message GetEventsRequest {
