@@ -42,4 +42,4 @@ jobs:
         sudo -E go mod vendor
         sudo -E go mod verify
         sudo -E GO111MODULE=off go get -u golang.org/x/lint/golint
-        sudo -E sh -c "ulimit -n 4096 && make test"
+        sudo -E make test

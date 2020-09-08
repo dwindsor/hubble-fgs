@@ -144,6 +144,7 @@ int fgs_map_loader(const int version,
 			"bpf_objecT__unload: failed obj(%s) map(%s) %i\n",
 			prog, __label_map, err);
 	}
+	bpf_object__close(obj);
 	return err;
 }
 
@@ -267,17 +268,11 @@ int bpf_link(char *target, const char *source, int type)
 		}
 	}
 
-	if (target_fd < 0) {
-		fprintf(stderr, "Get target %s failed\n", target);
-		return 0;
-	}
-
 	err = bpf_prog_attach(source_fd, target_fd, type, 0);
-	if (err) {
+	if (err)
 		fprintf(stderr, "bpf_prog_attach: failed (%s->%s) err %i\n", source, target, err);
-		return -1;
-	}
-	return 0;
+	close(target_fd);
+	return err;
 }
 
 int bpf_loader_pin(struct bpf_object *obj,
