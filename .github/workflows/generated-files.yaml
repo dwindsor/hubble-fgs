@@ -1,4 +1,4 @@
-name: Helm
+name: Generated files
 on:
   push:
     branches:
@@ -7,11 +7,12 @@ on:
     branches:
     - master
 jobs:
-  quick-install:
+  generated-files:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v2
-      - name: Validate that quick-install.yaml is up to date.
+      - name: Validate that generated files are up to date.
         run: |
           make quick-install
+          make -C api/v1 doc
           git diff --exit-code

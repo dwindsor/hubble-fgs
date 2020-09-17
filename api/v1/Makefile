@@ -18,7 +18,10 @@ $(FGS_GO_TARGETS): $(FGS_PROTO_SOURCES) deps
 		protoc $(FGS_PROTOC_PLUGINS) --go_out=plugins=grpc:. --validate_out=lang=go:. --go-json_out=orig_name:. $${proto}; \
 	done
 
-all: $(FGS_GO_TARGETS)
+all: $(FGS_GO_TARGETS) doc
+
+doc:
+	docker run --rm -v $(shell pwd):/out -v $(shell pwd)/fgs:/protos pseudomuto/protoc-gen-doc --doc_opt=markdown,$@
 
 clean:
 	rm -f $(FGS_GO_TARGETS)
@@ -26,4 +29,4 @@ clean:
 deps:
 	@protoc --version | grep 3.11.4 || (echo "Error: protoc 3.11.4 is required" && exit 1)
 
-.PHONY: all clean dep
+.PHONY: all clean dep doc
