@@ -1241,10 +1241,11 @@ type ExecveKey struct {
 }
 
 type ExecveValueL struct {
-	Common      api.MsgCommon
-	Kube        api.MsgK8s
-	Parent      api.MsgExecveKey
-	ParentFlags uint64
+	Common       api.MsgCommon
+	Kube         api.MsgK8s
+	Parent       api.MsgExecveKey
+	ParentFlags  uint64
+	Capabilities api.MsgCapabilities
 }
 
 type ExecveValue struct {

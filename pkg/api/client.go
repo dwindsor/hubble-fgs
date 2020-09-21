@@ -280,19 +280,27 @@ type MsgIPv4TcpEventUnix struct {
 
 var MsgUnixSize uint32 = 640
 
+type MsgCapabilities struct {
+	Permitted   uint64
+	Effective   uint64
+	Inheritable uint64
+}
+
 type MsgExecveEvent struct {
-	Common      MsgCommon
-	Kube        MsgK8s
-	Parent      MsgExecveKey
-	ParentFlags uint64
+	Common       MsgCommon
+	Kube         MsgK8s
+	Parent       MsgExecveKey
+	ParentFlags  uint64
+	Capabilities MsgCapabilities
 }
 
 type MsgExecveEventUnix struct {
-	Common      MsgCommon
-	Kube        MsgK8sUnix
-	Parent      MsgExecveKey
-	ParentFlags uint64
-	Process     MsgExecUnix
+	Common       MsgCommon
+	Kube         MsgK8sUnix
+	Parent       MsgExecveKey
+	ParentFlags  uint64
+	Capabilities MsgCapabilities
+	Process      MsgExecUnix
 }
 
 type MsgTLSIPv4 struct {

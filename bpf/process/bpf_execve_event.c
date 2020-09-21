@@ -61,7 +61,8 @@ int event_execve(struct sched_execve_args *ctx)
 			sizeof(struct msg_common)
 			+ sizeof(struct msg_k8s)
 			+ sizeof(struct msg_execve_key)
-			+ sizeof(__u64) +
+			+ sizeof(__u64)
+			+ sizeof(struct msg_capabilities)
 			+  execve->size);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 	return 0;

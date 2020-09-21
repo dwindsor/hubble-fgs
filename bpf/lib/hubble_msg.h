@@ -215,17 +215,24 @@ struct msg_execve_key {
 	__u64 ktime;
 } __attribute__((packed));
 
+struct msg_capabilities {
+	__u64 permitted;
+	__u64 effective;
+	__u64 inheritable;
+};
+
 struct msg_exit {
 	struct msg_common common;
 	struct msg_execve_key current;
 };
 
 struct msg_execve_event {
-	struct msg_common     common;
-	struct msg_k8s        kube;
-	struct msg_execve_key parent;
-	__u64		      parent_flags;
-	char		      pid[PADDED_BUFFER];
+	struct msg_common	common;
+	struct msg_k8s		kube;
+	struct msg_execve_key	parent;
+	__u64			parent_flags;
+	struct msg_capabilities caps;
+	char			pid[PADDED_BUFFER];
 } __attribute__((packed));
 
 // separate data structs for ipv4 and ipv6
