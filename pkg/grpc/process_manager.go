@@ -267,10 +267,19 @@ func (pm *ProcessManager) getProcessEndpoint(process *fgs.Process) *v1.Endpoint 
 	return endpoint
 }
 
+func (pm *ProcessManager) getCapabilities(caps fgsAPI.MsgCapabilities) *fgs.Capabilities {
+	return &fgs.Capabilities{
+		Permitted:   reader.GetCapabilities(caps.Permitted),
+		Effective:   reader.GetCapabilities(caps.Effective),
+		Inheritable: reader.GetCapabilities(caps.Inheritable),
+	}
+}
+
 func (pm *ProcessManager) getProcess(
 	process fgsAPI.MsgExecUnix,
 	containerID string,
 	parent fgsAPI.MsgExecveKey,
+	capabilities fgsAPI.MsgCapabilities,
 ) (*fgs.Process, *v1.Endpoint) {
 	args, cwd := reader.ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
@@ -285,6 +294,7 @@ func (pm *ProcessManager) getProcess(
 		pm.log.WithError(err).WithField("process", process).Warn("Failed to get exec ID for process")
 	}
 	protoPod, endpoint := pm.getPodInfo(containerID, process.Filename, args, process.NSPID)
+	caps := pm.getCapabilities(capabilities)
 	return &fgs.Process{
 		Pid:          &wrappers.UInt32Value{Value: process.PID},
 		Uid:          &wrappers.UInt32Value{Value: process.UID},
@@ -299,12 +309,13 @@ func (pm *ProcessManager) getProcess(
 		Docker:       containerID,
 		ParentExecId: parentExecID,
 		Refcnt:       1,
+		Cap:          caps,
 	}, endpoint
 }
 
 // Add converts an FGS exec event to protobuf format and adds the protobuf message to the cache.
 func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *fgs.Process {
-	proc, _ := pm.getProcess(event.Process, event.Kube.Docker, event.Parent)
+	proc, _ := pm.getProcess(event.Process, event.Kube.Docker, event.Parent, event.Capabilities)
 	pm.cache.Add(proc.ExecId, proc)
 	var parentExecID string
 	if proc.Pid != nil {

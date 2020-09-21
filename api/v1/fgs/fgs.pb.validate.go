@@ -282,6 +282,77 @@ var _ interface {
 	ErrorName() string
 } = PodValidationError{}
 
+// Validate checks the field values on Capabilities with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *Capabilities) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Permitted
+
+	// no validation rules for Effective
+
+	// no validation rules for Inheritable
+
+	return nil
+}
+
+// CapabilitiesValidationError is the validation error returned by
+// Capabilities.Validate if the designated constraints aren't met.
+type CapabilitiesValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e CapabilitiesValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e CapabilitiesValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e CapabilitiesValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e CapabilitiesValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e CapabilitiesValidationError) ErrorName() string { return "CapabilitiesValidationError" }
+
+// Error satisfies the builtin error interface
+func (e CapabilitiesValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sCapabilities.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = CapabilitiesValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = CapabilitiesValidationError{}
+
 // Validate checks the field values on Process with the rules defined in the
 // proto definition for this message. If any rules are violated, an error is returned.
 func (m *Process) Validate() error {
@@ -354,6 +425,16 @@ func (m *Process) Validate() error {
 	// no validation rules for ParentExecId
 
 	// no validation rules for Refcnt
+
+	if v, ok := interface{}(m.GetCap()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessValidationError{
+				field:  "Cap",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	return nil
 }
