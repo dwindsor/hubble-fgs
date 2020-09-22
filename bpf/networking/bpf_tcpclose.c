@@ -99,9 +99,11 @@ int event_ipv4_close(struct pt_regs *ctx)
 			process = lookup_socketmap(&tuple);
 		}
 		if (process) {
+			struct msg_execve_key copy = *process;
+
 			value.common.op = MSG_OP_IPV4_TCPACCEPT;
-			value.key.pid = process->pid;
-			value.key.ktime = process->ktime;
+			value.key.pid = copy.pid;
+			value.key.ktime = copy.ktime;
 			size = sizeof(struct msg_ipv4_tcp_event);
 			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
 			tuple.daddr = daddr;
@@ -109,7 +111,7 @@ int event_ipv4_close(struct pt_regs *ctx)
 			tuple.saddr = saddr;
 			if (!is_tuple_local(&tuple))
 				tuple.uid = 0;
-			add_socketmap(&tuple, process);
+			add_socketmap(&tuple, &copy);
 		}
 	}
 
