@@ -92,7 +92,7 @@ func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEvent) *fgs.GetEventsR
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_Tls{Tls: pm.GetTLS(msg)},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(0), // tbd
+			Time:     ktimeToProto(msg.Common.Ktime),
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -108,7 +108,7 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: pm.GetProcessExec(proc)},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Process.Ktime),
+			Time:     ktimeToProto(msg.Common.Ktime),
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -123,7 +123,7 @@ func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetE
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: pm.GetProcessExit(msg)},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(0), // tbd
+			Time:     ktimeToProto(msg.Common.Ktime),
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -138,7 +138,7 @@ func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetE
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_Test{Test: &fgs.Test{}},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(0), // tbd
+			Time:     ktimeToProto(msg.Common.Ktime),
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -153,25 +153,25 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.Ge
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: pm.GetProcessConnect(msg)},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.ProcessKey.Ktime),
+			Time:     ktimeToProto(msg.Common.Ktime),
 		}
 	case api.MSG_OP_IPV4_TCPCLOSE:
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: pm.GetProcessClose(msg)},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.ProcessKey.Ktime),
+			Time:     ktimeToProto(msg.Common.Ktime),
 		}
 	case api.MSG_OP_IPV4_LISTEN:
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: pm.GetProcessListen(msg)},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.ProcessKey.Ktime),
+			Time:     ktimeToProto(msg.Common.Ktime),
 		}
 	case api.MSG_OP_IPV4_ACCEPT:
 		res = &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: pm.GetProcessAccept(msg)},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.ProcessKey.Ktime),
+			Time:     ktimeToProto(msg.Common.Ktime),
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
