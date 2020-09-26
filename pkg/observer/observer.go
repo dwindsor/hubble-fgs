@@ -23,6 +23,7 @@ import (
 	"io/ioutil"
 	"os"
 	"os/exec"
+	"path"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -1742,7 +1743,7 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 			return fmt.Errorf("Kernel version lookup (uname -r) failing. Use '--kernel' to set manually: %s\n", err)
 		}
 		n := bytes.IndexByte(uname.Release[:], 0)
-		runFile := HubbleLib + "vmlinux-" + string(uname.Release[:n])
+		runFile := path.Join(HubbleLib, "metadata", "vmlinux-"+string(uname.Release[:n]))
 		if _, err := os.Stat(runFile); err == nil {
 			ObserverBTF = runFile
 			return nil
@@ -1764,6 +1765,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	if err := k.observerFindBTF(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
 	}
+	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
 	if err := k.observerFindProgs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
 	}
