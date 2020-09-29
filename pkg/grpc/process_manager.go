@@ -267,11 +267,22 @@ func (pm *ProcessManager) getProcessEndpoint(process *fgs.Process) *v1.Endpoint 
 	return endpoint
 }
 
+func getCapabilitiesTypes(capInt uint64) []fgs.CapabilitiesType {
+	var caps []fgs.CapabilitiesType
+	for i := uint64(0); i < 64; i++ {
+		if (1<<i)&capInt != 0 {
+			e := fgs.CapabilitiesType(i)
+			caps = append(caps, e)
+		}
+	}
+	return caps
+}
+
 func (pm *ProcessManager) getCapabilities(caps fgsAPI.MsgCapabilities) *fgs.Capabilities {
 	return &fgs.Capabilities{
-		Permitted:   reader.GetCapabilities(caps.Permitted),
-		Effective:   reader.GetCapabilities(caps.Effective),
-		Inheritable: reader.GetCapabilities(caps.Inheritable),
+		Permitted:   getCapabilitiesTypes(caps.Permitted),
+		Effective:   getCapabilitiesTypes(caps.Effective),
+		Inheritable: getCapabilitiesTypes(caps.Inheritable),
 	}
 }
 

@@ -290,12 +290,6 @@ func (m *Capabilities) Validate() error {
 		return nil
 	}
 
-	// no validation rules for Permitted
-
-	// no validation rules for Effective
-
-	// no validation rules for Inheritable
-
 	return nil
 }
 
