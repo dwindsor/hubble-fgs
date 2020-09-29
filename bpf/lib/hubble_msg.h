@@ -124,6 +124,7 @@ enum msg_ops {
 	MSG_OP_EXIT = 7,
 	MSG_OP_IPV4_TCPCLOSE = 8,
 	MSG_OP_IPV4_TCPACCEPT = 9,
+	MSG_OP_CREDS = 10,
 	MSG_OP_MAX,
 
 	// testing
@@ -224,6 +225,12 @@ struct msg_capabilities {
 struct msg_exit {
 	struct msg_common common;
 	struct msg_execve_key current;
+};
+
+struct msg_creds {
+	struct msg_common common;
+	struct msg_execve_key current;
+	struct msg_capabilities caps;
 };
 
 struct msg_execve_event {

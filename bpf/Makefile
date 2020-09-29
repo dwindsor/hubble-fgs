@@ -10,7 +10,7 @@ BPFTESTDIR := test/
 
 TLS = bpf_sockops.o bpf_skmsg_tls.o bpf_cgrp_in_tls.o bpf_event_tls.o bpf_tc_ingress.o bpf_tc_egress.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o
-PROCESS = bpf_execve_event.o bpf_fork.o bpf_exit.o
+PROCESS = bpf_execve_event.o bpf_fork.o bpf_exit.o bpf_cred.o
 BPFTEST = bpf_lseek.o
 
 IDIR = ./include/
