@@ -65,7 +65,8 @@ func (f *EventTypeFilter) OnBuildFilter(_ context.Context, ff *fgs.Filter) ([]hu
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessClose{})
 			case api.MSG_OP_IPV4_ACCEPT:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessAccept{})
-
+			case api.MSG_OP_CRED:
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessCred{})
 			case api.MSG_OP_TEST:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_Test{})
 

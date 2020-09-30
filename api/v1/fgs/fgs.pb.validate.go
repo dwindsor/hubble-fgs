@@ -1096,6 +1096,101 @@ var _ interface {
 	ErrorName() string
 } = ProcessExitValidationError{}
 
+// Validate checks the field values on ProcessCred with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *ProcessCred) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetProcess()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCredValidationError{
+				field:  "Process",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetParent()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCredValidationError{
+				field:  "Parent",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetCap()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCredValidationError{
+				field:  "Cap",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// ProcessCredValidationError is the validation error returned by
+// ProcessCred.Validate if the designated constraints aren't met.
+type ProcessCredValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ProcessCredValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ProcessCredValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ProcessCredValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ProcessCredValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ProcessCredValidationError) ErrorName() string { return "ProcessCredValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ProcessCredValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sProcessCred.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ProcessCredValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ProcessCredValidationError{}
+
 // Validate checks the field values on Test with the rules defined in the proto
 // definition for this message. If any rules are violated, an error is returned.
 func (m *Test) Validate() error {
@@ -1699,6 +1794,18 @@ func (m *GetEventsResponse) Validate() error {
 			if err := v.Validate(); err != nil {
 				return GetEventsResponseValidationError{
 					field:  "ProcessAccept",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *GetEventsResponse_ProcessCred:
+
+		if v, ok := interface{}(m.GetProcessCred()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsResponseValidationError{
+					field:  "ProcessCred",
 					reason: "embedded message failed validation",
 					cause:  err,
 				}

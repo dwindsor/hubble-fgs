@@ -114,6 +114,8 @@ func GetProcess(event *v1.Event) *fgs.Process {
 			return res.Tls.Process
 		case *fgs.GetEventsResponse_ProcessExit:
 			return res.ProcessExit.Process
+		case *fgs.GetEventsResponse_ProcessCred:
+			return res.ProcessCred.Process
 		default:
 			return (*fgs.Process)(nil)
 		}
@@ -137,6 +139,8 @@ func GetParent(event *v1.Event) *fgs.Process {
 			return res.ProcessListen.Parent
 		case *fgs.GetEventsResponse_ProcessExit:
 			return res.ProcessExit.Parent
+		case *fgs.GetEventsResponse_ProcessCred:
+			return res.ProcessCred.Process
 		default:
 			return (*fgs.Process)(nil)
 		}

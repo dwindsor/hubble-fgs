@@ -68,6 +68,8 @@ const (
 
 	MSG_OP_IPV4_ACCEPT = 9
 
+	MSG_OP_CRED = 10
+
 	// just for testing
 	MSG_OP_TEST = 254
 )
@@ -354,6 +356,14 @@ type MsgExitEvent struct {
 }
 
 type MsgExitEventUnix = MsgExitEvent
+
+type MsgCredEvent struct {
+	Common       MsgCommon
+	ProcessKey   MsgExecveKey
+	Capabilities MsgCapabilities
+}
+
+type MsgCredEventUnix = MsgCredEvent
 
 type MsgTestEvent struct {
 	Common MsgCommon

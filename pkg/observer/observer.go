@@ -237,6 +237,21 @@ var (
 		-1,
 	}
 
+	ObserverCred = bpfLoad{
+		"", "bpf_cred.o",
+		"commit_creds",
+		"commit_creds",
+		"kprobe/commit_creds",
+		"kprobe_commit_creds",
+
+		false,
+		true,
+		"kprobe",
+		bpfLoadStateIdle(),
+
+		-1,
+	}
+
 	ObserverTCPConnect = bpfLoad{
 		"", "bpf_tcpmon.o",
 		"tcp_connect",
@@ -410,6 +425,7 @@ var (
 		&ObserverExecve,
 		&ObserverExit,
 		&ObserverFork,
+		&ObserverCred,
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
 		&ObserverTCPClose,
@@ -484,6 +500,15 @@ func (k *ObserverKprobe) observerListenersExecve(msg *api.MsgExecveEventUnix) {
 	}
 }
 
+func (k *ObserverKprobe) observerListenersCred(msg *api.MsgCredEventUnix) {
+	for listener, _ := range k.listeners {
+		if err := listener.Notify(msg); err != nil {
+			k.log.Debug("Write failure removing Listener")
+			k.RemoveListener(listener)
+		}
+	}
+}
+
 func (k *ObserverKprobe) observerListenersExit(msg *api.MsgExitEventUnix) {
 	for listener, _ := range k.listeners {
 		if err := listener.Notify(msg); err != nil {
@@ -538,6 +563,10 @@ func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
 	unix.Parent = m.Parent
 	unix.Capabilities = m.Capabilities
 	return unix
+}
+
+func msgToCredUnix(m *api.MsgCredEvent) *api.MsgCredEventUnix {
+	return m
 }
 
 func msgToExitUnix(m *api.MsgExitEvent) *api.MsgExitEventUnix {
@@ -671,6 +700,15 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			msgUnix.Process = nopMsgExecUnix()
 		}
 		k.observerListenersExecve(msgUnix)
+	case api.MSG_OP_CRED:
+		m := api.MsgCredEvent{}
+		err := binary.Read(r, binary.LittleEndian, &m)
+		if err != nil {
+			fmt.Printf("api.MSG_OP_CRED binary read failure: %s\n", err)
+			break
+		}
+		msgUnix := msgToCredUnix(&m)
+		k.observerListenersCred(msgUnix)
 	case api.MSG_OP_EXIT:
 		m := api.MsgExitEvent{}
 		err := binary.Read(r, binary.LittleEndian, &m)
@@ -1642,6 +1680,7 @@ func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
 		&ObserverExecve,
 		&ObserverExit,
 		&ObserverFork,
+		&ObserverCred,
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
 		&ObserverTCPClose,

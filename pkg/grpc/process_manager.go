@@ -131,6 +131,21 @@ func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetE
 	return res
 }
 
+func (pm *ProcessManager) handleCredMessage(msg *api.MsgCredEventUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_CRED:
+		res = &fgs.GetEventsResponse{
+			Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: pm.GetProcessCred(msg)},
+			NodeName: pm.nodeName,
+			Time:     ktimeToProto(msg.Common.Ktime),
+		}
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
 func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
@@ -191,6 +206,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleTCPMessage(msg)
 	case *api.MsgExitEventUnix:
 		processedEvent = pm.handleExitMessage(msg)
+	case *api.MsgCredEventUnix:
+		processedEvent = pm.handleCredMessage(msg)
 	case *api.MsgTestEventUnix:
 		processedEvent = pm.handleTestMessage(msg)
 	default:
@@ -472,6 +489,22 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 	return &fgs.ProcessExit{
 		Process: process,
 		Parent:  parent,
+	}
+}
+
+// GetProcessCred returns Cred protobuf message for a given process.
+func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.ProcessCred {
+	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process == nil {
+		process = &fgs.Process{
+			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
+	}
+	return &fgs.ProcessCred{
+		Process: process,
+		Parent:  parent,
+		Cap:     pm.getCapabilities(event.Capabilities),
 	}
 }
 

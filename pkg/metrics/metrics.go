@@ -101,6 +101,8 @@ func handleProcessedEvent(processedEvent interface{}) {
 			eventType = fgs.EventType_PROCESS_TLS.String()
 		case *fgs.GetEventsResponse_ProcessExit:
 			eventType = fgs.EventType_PROCESS_EXIT.String()
+		case *fgs.GetEventsResponse_ProcessCred:
+			eventType = fgs.EventType_PROCESS_CRED.String()
 		}
 	default:
 		eventType = "unknown"
