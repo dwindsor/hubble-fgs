@@ -860,6 +860,10 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Parent.Pid = p.ppid
 	m.Parent.Ktime = p.pktime
 
+	m.Capabilities.Permitted = p.permitted
+	m.Capabilities.Effective = p.effective
+	m.Capabilities.Inheritable = p.inheritable
+
 	m.Process.Size = p.size
 	m.Process.PID = p.pid
 	m.Process.NSPID = p.nspid
@@ -1258,22 +1262,25 @@ func (k *ObserverKprobe) createDir() {
 }
 
 type ObserverProcs struct {
-	psize  uint32
-	puid   uint32
-	ppid   uint32
-	pnspid uint32
-	pauid  uint32
-	pflags uint32
-	pktime uint64
-	pargs  []byte
-	size   uint32
-	uid    uint32
-	pid    uint32
-	nspid  uint32
-	auid   uint32
-	flags  uint32
-	ktime  uint64
-	args   []byte
+	psize       uint32
+	puid        uint32
+	ppid        uint32
+	pnspid      uint32
+	pauid       uint32
+	pflags      uint32
+	pktime      uint64
+	pargs       []byte
+	size        uint32
+	uid         uint32
+	pid         uint32
+	nspid       uint32
+	auid        uint32
+	flags       uint32
+	ktime       uint64
+	args        []byte
+	effective   uint64
+	inheritable uint64
+	permitted   uint64
 }
 
 type ExecveKey struct {
@@ -1371,29 +1378,57 @@ func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
 	m.Close()
 }
 
-func getPIDNS(filename string) uint32 {
+func getPIDNS(filename string) (uint32, uint64, uint64, uint64) {
+	pid := uint32(0)
+	permitted := uint64(0)
+	effective := uint64(0)
+	inheritable := uint64(0)
+
+	getValue64Hex := func(line string) (uint64, error) {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, fmt.Errorf("Fields to few arguments")
+		}
+		pidField := fields[len(fields)-1]
+		pid, err := strconv.ParseUint(pidField, 16, 64)
+		return pid, err
+	}
+
+	getValue32Int := func(line string) (uint32, error) {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, fmt.Errorf("Fields to few arguments")
+		}
+		pidField := fields[len(fields)-1]
+		pid, err := strconv.ParseUint(pidField, 10, 32)
+		return uint32(pid), err
+	}
+
 	file, err := ioutil.ReadFile(filename)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warnf("ReadFile failed: %s", filename)
-		return 0
+		return 0, 0, 0, 0
 	}
 	statuslines := strings.Split(string(file), "\n")
 	for _, line := range statuslines {
+		err = nil
 		if strings.Contains(line, "NStgid:") {
-			fields := strings.Fields(line)
-			if len(fields) < 3 {
-				return 0
-			}
-			pidField := fields[len(fields)-1]
-			pid, err := strconv.ParseUint(pidField, 10, 32)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("NStgid parser failed %s", filename)
-				return 0
-			}
-			return uint32(pid)
+			pid, err = getValue32Int(line)
+		}
+		if strings.Contains(line, "CapPrm:") {
+			permitted, err = getValue64Hex(line)
+		}
+		if strings.Contains(line, "CapEff:") {
+			effective, err = getValue64Hex(line)
+		}
+		if strings.Contains(line, "CapInh:") {
+			inheritable, err = getValue64Hex(line)
+		}
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("ReadFile (%s) error: %s", line, filename)
 		}
 	}
-	return 0
+	return pid, permitted, effective, inheritable
 }
 
 func stringToTCPEntry(s string) *procTCPEntry {
@@ -1518,7 +1553,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			ktime = 0
 		}
 		ktime = (ktime / clktck) * nanoPerSeconds
-		nspid := getPIDNS(filepath.Join(ProcFS, d.Name(), "status"))
+		nspid, permitted, effective, inheritable := getPIDNS(filepath.Join(ProcFS, d.Name(), "status"))
 
 		if _ppid != 0 {
 			var err error
@@ -1542,7 +1577,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 				pktime = 0
 			}
 			pktime = (pktime / clktck) * nanoPerSeconds
-			pnspid = getPIDNS(filepath.Join(ProcFS, ppid, "status"))
+			pnspid, _, _, _ = getPIDNS(filepath.Join(ProcFS, ppid, "status"))
 		} else {
 			pcmdline = nil
 			pstatline = nil
@@ -1573,8 +1608,13 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			pflags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
 			pktime: pktime,
 			pid:    uint32(pid), nspid: nspid, args: cmdsUTF,
-			flags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
-			ktime: ktime}
+			flags:       api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
+			ktime:       ktime,
+			permitted:   permitted,
+			effective:   effective,
+			inheritable: inheritable,
+		}
+
 		p.size = uint32(api.SIZEOF_EXECVE + len(p.args) + api.MAX_SIZEOF_CWD)
 		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs) + api.MAX_SIZEOF_CWD)
 		/* If we can't fit this in the buffer lets trim some parts and
