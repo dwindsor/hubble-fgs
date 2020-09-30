@@ -94,6 +94,7 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
 	ObserverTLSTCIngress.Observer__program = "../../bpf/objs/bpf_tc_ingress.o"
 	ObserverTLSTCEgress.Observer__program = "../../bpf/objs/bpf_tc_egress.o"
 	ObserverLseekTest.Observer__program = "../../bpf/objs/bpf_lseek.o"
+	ObserverCred.Observer__program = "../../bpf/objs/bpf_cred.o"
 
 	btf := os.Getenv("FGS_BTF")
 	if btf != "" {
