@@ -110,7 +110,7 @@ int fgs_map_loader(const int version,
 		fprintf(stderr,
 			"bpf_object__load_xattr: failed %i: %s\n",
 			err, errstr);
-		return err;
+		goto cleanup;
 	}
 
 
@@ -120,23 +120,23 @@ int fgs_map_loader(const int version,
 		fprintf(stderr,
 			"bpf_object__find_map_by_name: obj(%s) map(%s) failed",
 			prog, __label_map);
-		return err;
+		goto cleanup;
 	}
 
+	err = libbpf_get_error(obj);
 	bpf_map__unpin(map_bpf, __map);
 	err = bpf_map__pin(map_bpf, __map);
 	if (err < 0) {
 		fprintf(stderr,
 		       "bpf_map__pin: failed obj(%s) map(%s) %i\n",
 		       prog, __label_map, err);
-		return err;
+		goto cleanup;
 	}
-	err = bpf_map__fd(map_bpf);
-	if (err < 0) {
+	map_fd = bpf_map__fd(map_bpf);
+	if (map_fd < 0) {
 		fprintf(stderr,
 			"bpf_map__fd: failed obj(%s) map(%s) %i\n",
 			prog, __label_map, err);
-		return err;
 	}
 	err = bpf_object__unload(obj);
 	if (err < 0) {
@@ -144,6 +144,8 @@ int fgs_map_loader(const int version,
 			"bpf_objecT__unload: failed obj(%s) map(%s) %i\n",
 			prog, __label_map, err);
 	}
+	close(map_fd);
+cleanup:
 	bpf_object__close(obj);
 	return err;
 }
@@ -272,6 +274,7 @@ int bpf_link(char *target, const char *source, int type)
 	if (err)
 		fprintf(stderr, "bpf_prog_attach: failed (%s->%s) err %i\n", source, target, err);
 	close(target_fd);
+	close(source_fd);
 	return err;
 }
 
@@ -431,6 +434,7 @@ int tracepoint_loader(const int version,
 		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
 		return err;
 	}
+	bpf_program__unload(prog_bpf);
 	return bpf_link_fd(prog_attach);
 }
 
@@ -480,6 +484,7 @@ int kprobe_loader(const int version,
 		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
 		return -1;
 	}
+	bpf_program__unload(prog_bpf);
 	return bpf_link_fd(prog_attach);
 }
 */
