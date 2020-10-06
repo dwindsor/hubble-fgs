@@ -1765,6 +1765,8 @@ type ObserverKprobe struct {
 	/* Filters */
 	msgFilter []*MsgFilter
 	log       logrus.FieldLogger
+	/* Sensors */
+	SensorCtlChan chan SensorOp
 }
 
 func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
@@ -1979,4 +1981,125 @@ func (k *ObserverKprobe) PrintStats() {
 
 func (k *ObserverKprobe) AttachFilter(f *MsgFilter) {
 	k.msgFilter = append(k.msgFilter, f)
+}
+
+const (
+	EnableSensor = iota
+	DisableSensor
+	StopController
+)
+
+type SensorOp struct {
+	SensorName string          // name of the sensor
+	SensorOp   int             // operation: EnableSensor or DisableSensor
+	Ctx        context.Context // request context
+	RetChan    chan error      // chan to return result
+}
+
+func (k *ObserverKprobe) startSensorController(sensors map[string]*observerSensor) error {
+	if k.SensorCtlChan != nil {
+		return fmt.Errorf("failed to start sensor controller: channel already exists")
+	}
+
+	c := make(chan SensorOp)
+	go func() {
+		for {
+			req := <-c
+
+			if req.SensorOp == StopController {
+				logger.GetLogger().Debugf("stopping sensor controller...")
+				req.RetChan <- nil
+				return
+			}
+
+			sensor := sensors[req.SensorName]
+			if sensor == nil {
+				req.RetChan <- fmt.Errorf("sensor %s does not exist", req.SensorName)
+				continue
+			}
+
+			switch req.SensorOp {
+			case EnableSensor:
+				// NB: For now, we don't treat a sensor already loaded as an error
+				// because that would complicate the client side, but we might have
+				// to reconsider
+				if sensor.loaded {
+					logger.GetLogger().Infof("ignoring EnableSensor %s since sensor is already enabled", sensor.name)
+					req.RetChan <- nil
+					continue
+				}
+
+				err := k.observerLoadSensor(sensor, req.Ctx)
+				req.RetChan <- err
+
+			case DisableSensor:
+				// NB: ditto
+				if !sensor.loaded {
+					logger.GetLogger().Infof("ignoring DisableSensor %s since sensor is not enabled", sensor.name)
+					req.RetChan <- nil
+					continue
+				}
+
+				err := k.observerUnloadSensor(sensor, req.Ctx)
+				req.RetChan <- err
+
+			default:
+				req.RetChan <- fmt.Errorf("unknown op: %d", req.SensorOp)
+			}
+		}
+	}()
+	k.SensorCtlChan = c
+	return nil
+}
+
+func (k *ObserverKprobe) stopSensorController(ctx context.Context) error {
+	retc := make(chan error)
+	op := SensorOp{
+		SensorName: "",
+		SensorOp:   StopController,
+		Ctx:        ctx,
+		RetChan:    retc,
+	}
+
+	k.SensorCtlChan <- op
+	return <-retc
+}
+
+// EnableSensor is the observer's interface for loading a sensor. In contrast
+// to observerLoadSensor(), it sends a message to the sensor controller
+// goroutine thus serializing sensor operation requests.
+func (k *ObserverKprobe) EnableSensor(ctx context.Context, name string) error {
+
+	if k.SensorCtlChan == nil {
+		return fmt.Errorf("enableSensor failed, no channel to sensor controller")
+	}
+
+	retc := make(chan error)
+	op := SensorOp{
+		SensorName: name,
+		SensorOp:   EnableSensor,
+		Ctx:        ctx,
+		RetChan:    retc,
+	}
+
+	k.SensorCtlChan <- op
+	return <-retc
+}
+
+func (k *ObserverKprobe) DisableSensor(ctx context.Context, name string) error {
+
+	if k.SensorCtlChan == nil {
+		return fmt.Errorf("DisableSensor failed, no channel to sensor controller")
+	}
+
+	retc := make(chan error)
+	op := SensorOp{
+		SensorName: name,
+		SensorOp:   DisableSensor,
+		Ctx:        ctx,
+		RetChan:    retc,
+	}
+
+	k.SensorCtlChan <- op
+	return <-retc
 }

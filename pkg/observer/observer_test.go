@@ -1131,7 +1131,7 @@ func TestListenAcceptClose(t *testing.T) {
 	testDone(t, kprobe)
 }
 
-func TestSensorLseekTest(t *testing.T) {
+func TestSensorLseekLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
@@ -1165,4 +1165,61 @@ func TestSensorLseekTest(t *testing.T) {
 
 	kprobe.RemovePrograms()
 	kprobe.PrintStats()
+}
+
+func TestSensorLseekEnable(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_Test{},
+		},
+	}
+
+	kprobe := getDefaultObserver(t, false, false, false)
+	defer func() {
+		kprobe.RemovePrograms()
+		kprobe.PrintStats()
+	}()
+
+	sensorName := "lseekTest"
+	progs := []*bpfLoad{&ObserverLseekTest}
+	maps := []*ObserverMap{}
+	sensor := &observerSensor{name: sensorName, progs: progs, maps: maps}
+	sensors := map[string]*observerSensor{
+		sensorName: sensor,
+	}
+
+	if err := kprobe.startSensorController(sensors); err != nil {
+		t.Fatalf("startSensorController failed: %s", err)
+	}
+	defer func() {
+		err := kprobe.stopSensorController(ctx)
+		if err != nil {
+			fmt.Printf("stopSensorController failed: %s\n", err)
+		}
+	}()
+
+	if err := kprobe.EnableSensor(ctx, sensorName); err != nil {
+		t.Fatalf("EnableSensor error: %s", err)
+	}
+
+	defer func() {
+		err := kprobe.DisableSensor(ctx, sensorName)
+		if err != nil {
+			fmt.Printf("DisableSensor failed: %s\n", err)
+		}
+	}()
+
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWG.Wait()
+	unix.Seek(-1, 0, 4444)
+	exitWG.Wait()
+
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
 }
