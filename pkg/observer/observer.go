@@ -1200,9 +1200,31 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 	return nil
 }
 
-func (k *ObserverKprobe) observerLoadSensor(sensor *observerSensor, stopCtx context.Context) error {
-	var btf string
+func (k *ObserverKprobe) observerUnloadSensor(sensor *observerSensor, ctx context.Context) error {
+	if !sensor.loaded {
+		k.log.Warningf("attempted to unload sensor %s which is not loaded", sensor.name)
+		return fmt.Errorf("unload of sensor %s failed: sensor not loaded", sensor.name)
+	}
 
+	for _, p := range sensor.progs {
+		k.removeProgram(p)
+	}
+
+	for _, m := range sensor.maps {
+		os.Remove(k.mapDir + m.mapName)
+	}
+
+	return nil
+}
+
+func (k *ObserverKprobe) observerLoadSensor(sensor *observerSensor, stopCtx context.Context) error {
+
+	if sensor.loaded {
+		k.log.Warningf("attempted to load sensor %s which is already loaded", sensor.name)
+		return fmt.Errorf("loading sensor %s failed: sensor already loaded", sensor.name)
+	}
+
+	var btf string
 	if ObserverExecve.Observer__btf == "" {
 		btf = ObserverBTF
 	} else {
@@ -1228,7 +1250,8 @@ func (k *ObserverKprobe) observerLoadSensor(sensor *observerSensor, stopCtx cont
 		p.loadState.setLoaded()
 		k.log.Infof("hubble-fgs, prog %s was loaded.\n", p.Observer__program)
 	}
-	k.log.Infof("hubble-fgs, loaded BPF maps and events successfully.\n")
+	k.log.Infof("hubble-fgs, loaded BPF maps and events for sensor %s successfully.\n", sensor.name)
+	sensor.loaded = true
 	return nil
 }
 
@@ -1710,10 +1733,15 @@ type MsgFilter struct {
 //
 // Contrarily to low-level facilities like kprobes, sensors are ment to be
 // visible to end users.
+//
+// NB: For now we assume that sensors use disjoint sets of progs and maps.  If
+// that assumption breaks, we need to be smarter about loading/deleting
+// programs and maps (e.g., keep reference counts).
 type observerSensor struct {
-	name  string
-	progs []*bpfLoad
-	maps  []*ObserverMap
+	name   string
+	progs  []*bpfLoad
+	maps   []*ObserverMap
+	loaded bool
 }
 
 type ObserverKprobe struct {
@@ -1910,12 +1938,17 @@ func removeTracepoint(fd int) {
 	unix.Close(fd)
 }
 
+func (k *ObserverKprobe) removeProgram(prog *bpfLoad) {
+	os.Remove(k.bpfDir + prog.observer__prog)
+	if prog.tracefd >= 0 {
+		removeTracepoint(prog.tracefd)
+		prog.tracefd = -1
+	}
+}
+
 func (k *ObserverKprobe) RemovePrograms() {
 	for _, l := range observerAllPrograms {
-		os.Remove(k.bpfDir + l.observer__prog)
-		if l.tracefd >= 0 {
-			removeTracepoint(l.tracefd)
-		}
+		k.removeProgram(l)
 	}
 
 	for _, m := range observerAllMaps {

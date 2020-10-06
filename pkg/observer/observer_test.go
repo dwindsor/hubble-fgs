@@ -1147,10 +1147,12 @@ func TestSensorLseekTest(t *testing.T) {
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
 	sensor := &observerSensor{name: "lseekTest", progs: progs, maps: maps}
-	kprobe.observerLoadSensor(sensor, ctx)
+	if err := kprobe.observerLoadSensor(sensor, ctx); err != nil {
+		kprobe.RemovePrograms()
+		t.Fatalf("observerLoadSensor error: %s", err)
+	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
-
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
 
@@ -1158,5 +1160,9 @@ func TestSensorLseekTest(t *testing.T) {
 	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
-	testDone(t, kprobe)
+
+	kprobe.observerUnloadSensor(sensor, ctx)
+
+	kprobe.RemovePrograms()
+	kprobe.PrintStats()
 }
