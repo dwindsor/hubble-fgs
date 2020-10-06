@@ -1379,6 +1379,280 @@ var _ interface {
 	ErrorName() string
 } = TlsValidationError{}
 
+// Validate checks the field values on EnableSensorRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *EnableSensorRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Name
+
+	return nil
+}
+
+// EnableSensorRequestValidationError is the validation error returned by
+// EnableSensorRequest.Validate if the designated constraints aren't met.
+type EnableSensorRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e EnableSensorRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e EnableSensorRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e EnableSensorRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e EnableSensorRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e EnableSensorRequestValidationError) ErrorName() string {
+	return "EnableSensorRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e EnableSensorRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sEnableSensorRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = EnableSensorRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = EnableSensorRequestValidationError{}
+
+// Validate checks the field values on EnableSensorResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *EnableSensorResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Id
+
+	return nil
+}
+
+// EnableSensorResponseValidationError is the validation error returned by
+// EnableSensorResponse.Validate if the designated constraints aren't met.
+type EnableSensorResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e EnableSensorResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e EnableSensorResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e EnableSensorResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e EnableSensorResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e EnableSensorResponseValidationError) ErrorName() string {
+	return "EnableSensorResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e EnableSensorResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sEnableSensorResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = EnableSensorResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = EnableSensorResponseValidationError{}
+
+// Validate checks the field values on DisableSensorRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *DisableSensorRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Id
+
+	return nil
+}
+
+// DisableSensorRequestValidationError is the validation error returned by
+// DisableSensorRequest.Validate if the designated constraints aren't met.
+type DisableSensorRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e DisableSensorRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e DisableSensorRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e DisableSensorRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e DisableSensorRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e DisableSensorRequestValidationError) ErrorName() string {
+	return "DisableSensorRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e DisableSensorRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sDisableSensorRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = DisableSensorRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = DisableSensorRequestValidationError{}
+
+// Validate checks the field values on DisableSensorResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *DisableSensorResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// DisableSensorResponseValidationError is the validation error returned by
+// DisableSensorResponse.Validate if the designated constraints aren't met.
+type DisableSensorResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e DisableSensorResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e DisableSensorResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e DisableSensorResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e DisableSensorResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e DisableSensorResponseValidationError) ErrorName() string {
+	return "DisableSensorResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e DisableSensorResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sDisableSensorResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = DisableSensorResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = DisableSensorResponseValidationError{}
+
 // Validate checks the field values on GetHealthStatusRequest with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, an error is returned.

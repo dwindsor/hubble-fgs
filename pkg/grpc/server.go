@@ -24,16 +24,25 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 )
 
+type observer interface {
+	EnableSensor(ctx context.Context, name string) error
+	DisableSensor(ctx context.Context, name string) error
+}
+
 type Server struct {
 	notifier notifier
+	observer observer
 }
 
 type getEventsListener struct {
 	events chan *fgs.GetEventsResponse
 }
 
-func NewServer(notifier notifier) *Server {
-	return &Server{notifier: notifier}
+func NewServer(notifier notifier, observer observer) *Server {
+	return &Server{
+		notifier: notifier,
+		observer: observer,
+	}
 }
 
 func newListener() *getEventsListener {
@@ -76,4 +85,23 @@ func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanc
 func (s *Server) GetHealth(ctx context.Context, request *fgs.GetHealthStatusRequest) (*fgs.GetHealthStatusResponse, error) {
 	logger.GetLogger().WithField("request", request).Debug("Received a GetHealth request")
 	return getHealth()
+}
+
+func (s *Server) EnableSensor(ctx context.Context, req *fgs.EnableSensorRequest) (*fgs.EnableSensorResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received a EnableSensor request")
+	name := req.GetName()
+	err := s.observer.EnableSensor(ctx, name)
+	var ret *fgs.EnableSensorResponse = nil
+	if err == nil {
+		// NB: just return the (same) name as an id for now.
+		ret = &fgs.EnableSensorResponse{Id: name}
+	}
+	return ret, err
+}
+
+func (s *Server) DisableSensor(ctx context.Context, req *fgs.DisableSensorRequest) (*fgs.DisableSensorResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received a DisableSensor request")
+	res := &fgs.DisableSensorResponse{}
+	err := s.observer.DisableSensor(ctx, req.GetId())
+	return res, err
 }

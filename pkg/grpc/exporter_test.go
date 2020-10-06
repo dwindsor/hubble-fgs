@@ -68,9 +68,19 @@ func (f *fakeNotifier) notifyListeners(event *fgs.GetEventsResponse) {
 	f.mux.Unlock()
 }
 
+type fakeObserver struct{}
+
+func (f *fakeObserver) EnableSensor(ctx context.Context, name string) error {
+	return nil
+}
+
+func (f *fakeObserver) DisableSensor(ctx context.Context, name string) error {
+	return nil
+}
+
 func TestExporter_Send(t *testing.T) {
 	eventNotifier := newFakeNotifier()
-	grpcServer := NewServer(eventNotifier)
+	grpcServer := NewServer(eventNotifier, &fakeObserver{})
 	numRecords := 2
 	results := newArrayWriter(numRecords)
 	encoder := json.NewEncoder(results)

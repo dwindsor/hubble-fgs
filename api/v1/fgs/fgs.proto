@@ -152,9 +152,26 @@ message Tls {
     string server_session = 18;
 }
 
+message EnableSensorRequest {
+	string name = 1;
+}
+
+message EnableSensorResponse {
+	string id = 1;
+}
+
+message DisableSensorRequest {
+	string id = 1;
+}
+
+message DisableSensorResponse { }
+
 service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
     rpc GetHealth(GetHealthStatusRequest) returns (GetHealthStatusResponse) {}
+
+    rpc EnableSensor(EnableSensorRequest) returns (EnableSensorResponse) {}
+    rpc DisableSensor(DisableSensorRequest) returns (DisableSensorResponse) {}
 }
 
 enum HealthStatusType {
