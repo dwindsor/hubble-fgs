@@ -144,6 +144,7 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		post->tuple = key;
 		post->common.op = MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
+		post->common.ktime = ktime_get_ns();
 
 		key.dport = bpf_htons(key.dport);
 		execve  = lookup_socketmap(&key);
