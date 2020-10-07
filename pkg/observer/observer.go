@@ -985,7 +985,7 @@ func getKernelVersion() (int, string, error) {
 	return version, verStr, nil
 }
 
-func (k *ObserverKprobe) observerLoadSensorMaps(sensor *observerSensor, btf string, stopCtx context.Context) error {
+func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor, btf string) error {
 	version, _, err := getKernelVersion()
 	if err != nil {
 		return err
@@ -1217,7 +1217,7 @@ func (k *ObserverKprobe) observerUnloadSensor(sensor *observerSensor, ctx contex
 	return nil
 }
 
-func (k *ObserverKprobe) observerLoadSensor(sensor *observerSensor, stopCtx context.Context) error {
+func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *observerSensor) error {
 
 	if sensor.loaded {
 		k.log.Warningf("attempted to load sensor %s which is already loaded", sensor.name)
@@ -1234,7 +1234,7 @@ func (k *ObserverKprobe) observerLoadSensor(sensor *observerSensor, stopCtx cont
 	_, verStr, _ := getKernelVersion()
 	k.log.Infof("Loading kernel version %s", verStr)
 
-	if err := k.observerLoadSensorMaps(sensor, btf, stopCtx); err != nil {
+	if err := k.observerLoadSensorMaps(stopCtx, sensor, btf); err != nil {
 		return err
 	}
 
@@ -1918,7 +1918,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	}
 
 	initialSensor := k.createInitialObserverSensor()
-	if err := k.observerLoadSensor(initialSensor, ctx); err != nil {
+	if err := k.observerLoadSensor(ctx, initialSensor); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
 	k.startUpdateMapMetrics()
@@ -1983,9 +1983,13 @@ func (k *ObserverKprobe) AttachFilter(f *MsgFilter) {
 	k.msgFilter = append(k.msgFilter, f)
 }
 
+// SensorOp values
 const (
+	// Enable a sensor
 	EnableSensor = iota
+	// Disable a sensor
 	DisableSensor
+	// Stop the control and return from the goroutine
 	StopController
 )
 
@@ -2029,7 +2033,7 @@ func (k *ObserverKprobe) startSensorController(sensors map[string]*observerSenso
 					continue
 				}
 
-				err := k.observerLoadSensor(sensor, req.Ctx)
+				err := k.observerLoadSensor(req.Ctx, sensor)
 				req.RetChan <- err
 
 			case DisableSensor:
@@ -2065,9 +2069,9 @@ func (k *ObserverKprobe) stopSensorController(ctx context.Context) error {
 	return <-retc
 }
 
-// EnableSensor is the observer's interface for loading a sensor. In contrast
-// to observerLoadSensor(), it sends a message to the sensor controller
-// goroutine thus serializing sensor operation requests.
+// EnableSensor is the observer's (public) interface for loading a sensor. In
+// contrast to observerLoadSensor(), it sends a message to the sensor
+// controller goroutine thus serializing sensor operation requests.
 func (k *ObserverKprobe) EnableSensor(ctx context.Context, name string) error {
 
 	if k.SensorCtlChan == nil {
@@ -2086,6 +2090,7 @@ func (k *ObserverKprobe) EnableSensor(ctx context.Context, name string) error {
 	return <-retc
 }
 
+// DisableSensor disables a sensor
 func (k *ObserverKprobe) DisableSensor(ctx context.Context, name string) error {
 
 	if k.SensorCtlChan == nil {

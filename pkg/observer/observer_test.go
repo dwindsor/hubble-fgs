@@ -156,7 +156,7 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe) error {
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	kprobe.createDir()
 	initialSensor := kprobe.createInitialObserverSensor()
-	if err := kprobe.observerLoadSensor(initialSensor, context.TODO()); err != nil {
+	if err := kprobe.observerLoadSensor(context.TODO(), initialSensor); err != nil {
 		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadProgs error: %s", err)
 	}
@@ -182,7 +182,7 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 func TestObjectLoad(t *testing.T) {
 	kprobe := getDefaultObserver(t, false, false, false)
 	initialSensor := kprobe.createInitialObserverSensor()
-	kprobe.observerLoadSensor(initialSensor, context.TODO())
+	kprobe.observerLoadSensor(context.TODO(), initialSensor)
 	kprobe.RemovePrograms()
 }
 
@@ -1147,7 +1147,7 @@ func TestSensorLseekLoad(t *testing.T) {
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
 	sensor := &observerSensor{name: "lseekTest", progs: progs, maps: maps}
-	if err := kprobe.observerLoadSensor(sensor, ctx); err != nil {
+	if err := kprobe.observerLoadSensor(ctx, sensor); err != nil {
 		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadSensor error: %s", err)
 	}
