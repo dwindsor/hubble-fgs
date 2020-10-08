@@ -58,6 +58,8 @@ int event_ingress_tcp(struct pt_regs *ctx)
 		int zero = 0;
 		struct msg_tls_event *post = map_lookup_elem(&heap, &zero);
 
+		if (!post) // should not be possible
+			return 0;
 		post->clienthello = *event;
 		post->tuple = key;
 		post->common.op = MSG_OP_TLS;
