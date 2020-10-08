@@ -324,11 +324,16 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 
 static inline __attribute__((always_inline))
 #ifdef SK_MSG
-int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int payload_off, struct msg_tls *tls, bool client)
+int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls *tls, bool client)
+{
+	/* Its a bit of a trick to get compiler to generate this
+	 * without lsh/srsh pattern which breaks verifier.
+	 */
+	int payload_off = 0;
 #else
 int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls, bool client)
-#endif
 {
+#endif
 	__u16 *cipher_length, adv_cipher, extlength;
 	int offset = payload_off;
 	struct tls_handshake_client_hello *client_hello;
@@ -343,7 +348,12 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 		"if %[payload_off] s> 0 goto +1;\n"
 		"%[payload_off] = 0;\n"
 		: [payload_off] "+r"(payload_off)::);
+
+#ifdef SK_MSG
+	payload = data;
+#else
 	payload = data + payload_off;
+#endif
 
 	client_hello = payload + sizeof(struct tls_hdr);
 	if ((void*)client_hello + sizeof(struct tls_handshake_client_hello) > data_end) {
@@ -381,7 +391,11 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	}
 	data = (void *)(long)ctx->data;
 	data_end = (void *)(long)ctx->data_end;
+#ifdef SK_MSG
+	payload = data;
+#else
 	payload = data + payload_off;
+#endif
 	client_hello = payload + sizeof(struct tls_hdr);
 
 	session = (void*)client_hello + 6;
@@ -577,14 +591,16 @@ bool is_expected_tls_server_hello(struct msg_tls *tls)
 static inline __attribute__((always_inline))
 #ifdef SK_MSG
 int bpf_parse_tls(struct sk_msg_md *ctx,
-		  void *payload, int payload_off,
+		  void *payload, int dummy,
 		  struct msg_tls *tls)
+{
+	int payload_off = 0;
 #else
 int bpf_parse_tls(struct __sk_buff *ctx,
 		  void *payload, int payload_off,
 		  struct msg_tls *tls)
-#endif
 {
+#endif
 	struct tls_hdr *hdr;
 	void *data_end = (void *)(long)ctx->data_end;
 
@@ -716,4 +732,14 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 	*offset = *offset + doff;
 	return (void*)tcphdr + doff;
 }
+#else
+static inline __attribute__((always_inline))
+void skb_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
+	key->daddr = skmsg->remote_ip4;
+	key->saddr = skmsg->local_ip4;
+	key->proto = 0;
+	key->dport = skmsg->remote_port;
+	key->sport = skmsg->local_port;
+}
+
 #endif
