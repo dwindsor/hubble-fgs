@@ -323,16 +323,16 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 }
 
 static inline __attribute__((always_inline))
-#ifdef SK_MSG
+#ifndef SK_MSG
+int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls, bool client)
+{
+#else
 int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls *tls, bool client)
 {
 	/* Its a bit of a trick to get compiler to generate this
 	 * without lsh/srsh pattern which breaks verifier.
 	 */
 	int payload_off = 0;
-#else
-int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls, bool client)
-{
 #endif
 	__u16 *cipher_length, adv_cipher, extlength;
 	int offset = payload_off;
@@ -349,7 +349,7 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 		"%[payload_off] = 0;\n"
 		: [payload_off] "+r"(payload_off)::);
 
-#ifdef SK_MSG
+#if defined(SK_MSG) || defined(SK_SKB)
 	payload = data;
 #else
 	payload = data + payload_off;
@@ -391,7 +391,7 @@ int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct ms
 	}
 	data = (void *)(long)ctx->data;
 	data_end = (void *)(long)ctx->data_end;
-#ifdef SK_MSG
+#if defined(SK_MSG) || defined(SK_SKB)
 	payload = data;
 #else
 	payload = data + payload_off;
@@ -595,6 +595,12 @@ int bpf_parse_tls(struct sk_msg_md *ctx,
 		  struct msg_tls *tls)
 {
 	int payload_off = 0;
+#elif defined(SK_SKB)
+int bpf_parse_tls(struct __sk_buff *ctx,
+		  void *payload, int dummy,
+		  struct msg_tls *tls)
+{
+	int payload_off = 0;
 #else
 int bpf_parse_tls(struct __sk_buff *ctx,
 		  void *payload, int payload_off,
@@ -661,8 +667,29 @@ int bpf_parse_tls(struct __sk_buff *ctx,
 }
 
 #define ETH_P_IP 0x800
+#define TLS_REMOTE_PORT 0xBB01
 
-#ifndef SK_MSG
+#ifdef SK_MSG
+static inline __attribute__((always_inline))
+void skb_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
+	key->daddr = skmsg->remote_ip4;
+	key->saddr = skmsg->local_ip4;
+	key->proto = 0;
+	key->dport = TLS_REMOTE_PORT;
+	key->sport = skmsg->local_port;
+}
+#elif defined(SK_SKB)
+static inline __attribute__((always_inline))
+void sk_skb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
+{
+	key->daddr = skb->remote_ip4;
+	key->saddr = skb->local_ip4;
+	key->proto = 0;
+	key->dport = TLS_REMOTE_PORT;
+	key->sport = skb->local_port;
+
+}
+#else
 static inline __attribute__((always_inline))
 void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
 	void *data, *data_end;
@@ -732,14 +759,4 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 	*offset = *offset + doff;
 	return (void*)tcphdr + doff;
 }
-#else
-static inline __attribute__((always_inline))
-void skb_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
-	key->daddr = skmsg->remote_ip4;
-	key->saddr = skmsg->local_ip4;
-	key->proto = 0;
-	key->dport = skmsg->remote_port;
-	key->sport = skmsg->local_port;
-}
-
 #endif
