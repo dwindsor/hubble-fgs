@@ -98,6 +98,10 @@ func NameToProgType(n string) int {
 		return BPF_PROG_TYPE_SOCK_OPS
 	case "skmsg":
 		return BPF_PROG_TYPE_SK_MSG
+	case "sk_skb_parser":
+		return BPF_PROG_TYPE_SK_SKB
+	case "sk_skb_verdict":
+		return BPF_PROG_TYPE_SK_SKB
 	case "cgrp_ingress":
 		return BPF_PROG_TYPE_CGROUP_SKB
 	case "tc_ingress":
@@ -342,31 +346,31 @@ var (
 		-1,
 	}
 
-	ObserverCgrpIngress = bpfLoad{
-		"", "bpf_cgrp_in_tls.o",
-		"cgroup_skb",
-		"cgroup_skb",
-		"cgroup_skb/ingress",
-		"cgroup_skb_ingress",
+	ObserverSkSkbVerdict = bpfLoad{
+		"", "bpf_skskb_verdict_tls.o",
+		"sk_skb",
+		"sk_skb",
+		"sk_skb_verdict/tls",
+		"sk_skb_verdict_tls",
 
 		false,
 		true,
-		"cgrp_ingress",
+		"sk_skb_verdict",
 		bpfLoadStateIdle(),
 
 		-1,
 	}
 
-	ObserverTLSEvent = bpfLoad{
-		"", "bpf_event_tls.o",
-		"tcp_v4_fill_cb",
-		"tcp_v4_fill_cb",
-		"kprobe/tcp_v4_fill_cb",
-		"kprobe_tcp_v4_fill_cb",
+	ObserverSkSkbParser = bpfLoad{
+		"", "bpf_skskb_parser_tls.o",
+		"sk_skb",
+		"sk_skb",
+		"sk_skb_parser/tls",
+		"sk_skb_parser_tls",
 
 		false,
 		true,
-		"kprobe",
+		"sk_skb_parser",
 		bpfLoadStateIdle(),
 
 		-1,
@@ -432,8 +436,8 @@ var (
 		&ObserverListen,
 		&ObserverSockopsEstablished,
 		&ObserverSkmsgTLS,
-		&ObserverCgrpIngress,
-		&ObserverTLSEvent,
+		&ObserverSkSkbVerdict,
+		&ObserverSkSkbParser,
 		&ObserverTLSTCEgress,
 		&ObserverTLSTCIngress,
 
@@ -1111,6 +1115,22 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
 			k.mapDir)
+	} else if load.probeType == "sk_skb_verdict" {
+		return bpf.LoadSkSkbVerdictProgram(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			k.mapDir)
+	} else if load.probeType == "sk_skb_parser" {
+		return bpf.LoadSkSkbParserProgram(
+			version, Verbosity,
+			btf,
+			load.Observer__program,
+			load.observer__label,
+			k.bpfDir+load.observer__prog,
+			k.mapDir)
 	} else if load.probeType == "cgrp_ingress" {
 		return bpf.LoadCgroupProgram(
 			version, Verbosity,
@@ -1741,8 +1761,8 @@ func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
 		progs = append(progs,
 			&ObserverSockopsEstablished,
 			&ObserverSkmsgTLS,
-			&ObserverCgrpIngress,
-			&ObserverTLSEvent,
+			&ObserverSkSkbVerdict,
+			&ObserverSkSkbParser,
 		)
 
 		maps = append(maps,

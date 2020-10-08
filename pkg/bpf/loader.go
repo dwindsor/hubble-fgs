@@ -354,6 +354,38 @@ int fgs_loader(const int version,
 	return bpf_link(link_path, __prog, attach_type);
 }
 
+int skskb_verdict_loader(const int version,
+			 const int verbosity,
+			 const char *btf,
+			 const char *prog,
+			 const char *label,
+			 const char *__prog,
+			 const char *mapdir)
+{
+	char *path = "/sys/fs/bpf/tcpmon/fgs_sock_map";
+	const int type = BPF_PROG_TYPE_SK_SKB;
+	const int attach = BPF_SK_SKB_STREAM_VERDICT;
+
+	return fgs_loader(version, verbosity, btf, prog, label,
+	                  __prog, mapdir, path, type, attach);
+}
+
+int skskb_parser_loader(const int version,
+			const int verbosity,
+			const char *btf,
+			const char *prog,
+			const char *label,
+			const char *__prog,
+			const char *mapdir)
+{
+	char *path = "/sys/fs/bpf/tcpmon/fgs_sock_map";
+	const int type = BPF_PROG_TYPE_SK_SKB;
+	const int attach = BPF_SK_SKB_STREAM_PARSER;
+
+	return fgs_loader(version, verbosity, btf, prog, label,
+	                  __prog, mapdir, path, type, attach);
+}
+
 int skmsg_loader(const int version,
 		 const int verbosity,
 		 const char *btf,
@@ -558,7 +590,39 @@ func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog
 	loader_fd := C.skmsg_loader(version, verbosity, btf, o, l, p, mapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
-		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
+		return fmt.Errorf("Unable to skmsg load: %d %s", loaderInt, object), 0
+	}
+	return nil, loaderInt
+}
+
+func LoadSkSkbVerdictProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+	version := C.int(__version)
+	verbosity := C.int(__verbosity)
+	btf := C.CString(__btf)
+	o := C.CString(object)
+	l := C.CString(__label)
+	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
+	loader_fd := C.skskb_verdict_loader(version, verbosity, btf, o, l, p, mapdir)
+	loaderInt := int(loader_fd)
+	if loaderInt < 0 {
+		return fmt.Errorf("Unable to skskb load: %d %s", loaderInt, object), 0
+	}
+	return nil, loaderInt
+}
+
+func LoadSkSkbParserProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+	version := C.int(__version)
+	verbosity := C.int(__verbosity)
+	btf := C.CString(__btf)
+	o := C.CString(object)
+	l := C.CString(__label)
+	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
+	loader_fd := C.skskb_parser_loader(version, verbosity, btf, o, l, p, mapdir)
+	loaderInt := int(loader_fd)
+	if loaderInt < 0 {
+		return fmt.Errorf("Unable to skskb load: %d %s", loaderInt, object), 0
 	}
 	return nil, loaderInt
 }
