@@ -258,6 +258,7 @@ github.com/spf13/viper
 # github.com/stretchr/testify v1.5.1
 ## explicit
 github.com/stretchr/testify/assert
+github.com/stretchr/testify/require
 # github.com/subosito/gotenv v1.2.0
 github.com/subosito/gotenv
 # github.com/vishvananda/netlink v1.1.1-0.20200210222539-bfba8e4149db => github.com/jrfastab/netlink v1.1.1
@@ -369,8 +370,6 @@ google.golang.org/grpc/credentials/internal
 google.golang.org/grpc/encoding
 google.golang.org/grpc/encoding/proto
 google.golang.org/grpc/grpclog
-google.golang.org/grpc/health
-google.golang.org/grpc/health/grpc_health_v1
 google.golang.org/grpc/internal
 google.golang.org/grpc/internal/backoff
 google.golang.org/grpc/internal/balancerload

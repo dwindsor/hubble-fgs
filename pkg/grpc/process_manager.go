@@ -4,10 +4,8 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
-	"strconv"
 	"strings"
 	"sync"
-	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/hubble/pkg/cilium"
@@ -18,10 +16,10 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
+	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
 	coreV1 "k8s.io/api/core/v1"
 )
@@ -38,7 +36,7 @@ type notifier interface {
 // ProcessManager maintains a cache of processes from fgs exec events.
 type ProcessManager struct {
 	log   logrus.FieldLogger
-	cache *lru.Cache
+	cache *processCache
 	// pidMap is a map from PID to the most recent exec ID for the PID. This is used to find the parent
 	// of exec events without clone flag.
 	pidMap   map[uint32]string
@@ -57,32 +55,19 @@ func NewProcessManager(
 	watcher K8sResourceWatcher,
 	ciliumState *cilium.State,
 ) (*ProcessManager, error) {
-	processCache, err := lru.New(processCacheSize)
+	cache, err := newProcessCache(log, processCacheSize)
 	if err != nil {
 		return nil, err
 	}
-	pm := &ProcessManager{
+	return &ProcessManager{
 		log:         log,
-		cache:       processCache,
+		cache:       cache,
 		pidMap:      make(map[uint32]string),
 		nodeName:    os.Getenv("NODE_NAME"),
 		watcher:     watcher,
 		ciliumState: ciliumState,
 		listeners:   make(map[listener]struct{}),
-	}
-	update := func() {
-		metrics.ExecveMapSize.WithLabelValues("processLru", strconv.Itoa(int(processCacheSize))).Set(float64(pm.cache.Len()))
-	}
-	ticker := time.NewTicker(60 * time.Second)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				update()
-			}
-		}
-	}()
-	return pm, nil
+	}, nil
 }
 
 func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEvent) *fgs.GetEventsResponse {
@@ -242,30 +227,33 @@ func ktimeToProto(ktime uint64) *timestamp.Timestamp {
 	return ts
 }
 func (pm *ProcessManager) getParentProcess(pid uint32, ktime uint64) (*fgs.Process, *fgs.Process) {
-	var parent, process *fgs.Process
+	var process, parent *fgs.Process
+	procInternal, parentInternal := pm.getParentProcessInternal(pid, ktime)
+	if procInternal != nil {
+		process = procInternal.process
+	}
+	if parentInternal != nil {
+		parent = parentInternal.process
+	}
+	return process, parent
+}
+
+func (pm *ProcessManager) getParentProcessInternal(pid uint32, ktime uint64) (*processInternal, *processInternal) {
+	var parent, process *processInternal
+	var err error
 
 	processID, err := pm.GetProcessID(pid, ktime)
 	if err != nil {
 		pm.log.WithError(err).WithField("pid", pid).WithField("ktime", ktime).Warn("Listen Failed to get exec process")
 	}
 
-	if entry, ok := pm.cache.Get(processID); ok {
-		process, _ = entry.(*fgs.Process)
-		if !ok {
-			pm.log.WithField("process entry", entry).Warn("invalid entry in process cache")
-		}
-	} else {
-		pm.log.WithField("id in event", processID).WithField("pid", pid).WithField("ktime", ktime).Warn("process not found in cache")
+	if process, err = pm.cache.get(processID); err != nil {
+		pm.log.WithField("id in event", processID).WithField("pid", pid).WithField("ktime", ktime).Debug("process not found in cache")
 		return nil, nil
 	}
 
-	if entry, ok := pm.cache.Get(process.ParentExecId); ok {
-		parent, ok = entry.(*fgs.Process)
-		if !ok {
-			pm.log.WithField("process entry", entry).Warn("invalid entry in process cache")
-		}
-	} else {
-		pm.log.WithField("id in event", process.ParentExecId).WithField("pid", pid).WithField("ktime", ktime).Warn("parent process not found in cache")
+	if parent, err = pm.cache.get(process.process.ParentExecId); err != nil {
+		pm.log.WithField("id in event", process.process.ParentExecId).WithField("pid", pid).WithField("ktime", ktime).Debug("parent process not found in cache")
 		return process, nil
 	}
 	return process, parent
@@ -308,7 +296,7 @@ func (pm *ProcessManager) getProcess(
 	containerID string,
 	parent fgsAPI.MsgExecveKey,
 	capabilities fgsAPI.MsgCapabilities,
-) (*fgs.Process, *v1.Endpoint) {
+) (*processInternal, *v1.Endpoint) {
 	args, cwd := reader.ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
 	var err error
@@ -323,78 +311,71 @@ func (pm *ProcessManager) getProcess(
 	}
 	protoPod, endpoint := pm.getPodInfo(containerID, process.Filename, args, process.NSPID)
 	caps := pm.getCapabilities(capabilities)
-	return &fgs.Process{
-		Pid:          &wrappers.UInt32Value{Value: process.PID},
-		Uid:          &wrappers.UInt32Value{Value: process.UID},
-		Cwd:          cwd,
-		Binary:       process.Filename,
-		Arguments:    args,
-		Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
-		StartTime:    ktimeToProto(process.Ktime),
-		Auid:         &wrappers.UInt32Value{Value: process.AUID},
-		Pod:          protoPod,
-		ExecId:       execID,
-		Docker:       containerID,
-		ParentExecId: parentExecID,
-		Refcnt:       1,
-		Cap:          caps,
+	return &processInternal{
+		process: &fgs.Process{
+			Pid:          &wrappers.UInt32Value{Value: process.PID},
+			Uid:          &wrappers.UInt32Value{Value: process.UID},
+			Cwd:          cwd,
+			Binary:       process.Filename,
+			Arguments:    args,
+			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
+			StartTime:    ktimeToProto(process.Ktime),
+			Auid:         &wrappers.UInt32Value{Value: process.AUID},
+			Pod:          protoPod,
+			ExecId:       execID,
+			Docker:       containerID,
+			ParentExecId: parentExecID,
+			Refcnt:       1,
+		},
+		capabilities: caps,
 	}, endpoint
 }
 
 // Add converts an FGS exec event to protobuf format and adds the protobuf message to the cache.
 func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *fgs.Process {
 	proc, _ := pm.getProcess(event.Process, event.Kube.Docker, event.Parent, event.Capabilities)
-	pm.cache.Add(proc.ExecId, proc)
+	pm.cache.add(proc)
 	var parentExecID string
-	if proc.Pid != nil {
-		parentExecID = pm.pidMap[proc.Pid.Value]
-		pm.pidMap[proc.Pid.Value] = proc.ExecId
+	if proc.process.Pid != nil {
+		parentExecID = pm.pidMap[proc.process.Pid.Value]
+		pm.pidMap[proc.process.Pid.Value] = proc.process.ExecId
 	}
-	if strings.Contains(proc.Flags, "clone") || strings.Contains(proc.Flags, "procFS") {
-		return proc
+	if strings.Contains(proc.process.Flags, "clone") || strings.Contains(proc.process.Flags, "procFS") {
+		return proc.process
 	}
 	// This means the exec didn't clone. Look up the most recent exec ID for this PID
 	// and use that as the parent.
-	entry, ok := pm.cache.Get(parentExecID)
-	if !ok {
+	parent, err := pm.cache.get(parentExecID)
+	if err != nil {
 		metrics.ErrorCount.WithLabelValues(string(metrics.NoParentNoClone)).Inc()
 		pm.log.WithFields(logrus.Fields{
 			"parent exec id": parentExecID,
 			"process":        proc,
 		}).Debug("parent not found in cache")
-		return proc
+		return proc.process
 	}
-	parent, ok := entry.(*fgs.Process)
-	if !ok {
-		pm.log.WithField("parent process entry", parent).Warn("invalid entry in process cache")
-		return proc
-	}
-	if parent.ExecId == proc.ExecId {
+	if parent.process.ExecId == proc.process.ExecId {
 		pm.log.WithFields(logrus.Fields{
 			"parent":  parent,
 			"current": proc,
 		}).Warn("parent and current process has the same exec ID")
-		return proc
+		return proc.process
 	}
-	proc.ParentExecId = parent.ExecId
-	return proc
+	proc.process.ParentExecId = parent.process.ExecId
+	return proc.process
 }
 
 // getAncestors builds an ancestor list by traversing the parent exec IDs.
 func (pm *ProcessManager) getAncestors(proc *fgs.Process) []*fgs.Process {
 	var ancestors []*fgs.Process
 	for parentExecID := proc.ParentExecId; parentExecID != ""; {
-		val, ok := pm.cache.Get(parentExecID)
-		if !ok {
+		entry, err := pm.cache.get(parentExecID)
+		if err != nil {
 			pm.log.WithField("id in event", parentExecID).Debug("parent not found in cache")
 			break
 		}
-		entry, ok := val.(*fgs.Process)
-		if !ok {
-			break
-		}
-		ancestors = append(ancestors, entry)
-		parentExecID = entry.ParentExecId
+		ancestors = append(ancestors, entry.process)
+		parentExecID = entry.process.ParentExecId
 	}
 	return ancestors
 }
@@ -477,13 +458,13 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 	} else {
 		process.Refcnt--
 		if process.Refcnt == 0 {
-			pm.cache.Remove(process.ExecId)
+			pm.cache.remove(process.ExecId)
 		}
 	}
 	if parent != nil {
 		parent.Refcnt--
 		if parent.Refcnt == 0 {
-			pm.cache.Remove(parent.ExecId)
+			pm.cache.remove(parent.ExecId)
 		}
 	}
 	return &fgs.ProcessExit{
@@ -494,12 +475,22 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 
 // GetProcessCred returns Cred protobuf message for a given process.
 func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.ProcessCred {
-	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	if process == nil {
+	processInt, parentInt := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	var process, parent *fgs.Process
+	if processInt == nil {
 		process = &fgs.Process{
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
+	} else {
+		// Make a copy of the process and set the cap field.
+		process = proto.Clone(processInt.process).(*fgs.Process)
+		process.Cap = processInt.capabilities
+	}
+	if parentInt != nil {
+		// Make a copy of the parent and set the cap field.
+		parent = proto.Clone(parentInt.process).(*fgs.Process)
+		parent.Cap = parentInt.capabilities
 	}
 	return &fgs.ProcessCred{
 		Process: process,
@@ -527,13 +518,11 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 		pm.log.WithError(err).Warn("TLS Failed to get exec process", event.ProcessKey.Pid)
 	}
 	var proc *fgs.Process
-	if entry, ok := pm.cache.Get(processID); ok {
-		proc, ok = entry.(*fgs.Process)
-		if !ok {
-			pm.log.WithField("process entry", entry).Warn("invalid entry in process cache")
-		}
+	processInt, err := pm.cache.get(processID)
+	if err != nil {
+		pm.log.WithField("id in TLS event", processID).Debug("process not found in cache")
 	} else {
-		pm.log.WithField("id in TLS event", processID).Warn("process not found in cache")
+		proc = processInt.process
 	}
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI)
 	return &fgs.Tls{
@@ -581,7 +570,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 	} else {
 		process.Refcnt--
 		if process.Refcnt == 0 {
-			pm.cache.Remove(process)
+			pm.cache.remove(process.ExecId)
 		}
 	}
 	if parent == nil {
@@ -589,7 +578,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 	} else {
 		parent.Refcnt--
 		if parent.Refcnt == 0 {
-			pm.cache.Remove(parent)
+			pm.cache.remove(parent.ExecId)
 		}
 	}
 	endpoint := pm.getProcessEndpoint(process)

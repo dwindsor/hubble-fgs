@@ -32,6 +32,12 @@ type ErrorType string
 const (
 	// Parent process was not found in the pid map for a process without the clone flag.
 	NoParentNoClone ErrorType = "no_parent_no_clone"
+	// Process not found on get() call.
+	ProcessCacheMissOnGet ErrorType = "process_cache_miss_on_get"
+	// Process evicted from the cache.
+	ProcessCacheEvicted ErrorType = "process_cache_evicted"
+	// Process not found on remove() call.
+	ProcessCacheMissOnRemove ErrorType = "process_cache_miss_on_remove"
 )
 
 var (
