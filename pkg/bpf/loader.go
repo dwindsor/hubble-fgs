@@ -314,7 +314,7 @@ int tc_loader(const int version,
 		   const char *ciliumdir)
 {
 	struct bpf_object *obj;
-	int err;
+	int fd, err;
 
 	obj = __loader(version, verbosity, btf, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
 	if (!obj)
@@ -325,7 +325,9 @@ int tc_loader(const int version,
 		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
 		return err;
 	}
-	return bpf_obj_get(__prog);
+	fd = bpf_obj_get(__prog);
+	bpf_object__close(obj);
+	return fd;
 }
 
 int fgs_loader(const int version,
@@ -340,7 +342,7 @@ int fgs_loader(const int version,
 		   const int attach_type)
 {
 	struct bpf_object *obj;
-	int err;
+	int fd, err;
 
 	obj = __loader(version, verbosity, btf, prog, mapdir, 0, prog_type);
 	if (!obj)
@@ -351,7 +353,9 @@ int fgs_loader(const int version,
 		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
 		return err;
 	}
-	return bpf_link(link_path, __prog, attach_type);
+	fd = bpf_link(link_path, __prog, attach_type);
+	bpf_object__close(obj);
+	return fd;
 }
 
 int skskb_verdict_loader(const int version,
@@ -466,6 +470,7 @@ int tracepoint_loader(const int version,
 		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
 		return err;
 	}
+	bpf_object__close(obj);
 	bpf_program__unload(prog_bpf);
 	return bpf_link_fd(prog_attach);
 }
@@ -516,6 +521,7 @@ int kprobe_loader(const int version,
 		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
 		return -1;
 	}
+	bpf_object__close(obj);
 	bpf_program__unload(prog_bpf);
 	return bpf_link_fd(prog_attach);
 }
