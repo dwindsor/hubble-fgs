@@ -477,13 +477,13 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 	} else {
 		process.Refcnt--
 		if process.Refcnt == 0 {
-			pm.cache.Remove(process)
+			pm.cache.Remove(process.ExecId)
 		}
 	}
 	if parent != nil {
 		parent.Refcnt--
 		if parent.Refcnt == 0 {
-			pm.cache.Remove(parent)
+			pm.cache.Remove(parent.ExecId)
 		}
 	}
 	return &fgs.ProcessExit{
