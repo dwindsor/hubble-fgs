@@ -53,6 +53,9 @@ const (
 	nanoPerSeconds = 1000000000
 
 	TCP_PROC_STATE_LISTEN = 10
+
+	maxMapRetries = 4
+	mapRetryDelay = 1
 )
 
 const (
@@ -1381,8 +1384,14 @@ func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
 	}
 
 	m, err := bpf.OpenMap(filepath.Join(k.mapDir, ObserverExecveMap.mapName))
-	if err != nil {
-		panic(err)
+	for i := 0; err != nil; i++ {
+		m, err = bpf.OpenMap(filepath.Join(k.mapDir, ObserverExecveMap.mapName))
+		if err != nil {
+			time.Sleep(mapRetryDelay * time.Second)
+		}
+		if i > maxMapRetries {
+			panic(err)
+		}
 	}
 	for _, p := range procs {
 		k := &ExecveKey{Pid: p.pid}
