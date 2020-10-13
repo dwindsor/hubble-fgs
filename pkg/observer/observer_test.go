@@ -1192,11 +1192,11 @@ func TestSensorLseekEnable(t *testing.T) {
 		sensorName: sensor,
 	}
 
-	if err := kprobe.startSensorController(sensors); err != nil {
+	if err := kprobe.startSensorCtl(sensors); err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
 	defer func() {
-		err := kprobe.stopSensorController(ctx)
+		err := kprobe.stopSensorCtl(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
