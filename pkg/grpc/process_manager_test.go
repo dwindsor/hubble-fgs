@@ -19,6 +19,7 @@ import (
 	"time"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -57,7 +58,8 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 		logrus.New(),
 		10,
 		NewFakeK8sWatcher(pods),
-		cilium.GetFakeCiliumState())
+		cilium.GetFakeCiliumState(),
+		false)
 	assert.NoError(t, err)
 	pod, endpoint := pm.getPodInfo("container-id-not-found", "", "", 0)
 	assert.Nil(t, pod)
@@ -118,7 +120,8 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 		logrus.New(),
 		10,
 		NewFakeK8sWatcher(pods),
-		cilium.GetFakeCiliumState())
+		cilium.GetFakeCiliumState(),
+		false)
 	assert.NoError(t, err)
 	pod, endpoint := pm.getPodInfo("aaaaaaa", "/bin/command", "arg-a arg-b", 1234)
 	assert.Equal(t,
@@ -134,4 +137,38 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 			},
 		}, pod)
 	assert.Nil(t, endpoint)
+}
+
+func TestProcessManager_GetProcessExec(t *testing.T) {
+	pm, err := NewProcessManager(
+		logrus.New(),
+		10,
+		NewFakeK8sWatcher(nil),
+		cilium.GetFakeCiliumState(),
+		false)
+	assert.NoError(t, err)
+	procInternal := pm.Add(&fgsAPI.MsgExecveEventUnix{
+		Common: fgsAPI.MsgCommon{
+			Ktime: 1234,
+		},
+		Capabilities: fgsAPI.MsgCapabilities{
+			Permitted:   1,
+			Effective:   1,
+			Inheritable: 1,
+		},
+		Process: fgsAPI.MsgExecUnix{
+			PID: 5678,
+		},
+	})
+	assert.Nil(t, pm.GetProcessExec(procInternal).Process.Cap)
+
+	// cap field should be set with enable-process-cred flag.
+	pm.enableProcessCred = true
+	assert.Equal(t,
+		&fgs.Capabilities{
+			Permitted:   []fgs.CapabilitiesType{fgs.CapabilitiesType_CAP_CHOWN},
+			Effective:   []fgs.CapabilitiesType{fgs.CapabilitiesType_CAP_CHOWN},
+			Inheritable: []fgs.CapabilitiesType{fgs.CapabilitiesType_CAP_CHOWN},
+		},
+		pm.GetProcessExec(procInternal).Process.Cap)
 }

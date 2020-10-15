@@ -44,6 +44,7 @@ var (
 	serverAddress              string
 	runStandalone              bool
 	ciliumBPF                  string
+	enableProcessCred          bool
 )
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
@@ -106,7 +107,8 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return err
 	}
-	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState)
+	processManager, err := fgsGrpc.NewProcessManager(
+		logger.GetLogger(), processCacheSize, watcher, ciliumState, enableProcessCred)
 	if err != nil {
 		return err
 	}
@@ -233,6 +235,7 @@ func init() {
 	flags.StringVar(&networkInterfaces, "network-interfaces", "", "Comma separated list of regex expressions to use to apply protocol parsers")
 	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
 	flags.StringVar(&ciliumBPF, "cilium-bpf", "", "Cilium BPF directory")
+	flags.BoolVar(&enableProcessCred, "enable-process-cred", true, "Enable process_cred events")
 	viper.BindPFlags(flags)
 
 	// Options for debugging/development, not visible to users

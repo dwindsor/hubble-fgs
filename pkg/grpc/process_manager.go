@@ -43,9 +43,10 @@ type ProcessManager struct {
 	nodeName string
 	watcher  K8sResourceWatcher
 	// synchronize access to the listeners map.
-	mux         sync.Mutex
-	listeners   map[listener]struct{}
-	ciliumState *cilium.State
+	mux               sync.Mutex
+	listeners         map[listener]struct{}
+	ciliumState       *cilium.State
+	enableProcessCred bool
 }
 
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
@@ -54,19 +55,21 @@ func NewProcessManager(
 	processCacheSize int,
 	watcher K8sResourceWatcher,
 	ciliumState *cilium.State,
+	enableProcessCred bool,
 ) (*ProcessManager, error) {
 	cache, err := newProcessCache(log, processCacheSize)
 	if err != nil {
 		return nil, err
 	}
 	return &ProcessManager{
-		log:         log,
-		cache:       cache,
-		pidMap:      make(map[uint32]string),
-		nodeName:    os.Getenv("NODE_NAME"),
-		watcher:     watcher,
-		ciliumState: ciliumState,
-		listeners:   make(map[listener]struct{}),
+		log:               log,
+		cache:             cache,
+		pidMap:            make(map[uint32]string),
+		nodeName:          os.Getenv("NODE_NAME"),
+		watcher:           watcher,
+		ciliumState:       ciliumState,
+		listeners:         make(map[listener]struct{}),
+		enableProcessCred: enableProcessCred,
 	}, nil
 }
 
@@ -117,6 +120,9 @@ func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetE
 }
 
 func (pm *ProcessManager) handleCredMessage(msg *api.MsgCredEventUnix) *fgs.GetEventsResponse {
+	if !pm.enableProcessCred {
+		return nil
+	}
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_CRED:
@@ -197,9 +203,11 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleTestMessage(msg)
 	default:
 		pm.log.WithField("event", event).Warn("unhandled event")
+		metrics.ErrorCount.WithLabelValues(string(metrics.UnhandledEvent)).Inc()
+		return nil
 	}
-	metrics.ProcessEvent(event, processedEvent)
 	if processedEvent != nil {
+		metrics.ProcessEvent(event, processedEvent)
 		pm.notifyListeners(processedEvent)
 	}
 	return nil
@@ -332,7 +340,7 @@ func (pm *ProcessManager) getProcess(
 }
 
 // Add converts an FGS exec event to protobuf format and adds the protobuf message to the cache.
-func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *fgs.Process {
+func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *processInternal {
 	proc, _ := pm.getProcess(event.Process, event.Kube.Docker, event.Parent, event.Capabilities)
 	pm.cache.add(proc)
 	var parentExecID string
@@ -341,7 +349,7 @@ func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *fgs.Process {
 		pm.pidMap[proc.process.Pid.Value] = proc.process.ExecId
 	}
 	if strings.Contains(proc.process.Flags, "clone") || strings.Contains(proc.process.Flags, "procFS") {
-		return proc.process
+		return proc
 	}
 	// This means the exec didn't clone. Look up the most recent exec ID for this PID
 	// and use that as the parent.
@@ -352,17 +360,17 @@ func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *fgs.Process {
 			"parent exec id": parentExecID,
 			"process":        proc,
 		}).Debug("parent not found in cache")
-		return proc.process
+		return proc
 	}
 	if parent.process.ExecId == proc.process.ExecId {
 		pm.log.WithFields(logrus.Fields{
 			"parent":  parent,
 			"current": proc,
 		}).Warn("parent and current process has the same exec ID")
-		return proc.process
+		return proc
 	}
 	proc.process.ParentExecId = parent.process.ExecId
-	return proc.process
+	return proc
 }
 
 // getAncestors builds an ancestor list by traversing the parent exec IDs.
@@ -401,12 +409,19 @@ func (pm *ProcessManager) GetExecIDFromKey(key *fgsAPI.MsgExecveKey) (string, er
 	return pm.GetProcessID(key.Pid, key.Ktime)
 }
 
+func copyProcess(process *fgs.Process) *fgs.Process {
+	if process == nil {
+		return nil
+	}
+	return proto.Clone(process).(*fgs.Process)
+}
+
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.
 func (pm *ProcessManager) GetProcessExec(
-	proc *fgs.Process,
+	proc *processInternal,
 ) *fgs.ProcessExec {
 	var parent *fgs.Process
-	ancestors := pm.getAncestors(proc)
+	ancestors := pm.getAncestors(proc.process)
 	if len(ancestors) >= 1 {
 		parent = ancestors[0]
 		ancestors = ancestors[1:]
@@ -415,8 +430,16 @@ func (pm *ProcessManager) GetProcessExec(
 			a.Refcnt++
 		}
 	}
+	// Set the cap field only if --enable-process-cred flag is set.
+	var process *fgs.Process
+	if pm.enableProcessCred {
+		process = copyProcess(proc.process)
+		process.Cap = proc.capabilities
+	} else {
+		process = proc.process
+	}
 	return &fgs.ProcessExec{
-		Process:   proc,
+		Process:   process,
 		Parent:    parent,
 		Ancestors: ancestors,
 	}
@@ -484,12 +507,12 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		}
 	} else {
 		// Make a copy of the process and set the cap field.
-		process = proto.Clone(processInt.process).(*fgs.Process)
+		process = copyProcess(processInt.process)
 		process.Cap = processInt.capabilities
 	}
 	if parentInt != nil {
 		// Make a copy of the parent and set the cap field.
-		parent = proto.Clone(parentInt.process).(*fgs.Process)
+		parent = copyProcess(parentInt.process)
 		parent.Cap = parentInt.capabilities
 	}
 	return &fgs.ProcessCred{

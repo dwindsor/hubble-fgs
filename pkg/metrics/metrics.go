@@ -38,6 +38,8 @@ const (
 	ProcessCacheEvicted ErrorType = "process_cache_evicted"
 	// Process not found on remove() call.
 	ProcessCacheMissOnRemove ErrorType = "process_cache_miss_on_remove"
+	// Missing event handler.
+	UnhandledEvent ErrorType = "unhandled_event"
 )
 
 var (
