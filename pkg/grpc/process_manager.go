@@ -490,6 +490,13 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 			pm.cache.remove(parent.ExecId)
 		}
 	}
+	ancestors := pm.getAncestors(process)
+	if len(ancestors) >= 2 {
+		ancestors = ancestors[1:]
+		for _, a := range ancestors {
+			a.Refcnt--
+		}
+	}
 	return &fgs.ProcessExit{
 		Process: process,
 		Parent:  parent,
