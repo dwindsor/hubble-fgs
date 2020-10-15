@@ -460,7 +460,7 @@ func (pm *ProcessManager) GetProcessListen(
 		process.Refcnt++
 	}
 	if parent != nil {
-		process.Refcnt++
+		parent.Refcnt++
 	}
 	return &fgs.ProcessListen{
 		Process: process,
