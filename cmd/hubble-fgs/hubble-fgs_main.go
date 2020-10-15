@@ -235,7 +235,7 @@ func init() {
 	flags.StringVar(&networkInterfaces, "network-interfaces", "", "Comma separated list of regex expressions to use to apply protocol parsers")
 	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
 	flags.StringVar(&ciliumBPF, "cilium-bpf", "", "Cilium BPF directory")
-	flags.BoolVar(&enableProcessCred, "enable-process-cred", true, "Enable process_cred events")
+	flags.BoolVar(&enableProcessCred, "enable-process-cred", false, "Enable process_cred events")
 	viper.BindPFlags(flags)
 
 	// Options for debugging/development, not visible to users
