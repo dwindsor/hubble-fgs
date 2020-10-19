@@ -12,15 +12,16 @@ struct bpf_map_def {
 #endif
 
 #define SK_MSG
+#define TLS_PORT 443
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "bpf_sockops.h"
-#include "parser.h"
-#include "tls_map.h"
 
-__attribute__((section(("sk_skb_parser/tls")), used))
-int bpf_skskb_parser_tls(struct __sk_buff *skb)
+#include "tls/bpf_skmsg_tls.h"
+
+__attribute__((section(("sk_msg/fgs")), used))
+int bpf_sk_msg_fgs(struct sk_msg_md *skmsg)
 {
-	return skb->len;
+	return bpf_sk_msg_tls(skmsg);
 }

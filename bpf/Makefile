@@ -4,13 +4,13 @@
 SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
 
 TLSDIR := parsers/tls/
-PARSERDIR = ./parsers/
+PARSERDIR = parsers/
 NETWORKINGDIR := networking/
 PROCESSDIR := process/
 BPFTESTDIR := test/
 
-PARSERS = bpf_sockops.o
-TLS = bpf_skmsg_tls.o bpf_skskb_verdict_tls.o bpf_skskb_parser_tls.o bpf_tc_ingress.o bpf_tc_egress.o
+PARSERS = bpf_sockops.o bpf_skmsg.o bpf_skskb_parser.o bpf_skskb_verdict.o 
+TLS = bpf_skmsg_tls.o bpf_tc_ingress.o bpf_tc_egress.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o
 PROCESS = bpf_execve_event.o bpf_fork.o bpf_exit.o bpf_cred.o
 BPFTEST = bpf_lseek.o
@@ -34,11 +34,12 @@ LLC    ?= llc
 
 OBJSDIR       := objs/
 
+PARSEROBJ     := $(addprefix $(OBJSDIR),$(PARSERS))
 TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
 NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
-OBJS          := $(TLSOBJ) $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
+OBJS          := $(PARSEROBJ) $(TLSOBJ) $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
 
 all: $(OBJS)
 
@@ -49,7 +50,7 @@ $(OBJSDIR):
 	mkdir $(OBJSDIR)
 
 objs/%.ll: $(PARSERDIR)%.c
-	${CLANG} ${CLANG_FLAGS} -I ${PARSERDIR} -c $< -o $@
+	${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
 objs/%.ll: $(TLSDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -I ${PARSERDIR} -c $< -o $@

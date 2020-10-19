@@ -12,11 +12,6 @@ struct bpf_map_def {
 #endif
 
 #include "hubble_msg.h"
-
-static inline void compiler_barrier(void) {
-	asm volatile("" ::: "memory");
-}
-
 #include "bpf_sockops.h"
 
 /* Hard coding policy until we have policy map in place. */
@@ -28,11 +23,10 @@ static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 	struct sock_key key = {};
 
 	sk_extract4_key(skops, &key);
-	if (key.dport == bpf_htons(TLS_PORT))
-		sock_hash_update(skops, &fgs_sock_map, &key, BPF_NOEXIST);
+	sock_hash_update(skops, &fgs_sock_map, &key, BPF_NOEXIST);
 }
 
-__section("sockops/tls_sockops")
+__section("sockops/fgs_sockops")
 int bpf_sockmap(struct bpf_sock_ops *skops)
 {
 	__u32 family, op;

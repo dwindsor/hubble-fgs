@@ -1,22 +1,6 @@
 /* Structure representing an L7 sock */
 struct sock_key {
-	struct {
-		__u32		sip4;
-		__u32		pad1;
-		__u32		pad2;
-		__u32		pad3;
-	};
-	struct {
-		__u32		dip4;
-		__u32		pad4;
-		__u32		pad5;
-		__u32		pad6;
-	};
-	__u8 family;
-	__u8 pad7;
-	__u16 pad8;
-	__u32 sport;
-	__u32 dport;
+	__u64 cookie;
 } __attribute__((packed));
 
 #define SOCKOPS_MAP_SIZE 65535
@@ -58,32 +42,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) fgs_sock_map = {
 
 __attribute__((unused))
 static void sk_extract4_key(struct bpf_sock_ops *ops,
-					    struct sock_key *key)
+			    struct sock_key *key)
 {
-	key->dip4 = ops->remote_ip4;
-	key->sip4 = ops->local_ip4;
-	key->family = AF_INET;
-
-	key->sport = (bpf_ntohl(ops->local_port) >> 16);
-	/* clang-7.1 or higher seems to think it can do a 16-bit read here
-	 * which unfortunately most kernels (as of October 2019) do not
-	 * support, which leads to verifier failures. Insert a READ_ONCE
-	 * to make sure that a 32-bit read followed by shift is generated. */
-	key->dport = READ_ONCE(ops->remote_port) >> 16;
-}
-
-__attribute__((unused))
-static void sk_msg_extract4_key(struct sk_msg_md *msg,
-				struct sock_key *key)
-{
-	key->dip4 = msg->remote_ip4;
-	key->sip4 = msg->local_ip4;
-	key->family = AF_INET;
-
-	key->sport = (bpf_ntohl(msg->local_port) >> 16);
-	/* clang-7.1 or higher seems to think it can do a 16-bit read here
-	 * which unfortunately most kernels (as of October 2019) do not
-	 * support, which leads to verifier failures. Insert a READ_ONCE
-	 * to make sure that a 32-bit read followed by shift is generated. */
-	key->dport = READ_ONCE(msg->remote_port) >> 16;
+	key->cookie = get_socket_cookie(ops);
 }

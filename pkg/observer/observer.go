@@ -323,8 +323,8 @@ var (
 		"", "bpf_sockops.o",
 		"sockops",
 		"sockops",
-		"sockops/tls_sockops",
-		"sockops_tls_sockops",
+		"sockops/fgs_sockops",
+		"sockops_fgs_sockops",
 
 		false,
 		true,
@@ -334,12 +334,12 @@ var (
 		-1,
 	}
 
-	ObserverSkmsgTLS = bpfLoad{
-		"", "bpf_skmsg_tls.o",
+	ObserverSkmsg = bpfLoad{
+		"", "bpf_skmsg.o",
 		"sk_msg",
 		"sk_msg",
-		"sk_msg/tls",
-		"sk_msg_tls",
+		"sk_msg/fgs",
+		"sk_msg_fgs",
 
 		false,
 		true,
@@ -350,11 +350,11 @@ var (
 	}
 
 	ObserverSkSkbVerdict = bpfLoad{
-		"", "bpf_skskb_verdict_tls.o",
+		"", "bpf_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb",
-		"sk_skb_verdict/tls",
-		"sk_skb_verdict_tls",
+		"sk_skb_verdict/fgs",
+		"sk_skb_verdict_fgs",
 
 		false,
 		true,
@@ -365,11 +365,11 @@ var (
 	}
 
 	ObserverSkSkbParser = bpfLoad{
-		"", "bpf_skskb_parser_tls.o",
+		"", "bpf_skskb_parser.o",
 		"sk_skb",
 		"sk_skb",
-		"sk_skb_parser/tls",
-		"sk_skb_parser_tls",
+		"sk_skb_parser/fgs",
+		"sk_skb_parser_fgs",
 
 		false,
 		true,
@@ -438,7 +438,7 @@ var (
 		&ObserverTCPClose,
 		&ObserverListen,
 		&ObserverSockopsEstablished,
-		&ObserverSkmsgTLS,
+		&ObserverSkmsg,
 		&ObserverSkSkbVerdict,
 		&ObserverSkSkbParser,
 		&ObserverTLSTCEgress,
@@ -456,7 +456,7 @@ var (
 	/* TLS maps */
 	ObserverTCTLSMap = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle()}
 	ObserverSockMap  = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle()}
-	ObserverTLSMap   = ObserverMap{"tls_map", "skmsg", &ObserverSkmsgTLS, bpfLoadStateIdle()}
+	ObserverTLSMap   = ObserverMap{"tls_map", "skmsg", &ObserverSkmsg, bpfLoadStateIdle()}
 	/* Internal statistics for debugging */
 	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
 	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
@@ -1799,7 +1799,7 @@ func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
 	if k.enableTLS {
 		progs = append(progs,
 			&ObserverSockopsEstablished,
-			&ObserverSkmsgTLS,
+			&ObserverSkmsg,
 			&ObserverSkSkbVerdict,
 			&ObserverSkSkbParser,
 		)
