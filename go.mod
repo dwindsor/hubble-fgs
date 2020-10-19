@@ -12,6 +12,7 @@ require (
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/mitchellh/protoc-gen-go-json v0.0.0-20200414201540-069933b8c834
+	github.com/pelletier/go-toml v1.8.0 // indirect
 	github.com/prometheus/client_golang v1.5.1
 	github.com/sirupsen/logrus v1.4.2
 	github.com/spf13/cobra v1.0.0
@@ -19,12 +20,12 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/vishvananda/netlink v1.1.1-0.20200210222539-bfba8e4149db
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20200420163511-1957bb5e6d1f
+	golang.org/x/sys v0.0.0-20200814200057-3d37ad5750ed
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	k8s.io/api v0.18.4
-	k8s.io/apimachinery v0.18.5
+	k8s.io/apimachinery v0.18.8
 	k8s.io/client-go v11.0.0+incompatible
 	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19 // indirect
 )

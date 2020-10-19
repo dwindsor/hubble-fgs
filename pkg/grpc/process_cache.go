@@ -3,6 +3,7 @@ package grpc
 import (
 	"fmt"
 	"strconv"
+	"sync/atomic"
 	"time"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
@@ -12,9 +13,24 @@ import (
 )
 
 type processCache struct {
-	log   logrus.FieldLogger
-	cache *lru.Cache
+	log        logrus.FieldLogger
+	cache      *lru.Cache
+	deleteChan chan *processInternal
 }
+
+// garbage collection states
+const (
+	inUse = iota
+	deletePending
+	deleteReady
+	deleted
+)
+
+// garbage collection run interval
+const (
+	intervalGC = time.Second * 30
+	colorsGC   = 2
+)
 
 // processInternal is the internal representation of a process.
 type processInternal struct {
@@ -22,6 +38,90 @@ type processInternal struct {
 	process *fgs.Process
 	// additional internal fields below
 	capabilities *fgs.Capabilities
+	// garbage collector metadata
+	color int
+}
+
+func (pc *processCache) cacheGarbageCollector() {
+	ticker := time.NewTicker(intervalGC)
+	pc.deleteChan = make(chan *processInternal)
+
+	go func() {
+		var deleteQueue, newQueue []*processInternal
+
+		for {
+			select {
+			case <-ticker.C:
+				newQueue = newQueue[:0]
+				for _, p := range deleteQueue {
+					/* If the ref != 0 this means we have bounced
+					 * through !refcnt and now have a refcnt. This
+					 * can happen if we receive the following,
+					 *
+					 *     execve->close->connect
+					 *
+					 * where the connect/close sequence is received
+					 * OOO. So bounce the process from the remove list
+					 * and continue. If the refcnt hits zero while we
+					 * are here the channel will serialize it and we
+					 * will handle normally. There is some risk that
+					 * we skip 2 color bands if it just hit zero and
+					 * then we run ticker event before the delete
+					 * channel. We could use a bit of color to avoid
+					 * later if we care. Also we may try to delete the
+					 * process a second time, but that is harmless.
+					 */
+					ref := atomic.LoadUint32(&p.process.Refcnt)
+					if ref != 0 {
+						continue
+					}
+					if p.color == deleteReady {
+						p.color = deleted
+						pc.remove(p.process.ExecId)
+					} else {
+						newQueue = append(newQueue, p)
+						p.color = deleteReady
+					}
+				}
+				deleteQueue = newQueue
+			case p := <-pc.deleteChan:
+				// duplicate deletes can happen, if they do reset
+				// color to pending and move along. This will cause
+				// the GC to keep it alive for at least another pass.
+				// Notice color is only ever touched inside GC behind
+				// select channel logic so should be safe to work on
+				// and assume its visible everywhere.
+				if p.color != inUse {
+					p.color = deletePending
+					continue
+				}
+				// The object has already been deleted let if fall of
+				// the edge of the world. Hitting this could mean our
+				// GC logic deleted a process too early.
+				// TBD add a counter around this to alert on it.
+				if p.color == deleted {
+					continue
+				}
+				p.color = deletePending
+				deleteQueue = append(deleteQueue, p)
+			}
+		}
+	}()
+}
+
+func (pc *processCache) deletePending(process *processInternal) {
+	pc.deleteChan <- process
+}
+
+func (pc *processCache) refDec(p *processInternal) {
+	ref := atomic.AddUint32(&p.process.Refcnt, ^uint32(0))
+	if ref == 0 {
+		pc.deletePending(p)
+	}
+}
+
+func (pc *processCache) refInc(p *processInternal) {
+	atomic.AddUint32(&p.process.Refcnt, 1)
 }
 
 func newProcessCache(
@@ -48,6 +148,7 @@ func newProcessCache(
 			}
 		}
 	}()
+	pm.cacheGarbageCollector()
 	return pm, nil
 }
 

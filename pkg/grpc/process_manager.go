@@ -61,6 +61,7 @@ func NewProcessManager(
 	if err != nil {
 		return nil, err
 	}
+
 	return &ProcessManager{
 		log:               log,
 		cache:             cache,
@@ -374,15 +375,15 @@ func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *processInternal
 }
 
 // getAncestors builds an ancestor list by traversing the parent exec IDs.
-func (pm *ProcessManager) getAncestors(proc *fgs.Process) []*fgs.Process {
-	var ancestors []*fgs.Process
+func (pm *ProcessManager) getAncestors(proc *fgs.Process) []*processInternal {
+	var ancestors []*processInternal
 	for parentExecID := proc.ParentExecId; parentExecID != ""; {
 		entry, err := pm.cache.get(parentExecID)
 		if err != nil {
 			pm.log.WithField("id in event", parentExecID).Debug("parent not found in cache")
 			break
 		}
-		ancestors = append(ancestors, entry.process)
+		ancestors = append(ancestors, entry)
 		parentExecID = entry.process.ParentExecId
 	}
 	return ancestors
@@ -420,28 +421,36 @@ func copyProcess(process *fgs.Process) *fgs.Process {
 func (pm *ProcessManager) GetProcessExec(
 	proc *processInternal,
 ) *fgs.ProcessExec {
-	var parent *fgs.Process
+	var parent *processInternal
+	var fgsAncestors []*fgs.Process
+
 	ancestors := pm.getAncestors(proc.process)
 	if len(ancestors) >= 1 {
 		parent = ancestors[0]
 		ancestors = ancestors[1:]
-		parent.Refcnt++
+		pm.cache.refInc(parent)
 		for _, a := range ancestors {
-			a.Refcnt++
+			pm.cache.refInc(a)
 		}
 	}
 	// Set the cap field only if --enable-process-cred flag is set.
-	var process *fgs.Process
+	var fgsParent, fgsProcess *fgs.Process
 	if pm.enableProcessCred {
-		process = copyProcess(proc.process)
-		process.Cap = proc.capabilities
+		fgsProcess = copyProcess(proc.process)
+		fgsProcess.Cap = proc.capabilities
 	} else {
-		process = proc.process
+		fgsProcess = proc.process
+	}
+	if parent != nil {
+		fgsParent = parent.process
+	}
+	for _, a := range ancestors {
+		fgsAncestors = append(fgsAncestors, a.process)
 	}
 	return &fgs.ProcessExec{
-		Process:   process,
-		Parent:    parent,
-		Ancestors: ancestors,
+		Process:   fgsProcess,
+		Parent:    fgsParent,
+		Ancestors: fgsAncestors,
 	}
 }
 
@@ -455,16 +464,16 @@ func (pm *ProcessManager) GetProcessListen(
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
-	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
-		process.Refcnt++
+		pm.cache.refInc(process)
 	}
 	if parent != nil {
-		parent.Refcnt++
+		pm.cache.refInc(parent)
 	}
 	return &fgs.ProcessListen{
-		Process: process,
-		Parent:  parent,
+		Process: process.process,
+		Parent:  parent.process,
 		Ip:      reader.GetIP(event.Tuple.SAddr, 0).String(),
 		Port:    port,
 	}
@@ -472,34 +481,33 @@ func (pm *ProcessManager) GetProcessListen(
 
 // GetProcessExit returns Exit protobuf message for a given process.
 func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
-	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	if process == nil {
-		process = &fgs.Process{
+	var fgsProcess, fgsParent *fgs.Process
+
+	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process != nil {
+		pm.cache.refDec(process)
+		fgsProcess = process.process
+	} else {
+		fgsProcess = &fgs.Process{
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
-	} else {
-		process.Refcnt--
-		if process.Refcnt == 0 {
-			pm.cache.remove(process.ExecId)
-		}
 	}
 	if parent != nil {
-		parent.Refcnt--
-		if parent.Refcnt == 0 {
-			pm.cache.remove(parent.ExecId)
-		}
+		pm.cache.refDec(parent)
+		fgsParent = parent.process
 	}
-	ancestors := pm.getAncestors(process)
+
+	ancestors := pm.getAncestors(fgsProcess)
 	if len(ancestors) >= 2 {
 		ancestors = ancestors[1:]
 		for _, a := range ancestors {
-			a.Refcnt--
+			pm.cache.refDec(a)
 		}
 	}
 	return &fgs.ProcessExit{
-		Process: process,
-		Parent:  parent,
+		Process: fgsProcess,
+		Parent:  fgsParent,
 	}
 }
 
@@ -580,6 +588,8 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrappers.UInt32Value
+	var fgsParent, fgsProcess *fgs.Process
+
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrappers.UInt32Value{
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
@@ -591,27 +601,23 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 		}
 	}
 
-	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		process = &fgs.Process{
+		fgsProcess = &fgs.Process{
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		process.Refcnt--
-		if process.Refcnt == 0 {
-			pm.cache.remove(process.ExecId)
-		}
+		fgsProcess = process.process
+		pm.cache.refDec(process)
 	}
 	if parent == nil {
-		parent = &fgs.Process{}
+		fgsParent = &fgs.Process{}
 	} else {
-		parent.Refcnt--
-		if parent.Refcnt == 0 {
-			pm.cache.remove(parent.ExecId)
-		}
+		fgsParent = parent.process
+		pm.cache.refDec(parent)
 	}
-	endpoint := pm.getProcessEndpoint(process)
+	endpoint := pm.getProcessEndpoint(fgsProcess)
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
 	var destinationNames []string
@@ -619,8 +625,8 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 		destinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 	}
 	return &fgs.ProcessClose{
-		Process:          process,
-		Parent:           parent,
+		Process:          fgsProcess,
+		Parent:           fgsParent,
 		SourceIp:         reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:       sourcePort,
 		DestinationIp:    destinationIP.String(),
@@ -631,7 +637,9 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessConnect {
+	var fgsProcess, fgsParent *fgs.Process
 	var sourcePort, destinationPort *wrappers.UInt32Value
+
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrappers.UInt32Value{
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
@@ -643,21 +651,23 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 		}
 	}
 
-	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		process = &fgs.Process{
+		fgsProcess = &fgs.Process{
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		process.Refcnt++
+		fgsProcess = process.process
+		pm.cache.refInc(process)
 	}
 	if parent == nil {
-		parent = &fgs.Process{}
+		fgsParent = &fgs.Process{}
 	} else {
-		parent.Refcnt++
+		fgsParent = parent.process
+		pm.cache.refInc(parent)
 	}
-	endpoint := pm.getProcessEndpoint(process)
+	endpoint := pm.getProcessEndpoint(fgsProcess)
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
 	var destinationNames []string
@@ -665,8 +675,8 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 		destinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 	}
 	return &fgs.ProcessConnect{
-		Process:          process,
-		Parent:           parent,
+		Process:          fgsProcess,
+		Parent:           fgsParent,
 		SourceIp:         reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:       sourcePort,
 		DestinationIp:    destinationIP.String(),
@@ -678,6 +688,8 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessAccept {
 	var sourcePort, destinationPort *wrappers.UInt32Value
+	var fgsParent, fgsProcess *fgs.Process
+
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrappers.UInt32Value{
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
@@ -689,21 +701,23 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 		}
 	}
 
-	process, parent := pm.getParentProcess(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		process = &fgs.Process{
+		fgsProcess = &fgs.Process{
 			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		process.Refcnt++
+		fgsProcess = process.process
+		pm.cache.refInc(process)
 	}
 	if parent == nil {
-		parent = &fgs.Process{}
+		fgsParent = &fgs.Process{}
 	} else {
-		parent.Refcnt++
+		fgsParent = parent.process
+		pm.cache.refInc(parent)
 	}
-	endpoint := pm.getProcessEndpoint(process)
+	endpoint := pm.getProcessEndpoint(fgsProcess)
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
 	var destinationNames []string
@@ -711,8 +725,8 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 		destinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 	}
 	return &fgs.ProcessAccept{
-		Process:          process,
-		Parent:           parent,
+		Process:          fgsProcess,
+		Parent:           fgsParent,
 		SourceIp:         reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:       sourcePort,
 		DestinationIp:    destinationIP.String(),
