@@ -20,6 +20,10 @@ hubble-fgs:
 hubble-enterprise:
 	$(GO) build ./cmd/hubble-enterprise/
 
+.PHONY: ksyms
+ksyms:
+	$(GO) build ./cmd/ksyms/
+
 hubble-fgs-image:
 	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs/
 	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-enterprise/
