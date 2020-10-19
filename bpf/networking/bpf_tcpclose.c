@@ -12,7 +12,7 @@ struct bpf_map_def {
 
 #include "api.h"
 #include "hubble_msg.h"
-#include "../tls/tls_map.h"
+#include "../parsers/tls/tls_map.h"
 #include "bpf_events.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";

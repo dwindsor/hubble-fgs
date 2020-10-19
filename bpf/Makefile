@@ -3,12 +3,14 @@
 
 SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
 
-TLSDIR := tls/
+TLSDIR := parsers/tls/
+PARSERDIR = ./parsers/
 NETWORKINGDIR := networking/
 PROCESSDIR := process/
 BPFTESTDIR := test/
 
-TLS = bpf_sockops.o bpf_skmsg_tls.o bpf_skskb_verdict_tls.o bpf_skskb_parser_tls.o bpf_tc_ingress.o bpf_tc_egress.o
+PARSERS = bpf_sockops.o
+TLS = bpf_skmsg_tls.o bpf_skskb_verdict_tls.o bpf_skskb_parser_tls.o bpf_tc_ingress.o bpf_tc_egress.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o
 PROCESS = bpf_execve_event.o bpf_fork.o bpf_exit.o bpf_cred.o
 BPFTEST = bpf_lseek.o
@@ -46,8 +48,11 @@ $(OBJS): | $(OBJSDIR)
 $(OBJSDIR):
 	mkdir $(OBJSDIR)
 
+objs/%.ll: $(PARSERDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -I ${PARSERDIR} -c $< -o $@
+
 objs/%.ll: $(TLSDIR)%.c
-	${CLANG} ${CLANG_FLAGS} -c $< -o $@
+	${CLANG} ${CLANG_FLAGS} -I ${PARSERDIR} -c $< -o $@
 
 objs/%.ll: $(NETWORKINGDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
