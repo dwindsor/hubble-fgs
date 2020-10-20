@@ -19,10 +19,13 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
+	"log"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
 type ksym struct {
@@ -33,7 +36,8 @@ type ksym struct {
 
 // Ksyms is a structure for kernel symbols
 type Ksyms struct {
-	table []ksym
+	table   []ksym
+	fnCache *lru.Cache
 }
 
 // FnOffset is a function location (function name + offset)
@@ -115,11 +119,43 @@ func NewKsyms(procfs string) (*Ksyms, error) {
 		sort.Slice(ksyms.table[:], func(i1, i2 int) bool { return ksyms.table[i1].addr < ksyms.table[i2].addr })
 	}
 
+	fc, err := lru.New(1024)
+	if err == nil {
+		ksyms.fnCache = fc
+	} else {
+		log.Printf("failed to initialize cache: %s", err)
+	}
+
 	return &ksyms, nil
 }
 
 // GetFnOffset -- returns the FnOffset for a given address
 func (k *Ksyms) GetFnOffset(addr uint64) (*FnOffset, error) {
+	type V struct {
+		ret *FnOffset
+		err error
+	}
+
+	// no cache
+	if k.fnCache == nil {
+		return k.getFnOffset(addr)
+	}
+
+	// cache hit
+	if v, ok := k.fnCache.Get(addr); ok {
+		val := v.(V)
+		return val.ret, val.err
+	}
+
+	// cache miss
+	ret, err := k.getFnOffset(addr)
+	k.fnCache.Add(addr, V{ret: ret, err: err})
+	return ret, err
+
+}
+
+// GetFnOffset -- retruns the FnOffset for a given address
+func (k *Ksyms) getFnOffset(addr uint64) (*FnOffset, error) {
 
 	// TODO: we can do binary search here if we care about performance
 	i := 0
