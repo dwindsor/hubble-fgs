@@ -447,6 +447,21 @@ func (pm *ProcessManager) GetProcessExec(
 	for _, a := range ancestors {
 		fgsAncestors = append(fgsAncestors, a.process)
 	}
+	// If this is not a clone we need to decrement parent refcnt because
+	// the parent has been replaced and will not get its own exit event.
+	// The new process will hold needed refcnts until it is destroyed.
+	if strings.Contains(proc.process.Flags, "clone") == false &&
+		strings.Contains(proc.process.Flags, "procFS") == false &&
+		parent != nil {
+		pm.cache.refDec(parent)
+		ancestors := pm.getAncestors(fgsParent)
+		if len(ancestors) >= 1 {
+			ancestors = ancestors[0:]
+			for _, a := range ancestors {
+				pm.cache.refDec(a)
+			}
+		}
+	}
 	return &fgs.ProcessExec{
 		Process:   fgsProcess,
 		Parent:    fgsParent,
