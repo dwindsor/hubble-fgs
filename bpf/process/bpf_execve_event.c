@@ -51,9 +51,10 @@ int event_execve(struct sched_execve_args *ctx)
 		curr->key.pid = pid;
 		curr->key.ktime = execve->ktime;
 		curr->pkey = event->parent;
-		if (curr->flags)
+		if (curr->flags & EVENT_COMMON_FLAG_CLONE) {
 			event_set_clone(execve);
-		curr->flags |= EVENT_EXECVE;
+		}
+		curr->flags = 0;
 	}
 
 	event->common.flags = 0;
