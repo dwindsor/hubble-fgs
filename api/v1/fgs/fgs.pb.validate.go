@@ -1379,6 +1379,224 @@ var _ interface {
 	ErrorName() string
 } = TlsValidationError{}
 
+// Validate checks the field values on ListSensorsRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *ListSensorsRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// ListSensorsRequestValidationError is the validation error returned by
+// ListSensorsRequest.Validate if the designated constraints aren't met.
+type ListSensorsRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListSensorsRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListSensorsRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListSensorsRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListSensorsRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListSensorsRequestValidationError) ErrorName() string {
+	return "ListSensorsRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListSensorsRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListSensorsRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListSensorsRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListSensorsRequestValidationError{}
+
+// Validate checks the field values on SensorStatus with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *SensorStatus) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Name
+
+	// no validation rules for Enabled
+
+	return nil
+}
+
+// SensorStatusValidationError is the validation error returned by
+// SensorStatus.Validate if the designated constraints aren't met.
+type SensorStatusValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e SensorStatusValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e SensorStatusValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e SensorStatusValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e SensorStatusValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e SensorStatusValidationError) ErrorName() string { return "SensorStatusValidationError" }
+
+// Error satisfies the builtin error interface
+func (e SensorStatusValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sSensorStatus.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = SensorStatusValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = SensorStatusValidationError{}
+
+// Validate checks the field values on ListSensorsResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *ListSensorsResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	for idx, item := range m.GetSensors() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return ListSensorsResponseValidationError{
+					field:  fmt.Sprintf("Sensors[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// ListSensorsResponseValidationError is the validation error returned by
+// ListSensorsResponse.Validate if the designated constraints aren't met.
+type ListSensorsResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ListSensorsResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ListSensorsResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ListSensorsResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ListSensorsResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ListSensorsResponseValidationError) ErrorName() string {
+	return "ListSensorsResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ListSensorsResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sListSensorsResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ListSensorsResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ListSensorsResponseValidationError{}
+
 // Validate checks the field values on EnableSensorRequest with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, an error is returned.

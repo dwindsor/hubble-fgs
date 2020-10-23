@@ -1188,11 +1188,9 @@ func TestSensorLseekEnable(t *testing.T) {
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
 	sensor := &observerSensor{name: sensorName, progs: progs, maps: maps}
-	sensors := map[string]*observerSensor{
-		sensorName: sensor,
-	}
+	registerSensor(sensor)
 
-	if err := kprobe.startSensorCtl(sensors); err != nil {
+	if err := kprobe.startSensorCtl(); err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
 	defer func() {

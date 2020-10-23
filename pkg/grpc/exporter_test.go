@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -69,6 +70,10 @@ func (f *fakeNotifier) notifyListeners(event *fgs.GetEventsResponse) {
 }
 
 type fakeObserver struct{}
+
+func (f *fakeObserver) ListSensors(ctx context.Context) (*[]api.SensorStatus, error) {
+	return nil, nil
+}
 
 func (f *fakeObserver) EnableSensor(ctx context.Context, name string) error {
 	return nil

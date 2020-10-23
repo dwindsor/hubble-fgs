@@ -371,6 +371,11 @@ type MsgTestEvent struct {
 
 type MsgTestEventUnix = MsgTestEvent
 
+type SensorStatus struct {
+	Name    string
+	Enabled bool
+}
+
 func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
 }

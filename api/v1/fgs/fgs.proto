@@ -152,6 +152,16 @@ message Tls {
     string server_session = 18;
 }
 
+message ListSensorsRequest { }
+
+message SensorStatus {
+	string name = 1;
+	bool enabled = 2;
+}
+message ListSensorsResponse {
+	repeated SensorStatus sensors = 1;
+}
+
 message EnableSensorRequest {
 	string name = 1;
 }
@@ -170,6 +180,7 @@ service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
     rpc GetHealth(GetHealthStatusRequest) returns (GetHealthStatusResponse) {}
 
+    rpc ListSensors(ListSensorsRequest) returns (ListSensorsResponse) {}
     rpc EnableSensor(EnableSensorRequest) returns (EnableSensorResponse) {}
     rpc DisableSensor(DisableSensorRequest) returns (DisableSensorResponse) {}
 }

@@ -20,6 +20,7 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/filters"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 )
@@ -27,6 +28,7 @@ import (
 type observer interface {
 	EnableSensor(ctx context.Context, name string) error
 	DisableSensor(ctx context.Context, name string) error
+	ListSensors(ctx context.Context) (*[]api.SensorStatus, error)
 }
 
 type Server struct {
@@ -85,6 +87,21 @@ func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanc
 func (s *Server) GetHealth(ctx context.Context, request *fgs.GetHealthStatusRequest) (*fgs.GetHealthStatusResponse, error) {
 	logger.GetLogger().WithField("request", request).Debug("Received a GetHealth request")
 	return getHealth()
+}
+
+func (s *Server) ListSensors(ctx context.Context, request *fgs.ListSensorsRequest) (*fgs.ListSensorsResponse, error) {
+	logger.GetLogger().Debug("Received a ListSensors request")
+	var ret *fgs.ListSensorsResponse = nil
+	list, err := s.observer.ListSensors(ctx)
+	if err == nil {
+		sensors := make([]*fgs.SensorStatus, 0, len(*list))
+		for _, s := range *list {
+			sensors = append(sensors, &fgs.SensorStatus{Name: s.Name, Enabled: s.Enabled})
+		}
+		ret = &fgs.ListSensorsResponse{Sensors: sensors}
+	}
+
+	return ret, err
 }
 
 func (s *Server) EnableSensor(ctx context.Context, req *fgs.EnableSensorRequest) (*fgs.EnableSensorResponse, error) {

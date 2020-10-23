@@ -1729,21 +1729,6 @@ type MsgFilter struct {
 	filterDrop int
 }
 
-// observerSensor is a set of bpf programs and maps that are managed as a unit.
-//
-// Contrarily to low-level facilities like kprobes, sensors are ment to be
-// visible to end users.
-//
-// NB: For now we assume that sensors use disjoint sets of progs and maps.  If
-// that assumption breaks, we need to be smarter about loading/deleting
-// programs and maps (e.g., keep reference counts).
-type observerSensor struct {
-	name   string
-	progs  []*bpfLoad
-	maps   []*ObserverMap
-	loaded bool
-}
-
 type ObserverKprobe struct {
 	/* Configuration */
 	bpfDir     string
@@ -1917,11 +1902,17 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		return fmt.Errorf("hubble-fgs, Aborting minimum requirements not met. %s\n", err)
 	}
 
+	// This is technically not a sensor since we are loading this
+	// statically when we start, but it allows us to have a single path for
+	// loading bpf programs.
 	initialSensor := k.createInitialObserverSensor()
 	if err := k.observerLoadSensor(ctx, initialSensor); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
 	k.startUpdateMapMetrics()
+
+	// start sensor controller
+	k.startSensorCtl()
 
 	k.populateExecve(ctx)
 	k.perfConfig = bpf.DefaultPerfEventConfig()
