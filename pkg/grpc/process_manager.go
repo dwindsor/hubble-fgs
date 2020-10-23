@@ -473,7 +473,9 @@ func (pm *ProcessManager) GetProcessExec(
 func (pm *ProcessManager) GetProcessListen(
 	event *fgsAPI.MsgIPv4TcpEventUnix,
 ) *fgs.ProcessListen {
+	var fgsProcess, fgsParent *fgs.Process
 	var port *wrappers.UInt32Value
+
 	if event.Tuple.SPort != 0 {
 		port = &wrappers.UInt32Value{
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
@@ -482,13 +484,20 @@ func (pm *ProcessManager) GetProcessListen(
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		pm.cache.refInc(process)
+		fgsProcess = process.process
+	} else {
+		fgsProcess = &fgs.Process{
+			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
 	}
 	if parent != nil {
 		pm.cache.refInc(parent)
+		fgsParent = parent.process
 	}
 	return &fgs.ProcessListen{
-		Process: process.process,
-		Parent:  parent.process,
+		Process: fgsProcess,
+		Parent:  fgsParent,
 		Ip:      reader.GetIP(event.Tuple.SAddr, 0).String(),
 		Port:    port,
 	}
