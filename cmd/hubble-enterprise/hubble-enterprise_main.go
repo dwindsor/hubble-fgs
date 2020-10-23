@@ -21,10 +21,10 @@ var (
 	serverAddress string
 	status        bool
 
-	cmd *cobra.Command
+	rootCmd *cobra.Command
 )
 
-func hubbleFGSPrinter() {
+func cliRun(fn func(cli fgs.FineGuidanceSensorsClient)) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
 	defer cancel()
 	conn, err := grpc.DialContext(ctx, serverAddress, grpc.WithInsecure(), grpc.WithBlock())
@@ -33,11 +33,7 @@ func hubbleFGSPrinter() {
 	}
 	defer conn.Close()
 	client := fgs.NewFineGuidanceSensorsClient(conn)
-	if status {
-		getStatus(client)
-	} else {
-		getEvents(client)
-	}
+	fn(client)
 }
 
 func getStatus(client fgs.FineGuidanceSensorsClient) {
@@ -80,21 +76,37 @@ func getEvents(client fgs.FineGuidanceSensorsClient) {
 }
 
 func init() {
-	cmd = &cobra.Command{
-		Use:   "hubble-fgs-printer",
-		Short: "Hubble FGS",
+	rootCmd = &cobra.Command{
+		Use:   "hubble-enterprise",
+		Short: "Hubble Enterprise CLI",
+	}
+
+	getEventsCmd := &cobra.Command{
+		Use:   "getevents",
+		Short: "Print events",
 		Run: func(cmd *cobra.Command, args []string) {
-			hubbleFGSPrinter()
+			cliRun(getEvents)
 		},
 	}
 
-	flags := cmd.PersistentFlags()
+	statusCmd := &cobra.Command{
+		Use:   "status",
+		Short: "Print health status",
+		Run: func(cmd *cobra.Command, args []string) {
+			cliRun(getStatus)
+		},
+	}
+
+	rootCmd.AddCommand(getEventsCmd)
+	rootCmd.AddCommand(statusCmd)
+
+	flags := rootCmd.PersistentFlags()
 	flags.BoolP("debug", "d", true, "Enable debug messages")
 	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
-	flags.BoolVar(&status, "status", false, "Print health status")
 	viper.BindPFlags(flags)
+
 }
 
-func hubbleFGSMainPrinter() {
-	cmd.Execute()
+func hubbleEnterpriseMain() {
+	rootCmd.Execute()
 }

@@ -6,7 +6,7 @@ DOCKER_IMAGE_TAG ?= latest
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
 
-all: headers hubble-bpf hubble-fgs hubble-fgs-printer
+all: headers hubble-bpf hubble-fgs hubble-enterprise
 
 headers:
 	cd ./bpf && make && cd ../
@@ -17,12 +17,12 @@ hubble-bpf:
 hubble-fgs:
 	$(GO) build ./cmd/hubble-fgs/
 
-hubble-fgs-printer:
-	$(GO) build ./cmd/hubble-fgs-printer/
+hubble-enterprise:
+	$(GO) build ./cmd/hubble-enterprise/
 
 hubble-fgs-image:
 	GOOS=linux GOARCH=amd64 $(GO) build ./cmd/hubble-fgs/
-	GOOS=linux GOARCH=amd64 $(GO) build ./cmd/hubble-fgs-printer/
+	GOOS=linux GOARCH=amd64 $(GO) build ./cmd/hubble-enterprise/
 
 install:
 	groupadd -f hubble
@@ -65,4 +65,4 @@ image-test:
 quick-install:
 	helm template ./install/kubernetes/hubble-fgs --namespace kube-system > ./install/kubernetes/quick-install.yaml
 
-.PHONY: headers all clean image install lint hubble-fgs quick-install
+.PHONY: headers all clean image install lint hubble-fgs quick-install hubble-enterprise

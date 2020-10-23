@@ -32,7 +32,7 @@ RUN addgroup hubble	       && \
     mkdir libs		       && \
     apk add --no-cache bash curl grep jq
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin/
-COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs-printer /usr/bin/
+COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-enterprise /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/covalentio/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
 COPY --from=hubble-fgs-btf /go/src/github.com/covalentio/hubble-fgs/bins/* /var/lib/hubble-fgs/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 /usr/local/lib/
