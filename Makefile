@@ -21,8 +21,8 @@ hubble-fgs-printer:
 	$(GO) build ./cmd/hubble-fgs-printer/
 
 hubble-fgs-image:
-	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs/
-	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs-printer/
+	GOOS=linux GOARCH=amd64 $(GO) build ./cmd/hubble-fgs/
+	GOOS=linux GOARCH=amd64 $(GO) build ./cmd/hubble-fgs-printer/
 
 install:
 	groupadd -f hubble
