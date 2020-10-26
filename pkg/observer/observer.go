@@ -1187,6 +1187,7 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 }
 
 func (k *ObserverKprobe) observerUnloadSensor(sensor *observerSensor, ctx context.Context) error {
+	k.log.Infof("Unloading sensor %s", sensor.name)
 	if !sensor.loaded {
 		k.log.Warningf("attempted to unload sensor %s which is not loaded", sensor.name)
 		return fmt.Errorf("unload of sensor %s failed: sensor not loaded", sensor.name)
@@ -1200,11 +1201,12 @@ func (k *ObserverKprobe) observerUnloadSensor(sensor *observerSensor, ctx contex
 		os.Remove(k.mapDir + m.mapName)
 	}
 
+	sensor.loaded = false
 	return nil
 }
 
 func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *observerSensor) error {
-
+	k.log.Infof("Loading sensor %s", sensor.name)
 	if sensor.loaded {
 		k.log.Warningf("attempted to load sensor %s which is already loaded", sensor.name)
 		return fmt.Errorf("loading sensor %s failed: sensor already loaded", sensor.name)
