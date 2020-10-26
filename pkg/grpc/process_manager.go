@@ -49,6 +49,20 @@ type ProcessManager struct {
 	enableProcessCred bool
 }
 
+// getNodeNameForExport returns node name string for JSON export. It uses NODE_NAME
+// env variable by default, which is also used by k8s watcher to watch for local pods:
+//
+//   https://github.com/covalentio/hubble-fgs/blob/a7be620c9fecdc2b693e3633506aca35d46cd3b2/pkg/grpc/watcher.go#L32
+//
+// Set HUBBLE_NODE_NAME to override the node_name field for JSON export.
+func getNodeNameForExport() string {
+	nodeName := os.Getenv("HUBBLE_NODE_NAME")
+	if nodeName != "" {
+		return nodeName
+	}
+	return os.Getenv("NODE_NAME")
+}
+
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
 func NewProcessManager(
 	log logrus.FieldLogger,
@@ -66,7 +80,7 @@ func NewProcessManager(
 		log:               log,
 		cache:             cache,
 		pidMap:            make(map[uint32]string),
-		nodeName:          os.Getenv("NODE_NAME"),
+		nodeName:          getNodeNameForExport(),
 		watcher:           watcher,
 		ciliumState:       ciliumState,
 		listeners:         make(map[listener]struct{}),

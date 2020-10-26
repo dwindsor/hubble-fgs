@@ -15,6 +15,7 @@
 package grpc
 
 import (
+	"os"
 	"testing"
 	"time"
 
@@ -171,4 +172,14 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 			Inheritable: []fgs.CapabilitiesType{fgs.CapabilitiesType_CAP_CHOWN},
 		},
 		pm.GetProcessExec(procInternal).Process.Cap)
+}
+
+func Test_getNodeNameForExport(t *testing.T) {
+	assert.Equal(t, "", getNodeNameForExport())
+	assert.NoError(t, os.Setenv("NODE_NAME", "from-node-name"))
+	assert.Equal(t, "from-node-name", getNodeNameForExport())
+	assert.NoError(t, os.Setenv("HUBBLE_NODE_NAME", "from-hubble-node-name"))
+	assert.Equal(t, "from-hubble-node-name", getNodeNameForExport())
+	assert.NoError(t, os.Unsetenv("NODE_NAME"))
+	assert.NoError(t, os.Unsetenv("HUBBLE_NODE_NAME"))
 }
