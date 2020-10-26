@@ -21,8 +21,8 @@ hubble-enterprise:
 	$(GO) build ./cmd/hubble-enterprise/
 
 hubble-fgs-image:
-	GOOS=linux GOARCH=amd64 $(GO) build ./cmd/hubble-fgs/
-	GOOS=linux GOARCH=amd64 $(GO) build ./cmd/hubble-enterprise/
+	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs/
+	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-enterprise/
 
 install:
 	groupadd -f hubble

@@ -18,7 +18,7 @@ package bpf
 
 /*
 #cgo CFLAGS: -I ../../bpf/include -I ../../bpf/libbpf/ -I ../../bpf/lib/
-#cgo LDFLAGS: -l:libbpf.so.0.2.0 -lelf -lz
+#cgo LDFLAGS: -lbpf -lelf -lz
 
 #include <string.h>
 #include <sched.h>
