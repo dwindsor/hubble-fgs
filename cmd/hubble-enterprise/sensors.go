@@ -23,7 +23,33 @@ func init() {
 		},
 	}
 
+	sensorEnableCmd := &cobra.Command{
+		Use:   "enable",
+		Short: "Enable sensor",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			sensor := args[0]
+			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+				enableSensor(cli, sensor)
+			})
+		},
+	}
+
+	sensorDisableCmd := &cobra.Command{
+		Use:   "disable",
+		Short: "Disable sensor",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			sensor := args[0]
+			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+				disableSensor(cli, sensor)
+			})
+		},
+	}
+
 	sensorsCmd.AddCommand(sensorsListCmd)
+	sensorsCmd.AddCommand(sensorEnableCmd)
+	sensorsCmd.AddCommand(sensorDisableCmd)
 	rootCmd.AddCommand(sensorsCmd)
 }
 
@@ -45,5 +71,25 @@ func listSensors(client fgs.FineGuidanceSensorsClient) {
 			enabled = "(not enabled)"
 		}
 		fmt.Printf("%s %s\n", sensor.Name, enabled)
+	}
+}
+
+func enableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
+	ctx, _ := context.WithCancel(context.Background())
+	_, err := client.EnableSensor(ctx, &fgs.EnableSensorRequest{Name: sensor})
+	if err == nil {
+		fmt.Printf("sensor %s enabled\n", sensor)
+	} else {
+		fmt.Printf("failed to enable sensor %s: %s\n", sensor, err)
+	}
+}
+
+func disableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
+	ctx, _ := context.WithCancel(context.Background())
+	_, err := client.DisableSensor(ctx, &fgs.DisableSensorRequest{Name: sensor})
+	if err == nil {
+		fmt.Printf("sensor %s disabled\n", sensor)
+	} else {
+		fmt.Printf("failed to disable sensor %s: %s\n", sensor, err)
 	}
 }
