@@ -106,12 +106,11 @@ func (s *Server) ListSensors(ctx context.Context, request *fgs.ListSensorsReques
 
 func (s *Server) EnableSensor(ctx context.Context, req *fgs.EnableSensorRequest) (*fgs.EnableSensorResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received a EnableSensor request")
-	name := req.GetName()
-	err := s.observer.EnableSensor(ctx, name)
+	err := s.observer.EnableSensor(ctx, req.GetName())
 	var ret *fgs.EnableSensorResponse = nil
 	if err == nil {
 		// NB: just return the (same) name as an id for now.
-		ret = &fgs.EnableSensorResponse{Id: name}
+		ret = &fgs.EnableSensorResponse{}
 	}
 	return ret, err
 }
@@ -119,6 +118,6 @@ func (s *Server) EnableSensor(ctx context.Context, req *fgs.EnableSensorRequest)
 func (s *Server) DisableSensor(ctx context.Context, req *fgs.DisableSensorRequest) (*fgs.DisableSensorResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received a DisableSensor request")
 	res := &fgs.DisableSensorResponse{}
-	err := s.observer.DisableSensor(ctx, req.GetId())
+	err := s.observer.DisableSensor(ctx, req.GetName())
 	return res, err
 }

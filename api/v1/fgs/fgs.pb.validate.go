@@ -1674,8 +1674,6 @@ func (m *EnableSensorResponse) Validate() error {
 		return nil
 	}
 
-	// no validation rules for Id
-
 	return nil
 }
 
@@ -1743,7 +1741,7 @@ func (m *DisableSensorRequest) Validate() error {
 		return nil
 	}
 
-	// no validation rules for Id
+	// no validation rules for Name
 
 	return nil
 }

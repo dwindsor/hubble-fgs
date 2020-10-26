@@ -166,12 +166,10 @@ message EnableSensorRequest {
 	string name = 1;
 }
 
-message EnableSensorResponse {
-	string id = 1;
-}
+message EnableSensorResponse {}
 
 message DisableSensorRequest {
-	string id = 1;
+	string name = 1;
 }
 
 message DisableSensorResponse { }
