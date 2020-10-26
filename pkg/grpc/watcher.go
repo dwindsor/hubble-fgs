@@ -5,6 +5,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/covalentio/hubble-fgs/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"
@@ -34,6 +35,7 @@ func NewK8sWatcher(k8sClient *kubernetes.Clientset, stateSyncIntervalSec time.Du
 	podInformer := k8sInformerFactory.Core().V1().Pods().Informer()
 	k8sInformerFactory.Start(wait.NeverStop)
 	k8sInformerFactory.WaitForCacheSync(wait.NeverStop)
+	logger.GetLogger().WithField("num_pods", len(podInformer.GetStore().List())).Info("Initialized pod cache")
 	return &K8sWatcher{podInformer: podInformer}
 }
 
