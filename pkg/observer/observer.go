@@ -771,11 +771,14 @@ func procsDockerID(pid uint32) string {
 	if err != nil {
 		return ""
 	}
-	docker := strings.SplitAfter(string(cgroups), "docker/")
-	if len(docker) == 1 { // no docker cgroups
-		return ""
+	docker := strings.Split(string(cgroups), "\n")
+	for _, s := range docker {
+		if strings.Contains(s, "pids:") && strings.Contains(s, "pods/") {
+			dockerFields := strings.Split(s, "/")
+			return dockerFields[len(dockerFields)-1]
+		}
 	}
-	return strings.SplitAfter(docker[1], "\n")[0][0:12]
+	return ""
 }
 
 func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry) {
