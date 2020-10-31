@@ -115,108 +115,6 @@ int bpf_parse_tls_hello_request(struct sk_msg_md *msg)
 #define EXT_SUPPORTED_VERSION 43
 
 static inline __attribute__((always_inline))
-int ext_copy(__u8 *sni, __u8 *end, __u8 *ext, __u32 copy)
-{
-	int len = copy, off = 0;
-	uint64_t tmp, ptr;
-
-	asm volatile (
-		"%[len] &= 0xff;\n"
-		"%[off] &= 0xff;\n"
-		"%[ptr] = %[ext];\n"
-		// Default abort case
-		"if %[len] > 32 goto 1f;\n"
-		// 32B case
-		"if %[len] < 32 goto +14\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 32;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
-		"*(u64 *)(%[sni] + 0) = %[tmp];\n"
-		"%[tmp] = *(u64 *)(%[ptr] +8);\n"
-		"*(u64 *)(%[sni] + 8) = %[tmp];\n"
-		"%[tmp] = *(u64 *)(%[ptr] +16);\n"
-		"*(u64 *)(%[sni] + 16) = %[tmp];\n"
-		"%[tmp] = *(u64 *)(%[ptr] +24);\n"
-		"*(u64 *)(%[sni] + 24) = %[tmp];\n"
-		"%[sni] += 32;\n"
-		"%[ptr] += 32;\n"
-		"%[len] -= 32;\n"
-		// 16B case
-		"if %[len] < 16 goto +10\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 16;\n"
-		"if %[tmp] > %[end] goto 1f\n"
-		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
-		"*(u64 *)(%[sni] + 0) = %[tmp];\n"
-		"%[tmp] = *(u64 *)(%[ptr] +8);\n"
-		"*(u64 *)(%[sni] + 8) = %[tmp];\n"
-		"%[sni] += 16;\n"
-		"%[ptr] += 16;\n"
-		"%[len] -= 16;\n"
-		// 8B case
-		"if %[len] < 8 goto +8\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 8;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
-		"*(u64 *)(%[sni] + 0) = %[tmp];\n"
-		"%[ptr] += 8;\n"
-		"%[sni] += 8;\n"
-		"%[len] -= 8;\n"
-		// 4B case
-		"if %[len] < 4 goto +8\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 4;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u32 *)(%[ptr] +0);\n"
-		"*(u32 *)(%[sni] + 0) = %[tmp];\n"
-		"%[len] -= 4;\n"
-		"%[sni] += 4;\n"
-		"%[ptr] += 4;\n"
-		// 3B case
-		"if %[len] < 3 goto +10;\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 3;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
-		"*(u8 *)(%[sni] + 0) = %[tmp];\n"
-		"%[tmp] = *(u8 *)(%[ptr] +1);\n"
-		"*(u8 *)(%[sni] + 1) = %[tmp];\n"
-		"%[tmp] = *(u8 *)(%[ptr] +2);\n"
-		"*(u8 *)(%[sni] + 2) = %[tmp];\n"
-		"%[len] -= 3;\n"
-		// 2B case
-		"if %[len] < 2 goto +8;\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 2;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
-		"*(u8 *)(%[sni] + 0) = %[tmp];\n"
-		"%[tmp] = *(u8 *)(%[ptr] +1);\n"
-		"*(u8 *)(%[sni] + 1) = %[tmp];\n"
-		"%[len] -= 2;\n"
-		// 1B case
-		"if %[len] < 1 goto +6;\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 1;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
-		"*(u8 *)(%[sni] + 0) = %[tmp];\n"
-		"%[len] -= 1;\n"
-		"1:;\n"
-		: [tmp] "+r"(tmp),
-		  [ptr] "+r"(ptr),
-	 	  [off] "+r"(off),
-		  [len] "+r"(len),
-		  [sni] "+r"(sni),
-		  [end] "+r"(end)
-		:
-		  [ext] "r"(ext):);
-	return copy - len;
-}
-
-static inline __attribute__((always_inline))
 struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void *data_end, struct msg_tls *tls)
 {
 	__u16 extlength, exttype;
@@ -239,7 +137,7 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 	}
 
 	if (dst) {
-		ext_copy(dst, data_end, (void *)extension + 4, extlength);
+		pkt_copy(dst, data_end, (void *)extension + 4, extlength);
 		if (extlength > 32)
 			tls->flags |= TLS_COPY_ERROR;
 	}
@@ -339,11 +237,11 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	client_hello = payload + sizeof(struct tls_hdr);
 
 	session = (void*)client_hello + 6;
-	ext_copy(tls->session,
+	pkt_copy(tls->session,
 		 data_end,
 		 (void *)session,
 		 32);
-	ext_copy(tls->session + 32,
+	pkt_copy(tls->session + 32,
 		 data_end,
 		 (void *)session + 32,
 		 32);
