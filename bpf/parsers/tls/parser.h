@@ -447,8 +447,9 @@ int bpf_parse_tls(struct __sk_buff *ctx,
 		  struct msg_tls *tls)
 {
 #endif
-	struct tls_hdr *hdr;
 	void *data_end = (void *)(long)ctx->data_end;
+	struct tls_hdr *hdr;
+	int next = 0;
 
 	if (payload + sizeof(struct tls_hdr) > data_end) {
 		payload = get_data(ctx, payload_off, sizeof(struct tls_hdr));
@@ -478,16 +479,8 @@ int bpf_parse_tls(struct __sk_buff *ctx,
 		case client_hello:
 			client = true;
 		case server_hello:
-			bpf_parse_tls_client_hello(ctx, payload_off, tls, client);
+			next = bpf_parse_tls_client_hello(ctx, payload_off, tls, client);
 			break;
-		case hello_request:
-		case certificate:
-		case server_key_exchange:
-		case certificate_request:
-		case server_hello_done:
-		case certificate_verify:
-		case client_key_exchange:
-		case finished:
 		default:
 			break;
 		}
@@ -502,8 +495,10 @@ int bpf_parse_tls(struct __sk_buff *ctx,
 		tls_alert = (struct tls_alert *)(payload + sizeof(struct tls_hdr));
 		tls->alert_level = tls_alert->level;
 		tls->alert_description = tls_alert->description;
+		/* Advance pointer to end of alert */
+		next = sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr);
 	}
-	return 0;
+	return next;
 }
 
 #define ETH_P_IP 0x800

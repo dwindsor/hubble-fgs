@@ -37,7 +37,7 @@ int bpf_skskb_verdict_tls(struct __sk_buff *skb)
 		memset(&post->serverhello, 0, sizeof(post->serverhello));
 
 		err = bpf_parse_tls(skb, payload, 0, &post->serverhello);
-		if (err)
+		if (err < 0)
 			return SK_PASS;
 
 		if (!is_expected_tls_server_hello(&post->serverhello))

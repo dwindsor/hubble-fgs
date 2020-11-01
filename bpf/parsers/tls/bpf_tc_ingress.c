@@ -135,7 +135,7 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		if (!payload)
 			return TC_ACT_UNSPEC;
 		err = bpf_parse_tls(skb, payload, off, &post->serverhello);
-		if (err)
+		if (err < 0)
 			return TC_ACT_UNSPEC;
 
 		if (!is_expected_tls_server_hello(&post->serverhello))
