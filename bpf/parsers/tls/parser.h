@@ -68,6 +68,8 @@ struct tls_extension {
 #define TLS_VERSION_11 0x0203
 #define TLS_VERSION_10 0x0103
 
+#define EIO 5
+
 enum tls_handshake_type {
 	hello_request = 0,
 	client_hello = 1,
@@ -225,7 +227,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	cipher_length = get_data(ctx, offset, 2);
 	if (!cipher_length) {
 		tls->flags |= TLS_CIPHER_ERROR;
-		return SK_PASS;
+		return -EIO;
 	}
 	data = (void *)(long)ctx->data;
 	data_end = (void *)(long)ctx->data_end;
@@ -255,7 +257,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 
 	if (adv_cipher > 255) {
 		tls->flags |= TLS_CIPHER_TOO_LARGE;
-		return SK_PASS;
+		return -EIO;
 	}
 	asm volatile (
 		"if %[adv_cipher] s> 0 goto +1;\n"
@@ -266,7 +268,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	compression = get_data(ctx, offset, 1);
 	if (!compression) {
 		tls->flags |= TLS_COMPRESSION_ERROR;
-		return SK_PASS;
+		return -EIO;
 	}
 
 	if (client)
@@ -278,7 +280,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	adv_compression &= 0x7f;
 	if (adv_compression > 255) {
 		tls->flags |= TLS_COMPRESSION_TOO_LARGE;
-		return SK_PASS;
+		return -EIO;
 	}
 
 	offset += adv_compression + 1;
@@ -286,7 +288,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	extension = get_data(ctx, offset, 6);
 	if (!extension) {
 		tls->flags |= TLS_EXT_ERROR;
-		return SK_PASS;
+		return -EIO;
 	}
 
 	extlength = *(u16 *)extension;
@@ -299,7 +301,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	extension = get_data(ctx, offset, extlength);
 	if (!extension) {
 		tls->flags |= TLS_EXT_ERROR;
-		return SK_PASS;
+		return -EIO;
 	}
 	data_end = (void *)(long)ctx->data_end;
 	extension = (void *)extension + 2;
@@ -307,7 +309,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	TWENTY_EXTENSIONS
 	tls->flags |= TLS_MAX_TLVS;
 extension_macro_out:
-	return SK_PASS;
+	return maxlength;
 }
 
 static inline __attribute__((always_inline))
