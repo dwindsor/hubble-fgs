@@ -201,6 +201,7 @@ struct msg_calltrace {
 #define TLS_EXT_ERROR		  0x100
 #define TLS_EXT_TOO_LARGE	  0x200
 #define TLS_VERSION		  0x400
+#define TLS_CERT		  0x800
 
 struct msg_tls {
 	__u16 version;

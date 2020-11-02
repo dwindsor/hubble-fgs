@@ -39,6 +39,12 @@ struct tls_handshake_server_hello {
 	__u8  session_id_length;
 } __attribute__((packed));
 
+struct tls_handshake_certificate {
+	__u32 type:8;
+	__u32 version:16;
+	__u32 length:16;
+} __attribute__((packed));
+
 struct tls_extension {
 	__u16 type;
 	__u16 length;
@@ -139,7 +145,7 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 	}
 
 	if (dst) {
-		pkt_copy(dst, data_end, (void *)extension + 4, extlength);
+		stack_pkt_copy(dst, data_end, (void *)extension + 4, extlength);
 		if (extlength > 32)
 			tls->flags |= TLS_COPY_ERROR;
 	}
