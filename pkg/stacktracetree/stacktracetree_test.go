@@ -22,14 +22,14 @@ import (
 func TestSimple(t *testing.T) {
 	fmt.Printf("Hello!\n")
 	stt0 := Stt{}
-	stt0.Append(0x10, nil, []SttLabel{})
-	stt0.Append(0x20, nil, []SttLabel{})
-	stt0.Append(0x30, nil, []SttLabel{})
+	stt0.Append(0x10, "", []string{})
+	stt0.Append(0x20, "", []string{})
+	stt0.Append(0x30, "", []string{})
 
 	stt1 := Stt{}
-	stt1.Append(0x10, nil, []SttLabel{})
-	stt1.Append(0x20, nil, []SttLabel{})
-	stt1.Append(0x40, nil, []SttLabel{})
+	stt1.Append(0x10, "", []string{})
+	stt1.Append(0x20, "", []string{})
+	stt1.Append(0x40, "", []string{})
 
 	tree := CreateSttree()
 	tree.AddStacktrace(&stt0)

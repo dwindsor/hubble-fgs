@@ -19,24 +19,19 @@ import (
 	"log"
 	"strings"
 
-	"github.com/covalentio/hubble-fgs/pkg/ksyms"
+	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/covalentio/hubble-fgs/pkg/api"
 )
 
 // Addr is an Address on the stacktrace tree
 type Addr = uint64
 
-// SttLabel is a key-value label
-type SttLabel struct {
-	Key interface{}
-	Val interface{}
-}
-
 // SttNode is a tree node
 type SttNode struct {
 	Addr     Addr
 	Count    int
-	Symbol   *ksyms.FnOffset
-	Labels   map[SttLabel]int
+	Symbol   string
+	Labels   map[string]int
 	Children map[Addr]*SttNode
 }
 
@@ -50,16 +45,16 @@ func (n1 *SttNode) merge(n2 *SttNode) {
 	s1 := n1.Symbol
 	s2 := n2.Symbol
 
-	if s1 == nil && s2 == nil {
+	if s1 == "" && s2 == "" {
 		// nothing to do
-	} else if s1 != nil && s2 == nil {
+	} else if s1 != "" && s2 == "" {
 		// nothing to do
-	} else if s1 == nil && s2 != nil {
+	} else if s1 == "" && s2 != "" {
 		n1.Symbol = s2
 	} else if s1 != s2 {
 		// both have symbols defined, but they are different, so
 		// something is wrong
-		log.Printf("error: different symbols (%s,%s) for the same address %x", s1.ToString(), s2.ToString(), n1.Addr)
+		log.Printf("error: different symbols (%s,%s) for the same address %x", s1, s2, n1.Addr)
 	}
 
 	for lbl, lblCount := range n2.Labels {
@@ -82,12 +77,13 @@ type Stt struct {
 }
 
 // Append appends an entry to a stacktrace
-func (p *Stt) Append(addr Addr, sym *ksyms.FnOffset, labels []SttLabel) {
+func (p *Stt) Append(addr Addr, sym string, labels []string) {
 	node := &SttNode{
 		Addr:     addr,
 		Count:    1,
 		Symbol:   sym,
 		Children: map[Addr]*SttNode{},
+		Labels:   map[string]int{},
 	}
 
 	for _, label := range labels {
@@ -97,13 +93,22 @@ func (p *Stt) Append(addr Addr, sym *ksyms.FnOffset, labels []SttLabel) {
 	p.nodes = append(p.nodes, node)
 }
 
+func SttFromCalltrace(calltrace []api.StackAddr, labels []string) *Stt {
+	stt := Stt{}
+	for _, ct := range calltrace {
+		stt.Append(ct.Addr, ct.Symbol, labels)
+	}
+
+	return &stt
+}
+
 // CreateSttree creates a stacktrace tree
 func CreateSttree() *Sttree {
 	return &Sttree{
 		Root: SttNode{
 			Addr:     0,
 			Count:    0,
-			Symbol:   nil,
+			Symbol:   "",
 			Children: map[Addr]*SttNode{},
 		},
 	}
@@ -137,19 +142,42 @@ func (n *SttNode) addChildren(nodes []*SttNode) {
 }
 
 func (n *SttNode) printNode(level int) {
-	indent := strings.Repeat("  ", level)
-	sym := ""
-	if n.Symbol != nil {
-		sym = n.Symbol.ToString()
-	}
-	fmt.Printf("%s0x%x (%s) count:%d\n", indent, n.Addr, sym, n.Count)
+	indent_space := "    "
+	indent := strings.Repeat(indent_space, level)
+	fmt.Printf("%s0x%x (%s) count:%d\n", indent, n.Addr, n.Symbol, n.Count)
 
+	nchildren := len(n.Children)
 	for _, child := range n.Children {
 		child.printNode(level + 1)
+	}
+
+	// This is a leaf, so we also print label counters
+	if nchildren == 0 {
+		for lbl, lbl_count := range n.Labels {
+			fmt.Printf("%s%s%s count:%d\n", indent, indent_space, lbl, lbl_count)
+		}
 	}
 }
 
 // Print prints the tree
 func (t *Sttree) Print() {
 	t.Root.printNode(0)
+}
+
+func (n *SttNode) ToProtoNode() *fgs.StacktraceNode {
+	protoNode := fgs.StacktraceNode{
+		Addr:  &fgs.StackAddr{Address: n.Addr, Symbol: n.Symbol},
+		Count: uint64(n.Count),
+	}
+
+	for lblKey, lblCount := range n.Labels {
+		protoLabel := fgs.Label{Key: lblKey, Count: uint64(lblCount)}
+		protoNode.Labels = append(protoNode.Labels, &protoLabel)
+	}
+
+	for _, child := range n.Children {
+		protoNode.Children = append(protoNode.Children, child.ToProtoNode())
+	}
+
+	return &protoNode
 }
