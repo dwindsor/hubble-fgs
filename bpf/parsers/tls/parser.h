@@ -305,7 +305,6 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	}
 	data_end = (void *)(long)ctx->data_end;
 	extension = (void *)extension + 2;
-	maxlength = 0x7fff;
 	TWENTY_EXTENSIONS
 	tls->flags |= TLS_MAX_TLVS;
 extension_macro_out:
