@@ -48,6 +48,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, int next)
 	cert = (struct tls_handshake_certificate *)data;
 	csize = cert->length;
 	csize = bpf_ntohs(csize);
+	csize += 4 + 1;
 
 	/* We get away with posting without a header because we have
 	 * a flag above indicating the cert is the next event and this

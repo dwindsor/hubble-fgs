@@ -88,7 +88,7 @@ func NewProcessManager(
 	}, nil
 }
 
-func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEvent) *fgs.GetEventsResponse {
+func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_TLS:
@@ -215,7 +215,7 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.Ge
 func (pm *ProcessManager) Notify(event interface{}) error {
 	var processedEvent *fgs.GetEventsResponse
 	switch msg := event.(type) {
-	case *api.MsgTLSEvent:
+	case *api.MsgTLSEventUnix:
 		processedEvent = pm.handleTLSMessage(msg)
 	case *api.MsgExecveEventUnix:
 		processedEvent = pm.handleExecveMessage(msg)
@@ -590,7 +590,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 }
 
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
+func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	var sourcePort, destinationPort *wrappers.UInt32Value
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrappers.UInt32Value{
@@ -634,6 +634,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEvent) *fgs.Tls {
 		ServerAlert:       reader.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
 		ClientSession:     reader.GetTLSSession(event.ClientHello.Session),
 		ServerSession:     reader.GetTLSSession(event.ServerHello.Session),
+		Certificates:      event.ServerCert.Certificates,
 	}
 }
 

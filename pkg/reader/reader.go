@@ -16,6 +16,7 @@ package reader
 
 import (
 	"bytes"
+	"crypto/x509"
 	"encoding/binary"
 	"fmt"
 	"net"
@@ -346,7 +347,55 @@ func GetTLSSupportedVersions(vers [16]byte, offset int) string {
 	return strings.Join(s, " ")
 }
 
-func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
+//func GetTLSRdns(rdns []byte) []string {
+//	set := rdns[0]
+//	setSize := rdns[1]
+//
+//	jj
+//}
+
+func GetTLSCertificateString(cert []byte) []string {
+	var certificateString []string
+
+	// Handshake Protocol Certificate: single byte offset because we
+	// already accounted for Type, Version, and first byte of Length
+	// by reading in 4B length that datapath used to cache total message
+	// length.
+	cIndex := 1
+	// Certficate Length: Length of all the certificates
+	certificatesLengthIndex := cIndex + 4
+	// Point at first certificate, will advance as we parse each cert
+	certificatesIndex := cIndex + 7
+
+	cLength := make([]byte, 4)
+	cLength[1] = cert[certificatesLengthIndex]
+	cLength[2] = cert[certificatesLengthIndex+1]
+	cLength[3] = cert[certificatesLengthIndex+2]
+	length := binary.BigEndian.Uint32(cLength)
+
+	for length > 0 {
+		cLength[1] = cert[certificatesIndex]
+		cLength[2] = cert[certificatesIndex+1]
+		cLength[3] = cert[certificatesIndex+2]
+		cIntLength := binary.BigEndian.Uint32(cLength)
+
+		certificate := cert[certificatesIndex+3 : uint32(certificatesIndex)+3+cIntLength]
+		parsedCert, err := x509.ParseCertificate(certificate)
+		if err != nil {
+			fmt.Printf("error %s\n", err)
+			return certificateString
+		}
+
+		subjectRsdn := parsedCert.Subject.ToRDNSequence()
+		certificateString = append(certificateString, subjectRsdn.String())
+
+		length -= (cIntLength + 3)
+		certificatesIndex += int(cIntLength) + 3
+	}
+	return certificateString
+}
+
+func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
 	op := msg.Common.Op
 	typeSNI, nameSNI := GetTLSSNI(msg.ClientHello.SNI)
 

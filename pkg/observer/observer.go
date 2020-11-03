@@ -473,7 +473,7 @@ func (k *ObserverKprobe) disableBpfLoad(bpf *bpfLoad) {
 	}
 }
 
-func (k *ObserverKprobe) observerListenersTLS(msg *api.MsgTLSEvent) {
+func (k *ObserverKprobe) observerListenersTLS(msg *api.MsgTLSEventUnix) {
 	for listener, _ := range k.listeners {
 		if err := listener.Notify(msg); err != nil {
 			k.log.Debug("Write failure removing Listener")
@@ -543,6 +543,18 @@ func (k *ObserverKprobe) RemoveListener(listener Listener) {
 	}
 }
 
+func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string) *api.MsgTLSEventUnix {
+	unix := &api.MsgTLSEventUnix{}
+
+	unix.Common = m.Common
+	unix.Tuple = m.Tuple
+	unix.ClientHello = m.ClientHello
+	unix.ServerHello = m.ServerHello
+	unix.ProcessKey = m.ProcessKey
+	fmt.Printf("ProcessKey %d\n", unix.ProcessKey)
+	unix.ServerCert.Certificates = certs
+	return unix
+}
 func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
 	unix := &api.MsgExecveEventUnix{}
 
@@ -665,18 +677,62 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	k.recvCntr++
 	r := bytes.NewReader(data)
 
+	/* If a continuation message set the op handler */
+	if k.cType != api.MSG_OP_UNDEF {
+		op = uint8(k.cType)
+	}
+
 	switch op {
 	case api.MSG_OP_TLS:
-		m := api.MsgTLSEvent{}
-		err := binary.Read(r, binary.LittleEndian, &m)
-		if err != nil {
-			break
+		var m *api.MsgTLSEvent
+		var certStrings []string
+
+		if k.cType == api.MSG_OP_UNDEF {
+			m = &api.MsgTLSEvent{}
+			err := binary.Read(r, binary.LittleEndian, m)
+			if err != nil {
+				break
+			}
+			if (m.ServerHello.Flags & api.TlsFlagCert) != 0 {
+				k.cType = api.MSG_OP_TLS
+				k.cMsg = m
+				break
+			}
+		} else {
+			var bytes uint32
+			k.cType = api.MSG_OP_UNDEF
+
+			m = k.cMsg
+			err := binary.Read(r, binary.LittleEndian, &bytes)
+			if err != nil {
+				fmt.Printf("binary read error on cont: %s\n", err)
+			} else if bytes == 0 {
+				var errCode uint8
+
+				err := binary.Read(r, binary.LittleEndian, &errCode)
+				if err == nil {
+					fmt.Printf("binary read error %d\n", errCode)
+				} else {
+					fmt.Printf("binary read errroCode failed %s\n", err)
+				}
+			} else {
+				cert := make([]byte, bytes-4)
+				err = binary.Read(r, binary.LittleEndian, &cert)
+				if err != nil {
+					fmt.Printf("binary read cert error on cont: %s\n", err)
+				}
+
+				certStrings = reader.GetTLSCertificateString(cert)
+			}
 		}
+
+		msgUnix := msgToTLSEventUnix(m, certStrings)
+
 		/* OR filter together */
-		k.observerListenersTLS(&m)
+		k.observerListenersTLS(msgUnix)
 		/* Keeping pretty printer because it helps debugging filters */
 		if k.prettyPrinter {
-			reader.ObserverTLSPrinter(&m, k.log)
+			reader.ObserverTLSPrinter(msgUnix, k.log)
 		}
 	case api.MSG_OP_EXECVE:
 		m := api.MsgExecveEvent{}
@@ -1753,6 +1809,10 @@ type ObserverKprobe struct {
 
 	/* Kernel symbols */
 	ksyms *ksyms.Ksyms
+
+	/* Runtime Measure Handlers */
+	cType uint8
+	cMsg  *api.MsgTLSEvent
 }
 
 // ObseverSync holds data that are safe to be used in all goroutine contexts.

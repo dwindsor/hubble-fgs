@@ -180,6 +180,7 @@ const (
 	TlsFlagExtError            = 0x0100
 	TlsFlagExtTooLarge         = 0x0200
 	TlsFlagVersion             = 0x0400
+	TlsFlagCert                = 0x0800
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
@@ -341,6 +342,10 @@ type MsgTLS struct {
 	Session           [64]uint8
 }
 
+type MsgTLSCertificates struct {
+	Certificates []string
+}
+
 type MsgExecveKey struct {
 	Pid   uint32
 	Pad   uint32
@@ -358,6 +363,15 @@ type MsgTLSEvent struct {
 	Tuple       MsgTLSIPv4
 	ClientHello MsgTLS
 	ServerHello MsgTLS
+	ProcessKey  MsgExecveKey
+}
+
+type MsgTLSEventUnix struct {
+	Common      MsgCommon
+	Tuple       MsgTLSIPv4
+	ClientHello MsgTLS
+	ServerHello MsgTLS
+	ServerCert  MsgTLSCertificates
 	ProcessKey  MsgExecveKey
 }
 
