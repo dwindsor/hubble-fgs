@@ -12,7 +12,7 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 #endif
 	void *data_end, *data, *tmp;
 
-	if (err)
+	if (err < 0)
 		return 0;
 
 	data_end = (void*)(long)ctx->data_end;
@@ -142,7 +142,6 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 	"%[len] -= 1;\n"
 
 #define COPY64B					\
-	"if %[tmp] > %[end] goto 1f;\n"		\
 	"%[tmp] = *(u64 *)(%[ptr] +0);\n"	\
 	"*(u64 *)(%[to] + 0) = %[tmp];\n"	\
 	"%[tmp] = *(u64 *)(%[ptr] +8);\n"	\
@@ -168,6 +167,12 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 	COPY64B			\
 	COPY64B			\
 	COPY64B			\
+
+#define COPY1024B		\
+	COPY256B		\
+	COPY256B		\
+	COPY256B		\
+	COPY256B
 
 static inline __attribute__((always_inline))
 int stack_pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
@@ -201,17 +206,27 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 	uint64_t tmp, ptr;
 
 	asm volatile (
-		"%[len] &= 0xff;\n"
-		"%[off] &= 0xff;\n"
+		"%[len] &= 0xfff;\n"
+		"%[off] &= 0xfff;\n"
 		"%[ptr] = %[from];\n"
 		// Default abort case
-		"if %[len] < 2016 goto +1;\n"
-		"%[len] = 2016;\n"
+		"if %[len] < 4064 goto +1;\n"
+		"%[len] = 4064;\n"
+		// 2048B case
+		"if %[len] < 1024 goto 7f;\n"
+		"%[tmp] = %[ptr];\n"
+		"%[tmp] += 1024;\n"
+		"if %[tmp] > %[end] goto 7f;\n"
+		COPY256B
+		COPY256B
+		COPY256B
+		COPY256B
+		"7:\n"
 		// 1024B case
 		"if %[len] < 1024 goto 6f;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 1024;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
+		"if %[tmp] > %[end] goto 6f;\n"
 		COPY256B
 		COPY256B
 		COPY256B
@@ -221,7 +236,7 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		"if %[len] < 512 goto 5f;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 512;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
+		"if %[tmp] > %[end] goto 5f;\n"
 		COPY256B
 		COPY256B
 		"5:\n"
@@ -229,7 +244,7 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		"if %[len] < 256 goto 4f;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 256;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
+		"if %[tmp] > %[end] goto 4f;\n"
 		COPY64B
 		COPY64B
 		COPY64B
@@ -239,7 +254,7 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		"if %[len] < 128 goto 3f;\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 128;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
+		"if %[tmp] > %[end] goto 3f;\n"
 		COPY64B
 		COPY64B
 		"3:;\n"
@@ -247,6 +262,7 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		"if %[len] < 64 goto 2f\n"
 		"%[tmp] = %[ptr];\n"
 		"%[tmp] += 64;\n"
+		"if %[tmp] > %[end] goto 2f;\n"
 		COPY64B
 		"2:\n"
 		// 32B case
@@ -260,6 +276,8 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		  [end] "+r"(end)
 		:
 		  [from] "r"(from):);
+	if (copy > 4064)
+		copy = 4064;
 	return copy - len;
 }
 
@@ -274,10 +292,33 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
  * avoid complexity and insn count overrun even with 1mil insns.
  */
 static inline
-int large_ctx_copy(struct __sk_buff *ctx, __u64 next, __u64 offset, __u64 copy)
+int large_ctx_copy(
+#ifdef SK_MSG
+		struct sk_msg_md *ctx,
+#else
+		struct __sk_buff *ctx,
+#endif
+		__u64 next, __u64 offset, __u64 copy)
 {
-	__u8 *to, *end, *from;
+	void *data, *data_end;
 	int copied, zero = 0;
+	__u8 *to;
+
+	data = (void *)(long)ctx->data;
+	data_end = (void *)(long)ctx->data_end;
+
+	/* Bound our inputs to "good" values */
+	asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
+	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
+
+	if ((data + next + offset + copy) > data_end) {
+		data = get_data(ctx, next + offset, copy);
+		if (!data)
+			return 0;
+		data_end = (void *)(long)ctx->data_end;
+	} else {
+		data = data + next + offset;
+	}
 
 	/* Duplicate map lookups because passing pointer through func
 	 * call is not currently supported.
@@ -292,10 +333,7 @@ int large_ctx_copy(struct __sk_buff *ctx, __u64 next, __u64 offset, __u64 copy)
 		return 0;
 
 	to = to + offset;
-	from = (void *)(long)ctx->data;
-	from = from + next + offset;
-	end = (void *)(long)ctx->data_end;
-	copied = pkt_copy(to, end, from, copy);
+	copied = pkt_copy(to, data_end, data, copy);
 
 	return copied;
 }
