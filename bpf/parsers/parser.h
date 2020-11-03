@@ -61,6 +61,139 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 	return data;
 }
 
+#define COPY32B						\
+							\
+	"if %[len] < 32 goto +14\n"			\
+	"%[tmp] = %[ptr];\n"				\
+	"%[tmp] += 32;\n"				\
+	"if %[tmp] > %[end] goto 1f;\n"			\
+	"%[tmp] = *(u64 *)(%[ptr] +0);\n"		\
+	"*(u64 *)(%[to] + 0) = %[tmp];\n"		\
+	"%[tmp] = *(u64 *)(%[ptr] +8);\n"		\
+	"*(u64 *)(%[to] + 8) = %[tmp];\n"		\
+	"%[tmp] = *(u64 *)(%[ptr] +16);\n"		\
+	"*(u64 *)(%[to] + 16) = %[tmp];\n"		\
+	"%[tmp] = *(u64 *)(%[ptr] +24);\n"		\
+	"*(u64 *)(%[to] + 24) = %[tmp];\n"		\
+	"%[to] += 32;\n"				\
+	"%[ptr] += 32;\n"				\
+	"%[len] -= 32;\n"				\
+							\
+	"if %[len] < 16 goto +10\n"			\
+	"%[tmp] = %[ptr];\n"				\
+	"%[tmp] += 16;\n"				\
+	"if %[tmp] > %[end] goto 1f\n"			\
+	"%[tmp] = *(u64 *)(%[ptr] +0);\n"		\
+	"*(u64 *)(%[to] + 0) = %[tmp];\n"		\
+	"%[tmp] = *(u64 *)(%[ptr] +8);\n"		\
+	"*(u64 *)(%[to] + 8) = %[tmp];\n"		\
+	"%[to] += 16;\n"				\
+	"%[ptr] += 16;\n"				\
+	"%[len] -= 16;\n"				\
+							\
+	"if %[len] < 8 goto +8\n"			\
+	"%[tmp] = %[ptr];\n"				\
+	"%[tmp] += 8;\n"				\
+	"if %[tmp] > %[end] goto 1f;\n"			\
+	"%[tmp] = *(u64 *)(%[ptr] +0);\n"		\
+	"*(u64 *)(%[to] + 0) = %[tmp];\n"		\
+	"%[ptr] += 8;\n"				\
+	"%[to] += 8;\n"					\
+	"%[len] -= 8;\n"				\
+							\
+	"if %[len] < 4 goto +8\n"			\
+	"%[tmp] = %[ptr];\n"				\
+	"%[tmp] += 4;\n"				\
+	"if %[tmp] > %[end] goto 1f;\n"			\
+	"%[tmp] = *(u32 *)(%[ptr] +0);\n"		\
+	"*(u32 *)(%[to] + 0) = %[tmp];\n"		\
+	"%[len] -= 4;\n"				\
+	"%[to] += 4;\n"					\
+	"%[ptr] += 4;\n"				\
+							\
+	"if %[len] < 3 goto +10;\n"			\
+	"%[tmp] = %[ptr];\n"				\
+	"%[tmp] += 3;\n"				\
+	"if %[tmp] > %[end] goto 1f;\n"			\
+	"%[tmp] = *(u8 *)(%[ptr] +0);\n"		\
+	"*(u8 *)(%[to] + 0) = %[tmp];\n"		\
+	"%[tmp] = *(u8 *)(%[ptr] +1);\n"		\
+	"*(u8 *)(%[to] + 1) = %[tmp];\n"		\
+	"%[tmp] = *(u8 *)(%[ptr] +2);\n"		\
+	"*(u8 *)(%[to] + 2) = %[tmp];\n"		\
+	"%[len] -= 3;\n"				\
+							\
+	"if %[len] < 2 goto +8;\n"			\
+	"%[tmp] = %[ptr];\n"				\
+	"%[tmp] += 2;\n"				\
+	"if %[tmp] > %[end] goto 1f;\n"			\
+	"%[tmp] = *(u8 *)(%[ptr] +0);\n"		\
+	"*(u8 *)(%[to] + 0) = %[tmp];\n"		\
+	"%[tmp] = *(u8 *)(%[ptr] +1);\n"		\
+	"*(u8 *)(%[to] + 1) = %[tmp];\n"		\
+	"%[len] -= 2;\n"				\
+							\
+	"if %[len] < 1 goto +6;\n"			\
+	"%[tmp] = %[ptr];\n"				\
+	"%[tmp] += 1;\n"				\
+	"if %[tmp] > %[end] goto 1f;\n"			\
+	"%[tmp] = *(u8 *)(%[ptr] +0);\n"		\
+	"*(u8 *)(%[to] + 0) = %[tmp];\n"		\
+	"%[len] -= 1;\n"
+
+#define COPY64B					\
+	"if %[tmp] > %[end] goto 1f;\n"		\
+	"%[tmp] = *(u64 *)(%[ptr] +0);\n"	\
+	"*(u64 *)(%[to] + 0) = %[tmp];\n"	\
+	"%[tmp] = *(u64 *)(%[ptr] +8);\n"	\
+	"*(u64 *)(%[to] + 8) = %[tmp];\n"	\
+	"%[tmp] = *(u64 *)(%[ptr] +16);\n"	\
+	"*(u64 *)(%[to] + 16) = %[tmp];\n"	\
+	"%[tmp] = *(u64 *)(%[ptr] +24);\n"	\
+	"*(u64 *)(%[to] + 24) = %[tmp];\n"	\
+	"%[tmp] = *(u64 *)(%[ptr] +32);\n"	\
+	"*(u64 *)(%[to] + 32) = %[tmp];\n"	\
+	"%[tmp] = *(u64 *)(%[ptr] +40);\n"	\
+	"*(u64 *)(%[to] + 40) = %[tmp];\n"	\
+	"%[tmp] = *(u64 *)(%[ptr] +48);\n"	\
+	"*(u64 *)(%[to] + 48) = %[tmp];\n"	\
+	"%[tmp] = *(u64 *)(%[ptr] +56);\n"	\
+	"*(u64 *)(%[to] + 56) = %[tmp];\n"	\
+	"%[to] += 64;\n"			\
+	"%[ptr] += 64;\n"			\
+	"%[len] -= 64;\n"			\
+
+#define COPY256B		\
+	COPY64B			\
+	COPY64B			\
+	COPY64B			\
+	COPY64B			\
+
+static inline __attribute__((always_inline))
+int stack_pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
+{
+	int len = copy, off = 0;
+	uint64_t tmp, ptr;
+
+	asm volatile (
+		"%[len] &= 0xff;\n"
+		"%[off] &= 0xff;\n"
+		"%[ptr] = %[from];\n"
+		// Default abort case
+		"if %[len] > 32 goto 1f;\n"
+		COPY32B
+		"1:;\n"
+		: [tmp] "+r"(tmp),
+		  [ptr] "+r"(ptr),
+		  [off] "+r"(off),
+		  [len] "+r"(len),
+		  [to] "+r"(to),
+		  [end] "+r"(end)
+		:
+		  [from] "r"(from):);
+	return copy - len;
+}
+
 static inline __attribute__((always_inline))
 int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 {
@@ -72,85 +205,52 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		"%[off] &= 0xff;\n"
 		"%[ptr] = %[from];\n"
 		// Default abort case
-		"if %[len] > 32 goto 1f;\n"
+		"if %[len] < 2016 goto +1;\n"
+		"%[len] = 2016;\n"
+		// 1024B case
+		"if %[len] < 1024 goto 6f;\n"
+		"%[tmp] = %[ptr];\n"
+		"%[tmp] += 1024;\n"
+		"if %[tmp] > %[end] goto 1f;\n"
+		COPY256B
+		COPY256B
+		COPY256B
+		COPY256B
+		"6:\n"
+		// 512B case
+		"if %[len] < 512 goto 5f;\n"
+		"%[tmp] = %[ptr];\n"
+		"%[tmp] += 512;\n"
+		"if %[tmp] > %[end] goto 1f;\n"
+		COPY256B
+		COPY256B
+		"5:\n"
+		// 256B case
+		"if %[len] < 256 goto 4f;\n"
+		"%[tmp] = %[ptr];\n"
+		"%[tmp] += 256;\n"
+		"if %[tmp] > %[end] goto 1f;\n"
+		COPY64B
+		COPY64B
+		COPY64B
+		COPY64B
+		"4:;\n"
+		// 128B case
+		"if %[len] < 128 goto 3f;\n"
+		"%[tmp] = %[ptr];\n"
+		"%[tmp] += 128;\n"
+		"if %[tmp] > %[end] goto 1f;\n"
+		COPY64B
+		COPY64B
+		"3:;\n"
+		// 64B case
+		"if %[len] < 64 goto 2f\n"
+		"%[tmp] = %[ptr];\n"
+		"%[tmp] += 64;\n"
+		COPY64B
+		"2:\n"
 		// 32B case
-		"if %[len] < 32 goto +14\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 32;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
-		"*(u64 *)(%[to] + 0) = %[tmp];\n"
-		"%[tmp] = *(u64 *)(%[ptr] +8);\n"
-		"*(u64 *)(%[to] + 8) = %[tmp];\n"
-		"%[tmp] = *(u64 *)(%[ptr] +16);\n"
-		"*(u64 *)(%[to] + 16) = %[tmp];\n"
-		"%[tmp] = *(u64 *)(%[ptr] +24);\n"
-		"*(u64 *)(%[to] + 24) = %[tmp];\n"
-		"%[to] += 32;\n"
-		"%[ptr] += 32;\n"
-		"%[len] -= 32;\n"
-		// 16B case
-		"if %[len] < 16 goto +10\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 16;\n"
-		"if %[tmp] > %[end] goto 1f\n"
-		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
-		"*(u64 *)(%[to] + 0) = %[tmp];\n"
-		"%[tmp] = *(u64 *)(%[ptr] +8);\n"
-		"*(u64 *)(%[to] + 8) = %[tmp];\n"
-		"%[to] += 16;\n"
-		"%[ptr] += 16;\n"
-		"%[len] -= 16;\n"
-		// 8B case
-		"if %[len] < 8 goto +8\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 8;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u64 *)(%[ptr] +0);\n"
-		"*(u64 *)(%[to] + 0) = %[tmp];\n"
-		"%[ptr] += 8;\n"
-		"%[to] += 8;\n"
-		"%[len] -= 8;\n"
-		// 4B case
-		"if %[len] < 4 goto +8\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 4;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u32 *)(%[ptr] +0);\n"
-		"*(u32 *)(%[to] + 0) = %[tmp];\n"
-		"%[len] -= 4;\n"
-		"%[to] += 4;\n"
-		"%[ptr] += 4;\n"
-		// 3B case
-		"if %[len] < 3 goto +10;\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 3;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
-		"*(u8 *)(%[to] + 0) = %[tmp];\n"
-		"%[tmp] = *(u8 *)(%[ptr] +1);\n"
-		"*(u8 *)(%[to] + 1) = %[tmp];\n"
-		"%[tmp] = *(u8 *)(%[ptr] +2);\n"
-		"*(u8 *)(%[to] + 2) = %[tmp];\n"
-		"%[len] -= 3;\n"
-		// 2B case
-		"if %[len] < 2 goto +8;\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 2;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
-		"*(u8 *)(%[to] + 0) = %[tmp];\n"
-		"%[tmp] = *(u8 *)(%[ptr] +1);\n"
-		"*(u8 *)(%[to] + 1) = %[tmp];\n"
-		"%[len] -= 2;\n"
-		// 1B case
-		"if %[len] < 1 goto +6;\n"
-		"%[tmp] = %[ptr];\n"
-		"%[tmp] += 1;\n"
-		"if %[tmp] > %[end] goto 1f;\n"
-		"%[tmp] = *(u8 *)(%[ptr] +0);\n"
-		"*(u8 *)(%[to] + 0) = %[tmp];\n"
-		"%[len] -= 1;\n"
+		COPY32B
 		"1:;\n"
 		: [tmp] "+r"(tmp),
 		  [ptr] "+r"(ptr),
@@ -161,4 +261,41 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		:
 		  [from] "r"(from):);
 	return copy - len;
+}
+
+struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 4096,
+	.max_entries = 1,
+};
+
+/* Large context copy to copy packet payload when we need a prune point to
+ * avoid complexity and insn count overrun even with 1mil insns.
+ */
+static inline
+int large_ctx_copy(struct __sk_buff *ctx, __u64 next, __u64 offset, __u64 copy)
+{
+	__u8 *to, *end, *from;
+	int copied, zero = 0;
+
+	/* Duplicate map lookups because passing pointer through func
+	 * call is not currently supported.
+	 *
+	 * TBD: JF, extend verifier to understand pointers/struct args.
+	 */
+	to = map_lookup_elem(&tls_heap, &zero);
+	if (!to)
+		return 0;
+
+	if (offset > 4096 - 32)
+		return 0;
+
+	to = to + offset;
+	from = (void *)(long)ctx->data;
+	from = from + next + offset;
+	end = (void *)(long)ctx->data_end;
+	copied = pkt_copy(to, end, from, copy);
+
+	return copied;
 }
