@@ -213,6 +213,9 @@ static uint64_t BPF_FUNC(get_current_pid_tgid);
 static int BPF_FUNC(get_current_comm, char *buf, uint32_t size); 
 
 static int BPF_FUNC(perf_event_output, void *ctx, void *map, uint64_t flags, void *data, uint64_t size);
+
+static int BPF_FUNC(get_stack, void *ctx, void *buf, uint32_t size, uint64_t flags);
+
 /** LLVM built-ins, mem*() routines work for constant size */
 
 #ifndef lock_xadd

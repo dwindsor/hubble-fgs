@@ -125,6 +125,8 @@ enum msg_ops {
 	MSG_OP_IPV4_TCPCLOSE = 8,
 	MSG_OP_IPV4_TCPACCEPT = 9,
 	MSG_OP_CREDS = 10,
+	MSG_OP_KFREE_SKB = 11,
+
 	MSG_OP_MAX,
 
 	// testing
@@ -178,6 +180,11 @@ struct msg_k8s {
 	__u64 cgrpid;
 	char  docker_id[DOCKER_ID_LENGTH];
 };
+
+struct msg_calltrace {
+	__u64 stack[16];
+	int32_t ret;
+} __attribute__((packed));
 
 #define EXT_SERVER_NAME_LENGTH 32
 #define EXT_VERSION_LENGTH 16
@@ -275,6 +282,12 @@ struct msg_tls_event {
 	struct msg_tls	      clienthello;
 	struct msg_tls	      serverhello;
 	struct msg_execve_key execve;
+} __attribute__((packed));
+
+struct msg_kfree_skb {
+	struct msg_common common;
+	struct msg_calltrace calltrace;
+	struct msg_ipv4_tuple tuple;
 } __attribute__((packed));
 
 struct event {
