@@ -37,6 +37,21 @@ var (
 	availableSensors map[string]*observerSensor = map[string]*observerSensor{}
 )
 
+type sensorLoadArg struct {
+	sttManagerHandle
+}
+
+type sensorUnloadArg = sensorLoadArg
+
+// observerSensorIface is the interface to the underlying sensor implementations
+type observerSensorImpl interface {
+	sensorLoaded(arg sensorLoadArg)
+	sensorUnloaded(arg sensorUnloadArg)
+
+	sensorGetConfig(cfg string) (string, error)
+	sensorSetConfig(cfg string, val string) error
+}
+
 // observerSensor is a set of bpf programs and maps that are managed as a unit.
 //
 // NB: For now we assume that sensors use disjoint sets of progs and maps.  If
@@ -47,6 +62,7 @@ type observerSensor struct {
 	progs  []*bpfLoad
 	maps   []*ObserverMap
 	loaded bool
+	impl   observerSensorImpl
 }
 
 // registerSensor registers a sensor so that it is available to users.
@@ -72,15 +88,17 @@ func registerSensor(s *observerSensor) {
 
 // sensorEnable enables a sensor
 type sensorEnable struct {
-	ctx     context.Context
-	name    string
+	ctx  context.Context
+	name string
+	sttManagerHandle
 	retChan chan error
 }
 
 // sensorDisable disables a sensor
 type sensorDisable struct {
-	ctx     context.Context
-	name    string
+	ctx  context.Context
+	name string
+	sttManagerHandle
 	retChan chan error
 }
 
@@ -88,6 +106,24 @@ type sensorDisable struct {
 type sensorList struct {
 	ctx     context.Context
 	result  *[]api.SensorStatus
+	retChan chan error
+}
+
+// set a configuration option on a sensor
+type sensorConfigSet struct {
+	ctx     context.Context
+	name    string
+	key     string
+	val     string
+	retChan chan error
+}
+
+// get a configuration option on a sensor
+type sensorConfigGet struct {
+	ctx     context.Context
+	name    string
+	key     string
+	val     string
 	retChan chan error
 }
 
@@ -105,21 +141,31 @@ type sensorOp interface {
 }
 
 // trivial sensorOpDone implementations for commands
-func (s *sensorEnable) sensorOpDone(e error)  { s.retChan <- e }
-func (s *sensorDisable) sensorOpDone(e error) { s.retChan <- e }
-func (s *sensorList) sensorOpDone(e error)    { s.retChan <- e }
-func (s *sensorCtlStop) sensorOpDone(e error) { s.retChan <- e }
+func (s *sensorEnable) sensorOpDone(e error)    { s.retChan <- e }
+func (s *sensorDisable) sensorOpDone(e error)   { s.retChan <- e }
+func (s *sensorList) sensorOpDone(e error)      { s.retChan <- e }
+func (s *sensorConfigSet) sensorOpDone(e error) { s.retChan <- e }
+func (s *sensorConfigGet) sensorOpDone(e error) { s.retChan <- e }
+func (s *sensorCtlStop) sensorOpDone(e error)   { s.retChan <- e }
 
-type sensorCtl = chan sensorOp
+type sensorCtlHandle = chan<- sensorOp
 
-// initializeSensorCtl initializes the sensorCtl field of the observer.
+// startSensorCtl initializes the sensorCtlHandle by spawning a
+// sensor controller goroutine.
 //
-// NB: This function still uses methods from ObserverKprobe. It should be
-// possible to completely decouple it from ObserverKprobe but it does not seem
-// to worth the effort at the moment.
+// The purpose of this goroutine is to serialize loading and unloading of
+// sensors as requested from different goroutines (e.g., different GRPC
+// clients).
+//
+// TODO: One issue here is that the goroutine needs a refence to the
+// ObserverKprobe structure to call observerLoadSensor(). AFAICT, it is safe to
+// call observerLoadSensor() from other goroutines. However, to make this
+// obvious, we should factor the necessary data out of ObserverKprobe and avoid
+// the need to keep reference to ObserverKprobe by the sensor controller
+// goroutine.
 func (k *ObserverKprobe) startSensorCtl() error {
 
-	if k.sensorCtl != nil {
+	if k.ObserverSync.sensorCtlHandle != nil {
 		return fmt.Errorf("failed to start sensor controller: channel already exists")
 	}
 
@@ -128,7 +174,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 		done := false
 		for !done {
 			op_ := <-c
-			err := errors.New("BUG: unset error value")
+			err := errors.New("BUG in SensorCtl: unset error value")
 			switch op := op_.(type) {
 			case *sensorEnable:
 				sensor := availableSensors[op.name]
@@ -145,8 +191,10 @@ func (k *ObserverKprobe) startSensorCtl() error {
 					err = nil
 					break
 				}
-
 				err = k.observerLoadSensor(op.ctx, sensor)
+				if err == nil && sensor.impl != nil {
+					sensor.impl.sensorLoaded(sensorLoadArg{sttManagerHandle: op.sttManagerHandle})
+				}
 
 			case *sensorDisable:
 				sensor := availableSensors[op.name]
@@ -161,6 +209,9 @@ func (k *ObserverKprobe) startSensorCtl() error {
 					break
 				}
 				err = k.observerUnloadSensor(sensor, op.ctx)
+				if err == nil && sensor.impl != nil {
+					sensor.impl.sensorUnloaded(sensorUnloadArg{sttManagerHandle: op.sttManagerHandle})
+				}
 
 			case *sensorList:
 				ret := make([]api.SensorStatus, 0, len(availableSensors))
@@ -169,6 +220,30 @@ func (k *ObserverKprobe) startSensorCtl() error {
 				}
 				op.result = &ret
 				err = nil
+
+			case *sensorConfigSet:
+				sensor := availableSensors[op.name]
+				if sensor == nil {
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+				if sensor.impl == nil {
+					err = fmt.Errorf("sensor %s does not support configuration", op.name)
+					break
+				}
+				err = sensor.impl.sensorSetConfig(op.key, op.val)
+
+			case *sensorConfigGet:
+				sensor := availableSensors[op.name]
+				if sensor == nil {
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+				if sensor.impl == nil {
+					err = fmt.Errorf("sensor %s does not support configuration", op.name)
+					break
+				}
+				op.val, err = sensor.impl.sensorGetConfig(op.key)
 
 			case *sensorCtlStop:
 				logger.GetLogger().Debugf("stopping sensor controller...")
@@ -183,7 +258,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 		}
 	}()
 
-	k.sensorCtl = c
+	k.ObserverSync.sensorCtlHandle = c
 	return nil
 }
 
@@ -192,42 +267,49 @@ func (k *ObserverKprobe) startSensorCtl() error {
  */
 
 // EnableSensor enables a sensor by name
-func (k *ObserverKprobe) EnableSensor(ctx context.Context, name string) error {
-	if k.sensorCtl == nil {
+func (h *ObserverSync) EnableSensor(ctx context.Context, name string) error {
+	if h.sensorCtlHandle == nil {
 		return fmt.Errorf("SensorEnable failed, controller channel not initialized")
 	}
 
 	retc := make(chan error)
 	op := &sensorEnable{
-		ctx:     ctx,
-		name:    name,
-		retChan: retc,
+		ctx:              ctx,
+		name:             name,
+		sttManagerHandle: h.sttManagerHandle,
+		retChan:          retc,
 	}
 
-	k.sensorCtl <- op
-	return <-retc
+	h.sensorCtlHandle <- op
+	err := <-retc
+
+	if err == nil {
+	}
+
+	return err
 }
 
 // DisableSensor disables a sensor by name
-func (k *ObserverKprobe) DisableSensor(ctx context.Context, name string) error {
-	if k.sensorCtl == nil {
+func (h *ObserverSync) DisableSensor(ctx context.Context, name string) error {
+	if h.sensorCtlHandle == nil {
 		return fmt.Errorf("SensorDisable failed, controller channel not initialized")
 	}
 
 	retc := make(chan error)
 	op := &sensorDisable{
-		ctx:     ctx,
-		name:    name,
-		retChan: retc,
+		ctx:              ctx,
+		name:             name,
+		sttManagerHandle: h.sttManagerHandle,
+		retChan:          retc,
 	}
 
-	k.sensorCtl <- op
+	h.sensorCtlHandle <- op
 	return <-retc
 }
 
-func (k *ObserverKprobe) ListSensors(ctx context.Context) (*[]api.SensorStatus, error) {
+func (h *ObserverSync) ListSensors(ctx context.Context) (*[]api.SensorStatus, error) {
 
-	if k.sensorCtl == nil {
+	if h.sensorCtlHandle == nil {
 		return nil, fmt.Errorf("ListSensors failed, controller channel not initialized")
 	}
 
@@ -237,7 +319,7 @@ func (k *ObserverKprobe) ListSensors(ctx context.Context) (*[]api.SensorStatus, 
 		retChan: retc,
 	}
 
-	k.sensorCtl <- op
+	h.sensorCtlHandle <- op
 	err := <-retc
 	if err == nil {
 		return op.result, nil
@@ -246,13 +328,55 @@ func (k *ObserverKprobe) ListSensors(ctx context.Context) (*[]api.SensorStatus, 
 	}
 }
 
-func (k *ObserverKprobe) stopSensorCtl(ctx context.Context) error {
+func (h *ObserverSync) GetSensorConfig(ctx context.Context, name string, cfgkey string) (string, error) {
+
+	if h.sensorCtlHandle == nil {
+		return "", fmt.Errorf("SensorGetConfig failed, controller channel not initialized")
+	}
+
+	retc := make(chan error)
+	op := &sensorConfigGet{
+		ctx:     ctx,
+		name:    name,
+		key:     cfgkey,
+		retChan: retc,
+	}
+
+	h.sensorCtlHandle <- op
+	err := <-retc
+	if err == nil {
+		return op.val, nil
+	} else {
+		return "", err
+	}
+}
+
+func (h *ObserverSync) SetSensorConfig(ctx context.Context, name string, cfgkey string, cfgval string) error {
+
+	if h.sensorCtlHandle == nil {
+		return fmt.Errorf("SensorSetConfig failed, controller channel not initialized")
+	}
+
+	retc := make(chan error)
+	op := &sensorConfigSet{
+		ctx:     ctx,
+		name:    name,
+		key:     cfgkey,
+		val:     cfgval,
+		retChan: retc,
+	}
+
+	h.sensorCtlHandle <- op
+	return <-retc
+}
+
+func (h *ObserverSync) stopSensorCtl(ctx context.Context) error {
 	retc := make(chan error)
 	op := &sensorCtlStop{
 		ctx:     ctx,
 		retChan: retc,
 	}
 
-	k.sensorCtl <- op
+	h.sensorCtlHandle <- op
 	return <-retc
 }

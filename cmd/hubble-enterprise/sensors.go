@@ -1,3 +1,16 @@
+// Copyright 2020 Authors of Hubble
+//
+// Licensed under the Apache License, Version 2.0 (the "License");
+// you may not use this file except in compliance with the License.
+// You may obtain a copy of the License at
+//
+//     http://www.apache.org/licenses/LICENSE-2.0
+//
+// Unless required by applicable law or agreed to in writing, software
+// distributed under the License is distributed on an "AS IS" BASIS,
+// WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+// See the License for the specific language governing permissions and
+// limitations under the License.
 package main
 
 import (
@@ -22,9 +35,10 @@ func init() {
 			cliRun(listSensors)
 		},
 	}
+	sensorsCmd.AddCommand(sensorsListCmd)
 
 	sensorEnableCmd := &cobra.Command{
-		Use:   "enable",
+		Use:   "enable <sensor>",
 		Short: "Enable sensor",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -34,9 +48,10 @@ func init() {
 			})
 		},
 	}
+	sensorsCmd.AddCommand(sensorEnableCmd)
 
 	sensorDisableCmd := &cobra.Command{
-		Use:   "disable",
+		Use:   "disable <sensor>",
 		Short: "Disable sensor",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
@@ -46,10 +61,32 @@ func init() {
 			})
 		},
 	}
-
-	sensorsCmd.AddCommand(sensorsListCmd)
-	sensorsCmd.AddCommand(sensorEnableCmd)
 	sensorsCmd.AddCommand(sensorDisableCmd)
+
+	sensorConfigCmd := &cobra.Command{
+		Use:   "config <sensor> [param] [val]",
+		Short: "Configure sensor",
+		Args:  cobra.RangeArgs(1, 3),
+		Run: func(cmd *cobra.Command, args []string) {
+			sensor := args[0]
+			switch len(args) {
+			case 1:
+				cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+					sensorGetConfig(cli, sensor, "")
+				})
+			case 2:
+				cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+					sensorGetConfig(cli, sensor, args[1])
+				})
+			case 3:
+				cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+					sensorSetConfig(cli, sensor, args[1], args[2])
+				})
+			}
+		},
+	}
+	sensorsCmd.AddCommand(sensorConfigCmd)
+
 	rootCmd.AddCommand(sensorsCmd)
 }
 
@@ -91,5 +128,25 @@ func disableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
 		fmt.Printf("sensor %s disabled\n", sensor)
 	} else {
 		fmt.Printf("failed to disable sensor %s: %s\n", sensor, err)
+	}
+}
+
+func sensorGetConfig(client fgs.FineGuidanceSensorsClient, sensor string, cfgkey string) {
+	ctx, _ := context.WithCancel(context.Background())
+	req := fgs.GetSensorConfigRequest{Name: sensor, Cfgkey: cfgkey}
+	res, err := client.GetSensorConfig(ctx, &req)
+	if err == nil {
+		fmt.Printf("%s\n", res.Cfgval)
+	} else {
+		fmt.Printf("error getting %s config value for %s: %s\n", cfgkey, sensor, err)
+	}
+}
+
+func sensorSetConfig(client fgs.FineGuidanceSensorsClient, sensor string, cfgkey string, cfgval string) {
+	ctx, _ := context.WithCancel(context.Background())
+	req := fgs.SetSensorConfigRequest{Name: sensor, Cfgkey: cfgkey, Cfgval: cfgval}
+	_, err := client.SetSensorConfig(ctx, &req)
+	if err != nil {
+		fmt.Printf("error setting %s=%s config for %s: %s\n", cfgkey, cfgval, sensor, err)
 	}
 }

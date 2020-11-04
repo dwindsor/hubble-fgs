@@ -366,3 +366,12 @@ func ObserverTLSPrinter(msg *api.MsgTLSEvent, log logrus.FieldLogger) {
 		"cipher":                       GetTLSCipher(api.SwapByte(msg.ServerHello.Cipher)),
 	}).Warn()
 }
+
+func ObserverKfreeSkbPrinter(msg *api.MsgKfreeSkb, log logrus.FieldLogger) {
+	op := msg.Common.Op
+	log.WithFields(logrus.Fields{
+		"op":        api.OpCode(op).String(),
+		"ret":       msg.Calltrace.Ret,
+		"calltrace": msg.Calltrace.Stack,
+	}).Debug()
+}

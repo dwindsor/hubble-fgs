@@ -152,6 +152,17 @@ func (pm *ProcessManager) handleCredMessage(msg *api.MsgCredEventUnix) *fgs.GetE
 	return res
 }
 
+func (pm *ProcessManager) handleKfreeSkbMessage(msg *api.MsgKfreeSkbUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_KFREE_SKB:
+		pm.log.Warn("TODO: handle kfree_skb message")
+
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
 func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
@@ -214,10 +225,13 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleExitMessage(msg)
 	case *api.MsgCredEventUnix:
 		processedEvent = pm.handleCredMessage(msg)
+	case *api.MsgKfreeSkbUnix:
+		processedEvent = pm.handleKfreeSkbMessage(msg)
 	case *api.MsgTestEventUnix:
 		processedEvent = pm.handleTestMessage(msg)
+
 	default:
-		pm.log.WithField("event", event).Warn("unhandled event")
+		pm.log.WithField("event", event).Warnf("unhandled event of type %T", msg)
 		metrics.ErrorCount.WithLabelValues(string(metrics.UnhandledEvent)).Inc()
 		return nil
 	}

@@ -164,14 +164,14 @@ func (t *Sttree) Print() {
 	t.Root.printNode(0)
 }
 
-func (n *SttNode) ToProtoNode() *fgs.StacktraceNode {
-	protoNode := fgs.StacktraceNode{
-		Addr:  &fgs.StackAddr{Address: n.Addr, Symbol: n.Symbol},
-		Count: uint64(n.Count),
+func (n *SttNode) ToProtoNode() *fgs.StackTraceNode {
+	protoNode := fgs.StackTraceNode{
+		Address: &fgs.StackAddress{Address: n.Addr, Symbol: n.Symbol},
+		Count:   uint64(n.Count),
 	}
 
 	for lblKey, lblCount := range n.Labels {
-		protoLabel := fgs.Label{Key: lblKey, Count: uint64(lblCount)}
+		protoLabel := fgs.StackTraceLabel{Key: lblKey, Count: uint64(lblCount)}
 		protoNode.Labels = append(protoNode.Labels, &protoLabel)
 	}
 

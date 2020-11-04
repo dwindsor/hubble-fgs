@@ -152,6 +152,32 @@ message Tls {
     string server_session = 18;
 }
 
+
+/**
+ * Stack traces
+ */
+
+message StackAddress {
+	uint64 address = 1;
+	string symbol = 2;
+}
+
+message StackTrace {
+	repeated StackAddress addresses = 1;
+}
+
+message StackTraceLabel {
+	string key = 1;
+	uint64 count = 2;
+}
+
+message StackTraceNode {
+	StackAddress address = 1;
+	uint64 count = 2;
+	repeated StackTraceLabel labels = 3;
+	repeated StackTraceNode children = 4;
+}
+
 message ListSensorsRequest { }
 
 message SensorStatus {
@@ -172,7 +198,32 @@ message DisableSensorRequest {
 	string name = 1;
 }
 
+message SetSensorConfigRequest {
+	string name = 1;
+	string cfgkey = 2;
+	string cfgval = 3;
+}
+
+message SetSensorConfigResponse {}
+
+message GetSensorConfigRequest {
+	string name = 1;
+	string cfgkey = 2;
+}
+
+message GetSensorConfigResponse {
+	string cfgval = 1;
+}
+
 message DisableSensorResponse { }
+
+message GetStackTraceTreeRequest {
+	string name = 1;
+}
+
+message GetStackTraceTreeResponse {
+	StackTraceNode root = 1;
+}
 
 service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
@@ -181,6 +232,10 @@ service FineGuidanceSensors {
     rpc ListSensors(ListSensorsRequest) returns (ListSensorsResponse) {}
     rpc EnableSensor(EnableSensorRequest) returns (EnableSensorResponse) {}
     rpc DisableSensor(DisableSensorRequest) returns (DisableSensorResponse) {}
+    rpc SetSensorConfig(SetSensorConfigRequest) returns (SetSensorConfigResponse) {}
+    rpc GetSensorConfig(GetSensorConfigRequest) returns (GetSensorConfigResponse) {}
+
+    rpc GetStackTraceTree(GetStackTraceTreeRequest) returns (GetStackTraceTreeResponse) {}
 }
 
 enum HealthStatusType {

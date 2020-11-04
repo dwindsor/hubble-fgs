@@ -36,6 +36,7 @@ import (
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
+	"github.com/covalentio/hubble-fgs/pkg/ksyms"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/sirupsen/logrus"
@@ -730,6 +731,15 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 		msgUnix := msgToTestUnix(&m)
 		k.observerListenersTest(msgUnix)
+
+	case api.MSG_OP_KFREE_SKB:
+		m := api.MsgKfreeSkb{}
+		err := binary.Read(r, binary.LittleEndian, &m)
+		if err != nil {
+			k.log.WithError(err).Warnf("Failed to read kfree_skb msg")
+			break
+		}
+		k.handleKfreeSkb(&m)
 
 	default:
 		k.log.Infof("unknown op ignored: %v \n", op)
@@ -1738,8 +1748,28 @@ type ObserverKprobe struct {
 	/* Filters */
 	msgFilter []*MsgFilter
 	log       logrus.FieldLogger
-	/* Sensors */
-	sensorCtl
+	/* see ObserverSync description */
+	ObserverSync
+
+	/* Kernel symbols */
+	ksyms *ksyms.Ksyms
+}
+
+// ObseverSync holds data that are safe to be used in all goroutine contexts.
+//
+// The ObserverKprobe structure contains internal data that are used in the
+// goroutine that executes Start(). Start()  polls for events, process them,
+// and forwards them to the registered listeners. The internal data of
+// ObserverKprobe are accessed without synchronization and so they must not be
+// used by other goroutines.
+//
+// ObserverSync holds the parts that are safe to be used from other
+// goroutines.
+type ObserverSync struct {
+	/* sensors controller: loading/unloading sensors */
+	sensorCtlHandle
+	/* stacktrace tree manager: managing stacktrace trees */
+	sttManagerHandle
 }
 
 func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
@@ -1879,6 +1909,15 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 
 func (k *ObserverKprobe) Start(ctx context.Context) error {
 	k.createDir()
+
+	// initialize kernel symbol lookup
+	ksyms, err := ksyms.NewKsyms(ProcFS)
+	if err == nil {
+		k.ksyms = ksyms
+	} else {
+		k.log.Warningf("failed to initialize ksyms: %s", err)
+	}
+
 	if err := k.observerFindBTF(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
 	}
@@ -1897,11 +1936,13 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	if err := k.observerLoadSensor(ctx, initialSensor); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
-	k.startUpdateMapMetrics()
 
-	// start sensor controller
+	// TODO: guard these with a flag
+	// start sensor controller and stt manager
 	k.startSensorCtl()
+	k.ObserverSync.sttManagerHandle = startSttManager()
 
+	k.startUpdateMapMetrics()
 	k.populateExecve(ctx)
 	k.perfConfig = bpf.DefaultPerfEventConfig()
 	if err := k.runEvents(ctx); err != nil {

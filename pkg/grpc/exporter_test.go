@@ -83,6 +83,18 @@ func (f *fakeObserver) DisableSensor(ctx context.Context, name string) error {
 	return nil
 }
 
+func (f *fakeObserver) GetSensorConfig(ctx context.Context, k string, v string) (string, error) {
+	return "", nil
+}
+
+func (f *fakeObserver) SetSensorConfig(ctx context.Context, name string, cfgkey string, cfgval string) error {
+	return nil
+}
+
+func (f *fakeObserver) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error) {
+	return nil, nil
+}
+
 func TestExporter_Send(t *testing.T) {
 	eventNotifier := newFakeNotifier()
 	grpcServer := NewServer(eventNotifier, &fakeObserver{})

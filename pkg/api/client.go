@@ -16,6 +16,8 @@ package api
 
 import (
 	"encoding/binary"
+
+	"github.com/covalentio/hubble-fgs/pkg/vtuple"
 )
 
 const (
@@ -69,6 +71,8 @@ const (
 	MSG_OP_IPV4_ACCEPT = 9
 
 	MSG_OP_CRED = 10
+
+	MSG_OP_KFREE_SKB = 11
 
 	// just for testing
 	MSG_OP_TEST = 254
@@ -195,6 +199,7 @@ const (
 	MsgOpIPv4Bind
 	MsgOpIPv4Listen
 	MsgOpExecve
+	MsgOpKfreeSkb
 )
 
 func (op OpCode) String() string {
@@ -205,7 +210,8 @@ func (op OpCode) String() string {
 		"TCPBind",
 		"TCPListen",
 		"Execve",
-		"TLS"}[op]
+		"TLS",
+		"KfreeSkb"}[op]
 }
 
 type MsgExec struct {
@@ -249,6 +255,11 @@ type MsgIPv4Tcp struct {
 	Tuple      MsgIPv4Tuple
 	Return     int64
 	ProcessKey MsgExecveKey
+}
+
+type MsgCalltrace struct {
+	Stack [16]uint64
+	Ret   int32
 }
 
 // API between Userspace hubble-fgs Golang agent and Unix domain socket listener
@@ -378,4 +389,21 @@ type SensorStatus struct {
 
 func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
+}
+
+type MsgKfreeSkb struct {
+	Common    MsgCommon
+	Calltrace MsgCalltrace
+	Tuple     MsgIPv4Tuple
+}
+
+type StackAddr struct {
+	Addr   uint64
+	Symbol string
+}
+
+type MsgKfreeSkbUnix struct {
+	Common    MsgCommon
+	Calltrace []StackAddr
+	Tuple     vtuple.VTupleImpl
 }

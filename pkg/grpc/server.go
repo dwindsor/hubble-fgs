@@ -29,6 +29,10 @@ type observer interface {
 	EnableSensor(ctx context.Context, name string) error
 	DisableSensor(ctx context.Context, name string) error
 	ListSensors(ctx context.Context) (*[]api.SensorStatus, error)
+	GetSensorConfig(ctx context.Context, name string, cfgkey string) (string, error)
+	SetSensorConfig(ctx context.Context, name string, cfgkey string, cfgval string) error
+
+	GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error)
 }
 
 type Server struct {
@@ -109,7 +113,6 @@ func (s *Server) EnableSensor(ctx context.Context, req *fgs.EnableSensorRequest)
 	err := s.observer.EnableSensor(ctx, req.GetName())
 	var ret *fgs.EnableSensorResponse = nil
 	if err == nil {
-		// NB: just return the (same) name as an id for now.
 		ret = &fgs.EnableSensorResponse{}
 	}
 	return ret, err
@@ -117,7 +120,40 @@ func (s *Server) EnableSensor(ctx context.Context, req *fgs.EnableSensorRequest)
 
 func (s *Server) DisableSensor(ctx context.Context, req *fgs.DisableSensorRequest) (*fgs.DisableSensorResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received a DisableSensor request")
-	res := &fgs.DisableSensorResponse{}
 	err := s.observer.DisableSensor(ctx, req.GetName())
-	return res, err
+	if err != nil {
+		return nil, err
+	}
+
+	return &fgs.DisableSensorResponse{}, nil
+}
+
+func (s *Server) GetSensorConfig(ctx context.Context, req *fgs.GetSensorConfigRequest) (*fgs.GetSensorConfigResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received a GetSensorConfig request")
+	cfgval, err := s.observer.GetSensorConfig(ctx, req.GetName(), req.GetCfgkey())
+	if err != nil {
+		return nil, err
+	}
+
+	return &fgs.GetSensorConfigResponse{Cfgval: cfgval}, nil
+}
+
+func (s *Server) SetSensorConfig(ctx context.Context, req *fgs.SetSensorConfigRequest) (*fgs.SetSensorConfigResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received a SetSensorConfig request")
+	err := s.observer.SetSensorConfig(ctx, req.GetName(), req.GetCfgkey(), req.GetCfgval())
+	if err != nil {
+		return nil, err
+	}
+
+	return &fgs.SetSensorConfigResponse{}, nil
+}
+
+func (s *Server) GetStackTraceTree(ctx context.Context, req *fgs.GetStackTraceTreeRequest) (*fgs.GetStackTraceTreeResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received a GetStackTraceTreee request")
+	root, err := s.observer.GetTreeProto(ctx, req.GetName())
+	if err != nil {
+		return nil, err
+	}
+
+	return &fgs.GetStackTraceTreeResponse{Root: root}, nil
 }

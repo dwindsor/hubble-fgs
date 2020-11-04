@@ -1379,6 +1379,330 @@ var _ interface {
 	ErrorName() string
 } = TlsValidationError{}
 
+// Validate checks the field values on StackAddress with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *StackAddress) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Address
+
+	// no validation rules for Symbol
+
+	return nil
+}
+
+// StackAddressValidationError is the validation error returned by
+// StackAddress.Validate if the designated constraints aren't met.
+type StackAddressValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e StackAddressValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e StackAddressValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e StackAddressValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e StackAddressValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e StackAddressValidationError) ErrorName() string { return "StackAddressValidationError" }
+
+// Error satisfies the builtin error interface
+func (e StackAddressValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sStackAddress.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = StackAddressValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = StackAddressValidationError{}
+
+// Validate checks the field values on StackTrace with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *StackTrace) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	for idx, item := range m.GetAddresses() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return StackTraceValidationError{
+					field:  fmt.Sprintf("Addresses[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// StackTraceValidationError is the validation error returned by
+// StackTrace.Validate if the designated constraints aren't met.
+type StackTraceValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e StackTraceValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e StackTraceValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e StackTraceValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e StackTraceValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e StackTraceValidationError) ErrorName() string { return "StackTraceValidationError" }
+
+// Error satisfies the builtin error interface
+func (e StackTraceValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sStackTrace.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = StackTraceValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = StackTraceValidationError{}
+
+// Validate checks the field values on StackTraceLabel with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *StackTraceLabel) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Key
+
+	// no validation rules for Count
+
+	return nil
+}
+
+// StackTraceLabelValidationError is the validation error returned by
+// StackTraceLabel.Validate if the designated constraints aren't met.
+type StackTraceLabelValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e StackTraceLabelValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e StackTraceLabelValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e StackTraceLabelValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e StackTraceLabelValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e StackTraceLabelValidationError) ErrorName() string { return "StackTraceLabelValidationError" }
+
+// Error satisfies the builtin error interface
+func (e StackTraceLabelValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sStackTraceLabel.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = StackTraceLabelValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = StackTraceLabelValidationError{}
+
+// Validate checks the field values on StackTraceNode with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *StackTraceNode) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetAddress()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return StackTraceNodeValidationError{
+				field:  "Address",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for Count
+
+	for idx, item := range m.GetLabels() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return StackTraceNodeValidationError{
+					field:  fmt.Sprintf("Labels[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	for idx, item := range m.GetChildren() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return StackTraceNodeValidationError{
+					field:  fmt.Sprintf("Children[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// StackTraceNodeValidationError is the validation error returned by
+// StackTraceNode.Validate if the designated constraints aren't met.
+type StackTraceNodeValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e StackTraceNodeValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e StackTraceNodeValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e StackTraceNodeValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e StackTraceNodeValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e StackTraceNodeValidationError) ErrorName() string { return "StackTraceNodeValidationError" }
+
+// Error satisfies the builtin error interface
+func (e StackTraceNodeValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sStackTraceNode.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = StackTraceNodeValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = StackTraceNodeValidationError{}
+
 // Validate checks the field values on ListSensorsRequest with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, an error is returned.
@@ -1802,6 +2126,286 @@ var _ interface {
 	ErrorName() string
 } = DisableSensorRequestValidationError{}
 
+// Validate checks the field values on SetSensorConfigRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *SetSensorConfigRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Name
+
+	// no validation rules for Cfgkey
+
+	// no validation rules for Cfgval
+
+	return nil
+}
+
+// SetSensorConfigRequestValidationError is the validation error returned by
+// SetSensorConfigRequest.Validate if the designated constraints aren't met.
+type SetSensorConfigRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e SetSensorConfigRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e SetSensorConfigRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e SetSensorConfigRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e SetSensorConfigRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e SetSensorConfigRequestValidationError) ErrorName() string {
+	return "SetSensorConfigRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e SetSensorConfigRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sSetSensorConfigRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = SetSensorConfigRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = SetSensorConfigRequestValidationError{}
+
+// Validate checks the field values on SetSensorConfigResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *SetSensorConfigResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// SetSensorConfigResponseValidationError is the validation error returned by
+// SetSensorConfigResponse.Validate if the designated constraints aren't met.
+type SetSensorConfigResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e SetSensorConfigResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e SetSensorConfigResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e SetSensorConfigResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e SetSensorConfigResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e SetSensorConfigResponseValidationError) ErrorName() string {
+	return "SetSensorConfigResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e SetSensorConfigResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sSetSensorConfigResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = SetSensorConfigResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = SetSensorConfigResponseValidationError{}
+
+// Validate checks the field values on GetSensorConfigRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *GetSensorConfigRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Name
+
+	// no validation rules for Cfgkey
+
+	return nil
+}
+
+// GetSensorConfigRequestValidationError is the validation error returned by
+// GetSensorConfigRequest.Validate if the designated constraints aren't met.
+type GetSensorConfigRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetSensorConfigRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetSensorConfigRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetSensorConfigRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetSensorConfigRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetSensorConfigRequestValidationError) ErrorName() string {
+	return "GetSensorConfigRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetSensorConfigRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetSensorConfigRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetSensorConfigRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetSensorConfigRequestValidationError{}
+
+// Validate checks the field values on GetSensorConfigResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *GetSensorConfigResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Cfgval
+
+	return nil
+}
+
+// GetSensorConfigResponseValidationError is the validation error returned by
+// GetSensorConfigResponse.Validate if the designated constraints aren't met.
+type GetSensorConfigResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetSensorConfigResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetSensorConfigResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetSensorConfigResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetSensorConfigResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetSensorConfigResponseValidationError) ErrorName() string {
+	return "GetSensorConfigResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetSensorConfigResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetSensorConfigResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetSensorConfigResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetSensorConfigResponseValidationError{}
+
 // Validate checks the field values on DisableSensorResponse with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, an error is returned.
@@ -1868,6 +2472,152 @@ var _ interface {
 	Cause() error
 	ErrorName() string
 } = DisableSensorResponseValidationError{}
+
+// Validate checks the field values on GetStackTraceTreeRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *GetStackTraceTreeRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Name
+
+	return nil
+}
+
+// GetStackTraceTreeRequestValidationError is the validation error returned by
+// GetStackTraceTreeRequest.Validate if the designated constraints aren't met.
+type GetStackTraceTreeRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetStackTraceTreeRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetStackTraceTreeRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetStackTraceTreeRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetStackTraceTreeRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetStackTraceTreeRequestValidationError) ErrorName() string {
+	return "GetStackTraceTreeRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetStackTraceTreeRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetStackTraceTreeRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetStackTraceTreeRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetStackTraceTreeRequestValidationError{}
+
+// Validate checks the field values on GetStackTraceTreeResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *GetStackTraceTreeResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetRoot()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return GetStackTraceTreeResponseValidationError{
+				field:  "Root",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// GetStackTraceTreeResponseValidationError is the validation error returned by
+// GetStackTraceTreeResponse.Validate if the designated constraints aren't met.
+type GetStackTraceTreeResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetStackTraceTreeResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetStackTraceTreeResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetStackTraceTreeResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetStackTraceTreeResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetStackTraceTreeResponseValidationError) ErrorName() string {
+	return "GetStackTraceTreeResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetStackTraceTreeResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetStackTraceTreeResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetStackTraceTreeResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetStackTraceTreeResponseValidationError{}
 
 // Validate checks the field values on GetHealthStatusRequest with the rules
 // defined in the proto definition for this message. If any rules are

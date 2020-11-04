@@ -112,7 +112,7 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, kprobe)
+	server := fgsGrpc.NewServer(processManager, &kprobe.ObserverSync)
 	if err = Serve(ctx, serverAddress, server); err != nil {
 		return err
 	}
