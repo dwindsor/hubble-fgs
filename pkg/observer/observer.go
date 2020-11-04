@@ -543,7 +543,7 @@ func (k *ObserverKprobe) RemoveListener(listener Listener) {
 	}
 }
 
-func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string) *api.MsgTLSEventUnix {
+func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32) *api.MsgTLSEventUnix {
 	unix := &api.MsgTLSEventUnix{}
 
 	unix.Common = m.Common
@@ -551,8 +551,12 @@ func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string) *api.MsgTLSEventUnix 
 	unix.ClientHello = m.ClientHello
 	unix.ServerHello = m.ServerHello
 	unix.ProcessKey = m.ProcessKey
-	fmt.Printf("ProcessKey %d\n", unix.ProcessKey)
-	unix.ServerCert.Certificates = certs
+
+	if errCode > 0 {
+		unix.ServerCert.Error = errCode
+	} else {
+		unix.ServerCert.Certificates = certs
+	}
 	return unix
 }
 func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
@@ -686,6 +690,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	case api.MSG_OP_TLS:
 		var m *api.MsgTLSEvent
 		var certStrings []string
+		errCode := uint32(0)
 
 		if k.cType == api.MSG_OP_UNDEF {
 			m = &api.MsgTLSEvent{}
@@ -700,33 +705,34 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			}
 		} else {
 			var bytes uint32
+
 			k.cType = api.MSG_OP_UNDEF
 
 			m = k.cMsg
 			err := binary.Read(r, binary.LittleEndian, &bytes)
 			if err != nil {
-				fmt.Printf("binary read error on cont: %s\n", err)
+				errCode = api.TlsCertificateErrorLengthRead
 			} else if bytes == 0 {
-				var errCode uint8
+				var errBpf uint8
 
-				err := binary.Read(r, binary.LittleEndian, &errCode)
+				err := binary.Read(r, binary.LittleEndian, &errBpf)
 				if err == nil {
-					fmt.Printf("binary read error %d\n", errCode)
+					errCode = uint32(errBpf)
 				} else {
-					fmt.Printf("binary read errroCode failed %s\n", err)
+					errCode = api.TlsCertificateErrorMissingCode
 				}
 			} else {
 				cert := make([]byte, bytes-4)
 				err = binary.Read(r, binary.LittleEndian, &cert)
 				if err != nil {
-					fmt.Printf("binary read cert error on cont: %s\n", err)
+					errCode = api.TlsCertificateErrorCertRead
 				}
 
 				certStrings = reader.GetTLSCertificateString(cert)
 			}
 		}
 
-		msgUnix := msgToTLSEventUnix(m, certStrings)
+		msgUnix := msgToTLSEventUnix(m, certStrings, errCode)
 
 		/* OR filter together */
 		k.observerListenersTLS(msgUnix)

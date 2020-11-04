@@ -131,6 +131,18 @@ message ProcessCred {
 
 message Test {}
 
+enum TlsCertificateError {
+	TLS_CERT_ERROR_UNDEF          = 0;
+	TLS_CERT_ERROR_UNKNOWN        = 1;
+	TLS_CERT_ERROR_TOO_LARGE      = 2;
+	TLS_CERT_ERROR_GET_DATA       = 3;
+	TLS_CERT_ERROR_NO_BUFFER      = 4;
+	TLS_CERT_ERROR_COPY           = 5;
+	TLS_CERT_ERROR_LENGTH_READ    = 6;
+	TLS_CERT_ERROR_CERT_READ      = 7;
+	TLS_CERT_ERROR_MISSING_CODE   = 8;
+}
+
 message Tls {
     Process process = 1;
     string source_ip = 2;
@@ -151,6 +163,7 @@ message Tls {
     string client_session = 17;
     string server_session = 18;
     repeated string certificates = 19;
+    TlsCertificateError certificate_error = 20;
 }
 
 

@@ -589,6 +589,29 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 	}
 }
 
+// Translate internal uint32 error codes into gRPC visible error codes
+func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
+	switch err {
+	case api.TlsCertificateErrorNone:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_UNDEF
+	case api.TlsCertificateErrorTooLarge:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_TOO_LARGE
+	case api.TlsCertificateErrorGetData:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA
+	case api.TlsCertificateErrorNoBuffer:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_NO_BUFFER
+	case api.TlsCertificateErrorCopyError:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_COPY
+	case api.TlsCertificateErrorLengthRead:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_LENGTH_READ
+	case api.TlsCertificateErrorMissingCode:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_MISSING_CODE
+	case api.TlsCertificateErrorCertRead:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_READ
+	}
+	return fgs.TlsCertificateError_TLS_CERT_ERROR_UNKNOWN
+}
+
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	var sourcePort, destinationPort *wrappers.UInt32Value
@@ -635,6 +658,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		ClientSession:     reader.GetTLSSession(event.ClientHello.Session),
 		ServerSession:     reader.GetTLSSession(event.ServerHello.Session),
 		Certificates:      event.ServerCert.Certificates,
+		CertificateError:  getTLSCertificateErrorCode(event.ServerCert.Error),
 	}
 }
 

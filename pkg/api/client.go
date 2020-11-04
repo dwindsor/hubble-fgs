@@ -183,6 +183,20 @@ const (
 	TlsFlagCert                = 0x0800
 )
 
+// TLS Certificate Errors
+const (
+	// BPF size errors
+	TlsCertificateErrorNone      = 0x0000
+	TlsCertificateErrorTooLarge  = 0x0001
+	TlsCertificateErrorGetData   = 0x0002
+	TlsCertificateErrorNoBuffer  = 0x0003
+	TlsCertificateErrorCopyError = 0x0004
+	// Userspace errors
+	TlsCertificateErrorLengthRead  = 0x0100
+	TlsCertificateErrorMissingCode = 0x0200
+	TlsCertificateErrorCertRead    = 0x0400
+)
+
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
 type MsgCommon struct {
 	Op    uint8
@@ -344,6 +358,7 @@ type MsgTLS struct {
 
 type MsgTLSCertificates struct {
 	Certificates []string
+	Error        uint32
 }
 
 type MsgExecveKey struct {

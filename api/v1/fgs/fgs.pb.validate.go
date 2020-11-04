@@ -1322,6 +1322,8 @@ func (m *Tls) Validate() error {
 
 	// no validation rules for ServerSession
 
+	// no validation rules for CertificateError
+
 	return nil
 }
 
