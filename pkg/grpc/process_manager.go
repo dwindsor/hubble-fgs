@@ -608,6 +608,10 @@ func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_MISSING_CODE
 	case api.TlsCertificateErrorCertRead:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_READ
+	case api.TlsCertificateErrorCertPartial:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_PARTIAL
+	case api.TlsCertificateErrorParseX509:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_PARSE_X509
 	}
 	return fgs.TlsCertificateError_TLS_CERT_ERROR_UNKNOWN
 }

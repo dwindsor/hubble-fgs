@@ -722,13 +722,18 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 					errCode = api.TlsCertificateErrorMissingCode
 				}
 			} else {
+				var code uint32
+
 				cert := make([]byte, bytes-4)
 				err = binary.Read(r, binary.LittleEndian, &cert)
 				if err != nil {
 					errCode = api.TlsCertificateErrorCertRead
 				}
 
-				certStrings = reader.GetTLSCertificateString(cert)
+				certStrings, code = reader.GetTLSCertificateString(cert)
+				if code != 0 {
+					errCode = api.TlsCertificateErrorCertPartial
+				}
 			}
 		}
 

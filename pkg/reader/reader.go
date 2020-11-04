@@ -354,7 +354,7 @@ func GetTLSSupportedVersions(vers [16]byte, offset int) string {
 //	jj
 //}
 
-func GetTLSCertificateString(cert []byte) []string {
+func GetTLSCertificateString(cert []byte) ([]string, uint32) {
 	var certificateString []string
 
 	// Handshake Protocol Certificate: single byte offset because we
@@ -373,17 +373,21 @@ func GetTLSCertificateString(cert []byte) []string {
 	cLength[3] = cert[certificatesLengthIndex+2]
 	length := binary.BigEndian.Uint32(cLength)
 
-	for length > 0 {
+	// Ensure length always can read at least the length field
+	for length > 4 {
 		cLength[1] = cert[certificatesIndex]
 		cLength[2] = cert[certificatesIndex+1]
 		cLength[3] = cert[certificatesIndex+2]
 		cIntLength := binary.BigEndian.Uint32(cLength)
 
+		if uint32(len(cert)) < uint32(certificatesIndex)+3+cIntLength {
+			return certificateString, api.TlsCertificateErrorCertPartial
+		}
+
 		certificate := cert[certificatesIndex+3 : uint32(certificatesIndex)+3+cIntLength]
 		parsedCert, err := x509.ParseCertificate(certificate)
 		if err != nil {
-			fmt.Printf("error %s\n", err)
-			return certificateString
+			return certificateString, api.TlsCertificateErrorParseX509
 		}
 
 		subjectRsdn := parsedCert.Subject.ToRDNSequence()
@@ -392,7 +396,10 @@ func GetTLSCertificateString(cert []byte) []string {
 		length -= (cIntLength + 3)
 		certificatesIndex += int(cIntLength) + 3
 	}
-	return certificateString
+	if length != 0 {
+		return certificateString, api.TlsCertificateErrorCertPartial
+	}
+	return certificateString, 0
 }
 
 func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {

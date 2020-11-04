@@ -195,6 +195,8 @@ const (
 	TlsCertificateErrorLengthRead  = 0x0100
 	TlsCertificateErrorMissingCode = 0x0200
 	TlsCertificateErrorCertRead    = 0x0400
+	TlsCertificateErrorCertPartial = 0x0800
+	TlsCertificateErrorParseX509   = 0x1000
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
