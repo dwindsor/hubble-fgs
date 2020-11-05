@@ -104,12 +104,20 @@ func CreateUDPv4(saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) VTupl
 
 }
 
-func CreateVTupleV4(proto byte, saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) VTupleImpl {
+type ErrorUnknownV4Protocol struct {
+	proto byte
+}
+
+func (e *ErrorUnknownV4Protocol) Error() string {
+	return fmt.Sprintf("unsupported protocol: %d", e.proto)
+}
+
+func CreateVTupleV4(proto byte, saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) (VTupleImpl, error) {
 
 	switch proto {
 	case VT_TCP, VT_UDP:
 	default:
-		panic(fmt.Sprintf("Unsupported protocol: %d", proto))
+		return VTupleImpl{}, &ErrorUnknownV4Protocol{proto: proto}
 	}
 
 	return VTupleImpl{
@@ -118,7 +126,7 @@ func CreateVTupleV4(proto byte, saddr [4]byte, sport uint16, daddr [4]byte, dpor
 		dstAddr: net.IPv4(daddr[0], daddr[1], daddr[2], daddr[3]),
 		srcPort: sport,
 		dstPort: dport,
-	}
+	}, nil
 }
 
 func StringRep(vt VTuple) string {

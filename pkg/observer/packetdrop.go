@@ -123,7 +123,7 @@ func (pd *PacketdropSensorImpl) sensorSetConfig(key_ string, param string) error
 	return nil
 }
 
-func msgTuple4ToVTuple(mt *api.MsgIPv4Tuple) vtuple.VTupleImpl {
+func msgTuple4ToVTuple(mt *api.MsgIPv4Tuple) (vtuple.VTupleImpl, error) {
 
 	getNetPort := func(np uint16) uint16 {
 		b16 := make([]byte, 2)
@@ -167,7 +167,7 @@ func msgToKfreeSkbUnix(m *api.MsgKfreeSkb, ksyms *ksyms.Ksyms) *api.MsgKfreeSkbU
 
 		ret.Calltrace = append(ret.Calltrace, api.StackAddr{Addr: addr, Symbol: symbol})
 	}
-	ret.Tuple = msgTuple4ToVTuple(&m.Tuple)
+	ret.Tuple, _ = msgTuple4ToVTuple(&m.Tuple)
 
 	return &ret
 }
