@@ -19,11 +19,12 @@ import (
 	"bufio"
 	"errors"
 	"fmt"
-	"log"
 	"os"
 	"sort"
 	"strconv"
 	"strings"
+
+	"github.com/covalentio/hubble-fgs/pkg/logger"
 
 	lru "github.com/hashicorp/golang-lru"
 )
@@ -123,7 +124,8 @@ func NewKsyms(procfs string) (*Ksyms, error) {
 	if err == nil {
 		ksyms.fnCache = fc
 	} else {
-		log.Printf("failed to initialize cache: %s", err)
+
+		logger.GetLogger().Infof("failed to initialize cache: %s", err)
 	}
 
 	return &ksyms, nil
