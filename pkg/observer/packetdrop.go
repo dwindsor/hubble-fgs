@@ -178,9 +178,9 @@ func (k *ObserverKprobe) handleKfreeSkb(m *api.MsgKfreeSkb) {
 
 	if false {
 		log := logger.GetLogger()
-		log.Printf("%s", vtuple.StringRep(&msgUnix.Tuple))
+		log.Info("%s", vtuple.StringRep(&msgUnix.Tuple))
 		for _, x := range msgUnix.Calltrace {
-			log.Printf("\t%s (0x%x)\n", x.Symbol, x.Addr)
+			log.Info("\t%s (0x%x)\n", x.Symbol, x.Addr)
 		}
 	}
 
@@ -189,7 +189,7 @@ func (k *ObserverKprobe) handleKfreeSkb(m *api.MsgKfreeSkb) {
 			return
 		}
 		// log := logger.GetLogger()
-		// log.Printf("tuple %s passed the filter %s\n", vtuple.StringRep(&msgUnix.Tuple), packetdropCfg.FilterStr)
+		// log.Info("tuple %s passed the filter %s\n", vtuple.StringRep(&msgUnix.Tuple), packetdropCfg.FilterStr)
 	}
 
 	stt_lbl := []string{vtuple.StringRep(&msgUnix.Tuple)}
