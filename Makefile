@@ -3,6 +3,7 @@ INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
+LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.1
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v /home/john/go/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
 
@@ -65,6 +66,13 @@ image-test:
 	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "covalentio/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
+
+libbpf:
+	$(eval id=$(shell docker create $(LIBBPF_IMAGE)))
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so ./
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 ./
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 ./
+	docker stop ${id}
 
 quick-install:
 	helm template ./install/kubernetes/hubble-fgs --namespace kube-system > ./install/kubernetes/quick-install.yaml
