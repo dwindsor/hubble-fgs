@@ -15,16 +15,17 @@ struct bpf_map_def {
 #include "bpf_events.h"
 
 
-// set_tuple_from_skb(skb)
-//
-//  Fill in the msg_ipv4_tuple and return whether we should output this (true)
-//  or not (false).
-//
-// NB: this is a best-effort function to retreive a 5-tuple from an sk_buff
-// structure. Result is _not_ guaranteed to be valid.
-//
-// TODO: We should modify the code to use BTF information when accessing the
-// kernel structures below.
+/* set_tuple_from_skb(skb)
+ *
+ *  Fill in the msg_ipv4_tuple and return whether we should output this (true)
+ *  or not (false).
+ *
+ * NB: this is a best-effort function to retreive a 5-tuple from an sk_buff
+ * structure. Result is _not_ guaranteed to be valid.
+ *
+ * TODO: We should modify the code to use BTF information when accessing the
+ * kernel structures below.
+ */
 static inline bool
 __attribute__((unused))
 set_tuple_from_skb(struct msg_ipv4_tuple *tuple, struct sk_buff *skb) {
