@@ -582,11 +582,22 @@ void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
 static inline __attribute__((always_inline))
 void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 {
-	void *data_end = (void *)(long)skb->data_end;
+	void *data_end;
 	__u8 doff;
 
+	/* Under code refactor clang was putting a <<32,>>32 here to
+	 * apparently zero up 32bits of data_end. But, this broke
+	 * verifier on 4.19 kernels. Lets tell clang how to do this
+	 * with asm.
+	 */
+	asm volatile(
+		"%[data_end] = *(u32*)%[skb_end];\n"
+		: [data_end] "+r"(data_end)
+		:  [skb_end] "m"(skb->data_end)
+		:);
+
 	/* offset of doff + 4B read */
-	if ((void *)tcphdr + 16 > data_end) {
+	if ((void *)tcphdr + sizeof(struct tcphdr) > data_end) {
 		tcphdr = get_data(skb, *offset, 16);
 		if (!tcphdr)
 			return 0;
