@@ -245,14 +245,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls 
 	client_hello = payload + sizeof(struct tls_hdr);
 
 	session = (void*)client_hello + 6;
-	pkt_copy(tls->session,
-		 data_end,
-		 (void *)session,
-		 32);
-	pkt_copy(tls->session + 32,
-		 data_end,
-		 (void *)session + 32,
-		 32);
+	small_pkt_copy(tls->session, data_end, session, 64);
 	if (client) {
 		adv_cipher = *cipher_length;
 		adv_cipher = bpf_htons(adv_cipher);

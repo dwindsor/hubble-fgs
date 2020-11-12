@@ -197,6 +197,42 @@ int stack_pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		:
 		  [from] "r"(from):);
 	return copy - len;
+
+}
+
+static inline __attribute__((always_inline))
+int small_pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
+{
+	int len = copy, off = 0;
+	uint64_t tmp, ptr;
+
+	asm volatile (
+		"%[len] &= 0xfff;\n"
+		"%[off] &= 0xfff;\n"
+		"%[ptr] = %[from];\n"
+		// Default abort case
+		"if %[len] > 96 goto 1f;\n"
+		// 64B case
+		"if %[len] < 64 goto 2f;\n"
+		"%[tmp] = %[ptr];\n"
+		"%[tmp] += 64;\n"
+		"if %[tmp] > %[end] goto 2f;\n"
+		COPY64B
+		"2:\n"
+		// 32B case
+		COPY32B
+		"1:;\n"
+		: [tmp] "+r"(tmp),
+		  [ptr] "+r"(ptr),
+		  [off] "+r"(off),
+		  [len] "+r"(len),
+		  [to] "+r"(to),
+		  [end] "+r"(end)
+		:
+		  [from] "r"(from):);
+	if (copy > 64)
+		copy = 64;
+	return copy - len;
 }
 
 static inline __attribute__((always_inline))
