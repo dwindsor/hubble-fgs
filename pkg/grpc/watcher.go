@@ -75,6 +75,18 @@ func findPod(containerID string, pods []interface{}) (*corev1.Pod, *corev1.Conta
 				return pod, &container, true
 			}
 		}
+		for _, container := range pod.Status.InitContainerStatuses {
+			parts := strings.Split(container.ContainerID, "//")
+			if len(parts) == 2 && strings.HasPrefix(parts[1], containerID) {
+				return pod, &container, true
+			}
+		}
+		for _, container := range pod.Status.EphemeralContainerStatuses {
+			parts := strings.Split(container.ContainerID, "//")
+			if len(parts) == 2 && strings.HasPrefix(parts[1], containerID) {
+				return pod, &container, true
+			}
+		}
 	}
 	return nil, nil, false
 }
