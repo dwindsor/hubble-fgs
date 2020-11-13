@@ -11,8 +11,6 @@ struct bpf_map_def {
 };
 #endif
 
-#define SK_MSG
-
 __attribute__((section(("sk_skb_parser/fgs")), used))
 int bpf_skskb_parser_fgs(struct __sk_buff *skb)
 {

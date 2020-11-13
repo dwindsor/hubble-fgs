@@ -604,3 +604,97 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 	return (void*)tcphdr + doff;
 }
 #endif
+
+/* TLS Certificate Error Codes */
+#define ENEXTTOOLARGE	1
+#define EGETDATA	2
+#define ENOBUFFER	3
+#define ECOPYERROR	4
+
+/* TLS Certificate Hdr offset */
+#define TLS_HEADER_BYTES 9
+
+/* TBD: JF, extend verifier to understand void functions */
+#ifndef SK_MSG
+static inline __attribute__((always_inline))
+int bpf_skskb_post_cert(struct __sk_buff *skb, int next)
+{
+	void *data, *data_end = (void *)(long)skb->data_end;
+	void *tls_server_hello = (void*)(long)skb->data;
+	struct tls_handshake_certificate *cert;
+	int *length, copied, zero = 0, errout[2];
+	__u32 csize = 0;
+	__u8 *buffer;
+
+	next += TLS_HEADER_BYTES; // Account for TLS Server Hello header
+	if (next > 1024) {
+		errout[1] = ENEXTTOOLARGE;
+		goto out;
+	}
+
+	asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
+	data = (void*)tls_server_hello + next;
+	if (data + sizeof(struct tls_handshake_certificate) > data_end) {
+		data = get_data(skb, next, sizeof(struct tls_handshake_certificate));
+		if (!data) {
+			errout[1] = EGETDATA;
+			goto out;
+		}
+		data_end = (void *)(long)skb->data_end;
+	}
+	compiler_barrier();
+	cert = (struct tls_handshake_certificate *)data;
+	csize = cert->length;
+	csize = bpf_ntohs(csize);
+	csize += 4 + 1;
+	csize &= 0x7fff;
+
+	/* We get away with posting without a header because we have
+	 * a flag above indicating the cert is the next event and this
+	 * is a non-preemptive hook so we can be certain the user side
+	 * will in-fact get this event immediately after above.
+	 */
+	buffer = map_lookup_elem(&tls_heap, &zero);
+	if (!buffer) {
+		errout[1] = ENOBUFFER;
+		goto out;
+	}
+
+	if (data + sizeof(struct tls_handshake_certificate) + csize > data_end) {
+		data = get_data(skb, next, csize + sizeof(struct tls_handshake_certificate));
+		if (!data) {
+			errout[1] = EGETDATA;
+			goto out;
+		}
+		data_end = (void *)(long)skb->data_end;
+	}
+
+	/* It seems compiler and verifier are conspiring to reject my
+	 * copy code. So loops generate code that wont prune and exceeds
+	 * 1mil insn similarly unrolled loops do as well. So brute force
+	 * this and macro it out and put code we want in via asm.
+	 */
+	copied = large_ctx_copy(skb, next, 0, csize);
+	/* We need at least enough bytes to get to certificate length
+	 * otherwise user space side will not be able to parse initial
+	 * length and will have to bail out anyways. Mind as well send
+	 * an error early.
+	 */
+	if (copied < 15) {
+		errout[1] = ECOPYERROR;
+		goto out;
+	}
+
+	/* total bound clamp because verifier lost it from above :( */
+	asm volatile ("%[copied] &= 0x0fff;\n": [copied] "+r"(copied)::);
+	length = (int *)buffer;
+	*length = copied;
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, buffer, copied);
+	return 0;
+out:
+	/* userspace wants to see an event so we generate an error event */
+	errout[0] = 0;
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, errout, sizeof(errout));
+	return 0;
+}
+#endif

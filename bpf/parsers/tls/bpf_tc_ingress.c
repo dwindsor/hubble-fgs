@@ -122,7 +122,7 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		struct msg_tls_event *post;
 		const int zero = 0;
 		void *payload;
-		int err;
+		int next;
 
 		post = map_lookup_elem(&heap, &zero);
 		if (!post)
@@ -134,12 +134,18 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		payload = skb_tcp_payload(skb, tcp, &off);
 		if (!payload)
 			return TC_ACT_UNSPEC;
-		err = bpf_parse_tls(skb, payload, off, &post->serverhello);
-		if (err < 0)
+		next = bpf_parse_tls(skb, payload, off, &post->serverhello);
+		if (next < 0)
 			return TC_ACT_UNSPEC;
 
 		if (!is_expected_tls_server_hello(&post->serverhello))
 			return TC_ACT_UNSPEC;
+
+		/* If this there is a next pointer and it is TLSv1.2 lets assume
+		 * its the cert and push it to user space.
+		 */
+		if (!(post->serverhello.flags & TLS_VERSION))
+			post->serverhello.flags |= TLS_CERT;
 
 		post->tuple = key;
 		post->common.op = MSG_OP_TLS;
@@ -156,6 +162,11 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 		event->type = 0;
 		post->serverhello.alert_level = 0;
 		post->clienthello.alert_level = 0;
+
+		if (!(post->serverhello.flags & TLS_VERSION)) {
+			next += off;
+			bpf_skskb_post_cert(skb, next);
+		}
 	}
 	return TC_ACT_UNSPEC;
 }
