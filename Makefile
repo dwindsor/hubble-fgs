@@ -16,18 +16,18 @@ hubble-bpf:
 	make -C ./bpf
 
 hubble-fgs:
-	$(GO) build ./cmd/hubble-fgs/
+	$(GO) build -mod=vendor ./cmd/hubble-fgs/
 
 hubble-enterprise:
-	$(GO) build ./cmd/hubble-enterprise/
+	$(GO) build -mod=vendor ./cmd/hubble-enterprise/
 
 .PHONY: ksyms
 ksyms:
 	$(GO) build ./cmd/ksyms/
 
 hubble-fgs-image:
-	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs/
-	GOOS=linux GOARCH=amd64 $(GO) build -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-enterprise/
+	GOOS=linux GOARCH=amd64 $(GO) build -mod=vendor -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs/
+	GOOS=linux GOARCH=amd64 $(GO) build -mod=vendor -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-enterprise/
 
 install:
 	groupadd -f hubble

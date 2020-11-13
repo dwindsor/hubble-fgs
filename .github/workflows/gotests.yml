@@ -41,8 +41,6 @@ jobs:
         echo `clang --version`
         make hubble-bpf
         sudo -E echo "run go tests: " `uname -a`
-        sudo -E go mod tidy
-        sudo -E go mod vendor
         sudo -E go mod verify
         sudo -E GO111MODULE=off go get -u golang.org/x/lint/golint
         sudo -E make test
