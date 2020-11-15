@@ -566,7 +566,9 @@ func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
 	unix.Kube.NetNS = m.Kube.NetNS
 	unix.Kube.Cid = m.Kube.Cid
 	unix.Kube.Cgrpid = m.Kube.Cgrpid
-	unix.Kube.Docker = strings.Trim(string(m.Kube.Docker[:]), "\u0000")
+	unix.Kube.Docker = strings.TrimFunc(string(m.Kube.Docker[:]), func(c rune) bool {
+		return c == 0x00
+	})
 	unix.Parent = m.Parent
 	unix.Capabilities = m.Capabilities
 	return unix
