@@ -661,11 +661,17 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, int next)
 	}
 
 	if (data + sizeof(struct tls_handshake_certificate) + csize > data_end) {
-		data = get_data(skb, next, csize + sizeof(struct tls_handshake_certificate));
+		int needed = csize + sizeof(struct tls_handshake_certificate);
+
+		if (needed > skb->len) {
+			needed = skb->len - next;
+		}
+		data = get_data(skb, next, needed);
 		if (!data) {
 			errout[1] = EGETDATA;
 			goto out;
 		}
+		csize = needed - sizeof(struct tls_handshake_certificate);
 		data_end = (void *)(long)skb->data_end;
 	}
 
