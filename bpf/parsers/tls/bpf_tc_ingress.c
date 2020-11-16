@@ -66,6 +66,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) cilium_snat_v4_externa
 	.max_entries	= 1,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) tls_calls = {
+	.type		= BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size	= sizeof(__u32),
+	.value_size	= sizeof(__u32),
+	.max_entries	= 1,
+};
+
 #define TLS_TYPE_HELLO 22
 #define ETH_P_IP 0x800
 
@@ -165,8 +172,71 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 
 		if (!(post->serverhello.flags & TLS_VERSION)) {
 			next += off;
-			bpf_skskb_post_cert(skb, next);
+			event->bytes = bpf_skskb_post_cert(skb, event, next);
+			if (event->bytes)
+				event->type = TLS_TYPE_MORE_DATA;
 		}
+	} else if (is_expected_tls_data(event)) {
+		tail_call(skb, &tls_calls, 0);
 	}
 	return TC_ACT_UNSPEC;
 }
+
+
+__attribute__((section(("tc/0")), used))
+int event_tc_ingress_tls_data(struct __sk_buff *skb)
+{
+	struct msg_execve_key *execve;
+	struct msg_tls_ipv4 key = {0};
+	struct msg_tls_event *post;
+	struct msg_tls *event;
+	struct tcphdr *tcp;
+	void *payload;
+	int zero = 0, off = 0;
+	__u32 addr;
+	__u16 port;
+
+	tcp = skb_tls_key(skb, &off, &key);
+	if (!tcp)
+		return TC_ACT_UNSPEC;
+
+	/* Swap key to match egress side */
+	addr = key.saddr;
+	key.saddr = key.daddr;
+	key.daddr = addr;
+
+	port = key.sport;
+	key.sport = key.dport;
+	key.dport = port;
+	key.proto = 0;
+
+	post = map_lookup_elem(&heap, &zero);
+	if (!post)
+		return TC_ACT_UNSPEC;
+
+	payload = skb_tcp_payload(skb, tcp, &off);
+	if (!payload)
+		return TC_ACT_UNSPEC;
+
+	event = map_lookup_elem(&tls_map, &key);
+	if (!event)
+		return TC_ACT_UNSPEC;
+
+	memset(&post->serverhello, 0, sizeof(post->serverhello));
+
+	post->tuple = key;
+	post->common.op = MSG_OP_TLS;
+	post->common.size = sizeof(struct msg_tls_event);
+	post->common.ktime = ktime_get_ns();
+	post->serverhello.flags |= TLS_CERT;
+
+	key.dport = bpf_htons(key.dport);
+	execve  = lookup_socketmap(&key);
+	if (execve)
+		post->execve = *execve;
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
+			  sizeof(struct msg_tls_event));
+	event->bytes = bpf_skskb_post_more_cert(skb, event, off, event->bytes);
+	return TC_ACT_UNSPEC;
+}
+

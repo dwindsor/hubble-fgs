@@ -66,7 +66,7 @@ int bpf_skskb_verdict_tls(struct __sk_buff *skb)
 		post->clienthello.alert_level = 0;
 
 		if (!(post->serverhello.flags & TLS_VERSION))
-			bpf_skskb_post_cert(skb, next);
+			bpf_skskb_post_cert(skb, event, next);
 	}
 	return SK_PASS;
 }

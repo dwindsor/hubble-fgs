@@ -313,8 +313,9 @@ int tc_loader(const int version,
 		   const char *mapdir,
 		   const char *ciliumdir)
 {
+	char tc_calls_name[255];
 	struct bpf_object *obj;
-	int fd, err;
+	int i, fd, map_fd, err;
 
 	obj = __loader(version, verbosity, btf, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
 	if (!obj)
@@ -325,6 +326,39 @@ int tc_loader(const int version,
 		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
 		return err;
 	}
+
+	snprintf(tc_calls_name, sizeof(tc_calls_name), "%s/tls_calls", mapdir);
+	map_fd = bpf_obj_get(tc_calls_name);
+	printf("bpf fgs_tc_calls map and progs %s mapfd %d\n", __prog, map_fd);
+	if (map_fd >= 0) {
+		for (i = 0; i < 1; i++) {
+			struct bpf_program *prog;
+			char prog_name[6];
+			char pin_name[200];
+
+			snprintf(prog_name, sizeof(prog_name), "tc/%i", i);
+			prog = bpf_object__find_program_by_title(obj, prog_name);
+			if (!prog)
+				continue;
+			fd = bpf_program__fd(prog);
+			if (fd < 0)
+				return errno;
+			snprintf(pin_name, sizeof(pin_name), "%s_%i", __prog, i);
+			bpf_program__unpin(prog, pin_name);
+			err = bpf_program__pin(prog, pin_name);
+			if (err) {
+				printf("program pin %s tailcall err %d\n", pin_name, err);
+				return err;
+			}
+			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
+			if (err) {
+				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
+				return err;
+			}
+			printf("bpf map update elem %s %d\n", pin_name, err);
+		}
+	}
+
 	fd = bpf_obj_get(__prog);
 	bpf_object__close(obj);
 	return fd;

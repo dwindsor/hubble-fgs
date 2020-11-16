@@ -66,6 +66,7 @@ struct tls_extension {
 #define bpf_htonl(x)		__builtin_bswap32(x)
 #endif
 
+#define TLS_TYPE_MORE_DATA  1
 #define TLS_TYPE_ALERT 21
 #define TLS_TYPE_HANDSHAKE 22
 
@@ -415,6 +416,18 @@ bool is_tls_version(struct msg_tls *tls)
 }
 
 static inline __attribute__((always_inline))
+bool is_tls_more_data(struct msg_tls*tls)
+{
+	return tls->type == TLS_TYPE_MORE_DATA;
+}
+
+static inline __attribute__((always_inline))
+bool is_expected_tls_data(struct msg_tls *tls)
+{
+	return is_tls_more_data(tls);
+}
+
+static inline __attribute__((always_inline))
 bool is_expected_tls_client_hello(struct msg_tls *tls)
 {
 	return is_tls_client_hello_handshake(tls) && is_tls_version(tls);
@@ -617,12 +630,12 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 /* TBD: JF, extend verifier to understand void functions */
 #ifndef SK_MSG
 static inline __attribute__((always_inline))
-int bpf_skskb_post_cert(struct __sk_buff *skb, int next)
+int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next)
 {
 	void *data, *data_end = (void *)(long)skb->data_end;
 	void *tls_server_hello = (void*)(long)skb->data;
 	struct tls_handshake_certificate *cert;
-	int *length, copied, zero = 0, errout[2];
+	int *length, copied, remaining = 0, zero = 0, errout[2];
 	__u32 csize = 0;
 	__u8 *buffer;
 
@@ -665,6 +678,8 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, int next)
 
 		if (needed > skb->len) {
 			needed = skb->len - next;
+			event->type = TLS_TYPE_MORE_DATA;
+			remaining = (csize + sizeof(struct tls_handshake_certificate)) - needed;
 		}
 		data = get_data(skb, next, needed);
 		if (!data) {
@@ -696,7 +711,64 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, int next)
 	length = (int *)buffer;
 	*length = copied;
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, buffer, copied);
+	return remaining;
+out:
+	/* userspace wants to see an event so we generate an error event */
+	errout[0] = 0;
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, errout, sizeof(errout));
 	return 0;
+}
+
+static inline __attribute__((always_inline))
+int bpf_skskb_post_more_cert(struct __sk_buff *skb, struct msg_tls *event, int next, int bytes)
+{
+	void *data, *data_end = (void *)(long)skb->data_end;
+	void *more_data = (void*)(long)skb->data;
+	int *length, copy = bytes, zero = 0, errout[2];
+	__u8 *buffer;
+
+	buffer = map_lookup_elem(&tls_heap, &zero);
+	if (!buffer) {
+		errout[1] = ENOBUFFER;
+		goto out;
+	}
+
+	if (next > 1024) {
+		errout[1] = ENEXTTOOLARGE;
+		goto out;
+	}
+	event->type = 0;
+	asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
+	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
+	data = (void*)more_data + next + copy;
+	if (data > data_end) {
+		int needed = copy;
+
+		if (needed > skb->len) {
+			needed = skb->len - next;
+			event->type = TLS_TYPE_MORE_DATA;
+		}
+		data = get_data(skb, next, needed);
+		if (!data) {
+			errout[1] = EGETDATA;
+			goto out;
+		}
+		copy = needed;
+		data_end = (void *)(long)skb->data_end;
+	}
+
+	/* It seems compiler and verifier are conspiring to reject my
+	 * copy code. So loops generate code that wont prune and exceeds
+	 * 1mil insn similarly unrolled loops do as well. So brute force
+	 * this and macro it out and put code we want in via asm.
+	 */
+	copy = large_ctx_copy(skb, next, 4, copy);
+	/* total bound clamp because verifier lost it from above :( */
+	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
+	length = (int *)buffer;
+	*length = copy;
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, buffer, copy);
+	return bytes-copy;
 out:
 	/* userspace wants to see an event so we generate an error event */
 	errout[0] = 0;

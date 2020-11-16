@@ -438,9 +438,10 @@ var (
 	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, bpfLoadStateIdle()}
 	ObserverTcpMap    = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, bpfLoadStateIdle()} // NB: This seems to be unused?
 	/* TLS maps */
-	ObserverTCTLSMap = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle()}
-	ObserverSockMap  = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle()}
-	ObserverTLSMap   = ObserverMap{"tls_map", "skmsg", &ObserverSkmsg, bpfLoadStateIdle()}
+	ObserverTCTLSMap     = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle()}
+	ObserverSockMap      = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle()}
+	ObserverTLSMap       = ObserverMap{"tls_map", "skmsg", &ObserverSkmsg, bpfLoadStateIdle()}
+	ObserverTLSTailCalls = ObserverMap{"tls_calls", "tc_ingress", &ObserverTLSTCIngress, bpfLoadStateIdle()}
 	/* Internal statistics for debugging */
 	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
 	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
@@ -455,6 +456,7 @@ var (
 		&ObserverSockMap,
 		&ObserverTLSMap,
 		&ObserverTCTLSMap,
+		&ObserverTLSTailCalls,
 		&ObserverExecveStats,
 		&ObserverSocketStats,
 		&ObserverTlsStats,
@@ -1894,6 +1896,7 @@ func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
 
 		maps = append(maps,
 			&ObserverTCTLSMap,
+			&ObserverTLSTailCalls,
 		)
 	}
 

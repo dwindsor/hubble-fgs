@@ -221,6 +221,7 @@ struct msg_tls {
 	__u8  alert_description;
 	__u32 flags;
 	__u8  session[64];
+	__u32 bytes;
 };
 
 struct msg_execve_key {

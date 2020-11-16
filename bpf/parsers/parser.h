@@ -347,13 +347,13 @@ int large_ctx_copy(
 	asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
 	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
 
-	if ((data + next + offset + copy) > data_end) {
-		data = get_data(ctx, next + offset, copy);
+	if ((data + next + copy) > data_end) {
+		data = get_data(ctx, next, copy);
 		if (!data)
 			return 0;
 		data_end = (void *)(long)ctx->data_end;
 	} else {
-		data = data + next + offset;
+		data = data + next;
 	}
 
 	/* Duplicate map lookups because passing pointer through func
