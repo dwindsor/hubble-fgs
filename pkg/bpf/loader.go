@@ -331,7 +331,7 @@ int tc_loader(const int version,
 	map_fd = bpf_obj_get(tc_calls_name);
 	printf("bpf fgs_tc_calls map and progs %s mapfd %d\n", __prog, map_fd);
 	if (map_fd >= 0) {
-		for (i = 0; i < 1; i++) {
+		for (i = 0; i < 2; i++) {
 			struct bpf_program *prog;
 			char prog_name[6];
 			char pin_name[200];
