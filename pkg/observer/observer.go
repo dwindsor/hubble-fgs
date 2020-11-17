@@ -702,6 +702,17 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			if err != nil {
 				break
 			}
+
+			if n, ok := k.tlsInProgress[m.Tuple]; ok {
+				k.cType = api.MSG_OP_TLS
+				k.cMsg = n.tls
+				k.cCert = n.cert
+				break
+			}
+			// This bit is an optimization. Because initial part of cert will
+			// immediately follow the event AND will usually be complete we
+			// can simply tell reader the next event is the cert and hopefully
+			// only use the map in rare cases.
 			if (m.ServerHello.Flags & api.TlsFlagCert) != 0 {
 				k.cType = api.MSG_OP_TLS
 				k.cMsg = m
@@ -711,6 +722,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			var bytes uint32
 
 			k.cType = api.MSG_OP_UNDEF
+			delete(k.tlsInProgress, k.cMsg.Tuple)
 
 			m = k.cMsg
 			err := binary.Read(r, binary.LittleEndian, &bytes)
@@ -719,6 +731,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			} else if bytes == 0 {
 				var errBpf uint8
 
+				errCode = api.TlsCertificateErrorLengthRead
 				err := binary.Read(r, binary.LittleEndian, &errBpf)
 				if err == nil {
 					errCode = uint32(errBpf)
@@ -727,16 +740,32 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 				}
 			} else {
 				var code uint32
+				header := uint32(4)
 
-				cert := make([]byte, bytes-4)
+				/* If we are glueing together fragments we don't have a header */
+				if len(k.cCert) != 0 {
+					header = 0
+				}
+
+				cert := make([]byte, bytes-header)
 				err = binary.Read(r, binary.LittleEndian, &cert)
 				if err != nil {
 					errCode = api.TlsCertificateErrorCertRead
 				}
 
+				if len(k.cCert) != 0 {
+					cert = append(k.cCert, cert...)
+					k.cCert = nil
+				}
 				certStrings, code = reader.GetTLSCertificateString(cert)
 				if code != 0 {
 					errCode = api.TlsCertificateErrorCertPartial
+					/* Need to store and submit when remaining bits show up. */
+					v := &MsgTLSEventCert{}
+					v.tls = m
+					v.cert = cert
+					k.tlsInProgress[m.Tuple] = v
+					break
 				}
 			}
 		}
@@ -1798,6 +1827,11 @@ type MsgFilter struct {
 	filterDrop int
 }
 
+type MsgTLSEventCert struct {
+	tls  *api.MsgTLSEvent
+	cert []byte
+}
+
 type ObserverKprobe struct {
 	/* Configuration */
 	bpfDir     string
@@ -1828,6 +1862,10 @@ type ObserverKprobe struct {
 	/* Runtime Measure Handlers */
 	cType uint8
 	cMsg  *api.MsgTLSEvent
+	cCert []byte
+
+	/* Runtime Containers */
+	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert
 }
 
 // ObseverSync holds data that are safe to be used in all goroutine contexts.
@@ -2067,6 +2105,7 @@ func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces string, tls, tlstc,
 		prettyPrinter: pretty,
 		listeners:     make(map[Listener]struct{}),
 		log:           logger.GetLogger(),
+		tlsInProgress: make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
 	}
 }
 

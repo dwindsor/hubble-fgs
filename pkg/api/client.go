@@ -365,6 +365,7 @@ type MsgTLS struct {
 	AlertDescription  uint8
 	Flags             uint32
 	Session           [64]uint8
+	Bytes             uint32
 }
 
 type MsgTLSCertificates struct {
