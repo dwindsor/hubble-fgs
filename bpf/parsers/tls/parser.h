@@ -171,10 +171,10 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 
 static inline __attribute__((always_inline))
 #ifndef SK_MSG
-int bpf_parse_tls_client_hello(struct __sk_buff *ctx, int payload_off, struct msg_tls *tls, bool client)
+int bpf_parse_tls_client_hello(struct __sk_buff *ctx, __u64 payload_off, struct msg_tls *tls, bool client)
 {
 #else
-int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, int dummy, struct msg_tls *tls, bool client)
+int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, __u64 dummy, struct msg_tls *tls, bool client)
 {
 	/* Its a bit of a trick to get compiler to generate this
 	 * without lsh/srsh pattern which breaks verifier.
