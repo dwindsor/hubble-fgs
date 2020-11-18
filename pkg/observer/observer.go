@@ -384,8 +384,8 @@ var (
 		"", "bpf_tc_ingress.o",
 		"ingress_tcp",
 		"ingress_tcp",
-		"tc/ingress_tcp",
-		"tc_ingress_tcp",
+		"classifier/ingress_tcp",
+		"classifier_ingress_tcp",
 
 		false,
 		true,

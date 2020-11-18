@@ -333,10 +333,10 @@ int tc_loader(const int version,
 	if (map_fd >= 0) {
 		for (i = 0; i < 2; i++) {
 			struct bpf_program *prog;
-			char prog_name[6];
+			char prog_name[20];
 			char pin_name[200];
 
-			snprintf(prog_name, sizeof(prog_name), "tc/%i", i);
+			snprintf(prog_name, sizeof(prog_name), "classifier/%i", i);
 			prog = bpf_object__find_program_by_title(obj, prog_name);
 			if (!prog)
 				continue;

@@ -140,7 +140,7 @@ void skb_tls_key_ct_xchg(struct msg_tls_ipv4 *key)
 	key->proto = 0;
 }
 
-__attribute__((section(("tc/ingress_tcp")), used))
+__attribute__((section(("classifier/ingress_tcp")), used))
 int event_tc_ingress_tcp(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
@@ -213,7 +213,7 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 	return TC_ACT_UNSPEC;
 }
 
-__attribute__((section(("tc/0")), used))
+__attribute__((section(("classifier/0")), used))
 int event_tc_ingress_tls_cert(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
@@ -237,7 +237,7 @@ int event_tc_ingress_tls_cert(struct __sk_buff *skb)
 	return TC_ACT_UNSPEC;
 }
 
-__attribute__((section(("tc/1")), used))
+__attribute__((section(("classifier/1")), used))
 int event_tc_ingress_tls_data(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
