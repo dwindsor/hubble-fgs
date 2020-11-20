@@ -157,6 +157,15 @@ const (
 	// be omitted. Also the same PID will be used by the kernel for both
 	// the old process and the newly exec'd process.
 	EventClone = 0x4000
+
+	// EventDocker*Err indicate the process containerID lookup failed in the
+	// kernel. The strings {Name|Kn|SubsysCgrp|Subsys|Cgroup} give us a hint
+	// at the specific read that failed so we can investigate the cause.
+	EventDockerNameErr       = 0x010000
+	EventDockerKnErr         = 0x020000
+	EventDockerSubsysCgrpErr = 0x040000
+	EventDockerSubsysErr     = 0x080000
+	EventDockerCgroupsErr    = 0x100000
 )
 
 // TLS supported version 8bit codes

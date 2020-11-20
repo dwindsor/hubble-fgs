@@ -739,13 +739,24 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 				probe_read(&kn, sizeof(cgrp->kn), _(&cgrp->kn));
 				if (kn) {
 					probe_read(&name, sizeof(name), _(&kn->name));
-					if (name)
+					if (name) {
 						probe_read_str(msg->kube.docker_id,
 							       DOCKER_ID_LENGTH,
 							       name);
+					} else {
+						curr->flags |= EVENT_DOCKER_NAME_ERR;
+					}
+				} {
+					curr->flags |= EVENT_DOCKER_KN_ERR;
 				}
+			} else {
+				curr->flags |= EVENT_DOCKER_SUBSYSCGRP_ERR;
 			}
+		} else {
+			curr->flags |= EVENT_DOCKER_SUBSYS_ERR;
 		}
+	} else {
+		curr->flags |= EVENT_DOCKER_CGROUPS_ERR;
 	}
 #ifdef BPF_FUNC_get_current_cgroup_id
 	msg->kube.cgrpid = get_current_cgroup_id();
