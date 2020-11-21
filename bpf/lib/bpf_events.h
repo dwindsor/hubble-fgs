@@ -746,9 +746,10 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 					} else {
 						curr->flags |= EVENT_DOCKER_NAME_ERR;
 					}
-				} {
-					curr->flags |= EVENT_DOCKER_KN_ERR;
 				}
+				// else case we do not include error flag because it
+				// indicates there is not a docker id. This is normal
+				// in the case process is in host namespace.
 			} else {
 				curr->flags |= EVENT_DOCKER_SUBSYSCGRP_ERR;
 			}
