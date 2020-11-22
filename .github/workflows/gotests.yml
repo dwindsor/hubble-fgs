@@ -21,14 +21,14 @@ jobs:
         sudo apt install libelf-dev netcat-traditional
         export PATH=/opt/hostedtoolcache/go/1.13.4/x64/bin:${GOPATH}/bin:${PATH}
         docker run --name libbpf quay.io/isovalent/hubble-libbpf:v0.2.1
-        docker run --name llvm quay.io/isovalent/hubble-llvm:2020-02-25
+        docker run --name llvm quay.io/isovalent/hubble-llvm:2020-11-25-194d3985-x86
         sudo -E echo "copy build tools from images"
         sudo -E docker cp libbpf:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 /usr/local/lib/
         sudo -E docker cp libbpf:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0     /usr/local/lib/
         sudo -E docker cp libbpf:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so       /usr/local/lib/
         sudo -E docker cp libbpf:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.a        /usr/local/lib/
-        sudo -E docker cp llvm:/usr/local/bin/clang-10 /usr/local/bin/clang
-        sudo -E docker cp llvm:/usr/local/bin/llc /usr/local/bin/
+        sudo -E docker cp llvm:/usr/local/bin/clang-11 /usr/bin/clang
+        sudo -E docker cp llvm:/usr/local/bin/llc /usr/bin/llc
         sudo -E ldconfig /usr/local/
         export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
         export PATH=/usr/local/bin:$PATH

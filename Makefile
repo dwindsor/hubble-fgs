@@ -69,9 +69,10 @@ image-test:
 
 libbpf:
 	$(eval id=$(shell docker create $(LIBBPF_IMAGE)))
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so ./
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 ./
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 ./
+	mkdir -p lib
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so ./lib/
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 ./lib/
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 ./lib/
 	docker stop ${id}
 
 quick-install:
