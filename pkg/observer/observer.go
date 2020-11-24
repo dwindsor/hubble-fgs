@@ -707,6 +707,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 				k.cType = api.MSG_OP_TLS
 				k.cMsg = n.tls
 				k.cCert = n.cert
+				k.header = n.header
 				break
 			}
 			// This bit is an optimization. Because initial part of cert will
@@ -747,25 +748,45 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 					header = 0
 				}
 
+				if k.header != 0 {
+					header -= k.header
+				}
+
+				/* Its possible we don't even have the header to read */
+				if bytes < header {
+					v := &MsgTLSEventCert{}
+					v.tls = m
+					v.cert = nil
+					v.header = bytes + k.header
+					k.tlsInProgress[m.Tuple] = v
+					k.header = 0
+					fmt.Printf("Read smaller than header %d < %d\n", bytes, header)
+					break
+				}
+
+				k.header = 0
+
 				cert := make([]byte, bytes-header)
 				err = binary.Read(r, binary.LittleEndian, &cert)
 				if err != nil {
+					fmt.Printf("bytes %d header %d\n", bytes, header)
 					errCode = api.TlsCertificateErrorCertRead
-				}
-
-				if len(k.cCert) != 0 {
-					cert = append(k.cCert, cert...)
-					k.cCert = nil
-				}
-				certStrings, code = reader.GetTLSCertificateString(cert)
-				if code != 0 {
-					errCode = api.TlsCertificateErrorCertPartial
-					/* Need to store and submit when remaining bits show up. */
-					v := &MsgTLSEventCert{}
-					v.tls = m
-					v.cert = cert
-					k.tlsInProgress[m.Tuple] = v
-					break
+				} else {
+					if len(k.cCert) != 0 {
+						cert = append(k.cCert, cert...)
+						k.cCert = nil
+					}
+					certStrings, code = reader.GetTLSCertificateString(cert)
+					if code != 0 {
+						errCode = api.TlsCertificateErrorCertPartial
+						/* Need to store and submit when remaining bits show up. */
+						v := &MsgTLSEventCert{}
+						v.tls = m
+						v.cert = cert
+						v.header = 0
+						k.tlsInProgress[m.Tuple] = v
+						break
+					}
 				}
 			}
 		}
@@ -1828,8 +1849,9 @@ type MsgFilter struct {
 }
 
 type MsgTLSEventCert struct {
-	tls  *api.MsgTLSEvent
-	cert []byte
+	tls    *api.MsgTLSEvent
+	cert   []byte
+	header uint32
 }
 
 type ObserverKprobe struct {
@@ -1860,9 +1882,10 @@ type ObserverKprobe struct {
 	ksyms *ksyms.Ksyms
 
 	/* Runtime Measure Handlers */
-	cType uint8
-	cMsg  *api.MsgTLSEvent
-	cCert []byte
+	cType  uint8
+	cMsg   *api.MsgTLSEvent
+	cCert  []byte
+	header uint32
 
 	/* Runtime Containers */
 	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert

@@ -700,15 +700,6 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next)
 	 * this and macro it out and put code we want in via asm.
 	 */
 	copied = large_ctx_copy(skb, next, 0, csize);
-	/* We need at least enough bytes to get to certificate length
-	 * otherwise user space side will not be able to parse initial
-	 * length and will have to bail out anyways. Mind as well send
-	 * an error early.
-	 */
-	if (copied < 15) {
-		errout[1] = ECOPYERROR;
-		goto out;
-	}
 
 	/* total bound clamp because verifier lost it from above :( */
 	asm volatile ("%[copied] &= 0x0fff;\n": [copied] "+r"(copied)::);
@@ -771,6 +762,8 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb, struct msg_tls *event, int n
 	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
 	length = (int *)buffer;
 	*length = copy;
+	copy += 4;
+	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, buffer, copy);
 	return bytes-copy;
 out:

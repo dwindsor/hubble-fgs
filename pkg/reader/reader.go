@@ -383,6 +383,10 @@ func GetTLSCertificateString(cert []byte) ([]string, uint32) {
 	// Point at first certificate, will advance as we parse each cert
 	certificatesIndex := cIndex + 7
 
+	if len(cert) < 4 {
+		return certificateString, api.TlsCertificateErrorCertPartial
+	}
+
 	cLength := make([]byte, 4)
 	cLength[1] = cert[certificatesLengthIndex]
 	cLength[2] = cert[certificatesLengthIndex+1]
