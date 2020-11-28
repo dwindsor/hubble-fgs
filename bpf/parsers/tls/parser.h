@@ -664,7 +664,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next)
 	csize = cert->length;
 	csize = bpf_ntohs(csize);
 	csize += 4 + 1;
-	csize &= 0x7fff;
+	asm volatile ("%[csize] &= 0x0fff;\n": [csize] "+r"(csize)::);
 
 	/* We get away with posting without a header because we have
 	 * a flag above indicating the cert is the next event and this
@@ -685,6 +685,8 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next)
 			event->type = TLS_TYPE_MORE_DATA;
 			remaining = (csize + sizeof(struct tls_handshake_certificate)) - needed;
 		}
+		asm volatile ("%[needed] &= 0x0fff;\n": [needed] "+r"(needed)::);
+		asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
 		data = get_data(skb, next, needed);
 		if (!data) {
 			errout[1] = EGETDATA;
@@ -698,7 +700,12 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next)
 	 * copy code. So loops generate code that wont prune and exceeds
 	 * 1mil insn similarly unrolled loops do as well. So brute force
 	 * this and macro it out and put code we want in via asm.
+	 *
+	 * The extra asm bounding logic is needed because csize may be
+	 * reset above and seems 4.19 kernels are unable to track that
+	 * the bound will be bounded with min value.
 	 */
+	asm volatile ("%[csize] &= 0x0fff;\n": [csize] "+r"(csize)::);
 	copied = large_ctx_copy(skb, next, 0, csize);
 
 	/* total bound clamp because verifier lost it from above :( */

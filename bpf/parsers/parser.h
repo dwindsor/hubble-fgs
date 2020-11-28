@@ -48,6 +48,7 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 		"%[off] = 0;\n"
 		"%[data] += %[off];\n"
 		"%[tmp] = %[data];\n"
+		"%[needed] &= 0x7fffffff;\n"
 		"%[tmp] += %[needed];\n"
 		"if %[tmp] <= %[data_end] goto +1;\n"
 		"%[data] = 0;\n"
@@ -348,6 +349,7 @@ int large_ctx_copy(
 	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
 
 	if ((data + next + copy) > data_end) {
+		asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
 		data = get_data(ctx, next, copy);
 		if (!data)
 			return 0;
