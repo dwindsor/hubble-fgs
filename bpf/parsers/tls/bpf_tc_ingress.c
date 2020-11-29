@@ -231,9 +231,16 @@ int event_tc_ingress_tls_cert(struct __sk_buff *skb)
 	if (!event)
 		return TC_ACT_UNSPEC;
 
-	event->bytes = bpf_skskb_post_cert(skb, event, next);
-	if (event->bytes)
+	event->bytes = bpf_skskb_post_cert(skb, event, next, &skb->cb[0]);
+	if (event->bytes) {
 		event->type = TLS_TYPE_MORE_DATA;
+		/* If there is more data in the current skb then the
+		 * cb[0] is set with the offset, otherwise wait for the
+		 * next skb for remaining data.
+		 */
+		if (skb->cb[0])
+			tail_call(skb, &tls_calls, 1);
+	}
 	return TC_ACT_UNSPEC;
 }
 

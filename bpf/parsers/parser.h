@@ -237,7 +237,7 @@ int small_pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 }
 
 static inline __attribute__((always_inline))
-int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
+int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u64 copy)
 {
 	int len = copy, off = 0;
 	uint64_t tmp, ptr;
@@ -246,9 +246,7 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		"%[len] &= 0xfff;\n"
 		"%[off] &= 0xfff;\n"
 		"%[ptr] = %[from];\n"
-		// Default abort case
-		"if %[len] < 4064 goto +1;\n"
-		"%[len] = 4064;\n"
+#ifdef SK_SKB
 		// 2048B case
 		"if %[len] < 1024 goto 7f;\n"
 		"%[tmp] = %[ptr];\n"
@@ -259,6 +257,7 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		COPY256B
 		COPY256B
 		"7:\n"
+#endif
 		// 1024B case
 		"if %[len] < 1024 goto 6f;\n"
 		"%[tmp] = %[ptr];\n"

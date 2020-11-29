@@ -18,6 +18,7 @@ int bpf_skskb_verdict_tls(struct __sk_buff *skb)
 	struct msg_execve_key *execve;
 	struct msg_tls *event;
 	int zero = 0;
+	__u32 cb0 = 0;
 
 	sk_skb_tls_key(skb, &key);
 
@@ -66,7 +67,7 @@ int bpf_skskb_verdict_tls(struct __sk_buff *skb)
 		post->clienthello.alert_level = 0;
 
 		if (!(post->serverhello.flags & TLS_VERSION)) {
-			event->bytes = bpf_skskb_post_cert(skb, event, next);
+			event->bytes = bpf_skskb_post_cert(skb, event, next, &cb0);
 			if (event->bytes)
 				event->type = TLS_TYPE_MORE_DATA;
 		}

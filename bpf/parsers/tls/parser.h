@@ -634,7 +634,7 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 /* TBD: JF, extend verifier to understand void functions */
 #ifndef SK_MSG
 static inline __attribute__((always_inline))
-int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next)
+int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, __u32 *cb0)
 {
 	void *data, *data_end = (void *)(long)skb->data_end;
 	void *tls_server_hello = (void*)(long)skb->data;
@@ -644,7 +644,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next)
 	__u8 *buffer;
 
 	next += TLS_HEADER_BYTES; // Account for TLS Server Hello header
-	if (next > 1024) {
+	if (next > 4096) {
 		errout[1] = ENEXTTOOLARGE;
 		goto out;
 	}
@@ -713,6 +713,13 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next)
 	length = (int *)buffer;
 	*length = copied;
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, buffer, copied);
+	if (csize > copied) {
+		event->type = TLS_TYPE_MORE_DATA;
+		*cb0 = next + copied;
+		remaining += csize - copied;
+	} else  {
+		*cb0 = 0;
+	}
 	return remaining;
 out:
 	/* userspace wants to see an event so we generate an error event */
@@ -735,7 +742,7 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb, struct msg_tls *event, int n
 		goto out;
 	}
 
-	if (next > 1024) {
+	if (next > 4096) {
 		errout[1] = ENEXTTOOLARGE;
 		goto out;
 	}
@@ -746,7 +753,7 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb, struct msg_tls *event, int n
 	if (data > data_end) {
 		int needed = copy;
 
-		if (needed > skb->len) {
+		if (next + needed > skb->len) {
 			needed = skb->len - next;
 			event->type = TLS_TYPE_MORE_DATA;
 		}
