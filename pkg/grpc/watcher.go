@@ -40,6 +40,12 @@ type K8sWatcher struct {
 func containerIndexFunc(obj interface{}) ([]string, error) {
 	var containerIDs []string
 	putContainer := func(fullContainerID string) error {
+		if fullContainerID == "" {
+			// This is expected if the container hasn't been started. This function
+			// will get called again after the container starts, so we just need to
+			// be patient.
+			return nil
+		}
 		parts := strings.Split(fullContainerID, "//")
 		if len(parts) != 2 {
 			return fmt.Errorf("unexpected containerID format, expecting 'docker://<name>', got %q", fullContainerID)
