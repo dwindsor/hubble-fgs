@@ -73,7 +73,8 @@ func getLogLevel() logrus.Level {
 func getLogFormat() (logrus.Formatter, error) {
 	logFormatOpt := viper.GetString("log-format")
 	switch logFormatOpt {
-	case LogFormatOpts[LogFormatTextId]:
+	// Use the text formatter if --log-format flag is not specified.
+	case LogFormatOpts[LogFormatTextId], "":
 		return &logrus.TextFormatter{}, nil
 	case LogFormatOpts[LogFormatJsonId]:
 		return &logrus.JSONFormatter{}, nil
