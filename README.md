@@ -114,19 +114,43 @@ At the moment hubble-fgs_main.go needs a link to the program name. Reasonable de
 should be added so we can skip this step. It is a bit useful to replace a program
 on a system with a new test program, but its also a bit annoying on the code side.
 
-## Running FGS on GKE
+## Running FGS
 
-### 1. Create a GKE cluster and Install Cilium
+### GKE
+
+#### 1. Create a GKE cluster and Install Cilium
 
 Follow https://docs.cilium.io/en/latest/gettingstarted/k8s-install-gke/ to create a
 GKE cluster and install Cilium. You might want to specify
 [`--release-channel` flag](https://cloud.google.com/kubernetes-engine/docs/concepts/release-channels)
 during cluster creation depending on which kernel version you need.
 
-### 2. Install the latest FGS
+#### 2. Install the latest FGS
 
     helm repo add isovalent https://helm.isovalent.com
     helm install -n cilium --version 9999.9999.9999-dev cilium-enterprise isovalent/cilium-enterprise --set cilium.enabled=false
+
+### Minikube on Mac
+
+#### 1. Check minikube version
+
+FGS has been tested with minikube v1.15.1 on Mac using Virtualbox as the driver:
+
+    % minikube version
+    minikube version: v1.15.1
+    commit: 23f40a012abb52eff365ff99a709501a61ac5876
+
+#### 2. Start minikube
+
+    minikube start --network-plugin=cni --memory=4096 --driver=virtualbox
+    minikube ssh -- sudo mount bpffs -t bpf /sys/fs/bpf
+
+#### 3. Install the latest FGS
+
+    helm repo add isovalent https://helm.isovalent.com
+    helm install -n kube-system --version 9999.9999.9999-dev cilium-enterprise isovalent/cilium-enterprise --set hubble-enterprise.enterprise.metadataImage.tag=minikube-current
+
+### Verifying the Installation
 
 The FGS container is called `enterprise`. If everything went well, you should see something like:
 
