@@ -677,13 +677,13 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, 
 		goto out;
 	}
 
-	if (data + sizeof(struct tls_handshake_certificate) + csize > data_end) {
-		int needed = csize + sizeof(struct tls_handshake_certificate);
+	if (data + csize > data_end) {
+		int needed = csize;
 
 		if (needed > skb->len) {
 			needed = skb->len - next;
 			event->type = TLS_TYPE_MORE_DATA;
-			remaining = (csize + sizeof(struct tls_handshake_certificate)) - needed;
+			remaining = csize - needed;
 		}
 		asm volatile ("%[needed] &= 0x0fff;\n": [needed] "+r"(needed)::);
 		asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
@@ -692,7 +692,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, 
 			errout[1] = EGETDATA;
 			goto out;
 		}
-		csize = needed - sizeof(struct tls_handshake_certificate);
+		csize = needed;
 		data_end = (void *)(long)skb->data_end;
 	}
 
@@ -779,7 +779,7 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb, struct msg_tls *event, int n
 	copy += 4;
 	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, buffer, copy);
-	return bytes-copy;
+	return bytes - copy + 4; // be careful to account for copy+=4 above
 out:
 	/* userspace wants to see an event so we generate an error event */
 	errout[0] = 0;
