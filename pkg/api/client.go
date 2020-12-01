@@ -83,7 +83,7 @@ const (
 	SIZEOF_EXECVE  = 32
 	MAX_SIZEOF_CWD = 256
 
-	SNI_BUFFER_SIZE = 32
+	SNI_BUFFER_SIZE = 64
 )
 
 // Msg Flag Definitions
@@ -358,7 +358,7 @@ type MsgTLS struct {
 	Type              uint8
 	Subtype           uint8
 	LegacyyVersion    uint16
-	SNI               [32]uint8
+	SNI               [64]uint8
 	SupportedVersions [16]uint8
 	Cipher            uint16
 	AlertLevel        uint8

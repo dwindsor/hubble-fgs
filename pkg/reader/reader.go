@@ -315,7 +315,7 @@ func GetTLSVersion(version uint16) string {
 	}
 }
 
-func GetTLSSNI(sni [32]byte) (string, string) {
+func GetTLSSNI(sni [api.SNI_BUFFER_SIZE]byte) (string, string) {
 	typeSNI := "unknown"
 	switch sni[2] {
 	case 0:

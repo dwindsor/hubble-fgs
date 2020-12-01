@@ -191,7 +191,7 @@ struct msg_calltrace {
 	int32_t ret;
 } __attribute__((packed));
 
-#define EXT_SERVER_NAME_LENGTH 32
+#define EXT_SERVER_NAME_LENGTH 64
 #define EXT_VERSION_LENGTH 16
 
 /* TLS Flags */

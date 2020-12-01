@@ -147,7 +147,7 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 
 	if (dst) {
 		stack_pkt_copy(dst, data_end, (void *)extension + 4, extlength);
-		if (extlength > 32)
+		if (extlength > EXT_SERVER_NAME_LENGTH)
 			tls->flags |= TLS_COPY_ERROR;
 	}
 

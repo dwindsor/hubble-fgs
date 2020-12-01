@@ -185,8 +185,6 @@ int stack_pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u32 copy)
 		"%[len] &= 0xff;\n"
 		"%[off] &= 0xff;\n"
 		"%[ptr] = %[from];\n"
-		// Default abort case
-		"if %[len] > 32 goto 1f;\n"
 		COPY32B
 		"1:;\n"
 		: [tmp] "+r"(tmp),
