@@ -678,7 +678,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, 
 	}
 
 	if (data + csize > data_end) {
-		int needed = csize;
+		int needed = csize + next;
 
 		if (needed > skb->len) {
 			needed = skb->len - next;
