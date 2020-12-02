@@ -18,7 +18,7 @@ package bpf
 
 /*
 #cgo CFLAGS: -I ../../bpf/include -I ../../bpf/libbpf/ -I ../../bpf/lib/
-#cgo LDFLAGS: -L../../ -lbpf -lelf -lz
+#cgo LDFLAGS: -L../../lib -lbpf -lelf -lz
 
 #include <string.h>
 #include <sched.h>
@@ -102,6 +102,7 @@ int fgs_map_loader(const int version,
 	attr.obj = obj;
 	attr.target_btf_path = btf;
 	attr.kern_version = version;
+	attr.target_btf = 0;
 	err = bpf_object__load_xattr(&attr);
 	if (err < 0) {
 		char errstr[256];

@@ -135,6 +135,7 @@ struct bpf_object_load_attr {
 	int log_level;
 	const char *target_btf_path;
 	__u32 kern_version;
+	struct btf *target_btf;
 };
 
 /* Load/unload object into/from kernel */

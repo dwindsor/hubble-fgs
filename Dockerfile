@@ -5,7 +5,7 @@ RUN apt update
 RUN apt install -y linux-libc-dev
 RUN make hubble-bpf
 
-FROM quay.io/isovalent/hubble-libbpf:v0.2.1 as hubble-libbpf
+FROM quay.io/isovalent/hubble-libbpf:v0.2.2 as hubble-libbpf
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 
