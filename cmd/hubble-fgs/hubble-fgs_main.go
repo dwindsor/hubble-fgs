@@ -91,6 +91,8 @@ func hubbleFGSExecute() error {
 		os.Exit(1)
 	}()
 
+	kprobe.ConfigureBTF(ctx)
+
 	if runStandalone {
 		return kprobe.StartStandalone(ctx)
 	}

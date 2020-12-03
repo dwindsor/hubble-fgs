@@ -216,6 +216,11 @@ static void *getBtf(const char *btf)
 
 static int addEnumBtf(void *btf, char *name, int value)
 {
+	return btf__add_enum(btf, name, value);
+}
+
+static int addEnumBtfValue(void *btf, char *name, int value)
+{
 	return btf__add_enum_value(btf, name, value);
 }
 
@@ -622,8 +627,13 @@ func GetBTF(__btf string) uintptr {
 	return uintptr(C.getBtf(C.CString(__btf)))
 }
 
-func AddEnumBTF(btf uintptr, name string, value int) int {
+func AddEnumBtf(btf uintptr, name string, value int) int {
 	ret := C.addEnumBtf(unsafe.Pointer(btf), C.CString(name), C.int(value))
+	return int(ret)
+}
+
+func AddEnumBtfValue(btf uintptr, name string, value int) int {
+	ret := C.addEnumBtfValue(unsafe.Pointer(btf), C.CString(name), C.int(value))
 	return int(ret)
 }
 

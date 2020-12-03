@@ -942,6 +942,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 
 func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
 	var err error
+	var i int
 
 	args, filename := procsFilename(p.args)
 	cwd, flags := getCWD(p.pid)
@@ -957,9 +958,14 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Kube.NetNS = 0
 	m.Kube.Cid = 0
 	m.Kube.Cgrpid = 0
-	m.Kube.Docker, _, err = procsDockerId(p.pid)
+	m.Kube.Docker, i, err = procsDockerId(p.pid)
 	if err != nil {
 		k.log.Warn("Procfs execve event pods/ identifier error: %s\n", err)
+	} else if i > 0 {
+		err := procDockerIdOffsetWriter(i, k.btfObj)
+		if err != nil {
+			k.log.Warn("procDockerIdOffsetWriter error: %s", err)
+		}
 	}
 
 	m.Parent.Pid = p.ppid
@@ -992,6 +998,12 @@ func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32
 	})
 	for _, p := range procs {
 		k.pushExecveEvents(p, tcpEntries, pushExecve)
+	}
+	// Ensure we have at least a default dockerId offset if we failed
+	// to disover one while walking proc
+	err := procDockerIdOffsetDefault(k.btfObj)
+	if err != nil {
+		k.log.Warn("prodDockerIdOffsetDefault error: %s", err)
 	}
 }
 
@@ -2027,6 +2039,15 @@ func (k *ObserverKprobe) getBTFKprobe() uintptr {
 	return k.btfObj
 }
 
+func (k *ObserverKprobe) ConfigureBTF(ctx context.Context) error {
+	// Find BTF metdaata and populate btf opaqu object
+	if err := k.observerFindBTF(ctx); err != nil {
+		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
+	}
+	k.createBTFKprobe()
+	return nil
+}
+
 func (k *ObserverKprobe) Start(ctx context.Context) error {
 	k.createDir()
 
@@ -2037,12 +2058,6 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	} else {
 		k.log.Warningf("failed to initialize ksyms: %s", err)
 	}
-
-	// Find BTF metdaata and populate btf opaqu object
-	if err := k.observerFindBTF(ctx); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
-	}
-	k.createBTFKprobe()
 
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
 	if err := k.observerFindProgs(ctx); err != nil {
