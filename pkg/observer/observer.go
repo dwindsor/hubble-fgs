@@ -1261,10 +1261,10 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
 		return k.observerLoadTC(load, version, Verbosity, btf)
 	} else {
-		btfobj := bpf.GetBTF(btf)
+		btfObj := k.getBTFKprobe()
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
-			btfobj,
+			btfObj,
 			load.Observer__program,
 			attach,
 			load.observer__label,
@@ -1875,6 +1875,9 @@ type ObserverKprobe struct {
 
 	/* Runtime Containers */
 	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert
+
+	/* opaque pointer to C BTF object */
+	btfObj uintptr
 }
 
 // ObseverSync holds data that are safe to be used in all goroutine contexts.
@@ -2034,6 +2037,14 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 	return nil
 }
 
+func (k *ObserverKprobe) createBTFKprobe() {
+	k.btfObj = bpf.GetBTF(ObserverBTF)
+}
+
+func (k *ObserverKprobe) getBTFKprobe() uintptr {
+	return k.btfObj
+}
+
 func (k *ObserverKprobe) Start(ctx context.Context) error {
 	k.createDir()
 
@@ -2045,9 +2056,12 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		k.log.Warningf("failed to initialize ksyms: %s", err)
 	}
 
+	// Find BTF metdaata and populate btf opaqu object
 	if err := k.observerFindBTF(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
 	}
+	k.createBTFKprobe()
+
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
 	if err := k.observerFindProgs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
@@ -2105,6 +2119,10 @@ func (k *ObserverKprobe) RemovePrograms() {
 	}
 	os.Remove(k.bpfDir)
 	os.Remove(k.mapDir)
+	if k.btfObj != 0 {
+		bpf.FreeBTF(k.btfObj)
+		k.btfObj = 0
+	}
 }
 
 func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces string, tls, tlstc, pretty bool) *ObserverKprobe {

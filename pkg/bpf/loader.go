@@ -211,14 +211,17 @@ int bpf_loader_set_map(struct bpf_object *obj,
 
 static void *getBtf(const char *btf)
 {
-	struct btf_ext *btf_ext;
-
-	return btf__parse(btf, &btf_ext);
+	return btf__parse(btf, NULL);
 }
 
 static int addEnumBtf(void *btf, char *name, int value)
 {
 	return btf__add_enum_value(btf, name, value);
+}
+
+static void freeBtf(void *btfobj)
+{
+	btf__free(btfobj);
 }
 
 static struct bpf_object *__loader(const int version,
@@ -339,7 +342,7 @@ int tc_loader(const int version,
 	err = bpf_loader_pin(obj, label, __prog);
 	if (err) {
 		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
-		return err;
+		goto out;
 	}
 
 	snprintf(tc_calls_name, sizeof(tc_calls_name), "%s/tls_calls", mapdir);
@@ -356,19 +359,21 @@ int tc_loader(const int version,
 			if (!prog)
 				continue;
 			fd = bpf_program__fd(prog);
-			if (fd < 0)
-				return errno;
+			if (fd < 0) {
+				err = errno;
+				goto out;
+			}
 			snprintf(pin_name, sizeof(pin_name), "%s_%i", __prog, i);
 			bpf_program__unpin(prog, pin_name);
 			err = bpf_program__pin(prog, pin_name);
 			if (err) {
 				printf("program pin %s tailcall err %d\n", pin_name, err);
-				return err;
+				goto out;
 			}
 			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
 			if (err) {
 				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
-				return err;
+				goto out;
 			}
 			printf("bpf map update elem %s %d\n", pin_name, err);
 		}
@@ -376,7 +381,12 @@ int tc_loader(const int version,
 
 	fd = bpf_obj_get(__prog);
 	bpf_object__close(obj);
+	btf__free(btfobj);
 	return fd;
+out:
+	bpf_object__close(obj);
+	btf__free(btfobj);
+	return err;
 }
 
 int fgs_loader(const int version,
@@ -396,17 +406,23 @@ int fgs_loader(const int version,
 
 	btfobj = getBtf(btf);
 	obj = __loader(version, verbosity, btfobj, prog, mapdir, 0, prog_type);
-	if (!obj)
-		return -1;
+	if (!obj) {
+		err = -1;
+		goto out;
+	}
 
 	err = bpf_loader_pin(obj, label, __prog);
 	if (err) {
 		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
-		return err;
+		goto out;
 	}
 	fd = bpf_link(link_path, __prog, attach_type);
 	bpf_object__close(obj);
+	btf__free(btfobj);
 	return fd;
+out:
+	btf__free(btfobj);
+	return err;
 }
 
 int skskb_verdict_loader(const int version,
@@ -493,18 +509,23 @@ int tracepoint_loader(const int version,
 
 	btfobj = getBtf(btf);
 	obj = __loader(version, verbosity, btfobj, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
-	if (!obj)
-		return -1;
+	if (!obj) {
+		err = -1;
+		goto out;
+	}
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
 		fprintf(stderr, "bpf_object__find_program_by_title: null pointer\n");
-		return -1;
+		bpf_object__close(obj);
+		err = -1;
+		goto out;
 	}
 	err = libbpf_get_error(prog_bpf);
 	if (err) {
 		fprintf(stderr, "bpf_object__find_program_by_title: failed\n");
-		return err;
+		bpf_object__close(obj);
+		goto out_object;
 	}
 
 	bpf_program__unpin(prog_bpf, __prog);
@@ -515,17 +536,24 @@ int tracepoint_loader(const int version,
 		// Expected error when attach point probe is happening
 		if (verbosity)
 			fprintf(stderr, "bpf_program__attach_tracepoint: failed (%s)\n", prog);
-		return err;
+		goto out_object;
 	}
 
 	err = bpf_program__pin(prog_bpf, __prog);
 	if (err < 0) {
 		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
-		return err;
+		goto out_object;
 	}
 	bpf_object__close(obj);
+	btf__free(btfobj);
 	bpf_program__unload(prog_bpf);
 	return bpf_link_fd(prog_attach);
+out_object:
+	bpf_program__unload(prog_bpf);
+	bpf_object__close(obj);
+out:
+	btf__free(btfobj);
+	return err;
 }
 
 int kprobe_loader(const int version,
@@ -590,13 +618,17 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func GetBTF(__btf string) unsafe.Pointer {
-	return C.getBtf(C.CString(__btf))
+func GetBTF(__btf string) uintptr {
+	return uintptr(C.getBtf(C.CString(__btf)))
 }
 
-func AddEnumBTF(btf unsafe.Pointer, name string, value int) int {
-	ret := C.addEnumBtf(btf, C.CString(name), C.int(value))
+func AddEnumBTF(btf uintptr, name string, value int) int {
+	ret := C.addEnumBtf(unsafe.Pointer(btf), C.CString(name), C.int(value))
 	return int(ret)
+}
+
+func FreeBTF(btf uintptr) {
+	C.freeBtf(unsafe.Pointer(btf))
 }
 
 func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_label string, __prog_type int) (int, error) {
@@ -719,7 +751,7 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	return nil, loaderInt
 }
 
-func LoadKprobeProgram(__version, __verbosity int, btf unsafe.Pointer, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
+func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
@@ -728,7 +760,7 @@ func LoadKprobeProgram(__version, __verbosity int, btf unsafe.Pointer, object, a
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
 	ret := C.bool(retprobe)
-	loader_fd := C.kprobe_loader(version, verbosity, btf, o, a, l, p, mapdir, ret)
+	loader_fd := C.kprobe_loader(version, verbosity, unsafe.Pointer(btf), o, a, l, p, mapdir, ret)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
