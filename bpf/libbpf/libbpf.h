@@ -130,6 +130,14 @@ LIBBPF_API int bpf_object__unpin_programs(struct bpf_object *obj,
 LIBBPF_API int bpf_object__pin(struct bpf_object *object, const char *path);
 LIBBPF_API void bpf_object__close(struct bpf_object *object);
 
+struct btf;
+struct btf_ext;
+
+LIBBPF_API void btf__free(struct btf *btf);
+LIBBPF_API struct btf *btf__parse(const char *path, struct btf_ext **btf_ext);
+LIBBPF_API int btf__add_enum(struct btf *btf, const char *name, __u32 bytes_sz);
+LIBBPF_API int btf__add_enum_value(struct btf *btf, const char *name, __s64 value);
+
 struct bpf_object_load_attr {
 	struct bpf_object *obj;
 	int log_level;
@@ -146,7 +154,6 @@ LIBBPF_API int bpf_object__unload(struct bpf_object *obj);
 LIBBPF_API const char *bpf_object__name(const struct bpf_object *obj);
 LIBBPF_API unsigned int bpf_object__kversion(const struct bpf_object *obj);
 
-struct btf;
 LIBBPF_API struct btf *bpf_object__btf(const struct bpf_object *obj);
 LIBBPF_API int bpf_object__btf_fd(const struct bpf_object *obj);
 
