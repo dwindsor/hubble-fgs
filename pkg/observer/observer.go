@@ -167,7 +167,6 @@ func (s *bpfLoadState) setLoaded() {
 }
 
 type bpfLoad struct {
-	Observer__btf        string
 	Observer__program    string
 	observer__x64_attach string
 	observer__attach     string
@@ -201,7 +200,7 @@ var (
 	IgnoreMissingProgs bool
 
 	ObserverExecve = bpfLoad{
-		"", "bpf_execve_event.o",
+		"bpf_execve_event.o",
 		"sched/sched_process_exec",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
@@ -216,7 +215,7 @@ var (
 	}
 
 	ObserverExit = bpfLoad{
-		"", "bpf_exit.o",
+		"bpf_exit.o",
 		"sched/sched_process_exit",
 		"sched/sched_process_exit",
 		"tracepoint/sys_exit",
@@ -231,7 +230,7 @@ var (
 	}
 
 	ObserverFork = bpfLoad{
-		"", "bpf_fork.o",
+		"bpf_fork.o",
 		"wake_up_new_task",
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
@@ -246,7 +245,7 @@ var (
 	}
 
 	ObserverCred = bpfLoad{
-		"", "bpf_cred.o",
+		"bpf_cred.o",
 		"commit_creds",
 		"commit_creds",
 		"kprobe/commit_creds",
@@ -261,7 +260,7 @@ var (
 	}
 
 	ObserverTCPConnect = bpfLoad{
-		"", "bpf_tcpmon.o",
+		"bpf_tcpmon.o",
 		"tcp_connect",
 		"tcp_connect",
 		"kprobe/tcp_connect",
@@ -276,7 +275,7 @@ var (
 	}
 
 	ObserverTCPConnectRet = bpfLoad{
-		"", "bpf_tcpmonret.o",
+		"bpf_tcpmonret.o",
 		"__x64_sys_connect",
 		"sys_connect",
 		"kretprobe/sys_connect",
@@ -291,7 +290,7 @@ var (
 	}
 
 	ObserverTCPClose = bpfLoad{
-		"", "bpf_tcpclose.o",
+		"bpf_tcpclose.o",
 		"tcp_set_state",
 		"tcp_set_state",
 		"kprobe/tcp_set_state",
@@ -306,7 +305,7 @@ var (
 	}
 
 	ObserverListen = bpfLoad{
-		"", "bpf_listen.o",
+		"bpf_listen.o",
 		"__inet_hash",
 		"__inet_hash",
 		"kprobe/inet_hash",
@@ -321,7 +320,7 @@ var (
 	}
 
 	ObserverSockopsEstablished = bpfLoad{
-		"", "bpf_sockops.o",
+		"bpf_sockops.o",
 		"sockops",
 		"sockops",
 		"sockops/fgs_sockops",
@@ -336,7 +335,7 @@ var (
 	}
 
 	ObserverSkmsg = bpfLoad{
-		"", "bpf_skmsg.o",
+		"bpf_skmsg.o",
 		"sk_msg",
 		"sk_msg",
 		"sk_msg/fgs",
@@ -351,7 +350,7 @@ var (
 	}
 
 	ObserverSkSkbVerdict = bpfLoad{
-		"", "bpf_skskb_verdict.o",
+		"bpf_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb",
 		"sk_skb_verdict/fgs",
@@ -366,7 +365,7 @@ var (
 	}
 
 	ObserverSkSkbParser = bpfLoad{
-		"", "bpf_skskb_parser.o",
+		"bpf_skskb_parser.o",
 		"sk_skb",
 		"sk_skb",
 		"sk_skb_parser/fgs",
@@ -381,7 +380,7 @@ var (
 	}
 
 	ObserverTLSTCIngress = bpfLoad{
-		"", "bpf_tc_ingress.o",
+		"bpf_tc_ingress.o",
 		"ingress_tcp",
 		"ingress_tcp",
 		"classifier/ingress_tcp",
@@ -396,7 +395,7 @@ var (
 	}
 
 	ObserverTLSTCEgress = bpfLoad{
-		"", "bpf_tc_egress.o",
+		"bpf_tc_egress.o",
 		"egress_tcp",
 		"egress_tcp",
 		"tc/egress_tcp",
@@ -1276,14 +1275,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 }
 
 func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Context) error {
-	var btf string
 	var fd int
-
-	if load.Observer__btf == "" {
-		btf = ObserverBTF
-	} else {
-		btf = load.Observer__btf
-	}
 
 	version, _, err := getKernelVersion()
 	if err != nil {
@@ -1292,22 +1284,22 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 
 	k.log.Debugf("prog %s kern_version %d\n", load.Observer__program, version)
 	if load.probeType == "tracepoint" {
-		err, fd = k.loadInstance(load, version, Verbosity, btf, true)
+		err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
 			removeTracepoint(load.tracefd)
-			err, fd = k.loadInstance(load, version, Verbosity, btf, true)
+			err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, true)
 		}
 		if err != nil {
 			return fmt.Errorf("Failed prog %s kern_version %d err %d LoadTracingProgram: %s\n",
 				load.Observer__program, version, fd, err)
 		}
 	} else {
-		err, fd = k.loadInstance(load, version, Verbosity, btf, true)
+		err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, true)
 		if err != nil {
 			/* If we fail attach with __x64_sys_execve variant try again with
 			 * sys_execve variant.
 			 */
-			err, fd = k.loadInstance(load, version, Verbosity, btf, false)
+			err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, false)
 			if err != nil && load.errorFatal {
 				return fmt.Errorf("Failed prog %s kern_version %d LoadKprobeProgram: %s\n",
 					load.Observer__program, version, err)
@@ -1344,17 +1336,10 @@ func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *obs
 		return fmt.Errorf("loading sensor %s failed: sensor already loaded", sensor.name)
 	}
 
-	var btf string
-	if ObserverExecve.Observer__btf == "" {
-		btf = ObserverBTF
-	} else {
-		btf = ObserverExecve.Observer__btf
-	}
-
 	_, verStr, _ := getKernelVersion()
 	k.log.Infof("Loading kernel version %s", verStr)
 
-	if err := k.observerLoadSensorMaps(stopCtx, sensor, btf); err != nil {
+	if err := k.observerLoadSensorMaps(stopCtx, sensor, ObserverBTF); err != nil {
 		return err
 	}
 
@@ -2041,6 +2026,10 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 		}
 
 		return fmt.Errorf("Kernel version '%s' BTF search failed kernel is not included in supported list. Use --btf option to specify BTF path and/or '--kernel' to specify kernel version.", uname.Release[:n])
+	} else {
+		if err := btfFileExists(ObserverBTF); err != nil {
+			return fmt.Errorf("User specified BTF does not exist. %s\n", err)
+		}
 	}
 	return nil
 }

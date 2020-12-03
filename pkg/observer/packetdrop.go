@@ -29,7 +29,7 @@ import (
 
 var (
 	ObserverKfreeSkb = bpfLoad{
-		"", "bpf_kfree_skb.o",
+		"bpf_kfree_skb.o",
 		"kfree_skb",
 		"kfree_skb",
 		"kprobe/kfree_skb",
