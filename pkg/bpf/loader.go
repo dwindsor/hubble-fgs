@@ -209,9 +209,21 @@ int bpf_loader_set_map(struct bpf_object *obj,
 	return 0;
 }
 
+static void *getBtf(const char *btf)
+{
+	struct btf_ext *btf_ext;
+
+	return btf__parse(btf, &btf_ext);
+}
+
+static int addEnumBtf(void *btf, char *name, int value)
+{
+	return btf__add_enum_value(btf, name, value);
+}
+
 static struct bpf_object *__loader(const int version,
 		    const int verbosity,
-		    const char *btf,
+		    struct btf *btf,
 		    const char *prog,
 		    const char *mapdir,
 		    const char *ciliumdir,
@@ -239,7 +251,7 @@ static struct bpf_object *__loader(const int version,
 	}
 
 	attr.obj = obj;
-	attr.target_btf_path = btf;
+	attr.target_btf = btf;
 	attr.kern_version = version;
 	err = bpf_object__load_xattr(&attr);
 	if (err < 0) {
@@ -317,8 +329,10 @@ int tc_loader(const int version,
 	char tc_calls_name[255];
 	struct bpf_object *obj;
 	int i, fd, map_fd, err;
+	struct btf *btfobj;
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
+	btfobj = getBtf(btf);
+	obj = __loader(version, verbosity, btfobj, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
 	if (!obj)
 		return -1;
 
@@ -377,9 +391,11 @@ int fgs_loader(const int version,
 		   const int attach_type)
 {
 	struct bpf_object *obj;
+	struct btf *btfobj;
 	int fd, err;
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, prog_type);
+	btfobj = getBtf(btf);
+	obj = __loader(version, verbosity, btfobj, prog, mapdir, 0, prog_type);
 	if (!obj)
 		return -1;
 
@@ -472,9 +488,11 @@ int tracepoint_loader(const int version,
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
 	struct bpf_object *obj;
+	struct btf *btfobj;
 	int err;
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
+	btfobj = getBtf(btf);
+	obj = __loader(version, verbosity, btfobj, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
 	if (!obj)
 		return -1;
 
@@ -512,7 +530,7 @@ int tracepoint_loader(const int version,
 
 int kprobe_loader(const int version,
 		  const int verbosity,
-		  const char *btf,
+		  void *btf,
 		  const char *prog,
 		  const char *attach,
 		  const char *label,
@@ -566,10 +584,20 @@ import "C"
 import (
 	"fmt"
 	"strings"
+	"unsafe"
 
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
+
+func GetBTF(__btf string) unsafe.Pointer {
+	return C.getBtf(C.CString(__btf))
+}
+
+func AddEnumBTF(btf unsafe.Pointer, name string, value int) int {
+	ret := C.addEnumBtf(btf, C.CString(name), C.int(value))
+	return int(ret)
+}
 
 func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_label string, __prog_type int) (int, error) {
 	version := C.int(__version)
@@ -691,10 +719,9 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	return nil, loaderInt
 }
 
-func LoadKprobeProgram(__version, __verbosity int, __btf, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
+func LoadKprobeProgram(__version, __verbosity int, btf unsafe.Pointer, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
 	o := C.CString(object)
 	a := C.CString(attach)
 	l := C.CString(__label)

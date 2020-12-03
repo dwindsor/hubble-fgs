@@ -1262,9 +1262,10 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
 		return k.observerLoadTC(load, version, Verbosity, btf)
 	} else {
+		btfobj := bpf.GetBTF(btf)
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
-			btf,
+			btfobj,
 			load.Observer__program,
 			attach,
 			load.observer__label,
