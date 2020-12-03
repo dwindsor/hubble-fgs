@@ -888,29 +888,6 @@ func getCWD(pid uint32) (string, uint32) {
 	return cwd, flags
 }
 
-func procsFilename(args []byte) (string, string) {
-	cmdArgs := bytes.Split(args, []byte{0x00})
-	filename := string(cmdArgs[0])
-	cmds := string(bytes.Join(cmdArgs[1:], []byte{0x00}))
-	return cmds, filename
-}
-
-func procsDockerID(pid uint32) string {
-	pidstr := fmt.Sprint(pid)
-	cgroups, err := ioutil.ReadFile(filepath.Join(ProcFS, pidstr, "cgroup"))
-	if err != nil {
-		return ""
-	}
-	docker := strings.Split(string(cgroups), "\n")
-	for _, s := range docker {
-		if strings.Contains(s, "pids:") && strings.Contains(s, "pods/") {
-			dockerFields := strings.Split(s, "/")
-			return dockerFields[len(dockerFields)-1]
-		}
-	}
-	return ""
-}
-
 func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry) {
 	pid := msg.Process.PID
 	tcp := api.MsgIPv4TcpEventUnix{}
@@ -964,6 +941,8 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 }
 
 func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
+	var err error
+
 	args, filename := procsFilename(p.args)
 	cwd, flags := getCWD(p.pid)
 	if (flags & api.EventRootCWD) == 0 {
@@ -978,7 +957,10 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Kube.NetNS = 0
 	m.Kube.Cid = 0
 	m.Kube.Cgrpid = 0
-	m.Kube.Docker = procsDockerID(p.pid)
+	m.Kube.Docker, _, err = procsDockerId(p.pid)
+	if err != nil {
+		k.log.Warn("Procfs execve event pods/ identifier error: %s\n", err)
+	}
 
 	m.Parent.Pid = p.ppid
 	m.Parent.Ktime = p.pktime
