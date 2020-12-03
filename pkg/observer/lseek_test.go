@@ -17,7 +17,7 @@ package observer
 
 var (
 	ObserverLseekTest = bpfLoad{
-		"", "bpf_lseek.o",
+		"bpf_lseek.o",
 		"syscalls/sys_enter_lseek",
 		"syscalls/sys_enter_lseek",
 		"tracepoint/sys_enter_lseek",
