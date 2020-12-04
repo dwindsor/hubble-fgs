@@ -72,7 +72,7 @@ void bpf_loader_programs(struct bpf_object *obj, int type, int verbosity) {
 
 int fgs_map_loader(const int version,
 		   const int verbosity,
-		   const char *btf,
+		   void *btf,
 		   const char *prog,
 		   const char *__map,
 		   const char *__label_map,
@@ -100,9 +100,8 @@ int fgs_map_loader(const int version,
 	bpf_loader_programs(obj, type, verbosity);
 
 	attr.obj = obj;
-	attr.target_btf_path = btf;
+	attr.target_btf = btf;
 	attr.kern_version = version;
-	attr.target_btf = 0;
 	err = bpf_object__load_xattr(&attr);
 	if (err < 0) {
 		char errstr[256];
@@ -327,7 +326,7 @@ int bpf_loader_pin(struct bpf_object *obj,
 
 int tc_loader(const int version,
 		   const int verbosity,
-		   const char *btf,
+		   void *btf,
 		   const char *prog,
 		   const char *label,
 		   const char *__prog,
@@ -337,10 +336,8 @@ int tc_loader(const int version,
 	char tc_calls_name[255];
 	struct bpf_object *obj;
 	int i, fd, map_fd, err;
-	struct btf *btfobj;
 
-	btfobj = getBtf(btf);
-	obj = __loader(version, verbosity, btfobj, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
+	obj = __loader(version, verbosity, btf, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
 	if (!obj)
 		return -1;
 
@@ -386,17 +383,15 @@ int tc_loader(const int version,
 
 	fd = bpf_obj_get(__prog);
 	bpf_object__close(obj);
-	btf__free(btfobj);
 	return fd;
 out:
 	bpf_object__close(obj);
-	btf__free(btfobj);
 	return err;
 }
 
 int fgs_loader(const int version,
 		   const int verbosity,
-		   const char *btf,
+		   void *btf,
 		   const char *prog,
 		   const char *label,
 		   const char *__prog,
@@ -406,11 +401,9 @@ int fgs_loader(const int version,
 		   const int attach_type)
 {
 	struct bpf_object *obj;
-	struct btf *btfobj;
 	int fd, err;
 
-	btfobj = getBtf(btf);
-	obj = __loader(version, verbosity, btfobj, prog, mapdir, 0, prog_type);
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, prog_type);
 	if (!obj) {
 		err = -1;
 		goto out;
@@ -423,16 +416,14 @@ int fgs_loader(const int version,
 	}
 	fd = bpf_link(link_path, __prog, attach_type);
 	bpf_object__close(obj);
-	btf__free(btfobj);
 	return fd;
 out:
-	btf__free(btfobj);
 	return err;
 }
 
 int skskb_verdict_loader(const int version,
 			 const int verbosity,
-			 const char *btf,
+			 void *btf,
 			 const char *prog,
 			 const char *label,
 			 const char *__prog,
@@ -448,7 +439,7 @@ int skskb_verdict_loader(const int version,
 
 int skskb_parser_loader(const int version,
 			const int verbosity,
-			const char *btf,
+			void *btf,
 			const char *prog,
 			const char *label,
 			const char *__prog,
@@ -464,7 +455,7 @@ int skskb_parser_loader(const int version,
 
 int skmsg_loader(const int version,
 		 const int verbosity,
-		 const char *btf,
+		 void *btf,
 		 const char *prog,
 		 const char *label,
 		 const char *__prog,
@@ -481,7 +472,7 @@ int skmsg_loader(const int version,
 
 int sockops_loader(const int version,
 		   const int verbosity,
-		   const char *btf,
+		   void *btf,
 		   const char *prog,
 		   const char *label,
 		   const char *__prog,
@@ -497,7 +488,7 @@ int sockops_loader(const int version,
 
 int tracepoint_loader(const int version,
 		      const int verbosity,
-		      const char *btf,
+		      void *btf,
 		      const char *prog,
 		      const char *attach_category,
 		      const char *attach_name,
@@ -509,11 +500,9 @@ int tracepoint_loader(const int version,
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
 	struct bpf_object *obj;
-	struct btf *btfobj;
 	int err;
 
-	btfobj = getBtf(btf);
-	obj = __loader(version, verbosity, btfobj, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
 	if (!obj) {
 		err = -1;
 		goto out;
@@ -550,14 +539,12 @@ int tracepoint_loader(const int version,
 		goto out_object;
 	}
 	bpf_object__close(obj);
-	btf__free(btfobj);
 	bpf_program__unload(prog_bpf);
 	return bpf_link_fd(prog_attach);
 out_object:
 	bpf_program__unload(prog_bpf);
 	bpf_object__close(obj);
 out:
-	btf__free(btfobj);
 	return err;
 }
 
@@ -641,16 +628,15 @@ func FreeBTF(btf uintptr) {
 	C.freeBtf(unsafe.Pointer(btf))
 }
 
-func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_label string, __prog_type int) (int, error) {
+func LoadAndPinMaps(__version, __verbosity int, btf uintptr, __prog, __map, __map_label string, __prog_type int) (int, error) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
 	p := C.CString(__prog)
 	m := C.CString(__map)
 	ml := C.CString(__map_label)
 	pt := C.int(__prog_type)
 
-	fd := C.fgs_map_loader(version, verbosity, btf, p, m, ml, pt)
+	fd := C.fgs_map_loader(version, verbosity, unsafe.Pointer(btf), p, m, ml, pt)
 	fdInt := int(fd)
 	if fdInt < 0 {
 		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
@@ -658,17 +644,16 @@ func LoadAndPinMaps(__version, __verbosity int, __btf, __prog, __map, __map_labe
 	return fdInt, nil
 }
 
-func LoadProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string, __prog_type, __attach_type int) (error, int) {
+func LoadProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, __prog_type, __attach_type int) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
 	pt := C.int(__prog_type)
 	at := C.int(__attach_type)
-	loader_fd := C.sockops_loader(version, verbosity, btf, o, l, p, mapdir, pt, at)
+	loader_fd := C.sockops_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, pt, at)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
@@ -676,29 +661,28 @@ func LoadProgram(__version, __verbosity int, __btf, object, __label, __prog, __m
 	return nil, loaderInt
 }
 
-func LoadSockopsProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+func LoadSockopsProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
 	prog_type := 13  // BPF_PROG_TYPE_SOCK_OPS
 	attach_type := 3 // BPF_CGROUP_SOCK_OPS
 
-	return LoadProgram(__version, __verbosity, __btf, object, __label, __prog, __mapdir, prog_type, attach_type)
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type)
 }
 
-func LoadCgroupProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+func LoadCgroupProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
 	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
 	attach_type := 0 // BPF_CGROUP_INET_INGRESS
 
-	return LoadProgram(__version, __verbosity, __btf, object, __label, __prog, __mapdir, prog_type, attach_type)
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type)
 }
 
-func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	loader_fd := C.skmsg_loader(version, verbosity, btf, o, l, p, mapdir)
+	loader_fd := C.skmsg_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to skmsg load: %d %s", loaderInt, object), 0
@@ -706,15 +690,14 @@ func LoadSkmsgProgram(__version, __verbosity int, __btf, object, __label, __prog
 	return nil, loaderInt
 }
 
-func LoadSkSkbVerdictProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+func LoadSkSkbVerdictProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	loader_fd := C.skskb_verdict_loader(version, verbosity, btf, o, l, p, mapdir)
+	loader_fd := C.skskb_verdict_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to skskb load: %d %s", loaderInt, object), 0
@@ -722,15 +705,14 @@ func LoadSkSkbVerdictProgram(__version, __verbosity int, __btf, object, __label,
 	return nil, loaderInt
 }
 
-func LoadSkSkbParserProgram(__version, __verbosity int, __btf, object, __label, __prog, __mapdir string) (error, int) {
+func LoadSkSkbParserProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	loader_fd := C.skskb_parser_loader(version, verbosity, btf, o, l, p, mapdir)
+	loader_fd := C.skskb_parser_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to skskb load: %d %s", loaderInt, object), 0
@@ -738,10 +720,9 @@ func LoadSkSkbParserProgram(__version, __verbosity int, __btf, object, __label, 
 	return nil, loaderInt
 }
 
-func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
+func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
 	o := C.CString(object)
 	aa := strings.Split(attach, "/")
 	if len(aa) != 2 {
@@ -753,7 +734,7 @@ func LoadTracingProgram(__version, __verbosity int, __btf, object, attach, __lab
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
 	ret := C.bool(retprobe)
-	loader_fd := C.tracepoint_loader(version, verbosity, btf, o, a_category, a_name, l, p, mapdir, ret)
+	loader_fd := C.tracepoint_loader(version, verbosity, unsafe.Pointer(btf), o, a_category, a_name, l, p, mapdir, ret)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to tracepoint load: %d %s", loaderInt, object), loaderInt
@@ -849,16 +830,15 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
 }
 
 func LoadTC(__version, __verbosity int,
-	__btf, object, __label, __prog, __mapdir, __ciliumdir string) (error, int) {
+	btf uintptr, object, __label, __prog, __mapdir, __ciliumdir string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
-	btf := C.CString(__btf)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
 	ciliumdir := C.CString(__ciliumdir)
-	loader_fd := C.tc_loader(version, verbosity, btf, o, l, p, mapdir, ciliumdir)
+	loader_fd := C.tc_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, ciliumdir)
 	loaderFd := int(loader_fd)
 	if loaderFd < 0 {
 		return fmt.Errorf("Unable to load tc program: %d %s", loaderFd, object), 0

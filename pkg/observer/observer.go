@@ -1111,7 +1111,7 @@ func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor 
 
 		pin := k.mapDir + m.mapName
 
-		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btf, m.bpf.Observer__program, pin, m.mapName,
+		fd, err := bpf.LoadAndPinMaps(version, Verbosity, k.btfObj, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
 		k.log.Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
 		if err != nil {
@@ -1151,7 +1151,7 @@ func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int, b
 	var attachLinks []netlink.Link
 
 	err, fd := bpf.LoadTC(version, Verbosity,
-		btf,
+		k.btfObj,
 		load.Observer__program,
 		load.observer__label,
 		k.bpfDir+load.observer__prog,
@@ -1205,7 +1205,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	if load.probeType == "tracepoint" {
 		return bpf.LoadTracingProgram(
 			version, Verbosity,
-			btf,
+			k.btfObj,
 			load.Observer__program,
 			attach,
 			load.observer__label,
@@ -1215,7 +1215,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "sockops" {
 		return bpf.LoadSockopsProgram(
 			version, Verbosity,
-			btf,
+			k.btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -1223,7 +1223,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "skmsg" {
 		return bpf.LoadSkmsgProgram(
 			version, Verbosity,
-			btf,
+			k.btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -1231,7 +1231,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "sk_skb_verdict" {
 		return bpf.LoadSkSkbVerdictProgram(
 			version, Verbosity,
-			btf,
+			k.btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -1239,7 +1239,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "sk_skb_parser" {
 		return bpf.LoadSkSkbParserProgram(
 			version, Verbosity,
-			btf,
+			k.btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -1247,7 +1247,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "cgrp_ingress" {
 		return bpf.LoadCgroupProgram(
 			version, Verbosity,
-			btf,
+			k.btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -1255,10 +1255,9 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
 		return k.observerLoadTC(load, version, Verbosity, btf)
 	} else {
-		btfObj := k.getBTFKprobe()
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
-			btfObj,
+			k.btfObj,
 			load.Observer__program,
 			attach,
 			load.observer__label,
