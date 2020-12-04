@@ -70,6 +70,7 @@ func TestMain(m *testing.M) {
 }
 
 func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
+	ctx, _ := context.WithCancel(context.Background())
 	var uts syscall.Utsname
 
 	if err := syscall.Uname(&uts); err != nil {
@@ -109,6 +110,7 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
 	if testing.Verbose() {
 		Verbosity = 1
 	}
+	kprobe.ConfigureBTF(ctx)
 	loadExporter(t, kprobe)
 	loadObserver(t, kprobe)
 
