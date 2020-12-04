@@ -3,6 +3,23 @@
 
 #define _(P) (__builtin_preserve_access_index(P))
 
+/* second argument to __builtin_preserve_enum_value() built-in */
+enum bpf_enum_value_kind {
+	BPF_ENUMVAL_EXISTS = 0,		/* enum value existence in kernel */
+	BPF_ENUMVAL_VALUE = 1,		/* enum value value relocation */
+};
+
+/*
+ * Convenience macro to get the integer value of an enumerator value in
+ * a target kernel.
+ * Returns:
+ *    64-bit value, if specified enum type and its enumerator value are
+ *    present in target kernel's BTF;
+ *    0, if no matching enum and/or enum value within that enum is found.
+ */
+#define bpf_core_enum_value(enum_type, enum_value)			    \
+	__builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value, BPF_ENUMVAL_VALUE)
+
 #include "bpf_core_read.h"
 
 static inline void compiler_barrier(void) {
