@@ -560,14 +560,14 @@ func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32) *api.
 	}
 	return unix
 }
-func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
+func msgToExecveUnix(m *api.MsgExecveEvent, offset int) *api.MsgExecveEventUnix {
 	unix := &api.MsgExecveEventUnix{}
 
 	unix.Common = m.Common
 	unix.Kube.NetNS = m.Kube.NetNS
 	unix.Kube.Cid = m.Kube.Cid
 	unix.Kube.Cgrpid = m.Kube.Cgrpid
-	unix.Kube.Docker = strings.TrimFunc(string(m.Kube.Docker[:]), func(c rune) bool {
+	unix.Kube.Docker = strings.TrimFunc(string(m.Kube.Docker[offset:]), func(c rune) bool {
 		return c == 0x00
 	})
 	unix.Parent = m.Parent
@@ -805,7 +805,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			fmt.Printf("api.MSG_OP_EXECVE binary read failure: %s\n", err)
 			break
 		}
-		msgUnix := msgToExecveUnix(&m)
+		msgUnix := msgToExecveUnix(&m, k.dockerIdOffsetWriter)
 		msgUnix.Process, empty, err = execParse(r)
 		if err != nil && empty {
 			msgUnix.Process = nopMsgExecUnix()
@@ -966,6 +966,7 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 		if err != nil {
 			k.log.Warn("procDockerIdOffsetWriter error: %s", err)
 		}
+		k.dockerIdOffsetWriter = i
 	}
 
 	m.Parent.Pid = p.ppid
@@ -1865,6 +1866,9 @@ type ObserverKprobe struct {
 	cMsg   *api.MsgTLSEvent
 	cCert  []byte
 	header uint32
+
+	/* Runtime docker Id info */
+	dockerIdOffsetWriter int
 
 	/* Runtime Containers */
 	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert

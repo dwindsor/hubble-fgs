@@ -13,8 +13,12 @@
  * processing stops.
  */
 
-/* Docker IDs are unique at first 12 characters, but 16 is nice 2Bytes */
-#define DOCKER_ID_LENGTH 16
+/* Docker IDs are unique at first 12 characters, but we want to get
+ * 12chars plus any extra prefix used by the container environment.
+ * Minikube for example prepends 'docker-' to the id. So lets copy
+ * 32B and assume at least 12B of it is ID info.
+ */
+#define DOCKER_ID_LENGTH 32
 /* Max number of args to parse */
 #define MAXARGS 20
 /* Max length of any given arg */
@@ -184,7 +188,7 @@ struct msg_k8s {
 	__u32 cid;
 	__u64 cgrpid;
 	char  docker_id[DOCKER_ID_LENGTH];
-};
+} __attribute__((packed));
 
 struct msg_calltrace {
 	__u64 stack[16];
