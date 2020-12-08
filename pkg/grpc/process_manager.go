@@ -35,8 +35,9 @@ type notifier interface {
 
 // ProcessManager maintains a cache of processes from fgs exec events.
 type ProcessManager struct {
-	log   logrus.FieldLogger
-	cache *processCache
+	log        logrus.FieldLogger
+	cache      *processCache
+	eventCache *eventCache
 	// pidMap is a map from PID to the most recent exec ID for the PID. This is used to find the parent
 	// of exec events without clone flag.
 	pidMap   map[uint32]string
@@ -47,6 +48,7 @@ type ProcessManager struct {
 	listeners         map[listener]struct{}
 	ciliumState       *cilium.State
 	enableProcessCred bool
+	enableEventCache  bool
 }
 
 // getNodeNameForExport returns node name string for JSON export. It uses NODE_NAME
@@ -70,13 +72,13 @@ func NewProcessManager(
 	watcher K8sResourceWatcher,
 	ciliumState *cilium.State,
 	enableProcessCred bool,
+	enableEventCache bool,
 ) (*ProcessManager, error) {
 	cache, err := newProcessCache(log, processCacheSize)
 	if err != nil {
 		return nil, err
 	}
-
-	return &ProcessManager{
+	pm := &ProcessManager{
 		log:               log,
 		cache:             cache,
 		pidMap:            make(map[uint32]string),
@@ -85,17 +87,25 @@ func NewProcessManager(
 		ciliumState:       ciliumState,
 		listeners:         make(map[listener]struct{}),
 		enableProcessCred: enableProcessCred,
-	}, nil
+		enableEventCache:  enableEventCache,
+	}
+
+	eventCache := newEventCache(log, pm)
+	pm.eventCache = eventCache
+	return pm, nil
 }
 
 func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_TLS:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_Tls{Tls: pm.GetTLS(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+		t := pm.GetTLS(msg)
+		if t != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_Tls{Tls: t},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -108,10 +118,15 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 	switch msg.Common.Op {
 	case api.MSG_OP_EXECVE:
 		proc := pm.Add(msg)
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: pm.GetProcessExec(proc)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+		procEvent := pm.GetProcessExec(proc)
+		if pm.enableEventCache == true && procEvent.Process.Docker != "" && procEvent.Process.Pod == nil {
+			pm.eventCache.addProc(procEvent, ktimeToProto(msg.Common.Ktime), msg.Process.NSPID)
+		} else {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: procEvent},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -123,10 +138,13 @@ func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetE
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_EXIT:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: pm.GetProcessExit(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+		e := pm.GetProcessExit(msg)
+		if e != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: e},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -182,28 +200,40 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.Ge
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_IPV4_TCPCONNECTRET:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: pm.GetProcessConnect(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+		cnct := pm.GetProcessConnect(msg)
+		if cnct != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: cnct},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
 		}
 	case api.MSG_OP_IPV4_TCPCLOSE:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: pm.GetProcessClose(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+		c := pm.GetProcessClose(msg)
+		if c != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: c},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
 		}
 	case api.MSG_OP_IPV4_LISTEN:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: pm.GetProcessListen(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+		l := pm.GetProcessListen(msg)
+		if l != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: l},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
 		}
 	case api.MSG_OP_IPV4_ACCEPT:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: pm.GetProcessAccept(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+		a := pm.GetProcessAccept(msg)
+		if a != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: a},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
@@ -523,12 +553,17 @@ func (pm *ProcessManager) GetProcessListen(
 		pm.cache.refInc(parent)
 		fgsParent = parent.process
 	}
-	return &fgs.ProcessListen{
+	fgsEvent := &fgs.ProcessListen{
 		Process: fgsProcess,
 		Parent:  fgsParent,
 		Ip:      reader.GetIP(event.Tuple.SAddr, 0).String(),
 		Port:    port,
 	}
+	if pm.enableEventCache == true && fgsProcess.Docker != "" && fgsProcess.Pod == nil {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+		return nil
+	}
+	return fgsEvent
 }
 
 // GetProcessExit returns Exit protobuf message for a given process.
@@ -557,10 +592,15 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 			pm.cache.refDec(a)
 		}
 	}
-	return &fgs.ProcessExit{
+	fgsEvent := &fgs.ProcessExit{
 		Process: fgsProcess,
 		Parent:  fgsParent,
 	}
+	if fgsProcess.Docker != "" && fgsProcess.Pod == nil {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+		return nil
+	}
+	return fgsEvent
 }
 
 // GetProcessCred returns Cred protobuf message for a given process.
@@ -582,11 +622,16 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		parent = copyProcess(parentInt.process)
 		parent.Cap = parentInt.capabilities
 	}
-	return &fgs.ProcessCred{
+	fgsEvent := &fgs.ProcessCred{
 		Process: process,
 		Parent:  parent,
 		Cap:     pm.getCapabilities(event.Capabilities),
 	}
+	if process.Docker != "" && process.Pod == nil {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+		return nil
+	}
+	return fgsEvent
 }
 
 // Translate internal uint32 error codes into gRPC visible error codes
@@ -642,7 +687,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		proc = processInt.process
 	}
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI)
-	return &fgs.Tls{
+	fgsEvent := &fgs.Tls{
 		Process:           proc,
 		SourceIp:          reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:        sourcePort,
@@ -664,6 +709,11 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		Certificates:      event.ServerCert.Certificates,
 		CertificateError:  getTLSCertificateErrorCode(event.ServerCert.Error),
 	}
+	if proc.Docker != "" && proc.Pod == nil {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+		return nil
+	}
+	return fgsEvent
 }
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
@@ -698,22 +748,30 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 		fgsParent = parent.process
 		pm.cache.refDec(parent)
 	}
-	endpoint := pm.getProcessEndpoint(fgsProcess)
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
-	var destinationNames []string
-	if endpoint != nil {
-		destinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+	fgsEvent := &fgs.ProcessClose{
+		Process:         fgsProcess,
+		Parent:          fgsParent,
+		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourcePort:      sourcePort,
+		DestinationIp:   destinationIP.String(),
+		DestinationPort: destinationPort,
 	}
-	return &fgs.ProcessClose{
-		Process:          fgsProcess,
-		Parent:           fgsParent,
-		SourceIp:         reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
-		SourcePort:       sourcePort,
-		DestinationIp:    destinationIP.String(),
-		DestinationPort:  destinationPort,
-		DestinationNames: destinationNames,
+
+	if fgsProcess.Docker != "" {
+		endpoint := pm.getProcessEndpoint(fgsProcess)
+		// Its possible to receive an event before its podInfo is received in
+		// this case we don't want to block waiting for it (we may have more
+		// events in the queue) so instead send it to a queue to be processed
+		// later.
+		if pm.enableEventCache == true && (endpoint == nil || fgsEvent.Process.Pod == nil) {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+			return nil
+		}
+		fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 	}
+	return fgsEvent
 }
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
@@ -748,22 +806,26 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 		fgsParent = parent.process
 		pm.cache.refInc(parent)
 	}
-	endpoint := pm.getProcessEndpoint(fgsProcess)
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
-	var destinationNames []string
-	if endpoint != nil {
-		destinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+	fgsEvent := &fgs.ProcessConnect{
+		Process:         fgsProcess,
+		Parent:          fgsParent,
+		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourcePort:      sourcePort,
+		DestinationIp:   destinationIP.String(),
+		DestinationPort: destinationPort,
 	}
-	return &fgs.ProcessConnect{
-		Process:          fgsProcess,
-		Parent:           fgsParent,
-		SourceIp:         reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
-		SourcePort:       sourcePort,
-		DestinationIp:    destinationIP.String(),
-		DestinationPort:  destinationPort,
-		DestinationNames: destinationNames,
+
+	if fgsProcess.Docker != "" {
+		endpoint := pm.getProcessEndpoint(fgsProcess)
+		if pm.enableEventCache == true && endpoint == nil || fgsEvent.Process.Pod == nil {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+			return nil
+		}
+		fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 	}
+	return fgsEvent
 }
 
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
@@ -798,22 +860,25 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 		fgsParent = parent.process
 		pm.cache.refInc(parent)
 	}
-	endpoint := pm.getProcessEndpoint(fgsProcess)
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
-	var destinationNames []string
-	if endpoint != nil {
-		destinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+	fgsEvent := &fgs.ProcessAccept{
+		Process:         fgsProcess,
+		Parent:          fgsParent,
+		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourcePort:      sourcePort,
+		DestinationIp:   destinationIP.String(),
+		DestinationPort: destinationPort,
 	}
-	return &fgs.ProcessAccept{
-		Process:          fgsProcess,
-		Parent:           fgsParent,
-		SourceIp:         reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
-		SourcePort:       sourcePort,
-		DestinationIp:    destinationIP.String(),
-		DestinationPort:  destinationPort,
-		DestinationNames: destinationNames,
+	if fgsProcess.Docker != "" {
+		endpoint := pm.getProcessEndpoint(fgsProcess)
+		if pm.enableEventCache == true && endpoint == nil || fgsEvent.Process.Pod == nil {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+			return nil
+		}
+		fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 	}
+	return fgsEvent
 }
 
 func (pm *ProcessManager) getPodInfo(containerID string, binary string, args string, nspid uint32) (*fgs.Pod, *v1.Endpoint) {

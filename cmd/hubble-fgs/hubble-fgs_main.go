@@ -110,7 +110,7 @@ func hubbleFGSExecute() error {
 		return err
 	}
 	processManager, err := fgsGrpc.NewProcessManager(
-		logger.GetLogger(), processCacheSize, watcher, ciliumState, enableProcessCred)
+		logger.GetLogger(), processCacheSize, watcher, ciliumState, enableProcessCred, enableCiliumAPI)
 	if err != nil {
 		return err
 	}
