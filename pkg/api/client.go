@@ -195,11 +195,13 @@ const (
 // TLS Certificate Errors
 const (
 	// BPF size errors
-	TlsCertificateErrorNone      = 0x0000
-	TlsCertificateErrorTooLarge  = 0x0001
-	TlsCertificateErrorGetData   = 0x0002
-	TlsCertificateErrorNoBuffer  = 0x0003
-	TlsCertificateErrorCopyError = 0x0004
+	TlsCertificateErrorNone            = 0x0000
+	TlsCertificateErrorTooLarge        = 0x0001
+	TlsCertificateErrorGetDataHdr      = 0x0002
+	TlsCertificateErrorNoBuffer        = 0x0003
+	TlsCertificateErrorCopyError       = 0x0004
+	TlsCertificateErrorGetDataCert     = 0x0005
+	TlsCertificateErrorGetDataMoreCert = 0x0006
 	// Userspace errors
 	TlsCertificateErrorLengthRead  = 0x0100
 	TlsCertificateErrorMissingCode = 0x0200

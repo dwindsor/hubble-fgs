@@ -641,8 +641,12 @@ func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_UNDEF
 	case api.TlsCertificateErrorTooLarge:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_TOO_LARGE
-	case api.TlsCertificateErrorGetData:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA
+	case api.TlsCertificateErrorGetDataHdr:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA_HDR
+	case api.TlsCertificateErrorGetDataCert:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA_CERT
+	case api.TlsCertificateErrorGetDataMoreCert:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA_MORECERT
 	case api.TlsCertificateErrorNoBuffer:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_NO_BUFFER
 	case api.TlsCertificateErrorCopyError:

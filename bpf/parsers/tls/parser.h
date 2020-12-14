@@ -623,10 +623,12 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 #endif
 
 /* TLS Certificate Error Codes */
-#define ENEXTTOOLARGE	1
-#define EGETDATA	2
-#define ENOBUFFER	3
-#define ECOPYERROR	4
+#define ENEXTTOOLARGE		1
+#define EGETDATAHDR		2
+#define ENOBUFFER		3
+#define ECOPYERROR		4
+#define EGETDATACERT		5
+#define EGETDATAMORECERT	6
 
 /* TLS Certificate Hdr offset */
 #define TLS_HEADER_BYTES 9
@@ -654,7 +656,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, 
 	if (data + sizeof(struct tls_handshake_certificate) > data_end) {
 		data = get_data(skb, next, sizeof(struct tls_handshake_certificate));
 		if (!data) {
-			errout[1] = EGETDATA;
+			errout[1] = EGETDATAHDR;
 			goto out;
 		}
 		data_end = (void *)(long)skb->data_end;
@@ -689,7 +691,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, 
 		asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
 		data = get_data(skb, next, needed);
 		if (!data) {
-			errout[1] = EGETDATA;
+			errout[1] = EGETDATACERT;
 			goto out;
 		}
 		csize = needed;
@@ -759,7 +761,7 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb, struct msg_tls *event, int n
 		}
 		data = get_data(skb, next, needed);
 		if (!data) {
-			errout[1] = EGETDATA;
+			errout[1] = EGETDATAMORECERT;
 			goto out;
 		}
 		copy = needed;
