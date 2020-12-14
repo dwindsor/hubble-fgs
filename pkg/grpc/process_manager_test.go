@@ -60,7 +60,7 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 		10,
 		NewFakeK8sWatcher(pods),
 		cilium.GetFakeCiliumState(),
-		false)
+		false, false)
 	assert.NoError(t, err)
 	pod, endpoint := pm.getPodInfo("container-id-not-found", "", "", 0)
 	assert.Nil(t, pod)
@@ -122,7 +122,7 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 		10,
 		NewFakeK8sWatcher(pods),
 		cilium.GetFakeCiliumState(),
-		false)
+		false, false)
 	assert.NoError(t, err)
 	pod, endpoint := pm.getPodInfo("aaaaaaa", "/bin/command", "arg-a arg-b", 1234)
 	assert.Equal(t,
@@ -146,7 +146,7 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 		10,
 		NewFakeK8sWatcher(nil),
 		cilium.GetFakeCiliumState(),
-		false)
+		false, false)
 	assert.NoError(t, err)
 	procInternal := pm.Add(&fgsAPI.MsgExecveEventUnix{
 		Common: fgsAPI.MsgCommon{

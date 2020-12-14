@@ -127,7 +127,7 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe) error {
 	watcher := fgsGrpc.NewFakeK8sWatcher(nil)
 	ciliumState := cilium.GetFakeCiliumState()
 	processCacheSize := 32768
-	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState, true)
+	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState, true, true)
 	if err != nil {
 		return err
 	}
