@@ -6,6 +6,7 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/sirupsen/logrus"
 )
@@ -77,7 +78,7 @@ func (ec *eventCache) handleNetEvents() {
 					tmp = append(tmp, e)
 					continue
 				}
-				ec.log.WithField("Process", e.event.GetProcess()).Warn("Network event labels lookup failed")
+				metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheEndpointRetryFailed)).Inc()
 			}
 		}
 
@@ -149,7 +150,7 @@ func (ec *eventCache) handleProcEvents() {
 				tmp = append(tmp, e)
 				continue
 			}
-			ec.log.WithField("Process", e.process.Process).Warn("Exec event podInfo lookup failed")
+			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCachePodInfoRetryFailed)).Inc()
 		}
 		/* In addition to holding this event until podInfo is available we
 		 * also need to ensure that any future references in the process
@@ -204,10 +205,12 @@ func newEventCache(log logrus.FieldLogger, pm *ProcessManager) *eventCache {
 
 func (ec *eventCache) add(e eventNetObj, t *timestamp.Timestamp) {
 	event := eventNetCacheObj{event: e, timestamp: t}
+	metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheNetworkCount)).Inc()
 	ec.netCache = append(ec.netCache, event)
 }
 
 func (ec *eventCache) addProc(e *fgs.ProcessExec, t *timestamp.Timestamp, nspid uint32) {
 	event := eventProcCacheObj{process: e, timestamp: t, nspid: nspid}
+	metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheProcessCount)).Inc()
 	ec.procCache = append(ec.procCache, event)
 }
