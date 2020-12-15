@@ -30,8 +30,15 @@ struct bpf_map_def __attribute__((section("maps"), used)) process_call_heap = {
 enum {
 	string_type = 1,
 	int_type = 2,
+	skb_type = 3,
 };
 
+struct skb_type {
+	__u32 hash;
+	__u32 len;
+	__u32 priority;
+	__u32 mark;
+};
 
 static inline __attribute__((always_inline))
 int read_call_arg(char *args, int type, int off, void *arg)
@@ -48,6 +55,15 @@ int read_call_arg(char *args, int type, int off, void *arg)
 		size  = sizeof(int);
 		probe_read(&args[off], size, arg);
 		bpf_printk("off %d value %d\n", off, args[off]);
+	} else if (type == skb_type && sizeof(struct skb_type) + off < 4095) {
+		struct sk_buff *skb = (struct sk_buff *)arg;
+		struct skb_type *skb_event = (struct skb_type *)&args[off];
+
+		probe_read(&skb_event->hash, sizeof(__u32), _(&skb->hash));
+		probe_read(&skb_event->len, sizeof(__u32), _(&skb->len));
+		probe_read(&skb_event->priority, sizeof(__u32), _(&skb->priority));
+		probe_read(&skb_event->mark, sizeof(__u32), _(&skb->mark));
+		size = sizeof(struct skb_type);
 	}
 	return size;
 }

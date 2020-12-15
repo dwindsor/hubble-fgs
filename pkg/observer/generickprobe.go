@@ -12,6 +12,7 @@ import (
 const (
 	GenericKprobeStringType = 1
 	GenericKprobeIntType    = 2
+	GenericKprobeSkbType    = 3
 )
 
 func kprobeStrToTypeId(arg string) int {
@@ -20,6 +21,8 @@ func kprobeStrToTypeId(arg string) int {
 		return GenericKprobeStringType
 	case "int":
 		return GenericKprobeIntType
+	case "skb":
+		return GenericKprobeSkbType
 	default:
 		return -1
 	}
@@ -203,6 +206,21 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 
 			arg.Index = uint64(i)
 			arg.Value = string(outputStr[:])
+			unix.Args = append(unix.Args, arg)
+		case GenericKprobeSkbType:
+			var skb api.MsgGenericKprobeSkb
+			var arg api.MsgGenericKprobeArgSkb
+
+			err := binary.Read(r, binary.LittleEndian, &skb)
+			if err != nil {
+				k.log.WithError(err).Warnf("skb type err")
+			}
+
+			arg.Index = uint64(i)
+			arg.Hash = skb.Hash
+			arg.Len = skb.Len
+			arg.Priority = skb.Priority
+			arg.Mark = skb.Mark
 			unix.Args = append(unix.Args, arg)
 		}
 	}

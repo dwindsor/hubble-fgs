@@ -129,10 +129,18 @@ message ProcessCred {
     Capabilities cap = 3;
 }
 
+message KprobeSkb {
+    uint32 hash = 1;
+    uint32 len = 2;
+    uint32 priority = 3;
+    uint32 mark = 4;
+}
+
 message KprobeArgument {
     oneof arg {
-	string string_arg = 1;
-	int32 int_arg = 2;
+	string    string_arg = 1;
+	int32     int_arg = 2;
+	KprobeSkb skb_arg = 3;
     }
 }
 

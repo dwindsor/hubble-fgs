@@ -1191,6 +1191,78 @@ var _ interface {
 	ErrorName() string
 } = ProcessCredValidationError{}
 
+// Validate checks the field values on KprobeSkb with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *KprobeSkb) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Hash
+
+	// no validation rules for Len
+
+	// no validation rules for Priority
+
+	// no validation rules for Mark
+
+	return nil
+}
+
+// KprobeSkbValidationError is the validation error returned by
+// KprobeSkb.Validate if the designated constraints aren't met.
+type KprobeSkbValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e KprobeSkbValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e KprobeSkbValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e KprobeSkbValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e KprobeSkbValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e KprobeSkbValidationError) ErrorName() string { return "KprobeSkbValidationError" }
+
+// Error satisfies the builtin error interface
+func (e KprobeSkbValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sKprobeSkb.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = KprobeSkbValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = KprobeSkbValidationError{}
+
 // Validate checks the field values on KprobeArgument with the rules defined in
 // the proto definition for this message. If any rules are violated, an error
 // is returned.
@@ -1206,6 +1278,18 @@ func (m *KprobeArgument) Validate() error {
 
 	case *KprobeArgument_IntArg:
 		// no validation rules for IntArg
+
+	case *KprobeArgument_SkbArg:
+
+		if v, ok := interface{}(m.GetSkbArg()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return KprobeArgumentValidationError{
+					field:  "SkbArg",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
 
 	}
 

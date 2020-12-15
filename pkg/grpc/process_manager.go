@@ -273,6 +273,10 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 
 		case api.MsgGenericKprobeArgString:
 			a.Arg = &fgs.KprobeArgument_StringArg{StringArg: e.Value}
+		case api.MsgGenericKprobeArgSkb:
+			skbArg := &fgs.KprobeSkb{
+				Hash: e.Hash, Len: e.Len, Priority: e.Priority, Mark: e.Mark}
+			a.Arg = &fgs.KprobeArgument_SkbArg{SkbArg: skbArg}
 		}
 		fgsArgs = append(fgsArgs, a)
 	}
