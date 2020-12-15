@@ -880,6 +880,9 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 		k.handleKfreeSkb(&m)
 
+	case api.MSG_OP_GENERIC_KPROBE:
+		k.handleGenericKprobe(r)
+
 	default:
 		k.log.Infof("unknown op ignored: %v \n", op)
 	}
@@ -1274,6 +1277,8 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			k.mapDir)
 	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
 		return k.observerLoadTC(load, version, Verbosity, btf)
+	} else if load.probeType == "generic_kprobe" {
+		return k.loadGenericKprobeSensor(load, version, Verbosity, x64)
 	} else {
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,

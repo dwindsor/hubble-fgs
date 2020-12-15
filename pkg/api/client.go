@@ -76,6 +76,8 @@ const (
 
 	MSG_OP_TLS_CONT = 12
 
+	MSG_OP_GENERIC_KPROBE = 13
+
 	// just for testing
 	MSG_OP_TEST = 254
 )
@@ -420,6 +422,12 @@ type MsgCredEvent struct {
 }
 
 type MsgCredEventUnix = MsgCredEvent
+
+type MsgGenericKprobe struct {
+	Common     MsgCommon
+	ProcessKey MsgExecveKey
+	Id         uint64
+}
 
 type MsgTestEvent struct {
 	Common MsgCommon
