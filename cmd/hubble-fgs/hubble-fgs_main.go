@@ -45,6 +45,7 @@ var (
 	runStandalone              bool
 	ciliumBPF                  string
 	enableProcessCred          bool
+	genericKprobes             string
 )
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
@@ -72,7 +73,7 @@ func hubbleFGSExecute() error {
 	}
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
-		networkInterfaces,
+		networkInterfaces, genericKprobes,
 		viper.GetBool("tls"), viper.GetBool("tlstc"),
 		viper.GetBool("debug"))
 
@@ -242,6 +243,9 @@ func init() {
 	flags.StringVar(&ciliumBPF, "cilium-bpf", "", "Cilium BPF directory")
 	flags.BoolVar(&enableProcessCred, "enable-process-cred", false, "Enable process_cred events")
 	viper.BindPFlags(flags)
+
+	// Options for generic Kprobes
+	flags.StringVar(&genericKprobes, "generic-kprobe", "", "Comma separated list of kprobes signatures to load")
 
 	// Options for debugging/development, not visible to users
 	flags.BoolVar(&runStandalone, "run-standalone", false, "Just start the observer and dump events to stdout")
