@@ -3,7 +3,6 @@ package observer
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"strings"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
@@ -90,18 +89,18 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		btf := bpf.GetBTF(btfBaseFile)
 		ret := bpf.AddEnumBtf(btf, genericFuncArgsEnum, 4)
 		if ret < 0 {
-			fmt.Printf("error add enum args %d\n", ret)
+			k.log.Warn("error add enum args %d", ret)
 		}
 		ret = bpf.AddEnumBtfValue(btf, kprobeGenericId, i)
 		if ret < 0 {
-			fmt.Printf("error add enum gen id value %d\n", ret)
+			k.log.Warn("error add enum gen id value %d", ret)
 		}
 
 		for j, f := range args {
 			argType := kprobeStrToTypeId(f)
 			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(j), argType)
 			if retVal < 0 {
-				fmt.Printf("error add enum btf value %d\n", retVal)
+				k.log.Warn("error add enum btf value %d", retVal)
 			}
 			argPrinters = append(argPrinters, argType)
 		}
