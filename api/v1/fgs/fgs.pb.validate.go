@@ -1191,6 +1191,183 @@ var _ interface {
 	ErrorName() string
 } = ProcessCredValidationError{}
 
+// Validate checks the field values on KprobeArgument with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *KprobeArgument) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	switch m.Arg.(type) {
+
+	case *KprobeArgument_StringArg:
+		// no validation rules for StringArg
+
+	case *KprobeArgument_IntArg:
+		// no validation rules for IntArg
+
+	}
+
+	return nil
+}
+
+// KprobeArgumentValidationError is the validation error returned by
+// KprobeArgument.Validate if the designated constraints aren't met.
+type KprobeArgumentValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e KprobeArgumentValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e KprobeArgumentValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e KprobeArgumentValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e KprobeArgumentValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e KprobeArgumentValidationError) ErrorName() string { return "KprobeArgumentValidationError" }
+
+// Error satisfies the builtin error interface
+func (e KprobeArgumentValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sKprobeArgument.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = KprobeArgumentValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = KprobeArgumentValidationError{}
+
+// Validate checks the field values on ProcessKprobe with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *ProcessKprobe) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetProcess()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessKprobeValidationError{
+				field:  "Process",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetParent()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessKprobeValidationError{
+				field:  "Parent",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for FunctionName
+
+	for idx, item := range m.GetArgs() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return ProcessKprobeValidationError{
+					field:  fmt.Sprintf("Args[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// ProcessKprobeValidationError is the validation error returned by
+// ProcessKprobe.Validate if the designated constraints aren't met.
+type ProcessKprobeValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ProcessKprobeValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ProcessKprobeValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ProcessKprobeValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ProcessKprobeValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ProcessKprobeValidationError) ErrorName() string { return "ProcessKprobeValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ProcessKprobeValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sProcessKprobe.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ProcessKprobeValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ProcessKprobeValidationError{}
+
 // Validate checks the field values on Test with the rules defined in the proto
 // definition for this message. If any rules are violated, an error is returned.
 func (m *Test) Validate() error {
@@ -3048,6 +3225,18 @@ func (m *GetEventsResponse) Validate() error {
 			if err := v.Validate(); err != nil {
 				return GetEventsResponseValidationError{
 					field:  "ProcessCred",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *GetEventsResponse_ProcessKprobe:
+
+		if v, ok := interface{}(m.GetProcessKprobe()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsResponseValidationError{
+					field:  "ProcessKprobe",
 					reason: "embedded message failed validation",
 					cause:  err,
 				}

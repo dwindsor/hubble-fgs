@@ -129,6 +129,20 @@ message ProcessCred {
     Capabilities cap = 3;
 }
 
+message KprobeArgument {
+    oneof arg {
+	string string_arg = 1;
+	int32 int_arg = 2;
+    }
+}
+
+message ProcessKprobe {
+    Process process = 1;
+    Process parent = 2;
+    string function_name = 3;
+    repeated KprobeArgument args = 4;
+}
+
 message Test {}
 
 enum TlsCertificateError {
@@ -306,6 +320,7 @@ message GetEventsResponse {
         ProcessClose process_close = 6;
 	ProcessAccept process_accept = 7;
 	ProcessCred process_cred = 8;
+	ProcessKprobe process_kprobe = 9;
 
 	Test test = 40000;
     }

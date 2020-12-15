@@ -128,6 +128,12 @@ func (ec *eventCache) handleNetEvents() {
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
+		case *fgs.ProcessKprobe:
+			processedEvent = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: event},
+				NodeName: ec.pm.nodeName,
+				Time:     e.timestamp,
+			}
 		}
 
 		ec.pm.notifyListeners(processedEvent)

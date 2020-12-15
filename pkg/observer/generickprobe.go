@@ -58,26 +58,30 @@ func kprobeArgToString(a int) string {
 
 var (
 	// A map of BTF images. generic_kprobe_name -> btf
-	genericKprobeBtf map[string]uintptr
-	genericKprobeId  map[uint64][]int
+	genericKprobeBtf  map[string]uintptr
+	genericKprobeId   map[uint64][]int
+	genericKprobeName map[uint64]string
 )
 
 func (k *ObserverKprobe) initKprobeSensors() {
 	genericKprobeBtf = make(map[string]uintptr, 1)
 	genericKprobeId = make(map[uint64][]int, 1)
+	genericKprobeName = make(map[uint64]string, 1)
 }
 
 func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile string) *observerSensor {
 	var progs []*bpfLoad
 
-	fmt.Printf("loading sensors %s btfBase %s\n", sensorList, btfBaseFile)
+	if sensorList == "" {
+		return nil
+	}
+
 	sensors := strings.Split(sensorList, ",")
 	// sensors <- function(arg1:arg2:arg3:arg4:arg5)
 	for i, s := range sensors {
 		var argPrinters []int
 
 		funcSplit := strings.Split(s, "(")
-		fmt.Printf("funcSplit %s\n", funcSplit)
 		filterSplit := strings.Split(funcSplit[1], ")")
 		funcName := funcSplit[0]
 		args := strings.Split(filterSplit[0], ":")
@@ -103,6 +107,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		}
 		genericKprobeBtf[funcName] = btf
 		genericKprobeId[uint64(i)] = argPrinters
+		genericKprobeName[uint64(i)] = funcName
 
 		load := &bpfLoad{}
 		load.Observer__program = HubbleLib + "bpf_generic_kprobe.o"
@@ -121,11 +126,11 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 
 	// some maps we might want to use
 	maps := []*ObserverMap{
-		&ObserverTCPMonMap,
-		&ObserverExecveMap,
-		&ObserverSocketMap,
-		&ObserverExecveStats,
-		&ObserverSocketStats,
+		//	&ObserverTCPMonMap,
+		//	&ObserverExecveMap,
+		//	&ObserverSocketMap,
+		//	&ObserverExecveStats,
+		//	&ObserverSocketStats,
 	}
 
 	return &observerSensor{
@@ -156,40 +161,61 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 
 func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	m := api.MsgGenericKprobe{}
+	unix := &api.MsgGenericKprobeUnix{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		k.log.WithError(err).Warnf("Failed to read process call msg")
 		return
 	}
 
+	unix.Common = m.Common
+	unix.ProcessKey = m.ProcessKey
+	unix.Id = m.Id
+	unix.FuncName = genericKprobeName[m.Id]
+
 	printerArgs := genericKprobeId[m.Id]
-	fmt.Printf("%d(", m.Id)
-	for _, arg := range printerArgs {
+	for i, arg := range printerArgs {
 		switch arg {
 		case GenericKprobeIntType:
-			var output uint32
+			var output int32
+			var arg api.MsgGenericKprobeArgInt
 
 			err := binary.Read(r, binary.LittleEndian, &output)
 			if err != nil {
 				k.log.WithError(err).Warnf("Int type error")
 			}
-			fmt.Printf("%i", output)
+
+			arg.Index = uint64(i)
+			arg.Value = output
+			unix.Args = append(unix.Args, arg)
 		case GenericKprobeStringType:
 			var b uint32
+			var arg api.MsgGenericKprobeArgString
 
 			err := binary.Read(r, binary.LittleEndian, &b)
 			if err != nil {
 				k.log.WithError(err).Warnf("StringSz type err")
 			}
-			fmt.Printf("[%d]", b)
 			outputStr := make([]byte, b)
 			err = binary.Read(r, binary.LittleEndian, &outputStr)
 			if err != nil {
 				k.log.WithError(err).Warnf("String type err")
 			}
 
-			fmt.Printf("%s,", outputStr)
+			arg.Index = uint64(i)
+			arg.Value = string(outputStr[:])
+			unix.Args = append(unix.Args, arg)
 		}
 	}
-	fmt.Printf(")\n")
+
+	k.observerListenersKprobe(unix)
+}
+
+func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) {
+	for listener, _ := range k.listeners {
+		if err := listener.Notify(msg); err != nil {
+			k.log.Debug("Write failure removing Listener")
+			k.RemoveListener(listener)
+		}
+	}
 }

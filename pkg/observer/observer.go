@@ -2100,10 +2100,12 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	}
 
 	// Load initial set of generic kprobe sensors */
-	k.initKprobeSensors()
-	genericKprobeSensor := k.createGenericKprobeSensors(k.genericKprobes, ObserverBTF)
-	if err := k.observerLoadSensor(ctx, genericKprobeSensor); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting could not load initial kprobe sensors. %s\n", err)
+	if k.genericKprobes != "" {
+		k.initKprobeSensors()
+		genericKprobeSensor := k.createGenericKprobeSensors(k.genericKprobes, ObserverBTF)
+		if err := k.observerLoadSensor(ctx, genericKprobeSensor); err != nil {
+			return fmt.Errorf("hubble-fgs, Aborting could not load initial kprobe sensors. %s\n", err)
+		}
 	}
 
 	// TODO: guard these with a flag

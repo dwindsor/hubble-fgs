@@ -244,6 +244,67 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.Ge
 	return res
 }
 
+func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKprobe {
+	var fgsParent, fgsProcess *fgs.Process
+	var fgsArgs []*fgs.KprobeArgument
+
+	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process == nil {
+		fgsProcess = &fgs.Process{
+			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
+	} else {
+		fgsProcess = process.process
+		pm.cache.refInc(process)
+	}
+	if parent == nil {
+		fgsParent = &fgs.Process{}
+	} else {
+		fgsParent = parent.process
+		pm.cache.refInc(parent)
+	}
+
+	for _, arg := range event.Args {
+		a := &fgs.KprobeArgument{}
+		switch e := arg.(type) {
+		case api.MsgGenericKprobeArgInt:
+			a.Arg = &fgs.KprobeArgument_IntArg{IntArg: e.Value}
+
+		case api.MsgGenericKprobeArgString:
+			a.Arg = &fgs.KprobeArgument_StringArg{StringArg: e.Value}
+		}
+		fgsArgs = append(fgsArgs, a)
+	}
+
+	fgsEvent := &fgs.ProcessKprobe{
+		Process:      fgsProcess,
+		Parent:       fgsParent,
+		FunctionName: event.FuncName,
+		Args:         fgsArgs,
+	}
+
+	if fgsProcess.Docker != "" {
+		if pm.enableEventCache == true && fgsEvent.Process.Pod == nil {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+			return nil
+		}
+	}
+	return fgsEvent
+}
+
+func (pm *ProcessManager) handleGenericKprobeMessage(msg *api.MsgGenericKprobeUnix) *fgs.GetEventsResponse {
+	k := pm.GetProcessKprobe(msg)
+	if k == nil {
+		return nil
+	}
+	return &fgs.GetEventsResponse{
+		Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: k},
+		NodeName: pm.nodeName,
+		Time:     ktimeToProto(msg.Common.Ktime),
+	}
+}
+
 // Notify implements Listener.Notify.
 func (pm *ProcessManager) Notify(event interface{}) error {
 	var processedEvent *fgs.GetEventsResponse
@@ -260,6 +321,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleCredMessage(msg)
 	case *api.MsgKfreeSkbUnix:
 		processedEvent = pm.handleKfreeSkbMessage(msg)
+	case *api.MsgGenericKprobeUnix:
+		processedEvent = pm.handleGenericKprobeMessage(msg)
 	case *api.MsgTestEventUnix:
 		processedEvent = pm.handleTestMessage(msg)
 
