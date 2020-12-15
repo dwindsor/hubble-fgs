@@ -136,6 +136,7 @@ enum msg_ops {
 	MSG_OP_CREDS = 10,
 	MSG_OP_KFREE_SKB = 11,
 	MSG_OP_TLS_CONT = 12,
+	MSG_OP_GENERIC_KPROBE = 13,
 
 	MSG_OP_MAX,
 
@@ -250,6 +251,13 @@ struct msg_creds {
 	struct msg_common common;
 	struct msg_execve_key current;
 	struct msg_capabilities caps;
+};
+
+struct msg_generic_kprobe {
+	struct msg_common common;
+	struct msg_execve_key current;
+	__u64 id;
+	char args[4096];
 };
 
 struct msg_execve_event {

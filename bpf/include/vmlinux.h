@@ -1,3 +1,14 @@
+/* User configurable BTF */
+enum generic_func_args_enum {
+	func_id = 0x1,
+	arg0    = 0x2,
+	arg1    = 0x3,
+	arg2    = 0x4,
+	arg3    = 0x5,
+	arg4    = 0x6,
+};
+
+/* Kernel BTF */
 typedef signed char __s8;
 
 typedef unsigned char __u8;
