@@ -69,7 +69,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
+func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) (*ObserverKprobe, error) {
 	ctx, _ := context.WithCancel(context.Background())
 	var uts syscall.Utsname
 
@@ -110,13 +110,17 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) *ObserverKprobe {
 	if testing.Verbose() {
 		Verbosity = 1
 	}
-	kprobe.ConfigureBTF(ctx)
+	err := kprobe.ConfigureBTF(ctx)
+	if err != nil {
+		return nil, err
+	}
+
 	loadExporter(t, kprobe)
 	loadObserver(t, kprobe)
 
 	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
 	kprobe.perfConfig.MapName = observerTestDir + "tcpmon_map"
-	return kprobe
+	return kprobe, nil
 }
 
 func loadExporter(t *testing.T, kprobe *ObserverKprobe) error {
@@ -182,7 +186,10 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 }
 
 func TestObjectLoad(t *testing.T) {
-	kprobe := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 	initialSensor := kprobe.createInitialObserverSensor()
 	kprobe.observerLoadSensor(context.TODO(), initialSensor)
 	kprobe.RemovePrograms()
@@ -654,7 +661,10 @@ func TestConnectEvent(t *testing.T) {
 		},
 	}
 
-	kprobe := getDefaultObserver(t, false, false, true)
+	kprobe, err := getDefaultObserver(t, false, false, true)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
@@ -739,7 +749,10 @@ func TestExecEventClone(t *testing.T) {
 		},
 	}
 
-	kprobe := getDefaultObserver(t, false, false, true)
+	kprobe, err := getDefaultObserver(t, false, false, true)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 
 	/* Verify initial KprobeEvent Execve "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
 	//	kprobe.AttachFilter(&ncExecFilter)
@@ -813,7 +826,10 @@ func TestExistingListenEvent(t *testing.T) {
 	cmdServer.Start()
 
 	/* Create kprobe */
-	kprobe := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 
 	if cmdServer != nil {
 		cmdServer.Process.Kill()
@@ -873,7 +889,11 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create kprobe */
-	kprobe := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+
 	if cmdServer != nil {
 		cmdServer.Process.Kill()
 	}
@@ -888,7 +908,10 @@ func TestLoadTCTls(t *testing.T) {
 	if minKernelVersion("4.19.0") != true {
 		return
 	}
-	kprobe := getDefaultObserver(t, false, true, false)
+	kprobe, err := getDefaultObserver(t, false, true, false)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 	testDone(t, kprobe)
 }
 
@@ -942,7 +965,10 @@ func TestTCTls13(t *testing.T) {
 		},
 	}
 
-	kprobe := getDefaultObserver(t, false, true, false)
+	kprobe, err := getDefaultObserver(t, false, true, false)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://google.com")
 	retries := jsonRetries
@@ -1002,7 +1028,10 @@ func TestTCTls12(t *testing.T) {
 		},
 	}
 
-	kprobe := getDefaultObserver(t, false, true, false)
+	kprobe, err := getDefaultObserver(t, false, true, false)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
 	retries := jsonRetries
@@ -1109,7 +1138,10 @@ func TestListenAcceptClose(t *testing.T) {
 		*/
 	}
 
-	kprobe := getDefaultObserver(t, false, false, true)
+	kprobe, err := getDefaultObserver(t, false, false, true)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
 	execWG.Wait()
@@ -1144,8 +1176,10 @@ func TestSensorLseekLoad(t *testing.T) {
 		},
 	}
 
-	kprobe := getDefaultObserver(t, false, false, false)
-
+	kprobe, err := getDefaultObserver(t, false, false, false)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
 	sensor := &observerSensor{name: "lseekTest", progs: progs, maps: maps}
@@ -1180,7 +1214,10 @@ func TestSensorLseekEnable(t *testing.T) {
 		},
 	}
 
-	kprobe := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
 	defer func() {
 		kprobe.RemovePrograms()
 		kprobe.PrintStats()
