@@ -680,9 +680,9 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, 
 	}
 
 	if (data + csize > data_end) {
-		int needed = csize + next;
+		int needed = csize;
 
-		if (needed > skb->len) {
+		if (next + needed > skb->len) {
 			needed = skb->len - next;
 			event->type = TLS_TYPE_MORE_DATA;
 			remaining = csize - needed;
