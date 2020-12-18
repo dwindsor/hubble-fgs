@@ -1,3 +1,5 @@
+#!/bin/bash
+
 apt update
 echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe multiverse
       deb http://ddebs.ubuntu.com $(lsb_release -cs)-updates main restricted universe multiverse
@@ -5,7 +7,9 @@ echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe mu
 tee -a /etc/apt/sources.list.d/ddebs.list
 apt install ubuntu-dbgsym-keyring
 apt update
-apt install linux-image-unsigned-`uname -r`-dbgsym
+k=`uname -r`
+k="${k/1032/1031}"
+apt install linux-image-unsigned-${k}-dbgsym
 echo "debug images pulled"
 echo `ls /usr/lib/debug/boot/`
 echo "docker run and build"
@@ -13,8 +17,10 @@ docker run --name btf-build -v /usr/lib/debug/boot:/kernels/ quay.io/isovalent/h
 "
 	export LD_LIBRARY_PATH=/usr/local/lib/lib/ && \
 	cd /kernels/ && \
-	pahole -J vmlinux-`uname -r` && \
-	llvm-objcopy --dump-section .BTF=.btf.vmlinux.bin vmlinux-`uname -r` && \
+	k=`uname -r` && \
+	k="${k/1032/1031}" && \
+	pahole -J vmlinux-${k} && \
+	llvm-objcopy --dump-section .BTF=.btf.vmlinux.bin vmlinux-${k} && \
 	llvm-objcopy -I binary -O elf64-x86-64 --rename-section .data=.BTF ./.btf.vmlinux.bin ./btf
 "
 docker cp btf-build:/kernels/btf ./bpf/btf
