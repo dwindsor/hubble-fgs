@@ -768,7 +768,6 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 				cert := make([]byte, bytes-header)
 				err = binary.Read(r, binary.LittleEndian, &cert)
 				if err != nil {
-					fmt.Printf("bytes %d header %d\n", bytes, header)
 					errCode = api.TlsCertificateErrorCertRead
 				} else {
 					if len(k.cCert) != 0 {
@@ -776,8 +775,8 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 						k.cCert = nil
 					}
 					certStrings, code = reader.GetTLSCertificateString(cert)
-					if code != 0 {
-						errCode = api.TlsCertificateErrorCertPartial
+					if code == api.TlsCertificateErrorCertPartial {
+						errCode = code
 						/* Need to store and submit when remaining bits show up. */
 						v := &MsgTLSEventCert{}
 						v.tls = m
@@ -785,6 +784,8 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 						v.header = 0
 						k.tlsInProgress[m.Tuple] = v
 						break
+					} else if code != 0 {
+						errCode = code
 					}
 				}
 			}
