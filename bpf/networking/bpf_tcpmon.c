@@ -88,10 +88,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		tuple.dport = dport;
 		tuple.sport = key.sport;
 		tuple.uid = 0;
-		tuple.proto = 0;
-		tuple.pad[0] = 0;
-		tuple.pad[1] = 0;
-		tuple.pad[2] = 0;
+		tuple.remaining = 0;
 
 		v.pid = process->key.pid;
 		v.ktime = process->key.ktime;

@@ -74,6 +74,8 @@ const (
 
 	MSG_OP_KFREE_SKB = 11
 
+	MSG_OP_TLS_CONT = 12
+
 	// just for testing
 	MSG_OP_TEST = 254
 )
@@ -208,6 +210,7 @@ const (
 	TlsCertificateErrorCertRead    = 0x0400
 	TlsCertificateErrorCertPartial = 0x0800
 	TlsCertificateErrorParseX509   = 0x1000
+	TlsCertificateErrorNullRead    = 0x2000
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
@@ -345,13 +348,12 @@ type MsgExecveEventUnix struct {
 }
 
 type MsgTLSIPv4 struct {
-	SAddr uint32
-	DAddr uint32
-	DPort uint16
-	SPort uint16
-	Uid   uint64
-	Proto uint8
-	Pad   [3]uint8
+	SAddr     uint32
+	DAddr     uint32
+	DPort     uint16
+	SPort     uint16
+	Uid       uint64
+	Remaining uint32
 }
 
 type MsgTLS struct {

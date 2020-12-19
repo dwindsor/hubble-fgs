@@ -684,114 +684,128 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	k.recvCntr++
 	r := bytes.NewReader(data)
 
-	/* If a continuation message set the op handler */
-	if k.cType != api.MSG_OP_UNDEF {
-		op = uint8(k.cType)
-	}
-
 	switch op {
 	case api.MSG_OP_TLS:
 		var m *api.MsgTLSEvent
 		var certStrings []string
 		errCode := uint32(0)
 
-		if k.cType == api.MSG_OP_UNDEF {
-			m = &api.MsgTLSEvent{}
-			err := binary.Read(r, binary.LittleEndian, m)
-			if err != nil {
-				break
-			}
+		m = &api.MsgTLSEvent{}
+		err := binary.Read(r, binary.LittleEndian, m)
+		if err != nil {
+			break
+		}
 
-			if n, ok := k.tlsInProgress[m.Tuple]; ok {
-				k.cType = api.MSG_OP_TLS
-				k.cMsg = n.tls
-				k.cCert = n.cert
-				k.header = n.header
-				break
-			}
-			// This bit is an optimization. Because initial part of cert will
-			// immediately follow the event AND will usually be complete we
-			// can simply tell reader the next event is the cert and hopefully
-			// only use the map in rare cases.
-			if (m.ServerHello.Flags & api.TlsFlagCert) != 0 {
-				k.cType = api.MSG_OP_TLS
-				k.cMsg = m
-				break
+		/* Certificates will be part of continuation message we cache
+		 * MsgTlsEvent until certificates arrive.
+		 */
+		if (m.ServerHello.Flags & api.TlsFlagCert) != 0 {
+			v := &MsgTLSEventCert{}
+			v.tls = m
+			v.cert = make([]byte, 0)
+			k.tlsInProgress[m.Tuple] = v
+			break
+		}
+
+		msgUnix := msgToTLSEventUnix(m, certStrings, errCode)
+		/* OR filter together */
+		k.observerListenersTLS(msgUnix)
+		/* Keeping pretty printer because it helps debugging filters */
+		if k.prettyPrinter {
+			reader.ObserverTLSPrinter(msgUnix, k.log)
+		}
+	case api.MSG_OP_TLS_CONT:
+		var certStrings []string
+		var bytes uint32
+		var errCode uint32
+
+		binary.Read(r, binary.LittleEndian, &op)
+		key := api.MsgTLSIPv4{}
+		err := binary.Read(r, binary.LittleEndian, &key)
+
+		/* We hide a completion bit in the struct, but is not used to
+		 * as part of the key lookup.
+		 */
+		remaining := key.Remaining
+		key.Remaining = 0
+
+		m := k.tlsInProgress[key]
+		/* If m is nil this implies either we incorrectly deleted a map
+		 * entry. (datapath indicated no more bytes, but then sent more?)
+		 * Or the entry was never populated in the first place. This would
+		 * indicate a MSG_OP_TLS_CONT event without a matching MSG_OP_TLS
+		 * event. A small aside, apparently there is some small window
+		 * where this could happen due to OOO events. To trigger this case
+		 * one core would have to submit MSG_OP_TLS+MSG_OP_TLS_CONT event
+		 * and then signal more data is needed. At this point in-theory an
+		 * skb could be received on a different core and that cpu could
+		 * post a MSG_OP_TLS_CONT event. But, really RSS should keep a
+		 * TLS flow pinned to a core so somehow RSS would have to break
+		 * first. TBD handle in-theory case with yet another cache?
+		 */
+		if m == nil {
+			m = &MsgTLSEventCert{}
+			errCode = api.TlsCertificateErrorNullRead
+		} else if err = binary.Read(r, binary.LittleEndian, &bytes); err != nil {
+			errCode = api.TlsCertificateErrorLengthRead
+		} else if bytes == 0 {
+			var errBpf uint8
+
+			errCode = api.TlsCertificateErrorLengthRead
+			err := binary.Read(r, binary.LittleEndian, &errBpf)
+			if err == nil {
+				errCode = uint32(errBpf)
+			} else {
+				errCode = api.TlsCertificateErrorMissingCode
 			}
 		} else {
-			var bytes uint32
+			header := uint32(4)
+			var code uint32
 
-			k.cType = api.MSG_OP_UNDEF
-			delete(k.tlsInProgress, k.cMsg.Tuple)
+			/* If we are glueing together fragments we don't have a header */
+			if len(m.cert) != 0 {
+				header = 0
+			}
 
-			m = k.cMsg
-			err := binary.Read(r, binary.LittleEndian, &bytes)
+			if m.header != 0 {
+				header -= m.header
+			}
+
+			/* Its possible we don't even have the header to read */
+			if bytes < header {
+				m.cert = nil
+				m.header = bytes + k.header
+				k.tlsInProgress[key] = m
+				break
+			}
+
+			k.header = 0
+
+			cert := make([]byte, bytes-header)
+			err = binary.Read(r, binary.LittleEndian, &cert)
 			if err != nil {
-				errCode = api.TlsCertificateErrorLengthRead
-			} else if bytes == 0 {
-				var errBpf uint8
-
-				errCode = api.TlsCertificateErrorLengthRead
-				err := binary.Read(r, binary.LittleEndian, &errBpf)
-				if err == nil {
-					errCode = uint32(errBpf)
-				} else {
-					errCode = api.TlsCertificateErrorMissingCode
-				}
+				errCode = api.TlsCertificateErrorCertRead
 			} else {
-				var code uint32
-				header := uint32(4)
-
-				/* If we are glueing together fragments we don't have a header */
-				if len(k.cCert) != 0 {
-					header = 0
+				if len(m.cert) != 0 {
+					cert = append(m.cert, cert...)
 				}
-
-				if k.header != 0 {
-					header -= k.header
-				}
-
-				/* Its possible we don't even have the header to read */
-				if bytes < header {
-					v := &MsgTLSEventCert{}
-					v.tls = m
-					v.cert = nil
-					v.header = bytes + k.header
-					k.tlsInProgress[m.Tuple] = v
-					k.header = 0
-					fmt.Printf("Read smaller than header %d < %d\n", bytes, header)
+				if remaining != 0 {
+					/* Need to store and submit when remaining bits show up. */
+					m.cert = cert
+					m.header = 0
+					k.tlsInProgress[key] = m
 					break
 				}
 
-				k.header = 0
-
-				cert := make([]byte, bytes-header)
-				err = binary.Read(r, binary.LittleEndian, &cert)
-				if err != nil {
-					errCode = api.TlsCertificateErrorCertRead
-				} else {
-					if len(k.cCert) != 0 {
-						cert = append(k.cCert, cert...)
-						k.cCert = nil
-					}
-					certStrings, code = reader.GetTLSCertificateString(cert)
-					if code == api.TlsCertificateErrorCertPartial {
-						errCode = code
-						/* Need to store and submit when remaining bits show up. */
-						v := &MsgTLSEventCert{}
-						v.tls = m
-						v.cert = cert
-						v.header = 0
-						k.tlsInProgress[m.Tuple] = v
-						break
-					} else if code != 0 {
-						errCode = code
-					}
+				certStrings, code = reader.GetTLSCertificateString(cert)
+				if code != 0 {
+					errCode = code
 				}
 			}
 		}
 
-		msgUnix := msgToTLSEventUnix(m, certStrings, errCode)
+		delete(k.tlsInProgress, key)
+		msgUnix := msgToTLSEventUnix(m.tls, certStrings, errCode)
 
 		/* OR filter together */
 		k.observerListenersTLS(msgUnix)

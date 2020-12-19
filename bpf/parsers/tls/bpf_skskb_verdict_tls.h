@@ -67,29 +67,16 @@ int bpf_skskb_verdict_tls(struct __sk_buff *skb)
 		post->clienthello.alert_level = 0;
 
 		if (!(post->serverhello.flags & TLS_VERSION)) {
-			event->bytes = bpf_skskb_post_cert(skb, event, next, &cb0);
+			event->bytes = bpf_skskb_post_cert(skb, &key, event, next, &cb0);
 			if (event->bytes)
 				event->type = TLS_TYPE_MORE_DATA;
+			else
+				event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
 		}
 	} else if (is_expected_tls_data(event)) {
-		struct msg_tls_event *post;
-
-		post = map_lookup_elem(&heap, &zero);	
-		if (!post)
-			return SK_PASS;
-
-		post->tuple = key;
-		post->common.op = MSG_OP_TLS;
-		post->common.size = sizeof(struct msg_tls_event);
-		post->common.ktime = ktime_get_ns();
-
-		execve = lookup_socketmap(&key);
-		if (execve)
-			post->execve = *execve;
-		post->serverhello.flags |= TLS_CERT;
-		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post, sizeof(struct msg_tls_event));
-		event->bytes = bpf_skskb_post_more_cert(skb, event, 0, event->bytes);
-		return SK_PASS;
+		event->bytes = bpf_skskb_post_more_cert(skb, &key, event, 0, event->bytes);
+		if (!event->bytes)
+			event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
 	}
 
 	return SK_PASS;

@@ -42,10 +42,7 @@ int event_ipv4_close(struct pt_regs *ctx)
 	probe_read(&tuple.dport, sizeof(tuple.dport), _(&(skp->__sk_common.skc_dport)));
 	probe_read(&tuple.uid,   sizeof(tuple.uid),   _(&(skp->__sk_common.skc_net.net)));
 
-	tuple.proto = 0;
-	tuple.pad[0] = 0;
-	tuple.pad[1] = 0;
-	tuple.pad[2] = 0;
+	tuple.remaining = 0;
 
 	value.common.flags = 0;
 	value.common.pad[0] = 0;

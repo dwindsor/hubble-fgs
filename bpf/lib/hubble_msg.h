@@ -135,6 +135,7 @@ enum msg_ops {
 	MSG_OP_IPV4_TCPACCEPT = 9,
 	MSG_OP_CREDS = 10,
 	MSG_OP_KFREE_SKB = 11,
+	MSG_OP_TLS_CONT = 12,
 
 	MSG_OP_MAX,
 
@@ -281,8 +282,7 @@ struct msg_tls_ipv4 {
 	__u16 dport;
 	__u16 sport;
 	__u64 uid;
-	__u8  proto;
-	__u8  pad[3];
+	__u32 remaining;
 } __attribute__((packed));
 
 #define SOCKET_TLS_DONE 0x0001

@@ -137,7 +137,6 @@ void skb_tls_key_ct_xchg(struct msg_tls_ipv4 *key)
 	port = key->sport;
 	key->sport = key->dport;
 	key->dport = port;
-	key->proto = 0;
 }
 
 __attribute__((section(("classifier/ingress_tcp")), used))
@@ -231,7 +230,7 @@ int event_tc_ingress_tls_cert(struct __sk_buff *skb)
 	if (!event)
 		return TC_ACT_UNSPEC;
 
-	event->bytes = bpf_skskb_post_cert(skb, event, next, &skb->cb[0]);
+	event->bytes = bpf_skskb_post_cert(skb, &key, event, next, &skb->cb[0]);
 	if (event->bytes) {
 		event->type = TLS_TYPE_MORE_DATA;
 		/* If there is more data in the current skb then the
@@ -240,6 +239,8 @@ int event_tc_ingress_tls_cert(struct __sk_buff *skb)
 		 */
 		if (skb->cb[0])
 			tail_call(skb, &tls_calls, 1);
+	} else {
+		event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
 	}
 	return TC_ACT_UNSPEC;
 }
@@ -248,9 +249,8 @@ __attribute__((section(("classifier/1")), used))
 int event_tc_ingress_tls_data(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
-	struct msg_tls_event *post;
 	struct msg_tls *event;
-	int zero = 0, off = 0;
+	int off = 0;
 
 	off = skb->cb[0];
 	key.saddr = skb->cb[1];
@@ -258,26 +258,12 @@ int event_tc_ingress_tls_data(struct __sk_buff *skb)
 	key.sport = skb->cb[3];
 	key.dport = skb->cb[4];
 	/* uid/proto are unused in tc tls hook */
-
-	/* TBD we have to do this shuffling because we can't pass
-	 * the map through the tailcall on 4.19 kernels. Once we
-	 * settle down a bit we should fix kernel to allow pointer
-	 * passing. For 5.1+ we can simply make this an inline call
-	 * with 1mil insns.
-	 */
-	post = map_lookup_elem(&heap, &zero);
-	if (!post)
-		return TC_ACT_UNSPEC;
-
 	event = event_tc_from_skb(skb, &key);
 	if (!event)
 		return TC_ACT_UNSPEC;
-
-	memset(&post->serverhello, 0, sizeof(post->serverhello));
-	event_tc_build(post, &key);
-	post->serverhello.flags |= TLS_CERT;
-
-	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post, sizeof(struct msg_tls_event));
-	event->bytes = bpf_skskb_post_more_cert(skb, event, off, event->bytes);
+	event->bytes = bpf_skskb_post_more_cert(skb, &key, event, off, event->bytes);
+	/* If no more bytes are expected mark socket as complete */
+	if (!event->bytes)
+		event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
 	return TC_ACT_UNSPEC;
 }

@@ -67,6 +67,7 @@ struct tls_extension {
 #endif
 
 #define TLS_TYPE_MORE_DATA  1
+#define TLS_TYPE_HANDSHAKE_COMPLETE 2
 #define TLS_TYPE_ALERT 21
 #define TLS_TYPE_HANDSHAKE 22
 
@@ -524,7 +525,6 @@ static inline __attribute__((always_inline))
 void skb_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
 	key->daddr = skmsg->remote_ip4;
 	key->saddr = skmsg->local_ip4;
-	key->proto = 0;
 	key->dport = TLS_REMOTE_PORT;
 	key->sport = skmsg->local_port;
 }
@@ -534,7 +534,6 @@ void sk_skb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
 {
 	key->daddr = skb->remote_ip4;
 	key->saddr = skb->local_ip4;
-	key->proto = 0;
 	key->dport = TLS_REMOTE_PORT;
 	key->sport = skb->local_port;
 
@@ -569,7 +568,6 @@ void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
 	iphdr = (void *)eth + sizeof(struct ethhdr);
 	key->daddr = iphdr->daddr;
 	key->saddr = iphdr->saddr;
-	key->proto = 0;
 
 	tcp_off = iphdr->ihl;
 	tcp_off &= 0x0f;
@@ -636,14 +634,31 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 /* TBD: JF, extend verifier to understand void functions */
 #ifndef SK_MSG
 static inline __attribute__((always_inline))
-int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, __u32 *cb0)
+int bpf_skskb_post_cert(struct __sk_buff *skb,
+			struct msg_tls_ipv4 *key,
+			struct msg_tls *event,
+			int next, __u32 *cb0)
 {
+	int *length, copied, zero = 0, *errout;
 	void *data, *data_end = (void *)(long)skb->data_end;
 	void *tls_server_hello = (void*)(long)skb->data;
 	struct tls_handshake_certificate *cert;
-	int *length, copied, remaining = 0, zero = 0, errout[2];
+	__u8 *start, *buffer;
 	__u32 csize = 0;
-	__u8 *buffer;
+
+	/* We get away with posting without a header because we have
+	 * a flag above indicating the cert is the next event and this
+	 * is a non-preemptive hook so we can be certain the user side
+	 * will in-fact get this event immediately after above.
+	 */
+	start = map_lookup_elem(&tls_heap, &zero);
+	if (!start) // This should never happen its a zero index lookup
+		return 0;
+	buffer = start + sizeof(struct msg_tls_ipv4) + sizeof(__u8);
+	start[0] = MSG_OP_TLS_CONT;
+	memcpy(start + 1, key, sizeof(struct msg_tls_ipv4));
+	key = (struct msg_tls_ipv4 *)(start + 1);
+	errout = (int*)buffer;
 
 	next += TLS_HEADER_BYTES; // Account for TLS Server Hello header
 	if (next > 4096) {
@@ -668,24 +683,13 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, 
 	csize += 4 + 1;
 	asm volatile ("%[csize] &= 0x0fff;\n": [csize] "+r"(csize)::);
 
-	/* We get away with posting without a header because we have
-	 * a flag above indicating the cert is the next event and this
-	 * is a non-preemptive hook so we can be certain the user side
-	 * will in-fact get this event immediately after above.
-	 */
-	buffer = map_lookup_elem(&tls_heap, &zero);
-	if (!buffer) {
-		errout[1] = ENOBUFFER;
-		goto out;
-	}
-
 	if (data + csize > data_end) {
 		int needed = csize;
 
 		if (next + needed > skb->len) {
 			needed = skb->len - next;
 			event->type = TLS_TYPE_MORE_DATA;
-			remaining = csize - needed;
+			key->remaining = csize - needed;
 		}
 		asm volatile ("%[needed] &= 0x0fff;\n": [needed] "+r"(needed)::);
 		asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
@@ -708,41 +712,51 @@ int bpf_skskb_post_cert(struct __sk_buff *skb, struct msg_tls *event, int next, 
 	 * the bound will be bounded with min value.
 	 */
 	asm volatile ("%[csize] &= 0x0fff;\n": [csize] "+r"(csize)::);
-	copied = large_ctx_copy(skb, next, 0, csize);
+	copied = large_ctx_copy(skb, next,
+				sizeof(struct msg_tls_ipv4) + sizeof(__u8),
+				csize);
 
 	/* total bound clamp because verifier lost it from above :( */
 	asm volatile ("%[copied] &= 0x0fff;\n": [copied] "+r"(copied)::);
 	length = (int *)buffer;
 	*length = copied;
-	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, buffer, copied);
 	if (csize > copied) {
 		event->type = TLS_TYPE_MORE_DATA;
 		*cb0 = next + copied;
-		remaining += csize - copied;
+		key->remaining += csize - copied;
 	} else  {
 		*cb0 = 0;
 	}
-	return remaining;
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copied + sizeof(struct msg_tls_ipv4) + sizeof(__u8));
+	/* pad[0] used to indicate certificate complete */
+	return key->remaining;
 out:
 	/* userspace wants to see an event so we generate an error event */
 	errout[0] = 0;
-	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, errout, sizeof(errout));
+	copied = sizeof(__u8) + sizeof(struct msg_tls_ipv4) + (sizeof(int) * 2);
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copied);
 	return 0;
 }
 
 static inline __attribute__((always_inline))
-int bpf_skskb_post_more_cert(struct __sk_buff *skb, struct msg_tls *event, int next, int bytes)
+int bpf_skskb_post_more_cert(struct __sk_buff *skb,
+			     struct msg_tls_ipv4 *key,
+			     struct msg_tls *event,
+			     int next, int bytes)
 {
 	void *data, *data_end = (void *)(long)skb->data_end;
 	void *more_data = (void*)(long)skb->data;
-	int *length, copy = bytes, zero = 0, errout[2];
-	__u8 *buffer;
+	int *length, copy = bytes, zero = 0, *errout;
+	__u8 *buffer, *start;
 
-	buffer = map_lookup_elem(&tls_heap, &zero);
-	if (!buffer) {
-		errout[1] = ENOBUFFER;
-		goto out;
-	}
+	start = map_lookup_elem(&tls_heap, &zero);
+	if (!start)
+		return 0;
+	start[0] = MSG_OP_TLS_CONT;
+	memcpy(start + 1, key, sizeof(struct msg_tls_ipv4));
+	key = (struct msg_tls_ipv4 *)(start + 1);
+	buffer = start + sizeof(struct msg_tls_ipv4) + sizeof(__u8);
+	errout = (int *)buffer;
 
 	if (next > 4096) {
 		errout[1] = ENEXTTOOLARGE;
@@ -773,19 +787,24 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb, struct msg_tls *event, int n
 	 * 1mil insn similarly unrolled loops do as well. So brute force
 	 * this and macro it out and put code we want in via asm.
 	 */
-	copy = large_ctx_copy(skb, next, 4, copy);
+	copy = large_ctx_copy(skb, next,
+			      4 + sizeof(struct msg_tls_ipv4) + sizeof(__u8),
+			      copy);
 	/* total bound clamp because verifier lost it from above :( */
 	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
 	length = (int *)buffer;
 	*length = copy;
 	copy += 4;
+	/* pad[0] indicates certificate completed. */
+	key->remaining = bytes - copy + 4;
 	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
-	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, buffer, copy);
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copy + sizeof(struct msg_tls_ipv4) + sizeof(__u8));
 	return bytes - copy + 4; // be careful to account for copy+=4 above
 out:
 	/* userspace wants to see an event so we generate an error event */
 	errout[0] = 0;
-	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, errout, sizeof(errout));
+	copy = sizeof(__u8) + sizeof(struct msg_tls_ipv4) + (sizeof(int) * 2);
+	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copy);
 	return 0;
 }
 #endif

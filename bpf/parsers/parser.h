@@ -318,7 +318,7 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u64 copy)
 struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 4096,
+	.value_size = 4096 + sizeof(struct msg_tls_ipv4),
 	.max_entries = 1,
 };
 
