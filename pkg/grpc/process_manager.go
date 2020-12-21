@@ -327,6 +327,9 @@ func (pm *ProcessManager) getParentProcessInternal(pid uint32, ktime uint64) (*p
 }
 
 func (pm *ProcessManager) getProcessEndpoint(process *fgs.Process) *v1.Endpoint {
+	if process == nil {
+		return nil
+	}
 	if process.Docker == "" {
 		return nil
 	}
@@ -687,6 +690,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	processInt, err := pm.cache.get(processID)
 	if err != nil {
 		pm.log.WithField("id in TLS event", processID).Debug("process not found in cache")
+		proc = nil
 	} else {
 		proc = processInt.process
 	}
@@ -713,7 +717,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		Certificates:      event.ServerCert.Certificates,
 		CertificateError:  getTLSCertificateErrorCode(event.ServerCert.Error),
 	}
-	if proc.Docker != "" && proc.Pod == nil {
+	if proc == nil || (proc.Docker != "" && proc.Pod == nil) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
 		return nil
 	}
