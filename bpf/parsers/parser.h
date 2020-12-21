@@ -108,11 +108,11 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 	"if %[tmp] > %[end] goto 1f;\n"			\
 	"%[tmp] = *(u32 *)(%[ptr] +0);\n"		\
 	"*(u32 *)(%[to] + 0) = %[tmp];\n"		\
-	"%[len] -= 4;\n"				\
 	"%[to] += 4;\n"					\
 	"%[ptr] += 4;\n"				\
+	"%[len] -= 4;\n"				\
 							\
-	"if %[len] < 3 goto +10;\n"			\
+	"if %[len] < 3 goto +12;\n"			\
 	"%[tmp] = %[ptr];\n"				\
 	"%[tmp] += 3;\n"				\
 	"if %[tmp] > %[end] goto 1f;\n"			\
@@ -122,9 +122,11 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 	"*(u8 *)(%[to] + 1) = %[tmp];\n"		\
 	"%[tmp] = *(u8 *)(%[ptr] +2);\n"		\
 	"*(u8 *)(%[to] + 2) = %[tmp];\n"		\
+	"%[to] += 3;\n"					\
+	"%[ptr] += 3;\n"				\
 	"%[len] -= 3;\n"				\
 							\
-	"if %[len] < 2 goto +8;\n"			\
+	"if %[len] < 2 goto +10;\n"			\
 	"%[tmp] = %[ptr];\n"				\
 	"%[tmp] += 2;\n"				\
 	"if %[tmp] > %[end] goto 1f;\n"			\
@@ -132,15 +134,19 @@ void *get_data(struct __sk_buff *ctx, int off, int needed)
 	"*(u8 *)(%[to] + 0) = %[tmp];\n"		\
 	"%[tmp] = *(u8 *)(%[ptr] +1);\n"		\
 	"*(u8 *)(%[to] + 1) = %[tmp];\n"		\
+	"%[to] += 2;\n"					\
+	"%[ptr] += 2;\n"				\
 	"%[len] -= 2;\n"				\
 							\
-	"if %[len] < 1 goto +6;\n"			\
+	"if %[len] < 1 goto +8;\n"			\
 	"%[tmp] = %[ptr];\n"				\
 	"%[tmp] += 1;\n"				\
 	"if %[tmp] > %[end] goto 1f;\n"			\
 	"%[tmp] = *(u8 *)(%[ptr] +0);\n"		\
 	"*(u8 *)(%[to] + 0) = %[tmp];\n"		\
-	"%[len] -= 1;\n"
+	"%[to] += 1;\n"					\
+	"%[ptr] += 1;\n"				\
+	"%[len] -= 1;\n"				\
 
 #define COPY64B					\
 	"%[tmp] = *(u64 *)(%[ptr] +0);\n"	\
@@ -241,7 +247,6 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u64 copy)
 	uint64_t tmp, ptr;
 
 	asm volatile (
-		"%[len] &= 0xfff;\n"
 		"%[off] &= 0xfff;\n"
 		"%[ptr] = %[from];\n"
 #ifdef SK_SKB
@@ -310,8 +315,6 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u64 copy)
 		  [end] "+r"(end)
 		:
 		  [from] "r"(from):);
-	if (copy > 4064)
-		copy = 4064;
 	return copy - len;
 }
 
