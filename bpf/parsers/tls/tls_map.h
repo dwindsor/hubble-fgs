@@ -1,6 +1,13 @@
 #ifndef __TLS_MAP_H
 #define __TLS_MAP_H
 
+struct bpf_map_def __attribute__((section("maps"), used)) tls_calls = {
+	.type		= BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size	= sizeof(__u32),
+	.value_size	= sizeof(__u32),
+	.max_entries	= 2,
+};
+
 struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(struct msg_tls_ipv4),

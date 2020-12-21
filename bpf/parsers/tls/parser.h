@@ -1,5 +1,6 @@
 #include "api.h"
 #include "../parser.h"
+#include "tls_map.h"
 
 struct tls_hdr {
 	__u8  type;
@@ -807,4 +808,118 @@ out:
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copy);
 	return 0;
 }
+
+/* event_tc_from_skb, builds IPv4/TCP key and populates off to point at start of TCP
+ * header. To find TCP payload use skb_tcp_payload(skb, tcp, off).
+ */
+static inline __attribute__((always_inline))
+struct msg_tls *event_tc_from_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
+{
+	return map_lookup_elem(&tls_map, key);
+}
+
+#if defined(SK_SKB)
+int event_tls_more_cert_func(struct __sk_buff *skb, int off)
+{
+	struct msg_tls_ipv4 key = {0};
+	struct msg_tls *event;
+
+	/* Until we can pass arbitrary pointers through functions we do
+	 * a second skb to key generation and map lookup.
+	 */
+	sk_skb_tls_key(skb, &key);
+	event = event_tc_from_skb(skb, &key);
+	if (!event)
+		return TC_ACT_UNSPEC;
+	event->bytes = bpf_skskb_post_more_cert(skb, &key, event, off, event->bytes);
+	/* If no more bytes are expected mark socket as complete */
+	if (!event->bytes)
+		event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
+	return TC_ACT_UNSPEC;
+}
+
+int event_tls_cert_func(struct __sk_buff *skb, int next)
+{
+	struct msg_tls_ipv4 key = {0};
+	struct msg_tls *event;
+	__u32 off = 0;
+
+	/* Until we can pass arbitrary pointers through functions we do
+	 * a second skb to key generation and map lookup.
+	 */
+	sk_skb_tls_key(skb, &key);
+	event = event_tc_from_skb(skb, &key);
+	if (!event)
+		return TC_ACT_UNSPEC;
+
+	event->bytes = bpf_skskb_post_cert(skb, &key, event, next, &off);
+	if (event->bytes) {
+		event->type = TLS_TYPE_MORE_DATA;
+		/* If there is more data in the current skb then the
+		 * offset is set, otherwise wait for the next skb for
+		 * remaining data.
+		 */
+		if (off)
+			event_tls_more_cert_func(skb, off);
+	} else {
+		event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
+	}
+	return TC_ACT_UNSPEC;
+}
+#else
+static inline __attribute__((always_inline))
+int event_tls_cert(struct __sk_buff *skb)
+{
+	struct msg_tls_ipv4 key = {0};
+	struct msg_tls *event;
+	int next;
+
+	next = skb->cb[0];
+	key.saddr = skb->cb[1];
+	key.daddr = skb->cb[2];
+	key.sport = skb->cb[3];
+	key.dport = skb->cb[4];
+	/* uid/proto are unused in tc tls hook */
+
+	event = event_tc_from_skb(skb, &key);
+	if (!event)
+		return TC_ACT_UNSPEC;
+
+	event->bytes = bpf_skskb_post_cert(skb, &key, event, next, &skb->cb[0]);
+	if (event->bytes) {
+		event->type = TLS_TYPE_MORE_DATA;
+		/* If there is more data in the current skb then the
+		 * cb[0] is set with the offset, otherwise wait for the
+		 * next skb for remaining data.
+		 */
+		if (skb->cb[0])
+			tail_call(skb, &tls_calls, 1);
+	} else {
+		event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
+	}
+	return TC_ACT_UNSPEC;
+}
+
+int event_post_more_cert(struct __sk_buff *skb)
+{
+	struct msg_tls_ipv4 key = {0};
+	struct msg_tls *event;
+	int off = 0;
+
+	off = skb->cb[0];
+	key.saddr = skb->cb[1];
+	key.daddr = skb->cb[2];
+	key.sport = skb->cb[3];
+	key.dport = skb->cb[4];
+	/* uid/proto are unused in tls hook */
+	event = event_tc_from_skb(skb, &key);
+	if (!event)
+		return TC_ACT_UNSPEC;
+	event->bytes = bpf_skskb_post_more_cert(skb, &key, event, off, event->bytes);
+	/* If no more bytes are expected mark socket as complete */
+	if (!event->bytes)
+		event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
+	return TC_ACT_UNSPEC;
+}
+#endif // SK_SKB
 #endif

@@ -66,24 +66,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) cilium_snat_v4_externa
 	.max_entries	= 1,
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_calls = {
-	.type		= BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size	= sizeof(__u32),
-	.value_size	= sizeof(__u32),
-	.max_entries	= 2,
-};
-
 #define TLS_TYPE_HELLO 22
 #define ETH_P_IP 0x800
-
-/* event_tc_from_skb, builds IPv4/TCP key and populates off to point at start of TCP
- * header. To find TCP payload use skb_tcp_payload(skb, tcp, off).
- */
-static inline __attribute__((always_inline))
-struct msg_tls *event_tc_from_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
-{
-	return map_lookup_elem(&tls_map, key);
-}
 
 static inline __attribute__((always_inline))
 void event_tc_build(struct msg_tls_event *post, struct msg_tls_ipv4 *key)
@@ -195,7 +179,7 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 
 		if (!(post->serverhello.flags & TLS_VERSION)) {
 			skb->cb[0] = next + off;
-			skb->cb[1] = key.saddr; 
+			skb->cb[1] = key.saddr;
 			skb->cb[2] = key.daddr;
 			skb->cb[3] = key.sport;
 			skb->cb[4] = key.dport;
@@ -215,55 +199,11 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 __attribute__((section(("classifier/0")), used))
 int event_tc_ingress_tls_cert(struct __sk_buff *skb)
 {
-	struct msg_tls_ipv4 key = {0};
-	struct msg_tls *event;
-	int next;
-
-	next = skb->cb[0];
-	key.saddr = skb->cb[1];
-	key.daddr = skb->cb[2];
-	key.sport = skb->cb[3];
-	key.dport = skb->cb[4];
-	/* uid/proto are unused in tc tls hook */
-
-	event = event_tc_from_skb(skb, &key);
-	if (!event)
-		return TC_ACT_UNSPEC;
-
-	event->bytes = bpf_skskb_post_cert(skb, &key, event, next, &skb->cb[0]);
-	if (event->bytes) {
-		event->type = TLS_TYPE_MORE_DATA;
-		/* If there is more data in the current skb then the
-		 * cb[0] is set with the offset, otherwise wait for the
-		 * next skb for remaining data.
-		 */
-		if (skb->cb[0])
-			tail_call(skb, &tls_calls, 1);
-	} else {
-		event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
-	}
-	return TC_ACT_UNSPEC;
+	return event_tls_cert(skb);
 }
 
 __attribute__((section(("classifier/1")), used))
 int event_tc_ingress_tls_data(struct __sk_buff *skb)
 {
-	struct msg_tls_ipv4 key = {0};
-	struct msg_tls *event;
-	int off = 0;
-
-	off = skb->cb[0];
-	key.saddr = skb->cb[1];
-	key.daddr = skb->cb[2];
-	key.sport = skb->cb[3];
-	key.dport = skb->cb[4];
-	/* uid/proto are unused in tc tls hook */
-	event = event_tc_from_skb(skb, &key);
-	if (!event)
-		return TC_ACT_UNSPEC;
-	event->bytes = bpf_skskb_post_more_cert(skb, &key, event, off, event->bytes);
-	/* If no more bytes are expected mark socket as complete */
-	if (!event->bytes)
-		event->type = TLS_TYPE_HANDSHAKE_COMPLETE;
-	return TC_ACT_UNSPEC;
+	return event_post_more_cert(skb);
 }
