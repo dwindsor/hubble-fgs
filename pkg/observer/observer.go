@@ -774,12 +774,11 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			/* Its possible we don't even have the header to read */
 			if bytes < header {
 				m.cert = nil
-				m.header = bytes + k.header
+				m.header = bytes + m.header
 				k.tlsInProgress[key] = m
 				break
 			}
-
-			k.header = 0
+			m.header = 0
 
 			cert := make([]byte, bytes-header)
 			err = binary.Read(r, binary.LittleEndian, &cert)
@@ -1875,12 +1874,6 @@ type ObserverKprobe struct {
 
 	/* Kernel symbols */
 	ksyms *ksyms.Ksyms
-
-	/* Runtime Measure Handlers */
-	cType  uint8
-	cMsg   *api.MsgTLSEvent
-	cCert  []byte
-	header uint32
 
 	/* Runtime docker Id info */
 	dockerIdOffsetWriter int
