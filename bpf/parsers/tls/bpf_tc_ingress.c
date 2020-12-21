@@ -186,6 +186,10 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 			tail_call(skb, &tls_calls, 0);
 		}
 	} else if (is_expected_tls_data(event)) {
+		void *payload = skb_tcp_payload(skb, tcp, &off);
+
+		if (!payload)
+			return TC_ACT_UNSPEC;
 		skb->cb[0] = off;
 		skb->cb[1] = key.saddr; 
 		skb->cb[2] = key.daddr;
