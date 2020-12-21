@@ -797,10 +797,10 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 	*length = copy;
 	copy += 4;
 	/* pad[0] indicates certificate completed. */
-	key->remaining = bytes - copy + 4;
+	key->remaining = bytes - (copy - 4);
 	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copy + sizeof(struct msg_tls_ipv4) + sizeof(__u8));
-	return bytes - copy + 4; // be careful to account for copy+=4 above
+	return key->remaining;
 out:
 	/* userspace wants to see an event so we generate an error event */
 	errout[0] = 0;

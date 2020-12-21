@@ -60,6 +60,10 @@ const (
 )
 
 const (
+	TLS_MIN_CERT_SIZE = 12
+)
+
+const (
 	BPF_PROG_TYPE_UNSPEC                  = 0
 	BPF_PROG_TYPE_SOCKET_FILTER           = 1
 	BPF_PROG_TYPE_KPROBE                  = 2
@@ -745,6 +749,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		 */
 		if m == nil {
 			m = &MsgTLSEventCert{}
+			m.tls = &api.MsgTLSEvent{}
 			errCode = api.TlsCertificateErrorNullRead
 		} else if err = binary.Read(r, binary.LittleEndian, &bytes); err != nil {
 			errCode = api.TlsCertificateErrorLengthRead
@@ -788,7 +793,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 				if len(m.cert) != 0 {
 					cert = append(m.cert, cert...)
 				}
-				if remaining != 0 {
+				if remaining != 0 || len(cert) < TLS_MIN_CERT_SIZE {
 					/* Need to store and submit when remaining bits show up. */
 					m.cert = cert
 					m.header = 0
