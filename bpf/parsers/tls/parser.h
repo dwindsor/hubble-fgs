@@ -745,9 +745,9 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 			     struct msg_tls *event,
 			     int next, int bytes)
 {
+	int *length, csize, copy = bytes, zero = 0, *errout;
 	void *data, *data_end = (void *)(long)skb->data_end;
 	void *more_data = (void*)(long)skb->data;
-	int *length, copy = bytes, zero = 0, *errout;
 	__u8 *buffer, *start;
 
 	start = map_lookup_elem(&tls_heap, &zero);
@@ -773,6 +773,7 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 		if (next + needed > skb->len) {
 			needed = skb->len - next;
 			event->type = TLS_TYPE_MORE_DATA;
+			key->remaining = copy - needed;
 		}
 		data = get_data(skb, next, needed);
 		if (!data) {
@@ -788,16 +789,17 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 	 * 1mil insn similarly unrolled loops do as well. So brute force
 	 * this and macro it out and put code we want in via asm.
 	 */
+	csize = copy;
 	copy = large_ctx_copy(skb, next,
 			      4 + sizeof(struct msg_tls_ipv4) + sizeof(__u8),
-			      copy);
+			      csize);
+	key->remaining += (csize - copy);
 	/* total bound clamp because verifier lost it from above :( */
 	asm volatile ("%[copy] &= 0x1fff;\n": [copy] "+r"(copy)::);
 	length = (int *)buffer;
 	*length = copy;
 	copy += 4;
 	/* pad[0] indicates certificate completed. */
-	key->remaining = bytes - (copy - 4);
 	asm volatile ("%[copy] &= 0x1fff;\n": [copy] "+r"(copy)::);
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copy + sizeof(struct msg_tls_ipv4) + sizeof(__u8));
 	return key->remaining;
