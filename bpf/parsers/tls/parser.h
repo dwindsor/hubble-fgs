@@ -667,7 +667,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 		goto out;
 	}
 
-	asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
+	asm volatile ("%[next] &= 0x1fff;\n": [next] "+r"(next)::);
 	data = (void*)tls_server_hello + next;
 	if (data + sizeof(struct tls_handshake_certificate) > data_end) {
 		data = get_data(skb, next, sizeof(struct tls_handshake_certificate));
@@ -682,7 +682,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 	csize = cert->length;
 	csize = bpf_ntohs(csize);
 	csize += 4 + 1;
-	asm volatile ("%[csize] &= 0x0fff;\n": [csize] "+r"(csize)::);
+	asm volatile ("%[csize] &= 0x1fff;\n": [csize] "+r"(csize)::);
 
 	if (data + csize > data_end) {
 		int needed = csize;
@@ -692,8 +692,8 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 			event->type = TLS_TYPE_MORE_DATA;
 			key->remaining = csize - needed;
 		}
-		asm volatile ("%[needed] &= 0x0fff;\n": [needed] "+r"(needed)::);
-		asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
+		asm volatile ("%[needed] &= 0x1fff;\n": [needed] "+r"(needed)::);
+		asm volatile ("%[next] &= 0x1fff;\n": [next] "+r"(next)::);
 		data = get_data(skb, next, needed);
 		if (!data) {
 			errout[1] = EGETDATACERT;
@@ -712,13 +712,13 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 	 * reset above and seems 4.19 kernels are unable to track that
 	 * the bound will be bounded with min value.
 	 */
-	asm volatile ("%[csize] &= 0x0fff;\n": [csize] "+r"(csize)::);
+	asm volatile ("%[csize] &= 0x1fff;\n": [csize] "+r"(csize)::);
 	copied = large_ctx_copy(skb, next,
 				sizeof(struct msg_tls_ipv4) + sizeof(__u8),
 				csize);
 
 	/* total bound clamp because verifier lost it from above :( */
-	asm volatile ("%[copied] &= 0x0fff;\n": [copied] "+r"(copied)::);
+	asm volatile ("%[copied] &= 0x1fff;\n": [copied] "+r"(copied)::);
 	length = (int *)buffer;
 	*length = copied;
 	if (csize > copied) {
@@ -764,8 +764,8 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 		goto out;
 	}
 	event->type = 0;
-	asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
-	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
+	asm volatile ("%[next] &= 0x1fff;\n": [next] "+r"(next)::);
+	asm volatile ("%[copy] &= 0x1fff;\n": [copy] "+r"(copy)::);
 	data = (void*)more_data + next + copy;
 	if (data > data_end) {
 		int needed = copy;
@@ -792,13 +792,13 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 			      4 + sizeof(struct msg_tls_ipv4) + sizeof(__u8),
 			      copy);
 	/* total bound clamp because verifier lost it from above :( */
-	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
+	asm volatile ("%[copy] &= 0x1fff;\n": [copy] "+r"(copy)::);
 	length = (int *)buffer;
 	*length = copy;
 	copy += 4;
 	/* pad[0] indicates certificate completed. */
 	key->remaining = bytes - (copy - 4);
-	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
+	asm volatile ("%[copy] &= 0x1fff;\n": [copy] "+r"(copy)::);
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copy + sizeof(struct msg_tls_ipv4) + sizeof(__u8));
 	return key->remaining;
 out:

@@ -321,7 +321,7 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u64 copy)
 struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 4096 + sizeof(struct msg_tls_ipv4),
+	.value_size = 8192 + sizeof(struct msg_tls_ipv4),
 	.max_entries = 1,
 };
 
@@ -338,18 +338,18 @@ int large_ctx_copy(
 		__u64 next, __u64 offset, __u64 copy)
 {
 	void *data, *data_end;
-	int copied, zero = 0;
+	int zero = 0;
 	__u8 *to;
 
 	data = (void *)(long)ctx->data;
 	data_end = (void *)(long)ctx->data_end;
 
 	/* Bound our inputs to "good" values */
-	asm volatile ("%[next] &= 0x0fff;\n": [next] "+r"(next)::);
-	asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
+	asm volatile ("%[next] &= 0x1fff;\n": [next] "+r"(next)::);
+	asm volatile ("%[copy] &= 0x1fff;\n": [copy] "+r"(copy)::);
 
 	if ((data + next + copy) > data_end) {
-		asm volatile ("%[copy] &= 0x0fff;\n": [copy] "+r"(copy)::);
+		asm volatile ("%[copy] &= 0x1fff;\n": [copy] "+r"(copy)::);
 		data = get_data(ctx, next, copy);
 		if (!data)
 			return 0;
@@ -371,7 +371,5 @@ int large_ctx_copy(
 		return 0;
 
 	to = to + offset;
-	copied = pkt_copy(to, data_end, data, copy);
-
-	return copied;
+	return pkt_copy(to, data_end, data, copy);
 }
