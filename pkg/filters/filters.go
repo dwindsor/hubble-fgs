@@ -116,6 +116,10 @@ func GetProcess(event *v1.Event) *fgs.Process {
 			return res.ProcessExit.Process
 		case *fgs.GetEventsResponse_ProcessCred:
 			return res.ProcessCred.Process
+		case *fgs.GetEventsResponse_ProcessClose:
+			return res.ProcessClose.Process
+		case *fgs.GetEventsResponse_ProcessAccept:
+			return res.ProcessAccept.Process
 		default:
 			return (*fgs.Process)(nil)
 		}
