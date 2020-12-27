@@ -159,10 +159,13 @@ func (pm *ProcessManager) handleCredMessage(msg *api.MsgCredEventUnix) *fgs.GetE
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_CRED:
-		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: pm.GetProcessCred(msg)},
-			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+		event := pm.GetProcessCred(msg)
+		if event != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: event},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
