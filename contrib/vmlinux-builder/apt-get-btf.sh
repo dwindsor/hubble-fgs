@@ -13,7 +13,7 @@ apt install linux-image-unsigned-${k}-dbgsym
 echo "debug images pulled"
 echo `ls /usr/lib/debug/boot/`
 echo "docker run and build"
-docker run --name btf-build -v /usr/lib/debug/boot:/kernels/ quay.io/isovalent/hubble-llvm:2020-11-25-194d3985-x86 /bin/bash -c \
+docker run --name btf-build -v /usr/lib/debug/boot:/kernels/ quay.io/isovalent/hubble-llvm:2020-12-18-a28b10b /bin/bash -c \
 "
 	export LD_LIBRARY_PATH=/usr/local/lib/lib/ && \
 	cd /kernels/ && \
