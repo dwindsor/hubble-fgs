@@ -1,4 +1,4 @@
-FROM quay.io/isovalent/hubble-llvm:2020-12-18-a28b10b as hubble-libbpf
+FROM quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2 as hubble-libbpf
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 

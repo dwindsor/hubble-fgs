@@ -1,4 +1,4 @@
-FROM quay.io/isovalent/hubble-llvm:2020-12-18-a28b10b  as bpf-builder
+FROM quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2 as bpf-builder
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 RUN apt update
