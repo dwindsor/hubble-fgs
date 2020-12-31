@@ -18,6 +18,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
+	"github.com/covalentio/hubble-fgs/pkg/sysdump"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -58,6 +59,17 @@ func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
 		return nil, nil, err
 	}
 	return allowList, denyList, nil
+}
+
+func saveInitInfo() error {
+	info := sysdump.InitInfo{
+		ExportFname: exportFilename,
+		LibDir:      observer.HubbleLib,
+		BtfFname:    observer.ObserverBTF,
+		MetricsAddr: metricsServer,
+		ServerAddr:  serverAddress,
+	}
+	return sysdump.SaveInitInfo(&info)
 }
 
 func hubbleFGSExecute() error {
@@ -127,6 +139,7 @@ func hubbleFGSExecute() error {
 		}
 	}
 	kprobe.AddListener(processManager)
+	saveInitInfo()
 	return kprobe.Start(ctx)
 }
 
