@@ -172,8 +172,7 @@ func Sysdump(outFname string) error {
 }
 
 func doSysdump(info *InitInfo, outFname string) error {
-
-	// we log into two logs, one is the starndard one and another one is a
+	// we log into two logs, one is the standard one and another one is a
 	// buffer that we are going to include as a file into the sysdump.
 	sysdumpLogger := logrus.New()
 	logBuff := new(bytes.Buffer)
