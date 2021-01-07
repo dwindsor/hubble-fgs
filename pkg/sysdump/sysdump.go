@@ -35,6 +35,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 
 	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 )
 
 const (
@@ -215,6 +216,7 @@ func doSysdump(info *InitInfo, outFname string) error {
 	si.addFgsLog(tarWriter)
 	si.addMetrics(tarWriter)
 	si.execCmd(tarWriter, "dmesg.out", "dmesg")
+	si.addTcInfo(tarWriter)
 	return nil
 }
 
@@ -405,4 +407,25 @@ func (s *sysdumpInfo) execCmd(tarWriter *tar.Writer, dstFname string, cmdName st
 	}
 	s.multiLog.WithField("cmd", cmd).WithField("ret", errStr).WithField("dstFname", dstFname).Info("executed command")
 	return s.tarAddBuff(tarWriter, dstFname, buff)
+}
+
+// addTcInfo adds information about tc filters on the devices
+func (si *sysdumpInfo) addTcInfo(tarWriter *tar.Writer) error {
+	links, err := netlink.LinkList()
+	if err != nil {
+		si.multiLog.WithError(err).Warn("listing devices failed")
+		return err
+	}
+
+	// NB: We could save the interfaces that fgs installed programs and
+	// query only those by saving the interfaces to the info file. Instead,
+	// we perform the command for all links in the system. This is simpler
+	// and also provides additional information that may be useful.
+	for _, link := range links {
+		linkName := link.Attrs().Name
+		si.execCmd(tarWriter, fmt.Sprintf("tc-info.%s.ingress", linkName), "tc", "filter", "show", "dev", linkName, "ingress")
+		si.execCmd(tarWriter, fmt.Sprintf("tc-info.%s.egress", linkName), "tc", "filter", "show", "dev", linkName, "egress")
+	}
+
+	return err
 }
