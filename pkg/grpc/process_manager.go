@@ -847,7 +847,9 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
 			return nil
 		}
-		fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+		if endpoint != nil {
+			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+		}
 	}
 	return fgsEvent
 }
