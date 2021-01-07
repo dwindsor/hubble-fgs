@@ -20,8 +20,10 @@ import (
 	"archive/tar"
 	"bytes"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
+	"net/http"
 	"os"
 	"path/filepath"
 	"strings"
@@ -209,6 +211,7 @@ func doSysdump(info *InitInfo, outFname string) error {
 	si.addLibFiles(tarWriter)
 	si.addBtfFile(tarWriter)
 	si.addFgsLog(tarWriter)
+	si.addMetrics(tarWriter)
 	return nil
 }
 
@@ -315,4 +318,36 @@ func (s *sysdumpInfo) addFgsLog(tarWriter *tar.Writer) error {
 		s.multiLog.WithField("exportFname", s.info.ExportFname).Info("fgs log file added")
 	}
 	return err
+}
+
+// addMetrics adds the output of metrics in the tar file
+func (s *sysdumpInfo) addMetrics(tarWriter *tar.Writer) error {
+	// nothing to do if metrics server is not running
+	if s.info.MetricsAddr == "" {
+		return nil
+	}
+
+	// determine the port that the metrics server listens to
+	slice := strings.Split(s.info.MetricsAddr, ":")
+	if len(slice) < 2 {
+		s.multiLog.WithField("metricsAddr", s.info.MetricsAddr).Warn("could not determine metrics port")
+		return errors.New("failed to determine metrics port")
+	}
+	port := slice[len(slice)-1]
+
+	// contact metrics server
+	metricsAddr := fmt.Sprintf("http://localhost:%s/metrics", port)
+	s.multiLog.WithField("metricsAddr", metricsAddr).Info("contacting metrics server")
+	resp, err := http.Get(metricsAddr)
+	if err != nil {
+		s.multiLog.WithField("metricsAddr", metricsAddr).WithField("err", err).Warn("failed to contact metrics server")
+		return err
+	}
+	defer resp.Body.Close()
+
+	buff := new(bytes.Buffer)
+	if _, err = buff.ReadFrom(resp.Body); err != nil {
+		s.multiLog.Warn("error in reading metrics server response: %s", err)
+	}
+	return s.tarAddBuff(tarWriter, "metrics", buff)
 }
