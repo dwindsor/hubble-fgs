@@ -19,12 +19,14 @@ package sysdump
 import (
 	"archive/tar"
 	"bytes"
+	"context"
 	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"net/http"
 	"os"
+	"os/exec"
 	"path/filepath"
 	"strings"
 	"time"
@@ -212,6 +214,7 @@ func doSysdump(info *InitInfo, outFname string) error {
 	si.addBtfFile(tarWriter)
 	si.addFgsLog(tarWriter)
 	si.addMetrics(tarWriter)
+	si.execCmd(tarWriter, "dmesg.out", "dmesg")
 	return nil
 }
 
@@ -350,4 +353,56 @@ func (s *sysdumpInfo) addMetrics(tarWriter *tar.Writer) error {
 		s.multiLog.Warn("error in reading metrics server response: %s", err)
 	}
 	return s.tarAddBuff(tarWriter, "metrics", buff)
+}
+
+// execCmd executes a command and saves its output (both stdout and stderr) to a file in the tar archive
+func (s *sysdumpInfo) execCmd(tarWriter *tar.Writer, dstFname string, cmdName string, cmdArgs ...string) error {
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+	cmd := exec.CommandContext(ctx, cmdName, cmdArgs...)
+	if stdin, err := cmd.StdinPipe(); err != nil {
+		s.multiLog.Warnf("StdinPipe() failed: %s", err)
+		return err
+	} else {
+		stdin.Close()
+	}
+	stdout, err := cmd.StdoutPipe()
+	if err != nil {
+		s.multiLog.Warnf("StdoutPipe() failed: %v", err)
+		return err
+	}
+	stderr, err := cmd.StderrPipe()
+	if err != nil {
+		s.multiLog.Warnf("StderrPipe() failed: %v", err)
+		return err
+	}
+
+	err = cmd.Start()
+	if err != nil {
+		s.multiLog.WithField("cmd", cmd).WithError(err).Warnf("failed to execute command")
+		return err
+	}
+	// NB: copying everything to a buffer makes things easier because we can
+	// compute the size of the file we want to write to the tar archive.
+	// If, however, we use this with programs (not currently the case) that
+	// have outputs too large for memory, this would be problematic because
+	// it will lead to swapping or OOM.
+	buff := new(bytes.Buffer)
+	buff.WriteString("-------------------- stdout starts here --------------------\n")
+	if _, err = buff.ReadFrom(stdout); err != nil {
+		s.multiLog.WithField("cmd", cmd).WithError(err).Warnf("error reading stdout")
+	}
+	buff.WriteString("-------------------- stderr starts here --------------------\n")
+	if _, err = buff.ReadFrom(stderr); err != nil {
+		s.multiLog.WithField("cmd", cmd).WithError(err).Warnf("error reading stderr")
+	}
+	buff.WriteString("------------------------------------------------------------\n")
+
+	errStr := "0"
+	err = cmd.Wait()
+	if err != nil {
+		errStr = err.Error()
+	}
+	s.multiLog.WithField("cmd", cmd).WithField("ret", errStr).WithField("dstFname", dstFname).Info("executed command")
+	return s.tarAddBuff(tarWriter, dstFname, buff)
 }

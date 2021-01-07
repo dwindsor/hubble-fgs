@@ -51,6 +51,17 @@ func (ml *MultiLog) WithField(key string, value interface{}) *MultiLogEntry {
 	}
 }
 
+// WithError adds err as a single field (using ErrorKey)
+func (ml *MultiLog) WithError(err error) *MultiLogEntry {
+	entries := make([]*logrus.Entry, 0, len(ml.Logs))
+	for _, log := range ml.Logs {
+		entries = append(entries, log.WithError(err))
+	}
+	return &MultiLogEntry{
+		Entries: entries,
+	}
+}
+
 func (ml *MultiLog) Info(args ...interface{}) {
 	for _, log := range ml.Logs {
 		log.Info(args...)
@@ -80,6 +91,17 @@ func (mle *MultiLogEntry) WithField(key string, value interface{}) *MultiLogEntr
 	entries := make([]*logrus.Entry, 0, len(mle.Entries))
 	for _, entry := range mle.Entries {
 		entries = append(entries, entry.WithField(key, value))
+	}
+	return &MultiLogEntry{
+		Entries: entries,
+	}
+}
+
+// WithError adds err as a single field (using ErrorKey)
+func (mle *MultiLogEntry) WithError(err error) *MultiLogEntry {
+	entries := make([]*logrus.Entry, 0, len(mle.Entries))
+	for _, entry := range mle.Entries {
+		entries = append(entries, entry.WithError(err))
 	}
 	return &MultiLogEntry{
 		Entries: entries,
