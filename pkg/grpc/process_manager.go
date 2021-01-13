@@ -903,7 +903,9 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
 			return nil
 		}
-		fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+		if endpoint != nil {
+			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+		}
 	}
 	return fgsEvent
 }
@@ -956,7 +958,9 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
 			return nil
 		}
-		fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+		if endpoint != nil {
+			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+		}
 	}
 	return fgsEvent
 }
