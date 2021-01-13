@@ -14,7 +14,7 @@
 package main
 
 import (
-	"github.com/covalentio/hubble-fgs/pkg/sysdump"
+	"github.com/covalentio/hubble-fgs/pkg/bugtool"
 
 	"github.com/spf13/cobra"
 )
@@ -23,16 +23,16 @@ var (
 	outFile string
 )
 
-func init() {
-	sysdumpCmd := &cobra.Command{
-		Use:   "sysdump",
-		Short: "Produce a sysdump",
+func initBugtoolCmd() {
+	bugtoolCmd := &cobra.Command{
+		Use:   "bugtool",
+		Short: "Produce a tar archive with debug information",
 		Run: func(cmd *cobra.Command, args []string) {
-			sysdump.Sysdump(outFile)
+			bugtool.Bugtool(outFile)
 		},
 	}
 
-	flags := sysdumpCmd.Flags()
-	flags.StringVarP(&outFile, "out", "o", "hubble-enterprise-sysdump.tar", "Output filename")
-	rootCmd.AddCommand(sysdumpCmd)
+	flags := bugtoolCmd.Flags()
+	flags.StringVarP(&outFile, "out", "o", "hubble-enterprise-bugtool.tar", "Output filename")
+	rootCmd.AddCommand(bugtoolCmd)
 }

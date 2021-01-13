@@ -12,9 +12,9 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-// FGS sysdump code
+// FGS bugtool code
 
-package sysdump
+package bugtool
 
 import (
 	"archive/tar"
@@ -101,7 +101,7 @@ func doSaveInitInfo(fname string, info *InitInfo) error {
 	return nil
 }
 
-type sysdumpInfo struct {
+type bugtoolInfo struct {
 	info      *InitInfo
 	prefixDir string
 	multiLog  MultiLog
@@ -126,12 +126,12 @@ func doTarAddBuff(tarWriter *tar.Writer, fname string, buff *bytes.Buffer) error
 	return err
 }
 
-func (s *sysdumpInfo) tarAddBuff(tarWriter *tar.Writer, fname string, buff *bytes.Buffer) error {
+func (s *bugtoolInfo) tarAddBuff(tarWriter *tar.Writer, fname string, buff *bytes.Buffer) error {
 	name := filepath.Join(s.prefixDir, fname)
 	return doTarAddBuff(tarWriter, name, buff)
 }
 
-func (s *sysdumpInfo) tarAddFile(tarWriter *tar.Writer, fnameSrc string, fnameDst string) error {
+func (s *bugtoolInfo) tarAddFile(tarWriter *tar.Writer, fnameSrc string, fnameDst string) error {
 	fileSrc, err := os.Open(fnameSrc)
 	if err != nil {
 		s.multiLog.WithField("path", fnameSrc).Warn("failed to open file")
@@ -166,39 +166,39 @@ func (s *sysdumpInfo) tarAddFile(tarWriter *tar.Writer, fnameSrc string, fnameDs
 	return nil
 }
 
-// Sysdump performs a sysdump and writes results as a tar archive in the given filename
-func Sysdump(outFname string) error {
+// Bugtool gathers information and writes it as a tar archive in the given filename
+func Bugtool(outFname string) error {
 	info, err := LoadInitInfo()
 	if err != nil {
 		return err
 	}
 
-	return doSysdump(info, outFname)
+	return doBugtool(info, outFname)
 }
 
-func doSysdump(info *InitInfo, outFname string) error {
+func doBugtool(info *InitInfo, outFname string) error {
 	// we log into two logs, one is the standard one and another one is a
-	// buffer that we are going to include as a file into the sysdump.
-	sysdumpLogger := logrus.New()
+	// buffer that we are going to include as a file into the bugtool archive.
+	bugtoolLogger := logrus.New()
 	logBuff := new(bytes.Buffer)
-	sysdumpLogger.Out = logBuff
+	bugtoolLogger.Out = logBuff
 	logrus.SetLevel(logrus.InfoLevel)
 	multiLog := MultiLog{
 		Logs: []logrus.FieldLogger{
 			logger.GetLogger(),
-			sysdumpLogger,
+			bugtoolLogger,
 		},
 	}
-	prefixDir := fmt.Sprintf("hubble-enterprise-sysdump-%s", time.Now().Format("20060102150405"))
+	prefixDir := fmt.Sprintf("hubble-enterprise-bugtool-%s", time.Now().Format("20060102150405"))
 
 	outFile, err := os.Create(outFname)
 	if err != nil {
-		multiLog.WithField("tarFile", outFname).Warn("failed to sysdump tarfile")
+		multiLog.WithField("tarFile", outFname).Warn("failed to create bugtool tarfile")
 		return err
 	}
 	defer outFile.Close()
 
-	si := sysdumpInfo{
+	si := bugtoolInfo{
 		info:      info,
 		prefixDir: prefixDir,
 		multiLog:  multiLog,
@@ -207,7 +207,7 @@ func doSysdump(info *InitInfo, outFname string) error {
 	tarWriter := tar.NewWriter(outFile)
 	defer func() {
 		defer tarWriter.Close()
-		si.tarAddBuff(tarWriter, "hubble-enterprise-sysdump.log", logBuff)
+		si.tarAddBuff(tarWriter, "hubble-enterprise-bugtool.log", logBuff)
 	}()
 
 	si.addInitInfo(tarWriter)
@@ -220,7 +220,7 @@ func doSysdump(info *InitInfo, outFname string) error {
 	return nil
 }
 
-func (s *sysdumpInfo) addInitInfo(tarWriter *tar.Writer) error {
+func (s *bugtoolInfo) addInitInfo(tarWriter *tar.Writer) error {
 	s.multiLog.Info("saving init info")
 	buff := new(bytes.Buffer)
 	if err := json.NewEncoder(buff).Encode(s.info); err != nil {
@@ -235,7 +235,7 @@ func (s *sysdumpInfo) addInitInfo(tarWriter *tar.Writer) error {
 // Currently, this includes the bpf files and potentially the btf file if it is stored there.  If
 // there are files that we do not want to add, we can filter them out, but for now we can just grab
 // everything.
-func (s *sysdumpInfo) addLibFiles(tarWriter *tar.Writer) error {
+func (s *bugtoolInfo) addLibFiles(tarWriter *tar.Writer) error {
 	s.multiLog.WithField("libDir", s.info.LibDir).Info("retrieving lib directory")
 	return filepath.Walk(
 		s.info.LibDir,
@@ -292,7 +292,7 @@ func (s *sysdumpInfo) addLibFiles(tarWriter *tar.Writer) error {
 }
 
 // addBtfFile adds the btf file to the archive.
-func (s *sysdumpInfo) addBtfFile(tarWriter *tar.Writer) error {
+func (s *bugtoolInfo) addBtfFile(tarWriter *tar.Writer) error {
 	btfFname, err := filepath.EvalSymlinks(s.info.BtfFname)
 	if err != nil {
 		s.multiLog.WithField("btfFname", s.info.BtfFname).Warnf("error resolving btf file: %s", err)
@@ -312,7 +312,7 @@ func (s *sysdumpInfo) addBtfFile(tarWriter *tar.Writer) error {
 }
 
 // addFgsLog adds the fgs log file to the archive
-func (s *sysdumpInfo) addFgsLog(tarWriter *tar.Writer) error {
+func (s *bugtoolInfo) addFgsLog(tarWriter *tar.Writer) error {
 	if s.info.ExportFname == "" {
 		s.multiLog.Info("no export file specified")
 		return nil
@@ -326,7 +326,7 @@ func (s *sysdumpInfo) addFgsLog(tarWriter *tar.Writer) error {
 }
 
 // addMetrics adds the output of metrics in the tar file
-func (s *sysdumpInfo) addMetrics(tarWriter *tar.Writer) error {
+func (s *bugtoolInfo) addMetrics(tarWriter *tar.Writer) error {
 	// nothing to do if metrics server is not running
 	if s.info.MetricsAddr == "" {
 		return nil
@@ -358,7 +358,7 @@ func (s *sysdumpInfo) addMetrics(tarWriter *tar.Writer) error {
 }
 
 // execCmd executes a command and saves its output (both stdout and stderr) to a file in the tar archive
-func (s *sysdumpInfo) execCmd(tarWriter *tar.Writer, dstFname string, cmdName string, cmdArgs ...string) error {
+func (s *bugtoolInfo) execCmd(tarWriter *tar.Writer, dstFname string, cmdName string, cmdArgs ...string) error {
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, cmdName, cmdArgs...)
@@ -410,7 +410,7 @@ func (s *sysdumpInfo) execCmd(tarWriter *tar.Writer, dstFname string, cmdName st
 }
 
 // addTcInfo adds information about tc filters on the devices
-func (si *sysdumpInfo) addTcInfo(tarWriter *tar.Writer) error {
+func (si *bugtoolInfo) addTcInfo(tarWriter *tar.Writer) error {
 	links, err := netlink.LinkList()
 	if err != nil {
 		si.multiLog.WithError(err).Warn("listing devices failed")

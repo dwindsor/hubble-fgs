@@ -11,6 +11,7 @@ import (
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
+	"github.com/covalentio/hubble-fgs/pkg/bugtool"
 	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	"github.com/covalentio/hubble-fgs/pkg/defaults"
 	"github.com/covalentio/hubble-fgs/pkg/filters"
@@ -18,7 +19,6 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
-	"github.com/covalentio/hubble-fgs/pkg/sysdump"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -62,14 +62,14 @@ func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
 }
 
 func saveInitInfo() error {
-	info := sysdump.InitInfo{
+	info := bugtool.InitInfo{
 		ExportFname: exportFilename,
 		LibDir:      observer.HubbleLib,
 		BtfFname:    observer.ObserverBTF,
 		MetricsAddr: metricsServer,
 		ServerAddr:  serverAddress,
 	}
-	return sysdump.SaveInitInfo(&info)
+	return bugtool.SaveInitInfo(&info)
 }
 
 func hubbleFGSExecute() error {

@@ -11,10 +11,10 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package sysdump
+package bugtool
 
-// For sysdump we want to log things into two different logs: the one used by
-// fgs, but also another one that will be saved within the sysdump itself. The
+// For bugtool we want to log things into two different logs: the one used by
+// fgs, but also another one that will be saved within the bugtool tar archive. The
 // log levels of these two are not always the same, so we need two different
 // loggers.
 //

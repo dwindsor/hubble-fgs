@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package sysdump
+package bugtool
 
 import (
 	"io/ioutil"
@@ -23,7 +23,7 @@ import (
 
 func TestSaveAndLoad(t *testing.T) {
 
-	tmpFile, err := ioutil.TempFile(os.TempDir(), "fgs-sysdump-test-")
+	tmpFile, err := ioutil.TempFile(os.TempDir(), "fgs-bugtool-test-")
 	if err != nil {
 		t.Error("failed to create temporary file")
 	}

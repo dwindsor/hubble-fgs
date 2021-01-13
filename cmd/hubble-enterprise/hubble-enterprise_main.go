@@ -106,6 +106,7 @@ func init() {
 
 	rootCmd.AddCommand(getEventsCmd)
 	rootCmd.AddCommand(statusCmd)
+	initBugtoolCmd()
 
 	flags := rootCmd.PersistentFlags()
 	flags.BoolP("debug", "d", true, "Enable debug messages")
