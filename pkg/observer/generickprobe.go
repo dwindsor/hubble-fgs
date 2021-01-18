@@ -3,6 +3,7 @@ package observer
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"strings"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
@@ -38,6 +39,7 @@ const (
 	arg3            = "arg3"
 	arg4            = "arg4"
 	arg5            = "arg5"
+	is_syscall      = "syscall"
 )
 
 func kprobeArgToString(a int) string {
@@ -79,14 +81,21 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 	}
 
 	sensors := strings.Split(sensorList, ",")
-	// sensors <- function(arg1:arg2:arg3:arg4:arg5)
+	// sensors <- function(arg1:arg2:arg3:arg4:arg5)[attributes]
 	for i, s := range sensors {
 		var argPrinters []int
+		var is_syscall bool
 
 		funcSplit := strings.Split(s, "(")
 		filterSplit := strings.Split(funcSplit[1], ")")
 		funcName := funcSplit[0]
 		args := strings.Split(filterSplit[0], ":")
+		attributes := strings.Split(s, "[")
+		if len(attributes) > 1 {
+			attributes = strings.Split(attributes[1], "]")
+		} else {
+			attributes = nil
+		}
 
 		// Write args into BTF ptr for use with load
 		btf := bpf.GetBTF(btfBaseFile)
@@ -107,6 +116,31 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 			}
 			argPrinters = append(argPrinters, argType)
 		}
+
+		// Write attributes into BTF ptr for use with load
+		if attributes != nil {
+			attrsSplit := strings.Split(attributes[0], ":")
+			for _, f := range attrsSplit {
+				switch f {
+				// Inform datapath that this kprobe is a syscall
+				case "syscall":
+					is_syscall = true
+				}
+			}
+		}
+
+		if is_syscall {
+			retVal := bpf.AddEnumBtfValue(btf, "syscall", 1)
+			if retVal < 0 {
+				k.log.Warn("error setting enum btf value \"syscall\" %d", retVal)
+			}
+		} else {
+			retVal := bpf.AddEnumBtfValue(btf, "syscall", 0)
+			if retVal < 0 {
+				k.log.Warn("error clearing enum btf value \"syscall\" %d", retVal)
+			}
+		}
+
 		genericKprobeBtf[funcName] = btf
 		genericKprobeId[uint64(i)] = argPrinters
 		genericKprobeName[uint64(i)] = funcName

@@ -19,18 +19,18 @@ struct skb_type {
 #define MAX_STRING 1024
 
 static inline __attribute__((always_inline))
-int read_call_arg(char *args, int type, long off, void *arg)
+int read_call_arg(char *args, int type, long off, unsigned long arg)
 {
 	int size = -1;
 
 	if (type == string_type && MAX_STRING + off < 4095) {
 		int *s = (int *)&args[off];
 
-		size = probe_read_str(&args[off+4], MAX_STRING, arg);
+		size = probe_read_str(&args[off+4], MAX_STRING, (char *)arg);
 		*s = size;
 	} else if (type == int_type && sizeof(int) + off < 4095) {
 		size  = sizeof(int);
-		probe_read(&args[off], size, arg);
+		probe_read(&args[off], size, &arg);
 	} else if (type == skb_type && sizeof(struct skb_type) + off < 4095) {
 		struct sk_buff *skb = (struct sk_buff *)arg;
 		struct skb_type *skb_event = (struct skb_type *)&args[off];
