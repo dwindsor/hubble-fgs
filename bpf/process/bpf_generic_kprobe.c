@@ -16,7 +16,6 @@ struct bpf_map_def {
 #include "types/basic.h"
 
 #define MAX_FILENAME 8096
-#define MAX_STRING 1024 
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
@@ -96,12 +95,9 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	}
 
 	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
-	if (total > 8192) {
-		bpf_printk("ETOOLARGE? %d\n", total);
+	if (total > 8192)
 		total = 8192;
-	}
 	e->common.size = total;
-	bpf_printk("post event %d\n", total);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total&0xfff);
 	return 0;
 }

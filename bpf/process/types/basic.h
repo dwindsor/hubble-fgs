@@ -28,11 +28,9 @@ int read_call_arg(char *args, int type, int off, void *arg)
 
 		size = probe_read_str(&args[off+4], MAX_STRING, arg);
 		*s = size;
-		bpf_printk("off %d value %d size %d\n", off, args[off], size);
 	} else if (type == int_type && sizeof(int) + off < 4095) {
 		size  = sizeof(int);
 		probe_read(&args[off], size, arg);
-		bpf_printk("off %d value %d\n", off, args[off]);
 	} else if (type == skb_type && sizeof(struct skb_type) + off < 4095) {
 		struct sk_buff *skb = (struct sk_buff *)arg;
 		struct skb_type *skb_event = (struct skb_type *)&args[off];
