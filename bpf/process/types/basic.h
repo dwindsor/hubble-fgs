@@ -19,7 +19,7 @@ struct skb_type {
 #define MAX_STRING 1024
 
 static inline __attribute__((always_inline))
-int read_call_arg(char *args, int type, int off, void *arg)
+int read_call_arg(char *args, int type, long off, void *arg)
 {
 	int size = -1;
 

@@ -31,9 +31,13 @@ int generic_kprobe_event(struct pt_regs *ctx)
 {
 	struct msg_generic_kprobe *e;
 	struct execve_map_value *enter;
-	int ty, errv, total = 0, zero = 0;
+	int ty, errv, zero = 0;
 	enum generic_func_args_enum fgs_args;
 	__u32 pid;
+	/* total is used as a pointer offset so we want type to match
+	 * pointer type in order to avoid bit shifts.
+	 */
+	long total = 0;
 
 	pid = get_current_pid_tgid() & 0xFFFFffff;
 	e = map_lookup_elem(&process_call_heap, &zero);
