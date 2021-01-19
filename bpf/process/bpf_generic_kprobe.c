@@ -30,16 +30,18 @@ __attribute__((section(("kprobe/generic_kprobe")), used))
 int generic_kprobe_event(struct pt_regs *ctx)
 {
 	enum generic_func_args_enum fgs_args;
-	int is_syscall, ty, errv, zero = 0;
+	int is_syscall, errv, zero = 0;
 	struct execve_map_value *enter;
 	struct msg_generic_kprobe *e;
 	unsigned long a0, a1, a2, a3, a4;
+	unsigned long a0m, a1m, a2m, a3m, a4m;
+	unsigned long arg_meta;
 	struct pt_regs *_ctx;
 	__u32 pid;
 	/* total is used as a pointer offset so we want type to match
 	 * pointer type in order to avoid bit shifts.
 	 */
-	long total = 0;
+	long ty, total = 0;
 
 	is_syscall = bpf_core_enum_value(fgs_args, syscall);
 	if (is_syscall) {
@@ -59,6 +61,12 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		a4 = ctx->r8;
 	}
 
+	a0m = bpf_core_enum_value(fgs_args, arg0m);
+	a1m = bpf_core_enum_value(fgs_args, arg1m);
+	a2m = bpf_core_enum_value(fgs_args, arg2m);
+	a3m = bpf_core_enum_value(fgs_args, arg3m);
+	a4m = bpf_core_enum_value(fgs_args, arg4m);
+
 	pid = get_current_pid_tgid() & 0xFFFFffff;
 	e = map_lookup_elem(&process_call_heap, &zero);
 	if (!e)
@@ -68,6 +76,8 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	if (enter) {
 		e->current.pid = pid;
 		e->current.ktime = enter->key.ktime;
+	} else {
+		return 0;
 	}
 
 	e->common.op = MSG_OP_GENERIC_KPROBE;
@@ -87,41 +97,50 @@ int generic_kprobe_event(struct pt_regs *ctx)
 
 	/* Read out args1-5 */
 	ty = bpf_core_enum_value(fgs_args, arg0);
-	if (ty >= 0 && ty + total < 4095) {
-		errv = read_call_arg(e->args, ty, total, a0);
-		if (errv >= 0)
-			total+=errv;
+	if (total < 4095) {
+		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
+		errv = read_call_arg(e->args, ty, total, a0, arg_meta);
+		if (errv < 0)
+			return 0;
+		total += errv;
 	}
 
 	ty = bpf_core_enum_value(fgs_args, arg1);
-	if (ty >= 0 && ty + total < 4095) {
-		errv += read_call_arg(e->args, ty, total, a1);
-		if (errv >= 0)
-			total+=errv;
+	if (total < 4095) {
+		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
+		errv = read_call_arg(e->args, ty, total, a1, arg_meta);
+		if (errv < 0)
+			return 0;
+		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg2);
-	if (ty >= 0 && ty + total < 4095) {
-		errv += read_call_arg(e->args, ty, total, a2);
-		if (errv >= 0)
-			total+=errv;
+	if (total < 4095) {
+		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
+		errv = read_call_arg(e->args, ty, total, a2, arg_meta);
+		if (errv < 0)
+			return 0;
+		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg3);
-	if (ty >= 0 && ty + total < 4095) {
-		errv += read_call_arg(e->args, ty, total, a3);
-		if (errv >= 0)
-			total+=errv;
+	if (total < 4095) {
+		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
+		errv = read_call_arg(e->args, ty, total, a3, arg_meta);
+		if (errv < 0)
+			return 0;
+		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg4);
-	if (ty >= 0 && ty + total < 4095) {
-		errv += read_call_arg(e->args, ty, total, a4);
-		if (errv >= 0)
-			total+=errv;
+	if (total < 4095) {
+		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
+		errv += read_call_arg(e->args, ty, total, a4, arg_meta);
+		if (errv < 0)
+			return 0;
+		total += errv;
 	}
-
 	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
 	if (total > 8192)
 		total = 8192;
 	e->common.size = total;
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total&0xfff);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total & 0x7fff);
 	return 0;
 }

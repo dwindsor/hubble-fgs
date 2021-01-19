@@ -7,6 +7,11 @@ enum generic_func_args_enum {
 	arg3    = 0x5,
 	arg4    = 0x6,
 	syscall = 0x7,
+	arg0m   = 0x8,
+	arg1m   = 0x9,
+	arg2m   = 0x10,
+	arg3m   = 0x11,
+	arg4m   = 0x12,
 };
 
 /* Kernel BTF */

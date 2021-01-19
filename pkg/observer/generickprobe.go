@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"strconv"
 	"strings"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
@@ -15,6 +16,7 @@ const (
 	GenericKprobeIntType    = 2
 	GenericKprobeSkbType    = 3
 	GenericKprobeSizeType   = 4
+	GenericKprobeCharBuffer = 5
 )
 
 func kprobeStrToTypeId(arg string) int {
@@ -27,6 +29,8 @@ func kprobeStrToTypeId(arg string) int {
 		return GenericKprobeSkbType
 	case "size_t":
 		return GenericKprobeSizeType
+	case "char_buf":
+		return GenericKprobeCharBuffer
 	default:
 		return -1
 	}
@@ -43,7 +47,31 @@ const (
 	arg4            = "arg4"
 	arg5            = "arg5"
 	is_syscall      = "syscall"
+	argm0           = "arg0m"
+	argm1           = "arg1m"
+	argm2           = "arg2m"
+	argm3           = "arg3m"
+	argm4           = "arg4m"
+	argm5           = "arg5m"
 )
+
+func kprobeArgMToString(a int) string {
+	switch a {
+	case 0:
+		return argm0
+	case 1:
+		return argm1
+	case 2:
+		return argm2
+	case 3:
+		return argm3
+	case 4:
+		return argm4
+	case 5:
+		return argm5
+	}
+	return ""
+}
 
 func kprobeArgToString(a int) string {
 	switch a {
@@ -112,11 +140,29 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		}
 
 		for j, f := range args {
-			argType := kprobeStrToTypeId(f)
+			fext := strings.Split(f, "#")
+
+			argType := kprobeStrToTypeId(fext[0])
+			argMValue := 0
+
+			if len(fext) > 1 {
+				var err error
+
+				argMValue, err = strconv.Atoi(fext[1])
+				if err != nil {
+					k.log.Warn("error strconv.Atoi %s, %s\n", fext[1], err)
+				}
+			}
+
 			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(j), argType)
 			if retVal < 0 {
-				k.log.Warn("error add enum btf value %d", retVal)
+				k.log.Warn("error add enum btf arg value %d", retVal)
 			}
+			retVal = bpf.AddEnumBtfValue(btf, kprobeArgMToString(j), argMValue)
+			if retVal < 0 {
+				k.log.Warn("error add enum btf argM value %d", retVal)
+			}
+
 			argPrinters = append(argPrinters, argType)
 		}
 
@@ -228,7 +274,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeStringType:
-			var b uint32
+			var b int32
 			var arg api.MsgGenericKprobeArgString
 
 			err := binary.Read(r, binary.LittleEndian, &b)
@@ -239,6 +285,23 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			err = binary.Read(r, binary.LittleEndian, &outputStr)
 			if err != nil {
 				k.log.WithError(err).Warnf("String type err")
+			}
+
+			arg.Index = uint64(i)
+			arg.Value = string(outputStr[:])
+			unix.Args = append(unix.Args, arg)
+		case GenericKprobeCharBuffer:
+			var b int32
+			var arg api.MsgGenericKprobeArgString
+
+			err := binary.Read(r, binary.LittleEndian, &b)
+			if err != nil {
+				k.log.WithError(err).Warnf("StringCharBuf size err")
+			}
+			outputStr := make([]byte, b)
+			err = binary.Read(r, binary.LittleEndian, &outputStr)
+			if err != nil {
+				k.log.WithError(err).Warnf("StringCharBuf size (%d) type err", b)
 			}
 
 			arg.Index = uint64(i)
