@@ -270,7 +270,8 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 		switch e := arg.(type) {
 		case api.MsgGenericKprobeArgInt:
 			a.Arg = &fgs.KprobeArgument_IntArg{IntArg: e.Value}
-
+		case api.MsgGenericKprobeArgSize:
+			a.Arg = &fgs.KprobeArgument_SizeArg{SizeArg: e.Value}
 		case api.MsgGenericKprobeArgString:
 			a.Arg = &fgs.KprobeArgument_StringArg{StringArg: e.Value}
 		case api.MsgGenericKprobeArgSkb:

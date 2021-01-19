@@ -10,6 +10,11 @@ type MsgGenericKprobeArgInt struct {
 	Value int32
 }
 
+type MsgGenericKprobeArgSize struct {
+	Index uint64
+	Value uint64
+}
+
 type MsgGenericKprobeSkb struct {
 	Hash     uint32
 	Len      uint32

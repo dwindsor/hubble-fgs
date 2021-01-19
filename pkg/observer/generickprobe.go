@@ -14,6 +14,7 @@ const (
 	GenericKprobeStringType = 1
 	GenericKprobeIntType    = 2
 	GenericKprobeSkbType    = 3
+	GenericKprobeSizeType   = 4
 )
 
 func kprobeStrToTypeId(arg string) int {
@@ -24,6 +25,8 @@ func kprobeStrToTypeId(arg string) int {
 		return GenericKprobeIntType
 	case "skb":
 		return GenericKprobeSkbType
+	case "size_t":
+		return GenericKprobeSizeType
 	default:
 		return -1
 	}
@@ -255,6 +258,18 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Len = skb.Len
 			arg.Priority = skb.Priority
 			arg.Mark = skb.Mark
+			unix.Args = append(unix.Args, arg)
+		case GenericKprobeSizeType:
+			var output uint64
+			var arg api.MsgGenericKprobeArgSize
+
+			err := binary.Read(r, binary.LittleEndian, &output)
+			if err != nil {
+				k.log.WithError(err).Warnf("Size type error")
+			}
+
+			arg.Index = uint64(i)
+			arg.Value = output
 			unix.Args = append(unix.Args, arg)
 		}
 	}

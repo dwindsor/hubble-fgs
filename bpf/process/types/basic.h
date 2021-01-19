@@ -3,6 +3,7 @@ enum {
 	string_type = 1,
 	int_type = 2,
 	skb_type = 3,
+	size_type = 4,
 };
 
 struct skb_type {
@@ -28,6 +29,9 @@ int read_call_arg(char *args, int type, long off, unsigned long arg)
 
 		size = probe_read_str(&args[off+4], MAX_STRING, (char *)arg);
 		*s = size;
+	} else if (type == size_type && sizeof(size_t) + off < 4095) {
+		probe_read(&args[off], sizeof(size_t), &arg);
+		size = sizeof(size_t);
 	} else if (type == int_type && sizeof(int) + off < 4095) {
 		size  = sizeof(int);
 		probe_read(&args[off], size, &arg);

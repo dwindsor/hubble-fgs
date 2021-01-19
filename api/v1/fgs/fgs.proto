@@ -141,6 +141,7 @@ message KprobeArgument {
 	string    string_arg = 1;
 	int32     int_arg = 2;
 	KprobeSkb skb_arg = 3;
+	uint64    size_arg = 4;
     }
 }
 
