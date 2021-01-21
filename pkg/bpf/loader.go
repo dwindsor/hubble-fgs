@@ -510,7 +510,7 @@ int tracepoint_loader(const int version,
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
-		fprintf(stderr, "bpf_object__find_program_by_title: null pointer\n");
+		fprintf(stderr, "bpf_object__find_program_by_title(tracepoint:%s): null pointer\n", label);
 		bpf_object__close(obj);
 		err = -1;
 		goto out;
@@ -561,7 +561,7 @@ int __kprobe_loader(struct bpf_object *obj,
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
-		fprintf(stderr, "bpf_object__find_program_by_title: null pointer\n");
+		fprintf(stderr, "bpf_object__find_program_by_title(kprobe:%s): null pointer\n", label);
 		return -1;
 	}
 	err = libbpf_get_error(prog_bpf);

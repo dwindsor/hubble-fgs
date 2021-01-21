@@ -65,8 +65,8 @@ test-compile:
 	$(GO) test -c ./pkg/vtuplefilter
 
 test-kernels:
-	kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
-	${KATA_RUNNER}
+	#kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
+	#${KATA_RUNNER}
 	kata-img vmlinuz-kata-linux-4.19.133-81_hubble
 	${KATA_RUNNER}
 	kata-img vmlinuz-kata-linux-5.4.51-83_hubble

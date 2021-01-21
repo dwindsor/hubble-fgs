@@ -99,7 +99,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg0);
 	if (total < 4095) {
 		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a0, arg_meta);
+		errv = read_call_arg(e->args, ty, total, a0, arg_meta, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -108,7 +108,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg1);
 	if (total < 4095) {
 		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a1, arg_meta);
+		errv = read_call_arg(e->args, ty, total, a1, arg_meta, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -116,7 +116,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg2);
 	if (total < 4095) {
 		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a2, arg_meta);
+		errv = read_call_arg(e->args, ty, total, a2, arg_meta, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -124,7 +124,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg3);
 	if (total < 4095) {
 		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a3, arg_meta);
+		errv = read_call_arg(e->args, ty, total, a3, arg_meta, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -132,7 +132,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg4);
 	if (total < 4095) {
 		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
-		errv += read_call_arg(e->args, ty, total, a4, arg_meta);
+		errv += read_call_arg(e->args, ty, total, a4, arg_meta, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;

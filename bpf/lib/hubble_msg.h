@@ -333,6 +333,7 @@ struct execve_map_value {
 	struct msg_execve_key key;
 	struct msg_execve_key pkey;
 	__u32  flags;
+	unsigned long retprobe_buffer;
 } __attribute__((packed));
 
 #ifdef BTF

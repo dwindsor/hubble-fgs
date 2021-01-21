@@ -30,7 +30,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
 #define MAX_STRING 1024
 
 static inline __attribute__((always_inline))
-int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned long argm)
+int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned long argm, struct execve_map_value *proc)
 {
 	int size = -1;
 	int zero = 0;
@@ -41,6 +41,7 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 		int *s = (int *)&args[off];
 		size = probe_read_str(&args[off+4], MAX_STRING, (char *)arg);
 		*s = size;
+		size += 4; // accounting for initial length int
 	} else if (type == size_type && sizeof(size_t) + off < 4095) {
 		probe_read(&args[off], sizeof(size_t), &arg);
 		size = sizeof(size_t);
@@ -57,7 +58,6 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 			    f[3] == value ||
 			    f[4] == value) ;
 			else return -2;
-
 		}
 		size  = sizeof(int);
 		args[off] = value;
@@ -74,7 +74,13 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 		int *s = (int *)&args[off];
 		size_t bytes = 0;
 
+		if (argm == -1) {
+			proc->retprobe_buffer = arg;
+			*s = 0;
+			return 4; // 4 is accounting for initial length int
+		}
 		probe_read(&bytes, sizeof(bytes), &argm);
+
 		if (off < 4095) {
 			int err;
 			/* Ensure bytes does not read past end of buffer */
@@ -92,7 +98,7 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 }
 
 static inline __attribute__((always_inline))
-unsigned long get_arg_meta(unsigned long meta,
+unsigned long get_arg_meta(int meta,
 			   unsigned long a0,
 			   unsigned long a1,
 			   unsigned long a2,
@@ -100,6 +106,7 @@ unsigned long get_arg_meta(unsigned long meta,
 			   unsigned long a4)
 {
 	switch (meta) {
+	case -1: return -1; // tbd what if this collides, seems unlikely.
 	case 1: return a0;
 	case 2: return a1;
 	case 3: return a2;

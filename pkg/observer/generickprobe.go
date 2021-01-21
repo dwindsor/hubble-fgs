@@ -3,7 +3,6 @@ package observer
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"strconv"
 	"strings"
 
@@ -103,17 +102,22 @@ type kprobeArgs struct {
 	args4 []byte
 }
 
+type kprobeLoadArgs struct {
+	args     kprobeArgs
+	btf      uintptr
+	retprobe bool
+	syscall  bool
+}
+
 var (
 	// A map of BTF images. generic_kprobe_name -> btf
-	genericKprobeArgs map[string]kprobeArgs
-	genericKprobeBtf  map[string]uintptr
-	genericKprobeId   map[uint64][]int
-	genericKprobeName map[uint64]string
+	genericKprobeLoadArgs map[string]kprobeLoadArgs
+	genericKprobeId       map[uint64][]int
+	genericKprobeName     map[uint64]string
 )
 
 func (k *ObserverKprobe) initKprobeSensors() {
-	genericKprobeArgs = make(map[string]kprobeArgs, 1)
-	genericKprobeBtf = make(map[string]uintptr, 1)
+	genericKprobeLoadArgs = make(map[string]kprobeLoadArgs, 1)
 	genericKprobeId = make(map[uint64][]int, 1)
 	genericKprobeName = make(map[uint64]string, 1)
 }
@@ -155,8 +159,9 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 	sensors := strings.Split(sensorList, ",")
 	// sensors <- function(arg1:arg2:arg3:arg4:arg5)[attributes]
 	for i, s := range sensors {
+		var entry kprobeLoadArgs
 		var argPrinters []int
-		var is_syscall bool
+		var is_syscall, is_retprobe bool
 		argFilters := kprobeArgs{
 			args0: make([]byte, sizeofArgsFilter),
 			args1: make([]byte, sizeofArgsFilter),
@@ -198,9 +203,14 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 			if len(fext) > 1 {
 				var err error
 
-				argMValue, err = strconv.Atoi(fext[1])
-				if err != nil {
-					k.log.Warn("error strconv.Atoi %s, %s\n", fext[1], err)
+				switch fext[1] {
+				case "ret":
+					argMValue = -1
+				default:
+					argMValue, err = strconv.Atoi(fext[1])
+					if err != nil {
+						k.log.Warn("error strconv.Atoi %s, %s\n", fext[1], err)
+					}
 				}
 			}
 
@@ -240,6 +250,8 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 				// Inform datapath that this kprobe is a syscall
 				case "syscall":
 					is_syscall = true
+				case "ret":
+					is_retprobe = true
 				}
 			}
 		}
@@ -256,22 +268,40 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 			}
 		}
 
-		genericKprobeArgs[funcName] = argFilters
-		genericKprobeBtf[funcName] = btf
+		entry.args = argFilters
+		entry.btf = btf
+		entry.retprobe = is_retprobe
+		entry.syscall = is_syscall
+		genericKprobeLoadArgs[funcName] = entry
 		genericKprobeId[uint64(i)] = argPrinters
 		genericKprobeName[uint64(i)] = funcName
 
 		load := &bpfLoad{}
-		load.Observer__program = HubbleLib + "bpf_generic_kprobe.o"
 		load.observer__x64_attach = funcName
-		load.observer__attach = funcName
+		load.Observer__program = HubbleLib + "bpf_generic_kprobe.o"
 		load.observer__label = "kprobe/generic_kprobe"
+		load.observer__attach = funcName
 		load.observer__prog = "kfprobe" + "_" + funcName
 		load.retProbe = false
 		load.errorFatal = true
 		load.probeType = "generic_kprobe"
 		load.loadState = bpfLoadStateIdle()
 		load.tracefd = -1
+
+		if is_retprobe {
+			loadret := &bpfLoad{}
+			loadret.observer__x64_attach = funcName
+			loadret.Observer__program = HubbleLib + "bpf_generic_retkprobe.o"
+			loadret.observer__label = "kprobe/generic_retkprobe"
+			loadret.observer__attach = funcName
+			loadret.observer__prog = "kretprobe" + "_" + funcName
+			loadret.retProbe = true
+			loadret.errorFatal = true
+			loadret.probeType = "generic_kprobe"
+			loadret.loadState = bpfLoadStateIdle()
+			loadret.tracefd = -1
+			progs = append(progs, loadret)
+		}
 
 		progs = append(progs, load)
 	}
@@ -295,13 +325,17 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose int, x64 bool) (error, int) {
 	var attach string
 
-	btf := genericKprobeBtf[load.observer__attach]
-	args := genericKprobeArgs[load.observer__attach]
+	btf := genericKprobeLoadArgs[load.observer__attach].btf
+	args := genericKprobeLoadArgs[load.observer__attach].args
+	// we don't actually need retprobe here but might be useful in the future for dbg?
+	retprobe := genericKprobeLoadArgs[load.observer__attach].retprobe
+
 	if x64 {
 		attach = load.observer__x64_attach
 	} else {
 		attach = load.observer__attach
 	}
+	retprobe = strings.Contains(load.Observer__program, "ret")
 	return bpf.LoadKprobeArgsProgram(
 		version, verbose, btf,
 		load.Observer__program,
@@ -309,7 +343,7 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 		load.observer__label,
 		k.bpfDir+load.observer__prog,
 		k.mapDir,
-		load.retProbe,
+		retprobe,
 		args.args0)
 }
 
@@ -327,8 +361,14 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	unix.Id = m.Id
 	unix.FuncName = genericKprobeName[m.Id]
 
+	retProbe := m.Common.Pad[0]
+
 	printerArgs := genericKprobeId[m.Id]
 	for i, arg := range printerArgs {
+		if retProbe > 0 && arg != GenericKprobeCharBuffer {
+			continue
+		}
+
 		switch arg {
 		case GenericKprobeIntType:
 			var output int32
@@ -367,15 +407,21 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			if err != nil {
 				k.log.WithError(err).Warnf("StringCharBuf size err")
 			}
-			outputStr := make([]byte, b)
-			err = binary.Read(r, binary.LittleEndian, &outputStr)
-			if err != nil {
-				k.log.WithError(err).Warnf("StringCharBuf size (%d) type err", b)
-			}
+			if b != 0 {
+				outputStr := make([]byte, b)
+				err = binary.Read(r, binary.LittleEndian, &outputStr)
+				if err != nil {
+					k.log.WithError(err).Warnf("StringCharBuf size (%d) type err", b)
+				}
 
-			arg.Index = uint64(i)
-			arg.Value = string(outputStr[:])
-			unix.Args = append(unix.Args, arg)
+				arg.Index = uint64(i)
+				arg.Value = string(outputStr[:])
+				unix.Args = append(unix.Args, arg)
+			} else {
+				arg.Index = uint64(i)
+				arg.Value = "return value expected"
+				unix.Args = append(unix.Args, arg)
+			}
 		case GenericKprobeSkbType:
 			var skb api.MsgGenericKprobeSkb
 			var arg api.MsgGenericKprobeArgSkb
