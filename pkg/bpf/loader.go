@@ -548,24 +548,16 @@ out:
 	return err;
 }
 
-int kprobe_loader(const int version,
-		  const int verbosity,
-		  void *btf,
-		  const char *prog,
-		  const char *attach,
-		  const char *label,
-	  	  const char *__prog,
-		  const char *mapdir,
-		  const bool retprobe)
+int __kprobe_loader(struct bpf_object *obj,
+		    const int verbosity,
+		    const char *attach,
+		    const char *label,
+		    const char *__prog,
+		    const bool retprobe)
 {
-	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
-	struct bpf_object *obj;
+	struct bpf_program *prog_bpf;
 	int err;
-
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
-	if (!obj)
-		return -1;
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
@@ -585,7 +577,7 @@ int kprobe_loader(const int version,
 	if (err) {
 		// Expected error when attach point probe is happening
 		if (verbosity)
-			fprintf(stderr, "bpf_program__attach_kprobe: failed (%s)\n", prog);
+			fprintf(stderr, "bpf_program__attach_kprobe: failed (%s)\n", label);
 		return -1;
 	}
 
@@ -597,6 +589,43 @@ int kprobe_loader(const int version,
 	bpf_object__close(obj);
 	bpf_program__unload(prog_bpf);
 	return bpf_link_fd(prog_attach);
+}
+
+int kprobe_loader_args(const int version,
+		  const int verbosity,
+		  void *btf,
+		  const char *prog,
+		  const char *attach,
+		  const char *label,
+		  const char *__prog,
+		  const char *mapdir,
+		  const bool retprobe)
+{
+	struct bpf_object *obj;
+
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
+	if (!obj)
+		return -1;
+	return __kprobe_loader(obj, verbosity, attach, label, __prog, retprobe);
+}
+
+int kprobe_loader(const int version,
+		  const int verbosity,
+		  void *btf,
+		  const char *prog,
+		  const char *attach,
+		  const char *label,
+		  const char *__prog,
+		  const char *mapdir,
+		  const bool retprobe)
+{
+	struct bpf_object *obj;
+
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
+	if (!obj)
+		return -1;
+
+	return __kprobe_loader(obj, verbosity, attach, label, __prog, retprobe);
 }
 */
 import "C"
