@@ -19,6 +19,10 @@ const (
 	GenericKprobeCharBuffer = 5
 )
 
+const (
+	sizeofArgsFilter = 40
+)
+
 func kprobeStrToTypeId(arg string) int {
 	switch arg {
 	case "string":
@@ -91,17 +95,54 @@ func kprobeArgToString(a int) string {
 	return ""
 }
 
+type kprobeArgs struct {
+	args0 []byte
+	args1 []byte
+	args2 []byte
+	args3 []byte
+	args4 []byte
+}
+
 var (
 	// A map of BTF images. generic_kprobe_name -> btf
+	genericKprobeArgs map[string]kprobeArgs
 	genericKprobeBtf  map[string]uintptr
 	genericKprobeId   map[uint64][]int
 	genericKprobeName map[uint64]string
 )
 
 func (k *ObserverKprobe) initKprobeSensors() {
+	genericKprobeArgs = make(map[string]kprobeArgs, 1)
 	genericKprobeBtf = make(map[string]uintptr, 1)
 	genericKprobeId = make(map[uint64][]int, 1)
 	genericKprobeName = make(map[uint64]string, 1)
+}
+
+func (k *ObserverKprobe) createArgFilter(argType int, filter string) []byte {
+	b := make([]byte, sizeofArgsFilter)
+
+	switch argType {
+	case GenericKprobeIntType: // int1 | int2 | ... | intN
+		fs := strings.Split(filter, "|")
+		if len(fs) > 9 {
+			k.log.Warn("Warning: createArgFilter too many filter, argType %d filterStr %s\n", argType, filter)
+		} else {
+			for i, f := range fs {
+				v, err := strconv.Atoi(f)
+				if err != nil {
+					k.log.Warn("invalid filterArg type %d filter %s\n", argType, f)
+				} else {
+					binary.LittleEndian.PutUint32(b[i*4:], uint32(v))
+				}
+			}
+		}
+	case GenericKprobeStringType:
+	case GenericKprobeSkbType:
+	case GenericKprobeSizeType:
+	case GenericKprobeCharBuffer:
+	}
+
+	return b
 }
 
 func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile string) *observerSensor {
@@ -116,6 +157,13 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 	for i, s := range sensors {
 		var argPrinters []int
 		var is_syscall bool
+		argFilters := kprobeArgs{
+			args0: make([]byte, sizeofArgsFilter),
+			args1: make([]byte, sizeofArgsFilter),
+			args2: make([]byte, sizeofArgsFilter),
+			args3: make([]byte, sizeofArgsFilter),
+			args4: make([]byte, sizeofArgsFilter),
+		}
 
 		funcSplit := strings.Split(s, "(")
 		filterSplit := strings.Split(funcSplit[1], ")")
@@ -139,18 +187,36 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 			k.log.Warn("error add enum gen id value %d", ret)
 		}
 
+		// Argument format 'aType=filters$metadata'
 		for j, f := range args {
 			fext := strings.Split(f, "#")
+			filters := strings.Split(fext[0], "=")
+			argType := kprobeStrToTypeId(filters[0])
 
-			argType := kprobeStrToTypeId(fext[0])
+			// Associate any metadata with the argument
 			argMValue := 0
-
 			if len(fext) > 1 {
 				var err error
 
 				argMValue, err = strconv.Atoi(fext[1])
 				if err != nil {
 					k.log.Warn("error strconv.Atoi %s, %s\n", fext[1], err)
+				}
+			}
+
+			if len(filters) > 1 {
+				argF := k.createArgFilter(argType, filters[1])
+				switch j { // this is a bit ugly fixup tbd
+				case 0:
+					argFilters.args0 = argF
+				case 1:
+					argFilters.args1 = argF
+				case 2:
+					argFilters.args2 = argF
+				case 3:
+					argFilters.args3 = argF
+				case 4:
+					argFilters.args4 = argF
 				}
 			}
 
@@ -190,6 +256,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 			}
 		}
 
+		genericKprobeArgs[funcName] = argFilters
 		genericKprobeBtf[funcName] = btf
 		genericKprobeId[uint64(i)] = argPrinters
 		genericKprobeName[uint64(i)] = funcName
@@ -229,19 +296,21 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 	var attach string
 
 	btf := genericKprobeBtf[load.observer__attach]
+	args := genericKprobeArgs[load.observer__attach]
 	if x64 {
 		attach = load.observer__x64_attach
 	} else {
 		attach = load.observer__attach
 	}
-	return bpf.LoadKprobeProgram(
+	return bpf.LoadKprobeArgsProgram(
 		version, verbose, btf,
 		load.Observer__program,
 		attach,
 		load.observer__label,
 		k.bpfDir+load.observer__prog,
 		k.mapDir,
-		load.retProbe)
+		load.retProbe,
+		args.args0)
 }
 
 func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {

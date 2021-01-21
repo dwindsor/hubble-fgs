@@ -15,6 +15,14 @@ struct skb_type {
 	__u32 mark;
 };
 
+
+struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 40,
+	.max_entries = 1,
+};
+
 /* Constants bounding printers if these change or buffer size changes then
  * we will need to resize. TBD would be to size these at compile time using
  * buffer size information.
@@ -25,20 +33,34 @@ static inline __attribute__((always_inline))
 int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned long argm)
 {
 	int size = -1;
+	int zero = 0;
 
 	if (type == nop) {
 		size = 0;
 	} else if (type == string_type && MAX_STRING + off < 4095) {
 		int *s = (int *)&args[off];
-
 		size = probe_read_str(&args[off+4], MAX_STRING, (char *)arg);
 		*s = size;
 	} else if (type == size_type && sizeof(size_t) + off < 4095) {
 		probe_read(&args[off], sizeof(size_t), &arg);
 		size = sizeof(size_t);
 	} else if (type == int_type && sizeof(int) + off < 4095) {
+		int value;
+		int *f;
+
+		probe_read(&value, sizeof(int), &arg);
+		f = map_lookup_elem(&args0_filter_map, &zero);
+		if (f && *f) {
+			if (f[0] == value ||
+			    f[1] == value ||
+			    f[2] == value ||
+			    f[3] == value ||
+			    f[4] == value) ;
+			else return -2;
+
+		}
 		size  = sizeof(int);
-		probe_read(&args[off], size, &arg);
+		args[off] = value;
 	} else if (type == skb_type && sizeof(struct skb_type) + off < 4095) {
 		struct sk_buff *skb = (struct sk_buff *)arg;
 		struct skb_type *skb_event = (struct skb_type *)&args[off];

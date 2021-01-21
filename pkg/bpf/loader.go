@@ -599,13 +599,28 @@ int kprobe_loader_args(const int version,
 		  const char *label,
 		  const char *__prog,
 		  const char *mapdir,
-		  const bool retprobe)
+		  const bool retprobe,
+	  	  void *args0)
 {
 	struct bpf_object *obj;
+	int map_fd, err;
 
 	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
 	if (!obj)
 		return -1;
+
+	map_fd = bpf_object__find_map_fd_by_name(obj, "args0_filter_map");
+	if (map_fd >= 0) {
+		int i = 0;
+
+		err = bpf_map_update_elem(map_fd, &i, args0, BPF_ANY);
+		if (err) {
+			printf("WARNING: map update elem args0 error %d\n", err);
+		}
+	} else {
+		printf("WARNING: attempted to set filter args on program without filters\n");
+	}
+
 	return __kprobe_loader(obj, verbosity, attach, label, __prog, retprobe);
 }
 
@@ -781,6 +796,31 @@ func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, 
 	mapdir := C.CString(__mapdir)
 	ret := C.bool(retprobe)
 	loader_fd := C.kprobe_loader(version, verbosity, unsafe.Pointer(btf), o, a, l, p, mapdir, ret)
+	loaderInt := int(loader_fd)
+	if loaderInt < 0 {
+		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
+	}
+	return nil, loaderInt
+}
+
+func LoadKprobeArgsProgram(__version, __verbosity int,
+	btf uintptr,
+	object, attach, __label, __prog, __mapdir string,
+	retprobe bool,
+	args0 []byte) (error, int) {
+	version := C.int(__version)
+	verbosity := C.int(__verbosity)
+	o := C.CString(object)
+	a := C.CString(attach)
+	l := C.CString(__label)
+	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
+	ret := C.bool(retprobe)
+	loader_fd := C.kprobe_loader_args(version,
+		verbosity,
+		unsafe.Pointer(btf),
+		o, a, l, p, mapdir, ret,
+		C.CBytes(args0))
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
