@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"flag"
 	"fmt"
 	"io/ioutil"
 	"net"
@@ -28,9 +29,15 @@ import (
 
 var (
 	selfBinary string
+	fgsLib     string
 )
 
+func init() {
+	flag.StringVar(&fgsLib, "hubble-lib", "/var/lib/hubble-fgs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
+}
+
 func TestMain(m *testing.M) {
+	flag.Parse()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
@@ -51,25 +58,11 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) (*ObserverKprobe,
 	for i, b := range uts.Release {
 		buf[i] = byte(b)
 	}
-	ObserverExecve.Observer__program = "../../bpf/objs/bpf_execve_event.o"
-	ObserverExit.Observer__program = "../../bpf/objs/bpf_exit.o"
-	ObserverFork.Observer__program = "../../bpf/objs/bpf_fork.o"
-	ObserverTCPConnect.Observer__program = "../../bpf/objs/bpf_tcpmon.o"
-	ObserverTCPConnectRet.Observer__program = "../../bpf/objs/bpf_tcpmonret.o"
-	ObserverTCPClose.Observer__program = "../../bpf/objs/bpf_tcpclose.o"
-	ObserverListen.Observer__program = "../../bpf/objs/bpf_listen.o"
-	ObserverSockopsEstablished.Observer__program = "../../bpf/objs/bpf_sockops.o"
-	ObserverSkmsg.Observer__program = "../../bpf/objs/bpf_skmsg.o"
-	ObserverTLSTCIngress.Observer__program = "../../bpf/objs/bpf_tc_ingress.o"
-	ObserverTLSTCEgress.Observer__program = "../../bpf/objs/bpf_tc_egress.o"
-	ObserverLseekTest.Observer__program = "../../bpf/objs/bpf_lseek.o"
-	ObserverCred.Observer__program = "../../bpf/objs/bpf_cred.o"
 
-	btf := os.Getenv("FGS_BTF")
-	if btf != "" {
-		ObserverBTF = btf
-	} else {
-		ObserverBTF = "../../bpf/btf"
+	HubbleLib = fgsLib
+	envFgsLib := os.Getenv("FGS_LIB")
+	if envFgsLib != "" {
+		HubbleLib = envFgsLib
 	}
 	procfs := os.Getenv("FGS_PROCFS")
 	if procfs != "" {
@@ -80,8 +73,12 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) (*ObserverKprobe,
 	if testing.Verbose() {
 		Verbosity = 1
 	}
+
 	err := kprobe.ConfigureBTF(ctx)
 	if err != nil {
+		return nil, err
+	}
+	if err := kprobe.observerFindProgs(ctx); err != nil {
 		return nil, err
 	}
 

@@ -1908,18 +1908,21 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 			ObserverBTF = runFile
 			return nil
 		}
+		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
 
 		runFile = HubbleLib + "btf"
 		if _, err := os.Stat(runFile); err == nil {
 			ObserverBTF = runFile
 			return nil
 		}
+		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
 
 		runFile = path.Join("sys", "kernel", "btf", "vmlinux")
 		if _, err := os.Stat(runFile); err == nil {
 			ObserverBTF = runFile
 			return nil
 		}
+		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
 
 		return fmt.Errorf("Kernel version '%s' BTF search failed kernel is not included in supported list. Use --btf option to specify BTF path and/or '--kernel' to specify kernel version.", uname.Release[:n])
 	} else {

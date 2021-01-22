@@ -23,5 +23,6 @@ docker run --name btf-build -v /usr/lib/debug/boot:/kernels/ quay.io/isovalent/h
 	llvm-objcopy --dump-section .BTF=.btf.vmlinux.bin vmlinux-${k} && \
 	llvm-objcopy -I binary -O elf64-x86-64 --rename-section .data=.BTF ./.btf.vmlinux.bin ./btf
 "
-docker cp btf-build:/kernels/btf ./bpf/btf
+mkdir ./bpf/objs
+docker cp btf-build:/kernels/btf ./bpf/objs/btf
 docker rm -f btf-build
