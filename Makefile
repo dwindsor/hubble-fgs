@@ -3,17 +3,30 @@ INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
+LOCAL_CLANG ?= 1
 LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.2
+CLANG_IMAGE = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
 
-all: headers hubble-bpf hubble-fgs hubble-enterprise
 
-headers:
-	cd ./bpf && make && cd ../
+all: hubble-bpf hubble-fgs hubble-enterprise test-compile
 
-hubble-bpf:
+.PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
+
+ifeq (1,$(LOCAL_CLANG))
+hubble-bpf: hubble-bpf-local
+else
+hubble-bpf: hubble-bpf-container
+endif
+
+hubble-bpf-local:
 	make -C ./bpf
+
+hubble-bpf-container:
+	docker rm hubble-llvm || true
+	docker run -v $(CURDIR):/hubble-fgs -u $$(id -u)  --name hubble-llvm $(CLANG_IMAGE) make -C /hubble-fgs/bpf
+	docker rm hubble-llvm
 
 hubble-fgs:
 	$(GO) build -mod=vendor ./cmd/hubble-fgs/
@@ -40,6 +53,16 @@ clean:
 
 test:
 	$(GO) test $(GOFLAGS) -cover $$(go list $(GOFLAGS) ./...)
+
+test-compile:
+	$(GO) test -c ./pkg/bugtool
+	$(GO) test -c ./pkg/filters
+	$(GO) test -c ./pkg/grpc
+	$(GO) test -c ./pkg/metrics
+	$(GO) test -c ./pkg/observer
+	$(GO) test -c ./pkg/reader
+	$(GO) test -c ./pkg/stacktracetree
+	$(GO) test -c ./pkg/vtuplefilter
 
 test-kernels:
 	kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
