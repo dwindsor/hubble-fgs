@@ -43,6 +43,7 @@ int event_sys_listen(struct pt_regs *ctx)
 	value.tuple.saddr = key.saddr;
 	value.tuple.sport = key.sport;
 	value.common.op = MSG_OP_IPV4_LISTEN;
+	value.common.ktime = ktime_get_ns();
 	value.common.size = sizeof(struct msg_ipv4_tcp_event);
 	value.key.pid = pid;
 	value.key.ktime = process->key.ktime;
