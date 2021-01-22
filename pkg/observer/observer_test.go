@@ -721,6 +721,10 @@ func TestListenAcceptClose(t *testing.T) {
 }
 
 func TestSensorLseekLoad(t *testing.T) {
+	if _, err := os.Stat("/sys/kernel/debug/tracing/events/syscalls"); os.IsNotExist(err) {
+		t.Skip("cannot use syscall tracepoints (consider enabling CONFIG_FTRACE_SYSCALLS)")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
@@ -759,6 +763,10 @@ func TestSensorLseekLoad(t *testing.T) {
 }
 
 func TestSensorLseekEnable(t *testing.T) {
+	if _, err := os.Stat("/sys/kernel/debug/tracing/events/syscalls"); os.IsNotExist(err) {
+		t.Skip("cannot use syscall tracepoints (consider enabling CONFIG_FTRACE_SYSCALLS)")
+	}
+
 	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
