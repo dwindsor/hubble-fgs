@@ -4,6 +4,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"os"
+	"sort"
 	"strings"
 	"time"
 
@@ -248,6 +249,24 @@ func verbosePrintf(s string) {
 	}
 }
 
+type EventResponses []fgs.GetEventsResponse
+type ByTime struct{ EventResponses }
+
+func (s EventResponses) Len() int      { return len(s) }
+func (s EventResponses) Swap(i, j int) { s[i], s[j] = s[j], s[i] }
+
+func (s ByTime) Less(i, j int) bool {
+
+	t1 := s.EventResponses[i].Time
+	t2 := s.EventResponses[j].Time
+	t1s := t1.GetSeconds()
+	t2s := t2.GetSeconds()
+	if t1s == t2s {
+		return t1.GetNanos() < t2.GetNanos()
+	}
+	return t1s < t2s
+}
+
 func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts, found int) bool {
 	var err error
 
@@ -255,7 +274,6 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 		return false
 	}
 
-	ev := fgs.GetEventsResponse{}
 	if jsonFile == nil {
 		fmt.Printf("jsonTestCompare: openning: %s\n", exportFile)
 		jsonFile, err = os.Open(exportFile)
@@ -265,13 +283,29 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 		defer jsonFile.Close()
 	}
 
+	events := make([]fgs.GetEventsResponse, 0, 128)
 	dec := json.NewDecoder(jsonFile)
+	for {
+		ev := fgs.GetEventsResponse{}
+		err = jsonpb.UnmarshalNext(dec, &ev)
+		if err != nil {
+			break
+		}
+		events = append(events, ev)
+		if !dec.More() {
+			break
+		}
+	}
+	sort.Sort(ByTime{events})
+
+	evidx := 0
 	for tidx, t := range trace[found:] {
 		for {
-			err = jsonpb.UnmarshalNext(dec, &ev)
-			if err != nil {
+			if evidx == len(events) {
 				goto retry
 			}
+			ev := events[evidx]
+			evidx += 1
 
 			evTyStr := eventTypeString(ev.Event)
 			trTyStr := eventTypeString(t.Event)
