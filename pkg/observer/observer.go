@@ -1874,6 +1874,7 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 		if _, err := os.Stat(p.Observer__program); err == nil {
 			continue
 		}
+		logger.GetLogger().WithField("file", p.Observer__program).Info("candidate bpf file does not exist")
 		last := strings.Split(p.Observer__program, "/")
 		filename := last[len(last)-1]
 
@@ -1882,6 +1883,7 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 			p.Observer__program = path
 			continue
 		}
+		logger.GetLogger().WithField("file", path).Info("candidate bpf file does not exist")
 
 		if IgnoreMissingProgs {
 			logger.GetLogger().Warningf("failed to find BPF prog %s, but was told to ignore such errors. Disabling it and moving on.", p.Observer__program)

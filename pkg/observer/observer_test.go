@@ -28,12 +28,14 @@ import (
 )
 
 var (
-	selfBinary string
-	fgsLib     string
+	selfBinary  string
+	fgsLib      string
+	cmdWaitTime time.Duration
 )
 
 func init() {
 	flag.StringVar(&fgsLib, "hubble-lib", "/var/lib/hubble-fgs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
+	flag.DurationVar(&cmdWaitTime, "command-wait", 10000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 }
 
 func TestMain(m *testing.M) {
@@ -177,7 +179,7 @@ func testDone(t *testing.T, kprobe *ObserverKprobe) {
 }
 
 func TestConnectEvent(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -230,7 +232,7 @@ func TestConnectEvent(t *testing.T) {
 }
 
 func TestExecEventClone(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -474,7 +476,7 @@ func TestTCTls13(t *testing.T) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -537,7 +539,7 @@ func TestTCTls12(t *testing.T) {
 		return
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -596,7 +598,7 @@ func TestTCTls12(t *testing.T) {
 }
 
 func TestListenAcceptClose(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -724,7 +726,7 @@ func TestSensorLseekLoad(t *testing.T) {
 		t.Skip("cannot use syscall tracepoints (consider enabling CONFIG_FTRACE_SYSCALLS)")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -766,7 +768,7 @@ func TestSensorLseekEnable(t *testing.T) {
 		t.Skip("cannot use syscall tracepoints (consider enabling CONFIG_FTRACE_SYSCALLS)")
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
