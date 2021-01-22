@@ -26,10 +26,15 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+var (
+	selfBinary string
+)
+
 func TestMain(m *testing.M) {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
+	selfBinary = filepath.Base(os.Args[0])
 	exitCode := m.Run()
 	os.Exit(exitCode)
 }
@@ -152,7 +157,7 @@ func getMyPid() uint32 {
 			if err != nil {
 				continue
 			}
-			if strings.Contains(string(cmdline), "go-build") {
+			if strings.Contains(string(cmdline), selfBinary) {
 				pid, err := strconv.ParseUint(d.Name(), 10, 32)
 				if err != nil {
 					continue
@@ -181,7 +186,7 @@ func TestConnectEvent(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: "go-build"},
+					Process: &fgs.Process{Binary: selfBinary},
 					Parent:  &fgs.Process{Binary: ""},
 				},
 			},
@@ -192,7 +197,7 @@ func TestConnectEvent(t *testing.T) {
 					Process: &fgs.Process{
 						Binary:    "curl",
 						Arguments: "127.0.0.1"},
-					Parent: &fgs.Process{Binary: "go-build"},
+					Parent: &fgs.Process{Binary: selfBinary},
 				},
 			},
 		},
@@ -203,7 +208,7 @@ func TestConnectEvent(t *testing.T) {
 						Binary:    "curl",
 						Arguments: "127.0.0.1"},
 					Parent: &fgs.Process{
-						Binary: "go-build"},
+						Binary: selfBinary},
 					DestinationIp:   "127.0.0.1",
 					DestinationPort: &wrappers.UInt32Value{Value: 80},
 				},
@@ -237,7 +242,7 @@ func TestExecEventClone(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: "go-build"},
+					Process: &fgs.Process{Binary: selfBinary},
 					Parent:  &fgs.Process{Binary: ""},
 				},
 			},
@@ -249,7 +254,7 @@ func TestExecEventClone(t *testing.T) {
 						Binary:    "nc.traditional",
 						Arguments: "-nvlp 8081",
 						Cwd:       fcwd},
-					Parent: &fgs.Process{Binary: "go-build",
+					Parent: &fgs.Process{Binary: selfBinary,
 						Cwd: rcwd},
 				},
 			},
@@ -262,7 +267,7 @@ func TestExecEventClone(t *testing.T) {
 						Arguments: "-nvlp 8081",
 						Cwd:       fcwd},
 					Parent: &fgs.Process{
-						Binary: "go-build",
+						Binary: selfBinary,
 						Cwd:    rcwd},
 					Ip:   "0.0.0.0",
 					Port: &wrappers.UInt32Value{Value: 8081},
@@ -277,7 +282,7 @@ func TestExecEventClone(t *testing.T) {
 						Arguments: "127.0.0.1 8081 -e /bin/sh",
 						Cwd:       fcwd},
 					Parent: &fgs.Process{
-						Binary: "go-build",
+						Binary: selfBinary,
 						Cwd:    rcwd},
 				},
 			},
@@ -290,7 +295,7 @@ func TestExecEventClone(t *testing.T) {
 						Arguments: "127.0.0.1 8081 -e /bin/sh",
 						Cwd:       fcwd},
 					Parent: &fgs.Process{
-						Binary: "go-build",
+						Binary: selfBinary,
 						Cwd:    rcwd},
 					DestinationIp:   "127.0.0.1",
 					DestinationPort: &wrappers.UInt32Value{Value: 8081},
@@ -341,7 +346,7 @@ func TestExistingListenEvent(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: "go-build"},
+					Process: &fgs.Process{Binary: selfBinary},
 					Parent:  &fgs.Process{Binary: ""},
 				},
 			},
@@ -352,7 +357,7 @@ func TestExistingListenEvent(t *testing.T) {
 					Process: &fgs.Process{
 						Binary:    "nc.traditional",
 						Arguments: "-nvlp 8081"},
-					Parent: &fgs.Process{Binary: "go-build"},
+					Parent: &fgs.Process{Binary: selfBinary},
 				},
 			},
 		},
@@ -363,7 +368,7 @@ func TestExistingListenEvent(t *testing.T) {
 						Binary:    "nc.traditional",
 						Arguments: "-nvlp 8081"},
 					Parent: &fgs.Process{
-						Binary: "go-build"},
+						Binary: selfBinary},
 					Ip:   "0.0.0.0",
 					Port: &wrappers.UInt32Value{Value: 8081},
 				},
@@ -397,7 +402,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: "go-build"},
+					Process: &fgs.Process{Binary: selfBinary},
 					Parent:  &fgs.Process{Binary: ""},
 				},
 			},
@@ -408,7 +413,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 					Process: &fgs.Process{
 						Binary:    "nc.traditional",
 						Arguments: "-nvlp 8081"},
-					Parent: &fgs.Process{Binary: "go-build"},
+					Parent: &fgs.Process{Binary: selfBinary},
 				},
 			},
 		},
@@ -419,7 +424,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 						Binary:    "nc.traditional",
 						Arguments: "-nvlp 8081"},
 					Parent: &fgs.Process{
-						Binary: "go-build"},
+						Binary: selfBinary},
 					Ip:   "0.0.0.0",
 					Port: &wrappers.UInt32Value{Value: 8081},
 				},
@@ -481,7 +486,7 @@ func TestTCTls13(t *testing.T) {
 					Process: &fgs.Process{
 						Binary:    "curl",
 						Arguments: "https://google.com"},
-					Parent: &fgs.Process{Binary: "go-build"},
+					Parent: &fgs.Process{Binary: selfBinary},
 				},
 			},
 		},
@@ -492,7 +497,7 @@ func TestTCTls13(t *testing.T) {
 						Binary:    "curl",
 						Arguments: "https://google.com"},
 					Parent: &fgs.Process{
-						Binary: "go-build"},
+						Binary: selfBinary},
 					DestinationPort: &wrappers.UInt32Value{Value: 443},
 				},
 			},
@@ -544,7 +549,7 @@ func TestTCTls12(t *testing.T) {
 					Process: &fgs.Process{
 						Binary:    "curl",
 						Arguments: "https://tls-v1-2.badssl.com:1012/"},
-					Parent: &fgs.Process{Binary: "go-build"},
+					Parent: &fgs.Process{Binary: selfBinary},
 				},
 			},
 		},
@@ -555,7 +560,7 @@ func TestTCTls12(t *testing.T) {
 						Binary:    "curl",
 						Arguments: "https://tls-v1-2.badssl.com:1012/"},
 					Parent: &fgs.Process{
-						Binary: "go-build"},
+						Binary: selfBinary},
 					DestinationPort: &wrappers.UInt32Value{Value: 1012},
 				},
 			},
@@ -603,7 +608,7 @@ func TestListenAcceptClose(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: "go-build"},
+					Process: &fgs.Process{Binary: selfBinary},
 					Parent:  &fgs.Process{Binary: ""},
 				},
 			},
@@ -615,7 +620,7 @@ func TestListenAcceptClose(t *testing.T) {
 						Binary:    "nc.traditional",
 						Arguments: "-nvlp 8081",
 						Cwd:       fcwd},
-					Parent: &fgs.Process{Binary: "go-build",
+					Parent: &fgs.Process{Binary: selfBinary,
 						Cwd: rcwd},
 				},
 			},
@@ -628,7 +633,7 @@ func TestListenAcceptClose(t *testing.T) {
 						Arguments: "-nvlp 8081",
 						Cwd:       fcwd},
 					Parent: &fgs.Process{
-						Binary: "go-build",
+						Binary: selfBinary,
 						Cwd:    rcwd},
 					Ip:   "0.0.0.0",
 					Port: &wrappers.UInt32Value{Value: 8081},
@@ -643,7 +648,7 @@ func TestListenAcceptClose(t *testing.T) {
 						Arguments: "-nvlp 8081",
 						Cwd:       fcwd},
 					Parent: &fgs.Process{
-						Binary: "go-build",
+						Binary: selfBinary,
 						Cwd:    rcwd},
 					SourceIp:   "127.0.0.1",
 					SourcePort: &wrappers.UInt32Value{Value: 8081},
@@ -658,7 +663,7 @@ func TestListenAcceptClose(t *testing.T) {
 						Arguments: "-nvlp 8081",
 						Cwd:       fcwd},
 					Parent: &fgs.Process{
-						Binary: "go-build",
+						Binary: selfBinary,
 						Cwd:    rcwd},
 					SourceIp:   "0.0.0.0",
 					SourcePort: &wrappers.UInt32Value{Value: 8081},
@@ -678,7 +683,7 @@ func TestListenAcceptClose(t *testing.T) {
 							Arguments: "-nvlp 8081",
 							Cwd:       fcwd},
 						Parent: &fgs.Process{
-							Binary: "go-build",
+							Binary: selfBinary,
 							Cwd:    rcwd},
 						SourceIp:   "127.0.0.1",
 						SourcePort: &wrappers.UInt32Value{Value: 8081},
