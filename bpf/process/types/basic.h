@@ -1,11 +1,18 @@
 /* Type IDs form API with user space generickprobe.go */
 enum {
+	filter = -2,
 	nop = -1,
 	string_type = 1,
 	int_type = 2,
 	skb_type = 3,
 	size_type = 4,
 	char_buf = 5,
+};
+
+enum {
+	char_buf_enomem = -1,
+	char_buf_pagefault = -2,
+	char_buf_toolarge = -3,
 };
 
 struct skb_type {
@@ -46,8 +53,8 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 		probe_read(&args[off], sizeof(size_t), &arg);
 		size = sizeof(size_t);
 	} else if (type == int_type && sizeof(int) + off < 4095) {
+		int *f, *s = (int *)&args[off];
 		int value;
-		int *f;
 
 		probe_read(&value, sizeof(int), &arg);
 		f = map_lookup_elem(&args0_filter_map, &zero);
@@ -57,10 +64,10 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 			    f[2] == value ||
 			    f[3] == value ||
 			    f[4] == value) ;
-			else return -2;
+			else return filter;
 		}
 		size  = sizeof(int);
-		args[off] = value;
+		*s = value;
 	} else if (type == skb_type && sizeof(struct skb_type) + off < 4095) {
 		struct sk_buff *skb = (struct sk_buff *)arg;
 		struct skb_type *skb_event = (struct skb_type *)&args[off];
@@ -85,13 +92,20 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 			int err;
 			/* Ensure bytes does not read past end of buffer */
 			bytes &= 0x7fff;   // required to create min bound
-			if (bytes > 2000)  // creates uppder bounds [0, 2000]
-				return 0;
+			if (bytes > 6000) {  // creates uppder bounds [0, 4000]
+				*s = char_buf_toolarge;
+				return 4;
+			}
 			err = probe_read(&args[off+4], bytes, (char *)arg);
-			if (err)
-				return 0;
+			if (err) {
+				*s = char_buf_pagefault;
+				return 4;
+			}
 			size = bytes + 4;
-			*s = bytes;
+			*s = (int)bytes;
+		} else {
+			*s = char_buf_enomem;
+			return 4;
 		}
 	}
 	return size;

@@ -16,6 +16,7 @@ struct bpf_map_def {
 #include "types/basic.h"
 
 #define MAX_FILENAME 8096
+#define MAX_TOTAL 9000
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
@@ -97,7 +98,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 
 	/* Read out args1-5 */
 	ty = bpf_core_enum_value(fgs_args, arg0);
-	if (total < 4095) {
+	if (total < MAX_TOTAL) {
 		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e->args, ty, total, a0, arg_meta, enter);
 		if (errv < 0)
@@ -106,7 +107,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	}
 
 	ty = bpf_core_enum_value(fgs_args, arg1);
-	if (total < 4095) {
+	if (total < MAX_TOTAL) {
 		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e->args, ty, total, a1, arg_meta, enter);
 		if (errv < 0)
@@ -114,7 +115,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg2);
-	if (total < 4095) {
+	if (total < MAX_TOTAL) {
 		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e->args, ty, total, a2, arg_meta, enter);
 		if (errv < 0)
@@ -122,7 +123,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg3);
-	if (total < 4095) {
+	if (total < MAX_TOTAL) {
 		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e->args, ty, total, a3, arg_meta, enter);
 		if (errv < 0)
@@ -130,17 +131,17 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg4);
-	if (total < 4095) {
+	if (total < MAX_TOTAL) {
 		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
 		errv += read_call_arg(e->args, ty, total, a4, arg_meta, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
 	}
-	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
-	if (total > 8192)
-		total = 8192;
 	e->common.size = total;
+	if (total > MAX_TOTAL)
+		total = MAX_TOTAL;
+	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total & 0x7fff);
 	return 0;
 }

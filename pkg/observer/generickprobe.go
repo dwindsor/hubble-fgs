@@ -58,6 +58,24 @@ const (
 	argm5           = "arg5m"
 )
 
+const (
+	CharBufErrorENOMEM    = -1
+	CharBufErrorPageFault = -2
+	CharBufErrorTooLarge  = -3
+)
+
+func kprobeCharBufErrorToString(e int32) string {
+	switch e {
+	case CharBufErrorENOMEM:
+		return "CharBufErrorENOMEM"
+	case CharBufErrorTooLarge:
+		return "CharBufErrorBufTooLarge"
+	case CharBufErrorPageFault:
+		return "CharBufErrorPageFault"
+	}
+	return "CharBufErrorUnknown"
+}
+
 func kprobeArgMToString(a int) string {
 	switch a {
 	case 0:
@@ -407,7 +425,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			if err != nil {
 				k.log.WithError(err).Warnf("StringCharBuf size err")
 			}
-			if b != 0 {
+			if b > 0 {
 				outputStr := make([]byte, b)
 				err = binary.Read(r, binary.LittleEndian, &outputStr)
 				if err != nil {
@@ -417,9 +435,13 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 				arg.Index = uint64(i)
 				arg.Value = string(outputStr[:])
 				unix.Args = append(unix.Args, arg)
-			} else {
+			} else if b == 0 {
 				arg.Index = uint64(i)
 				arg.Value = "return value expected"
+				unix.Args = append(unix.Args, arg)
+			} else {
+				arg.Index = uint64(i)
+				arg.Value = kprobeCharBufErrorToString(b)
 				unix.Args = append(unix.Args, arg)
 			}
 		case GenericKprobeSkbType:
@@ -443,7 +465,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 
 			err := binary.Read(r, binary.LittleEndian, &output)
 			if err != nil {
-				k.log.WithError(err).Warnf("Size type error")
+				k.log.WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
 			}
 
 			arg.Index = uint64(i)
