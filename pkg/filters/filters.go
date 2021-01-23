@@ -120,6 +120,8 @@ func GetProcess(event *v1.Event) *fgs.Process {
 			return res.ProcessClose.Process
 		case *fgs.GetEventsResponse_ProcessAccept:
 			return res.ProcessAccept.Process
+		case *fgs.GetEventsResponse_ProcessKprobe:
+			return res.ProcessKprobe.Process
 		default:
 			return (*fgs.Process)(nil)
 		}
@@ -145,6 +147,8 @@ func GetParent(event *v1.Event) *fgs.Process {
 			return res.ProcessExit.Parent
 		case *fgs.GetEventsResponse_ProcessCred:
 			return res.ProcessCred.Process
+		case *fgs.GetEventsResponse_ProcessKprobe:
+			return res.ProcessKprobe.Process
 		default:
 			return (*fgs.Process)(nil)
 		}
