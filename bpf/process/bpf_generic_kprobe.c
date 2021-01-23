@@ -1,6 +1,13 @@
 #include "vmlinux.h"
 #include "api.h"
 
+enum {
+	nspid_filter_none = 0,
+	nspid_filter_gt   = 1,
+	nspid_filter_lt   = 2,
+	nspid_filter_eq   = 3,
+};
+
 #ifndef bpf_map_def
 struct bpf_map_def {
 	unsigned int type;
@@ -75,6 +82,17 @@ int generic_kprobe_event(struct pt_regs *ctx)
 
 	enter = map_lookup_event(pid);
 	if (enter) {
+		int nspid_filter_ty = bpf_core_enum_value(fgs_args, nspid_type);
+		int nspid_filter_value = bpf_core_enum_value(fgs_args, nspid_value);
+
+		if (nspid_filter_ty == nspid_filter_lt) {
+			if (enter->nspid < nspid_filter_value)
+				return 0;
+		} else if (nspid_filter_ty == nspid_filter_gt) {
+			if (enter->nspid > nspid_filter_value)
+				return 0;
+		}
+
 		e->current.pid = pid;
 		e->current.ktime = enter->key.ktime;
 	} else {

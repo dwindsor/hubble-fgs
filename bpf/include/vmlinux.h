@@ -12,6 +12,8 @@ enum generic_func_args_enum {
 	arg2m   = 0x10,
 	arg3m   = 0x11,
 	arg4m   = 0x12,
+	nspid_type  = 0x13,
+	nspid_value = 0x14,
 };
 
 /* Kernel BTF */

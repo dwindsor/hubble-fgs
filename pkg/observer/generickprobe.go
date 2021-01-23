@@ -167,6 +167,35 @@ func (k *ObserverKprobe) createArgFilter(argType int, filter string) []byte {
 	return b
 }
 
+const (
+	genericKprobeFilterGT = 1
+	genericKprobeFilterLT = 2
+	genericKprobeFilterEQ = 3
+)
+
+func (k *ObserverKprobe) nspidFilterStrToType(ty string) int {
+	switch ty {
+	case "gt":
+		return genericKprobeFilterGT
+	case "lt":
+		return genericKprobeFilterLT
+	case "eq":
+		return genericKprobeFilterEQ
+	default:
+		k.log.Warn("genericKprobe Filter type unknown %s", ty)
+	}
+	return 0
+}
+
+func (k *ObserverKprobe) nspidFilterStrToValue(value string) int {
+	v, err := strconv.Atoi(value)
+	if err != nil {
+		k.log.Warn("genericKprobe Filter value error %s\n", err)
+		return 0
+	}
+	return v
+}
+
 func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile string) *observerSensor {
 	var progs []*bpfLoad
 
@@ -180,6 +209,10 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		var entry kprobeLoadArgs
 		var argPrinters []int
 		var is_syscall, is_retprobe bool
+
+		nspid_filter := int(0)
+		nspid_type := int(0)
+
 		argFilters := kprobeArgs{
 			args0: make([]byte, sizeofArgsFilter),
 			args1: make([]byte, sizeofArgsFilter),
@@ -264,12 +297,16 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		if attributes != nil {
 			attrsSplit := strings.Split(attributes[0], ":")
 			for _, f := range attrsSplit {
-				switch f {
+				_f := strings.Split(f, " ")
+				switch _f[0] {
 				// Inform datapath that this kprobe is a syscall
 				case "syscall":
 					is_syscall = true
 				case "ret":
 					is_retprobe = true
+				case "nspid":
+					nspid_type = k.nspidFilterStrToType(_f[1])
+					nspid_filter = k.nspidFilterStrToValue(_f[2])
 				}
 			}
 		}
@@ -284,6 +321,14 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 			if retVal < 0 {
 				k.log.Warn("error clearing enum btf value \"syscall\" %d", retVal)
 			}
+		}
+		retVal := bpf.AddEnumBtfValue(btf, "nspid_type", nspid_type)
+		if retVal < 0 {
+			k.log.Warn("error setting enum btf value \"nspid_type\" %d", retVal)
+		}
+		retVal = bpf.AddEnumBtfValue(btf, "nspid_value", nspid_filter)
+		if retVal < 0 {
+			k.log.Warn("error setting enum btf value \"nspid_value\" %d", retVal)
 		}
 
 		entry.args = argFilters
