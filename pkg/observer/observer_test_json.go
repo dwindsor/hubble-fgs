@@ -221,17 +221,22 @@ func jsonTestCompareTls(a, b *fgs.GetEventsResponse_Tls) bool {
 }
 
 func eventTypeString(ev interface{}) string {
-	switch ev.(type) {
+	switch xev := ev.(type) {
 	case *fgs.GetEventsResponse_ProcessConnect:
-		return "ProcessConnect"
+		return fmt.Sprintf("ProcessConnect(%s:%s->%s:%s)",
+			xev.ProcessConnect.SourceIp, xev.ProcessConnect.SourcePort,
+			xev.ProcessConnect.DestinationIp, xev.ProcessConnect.DestinationPort,
+		)
 	case *fgs.GetEventsResponse_ProcessListen:
-		return "ProcessListen"
+		return fmt.Sprintf("ProcessListen(%s:%s)",
+			xev.ProcessListen.Ip,
+			xev.ProcessListen.Port)
 	case *fgs.GetEventsResponse_ProcessAccept:
 		return "ProcessAccept"
 	case *fgs.GetEventsResponse_Tls:
 		return "Tls"
 	case *fgs.GetEventsResponse_ProcessExec:
-		return "ProcessExec"
+		return fmt.Sprintf("ProcessExec(proc.cmd=%s)", xev.ProcessExec.Process.Binary)
 	case *fgs.GetEventsResponse_ProcessExit:
 		return "ProcessExit"
 	case *fgs.GetEventsResponse_ProcessClose:
