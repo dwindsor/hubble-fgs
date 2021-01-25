@@ -35,7 +35,7 @@ var (
 
 func init() {
 	flag.StringVar(&fgsLib, "hubble-lib", "/var/lib/hubble-fgs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
-	flag.DurationVar(&cmdWaitTime, "command-wait", 10000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
+	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 }
 
 func TestMain(m *testing.M) {
