@@ -791,6 +791,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 
 	tcp.ProcessKey.Pid = pid
 	tcp.ProcessKey.Ktime = msg.Process.Ktime
+	tcp.Common.Ktime = msg.Process.Ktime
 
 	fdDir := fmt.Sprintf("%s/%d/fd", ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)
@@ -849,7 +850,6 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 
 	m := api.MsgExecveEventUnix{}
 	m.Common.Op = api.MSG_OP_EXECVE
-	m.Common.Ktime = 0
 	m.Common.Size = api.MsgUnixSize + p.psize + p.size
 
 	m.Kube.NetNS = 0
@@ -880,6 +880,7 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Process.AUID = p.auid
 	m.Process.Flags = p.flags | flags
 	m.Process.Ktime = p.ktime
+	m.Common.Ktime = p.ktime
 	m.Process.Filename = filename
 	m.Process.Args = args
 
@@ -1602,7 +1603,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			k.log.WithError(err).Warnf("Ktime parsing error: %s: %s", _ktime, filepath.Join(ProcFS, ppid, "stat"))
 			ktime = 0
 		}
-		ktime = (ktime / clktck) * nanoPerSeconds
+		ktime = ktime * (nanoPerSeconds / clktck)
 		nspid, permitted, effective, inheritable := getPIDNS(filepath.Join(ProcFS, d.Name(), "status"))
 
 		if _ppid != 0 {
@@ -1626,7 +1627,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 				k.log.WithError(err).Warnf("Warning: Parent ktime parsing error: %s: %s", _pktime, filepath.Join(ProcFS, ppid, "stat"))
 				pktime = 0
 			}
-			pktime = (pktime / clktck) * nanoPerSeconds
+			pktime = pktime * (nanoPerSeconds / clktck)
 			pnspid, _, _, _ = getPIDNS(filepath.Join(ProcFS, ppid, "status"))
 		} else {
 			pcmdline = nil
