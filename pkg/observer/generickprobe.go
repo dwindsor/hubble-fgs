@@ -173,7 +173,7 @@ const (
 	genericKprobeFilterEQ = 3
 )
 
-func (k *ObserverKprobe) nspidFilterStrToType(ty string) int {
+func (k *ObserverKprobe) pidFilterStrToType(ty string) int {
 	switch ty {
 	case "gt":
 		return genericKprobeFilterGT
@@ -187,7 +187,7 @@ func (k *ObserverKprobe) nspidFilterStrToType(ty string) int {
 	return 0
 }
 
-func (k *ObserverKprobe) nspidFilterStrToValue(value string) int {
+func (k *ObserverKprobe) pidFilterStrToValue(value string) int {
 	v, err := strconv.Atoi(value)
 	if err != nil {
 		k.log.Warn("genericKprobe Filter value error %s\n", err)
@@ -212,6 +212,8 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 
 		nspid_filter := int(0)
 		nspid_type := int(0)
+		pid_filter := int(0)
+		pid_type := int(0)
 
 		argFilters := kprobeArgs{
 			args0: make([]byte, sizeofArgsFilter),
@@ -305,8 +307,11 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 				case "ret":
 					is_retprobe = true
 				case "nspid":
-					nspid_type = k.nspidFilterStrToType(_f[1])
-					nspid_filter = k.nspidFilterStrToValue(_f[2])
+					nspid_type = k.pidFilterStrToType(_f[1])
+					nspid_filter = k.pidFilterStrToValue(_f[2])
+				case "pid":
+					pid_type = k.pidFilterStrToType(_f[1])
+					pid_filter = k.pidFilterStrToValue(_f[2])
 				}
 			}
 		}
@@ -329,6 +334,15 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		retVal = bpf.AddEnumBtfValue(btf, "nspid_value", nspid_filter)
 		if retVal < 0 {
 			k.log.Warn("error setting enum btf value \"nspid_value\" %d", retVal)
+		}
+
+		retVal = bpf.AddEnumBtfValue(btf, "pid_type", pid_type)
+		if retVal < 0 {
+			k.log.Warn("error setting enum btf value \"pid_type\" %d", retVal)
+		}
+		retVal = bpf.AddEnumBtfValue(btf, "pid_value", pid_filter)
+		if retVal < 0 {
+			k.log.Warn("error setting enum btf value \"pid_value\" %d", retVal)
 		}
 
 		entry.args = argFilters
