@@ -90,6 +90,13 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadProgs error: %s", err)
 	}
+	if kprobe.genericKprobes != "" {
+		kprobe.initKprobeSensors()
+		genericKprobeSensor := kprobe.createGenericKprobeSensors(kprobe.genericKprobes, ObserverBTF)
+		if err := kprobe.observerLoadSensor(context.TODO(), genericKprobeSensor); err != nil {
+			t.Fatalf("observerLoadSensors error: Could not load kprobe sensors. %s", err)
+		}
+	}
 	kprobe.populateExecve(context.TODO())
 }
 

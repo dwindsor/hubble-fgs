@@ -48,7 +48,7 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) (*ObserverKprobe, error) {
+func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool, probes string) (*ObserverKprobe, error) {
 	ctx, _ := context.WithCancel(context.Background())
 	var uts syscall.Utsname
 
@@ -70,8 +70,9 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) (*ObserverKprobe,
 	if procfs != "" {
 		ProcFS = procfs
 	}
+	HubbleLib = "../../bpf/objs/"
 
-	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", "", tls, tlstc, pretty)
+	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", probes, tls, tlstc, pretty)
 	if testing.Verbose() {
 		Verbosity = 1
 	}
@@ -93,13 +94,65 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool) (*ObserverKprobe,
 }
 
 func TestObjectLoad(t *testing.T) {
-	kprobe, err := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
 	initialSensor := kprobe.createInitialObserverSensor()
 	kprobe.observerLoadSensor(context.TODO(), initialSensor)
 	kprobe.RemovePrograms()
+}
+
+func TestKprobeObjectLoad(t *testing.T) {
+	writeReadHook := "__x64_sys_read(int=2|1:char_buf#ret:size_t:nop:nop)[syscall:ret],__x64_sys_write(int=2|1:char_buf#3:size_t:nop:nop)[syscall]"
+	kprobe, err := getDefaultObserver(t, false, false, false, writeReadHook)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	initialSensor := kprobe.createInitialObserverSensor()
+	kprobe.observerLoadSensor(context.TODO(), initialSensor)
+	kprobe.RemovePrograms()
+}
+
+func TestKprobeObjectWriteRead(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+	pidStr := strconv.Itoa(int(getMyPid()))
+
+	writeReadHook := "__x64_sys_write(int=1:char_buf#3:size_t:nop:nop)[syscall:pidset " + pidStr + "]"
+
+	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: 1}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello world"}}
+	arg2 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 11}}
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessKprobe{
+				ProcessKprobe: &fgs.ProcessKprobe{
+					Process:      &fgs.Process{Binary: "go-build"},
+					Parent:       &fgs.Process{Binary: ""},
+					FunctionName: "__x64_sys_write",
+					Args:         []*fgs.KprobeArgument{arg0, arg1, arg2},
+				},
+			},
+		},
+	}
+
+	kprobe, err := getDefaultObserver(t, false, false, false, writeReadHook)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWG.Wait()
+	_, err = syscall.Write(1, []byte("hello world"))
+	execWG.Wait()
+	retries := jsonRetries
+	time.Sleep(1000 * time.Millisecond)
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
 }
 
 func removeMountPoint(dir string) string {
@@ -217,7 +270,7 @@ func TestConnectEvent(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, false, false, true)
+	kprobe, err := getDefaultObserver(t, false, false, true, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -305,7 +358,7 @@ func TestExecEventClone(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, false, false, true)
+	kprobe, err := getDefaultObserver(t, false, false, true, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -382,7 +435,7 @@ func TestExistingListenEvent(t *testing.T) {
 	cmdServer.Start()
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -445,7 +498,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -464,7 +517,7 @@ func TestLoadTCTls(t *testing.T) {
 	if minKernelVersion("4.19.0") != true {
 		return
 	}
-	kprobe, err := getDefaultObserver(t, false, true, false)
+	kprobe, err := getDefaultObserver(t, false, true, false, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -521,7 +574,7 @@ func TestTCTls13(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, false, true, false)
+	kprobe, err := getDefaultObserver(t, false, true, false, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -584,7 +637,7 @@ func TestTCTls12(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, false, true, false)
+	kprobe, err := getDefaultObserver(t, false, true, false, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -694,7 +747,7 @@ func TestListenAcceptClose(t *testing.T) {
 		*/
 	}
 
-	kprobe, err := getDefaultObserver(t, false, false, true)
+	kprobe, err := getDefaultObserver(t, false, false, true, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -736,7 +789,7 @@ func TestSensorLseekLoad(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -778,7 +831,7 @@ func TestSensorLseekEnable(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, false, false, false)
+	kprobe, err := getDefaultObserver(t, false, false, false, "")
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}

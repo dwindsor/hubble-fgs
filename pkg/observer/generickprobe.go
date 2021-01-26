@@ -400,6 +400,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		//	&ObserverSocketStats,
 	}
 
+	k.log.Info("Loaded generic kprobe sensor")
 	return &observerSensor{
 		name:  "__generic_kprobe_sensors__",
 		progs: progs,

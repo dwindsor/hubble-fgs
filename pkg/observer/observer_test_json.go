@@ -228,6 +228,29 @@ func jsonTestCompareTls(a, b *fgs.GetEventsResponse_Tls) bool {
 	return true
 }
 
+func compareKprobeFunction(a, b *fgs.ProcessKprobe) bool {
+	if a.FunctionName != b.FunctionName {
+		return false
+	}
+	return true
+}
+
+func jsonTestCompareKprobe(a, b *fgs.ProcessKprobe) bool {
+	if a.Process == nil || b.Process == nil {
+		return false
+	}
+	if ok := compareProcess(a.Process, b.Process); !ok {
+		return false
+	}
+	if ok := compareProcess(a.Parent, b.Parent); !ok {
+		return false
+	}
+	if ok := compareKprobeFunction(a, b); !ok {
+		return false
+	}
+	return true
+}
+
 func eventTypeString(ev interface{}) string {
 	switch xev := ev.(type) {
 	case *fgs.GetEventsResponse_ProcessConnect:
@@ -381,7 +404,15 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 						goto next
 					}
 				}
-
+			case *fgs.GetEventsResponse_ProcessKprobe:
+				switch bRes := t.Event.(type) {
+				case *fgs.GetEventsResponse_ProcessKprobe:
+					if ok := jsonTestCompareKprobe(res.ProcessKprobe, bRes.ProcessKprobe); ok {
+						found++
+						verbosePrintf("\tFOUND IT!\n")
+						goto next
+					}
+				}
 			case *fgs.GetEventsResponse_Test:
 				switch t.Event.(type) {
 				case *fgs.GetEventsResponse_Test:
