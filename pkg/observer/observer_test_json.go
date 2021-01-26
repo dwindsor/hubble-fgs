@@ -17,6 +17,14 @@ var (
 )
 
 func compareProcess(a, b *fgs.Process) bool {
+
+	if a == nil && b == nil {
+		return true
+	} else if a == nil || b == nil {
+		fmt.Printf("compareProcess: a=%p b=%p\n", a, b)
+		return false
+	}
+
 	if b.Pid != nil && b.Pid.Value != 0 && a.Pid.Value != b.Pid.Value {
 		fmt.Printf("compareProcess (%s): expected pid %d found pid %d\n",
 			a.Binary, b.Pid.Value, a.Pid.Value)
@@ -315,7 +323,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 			evTyStr := eventTypeString(ev.Event)
 			trTyStr := eventTypeString(t.Event)
 			if Verbosity > 0 {
-				fmt.Printf("tidx=%d found=%d => got %s looking for %s (string match:%t)\n", tidx, found, evTyStr, trTyStr, evTyStr == trTyStr)
+				fmt.Printf("tidx=%d found=%d => got %s looking for %s\n", tidx, found, evTyStr, trTyStr)
 			}
 			switch res := ev.Event.(type) {
 			case *fgs.GetEventsResponse_ProcessConnect:
