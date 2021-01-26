@@ -1556,18 +1556,18 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
 	}
 
+	clktck, err := getClkTck()
+	if err != nil {
+		k.log.WithError(err).Warn("procFS wallclock time may be inaccurate")
+		clktck = 1
+	}
+
 	for _, d := range procFS {
 		var pcmdline, pstatline []byte
 		var pstats []string
 		var pktime uint64
 		var pexecPath string
 		var pnspid uint32
-
-		clktck, err := getClkTck()
-		if err != nil {
-			k.log.WithError(err).Warn("procFS wallclock time may be inaccurate")
-			clktck = 1
-		}
 
 		if d.IsDir() == false {
 			continue
