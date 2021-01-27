@@ -21,6 +21,7 @@ import (
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/filters"
+	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
@@ -124,6 +125,11 @@ func handleProcessedEvent(processedEvent interface{}) {
 			eventType = fgs.EventType_PROCESS_EXIT.String()
 		case *fgs.GetEventsResponse_ProcessCred:
 			eventType = fgs.EventType_PROCESS_CRED.String()
+		case *fgs.GetEventsResponse_ProcessAccept:
+			eventType = fgs.EventType_PROCESS_ACCEPT.String()
+		default:
+			logger.GetLogger().WithField("event", processedEvent).Warn("unhandled event")
+			eventType = "unhandled"
 		}
 	default:
 		eventType = "unknown"
