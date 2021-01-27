@@ -6,6 +6,7 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/sirupsen/logrus"
@@ -19,13 +20,14 @@ type eventNetCacheObj struct {
 	event     eventNetObj
 	timestamp *timestamp.Timestamp
 	color     int
+	msg       interface{}
 }
 
 type eventProcCacheObj struct {
 	process   *fgs.ProcessExec
-	nspid     uint32
 	timestamp *timestamp.Timestamp
 	color     int
+	msg       *api.MsgExecveEventUnix
 }
 
 type eventCache struct {
@@ -139,7 +141,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 		}
 
-		ec.pm.notifyListeners(processedEvent)
+		ec.pm.notifyListeners(e.msg, processedEvent)
 	}
 	ec.netCache = tmp
 }
@@ -150,7 +152,7 @@ func (ec *eventCache) handleProcEvents() {
 		containerId := e.process.Process.Docker
 		filename := e.process.Process.Binary
 		args := e.process.Process.Arguments
-		nspid := e.nspid
+		nspid := e.msg.Process.NSPID
 
 		podInfo, _ := ec.pm.getPodInfo(containerId, filename, args, nspid)
 		if podInfo == nil {
@@ -178,7 +180,7 @@ func (ec *eventCache) handleProcEvents() {
 			NodeName: ec.pm.nodeName,
 			Time:     e.timestamp,
 		}
-		ec.pm.notifyListeners(processedEvent)
+		ec.pm.notifyListeners(e.msg, processedEvent)
 	}
 	ec.procCache = tmp
 }
@@ -212,14 +214,14 @@ func newEventCache(log logrus.FieldLogger, pm *ProcessManager) *eventCache {
 	return ec
 }
 
-func (ec *eventCache) add(e eventNetObj, t *timestamp.Timestamp) {
-	event := eventNetCacheObj{event: e, timestamp: t}
+func (ec *eventCache) add(e eventNetObj, t *timestamp.Timestamp, msg interface{}) {
+	event := eventNetCacheObj{event: e, timestamp: t, msg: msg}
 	metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheNetworkCount)).Inc()
 	ec.netCache = append(ec.netCache, event)
 }
 
-func (ec *eventCache) addProc(e *fgs.ProcessExec, t *timestamp.Timestamp, nspid uint32) {
-	event := eventProcCacheObj{process: e, timestamp: t, nspid: nspid}
+func (ec *eventCache) addProc(e *fgs.ProcessExec, t *timestamp.Timestamp, msg *api.MsgExecveEventUnix) {
+	event := eventProcCacheObj{process: e, timestamp: t, msg: msg}
 	metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheProcessCount)).Inc()
 	ec.procCache = append(ec.procCache, event)
 }

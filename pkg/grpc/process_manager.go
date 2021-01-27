@@ -120,7 +120,7 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 		proc := pm.Add(msg)
 		procEvent := pm.GetProcessExec(proc)
 		if pm.enableEventCache == true && procEvent.Process.Docker != "" && procEvent.Process.Pod == nil {
-			pm.eventCache.addProc(procEvent, ktimeToProto(msg.Common.Ktime), msg.Process.NSPID)
+			pm.eventCache.addProc(procEvent, ktimeToProto(msg.Common.Ktime), msg)
 		} else {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: procEvent},
@@ -290,7 +290,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 
 	if fgsProcess.Docker != "" {
 		if pm.enableEventCache == true && fgsEvent.Process.Pod == nil {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
 	}
@@ -336,8 +336,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		return nil
 	}
 	if processedEvent != nil {
-		metrics.ProcessEvent(event, processedEvent)
-		pm.notifyListeners(processedEvent)
+		pm.notifyListeners(event, processedEvent)
 	}
 	return nil
 }
@@ -633,7 +632,7 @@ func (pm *ProcessManager) GetProcessListen(
 		Port:    port,
 	}
 	if pm.enableEventCache == true && fgsProcess.Docker != "" && fgsProcess.Pod == nil {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
 	return fgsEvent
@@ -670,7 +669,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		Parent:  fgsParent,
 	}
 	if fgsProcess.Docker != "" && fgsProcess.Pod == nil {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
 	return fgsEvent
@@ -701,7 +700,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		Cap:     pm.getCapabilities(event.Capabilities),
 	}
 	if process.Docker != "" && process.Pod == nil {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
 	return fgsEvent
@@ -788,7 +787,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		CertificateError:  getTLSCertificateErrorCode(event.ServerCert.Error),
 	}
 	if proc == nil || (proc.Docker != "" && proc.Pod == nil) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
 	return fgsEvent
@@ -844,7 +843,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 		// events in the queue) so instead send it to a queue to be processed
 		// later.
 		if pm.enableEventCache == true && (endpoint == nil || fgsEvent.Process.Pod == nil) {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
 		if endpoint != nil {
@@ -900,7 +899,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 	if fgsProcess.Docker != "" {
 		endpoint := pm.getProcessEndpoint(fgsProcess)
 		if pm.enableEventCache == true && endpoint == nil || fgsEvent.Process.Pod == nil {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
 		if endpoint != nil {
@@ -955,7 +954,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 	if fgsProcess.Docker != "" {
 		endpoint := pm.getProcessEndpoint(fgsProcess)
 		if pm.enableEventCache == true && endpoint == nil || fgsEvent.Process.Pod == nil {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime))
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
 		if endpoint != nil {
@@ -1045,10 +1044,11 @@ func (pm *ProcessManager) removeListener(listener listener) {
 	delete(pm.listeners, listener)
 }
 
-func (pm *ProcessManager) notifyListeners(event *fgs.GetEventsResponse) {
+func (pm *ProcessManager) notifyListeners(original interface{}, processed *fgs.GetEventsResponse) {
 	pm.mux.Lock()
 	defer pm.mux.Unlock()
 	for l := range pm.listeners {
-		l.notify(event)
+		l.notify(processed)
 	}
+	metrics.ProcessEvent(original, processed)
 }
