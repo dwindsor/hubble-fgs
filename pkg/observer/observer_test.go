@@ -104,7 +104,7 @@ func TestObjectLoad(t *testing.T) {
 }
 
 func TestKprobeObjectLoad(t *testing.T) {
-	writeReadHook := "__x64_sys_read(int=2|1:char_buf#ret:size_t:nop:nop)[syscall:ret],__x64_sys_write(int=2|1:char_buf#3:size_t:nop:nop)[syscall]"
+	writeReadHook := "__x64_sys_read(int=eq 2|eq 1:char_buf#ret:size_t:nop:nop)[syscall:ret],__x64_sys_write(int=eq 2|eq 1:char_buf#3:size_t:nop:nop)[syscall]"
 	kprobe, err := getDefaultObserver(t, false, false, false, writeReadHook)
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
@@ -120,7 +120,7 @@ func TestKprobeObjectWriteRead(t *testing.T) {
 	defer cancel()
 	pidStr := strconv.Itoa(int(getMyPid()))
 
-	writeReadHook := "__x64_sys_write(int=1:char_buf#3:size_t:nop:nop)[syscall:pidset " + pidStr + "]"
+	writeReadHook := "__x64_sys_write(int=eq 1:char_buf#3:size_t:nop:nop)[syscall:pidset " + pidStr + "]"
 
 	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: 1}}
 	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello world"}}

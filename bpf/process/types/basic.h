@@ -1,3 +1,5 @@
+#include "operations.h"
+
 /* Type IDs form API with user space generickprobe.go */
 enum {
 	filter = -2,
@@ -23,10 +25,13 @@ struct skb_type {
 };
 
 
+#define MAX_ARGS_SIZE 80
+#define MAX_ARGS_ENTRIES 8
+
 struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 40,
+	.value_size = 80,
 	.max_entries = 1,
 };
 
@@ -58,14 +63,32 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 
 		probe_read(&value, sizeof(int), &arg);
 		f = map_lookup_elem(&args0_filter_map, &zero);
+
 		if (f && *f) {
-			if (f[0] == value ||
-			    f[1] == value ||
-			    f[2] == value ||
-			    f[3] == value ||
-			    f[4] == value) ;
-			else return filter;
+			int i;
+
+			/* Ideally we would walk only count entries, but verifier
+			 * and llvm plot to not allow this. Either clang refuses
+			 * to unroll loops (too complex?) or verifier loses 'off'
+			 * var and complains later in next arg handler.
+			 *
+			 * TBD fix clang/verifier and coconspirators.
+			 */
+#pragma unroll
+			for (i = 1; i < MAX_ARGS_ENTRIES*2; i+=2) {
+				int op = f[i];
+				int v = f[i+1];
+
+				if (op == op_filter_eq  && v == value)
+					goto accept_filter;
+				if (op == op_filter_lt && v < value)
+					goto accept_filter;
+				if (op == op_filter_gt && v > value)
+					goto accept_filter;
+			}
+			return filter;
 		}
+accept_filter:
 		size  = sizeof(int);
 		*s = value;
 	} else if (type == skb_type && sizeof(struct skb_type) + off < 4095) {

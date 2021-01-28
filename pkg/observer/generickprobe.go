@@ -19,7 +19,7 @@ const (
 )
 
 const (
-	sizeofArgsFilter = 40
+	sizeofArgsFilter = 80
 )
 
 func kprobeStrToTypeId(arg string) int {
@@ -134,37 +134,14 @@ var (
 	genericKprobeName     map[uint64]string
 )
 
+var (
+	MaxFilterIntArgs = 8
+)
+
 func (k *ObserverKprobe) initKprobeSensors() {
 	genericKprobeLoadArgs = make(map[string]kprobeLoadArgs, 1)
 	genericKprobeId = make(map[uint64][]int, 1)
 	genericKprobeName = make(map[uint64]string, 1)
-}
-
-func (k *ObserverKprobe) createArgFilter(argType int, filter string) []byte {
-	b := make([]byte, sizeofArgsFilter)
-
-	switch argType {
-	case GenericKprobeIntType: // int1 | int2 | ... | intN
-		fs := strings.Split(filter, "|")
-		if len(fs) > 9 {
-			k.log.Warn("Warning: createArgFilter too many filter, argType %d filterStr %s\n", argType, filter)
-		} else {
-			for i, f := range fs {
-				v, err := strconv.Atoi(f)
-				if err != nil {
-					k.log.Warn("invalid filterArg type %d filter %s\n", argType, f)
-				} else {
-					binary.LittleEndian.PutUint32(b[i*4:], uint32(v))
-				}
-			}
-		}
-	case GenericKprobeStringType:
-	case GenericKprobeSkbType:
-	case GenericKprobeSizeType:
-	case GenericKprobeCharBuffer:
-	}
-
-	return b
 }
 
 const (
@@ -173,7 +150,7 @@ const (
 	genericKprobeFilterEQ = 3
 )
 
-func (k *ObserverKprobe) pidFilterStrToType(ty string) int {
+func (k *ObserverKprobe) opFilterStrToType(ty string) int {
 	switch ty {
 	case "gt":
 		return genericKprobeFilterGT
@@ -185,6 +162,46 @@ func (k *ObserverKprobe) pidFilterStrToType(ty string) int {
 		k.log.Warn("genericKprobe Filter type unknown %s", ty)
 	}
 	return 0
+}
+
+func (k *ObserverKprobe) createArgFilter(argType int, filter string) []byte {
+	b := make([]byte, sizeofArgsFilter)
+
+	switch argType {
+	// syntax int filters: [lt,gt,eq] int1 | [lt,gt,eq] int2 | ... | [lt,gt,eq] intN
+	case GenericKprobeIntType:
+		fs := strings.Split(filter, "|")
+		if len(fs) > MaxFilterIntArgs {
+			k.log.Warn("Warning: createArgFilter too many filter, argType %d filterStr %s\n", argType, filter)
+		} else {
+			// Byte buffer layout: #Entries, opType1 opValue1, opType2 opValue2, ...
+			off := 0
+			binary.LittleEndian.PutUint32(b[off:], uint32(len(fs)))
+			off += 4
+
+			for _, f := range fs {
+				opVal := strings.Split(f, " ")
+
+				operation := k.opFilterStrToType(opVal[0])
+				binary.LittleEndian.PutUint32(b[off:], uint32(operation))
+
+				v, err := strconv.Atoi(opVal[1])
+				if err != nil {
+					k.log.Warn("invalid filterArg type %d filter %s\n", argType, f)
+				} else {
+					binary.LittleEndian.PutUint32(b[off+4:], uint32(v))
+				}
+
+				off += 8
+			}
+		}
+	case GenericKprobeStringType:
+	case GenericKprobeSkbType:
+	case GenericKprobeSizeType:
+	case GenericKprobeCharBuffer:
+	}
+
+	return b
 }
 
 func (k *ObserverKprobe) pidFilterStrToValue(value string) int {
@@ -308,10 +325,10 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 				case "ret":
 					is_retprobe = true
 				case "nspid":
-					nspid_type = k.pidFilterStrToType(_f[1])
+					nspid_type = k.opFilterStrToType(_f[1])
 					nspid_filter = k.pidFilterStrToValue(_f[2])
 				case "pid":
-					pid_type = k.pidFilterStrToType(_f[1])
+					pid_type = k.opFilterStrToType(_f[1])
 					pid_filter = k.pidFilterStrToValue(_f[2])
 				case "pidset":
 					pidset_value = k.pidFilterStrToValue(_f[1])

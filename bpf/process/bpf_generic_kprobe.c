@@ -1,13 +1,6 @@
 #include "vmlinux.h"
 #include "api.h"
 
-enum {
-	pid_filter_none = 0,
-	pid_filter_gt   = 1,
-	pid_filter_lt   = 2,
-	pid_filter_eq   = 3,
-};
-
 #ifndef bpf_map_def
 struct bpf_map_def {
 	unsigned int type;
@@ -20,6 +13,7 @@ struct bpf_map_def {
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "types/operations.h"
 #include "types/basic.h"
 
 #define MAX_FILENAME 8096
@@ -111,21 +105,21 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		int pid_filter_value = bpf_core_enum_value(fgs_args, pid_value);
 		int pidset_filter_value = bpf_core_enum_value(fgs_args, pidset_value);
 
-		if (nspid_filter_ty == pid_filter_lt) {
+		if (nspid_filter_ty == op_filter_lt) {
 			if (enter->nspid < nspid_filter_value)
 				return 0;
-		} else if (nspid_filter_ty == pid_filter_gt) {
+		} else if (nspid_filter_ty == op_filter_gt) {
 			if (enter->nspid > nspid_filter_value)
 				return 0;
 		}
 
-		if (pid_filter_ty == pid_filter_lt) {
+		if (pid_filter_ty == op_filter_lt) {
 			if (enter->key.pid < pid_filter_value)
 				return 0;
-		} else if (pid_filter_ty == pid_filter_gt) {
+		} else if (pid_filter_ty == op_filter_gt) {
 			if (enter->key.pid > pid_filter_value)
 				return 0;
-		} else if (pid_filter_ty == pid_filter_eq) {
+		} else if (pid_filter_ty == op_filter_eq) {
 			if (enter->key.pid == pid_filter_value)
 				return 0;
 		}
