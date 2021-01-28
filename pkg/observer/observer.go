@@ -1920,7 +1920,7 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 		}
 		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
 
-		runFile = path.Join("sys", "kernel", "btf", "vmlinux")
+		runFile = path.Join("/sys", "kernel", "btf", "vmlinux")
 		if _, err := os.Stat(runFile); err == nil {
 			ObserverBTF = runFile
 			return nil
