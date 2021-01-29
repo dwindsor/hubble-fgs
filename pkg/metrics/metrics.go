@@ -127,6 +127,8 @@ func handleProcessedEvent(processedEvent interface{}) {
 			eventType = fgs.EventType_PROCESS_CRED.String()
 		case *fgs.GetEventsResponse_ProcessAccept:
 			eventType = fgs.EventType_PROCESS_ACCEPT.String()
+		case *fgs.GetEventsResponse_ProcessKprobe:
+			eventType = fgs.EventType_PROCESS_KPROBE.String()
 		default:
 			logger.GetLogger().WithField("event", processedEvent).Warn("unhandled event")
 			eventType = "unhandled"
