@@ -591,6 +591,7 @@ int __kprobe_loader(struct bpf_object *obj,
 	return bpf_link_fd(prog_attach);
 }
 
+#define MAX_ARGS 5
 int kprobe_loader_args(const int version,
 		  const int verbosity,
 		  void *btf,
@@ -600,25 +601,38 @@ int kprobe_loader_args(const int version,
 		  const char *__prog,
 		  const char *mapdir,
 		  const bool retprobe,
-	  	  void *args0)
+		  void *args0, void *args1, void *args2, void *args3, void *args4)
 {
+	int map_fd, err, i, zero = 0;
 	struct bpf_object *obj;
-	int map_fd, err;
+	char *map_name[] = {
+		"args0_filter_map",
+		"args1_filter_map",
+		"args2_filter_map",
+		"args3_filter_map",
+		"args4_filter_map"};
+	void *args[] = {
+		args0,
+		args1,
+		args2,
+		args3,
+		args4,
+	};
 
 	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
 	if (!obj)
 		return -1;
 
-	map_fd = bpf_object__find_map_fd_by_name(obj, "args0_filter_map");
-	if (map_fd >= 0) {
-		int i = 0;
-
-		err = bpf_map_update_elem(map_fd, &i, args0, BPF_ANY);
-		if (err) {
-			printf("WARNING: map update elem args0 error %d\n", err);
+	for (i = 0; i < MAX_ARGS; i++) {
+		map_fd = bpf_object__find_map_fd_by_name(obj, map_name[i]);
+		if (map_fd >= 0) {
+			err = bpf_map_update_elem(map_fd, &zero, args[i], BPF_ANY);
+			if (err) {
+				printf("WARNING: map update elem %s error %d\n", map_name[i], err);
+			}
+		} else {
+			printf("WARNING: attempted to set filter args on program without filters\n");
 		}
-	} else {
-		printf("WARNING: attempted to set filter args on program without filters\n");
 	}
 
 	return __kprobe_loader(obj, verbosity, attach, label, __prog, retprobe);
@@ -822,7 +836,11 @@ func LoadKprobeArgsProgram(__version, __verbosity int,
 		verbosity,
 		unsafe.Pointer(btf),
 		o, a, l, p, mapdir, ret,
-		C.CBytes(args.Args0))
+		C.CBytes(args.Args0),
+		C.CBytes(args.Args1),
+		C.CBytes(args.Args2),
+		C.CBytes(args.Args3),
+		C.CBytes(args.Args4))
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
