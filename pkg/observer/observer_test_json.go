@@ -232,6 +232,47 @@ func compareKprobeFunction(a, b *fgs.ProcessKprobe) bool {
 	if a.FunctionName != b.FunctionName {
 		return false
 	}
+
+	for i, rarg := range b.Args {
+		switch ev := rarg.Arg.(type) {
+		case *fgs.KprobeArgument_IntArg:
+			switch expected := a.Args[i].Arg.(type) {
+			case *fgs.KprobeArgument_IntArg:
+				if ev.IntArg != expected.IntArg {
+					fmt.Printf("compare.IntArg(%d): expected %d found %d\n",
+						i, ev.IntArg, expected.IntArg)
+					return false
+				}
+			default:
+				fmt.Printf("compare.IntArg(%d): expected IntArg type\n", i)
+				return false
+			}
+		case *fgs.KprobeArgument_StringArg:
+			switch expected := a.Args[i].Arg.(type) {
+			case *fgs.KprobeArgument_StringArg:
+				if ev.StringArg != expected.StringArg {
+					fmt.Printf("compare.StringArg(%d): expected \"%s\" found \"%s\"\n",
+						i, ev.StringArg, expected.StringArg)
+					return false
+				}
+			default:
+				fmt.Printf("compare.StringArg(%d): expected StringArg type\n", i)
+				return false
+			}
+		case *fgs.KprobeArgument_SizeArg:
+			switch expected := a.Args[i].Arg.(type) {
+			case *fgs.KprobeArgument_SizeArg:
+				if ev.SizeArg != expected.SizeArg {
+					fmt.Printf("compare.SizeArg(%d): expected %d found %d\n",
+						i, ev.SizeArg, expected.SizeArg)
+					return false
+				}
+			default:
+				fmt.Printf("compare.SizeArg(%d): expected SizeArg type\n", i)
+				return false
+			}
+		}
+	}
 	return true
 }
 
