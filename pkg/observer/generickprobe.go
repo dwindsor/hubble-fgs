@@ -16,6 +16,7 @@ const (
 	GenericKprobeSkbType    = 3
 	GenericKprobeSizeType   = 4
 	GenericKprobeCharBuffer = 5
+	GenericKprobeCharIovec  = 6
 )
 
 const (
@@ -34,6 +35,8 @@ func kprobeStrToTypeId(arg string) int {
 		return GenericKprobeSizeType
 	case "char_buf":
 		return GenericKprobeCharBuffer
+	case "char_iovec":
+		return GenericKprobeCharIovec
 	default:
 		return -1
 	}
@@ -199,6 +202,7 @@ func (k *ObserverKprobe) createArgFilter(argType int, filter string) []byte {
 	case GenericKprobeSkbType:
 	case GenericKprobeSizeType:
 	case GenericKprobeCharBuffer:
+	case GenericKprobeCharIovec:
 	}
 
 	return b
@@ -502,7 +506,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Index = uint64(i)
 			arg.Value = string(outputStr[:])
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobeCharBuffer:
+		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
 			var b int32
 			var arg api.MsgGenericKprobeArgString
 
