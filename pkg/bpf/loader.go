@@ -652,6 +652,8 @@ import (
 
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
+
+	"github.com/covalentio/hubble-fgs/pkg/api"
 )
 
 func GetBTF(__btf string) uintptr {
@@ -807,7 +809,7 @@ func LoadKprobeArgsProgram(__version, __verbosity int,
 	btf uintptr,
 	object, attach, __label, __prog, __mapdir string,
 	retprobe bool,
-	args0 []byte) (error, int) {
+	args api.KprobeArgs) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
@@ -820,7 +822,7 @@ func LoadKprobeArgsProgram(__version, __verbosity int,
 		verbosity,
 		unsafe.Pointer(btf),
 		o, a, l, p, mapdir, ret,
-		C.CBytes(args0))
+		C.CBytes(args.Args0))
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0

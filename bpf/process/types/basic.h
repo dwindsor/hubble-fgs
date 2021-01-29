@@ -29,13 +29,6 @@ struct skb_type {
 #define MAX_ARGS_SIZE 80
 #define MAX_ARGS_ENTRIES 8
 
-struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
 /* Constants bounding printers if these change or buffer size changes then
  * we will need to resize. TBD would be to size these at compile time using
  * buffer size information.
@@ -96,7 +89,11 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 }
 
 static inline __attribute__((always_inline))
-int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned long argm, struct execve_map_value *proc)
+int read_call_arg(char *args,
+		  int type, long off,
+		  unsigned long arg, unsigned long argm,
+		  void *filter_map,
+		  struct execve_map_value *proc)
 {
 	int size = -1;
 	int zero = 0;
@@ -117,8 +114,8 @@ int read_call_arg(char *args, int type, long off, unsigned long arg, unsigned lo
 
 		probe_read(&value, sizeof(int), &arg);
 		args[off] = value;
-		f = map_lookup_elem(&args0_filter_map, &zero);
 
+		f = map_lookup_elem(filter_map, &zero);
 		if (f && *f) {
 			int i;
 

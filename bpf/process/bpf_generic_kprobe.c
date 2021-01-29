@@ -50,6 +50,42 @@ struct bpf_map_def __attribute__((section("maps"), used)) process_call_heap = {
 	return 0;	\
 }
 
+/* Arrays of size 1 will be rewritten to direct loads in verifier */
+struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) args1_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) args2_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) args3_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) args4_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
 __attribute__((section(("kprobe/generic_kprobe")), used))
 int generic_kprobe_event(struct pt_regs *ctx)
 {
@@ -153,8 +189,10 @@ accept: // Accept pidset goto
 	/* Read out args1-5 */
 	ty = bpf_core_enum_value(fgs_args, arg0);
 	if (total < MAX_TOTAL) {
+		void *map = &args0_filter_map;
+
 		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a0, arg_meta, enter);
+		errv = read_call_arg(e->args, ty, total, a0, arg_meta, map, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -162,32 +200,40 @@ accept: // Accept pidset goto
 
 	ty = bpf_core_enum_value(fgs_args, arg1);
 	if (total < MAX_TOTAL) {
+		void *map = &args1_filter_map;
+
 		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a1, arg_meta, enter);
+		errv = read_call_arg(e->args, ty, total, a1, arg_meta, map, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg2);
 	if (total < MAX_TOTAL) {
+		void *map = &args2_filter_map;
+
 		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a2, arg_meta, enter);
+		errv = read_call_arg(e->args, ty, total, a2, arg_meta, map, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg3);
 	if (total < MAX_TOTAL) {
+		void *map = &args3_filter_map;
+
 		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a3, arg_meta, enter);
+		errv = read_call_arg(e->args, ty, total, a3, arg_meta, map, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
 	}
 	ty = bpf_core_enum_value(fgs_args, arg4);
 	if (total < MAX_TOTAL) {
+		void *map = &args4_filter_map;
+
 		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
-		errv += read_call_arg(e->args, ty, total, a4, arg_meta, enter);
+		errv += read_call_arg(e->args, ty, total, a4, arg_meta, map, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;

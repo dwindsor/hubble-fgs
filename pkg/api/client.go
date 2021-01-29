@@ -460,3 +460,11 @@ type MsgKfreeSkbUnix struct {
 	Calltrace []StackAddr
 	Tuple     vtuple.VTupleImpl
 }
+
+type KprobeArgs struct {
+	Args0 []byte
+	Args1 []byte
+	Args2 []byte
+	Args3 []byte
+	Args4 []byte
+}

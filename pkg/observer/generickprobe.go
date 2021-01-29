@@ -115,16 +115,8 @@ func kprobeArgToString(a int) string {
 	return ""
 }
 
-type kprobeArgs struct {
-	args0 []byte
-	args1 []byte
-	args2 []byte
-	args3 []byte
-	args4 []byte
-}
-
 type kprobeLoadArgs struct {
-	args     kprobeArgs
+	args     api.KprobeArgs
 	btf      uintptr
 	retprobe bool
 	syscall  bool
@@ -237,12 +229,12 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		pid_type := int(0)
 		pidset_value := int(0)
 
-		argFilters := kprobeArgs{
-			args0: make([]byte, sizeofArgsFilter),
-			args1: make([]byte, sizeofArgsFilter),
-			args2: make([]byte, sizeofArgsFilter),
-			args3: make([]byte, sizeofArgsFilter),
-			args4: make([]byte, sizeofArgsFilter),
+		argFilters := api.KprobeArgs{
+			Args0: make([]byte, sizeofArgsFilter),
+			Args1: make([]byte, sizeofArgsFilter),
+			Args2: make([]byte, sizeofArgsFilter),
+			Args3: make([]byte, sizeofArgsFilter),
+			Args4: make([]byte, sizeofArgsFilter),
 		}
 
 		funcSplit := strings.Split(s, "(")
@@ -293,15 +285,15 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 				argF := k.createArgFilter(argType, filters[1])
 				switch j { // this is a bit ugly fixup tbd
 				case 0:
-					argFilters.args0 = argF
+					argFilters.Args0 = argF
 				case 1:
-					argFilters.args1 = argF
+					argFilters.Args1 = argF
 				case 2:
-					argFilters.args2 = argF
+					argFilters.Args2 = argF
 				case 3:
-					argFilters.args3 = argF
+					argFilters.Args3 = argF
 				case 4:
-					argFilters.args4 = argF
+					argFilters.Args4 = argF
 				}
 			}
 
@@ -451,7 +443,7 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 		k.bpfDir+load.observer__prog,
 		k.mapDir,
 		retprobe,
-		args.args0)
+		args)
 }
 
 func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
