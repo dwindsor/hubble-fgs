@@ -155,6 +155,60 @@ func TestKprobeObjectWriteRead(t *testing.T) {
 	testDone(t, kprobe)
 }
 
+func helloIovecWorldWritev() (err error) {
+	var arrayOfBytes = make([][]byte, 3)
+
+	h := []byte("hello")
+	i := []byte(" iovec ")
+	w := []byte("world")
+
+	arrayOfBytes[0] = h
+	arrayOfBytes[1] = i
+	arrayOfBytes[2] = w
+	_, err = unix.Writev(1, arrayOfBytes)
+	return err
+}
+
+func TestKprobeObjectWriteVRead(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+	pidStr := strconv.Itoa(int(getMyPid()))
+
+	writeReadHook := "__x64_sys_writev(int=eq 1:char_iovec#3:nop:nop:nop)[syscall:pidset " + pidStr + "]"
+
+	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: 1}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello iovec world"}}
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessKprobe{
+				ProcessKprobe: &fgs.ProcessKprobe{
+					Process:      &fgs.Process{Binary: "go-build"},
+					Parent:       &fgs.Process{Binary: ""},
+					FunctionName: "__x64_sys_writev",
+					Args:         []*fgs.KprobeArgument{arg0, arg1},
+				},
+			},
+		},
+	}
+
+	kprobe, err := getDefaultObserver(t, false, false, false, writeReadHook)
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWG.Wait()
+	err = helloIovecWorldWritev()
+	execWG.Wait()
+	retries := jsonRetries
+	time.Sleep(1000 * time.Millisecond)
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
+}
+
 func removeMountPoint(dir string) string {
 	var accum string
 
