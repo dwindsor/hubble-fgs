@@ -631,7 +631,7 @@ int kprobe_loader_args(const int version,
 				printf("WARNING: map update elem %s error %d\n", map_name[i], err);
 			}
 		} else {
-			printf("WARNING: attempted to set filter args on program without filters\n");
+			printf("WARNING: attempted to set filter args on program %s without filters\n", map_name[i]);
 		}
 	}
 

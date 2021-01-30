@@ -28,26 +28,42 @@ struct bpf_map_def __attribute__((section("maps"), used)) process_call_heap = {
 	.max_entries = 1,
 };
 
-#define FIND_PIDSET  {					\
+#define FIND_PIDSET(value)  {				\
 	if (!filter)					\
 		return 0;				\
-	if (filter->key.pid == pidset_filter_value ||	\
-	    filter->pkey.pid == pidset_filter_value)	\
+	if (filter->key.pid == value ||			\
+	    filter->pkey.pid == value) {		\
+			pidset_found = true;		\
 			goto accept;			\
+	}						\
 	filter = map_lookup_event(filter->pkey.pid);	\
 }
 
-#define FIND_PIDSET10 {	\
-	FIND_PIDSET	\
-	FIND_PIDSET	\
-	FIND_PIDSET	\
-	FIND_PIDSET	\
-	FIND_PIDSET	\
-	FIND_PIDSET	\
-	FIND_PIDSET	\
-	FIND_PIDSET	\
-	FIND_PIDSET	\
-	return 0;	\
+#define FIND_PIDSET10(VAL) {	\
+	FIND_PIDSET(VAL)	\
+	FIND_PIDSET(VAL)	\
+	FIND_PIDSET(VAL)	\
+	FIND_PIDSET(VAL)	\
+	FIND_PIDSET(VAL)	\
+	FIND_PIDSET(VAL)	\
+	FIND_PIDSET(VAL)	\
+	FIND_PIDSET(VAL)	\
+	FIND_PIDSET(VAL)	\
+}
+
+#define FILTER_PIDSET(VAL) {	\
+	FIND_PIDSET10(VAL)	\
+}
+
+static inline __attribute__((always_inline))
+bool filter_pidset(int pid, struct execve_map_value *enter)
+{
+	struct execve_map_value *filter = enter;
+	bool pidset_found = false;
+
+	FIND_PIDSET10(pid);
+accept:
+	return pidset_found;
 }
 
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
@@ -140,6 +156,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		int pid_filter_ty = bpf_core_enum_value(fgs_args, pid_type);
 		int pid_filter_value = bpf_core_enum_value(fgs_args, pid_value);
 		int pidset_filter_value = bpf_core_enum_value(fgs_args, pidset_value);
+		int notpidset_filter_value = bpf_core_enum_value(fgs_args, notpidset_value);
 
 		if (nspid_filter_ty == op_filter_lt) {
 			if (enter->nspid < nspid_filter_value)
@@ -160,12 +177,16 @@ int generic_kprobe_event(struct pt_regs *ctx)
 				return 0;
 		}
 
-		if (pidset_filter_value) {
-			struct execve_map_value *filter = enter;
-			/* Manually unroll loop because clang can't */
-			FIND_PIDSET10
+		if (pidset_filter_value ||
+		    notpidset_filter_value) {
+			bool negate = !!notpidset_filter_value;
+			bool found = filter_pidset(pidset_filter_value, enter);
+
+			if (!found && !negate)
+				return 0;
+			else if (found && negate)
+				return 0;
 		}
-accept: // Accept pidset goto
 		e->current.pid = enter->key.pid;
 		e->current.ktime = enter->key.ktime;
 	} else {

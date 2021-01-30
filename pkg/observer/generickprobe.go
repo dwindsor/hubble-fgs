@@ -228,6 +228,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		pid_filter := int(0)
 		pid_type := int(0)
 		pidset_value := int(0)
+		notpidset_value := int(0)
 
 		argFilters := api.KprobeArgs{
 			Args0: make([]byte, sizeofArgsFilter),
@@ -328,6 +329,8 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 					pid_filter = k.pidFilterStrToValue(_f[2])
 				case "pidset":
 					pidset_value = k.pidFilterStrToValue(_f[1])
+				case "notpidset":
+					notpidset_value = k.pidFilterStrToValue(_f[1])
 				}
 			}
 		}
@@ -364,6 +367,11 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		retVal = bpf.AddEnumBtfValue(btf, "pidset_value", pidset_value)
 		if retVal < 0 {
 			k.log.Warn("error setting enum btf value \"pidset_value\" %d", retVal)
+		}
+
+		retVal = bpf.AddEnumBtfValue(btf, "notpidset_value", notpidset_value)
+		if retVal < 0 {
+			k.log.Warn("error setting enum btf value \"notpidset_value\" %d", retVal)
 		}
 
 		entry.args = argFilters
