@@ -16,8 +16,10 @@ enum generic_func_args_enum {
 	nspid_value = 0x14,
 	pid_type    = 0x15,
 	pid_value   = 0x16,
-	pidset_value    = 0x17,
-	notpidset_value = 0x18,
+	pidset_value      = 0x17,
+	notpidset_value   = 0x18,
+	nspidset_value    = 0x19,
+	notnspidset_value = 0x20,
 };
 
 /* Kernel BTF */

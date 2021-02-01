@@ -55,6 +55,32 @@ struct bpf_map_def __attribute__((section("maps"), used)) process_call_heap = {
 	FIND_PIDSET10(VAL)	\
 }
 
+#define FIND_NSPIDSET(value)  {				\
+	if (!filter)					\
+		return 0;				\
+	if (filter->nspid == value) {			\
+		nspidset_found = true;			\
+		goto nspid_accept;			\
+	}						\
+	filter = map_lookup_event(filter->pkey.pid);	\
+}
+
+#define FIND_NSPIDSET10(VAL) {	\
+	FIND_NSPIDSET(VAL)	\
+	FIND_NSPIDSET(VAL)	\
+	FIND_NSPIDSET(VAL)	\
+	FIND_NSPIDSET(VAL)	\
+	FIND_NSPIDSET(VAL)	\
+	FIND_NSPIDSET(VAL)	\
+	FIND_NSPIDSET(VAL)	\
+	FIND_NSPIDSET(VAL)	\
+	FIND_NSPIDSET(VAL)	\
+}
+
+#define FILTER_NSPIDSET(VAL) {	\
+	FIND_NSPIDSET10(VAL)	\
+}
+
 static inline __attribute__((always_inline))
 bool filter_pidset(int pid, struct execve_map_value *enter)
 {
@@ -64,6 +90,58 @@ bool filter_pidset(int pid, struct execve_map_value *enter)
 	FIND_PIDSET10(pid);
 accept:
 	return pidset_found;
+}
+
+static inline __attribute__((always_inline))
+bool filter_nspidset(int nspid, struct execve_map_value *enter)
+{
+	struct execve_map_value *filter = enter;
+	bool nspidset_found = false;
+
+	FIND_NSPIDSET10(nspid);
+nspid_accept:
+	return nspidset_found;
+}
+
+static inline __attribute__((always_inline))
+bool filter_pidsets(struct execve_map_value *enter)
+{
+	enum generic_func_args_enum fgs_args;
+
+	int pidset_filter_value = bpf_core_enum_value(fgs_args, pidset_value);
+	int notpidset_filter_value = bpf_core_enum_value(fgs_args, notpidset_value);
+	int nspidset_filter_value = bpf_core_enum_value(fgs_args, nspidset_value);
+	int notnspidset_filter_value = bpf_core_enum_value(fgs_args, notnspidset_value);
+
+	if (pidset_filter_value) {
+		bool found = filter_pidset(pidset_filter_value, enter);
+
+		if (!found)
+			return 0;
+	}
+
+	if (notpidset_filter_value) {
+		bool found = filter_pidset(notpidset_filter_value, enter);
+
+		if (found)
+			return 0;
+	}
+
+	if (nspidset_filter_value) {
+		bool found = filter_nspidset(nspidset_filter_value, enter);
+
+		if (!found)
+			return 0;
+	}
+
+	if (notnspidset_filter_value) {
+		bool found = filter_nspidset(notnspidset_filter_value, enter);
+
+		if (found)
+			return 0;
+	}
+
+	return true;
 }
 
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
@@ -155,8 +233,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		int nspid_filter_value = bpf_core_enum_value(fgs_args, nspid_value);
 		int pid_filter_ty = bpf_core_enum_value(fgs_args, pid_type);
 		int pid_filter_value = bpf_core_enum_value(fgs_args, pid_value);
-		int pidset_filter_value = bpf_core_enum_value(fgs_args, pidset_value);
-		int notpidset_filter_value = bpf_core_enum_value(fgs_args, notpidset_value);
+		bool accept_pid;
 
 		if (nspid_filter_ty == op_filter_lt) {
 			if (enter->nspid < nspid_filter_value)
@@ -177,16 +254,9 @@ int generic_kprobe_event(struct pt_regs *ctx)
 				return 0;
 		}
 
-		if (pidset_filter_value ||
-		    notpidset_filter_value) {
-			bool negate = !!notpidset_filter_value;
-			bool found = filter_pidset(pidset_filter_value, enter);
-
-			if (!found && !negate)
-				return 0;
-			else if (found && negate)
-				return 0;
-		}
+		accept_pid = filter_pidsets(enter);
+		if (!accept_pid)
+			return 0;
 		e->current.pid = enter->key.pid;
 		e->current.ktime = enter->key.ktime;
 	} else {
@@ -260,9 +330,12 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		total += errv;
 	}
 	e->common.size = total;
-	if (total > MAX_TOTAL)
-		total = MAX_TOTAL;
 	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total & 0x7fff);
+	/* Code movement from clang forces us to inline bounds checks here */
+	asm volatile("%[total] &= 0x7fff;\n"
+		     "if %[total] < 9000 goto +1\n;"
+		     "%[total] = 9000;\n"
+			: : [total] "+r"(total):);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
 	return 0;
 }
