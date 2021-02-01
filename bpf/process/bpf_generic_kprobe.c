@@ -28,6 +28,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) process_call_heap = {
 	.max_entries = 1,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
+	.type		= BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size	= sizeof(__u32),
+	.value_size	= sizeof(__u32),
+	.max_entries	= 1,
+};
+
 #define FIND_PIDSET(value)  {				\
 	if (!filter)					\
 		return 0;				\
@@ -180,8 +187,62 @@ struct bpf_map_def __attribute__((section("maps"), used)) args4_filter_map = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/generic_kprobe")), used))
-int generic_kprobe_event(struct pt_regs *ctx)
+static inline __attribute__((always_inline))
+int generic_kprobe_process_filter(struct pt_regs *ctx)
+{
+	struct execve_map_value *enter;
+	struct msg_generic_kprobe *e;
+	bool walker = 0;
+	__u32 ppid;
+
+	enter = event_find_curr(&ppid, 0, &walker);
+	if (enter) {
+		enum generic_func_args_enum fgs_args;
+		int zero = 0;
+
+		int nspid_filter_ty = bpf_core_enum_value(fgs_args, nspid_type);
+		int nspid_filter_value = bpf_core_enum_value(fgs_args, nspid_value);
+		int pid_filter_ty = bpf_core_enum_value(fgs_args, pid_type);
+		int pid_filter_value = bpf_core_enum_value(fgs_args, pid_value);
+		bool accept_pid;
+
+		if (nspid_filter_ty == op_filter_lt) {
+			if (enter->nspid < nspid_filter_value)
+				return 0;
+		} else if (nspid_filter_ty == op_filter_gt) {
+			if (enter->nspid > nspid_filter_value)
+				return 0;
+		}
+
+		if (pid_filter_ty == op_filter_lt) {
+			if (enter->key.pid < pid_filter_value)
+				return 0;
+		} else if (pid_filter_ty == op_filter_gt) {
+			if (enter->key.pid > pid_filter_value)
+				return 0;
+		} else if (pid_filter_ty == op_filter_eq) {
+			if (enter->key.pid == pid_filter_value)
+				return 0;
+		}
+
+		accept_pid = filter_pidsets(enter);
+		if (!accept_pid)
+			return 0;
+
+
+		e = map_lookup_elem(&process_call_heap, &zero);
+		if (!e)
+			return 0;
+
+		e->current.pid = enter->key.pid;
+		e->current.ktime = enter->key.ktime;
+		tail_call(ctx, &kprobe_calls, 0);
+	}
+	return 0;
+}
+
+__attribute__((section(("kprobe/0")), used))
+int generic_kprobe_process_event(struct pt_regs *ctx)
 {
 	enum generic_func_args_enum fgs_args;
 	int is_syscall, errv, zero = 0;
@@ -197,6 +258,15 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	 * pointer type in order to avoid bit shifts.
 	 */
 	long ty, total = 0;
+
+	/* Pid/Ktime Passed through per cpu map in process heap. */
+	e = map_lookup_elem(&process_call_heap, &zero);
+	if (!e)
+		return 0;
+
+	enter = event_find_curr(&ppid, 0, &walker);
+	if (!enter)
+		return 0;
 
 	is_syscall = bpf_core_enum_value(fgs_args, syscall);
 	if (is_syscall) {
@@ -226,43 +296,6 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	e = map_lookup_elem(&process_call_heap, &zero);
 	if (!e)
 		return 0;
-
-	enter = event_find_curr(&ppid, 0, &walker);
-	if (enter) {
-		int nspid_filter_ty = bpf_core_enum_value(fgs_args, nspid_type);
-		int nspid_filter_value = bpf_core_enum_value(fgs_args, nspid_value);
-		int pid_filter_ty = bpf_core_enum_value(fgs_args, pid_type);
-		int pid_filter_value = bpf_core_enum_value(fgs_args, pid_value);
-		bool accept_pid;
-
-		if (nspid_filter_ty == op_filter_lt) {
-			if (enter->nspid < nspid_filter_value)
-				return 0;
-		} else if (nspid_filter_ty == op_filter_gt) {
-			if (enter->nspid > nspid_filter_value)
-				return 0;
-		}
-
-		if (pid_filter_ty == op_filter_lt) {
-			if (enter->key.pid < pid_filter_value)
-				return 0;
-		} else if (pid_filter_ty == op_filter_gt) {
-			if (enter->key.pid > pid_filter_value)
-				return 0;
-		} else if (pid_filter_ty == op_filter_eq) {
-			if (enter->key.pid == pid_filter_value)
-				return 0;
-		}
-
-		accept_pid = filter_pidsets(enter);
-		if (!accept_pid)
-			return 0;
-		e->current.pid = enter->key.pid;
-		e->current.ktime = enter->key.ktime;
-	} else {
-		return 0;
-	}
-
 	e->common.op = MSG_OP_GENERIC_KPROBE;
 	e->common.flags = 0;
 	e->common.pad[0] = 0;
@@ -338,4 +371,16 @@ int generic_kprobe_event(struct pt_regs *ctx)
 			: : [total] "+r"(total):);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
 	return 0;
+}
+
+/* Generic kprobe is composed of two parts, first we filter process with
+ * process filters (nspid, pid, etc.) then if we accpet the process we
+ * run the arg filters and event builder. For 4.19 kernels we have to
+ * use the tail call infrastructure to get below 4k insns. For 5.x+ kernels
+ * with 1m.insns its not an issue.
+ */
+__attribute__((section(("kprobe/generic_kprobe")), used))
+int generic_kprobe_event(struct pt_regs *ctx)
+{
+	return generic_kprobe_process_filter(ctx);
 }

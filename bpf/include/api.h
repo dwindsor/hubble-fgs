@@ -132,8 +132,7 @@ static void BPF_FUNC(trace_printk, const char *fmt, int fmt_size, ...);
 static uint32_t BPF_FUNC(get_prandom_u32);
 
 /* Tail calls */
-static void BPF_FUNC(tail_call, struct __sk_buff *skb, void *map,
-		     uint32_t index);
+static void BPF_FUNC(tail_call, void *ctx, void *map, uint32_t index);
 
 /* System helpers */
 static uint32_t BPF_FUNC(get_smp_processor_id);

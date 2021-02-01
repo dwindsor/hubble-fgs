@@ -41,22 +41,38 @@ int return_error(int *s, int err) {
 	return sizeof(int);
 }
 
+/* Error writer  for use when pointer *s is lost to stack and can not
+ * be recoved with known bounds.
+ */
+static inline __attribute__((always_inline))
+int return_stack_error(char *args, int orig, int err)
+{
+	int *s;
+
+	asm volatile("%[orig] &= 0xfff;\n" :: [orig] "r+" (orig):);
+	s = (int *)&args[orig];
+	*s = err;
+	return sizeof(int);
+}
 
 static inline __attribute__((always_inline))
 int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 	struct iovec iov; // limit is 1024 using a hack now. For 5.4 kernel we should loop over 1024
 	char index = sizeof(struct iovec) * i;
+	size_t size;
 	int err;
 
 	err = probe_read(&iov, sizeof(iov), (struct iovec *)(arg+index));
-	if (err)
+	if (err < 0)
 		return char_buf_pagefault;
-	iov.iov_len &= 0x7fff;
-	if (iov.iov_len > 4000)
+	size = iov.iov_len;
+	if (size > 4000)
 		return char_buf_toolarge;
-	off &= 0xFFF;
-	err = probe_read(&args[off], iov.iov_len, (char *) iov.iov_base);
-	if (err)
+	asm volatile("%[off] &= 0xfff;\n"
+		     "%[size] &= 0x7fff;\n"
+			:: [off] "+r"(off), [size] "+r"(size):);
+	err = probe_read(&args[off], size, (char *) iov.iov_base);
+	if (err < 0)
 		return char_buf_pagefault;
 	return iov.iov_len;
 }
@@ -69,7 +85,7 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 		goto char_iovec_done;					\
 	c = parse_iovec_array(args, arg, i, off);			\
 	if (c < 0)							\
-	       return return_error(s, c);				\
+	       return return_stack_error(args, orig, c);			\
 	size += c;							\
 	c &= 0x7fff;							\
 	off += c;							\
@@ -168,7 +184,7 @@ accept_filter:
 			if (bytes > 6000)  // creates uppder bounds [0, 4000]
 				return return_error(s, char_buf_toolarge);
 			err = probe_read(&args[off+4], bytes, (char *)arg);
-			if (err)
+			if (err < 0)
 				return return_error(s, char_buf_pagefault);
 			size = bytes + 4;
 			*s = (int)bytes;
@@ -176,14 +192,14 @@ accept_filter:
 			return return_error(s, char_buf_enomem);
 		}
 	} else if (type == char_iovec) {
-		int err, i = 0, cnt, *s = (int *)&args[off];
+		int err, i = 0, cnt, orig = off, *s = (int *)&args[off];
 
 		if (argm == -1) {
 			proc->retprobe_buffer = arg;
 			return return_error(s, 0);
 		}
 		err = probe_read(&cnt, sizeof(cnt), &argm);
-		if (err) {
+		if (err < 0) {
 			return return_error(s, char_buf_pagefault);
 		}
 
@@ -193,8 +209,15 @@ accept_filter:
 		/* PARSE_IOVEC_ENTRIES will jump here when done or return error */
 char_iovec_done:
 		/* This could be a buggy size_t -> int conversion except
-		 * we bounded about with 0x7fff so should be good.
+		 * we bound with 0x7fff so should be good. We have to use
+		 * orig to reread out s here because compiler pushed map
+		 * pointer into stack and is going to read orig (off) bytes
+		 * into it except pre 5.x we are not keeping bounds in stack
+		 * and this fails on 4.19. So we get this explicit offset
+		 * mess.
 		 */
+		asm volatile("%[orig] &= 0xfff;\n" :: [orig] "r+" (orig):);
+		s = (int *)&args[orig];
 		*s = size;
 		size += 4;
 	}
