@@ -47,11 +47,13 @@ int return_error(int *s, int err) {
 static inline __attribute__((always_inline))
 int return_stack_error(char *args, int orig, int err)
 {
-	int *s;
-
-	asm volatile("%[orig] &= 0xfff;\n" :: [orig] "r+" (orig):);
-	s = (int *)&args[orig];
-	*s = err;
+	asm volatile("%[orig] &= 0xfff;\n"
+		     "r1 = *(u64 *)%[args];\n"
+		     "r1 += %[orig];\n"
+		     "*(u32 *)(r1 + 0) = %[err];\n"
+		     :: [orig] "r+" (orig), [args] "m+"(args), [err] "r+"(err): "r1");
+	//s = (int *)&args[o];
+	//*s = err;
 	return sizeof(int);
 }
 
@@ -101,23 +103,21 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 	PARSE_IOVEC_ENTRY     \
 	PARSE_IOVEC_ENTRY     \
 	PARSE_IOVEC_ENTRY     \
-	PARSE_IOVEC_ENTRY     \
 }
 
 static inline __attribute__((always_inline))
-int read_call_arg(char *args,
+long read_call_arg(char *args,
 		  int type, long off,
 		  unsigned long arg, unsigned long argm,
 		  void *filter_map,
 		  struct execve_map_value *proc)
 {
-	int size = -1;
+	long size = -1;
 	int zero = 0;
 
 	if (type == nop) {
 		size = 0;
-	} else if (type == string_type && MAX_STRING + off < 4095) {
-		int *s = (int *)&args[off];
+	} else if (type == string_type && MAX_STRING + off < 4095) { int *s = (int *)&args[off];
 		size = probe_read_str(&args[off+4], MAX_STRING, (char *)arg);
 		*s = size;
 		size += 4; // accounting for initial length int
@@ -125,11 +125,11 @@ int read_call_arg(char *args,
 		probe_read(&args[off], sizeof(size_t), &arg);
 		size = sizeof(size_t);
 	} else if (type == int_type && sizeof(int) + off < 4095) {
-		int *f;
 		int value;
+		int *f;
 
 		probe_read(&value, sizeof(int), &arg);
-		args[off] = value;
+		probe_read(&args[off], sizeof(int), &value);
 
 		f = map_lookup_elem(filter_map, &zero);
 		if (f && *f) {
@@ -144,8 +144,14 @@ int read_call_arg(char *args,
 			 */
 #pragma unroll
 			for (i = 1; i < MAX_ARGS_ENTRIES*2; i+=2) {
-				int op = f[i];
-				int v = f[i+1];
+				int op, v;
+				/* TODO: optimize reads for 5.x kernels where
+				 * we can direct f lookup ex:
+				 *  int op = f[i];
+				 *  int v = f[i+1];
+				 */
+				probe_read(&op, sizeof(int), &f[i]);
+				probe_read(&v, sizeof(int), &f[i+1]);
 
 				if (op == op_filter_eq  && v == value)
 					goto accept_filter;
@@ -200,7 +206,7 @@ accept_filter:
 		}
 		err = probe_read(&cnt, sizeof(cnt), &argm);
 		if (err < 0) {
-			return return_error(s, char_buf_pagefault);
+			return return_stack_error(args, orig, char_buf_pagefault);
 		}
 
 		size = 0;

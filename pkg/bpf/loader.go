@@ -605,6 +605,7 @@ int kprobe_loader_args(const int version,
 {
 	int map_fd, err, i, zero = 0;
 	char kprobe_calls_name[255];
+	struct bpf_map *map_bpf;
 	struct bpf_object *obj;
 	char *map_name[] = {
 		"args0_filter_map",
@@ -637,39 +638,55 @@ int kprobe_loader_args(const int version,
 	}
 
 	snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s/kprobe_calls", mapdir);
-	map_fd = bpf_obj_get(kprobe_calls_name);
+	map_bpf = bpf_object__find_map_by_name(obj, "kprobe_calls");
+	if (err) {
+		fprintf(stderr,
+			"bpf_object__find_map_by_name: obj(%s) map(kprobe_calls) failed",
+			prog);
+		goto kprobe_loader_err;
+	}
+	bpf_map__unpin(map_bpf, kprobe_calls_name);
+	err = bpf_map__pin(map_bpf, kprobe_calls_name);
+	if (err < 0) {
+		fprintf(stderr, "bpf_map__pin: obj(%s) map(%s) failed: %i", prog, kprobe_calls_name, err);
+		goto kprobe_loader_err;
+	}
+	map_fd = bpf_map__fd(map_bpf);
 	printf("bpf fgs_kprobe_calls map and progs %s mapfd %d\n", __prog, map_fd);
 	if (map_fd >= 0) {
-		struct bpf_program *prog;
-		char prog_name[20];
-		char pin_name[200];
-		int fd, zero = 0;
+		for (i = 0; i < 2; i++) {
+			struct bpf_program *prog;
+			char prog_name[20];
+			char pin_name[200];
+			int fd;
 
-		snprintf(prog_name, sizeof(prog_name), "kprobe/%i", zero);
-		prog = bpf_object__find_program_by_title(obj, prog_name);
-		if (!prog)
-			goto out;
-		fd = bpf_program__fd(prog);
-		if (fd < 0) {
-			err = errno;
-			goto out;
+			snprintf(prog_name, sizeof(prog_name), "kprobe/%i", i);
+			prog = bpf_object__find_program_by_title(obj, prog_name);
+			if (!prog)
+				goto out;
+			fd = bpf_program__fd(prog);
+			if (fd < 0) {
+				err = errno;
+				goto kprobe_loader_err;
+			}
+			snprintf(pin_name, sizeof(pin_name), "%s_%i", __prog, i);
+			bpf_program__unpin(prog, pin_name);
+			err = bpf_program__pin(prog, pin_name);
+			if (err) {
+				printf("program pin %s tailcall err %d\n", pin_name, err);
+				goto kprobe_loader_err;
+			}
+			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
+			if (err) {
+				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
+				goto kprobe_loader_err;
+			}
 		}
-		snprintf(pin_name, sizeof(pin_name), "%s_%i", __prog, zero);
-		bpf_program__unpin(prog, pin_name);
-		err = bpf_program__pin(prog, pin_name);
-		if (err) {
-			printf("program pin %s tailcall err %d\n", pin_name, err);
-			goto out;
-		}
-		err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
-		if (err) {
-			printf("map updat elem  i %i tailcall err %d %d\n", zero, err, errno);
-			goto out;
-		}
-		printf("bpf map update elem %s %d\n", pin_name, err);
 	}
 out:
 	return __kprobe_loader(obj, verbosity, attach, label, __prog, retprobe);
+kprobe_loader_err:
+	return err;
 }
 
 int kprobe_loader(const int version,

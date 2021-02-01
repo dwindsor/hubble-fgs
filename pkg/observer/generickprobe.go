@@ -403,7 +403,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile stri
 		load.Observer__program = HubbleLib + "bpf_generic_kprobe.o"
 		load.observer__label = "kprobe/generic_kprobe"
 		load.observer__attach = funcName
-		load.observer__prog = "kfprobe" + "_" + funcName
+		load.observer__prog = "kprobe" + "_" + funcName
 		load.retProbe = false
 		load.errorFatal = true
 		load.probeType = "generic_kprobe"

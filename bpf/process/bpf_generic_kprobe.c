@@ -32,7 +32,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
 	.value_size	= sizeof(__u32),
-	.max_entries	= 1,
+	.max_entries	= 2,
 };
 
 #define FIND_PIDSET(value)  {				\
@@ -241,16 +241,26 @@ int generic_kprobe_process_filter(struct pt_regs *ctx)
 	return 0;
 }
 
+/* Generic kprobe is composed of two parts, first we filter process with
+ * process filters (nspid, pid, etc.) then if we accpet the process we
+ * run the arg filters and event builder. For 4.19 kernels we have to
+ * use the tail call infrastructure to get below 4k insns. For 5.x+ kernels
+ * with 1m.insns its not an issue.
+ */
+__attribute__((section(("kprobe/generic_kprobe")), used))
+int generic_kprobe_event(struct pt_regs *ctx)
+{
+	return generic_kprobe_process_filter(ctx);
+}
+
 __attribute__((section(("kprobe/0")), used))
-int generic_kprobe_process_event(struct pt_regs *ctx)
+int generic_kprobe_process_event0(struct pt_regs *ctx)
 {
 	enum generic_func_args_enum fgs_args;
-	int is_syscall, errv, zero = 0;
+	int is_syscall, zero = 0;
 	struct execve_map_value *enter;
 	struct msg_generic_kprobe *e;
 	unsigned long a0, a1, a2, a3, a4;
-	unsigned long a0m, a1m, a2m, a3m, a4m;
-	unsigned long arg_meta;
 	struct pt_regs *_ctx;
 	bool walker = 0;
 	__u32 pid, ppid;
@@ -286,12 +296,6 @@ int generic_kprobe_process_event(struct pt_regs *ctx)
 		a4 = ctx->r8;
 	}
 
-	a0m = bpf_core_enum_value(fgs_args, arg0m);
-	a1m = bpf_core_enum_value(fgs_args, arg1m);
-	a2m = bpf_core_enum_value(fgs_args, arg2m);
-	a3m = bpf_core_enum_value(fgs_args, arg3m);
-	a4m = bpf_core_enum_value(fgs_args, arg4m);
-
 	pid = get_current_pid_tgid() & 0xFFFFffff;
 	e = map_lookup_elem(&process_call_heap, &zero);
 	if (!e)
@@ -314,7 +318,10 @@ int generic_kprobe_process_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg0);
 	if (total < MAX_TOTAL) {
 		void *map = &args0_filter_map;
+		unsigned long a0m, arg_meta;
+		long errv;
 
+		a0m = bpf_core_enum_value(fgs_args, arg0m);
 		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e->args, ty, total, a0, arg_meta, map, enter);
 		if (errv < 0)
@@ -325,7 +332,10 @@ int generic_kprobe_process_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg1);
 	if (total < MAX_TOTAL) {
 		void *map = &args1_filter_map;
+		unsigned long a1m, arg_meta;
+		long errv;
 
+		a1m = bpf_core_enum_value(fgs_args, arg1m);
 		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e->args, ty, total, a1, arg_meta, map, enter);
 		if (errv < 0)
@@ -335,17 +345,69 @@ int generic_kprobe_process_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg2);
 	if (total < MAX_TOTAL) {
 		void *map = &args2_filter_map;
+		unsigned long a2m, arg_meta;
+		long errv;
 
+		a2m = bpf_core_enum_value(fgs_args, arg2m);
 		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e->args, ty, total, a2, arg_meta, map, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
 	}
+	e->common.size = total;
+	tail_call(ctx, &kprobe_calls, 1);
+	return 0;
+}
+
+__attribute__((section(("kprobe/1")), used))
+int generic_kprobe_process_event1(struct pt_regs *ctx)
+{
+	enum generic_func_args_enum fgs_args;
+	unsigned long a0, a1, a2, a3, a4;
+	struct execve_map_value *enter;
+	struct msg_generic_kprobe *e;
+	int is_syscall, zero = 0;
+	bool walker = 0;
+	long ty, total;
+	__u32 ppid;
+
+	/* Preamble to setup context */
+	enter = event_find_curr(&ppid, 0, &walker);
+	if (!enter)
+		return 0;
+
+	e = map_lookup_elem(&process_call_heap, &zero);
+	if (!e)
+		return 0;
+
+	total = e->common.size;
+	is_syscall = bpf_core_enum_value(fgs_args, syscall);
+	if (is_syscall) {
+		struct pt_regs *_ctx = (struct pt_regs *)ctx->di;
+		if (!_ctx)
+			return 0;
+		probe_read(&a0, sizeof(a0), &_ctx->di);
+		probe_read(&a1, sizeof(a1), &_ctx->si);
+		probe_read(&a2, sizeof(a2), &_ctx->dx);
+		probe_read(&a3, sizeof(a3), &_ctx->cx);
+		probe_read(&a4, sizeof(a4), &_ctx->r8);
+	} else {
+		a0 = ctx->di;
+		a1 = ctx->si;
+		a2 = ctx->dx;
+		a3 = ctx->cx;
+		a4 = ctx->r8;
+	}
+
+	/* Arg filter and copy logic */
 	ty = bpf_core_enum_value(fgs_args, arg3);
 	if (total < MAX_TOTAL) {
 		void *map = &args3_filter_map;
+		unsigned long a3m, arg_meta;
+		long errv;
 
+		a3m = bpf_core_enum_value(fgs_args, arg3m);
 		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e->args, ty, total, a3, arg_meta, map, enter);
 		if (errv < 0)
@@ -355,14 +417,19 @@ int generic_kprobe_process_event(struct pt_regs *ctx)
 	ty = bpf_core_enum_value(fgs_args, arg4);
 	if (total < MAX_TOTAL) {
 		void *map = &args4_filter_map;
+		unsigned long a4m, arg_meta;
+		long errv;
 
+		a4m = bpf_core_enum_value(fgs_args, arg4m);
 		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
-		errv += read_call_arg(e->args, ty, total, a4, arg_meta, map, enter);
+		errv = read_call_arg(e->args, ty, total, a4, arg_meta, map, enter);
 		if (errv < 0)
 			return 0;
 		total += errv;
 	}
 	e->common.size = total;
+
+	/* Post event */
 	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
 	/* Code movement from clang forces us to inline bounds checks here */
 	asm volatile("%[total] &= 0x7fff;\n"
@@ -373,14 +440,3 @@ int generic_kprobe_process_event(struct pt_regs *ctx)
 	return 0;
 }
 
-/* Generic kprobe is composed of two parts, first we filter process with
- * process filters (nspid, pid, etc.) then if we accpet the process we
- * run the arg filters and event builder. For 4.19 kernels we have to
- * use the tail call infrastructure to get below 4k insns. For 5.x+ kernels
- * with 1m.insns its not an issue.
- */
-__attribute__((section(("kprobe/generic_kprobe")), used))
-int generic_kprobe_event(struct pt_regs *ctx)
-{
-	return generic_kprobe_process_filter(ctx);
-}
