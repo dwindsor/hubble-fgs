@@ -10,6 +10,7 @@ require (
 	github.com/fsnotify/fsnotify v1.4.10-0.20200417215612-7f4cf4dd2b52 // indirect
 	github.com/golang/protobuf v1.3.2
 	github.com/google/go-cmp v0.5.2 // indirect
+	github.com/google/gops v0.3.14
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/mitchellh/protoc-gen-go-json v0.0.0-20200414201540-069933b8c834
@@ -21,7 +22,7 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/vishvananda/netlink v1.1.1-0.20200210222539-bfba8e4149db
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634
+	golang.org/x/sys v0.0.0-20201207223542-d4d67f95c62d
 	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
 	google.golang.org/grpc v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0

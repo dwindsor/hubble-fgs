@@ -19,6 +19,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
+	gops "github.com/google/gops/agent"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -221,6 +222,9 @@ func init() {
 		Use:   "hubble-fgs SOURCE_DIR BUCKET",
 		Short: "Hubble FGS",
 		Run: func(cmd *cobra.Command, args []string) {
+			if err := gops.Listen(gops.Options{}); err != nil {
+				logger.GetLogger().WithError(err).Fatal("Failed to start gops")
+			}
 			if err := hubbleFGSExecute(); err != nil {
 				logger.GetLogger().WithError(err).Fatal("Failed to start hubble-fgs")
 			}

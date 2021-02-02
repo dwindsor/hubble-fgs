@@ -19,6 +19,14 @@ COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a 
 RUN ldconfig /usr/local/; export LD_LIBRARY_PATH=/usr/local/lib/
 RUN make hubble-fgs-image
 
+FROM docker.io/library/golang:1.15.7-alpine as gops
+RUN apk add --no-cache binutils git \
+ && go get -d github.com/google/gops \
+ && cd /go/src/github.com/google/gops \
+ && git checkout -b v0.3.14 v0.3.14 \
+ && go install \
+ && strip /go/bin/gops
+
 FROM docker.io/library/alpine:3.12
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
@@ -27,6 +35,7 @@ RUN addgroup hubble	       && \
     apk add --no-cache --update bash curl jq
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/covalentio/hubble-fgs/hubble-enterprise /usr/bin/
+COPY --from=gops /go/bin/gops /bin /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/covalentio/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 /usr/local/lib/

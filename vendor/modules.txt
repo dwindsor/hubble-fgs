@@ -154,6 +154,11 @@ github.com/google/gofuzz
 # github.com/google/gopacket v1.1.17
 github.com/google/gopacket
 github.com/google/gopacket/layers
+# github.com/google/gops v0.3.14
+## explicit
+github.com/google/gops/agent
+github.com/google/gops/internal
+github.com/google/gops/signal
 # github.com/googleapis/gnostic v0.1.0
 github.com/googleapis/gnostic/OpenAPIv2
 github.com/googleapis/gnostic/compiler
@@ -304,7 +309,7 @@ golang.org/x/oauth2/internal
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 ## explicit
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20201009025420-dfb3f7c4e634
+# golang.org/x/sys v0.0.0-20201207223542-d4d67f95c62d
 ## explicit
 golang.org/x/sys/internal/unsafeheader
 golang.org/x/sys/unix
