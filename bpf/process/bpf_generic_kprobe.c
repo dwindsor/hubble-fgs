@@ -212,6 +212,9 @@ int generic_kprobe_process_filter(struct pt_regs *ctx)
 		} else if (nspid_filter_ty == op_filter_gt) {
 			if (enter->nspid > nspid_filter_value)
 				return 0;
+		} else if (nspid_filter_ty == op_filter_eq) {
+			if (enter->nspid == nspid_filter_value)
+				return 0;
 		}
 
 		if (pid_filter_ty == op_filter_lt) {
