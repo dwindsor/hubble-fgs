@@ -48,7 +48,7 @@ int event_execve(struct sched_execve_args *ctx)
 
 	curr = map_lookup_event(pid);
 	if (curr) {
-		curr->key.pid = pid;
+		curr->key.pid = execve->pid;
 		curr->key.ktime = execve->ktime;
 		curr->nspid = execve->nspid;
 		curr->pkey = event->parent;
