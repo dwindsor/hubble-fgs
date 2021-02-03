@@ -249,7 +249,7 @@ func init() {
 	flags.DurationVar(&exportFileRotationInterval, "export-file-rotation-interval", 0,
 		"Interval at which to rotate JSON export files in addition to rotating them by size")
 	flags.IntVar(&exportFileMaxBackups, "export-file-max-backups", 5, "Number of rotated JSON export files to retain")
-	flags.BoolVar(&exportFileCompress, "export-file-compress", true, "Compress rotated JSON export files")
+	flags.BoolVar(&exportFileCompress, "export-file-compress", false, "Compress rotated JSON export files")
 	flags.String("log-level", "info", "Set log level")
 	flags.String("log-format", "text", "Set log format")
 	flags.BoolVar(&enableK8sAPI, "enable-k8s-api", false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
