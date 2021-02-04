@@ -2,6 +2,8 @@ package observer
 
 import (
 	"fmt"
+	"path/filepath"
+	"time"
 	"unsafe"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
@@ -40,7 +42,7 @@ func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue {
 	return &ExecveValue{}
 }
 
-func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
+func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
 	var err error
 	var i int
 
@@ -90,7 +92,7 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 		k.observerListenersExecve(&m)
 	}
 	/* Collect any existing TCP sockets on PID and generate events. */
-	k.pushTCPEvents(&m, tcpEntries)
+	k.pushTCPEvents(&m, tcpEntries, writeMaps)
 }
 
 func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {

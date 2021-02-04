@@ -3,12 +3,61 @@ package observer
 import (
 	"fmt"
 	"io/ioutil"
+	"net"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
+	"time"
+	"unsafe"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/bpf"
 )
+
+type SocketMapKey struct {
+	Saddr     uint32
+	Daddr     uint32
+	Dport     uint16
+	Sport     uint16
+	Uid       uint64
+	Remaining uint32
+}
+
+type SocketMapValue struct {
+	Pid   uint32
+	Pad   uint32
+	Ktime uint64
+}
+
+func bpfIpToString(ip uint32) string {
+	scratch := make(net.IP, 4)
+
+	scratch[0] = byte(ip)
+	scratch[1] = byte(ip >> 8)
+	scratch[2] = byte(ip >> 16)
+	scratch[3] = byte(ip >> 24)
+
+	return scratch.String()
+}
+
+func (k *SocketMapKey) String() string {
+	return fmt.Sprintf("%s:%d %s:%d meta(uid %d, remaining %d)",
+		bpfIpToString(k.Saddr), k.Sport,
+		bpfIpToString(k.Daddr), k.Dport,
+		k.Uid, k.Remaining)
+}
+func (k *SocketMapKey) NewValue() bpf.MapValue     { return &SocketMapValue{} }
+func (k *SocketMapKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
+func (k *SocketMapKey) DeepCopyMapKey() bpf.MapKey { return &SocketMapKey{} }
+
+func (v *SocketMapValue) String() string {
+	return fmt.Sprintf("%d %d", v.Pid, v.Ktime)
+}
+func (v *SocketMapValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
+func (v *SocketMapValue) DeepCopyMapValue() bpf.MapValue {
+	return &SocketMapValue{}
+}
 
 type procTCPEntry struct {
 	id                   int
@@ -33,7 +82,9 @@ type procTCPEntry struct {
 	slowstartThresh      uint64
 }
 
-func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry) {
+func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry, writeMaps bool) {
+	var m *bpf.Map
+
 	pid := msg.Process.PID
 	tcp := api.MsgIPv4TcpEventUnix{}
 
@@ -46,6 +97,23 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 	if err != nil {
 		k.log.WithError(err).Warnf("ReadDir %d/fd/ failed", pid)
 	}
+
+	if writeMaps {
+		var err error
+
+		m, err = bpf.OpenMap(filepath.Join(k.mapDir, ObserverSocketMap.mapName))
+		for i := 0; err != nil; i++ {
+			m, err = bpf.OpenMap(filepath.Join(k.mapDir, ObserverSocketMap.mapName))
+			if err != nil {
+				time.Sleep(mapRetryDelay * time.Second)
+			}
+			if i > maxMapRetries {
+				panic(err)
+			}
+		}
+		defer m.Close()
+	}
+
 	for _, d := range procFD {
 		socket, err := os.Readlink(fdDir + "/" + d.Name())
 		if err != nil && Verbosity > 0 {
@@ -81,7 +149,30 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 				}
 
 				k.observerListenersTcp(&tcp)
+				fmt.Printf("writeSockMap %v\n", writeMaps)
+				if writeMaps {
+					k.writeSockMap(&tcp, m)
+				}
 			}
 		}
 	}
+}
+
+func (k *ObserverKprobe) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map) {
+	key := &SocketMapKey{
+		Saddr:     tcp.Tuple.SAddr,
+		Daddr:     tcp.Tuple.DAddr,
+		Dport:     tcp.Tuple.DPort,
+		Sport:     tcp.Tuple.SPort,
+		Uid:       0,
+		Remaining: 0,
+	}
+
+	val := &SocketMapValue{
+		Pid:   tcp.ProcessKey.Pid,
+		Pad:   0,
+		Ktime: tcp.ProcessKey.Ktime,
+	}
+	fmt.Printf("Update the map %s -> %s\n", key, val)
+	m.Update(key, val)
 }

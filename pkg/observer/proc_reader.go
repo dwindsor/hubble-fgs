@@ -12,11 +12,9 @@ import (
 	"sort"
 	"strconv"
 	"strings"
-	"time"
 	"unicode/utf8"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 )
 
@@ -185,12 +183,15 @@ type ObserverProcs struct {
 	permitted   uint64
 }
 
-func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve bool) {
+func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
+	if writeMaps {
+		k.writeExecveMap(procs)
+	}
 	sort.Slice(procs, func(i, j int) bool {
 		return procs[i].ppid < procs[j].ppid
 	})
 	for _, p := range procs {
-		k.pushExecveEvents(p, tcpEntries, pushExecve)
+		k.pushExecveEvents(p, tcpEntries, pushExecve, writeMaps)
 	}
 	// Ensure we have at least a default dockerId offset if we failed
 	// to disover one while walking proc
@@ -363,9 +364,6 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 	}
 	k.log.Infof("Read ProcFS %s appended %d/%d entries\n", ProcFS, len(procs), len(procFS))
 
-	if write {
-		k.writeExecveMap(procs)
-	}
-	k.pushEvents(procs, entryMap, push)
+	k.pushEvents(procs, entryMap, push, write)
 	return procs
 }
