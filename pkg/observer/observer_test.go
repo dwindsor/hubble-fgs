@@ -501,6 +501,97 @@ func TestExistingListenEvent(t *testing.T) {
 	testDone(t, kprobe)
 }
 
+func TestExistingAcceptEvent(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	rcwd := cwdPath(true)
+	fcwd := cwdPath(false)
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{Binary: selfBinary},
+					Parent:  &fgs.Process{Binary: ""},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{
+						Binary:    "nc.traditional",
+						Arguments: "-nvlp 8081"},
+					Parent: &fgs.Process{Binary: selfBinary},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessListen{
+				ProcessListen: &fgs.ProcessListen{
+					Process: &fgs.Process{
+						Binary:    "nc.traditional",
+						Arguments: "-nvlp 8081"},
+					Parent: &fgs.Process{
+						Binary: selfBinary},
+					Ip:   "0.0.0.0",
+					Port: &wrappers.UInt32Value{Value: 8081},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessAccept{
+				ProcessAccept: &fgs.ProcessAccept{
+					Process: &fgs.Process{
+						Binary:    "nc.traditional",
+						Arguments: "-nvlp 8081",
+						Cwd:       fcwd},
+					Parent: &fgs.Process{
+						Binary: selfBinary,
+						Cwd:    rcwd},
+					SourceIp:   "127.0.0.1",
+					SourcePort: &wrappers.UInt32Value{Value: 8081},
+				},
+			},
+		},
+	}
+
+	/* Start server before creating kprobe */
+	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
+	fmt.Printf("cmd: %s\n", cmdServer)
+	cmdServer.Start()
+	time.Sleep(1000 * time.Millisecond)
+
+	/* Create kprobe */
+	kprobe, err := getDefaultObserver(t, false, false, false, "")
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+
+	execWG.Wait()
+	time.Sleep(1000 * time.Millisecond)
+	cmdClient := exec.Command("nc.traditional", "127.0.0.1", "8081")
+	fmt.Printf("cmd: %s\n", cmdClient)
+	cmdClient.Start()
+	exitWG.Wait()
+
+	if cmdClient != nil {
+		cmdClient.Process.Signal(syscall.SIGKILL)
+	}
+	if cmdServer != nil {
+		cmdServer.Process.Signal(syscall.SIGKILL)
+	}
+
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
+}
+
 func TestExistingRootCWDListenEvent(t *testing.T) {
 	trace := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
