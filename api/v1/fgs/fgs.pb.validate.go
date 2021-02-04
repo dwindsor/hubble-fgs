@@ -3105,6 +3105,85 @@ var _ interface {
 	ErrorName() string
 } = GetHealthStatusResponseValidationError{}
 
+// Validate checks the field values on AggregationOptions with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *AggregationOptions) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetWindowSize()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return AggregationOptionsValidationError{
+				field:  "WindowSize",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for ChannelBufferSize
+
+	return nil
+}
+
+// AggregationOptionsValidationError is the validation error returned by
+// AggregationOptions.Validate if the designated constraints aren't met.
+type AggregationOptionsValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e AggregationOptionsValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e AggregationOptionsValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e AggregationOptionsValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e AggregationOptionsValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e AggregationOptionsValidationError) ErrorName() string {
+	return "AggregationOptionsValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e AggregationOptionsValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sAggregationOptions.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = AggregationOptionsValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = AggregationOptionsValidationError{}
+
 // Validate checks the field values on GetEventsRequest with the rules defined
 // in the proto definition for this message. If any rules are violated, an
 // error is returned.
@@ -3141,6 +3220,16 @@ func (m *GetEventsRequest) Validate() error {
 			}
 		}
 
+	}
+
+	if v, ok := interface{}(m.GetAggregationOptions()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return GetEventsRequestValidationError{
+				field:  "AggregationOptions",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
 	}
 
 	return nil
@@ -3200,6 +3289,73 @@ var _ interface {
 	ErrorName() string
 } = GetEventsRequestValidationError{}
 
+// Validate checks the field values on AggregationInfo with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *AggregationInfo) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Count
+
+	return nil
+}
+
+// AggregationInfoValidationError is the validation error returned by
+// AggregationInfo.Validate if the designated constraints aren't met.
+type AggregationInfoValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e AggregationInfoValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e AggregationInfoValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e AggregationInfoValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e AggregationInfoValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e AggregationInfoValidationError) ErrorName() string { return "AggregationInfoValidationError" }
+
+// Error satisfies the builtin error interface
+func (e AggregationInfoValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sAggregationInfo.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = AggregationInfoValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = AggregationInfoValidationError{}
+
 // Validate checks the field values on GetEventsResponse with the rules defined
 // in the proto definition for this message. If any rules are violated, an
 // error is returned.
@@ -3214,6 +3370,16 @@ func (m *GetEventsResponse) Validate() error {
 		if err := v.Validate(); err != nil {
 			return GetEventsResponseValidationError{
 				field:  "Time",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetAggregationInfo()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return GetEventsResponseValidationError{
+				field:  "AggregationInfo",
 				reason: "embedded message failed validation",
 				cause:  err,
 			}

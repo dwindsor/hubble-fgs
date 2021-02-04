@@ -71,13 +71,35 @@ func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanc
 	if err != nil {
 		return err
 	}
+	aggregator, err := NewAggregator(server, request.AggregationOptions)
+	if err != nil {
+		return err
+	}
+	if aggregator != nil {
+		go aggregator.Start()
+	}
+
 	l := newListener()
 	s.notifier.addListener(l)
 	defer s.notifier.removeListener(l)
 	for {
 		select {
 		case event := <-l.events:
-			if hubbleFilters.Apply(allowList, denyList, &v1.Event{Event: event}) {
+			if !hubbleFilters.Apply(allowList, denyList, &v1.Event{Event: event}) {
+				// Event is filtered out. Nothing to do here. Continue.
+				continue
+			}
+			if aggregator != nil {
+				// Send event to aggregator.
+				select {
+				case aggregator.getEventChannel() <- event:
+				default:
+					logger.GetLogger().
+						WithField("request", request).
+						Warn("Aggregator buffer is full. Consider increasing AggregatorOptions.channel_buffer_size.")
+				}
+			} else {
+				// No need to aggregate. Directly send out the response.
 				if err = server.Send(event); err != nil {
 					return err
 				}
