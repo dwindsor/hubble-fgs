@@ -1,10 +1,9 @@
 FROM quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2 as bpf-builder
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
-
-RUN apt-get update
-RUN apt-get upgrade -y
-RUN apt-get install -y linux-libc-dev
+RUN apt-get update  -y && \
+    apt-get upgrade -y && \
+    apt-get install -y linux-libc-dev
 RUN make hubble-bpf
 
 FROM quay.io/isovalent/hubble-libbpf:v0.2.2 as hubble-libbpf
@@ -16,10 +15,24 @@ COPY . ./
 
 
 FROM golang:1.14
-RUN apt-get update
-RUN apt-get upgrade -y
-RUN apt-get install -y linux-libc-dev rpm2cpio cpio git flex bison autoconf libelf-dev bc netcat-traditional vim file strace jq less
-WORKDIR /go/src/github.com/covalentio/hubble-fgs
+RUN apt-get update -y &&    \
+    apt-get upgrade -y &&   \
+    apt-get install -y      \
+	linux-libc-dev      \
+	rpm2cpio            \
+	cpio                \
+	git                 \
+	flex                \
+	bison               \
+	autoconf            \
+	libelf-dev          \
+	bc                  \
+	netcat-traditional  \
+	vim                 \
+	file                \
+	strace              \
+	jq                  \
+	less
 COPY --from=bpf-builder /go/src/github.com/covalentio/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 /usr/local/lib/

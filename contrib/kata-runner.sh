@@ -9,25 +9,27 @@ CONTAINER_TEST="${CONTAINER_REPO}/hubble-fgs-test"
 CONTAINER_DEV="${CONTAINER_REPO}/hubble-fgs-dev"
 CONTAINER_CMD=""
 CONTAINER_NAME="kata-fgs"
+DOCKER_VOLUMES="-v /proc:/procRoot -v ${BTF}:/var/lib/hubble-fgs/btf"
 
 container="covalentio/hubble-fgs"
 opt_test=0
 
 usage() {
-    echo "Usage: $0 [-h] [-t] [-s] [-d]"
+    echo "Usage: $0 [-h] [-t|-d] [-s] [-l] [-D]"
     echo "Options:"
     echo "  -h: help"
     echo "  -t: use test container ($CONTAINER_TEST)"
     echo "  -d: use dev container ($CONTAINER_DEV)"
-    echo "  -e: exec inside $CONTAINER_NAME"
-    echo "  -d: debug (print commands)"
     echo "  -s: run a shell"
+    echo "  -l: mount local dir inside container"
+    echo "  -e: exec inside container"
+    echo "  -D: debug info"
 }
 
 set -e
 
 container=${CONTAINER_FGS}
-while getopts "htsde" opt; do
+while getopts "htsdelD" opt; do
     case $opt in
         h)
             usage
@@ -45,8 +47,11 @@ while getopts "htsde" opt; do
         e)
             opt_exec=true
             ;;
+        l)
+            DOCKER_VOLUMES="$DOCKER_VOLUMES -v ${FGS_DIR}:/go/src/github.com/covalentio/hubble-fgs"
+            ;;
 
-        d)
+        D)
             set -x
             ;;
         *)
@@ -69,9 +74,6 @@ if [ "$opt_shell" = true ]; then
     fi
 fi
 
-# -v ${FGS_DIR}:/go/src/github.com/covalentio/hubble-fgs \
-
-
 docker run \
     --runtime=kata-runtime \
     --cap-add all \
@@ -80,7 +82,6 @@ docker run \
     --ulimit memlock=-1:-1 \
     --runtime=kata-runtime \
     --name $CONTAINER_NAME \
-    -v /proc:/procRoot \
-    -v ${BTF}:/var/lib/hubble-fgs/btf \
+    $DOCKER_VOLUMES \
     $container \
     $container_cmd
