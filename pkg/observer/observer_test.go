@@ -129,7 +129,7 @@ func TestKprobeObjectWriteRead(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessKprobe{
 				ProcessKprobe: &fgs.ProcessKprobe{
-					Process:      &fgs.Process{Binary: "go-build"},
+					Process:      &fgs.Process{Binary: selfBinary},
 					Parent:       &fgs.Process{Binary: ""},
 					FunctionName: "__x64_sys_write",
 					Args:         []*fgs.KprobeArgument{arg0, arg1, arg2},
@@ -183,7 +183,7 @@ func TestKprobeObjectWriteVRead(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessKprobe{
 				ProcessKprobe: &fgs.ProcessKprobe{
-					Process:      &fgs.Process{Binary: "go-build"},
+					Process:      &fgs.Process{Binary: selfBinary},
 					Parent:       &fgs.Process{Binary: ""},
 					FunctionName: "__x64_sys_writev",
 					Args:         []*fgs.KprobeArgument{arg0, arg1},
