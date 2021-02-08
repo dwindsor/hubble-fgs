@@ -315,6 +315,8 @@ func eventTypeString(ev interface{}) string {
 		return "ProcessClose"
 	case *fgs.GetEventsResponse_Test:
 		return "Test"
+	case *fgs.GetEventsResponse_ProcessKprobe:
+		return fmt.Sprintf("Kprobe(proc.cmd=%s)", xev.ProcessKprobe.Process.Binary)
 	default:
 		return fmt.Sprintf("<UNKNOWN:%T>", ev)
 	}
