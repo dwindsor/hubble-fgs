@@ -19,7 +19,9 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 	"github.com/covalentio/hubble-fgs/pkg/metrics"
 	"github.com/covalentio/hubble-fgs/pkg/observer"
+	"github.com/golang/protobuf/ptypes"
 	gops "github.com/google/gops/agent"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
@@ -48,6 +50,11 @@ var (
 	ciliumBPF                  string
 	enableProcessCred          bool
 	genericKprobes             string
+
+	// Export aggregation options
+	enableExportAggregation     bool
+	exportAggregationWindowSize time.Duration
+	exportAggregationBufferSize uint64
 )
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
@@ -155,7 +162,6 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 		MaxBackups: exportFileMaxBackups,
 		Compress:   exportFileCompress,
 	}
-	logger.GetLogger().WithField("logger", writer).Info("Starting JSON exporter")
 	if exportFileRotationInterval != 0 {
 		logger.GetLogger().WithField("duration", exportFileRotationInterval).Info("Periodically rotating JSON export files")
 		go func() {
@@ -176,7 +182,15 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 		}()
 	}
 	encoder := json.NewEncoder(&writer)
-	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
+	var aggregationOptions *fgs.AggregationOptions
+	if enableExportAggregation {
+		aggregationOptions = &fgs.AggregationOptions{
+			WindowSize:        ptypes.DurationProto(exportAggregationWindowSize),
+			ChannelBufferSize: exportAggregationBufferSize,
+		}
+	}
+	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions}
+	logger.GetLogger().WithFields(logrus.Fields{"logger": writer, "request": req}).Info("Starting JSON exporter")
 	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder)
 	go exporter.Start()
 	return nil
@@ -271,6 +285,10 @@ func init() {
 	flags.BoolVarP(&observer.IgnoreMissingProgs, "ignore-missing-progs", "", false, "Ignore missing BPF programs")
 	flags.MarkHidden("ignore-missing-progs")
 
+	// JSON export aggregation options.
+	flags.BoolVar(&enableExportAggregation, "enable-export-aggregation", false, "Enable JSON export aggregation")
+	flags.DurationVar(&exportAggregationWindowSize, "export-aggregation-window-size", 15*time.Second, "JSON export aggregation time window")
+	flags.Uint64Var(&exportAggregationBufferSize, "export-aggregation-buffer-size", 10000, "Aggregator channel buffer size")
 }
 
 func hubbleFGSMain() {
