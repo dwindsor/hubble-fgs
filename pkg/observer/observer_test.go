@@ -34,7 +34,7 @@ var (
 )
 
 func init() {
-	flag.StringVar(&fgsLib, "hubble-lib", "/var/lib/hubble-fgs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
+	flag.StringVar(&fgsLib, "hubble-lib", "../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
 	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 }
 
@@ -70,7 +70,6 @@ func getDefaultObserver(t *testing.T, tls, tlstc, pretty bool, probes string) (*
 	if procfs != "" {
 		ProcFS = procfs
 	}
-	HubbleLib = "../../bpf/objs/"
 
 	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", probes, tls, tlstc, pretty)
 	if testing.Verbose() {
