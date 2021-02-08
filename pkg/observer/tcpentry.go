@@ -20,8 +20,8 @@ type SocketMapKey struct {
 	Daddr     uint32
 	Dport     uint16
 	Sport     uint16
-	Uid       uint64
 	Remaining uint32
+	Uid       uint64
 }
 
 type SocketMapValue struct {
@@ -82,6 +82,26 @@ type procTCPEntry struct {
 	slowstartThresh      uint64
 }
 
+func (k *ObserverKprobe) getPidNetNsInode(pid uint32) uint64 {
+	pidStr := strconv.Itoa(int(pid))
+	netns := filepath.Join(ProcFS, pidStr, "ns", "net")
+	netStr, err := os.Readlink(netns)
+	if err != nil {
+		k.log.WithError(err).Warnf("NetNSInode read (%d) failed", pid)
+		return 0
+	}
+	fields := strings.Split(netStr, ":")
+	if len(fields) < 2 {
+		k.log.WithError(err).Warnf("NetNSInode format invalid %s", netStr)
+		return 0
+	}
+	inode := fields[1]
+	inode = strings.TrimRight(inode, "]")
+	inode = strings.TrimLeft(inode, "[")
+	inodeEntry, err := strconv.ParseUint(inode, 10, 32)
+	return inodeEntry
+}
+
 func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry, writeMaps bool) {
 	var m *bpf.Map
 
@@ -91,6 +111,8 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 	tcp.ProcessKey.Pid = pid
 	tcp.ProcessKey.Ktime = msg.Process.Ktime
 	tcp.Common.Ktime = msg.Process.Ktime
+
+	netns := k.getPidNetNsInode(pid)
 
 	fdDir := fmt.Sprintf("%s/%d/fd", ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)
@@ -151,20 +173,20 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 				k.observerListenersTcp(&tcp)
 				fmt.Printf("writeSockMap %v\n", writeMaps)
 				if writeMaps {
-					k.writeSockMap(&tcp, m)
+					k.writeSockMap(&tcp, m, netns)
 				}
 			}
 		}
 	}
 }
 
-func (k *ObserverKprobe) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map) {
+func (k *ObserverKprobe) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map, uid uint64) {
 	key := &SocketMapKey{
 		Saddr:     tcp.Tuple.SAddr,
 		Daddr:     tcp.Tuple.DAddr,
 		Dport:     tcp.Tuple.DPort,
 		Sport:     tcp.Tuple.SPort,
-		Uid:       0,
+		Uid:       uid,
 		Remaining: 0,
 	}
 

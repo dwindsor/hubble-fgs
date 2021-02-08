@@ -26,6 +26,7 @@ int event_ipv4_close(struct pt_regs *ctx)
 	struct msg_ipv4_tcp_event value;
 	struct msg_execve_key *process;
 	struct msg_tls_ipv4 tuple;
+	struct net *netns;
 	struct sock *skp;
 	size_t size;
 	int state;
@@ -40,9 +41,16 @@ int event_ipv4_close(struct pt_regs *ctx)
 	probe_read(&tuple.sport, sizeof(tuple.sport), _(&(skp->__sk_common.skc_num)));
 	probe_read(&tuple.daddr, sizeof(tuple.daddr), _(&(skp->__sk_common.skc_daddr)));
 	probe_read(&tuple.dport, sizeof(tuple.dport), _(&(skp->__sk_common.skc_dport)));
-	probe_read(&tuple.uid,   sizeof(tuple.uid),   _(&(skp->__sk_common.skc_net.net)));
 
 	tuple.remaining = 0;
+	tuple.uid = 0;
+
+	probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
+	if (netns) {
+		struct ns_common *c = _(&netns->ns);
+
+		probe_read(&tuple.uid, sizeof(c->inum), _(&c->inum));
+	}
 
 	value.common.flags = 0;
 	value.common.pad[0] = 0;

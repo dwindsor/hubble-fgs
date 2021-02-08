@@ -82,6 +82,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	{
 		struct msg_execve_key v = {0};
 		struct msg_tls_ipv4 tuple;
+		struct net *netns;
 
 		tuple.saddr = key.saddr;
 		tuple.daddr = daddr;
@@ -90,10 +91,15 @@ int event_ipv4_connect(struct pt_regs *ctx)
 		tuple.uid = 0;
 		tuple.remaining = 0;
 
+		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
+		if (netns) {
+			struct ns_common *c = _(&netns->ns);
+
+			probe_read(&tuple.uid, sizeof(c->inum), _(&c->inum));
+		}
+
 		v.pid = process->key.pid;
 		v.ktime = process->key.ktime;
-
-		probe_read(&tuple.uid, sizeof(tuple.uid), _(&(skp->__sk_common.skc_net.net)));
 
 		if (!is_tuple_local(&tuple))
 			tuple.uid = 0;

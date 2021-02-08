@@ -289,8 +289,8 @@ struct msg_tls_ipv4 {
 	__u32 daddr;
 	__u16 dport;
 	__u16 sport;
-	__u64 uid;
 	__u32 remaining;
+	__u64 uid;
 } __attribute__((packed));
 
 #define SOCKET_TLS_DONE 0x0001
