@@ -279,9 +279,6 @@ func getMyPid() uint32 {
 func testDone(t *testing.T, kprobe *ObserverKprobe) {
 	kprobe.RemovePrograms()
 	kprobe.PrintStats()
-	if kprobe.filterPass < 1 {
-		t.Fail()
-	}
 }
 
 func TestConnectEvent(t *testing.T) {
