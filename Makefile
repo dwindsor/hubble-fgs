@@ -69,6 +69,7 @@ test-compile:
 	$(GO) test -c ./pkg/reader                -o go-tests/reader.test
 	$(GO) test -c ./pkg/stacktracetree        -o go-tests/stacktracetree.test
 	$(GO) test -c ./pkg/vtuplefilter          -o go-tests/vtuplefilter.test
+	$(GO) test -c ./pkg/tracepoint            -o go-tests/tracepoint.test
 
 test-kernels:
 	#kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
