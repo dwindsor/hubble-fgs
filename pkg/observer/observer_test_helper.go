@@ -11,14 +11,13 @@ import (
 	"testing"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	"github.com/covalentio/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/covalentio/hubble-fgs/pkg/grpc"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 
-	"gopkg.in/natefinch/lumberjack.v2"
-
+	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
 	"golang.org/x/sys/unix"
+	"gopkg.in/natefinch/lumberjack.v2"
 )
 
 var (
@@ -26,6 +25,61 @@ var (
 	exportFile      = "/tmp/hubble-fgs.gotest"
 	jsonRetries     = 4
 )
+
+type testObserverOptions struct {
+	tls    bool
+	tlstc  bool
+	pretty bool
+	probes string
+}
+
+type testExporterOptions struct {
+	watcher     fgsGrpc.K8sResourceWatcher
+	ciliumState *hubbleCilium.State
+}
+
+type testOptions struct {
+	observer testObserverOptions
+	exporter testExporterOptions
+}
+
+type testOption func(*testOptions)
+
+func withTLS() testOption {
+	return func(o *testOptions) {
+		o.observer.tls = true
+	}
+}
+
+func withTLSTC() testOption {
+	return func(o *testOptions) {
+		o.observer.tlstc = true
+	}
+}
+
+func withPretty() testOption {
+	return func(o *testOptions) {
+		o.observer.pretty = true
+	}
+}
+
+func withProbes(probes string) testOption {
+	return func(o *testOptions) {
+		o.observer.probes = probes
+	}
+}
+
+func withK8sWatcher(w fgsGrpc.K8sResourceWatcher) testOption {
+	return func(o *testOptions) {
+		o.exporter.watcher = w
+	}
+}
+
+func withCiliumState(s *hubbleCilium.State) testOption {
+	return func(o *testOptions) {
+		o.exporter.ciliumState = s
+	}
+}
 
 func minKernelVersion(kernel string) bool {
 	var uname unix.Utsname
@@ -47,13 +101,13 @@ func minKernelVersion(kernel string) bool {
 	return false
 }
 
-func loadExporter(t *testing.T, kprobe *ObserverKprobe) error {
+func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOptions) error {
 	ctx, _ := context.WithCancel(context.Background())
 
 	os.Remove(exportFile)
 
-	watcher := fgsGrpc.NewFakeK8sWatcher(nil)
-	ciliumState := cilium.GetFakeCiliumState()
+	watcher := opts.watcher
+	ciliumState := opts.ciliumState
 	processCacheSize := 32768
 	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState, true, true)
 	if err != nil {
