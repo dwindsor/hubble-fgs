@@ -41,6 +41,9 @@ func compareProcess(a, b *fgs.Process) bool {
 			a.Binary, b.Cwd, a.Cwd)
 		//return false
 	}
+	if b.Docker != "" && a.Docker != b.Docker {
+		return false
+	}
 	return true
 }
 
