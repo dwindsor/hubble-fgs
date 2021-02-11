@@ -50,19 +50,22 @@ install:
 clean:
 	rm -f $(TARGET)
 	make -C ./bpf clean
+	rm -f go-tests/*.test
+
 
 test:
 	$(GO) test $(GOFLAGS) -cover $$(go list $(GOFLAGS) ./...)
 
 test-compile:
-	$(GO) test -c ./pkg/bugtool
-	$(GO) test -c ./pkg/filters
-	$(GO) test -c ./pkg/grpc
-	$(GO) test -c ./pkg/metrics
-	$(GO) test -c ./pkg/observer
-	$(GO) test -c ./pkg/reader
-	$(GO) test -c ./pkg/stacktracetree
-	$(GO) test -c ./pkg/vtuplefilter
+	mkdir -p go-tests
+	$(GO) test -c ./pkg/bugtool               -o go-tests/bugtool.test
+	$(GO) test -c ./pkg/filters               -o go-tests/filters.test
+	$(GO) test -c ./pkg/grpc                  -o go-tests/grpc.test
+	$(GO) test -c ./pkg/metrics               -o go-tests/metrics.test
+	$(GO) test -c ./pkg/observer              -o go-tests/observer.test
+	$(GO) test -c ./pkg/reader                -o go-tests/reader.test
+	$(GO) test -c ./pkg/stacktracetree        -o go-tests/stacktracetree.test
+	$(GO) test -c ./pkg/vtuplefilter          -o go-tests/vtuplefilter.test
 
 test-kernels:
 	#kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
