@@ -26,7 +26,10 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/golang/protobuf/ptypes/wrappers"
 
+	hubbleV1 "github.com/cilium/hubble/pkg/api/v1"
 	"golang.org/x/sys/unix"
+	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -1038,4 +1041,155 @@ func TestSensorLseekEnable(t *testing.T) {
 	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
+}
+
+func TestDockerListenConnect(t *testing.T) {
+	if err := exec.Command("docker", "version").Run(); err != nil {
+		t.Skipf("docker not available. skipping test: %s", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+	var exitWG, execWG sync.WaitGroup
+	var serverDockerID, clientDockerID string
+
+	const (
+		testPod       = "pod-1"
+		testNamespace = "ns-1"
+	)
+
+	// We need to create a fake K8s watcher and Cilium state to avoid the events
+	// getting delayed due to missing pod information
+	w := &fakeK8sWatcher{
+		OnFindPod: func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
+			if containerID == "" {
+				return nil, nil, false
+			}
+
+			container := corev1.ContainerStatus{
+				Name:        containerID,
+				Image:       "image",
+				ImageID:     "id",
+				ContainerID: "docker://" + containerID,
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: v1.Time{
+							Time: time.Unix(1, 2),
+						},
+					},
+				},
+			}
+			pod := corev1.Pod{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      testPod,
+					Namespace: testNamespace,
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						container,
+					},
+				},
+			}
+
+			return &pod, &container, true
+		},
+	}
+	s := cilium.GetFakeCiliumState()
+	s.GetEndpointsHandler().UpdateEndpoint(&hubbleV1.Endpoint{
+		ID:           1234,
+		PodName:      testPod,
+		PodNamespace: testNamespace,
+	})
+
+	kprobe, err := getDefaultObserver(t, withPretty(), withK8sWatcher(w), withCiliumState(s))
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+
+	execWG.Wait()
+	serverDockerID = dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
+	time.Sleep(1 * time.Second)
+	clientDockerID = dockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "fgs-test-server", "8081")
+	exitWG.Wait()
+
+	// FGS picks up the first 32 bytes
+	fgsServerID := serverDockerID[:31]
+	fgsClientID := clientDockerID[:31]
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{Binary: selfBinary},
+					Parent:  &fgs.Process{Binary: ""},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{
+						Binary:    "/usr/bin/nc",
+						Arguments: "-nvlp 8081",
+						Cwd:       "/",
+						Docker:    fgsServerID,
+						Uid:       &wrappers.UInt32Value{Value: 0},
+					},
+					Parent: &fgs.Process{},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessListen{
+				ProcessListen: &fgs.ProcessListen{
+					Process: &fgs.Process{
+						Binary:    "/usr/bin/nc",
+						Arguments: "-nvlp 8081",
+						Cwd:       "/",
+						Docker:    fgsServerID,
+						Uid:       &wrappers.UInt32Value{Value: 0},
+					},
+					Parent: &fgs.Process{},
+					Ip:     "0.0.0.0",
+					Port:   &wrappers.UInt32Value{Value: 8081},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{
+						Binary:    "/usr/bin/nc",
+						Arguments: "fgs-test-server 8081",
+						Cwd:       "/",
+						Docker:    fgsClientID,
+						Uid:       &wrappers.UInt32Value{Value: 0},
+					},
+					Parent: &fgs.Process{},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &fgs.ProcessConnect{
+					Process: &fgs.Process{
+						Binary:    "/usr/bin/nc",
+						Arguments: "fgs-test-server 8081",
+						Cwd:       "/",
+						Docker:    fgsClientID,
+						Uid:       &wrappers.UInt32Value{Value: 0},
+					},
+					Parent:          &fgs.Process{},
+					DestinationPort: &wrappers.UInt32Value{Value: 8081},
+				},
+			},
+		},
+	}
+
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
 }

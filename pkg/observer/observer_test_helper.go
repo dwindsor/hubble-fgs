@@ -18,6 +18,7 @@ import (
 	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
 	"golang.org/x/sys/unix"
 	"gopkg.in/natefinch/lumberjack.v2"
+	corev1 "k8s.io/api/core/v1"
 )
 
 var (
@@ -176,4 +177,38 @@ func execWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
 	err := cmd.Run()
 	fmt.Printf("cmd %v err %v\n", cmd, err)
 	exitWG.Wait()
+}
+
+// dockerRun starts a new docker container in the background. The container will
+// be killed and removed on test cleanup.
+// It returns the containerId on success, or an error if spawning the container failed.
+func dockerRun(t *testing.T, args ...string) (containerId string) {
+	// note: we are not using `--rm` so we can choose to wait on the container
+	// with `docker wait`. We remove it manually below in t.Cleanup instead
+	args = append([]string{"run", "--detach"}, args...)
+	id, err := exec.Command("docker", args...).Output()
+	if err != nil {
+		t.Fatalf("failed to spawn docker container %v: %s", args, err)
+	}
+
+	containerId = strings.TrimSpace(string(id))
+	t.Cleanup(func() {
+		err := exec.Command("docker", "rm", "--force", containerId).Run()
+		if err != nil {
+			t.Logf("failed to remove container %s: %s", containerId, err)
+		}
+	})
+
+	return containerId
+}
+
+type fakeK8sWatcher struct {
+	OnFindPod func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool)
+}
+
+func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
+	if f.OnFindPod == nil {
+		panic("FindPod not implemented")
+	}
+	return f.OnFindPod(containerID)
 }
