@@ -15,6 +15,7 @@
 package grpc
 
 import (
+	"encoding/base64"
 	"os"
 	"testing"
 	"time"
@@ -182,4 +183,20 @@ func Test_getNodeNameForExport(t *testing.T) {
 	assert.Equal(t, "from-hubble-node-name", getNodeNameForExport())
 	assert.NoError(t, os.Unsetenv("NODE_NAME"))
 	assert.NoError(t, os.Unsetenv("HUBBLE_NODE_NAME"))
+}
+
+func TestProcessManager_GetProcessID(t *testing.T) {
+	assert.NoError(t, os.Setenv("NODE_NAME", "my-node"))
+	pm, err := NewProcessManager(
+		logrus.New(),
+		10,
+		NewFakeK8sWatcher([]interface{}{}),
+		cilium.GetFakeCiliumState(),
+		false, false)
+	assert.NoError(t, err)
+	id := pm.GetProcessID(1, 2)
+	decoded, err := base64.StdEncoding.DecodeString(id)
+	assert.NoError(t, err)
+	assert.Equal(t, "my-node:2:1", string(decoded))
+	assert.NoError(t, os.Unsetenv("NODE_NAME"))
 }

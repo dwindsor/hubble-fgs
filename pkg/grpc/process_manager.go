@@ -379,10 +379,7 @@ func (pm *ProcessManager) getParentProcessInternal(pid uint32, ktime uint64) (*p
 	var parent, process *processInternal
 	var err error
 
-	processID, err := pm.GetProcessID(pid, ktime)
-	if err != nil {
-		pm.log.WithError(err).WithField("pid", pid).WithField("ktime", ktime).Warn("Listen Failed to get exec process")
-	}
+	processID := pm.GetProcessID(pid, ktime)
 
 	if process, err = pm.cache.get(processID); err != nil {
 		pm.log.WithField("id in event", processID).WithField("pid", pid).WithField("ktime", ktime).Debug("process not found in cache")
@@ -439,16 +436,10 @@ func (pm *ProcessManager) getProcess(
 ) (*processInternal, *v1.Endpoint) {
 	args, cwd := reader.ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
-	var err error
 	if parent.Pid != 0 {
-		if parentExecID, err = pm.GetExecIDFromKey(&parent); err != nil {
-			pm.log.WithError(err).WithField("parent", parent).Warn("Failed to get exec ID for parent")
-		}
+		parentExecID = pm.GetExecIDFromKey(&parent)
 	}
-	execID, err := pm.GetExecID(&process)
-	if err != nil {
-		pm.log.WithError(err).WithField("process", process).Warn("Failed to get exec ID for process")
-	}
+	execID := pm.GetExecID(&process)
 	protoPod, endpoint := pm.getPodInfo(containerID, process.Filename, args, process.NSPID)
 	caps := pm.getCapabilities(capabilities)
 	return &processInternal{
@@ -520,24 +511,16 @@ func (pm *ProcessManager) getAncestors(proc *fgs.Process) []*processInternal {
 	return ancestors
 }
 
-func (pm *ProcessManager) GetProcessID(pid uint32, ktime uint64) (string, error) {
-	builder := strings.Builder{}
-	encoder := base64.NewEncoder(base64.StdEncoding, &builder)
-	if _, err := encoder.Write([]byte(fmt.Sprintf("%s:%d:%d", pm.nodeName, ktime, pid))); err != nil {
-		return "", err
-	}
-	if err := encoder.Close(); err != nil {
-		return "", err
-	}
-	return builder.String(), nil
+func (pm *ProcessManager) GetProcessID(pid uint32, ktime uint64) string {
+	return base64.StdEncoding.EncodeToString([]byte(fmt.Sprintf("%s:%d:%d", pm.nodeName, ktime, pid)))
 }
 
 // GetExecID returns the exec ID of a given process.
-func (pm *ProcessManager) GetExecID(proc *fgsAPI.MsgExecUnix) (string, error) {
+func (pm *ProcessManager) GetExecID(proc *fgsAPI.MsgExecUnix) string {
 	return pm.GetProcessID(proc.PID, proc.Ktime)
 }
 
-func (pm *ProcessManager) GetExecIDFromKey(key *fgsAPI.MsgExecveKey) (string, error) {
+func (pm *ProcessManager) GetExecIDFromKey(key *fgsAPI.MsgExecveKey) string {
 	return pm.GetProcessID(key.Pid, key.Ktime)
 }
 
@@ -752,10 +735,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		}
 	}
 
-	processID, err := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	if err != nil {
-		pm.log.WithError(err).Warn("TLS Failed to get exec process", event.ProcessKey.Pid)
-	}
+	processID := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	var proc *fgs.Process
 	processInt, err := pm.cache.get(processID)
 	if err != nil {
