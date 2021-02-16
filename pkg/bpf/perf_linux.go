@@ -425,7 +425,8 @@ func (e *PerfEvent) Read(receive ReceiveFunc, lostFn LostFunc, err ErrorFunc) {
 		return
 	}
 
-	timer := time.After(20 * time.Second)
+	timer := time.NewTimer(20 * time.Second)
+	defer timer.Stop()
 read:
 	for {
 		var (
@@ -467,7 +468,7 @@ read:
 		}
 
 		select {
-		case <-timer:
+		case <-timer.C:
 			err(e)
 			C.perf_event_reset_tail(unsafe.Pointer(&e.data[0]))
 			break read
