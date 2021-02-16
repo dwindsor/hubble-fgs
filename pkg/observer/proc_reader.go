@@ -30,7 +30,7 @@ func stringToUTF8(s []byte) []byte {
 	return s
 }
 
-func stringToTCPEntry(s string) *procTCPEntry {
+func stringToTCPEntry(s string) (*procTCPEntry, error) {
 	var entry procTCPEntry
 
 	fields := strings.Fields(s)
@@ -40,27 +40,27 @@ func stringToTCPEntry(s string) *procTCPEntry {
 	remote := strings.Split(fields[2], ":")
 	localIP, err := strconv.ParseUint(local[0], 16, 32)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("localIP parse error")
+		return nil, err
 	}
 	localPort, err := strconv.ParseUint(local[1], 16, 16)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("localPort parse error")
+		return nil, err
 	}
 	remoteIP, err := strconv.ParseUint(remote[0], 16, 32)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("remoteIP parse error")
+		return nil, err
 	}
 	remotePort, err := strconv.ParseUint(remote[1], 16, 16)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("remotePort parse error")
+		return nil, err
 	}
 	state, err := strconv.ParseUint(fields[3], 16, 32)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("TCP state parse error")
+		return nil, err
 	}
 	inode, err := strconv.ParseUint(fields[9], 10, 32)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("inode parse error")
+		return nil, err
 	}
 
 	entry.id = int(id)
@@ -71,27 +71,45 @@ func stringToTCPEntry(s string) *procTCPEntry {
 	entry.remotePort = uint16(remotePort)
 	entry.state = uint32(state)
 
-	return &entry
+	return &entry, nil
 }
 
-func (k *ObserverKprobe) getTCPConnections() (map[uint32]procTCPEntry, error) {
-	entryMap := make(map[uint32]procTCPEntry)
-
-	tcp, err := os.Open(ProcFS + "/net/tcp")
+func (k *ObserverKprobe) _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, file string) error {
+	pidStr := strconv.Itoa(int(pid))
+	tcp, err := os.Open(filepath.Join(ProcFS, pidStr, file))
 	if err != nil {
-		return nil, err
+		return err
 	}
 	defer tcp.Close()
 	scanner := bufio.NewScanner(tcp)
 	scanner.Scan()
 	for scanner.Scan() {
-		entry := stringToTCPEntry(scanner.Text())
+		entry, err := stringToTCPEntry(scanner.Text())
+		// We do not handle IPv6 yet so we may get expected errors
+		// in these cases. When this happens just continue otherwise
+		// lets ensure we log it.
+		if err != nil {
+			if file != "/net/tcp6" {
+				k.log.Warn("ProcFS: /%s/%d/%s TCPConnections error: %s", ProcFS, pidStr, file, err)
+			}
+			continue
+		}
 		entryMap[entry.inode] = *entry
 	}
 	if err := scanner.Err(); err != nil {
-		return nil, err
+		return err
 	}
-	return entryMap, nil
+	return nil
+}
+
+func (k *ObserverKprobe) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64) error {
+	if err := k._getTCPConnections(entryMap, pid, "/net/tcp"); err != nil {
+		return err
+	}
+	if err := k._getTCPConnections(entryMap, pid, "/net/tcp6"); err != nil {
+		return err
+	}
+	return nil
 }
 
 func getClkTck() (uint64, error) {
@@ -202,14 +220,10 @@ func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32
 }
 
 func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
+	var entryMap = make(map[uint32]procTCPEntry)
 	var procs []ObserverProcs
 	procFS, _ := ioutil.ReadDir(ProcFS)
 	r := regexp.MustCompile(`[^\s\(]+|(\({1,2}[^\)]*\){1,2})`)
-
-	entryMap, err := k.getTCPConnections()
-	if err != nil {
-		k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
-	}
 
 	clktck, err := getClkTck()
 	if err != nil {
@@ -361,6 +375,11 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		}
 
 		procs = append(procs, p)
+
+		// Collect any TCP connections associated with this pid
+		if err = k.getTCPConnections(entryMap, pid); err != nil {
+			k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
+		}
 	}
 	k.log.Infof("Read ProcFS %s appended %d/%d entries\n", ProcFS, len(procs), len(procFS))
 
