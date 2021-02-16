@@ -1485,9 +1485,10 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
 
+	k.initKprobeSensors()
+
 	// Load initial set of generic kprobe sensors */
 	if k.configFile != "" {
-		k.initKprobeSensors()
 		genericKprobeSensor, err := k.createGenericKprobeSensors(ObserverBTF, k.configFile)
 		if err != nil {
 			return fmt.Errorf("hubble-fgs, Aborting could not create Kprobe sensor. %s\n", err)
@@ -1509,6 +1510,9 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	// start sensor controller and stt manager
 	k.startSensorCtl()
 	k.ObserverSync.sttManagerHandle = startSttManager()
+
+	// start CRD watcher
+	go k.watchTracePolicy()
 
 	k.startUpdateMapMetrics()
 	k.populateExecve(ctx)

@@ -39,6 +39,13 @@ const (
 	invalidTypeId = -2
 )
 
+var (
+	// genericKprobeProgs stores dynamic kprobes added/removed from CRD.
+	// Kprobes managed from init config file are pushed through
+	// observerAllPrograms.
+	genericKprobeProgs = map[string]*bpfLoad{}
+)
+
 func kprobeStrToTypeId(arg string) int {
 	switch arg {
 	case "string":
@@ -576,9 +583,7 @@ func (k *ObserverKprobe) loadGenericKprobeObject(bundle *observerSensor) error {
 	for _, p := range bundle.progs {
 		btf := genericKprobeLoadArgs[p.observer__attach].btf
 		args := genericKprobeLoadArgs[p.observer__attach].args
-		// we don't actually need retprobe here but might be useful in the future for dbg?
 		retprobe := genericKprobeLoadArgs[p.observer__attach].retprobe
-		observerAllPrograms = append(observerAllPrograms, p)
 
 		retprobe = strings.Contains(p.Observer__program, "ret")
 		err, _ := bpf.LoadKprobeArgsProgram(
@@ -601,6 +606,10 @@ func (k *ObserverKprobe) loadGenericKprobeObject(bundle *observerSensor) error {
 				retprobe,
 				args)
 		}
+		if err != nil {
+			return fmt.Errorf("Loading probe failed: %s\n", err)
+		}
+		genericKprobeProgs[p.observer__attach] = p
 	}
 	return nil
 }
@@ -749,6 +758,17 @@ func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) 
 		if err := listener.Notify(msg); err != nil {
 			k.log.Debug("Write failure removing Listener")
 			k.RemoveListener(listener)
+		}
+	}
+}
+
+func (k *ObserverKprobe) removeGenericKprobeSensor(kprobeConfig *v1alpha1.TracingPolicySpec) {
+	for _, f := range kprobeConfig.KProbes {
+		p := genericKprobeProgs[f.Call]
+		if p != nil {
+			k.removeProgram(p)
+		} else {
+			k.log.Warn("Attempted to remove unloaded program: %s\n", f.Call)
 		}
 	}
 }
