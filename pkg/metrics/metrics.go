@@ -46,9 +46,15 @@ const (
 	// Event cache add process entry to cache.
 	EventCacheProcessCount ErrorType = "event_cache_process_count"
 	// Event cache podInfo retries failed.
-	EventCachePodInfoRetryFailed = "event_cache_podinfo_retry_failed"
+	EventCachePodInfoRetryFailed ErrorType = "event_cache_podinfo_retry_failed"
 	// Event cache endpoint retries failed.
-	EventCacheEndpointRetryFailed = "event_cache_endpoint_retry_failed"
+	EventCacheEndpointRetryFailed ErrorType = "event_cache_endpoint_retry_failed"
+	// There was an invalid entry in the pid map.
+	PidMapInvalidEntry ErrorType = "pid_map_invalid_entry"
+	// An entry was evicted from the pid map because the map was full.
+	PidMapEvicted ErrorType = "pid_map_evicted"
+	// PID not found in the pid map on remove() call.
+	PidMapMissOnRemove ErrorType = "pid_map_miss_on_remove"
 )
 
 var (

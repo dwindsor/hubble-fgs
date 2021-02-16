@@ -16,6 +16,10 @@ type processCache struct {
 	log        logrus.FieldLogger
 	cache      *lru.Cache
 	deleteChan chan *processInternal
+
+	// pidMap is a map from PID to the most recent exec ID for the PID. This is used to find the parent
+	// of exec events without clone flag.
+	pidMap *lru.Cache
 }
 
 // garbage collection states
@@ -77,7 +81,7 @@ func (pc *processCache) cacheGarbageCollector() {
 					}
 					if p.color == deleteReady {
 						p.color = deleted
-						pc.remove(p.process.ExecId)
+						pc.remove(p.process)
 					} else {
 						newQueue = append(newQueue, p)
 						p.color = deleteReady
@@ -132,12 +136,18 @@ func newProcessCache(
 	if err != nil {
 		return nil, err
 	}
+	pidMap, err := lru.New(processCacheSize)
+	if err != nil {
+		return nil, err
+	}
 	pm := &processCache{
-		log:   log,
-		cache: lruCache,
+		log:    log,
+		cache:  lruCache,
+		pidMap: pidMap,
 	}
 	update := func() {
 		metrics.ExecveMapSize.WithLabelValues("processLru", strconv.Itoa(processCacheSize)).Set(float64(pm.cache.Len()))
+		metrics.ExecveMapSize.WithLabelValues("pidMap", strconv.Itoa(processCacheSize)).Set(float64(pm.pidMap.Len()))
 	}
 	ticker := time.NewTicker(60 * time.Second)
 	go func() {
@@ -176,14 +186,44 @@ func (pc *processCache) add(process *processInternal) bool {
 	return evicted
 }
 
-func (pc *processCache) remove(processID string) bool {
-	present := pc.cache.Remove(processID)
+func (pc *processCache) remove(process *fgs.Process) bool {
+	present := pc.cache.Remove(process.ExecId)
 	if !present {
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnRemove)).Inc()
+	}
+	if process.Pid != nil {
+		pidFound := pc.pidMap.Remove(process.Pid.Value)
+		if !pidFound {
+			metrics.ErrorCount.WithLabelValues(string(metrics.PidMapMissOnRemove)).Inc()
+		}
 	}
 	return present
 }
 
 func (pc *processCache) len() int {
 	return pc.cache.Len()
+}
+
+// Get the exec ID for a given PID. If PID is not found, it returns an empty string.
+func (pc *processCache) getFromPidMap(pid uint32) string {
+	entry, ok := pc.pidMap.Get(pid)
+	if !ok {
+		return ""
+	}
+	execID, ok := entry.(string)
+	if !ok {
+		pc.log.WithFields(logrus.Fields{"pid": pid, "execID": execID}).Warn("Invalid entry in pidMap")
+		metrics.ErrorCount.WithLabelValues(string(metrics.PidMapInvalidEntry)).Inc()
+		return ""
+	}
+	return execID
+}
+
+func (pc *processCache) addToPidMap(pid uint32, execID string) bool {
+	evicted := pc.pidMap.Add(pid, execID)
+	if evicted {
+		pc.log.Warn("Entry evicted from pidMap")
+		metrics.ErrorCount.WithLabelValues(string(metrics.PidMapEvicted)).Inc()
+	}
+	return evicted
 }

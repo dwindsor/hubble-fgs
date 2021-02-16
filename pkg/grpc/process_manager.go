@@ -38,11 +38,8 @@ type ProcessManager struct {
 	log        logrus.FieldLogger
 	cache      *processCache
 	eventCache *eventCache
-	// pidMap is a map from PID to the most recent exec ID for the PID. This is used to find the parent
-	// of exec events without clone flag.
-	pidMap   map[uint32]string
-	nodeName string
-	watcher  K8sResourceWatcher
+	nodeName   string
+	watcher    K8sResourceWatcher
 	// synchronize access to the listeners map.
 	mux               sync.Mutex
 	listeners         map[listener]struct{}
@@ -81,7 +78,6 @@ func NewProcessManager(
 	pm := &ProcessManager{
 		log:               log,
 		cache:             cache,
-		pidMap:            make(map[uint32]string),
 		nodeName:          getNodeNameForExport(),
 		watcher:           watcher,
 		ciliumState:       ciliumState,
@@ -468,8 +464,8 @@ func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *processInternal
 	pm.cache.add(proc)
 	var parentExecID string
 	if proc.process.Pid != nil {
-		parentExecID = pm.pidMap[proc.process.Pid.Value]
-		pm.pidMap[proc.process.Pid.Value] = proc.process.ExecId
+		parentExecID = pm.cache.getFromPidMap(proc.process.Pid.Value)
+		pm.cache.addToPidMap(proc.process.Pid.Value, proc.process.ExecId)
 	}
 	if strings.Contains(proc.process.Flags, "clone") || strings.Contains(proc.process.Flags, "procFS") {
 		return proc
