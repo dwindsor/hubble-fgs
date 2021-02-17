@@ -171,7 +171,6 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 				}
 
 				k.observerListenersTcp(&tcp)
-				fmt.Printf("writeSockMap %v\n", writeMaps)
 				if writeMaps {
 					k.writeSockMap(&tcp, m, netns)
 				}
@@ -195,6 +194,5 @@ func (k *ObserverKprobe) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map, 
 		Pad:   0,
 		Ktime: tcp.ProcessKey.Ktime,
 	}
-	fmt.Printf("Update the map %s -> %s\n", key, val)
 	m.Update(key, val)
 }

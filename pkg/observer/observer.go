@@ -1130,7 +1130,7 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 			return fmt.Errorf("kprobe events syscall.EBADF: %s", err)
 
 		case err != nil:
-			k.log.WithError(err).Warn("kprobe events poll failed")
+			k.log.WithError(err).Debug("kprobe events poll failed")
 			continue
 		}
 		if todo > 0 {
