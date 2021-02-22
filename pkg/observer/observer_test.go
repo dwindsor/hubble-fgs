@@ -37,9 +37,10 @@ import (
 )
 
 var (
-	selfBinary  string
-	fgsLib      string
-	cmdWaitTime time.Duration
+	selfBinary   string
+	fgsLib       string
+	cmdWaitTime  time.Duration
+	verboseLevel int
 )
 
 const (
@@ -49,6 +50,8 @@ const (
 func init() {
 	flag.StringVar(&fgsLib, "hubble-lib", "../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
 	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
+	flag.IntVar(&verboseLevel, "verbosity-level", 1, "verbosity level of verbose mode. (Requires verbose mode to be enabled.)")
+
 }
 
 func TestMain(m *testing.M) {
@@ -105,7 +108,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 	oo := &o.observer
 	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", oo.config, oo.tls, oo.tlstc, oo.pretty)
 	if testing.Verbose() {
-		Verbosity = 1
+		Verbosity = verboseLevel
 	}
 
 	err := kprobe.ConfigureBTF(ctx)
