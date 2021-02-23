@@ -1455,6 +1455,112 @@ var _ interface {
 	ErrorName() string
 } = ProcessKprobeValidationError{}
 
+// Validate checks the field values on ProcessTracepoint with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *ProcessTracepoint) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetProcess()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessTracepointValidationError{
+				field:  "Process",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetParent()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessTracepointValidationError{
+				field:  "Parent",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for Subsys
+
+	// no validation rules for Event
+
+	for idx, item := range m.GetArgs() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return ProcessTracepointValidationError{
+					field:  fmt.Sprintf("Args[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// ProcessTracepointValidationError is the validation error returned by
+// ProcessTracepoint.Validate if the designated constraints aren't met.
+type ProcessTracepointValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ProcessTracepointValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ProcessTracepointValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ProcessTracepointValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ProcessTracepointValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ProcessTracepointValidationError) ErrorName() string {
+	return "ProcessTracepointValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e ProcessTracepointValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sProcessTracepoint.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ProcessTracepointValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ProcessTracepointValidationError{}
+
 // Validate checks the field values on Test with the rules defined in the proto
 // definition for this message. If any rules are violated, an error is returned.
 func (m *Test) Validate() error {
@@ -3498,6 +3604,18 @@ func (m *GetEventsResponse) Validate() error {
 			if err := v.Validate(); err != nil {
 				return GetEventsResponseValidationError{
 					field:  "ProcessKprobe",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *GetEventsResponse_ProcessTracepoint:
+
+		if v, ok := interface{}(m.GetProcessTracepoint()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsResponseValidationError{
+					field:  "ProcessTracepoint",
 					reason: "embedded message failed validation",
 					cause:  err,
 				}

@@ -29,6 +29,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 )
 

@@ -24,6 +24,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/cilium"
+	"github.com/covalentio/hubble-fgs/pkg/config"
 	fgsGrpc "github.com/covalentio/hubble-fgs/pkg/grpc"
 	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
@@ -106,7 +107,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 	}
 
 	oo := &o.observer
-	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", oo.config, oo.tls, oo.tlstc, oo.pretty)
+	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", oo.config, oo.tracepoints, oo.tls, oo.tlstc, oo.pretty)
 	if testing.Verbose() {
 		Verbosity = verboseLevel
 	}
@@ -1451,4 +1452,268 @@ func TestDockerExistingListenEvent(t *testing.T) {
 		t.Fail()
 	}
 	testDone(t, kprobe)
+}
+
+func TestGenericTracepointSimple(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	lseekConf := GenericTracepointConf{
+		Subsys: "syscalls",
+		Event:  "sys_enter_lseek",
+		Args: []GenericTracepointConfArg{
+			GenericTracepointConfArg{
+				TpIndex: 7, /* whence */
+			},
+			GenericTracepointConfArg{
+				TpIndex: 5, /* fd */
+			},
+		},
+	}
+
+	observer, err := getDefaultObserverWithWatchers(t, withTracepoint(lseekConf))
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+
+	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 4444}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 18446744073709551615}} // -1
+
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessTracepoint{
+				ProcessTracepoint: &fgs.ProcessTracepoint{
+					Subsys: "syscalls",
+					Event:  "sys_enter_lseek",
+					Args:   []*fgs.KprobeArgument{arg0, arg1},
+				},
+			},
+		},
+	}
+
+	loopEvents(t, &exitWG, &execWG, observer, ctx)
+	execWG.Wait()
+	unix.Seek(-1, 0, 4444)
+	exitWG.Wait()
+	retries := jsonRetries
+	time.Sleep(1000 * time.Millisecond)
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, observer)
+}
+
+func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, selfOp func(), checkFn func(*fgs.ProcessTracepoint) error) {
+	defer func() {
+		if t.Failed() {
+			if fname, err := jsonTestSaveCopy(nil); err != nil {
+				t.Logf("Failed to save a copy of json out: %s", err)
+			} else {
+				t.Logf("Saved a copy of json out: %s", fname)
+			}
+		}
+	}()
+
+	if _, err := os.Stat("/sys/kernel/debug/tracing/events/syscalls"); os.IsNotExist(err) {
+		t.Skip("cannot use syscall tracepoints (consider enabling CONFIG_FTRACE_SYSCALLS)")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5000*time.Millisecond)
+	defer cancel()
+
+	pid := int(getMyPid())
+	t.Logf("filtering for my pid (%d)", pid)
+	pidFilter := config.Filter{
+		Type:  "pidset",
+		Op:    "eq",
+		Value: strconv.Itoa(pid),
+	}
+
+	conf.Filters = append(conf.Filters, pidFilter)
+	observer, err := getDefaultObserverWithWatchers(t, withTracepoint(conf))
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+
+	var exitWG, execWG sync.WaitGroup
+	loopEvents(t, &exitWG, &execWG, observer, ctx)
+	execWG.Wait()
+	selfOp()
+	exitWG.Wait()
+
+	tpEventsNr := 0
+	checkEventFn := func(event *fgs.GetEventsResponse) error {
+		switch tpEvent := event.Event.(type) {
+		case *fgs.GetEventsResponse_ProcessTracepoint:
+			if err := checkFn(tpEvent.ProcessTracepoint); err != nil {
+				return err
+			}
+			eventPid := tpEvent.ProcessTracepoint.Process.Pid.Value
+			if int(eventPid) != pid {
+				return fmt.Errorf("Unexpected pid=%d (filter is for pid %d)", eventPid, pid)
+			}
+			tpEventsNr += 1
+		default:
+			return nil
+
+		}
+		return nil
+	}
+
+	if err := jsonTestIterate(nil, checkEventFn); err != nil {
+		t.Logf("error: %s", err)
+		t.Fail()
+	}
+
+	// NB: in some cases we get more events. I think this
+	// might be to -EINTR or similar. Will need to include the return value
+	// to do proper testing.
+	if tpEventsNr < 1 {
+		t.Logf("Got %d events while expecting at least 1", tpEventsNr)
+		t.Fail()
+	}
+
+	testDone(t, observer)
+}
+
+func TestGenericTracepointPidFilterLseek(t *testing.T) {
+	tracepointConf := GenericTracepointConf{
+		Subsys: "syscalls",
+		Event:  "sys_enter_lseek",
+		Args:   []GenericTracepointConfArg{},
+	}
+
+	op := func() {
+		fmt.Printf("Calling lseek...\n")
+		unix.Seek(-1, 0, 4444)
+	}
+
+	check := func(event *fgs.ProcessTracepoint) error {
+		return nil
+	}
+
+	doTestGenericTracepointPidFilter(t, tracepointConf, op, check)
+}
+
+func TestGenericTracepointArgFilterLseek(t *testing.T) {
+	t.Skip("Argument filters not ready yet")
+	fd_u := uint64(100)
+	fd := 100
+	whence_u := uint64(4444)
+	whence := 4444
+
+	tracepointConf := GenericTracepointConf{
+		Subsys: "syscalls",
+		Event:  "sys_enter_lseek",
+		Args: []GenericTracepointConfArg{
+			GenericTracepointConfArg{
+				TpIndex: 7, /* whence */
+				ArgFilters: []config.Filter{
+					config.Filter{
+						Op:    "eq",
+						Value: strconv.Itoa(whence),
+					},
+				},
+			},
+			GenericTracepointConfArg{
+				TpIndex: 5, /* fd */
+			},
+		},
+	}
+
+	op := func() {
+		fmt.Printf("Calling lseek...\n")
+		unix.Seek(fd, 0, whence)
+		unix.Seek(fd, 0, whence+1)
+	}
+
+	check := func(event *fgs.ProcessTracepoint) error {
+		if len(event.Args) != 2 {
+			return fmt.Errorf("unexpected number of arguments: %d", len(event.Args))
+		}
+		arg0, ok := event.Args[0].GetArg().(*fgs.KprobeArgument_SizeArg)
+		if !ok {
+			return fmt.Errorf("unexpected first arg: %s", event.Args[0])
+		}
+		xwhence := arg0.SizeArg
+		if xwhence != whence_u {
+			return fmt.Errorf("unexpected arg val. got:%d expecting:%d", xwhence, whence)
+		}
+		arg1, ok := event.Args[1].GetArg().(*fgs.KprobeArgument_SizeArg)
+		if !ok {
+			return fmt.Errorf("unexpected first arg: %s", event.Args[1])
+		}
+		xfd := arg1.SizeArg
+		if xfd != fd_u {
+			return fmt.Errorf("unexpected arg val. got:%d expecting:%d", xfd, fd)
+		}
+		return nil
+	}
+
+	doTestGenericTracepointPidFilter(t, tracepointConf, op, check)
+
+}
+
+func TestGenericTracepointMeta(t *testing.T) {
+	t.Skip("Argument filters not ready yet")
+	tracepointConf := GenericTracepointConf{
+		Subsys: "syscalls",
+		Event:  "sys_enter_write",
+		Args: []GenericTracepointConfArg{
+			// NB: there is code in the control path to enable this
+			// argument to be read so that it can be used for the
+			// metadata of the buffer, but not add it to the
+			// output.
+			//
+			// GenericTracepointConfArg{
+			// 	TpIndex: 7, /* count */
+			// },
+			GenericTracepointConfArg{
+				TpIndex: 5, /* int fd */
+				ArgFilters: []config.Filter{
+					config.Filter{
+						Op:    "eq",
+						Value: "1",
+					},
+				},
+			},
+			GenericTracepointConfArg{
+				TpIndex: 6,   /* char *buf */
+				MetaArg: "8", /* count  */
+			},
+		},
+	}
+
+	op := func() {
+		syscall.Write(1, []byte("hello world"))
+	}
+
+	found := false
+	check := func(event *fgs.ProcessTracepoint) error {
+		if event.Subsys != "syscalls" {
+			return fmt.Errorf("Unexpected subsys: %s", event.Subsys)
+		}
+		if event.Event != "sys_enter_write" {
+			return fmt.Errorf("Unexpected subsys: %s", event.Event)
+		}
+		if len(event.Args) != 2 {
+			return fmt.Errorf("Expecting single argument, but got %d", len(event.Args))
+		}
+		arg1_, ok := event.Args[1].GetArg().(*fgs.KprobeArgument_StringArg)
+		if !ok {
+			return fmt.Errorf("Unexpected arg: %v", event.Args[1].GetArg())
+		}
+		arg1 := arg1_.StringArg
+		if arg1 == "hello world" {
+			found = true
+		}
+		return nil
+	}
+
+	doTestGenericTracepointPidFilter(t, tracepointConf, op, check)
+	if !found {
+		t.Logf("expected string not found")
+		t.Fail()
+	}
 }

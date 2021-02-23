@@ -306,6 +306,65 @@ func (pm *ProcessManager) handleGenericKprobeMessage(msg *api.MsgGenericKprobeUn
 	}
 }
 
+func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix) *fgs.GetEventsResponse {
+	var fgsParent, fgsProcess *fgs.Process
+
+	process, parent := pm.getParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
+	if process == nil {
+		fgsProcess = &fgs.Process{
+			Pid:       &wrappers.UInt32Value{Value: msg.ProcessKey.Pid},
+			StartTime: ktimeToProto(msg.ProcessKey.Ktime),
+		}
+	} else {
+		fgsProcess = process.process
+		pm.cache.refInc(process)
+	}
+	if parent == nil {
+		fgsParent = &fgs.Process{}
+	} else {
+		fgsParent = parent.process
+		pm.cache.refInc(parent)
+	}
+
+	var fgsArgs []*fgs.KprobeArgument
+	for _, arg := range msg.Args {
+		switch v := arg.(type) {
+		case uint64:
+			fgsArgs = append(fgsArgs, &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{
+				SizeArg: v,
+			}})
+		case string:
+			fgsArgs = append(fgsArgs, &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{
+				StringArg: v,
+			}})
+
+		default:
+			logger.GetLogger().Infof("handleGenericTracepointMessage: unhandled value: %+v (%T)", arg, arg)
+		}
+	}
+
+	fgsEvent := &fgs.ProcessTracepoint{
+		Process: fgsProcess,
+		Parent:  fgsParent,
+		Subsys:  msg.Subsys,
+		Event:   msg.Event,
+		Args:    fgsArgs,
+	}
+
+	if fgsProcess.Docker != "" {
+		if pm.enableEventCache == true && fgsEvent.Process.Pod == nil {
+			pm.eventCache.add(fgsEvent, ktimeToProto(msg.Common.Ktime), msg)
+			return nil
+		}
+	}
+
+	return &fgs.GetEventsResponse{
+		Event:    &fgs.GetEventsResponse_ProcessTracepoint{ProcessTracepoint: fgsEvent},
+		NodeName: pm.nodeName,
+		Time:     ktimeToProto(msg.Common.Ktime),
+	}
+}
+
 // Notify implements Listener.Notify.
 func (pm *ProcessManager) Notify(event interface{}) error {
 	var processedEvent *fgs.GetEventsResponse
@@ -324,6 +383,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleKfreeSkbMessage(msg)
 	case *api.MsgGenericKprobeUnix:
 		processedEvent = pm.handleGenericKprobeMessage(msg)
+	case *api.MsgGenericTracepointUnix:
+		processedEvent = pm.handleGenericTracepointMessage(msg)
 	case *api.MsgTestEventUnix:
 		processedEvent = pm.handleTestMessage(msg)
 

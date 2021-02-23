@@ -23,6 +23,15 @@ enum generic_func_args_enum {
 	notpidset_value   = 0x18,
 	nspidset_value    = 0x19,
 	notnspidset_value = 0x20,
+	/*
+	 * Tracepoints are using the same enum as kprobes
+	 */
+	/* offset of argument fields from ctx pointer */
+	t_arg0_ctx_off = 0x100,
+	t_arg1_ctx_off = 0x101,
+	t_arg2_ctx_off = 0x102,
+	t_arg3_ctx_off = 0x103,
+	t_arg4_ctx_off = 0x104,
 };
 
 /* Kernel BTF */

@@ -10,6 +10,16 @@ enum {
 	size_type = 4,
 	char_buf = 5,
 	char_iovec = 6,
+
+	s64_ty = 10,
+	u64_ty = 11,
+	s32_ty = 12,
+	u32_ty = 13,
+
+	nop_s64_ty = -10,
+	nop_u64_ty = -11,
+	nop_u32_ty = -12,
+	nop_s32_ty = -13,
 };
 
 enum {
@@ -34,6 +44,21 @@ struct skb_type {
  * buffer size information.
  */
 #define MAX_STRING 1024
+
+static inline __attribute__((always_inline))
+bool ty_is_nop(int ty) {
+	switch (ty) {
+		case nop:
+		case nop_s64_ty:
+		case nop_u64_ty:
+		case nop_s32_ty:
+		case nop_u32_ty:
+		return true;
+
+		default:
+		return false;
+	}
+}
 
 static inline __attribute__((always_inline))
 int return_error(int *s, int err) {
@@ -129,7 +154,7 @@ long read_call_arg(char *args,
 	long size = -1;
 	int zero = 0;
 
-	if (type == nop) {
+	if (ty_is_nop(type)) {
 		size = 0;
 	} else if (type == string_type && MAX_STRING + off < 4095) {
 		int *s = (int *)&args[off];
@@ -139,6 +164,12 @@ long read_call_arg(char *args,
 	} else if (type == size_type && sizeof(size_t) + off < 4095) {
 		probe_read(&args[off], sizeof(size_t), &arg);
 		size = sizeof(size_t);
+	} else if ((type == s64_ty || type == u64_ty) && 8 + off < 4095) {
+		probe_read(&args[off], 8, &arg);
+		size = 8;
+	} else if ((type == s32_ty || type == u32_ty) && 4 + off < 4095) {
+		probe_read(&args[off], 4, &arg);
+		size = 4;
 	} else if (type == int_type && sizeof(int) + off < 4095) {
 		int value;
 		int *f;

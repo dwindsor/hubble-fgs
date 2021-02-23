@@ -76,7 +76,8 @@ const (
 
 	MSG_OP_TLS_CONT = 12
 
-	MSG_OP_GENERIC_KPROBE = 13
+	MSG_OP_GENERIC_KPROBE     = 13
+	MSG_OP_GENERIC_TRACEPOINT = 14
 
 	// just for testing
 	MSG_OP_TEST = 254

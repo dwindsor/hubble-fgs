@@ -1,0 +1,198 @@
+#include "vmlinux.h"
+#include "api.h"
+
+#ifndef bpf_map_def
+struct bpf_map_def {
+	unsigned int type;
+	unsigned int key_size;
+	unsigned int value_size;
+	unsigned int max_entries;
+	unsigned int map_flags;
+};
+#endif
+
+#include "hubble_msg.h"
+#include "bpf_events.h"
+#include "types/operations.h"
+#include "types/basic.h"
+#include "generic_calls.h"
+#include "pfilter.h"
+
+
+struct bpf_map_def __attribute__((section("maps"), used)) tp_calls = {
+	.type		= BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size	= sizeof(__u32),
+	.value_size	= sizeof(__u32),
+	.max_entries	= 2,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) tp_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(struct msg_generic_kprobe),
+	.max_entries = 1,
+};
+
+/* Arrays of size 1 will be rewritten to direct loads in verifier */
+struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) args1_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) args2_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) args3_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) args4_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 80,
+	.max_entries = 1,
+};
+
+struct generic_tracepoint_event_arg {
+	/* common header */
+	__u16 common_type;
+	__u8 common_flags;
+	__u8 common_preempt_count;
+	__s32 common_pid;
+	/* tracepoint specific fields ... */
+};
+
+static inline __attribute__((always_inline))
+unsigned long get_ctx_ul(void *src, int type) {
+
+	switch (type) {
+		case nop_s64_ty:
+		case nop_u64_ty:
+		case s64_ty:
+		case u64_ty: {
+			u64 ret;
+			probe_read(&ret, sizeof(u64), src);
+			return ret;
+		}
+
+		case size_type: {
+			size_t ret;
+			probe_read(&ret, sizeof(size_t), src);
+			return (unsigned long)ret;
+		}
+
+		case nop_s32_ty:
+		case s32_ty: {
+			s32 ret;
+			probe_read(&ret, sizeof(u32), src);
+			return ret;
+		}
+
+		case nop_u32_ty:
+		case u32_ty: {
+			u32 ret;
+			probe_read(&ret, sizeof(u32), src);
+			return ret;
+		}
+
+		case char_buf: {
+			char *buff;
+			probe_read(&buff, sizeof(char *), src);
+			return (unsigned long)buff;
+		}
+
+		default:
+		case nop:
+			return 0;
+	}
+}
+
+__attribute__((section(("tracepoint/generic_tracepoint")), used))
+int generic_tracepoint_event(struct generic_tracepoint_event_arg *ctx)
+{
+	enum generic_func_args_enum fgs_args;
+	struct msg_generic_kprobe *msg;
+	int zero = 0, ret;
+
+	msg = map_lookup_elem(&tp_heap, &zero);
+	if (!msg)
+		return 0;
+
+	ret = generic_process_filter(&msg->current);
+	if (ret != PFILTER_PASSED)
+		return 0;
+
+	msg->a0 = ({
+		unsigned long ctx_off = bpf_core_enum_value(fgs_args, t_arg0_ctx_off);
+		int ty = bpf_core_enum_value(fgs_args, arg0);
+		get_ctx_ul((char *)ctx + ctx_off, ty);
+	});
+
+	msg->a1 = ({
+		unsigned long ctx_off = bpf_core_enum_value(fgs_args, t_arg1_ctx_off);
+		int ty = bpf_core_enum_value(fgs_args, arg1);
+		get_ctx_ul((char *)ctx + ctx_off, ty);
+	});
+
+	msg->a2 = ({
+		unsigned long ctx_off = bpf_core_enum_value(fgs_args, t_arg2_ctx_off);
+		int ty = bpf_core_enum_value(fgs_args, arg2);
+		get_ctx_ul((char *)ctx + ctx_off, ty);
+	});
+
+	msg->a3 = ({
+		unsigned long ctx_off = bpf_core_enum_value(fgs_args, t_arg3_ctx_off);
+		int ty = bpf_core_enum_value(fgs_args, arg3);
+		get_ctx_ul((char *)ctx + ctx_off, ty);
+	});
+
+	msg->a4 = ({
+		unsigned long ctx_off = bpf_core_enum_value(fgs_args, t_arg4_ctx_off);
+		int ty = bpf_core_enum_value(fgs_args, arg4);
+		get_ctx_ul((char *)ctx + ctx_off, ty);
+	});
+
+	msg->common.op = MSG_OP_GENERIC_TRACEPOINT;
+
+	tail_call(ctx, &tp_calls, 0);
+	return 0;
+}
+
+__attribute__((section(("kprobe/0")), used))
+int generic_tracepoint_event0(void *ctx)
+{
+	return generic_process_event0(
+		ctx,
+		&tp_heap,
+		&args0_filter_map,
+		&args1_filter_map,
+		&args2_filter_map,
+		&tp_calls);
+}
+__attribute__((section(("kprobe/1")), used))
+int generic_tracepoint_event1(void *ctx)
+{
+	return generic_process_event1(
+		ctx,
+		&tp_heap,
+		&args3_filter_map,
+		&args4_filter_map);
+}
+
+char _license[] __attribute__((section(("license")), used)) = "GPL";

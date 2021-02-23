@@ -32,11 +32,12 @@ var (
 )
 
 type testObserverOptions struct {
-	tls    bool
-	tlstc  bool
-	pretty bool
-	probes string
-	config string
+	tls         bool
+	tlstc       bool
+	pretty      bool
+	probes      string
+	config      string
+	tracepoints []GenericTracepointConf
 }
 
 type testExporterOptions struct {
@@ -69,15 +70,15 @@ func withPretty() testOption {
 	}
 }
 
-func withProbes(probes string) testOption {
-	return func(o *testOptions) {
-		o.observer.probes = probes
-	}
-}
-
 func withConfig(config string) testOption {
 	return func(o *testOptions) {
 		o.observer.config = config
+	}
+}
+
+func withTracepoint(tracepoint GenericTracepointConf) testOption {
+	return func(o *testOptions) {
+		o.observer.tracepoints = append(o.observer.tracepoints, tracepoint)
 	}
 }
 
@@ -166,6 +167,15 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 			t.Fatalf("observerLoadSensors error: Could not load kprobe sensors. %s", err)
 		}
 	}
+
+	if len(kprobe.genericTracepointsConf) > 0 {
+		if genericTracepointSensor, err := kprobe.createGenericTracepointSensor(kprobe.genericTracepointsConf); err != nil {
+			t.Fatalf("hubble-fgs, Failed to create initial generic tracepoint sensor: %s", err)
+		} else if err := kprobe.observerLoadSensor(context.TODO(), genericTracepointSensor); err != nil {
+			t.Fatalf("hubble-fgs, Aborting could not load initial tracepoint sensor. %s\n", err)
+		}
+	}
+
 	kprobe.populateExecve(context.TODO())
 }
 

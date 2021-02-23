@@ -93,7 +93,7 @@ func hubbleFGSExecute() error {
 	}
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
-		networkInterfaces, configFile,
+		networkInterfaces, configFile, []observer.GenericTracepointConf{},
 		viper.GetBool("tls"), viper.GetBool("tlstc"),
 		viper.GetBool("debug"))
 

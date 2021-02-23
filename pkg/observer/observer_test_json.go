@@ -3,7 +3,10 @@ package observer
 import (
 	"encoding/json"
 	"fmt"
+	"io"
+	"io/ioutil"
 	"os"
+	"reflect"
 	"sort"
 	"strings"
 	"time"
@@ -306,6 +309,29 @@ func jsonTestCompareKprobe(a, b *fgs.ProcessKprobe) bool {
 	return true
 }
 
+func jsonTestCompareTracepoint(observed, expected *fgs.ProcessTracepoint) bool {
+	if observed.Subsys != expected.Subsys {
+		return false
+	}
+	if observed.Event != expected.Event {
+		return false
+	}
+
+	for idx, arg := range expected.Args {
+		fmt.Printf("expected: %T %+v\n", arg, arg)
+		if idx < len(observed.Args) {
+			if reflect.DeepEqual(arg, observed.Args[idx]) {
+				return true
+			} else {
+				fmt.Printf("expected: %+v (%T)  observed: %+v (%T)\n", arg, arg, observed.Args[idx], observed.Args[idx])
+			}
+		}
+		return false
+	}
+
+	return true
+}
+
 func eventTypeString(ev interface{}) string {
 	switch xev := ev.(type) {
 	case *fgs.GetEventsResponse_ProcessConnect:
@@ -331,6 +357,8 @@ func eventTypeString(ev interface{}) string {
 		return "Test"
 	case *fgs.GetEventsResponse_ProcessKprobe:
 		return fmt.Sprintf("Kprobe(proc.cmd=%s)", xev.ProcessKprobe.Process.Binary)
+	case *fgs.GetEventsResponse_ProcessTracepoint:
+		return fmt.Sprintf("Tracepoint(event=%s)", xev.ProcessTracepoint.Event)
 	default:
 		return fmt.Sprintf("<UNKNOWN:%T>", ev)
 	}
@@ -358,6 +386,64 @@ func (s ByTime) Less(i, j int) bool {
 		return t1.GetNanos() < t2.GetNanos()
 	}
 	return t1s < t2s
+}
+
+// jsonTestSaveCopy saves a copy of the json file
+func jsonTestSaveCopy(jsonFile *os.File) (string, error) {
+	var err error
+	if jsonFile == nil {
+		fmt.Printf("jsonTestIterate: openning: %s\n", exportFile)
+		jsonFile, err = os.Open(exportFile)
+		if err != nil {
+			return "", fmt.Errorf("opening json file failed: %w", err)
+		}
+		defer jsonFile.Close()
+	}
+
+	out, err := ioutil.TempFile("/tmp/", fmt.Sprintf("hubble-fgs.gotest.*"))
+	if err != nil {
+		return "", fmt.Errorf("opening destination file failed: %w", err)
+	}
+	defer out.Close()
+
+	_, err = io.Copy(out, jsonFile)
+	if err != nil {
+		return "", fmt.Errorf("failed to copy json file: %w", err)
+	}
+
+	os.Chmod(out.Name(), 0644)
+	return out.Name(), nil
+}
+
+func jsonTestIterate(jsonFile *os.File, checkFn func(*fgs.GetEventsResponse) error) error {
+
+	var err error
+	if jsonFile == nil {
+		fmt.Printf("jsonTestIterate: openning: %s\n", exportFile)
+		jsonFile, err = os.Open(exportFile)
+		if err != nil {
+			return fmt.Errorf("opening json faile faied: %w", err)
+		}
+		defer jsonFile.Close()
+	}
+
+	dec := json.NewDecoder(jsonFile)
+	for {
+		ev := fgs.GetEventsResponse{}
+		err := jsonpb.UnmarshalNext(dec, &ev)
+		if err != nil {
+			return fmt.Errorf("unmarshal failed: %w", err)
+		}
+		err = checkFn(&ev)
+		if err != nil {
+			return fmt.Errorf("check function retuned error: %w", err)
+		}
+		if !dec.More() {
+			break
+		}
+	}
+
+	return nil
 }
 
 func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts, found int) bool {
@@ -470,6 +556,15 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 						goto next
 					}
 				}
+			case *fgs.GetEventsResponse_ProcessTracepoint:
+				switch bRes := t.Event.(type) {
+				case *fgs.GetEventsResponse_ProcessTracepoint:
+					if ok := jsonTestCompareTracepoint(res.ProcessTracepoint, bRes.ProcessTracepoint); ok {
+						found++
+						verbosePrintf("\tFOUND IT!\n")
+						goto next
+					}
+				}
 			case *fgs.GetEventsResponse_Test:
 				switch t.Event.(type) {
 				case *fgs.GetEventsResponse_Test:
@@ -479,7 +574,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 				}
 
 			default:
-				verbosePrintf("unknown\n")
+				verbosePrintf("Do not know how to compare\n")
 			}
 		}
 	next:

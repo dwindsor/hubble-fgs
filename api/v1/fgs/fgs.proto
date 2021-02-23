@@ -153,6 +153,15 @@ message ProcessKprobe {
     repeated KprobeArgument args = 4;
 }
 
+message ProcessTracepoint {
+    Process process = 1;
+    Process parent = 2;
+    string subsys = 4;
+    string event = 5;
+    // TODO: once we implement all we want, rename KprobeArgument to GenericArgument
+    repeated KprobeArgument args = 6;
+}
+
 message Test {}
 
 enum TlsCertificateError {
@@ -359,6 +368,7 @@ message GetEventsResponse {
         ProcessAccept process_accept = 7;
         ProcessCred process_cred = 8;
         ProcessKprobe process_kprobe = 9;
+        ProcessTracepoint process_tracepoint = 10;
 
         Test test = 40000;
     }
@@ -387,6 +397,7 @@ enum EventType {
 	PROCESS_ACCEPT = 9;
 	PROCESS_CRED = 10;
 	PROCESS_KPROBE = 13;
+	PROCESS_TRACEPOINT = 14;
 
 	TEST = 254;
 }

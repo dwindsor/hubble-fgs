@@ -178,6 +178,8 @@ type bpfLoad struct {
 	loadState bpfLoadState
 
 	tracefd int
+
+	loaderData interface{}
 }
 
 type ObserverMap struct {
@@ -210,6 +212,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverExit = bpfLoad{
@@ -225,6 +229,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverFork = bpfLoad{
@@ -240,6 +246,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverCred = bpfLoad{
@@ -255,6 +263,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverTCPConnect = bpfLoad{
@@ -270,6 +280,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverTCPConnectRet = bpfLoad{
@@ -285,6 +297,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverTCPClose = bpfLoad{
@@ -300,6 +314,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverListen = bpfLoad{
@@ -315,6 +331,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverSockopsEstablished = bpfLoad{
@@ -330,6 +348,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverSkmsg = bpfLoad{
@@ -345,6 +365,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverSkSkbVerdict = bpfLoad{
@@ -360,6 +382,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverSkSkbParser = bpfLoad{
@@ -375,6 +399,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverTLSTCIngress = bpfLoad{
@@ -390,6 +416,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	ObserverTLSTCEgress = bpfLoad{
@@ -405,6 +433,8 @@ var (
 		bpfLoadStateIdle(),
 
 		-1,
+
+		struct{}{},
 	}
 
 	observerTimeout = 5 * time.Minute
@@ -757,6 +787,9 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	case api.MSG_OP_GENERIC_KPROBE:
 		k.handleGenericKprobe(r)
 
+	case api.MSG_OP_GENERIC_TRACEPOINT:
+		k.handleGenericTracepoint(r)
+
 	default:
 		k.log.Infof("unknown op ignored: %v \n", op)
 	}
@@ -1009,6 +1042,8 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 		return k.observerLoadTC(load, version, Verbosity, btf)
 	} else if load.probeType == "generic_kprobe" {
 		return k.loadGenericKprobeSensor(load, version, Verbosity, x64)
+	} else if load.probeType == "generic_tracepoint" {
+		return k.loadGenericTracepointSensor(load, btf, version, Verbosity, x64)
 	} else {
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
@@ -1034,6 +1069,7 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 	if load.probeType == "tracepoint" {
 		err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
+			k.log.Infof("Tracepoint %s exists: removing and retrying", load.Observer__program)
 			removeTracepoint(load.tracefd)
 			err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, true)
 		}
@@ -1227,6 +1263,9 @@ type ObserverKprobe struct {
 
 	/* YAML Configuration File */
 	configFile string
+
+	/* generic Tracepoints configuration */
+	genericTracepointsConf []GenericTracepointConf
 }
 
 // ObseverSync holds data that are safe to be used in all goroutine contexts.
@@ -1458,7 +1497,15 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		}
 	}
 
-	// TODO: guard these with a flag
+	// load initial set of generic tracepoint sensors
+	if len(k.genericTracepointsConf) > 0 {
+		if genericTracepointSensor, err := k.createGenericTracepointSensor(k.genericTracepointsConf); err != nil {
+			return fmt.Errorf("hubble-fgs, Failed to create initial generic tracepoint sensor: %w", err)
+		} else if err := k.observerLoadSensor(ctx, genericTracepointSensor); err != nil {
+			return fmt.Errorf("hubble-fgs, Aborting could not load initial tracepoint sensor. %w\n", err)
+		}
+	}
+
 	// start sensor controller and stt manager
 	k.startSensorCtl()
 	k.ObserverSync.sttManagerHandle = startSttManager()
@@ -1510,20 +1557,21 @@ func (k *ObserverKprobe) RemovePrograms() {
 	}
 }
 
-func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
+func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string, genericTracepoints []GenericTracepointConf,
 	tls, tlstc, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
-		bpfDir:        bpfDir,
-		mapDir:        mapDir,
-		ciliumDir:     ciliumDir,
-		interfaces:    interfaces,
-		enableTLS:     tls,
-		enableTLSTC:   tlstc,
-		prettyPrinter: pretty,
-		listeners:     make(map[Listener]struct{}),
-		log:           logger.GetLogger(),
-		tlsInProgress: make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
-		configFile:    configFile,
+		bpfDir:                 bpfDir,
+		mapDir:                 mapDir,
+		ciliumDir:              ciliumDir,
+		interfaces:             interfaces,
+		enableTLS:              tls,
+		enableTLSTC:            tlstc,
+		prettyPrinter:          pretty,
+		listeners:              make(map[Listener]struct{}),
+		log:                    logger.GetLogger(),
+		tlsInProgress:          make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
+		configFile:             configFile,
+		genericTracepointsConf: genericTracepoints,
 	}
 }
 

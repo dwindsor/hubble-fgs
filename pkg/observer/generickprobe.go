@@ -20,6 +20,11 @@ const (
 	GenericKprobeSizeType   = 4
 	GenericKprobeCharBuffer = 5
 	GenericKprobeCharIovec  = 6
+
+	GenericKprobeS64Type = 10
+	GenericKprobeU64Type = 11
+	GenericKprobeS32Type = 12
+	GenericKprobeU32Type = 13
 )
 
 const (
@@ -240,6 +245,28 @@ func (k *ObserverKprobe) checkFilterRestrictions(ty, opName string, op int) erro
 	return nil
 }
 
+func getMetaValue(meta string) (int, error) {
+	switch meta {
+	case "":
+		return 0, nil
+
+	case "ret":
+		return -1, nil
+
+	default:
+		if ret, err := strconv.Atoi(meta); err != nil {
+			return 0, fmt.Errorf("Error filter meta %s invalid: %s\n", meta, err)
+		} else if ret == 0 {
+			return 0, fmt.Errorf("Error filter meta (%s) cannot be zero\n", meta)
+		} else if ret < 0 {
+			return 0, fmt.Errorf("Error filter meta (%s) must be >0\n", meta)
+		} else {
+			return ret, nil
+		}
+	}
+
+}
+
 func (k *ObserverKprobe) kprobeProcessFilters(btf uintptr, filters []config.Filter) error {
 	availableFilters := map[string]bool{
 		"nspid":       false,
@@ -336,21 +363,10 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 			}
 
 			// Associate any metadata with the argument
-			var argMValue int
-			switch meta := a.Meta; meta {
-			case "":
-				argMValue = 0
-
-			case "ret":
-				argMValue = -1
-
-			default:
-				argMValue, err = strconv.Atoi(meta)
-				if err != nil {
-					return nil, fmt.Errorf("Error filter meta %s invalid: %s\n", meta, err)
-				}
+			argMValue, err := getMetaValue(a.Meta)
+			if err != nil {
+				return nil, err
 			}
-
 			if len(a.Filters) > 0 {
 				argF := k.createArgFilter(argType, a.Filters)
 				switch j { // this is a bit ugly fixup tbd
