@@ -198,6 +198,8 @@ func (ec *eventCache) eventRetry() {
 			case <-ticker.C:
 				ec.handleNetEvents()
 				ec.handleProcEvents()
+				metrics.ExecveMapSize.WithLabelValues("netCache", "0").Set(float64(len(ec.netCache)))
+				metrics.ExecveMapSize.WithLabelValues("procCache", "0").Set(float64(len(ec.procCache)))
 			}
 		}
 	}()

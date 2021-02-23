@@ -19,12 +19,14 @@ import (
 	"time"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/cilium"
 	fgsGrpc "github.com/covalentio/hubble-fgs/pkg/grpc"
 	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/stretchr/testify/assert"
 
 	hubbleV1 "github.com/cilium/hubble/pkg/api/v1"
 	"golang.org/x/sys/unix"
@@ -1192,4 +1194,29 @@ func TestDockerListenConnect(t *testing.T) {
 		t.Fail()
 	}
 	testDone(t, kprobe)
+}
+
+func Test_msgToExecveUnix(t *testing.T) {
+	event := api.MsgExecveEvent{}
+
+	// Minikube has "docker-" prefix.
+	prefix := "docker-"
+	minikubeID := prefix + "9e123a99b140a6ea4a8d15040ca2c8ee2d5ee9605e81d66ae4e3e29c3f0ef220.scope"
+	copy(event.Kube.Docker[:], minikubeID)
+	_, offset, err := procsDockerIdOffset(minikubeID)
+	assert.NoError(t, err)
+	result := msgToExecveUnix(&event, offset)
+	assert.Equal(t, strings.Split(minikubeID, "-")[1][:api.DOCKER_ID_LENGTH-len(prefix)], result.Kube.Docker)
+	event.Kube.Docker[0] = 0
+	result = msgToExecveUnix(&event, offset)
+	assert.Empty(t, result.Kube.Docker)
+
+	// GKE doesn't.
+	gkeID := "82836ef3675020258bee5075ace6264b3bc5300e20c975543cbc984bea59638f"
+	copy(event.Kube.Docker[:], gkeID)
+	result = msgToExecveUnix(&event, 0)
+	assert.Equal(t, gkeID[:api.DOCKER_ID_LENGTH], result.Kube.Docker)
+	event.Kube.Docker[0] = 0
+	result = msgToExecveUnix(&event, offset)
+	assert.Empty(t, result.Kube.Docker)
 }

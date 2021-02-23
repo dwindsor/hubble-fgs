@@ -565,9 +565,12 @@ func msgToExecveUnix(m *api.MsgExecveEvent, offset int) *api.MsgExecveEventUnix 
 	unix.Kube.NetNS = m.Kube.NetNS
 	unix.Kube.Cid = m.Kube.Cid
 	unix.Kube.Cgrpid = m.Kube.Cgrpid
-	unix.Kube.Docker = strings.TrimFunc(string(m.Kube.Docker[offset:]), func(c rune) bool {
-		return c == 0x00
-	})
+	// The first byte is set to zero if there is no docker ID for this event.
+	if m.Kube.Docker[0] != 0x00 {
+		unix.Kube.Docker = strings.TrimFunc(string(m.Kube.Docker[offset:]), func(c rune) bool {
+			return c == 0x00
+		})
+	}
 	unix.Parent = m.Parent
 	unix.Capabilities = m.Capabilities
 	return unix
