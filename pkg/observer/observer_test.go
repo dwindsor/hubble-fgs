@@ -18,6 +18,8 @@ import (
 	"testing"
 	"time"
 
+	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
+
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
@@ -1045,24 +1047,20 @@ func TestSensorLseekEnable(t *testing.T) {
 	}
 }
 
-func TestDockerListenConnect(t *testing.T) {
-	if err := exec.Command("docker", "version").Run(); err != nil {
-		t.Skipf("docker not available. skipping test: %s", err)
-	}
+// Create a fake Cilium state to avoid the events getting delayed due to missing pod info
+func createFakeCiliumState(testPod, testNamespace string) *hubbleCilium.State {
+	s := cilium.GetFakeCiliumState()
+	s.GetEndpointsHandler().UpdateEndpoint(&hubbleV1.Endpoint{
+		ID:           1234,
+		PodName:      testPod,
+		PodNamespace: testNamespace,
+	})
+	return s
+}
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	defer cancel()
-	var exitWG, execWG sync.WaitGroup
-	var serverDockerID, clientDockerID string
-
-	const (
-		testPod       = "pod-1"
-		testNamespace = "ns-1"
-	)
-
-	// We need to create a fake K8s watcher and Cilium state to avoid the events
-	// getting delayed due to missing pod information
-	w := &fakeK8sWatcher{
+// Create a fake K8s watcher to avoid delayed event due to missing pod info
+func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
+	return &fakeK8sWatcher{
 		OnFindPod: func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
 			if containerID == "" {
 				return nil, nil, false
@@ -1096,12 +1094,25 @@ func TestDockerListenConnect(t *testing.T) {
 			return &pod, &container, true
 		},
 	}
-	s := cilium.GetFakeCiliumState()
-	s.GetEndpointsHandler().UpdateEndpoint(&hubbleV1.Endpoint{
-		ID:           1234,
-		PodName:      testPod,
-		PodNamespace: testNamespace,
-	})
+}
+
+func TestDockerListenConnect(t *testing.T) {
+	if err := exec.Command("docker", "version").Run(); err != nil {
+		t.Skipf("docker not available. skipping test: %s", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+	var exitWG, execWG sync.WaitGroup
+	var serverDockerID, clientDockerID string
+
+	const (
+		testPod       = "pod-1"
+		testNamespace = "ns-1"
+	)
+
+	w := createFakeWatcher(testPod, testNamespace)
+	s := createFakeCiliumState(testPod, testNamespace)
 
 	kprobe, err := getDefaultObserver(t, withPretty(), withK8sWatcher(w), withCiliumState(s))
 	if err != nil {
@@ -1172,6 +1183,7 @@ func TestDockerListenConnect(t *testing.T) {
 				},
 			},
 		},
+
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
@@ -1219,4 +1231,86 @@ func Test_msgToExecveUnix(t *testing.T) {
 	event.Kube.Docker[0] = 0
 	result = msgToExecveUnix(&event, offset)
 	assert.Empty(t, result.Kube.Docker)
+}
+
+func TestDockerExistingListenEvent(t *testing.T) {
+	if err := exec.Command("docker", "version").Run(); err != nil {
+		t.Skipf("docker not available. skipping test: %s", err)
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+	var exitWG, execWG sync.WaitGroup
+
+	const (
+		testPod       = "pod-1"
+		testNamespace = "ns-1"
+	)
+
+	w := createFakeWatcher(testPod, testNamespace)
+	s := createFakeCiliumState(testPod, testNamespace)
+
+	/* Start server before creating kprobe */
+	dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
+
+	/* Create kprobe */
+	kprobe, err := getDefaultObserver(t, withPretty(), withK8sWatcher(w), withCiliumState(s))
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+
+	// Ideally we would also verify the dockerID, but our current dockerID
+	// scanner from procFS does not match github actions docker env that
+	// does not prepend a 'docker' string to the cgroup name. For now
+	// drop the comparison and just ensure we get the events.
+	//fgsServerID := serverDockerID[:31]
+
+	// Current code reports binary behind symlink in proc case (binaries running
+	// before fgs starts), but in runtime event we report the name of the symlink.
+	// In this test the difference is busybox vs nc.
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{Binary: selfBinary},
+					Parent:  &fgs.Process{Binary: ""},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{
+						Binary:    "/bin/busybox",
+						Arguments: "-nvlp 8081",
+						Cwd:       "/",
+						Uid:       &wrappers.UInt32Value{Value: 0},
+					},
+					Parent: &fgs.Process{},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessListen{
+				ProcessListen: &fgs.ProcessListen{
+					Process: &fgs.Process{
+						Binary:    "/bin/busybox",
+						Arguments: "-nvlp 8081",
+						Cwd:       "/",
+						Uid:       &wrappers.UInt32Value{Value: 0},
+					},
+					Parent: &fgs.Process{},
+					Ip:     "0.0.0.0",
+					Port:   &wrappers.UInt32Value{Value: 8081},
+				},
+			},
+		},
+	}
+
+	retries := jsonRetries
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
 }
