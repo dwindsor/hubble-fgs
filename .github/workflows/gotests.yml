@@ -45,3 +45,9 @@ jobs:
         sudo -E GO111MODULE=off go get -u golang.org/x/lint/golint
         export FGS_LIB="/home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs/bpf/objs/"
         sudo -E make test
+    - name: Upload FGS logs
+      if: always()
+      uses: actions/upload-artifact@v2
+      with:
+        name: hubble-fgs-json
+        path: /tmp/hubble-fgs.gotest
