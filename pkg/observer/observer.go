@@ -1352,6 +1352,17 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 	if ObserverBTF == "" {
 		var uname unix.Utsname
 
+		// Alternative to auto-discovery and/or command line argument we
+		// can also set via environment variable.
+		fgsBtfEnv := os.Getenv("FGS_BTF")
+		if fgsBtfEnv != "" {
+			if _, err := os.Stat(fgsBtfEnv); err != nil {
+				return err
+			}
+			ObserverBTF = fgsBtfEnv
+			return nil
+		}
+
 		err := unix.Uname(&uname)
 		if err != nil {
 			return fmt.Errorf("Kernel version lookup (uname -r) failing. Use '--kernel' to set manually: %s\n", err)
