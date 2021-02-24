@@ -61,10 +61,16 @@ func procsDockerId(pid uint32) (string, int, error) {
 	}
 	docker := strings.Split(string(cgroups), "\n")
 	for _, s := range docker {
-		if strings.Contains(s, "pids:") && strings.Contains(s, "pods") {
+		if strings.Contains(s, "pids:") && (strings.Contains(s, "pods") || strings.Contains(s, "docker")) {
 			dockerFields := strings.Split(s, "/")
 			dockerString := dockerFields[len(dockerFields)-1]
-			return procsDockerIdOffset(dockerString)
+			docker, i, err := procsDockerIdOffset(dockerString)
+			// return first 31 chars to match BPF generated values.
+			// If the string is less than 31 chars its not a docker
+			// ID so skip it. For example docker.server will get here.
+			if len(docker) > 30 {
+				return docker[:31], i, err
+			}
 		}
 	}
 	return "", 0, nil
