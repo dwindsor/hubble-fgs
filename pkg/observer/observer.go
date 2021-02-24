@@ -1078,6 +1078,10 @@ func (k *ObserverKprobe) observerUnloadSensor(sensor *observerSensor, ctx contex
 }
 
 func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *observerSensor) error {
+	if sensor == nil {
+		return nil
+	}
+
 	k.log.Infof("Loading sensor %s", sensor.name)
 	if sensor.loaded {
 		k.log.Warningf("attempted to load sensor %s which is already loaded", sensor.name)
