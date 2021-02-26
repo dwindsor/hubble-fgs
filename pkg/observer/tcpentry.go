@@ -153,7 +153,10 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 			if err != nil {
 				k.log.WithError(err).Warnf("tcpEntry inode not parsable: %s", inode)
 			} else {
-				entry := tcpEntries[uint32(inodeEntry)]
+				entry, ok := tcpEntries[uint32(inodeEntry)]
+				if !ok {
+					continue
+				}
 				tcp.Tuple.SAddr = entry.localIP
 				tcp.Tuple.DAddr = entry.remoteIP
 				tcp.Tuple.DPort = entry.remotePort
