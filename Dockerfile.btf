@@ -9,7 +9,7 @@ FROM quay.io/isovalent/hubble-libbpf:v0.2.2 as hubble-libbpf
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 
-FROM quay.io/cilium/cilium-builder:2020-12-15-v1.9 as hubble-builder
+FROM quay.io/cilium/cilium-builder:309d6c32ce304efe7490876be24804622f698999 as hubble-builder
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 /usr/local/lib/

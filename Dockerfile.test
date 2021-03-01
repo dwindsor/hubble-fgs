@@ -9,7 +9,7 @@ FROM quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2 as hubble-libbpf
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 
-FROM golang:1.14
+FROM golang:1.16
 RUN apt update
 RUN apt install -y linux-libc-dev rpm2cpio cpio git flex bison autoconf libelf-dev bc netcat-traditional
 WORKDIR /go/src/github.com/covalentio/hubble-fgs

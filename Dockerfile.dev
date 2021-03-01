@@ -14,7 +14,7 @@ FROM quay.io/cilium/cilium-bpftool AS bpftool
 COPY . ./
 
 
-FROM golang:1.14
+FROM golang:1.16
 RUN apt-get update -y &&    \
     apt-get upgrade -y &&   \
     apt-get install -y      \

@@ -1,15 +1,15 @@
 FROM quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2 as bpf-builder
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
-RUN apt update
-RUN apt install -y linux-libc-dev
+RUN apt-get update
+RUN apt-get install -y linux-libc-dev
 RUN make hubble-bpf
 
 FROM quay.io/isovalent/hubble-libbpf:v0.2.2 as hubble-libbpf
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 
-FROM quay.io/cilium/cilium-builder:2020-12-15-v1.9 as hubble-builder
+FROM quay.io/cilium/cilium-builder:309d6c32ce304efe7490876be24804622f698999 as hubble-builder
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 /usr/local/lib/
@@ -19,11 +19,11 @@ COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a 
 RUN ldconfig /usr/local/; export LD_LIBRARY_PATH=/usr/local/lib/
 RUN make hubble-fgs-image
 
-FROM docker.io/library/golang:1.15.7-alpine as gops
+FROM docker.io/library/golang:1.16.0-alpine3.13 as gops
 RUN apk add --no-cache binutils git \
- && go get -d github.com/google/gops \
+ && git clone https://github.com/google/gops /go/src/github.com/google/gops \
  && cd /go/src/github.com/google/gops \
- && git checkout -b v0.3.14 v0.3.14 \
+ && git checkout -b v0.3.15 v0.3.15 \
  && go install \
  && strip /go/bin/gops
 
