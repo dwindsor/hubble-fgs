@@ -19,7 +19,9 @@ import (
 	"errors"
 	"fmt"
 	"io"
+	"io/fs"
 	"os"
+	"path/filepath"
 	"regexp"
 	"strconv"
 	"strings"
@@ -45,10 +47,20 @@ type TracepointFormat struct {
 
 // TracepointFieldFormat describes the format for each of the tracepoint fields
 type TracepointFieldFormat struct {
-	Field    string
+	FieldStr string
+	Field    *Field
 	Offset   uint
 	Size     uint
 	IsSigned bool
+}
+
+func (tff *TracepointFieldFormat) ParseField() error {
+	ty, err := parseField(tff.FieldStr)
+	if err != nil {
+		return err
+	}
+	tff.Field = ty
+	return nil
 }
 
 // LoadFormat loads the format of a tracepoint from /sys/kernel/debug
@@ -172,7 +184,7 @@ FieldsLoop:
 		}
 
 		ret.Fields = append(ret.Fields, TracepointFieldFormat{
-			Field:    res[1],
+			FieldStr: res[1],
 			Offset:   uint(offset64),
 			Size:     uint(size64),
 			IsSigned: isSigned,
@@ -180,4 +192,29 @@ FieldsLoop:
 	}
 
 	return &ret, nil
+}
+
+// GetAllTracepoints iterates the tracepointsPath directory and returns all events found there.
+// The Format field for this events is going to be empty. Callers can call LoadFormat() to fill it.
+func GetAllTracepoints() ([]Tracepoint, error) {
+	ret := []Tracepoint{}
+	err := filepath.Walk(tracepointsPath, func(path string, info fs.FileInfo, err error) error {
+		if info.IsDir() {
+			name := strings.TrimPrefix(path, tracepointsPath+"/")
+			arr := strings.Split(name, "/")
+			if len(arr) == 2 {
+				ret = append(ret, Tracepoint{
+					Subsys: arr[0],
+					Event:  arr[1],
+				})
+				return filepath.SkipDir
+			}
+
+		}
+		return nil
+	})
+	if err != nil {
+		return nil, err
+	}
+	return ret, nil
 }
