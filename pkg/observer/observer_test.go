@@ -42,6 +42,10 @@ var (
 	cmdWaitTime time.Duration
 )
 
+const (
+	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
+)
+
 func init() {
 	flag.StringVar(&fgsLib, "hubble-lib", "../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
 	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
@@ -132,8 +136,32 @@ func TestObjectLoad(t *testing.T) {
 }
 
 func TestKprobeObjectLoad(t *testing.T) {
-	writeReadHook := "__x64_sys_read(int=eq 2|eq 1:char_buf#ret:size_t:nop:nop)[syscall:ret],__x64_sys_write(int=eq 2|eq 1:char_buf#3:size_t:nop:nop)[syscall]"
-	kprobe, err := getDefaultObserver(t, withProbes(writeReadHook))
+	writeReadHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write"
+spec:
+  description: "write hook"
+  kprobe:
+    function:
+    - call: "__x64_sys_write"
+      return: false
+      syscall: true
+      args:
+      - type: "int"
+        filters:
+        - op: "eq"
+          value: "1"
+      - type: "char_buf"
+        meta: "3"
+      - type: "size_t"
+`
+	writeConfigHook := []byte(writeReadHook)
+	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+	kprobe, err := getDefaultObserver(t, withConfig(testConfigFile))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -146,9 +174,36 @@ func TestKprobeObjectWriteRead(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
-	pidStr := strconv.Itoa(int(getMyPid()))
 
-	writeReadHook := "__x64_sys_write(int=eq 1:char_buf#3:size_t:nop:nop)[syscall:pidset " + pidStr + "]"
+	pidStr := strconv.Itoa(int(getMyPid()))
+	writeReadHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write"
+spec:
+  description: "write hook"
+  kprobe:
+    function:
+    - call: "__x64_sys_write"
+      return: false
+      syscall: true
+      args:
+      - type: "int"
+        filters:
+        - op: "eq"
+          value: "1"
+      - type: "char_buf"
+        meta: "3"
+      - type: "size_t"
+      filters:
+        - type: "pidset"
+          value: "` + pidStr + `"
+`
+	writeConfigHook := []byte(writeReadHook)
+	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
 
 	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: 1}}
 	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello world"}}
@@ -167,7 +222,7 @@ func TestKprobeObjectWriteRead(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, withProbes(writeReadHook))
+	kprobe, err := getDefaultObserver(t, withConfig(testConfigFile))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -203,7 +258,33 @@ func TestKprobeObjectWriteVRead(t *testing.T) {
 	defer cancel()
 	pidStr := strconv.Itoa(int(getMyPid()))
 
-	writeReadHook := "__x64_sys_writev(int=eq 1:char_iovec#3:nop:nop:nop)[syscall:pidset " + pidStr + "]"
+	writeReadHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "__x64_sys_writev"
+spec:
+  description: "write hook"
+  kprobe:
+    function:
+    - call: "__x64_sys_writev"
+      return: false
+      syscall: true
+      args:
+      - type: "int"
+        filters:
+        - op: "eq"
+          value: "1"
+      - type: "char_iovec"
+        meta: "3"
+      filters:
+        - type: "pidset"
+          value: "` + pidStr + `"
+`
+	writeConfigHook := []byte(writeReadHook)
+	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
 
 	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: 1}}
 	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello iovec world"}}
@@ -221,7 +302,7 @@ func TestKprobeObjectWriteVRead(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, withProbes(writeReadHook))
+	kprobe, err := getDefaultObserver(t, withConfig(testConfigFile))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}

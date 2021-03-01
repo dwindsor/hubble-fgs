@@ -71,6 +71,12 @@ func withProbes(probes string) testOption {
 	}
 }
 
+func withConfig(config string) testOption {
+	return func(o *testOptions) {
+		o.observer.config = config
+	}
+}
+
 func withK8sWatcher(w fgsGrpc.K8sResourceWatcher) testOption {
 	return func(o *testOptions) {
 		o.exporter.watcher = w
@@ -146,9 +152,9 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadProgs error: %s", err)
 	}
-	if kprobe.genericKprobes != "" {
+	if kprobe.configFile != "" {
 		kprobe.initKprobeSensors()
-		genericKprobeSensor := kprobe.createGenericKprobeSensors(kprobe.genericKprobes, ObserverBTF)
+		genericKprobeSensor := kprobe.createGenericKprobeSensors(kprobe.genericKprobes, ObserverBTF, kprobe.configFile)
 		if err := kprobe.observerLoadSensor(context.TODO(), genericKprobeSensor); err != nil {
 			t.Fatalf("observerLoadSensors error: Could not load kprobe sensors. %s", err)
 		}
