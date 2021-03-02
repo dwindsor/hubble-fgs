@@ -1227,6 +1227,9 @@ type ObserverKprobe struct {
 
 	/* generic Kprobes loader string */
 	genericKprobes string
+
+	/* YAML Configuration File */
+	configFile string
 }
 
 // ObseverSync holds data that are safe to be used in all goroutine contexts.
@@ -1502,7 +1505,7 @@ func (k *ObserverKprobe) RemovePrograms() {
 	}
 }
 
-func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, genericKprobes string,
+func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, genericKprobes, configFile string,
 	tls, tlstc, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:         bpfDir,
@@ -1516,6 +1519,7 @@ func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, genericKprobes str
 		log:            logger.GetLogger(),
 		tlsInProgress:  make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
 		genericKprobes: genericKprobes,
+		configFile:     configFile,
 	}
 }
 

@@ -87,6 +87,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 			tlstc:  false,
 			pretty: false,
 			probes: "",
+			config: "",
 		},
 		exporter: testExporterOptions{
 			watcher:     fgsGrpc.NewFakeK8sWatcher(nil),
@@ -99,7 +100,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 	}
 
 	oo := &o.observer
-	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", oo.probes, oo.tls, oo.tlstc, oo.pretty)
+	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", oo.probes, oo.config, oo.tls, oo.tlstc, oo.pretty)
 	if testing.Verbose() {
 		Verbosity = 1
 	}

@@ -32,6 +32,7 @@ type testObserverOptions struct {
 	tlstc  bool
 	pretty bool
 	probes string
+	config string
 }
 
 type testExporterOptions struct {
