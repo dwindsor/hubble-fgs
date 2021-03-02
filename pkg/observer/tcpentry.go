@@ -102,7 +102,7 @@ func (k *ObserverKprobe) getPidNetNsInode(pid uint32) uint64 {
 	return inodeEntry
 }
 
-func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry, writeMaps bool) {
+func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
 	var m *bpf.Map
 
 	pid := msg.Process.PID
@@ -173,7 +173,9 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 					tcp.Common.Op = api.MsgOpIPv4TCPConnectReturn
 				}
 
-				k.observerListenersTcp(&tcp)
+				if pushEvents {
+					k.observerListenersTcp(&tcp)
+				}
 				if writeMaps {
 					k.writeSockMap(&tcp, m, netns)
 				}

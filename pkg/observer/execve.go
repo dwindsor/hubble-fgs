@@ -92,7 +92,7 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 		k.observerListenersExecve(&m)
 	}
 	/* Collect any existing TCP sockets on PID and generate events. */
-	k.pushTCPEvents(&m, tcpEntries, writeMaps)
+	k.pushTCPEvents(&m, tcpEntries, writeMaps, pushExecve)
 }
 
 func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
