@@ -49,7 +49,6 @@ var (
 	runStandalone              bool
 	ciliumBPF                  string
 	enableProcessCred          bool
-	genericKprobes             string
 	configFile                 string
 
 	// Export aggregation options
@@ -94,7 +93,7 @@ func hubbleFGSExecute() error {
 	}
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
-		networkInterfaces, genericKprobes, configFile,
+		networkInterfaces, configFile,
 		viper.GetBool("tls"), viper.GetBool("tlstc"),
 		viper.GetBool("debug"))
 
@@ -278,9 +277,6 @@ func init() {
 
 	// Config files
 	flags.StringVar(&configFile, "config-file", "", "Configuration file to load from")
-
-	// Options for generic Kprobes
-	flags.StringVar(&genericKprobes, "generic-kprobe", "", "Comma separated list of kprobes signatures to load")
 
 	// Options for debugging/development, not visible to users
 	flags.BoolVar(&runStandalone, "run-standalone", false, "Just start the observer and dump events to stdout")

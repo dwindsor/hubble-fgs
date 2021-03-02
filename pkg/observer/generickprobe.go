@@ -205,7 +205,7 @@ func (k *ObserverKprobe) pidFilterStrToValue(value string) int {
 	return v
 }
 
-func (k *ObserverKprobe) createGenericKprobeSensors(sensorList, btfBaseFile, configFile string) *observerSensor {
+func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile string) *observerSensor {
 	var progs []*bpfLoad
 
 	if configFile == "" {

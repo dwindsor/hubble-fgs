@@ -1225,9 +1225,6 @@ type ObserverKprobe struct {
 	/* opaque pointer to C BTF object */
 	btfObj uintptr
 
-	/* generic Kprobes loader string */
-	genericKprobes string
-
 	/* YAML Configuration File */
 	configFile string
 }
@@ -1452,7 +1449,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	// Load initial set of generic kprobe sensors */
 	if k.configFile != "" {
 		k.initKprobeSensors()
-		genericKprobeSensor := k.createGenericKprobeSensors(k.genericKprobes, ObserverBTF, k.configFile)
+		genericKprobeSensor := k.createGenericKprobeSensors(ObserverBTF, k.configFile)
 		if err := k.observerLoadSensor(ctx, genericKprobeSensor); err != nil {
 			return fmt.Errorf("hubble-fgs, Aborting could not load initial kprobe sensors. %s\n", err)
 		}
@@ -1505,21 +1502,20 @@ func (k *ObserverKprobe) RemovePrograms() {
 	}
 }
 
-func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, genericKprobes, configFile string,
+func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 	tls, tlstc, pretty bool) *ObserverKprobe {
 	return &ObserverKprobe{
-		bpfDir:         bpfDir,
-		mapDir:         mapDir,
-		ciliumDir:      ciliumDir,
-		interfaces:     interfaces,
-		enableTLS:      tls,
-		enableTLSTC:    tlstc,
-		prettyPrinter:  pretty,
-		listeners:      make(map[Listener]struct{}),
-		log:            logger.GetLogger(),
-		tlsInProgress:  make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
-		genericKprobes: genericKprobes,
-		configFile:     configFile,
+		bpfDir:        bpfDir,
+		mapDir:        mapDir,
+		ciliumDir:     ciliumDir,
+		interfaces:    interfaces,
+		enableTLS:     tls,
+		enableTLSTC:   tlstc,
+		prettyPrinter: pretty,
+		listeners:     make(map[Listener]struct{}),
+		log:           logger.GetLogger(),
+		tlsInProgress: make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
+		configFile:    configFile,
 	}
 }
 

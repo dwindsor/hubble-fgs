@@ -90,7 +90,6 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 			tls:    false,
 			tlstc:  false,
 			pretty: false,
-			probes: "",
 			config: "",
 		},
 		exporter: testExporterOptions{
@@ -104,7 +103,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 	}
 
 	oo := &o.observer
-	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", oo.probes, oo.config, oo.tls, oo.tlstc, oo.pretty)
+	kprobe := NewObserverKprobe(observerTestDir, observerTestDir, "", "", oo.config, oo.tls, oo.tlstc, oo.pretty)
 	if testing.Verbose() {
 		Verbosity = 1
 	}
