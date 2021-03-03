@@ -3,6 +3,7 @@ package observer
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"strconv"
 	"strings"
 
@@ -205,16 +206,12 @@ func (k *ObserverKprobe) pidFilterStrToValue(value string) int {
 	return v
 }
 
-func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile string) *observerSensor {
+func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile string) (*observerSensor, error) {
 	var progs []*bpfLoad
-
-	if configFile == "" {
-		return nil
-	}
 
 	kprobeConfig, err := config.FileConfigYaml(configFile)
 	if err != nil {
-		return nil
+		return nil, err
 	}
 
 	for i, f := range kprobeConfig.Spec.Kprobe.Function {
@@ -245,11 +242,11 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 		btf := bpf.GetBTF(btfBaseFile)
 		ret := bpf.AddEnumBtf(btf, genericFuncArgsEnum, 4)
 		if ret < 0 {
-			k.log.Warn("error add enum args %d", ret)
+			return nil, fmt.Errorf("Error add enum args (%s) failed %d", genericFuncArgsEnum, ret)
 		}
 		ret = bpf.AddEnumBtfValue(btf, kprobeGenericId, i)
 		if ret < 0 {
-			k.log.Warn("error add enum gen id value %d", ret)
+			return nil, fmt.Errorf("Error add enum value failed %d", ret)
 		}
 
 		if len(f.Args) < 5 {
@@ -277,7 +274,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 				default:
 					argMValue, err = strconv.Atoi(fext)
 					if err != nil {
-						k.log.Warn("error fext '%s' invalid", fext)
+						return nil, fmt.Errorf("Error filter meta %s invalid: %s\n", fext, err)
 					}
 				}
 			}
@@ -300,11 +297,11 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 
 			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(j), argType)
 			if retVal < 0 {
-				k.log.Warn("error add enum btf arg value %d", retVal)
+				return nil, fmt.Errorf("Error add enum value '%s' failed %d", kprobeArgToString(j), retVal)
 			}
 			retVal = bpf.AddEnumBtfValue(btf, kprobeArgMToString(j), argMValue)
 			if retVal < 0 {
-				k.log.Warn("error add enum btf argM value %d", retVal)
+				return nil, fmt.Errorf("Error add enum value '%s' failed %d", kprobeArgMToString(j), retVal)
 			}
 
 			argPrinters = append(argPrinters, argType)
@@ -341,50 +338,50 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 		if is_syscall {
 			retVal := bpf.AddEnumBtfValue(btf, "syscall", 1)
 			if retVal < 0 {
-				k.log.Warn("error setting enum btf value \"syscall\" %d", retVal)
+				return nil, fmt.Errorf("Error add enum value 'syscall = 1' failed %d", retVal)
 			}
 		} else {
 			retVal := bpf.AddEnumBtfValue(btf, "syscall", 0)
 			if retVal < 0 {
-				k.log.Warn("error clearing enum btf value \"syscall\" %d", retVal)
+				return nil, fmt.Errorf("Error add enum value 'syscall = 0' failed %d", retVal)
 			}
 		}
 		retVal := bpf.AddEnumBtfValue(btf, "nspid_type", nspid_op)
 		if retVal < 0 {
-			k.log.Warn("error setting enum btf value \"nspid_type\" %d", retVal)
+			return nil, fmt.Errorf("Error add enum value 'nspid_type' failed %d", retVal)
 		}
 		retVal = bpf.AddEnumBtfValue(btf, "nspid_value", nspid_filter)
 		if retVal < 0 {
-			k.log.Warn("error setting enum btf value \"nspid_value\" %d", retVal)
+			return nil, fmt.Errorf("Error add enum value 'nspid_value' failed %d", retVal)
 		}
 
 		retVal = bpf.AddEnumBtfValue(btf, "pid_type", pid_op)
 		if retVal < 0 {
-			k.log.Warn("error setting enum btf value \"pid_type\" %d", retVal)
+			return nil, fmt.Errorf("Error add enum value 'pid_type' failed %d", retVal)
 		}
 		retVal = bpf.AddEnumBtfValue(btf, "pid_value", pid_filter)
 		if retVal < 0 {
-			k.log.Warn("error setting enum btf value \"pid_value\" %d", retVal)
+			return nil, fmt.Errorf("Error add enum value 'pid_value' failed %d", retVal)
 		}
 
 		retVal = bpf.AddEnumBtfValue(btf, "pidset_value", pidset_value)
 		if retVal < 0 {
-			k.log.Warn("error setting enum btf value \"pidset_value\" %d", retVal)
+			return nil, fmt.Errorf("Error add enum value 'pidset_value' failed %d", retVal)
 		}
 
 		retVal = bpf.AddEnumBtfValue(btf, "notpidset_value", notpidset_value)
 		if retVal < 0 {
-			k.log.Warn("error setting enum btf value \"notpidset_value\" %d", retVal)
+			return nil, fmt.Errorf("Error add enum value 'notpidset_value' failed %d", retVal)
 		}
 
 		retVal = bpf.AddEnumBtfValue(btf, "nspidset_value", nspidset_value)
 		if retVal < 0 {
-			k.log.Warn("error setting enum btf value \"pidset_value\" %d", retVal)
+			return nil, fmt.Errorf("Error add enum value 'nspidset_value' failed %d", retVal)
 		}
 
 		retVal = bpf.AddEnumBtfValue(btf, "notnspidset_value", notnspidset_value)
 		if retVal < 0 {
-			k.log.Warn("error setting enum btf value \"notpidset_value\" %d", retVal)
+			return nil, fmt.Errorf("Error add enum value 'notnspidset_value' failed %d", retVal)
 		}
 
 		entry.args = argFilters
@@ -439,7 +436,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 		name:  "__generic_kprobe_sensors__",
 		progs: progs,
 		maps:  maps,
-	}
+	}, nil
 }
 
 func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose int, x64 bool) (error, int) {

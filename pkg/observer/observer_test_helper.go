@@ -154,7 +154,10 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	}
 	if kprobe.configFile != "" {
 		kprobe.initKprobeSensors()
-		genericKprobeSensor := kprobe.createGenericKprobeSensors(ObserverBTF, kprobe.configFile)
+		genericKprobeSensor, err := kprobe.createGenericKprobeSensors(ObserverBTF, kprobe.configFile)
+		if err != nil {
+			t.Fatalf("createGenericKprobeSensors error: Could not create kprobe sensor. %s", err)
+		}
 		if err := kprobe.observerLoadSensor(context.TODO(), genericKprobeSensor); err != nil {
 			t.Fatalf("observerLoadSensors error: Could not load kprobe sensors. %s", err)
 		}
