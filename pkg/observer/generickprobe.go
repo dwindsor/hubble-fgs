@@ -25,6 +25,11 @@ const (
 	sizeofArgsFilter = 80
 )
 
+const (
+	nopTypeId     = -1
+	invalidTypeId = -2
+)
+
 func kprobeStrToTypeId(arg string) int {
 	switch arg {
 	case "string":
@@ -39,8 +44,10 @@ func kprobeStrToTypeId(arg string) int {
 		return GenericKprobeCharBuffer
 	case "char_iovec":
 		return GenericKprobeCharIovec
+	case "nop":
+		return nopTypeId
 	default:
-		return -1
+		return invalidTypeId
 	}
 }
 
@@ -262,6 +269,9 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 		for j, a := range f.Args {
 			fext := a.Meta
 			argType := kprobeStrToTypeId(a.Type)
+			if argType == invalidTypeId {
+				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
+			}
 
 			// Associate any metadata with the argument
 			argMValue := 0
