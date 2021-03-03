@@ -105,6 +105,20 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 	PARSE_IOVEC_ENTRY     \
 }
 
+/**
+ * Read a generic argument
+ *
+ * @args: destination buffer for the generic argument
+ * @type: type of the argument
+ * @off: offset of the argument within @args
+ * @arg: argument location (generally, address of the argument)
+ * @argm: argument metadata. The meaning of this depends on the @type. Some
+ *        types use a -1 to designate saving @arg into ->retprobe_buffer.
+ * @filter_map:
+ * @proc: process state (used to access ->retprobe_buffer)
+ *
+ * Returns the size of data appended to @args.
+ */
 static inline __attribute__((always_inline))
 long read_call_arg(char *args,
 		  int type, long off,
@@ -117,7 +131,8 @@ long read_call_arg(char *args,
 
 	if (type == nop) {
 		size = 0;
-	} else if (type == string_type && MAX_STRING + off < 4095) { int *s = (int *)&args[off];
+	} else if (type == string_type && MAX_STRING + off < 4095) {
+		int *s = (int *)&args[off];
 		size = probe_read_str(&args[off+4], MAX_STRING, (char *)arg);
 		*s = size;
 		size += 4; // accounting for initial length int
