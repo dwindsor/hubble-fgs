@@ -40,6 +40,7 @@ spec:
       - type: "size_t"
       filters:
       - type: pidset
+        op: "eq"
         value: "1"
 `
 
@@ -75,6 +76,7 @@ var expectedWrite = GenericKprobeConfig{
 					Filters: []Filter{
 						{
 							Type:  "pidset",
+							Op:    "eq",
 							Value: "1",
 						},
 					},
@@ -125,14 +127,19 @@ spec:
         - value: "fooby"
       filters:
       - type: nspid
+        op: "eq"
         value: "3"
       - type: pid
+        op: "eq"
         value: "1"
       - type: pidset
+        op: "eq"
         value: "1"
       - type: notpidset
+        op: "eq"
         value: "1"
       - type: notnspidset
+        op: "eq"
         value: "1"
 `
 
@@ -217,22 +224,27 @@ var expectedData = GenericKprobeConfig{
 					Filters: []Filter{
 						{
 							Type:  "nspid",
+							Op:    "eq",
 							Value: "3",
 						},
 						{
 							Type:  "pid",
+							Op:    "eq",
 							Value: "1",
 						},
 						{
 							Type:  "pidset",
+							Op:    "eq",
 							Value: "1",
 						},
 						{
 							Type:  "notpidset",
+							Op:    "eq",
 							Value: "1",
 						},
 						{
 							Type:  "notnspidset",
+							Op:    "eq",
 							Value: "1",
 						},
 					},
