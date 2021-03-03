@@ -196,6 +196,7 @@ spec:
       - type: "size_t"
       filters:
         - type: "pidset"
+          op: "eq"
           value: "` + pidStr + `"
 `
 	writeConfigHook := []byte(writeReadHook)
@@ -277,6 +278,7 @@ spec:
         meta: "3"
       filters:
         - type: "pidset"
+          op: "eq"
           value: "` + pidStr + `"
 `
 	writeConfigHook := []byte(writeReadHook)

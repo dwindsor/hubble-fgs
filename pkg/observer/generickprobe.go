@@ -154,18 +154,16 @@ const (
 	genericKprobeFilterEQ = 3
 )
 
-func (k *ObserverKprobe) opFilterStrToType(ty string) int {
+func (k *ObserverKprobe) opFilterStrToType(ty string) (int, error) {
 	switch ty {
 	case "gt":
-		return genericKprobeFilterGT
+		return genericKprobeFilterGT, nil
 	case "lt":
-		return genericKprobeFilterLT
+		return genericKprobeFilterLT, nil
 	case "eq":
-		return genericKprobeFilterEQ
-	default:
-		k.log.Warn("genericKprobe Filter type unknown %s", ty)
+		return genericKprobeFilterEQ, nil
 	}
-	return 0
+	return 0, fmt.Errorf("Unknown op '%s'", ty)
 }
 
 func (k *ObserverKprobe) createArgFilter(argType int, filters []config.Filter) []byte {
@@ -183,7 +181,7 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []config.Filter) [
 		off += 4
 
 		for _, f := range filters {
-			operation := k.opFilterStrToType(f.Op)
+			operation, _ := k.opFilterStrToType(f.Op)
 			binary.LittleEndian.PutUint32(b[off:], uint32(operation))
 
 			v, err := strconv.Atoi(f.Value)
@@ -204,13 +202,65 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []config.Filter) [
 	return b
 }
 
-func (k *ObserverKprobe) pidFilterStrToValue(value string) int {
+func (k *ObserverKprobe) pidFilterStrToValue(value string) (int, error) {
 	v, err := strconv.Atoi(value)
 	if err != nil {
-		k.log.Warn("genericKprobe Filter value error %s\n", err)
-		return 0
+		return 0, fmt.Errorf("Invalid filter value error %s\n", err)
 	}
-	return v
+	return v, nil
+}
+
+func (k *ObserverKprobe) kprobeEventFilterWriteBTF(btf uintptr, ty string, op, value int) error {
+	retVal := bpf.AddEnumBtfValue(btf, ty+"_type", op)
+	if retVal < 0 {
+		return fmt.Errorf("Error add enum value '%s_type' failed %d", ty, retVal)
+	}
+
+	retVal = bpf.AddEnumBtfValue(btf, ty+"_value", value)
+	if retVal < 0 {
+		return fmt.Errorf("Error add enum value '%s_value' failed %d", ty, retVal)
+	}
+	return nil
+}
+
+func (k *ObserverKprobe) kprobeProcessFilters(btf uintptr, filters []config.Filter) error {
+	availableFilters := map[string]bool{
+		"nspid":       false,
+		"pid":         false,
+		"pidset":      false,
+		"notpidset":   false,
+		"nspidset":    false,
+		"notnspidset": false,
+	}
+
+	for _, filter := range filters {
+		_type := filter.Type
+		op, err := k.opFilterStrToType(filter.Op)
+		if err != nil {
+			return fmt.Errorf("Error filter op '%s': %s", _type, err)
+		}
+		value, err := k.pidFilterStrToValue(filter.Value)
+		if err != nil {
+			return fmt.Errorf("Error filter value '%s': %s", _type, err)
+		}
+
+		if _, ok := availableFilters[_type]; !ok {
+			return fmt.Errorf("Unknown event filter '%s'", _type)
+		}
+		availableFilters[_type] = true
+		if err := k.kprobeEventFilterWriteBTF(btf, _type, op, value); err != nil {
+			return err
+		}
+	}
+	// All enums need to be fully populated or otherwise BPF side
+	// may try to access an enum that does not exist and fail
+	// verification.
+	for key, value := range availableFilters {
+		if !value {
+			k.kprobeEventFilterWriteBTF(btf, key, 0, 0)
+		}
+	}
+	return nil
 }
 
 func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile string) (*observerSensor, error) {
@@ -225,15 +275,6 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 		var entry kprobeLoadArgs
 		var argPrinters []int
 		var is_syscall, is_retprobe bool
-
-		nspid_filter := int(0)
-		nspid_op := int(0)
-		pid_filter := int(0)
-		pid_op := int(0)
-		pidset_value := int(0)
-		notpidset_value := int(0)
-		nspidset_value := int(0)
-		notnspidset_value := int(0)
 
 		argFilters := api.KprobeArgs{
 			Args0: make([]byte, sizeofArgsFilter),
@@ -321,30 +362,6 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 		is_syscall = f.Syscall
 		is_retprobe = f.Return
 
-		for _, filter := range f.Filters {
-			_type := filter.Type
-			_op := filter.Op
-			_value := filter.Value
-
-			switch _type {
-			// Inform datapath that this kprobe is a syscall
-			case "nspid":
-				nspid_op = k.opFilterStrToType(_op)
-				nspid_filter = k.pidFilterStrToValue(_value)
-			case "pid":
-				pid_op = k.opFilterStrToType(_op)
-				pid_filter = k.pidFilterStrToValue(_value)
-			case "pidset":
-				pidset_value = k.pidFilterStrToValue(_value)
-			case "notpidset":
-				notpidset_value = k.pidFilterStrToValue(_value)
-			case "nspidset":
-				nspidset_value = k.pidFilterStrToValue(_value)
-			case "notnspidset":
-				notnspidset_value = k.pidFilterStrToValue(_value)
-			}
-		}
-
 		if is_syscall {
 			retVal := bpf.AddEnumBtfValue(btf, "syscall", 1)
 			if retVal < 0 {
@@ -356,42 +373,8 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 				return nil, fmt.Errorf("Error add enum value 'syscall = 0' failed %d", retVal)
 			}
 		}
-		retVal := bpf.AddEnumBtfValue(btf, "nspid_type", nspid_op)
-		if retVal < 0 {
-			return nil, fmt.Errorf("Error add enum value 'nspid_type' failed %d", retVal)
-		}
-		retVal = bpf.AddEnumBtfValue(btf, "nspid_value", nspid_filter)
-		if retVal < 0 {
-			return nil, fmt.Errorf("Error add enum value 'nspid_value' failed %d", retVal)
-		}
-
-		retVal = bpf.AddEnumBtfValue(btf, "pid_type", pid_op)
-		if retVal < 0 {
-			return nil, fmt.Errorf("Error add enum value 'pid_type' failed %d", retVal)
-		}
-		retVal = bpf.AddEnumBtfValue(btf, "pid_value", pid_filter)
-		if retVal < 0 {
-			return nil, fmt.Errorf("Error add enum value 'pid_value' failed %d", retVal)
-		}
-
-		retVal = bpf.AddEnumBtfValue(btf, "pidset_value", pidset_value)
-		if retVal < 0 {
-			return nil, fmt.Errorf("Error add enum value 'pidset_value' failed %d", retVal)
-		}
-
-		retVal = bpf.AddEnumBtfValue(btf, "notpidset_value", notpidset_value)
-		if retVal < 0 {
-			return nil, fmt.Errorf("Error add enum value 'notpidset_value' failed %d", retVal)
-		}
-
-		retVal = bpf.AddEnumBtfValue(btf, "nspidset_value", nspidset_value)
-		if retVal < 0 {
-			return nil, fmt.Errorf("Error add enum value 'nspidset_value' failed %d", retVal)
-		}
-
-		retVal = bpf.AddEnumBtfValue(btf, "notnspidset_value", notnspidset_value)
-		if retVal < 0 {
-			return nil, fmt.Errorf("Error add enum value 'notnspidset_value' failed %d", retVal)
+		if err := k.kprobeProcessFilters(btf, f.Filters); err != nil {
+			return nil, fmt.Errorf("Error creating process filters: %s", err)
 		}
 
 		entry.args = argFilters
