@@ -223,6 +223,22 @@ func (k *ObserverKprobe) kprobeEventFilterWriteBTF(btf uintptr, ty string, op, v
 	return nil
 }
 
+// hard coded all our restrictions on filters here for now.
+func (k *ObserverKprobe) checkFilterRestrictions(ty, opName string, op int) error {
+	switch ty {
+	case "notpidset":
+	case "nspidset":
+	case "notnspidset":
+		// Its unclear to me what these filters even mean if
+		// its not an equality test. For now skip them and
+		// we can come back later if they seem useful.
+		if op != genericKprobeFilterEQ {
+			return fmt.Errorf("Event filter '%s' op '%s' unsupported for type", ty, opName)
+		}
+	}
+	return nil
+}
+
 func (k *ObserverKprobe) kprobeProcessFilters(btf uintptr, filters []config.Filter) error {
 	availableFilters := map[string]bool{
 		"nspid":       false,
@@ -248,6 +264,9 @@ func (k *ObserverKprobe) kprobeProcessFilters(btf uintptr, filters []config.Filt
 			return fmt.Errorf("Unknown event filter '%s'", _type)
 		}
 		availableFilters[_type] = true
+		if err := k.checkFilterRestrictions(_type, filter.Op, op); err != nil {
+			return err
+		}
 		if err := k.kprobeEventFilterWriteBTF(btf, _type, op, value); err != nil {
 			return err
 		}
