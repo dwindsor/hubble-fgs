@@ -15,6 +15,7 @@ struct bpf_map_def {
 #include "bpf_events.h"
 #include "types/operations.h"
 #include "types/basic.h"
+#include "pfilter.h"
 
 #define MAX_FILENAME 8096
 #define MAX_TOTAL 9000
@@ -35,121 +36,6 @@ struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
 	.max_entries	= 2,
 };
 
-#define FIND_PIDSET(value)  {				\
-	if (!filter)					\
-		return 0;				\
-	if (filter->key.pid == value ||			\
-	    filter->pkey.pid == value) {		\
-			pidset_found = true;		\
-			goto accept;			\
-	}						\
-	filter = map_lookup_event(filter->pkey.pid);	\
-}
-
-#define FIND_PIDSET10(VAL) {	\
-	FIND_PIDSET(VAL)	\
-	FIND_PIDSET(VAL)	\
-	FIND_PIDSET(VAL)	\
-	FIND_PIDSET(VAL)	\
-	FIND_PIDSET(VAL)	\
-	FIND_PIDSET(VAL)	\
-	FIND_PIDSET(VAL)	\
-	FIND_PIDSET(VAL)	\
-	FIND_PIDSET(VAL)	\
-}
-
-#define FILTER_PIDSET(VAL) {	\
-	FIND_PIDSET10(VAL)	\
-}
-
-#define FIND_NSPIDSET(value)  {				\
-	if (!filter)					\
-		return 0;				\
-	if (filter->nspid == value) {			\
-		nspidset_found = true;			\
-		goto nspid_accept;			\
-	}						\
-	filter = map_lookup_event(filter->pkey.pid);	\
-}
-
-#define FIND_NSPIDSET10(VAL) {	\
-	FIND_NSPIDSET(VAL)	\
-	FIND_NSPIDSET(VAL)	\
-	FIND_NSPIDSET(VAL)	\
-	FIND_NSPIDSET(VAL)	\
-	FIND_NSPIDSET(VAL)	\
-	FIND_NSPIDSET(VAL)	\
-	FIND_NSPIDSET(VAL)	\
-	FIND_NSPIDSET(VAL)	\
-	FIND_NSPIDSET(VAL)	\
-}
-
-#define FILTER_NSPIDSET(VAL) {	\
-	FIND_NSPIDSET10(VAL)	\
-}
-
-static inline __attribute__((always_inline))
-bool filter_pidset(int pid, struct execve_map_value *enter)
-{
-	struct execve_map_value *filter = enter;
-	bool pidset_found = false;
-
-	FIND_PIDSET10(pid);
-accept:
-	return pidset_found;
-}
-
-static inline __attribute__((always_inline))
-bool filter_nspidset(int nspid, struct execve_map_value *enter)
-{
-	struct execve_map_value *filter = enter;
-	bool nspidset_found = false;
-
-	FIND_NSPIDSET10(nspid);
-nspid_accept:
-	return nspidset_found;
-}
-
-static inline __attribute__((always_inline))
-bool filter_pidsets(struct execve_map_value *enter)
-{
-	enum generic_func_args_enum fgs_args;
-
-	int pidset_filter_value = bpf_core_enum_value(fgs_args, pidset_value);
-	int notpidset_filter_value = bpf_core_enum_value(fgs_args, notpidset_value);
-	int nspidset_filter_value = bpf_core_enum_value(fgs_args, nspidset_value);
-	int notnspidset_filter_value = bpf_core_enum_value(fgs_args, notnspidset_value);
-
-	if (pidset_filter_value) {
-		bool found = filter_pidset(pidset_filter_value, enter);
-
-		if (!found)
-			return 0;
-	}
-
-	if (notpidset_filter_value) {
-		bool found = filter_pidset(notpidset_filter_value, enter);
-
-		if (found)
-			return 0;
-	}
-
-	if (nspidset_filter_value) {
-		bool found = filter_nspidset(nspidset_filter_value, enter);
-
-		if (!found)
-			return 0;
-	}
-
-	if (notnspidset_filter_value) {
-		bool found = filter_nspidset(notnspidset_filter_value, enter);
-
-		if (found)
-			return 0;
-	}
-
-	return true;
-}
 
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
 struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
@@ -190,57 +76,18 @@ struct bpf_map_def __attribute__((section("maps"), used)) args4_filter_map = {
 static inline __attribute__((always_inline))
 int generic_kprobe_process_filter(struct pt_regs *ctx)
 {
-	struct execve_map_value *enter;
-	struct msg_generic_kprobe *e;
-	bool walker = 0;
-	__u32 ppid;
+	int ret, zero = 0;
+	struct msg_generic_kprobe *msg;
 
-	enter = event_find_curr(&ppid, 0, &walker);
-	if (enter) {
-		enum generic_func_args_enum fgs_args;
-		int zero = 0;
+	msg = map_lookup_elem(&process_call_heap, &zero);
+	if (!msg)
+		return 0;
 
-		int nspid_filter_ty = bpf_core_enum_value(fgs_args, nspid_type);
-		int nspid_filter_value = bpf_core_enum_value(fgs_args, nspid_value);
-		int pid_filter_ty = bpf_core_enum_value(fgs_args, pid_type);
-		int pid_filter_value = bpf_core_enum_value(fgs_args, pid_value);
-		bool accept_pid;
+	ret = generic_process_filter(&msg->current);
+	if (ret != PFILTER_PASSED)
+		return 0;
 
-		if (nspid_filter_ty == op_filter_lt) {
-			if (enter->nspid < nspid_filter_value)
-				return 0;
-		} else if (nspid_filter_ty == op_filter_gt) {
-			if (enter->nspid > nspid_filter_value)
-				return 0;
-		} else if (nspid_filter_ty == op_filter_eq) {
-			if (enter->nspid == nspid_filter_value)
-				return 0;
-		}
-
-		if (pid_filter_ty == op_filter_lt) {
-			if (enter->key.pid < pid_filter_value)
-				return 0;
-		} else if (pid_filter_ty == op_filter_gt) {
-			if (enter->key.pid > pid_filter_value)
-				return 0;
-		} else if (pid_filter_ty == op_filter_eq) {
-			if (enter->key.pid == pid_filter_value)
-				return 0;
-		}
-
-		accept_pid = filter_pidsets(enter);
-		if (!accept_pid)
-			return 0;
-
-
-		e = map_lookup_elem(&process_call_heap, &zero);
-		if (!e)
-			return 0;
-
-		e->current.pid = enter->key.pid;
-		e->current.ktime = enter->key.ktime;
-		tail_call(ctx, &kprobe_calls, 0);
-	}
+	tail_call(ctx, &kprobe_calls, 0);
 	return 0;
 }
 
