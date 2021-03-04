@@ -76,8 +76,9 @@ struct bpf_map_def __attribute__((section("maps"), used)) args4_filter_map = {
 static inline __attribute__((always_inline))
 int generic_kprobe_process_filter(struct pt_regs *ctx)
 {
-	int ret, zero = 0;
+	int ret, is_syscall, zero = 0;
 	struct msg_generic_kprobe *msg;
+	enum generic_func_args_enum fgs_args;
 
 	msg = map_lookup_elem(&process_call_heap, &zero);
 	if (!msg)
@@ -86,6 +87,26 @@ int generic_kprobe_process_filter(struct pt_regs *ctx)
 	ret = generic_process_filter(&msg->current);
 	if (ret != PFILTER_PASSED)
 		return 0;
+
+	is_syscall = bpf_core_enum_value(fgs_args, syscall);
+	if (is_syscall) {
+		struct pt_regs *_ctx;
+		_ctx = (struct pt_regs *)ctx->di;
+		if (!_ctx)
+			return 0;
+		probe_read(&msg->a0, sizeof(msg->a0), &_ctx->di);
+		probe_read(&msg->a1, sizeof(msg->a1), &_ctx->si);
+		probe_read(&msg->a2, sizeof(msg->a2), &_ctx->dx);
+		probe_read(&msg->a3, sizeof(msg->a3), &_ctx->cx);
+		probe_read(&msg->a4, sizeof(msg->a4), &_ctx->r8);
+	} else {
+		msg->a0 = ctx->di;
+		msg->a1 = ctx->si;
+		msg->a2 = ctx->dx;
+		msg->a3 = ctx->cx;
+		msg->a4 = ctx->r8;
+	}
+
 
 	tail_call(ctx, &kprobe_calls, 0);
 	return 0;
@@ -107,11 +128,10 @@ __attribute__((section(("kprobe/0")), used))
 int generic_kprobe_process_event0(struct pt_regs *ctx)
 {
 	enum generic_func_args_enum fgs_args;
-	int is_syscall, zero = 0;
+	int zero = 0;
 	struct execve_map_value *enter;
 	struct msg_generic_kprobe *e;
 	unsigned long a0, a1, a2, a3, a4;
-	struct pt_regs *_ctx;
 	bool walker = 0;
 	__u32 pid, ppid;
 	/* total is used as a pointer offset so we want type to match
@@ -128,23 +148,11 @@ int generic_kprobe_process_event0(struct pt_regs *ctx)
 	if (!enter)
 		return 0;
 
-	is_syscall = bpf_core_enum_value(fgs_args, syscall);
-	if (is_syscall) {
-		_ctx = (struct pt_regs *)ctx->di;
-		if (!_ctx)
-			return 0;
-		probe_read(&a0, sizeof(a0), &_ctx->di);
-		probe_read(&a1, sizeof(a1), &_ctx->si);
-		probe_read(&a2, sizeof(a2), &_ctx->dx);
-		probe_read(&a3, sizeof(a3), &_ctx->cx);
-		probe_read(&a4, sizeof(a4), &_ctx->r8);
-	} else {
-		a0 = ctx->di;
-		a1 = ctx->si;
-		a2 = ctx->dx;
-		a3 = ctx->cx;
-		a4 = ctx->r8;
-	}
+	a0 = e->a0;
+	a1 = e->a1;
+	a2 = e->a2;
+	a3 = e->a3;
+	a4 = e->a4;
 
 	pid = get_current_pid_tgid() & 0xFFFFffff;
 	e = map_lookup_elem(&process_call_heap, &zero);
@@ -217,7 +225,7 @@ int generic_kprobe_process_event1(struct pt_regs *ctx)
 	unsigned long a0, a1, a2, a3, a4;
 	struct execve_map_value *enter;
 	struct msg_generic_kprobe *e;
-	int is_syscall, zero = 0;
+	int zero = 0;
 	bool walker = 0;
 	long ty, total;
 	__u32 ppid;
@@ -232,23 +240,12 @@ int generic_kprobe_process_event1(struct pt_regs *ctx)
 		return 0;
 
 	total = e->common.size;
-	is_syscall = bpf_core_enum_value(fgs_args, syscall);
-	if (is_syscall) {
-		struct pt_regs *_ctx = (struct pt_regs *)ctx->di;
-		if (!_ctx)
-			return 0;
-		probe_read(&a0, sizeof(a0), &_ctx->di);
-		probe_read(&a1, sizeof(a1), &_ctx->si);
-		probe_read(&a2, sizeof(a2), &_ctx->dx);
-		probe_read(&a3, sizeof(a3), &_ctx->cx);
-		probe_read(&a4, sizeof(a4), &_ctx->r8);
-	} else {
-		a0 = ctx->di;
-		a1 = ctx->si;
-		a2 = ctx->dx;
-		a3 = ctx->cx;
-		a4 = ctx->r8;
-	}
+
+	a0 = e->a0;
+	a1 = e->a1;
+	a2 = e->a2;
+	a3 = e->a3;
+	a4 = e->a4;
 
 	/* Arg filter and copy logic */
 	ty = bpf_core_enum_value(fgs_args, arg3);

@@ -258,6 +258,7 @@ struct msg_generic_kprobe {
 	struct msg_execve_key current;
 	__u64 id;
 	char args[9000];
+	unsigned long a0,a1,a2,a3,a4;
 };
 
 struct msg_execve_event {
