@@ -15,10 +15,8 @@ struct bpf_map_def {
 #include "bpf_events.h"
 #include "types/operations.h"
 #include "types/basic.h"
+#include "generic_calls.h"
 #include "pfilter.h"
-
-#define MAX_FILENAME 8096
-#define MAX_TOTAL 9000
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
@@ -106,7 +104,7 @@ int generic_kprobe_process_filter(struct pt_regs *ctx)
 		msg->a3 = ctx->cx;
 		msg->a4 = ctx->r8;
 	}
-
+	msg->common.op = MSG_OP_GENERIC_KPROBE;
 
 	tail_call(ctx, &kprobe_calls, 0);
 	return 0;
@@ -125,165 +123,23 @@ int generic_kprobe_event(struct pt_regs *ctx)
 }
 
 __attribute__((section(("kprobe/0")), used))
-int generic_kprobe_process_event0(struct pt_regs *ctx)
+int generic_kprobe_process_event0(void *ctx)
 {
-	enum generic_func_args_enum fgs_args;
-	int zero = 0;
-	struct execve_map_value *enter;
-	struct msg_generic_kprobe *e;
-	unsigned long a0, a1, a2, a3, a4;
-	bool walker = 0;
-	__u32 pid, ppid;
-	/* total is used as a pointer offset so we want type to match
-	 * pointer type in order to avoid bit shifts.
-	 */
-	long ty, total = 0;
-
-	/* Pid/Ktime Passed through per cpu map in process heap. */
-	e = map_lookup_elem(&process_call_heap, &zero);
-	if (!e)
-		return 0;
-
-	enter = event_find_curr(&ppid, 0, &walker);
-	if (!enter)
-		return 0;
-
-	a0 = e->a0;
-	a1 = e->a1;
-	a2 = e->a2;
-	a3 = e->a3;
-	a4 = e->a4;
-
-	pid = get_current_pid_tgid() & 0xFFFFffff;
-	e = map_lookup_elem(&process_call_heap, &zero);
-	if (!e)
-		return 0;
-	e->common.op = MSG_OP_GENERIC_KPROBE;
-	e->common.flags = 0;
-	e->common.pad[0] = 0;
-	e->common.pad[1] = 0;
-	e->common.size = 0;
-	e->common.ktime = ktime_get_ns();
-
-	e->current.pad[0] = 0;
-	e->current.pad[1] = 0;
-	e->current.pad[2] = 0;
-	e->current.pad[3] = 0;
-
-	e->id = bpf_core_enum_value(fgs_args, func_id);
-
-	/* Read out args1-5 */
-	ty = bpf_core_enum_value(fgs_args, arg0);
-	if (total < MAX_TOTAL) {
-		void *map = &args0_filter_map;
-		unsigned long a0m, arg_meta;
-		long errv;
-
-		a0m = bpf_core_enum_value(fgs_args, arg0m);
-		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a0, arg_meta, map, enter);
-		if (errv < 0)
-			return 0;
-		total += errv;
-	}
-
-	ty = bpf_core_enum_value(fgs_args, arg1);
-	if (total < MAX_TOTAL) {
-		void *map = &args1_filter_map;
-		unsigned long a1m, arg_meta;
-		long errv;
-
-		a1m = bpf_core_enum_value(fgs_args, arg1m);
-		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a1, arg_meta, map, enter);
-		if (errv < 0)
-			return 0;
-		total += errv;
-	}
-	ty = bpf_core_enum_value(fgs_args, arg2);
-	if (total < MAX_TOTAL) {
-		void *map = &args2_filter_map;
-		unsigned long a2m, arg_meta;
-		long errv;
-
-		a2m = bpf_core_enum_value(fgs_args, arg2m);
-		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a2, arg_meta, map, enter);
-		if (errv < 0)
-			return 0;
-		total += errv;
-	}
-	e->common.size = total;
-	tail_call(ctx, &kprobe_calls, 1);
-	return 0;
+	return generic_process_event0(
+		ctx,
+		&process_call_heap,
+		&args0_filter_map,
+		&args1_filter_map,
+		&args2_filter_map,
+		&kprobe_calls);
 }
-
 __attribute__((section(("kprobe/1")), used))
-int generic_kprobe_process_event1(struct pt_regs *ctx)
+int generic_kprobe_process_event1(void *ctx)
 {
-	enum generic_func_args_enum fgs_args;
-	unsigned long a0, a1, a2, a3, a4;
-	struct execve_map_value *enter;
-	struct msg_generic_kprobe *e;
-	int zero = 0;
-	bool walker = 0;
-	long ty, total;
-	__u32 ppid;
-
-	/* Preamble to setup context */
-	enter = event_find_curr(&ppid, 0, &walker);
-	if (!enter)
-		return 0;
-
-	e = map_lookup_elem(&process_call_heap, &zero);
-	if (!e)
-		return 0;
-
-	total = e->common.size;
-
-	a0 = e->a0;
-	a1 = e->a1;
-	a2 = e->a2;
-	a3 = e->a3;
-	a4 = e->a4;
-
-	/* Arg filter and copy logic */
-	ty = bpf_core_enum_value(fgs_args, arg3);
-	if (total < MAX_TOTAL) {
-		void *map = &args3_filter_map;
-		unsigned long a3m, arg_meta;
-		long errv;
-
-		a3m = bpf_core_enum_value(fgs_args, arg3m);
-		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a3, arg_meta, map, enter);
-		if (errv < 0)
-			return 0;
-		total += errv;
-	}
-	ty = bpf_core_enum_value(fgs_args, arg4);
-	if (total < MAX_TOTAL) {
-		void *map = &args4_filter_map;
-		unsigned long a4m, arg_meta;
-		long errv;
-
-		a4m = bpf_core_enum_value(fgs_args, arg4m);
-		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a4, arg_meta, map, enter);
-		if (errv < 0)
-			return 0;
-		total += errv;
-	}
-	e->common.size = total;
-
-	/* Post event */
-	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
-	/* Code movement from clang forces us to inline bounds checks here */
-	asm volatile("%[total] &= 0x7fff;\n"
-		     "if %[total] < 9000 goto +1\n;"
-		     "%[total] = 9000;\n"
-			: : [total] "+r"(total):);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
-	return 0;
+	return generic_process_event1(
+		ctx,
+		&process_call_heap,
+		&args3_filter_map,
+		&args4_filter_map);
 }
 
