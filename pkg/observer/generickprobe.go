@@ -317,6 +317,8 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 			return nil, fmt.Errorf("Error add enum value failed %d", ret)
 		}
 
+		// NB: bpf side handles 5 args. if there are less than 5 args
+		// defined, fill the rest with nop args.
 		if len(f.Args) < 5 {
 			nop := config.Arg{
 				Type: "nop",
