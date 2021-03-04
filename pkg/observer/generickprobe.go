@@ -328,25 +328,24 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 
 		// Argument format 'aType=filters$metadata'
 		for j, a := range f.Args {
-			fext := a.Meta
 			argType := kprobeStrToTypeId(a.Type)
 			if argType == invalidTypeId {
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
 			}
 
 			// Associate any metadata with the argument
-			argMValue := 0
-			if fext != "" {
-				var err error
+			var argMValue int
+			switch meta := a.Meta; meta {
+			case "":
+				argMValue = 0
 
-				switch fext {
-				case "ret":
-					argMValue = -1
-				default:
-					argMValue, err = strconv.Atoi(fext)
-					if err != nil {
-						return nil, fmt.Errorf("Error filter meta %s invalid: %s\n", fext, err)
-					}
+			case "ret":
+				argMValue = -1
+
+			default:
+				argMValue, err = strconv.Atoi(meta)
+				if err != nil {
+					return nil, fmt.Errorf("Error filter meta %s invalid: %s\n", meta, err)
 				}
 			}
 
