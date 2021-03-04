@@ -964,8 +964,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 			attach,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
-			k.mapDir,
-			load.retProbe)
+			k.mapDir)
 	} else if load.probeType == "sockops" {
 		return bpf.LoadSockopsProgram(
 			version, Verbosity,

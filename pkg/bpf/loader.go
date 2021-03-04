@@ -484,7 +484,7 @@ int sockops_loader(const int version,
 	                  __prog, mapdir, path, prog_type, attach_type);
 }
 
-int tracepoint_loader(const int version,
+int __tracepoint_loader(struct bpf_object *obj,
 		      const int verbosity,
 		      void *btf,
 		      const char *prog,
@@ -492,19 +492,11 @@ int tracepoint_loader(const int version,
 		      const char *attach_name,
 		      const char *label,
 		      const char *__prog,
-		      const char *mapdir,
-		      const bool retprobe)
+		      const char *mapdir)
 {
 	struct bpf_program *prog_bpf;
 	struct bpf_link *prog_attach;
-	struct bpf_object *obj;
 	int err;
-
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
-	if (!obj) {
-		err = -1;
-		goto out;
-	}
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
@@ -544,6 +536,26 @@ out_object:
 	bpf_object__close(obj);
 out:
 	return err;
+}
+
+int tracepoint_loader(const int version,
+		      const int verbosity,
+		      void *btf,
+		      const char *prog,
+		      const char *attach_category,
+		      const char *attach_name,
+		      const char *label,
+		      const char *__prog,
+		      const char *mapdir)
+{
+	struct bpf_object *obj;
+	int err;
+
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
+	if (!obj)
+		return -1;
+
+	return __tracepoint_loader(obj, verbosity, btf, prog, attach_category, attach_name, label, __prog, mapdir);
 }
 
 int __kprobe_loader(struct bpf_object *obj,
@@ -589,17 +601,20 @@ int __kprobe_loader(struct bpf_object *obj,
 	return bpf_link_fd(prog_attach);
 }
 
+
+
 #define MAX_ARGS 5
-int kprobe_loader_args(const int version,
-		  const int verbosity,
-		  void *btf,
-		  const char *prog,
-		  const char *attach,
-		  const char *label,
-		  const char *__prog,
-		  const char *mapdir,
-		  const bool retprobe,
-		  void *args0, void *args1, void *args2, void *args3, void *args4)
+void *generic_loader_args(
+	const int version,
+	const int verbosity,
+	void *btf,
+	const char *prog,
+	const char *attach,
+	const char *label,
+	const char *__prog,
+	const char *mapdir,
+	void *args0, void *args1, void *args2, void *args3, void *args4,
+	const int type)
 {
 	int map_fd, err, i, zero = 0;
 	char kprobe_calls_name[255];
@@ -619,9 +634,9 @@ int kprobe_loader_args(const int version,
 		args4,
 	};
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
+	obj = __loader(version, verbosity, btf, prog, mapdir, 0, type);
 	if (!obj)
-		return -1;
+		goto err;
 
 	for (i = 0; i < MAX_ARGS; i++) {
 		map_fd = bpf_object__find_map_fd_by_name(obj, map_name[i]);
@@ -635,20 +650,35 @@ int kprobe_loader_args(const int version,
 		}
 	}
 
-	snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s/kprobe_calls", mapdir);
-	map_bpf = bpf_object__find_map_by_name(obj, "kprobe_calls");
-	if (err) {
-		fprintf(stderr,
-			"bpf_object__find_map_by_name: obj(%s) map(kprobe_calls) failed",
-			prog);
-		goto kprobe_loader_err;
+	switch (type) {
+		case BPF_PROG_TYPE_KPROBE:
+			snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s/kprobe_calls", mapdir);
+			map_bpf = bpf_object__find_map_by_name(obj, "kprobe_calls");
+			break;
+
+		case BPF_PROG_TYPE_TRACEPOINT:
+			snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s/tp_calls", mapdir);
+			map_bpf = bpf_object__find_map_by_name(obj, "tp_calls");
+			break;
+
+		default:
+			fprintf(stderr, "%s(): unknown program type:%d", __FUNCTION__, type);
+			goto err;
 	}
+	if (!map_bpf) {
+		fprintf(stderr,
+			"bpf_object__find_map_by_name: obj(%s) map(%s) failed",
+			prog, kprobe_calls_name);
+		goto err;
+	}
+
 	bpf_map__unpin(map_bpf, kprobe_calls_name);
 	err = bpf_map__pin(map_bpf, kprobe_calls_name);
 	if (err < 0) {
 		fprintf(stderr, "bpf_map__pin: obj(%s) map(%s) failed: %i", prog, kprobe_calls_name, err);
-		goto kprobe_loader_err;
+		goto err;
 	}
+
 	map_fd = bpf_map__fd(map_bpf);
 	printf("bpf fgs_kprobe_calls map and progs %s mapfd %d\n", __prog, map_fd);
 	if (map_fd >= 0) {
@@ -665,26 +695,64 @@ int kprobe_loader_args(const int version,
 			fd = bpf_program__fd(prog);
 			if (fd < 0) {
 				err = errno;
-				goto kprobe_loader_err;
+				goto err;
 			}
 			snprintf(pin_name, sizeof(pin_name), "%s_%i", __prog, i);
 			bpf_program__unpin(prog, pin_name);
 			err = bpf_program__pin(prog, pin_name);
 			if (err) {
 				printf("program pin %s tailcall err %d\n", pin_name, err);
-				goto kprobe_loader_err;
+				goto err;
 			}
 			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
 			if (err) {
 				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
-				goto kprobe_loader_err;
+				goto err;
 			}
 		}
 	}
 out:
+	return obj;
+err:
+	return NULL;
+}
+
+int kprobe_loader_args(const int version,
+		  const int verbosity,
+		  void *btf,
+		  const char *prog,
+		  const char *attach,
+		  const char *label,
+		  const char *__prog,
+		  const char *mapdir,
+		  const bool retprobe,
+		  void *args0, void *args1, void *args2, void *args3, void *args4) {
+	struct bpf_object *obj;
+	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, args0, args1, args2, args3, args4, BPF_PROG_TYPE_KPROBE);
+	if (!obj) {
+		return -1;
+	}
 	return __kprobe_loader(obj, verbosity, attach, label, __prog, retprobe);
-kprobe_loader_err:
-	return err;
+}
+
+
+
+int tracepoint_loader_args(const int version,
+		  const int verbosity,
+		  void *btf,
+		  const char *prog,
+		  const char *attach_category,
+		  const char *attach,
+		  const char *label,
+		  const char *__prog,
+		  const char *mapdir,
+		  const bool retprobe,
+		  void *args0, void *args1, void *args2, void *args3, void *args4) {
+	struct bpf_object *obj;
+	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, args0, args1, args2, args3, args4, BPF_PROG_TYPE_TRACEPOINT);
+	if (!obj)
+		return -1;
+	return __tracepoint_loader(obj, verbosity, btf, prog, attach_category, attach, label, __prog, mapdir);
 }
 
 int kprobe_loader(const int version,
@@ -698,7 +766,6 @@ int kprobe_loader(const int version,
 		  const bool retprobe)
 {
 	struct bpf_object *obj;
-
 	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
 	if (!obj)
 		return -1;
@@ -829,7 +896,7 @@ func LoadSkSkbParserProgram(__version, __verbosity int, btf uintptr, object, __l
 	return nil, loaderInt
 }
 
-func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
+func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
@@ -842,8 +909,7 @@ func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach,
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	ret := C.bool(retprobe)
-	loader_fd := C.tracepoint_loader(version, verbosity, unsafe.Pointer(btf), o, a_category, a_name, l, p, mapdir, ret)
+	loader_fd := C.tracepoint_loader(version, verbosity, unsafe.Pointer(btf), o, a_category, a_name, l, p, mapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to tracepoint load: %d %s", loaderInt, object), loaderInt
@@ -885,6 +951,40 @@ func LoadKprobeArgsProgram(__version, __verbosity int,
 		verbosity,
 		unsafe.Pointer(btf),
 		o, a, l, p, mapdir, ret,
+		C.CBytes(args.Args0),
+		C.CBytes(args.Args1),
+		C.CBytes(args.Args2),
+		C.CBytes(args.Args3),
+		C.CBytes(args.Args4))
+	loaderInt := int(loader_fd)
+	if loaderInt < 0 {
+		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
+	}
+	return nil, loaderInt
+}
+
+func LoadTracepointArgsProgram(__version, __verbosity int,
+	btf uintptr,
+	object, attach, __label, __prog, __mapdir string,
+	retprobe bool,
+	args api.KprobeArgs) (error, int) {
+	version := C.int(__version)
+	verbosity := C.int(__verbosity)
+	o := C.CString(object)
+	aa := strings.Split(attach, "/")
+	if len(aa) != 2 {
+		return fmt.Errorf("tracepoint attach argument must be in the form category/tracepoint. Instead got: %s", attach), -1
+	}
+	a_category := C.CString(aa[0])
+	a_name := C.CString(aa[1])
+	l := C.CString(__label)
+	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
+	ret := C.bool(retprobe)
+	loader_fd := C.tracepoint_loader_args(version,
+		verbosity,
+		unsafe.Pointer(btf),
+		o, a_category, a_name, l, p, mapdir, ret,
 		C.CBytes(args.Args0),
 		C.CBytes(args.Args1),
 		C.CBytes(args.Args2),
