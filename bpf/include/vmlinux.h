@@ -1,17 +1,20 @@
 /* User configurable BTF */
 enum generic_func_args_enum {
 	func_id = 0x1,
+	/* arg{0..4}: types of arguments */
 	arg0    = 0x2,
 	arg1    = 0x3,
 	arg2    = 0x4,
 	arg3    = 0x5,
 	arg4    = 0x6,
 	syscall = 0x7,
+	/* arg{0..4}m: metadata of arguments */
 	arg0m   = 0x8,
 	arg1m   = 0x9,
 	arg2m   = 0x10,
 	arg3m   = 0x11,
 	arg4m   = 0x12,
+	/* {ns,}pid filter arguments */
 	nspid_type  = 0x13,
 	nspid_value = 0x14,
 	pid_type    = 0x15,
