@@ -19,13 +19,11 @@ jobs:
       run: |
         docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
         sudo apt install libelf-dev netcat-traditional
-        export PATH=/opt/hostedtoolcache/go/1.13.4/x64/bin:${GOPATH}/bin:${PATH}
+        export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
         cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs
         sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
         sudo -E ldconfig /usr/local/
-        export LD_LIBRARY_PATH=/usr/local/lib:$LD_LIBRARY_PATH
-        export PATH=/usr/local/bin:$PATH
         sudo sed -i '/secure_path/d' /etc/sudoers
         sudo sed -i '/env_reset/d' /etc/sudoers
         sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
