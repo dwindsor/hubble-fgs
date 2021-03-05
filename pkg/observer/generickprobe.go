@@ -461,6 +461,8 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 	// we don't actually need retprobe here but might be useful in the future for dbg?
 	retprobe := genericKprobeLoadArgs[load.observer__attach].retprobe
 
+	observerAllPrograms = append(observerAllPrograms, load)
+
 	if x64 {
 		attach = load.observer__x64_attach
 	} else {

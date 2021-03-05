@@ -1483,6 +1483,11 @@ func removeTracepoint(fd int) {
 
 func (k *ObserverKprobe) removeProgram(prog *bpfLoad) {
 	os.Remove(k.bpfDir + prog.observer__prog)
+	if prog.probeType == "generic_kprobe" {
+		os.Remove(k.bpfDir + prog.observer__prog + "_0")
+		os.Remove(k.bpfDir + prog.observer__prog + "_1")
+		os.Remove(k.bpfDir + "kprobe_calls")
+	}
 	if prog.tracefd >= 0 {
 		removeTracepoint(prog.tracefd)
 		prog.tracefd = -1
