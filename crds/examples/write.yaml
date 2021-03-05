@@ -1,0 +1,23 @@
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "sys-write"
+spec:
+  kprobes:
+  - call: "__x64_sys_write"
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+      sizeArgIndex: 2
+    - index: 2
+      type: "size_t"
+    filters:
+      pids:
+      - op: "eq"
+        value: 25587
+      args:
+      - index: 0
+        op: "eq"
+        value: "1"

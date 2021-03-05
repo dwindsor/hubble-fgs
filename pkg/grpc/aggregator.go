@@ -104,7 +104,7 @@ func (a *Aggregator) handleProcessAccept(event *fgs.GetEventsResponse) {
 		fgs.EventType_PROCESS_ACCEPT,
 		acceptEvent.Process.ExecId,
 		acceptEvent.SourceIp,
-		acceptEvent.SourcePort,
+		acceptEvent.SourcePort.Value,
 		getNameOrIp(acceptEvent.DestinationIp, acceptEvent.DestinationNames),
 	)
 	current := a.cache[key]
@@ -124,7 +124,7 @@ func (a *Aggregator) handleProcessConnect(event *fgs.GetEventsResponse) {
 		connectEvent.Process.ExecId,
 		connectEvent.SourceIp,
 		getNameOrIp(connectEvent.DestinationIp, connectEvent.DestinationNames),
-		connectEvent.DestinationPort,
+		connectEvent.DestinationPort.Value,
 	)
 	current := a.cache[key]
 	if current == nil {

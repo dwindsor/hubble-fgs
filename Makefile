@@ -116,4 +116,12 @@ tools-install: libbpf-install clang-install
 quick-install:
 	helm template ./install/kubernetes/hubble-fgs --namespace kube-system > ./install/kubernetes/quick-install.yaml
 
-.PHONY: headers all clean image install lint hubble-fgs quick-install hubble-enterprise
+generate:
+	./tools/controller-gen crd paths=./pkg/k8s/apis/... output:dir=./crds
+	bash vendor/k8s.io/code-generator/generate-groups.sh all \
+	  github.com/covalentio/hubble-fgs/pkg/k8s/client \
+	  github.com/covalentio/hubble-fgs/pkg/k8s/apis \
+	  isovalent.com:v1alpha1 \
+	  --go-header-file hack/custom-boilerplate.go.txt
+
+.PHONY: headers all clean image install lint hubble-fgs quick-install hubble-enterprise generate

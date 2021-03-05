@@ -7,9 +7,7 @@ require (
 	github.com/cilium/hubble v0.5.1
 	github.com/ckaznocha/protoc-gen-lint v0.2.1
 	github.com/envoyproxy/protoc-gen-validate v0.4.0
-	github.com/fsnotify/fsnotify v1.4.10-0.20200417215612-7f4cf4dd2b52 // indirect
 	github.com/golang/protobuf v1.3.2
-	github.com/google/go-cmp v0.5.2 // indirect
 	github.com/google/gops v0.3.14
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
@@ -22,15 +20,15 @@ require (
 	github.com/stretchr/testify v1.5.1
 	github.com/vishvananda/netlink v1.1.1-0.20200210222539-bfba8e4149db
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20201207223542-d4d67f95c62d
-	golang.org/x/time v0.0.0-20200630173020-3af7569d3a1e // indirect
+	golang.org/x/sys v0.0.0-20201231184435-2d18734c6014
 	google.golang.org/grpc v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.3.0
 	k8s.io/api v0.18.4
-	k8s.io/apimachinery v0.18.8
+	k8s.io/apimachinery v0.18.4
 	k8s.io/client-go v11.0.0+incompatible
-	k8s.io/utils v0.0.0-20200619165400-6e3d28b6ed19 // indirect
+	k8s.io/code-generator v0.18.4
+	sigs.k8s.io/controller-tools v0.4.1
 )
 
 // has to be in sync with both cilium and hubble overrides (mostly cilium).
