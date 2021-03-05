@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"path"
 	"strconv"
 	"strings"
 
@@ -406,7 +407,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 
 		load := &bpfLoad{}
 		load.observer__x64_attach = funcName
-		load.Observer__program = HubbleLib + "bpf_generic_kprobe.o"
+		load.Observer__program = path.Join(HubbleLib, "bpf_generic_kprobe.o")
 		load.observer__label = "kprobe/generic_kprobe"
 		load.observer__attach = funcName
 		load.observer__prog = "kprobe" + "_" + funcName
@@ -419,7 +420,7 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 		if is_retprobe {
 			loadret := &bpfLoad{}
 			loadret.observer__x64_attach = funcName
-			loadret.Observer__program = HubbleLib + "bpf_generic_retkprobe.o"
+			loadret.Observer__program = path.Join(HubbleLib, "bpf_generic_retkprobe.o")
 			loadret.observer__label = "kprobe/generic_retkprobe"
 			loadret.observer__attach = funcName
 			loadret.observer__prog = "kretprobe" + "_" + funcName

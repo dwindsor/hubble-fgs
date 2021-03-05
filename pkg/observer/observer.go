@@ -1334,7 +1334,7 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 		last := strings.Split(p.Observer__program, "/")
 		filename := last[len(last)-1]
 
-		path := HubbleLib + filename
+		path := path.Join(HubbleLib, filename)
 		if _, err := os.Stat(path); err == nil {
 			p.Observer__program = path
 			continue
@@ -1379,7 +1379,7 @@ func (k *ObserverKprobe) observerFindBTF(ctx context.Context) error {
 		}
 		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
 
-		runFile = HubbleLib + "btf"
+		runFile = path.Join(HubbleLib, "btf")
 		if _, err := os.Stat(runFile); err == nil {
 			ObserverBTF = runFile
 			return nil
