@@ -5,7 +5,10 @@ CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
 LOCAL_CLANG ?= 1
 LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.2
-CLANG_IMAGE = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
+CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
+
+LIBBPF_INSTALL_DIR ?= ./lib
+CLANG_INSTALL_DIR  ?= ./bin
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
 
@@ -93,13 +96,22 @@ image-test:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
 
-libbpf:
+libbpf-install:
 	$(eval id=$(shell docker create $(LIBBPF_IMAGE)))
-	mkdir -p lib
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so ./lib/
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 ./lib/
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 ./lib/
+	mkdir -p $(LIBBPF_INSTALL_DIR)
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so $(LIBBPF_INSTALL_DIR)
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 $(LIBBPF_INSTALL_DIR)
+	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 $(LIBBPF_INSTALL_DIR)
 	docker stop ${id}
+
+clang-install:
+	$(eval id=$(shell docker create $(CLANG_IMAGE)))
+	mkdir -p $(CLANG_INSTALL_DIR)
+	docker cp ${id}:/usr/local/bin/clang-11 $(CLANG_INSTALL_DIR)/clang
+	docker cp ${id}:/usr/local/bin/llc $(CLANG_INSTALL_DIR)/llc
+	docker stop ${id}
+
+tools-install: libbpf-install clang-install
 
 quick-install:
 	helm template ./install/kubernetes/hubble-fgs --namespace kube-system > ./install/kubernetes/quick-install.yaml
