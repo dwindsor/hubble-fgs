@@ -1,14 +1,18 @@
 package observer
 
 import (
+	"bytes"
 	"context"
 	"encoding/json"
 	"fmt"
+	"io/ioutil"
 	"os"
 	"os/exec"
+	"path/filepath"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/filters"
@@ -221,4 +225,33 @@ func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 		panic("FindPod not implemented")
 	}
 	return f.OnFindPod(containerID)
+}
+
+// Used to wait for a process to start, we do a lookup on PROCFS
+// because this may be called before kprobe is created.
+func waitForProcess(process string) error {
+	var b []byte
+	b = append(b, 0x00)
+
+	procfs := os.Getenv("FGS_PROCFS")
+	if procfs == "" {
+		procfs = "/proc/"
+	}
+	procDir, _ := ioutil.ReadDir(procfs)
+	for i := 0; i < 120; i++ {
+		for _, d := range procDir {
+
+			cmdline, err := ioutil.ReadFile(filepath.Join(procfs, d.Name(), "/cmdline"))
+			if err != nil {
+				continue
+			}
+			cmdTokens := bytes.Split([]byte(cmdline), b)
+			cmd := string(bytes.Join(cmdTokens, []byte(" ")))
+			if strings.Contains(cmd, process) {
+				return nil
+			}
+		}
+		time.Sleep(1 * time.Second)
+	}
+	return fmt.Errorf("process '%s' did not start", process)
 }

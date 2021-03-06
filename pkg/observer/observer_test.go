@@ -1338,6 +1338,8 @@ func TestDockerExistingListenEvent(t *testing.T) {
 
 	/* Start server before creating kprobe */
 	dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
+	waitForProcess("nc -nvlp 8081")
+	time.Sleep(2 * time.Second)
 
 	/* Create kprobe */
 	kprobe, err := getDefaultObserver(t, withPretty(), withK8sWatcher(w), withCiliumState(s))
