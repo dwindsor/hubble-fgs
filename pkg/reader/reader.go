@@ -109,7 +109,8 @@ func DecodeKtime(ktime int64) (time.Time, error) {
 		return time.Time{}, err
 	}
 	diff := ktime - currentTime.Nano()
-	return time.Now().Add(time.Duration(diff)), nil
+	t := time.Now().Add(time.Duration(diff))
+	return t.Truncate(1 * time.Millisecond), nil
 }
 
 func argsDecoderTrim(r rune) bool {
