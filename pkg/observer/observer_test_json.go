@@ -378,7 +378,7 @@ func jsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 			break
 		}
 	}
-	sort.Sort(ByTime{events})
+	sort.Stable(ByTime{events})
 
 	evidx := 0
 	for tidx, t := range trace[found:] {
