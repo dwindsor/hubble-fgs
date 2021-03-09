@@ -762,6 +762,10 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		ServerSession:     reader.GetTLSSession(event.ServerHello.Session),
 		Certificates:      event.ServerCert.Certificates,
 		CertificateError:  getTLSCertificateErrorCode(event.ServerCert.Error),
+		ParserStateNext:   event.ServerCert.ParserState.Next,
+		ParserStateNeeded: event.ServerCert.ParserState.Needed,
+		ParserStateCsize:  event.ServerCert.ParserState.Csize,
+		ParserStateSkblen: event.ServerCert.ParserState.SkbLen,
 	}
 	if proc == nil || (proc.Docker != "" && proc.Pod == nil) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)

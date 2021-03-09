@@ -635,6 +635,15 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 /* TBD: JF, extend verifier to understand void functions */
 #ifndef SK_MSG
 static inline __attribute__((always_inline))
+void errout_pack(int *errout, int code, int a, int b, int c, int d) {
+	errout[1] = code;
+	errout[2] = a;
+	errout[3] = b;
+	errout[4] = c;
+	errout[5] = d;
+}
+
+static inline __attribute__((always_inline))
 int bpf_skskb_post_cert(struct __sk_buff *skb,
 			struct msg_tls_ipv4 *key,
 			struct msg_tls *event,
@@ -663,7 +672,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 
 	next += TLS_HEADER_BYTES; // Account for TLS Server Hello header
 	if (next > 4096) {
-		errout[1] = ENEXTTOOLARGE;
+		errout_pack(errout, ENEXTTOOLARGE, next, 0, 0, 0);
 		goto out;
 	}
 
@@ -672,7 +681,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 	if (data + sizeof(struct tls_handshake_certificate) > data_end) {
 		data = get_data(skb, next, sizeof(struct tls_handshake_certificate));
 		if (!data) {
-			errout[1] = EGETDATAHDR;
+			errout_pack(errout, EGETDATAHDR, next, 0, csize, skb->len);
 			goto out;
 		}
 		data_end = (void *)(long)skb->data_end;
@@ -696,7 +705,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 		asm volatile ("%[next] &= 0x1fff;\n": [next] "+r"(next)::);
 		data = get_data(skb, next, needed);
 		if (!data) {
-			errout[1] = EGETDATACERT;
+			errout_pack(errout, EGETDATACERT, next, needed, csize, skb->len);
 			goto out;
 		}
 		csize = needed;
@@ -734,7 +743,7 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 out:
 	/* userspace wants to see an event so we generate an error event */
 	errout[0] = 0;
-	copied = sizeof(__u8) + sizeof(struct msg_tls_ipv4) + (sizeof(int) * 2);
+	copied = sizeof(__u8) + sizeof(struct msg_tls_ipv4) + (sizeof(int) * 6);
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copied);
 	return 0;
 }
@@ -760,7 +769,7 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 	errout = (int *)buffer;
 
 	if (next > 4096) {
-		errout[1] = ENEXTTOOLARGE;
+		errout_pack(errout, ENEXTTOOLARGE, next, 0, 0, 0);
 		goto out;
 	}
 	event->type = 0;
@@ -777,7 +786,7 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 		}
 		data = get_data(skb, next, needed);
 		if (!data) {
-			errout[1] = EGETDATAMORECERT;
+			errout_pack(errout, EGETDATAMORECERT, next, needed, copy, skb->len);
 			goto out;
 		}
 		copy = needed;
@@ -806,7 +815,7 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 out:
 	/* userspace wants to see an event so we generate an error event */
 	errout[0] = 0;
-	copy = sizeof(__u8) + sizeof(struct msg_tls_ipv4) + (sizeof(int) * 2);
+	copy = sizeof(__u8) + sizeof(struct msg_tls_ipv4) + (sizeof(int) * 6);
 	perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, start, copy);
 	return 0;
 }

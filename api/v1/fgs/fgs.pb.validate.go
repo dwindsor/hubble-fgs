@@ -1588,6 +1588,14 @@ func (m *Tls) Validate() error {
 
 	// no validation rules for CertificateError
 
+	// no validation rules for ParserStateNext
+
+	// no validation rules for ParserStateNeeded
+
+	// no validation rules for ParserStateCsize
+
+	// no validation rules for ParserStateSkblen
+
 	return nil
 }
 

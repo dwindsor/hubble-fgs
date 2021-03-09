@@ -9,8 +9,9 @@ import (
 )
 
 func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
-	var m *api.MsgTLSEvent
+	var errState api.MsgTLSParserState
 	var certStrings []string
+	var m *api.MsgTLSEvent
 	errCode := uint32(0)
 
 	m = &api.MsgTLSEvent{}
@@ -30,7 +31,7 @@ func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
 		return
 	}
 
-	msgUnix := msgToTLSEventUnix(m, certStrings, errCode)
+	msgUnix := msgToTLSEventUnix(m, certStrings, errCode, errState)
 	/* OR filter together */
 	k.observerListenersTLS(msgUnix)
 	/* Keeping pretty printer because it helps debugging filters */
@@ -39,9 +40,23 @@ func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
 	}
 }
 
+// bpf_skskb_post_cert and bpf_skskb_post_more_cert return additional
+// information around their specific errors.
+func errorHasState(errType uint32) bool {
+	switch errType {
+	case api.TlsCertificateErrorTooLarge,
+		api.TlsCertificateErrorGetDataHdr,
+		api.TlsCertificateErrorGetDataCert,
+		api.TlsCertificateErrorGetDataMoreCert:
+		return true
+	}
+	return false
+}
+
 func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 	var certStrings []string
 	var errCode uint32
+	var errState api.MsgTLSParserState
 	var bytes uint32
 	var op uint8
 
@@ -76,12 +91,15 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 	} else if err = binary.Read(r, binary.LittleEndian, &bytes); err != nil {
 		errCode = api.TlsCertificateErrorLengthRead
 	} else if bytes == 0 {
-		var errBpf uint8
+		var errBpf uint32
 
 		errCode = api.TlsCertificateErrorLengthRead
 		err := binary.Read(r, binary.LittleEndian, &errBpf)
 		if err == nil {
 			errCode = uint32(errBpf)
+			if errorHasState(errCode) {
+				binary.Read(r, binary.LittleEndian, &errState)
+			}
 		} else {
 			errCode = api.TlsCertificateErrorMissingCode
 		}
@@ -131,7 +149,7 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 	}
 
 	delete(k.tlsInProgress, key)
-	msgUnix := msgToTLSEventUnix(m.tls, certStrings, errCode)
+	msgUnix := msgToTLSEventUnix(m.tls, certStrings, errCode, errState)
 
 	/* OR filter together */
 	k.observerListenersTLS(msgUnix)

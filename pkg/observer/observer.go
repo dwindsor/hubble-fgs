@@ -542,7 +542,7 @@ func (k *ObserverKprobe) RemoveListener(listener Listener) {
 	}
 }
 
-func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32) *api.MsgTLSEventUnix {
+func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errState api.MsgTLSParserState) *api.MsgTLSEventUnix {
 	unix := &api.MsgTLSEventUnix{}
 
 	unix.Common = m.Common
@@ -553,6 +553,7 @@ func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32) *api.
 
 	if errCode > 0 {
 		unix.ServerCert.Error = errCode
+		unix.ServerCert.ParserState = errState
 	} else {
 		unix.ServerCert.Certificates = certs
 	}

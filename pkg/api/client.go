@@ -374,9 +374,18 @@ type MsgTLS struct {
 	Bytes             uint32
 }
 
+type MsgTLSParserState struct {
+	Next   uint32
+	Needed uint32
+	Csize  uint32
+	SkbLen uint32
+}
+
 type MsgTLSCertificates struct {
 	Certificates []string
 	Error        uint32
+	// Error Info useful for bug reports
+	ParserState MsgTLSParserState
 }
 
 type MsgExecveKey struct {
