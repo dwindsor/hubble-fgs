@@ -354,8 +354,8 @@ type MsgTLSIPv4 struct {
 	DAddr     uint32
 	DPort     uint16
 	SPort     uint16
-	Uid       uint64
 	Remaining uint32
+	Uid       uint64
 }
 
 type MsgTLS struct {

@@ -190,8 +190,8 @@ func (k *ObserverKprobe) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map, 
 		Daddr:     tcp.Tuple.DAddr,
 		Dport:     tcp.Tuple.DPort,
 		Sport:     tcp.Tuple.SPort,
-		Uid:       uid,
 		Remaining: 0,
+		Uid:       uid,
 	}
 
 	val := &SocketMapValue{
