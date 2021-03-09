@@ -349,7 +349,6 @@ int tc_loader(const int version,
 
 	snprintf(tc_calls_name, sizeof(tc_calls_name), "%s/tls_calls", mapdir);
 	map_fd = bpf_obj_get(tc_calls_name);
-	printf("bpf fgs_tc_calls map and progs %s mapfd %d\n", __prog, map_fd);
 	if (map_fd >= 0) {
 		for (i = 0; i < 2; i++) {
 			struct bpf_program *prog;
@@ -377,7 +376,6 @@ int tc_loader(const int version,
 				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
 				goto out;
 			}
-			printf("bpf map update elem %s %d\n", pin_name, err);
 		}
 	}
 
