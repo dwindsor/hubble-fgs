@@ -851,6 +851,11 @@ func TestTCTls12(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
+	certs := []string{
+		"CN=*.badssl.com,O=Lucas Garron Torres,L=Walnut Creek,ST=California,C=US",
+		"CN=DigiCert SHA2 Secure Server CA,O=DigiCert Inc,C=US",
+	}
+
 	trace := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
@@ -887,6 +892,7 @@ func TestTCTls12(t *testing.T) {
 					SniName:         "tls-v1-2.badssl.com",
 					ClientFlags:     "ExtVersion",
 					ServerFlags:     "",
+					Certificates:    certs,
 				},
 			},
 		},

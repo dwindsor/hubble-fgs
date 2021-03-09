@@ -228,6 +228,17 @@ func jsonTestCompareTls(a, b *fgs.GetEventsResponse_Tls) bool {
 		return false
 	}
 
+	if len(bTls.Certificates) > 0 {
+		if len(bTls.Certificates) != len(aTls.Certificates) {
+			return false
+		}
+		for i, c := range bTls.Certificates {
+			if c != aTls.Certificates[i] {
+				return false
+			}
+		}
+	}
+
 	return true
 }
 
