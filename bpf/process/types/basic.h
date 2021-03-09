@@ -146,7 +146,7 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
  */
 static inline __attribute__((always_inline))
 long read_call_arg(char *args,
-		  int type, long off,
+		  int type, long orig_off,
 		  unsigned long arg, unsigned long argm,
 		  void *filter_map,
 		  struct execve_map_value *proc)
@@ -154,23 +154,65 @@ long read_call_arg(char *args,
 	long size = -1;
 	int zero = 0;
 
-	if (ty_is_nop(type)) {
-		size = 0;
-	} else if (type == string_type && MAX_STRING + off < 4095) {
+	size_t min_size = 0;
+	switch (type) {
+		case string_type:
+			min_size = MAX_STRING;
+			break;
+
+		case int_type:
+		case s32_ty:
+		case u32_ty:
+			min_size = 4;
+			break;
+
+		case skb_type:
+			min_size = sizeof(struct skb_type);
+			break;
+
+		case size_type:
+		case s64_ty:
+		case u64_ty:
+			min_size = 8;
+			break;
+
+		case char_buf:
+			min_size = 4;
+			break;
+
+		case char_iovec:
+			min_size = 4;
+			break;
+
+		// nop or something else we do not process here
+		default:
+		return 0;
+	}
+	if (orig_off >= 4095 - min_size) {
+		return 0;
+	}
+	args += orig_off;
+
+	if (type == string_type) {
+		const long off = 0;
 		int *s = (int *)&args[off];
 		size = probe_read_str(&args[off+4], MAX_STRING, (char *)arg);
 		*s = size;
 		size += 4; // accounting for initial length int
-	} else if (type == size_type && sizeof(size_t) + off < 4095) {
+	} else if (type == size_type) {
+		const long off = 0;
 		probe_read(&args[off], sizeof(size_t), &arg);
 		size = sizeof(size_t);
-	} else if ((type == s64_ty || type == u64_ty) && 8 + off < 4095) {
+	} else if ((type == s64_ty || type == u64_ty)) {
+		const long off = 0;
 		probe_read(&args[off], 8, &arg);
 		size = 8;
-	} else if ((type == s32_ty || type == u32_ty) && 4 + off < 4095) {
+	} else if ((type == s32_ty || type == u32_ty)) {
+		const long off = 0;
 		probe_read(&args[off], 4, &arg);
 		size = 4;
-	} else if (type == int_type && sizeof(int) + off < 4095) {
+	} else if (type == int_type) {
+		const long off = 0;
 		int value;
 		int *f;
 
@@ -210,7 +252,8 @@ long read_call_arg(char *args,
 		}
 accept_filter:
 		size  = sizeof(int);
-	} else if (type == skb_type && sizeof(struct skb_type) + off < 4095) {
+	} else if (type == skb_type) {
+		const long off = 0;
 		struct sk_buff *skb = (struct sk_buff *)arg;
 		struct skb_type *skb_event = (struct skb_type *)&args[off];
 
@@ -220,6 +263,7 @@ accept_filter:
 		probe_read(&skb_event->mark, sizeof(__u32), _(&skb->mark));
 		size = sizeof(struct skb_type);
 	} else if (type == char_buf) {
+		const long off = 0;
 		int *s = (int *)&args[off];
 		size_t bytes = 0;
 
@@ -244,7 +288,9 @@ accept_filter:
 			return return_error(s, char_buf_enomem);
 		}
 	} else if (type == char_iovec) {
-		int err, i = 0, cnt, orig = off, *s = (int *)&args[off];
+		long off = 0;
+		const int orig = off;
+		int err, i = 0, cnt, *s = (int *)&args[off];
 
 		if (argm == -1) {
 			proc->retprobe_buffer = arg;
