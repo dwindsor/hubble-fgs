@@ -902,6 +902,7 @@ int event_tls_cert(struct __sk_buff *skb)
 	return TC_ACT_UNSPEC;
 }
 
+static inline __attribute__((always_inline))
 int event_post_more_cert(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
