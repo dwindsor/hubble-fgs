@@ -112,7 +112,7 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 		goto char_iovec_done;					\
 	c = parse_iovec_array(args, arg, i, off);			\
 	if (c < 0)							\
-	       return return_stack_error(args, orig, c);			\
+	       return return_stack_error(args, 0, c);			\
 	size += c;							\
 	c &= 0x7fff;							\
 	off += c;							\
@@ -194,30 +194,25 @@ long read_call_arg(char *args,
 	args += orig_off;
 
 	if (type == string_type) {
-		const long off = 0;
-		int *s = (int *)&args[off];
-		size = probe_read_str(&args[off+4], MAX_STRING, (char *)arg);
+		int *s = (int *)args;
+		size = probe_read_str(&args[4], MAX_STRING, (char *)arg);
 		*s = size;
 		size += 4; // accounting for initial length int
 	} else if (type == size_type) {
-		const long off = 0;
-		probe_read(&args[off], sizeof(size_t), &arg);
+		probe_read(args, sizeof(size_t), &arg);
 		size = sizeof(size_t);
 	} else if ((type == s64_ty || type == u64_ty)) {
-		const long off = 0;
-		probe_read(&args[off], 8, &arg);
+		probe_read(args, 8, &arg);
 		size = 8;
 	} else if ((type == s32_ty || type == u32_ty)) {
-		const long off = 0;
-		probe_read(&args[off], 4, &arg);
+		probe_read(args, 4, &arg);
 		size = 4;
 	} else if (type == int_type) {
-		const long off = 0;
 		int value;
 		int *f;
 
 		probe_read(&value, sizeof(int), &arg);
-		probe_read(&args[off], sizeof(int), &value);
+		probe_read(args, sizeof(int), &value);
 
 		f = map_lookup_elem(filter_map, &zero);
 		if (f && *f) {
@@ -253,9 +248,8 @@ long read_call_arg(char *args,
 accept_filter:
 		size  = sizeof(int);
 	} else if (type == skb_type) {
-		const long off = 0;
 		struct sk_buff *skb = (struct sk_buff *)arg;
-		struct skb_type *skb_event = (struct skb_type *)&args[off];
+		struct skb_type *skb_event = (struct skb_type *)args;
 
 		probe_read(&skb_event->hash, sizeof(__u32), _(&skb->hash));
 		probe_read(&skb_event->len, sizeof(__u32), _(&skb->len));
@@ -263,9 +257,9 @@ accept_filter:
 		probe_read(&skb_event->mark, sizeof(__u32), _(&skb->mark));
 		size = sizeof(struct skb_type);
 	} else if (type == char_buf) {
-		const long off = 0;
-		int *s = (int *)&args[off];
+		int *s = (int *)args;
 		size_t bytes = 0;
+		int err;
 
 		if (argm == -1) {
 			proc->retprobe_buffer = arg;
@@ -273,23 +267,17 @@ accept_filter:
 		}
 		probe_read(&bytes, sizeof(bytes), &argm);
 
-		if (off < 4095) {
-			int err;
-			/* Ensure bytes does not read past end of buffer */
-			bytes &= 0x7fff;   // required to create min bound
-			if (bytes > 6000)  // creates uppder bounds [0, 4000]
-				return return_error(s, char_buf_toolarge);
-			err = probe_read(&args[off+4], bytes, (char *)arg);
-			if (err < 0)
-				return return_error(s, char_buf_pagefault);
-			size = bytes + 4;
-			*s = (int)bytes;
-		} else {
-			return return_error(s, char_buf_enomem);
-		}
+		/* Ensure bytes does not read past end of buffer */
+		bytes &= 0x7fff;   // required to create min bound
+		if (bytes > 6000)  // creates uppder bounds [0, 4000]
+			return return_error(s, char_buf_toolarge);
+		err = probe_read(&args[4], bytes, (char *)arg);
+		if (err < 0)
+			return return_error(s, char_buf_pagefault);
+		size = bytes + 4;
+		*s = (int)bytes;
 	} else if (type == char_iovec) {
 		long off = 0;
-		const int orig = off;
 		int err, i = 0, cnt, *s = (int *)&args[off];
 
 		if (argm == -1) {
@@ -298,7 +286,7 @@ accept_filter:
 		}
 		err = probe_read(&cnt, sizeof(cnt), &argm);
 		if (err < 0) {
-			return return_stack_error(args, orig, char_buf_pagefault);
+			return return_stack_error(args, 0, char_buf_pagefault);
 		}
 
 		size = 0;
@@ -306,16 +294,7 @@ accept_filter:
 		PARSE_IOVEC_ENTRIES // may return an error directly
 		/* PARSE_IOVEC_ENTRIES will jump here when done or return error */
 char_iovec_done:
-		/* This could be a buggy size_t -> int conversion except
-		 * we bound with 0x7fff so should be good. We have to use
-		 * orig to reread out s here because compiler pushed map
-		 * pointer into stack and is going to read orig (off) bytes
-		 * into it except pre 5.x we are not keeping bounds in stack
-		 * and this fails on 4.19. So we get this explicit offset
-		 * mess.
-		 */
-		asm volatile("%[orig] &= 0xfff;\n" :: [orig] "r+" (orig):);
-		s = (int *)&args[orig];
+		s = (int *)args;
 		*s = size;
 		size += 4;
 	}
