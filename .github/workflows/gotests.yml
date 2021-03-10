@@ -37,7 +37,7 @@ jobs:
         export FGS_LIB="/home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs/bpf/objs/"
         sudo -E make test
     - name: Upload FGS logs
-      if: always()
+      if: failure()
       uses: actions/upload-artifact@v2
       with:
         name: hubble-fgs-json
