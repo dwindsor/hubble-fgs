@@ -1,35 +1,40 @@
 #!/bin/bash
 
 FGS_DIR=$(realpath $(dirname $0)/..)
-BTF="/var/lib/kata-containers/images/btf"
 
 CONTAINER_REPO="covalentio"
 CONTAINER_FGS="${CONTAINER_REPO}/hubble-fgs"
 CONTAINER_TEST="${CONTAINER_REPO}/hubble-fgs-test"
 CONTAINER_DEV="${CONTAINER_REPO}/hubble-fgs-dev"
-CONTAINER_CMD=""
 CONTAINER_NAME="kata-fgs"
-DOCKER_VOLUMES="-v /proc:/procRoot -v ${BTF}:/var/lib/hubble-fgs/btf"
 
+btf="/var/lib/kata-containers/images/btf"
 container="covalentio/hubble-fgs"
 opt_test=0
 
 usage() {
-    echo "Usage: $0 [-h] [-t|-d] [-s] [-l] [-D]"
+    echo "Usage: $0 [-h] [-d|-t|-c <container>] [-s|-e] [-l] [-D]"
     echo "Options:"
     echo "  -h: help"
-    echo "  -t: use test container ($CONTAINER_TEST)"
+
     echo "  -d: use dev container ($CONTAINER_DEV)"
+    echo "  -t: use test container ($CONTAINER_TEST)"
+    echo "  -c: specify which container to run as argument"
+
     echo "  -s: run a shell"
-    echo "  -l: mount local dir inside container"
+    echo "  -x: run whatever comes after arguments"
     echo "  -e: exec inside container"
-    echo "  -D: debug info"
+
+    echo "  -l: mount local dir inside container"
+
+    echo "  -D: print commands of this script"
+
 }
 
-set -e
-
 container=${CONTAINER_FGS}
-while getopts "htsdelD" opt; do
+docker_volumes="-v /proc:/procRoot"
+
+while getopts "hdtc:sexlDb:" opt; do
     case $opt in
         h)
             usage
@@ -41,14 +46,23 @@ while getopts "htsdelD" opt; do
         d)
             container=${CONTAINER_DEV}
             ;;
+        c)
+            container=${OPTARG}
+            ;;
+        b)
+           btf=${OPTARG}
+           ;;
         s)
             opt_shell=true
             ;;
         e)
             opt_exec=true
             ;;
+	x)
+           opt_arg=true
+	   ;;
         l)
-            DOCKER_VOLUMES="$DOCKER_VOLUMES -v ${FGS_DIR}:/go/src/github.com/covalentio/hubble-fgs"
+	    docker_volumes="$docker_volumes -v ${FGS_DIR}:/go/src/github.com/covalentio/hubble-fgs"
             ;;
 
         D)
@@ -61,13 +75,24 @@ while getopts "htsdelD" opt; do
 done
 
 
+KATA_RUNTIME=$(docker -D info | grep Runtimes: | grep -o 'kata[^ ]*')
+if [ -z "$KATA_RUNTIME" ]; then
+	echo "Cannot find kata runtime. Bailing out."
+	exit 1
+else
+	echo "Using $KATA_RUNTIME as kata runtime"
+fi
+
+docker_volumes="$docker_volumes -v ${btf}:/var/lib/hubble-fgs/btf"
+
+shift $(expr $OPTIND - 1)
 if [ "$opt_exec" = true ]; then
     set -x
     docker exec -it kata-fgs bash
     exit
-fi
-
-if [ "$opt_shell" = true ]; then
+elif [ "$opt_arg" = true ]; then
+    container_cmd="$@"
+elif [ "$opt_shell" = true ]; then
     container_cmd="bash"
     if [ -f "$FGS_DIR/.bashrc-fgs" ]; then
         container_cmd="$container_cmd --rcfile .bashrc-fgs"
@@ -75,13 +100,12 @@ if [ "$opt_shell" = true ]; then
 fi
 
 docker run \
-    --runtime=kata-runtime \
+    --runtime=$KATA_RUNTIME \
     --cap-add all \
     --rm \
     -ti \
     --ulimit memlock=-1:-1 \
-    --runtime=kata-runtime \
     --name $CONTAINER_NAME \
-    $DOCKER_VOLUMES \
+    $docker_volumes \
     $container \
     $container_cmd

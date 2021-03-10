@@ -42,7 +42,7 @@ COPY --from=bpftool  /bin/bpftool /usr/bin/
 RUN ldconfig /usr/local/; export LD_LIBRARY_PATH=/usr/local/lib/
 WORKDIR /go/src/github.com/covalentio/hubble-fgs
 COPY . ./
-RUN make hubble-fgs hubble-enterprise
+RUN make hubble-fgs hubble-enterprise test-compile
 
 
 ENV FGS_PROCFS=/procRoot/
