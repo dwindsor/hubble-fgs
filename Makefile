@@ -57,7 +57,7 @@ clean:
 
 
 test:
-	$(GO) test $(GOFLAGS) -cover $$(go list $(GOFLAGS) ./...)
+	$(GO) test $(GOFLAGS) -failfast -cover $$(go list $(GOFLAGS) ./...)
 
 test-compile:
 	mkdir -p go-tests
