@@ -225,9 +225,9 @@ spec:
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
@@ -306,9 +306,9 @@ spec:
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
@@ -434,9 +434,9 @@ func TestConnectEvent(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, withPretty())
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
@@ -522,9 +522,9 @@ func TestExecEventClone(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, withPretty())
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
 	/* Verify initial KprobeEvent Execve "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
@@ -599,9 +599,9 @@ func TestExistingListenEvent(t *testing.T) {
 	cmdServer.Start()
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserver(t)
+	kprobe, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
 	if cmdServer != nil {
@@ -679,9 +679,9 @@ func TestExistingAcceptEvent(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserver(t)
+	kprobe, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
@@ -753,9 +753,9 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserver(t)
+	kprobe, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
 	if cmdServer != nil {
@@ -772,9 +772,9 @@ func TestLoadTCTls(t *testing.T) {
 	if minKernelVersion("4.19.0") != true {
 		return
 	}
-	kprobe, err := getDefaultObserver(t, withTLSTC())
+	kprobe, err := getDefaultObserverWithWatchers(t, withTLSTC())
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	testDone(t, kprobe)
 }
@@ -829,9 +829,9 @@ func TestTCTls13(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, withTLSTC())
+	kprobe, err := getDefaultObserverWithWatchers(t, withTLSTC())
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://google.com")
@@ -898,9 +898,9 @@ func TestTCTls12(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t, withTLSTC())
+	kprobe, err := getDefaultObserverWithWatchers(t, withTLSTC())
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
@@ -1008,9 +1008,9 @@ func TestListenAcceptClose(t *testing.T) {
 		*/
 	}
 
-	kprobe, err := getDefaultObserver(t, withPretty())
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
@@ -1050,9 +1050,9 @@ func TestSensorLseekLoad(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t)
+	kprobe, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
@@ -1092,9 +1092,9 @@ func TestSensorLseekEnable(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserver(t)
+	kprobe, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	defer func() {
 		kprobe.RemovePrograms()
@@ -1188,6 +1188,20 @@ func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
 	}
 }
 
+func getDefaultObserverWithWatchers(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
+	const (
+		testPod       = "pod-1"
+		testNamespace = "ns-1"
+	)
+
+	w := createFakeWatcher(testPod, testNamespace)
+	s := createFakeCiliumState(testPod, testNamespace)
+
+	opts = append(opts, withK8sWatcher(w))
+	opts = append(opts, withCiliumState(s))
+	return getDefaultObserver(t, opts...)
+}
+
 func TestDockerListenConnect(t *testing.T) {
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		t.Skipf("docker not available. skipping test: %s", err)
@@ -1198,15 +1212,7 @@ func TestDockerListenConnect(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	var serverDockerID, clientDockerID string
 
-	const (
-		testPod       = "pod-1"
-		testNamespace = "ns-1"
-	)
-
-	w := createFakeWatcher(testPod, testNamespace)
-	s := createFakeCiliumState(testPod, testNamespace)
-
-	kprobe, err := getDefaultObserver(t, withPretty(), withK8sWatcher(w), withCiliumState(s))
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -1334,23 +1340,15 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	defer cancel()
 	var exitWG, execWG sync.WaitGroup
 
-	const (
-		testPod       = "pod-1"
-		testNamespace = "ns-1"
-	)
-
-	w := createFakeWatcher(testPod, testNamespace)
-	s := createFakeCiliumState(testPod, testNamespace)
-
 	/* Start server before creating kprobe */
 	dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
 	waitForProcess("nc -nvlp 8081")
 	time.Sleep(2 * time.Second)
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserver(t, withPretty(), withK8sWatcher(w), withCiliumState(s))
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
