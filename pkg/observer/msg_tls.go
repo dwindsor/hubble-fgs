@@ -47,7 +47,9 @@ func errorHasState(errType uint32) bool {
 	case api.TlsCertificateErrorTooLarge,
 		api.TlsCertificateErrorGetDataHdr,
 		api.TlsCertificateErrorGetDataCert,
-		api.TlsCertificateErrorGetDataMoreCert:
+		api.TlsCertificateErrorGetDataMoreCert,
+		api.TlsCertificateErrorCopyCert,
+		api.TlsCertificateErrorCopyMoreCert:
 		return true
 	}
 	return false

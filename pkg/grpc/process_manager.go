@@ -699,6 +699,10 @@ func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA_CERT
 	case api.TlsCertificateErrorGetDataMoreCert:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA_MORECERT
+	case api.TlsCertificateErrorCopyCert:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_COPY_CERT
+	case api.TlsCertificateErrorCopyMoreCert:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_COPY_MORE_CERT
 	case api.TlsCertificateErrorNoBuffer:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_NO_BUFFER
 	case api.TlsCertificateErrorCopyError:

@@ -206,6 +206,8 @@ const (
 	TlsCertificateErrorCopyError       = 0x0004
 	TlsCertificateErrorGetDataCert     = 0x0005
 	TlsCertificateErrorGetDataMoreCert = 0x0006
+	TlsCertificateErrorCopyCert        = 0x0007
+	TlsCertificateErrorCopyMoreCert    = 0x0008
 	// Userspace errors
 	TlsCertificateErrorLengthRead  = 0x0100
 	TlsCertificateErrorMissingCode = 0x0200

@@ -628,6 +628,8 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 #define ECOPYERROR		4
 #define EGETDATACERT		5
 #define EGETDATAMORECERT	6
+#define ECOPYCERT		7
+#define ECOPYMORECERT		8
 
 /* TLS Certificate Hdr offset */
 #define TLS_HEADER_BYTES 9
@@ -725,6 +727,10 @@ int bpf_skskb_post_cert(struct __sk_buff *skb,
 	copied = large_ctx_copy(skb, next,
 				sizeof(struct msg_tls_ipv4) + sizeof(__u8),
 				csize);
+	if (!copied) {
+		errout_pack(errout, ECOPYCERT, next, 0, csize, skb->len);
+		goto out;
+	}
 
 	/* total bound clamp because verifier lost it from above :( */
 	asm volatile ("%[copied] &= 0x1fff;\n": [copied] "+r"(copied)::);
@@ -802,6 +808,10 @@ int bpf_skskb_post_more_cert(struct __sk_buff *skb,
 	copy = large_ctx_copy(skb, next,
 			      4 + sizeof(struct msg_tls_ipv4) + sizeof(__u8),
 			      csize);
+	if (!copy) {
+		errout_pack(errout, ECOPYMORECERT, next, 0, csize, skb->len);
+		goto out;
+	}
 	key->remaining += (csize - copy);
 	/* total bound clamp because verifier lost it from above :( */
 	asm volatile ("%[copy] &= 0x1fff;\n": [copy] "+r"(copy)::);
