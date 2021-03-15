@@ -172,6 +172,52 @@ spec:
 	kprobe.RemovePrograms()
 }
 
+// NB: This is similar to TestKprobeObjectWriteRead, but it's a bit easier to
+// debug because we can write things on stdout which will not generate events.
+func TestKprobeLseek(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	pidStr := strconv.Itoa(int(getMyPid()))
+	fmt.Printf("pid=%s\n", pidStr)
+
+	lseekConfigHook_ := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write"
+spec:
+  description: "lseek hook"
+  kprobe:
+    function:
+    - call: "__x64_sys_lseek"
+      return: false
+      syscall: true
+      args:
+      - type: "int"
+      filters:
+        - type: "pidset"
+          op: "eq"
+          value: "` + pidStr + `"
+`
+	lseekConfigHook := []byte(lseekConfigHook_)
+	err := ioutil.WriteFile(testConfigFile, lseekConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWG.Wait()
+	fmt.Printf("Calling lseek...\n")
+	unix.Seek(-1, 0, 4444)
+	exitWG.Wait()
+	testDone(t, kprobe)
+}
+
 func TestKprobeObjectWriteRead(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
 	var exitWG, execWG sync.WaitGroup
