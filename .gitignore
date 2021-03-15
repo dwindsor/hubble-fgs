@@ -2,3 +2,4 @@ lib/*
 hubble-fgs
 hubble-enterprise
 observer.test
+go-tests
