@@ -232,7 +232,7 @@ spec:
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	_, err = syscall.Write(1, []byte("hello world"))
-	execWG.Wait()
+	exitWG.Wait()
 	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
 	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
