@@ -198,11 +198,40 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []config.Filter) [
 			}
 			off += 8
 		}
+	case GenericKprobeU64Type:
+		if len(filters) > MaxFilterIntArgs {
+			k.log.Warn("Warning: createArgFilter too many filter, argType %d filterStr %s\n", argType, filters)
+		}
+		// Byte buffer layout: #Entries, opType1 opValue1, opType2 opValue2, ...
+		off := 0
+		binary.LittleEndian.PutUint32(b[off:], uint32(len(filters)))
+		off += 4
+
+		for _, f := range filters {
+			operation, _ := k.opFilterStrToType(f.Op)
+			binary.LittleEndian.PutUint32(b[off:], uint32(operation))
+
+			v, err := strconv.ParseUint(f.Value, 10, 64)
+			if err != nil {
+				k.log.Warn("invalid filterArg type %d filter %s\n", argType, f)
+			} else {
+				binary.LittleEndian.PutUint64(b[off+4:], uint64(v))
+			}
+			off += (4 + 8)
+		}
+
 	case GenericKprobeStringType:
+		fallthrough
 	case GenericKprobeSkbType:
+		fallthrough
 	case GenericKprobeSizeType:
+		fallthrough
 	case GenericKprobeCharBuffer:
+		fallthrough
 	case GenericKprobeCharIovec:
+		fallthrough
+	default:
+		k.log.Warnf("filter for type %d ignored", argType)
 	}
 
 	return b

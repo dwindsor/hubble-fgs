@@ -1597,7 +1597,6 @@ func TestGenericTracepointPidFilterLseek(t *testing.T) {
 }
 
 func TestGenericTracepointArgFilterLseek(t *testing.T) {
-	t.Skip("Argument filters not ready yet")
 	fd_u := uint64(100)
 	fd := 100
 	whence_u := uint64(4444)
@@ -1656,7 +1655,6 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 }
 
 func TestGenericTracepointMeta(t *testing.T) {
-	t.Skip("Argument filters not ready yet")
 	tracepointConf := GenericTracepointConf{
 		Subsys: "syscalls",
 		Event:  "sys_enter_write",

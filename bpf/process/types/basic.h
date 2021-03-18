@@ -202,7 +202,34 @@ long read_call_arg(char *args,
 		probe_read(args, sizeof(size_t), &arg);
 		size = sizeof(size_t);
 	} else if ((type == s64_ty || type == u64_ty)) {
-		probe_read(args, 8, &arg);
+
+		u64 val;
+		probe_read(args, sizeof(val), &arg);
+		probe_read(&val, sizeof(val), &arg);
+
+		char *f;
+		f = map_lookup_elem(filter_map, &zero);
+		int nfilters;
+		if (f && (nfilters = *((int *)f)) > 0) {
+			f += 4; // first int is number of filters
+#pragma unroll
+			for (int i = 0; i < MAX_ARGS_ENTRIES; i++) {
+				int op;
+				u64 fval;
+				probe_read(&op, sizeof(op), f);
+				f += sizeof(op);
+				probe_read(&fval, sizeof(fval), f);
+				f += sizeof(fval);
+				if (op == op_filter_eq  && val == fval)
+					goto accept_filter_u64;
+				if (op == op_filter_lt && val < fval)
+					goto accept_filter_u64;
+				if (op == op_filter_gt && val > fval)
+					goto accept_filter_u64;
+			}
+			return filter;
+		}
+accept_filter_u64:
 		size = 8;
 	} else if ((type == s32_ty || type == u32_ty)) {
 		probe_read(args, 4, &arg);
