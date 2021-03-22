@@ -17,49 +17,21 @@ package config
 import (
 	"io/ioutil"
 
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"gopkg.in/yaml.v2"
 )
 
 type Metadata struct {
-	Name string
-}
-
-type Filter struct {
-	Type  string
-	Op    string
-	Value string
-}
-
-type Arg struct {
-	Type    string
-	Meta    string
-	Filters []Filter
-}
-
-type Function struct {
-	Call    string
-	Return  bool
-	Syscall bool
-	Args    []Arg
-	Filters []Filter
-}
-
-type Kprobe struct {
-	Function []Function
-}
-
-type Spec struct {
-	Description string
-	Kprobe      Kprobe
+	Name string `yaml:"name"`
 }
 
 type GenericKprobeConfig struct {
-	ApiVersion string `yaml:"apiVersion"`
-	Metadata   Metadata
-	Spec       Spec
+	ApiVersion string                     `yaml:"apiVersion"`
+	Metadata   Metadata                   `yaml:"metadata"`
+	Spec       v1alpha1.TracingPolicySpec `yaml:"spec"`
 }
 
-func ReadConfigYaml(data string) (*GenericKprobeConfig, error) {
+func readConfigYaml(data string) (*GenericKprobeConfig, error) {
 	var k GenericKprobeConfig
 
 	err := yaml.Unmarshal([]byte(data), &k)
@@ -69,10 +41,22 @@ func ReadConfigYaml(data string) (*GenericKprobeConfig, error) {
 	return &k, nil
 }
 
-func FileConfigYaml(fileName string) (*GenericKprobeConfig, error) {
+func fileConfig(fileName string) (*GenericKprobeConfig, error) {
 	config, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return nil, err
 	}
-	return ReadConfigYaml(string(config))
+	return readConfigYaml(string(config))
+}
+
+func FileConfigSpec(fileName string) (*v1alpha1.TracingPolicySpec, error) {
+	k, err := fileConfig(fileName)
+	if err != nil {
+		return nil, err
+	}
+	return &k.Spec, err
+}
+
+func FileConfigYaml(fileName string) (*GenericKprobeConfig, error) {
+	return fileConfig(fileName)
 }

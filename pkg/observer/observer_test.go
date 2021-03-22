@@ -24,8 +24,8 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/cilium"
-	"github.com/covalentio/hubble-fgs/pkg/config"
 	fgsGrpc "github.com/covalentio/hubble-fgs/pkg/grpc"
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
 	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/golang/protobuf/ptypes/wrappers"
@@ -145,19 +145,24 @@ metadata:
   name: "sys_write"
 spec:
   description: "write hook"
-  kprobe:
-    function:
-    - call: "__x64_sys_write"
-      return: false
-      syscall: true
+  kprobes:
+  - call: "__x64_sys_write"
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+      sizeargindex: 2
+    - index: 2
+      type: "size_t"
+    filters:
+      pids:
+      - op: "eq"
+        value: 25587
       args:
-      - type: "int"
-        filters:
-        - op: "eq"
-          value: "1"
-      - type: "char_buf"
-        meta: "3"
-      - type: "size_t"
+      - index: 0
+        op: "eq"
+        value: "1"
 `
 	writeConfigHook := []byte(writeReadHook)
 	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
@@ -189,17 +194,19 @@ metadata:
   name: "sys_write"
 spec:
   description: "lseek hook"
-  kprobe:
-    function:
-    - call: "__x64_sys_lseek"
-      return: false
-      syscall: true
-      args:
-      - type: "int"
-      filters:
-        - type: "pidset"
-          op: "eq"
-          value: "` + pidStr + `"
+  kprobes:
+  - call: "__x64_sys_lseek"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    filters:
+      pids:
+      - op: "eq"
+        value: ` + pidStr + ` 
+        followforks: true
+        isnamespacepid: false 
 `
 	lseekConfigHook := []byte(lseekConfigHook_)
 	err := ioutil.WriteFile(testConfigFile, lseekConfigHook, 0644)
@@ -231,23 +238,28 @@ metadata:
   name: "sys_write"
 spec:
   description: "write hook"
-  kprobe:
-    function:
-    - call: "__x64_sys_write"
-      return: false
-      syscall: true
+  kprobes:
+  - call: "__x64_sys_write"
+    return: false 
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+      sizeargindex: 3
+    - index: 2
+      type: "size_t"
+    filters:
+      pids:
+      - op: "eq"
+        value: ` + pidStr + ` 
+        followforks: true
+        isnamespacepid: false 
       args:
-      - type: "int"
-        filters:
-        - op: "eq"
-          value: "1"
-      - type: "char_buf"
-        meta: "3"
-      - type: "size_t"
-      filters:
-        - type: "pidset"
-          op: "eq"
-          value: "` + pidStr + `"
+      - index: 0
+        op: "eq"
+        value: "1"
 `
 	writeConfigHook := []byte(writeReadHook)
 	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
@@ -314,22 +326,26 @@ metadata:
   name: "__x64_sys_writev"
 spec:
   description: "write hook"
-  kprobe:
-    function:
-    - call: "__x64_sys_writev"
-      return: false
-      syscall: true
+  kprobes:
+  - call: "__x64_sys_writev"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_iovec"
+      sizeargindex: 3
+    filters:
+      pids:
+      - op: "eq"
+        value: ` + pidStr + ` 
+        followforks: true
+        isnamespacepid: false 
       args:
-      - type: "int"
-        filters:
-        - op: "eq"
-          value: "1"
-      - type: "char_iovec"
-        meta: "3"
-      filters:
-        - type: "pidset"
-          op: "eq"
-          value: "` + pidStr + `"
+      - index: 0
+        op: "eq"
+        value: "1"
 `
 	writeConfigHook := []byte(writeReadHook)
 	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
@@ -1524,10 +1540,11 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 
 	pid := int(getMyPid())
 	t.Logf("filtering for my pid (%d)", pid)
-	pidFilter := config.Filter{
-		Type:  "pidset",
-		Op:    "eq",
-		Value: strconv.Itoa(pid),
+	pidFilter := v1alpha1.PIDFilter{
+		Op:             "eq",
+		IsNamespacePID: false,
+		FollowForks:    true,
+		Value:          uint32(pid),
 	}
 
 	conf.Filters = append(conf.Filters, pidFilter)
@@ -1608,8 +1625,8 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 		Args: []GenericTracepointConfArg{
 			GenericTracepointConfArg{
 				TpIndex: 7, /* whence */
-				ArgFilters: []config.Filter{
-					config.Filter{
+				ArgFilters: []v1alpha1.ArgFilter{
+					v1alpha1.ArgFilter{
 						Op:    "eq",
 						Value: strconv.Itoa(whence),
 					},
@@ -1669,8 +1686,8 @@ func TestGenericTracepointMeta(t *testing.T) {
 			// },
 			GenericTracepointConfArg{
 				TpIndex: 5, /* int fd */
-				ArgFilters: []config.Filter{
-					config.Filter{
+				ArgFilters: []v1alpha1.ArgFilter{
+					v1alpha1.ArgFilter{
 						Op:    "eq",
 						Value: "1",
 					},

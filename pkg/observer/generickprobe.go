@@ -11,9 +11,11 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/config"
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 )
 
 const (
+	GenericKprobeNopType    = 0
 	GenericKprobeStringType = 1
 	GenericKprobeIntType    = 2
 	GenericKprobeSkbType    = 3
@@ -29,6 +31,7 @@ const (
 
 const (
 	sizeofArgsFilter = 80
+	maxArgsSupported = 5
 )
 
 const (
@@ -172,7 +175,7 @@ func (k *ObserverKprobe) opFilterStrToType(ty string) (int, error) {
 	return 0, fmt.Errorf("Unknown op '%s'", ty)
 }
 
-func (k *ObserverKprobe) createArgFilter(argType int, filters []config.Filter) []byte {
+func (k *ObserverKprobe) createArgFilter(argType int, filters []v1alpha1.ArgFilter) []byte {
 	b := make([]byte, sizeofArgsFilter)
 
 	switch argType {
@@ -182,44 +185,43 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []config.Filter) [
 			k.log.Warn("Warning: createArgFilter too many filter, argType %d filterStr %s\n", argType, filters)
 		}
 		// Byte buffer layout: #Entries, opType1 opValue1, opType2 opValue2, ...
-		off := 0
-		binary.LittleEndian.PutUint32(b[off:], uint32(len(filters)))
-		off += 4
+		binary.LittleEndian.PutUint32(b[0:], uint32(len(filters)))
 
 		for _, f := range filters {
+			opIndex := (f.Index * 4) + 4
+			valueIndex := opIndex + 4
+
 			operation, _ := k.opFilterStrToType(f.Op)
-			binary.LittleEndian.PutUint32(b[off:], uint32(operation))
+			binary.LittleEndian.PutUint32(b[opIndex:], uint32(operation))
 
 			v, err := strconv.Atoi(f.Value)
 			if err != nil {
 				k.log.Warn("invalid filterArg type %d filter %s\n", argType, f)
 			} else {
-				binary.LittleEndian.PutUint32(b[off+4:], uint32(v))
+				binary.LittleEndian.PutUint32(b[valueIndex:], uint32(v))
 			}
-			off += 8
 		}
 	case GenericKprobeU64Type:
 		if len(filters) > MaxFilterIntArgs {
 			k.log.Warn("Warning: createArgFilter too many filter, argType %d filterStr %s\n", argType, filters)
 		}
 		// Byte buffer layout: #Entries, opType1 opValue1, opType2 opValue2, ...
-		off := 0
-		binary.LittleEndian.PutUint32(b[off:], uint32(len(filters)))
-		off += 4
+		binary.LittleEndian.PutUint32(b[0:], uint32(len(filters)))
 
 		for _, f := range filters {
+			opIndex := (f.Index * 12) + 4
+			valueIndex := opIndex + 4
+
 			operation, _ := k.opFilterStrToType(f.Op)
-			binary.LittleEndian.PutUint32(b[off:], uint32(operation))
+			binary.LittleEndian.PutUint32(b[opIndex:], uint32(operation))
 
 			v, err := strconv.ParseUint(f.Value, 10, 64)
 			if err != nil {
 				k.log.Warn("invalid filterArg type %d filter %s\n", argType, f)
 			} else {
-				binary.LittleEndian.PutUint64(b[off+4:], uint64(v))
+				binary.LittleEndian.PutUint64(b[valueIndex:], uint64(v))
 			}
-			off += (4 + 8)
 		}
-
 	case GenericKprobeStringType:
 		fallthrough
 	case GenericKprobeSkbType:
@@ -230,19 +232,20 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []config.Filter) [
 		fallthrough
 	case GenericKprobeCharIovec:
 		fallthrough
+	case GenericKprobeNopType:
 	default:
-		k.log.Warnf("filter for type %d ignored", argType)
+		return nil
 	}
 
 	return b
 }
 
-func (k *ObserverKprobe) pidFilterStrToValue(value string) (int, error) {
-	v, err := strconv.Atoi(value)
-	if err != nil {
-		return 0, fmt.Errorf("Invalid filter value error %s\n", err)
-	}
-	return v, nil
+func (k *ObserverKprobe) createArgFilterNop() []byte {
+	return k.createArgFilter(GenericKprobeNopType, nil)
+}
+
+func (k *ObserverKprobe) pidFilterValue(value uint32) (int, error) {
+	return int(value), nil
 }
 
 func (k *ObserverKprobe) kprobeEventFilterWriteBTF(btf uintptr, ty string, op, value int) error {
@@ -274,29 +277,62 @@ func (k *ObserverKprobe) checkFilterRestrictions(ty, opName string, op int) erro
 	return nil
 }
 
-func getMetaValue(meta string) (int, error) {
-	switch meta {
-	case "":
-		return 0, nil
-
-	case "ret":
-		return -1, nil
-
-	default:
-		if ret, err := strconv.Atoi(meta); err != nil {
-			return 0, fmt.Errorf("Error filter meta %s invalid: %s\n", meta, err)
-		} else if ret == 0 {
-			return 0, fmt.Errorf("Error filter meta (%s) cannot be zero\n", meta)
-		} else if ret < 0 {
-			return 0, fmt.Errorf("Error filter meta (%s) must be >0\n", meta)
-		} else {
-			return ret, nil
-		}
+func getMetaValue(arg *v1alpha1.KProbeArg) int {
+	if arg.SizeArgIndex > 0 {
+		return int(arg.SizeArgIndex)
 	}
-
+	if arg.ReturnCopy {
+		return -1
+	}
+	return 0
 }
 
-func (k *ObserverKprobe) kprobeProcessFilters(btf uintptr, filters []config.Filter) error {
+func pidFilterParseType(f v1alpha1.PIDFilter) (string, error) {
+
+	switch f.IsNamespacePID {
+	case true:
+		switch f.FollowForks {
+		case true:
+			switch f.Op {
+			case "eq":
+				return "nspidset", nil
+			case "neq":
+				return "notnspidset", nil
+			default:
+				return "", fmt.Errorf("Unsupported op %s", f.Op)
+			}
+		case false:
+			switch f.Op {
+			case "eq":
+				return "nspid", nil
+			default:
+				return "", fmt.Errorf("Unsupported op %s", f.Op)
+			}
+		}
+	case false:
+		switch f.FollowForks {
+		case true:
+			switch f.Op {
+			case "eq":
+				return "pidset", nil
+			case "neq":
+				return "notpidset", nil
+			default:
+				return "", fmt.Errorf("Unsupported op %s", f.Op)
+			}
+		case false:
+			switch f.Op {
+			case "eq":
+				return "pid", nil
+			default:
+				return "", fmt.Errorf("Unsupported op %s", f.Op)
+			}
+		}
+	}
+	return "", fmt.Errorf("Unsupported PIDFilter %v", f)
+}
+
+func (k *ObserverKprobe) kprobePidFilters(btf uintptr, filters []v1alpha1.PIDFilter) error {
 	availableFilters := map[string]bool{
 		"nspid":       false,
 		"pid":         false,
@@ -307,12 +343,15 @@ func (k *ObserverKprobe) kprobeProcessFilters(btf uintptr, filters []config.Filt
 	}
 
 	for _, filter := range filters {
-		_type := filter.Type
+		_type, err := pidFilterParseType(filter)
+		if err != nil {
+			return fmt.Errorf("Error pidFilter '%v': %s", filter, err)
+		}
 		op, err := k.opFilterStrToType(filter.Op)
 		if err != nil {
 			return fmt.Errorf("Error filter op '%s': %s", _type, err)
 		}
-		value, err := k.pidFilterStrToValue(filter.Value)
+		value, err := k.pidFilterValue(filter.Value)
 		if err != nil {
 			return fmt.Errorf("Error filter value '%s': %s", _type, err)
 		}
@@ -324,6 +363,7 @@ func (k *ObserverKprobe) kprobeProcessFilters(btf uintptr, filters []config.Filt
 		if err := k.checkFilterRestrictions(_type, filter.Op, op); err != nil {
 			return err
 		}
+
 		if err := k.kprobeEventFilterWriteBTF(btf, _type, op, value); err != nil {
 			return err
 		}
@@ -339,27 +379,59 @@ func (k *ObserverKprobe) kprobeProcessFilters(btf uintptr, filters []config.Filt
 	return nil
 }
 
+func (k *ObserverKprobe) initArgFilters() *api.KprobeArgs {
+	nop := k.createArgFilterNop()
+	return &api.KprobeArgs{
+		Args0: nop,
+		Args1: nop,
+		Args2: nop,
+		Args3: nop,
+		Args4: nop,
+	}
+}
+
+func (k *ObserverKprobe) assignArgFilter(value []byte, filter *api.KprobeArgs, index uint32) {
+	switch int(index) {
+	case 0:
+		filter.Args0 = value
+	case 1:
+		filter.Args1 = value
+	case 2:
+		filter.Args2 = value
+	case 3:
+		filter.Args3 = value
+	case 4:
+		filter.Args4 = value
+	}
+}
+
+func getArgIndexFilter(index uint32, argFilters []v1alpha1.ArgFilter) []v1alpha1.ArgFilter {
+	var filters []v1alpha1.ArgFilter
+
+	filters = nil
+	for _, f := range argFilters {
+		if index == f.Index {
+			filters = append(filters, f)
+		}
+	}
+	return filters
+}
+
 func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile string) (*observerSensor, error) {
 	var progs []*bpfLoad
 
-	kprobeConfig, err := config.FileConfigYaml(configFile)
+	kprobeConfig, err := config.FileConfigSpec(configFile)
 	if err != nil {
 		return nil, err
 	}
 
-	for i, f := range kprobeConfig.Spec.Kprobe.Function {
+	for i, f := range kprobeConfig.KProbes {
 		var entry kprobeLoadArgs
 		var argPrinters []int
 		var is_syscall, is_retprobe bool
+		var argsBTFSet [maxArgsSupported]bool
 
-		argFilters := api.KprobeArgs{
-			Args0: make([]byte, sizeofArgsFilter),
-			Args1: make([]byte, sizeofArgsFilter),
-			Args2: make([]byte, sizeofArgsFilter),
-			Args3: make([]byte, sizeofArgsFilter),
-			Args4: make([]byte, sizeofArgsFilter),
-		}
-
+		argFilters := k.initArgFilters()
 		funcName := f.Call
 
 		// Write args into BTF ptr for use with load
@@ -373,55 +445,46 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 			return nil, fmt.Errorf("Error add enum value failed %d", ret)
 		}
 
-		// NB: bpf side handles 5 args. if there are less than 5 args
-		// defined, fill the rest with nop args.
-		if len(f.Args) < 5 {
-			nop := config.Arg{
-				Type: "nop",
-			}
-			for j := len(f.Args); j < 6; j++ {
-				f.Args = append(f.Args, nop)
-			}
-		}
-
-		// Argument format 'aType=filters$metadata'
+		// Parse Arguments and join Filters with args.
 		for j, a := range f.Args {
 			argType := kprobeStrToTypeId(a.Type)
 			if argType == invalidTypeId {
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
 			}
-
-			// Associate any metadata with the argument
-			argMValue, err := getMetaValue(a.Meta)
-			if err != nil {
-				return nil, err
+			argMValue := getMetaValue(&a)
+			argIndexedFilters := getArgIndexFilter(a.Index, f.Filters.Args)
+			argF := k.createArgFilter(argType, argIndexedFilters)
+			if argF != nil {
+				k.assignArgFilter(argF, argFilters, a.Index)
 			}
-			if len(a.Filters) > 0 {
-				argF := k.createArgFilter(argType, a.Filters)
-				switch j { // this is a bit ugly fixup tbd
-				case 0:
-					argFilters.Args0 = argF
-				case 1:
-					argFilters.Args1 = argF
-				case 2:
-					argFilters.Args2 = argF
-				case 3:
-					argFilters.Args3 = argF
-				case 4:
-					argFilters.Args4 = argF
+
+			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(int(a.Index)), argType)
+			if retVal < 0 {
+				return nil, fmt.Errorf("Error add enum value '%s' failed %d", kprobeArgToString(int(a.Index)), retVal)
+			}
+			retVal = bpf.AddEnumBtfValue(btf, kprobeArgMToString(int(a.Index)), argMValue)
+			if retVal < 0 {
+				return nil, fmt.Errorf("Error add enum value '%s' failed %d", kprobeArgMToString(int(a.Index)), retVal)
+			}
+
+			argsBTFSet[a.Index] = true
+			argPrinters = append(argPrinters, argType)
+		}
+
+		for j, a := range argsBTFSet {
+			if a == false {
+				nopType := kprobeStrToTypeId("nop")
+				retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(j), nopType)
+				if retVal < 0 {
+					return nil, fmt.Errorf("Error add enum value '%s' failed %d",
+						kprobeArgToString(j), retVal)
+				}
+				retVal = bpf.AddEnumBtfValue(btf, kprobeArgMToString(j), 0)
+				if retVal < 0 {
+					return nil, fmt.Errorf("Error add enum value '%s' failed %d",
+						kprobeArgToString(j), retVal)
 				}
 			}
-
-			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(j), argType)
-			if retVal < 0 {
-				return nil, fmt.Errorf("Error add enum value '%s' failed %d", kprobeArgToString(j), retVal)
-			}
-			retVal = bpf.AddEnumBtfValue(btf, kprobeArgMToString(j), argMValue)
-			if retVal < 0 {
-				return nil, fmt.Errorf("Error add enum value '%s' failed %d", kprobeArgMToString(j), retVal)
-			}
-
-			argPrinters = append(argPrinters, argType)
 		}
 
 		// Write attributes into BTF ptr for use with load
@@ -439,11 +502,11 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 				return nil, fmt.Errorf("Error add enum value 'syscall = 0' failed %d", retVal)
 			}
 		}
-		if err := k.kprobeProcessFilters(btf, f.Filters); err != nil {
-			return nil, fmt.Errorf("Error creating process filters: %s", err)
+		if err := k.kprobePidFilters(btf, f.Filters.PIDs); err != nil {
+			return nil, fmt.Errorf("Error creating PID filters: %s", err)
 		}
 
-		entry.args = argFilters
+		entry.args = *argFilters
 		entry.btf = btf
 		entry.retprobe = is_retprobe
 		entry.syscall = is_syscall

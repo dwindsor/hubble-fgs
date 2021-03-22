@@ -20,10 +20,11 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"strconv"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
-	"github.com/covalentio/hubble-fgs/pkg/config"
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/covalentio/hubble-fgs/pkg/tracepoint"
 )
 
@@ -46,7 +47,7 @@ type genericTracepoint struct {
 	Info *tracepoint.Tracepoint
 	args []genericTracepointArg
 
-	Filters []config.Filter
+	Filters []v1alpha1.PIDFilter
 
 	// index to access this on genericTracepointTable
 	tableIdx int
@@ -80,7 +81,7 @@ type genericTracepointArg struct {
 	// bpf generic type
 	genericTypeId int
 
-	argFiltersConf []config.Filter
+	argFiltersConf []v1alpha1.ArgFilter
 }
 
 // tracepointTable is, for now, an array.
@@ -111,7 +112,7 @@ type GenericTracepointConf struct {
 	Subsys  string
 	Event   string
 	Args    []GenericTracepointConfArg
-	Filters []config.Filter
+	Filters []v1alpha1.PIDFilter
 }
 
 // GenericTracepointConfArg represents an argument of a generic tracepoint
@@ -120,8 +121,30 @@ type GenericTracepointConf struct {
 // (Another option might be to specify this by name)
 type GenericTracepointConfArg struct {
 	TpIndex    int
-	ArgFilters []config.Filter
+	ArgFilters []v1alpha1.ArgFilter
 	MetaArg    string
+}
+
+// getTracepointMetaArg is a temporary helper to find meta values while tracepoint
+// converts into new CRD and config formats.
+func getTracepointMetaValue(meta string) (int, error) {
+	switch meta {
+	case "":
+		return 0, nil
+
+	case "ret":
+		return -1, nil
+	default:
+		if ret, err := strconv.Atoi(meta); err != nil {
+			return 0, fmt.Errorf("Error filter meta %s invalid: %s\n", meta, err)
+		} else if ret == 0 {
+			return 0, fmt.Errorf("Error filter meta (%s) cannot be zero\n", meta)
+		} else if ret < 0 {
+			return 0, fmt.Errorf("Error filter meta (%s) must be >0\n", meta)
+		} else {
+			return ret, nil
+		}
+	}
 }
 
 // NB: making this a method of GenericTracepointConfArg means that we can have
@@ -133,7 +156,7 @@ func (conf *GenericTracepointConfArg) configureTracepointArg(tp *genericTracepoi
 	}
 	field := tp.Info.Format.Fields[conf.TpIndex]
 
-	metaTpIndex, err := getMetaValue(conf.MetaArg)
+	metaTpIndex, err := getTracepointMetaValue(conf.MetaArg)
 	if err != nil {
 		return err
 	}
@@ -361,7 +384,7 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		Args4: make([]byte, sizeofArgsFilter),
 	}
 
-	if err := k.kprobeProcessFilters(btfObj, tp.Filters); err != nil {
+	if err := k.kprobePidFilters(btfObj, tp.Filters); err != nil {
 		return err, 0
 	}
 

@@ -44,6 +44,10 @@ spec:
                             format: int32
                             minimum: 0
                             type: integer
+                          returnCopy:
+                            default: false
+                            description: This field is used only for char_buf and char_iovec types.
+                            type: boolean
                           sizeArgIndex:
                             description: Specifies the position of the corresponding size argument for this argument. This field is used only for char_buf and char_iovec types.
                             format: int32
@@ -99,11 +103,11 @@ spec:
                           items:
                             properties:
                               followForks:
-                                default: false
+                                default: true
                                 description: Matches any descendant processes.
                                 type: boolean
                               isNamespacePID:
-                                default: false
+                                default: true
                                 description: Indicates whether this pid is in a namespace.
                                 type: boolean
                               op:

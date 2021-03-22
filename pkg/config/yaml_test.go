@@ -17,6 +17,8 @@ package config
 import (
 	"reflect"
 	"testing"
+
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 )
 
 var writev = `
@@ -25,21 +27,26 @@ metadata:
   name: "sys_write"
 spec:
   description: "write hook"
-  kprobe:
-    function:
-    - call: "__x64_sys_write"
-      return: false 
-      syscall: true
+  kprobes:
+  - call: "__x64_sys_write"
+    return: false 
+    syscall: true
+    args:
+      - index: 0
+        type: "int"
+      - index: 1
+        type: "char_buf"
+        sizeargindex: 3
+      - index: 2
+        type: "size_t"
+    filters:
+      pids:
+      - op: "eq"
+        value: 1
+        followforks: true
+        isnamespacepid: false
       args:
-      - type: "int"
-        filters:
-        - op: "eq"
-          value: "1"
-      - type: "char_buf"
-        meta: "3"
-      - type: "size_t"
-      filters:
-      - type: pidset
+      - index: 0
         op: "eq"
         value: "1"
 `
@@ -47,35 +54,39 @@ spec:
 var expectedWrite = GenericKprobeConfig{
 	ApiVersion: "hubble-enterprise.io/v1",
 	Metadata:   Metadata{Name: "sys_write"},
-	Spec: Spec{
-		Description: "write hook",
-		Kprobe: Kprobe{
-			Function: []Function{
-				{
-					Call:    "__x64_sys_write",
-					Return:  false,
-					Syscall: true,
-					Args: []Arg{
+	Spec: v1alpha1.TracingPolicySpec{
+		KProbes: []v1alpha1.KProbeSpec{
+			{
+				Call:    "__x64_sys_write",
+				Return:  false,
+				Syscall: true,
+				Args: []v1alpha1.KProbeArg{
+					{
+						Index: 0,
+						Type:  "int",
+					},
+					{
+						Index:        1,
+						Type:         "char_buf",
+						SizeArgIndex: 3,
+					},
+					{
+						Index: 2,
+						Type:  "size_t",
+					},
+				},
+				Filters: v1alpha1.KProbeFilters{
+					PIDs: []v1alpha1.PIDFilter{
 						{
-							Type: "int",
-							Filters: []Filter{
-								{
-									Op:    "eq",
-									Value: "1",
-								},
-							},
-						},
-						{
-							Type: "char_buf",
-							Meta: "3",
-						},
-						{
-							Type: "size_t",
+							Op:             "eq",
+							Value:          1,
+							FollowForks:    true,
+							IsNamespacePID: false,
 						},
 					},
-					Filters: []Filter{
+					Args: []v1alpha1.ArgFilter{
 						{
-							Type:  "pidset",
+							Index: 0,
 							Op:    "eq",
 							Value: "1",
 						},
@@ -92,161 +103,81 @@ metadata:
   name: "sys_write"
 spec:
   description: "Syscall hook points"
-  kprobe:
-    function:
-    - call: "example_func"
-      return: true
-      syscall: true
-      args:
-      - type: "int"
-        filters:
-        - op: "lt"
-          value: "3"
-      - type: "int"
-        filters:
-        - op: "gt"
-          value: "4"
-      - type: "int"
-        filters:
-        - op: "eq"
-          value: "4"
-      - type: "string"
-      - type: "skb"
-    - call: "another_func"
-      return: false
-      syscall: false
-      args:
-      - type: string
-        filters:
-        - value: "fooby"
-      - type: string
-        filters:
-        - value: "fooby"
-      - type: string
-        filters:
-        - value: "fooby"
-      filters:
-      - type: nspid
-        op: "eq"
-        value: "3"
-      - type: pid
-        op: "eq"
-        value: "1"
-      - type: pidset
-        op: "eq"
-        value: "1"
-      - type: notpidset
-        op: "eq"
-        value: "1"
-      - type: notnspidset
-        op: "eq"
-        value: "1"
+  kprobes:
+  - call: "example_func"
+    return: true
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1 
+      type: "int"
+    - index: 2
+      type: "int"
+    - index: 3
+      type: "string"
+    - index: 4
+      type: "skb"
+  - call: "another_func"
+    return: false
+    syscall: false
+    args:
+    - index: 0
+      type: string
+    - index: 1
+      type: string
+    - index: 2
+      type: string
 `
 
 var expectedData = GenericKprobeConfig{
 	ApiVersion: "hubble-enterprise.io/v1",
 	Metadata:   Metadata{Name: "sys_write"},
-	Spec: Spec{
-		Description: "Syscall hook points",
-		Kprobe: Kprobe{
-			Function: []Function{
-				{
-					Call:    "example_func",
-					Return:  true,
-					Syscall: true,
-					Args: []Arg{
-						{
-							Type: "int",
-							Filters: []Filter{
-								{
-									Op:    "lt",
-									Value: "3",
-								},
-							},
-						},
-						{
-							Type: "int",
-							Filters: []Filter{
-								{
-									Op:    "gt",
-									Value: "4",
-								},
-							},
-						},
-						{
-							Type: "int",
-							Filters: []Filter{
-								{
-									Op:    "eq",
-									Value: "4",
-								},
-							},
-						},
-						{
-							Type: "string",
-						},
-						{
-							Type: "skb",
-						},
+	Spec: v1alpha1.TracingPolicySpec{
+		KProbes: []v1alpha1.KProbeSpec{
+			{
+				Call:    "example_func",
+				Return:  true,
+				Syscall: true,
+				Args: []v1alpha1.KProbeArg{
+					{
+						Index: 0,
+						Type:  "int",
 					},
-					Filters: nil,
-				}, {
-
-					Call:    "another_func",
-					Return:  false,
-					Syscall: false,
-					Args: []Arg{
-						{
-							Type: "string",
-							Filters: []Filter{
-								{
-									Value: "fooby",
-								},
-							},
-						},
-						{
-							Type: "string",
-							Filters: []Filter{
-								{
-									Value: "fooby",
-								},
-							},
-						},
-						{
-							Type: "string",
-							Filters: []Filter{
-								{
-									Value: "fooby",
-								},
-							},
-						},
+					{
+						Index: 1,
+						Type:  "int",
 					},
-					Filters: []Filter{
-						{
-							Type:  "nspid",
-							Op:    "eq",
-							Value: "3",
-						},
-						{
-							Type:  "pid",
-							Op:    "eq",
-							Value: "1",
-						},
-						{
-							Type:  "pidset",
-							Op:    "eq",
-							Value: "1",
-						},
-						{
-							Type:  "notpidset",
-							Op:    "eq",
-							Value: "1",
-						},
-						{
-							Type:  "notnspidset",
-							Op:    "eq",
-							Value: "1",
-						},
+					{
+						Index: 2,
+						Type:  "int",
+					},
+					{
+						Index: 3,
+						Type:  "string",
+					},
+					{
+						Index: 4,
+						Type:  "skb",
+					},
+				},
+			},
+			{
+				Call:    "another_func",
+				Return:  false,
+				Syscall: false,
+				Args: []v1alpha1.KProbeArg{
+					{
+						Index: 0,
+						Type:  "string",
+					},
+					{
+						Index: 1,
+						Type:  "string",
+					},
+					{
+						Index: 2,
+						Type:  "string",
 					},
 				},
 			},
@@ -255,17 +186,17 @@ var expectedData = GenericKprobeConfig{
 }
 
 func TestYamlWritev(t *testing.T) {
-	k, err := ReadConfigYaml(writev)
+	k, err := readConfigYaml(writev)
 	if err != nil {
 		t.Errorf("YamlWritev error %s", err)
 	}
 	if reflect.DeepEqual(*k, expectedWrite) != true {
-		t.Errorf("not equal\nk=%v\ne= %v\n", k, expectedData)
+		t.Errorf("not equal\nk=%v\ne= %v\n", k, expectedWrite)
 	}
 }
 
 func TestYamlData(t *testing.T) {
-	k, err := ReadConfigYaml(data)
+	k, err := readConfigYaml(data)
 	if err != nil {
 		t.Errorf("YamlData error %s", err)
 	}

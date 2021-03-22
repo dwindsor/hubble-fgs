@@ -66,6 +66,10 @@ type KProbeArg struct {
 	// Specifies the position of the corresponding size argument for this argument.
 	// This field is used only for char_buf and char_iovec types.
 	SizeArgIndex uint32 `json:"sizeArgIndex"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// This field is used only for char_buf and char_iovec types.
+	ReturnCopy bool `json:"returnCopy"`
 }
 
 type KProbeFilters struct {
