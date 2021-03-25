@@ -6,6 +6,9 @@ echo "deb http://ddebs.ubuntu.com $(lsb_release -cs) main restricted universe mu
       deb http://ddebs.ubuntu.com $(lsb_release -cs)-proposed main restricted universe multiverse" | \
 tee -a /etc/apt/sources.list.d/ddebs.list
 apt install ubuntu-dbgsym-keyring
+## Quick fix for https://bugs.launchpad.net/ubuntu/+source/ubuntu-keyring/+bug/1920640
+wget -O- http://ddebs.ubuntu.com/dbgsym-release-key.asc | sudo apt-key add -
+
 apt update
 k=`uname -r`
 k="${k/1032/1031}"
