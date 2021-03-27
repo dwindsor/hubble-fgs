@@ -421,12 +421,15 @@ func getArgIndexFilter(index uint32, argFilters []v1alpha1.ArgFilter) []v1alpha1
 }
 
 func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile string) (*observerSensor, error) {
-	var progs []*bpfLoad
-
 	kprobeConfig, err := config.FileConfigSpec(configFile)
 	if err != nil {
 		return nil, err
 	}
+	return k.addGenericKprobeSensors(kprobeConfig, btfBaseFile)
+}
+
+func (k *ObserverKprobe) addGenericKprobeSensors(kprobeConfig *v1alpha1.TracingPolicySpec, btfBaseFile string) (*observerSensor, error) {
+	var progs []*bpfLoad
 
 	for i, f := range kprobeConfig.KProbes {
 		var entry kprobeLoadArgs
@@ -562,6 +565,44 @@ func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile stri
 		progs: progs,
 		maps:  maps,
 	}, nil
+}
+
+func (k *ObserverKprobe) loadGenericKprobeObject(bundle *observerSensor) error {
+	version, _, err := getKernelVersion()
+	if err != nil {
+		return err
+	}
+
+	for _, p := range bundle.progs {
+		btf := genericKprobeLoadArgs[p.observer__attach].btf
+		args := genericKprobeLoadArgs[p.observer__attach].args
+		// we don't actually need retprobe here but might be useful in the future for dbg?
+		retprobe := genericKprobeLoadArgs[p.observer__attach].retprobe
+		observerAllPrograms = append(observerAllPrograms, p)
+
+		retprobe = strings.Contains(p.Observer__program, "ret")
+		err, _ := bpf.LoadKprobeArgsProgram(
+			version, Verbosity, btf,
+			p.Observer__program,
+			p.observer__x64_attach,
+			p.observer__label,
+			k.bpfDir+p.observer__prog,
+			k.mapDir,
+			retprobe,
+			args)
+		if err != nil {
+			err, _ = bpf.LoadKprobeArgsProgram(
+				version, Verbosity, btf,
+				p.Observer__program,
+				p.observer__attach,
+				p.observer__label,
+				k.bpfDir+p.observer__prog,
+				k.mapDir,
+				retprobe,
+				args)
+		}
+	}
+	return nil
 }
 
 func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose int, x64 bool) (error, int) {
