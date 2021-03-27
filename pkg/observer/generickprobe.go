@@ -158,9 +158,10 @@ func (k *ObserverKprobe) initKprobeSensors() {
 }
 
 const (
-	genericKprobeFilterGT = 1
-	genericKprobeFilterLT = 2
-	genericKprobeFilterEQ = 3
+	genericKprobeFilterGT  = 1
+	genericKprobeFilterLT  = 2
+	genericKprobeFilterEQ  = 3
+	genericKprobeFilterNEQ = 4
 )
 
 func (k *ObserverKprobe) opFilterStrToType(ty string) (int, error) {
@@ -171,6 +172,8 @@ func (k *ObserverKprobe) opFilterStrToType(ty string) (int, error) {
 		return genericKprobeFilterLT, nil
 	case "eq":
 		return genericKprobeFilterEQ, nil
+	case "neq":
+		return genericKprobeFilterNEQ, nil
 	}
 	return 0, fmt.Errorf("Unknown op '%s'", ty)
 }
@@ -270,7 +273,7 @@ func (k *ObserverKprobe) checkFilterRestrictions(ty, opName string, op int) erro
 		// Its unclear to me what these filters even mean if
 		// its not an equality test. For now skip them and
 		// we can come back later if they seem useful.
-		if op != genericKprobeFilterEQ {
+		if op != genericKprobeFilterEQ && op != genericKprobeFilterNEQ {
 			return fmt.Errorf("Event filter '%s' op '%s' unsupported for type", ty, opName)
 		}
 	}
