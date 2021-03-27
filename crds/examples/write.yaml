@@ -10,13 +10,15 @@ spec:
       type: "int"
     - index: 1
       type: "char_buf"
-      sizeArgIndex: 2
+      sizeArgIndex: 3
     - index: 2
       type: "size_t"
     filters:
       pids:
-      - op: "eq"
-        value: 25587
+      - op: "neq"
+        value: 1
+        followForks: true
+        isNamespacePID: true
       args:
       - index: 0
         op: "eq"
