@@ -1,6 +1,6 @@
 module github.com/covalentio/hubble-fgs
 
-go 1.14
+go 1.16
 
 require (
 	github.com/cilium/cilium v1.7.0-rc2.0.20200311180626-711b37ed100c
