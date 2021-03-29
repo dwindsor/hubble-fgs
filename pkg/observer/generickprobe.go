@@ -197,8 +197,8 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []v1alpha1.ArgFilt
 		// Byte buffer layout: #Entries, opType1 opValue1, opType2 opValue2, ...
 		binary.LittleEndian.PutUint32(b[0:], uint32(len(filters)))
 
-		for _, f := range filters {
-			opIndex := (f.Index * 4) + 4
+		for fidx, f := range filters {
+			opIndex := (fidx * 4) + 4
 			valueIndex := opIndex + 4
 
 			operation, _ := k.opFilterStrToType(f.Op)
@@ -218,8 +218,8 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []v1alpha1.ArgFilt
 		// Byte buffer layout: #Entries, opType1 opValue1, opType2 opValue2, ...
 		binary.LittleEndian.PutUint32(b[0:], uint32(len(filters)))
 
-		for _, f := range filters {
-			opIndex := (f.Index * 12) + 4
+		for fidx, f := range filters {
+			opIndex := (fidx * 12) + 4
 			valueIndex := opIndex + 4
 
 			operation, _ := k.opFilterStrToType(f.Op)
