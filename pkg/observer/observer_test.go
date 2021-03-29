@@ -1625,15 +1625,16 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 		Args: []GenericTracepointConfArg{
 			GenericTracepointConfArg{
 				TpIndex: 7, /* whence */
-				ArgFilters: []v1alpha1.ArgFilter{
-					v1alpha1.ArgFilter{
-						Op:    "eq",
-						Value: strconv.Itoa(whence),
-					},
-				},
 			},
 			GenericTracepointConfArg{
 				TpIndex: 5, /* fd */
+			},
+		},
+		ArgFilters: []v1alpha1.ArgFilter{
+			v1alpha1.ArgFilter{
+				Index: 7,
+				Op:    "eq",
+				Value: strconv.Itoa(whence),
 			},
 		},
 	}
@@ -1686,16 +1687,17 @@ func TestGenericTracepointMeta(t *testing.T) {
 			// },
 			GenericTracepointConfArg{
 				TpIndex: 5, /* int fd */
-				ArgFilters: []v1alpha1.ArgFilter{
-					v1alpha1.ArgFilter{
-						Op:    "eq",
-						Value: "1",
-					},
-				},
 			},
 			GenericTracepointConfArg{
 				TpIndex: 6,   /* char *buf */
 				MetaArg: "8", /* count  */
+			},
+		},
+		ArgFilters: []v1alpha1.ArgFilter{
+			v1alpha1.ArgFilter{
+				Index: 5,
+				Op:    "eq",
+				Value: "1",
 			},
 		},
 	}

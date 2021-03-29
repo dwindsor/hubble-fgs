@@ -47,7 +47,8 @@ type genericTracepoint struct {
 	Info *tracepoint.Tracepoint
 	args []genericTracepointArg
 
-	Filters []v1alpha1.PIDFilter
+	Filters    []v1alpha1.PIDFilter
+	ArgFilters []v1alpha1.ArgFilter
 
 	// index to access this on genericTracepointTable
 	tableIdx int
@@ -56,9 +57,9 @@ type genericTracepoint struct {
 // genericTracepointArg is the internal representation of an output value of a
 // generic tracepoint.
 type genericTracepointArg struct {
-	CtxOffset int // offset within tracepoint ctx
-	ArgIdx    int // index in genericTracepoint.args
-	TpIdx     int // index in the tracepoint arguments
+	CtxOffset int    // offset within tracepoint ctx
+	ArgIdx    uint32 // index in genericTracepoint.args
+	TpIdx     int    // index in the tracepoint arguments
 
 	// Meta field: the user defines the meta argument in terms of the
 	// tracepoint arguments (MetaTp), but we have to translate it to
@@ -109,10 +110,11 @@ func (t *tracepointTable) getTracepoint(idx int) (*genericTracepoint, error) {
 // GenericTracepointConf is the configuration for a generic tracepoint. This is
 // a caller-defined structure that configures a tracepoint.
 type GenericTracepointConf struct {
-	Subsys  string
-	Event   string
-	Args    []GenericTracepointConfArg
-	Filters []v1alpha1.PIDFilter
+	Subsys     string
+	Event      string
+	Args       []GenericTracepointConfArg
+	Filters    []v1alpha1.PIDFilter
+	ArgFilters []v1alpha1.ArgFilter
 }
 
 // GenericTracepointConfArg represents an argument of a generic tracepoint
@@ -120,9 +122,8 @@ type GenericTracepointConf struct {
 // This points to the index of the argument.
 // (Another option might be to specify this by name)
 type GenericTracepointConfArg struct {
-	TpIndex    int
-	ArgFilters []v1alpha1.ArgFilter
-	MetaArg    string
+	TpIndex int
+	MetaArg string
 }
 
 // getTracepointMetaArg is a temporary helper to find meta values while tracepoint
@@ -161,16 +162,15 @@ func (conf *GenericTracepointConfArg) configureTracepointArg(tp *genericTracepoi
 		return err
 	}
 
-	argIdx := len(tp.args)
+	argIdx := uint32(len(tp.args))
 	tp.args = append(tp.args, genericTracepointArg{
-		CtxOffset:      int(field.Offset),
-		ArgIdx:         argIdx,
-		TpIdx:          conf.TpIndex,
-		MetaTp:         metaTpIndex,
-		nopTy:          false,
-		format:         &field,
-		genericTypeId:  invalidTypeId,
-		argFiltersConf: conf.ArgFilters,
+		CtxOffset:     int(field.Offset),
+		ArgIdx:        argIdx,
+		TpIdx:         conf.TpIndex,
+		MetaTp:        metaTpIndex,
+		nopTy:         false,
+		format:        &field,
+		genericTypeId: invalidTypeId,
 	})
 	return nil
 }
@@ -248,8 +248,9 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 	}
 
 	ret := &genericTracepoint{
-		Info:    &tp,
-		Filters: conf.Filters,
+		Info:       &tp,
+		Filters:    conf.Filters,
+		ArgFilters: conf.ArgFilters,
 	}
 
 	for _, arg := range conf.Args {
@@ -272,7 +273,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 				ret.Info.Subsys, ret.Info.Event, len(ret.Info.Format.Fields), tpIdx)
 		}
 		field := ret.Info.Format.Fields[tpIdx]
-		argIdx := len(ret.args)
+		argIdx := uint32(len(ret.args))
 		ret.args = append(ret.args, genericTracepointArg{
 			CtxOffset:     int(field.Offset),
 			ArgIdx:        argIdx,
@@ -295,7 +296,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 		if a, err := getOrAppend(meta); err != nil {
 			return nil, err
 		} else {
-			ret.args[idx].MetaArg = a.ArgIdx + 1
+			ret.args[idx].MetaArg = int(a.ArgIdx) + 1
 		}
 	}
 
@@ -376,13 +377,7 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		return err, 0
 	}
 
-	argFilters := api.KprobeArgs{
-		Args0: make([]byte, sizeofArgsFilter),
-		Args1: make([]byte, sizeofArgsFilter),
-		Args2: make([]byte, sizeofArgsFilter),
-		Args3: make([]byte, sizeofArgsFilter),
-		Args4: make([]byte, sizeofArgsFilter),
-	}
+	argFilters := k.initArgFilters()
 
 	if err := k.kprobePidFilters(btfObj, tp.Filters); err != nil {
 		return err, 0
@@ -408,20 +403,10 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 			return err, 0
 		}
 
-		if len(tpArg.argFiltersConf) > 0 {
-			argF := k.createArgFilter(tpArg.genericTypeId, tpArg.argFiltersConf)
-			switch i { // this is a bit ugly fixup tbd
-			case 0:
-				argFilters.Args0 = argF
-			case 1:
-				argFilters.Args1 = argF
-			case 2:
-				argFilters.Args2 = argF
-			case 3:
-				argFilters.Args3 = argF
-			case 4:
-				argFilters.Args4 = argF
-			}
+		argIndexedFilters := getArgIndexFilter(uint32(tpArg.TpIdx), tp.ArgFilters)
+		argF := k.createArgFilter(tpArg.genericTypeId, argIndexedFilters)
+		if argF != nil {
+			k.assignArgFilter(argF, argFilters, uint32(i))
 		}
 
 		k.log.Infof("configured argument #%d: %+v (type:%d)", i, tpArg, tpArg.genericTypeId)
@@ -458,7 +443,7 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		k.bpfDir+load.observer__prog,
 		k.mapDir,
 		load.retProbe,
-		argFilters)
+		*argFilters)
 }
 
 func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
