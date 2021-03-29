@@ -29,7 +29,7 @@ spec:
   description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
-    return: false 
+    return: false
     syscall: true
     args:
       - index: 0
@@ -51,7 +51,7 @@ spec:
         value: "1"
 `
 
-var expectedWrite = GenericKprobeConfig{
+var expectedWrite = GenericTracingConf{
 	ApiVersion: "hubble-enterprise.io/v1",
 	Metadata:   Metadata{Name: "sys_write"},
 	Spec: v1alpha1.TracingPolicySpec{
@@ -130,7 +130,7 @@ spec:
       type: string
 `
 
-var expectedData = GenericKprobeConfig{
+var expectedData = GenericTracingConf{
 	ApiVersion: "hubble-enterprise.io/v1",
 	Metadata:   Metadata{Name: "sys_write"},
 	Spec: v1alpha1.TracingPolicySpec{

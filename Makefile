@@ -70,6 +70,7 @@ test-compile:
 	$(GO) test -c ./pkg/stacktracetree        -o go-tests/stacktracetree.test
 	$(GO) test -c ./pkg/vtuplefilter          -o go-tests/vtuplefilter.test
 	$(GO) test -c ./pkg/tracepoint            -o go-tests/tracepoint.test
+	$(GO) test -c ./pkg/config               -o go-tests/config.test
 
 test-kernels:
 	#kata-img  vmlinuz-kata-linux-4.14.184-79_hubble

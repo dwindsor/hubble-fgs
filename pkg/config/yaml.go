@@ -25,14 +25,14 @@ type Metadata struct {
 	Name string `yaml:"name"`
 }
 
-type GenericKprobeConfig struct {
+type GenericTracingConf struct {
 	ApiVersion string                     `yaml:"apiVersion"`
 	Metadata   Metadata                   `yaml:"metadata"`
 	Spec       v1alpha1.TracingPolicySpec `yaml:"spec"`
 }
 
-func readConfigYaml(data string) (*GenericKprobeConfig, error) {
-	var k GenericKprobeConfig
+func readConfigYaml(data string) (*GenericTracingConf, error) {
+	var k GenericTracingConf
 
 	err := yaml.Unmarshal([]byte(data), &k)
 	if err != nil {
@@ -41,7 +41,7 @@ func readConfigYaml(data string) (*GenericKprobeConfig, error) {
 	return &k, nil
 }
 
-func fileConfig(fileName string) (*GenericKprobeConfig, error) {
+func fileConfig(fileName string) (*GenericTracingConf, error) {
 	config, err := ioutil.ReadFile(fileName)
 	if err != nil {
 		return nil, err
@@ -57,6 +57,6 @@ func FileConfigSpec(fileName string) (*v1alpha1.TracingPolicySpec, error) {
 	return &k.Spec, err
 }
 
-func FileConfigYaml(fileName string) (*GenericKprobeConfig, error) {
+func FileConfigYaml(fileName string) (*GenericTracingConf, error) {
 	return fileConfig(fileName)
 }
