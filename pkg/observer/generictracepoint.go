@@ -20,7 +20,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"strconv"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
@@ -109,64 +108,42 @@ func (t *tracepointTable) getTracepoint(idx int) (*genericTracepoint, error) {
 
 // GenericTracepointConf is the configuration for a generic tracepoint. This is
 // a caller-defined structure that configures a tracepoint.
-type GenericTracepointConf struct {
-	Subsys     string
-	Event      string
-	Args       []GenericTracepointConfArg
-	Filters    []v1alpha1.PIDFilter
-	ArgFilters []v1alpha1.ArgFilter
-}
+type GenericTracepointConf v1alpha1.TracepointSpec
 
 // GenericTracepointConfArg represents an argument of a generic tracepoint
 //
 // This points to the index of the argument.
 // (Another option might be to specify this by name)
-type GenericTracepointConfArg struct {
-	TpIndex int
-	MetaArg string
-}
+type GenericTracepointConfArg v1alpha1.TracepointArg
 
 // getTracepointMetaArg is a temporary helper to find meta values while tracepoint
 // converts into new CRD and config formats.
-func getTracepointMetaValue(meta string) (int, error) {
-	switch meta {
-	case "":
-		return 0, nil
-
-	case "ret":
-		return -1, nil
-	default:
-		if ret, err := strconv.Atoi(meta); err != nil {
-			return 0, fmt.Errorf("Error filter meta %s invalid: %s\n", meta, err)
-		} else if ret == 0 {
-			return 0, fmt.Errorf("Error filter meta (%s) cannot be zero\n", meta)
-		} else if ret < 0 {
-			return 0, fmt.Errorf("Error filter meta (%s) must be >0\n", meta)
-		} else {
-			return ret, nil
-		}
+func getTracepointMetaValue(arg *GenericTracepointConfArg) int {
+	if arg.SizeArgIndex > 0 {
+		return int(arg.SizeArgIndex)
 	}
+	if arg.ReturnCopy {
+		return -1
+	}
+	return 0
 }
 
 // NB: making this a method of GenericTracepointConfArg means that we can have
 // this as an interface (e.g,. for implementing output by name)
 func (conf *GenericTracepointConfArg) configureTracepointArg(tp *genericTracepoint) error {
-	if conf.TpIndex >= len(tp.Info.Format.Fields) {
+	if conf.Index >= uint32(len(tp.Info.Format.Fields)) {
 		return fmt.Errorf("tracepoint %s/%s has %d fields but field %d was requested",
-			tp.Info.Subsys, tp.Info.Event, len(tp.Info.Format.Fields), conf.TpIndex)
+			tp.Info.Subsys, tp.Info.Event, len(tp.Info.Format.Fields), conf.Index)
 	}
-	field := tp.Info.Format.Fields[conf.TpIndex]
+	field := tp.Info.Format.Fields[conf.Index]
 
-	metaTpIndex, err := getTracepointMetaValue(conf.MetaArg)
-	if err != nil {
-		return err
-	}
+	metaTpIndex := getTracepointMetaValue(conf)
 
 	argIdx := uint32(len(tp.args))
 	tp.args = append(tp.args, genericTracepointArg{
 		CtxOffset:     int(field.Offset),
 		ArgIdx:        argIdx,
-		TpIdx:         conf.TpIndex,
+		TpIdx:         int(conf.Index),
 		MetaTp:        metaTpIndex,
 		nopTy:         false,
 		format:        &field,
@@ -239,7 +216,7 @@ func (out *genericTracepointArg) getGenericTypeId() (int, error) {
 // the user-provided configuration
 func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, error) {
 	tp := tracepoint.Tracepoint{
-		Subsys: conf.Subsys,
+		Subsys: conf.Subsystem,
 		Event:  conf.Event,
 	}
 
@@ -249,11 +226,16 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 
 	ret := &genericTracepoint{
 		Info:       &tp,
-		Filters:    conf.Filters,
-		ArgFilters: conf.ArgFilters,
+		Filters:    conf.Filters.PIDs,
+		ArgFilters: conf.Filters.Args,
 	}
 
-	for _, arg := range conf.Args {
+	for i, _ := range conf.Args {
+		arg := GenericTracepointConfArg{
+			Index:        conf.Args[i].Index,
+			SizeArgIndex: conf.Args[i].SizeArgIndex,
+			ReturnCopy:   conf.Args[i].ReturnCopy,
+		}
 		if err := arg.configureTracepointArg(ret); err != nil {
 			return nil, err
 		}

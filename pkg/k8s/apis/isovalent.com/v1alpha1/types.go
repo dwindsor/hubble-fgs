@@ -33,6 +33,8 @@ type TracingPolicy struct {
 type TracingPolicySpec struct {
 	// A list of kprobe specs.
 	KProbes []KProbeSpec `json:"kprobes"`
+	// A list of tracepoint specs.
+	Tracepoints []TracepointSpec `json:"tracepoints"`
 }
 
 type KProbeSpec struct {
@@ -73,6 +75,43 @@ type KProbeArg struct {
 }
 
 type KProbeFilters struct {
+	// +kubebuilder:validation:Optional
+	// A list of process ID filters.
+	PIDs []PIDFilter `json:"pids"`
+	// +kubebuilder:validation:Optional
+	// A list of argument filters.
+	Args []ArgFilter `json:"args"`
+}
+
+type TracepointSpec struct {
+	// Tracepoint subsystem
+	Subsystem string `json:"subsystem"`
+	// Tracepoint event
+	Event string `json:"event"`
+	// +kubebuilder:validation:Optional
+	// A list of function arguments to include in the trace output.
+	Args []TracepointArg `json:"args"`
+	// +kubebuilder:validation:Optional
+	// Filters to apply before producing trace output.
+	Filters TracepointFilters `json:"filters"`
+}
+
+type TracepointArg struct {
+	// +kubebuilder:validation:Minimum=0
+	// Position of the argument.
+	Index uint32 `json:"index"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Minimum=0
+	// Specifies the position of the corresponding size argument for this argument.
+	// This field is used only for char_buf and char_iovec types.
+	SizeArgIndex uint32 `json:"sizeArgIndex"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// This field is used only for char_buf and char_iovec types.
+	ReturnCopy bool `json:"returnCopy"`
+}
+
+type TracepointFilters struct {
 	// +kubebuilder:validation:Optional
 	// A list of process ID filters.
 	PIDs []PIDFilter `json:"pids"`

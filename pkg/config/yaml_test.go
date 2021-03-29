@@ -15,6 +15,7 @@
 package config
 
 import (
+	_ "embed"
 	"reflect"
 	"testing"
 
@@ -202,5 +203,52 @@ func TestYamlData(t *testing.T) {
 	}
 	if reflect.DeepEqual(*k, expectedData) != true {
 		t.Errorf("not equal\nk=%v\ne= %v\n", k, expectedData)
+	}
+}
+
+//go:embed examples/tracepoint-lseek-pid.yaml
+var lseekExample string
+
+func TestYamlLseek(t *testing.T) {
+
+	expected := GenericTracingConf{
+		ApiVersion: "hubble-enterprise.io/v1",
+		Metadata:   Metadata{Name: "tracepoint-lseek"},
+		Spec: v1alpha1.TracingPolicySpec{
+			Tracepoints: []v1alpha1.TracepointSpec{{
+				Subsystem: "syscalls",
+				Event:     "sys_enter_lseek",
+				Args: []v1alpha1.TracepointArg{
+					{Index: 7},
+					{Index: 5},
+				},
+				Filters: v1alpha1.TracepointFilters{
+					PIDs: []v1alpha1.PIDFilter{
+						{
+							Op:             "eq",
+							Value:          1111,
+							FollowForks:    true,
+							IsNamespacePID: false,
+						},
+					},
+					Args: []v1alpha1.ArgFilter{
+						{
+							Index: 7,
+							Op:    "eq",
+							Value: "4444",
+						},
+					},
+				},
+			}},
+		},
+	}
+
+	k, err := readConfigYaml(lseekExample)
+	if err != nil {
+		t.Errorf("readConfigYaml failed: %s", err)
+	}
+
+	if reflect.DeepEqual(expected, *k) != true {
+		t.Errorf("\ngot:\n%+v\nexpected:\n%+v", *k, expected)
 	}
 }

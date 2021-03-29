@@ -1574,15 +1574,11 @@ func TestGenericTracepointSimple(t *testing.T) {
 	defer cancel()
 
 	lseekConf := GenericTracepointConf{
-		Subsys: "syscalls",
-		Event:  "sys_enter_lseek",
-		Args: []GenericTracepointConfArg{
-			GenericTracepointConfArg{
-				TpIndex: 7, /* whence */
-			},
-			GenericTracepointConfArg{
-				TpIndex: 5, /* fd */
-			},
+		Subsystem: "syscalls",
+		Event:     "sys_enter_lseek",
+		Args: []v1alpha1.TracepointArg{
+			{Index: 7}, /* whence */
+			{Index: 5}, /* fd */
 		},
 	}
 
@@ -1645,7 +1641,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		Value:          uint32(pid),
 	}
 
-	conf.Filters = append(conf.Filters, pidFilter)
+	conf.Filters.PIDs = append(conf.Filters.PIDs, pidFilter)
 	observer, err := getDefaultObserverWithWatchers(t, withTracepoint(conf))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
@@ -1694,9 +1690,8 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 
 func TestGenericTracepointPidFilterLseek(t *testing.T) {
 	tracepointConf := GenericTracepointConf{
-		Subsys: "syscalls",
-		Event:  "sys_enter_lseek",
-		Args:   []GenericTracepointConfArg{},
+		Subsystem: "syscalls",
+		Event:     "sys_enter_lseek",
 	}
 
 	op := func() {
@@ -1718,22 +1713,22 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 	whence := 4444
 
 	tracepointConf := GenericTracepointConf{
-		Subsys: "syscalls",
-		Event:  "sys_enter_lseek",
-		Args: []GenericTracepointConfArg{
-			GenericTracepointConfArg{
-				TpIndex: 7, /* whence */
+		Subsystem: "syscalls",
+		Event:     "sys_enter_lseek",
+		Args: []v1alpha1.TracepointArg{
+			v1alpha1.TracepointArg{
+				Index: 7, /* whence */
 			},
-			GenericTracepointConfArg{
-				TpIndex: 5, /* fd */
+			v1alpha1.TracepointArg{
+				Index: 5, /* fd */
 			},
 		},
-		ArgFilters: []v1alpha1.ArgFilter{
-			v1alpha1.ArgFilter{
+		Filters: v1alpha1.TracepointFilters{
+			Args: []v1alpha1.ArgFilter{{
 				Index: 7,
 				Op:    "eq",
 				Value: strconv.Itoa(whence),
-			},
+			}},
 		},
 	}
 
@@ -1772,31 +1767,24 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 
 func TestGenericTracepointMeta(t *testing.T) {
 	tracepointConf := GenericTracepointConf{
-		Subsys: "syscalls",
-		Event:  "sys_enter_write",
-		Args: []GenericTracepointConfArg{
-			// NB: there is code in the control path to enable this
-			// argument to be read so that it can be used for the
-			// metadata of the buffer, but not add it to the
-			// output.
-			//
-			// GenericTracepointConfArg{
-			// 	TpIndex: 7, /* count */
-			// },
-			GenericTracepointConfArg{
-				TpIndex: 5, /* int fd */
+		Subsystem: "syscalls",
+		Event:     "sys_enter_write",
+		Args: []v1alpha1.TracepointArg{
+			v1alpha1.TracepointArg{
+				Index: 5, /* fd */
 			},
-			GenericTracepointConfArg{
-				TpIndex: 6,   /* char *buf */
-				MetaArg: "8", /* count  */
+			v1alpha1.TracepointArg{
+				Index:        6,     /* char *buf */
+				SizeArgIndex: 7 + 1, /* count */
+
 			},
 		},
-		ArgFilters: []v1alpha1.ArgFilter{
-			v1alpha1.ArgFilter{
+		Filters: v1alpha1.TracepointFilters{
+			Args: []v1alpha1.ArgFilter{{
 				Index: 5,
 				Op:    "eq",
 				Value: "1",
-			},
+			}},
 		},
 	}
 
