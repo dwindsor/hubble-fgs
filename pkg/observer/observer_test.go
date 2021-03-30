@@ -300,6 +300,100 @@ spec:
 	testDone(t, kprobe)
 }
 
+func TestKprobeObjectRead(t *testing.T) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	// Create file with hello world to read
+	fd, errno := syscall.Open("/tmp/testfile", syscall.O_CREAT|syscall.O_RDWR, 0x777)
+	if fd < 0 {
+		fmt.Printf("File open failed: %s\n", errno)
+		t.Fatal()
+	}
+	fd2, errno := syscall.Open("/tmp/testfile", syscall.O_RDWR, 0x770)
+	if fd2 < 0 {
+		fmt.Printf("File open fro read failed: %s\n", errno)
+		t.Fatal()
+	}
+	fdString := fmt.Sprint(fd2)
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "read hook"
+  kprobes:
+  - call: "__x64_sys_read"
+    return: true
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+      returncopy: true
+    - index: 2
+      type: "size_t"
+    filters:
+      pids:
+      - op: "eq"
+        value: ` + pidStr + `
+        followforks: true
+        isnamespacepid: false
+      args:
+      - index: 0
+        op: "eq"
+        value: ` + fdString + `
+`
+	readConfigHook := []byte(readHook)
+	err := ioutil.WriteFile(testConfigFile, readConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello world"}}
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessKprobe{
+				ProcessKprobe: &fgs.ProcessKprobe{
+					Process:      &fgs.Process{Binary: selfBinary},
+					Parent:       &fgs.Process{Binary: ""},
+					FunctionName: "__x64_sys_read",
+					Args:         []*fgs.KprobeArgument{arg0},
+				},
+			},
+		},
+	}
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWG.Wait()
+	hello := []byte("hello world")
+	n, errno := syscall.Write(fd, hello)
+	if n < 0 {
+		fmt.Printf("syscall.Write failed: %s\n", errno)
+		t.Fatal()
+	}
+	syscall.Fsync(fd)
+	var readBytes = make([]byte, 11)
+	i, errno := syscall.Read(fd2, readBytes)
+	if i < 0 {
+		fmt.Printf("syscall.Read failed: %s\n", errno)
+		t.Fatal()
+	}
+	exitWG.Wait()
+	retries := jsonRetries
+	time.Sleep(1000 * time.Millisecond)
+	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+		t.Fail()
+	}
+	testDone(t, kprobe)
+}
+
 func helloIovecWorldWritev() (err error) {
 	var arrayOfBytes = make([][]byte, 3)
 
