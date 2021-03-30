@@ -53,7 +53,6 @@ int generic_process_event0(
 	e->current.pad[3] = 0;
 
 	e->id = bpf_core_enum_value(fgs_args, func_id);
-
 	/* Read out args1-5 */
 	ty = bpf_core_enum_value(fgs_args, arg0);
 	if (total < MAX_TOTAL) {

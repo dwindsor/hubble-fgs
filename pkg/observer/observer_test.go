@@ -388,6 +388,158 @@ spec:
 	testDone(t, kprobe)
 }
 
+func testKprobeObjectFiltered(t *testing.T, readHook string, invertResult bool) {
+	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	// Create file to open later
+	fd, errno := syscall.Open("/tmp/testfile", syscall.O_CREAT|syscall.O_RDWR, 0x777)
+	if fd < 0 {
+		fmt.Printf("File open failed: %s\n", errno)
+		t.Fatal()
+	}
+
+	readConfigHook := []byte(readHook)
+	err := ioutil.WriteFile(testConfigFile, readConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: -100}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "/tmp/testfile\u0000"}}
+	trace := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessKprobe{
+				ProcessKprobe: &fgs.ProcessKprobe{
+					Process:      &fgs.Process{Binary: selfBinary},
+					Parent:       &fgs.Process{Binary: ""},
+					FunctionName: "__x64_sys_openat",
+					Args:         []*fgs.KprobeArgument{arg0, arg1},
+				},
+			},
+		},
+	}
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWG.Wait()
+	fd2, errno := syscall.Open("/tmp/testfile", syscall.O_RDWR, 0x770)
+	if fd2 < 0 {
+		fmt.Printf("File open from read failed: %s\n", errno)
+		t.Fatal()
+	}
+	exitWG.Wait()
+	retries := jsonRetries
+	time.Sleep(1000 * time.Millisecond)
+	ok := JsonTestCompare(trace, nil, retries, 0)
+	if (invertResult && ok) || (!invertResult && !ok) {
+		t.Fail()
+	}
+	testDone(t, kprobe)
+}
+
+func TestKprobeObjectOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    allowfilters:
+      pids:
+      - op: "eq"
+        value: ` + pidStr + `
+        followforks: true
+        isnamespacepid: false
+      args:
+      - index: 1
+        op: "eq"
+        value: "/tmp/testfile"
+`
+	testKprobeObjectFiltered(t, readHook, false)
+}
+
+func TestKprobeObjectFilterOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    allowfilters:
+      pids:
+      - op: "eq"
+        value: ` + pidStr + `
+        followforks: true
+        isnamespacepid: false
+      args:
+      - index: 1
+        op: "eq"
+        value: "/tmp/foofile"
+`
+	testKprobeObjectFiltered(t, readHook, true)
+}
+
+func TestKprobeObjectFilterPrefixOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    allowfilters:
+      pids:
+      - op: "eq"
+        value: ` + pidStr + `
+        followforks: true
+        isnamespacepid: false
+      args:
+      - index: 1
+        op: "stringprefix"
+        value: "/tmp/testf"
+`
+	testKprobeObjectFiltered(t, readHook, false)
+}
+
 func helloIovecWorldWritev() (err error) {
 	var arrayOfBytes = make([][]byte, 3)
 

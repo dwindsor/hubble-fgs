@@ -168,6 +168,10 @@ const (
 	genericKprobeFilterLT  = 2
 	genericKprobeFilterEQ  = 3
 	genericKprobeFilterNEQ = 4
+	// String ops
+	genericKprobeFilterStringContains = 5
+	genericKprobeFilterStringPrefix   = 6
+	genericKprobeFilterStringPostfix  = 7
 )
 
 func (k *ObserverKprobe) opFilterStrToType(ty string) (int, error) {
@@ -180,8 +184,34 @@ func (k *ObserverKprobe) opFilterStrToType(ty string) (int, error) {
 		return genericKprobeFilterEQ, nil
 	case "neq":
 		return genericKprobeFilterNEQ, nil
+	case "stringcontains":
+		return genericKprobeFilterStringContains, nil
+	case "stringprefix":
+		return genericKprobeFilterStringPrefix, nil
+	case "stringpostfix":
+		return genericKprobeFilterStringPostfix, nil
 	}
+
 	return 0, fmt.Errorf("Unknown op '%s'", ty)
+}
+
+func goStringToAscii(s string) []byte {
+	r := []rune(s)
+
+	b := make([]byte, len(s))
+	for i := 0; i < len(r); i++ {
+		b[i] = byte(r[i])
+	}
+	return b
+}
+
+func opFilterStringSupported(op int) bool {
+	switch op {
+	case genericKprobeFilterEQ,
+		genericKprobeFilterStringPrefix:
+		return true
+	}
+	return false
 }
 
 func (k *ObserverKprobe) createArgFilter(argType int, filters []v1alpha1.ArgFilter) []byte {
@@ -232,7 +262,25 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []v1alpha1.ArgFilt
 			}
 		}
 	case GenericKprobeStringType:
-		fallthrough
+		filterIndex := 0
+
+		for _, f := range filters {
+			operation, _ := k.opFilterStrToType(f.Op)
+			if !opFilterStringSupported(operation) {
+				k.log.Warn("Warning: string type unsupported op type %s\n", f.Op)
+				continue
+			}
+			binary.LittleEndian.PutUint32(b[filterIndex:], uint32(operation))
+			filterIndex += 4
+			binary.LittleEndian.PutUint32(b[filterIndex:], uint32(len(f.Value)))
+			filterIndex += 4
+			asciiValue := goStringToAscii(f.Value)
+			for _, v := range asciiValue {
+				b[filterIndex] = v
+				filterIndex++
+			}
+			b[filterIndex] = 0x00
+		}
 	case GenericKprobeSkbType:
 		fallthrough
 	case GenericKprobeSizeType:
@@ -689,7 +737,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			outputStr := make([]byte, b)
 			err = binary.Read(r, binary.LittleEndian, &outputStr)
 			if err != nil {
-				k.log.WithError(err).Warnf("String type err")
+				k.log.WithError(err).Warnf("String with size %d type err", b)
 			}
 
 			arg.Index = uint64(i)

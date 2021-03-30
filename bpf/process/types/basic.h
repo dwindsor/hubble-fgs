@@ -130,6 +130,75 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 	PARSE_IOVEC_ENTRY     \
 }
 
+static inline __attribute__((always_inline))
+int cmpbytes(char *s1, char *s2, size_t n)
+{
+	int i = 0;
+
+	if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+	i++; if (i < n && s1[i] != s2[i]) return -1;
+
+	return 0;
+}
+
+static inline __attribute__((always_inline))
+long filter_strings(char *args, unsigned long arg, void *filter_map)
+{
+
+	int *s = (int *)args;
+	int zero = 0;
+	long size;
+	char *f;
+
+	size = probe_read_str(&args[4], MAX_STRING, (char *)arg);
+	if (size < 0) {
+		return filter;
+	}
+	*s = size;
+
+	f = map_lookup_elem(filter_map, &zero);
+	if (f) {
+		__u32 op = *(__u32 *)f;
+
+		if (op == op_filter_eq || op == op_filter_str_prefix) {
+			__u32 length = *(__u32 *)&f[4];
+			long i = 0;
+			int err;
+
+			asm volatile("%[length] &= 0x3f;\n" :: [length] "+r"(length):);
+			if (i < length && f[8] != args[4])
+				return filter;
+
+			// verify terminating null character for equals case
+			if (op == op_filter_eq) {
+				if (args[4+length] != '\0' &&
+				    args[4+length-1] != '\0')
+					return filter;
+			}
+
+			err = cmpbytes(&f[8], &args[4], length);
+			if (err)
+				return filter;
+		}
+	}
+	// Initial 4 bytes hold string length
+	return size + 4;
+}
+
+
 /**
  * Read a generic argument
  *
@@ -191,13 +260,13 @@ long read_call_arg(char *args,
 	if (orig_off >= 4095 - min_size) {
 		return 0;
 	}
+	asm volatile("%[orig_off] &= 0xfff;\n" :: [orig_off] "+r"(orig_off):);
 	args += orig_off;
 
 	if (type == string_type) {
-		int *s = (int *)args;
-		size = probe_read_str(&args[4], MAX_STRING, (char *)arg);
-		*s = size;
-		size += 4; // accounting for initial length int
+		size = filter_strings(args, arg, filter_map);
+		if (size < 0)
+			return filter;
 	} else if (type == size_type) {
 		probe_read(args, sizeof(size_t), &arg);
 		size = sizeof(size_t);
