@@ -45,12 +45,8 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		return 0;
 
 	enter = event_find_curr(&ppid, 0, &walker);
-	if (enter) {
-		e->current.pid = pid;
-		e->current.ktime = enter->key.ktime;
-	} else {
+	if (!enter)
 		return 0;
-	}
 	if (!enter->retprobe_buffer)
 		return 0;
 
@@ -61,7 +57,8 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	e->common.size = 0;
 	e->common.ktime = ktime_get_ns();
 
-	e->current.pid = pid;
+	e->current.pid = enter->key.pid;
+	e->current.ktime = enter->key.ktime;
 	e->current.pad[0] = 0;
 	e->current.pad[1] = 0;
 	e->current.pad[2] = 0;
@@ -74,7 +71,6 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		size = 0;
 	size &= 0x7fff;
 
-	bpf_printk("size ctx->ax %d size %d\n", ctx->ax, size);
 	s = (int *)&e->args[0];
 	*s = size;
 	/* tbd error check and signal to userland */
