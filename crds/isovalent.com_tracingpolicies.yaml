@@ -52,6 +52,7 @@ spec:
                                 enum:
                                 - eq
                                 - neq
+                                - stringprefix
                                 type: string
                               value:
                                 description: Value to compare the argument against.
@@ -184,6 +185,7 @@ spec:
                                 enum:
                                 - eq
                                 - neq
+                                - stringprefix
                                 type: string
                               value:
                                 description: Value to compare the argument against.

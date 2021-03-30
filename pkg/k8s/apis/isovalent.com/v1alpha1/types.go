@@ -140,7 +140,7 @@ type ArgFilter struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument to apply fhe filter to.
 	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=eq;neq
+	// +kubebuilder:validation:Enum=eq;neq;stringprefix
 	// Filter operation.
 	Op string `json:"op"`
 	// Value to compare the argument against.
