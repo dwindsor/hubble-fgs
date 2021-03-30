@@ -473,7 +473,9 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobeConfig *v1alpha1.TracingP
 
 			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(int(a.Index)), argType)
 			if retVal < 0 {
-				return nil, fmt.Errorf("Error add enum value '%s' failed %d", kprobeArgToString(int(a.Index)), retVal)
+				return nil,
+					fmt.Errorf("Error add arg: ArgType %s Index %d failed %d",
+						a.Type, int(a.Index), retVal)
 			}
 			retVal = bpf.AddEnumBtfValue(btf, kprobeArgMToString(int(a.Index)), argMValue)
 			if retVal < 0 {
@@ -574,6 +576,57 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobeConfig *v1alpha1.TracingP
 	}, nil
 }
 
+func (k *ObserverKprobe) loadKprobeArgs(version int, p *bpfLoad) error {
+	btf := genericKprobeLoadArgs[p.observer__attach].btf
+	args := genericKprobeLoadArgs[p.observer__attach].args
+
+	err, _ := bpf.LoadKprobeArgsProgram(
+		version, Verbosity, btf,
+		p.Observer__program,
+		p.observer__x64_attach,
+		p.observer__label,
+		k.bpfDir+p.observer__prog,
+		k.mapDir,
+		false,
+		args)
+	if err != nil {
+		err, _ = bpf.LoadKprobeArgsProgram(
+			version, Verbosity, btf,
+			p.Observer__program,
+			p.observer__attach,
+			p.observer__label,
+			k.bpfDir+p.observer__prog,
+			k.mapDir,
+			false,
+			args)
+	}
+	return err
+}
+
+func (k *ObserverKprobe) loadKprobe(version int, p *bpfLoad) error {
+	btf := genericKprobeLoadArgs[p.observer__attach].btf
+
+	err, _ := bpf.LoadKprobeProgram(
+		version, Verbosity, btf,
+		p.Observer__program,
+		p.observer__x64_attach,
+		p.observer__label,
+		k.bpfDir+p.observer__prog,
+		k.mapDir,
+		true)
+	if err != nil {
+		err, _ = bpf.LoadKprobeProgram(
+			version, Verbosity, btf,
+			p.Observer__program,
+			p.observer__attach,
+			p.observer__label,
+			k.bpfDir+p.observer__prog,
+			k.mapDir,
+			true)
+	}
+	return err
+}
+
 func (k *ObserverKprobe) loadGenericKprobeObject(bundle *observerSensor) error {
 	version, _, err := getKernelVersion()
 	if err != nil {
@@ -581,30 +634,13 @@ func (k *ObserverKprobe) loadGenericKprobeObject(bundle *observerSensor) error {
 	}
 
 	for _, p := range bundle.progs {
-		btf := genericKprobeLoadArgs[p.observer__attach].btf
-		args := genericKprobeLoadArgs[p.observer__attach].args
 		retprobe := genericKprobeLoadArgs[p.observer__attach].retprobe
 
 		retprobe = strings.Contains(p.Observer__program, "ret")
-		err, _ := bpf.LoadKprobeArgsProgram(
-			version, Verbosity, btf,
-			p.Observer__program,
-			p.observer__x64_attach,
-			p.observer__label,
-			k.bpfDir+p.observer__prog,
-			k.mapDir,
-			retprobe,
-			args)
-		if err != nil {
-			err, _ = bpf.LoadKprobeArgsProgram(
-				version, Verbosity, btf,
-				p.Observer__program,
-				p.observer__attach,
-				p.observer__label,
-				k.bpfDir+p.observer__prog,
-				k.mapDir,
-				retprobe,
-				args)
+		if retprobe {
+			err = k.loadKprobe(version, p)
+		} else {
+			err = k.loadKprobeArgs(version, p)
 		}
 		if err != nil {
 			return fmt.Errorf("Loading probe failed: %s\n", err)
@@ -614,31 +650,16 @@ func (k *ObserverKprobe) loadGenericKprobeObject(bundle *observerSensor) error {
 	return nil
 }
 
-func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose int, x64 bool) (error, int) {
-	var attach string
-
-	btf := genericKprobeLoadArgs[load.observer__attach].btf
-	args := genericKprobeLoadArgs[load.observer__attach].args
+func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose int) (error, int) {
 	// we don't actually need retprobe here but might be useful in the future for dbg?
 	retprobe := genericKprobeLoadArgs[load.observer__attach].retprobe
-
 	observerAllPrograms = append(observerAllPrograms, load)
-
-	if x64 {
-		attach = load.observer__x64_attach
-	} else {
-		attach = load.observer__attach
-	}
 	retprobe = strings.Contains(load.Observer__program, "ret")
-	return bpf.LoadKprobeArgsProgram(
-		version, verbose, btf,
-		load.Observer__program,
-		attach,
-		load.observer__label,
-		k.bpfDir+load.observer__prog,
-		k.mapDir,
-		retprobe,
-		args)
+	if retprobe {
+		return k.loadKprobe(version, load), 0
+	} else {
+		return k.loadKprobeArgs(version, load), 0
+	}
 }
 
 func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {

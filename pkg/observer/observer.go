@@ -1041,7 +1041,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
 		return k.observerLoadTC(load, version, Verbosity, btf)
 	} else if load.probeType == "generic_kprobe" {
-		return k.loadGenericKprobeSensor(load, version, Verbosity, x64)
+		return k.loadGenericKprobeSensor(load, version, Verbosity)
 	} else if load.probeType == "generic_tracepoint" {
 		return k.loadGenericTracepointSensor(load, btf, version, Verbosity, x64)
 	} else {
