@@ -118,7 +118,7 @@ int fgs_map_loader(const int version,
 	err = libbpf_get_error(map_bpf);
 	if (err) {
 		fprintf(stderr,
-			"bpf_object__find_map_by_name: obj(%s) map(%s) failed",
+			"bpf_object__find_map_by_name: fgs map loader obj(%s) map(%s) failed",
 			prog, __label_map);
 		goto cleanup;
 	}
@@ -667,7 +667,7 @@ void *generic_loader_args(
 	}
 	if (!map_bpf) {
 		fprintf(stderr,
-			"bpf_object__find_map_by_name: obj(%s) map(%s) failed",
+			"bpf_object__find_map_by_name: generic loader args obj(%s) map(%s) failed: ",
 			prog, kprobe_calls_name);
 		goto err;
 	}
