@@ -235,6 +235,10 @@ message StackTraceNode {
 	repeated StackTraceNode children = 4;
 }
 
+/**
+ * Sensors
+ */
+
 message ListSensorsRequest { }
 
 message SensorStatus {
@@ -244,6 +248,18 @@ message SensorStatus {
 message ListSensorsResponse {
 	repeated SensorStatus sensors = 1;
 }
+
+message AddTracingPolicyRequest {
+	string name = 1;
+	string yaml = 2;
+}
+message AddTracingPolicyResponse {}
+
+message RemoveSensorRequest {
+	string name = 1;
+}
+message RemoveSensorResponse {}
+
 
 message EnableSensorRequest {
 	string name = 1;
@@ -285,6 +301,9 @@ message GetStackTraceTreeResponse {
 service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
     rpc GetHealth(GetHealthStatusRequest) returns (GetHealthStatusResponse) {}
+
+    rpc AddTracingPolicy(AddTracingPolicyRequest) returns (AddTracingPolicyResponse) {}
+    rpc RemoveSensor(RemoveSensorRequest) returns (RemoveSensorResponse) {}
 
     rpc ListSensors(ListSensorsRequest) returns (ListSensorsResponse) {}
     rpc EnableSensor(EnableSensorRequest) returns (EnableSensorResponse) {}

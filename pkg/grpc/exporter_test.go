@@ -95,6 +95,13 @@ func (f *fakeObserver) GetTreeProto(ctx context.Context, tname string) (*fgs.Sta
 	return nil, nil
 }
 
+func (f *fakeObserver) AddTracingPolicy(ctx context.Context, sensorName string, policyYaml string) error {
+	return nil
+}
+func (f *fakeObserver) RemoveSensor(ctx context.Context, sensorName string) error {
+	return nil
+}
+
 func TestExporter_Send(t *testing.T) {
 	eventNotifier := newFakeNotifier()
 	grpcServer := NewServer(eventNotifier, &fakeObserver{})

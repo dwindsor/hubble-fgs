@@ -2301,6 +2301,280 @@ var _ interface {
 	ErrorName() string
 } = ListSensorsResponseValidationError{}
 
+// Validate checks the field values on AddTracingPolicyRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *AddTracingPolicyRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Name
+
+	// no validation rules for Yaml
+
+	return nil
+}
+
+// AddTracingPolicyRequestValidationError is the validation error returned by
+// AddTracingPolicyRequest.Validate if the designated constraints aren't met.
+type AddTracingPolicyRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e AddTracingPolicyRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e AddTracingPolicyRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e AddTracingPolicyRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e AddTracingPolicyRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e AddTracingPolicyRequestValidationError) ErrorName() string {
+	return "AddTracingPolicyRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e AddTracingPolicyRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sAddTracingPolicyRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = AddTracingPolicyRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = AddTracingPolicyRequestValidationError{}
+
+// Validate checks the field values on AddTracingPolicyResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *AddTracingPolicyResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// AddTracingPolicyResponseValidationError is the validation error returned by
+// AddTracingPolicyResponse.Validate if the designated constraints aren't met.
+type AddTracingPolicyResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e AddTracingPolicyResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e AddTracingPolicyResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e AddTracingPolicyResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e AddTracingPolicyResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e AddTracingPolicyResponseValidationError) ErrorName() string {
+	return "AddTracingPolicyResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e AddTracingPolicyResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sAddTracingPolicyResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = AddTracingPolicyResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = AddTracingPolicyResponseValidationError{}
+
+// Validate checks the field values on RemoveSensorRequest with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *RemoveSensorRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Name
+
+	return nil
+}
+
+// RemoveSensorRequestValidationError is the validation error returned by
+// RemoveSensorRequest.Validate if the designated constraints aren't met.
+type RemoveSensorRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e RemoveSensorRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e RemoveSensorRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e RemoveSensorRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e RemoveSensorRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e RemoveSensorRequestValidationError) ErrorName() string {
+	return "RemoveSensorRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e RemoveSensorRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sRemoveSensorRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = RemoveSensorRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = RemoveSensorRequestValidationError{}
+
+// Validate checks the field values on RemoveSensorResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *RemoveSensorResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// RemoveSensorResponseValidationError is the validation error returned by
+// RemoveSensorResponse.Validate if the designated constraints aren't met.
+type RemoveSensorResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e RemoveSensorResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e RemoveSensorResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e RemoveSensorResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e RemoveSensorResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e RemoveSensorResponseValidationError) ErrorName() string {
+	return "RemoveSensorResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e RemoveSensorResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sRemoveSensorResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = RemoveSensorResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = RemoveSensorResponseValidationError{}
+
 // Validate checks the field values on EnableSensorRequest with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, an error is returned.

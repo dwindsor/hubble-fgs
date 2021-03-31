@@ -26,12 +26,13 @@ import (
 )
 
 type observer interface {
+	AddTracingPolicy(ctx context.Context, sensorName string, policyYaml string) error
 	EnableSensor(ctx context.Context, name string) error
 	DisableSensor(ctx context.Context, name string) error
 	ListSensors(ctx context.Context) (*[]api.SensorStatus, error)
 	GetSensorConfig(ctx context.Context, name string, cfgkey string) (string, error)
 	SetSensorConfig(ctx context.Context, name string, cfgkey string, cfgval string) error
-
+	RemoveSensor(ctx context.Context, sensorName string) error
 	GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error)
 }
 
@@ -128,6 +129,22 @@ func (s *Server) ListSensors(ctx context.Context, request *fgs.ListSensorsReques
 	}
 
 	return ret, err
+}
+
+func (s *Server) AddTracingPolicy(ctx context.Context, req *fgs.AddTracingPolicyRequest) (*fgs.AddTracingPolicyResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received an AddTracingPolicy request")
+	if err := s.observer.AddTracingPolicy(ctx, req.GetName(), req.GetYaml()); err != nil {
+		return nil, err
+	}
+	return &fgs.AddTracingPolicyResponse{}, nil
+}
+
+func (s *Server) RemoveSensor(ctx context.Context, req *fgs.RemoveSensorRequest) (*fgs.RemoveSensorResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received a RemoveTracingPolicy request")
+	if err := s.observer.RemoveSensor(ctx, req.GetName()); err != nil {
+		return nil, err
+	}
+	return &fgs.RemoveSensorResponse{}, nil
 }
 
 func (s *Server) EnableSensor(ctx context.Context, req *fgs.EnableSensorRequest) (*fgs.EnableSensorResponse, error) {

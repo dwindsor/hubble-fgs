@@ -16,6 +16,7 @@ package main
 import (
 	"context"
 	"fmt"
+	"os"
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 
@@ -87,7 +88,37 @@ func init() {
 	}
 	sensorsCmd.AddCommand(sensorConfigCmd)
 
+	sensorRmCmd := &cobra.Command{
+		Use:   "rm <sensor_name>",
+		Short: "remove a sensor",
+		Args:  cobra.ExactArgs(1),
+		Run: func(cmd *cobra.Command, args []string) {
+			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+				removeSensor(cli, args[0])
+			})
+		},
+	}
+	sensorsCmd.AddCommand(sensorRmCmd)
+
 	rootCmd.AddCommand(sensorsCmd)
+
+	tpCmd := &cobra.Command{
+		Use:   "tracingpolicy",
+		Short: "Manage tracing policies",
+	}
+
+	tpAddCmd := &cobra.Command{
+		Use:   "add <sensor_name> <yaml_file>",
+		Short: "Add a new sennsor based on a tracing policy",
+		Args:  cobra.ExactArgs(2),
+		Run: func(cmd *cobra.Command, args []string) {
+			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+				addTracingPolicy(cli, args[0], args[1])
+			})
+		},
+	}
+	tpCmd.AddCommand(tpAddCmd)
+	rootCmd.AddCommand(tpCmd)
 }
 
 func listSensors(client fgs.FineGuidanceSensorsClient) {
@@ -108,6 +139,33 @@ func listSensors(client fgs.FineGuidanceSensorsClient) {
 			enabled = "(not enabled)"
 		}
 		fmt.Printf("%s %s\n", sensor.Name, enabled)
+	}
+}
+
+func addTracingPolicy(client fgs.FineGuidanceSensorsClient, sensor, yamlFname string) {
+	yamlb, err := os.ReadFile(yamlFname)
+	if err != nil {
+		fmt.Printf("failed to read yaml file %s: %s\n", yamlFname, err)
+		return
+	}
+
+	ctx, _ := context.WithCancel(context.Background())
+	_, err = client.AddTracingPolicy(ctx, &fgs.AddTracingPolicyRequest{
+		Name: sensor,
+		Yaml: string(yamlb),
+	})
+	if err != nil {
+		fmt.Printf("failed to add tracing policy: %s\n", err)
+	}
+}
+
+func removeSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
+	ctx, _ := context.WithCancel(context.Background())
+	_, err := client.RemoveSensor(ctx, &fgs.RemoveSensorRequest{
+		Name: sensor,
+	})
+	if err != nil {
+		fmt.Printf("failed to remove tracing policy: %s\n", err)
 	}
 }
 
