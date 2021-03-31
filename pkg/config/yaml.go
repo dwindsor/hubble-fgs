@@ -31,7 +31,7 @@ type GenericTracingConf struct {
 	Spec       v1alpha1.TracingPolicySpec `yaml:"spec"`
 }
 
-func readConfigYaml(data string) (*GenericTracingConf, error) {
+func ReadConfigYaml(data string) (*GenericTracingConf, error) {
 	var k GenericTracingConf
 
 	err := yaml.Unmarshal([]byte(data), &k)
@@ -46,7 +46,7 @@ func fileConfig(fileName string) (*GenericTracingConf, error) {
 	if err != nil {
 		return nil, err
 	}
-	return readConfigYaml(string(config))
+	return ReadConfigYaml(string(config))
 }
 
 func FileConfigSpec(fileName string) (*v1alpha1.TracingPolicySpec, error) {

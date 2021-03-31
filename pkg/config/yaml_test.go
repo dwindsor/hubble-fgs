@@ -187,7 +187,7 @@ var expectedData = GenericTracingConf{
 }
 
 func TestYamlWritev(t *testing.T) {
-	k, err := readConfigYaml(writev)
+	k, err := ReadConfigYaml(writev)
 	if err != nil {
 		t.Errorf("YamlWritev error %s", err)
 	}
@@ -197,7 +197,7 @@ func TestYamlWritev(t *testing.T) {
 }
 
 func TestYamlData(t *testing.T) {
-	k, err := readConfigYaml(data)
+	k, err := ReadConfigYaml(data)
 	if err != nil {
 		t.Errorf("YamlData error %s", err)
 	}
@@ -243,9 +243,9 @@ func TestYamlLseek(t *testing.T) {
 		},
 	}
 
-	k, err := readConfigYaml(lseekExample)
+	k, err := ReadConfigYaml(lseekExample)
 	if err != nil {
-		t.Errorf("readConfigYaml failed: %s", err)
+		t.Errorf("ReadConfigYaml failed: %s", err)
 	}
 
 	if reflect.DeepEqual(expected, *k) != true {
