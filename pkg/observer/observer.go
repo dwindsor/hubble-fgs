@@ -1264,9 +1264,6 @@ type ObserverKprobe struct {
 	/* YAML Configuration File */
 	configFile string
 
-	/* generic Tracepoints configuration */
-	genericTracepointsConf []GenericTracepointConf
-
 	/* enable CRD */
 	enableCRD bool
 }
@@ -1501,15 +1498,6 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		}
 	}
 
-	// load initial set of generic tracepoint sensors
-	if len(k.genericTracepointsConf) > 0 {
-		if genericTracepointSensor, err := k.createGenericTracepointSensor(k.genericTracepointsConf); err != nil {
-			return fmt.Errorf("hubble-fgs, Failed to create initial generic tracepoint sensor: %w", err)
-		} else if err := k.observerLoadSensor(ctx, genericTracepointSensor); err != nil {
-			return fmt.Errorf("hubble-fgs, Aborting could not load initial tracepoint sensor. %w\n", err)
-		}
-	}
-
 	// start sensor controller and stt manager
 	k.startSensorCtl()
 	k.ObserverSync.sttManagerHandle = startSttManager()
@@ -1569,19 +1557,18 @@ func (k *ObserverKprobe) RemovePrograms() {
 func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string, genericTracepoints []GenericTracepointConf,
 	tls, tlstc, pretty, crd bool) *ObserverKprobe {
 	return &ObserverKprobe{
-		bpfDir:                 bpfDir,
-		mapDir:                 mapDir,
-		ciliumDir:              ciliumDir,
-		interfaces:             interfaces,
-		enableTLS:              tls,
-		enableTLSTC:            tlstc,
-		prettyPrinter:          pretty,
-		listeners:              make(map[Listener]struct{}),
-		log:                    logger.GetLogger(),
-		tlsInProgress:          make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
-		configFile:             configFile,
-		genericTracepointsConf: genericTracepoints,
-		enableCRD:              crd,
+		bpfDir:        bpfDir,
+		mapDir:        mapDir,
+		ciliumDir:     ciliumDir,
+		interfaces:    interfaces,
+		enableTLS:     tls,
+		enableTLSTC:   tlstc,
+		prettyPrinter: pretty,
+		listeners:     make(map[Listener]struct{}),
+		log:           logger.GetLogger(),
+		tlsInProgress: make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
+		configFile:    configFile,
+		enableCRD:     crd,
 	}
 }
 

@@ -108,7 +108,7 @@ func (t *tracepointTable) getTracepoint(idx int) (*genericTracepoint, error) {
 
 // GenericTracepointConf is the configuration for a generic tracepoint. This is
 // a caller-defined structure that configures a tracepoint.
-type GenericTracepointConf v1alpha1.TracepointSpec
+type GenericTracepointConf = v1alpha1.TracepointSpec
 
 // GenericTracepointConfArg represents an argument of a generic tracepoint
 //

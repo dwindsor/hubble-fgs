@@ -20,6 +20,7 @@ import (
 	"fmt"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/config"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 )
 
@@ -30,7 +31,7 @@ import (
 // visible to end users who can enable/disable them.
 //
 // Sensor control operations are done in a separate goroutine which acts as a
-// serialiation point for concurrent client requests.
+// serialization point for concurrent client requests.
 
 var (
 	// list of availableSensors, see registerSensor()
@@ -71,7 +72,7 @@ type observerSensor struct {
 // This ensures that the function is called before controller goroutine starts,
 // and that the availableSensors is setup without having to worry about
 // synchronization.
-func registerSensor(s *observerSensor) {
+func registerSensorAtInit(s *observerSensor) {
 
 	if _, exists := availableSensors[s.name]; exists {
 		panic(fmt.Sprintf("registerSensor called, but %s is already registered", s.name))
@@ -80,11 +81,36 @@ func registerSensor(s *observerSensor) {
 	availableSensors[s.name] = s
 }
 
-// There are 4 commands that can be passed to the controller goroutine:
+// There are 6 commands that can be passed to the controller goroutine:
+// - tracingPolicyAdd
+// - sensorList
 // - sensorEnable
 // - sensorDisable
-// - sensorList
+// - sensorRemove
 // - sensorCtlStop
+
+// tracingPolicyAdd adds a sensor based on a the provided tracing policy
+type tracingPolicyAdd struct {
+	ctx        context.Context
+	name       string
+	policyYAML string
+	retChan    chan error
+}
+
+// sensorAdd adds a sensor
+type sensorAdd struct {
+	ctx     context.Context
+	name    string
+	sensor  *observerSensor
+	retChan chan error
+}
+
+// sensorRemove removes a sensor (for now, used only for tracing policies)
+type sensorRemove struct {
+	ctx     context.Context
+	name    string
+	retChan chan error
+}
 
 // sensorEnable enables a sensor
 type sensorEnable struct {
@@ -141,12 +167,15 @@ type sensorOp interface {
 }
 
 // trivial sensorOpDone implementations for commands
-func (s *sensorEnable) sensorOpDone(e error)    { s.retChan <- e }
-func (s *sensorDisable) sensorOpDone(e error)   { s.retChan <- e }
-func (s *sensorList) sensorOpDone(e error)      { s.retChan <- e }
-func (s *sensorConfigSet) sensorOpDone(e error) { s.retChan <- e }
-func (s *sensorConfigGet) sensorOpDone(e error) { s.retChan <- e }
-func (s *sensorCtlStop) sensorOpDone(e error)   { s.retChan <- e }
+func (s *tracingPolicyAdd) sensorOpDone(e error) { s.retChan <- e }
+func (s *sensorAdd) sensorOpDone(e error)        { s.retChan <- e }
+func (s *sensorRemove) sensorOpDone(e error)     { s.retChan <- e }
+func (s *sensorEnable) sensorOpDone(e error)     { s.retChan <- e }
+func (s *sensorDisable) sensorOpDone(e error)    { s.retChan <- e }
+func (s *sensorList) sensorOpDone(e error)       { s.retChan <- e }
+func (s *sensorConfigSet) sensorOpDone(e error)  { s.retChan <- e }
+func (s *sensorConfigGet) sensorOpDone(e error)  { s.retChan <- e }
+func (s *sensorCtlStop) sensorOpDone(e error)    { s.retChan <- e }
 
 type sensorCtlHandle = chan<- sensorOp
 
@@ -176,6 +205,41 @@ func (k *ObserverKprobe) startSensorCtl() error {
 			op_ := <-c
 			err := errors.New("BUG in SensorCtl: unset error value")
 			switch op := op_.(type) {
+
+			case *tracingPolicyAdd:
+				var sensor *observerSensor
+				if _, exists := availableSensors[op.name]; exists {
+					err = fmt.Errorf("sensor %s already exists", op.name)
+					break
+				}
+				sensor, err = k.getSensorFromTracingPolicy(op.policyYAML)
+				if err != nil {
+					break
+				}
+				availableSensors[op.name] = sensor
+				err = nil
+
+			case *sensorAdd:
+				if _, exists := availableSensors[op.name]; exists {
+					err = fmt.Errorf("sensor %s already exists", op.name)
+					break
+				}
+				availableSensors[op.name] = op.sensor
+				err = nil
+
+			case *sensorRemove:
+				sensor, exists := availableSensors[op.name]
+				if !exists {
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+				if sensor.loaded {
+					err = fmt.Errorf("sensor %s enabled, please disable it before removing", op.name)
+					break
+				}
+				delete(availableSensors, op.name)
+				err = nil
+
 			case *sensorEnable:
 				sensor := availableSensors[op.name]
 				if sensor == nil {
@@ -261,6 +325,27 @@ func (k *ObserverKprobe) startSensorCtl() error {
 	k.ObserverSync.sensorCtlHandle = c
 	return nil
 }
+func (o *ObserverKprobe) getSensorFromTracingPolicy(yaml string) (*observerSensor, error) {
+
+	cnf, err := config.ReadConfigYaml(yaml)
+	if err != nil {
+		return nil, err
+	}
+
+	kprobes := cnf.Spec.KProbes
+	tracepoints := cnf.Spec.Tracepoints
+	if len(kprobes) > 0 && len(tracepoints) > 0 {
+		// TODO: requires some refactoring (see also below)
+		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
+	} else if len(kprobes) > 0 {
+		// TODO: requires some refactoring
+		return nil, errors.New("tracing policies with kprobes are not currently supported")
+	} else if len(tracepoints) > 0 {
+		return o.createGenericTracepointSensor(tracepoints)
+	} else {
+		return nil, errors.New("empty tracing policy")
+	}
+}
 
 /*
  * Observer sensor operations
@@ -283,10 +368,25 @@ func (h *ObserverSync) EnableSensor(ctx context.Context, name string) error {
 	h.sensorCtlHandle <- op
 	err := <-retc
 
-	if err == nil {
+	return err
+}
+
+// AddSensor adds a sensor
+func (h *ObserverSync) AddSensor(ctx context.Context, name string, sensor *observerSensor) error {
+	if h.sensorCtlHandle == nil {
+		return fmt.Errorf("SensorDisable failed, controller channel not initialized")
 	}
 
-	return err
+	retc := make(chan error)
+	op := &sensorAdd{
+		ctx:     ctx,
+		name:    name,
+		sensor:  sensor,
+		retChan: retc,
+	}
+
+	h.sensorCtlHandle <- op
+	return <-retc
 }
 
 // DisableSensor disables a sensor by name
@@ -368,6 +468,43 @@ func (h *ObserverSync) SetSensorConfig(ctx context.Context, name string, cfgkey 
 
 	h.sensorCtlHandle <- op
 	return <-retc
+}
+
+// AddTracingPolicy adds a new sensor based on a tracing policy
+func (h *ObserverSync) AddTracingPolicy(ctx context.Context, sensorName string, yaml string) error {
+	if h.sensorCtlHandle == nil {
+		return fmt.Errorf("SensorEnable failed, controller channel not initialized")
+	}
+
+	retc := make(chan error)
+	op := &tracingPolicyAdd{
+		ctx:        ctx,
+		name:       sensorName,
+		policyYAML: yaml,
+		retChan:    retc,
+	}
+
+	h.sensorCtlHandle <- op
+	err := <-retc
+
+	return err
+}
+
+func (h *ObserverSync) RemoveSensor(ctx context.Context, sensorName string) error {
+	if h.sensorCtlHandle == nil {
+		return fmt.Errorf("SensorEnable failed, controller channel not initialized")
+	}
+	retc := make(chan error)
+	op := &sensorRemove{
+		ctx:     ctx,
+		name:    sensorName,
+		retChan: retc,
+	}
+
+	h.sensorCtlHandle <- op
+	err := <-retc
+
+	return err
 }
 
 func (h *ObserverSync) stopSensorCtl(ctx context.Context) error {

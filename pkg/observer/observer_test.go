@@ -1266,7 +1266,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
 	sensor := &observerSensor{name: sensorName, progs: progs, maps: maps}
-	registerSensor(sensor)
+	registerSensorAtInit(sensor)
 
 	if err := kprobe.startSensorCtl(); err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
@@ -1568,6 +1568,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	testDone(t, kprobe)
 }
 
+// TestGenericTracepointSimple is a simple generic tracepoint test that creates a tracepoint for lseek()
 func TestGenericTracepointSimple(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
@@ -1582,14 +1583,45 @@ func TestGenericTracepointSimple(t *testing.T) {
 		},
 	}
 
-	observer, err := getDefaultObserverWithWatchers(t, withTracepoint(lseekConf))
+	// initialize observer
+	observer, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
 
+	// We do not call observer.Start(), so we need to start the sensor controller
+	if err := observer.startSensorCtl(); err != nil {
+		t.Fatalf("startSensorController failed: %s", err)
+	}
+	defer func() {
+		err := observer.stopSensorCtl(ctx)
+		if err != nil {
+			fmt.Printf("stopSensorController failed: %s\n", err)
+		}
+	}()
+
+	// create and add sensor
+	sensor, err := observer.createGenericTracepointSensor([]GenericTracepointConf{lseekConf})
+	if err != nil {
+		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
+	}
+	sensorName := "GtpLseekTest"
+	if err := observer.AddSensor(ctx, sensorName, sensor); err != nil {
+		t.Fatalf("failed to add generic tracepoint sensor: %s", err)
+	}
+	defer func() {
+		observer.RemoveSensor(ctx, sensorName)
+	}()
+	if err := observer.EnableSensor(ctx, sensorName); err != nil {
+		t.Fatalf("EnableSensor error: %s", err)
+	}
+	defer func() {
+		observer.DisableSensor(ctx, sensorName)
+	}()
+
+	// sensor was enabled, test it
 	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 4444}}
 	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 18446744073709551615}} // -1
-
 	trace := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessTracepoint{
@@ -1642,10 +1674,39 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	}
 
 	conf.Filters.PIDs = append(conf.Filters.PIDs, pidFilter)
-	observer, err := getDefaultObserverWithWatchers(t, withTracepoint(conf))
+	observer, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
+	// We do not call observer.Start(), so we need to start the sensor controller
+	if err := observer.startSensorCtl(); err != nil {
+		t.Fatalf("startSensorController failed: %s", err)
+	}
+	defer func() {
+		err := observer.stopSensorCtl(ctx)
+		if err != nil {
+			fmt.Printf("stopSensorController failed: %s\n", err)
+		}
+	}()
+
+	// create and add sensor
+	sensor, err := observer.createGenericTracepointSensor([]GenericTracepointConf{conf})
+	if err != nil {
+		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
+	}
+	sensorName := "GtpLseekTest"
+	if err := observer.AddSensor(ctx, sensorName, sensor); err != nil {
+		t.Fatalf("failed to add generic tracepoint sensor: %s", err)
+	}
+	defer func() {
+		observer.RemoveSensor(ctx, sensorName)
+	}()
+	if err := observer.EnableSensor(ctx, sensorName); err != nil {
+		t.Fatalf("EnableSensor error: %s", err)
+	}
+	defer func() {
+		observer.DisableSensor(ctx, sensorName)
+	}()
 
 	var exitWG, execWG sync.WaitGroup
 	loopEvents(t, &exitWG, &execWG, observer, ctx)

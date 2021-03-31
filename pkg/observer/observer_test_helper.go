@@ -83,12 +83,6 @@ func withCRD(config string) testOption {
 	}
 }
 
-func withTracepoint(tracepoint GenericTracepointConf) testOption {
-	return func(o *testOptions) {
-		o.observer.tracepoints = append(o.observer.tracepoints, tracepoint)
-	}
-}
-
 func withK8sWatcher(w fgsGrpc.K8sResourceWatcher) testOption {
 	return func(o *testOptions) {
 		o.exporter.watcher = w
@@ -172,14 +166,6 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 		}
 		if err := kprobe.observerLoadSensor(context.TODO(), genericKprobeSensor); err != nil {
 			t.Fatalf("observerLoadSensors error: Could not load kprobe sensors. %s", err)
-		}
-	}
-
-	if len(kprobe.genericTracepointsConf) > 0 {
-		if genericTracepointSensor, err := kprobe.createGenericTracepointSensor(kprobe.genericTracepointsConf); err != nil {
-			t.Fatalf("hubble-fgs, Failed to create initial generic tracepoint sensor: %s", err)
-		} else if err := kprobe.observerLoadSensor(context.TODO(), genericTracepointSensor); err != nil {
-			t.Fatalf("hubble-fgs, Aborting could not load initial tracepoint sensor. %s\n", err)
 		}
 	}
 

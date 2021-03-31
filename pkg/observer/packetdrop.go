@@ -51,7 +51,7 @@ var (
 func init() {
 	observerAllPrograms = append(observerAllPrograms, &ObserverKfreeSkb)
 	sensor := createPacketDropSensor()
-	registerSensor(sensor)
+	registerSensorAtInit(sensor)
 
 }
 
