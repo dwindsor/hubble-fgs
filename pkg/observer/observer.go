@@ -1266,6 +1266,9 @@ type ObserverKprobe struct {
 
 	/* generic Tracepoints configuration */
 	genericTracepointsConf []GenericTracepointConf
+
+	/* enable CRD */
+	enableCRD bool
 }
 
 // ObseverSync holds data that are safe to be used in all goroutine contexts.
@@ -1512,7 +1515,9 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	k.ObserverSync.sttManagerHandle = startSttManager()
 
 	// start CRD watcher
-	go k.watchTracePolicy()
+	if k.enableCRD {
+		go k.watchTracePolicy()
+	}
 
 	k.startUpdateMapMetrics()
 	k.populateExecve(ctx)
@@ -1562,7 +1567,7 @@ func (k *ObserverKprobe) RemovePrograms() {
 }
 
 func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string, genericTracepoints []GenericTracepointConf,
-	tls, tlstc, pretty bool) *ObserverKprobe {
+	tls, tlstc, pretty, crd bool) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:                 bpfDir,
 		mapDir:                 mapDir,
@@ -1576,6 +1581,7 @@ func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 		tlsInProgress:          make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
 		configFile:             configFile,
 		genericTracepointsConf: genericTracepoints,
+		enableCRD:              crd,
 	}
 }
 

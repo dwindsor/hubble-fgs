@@ -35,6 +35,7 @@ type testObserverOptions struct {
 	tls         bool
 	tlstc       bool
 	pretty      bool
+	crd         bool
 	probes      string
 	config      string
 	tracepoints []GenericTracepointConf
@@ -71,6 +72,12 @@ func withPretty() testOption {
 }
 
 func withConfig(config string) testOption {
+	return func(o *testOptions) {
+		o.observer.config = config
+	}
+}
+
+func withCRD(config string) testOption {
 	return func(o *testOptions) {
 		o.observer.config = config
 	}
