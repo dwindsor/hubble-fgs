@@ -161,6 +161,9 @@ int generic_process_filter(struct msg_execve_key *current)
 		} else if (nspid_filter_ty == op_filter_eq) {
 			if (enter->nspid != nspid_filter_value)
 				return PFILTER_FAILED;
+		} else if (nspid_filter_ty == op_filter_neq) {
+			if (enter->nspid == nspid_filter_value)
+				return PFILTER_FAILED;
 		}
 
 		if (pid_filter_ty == op_filter_lt) {
@@ -171,6 +174,9 @@ int generic_process_filter(struct msg_execve_key *current)
 				return PFILTER_FAILED;
 		} else if (pid_filter_ty == op_filter_eq) {
 			if (enter->key.pid != pid_filter_value)
+				return PFILTER_FAILED;
+		} else if (pid_filter_ty == op_filter_neq) {
+			if (enter->key.pid == pid_filter_value)
 				return PFILTER_FAILED;
 		}
 

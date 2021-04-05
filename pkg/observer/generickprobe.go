@@ -312,12 +312,7 @@ func pidFilterParseType(f v1alpha1.PIDFilter) (string, error) {
 				return "", fmt.Errorf("Unsupported op %s", f.Op)
 			}
 		case false:
-			switch f.Op {
-			case "eq":
-				return "nspid", nil
-			default:
-				return "", fmt.Errorf("Unsupported op %s", f.Op)
-			}
+			return "nspid", nil
 		}
 	case false:
 		switch f.FollowForks {
@@ -331,12 +326,7 @@ func pidFilterParseType(f v1alpha1.PIDFilter) (string, error) {
 				return "", fmt.Errorf("Unsupported op %s", f.Op)
 			}
 		case false:
-			switch f.Op {
-			case "eq":
-				return "pid", nil
-			default:
-				return "", fmt.Errorf("Unsupported op %s", f.Op)
-			}
+			return "pid", nil
 		}
 	}
 	return "", fmt.Errorf("Unsupported PIDFilter %v", f)
