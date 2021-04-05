@@ -153,24 +153,24 @@ int generic_process_filter(struct msg_execve_key *current)
 		bool accept_pid;
 
 		if (nspid_filter_ty == op_filter_lt) {
-			if (enter->nspid < nspid_filter_value)
+			if (enter->nspid >= nspid_filter_value)
 				return PFILTER_FAILED;
 		} else if (nspid_filter_ty == op_filter_gt) {
-			if (enter->nspid > nspid_filter_value)
+			if (enter->nspid <= nspid_filter_value)
 				return PFILTER_FAILED;
 		} else if (nspid_filter_ty == op_filter_eq) {
-			if (enter->nspid == nspid_filter_value)
+			if (enter->nspid != nspid_filter_value)
 				return PFILTER_FAILED;
 		}
 
 		if (pid_filter_ty == op_filter_lt) {
-			if (enter->key.pid < pid_filter_value)
+			if (enter->key.pid >= pid_filter_value)
 				return PFILTER_FAILED;
 		} else if (pid_filter_ty == op_filter_gt) {
-			if (enter->key.pid > pid_filter_value)
+			if (enter->key.pid <= pid_filter_value)
 				return PFILTER_FAILED;
 		} else if (pid_filter_ty == op_filter_eq) {
-			if (enter->key.pid == pid_filter_value)
+			if (enter->key.pid != pid_filter_value)
 				return PFILTER_FAILED;
 		}
 
