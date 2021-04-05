@@ -26,6 +26,8 @@ type ExecveValue struct {
 	Process api.MsgExecveKey
 	Parent  api.MsgExecveKey
 	Flags   uint32
+	Nspid   uint32
+	Buffer  uint64
 }
 
 func (k *ExecveKey) String() string             { return fmt.Sprintf("key=%d", k.Pid) }
@@ -125,6 +127,9 @@ func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
 		v.Parent.Ktime = p.pktime
 		v.Process.Pid = p.pid
 		v.Process.Ktime = p.ktime
+		v.Flags = 0
+		v.Nspid = p.nspid
+		v.Buffer = 0
 
 		m.Update(k, v)
 	}

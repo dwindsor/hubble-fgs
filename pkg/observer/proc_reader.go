@@ -275,6 +275,12 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		ktime = ktime * (nanoPerSeconds / clktck)
 		nspid, permitted, effective, inheritable := getPIDNS(filepath.Join(ProcFS, d.Name(), "status"))
 
+		// On error procsDockerId zeros dockerId so we can ignore any errors.
+		dockerId, _, _ := procsDockerId(uint32(pid))
+		if dockerId == "" {
+			nspid = 0
+		}
+
 		if _ppid != 0 {
 			var err error
 
@@ -297,7 +303,9 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 				pktime = 0
 			}
 			pktime = pktime * (nanoPerSeconds / clktck)
-			pnspid, _, _, _ = getPIDNS(filepath.Join(ProcFS, ppid, "status"))
+			if dockerId != "" {
+				pnspid, _, _, _ = getPIDNS(filepath.Join(ProcFS, ppid, "status"))
+			}
 		} else {
 			pcmdline = nil
 			pstatline = nil
