@@ -455,7 +455,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobeConfig *v1alpha1.TracingP
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
 			}
 			argMValue := getMetaValue(&a)
-			argIndexedFilters := getArgIndexFilter(a.Index, f.Filters.Args)
+			argIndexedFilters := getArgIndexFilter(a.Index, f.AllowFilters.Args)
 			argF := k.createArgFilter(argType, argIndexedFilters)
 			if argF != nil {
 				k.assignArgFilter(argF, argFilters, a.Index)
@@ -507,7 +507,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobeConfig *v1alpha1.TracingP
 				return nil, fmt.Errorf("Error add enum value 'syscall = 0' failed %d", retVal)
 			}
 		}
-		if err := k.kprobePidFilters(btf, f.Filters.PIDs); err != nil {
+		if err := k.kprobePidFilters(btf, f.AllowFilters.PIDs); err != nil {
 			return nil, fmt.Errorf("Error creating PID filters: %s", err)
 		}
 

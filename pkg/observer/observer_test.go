@@ -159,7 +159,7 @@ spec:
       sizeargindex: 2
     - index: 2
       type: "size_t"
-    filters:
+    allowfilters:
       pids:
       - op: "eq"
         value: 25587
@@ -205,7 +205,7 @@ spec:
     args:
     - index: 0
       type: "int"
-    filters:
+    allowfilters:
       pids:
       - op: "eq"
         value: ` + pidStr + ` 
@@ -254,7 +254,7 @@ spec:
       sizeargindex: 3
     - index: 2
       type: "size_t"
-    filters:
+    allowfilters:
       pids:
       - op: "eq"
         value: ` + pidStr + ` 
@@ -340,7 +340,7 @@ spec:
       returncopy: true
     - index: 2
       type: "size_t"
-    filters:
+    allowfilters:
       pids:
       - op: "eq"
         value: ` + pidStr + `
@@ -434,7 +434,7 @@ spec:
     - index: 1
       type: "char_iovec"
       sizeargindex: 3
-    filters:
+    allowfilters:
       pids:
       - op: "eq"
         value: ` + pidStr + ` 

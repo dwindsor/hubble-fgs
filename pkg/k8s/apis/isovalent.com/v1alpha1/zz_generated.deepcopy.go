@@ -76,7 +76,7 @@ func (in *KProbeSpec) DeepCopyInto(out *KProbeSpec) {
 		*out = make([]KProbeArg, len(*in))
 		copy(*out, *in)
 	}
-	in.Filters.DeepCopyInto(&out.Filters)
+	in.AllowFilters.DeepCopyInto(&out.AllowFilters)
 	return
 }
 

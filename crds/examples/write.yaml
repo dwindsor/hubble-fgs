@@ -14,7 +14,7 @@ spec:
       sizeargindex: 3
     - index: 2
       type: "size_t"
-    filters:
+    allowfilters:
       pids:
       - op: "neq"
         value: 1

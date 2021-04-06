@@ -39,7 +39,7 @@ spec:
         sizeargindex: 3
       - index: 2
         type: "size_t"
-    filters:
+    allowfilters:
       pids:
       - op: "eq"
         value: 1
@@ -75,7 +75,7 @@ var expectedWrite = GenericKprobeConfig{
 						Type:  "size_t",
 					},
 				},
-				Filters: v1alpha1.KProbeFilters{
+				AllowFilters: v1alpha1.KProbeFilters{
 					PIDs: []v1alpha1.PIDFilter{
 						{
 							Op:             "eq",

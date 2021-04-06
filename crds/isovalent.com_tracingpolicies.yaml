@@ -35,6 +35,61 @@ spec:
                 description: A list of kprobe specs.
                 items:
                   properties:
+                    allowFilters:
+                      description: AllowFilters to apply before producing trace output.
+                      properties:
+                        args:
+                          description: A list of argument filters.
+                          items:
+                            properties:
+                              index:
+                                description: Position of the argument to apply fhe filter to.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              op:
+                                description: Filter operation.
+                                enum:
+                                - eq
+                                - neq
+                                type: string
+                              value:
+                                description: Value to compare the argument against.
+                                type: string
+                            required:
+                            - index
+                            - op
+                            - value
+                            type: object
+                          type: array
+                        pids:
+                          description: A list of process ID filters.
+                          items:
+                            properties:
+                              followForks:
+                                default: false
+                                description: Matches any descendant processes.
+                                type: boolean
+                              isNamespacePID:
+                                default: false
+                                description: Indicates whether this pid is in a namespace.
+                                type: boolean
+                              op:
+                                description: Filter operation.
+                                enum:
+                                - eq
+                                - neq
+                                type: string
+                              value:
+                                description: Process ID to apply the filter to.
+                                format: int32
+                                type: integer
+                            required:
+                            - op
+                            - value
+                            type: object
+                          type: array
+                      type: object
                     args:
                       description: A list of function arguments to include in the trace output.
                       items:
@@ -71,61 +126,6 @@ spec:
                     call:
                       description: Name of the function to apply the kprobe spec to.
                       type: string
-                    filters:
-                      description: Filters to apply before producing trace output.
-                      properties:
-                        args:
-                          description: A list of argument filters.
-                          items:
-                            properties:
-                              index:
-                                description: Position of the argument to apply fhe filter to.
-                                format: int32
-                                minimum: 0
-                                type: integer
-                              op:
-                                description: Filter operation.
-                                enum:
-                                - eq
-                                - neq
-                                type: string
-                              value:
-                                description: Value to compare the argument against.
-                                type: string
-                            required:
-                            - index
-                            - op
-                            - value
-                            type: object
-                          type: array
-                        pids:
-                          description: A list of process ID filters.
-                          items:
-                            properties:
-                              followForks:
-                                default: true
-                                description: Matches any descendant processes.
-                                type: boolean
-                              isNamespacePID:
-                                default: true
-                                description: Indicates whether this pid is in a namespace.
-                                type: boolean
-                              op:
-                                description: Filter operation.
-                                enum:
-                                - eq
-                                - neq
-                                type: string
-                              value:
-                                description: Process ID to apply the filter to.
-                                format: int32
-                                type: integer
-                            required:
-                            - op
-                            - value
-                            type: object
-                          type: array
-                      type: object
                     return:
                       default: false
                       description: Indicates whether to collect return value of the traced function.

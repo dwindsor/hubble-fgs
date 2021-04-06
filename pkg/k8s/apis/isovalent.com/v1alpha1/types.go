@@ -50,8 +50,8 @@ type KProbeSpec struct {
 	// A list of function arguments to include in the trace output.
 	Args []KProbeArg `json:"args"`
 	// +kubebuilder:validation:Optional
-	// Filters to apply before producing trace output.
-	Filters KProbeFilters `json:"filters"`
+	// AllowFilters to apply before producing trace output.
+	AllowFilters KProbeFilters `json:"allowFilters"`
 }
 
 type KProbeArg struct {
