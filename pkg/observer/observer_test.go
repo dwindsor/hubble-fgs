@@ -298,7 +298,7 @@ spec:
 	exitWG.Wait()
 	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -392,7 +392,7 @@ spec:
 	exitWG.Wait()
 	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -477,7 +477,7 @@ spec:
 	execWG.Wait()
 	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -603,7 +603,7 @@ func TestConnectEvent(t *testing.T) {
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -714,7 +714,7 @@ func TestExecEventClone(t *testing.T) {
 	}
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -770,7 +770,7 @@ func TestExistingListenEvent(t *testing.T) {
 	}
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -861,7 +861,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	}
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -923,7 +923,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 		cmdServer.Process.Kill()
 	}
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -997,7 +997,7 @@ func TestTCTls13(t *testing.T) {
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://google.com")
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -1066,7 +1066,7 @@ func TestTCTls12(t *testing.T) {
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -1190,7 +1190,7 @@ func TestListenAcceptClose(t *testing.T) {
 		cmdServer.Process.Signal(syscall.SIGKILL)
 	}
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -1228,7 +1228,7 @@ func TestSensorLseekLoad(t *testing.T) {
 	exitWG.Wait()
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 
@@ -1295,7 +1295,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	exitWG.Wait()
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 }
@@ -1461,7 +1461,7 @@ func TestDockerListenConnect(t *testing.T) {
 	}
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -1562,7 +1562,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	}
 
 	retries := jsonRetries
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, kprobe)
@@ -1640,7 +1640,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 	exitWG.Wait()
 	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
-	if ok := jsonTestCompare(trace, nil, retries, 0); !ok {
+	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
 		t.Fail()
 	}
 	testDone(t, observer)

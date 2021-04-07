@@ -1,0 +1,130 @@
+name: ConformanceGKE
+
+on:
+  push:
+env:
+  clusterName: fgs-cli-ci-${{ github.run_number }}
+  zone: us-west2-a
+
+jobs:
+  installation-and-connectivitiy:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v2
+        with:
+          path: hubble-fgs
+
+      - uses: actions/setup-go@v1
+        with:
+          go-version: '1.16'
+
+      - name: Install Cilium CLI
+        run: |
+          curl -LO https://github.com/cilium/cilium-cli/releases/download/v0.4/cilium-linux-amd64.tar.gz
+          sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
+          rm cilium-linux-amd64.tar.gz
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@master
+        with:
+          project_id: ${{ secrets.GCP_PROJECT_ID }}
+          service_account_key: ${{ secrets.GCP_SA_KEY }}
+          export_default_credentials: true
+
+      - name: install beta component
+        run: gcloud components install beta
+
+      - name: gcloud info
+        run: |
+          gcloud info
+
+      - name: Create GKE cluster
+        run: |
+          gcloud container clusters create ${{ env.clusterName }} \
+            --preemptible \
+            --labels "usage=pr,owner=${{ github.event.pull_request.number }}" \
+            --image-type COS \
+            --num-nodes 2 \
+            --machine-type n1-standard-4 \
+            --zone ${{ env.zone }}
+
+      - name: Get Credentials
+        run: |
+          gcloud container clusters get-credentials ${{ env.clusterName }} --zone ${{ env.zone }}
+
+      - name: Install cilium
+        run: |
+          cilium install \
+            --cluster-name=${{ env.clusterName }} \
+            --restart-unmanaged-pods=false \
+            --config monitor-aggregation=none \
+
+      - name: Enable Relay
+        run: |
+          cilium hubble enable
+
+      - name: Status
+        run: |
+          cilium status --wait
+
+      - name: Relay Port Forward
+        run: |
+          kubectl port-forward -n kube-system deployment/hubble-relay 4245:4245&
+          sleep 5s
+
+      - name: Install FGS
+        run: |
+          helm repo add isovalent https://helm.isovalent.com
+          helm repo update
+          helm install cilium-enterprise isovalent/cilium-enterprise \
+                 --set hubble-enterprise.enterprise.image.tag=latest \
+                 --namespace kube-system --set cilium.enabled=false
+          #kubectl wait -n kube-system --for=condition=Ready --all pod --timeout=5m
+          sleep 30s
+
+      - name: Demo Application
+        run: |
+          kubectl create namespace tenant-jobs
+          kubectl -n tenant-jobs apply -f https://docs.isovalent.com/public/jobs-app-attack.yaml
+          #kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=5m
+          sleep 30s
+
+      - name: Cleanup
+        if: ${{ always() }}
+        run: |
+          cilium status
+          kubectl get pods --all-namespaces -o wide
+          curl -sLO https://github.com/cilium/cilium-sysdump/releases/latest/download/cilium-sysdump.zip
+          python cilium-sysdump.zip --output cilium-sysdump-out
+          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
+              -n kube-system -o custom-columns=name:metadata.name --no-headers \
+              | xargs -I{} kubectl cp -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
+          cat ./hubble-fgs*.log >> fgs.log
+          gcloud container clusters delete --quiet ${{ env.clusterName }} --zone ${{ env.zone }}
+
+      - name: Verify FGS
+        if: ${{ always() }}
+        run: |
+          sudo apt install libelf-dev
+          cd hubble-fgs
+          sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
+          sudo -E ldconfig /usr/local/
+          go mod verify
+          go run ./tests/jobs.trace.go ../fgs.log
+      - name: Upload Cilium Artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: cilium-sysdump-out.zip
+          path: cilium-sysdump-out.zip
+          retention-days: 5
+
+      - name: Upload FGS Artifacts
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: fgs.log
+          path: fgs.log
+          retention-days: 5
