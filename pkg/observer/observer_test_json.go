@@ -19,6 +19,50 @@ var (
 	retryDelay = 2 * time.Second
 )
 
+func compareImage(a, b *fgs.Image) bool {
+	if b.Id != "" && a.Id != b.Id {
+		fmt.Printf("compareImage: expected id %s found %s\n", b.Id, a.Id)
+		return false
+	}
+	if b.Name != "" && a.Name != b.Name {
+		fmt.Printf("compareImage: expected Name %s found %s\n", b.Name, a.Name)
+		return false
+	}
+	return true
+}
+
+func compareContainer(a, b *fgs.Container) bool {
+	if b.Id != "" && a.Id != b.Id {
+		fmt.Printf("compareContainer: expected id %s found %s\n", b.Id, a.Id)
+		return false
+	}
+	if b.Name != "" && a.Name != b.Name {
+		fmt.Printf("compareContainer: expected Name %s found %s\n", b.Name, a.Name)
+		return false
+	}
+	if b.Image != nil && compareImage(a.Image, b.Image) == false {
+		return false
+	}
+	return true
+}
+
+func comparePod(a, b *fgs.Pod) bool {
+	if b.Namespace != "" && a.Namespace != b.Namespace {
+		fmt.Printf("comparePod: expected namespace %s found %s\n",
+			b.Namespace, a.Namespace)
+		return false
+	}
+	if b.Name != "" && strings.Contains(a.Name, b.Name) == false {
+		fmt.Printf("comparePod: expected name %s found %s\n",
+			b.Name, a.Name)
+		return false
+	}
+	if b.Container != nil && compareContainer(a.Container, b.Container) == false {
+		return false
+	}
+	return true
+}
+
 func compareProcess(a, b *fgs.Process) bool {
 
 	if a == nil && b == nil {
@@ -47,6 +91,11 @@ func compareProcess(a, b *fgs.Process) bool {
 	if b.Docker != "" && a.Docker != b.Docker {
 		return false
 	}
+
+	if b.Pod != nil && comparePod(a.Pod, b.Pod) == false {
+		return false
+	}
+
 	return true
 }
 
