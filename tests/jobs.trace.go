@@ -15,7 +15,22 @@ var (
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
 					Process: &fgs.Process{Binary: "/usr/local/bin/node",
-						Arguments: "server.js"},
+						Arguments: "server.js",
+						Pod: &fgs.Pod{
+							Namespace: "tenant-jobs",
+							Name:      "jobposting",
+							Labels: []string{"k8s:app=jobposting",
+								"k8s:io.cilium.k8s.policy.cluster=fgs-cli-ci-11",
+								"k8s:io.cilium.k8s.policy.serviceaccount=default",
+								"k8s:io.kubernetes.pod.namespace=tenant-jobs"},
+							Container: &fgs.Container{
+								Name: "jobposting",
+								Image: &fgs.Image{
+									Name: "quay.io/isovalent/jobs-app-jobposting:latest",
+								},
+							},
+						},
+					},
 					Parent: &fgs.Process{Binary: ""},
 				},
 			},
