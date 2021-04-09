@@ -418,17 +418,17 @@ func getArgIndexFilter(index uint32, argFilters []v1alpha1.ArgFilter) []v1alpha1
 }
 
 func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile string) (*observerSensor, error) {
-	kprobeConfig, err := config.FileConfigSpec(configFile)
+	spec, err := config.FileConfigSpec(configFile)
 	if err != nil {
 		return nil, err
 	}
-	return k.addGenericKprobeSensors(kprobeConfig, btfBaseFile)
+	return k.addGenericKprobeSensors(spec.KProbes, btfBaseFile)
 }
 
-func (k *ObserverKprobe) addGenericKprobeSensors(kprobeConfig *v1alpha1.TracingPolicySpec, btfBaseFile string) (*observerSensor, error) {
+func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*observerSensor, error) {
 	var progs []*bpfLoad
 
-	for i, f := range kprobeConfig.KProbes {
+	for i, f := range kprobes {
 		var entry kprobeLoadArgs
 		var argPrinters []int
 		var is_syscall, is_retprobe bool

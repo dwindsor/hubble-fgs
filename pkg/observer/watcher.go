@@ -30,7 +30,7 @@ func (k *ObserverKprobe) watchTracePolicy() {
 				return
 			}
 			log.WithField("policy", policy.Spec).Info("tracing policy added")
-			c, err := k.addGenericKprobeSensors(&policy.Spec, ObserverBTF)
+			c, err := k.addGenericKprobeSensors(policy.Spec.KProbes, ObserverBTF)
 			if err != nil {
 				log.WithError(err).Warn("Can not parse config")
 			} else {
@@ -59,7 +59,7 @@ func (k *ObserverKprobe) watchTracePolicy() {
 				"newPolicy": newPolicy.Spec,
 			}).Info("tracing policy updated")
 			k.removeGenericKprobeSensor(&oldPolicy.Spec)
-			c, err := k.addGenericKprobeSensors(&newPolicy.Spec, ObserverBTF)
+			c, err := k.addGenericKprobeSensors(newPolicy.Spec.KProbes, ObserverBTF)
 			if err != nil {
 				log.WithError(err).Warn("Can not parse config")
 			} else {
