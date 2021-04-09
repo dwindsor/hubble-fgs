@@ -18,6 +18,7 @@ import (
 	"context"
 	"errors"
 	"fmt"
+	"os"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/config"
@@ -212,7 +213,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 					err = fmt.Errorf("sensor %s already exists", op.name)
 					break
 				}
-				sensor, err = k.getSensorFromTracingPolicy(op.policyYAML)
+				sensor, err = k.getSensorFromTracingPolicyString(op.policyYAML)
 				if err != nil {
 					break
 				}
@@ -325,7 +326,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 	k.ObserverSync.sensorCtlHandle = c
 	return nil
 }
-func (o *ObserverKprobe) getSensorFromTracingPolicy(yaml string) (*observerSensor, error) {
+func (o *ObserverKprobe) getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
 
 	cnf, err := config.ReadConfigYaml(yaml)
 	if err != nil {
@@ -338,13 +339,20 @@ func (o *ObserverKprobe) getSensorFromTracingPolicy(yaml string) (*observerSenso
 		// TODO: requires some refactoring (see also below)
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	} else if len(kprobes) > 0 {
-		// TODO: requires some refactoring
-		return nil, errors.New("tracing policies with kprobes are not currently supported")
+		return o.addGenericKprobeSensors(kprobes, ObserverBTF)
 	} else if len(tracepoints) > 0 {
 		return o.createGenericTracepointSensor(tracepoints)
 	} else {
 		return nil, errors.New("empty tracing policy")
 	}
+}
+
+func (o *ObserverKprobe) getSensorFromTracingPolicyFname(fname string) (*observerSensor, error) {
+	yamlData, err := os.ReadFile(fname)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read yaml file %s: %w", fname, err)
+	}
+	return o.getSensorFromTracingPolicyString(string(yamlData))
 }
 
 /*

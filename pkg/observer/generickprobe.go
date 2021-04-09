@@ -10,7 +10,6 @@ import (
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
-	"github.com/covalentio/hubble-fgs/pkg/config"
 	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 )
 
@@ -415,14 +414,6 @@ func getArgIndexFilter(index uint32, argFilters []v1alpha1.ArgFilter) []v1alpha1
 		}
 	}
 	return filters
-}
-
-func (k *ObserverKprobe) createGenericKprobeSensors(btfBaseFile, configFile string) (*observerSensor, error) {
-	spec, err := config.FileConfigSpec(configFile)
-	if err != nil {
-		return nil, err
-	}
-	return k.addGenericKprobeSensors(spec.KProbes, btfBaseFile)
 }
 
 func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*observerSensor, error) {

@@ -160,7 +160,7 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	}
 	if kprobe.configFile != "" {
 		kprobe.initKprobeSensors()
-		genericKprobeSensor, err := kprobe.createGenericKprobeSensors(ObserverBTF, kprobe.configFile)
+		genericKprobeSensor, err := kprobe.getSensorFromTracingPolicyFname(kprobe.configFile)
 		if err != nil {
 			t.Fatalf("createGenericKprobeSensors error: Could not create kprobe sensor. %s", err)
 		}
