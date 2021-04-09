@@ -138,8 +138,101 @@ spec:
                   - call
                   type: object
                 type: array
+              tracepoints:
+                description: A list of tracepoint specs.
+                items:
+                  properties:
+                    args:
+                      description: A list of function arguments to include in the trace output.
+                      items:
+                        properties:
+                          index:
+                            description: Position of the argument.
+                            format: int32
+                            minimum: 0
+                            type: integer
+                          returnCopy:
+                            default: false
+                            description: This field is used only for char_buf and char_iovec types.
+                            type: boolean
+                          sizeArgIndex:
+                            description: Specifies the position of the corresponding size argument for this argument. This field is used only for char_buf and char_iovec types.
+                            format: int32
+                            minimum: 0
+                            type: integer
+                        required:
+                        - index
+                        type: object
+                      type: array
+                    event:
+                      description: Tracepoint event
+                      type: string
+                    filters:
+                      description: Filters to apply before producing trace output.
+                      properties:
+                        args:
+                          description: A list of argument filters.
+                          items:
+                            properties:
+                              index:
+                                description: Position of the argument to apply fhe filter to.
+                                format: int32
+                                minimum: 0
+                                type: integer
+                              op:
+                                description: Filter operation.
+                                enum:
+                                - eq
+                                - neq
+                                type: string
+                              value:
+                                description: Value to compare the argument against.
+                                type: string
+                            required:
+                            - index
+                            - op
+                            - value
+                            type: object
+                          type: array
+                        pids:
+                          description: A list of process ID filters.
+                          items:
+                            properties:
+                              followForks:
+                                default: false
+                                description: Matches any descendant processes.
+                                type: boolean
+                              isNamespacePID:
+                                default: false
+                                description: Indicates whether this pid is in a namespace.
+                                type: boolean
+                              op:
+                                description: Filter operation.
+                                enum:
+                                - eq
+                                - neq
+                                type: string
+                              value:
+                                description: Process ID to apply the filter to.
+                                format: int32
+                                type: integer
+                            required:
+                            - op
+                            - value
+                            type: object
+                          type: array
+                      type: object
+                    subsystem:
+                      description: Tracepoint subsystem
+                      type: string
+                  required:
+                  - event
+                  - subsystem
+                  type: object
+                type: array
             required:
             - kprobes
+            - tracepoints
             type: object
         required:
         - metadata
