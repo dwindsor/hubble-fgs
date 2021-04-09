@@ -1498,13 +1498,16 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		}
 	}
 
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
 	// start sensor controller and stt manager
 	k.startSensorCtl()
 	k.ObserverSync.sttManagerHandle = startSttManager()
 
 	// start CRD watcher
 	if k.enableCRD {
-		go k.watchTracePolicy()
+		go k.watchTracePolicy(ctx)
 	}
 
 	k.startUpdateMapMetrics()

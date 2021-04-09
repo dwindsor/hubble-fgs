@@ -1,6 +1,7 @@
 package observer
 
 import (
+	"context"
 	"time"
 
 	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -13,7 +14,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func (k *ObserverKprobe) watchTracePolicy() {
+func (k *ObserverKprobe) watchTracePolicy(ctx context.Context) {
 	log := logger.GetLogger()
 	conf, err := rest.InClusterConfig()
 	if err != nil {
@@ -30,13 +31,9 @@ func (k *ObserverKprobe) watchTracePolicy() {
 				return
 			}
 			log.WithField("policy", policy.Spec).Info("tracing policy added")
-			c, err := k.addGenericKprobeSensors(policy.Spec.KProbes, ObserverBTF)
+			err := k.AddTracingPolicy(ctx, policy.ObjectMeta.Name, &policy.Spec)
 			if err != nil {
-				log.WithError(err).Warn("Can not parse config")
-			} else {
-				if err := k.loadGenericKprobeObject(c); err != nil {
-					log.WithError(err).Warn("Kprobe sensor failed\n")
-				}
+				log.WithError(err).Warn("adding tracing policy failed")
 			}
 		},
 		UpdateFunc: func(oldObj interface{}, newObj interface{}) {
@@ -58,15 +55,16 @@ func (k *ObserverKprobe) watchTracePolicy() {
 				"oldPolicy": oldPolicy.Spec,
 				"newPolicy": newPolicy.Spec,
 			}).Info("tracing policy updated")
-			k.removeGenericKprobeSensor(&oldPolicy.Spec)
-			c, err := k.addGenericKprobeSensors(newPolicy.Spec.KProbes, ObserverBTF)
+			err := k.RemoveSensor(ctx, oldPolicy.ObjectMeta.Name)
 			if err != nil {
-				log.WithError(err).Warn("Can not parse config")
-			} else {
-				if err := k.loadGenericKprobeObject(c); err != nil {
-					log.WithError(err).Warn("Kprobe sensor failed\n")
-				}
+				log.WithError(err).Warnf("Failed to remove sensor %s to perform update", oldPolicy.ObjectMeta.Name)
+				return
 			}
+			err = k.AddTracingPolicy(ctx, newPolicy.ObjectMeta.Name, &newPolicy.Spec)
+			if err != nil {
+				log.WithError(err).Warn("adding new tracing policy failed")
+			}
+
 		},
 		DeleteFunc: func(obj interface{}) {
 			policy, ok := obj.(*v1alpha1.TracingPolicy)
@@ -75,7 +73,11 @@ func (k *ObserverKprobe) watchTracePolicy() {
 				return
 			}
 			logger.GetLogger().WithField("policy", policy.Spec).Info("tracing policy deleted")
-			k.removeGenericKprobeSensor(&policy.Spec)
+			err := k.RemoveSensor(ctx, policy.ObjectMeta.Name)
+			if err != nil {
+				log.WithError(err).Warnf("Failed to remove sensor %s to perform update", policy.ObjectMeta.Name)
+				return
+			}
 
 		},
 	})
