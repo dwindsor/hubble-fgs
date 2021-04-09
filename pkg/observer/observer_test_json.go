@@ -99,6 +99,19 @@ func compareProcess(a, b *fgs.Process) bool {
 	return true
 }
 
+func compareAncestors(a, b []*fgs.Process) bool {
+	if len(a) < len(b) {
+		return false
+	}
+	for i, pB := range b {
+		pA := a[i]
+		if ok := compareProcess(pA, pB); !ok {
+			return false
+		}
+	}
+	return true
+}
+
 func jsonTestCompareExecve(a, b *fgs.GetEventsResponse_ProcessExec) bool {
 	aExecve := a.ProcessExec
 	bExecve := b.ProcessExec
@@ -107,6 +120,10 @@ func jsonTestCompareExecve(a, b *fgs.GetEventsResponse_ProcessExec) bool {
 		return false
 	}
 	if ok := compareProcess(aExecve.Parent, bExecve.Parent); !ok {
+		return false
+	}
+
+	if ok := compareAncestors(aExecve.Ancestors, bExecve.Ancestors); !ok {
 		return false
 	}
 	return true

@@ -31,7 +31,47 @@ var (
 							},
 						},
 					},
-					Parent: &fgs.Process{Binary: ""},
+					Parent: &fgs.Process{Binary: "/bin/sh",
+						Arguments: "-c \"PORT=9080 node server.js\"",
+						Pod: &fgs.Pod{
+							Namespace: "tenant-jobs",
+							Name:      "jobposting",
+							Labels: []string{"k8s:app=jobposting",
+								"k8s:io.cilium.k8s.policy.cluster=fgs-cli-ci-11",
+								"k8s:io.cilium.k8s.policy.serviceaccount=default",
+								"k8s:io.kubernetes.pod.namespace=tenant-jobs"},
+							Container: &fgs.Container{
+								Name: "jobposting",
+								Image: &fgs.Image{
+									Name: "quay.io/isovalent/jobs-app-jobposting:latest",
+								},
+							},
+						},
+					},
+					Ancestors: []*fgs.Process{
+						&fgs.Process{
+							Binary:    "/usr/local/bin/docker-entrypoint.sh",
+							Arguments: "/usr/local/bin/docker-entrypoint.sh /bin/sh -c \"PORT=9080 node server.js\"",
+							Pod: &fgs.Pod{
+								Namespace: "tenant-jobs",
+								Name:      "jobposting",
+								Labels: []string{"k8s:app=jobposting",
+									"k8s:io.cilium.k8s.policy.cluster=fgs-cli-ci-11",
+									"k8s:io.cilium.k8s.policy.serviceaccount=default",
+									"k8s:io.kubernetes.pod.namespace=tenant-jobs"},
+								Container: &fgs.Container{
+									Name: "jobposting",
+									Image: &fgs.Image{
+										Name: "quay.io/isovalent/jobs-app-jobposting:latest",
+									},
+								},
+							},
+						},
+						&fgs.Process{
+							Binary:    "/usr/bin/containerd-shim",
+							Arguments: "-namespace moby -workdir /var/lib/containerd/io.containerd.runtime.v1.linux/moby/",
+						},
+					},
 				},
 			},
 		},
