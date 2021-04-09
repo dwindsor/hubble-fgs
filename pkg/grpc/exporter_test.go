@@ -9,6 +9,7 @@ import (
 
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -95,7 +96,7 @@ func (f *fakeObserver) GetTreeProto(ctx context.Context, tname string) (*fgs.Sta
 	return nil, nil
 }
 
-func (f *fakeObserver) AddTracingPolicy(ctx context.Context, sensorName string, policyYaml string) error {
+func (f *fakeObserver) AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error {
 	return nil
 }
 func (f *fakeObserver) RemoveSensor(ctx context.Context, sensorName string) error {

@@ -151,7 +151,6 @@ func addTracingPolicy(client fgs.FineGuidanceSensorsClient, sensor, yamlFname st
 
 	ctx, _ := context.WithCancel(context.Background())
 	_, err = client.AddTracingPolicy(ctx, &fgs.AddTracingPolicyRequest{
-		Name: sensor,
 		Yaml: string(yamlb),
 	})
 	if err != nil {

@@ -21,12 +21,14 @@ import (
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/covalentio/hubble-fgs/api/v1/fgs"
 	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/covalentio/hubble-fgs/pkg/config"
 	"github.com/covalentio/hubble-fgs/pkg/filters"
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 )
 
 type observer interface {
-	AddTracingPolicy(ctx context.Context, sensorName string, policyYaml string) error
+	AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error
 	EnableSensor(ctx context.Context, name string) error
 	DisableSensor(ctx context.Context, name string) error
 	ListSensors(ctx context.Context) (*[]api.SensorStatus, error)
@@ -133,7 +135,11 @@ func (s *Server) ListSensors(ctx context.Context, request *fgs.ListSensorsReques
 
 func (s *Server) AddTracingPolicy(ctx context.Context, req *fgs.AddTracingPolicyRequest) (*fgs.AddTracingPolicyResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received an AddTracingPolicy request")
-	if err := s.observer.AddTracingPolicy(ctx, req.GetName(), req.GetYaml()); err != nil {
+	conf, err := config.ReadConfigYaml(req.GetYaml())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.observer.AddTracingPolicy(ctx, conf.Metadata.Name, &conf.Spec); err != nil {
 		return nil, err
 	}
 	return &fgs.AddTracingPolicyResponse{}, nil

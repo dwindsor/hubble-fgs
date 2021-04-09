@@ -250,8 +250,7 @@ message ListSensorsResponse {
 }
 
 message AddTracingPolicyRequest {
-	string name = 1;
-	string yaml = 2;
+	string yaml = 1;
 }
 message AddTracingPolicyResponse {}
 

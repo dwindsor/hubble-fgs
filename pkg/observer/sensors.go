@@ -22,6 +22,7 @@ import (
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/config"
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
 )
 
@@ -93,8 +94,8 @@ func registerSensorAtInit(s *observerSensor) {
 // tracingPolicyAdd adds a sensor based on a the provided tracing policy
 type tracingPolicyAdd struct {
 	ctx        context.Context
-	name       string
-	policyYAML string
+	sensorName string
+	spec       *v1alpha1.TracingPolicySpec
 	retChan    chan error
 }
 
@@ -208,16 +209,15 @@ func (k *ObserverKprobe) startSensorCtl() error {
 			switch op := op_.(type) {
 
 			case *tracingPolicyAdd:
-				var sensor *observerSensor
-				if _, exists := availableSensors[op.name]; exists {
-					err = fmt.Errorf("sensor %s already exists", op.name)
+				if _, exists := availableSensors[op.sensorName]; exists {
+					err = fmt.Errorf("sensor %s already exists", op.sensorName)
 					break
 				}
-				sensor, err = k.getSensorFromTracingPolicyString(op.policyYAML)
+				sensor, err := k.getSensorFromTracingPolicy(op.spec)
 				if err != nil {
 					break
 				}
-				availableSensors[op.name] = sensor
+				availableSensors[op.sensorName] = sensor
 				err = nil
 
 			case *sensorAdd:
@@ -326,15 +326,10 @@ func (k *ObserverKprobe) startSensorCtl() error {
 	k.ObserverSync.sensorCtlHandle = c
 	return nil
 }
-func (o *ObserverKprobe) getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
 
-	cnf, err := config.ReadConfigYaml(yaml)
-	if err != nil {
-		return nil, err
-	}
-
-	kprobes := cnf.Spec.KProbes
-	tracepoints := cnf.Spec.Tracepoints
+func (o *ObserverKprobe) getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	kprobes := spec.KProbes
+	tracepoints := spec.Tracepoints
 	if len(kprobes) > 0 && len(tracepoints) > 0 {
 		// TODO: requires some refactoring (see also below)
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
@@ -345,6 +340,15 @@ func (o *ObserverKprobe) getSensorFromTracingPolicyString(yaml string) (*observe
 	} else {
 		return nil, errors.New("empty tracing policy")
 	}
+}
+
+func (o *ObserverKprobe) getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
+	cnf, err := config.ReadConfigYaml(yaml)
+	if err != nil {
+		return nil, err
+	}
+	return o.getSensorFromTracingPolicy(&cnf.Spec)
+
 }
 
 func (o *ObserverKprobe) getSensorFromTracingPolicyFname(fname string) (*observerSensor, error) {
@@ -479,7 +483,7 @@ func (h *ObserverSync) SetSensorConfig(ctx context.Context, name string, cfgkey 
 }
 
 // AddTracingPolicy adds a new sensor based on a tracing policy
-func (h *ObserverSync) AddTracingPolicy(ctx context.Context, sensorName string, yaml string) error {
+func (h *ObserverSync) AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error {
 	if h.sensorCtlHandle == nil {
 		return fmt.Errorf("SensorEnable failed, controller channel not initialized")
 	}
@@ -487,8 +491,8 @@ func (h *ObserverSync) AddTracingPolicy(ctx context.Context, sensorName string, 
 	retc := make(chan error)
 	op := &tracingPolicyAdd{
 		ctx:        ctx,
-		name:       sensorName,
-		policyYAML: yaml,
+		sensorName: sensorName,
+		spec:       spec,
 		retChan:    retc,
 	}
 

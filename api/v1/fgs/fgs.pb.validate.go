@@ -2309,8 +2309,6 @@ func (m *AddTracingPolicyRequest) Validate() error {
 		return nil
 	}
 
-	// no validation rules for Name
-
 	// no validation rules for Yaml
 
 	return nil
