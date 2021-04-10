@@ -350,7 +350,7 @@ int tc_loader(const int version,
 	snprintf(tc_calls_name, sizeof(tc_calls_name), "%s/tls_calls", mapdir);
 	map_fd = bpf_obj_get(tc_calls_name);
 	if (map_fd >= 0) {
-		for (i = 0; i < 2; i++) {
+		for (i = 0; i < 6; i++) {
 			struct bpf_program *prog;
 			char prog_name[20];
 			char pin_name[200];
@@ -682,7 +682,7 @@ void *generic_loader_args(
 	map_fd = bpf_map__fd(map_bpf);
 	printf("bpf fgs_kprobe_calls map and progs %s mapfd %d\n", __prog, map_fd);
 	if (map_fd >= 0) {
-		for (i = 0; i < 2; i++) {
+		for (i = 0; i < 6; i++) {
 			struct bpf_program *prog;
 			char prog_name[20];
 			char pin_name[200];
@@ -706,7 +706,7 @@ void *generic_loader_args(
 			}
 			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
 			if (err) {
-				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
+				printf("map update elem  i %i %s tailcall err %d %d\n", i, prog_name, err, errno);
 				goto err;
 			}
 		}

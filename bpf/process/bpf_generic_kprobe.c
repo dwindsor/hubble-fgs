@@ -31,9 +31,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
 	.value_size	= sizeof(__u32),
-	.max_entries	= 2,
+	.max_entries	= 6,
 };
-
 
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
 struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
@@ -74,9 +73,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) args4_filter_map = {
 static inline __attribute__((always_inline))
 int generic_kprobe_process_filter(struct pt_regs *ctx)
 {
-	int ret, is_syscall, zero = 0;
+	int ret, zero = 0;
 	struct msg_generic_kprobe *msg;
-	enum generic_func_args_enum fgs_args;
 
 	msg = map_lookup_elem(&process_call_heap, &zero);
 	if (!msg)
@@ -85,26 +83,6 @@ int generic_kprobe_process_filter(struct pt_regs *ctx)
 	ret = generic_process_filter(&msg->current);
 	if (ret != PFILTER_PASSED)
 		return 0;
-
-	is_syscall = bpf_core_enum_value(fgs_args, syscall);
-	if (is_syscall) {
-		struct pt_regs *_ctx;
-		_ctx = (struct pt_regs *)ctx->di;
-		if (!_ctx)
-			return 0;
-		probe_read(&msg->a0, sizeof(msg->a0), &_ctx->di);
-		probe_read(&msg->a1, sizeof(msg->a1), &_ctx->si);
-		probe_read(&msg->a2, sizeof(msg->a2), &_ctx->dx);
-		probe_read(&msg->a3, sizeof(msg->a3), &_ctx->cx);
-		probe_read(&msg->a4, sizeof(msg->a4), &_ctx->r8);
-	} else {
-		msg->a0 = ctx->di;
-		msg->a1 = ctx->si;
-		msg->a2 = ctx->dx;
-		msg->a3 = ctx->cx;
-		msg->a4 = ctx->r8;
-	}
-	msg->common.op = MSG_OP_GENERIC_KPROBE;
 
 	tail_call(ctx, &kprobe_calls, 0);
 	return 0;
@@ -125,21 +103,48 @@ int generic_kprobe_event(struct pt_regs *ctx)
 __attribute__((section(("kprobe/0")), used))
 int generic_kprobe_process_event0(void *ctx)
 {
-	return generic_process_event0(
+	return generic_process_event_and_setup(
 		ctx,
 		&process_call_heap,
 		&args0_filter_map,
-		&args1_filter_map,
-		&args2_filter_map,
 		&kprobe_calls);
 }
+
 __attribute__((section(("kprobe/1")), used))
 int generic_kprobe_process_event1(void *ctx)
 {
 	return generic_process_event1(
 		ctx,
 		&process_call_heap,
-		&args3_filter_map,
-		&args4_filter_map);
+		&args1_filter_map,
+		&kprobe_calls);
 }
 
+__attribute__((section(("kprobe/2")), used))
+int generic_kprobe_process_event2(void *ctx)
+{
+	return generic_process_event2(
+		ctx,
+		&process_call_heap,
+		&args2_filter_map,
+		&kprobe_calls);
+}
+
+__attribute__((section(("kprobe/3")), used))
+int generic_kprobe_process_event3(void *ctx)
+{
+	return generic_process_event3(
+		ctx,
+		&process_call_heap,
+		&args3_filter_map,
+		&kprobe_calls);
+}
+
+__attribute__((section(("kprobe/4")), used))
+int generic_kprobe_process_event4(void *ctx)
+{
+	return generic_process_event4(
+		ctx,
+		&process_call_heap,
+		&args4_filter_map);
+}

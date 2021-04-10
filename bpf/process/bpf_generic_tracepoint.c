@@ -23,7 +23,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tp_calls = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
 	.value_size	= sizeof(__u32),
-	.max_entries	= 2,
+	.max_entries	= 6,
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) tp_heap = {
@@ -181,8 +181,6 @@ int generic_tracepoint_event0(void *ctx)
 		ctx,
 		&tp_heap,
 		&args0_filter_map,
-		&args1_filter_map,
-		&args2_filter_map,
 		&tp_calls);
 }
 __attribute__((section(("kprobe/1")), used))
@@ -191,7 +189,36 @@ int generic_tracepoint_event1(void *ctx)
 	return generic_process_event1(
 		ctx,
 		&tp_heap,
+		&args1_filter_map,
+		&tp_calls);
+}
+
+__attribute__((section(("kprobe/2")), used))
+int generic_kprobe_process_event2(void *ctx)
+{
+	return generic_process_event2(
+		ctx,
+		&tp_heap,
+		&args2_filter_map,
+		&tp_calls);
+}
+
+__attribute__((section(("kprobe/3")), used))
+int generic_kprobe_process_event3(void *ctx)
+{
+	return generic_process_event3(
+		ctx,
+		&tp_heap,
 		&args3_filter_map,
+		&tp_calls);
+}
+
+__attribute__((section(("kprobe/4")), used))
+int generic_kprobe_process_event4(void *ctx)
+{
+	return generic_process_event4(
+		ctx,
+		&tp_heap,
 		&args4_filter_map);
 }
 

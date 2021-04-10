@@ -86,17 +86,17 @@ static inline __attribute__((always_inline))
 int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 	struct iovec iov; // limit is 1024 using a hack now. For 5.4 kernel we should loop over 1024
 	char index = sizeof(struct iovec) * i;
-	size_t size;
+	__u64 size;
 	int err;
 
 	err = probe_read(&iov, sizeof(iov), (struct iovec *)(arg+index));
 	if (err < 0)
 		return char_buf_pagefault;
 	size = iov.iov_len;
-	if (size > 4000)
+	if (size > 4094)
 		return char_buf_toolarge;
 	asm volatile("%[off] &= 0xfff;\n"
-		     "%[size] &= 0x7fff;\n"
+		     "%[size] &= 0xfff;\n"
 			:: [off] "+r"(off), [size] "+r"(size):);
 	err = probe_read(&args[off], size, (char *) iov.iov_base);
 	if (err < 0)
@@ -130,26 +130,16 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 	PARSE_IOVEC_ENTRY     \
 }
 
+#define MAX_STRING_FILTER 128
+
 static inline __attribute__((always_inline))
 int cmpbytes(char *s1, char *s2, size_t n)
 {
-	int i = 0;
-
-	if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
-	i++; if (i < n && s1[i] != s2[i]) return -1;
+	int i;
+#pragma unroll
+	for (i = 0; i < MAX_STRING_FILTER; i++) {
+		if (i < n && s1[i] != s2[i]) return -1;
+	}
 
 	return 0;
 }
@@ -363,11 +353,8 @@ accept_filter:
 		}
 		probe_read(&bytes, sizeof(bytes), &argm);
 
-		/* Ensure bytes does not read past end of buffer */
-		bytes &= 0x7fff;   // required to create min bound
-		if (bytes > 6000)  // creates uppder bounds [0, 4000]
-			return return_error(s, char_buf_toolarge);
-		err = probe_read(&args[4], bytes, (char *)arg);
+		/* Bound bytes <4095 to ensure bytes does not read past end of buffer */
+		err = probe_read(&args[4], bytes&0xfff, (char *)arg);
 		if (err < 0)
 			return return_error(s, char_buf_pagefault);
 		size = bytes + 4;
