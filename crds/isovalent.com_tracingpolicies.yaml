@@ -35,62 +35,6 @@ spec:
                 description: A list of kprobe specs.
                 items:
                   properties:
-                    allowFilters:
-                      description: AllowFilters to apply before producing trace output.
-                      properties:
-                        args:
-                          description: A list of argument filters.
-                          items:
-                            properties:
-                              index:
-                                description: Position of the argument to apply fhe filter to.
-                                format: int32
-                                minimum: 0
-                                type: integer
-                              op:
-                                description: Filter operation.
-                                enum:
-                                - eq
-                                - neq
-                                - stringprefix
-                                type: string
-                              value:
-                                description: Value to compare the argument against.
-                                type: string
-                            required:
-                            - index
-                            - op
-                            - value
-                            type: object
-                          type: array
-                        pids:
-                          description: A list of process ID filters.
-                          items:
-                            properties:
-                              followForks:
-                                default: false
-                                description: Matches any descendant processes.
-                                type: boolean
-                              isNamespacePID:
-                                default: false
-                                description: Indicates whether this pid is in a namespace.
-                                type: boolean
-                              op:
-                                description: Filter operation.
-                                enum:
-                                - eq
-                                - neq
-                                type: string
-                              value:
-                                description: Process ID to apply the filter to.
-                                format: int32
-                                type: integer
-                            required:
-                            - op
-                            - value
-                            type: object
-                          type: array
-                      type: object
                     args:
                       description: A list of function arguments to include in the trace output.
                       items:
@@ -131,6 +75,68 @@ spec:
                       default: false
                       description: Indicates whether to collect return value of the traced function.
                       type: boolean
+                    selectors:
+                      description: Selectors to apply before producing trace output. Selectors are ORed.
+                      items:
+                        description: KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The results of MatchPIDs and MatchArgs are ANDed.
+                        properties:
+                          matchArgs:
+                            description: A list of argument filters. MatchArgs are ANDed.
+                            items:
+                              properties:
+                                index:
+                                  description: Position of the argument to apply fhe filter to.
+                                  format: int32
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  type: string
+                                value:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
+                              - operator
+                              - value
+                              type: object
+                            type: array
+                          matchPIDs:
+                            description: A list of process ID filters. MatchPIDs are ANDed.
+                            items:
+                              properties:
+                                followForks:
+                                  default: false
+                                  description: Matches any descendant processes of the matching PIDs.
+                                  type: boolean
+                                isNamespacePID:
+                                  default: false
+                                  description: Indicates whether PIDs are namespace PIDs.
+                                  type: boolean
+                                operator:
+                                  description: PID selector operator.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  type: string
+                                values:
+                                  description: Process IDs to match.
+                                  items:
+                                    format: int32
+                                    type: integer
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                        type: object
+                      type: array
                     syscall:
                       default: true
                       description: Indicates whether the traced function is a syscall.
@@ -232,9 +238,6 @@ spec:
                   - subsystem
                   type: object
                 type: array
-            required:
-            - kprobes
-            - tracepoints
             type: object
         required:
         - metadata

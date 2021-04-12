@@ -31,8 +31,10 @@ type TracingPolicy struct {
 }
 
 type TracingPolicySpec struct {
+	// +kubebuilder:validation:Optional
 	// A list of kprobe specs.
 	KProbes []KProbeSpec `json:"kprobes"`
+	// +kubebuilder:validation:Optional
 	// A list of tracepoint specs.
 	Tracepoints []TracepointSpec `json:"tracepoints"`
 }
@@ -52,8 +54,8 @@ type KProbeSpec struct {
 	// A list of function arguments to include in the trace output.
 	Args []KProbeArg `json:"args"`
 	// +kubebuilder:validation:Optional
-	// AllowFilters to apply before producing trace output.
-	AllowFilters KProbeFilters `json:"allowFilters"`
+	// Selectors to apply before producing trace output. Selectors are ORed.
+	Selectors []KProbeSelector `json:"selectors"`
 }
 
 type KProbeArg struct {
@@ -81,6 +83,44 @@ type KProbeFilters struct {
 	// +kubebuilder:validation:Optional
 	// A list of argument filters.
 	Args []ArgFilter `json:"args"`
+}
+
+// KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
+// results of MatchPIDs and MatchArgs are ANDed.
+type KProbeSelector struct {
+	// +kubebuilder:validation:Optional
+	// A list of process ID filters. MatchPIDs are ANDed.
+	MatchPIDs []PIDSelector `json:"matchPIDs"`
+	// +kubebuilder:validation:Optional
+	// A list of argument filters. MatchArgs are ANDed.
+	MatchArgs []ArgSelector `json:"matchArgs"`
+}
+
+type PIDSelector struct {
+	// +kubebuilder:validation:Enum=In;NotIn
+	// PID selector operator.
+	Operator string `json:"operator"`
+	// Process IDs to match.
+	Values []uint32 `json:"values"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// Indicates whether PIDs are namespace PIDs.
+	IsNamespacePID bool `json:"isNamespacePID"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// Matches any descendant processes of the matching PIDs.
+	FollowForks bool `json:"followForks"`
+}
+
+type ArgSelector struct {
+	// +kubebuilder:validation:Minimum=0
+	// Position of the argument to apply fhe filter to.
+	Index uint32 `json:"index"`
+	// +kubebuilder:validation:Enum=Equal;NotEqual
+	// Filter operation.
+	Operator string `json:"operator"`
+	// Value to compare the argument against.
+	Values []string `json:"value"`
 }
 
 type TracepointSpec struct {

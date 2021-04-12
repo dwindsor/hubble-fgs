@@ -11,20 +11,36 @@ spec:
       type: "int"
     - index: 1
       type: "char_buf"
-      sizeargindex: 3
+      sizeArgIndex: 3
     - index: 2
       type: "size_t"
-    allowfilters:
-      pids:
-      - op: "neq"
-        value: 1
-        followforks: true
-        isnamespacepid: true
-      - op: "neq"
-        value: 0
-        followforks: false
-        isnamespacepid: true
-      args:
+    # (pid in {1, 2} && arg0 == "1" && arg2 != "hello") || (pid in {3, 4} && arg0 == "2" && arg1 == "world")
+    selectors:
+    - matchPIDs:
+      - operator: In
+        values:
+        - 1
+        - 2
+      matchArgs:
       - index: 0
-        op: "eq"
-        value: "1"
+        operator: Equal
+        values:
+        - "1"
+      - index: 1
+        operator: NotEqual
+        values:
+        - "hello"
+    - matchPIDs:
+      - operator: In
+        values:
+        - 3
+        - 4
+      matchArgs:
+      - index: 0
+        operator: Equal
+        values:
+        - "2"
+      - index: 1
+        operator: NotEqual
+        values:
+        - "world"
