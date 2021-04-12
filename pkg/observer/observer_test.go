@@ -67,16 +67,6 @@ func TestMain(m *testing.M) {
 
 func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
 	ctx, _ := context.WithCancel(context.Background())
-	var uts syscall.Utsname
-
-	if err := syscall.Uname(&uts); err != nil {
-		t.Fatalf("sys.Uname error: %s", err)
-	}
-
-	buf := make([]byte, 65)
-	for i, b := range uts.Release {
-		buf[i] = byte(b)
-	}
 
 	HubbleLib = fgsLib
 	envFgsLib := os.Getenv("FGS_LIB")
