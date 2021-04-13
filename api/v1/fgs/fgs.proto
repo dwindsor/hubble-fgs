@@ -297,6 +297,11 @@ message GetStackTraceTreeResponse {
 	StackTraceNode root = 1;
 }
 
+message GetVersionRequest{}
+message GetVersionResponse{
+	string version = 1;
+}
+
 service FineGuidanceSensors {
     rpc GetEvents(GetEventsRequest) returns (stream GetEventsResponse) {}
     rpc GetHealth(GetHealthStatusRequest) returns (GetHealthStatusResponse) {}
@@ -311,6 +316,8 @@ service FineGuidanceSensors {
     rpc GetSensorConfig(GetSensorConfigRequest) returns (GetSensorConfigResponse) {}
 
     rpc GetStackTraceTree(GetStackTraceTreeRequest) returns (GetStackTraceTreeResponse) {}
+
+    rpc GetVersion(GetVersionRequest) returns (GetVersionResponse) {}
 }
 
 enum HealthStatusType {

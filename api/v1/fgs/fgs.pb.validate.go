@@ -3271,6 +3271,142 @@ var _ interface {
 	ErrorName() string
 } = GetStackTraceTreeResponseValidationError{}
 
+// Validate checks the field values on GetVersionRequest with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *GetVersionRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	return nil
+}
+
+// GetVersionRequestValidationError is the validation error returned by
+// GetVersionRequest.Validate if the designated constraints aren't met.
+type GetVersionRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetVersionRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetVersionRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetVersionRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetVersionRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetVersionRequestValidationError) ErrorName() string {
+	return "GetVersionRequestValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetVersionRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetVersionRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetVersionRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetVersionRequestValidationError{}
+
+// Validate checks the field values on GetVersionResponse with the rules
+// defined in the proto definition for this message. If any rules are
+// violated, an error is returned.
+func (m *GetVersionResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Version
+
+	return nil
+}
+
+// GetVersionResponseValidationError is the validation error returned by
+// GetVersionResponse.Validate if the designated constraints aren't met.
+type GetVersionResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e GetVersionResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e GetVersionResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e GetVersionResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e GetVersionResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e GetVersionResponseValidationError) ErrorName() string {
+	return "GetVersionResponseValidationError"
+}
+
+// Error satisfies the builtin error interface
+func (e GetVersionResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sGetVersionResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = GetVersionResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = GetVersionResponseValidationError{}
+
 // Validate checks the field values on GetHealthStatusRequest with the rules
 // defined in the proto definition for this message. If any rules are
 // violated, an error is returned.

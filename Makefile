@@ -9,6 +9,8 @@ CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
 
 LIBBPF_INSTALL_DIR ?= ./lib
 CLANG_INSTALL_DIR  ?= ./bin
+VERSION=$(shell git describe --tags --always)
+GO_LDFLAGS="-X 'github.com/covalentio/hubble-fgs/pkg/version.Version=$(VERSION)'"
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
 
@@ -32,10 +34,10 @@ hubble-bpf-container:
 	docker rm hubble-llvm
 
 hubble-fgs:
-	$(GO) build -mod=vendor ./cmd/hubble-fgs/
+	$(GO) build -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
 
 hubble-enterprise:
-	$(GO) build -mod=vendor ./cmd/hubble-enterprise/
+	$(GO) build -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-enterprise/
 
 .PHONY: ksyms
 ksyms:

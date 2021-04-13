@@ -25,6 +25,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/filters"
 	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/covalentio/hubble-fgs/pkg/version"
 )
 
 type observer interface {
@@ -192,7 +193,6 @@ func (s *Server) SetSensorConfig(ctx context.Context, req *fgs.SetSensorConfigRe
 
 	return &fgs.SetSensorConfigResponse{}, nil
 }
-
 func (s *Server) GetStackTraceTree(ctx context.Context, req *fgs.GetStackTraceTreeRequest) (*fgs.GetStackTraceTreeResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received a GetStackTraceTreee request")
 	root, err := s.observer.GetTreeProto(ctx, req.GetName())
@@ -201,4 +201,8 @@ func (s *Server) GetStackTraceTree(ctx context.Context, req *fgs.GetStackTraceTr
 	}
 
 	return &fgs.GetStackTraceTreeResponse{Root: root}, nil
+}
+
+func (s *Server) GetVersion(ctx context.Context, req *fgs.GetVersionRequest) (*fgs.GetVersionResponse, error) {
+	return &fgs.GetVersionResponse{Version: version.Version}, nil
 }
