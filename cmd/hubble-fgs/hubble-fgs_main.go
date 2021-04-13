@@ -268,7 +268,7 @@ func init() {
 	flags.String("log-level", "info", "Set log level")
 	flags.String("log-format", "text", "Set log format")
 	flags.BoolVar(&enableK8sAPI, "enable-k8s-api", false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
-	flags.BoolVar(&enableCRD, "enable-crd", true, "Enables K8s CRD watchers")
+	flags.BoolVar(&enableCRD, "enable-crd", false, "Enables K8s CRD watchers")
 	flags.StringVar(&metricsServer, "metrics-server", "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
 	flags.BoolVar(&enableCiliumAPI, "enable-cilium-api", false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
 	flags.StringVar(&networkInterfaces, "network-interfaces", "", "Comma separated list of regex expressions to use to apply protocol parsers")
