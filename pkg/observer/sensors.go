@@ -209,11 +209,12 @@ func (k *ObserverKprobe) startSensorCtl() error {
 			switch op := op_.(type) {
 
 			case *tracingPolicyAdd:
+				var sensor *observerSensor
 				if _, exists := availableSensors[op.sensorName]; exists {
 					err = fmt.Errorf("sensor %s already exists", op.sensorName)
 					break
 				}
-				sensor, err := k.getSensorFromTracingPolicy(op.spec)
+				sensor, err = k.getSensorFromTracingPolicy(op.spec)
 				if err != nil {
 					break
 				}
