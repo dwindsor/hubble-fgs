@@ -359,12 +359,6 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		return err, 0
 	}
 
-	argFilters := k.initArgFilters()
-
-	if err := k.kprobePidFilters(btfObj, tp.Filters); err != nil {
-		return err, 0
-	}
-
 	// iterate over output arguments
 	for i := range tp.args {
 		tpArg := &tp.args[i]
@@ -385,12 +379,6 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 			return err, 0
 		}
 
-		argIndexedFilters := getArgIndexFilter(uint32(tpArg.TpIdx), tp.ArgFilters)
-		argF := k.createArgFilter(tpArg.genericTypeId, argIndexedFilters)
-		if argF != nil {
-			k.assignArgFilter(argF, argFilters, uint32(i))
-		}
-
 		k.log.Infof("configured argument #%d: %+v (type:%d)", i, tpArg, tpArg.genericTypeId)
 	}
 
@@ -409,6 +397,9 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		}
 	}
 
+	// TBD tp filters
+	argFilters := make([]byte, 4096) //k.initKernelSelectors(tp.Selectors)
+
 	var attach string
 	if x64 {
 		attach = load.observer__x64_attach
@@ -425,7 +416,7 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		k.bpfDir+load.observer__prog,
 		k.mapDir,
 		load.retProbe,
-		*argFilters)
+		argFilters)
 }
 
 func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {

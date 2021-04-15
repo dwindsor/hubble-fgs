@@ -613,41 +613,27 @@ void *generic_loader_args(
 	const char *label,
 	const char *__prog,
 	const char *mapdir,
-	void *args0, void *args1, void *args2, void *args3, void *args4,
+	void *filter,
 	const int type)
 {
 	int map_fd, err, i, zero = 0;
 	char kprobe_calls_name[255];
 	struct bpf_map *map_bpf;
 	struct bpf_object *obj;
-	char *map_name[] = {
-		"args0_filter_map",
-		"args1_filter_map",
-		"args2_filter_map",
-		"args3_filter_map",
-		"args4_filter_map"};
-	void *args[] = {
-		args0,
-		args1,
-		args2,
-		args3,
-		args4,
-	};
+	char *filter_map = "filter_map";
 
 	obj = __loader(version, verbosity, btf, prog, mapdir, 0, type);
 	if (!obj)
 		goto err;
 
-	for (i = 0; i < MAX_ARGS; i++) {
-		map_fd = bpf_object__find_map_fd_by_name(obj, map_name[i]);
-		if (map_fd >= 0) {
-			err = bpf_map_update_elem(map_fd, &zero, args[i], BPF_ANY);
-			if (err) {
-				printf("WARNING: map update elem %s error %d\n", map_name[i], err);
-			}
-		} else {
-			printf("WARNING: attempted to set filter args on program %s without filters\n", map_name[i]);
+	map_fd = bpf_object__find_map_fd_by_name(obj, filter_map);
+	if (map_fd >= 0) {
+		err = bpf_map_update_elem(map_fd, &zero, filter, BPF_ANY);
+		if (err) {
+			printf("WARNING: map update elem %s error %d\n", filter_map, err);
 		}
+	} else {
+		printf("WARNING: attempted to set filter args on program %s without filters\n", filter_map);
 	}
 
 	switch (type) {
@@ -747,10 +733,10 @@ int generic_kprobe_loader(const int version,
 		  const char *__prog,
 		  const char *mapdir,
 		  const char *genmapdir,
-		  void *args0, void *args1, void *args2, void *args3, void *args4) {
+		  void *filters) {
 	struct bpf_object *obj;
 	int err;
-	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, args0, args1, args2, args3, args4, BPF_PROG_TYPE_KPROBE);
+	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, filters, BPF_PROG_TYPE_KPROBE);
 	if (!obj) {
 		return -1;
 	}
@@ -792,9 +778,9 @@ int tracepoint_loader_args(const int version,
 		  const char *__prog,
 		  const char *mapdir,
 		  const bool retprobe,
-		  void *args0, void *args1, void *args2, void *args3, void *args4) {
+		  void *filters) {
 	struct bpf_object *obj;
-	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, args0, args1, args2, args3, args4, BPF_PROG_TYPE_TRACEPOINT);
+	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, filters, BPF_PROG_TYPE_TRACEPOINT);
 	if (!obj)
 		return -1;
 	return __tracepoint_loader(obj, verbosity, btf, prog, attach_category, attach, label, __prog, mapdir);
@@ -827,8 +813,6 @@ import (
 
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
-
-	"github.com/covalentio/hubble-fgs/pkg/api"
 )
 
 func GetBTF(__btf string) uintptr {
@@ -982,7 +966,7 @@ func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, 
 func LoadGenericKprobeProgram(__version, __verbosity int,
 	btf uintptr,
 	object, attach, __label, __prog, __mapdir string, __genmapdir string,
-	args api.KprobeArgs) (error, int) {
+	filters [4096]byte) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
@@ -994,12 +978,7 @@ func LoadGenericKprobeProgram(__version, __verbosity int,
 	loader_fd := C.generic_kprobe_loader(version,
 		verbosity,
 		unsafe.Pointer(btf),
-		o, a, l, p, mapdir, genmapdir,
-		C.CBytes(args.Args0),
-		C.CBytes(args.Args1),
-		C.CBytes(args.Args2),
-		C.CBytes(args.Args3),
-		C.CBytes(args.Args4))
+		o, a, l, p, mapdir, genmapdir, unsafe.Pointer(&filters))
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
@@ -1028,7 +1007,7 @@ func LoadTracepointArgsProgram(__version, __verbosity int,
 	btf uintptr,
 	object, attach, __label, __prog, __mapdir string,
 	retprobe bool,
-	args api.KprobeArgs) (error, int) {
+	filters []byte) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
@@ -1045,12 +1024,7 @@ func LoadTracepointArgsProgram(__version, __verbosity int,
 	loader_fd := C.tracepoint_loader_args(version,
 		verbosity,
 		unsafe.Pointer(btf),
-		o, a_category, a_name, l, p, mapdir, ret,
-		C.CBytes(args.Args0),
-		C.CBytes(args.Args1),
-		C.CBytes(args.Args2),
-		C.CBytes(args.Args3),
-		C.CBytes(args.Args4))
+		o, a_category, a_name, l, p, mapdir, ret, unsafe.Pointer(&filters))
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0

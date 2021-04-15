@@ -13,6 +13,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/idtable"
 	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/covalentio/hubble-fgs/pkg/selectors"
 )
 
 const (
@@ -142,7 +143,7 @@ func kprobeArgToString(a int) string {
 }
 
 type kprobeLoadArgs struct {
-	args     api.KprobeArgs
+	filters  [4096]byte
 	btf      uintptr
 	retprobe bool
 	syscall  bool
@@ -469,17 +470,6 @@ func (k *ObserverKprobe) kprobePidFilters(btf uintptr, filters []v1alpha1.PIDFil
 	return nil
 }
 
-func (k *ObserverKprobe) initArgFilters() *api.KprobeArgs {
-	nop := k.createArgFilterNop()
-	return &api.KprobeArgs{
-		Args0: nop,
-		Args1: nop,
-		Args2: nop,
-		Args3: nop,
-		Args4: nop,
-	}
-}
-
 func (k *ObserverKprobe) assignArgFilter(value []byte, filter *api.KprobeArgs, index uint32) {
 	switch int(index) {
 	case 0:
@@ -507,6 +497,34 @@ func getArgIndexFilter(index uint32, argFilters []v1alpha1.ArgFilter) []v1alpha1
 	return filters
 }
 
+func pidOpValue(p v1alpha1.PIDSelector) (uint32, error) {
+	return 0, nil
+}
+
+func pidFlagValue(p v1alpha1.PIDSelector) (uint32, error) {
+	return 0, nil
+}
+
+func pidValue(p v1alpha1.PIDSelector) ([]byte, uint32, error) {
+	var value []byte
+
+	return value, 0, nil
+}
+
+func argIndexValue(a v1alpha1.ArgSelector) (uint32, error) {
+	return 0, nil
+}
+
+func argOpValue(a v1alpha1.ArgSelector) (uint32, error) {
+	return 0, nil
+}
+
+func argValue(a v1alpha1.ArgSelector) ([]byte, uint32, error) {
+	var value []byte
+
+	return value, 0, nil
+}
+
 func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*observerSensor, error) {
 	var progs []*bpfLoad
 
@@ -516,7 +534,6 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		var is_syscall, is_retprobe bool
 		var argsBTFSet [maxArgsSupported]bool
 
-		argFilters := k.initArgFilters()
 		funcName := f.Call
 
 		// Write args into BTF ptr for use with load
@@ -526,19 +543,13 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			return nil, fmt.Errorf("Error add enum args (%s) failed %d", genericFuncArgsEnum, ret)
 		}
 
-		// Parse Arguments and join Filters with args.
+		// Parse Arguments
 		for j, a := range f.Args {
 			argType := kprobeStrToTypeId(a.Type)
 			if argType == invalidTypeId {
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
 			}
 			argMValue := getMetaValue(&a)
-			argIndexedFilters := getArgIndexFilter(a.Index, f.AllowFilters.Args)
-			argF := k.createArgFilter(argType, argIndexedFilters)
-			if argF != nil {
-				k.assignArgFilter(argF, argFilters, a.Index)
-			}
-
 			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(int(a.Index)), argType)
 			if retVal < 0 {
 				return nil,
@@ -554,6 +565,8 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			argPrinters = append(argPrinters, argType)
 		}
 
+		// Mark remaining arguments as 'nops' the kernel side will skip
+		// copying 'nop' args.
 		for j, a := range argsBTFSet {
 			if a == false {
 				nopType := kprobeStrToTypeId("nop")
@@ -570,6 +583,9 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			}
 		}
 
+		// Parse Filters into kernel filter logic
+		kernelSelectors := selectors.InitKernelSelectors(f)
+
 		// Write attributes into BTF ptr for use with load
 		is_syscall = f.Syscall
 		is_retprobe = f.Return
@@ -585,15 +601,12 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 				return nil, fmt.Errorf("Error add enum value 'syscall = 0' failed %d", retVal)
 			}
 		}
-		if err := k.kprobePidFilters(btf, f.AllowFilters.PIDs); err != nil {
-			return nil, fmt.Errorf("Error creating PID filters: %s", err)
-		}
 
 		// create a new entry on the table, and pass its id to BPF-side
 		// so that we can do the matching at event-generation time
 		kprobeEntry := genericKprobe{
 			loadArgs: kprobeLoadArgs{
-				args:     *argFilters,
+				filters:  kernelSelectors,
 				btf:      btf,
 				retprobe: is_retprobe,
 				syscall:  is_syscall,
@@ -642,25 +655,15 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 
 	}
 
-	// some maps we might want to use
-	maps := []*ObserverMap{
-		//	&ObserverTCPMonMap,
-		//	&ObserverExecveMap,
-		//	&ObserverSocketMap,
-		//	&ObserverExecveStats,
-		//	&ObserverSocketStats,
-	}
-
 	k.log.Info("Loaded generic kprobe sensor")
 	return &observerSensor{
 		name:  "__generic_kprobe_sensors__",
 		progs: progs,
-		maps:  maps,
+		maps:  []*ObserverMap{},
 	}, nil
 }
 
-func (k *ObserverKprobe) loadGenericKprobe(version int, p *bpfLoad, btf uintptr, genmapDir string, args *api.KprobeArgs) error {
-
+func (k *ObserverKprobe) loadGenericKprobe(version int, p *bpfLoad, btf uintptr, genmapDir string, filters [4096]byte) error {
 	err, _ := bpf.LoadGenericKprobeProgram(
 		version, Verbosity, btf,
 		p.Observer__program,
@@ -669,7 +672,7 @@ func (k *ObserverKprobe) loadGenericKprobe(version int, p *bpfLoad, btf uintptr,
 		k.bpfDir+p.observer__prog,
 		k.mapDir,
 		genmapDir,
-		*args)
+		filters)
 	if err != nil {
 		err, _ = bpf.LoadGenericKprobeProgram(
 			version, Verbosity, btf,
@@ -679,7 +682,7 @@ func (k *ObserverKprobe) loadGenericKprobe(version int, p *bpfLoad, btf uintptr,
 			k.bpfDir+p.observer__prog,
 			k.mapDir,
 			genmapDir,
-			*args)
+			filters)
 	}
 	return err
 }
@@ -720,7 +723,7 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 	if retprobe {
 		return k.loadGenericKprobeRet(version, load, gk.loadArgs.btf, genmapDir), 0
 	} else {
-		return k.loadGenericKprobe(version, load, gk.loadArgs.btf, genmapDir, &gk.loadArgs.args), 0
+		return k.loadGenericKprobe(version, load, gk.loadArgs.btf, genmapDir, gk.loadArgs.filters), 0
 	}
 }
 
