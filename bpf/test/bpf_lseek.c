@@ -48,11 +48,11 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 __attribute__((section(("tracepoint/sys_enter_lseek")), used))
 int test_lseek(struct sys_enter_lseek_args *ctx) {
 	if (ctx->fd == -1 && ctx->whence == 4444) {
-		struct msg_common msg = {0};
-		size_t size = sizeof(struct msg_common);
-		msg.op = MSG_OP_TEST;
-		msg.ktime = ktime_get_ns();
-		msg.size = size;
+		struct msg_test msg = {0};
+		size_t size = sizeof(msg);
+		msg.common.op = MSG_OP_TEST;
+		msg.common.ktime = ktime_get_ns();
+		msg.common.size = size;
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &msg, size);
 	}
 

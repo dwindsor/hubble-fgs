@@ -1568,6 +1568,14 @@ func (m *Test) Validate() error {
 		return nil
 	}
 
+	// no validation rules for Arg0
+
+	// no validation rules for Arg1
+
+	// no validation rules for Arg2
+
+	// no validation rules for Arg3
+
 	return nil
 }
 

@@ -262,6 +262,14 @@ struct msg_generic_kprobe {
 	unsigned long a0,a1,a2,a3,a4;
 };
 
+struct msg_test {
+	struct msg_common common;
+	unsigned long arg0;
+	unsigned long arg1;
+	unsigned long arg2;
+	unsigned long arg3;
+} __attribute__((packed));
+
 struct msg_execve_event {
 	struct msg_common	common;
 	struct msg_k8s		kube;

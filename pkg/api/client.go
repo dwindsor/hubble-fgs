@@ -443,6 +443,10 @@ type MsgGenericKprobe struct {
 
 type MsgTestEvent struct {
 	Common MsgCommon
+	Arg0   uint64
+	Arg1   uint64
+	Arg2   uint64
+	Arg3   uint64
 }
 
 type MsgTestEventUnix = MsgTestEvent

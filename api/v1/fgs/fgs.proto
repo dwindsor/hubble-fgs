@@ -162,7 +162,12 @@ message ProcessTracepoint {
     repeated KprobeArgument args = 6;
 }
 
-message Test {}
+message Test {
+	uint64 arg0 = 1;
+	uint64 arg1 = 2;
+	uint64 arg2 = 3;
+	uint64 arg3 = 4;
+}
 
 enum TlsCertificateError {
 	TLS_CERT_ERROR_UNDEF          = 0;

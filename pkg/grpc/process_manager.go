@@ -185,7 +185,12 @@ func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetE
 	switch msg.Common.Op {
 	case api.MSG_OP_TEST:
 		res = &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_Test{Test: &fgs.Test{}},
+			Event: &fgs.GetEventsResponse_Test{Test: &fgs.Test{
+				Arg0: msg.Arg0,
+				Arg1: msg.Arg1,
+				Arg2: msg.Arg2,
+				Arg3: msg.Arg3,
+			}},
 			NodeName: pm.nodeName,
 			Time:     ktimeToProto(msg.Common.Ktime),
 		}
