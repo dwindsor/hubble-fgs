@@ -108,12 +108,12 @@ func init() {
 	}
 
 	tpAddCmd := &cobra.Command{
-		Use:   "add <sensor_name> <yaml_file>",
+		Use:   "add <yaml_file>",
 		Short: "Add a new sennsor based on a tracing policy",
-		Args:  cobra.ExactArgs(2),
+		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
-				addTracingPolicy(cli, args[0], args[1])
+				addTracingPolicy(cli, args[0])
 			})
 		},
 	}
@@ -142,7 +142,7 @@ func listSensors(client fgs.FineGuidanceSensorsClient) {
 	}
 }
 
-func addTracingPolicy(client fgs.FineGuidanceSensorsClient, sensor, yamlFname string) {
+func addTracingPolicy(client fgs.FineGuidanceSensorsClient, yamlFname string) {
 	yamlb, err := os.ReadFile(yamlFname)
 	if err != nil {
 		fmt.Printf("failed to read yaml file %s: %s\n", yamlFname, err)
