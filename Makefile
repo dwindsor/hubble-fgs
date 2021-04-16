@@ -11,6 +11,7 @@ LIBBPF_INSTALL_DIR ?= ./lib
 CLANG_INSTALL_DIR  ?= ./bin
 VERSION=$(shell git describe --tags --always)
 GO_LDFLAGS="-X 'github.com/covalentio/hubble-fgs/pkg/version.Version=$(VERSION)'"
+GO_IMAGE_LDFLAGS="-X 'github.com/covalentio/hubble-fgs/pkg/version.Version=$(VERSION)' -linkmode external -extldflags -static"
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
 
@@ -44,8 +45,8 @@ ksyms:
 	$(GO) build ./cmd/ksyms/
 
 hubble-fgs-image:
-	GOOS=linux GOARCH=amd64 $(GO) build -mod=vendor -ldflags=$(GO_LDFLAGS) -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-fgs/
-	GOOS=linux GOARCH=amd64 $(GO) build -mod=vendor -ldflags=$(GO_LDFLAGS) -ldflags "-linkmode external -extldflags -static" ./cmd/hubble-enterprise/
+	GOOS=linux GOARCH=amd64 $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-fgs/
+	GOOS=linux GOARCH=amd64 $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-enterprise/
 
 install:
 	groupadd -f hubble
