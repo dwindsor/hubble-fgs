@@ -763,7 +763,13 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 				unix.Args = append(unix.Args, arg)
 			} else if b == 0 {
 				arg.Index = uint64(i)
-				arg.Value = "return value expected"
+				// NB: at least for some functions (e.g., the read syscall),
+				// the string might be of zero length.
+				if unix.FuncName == "__x64_sys_read" {
+					arg.Value = ""
+				} else {
+					arg.Value = "return value expected"
+				}
 				unix.Args = append(unix.Args, arg)
 			} else {
 				arg.Index = uint64(i)
