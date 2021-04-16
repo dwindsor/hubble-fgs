@@ -227,7 +227,7 @@ func (k *ObserverKprobe) createArgFilter(argType int, filters []v1alpha1.ArgFilt
 		binary.LittleEndian.PutUint32(b[0:], uint32(len(filters)))
 
 		for fidx, f := range filters {
-			opIndex := (fidx * 4) + 4
+			opIndex := (fidx * 8) + 4
 			valueIndex := opIndex + 4
 
 			operation, _ := k.opFilterStrToType(f.Op)
