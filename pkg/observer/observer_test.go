@@ -65,21 +65,9 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
-	ctx, _ := context.WithCancel(context.Background())
-
-	HubbleLib = fgsLib
-	envFgsLib := os.Getenv("FGS_LIB")
-	if envFgsLib != "" {
-		HubbleLib = envFgsLib
-	}
-	procfs := os.Getenv("FGS_PROCFS")
-	if procfs != "" {
-		ProcFS = procfs
-	}
-
+func newDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, *testOptions) {
 	// default values
-	o := &testOptions{
+	options := &testOptions{
 		observer: testObserverOptions{
 			tls:    false,
 			tlstc:  false,
@@ -94,14 +82,31 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 	}
 	// apply user options
 	for _, opt := range opts {
-		opt(o)
+		opt(options)
 	}
 
-	oo := &o.observer
-	kprobe := NewObserverKprobe(observerTestDir,
-		observerTestDir,
-		"", "",
-		oo.config, oo.tracepoints, oo.tls, oo.tlstc, oo.pretty, oo.crd)
+	oo := &options.observer
+	return NewObserverKprobe(observerTestDir,
+			observerTestDir,
+			"", "",
+			oo.config, oo.tracepoints, oo.tls, oo.tlstc, oo.pretty, oo.crd),
+		options
+}
+
+func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
+	ctx, _ := context.WithCancel(context.Background())
+
+	HubbleLib = fgsLib
+	envFgsLib := os.Getenv("FGS_LIB")
+	if envFgsLib != "" {
+		HubbleLib = envFgsLib
+	}
+	procfs := os.Getenv("FGS_PROCFS")
+	if procfs != "" {
+		ProcFS = procfs
+	}
+
+	kprobe, o := newDefaultObserver(t, opts...)
 	if testing.Verbose() {
 		Verbosity = verboseLevel
 	}
