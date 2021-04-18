@@ -656,29 +656,6 @@ func (k *ObserverKprobe) loadKprobe(version int, p *bpfLoad) error {
 	return err
 }
 
-func (k *ObserverKprobe) loadGenericKprobeObject(bundle *observerSensor) error {
-	version, _, err := getKernelVersion()
-	if err != nil {
-		return err
-	}
-
-	for _, p := range bundle.progs {
-		retprobe := genericKprobeLoadArgs[p.observer__attach].retprobe
-
-		retprobe = strings.Contains(p.Observer__program, "ret")
-		if retprobe {
-			err = k.loadKprobe(version, p)
-		} else {
-			err = k.loadKprobeArgs(version, p)
-		}
-		if err != nil {
-			return fmt.Errorf("Loading probe failed: %s\n", err)
-		}
-		genericKprobeProgs[p.observer__attach] = p
-	}
-	return nil
-}
-
 func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose int) (error, int) {
 	// we don't actually need retprobe here but might be useful in the future for dbg?
 	retprobe := genericKprobeLoadArgs[load.observer__attach].retprobe
