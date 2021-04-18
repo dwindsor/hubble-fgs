@@ -10,6 +10,7 @@ import (
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
+	"github.com/covalentio/hubble-fgs/pkg/idtable"
 	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 )
 
@@ -146,22 +147,44 @@ type kprobeLoadArgs struct {
 	syscall  bool
 }
 
+// internal genericKprobe info
+type genericKprobe struct {
+	loadArgs    kprobeLoadArgs
+	argPrinters []int
+	funcName    string
+
+	tableId idtable.EntryID
+}
+
+func (g *genericKprobe) SetID(id idtable.EntryID) {
+	g.tableId = id
+}
+
 var (
-	// A map of BTF images. generic_kprobe_name -> btf
-	genericKprobeLoadArgs map[string]kprobeLoadArgs
-	genericKprobeId       map[uint64][]int
-	genericKprobeName     map[uint64]string
+	genericKprobeTable idtable.Table
 )
+
+func genericKprobeTableGet(id idtable.EntryID) (*genericKprobe, error) {
+	if entry, err := genericKprobeTable.GetEntry(id); err != nil {
+		return nil, fmt.Errorf("getting entry from genericKprobeTable failed with: %w", err)
+	} else if val, ok := entry.(*genericKprobe); !ok {
+		return nil, fmt.Errorf("getting entry from genericKprobeTable failed with: got invalid type: %T (%v)", entry, entry)
+	} else {
+		return val, nil
+	}
+}
+
+func genericKprobeFromBpfLoad(l *bpfLoad) (*genericKprobe, error) {
+	if id, ok := l.loaderData.(idtable.EntryID); !ok {
+		return nil, fmt.Errorf("invalid loadData type: expecting idtable.EntryID and got: %T (%v)", l.loaderData, l.loaderData)
+	} else {
+		return genericKprobeTableGet(id)
+	}
+}
 
 var (
 	MaxFilterIntArgs = 8
 )
-
-func (k *ObserverKprobe) initKprobeSensors() {
-	genericKprobeLoadArgs = make(map[string]kprobeLoadArgs, 1)
-	genericKprobeId = make(map[uint64][]int, 1)
-	genericKprobeName = make(map[uint64]string, 1)
-}
 
 const (
 	genericKprobeFilterGT  = 1
@@ -467,8 +490,8 @@ func getArgIndexFilter(index uint32, argFilters []v1alpha1.ArgFilter) []v1alpha1
 func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*observerSensor, error) {
 	var progs []*bpfLoad
 
-	for i, f := range kprobes {
-		var entry kprobeLoadArgs
+	for i := range kprobes {
+		f := kprobes[i]
 		var argPrinters []int
 		var is_syscall, is_retprobe bool
 		var argsBTFSet [maxArgsSupported]bool
@@ -481,10 +504,6 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		ret := bpf.AddEnumBtf(btf, genericFuncArgsEnum, 4)
 		if ret < 0 {
 			return nil, fmt.Errorf("Error add enum args (%s) failed %d", genericFuncArgsEnum, ret)
-		}
-		ret = bpf.AddEnumBtfValue(btf, kprobeGenericId, i)
-		if ret < 0 {
-			return nil, fmt.Errorf("Error add enum value failed %d", ret)
 		}
 
 		// Parse Arguments and join Filters with args.
@@ -550,13 +569,25 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			return nil, fmt.Errorf("Error creating PID filters: %s", err)
 		}
 
-		entry.args = *argFilters
-		entry.btf = btf
-		entry.retprobe = is_retprobe
-		entry.syscall = is_syscall
-		genericKprobeLoadArgs[funcName] = entry
-		genericKprobeId[uint64(i)] = argPrinters
-		genericKprobeName[uint64(i)] = funcName
+		// create a new entry on the table, and pass its id to BPF-side
+		// so that we can do the matching at event-generation time
+		kprobeEntry := genericKprobe{
+			loadArgs: kprobeLoadArgs{
+				args:     *argFilters,
+				btf:      btf,
+				retprobe: is_retprobe,
+				syscall:  is_syscall,
+			},
+			argPrinters: argPrinters,
+			funcName:    funcName,
+			tableId:     idtable.UninitializedEntryID,
+		}
+		genericKprobeTable.AddEntry(&kprobeEntry)
+		ret = bpf.AddEnumBtfValue(btf, kprobeGenericId, kprobeEntry.tableId.ID)
+		if ret < 0 {
+			genericKprobeTable.RemoveEntry(kprobeEntry.tableId)
+			return nil, fmt.Errorf("Error add enum value failed %d", ret)
+		}
 
 		load := &bpfLoad{}
 		load.observer__x64_attach = funcName
@@ -569,6 +600,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		load.probeType = "generic_kprobe"
 		load.loadState = bpfLoadStateIdle()
 		load.tracefd = -1
+		load.loaderData = kprobeEntry.tableId
 
 		if is_retprobe {
 			loadret := &bpfLoad{}
@@ -582,6 +614,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			loadret.probeType = "generic_kprobe"
 			loadret.loadState = bpfLoadStateIdle()
 			loadret.tracefd = -1
+			loadret.loaderData = kprobeEntry.tableId
 			progs = append(progs, loadret)
 		}
 
@@ -605,9 +638,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 	}, nil
 }
 
-func (k *ObserverKprobe) loadKprobeArgs(version int, p *bpfLoad) error {
-	btf := genericKprobeLoadArgs[p.observer__attach].btf
-	args := genericKprobeLoadArgs[p.observer__attach].args
+func (k *ObserverKprobe) loadKprobeArgs(version int, p *bpfLoad, btf uintptr, args *api.KprobeArgs) error {
 
 	err, _ := bpf.LoadKprobeArgsProgram(
 		version, Verbosity, btf,
@@ -617,7 +648,7 @@ func (k *ObserverKprobe) loadKprobeArgs(version int, p *bpfLoad) error {
 		k.bpfDir+p.observer__prog,
 		k.mapDir,
 		false,
-		args)
+		*args)
 	if err != nil {
 		err, _ = bpf.LoadKprobeArgsProgram(
 			version, Verbosity, btf,
@@ -627,14 +658,12 @@ func (k *ObserverKprobe) loadKprobeArgs(version int, p *bpfLoad) error {
 			k.bpfDir+p.observer__prog,
 			k.mapDir,
 			false,
-			args)
+			*args)
 	}
 	return err
 }
 
-func (k *ObserverKprobe) loadKprobe(version int, p *bpfLoad) error {
-	btf := genericKprobeLoadArgs[p.observer__attach].btf
-
+func (k *ObserverKprobe) loadKprobe(version int, p *bpfLoad, btf uintptr) error {
 	err, _ := bpf.LoadKprobeProgram(
 		version, Verbosity, btf,
 		p.Observer__program,
@@ -657,14 +686,17 @@ func (k *ObserverKprobe) loadKprobe(version int, p *bpfLoad) error {
 }
 
 func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose int) (error, int) {
-	// we don't actually need retprobe here but might be useful in the future for dbg?
-	retprobe := genericKprobeLoadArgs[load.observer__attach].retprobe
+	gk, err := genericKprobeFromBpfLoad(load)
+	if err != nil {
+		return err, 0
+	}
+
 	observerAllPrograms = append(observerAllPrograms, load)
-	retprobe = strings.Contains(load.Observer__program, "ret")
+	retprobe := strings.Contains(load.Observer__program, "ret")
 	if retprobe {
-		return k.loadKprobe(version, load), 0
+		return k.loadKprobe(version, load, gk.loadArgs.btf), 0
 	} else {
-		return k.loadKprobeArgs(version, load), 0
+		return k.loadKprobeArgs(version, load, gk.loadArgs.btf, &gk.loadArgs.args), 0
 	}
 }
 
@@ -677,15 +709,20 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 		return
 	}
 
+	gk, err := genericKprobeTableGet(idtable.EntryID{ID: int(m.Id)})
+	if err != nil {
+		k.log.WithError(err).Warnf("Failed to match id:%d", m.Id)
+		return
+	}
+
 	unix.Common = m.Common
 	unix.ProcessKey = m.ProcessKey
 	unix.Id = m.Id
-	unix.FuncName = genericKprobeName[m.Id]
+	unix.FuncName = gk.funcName
 
 	retProbe := m.Common.Pad[0]
 
-	printerArgs := genericKprobeId[m.Id]
-	for i, arg := range printerArgs {
+	for i, arg := range gk.argPrinters {
 		if retProbe > 0 && arg != GenericKprobeCharBuffer {
 			continue
 		}

@@ -1485,8 +1485,6 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
 
-	k.initKprobeSensors()
-
 	// Load initial set of generic kprobe sensors */
 	if k.configFile != "" {
 		genericSensor, err := k.getSensorFromTracingPolicyFname(k.configFile)
