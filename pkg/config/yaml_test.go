@@ -40,16 +40,18 @@ spec:
         sizeargindex: 3
       - index: 2
         type: "size_t"
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: 1
-        followforks: true
-        isnamespacepid: false
-      args:
-      - index: 0
-        op: "eq"
-        value: "1"
+    selectors:
+      - matchpids:
+        - operator: In
+          followforks: true
+          isnamespacepid: false
+          values:
+            - 1
+        matchargs:
+        - index: 0
+          operator: "equal"
+          values:
+            - "1"
 `
 
 var expectedWrite = GenericTracingConf{
@@ -76,20 +78,22 @@ var expectedWrite = GenericTracingConf{
 						Type:  "size_t",
 					},
 				},
-				AllowFilters: v1alpha1.KProbeFilters{
-					PIDs: []v1alpha1.PIDFilter{
-						{
-							Op:             "eq",
-							Value:          1,
-							FollowForks:    true,
-							IsNamespacePID: false,
+				Selectors: []v1alpha1.KProbeSelector{
+					{
+						MatchPIDs: []v1alpha1.PIDSelector{
+							{
+								Operator:       "In",
+								Values:         []uint32{1},
+								FollowForks:    true,
+								IsNamespacePID: false,
+							},
 						},
-					},
-					Args: []v1alpha1.ArgFilter{
-						{
-							Index: 0,
-							Op:    "eq",
-							Value: "1",
+						MatchArgs: []v1alpha1.ArgSelector{
+							{
+								Index:    0,
+								Operator: "equal",
+								Values:   []string{"1"},
+							},
 						},
 					},
 				},
@@ -124,11 +128,30 @@ spec:
     syscall: false
     args:
     - index: 0
-      type: string
-    - index: 1
-      type: string
+      type: "string"
+    - index: 1 
+      type: "string"
     - index: 2
-      type: string
+      type: "string"
+    - index: 3
+      type: "string"
+    selectors:
+      - matchpids:
+        - operator: In
+          followforks: true
+          isnamespacepid: false
+          values:
+            - 1
+            - 2
+        matchargs:
+        - index: 0
+          operator: "equal"
+          values:
+            - "1"
+        - index: 1
+          operator: "notequal" 
+          values:
+            - "world"
 `
 
 var expectedData = GenericTracingConf{
@@ -179,6 +202,34 @@ var expectedData = GenericTracingConf{
 					{
 						Index: 2,
 						Type:  "string",
+					},
+					{
+						Index: 3,
+						Type:  "string",
+					},
+				},
+				Selectors: []v1alpha1.KProbeSelector{
+					{
+						MatchPIDs: []v1alpha1.PIDSelector{
+							{
+								Operator:       "In",
+								Values:         []uint32{1, 2},
+								FollowForks:    true,
+								IsNamespacePID: false,
+							},
+						},
+						MatchArgs: []v1alpha1.ArgSelector{
+							{
+								Index:    0,
+								Operator: "equal",
+								Values:   []string{"1"},
+							},
+							{
+								Index:    1,
+								Operator: "notequal",
+								Values:   []string{"world"},
+							},
+						},
 					},
 				},
 			},
