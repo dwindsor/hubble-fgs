@@ -154,6 +154,12 @@ type genericKprobe struct {
 	argPrinters []int
 	funcName    string
 
+	// for kprobes that have a retprobe, we maintain the enter events in
+	// the map, so that we can merge them when the return event is
+	// generated. The envets are maintained in the map below, using
+	// ThreadId as the key.
+	pendingEvents map[uint64]*api.MsgGenericKprobeUnix
+
 	tableId idtable.EntryID
 }
 
@@ -583,9 +589,10 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 				retprobe: is_retprobe,
 				syscall:  is_syscall,
 			},
-			argPrinters: argPrinters,
-			funcName:    funcName,
-			tableId:     idtable.UninitializedEntryID,
+			argPrinters:   argPrinters,
+			funcName:      funcName,
+			pendingEvents: map[uint64]*api.MsgGenericKprobeUnix{},
+			tableId:       idtable.UninitializedEntryID,
 		}
 		genericKprobeTable.AddEntry(&kprobeEntry)
 		ret = bpf.AddEnumBtfValue(btf, kprobeGenericId, kprobeEntry.tableId.ID)
@@ -828,7 +835,37 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 		}
 	}
 
-	k.observerListenersKprobe(unix)
+	if gk.loadArgs.retprobe {
+		// NB: the asumption here is that the enter event will come
+		// first, and I cannot think of a case where this approach
+		// would not work. Even if there is a race in loading, we are
+		// currently loading the enter probe first, so we should never
+		// see an exit (return) event before an enter event.
+		// Having said that, marking messages from bpf side as to
+		// whether they correspond to an enter or a return event, will
+		// make this more robust.
+		if prev, exists := gk.pendingEvents[m.ThreadId]; exists {
+			delete(gk.pendingEvents, m.ThreadId)
+			unix = k.retprobeMerge(&gk.loadArgs, prev, unix)
+		} else {
+			gk.pendingEvents[m.ThreadId] = unix
+			unix = nil
+		}
+	}
+	if unix != nil {
+		k.observerListenersKprobe(unix)
+	}
+}
+
+// retprobeMerge merges the two events: the one from they entry and one from the return
+func (k *ObserverKprobe) retprobeMerge(loadArgs *kprobeLoadArgs, prev *api.MsgGenericKprobeUnix, msg *api.MsgGenericKprobeUnix) *api.MsgGenericKprobeUnix {
+	newArg, ok := msg.Args[0].(api.MsgGenericKprobeArgString)
+	if !ok {
+		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, msg)
+		return nil
+	}
+	prev.Args[newArg.Index] = newArg
+	return prev
 }
 
 func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) {

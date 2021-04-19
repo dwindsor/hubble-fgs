@@ -352,7 +352,9 @@ spec:
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello world"}}
+	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: int32(fd2)}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello world"}}
+	arg2 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 11}}
 	trace := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessKprobe{
@@ -360,7 +362,7 @@ spec:
 					Process:      &fgs.Process{Binary: selfBinary},
 					Parent:       &fgs.Process{Binary: ""},
 					FunctionName: "__x64_sys_read",
-					Args:         []*fgs.KprobeArgument{arg0},
+					Args:         []*fgs.KprobeArgument{arg0, arg1, arg2},
 				},
 			},
 		},
