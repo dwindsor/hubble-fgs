@@ -41,12 +41,14 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	size_t size;
 	unsigned long retprobe_buffer;
 
-	tid = get_current_pid_tgid();
-	pid = tid & 0xFFFFffff;
 
 	e = map_lookup_elem(&process_call_heap, &zero);
 	if (!e)
 		return 0;
+
+	tid = get_current_pid_tgid();
+	pid = tid & 0xFFFFffff;
+	e->thread_id = tid;
 
 	retprobe_buffer = retprobe_map_get(tid);
 	if (!retprobe_buffer)
@@ -82,7 +84,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	/* tbd error check and signal to userland */
 	probe_read(&e->args[4], size, (char *)retprobe_buffer);
 	total = size + 4;
-	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
+	total += generic_kprobe_common_size();
 	if (total > 8192)
 		total = 8192;
 	e->common.size = total;

@@ -710,7 +710,6 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 
 func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	m := api.MsgGenericKprobe{}
-	unix := &api.MsgGenericKprobeUnix{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		k.log.WithError(err).Warnf("Failed to read process call msg")
@@ -723,6 +722,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 		return
 	}
 
+	unix := &api.MsgGenericKprobeUnix{}
 	unix.Common = m.Common
 	unix.ProcessKey = m.ProcessKey
 	unix.Id = m.Id

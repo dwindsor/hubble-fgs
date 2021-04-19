@@ -12,7 +12,7 @@ int generic_process_event0(
 	struct msg_generic_kprobe *e;
 	unsigned long a0, a1, a2, a3, a4;
 	bool walker = 0;
-	__u32 pid, ppid;
+	__u32 ppid;
 	int zero = 0;
 	/* total is used as a pointer offset so we want type to match
 	 * pointer type in order to avoid bit shifts.
@@ -23,7 +23,6 @@ int generic_process_event0(
 	if (!enter)
 		return 0;
 
-	pid = get_current_pid_tgid() & 0xFFFFffff;
 	// get e again to help verifier
 	e = map_lookup_elem(heap_map, &zero);
 	if (!e)
@@ -47,6 +46,7 @@ int generic_process_event0(
 	e->current.pad[3] = 0;
 
 	e->id = bpf_core_enum_value(fgs_args, func_id);
+	e->thread_id = get_current_pid_tgid();
 	/* Read out args1-5 */
 	ty = bpf_core_enum_value(fgs_args, arg0);
 	if (total < MAX_TOTAL) {
@@ -307,7 +307,7 @@ int generic_process_event4(
 	e->common.size = total;
 
 	/* Post event */
-	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
+	total += generic_kprobe_common_size();
 	/* Code movement from clang forces us to inline bounds checks here */
 	asm volatile("%[total] &= 0x7fff;\n"
 		"if %[total] < 9000 goto +1\n;"

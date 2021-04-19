@@ -439,6 +439,7 @@ type MsgGenericKprobe struct {
 	Common     MsgCommon
 	ProcessKey MsgExecveKey
 	Id         uint64
+	ThreadId   uint64
 }
 
 type MsgTestEvent struct {
