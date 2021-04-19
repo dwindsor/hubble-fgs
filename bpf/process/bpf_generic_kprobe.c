@@ -13,6 +13,7 @@ struct bpf_map_def {
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "retprobe_map.h"
 #include "types/operations.h"
 #include "types/basic.h"
 #include "generic_calls.h"

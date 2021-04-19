@@ -197,9 +197,8 @@ long filter_strings(char *args, unsigned long arg, void *filter_map)
  * @off: offset of the argument within @args
  * @arg: argument location (generally, address of the argument)
  * @argm: argument metadata. The meaning of this depends on the @type. Some
- *        types use a -1 to designate saving @arg into ->retprobe_buffer.
+ *        types use a -1 to designate saving @arg into the retprobe map
  * @filter_map:
- * @proc: process state (used to access ->retprobe_buffer)
  *
  * Returns the size of data appended to @args.
  */
@@ -207,8 +206,7 @@ static inline __attribute__((always_inline))
 long read_call_arg(char *args,
 		  int type, long orig_off,
 		  unsigned long arg, unsigned long argm,
-		  void *filter_map,
-		  struct execve_map_value *proc)
+		  void *filter_map)
 {
 	long size = -1;
 	int zero = 0;
@@ -348,7 +346,8 @@ accept_filter:
 		int err;
 
 		if (argm == -1) {
-			proc->retprobe_buffer = arg;
+			u64 tid = get_current_pid_tgid();
+			retprobe_map_set(tid, arg);
 			return return_error(s, 0);
 		}
 		probe_read(&bytes, sizeof(bytes), &argm);
@@ -364,7 +363,8 @@ accept_filter:
 		int err, i = 0, cnt, *s = (int *)&args[off];
 
 		if (argm == -1) {
-			proc->retprobe_buffer = arg;
+			u64 tid = get_current_pid_tgid();
+			retprobe_map_set(tid, arg);
 			return return_error(s, 0);
 		}
 		err = probe_read(&cnt, sizeof(cnt), &argm);

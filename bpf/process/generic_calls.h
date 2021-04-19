@@ -56,7 +56,7 @@ int generic_process_event0(
 
 		a0m = bpf_core_enum_value(fgs_args, arg0m);
 		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a0, arg_meta, map, enter);
+		errv = read_call_arg(e->args, ty, total, a0, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -145,7 +145,7 @@ int generic_process_event1(
 
 		a1m = bpf_core_enum_value(fgs_args, arg1m);
 		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a1, arg_meta, map, enter);
+		errv = read_call_arg(e->args, ty, total, a1, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -196,7 +196,7 @@ int generic_process_event2(
 
 		a2m = bpf_core_enum_value(fgs_args, arg2m);
 		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a2, arg_meta, map, enter);
+		errv = read_call_arg(e->args, ty, total, a2, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -249,7 +249,7 @@ int generic_process_event3(
 
 		a3m = bpf_core_enum_value(fgs_args, arg3m);
 		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a3, arg_meta, map, enter);
+		errv = read_call_arg(e->args, ty, total, a3, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -299,7 +299,7 @@ int generic_process_event4(
 
 		a4m = bpf_core_enum_value(fgs_args, arg4m);
 		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a4, arg_meta, map, enter);
+		errv = read_call_arg(e->args, ty, total, a4, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;

@@ -157,7 +157,7 @@ int __bpf_obj_get(const char *file)
 
 int bpf_loader_set_map(struct bpf_object *obj,
 		       const char *mapdir,
-		       const char *ciliumdir,
+		       const char *mapdir2,
 		       int verbosity)
 {
 	struct bpf_map *map;
@@ -172,19 +172,19 @@ int bpf_loader_set_map(struct bpf_object *obj,
 		strncat(pinfd, name, sizeof(pinfd) - 1);
 		fd = bpf_obj_get(pinfd);
 		if (fd < 0) {
-			char ciliumfd[512];
+			char mapdir2fd[512];
 
-			if (ciliumdir) {
-				strncpy(ciliumfd, ciliumdir, sizeof(pinfd));
-				strncat(ciliumfd, name, sizeof(pinfd) - 1);
+			if (mapdir2) {
+				strncpy(mapdir2fd, mapdir2, sizeof(pinfd));
+				strncat(mapdir2fd, name, sizeof(pinfd) - 1);
 
-				fd = bpf_obj_get(ciliumfd);
+				fd = bpf_obj_get(mapdir2fd);
 				if (fd < 0) {
 					if (verbosity)
-						fprintf(stderr, "searched for Cilium bpf_map %s not found\n", ciliumfd);
+						fprintf(stderr, "searched for bpf_map %s not found\n", mapdir2fd);
 				} else {
 					if (verbosity)
-						fprintf(stderr, "found Cilium bpf_map %s\n", ciliumfd);
+						fprintf(stderr, "found bpf_map %s\n", mapdir2fd);
 				}
 			}
 
@@ -717,7 +717,28 @@ err:
 	return NULL;
 }
 
-int kprobe_loader_args(const int version,
+int generic_kprobe_pin_retprobe(struct bpf_object *obj, const char *genmapdir) {
+	const char map_name[] = "retprobe_map";
+	struct bpf_map *map;
+	int err;
+
+	map = bpf_object__find_map_by_name(obj, map_name);
+	err = libbpf_get_error(map);
+	if (err) {
+		fprintf(stderr, "retprobe map not found\n");
+		return -1;
+	}
+
+	char fname[256];
+	snprintf(fname, sizeof(fname), "%s/%s", genmapdir, map_name);
+	err = bpf_map__pin(map, fname);
+	if (err < 0) {
+		fprintf(stderr, "failed to pin retprobe map: %i\n", err);
+	}
+	return 0;
+}
+
+int generic_kprobe_loader(const int version,
 		  const int verbosity,
 		  void *btf,
 		  const char *prog,
@@ -725,14 +746,38 @@ int kprobe_loader_args(const int version,
 		  const char *label,
 		  const char *__prog,
 		  const char *mapdir,
-		  const bool retprobe,
+		  const char *genmapdir,
 		  void *args0, void *args1, void *args2, void *args3, void *args4) {
 	struct bpf_object *obj;
+	int err;
 	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, args0, args1, args2, args3, args4, BPF_PROG_TYPE_KPROBE);
 	if (!obj) {
 		return -1;
 	}
-	return __kprobe_loader(obj, verbosity, attach, label, __prog, retprobe);
+	err = generic_kprobe_pin_retprobe(obj, genmapdir);
+	if (err) {
+		// TODO: cleanup
+		return -1;
+	}
+	return __kprobe_loader(obj, verbosity, attach, label, __prog, false);
+}
+
+int generic_kprobe_ret_loader(const int version,
+		  const int verbosity,
+		  void *btf,
+		  const char *prog,
+		  const char *attach,
+		  const char *label,
+		  const char *__prog,
+		  const char *mapdir,
+		  const char *genmapdir)
+{
+	struct bpf_object *obj;
+	obj = __loader(version, verbosity, btf, prog, mapdir, genmapdir, BPF_PROG_TYPE_KPROBE);
+	if (!obj)
+		return -1;
+
+	return __kprobe_loader(obj, verbosity, attach, label, __prog, true);
 }
 
 
@@ -934,10 +979,9 @@ func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, 
 	return nil, loaderInt
 }
 
-func LoadKprobeArgsProgram(__version, __verbosity int,
+func LoadGenericKprobeProgram(__version, __verbosity int,
 	btf uintptr,
-	object, attach, __label, __prog, __mapdir string,
-	retprobe bool,
+	object, attach, __label, __prog, __mapdir string, __genmapdir string,
 	args api.KprobeArgs) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
@@ -946,16 +990,33 @@ func LoadKprobeArgsProgram(__version, __verbosity int,
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	ret := C.bool(retprobe)
-	loader_fd := C.kprobe_loader_args(version,
+	genmapdir := C.CString(__genmapdir)
+	loader_fd := C.generic_kprobe_loader(version,
 		verbosity,
 		unsafe.Pointer(btf),
-		o, a, l, p, mapdir, ret,
+		o, a, l, p, mapdir, genmapdir,
 		C.CBytes(args.Args0),
 		C.CBytes(args.Args1),
 		C.CBytes(args.Args2),
 		C.CBytes(args.Args3),
 		C.CBytes(args.Args4))
+	loaderInt := int(loader_fd)
+	if loaderInt < 0 {
+		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
+	}
+	return nil, loaderInt
+}
+
+func LoadGenericKprobeRetProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string, __genmapdir string) (error, int) {
+	version := C.int(__version)
+	verbosity := C.int(__verbosity)
+	o := C.CString(object)
+	a := C.CString(attach)
+	l := C.CString(__label)
+	p := C.CString(__prog)
+	mapdir := C.CString(__mapdir)
+	genmapdir := C.CString(__genmapdir)
+	loader_fd := C.generic_kprobe_ret_loader(version, verbosity, unsafe.Pointer(btf), o, a, l, p, mapdir, genmapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0

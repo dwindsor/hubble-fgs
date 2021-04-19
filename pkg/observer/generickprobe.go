@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"os"
 	"path"
 	"strconv"
 	"strings"
@@ -154,6 +155,10 @@ type genericKprobe struct {
 	funcName    string
 
 	tableId idtable.EntryID
+}
+
+func (g *genericKprobe) getMapDir(mapDir string) string {
+	return path.Join(mapDir, fmt.Sprintf("generickprobe_id:%d_fn:%s", g.tableId.ID, g.funcName)) + "/"
 }
 
 func (g *genericKprobe) SetID(id idtable.EntryID) {
@@ -601,6 +606,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		load.loadState = bpfLoadStateIdle()
 		load.tracefd = -1
 		load.loaderData = kprobeEntry.tableId
+		progs = append(progs, load)
 
 		if is_retprobe {
 			loadret := &bpfLoad{}
@@ -618,7 +624,6 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			progs = append(progs, loadret)
 		}
 
-		progs = append(progs, load)
 	}
 
 	// some maps we might want to use
@@ -638,49 +643,49 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 	}, nil
 }
 
-func (k *ObserverKprobe) loadKprobeArgs(version int, p *bpfLoad, btf uintptr, args *api.KprobeArgs) error {
+func (k *ObserverKprobe) loadGenericKprobe(version int, p *bpfLoad, btf uintptr, genmapDir string, args *api.KprobeArgs) error {
 
-	err, _ := bpf.LoadKprobeArgsProgram(
+	err, _ := bpf.LoadGenericKprobeProgram(
 		version, Verbosity, btf,
 		p.Observer__program,
 		p.observer__x64_attach,
 		p.observer__label,
 		k.bpfDir+p.observer__prog,
 		k.mapDir,
-		false,
+		genmapDir,
 		*args)
 	if err != nil {
-		err, _ = bpf.LoadKprobeArgsProgram(
+		err, _ = bpf.LoadGenericKprobeProgram(
 			version, Verbosity, btf,
 			p.Observer__program,
 			p.observer__attach,
 			p.observer__label,
 			k.bpfDir+p.observer__prog,
 			k.mapDir,
-			false,
+			genmapDir,
 			*args)
 	}
 	return err
 }
 
-func (k *ObserverKprobe) loadKprobe(version int, p *bpfLoad, btf uintptr) error {
-	err, _ := bpf.LoadKprobeProgram(
+func (k *ObserverKprobe) loadGenericKprobeRet(version int, p *bpfLoad, btf uintptr, genmapDir string) error {
+	err, _ := bpf.LoadGenericKprobeRetProgram(
 		version, Verbosity, btf,
 		p.Observer__program,
 		p.observer__x64_attach,
 		p.observer__label,
-		k.bpfDir+p.observer__prog,
+		path.Join(k.bpfDir, p.observer__prog),
 		k.mapDir,
-		true)
+		genmapDir)
 	if err != nil {
-		err, _ = bpf.LoadKprobeProgram(
+		err, _ = bpf.LoadGenericKprobeRetProgram(
 			version, Verbosity, btf,
 			p.Observer__program,
 			p.observer__attach,
 			p.observer__label,
-			k.bpfDir+p.observer__prog,
+			path.Join(k.bpfDir, p.observer__prog),
 			k.mapDir,
-			true)
+			genmapDir)
 	}
 	return err
 }
@@ -691,12 +696,15 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 		return err, 0
 	}
 
+	genmapDir := gk.getMapDir(k.mapDir)
+	os.Mkdir(genmapDir, os.ModeDir)
+
 	observerAllPrograms = append(observerAllPrograms, load)
 	retprobe := strings.Contains(load.Observer__program, "ret")
 	if retprobe {
-		return k.loadKprobe(version, load, gk.loadArgs.btf), 0
+		return k.loadGenericKprobeRet(version, load, gk.loadArgs.btf, genmapDir), 0
 	} else {
-		return k.loadKprobeArgs(version, load, gk.loadArgs.btf, &gk.loadArgs.args), 0
+		return k.loadGenericKprobe(version, load, gk.loadArgs.btf, genmapDir, &gk.loadArgs.args), 0
 	}
 }
 

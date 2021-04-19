@@ -13,6 +13,7 @@ struct bpf_map_def {
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "retprobe_map.h"
 #include "types/basic.h"
 
 #define MAX_FILENAME 8096
@@ -34,20 +35,25 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	struct msg_generic_kprobe *e;
 	bool walker = false;
 	int zero = 0, *s;
+	__u64 tid;
 	__u32 pid, ppid;
 	long total = 0;
 	size_t size;
+	unsigned long retprobe_buffer;
 
-	pid = get_current_pid_tgid() & 0xFFFFffff;
+	tid = get_current_pid_tgid();
+	pid = tid & 0xFFFFffff;
 
 	e = map_lookup_elem(&process_call_heap, &zero);
 	if (!e)
 		return 0;
 
+	retprobe_buffer = retprobe_map_get(tid);
+	if (!retprobe_buffer)
+		return 0;
+
 	enter = event_find_curr(&ppid, 0, &walker);
 	if (!enter)
-		return 0;
-	if (!enter->retprobe_buffer)
 		return 0;
 
 	e->common.op = MSG_OP_GENERIC_KPROBE;
@@ -74,13 +80,12 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	s = (int *)&e->args[0];
 	*s = size;
 	/* tbd error check and signal to userland */
-	probe_read(&e->args[4], size, (char *)enter->retprobe_buffer);
+	probe_read(&e->args[4], size, (char *)retprobe_buffer);
 	total = size + 4;
 	total += sizeof(struct msg_common) + sizeof(struct msg_execve_key) + sizeof(__u64);
 	if (total > 8192)
 		total = 8192;
 	e->common.size = total;
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total&0x7fff);
-	enter->retprobe_buffer = 0;
 	return 0;
 }
