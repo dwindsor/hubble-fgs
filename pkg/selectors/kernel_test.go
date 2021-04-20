@@ -1,0 +1,307 @@
+package selectors
+
+import (
+	"bytes"
+	"testing"
+
+	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+)
+
+func TestWriteSelectorUint32(t *testing.T) {
+	k := &kernelSelectorState{off: 0}
+	v := uint32(0x1234abcd)
+	writeSelectorUint32(k, v)
+	if k.e[3] != 0x12 || k.e[2] != 0x34 || k.e[1] != 0xab || k.e[0] != 0xcd {
+		t.Errorf("SelectorStateWrite failed: %x %x %x %x\n",
+			k.e[0], k.e[1], k.e[2], k.e[3])
+	}
+
+	k.off = 1024
+	writeSelectorUint32(k, v)
+	if k.e[1027] != 0x12 || k.e[1026] != 0x34 || k.e[1025] != 0xab || k.e[1024] != 0xcd {
+		t.Errorf("SelectorStateWrite offset(1024) failed: %x %x %x %x\n",
+			k.e[1027], k.e[1026], k.e[1025], k.e[1024])
+	}
+}
+
+func TestWriteSelectorLength(t *testing.T) {
+	k := &kernelSelectorState{off: 0}
+	v := uint32(0x1234abcd)
+
+	e1 := 8
+	e2 := 12
+
+	off := advanceSelectorLength(k)
+	writeSelectorUint32(k, v)
+	writeSelectorLength(k, off)
+
+	off = advanceSelectorLength(k)
+	writeSelectorUint32(k, v)
+	writeSelectorUint32(k, v)
+	writeSelectorLength(k, off)
+
+	// Length fields include the length value
+	if k.e[3] != 0 || k.e[2] != 0 || k.e[1] != 0 || k.e[0] != 8 {
+		t.Errorf("WriteSelectorLength(0): expected %d actual 0X%x%x%x%x\n", e1, k.e[0], k.e[1], k.e[2], k.e[3])
+	}
+	if k.e[11] != 0 || k.e[10] != 0 || k.e[9] != 0 || k.e[8] != 12 {
+		t.Errorf("WriteSelectorLength(8): expected %d actual 0X%x%x%x%x\n", e2, k.e[8], k.e[9], k.e[10], k.e[11])
+	}
+}
+
+func TestWriteSelectorByteArray(t *testing.T) {
+	k := &kernelSelectorState{off: 0}
+	v := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf}
+
+	off1 := advanceSelectorLength(k)
+	off2 := advanceSelectorLength(k)
+	writeSelectorByteArray(k, v, uint32(len(v)))
+	writeSelectorLength(k, off2)
+	writeSelectorLength(k, off1)
+
+	// Length fields include the length value
+	if k.e[3] != 0 || k.e[2] != 0 || k.e[1] != 0 || k.e[0] != 23 {
+		t.Errorf("WriteSelectorLength(0): expected 0X%x actual 0X%x%x%x%x\n", 23, k.e[0], k.e[1], k.e[2], k.e[3])
+	}
+	if k.e[7] != 0 || k.e[6] != 0 || k.e[5] != 0 || k.e[4] != 19 {
+		t.Errorf("WriteSelectorLength(8): expected 0X%x actual 0X%x%x%x%x\n", 19, k.e[4], k.e[5], k.e[6], k.e[7])
+	}
+	// Byte array
+	if k.e[8] != 1 || k.e[9] != 2 || k.e[10] != 3 || k.e[11] != 4 ||
+		k.e[12] != 5 || k.e[13] != 6 || k.e[14] != 7 || k.e[15] != 8 ||
+		k.e[16] != 9 || k.e[17] != 0xa || k.e[18] != 0xb || k.e[19] != 0xc ||
+		k.e[20] != 0xd || k.e[21] != 0xe || k.e[22] != 0xf {
+		t.Errorf("WriteSelectorLength(8): expected %x actual 0X%x\n", v, k.e[8:])
+	}
+
+}
+
+func TestArgSelectorValue(t *testing.T) {
+	astring := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
+
+	b, l := argSelectorValue(astring.Values[0])
+	if bytes.Equal(b, []byte("foobar")) == false || l != 6 {
+		t.Errorf("argSelectorValue: expected %v %v actual %v %v\n", []byte("foobar"), 6, b, l)
+	}
+}
+
+func TestSelectorOp(t *testing.T) {
+	if op, err := selectorOp("gt"); op != selectorOpGT || err != nil {
+		t.Errorf("selectorOp: expected %d actual %d %v\n", selectorOpGT, op, err)
+	}
+	if op, err := selectorOp("lt"); op != selectorOpLT || err != nil {
+		t.Errorf("selectorOp: expected %d actual %d %v\n", selectorOpLT, op, err)
+	}
+	if op, err := selectorOp("eq"); op != selectorOpEQ || err != nil {
+		t.Errorf("selectorOp: expected %d actual %d %v\n", selectorOpEQ, op, err)
+	}
+	if op, err := selectorOp("Equal"); op != selectorOpEQ || err != nil {
+		t.Errorf("selectorOp: expected %d actual %d %v\n", selectorOpEQ, op, err)
+	}
+	if op, err := selectorOp("neq"); op != selectorOpNEQ || err != nil {
+		t.Errorf("selectorOp: expected %d actual %d %v\n", selectorOpNEQ, op, err)
+	}
+	if op, err := selectorOp("In"); op != selectorOpIn || err != nil {
+		t.Errorf("selectorOp: expected %d actual %d %v\n", selectorOpIn, op, err)
+	}
+	if op, err := selectorOp("NotIn"); op != selectorOpNotIn || err != nil {
+		t.Errorf("selectorOp: expected %d actual %d %v\n", selectorOpNotIn, op, err)
+	}
+	if op, err := selectorOp("foo"); op != 0 || err == nil {
+		t.Errorf("selectorOp: expected error actual %d %v\n", op, err)
+	}
+}
+
+func TestPidSelectorFlags(t *testing.T) {
+	pid := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
+	if flags := pidSelectorFlags(pid); flags != 0x3 {
+		t.Errorf("pidSelectorFlags: expected: 0x3 actual %v\n", flags)
+	}
+	pid.IsNamespacePID = false
+	if flags := pidSelectorFlags(pid); flags != 0x2 {
+		t.Errorf("pidSelectorFlags: expected: 0x2 actual %v\n", flags)
+	}
+	pid.IsNamespacePID = true
+	pid.FollowForks = false
+	if flags := pidSelectorFlags(pid); flags != 0x1 {
+		t.Errorf("pidSelectorFlags: expected: 0x1 actual %v\n", flags)
+	}
+	pid.IsNamespacePID = false
+	pid.FollowForks = false
+	if flags := pidSelectorFlags(pid); flags != 0x0 {
+		t.Errorf("pidSelectorFlags: expected: 0x0 actual %v\n", flags)
+	}
+}
+
+func TestPidSelectorValue(t *testing.T) {
+	pid := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
+	expected := []byte{0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0}
+	if b, l := pidSelectorValue(pid); bytes.Equal(b, expected) == false || l != 12 {
+		t.Errorf("pidSelectorValue: expected %v actual %v\n", expected, b)
+	}
+}
+
+func TestParseMatchArg(t *testing.T) {
+	sig := []v1alpha1.KProbeArg{
+		v1alpha1.KProbeArg{Index: 1, Type: "string", SizeArgIndex: 0, ReturnCopy: false},
+		v1alpha1.KProbeArg{Index: 2, Type: "int", SizeArgIndex: 0, ReturnCopy: false},
+		v1alpha1.KProbeArg{Index: 3, Type: "char_buf", SizeArgIndex: 0, ReturnCopy: false},
+		v1alpha1.KProbeArg{Index: 4, Type: "char_iovec", SizeArgIndex: 0, ReturnCopy: false},
+	}
+
+	arg1 := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
+	k := &kernelSelectorState{off: 0}
+	expected1 := []byte{
+		0x01, 0x00, 0x00, 0x00, // Index == 1
+		0x03, 0x00, 0x00, 0x00, // operator == equal
+		18, 0x00, 0x00, 0x00, // length == 18
+		0x06, 0x00, 0x00, 0x00, // value type == string
+		0x06, 0x00, 0x00, 0x00, // value length == 6
+		102, 111, 111, 98, 97, 114, // value ascii "foobar"
+	}
+	if err := parseMatchArg(k, arg1, sig); err != nil || bytes.Equal(expected1, k.e[0:k.off]) == false {
+		t.Errorf("parseMatchArg: error %v expected %v bytes %v parsing %v\n", err, expected1, k.e[0:k.off], arg1)
+	}
+
+	nextArg := k.off
+	arg2 := &v1alpha1.ArgSelector{Index: 2, Operator: "Equal", Values: []string{"1", "2"}}
+	expected2 := []byte{
+		0x02, 0x00, 0x00, 0x00, // Index == 2
+		0x03, 0x00, 0x00, 0x00, // operator == equal
+		16, 0x00, 0x00, 0x00, // length == 16
+		0x01, 0x00, 0x00, 0x00, // value type == int
+		0x01, 0x00, 0x00, 0x00, // value 1
+		0x02, 0x00, 0x00, 0x00, // value 2
+	}
+	if err := parseMatchArg(k, arg2, sig); err != nil || bytes.Equal(expected2, k.e[nextArg:k.off]) == false {
+		t.Errorf("parseMatchArg: error %v expected %v bytes %v parsing %v\n", err, expected2, k.e[nextArg:k.off], arg2)
+	}
+
+	length := []byte{54, 0x00, 0x00, 0x00}
+	expected3 := append(length, expected1[:]...)
+	expected3 = append(expected3, expected2[:]...)
+	arg3 := []v1alpha1.ArgSelector{*arg1, *arg2}
+	ks := &kernelSelectorState{off: 0}
+	if err := parseMatchArgs(ks, arg3, sig); err != nil || bytes.Equal(expected3, ks.e[0:ks.off]) == false {
+		t.Errorf("parseMatchArgs: error %v expected %v bytes %v parsing %v\n", err, expected3, ks.e[0:k.off], arg3)
+	}
+}
+
+func TestParseMatchPid(t *testing.T) {
+	pid1 := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
+	k := &kernelSelectorState{off: 0}
+	expected1 := []byte{
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x03, 0x00, 0x00, 0x00, // flags == 0x3
+		0x03, 0x00, 0x00, 0x00, // length == 0x3
+		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+		0x02, 0x00, 0x00, 0x00, // Values[1] == 2
+		0x03, 0x00, 0x00, 0x00, // Values[2] == 3
+	}
+	if err := parseMatchPid(k, pid1); err != nil || bytes.Equal(expected1, k.e[0:k.off]) == false {
+		t.Errorf("parseMatchPid: error %v expected %v bytes %v parsing %v\n", err, expected1, k.e[0:k.off], pid1)
+	}
+
+	nextPid := k.off
+	pid2 := &v1alpha1.PIDSelector{Operator: "NotIn", Values: []uint32{1, 2, 3, 4}, IsNamespacePID: false, FollowForks: false}
+	expected2 := []byte{
+		0x06, 0x00, 0x00, 0x00, // op == NotIn
+		0x00, 0x00, 0x00, 0x00, // flags == 0x0
+		0x04, 0x00, 0x00, 0x00, // length == 0x4
+		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+		0x02, 0x00, 0x00, 0x00, // Values[1] == 2
+		0x03, 0x00, 0x00, 0x00, // Values[2] == 3
+		0x04, 0x00, 0x00, 0x00, // Values[2] == 3
+	}
+	if err := parseMatchPid(k, pid2); err != nil || bytes.Equal(expected2, k.e[nextPid:k.off]) == false {
+		t.Errorf("parseMatchPid: error %v expected %v bytes %v parsing %v\n", err, expected2, k.e[nextPid:k.off], pid2)
+	}
+
+	length := []byte{56, 0x00, 0x00, 0x00}
+	expected3 := append(length, expected1[:]...)
+	expected3 = append(expected3, expected2[:]...)
+	pid3 := []v1alpha1.PIDSelector{*pid1, *pid2}
+	ks := &kernelSelectorState{off: 0}
+	if err := parseMatchPids(ks, pid3); err != nil || bytes.Equal(expected3, ks.e[0:ks.off]) == false {
+		t.Errorf("parseMatchPid: error %v expected %v bytes %v parsing %v\n", err, expected3, ks.e[0:ks.off], pid3)
+	}
+}
+
+func TestInitKernelSelectors(t *testing.T) {
+	expected := []byte{
+		// spec header
+		0x01, 0x00, 0x00, 0x00, // single selector
+
+		0x4, 0x00, 0x00, 0x00, // selector offset list
+
+		// selector header size 4
+		114, 0x00, 0x00, 0x00, // size = pids + args + 4
+
+		// pid header
+		56, 0x00, 0x00, 0x00, // size = sizeof(pid2) + sizeof(pid1) + 4
+
+		//pid1 size = 24
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x03, 0x00, 0x00, 0x00, // flags == 0x3
+		0x03, 0x00, 0x00, 0x00, // length == 0x3
+		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+		0x02, 0x00, 0x00, 0x00, // Values[1] == 2
+		0x03, 0x00, 0x00, 0x00, // Values[2] == 3
+
+		//pid2 size = 28
+		0x06, 0x00, 0x00, 0x00, // op == NotIn
+		0x00, 0x00, 0x00, 0x00, // flags == 0x0
+		0x04, 0x00, 0x00, 0x00, // length == 0x4
+		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+		0x02, 0x00, 0x00, 0x00, // Values[1] == 2
+		0x03, 0x00, 0x00, 0x00, // Values[2] == 3
+		0x04, 0x00, 0x00, 0x00, // Values[2] == 3
+
+		// arg header
+		54, 0x00, 0x00, 0x00, // size = sizeof(arg2) + sizeof(arg1) + 4
+
+		//arg1 size = 26
+		0x01, 0x00, 0x00, 0x00, // Index == 1
+		0x03, 0x00, 0x00, 0x00, // operator == equal
+		18, 0x00, 0x00, 0x00, // length == 18
+		0x06, 0x00, 0x00, 0x00, // value type == string
+		0x06, 0x00, 0x00, 0x00, // value length == 6
+		102, 111, 111, 98, 97, 114, // value ascii "foobar"
+
+		//arg2 size = 24
+		0x02, 0x00, 0x00, 0x00, // Index == 2
+		0x03, 0x00, 0x00, 0x00, // operator == equal
+		16, 0x00, 0x00, 0x00, // length == 0x10
+		0x01, 0x00, 0x00, 0x00, // value type == int
+		0x01, 0x00, 0x00, 0x00, // value 1
+		0x02, 0x00, 0x00, 0x00, // value 2
+
+	}
+
+	arg1 := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
+	arg2 := &v1alpha1.ArgSelector{Index: 2, Operator: "Equal", Values: []string{"1", "2"}}
+	matchArgs := []v1alpha1.ArgSelector{*arg1, *arg2}
+	pid1 := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
+	pid2 := &v1alpha1.PIDSelector{Operator: "NotIn", Values: []uint32{1, 2, 3, 4}, IsNamespacePID: false, FollowForks: false}
+	matchPids := []v1alpha1.PIDSelector{*pid1, *pid2}
+	selectors := []v1alpha1.KProbeSelector{
+		{
+			MatchPIDs: matchPids,
+			MatchArgs: matchArgs,
+		},
+	}
+	args := []v1alpha1.KProbeArg{
+		v1alpha1.KProbeArg{Index: 1, Type: "string", SizeArgIndex: 0, ReturnCopy: false},
+		v1alpha1.KProbeArg{Index: 2, Type: "int", SizeArgIndex: 0, ReturnCopy: false},
+		v1alpha1.KProbeArg{Index: 3, Type: "char_buf", SizeArgIndex: 0, ReturnCopy: false},
+		v1alpha1.KProbeArg{Index: 4, Type: "char_iovec", SizeArgIndex: 0, ReturnCopy: false},
+	}
+	spec := v1alpha1.KProbeSpec{
+		Selectors: selectors,
+		Args:      args,
+	}
+	b, _ := InitKernelSelectors(spec)
+	if bytes.Equal(expected[0:len(expected)], b[0:len(expected)]) == false {
+		t.Errorf("InitKernelSelectors: expected %v bytes %v\n", expected, b[0:len(expected)])
+	}
+}
