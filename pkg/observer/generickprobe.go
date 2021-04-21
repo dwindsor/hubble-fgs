@@ -584,7 +584,10 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		}
 
 		// Parse Filters into kernel filter logic
-		kernelSelectors := selectors.InitKernelSelectors(f)
+		kernelSelectors, err := selectors.InitKernelSelectors(f)
+		if err != nil {
+			return nil, err
+		}
 
 		// Write attributes into BTF ptr for use with load
 		is_syscall = f.Syscall
