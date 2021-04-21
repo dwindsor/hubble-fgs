@@ -35,38 +35,10 @@ struct bpf_map_def __attribute__((section("maps"), used)) tp_heap = {
 };
 
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
-struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
+struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) args1_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) args2_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) args3_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) args4_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
+	.value_size = 4096,
 	.max_entries = 1,
 };
 
@@ -135,7 +107,7 @@ int generic_tracepoint_event(struct generic_tracepoint_event_arg *ctx)
 	if (!msg)
 		return 0;
 
-	ret = generic_process_filter(&msg->current);
+	ret = generic_process_filter(msg, &filter_map);
 	if (ret != PFILTER_PASSED)
 		return 0;
 
@@ -181,7 +153,7 @@ int generic_tracepoint_event0(void *ctx)
 	return generic_process_event0(
 		ctx,
 		&tp_heap,
-		&args0_filter_map,
+		&filter_map,
 		&tp_calls);
 }
 __attribute__((section(("kprobe/1")), used))
@@ -190,7 +162,7 @@ int generic_tracepoint_event1(void *ctx)
 	return generic_process_event1(
 		ctx,
 		&tp_heap,
-		&args1_filter_map,
+		&filter_map,
 		&tp_calls);
 }
 
@@ -200,7 +172,7 @@ int generic_kprobe_process_event2(void *ctx)
 	return generic_process_event2(
 		ctx,
 		&tp_heap,
-		&args2_filter_map,
+		&filter_map,
 		&tp_calls);
 }
 
@@ -210,7 +182,7 @@ int generic_kprobe_process_event3(void *ctx)
 	return generic_process_event3(
 		ctx,
 		&tp_heap,
-		&args3_filter_map,
+		&filter_map,
 		&tp_calls);
 }
 
@@ -220,7 +192,7 @@ int generic_kprobe_process_event4(void *ctx)
 	return generic_process_event4(
 		ctx,
 		&tp_heap,
-		&args4_filter_map);
+		&filter_map);
 }
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";

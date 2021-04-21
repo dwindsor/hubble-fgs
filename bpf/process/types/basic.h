@@ -3,13 +3,13 @@
 /* Type IDs form API with user space generickprobe.go */
 enum {
 	filter = -2,
-	nop = -1,
-	string_type = 1,
-	int_type = 2,
-	skb_type = 3,
+	nop = 0,
+	int_type = 1,
+	char_buf = 2,
+	char_iovec = 3,
 	size_type = 4,
-	char_buf = 5,
-	char_iovec = 6,
+	skb_type = 5,
+	string_type = 6,
 
 	s64_ty = 10,
 	u64_ty = 11,
@@ -83,7 +83,7 @@ int return_stack_error(char *args, int orig, int err)
 }
 
 static inline __attribute__((always_inline))
-int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
+int parse_iovec_array(char *args, unsigned long arg, int i, __u64 off) {
 	struct iovec iov; // limit is 1024 using a hack now. For 5.4 kernel we should loop over 1024
 	char index = sizeof(struct iovec) * i;
 	__u64 size;
@@ -95,8 +95,8 @@ int parse_iovec_array(char *args, unsigned long arg, int i, int off) {
 	size = iov.iov_len;
 	if (size > 4094)
 		return char_buf_toolarge;
-	asm volatile("%[off] &= 0xfff;\n"
-		     "%[size] &= 0xfff;\n"
+	asm volatile("%[off] &= 0xeff;\n"
+		     "%[size] &= 0xeff;\n"
 			:: [off] "+r"(off), [size] "+r"(size):);
 	err = probe_read(&args[off], size, (char *) iov.iov_base);
 	if (err < 0)
@@ -145,49 +145,269 @@ int cmpbytes(char *s1, char *s2, size_t n)
 }
 
 static inline __attribute__((always_inline))
-long filter_strings(char *args, unsigned long arg, void *filter_map)
+long copy_strings(char *args, unsigned long arg)
 {
-
 	int *s = (int *)args;
-	int zero = 0;
 	long size;
-	char *f;
 
 	size = probe_read_str(&args[4], MAX_STRING, (char *)arg);
 	if (size < 0) {
 		return filter;
 	}
 	*s = size;
-
-	f = map_lookup_elem(filter_map, &zero);
-	if (f) {
-		__u32 op = *(__u32 *)f;
-
-		if (op == op_filter_eq || op == op_filter_str_prefix) {
-			__u32 length = *(__u32 *)&f[4];
-			long i = 0;
-			int err;
-
-			asm volatile("%[length] &= 0x3f;\n" :: [length] "+r"(length):);
-			if (i < length && f[8] != args[4])
-				return filter;
-
-			// verify terminating null character for equals case
-			if (op == op_filter_eq) {
-				if (args[4+length] != '\0' &&
-				    args[4+length-1] != '\0')
-					return filter;
-			}
-
-			err = cmpbytes(&f[8], &args[4], length);
-			if (err)
-				return filter;
-		}
-	}
 	// Initial 4 bytes hold string length
 	return size + 4;
 }
 
+static inline __attribute__((always_inline))
+long copy_skb(char *args, unsigned long arg)
+{
+	struct sk_buff *skb = (struct sk_buff *)arg;
+	struct skb_type *skb_event = (struct skb_type *)args;
+
+	probe_read(&skb_event->hash, sizeof(__u32), _(&skb->hash));
+	probe_read(&skb_event->len, sizeof(__u32), _(&skb->len));
+	probe_read(&skb_event->priority, sizeof(__u32), _(&skb->priority));
+	probe_read(&skb_event->mark, sizeof(__u32), _(&skb->mark));
+	return sizeof(struct skb_type);
+}
+
+static inline __attribute__((always_inline))
+long copy_char_buf(char *args, unsigned long arg, unsigned long argm)
+{
+	int *s = (int *)args;
+	size_t bytes = 0;
+	int err;
+
+	if (argm == -1) {
+		u64 tid = get_current_pid_tgid();
+		retprobe_map_set(tid, arg);
+		return return_error(s, 0);
+	}
+	probe_read(&bytes, sizeof(bytes), &argm);
+
+	/* Bound bytes <4095 to ensure bytes does not read past end of buffer */
+	err = probe_read(&args[4], bytes&0xfff, (char *)arg);
+	if (err < 0)
+		return return_error(s, char_buf_pagefault);
+	*s = (int)bytes;
+	return bytes + 4;
+}
+
+static inline __attribute__((always_inline))
+long copy_char_iovec(char *args, unsigned long arg, unsigned long argm)
+{
+	long size, off = 0;
+	int err, i = 0, cnt, *s = (int *)&args[off];
+
+	if (argm == -1) {
+		u64 tid = get_current_pid_tgid();
+		retprobe_map_set(tid, arg);
+			return return_error(s, 0);
+	}
+	err = probe_read(&cnt, sizeof(cnt), &argm);
+	if (err < 0) {
+		return return_stack_error(args, 0, char_buf_pagefault);
+	}
+
+	size = 0;
+	off += 4;
+	PARSE_IOVEC_ENTRIES // may return an error directly
+	/* PARSE_IOVEC_ENTRIES will jump here when done or return error */
+char_iovec_done:
+	s = (int *)args;
+	*s = size;
+	return size + 4;
+}
+
+static inline __attribute__((always_inline))
+size_t type_to_min_size(int type)
+{
+	switch (type) {
+	case string_type:
+		return MAX_STRING;
+	case int_type:
+	case s32_ty:
+	case u32_ty:
+		return 4;
+	case skb_type:
+		return sizeof(struct skb_type);
+	case size_type:
+	case s64_ty:
+	case u64_ty:
+		return 8;
+	case char_buf:
+	case char_iovec:
+		return 4;
+	// nop or something else we do not process here
+	default:
+		return 0;
+	}
+}
+
+struct selector_arg_filter {
+	__u32 arglen;
+	__u32 index;
+	__u32 op;
+	__u32 vallen;
+	__u32 type;
+	__u8  value;
+} __attribute__((packed));
+
+static inline __attribute__((always_inline))
+int selector_arg_offset(__u8 *f, char *args, __u32 arg, __u32 index)
+{
+	struct selector_arg_filter *filter;
+	__u32 *tmp, len, off;
+
+	index *= 4;
+	index += 4;
+
+	asm volatile (
+	"if %[index] > 68 goto +9;\n"
+	"%[t] = %[m];\n"
+	"%[t] += %[index];\n"
+	"%[index] = *(u32 *)(%[t] + 0);\n"
+	"if %[index] > 1004 goto +5;\n"
+	"%[t] = %[m];\n"
+	"%[t] += %[index];\n"
+	"%[len] = *(u32 *)(%[t] + 8);\n" // pid header length;
+	:[index] "+r"(index),
+	  [len] "+r"(len),
+          [m] "+r"(f),
+	  [t] "+r"(tmp)
+	::);
+
+	off = index + 8 + len;
+	if (off > 4000) {
+		return 0;
+	}
+	asm volatile("%[off] &= 0xeff;\n" :: [off] "+r"(off):);
+
+	filter = (struct selector_arg_filter *)&f[off];
+	if (filter->index != arg) {
+		/* offset by 8 because we want to point arglen at previous entry
+		 * to get correct {index,op,vallen,type,value} tuple.
+		 */
+		off += filter->vallen + 8;
+		asm volatile("%[off] &= 0xeff;\n" :: [off] "+r"(off):);
+		filter = (struct selector_arg_filter *)&f[off];
+		if (filter->index != arg)
+			return 1;
+	}
+
+	switch (filter->type) {
+	case string_type:
+	case char_buf:
+		{
+		char *value = (char *)&filter->value;
+		__u32 length = *(__u32 *)&value[0];
+		int err;
+		int v, a;
+
+		asm volatile("%[length] &= 0x3f;\n" :: [length] "+r"(length):);
+		v = (int)value[0];
+		a = (int)args[0];
+		if (filter->op == op_filter_eq) {
+			if (v != a)
+				break;
+		}
+		err = cmpbytes(&value[4], &args[4], length);
+		if (!err)
+			return 1;
+		}
+		break;
+	case s64_ty:
+	case u64_ty:
+		if (*(u64 *)args == filter->value)
+			return 1;
+		break;
+	case size_type:
+	case int_type:
+	case s32_ty:
+	case u32_ty:
+#if 0
+				if (op == op_filter_eq  && val == fval)
+					goto accept_filter_u64;
+				if (op == op_filter_lt && val < fval)
+					goto accept_filter_u64;
+				if (op == op_filter_gt && val > fval)
+					goto accept_filter_u64;
+#endif
+
+		if (*(u32 *)args == filter->value)
+			return 1;
+		break;
+	default:
+		return 1; // no policy in place
+	}
+
+	return 0;
+}
+
+static inline __attribute__((always_inline))
+int filter_arg(struct msg_generic_kprobe *e, int index, int type, char *args, void *filter_map)
+{
+	int pass, zero = 0;
+	__u8 *f;
+
+	/* No filters and no selectors so just accepts */
+	f = map_lookup_elem(filter_map, &zero);
+	if (!f) {
+		return 1;
+	}
+
+	/* No selectors, accept */
+	if (!e->s0 && !e->s1 && !e->s2 && !e->s3 && !e->s4 &&
+	    !e->s5 && !e->s6 && !e->s7)
+		return 1;
+
+	/* We ran process filters early as a prefilter to drop unrelated
+	 * events early. Now we need to ensure that active pid sselectors
+	 * have their arg filters run.
+	 */
+	if (e->s0) {
+		pass = selector_arg_offset(f, args, index, 0);
+		if (pass)
+			return 1;
+	}
+	if (e->s1) {
+		pass = selector_arg_offset(f, args, index, 1);
+		if (pass)
+			return 1;
+	}
+	if (e->s2) {
+		pass = selector_arg_offset(f, args, index, 2);
+		if (pass)
+			return 1;
+	}
+	if (e->s3) {
+		pass = selector_arg_offset(f, args, index, 3);
+		if (pass)
+			return 1;
+	}
+	if (e->s4) {
+		pass = selector_arg_offset(f, args, index, 4);
+		if (pass)
+			return 1;
+	}
+	if (e->s5) {
+		pass = selector_arg_offset(f, args, index, 5);
+		if (pass)
+			return 1;
+	}
+	if (e->s6) {
+		pass = selector_arg_offset(f, args, index, 6);
+		if (pass)
+			return 1;
+	}
+	if (e->s7) {
+		pass = selector_arg_offset(f, args, index, 7);
+		if (pass)
+			return 1;
+	}
+	return 0;
+}
 
 /**
  * Read a generic argument
@@ -203,184 +423,63 @@ long filter_strings(char *args, unsigned long arg, void *filter_map)
  * Returns the size of data appended to @args.
  */
 static inline __attribute__((always_inline))
-long read_call_arg(char *args,
-		  int type, long orig_off,
+long read_call_arg(struct msg_generic_kprobe *e,
+		  int index, int type, long orig_off,
 		  unsigned long arg, unsigned long argm,
 		  void *filter_map)
 {
+	size_t min_size = type_to_min_size(type);
+	char *args = e->args;
 	long size = -1;
-	int zero = 0;
+	int pass;
 
-	size_t min_size = 0;
-	switch (type) {
-		case string_type:
-			min_size = MAX_STRING;
-			break;
-
-		case int_type:
-		case s32_ty:
-		case u32_ty:
-			min_size = 4;
-			break;
-
-		case skb_type:
-			min_size = sizeof(struct skb_type);
-			break;
-
-		case size_type:
-		case s64_ty:
-		case u64_ty:
-			min_size = 8;
-			break;
-
-		case char_buf:
-			min_size = 4;
-			break;
-
-		case char_iovec:
-			min_size = 4;
-			break;
-
-		// nop or something else we do not process here
-		default:
+	if (orig_off >= 4095 - min_size)
 		return 0;
-	}
-	if (orig_off >= 4095 - min_size) {
-		return 0;
-	}
 	asm volatile("%[orig_off] &= 0xfff;\n" :: [orig_off] "+r"(orig_off):);
 	args += orig_off;
 
-	if (type == string_type) {
-		size = filter_strings(args, arg, filter_map);
-		if (size < 0)
-			return filter;
-	} else if (type == size_type) {
+	switch (type) {
+	case string_type:
+		size = copy_strings(args, arg);
+		break;
+	case size_type:
 		probe_read(args, sizeof(size_t), &arg);
 		size = sizeof(size_t);
-	} else if ((type == s64_ty || type == u64_ty)) {
-
-		u64 val;
-		probe_read(args, sizeof(val), &arg);
-		probe_read(&val, sizeof(val), &arg);
-
-		char *f;
-		f = map_lookup_elem(filter_map, &zero);
-		int nfilters;
-		if (f && (nfilters = *((int *)f)) > 0) {
-			f += 4; // first int is number of filters
-#pragma unroll
-			for (int i = 0; i < MAX_ARGS_ENTRIES; i++) {
-				int op;
-				u64 fval;
-				probe_read(&op, sizeof(op), f);
-				f += sizeof(op);
-				probe_read(&fval, sizeof(fval), f);
-				f += sizeof(fval);
-				if (op == op_filter_eq  && val == fval)
-					goto accept_filter_u64;
-				if (op == op_filter_lt && val < fval)
-					goto accept_filter_u64;
-				if (op == op_filter_gt && val > fval)
-					goto accept_filter_u64;
-			}
-			return filter;
-		}
-accept_filter_u64:
-		size = 8;
-	} else if ((type == s32_ty || type == u32_ty)) {
-		probe_read(args, 4, &arg);
-		size = 4;
-	} else if (type == int_type) {
-		int value;
-		int *f;
-
-		probe_read(&value, sizeof(int), &arg);
-		probe_read(args, sizeof(int), &value);
-
-		f = map_lookup_elem(filter_map, &zero);
-		if (f && *f) {
-			int i;
-
-			/* Ideally we would walk only count entries, but verifier
-			 * and llvm plot to not allow this. Either clang refuses
-			 * to unroll loops (too complex?) or verifier loses 'off'
-			 * var and complains later in next arg handler.
-			 *
-			 * TBD fix clang/verifier and coconspirators.
-			 */
-#pragma unroll
-			for (i = 1; i < MAX_ARGS_ENTRIES*2; i+=2) {
-				int op, v;
-				/* TODO: optimize reads for 5.x kernels where
-				 * we can direct f lookup ex:
-				 *  int op = f[i];
-				 *  int v = f[i+1];
-				 */
-				probe_read(&op, sizeof(int), &f[i]);
-				probe_read(&v, sizeof(int), &f[i+1]);
-
-				if (op == op_filter_eq  && v == value)
-					goto accept_filter;
-				if (op == op_filter_lt && v < value)
-					goto accept_filter;
-				if (op == op_filter_gt && v > value)
-					goto accept_filter;
-			}
-			return filter;
-		}
-accept_filter:
+		break;
+	case s64_ty:
+	case u64_ty:
+		probe_read(args, sizeof(__u64), &arg);
+		size = sizeof(__u64);
+		break;
+	case s32_ty:
+	case u32_ty:
+		probe_read(args, sizeof(__u32), &arg);
+		size = sizeof(__u32);
+		break;
+	case int_type:
+		probe_read(args, sizeof(int), &arg);
 		size  = sizeof(int);
-	} else if (type == skb_type) {
-		struct sk_buff *skb = (struct sk_buff *)arg;
-		struct skb_type *skb_event = (struct skb_type *)args;
-
-		probe_read(&skb_event->hash, sizeof(__u32), _(&skb->hash));
-		probe_read(&skb_event->len, sizeof(__u32), _(&skb->len));
-		probe_read(&skb_event->priority, sizeof(__u32), _(&skb->priority));
-		probe_read(&skb_event->mark, sizeof(__u32), _(&skb->mark));
-		size = sizeof(struct skb_type);
-	} else if (type == char_buf) {
-		int *s = (int *)args;
-		size_t bytes = 0;
-		int err;
-
-		if (argm == -1) {
-			u64 tid = get_current_pid_tgid();
-			retprobe_map_set(tid, arg);
-			return return_error(s, 0);
-		}
-		probe_read(&bytes, sizeof(bytes), &argm);
-
-		/* Bound bytes <4095 to ensure bytes does not read past end of buffer */
-		err = probe_read(&args[4], bytes&0xfff, (char *)arg);
-		if (err < 0)
-			return return_error(s, char_buf_pagefault);
-		size = bytes + 4;
-		*s = (int)bytes;
-	} else if (type == char_iovec) {
-		long off = 0;
-		int err, i = 0, cnt, *s = (int *)&args[off];
-
-		if (argm == -1) {
-			u64 tid = get_current_pid_tgid();
-			retprobe_map_set(tid, arg);
-			return return_error(s, 0);
-		}
-		err = probe_read(&cnt, sizeof(cnt), &argm);
-		if (err < 0) {
-			return return_stack_error(args, 0, char_buf_pagefault);
-		}
-
+		break;
+	case skb_type:
+		size = copy_skb(args, arg);
+		break;
+	case char_buf:
+		size = copy_char_buf(args, arg, argm);
+		break;
+	case char_iovec:
+		size = copy_char_iovec(args, arg, argm);
+		break;
+	default:
 		size = 0;
-		off += 4;
-		PARSE_IOVEC_ENTRIES // may return an error directly
-		/* PARSE_IOVEC_ENTRIES will jump here when done or return error */
-char_iovec_done:
-		s = (int *)args;
-		*s = size;
-		size += 4;
+		break;
 	}
+	if (size < 0)
+		return size;
+
+	pass = filter_arg(e, index, type, args, filter_map);
+	if (!pass)
+		return -1;
+
 	return size;
 }
 

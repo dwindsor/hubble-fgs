@@ -4,7 +4,7 @@ static inline __attribute__((always_inline))
 int generic_process_event0(
 	struct pt_regs *ctx,
 	struct bpf_map_def *heap_map,
-	struct bpf_map_def *args0_filter_map,
+	struct bpf_map_def *map,
 	struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
@@ -50,13 +50,12 @@ int generic_process_event0(
 	/* Read out args1-5 */
 	ty = bpf_core_enum_value(fgs_args, arg0);
 	if (total < MAX_TOTAL) {
-		void *map = args0_filter_map;
 		unsigned long a0m, arg_meta;
 		long errv;
 
 		a0m = bpf_core_enum_value(fgs_args, arg0m);
 		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a0, arg_meta, map);
+		errv = read_call_arg(e, 0, ty, total, a0, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -70,7 +69,7 @@ static inline __attribute__((always_inline))
 int generic_process_event_and_setup(
 	struct pt_regs *ctx,
 	struct bpf_map_def *heap_map,
-	struct bpf_map_def *args0_filter_map,
+	struct bpf_map_def *map,
 	struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
@@ -101,14 +100,14 @@ int generic_process_event_and_setup(
 		e->a4 = ctx->r8;
 	}
 	e->common.op = MSG_OP_GENERIC_KPROBE;
-	return generic_process_event0(ctx, heap_map, args0_filter_map, tailcals);
+	return generic_process_event0(ctx, heap_map, map, tailcals);
 }
 
 static inline __attribute__((always_inline))
 int generic_process_event1(
 	void *ctx,
 	struct bpf_map_def *heap_map,
-	struct bpf_map_def *args1_filter_map,
+	struct bpf_map_def *map,
 	struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
@@ -139,13 +138,12 @@ int generic_process_event1(
 
 	ty = bpf_core_enum_value(fgs_args, arg1);
 	if (total < MAX_TOTAL) {
-		void *map = args1_filter_map;
 		unsigned long a1m, arg_meta;
 		long errv;
 
 		a1m = bpf_core_enum_value(fgs_args, arg1m);
 		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a1, arg_meta, map);
+		errv = read_call_arg(e, 1, ty, total, a1, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -159,7 +157,7 @@ static inline __attribute__((always_inline))
 int generic_process_event2(
 	void *ctx,
 	struct bpf_map_def *heap_map,
-	struct bpf_map_def *args2_filter_map,
+	struct bpf_map_def *map,
 	struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
@@ -190,13 +188,12 @@ int generic_process_event2(
 
 	ty = bpf_core_enum_value(fgs_args, arg2);
 	if (total < MAX_TOTAL) {
-		void *map = args2_filter_map;
 		unsigned long a2m, arg_meta;
 		long errv;
 
 		a2m = bpf_core_enum_value(fgs_args, arg2m);
 		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a2, arg_meta, map);
+		errv = read_call_arg(e, 2, ty, total, a2, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -210,9 +207,8 @@ static inline __attribute__((always_inline))
 int generic_process_event3(
 	void *ctx,
 	struct bpf_map_def *heap_map,
-	struct bpf_map_def *args3_filter_map,
+	struct bpf_map_def *map,
 	struct bpf_map_def *tailcals)
-
 {
 	enum generic_func_args_enum fgs_args;
 	unsigned long a0, a1, a2, a3, a4;
@@ -243,13 +239,12 @@ int generic_process_event3(
 	/* Arg filter and copy logic */
 	ty = bpf_core_enum_value(fgs_args, arg3);
 	if (total < MAX_TOTAL) {
-		void *map = args3_filter_map;
 		unsigned long a3m, arg_meta;
 		long errv;
 
 		a3m = bpf_core_enum_value(fgs_args, arg3m);
 		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a3, arg_meta, map);
+		errv = read_call_arg(e, 3, ty, total, a3, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;
@@ -263,7 +258,7 @@ static inline __attribute__((always_inline))
 int generic_process_event4(
 	void *ctx,
 	struct bpf_map_def *heap_map,
-	struct bpf_map_def *args4_filter_map)
+	struct bpf_map_def *map)
 {
 	enum generic_func_args_enum fgs_args;
 	unsigned long a0, a1, a2, a3, a4;
@@ -273,6 +268,7 @@ int generic_process_event4(
 	bool walker = 0;
 	long ty, total;
 	__u32 ppid;
+
 
 	/* Preamble to setup context */
 	enter = event_find_curr(&ppid, 0, &walker);
@@ -293,13 +289,12 @@ int generic_process_event4(
 
 	ty = bpf_core_enum_value(fgs_args, arg4);
 	if (total < MAX_TOTAL) {
-		void *map = args4_filter_map;
 		unsigned long a4m, arg_meta;
 		long errv;
 
 		a4m = bpf_core_enum_value(fgs_args, arg4m);
 		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e->args, ty, total, a4, arg_meta, map);
+		errv = read_call_arg(e, 4, ty, total, a4, arg_meta, map);
 		if (errv < 0)
 			return 0;
 		total += errv;

@@ -268,6 +268,7 @@ struct msg_generic_kprobe {
 	__u64 thread_id;
 	char args[24000];
 	unsigned long a0,a1,a2,a3,a4;
+	unsigned long s0,s1,s2,s3,s4,s5,s6,s7;
 };
 
 struct msg_test {

@@ -36,38 +36,10 @@ struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
 };
 
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
-struct bpf_map_def __attribute__((section("maps"), used)) args0_filter_map = {
+struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) args1_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) args2_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) args3_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) args4_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 80,
+	.value_size = 4096,
 	.max_entries = 1,
 };
 
@@ -81,7 +53,7 @@ int generic_kprobe_process_filter(struct pt_regs *ctx)
 	if (!msg)
 		return 0;
 
-	ret = generic_process_filter(&msg->current);
+	ret = generic_process_filter(msg, &filter_map);
 	if (ret != PFILTER_PASSED)
 		return 0;
 
@@ -89,11 +61,24 @@ int generic_kprobe_process_filter(struct pt_regs *ctx)
 	return 0;
 }
 
-/* Generic kprobe is composed of two parts, first we filter process with
- * process filters (nspid, pid, etc.) then if we accpet the process we
- * run the arg filters and event builder. For 4.19 kernels we have to
- * use the tail call infrastructure to get below 4k insns. For 5.x+ kernels
- * with 1m.insns its not an issue.
+/* Generic kprobe pseudocode is the following
+ *
+ *  filter_pids -> drop if no matches
+ *  copy arguments buffer
+ *  filter selectors -> drop if no matches
+ *  generate ring buffer event
+ *
+ * First we filter by pids this allows us to quickly job events
+ * that are not relevant. This is helpful if we end up copying
+ * large string values.
+ *
+ * Then we copy arguments then run full selectors logic. We keep
+ * track of pids that passed initial filter so we avoid running
+ * pid filters twice.
+ *
+ * For 4.19 kernels we have to use the tail call infrastructure
+ * to get below 4k insns. For 5.x+ kernels with 1m.insns its not
+ * an issue.
  */
 __attribute__((section(("kprobe/generic_kprobe")), used))
 int generic_kprobe_event(struct pt_regs *ctx)
@@ -107,7 +92,7 @@ int generic_kprobe_process_event0(void *ctx)
 	return generic_process_event_and_setup(
 		ctx,
 		&process_call_heap,
-		&args0_filter_map,
+		&filter_map,
 		&kprobe_calls);
 }
 
@@ -117,7 +102,7 @@ int generic_kprobe_process_event1(void *ctx)
 	return generic_process_event1(
 		ctx,
 		&process_call_heap,
-		&args1_filter_map,
+		&filter_map,
 		&kprobe_calls);
 }
 
@@ -127,7 +112,7 @@ int generic_kprobe_process_event2(void *ctx)
 	return generic_process_event2(
 		ctx,
 		&process_call_heap,
-		&args2_filter_map,
+		&filter_map,
 		&kprobe_calls);
 }
 
@@ -137,7 +122,7 @@ int generic_kprobe_process_event3(void *ctx)
 	return generic_process_event3(
 		ctx,
 		&process_call_heap,
-		&args3_filter_map,
+		&filter_map,
 		&kprobe_calls);
 }
 
@@ -147,5 +132,5 @@ int generic_kprobe_process_event4(void *ctx)
 	return generic_process_event4(
 		ctx,
 		&process_call_heap,
-		&args4_filter_map);
+		&filter_map);
 }
