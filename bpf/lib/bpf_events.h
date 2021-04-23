@@ -375,7 +375,7 @@ __u32 get_task_pid_vnr(void)
 		 * sanitize it for the verifier.
 		 */
 		if (!thread_pid_exists)
-			link_sz = 48; // voodoo magic, hard-code 48 to init stack
+			link_sz = 24; // voodoo magic, hard-code 24 to init stack
 		probe_read(&link, link_sz, (void *)_(&task->pids) + (PIDTYPE_PID * link_sz));
 		pid = link.pid;
 	}
