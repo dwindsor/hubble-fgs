@@ -770,7 +770,12 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			}
 
 			arg.Index = uint64(i)
-			arg.Value = string(outputStr[:])
+			strVal := string(outputStr[:])
+			lenStrVal := len(strVal)
+			if lenStrVal > 0 && strVal[lenStrVal-1] == '\x00' {
+				strVal = strVal[0 : lenStrVal-1]
+			}
+			arg.Value = strVal
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
 			var b int32

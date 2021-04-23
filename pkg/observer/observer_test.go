@@ -414,7 +414,7 @@ func testKprobeObjectFiltered(t *testing.T, readHook string, invertResult bool) 
 	}
 
 	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: -100}}
-	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "/tmp/testfile\u0000"}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "/tmp/testfile"}}
 	trace := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessKprobe{
