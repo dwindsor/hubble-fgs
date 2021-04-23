@@ -652,12 +652,12 @@ void *generic_loader_args(
 
 	switch (type) {
 		case BPF_PROG_TYPE_KPROBE:
-			snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s/kprobe_calls", mapdir);
+			snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s-kp-calls", __prog);
 			map_bpf = bpf_object__find_map_by_name(obj, "kprobe_calls");
 			break;
 
 		case BPF_PROG_TYPE_TRACEPOINT:
-			snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s/tp_calls", mapdir);
+			snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s-tp-calls", __prog);
 			map_bpf = bpf_object__find_map_by_name(obj, "tp_calls");
 			break;
 
