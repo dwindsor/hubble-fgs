@@ -869,8 +869,13 @@ func (k *ObserverKprobe) retprobeMerge(loadArgs *kprobeLoadArgs, prev *api.MsgGe
 		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, msg)
 		return nil
 	}
-	prev.Args[newArg.Index] = newArg
-	return prev
+	if uint64(len(prev.Args)) > newArg.Index {
+		prev.Args[newArg.Index] = newArg
+		return prev
+	} else {
+		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, msg)
+		return nil
+	}
 }
 
 func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) {
