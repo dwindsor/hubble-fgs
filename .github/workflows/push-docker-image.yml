@@ -27,3 +27,9 @@ jobs:
           docker tag "$IMAGE":"$VERSION" "$IMAGE":"$VERSION"-"$SHA"
           docker push "$IMAGE":"$VERSION"-"$SHA"
         fi
+        if [ "$(dirname $GITHUB_REF)" == "refs/heads/master" ]; then
+          # This is a push to master. Also create a "latest" image tag.
+          SHA=$(git rev-parse --short HEAD)
+          docker tag "$IMAGE":"$VERSION" "$IMAGE":latest
+          docker push "$IMAGE":latest
+        fi
