@@ -4,6 +4,7 @@ import (
 	"encoding/base64"
 	"fmt"
 	"os"
+	"path/filepath"
 	"strings"
 	"sync"
 
@@ -490,6 +491,13 @@ func (pm *ProcessManager) getCapabilities(caps fgsAPI.MsgCapabilities) *fgs.Capa
 	}
 }
 
+func getBinaryAbsolutePath(binary string, cwd string) string {
+	if filepath.IsAbs(binary) {
+		return binary
+	}
+	return filepath.Join(cwd, binary)
+}
+
 func (pm *ProcessManager) getProcess(
 	process fgsAPI.MsgExecUnix,
 	containerID string,
@@ -509,7 +517,7 @@ func (pm *ProcessManager) getProcess(
 			Pid:          &wrappers.UInt32Value{Value: process.PID},
 			Uid:          &wrappers.UInt32Value{Value: process.UID},
 			Cwd:          cwd,
-			Binary:       process.Filename,
+			Binary:       getBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
 			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
 			StartTime:    ktimeToProto(process.Ktime),

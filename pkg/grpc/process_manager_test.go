@@ -200,3 +200,10 @@ func TestProcessManager_GetProcessID(t *testing.T) {
 	assert.Equal(t, "my-node:2:1", string(decoded))
 	assert.NoError(t, os.Unsetenv("NODE_NAME"))
 }
+
+func Test_getBinaryAbsolutePath(t *testing.T) {
+	assert.Equal(t, "/usr/bin/cat", getBinaryAbsolutePath("/usr/bin/cat", "/tmp"))
+	assert.Equal(t, "/usr/bin/cat", getBinaryAbsolutePath("./bin/cat", "/usr"))
+	assert.Equal(t, "/usr/bin/cat", getBinaryAbsolutePath("../usr/bin/cat", "/etc"))
+	assert.Equal(t, "/usr/bin/cat", getBinaryAbsolutePath("../../bin/cat", "/usr/local/bin"))
+}
