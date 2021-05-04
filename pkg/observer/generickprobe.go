@@ -36,6 +36,10 @@ const (
 )
 
 const (
+	argReturnCopy = -1
+)
+
+const (
 	nopTypeId     = -1
 	invalidTypeId = -2
 )
@@ -298,7 +302,7 @@ func getMetaValue(arg *v1alpha1.KProbeArg) int {
 		return int(arg.SizeArgIndex)
 	}
 	if arg.ReturnCopy {
-		return -1
+		return argReturnCopy
 	}
 	return 0
 }
@@ -371,6 +375,9 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
 			}
 			argMValue := getMetaValue(&a)
+			if argMValue == argReturnCopy {
+				is_retprobe = true
+			}
 			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(int(a.Index)), argType)
 			if retVal < 0 {
 				return nil,
@@ -412,7 +419,9 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 
 		// Write attributes into BTF ptr for use with load
 		is_syscall = f.Syscall
-		is_retprobe = f.Return
+		if !is_retprobe {
+			is_retprobe = f.Return
+		}
 
 		if is_syscall {
 			retVal := bpf.AddEnumBtfValue(btf, "syscall", 1)
