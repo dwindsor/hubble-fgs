@@ -1294,6 +1294,9 @@ func (m *KprobeArgument) Validate() error {
 	case *KprobeArgument_SizeArg:
 		// no validation rules for SizeArg
 
+	case *KprobeArgument_BytesArg:
+		// no validation rules for BytesArg
+
 	}
 
 	return nil

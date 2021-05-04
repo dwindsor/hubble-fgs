@@ -267,7 +267,7 @@ spec:
 	}
 
 	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: 1}}
-	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello world"}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{BytesArg: []byte("hello world")}}
 	arg2 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 11}}
 
 	trace := []*fgs.GetEventsResponse{
@@ -353,7 +353,7 @@ spec:
 	}
 
 	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: int32(fd2)}}
-	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello world"}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{BytesArg: []byte("hello world")}}
 	arg2 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 11}}
 	trace := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
@@ -601,7 +601,7 @@ spec:
 	}
 
 	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: 1}}
-	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "hello iovec world"}}
+	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{BytesArg: []byte("hello iovec world")}}
 
 	trace := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{

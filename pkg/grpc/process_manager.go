@@ -280,6 +280,10 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			skbArg := &fgs.KprobeSkb{
 				Hash: e.Hash, Len: e.Len, Priority: e.Priority, Mark: e.Mark}
 			a.Arg = &fgs.KprobeArgument_SkbArg{SkbArg: skbArg}
+		case api.MsgGenericKprobeArgBytes:
+			a.Arg = &fgs.KprobeArgument_BytesArg{BytesArg: e.Value}
+		default:
+			pm.log.WithField("arg", e).Warnf("unexpected type: %T", e)
 		}
 		fgsArgs = append(fgsArgs, a)
 	}

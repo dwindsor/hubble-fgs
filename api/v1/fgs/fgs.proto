@@ -143,6 +143,7 @@ message KprobeArgument {
 	int32     int_arg = 2;
 	KprobeSkb skb_arg = 3;
 	uint64    size_arg = 4;
+	bytes     bytes_arg = 5;
     }
 }
 

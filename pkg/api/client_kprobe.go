@@ -5,6 +5,11 @@ type MsgGenericKprobeArgString struct {
 	Value string
 }
 
+type MsgGenericKprobeArgBytes struct {
+	Index uint64
+	Value []byte
+}
+
 type MsgGenericKprobeArgInt struct {
 	Index uint64
 	Value int32

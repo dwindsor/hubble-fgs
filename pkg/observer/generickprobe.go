@@ -779,35 +779,34 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
 			var b int32
-			var arg api.MsgGenericKprobeArgString
+			var arg api.MsgGenericKprobeArgBytes
 
 			err := binary.Read(r, binary.LittleEndian, &b)
 			if err != nil {
 				k.log.WithError(err).Warnf("StringCharBuf size err")
 			}
 			if b > 0 {
-				outputStr := make([]byte, b)
-				err = binary.Read(r, binary.LittleEndian, &outputStr)
+				outputBytes := make([]byte, b)
+				err = binary.Read(r, binary.LittleEndian, &outputBytes)
 				if err != nil {
 					k.log.WithError(err).Warnf("StringCharBuf size (%d) type err", b)
 				}
 
 				arg.Index = uint64(i)
-				arg.Value = string(outputStr[:])
+				arg.Value = outputBytes
 				unix.Args = append(unix.Args, arg)
 			} else if b == 0 {
 				arg.Index = uint64(i)
-				// NB: at least for some functions (e.g., the read syscall),
-				// the string might be of zero length.
-				if unix.FuncName == "__x64_sys_read" {
-					arg.Value = ""
-				} else {
-					arg.Value = "return value expected"
-				}
+				// NB: we used to have an error string here, but given things like
+				// read() where it is valid to have an empty (zero-length) buffer,
+				// we just return an empty byte buffer.
+				arg.Value = []byte{}
 				unix.Args = append(unix.Args, arg)
 			} else {
 				arg.Index = uint64(i)
-				arg.Value = kprobeCharBufErrorToString(b)
+				// NB: once we extended arguments to also pass errors, we can change
+				// this.
+				arg.Value = []byte(kprobeCharBufErrorToString(b))
 				unix.Args = append(unix.Args, arg)
 			}
 		case GenericKprobeSkbType:
@@ -864,7 +863,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 
 // retprobeMerge merges the two events: the one from they entry and one from the return
 func (k *ObserverKprobe) retprobeMerge(loadArgs *kprobeLoadArgs, prev *api.MsgGenericKprobeUnix, msg *api.MsgGenericKprobeUnix) *api.MsgGenericKprobeUnix {
-	newArg, ok := msg.Args[0].(api.MsgGenericKprobeArgString)
+	newArg, ok := msg.Args[0].(api.MsgGenericKprobeArgBytes)
 	if !ok {
 		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, msg)
 		return nil
