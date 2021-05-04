@@ -158,9 +158,18 @@ type genericKprobe struct {
 	// the map, so that we can merge them when the return event is
 	// generated. The envets are maintained in the map below, using
 	// ThreadId as the key.
-	pendingEvents map[uint64]*api.MsgGenericKprobeUnix
+	pendingEvents map[uint64]pendingEvent
 
 	tableId idtable.EntryID
+}
+
+// pendingEvent is an event waiting to be merged with another event.
+// This is needed for retprobe probes that generate two events: one at the
+// function entry, and one at the function return. We merge these events into
+// one, before returning it to the user.
+type pendingEvent struct {
+	ev          *api.MsgGenericKprobeUnix
+	returnEvent bool
 }
 
 func (g *genericKprobe) getMapDir(mapDir string) string {
@@ -591,7 +600,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			},
 			argPrinters:   argPrinters,
 			funcName:      funcName,
-			pendingEvents: map[uint64]*api.MsgGenericKprobeUnix{},
+			pendingEvents: map[uint64]pendingEvent{},
 			tableId:       idtable.UninitializedEntryID,
 		}
 		genericKprobeTable.AddEntry(&kprobeEntry)
@@ -735,10 +744,10 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	unix.Id = m.Id
 	unix.FuncName = gk.funcName
 
-	retProbe := m.Common.Pad[0]
+	returnEvent := m.Common.Pad[0] > 0
 
 	for i, arg := range gk.argPrinters {
-		if retProbe > 0 && arg != GenericKprobeCharBuffer {
+		if returnEvent && arg != GenericKprobeCharBuffer {
 			continue
 		}
 
@@ -839,40 +848,53 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 		}
 	}
 
+	// there are two events for this probe (entry and return)
 	if gk.loadArgs.retprobe {
-		// NB: the asumption here is that the enter event will come
-		// first, and I cannot think of a case where this approach
-		// would not work. Even if there is a race in loading, we are
-		// currently loading the enter probe first, so we should never
-		// see an exit (return) event before an enter event.
-		// Having said that, marking messages from bpf side as to
-		// whether they correspond to an enter or a return event, will
-		// make this more robust.
+		// if an event exist already, try to merge them. Otherwise, add
+		// the one we have in the map.
+		curr := pendingEvent{ev: unix, returnEvent: returnEvent}
 		if prev, exists := gk.pendingEvents[m.ThreadId]; exists {
 			delete(gk.pendingEvents, m.ThreadId)
-			unix = k.retprobeMerge(&gk.loadArgs, prev, unix)
+			unix = k.retprobeMerge(prev, curr)
 		} else {
-			gk.pendingEvents[m.ThreadId] = unix
+			gk.pendingEvents[m.ThreadId] = curr
 			unix = nil
 		}
 	}
+
 	if unix != nil {
 		k.observerListenersKprobe(unix)
 	}
 }
 
 // retprobeMerge merges the two events: the one from they entry and one from the return
-func (k *ObserverKprobe) retprobeMerge(loadArgs *kprobeLoadArgs, prev *api.MsgGenericKprobeUnix, msg *api.MsgGenericKprobeUnix) *api.MsgGenericKprobeUnix {
-	newArg, ok := msg.Args[0].(api.MsgGenericKprobeArgBytes)
-	if !ok {
-		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, msg)
+func (k *ObserverKprobe) retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUnix {
+	var retEv, enterEv *api.MsgGenericKprobeUnix
+
+	if prev.returnEvent && !curr.returnEvent {
+		retEv = prev.ev
+		enterEv = curr.ev
+	} else if !prev.returnEvent && curr.returnEvent {
+		retEv = curr.ev
+		enterEv = prev.ev
+	} else if prev.returnEvent && curr.returnEvent {
+		k.log.Warnf("cannot merge two return events: prev:%+v curr:%+v", prev, curr)
+		return nil
+	} else {
+		k.log.Warnf("cannot merge two enter events: prev:%+v curr:%+v", prev, curr)
 		return nil
 	}
-	if uint64(len(prev.Args)) > newArg.Index {
-		prev.Args[newArg.Index] = newArg
-		return prev
+
+	retArg, ok := retEv.Args[0].(api.MsgGenericKprobeArgBytes)
+	if !ok {
+		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, curr)
+		return nil
+	}
+	if uint64(len(enterEv.Args)) > retArg.Index {
+		enterEv.Args[retArg.Index] = retArg
+		return enterEv
 	} else {
-		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, msg)
+		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, curr)
 		return nil
 	}
 }
