@@ -154,14 +154,16 @@ spec:
       sizeargindex: 2
     - index: 2
       type: "size_t"
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: 25587
-      args:
-      - index: 0
-        op: "eq"
-        value: "1"
+    selectors:
+    - matchpids:
+      - operator: In
+        values:
+        - 25587
+    matchargs:
+    - index: 0
+      operator: Equal
+      values:
+      - "1"
 `
 	writeConfigHook := []byte(writeReadHook)
 	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
@@ -200,13 +202,14 @@ spec:
     args:
     - index: 0
       type: "int"
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: ` + pidStr + ` 
+    selectors:
+    - matchpids:
+      - operator: In
         followforks: true
-        isnamespacepid: false 
-`
+        isnamespacepid: false
+        values:
+        - ` + pidStr
+
 	lseekConfigHook := []byte(lseekConfigHook_)
 	err := ioutil.WriteFile(testConfigFile, lseekConfigHook, 0644)
 	if err != nil {
@@ -249,16 +252,18 @@ spec:
       sizeargindex: 3
     - index: 2
       type: "size_t"
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: ` + pidStr + ` 
+    selectors:
+    - matchpids:
+      - operator: In
         followforks: true
-        isnamespacepid: false 
-      args:
+        isnamespacepid: false
+        values:
+        - ` + pidStr + `
+      matchargs:
       - index: 0
-        op: "eq"
-        value: "1"
+        operator: "Equal"
+        values:
+        - "1"
 `
 	writeConfigHook := []byte(writeReadHook)
 	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
@@ -325,7 +330,6 @@ spec:
   description: "read hook"
   kprobes:
   - call: "__x64_sys_read"
-    return: true
     syscall: true
     args:
     - index: 0
@@ -335,17 +339,18 @@ spec:
       returncopy: true
     - index: 2
       type: "size_t"
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: ` + pidStr + `
+    selectors:
+    - matchpids:
+      - operator: In
         followforks: true
-        isnamespacepid: false
-      args:
+        values:
+        - ` + pidStr + `
+      matchargs:
       - index: 0
-        op: "eq"
-        value: ` + fdString + `
-`
+        operator: "Equal"
+        values:
+        - ` + fdString
+
 	readConfigHook := []byte(readHook)
 	err := ioutil.WriteFile(testConfigFile, readConfigHook, 0644)
 	if err != nil {
@@ -467,16 +472,17 @@ spec:
       type: "string"
     - index: 2
       type: "int"
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: ` + pidStr + `
+    selectors:
+    - matchpids:
+      - operator: In
         followforks: true
-        isnamespacepid: false
-      args:
+        values:
+        - ` + pidStr + `
+      matchargs:
       - index: 1
-        op: "eq"
-        value: "/tmp/testfile"
+        operator: "Equal"
+        values:
+        - "/tmp/testfile\0"
 `
 	testKprobeObjectFiltered(t, readHook, false)
 }
@@ -500,16 +506,17 @@ spec:
       type: "string"
     - index: 2
       type: "int"
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: ` + pidStr + `
+    selectors:
+    - matchpids:
+      - operator: In
         followforks: true
-        isnamespacepid: false
-      args:
+        values:
+        - ` + pidStr + `
+      matchargs:
       - index: 1
-        op: "eq"
-        value: "/tmp/foofile"
+        operator: "Equal"
+        values:
+        - "/tmp/foofile\0"
 `
 	testKprobeObjectFiltered(t, readHook, true)
 }
@@ -533,16 +540,17 @@ spec:
       type: "string"
     - index: 2
       type: "int"
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: ` + pidStr + `
+    selectors:
+    - matchpids:
+      - operator: In
         followforks: true
-        isnamespacepid: false
-      args:
+        values:
+        - ` + pidStr + `
+      matchargs:
       - index: 1
-        op: "stringprefix"
-        value: "/tmp/testf"
+        operator: "Prefix"
+        values:
+        - "/tmp/testf"
 `
 	testKprobeObjectFiltered(t, readHook, false)
 }
@@ -583,16 +591,17 @@ spec:
     - index: 1
       type: "char_iovec"
       sizeargindex: 3
-    allowfilters:
-      pids:
-      - op: "eq"
-        value: ` + pidStr + ` 
+    selectors:
+    - matchpids:
+      - operator: In
         followforks: true
-        isnamespacepid: false 
-      args:
+        values:
+        - ` + pidStr + `
+      matchargs:
       - index: 0
-        op: "eq"
-        value: "1"
+        operator: Equal
+        values:
+        - 1
 `
 	writeConfigHook := []byte(writeReadHook)
 	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
@@ -1816,13 +1825,15 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	pid := int(getMyPid())
 	t.Logf("filtering for my pid (%d)", pid)
 	pidSelector := v1alpha1.PIDSelector{
-		Operator:       "eq",
+		Operator:       "In",
 		IsNamespacePID: false,
 		FollowForks:    true,
 		Values:         []uint32{uint32(pid)},
 	}
 
-	conf.Selectors = make([]v1alpha1.KProbeSelector, 1)
+	if len(conf.Selectors) == 0 {
+		conf.Selectors = make([]v1alpha1.KProbeSelector, 1)
+	}
 	conf.Selectors[0].MatchPIDs = append(conf.Selectors[0].MatchPIDs, pidSelector)
 	observer, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
@@ -1921,6 +1932,7 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 	fd_u := uint64(100)
 	fd := 100
 	whence_u := uint64(4444)
+	whenceStr := "4444"
 	whence := 4444
 
 	tracepointConf := GenericTracepointConf{
@@ -1936,10 +1948,11 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 		},
 		Selectors: []v1alpha1.KProbeSelector{
 			{
-				MatchPIDs: []v1alpha1.PIDSelector{
-					v1alpha1.PIDSelector{
-						Operator: "eq",
-						Values:   []uint32{uint32(whence)},
+				MatchArgs: []v1alpha1.ArgSelector{
+					{
+						Index:    7,
+						Operator: "Equal",
+						Values:   []string{whenceStr},
 					},
 				},
 			},
@@ -1976,7 +1989,6 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 	}
 
 	doTestGenericTracepointPidFilter(t, tracepointConf, op, check)
-
 }
 
 func TestGenericTracepointMeta(t *testing.T) {
