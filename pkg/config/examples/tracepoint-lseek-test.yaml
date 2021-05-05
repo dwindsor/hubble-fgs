@@ -9,9 +9,9 @@ spec:
     args:
     - index: 7
     - index: 5
-    filters:
-      args:
+    selectors:
+    - matchargs:
       - index: 7
-        op: "eq"
-        value: "4444"
-
+        operator: Equal
+        values:
+        - "4444"

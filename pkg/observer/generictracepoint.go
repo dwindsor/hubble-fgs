@@ -24,6 +24,7 @@ import (
 	"github.com/covalentio/hubble-fgs/pkg/api"
 	"github.com/covalentio/hubble-fgs/pkg/bpf"
 	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/covalentio/hubble-fgs/pkg/selectors"
 	"github.com/covalentio/hubble-fgs/pkg/tracepoint"
 )
 
@@ -46,8 +47,7 @@ type genericTracepoint struct {
 	Info *tracepoint.Tracepoint
 	args []genericTracepointArg
 
-	Filters    []v1alpha1.PIDFilter
-	ArgFilters []v1alpha1.ArgFilter
+	Selectors *v1alpha1.TracepointSpec
 
 	// index to access this on genericTracepointTable
 	tableIdx int
@@ -80,8 +80,6 @@ type genericTracepointArg struct {
 
 	// bpf generic type
 	genericTypeId int
-
-	argFiltersConf []v1alpha1.ArgFilter
 }
 
 // tracepointTable is, for now, an array.
@@ -114,7 +112,7 @@ type GenericTracepointConf = v1alpha1.TracepointSpec
 //
 // This points to the index of the argument.
 // (Another option might be to specify this by name)
-type GenericTracepointConfArg v1alpha1.TracepointArg
+type GenericTracepointConfArg v1alpha1.KProbeArg
 
 // getTracepointMetaArg is a temporary helper to find meta values while tracepoint
 // converts into new CRD and config formats.
@@ -225,9 +223,8 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 	}
 
 	ret := &genericTracepoint{
-		Info:       &tp,
-		Filters:    conf.Filters.PIDs,
-		ArgFilters: conf.Filters.Args,
+		Info:      &tp,
+		Selectors: conf,
 	}
 
 	for i, _ := range conf.Args {
@@ -397,8 +394,10 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		}
 	}
 
-	// TBD tp filters
-	argFilters := make([]byte, 4096) //k.initKernelSelectors(tp.Selectors)
+	kernelSelectors, err := selectors.InitTracepointSelectors(tp.Selectors)
+	if err != nil {
+		return err, 0
+	}
 
 	var attach string
 	if x64 {
@@ -416,7 +415,7 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		k.bpfDir+load.observer__prog,
 		k.mapDir,
 		load.retProbe,
-		argFilters)
+		kernelSelectors)
 }
 
 func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {

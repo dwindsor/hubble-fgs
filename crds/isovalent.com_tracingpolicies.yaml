@@ -167,69 +167,86 @@ spec:
                             format: int32
                             minimum: 0
                             type: integer
+                          type:
+                            description: Argument type.
+                            enum:
+                            - int
+                            - char_buf
+                            - char_iovec
+                            - size_t
+                            - skb
+                            - string
+                            type: string
                         required:
                         - index
+                        - type
                         type: object
                       type: array
                     event:
                       description: Tracepoint event
                       type: string
-                    filters:
-                      description: Filters to apply before producing trace output.
-                      properties:
-                        args:
-                          description: A list of argument filters.
-                          items:
-                            properties:
-                              index:
-                                description: Position of the argument to apply fhe filter to.
-                                format: int32
-                                minimum: 0
-                                type: integer
-                              op:
-                                description: Filter operation.
-                                enum:
-                                - eq
-                                - neq
-                                - stringprefix
-                                type: string
-                              value:
-                                description: Value to compare the argument against.
-                                type: string
-                            required:
-                            - index
-                            - op
-                            - value
-                            type: object
-                          type: array
-                        pids:
-                          description: A list of process ID filters.
-                          items:
-                            properties:
-                              followForks:
-                                default: false
-                                description: Matches any descendant processes.
-                                type: boolean
-                              isNamespacePID:
-                                default: false
-                                description: Indicates whether this pid is in a namespace.
-                                type: boolean
-                              op:
-                                description: Filter operation.
-                                enum:
-                                - eq
-                                - neq
-                                type: string
-                              value:
-                                description: Process ID to apply the filter to.
-                                format: int32
-                                type: integer
-                            required:
-                            - op
-                            - value
-                            type: object
-                          type: array
-                      type: object
+                    selectors:
+                      description: Selectors to apply before producing trace output. Selectors are ORed.
+                      items:
+                        description: KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The results of MatchPIDs and MatchArgs are ANDed.
+                        properties:
+                          matchArgs:
+                            description: A list of argument filters. MatchArgs are ANDed.
+                            items:
+                              properties:
+                                index:
+                                  description: Position of the argument to apply fhe filter to.
+                                  format: int32
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  type: string
+                                value:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
+                              - operator
+                              - value
+                              type: object
+                            type: array
+                          matchPIDs:
+                            description: A list of process ID filters. MatchPIDs are ANDed.
+                            items:
+                              properties:
+                                followForks:
+                                  default: false
+                                  description: Matches any descendant processes of the matching PIDs.
+                                  type: boolean
+                                isNamespacePID:
+                                  default: false
+                                  description: Indicates whether PIDs are namespace PIDs.
+                                  type: boolean
+                                operator:
+                                  description: PID selector operator.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  type: string
+                                values:
+                                  description: Process IDs to match.
+                                  items:
+                                    format: int32
+                                    type: integer
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                        type: object
+                      type: array
                     subsystem:
                       description: Tracepoint subsystem
                       type: string

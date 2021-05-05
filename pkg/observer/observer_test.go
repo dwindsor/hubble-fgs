@@ -1726,7 +1726,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 	lseekConf := GenericTracepointConf{
 		Subsystem: "syscalls",
 		Event:     "sys_enter_lseek",
-		Args: []v1alpha1.TracepointArg{
+		Args: []v1alpha1.KProbeArg{
 			{Index: 7}, /* whence */
 			{Index: 5}, /* fd */
 		},
@@ -1815,14 +1815,15 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 
 	pid := int(getMyPid())
 	t.Logf("filtering for my pid (%d)", pid)
-	pidFilter := v1alpha1.PIDFilter{
-		Op:             "eq",
+	pidSelector := v1alpha1.PIDSelector{
+		Operator:       "eq",
 		IsNamespacePID: false,
 		FollowForks:    true,
-		Value:          uint32(pid),
+		Values:         []uint32{uint32(pid)},
 	}
 
-	conf.Filters.PIDs = append(conf.Filters.PIDs, pidFilter)
+	conf.Selectors = make([]v1alpha1.KProbeSelector, 1)
+	conf.Selectors[0].MatchPIDs = append(conf.Selectors[0].MatchPIDs, pidSelector)
 	observer, err := getDefaultObserverWithWatchers(t)
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
@@ -1925,20 +1926,23 @@ func TestGenericTracepointArgFilterLseek(t *testing.T) {
 	tracepointConf := GenericTracepointConf{
 		Subsystem: "syscalls",
 		Event:     "sys_enter_lseek",
-		Args: []v1alpha1.TracepointArg{
-			v1alpha1.TracepointArg{
+		Args: []v1alpha1.KProbeArg{
+			v1alpha1.KProbeArg{
 				Index: 7, /* whence */
 			},
-			v1alpha1.TracepointArg{
+			v1alpha1.KProbeArg{
 				Index: 5, /* fd */
 			},
 		},
-		Filters: v1alpha1.TracepointFilters{
-			Args: []v1alpha1.ArgFilter{{
-				Index: 7,
-				Op:    "eq",
-				Value: strconv.Itoa(whence),
-			}},
+		Selectors: []v1alpha1.KProbeSelector{
+			{
+				MatchPIDs: []v1alpha1.PIDSelector{
+					v1alpha1.PIDSelector{
+						Operator: "eq",
+						Values:   []uint32{uint32(whence)},
+					},
+				},
+			},
 		},
 	}
 
@@ -1979,23 +1983,23 @@ func TestGenericTracepointMeta(t *testing.T) {
 	tracepointConf := GenericTracepointConf{
 		Subsystem: "syscalls",
 		Event:     "sys_enter_write",
-		Args: []v1alpha1.TracepointArg{
-			v1alpha1.TracepointArg{
+		Args: []v1alpha1.KProbeArg{
+			v1alpha1.KProbeArg{
 				Index: 5, /* fd */
 			},
-			v1alpha1.TracepointArg{
+			v1alpha1.KProbeArg{
 				Index:        6,     /* char *buf */
 				SizeArgIndex: 7 + 1, /* count */
 
 			},
 		},
-		Filters: v1alpha1.TracepointFilters{
-			Args: []v1alpha1.ArgFilter{{
-				Index: 5,
-				Op:    "eq",
-				Value: "1",
+		Selectors: []v1alpha1.KProbeSelector{{
+			MatchArgs: []v1alpha1.ArgSelector{{
+				Index:    5,
+				Operator: "eq",
+				Values:   []string{"1"},
 			}},
-		},
+		}},
 	}
 
 	op := func() {

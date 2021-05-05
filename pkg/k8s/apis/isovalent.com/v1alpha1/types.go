@@ -76,15 +76,6 @@ type KProbeArg struct {
 	ReturnCopy bool `json:"returnCopy"`
 }
 
-type KProbeFilters struct {
-	// +kubebuilder:validation:Optional
-	// A list of process ID filters.
-	PIDs []PIDFilter `json:"pids"`
-	// +kubebuilder:validation:Optional
-	// A list of argument filters.
-	Args []ArgFilter `json:"args"`
-}
-
 // KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
 // results of MatchPIDs and MatchArgs are ANDed.
 type KProbeSelector struct {
@@ -130,61 +121,10 @@ type TracepointSpec struct {
 	Event string `json:"event"`
 	// +kubebuilder:validation:Optional
 	// A list of function arguments to include in the trace output.
-	Args []TracepointArg `json:"args"`
+	Args []KProbeArg `json:"args"`
 	// +kubebuilder:validation:Optional
-	// Filters to apply before producing trace output.
-	Filters TracepointFilters `json:"filters"`
-}
-
-type TracepointArg struct {
-	// +kubebuilder:validation:Minimum=0
-	// Position of the argument.
-	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:validation:Minimum=0
-	// Specifies the position of the corresponding size argument for this argument.
-	// This field is used only for char_buf and char_iovec types.
-	SizeArgIndex uint32 `json:"sizeArgIndex"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// This field is used only for char_buf and char_iovec types.
-	ReturnCopy bool `json:"returnCopy"`
-}
-
-type TracepointFilters struct {
-	// +kubebuilder:validation:Optional
-	// A list of process ID filters.
-	PIDs []PIDFilter `json:"pids"`
-	// +kubebuilder:validation:Optional
-	// A list of argument filters.
-	Args []ArgFilter `json:"args"`
-}
-
-type PIDFilter struct {
-	// +kubebuilder:validation:Enum=eq;neq
-	// Filter operation.
-	Op string `json:"op"`
-	// Process ID to apply the filter to.
-	Value uint32 `json:"value"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Indicates whether this pid is in a namespace.
-	IsNamespacePID bool `json:"isNamespacePID"`
-	// +kubebuilder:validation:Optional
-	// +kubebuilder:default=false
-	// Matches any descendant processes.
-	FollowForks bool `json:"followForks"`
-}
-
-type ArgFilter struct {
-	// +kubebuilder:validation:Minimum=0
-	// Position of the argument to apply fhe filter to.
-	Index uint32 `json:"index"`
-	// +kubebuilder:validation:Enum=eq;neq;stringprefix
-	// Filter operation.
-	Op string `json:"op"`
-	// Value to compare the argument against.
-	Value string `json:"value"`
+	// Selectors to apply before producing trace output. Selectors are ORed.
+	Selectors []KProbeSelector `json:"selectors"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

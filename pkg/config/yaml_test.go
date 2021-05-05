@@ -269,27 +269,27 @@ func TestYamlLseek(t *testing.T) {
 			Tracepoints: []v1alpha1.TracepointSpec{{
 				Subsystem: "syscalls",
 				Event:     "sys_enter_lseek",
-				Args: []v1alpha1.TracepointArg{
+				Args: []v1alpha1.KProbeArg{
 					{Index: 7},
 					{Index: 5},
 				},
-				Filters: v1alpha1.TracepointFilters{
-					PIDs: []v1alpha1.PIDFilter{
+				Selectors: []v1alpha1.KProbeSelector{{
+					MatchPIDs: []v1alpha1.PIDSelector{
 						{
-							Op:             "eq",
-							Value:          1111,
+							Operator:       "eq",
 							FollowForks:    true,
 							IsNamespacePID: false,
+							Values:         []uint32{1111},
 						},
 					},
-					Args: []v1alpha1.ArgFilter{
+					MatchArgs: []v1alpha1.ArgSelector{
 						{
-							Index: 7,
-							Op:    "eq",
-							Value: "4444",
+							Index:    7,
+							Operator: "eq",
+							Values:   []string{"4444"},
 						},
 					},
-				},
+				}},
 			}},
 		},
 	}

@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"strconv"
 	"strings"
 
 	"github.com/covalentio/hubble-fgs/pkg/api"
@@ -258,93 +257,6 @@ func opFilterStringSupported(op int) bool {
 	return false
 }
 
-func (k *ObserverKprobe) createArgFilter(argType int, filters []v1alpha1.ArgFilter) []byte {
-	b := make([]byte, sizeofArgsFilter)
-
-	switch argType {
-	// syntax int filters: [lt,gt,eq] int1 | [lt,gt,eq] int2 | ... | [lt,gt,eq] intN
-	case GenericKprobeIntType:
-		if len(filters) > MaxFilterIntArgs {
-			k.log.Warn("Warning: createArgFilter too many filter, argType %d filterStr %s\n", argType, filters)
-		}
-		// Byte buffer layout: #Entries, opType1 opValue1, opType2 opValue2, ...
-		binary.LittleEndian.PutUint32(b[0:], uint32(len(filters)))
-
-		for fidx, f := range filters {
-			opIndex := (fidx * 8) + 4
-			valueIndex := opIndex + 4
-
-			operation, _ := k.opFilterStrToType(f.Op)
-			binary.LittleEndian.PutUint32(b[opIndex:], uint32(operation))
-
-			v, err := strconv.Atoi(f.Value)
-			if err != nil {
-				k.log.Warn("invalid filterArg type %d filter %s\n", argType, f)
-			} else {
-				binary.LittleEndian.PutUint32(b[valueIndex:], uint32(v))
-			}
-		}
-	case GenericKprobeU64Type:
-		if len(filters) > MaxFilterIntArgs {
-			k.log.Warn("Warning: createArgFilter too many filter, argType %d filterStr %s\n", argType, filters)
-		}
-		// Byte buffer layout: #Entries, opType1 opValue1, opType2 opValue2, ...
-		binary.LittleEndian.PutUint32(b[0:], uint32(len(filters)))
-
-		for fidx, f := range filters {
-			opIndex := (fidx * 12) + 4
-			valueIndex := opIndex + 4
-
-			operation, _ := k.opFilterStrToType(f.Op)
-			binary.LittleEndian.PutUint32(b[opIndex:], uint32(operation))
-
-			v, err := strconv.ParseUint(f.Value, 10, 64)
-			if err != nil {
-				k.log.Warn("invalid filterArg type %d filter %s\n", argType, f)
-			} else {
-				binary.LittleEndian.PutUint64(b[valueIndex:], uint64(v))
-			}
-		}
-	case GenericKprobeStringType:
-		filterIndex := 0
-
-		for _, f := range filters {
-			operation, _ := k.opFilterStrToType(f.Op)
-			if !opFilterStringSupported(operation) {
-				k.log.Warn("Warning: string type unsupported op type %s\n", f.Op)
-				continue
-			}
-			binary.LittleEndian.PutUint32(b[filterIndex:], uint32(operation))
-			filterIndex += 4
-			binary.LittleEndian.PutUint32(b[filterIndex:], uint32(len(f.Value)))
-			filterIndex += 4
-			asciiValue := goStringToAscii(f.Value)
-			for _, v := range asciiValue {
-				b[filterIndex] = v
-				filterIndex++
-			}
-			b[filterIndex] = 0x00
-		}
-	case GenericKprobeSkbType:
-		fallthrough
-	case GenericKprobeSizeType:
-		fallthrough
-	case GenericKprobeCharBuffer:
-		fallthrough
-	case GenericKprobeCharIovec:
-		fallthrough
-	case GenericKprobeNopType:
-	default:
-		return nil
-	}
-
-	return b
-}
-
-func (k *ObserverKprobe) createArgFilterNop() []byte {
-	return k.createArgFilter(GenericKprobeNopType, nil)
-}
-
 func (k *ObserverKprobe) pidFilterValue(value uint32) (int, error) {
 	return int(value), nil
 }
@@ -388,88 +300,6 @@ func getMetaValue(arg *v1alpha1.KProbeArg) int {
 	return 0
 }
 
-func pidFilterParseType(f v1alpha1.PIDFilter) (string, error) {
-
-	switch f.IsNamespacePID {
-	case true:
-		switch f.FollowForks {
-		case true:
-			switch f.Op {
-			case "eq":
-				return "nspidset", nil
-			case "neq":
-				return "notnspidset", nil
-			default:
-				return "", fmt.Errorf("Unsupported op %s", f.Op)
-			}
-		case false:
-			return "nspid", nil
-		}
-	case false:
-		switch f.FollowForks {
-		case true:
-			switch f.Op {
-			case "eq":
-				return "pidset", nil
-			case "neq":
-				return "notpidset", nil
-			default:
-				return "", fmt.Errorf("Unsupported op %s", f.Op)
-			}
-		case false:
-			return "pid", nil
-		}
-	}
-	return "", fmt.Errorf("Unsupported PIDFilter %v", f)
-}
-
-func (k *ObserverKprobe) kprobePidFilters(btf uintptr, filters []v1alpha1.PIDFilter) error {
-	availableFilters := map[string]bool{
-		"nspid":       false,
-		"pid":         false,
-		"pidset":      false,
-		"notpidset":   false,
-		"nspidset":    false,
-		"notnspidset": false,
-	}
-
-	for _, filter := range filters {
-		_type, err := pidFilterParseType(filter)
-		if err != nil {
-			return fmt.Errorf("Error pidFilter '%v': %s", filter, err)
-		}
-		op, err := k.opFilterStrToType(filter.Op)
-		if err != nil {
-			return fmt.Errorf("Error filter op '%s': %s", _type, err)
-		}
-		value, err := k.pidFilterValue(filter.Value)
-		if err != nil {
-			return fmt.Errorf("Error filter value '%s': %s", _type, err)
-		}
-
-		if _, ok := availableFilters[_type]; !ok {
-			return fmt.Errorf("Unknown event filter '%s'", _type)
-		}
-		availableFilters[_type] = true
-		if err := k.checkFilterRestrictions(_type, filter.Op, op); err != nil {
-			return err
-		}
-
-		if err := k.kprobeEventFilterWriteBTF(btf, _type, op, value); err != nil {
-			return err
-		}
-	}
-	// All enums need to be fully populated or otherwise BPF side
-	// may try to access an enum that does not exist and fail
-	// verification.
-	for key, value := range availableFilters {
-		if !value {
-			k.kprobeEventFilterWriteBTF(btf, key, 0, 0)
-		}
-	}
-	return nil
-}
-
 func (k *ObserverKprobe) assignArgFilter(value []byte, filter *api.KprobeArgs, index uint32) {
 	switch int(index) {
 	case 0:
@@ -483,18 +313,6 @@ func (k *ObserverKprobe) assignArgFilter(value []byte, filter *api.KprobeArgs, i
 	case 4:
 		filter.Args4 = value
 	}
-}
-
-func getArgIndexFilter(index uint32, argFilters []v1alpha1.ArgFilter) []v1alpha1.ArgFilter {
-	var filters []v1alpha1.ArgFilter
-
-	filters = nil
-	for _, f := range argFilters {
-		if index == f.Index {
-			filters = append(filters, f)
-		}
-	}
-	return filters
 }
 
 func pidOpValue(p v1alpha1.PIDSelector) (uint32, error) {

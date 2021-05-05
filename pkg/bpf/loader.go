@@ -1007,7 +1007,7 @@ func LoadTracepointArgsProgram(__version, __verbosity int,
 	btf uintptr,
 	object, attach, __label, __prog, __mapdir string,
 	retprobe bool,
-	filters []byte) (error, int) {
+	filters [4096]byte) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)

@@ -9,13 +9,15 @@ spec:
     args:
     - index: 7
     - index: 5
-    filters:
-      pids:
-      - op: "eq"
-        value: 1111
-        followforks: true
-        isnamespacepid: false
-      args:
+    selectors:
+    - matchpids:
+        - operator: eq
+          values:
+          - 1111
+          followforks: true
+          isnamespacepid: false
+      matchargs:
       - index: 7
-        op: "eq"
-        value: "4444"
+        operator: eq
+        values:
+        - "4444"
