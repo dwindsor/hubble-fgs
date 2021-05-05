@@ -34,6 +34,7 @@ CLANG  ?= clang
 LLC    ?= llc
 
 OBJSDIR       := objs/
+DEPSDIR       := deps/
 
 PARSEROBJ     := $(addprefix $(OBJSDIR),$(PARSERS))
 TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
@@ -42,29 +43,56 @@ NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
 OBJS          := $(PARSEROBJ) $(TLSOBJ) ${TLSTCOBJ} $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
+DEPS          := $(patsubst $(OBJSDIR)%.o,$(DEPSDIR)%.d,$(OBJS))
 
-all: $(OBJS)
+all: $(OBJS) $(DEPS)
 
 # NB: https://www.gnu.org/software/make/manual/html_node/Prerequisite-Types.html
 $(OBJS): | $(OBJSDIR)
+$(DEPS): | $(DEPSDIR)
 
 $(OBJSDIR):
 	mkdir $(OBJSDIR)
 
+$(DEPSDIR):
+	mkdir $(DEPSDIR)
+
+# Generic build targets for each sub-dir
+
+# PARSERDIR
 objs/%.ll: $(PARSERDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
+$(DEPSDIR)%.d: $(PARSERDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+
+# TLSDIR
 objs/%.ll: $(TLSDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -I ${PARSERDIR} -c $< -o $@
 
+$(DEPSDIR)%.d: $(TLSDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+
+# NETWORKINGDIR
 objs/%.ll: $(NETWORKINGDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
+$(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+
+# PROCESSDIR
 objs/%.ll: $(PROCESSDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
+$(DEPSDIR)%.d: $(PROCESSDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+
+# BPFTESTDIR
 objs/%.ll: $(BPFTESTDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
+
+$(DEPSDIR)%.d: $(BPFTESTDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
 
 # Build sockops/sockmsg with ALU32 for 5.4+ kernels
 objs/bpf_skskb_verdict.o: objs/bpf_skskb_verdict.ll
@@ -80,8 +108,14 @@ objs/bpf_skmsg.o: objs/bpf_skmsg.ll
 objs/%.o: objs/%.ll
 	${LLC} ${LLC_FLAGS} -filetype=obj $< -o $@
 
+# include dependencies
+ifneq ($(MAKECMDGOALS),clean)
+-include $(DEPS)
+endif
+
 clean:
 	@$(ECHO_CLEAN)
 	$(QUIET) $(foreach TARGET,$(SUBDIRS), \
 		$(MAKE) -C $(TARGET) clean)
 	$(QUIET)rm -f $(OBJSDIR)*.{o,ll,i,s}
+	$(QUIET)rm -f $(DEPSDIR)*.d
