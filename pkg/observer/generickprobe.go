@@ -17,12 +17,12 @@ import (
 
 const (
 	GenericKprobeNopType    = 0
-	GenericKprobeStringType = 1
-	GenericKprobeIntType    = 2
-	GenericKprobeSkbType    = 3
+	GenericKprobeIntType    = 1
+	GenericKprobeCharBuffer = 2
+	GenericKprobeCharIovec  = 3
 	GenericKprobeSizeType   = 4
-	GenericKprobeCharBuffer = 5
-	GenericKprobeCharIovec  = 6
+	GenericKprobeSkbType    = 5
+	GenericKprobeStringType = 6
 
 	GenericKprobeS64Type = 10
 	GenericKprobeU64Type = 11
@@ -211,10 +211,13 @@ const (
 	genericKprobeFilterLT  = 2
 	genericKprobeFilterEQ  = 3
 	genericKprobeFilterNEQ = 4
+	// PID ops
+	genercKprobeFilterIn    = 5
+	genercKprobeFilterNotIn = 6
 	// String ops
-	genericKprobeFilterStringContains = 5
-	genericKprobeFilterStringPrefix   = 6
-	genericKprobeFilterStringPostfix  = 7
+	genericKprobeFilterStringContains = 7
+	genericKprobeFilterStringPrefix   = 8
+	genericKprobeFilterStringPostfix  = 9
 )
 
 func (k *ObserverKprobe) opFilterStrToType(ty string) (int, error) {
