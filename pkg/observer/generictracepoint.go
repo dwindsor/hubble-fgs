@@ -154,10 +154,10 @@ func (o *genericTracepointArg) String() string {
 	return fmt.Sprintf("genericTracepointArg{CtxOffset: %d format: %+v}", o.CtxOffset, o.format)
 }
 
-func (out *genericTracepointArg) setGenericTypeId() error {
+func (out *genericTracepointArg) setGenericTypeId() (int, error) {
 	ret, err := out.getGenericTypeId()
 	out.genericTypeId = ret
-	return err
+	return ret, err
 }
 
 // getGenericTypeId: returns the generic type Id of a tracepoint argument
@@ -363,7 +363,7 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 			return err, 0
 		}
 
-		err := tpArg.setGenericTypeId()
+		_, err := tpArg.setGenericTypeId()
 		if err != nil {
 			return fmt.Errorf("output argument %v unsupported: %w\n", &tpArg, err), 0
 		}
@@ -391,6 +391,35 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 
 		if err := btfAddEnumValue(kprobeArgMToString(i), 0); err != nil {
 			return err, 0
+		}
+	}
+
+	// rewrite arg index
+	for i := range tp.args {
+		tpArg := &tp.args[i]
+
+		ty, err := tpArg.setGenericTypeId()
+		if err != nil {
+			return fmt.Errorf("output argument %v unsupported: %w\n", &tpArg, err), 0
+		}
+
+		if len(tp.Selectors.Args) > i && tp.Selectors.Args[i].Type == "" {
+			tp.Selectors.Args[i].Type = selectors.ArgTypeToString(uint32(ty))
+		}
+
+		// could we rewrite and then catch it again :/
+		fmt.Printf("tpArg: TpIdx %d, ArgIdx %d\n", tpArg.TpIdx, tpArg.ArgIdx)
+		for j, arg := range tp.Selectors.Args {
+			if arg.Index == uint32(tpArg.TpIdx) {
+				tp.Selectors.Args[j].Index = tpArg.ArgIdx
+			}
+		}
+		for j, s := range tp.Selectors.Selectors {
+			for k, match := range s.MatchArgs {
+				if match.Index == uint32(tpArg.TpIdx) {
+					tp.Selectors.Selectors[j].MatchArgs[k].Index = uint32(tpArg.ArgIdx)
+				}
+			}
 		}
 	}
 
