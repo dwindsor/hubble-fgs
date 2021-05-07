@@ -255,46 +255,59 @@ struct selector_arg_filter {
 } __attribute__((packed));
 
 static inline __attribute__((always_inline))
-int selector_arg_offset(__u8 *f, char *args, __u32 arg, __u32 index)
+int selector_arg_offset(__u8 *f,
+			struct msg_generic_kprobe *e,
+			__u32 selector)
 {
 	struct selector_arg_filter *filter;
-	__u32 *tmp, len, off;
+	__u32 *tmp, len, index;
+	char *args;
+	long seloff, argoff;
 
-	index *= 4;
-	index += 4;
+	selector *= 4;
+	selector += 4;
 
 	asm volatile (
-	"if %[index] > 68 goto +9;\n"
+	"if %[selector] > 68 goto +9;\n"
 	"%[t] = %[m];\n"
-	"%[t] += %[index];\n"
-	"%[index] = *(u32 *)(%[t] + 0);\n"
-	"if %[index] > 1004 goto +5;\n"
+	"%[t] += %[selector];\n"
+	"%[selector] = *(u32 *)(%[t] + 0);\n"
+	"if %[selector] > 1004 goto +5;\n"
 	"%[t] = %[m];\n"
-	"%[t] += %[index];\n"
+	"%[t] += %[selector];\n"
 	"%[len] = *(u32 *)(%[t] + 8);\n" // pid header length;
-	:[index] "+r"(index),
+	:[selector] "+r"(selector),
 	  [len] "+r"(len),
           [m] "+r"(f),
 	  [t] "+r"(tmp)
 	::);
 
-	off = index + 8 + len;
-	if (off > 4000) {
+	seloff = selector + 8 + len;
+	if (seloff > 4000) {
 		return 0;
 	}
-	asm volatile("%[off] &= 0xeff;\n" :: [off] "+r"(off):);
+	asm volatile("%[seloff] &= 0xeff;\n" :: [seloff] "+r"(seloff):);
+	filter = (struct selector_arg_filter *)&f[seloff];
 
+	index = filter->index;
+	if (index > 5)
+		return 0;
+
+	asm volatile("%[index] &= 0x7;\n" :: [index] "+r"(index):);
+	argoff = e->argsoff[index];
+	asm volatile("%[argoff] &= 0xeff;\n" :: [argoff] "+r"(argoff):);
+	args = &e->args[argoff];
+
+#if 0 // advance to next filter value
+	/* offset by 8 because we want to point arglen at previous entry
+	 * to get correct {index,op,vallen,type,value} tuple.
+	 */
+	off += filter->vallen + 8;
+	asm volatile("%[off] &= 0xeff;\n" :: [off] "+r"(off):);
 	filter = (struct selector_arg_filter *)&f[off];
-	if (filter->index != arg) {
-		/* offset by 8 because we want to point arglen at previous entry
-		 * to get correct {index,op,vallen,type,value} tuple.
-		 */
-		off += filter->vallen + 8;
-		asm volatile("%[off] &= 0xeff;\n" :: [off] "+r"(off):);
-		filter = (struct selector_arg_filter *)&f[off];
-		if (filter->index != arg)
-			return 1;
-	}
+	if (filter->index != arg)
+		return 1;
+#endif
 
 	switch (filter->type) {
 	case string_type:
@@ -331,17 +344,14 @@ int selector_arg_offset(__u8 *f, char *args, __u32 arg, __u32 index)
 	case int_type:
 	case s32_ty:
 	case u32_ty:
-#if 0
-				if (op == op_filter_eq  && val == fval)
-					goto accept_filter_u64;
-				if (op == op_filter_lt && val < fval)
-					goto accept_filter_u64;
-				if (op == op_filter_gt && val > fval)
-					goto accept_filter_u64;
-#endif
+		{
+			bool res = (*(u32 *)args == filter->value);
 
-		if (*(u32 *)args == filter->value)
-			return 1;
+			if (filter->op == op_filter_eq  && res)
+				return 1;
+			if (filter->op == op_filter_neq  && !res)
+				return 1;
+		}
 		break;
 	default:
 		return 1; // no policy in place
@@ -351,9 +361,17 @@ int selector_arg_offset(__u8 *f, char *args, __u32 arg, __u32 index)
 }
 
 static inline __attribute__((always_inline))
-int filter_arg(struct msg_generic_kprobe *e, int index, int type, char *args, void *filter_map)
+int filter_args_reject(void) {
+	u64 tid = get_current_pid_tgid();
+	retprobe_map_clear(tid);
+	return 0;
+}
+
+static inline __attribute__((always_inline))
+int filter_args(struct msg_generic_kprobe *e,
+		int index, void *filter_map)
 {
-	int pass, zero = 0;
+	int zero = 0;
 	__u8 *f;
 
 	/* No filters and no selectors so just accepts */
@@ -362,56 +380,58 @@ int filter_arg(struct msg_generic_kprobe *e, int index, int type, char *args, vo
 		return 1;
 	}
 
-	/* No selectors, accept */
-	if (!e->s0 && !e->s1 && !e->s2 && !e->s3 && !e->s4 &&
-	    !e->s5 && !e->s6 && !e->s7)
+	/* No selectors, accept by default */
+	if (!e->active[SELECTORS_ACTIVE]) {
 		return 1;
+	}
 
 	/* We ran process filters early as a prefilter to drop unrelated
 	 * events early. Now we need to ensure that active pid sselectors
 	 * have their arg filters run.
 	 */
-	if (e->s0) {
-		pass = selector_arg_offset(f, args, index, 0);
-		if (pass)
-			return 1;
-	}
-	if (e->s1) {
-		pass = selector_arg_offset(f, args, index, 1);
-		if (pass)
-			return 1;
-	}
-	if (e->s2) {
-		pass = selector_arg_offset(f, args, index, 2);
-		if (pass)
-			return 1;
-	}
-	if (e->s3) {
-		pass = selector_arg_offset(f, args, index, 3);
-		if (pass)
-			return 1;
-	}
-	if (e->s4) {
-		pass = selector_arg_offset(f, args, index, 4);
-		if (pass)
-			return 1;
-	}
-	if (e->s5) {
-		pass = selector_arg_offset(f, args, index, 5);
-		if (pass)
-			return 1;
-	}
-	if (e->s6) {
-		pass = selector_arg_offset(f, args, index, 6);
-		if (pass)
-			return 1;
-	}
-	if (e->s7) {
-		pass = selector_arg_offset(f, args, index, 7);
+	if (index > SELECTORS_ACTIVE)
+		return filter_args_reject();
+
+	if (e->active[index]) {
+		int pass = selector_arg_offset(f, e, index);
 		if (pass)
 			return 1;
 	}
 	return 0;
+}
+
+#define MAX_SELECTORS 8
+
+static inline __attribute__((always_inline))
+long filter_read_arg(void *ctx, int index,
+		     struct bpf_map_def *heap,
+		     struct bpf_map_def *filter,
+		     struct bpf_map_def *tailcalls)
+{
+	struct msg_generic_kprobe *e;
+	int pass, zero = 0;
+	size_t total;
+
+	e = map_lookup_elem(heap, &zero);
+	if (!e)
+		return 0;
+	pass = filter_args(e, index, filter);
+	if (!pass) {
+		index++;
+		if (index > MAX_SELECTORS || !e->active[index])
+			return filter_args_reject();
+		tail_call(ctx, tailcalls, index + 5);
+		return 2;
+	}
+
+	total = e->common.size + generic_kprobe_common_size();
+	/* Code movement from clang forces us to inline bounds checks here */
+	asm volatile("%[total] &= 0x7fff;\n"
+		"if %[total] < 9000 goto +1\n;"
+		"%[total] = 9000;\n"
+		: : [total] "+r"(total):);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
+	return 1;
 }
 
 /**
@@ -436,34 +456,31 @@ long read_call_arg(struct msg_generic_kprobe *e,
 	size_t min_size = type_to_min_size(type);
 	char *args = e->args;
 	long size = -1;
-	int pass;
 
 	if (orig_off >= 4095 - min_size)
 		return 0;
 	asm volatile("%[orig_off] &= 0xfff;\n" :: [orig_off] "+r"(orig_off):);
 	args += orig_off;
 
+	/* Cache args offset for filter use later */
+	e->argsoff[index] = orig_off;
+
 	switch (type) {
 	case string_type:
 		size = copy_strings(args, arg);
 		break;
 	case size_type:
-		probe_read(args, sizeof(size_t), &arg);
-		size = sizeof(size_t);
-		break;
 	case s64_ty:
 	case u64_ty:
 		probe_read(args, sizeof(__u64), &arg);
 		size = sizeof(__u64);
 		break;
+	/* Consolidate all the types to save instructions */
+	case int_type:
 	case s32_ty:
 	case u32_ty:
 		probe_read(args, sizeof(__u32), &arg);
 		size = sizeof(__u32);
-		break;
-	case int_type:
-		probe_read(args, sizeof(int), &arg);
-		size  = sizeof(int);
 		break;
 	case skb_type:
 		size = copy_skb(args, arg);
@@ -480,10 +497,6 @@ long read_call_arg(struct msg_generic_kprobe *e,
 	}
 	if (size < 0)
 		return size;
-
-	pass = filter_arg(e, index, type, args, filter_map);
-	if (!pass)
-		return -1;
 
 	return size;
 }

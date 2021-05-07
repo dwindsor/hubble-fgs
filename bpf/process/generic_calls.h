@@ -56,9 +56,8 @@ int generic_process_event0(
 		a0m = bpf_core_enum_value(fgs_args, arg0m);
 		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e, 0, ty, total, a0, arg_meta, map);
-		if (errv < 0)
-			return 0;
-		total += errv;
+		if (errv > 0)
+			total += errv;
 	}
 	e->common.size = total;
 	tail_call(ctx, tailcals, 1);
@@ -104,6 +103,20 @@ int generic_process_event_and_setup(
 }
 
 static inline __attribute__((always_inline))
+int generic_filter_submit(void *ctx, struct msg_generic_kprobe *e, long total)
+{
+	/* Post event */
+	total += generic_kprobe_common_size();
+	/* Code movement from clang forces us to inline bounds checks here */
+	asm volatile("%[total] &= 0x7fff;\n"
+		"if %[total] < 9000 goto +1\n;"
+		"%[total] = 9000;\n"
+		: : [total] "+r"(total):);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
+	return 0;
+}
+
+static inline __attribute__((always_inline))
 int generic_process_event1(
 	void *ctx,
 	struct bpf_map_def *heap_map,
@@ -144,9 +157,8 @@ int generic_process_event1(
 		a1m = bpf_core_enum_value(fgs_args, arg1m);
 		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e, 1, ty, total, a1, arg_meta, map);
-		if (errv < 0)
-			return 0;
-		total += errv;
+		if (errv > 0)
+			total += errv;
 	}
 	e->common.size = total;
 	tail_call(ctx, tailcals, 2);
@@ -194,9 +206,8 @@ int generic_process_event2(
 		a2m = bpf_core_enum_value(fgs_args, arg2m);
 		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e, 2, ty, total, a2, arg_meta, map);
-		if (errv < 0)
-			return 0;
-		total += errv;
+		if (errv > 0)
+			total += errv;
 	}
 	e->common.size = total;
 	tail_call(ctx, tailcals, 3);
@@ -245,9 +256,8 @@ int generic_process_event3(
 		a3m = bpf_core_enum_value(fgs_args, arg3m);
 		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e, 3, ty, total, a3, arg_meta, map);
-		if (errv < 0)
-			return 0;
-		total += errv;
+		if (errv > 0)
+			total += errv;
 	}
 	e->common.size = total;
 	tail_call(ctx, tailcals, 4);
@@ -258,7 +268,8 @@ static inline __attribute__((always_inline))
 int generic_process_event4(
 	void *ctx,
 	struct bpf_map_def *heap_map,
-	struct bpf_map_def *map)
+	struct bpf_map_def *map,
+	struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
 	unsigned long a0, a1, a2, a3, a4;
@@ -295,19 +306,12 @@ int generic_process_event4(
 		a4m = bpf_core_enum_value(fgs_args, arg4m);
 		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
 		errv = read_call_arg(e, 4, ty, total, a4, arg_meta, map);
-		if (errv < 0)
-			return 0;
-		total += errv;
+		if (errv > 0)
+			total += errv;
 	}
 	e->common.size = total;
-
 	/* Post event */
 	total += generic_kprobe_common_size();
-	/* Code movement from clang forces us to inline bounds checks here */
-	asm volatile("%[total] &= 0x7fff;\n"
-		"if %[total] < 9000 goto +1\n;"
-		"%[total] = 9000;\n"
-		: : [total] "+r"(total):);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
+	tail_call(ctx, tailcals, 6);
 	return 0;
 }

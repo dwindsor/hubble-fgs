@@ -261,6 +261,12 @@ size_t generic_kprobe_common_size()
 		+ sizeof(struct msg_execve_key)
 		+ sizeof(__u64) + sizeof(__u64);
 }
+
+#define MAX_POSSIBLE_ARGS 5
+#define MAX_POSSIBLE_SELECTORS 31
+#define SELECTORS_ACTIVE 31
+#define MAX_CONFIGURED_SELECTORS MAX_POSSIBLE_SELECTORS + 1
+
 struct msg_generic_kprobe {
 	struct msg_common common;
 	struct msg_execve_key current;
@@ -268,7 +274,10 @@ struct msg_generic_kprobe {
 	__u64 thread_id;
 	char args[24000];
 	unsigned long a0,a1,a2,a3,a4;
-	unsigned long s0,s1,s2,s3,s4,s5,s6,s7;
+	long argsoff[MAX_POSSIBLE_ARGS];
+	__u64 curr;
+	__u64 pass;
+	bool active[MAX_CONFIGURED_SELECTORS];
 };
 
 struct msg_test {

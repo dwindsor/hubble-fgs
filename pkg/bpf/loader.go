@@ -668,7 +668,7 @@ void *generic_loader_args(
 	map_fd = bpf_map__fd(map_bpf);
 	printf("bpf fgs_kprobe_calls map and progs %s mapfd %d\n", __prog, map_fd);
 	if (map_fd >= 0) {
-		for (i = 0; i < 6; i++) {
+		for (i = 0; i < 11; i++) {
 			struct bpf_program *prog;
 			char prog_name[20];
 			char pin_name[200];

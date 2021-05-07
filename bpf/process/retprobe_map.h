@@ -17,6 +17,15 @@ unsigned long retprobe_map_get(__u64 tid)
 }
 
 static inline __attribute__((always_inline))
+void retprobe_map_clear(__u64 tid)
+{
+	unsigned long *ptr = map_lookup_elem(&retprobe_map, &tid);
+
+	if (ptr)
+		map_delete_elem(&retprobe_map, &tid);
+}
+
+static inline __attribute__((always_inline))
 void retprobe_map_set(__u64 tid, unsigned long val)
 {
 	map_update_elem(&retprobe_map, &tid, &val, BPF_ANY);

@@ -32,7 +32,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
 	.value_size	= sizeof(__u32),
-	.max_entries	= 6,
+	.max_entries	= 11,
 };
 
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
@@ -44,20 +44,22 @@ struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 };
 
 static inline __attribute__((always_inline))
-int generic_kprobe_process_filter(struct pt_regs *ctx)
-{
-	int ret, zero = 0;
+int generic_kprobe_start_process_filter(void *ctx) {
 	struct msg_generic_kprobe *msg;
+	int i, zero = 0;
 
 	msg = map_lookup_elem(&process_call_heap, &zero);
 	if (!msg)
 		return 0;
-
-	ret = generic_process_filter(msg, &filter_map);
-	if (ret != PFILTER_PASSED)
-		return 0;
-
-	tail_call(ctx, &kprobe_calls, 0);
+	/* Initialize selector index to 0 */
+	msg->curr = 0;
+#pragma unroll
+	for (i = 0; i < MAX_CONFIGURED_SELECTORS; i++)
+		msg->active[i] = 0;
+	/* Initialize accept field to reject */
+	msg->pass = 0;
+	/* Tail call into filters. */
+	tail_call(ctx, &kprobe_calls, 5);
 	return 0;
 }
 
@@ -83,7 +85,7 @@ int generic_kprobe_process_filter(struct pt_regs *ctx)
 __attribute__((section(("kprobe/generic_kprobe")), used))
 int generic_kprobe_event(struct pt_regs *ctx)
 {
-	return generic_kprobe_process_filter(ctx);
+	return generic_kprobe_start_process_filter(ctx);
 }
 
 __attribute__((section(("kprobe/0")), used))
@@ -132,5 +134,77 @@ int generic_kprobe_process_event4(void *ctx)
 	return generic_process_event4(
 		ctx,
 		&process_call_heap,
-		&filter_map);
+		&filter_map,
+		&kprobe_calls);
+}
+
+__attribute__((section(("kprobe/5")), used))
+int generic_kprobe_process_filter(void *ctx)
+{
+	struct msg_generic_kprobe *msg;
+	int ret, zero = 0;
+
+	msg = map_lookup_elem(&process_call_heap, &zero);
+	if (!msg)
+		return 0;
+
+	ret = generic_process_filter(msg, &filter_map);
+	if (ret == PFILTER_CONTINUE)
+		tail_call(ctx, &kprobe_calls, 5);
+	else if (ret == PFILTER_ACCEPT)
+		tail_call(ctx, &kprobe_calls, 0);
+	/* If filter does not accept drop it. Ideally we would
+	 * log error codes for later review, TBD.
+	 */
+	return PFILTER_REJECT;
+}
+
+__attribute__((section(("kprobe/6")), used))
+int generic_kprobe_filter_arg1(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 0,
+		&process_call_heap,
+		&filter_map,
+		&kprobe_calls);
+}
+
+__attribute__((section(("kprobe/7")), used))
+int generic_kprobe_filter_arg2(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 1,
+		&process_call_heap,
+		&filter_map,
+		&kprobe_calls);
+}
+
+__attribute__((section(("kprobe/8")), used))
+int generic_kprobe_filter_arg3(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 2,
+		&process_call_heap,
+		&filter_map,
+		&kprobe_calls);
+}
+
+__attribute__((section(("kprobe/9")), used))
+int generic_kprobe_filter_arg4(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 3,
+		&process_call_heap,
+		&filter_map,
+		&kprobe_calls);
+}
+
+__attribute__((section(("kprobe/10")), used))
+int generic_kprobe_filter_arg5(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 4,
+		&process_call_heap,
+		&filter_map,
+		&kprobe_calls);
 }

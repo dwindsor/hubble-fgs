@@ -24,7 +24,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tp_calls = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
 	.value_size	= sizeof(__u32),
-	.max_entries	= 6,
+	.max_entries	= 11,
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) tp_heap = {
@@ -101,14 +101,10 @@ int generic_tracepoint_event(struct generic_tracepoint_event_arg *ctx)
 {
 	enum generic_func_args_enum fgs_args;
 	struct msg_generic_kprobe *msg;
-	int zero = 0, ret;
+	int zero = 0, i;
 
 	msg = map_lookup_elem(&tp_heap, &zero);
 	if (!msg)
-		return 0;
-
-	ret = generic_process_filter(msg, &filter_map);
-	if (ret != PFILTER_PASSED)
 		return 0;
 
 	msg->a0 = ({
@@ -142,8 +138,12 @@ int generic_tracepoint_event(struct generic_tracepoint_event_arg *ctx)
 	});
 
 	msg->common.op = MSG_OP_GENERIC_TRACEPOINT;
-
-	tail_call(ctx, &tp_calls, 0);
+	msg->curr = 0;
+#pragma unroll
+	for (i = 0; i < MAX_CONFIGURED_SELECTORS; i++)
+		msg->active[i] = 0;
+	msg->pass = 0;
+	tail_call(ctx, &tp_calls, 5);
 	return 0;
 }
 
@@ -167,7 +167,7 @@ int generic_tracepoint_event1(void *ctx)
 }
 
 __attribute__((section(("kprobe/2")), used))
-int generic_kprobe_process_event2(void *ctx)
+int generic_tracepoint_event2(void *ctx)
 {
 	return generic_process_event2(
 		ctx,
@@ -177,7 +177,7 @@ int generic_kprobe_process_event2(void *ctx)
 }
 
 __attribute__((section(("kprobe/3")), used))
-int generic_kprobe_process_event3(void *ctx)
+int generic_tracepoint_event3(void *ctx)
 {
 	return generic_process_event3(
 		ctx,
@@ -187,12 +187,83 @@ int generic_kprobe_process_event3(void *ctx)
 }
 
 __attribute__((section(("kprobe/4")), used))
-int generic_kprobe_process_event4(void *ctx)
+int generic_tracepoint_event4(void *ctx)
 {
 	return generic_process_event4(
 		ctx,
 		&tp_heap,
-		&filter_map);
+		&filter_map,
+		&tp_calls);
 }
 
+__attribute__((section(("kprobe/5")), used))
+int generic_tracepoint_filter(void *ctx)
+{
+	struct msg_generic_kprobe *msg;
+	int ret, zero = 0;
+
+	msg = map_lookup_elem(&tp_heap, &zero);
+	if (!msg)
+		return 0;
+
+	ret = generic_process_filter(msg, &filter_map);
+	if (ret == PFILTER_CONTINUE)
+		tail_call(ctx, &tp_calls, 5);
+	else if (ret == PFILTER_ACCEPT)
+		tail_call(ctx, &tp_calls, 0);
+	/* If filter does not accept drop it. Ideally we would
+	 * log error codes for later review, TBD.
+	 */
+	return PFILTER_REJECT;
+}
+
+__attribute__((section(("kprobe/6")), used))
+int generic_tracepoint_arg1(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 0,
+		&tp_heap,
+		&filter_map,
+		&tp_calls);
+}
+
+__attribute__((section(("kprobe/7")), used))
+int generic_tracepoint_arg2(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 1,
+		&tp_heap,
+		&filter_map,
+		&tp_calls);
+}
+
+__attribute__((section(("kprobe/8")), used))
+int generic_tracepoint_arg3(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 2,
+		&tp_heap,
+		&filter_map,
+		&tp_calls);
+}
+
+__attribute__((section(("kprobe/9")), used))
+int generic_tracepoint_arg4(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 3,
+		&tp_heap,
+		&filter_map,
+		&tp_calls);
+}
+
+__attribute__((section(("kprobe/10")), used))
+int generic_tracepoint_arg5(void *ctx)
+{
+	return filter_read_arg(
+		ctx, 4,
+		&tp_heap,
+		&filter_map,
+		&tp_calls);
+}
 char _license[] __attribute__((section(("license")), used)) = "GPL";

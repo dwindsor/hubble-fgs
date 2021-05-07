@@ -40,7 +40,7 @@
 }
 
 static inline __attribute__((always_inline))
-bool filter_pidset(int sel, int isns, struct execve_map_value *enter)
+bool filter_pidset(__u64 sel, __u64 isns, struct execve_map_value *enter)
 {
 	struct execve_map_value *filter = enter;
 	bool pidset_found = false;
@@ -54,13 +54,13 @@ accept:
 #define PID_SELECTOR_FLAG_FOLLOW 0x2
 
 static inline __attribute__((always_inline))
-bool filter_pidsets(__u32 ty,
-		    __u32 flags,
-		    __u32 sel,
+bool filter_pidsets(__u64 ty,
+		    __u64 flags,
+		    __u64 sel,
 		    struct execve_map_value *enter)
 {
 	bool found;
-	int isns = flags & PID_SELECTOR_FLAG_NSPID;
+	__u64 isns = flags & PID_SELECTOR_FLAG_NSPID;
 
 	/* If nspid rule and entry is not in a namespace drop it */
 	if (isns && !enter->nspid)
@@ -75,27 +75,29 @@ bool filter_pidsets(__u32 ty,
 
 // generic_process_filter return value
 enum  {
-	PFILTER_PASSED = 1,          // filter check passed
-	PFILTER_FAILED = 0,          // filter check failed
+	PFILTER_ERROR = 3,	     // these should never happen
+	PFILTER_CONTINUE = 2,        // filter check continue
+	PFILTER_ACCEPT = 1,          // filter check passed
+	PFILTER_REJECT = 0,          // filter check failed
 	PFILTER_CURR_NOT_FOUND = 0,  // event_find_curr() failed
 };
 
 static inline  __attribute__((always_inline))
-int __process_filter(__u32 ty, __u32 flags, __u32 sel, __u32 pid,
+int __process_filter(__u64 ty, __u64 flags, __u64 sel, __u64 pid,
 		   struct execve_map_value *enter)
 {
 	if (flags & PID_SELECTOR_FLAG_FOLLOW) {
 		bool accept_pid = filter_pidsets(ty, flags, sel, enter);
 
 		if (!accept_pid)
-			return PFILTER_FAILED;
-		return PFILTER_PASSED;
+			return PFILTER_REJECT;
+		return PFILTER_ACCEPT;
 	} else {
 		if (ty == op_filter_pid_in && sel != pid)
-			return PFILTER_FAILED;
+			return PFILTER_REJECT;
 		else if (ty == op_filter_pid_notin && sel == pid)
-			return PFILTER_FAILED;
-		return PFILTER_PASSED;
+			return PFILTER_REJECT;
+		return PFILTER_ACCEPT;
 	}
 }
 
@@ -106,16 +108,19 @@ int next_pid_value(__u32 off, __u32 *f, __u32 ty)
 }
 
 static inline __attribute__((always_inline))
-int process_filter(__u32 i, __u32 off, __u32 *f, __u32 ty, __u32 flags, __u32 pid,
+int process_filter(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 flags, __u64 pid,
 		   struct execve_map_value *enter)
 {
 	__u32 sel;
 
 	if (off > 1000)
 		sel = 0;
-	else
-		sel = f[off/4];
-
+	else {
+		__u64 o = (__u64)off;
+		o = o / 4;
+		asm volatile("%[o] &= 0x3ff;\n":: [o] "+r" (o):);
+		sel = f[o];
+	}
 	return __process_filter(ty, flags, sel, pid, enter);
 }
 
@@ -124,7 +129,7 @@ int selector_process_filter(__u32 *f,
 			    __u32 index,
 			    struct execve_map_value *enter)
 {
-	__u32 pid, ty = 0, flags = 0, len = 0;
+	__u64 pid, ty = 0, flags = 0, len = 0;
 	__u64 tmp = 0;
 	int res1, res2, res3, res4;
 
@@ -206,10 +211,25 @@ one:
 	return res1 | res2 | res3 | res4;
 }
 
+#define MAX_SELECTORS 8
+
+static inline __attribute__((always_inline))
+int process_filter_done(struct msg_generic_kprobe *msg,
+			struct execve_map_value *enter,
+			struct msg_execve_key *current)
+{
+	current->pid = enter->key.pid;
+	current->ktime = enter->key.ktime;
+	if (msg->pass) {
+		return PFILTER_ACCEPT;
+	}
+	return PFILTER_REJECT;
+}
+
 // generic_process_filter performs first pass filtering based on pid/nspid.
 // We keep a list of selectors that pass.
 //
-// if filter check was successful, it will return PFILTER_PASSED and properly
+// if filter check was successful, it will return PFILTER_ACCEPT and properly
 // set the values of:
 //    current->pid
 //    current->ktime
@@ -222,66 +242,47 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
 	struct execve_map_value *enter;
 	bool walker = 0;
 	__u32 ppid;
+	int curr;
 
-	msg->s7 = msg->s6 = msg->s5 = msg->s4 = msg->s3 = msg->s2 = msg->s1 = msg->s0 = 0;
 	enter = event_find_curr(&ppid, 0, &walker);
 	if (enter) {
-		bool pass7, pass6, pass5, pass4, pass3, pass2, pass1, pass0;
-		int zero = 0, selectors;
+		int zero = 0, selectors, pass;
 		__u32 *f = map_lookup_elem(fmap, &zero);
 
 		if (!f)
-			return 0;
-		pass7 = pass6 = pass5 = pass4 = pass3 = pass2 = pass1 = pass0 = 0;
-		selectors = f[0];
-		if (selectors == 0) goto selpass;
-		if (selectors == 1) goto sel1;
-		if (selectors == 2) goto sel2;
-		if (selectors == 3) goto sel3;
-		if (selectors == 4) goto sel4;
-		if (selectors == 5) goto sel5;
-		if (selectors == 6) goto sel6;
-		if (selectors == 7) goto sel7;
-		if (selectors == 8) goto sel8;
-sel8:
-		pass7 = selector_process_filter(f, 7, enter);
-		if (pass7)
-			msg->s7 = true;
-sel7:
-		pass6 = selector_process_filter(f, 6, enter);
-		if (pass6)
-			msg->s6 = true;
-sel6:
-		pass5 = selector_process_filter(f, 5, enter);
-		if (pass5)
-			msg->s5 = true;
-sel5:
-		pass4 = selector_process_filter(f, 4, enter);
-		if (pass4)
-			msg->s4 = true;
-sel4:
-		pass3 = selector_process_filter(f, 3, enter);
-		if (pass3)
-			msg->s3 = true;
-sel3:
-		pass2 = selector_process_filter(f, 2, enter);
-		if (pass2)
-			msg->s2 = true;
-sel2:
-		pass1 = selector_process_filter(f, 1, enter);
-		if (pass1)
-			msg->s1 = true;
-sel1:
-		pass0 = selector_process_filter(f, 0, enter);
-		if (pass0)
-			msg->s0 = true;
+			return PFILTER_ERROR;
 
-		if (!(pass0 | pass1 | pass2 | pass3 | pass4 | pass5 | pass6 | pass7))
-			return PFILTER_FAILED;
-selpass:
-		current->pid = enter->key.pid;
-		current->ktime = enter->key.ktime;
-		return PFILTER_PASSED;
+		curr = msg->curr;
+		if (curr > MAX_SELECTORS) {
+			bpf_printk("curr %d max 5\n", curr);
+			return process_filter_done(msg, enter, current);
+		}
+
+		selectors = f[0];
+		/* If no selectors accept process */
+		if (!selectors)
+			return PFILTER_ACCEPT;
+
+		/* If we get here with reference to uninitialized selector drop */
+		if (selectors <= curr) {
+			bpf_printk("no selectors?? %d -- %d\n", selectors, curr);
+			return process_filter_done(msg, enter, current);
+		}
+
+		pass = selector_process_filter(f, curr, enter);
+		if (pass) {
+			/* Verify lost that msg is not null here so recheck */
+			asm volatile("%[curr] &= 0x1f;\n":: [curr] "r+" (curr):);
+			msg->active[curr] = true;
+			msg->active[SELECTORS_ACTIVE] = true;
+			msg->pass |= true;
+		}
+		bpf_printk("curr %d -> pass %d\n", curr, pass);
+		msg->curr++;
+		if (msg->curr > selectors)
+			return process_filter_done(msg, enter, current);
+		return PFILTER_CONTINUE;
 	}
+	bpf_printk("curr not found %d\n", PFILTER_CURR_NOT_FOUND);
 	return PFILTER_CURR_NOT_FOUND;
 }

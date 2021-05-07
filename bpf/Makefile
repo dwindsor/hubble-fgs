@@ -27,7 +27,7 @@ FLAGS := -I. -I/usr/include/x86_64-linux-gnu/ \
 	 -O2
 
 CLANG_FLAGS += ${FLAGS} -I ${LIBBPF} -I ${IDIR} -I ${LDIR} -target bpf -emit-llvm -g
-LLC_FLAGS   := -march=bpf -mcpu=v3 -mattr=dwarfris
+LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
 LLC_FLAGS_ALU32 := -march=bpf -mcpu=v3 -mattr=dwarfris
 
 CLANG  ?= clang
