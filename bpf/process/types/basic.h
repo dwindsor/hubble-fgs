@@ -319,8 +319,13 @@ int selector_arg_offset(__u8 *f, char *args, __u32 arg, __u32 index)
 		break;
 	case s64_ty:
 	case u64_ty:
-		if (*(u64 *)args == filter->value)
+		{
+		__u8 *v = &filter->value;
+		__u64 w = *(u64*)v;
+
+		if (*(u64 *)args == w)
 			return 1;
+		}
 		break;
 	case size_type:
 	case int_type:

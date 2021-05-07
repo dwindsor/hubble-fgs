@@ -32,6 +32,11 @@ func writeSelectorUint32(k *kernelSelectorState, v uint32) {
 	k.off += 4
 }
 
+func writeSelectorUint64(k *kernelSelectorState, v uint64) {
+	binary.LittleEndian.PutUint64(k.e[k.off:], v)
+	k.off += 8
+}
+
 func writeSelectorLength(k *kernelSelectorState, loff uint32) {
 	diff := k.off - loff
 	binary.LittleEndian.PutUint32(k.e[loff:], diff)
@@ -72,11 +77,28 @@ const (
 
 var argTypeTable = map[string]uint32{
 	"int":        argTypeInt,
+	"uint32":     argTypeU32,
+	"int32":      argTypeS32,
+	"uint64":     argTypeU64,
+	"int64":      argTypeS64,
 	"char_buf":   argTypeCharBuf,
 	"char_iovec": argTypeCharIovec,
 	"sizet":      argTypeSizet,
 	"skb":        argTypeSkb,
 	"string":     argTypeString,
+}
+
+var argTypeStringTable = map[uint32]string{
+	argTypeInt:       "int",
+	argTypeU32:       "uint32",
+	argTypeS32:       "int32",
+	argTypeU64:       "uint64",
+	argTypeS64:       "int64",
+	argTypeCharBuf:   "char_buf",
+	argTypeCharIovec: "char_iovec",
+	argTypeSizet:     "sizet",
+	argTypeSkb:       "skb",
+	argTypeString:    "string",
 }
 
 const (
@@ -183,6 +205,10 @@ func kprobeArgType(t string) uint32 {
 	return argTypeTable[t]
 }
 
+func ArgTypeToString(t uint32) string {
+	return argTypeStringTable[t]
+}
+
 func argSelectorType(arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) (uint32, error) {
 	for _, s := range sig {
 		if arg.Index == s.Index {
@@ -201,12 +227,18 @@ func parseMatchValues(k *kernelSelectorState, values []string, ty uint32) error 
 			value, size := argSelectorValue(v)
 			writeSelectorUint32(k, size)
 			writeSelectorByteArray(k, value, size)
-		case argTypeInt, argTypeSizet:
+		case argTypeU32, argTypeS32, argTypeInt, argTypeSizet:
 			i, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
 			}
 			writeSelectorUint32(k, uint32(i))
+		case argTypeU64, argTypeS64:
+			i, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+			}
+			writeSelectorUint64(k, uint64(i))
 		case argTypeSkb, argTypeCharIovec:
 			return fmt.Errorf("MatchArgs values %s unsupported\n", v)
 		}

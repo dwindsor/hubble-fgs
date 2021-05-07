@@ -57,6 +57,14 @@ func kprobeStrToTypeId(arg string) int {
 		return GenericKprobeStringType
 	case "int":
 		return GenericKprobeIntType
+	case "uint64":
+		return GenericKprobeU64Type
+	case "uint32":
+		return GenericKprobeU32Type
+	case "sint64":
+		return GenericKprobeS64Type
+	case "sint32":
+		return GenericKprobeS32Type
 	case "skb":
 		return GenericKprobeSkbType
 	case "size_t":
