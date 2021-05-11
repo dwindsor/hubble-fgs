@@ -46,6 +46,12 @@ struct selector_arg_filter {
 
 #define MAX_ARGS_SIZE 80
 #define MAX_ARGS_ENTRIES 8
+#define MAX_MATCH_VALUES 4
+/* String parsing consumes instructions so this adds an additional
+ * knob to tune how many instructions we should spend parsing
+ * strings.
+ */
+#define MAX_MATCH_STRING_VALUES 2
 
 /* Constants bounding printers if these change or buffer size changes then
  * we will need to resize. TBD would be to size these at compile time using
@@ -205,19 +211,33 @@ static inline __attribute__((always_inline))
 long filter_char_buf(struct selector_arg_filter *filter, char *args)
 {
 	char *value = (char *)&filter->value;
-	__u32 length = *(__u32 *)&value[0];
-	int err, v, a;
+	long i, j = 0;
 
-	asm volatile("%[length] &= 0x3f;\n" :: [length] "+r"(length):);
-	v = (int)value[0];
-	a = (int)args[0];
-	if (filter->op == op_filter_eq) {
-		if (v != a)
-			return 0;
+#pragma unroll
+	for (i = 0; i < MAX_MATCH_STRING_VALUES; i++) {
+		__u32 length;
+		int err, v, a;
+
+		/* filter->vallen is pulled from user input so we also need to
+		 * ensure its bounded.
+		 */
+		asm volatile("%[j] &= 0xff;\n" :: [j] "+r"(j):);
+		length = *(__u32 *)&value[j];
+		asm volatile("%[length] &= 0x3f;\n" :: [length] "+r"(length):);
+		v = (int)value[j];
+		a = (int)args[0];
+		if (filter->op == op_filter_eq) {
+			if (v != a)
+				goto skip_string;
+		}
+		err = cmpbytes(&value[j+4], &args[4], length);
+		if (!err)
+			return 1;
+skip_string:
+		j += length + 4;
+		if (j + 8 >= filter->vallen)
+			break;
 	}
-	err = cmpbytes(&value[4], &args[4], length);
-	if (!err)
-		return 1;
 	return 0;
 }
 
@@ -250,26 +270,45 @@ char_iovec_done:
 static inline __attribute__((always_inline))
 long filter_64ty(struct selector_arg_filter *filter, char *args)
 {
-	__u8 *v = &filter->value;
-	__u64 w = *(u64*)v;
-	bool res = (*(u64 *)args == w);
+	__u64 *v = (__u64 *)&filter->value;
+	int i, j = 0;
 
-	if (filter->op == op_filter_eq && res)
-		return 1;
-	if (filter->op == op_filter_neq && !res)
-		return 1;
+#pragma unroll
+	for (i = 0; i < MAX_MATCH_VALUES; i++) {
+		__u64 w = v[i];
+		bool res = (*(u64 *)args == w);
+
+		if (filter->op == op_filter_eq && res)
+			return 1;
+		if (filter->op == op_filter_neq && !res)
+			return 1;
+		j += 8;
+		if (j + 8 >= filter->vallen)
+			break;
+	}
 	return 0;
 }
 
 static inline __attribute__((always_inline))
 long filter_32ty(struct selector_arg_filter *filter, char *args)
 {
-	bool res = (*(u32 *)args == filter->value);
+	__u32 *v =  (__u32 *)&filter->value;
+	int i, j = 0;
 
-	if (filter->op == op_filter_eq && res)
-		return 1;
-	if (filter->op == op_filter_neq && !res)
-		return 1;
+#pragma unroll
+	for (i = 0; i < MAX_MATCH_VALUES; i++) {
+		__u32 w = v[i];
+		bool res = (*(u32 *)args == w);
+
+		if (filter->op == op_filter_eq && res)
+			return 1;
+		if (filter->op == op_filter_neq && !res)
+			return 1;
+		// placed here to allow llvm unroll this loop
+		j += 4;
+		if (j + 8 >= filter->vallen)
+			break;
+	}
 	return 0;
 }
 
