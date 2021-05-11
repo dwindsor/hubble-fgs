@@ -253,10 +253,8 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
 			return PFILTER_ERROR;
 
 		curr = msg->curr;
-		if (curr > MAX_SELECTORS) {
-			bpf_printk("curr %d max 5\n", curr);
+		if (curr > MAX_SELECTORS)
 			return process_filter_done(msg, enter, current);
-		}
 
 		selectors = f[0];
 		/* If no selectors accept process */
@@ -264,10 +262,8 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
 			return PFILTER_ACCEPT;
 
 		/* If we get here with reference to uninitialized selector drop */
-		if (selectors <= curr) {
-			bpf_printk("no selectors?? %d -- %d\n", selectors, curr);
+		if (selectors <= curr)
 			return process_filter_done(msg, enter, current);
-		}
 
 		pass = selector_process_filter(f, curr, enter);
 		if (pass) {
@@ -277,12 +273,10 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
 			msg->active[SELECTORS_ACTIVE] = true;
 			msg->pass |= true;
 		}
-		bpf_printk("curr %d -> pass %d\n", curr, pass);
 		msg->curr++;
 		if (msg->curr > selectors)
 			return process_filter_done(msg, enter, current);
 		return PFILTER_CONTINUE;
 	}
-	bpf_printk("curr not found %d\n", PFILTER_CURR_NOT_FOUND);
 	return PFILTER_CURR_NOT_FOUND;
 }
