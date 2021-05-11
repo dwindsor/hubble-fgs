@@ -487,6 +487,41 @@ spec:
 	testKprobeObjectFiltered(t, readHook, false)
 }
 
+func TestKprobeObjectMultiValueOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
+      matchargs:
+      - index: 1
+        operator: "Equal"
+        values:
+        - "/tmp/foobar\0"
+        - "/tmp/testfile\0"
+`
+	testKprobeObjectFiltered(t, readHook, false)
+}
+
 func TestKprobeObjectFilterOpen(t *testing.T) {
 	pidStr := strconv.Itoa(int(getMyPid()))
 	readHook := `
@@ -517,6 +552,41 @@ spec:
         operator: "Equal"
         values:
         - "/tmp/foofile\0"
+`
+	testKprobeObjectFiltered(t, readHook, true)
+}
+
+func TestKprobeObjectMultiValueFilterOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
+      matchargs:
+      - index: 1
+        operator: "Equal"
+        values:
+        - "/tmp/foo\0"
+        - "/tmp/bar\0"
 `
 	testKprobeObjectFiltered(t, readHook, true)
 }
