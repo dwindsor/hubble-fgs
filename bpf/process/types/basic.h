@@ -35,6 +35,16 @@ struct skb_type {
 	__u32 mark;
 };
 
+struct selector_arg_filter {
+	__u32 arglen;
+	__u32 index;
+	__u32 op;
+	__u32 vallen;
+	__u32 type;
+	__u8  value;
+} __attribute__((packed));
+
+
 
 #define MAX_ARGS_SIZE 80
 #define MAX_ARGS_ENTRIES 8
@@ -195,6 +205,26 @@ long copy_char_buf(char *args, unsigned long arg, unsigned long argm)
 }
 
 static inline __attribute__((always_inline))
+long filter_char_buf(struct selector_arg_filter *filter, char *args)
+{
+	char *value = (char *)&filter->value;
+	__u32 length = *(__u32 *)&value[0];
+	int err, v, a;
+
+	asm volatile("%[length] &= 0x3f;\n" :: [length] "+r"(length):);
+	v = (int)value[0];
+	a = (int)args[0];
+	if (filter->op == op_filter_eq) {
+		if (v != a)
+			return 0;
+	}
+	err = cmpbytes(&value[4], &args[4], length);
+	if (!err)
+		return 1;
+	return 0;
+}
+
+static inline __attribute__((always_inline))
 long copy_char_iovec(char *args, unsigned long arg, unsigned long argm)
 {
 	long size, off = 0;
@@ -221,6 +251,30 @@ char_iovec_done:
 }
 
 static inline __attribute__((always_inline))
+long filter_64ty(struct selector_arg_filter *filter, char *args)
+{
+	__u8 *v = &filter->value;
+	__u64 w = *(u64*)v;
+
+	if (*(u64 *)args == w)
+		return 1;
+	return 0;
+}
+
+static inline __attribute__((always_inline))
+long filter_32ty(struct selector_arg_filter *filter, char *args)
+{
+	bool res = (*(u32 *)args == filter->value);
+
+	if (filter->op == op_filter_eq  && res)
+		return 1;
+	if (filter->op == op_filter_neq  && !res)
+		return 1;
+	return 0;
+}
+
+
+static inline __attribute__((always_inline))
 size_t type_to_min_size(int type)
 {
 	switch (type) {
@@ -245,24 +299,15 @@ size_t type_to_min_size(int type)
 	}
 }
 
-struct selector_arg_filter {
-	__u32 arglen;
-	__u32 index;
-	__u32 op;
-	__u32 vallen;
-	__u32 type;
-	__u8  value;
-} __attribute__((packed));
-
 static inline __attribute__((always_inline))
 int selector_arg_offset(__u8 *f,
 			struct msg_generic_kprobe *e,
 			__u32 selector)
 {
 	struct selector_arg_filter *filter;
+	long seloff, argoff, pass;
 	__u32 *tmp, len, index;
 	char *args;
-	long seloff, argoff;
 
 	selector *= 4;
 	selector += 4;
@@ -298,66 +343,27 @@ int selector_arg_offset(__u8 *f,
 	asm volatile("%[argoff] &= 0xeff;\n" :: [argoff] "+r"(argoff):);
 	args = &e->args[argoff];
 
-#if 0 // advance to next filter value
-	/* offset by 8 because we want to point arglen at previous entry
-	 * to get correct {index,op,vallen,type,value} tuple.
-	 */
-	off += filter->vallen + 8;
-	asm volatile("%[off] &= 0xeff;\n" :: [off] "+r"(off):);
-	filter = (struct selector_arg_filter *)&f[off];
-	if (filter->index != arg)
-		return 1;
-#endif
-
 	switch (filter->type) {
 	case string_type:
 	case char_buf:
-		{
-		char *value = (char *)&filter->value;
-		__u32 length = *(__u32 *)&value[0];
-		int err;
-		int v, a;
-
-		asm volatile("%[length] &= 0x3f;\n" :: [length] "+r"(length):);
-		v = (int)value[0];
-		a = (int)args[0];
-		if (filter->op == op_filter_eq) {
-			if (v != a)
-				break;
-		}
-		err = cmpbytes(&value[4], &args[4], length);
-		if (!err)
-			return 1;
-		}
+		pass = filter_char_buf(filter, args);
 		break;
 	case s64_ty:
 	case u64_ty:
-		{
-		__u8 *v = &filter->value;
-		__u64 w = *(u64*)v;
-
-		if (*(u64 *)args == w)
-			return 1;
-		}
+		pass = filter_64ty(filter, args);
 		break;
 	case size_type:
 	case int_type:
 	case s32_ty:
 	case u32_ty:
-		{
-			bool res = (*(u32 *)args == filter->value);
-
-			if (filter->op == op_filter_eq  && res)
-				return 1;
-			if (filter->op == op_filter_neq  && !res)
-				return 1;
-		}
+		pass = filter_32ty(filter, args);
 		break;
 	default:
-		return 1; // no policy in place
+		pass = 1; // no policy in place
+		break;
 	}
 
-	return 0;
+	return pass;
 }
 
 static inline __attribute__((always_inline))
