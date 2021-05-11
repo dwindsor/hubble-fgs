@@ -255,8 +255,11 @@ long filter_64ty(struct selector_arg_filter *filter, char *args)
 {
 	__u8 *v = &filter->value;
 	__u64 w = *(u64*)v;
+	bool res = (*(u64 *)args == w);
 
-	if (*(u64 *)args == w)
+	if (filter->op == op_filter_eq && res)
+		return 1;
+	if (filter->op == op_filter_neq && !res)
 		return 1;
 	return 0;
 }
@@ -266,13 +269,12 @@ long filter_32ty(struct selector_arg_filter *filter, char *args)
 {
 	bool res = (*(u32 *)args == filter->value);
 
-	if (filter->op == op_filter_eq  && res)
+	if (filter->op == op_filter_eq && res)
 		return 1;
-	if (filter->op == op_filter_neq  && !res)
+	if (filter->op == op_filter_neq && !res)
 		return 1;
 	return 0;
 }
-
 
 static inline __attribute__((always_inline))
 size_t type_to_min_size(int type)
