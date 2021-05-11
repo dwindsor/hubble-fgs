@@ -44,8 +44,6 @@ struct selector_arg_filter {
 	__u8  value;
 } __attribute__((packed));
 
-
-
 #define MAX_ARGS_SIZE 80
 #define MAX_ARGS_ENTRIES 8
 
@@ -76,8 +74,9 @@ int return_error(int *s, int err) {
 	return sizeof(int);
 }
 
-/* Error writer  for use when pointer *s is lost to stack and can not
- * be recoved with known bounds.
+/* Error writer for use when pointer *s is lost to stack and can not
+ * be recoved with known bounds. We had to push this via asm to stop
+ * clang from omitting some checks and applying code motion on us.
  */
 static inline __attribute__((always_inline))
 int return_stack_error(char *args, int orig, int err)
@@ -87,8 +86,6 @@ int return_stack_error(char *args, int orig, int err)
 		     "r1 += %[orig];\n"
 		     "*(u32 *)(r1 + 0) = %[err];\n"
 		     :: [orig] "r+" (orig), [args] "m+"(args), [err] "r+"(err): "r1");
-	//s = (int *)&args[o];
-	//*s = err;
 	return sizeof(int);
 }
 
