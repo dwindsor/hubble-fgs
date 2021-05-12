@@ -622,3 +622,30 @@ spec:
 	}
 	testDone(t, kprobe)
 }
+
+func TestKprobeObjectFilenameOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "do_filp_open"
+    return: false
+    syscall: false
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "filename"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
+`
+	testKprobeObjectFiltered(t, readHook, false)
+}

@@ -28,6 +28,8 @@ const (
 	GenericKprobeU64Type = 11
 	GenericKprobeS32Type = 12
 	GenericKprobeU32Type = 13
+
+	GenericKprobeFilenameType = 14
 )
 
 const (
@@ -73,6 +75,8 @@ func kprobeStrToTypeId(arg string) int {
 		return GenericKprobeCharBuffer
 	case "char_iovec":
 		return GenericKprobeCharIovec
+	case "filename":
+		return GenericKprobeFilenameType
 	case "nop":
 		return nopTypeId
 	default:
@@ -609,7 +613,8 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Index = uint64(i)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobeStringType:
+		case GenericKprobeFilenameType,
+			GenericKprobeStringType:
 			var b int32
 			var arg api.MsgGenericKprobeArgString
 
