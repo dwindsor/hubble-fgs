@@ -40,7 +40,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	long total = 0;
 	size_t size;
 	unsigned long retprobe_buffer;
-
+	long ty;
 
 	e = map_lookup_elem(&process_call_heap, &zero);
 	if (!e)
@@ -50,23 +50,40 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	pid = tid & 0xFFFFffff;
 	e->thread_id = tid;
 
+	ty = bpf_core_enum_value(fgs_args, argreturn);
 	retprobe_buffer = retprobe_map_get(tid);
 	if (!retprobe_buffer)
 		return 0;
 
+	if (ty) {
+		size = read_call_arg(e, 0, ty, 0, (unsigned long)ctx->ax, 0, 0);
+		bpf_printk("return kprobe ty %d size %d\n", ty, size);
+	} else { // if (retprobe_buffer) {
+		size = (int)ctx->ax;
+		if (size > 4000)
+			size = 0;
+		size &= 0x7fff;
+		s = (int *)&e->args[0];
+		*s = size;
+		/* tbd error check and signal to userland */
+		probe_read(&e->args[4], size, (char *)retprobe_buffer);
+		size +=4;
+	}
+
+	/* Complete message header and send */
 	enter = event_find_curr(&ppid, 0, &walker);
-	if (!enter)
-		return 0;
 
 	e->common.op = MSG_OP_GENERIC_KPROBE;
 	e->common.flags = 1;
 	e->common.pad[0] = 0;
 	e->common.pad[1] = 0;
-	e->common.size = 0;
+	e->common.size = size;
 	e->common.ktime = ktime_get_ns();
 
-	e->current.pid = enter->key.pid;
-	e->current.ktime = enter->key.ktime;
+	if (enter) {
+		e->current.pid = enter->key.pid;
+		e->current.ktime = enter->key.ktime;
+	}
 	e->current.pad[0] = 0;
 	e->current.pad[1] = 0;
 	e->current.pad[2] = 0;
@@ -74,16 +91,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 
 	e->id = bpf_core_enum_value(fgs_args, func_id);
 
-	size = (int)ctx->ax;
-	if (size > 4000)
-		size = 0;
-	size &= 0x7fff;
-
-	s = (int *)&e->args[0];
-	*s = size;
-	/* tbd error check and signal to userland */
-	probe_read(&e->args[4], size, (char *)retprobe_buffer);
-	total = size + 4;
+	total = size;
 	total += generic_kprobe_common_size();
 	if (total > 8192)
 		total = 8192;

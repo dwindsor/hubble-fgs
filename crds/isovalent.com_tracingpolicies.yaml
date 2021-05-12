@@ -72,9 +72,36 @@ spec:
                       description: Name of the function to apply the kprobe spec to.
                       type: string
                     return:
-                      default: false
-                      description: Indicates whether to collect return value of the traced function.
-                      type: boolean
+                      description: A return argument to include in the trace output.
+                      properties:
+                        index:
+                          description: Position of the argument.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        returnCopy:
+                          default: false
+                          description: This field is used only for char_buf and char_iovec types.
+                          type: boolean
+                        sizeArgIndex:
+                          description: Specifies the position of the corresponding size argument for this argument. This field is used only for char_buf and char_iovec types.
+                          format: int32
+                          minimum: 0
+                          type: integer
+                        type:
+                          description: Argument type.
+                          enum:
+                          - int
+                          - char_buf
+                          - char_iovec
+                          - size_t
+                          - skb
+                          - string
+                          type: string
+                      required:
+                      - index
+                      - type
+                      type: object
                     selectors:
                       description: Selectors to apply before producing trace output. Selectors are ORed.
                       items:

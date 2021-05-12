@@ -11,6 +11,8 @@ struct bpf_map_def {
 };
 #endif
 
+#define GENERIC_KPROBE
+
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "retprobe_map.h"

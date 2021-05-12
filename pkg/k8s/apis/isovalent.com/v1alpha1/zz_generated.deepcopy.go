@@ -85,6 +85,7 @@ func (in *KProbeSpec) DeepCopyInto(out *KProbeSpec) {
 		*out = make([]KProbeArg, len(*in))
 		copy(*out, *in)
 	}
+	out.ReturnArg = in.ReturnArg
 	if in.Selectors != nil {
 		in, out := &in.Selectors, &out.Selectors
 		*out = make([]KProbeSelector, len(*in))

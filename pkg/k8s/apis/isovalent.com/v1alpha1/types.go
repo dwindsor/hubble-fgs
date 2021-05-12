@@ -54,6 +54,9 @@ type KProbeSpec struct {
 	// A list of function arguments to include in the trace output.
 	Args []KProbeArg `json:"args"`
 	// +kubebuilder:validation:Optional
+	// A return argument to include in the trace output.
+	ReturnArg KProbeArg `json:"return"`
+	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []KProbeSelector `json:"selectors"`
 }

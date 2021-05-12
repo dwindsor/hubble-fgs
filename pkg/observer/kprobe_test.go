@@ -633,19 +633,20 @@ spec:
   description: "open filtered hook"
   kprobes:
   - call: "do_filp_open"
-    return: false
+    return: true
     syscall: false
     args:
     - index: 0
       type: int
     - index: 1
       type: "filename"
+    returnarg:
+      type: int
     selectors:
     - matchpids:
       - operator: In
         followforks: true
         values:
-        - ` + pidStr + `
-`
+        - ` + pidStr
 	testKprobeObjectFiltered(t, readHook, false)
 }

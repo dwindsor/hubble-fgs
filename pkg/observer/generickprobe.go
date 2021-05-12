@@ -34,7 +34,9 @@ const (
 
 const (
 	sizeofArgsFilter = 80
-	maxArgsSupported = 5
+	// 5 arguments + 1 return argument
+	maxArgsSupported = 6
+	returnArgIndex   = maxArgsSupported - 1
 )
 
 const (
@@ -94,6 +96,7 @@ const (
 	arg3            = "arg3"
 	arg4            = "arg4"
 	arg5            = "arg5"
+	argreturn       = "argreturn"
 	is_syscall      = "syscall"
 	argm0           = "arg0m"
 	argm1           = "arg1m"
@@ -152,7 +155,7 @@ func kprobeArgToString(a int) string {
 	case 4:
 		return arg4
 	case 5:
-		return arg5
+		return argreturn
 	}
 	return ""
 }
@@ -164,11 +167,17 @@ type kprobeLoadArgs struct {
 	syscall  bool
 }
 
+type argPrinters struct {
+	ty    int
+	index int
+}
+
 // internal genericKprobe info
 type genericKprobe struct {
-	loadArgs    kprobeLoadArgs
-	argPrinters []int
-	funcName    string
+	loadArgs          kprobeLoadArgs
+	argSigPrinters    []argPrinters
+	argReturnPrinters []argPrinters
+	funcName          string
 
 	// for kprobes that have a retprobe, we maintain the enter events in
 	// the map, so that we can merge them when the return event is
@@ -368,7 +377,8 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 
 	for i := range kprobes {
 		f := kprobes[i]
-		var argPrinters []int
+		var argSigPrinters []argPrinters
+		var argReturnPrinters []argPrinters
 		var is_syscall, is_retprobe bool
 		var argsBTFSet [maxArgsSupported]bool
 
@@ -403,7 +413,26 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			}
 
 			argsBTFSet[a.Index] = true
-			argPrinters = append(argPrinters, argType)
+			argP := argPrinters{index: j, ty: argType}
+			argSigPrinters = append(argSigPrinters, argP)
+		}
+
+		// Parse ReturnArg
+		if f.Return {
+			argType := kprobeStrToTypeId(f.ReturnArg.Type)
+			if argType == invalidTypeId {
+				if f.ReturnArg.Type == "" {
+					return nil, fmt.Errorf("ReturnArg not specified with Return=true.")
+				}
+				return nil, fmt.Errorf("ReturnArg type '%s' unsupported", f.ReturnArg.Type)
+			}
+			retVal := bpf.AddEnumBtfValue(btf, argreturn, argType)
+			if retVal < 0 {
+				return nil, fmt.Errorf("Error add enum value '%s'='%d' failed %d\n", argreturn, argType, retVal)
+			}
+			argsBTFSet[returnArgIndex] = true
+			argP := argPrinters{index: returnArgIndex, ty: argType}
+			argReturnPrinters = append(argReturnPrinters, argP)
 		}
 
 		// Mark remaining arguments as 'nops' the kernel side will skip
@@ -457,10 +486,11 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 				retprobe: is_retprobe,
 				syscall:  is_syscall,
 			},
-			argPrinters:   argPrinters,
-			funcName:      funcName,
-			pendingEvents: map[uint64]pendingEvent{},
-			tableId:       idtable.UninitializedEntryID,
+			argSigPrinters:    argSigPrinters,
+			argReturnPrinters: argReturnPrinters,
+			funcName:          funcName,
+			pendingEvents:     map[uint64]pendingEvent{},
+			tableId:           idtable.UninitializedEntryID,
 		}
 		genericKprobeTable.AddEntry(&kprobeEntry)
 		ret = bpf.AddEnumBtfValue(btf, kprobeGenericId, kprobeEntry.tableId.ID)
@@ -595,12 +625,14 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 
 	returnEvent := m.Common.Pad[0] > 0
 
-	for i, arg := range gk.argPrinters {
-		if returnEvent && arg != GenericKprobeCharBuffer {
-			continue
-		}
-
-		switch arg {
+	var printers []argPrinters
+	if returnEvent {
+		printers = gk.argReturnPrinters
+	} else {
+		printers = gk.argSigPrinters
+	}
+	for i, a := range printers {
+		switch a.ty {
 		case GenericKprobeIntType:
 			var output int32
 			var arg api.MsgGenericKprobeArgInt
@@ -610,7 +642,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 				k.log.WithError(err).Warnf("Int type error")
 			}
 
-			arg.Index = uint64(i)
+			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeFilenameType,
@@ -628,7 +660,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 				k.log.WithError(err).Warnf("String with size %d type err", b)
 			}
 
-			arg.Index = uint64(i)
+			arg.Index = uint64(a.index)
 			strVal := string(outputStr[:])
 			lenStrVal := len(strVal)
 			if lenStrVal > 0 && strVal[lenStrVal-1] == '\x00' {
@@ -651,7 +683,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 					k.log.WithError(err).Warnf("StringCharBuf size (%d) type err", b)
 				}
 
-				arg.Index = uint64(i)
+				arg.Index = uint64(a.index)
 				arg.Value = outputBytes
 				unix.Args = append(unix.Args, arg)
 			} else if b == 0 {
@@ -677,7 +709,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 				k.log.WithError(err).Warnf("skb type err")
 			}
 
-			arg.Index = uint64(i)
+			arg.Index = uint64(a.index)
 			arg.Hash = skb.Hash
 			arg.Len = skb.Len
 			arg.Priority = skb.Priority
@@ -692,9 +724,11 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 				k.log.WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
 			}
 
-			arg.Index = uint64(i)
+			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
+		default:
+			k.log.WithError(err).WithField("event", a).Warnf("Unknown type event")
 		}
 	}
 
@@ -735,18 +769,15 @@ func (k *ObserverKprobe) retprobeMerge(prev pendingEvent, curr pendingEvent) *ap
 		return nil
 	}
 
-	retArg, ok := retEv.Args[0].(api.MsgGenericKprobeArgBytes)
-	if !ok {
-		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, curr)
-		return nil
+	for _, retArg := range retEv.Args {
+		index := retArg.GetIndex()
+		if uint64(len(enterEv.Args)) > index {
+			enterEv.Args[index] = retArg
+		} else {
+			enterEv.Args = append(enterEv.Args, retArg)
+		}
 	}
-	if uint64(len(enterEv.Args)) > retArg.Index {
-		enterEv.Args[retArg.Index] = retArg
-		return enterEv
-	} else {
-		k.log.Warnf("failed to merge retprobe: prev:%+v next:%+v", prev, curr)
-		return nil
-	}
+	return enterEv
 }
 
 func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) {

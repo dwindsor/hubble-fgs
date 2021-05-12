@@ -5,9 +5,17 @@ type MsgGenericKprobeArgString struct {
 	Value string
 }
 
+func (m MsgGenericKprobeArgString) GetIndex() uint64 {
+	return m.Index
+}
+
 type MsgGenericKprobeArgBytes struct {
 	Index uint64
 	Value []byte
+}
+
+func (m MsgGenericKprobeArgBytes) GetIndex() uint64 {
+	return m.Index
 }
 
 type MsgGenericKprobeArgInt struct {
@@ -15,9 +23,17 @@ type MsgGenericKprobeArgInt struct {
 	Value int32
 }
 
+func (m MsgGenericKprobeArgInt) GetIndex() uint64 {
+	return m.Index
+}
+
 type MsgGenericKprobeArgSize struct {
 	Index uint64
 	Value uint64
+}
+
+func (m MsgGenericKprobeArgSize) GetIndex() uint64 {
+	return m.Index
 }
 
 type MsgGenericKprobeSkb struct {
@@ -35,7 +51,13 @@ type MsgGenericKprobeArgSkb struct {
 	Mark     uint32
 }
 
-type MsgGenericKprobeArg interface{}
+func (m MsgGenericKprobeArgSkb) GetIndex() uint64 {
+	return m.Index
+}
+
+type MsgGenericKprobeArg interface {
+	GetIndex() uint64
+}
 
 type MsgGenericKprobeUnix struct {
 	Common     MsgCommon

@@ -47,6 +47,14 @@ int generic_process_event0(
 
 	e->id = bpf_core_enum_value(fgs_args, func_id);
 	e->thread_id = get_current_pid_tgid();
+
+	/* If return arg is needed mark retprobe */
+#ifdef GENERIC_KPROBE
+	ty = bpf_core_enum_value(fgs_args, argreturn);
+	if (ty > 0)
+		retprobe_map_set(e->thread_id, 1);
+#endif
+
 	/* Read out args1-5 */
 	ty = bpf_core_enum_value(fgs_args, arg0);
 	if (total < MAX_TOTAL) {
@@ -59,6 +67,7 @@ int generic_process_event0(
 		if (errv > 0)
 			total += errv;
 	}
+	e->common.flags = 0;
 	e->common.size = total;
 	tail_call(ctx, tailcals, 1);
 	return 0;
@@ -99,6 +108,7 @@ int generic_process_event_and_setup(
 		e->a4 = ctx->r8;
 	}
 	e->common.op = MSG_OP_GENERIC_KPROBE;
+	e->common.flags = 0;
 	return generic_process_event0(ctx, heap_map, map, tailcals);
 }
 
