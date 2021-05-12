@@ -143,7 +143,10 @@ func selectorOp(op string) (uint32, error) {
 		return selectorOpNotIn, nil
 	case "prefix", "Prefix":
 		return selectorOpPrefix, nil
+	case "postfix", "Postfix":
+		return selectorOpPostfix, nil
 	}
+
 	return 0, fmt.Errorf("Unknown op '%s'", op)
 }
 

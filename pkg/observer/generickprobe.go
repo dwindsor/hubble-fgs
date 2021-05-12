@@ -266,7 +266,8 @@ func goStringToAscii(s string) []byte {
 func opFilterStringSupported(op int) bool {
 	switch op {
 	case genericKprobeFilterEQ,
-		genericKprobeFilterStringPrefix:
+		genericKprobeFilterStringPrefix,
+		genericKprobeFilterStringPostfix:
 		return true
 	}
 	return false

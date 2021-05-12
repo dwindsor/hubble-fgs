@@ -503,6 +503,40 @@ spec:
 	testKprobeObjectFiltered(t, readHook, false)
 }
 
+func TestKprobeObjectPostfixOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
+      matchargs:
+      - index: 1
+        operator: "Postfix"
+        values:
+        - "testfile\0"
+`
+	testKprobeObjectFiltered(t, readHook, false)
+}
+
 func helloIovecWorldWritev() (err error) {
 	var arrayOfBytes = make([][]byte, 3)
 

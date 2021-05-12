@@ -216,7 +216,7 @@ long filter_char_buf(struct selector_arg_filter *filter, char *args)
 #pragma unroll
 	for (i = 0; i < MAX_MATCH_STRING_VALUES; i++) {
 		__u32 length;
-		int err, v, a;
+		int err, v, a, postoff = 0;
 
 		/* filter->vallen is pulled from user input so we also need to
 		 * ensure its bounded.
@@ -229,8 +229,12 @@ long filter_char_buf(struct selector_arg_filter *filter, char *args)
 		if (filter->op == op_filter_eq) {
 			if (v != a)
 				goto skip_string;
+		} else if (filter->op == op_filter_str_postfix) {
+			postoff = a - length;
+			asm volatile("%[postoff] &= 0x3f;\n" :: [postoff] "+r"(postoff):);
 		}
-		err = cmpbytes(&value[j+4], &args[4], length);
+
+		err = cmpbytes(&value[j+4], &args[4+postoff], length);
 		if (!err)
 			return 1;
 skip_string:
