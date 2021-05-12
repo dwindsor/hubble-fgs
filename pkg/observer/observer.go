@@ -1529,7 +1529,18 @@ func removeTracepoint(fd int) {
 func (k *ObserverKprobe) removeProgram(prog *bpfLoad) {
 	os.Remove(k.bpfDir + prog.observer__prog)
 	if prog.probeType == "generic_kprobe" {
-		coreFile := strings.Split(prog.observer__prog, "__")[1]
+		coreFile := ""
+		splitProg := strings.Split(prog.observer__prog, "__")
+		if (len(splitProg)) > 1 {
+			coreFile = splitProg[1]
+		} else {
+			splitProg = strings.Split(prog.observer__prog, "kprobe_")
+			if len(splitProg) < 2 {
+				splitProg = strings.Split(prog.observer__prog, "kretprobe_")
+			}
+			coreFile = splitProg[1]
+		}
+		fmt.Printf("remove strings %s\n", coreFile)
 		files, err := ioutil.ReadDir(k.bpfDir)
 		if err == nil {
 			for _, f := range files {
