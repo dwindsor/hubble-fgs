@@ -209,102 +209,115 @@ struct task_struct *get_task_from_pid(__u32 pid)
 #define CWD_OFFSET_REG "r7"
 
 #define PROBE_CWD_READ_LOOP_HEADER				\
-	CWD_DENTRY_REG " = *(u64 *)%[dentry];"			\
-	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];"		\
-	CWD_OFFSET_REG " = *(u32 *)%[offset];"			\
-	"r3 = *(u64 *)%[curr];"					\
-	"*(u32 *)(r3 + 0) = " CWD_OFFSET_REG ";"
+	CWD_DENTRY_REG " = *(u64 *)%[dentry];\n"		\
+	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];\n"		\
+	CWD_OFFSET_REG " = *(u32 *)%[offset];\n"
 
 #define PROBE_CWD_READ	  	   			\
 	/* if (!dentry) { break; } */			\
-	"r3 = " CWD_DENTRY_REG ";"			\
-	"if r3 == 0 goto %l[a];"			\
+	"r3 = " CWD_DENTRY_REG ";\n"			\
+	"if r3 == 0 goto %l[a];\n"			\
 	/* probe_read(&parent, sizeof(parent), &dentry->d_parent); */ \
-	"r2 = *(u32 *)%[dentry_parent];"		\
-	"r3 += r2;"					\
-	"r2 = 8;"					\
-	"r1 = %[ptr];"					\
-	"call 4;"					\
+	"r2 = *(u32 *)%[dentry_parent];\n"		\
+	"r3 += r2;\n"					\
+	"r2 = 8;\n"					\
+	"r1 = %[ptr];\n"				\
+	"call 4;\n"					\
 	/* if (!parent) { break; } */			\
-	"r4 = *(u64 *)(%[ptr] + 0);"			\
-	"if r4 == 0x0 goto %l[a];"			\
+	"r4 = *(u64 *)(%[ptr] + 0);\n"			\
+	"if r4 == 0x0 goto %l[a];\n"			\
 	/* if (vfsmnt_dentry && dentry == vfsmnt_dentry) { */ \
-	"if " CWD_VFSMNT_DENTRY_REG " == " CWD_DENTRY_REG " goto %l[a];" \
+	"if " CWD_VFSMNT_DENTRY_REG " == " CWD_DENTRY_REG " goto %l[a];\n" \
 	/* name = &dentry->d_name; */			\
 	/* dentry = parent; */				\
 	/* probe_read(&dname, sizeof(dname), &name->name); */ \
-	"r3 = " CWD_DENTRY_REG ";"			\
-	"r2 = *(u32 *)%[dentry_name];"			\
-	"r3 += r2;"					\
-	CWD_DENTRY_REG " = r4;" /* r9 = parent */	\
-	"r1 = %[ptr];"					\
-	"r2 = 8;"					\
-	"call 4;"					\
+	"r3 = " CWD_DENTRY_REG ";\n"			\
+	"r2 = *(u32 *)%[dentry_name];\n"		\
+	"r3 += r2;\n"					\
+	CWD_DENTRY_REG " = r4;\n" /* r9 = parent */	\
+	"r1 = %[ptr];\n"				\
+	"r2 = 8;\n"					\
+	"call 4;\n"					\
 	/* pcwd = curr + offset */			\
 	/* probe_read(pcwd, 1, &slash); */		\
-	"r1 = *(u64 *)%[pid];"				\
-	"if " CWD_OFFSET_REG " s< 0 goto %l[a];"	\
-	"if " CWD_OFFSET_REG " s> 1188 goto %l[a];"	\
-	"r1 += " CWD_OFFSET_REG ";"\
-	"r2 = 1;"					\
-	"r3 = *(u64 *)%[slash];"			\
-	"call 4;"					\
+	"r1 = *(u64 *)%[pid];\n"			\
+	"if " CWD_OFFSET_REG " s< 0 goto %l[a];\n"	\
+	"if " CWD_OFFSET_REG " s> 1188 goto %l[a];\n"	\
+	"r1 += " CWD_OFFSET_REG ";\n"			\
+	"r2 = 1;\n"					\
+	"r3 = *(u64 *)%[slash];\n"			\
+	"call 4;\n"					\
 	/* pcwd++; */					\
 	/* ret = probe_read_str(pcwd, CWD_MAX, dname); */ \
-	CWD_OFFSET_REG " += 1;"				\
-	"r1 = *(u64 *)%[pid];"				\
-	"if " CWD_OFFSET_REG " < 0 goto %l[a];"	\
-	"if " CWD_OFFSET_REG " > 1188 goto %l[a];"	\
-	"r1 += " CWD_OFFSET_REG ";"			\
-	"r2 = " XSTR(CWD_MAX) ";"			\
-	"r3 = *(u64 *)(%[ptr] + 0);"			\
-	"call 45;"					\
+	CWD_OFFSET_REG " += 1;\n"			\
+	"r1 = *(u64 *)%[pid];\n"			\
+	"if " CWD_OFFSET_REG " < 0 goto %l[a];\n"	\
+	"if " CWD_OFFSET_REG " > 1188 goto %l[a];\n"	\
+	"r1 += " CWD_OFFSET_REG ";\n"			\
+	"r2 = " XSTR(CWD_MAX) ";\n"			\
+	"r3 = *(u64 *)(%[ptr] + 0);\n"			\
+	"call 45;\n"					\
 	/* if (ret < 0) { */				\
 	/* cwdsize += ret */				\
-	"if r0 s< 1 goto %l[a];"				\
-	"r0 -= 1;"					\
-	CWD_OFFSET_REG " += r0;"			\
-	"r3 = *(u64 *)%[curr];"				\
-	"*(u32 *)(r3 + 0) = " CWD_OFFSET_REG ";"
+	"if r0 s< 1 goto %l[a];\n"			\
+	"r0 -= 1\n;"					\
+	CWD_OFFSET_REG " += r0;\n"			\
+	"*(u32 *)%[offset] = " CWD_OFFSET_REG ";\n"
 
 #define offsetof_btf(s, memb) \
 	((size_t)((char *)_(&((s *)0)->memb) - (char *)0))
 
 static inline __attribute__((always_inline))
-int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
-	       __u32 offset, __u32 proc_pid, bool prealloc)
+int64_t getpath(struct event_execve *curr, struct path path, volatile __u32 __offset)
 {
-	struct task_struct *task = get_task_from_pid(proc_pid);
 	struct dentry *dentry, *vfsmnt_dentry;
-	struct vfsmount *vfsmnt;
-	struct path pwd;
-	struct fs_struct *fs;
-	void *ptr;
-	char slash = '/';
-	char *pslash = &slash;
-	__u32 orig_size = curr->size, orig_offset = offset;
 	int dentry_parent, dentry_name;
+	struct vfsmount *vfsmnt;
+	char slash, *pslash;
+	void *ptr;
+
+	/* Pointer to offset for inline asm goto */
+	//__u32 *offset = &__offset;
+
 	/* Verify complains if this is not a constant (compiler optimizes
 	 * us into a corner ottherwise). So for now note qstr->name is 8
 	 * bytes into struct on all kernels we use.
 	 */
 	const int qstr = 8;
 
-	probe_read(&fs, sizeof(fs), _(&task->fs));
-	if (!fs) {
-		curr->flags |= EVENT_ERROR_CWD;
-		return 0;
-	}
+	slash = '/';
+	pslash = &slash;
 
-	probe_read(&pwd, sizeof(pwd), _(&fs->pwd));
-	dentry = pwd.dentry;
-	vfsmnt = pwd.mnt;
+	dentry = path.dentry;
+	vfsmnt = path.mnt;
 	probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), _(&vfsmnt->mnt_root));
 
 	dentry_parent = offsetof_btf(struct dentry, d_parent);
 	dentry_name = offsetof_btf(struct dentry, d_name);
 	dentry_name += qstr;
 
+	/* For 'asm goto' offset needs to be a memory address otherwise
+	 * code may load the value from memory into a register in the preheader,
+	 * but then goto logic will not know to load final result back into
+	 * memory on goto exit. The result is some code like this,
+	 *
+	 * call 45
+	 * if r0 s< 1 goto +42 <LBB0_77>
+	 * r0 -= 1
+	 * r7 += r0
+	 * *(u64 *)(r10 - 168) = r7
+	 *
+	 * Notice we skip the load at the end needed to push offset back into
+	 * stack. Later we might have code like this,
+	 *
+	 * r3 = *(u64 *)(r10 - 168)
+	 *
+	 * That expect to load the new offset, but its not there. To make
+	 * things extra convoluted we are short on registers so can't mark
+	 * offset as clobbered. In order to defeat compiler though we mark
+	 * offset volatile above and this forces the retrun __offset to reload
+	 * the value from stack.
+	 */
 	asm volatile goto (
 			PROBE_CWD_READ_LOOP_HEADER
 			PROBE_CWD_READ
@@ -323,18 +336,38 @@ int64_t getcwd(struct event_execve *curr, struct event_execve *pid,
 			PROBE_CWD_READ
 			PROBE_CWD_READ
 		:
-		: [curr]   "=m"(curr),
-		  [pid]    "=m"(pid),
+		: [pid]    "m"(curr),
 		  [vfsmnt] "m"(vfsmnt_dentry),
 		  [dentry] "m"(dentry),
 		  [ptr]    "+r"(&ptr),
 		  [slash]  "m"(pslash),
-		  [offset] "+m"(offset),
 		  [dentry_parent] "m"(dentry_parent),
-		  [dentry_name] "m"(dentry_name)
-		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9"
+		  [dentry_name] "m"(dentry_name),
+		  [offset] "+m"(__offset)
+		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9", "memory"
 		: a);
 a:
+	return __offset;
+}
+
+static inline __attribute__((always_inline))
+int64_t getcwd(struct event_execve *curr,
+	       __u32 offset, __u32 proc_pid, bool prealloc)
+{
+	struct task_struct *task = get_task_from_pid(proc_pid);
+	__u32 orig_size = curr->size, orig_offset = offset;
+	struct fs_struct *fs;
+	struct path pwd;
+
+	probe_read(&fs, sizeof(fs), _(&task->fs));
+	if (!fs) {
+		curr->flags |= EVENT_ERROR_CWD;
+		return 0;
+	}
+
+	probe_read(&pwd, sizeof(pwd), _(&fs->pwd));
+	offset = getpath(curr, pwd, offset);
+	curr->size = offset;
 	// Unfortunate special case for '/' where nothing was added we need
 	// to truncate with '\n' for parser.
 	if (curr->size == orig_offset)
@@ -547,7 +580,7 @@ void event_args_builder(struct msg_execve_event *event)
 static inline __attribute__((always_inline))
 void event_cwd_builder(struct event_execve *process, __u32 curr_pid)
 {
-	getcwd(process, process, process->size, process->pid, 0);
+	getcwd(process, process->size, process->pid, 0);
 }
 
 static inline __attribute__((always_inline))
@@ -722,7 +755,7 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 			prealloc = true;
 		}
 		if (!(curr->flags & EVENT_ERROR_CWD)) {
-			err = getcwd(curr, curr, offset, curr->pid, prealloc);
+			err = getcwd(curr, offset, curr->pid, prealloc);
 			if (!err)
 				curr->flags = curr->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
 		}
