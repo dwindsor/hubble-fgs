@@ -1263,6 +1263,142 @@ var _ interface {
 	ErrorName() string
 } = KprobeSkbValidationError{}
 
+// Validate checks the field values on KprobePath with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *KprobePath) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Mount
+
+	// no validation rules for Path
+
+	return nil
+}
+
+// KprobePathValidationError is the validation error returned by
+// KprobePath.Validate if the designated constraints aren't met.
+type KprobePathValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e KprobePathValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e KprobePathValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e KprobePathValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e KprobePathValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e KprobePathValidationError) ErrorName() string { return "KprobePathValidationError" }
+
+// Error satisfies the builtin error interface
+func (e KprobePathValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sKprobePath.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = KprobePathValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = KprobePathValidationError{}
+
+// Validate checks the field values on KprobeFile with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *KprobeFile) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Mount
+
+	// no validation rules for Path
+
+	return nil
+}
+
+// KprobeFileValidationError is the validation error returned by
+// KprobeFile.Validate if the designated constraints aren't met.
+type KprobeFileValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e KprobeFileValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e KprobeFileValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e KprobeFileValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e KprobeFileValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e KprobeFileValidationError) ErrorName() string { return "KprobeFileValidationError" }
+
+// Error satisfies the builtin error interface
+func (e KprobeFileValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sKprobeFile.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = KprobeFileValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = KprobeFileValidationError{}
+
 // Validate checks the field values on KprobeArgument with the rules defined in
 // the proto definition for this message. If any rules are violated, an error
 // is returned.
@@ -1296,6 +1432,30 @@ func (m *KprobeArgument) Validate() error {
 
 	case *KprobeArgument_BytesArg:
 		// no validation rules for BytesArg
+
+	case *KprobeArgument_PathArg:
+
+		if v, ok := interface{}(m.GetPathArg()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return KprobeArgumentValidationError{
+					field:  "PathArg",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *KprobeArgument_FileArg:
+
+		if v, ok := interface{}(m.GetFileArg()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return KprobeArgumentValidationError{
+					field:  "FileArg",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
 
 	}
 

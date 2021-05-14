@@ -137,6 +137,16 @@ message KprobeSkb {
     uint32 mark = 4;
 }
 
+message KprobePath {
+    string mount = 1;
+    string path  = 2;
+}
+
+message KprobeFile {
+    string mount = 1;
+    string path  = 2;
+}
+
 message KprobeArgument {
     oneof arg {
 	string    string_arg = 1;
@@ -144,6 +154,8 @@ message KprobeArgument {
 	KprobeSkb skb_arg = 3;
 	uint64    size_arg = 4;
 	bytes     bytes_arg = 5;
+	KprobePath path_arg = 6;
+	KprobeFile file_arg = 7;
     }
 }
 
