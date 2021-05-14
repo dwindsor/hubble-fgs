@@ -33,13 +33,6 @@ const (
 )
 
 const (
-	sizeofArgsFilter = 80
-	// 5 arguments + 1 return argument
-	maxArgsSupported = 6
-	returnArgIndex   = maxArgsSupported - 1
-)
-
-const (
 	argReturnCopy = -1
 )
 
@@ -380,7 +373,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		var argSigPrinters []argPrinters
 		var argReturnPrinters []argPrinters
 		var is_syscall, is_retprobe bool
-		var argsBTFSet [maxArgsSupported]bool
+		var argsBTFSet [api.MaxArgsSupported]bool
 
 		funcName := f.Call
 
@@ -430,8 +423,8 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value '%s'='%d' failed %d\n", argreturn, argType, retVal)
 			}
-			argsBTFSet[returnArgIndex] = true
-			argP := argPrinters{index: returnArgIndex, ty: argType}
+			argsBTFSet[api.ReturnArgIndex] = true
+			argP := argPrinters{index: api.ReturnArgIndex, ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
 		}
 

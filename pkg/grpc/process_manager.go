@@ -249,6 +249,7 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.Ge
 func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKprobe {
 	var fgsParent, fgsProcess *fgs.Process
 	var fgsArgs []*fgs.KprobeArgument
+	var fgsReturnArg *fgs.KprobeArgument
 
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
@@ -285,7 +286,11 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 		default:
 			pm.log.WithField("arg", e).Warnf("unexpected type: %T", e)
 		}
-		fgsArgs = append(fgsArgs, a)
+		if arg.IsReturnArg() {
+			fgsReturnArg = a
+		} else {
+			fgsArgs = append(fgsArgs, a)
+		}
 	}
 
 	fgsEvent := &fgs.ProcessKprobe{
@@ -293,6 +298,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 		Parent:       fgsParent,
 		FunctionName: event.FuncName,
 		Args:         fgsArgs,
+		Return:       fgsReturnArg,
 	}
 
 	if fgsProcess.Docker != "" {

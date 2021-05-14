@@ -1401,6 +1401,16 @@ func (m *ProcessKprobe) Validate() error {
 
 	}
 
+	if v, ok := interface{}(m.GetReturn()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessKprobeValidationError{
+				field:  "Return",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
 	return nil
 }
 

@@ -152,6 +152,7 @@ message ProcessKprobe {
     Process parent = 2;
     string function_name = 3;
     repeated KprobeArgument args = 4;
+    KprobeArgument return = 5;
 }
 
 message ProcessTracepoint {
