@@ -268,16 +268,13 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	((size_t)((char *)_(&((s *)0)->memb) - (char *)0))
 
 static inline __attribute__((always_inline))
-int64_t getpath(struct event_execve *curr, struct path path, volatile __u32 __offset)
+long getpath(void *curr, struct path path, volatile long offset)
 {
 	struct dentry *dentry, *vfsmnt_dentry;
-	int dentry_parent, dentry_name;
+	long dentry_parent, dentry_name;
 	struct vfsmount *vfsmnt;
 	char slash, *pslash;
-	void *ptr;
-
-	/* Pointer to offset for inline asm goto */
-	//__u32 *offset = &__offset;
+	long *ptr = 0;
 
 	/* Verify complains if this is not a constant (compiler optimizes
 	 * us into a corner ottherwise). So for now note qstr->name is 8
@@ -343,11 +340,11 @@ int64_t getpath(struct event_execve *curr, struct path path, volatile __u32 __of
 		  [slash]  "m"(pslash),
 		  [dentry_parent] "m"(dentry_parent),
 		  [dentry_name] "m"(dentry_name),
-		  [offset] "+m"(__offset)
+		  [offset] "+m"(offset)
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9", "memory"
 		: a);
 a:
-	return __offset;
+	return offset;
 }
 
 static inline __attribute__((always_inline))

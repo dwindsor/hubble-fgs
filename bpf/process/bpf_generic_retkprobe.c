@@ -34,11 +34,11 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	struct execve_map_value *enter;
 	struct msg_generic_kprobe *e;
 	bool walker = false;
-	int zero = 0, *s;
+	int zero = 0;
 	__u64 tid;
 	__u32 pid, ppid;
 	long total = 0;
-	size_t size;
+	long size;
 	unsigned long retprobe_buffer;
 	long ty;
 
@@ -57,8 +57,9 @@ int generic_kprobe_event(struct pt_regs *ctx)
 
 	if (ty) {
 		size = read_call_arg(e, 0, ty, 0, (unsigned long)ctx->ax, 0, 0);
-		bpf_printk("return kprobe ty %d size %d\n", ty, size);
-	} else { // if (retprobe_buffer) {
+	} else {
+		int *s;
+
 		size = (int)ctx->ax;
 		if (size > 4000)
 			size = 0;
@@ -69,7 +70,6 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		probe_read(&e->args[4], size, (char *)retprobe_buffer);
 		size +=4;
 	}
-
 	/* Complete message header and send */
 	enter = event_find_curr(&ppid, 0, &walker);
 
@@ -96,6 +96,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	if (total > 8192)
 		total = 8192;
 	e->common.size = total;
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total&0x7fff);
+	asm volatile("%[total] &= 0xfff;\n" : [total] "+r" (total):);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
 	return 0;
 }

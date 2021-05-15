@@ -278,7 +278,28 @@ spec:
 	testDone(t, kprobe)
 }
 
-func testKprobeObjectFiltered(t *testing.T, readHook string, invertResult bool) {
+// __x64_sys_openat trace
+var (
+	openArg0  = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: -100}}
+	openArg1  = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "/tmp/testfile"}}
+	openTrace = []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessKprobe{
+				ProcessKprobe: &fgs.ProcessKprobe{
+					Process:      &fgs.Process{Binary: selfBinary},
+					Parent:       &fgs.Process{Binary: ""},
+					FunctionName: "__x64_sys_openat",
+					Args:         []*fgs.KprobeArgument{openArg0, openArg1},
+				},
+			},
+		},
+	}
+)
+
+func testKprobeObjectFiltered(t *testing.T,
+	readHook string,
+	trace []*fgs.GetEventsResponse,
+	invertResult bool) {
 	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
@@ -296,20 +317,6 @@ func testKprobeObjectFiltered(t *testing.T, readHook string, invertResult bool) 
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: -100}}
-	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "/tmp/testfile"}}
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessKprobe{
-				ProcessKprobe: &fgs.ProcessKprobe{
-					Process:      &fgs.Process{Binary: selfBinary},
-					Parent:       &fgs.Process{Binary: ""},
-					FunctionName: "__x64_sys_openat",
-					Args:         []*fgs.KprobeArgument{arg0, arg1},
-				},
-			},
-		},
-	}
 	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
@@ -362,7 +369,7 @@ spec:
         values:
         - "/tmp/testfile\0"
 `
-	testKprobeObjectFiltered(t, readHook, false)
+	testKprobeObjectFiltered(t, readHook, openTrace, false)
 }
 
 func TestKprobeObjectMultiValueOpen(t *testing.T) {
@@ -397,7 +404,7 @@ spec:
         - "/tmp/foobar\0"
         - "/tmp/testfile\0"
 `
-	testKprobeObjectFiltered(t, readHook, false)
+	testKprobeObjectFiltered(t, readHook, openTrace, false)
 }
 
 func TestKprobeObjectFilterOpen(t *testing.T) {
@@ -431,7 +438,7 @@ spec:
         values:
         - "/tmp/foofile\0"
 `
-	testKprobeObjectFiltered(t, readHook, true)
+	testKprobeObjectFiltered(t, readHook, openTrace, true)
 }
 
 func TestKprobeObjectMultiValueFilterOpen(t *testing.T) {
@@ -466,7 +473,7 @@ spec:
         - "/tmp/foo\0"
         - "/tmp/bar\0"
 `
-	testKprobeObjectFiltered(t, readHook, true)
+	testKprobeObjectFiltered(t, readHook, openTrace, true)
 }
 
 func TestKprobeObjectFilterPrefixOpen(t *testing.T) {
@@ -500,7 +507,7 @@ spec:
         values:
         - "/tmp/testf"
 `
-	testKprobeObjectFiltered(t, readHook, false)
+	testKprobeObjectFiltered(t, readHook, openTrace, false)
 }
 
 func TestKprobeObjectPostfixOpen(t *testing.T) {
@@ -534,7 +541,7 @@ spec:
         values:
         - "testfile\0"
 `
-	testKprobeObjectFiltered(t, readHook, false)
+	testKprobeObjectFiltered(t, readHook, openTrace, false)
 }
 
 func helloIovecWorldWritev() (err error) {
@@ -623,7 +630,48 @@ spec:
 	testDone(t, kprobe)
 }
 
+var (
+	doOpenTrace = []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessKprobe{
+				ProcessKprobe: &fgs.ProcessKprobe{
+					Process:      &fgs.Process{Binary: selfBinary},
+					Parent:       &fgs.Process{Binary: ""},
+					FunctionName: "do_filp_open",
+					Args:         []*fgs.KprobeArgument{openArg0, openArg1},
+				},
+			},
+		},
+	}
+)
+
 func TestKprobeObjectFilenameOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "do_filp_open"
+    return: false
+    syscall: false
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "filename"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr
+	testKprobeObjectFiltered(t, readHook, doOpenTrace, false)
+}
+
+func TestKprobeObjectReturnFilenameOpen(t *testing.T) {
 	pidStr := strconv.Itoa(int(getMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
@@ -641,12 +689,12 @@ spec:
     - index: 1
       type: "filename"
     returnarg:
-      type: int
+      type: file
     selectors:
     - matchpids:
       - operator: In
         followforks: true
         values:
         - ` + pidStr
-	testKprobeObjectFiltered(t, readHook, false)
+	testKprobeObjectFiltered(t, readHook, doOpenTrace, false)
 }

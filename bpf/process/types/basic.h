@@ -1,4 +1,5 @@
 #include "operations.h"
+#include "bpf_events.h"
 
 /* Type IDs form API with user space generickprobe.go */
 enum {
@@ -16,7 +17,9 @@ enum {
 	s32_ty = 12,
 	u32_ty = 13,
 
-	filename_type = 14,
+	filename_ty = 14,
+	path_ty = 15,
+	file_ty = 16,
 
 	nop_s64_ty = -10,
 	nop_u64_ty = -11,
@@ -157,6 +160,24 @@ int cmpbytes(char *s1, char *s2, size_t n)
 	}
 
 	return 0;
+}
+
+static inline __attribute__((always_inline))
+long copy_path(char *args, unsigned long arg)
+{
+	int *s = (int *)args;
+	struct path path;
+	long size;
+
+	probe_read(&path, sizeof(path), (void *)arg);
+	size = getpath(&args[4], path, 0);
+	*s = (__u32)size;
+	if (size < 0)
+		return filter;
+	else if (size == 0)
+		return 0;
+	size += 4;
+	return size;
 }
 
 static inline __attribute__((always_inline))
@@ -322,7 +343,6 @@ static inline __attribute__((always_inline))
 size_t type_to_min_size(int type)
 {
 	switch (type) {
-	case filename_type:
 	case string_type:
 		return MAX_STRING;
 	case int_type:
@@ -517,14 +537,23 @@ long read_call_arg(struct msg_generic_kprobe *e,
 	e->argsoff[index] = orig_off;
 
 	switch (type) {
-	case filename_type:
+	case file_ty:
+		{
+		struct file *file;
+		probe_read(&file, sizeof(file), &arg);
+		arg = (unsigned long)&file->f_path;
+		}
+		// fallthrough to copy_path
+	case path_ty:
+		size = copy_path(args, arg);
+		break;
+	case filename_ty:
 		{
 		struct filename *file;
-
 		probe_read(&file, sizeof(file), &arg);
 		probe_read(&arg, sizeof(arg), &file->name);
 		}
-		// fallthrough to copy
+               // fallthrough to copy_string
 	case string_type:
 		size = copy_strings(args, arg);
 		break;
@@ -554,9 +583,6 @@ long read_call_arg(struct msg_generic_kprobe *e,
 		size = 0;
 		break;
 	}
-	if (size < 0)
-		return size;
-
 	return size;
 }
 
