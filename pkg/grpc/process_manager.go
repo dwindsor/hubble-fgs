@@ -283,6 +283,16 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			a.Arg = &fgs.KprobeArgument_SkbArg{SkbArg: skbArg}
 		case api.MsgGenericKprobeArgBytes:
 			a.Arg = &fgs.KprobeArgument_BytesArg{BytesArg: e.Value}
+		case api.MsgGenericKprobeArgFile:
+			fileArg := &fgs.KprobeFile{
+				Path: e.Value,
+			}
+			a.Arg = &fgs.KprobeArgument_FileArg{FileArg: fileArg}
+		case api.MsgGenericKprobeArgPath:
+			pathArg := &fgs.KprobePath{
+				Path: e.Value,
+			}
+			a.Arg = &fgs.KprobeArgument_PathArg{PathArg: pathArg}
 		default:
 			pm.log.WithField("arg", e).Warnf("unexpected type: %T", e)
 		}

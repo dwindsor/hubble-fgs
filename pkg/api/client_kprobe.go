@@ -7,6 +7,32 @@ const (
 	ReturnArgIndex   = MaxArgsSupported - 1
 )
 
+type MsgGenericKprobeArgPath struct {
+	Index uint64
+	Value string
+}
+
+func (m MsgGenericKprobeArgPath) GetIndex() uint64 {
+	return m.Index
+}
+
+func (m MsgGenericKprobeArgPath) IsReturnArg() bool {
+	return (m.Index == ReturnArgIndex)
+}
+
+type MsgGenericKprobeArgFile struct {
+	Index uint64
+	Value string
+}
+
+func (m MsgGenericKprobeArgFile) GetIndex() uint64 {
+	return m.Index
+}
+
+func (m MsgGenericKprobeArgFile) IsReturnArg() bool {
+	return (m.Index == ReturnArgIndex)
+}
+
 type MsgGenericKprobeArgString struct {
 	Index uint64
 	Value string

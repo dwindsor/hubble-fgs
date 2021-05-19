@@ -602,6 +602,27 @@ func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose
 	}
 }
 
+func (k *ObserverKprobe) handleGenericKprobeString(r *bytes.Reader) string {
+	var b int32
+
+	err := binary.Read(r, binary.LittleEndian, &b)
+	if err != nil {
+		k.log.WithError(err).Warnf("StringSz type err")
+	}
+	outputStr := make([]byte, b)
+	err = binary.Read(r, binary.LittleEndian, &outputStr)
+	if err != nil {
+		k.log.WithError(err).Warnf("String with size %d type err", b)
+	}
+
+	strVal := string(outputStr[:])
+	lenStrVal := len(strVal)
+	if lenStrVal > 0 && strVal[lenStrVal-1] == '\x00' {
+		strVal = strVal[0 : lenStrVal-1]
+	}
+	return strVal
+}
+
 func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	m := api.MsgGenericKprobe{}
 	err := binary.Read(r, binary.LittleEndian, &m)
@@ -644,9 +665,19 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobeFileType,
-			GenericKprobePathType,
-			GenericKprobeFilenameType,
+		case GenericKprobeFileType:
+			var arg api.MsgGenericKprobeArgFile
+
+			arg.Index = uint64(a.index)
+			arg.Value = k.handleGenericKprobeString(r)
+			unix.Args = append(unix.Args, arg)
+		case GenericKprobePathType:
+			var arg api.MsgGenericKprobeArgPath
+
+			arg.Index = uint64(a.index)
+			arg.Value = k.handleGenericKprobeString(r)
+			unix.Args = append(unix.Args, arg)
+		case GenericKprobeFilenameType,
 			GenericKprobeStringType:
 			var b int32
 			var arg api.MsgGenericKprobeArgString
