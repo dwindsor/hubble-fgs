@@ -40,6 +40,15 @@ struct skb_type {
 	__u32 mark;
 };
 
+enum {
+	ACTION_POST = 0,
+};
+
+struct selector_action {
+	__u32 actionlen;
+	__u32 act[];
+};
+
 struct selector_arg_filter {
 	__u32 arglen;
 	__u32 index;
@@ -428,7 +437,7 @@ int selector_arg_offset(__u8 *f,
 		break;
 	}
 
-	return pass;
+	return pass ? seloff : 0;
 }
 
 static inline __attribute__((always_inline))
@@ -466,7 +475,7 @@ int filter_args(struct msg_generic_kprobe *e,
 	if (e->active[index]) {
 		int pass = selector_arg_offset(f, e, index);
 		if (pass)
-			return 1;
+			return pass;
 	}
 	return 0;
 }
@@ -481,6 +490,7 @@ long filter_read_arg(void *ctx, int index,
 {
 	struct msg_generic_kprobe *e;
 	int pass, zero = 0;
+	bool postit = true;
 	size_t total;
 
 	e = map_lookup_elem(heap, &zero);
@@ -495,13 +505,46 @@ long filter_read_arg(void *ctx, int index,
 		return 2;
 	}
 
+	// If pass >1 then we need to consult the selector actions
+	// otherwise pass==1 indicates using default action. Pass=1
+	// indicates no selectors were attached.
+	if (pass > 1) {
+		struct selector_arg_filter *arg;
+		struct selector_action *actions;
+		__u8 *f;
+		int i;
+
+		f = map_lookup_elem(filter, &zero);
+		if (!f)
+			goto dopost;
+
+		arg = (struct selector_arg_filter *)&f[pass];
+		actions = (struct selector_action *)&f[pass+arg->arglen];
+
+		/* Expect no more than two actions. */
+		if (actions->actionlen > 4 && actions->actionlen < 12) {
+			for (i = 0; i + 4 < actions->actionlen; i+=4) {
+				__u32 act = actions->act[i];
+
+				switch (act) {
+				case ACTION_POST:
+					postit = true;
+					break;
+				default:
+					goto dopost;
+				}
+			}
+		}
+	}
+dopost:
 	total = e->common.size + generic_kprobe_common_size();
 	/* Code movement from clang forces us to inline bounds checks here */
 	asm volatile("%[total] &= 0x7fff;\n"
 		"if %[total] < 9000 goto +1\n;"
 		"%[total] = 9000;\n"
 		: : [total] "+r"(total):);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
+	if (postit)
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
 	return 1;
 }
 
