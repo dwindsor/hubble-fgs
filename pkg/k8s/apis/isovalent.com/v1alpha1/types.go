@@ -88,6 +88,9 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of argument filters. MatchArgs are ANDed.
 	MatchArgs []ArgSelector `json:"matchArgs"`
+	// +kubebuilder:validation:Optional
+	// A list of actions to execute when this selector matches
+	MatchActions []ActionSelector `json:"matchActions"`
 }
 
 type PIDSelector struct {
@@ -115,6 +118,12 @@ type ArgSelector struct {
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
 	Values []string `json:"value"`
+}
+
+type ActionSelector struct {
+	// +kubebuilder:validation:Enum=Post;
+	// Action to execute.
+	Action string `json:"action"`
 }
 
 type TracepointSpec struct {

@@ -30,6 +30,9 @@ spec:
         operator: NotEqual
         values:
         - "hello"
+      matchActions:
+      - action: "post_event"
+      # we only have one action type now but will have more
     - matchPIDs:
       - operator: In
         values:
@@ -44,3 +47,5 @@ spec:
         operator: NotEqual
         values:
         - "world"
+      matchActions:
+      - action: "post_event"

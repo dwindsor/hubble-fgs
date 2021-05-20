@@ -61,6 +61,18 @@ func argSelectorValue(v string) ([]byte, uint32) {
 }
 
 const (
+	actionTypePost = 0
+)
+
+var actionTypeTable = map[string]uint32{
+	"post_event": actionTypePost,
+}
+
+var actionTypeStringTable = map[uint32]string{
+	actionTypePost: "post_event",
+}
+
+const (
 	argTypeNop       = 0
 	argTypeInt       = 1
 	argTypeCharBuf   = 2
@@ -282,6 +294,26 @@ func parseMatchArgs(k *kernelSelectorState, args []v1alpha1.ArgSelector, sig []v
 	return nil
 }
 
+func parseMatchAction(k *kernelSelectorState, action *v1alpha1.ActionSelector) error {
+	act, ok := actionTypeTable[action.Action]
+	if !ok {
+		return fmt.Errorf("parseMatchAction: actionType %s unknown\n", action.Action)
+	}
+	writeSelectorUint32(k, act)
+	return nil
+}
+
+func parseMatchActions(k *kernelSelectorState, actions []v1alpha1.ActionSelector) error {
+	loff := advanceSelectorLength(k)
+	for _, a := range actions {
+		if err := parseMatchAction(k, &a); err != nil {
+			return err
+		}
+	}
+	writeSelectorLength(k, loff)
+	return nil
+}
+
 func parseSelector(
 	k *kernelSelectorState,
 	selectors *v1alpha1.KProbeSelector,
@@ -291,6 +323,9 @@ func parseSelector(
 	}
 	if err := parseMatchArgs(k, selectors.MatchArgs, args); err != nil {
 		return fmt.Errorf("parseMatchArgs  error: %x", err)
+	}
+	if err := parseMatchActions(k, selectors.MatchActions); err != nil {
+		return fmt.Errorf("parseMatchActions error: %x", err)
 	}
 	return nil
 }

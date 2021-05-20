@@ -227,6 +227,33 @@ func TestParseMatchPid(t *testing.T) {
 	}
 }
 
+func TestParseMatchAction(t *testing.T) {
+	act1 := &v1alpha1.ActionSelector{Action: "post_event"}
+	act2 := &v1alpha1.ActionSelector{Action: "post_event"}
+	k := &kernelSelectorState{off: 0}
+	expected1 := []byte{
+		0x00, 0x00, 0x00, 0x00, // Action = "post_event"
+	}
+	if err := parseMatchAction(k, act1); err != nil || bytes.Equal(expected1, k.e[0:k.off]) == false {
+		t.Errorf("parseMatchAction: error %v expected %v bytes %v parsing %v\n", err, expected1, k.e[0:k.off], act1)
+	}
+	// This is a bit contrived because we only have single action so far
+	// but once we get two we will update this. Point being we want to
+	// test multiple actions.
+	expected2 := []byte{
+		0x00, 0x00, 0x00, 0x00, // Action = "post_event"
+	}
+	length := []byte{12, 0x00, 0x00, 0x00}
+	expected := append(length, expected1[:]...)
+	expected = append(expected, expected2[:]...)
+
+	act := []v1alpha1.ActionSelector{*act1, *act2}
+	ks := &kernelSelectorState{off: 0}
+	if err := parseMatchActions(ks, act); err != nil || bytes.Equal(expected, ks.e[0:ks.off]) == false {
+		t.Errorf("parseMatchActions: error %v expected %v bytes %v parsing %v\n", err, expected, ks.e[0:ks.off], act)
+	}
+}
+
 func TestInitKernelSelectors(t *testing.T) {
 	expected := []byte{
 		// spec header
@@ -235,7 +262,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x4, 0x00, 0x00, 0x00, // selector offset list
 
 		// selector header size 4
-		114, 0x00, 0x00, 0x00, // size = pids + args + 4
+		122, 0x00, 0x00, 0x00, // size = pids + args + actions + 4
 
 		// pid header
 		56, 0x00, 0x00, 0x00, // size = sizeof(pid2) + sizeof(pid1) + 4
@@ -276,6 +303,9 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x01, 0x00, 0x00, 0x00, // value 1
 		0x02, 0x00, 0x00, 0x00, // value 2
 
+		// actions header
+		0x08, 0x00, 0x00, 0x00, // size = (sizeof(uint32) * number of actions)  + 4
+		0x00, 0x00, 0x00, 0x00, // post_event to userspace
 	}
 
 	arg1 := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
@@ -284,10 +314,15 @@ func TestInitKernelSelectors(t *testing.T) {
 	pid1 := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
 	pid2 := &v1alpha1.PIDSelector{Operator: "NotIn", Values: []uint32{1, 2, 3, 4}, IsNamespacePID: false, FollowForks: false}
 	matchPids := []v1alpha1.PIDSelector{*pid1, *pid2}
+
+	act := &v1alpha1.ActionSelector{Action: "post_event"}
+	matchActions := []v1alpha1.ActionSelector{*act}
+
 	selectors := []v1alpha1.KProbeSelector{
 		{
-			MatchPIDs: matchPids,
-			MatchArgs: matchArgs,
+			MatchPIDs:    matchPids,
+			MatchArgs:    matchArgs,
+			MatchActions: matchActions,
 		},
 	}
 	args := []v1alpha1.KProbeArg{
