@@ -42,6 +42,7 @@ struct skb_type {
 
 enum {
 	ACTION_POST = 0,
+	ACTION_FOLLOWFD = 1,
 };
 
 struct selector_action {
@@ -491,6 +492,60 @@ int filter_args(struct msg_generic_kprobe *e,
 	return 0;
 }
 
+
+struct fdinstall_key {
+	__u64 tid;
+	__u64 fd;
+};
+
+struct fdinstall_value {
+	char file[100]; // JF, made this up tdb clean up string lengths
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) fdinstall_map = {
+	.type = BPF_MAP_TYPE_LRU_HASH,
+	.key_size = sizeof(struct fdinstall_key),
+	.value_size = sizeof(struct fdinstall_value),
+	.max_entries = 100,
+};
+
+static inline __attribute__((always_inline))
+void installfd(struct msg_generic_kprobe *e, int fd, int name)
+{
+	struct fdinstall_value val = {0};
+	struct fdinstall_key key = {0};
+	long fdoff, nameoff;
+	__u32 size;
+
+	/* Satisfies verifier but is a bit ugly, ideally we
+	 * can just '&' and drop the '>' case.
+	 */
+	asm volatile("%[fd] &= 0xf;\n": [fd] "+r"(fd):);
+	if (fd > 5) {
+		return;
+	}
+	fdoff = e->argsoff[fd];
+	asm volatile("%[fdoff] &= 0xeff;\n": [fdoff] "+r"(fdoff):);
+	key.fd = (__u32)e->args[fdoff];
+	key.tid = get_current_pid_tgid();
+
+	asm volatile("%[name] &= 0xf;\n": [name] "+r"(name):);
+	if (name > 5)
+		return;
+	nameoff = e->argsoff[name];
+	asm volatile("%[nameoff] &= 0xeff;\n": [nameoff] "+r"(nameoff):);
+
+	size = *(__u32 *)&e->args[nameoff];
+	asm volatile("%[size] &= 0xf;\n": [size] "+r"(size):);
+
+	probe_read(&val.file[4],
+		   size,
+		   &e->args[nameoff+4]);
+
+	*(__u32 *)&val.file[0] = size;
+	map_update_elem(&fdinstall_map, &key, &val, BPF_ANY);
+}
+
 #define MAX_SELECTORS 8
 
 static inline __attribute__((always_inline))
@@ -517,33 +572,65 @@ long filter_read_arg(void *ctx, int index,
 	}
 
 	// If pass >1 then we need to consult the selector actions
-	// otherwise pass==1 indicates using default action. Pass=1
-	// indicates no selectors were attached.
+	// otherwise pass==1 indicates using default action.
 	if (pass > 1) {
 		struct selector_arg_filter *arg;
 		struct selector_action *actions;
+		int actoff;
 		__u8 *f;
-		int i;
 
 		f = map_lookup_elem(filter, &zero);
 		if (!f)
 			goto dopost;
 
+		asm volatile("%[pass] &= 0xeff;\n": [pass] "+r"(pass):);
 		arg = (struct selector_arg_filter *)&f[pass];
-		actions = (struct selector_action *)&f[pass+arg->arglen];
 
+		actoff = pass + arg->arglen;
+		asm volatile("%[actoff] &= 0xeff;\n": [actoff] "+r"(actoff):);
+		actions = (struct selector_action *)&f[actoff];
+
+		long cntr = (actions->actionlen - 4) / 4;
+		asm volatile("%[cntr] &= 0x3;\n": [cntr] "+r"(cntr):);
 		/* Expect no more than two actions. */
-		if (actions->actionlen > 4 && actions->actionlen < 12) {
-			for (i = 0; i + 4 < actions->actionlen; i+=4) {
-				__u32 act = actions->act[i];
+		{
+			long i = 0;
+			__u32 act = actions->act[i];
 
-				switch (act) {
-				case ACTION_POST:
-					postit = true;
-					break;
-				default:
-					goto dopost;
+			// JF: remove this duplicate with a function but
+			// for now lets not fight with verifier.
+			switch (act) {
+			case ACTION_POST:
+				postit = true;
+				break;
+			case ACTION_FOLLOWFD:
+				{
+				int fdi = actions->act[++i];
+				int namei = actions->act[++i];
+				installfd(e, fdi, namei);
+				break;
 				}
+			default:
+				goto dopost;
+			}
+
+			if (i+1 > cntr)
+				goto dopost;
+
+			act = actions->act[++i];
+			switch (act) {
+			case ACTION_POST:
+				postit = true;
+				break;
+			case ACTION_FOLLOWFD:
+				{
+				int fdi = actions->act[++i];
+				int namei = actions->act[++i];
+				installfd(e, fdi, namei);
+				break;
+				}
+			default:
+				goto dopost;
 			}
 		}
 	}
