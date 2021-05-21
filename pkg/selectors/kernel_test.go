@@ -262,7 +262,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x4, 0x00, 0x00, 0x00, // selector offset list
 
 		// selector header size 4
-		122, 0x00, 0x00, 0x00, // size = pids + args + actions + 4
+		134, 0x00, 0x00, 0x00, // size = pids + args + actions + 4
 
 		// pid header
 		56, 0x00, 0x00, 0x00, // size = sizeof(pid2) + sizeof(pid1) + 4
@@ -304,8 +304,11 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x02, 0x00, 0x00, 0x00, // value 2
 
 		// actions header
-		0x08, 0x00, 0x00, 0x00, // size = (sizeof(uint32) * number of actions)  + 4
+		20, 0x00, 0x00, 0x00, // size = (sizeof(uint32) * number of actions)  + 4
 		0x00, 0x00, 0x00, 0x00, // post_event to userspace
+		0x01, 0x00, 0x00, 0x00, // fdinstall
+		0x00, 0x00, 0x00, 0x00, // arg index of fd
+		0x01, 0x00, 0x00, 0x00, // arg index of string filename
 	}
 
 	arg1 := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
@@ -315,8 +318,11 @@ func TestInitKernelSelectors(t *testing.T) {
 	pid2 := &v1alpha1.PIDSelector{Operator: "NotIn", Values: []uint32{1, 2, 3, 4}, IsNamespacePID: false, FollowForks: false}
 	matchPids := []v1alpha1.PIDSelector{*pid1, *pid2}
 
-	act := &v1alpha1.ActionSelector{Action: "post_event"}
-	matchActions := []v1alpha1.ActionSelector{*act}
+	act1 := &v1alpha1.ActionSelector{Action: "post_event"}
+	act2 := &v1alpha1.ActionSelector{Action: "followfd",
+		ArgFd:   0,
+		ArgName: 1}
+	matchActions := []v1alpha1.ActionSelector{*act1, *act2}
 
 	selectors := []v1alpha1.KProbeSelector{
 		{

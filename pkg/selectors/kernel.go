@@ -61,15 +61,18 @@ func argSelectorValue(v string) ([]byte, uint32) {
 }
 
 const (
-	actionTypePost = 0
+	actionTypePost     = 0
+	actionTypeFollowFd = 1
 )
 
 var actionTypeTable = map[string]uint32{
 	"post_event": actionTypePost,
+	"followfd":   actionTypeFollowFd,
 }
 
 var actionTypeStringTable = map[uint32]string{
-	actionTypePost: "post_event",
+	actionTypePost:     "post_event",
+	actionTypeFollowFd: "followfd",
 }
 
 const (
@@ -300,6 +303,11 @@ func parseMatchAction(k *kernelSelectorState, action *v1alpha1.ActionSelector) e
 		return fmt.Errorf("parseMatchAction: actionType %s unknown\n", action.Action)
 	}
 	writeSelectorUint32(k, act)
+	switch act {
+	case actionTypeFollowFd:
+		writeSelectorUint32(k, action.ArgFd)
+		writeSelectorUint32(k, action.ArgName)
+	}
 	return nil
 }
 

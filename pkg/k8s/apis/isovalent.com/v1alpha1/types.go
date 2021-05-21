@@ -121,9 +121,15 @@ type ArgSelector struct {
 }
 
 type ActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;
+	// +kubebuilder:validation:Enum=Post;followFD;
 	// Action to execute.
 	Action string `json:"action"`
+	// +kubebuilder:validation:Optional
+	// An arg index for the fd for fdInstall action
+	ArgFd uint32 `json:"fd"`
+	// +kubebuilder:validation:Optional
+	// An arg index for the filename for fdInstall action
+	ArgName uint32 `json:"name"`
 }
 
 type TracepointSpec struct {
