@@ -266,6 +266,11 @@ long filter_char_buf(struct selector_arg_filter *filter, char *args)
 			asm volatile("%[postoff] &= 0x3f;\n" :: [postoff] "+r"(postoff):);
 		}
 
+		/* This is redundant, but seems we lost 'j' bounds from
+		 * above so at the moment its necessary until we improve
+		 * compiler.
+		 */
+		asm volatile("%[j] &= 0xff;\n" :: [j] "+r"(j):);
 		err = cmpbytes(&value[j+4], &args[4+postoff], length);
 		if (!err)
 			return 1;
@@ -401,8 +406,11 @@ int selector_arg_offset(__u8 *f,
 	  [t] "+r"(tmp)
 	::);
 
+	/* seloff must leave space for verifier to walk strings
+	 * so we set inside 4k maximum.
+	 */
 	seloff = selector + 8 + len;
-	if (seloff > 4000) {
+	if (seloff > 3800) {
 		return 0;
 	}
 	asm volatile("%[seloff] &= 0xeff;\n" :: [seloff] "+r"(seloff):);
