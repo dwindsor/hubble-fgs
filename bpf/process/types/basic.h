@@ -416,6 +416,9 @@ int selector_arg_offset(__u8 *f,
 	asm volatile("%[seloff] &= 0xeff;\n" :: [seloff] "+r"(seloff):);
 	filter = (struct selector_arg_filter *)&f[seloff];
 
+	if (filter->arglen <= 4) // no filters
+		return seloff;
+
 	index = filter->index;
 	if (index > 5)
 		return 0;

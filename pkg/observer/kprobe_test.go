@@ -695,6 +695,9 @@ spec:
       - operator: In
         followforks: true
         values:
-        - ` + pidStr
+        - ` + pidStr + `
+      matchactions:
+      - action: followfd
+     `
 	testKprobeObjectFiltered(t, readHook, doOpenTrace, false)
 }
