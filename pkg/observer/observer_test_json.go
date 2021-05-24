@@ -354,6 +354,26 @@ func compareKprobeFunction(a, b *fgs.ProcessKprobe) bool {
 				fmt.Printf("compare.SizeArg(%d): expected SizeArg type\n", i)
 				return false
 			}
+		case *fgs.KprobeArgument_BytesArg:
+			switch expected := a.Args[i].Arg.(type) {
+			case *fgs.KprobeArgument_BytesArg:
+				if len(ev.BytesArg) != len(expected.BytesArg) {
+					fmt.Printf("compare.BytesArg(%d): different lengths, expected '%s' found '%s'\n",
+						i, expected.BytesArg, ev.BytesArg)
+					return false
+				}
+				for j, b := range ev.BytesArg {
+					if b != expected.BytesArg[j] {
+						fmt.Printf("compare.ByteArg(%d): expected '%x' found '%x'\n",
+							i, b, expected.BytesArg[j])
+						return false
+					}
+				}
+			default:
+				fmt.Printf("compare.SizeArg(%d): expected SizeArg type\n", i)
+				return false
+			}
+
 		}
 	}
 	return true
