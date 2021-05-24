@@ -18,8 +18,9 @@ enum {
 	u32_ty = 13,
 
 	filename_ty = 14,
-	path_ty = 15,
-	file_ty = 16,
+	path_ty     = 15,
+	file_ty     = 16,
+	fd_ty       = 17,
 
 	nop_s64_ty = -10,
 	nop_u64_ty = -11,
@@ -233,7 +234,8 @@ long copy_char_buf(char *args, unsigned long arg, unsigned long argm)
 	probe_read(&bytes, sizeof(bytes), &argm);
 
 	/* Bound bytes <4095 to ensure bytes does not read past end of buffer */
-	err = probe_read(&args[4], bytes&0xfff, (char *)arg);
+	bytes &= 0xfff;
+	err = probe_read(&args[4], bytes, (char *)arg);
 	if (err < 0)
 		return return_error(s, char_buf_pagefault);
 	*s = (int)bytes;
@@ -492,10 +494,10 @@ int filter_args(struct msg_generic_kprobe *e,
 	return 0;
 }
 
-
 struct fdinstall_key {
 	__u64 tid;
-	__u64 fd;
+	__u32 fd;
+	__u32 pad;
 };
 
 struct fdinstall_value {
@@ -506,7 +508,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) fdinstall_map = {
 	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(struct fdinstall_key),
 	.value_size = sizeof(struct fdinstall_value),
-	.max_entries = 100,
+	.max_entries = 32000,
 };
 
 static inline __attribute__((always_inline))
@@ -526,7 +528,8 @@ void installfd(struct msg_generic_kprobe *e, int fd, int name)
 	}
 	fdoff = e->argsoff[fd];
 	asm volatile("%[fdoff] &= 0xeff;\n": [fdoff] "+r"(fdoff):);
-	key.fd = (__u32)e->args[fdoff];
+	key.pad = 0;
+	key.fd = *(__u32 *)&e->args[fdoff];
 	key.tid = get_current_pid_tgid();
 
 	asm volatile("%[name] &= 0xf;\n": [name] "+r"(name):);
@@ -687,6 +690,26 @@ long read_call_arg(struct msg_generic_kprobe *e,
 		// fallthrough to copy_path
 	case path_ty:
 		size = copy_path(args, arg);
+		break;
+	case fd_ty:
+		{
+		struct fdinstall_key key = {0};
+		struct fdinstall_value *val;
+		__u32 fd;
+
+		key.tid = get_current_pid_tgid();
+		probe_read(&fd, sizeof(__u32), &arg);
+		key.fd = fd;
+
+		val = map_lookup_elem(&fdinstall_map, &key);
+		if (val) {
+			__u32 bytes = (__u32)val->file[0];
+
+			asm volatile("%[bytes] &= 0xf;\n": [bytes] "+r"(bytes):);
+			probe_read(&args[0], bytes + 4, (char *)&val->file[0]);
+			size = bytes + 4;
+		}
+		}
 		break;
 	case filename_ty:
 		{

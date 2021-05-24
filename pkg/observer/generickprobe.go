@@ -32,6 +32,7 @@ const (
 	GenericKprobeFilenameType = 14
 	GenericKprobePathType     = 15
 	GenericKprobeFileType     = 16
+	GenericKprobeFdType       = 17
 )
 
 const (
@@ -78,6 +79,8 @@ func kprobeStrToTypeId(arg string) int {
 		return GenericKprobeFileType
 	case "path":
 		return GenericKprobePathType
+	case "fd":
+		return GenericKprobeFdType
 	case "nop":
 		return nopTypeId
 	default:
@@ -699,6 +702,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Value = k.handleGenericKprobeString(r)
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeFilenameType,
+			GenericKprobeFdType,
 			GenericKprobeStringType:
 			var b int32
 			var arg api.MsgGenericKprobeArgString

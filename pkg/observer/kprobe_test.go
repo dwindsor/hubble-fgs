@@ -328,6 +328,7 @@ func testKprobeObjectFiltered(t *testing.T,
 		fmt.Printf("File open from read failed: %s\n", errno)
 		t.Fatal()
 	}
+	syscall.Write(fd2, []byte("hello world"))
 	exitWG.Wait()
 	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
@@ -668,8 +669,6 @@ spec:
         followforks: true
         values:
         - ` + pidStr + `
-      matchactions:
-      - action: followfd
      `
 	testKprobeObjectFiltered(t, readHook, doOpenTrace, false)
 }
@@ -699,10 +698,71 @@ spec:
         followforks: true
         values:
         - ` + pidStr + `
+     `
+	testKprobeObjectFiltered(t, readHook, doOpenTrace, false)
+}
+
+var (
+	writeArg0 = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "/testfile/tmp"}}
+	writeArg1 = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{BytesArg: []byte("hello world")}}
+	writeArg2 = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 11}}
+
+	writeFileTrace = []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessKprobe{
+				ProcessKprobe: &fgs.ProcessKprobe{
+					Process:      &fgs.Process{Binary: selfBinary},
+					Parent:       &fgs.Process{Binary: ""},
+					FunctionName: "__x64_sys_write",
+					Args:         []*fgs.KprobeArgument{writeArg0, writeArg1, writeArg2},
+				},
+			},
+		},
+	}
+)
+
+func TestKprobeObjectFileWrite(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "fd_install"
+    return: false
+    syscall: false
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "file"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
       matchactions:
       - action: followfd
         argfd: 0
         argname: 1
-     `
-	testKprobeObjectFiltered(t, readHook, doOpenTrace, false)
+  - call: "__x64_sys_write"
+    syscall: true
+    args:
+    - index: 0
+      type: "fd"
+    - index: 1
+      type: "char_buf"
+      sizeargindex: 3
+    - index: 2
+      type: "size_t"
+    selectors:
+    - matchpids:
+      - operator: In
+        values:
+        - ` + pidStr + `
+`
+	testKprobeObjectFiltered(t, readHook, writeFileTrace, false)
 }
