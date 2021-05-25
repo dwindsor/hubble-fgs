@@ -66,6 +66,13 @@ int generic_process_event0(
 		errv = read_call_arg(e, 0, ty, total, a0, arg_meta, map);
 		if (errv > 0)
 			total += errv;
+		/* Follow filter lookup failed so lets abort the event.
+		 * From high-level this is a filter and should be in the
+		 * filter block, but its just easier to do here so lets
+		 * do it where it makes most sense.
+		 */
+		if (errv < 0)
+			return filter_args_reject();
 	}
 	e->common.flags = 0;
 	e->common.size = total;
@@ -169,6 +176,8 @@ int generic_process_event1(
 		errv = read_call_arg(e, 1, ty, total, a1, arg_meta, map);
 		if (errv > 0)
 			total += errv;
+		if (errv < 0)
+			return filter_args_reject();
 	}
 	e->common.size = total;
 	tail_call(ctx, tailcals, 2);
@@ -218,6 +227,8 @@ int generic_process_event2(
 		errv = read_call_arg(e, 2, ty, total, a2, arg_meta, map);
 		if (errv > 0)
 			total += errv;
+		if (errv < 0)
+			return filter_args_reject();
 	}
 	e->common.size = total;
 	tail_call(ctx, tailcals, 3);
@@ -268,6 +279,8 @@ int generic_process_event3(
 		errv = read_call_arg(e, 3, ty, total, a3, arg_meta, map);
 		if (errv > 0)
 			total += errv;
+		if (errv < 0)
+			return filter_args_reject();
 	}
 	e->common.size = total;
 	tail_call(ctx, tailcals, 4);
@@ -318,6 +331,8 @@ int generic_process_event4(
 		errv = read_call_arg(e, 4, ty, total, a4, arg_meta, map);
 		if (errv > 0)
 			total += errv;
+		if (errv < 0)
+			return filter_args_reject();
 	}
 	e->common.size = total;
 	/* Post event */
