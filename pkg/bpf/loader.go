@@ -617,14 +617,30 @@ void *generic_loader_args(
 	const int type)
 {
 	int map_fd, err, i, zero = 0;
-	char kprobe_calls_name[255];
-	struct bpf_map *map_bpf;
+	char map_name[255];
+	struct bpf_map *map_bpf, *map_fdinstall;
 	struct bpf_object *obj;
 	char *filter_map = "filter_map";
+	char *fdinstall_map = "fdinstall_map";
 
 	obj = __loader(version, verbosity, btf, prog, mapdir, 0, type);
 	if (!obj)
 		goto err;
+
+	map_fdinstall = bpf_object__find_map_by_name(obj, fdinstall_map);
+	if (map_fdinstall) {
+		snprintf(map_name, sizeof(map_name), "%s/fdinstall_map", mapdir);
+		bpf_map__unpin(map_fdinstall, map_name);
+		err = bpf_map__pin(map_fdinstall, map_name);
+		if (err < 0) {
+			fprintf(stderr, "bpf_map__pin: obj(%s) map(fd_map) failed: %i", map_name, err);
+			goto err;
+		}
+	} else {
+		fprintf(stderr, "bpf_object__find_map_by_name (%s): fdinstall_map failed\n",
+			fdinstall_map);
+		goto err;
+	}
 
 	map_fd = bpf_object__find_map_fd_by_name(obj, filter_map);
 	if (map_fd >= 0) {
@@ -638,12 +654,12 @@ void *generic_loader_args(
 
 	switch (type) {
 		case BPF_PROG_TYPE_KPROBE:
-			snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s-kp-calls", __prog);
+			snprintf(map_name, sizeof(map_name), "%s-kp-calls", __prog);
 			map_bpf = bpf_object__find_map_by_name(obj, "kprobe_calls");
 			break;
 
 		case BPF_PROG_TYPE_TRACEPOINT:
-			snprintf(kprobe_calls_name, sizeof(kprobe_calls_name), "%s-tp-calls", __prog);
+			snprintf(map_name, sizeof(map_name), "%s-tp-calls", __prog);
 			map_bpf = bpf_object__find_map_by_name(obj, "tp_calls");
 			break;
 
@@ -654,14 +670,13 @@ void *generic_loader_args(
 	if (!map_bpf) {
 		fprintf(stderr,
 			"bpf_object__find_map_by_name: generic loader args obj(%s) map(%s) failed: ",
-			prog, kprobe_calls_name);
+			prog, map_name);
 		goto err;
 	}
-
-	bpf_map__unpin(map_bpf, kprobe_calls_name);
-	err = bpf_map__pin(map_bpf, kprobe_calls_name);
+	bpf_map__unpin(map_bpf, map_name);
+	err = bpf_map__pin(map_bpf, map_name);
 	if (err < 0) {
-		fprintf(stderr, "bpf_map__pin: obj(%s) map(%s) failed: %i", prog, kprobe_calls_name, err);
+		fprintf(stderr, "bpf_map__pin: obj(%s) map(%s) failed: %i", prog, map_name, err);
 		goto err;
 	}
 
