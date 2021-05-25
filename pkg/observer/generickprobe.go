@@ -378,9 +378,11 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		f := kprobes[i]
 		var argSigPrinters []argPrinters
 		var argReturnPrinters []argPrinters
-		var is_syscall, is_retprobe bool
+		var setRetprobe, is_syscall bool
+		var argRetprobe *v1alpha1.KProbeArg
 		var argsBTFSet [api.MaxArgsSupported]bool
 
+		argRetprobe = nil // holds pointer to arg for return handler
 		funcName := f.Call
 
 		// Write args into BTF ptr for use with load
@@ -398,7 +400,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			}
 			argMValue := getMetaValue(&a)
 			if argMValue == argReturnCopy {
-				is_retprobe = true
+				argRetprobe = &f.Args[j]
 			}
 			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(int(a.Index)), argType)
 			if retVal < 0 {
@@ -416,7 +418,15 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			argSigPrinters = append(argSigPrinters, argP)
 		}
 
-		// Parse ReturnArg
+		// Parse ReturnArg, we have two types of return arg parsing. We
+		// support populating a kprobe buffer from kretprobe hooks. This
+		// is used to capture data that is populated by the function hoooked.
+		// For example Read calls supply a buffer to the syscall, but we
+		// wont have its contents until kretprobe is run. The other type is
+		// the f.Return case. These capture the return value of the function
+		// without context from the kprobe hook. The BTF argument 'argreturn'
+		// instructs the BPF kretprobe program which type of copy to use. And
+		// argReturnPrinters tell golang printer piece how to print the event.
 		if f.Return {
 			argType := kprobeStrToTypeId(f.ReturnArg.Type)
 			if argType == invalidTypeId {
@@ -431,6 +441,17 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			}
 			argsBTFSet[api.ReturnArgIndex] = true
 			argP := argPrinters{index: api.ReturnArgIndex, ty: argType}
+			argReturnPrinters = append(argReturnPrinters, argP)
+		} else if argRetprobe != nil {
+			retVal := bpf.AddEnumBtfValue(btf, argreturn, 0)
+			if retVal < 0 {
+				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d\n", argreturn, retVal)
+			}
+			argsBTFSet[api.ReturnArgIndex] = true
+			setRetprobe = true
+
+			argType := kprobeStrToTypeId(argRetprobe.Type)
+			argP := argPrinters{index: int(argRetprobe.Index), ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
 		}
 
@@ -460,8 +481,8 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 
 		// Write attributes into BTF ptr for use with load
 		is_syscall = f.Syscall
-		if !is_retprobe {
-			is_retprobe = f.Return
+		if !setRetprobe {
+			setRetprobe = f.Return
 		}
 
 		if is_syscall {
@@ -482,7 +503,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			loadArgs: kprobeLoadArgs{
 				filters:  kernelSelectors,
 				btf:      btf,
-				retprobe: is_retprobe,
+				retprobe: setRetprobe,
 				syscall:  is_syscall,
 			},
 			argSigPrinters:    argSigPrinters,
@@ -512,7 +533,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		load.loaderData = kprobeEntry.tableId
 		progs = append(progs, load)
 
-		if is_retprobe {
+		if setRetprobe {
 			loadret := &bpfLoad{}
 			loadret.observer__x64_attach = funcName
 			loadret.Observer__program = path.Join(HubbleLib, "bpf_generic_retkprobe.o")

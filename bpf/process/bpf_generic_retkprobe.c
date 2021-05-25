@@ -61,9 +61,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		int *s;
 
 		size = (int)ctx->ax;
-		if (size > 4000)
-			size = 0;
-		size &= 0x7fff;
+		size &= 0xfff;
 		s = (int *)&e->args[0];
 		*s = size;
 		/* tbd error check and signal to userland */
