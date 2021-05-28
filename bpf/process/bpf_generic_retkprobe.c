@@ -38,7 +38,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	__u64 tid;
 	__u32 pid, ppid;
 	long total = 0;
-	long size;
+	long size, orig_size;
 	unsigned long retprobe_buffer;
 	long ty;
 
@@ -60,13 +60,14 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	} else {
 		int *s;
 
-		size = (int)ctx->ax;
+		orig_size = size = (int)ctx->ax;
 		size &= 0xfff;
 		s = (int *)&e->args[0];
-		*s = size;
+		s[0] = size;
+		s[1] = orig_size;
 		/* tbd error check and signal to userland */
-		probe_read(&e->args[4], size, (char *)retprobe_buffer);
-		size +=4;
+		probe_read(&e->args[8], size, (char *)retprobe_buffer);
+		size +=8;
 	}
 	/* Complete message header and send */
 	enter = event_find_curr(&ppid, 0, &walker);

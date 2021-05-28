@@ -223,7 +223,7 @@ static inline __attribute__((always_inline))
 long copy_char_buf(char *args, unsigned long arg, unsigned long argm)
 {
 	int *s = (int *)args;
-	size_t bytes = 0;
+	size_t bytes = 0, rd_bytes;
 	int err;
 
 	if (argm == -1) {
@@ -234,12 +234,14 @@ long copy_char_buf(char *args, unsigned long arg, unsigned long argm)
 	probe_read(&bytes, sizeof(bytes), &argm);
 
 	/* Bound bytes <4095 to ensure bytes does not read past end of buffer */
-	bytes &= 0xfff;
-	err = probe_read(&args[4], bytes, (char *)arg);
+	rd_bytes = bytes;
+	rd_bytes &= 0xfff;
+	err = probe_read(&args[8], rd_bytes, (char *)arg);
 	if (err < 0)
 		return return_error(s, char_buf_pagefault);
-	*s = (int)bytes;
-	return bytes + 4;
+	s[0] = (int)bytes;
+	s[1] = (int)rd_bytes;
+	return rd_bytes + 8;
 }
 
 static inline __attribute__((always_inline))
@@ -302,13 +304,14 @@ long copy_char_iovec(char *args, unsigned long arg, unsigned long argm)
 	}
 
 	size = 0;
-	off += 4;
+	off += 8;
 	PARSE_IOVEC_ENTRIES // may return an error directly
 	/* PARSE_IOVEC_ENTRIES will jump here when done or return error */
 char_iovec_done:
 	s = (int *)args;
-	*s = size;
-	return size + 4;
+	s[0] = size;
+	s[1] = size;
+	return size + 8;
 }
 
 static inline __attribute__((always_inline))

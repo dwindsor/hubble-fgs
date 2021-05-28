@@ -282,7 +282,14 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 				Hash: e.Hash, Len: e.Len, Priority: e.Priority, Mark: e.Mark}
 			a.Arg = &fgs.KprobeArgument_SkbArg{SkbArg: skbArg}
 		case api.MsgGenericKprobeArgBytes:
-			a.Arg = &fgs.KprobeArgument_BytesArg{BytesArg: e.Value}
+			if e.OrigSize > uint64(len(e.Value)) {
+				a.Arg = &fgs.KprobeArgument_TruncatedBytesArg{&fgs.KprobeTruncatedBytes{
+					OrigSize: e.OrigSize,
+					BytesArg: e.Value,
+				}}
+			} else {
+				a.Arg = &fgs.KprobeArgument_BytesArg{BytesArg: e.Value}
+			}
 		case api.MsgGenericKprobeArgFile:
 			fileArg := &fgs.KprobeFile{
 				Path: reader.SwapPath(e.Value),
@@ -364,8 +371,13 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 				StringArg: v,
 			}})
 
+		case []byte:
+			fgsArgs = append(fgsArgs, &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{
+				BytesArg: v,
+			}})
+
 		default:
-			logger.GetLogger().Infof("handleGenericTracepointMessage: unhandled value: %+v (%T)", arg, arg)
+			logger.GetLogger().Warnf("handleGenericTracepointMessage: unhandled value: %+v (%T)", arg, arg)
 		}
 	}
 

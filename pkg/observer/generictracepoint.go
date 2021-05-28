@@ -473,7 +473,7 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 	unix.Subsys = tp.Info.Subsys
 	unix.Event = tp.Info.Event
 
-	for _, out := range tp.args {
+	for idx, out := range tp.args {
 
 		if out.nopTy {
 			continue
@@ -498,27 +498,12 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 			unix.Args = append(unix.Args, val)
 
 		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
-			var b int32
-
-			err := binary.Read(r, binary.LittleEndian, &b)
-			if err != nil {
-				k.log.WithError(err).Warnf("StringCharBuf size err")
-			}
-			if b > 0 {
-				outputStr := make([]byte, b)
-				err = binary.Read(r, binary.LittleEndian, &outputStr)
-				if err != nil {
-					k.log.WithError(err).Warnf("StringCharBuf size (%d) type err", b)
-				}
-				arg := string(outputStr[:])
-				unix.Args = append(unix.Args, arg)
-			} else if b == 0 {
-				arg := "return value expected"
-				unix.Args = append(unix.Args, arg)
+			if arg, err := k.readArgBytes(r, idx); err == nil {
+				unix.Args = append(unix.Args, arg.Value)
 			} else {
-				arg := kprobeCharBufErrorToString(b)
-				unix.Args = append(unix.Args, arg)
+				k.log.WithError(err).Warnf("failed to read bytes argument")
 			}
+
 		default:
 			k.log.Warnf("handleGenericTracepoint: ignoring:  %+v", out)
 		}

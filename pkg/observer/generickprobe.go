@@ -647,6 +647,40 @@ func (k *ObserverKprobe) handleGenericKprobeString(r *bytes.Reader) string {
 	return strVal
 }
 
+func (k *ObserverKprobe) readArgBytes(r *bytes.Reader, index int) (*api.MsgGenericKprobeArgBytes, error) {
+	var bytes, bytes_rd int32
+	var arg api.MsgGenericKprobeArgBytes
+
+	if err := binary.Read(r, binary.LittleEndian, &bytes); err != nil {
+		return nil, fmt.Errorf("failed to read original size for buffer argument: %w", err)
+	}
+
+	arg.Index = uint64(index)
+	// bpf-side returned an error
+	if bytes < 0 {
+		// NB: once we extended arguments to also pass errors, we can change
+		// this.
+		arg.Value = []byte(kprobeCharBufErrorToString(bytes))
+		return &arg, nil
+	}
+	arg.OrigSize = uint64(bytes)
+	if err := binary.Read(r, binary.LittleEndian, &bytes_rd); err != nil {
+		return nil, fmt.Errorf("failed to read size for buffer argument: %w", err)
+	}
+
+	if bytes_rd > 0 {
+		arg.Value = make([]byte, bytes_rd)
+		if err := binary.Read(r, binary.LittleEndian, &arg.Value); err != nil {
+			return nil, fmt.Errorf("failed to read buffer (size: %d): %w", bytes_rd, err)
+		}
+	}
+
+	// NB: there are cases (e.g., read()) where it is valid to have an
+	// empty (zero-length) buffer.
+	return &arg, nil
+
+}
+
 func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	m := api.MsgGenericKprobe{}
 	err := binary.Read(r, binary.LittleEndian, &m)
@@ -675,7 +709,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	} else {
 		printers = gk.argSigPrinters
 	}
-	for i, a := range printers {
+	for _, a := range printers {
 		switch a.ty {
 		case GenericKprobeIntType:
 			var output int32
@@ -726,36 +760,10 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Value = strVal
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
-			var b int32
-			var arg api.MsgGenericKprobeArgBytes
-
-			err := binary.Read(r, binary.LittleEndian, &b)
-			if err != nil {
-				k.log.WithError(err).Warnf("StringCharBuf size err")
-			}
-			if b > 0 {
-				outputBytes := make([]byte, b)
-				err = binary.Read(r, binary.LittleEndian, &outputBytes)
-				if err != nil {
-					k.log.WithError(err).Warnf("StringCharBuf size (%d) type err", b)
-				}
-
-				arg.Index = uint64(a.index)
-				arg.Value = outputBytes
-				unix.Args = append(unix.Args, arg)
-			} else if b == 0 {
-				arg.Index = uint64(i)
-				// NB: we used to have an error string here, but given things like
-				// read() where it is valid to have an empty (zero-length) buffer,
-				// we just return an empty byte buffer.
-				arg.Value = []byte{}
-				unix.Args = append(unix.Args, arg)
+			if arg, err := k.readArgBytes(r, a.index); err == nil {
+				unix.Args = append(unix.Args, *arg)
 			} else {
-				arg.Index = uint64(i)
-				// NB: once we extended arguments to also pass errors, we can change
-				// this.
-				arg.Value = []byte(kprobeCharBufErrorToString(b))
-				unix.Args = append(unix.Args, arg)
+				k.log.WithError(err).Warnf("failed to read bytes argument")
 			}
 		case GenericKprobeSkbType:
 			var skb api.MsgGenericKprobeSkb

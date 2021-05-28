@@ -47,8 +47,9 @@ func (m MsgGenericKprobeArgString) IsReturnArg() bool {
 }
 
 type MsgGenericKprobeArgBytes struct {
-	Index uint64
-	Value []byte
+	Index    uint64
+	OrigSize uint64 // if len(Value) < OrigSize, then the result was truncated
+	Value    []byte
 }
 
 func (m MsgGenericKprobeArgBytes) GetIndex() uint64 {

@@ -318,11 +318,11 @@ func TestGenericTracepointMeta(t *testing.T) {
 		if len(event.Args) != 2 {
 			return fmt.Errorf("Expecting single argument, but got %d", len(event.Args))
 		}
-		arg1_, ok := event.Args[1].GetArg().(*fgs.KprobeArgument_StringArg)
+		arg1_, ok := event.Args[1].GetArg().(*fgs.KprobeArgument_BytesArg)
 		if !ok {
 			return fmt.Errorf("Unexpected arg: %v", event.Args[1].GetArg())
 		}
-		arg1 := arg1_.StringArg
+		arg1 := string(arg1_.BytesArg)
 		if arg1 == "hello world" {
 			found = true
 		}
