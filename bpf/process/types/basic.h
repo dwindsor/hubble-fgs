@@ -32,6 +32,7 @@ enum {
 	char_buf_enomem = -1,
 	char_buf_pagefault = -2,
 	char_buf_toolarge = -3,
+	char_buf_saved_for_retprobe = -4,
 };
 
 struct skb_type {
@@ -229,7 +230,7 @@ long copy_char_buf(char *args, unsigned long arg, unsigned long argm)
 	if (argm == -1) {
 		u64 tid = get_current_pid_tgid();
 		retprobe_map_set(tid, arg);
-		return return_error(s, 0);
+		return return_error(s, char_buf_saved_for_retprobe);
 	}
 	probe_read(&bytes, sizeof(bytes), &argm);
 
@@ -296,7 +297,7 @@ long copy_char_iovec(char *args, unsigned long arg, unsigned long argm)
 	if (argm == -1) {
 		u64 tid = get_current_pid_tgid();
 		retprobe_map_set(tid, arg);
-			return return_error(s, 0);
+		return return_error(s, char_buf_saved_for_retprobe);
 	}
 	err = probe_read(&cnt, sizeof(cnt), &argm);
 	if (err < 0) {

@@ -109,9 +109,10 @@ const (
 )
 
 const (
-	CharBufErrorENOMEM    = -1
-	CharBufErrorPageFault = -2
-	CharBufErrorTooLarge  = -3
+	CharBufErrorENOMEM      = -1
+	CharBufErrorPageFault   = -2
+	CharBufErrorTooLarge    = -3
+	CharBufSavedForRetprobe = -4
 )
 
 func kprobeCharBufErrorToString(e int32) string {
@@ -656,6 +657,9 @@ func (k *ObserverKprobe) readArgBytes(r *bytes.Reader, index int) (*api.MsgGener
 	}
 
 	arg.Index = uint64(index)
+	if bytes == CharBufSavedForRetprobe {
+		return &arg, nil
+	}
 	// bpf-side returned an error
 	if bytes < 0 {
 		// NB: once we extended arguments to also pass errors, we can change
