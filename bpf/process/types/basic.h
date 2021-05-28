@@ -672,9 +672,10 @@ long read_call_arg(struct msg_generic_kprobe *e,
 	char *args = e->args;
 	long size = -1;
 
-	if (orig_off >= 4095 - min_size)
+	if (orig_off >= 16383 - min_size) {
 		return 0;
-	asm volatile("%[orig_off] &= 0xfff;\n" :: [orig_off] "+r"(orig_off):);
+	}
+	asm volatile("%[orig_off] &= 0x3fff;\n" :: [orig_off] "+r"(orig_off):);
 	args += orig_off;
 
 	/* Cache args offset for filter use later */
