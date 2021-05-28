@@ -147,6 +147,11 @@ message KprobeFile {
     string path  = 2;
 }
 
+message KprobeTruncatedBytes {
+	bytes bytes_arg = 1;
+	uint64 orig_size = 2;
+}
+
 message KprobeArgument {
     oneof arg {
 	string    string_arg = 1;
@@ -156,6 +161,7 @@ message KprobeArgument {
 	bytes     bytes_arg = 5;
 	KprobePath path_arg = 6;
 	KprobeFile file_arg = 7;
+	KprobeTruncatedBytes truncated_bytes_arg = 8;
     }
 }
 
