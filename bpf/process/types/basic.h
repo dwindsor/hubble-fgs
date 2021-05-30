@@ -553,6 +553,39 @@ void installfd(struct msg_generic_kprobe *e, int fd, int name)
 	map_update_elem(&fdinstall_map, &key, &val, BPF_ANY);
 }
 
+static inline __attribute__((always_inline))
+long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *actions)
+{
+	int fdi, namei;
+
+	switch (actions->act[i]) {
+	case ACTION_FOLLOWFD:
+		fdi = actions->act[++i];
+		namei = actions->act[++i];
+		installfd(e, fdi, namei);
+		break;
+	default:
+		break;
+	}
+	return ++i;
+}
+
+static inline __attribute__((always_inline))
+long do_actions(struct msg_generic_kprobe *e, struct selector_action *actions)
+{
+	long i = 0, cntr = (actions->actionlen - 4) / 4;
+
+	asm volatile("%[cntr] &= 0x3;\n": [cntr] "+r"(cntr):);
+
+	/* Clang really doesn't want to unwind a loop here. */
+	i = __do_action(i, e, actions);
+	if (i > cntr)
+		goto out;
+	i = __do_action(i, e, actions);
+out:
+	return true;
+}
+
 #define MAX_SELECTORS 8
 
 static inline __attribute__((always_inline))
@@ -563,7 +596,6 @@ long filter_read_arg(void *ctx, int index,
 {
 	struct msg_generic_kprobe *e;
 	int pass, zero = 0;
-	bool postit = true;
 	size_t total;
 
 	e = map_lookup_elem(heap, &zero);
@@ -587,69 +619,29 @@ long filter_read_arg(void *ctx, int index,
 		__u8 *f;
 
 		f = map_lookup_elem(filter, &zero);
-		if (!f)
-			goto dopost;
+		if (f) {
+			bool postit;
 
-		asm volatile("%[pass] &= 0xeff;\n": [pass] "+r"(pass):);
-		arg = (struct selector_arg_filter *)&f[pass];
+			asm volatile("%[pass] &= 0xeff;\n": [pass] "+r"(pass):);
+			arg = (struct selector_arg_filter *)&f[pass];
 
-		actoff = pass + arg->arglen;
-		asm volatile("%[actoff] &= 0xeff;\n": [actoff] "+r"(actoff):);
-		actions = (struct selector_action *)&f[actoff];
+			actoff = pass + arg->arglen;
+			asm volatile("%[actoff] &= 0xeff;\n": [actoff] "+r"(actoff):);
+			actions = (struct selector_action *)&f[actoff];
 
-		long cntr = (actions->actionlen - 4) / 4;
-		asm volatile("%[cntr] &= 0x3;\n": [cntr] "+r"(cntr):);
-		/* Expect no more than two actions. */
-		{
-			long i = 0;
-			__u32 act = actions->act[i];
-
-			// JF: remove this duplicate with a function but
-			// for now lets not fight with verifier.
-			switch (act) {
-			case ACTION_POST:
-				postit = true;
-				break;
-			case ACTION_FOLLOWFD:
-				{
-				int fdi = actions->act[++i];
-				int namei = actions->act[++i];
-				installfd(e, fdi, namei);
-				break;
-				}
-			default:
-				goto dopost;
-			}
-
-			if (i+1 > cntr)
-				goto dopost;
-
-			act = actions->act[++i];
-			switch (act) {
-			case ACTION_POST:
-				postit = true;
-				break;
-			case ACTION_FOLLOWFD:
-				{
-				int fdi = actions->act[++i];
-				int namei = actions->act[++i];
-				installfd(e, fdi, namei);
-				break;
-				}
-			default:
-				goto dopost;
-			}
+			postit = do_actions(e, actions);
+			if (!postit)
+				return 1;
 		}
 	}
-dopost:
+
 	total = e->common.size + generic_kprobe_common_size();
 	/* Code movement from clang forces us to inline bounds checks here */
 	asm volatile("%[total] &= 0x7fff;\n"
 		"if %[total] < 9000 goto +1\n;"
 		"%[total] = 9000;\n"
 		: : [total] "+r"(total):);
-	if (postit)
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
 	return 1;
 }
 
