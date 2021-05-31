@@ -7,7 +7,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/covalentio/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
 )
 
 var (

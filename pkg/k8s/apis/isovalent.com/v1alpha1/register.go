@@ -15,7 +15,7 @@
 package v1alpha1
 
 import (
-	isovalentcom "github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com"
+	isovalentcom "github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/apimachinery/pkg/runtime/schema"

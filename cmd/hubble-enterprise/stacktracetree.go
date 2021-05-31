@@ -19,7 +19,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 
 	"github.com/spf13/cobra"
 )

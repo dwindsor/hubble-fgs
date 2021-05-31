@@ -24,7 +24,7 @@ $ kubectl apply -f hubble-btf-pvc.yaml
 (3) Copy BTF to disk
 
 $ gcloud beta compute --project $PROJECT scp --zone "us-west1-a" \
-     ~/go/src/github.com/covalentio/hubble-fgs/contrib/vmlinux-builder/btf \
+     ~/go/src/github.com/isovalent/hubble-fgs/contrib/vmlinux-builder/btf \
      gke-my-cluster-default-pool-ab1fc632-f7dc:/var/lib/hubble-fgs/btf/
 
 (4) Add mount to hubble.yaml

@@ -19,7 +19,7 @@ import (
 	"testing"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 )

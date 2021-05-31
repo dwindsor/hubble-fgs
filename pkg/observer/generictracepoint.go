@@ -21,11 +21,11 @@ import (
 	"fmt"
 	"path"
 
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/bpf"
-	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/covalentio/hubble-fgs/pkg/selectors"
-	"github.com/covalentio/hubble-fgs/pkg/tracepoint"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/selectors"
+	"github.com/isovalent/hubble-fgs/pkg/tracepoint"
 )
 
 const (

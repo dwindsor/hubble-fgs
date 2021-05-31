@@ -20,13 +20,13 @@ import (
 
 	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/bpf"
-	"github.com/covalentio/hubble-fgs/pkg/cilium"
-	fgsGrpc "github.com/covalentio/hubble-fgs/pkg/grpc"
-	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
-	"github.com/covalentio/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
+	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 

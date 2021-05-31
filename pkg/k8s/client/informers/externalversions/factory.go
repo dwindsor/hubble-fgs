@@ -9,9 +9,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/covalentio/hubble-fgs/pkg/k8s/client/clientset/versioned"
-	internalinterfaces "github.com/covalentio/hubble-fgs/pkg/k8s/client/informers/externalversions/internalinterfaces"
-	isovalentcom "github.com/covalentio/hubble-fgs/pkg/k8s/client/informers/externalversions/isovalent.com"
+	versioned "github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
+	internalinterfaces "github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/internalinterfaces"
+	isovalentcom "github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/isovalent.com"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

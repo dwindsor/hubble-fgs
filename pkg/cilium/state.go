@@ -25,7 +25,7 @@ import (
 	"github.com/cilium/hubble/pkg/fqdncache"
 	"github.com/cilium/hubble/pkg/ipcache"
 	"github.com/cilium/hubble/pkg/servicecache"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 func GetCiliumState(enableCiliumAPI bool, ctx context.Context) (*cilium.State, error) {

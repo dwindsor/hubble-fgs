@@ -25,7 +25,7 @@ import (
 	"syscall"
 	"unsafe"
 
-	"github.com/covalentio/hubble-fgs/pkg/lock"
+	"github.com/isovalent/hubble-fgs/pkg/lock"
 
 	"golang.org/x/sys/unix"
 )

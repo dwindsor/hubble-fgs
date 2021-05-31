@@ -17,7 +17,7 @@ package filters
 import (
 	"testing"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 )

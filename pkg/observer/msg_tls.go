@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
 func (k *ObserverKprobe) handleTls(r *bytes.Reader) {

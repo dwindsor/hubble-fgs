@@ -8,8 +8,8 @@ import (
 	"os/signal"
 	"time"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"

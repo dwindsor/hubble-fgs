@@ -14,8 +14,8 @@ import (
 	"strings"
 	"unicode/utf8"
 
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 func stringToUTF8(s []byte) []byte {

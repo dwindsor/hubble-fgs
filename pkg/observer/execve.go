@@ -6,8 +6,8 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
 )
 
 type ExecveKey struct {

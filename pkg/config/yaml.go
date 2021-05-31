@@ -17,7 +17,7 @@ package config
 import (
 	"io/ioutil"
 
-	"github.com/covalentio/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"gopkg.in/yaml.v2"
 )
 

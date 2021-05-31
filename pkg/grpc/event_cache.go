@@ -5,9 +5,9 @@ import (
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/metrics"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/sirupsen/logrus"
 )

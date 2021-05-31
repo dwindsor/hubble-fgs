@@ -19,7 +19,7 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 )
 
 /* pidSet is the set of pids we are interested in receiving events

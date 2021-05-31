@@ -7,5 +7,5 @@ description: Helm chart for the Hubble FGS
 keywords:
   - fgs
 sources:
-  - https://github.com/covalentio/hubble-fgs
+  - https://github.com/isovalent/hubble-fgs
 engine: gotpl

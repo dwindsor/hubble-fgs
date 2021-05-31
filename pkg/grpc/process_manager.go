@@ -10,17 +10,17 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/hubble/pkg/cilium"
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/filters"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
-	"github.com/covalentio/hubble-fgs/pkg/metrics"
-	"github.com/covalentio/hubble-fgs/pkg/reader"
 	"github.com/golang/protobuf/proto"
 	"github.com/golang/protobuf/ptypes"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/filters"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/metrics"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/sirupsen/logrus"
 	coreV1 "k8s.io/api/core/v1"
 )
@@ -52,7 +52,7 @@ type ProcessManager struct {
 // getNodeNameForExport returns node name string for JSON export. It uses NODE_NAME
 // env variable by default, which is also used by k8s watcher to watch for local pods:
 //
-//   https://github.com/covalentio/hubble-fgs/blob/a7be620c9fecdc2b693e3633506aca35d46cd3b2/pkg/grpc/watcher.go#L32
+//   https://github.com/isovalent/hubble-fgs/blob/a7be620c9fecdc2b693e3633506aca35d46cd3b2/pkg/grpc/watcher.go#L32
 //
 // Set HUBBLE_NODE_NAME to override the node_name field for JSON export.
 func getNodeNameForExport() string {

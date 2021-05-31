@@ -18,9 +18,9 @@ import (
 	"errors"
 	"fmt"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
-	stt "github.com/covalentio/hubble-fgs/pkg/stacktracetree"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	stt "github.com/isovalent/hubble-fgs/pkg/stacktracetree"
 )
 
 // StackTrace Tree Manager

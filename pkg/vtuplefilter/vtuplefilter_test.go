@@ -3,7 +3,7 @@ package vtuplefilter
 import (
 	"testing"
 
-	"github.com/covalentio/hubble-fgs/pkg/vtuple"
+	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 )
 
 type VTRes struct {

@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/covalentio/hubble-fgs/pkg/vtuple"
+	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 )
 
 type Port = uint16

@@ -24,7 +24,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 
 	lru "github.com/hashicorp/golang-lru"
 )

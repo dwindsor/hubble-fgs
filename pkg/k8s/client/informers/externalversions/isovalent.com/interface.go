@@ -5,8 +5,8 @@
 package isovalent
 
 import (
-	internalinterfaces "github.com/covalentio/hubble-fgs/pkg/k8s/client/informers/externalversions/internalinterfaces"
-	v1alpha1 "github.com/covalentio/hubble-fgs/pkg/k8s/client/informers/externalversions/isovalent.com/v1alpha1"
+	internalinterfaces "github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/internalinterfaces"
+	v1alpha1 "github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/isovalent.com/v1alpha1"
 )
 
 // Interface provides access to each of this group's versions.

@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	fgsAPI "github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/cilium"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/sirupsen/logrus"

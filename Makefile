@@ -10,10 +10,10 @@ CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
 LIBBPF_INSTALL_DIR ?= ./lib
 CLANG_INSTALL_DIR  ?= ./bin
 VERSION=$(shell git describe --tags --always)
-GO_LDFLAGS="-X 'github.com/covalentio/hubble-fgs/pkg/version.Version=$(VERSION)'"
-GO_IMAGE_LDFLAGS="-X 'github.com/covalentio/hubble-fgs/pkg/version.Version=$(VERSION)' -linkmode external -extldflags -static"
+GO_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Version=$(VERSION)'"
+GO_IMAGE_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Version=$(VERSION)' -linkmode external -extldflags -static"
 
-KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/covalentio/hubble-fgs -v /proc:/procRoot covalentio/hubble-fgs-test
+KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/isovalent/hubble-fgs -v /proc:/procRoot isovalent/hubble-fgs-test
 
 
 all: hubble-bpf hubble-fgs hubble-enterprise test-compile
@@ -88,19 +88,19 @@ lint:
 	golint -set_exit_status $$(go list ./...)
 
 image:
-	$(CONTAINER_ENGINE) build -t "covalentio/hubble-fgs:${DOCKER_IMAGE_TAG}" .
+	$(CONTAINER_ENGINE) build -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
-	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs:$(DOCKER_IMAGE_TAG)"
+	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
 
 image-btf:
-	$(CONTAINER_ENGINE) build -f Dockerfile.btf -t "covalentio/hubble-fgs:${DOCKER_IMAGE_TAG}" .
+	$(CONTAINER_ENGINE) build -f Dockerfile.btf -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
-	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs:$(DOCKER_IMAGE_TAG)"
+	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
 
 image-test:
-	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "covalentio/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
+	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
-	$(QUIET)echo "${CONTAINER_ENGINE} push covalentio/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
+	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
 
 libbpf-install:
 	$(eval id=$(shell docker create $(LIBBPF_IMAGE)))
@@ -125,8 +125,8 @@ quick-install:
 generate:
 	./tools/controller-gen crd paths=./pkg/k8s/apis/... output:dir=./crds
 	bash vendor/k8s.io/code-generator/generate-groups.sh all \
-	  github.com/covalentio/hubble-fgs/pkg/k8s/client \
-	  github.com/covalentio/hubble-fgs/pkg/k8s/apis \
+	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
+	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
 	  isovalent.com:v1alpha1 \
 	  --go-header-file hack/custom-boilerplate.go.txt
 

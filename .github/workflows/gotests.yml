@@ -9,7 +9,7 @@ jobs:
     steps:
     - uses: actions/checkout@master
       with:
-        path: go/src/github.com/covalentio/hubble-fgs/
+        path: go/src/github.com/isovalent/hubble-fgs/
     - uses: actions/setup-go@v1
       with:
         go-version: '1.16'
@@ -21,7 +21,7 @@ jobs:
         sudo apt install libelf-dev netcat-traditional
         export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
-        cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs
+        cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs
         sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
         sudo -E ldconfig /usr/local/
         sudo sed -i '/secure_path/d' /etc/sudoers
@@ -34,7 +34,7 @@ jobs:
         sudo -E echo "run go tests: " `uname -a`
         sudo -E go mod verify
         sudo -E GO111MODULE=off go get -u golang.org/x/lint/golint
-        export FGS_LIB="/home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/covalentio/hubble-fgs/bpf/objs/"
+        export FGS_LIB="/home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs/bpf/objs/"
         sudo -E make test
     - name: Upload FGS logs
       if: failure()

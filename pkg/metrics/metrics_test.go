@@ -18,9 +18,9 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )

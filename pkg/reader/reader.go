@@ -25,7 +25,7 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )

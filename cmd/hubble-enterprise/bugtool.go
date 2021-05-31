@@ -14,7 +14,7 @@
 package main
 
 import (
-	"github.com/covalentio/hubble-fgs/pkg/bugtool"
+	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 
 	"github.com/spf13/cobra"
 )

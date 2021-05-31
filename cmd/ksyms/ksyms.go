@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/covalentio/hubble-fgs/pkg/ksyms"
+	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 )
 
 // NB: I should do proper tests but for now, I do something like:

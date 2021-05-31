@@ -1,4 +1,4 @@
-module github.com/covalentio/hubble-fgs
+module github.com/isovalent/hubble-fgs
 
 go 1.16
 

@@ -7,7 +7,7 @@ import (
 	"strings"
 	"time"
 
-	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	"k8s.io/apimachinery/pkg/util/wait"

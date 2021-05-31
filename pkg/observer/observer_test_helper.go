@@ -14,10 +14,10 @@ import (
 	"testing"
 	"time"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	"github.com/covalentio/hubble-fgs/pkg/filters"
-	fgsGrpc "github.com/covalentio/hubble-fgs/pkg/grpc"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/filters"
+	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 
 	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
 	"golang.org/x/sys/unix"

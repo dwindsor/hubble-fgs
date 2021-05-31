@@ -1,1 +1,1 @@
-docker build -f Dockerfile.dev -t "covalentio/hubble-fgs-dev:latest" .
+docker build -f Dockerfile.dev -t "isovalent/hubble-fgs-dev:latest" .

@@ -17,7 +17,7 @@ package api
 import (
 	"encoding/binary"
 
-	"github.com/covalentio/hubble-fgs/pkg/vtuple"
+	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 )
 
 const (

@@ -1,7 +1,7 @@
 package observer
 
 import (
-	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api"
 
 	"fmt"
 )

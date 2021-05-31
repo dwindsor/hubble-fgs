@@ -19,12 +19,12 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/covalentio/hubble-fgs/pkg/api"
-	"github.com/covalentio/hubble-fgs/pkg/ksyms"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
-	stt "github.com/covalentio/hubble-fgs/pkg/stacktracetree"
-	"github.com/covalentio/hubble-fgs/pkg/vtuple"
-	"github.com/covalentio/hubble-fgs/pkg/vtuplefilter"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ksyms"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	stt "github.com/isovalent/hubble-fgs/pkg/stacktracetree"
+	"github.com/isovalent/hubble-fgs/pkg/vtuple"
+	"github.com/isovalent/hubble-fgs/pkg/vtuplefilter"
 )
 
 var (

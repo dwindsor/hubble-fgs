@@ -19,8 +19,8 @@ import (
 	"log"
 	"strings"
 
-	"github.com/covalentio/hubble-fgs/api/v1/fgs"
-	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/api"
 )
 
 // Addr is an Address on the stacktrace tree

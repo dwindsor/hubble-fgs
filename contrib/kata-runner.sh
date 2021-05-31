@@ -2,14 +2,14 @@
 
 FGS_DIR=$(realpath $(dirname $0)/..)
 
-CONTAINER_REPO="covalentio"
+CONTAINER_REPO="isovalent"
 CONTAINER_FGS="${CONTAINER_REPO}/hubble-fgs"
 CONTAINER_TEST="${CONTAINER_REPO}/hubble-fgs-test"
 CONTAINER_DEV="${CONTAINER_REPO}/hubble-fgs-dev"
 CONTAINER_NAME="kata-fgs"
 
 btf="/var/lib/kata-containers/images/btf"
-container="covalentio/hubble-fgs"
+container="isovalent/hubble-fgs"
 opt_test=0
 
 usage() {
@@ -62,7 +62,7 @@ while getopts "hdtc:sexlDb:" opt; do
            opt_arg=true
 	   ;;
         l)
-	    docker_volumes="$docker_volumes -v ${FGS_DIR}:/go/src/github.com/covalentio/hubble-fgs"
+	    docker_volumes="$docker_volumes -v ${FGS_DIR}:/go/src/github.com/isovalent/hubble-fgs"
             ;;
 
         D)

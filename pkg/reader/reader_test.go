@@ -18,7 +18,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/covalentio/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api"
 )
 
 func TestDecodeCommonFlags(t *testing.T) {

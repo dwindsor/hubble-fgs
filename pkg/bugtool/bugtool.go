@@ -31,8 +31,8 @@ import (
 	"strings"
 	"time"
 
-	"github.com/covalentio/hubble-fgs/pkg/defaults"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/defaults"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 
 	"github.com/sirupsen/logrus"
 	"github.com/vishvananda/netlink"

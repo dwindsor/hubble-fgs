@@ -24,9 +24,9 @@ import (
 	"sync"
 	"syscall"
 
-	"github.com/covalentio/hubble-fgs/pkg/defaults"
-	"github.com/covalentio/hubble-fgs/pkg/logger"
-	"github.com/covalentio/hubble-fgs/pkg/mountinfo"
+	"github.com/isovalent/hubble-fgs/pkg/defaults"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
 	"golang.org/x/sys/unix"
 )
 

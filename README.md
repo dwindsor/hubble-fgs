@@ -40,12 +40,12 @@ To test locally:
 
 To run tests in docker:
 
-    docker run -ti --name test --privileged -v $GOPATH/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs covalentio/hubble-fgs-test
+    docker run -ti --name test --privileged -v $GOPATH/src/github.com/isovalent/hubble-fgs:/go/src/github.com/isovalent/hubble-fgs isovalent/hubble-fgs-test
 
 To use kata containers for testing, please have a look at
-[`hubble-builder/kata-tester`](https://github.com/covalentio/hubble-builder/tree/master/kata-tester),
+[`hubble-builder/kata-tester`](https://github.com/isovalent/hubble-builder/tree/master/kata-tester),
 which is also where the [`kata-img`
-script](https://github.com/covalentio/hubble-builder/blob/master/kata-tester/contrib/kata-img)
+script](https://github.com/isovalent/hubble-builder/blob/master/kata-tester/contrib/kata-img)
 can be found.
 
 To run tests in kata-container with hosted kernel we can use kata-img to see
@@ -61,8 +61,8 @@ tests,
 
     docker run --runtime=kata-runtime -ti --name test --cap-add all --ulimit memlock=-1:-1 \
         -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf \
-        -v $GOPATH/src/github.com/covalentio/hubble-fgs:/go/src/github.com/covalentio/hubble-fgs \
-        -v /proc:/procRoot covalentio/hubble-fgs-test
+        -v $GOPATH/src/github.com/isovalent/hubble-fgs:/go/src/github.com/isovalent/hubble-fgs \
+        -v /proc:/procRoot isovalent/hubble-fgs-test
 
 Some environment variables impact where fgs will look for procFS and BTF data.
 The defaults are,
