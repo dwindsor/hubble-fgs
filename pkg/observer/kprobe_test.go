@@ -703,9 +703,10 @@ spec:
 }
 
 var (
-	writeArg0 = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "/testfile/tmp"}}
-	writeArg1 = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{BytesArg: []byte("hello world")}}
-	writeArg2 = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 11}}
+	writeArg0File = &fgs.KprobeFile{Path: "tmp/testfile"}
+	writeArg0     = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_FileArg{FileArg: writeArg0File}}
+	writeArg1     = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{BytesArg: []byte("hello world")}}
+	writeArg2     = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 11}}
 
 	writeFileTrace = []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{

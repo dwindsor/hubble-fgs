@@ -727,7 +727,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobeFileType:
+		case GenericKprobeFileType, GenericKprobeFdType:
 			var arg api.MsgGenericKprobeArgFile
 
 			arg.Index = uint64(a.index)
@@ -740,7 +740,6 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Value = k.handleGenericKprobeString(r)
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeFilenameType,
-			GenericKprobeFdType,
 			GenericKprobeStringType:
 			var b int32
 			var arg api.MsgGenericKprobeArgString
