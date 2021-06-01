@@ -791,6 +791,11 @@ spec:
         followforks: true
         values:
         - ` + pidStr + `
+      matchargs:
+      - index: 1
+        operator: "Equal"
+        values:
+        - "tmp/testfile"
       matchactions:
       - action: followfd
         argfd: 0

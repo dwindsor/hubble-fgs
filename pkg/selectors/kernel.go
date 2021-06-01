@@ -90,7 +90,8 @@ const (
 	argTypeS32 = 12
 	argTypeU32 = 13
 
-	argTypeFd = 17
+	argTypeFile = 16
+	argTypeFd   = 17
 )
 
 var argTypeTable = map[string]uint32{
@@ -105,6 +106,7 @@ var argTypeTable = map[string]uint32{
 	"skb":        argTypeSkb,
 	"string":     argTypeString,
 	"fd":         argTypeFd,
+	"file":       argTypeFile,
 }
 
 var argTypeStringTable = map[uint32]string{
@@ -119,6 +121,7 @@ var argTypeStringTable = map[uint32]string{
 	argTypeSkb:       "skb",
 	argTypeString:    "string",
 	argTypeFd:        "fd",
+	argTypeFile:      "file",
 }
 
 const (
@@ -246,7 +249,7 @@ func argSelectorType(arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) (uint3
 func parseMatchValues(k *kernelSelectorState, values []string, ty uint32) error {
 	for _, v := range values {
 		switch ty {
-		case argTypeFd:
+		case argTypeFd, argTypeFile:
 			mnt := "/"
 			swapV := mnt + reader.SwapPath(v)
 			value, size := argSelectorValue(swapV)
