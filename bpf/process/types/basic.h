@@ -364,6 +364,7 @@ static inline __attribute__((always_inline))
 size_t type_to_min_size(int type)
 {
 	switch (type) {
+	case fd_ty:
 	case string_type:
 		return MAX_STRING;
 	case int_type:
@@ -436,6 +437,7 @@ int selector_arg_offset(__u8 *f,
 	args = &e->args[argoff];
 
 	switch (filter->type) {
+	case fd_ty:
 	case string_type:
 	case char_buf:
 		pass = filter_char_buf(filter, args);

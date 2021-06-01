@@ -766,3 +766,54 @@ spec:
 `
 	testKprobeObjectFiltered(t, readHook, writeFileTrace, false)
 }
+
+func TestKprobeObjectFileWriteFiltered(t *testing.T) {
+	pidStr := strconv.Itoa(int(getMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "fd_install"
+    return: false
+    syscall: false
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "file"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
+      matchactions:
+      - action: followfd
+        argfd: 0
+        argname: 1
+  - call: "__x64_sys_write"
+    syscall: true
+    args:
+    - index: 0
+      type: "fd"
+    - index: 1
+      type: "char_buf"
+      sizeargindex: 3
+    - index: 2
+      type: "size_t"
+    selectors:
+    - matchpids:
+      - operator: In
+        values:
+        - ` + pidStr + `
+      matchargs:
+      - index: 0
+        operator: "Equal"
+        values:
+        - "/testfile/tmp"
+`
+	testKprobeObjectFiltered(t, readHook, writeFileTrace, false)
+}

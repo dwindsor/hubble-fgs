@@ -88,6 +88,8 @@ const (
 	argTypeU64 = 11
 	argTypeS32 = 12
 	argTypeU32 = 13
+
+	argTypeFd = 17
 )
 
 var argTypeTable = map[string]uint32{
@@ -101,6 +103,7 @@ var argTypeTable = map[string]uint32{
 	"sizet":      argTypeSizet,
 	"skb":        argTypeSkb,
 	"string":     argTypeString,
+	"fd":         argTypeFd,
 }
 
 var argTypeStringTable = map[uint32]string{
@@ -114,6 +117,7 @@ var argTypeStringTable = map[uint32]string{
 	argTypeSizet:     "sizet",
 	argTypeSkb:       "skb",
 	argTypeString:    "string",
+	argTypeFd:        "fd",
 }
 
 const (
@@ -241,7 +245,7 @@ func argSelectorType(arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) (uint3
 func parseMatchValues(k *kernelSelectorState, values []string, ty uint32) error {
 	for _, v := range values {
 		switch ty {
-		case argTypeString, argTypeCharBuf:
+		case argTypeFd, argTypeString, argTypeCharBuf:
 			value, size := argSelectorValue(v)
 			writeSelectorUint32(k, size)
 			writeSelectorByteArray(k, value, size)
