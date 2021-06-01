@@ -20,6 +20,7 @@ import (
 	"strconv"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
 type kernelSelectorState struct {
@@ -245,7 +246,13 @@ func argSelectorType(arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) (uint3
 func parseMatchValues(k *kernelSelectorState, values []string, ty uint32) error {
 	for _, v := range values {
 		switch ty {
-		case argTypeFd, argTypeString, argTypeCharBuf:
+		case argTypeFd:
+			mnt := "/"
+			swapV := mnt + reader.SwapPath(v)
+			value, size := argSelectorValue(swapV)
+			writeSelectorUint32(k, size)
+			writeSelectorByteArray(k, value, size)
+		case argTypeString, argTypeCharBuf:
 			value, size := argSelectorValue(v)
 			writeSelectorUint32(k, size)
 			writeSelectorByteArray(k, value, size)

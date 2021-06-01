@@ -814,7 +814,7 @@ spec:
       - index: 0
         operator: "Equal"
         values:
-        - "/testfile/tmp"
+        - "tmp/testfile"
 `
 	testKprobeObjectFiltered(t, readHook, writeFileTrace, false)
 }
