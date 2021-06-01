@@ -45,6 +45,12 @@ struct skb_type {
 enum {
 	ACTION_POST = 0,
 	ACTION_FOLLOWFD = 1,
+	/* Actual SIGKILL value, but we dont want to pull headers in */
+	ACTION_SIGKILL = 2,
+};
+
+enum {
+	FGS_SIGKILL = 9,
 };
 
 struct selector_action {
@@ -567,6 +573,9 @@ long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *a
 		fdi = actions->act[++i];
 		namei = actions->act[++i];
 		installfd(e, fdi, namei);
+		break;
+	case ACTION_SIGKILL:
+		send_signal(FGS_SIGKILL);
 		break;
 	default:
 		break;

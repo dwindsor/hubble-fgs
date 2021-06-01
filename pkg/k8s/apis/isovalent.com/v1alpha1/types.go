@@ -121,7 +121,7 @@ type ArgSelector struct {
 }
 
 type ActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;followFD;
+	// +kubebuilder:validation:Enum=Post;followFD;SigKill
 	// Action to execute.
 	Action string `json:"action"`
 	// +kubebuilder:validation:Optional

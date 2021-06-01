@@ -64,16 +64,19 @@ func argSelectorValue(v string) ([]byte, uint32) {
 const (
 	actionTypePost     = 0
 	actionTypeFollowFd = 1
+	actionTypeSigKill  = 2
 )
 
 var actionTypeTable = map[string]uint32{
 	"post_event": actionTypePost,
 	"followfd":   actionTypeFollowFd,
+	"sigkill":    actionTypeSigKill,
 }
 
 var actionTypeStringTable = map[uint32]string{
 	actionTypePost:     "post_event",
 	actionTypeFollowFd: "followfd",
+	actionTypeSigKill:  "sigkill",
 }
 
 const (
