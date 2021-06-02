@@ -113,7 +113,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 	if err := btf.ConfigureBTF(HubbleLib, ctx); err != nil {
 		return nil, err
 	}
-	if err := kprobe.observerFindProgs(ctx); err != nil {
+	if err := observerFindProgs(ctx); err != nil {
 		return nil, err
 	}
 

@@ -621,7 +621,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	}
 
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
-	if err := k.observerFindProgs(ctx); err != nil {
+	if err := observerFindProgs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
 	}
 	if _, err := k.observerMinReqs(ctx); err != nil {

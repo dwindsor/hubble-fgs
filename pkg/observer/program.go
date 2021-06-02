@@ -485,8 +485,7 @@ func (k *ObserverKprobe) RemovePrograms() {
 	btf.FreeCachedBTF()
 }
 
-func (k *ObserverKprobe) disableBpfLoad(bpf *bpfLoad) {
-
+func disableBpfLoad(bpf *bpfLoad) {
 	bpf.loadState.setDisabled()
 	for _, om := range observerAllMaps {
 		if om.bpf == bpf {
@@ -496,7 +495,7 @@ func (k *ObserverKprobe) disableBpfLoad(bpf *bpfLoad) {
 	}
 }
 
-func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
+func observerFindProgs(ctx context.Context) error {
 	for _, p := range observerAllPrograms {
 		if _, err := os.Stat(p.Observer__program); err == nil {
 			continue
@@ -514,7 +513,7 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 
 		if IgnoreMissingProgs {
 			logger.GetLogger().Warningf("failed to find BPF prog %s, but was told to ignore such errors. Disabling it and moving on.", p.Observer__program)
-			k.disableBpfLoad(p)
+			disableBpfLoad(p)
 			continue
 		}
 
@@ -533,7 +532,7 @@ func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor 
 		var err error
 
 		if m.pinState.isDisabled() {
-			k.log.Infof("hubble-fgs, map %s is disabled, skipping.\n", m.mapName)
+			logger.GetLogger().Infof("hubble-fgs, map %s is disabled, skipping.\n", m.mapName)
 			continue
 		}
 
@@ -541,28 +540,28 @@ func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor 
 		btfObj := btf.GetCachedBTF()
 		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btfObj, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
-		k.log.Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
+		logger.GetLogger().Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
 		if err != nil {
 			return fmt.Errorf("failed %d load map (%s): %s\n", fd, m.mapType, err)
 		}
-		k.log.Infof("hubble-fgs, map %s was loaded.\n", m.mapName)
+		logger.GetLogger().Infof("hubble-fgs, map %s was loaded.\n", m.mapName)
 	}
 
 	return nil
 }
 
-func (k *ObserverKprobe) getDefaultRouteLinks() ([]netlink.Link, error) {
+func getDefaultRouteLinks() ([]netlink.Link, error) {
 	var links []netlink.Link
 
 	nilDst := &netlink.Route{Dst: nil}
 	routes, err := netlink.RouteListFiltered(netlink.FAMILY_V4, nilDst, netlink.RT_FILTER_DST)
 	if err != nil {
-		k.log.WithError(err).Warn("RouteListFiltered failed:")
+		logger.GetLogger().WithError(err).Warn("RouteListFiltered failed:")
 		return nil, err
 	}
 	allLinks, err := netlink.LinkList()
 	if err != nil {
-		k.log.WithError(err).Warn("LinkList failed:")
+		logger.GetLogger().WithError(err).Warn("LinkList failed:")
 		return nil, err
 	}
 	for _, route := range routes {
@@ -605,14 +604,14 @@ func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int) (
 			}
 		}
 	} else {
-		attachLinks, err = k.getDefaultRouteLinks()
+		attachLinks, err = getDefaultRouteLinks()
 		if err != nil {
 			return err, 0
 		}
 	}
 
 	for _, link := range attachLinks {
-		k.log.Infof("Attaching %s to device %s", load.probeType, link.Attrs().Name)
+		logger.GetLogger().Infof("Attaching %s to device %s", load.probeType, link.Attrs().Name)
 		isIngress := "tc_ingress" == load.probeType
 		if err = bpf.QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
 			return err, 0
@@ -708,11 +707,11 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 		return err
 	}
 
-	k.log.Debugf("prog %s kern_version %d\n", load.Observer__program, version)
+	logger.GetLogger().Debugf("prog %s kern_version %d\n", load.Observer__program, version)
 	if load.probeType == "tracepoint" {
 		err, fd = k.loadInstance(load, version, Verbosity, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
-			k.log.Infof("Tracepoint %s exists: removing and retrying", load.Observer__program)
+			logger.GetLogger().Infof("Tracepoint %s exists: removing and retrying", load.Observer__program)
 			removeTracepoint(load.tracefd)
 			err, fd = k.loadInstance(load, version, Verbosity, true)
 		}
@@ -738,9 +737,9 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 }
 
 func (k *ObserverKprobe) observerUnloadSensor(sensor *observerSensor, ctx context.Context) error {
-	k.log.Infof("Unloading sensor %s", sensor.name)
+	logger.GetLogger().Infof("Unloading sensor %s", sensor.name)
 	if !sensor.loaded {
-		k.log.Warningf("attempted to unload sensor %s which is not loaded", sensor.name)
+		logger.GetLogger().Warningf("attempted to unload sensor %s which is not loaded", sensor.name)
 		return fmt.Errorf("unload of sensor %s failed: sensor not loaded", sensor.name)
 	}
 
@@ -761,14 +760,14 @@ func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *obs
 		return nil
 	}
 
-	k.log.Infof("Loading sensor %s", sensor.name)
+	logger.GetLogger().Infof("Loading sensor %s", sensor.name)
 	if sensor.loaded {
-		k.log.Warningf("attempted to load sensor %s which is already loaded", sensor.name)
+		logger.GetLogger().Warningf("attempted to load sensor %s which is already loaded", sensor.name)
 		return fmt.Errorf("loading sensor %s failed: sensor already loaded", sensor.name)
 	}
 
 	_, verStr, _ := kernels.GetKernelVersion(KernelVersion, ProcFS)
-	k.log.Infof("Loading kernel version %s", verStr)
+	logger.GetLogger().Infof("Loading kernel version %s", verStr)
 
 	if err := k.observerLoadSensorMaps(stopCtx, sensor); err != nil {
 		return err
@@ -776,7 +775,7 @@ func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *obs
 
 	for _, p := range sensor.progs {
 		if p.loadState.isDisabled() {
-			k.log.Infof("hubble-fgs, prog %s is disabled, skipping.\n", p.Observer__program)
+			logger.GetLogger().Infof("hubble-fgs, prog %s is disabled, skipping.\n", p.Observer__program)
 			continue
 		}
 
@@ -784,9 +783,9 @@ func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *obs
 			return err
 		}
 		p.loadState.setLoaded()
-		k.log.Infof("hubble-fgs, prog %s was loaded.\n", p.Observer__program)
+		logger.GetLogger().Infof("hubble-fgs, prog %s was loaded.\n", p.Observer__program)
 	}
-	k.log.Infof("hubble-fgs, loaded BPF maps and events for sensor %s successfully.\n", sensor.name)
+	logger.GetLogger().Infof("hubble-fgs, loaded BPF maps and events for sensor %s successfully.\n", sensor.name)
 	sensor.loaded = true
 	return nil
 }
