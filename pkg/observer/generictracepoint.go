@@ -23,6 +23,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/tracepoint"
@@ -322,7 +323,7 @@ func (k *ObserverKprobe) createGenericTracepointSensor(confs []GenericTracepoint
 	}, nil
 }
 
-func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile string, version, verbose int, x64 bool) (error, int) {
+func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, version, verbose int, x64 bool) (error, int) {
 
 	btfCtxOffsetFn := func(i int) string {
 		return fmt.Sprintf("t_arg%d_ctx_off", i)
@@ -338,7 +339,7 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		return fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.observer__attach, err), 0
 	}
 
-	btfObj := bpf.GetBTF(btfFile)
+	btfObj := btf.GetCopyBTF()
 	defer bpf.FreeBTF(btfObj)
 	btfAddEnumValue := func(s string, val int) error {
 		if ret := bpf.AddEnumBtfValue(btfObj, s, val); ret < 0 {

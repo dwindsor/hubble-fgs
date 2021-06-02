@@ -9,8 +9,11 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/golang/protobuf/ptypes"
+	gops "github.com/google/gops/agent"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/defaults"
@@ -20,8 +23,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/version"
-	"github.com/golang/protobuf/ptypes"
-	gops "github.com/google/gops/agent"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -52,6 +53,7 @@ var (
 	enableProcessCred          bool
 	configFile                 string
 	enableCRD                  bool
+	hubbleLib                  string
 
 	// Export aggregation options
 	enableExportAggregation     bool
@@ -74,7 +76,7 @@ func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
 func saveInitInfo() error {
 	info := bugtool.InitInfo{
 		ExportFname: exportFilename,
-		LibDir:      observer.HubbleLib,
+		LibDir:      hubbleLib,
 		BtfFname:    observer.ObserverBTF,
 		MetricsAddr: metricsServer,
 		ServerAddr:  serverAddress,
@@ -114,7 +116,8 @@ func hubbleFGSExecute() error {
 		os.Exit(1)
 	}()
 
-	if err := kprobe.ConfigureBTF(ctx); err != nil {
+	err := btf.ConfigureBTF(hubbleLib, ctx)
+	if err != nil {
 		return err
 	}
 
@@ -251,7 +254,7 @@ func init() {
 	flags := cmd.PersistentFlags()
 
 	flags.BoolP("debug", "d", false, "Enable debug messages")
-	flags.StringVar(&observer.HubbleLib, "hubble-lib", "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
+	flags.StringVar(&hubbleLib, "hubble-lib", "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
 	flags.StringVar(&observer.ObserverBTF, "btf", "", "Location of btf")
 
 	flags.StringVar(&observer.ProcFS,

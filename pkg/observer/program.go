@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/vishvananda/netlink"
@@ -481,10 +482,7 @@ func (k *ObserverKprobe) RemovePrograms() {
 	}
 	os.Remove(k.bpfDir)
 	os.Remove(k.mapDir)
-	if k.btfObj != 0 {
-		bpf.FreeBTF(k.btfObj)
-		k.btfObj = 0
-	}
+	btf.FreeCachedBTF()
 }
 
 func (k *ObserverKprobe) disableBpfLoad(bpf *bpfLoad) {
@@ -525,7 +523,7 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 	return nil
 }
 
-func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor, btf string) error {
+func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor) error {
 	version, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	if err != nil {
 		return err
@@ -540,8 +538,8 @@ func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor 
 		}
 
 		pin := k.mapDir + m.mapName
-
-		fd, err := bpf.LoadAndPinMaps(version, Verbosity, k.btfObj, m.bpf.Observer__program, pin, m.mapName,
+		btfObj := btf.GetCachedBTF()
+		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btfObj, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
 		k.log.Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
 		if err != nil {
@@ -577,11 +575,12 @@ func (k *ObserverKprobe) getDefaultRouteLinks() ([]netlink.Link, error) {
 	return links, nil
 }
 
-func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int, btf string) (error, int) {
+func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int) (error, int) {
 	var attachLinks []netlink.Link
 
+	btfObj := btf.GetCachedBTF()
 	err, fd := bpf.LoadTC(version, Verbosity,
-		k.btfObj,
+		btfObj,
 		load.Observer__program,
 		load.observer__label,
 		k.bpfDir+load.observer__prog,
@@ -624,7 +623,7 @@ func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int, b
 	return nil, 0
 }
 
-func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf string, x64 bool) (error, int) {
+func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, x64 bool) (error, int) {
 	var attach string
 
 	if x64 {
@@ -632,10 +631,11 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else {
 		attach = load.observer__attach
 	}
+	btfObj := btf.GetCachedBTF()
 	if load.probeType == "tracepoint" {
 		return bpf.LoadTracingProgram(
 			version, Verbosity,
-			k.btfObj,
+			btfObj,
 			load.Observer__program,
 			attach,
 			load.observer__label,
@@ -644,7 +644,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "sockops" {
 		return bpf.LoadSockopsProgram(
 			version, Verbosity,
-			k.btfObj,
+			btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -652,7 +652,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "skmsg" {
 		return bpf.LoadSkmsgProgram(
 			version, Verbosity,
-			k.btfObj,
+			btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -660,7 +660,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "sk_skb_verdict" {
 		return bpf.LoadSkSkbVerdictProgram(
 			version, Verbosity,
-			k.btfObj,
+			btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -668,7 +668,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "sk_skb_parser" {
 		return bpf.LoadSkSkbParserProgram(
 			version, Verbosity,
-			k.btfObj,
+			btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
@@ -676,21 +676,21 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 	} else if load.probeType == "cgrp_ingress" {
 		return bpf.LoadCgroupProgram(
 			version, Verbosity,
-			k.btfObj,
+			btfObj,
 			load.Observer__program,
 			load.observer__label,
 			k.bpfDir+load.observer__prog,
 			k.mapDir)
 	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
-		return k.observerLoadTC(load, version, Verbosity, btf)
+		return k.observerLoadTC(load, version, Verbosity)
 	} else if load.probeType == "generic_kprobe" {
 		return k.loadGenericKprobeSensor(load, version, Verbosity)
 	} else if load.probeType == "generic_tracepoint" {
-		return k.loadGenericTracepointSensor(load, btf, version, Verbosity, x64)
+		return k.loadGenericTracepointSensor(load, version, Verbosity, x64)
 	} else {
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
-			k.btfObj,
+			btfObj,
 			load.Observer__program,
 			attach,
 			load.observer__label,
@@ -710,23 +710,23 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 
 	k.log.Debugf("prog %s kern_version %d\n", load.Observer__program, version)
 	if load.probeType == "tracepoint" {
-		err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, true)
+		err, fd = k.loadInstance(load, version, Verbosity, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
 			k.log.Infof("Tracepoint %s exists: removing and retrying", load.Observer__program)
 			removeTracepoint(load.tracefd)
-			err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, true)
+			err, fd = k.loadInstance(load, version, Verbosity, true)
 		}
 		if err != nil {
 			return fmt.Errorf("Failed prog %s kern_version %d err %d LoadTracingProgram: %s\n",
 				load.Observer__program, version, fd, err)
 		}
 	} else {
-		err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, true)
+		err, fd = k.loadInstance(load, version, Verbosity, true)
 		if err != nil {
 			/* If we fail attach with __x64_sys_execve variant try again with
 			 * sys_execve variant.
 			 */
-			err, fd = k.loadInstance(load, version, Verbosity, ObserverBTF, false)
+			err, fd = k.loadInstance(load, version, Verbosity, false)
 			if err != nil && load.errorFatal {
 				return fmt.Errorf("Failed prog %s kern_version %d LoadKprobeProgram: %s\n",
 					load.Observer__program, version, err)
@@ -770,7 +770,7 @@ func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *obs
 	_, verStr, _ := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	k.log.Infof("Loading kernel version %s", verStr)
 
-	if err := k.observerLoadSensorMaps(stopCtx, sensor, ObserverBTF); err != nil {
+	if err := k.observerLoadSensorMaps(stopCtx, sensor); err != nil {
 		return err
 	}
 

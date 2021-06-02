@@ -573,9 +573,6 @@ type ObserverKprobe struct {
 	/* Runtime Containers */
 	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert
 
-	/* opaque pointer to C BTF object */
-	btfObj uintptr
-
 	/* YAML Configuration File */
 	configFile string
 

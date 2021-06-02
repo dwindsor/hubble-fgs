@@ -8,6 +8,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 )
 
 type ExecveKey struct {
@@ -65,7 +66,7 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	if err != nil {
 		k.log.Warn("Procfs execve event pods/ identifier error: %s\n", err)
 	} else if i > 0 {
-		err := procDockerIdOffsetWriter(i, k.btfObj)
+		err := procDockerIdOffsetWriter(i, btf.GetCachedBTF())
 		if err != nil {
 			k.log.Warn("procDockerIdOffsetWriter error: %s", err)
 		}

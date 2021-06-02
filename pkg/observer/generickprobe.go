@@ -10,6 +10,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/idtable"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
@@ -390,7 +391,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 		funcName := f.Call
 
 		// Write args into BTF ptr for use with load
-		btf := bpf.GetBTF(btfBaseFile)
+		btf := btf.GetCopyBTF()
 		ret := bpf.AddEnumBtf(btf, genericFuncArgsEnum, 4)
 		if ret < 0 {
 			return nil, fmt.Errorf("Error add enum args (%s) failed %d", genericFuncArgsEnum, ret)

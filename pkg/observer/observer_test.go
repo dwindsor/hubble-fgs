@@ -20,10 +20,12 @@ import (
 
 	hubbleV1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
+
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
@@ -108,8 +110,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 		Verbosity = verboseLevel
 	}
 
-	err := kprobe.ConfigureBTF(ctx)
-	if err != nil {
+	if err := btf.ConfigureBTF(HubbleLib, ctx); err != nil {
 		return nil, err
 	}
 	if err := kprobe.observerFindProgs(ctx); err != nil {
@@ -128,6 +129,9 @@ func TestObjectLoad(t *testing.T) {
 	kprobe, err := getDefaultObserver(t)
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	if err := btf.ConfigureBTF(HubbleLib, context.TODO()); err != nil {
+		t.Fatalf("ConfigureBTF error: %s", err)
 	}
 	initialSensor := kprobe.createInitialObserverSensor()
 	kprobe.observerLoadSensor(context.TODO(), initialSensor)
