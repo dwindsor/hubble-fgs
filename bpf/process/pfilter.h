@@ -258,8 +258,10 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
 
 		selectors = f[0];
 		/* If no selectors accept process */
-		if (!selectors)
-			return PFILTER_ACCEPT;
+		if (!selectors) {
+			msg->pass = true;
+			return process_filter_done(msg, enter, current);
+		}
 
 		/* If we get here with reference to uninitialized selector drop */
 		if (selectors <= curr)
