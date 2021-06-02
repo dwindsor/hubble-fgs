@@ -2,4 +2,4 @@
 
 SCRIPTPATH="$( cd "$(dirname "$0")" ; pwd -P )"
 
-GO111MODULE=off go run ${SCRIPTPATH}/../vendor/sigs.k8s.io/controller-tools/cmd/controller-gen $@
+go run ${SCRIPTPATH}/../vendor/sigs.k8s.io/controller-tools/cmd/controller-gen $@
