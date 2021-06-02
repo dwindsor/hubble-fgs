@@ -6,7 +6,7 @@ env:
   zone: europe-west4-c
   vmName: kata-test-gh-${{ github.run_number }}
   vmHost: kata-test-gh-${{ github.run_number }}.europe-west4-c.${{ secrets.GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.GCP_PROJECT_ID }}/global/machineImages/kata-test-20210315-154212
+  machineImage: projects/${{ secrets.GCP_PROJECT_ID }}/global/machineImages/kata-test-20210602-152521
 jobs:
   test:
     runs-on: ubuntu-latest
@@ -34,6 +34,9 @@ jobs:
         gcloud compute ssh ${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a"
         gcloud compute config-ssh
         ssh ${{ env.vmHost }} uname -a
+    - name: check that kata containers work
+      run: |
+        ssh ${{ env.vmHost }} -t -t 'sudo docker run --runtime=kata -it busybox  /bin/uname -r'
     - name: build docker image in VM
       id: build
       run: |
