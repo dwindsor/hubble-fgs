@@ -610,8 +610,6 @@ func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
 }
 
 func (k *ObserverKprobe) Start(ctx context.Context) error {
-	k.createDir()
-
 	// initialize kernel symbol lookup
 	ksyms, err := ksyms.NewKsyms(ProcFS)
 	if err == nil {
@@ -620,20 +618,8 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		k.log.Warningf("failed to initialize ksyms: %s", err)
 	}
 
-	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
-	if err := observerFindProgs(ctx); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
-	}
-	if _, err := k.observerMinReqs(ctx); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting minimum requirements not met. %s\n", err)
-	}
-
-	// This is technically not a sensor since we are loading this
-	// statically when we start, but it allows us to have a single path for
-	// loading bpf programs.
-	initialSensor := k.createInitialObserverSensor()
-	if err := k.observerLoadSensor(ctx, initialSensor); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
+	if err := k.LoadDefaultSensor(ctx); err != nil {
+		return err
 	}
 
 	// Load initial set of generic kprobe sensors */

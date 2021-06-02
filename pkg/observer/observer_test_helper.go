@@ -153,12 +153,10 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 }
 
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
-	kprobe.createDir()
-	initialSensor := kprobe.createInitialObserverSensor()
-	if err := kprobe.observerLoadSensor(context.TODO(), initialSensor); err != nil {
-		kprobe.RemovePrograms()
-		t.Fatalf("observerLoadProgs error: %s", err)
+	if err := kprobe.LoadDefaultSensor(context.TODO()); err != nil {
+		t.Fatalf("LoadDefaultSensor error: %s\n", err)
 	}
+
 	if kprobe.configFile != "" {
 		genericKprobeSensor, err := kprobe.getSensorFromTracingPolicyFname(kprobe.configFile)
 		if err != nil {
