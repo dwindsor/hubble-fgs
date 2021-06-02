@@ -1,0 +1,58 @@
+package observer
+
+import (
+	"bytes"
+	"io/ioutil"
+	"strconv"
+	"strings"
+
+	"golang.org/x/sys/unix"
+)
+
+func kernelStringToNumeric(ver string) int64 {
+	vers := strings.Split(ver, ".")
+	a, erra := strconv.ParseInt(vers[0], 10, 32)
+	b, errb := strconv.ParseInt(vers[1], 10, 32)
+	c, errc := strconv.ParseInt(vers[2], 10, 32)
+	if erra != nil || errb != nil || errc != nil {
+		return 0
+	}
+	return ((a << 16) + (b << 8) + c)
+}
+
+func getKernelVersion() (int, string, error) {
+	var version int = 0
+	var verStr string = ""
+
+	if KernelVersion != "" {
+		version = int(kernelStringToNumeric(KernelVersion))
+		verStr = KernelVersion
+	} else {
+		if versionSig, err := ioutil.ReadFile(ProcFS + "/version_signature"); err == nil {
+			versionStrings := strings.Fields(string(versionSig))
+			version = int(kernelStringToNumeric(versionStrings[len(versionStrings)-1]))
+			verStr = versionStrings[len(versionStrings)-1]
+		} else {
+			var uname unix.Utsname
+
+			err := unix.Uname(&uname)
+			if err != nil {
+				verStr = "unknown"
+				// On error default to bpf discovery which
+				// will work in many cases, notable exception
+				// is the cloud vendors and others that mangle
+				// the kernel version string.
+				return 0, verStr, nil
+			}
+			n := bytes.IndexByte(uname.Release[:], 0)
+			// vendors like to define kernel 4.14.128-foo but
+			// everything after '-' is meaningless from BPF
+			// side so toss it out.
+			release := strings.Split(string(uname.Release[:n]), "-")
+			verStr = release[0]
+			numeric := strings.TrimRight(verStr, "+")
+			version = int(kernelStringToNumeric(numeric))
+		}
+	}
+	return version, verStr, nil
+}
