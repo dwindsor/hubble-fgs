@@ -1,4 +1,4 @@
-package observer
+package kernels
 
 import (
 	"bytes"
@@ -9,7 +9,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func kernelStringToNumeric(ver string) int64 {
+func KernelStringToNumeric(ver string) int64 {
 	vers := strings.Split(ver, ".")
 	a, erra := strconv.ParseInt(vers[0], 10, 32)
 	b, errb := strconv.ParseInt(vers[1], 10, 32)
@@ -20,17 +20,17 @@ func kernelStringToNumeric(ver string) int64 {
 	return ((a << 16) + (b << 8) + c)
 }
 
-func getKernelVersion() (int, string, error) {
+func GetKernelVersion(kernelVersion, procfs string) (int, string, error) {
 	var version int = 0
 	var verStr string = ""
 
-	if KernelVersion != "" {
-		version = int(kernelStringToNumeric(KernelVersion))
-		verStr = KernelVersion
+	if kernelVersion != "" {
+		version = int(KernelStringToNumeric(kernelVersion))
+		verStr = kernelVersion
 	} else {
-		if versionSig, err := ioutil.ReadFile(ProcFS + "/version_signature"); err == nil {
+		if versionSig, err := ioutil.ReadFile(procfs + "/version_signature"); err == nil {
 			versionStrings := strings.Fields(string(versionSig))
-			version = int(kernelStringToNumeric(versionStrings[len(versionStrings)-1]))
+			version = int(KernelStringToNumeric(versionStrings[len(versionStrings)-1]))
 			verStr = versionStrings[len(versionStrings)-1]
 		} else {
 			var uname unix.Utsname
@@ -51,7 +51,7 @@ func getKernelVersion() (int, string, error) {
 			release := strings.Split(string(uname.Release[:n]), "-")
 			verStr = release[0]
 			numeric := strings.TrimRight(verStr, "+")
-			version = int(kernelStringToNumeric(numeric))
+			version = int(KernelStringToNumeric(numeric))
 		}
 	}
 	return version, verStr, nil

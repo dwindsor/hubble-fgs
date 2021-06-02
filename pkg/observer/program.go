@@ -10,6 +10,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/vishvananda/netlink"
 
@@ -525,7 +526,7 @@ func (k *ObserverKprobe) observerFindProgs(ctx context.Context) error {
 }
 
 func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor, btf string) error {
-	version, _, err := getKernelVersion()
+	version, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	if err != nil {
 		return err
 	}
@@ -702,7 +703,7 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, btf
 func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Context) error {
 	var fd int
 
-	version, _, err := getKernelVersion()
+	version, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	if err != nil {
 		return err
 	}
@@ -766,7 +767,7 @@ func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *obs
 		return fmt.Errorf("loading sensor %s failed: sensor already loaded", sensor.name)
 	}
 
-	_, verStr, _ := getKernelVersion()
+	_, verStr, _ := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	k.log.Infof("Loading kernel version %s", verStr)
 
 	if err := k.observerLoadSensorMaps(stopCtx, sensor, ObserverBTF); err != nil {

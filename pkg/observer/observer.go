@@ -27,6 +27,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/sirupsen/logrus"
@@ -604,7 +605,7 @@ func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
 }
 
 func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
-	_, _, err := getKernelVersion()
+	_, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	if err != nil {
 		return false, fmt.Errorf("Kernel version lookup failed, required for kprobe.\n")
 	}

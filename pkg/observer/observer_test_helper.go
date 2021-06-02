@@ -17,6 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 
 	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
@@ -107,8 +108,8 @@ func minKernelVersion(kernel string) bool {
 	// side so toss it out.
 	release := strings.Split(string(uname.Release[:]), "-")
 	numeric := strings.TrimRight(release[0], "+")
-	runningVersion := int(kernelStringToNumeric(numeric))
-	minVersion := int(kernelStringToNumeric(kernel))
+	runningVersion := int(kernels.KernelStringToNumeric(numeric))
+	minVersion := int(kernels.KernelStringToNumeric(kernel))
 	if minVersion <= runningVersion {
 		return true
 	}
