@@ -175,10 +175,9 @@ spec:
 	_, err = syscall.Write(1, []byte("hello world"))
 	exitWG.Wait()
 	retries := jsonRetries
-	time.Sleep(1000 * time.Millisecond)
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, retries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -270,11 +269,9 @@ spec:
 		t.Fatal()
 	}
 	exitWG.Wait()
-	retries := jsonRetries
-	time.Sleep(1000 * time.Millisecond)
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -333,7 +330,8 @@ func testKprobeObjectFiltered(t *testing.T,
 	assert.Equal(t, len(data), n)
 	assert.NoError(t, err)
 	exitWG.Wait()
-	ok := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
 	if (invertResult && ok) || (!invertResult && !ok) {
 		t.Fail()
 	}
@@ -624,11 +622,9 @@ spec:
 	execWG.Wait()
 	err = helloIovecWorldWritev()
 	execWG.Wait()
-	retries := jsonRetries
-	time.Sleep(1000 * time.Millisecond)
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 

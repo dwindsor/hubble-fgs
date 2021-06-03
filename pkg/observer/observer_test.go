@@ -18,8 +18,9 @@ import (
 	"testing"
 	"time"
 
+	hubbleV1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
-
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -27,10 +28,7 @@ import (
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
-
-	hubbleV1 "github.com/cilium/hubble/pkg/api/v1"
 	"golang.org/x/sys/unix"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -255,10 +253,9 @@ func TestConnectEvent(t *testing.T) {
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -365,11 +362,9 @@ func TestExecEventClone(t *testing.T) {
 	if cmdClient != nil {
 		cmdClient.Process.Kill()
 	}
-
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -422,10 +417,9 @@ func TestExistingListenEvent(t *testing.T) {
 		cmdServer.Process.Kill()
 	}
 
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -513,10 +507,9 @@ func TestExistingAcceptEvent(t *testing.T) {
 		cmdServer.Process.Signal(syscall.SIGKILL)
 	}
 
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -575,10 +568,9 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	if cmdServer != nil {
 		cmdServer.Process.Kill()
 	}
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -649,10 +641,9 @@ func TestTCTls13(t *testing.T) {
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://google.com")
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -718,10 +709,9 @@ func TestTCTls12(t *testing.T) {
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -842,10 +832,9 @@ func TestListenAcceptClose(t *testing.T) {
 	if cmdServer != nil {
 		cmdServer.Process.Signal(syscall.SIGKILL)
 	}
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -880,10 +869,9 @@ func TestSensorLseekLoad(t *testing.T) {
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
 
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 
 	kprobe.observerUnloadSensor(sensor, ctx)
 
@@ -947,10 +935,9 @@ func TestSensorLseekEnable(t *testing.T) {
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
 
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 }
 
 // Create a fake Cilium state to avoid the events getting delayed due to missing pod info
@@ -1113,10 +1100,9 @@ func TestDockerListenConnect(t *testing.T) {
 		},
 	}
 
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
@@ -1214,9 +1200,8 @@ func TestDockerExistingListenEvent(t *testing.T) {
 		},
 	}
 
-	retries := jsonRetries
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, kprobe)
 }

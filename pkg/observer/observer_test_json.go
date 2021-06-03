@@ -11,8 +11,10 @@ import (
 	"strings"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/golang/protobuf/jsonpb"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -532,17 +534,17 @@ func jsonTestIterate(jsonFile *os.File, checkFn func(*fgs.GetEventsResponse) err
 	return nil
 }
 
-func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts, found int) bool {
+func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts, found int) (bool, error) {
 	var err error
 
 	if attempts < 1 {
-		return false
+		return false, nil
 	}
 
 	if jsonFile == nil {
 		jsonFile, err = os.Open(exportFile)
 		if err != nil {
-			return false
+			return false, err
 		}
 		defer jsonFile.Close()
 	}
@@ -553,7 +555,10 @@ func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 		ev := fgs.GetEventsResponse{}
 		err = jsonpb.UnmarshalNext(dec, &ev)
 		if err != nil {
-			break
+			if err == io.EOF {
+				break
+			}
+			return false, err
 		}
 		events = append(events, ev)
 		if !dec.More() {
@@ -667,9 +672,13 @@ func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts
 
 	if found == len(trace) {
 		verbosePrintf("\tFOUND ALL!\n")
-		return true
+		return true, nil
 	}
 retry:
+	logger.GetLogger().WithFields(logrus.Fields{
+		"trace":  trace,
+		"events": events,
+	}).Warn("Some events were missing. Retrying..")
 	attempts--
 	time.Sleep(retryDelay)
 	return JsonTestCompare(trace, jsonFile, attempts, found)

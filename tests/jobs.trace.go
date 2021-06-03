@@ -4,9 +4,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
 var (
@@ -97,7 +97,12 @@ func main() {
 	}
 	defer jsonFile.Close()
 
-	if ok := observer.JsonTestCompare(jobsTrace, jsonFile, 1, 0); !ok {
+	ok, err := observer.JsonTestCompare(jobsTrace, jsonFile, 1, 0)
+	if err != nil {
+		fmt.Printf("🔥 Failed: no dice: %v\n", err)
+		os.Exit(1)
+	}
+	if !ok {
 		fmt.Printf("🔥 Failed: no dice\n")
 		os.Exit(1)
 	}

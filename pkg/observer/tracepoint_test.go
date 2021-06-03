@@ -11,7 +11,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
 
@@ -87,9 +87,9 @@ func TestGenericTracepointSimple(t *testing.T) {
 	exitWG.Wait()
 	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
-	if ok := JsonTestCompare(trace, nil, retries, 0); !ok {
-		t.Fail()
-	}
+	ok, err := JsonTestCompare(trace, nil, retries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
 	testDone(t, observer)
 }
 
