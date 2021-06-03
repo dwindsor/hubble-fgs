@@ -81,15 +81,24 @@ jobs:
           helm install cilium-enterprise isovalent/cilium-enterprise \
                  --set hubble-enterprise.enterprise.image.tag=latest \
                  --namespace kube-system --set cilium.enabled=false
-          #kubectl wait -n kube-system --for=condition=Ready --all pod --timeout=5m
-          sleep 30s
 
       - name: Demo Application
         run: |
           kubectl create namespace tenant-jobs
           kubectl -n tenant-jobs apply -f https://docs.isovalent.com/public/jobs-app-attack.yaml
-          kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=5m
-          sleep 30s
+
+      - name: Wait for pods to become ready
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 5
+          command: |
+            kubectl wait -n kube-system --for=condition=Ready --all pod --timeout=30s
+            kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=30s
+
+      # Let the demo app do its thing to generate all the events. Would be nice if we could avoid sleeping.
+      - name: Sleep
+        run: sleep 60
 
       - name: Cleanup
         if: ${{ always() }}
