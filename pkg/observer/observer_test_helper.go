@@ -28,7 +28,7 @@ import (
 var (
 	observerTestDir = "/sys/fs/bpf/testObserver/"
 	exportFile      = "/tmp/hubble-fgs.gotest"
-	jsonRetries     = 4
+	jsonRetries     = 10
 )
 
 type testObserverOptions struct {
