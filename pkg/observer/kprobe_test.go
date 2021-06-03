@@ -11,7 +11,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-
+	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
 
@@ -328,11 +328,12 @@ func testKprobeObjectFiltered(t *testing.T,
 		fmt.Printf("File open from read failed: %s\n", errno)
 		t.Fatal()
 	}
-	syscall.Write(fd2, []byte("hello world"))
+	data := "hello world"
+	n, err := syscall.Write(fd2, []byte(data))
+	assert.Equal(t, len(data), n)
+	assert.NoError(t, err)
 	exitWG.Wait()
-	retries := jsonRetries
-	time.Sleep(1000 * time.Millisecond)
-	ok := JsonTestCompare(trace, nil, retries, 0)
+	ok := JsonTestCompare(trace, nil, jsonRetries, 0)
 	if (invertResult && ok) || (!invertResult && !ok) {
 		t.Fail()
 	}
