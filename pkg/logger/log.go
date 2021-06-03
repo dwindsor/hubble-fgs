@@ -75,7 +75,9 @@ func getLogFormat() (logrus.Formatter, error) {
 	switch logFormatOpt {
 	// Use the text formatter if --log-format flag is not specified.
 	case LogFormatOpts[LogFormatTextId], "":
-		return &logrus.TextFormatter{}, nil
+		return &logrus.TextFormatter{
+			DisableColors: true,
+		}, nil
 	case LogFormatOpts[LogFormatJsonId]:
 		return &logrus.JSONFormatter{}, nil
 	default:
