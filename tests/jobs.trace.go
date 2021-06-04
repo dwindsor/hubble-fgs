@@ -90,14 +90,7 @@ var (
 )
 
 func main() {
-	jsonFile, err := os.Open(os.Args[1])
-	if err != nil {
-		fmt.Printf("🔥 Failed: could not open %s\n", os.Args[1])
-		os.Exit(1)
-	}
-	defer jsonFile.Close()
-
-	ok, err := observer.JsonTestCompare(jobsTrace, jsonFile, 1, 0)
+	ok, err := observer.JsonTestCompare(jobsTrace, os.Args[1], 1, 0)
 	if err != nil {
 		fmt.Printf("🔥 Failed: no dice: %v\n", err)
 		os.Exit(1)

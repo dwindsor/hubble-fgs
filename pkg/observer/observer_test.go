@@ -253,7 +253,7 @@ func TestConnectEvent(t *testing.T) {
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -362,7 +362,7 @@ func TestExecEventClone(t *testing.T) {
 	if cmdClient != nil {
 		cmdClient.Process.Kill()
 	}
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -417,7 +417,7 @@ func TestExistingListenEvent(t *testing.T) {
 		cmdServer.Process.Kill()
 	}
 
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -507,7 +507,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 		cmdServer.Process.Signal(syscall.SIGKILL)
 	}
 
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -568,7 +568,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	if cmdServer != nil {
 		cmdServer.Process.Kill()
 	}
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -641,7 +641,7 @@ func TestTCTls13(t *testing.T) {
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://google.com")
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -709,7 +709,7 @@ func TestTCTls12(t *testing.T) {
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -832,7 +832,7 @@ func TestListenAcceptClose(t *testing.T) {
 	if cmdServer != nil {
 		cmdServer.Process.Signal(syscall.SIGKILL)
 	}
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -869,7 +869,7 @@ func TestSensorLseekLoad(t *testing.T) {
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
 
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 
@@ -935,7 +935,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
 
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 }
@@ -1100,7 +1100,7 @@ func TestDockerListenConnect(t *testing.T) {
 		},
 	}
 
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
@@ -1200,7 +1200,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 		},
 	}
 
-	ok, err := JsonTestCompare(trace, nil, jsonRetries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)

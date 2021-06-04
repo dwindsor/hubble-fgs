@@ -534,20 +534,18 @@ func jsonTestIterate(jsonFile *os.File, checkFn func(*fgs.GetEventsResponse) err
 	return nil
 }
 
-func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFile *os.File, attempts, found int) (bool, error) {
+func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attempts, found int) (bool, error) {
 	var err error
 
 	if attempts < 1 {
 		return false, nil
 	}
 
-	if jsonFile == nil {
-		jsonFile, err = os.Open(exportFile)
-		if err != nil {
-			return false, err
-		}
-		defer jsonFile.Close()
+	jsonFile, err := os.Open(jsonFilename)
+	if err != nil {
+		return false, err
 	}
+	defer jsonFile.Close()
 
 	events := make([]fgs.GetEventsResponse, 0, 128)
 	dec := json.NewDecoder(jsonFile)
@@ -681,5 +679,5 @@ retry:
 	}).Warn("Some events were missing. Retrying..")
 	attempts--
 	time.Sleep(retryDelay)
-	return JsonTestCompare(trace, jsonFile, attempts, found)
+	return JsonTestCompare(trace, exportFile, attempts, found)
 }

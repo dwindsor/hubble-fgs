@@ -87,7 +87,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 	exitWG.Wait()
 	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
-	ok, err := JsonTestCompare(trace, nil, retries, 0)
+	ok, err := JsonTestCompare(trace, exportFile, retries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, observer)
