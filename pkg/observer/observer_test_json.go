@@ -673,9 +673,13 @@ func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attemp
 		return true, nil
 	}
 retry:
+	eventStr := ""
+	for _, e := range events {
+		eventStr += e.String() + "\n"
+	}
 	logger.GetLogger().WithFields(logrus.Fields{
 		"trace":  trace,
-		"events": events,
+		"events": eventStr,
 	}).Warn("Some events were missing. Retrying..")
 	attempts--
 	time.Sleep(retryDelay)
