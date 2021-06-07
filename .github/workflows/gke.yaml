@@ -79,7 +79,7 @@ jobs:
           helm repo add isovalent https://helm.isovalent.com
           helm repo update
           helm install cilium-enterprise isovalent/cilium-enterprise \
-                 --set hubble-enterprise.enterprise.image.tag=latest \
+                 --set hubble-enterprise.enterprise.image.tag=master \
                  --namespace kube-system --set cilium.enabled=false
 
       - name: Demo Application
