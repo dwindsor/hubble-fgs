@@ -315,13 +315,13 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		}
 
 		execPath, err := os.Readlink(filepath.Join(ProcFS, d.Name(), "exe"))
-		if execPath != "" {
+		if err == nil {
 			cmdline = prependPath(execPath, cmdline)
 		}
 
 		if _ppid != 0 {
-			pexecPath, _ = os.Readlink(filepath.Join(ProcFS, ppid, "exe"))
-			if pexecPath != "" {
+			pexecPath, err = os.Readlink(filepath.Join(ProcFS, ppid, "exe"))
+			if err == nil {
 				pcmdline = prependPath(pexecPath, pcmdline)
 			}
 		} else {
