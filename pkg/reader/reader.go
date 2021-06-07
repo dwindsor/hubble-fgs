@@ -153,7 +153,7 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	} else if (flags & api.EventRootCWD) != 0 {
 		cwd = "/"
 	} else if (flags & api.EventProcFS) != 0 {
-		cwd = string(argTokens[len(argTokens)-1])
+		cwd = strings.TrimSpace(string(argTokens[len(argTokens)-1]))
 	} else {
 		cwd = "/" + SwapPath(string(argTokens[len(argTokens)-1]))
 	}
