@@ -153,7 +153,9 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 }
 
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
-	if err := kprobe.LoadDefaultSensor(context.TODO()); err != nil {
+	if err := LoadDefaultSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir,
+		kprobe.enableTLSTC, kprobe.enableTLS,
+		context.TODO()); err != nil {
 		t.Fatalf("LoadDefaultSensor error: %s\n", err)
 	}
 
@@ -162,7 +164,7 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 		if err != nil {
 			t.Fatalf("createGenericKprobeSensors error: Could not create kprobe sensor. %s", err)
 		}
-		if err := kprobe.observerLoadSensor(context.TODO(), genericKprobeSensor); err != nil {
+		if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), genericKprobeSensor); err != nil {
 			t.Fatalf("observerLoadSensors error: Could not load kprobe sensors. %s", err)
 		}
 	}
@@ -177,7 +179,7 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 		defer exitWG.Done()
 		e, err := kprobe.__runEvents(ctx)
 		if err != nil {
-			kprobe.RemovePrograms()
+			RemovePrograms(kprobe.bpfDir, kprobe.mapDir)
 			t.Fatalf("runEvents error: %s", err)
 		}
 		defer e.CloseAll()

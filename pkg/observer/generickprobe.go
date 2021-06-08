@@ -577,14 +577,14 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 	}, nil
 }
 
-func (k *ObserverKprobe) loadGenericKprobe(version int, p *bpfLoad, btf uintptr, genmapDir string, filters [4096]byte) error {
+func loadGenericKprobe(bpfDir, mapDir string, version int, p *bpfLoad, btf uintptr, genmapDir string, filters [4096]byte) error {
 	err, _ := bpf.LoadGenericKprobeProgram(
 		version, Verbosity, btf,
 		p.Observer__program,
 		p.observer__x64_attach,
 		p.observer__label,
-		k.bpfDir+p.observer__prog,
-		k.mapDir,
+		bpfDir+p.observer__prog,
+		mapDir,
 		genmapDir,
 		filters)
 	if err != nil {
@@ -593,22 +593,22 @@ func (k *ObserverKprobe) loadGenericKprobe(version int, p *bpfLoad, btf uintptr,
 			p.Observer__program,
 			p.observer__attach,
 			p.observer__label,
-			k.bpfDir+p.observer__prog,
-			k.mapDir,
+			bpfDir+p.observer__prog,
+			mapDir,
 			genmapDir,
 			filters)
 	}
 	return err
 }
 
-func (k *ObserverKprobe) loadGenericKprobeRet(version int, p *bpfLoad, btf uintptr, genmapDir string) error {
+func loadGenericKprobeRet(bpfDir, mapDir string, version int, p *bpfLoad, btf uintptr, genmapDir string) error {
 	err, _ := bpf.LoadGenericKprobeRetProgram(
 		version, Verbosity, btf,
 		p.Observer__program,
 		p.observer__x64_attach,
 		p.observer__label,
-		path.Join(k.bpfDir, p.observer__prog),
-		k.mapDir,
+		path.Join(bpfDir, p.observer__prog),
+		mapDir,
 		genmapDir)
 	if err != nil {
 		err, _ = bpf.LoadGenericKprobeRetProgram(
@@ -616,28 +616,28 @@ func (k *ObserverKprobe) loadGenericKprobeRet(version int, p *bpfLoad, btf uintp
 			p.Observer__program,
 			p.observer__attach,
 			p.observer__label,
-			path.Join(k.bpfDir, p.observer__prog),
-			k.mapDir,
+			path.Join(bpfDir, p.observer__prog),
+			mapDir,
 			genmapDir)
 	}
 	return err
 }
 
-func (k *ObserverKprobe) loadGenericKprobeSensor(load *bpfLoad, version, verbose int) (error, int) {
+func loadGenericKprobeSensor(bpfDir, mapDir string, load *bpfLoad, version, verbose int) (error, int) {
 	gk, err := genericKprobeFromBpfLoad(load)
 	if err != nil {
 		return err, 0
 	}
 
-	genmapDir := gk.getMapDir(k.mapDir)
+	genmapDir := gk.getMapDir(mapDir)
 	os.Mkdir(genmapDir, os.ModeDir)
 
 	observerAllPrograms = append(observerAllPrograms, load)
 	retprobe := strings.Contains(load.Observer__program, "ret")
 	if retprobe {
-		return k.loadGenericKprobeRet(version, load, gk.loadArgs.btf, genmapDir), 0
+		return loadGenericKprobeRet(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir), 0
 	} else {
-		return k.loadGenericKprobe(version, load, gk.loadArgs.btf, genmapDir, gk.loadArgs.filters), 0
+		return loadGenericKprobe(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir, gk.loadArgs.filters), 0
 	}
 }
 
@@ -875,7 +875,7 @@ func (k *ObserverKprobe) removeGenericKprobeSensor(kprobeConfig *v1alpha1.Tracin
 	for _, f := range kprobeConfig.KProbes {
 		p := genericKprobeProgs[f.Call]
 		if p != nil {
-			k.removeProgram(p)
+			removeProgram(k.bpfDir, p)
 		} else {
 			k.log.Warn("Attempted to remove unloaded program: %s\n", f.Call)
 		}

@@ -257,7 +257,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 					err = nil
 					break
 				}
-				err = k.observerLoadSensor(op.ctx, sensor)
+				err = ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, op.ctx, sensor)
 				if err == nil && sensor.impl != nil {
 					sensor.impl.sensorLoaded(sensorLoadArg{sttManagerHandle: op.sttManagerHandle})
 				}
@@ -274,7 +274,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 					err = nil
 					break
 				}
-				err = k.observerUnloadSensor(sensor, op.ctx)
+				err = observerUnloadSensor(k.bpfDir, k.mapDir, sensor, op.ctx)
 				if err == nil && sensor.impl != nil {
 					sensor.impl.sensorUnloaded(sensorUnloadArg{sttManagerHandle: op.sttManagerHandle})
 				}

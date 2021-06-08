@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/tracepoint"
 )
@@ -41,6 +42,8 @@ var (
 	// and at the time we process the perf event from bpf-side. We keep
 	// this information on a table index by a (unique) tracepoint id.
 	genericTracepointTable = tracepointTable{}
+
+	tracepointLog = logger.GetLogger()
 )
 
 // genericTracepoint is the internal representation of a tracepoint
@@ -323,7 +326,7 @@ func (k *ObserverKprobe) createGenericTracepointSensor(confs []GenericTracepoint
 	}, nil
 }
 
-func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, version, verbose int, x64 bool) (error, int) {
+func LoadGenericTracepointSensor(bpfDir, mapDir string, load *bpfLoad, version, verbose int, x64 bool) (error, int) {
 
 	btfCtxOffsetFn := func(i int) string {
 		return fmt.Sprintf("t_arg%d_ctx_off", i)
@@ -377,7 +380,7 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, version, ver
 			return err, 0
 		}
 
-		k.log.Infof("configured argument #%d: %+v (type:%d)", i, tpArg, tpArg.genericTypeId)
+		tracepointLog.Infof("configured argument #%d: %+v (type:%d)", i, tpArg, tpArg.genericTypeId)
 	}
 
 	// nop args
@@ -447,8 +450,8 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, version, ver
 		load.Observer__program,
 		attach,
 		load.observer__label,
-		k.bpfDir+load.observer__prog,
-		k.mapDir,
+		bpfDir+load.observer__prog,
+		mapDir,
 		load.retProbe,
 		kernelSelectors)
 }

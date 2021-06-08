@@ -6,7 +6,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"regexp"
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -368,7 +367,7 @@ type bpfLoad struct {
 }
 
 // createInitialObserverSensor retruns the observerSensor that is loaded at initialization time
-func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
+func createInitialObserverSensor(enableTLS, enableTLSTC bool) *observerSensor {
 	progs := []*bpfLoad{
 		&ObserverExecve,
 		&ObserverExit,
@@ -390,7 +389,7 @@ func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
 		&ObserverTlsStats, // NB: Maybe this should be under k.enableTLS?
 	}
 
-	if k.enableTLS {
+	if enableTLS {
 		progs = append(progs,
 			&ObserverSockopsEstablished,
 			&ObserverSkmsg,
@@ -404,7 +403,7 @@ func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
 		)
 	}
 
-	if k.enableTLSTC {
+	if enableTLSTC {
 		progs = append(progs,
 			&ObserverTLSTCEgress,
 			&ObserverTLSTCIngress,
@@ -429,8 +428,8 @@ func (k *ObserverKprobe) createInitialObserverSensor() *observerSensor {
 	}
 }
 
-func (k *ObserverKprobe) removeProgram(prog *bpfLoad) {
-	os.Remove(k.bpfDir + prog.observer__prog)
+func removeProgram(bpfDir string, prog *bpfLoad) {
+	os.Remove(bpfDir + prog.observer__prog)
 	if prog.probeType == "generic_kprobe" {
 		coreFile := ""
 		splitProg := strings.Split(prog.observer__prog, "__")
@@ -444,19 +443,19 @@ func (k *ObserverKprobe) removeProgram(prog *bpfLoad) {
 			coreFile = splitProg[1]
 		}
 		fmt.Printf("remove strings %s\n", coreFile)
-		files, err := ioutil.ReadDir(k.bpfDir)
+		files, err := ioutil.ReadDir(bpfDir)
 		if err == nil {
 			for _, f := range files {
 				if strings.Contains(f.Name(), coreFile) {
 					if f.IsDir() {
-						os.RemoveAll(k.bpfDir + f.Name())
+						os.RemoveAll(bpfDir + f.Name())
 					} else {
-						os.Remove(k.bpfDir + f.Name())
+						os.Remove(bpfDir + f.Name())
 					}
 				}
 			}
 		}
-		os.Remove(k.bpfDir + prog.observer__prog + "-kp-calls")
+		os.Remove(bpfDir + prog.observer__prog + "-kp-calls")
 	}
 	if prog.tracefd >= 0 {
 		removeTracepoint(prog.tracefd)
@@ -464,16 +463,16 @@ func (k *ObserverKprobe) removeProgram(prog *bpfLoad) {
 	}
 }
 
-func (k *ObserverKprobe) RemovePrograms() {
+func RemovePrograms(bpfDir, mapDir string) {
 	for _, l := range observerAllPrograms {
-		k.removeProgram(l)
+		removeProgram(bpfDir, l)
 	}
 
 	for _, m := range observerAllMaps {
-		os.Remove(k.mapDir + m.mapName)
+		os.Remove(mapDir + m.mapName)
 	}
-	os.Remove(k.bpfDir)
-	os.Remove(k.mapDir)
+	os.Remove(bpfDir)
+	os.Remove(mapDir)
 	btf.FreeCachedBTF()
 }
 
@@ -514,7 +513,7 @@ func observerFindProgs(ctx context.Context) error {
 	return nil
 }
 
-func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor) error {
+func observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor, mapDir string) error {
 	version, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	if err != nil {
 		return err
@@ -528,7 +527,7 @@ func (k *ObserverKprobe) observerLoadSensorMaps(stopCtx context.Context, sensor 
 			continue
 		}
 
-		pin := k.mapDir + m.mapName
+		pin := mapDir + m.mapName
 		btfObj := btf.GetCachedBTF()
 		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btfObj, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
@@ -566,7 +565,7 @@ func getDefaultRouteLinks() ([]netlink.Link, error) {
 	return links, nil
 }
 
-func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int) (error, int) {
+func observerLoadTC(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verbosity int) (error, int) {
 	var attachLinks []netlink.Link
 
 	btfObj := btf.GetCachedBTF()
@@ -574,32 +573,15 @@ func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int) (
 		btfObj,
 		load.Observer__program,
 		load.observer__label,
-		k.bpfDir+load.observer__prog,
-		k.mapDir,
-		k.ciliumDir)
+		bpfDir+load.observer__prog,
+		mapDir,
+		ciliumDir)
 	if err != nil {
 		return err, fd
 	}
-	if k.interfaces != "" {
-		links, err := netlink.LinkList()
-		if err != nil {
-			return err, 0
-		}
-		ifaceMatch := strings.Split(k.interfaces, ",")
-		for _, link := range links {
-			for _, m := range ifaceMatch {
-				add, err := regexp.MatchString(m, link.Attrs().Name)
-				if err != nil || !add {
-					continue
-				}
-				attachLinks = append(attachLinks, link)
-			}
-		}
-	} else {
-		attachLinks, err = getDefaultRouteLinks()
-		if err != nil {
-			return err, 0
-		}
+	attachLinks, err = getDefaultRouteLinks()
+	if err != nil {
+		return err, 0
 	}
 
 	for _, link := range attachLinks {
@@ -614,7 +596,7 @@ func (k *ObserverKprobe) observerLoadTC(load *bpfLoad, version, Verbosity int) (
 	return nil, 0
 }
 
-func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, x64 bool) (error, int) {
+func loadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verbosity int, x64 bool) (error, int) {
 	var attach string
 
 	if x64 {
@@ -630,54 +612,54 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, x64
 			load.Observer__program,
 			attach,
 			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			k.mapDir)
+			bpfDir+load.observer__prog,
+			mapDir)
 	} else if load.probeType == "sockops" {
 		return bpf.LoadSockopsProgram(
 			version, Verbosity,
 			btfObj,
 			load.Observer__program,
 			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			k.mapDir)
+			bpfDir+load.observer__prog,
+			mapDir)
 	} else if load.probeType == "skmsg" {
 		return bpf.LoadSkmsgProgram(
 			version, Verbosity,
 			btfObj,
 			load.Observer__program,
 			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			k.mapDir)
+			bpfDir+load.observer__prog,
+			mapDir)
 	} else if load.probeType == "sk_skb_verdict" {
 		return bpf.LoadSkSkbVerdictProgram(
 			version, Verbosity,
 			btfObj,
 			load.Observer__program,
 			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			k.mapDir)
+			bpfDir+load.observer__prog,
+			mapDir)
 	} else if load.probeType == "sk_skb_parser" {
 		return bpf.LoadSkSkbParserProgram(
 			version, Verbosity,
 			btfObj,
 			load.Observer__program,
 			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			k.mapDir)
+			bpfDir+load.observer__prog,
+			mapDir)
 	} else if load.probeType == "cgrp_ingress" {
 		return bpf.LoadCgroupProgram(
 			version, Verbosity,
 			btfObj,
 			load.Observer__program,
 			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			k.mapDir)
+			bpfDir+load.observer__prog,
+			mapDir)
 	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
-		return k.observerLoadTC(load, version, Verbosity)
+		return observerLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity)
 	} else if load.probeType == "generic_kprobe" {
-		return k.loadGenericKprobeSensor(load, version, Verbosity)
+		return loadGenericKprobeSensor(bpfDir, mapDir, load, version, Verbosity)
 	} else if load.probeType == "generic_tracepoint" {
-		return k.loadGenericTracepointSensor(load, version, Verbosity, x64)
+		return LoadGenericTracepointSensor(bpfDir, mapDir, load, version, Verbosity, x64)
 	} else {
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
@@ -685,13 +667,13 @@ func (k *ObserverKprobe) loadInstance(load *bpfLoad, version, Verbosity int, x64
 			load.Observer__program,
 			attach,
 			load.observer__label,
-			k.bpfDir+load.observer__prog,
-			k.mapDir,
+			bpfDir+load.observer__prog,
+			mapDir,
 			load.retProbe)
 	}
 }
 
-func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Context) error {
+func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, stopCtx context.Context) error {
 	var fd int
 
 	version, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
@@ -701,23 +683,23 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 
 	logger.GetLogger().Debugf("prog %s kern_version %d\n", load.Observer__program, version)
 	if load.probeType == "tracepoint" {
-		err, fd = k.loadInstance(load, version, Verbosity, true)
+		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, Verbosity, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
 			logger.GetLogger().Infof("Tracepoint %s exists: removing and retrying", load.Observer__program)
 			removeTracepoint(load.tracefd)
-			err, fd = k.loadInstance(load, version, Verbosity, true)
+			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, Verbosity, true)
 		}
 		if err != nil {
 			return fmt.Errorf("Failed prog %s kern_version %d err %d LoadTracingProgram: %s\n",
 				load.Observer__program, version, fd, err)
 		}
 	} else {
-		err, fd = k.loadInstance(load, version, Verbosity, true)
+		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, Verbosity, true)
 		if err != nil {
 			/* If we fail attach with __x64_sys_execve variant try again with
 			 * sys_execve variant.
 			 */
-			err, fd = k.loadInstance(load, version, Verbosity, false)
+			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, Verbosity, false)
 			if err != nil && load.errorFatal {
 				return fmt.Errorf("Failed prog %s kern_version %d LoadKprobeProgram: %s\n",
 					load.Observer__program, version, err)
@@ -728,7 +710,7 @@ func (k *ObserverKprobe) observerLoadInstance(load *bpfLoad, stopCtx context.Con
 	return nil
 }
 
-func (k *ObserverKprobe) observerUnloadSensor(sensor *observerSensor, ctx context.Context) error {
+func observerUnloadSensor(bpfDir, mapDir string, sensor *observerSensor, ctx context.Context) error {
 	logger.GetLogger().Infof("Unloading sensor %s", sensor.name)
 	if !sensor.loaded {
 		logger.GetLogger().Warningf("attempted to unload sensor %s which is not loaded", sensor.name)
@@ -736,18 +718,18 @@ func (k *ObserverKprobe) observerUnloadSensor(sensor *observerSensor, ctx contex
 	}
 
 	for _, p := range sensor.progs {
-		k.removeProgram(p)
+		removeProgram(bpfDir, p)
 	}
 
 	for _, m := range sensor.maps {
-		os.Remove(k.mapDir + m.mapName)
+		os.Remove(mapDir + m.mapName)
 	}
 
 	sensor.loaded = false
 	return nil
 }
 
-func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *observerSensor) error {
+func ObserverLoadSensor(bpfDir, mapDir, ciliumDir string, stopCtx context.Context, sensor *observerSensor) error {
 	if sensor == nil {
 		return nil
 	}
@@ -761,7 +743,7 @@ func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *obs
 	_, verStr, _ := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	logger.GetLogger().Infof("Loading kernel version %s", verStr)
 
-	if err := k.observerLoadSensorMaps(stopCtx, sensor); err != nil {
+	if err := observerLoadSensorMaps(stopCtx, sensor, mapDir); err != nil {
 		return err
 	}
 
@@ -771,7 +753,7 @@ func (k *ObserverKprobe) observerLoadSensor(stopCtx context.Context, sensor *obs
 			continue
 		}
 
-		if err := k.observerLoadInstance(p, stopCtx); err != nil {
+		if err := observerLoadInstance(bpfDir, mapDir, ciliumDir, p, stopCtx); err != nil {
 			return err
 		}
 		p.loadState.setLoaded()
@@ -791,22 +773,35 @@ func removeTracepoint(fd int) {
 	unix.Close(fd)
 }
 
-func (k *ObserverKprobe) LoadDefaultSensor(ctx context.Context) error {
-	k.createDir()
+func observerMinReqs(ctx context.Context) (bool, error) {
+	_, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
+	if err != nil {
+		return false, fmt.Errorf("Kernel version lookup failed, required for kprobe.\n")
+	}
+	return true, nil
+}
+
+func createDir(bpfDir, mapDir string) {
+	os.Mkdir(bpfDir, os.ModeDir)
+	os.Mkdir(mapDir, os.ModeDir)
+}
+
+func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, tlsTC, tls bool, ctx context.Context) error {
+	createDir(bpfDir, mapDir)
 
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
 	if err := observerFindProgs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
 	}
-	if _, err := k.observerMinReqs(ctx); err != nil {
+	if _, err := observerMinReqs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting minimum requirements not met. %s\n", err)
 	}
 
 	// This is technically not a sensor since we are loading this
 	// statically when we start, but it allows us to have a single path for
 	// loading bpf programs.
-	initialSensor := k.createInitialObserverSensor()
-	if err := k.observerLoadSensor(ctx, initialSensor); err != nil {
+	initialSensor := createInitialObserverSensor(tls, tlsTC)
+	if err := ObserverLoadSensor(bpfDir, mapDir, ciliumDir, ctx, initialSensor); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
 

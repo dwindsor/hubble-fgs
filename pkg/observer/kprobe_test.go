@@ -52,8 +52,8 @@ spec:
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	initialSensor := kprobe.createInitialObserverSensor()
-	kprobe.observerLoadSensor(context.TODO(), initialSensor)
+	initialSensor := createInitialObserverSensor(kprobe.enableTLS, kprobe.enableTLSTC)
+	ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), initialSensor)
 	kprobe.RemovePrograms()
 }
 

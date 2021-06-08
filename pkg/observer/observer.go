@@ -27,7 +27,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/sirupsen/logrus"
@@ -510,11 +509,6 @@ func (k *ObserverKprobe) runEvents(stopCtx context.Context) error {
 	return nil
 }
 
-func (k *ObserverKprobe) createDir() {
-	os.Mkdir(k.bpfDir, os.ModeDir)
-	os.Mkdir(k.mapDir, os.ModeDir)
-}
-
 func prependPath(s string, b []byte) []byte {
 	split := strings.Split(string(b), "\u0000")
 	split[0] = s
@@ -601,14 +595,6 @@ func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
 	return true
 }
 
-func (k *ObserverKprobe) observerMinReqs(ctx context.Context) (bool, error) {
-	_, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
-	if err != nil {
-		return false, fmt.Errorf("Kernel version lookup failed, required for kprobe.\n")
-	}
-	return true, nil
-}
-
 func (k *ObserverKprobe) Start(ctx context.Context) error {
 	// initialize kernel symbol lookup
 	ksyms, err := ksyms.NewKsyms(ProcFS)
@@ -618,7 +604,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		k.log.Warningf("failed to initialize ksyms: %s", err)
 	}
 
-	if err := k.LoadDefaultSensor(ctx); err != nil {
+	if err := LoadDefaultSensor(k.bpfDir, k.mapDir, k.ciliumDir, k.enableTLS, k.enableTLSTC, ctx); err != nil {
 		return err
 	}
 
@@ -628,7 +614,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("hubble-fgs, failed to initialize generic sensors. %w\n", err)
 		}
-		if err := k.observerLoadSensor(ctx, genericSensor); err != nil {
+		if err := ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx, genericSensor); err != nil {
 			return fmt.Errorf("hubble-fgs, Aborting could not load initial kprobe sensors. %s\n", err)
 		}
 	}
@@ -679,4 +665,8 @@ func (k *ObserverKprobe) PrintStats() {
 
 func (k *ObserverKprobe) AttachFilter(f *MsgFilter) {
 	k.msgFilter = append(k.msgFilter, f)
+}
+
+func (k *ObserverKprobe) RemovePrograms() {
+	RemovePrograms(k.bpfDir, k.mapDir)
 }
