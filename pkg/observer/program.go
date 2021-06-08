@@ -307,14 +307,6 @@ var (
 	}
 )
 
-type shouldLoad func(k *ObserverKprobe) bool
-
-func alwaysLoad(k *ObserverKprobe) bool  { return true }
-func neverLoad(k *ObserverKprobe) bool   { return false }
-func isTLSLoad(k *ObserverKprobe) bool   { return k.enableTLS }
-func isTLSTCLoad(k *ObserverKprobe) bool { return k.enableTLSTC }
-func isExternal(k *ObserverKprobe) bool  { return false }
-
 // bpfLoadState represents the state of a BPF program or map
 //
 // NB: Currently there is no case where we attempt to load a program that is
