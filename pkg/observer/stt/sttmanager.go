@@ -11,7 +11,7 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package observer
+package sttManager
 
 import (
 	"errors"
@@ -23,7 +23,7 @@ import (
 )
 
 // StackTrace Tree Manager
-type sttManagerHandle chan<- SttMgOp
+type SttManagerHandle chan<- SttMgOp
 
 // Operations
 
@@ -45,7 +45,7 @@ type SttMgTreeInsert struct {
 
 type SttMgTreeToProto struct {
 	TreeName string
-	retChan  chan error
+	RetChan  chan error
 	RootNode *fgs.StackTraceNode
 }
 
@@ -62,10 +62,10 @@ type SttMgOp interface {
 func (s *SttMgCreateTree) SttMgOpDone(e error)  { s.retChan <- e }
 func (s *SttMgDestroyTree) SttMgOpDone(e error) { s.retChan <- e }
 func (s *SttMgTreeInsert) SttMgOpDone(e error)  { s.retChan <- e }
-func (s *SttMgTreeToProto) SttMgOpDone(e error) { s.retChan <- e }
+func (s *SttMgTreeToProto) SttMgOpDone(e error) { s.RetChan <- e }
 func (s *SttMgStop) SttMgOpDone(e error)        { s.retChan <- e }
 
-func startSttManager() sttManagerHandle {
+func StartSttManager() SttManagerHandle {
 	c := make(chan SttMgOp)
 	treeMap := make(map[string]*stt.Sttree)
 	go func() {
@@ -114,9 +114,9 @@ func startSttManager() sttManagerHandle {
 	return c
 }
 
-func (h sttManagerHandle) CreateTree(tname string) error {
+func (h SttManagerHandle) CreateTree(tname string) error {
 	if h == nil {
-		return fmt.Errorf("CreateTree failed, sttManagerHandle is nil")
+		return fmt.Errorf("CreateTree failed, SttManagerHandle is nil")
 	}
 
 	retc := make(chan error)
@@ -128,9 +128,9 @@ func (h sttManagerHandle) CreateTree(tname string) error {
 	return <-retc
 }
 
-func (h sttManagerHandle) DestroyTree(tname string) error {
+func (h SttManagerHandle) DestroyTree(tname string) error {
 	if h == nil {
-		return fmt.Errorf("DestroyTree failed, sttManagerHandle is nil")
+		return fmt.Errorf("DestroyTree failed, SttManagerHandle is nil")
 	}
 
 	retc := make(chan error)
@@ -142,9 +142,9 @@ func (h sttManagerHandle) DestroyTree(tname string) error {
 	return <-retc
 }
 
-func (h sttManagerHandle) Insert(tname string, stt *stt.Stt) error {
+func (h SttManagerHandle) Insert(tname string, stt *stt.Stt) error {
 	if h == nil {
-		return fmt.Errorf("Instert failed, sttManagerHandle is nil")
+		return fmt.Errorf("Instert failed, SttManagerHandle is nil")
 	}
 
 	retc := make(chan error)

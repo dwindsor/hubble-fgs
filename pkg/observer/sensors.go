@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/observer/stt"
 )
 
 // Sensors
@@ -45,11 +46,11 @@ var (
 
 type ObserverSync struct {
 	sensorCtl  sensorCtlHandle
-	sttManager sttManagerHandle
+	sttManager sttManager.SttManagerHandle
 }
 
 type sensorLoadArg struct {
-	sttManagerHandle
+	sttManagerHandle sttManager.SttManagerHandle
 }
 
 type sensorUnloadArg = sensorLoadArg
@@ -124,18 +125,18 @@ type sensorRemove struct {
 
 // sensorEnable enables a sensor
 type sensorEnable struct {
-	ctx  context.Context
-	name string
-	sttManagerHandle
-	retChan chan error
+	ctx              context.Context
+	name             string
+	sttManagerHandle sttManager.SttManagerHandle
+	retChan          chan error
 }
 
 // sensorDisable disables a sensor
 type sensorDisable struct {
-	ctx  context.Context
-	name string
-	sttManagerHandle
-	retChan chan error
+	ctx              context.Context
+	name             string
+	sttManagerHandle sttManager.SttManagerHandle
+	retChan          chan error
 }
 
 // sensorList returns a list of the active sensors
@@ -326,7 +327,7 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 		}
 	}()
 
-	sensor.sttManager = startSttManager()
+	sensor.sttManager = sttManager.StartSttManager()
 	sensor.sensorCtl = c
 	return &sensor, nil
 }
@@ -507,9 +508,9 @@ func (s *ObserverSync) GetTreeProto(ctx context.Context, tname string) (*fgs.Sta
 	}
 
 	retc := make(chan error)
-	op := &SttMgTreeToProto{
+	op := &sttManager.SttMgTreeToProto{
 		TreeName: tname,
-		retChan:  retc,
+		RetChan:  retc,
 	}
 	h <- op
 	err := <-retc
