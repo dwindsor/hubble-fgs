@@ -288,7 +288,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 }
 
 // createGenericTracepointSensor will create a sensor that can be loaded based on a generic tracepoint configuration
-func (k *ObserverKprobe) createGenericTracepointSensor(confs []GenericTracepointConf) (*observerSensor, error) {
+func createGenericTracepointSensor(confs []GenericTracepointConf) (*observerSensor, error) {
 
 	tracepoints := make([]*genericTracepoint, 0, len(confs))
 	for _, conf := range confs {

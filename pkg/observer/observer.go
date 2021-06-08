@@ -610,7 +610,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 
 	// Load initial set of generic kprobe sensors */
 	if k.configFile != "" {
-		genericSensor, err := k.getSensorFromTracingPolicyFname(k.configFile)
+		genericSensor, err := getSensorFromTracingPolicyFname(k.configFile)
 		if err != nil {
 			return fmt.Errorf("hubble-fgs, failed to initialize generic sensors. %w\n", err)
 		}

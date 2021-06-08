@@ -13,6 +13,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/idtable"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 )
 
@@ -376,7 +377,7 @@ func argValue(a v1alpha1.ArgSelector) ([]byte, uint32, error) {
 	return value, 0, nil
 }
 
-func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*observerSensor, error) {
+func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*observerSensor, error) {
 	var progs []*bpfLoad
 
 	for i := range kprobes {
@@ -569,7 +570,7 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 
 	}
 
-	k.log.Info("Loaded generic kprobe sensor")
+	logger.GetLogger().Info("Loaded generic kprobe sensor")
 	return &observerSensor{
 		name:  "__generic_kprobe_sensors__",
 		progs: progs,
@@ -646,12 +647,12 @@ func (k *ObserverKprobe) handleGenericKprobeString(r *bytes.Reader) string {
 
 	err := binary.Read(r, binary.LittleEndian, &b)
 	if err != nil {
-		k.log.WithError(err).Warnf("StringSz type err")
+		logger.GetLogger().WithError(err).Warnf("StringSz type err")
 	}
 	outputStr := make([]byte, b)
 	err = binary.Read(r, binary.LittleEndian, &outputStr)
 	if err != nil {
-		k.log.WithError(err).Warnf("String with size %d type err", b)
+		logger.GetLogger().WithError(err).Warnf("String with size %d type err", b)
 	}
 
 	strVal := string(outputStr[:])
@@ -703,13 +704,13 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	m := api.MsgGenericKprobe{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
-		k.log.WithError(err).Warnf("Failed to read process call msg")
+		logger.GetLogger().WithError(err).Warnf("Failed to read process call msg")
 		return
 	}
 
 	gk, err := genericKprobeTableGet(idtable.EntryID{ID: int(m.Id)})
 	if err != nil {
-		k.log.WithError(err).Warnf("Failed to match id:%d", m.Id)
+		logger.GetLogger().WithError(err).Warnf("Failed to match id:%d", m.Id)
 		return
 	}
 
@@ -735,7 +736,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 
 			err := binary.Read(r, binary.LittleEndian, &output)
 			if err != nil {
-				k.log.WithError(err).Warnf("Int type error")
+				logger.GetLogger().WithError(err).Warnf("Int type error")
 			}
 
 			arg.Index = uint64(a.index)
@@ -760,12 +761,12 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 
 			err := binary.Read(r, binary.LittleEndian, &b)
 			if err != nil {
-				k.log.WithError(err).Warnf("StringSz type err")
+				logger.GetLogger().WithError(err).Warnf("StringSz type err")
 			}
 			outputStr := make([]byte, b)
 			err = binary.Read(r, binary.LittleEndian, &outputStr)
 			if err != nil {
-				k.log.WithError(err).Warnf("String with size %d type err", b)
+				logger.GetLogger().WithError(err).Warnf("String with size %d type err", b)
 			}
 
 			arg.Index = uint64(a.index)
@@ -780,7 +781,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			if arg, err := k.readArgBytes(r, a.index); err == nil {
 				unix.Args = append(unix.Args, *arg)
 			} else {
-				k.log.WithError(err).Warnf("failed to read bytes argument")
+				logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
 			}
 		case GenericKprobeSkbType:
 			var skb api.MsgGenericKprobeSkb
@@ -788,7 +789,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 
 			err := binary.Read(r, binary.LittleEndian, &skb)
 			if err != nil {
-				k.log.WithError(err).Warnf("skb type err")
+				logger.GetLogger().WithError(err).Warnf("skb type err")
 			}
 
 			arg.Index = uint64(a.index)
@@ -803,14 +804,14 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 
 			err := binary.Read(r, binary.LittleEndian, &output)
 			if err != nil {
-				k.log.WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
+				logger.GetLogger().WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
 			}
 
 			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
 		default:
-			k.log.WithError(err).WithField("event", a).Warnf("Unknown type event")
+			logger.GetLogger().WithError(err).WithField("event", a).Warnf("Unknown type event")
 		}
 	}
 
@@ -844,10 +845,10 @@ func (k *ObserverKprobe) retprobeMerge(prev pendingEvent, curr pendingEvent) *ap
 		retEv = curr.ev
 		enterEv = prev.ev
 	} else if prev.returnEvent && curr.returnEvent {
-		k.log.Warnf("cannot merge two return events: prev:%+v curr:%+v", prev, curr)
+		logger.GetLogger().Warnf("cannot merge two return events: prev:%+v curr:%+v", prev, curr)
 		return nil
 	} else {
-		k.log.Warnf("cannot merge two enter events: prev:%+v curr:%+v", prev, curr)
+		logger.GetLogger().Warnf("cannot merge two enter events: prev:%+v curr:%+v", prev, curr)
 		return nil
 	}
 
@@ -865,7 +866,7 @@ func (k *ObserverKprobe) retprobeMerge(prev pendingEvent, curr pendingEvent) *ap
 func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) {
 	for listener, _ := range k.listeners {
 		if err := listener.Notify(msg); err != nil {
-			k.log.Debug("Write failure removing Listener")
+			logger.GetLogger().Debug("Write failure removing Listener")
 			k.RemoveListener(listener)
 		}
 	}
@@ -877,7 +878,7 @@ func (k *ObserverKprobe) removeGenericKprobeSensor(kprobeConfig *v1alpha1.Tracin
 		if p != nil {
 			removeProgram(k.bpfDir, p)
 		} else {
-			k.log.Warn("Attempted to remove unloaded program: %s\n", f.Call)
+			logger.GetLogger().Warn("Attempted to remove unloaded program: %s\n", f.Call)
 		}
 	}
 }

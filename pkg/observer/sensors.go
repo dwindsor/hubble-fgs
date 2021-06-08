@@ -214,7 +214,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 					err = fmt.Errorf("sensor %s already exists", op.sensorName)
 					break
 				}
-				sensor, err = k.getSensorFromTracingPolicy(op.spec)
+				sensor, err = getSensorFromTracingPolicy(op.spec)
 				if err != nil {
 					break
 				}
@@ -328,36 +328,36 @@ func (k *ObserverKprobe) startSensorCtl() error {
 	return nil
 }
 
-func (o *ObserverKprobe) getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
 	kprobes := spec.KProbes
 	tracepoints := spec.Tracepoints
 	if len(kprobes) > 0 && len(tracepoints) > 0 {
 		// TODO: requires some refactoring (see also below)
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	} else if len(kprobes) > 0 {
-		return o.addGenericKprobeSensors(kprobes, ObserverBTF)
+		return addGenericKprobeSensors(kprobes, ObserverBTF)
 	} else if len(tracepoints) > 0 {
-		return o.createGenericTracepointSensor(tracepoints)
+		return createGenericTracepointSensor(tracepoints)
 	} else {
 		return nil, errors.New("empty tracing policy")
 	}
 }
 
-func (o *ObserverKprobe) getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
+func getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
 	cnf, err := config.ReadConfigYaml(yaml)
 	if err != nil {
 		return nil, err
 	}
-	return o.getSensorFromTracingPolicy(&cnf.Spec)
+	return getSensorFromTracingPolicy(&cnf.Spec)
 
 }
 
-func (o *ObserverKprobe) getSensorFromTracingPolicyFname(fname string) (*observerSensor, error) {
+func getSensorFromTracingPolicyFname(fname string) (*observerSensor, error) {
 	yamlData, err := os.ReadFile(fname)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read yaml file %s: %w", fname, err)
 	}
-	return o.getSensorFromTracingPolicyString(string(yamlData))
+	return getSensorFromTracingPolicyString(string(yamlData))
 }
 
 /*

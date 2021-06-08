@@ -48,7 +48,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 	}()
 
 	// create and add sensor
-	sensor, err := observer.createGenericTracepointSensor([]GenericTracepointConf{lseekConf})
+	sensor, err := createGenericTracepointSensor([]GenericTracepointConf{lseekConf})
 	if err != nil {
 		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
 	}
@@ -140,7 +140,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	}()
 
 	// create and add sensor
-	sensor, err := observer.createGenericTracepointSensor([]GenericTracepointConf{conf})
+	sensor, err := createGenericTracepointSensor([]GenericTracepointConf{conf})
 	if err != nil {
 		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
 	}
