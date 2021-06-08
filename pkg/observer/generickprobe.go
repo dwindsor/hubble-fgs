@@ -642,7 +642,7 @@ func loadGenericKprobeSensor(bpfDir, mapDir string, load *bpfLoad, version, verb
 	}
 }
 
-func (k *ObserverKprobe) handleGenericKprobeString(r *bytes.Reader) string {
+func handleGenericKprobeString(r *bytes.Reader) string {
 	var b int32
 
 	err := binary.Read(r, binary.LittleEndian, &b)
@@ -663,7 +663,7 @@ func (k *ObserverKprobe) handleGenericKprobeString(r *bytes.Reader) string {
 	return strVal
 }
 
-func (k *ObserverKprobe) readArgBytes(r *bytes.Reader, index int) (*api.MsgGenericKprobeArgBytes, error) {
+func ReadArgBytes(r *bytes.Reader, index int) (*api.MsgGenericKprobeArgBytes, error) {
 	var bytes, bytes_rd int32
 	var arg api.MsgGenericKprobeArgBytes
 
@@ -746,13 +746,13 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			var arg api.MsgGenericKprobeArgFile
 
 			arg.Index = uint64(a.index)
-			arg.Value = k.handleGenericKprobeString(r)
+			arg.Value = handleGenericKprobeString(r)
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobePathType:
 			var arg api.MsgGenericKprobeArgPath
 
 			arg.Index = uint64(a.index)
-			arg.Value = k.handleGenericKprobeString(r)
+			arg.Value = handleGenericKprobeString(r)
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeFilenameType,
 			GenericKprobeStringType:
@@ -778,7 +778,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Value = strVal
 			unix.Args = append(unix.Args, arg)
 		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
-			if arg, err := k.readArgBytes(r, a.index); err == nil {
+			if arg, err := ReadArgBytes(r, a.index); err == nil {
 				unix.Args = append(unix.Args, *arg)
 			} else {
 				logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
@@ -822,7 +822,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 		curr := pendingEvent{ev: unix, returnEvent: returnEvent}
 		if prev, exists := gk.pendingEvents[m.ThreadId]; exists {
 			delete(gk.pendingEvents, m.ThreadId)
-			unix = k.retprobeMerge(prev, curr)
+			unix = retprobeMerge(prev, curr)
 		} else {
 			gk.pendingEvents[m.ThreadId] = curr
 			unix = nil
@@ -835,7 +835,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 }
 
 // retprobeMerge merges the two events: the one from they entry and one from the return
-func (k *ObserverKprobe) retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUnix {
+func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUnix {
 	var retEv, enterEv *api.MsgGenericKprobeUnix
 
 	if prev.returnEvent && !curr.returnEvent {
@@ -868,17 +868,6 @@ func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) 
 		if err := listener.Notify(msg); err != nil {
 			logger.GetLogger().Debug("Write failure removing Listener")
 			k.RemoveListener(listener)
-		}
-	}
-}
-
-func (k *ObserverKprobe) removeGenericKprobeSensor(kprobeConfig *v1alpha1.TracingPolicySpec) {
-	for _, f := range kprobeConfig.KProbes {
-		p := genericKprobeProgs[f.Call]
-		if p != nil {
-			removeProgram(k.bpfDir, p)
-		} else {
-			logger.GetLogger().Warn("Attempted to remove unloaded program: %s\n", f.Call)
 		}
 	}
 }

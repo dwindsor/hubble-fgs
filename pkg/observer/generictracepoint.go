@@ -507,7 +507,7 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 			unix.Args = append(unix.Args, val)
 
 		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
-			if arg, err := k.readArgBytes(r, idx); err == nil {
+			if arg, err := ReadArgBytes(r, idx); err == nil {
 				unix.Args = append(unix.Args, arg.Value)
 			} else {
 				k.log.WithError(err).Warnf("failed to read bytes argument")
