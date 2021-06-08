@@ -196,7 +196,7 @@ func (k *ObserverKprobe) handleKfreeSkb(m *api.MsgKfreeSkb) {
 
 	stt_lbl := []string{vtuple.StringRep(&msgUnix.Tuple)}
 	stt := stt.SttFromCalltrace(msgUnix.Calltrace, stt_lbl)
-	k.ObserverSync.sttManagerHandle.Insert("packet-drop", stt)
+	k.ObserverSync.sttManager.Insert("packet-drop", stt)
 
 	// NB: Currently, we don't push these events to listens, but we might
 	// want to change that at some point.

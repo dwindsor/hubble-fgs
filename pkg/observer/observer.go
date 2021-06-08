@@ -555,8 +555,6 @@ type ObserverKprobe struct {
 	/* Filters */
 	msgFilter []*MsgFilter
 	log       logrus.FieldLogger
-	/* see ObserverSync description */
-	ObserverSync
 
 	/* Kernel symbols */
 	ksyms *ksyms.Ksyms
@@ -572,23 +570,9 @@ type ObserverKprobe struct {
 
 	/* enable CRD */
 	enableCRD bool
-}
 
-// ObseverSync holds data that are safe to be used in all goroutine contexts.
-//
-// The ObserverKprobe structure contains internal data that are used in the
-// goroutine that executes Start(). Start()  polls for events, process them,
-// and forwards them to the registered listeners. The internal data of
-// ObserverKprobe are accessed without synchronization and so they must not be
-// used by other goroutines.
-//
-// ObserverSync holds the parts that are safe to be used from other
-// goroutines.
-type ObserverSync struct {
-	/* sensors controller: loading/unloading sensors */
-	sensorCtlHandle
-	/* stacktrace tree manager: managing stacktrace trees */
-	sttManagerHandle
+	/* Sensor Controller */
+	ObserverSync *ObserverSync
 }
 
 func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
@@ -623,12 +607,14 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	defer cancel()
 
 	// start sensor controller and stt manager
-	k.startSensorCtl()
-	k.ObserverSync.sttManagerHandle = startSttManager()
+	k.ObserverSync, err = StartSensorCtl(k.bpfDir, k.mapDir, k.ciliumDir)
+	if err != nil {
+		return err
+	}
 
 	// start CRD watcher
 	if k.enableCRD {
-		go k.watchTracePolicy(ctx)
+		go watchTracePolicy(k.ObserverSync, ctx)
 	}
 
 	k.startUpdateMapMetrics()

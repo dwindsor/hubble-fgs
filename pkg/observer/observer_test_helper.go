@@ -128,7 +128,7 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, kprobe)
+	server := fgsGrpc.NewServer(processManager, kprobe.ObserverSync)
 	writer := lumberjack.Logger{
 		Filename:   exportFile,
 		MaxSize:    10,

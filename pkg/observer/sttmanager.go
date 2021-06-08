@@ -14,7 +14,6 @@
 package observer
 
 import (
-	"context"
 	"errors"
 	"fmt"
 
@@ -156,23 +155,4 @@ func (h sttManagerHandle) Insert(tname string, stt *stt.Stt) error {
 	}
 	h <- op
 	return <-retc
-}
-
-func (h sttManagerHandle) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error) {
-	if h == nil {
-		return nil, fmt.Errorf("GetTreeProto failed, sttManagerHandle is nil")
-	}
-
-	retc := make(chan error)
-	op := &SttMgTreeToProto{
-		TreeName: tname,
-		retChan:  retc,
-	}
-	h <- op
-	err := <-retc
-	if err != nil {
-		return nil, err
-	} else {
-		return op.RootNode, nil
-	}
 }

@@ -20,6 +20,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -38,7 +39,14 @@ import (
 var (
 	// list of availableSensors, see registerSensor()
 	availableSensors map[string]*observerSensor = map[string]*observerSensor{}
+	// observerSync
+	observerSync *ObserverSync
 )
+
+type ObserverSync struct {
+	sensorCtl  sensorCtlHandle
+	sttManager sttManagerHandle
+}
 
 type sensorLoadArg struct {
 	sttManagerHandle
@@ -187,17 +195,11 @@ type sensorCtlHandle = chan<- sensorOp
 // The purpose of this goroutine is to serialize loading and unloading of
 // sensors as requested from different goroutines (e.g., different GRPC
 // clients).
-//
-// TODO: One issue here is that the goroutine needs a refence to the
-// ObserverKprobe structure to call observerLoadSensor(). AFAICT, it is safe to
-// call observerLoadSensor() from other goroutines. However, to make this
-// obvious, we should factor the necessary data out of ObserverKprobe and avoid
-// the need to keep reference to ObserverKprobe by the sensor controller
-// goroutine.
-func (k *ObserverKprobe) startSensorCtl() error {
+func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
+	var sensor ObserverSync
 
-	if k.ObserverSync.sensorCtlHandle != nil {
-		return fmt.Errorf("failed to start sensor controller: channel already exists")
+	if observerSync != nil {
+		return nil, fmt.Errorf("failed to start sensor controller: channel already exists")
 	}
 
 	c := make(chan sensorOp)
@@ -257,7 +259,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 					err = nil
 					break
 				}
-				err = ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, op.ctx, sensor)
+				err = ObserverLoadSensor(bpfDir, mapDir, ciliumDir, op.ctx, sensor)
 				if err == nil && sensor.impl != nil {
 					sensor.impl.sensorLoaded(sensorLoadArg{sttManagerHandle: op.sttManagerHandle})
 				}
@@ -274,7 +276,7 @@ func (k *ObserverKprobe) startSensorCtl() error {
 					err = nil
 					break
 				}
-				err = observerUnloadSensor(k.bpfDir, k.mapDir, sensor, op.ctx)
+				err = observerUnloadSensor(bpfDir, mapDir, sensor, op.ctx)
 				if err == nil && sensor.impl != nil {
 					sensor.impl.sensorUnloaded(sensorUnloadArg{sttManagerHandle: op.sttManagerHandle})
 				}
@@ -324,8 +326,9 @@ func (k *ObserverKprobe) startSensorCtl() error {
 		}
 	}()
 
-	k.ObserverSync.sensorCtlHandle = c
-	return nil
+	sensor.sttManager = startSttManager()
+	sensor.sensorCtl = c
+	return &sensor, nil
 }
 
 func getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
@@ -366,19 +369,15 @@ func getSensorFromTracingPolicyFname(fname string) (*observerSensor, error) {
 
 // EnableSensor enables a sensor by name
 func (h *ObserverSync) EnableSensor(ctx context.Context, name string) error {
-	if h.sensorCtlHandle == nil {
-		return fmt.Errorf("SensorEnable failed, controller channel not initialized")
-	}
-
 	retc := make(chan error)
 	op := &sensorEnable{
 		ctx:              ctx,
 		name:             name,
-		sttManagerHandle: h.sttManagerHandle,
+		sttManagerHandle: h.sttManager,
 		retChan:          retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	err := <-retc
 
 	return err
@@ -386,10 +385,6 @@ func (h *ObserverSync) EnableSensor(ctx context.Context, name string) error {
 
 // AddSensor adds a sensor
 func (h *ObserverSync) AddSensor(ctx context.Context, name string, sensor *observerSensor) error {
-	if h.sensorCtlHandle == nil {
-		return fmt.Errorf("SensorDisable failed, controller channel not initialized")
-	}
-
 	retc := make(chan error)
 	op := &sensorAdd{
 		ctx:     ctx,
@@ -398,41 +393,32 @@ func (h *ObserverSync) AddSensor(ctx context.Context, name string, sensor *obser
 		retChan: retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	return <-retc
 }
 
 // DisableSensor disables a sensor by name
 func (h *ObserverSync) DisableSensor(ctx context.Context, name string) error {
-	if h.sensorCtlHandle == nil {
-		return fmt.Errorf("SensorDisable failed, controller channel not initialized")
-	}
-
 	retc := make(chan error)
 	op := &sensorDisable{
 		ctx:              ctx,
 		name:             name,
-		sttManagerHandle: h.sttManagerHandle,
+		sttManagerHandle: h.sttManager,
 		retChan:          retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	return <-retc
 }
 
 func (h *ObserverSync) ListSensors(ctx context.Context) (*[]api.SensorStatus, error) {
-
-	if h.sensorCtlHandle == nil {
-		return nil, fmt.Errorf("ListSensors failed, controller channel not initialized")
-	}
-
 	retc := make(chan error)
 	op := &sensorList{
 		ctx:     ctx,
 		retChan: retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	err := <-retc
 	if err == nil {
 		return op.result, nil
@@ -442,11 +428,6 @@ func (h *ObserverSync) ListSensors(ctx context.Context) (*[]api.SensorStatus, er
 }
 
 func (h *ObserverSync) GetSensorConfig(ctx context.Context, name string, cfgkey string) (string, error) {
-
-	if h.sensorCtlHandle == nil {
-		return "", fmt.Errorf("SensorGetConfig failed, controller channel not initialized")
-	}
-
 	retc := make(chan error)
 	op := &sensorConfigGet{
 		ctx:     ctx,
@@ -455,7 +436,7 @@ func (h *ObserverSync) GetSensorConfig(ctx context.Context, name string, cfgkey 
 		retChan: retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	err := <-retc
 	if err == nil {
 		return op.val, nil
@@ -465,11 +446,6 @@ func (h *ObserverSync) GetSensorConfig(ctx context.Context, name string, cfgkey 
 }
 
 func (h *ObserverSync) SetSensorConfig(ctx context.Context, name string, cfgkey string, cfgval string) error {
-
-	if h.sensorCtlHandle == nil {
-		return fmt.Errorf("SensorSetConfig failed, controller channel not initialized")
-	}
-
 	retc := make(chan error)
 	op := &sensorConfigSet{
 		ctx:     ctx,
@@ -479,16 +455,12 @@ func (h *ObserverSync) SetSensorConfig(ctx context.Context, name string, cfgkey 
 		retChan: retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	return <-retc
 }
 
 // AddTracingPolicy adds a new sensor based on a tracing policy
 func (h *ObserverSync) AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error {
-	if h.sensorCtlHandle == nil {
-		return fmt.Errorf("SensorEnable failed, controller channel not initialized")
-	}
-
 	retc := make(chan error)
 	op := &tracingPolicyAdd{
 		ctx:        ctx,
@@ -497,16 +469,13 @@ func (h *ObserverSync) AddTracingPolicy(ctx context.Context, sensorName string, 
 		retChan:    retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	err := <-retc
 
 	return err
 }
 
 func (h *ObserverSync) RemoveSensor(ctx context.Context, sensorName string) error {
-	if h.sensorCtlHandle == nil {
-		return fmt.Errorf("SensorEnable failed, controller channel not initialized")
-	}
 	retc := make(chan error)
 	op := &sensorRemove{
 		ctx:     ctx,
@@ -514,7 +483,7 @@ func (h *ObserverSync) RemoveSensor(ctx context.Context, sensorName string) erro
 		retChan: retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	err := <-retc
 
 	return err
@@ -527,6 +496,26 @@ func (h *ObserverSync) stopSensorCtl(ctx context.Context) error {
 		retChan: retc,
 	}
 
-	h.sensorCtlHandle <- op
+	h.sensorCtl <- op
 	return <-retc
+}
+
+func (s *ObserverSync) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error) {
+	h := s.sttManager
+	if h == nil {
+		return nil, fmt.Errorf("GetTreeProto failed, sttManagerHandle is nil")
+	}
+
+	retc := make(chan error)
+	op := &SttMgTreeToProto{
+		TreeName: tname,
+		retChan:  retc,
+	}
+	h <- op
+	err := <-retc
+	if err != nil {
+		return nil, err
+	} else {
+		return op.RootNode, nil
+	}
 }

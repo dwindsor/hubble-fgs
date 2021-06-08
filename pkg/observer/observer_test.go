@@ -913,22 +913,24 @@ func TestSensorLseekEnable(t *testing.T) {
 	sensor := &observerSensor{name: sensorName, progs: progs, maps: maps}
 	registerSensorAtInit(sensor)
 
-	if err := kprobe.startSensorCtl(); err != nil {
+	sensorCtl, err := StartSensorCtl(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir)
+	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
+	kprobe.ObserverSync = sensorCtl
 	defer func() {
-		err := kprobe.stopSensorCtl(ctx)
+		err := sensorCtl.stopSensorCtl(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
 	}()
 
-	if err := kprobe.EnableSensor(ctx, sensorName); err != nil {
+	if err := sensorCtl.EnableSensor(ctx, sensorName); err != nil {
 		t.Fatalf("EnableSensor error: %s", err)
 	}
 
 	defer func() {
-		err := kprobe.DisableSensor(ctx, sensorName)
+		err := sensorCtl.DisableSensor(ctx, sensorName)
 		if err != nil {
 			fmt.Printf("DisableSensor failed: %s\n", err)
 		}

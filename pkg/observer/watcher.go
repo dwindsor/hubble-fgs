@@ -14,7 +14,7 @@ import (
 	"k8s.io/client-go/tools/cache"
 )
 
-func (k *ObserverKprobe) watchTracePolicy(ctx context.Context) {
+func watchTracePolicy(s *ObserverSync, ctx context.Context) {
 	log := logger.GetLogger()
 	conf, err := rest.InClusterConfig()
 	if err != nil {
@@ -31,7 +31,7 @@ func (k *ObserverKprobe) watchTracePolicy(ctx context.Context) {
 				return
 			}
 			log.WithField("policy", policy.Spec).Info("tracing policy added")
-			err := k.AddTracingPolicy(ctx, policy.ObjectMeta.Name, &policy.Spec)
+			err := s.AddTracingPolicy(ctx, policy.ObjectMeta.Name, &policy.Spec)
 			if err != nil {
 				log.WithError(err).Warn("adding tracing policy failed")
 			}
@@ -55,12 +55,12 @@ func (k *ObserverKprobe) watchTracePolicy(ctx context.Context) {
 				"oldPolicy": oldPolicy.Spec,
 				"newPolicy": newPolicy.Spec,
 			}).Info("tracing policy updated")
-			err := k.RemoveSensor(ctx, oldPolicy.ObjectMeta.Name)
+			err := s.RemoveSensor(ctx, oldPolicy.ObjectMeta.Name)
 			if err != nil {
 				log.WithError(err).Warnf("Failed to remove sensor %s to perform update", oldPolicy.ObjectMeta.Name)
 				return
 			}
-			err = k.AddTracingPolicy(ctx, newPolicy.ObjectMeta.Name, &newPolicy.Spec)
+			err = s.AddTracingPolicy(ctx, newPolicy.ObjectMeta.Name, &newPolicy.Spec)
 			if err != nil {
 				log.WithError(err).Warn("adding new tracing policy failed")
 			}
@@ -73,7 +73,7 @@ func (k *ObserverKprobe) watchTracePolicy(ctx context.Context) {
 				return
 			}
 			logger.GetLogger().WithField("policy", policy.Spec).Info("tracing policy deleted")
-			err := k.RemoveSensor(ctx, policy.ObjectMeta.Name)
+			err := s.RemoveSensor(ctx, policy.ObjectMeta.Name)
 			if err != nil {
 				log.WithError(err).Warnf("Failed to remove sensor %s to perform update", policy.ObjectMeta.Name)
 				return
