@@ -501,6 +501,19 @@ func (k *ObserverKprobe) addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, 
 			}
 		}
 
+		has_sigkill := selectors.MatchActionSigKill(f)
+		if has_sigkill {
+			retVal := bpf.AddEnumBtfValue(btf, "sigkill", 1)
+			if retVal < 0 {
+				return nil, fmt.Errorf("Error add enum value 'sigkill = 1' failed %d", retVal)
+			}
+		} else {
+			retVal := bpf.AddEnumBtfValue(btf, "sigkill", 0)
+			if retVal < 0 {
+				return nil, fmt.Errorf("Error add enum value 'sigkill = 0' failed %d", retVal)
+			}
+		}
+
 		// create a new entry on the table, and pass its id to BPF-side
 		// so that we can do the matching at event-generation time
 		kprobeEntry := genericKprobe{

@@ -394,6 +394,11 @@ func (k *ObserverKprobe) loadGenericTracepointSensor(load *bpfLoad, btfFile stri
 		}
 	}
 
+	// actions nop
+	if err := btfAddEnumValue("sigkill", 0); err != nil {
+		return err, 0
+	}
+
 	// rewrite arg index
 	for i := range tp.args {
 		tpArg := &tp.args[i]

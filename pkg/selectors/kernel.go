@@ -79,6 +79,18 @@ var actionTypeStringTable = map[uint32]string{
 	actionTypeSigKill:  "sigkill",
 }
 
+func MatchActionSigKill(spec v1alpha1.KProbeSpec) bool {
+	sels := spec.Selectors
+	for _, s := range sels {
+		for _, act := range s.MatchActions {
+			if act.Action == actionTypeStringTable[actionTypeSigKill] {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 const (
 	argTypeNop       = 0
 	argTypeInt       = 1

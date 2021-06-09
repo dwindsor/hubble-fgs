@@ -25,6 +25,8 @@ enum generic_func_args_enum {
 	notnspidset_value = 0x20,
 	/* return arguments */
 	argreturn = 0x31,
+	/* actions enabled */
+	sigkill = 0x40,
 	/*
 	 * Tracepoints are using the same enum as kprobes
 	 */

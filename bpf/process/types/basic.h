@@ -566,6 +566,7 @@ void installfd(struct msg_generic_kprobe *e, int fd, int name)
 static inline __attribute__((always_inline))
 long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *actions)
 {
+	enum generic_func_args_enum fgs_args;
 	int fdi, namei;
 
 	switch (actions->act[i]) {
@@ -575,7 +576,8 @@ long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *a
 		installfd(e, fdi, namei);
 		break;
 	case ACTION_SIGKILL:
-		send_signal(FGS_SIGKILL);
+		if (bpf_core_enum_value(fgs_args, sigkill))
+			send_signal(FGS_SIGKILL);
 		break;
 	default:
 		break;
