@@ -33,7 +33,7 @@ func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
 
 	msgUnix := msgToTLSEventUnix(m, certStrings, errCode, errState)
 	/* OR filter together */
-	k.observerListenersTLS(msgUnix)
+	k.observerListeners(msgUnix)
 	/* Keeping pretty printer because it helps debugging filters */
 	if k.prettyPrinter {
 		reader.ObserverTLSPrinter(msgUnix, k.log)
@@ -154,7 +154,7 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 	msgUnix := msgToTLSEventUnix(m.tls, certStrings, errCode, errState)
 
 	/* OR filter together */
-	k.observerListenersTLS(msgUnix)
+	k.observerListeners(msgUnix)
 	/* Keeping pretty printer because it helps debugging filters */
 	if k.prettyPrinter {
 		reader.ObserverTLSPrinter(msgUnix, k.log)

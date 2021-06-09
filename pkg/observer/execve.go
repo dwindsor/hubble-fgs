@@ -92,7 +92,7 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Process.Args = args
 
 	if pushExecve {
-		k.observerListenersExecve(&m)
+		k.observerListeners(&m)
 	}
 	/* Collect any existing TCP sockets on PID and generate events. */
 	k.pushTCPEvents(&m, tcpEntries, writeMaps, pushExecve)

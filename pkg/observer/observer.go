@@ -130,54 +130,7 @@ var (
 	pollTimeout     = 5000
 )
 
-func (k *ObserverKprobe) observerListenersTLS(msg *api.MsgTLSEventUnix) {
-	for listener, _ := range k.listeners {
-		if err := listener.Notify(msg); err != nil {
-			k.log.Debug("Write failure removing Listener")
-			k.RemoveListener(listener)
-		}
-	}
-}
-
-func (k *ObserverKprobe) observerListenersExecve(msg *api.MsgExecveEventUnix) {
-	for listener, _ := range k.listeners {
-		if err := listener.Notify(msg); err != nil {
-			k.log.Debug("Write failure removing Listener")
-			k.RemoveListener(listener)
-		}
-	}
-}
-
-func (k *ObserverKprobe) observerListenersCred(msg *api.MsgCredEventUnix) {
-	for listener, _ := range k.listeners {
-		if err := listener.Notify(msg); err != nil {
-			k.log.Debug("Write failure removing Listener")
-			k.RemoveListener(listener)
-		}
-	}
-}
-
-func (k *ObserverKprobe) observerListenersExit(msg *api.MsgExitEventUnix) {
-	for listener, _ := range k.listeners {
-		if err := listener.Notify(msg); err != nil {
-			k.log.Debug("Write failure removing Listener")
-			k.RemoveListener(listener)
-		}
-	}
-}
-
-func (k *ObserverKprobe) observerListenersTcp(msg *api.MsgIPv4TcpEventUnix) {
-	if pass := k.runFilters(msg); pass {
-		for listener, _ := range k.listeners {
-			if err := listener.Notify(msg); err != nil {
-				k.log.WithError(err).Debug("Write failure removing Listener")
-				k.RemoveListener(listener)
-			}
-		}
-	}
-}
-
-func (k *ObserverKprobe) observerListenersTest(msg *api.MsgTestEventUnix) {
+func (k *ObserverKprobe) observerListeners(msg interface{}) {
 	for listener, _ := range k.listeners {
 		if err := listener.Notify(msg); err != nil {
 			k.log.Debug("Write failure removing Listener")
@@ -361,7 +314,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		if err != nil && empty {
 			msgUnix.Process = nopMsgExecUnix()
 		}
-		k.observerListenersExecve(msgUnix)
+		k.observerListeners(msgUnix)
 	case api.MSG_OP_CRED:
 		m := api.MsgCredEvent{}
 		err := binary.Read(r, binary.LittleEndian, &m)
@@ -370,7 +323,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			break
 		}
 		msgUnix := msgToCredUnix(&m)
-		k.observerListenersCred(msgUnix)
+		k.observerListeners(msgUnix)
 	case api.MSG_OP_EXIT:
 		m := api.MsgExitEvent{}
 		err := binary.Read(r, binary.LittleEndian, &m)
@@ -379,7 +332,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			break
 		}
 		msgUnix := msgToExitUnix(&m)
-		k.observerListenersExit(msgUnix)
+		k.observerListeners(msgUnix)
 	case api.MSG_OP_IPV4_TCPCONNECT,
 		api.MSG_OP_IPV4_TCPCONNECTRET,
 		api.MSG_OP_IPV4_TCPCLOSE,
@@ -392,7 +345,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			break
 		}
 		msgUnix := msgToTcpUnix(&m)
-		k.observerListenersTcp(msgUnix)
+		k.observerListeners(msgUnix)
 
 	case api.MSG_OP_TEST:
 		m := api.MsgTestEvent{}
@@ -401,7 +354,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 			break
 		}
 		msgUnix := msgToTestUnix(&m)
-		k.observerListenersTest(msgUnix)
+		k.observerListeners(msgUnix)
 
 	case api.MSG_OP_KFREE_SKB:
 		m := api.MsgKfreeSkb{}

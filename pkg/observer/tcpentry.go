@@ -174,7 +174,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 				}
 
 				if pushEvents {
-					k.observerListenersTcp(&tcp)
+					k.observerListeners(&tcp)
 				}
 				if writeMaps {
 					k.writeSockMap(&tcp, m, netns)
