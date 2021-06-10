@@ -10,7 +10,6 @@ PROCESSDIR := process/
 BPFTESTDIR := test/
 
 PARSERS = bpf_sockops.o bpf_skmsg.o bpf_skskb_parser.o bpf_skskb_verdict.o 
-TLS = bpf_skmsg_tls.o
 TLSTC = bpf_tc_ingress.o bpf_tc_egress.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o bpf_kfree_skb.o
 PROCESS = bpf_execve_event.o bpf_fork.o bpf_exit.o bpf_cred.o bpf_generic_kprobe.o bpf_generic_retkprobe.o bpf_generic_tracepoint.o
@@ -37,19 +36,20 @@ OBJSDIR       := objs/
 DEPSDIR       := deps/
 
 PARSEROBJ     := $(addprefix $(OBJSDIR),$(PARSERS))
-TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
 TLSTCOBJ      := $(addprefix $(OBJSDIR),$(TLSTC))
 NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
-OBJS          := $(PARSEROBJ) $(TLSOBJ) ${TLSTCOBJ} $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
-DEPS          := $(patsubst $(OBJSDIR)%.o,$(DEPSDIR)%.d,$(OBJS))
+OBJS          := $(PARSEROBJ) ${TLSTCOBJ} $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
+LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
+DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 
 all: $(OBJS) $(DEPS)
 
 # NB: https://www.gnu.org/software/make/manual/html_node/Prerequisite-Types.html
 $(OBJS): | $(OBJSDIR)
 $(DEPS): | $(DEPSDIR)
+$(LLOBJS): | $(OBJSDIR)
 
 $(OBJSDIR):
 	mkdir $(OBJSDIR)
@@ -64,35 +64,35 @@ objs/%.ll: $(PARSERDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
 $(DEPSDIR)%.d: $(PARSERDIR)%.c
-	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # TLSDIR
 objs/%.ll: $(TLSDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -I ${PARSERDIR} -c $< -o $@
 
 $(DEPSDIR)%.d: $(TLSDIR)%.c
-	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # NETWORKINGDIR
 objs/%.ll: $(NETWORKINGDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
 $(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
-	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # PROCESSDIR
 objs/%.ll: $(PROCESSDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
-	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # BPFTESTDIR
 objs/%.ll: $(BPFTESTDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -c $< -o $@
 
 $(DEPSDIR)%.d: $(BPFTESTDIR)%.c
-	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.o, $@)   $< > $@
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # Build sockops/sockmsg with ALU32 for 5.4+ kernels
 objs/bpf_skskb_verdict.o: objs/bpf_skskb_verdict.ll
