@@ -14,15 +14,6 @@ enum generic_func_args_enum {
 	arg2m   = 0x10,
 	arg3m   = 0x11,
 	arg4m   = 0x12,
-	/* {ns,}pid filter arguments */
-	nspid_type  = 0x13,
-	nspid_value = 0x14,
-	pid_type    = 0x15,
-	pid_value   = 0x16,
-	pidset_value      = 0x17,
-	notpidset_value   = 0x18,
-	nspidset_value    = 0x19,
-	notnspidset_value = 0x20,
 	/* return arguments */
 	argreturn = 0x31,
 	/* actions enabled */
