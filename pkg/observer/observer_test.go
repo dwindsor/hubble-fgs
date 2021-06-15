@@ -738,6 +738,16 @@ func TestListenAcceptClose(t *testing.T) {
 	rcwd := cwdPath(true)
 	fcwd := cwdPath(false)
 
+	ncProc := &fgs.Process{
+		Binary:    "nc.traditional",
+		Arguments: "-nvlp 8081",
+		Cwd:       fcwd,
+	}
+	selfProc := &fgs.Process{
+		Binary: selfBinary,
+		Cwd:    rcwd,
+	}
+
 	trace := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
@@ -750,40 +760,26 @@ func TestListenAcceptClose(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{Binary: selfBinary,
-						Cwd: rcwd},
+					Process: ncProc,
+					Parent:  selfProc,
 				},
 			},
 		},
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessListen{
 				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{
-						Binary: selfBinary,
-						Cwd:    rcwd},
-					Ip:   "0.0.0.0",
-					Port: &wrappers.UInt32Value{Value: 8081},
+					Process: ncProc,
+					Parent:  selfProc,
+					Ip:      "0.0.0.0",
+					Port:    &wrappers.UInt32Value{Value: 8081},
 				},
 			},
 		},
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessAccept{
 				ProcessAccept: &fgs.ProcessAccept{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{
-						Binary: selfBinary,
-						Cwd:    rcwd},
+					Process:    ncProc,
+					Parent:     selfProc,
 					SourceIp:   "127.0.0.1",
 					SourcePort: &wrappers.UInt32Value{Value: 8081},
 				},
@@ -792,13 +788,8 @@ func TestListenAcceptClose(t *testing.T) {
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessClose{
 				ProcessClose: &fgs.ProcessClose{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{
-						Binary: selfBinary,
-						Cwd:    rcwd},
+					Process:    ncProc,
+					Parent:     selfProc,
 					SourceIp:   "0.0.0.0",
 					SourcePort: &wrappers.UInt32Value{Value: 8081},
 				},
@@ -812,13 +803,8 @@ func TestListenAcceptClose(t *testing.T) {
 			&fgs.GetEventsResponse{
 				Event: &fgs.GetEventsResponse_ProcessClose{
 					ProcessClose: &fgs.ProcessClose{
-						Process: &fgs.Process{
-							Binary:    "nc.traditional",
-							Arguments: "-nvlp 8081",
-							Cwd:       fcwd},
-						Parent: &fgs.Process{
-							Binary: selfBinary,
-							Cwd:    rcwd},
+						Process: ncProc,
+						Parent: selfProc,
 						SourceIp:   "127.0.0.1",
 						SourcePort: &wrappers.UInt32Value{Value: 8081},
 					},
