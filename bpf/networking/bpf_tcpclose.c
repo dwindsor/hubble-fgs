@@ -20,16 +20,24 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
+struct bpf_map_def __attribute__((section("maps"), used)) tcp_close_event_map = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.max_entries = 1,
+};
+
 __attribute__((section(("kprobe/tcp_set_state")), used))
 int event_ipv4_close(struct pt_regs *ctx)
 {
-	struct msg_ipv4_tcp_event value;
+	struct msg_ipv4_tcp_event *val;
 	struct msg_execve_key *process;
 	struct msg_tls_ipv4 tuple;
 	struct net *netns;
 	struct sock *skp;
 	size_t size;
 	int state;
+	u32 zero = 0;
 
 	state = ctx->si;
 	if (state != TCP_CLOSE && state != TCP_ESTABLISHED)
@@ -52,38 +60,44 @@ int event_ipv4_close(struct pt_regs *ctx)
 		probe_read(&tuple.uid, sizeof(c->inum), _(&c->inum));
 	}
 
-	value.common.flags = 0;
-	value.common.pad[0] = 0;
-	value.common.pad[1] = 0;
-	value.common.size = sizeof(struct msg_ipv4_tcp_event);
-	value.common.ktime = ktime_get_ns();
+	val = map_lookup_elem(&tcp_close_event_map, &zero);
+	if (!val) {
+		return 0;
+	}
 
-	value.tuple.saddr = tuple.saddr;
-	value.tuple.daddr = tuple.daddr;
-	value.tuple.dport = tuple.dport;
-	value.tuple.sport = tuple.sport;
-	value.tuple.proto = 0;
-	value.tuple.post_daddr = 0; // After bpf-cgroup rewrites
-	value.tuple.post_dport = 0; // After bpf-cgroup rewrites
-	value.tuple.pad[0] = 0;
-	value.tuple.pad[1] = 0;
-	value.tuple.pad[2] = 0;
-	value.tuple.pad[3] = 0;
-	value.tuple.pad[4] = 0;
+	*val = (struct msg_ipv4_tcp_event){
+		.common.flags = 0,
+		.common.pad[0] = 0,
+		.common.pad[1] = 0,
+		.common.size = sizeof(struct msg_ipv4_tcp_event),
+		.common.ktime = ktime_get_ns(),
 
-	value.ret = 0; // Populated by kretprobe
-	memset(value.key.pad, 0, sizeof(value.key.pad));
+		.tuple.saddr = tuple.saddr,
+		.tuple.daddr = tuple.daddr,
+		.tuple.dport = tuple.dport,
+		.tuple.sport = tuple.sport,
+		.tuple.proto = 0,
+		.tuple.post_daddr = 0, // After bpf-cgroup rewrites
+		.tuple.post_dport = 0, // After bpf-cgroup rewrites
+		.tuple.pad[0] = 0,
+		.tuple.pad[1] = 0,
+		.tuple.pad[2] = 0,
+		.tuple.pad[3] = 0,
+		.tuple.pad[4] = 0,
+
+		.ret = 0, // Populated by kretprobe
+	};
 
 	if (state == TCP_CLOSE) {
 		if (!is_tuple_local(&tuple))
 			tuple.uid = 0;
 		process = lookup_socketmap(&tuple);
 		if (process) {
-			value.common.op = MSG_OP_IPV4_TCPCLOSE;
-			value.key.pid = process->pid;
-			value.key.ktime = process->ktime;
+			val->common.op = MSG_OP_IPV4_TCPCLOSE;
+			val->key.pid = process->pid;
+			val->key.ktime = process->ktime;
 			size = sizeof(struct msg_ipv4_tcp_event);
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 		}
 	} else { // state == TCP_ESTABLISHED
 		__u32 daddr = tuple.daddr;
@@ -106,11 +120,11 @@ int event_ipv4_close(struct pt_regs *ctx)
 		if (process) {
 			struct msg_execve_key copy = *process;
 
-			value.common.op = MSG_OP_IPV4_TCPACCEPT;
-			value.key.pid = copy.pid;
-			value.key.ktime = copy.ktime;
+			val->common.op = MSG_OP_IPV4_TCPACCEPT;
+			val->key.pid = copy.pid;
+			val->key.ktime = copy.ktime;
 			size = sizeof(struct msg_ipv4_tcp_event);
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 			tuple.daddr = daddr;
 			tuple.dport = dport;
 			tuple.saddr = saddr;

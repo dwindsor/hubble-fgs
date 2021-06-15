@@ -19,13 +19,20 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
+struct bpf_map_def __attribute__((section("maps"), used)) tcp_connect_event_map = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.max_entries = 1,
+};
+
 __attribute__((section(("kprobe/tcp_connect")), used))
 int event_ipv4_connect(struct pt_regs *ctx)
 {
 	struct execve_map_value *process = 0;
-	struct msg_ipv4_tcp_event value;
+	struct msg_ipv4_tcp_event *val;
 	struct msg_ipv4_tcp_key key;
-	__u32 ppid = 0, pid = 0;
+	__u32 ppid = 0, pid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
 	uint64_t size;
@@ -37,6 +44,12 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	if (!process)
 		return 0;
 
+	val = map_lookup_elem(&tcp_connect_event_map, &zero);
+	if (!val) {
+		return 0;
+	}
+
+
 	skp = (void *)((ctx)->di);
 	key.pid = pid;
 	key.pad = 0;
@@ -45,35 +58,35 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	probe_read(&daddr, sizeof(daddr), _(&(skp->__sk_common.skc_daddr)));
 	probe_read(&dport, sizeof(dport), _(&(skp->__sk_common.skc_dport)));
 
-	value.common.op = MSG_OP_IPV4_TCPCONNECTRET;
-	value.common.flags = 0;
-	value.common.pad[0] = 0;
-	value.common.pad[1] = 0;
-	value.common.size = sizeof(struct msg_ipv4_tcp_event);
-	value.common.ktime = ktime_get_ns();
-	
-	value.tuple.saddr = key.saddr;
-	value.tuple.daddr = daddr;
-	value.tuple.dport = dport;
-	value.tuple.sport = key.sport;
-	value.tuple.proto = 0;
-	value.tuple.post_daddr = 0; // After bpf-cgroup rewrites
-	value.tuple.post_dport = 0; // After bpf-cgroup rewrites
-	value.tuple.pad[0] = 0;
-	value.tuple.pad[1] = 0;
-	value.tuple.pad[2] = 0;
-	value.tuple.pad[3] = 0;
-	value.tuple.pad[4] = 0;
+	// NB: missing fields are initialized to zero, so 0s can be removed.
+	*val = (struct msg_ipv4_tcp_event){
+		.common.op = MSG_OP_IPV4_TCPCONNECTRET,
+		.common.flags = 0,
+		.common.pad[0] = 0,
+		.common.pad[1] = 0,
+		.common.ktime = ktime_get_ns(),
+		.common.size = sizeof(struct msg_ipv4_tcp_event),
+		.tuple.saddr = key.saddr,
+		.tuple.daddr = daddr,
+		.tuple.dport = dport,
+		.tuple.sport = key.sport,
+		.tuple.proto = 0,
+		.tuple.post_daddr = 0, // After bpf-cgroup rewrites
+		.tuple.post_dport = 0, // After bpf-cgroup rewrites
+		.tuple.pad[0] = 0,
+		.tuple.pad[1] = 0,
+		.tuple.pad[2] = 0,
+		.tuple.pad[3] = 0,
+		.tuple.pad[4] = 0,
+		.ret = 0, // Populated by kretprobe
+		.key.pid = process->key.pid,
+		.key.ktime = process->key.ktime,
+	};
 
-	value.ret = 0; // Populated by kretprobe
-
-	value.key.pid = process->key.pid;
-	memset(value.key.pad, 0, sizeof(value.key.pad));
-	value.key.ktime = process->key.ktime;
-	map_update_elem(&ipv4_tcp_map, &key, &value, 0);
+	map_update_elem(&ipv4_tcp_map, &key, val, 0);
 
 	size = sizeof(struct msg_ipv4_tcp_event);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &value, size);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 
 	/* tuple is on the stack and verifier wont use stack in call happily
 	 * if its not initialized. Alternatively, without padding we are not

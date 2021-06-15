@@ -303,6 +303,7 @@ struct msg_ipv4_tcp_event {
 	struct msg_ipv4_tuple tuple;
 	unsigned long int     ret;
 	struct msg_execve_key key;
+	__u64                 socket_cookie;
 } __attribute__((packed));
 
 struct msg_ipv4_tcp_key {
