@@ -38,6 +38,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/stretchr/testify/assert"
@@ -589,7 +590,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 }
 
 func TestLoadTCTls(t *testing.T) {
-	if minKernelVersion("4.19.0") != true {
+	if kernels.MinKernelVersion("4.19.0") != true {
 		return
 	}
 	kprobe, err := getDefaultObserverWithWatchers(t, withTLSTC())
@@ -600,7 +601,7 @@ func TestLoadTCTls(t *testing.T) {
 }
 
 func TestTCTls13(t *testing.T) {
-	if minKernelVersion("4.19.0") != true {
+	if kernels.MinKernelVersion("4.19.0") != true {
 		return
 	}
 
@@ -662,7 +663,7 @@ func TestTCTls13(t *testing.T) {
 }
 
 func TestTCTls12(t *testing.T) {
-	if minKernelVersion("4.19.0") != true {
+	if kernels.MinKernelVersion("4.19.0") != true {
 		return
 	}
 

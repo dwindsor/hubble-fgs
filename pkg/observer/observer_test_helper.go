@@ -27,11 +27,9 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 
 	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
-	"golang.org/x/sys/unix"
 	"gopkg.in/natefinch/lumberjack.v2"
 	corev1 "k8s.io/api/core/v1"
 )
@@ -104,26 +102,6 @@ func withCiliumState(s *hubbleCilium.State) testOption {
 	return func(o *testOptions) {
 		o.exporter.ciliumState = s
 	}
-}
-
-func minKernelVersion(kernel string) bool {
-	var uname unix.Utsname
-
-	if err := unix.Uname(&uname); err != nil {
-		return true
-	}
-	//n := bytes.IndexByte(uname.Release[:], 0)
-	// vendors like to define kernel 4.14.128-foo but
-	// everything after '-' is meaningless from BPF
-	// side so toss it out.
-	release := strings.Split(string(uname.Release[:]), "-")
-	numeric := strings.TrimRight(release[0], "+")
-	runningVersion := int(kernels.KernelStringToNumeric(numeric))
-	minVersion := int(kernels.KernelStringToNumeric(kernel))
-	if minVersion <= runningVersion {
-		return true
-	}
-	return false
 }
 
 func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOptions) error {
