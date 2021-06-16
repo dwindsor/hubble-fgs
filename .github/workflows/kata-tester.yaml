@@ -1,7 +1,9 @@
 name: HubbleFGS Kata Go tests
 on:
-  workflow_dispatch:
+  pull_request:
   push:
+    branches:
+      - master
 env:
   zone: europe-west4-c
   vmName: kata-test-gh-${{ github.run_number }}

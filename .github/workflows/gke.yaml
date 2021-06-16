@@ -1,7 +1,10 @@
 name: ConformanceGKE
 
 on:
+  pull_request:
   push:
+    branches:
+      - master
 env:
   clusterName: fgs-cli-ci-${{ github.run_number }}
   zone: us-west2-a
