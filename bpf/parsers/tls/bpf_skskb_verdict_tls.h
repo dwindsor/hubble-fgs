@@ -12,6 +12,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 };
 
 #define SK_SKB
+static inline __attribute__((always_inline))
 int bpf_skskb_verdict_tls(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};

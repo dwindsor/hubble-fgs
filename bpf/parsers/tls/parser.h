@@ -840,6 +840,7 @@ struct msg_tls *event_tc_from_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *ke
 }
 
 #if defined(SK_SKB)
+static inline __attribute__((always_inline))
 int event_tls_more_cert_func(struct __sk_buff *skb, int off)
 {
 	struct msg_tls_ipv4 key = {0};
@@ -859,6 +860,7 @@ int event_tls_more_cert_func(struct __sk_buff *skb, int off)
 	return TC_ACT_UNSPEC;
 }
 
+static inline __attribute__((always_inline))
 int event_tls_cert_func(struct __sk_buff *skb, int next)
 {
 	struct msg_tls_ipv4 key = {0};

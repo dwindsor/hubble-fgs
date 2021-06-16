@@ -1,6 +1,7 @@
 #include "tls_map.h"
 #include "parser.h"
 
+static inline __attribute__((always_inline))
 int bpf_sk_msg_tls(struct sk_msg_md *skmsg)
 {
 	struct msg_tls_ipv4 tuple = {0};
