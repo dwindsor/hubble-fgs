@@ -568,9 +568,9 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			progs = append(progs, loadret)
 		}
 
+		logger.GetLogger().Info("Added generic kprobe sensor: %s -> %s", load.Observer__program, load.observer__attach)
 	}
 
-	logger.GetLogger().Info("Loaded generic kprobe sensor")
 	return &observerSensor{
 		name:  "__generic_kprobe_sensors__",
 		progs: progs,
@@ -598,6 +598,9 @@ func loadGenericKprobe(bpfDir, mapDir string, version int, p *bpfLoad, btf uintp
 			mapDir,
 			genmapDir,
 			filters)
+	}
+	if err == nil {
+		logger.GetLogger().Info("Loaded generic kprobe sensor: %s -> %s", p.Observer__program, p.observer__attach)
 	}
 	return err
 }

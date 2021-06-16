@@ -145,7 +145,7 @@ spec:
                                   - Equal
                                   - NotEqual
                                   type: string
-                                value:
+                                values:
                                   description: Value to compare the argument against.
                                   items:
                                     type: string
@@ -153,7 +153,7 @@ spec:
                               required:
                               - index
                               - operator
-                              - value
+                              - values
                               type: object
                             type: array
                           matchPIDs:
@@ -278,7 +278,7 @@ spec:
                                   - Equal
                                   - NotEqual
                                   type: string
-                                value:
+                                values:
                                   description: Value to compare the argument against.
                                   items:
                                     type: string
@@ -286,7 +286,7 @@ spec:
                               required:
                               - index
                               - operator
-                              - value
+                              - values
                               type: object
                             type: array
                           matchPIDs:

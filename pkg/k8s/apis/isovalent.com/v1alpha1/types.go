@@ -117,7 +117,7 @@ type ArgSelector struct {
 	// Filter operation.
 	Operator string `json:"operator"`
 	// Value to compare the argument against.
-	Values []string `json:"value"`
+	Values []string `json:"values"`
 }
 
 type ActionSelector struct {

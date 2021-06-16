@@ -14,38 +14,16 @@ spec:
       sizeArgIndex: 3
     - index: 2
       type: "size_t"
-    # (pid in {1, 2} && arg0 == "1" && arg2 != "hello") || (pid in {3, 4} && arg0 == "2" && arg1 == "world")
+    # follow any non-init pids stdout e.g. exec into container
     selectors:
     - matchPIDs:
-      - operator: In
+      - operator: NotIn
+        followForks: true
+        isNamespacePID: true
         values:
         - 1
-        - 2
       matchArgs:
       - index: 0
-        operator: Equal
+        operator: "Equal"
         values:
         - "1"
-      - index: 1
-        operator: NotEqual
-        values:
-        - "hello"
-      matchActions:
-      - action: "post_event"
-      # we only have one action type now but will have more
-    - matchPIDs:
-      - operator: In
-        values:
-        - 3
-        - 4
-      matchArgs:
-      - index: 0
-        operator: Equal
-        values:
-        - "2"
-      - index: 1
-        operator: NotEqual
-        values:
-        - "world"
-      matchActions:
-      - action: "post_event"
