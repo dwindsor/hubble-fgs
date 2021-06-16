@@ -53,7 +53,6 @@ var (
 	enableProcessCred          bool
 	configFile                 string
 	enableCRD                  bool
-	hubbleLib                  string
 
 	// Export aggregation options
 	enableExportAggregation     bool
@@ -76,7 +75,7 @@ func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
 func saveInitInfo() error {
 	info := bugtool.InitInfo{
 		ExportFname: exportFilename,
-		LibDir:      hubbleLib,
+		LibDir:      observer.HubbleLib,
 		BtfFname:    observer.ObserverBTF,
 		MetricsAddr: metricsServer,
 		ServerAddr:  serverAddress,
@@ -116,7 +115,7 @@ func hubbleFGSExecute() error {
 		os.Exit(1)
 	}()
 
-	err := btf.ConfigureBTF(hubbleLib, ctx)
+	err := btf.ConfigureBTF(observer.HubbleLib, ctx)
 	if err != nil {
 		return err
 	}
@@ -254,7 +253,7 @@ func init() {
 	flags := cmd.PersistentFlags()
 
 	flags.BoolP("debug", "d", false, "Enable debug messages")
-	flags.StringVar(&hubbleLib, "hubble-lib", "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
+	flags.StringVar(&observer.HubbleLib, "hubble-lib", "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
 	flags.StringVar(&observer.ObserverBTF, "btf", "", "Location of btf")
 
 	flags.StringVar(&observer.ProcFS,
