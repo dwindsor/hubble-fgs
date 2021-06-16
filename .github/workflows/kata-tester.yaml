@@ -6,8 +6,8 @@ on:
       - master
 env:
   zone: europe-west4-c
-  vmName: kata-test-gh-${{ github.run_number }}
-  vmHost: kata-test-gh-${{ github.run_number }}.europe-west4-c.${{ secrets.GCP_PROJECT_ID }}
+  vmName: kata-test-gh-${{ github.run_id }}
+  vmHost: kata-test-gh-${{ github.run_id }}.europe-west4-c.${{ secrets.GCP_PROJECT_ID }}
   machineImage: projects/${{ secrets.GCP_PROJECT_ID }}/global/machineImages/kata-test-20210602-152521
 jobs:
   test:
