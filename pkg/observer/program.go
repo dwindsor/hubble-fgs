@@ -389,6 +389,7 @@ func createInitialObserverSensor(enableTLS, enableTLSTC bool) *observerSensor {
 		&ObserverTlsStats, // NB: Maybe this should be under k.enableTLS?
 	}
 
+	logger.GetLogger().Infof("Enable TLS %v, Enable TLSTC %v\n", enableTLS, enableTLSTC)
 	if enableTLS {
 		progs = append(progs,
 			&ObserverSockopsEstablished,
@@ -786,7 +787,7 @@ func createDir(bpfDir, mapDir string) {
 	os.Mkdir(mapDir, os.ModeDir)
 }
 
-func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, tlsTC, tls bool, ctx context.Context) error {
+func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, tls, tlsTC bool, ctx context.Context) error {
 	createDir(bpfDir, mapDir)
 
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
