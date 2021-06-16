@@ -122,6 +122,7 @@ jobs:
               | xargs -I{} kubectl cp -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
           cat ./hubble-fgs*.log >> fgs.log
           gcloud container clusters delete --quiet ${{ env.clusterName }} --zone ${{ env.zone }}
+        shell: bash {0}
 
       - name: Verify FGS
         if: ${{ always() }}
