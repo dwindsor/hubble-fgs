@@ -66,9 +66,6 @@ int event_ipv4_close(struct pt_regs *ctx)
 	}
 
 	*val = (struct msg_ipv4_tcp_event){
-		.common.flags = 0,
-		.common.pad[0] = 0,
-		.common.pad[1] = 0,
 		.common.size = sizeof(struct msg_ipv4_tcp_event),
 		.common.ktime = ktime_get_ns(),
 
@@ -76,16 +73,6 @@ int event_ipv4_close(struct pt_regs *ctx)
 		.tuple.daddr = tuple.daddr,
 		.tuple.dport = tuple.dport,
 		.tuple.sport = tuple.sport,
-		.tuple.proto = 0,
-		.tuple.post_daddr = 0, // After bpf-cgroup rewrites
-		.tuple.post_dport = 0, // After bpf-cgroup rewrites
-		.tuple.pad[0] = 0,
-		.tuple.pad[1] = 0,
-		.tuple.pad[2] = 0,
-		.tuple.pad[3] = 0,
-		.tuple.pad[4] = 0,
-
-		.ret = 0, // Populated by kretprobe
 	};
 
 	if (state == TCP_CLOSE) {

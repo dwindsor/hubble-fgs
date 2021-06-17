@@ -58,27 +58,14 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	probe_read(&daddr, sizeof(daddr), _(&(skp->__sk_common.skc_daddr)));
 	probe_read(&dport, sizeof(dport), _(&(skp->__sk_common.skc_dport)));
 
-	// NB: missing fields are initialized to zero, so 0s can be removed.
 	*val = (struct msg_ipv4_tcp_event){
 		.common.op = MSG_OP_IPV4_TCPCONNECTRET,
-		.common.flags = 0,
-		.common.pad[0] = 0,
-		.common.pad[1] = 0,
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ipv4_tcp_event),
 		.tuple.saddr = key.saddr,
 		.tuple.daddr = daddr,
 		.tuple.dport = dport,
 		.tuple.sport = key.sport,
-		.tuple.proto = 0,
-		.tuple.post_daddr = 0, // After bpf-cgroup rewrites
-		.tuple.post_dport = 0, // After bpf-cgroup rewrites
-		.tuple.pad[0] = 0,
-		.tuple.pad[1] = 0,
-		.tuple.pad[2] = 0,
-		.tuple.pad[3] = 0,
-		.tuple.pad[4] = 0,
-		.ret = 0, // Populated by kretprobe
 		.key.pid = process->key.pid,
 		.key.ktime = process->key.ktime,
 	};
