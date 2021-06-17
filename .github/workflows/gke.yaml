@@ -12,7 +12,7 @@ env:
 jobs:
   installation-and-connectivitiy:
     runs-on: ubuntu-latest
-    timeout-minutes: 15
+    timeout-minutes: 20
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -81,9 +81,10 @@ jobs:
         run: |
           helm repo add isovalent https://helm.isovalent.com
           helm repo update
-          helm install cilium-enterprise isovalent/cilium-enterprise \
-                 --set hubble-enterprise.enterprise.image.tag=master \
-                 --namespace kube-system --set cilium.enabled=false
+          helm install hubble-enterprise isovalent/hubble-enterprise \
+                 --version 9999.9999.9999-dev \
+                 --set enterprise.image.tag=master \
+                 --namespace kube-system
 
       - name: Wait for FGS pods to become ready
         uses: nick-invision/retry@v2
