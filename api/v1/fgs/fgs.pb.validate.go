@@ -487,6 +487,79 @@ var _ interface {
 	ErrorName() string
 } = ProcessValidationError{}
 
+// Validate checks the field values on SocketStats with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *SocketStats) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for BytesSent
+
+	// no validation rules for BytesReceived
+
+	// no validation rules for SegsIn
+
+	// no validation rules for SegsOut
+
+	return nil
+}
+
+// SocketStatsValidationError is the validation error returned by
+// SocketStats.Validate if the designated constraints aren't met.
+type SocketStatsValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e SocketStatsValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e SocketStatsValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e SocketStatsValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e SocketStatsValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e SocketStatsValidationError) ErrorName() string { return "SocketStatsValidationError" }
+
+// Error satisfies the builtin error interface
+func (e SocketStatsValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sSocketStats.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = SocketStatsValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = SocketStatsValidationError{}
+
 // Validate checks the field values on ProcessConnect with the rules defined in
 // the proto definition for this message. If any rules are violated, an error
 // is returned.
@@ -651,6 +724,16 @@ func (m *ProcessClose) Validate() error {
 	}
 
 	// no validation rules for SockCookie
+
+	if v, ok := interface{}(m.GetStats()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCloseValidationError{
+				field:  "Stats",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	return nil
 }
