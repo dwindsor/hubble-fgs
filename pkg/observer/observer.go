@@ -209,6 +209,7 @@ func msgToTcpUnix(m *api.MsgIPv4Tcp) *api.MsgIPv4TcpEventUnix {
 	unix.Return = m.Return
 	unix.ProcessKey = m.ProcessKey
 	unix.SockCookie = m.SockCookie
+	unix.SocketStats = m.SocketStats
 
 	return unix
 }

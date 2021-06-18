@@ -247,7 +247,7 @@ func (op OpCode) String() string {
 		"KfreeSkb"}[op]
 }
 
-type MsgFGSReady struct {}
+type MsgFGSReady struct{}
 
 type MsgExec struct {
 	Size  uint32
@@ -286,11 +286,12 @@ type MsgK8s struct {
 }
 
 type MsgIPv4Tcp struct {
-	Common     MsgCommon
-	Tuple      MsgIPv4Tuple
-	Return     int64
-	ProcessKey MsgExecveKey
-	SockCookie uint64
+	Common      MsgCommon
+	Tuple       MsgIPv4Tuple
+	Return      int64
+	ProcessKey  MsgExecveKey
+	SockCookie  uint64
+	SocketStats MsgSocketStats
 }
 
 type MsgCalltrace struct {
@@ -319,13 +320,21 @@ type MsgK8sUnix struct {
 	Docker string
 }
 
+type MsgSocketStats struct {
+	BytesSent     uint64
+	BytesReceived uint64
+	SegsIn        uint32
+	SegsOut       uint32
+}
+
 type MsgIPv4TcpEventUnix struct {
-	Common     MsgCommon
-	Tuple      MsgIPv4Tuple
-	Kube       MsgK8sUnix
-	Return     int64
-	ProcessKey MsgExecveKey
-	SockCookie uint64
+	Common      MsgCommon
+	Tuple       MsgIPv4Tuple
+	Kube        MsgK8sUnix
+	Return      int64
+	ProcessKey  MsgExecveKey
+	SockCookie  uint64
+	SocketStats MsgSocketStats
 }
 
 var MsgUnixSize uint32 = 640

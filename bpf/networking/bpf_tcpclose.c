@@ -15,6 +15,7 @@ struct bpf_map_def {
 #include "../parsers/tls/tls_map.h"
 #include "bpf_events.h"
 #include "cookie.h"
+#include "bpf_network_helpers.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -85,6 +86,9 @@ int event_ipv4_close(struct pt_regs *ctx)
 			val->common.op = MSG_OP_IPV4_TCPCLOSE;
 			val->key.pid = process->pid;
 			val->key.ktime = process->ktime;
+
+			get_socket_stats(skp, &val->stats);
+
 			size = sizeof(struct msg_ipv4_tcp_event);
 			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 		}

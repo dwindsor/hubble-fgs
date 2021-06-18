@@ -297,6 +297,13 @@ struct msg_execve_event {
 	char			pid[PADDED_BUFFER];
 } __attribute__((packed));
 
+struct msg_socket_stats {
+	__u64 bytes_sent;
+	__u64 bytes_received;
+	__u32 segs_in;
+	__u32 segs_out;
+} __attribute__((packed));
+
 // separate data structs for ipv4 and ipv6
 struct msg_ipv4_tcp_event {
 	struct msg_common     common;
@@ -304,6 +311,7 @@ struct msg_ipv4_tcp_event {
 	unsigned long int     ret;
 	struct msg_execve_key key;
 	__u64                 socket_cookie;
+	struct msg_socket_stats stats;
 } __attribute__((packed));
 
 struct msg_ipv4_tcp_key {

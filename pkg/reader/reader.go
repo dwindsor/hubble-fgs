@@ -22,10 +22,20 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
+
+func GetSocketStats(stats *api.MsgSocketStats) *fgs.SocketStats {
+	return &fgs.SocketStats{
+		BytesSent:     stats.BytesSent,
+		BytesReceived: stats.BytesReceived,
+		SegsIn:        stats.SegsIn,
+		SegsOut:       stats.SegsOut,
+	}
+}
 
 func GetIP(i uint32, op uint8) net.IP {
 	if op == api.MSG_OP_IPV4_BIND {

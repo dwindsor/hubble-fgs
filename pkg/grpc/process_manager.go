@@ -935,6 +935,8 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 	}
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
+	socketStats := reader.GetSocketStats(&event.SocketStats)
+
 	fgsEvent := &fgs.ProcessClose{
 		Process:         fgsProcess,
 		Parent:          fgsParent,
@@ -942,6 +944,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
+		Stats:           socketStats,
 	}
 
 	if event.SockCookie != 0 {
