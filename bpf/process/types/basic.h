@@ -544,7 +544,7 @@ void installfd(struct msg_generic_kprobe *e, int fd, int name)
 	asm volatile("%[fdoff] &= 0xeff;\n": [fdoff] "+r"(fdoff):);
 	key.pad = 0;
 	key.fd = *(__u32 *)&e->args[fdoff];
-	key.tid = get_current_pid_tgid() & 0xffffFFFF;
+	key.tid = get_current_pid_tgid() >> 32;
 
 	asm volatile("%[name] &= 0xf;\n": [name] "+r"(name):);
 	if (name > 5)
@@ -709,7 +709,7 @@ long read_call_arg(struct msg_generic_kprobe *e,
 		struct fdinstall_value *val;
 		__u32 fd;
 
-		key.tid = get_current_pid_tgid() & 0xffffFFFF;
+		key.tid = get_current_pid_tgid() >> 32;
 		probe_read(&fd, sizeof(__u32), &arg);
 		key.fd = fd;
 
