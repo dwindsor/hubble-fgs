@@ -600,16 +600,8 @@ func TestLoadTCTls(t *testing.T) {
 	testDone(t, kprobe)
 }
 
-func TestTCTls13(t *testing.T) {
-	if kernels.MinKernelVersion("4.19.0") != true {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
-	defer cancel()
-
-	trace := []*fgs.GetEventsResponse{
+var (
+	traceTcTls13 = []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
@@ -649,6 +641,27 @@ func TestTCTls13(t *testing.T) {
 			},
 		},
 	}
+	tlstc = `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "tls"
+spec:
+  description: "tls parser spec"
+  parser:
+    tls:
+      enable: true
+      mode: "tc"
+`
+)
+
+func TestTCTls13(t *testing.T) {
+	if kernels.MinKernelVersion("4.19.0") != true {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
 
 	kprobe, err := getDefaultObserverWithWatchers(t, withTLSTC())
 	if err != nil {
@@ -656,7 +669,33 @@ func TestTCTls13(t *testing.T) {
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "https://google.com")
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+	ok, err := JsonTestCompare(traceTcTls13, exportFile, jsonRetries, 0)
+	assert.NoError(t, err)
+	assert.True(t, ok)
+	testDone(t, kprobe)
+}
+
+func TestConfigTCTls13(t *testing.T) {
+	if kernels.MinKernelVersion("4.19.0") != true {
+		return
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	tlsConfig := []byte(tlstc)
+	err := ioutil.WriteFile(testConfigFile, tlsConfig, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	if err != nil {
+		t.Fatalf("getDefaultObserver error: %s", err)
+	}
+	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	execWGCurl(&execWG, &exitWG, "https://google.com")
+	ok, err := JsonTestCompare(traceTcTls13, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
 	testDone(t, kprobe)
