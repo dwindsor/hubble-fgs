@@ -340,7 +340,7 @@ func getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSens
 	} else if len(tracepoints) > 0 {
 		return createGenericTracepointSensor(tracepoints)
 	} else {
-		return nil, errors.New("empty tracing policy")
+		return nil, nil
 	}
 }
 

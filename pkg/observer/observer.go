@@ -552,8 +552,20 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		if err != nil {
 			return fmt.Errorf("hubble-fgs, failed to initialize generic sensors. %w\n", err)
 		}
-		if err := ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx, genericSensor); err != nil {
-			return fmt.Errorf("hubble-fgs, Aborting could not load initial kprobe sensors. %s\n", err)
+		if genericSensor != nil {
+			if err := ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx, genericSensor); err != nil {
+				return fmt.Errorf("hubble-fgs, Aborting could not load initial kprobe sensors. %s\n", err)
+			}
+		}
+
+		parserSensor, err := getSensorFromParserPolicyFname(k.configFile)
+		if err != nil {
+			return fmt.Errorf("hubble-fgs, failed to initialize parser sensors. %w\n", err)
+		}
+		if parserSensor != nil {
+			if err := ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx, parserSensor); err != nil {
+				return fmt.Errorf("hubble-fgs, Aborting could not load initial parser sensors. %s\n", err)
+			}
 		}
 	}
 
