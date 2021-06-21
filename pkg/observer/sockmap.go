@@ -136,9 +136,15 @@ func addParserSensors(parser v1alpha1.ParserPolicySpec) (*observerSensor, error)
 		enableTls = true
 	case "tc":
 		enableTlsTc = true
+	default:
+		return nil, nil
 	}
 
 	return EnableTlsParser(enableTls, enableTlsTc), nil
+}
+
+func getSensorFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	return addParserSensors(spec.Parser)
 }
 
 func getSensorFromParserPolicyString(yaml string) (*observerSensor, error) {

@@ -220,6 +220,18 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 				}
 				availableSensors[op.sensorName] = sensor
 				err = ObserverLoadSensor(bpfDir, mapDir, ciliumDir, op.ctx, sensor)
+				if err != nil {
+					break
+				}
+
+				sensor, err = getSensorFromParserPolicy(op.spec)
+				if err != nil {
+					break
+				}
+				if sensor != nil {
+					availableSensors[op.sensorName] = sensor
+					err = ObserverLoadSensor(bpfDir, mapDir, ciliumDir, op.ctx, sensor)
+				}
 
 			case *sensorAdd:
 				if _, exists := availableSensors[op.name]; exists {
