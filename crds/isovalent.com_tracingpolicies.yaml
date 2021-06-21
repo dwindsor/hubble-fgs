@@ -195,6 +195,27 @@ spec:
                   - call
                   type: object
                 type: array
+              parser:
+                description: Parser policy specification.
+                properties:
+                  tls:
+                    description: A Tls specs.
+                    properties:
+                      enable:
+                        description: TLS enable parser
+                        type: boolean
+                      mode:
+                        default: none
+                        description: TLS parser type
+                        enum:
+                        - socket
+                        - tc
+                        type: string
+                    required:
+                    - enable
+                    - mode
+                    type: object
+                type: object
               tracepoints:
                 description: A list of tracepoint specs.
                 items:
