@@ -34,6 +34,9 @@ type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A list of tracepoint specs.
 	Tracepoints []TracepointSpec `json:"tracepoints"`
+	// +kubebuilder:validation:Optional
+	// Parser policy specification.
+	Parser ParserPolicySpec `json:"parser"`
 }
 
 type KProbeSpec struct {
@@ -140,6 +143,21 @@ type TracepointSpec struct {
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
 	Selectors []KProbeSelector `json:"selectors"`
+}
+
+type TlsSpec struct {
+	// TLS enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:default="none"
+	// +kubebuilder:validation:Enum=socket;tc;
+	// TLS parser type
+	Mode string `json:"mode"`
+}
+
+type ParserPolicySpec struct {
+	// +kubebuilder:validation:Optional
+	// A Tls specs.
+	Tls TlsSpec `json:"tls"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
