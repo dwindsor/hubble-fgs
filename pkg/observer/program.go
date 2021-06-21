@@ -165,74 +165,6 @@ var (
 		struct{}{},
 	}
 
-	ObserverSockopsEstablished = bpfLoad{
-		"bpf_sockops.o",
-		"sockops",
-		"sockops",
-		"sockops/fgs_sockops",
-		"sockops_fgs_sockops",
-
-		false,
-		true,
-		"sockops",
-		bpfLoadStateIdle(),
-
-		-1,
-
-		struct{}{},
-	}
-
-	ObserverSkmsg = bpfLoad{
-		"bpf_skmsg.o",
-		"sk_msg",
-		"sk_msg",
-		"sk_msg/fgs",
-		"sk_msg_fgs",
-
-		false,
-		true,
-		"skmsg",
-		bpfLoadStateIdle(),
-
-		-1,
-
-		struct{}{},
-	}
-
-	ObserverSkSkbVerdict = bpfLoad{
-		"bpf_skskb_verdict.o",
-		"sk_skb",
-		"sk_skb",
-		"sk_skb_verdict/fgs",
-		"sk_skb_verdict_fgs",
-
-		false,
-		true,
-		"sk_skb_verdict",
-		bpfLoadStateIdle(),
-
-		-1,
-
-		struct{}{},
-	}
-
-	ObserverSkSkbParser = bpfLoad{
-		"bpf_skskb_parser.o",
-		"sk_skb",
-		"sk_skb",
-		"sk_skb_parser/fgs",
-		"sk_skb_parser_fgs",
-
-		false,
-		true,
-		"sk_skb_parser",
-		bpfLoadStateIdle(),
-
-		-1,
-
-		struct{}{},
-	}
-
 	ObserverTLSTCIngress = bpfLoad{
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
@@ -276,10 +208,6 @@ var (
 		&ObserverTCPConnectRet,
 		&ObserverTCPClose,
 		&ObserverListen,
-		&ObserverSockopsEstablished,
-		&ObserverSkmsg,
-		&ObserverSkSkbVerdict,
-		&ObserverSkSkbParser,
 		&ObserverTLSTCEgress,
 		&ObserverTLSTCIngress,
 	}
@@ -290,11 +218,6 @@ var (
 	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, bpfLoadStateIdle(), -1}
 	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1}
 	ObserverTcpMap    = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1} // NB: This seems to be unused?
-	/* TLS maps */
-	ObserverTCTLSMap     = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle(), -1}
-	ObserverSockMap      = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle(), -1}
-	ObserverTLSMap       = ObserverMap{"tls_map", "skmsg", &ObserverSkmsg, bpfLoadStateIdle(), -1}
-	ObserverTLSTailCalls = ObserverMap{"tls_calls", "tc_ingress", &ObserverTLSTCIngress, bpfLoadStateIdle(), -1}
 	/* Internal statistics for debugging */
 	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, bpfLoadStateIdle(), -1}
 	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, bpfLoadStateIdle(), -1}
@@ -307,9 +230,6 @@ var (
 		&ObserverExecveMap,
 		&ObserverTCPMonMap,
 		&ObserverSockMap,
-		&ObserverTLSMap,
-		&ObserverTCTLSMap,
-		&ObserverTLSTailCalls,
 		&ObserverExecveStats,
 		&ObserverSocketStats,
 		&ObserverTlsStats,
@@ -400,32 +320,9 @@ func createInitialObserverSensor(enableTLS, enableTLSTC bool) *observerSensor {
 		&ObserverTlsStats, // NB: Maybe this should be under k.enableTLS?
 	}
 
-	logger.GetLogger().Infof("Enable TLS %v, Enable TLSTC %v\n", enableTLS, enableTLSTC)
-	if enableTLS {
-		progs = append(progs,
-			&ObserverSockopsEstablished,
-			&ObserverSkmsg,
-			&ObserverSkSkbVerdict,
-			&ObserverSkSkbParser,
-		)
-
-		maps = append(maps,
-			&ObserverSockMap,
-			&ObserverTLSMap,
-		)
-	}
-
-	if enableTLSTC {
-		progs = append(progs,
-			&ObserverTLSTCEgress,
-			&ObserverTLSTCIngress,
-		)
-
-		maps = append(maps,
-			&ObserverTCTLSMap,
-			&ObserverTLSTailCalls,
-		)
-	}
+	// tlsSensor is special, it has both a CLI option and
+	// a configFile/CRD setup path.
+	tlsSensor := EnableTlsParser(enableTLS, enableTLSTC)
 
 	if false {
 		maps = append(maps,
@@ -435,8 +332,8 @@ func createInitialObserverSensor(enableTLS, enableTLSTC bool) *observerSensor {
 
 	return &observerSensor{
 		name:  "__main__",
-		progs: progs,
-		maps:  maps,
+		progs: append(progs, tlsSensor.progs...),
+		maps:  append(maps, tlsSensor.maps...),
 	}
 }
 
