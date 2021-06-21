@@ -539,6 +539,8 @@ func (m *ProcessConnect) Validate() error {
 		}
 	}
 
+	// no validation rules for SockCookie
+
 	return nil
 }
 
@@ -648,6 +650,8 @@ func (m *ProcessClose) Validate() error {
 		}
 	}
 
+	// no validation rules for SockCookie
+
 	return nil
 }
 
@@ -744,6 +748,8 @@ func (m *ProcessListen) Validate() error {
 			}
 		}
 	}
+
+	// no validation rules for SockCookie
 
 	return nil
 }
@@ -853,6 +859,8 @@ func (m *ProcessAccept) Validate() error {
 			}
 		}
 	}
+
+	// no validation rules for SockCookie
 
 	return nil
 }
