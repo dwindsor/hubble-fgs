@@ -300,3 +300,39 @@ func TestYamlLseek(t *testing.T) {
 		t.Errorf("\ngot:\n%+v\nexpected:\n%+v", *k, expected)
 	}
 }
+
+var (
+	tlsExample = `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "tls-example"
+spec:
+  description: "tls parser spec"
+  parser:
+    tls:
+      mode: "tc"
+`
+)
+
+func TestYamlTls(t *testing.T) {
+	expected := GenericTracingConf{
+		ApiVersion: "hubble-enterprise.io/v1",
+		Metadata:   Metadata{Name: "tls-example"},
+		Spec: v1alpha1.TracingPolicySpec{
+			Parser: v1alpha1.ParserPolicySpec{
+				Tls: v1alpha1.TlsSpec{
+					Mode: "tc",
+				},
+			},
+		},
+	}
+
+	k, err := ReadConfigYaml(tlsExample)
+	if err != nil {
+		t.Errorf("ReadConfigYaml failed: %s", err)
+	}
+
+	if reflect.DeepEqual(expected, *k) != true {
+		t.Errorf("\ngot:\n%+v\nexpected:\n%+v", *k, expected)
+	}
+}
