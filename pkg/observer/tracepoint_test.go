@@ -12,6 +12,7 @@ package observer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -177,7 +178,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	exitWG.Wait()
 
 	tpEventsNr := 0
-	checkEventFn := func(event *fgs.GetEventsResponse) error {
+	checkEventFn := func(event *fgs.GetEventsResponse, t *testing.T) error {
 		switch tpEvent := event.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessTracepoint:
 			if err := checkFn(tpEvent.ProcessTracepoint); err != nil {
@@ -188,14 +189,15 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 				return fmt.Errorf("Unexpected pid=%d (filter is for pid %d)", eventPid, pid)
 			}
 			tpEventsNr += 1
-		default:
 			return nil
+		default:
+			return fmt.Errorf("not a tracepoint event: %T", tpEvent)
 
 		}
-		return nil
+		return errors.New("internal error")
 	}
 
-	if err := jsonTestIterate(nil, checkEventFn); err != nil {
+	if err := jsonTestCheck(t, nil, eventCheckerFn(checkEventFn)); err != nil {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}

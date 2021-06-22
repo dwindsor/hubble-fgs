@@ -19,6 +19,7 @@ import (
 	"reflect"
 	"sort"
 	"strings"
+	"testing"
 	"time"
 
 	"github.com/golang/protobuf/jsonpb"
@@ -513,7 +514,7 @@ func jsonTestSaveCopy(jsonFile *os.File) (string, error) {
 	return out.Name(), nil
 }
 
-func jsonTestIterate(jsonFile *os.File, checkFn func(*fgs.GetEventsResponse) error) error {
+func jsonTestCheck(t *testing.T, jsonFile *os.File, c eventChecker) error {
 
 	var err error
 	if jsonFile == nil {
@@ -525,6 +526,7 @@ func jsonTestIterate(jsonFile *os.File, checkFn func(*fgs.GetEventsResponse) err
 		defer jsonFile.Close()
 	}
 
+	count := 0
 	dec := json.NewDecoder(jsonFile)
 	for {
 		ev := fgs.GetEventsResponse{}
@@ -532,16 +534,27 @@ func jsonTestIterate(jsonFile *os.File, checkFn func(*fgs.GetEventsResponse) err
 		if err != nil {
 			return fmt.Errorf("unmarshal failed: %w", err)
 		}
-		err = checkFn(&ev)
-		if err != nil {
-			return fmt.Errorf("check function retuned error: %w", err)
+		count += 1
+		err = c.check(&ev, t)
+		if err == nil {
+			t.Logf("jsonTestCheck/line:%04d: event:%s => final match", count, eventTypeString(ev.Event))
+			t.Logf("jsonTestCheck: DONE!\n")
+			return nil
 		}
+
+		if e, ok := err.(*eventCheckerMadeProgress); ok {
+			t.Logf("jsonTestCheck/line:%04d: event:%s made progress. continuing: %s\n", count, eventTypeString(ev.Event), e.Error())
+		} else {
+			t.Logf("jsonTestCheck/line:%04d: event:%s did not match: %s\n", count, eventTypeString(ev.Event), err)
+		}
+
+		// no match: move to the next event
 		if !dec.More() {
 			break
 		}
 	}
 
-	return nil
+	return fmt.Errorf("jsonTestCheck: failed to match after %d events", count)
 }
 
 func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attempts, found int) (bool, error) {
