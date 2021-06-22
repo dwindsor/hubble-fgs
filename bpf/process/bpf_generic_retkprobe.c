@@ -36,7 +36,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	bool walker = false;
 	int zero = 0;
 	__u64 tid;
-	__u32 pid, ppid;
+	__u32 ppid;
 	long total = 0;
 	long size, orig_size;
 	unsigned long retprobe_buffer;
@@ -47,7 +47,6 @@ int generic_kprobe_event(struct pt_regs *ctx)
 		return 0;
 
 	tid = get_current_pid_tgid();
-	pid = tid & 0xFFFFffff;
 	e->thread_id = tid;
 
 	ty = bpf_core_enum_value(fgs_args, argreturn);
