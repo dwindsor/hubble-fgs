@@ -727,6 +727,11 @@ func (pm *ProcessManager) GetProcessListen(
 		Ip:      reader.GetIP(event.Tuple.SAddr, 0).String(),
 		Port:    port,
 	}
+
+	if event.SockCookie != 0 {
+		fgsEvent.SockCookie = event.SockCookie
+	}
+
 	if pm.enableEventCache == true && fgsProcess.Docker != "" && fgsProcess.Pod == nil {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
@@ -937,6 +942,10 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 		DestinationPort: destinationPort,
 	}
 
+	if event.SockCookie != 0 {
+		fgsEvent.SockCookie = event.SockCookie
+	}
+
 	if fgsProcess.Docker != "" {
 		endpoint := pm.getProcessEndpoint(fgsProcess)
 		// Its possible to receive an event before its podInfo is received in
@@ -997,6 +1006,10 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 		DestinationPort: destinationPort,
 	}
 
+	if event.SockCookie != 0 {
+		fgsEvent.SockCookie = event.SockCookie
+	}
+
 	if fgsProcess.Docker != "" {
 		endpoint := pm.getProcessEndpoint(fgsProcess)
 		if pm.enableEventCache == true && endpoint == nil || fgsEvent.Process.Pod == nil {
@@ -1052,6 +1065,11 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 	}
+
+	if event.SockCookie != 0 {
+		fgsEvent.SockCookie = event.SockCookie
+	}
+
 	if fgsProcess.Docker != "" {
 		endpoint := pm.getProcessEndpoint(fgsProcess)
 		if pm.enableEventCache == true && endpoint == nil || fgsEvent.Process.Pod == nil {

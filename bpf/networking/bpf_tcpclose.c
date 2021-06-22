@@ -14,6 +14,7 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "../parsers/tls/tls_map.h"
 #include "bpf_events.h"
+#include "cookie.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -73,6 +74,7 @@ int event_ipv4_close(struct pt_regs *ctx)
 		.tuple.daddr = tuple.daddr,
 		.tuple.dport = tuple.dport,
 		.tuple.sport = tuple.sport,
+		.socket_cookie = get_cookie(skp),
 	};
 
 	if (state == TCP_CLOSE) {

@@ -288,6 +288,7 @@ type MsgIPv4Tcp struct {
 	Tuple      MsgIPv4Tuple
 	Return     int64
 	ProcessKey MsgExecveKey
+	SockCookie uint64
 }
 
 type MsgCalltrace struct {
@@ -322,6 +323,7 @@ type MsgIPv4TcpEventUnix struct {
 	Kube       MsgK8sUnix
 	Return     int64
 	ProcessKey MsgExecveKey
+	SockCookie uint64
 }
 
 var MsgUnixSize uint32 = 640

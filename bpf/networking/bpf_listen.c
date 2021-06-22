@@ -13,6 +13,7 @@ struct bpf_map_def {
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "cookie.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -60,6 +61,7 @@ int event_sys_listen(struct pt_regs *ctx)
 		.common.size = sizeof(struct msg_ipv4_tcp_event),
 		.key.pid = pid,
 		.key.ktime = process->key.ktime,
+		.socket_cookie = get_cookie(skp),
 	};
 
 	map_update_elem(&ipv4_tcp_map, &key, val, 0);
