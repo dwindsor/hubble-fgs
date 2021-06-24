@@ -17,6 +17,7 @@ import (
 	"os"
 	"path"
 	"strings"
+	"syscall"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
@@ -284,22 +285,22 @@ var (
 	}
 
 	/* Event Ring map */
-	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, bpfLoadStateIdle()}
+	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, bpfLoadStateIdle(), -1}
 	/* Networking and Process Monitoring maps */
-	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, bpfLoadStateIdle()}
-	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, bpfLoadStateIdle()}
-	ObserverTcpMap    = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, bpfLoadStateIdle()} // NB: This seems to be unused?
+	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, bpfLoadStateIdle(), -1}
+	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1}
+	ObserverTcpMap    = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1} // NB: This seems to be unused?
 	/* TLS maps */
-	ObserverTCTLSMap     = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle()}
-	ObserverSockMap      = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle()}
-	ObserverTLSMap       = ObserverMap{"tls_map", "skmsg", &ObserverSkmsg, bpfLoadStateIdle()}
-	ObserverTLSTailCalls = ObserverMap{"tls_calls", "tc_ingress", &ObserverTLSTCIngress, bpfLoadStateIdle()}
+	ObserverTCTLSMap     = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle(), -1}
+	ObserverSockMap      = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle(), -1}
+	ObserverTLSMap       = ObserverMap{"tls_map", "skmsg", &ObserverSkmsg, bpfLoadStateIdle(), -1}
+	ObserverTLSTailCalls = ObserverMap{"tls_calls", "tc_ingress", &ObserverTLSTCIngress, bpfLoadStateIdle(), -1}
 	/* Internal statistics for debugging */
-	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
-	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
-	ObserverTlsStats    = ObserverMap{"tls_map_stats", "", &ObserverExecve, bpfLoadStateIdle()}
+	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, bpfLoadStateIdle(), -1}
+	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, bpfLoadStateIdle(), -1}
+	ObserverTlsStats    = ObserverMap{"tls_map_stats", "", &ObserverExecve, bpfLoadStateIdle(), -1}
 	/* Cilium maps */
-	ObserverCiliumSnat = ObserverMap{"cilium_snat_v4_external", "", &ObserverTCPConnect, bpfLoadStateIdle()}
+	ObserverCiliumSnat = ObserverMap{"cilium_snat_v4_external", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1}
 
 	observerAllMaps = []*ObserverMap{
 		&ObserverSocketMap,
@@ -480,6 +481,9 @@ func RemovePrograms(bpfDir, mapDir string) {
 	}
 
 	for _, m := range observerAllMaps {
+		if m.fd > 0 {
+			syscall.Close(m.fd)
+		}
 		os.Remove(mapDir + m.mapName)
 	}
 	os.Remove(bpfDir)
@@ -540,11 +544,11 @@ func observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor, map
 
 		pin := mapDir + m.mapName
 		btfObj := btf.GetCachedBTF()
-		fd, err := bpf.LoadAndPinMaps(version, Verbosity, btfObj, m.bpf.Observer__program, pin, m.mapName,
+		m.fd, err = bpf.LoadAndPinMaps(version, Verbosity, btfObj, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
 		logger.GetLogger().Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
 		if err != nil {
-			return fmt.Errorf("failed %d load map (%s): %s\n", fd, m.mapType, err)
+			return fmt.Errorf("failed %d load map (%s): %s\n", m.fd, m.mapType, err)
 		}
 		logger.GetLogger().Infof("hubble-fgs, map %s was loaded.\n", m.mapName)
 	}

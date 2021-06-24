@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/tracepoint"
+	"github.com/sirupsen/logrus"
 )
 
 const (
@@ -40,7 +41,7 @@ var (
 	// this information on a table index by a (unique) tracepoint id.
 	genericTracepointTable = tracepointTable{}
 
-	tracepointLog = logger.GetLogger()
+	tracepointLog logrus.FieldLogger
 )
 
 // genericTracepoint is the internal representation of a tracepoint
@@ -324,6 +325,7 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*observerSens
 }
 
 func LoadGenericTracepointSensor(bpfDir, mapDir string, load *bpfLoad, version, verbose int, x64 bool) (error, int) {
+	tracepointLog = logger.GetLogger()
 
 	btfCtxOffsetFn := func(i int) string {
 		return fmt.Sprintf("t_arg%d_ctx_off", i)

@@ -247,6 +247,8 @@ func (op OpCode) String() string {
 		"KfreeSkb"}[op]
 }
 
+type MsgFGSReady struct {}
+
 type MsgExec struct {
 	Size  uint32
 	PID   uint32

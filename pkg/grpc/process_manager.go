@@ -417,6 +417,8 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 func (pm *ProcessManager) Notify(event interface{}) error {
 	var processedEvent *fgs.GetEventsResponse
 	switch msg := event.(type) {
+	case *api.MsgFGSReady:
+		// pass
 	case *api.MsgTLSEventUnix:
 		processedEvent = pm.handleTLSMessage(msg)
 	case *api.MsgExecveEventUnix:

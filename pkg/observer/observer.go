@@ -110,6 +110,7 @@ type ObserverMap struct {
 	mapType  string
 	bpf      *bpfLoad
 	pinState bpfLoadState
+	fd       int
 }
 
 var (
@@ -427,6 +428,8 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 	observerError := k.observerError
 
 	k.log.Info("Listening for events...")
+	k.observerListeners(&api.MsgFGSReady{})
+
 	for !isCtxDone(stopCtx) {
 		todo, err := e.Poll(pollTimeout)
 		switch {
@@ -553,9 +556,6 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 			return fmt.Errorf("hubble-fgs, Aborting could not load initial kprobe sensors. %s\n", err)
 		}
 	}
-
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
 
 	// start sensor controller and stt manager
 	k.ObserverSync, err = StartSensorCtl(k.bpfDir, k.mapDir, k.ciliumDir)
