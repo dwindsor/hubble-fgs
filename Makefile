@@ -16,7 +16,7 @@ GO_IMAGE_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Version=$(VERS
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/isovalent/hubble-fgs -v /proc:/procRoot isovalent/hubble-fgs-test
 
 
-all: hubble-bpf hubble-fgs hubble-enterprise test-compile
+all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench test-compile
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
@@ -58,6 +58,13 @@ clean:
 	make -C ./bpf clean
 	rm -f go-tests/*.test
 
+.PHONY: fgs-bench
+fgs-bench:
+	$(GO) build ./cmd/fgs-bench
+
+package-fgs-bench: hubble-bpf-local fgs-bench
+	tar --transform="s|^|fgs-bench/|" \
+	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench lib/libbpf.so.0
 
 test:
 	$(GO) test $(GOFLAGS) -failfast -cover $$(go list $(GOFLAGS) ./...)

@@ -1,5 +1,6 @@
 lib/*
 hubble-fgs
+/fgs-bench
 ^hubble-enterprise$
 observer.test
 go-tests
