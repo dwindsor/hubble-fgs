@@ -84,6 +84,17 @@ var (
 	ObserverTLSTailCalls = ObserverMap{"tls_calls", "tc_ingress", &ObserverTLSTCIngress, bpfLoadStateIdle(), -1}
 )
 
+type observerTlsSensor struct {
+	name string
+}
+
+func init() {
+	tls := &observerTlsSensor{
+		name: "tls sensor",
+	}
+	registerTracingSensorsAtIinit(tls.name, tls)
+}
+
 func EnableTlsParser(tls, tc bool) *observerSensor {
 	var progs []*bpfLoad
 	var maps []*ObserverMap
@@ -145,6 +156,10 @@ func addParserSensors(parser v1alpha1.ParserPolicySpec) (*observerSensor, error)
 
 func getSensorFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
 	return addParserSensors(spec.Parser)
+}
+
+func (tls *observerTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	return getSensorFromParserPolicy(spec)
 }
 
 func getSensorFromParserPolicyString(yaml string) (*observerSensor, error) {

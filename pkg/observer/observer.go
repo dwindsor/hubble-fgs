@@ -24,6 +24,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/sirupsen/logrus"
@@ -548,23 +549,27 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 
 	// Load initial set of generic kprobe sensors */
 	if k.configFile != "" {
-		genericSensor, err := getSensorFromTracingPolicyFname(k.configFile)
+		yamlData, err := os.ReadFile(k.configFile)
 		if err != nil {
-			return fmt.Errorf("hubble-fgs, failed to initialize generic sensors. %w\n", err)
+			return fmt.Errorf("failed to read yaml file %s: %w", k.configFile, err)
 		}
-		if genericSensor != nil {
-			if err := ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx, genericSensor); err != nil {
-				return fmt.Errorf("hubble-fgs, Aborting could not load initial kprobe sensors. %s\n", err)
+		cnf, err := config.ReadConfigYaml(string(yamlData))
+		if err != nil {
+			return err
+		}
+		for _, s := range registeredTracingSensors {
+			sensor, err := s.specHandler(&cnf.Spec)
+			if err != nil {
+				return err
 			}
-		}
+			if sensor == nil {
+				continue
+			}
 
-		parserSensor, err := getSensorFromParserPolicyFname(k.configFile)
-		if err != nil {
-			return fmt.Errorf("hubble-fgs, failed to initialize parser sensors. %w\n", err)
-		}
-		if parserSensor != nil {
-			if err := ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx, parserSensor); err != nil {
-				return fmt.Errorf("hubble-fgs, Aborting could not load initial parser sensors. %s\n", err)
+			availableSensors[sensor.name] = sensor
+			err = ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx, sensor)
+			if err != nil {
+				return err
 			}
 		}
 	}

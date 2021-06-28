@@ -13,6 +13,7 @@ package observer
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"path"
@@ -37,6 +38,17 @@ var (
 	// observerAllPrograms.
 	genericKprobeProgs = map[string]*bpfLoad{}
 )
+
+type observerKprobeSensor struct {
+	name string
+}
+
+func init() {
+	kprobe := &observerKprobeSensor{
+		name: "kprobe sensor",
+	}
+	registerTracingSensorsAtIinit(kprobe.name, kprobe)
+}
 
 const (
 	genericFuncArgsEnum = "generic_func_args_enum"
@@ -855,4 +867,23 @@ func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) 
 			k.RemoveListener(listener)
 		}
 	}
+}
+
+func getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	kprobes := spec.KProbes
+	tracepoints := spec.Tracepoints
+	if len(kprobes) > 0 && len(tracepoints) > 0 {
+		// TODO: requires some refactoring (see also below)
+		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
+	} else if len(kprobes) > 0 {
+		return addGenericKprobeSensors(kprobes, ObserverBTF)
+	} else if len(tracepoints) > 0 {
+		return createGenericTracepointSensor(tracepoints)
+	} else {
+		return nil, nil
+	}
+}
+
+func (k *observerKprobeSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	return getSensorFromTracingPolicy(spec)
 }

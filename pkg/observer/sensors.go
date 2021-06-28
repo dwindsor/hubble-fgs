@@ -37,6 +37,8 @@ import (
 var (
 	// list of availableSensors, see registerSensor()
 	availableSensors map[string]*observerSensor = map[string]*observerSensor{}
+	// list of registered Tracing handlers, see registerTracingHandler()
+	registeredTracingSensors map[string]observerTracingSensor = map[string]observerTracingSensor{}
 	// observerSync
 	observerSync *ObserverSync
 )
@@ -59,6 +61,22 @@ type observerSensorImpl interface {
 
 	sensorGetConfig(cfg string) (string, error)
 	sensorSetConfig(cfg string, val string) error
+}
+
+type observerTracingSensor interface {
+	specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error)
+}
+
+// registerTracingSensorsAtIinit registers a handler for Tracing policy.
+//
+// This function is meant to be called in an init().
+// This will register a CRD or config file handler so that the config file
+// or CRDs will be passed to the handler to be parsed.
+func registerTracingSensorsAtIinit(name string, s observerTracingSensor) {
+	if _, exists := availableSensors[name]; exists {
+		panic(fmt.Sprintf("registerTracingSensor called, but %s is already registered", name))
+	}
+	registeredTracingSensors[name] = s
 }
 
 // observerSensor is a set of bpf programs and maps that are managed as a unit.
@@ -214,25 +232,21 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 					err = fmt.Errorf("sensor %s already exists", op.sensorName)
 					break
 				}
-				sensor, err = getSensorFromTracingPolicy(op.spec)
-				if err != nil {
-					break
-				}
-				availableSensors[op.sensorName] = sensor
-				err = ObserverLoadSensor(bpfDir, mapDir, ciliumDir, op.ctx, sensor)
-				if err != nil {
-					break
-				}
+				for _, s := range registeredTracingSensors {
+					sensor, err = s.specHandler(op.spec)
+					if err != nil {
+						break
+					}
+					if sensor == nil {
+						continue
+					}
 
-				sensor, err = getSensorFromParserPolicy(op.spec)
-				if err != nil {
-					break
-				}
-				if sensor != nil {
 					availableSensors[op.sensorName] = sensor
 					err = ObserverLoadSensor(bpfDir, mapDir, ciliumDir, op.ctx, sensor)
+					if err != nil {
+						break
+					}
 				}
-
 			case *sensorAdd:
 				if _, exists := availableSensors[op.name]; exists {
 					err = fmt.Errorf("sensor %s already exists", op.name)
@@ -339,21 +353,6 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 	sensor.sttManager = sttManager.StartSttManager()
 	sensor.sensorCtl = c
 	return &sensor, nil
-}
-
-func getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
-	kprobes := spec.KProbes
-	tracepoints := spec.Tracepoints
-	if len(kprobes) > 0 && len(tracepoints) > 0 {
-		// TODO: requires some refactoring (see also below)
-		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
-	} else if len(kprobes) > 0 {
-		return addGenericKprobeSensors(kprobes, ObserverBTF)
-	} else if len(tracepoints) > 0 {
-		return createGenericTracepointSensor(tracepoints)
-	} else {
-		return nil, nil
-	}
 }
 
 func getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
