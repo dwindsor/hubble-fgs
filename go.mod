@@ -19,11 +19,16 @@ require (
 	github.com/spf13/viper v1.6.1
 	github.com/stretchr/testify v1.5.1
 	github.com/vishvananda/netlink v1.1.1-0.20200210222539-bfba8e4149db
+	golang.org/x/lint v0.0.0-20210508222113-6edffad5e616 // indirect
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 	golang.org/x/sys v0.0.0-20201231184435-2d18734c6014
+	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
+	golang.org/x/xerrors v0.0.0-20200804184101-5ec99f83aff1 // indirect
+	google.golang.org/api v0.4.0
 	google.golang.org/grpc v1.26.0
 	gopkg.in/natefinch/lumberjack.v2 v2.0.0
 	gopkg.in/yaml.v2 v2.3.0
+	honnef.co/go/tools v0.0.1-2020.1.6 // indirect
 	k8s.io/api v0.18.4
 	k8s.io/apimachinery v0.18.4
 	k8s.io/client-go v11.0.0+incompatible
