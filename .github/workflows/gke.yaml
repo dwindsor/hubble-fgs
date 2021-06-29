@@ -23,6 +23,22 @@ jobs:
         with:
           go-version: '1.16'
 
+      - name: Set up job variables
+        id: vars
+        run: |
+          if [ ${{ github.event.issue.pull_request || github.event.pull_request }} ]; then
+            PR_API_JSON=$(curl \
+              -H "Accept: application/vnd.github.v3+json" \
+              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
+              ${{ github.event.issue.pull_request.url || github.event.pull_request.url }})
+            SHA=$(echo "$PR_API_JSON" | jq -r ".head.sha")
+            OWNER=$(echo "$PR_API_JSON" | jq -r ".number")
+          else
+            SHA=${{ github.sha }}
+            OWNER=${{ github.sha }}
+          fi
+          echo ::set-output name=sha::${SHA}
+
       - name: Install Cilium CLI
         run: |
           curl -LO https://github.com/cilium/cilium-cli/releases/download/v0.8.2/cilium-linux-amd64.tar.gz
@@ -77,13 +93,20 @@ jobs:
           kubectl port-forward -n kube-system deployment/hubble-relay 4245:4245&
           sleep 5s
 
+      - name: Wait for image to be available
+        timeout-minutes: 10
+        shell: bash
+        run: |
+          until curl --silent -f -lSL "https://quay.io/api/v1/repository/${{ github.repository_owner }}/hubble-enterprise-ci/tag/${{ steps.vars.outputs.sha }}/images" &> /dev/null; do sleep 45s; done
+
       - name: Install FGS
         run: |
           helm repo add isovalent https://helm.isovalent.com
           helm repo update
           helm install hubble-enterprise isovalent/hubble-enterprise \
                  --version 9999.9999.9999-dev \
-                 --set enterprise.image.tag=master \
+                 --set enterprise.image.repository=quay.io/isovalent/hubble-enterprise-ci \
+                 --set enterprise.image.tag=${{ steps.vars.outputs.sha }} \
                  --namespace kube-system
 
       - name: Wait for FGS pods to become ready
