@@ -20,6 +20,7 @@ import (
 type CpuUsage struct {
 	SystemTime time.Duration
 	UserTime   time.Duration
+	MaxRss     int64
 }
 
 type CpuUsageTarget int
@@ -37,6 +38,7 @@ func GetCpuUsage(tgt CpuUsageTarget) (cpuUsage CpuUsage) {
 	}
 	cpuUsage.UserTime = timevalToDuration(rusage.Utime)
 	cpuUsage.SystemTime = timevalToDuration(rusage.Stime)
+	cpuUsage.MaxRss = rusage.Maxrss
 	return
 }
 
@@ -52,7 +54,7 @@ func (cu CpuUsage) Sub(cu2 CpuUsage) CpuUsage {
 }
 
 func (cu CpuUsage) String() string {
-	return fmt.Sprintf("system=%s, user=%s", cu.SystemTime, cu.UserTime)
+	return fmt.Sprintf("system=%s, user=%s, rss=%d", cu.SystemTime, cu.UserTime, cu.MaxRss)
 }
 
 type CountingDiscardWriter struct {

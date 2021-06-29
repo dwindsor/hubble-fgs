@@ -70,6 +70,7 @@ func main() {
 		FgsDebug:      *debug,
 		FgsJsonEncode: *jsonEncode,
 		Mode:          *mode,
+		Baseline:      *baseline,
 	}
 
 	var summary *bench.BenchSummary

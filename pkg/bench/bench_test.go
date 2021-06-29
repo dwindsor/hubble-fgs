@@ -12,6 +12,7 @@ package bench
 
 import (
 	"context"
+	"os"
 	"path"
 	"strings"
 	"testing"
@@ -21,8 +22,15 @@ import (
 )
 
 func resultFilename(b *testing.B) string {
-	// NOTE: working directory is pkg/bench.
-	return path.Join("..", "..", "results", strings.ReplaceAll(b.Name(), "/", "_") + ".json")
+	// NOTE: working directory is pkg/bench when running with "go test". We're
+	// also packaging up the benchmark suite into a binary and running it in CI
+	// in which case we're dumping the results to current directory.
+	file := strings.ReplaceAll(b.Name(), "/", "_") + ".json"
+	if _, err := os.Stat("bench_test.go"); err == nil {
+		return path.Join("..", "..", "results", file)
+	} else {
+		return file
+	}
 }
 
 func BenchmarkBaseline(b *testing.B) {
@@ -33,6 +41,7 @@ func BenchmarkBaseline(b *testing.B) {
 					NumConns: b.N,
 					ConnRate: 0, // Unlimited
 					Mode:     mode,
+					Baseline: true,
 				})
 			if err := summary.WriteFile(resultFilename(b)); err != nil {
 				b.Fatalf("summary.WriteFile failed: %s", err)
@@ -58,6 +67,7 @@ func benchmarkFgs(b *testing.B, fgsTls bool) {
 		ConnRate: 0, // Unlimited
 		Mode:     "tcp",
 		FgsEnableTls: fgsTls,
+		Baseline: false,
 	}
 
 	summary := newBenchSummary(args)
@@ -66,7 +76,7 @@ func benchmarkFgs(b *testing.B, fgsTls bool) {
 	fgsReady := make(chan bool)
 	fgsFinished := make(chan bool)
 	go func() {
-		runFgs(false, false, summary, fgsCtx, fgsCancel, fgsReady)
+		runFgs(fgsTls, false, summary, fgsCtx, fgsCancel, fgsReady)
 		fgsFinished <- true
 	}()
 
@@ -89,5 +99,7 @@ func benchmarkFgs(b *testing.B, fgsTls bool) {
 
 	fgsCancel()
 	<- fgsFinished
+
+
 
 }

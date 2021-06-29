@@ -40,6 +40,7 @@ type BenchArguments struct {
 	FgsDebug      bool
 	FgsJsonEncode bool
 	Mode          string
+	Baseline      bool
 }
 
 func (args *BenchArguments) String() string {
@@ -95,6 +96,11 @@ func runFgs(fgsEnableTls, fgsDebug bool, summary *BenchSummary, ctx context.Cont
 			log.Fatal(err)
 		}
 		observer.HubbleLib = path.Join(path.Dir(exePath), "bpf/objs")
+
+		if _, err := os.Stat(observer.HubbleLib); err != nil {
+			// Running outside the source tree, fall back to default location.
+			observer.HubbleLib = "/var/lib/hubble-fgs"
+		}
 	}
 
 	kprobe := observer.NewObserverKprobe("/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
@@ -127,9 +133,11 @@ type benchmarkListener struct {
 }
 
 func runFgsBenchmark(args *BenchArguments, summary *BenchSummary, ctx context.Context, cancel context.CancelFunc) {
+	cpuUsageBefore := GetCpuUsage(CPU_USAGE_ALL_THREADS)
 	runConnectionLoad(ctx, cancel, args, summary)
+	cpuUsageAfter := GetCpuUsage(CPU_USAGE_ALL_THREADS)
 	summary.FgsCpuUsage =
-		GetCpuUsage(CPU_USAGE_ALL_THREADS).Sub(summary.SinkCpuUsage).Sub(summary.SourceCpuUsage)
+		cpuUsageAfter.Sub(cpuUsageBefore).Sub(summary.SinkCpuUsage).Sub(summary.SourceCpuUsage)
 }
 
 func (bl *benchmarkListener) Notify(msg interface{}) error {
