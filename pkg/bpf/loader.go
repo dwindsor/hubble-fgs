@@ -201,26 +201,6 @@ int bpf_loader_set_map(struct bpf_object *obj,
 	return 0;
 }
 
-static void *getBtf(const char *btf)
-{
-	return btf__parse(btf, NULL);
-}
-
-static int addEnumBtf(void *btf, char *name, int value)
-{
-	return btf__add_enum(btf, name, value);
-}
-
-static int addEnumBtfValue(void *btf, char *name, int value)
-{
-	return btf__add_enum_value(btf, name, value);
-}
-
-static void freeBtf(void *btfobj)
-{
-	btf__free(btfobj);
-}
-
 static struct bpf_object *__loader(const int version,
 		    const int verbosity,
 		    struct btf *btf,
@@ -822,24 +802,6 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
-
-func GetBTF(__btf string) uintptr {
-	return uintptr(C.getBtf(C.CString(__btf)))
-}
-
-func AddEnumBtf(btf uintptr, name string, value int) int {
-	ret := C.addEnumBtf(unsafe.Pointer(btf), C.CString(name), C.int(value))
-	return int(ret)
-}
-
-func AddEnumBtfValue(btf uintptr, name string, value int) int {
-	ret := C.addEnumBtfValue(unsafe.Pointer(btf), C.CString(name), C.int(value))
-	return int(ret)
-}
-
-func FreeBTF(btf uintptr) {
-	C.freeBtf(unsafe.Pointer(btf))
-}
 
 func LoadAndPinMaps(__version, __verbosity int, btf uintptr, __prog, __map, __map_label string, __prog_type int) (int, error) {
 	version := C.int(__version)
