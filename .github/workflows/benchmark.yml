@@ -1,0 +1,46 @@
+name: HubbleFGS Benchmark
+on:
+  pull_request:
+  push:
+    branches:
+      - master
+#  schedule:
+#      - cron:  '0 1 * * *'
+
+jobs:
+  build:
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      matrix:
+        os: [ ubuntu-20.04 ]
+    steps:
+    - uses: actions/checkout@master
+      with:
+        path: go/src/github.com/isovalent/hubble-fgs/
+    - uses: actions/setup-go@v1
+      with:
+        go-version: '1.16'
+    - name: Run benchmark and publish
+      env:
+        GOPATH: /home/runner/work/hubble-fgs/hubble-fgs/go
+        GCP_SA_KEY: ${{secrets.GCP_SA_KEY}}
+        BENCH_DURATION: 1m
+      run: |
+        docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
+        sudo apt install libelf-dev netcat-traditional
+        export PATH=${GOPATH}/bin:${PATH}
+        sudo -E echo "copy build tools from images"
+        cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs
+        sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
+        sudo -E ldconfig /usr/local/
+        sudo sed -i '/secure_path/d' /etc/sudoers
+        sudo sed -i '/env_reset/d' /etc/sudoers
+        sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
+        echo `which clang`
+        echo `which llc`
+        echo `clang --version`
+        sudo make hubble-bpf
+        sudo -E go test github.com/isovalent/hubble-fgs/pkg/bench -benchtime $BENCH_DURATION -timeout 30m -bench .
+        find results -name "*.json" | xargs sudo -E go run ./cmd/fgs-bench-publish/fgs-bench-publish.go "$GITHUB_SHA" "$GCP_SA_KEY"
+
