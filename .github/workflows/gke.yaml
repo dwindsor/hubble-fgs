@@ -32,10 +32,8 @@ jobs:
               -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
               ${{ github.event.issue.pull_request.url || github.event.pull_request.url }})
             SHA=$(echo "$PR_API_JSON" | jq -r ".head.sha")
-            OWNER=$(echo "$PR_API_JSON" | jq -r ".number")
           else
             SHA=${{ github.sha }}
-            OWNER=${{ github.sha }}
           fi
           echo ::set-output name=sha::${SHA}
 
