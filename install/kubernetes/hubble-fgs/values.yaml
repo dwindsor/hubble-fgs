@@ -1,3 +1,5 @@
+debug: false
+
 # image used for hubble-fgs
 image:
   # repository of the docker image
@@ -77,3 +79,6 @@ metricsServer: ":2112"
 
 # enableTLSEvents enables TLS visibility.
 enableTLSEvents: true
+
+# procFS
+procFS: /procRoot

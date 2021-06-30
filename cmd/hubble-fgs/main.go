@@ -231,6 +231,18 @@ func execute() error {
 		},
 	}
 
+	cobra.OnInitialize(func() {
+		viper.SetEnvPrefix("fgs")
+		viper.SetConfigName("config")
+		viper.SetConfigType("yaml")
+		viper.AddConfigPath(".")               // look for a config file in cwd first, useful during development
+		viper.AddConfigPath("/etc/hubble-fgs") // look in the global configuration directory
+		if err := viper.ReadInConfig(); err != nil {
+			logger.GetLogger().WithError(err).Warn("Failed to read config from file")
+		}
+		viper.AutomaticEnv()
+	})
+
 	flags := rootCmd.PersistentFlags()
 
 	flags.BoolP(keyDebug, "d", false, "Enable debug messages")

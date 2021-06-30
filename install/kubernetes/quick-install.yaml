@@ -6,6 +6,27 @@ metadata:
   name: hubble-fgs
   namespace: kube-system
 ---
+# Source: hubble-fgs/templates/configmap.yaml
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: fgs-config
+  namespace: kube-system
+data:
+  config.yaml: |
+    debug: false
+    enable-cilium-api: true
+    cilium-bpf: /sys/fs/bpf/tc/globals/
+    enable-k8s-api: true
+    export-file-compress: true
+    export-file-max-backups: 5
+    export-file-max-size-mb: 10
+    export-filename: /var/run/cilium/hubble-fgs.log
+    metrics-server: :2112
+    process-cache-size: 32768
+    procfs: /procRoot
+    tlstc: true
+---
 # Source: hubble-fgs/templates/clusterrole.yaml
 kind: ClusterRole
 apiVersion: rbac.authorization.k8s.io/v1
@@ -57,22 +78,14 @@ spec:
           command:
             - /usr/bin/hubble-fgs
           args:
-            - --procfs=/procRoot
-            - --tlstc
-            - --process-cache-size=32768
-            - --export-filename=/var/run/cilium/hubble-fgs.log
-            - --export-file-max-size-mb=10
-            - --export-file-max-backups=5
-            - --export-file-compress=true
-            - --enable-k8s-api
-            - --enable-cilium-api
-            - --cilium-bpf=/sys/fs/bpf/tc/globals/
-            - --metrics-server=:2112
           image: quay.io/isovalent/hubble-fgs:latest
           imagePullPolicy: Always
           securityContext:
             privileged: true
           volumeMounts:
+            - mountPath: /etc/hubble-fgs
+              name: fgs-config
+              readOnly: true
             - mountPath: /sys/fs/bpf
               mountPropagation: HostToContainer
               name: bpf-maps
@@ -93,6 +106,12 @@ spec:
       tolerations:
         - operator: Exists
       volumes:
+        - configMap:
+            name: fgs-config
+            items:
+            - key: config.yaml
+              path: config.yaml
+          name: fgs-config
         - hostPath:
             path: /sys/fs/bpf
             type: DirectoryOrCreate

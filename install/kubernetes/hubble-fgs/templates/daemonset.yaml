@@ -24,33 +24,14 @@ spec:
           command:
             - /usr/bin/hubble-fgs
           args:
-            - --procfs=/procRoot
-{{- if .Values.enableTLSEvents }}
-            - --tlstc
-{{- end }}
-            - --process-cache-size={{ .Values.processCacheSize }}
-            - --export-filename={{ .Values.exportFilename }}
-            - --export-file-max-size-mb={{ .Values.exportFileMaxSizeMB }}
-            - --export-file-max-backups={{ .Values.exportFileMaxBackups }}
-            - --export-file-compress={{ .Values.exportFileCompress }}
-{{- if .Values.exportFileRotationInterval }}
-            - --export-file-rotation-interval={{ .Values.exportFileRotationInterval }}
-{{- end }}
-{{- if .Values.enableK8sAPI }}
-            - --enable-k8s-api
-{{- end }}
-{{- if .Values.enableCiliumAPI }}
-            - --enable-cilium-api
-            - --cilium-bpf=/sys/fs/bpf/tc/globals/
-{{- end }}
-{{- if .Values.metricsServer }}
-            - --metrics-server={{ .Values.metricsServer }}
-{{- end }}
           image: {{ .Values.image.repository }}:{{ .Values.image.tag }}
           imagePullPolicy: {{ .Values.image.pullPolicy }}
           securityContext:
             privileged: true
           volumeMounts:
+            - mountPath: /etc/hubble-fgs
+              name: fgs-config
+              readOnly: true
             - mountPath: /sys/fs/bpf
               mountPropagation: HostToContainer
               name: bpf-maps
@@ -85,6 +66,12 @@ spec:
       tolerations:
         - operator: Exists
       volumes:
+        - configMap:
+            name: fgs-config
+            items:
+            - key: config.yaml
+              path: config.yaml
+          name: fgs-config
         - hostPath:
             path: /sys/fs/bpf
             type: DirectoryOrCreate
