@@ -32,33 +32,7 @@ import (
 	"k8s.io/client-go/rest"
 )
 
-var (
-	observerDir = "/sys/fs/bpf/tcpmon/"
-
-	cmd *cobra.Command
-
-	processCacheSize           int
-	exportFilename             string
-	exportFileMaxSizeMB        int
-	exportFileRotationInterval time.Duration
-	exportFileMaxBackups       int
-	exportFileCompress         bool
-	enableK8sAPI               bool
-	metricsServer              string
-	enableCiliumAPI            bool
-	networkInterfaces          string
-	serverAddress              string
-	runStandalone              bool
-	ciliumBPF                  string
-	enableProcessCred          bool
-	configFile                 string
-	enableCRD                  bool
-
-	// Export aggregation options
-	enableExportAggregation     bool
-	exportAggregationWindowSize time.Duration
-	exportAggregationBufferSize uint64
-)
+const observerDir = "/sys/fs/bpf/tcpmon/"
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
 	allowList, err := filters.ParseFilterList(os.Getenv("EXPORT_ALLOW_LIST"))
@@ -86,7 +60,9 @@ func saveInitInfo() error {
 func hubbleFGSExecute() error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
-	tls := viper.GetBool("tls")
+
+	logger.GetLogger().Infof("config settings: %#v", viper.AllSettings())
+	readAndSetFlags()
 
 	ctx, cancel := context.WithCancel(context.Background())
 	bpf.CheckOrMountFS("")
@@ -97,8 +73,8 @@ func hubbleFGSExecute() error {
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
 		networkInterfaces, configFile, []observer.GenericTracepointConf{},
-		viper.GetBool("tls"), viper.GetBool("tlstc"),
-		viper.GetBool("debug"), viper.GetBool("enable-crd"))
+		tls, tlstc,
+		debug, enableCRD)
 
 	/* Remove any stale programs, otherwise feature set change can cause
 	 * old programs to linger resulting in undefined behavior. And because
@@ -137,7 +113,12 @@ func hubbleFGSExecute() error {
 		return err
 	}
 	processManager, err := fgsGrpc.NewProcessManager(
-		logger.GetLogger(), processCacheSize, watcher, ciliumState, enableProcessCred, enableCiliumAPI)
+		logger.GetLogger(),
+		processCacheSize,
+		watcher,
+		ciliumState,
+		enableProcessCred,
+		enableCiliumAPI)
 	if err != nil {
 		return err
 	}
@@ -235,8 +216,8 @@ func getWatcher(enableK8sAPI bool) (fgsGrpc.K8sResourceWatcher, error) {
 	return fgsGrpc.NewFakeK8sWatcher(nil), nil
 }
 
-func init() {
-	cmd = &cobra.Command{
+func execute() error {
+	rootCmd := &cobra.Command{
 		Use:   "hubble-fgs SOURCE_DIR BUCKET",
 		Short: "Hubble FGS",
 		Run: func(cmd *cobra.Command, args []string) {
@@ -250,53 +231,49 @@ func init() {
 		},
 	}
 
-	flags := cmd.PersistentFlags()
+	flags := rootCmd.PersistentFlags()
 
-	flags.BoolP("debug", "d", false, "Enable debug messages")
-	flags.StringVar(&observer.HubbleLib, "hubble-lib", "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
-	flags.StringVar(&observer.ObserverBTF, "btf", "", "Location of btf")
+	flags.BoolP(keyDebug, "d", false, "Enable debug messages")
+	flags.String(keyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
+	flags.String(keyBTF, "", "Location of btf")
 
-	flags.StringVar(&observer.ProcFS,
-		"procfs", "/proc/", "Location of procfs to consume existing PIDs")
-	flags.StringVar(&observer.KernelVersion, "kernel", "", "Kernel version")
-	flags.IntVar(&observer.Verbosity, "verbose", 0, "set verbosity level")
-	flags.BoolP("tls", "t", false, "Enable tls events")
-	flags.BoolP("tlstc", "", false, "Enable TLS TC events")
-	flags.IntVar(&processCacheSize, "process-cache-size", 32768, "Size of the process cache")
-	flags.StringVar(&exportFilename, "export-filename", "", "Filename for JSON export. Disabled by default")
-	flags.IntVar(&exportFileMaxSizeMB, "export-file-max-size-mb", 10, "Size in MB for rotating JSON export files")
-	flags.DurationVar(&exportFileRotationInterval, "export-file-rotation-interval", 0,
-		"Interval at which to rotate JSON export files in addition to rotating them by size")
-	flags.IntVar(&exportFileMaxBackups, "export-file-max-backups", 5, "Number of rotated JSON export files to retain")
-	flags.BoolVar(&exportFileCompress, "export-file-compress", false, "Compress rotated JSON export files")
-	flags.String("log-level", "info", "Set log level")
-	flags.String("log-format", "text", "Set log format")
-	flags.BoolVar(&enableK8sAPI, "enable-k8s-api", false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
-	flags.BoolVar(&enableCRD, "enable-crd", false, "Enables K8s CRD watchers")
-	flags.StringVar(&metricsServer, "metrics-server", "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
-	flags.BoolVar(&enableCiliumAPI, "enable-cilium-api", false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
-	flags.StringVar(&networkInterfaces, "network-interfaces", "", "Comma separated list of regex expressions to use to apply protocol parsers")
-	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
-	flags.StringVar(&ciliumBPF, "cilium-bpf", "", "Cilium BPF directory")
-	flags.BoolVar(&enableProcessCred, "enable-process-cred", false, "Enable process_cred events")
+	flags.String(keyProcFS, "/proc/", "Location of procfs to consume existing PIDs")
+	flags.String(keyKernelVersion, "", "Kernel version")
+	flags.Int(keyVerbosity, 0, "set verbosity level")
+	flags.BoolP(keyTLS, "t", false, "Enable tls events")
+	flags.Bool(keyTLSTC, false, "Enable TLS TC events")
+	flags.Int(keyProcessCacheSize, 32768, "Size of the process cache")
+	flags.String(keyExportFilename, "", "Filename for JSON export. Disabled by default")
+	flags.Int(keyExportFileMaxSizeMB, 10, "Size in MB for rotating JSON export files")
+	flags.Duration(keyExportFileRotationInterval, 0, "Interval at which to rotate JSON export files in addition to rotating them by size")
+	flags.Int(keyExportFileMaxBackups, 5, "Number of rotated JSON export files to retain")
+	flags.Bool(keyExportFileCompress, false, "Compress rotated JSON export files")
+	flags.String(keyLogLevel, "info", "Set log level")
+	flags.String(keyLogFormat, "text", "Set log format")
+	flags.Bool(keyEnableK8sAPI, false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
+	flags.Bool(keyEnableCRD, false, "Enables K8s CRD watchers")
+	flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
+	flags.String(keyMetricsServer, "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
+	flags.String(keyNetworkInterfaces, "", "Comma separated list of regex expressions to use to apply protocol parsers")
+	flags.String(keyServerAddress, "localhost:54321", "gRPC server address")
+	flags.String(keyCiliumBPF, "", "Cilium BPF directory")
+	flags.Bool(keyEnableProcessCred, false, "Enable process_cred events")
 	viper.BindPFlags(flags)
 
 	// Config files
-	flags.StringVar(&configFile, "config-file", "", "Configuration file to load from")
+	flags.String(keyConfigFile, "", "Configuration file to load from")
 
 	// Options for debugging/development, not visible to users
-	flags.BoolVar(&runStandalone, "run-standalone", false, "Just start the observer and dump events to stdout")
-	flags.MarkHidden("run-standalone")
+	flags.Bool(keyRunStandalone, false, "Just start the observer and dump events to stdout")
+	flags.MarkHidden(keyRunStandalone)
 
-	flags.BoolVarP(&observer.IgnoreMissingProgs, "ignore-missing-progs", "", false, "Ignore missing BPF programs")
-	flags.MarkHidden("ignore-missing-progs")
+	flags.Bool(keyIgnoreMissingProgs, false, "Ignore missing BPF programs")
+	flags.MarkHidden(keyIgnoreMissingProgs)
 
 	// JSON export aggregation options.
-	flags.BoolVar(&enableExportAggregation, "enable-export-aggregation", false, "Enable JSON export aggregation")
-	flags.DurationVar(&exportAggregationWindowSize, "export-aggregation-window-size", 15*time.Second, "JSON export aggregation time window")
-	flags.Uint64Var(&exportAggregationBufferSize, "export-aggregation-buffer-size", 10000, "Aggregator channel buffer size")
-}
+	flags.Bool(keyEnableExportAggregation, false, "Enable JSON export aggregation")
+	flags.Duration(keyExportAggregationWindowSize, 15*time.Second, "JSON export aggregation time window")
+	flags.Uint64(keyExportAggregationBufferSize, 10000, "Aggregator channel buffer size")
 
-func hubbleFGSMain() {
-	cmd.Execute()
+	return rootCmd.Execute()
 }
