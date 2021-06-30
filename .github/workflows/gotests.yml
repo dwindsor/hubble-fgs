@@ -51,6 +51,7 @@ jobs:
         echo `which clang`
         echo `which llc`
         echo `clang --version`
+        make check-copyright
         sudo make hubble-bpf
         sudo -E echo "run go tests: " `uname -a`
         sudo -E go mod verify

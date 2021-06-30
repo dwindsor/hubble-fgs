@@ -22,6 +22,9 @@ KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-
 GOLANGCILINT_WANT_VERSION = 1.42.1
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 
+# Directories to enforce copyright headers on
+COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
+
 all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile contrib-progs checkerpc
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
@@ -127,6 +130,18 @@ test-kernels:
 	${KATA_RUNNER}
 	kata-img vmlinuz-kata-linux-5.4.51-83_hubble
 	${KATA_RUNNER}
+
+
+.PHONY: check-copyright update-copyright
+check-copyright:
+	for dir in $(COPYRIGHT_DIRS); do \
+		contrib/copyright-headers check $$dir; \
+	done
+
+update-copyright:
+	for dir in $(COPYRIGHT_DIRS); do \
+		contrib/copyright-headers update $$dir; \
+	done
 
 lint:
 	golint -set_exit_status $$(go list ./...)
