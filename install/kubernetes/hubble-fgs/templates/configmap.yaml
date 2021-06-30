@@ -12,6 +12,7 @@ data:
     cilium-bpf: /sys/fs/bpf/tc/globals/
 {{- end }}
     enable-k8s-api: {{ .Values.enableK8sAPI }}
+    enable-crd: {{ .Values.enableCRD }}
     export-file-compress: {{ .Values.exportFileCompress }}
     export-file-max-backups: {{ .Values.exportFileMaxBackups }}
     export-file-max-size-mb: {{ .Values.exportFileMaxSizeMB }}

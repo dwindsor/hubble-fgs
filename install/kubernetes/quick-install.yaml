@@ -18,6 +18,7 @@ data:
     enable-cilium-api: true
     cilium-bpf: /sys/fs/bpf/tc/globals/
     enable-k8s-api: true
+    enable-crd: true
     export-file-compress: true
     export-file-max-backups: 5
     export-file-max-size-mb: 10
