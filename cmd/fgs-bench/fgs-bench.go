@@ -24,13 +24,16 @@ import (
 // Command-line flags
 var (
 	mode       *string
-	numConns   *int
+	numSteps *int
 	connRate   *int
 	fgsTls     *bool
 	noDelay    *bool
 	debug      *bool
 	jsonEncode *bool
 	baseline   *bool
+	requestResponse *bool
+	requestSize *int
+	useNetperf *bool
 )
 
 func checkMode() {
@@ -39,11 +42,12 @@ func checkMode() {
 			return
 		}
 	}
-	log.Fatalf("unknown mode: %s, pick on of: " + strings.Join(bench.SupportedModes, ","))
+	log.Fatalf("unknown mode: %s, pick on of: %s",
+	           *mode, strings.Join(bench.SupportedModes, ","))
 }
 
 func init() {
-	numConns = flag.Int("n", 1000, "number of connections")
+	numSteps = flag.Int("n", 1000, "number of connections or requests")
 	connRate = flag.Int("rate", 100, "connections per second, use 0 for unlimited")
 	fgsTls = flag.Bool("fgs-tls", false, "enable TLS in FGS")
 	debug = flag.Bool("debug", false, "enable FGS debugging")
@@ -51,6 +55,10 @@ func init() {
 	baseline = flag.Bool("baseline", false, "run a baseline benchmark without FGS")
 
 	mode = flag.String("mode", "tcp", "connection mode, one of: "+strings.Join(bench.SupportedModes, ","))
+
+	requestResponse = flag.Bool("rr", false, "run a request-response test")
+	requestSize = flag.Int("req-size", 64, "request size for request-response test")
+	useNetperf = flag.Bool("netperf", true, "use netperf in request-response test (in TCP mode)")
 }
 
 func main() {
@@ -64,13 +72,16 @@ func main() {
 	log.SetOutput(os.Stderr)
 
 	args := &bench.BenchArguments{
-		NumConns:      *numConns,
+		NumSteps:      *numSteps,
 		ConnRate:      *connRate,
 		FgsEnableTls:  *fgsTls,
 		FgsDebug:      *debug,
 		FgsJsonEncode: *jsonEncode,
 		Mode:          *mode,
 		Baseline:      *baseline,
+		RequestResponse: *requestResponse,
+		ReqSize: *requestSize,
+		UseNetperf: *useNetperf,
 	}
 
 	var summary *bench.BenchSummary

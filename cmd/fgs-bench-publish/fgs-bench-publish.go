@@ -19,54 +19,32 @@ import (
 
 const (
 	SHEET_DOC_ID = "1_5wv5gFcw6fh8FtJN8X1JB6iZJ85OlvM4eXuUXIHKo0"
-
-	SHEET_BASELINE_TLS  = 503947610
-	SHEET_BASELINE_TCP  = 371755781
-	SHEET_BASELINE_HTTP = 78820048
-
-	SHEET_FGS_TLS_TLS  = 2026607124
-	SHEET_FGS_TCP_TLS  = 839882648
-	SHEET_FGS_HTTP_TLS = 1872945073
-
-	SHEET_FGS_TLS_NOTLS  = 1814748783 
-	SHEET_FGS_TCP_NOTLS  = 2060975911 
-	SHEET_FGS_HTTP_NOTLS = 1585471493 
 )
 
+// Sheet identifiers (see gid= in URL).
+// Used as the BatchUpdate requests work on the id instead of the name.
+var testNameToSheetId = map[string]int64{
+	"BenchmarkBaseline/tls":  503947610,
+	"BenchmarkBaseline/tcp":  371755781,
+	"BenchmarkBaseline/http": 78820048,
+
+	"BenchmarkFgsNoTls/tls":  1814748783,
+	"BenchmarkFgsNoTls/tcp":  2060975911,
+	"BenchmarkFgsNoTls/http": 1585471493,
+
+	"BenchmarkFgsTls/tls":  2026607124,
+	"BenchmarkFgsTls/tcp":  839882648,
+	"BenchmarkFgsTls/http": 1872945073,
+
+	"BenchmarkFgsTcpRequestResponse": 1072107619,
+	"BenchmarkBaselineTcpRequestResponse": 2098922345,
+}
+
 func summaryToSheetId(summary *bench.BenchSummary) int64 {
-	if summary.Args.Baseline {
-		switch summary.Args.Mode {
-		case "tcp":
-			return SHEET_BASELINE_TCP
-		case "tls":
-			return SHEET_BASELINE_TLS
-		case "http":
-			return SHEET_BASELINE_HTTP
-		default:
-			panic("unknown mode")
-		}
-	} else if summary.Args.FgsEnableTls {
-		switch summary.Args.Mode {
-		case "tcp":
-			return SHEET_FGS_TCP_TLS
-		case "tls":
-			return SHEET_FGS_TLS_TLS
-		case "http":
-			return SHEET_FGS_HTTP_TLS
-		default:
-			panic("unknown mode")
-		}
+	if id, ok := testNameToSheetId[summary.TestName]; ok {
+		return id
 	} else {
-		switch summary.Args.Mode {
-		case "tcp":
-			return SHEET_FGS_TCP_NOTLS
-		case "tls":
-			return SHEET_FGS_TLS_NOTLS
-		case "http":
-			return SHEET_FGS_HTTP_NOTLS
-		default:
-			panic("unknown mode")
-		}
+		return 0 // Test sheet
 	}
 }
 
@@ -77,7 +55,6 @@ func main() {
 
 	gitRev := os.Args[1]
 	saKey := os.Args[2]
-
 
 	ctx := context.Background()
 	sheetsService, err := sheets.NewService(ctx, option.WithCredentialsJSON([]byte(saKey)))
@@ -182,9 +159,7 @@ func valueToCellData(value interface{}) *sheets.CellData {
 	return &sheets.CellData{UserEnteredValue: ev}
 }
 
-func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *bench.BenchSummary) {
-
-	sheetId := summaryToSheetId(summary)
+func valuesFromSummary(gitRev string, summary *bench.BenchSummary) []*sheets.CellData {
 
 	fgsSystemCpuPercent := 100.0 * float64(summary.FgsCpuUsage.SystemTime) / float64(summary.TestDurationNanos)
 	fgsUserCpuPercent := 100.0 * float64(summary.FgsCpuUsage.UserTime) / float64(summary.TestDurationNanos)
@@ -195,12 +170,19 @@ func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *benc
 	sinkSystemCpuPercent := 100.0 * float64(summary.SinkCpuUsage.SystemTime) / float64(summary.TestDurationNanos)
 	sinkUserCpuPercent := 100.0 * float64(summary.SinkCpuUsage.UserTime) / float64(summary.TestDurationNanos)
 
-	values :=
-		[]*sheets.CellData{
+	if summary.Args.RequestResponse {
+		return []*sheets.CellData{
 			valueToCellData(summary.StartTime.Format(time.RFC3339)),
 			valueToCellData(durationToSecs(summary.SetupDurationNanos)),
 			valueToCellData(durationToSecs(summary.TestDurationNanos)),
-			valueToCellData(summary.SourceStats.ActualRate),
+
+			// Rates and latencies
+			valueToCellData(summary.SourceStats.ActualReqRate),
+			valueToCellData(durationToSecs(summary.SourceStats.LatencyP50)),
+			valueToCellData(durationToSecs(summary.SourceStats.LatencyP90)),
+			valueToCellData(durationToSecs(summary.SourceStats.LatencyP99)),
+
+			// Resource usage
 			valueToCellData(fgsSystemCpuPercent),
 			valueToCellData(fgsUserCpuPercent),
 			valueToCellData(summary.FgsCpuUsage.MaxRss),
@@ -208,6 +190,8 @@ func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *benc
 			valueToCellData(sourceUserCpuPercent),
 			valueToCellData(sinkSystemCpuPercent),
 			valueToCellData(sinkUserCpuPercent),
+
+			// BPF stats
 			valueToCellData(getBpfStatForSheets("event_sys_liste", summary)),
 			valueToCellData(getBpfStatForSheets("event_ret_ipv4_", summary)),
 			valueToCellData(getBpfStatForSheets("event_ipv4_conn", summary)),
@@ -215,10 +199,50 @@ func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *benc
 			valueToCellData(getBpfStatForSheets("bpf_skskb_verdi", summary)),
 			valueToCellData(getBpfStatForSheets("bpf_skskb_parse", summary)),
 			valueToCellData(getBpfStatForSheets("bpf_sk_msg_fgs", summary)),
+
+			// Meta
 			valueToCellData(gitRev),
 			valueToCellData(getSystemVersions()),
 			valueToCellData(getCpuName()),
 		}
+	} else {
+		return []*sheets.CellData{
+			valueToCellData(summary.StartTime.Format(time.RFC3339)),
+			valueToCellData(durationToSecs(summary.SetupDurationNanos)),
+			valueToCellData(durationToSecs(summary.TestDurationNanos)),
+			valueToCellData(summary.SourceStats.ActualConnRate),
+
+			// Resource usage
+			valueToCellData(fgsSystemCpuPercent),
+			valueToCellData(fgsUserCpuPercent),
+			valueToCellData(summary.FgsCpuUsage.MaxRss),
+			valueToCellData(sourceSystemCpuPercent),
+			valueToCellData(sourceUserCpuPercent),
+			valueToCellData(sinkSystemCpuPercent),
+			valueToCellData(sinkUserCpuPercent),
+
+			// BPF stats
+			valueToCellData(getBpfStatForSheets("event_sys_liste", summary)),
+			valueToCellData(getBpfStatForSheets("event_ret_ipv4_", summary)),
+			valueToCellData(getBpfStatForSheets("event_ipv4_conn", summary)),
+			valueToCellData(getBpfStatForSheets("bpf_sockmap", summary)),
+			valueToCellData(getBpfStatForSheets("bpf_skskb_verdi", summary)),
+			valueToCellData(getBpfStatForSheets("bpf_skskb_parse", summary)),
+			valueToCellData(getBpfStatForSheets("bpf_sk_msg_fgs", summary)),
+
+			// Meta
+			valueToCellData(gitRev),
+			valueToCellData(getSystemVersions()),
+			valueToCellData(getCpuName()),
+		}
+	}
+
+}
+
+func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *bench.BenchSummary) {
+
+	sheetId := summaryToSheetId(summary)
+	values := valuesFromSummary(gitRev, summary)
 
 	r := sheets.BatchUpdateSpreadsheetRequest{
 		Requests: []*sheets.Request{
@@ -242,7 +266,7 @@ func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *benc
 						StartRowIndex:    1,
 						EndRowIndex:      2,
 						StartColumnIndex: 0,
-						EndColumnIndex:   1+int64(len(values)),
+						EndColumnIndex:   1 + int64(len(values)),
 					},
 					Rows: []*sheets.RowData{{Values: values}},
 				},

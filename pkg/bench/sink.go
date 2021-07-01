@@ -17,6 +17,8 @@ import (
 	"log"
 	"net"
 	"net/http"
+	"os/exec"
+	"syscall"
 )
 
 var (
@@ -28,14 +30,22 @@ var (
 )
 
 func acceptAndClose(l net.Listener) {
-	buf := make([]byte, 1024)
+	buf := make([]byte, 8192)
 	for {
 		c, err := l.Accept()
 		if err != nil {
 			return
 		}
-		c.Read(buf)
-		c.Write(buf)
+		for {
+			n, err := c.Read(buf)
+			if err != nil {
+				break
+			}
+			_, err = c.Write(buf[:n])
+			if err != nil {
+				break
+			}
+		}
 		c.Close()
 	}
 }
@@ -101,4 +111,24 @@ func sink(ctx context.Context, mode string, sinkReady chan int) {
 	default:
 		log.Fatal("unknown mode")
 	}
+}
+
+func netperfSink(ctx context.Context, mode string, sinkReady chan int) {
+	cmd := exec.Command("netserver", "-D", "-N")
+
+	// Terminate the process gracefully as netserver forks.
+	go func() {
+		<- ctx.Done()
+		cmd.Process.Signal(syscall.SIGTERM)
+	}()
+
+	// netserver sets the output file permissions and with -D the output
+	// file is /dev/null, so don't run netserver as root to avoid changing
+	// permissions of /dev/null.
+	// https://github.com/HewlettPackard/netperf/issues/26
+	cmd.SysProcAttr = &syscall.SysProcAttr{
+		Credential: &syscall.Credential{Uid: 1},
+	}
+	cmd.Start()
+	sinkReady <- 1
 }

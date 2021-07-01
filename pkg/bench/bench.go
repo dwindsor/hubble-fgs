@@ -34,19 +34,24 @@ var (
 )
 
 type BenchArguments struct {
-	NumConns      int
+	NumSteps      int
 	ConnRate      int
 	FgsEnableTls  bool
 	FgsDebug      bool
 	FgsJsonEncode bool
 	Mode          string
 	Baseline      bool
+
+	RequestResponse bool
+	UseNetperf bool
+	ReqSize         int
 }
 
 func (args *BenchArguments) String() string {
-	return fmt.Sprintf("n=%d, rate=%d, tls=%v, debug=%v, json-encode=%v, mode=%s",
-		args.NumConns, args.ConnRate, args.FgsEnableTls,
-		args.FgsDebug, args.FgsJsonEncode, args.Mode)
+	return fmt.Sprintf("n=%d, rate=%d, tls=%v, debug=%v, json-encode=%v, mode=%s, rr=%v, netperf=%v, req-size=%v",
+		args.NumSteps, args.ConnRate, args.FgsEnableTls,
+		args.FgsDebug, args.FgsJsonEncode, args.Mode,
+		args.RequestResponse, args.UseNetperf, args.ReqSize)
 }
 
 func BenchBaseline(args *BenchArguments) *BenchSummary {
@@ -76,7 +81,7 @@ func BenchFGS(args *BenchArguments, readyCb func()) *BenchSummary {
 	runFgs(args.FgsEnableTls, args.FgsDebug, summary, ctx, cancel, ready)
 
 	// Wait for final summary
-	<- finished
+	<-finished
 
 	return summary
 }
@@ -203,7 +208,11 @@ func runConnectionLoad(ctx context.Context, cancel context.CancelFunc, args *Ben
 		// Lock to specific thread to collect rusage
 		runtime.LockOSThread()
 		cpuUsageBefore := GetCpuUsage(CPU_USAGE_THIS_THREAD)
-		sink(ctx, args.Mode, sinkReady)
+		if args.Mode == "tcp" && args.RequestResponse && args.UseNetperf {
+			netperfSink(ctx, args.Mode, sinkReady)
+		} else {
+			sink(ctx, args.Mode, sinkReady)
+		}
 		sinkCpuUsage <- GetCpuUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore)
 	}()
 
@@ -211,7 +220,16 @@ func runConnectionLoad(ctx context.Context, cancel context.CancelFunc, args *Ben
 	runtime.LockOSThread()
 	sinkPort := <-sinkReady
 	cpuUsageBefore := GetCpuUsage(CPU_USAGE_THIS_THREAD)
-	summary.SourceStats = source(ctx, sinkPort, args.Mode, args.NumConns, float64(args.ConnRate))
+
+	if args.RequestResponse {
+		if args.Mode == "tcp" && args.UseNetperf {
+			summary.SourceStats = netperfSource(ctx, sinkPort, args.Mode, args.NumSteps, args.ReqSize)
+		} else {
+			summary.SourceStats = rrSource(ctx, sinkPort, args.Mode, args.NumSteps, args.ReqSize)
+		}
+	} else {
+		summary.SourceStats = source(ctx, sinkPort, args.Mode, args.NumSteps, float64(args.ConnRate))
+	}
 	summary.SourceCpuUsage = GetCpuUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore)
 	summary.BpfStats = GetBpfStatsSince(oldBpfStats)
 	summary.EndTime = time.Now()

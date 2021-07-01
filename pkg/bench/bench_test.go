@@ -38,11 +38,12 @@ func BenchmarkBaseline(b *testing.B) {
 		b.Run(mode, func(b *testing.B) {
 			summary := BenchBaseline(
 				&BenchArguments{
-					NumConns: b.N,
+					NumSteps: b.N,
 					ConnRate: 0, // Unlimited
 					Mode:     mode,
 					Baseline: true,
 				})
+			summary.TestName = b.Name()
 			if err := summary.WriteFile(resultFilename(b)); err != nil {
 				b.Fatalf("summary.WriteFile failed: %s", err)
 			}
@@ -50,25 +51,93 @@ func BenchmarkBaseline(b *testing.B) {
 	}
 }
 
+func BenchmarkBaselineTcpRequestResponse(b *testing.B) {
+	summary := BenchBaseline(
+		&BenchArguments{
+			NumSteps:        b.N,
+			ConnRate:        0, // Unlimited
+			Mode:            "tcp",
+			Baseline:        true,
+			RequestResponse: true,
+			UseNetperf:      true,
+		})
+
+	summary.TestName = b.Name()
+	if err := summary.WriteFile(resultFilename(b)); err != nil {
+		b.Fatalf("summary.WriteFile failed: %s", err)
+	}
+}
+
+func BenchmarkFgsTcpRequestResponse(b *testing.B) {
+	benchmarkFgs(b,
+		[]string{"tcp"},
+		&BenchArguments{
+			NumSteps:        1,
+			ConnRate:        0, // Unlimited
+			Mode:            "tcp",
+			FgsEnableTls:    false,
+			Baseline:        false,
+			RequestResponse: true,
+			UseNetperf:      true,
+		})
+}
+
+func BenchmarkBaselineHttpRequestResponse(b *testing.B) {
+	summary := BenchBaseline(
+		&BenchArguments{
+			NumSteps:        b.N,
+			ConnRate:        0, // Unlimited
+			Mode:            "http",
+			Baseline:        true,
+			RequestResponse: true,
+			UseNetperf:      false,
+		})
+	if err := summary.WriteFile(resultFilename(b)); err != nil {
+		b.Fatalf("summary.WriteFile failed: %s", err)
+	}
+}
+
+func BenchmarkFgsHttpRequestResponse(b *testing.B) {
+	benchmarkFgs(b,
+		[]string{"http"},
+		&BenchArguments{
+			NumSteps:        1,
+			ConnRate:        0, // Unlimited
+			Mode:            "http",
+			FgsEnableTls:    false,
+			Baseline:        false,
+			RequestResponse: true,
+			UseNetperf:      false,
+		})
+}
+
 func BenchmarkFgsNoTls(b *testing.B) {
-	benchmarkFgs(b, false)
+	benchmarkFgs(b,
+		SupportedModes,
+		&BenchArguments{
+			NumSteps:     1,
+			ConnRate:     0, // Unlimited
+			Mode:         "tcp",
+			FgsEnableTls: false,
+			Baseline:     false,
+		})
 }
 
 func BenchmarkFgsTls(b *testing.B) {
-	benchmarkFgs(b, true)
+	benchmarkFgs(b,
+		SupportedModes,
+		&BenchArguments{
+			NumSteps:     1,
+			ConnRate:     0, // Unlimited
+			Mode:         "tcp",
+			FgsEnableTls: true,
+			Baseline:     false,
+		})
 }
 
-func benchmarkFgs(b *testing.B, fgsTls bool) {
+func benchmarkFgs(b *testing.B, modes []string, args *BenchArguments) {
 	viper.Set("log-level", "error")
 	viper.Set("debug", false)
-
-	args := &BenchArguments{
-		NumConns: 1,
-		ConnRate: 0, // Unlimited
-		Mode:     "tcp",
-		FgsEnableTls: fgsTls,
-		Baseline: false,
-	}
 
 	summary := newBenchSummary(args)
 
@@ -76,19 +145,20 @@ func benchmarkFgs(b *testing.B, fgsTls bool) {
 	fgsReady := make(chan bool)
 	fgsFinished := make(chan bool)
 	go func() {
-		runFgs(fgsTls, false, summary, fgsCtx, fgsCancel, fgsReady)
+		runFgs(args.FgsEnableTls, false, summary, fgsCtx, fgsCancel, fgsReady)
 		fgsFinished <- true
 	}()
 
 	<-fgsReady
+	summary.TestName = b.Name()
 	summary.SetupDurationNanos = time.Since(summary.StartTime)
-	for _, mode := range SupportedModes {
+	for _, mode := range modes {
 		b.Run(mode, func(b *testing.B) {
 			loadCtx, loadCancel := context.WithCancel(context.Background())
 			summary.ResetForNewRun()
 			summary.StartTime = time.Now()
 			args.Mode = mode
-			args.NumConns = b.N
+			args.NumSteps = b.N
 			go sigHandler(loadCtx, loadCancel)
 			runFgsBenchmark(args, summary, loadCtx, loadCancel)
 			if err := summary.WriteFile(resultFilename(b)); err != nil {
@@ -96,10 +166,7 @@ func benchmarkFgs(b *testing.B, fgsTls bool) {
 			}
 		})
 	}
-
 	fgsCancel()
-	<- fgsFinished
-
-
+	<-fgsFinished
 
 }

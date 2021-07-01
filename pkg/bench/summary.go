@@ -22,6 +22,7 @@ import (
 // This is updated from multiple places concurrently, but currently
 // there is no overlap on writes, so this isn't yet protected by a mutex.
 type BenchSummary struct {
+	TestName string
 	Args *BenchArguments
 
 	TlsEvents, ExitEvents, ExecEvents, TcpEvents int64
@@ -42,6 +43,10 @@ type BenchSummary struct {
 	BpfStats map[int64]*BpfProgStats
 }
 
+
+// Reset the summary for another run. Unfortunate hack to be able
+// to reuse the FGS setup for multiple different tests (it has pointer
+// to summary). TODO: Might be cleaner to register another fresh listener.
 func (ts *BenchSummary) ResetForNewRun() {
 	ts.TlsEvents = 0
 	ts.ExitEvents = 0
@@ -54,6 +59,9 @@ func (ts *BenchSummary) ResetForNewRun() {
 	ts.FgsCpuUsage = CpuUsage{}
 	ts.SourceCpuUsage = CpuUsage{}
 	ts.SinkCpuUsage = CpuUsage{}
+	ts.SourceStats = SourceStats{}
+	ts.JsonEncodingDurationNanos = 0
+	ts.BpfStats = make(map[int64]*BpfProgStats)
 }
 
 func (ts *BenchSummary) Dump() {
@@ -75,9 +83,14 @@ func (ts *BenchSummary) PrettyPrint() {
 	fmt.Printf("FGS cpu usage:     %s\n", ts.FgsCpuUsage)
 	fmt.Printf("Source cpu usage:  %s\n", ts.SourceCpuUsage)
 	fmt.Printf("Sink cpu usage:    %s\n", ts.SinkCpuUsage)
-	fmt.Printf("Connection rate:   %.2f per second\n", ts.SourceStats.ActualRate)
+	fmt.Printf("Connection rate:   %.2f per second\n", ts.SourceStats.ActualConnRate)
+	fmt.Printf("Request rate:      %.2f per second\n", ts.SourceStats.ActualReqRate)
+	fmt.Printf("Latency 50th:      %s\n", ts.SourceStats.LatencyP50)
+	fmt.Printf("Latency 90th:      %s\n", ts.SourceStats.LatencyP90)
+	fmt.Printf("Latency 99th:      %s\n", ts.SourceStats.LatencyP99)
+
 	if ts.SourceStats.Errors > 0 {
-		fmt.Printf("Connection errors: %d\n", ts.SourceStats.Errors)
+		fmt.Printf("Errors:            %d\n", ts.SourceStats.Errors)
 		fmt.Printf("Last error:        %s\n", ts.SourceStats.LastError)
 	}
 	fmt.Println("BPF statistics:")
