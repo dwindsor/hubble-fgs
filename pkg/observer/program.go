@@ -398,8 +398,8 @@ func disableBpfLoad(bpf *bpfLoad) {
 	}
 }
 
-func observerFindProgs(ctx context.Context) error {
-	for _, p := range observerAllPrograms {
+func observerFindProgs(ctx context.Context, sensor *observerSensor) error {
+	for _, p := range sensor.progs {
 		if _, err := os.Stat(p.Observer__program); err == nil {
 			continue
 		}
@@ -702,9 +702,6 @@ func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, tls, tlsTC bool, ctx co
 	createDir(bpfDir, mapDir)
 
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
-	if err := observerFindProgs(ctx); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
-	}
 	if _, err := observerMinReqs(ctx); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting minimum requirements not met. %s\n", err)
 	}
@@ -713,6 +710,11 @@ func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, tls, tlsTC bool, ctx co
 	// statically when we start, but it allows us to have a single path for
 	// loading bpf programs.
 	initialSensor := createInitialObserverSensor(tls, tlsTC)
+
+	if err := observerFindProgs(ctx, initialSensor); err != nil {
+		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
+	}
+
 	if err := ObserverLoadSensor(bpfDir, mapDir, ciliumDir, ctx, initialSensor); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}

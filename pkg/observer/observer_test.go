@@ -124,9 +124,6 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 	if err := btf.ConfigureBTF(HubbleLib, ctx); err != nil {
 		return nil, err
 	}
-	if err := observerFindProgs(ctx); err != nil {
-		return nil, err
-	}
 
 	loadExporter(t, kprobe, &o.exporter)
 	loadObserver(t, kprobe)
@@ -145,6 +142,9 @@ func TestObjectLoad(t *testing.T) {
 		t.Fatalf("ConfigureBTF error: %s", err)
 	}
 	initialSensor := createInitialObserverSensor(kprobe.enableTLS, kprobe.enableTLSTC)
+	if err := observerFindProgs(context.TODO(), initialSensor); err != nil {
+		t.Fatalf("observerFindProgs error: %s", err)
+	}
 	ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), initialSensor)
 	kprobe.RemovePrograms()
 }
@@ -900,6 +900,9 @@ func TestSensorLseekLoad(t *testing.T) {
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
 	sensor := &observerSensor{name: "lseekTest", progs: progs, maps: maps}
+	if err := observerFindProgs(ctx, sensor); err != nil {
+		t.Fatalf("observerFindProgs error: %s", err)
+	}
 	if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, ctx, sensor); err != nil {
 		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadSensor error: %s", err)

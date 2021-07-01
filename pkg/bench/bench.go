@@ -115,7 +115,10 @@ func runFgs(fgsEnableTls, fgsDebug bool, summary *BenchSummary, ctx context.Cont
 		log.Fatal(err)
 	}
 
-	startBenchmarkListener(summary, ready, kprobe, ctx, cancel)
+	err := startBenchmarkListener(summary, ready, kprobe, ctx, cancel)
+	if err != nil {
+		log.Fatalf("Starting FGS failed: %v", err)
+	}
 
 	<-ctx.Done()
 }
