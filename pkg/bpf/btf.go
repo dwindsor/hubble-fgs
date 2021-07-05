@@ -13,7 +13,7 @@
 package bpf
 
 /*
-#cgo CFLAGS: -I ../../bpf/include -I ../../bpf/libbpf/ -I ../../bpf/lib/
+#cgo CFLAGS:
 #cgo LDFLAGS: -L../../lib -lbpf -lelf -lz
 
 #include "libbpf.h"
