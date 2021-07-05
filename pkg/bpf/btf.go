@@ -16,6 +16,7 @@ package bpf
 #cgo CFLAGS:
 #cgo LDFLAGS: -L../../lib -lbpf -lelf -lz
 
+#include "btf.h"
 #include "libbpf.h"
 
 static void *getBtf(const char *btf)
