@@ -150,11 +150,11 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	if kprobe.configFile != "" {
 		genericKprobeSensor, err := getSensorFromTracingPolicyFname(kprobe.configFile)
 		if err != nil {
-			t.Fatalf("createGenericKprobeSensors error: Could not create kprobe sensor. %s", err)
+			t.Fatalf("createGenericKprobeSensors error: Could not create kprobe sensor: %s", err)
 		}
 		if genericKprobeSensor != nil {
 			if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), genericKprobeSensor); err != nil {
-				t.Fatalf("observerLoadSensors error: Could not load kprobe sensors. %s", err)
+				t.Fatalf("observerLoadSensors error: Could not load kprobe sensors: %s", err)
 			}
 		}
 
