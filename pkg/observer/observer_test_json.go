@@ -559,6 +559,9 @@ func jsonTestCheck(t *testing.T, jsonFile *os.File, c eventChecker) error {
 
 func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attempts, found int) (bool, error) {
 	var err error
+	var dec *json.Decoder
+	events := make([]fgs.GetEventsResponse, 0, 128)
+	evidx := 0
 
 	if attempts < 1 {
 		return false, nil
@@ -566,12 +569,11 @@ func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attemp
 
 	jsonFile, err := os.Open(jsonFilename)
 	if err != nil {
-		return false, err
+		goto retry
 	}
 	defer jsonFile.Close()
 
-	events := make([]fgs.GetEventsResponse, 0, 128)
-	dec := json.NewDecoder(jsonFile)
+	dec = json.NewDecoder(jsonFile)
 	for {
 		ev := fgs.GetEventsResponse{}
 		err = jsonpb.UnmarshalNext(dec, &ev)
@@ -588,7 +590,6 @@ func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attemp
 	}
 	sort.Stable(ByTime{events})
 
-	evidx := 0
 	for tidx, t := range trace[found:] {
 		for {
 			if evidx == len(events) {
