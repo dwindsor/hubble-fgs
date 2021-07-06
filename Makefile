@@ -6,6 +6,7 @@ DOCKER_IMAGE_TAG ?= latest
 LOCAL_CLANG ?= 1
 LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.2
 CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
+METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 
 LIBBPF_INSTALL_DIR ?= ./lib
 CLANG_INSTALL_DIR  ?= ./bin
@@ -122,6 +123,15 @@ clang-install:
 	docker cp ${id}:/usr/local/bin/clang-11 $(CLANG_INSTALL_DIR)/clang
 	docker cp ${id}:/usr/local/bin/llc $(CLANG_INSTALL_DIR)/llc
 	docker stop ${id}
+
+fetch-testdata:
+	docker stop fgs-md-temp || true
+	docker rm fgs-md-temp || true
+	docker create --name fgs-md-temp $(METADATA_IMAGE)
+	mkdir -p testdata/btf
+	docker cp fgs-md-temp:/var/run/hubble-fgs/vmlinux-5.4.104+ testdata/btf
+	docker stop fgs-md-temp || true
+
 
 tools-install: libbpf-install clang-install
 
