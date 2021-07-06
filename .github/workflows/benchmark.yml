@@ -1,5 +1,6 @@
 name: HubbleFGS Benchmark
 on:
+  workflow_dispatch:
   schedule:
     - cron:  '0 1 * * *'
 
@@ -24,7 +25,7 @@ jobs:
         BENCH_DURATION: 1m
       run: |
         docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
-        sudo apt install libelf-dev netcat-traditional
+        sudo apt install libelf-dev netcat-traditional netperf
         export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
         cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs
