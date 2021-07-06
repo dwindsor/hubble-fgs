@@ -270,7 +270,6 @@ func execute() error {
 	flags.String(keyServerAddress, "localhost:54321", "gRPC server address")
 	flags.String(keyCiliumBPF, "", "Cilium BPF directory")
 	flags.Bool(keyEnableProcessCred, false, "Enable process_cred events")
-	viper.BindPFlags(flags)
 
 	// Config files
 	flags.String(keyConfigFile, "", "Configuration file to load from")
@@ -287,5 +286,6 @@ func execute() error {
 	flags.Duration(keyExportAggregationWindowSize, 15*time.Second, "JSON export aggregation time window")
 	flags.Uint64(keyExportAggregationBufferSize, 10000, "Aggregator channel buffer size")
 
+	viper.BindPFlags(flags)
 	return rootCmd.Execute()
 }
