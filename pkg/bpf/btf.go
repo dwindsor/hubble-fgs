@@ -19,6 +19,18 @@ package bpf
 #include "btf.h"
 #include "libbpf.h"
 
+#ifndef MAX_ERRNO
+#define MAX_ERRNO 4095
+#endif
+
+static long getError(void *ptr)
+{
+	if ((unsigned long)ptr >= (unsigned long)-MAX_ERRNO) {
+		return -(long)ptr;
+	}
+	return 0;
+}
+
 static void *getBtf(const char *btf)
 {
 	return btf__parse(btf, NULL);
@@ -42,23 +54,38 @@ static void freeBtf(void *btfobj)
 import "C"
 
 import (
+	"fmt"
 	"unsafe"
 )
 
-func GetBTF(__btf string) uintptr {
-	return uintptr(C.getBtf(C.CString(__btf)))
+// BTF is a wrapper for struct btf *
+type BTF uintptr
+
+const BTFNil = BTF(0)
+
+// NewBTF creates a new BTF object based on the file in the given path
+func NewBTF(path string) (BTF, error) {
+	ret := C.getBtf(C.CString(path))
+	if err := C.getError(ret); err != 0 {
+		return BTF(0), fmt.Errorf("failed to parse BTF: %d", err)
+	}
+	return BTF(uintptr(ret)), nil
 }
 
-func AddEnumBtf(btf uintptr, name string, value int) int {
-	ret := C.addEnumBtf(unsafe.Pointer(btf), C.CString(name), C.int(value))
+// Close releases the resources of the BTF object
+func (btf BTF) Close() {
+	ptr := uintptr(btf)
+	C.freeBtf(unsafe.Pointer(ptr))
+}
+
+func (btf BTF) AddEnum(name string, value int) int {
+	ptr := uintptr(btf)
+	ret := C.addEnumBtf(unsafe.Pointer(ptr), C.CString(name), C.int(value))
 	return int(ret)
 }
 
-func AddEnumBtfValue(btf uintptr, name string, value int) int {
-	ret := C.addEnumBtfValue(unsafe.Pointer(btf), C.CString(name), C.int(value))
+func (btf BTF) AddEnumValue(name string, value int) int {
+	ptr := uintptr(btf)
+	ret := C.addEnumBtfValue(unsafe.Pointer(ptr), C.CString(name), C.int(value))
 	return int(ret)
-}
-
-func FreeBTF(btf uintptr) {
-	C.freeBtf(unsafe.Pointer(btf))
 }

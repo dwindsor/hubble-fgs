@@ -121,7 +121,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 		Verbosity = verboseLevel
 	}
 
-	if err := btf.ConfigureBTF(HubbleLib, ctx); err != nil {
+	if err := btf.InitCachedBTF(HubbleLib, ctx); err != nil {
 		return nil, err
 	}
 
@@ -138,7 +138,7 @@ func TestObjectLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	if err := btf.ConfigureBTF(HubbleLib, context.TODO()); err != nil {
+	if err := btf.InitCachedBTF(HubbleLib, context.TODO()); err != nil {
 		t.Fatalf("ConfigureBTF error: %s", err)
 	}
 	initialSensor := createInitialObserverSensor(kprobe.enableTLS, kprobe.enableTLSTC)

@@ -440,7 +440,7 @@ func observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor, map
 		}
 
 		pin := mapDir + m.mapName
-		btfObj := btf.GetCachedBTF()
+		btfObj := uintptr(btf.GetCachedBTF())
 		m.fd, err = bpf.LoadAndPinMaps(version, Verbosity, btfObj, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
 		logger.GetLogger().Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
@@ -480,7 +480,7 @@ func getDefaultRouteLinks() ([]netlink.Link, error) {
 func observerLoadTC(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verbosity int) (error, int) {
 	var attachLinks []netlink.Link
 
-	btfObj := btf.GetCachedBTF()
+	btfObj := uintptr(btf.GetCachedBTF())
 	err, fd := bpf.LoadTC(version, Verbosity,
 		btfObj,
 		load.Observer__program,
@@ -516,7 +516,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verb
 	} else {
 		attach = load.observer__attach
 	}
-	btfObj := btf.GetCachedBTF()
+	btfObj := uintptr(btf.GetCachedBTF())
 	if load.probeType == "tracepoint" {
 		return bpf.LoadTracingProgram(
 			version, Verbosity,

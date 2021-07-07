@@ -91,7 +91,7 @@ func hubbleFGSExecute() error {
 		os.Exit(1)
 	}()
 
-	err := btf.ConfigureBTF(observer.HubbleLib, ctx)
+	err := btf.InitCachedBTF(observer.HubbleLib, ctx)
 	if err != nil {
 		return err
 	}

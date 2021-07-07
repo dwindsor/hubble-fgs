@@ -25,7 +25,7 @@ import (
 
 var (
 	/* opaque pointer to C BTF object */
-	btfObj uintptr = 0
+	btfObj = bpf.BTFNil
 
 	btfFile string
 )
@@ -81,11 +81,11 @@ func observerFindBTF(lib, btf string, ctx context.Context) (string, error) {
 	return btf, nil
 }
 
-func createBTFKprobe(btf string) uintptr {
-	return bpf.GetBTF(btf)
+func NewBTF() (bpf.BTF, error) {
+	return bpf.NewBTF(btfFile)
 }
 
-func ConfigureBTF(lib string, ctx context.Context) error {
+func InitCachedBTF(lib string, ctx context.Context) error {
 	var err error
 
 	// Find BTF metdaata and populate btf opaqu object
@@ -93,21 +93,17 @@ func ConfigureBTF(lib string, ctx context.Context) error {
 	if err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
 	}
-	btfObj = createBTFKprobe(btfFile)
-	return nil
+	btfObj, err = NewBTF()
+	return err
 }
 
-func GetCopyBTF() uintptr {
-	return createBTFKprobe(btfFile)
-}
-
-func GetCachedBTF() uintptr {
+func GetCachedBTF() bpf.BTF {
 	return btfObj
 }
 
 func FreeCachedBTF() {
-	if btfObj != 0 {
-		bpf.FreeBTF(btfObj)
-		btfObj = 0
+	if btfObj != bpf.BTFNil {
+		btfObj.Close()
+		btfObj = bpf.BTFNil
 	}
 }

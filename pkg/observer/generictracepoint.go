@@ -341,16 +341,19 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *bpfLoad, version, 
 		return fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.observer__attach, err), 0
 	}
 
-	btfObj := btf.GetCopyBTF()
-	defer bpf.FreeBTF(btfObj)
+	btfObj, err := btf.NewBTF()
+	if err != nil {
+		return err, 0
+	}
+	defer btfObj.Close()
 	btfAddEnumValue := func(s string, val int) error {
-		if ret := bpf.AddEnumBtfValue(btfObj, s, val); ret < 0 {
+		if ret := btfObj.AddEnumValue(s, val); ret < 0 {
 			return fmt.Errorf("failed to add %s=%d BTF value (error=%d)", s, val, ret)
 		}
 		return nil
 	}
 
-	ret := bpf.AddEnumBtf(btfObj, genericFuncArgsEnum, 4)
+	ret := btfObj.AddEnum(genericFuncArgsEnum, 4)
 	if ret < 0 {
 		return fmt.Errorf("failed to add %s=%d BTF enum (ret=%d)", genericFuncArgsEnum, 4, ret), 0
 	}
@@ -445,7 +448,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *bpfLoad, version, 
 
 	return bpf.LoadTracepointArgsProgram(
 		version, Verbosity,
-		btfObj,
+		uintptr(btfObj),
 		load.Observer__program,
 		attach,
 		load.observer__label,

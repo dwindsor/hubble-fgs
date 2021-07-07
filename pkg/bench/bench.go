@@ -116,7 +116,7 @@ func runFgs(fgsEnableTls, fgsDebug bool, summary *BenchSummary, ctx context.Cont
 
 	defer kprobe.RemovePrograms()
 
-	if err := btf.ConfigureBTF(observer.HubbleLib, ctx); err != nil {
+	if err := btf.InitCachedBTF(observer.HubbleLib, ctx); err != nil {
 		log.Fatal(err)
 	}
 

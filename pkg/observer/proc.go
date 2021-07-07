@@ -24,23 +24,23 @@ var (
 	dockerIdSet = 0
 )
 
-func procDockerIdOffsetWriter(off int, btf uintptr) error {
+func procDockerIdOffsetWriter(off int, btf bpf.BTF) error {
 	if dockerIdSet != 0 {
 		return nil
 	}
 	dockerIdSet = 1
-	errInt := bpf.AddEnumBtf(btf, "fgs_args_proc", 1)
+	errInt := btf.AddEnum("fgs_args_proc", 1)
 	if errInt < 0 {
 		return fmt.Errorf("AddenumBtf failed %d", errInt)
 	}
-	errInt = bpf.AddEnumBtfValue(btf, "fgs_args_docker_off", off)
+	errInt = btf.AddEnumValue("fgs_args_docker_off", off)
 	if errInt < 0 {
 		return fmt.Errorf("AddenumBtf enumValue failed value=%d error %d", off, errInt)
 	}
 	return nil
 }
 
-func procDockerIdOffsetDefault(btf uintptr) error {
+func procDockerIdOffsetDefault(btf bpf.BTF) error {
 	return procDockerIdOffsetWriter(0, btf)
 }
 

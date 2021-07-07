@@ -305,13 +305,13 @@ func (k *ObserverKprobe) pidFilterValue(value uint32) (int, error) {
 	return int(value), nil
 }
 
-func (k *ObserverKprobe) kprobeEventFilterWriteBTF(btf uintptr, ty string, op, value int) error {
-	retVal := bpf.AddEnumBtfValue(btf, ty+"_type", op)
+func (k *ObserverKprobe) kprobeEventFilterWriteBTF(btf bpf.BTF, ty string, op, value int) error {
+	retVal := btf.AddEnumValue(ty+"_type", op)
 	if retVal < 0 {
 		return fmt.Errorf("Error add enum value '%s_type' failed %d", ty, retVal)
 	}
 
-	retVal = bpf.AddEnumBtfValue(btf, ty+"_value", value)
+	retVal = btf.AddEnumValue(ty+"_value", value)
 	if retVal < 0 {
 		return fmt.Errorf("Error add enum value '%s_value' failed %d", ty, retVal)
 	}
@@ -402,8 +402,11 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		funcName := f.Call
 
 		// Write args into BTF ptr for use with load
-		btf := btf.GetCopyBTF()
-		ret := bpf.AddEnumBtf(btf, genericFuncArgsEnum, 4)
+		btfobj, err := btf.NewBTF()
+		if err != nil {
+			return nil, err
+		}
+		ret := btfobj.AddEnum(genericFuncArgsEnum, 4)
 		if ret < 0 {
 			return nil, fmt.Errorf("Error add enum args (%s) failed %d", genericFuncArgsEnum, ret)
 		}
@@ -418,13 +421,13 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			if argMValue == argReturnCopy {
 				argRetprobe = &f.Args[j]
 			}
-			retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(int(a.Index)), argType)
+			retVal := btfobj.AddEnumValue(kprobeArgToString(int(a.Index)), argType)
 			if retVal < 0 {
 				return nil,
 					fmt.Errorf("Error add arg: ArgType %s Index %d failed %d",
 						a.Type, int(a.Index), retVal)
 			}
-			retVal = bpf.AddEnumBtfValue(btf, kprobeArgMToString(int(a.Index)), argMValue)
+			retVal = btfobj.AddEnumValue(kprobeArgMToString(int(a.Index)), argMValue)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value '%s' failed %d", kprobeArgMToString(int(a.Index)), retVal)
 			}
@@ -451,7 +454,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 				}
 				return nil, fmt.Errorf("ReturnArg type '%s' unsupported", f.ReturnArg.Type)
 			}
-			retVal := bpf.AddEnumBtfValue(btf, argreturn, argType)
+			retVal := btfobj.AddEnumValue(argreturn, argType)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value '%s'='%d' failed %d\n", argreturn, argType, retVal)
 			}
@@ -459,7 +462,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			argP := argPrinters{index: api.ReturnArgIndex, ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
 		} else if argRetprobe != nil {
-			retVal := bpf.AddEnumBtfValue(btf, argreturn, 0)
+			retVal := btfobj.AddEnumValue(argreturn, 0)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d\n", argreturn, retVal)
 			}
@@ -476,12 +479,12 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		for j, a := range argsBTFSet {
 			if a == false {
 				nopType := kprobeStrToTypeId("nop")
-				retVal := bpf.AddEnumBtfValue(btf, kprobeArgToString(j), nopType)
+				retVal := btfobj.AddEnumValue(kprobeArgToString(j), nopType)
 				if retVal < 0 {
 					return nil, fmt.Errorf("Error add enum value '%s' failed %d",
 						kprobeArgToString(j), retVal)
 				}
-				retVal = bpf.AddEnumBtfValue(btf, kprobeArgMToString(j), 0)
+				retVal = btfobj.AddEnumValue(kprobeArgMToString(j), 0)
 				if retVal < 0 {
 					return nil, fmt.Errorf("Error add enum value '%s' failed %d",
 						kprobeArgToString(j), retVal)
@@ -502,12 +505,12 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		}
 
 		if is_syscall {
-			retVal := bpf.AddEnumBtfValue(btf, "syscall", 1)
+			retVal := btfobj.AddEnumValue("syscall", 1)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value 'syscall = 1' failed %d", retVal)
 			}
 		} else {
-			retVal := bpf.AddEnumBtfValue(btf, "syscall", 0)
+			retVal := btfobj.AddEnumValue("syscall", 0)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value 'syscall = 0' failed %d", retVal)
 			}
@@ -515,12 +518,12 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 
 		has_sigkill := selectors.MatchActionSigKill(f)
 		if has_sigkill {
-			retVal := bpf.AddEnumBtfValue(btf, "sigkill", 1)
+			retVal := btfobj.AddEnumValue("sigkill", 1)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value 'sigkill = 1' failed %d", retVal)
 			}
 		} else {
-			retVal := bpf.AddEnumBtfValue(btf, "sigkill", 0)
+			retVal := btfobj.AddEnumValue("sigkill", 0)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value 'sigkill = 0' failed %d", retVal)
 			}
@@ -531,7 +534,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		kprobeEntry := genericKprobe{
 			loadArgs: kprobeLoadArgs{
 				filters:  kernelSelectors,
-				btf:      btf,
+				btf:      uintptr(btfobj),
 				retprobe: setRetprobe,
 				syscall:  is_syscall,
 			},
@@ -542,7 +545,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			tableId:           idtable.UninitializedEntryID,
 		}
 		genericKprobeTable.AddEntry(&kprobeEntry)
-		ret = bpf.AddEnumBtfValue(btf, kprobeGenericId, kprobeEntry.tableId.ID)
+		ret = btfobj.AddEnumValue(kprobeGenericId, kprobeEntry.tableId.ID)
 		if ret < 0 {
 			genericKprobeTable.RemoveEntry(kprobeEntry.tableId)
 			return nil, fmt.Errorf("Error add enum value failed %d", ret)
