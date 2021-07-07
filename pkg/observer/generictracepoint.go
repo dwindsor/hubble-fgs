@@ -147,7 +147,7 @@ func (conf *GenericTracepointConfArg) configureTracepointArg(tp *genericTracepoi
 		MetaTp:        metaTpIndex,
 		nopTy:         false,
 		format:        &field,
-		genericTypeId: invalidTypeId,
+		genericTypeId: GenericInvalidType,
 	})
 	return nil
 }
@@ -163,36 +163,36 @@ func (out *genericTracepointArg) setGenericTypeId() (int, error) {
 }
 
 // getGenericTypeId: returns the generic type Id of a tracepoint argument
-// if such an id cannot be termined, it returns an invalidTypeId and an error
+// if such an id cannot be termined, it returns an GenericInvalidType and an error
 func (out *genericTracepointArg) getGenericTypeId() (int, error) {
 
 	if out.format == nil {
-		return invalidTypeId, errors.New("format is nil")
+		return GenericInvalidType, errors.New("format is nil")
 	}
 
 	if out.format.Field == nil {
 		err := out.format.ParseField()
 		if err != nil {
-			return invalidTypeId, fmt.Errorf("failed to parse field: %w", err)
+			return GenericInvalidType, fmt.Errorf("failed to parse field: %w", err)
 		}
 	}
 
 	switch ty := out.format.Field.Type.(type) {
 	case tracepoint.IntTy:
 		if out.format.Size == 4 && out.format.IsSigned {
-			return GenericKprobeS32Type, nil
+			return GenericS32Type, nil
 		} else if out.format.Size == 4 && !out.format.IsSigned {
-			return GenericKprobeU32Type, nil
+			return GenericU32Type, nil
 		} else if out.format.Size == 8 && out.format.IsSigned {
-			return GenericKprobeS64Type, nil
+			return GenericS64Type, nil
 		} else if out.format.Size == 8 && !out.format.IsSigned {
-			return GenericKprobeU64Type, nil
+			return GenericU64Type, nil
 		}
 	case tracepoint.PointerTy:
 		// char *
 		intTy, ok := ty.Ty.(tracepoint.IntTy)
 		if !ok {
-			return invalidTypeId, fmt.Errorf("cannot handle pointer type to %T", ty)
+			return GenericInvalidType, fmt.Errorf("cannot handle pointer type to %T", ty)
 		}
 		if intTy.Base == tracepoint.IntTyChar {
 			// NB: there is no way to determine if this is a string
@@ -200,16 +200,16 @@ func (out *genericTracepointArg) getGenericTypeId() (int, error) {
 			// build manually ourselves. For now, we only deal with
 			// buffers and expect a metadata argument.
 			if out.MetaTp == 0 {
-				return invalidTypeId, errors.New("no metadata field for buffer")
+				return GenericInvalidType, errors.New("no metadata field for buffer")
 			}
-			return GenericKprobeCharBuffer, nil
+			return GenericCharBuffer, nil
 		}
 
 	case tracepoint.SizeTy:
-		return GenericKprobeSizeType, nil
+		return GenericSizeType, nil
 	}
 
-	return invalidTypeId, fmt.Errorf("Unknown type: %T", out.format.Field.Type)
+	return GenericInvalidType, fmt.Errorf("Unknown type: %T", out.format.Field.Type)
 }
 
 // createGenericTracepoint creates the genericTracepoint information based on
@@ -263,7 +263,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 			MetaArg:       0,
 			nopTy:         true,
 			format:        &field,
-			genericTypeId: invalidTypeId,
+			genericTypeId: GenericInvalidType,
 		})
 		return &ret.args[argIdx], nil
 	}
@@ -391,7 +391,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *bpfLoad, version, 
 			return err, 0
 		}
 
-		if err := btfAddEnumValue(kprobeArgToString(i), nopTypeId); err != nil {
+		if err := btfAddEnumValue(kprobeArgToString(i), GenericNopType); err != nil {
 			return err, 0
 		}
 
@@ -491,7 +491,7 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 		}
 
 		switch out.genericTypeId {
-		case GenericKprobeU64Type:
+		case GenericU64Type:
 			var val uint64
 			err := binary.Read(r, binary.LittleEndian, &val)
 			if err != nil {
@@ -499,7 +499,7 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 			}
 			unix.Args = append(unix.Args, val)
 
-		case GenericKprobeSizeType:
+		case GenericSizeType:
 			var val uint64
 
 			err := binary.Read(r, binary.LittleEndian, &val)
@@ -508,7 +508,7 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 			}
 			unix.Args = append(unix.Args, val)
 
-		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
+		case GenericCharBuffer, GenericCharIovec:
 			if arg, err := ReadArgBytes(r, idx); err == nil {
 				unix.Args = append(unix.Args, arg.Value)
 			} else {

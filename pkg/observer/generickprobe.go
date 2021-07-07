@@ -28,32 +28,7 @@ import (
 )
 
 const (
-	GenericKprobeNopType    = 0
-	GenericKprobeIntType    = 1
-	GenericKprobeCharBuffer = 2
-	GenericKprobeCharIovec  = 3
-	GenericKprobeSizeType   = 4
-	GenericKprobeSkbType    = 5
-	GenericKprobeStringType = 6
-
-	GenericKprobeS64Type = 10
-	GenericKprobeU64Type = 11
-	GenericKprobeS32Type = 12
-	GenericKprobeU32Type = 13
-
-	GenericKprobeFilenameType = 14
-	GenericKprobePathType     = 15
-	GenericKprobeFileType     = 16
-	GenericKprobeFdType       = 17
-)
-
-const (
 	argReturnCopy = -1
-)
-
-const (
-	nopTypeId     = -1
-	invalidTypeId = -2
 )
 
 var (
@@ -62,43 +37,6 @@ var (
 	// observerAllPrograms.
 	genericKprobeProgs = map[string]*bpfLoad{}
 )
-
-func kprobeStrToTypeId(arg string) int {
-	switch arg {
-	case "string":
-		return GenericKprobeStringType
-	case "int":
-		return GenericKprobeIntType
-	case "uint64":
-		return GenericKprobeU64Type
-	case "uint32":
-		return GenericKprobeU32Type
-	case "sint64":
-		return GenericKprobeS64Type
-	case "sint32":
-		return GenericKprobeS32Type
-	case "skb":
-		return GenericKprobeSkbType
-	case "size_t":
-		return GenericKprobeSizeType
-	case "char_buf":
-		return GenericKprobeCharBuffer
-	case "char_iovec":
-		return GenericKprobeCharIovec
-	case "filename":
-		return GenericKprobeFilenameType
-	case "file":
-		return GenericKprobeFileType
-	case "path":
-		return GenericKprobePathType
-	case "fd":
-		return GenericKprobeFdType
-	case "nop":
-		return nopTypeId
-	default:
-		return invalidTypeId
-	}
-}
 
 const (
 	genericFuncArgsEnum = "generic_func_args_enum"
@@ -423,8 +361,8 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 
 		// Parse Arguments
 		for j, a := range f.Args {
-			argType := kprobeStrToTypeId(a.Type)
-			if argType == invalidTypeId {
+			argType := genericTypeFromString(a.Type)
+			if argType == GenericInvalidType {
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
 			}
 			argMValue := getMetaValue(&a)
@@ -457,8 +395,8 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// instructs the BPF kretprobe program which type of copy to use. And
 		// argReturnPrinters tell golang printer piece how to print the event.
 		if f.Return {
-			argType := kprobeStrToTypeId(f.ReturnArg.Type)
-			if argType == invalidTypeId {
+			argType := genericTypeFromString(f.ReturnArg.Type)
+			if argType == GenericInvalidType {
 				if f.ReturnArg.Type == "" {
 					return nil, fmt.Errorf("ReturnArg not specified with Return=true.")
 				}
@@ -479,7 +417,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			argsBTFSet[api.ReturnArgIndex] = true
 			setRetprobe = true
 
-			argType := kprobeStrToTypeId(argRetprobe.Type)
+			argType := genericTypeFromString(argRetprobe.Type)
 			argP := argPrinters{index: int(argRetprobe.Index), ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
 		}
@@ -488,8 +426,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// copying 'nop' args.
 		for j, a := range argsBTFSet {
 			if a == false {
-				nopType := kprobeStrToTypeId("nop")
-				retVal := btfobj.AddEnumValue(kprobeArgToString(j), nopType)
+				retVal := btfobj.AddEnumValue(kprobeArgToString(j), GenericNopType)
 				if retVal < 0 {
 					return nil, fmt.Errorf("Error add enum value '%s' failed %d",
 						kprobeArgToString(j), retVal)
@@ -771,7 +708,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 	}
 	for _, a := range printers {
 		switch a.ty {
-		case GenericKprobeIntType:
+		case GenericIntType:
 			var output int32
 			var arg api.MsgGenericKprobeArgInt
 
@@ -783,20 +720,19 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobeFileType, GenericKprobeFdType:
+		case GenericFileType, GenericFdType:
 			var arg api.MsgGenericKprobeArgFile
 
 			arg.Index = uint64(a.index)
 			arg.Value = handleGenericKprobeString(r)
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobePathType:
+		case GenericPathType:
 			var arg api.MsgGenericKprobeArgPath
 
 			arg.Index = uint64(a.index)
 			arg.Value = handleGenericKprobeString(r)
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobeFilenameType,
-			GenericKprobeStringType:
+		case GenericFilenameType, GenericStringType:
 			var b int32
 			var arg api.MsgGenericKprobeArgString
 
@@ -818,13 +754,13 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			}
 			arg.Value = strVal
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobeCharBuffer, GenericKprobeCharIovec:
+		case GenericCharBuffer, GenericCharIovec:
 			if arg, err := ReadArgBytes(r, a.index); err == nil {
 				unix.Args = append(unix.Args, *arg)
 			} else {
 				logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
 			}
-		case GenericKprobeSkbType:
+		case GenericSkbType:
 			var skb api.MsgGenericKprobeSkb
 			var arg api.MsgGenericKprobeArgSkb
 
@@ -839,7 +775,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			arg.Priority = skb.Priority
 			arg.Mark = skb.Mark
 			unix.Args = append(unix.Args, arg)
-		case GenericKprobeSizeType:
+		case GenericSizeType:
 			var output uint64
 			var arg api.MsgGenericKprobeArgSize
 
