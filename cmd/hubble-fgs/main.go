@@ -74,7 +74,7 @@ func hubbleFGSExecute() error {
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
 		networkInterfaces, configFile, []observer.GenericTracepointConf{},
 		tls, tlstc,
-		debug, enableCRD)
+		debug, enableK8sAPI)
 
 	/* Remove any stale programs, otherwise feature set change can cause
 	 * old programs to linger resulting in undefined behavior. And because
@@ -263,7 +263,6 @@ func execute() error {
 	flags.String(keyLogLevel, "info", "Set log level")
 	flags.String(keyLogFormat, "text", "Set log format")
 	flags.Bool(keyEnableK8sAPI, false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
-	flags.Bool(keyEnableCRD, false, "Enables K8s CRD watchers")
 	flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
 	flags.String(keyMetricsServer, "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
 	flags.String(keyNetworkInterfaces, "", "Comma separated list of regex expressions to use to apply protocol parsers")

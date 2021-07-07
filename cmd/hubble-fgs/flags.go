@@ -33,7 +33,6 @@ const (
 	keyLogFormat = "log-format"
 
 	keyEnableK8sAPI    = "enable-k8s-api"
-	keyEnableCRD       = "enable-crd"
 	keyEnableCiliumAPI = "enable-cilium-api"
 
 	keyMetricsServer     = "metrics-server"
@@ -65,7 +64,6 @@ var (
 
 	enableK8sAPI    bool
 	enableCiliumAPI bool
-	enableCRD       bool
 
 	metricsServer     string
 	networkInterfaces string
@@ -103,7 +101,6 @@ func readAndSetFlags() {
 
 	enableK8sAPI = viper.GetBool(keyEnableK8sAPI)
 	enableCiliumAPI = viper.GetBool(keyEnableCiliumAPI)
-	enableCRD = viper.GetBool(keyEnableCRD)
 
 	metricsServer = viper.GetString(keyMetricsServer)
 	networkInterfaces = viper.GetString(keyNetworkInterfaces)
