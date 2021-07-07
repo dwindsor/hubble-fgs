@@ -205,7 +205,7 @@ spec:
                         description: TLS enable parser
                         type: boolean
                       mode:
-                        default: none
+                        default: tc
                         description: TLS parser type
                         enum:
                         - socket

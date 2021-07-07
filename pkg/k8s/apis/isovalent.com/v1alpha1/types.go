@@ -148,7 +148,7 @@ type TracepointSpec struct {
 type TlsSpec struct {
 	// TLS enable parser
 	Enable bool `json:"enable"`
-	// +kubebuilder:default="none"
+	// +kubebuilder:default="tc"
 	// +kubebuilder:validation:Enum=socket;tc;
 	// TLS parser type
 	Mode string `json:"mode"`
