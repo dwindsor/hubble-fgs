@@ -36,14 +36,18 @@ var testNameToSheetId = map[string]int64{
 	"BenchmarkFgsTls/tcp":  839882648,
 	"BenchmarkFgsTls/http": 1872945073,
 
-	"BenchmarkFgsTcpRequestResponse": 1072107619,
+	"BenchmarkFgsTcpRequestResponse/tcp":  1072107619,
 	"BenchmarkBaselineTcpRequestResponse": 2098922345,
+
+	"BenchmarkBaselineHttpRequestResponse": 1043261075,
+	"BenchmarkFgsHttpRequestResponse/http": 794354699,
 }
 
 func summaryToSheetId(summary *bench.BenchSummary) int64 {
 	if id, ok := testNameToSheetId[summary.TestName]; ok {
 		return id
 	} else {
+		log.Printf("No sheet for %s, defaulting to 'Test'\n", summary.TestName)
 		return 0 // Test sheet
 	}
 }

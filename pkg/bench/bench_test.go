@@ -92,6 +92,7 @@ func BenchmarkBaselineHttpRequestResponse(b *testing.B) {
 			RequestResponse: true,
 			UseNetperf:      false,
 		})
+	summary.TestName = b.Name()
 	if err := summary.WriteFile(resultFilename(b)); err != nil {
 		b.Fatalf("summary.WriteFile failed: %s", err)
 	}
@@ -150,13 +151,13 @@ func benchmarkFgs(b *testing.B, modes []string, args *BenchArguments) {
 	}()
 
 	<-fgsReady
-	summary.TestName = b.Name()
 	summary.SetupDurationNanos = time.Since(summary.StartTime)
 	for _, mode := range modes {
 		b.Run(mode, func(b *testing.B) {
 			loadCtx, loadCancel := context.WithCancel(context.Background())
 			summary.ResetForNewRun()
 			summary.StartTime = time.Now()
+			summary.TestName = b.Name()
 			args.Mode = mode
 			args.NumSteps = b.N
 			go sigHandler(loadCtx, loadCancel)
