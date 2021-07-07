@@ -54,7 +54,6 @@ install:
 	$(INSTALL) -m 0755 ./hubble-fgs $(DESTDIR)$(BINDIR)
 
 clean:
-	rm -f $(TARGET)
 	make -C ./bpf clean
 	rm -f go-tests/*.test
 
