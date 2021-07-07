@@ -73,9 +73,6 @@ enableK8sAPI: true
 # Access Cilium API to associate FGS events with Cilium endpoints and DNS cache.
 enableCiliumAPI: true
 
-# enableCRD enables the Kubernetes CRD watchers
-enableCRD: true
-
 # Address to expose FGS prometheus metrics (e.g. ":2112"). Metrics server will be disabled if this
 # field is not set.
 metricsServer: ":2112"
