@@ -127,7 +127,13 @@ var (
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
 	pollTimeout     = 5000
+
+	eventHandler = make(map[uint8]func(r *bytes.Reader) (interface{}, error))
 )
+
+func RegisterEventHandlerAtInit(ev uint8, handler func(r *bytes.Reader) (interface{}, error)) {
+	eventHandler[ev] = handler
+}
 
 func (k *ObserverKprobe) observerListeners(msg interface{}) {
 	for listener, _ := range k.listeners {
@@ -365,16 +371,18 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 		k.handleKfreeSkb(&m)
 
-	case api.MSG_OP_GENERIC_KPROBE:
-		k.handleGenericKprobe(r)
-
 	case api.MSG_OP_GENERIC_TRACEPOINT:
 		k.handleGenericTracepoint(r)
 
 	default:
-		k.log.Infof("unknown op ignored: %v \n", op)
+		if h, ok := eventHandler[op]; ok {
+			if unix, err := h(r); err == nil {
+				k.observerListeners(unix)
+			}
+		} else {
+			k.log.Infof("unknown op ignored: %v \n", op)
+		}
 	}
-
 }
 
 func getCWD(pid uint32) (string, uint32) {

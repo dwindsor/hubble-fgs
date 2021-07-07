@@ -48,6 +48,7 @@ func init() {
 		name: "kprobe sensor",
 	}
 	registerTracingSensorsAtIinit(kprobe.name, kprobe)
+	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
 }
 
 const (
@@ -698,18 +699,18 @@ func ReadArgBytes(r *bytes.Reader, index int) (*api.MsgGenericKprobeArgBytes, er
 
 }
 
-func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
+func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
 	m := api.MsgGenericKprobe{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warnf("Failed to read process call msg")
-		return
+		return nil, fmt.Errorf("Failed to read process call msg")
 	}
 
 	gk, err := genericKprobeTableGet(idtable.EntryID{ID: int(m.Id)})
 	if err != nil {
 		logger.GetLogger().WithError(err).Warnf("Failed to match id:%d", m.Id)
-		return
+		return nil, fmt.Errorf("Failed to match id")
 	}
 
 	unix := &api.MsgGenericKprobeUnix{}
@@ -735,6 +736,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			err := binary.Read(r, binary.LittleEndian, &output)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("Int type error")
+				err = nil
 			}
 
 			arg.Index = uint64(a.index)
@@ -759,11 +761,13 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			err := binary.Read(r, binary.LittleEndian, &b)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("StringSz type err")
+				err = nil
 			}
 			outputStr := make([]byte, b)
 			err = binary.Read(r, binary.LittleEndian, &outputStr)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("String with size %d type err", b)
+				err = nil
 			}
 
 			arg.Index = uint64(a.index)
@@ -787,6 +791,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			err := binary.Read(r, binary.LittleEndian, &skb)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("skb type err")
+				err = nil
 			}
 
 			arg.Index = uint64(a.index)
@@ -802,6 +807,7 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 			err := binary.Read(r, binary.LittleEndian, &output)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
+				err = nil
 			}
 
 			arg.Index = uint64(a.index)
@@ -823,12 +829,10 @@ func (k *ObserverKprobe) handleGenericKprobe(r *bytes.Reader) {
 		} else {
 			gk.pendingEvents[m.ThreadId] = curr
 			unix = nil
+			err = fmt.Errorf("pendingEvents")
 		}
 	}
-
-	if unix != nil {
-		k.observerListenersKprobe(unix)
-	}
+	return unix, err
 }
 
 // retprobeMerge merges the two events: the one from they entry and one from the return
@@ -858,15 +862,6 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUn
 		}
 	}
 	return enterEv
-}
-
-func (k *ObserverKprobe) observerListenersKprobe(msg *api.MsgGenericKprobeUnix) {
-	for listener, _ := range k.listeners {
-		if err := listener.Notify(msg); err != nil {
-			logger.GetLogger().Debug("Write failure removing Listener")
-			k.RemoveListener(listener)
-		}
-	}
 }
 
 func getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
