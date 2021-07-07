@@ -221,6 +221,7 @@ func (g *genericKprobe) SetID(id idtable.EntryID) {
 }
 
 var (
+	// genericKprobeTable is a global table that maintains information for generic kprobes
 	genericKprobeTable idtable.Table
 )
 
@@ -390,6 +391,14 @@ func argValue(a v1alpha1.ArgSelector) ([]byte, uint32, error) {
 func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*observerSensor, error) {
 	var progs []*bpfLoad
 
+	btfobj := bpf.BTFNil
+	defer func() {
+		// if we return early due to an error, make sure that we don't leak the BTF object
+		if btfobj != bpf.BTFNil {
+			btfobj.Close()
+		}
+	}()
+
 	for i := range kprobes {
 		f := kprobes[i]
 		var argSigPrinters []argPrinters
@@ -402,7 +411,8 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		funcName := f.Call
 
 		// Write args into BTF ptr for use with load
-		btfobj, err := btf.NewBTF()
+		var err error
+		btfobj, err = btf.NewBTF()
 		if err != nil {
 			return nil, err
 		}
@@ -550,6 +560,21 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			genericKprobeTable.RemoveEntry(kprobeEntry.tableId)
 			return nil, fmt.Errorf("Error add enum value failed %d", ret)
 		}
+
+		// NB(kkourt): after we insert the kprobeEntry to the global table
+		// (genericKprobeTable), the btf object will need to be released when we remove the
+		// entry from the table. We set btfobj to nil to indicate this.
+		//
+		// Currently, however, we do not remove entries from the global table.
+		//
+		// Removal is done in the sensor controller goroutine.  One option would be to
+		// add a sensorRemove method in the observerSensorImpl, so that each sensor does its
+		// own cleanup. Note that in that case, we would need to synchronize access to the
+		// table because sensorRemove would be called from the sensor controller goroutine.
+		//
+		// Alternatively, we could construct the btf object at load time (as we do in the
+		// tracepoints case) and release it there, which seems like a simpler option.
+		btfobj = bpf.BTFNil
 
 		load := &bpfLoad{}
 		load.observer__x64_attach = funcName
