@@ -33,7 +33,7 @@ jobs:
           sudo sed -i '/env_reset/d' /etc/sudoers
           sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
           sudo make hubble-bpf
-          sudo -E ./contrib/pr-benchmark.sh
+          sudo -E ./contrib/pr-benchmark.sh $(git rev-parse --short ${{ github.event.pull_request.head.sha }})
 
       - name: Find Comment
         uses: peter-evans/find-comment@v1
