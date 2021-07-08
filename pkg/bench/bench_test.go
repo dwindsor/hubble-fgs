@@ -82,6 +82,20 @@ func BenchmarkFgsTcpRequestResponse(b *testing.B) {
 		})
 }
 
+func BenchmarkFgsTls_TcpRequestResponse(b *testing.B) {
+	benchmarkFgs(b,
+		[]string{"tcp"},
+		&BenchArguments{
+			NumSteps:        1,
+			ConnRate:        0, // Unlimited
+			Mode:            "tcp",
+			FgsEnableTls:    true,
+			Baseline:        false,
+			RequestResponse: true,
+			UseNetperf:      true,
+		})
+}
+
 func BenchmarkBaselineHttpRequestResponse(b *testing.B) {
 	summary := BenchBaseline(
 		&BenchArguments{
