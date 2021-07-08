@@ -19,6 +19,7 @@ import (
 )
 
 const (
+	keyConfigDir        = "config-dir"
 	keyDebug            = "debug"
 	keyHubbleLib        = "hubble-lib"
 	keyBTF              = "btf"

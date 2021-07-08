@@ -9,6 +9,7 @@ import (
 	"syscall"
 	"time"
 
+	"github.com/cilium/cilium/pkg/option"
 	"github.com/golang/protobuf/ptypes"
 	gops "github.com/google/gops/agent"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -61,7 +62,7 @@ func hubbleFGSExecute() error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	logger.GetLogger().Infof("config settings: %#v", viper.AllSettings())
+	logger.GetLogger().WithField("config", viper.AllSettings()).Info("config settings")
 	readAndSetFlags()
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -239,16 +240,27 @@ func execute() error {
 		viper.SetEnvPrefix("fgs")
 		viper.SetConfigName("config")
 		viper.SetConfigType("yaml")
-		viper.AddConfigPath(".")               // look for a config file in cwd first, useful during development
-		viper.AddConfigPath("/etc/hubble-fgs") // look in the global configuration directory
-		if err := viper.ReadInConfig(); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to read config from file")
+		viper.AddConfigPath(".") // look for a config file in cwd first, useful during development
+		if err := viper.ReadInConfig(); err == nil {
+			logger.GetLogger().Info("Loaded config from file")
+		}
+		if viper.IsSet(keyConfigDir) {
+			configDir := viper.GetString(keyConfigDir)
+			cm, err := option.ReadDirConfig(configDir)
+			if err != nil {
+				logger.GetLogger().WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to read config from directory")
+			}
+			if err := viper.MergeConfigMap(cm); err != nil {
+				logger.GetLogger().WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to merge config from directory")
+			}
+			logger.GetLogger().WithField(keyConfigDir, configDir).Info("Loaded config from directory")
 		}
 		viper.AutomaticEnv()
 	})
 
 	flags := rootCmd.PersistentFlags()
 
+	flags.String(keyConfigDir, "", "Configuration directory that contains a file for each option")
 	flags.BoolP(keyDebug, "d", false, "Enable debug messages")
 	flags.String(keyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
 	flags.String(keyBTF, "", "Location of btf")
