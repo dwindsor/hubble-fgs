@@ -8,7 +8,7 @@ env:
   zone: europe-west4-c
   vmName: kata-test-gh-${{ github.run_id }}
   vmHost: kata-test-gh-${{ github.run_id }}.europe-west4-c.${{ secrets.GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.GCP_PROJECT_ID }}/global/machineImages/kata-test-20210602-152521
+  machineImage: projects/${{ secrets.GCP_PROJECT_ID }}/global/machineImages/kata-test-20210707-211911
 jobs:
   test:
     runs-on: ubuntu-latest
