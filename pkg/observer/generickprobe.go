@@ -359,6 +359,14 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			return nil, fmt.Errorf("Error add enum args (%s) failed %d", genericFuncArgsEnum, ret)
 		}
 
+		if err := btf.ValidateKprobeSpec(btfobj, f); err != nil {
+			if warn, _ := err.(*btf.ValidationWarn); false {
+				logger.GetLogger().Warnf("kprobe spec validation: %s", warn)
+			} else {
+				return nil, fmt.Errorf("invalid kprobe spec: %w", err)
+			}
+		}
+
 		// Parse Arguments
 		for j, a := range f.Args {
 			argType := genericTypeFromString(a.Type)
