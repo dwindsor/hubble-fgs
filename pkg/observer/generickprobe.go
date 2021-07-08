@@ -338,7 +338,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 	}()
 
 	for i := range kprobes {
-		f := kprobes[i]
+		f := &kprobes[i]
 		var argSigPrinters []argPrinters
 		var argReturnPrinters []argPrinters
 		var setRetprobe, is_syscall bool

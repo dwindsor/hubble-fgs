@@ -351,7 +351,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		Selectors: selectors,
 		Args:      args,
 	}
-	b, _ := InitKernelSelectors(spec)
+	b, _ := InitKernelSelectors(&spec)
 	if bytes.Equal(expected[0:len(expected)], b[0:len(expected)]) == false {
 		t.Errorf("InitKernelSelectors: expected %v bytes %v\n", expected, b[0:len(expected)])
 	}

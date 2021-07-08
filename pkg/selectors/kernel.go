@@ -76,7 +76,7 @@ var actionTypeStringTable = map[uint32]string{
 	actionTypeSigKill:  "sigkill",
 }
 
-func MatchActionSigKill(spec v1alpha1.KProbeSpec) bool {
+func MatchActionSigKill(spec *v1alpha1.KProbeSpec) bool {
 	sels := spec.Selectors
 	for _, s := range sels {
 		for _, act := range s.MatchActions {
@@ -371,7 +371,7 @@ func parseSelector(
 // PIDn := [op][flags][value]
 // Argn := [index][op][value]
 // value := [type][len][v]
-func InitKernelSelectors(spec v1alpha1.KProbeSpec) ([4096]byte, error) {
+func InitKernelSelectors(spec *v1alpha1.KProbeSpec) ([4096]byte, error) {
 	selectors := spec.Selectors
 	args := spec.Args
 	kernelSelectors := &kernelSelectorState{}
