@@ -34,6 +34,7 @@ spec:
   description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
+    syscall: true
     args:
     - index: 0
       type: "int"
