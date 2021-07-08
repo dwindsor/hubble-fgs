@@ -37,7 +37,7 @@ jobs:
           ref: ${{ steps.tag.outputs.tag }}
 
       # master branch pushes
-      - name: CI Build
+      - name: CI Build (master)
         if: ${{ github.event_name != 'pull_request_target' }}
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         id: docker_build_ci_master
@@ -50,8 +50,16 @@ jobs:
             quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:latest
             quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:${{ steps.tag.outputs.tag }}
 
+      - name: CI Image Releases digests (master)
+        if: ${{ github.event_name != 'pull_request_target' }}
+        shell: bash
+        run: |
+          mkdir -p image-digest/
+          echo "quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:latest@${{ steps.docker_build_ci_master.outputs.digest }}" > image-digest/hubble-enterprise.txt
+          echo "quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_ci_master.outputs.digest }}" >> image-digest/hubble-enterprise.txt
+
       # PR updates
-      - name: CI Build ${{ matrix.name }}
+      - name: CI Build (PR)
         if: ${{ github.event_name == 'pull_request_target' }}
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         id: docker_build_ci_pr
@@ -62,3 +70,40 @@ jobs:
           platforms: linux/amd64
           tags: |
             quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:${{ steps.tag.outputs.tag }}
+
+      - name: CI Image Releases digests (PR)
+        if: ${{ github.event_name == 'pull_request_target' }}
+        shell: bash
+        run: |
+          mkdir -p image-digest/
+          echo "quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_ci_pr.outputs.digest }}" >> image-digest/hubble-enterprise.txt
+
+      # Upload artifact digests
+      - name: Upload artifact digests
+        uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
+        with:
+          name: image-digest hubble-enterprise
+          path: image-digest
+          retention-days: 1
+
+  image-digests:
+    if: ${{ always() }}
+    name: Display Digests
+    runs-on: ubuntu-20.04
+    needs: [build-and-push-prs]
+    steps:
+      - name: Downloading Image Digests
+        shell: bash
+        run: |
+          mkdir -p image-digest/
+
+      - name: Download digests of all images built
+        uses: actions/download-artifact@3be87be14a055c47b01d3bd88f8fe02320a9bb60
+        with:
+          path: image-digest/
+
+      - name: Image Digests Output
+        shell: bash
+        run: |
+          cd image-digest/
+          find -type f | sort | xargs -d '\n' cat
