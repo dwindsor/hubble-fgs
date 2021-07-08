@@ -134,7 +134,7 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 	}
 	denyList, _ := filters.ParseFilterList("")
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
-	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder)
+	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder, nil)
 	go exporter.Start()
 	kprobe.AddListener(processManager)
 	return nil

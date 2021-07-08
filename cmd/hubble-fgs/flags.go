@@ -50,6 +50,7 @@ const (
 	keyExportFileRotationInterval = "export-file-rotation-interval"
 	keyExportFileMaxBackups       = "export-file-max-backups"
 	keyExportFileCompress         = "export-file-compress"
+	keyExportRateLimit            = "export-rate-limit"
 
 	keyEnableExportAggregation     = "enable-export-aggregation"
 	keyExportAggregationWindowSize = "export-aggregation-window-size"
@@ -79,6 +80,7 @@ var (
 	exportFileRotationInterval time.Duration
 	exportFileMaxBackups       int
 	exportFileCompress         bool
+	exportRateLimit            int
 
 	// Export aggregation options
 	enableExportAggregation     bool
@@ -116,6 +118,7 @@ func readAndSetFlags() {
 	exportFileRotationInterval = viper.GetDuration(keyExportFileRotationInterval)
 	exportFileMaxBackups = viper.GetInt(keyExportFileMaxBackups)
 	exportFileCompress = viper.GetBool(keyExportFileCompress)
+	exportRateLimit = viper.GetInt(keyExportRateLimit)
 
 	enableExportAggregation = viper.GetBool(keyEnableExportAggregation)
 	exportAggregationWindowSize = viper.GetDuration(keyExportAggregationWindowSize)

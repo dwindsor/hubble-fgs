@@ -17,6 +17,7 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"sync/atomic"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -24,11 +25,12 @@ import (
 )
 
 type Exporter struct {
-	ctx     context.Context
-	request *fgs.GetEventsRequest
-	server  *Server
-	encoder *json.Encoder
-	done    chan bool
+	ctx         context.Context
+	request     *fgs.GetEventsRequest
+	server      *Server
+	encoder     *json.Encoder
+	rateLimiter *RateLimiter
+	done        chan bool
 }
 
 func NewExporter(
@@ -36,8 +38,9 @@ func NewExporter(
 	request *fgs.GetEventsRequest,
 	server *Server,
 	encoder *json.Encoder,
+	rateLimiter *RateLimiter,
 ) *Exporter {
-	return &Exporter{ctx, request, server, encoder, make(chan bool)}
+	return &Exporter{ctx, request, server, encoder, rateLimiter, make(chan bool)}
 }
 
 func (e *Exporter) Start() {
@@ -48,6 +51,10 @@ func (e *Exporter) Start() {
 }
 
 func (e *Exporter) Send(event *fgs.GetEventsResponse) error {
+	if e.rateLimiter != nil && e.rateLimiter.Allow() {
+		atomic.AddUint64(&e.rateLimiter.dropped, 1)
+		return nil
+	}
 	if err := e.encoder.Encode(event); err != nil {
 		logger.GetLogger().WithError(err).Warning("Failed to JSON encode")
 	}

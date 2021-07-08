@@ -167,6 +167,10 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 		}()
 	}
 	encoder := json.NewEncoder(&writer)
+	var rateLimiter *fgsGrpc.RateLimiter
+	if exportRateLimit >= 0 {
+		rateLimiter = fgsGrpc.NewRateLimiter(ctx, 1*time.Minute, exportRateLimit, encoder)
+	}
 	var aggregationOptions *fgs.AggregationOptions
 	if enableExportAggregation {
 		aggregationOptions = &fgs.AggregationOptions{
@@ -176,7 +180,7 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 	}
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions}
 	logger.GetLogger().WithFields(logrus.Fields{"logger": writer, "request": req}).Info("Starting JSON exporter")
-	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder)
+	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder, rateLimiter)
 	go exporter.Start()
 	return nil
 }
@@ -260,6 +264,7 @@ func execute() error {
 	flags.Duration(keyExportFileRotationInterval, 0, "Interval at which to rotate JSON export files in addition to rotating them by size")
 	flags.Int(keyExportFileMaxBackups, 5, "Number of rotated JSON export files to retain")
 	flags.Bool(keyExportFileCompress, false, "Compress rotated JSON export files")
+	flags.Int(keyExportRateLimit, -1, "Rate limit (per minute) for event export. Set to -1 to disable")
 	flags.String(keyLogLevel, "info", "Set log level")
 	flags.String(keyLogFormat, "text", "Set log format")
 	flags.Bool(keyEnableK8sAPI, false, "Access Kubernetes API to associate FGS events with Kubernetes pods")

@@ -121,7 +121,7 @@ func TestExporter_Send(t *testing.T) {
 	encoder := json.NewEncoder(results)
 	ctx, cancel := context.WithCancel(context.Background())
 	request := fgs.GetEventsRequest{DenyList: []*fgs.Filter{{BinaryRegex: []string{"b"}}}}
-	exporter := NewExporter(ctx, &request, grpcServer, encoder)
+	exporter := NewExporter(ctx, &request, grpcServer, encoder, nil)
 	go exporter.Start()
 	<-eventNotifier.added
 	eventNotifier.notifyListeners(&fgs.GetEventsResponse{
