@@ -14,6 +14,5 @@ jobs:
       - name: Validate that generated files are up to date.
         run: |
           make generate
-          make quick-install
           make -C api/v1 doc
           git diff --exit-code
