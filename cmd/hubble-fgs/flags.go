@@ -56,6 +56,9 @@ const (
 	keyEnableExportAggregation     = "enable-export-aggregation"
 	keyExportAggregationWindowSize = "export-aggregation-window-size"
 	keyExportAggregationBufferSize = "export-aggregation-buffer-size"
+
+	keyExportAllowlist = "export-allowlist"
+	keyExportDenylist  = "export-denylist"
 )
 
 var (

@@ -36,11 +36,11 @@ import (
 const observerDir = "/sys/fs/bpf/tcpmon/"
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
-	allowList, err := filters.ParseFilterList(os.Getenv("EXPORT_ALLOW_LIST"))
+	allowList, err := filters.ParseFilterList(viper.GetString(keyExportAllowlist))
 	if err != nil {
 		return nil, nil, err
 	}
-	denyList, err := filters.ParseFilterList(os.Getenv("EXPORT_DENY_LIST"))
+	denyList, err := filters.ParseFilterList(viper.GetString(keyExportDenylist))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -301,6 +301,10 @@ func execute() error {
 	flags.Bool(keyEnableExportAggregation, false, "Enable JSON export aggregation")
 	flags.Duration(keyExportAggregationWindowSize, 15*time.Second, "JSON export aggregation time window")
 	flags.Uint64(keyExportAggregationBufferSize, 10000, "Aggregator channel buffer size")
+
+	// JSON export filter options
+	flags.String(keyExportAllowlist, "", "JSON export allowlist")
+	flags.String(keyExportDenylist, "", "JSON export denylist")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
