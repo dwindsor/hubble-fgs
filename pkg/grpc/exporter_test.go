@@ -13,9 +13,12 @@ package grpc
 import (
 	"context"
 	"encoding/json"
+	"fmt"
+	"os"
 	"strings"
 	"sync"
 	"testing"
+	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
@@ -140,4 +143,111 @@ func TestExporter_Send(t *testing.T) {
 	assert.Equal(t, []string{`{"process_connect":{"process":{"binary":"a"}}}`, `{"process_listen":{"process":{"binary":"c"}}}`}, results.items)
 	cancel()
 	<-eventNotifier.removed
+}
+
+type jsonEvent struct {
+	Event         json.RawMessage `json:"process_connect"`
+	RateLimitInfo json.RawMessage `json:"rate_limit_info"`
+}
+
+const nodeName = "test-node-name"
+
+func checkEvents(t *testing.T, eventsJSON []string, wantEvents, wantRateLimitInfo int, wantDropped uint64) {
+	t.Helper()
+
+	gotEvents, gotRateLimitInfo, gotDropped := 0, 0, uint64(0)
+	for _, event := range eventsJSON {
+		if event == "" {
+			continue
+		}
+
+		var ev jsonEvent
+		if err := json.Unmarshal([]byte(event), &ev); err != nil {
+			t.Fatalf("failed to unmarshal JSON event %q: %v", event, err)
+		}
+
+		decoded := 0
+		if len(ev.Event) > 0 {
+			gotEvents++
+			decoded++
+		}
+		if len(ev.RateLimitInfo) > 0 {
+			var r RateLimitInfoEvent
+			if err := json.Unmarshal([]byte(event), &r); err != nil {
+				t.Fatalf("failed to unmarshal JSON event %q: %v", event, err)
+			}
+			gotRateLimitInfo++
+			gotDropped += r.RateLimitInfo.NumberOfDroppedEvents
+			decoded++
+
+			if nn := r.RateLimitInfo.NodeName; nn != nodeName {
+				t.Errorf("unexpected node name for rate-limit-info event: got %q, want %q", nn, nodeName)
+			}
+		}
+
+		if decoded != 1 {
+			t.Fatalf("expected to decode %q as exactly 1 event, got %d", event, decoded)
+		}
+	}
+	assert.Equal(t, wantEvents, gotEvents, "number of events")
+	assert.Equal(t, wantRateLimitInfo, gotRateLimitInfo, "number of rate_limit_info events")
+	assert.Equal(t, wantDropped, gotDropped, "number of dropped events")
+}
+
+func Test_rateLimitExport(t *testing.T) {
+	// set node name to be reported in RateLimitInfo events
+	hubbleNodeNameEnv := "HUBBLE_NODE_NAME"
+	value, ok := os.LookupEnv(hubbleNodeNameEnv)
+	if !ok || value == "" {
+		if err := os.Setenv(hubbleNodeNameEnv, nodeName); err != nil {
+			t.Fatalf("failed to set %s env var", hubbleNodeNameEnv)
+		}
+		defer os.Unsetenv(hubbleNodeNameEnv)
+	}
+
+	tests := []struct {
+		name              string
+		totalEvents       int
+		rateLimit         int
+		wantEvents        int
+		wantRateLimitInfo int
+		wantDropped       uint64
+	}{
+		{"no events", 0, 10, 0, 0, 0},
+		{"rate limit", 100, 10, 10, 1, 90},
+		{"rate limit all ", 100, 0, 0, 1, 100},
+		{"rate limit none", 100, -1, 100, 0, 0},
+	}
+	for _, tt := range tests {
+		t.Run(fmt.Sprintf("%s (%d events, %d rate limit)", tt.name, tt.totalEvents, tt.rateLimit), func(t *testing.T) {
+			eventNotifier := newFakeNotifier()
+			grpcServer := NewServer(eventNotifier, &fakeObserver{})
+			results := newArrayWriter(tt.totalEvents)
+			encoder := json.NewEncoder(results)
+			ctx, cancel := context.WithCancel(context.Background())
+			request := &fgs.GetEventsRequest{}
+			exporter := NewExporter(
+				ctx,
+				request,
+				grpcServer,
+				encoder,
+				NewRateLimiter(ctx, 50*time.Millisecond, tt.rateLimit, encoder),
+			)
+			go exporter.Start()
+			<-eventNotifier.added
+			for i := 0; i < tt.totalEvents; i++ {
+				eventNotifier.notifyListeners(&fgs.GetEventsResponse{
+					Event: &fgs.GetEventsResponse_ProcessConnect{
+						ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Binary: fmt.Sprintf("a%d", i)}},
+					}})
+			}
+
+			reportInterval := 100 * time.Millisecond
+			// wait for ~2 report intervals to make sure we get a rate-limit-info event
+			time.Sleep(2 * reportInterval)
+			cancel()
+
+			checkEvents(t, results.items, tt.wantEvents, tt.wantRateLimitInfo, tt.wantDropped)
+		})
+	}
 }
