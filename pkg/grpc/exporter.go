@@ -51,7 +51,7 @@ func (e *Exporter) Start() {
 }
 
 func (e *Exporter) Send(event *fgs.GetEventsResponse) error {
-	if e.rateLimiter != nil && e.rateLimiter.Allow() {
+	if e.rateLimiter != nil && !e.rateLimiter.Allow() {
 		atomic.AddUint64(&e.rateLimiter.dropped, 1)
 		return nil
 	}
