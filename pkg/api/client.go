@@ -325,6 +325,8 @@ type MsgSocketStats struct {
 	BytesReceived uint64
 	SegsIn        uint32
 	SegsOut       uint32
+	SRtt          uint32
+	Padding       uint32
 }
 
 type MsgIPv4TcpEventUnix struct {

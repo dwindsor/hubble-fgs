@@ -302,6 +302,8 @@ struct msg_socket_stats {
 	__u64 bytes_received;
 	__u32 segs_in;
 	__u32 segs_out;
+	__u32 srtt;
+	__u32 padding;
 } __attribute__((packed));
 
 // separate data structs for ipv4 and ipv6
