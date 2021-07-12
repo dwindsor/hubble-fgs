@@ -503,6 +503,8 @@ func (m *SocketStats) Validate() error {
 
 	// no validation rules for SegsOut
 
+	// no validation rules for Srtt
+
 	return nil
 }
 

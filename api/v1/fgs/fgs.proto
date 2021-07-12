@@ -80,6 +80,7 @@ message SocketStats {
     uint64 bytes_received = 2;
     uint32 segs_in = 3;
     uint32 segs_out = 4;
+    uint32 srtt = 5;
 }
 
 message ProcessConnect {
