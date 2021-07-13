@@ -30,11 +30,13 @@ import (
 
 func GetSocketStats(stats *api.MsgSocketStats) *fgs.SocketStats {
 	return &fgs.SocketStats{
-		BytesSent:     stats.BytesSent,
-		BytesReceived: stats.BytesReceived,
-		SegsIn:        stats.SegsIn,
-		SegsOut:       stats.SegsOut,
-		Srtt:          stats.SRtt,
+		BytesSent:        stats.BytesSent,
+		BytesReceived:    stats.BytesReceived,
+		SegsIn:           stats.SegsIn,
+		SegsOut:          stats.SegsOut,
+		Srtt:             stats.SRtt,
+		RetransmitsBytes: stats.RetransmitBytes,
+		RetransmitsSegs:  stats.RetransmitSegs,
 	}
 }
 

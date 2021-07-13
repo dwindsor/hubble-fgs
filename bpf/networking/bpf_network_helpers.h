@@ -8,6 +8,8 @@ void get_socket_stats(struct sock *sk, struct msg_socket_stats *stats)
 	probe_read(&stats->segs_in, sizeof(__u32), _(&(tcp->segs_in)));
 	probe_read(&stats->segs_out, sizeof(__u32), _(&(tcp->segs_out)));
 	probe_read(&stats->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
+	probe_read(&stats->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
+	probe_read(&stats->retransbytes, sizeof(__u64), _(&(tcp->bytes_retrans)));
 }
 
 static inline __attribute__((always_inline))

@@ -321,12 +321,13 @@ type MsgK8sUnix struct {
 }
 
 type MsgSocketStats struct {
-	BytesSent     uint64
-	BytesReceived uint64
-	SegsIn        uint32
-	SegsOut       uint32
-	SRtt          uint32
-	Padding       uint32
+	BytesSent       uint64
+	BytesReceived   uint64
+	SegsIn          uint32
+	SegsOut         uint32
+	SRtt            uint32
+	RetransmitSegs  uint32
+	RetransmitBytes uint64
 }
 
 type MsgIPv4TcpEventUnix struct {
