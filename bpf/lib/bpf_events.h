@@ -825,7 +825,7 @@ struct event_execve *event_get_curr_execve(struct msg_execve_event *msg)
 }
 
 static inline __attribute__((always_inline))
-void add_socketmap(struct msg_tls_ipv4 *tuple, struct msg_execve_key *v)
+void add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
 {
 	int err = map_update_elem(&socket_map, tuple, v, 0);
 	int zero = 0;
@@ -847,7 +847,7 @@ void del_socketmap(struct msg_tls_ipv4 *tuple)
 }
 
 static inline __attribute__((always_inline))
-struct msg_execve_key *lookup_socketmap(struct msg_tls_ipv4 *tuple)
+struct socketmap_value *lookup_socketmap(struct msg_tls_ipv4 *tuple)
 {
 	return map_lookup_elem(&socket_map, tuple);
 }

@@ -68,7 +68,8 @@ int event_sys_listen(struct pt_regs *ctx)
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_ipv4_tcp_event));
 
 	{
-		struct msg_execve_key v = {0};
+		struct socketmap_value v;
+		struct msg_execve_key ev = {0};
 		struct msg_tls_ipv4 tuple;
 		struct net *netns;
 
@@ -86,8 +87,10 @@ int event_sys_listen(struct pt_regs *ctx)
 			probe_read(&tuple.uid, sizeof(c->inum), _(&c->inum));
 		}
 
-		v.pid = process->key.pid;
-		v.ktime = process->key.ktime;
+		ev.pid = process->key.pid;
+		ev.ktime = process->key.ktime;
+		v.key = ev;
+		v.zero_window = 0;
 
 		add_socketmap(&tuple, &v);
 	}

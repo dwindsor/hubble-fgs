@@ -148,6 +148,23 @@ var (
 		struct{}{},
 	}
 
+	ObserverTCPSendCheck = bpfLoad{
+		"bpf_tcp_send_check.o",
+		"tcp_v4_send_check",
+		"tcp_v4_send_check",
+		"kprobe/tcp_v4_send_check",
+		"kprobe_tcp_v4_send_check",
+
+		false,
+		true,
+		"kprobe",
+		bpfLoadStateIdle(),
+
+		-1,
+
+		struct{}{},
+	}
+
 	ObserverListen = bpfLoad{
 		"bpf_listen.o",
 		"__inet_hash",
@@ -207,6 +224,7 @@ var (
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
 		&ObserverTCPClose,
+		&ObserverTCPSendCheck,
 		&ObserverListen,
 		&ObserverTLSTCEgress,
 		&ObserverTLSTCIngress,
@@ -307,6 +325,7 @@ func createInitialObserverSensor(enableTLS, enableTLSTC bool) *observerSensor {
 		&ObserverTCPConnect,
 		&ObserverTCPConnectRet,
 		&ObserverTCPClose,
+		&ObserverTCPSendCheck,
 		&ObserverListen,
 	}
 

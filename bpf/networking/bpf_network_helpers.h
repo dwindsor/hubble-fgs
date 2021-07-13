@@ -1,5 +1,8 @@
 static inline __attribute__((always_inline))
-void get_socket_stats(struct sock *sk, struct msg_socket_stats *stats)
+void get_socket_stats(struct sock *sk,
+		      struct net *net,
+		      __u32 zerowin,
+		      struct msg_socket_stats *stats)
 {
 	struct tcp_sock *tcp = (struct tcp_sock *)sk;
 
@@ -10,6 +13,8 @@ void get_socket_stats(struct sock *sk, struct msg_socket_stats *stats)
 	probe_read(&stats->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
 	probe_read(&stats->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
 	probe_read(&stats->retransbytes, sizeof(__u64), _(&(tcp->bytes_retrans)));
+	//stats->tozerowin populated in-band TCP hook watching for zero window
+	stats->tozerowin = zerowin;
 }
 
 static inline __attribute__((always_inline))

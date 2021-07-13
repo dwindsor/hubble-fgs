@@ -33,7 +33,7 @@ __attribute__((section(("kprobe/tcp_set_state")), used))
 int event_ipv4_close(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_event *val;
-	struct msg_execve_key *process;
+	struct socketmap_value *process;
 	struct msg_tls_ipv4 tuple;
 	struct net *netns;
 	struct sock *skp;
@@ -84,10 +84,12 @@ int event_ipv4_close(struct pt_regs *ctx)
 		process = lookup_socketmap(&tuple);
 		if (process) {
 			val->common.op = MSG_OP_IPV4_TCPCLOSE;
-			val->key.pid = process->pid;
-			val->key.ktime = process->ktime;
+			val->key.pid = process->key.pid;
+			val->key.ktime = process->key.ktime;
 
-			get_socket_stats(skp, &val->stats);
+			get_socket_stats(skp, netns,
+					 process->zero_window,
+					 &val->stats);
 
 			size = sizeof(struct msg_ipv4_tcp_event);
 			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
@@ -111,11 +113,11 @@ int event_ipv4_close(struct pt_regs *ctx)
 			process = lookup_socketmap(&tuple);
 		}
 		if (process) {
-			struct msg_execve_key copy = *process;
+			struct socketmap_value copy = *process;
 
 			val->common.op = MSG_OP_IPV4_TCPACCEPT;
-			val->key.pid = copy.pid;
-			val->key.ktime = copy.ktime;
+			val->key.pid = copy.key.pid;
+			val->key.ktime = copy.key.ktime;
 			size = sizeof(struct msg_ipv4_tcp_event);
 			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 			tuple.daddr = daddr;

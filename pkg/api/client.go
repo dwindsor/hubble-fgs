@@ -328,6 +328,8 @@ type MsgSocketStats struct {
 	SRtt            uint32
 	RetransmitSegs  uint32
 	RetransmitBytes uint64
+	ToZeroWindow    uint32
+	Padding         uint32
 }
 
 type MsgIPv4TcpEventUnix struct {

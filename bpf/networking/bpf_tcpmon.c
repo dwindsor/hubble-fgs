@@ -82,7 +82,7 @@ int event_ipv4_connect(struct pt_regs *ctx)
 	 * 32-bit aligned so we really do want it there.
 	 */
 	{
-		struct msg_execve_key v = {0};
+		struct socketmap_value v = {0};
 		struct msg_tls_ipv4 tuple;
 		struct net *netns;
 
@@ -100,8 +100,8 @@ int event_ipv4_connect(struct pt_regs *ctx)
 			probe_read(&tuple.uid, sizeof(c->inum), _(&c->inum));
 		}
 
-		v.pid = process->key.pid;
-		v.ktime = process->key.ktime;
+		v.key.pid = process->key.pid;
+		v.key.ktime = process->key.ktime;
 
 		if (!is_tuple_local(&tuple))
 			tuple.uid = 0;

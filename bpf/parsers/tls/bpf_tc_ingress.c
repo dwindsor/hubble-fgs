@@ -72,7 +72,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) cilium_snat_v4_externa
 static inline __attribute__((always_inline))
 void event_tc_build(struct msg_tls_event *post, struct msg_tls_ipv4 *key)
 {
-	struct msg_execve_key *execve;
+	struct socketmap_value *execve;
 	__u16 dport;
 
 	post->tuple = *key;
@@ -83,7 +83,7 @@ void event_tc_build(struct msg_tls_event *post, struct msg_tls_ipv4 *key)
 	key->dport = bpf_htons(key->dport);
 	execve  = lookup_socketmap(key);
 	if (execve)
-		post->execve = *execve;
+		post->execve = execve->key;
 	key->dport = dport;
 }
 

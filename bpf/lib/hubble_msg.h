@@ -305,6 +305,8 @@ struct msg_socket_stats {
 	__u32 srtt;
 	__u32 retranssegs;
 	__u64 retransbytes;
+	__u32 tozerowin;
+	__u32 padding;
 } __attribute__((packed));
 
 // separate data structs for ipv4 and ipv6
@@ -439,18 +441,23 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
 };
 #endif
 
+struct socketmap_value {
+	struct msg_execve_key key;
+	__u32 zero_window;
+};
+
 #ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_HASH];
 	unsigned int (*key_size)[sizeof(struct msg_tls_ipv4)];
-	unsigned int (*value_size)[sizeof(struct msg_execve_key)];
+	unsigned int (*value_size)[sizeof(struct socketmap_value)];
 	unsigned int (*max_entries)[32768];
 } socket_map __attribute__((section((".maps")), used));
 #else
 struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct msg_execve_key),
+	.value_size = sizeof(struct socketmap_value),
 	.max_entries = 32768,
 };
 #endif

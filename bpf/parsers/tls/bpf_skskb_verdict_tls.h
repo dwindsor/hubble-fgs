@@ -15,8 +15,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 static inline __attribute__((always_inline))
 int bpf_skskb_verdict_tls(struct __sk_buff *skb)
 {
+	struct socketmap_value *execve;
 	struct msg_tls_ipv4 key = {0};
-	struct msg_execve_key *execve;
 	struct msg_tls *event;
 	int zero = 0;
 
@@ -58,7 +58,7 @@ int bpf_skskb_verdict_tls(struct __sk_buff *skb)
 
 		execve  = lookup_socketmap(&key);
 		if (execve)
-			post->execve = *execve;
+			post->execve = execve->key;
 
 		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
 				  sizeof(struct msg_tls_event));
