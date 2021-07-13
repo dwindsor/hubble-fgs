@@ -505,6 +505,10 @@ func (m *SocketStats) Validate() error {
 
 	// no validation rules for Srtt
 
+	// no validation rules for RetransmitsBytes
+
+	// no validation rules for RetransmitsSegs
+
 	return nil
 }
 

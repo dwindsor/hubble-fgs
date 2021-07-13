@@ -81,6 +81,8 @@ message SocketStats {
     uint32 segs_in = 3;
     uint32 segs_out = 4;
     uint32 srtt = 5;
+    uint64 retransmits_bytes = 6;
+    uint32 retransmits_segs = 7;
 }
 
 message ProcessConnect {
