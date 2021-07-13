@@ -509,6 +509,8 @@ func (m *SocketStats) Validate() error {
 
 	// no validation rules for RetransmitsSegs
 
+	// no validation rules for ToZeroWindow
+
 	return nil
 }
 

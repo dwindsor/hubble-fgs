@@ -83,6 +83,7 @@ message SocketStats {
     uint32 srtt = 5;
     uint64 retransmits_bytes = 6;
     uint32 retransmits_segs = 7;
+    uint32 to_zero_window = 8;
 }
 
 message ProcessConnect {
