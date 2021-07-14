@@ -44,13 +44,15 @@ package bpf
 #define BPF_SK_MSG_VERDICT 7
 #endif
 
-static int libbpf_log_level = LIBBPF_WARN;
-
 static int __print(enum libbpf_print_level level __attribute__((unused)),
 		   const char *format, va_list args)
 {
-	if (libbpf_log_level >= level)
-		return vfprintf(stderr, format, args);
+	return vfprintf(stderr, format, args);
+}
+
+static int __quiet(enum libbpf_print_level level __attribute__((unused)),
+		   const char *format, va_list args)
+{
 }
 
 void bpf_loader_programs(struct bpf_object *obj, int type, int verbosity) {
@@ -80,8 +82,10 @@ int fgs_map_loader(const int version,
 	struct bpf_object *obj;
 	int err, map_fd;
 
-	libbpf_set_print(__print);
-	libbpf_log_level = verbosity > 2 ? LIBBPF_DEBUG : LIBBPF_WARN;
+	if (verbosity > 1)
+		libbpf_set_print(__print);
+	else
+		libbpf_set_print(__quiet);
 
 	obj = bpf_object__open(prog);
 	err = libbpf_get_error(obj);
@@ -213,8 +217,8 @@ static struct bpf_object *__loader(const int version,
 	struct bpf_object *obj;
 	int err;
 
-	libbpf_log_level = verbosity > 2 ? LIBBPF_DEBUG : LIBBPF_WARN;
-	libbpf_set_print(__print);
+	if (verbosity > 1)
+		libbpf_set_print(__print);
 
 	obj = bpf_object__open(prog);
 	err = libbpf_get_error(obj);
