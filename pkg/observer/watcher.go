@@ -8,10 +8,13 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 //
+
 package observer
 
 import (
 	"context"
+	"strings"
+	"sync"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -19,10 +22,35 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/sirupsen/logrus"
+	"k8s.io/apimachinery/pkg/util/runtime"
 	"k8s.io/apimachinery/pkg/util/wait"
 	"k8s.io/client-go/rest"
 	"k8s.io/client-go/tools/cache"
 )
+
+// Log "missing tracing policy" message once.
+var logOnce sync.Once
+
+func init() {
+	runtime.ErrorHandlers = []func(error){k8sErrorHandler}
+}
+
+// k8sErrorHandler logs errors from k8s API to the fgs logger for consistent log format.
+func k8sErrorHandler(e error) {
+	if e == nil {
+		return
+	}
+	switch {
+	case strings.Contains(e.Error(), "Failed to list *v1alpha1.TracingPolicy: the server could not find the requested resource (get tracingpolicies.isovalent.com)"):
+		// TODO: For now log an info message once if TracingPolicy is not defined.
+		//       In the long term we should automate the CRD creation process.
+		logOnce.Do(func() {
+			logger.GetLogger().WithError(e).Infof("TracingPolicy CRD not defined")
+		})
+	default:
+		logger.GetLogger().WithError(e).Errorf("Kubernetes API error")
+	}
+}
 
 func watchTracePolicy(s *ObserverSync, ctx context.Context) {
 	log := logger.GetLogger()
