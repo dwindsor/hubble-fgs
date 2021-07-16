@@ -45,3 +45,16 @@ func TestProcsDockerId(t *testing.T) {
 
 	// To further test we need a k8s environment unforunately. TBD
 }
+
+func TestProcsFindDockerId(t *testing.T) {
+	p := "6:pids:/kubepods/besteffort/pod26ab26cd-6409-443f-a13c-fd6c231207c8/ae7a1981e064c217035e0b23979c8defd51c850d1af26fbcf148187e5b0da61c"
+	d, i, _ := procsFindDockerId(p)
+	assert.Equal(t, i, 0, "Docker offset wrong")
+	assert.Equal(t, d, "ae7a1981e064c217035e0b23979c8de", "DockerId wrong")
+
+	p = "4:pids:/kubepods/burstable/pod1399d9c7-c86f-4371-8568-07b3d32258a4/91f2457fb4c2b1356eefc7bace36532f5eb3d354804bb2cff787ea321320b5a5"
+	d, i, _ = procsFindDockerId(p)
+	assert.Equal(t, i, 0, "Docker offset wrong")
+	assert.Equal(t, d, "91f2457fb4c2b1356eefc7bace36532", "DockerId wrong")
+
+}

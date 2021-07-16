@@ -63,13 +63,8 @@ func procsFilename(args []byte) (string, string) {
 	return cmds, filename
 }
 
-func procsDockerId(pid uint32) (string, int, error) {
-	pidstr := fmt.Sprint(pid)
-	cgroups, err := ioutil.ReadFile(filepath.Join(ProcFS, pidstr, "cgroup"))
-	if err != nil {
-		return "", 0, err
-	}
-	docker := strings.Split(string(cgroups), "\n")
+func procsFindDockerId(cgroups string) (string, int, error) {
+	docker := strings.Split(cgroups, "\n")
 	for _, s := range docker {
 		if strings.Contains(s, "pids:") && (strings.Contains(s, "pods") || strings.Contains(s, "docker")) {
 			dockerFields := strings.Split(s, "/")
@@ -84,4 +79,13 @@ func procsDockerId(pid uint32) (string, int, error) {
 		}
 	}
 	return "", 0, nil
+}
+
+func procsDockerId(pid uint32) (string, int, error) {
+	pidstr := fmt.Sprint(pid)
+	cgroups, err := ioutil.ReadFile(filepath.Join(ProcFS, pidstr, "cgroup"))
+	if err != nil {
+		return "", 0, err
+	}
+	return procsFindDockerId(string(cgroups))
 }
