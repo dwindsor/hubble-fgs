@@ -57,11 +57,20 @@ spec:
                             description: Argument type.
                             enum:
                             - int
+                            - uint32
+                            - int32
+                            - uint64
+                            - int64
                             - char_buf
                             - char_iovec
                             - size_t
                             - skb
                             - string
+                            - fd
+                            - file
+                            - filename
+                            - path
+                            - nop
                             type: string
                         required:
                         - index
@@ -92,11 +101,20 @@ spec:
                           description: Argument type.
                           enum:
                           - int
+                          - uint32
+                          - int32
+                          - uint64
+                          - int64
                           - char_buf
                           - char_iovec
                           - size_t
                           - skb
                           - string
+                          - fd
+                          - file
+                          - filename
+                          - path
+                          - nop
                           type: string
                       required:
                       - index
@@ -242,11 +260,20 @@ spec:
                             description: Argument type.
                             enum:
                             - int
+                            - uint32
+                            - int32
+                            - uint64
+                            - int64
                             - char_buf
                             - char_iovec
                             - size_t
                             - skb
                             - string
+                            - fd
+                            - file
+                            - filename
+                            - path
+                            - nop
                             type: string
                         required:
                         - index
