@@ -122,7 +122,7 @@ func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
 		}
 
 		if !typesCompatible(specArg.Type, paramTyStr) {
-			return fmt.Errorf("type (%s) of argument %d does not match spec type (%s)\n", paramTyStr, specArg.Index, specArg.Type)
+			return &ValidationWarn{s: fmt.Sprintf("type (%s) of argument %d does not match spec type (%s)\n", paramTyStr, specArg.Index, specArg.Type)}
 		}
 	}
 
@@ -136,7 +136,7 @@ func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
 			fmt.Errorf("failed to dump return type of %s: %w", kspec.Call, err)
 		}
 		if !typesCompatible(kspec.ReturnArg.Type, retTyStr) {
-			return fmt.Errorf("return type (%s) does not match spec return type (%s)\n", retTyStr, kspec.ReturnArg.Type)
+			return &ValidationWarn{s: fmt.Sprintf("return type (%s) does not match spec return type (%s)\n", retTyStr, kspec.ReturnArg.Type)}
 		}
 	}
 
@@ -230,7 +230,7 @@ func validateSycall(kspec *v1alpha1.KProbeSpec, name string) error {
 
 		argTy := argsInfo[specArg.Index].Type
 		if !typesCompatible(specArg.Type, argTy) {
-			return fmt.Errorf("type (%s) of syscall argument %d does not match spec type (%s)\n", argTy, specArg.Index, specArg.Type)
+			return &ValidationWarn{s: fmt.Sprintf("type (%s) of syscall argument %d does not match spec type (%s)\n", argTy, specArg.Index, specArg.Type)}
 		}
 	}
 
