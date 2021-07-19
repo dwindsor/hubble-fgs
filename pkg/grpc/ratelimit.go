@@ -27,12 +27,21 @@ type RateLimiter struct {
 	dropped        uint64 // accessed atomically
 }
 
-func NewRateLimiter(ctx context.Context, interval time.Duration, burst int, encoder *json.Encoder) *RateLimiter {
-	if burst < 0 {
+// getLimit converts an numEvents and interval to rate.Limit which is a floating point value
+// representing number of events per second.
+func getLimit(numEvents int, interval time.Duration) rate.Limit {
+	if numEvents == 0 {
+		return 0
+	}
+	return rate.Every(interval / time.Duration(numEvents))
+}
+
+func NewRateLimiter(ctx context.Context, interval time.Duration, numEvents int, encoder *json.Encoder) *RateLimiter {
+	if numEvents < 0 {
 		return nil
 	}
 	r := &RateLimiter{
-		rate.NewLimiter(rate.Every(interval), burst),
+		rate.NewLimiter(getLimit(numEvents, interval), numEvents),
 		ctx,
 		interval, // TODO(tk): use a separate interval for reporting?
 		0,
@@ -42,13 +51,13 @@ func NewRateLimiter(ctx context.Context, interval time.Duration, burst int, enco
 }
 
 type RateLimitInfo struct {
-	NumberOfDroppedEvents uint64    `json:"number_of_dropped_events"`
-	NodeName              string    `json:"node_name"`
-	Time                  time.Time `json:"time"`
+	NumberOfDroppedEvents uint64 `json:"number_of_dropped_events"`
 }
 
 type RateLimitInfoEvent struct {
-	*RateLimitInfo `json:"rate_limit_info"`
+	RateLimitInfo *RateLimitInfo `json:"rate_limit_info"`
+	NodeName      string         `json:"node_name"`
+	Time          time.Time      `json:"time"`
 }
 
 func (r *RateLimiter) reportRateLimitInfo(encoder *json.Encoder) {
@@ -59,11 +68,9 @@ func (r *RateLimiter) reportRateLimitInfo(encoder *json.Encoder) {
 			dropped := atomic.SwapUint64(&r.dropped, 0)
 			if dropped > 0 {
 				err := encoder.Encode(&RateLimitInfoEvent{
-					&RateLimitInfo{
-						NumberOfDroppedEvents: dropped,
-						NodeName:              getNodeNameForExport(),
-						Time:                  time.Now(),
-					},
+					RateLimitInfo: &RateLimitInfo{NumberOfDroppedEvents: dropped},
+					NodeName:      getNodeNameForExport(),
+					Time:          time.Now(),
 				})
 				if err != nil {
 					logger.GetLogger().

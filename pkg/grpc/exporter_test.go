@@ -180,7 +180,7 @@ func checkEvents(t *testing.T, eventsJSON []string, wantEvents, wantRateLimitInf
 			gotDropped += r.RateLimitInfo.NumberOfDroppedEvents
 			decoded++
 
-			if nn := r.RateLimitInfo.NodeName; nn != nodeName {
+			if nn := r.NodeName; nn != nodeName {
 				t.Errorf("unexpected node name for rate-limit-info event: got %q, want %q", nn, nodeName)
 			}
 		}
