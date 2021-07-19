@@ -36,11 +36,11 @@ func Test_getLimit(t *testing.T) {
 
 func Test_rateLimitJSON(t *testing.T) {
 	ev := RateLimitInfoEvent{
-		RateLimitInfo: &RateLimitInfo{NumberOfDroppedEvents: 10},
+		RateLimitInfo: &RateLimitInfo{NumberOfDroppedProcessEvents: 10},
 		NodeName:      "my-node",
 		Time:          time.Time{},
 	}
 	b, err := json.Marshal(ev)
 	assert.NoError(t, err)
-	assert.Equal(t, `{"rate_limit_info":{"number_of_dropped_events":10},"node_name":"my-node","time":"0001-01-01T00:00:00Z"}`, string(b))
+	assert.Equal(t, `{"rate_limit_info":{"number_of_dropped_process_events":10},"node_name":"my-node","time":"0001-01-01T00:00:00Z"}`, string(b))
 }

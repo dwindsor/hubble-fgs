@@ -177,7 +177,7 @@ func checkEvents(t *testing.T, eventsJSON []string, wantEvents, wantRateLimitInf
 				t.Fatalf("failed to unmarshal JSON event %q: %v", event, err)
 			}
 			gotRateLimitInfo++
-			gotDropped += r.RateLimitInfo.NumberOfDroppedEvents
+			gotDropped += r.RateLimitInfo.NumberOfDroppedProcessEvents
 			decoded++
 
 			if nn := r.NodeName; nn != nodeName {
