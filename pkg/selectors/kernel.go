@@ -81,7 +81,7 @@ func MatchActionSigKill(spec *v1alpha1.KProbeSpec) bool {
 	sels := spec.Selectors
 	for _, s := range sels {
 		for _, act := range s.MatchActions {
-			if act.Action == actionTypeStringTable[actionTypeSigKill] {
+			if strings.ToLower(act.Action) == actionTypeStringTable[actionTypeSigKill] {
 				return true
 			}
 		}
