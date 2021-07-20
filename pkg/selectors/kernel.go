@@ -353,13 +353,13 @@ func parseSelector(
 	selectors *v1alpha1.KProbeSelector,
 	args []v1alpha1.KProbeArg) error {
 	if err := parseMatchPids(k, selectors.MatchPIDs); err != nil {
-		return fmt.Errorf("parseMatchPids error: %x", err)
+		return fmt.Errorf("parseMatchPids error: %w", err)
 	}
 	if err := parseMatchArgs(k, selectors.MatchArgs, args); err != nil {
-		return fmt.Errorf("parseMatchArgs  error: %x", err)
+		return fmt.Errorf("parseMatchArgs  error: %w", err)
 	}
 	if err := parseMatchActions(k, selectors.MatchActions); err != nil {
-		return fmt.Errorf("parseMatchActions error: %x", err)
+		return fmt.Errorf("parseMatchActions error: %w", err)
 	}
 	return nil
 }
