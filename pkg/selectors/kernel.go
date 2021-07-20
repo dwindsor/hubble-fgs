@@ -15,6 +15,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"strconv"
+	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -65,13 +66,13 @@ const (
 )
 
 var actionTypeTable = map[string]uint32{
-	"post_event": actionTypePost,
-	"followfd":   actionTypeFollowFd,
-	"sigkill":    actionTypeSigKill,
+	"post":     actionTypePost,
+	"followfd": actionTypeFollowFd,
+	"sigkill":  actionTypeSigKill,
 }
 
 var actionTypeStringTable = map[uint32]string{
-	actionTypePost:     "post_event",
+	actionTypePost:     "post",
 	actionTypeFollowFd: "followfd",
 	actionTypeSigKill:  "sigkill",
 }
@@ -324,7 +325,7 @@ func parseMatchArgs(k *kernelSelectorState, args []v1alpha1.ArgSelector, sig []v
 }
 
 func parseMatchAction(k *kernelSelectorState, action *v1alpha1.ActionSelector) error {
-	act, ok := actionTypeTable[action.Action]
+	act, ok := actionTypeTable[strings.ToLower(action.Action)]
 	if !ok {
 		return fmt.Errorf("parseMatchAction: actionType %s unknown\n", action.Action)
 	}

@@ -238,11 +238,11 @@ func TestParseMatchPid(t *testing.T) {
 }
 
 func TestParseMatchAction(t *testing.T) {
-	act1 := &v1alpha1.ActionSelector{Action: "post_event"}
-	act2 := &v1alpha1.ActionSelector{Action: "post_event"}
+	act1 := &v1alpha1.ActionSelector{Action: "post"}
+	act2 := &v1alpha1.ActionSelector{Action: "post"}
 	k := &kernelSelectorState{off: 0}
 	expected1 := []byte{
-		0x00, 0x00, 0x00, 0x00, // Action = "post_event"
+		0x00, 0x00, 0x00, 0x00, // Action = "post"
 	}
 	if err := parseMatchAction(k, act1); err != nil || bytes.Equal(expected1, k.e[0:k.off]) == false {
 		t.Errorf("parseMatchAction: error %v expected %v bytes %v parsing %v\n", err, expected1, k.e[0:k.off], act1)
@@ -251,7 +251,7 @@ func TestParseMatchAction(t *testing.T) {
 	// but once we get two we will update this. Point being we want to
 	// test multiple actions.
 	expected2 := []byte{
-		0x00, 0x00, 0x00, 0x00, // Action = "post_event"
+		0x00, 0x00, 0x00, 0x00, // Action = "post"
 	}
 	length := []byte{12, 0x00, 0x00, 0x00}
 	expected := append(length, expected1[:]...)
@@ -315,7 +315,7 @@ func TestInitKernelSelectors(t *testing.T) {
 
 		// actions header
 		20, 0x00, 0x00, 0x00, // size = (sizeof(uint32) * number of actions)  + 4
-		0x00, 0x00, 0x00, 0x00, // post_event to userspace
+		0x00, 0x00, 0x00, 0x00, // post to userspace
 		0x01, 0x00, 0x00, 0x00, // fdinstall
 		0x00, 0x00, 0x00, 0x00, // arg index of fd
 		0x01, 0x00, 0x00, 0x00, // arg index of string filename
@@ -328,7 +328,7 @@ func TestInitKernelSelectors(t *testing.T) {
 	pid2 := &v1alpha1.PIDSelector{Operator: "NotIn", Values: []uint32{1, 2, 3, 4}, IsNamespacePID: false, FollowForks: false}
 	matchPids := []v1alpha1.PIDSelector{*pid1, *pid2}
 
-	act1 := &v1alpha1.ActionSelector{Action: "post_event"}
+	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "followfd",
 		ArgFd:   0,
 		ArgName: 1}

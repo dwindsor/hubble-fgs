@@ -133,8 +133,8 @@ spec:
                                   description: Action to execute.
                                   enum:
                                   - Post
-                                  - followFD
-                                  - SigKill
+                                  - FollowFD
+                                  - Sigkill
                                   type: string
                                 argFd:
                                   description: An arg index for the fd for fdInstall action
@@ -296,8 +296,8 @@ spec:
                                   description: Action to execute.
                                   enum:
                                   - Post
-                                  - followFD
-                                  - SigKill
+                                  - FollowFD
+                                  - Sigkill
                                   type: string
                                 argFd:
                                   description: An arg index for the fd for fdInstall action
