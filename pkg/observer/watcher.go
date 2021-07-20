@@ -93,7 +93,7 @@ func watchTracePolicy(s *ObserverSync, ctx context.Context) {
 				"oldPolicy": oldPolicy.Spec,
 				"newPolicy": newPolicy.Spec,
 			}).Info("tracing policy updated")
-			err := s.RemoveSensor(ctx, oldPolicy.ObjectMeta.Name)
+			err := s.DelTracingPolicy(ctx, oldPolicy.ObjectMeta.Name)
 			if err != nil {
 				log.WithError(err).Warnf("Failed to remove sensor %s to perform update", oldPolicy.ObjectMeta.Name)
 				return
@@ -111,7 +111,7 @@ func watchTracePolicy(s *ObserverSync, ctx context.Context) {
 				return
 			}
 			logger.GetLogger().WithField("policy", policy.Spec).Info("tracing policy deleted")
-			err := s.RemoveSensor(ctx, policy.ObjectMeta.Name)
+			err := s.DelTracingPolicy(ctx, policy.ObjectMeta.Name)
 			if err != nil {
 				log.WithError(err).Warnf("Failed to remove sensor %s to perform update", policy.ObjectMeta.Name)
 				return

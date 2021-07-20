@@ -295,6 +295,11 @@ message AddTracingPolicyRequest {
 }
 message AddTracingPolicyResponse {}
 
+message DeleteTracingPolicyRequest {
+	string yaml = 1;
+}
+message DeleteTracingPolicyResponse {}
+
 message RemoveSensorRequest {
 	string name = 1;
 }

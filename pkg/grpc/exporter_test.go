@@ -112,6 +112,11 @@ func (f *fakeObserver) GetTreeProto(ctx context.Context, tname string) (*fgs.Sta
 func (f *fakeObserver) AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error {
 	return nil
 }
+
+func (f *fakeObserver) DelTracingPolicy(ctx context.Context, sensorName string) error {
+	return nil
+}
+
 func (f *fakeObserver) RemoveSensor(ctx context.Context, sensorName string) error {
 	return nil
 }

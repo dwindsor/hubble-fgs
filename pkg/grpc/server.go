@@ -27,6 +27,7 @@ import (
 
 type observer interface {
 	AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error
+	DelTracingPolicy(ctx context.Context, sensorName string) error
 	EnableSensor(ctx context.Context, name string) error
 	DisableSensor(ctx context.Context, name string) error
 	ListSensors(ctx context.Context) (*[]api.SensorStatus, error)
@@ -143,6 +144,17 @@ func (s *Server) AddTracingPolicy(ctx context.Context, req *fgs.AddTracingPolicy
 	return &fgs.AddTracingPolicyResponse{}, nil
 }
 
+func (s *Server) DelTracingPolicy(ctx context.Context, req *fgs.DeleteTracingPolicyRequest) (*fgs.DeleteTracingPolicyResponse, error) {
+	logger.GetLogger().WithField("request", req).Debug("Received an DeleteTracingPolicy request")
+	conf, err := config.ReadConfigYaml(req.GetYaml())
+	if err != nil {
+		return nil, err
+	}
+	if err := s.observer.DelTracingPolicy(ctx, conf.Metadata.Name); err != nil {
+		return nil, err
+	}
+	return &fgs.DeleteTracingPolicyResponse{}, nil
+}
 func (s *Server) RemoveSensor(ctx context.Context, req *fgs.RemoveSensorRequest) (*fgs.RemoveSensorResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received a RemoveTracingPolicy request")
 	if err := s.observer.RemoveSensor(ctx, req.GetName()); err != nil {

@@ -109,6 +109,7 @@ func registerSensorAtInit(s *observerSensor) {
 
 // There are 6 commands that can be passed to the controller goroutine:
 // - tracingPolicyAdd
+// - tracingPolicyDel
 // - sensorList
 // - sensorEnable
 // - sensorDisable
@@ -120,6 +121,12 @@ type tracingPolicyAdd struct {
 	ctx        context.Context
 	sensorName string
 	spec       *v1alpha1.TracingPolicySpec
+	retChan    chan error
+}
+
+type tracingPolicyDel struct {
+	ctx        context.Context
+	sensorName string
 	retChan    chan error
 }
 
@@ -194,6 +201,7 @@ type sensorOp interface {
 
 // trivial sensorOpDone implementations for commands
 func (s *tracingPolicyAdd) sensorOpDone(e error) { s.retChan <- e }
+func (s *tracingPolicyDel) sensorOpDone(e error) { s.retChan <- e }
 func (s *sensorAdd) sensorOpDone(e error)        { s.retChan <- e }
 func (s *sensorRemove) sensorOpDone(e error)     { s.retChan <- e }
 func (s *sensorEnable) sensorOpDone(e error)     { s.retChan <- e }
@@ -247,6 +255,17 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 						break
 					}
 				}
+
+			case *tracingPolicyDel:
+				sensor, exists := availableSensors[op.sensorName]
+				if !exists {
+					err = fmt.Errorf("sensor %s does not exist", op.sensorName)
+					break
+				}
+				if err = observerUnloadSensor(bpfDir, mapDir, sensor, op.ctx); err == nil {
+					delete(availableSensors, op.sensorName)
+				}
+
 			case *sensorAdd:
 				if _, exists := availableSensors[op.name]; exists {
 					err = fmt.Errorf("sensor %s already exists", op.name)
@@ -475,6 +494,21 @@ func (h *ObserverSync) AddTracingPolicy(ctx context.Context, sensorName string, 
 		ctx:        ctx,
 		sensorName: sensorName,
 		spec:       spec,
+		retChan:    retc,
+	}
+
+	h.sensorCtl <- op
+	err := <-retc
+
+	return err
+}
+
+// DelTracingPolicy deletes a new sensor based on a tracing policy
+func (h *ObserverSync) DelTracingPolicy(ctx context.Context, sensorName string) error {
+	retc := make(chan error)
+	op := &tracingPolicyDel{
+		ctx:        ctx,
+		sensorName: sensorName,
 		retChan:    retc,
 	}
 
