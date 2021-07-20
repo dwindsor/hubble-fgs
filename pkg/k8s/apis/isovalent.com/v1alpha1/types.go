@@ -126,10 +126,10 @@ type ActionSelector struct {
 	Action string `json:"action"`
 	// +kubebuilder:validation:Optional
 	// An arg index for the fd for fdInstall action
-	ArgFd uint32 `json:"fd"`
+	ArgFd uint32 `json:"argFd"`
 	// +kubebuilder:validation:Optional
 	// An arg index for the filename for fdInstall action
-	ArgName uint32 `json:"name"`
+	ArgName uint32 `json:"argName"`
 }
 
 type TracepointSpec struct {

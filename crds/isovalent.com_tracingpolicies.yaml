@@ -136,11 +136,11 @@ spec:
                                   - followFD
                                   - SigKill
                                   type: string
-                                fd:
+                                argFd:
                                   description: An arg index for the fd for fdInstall action
                                   format: int32
                                   type: integer
-                                name:
+                                argName:
                                   description: An arg index for the filename for fdInstall action
                                   format: int32
                                   type: integer
@@ -299,11 +299,11 @@ spec:
                                   - followFD
                                   - SigKill
                                   type: string
-                                fd:
+                                argFd:
                                   description: An arg index for the fd for fdInstall action
                                   format: int32
                                   type: integer
-                                name:
+                                argName:
                                   description: An arg index for the filename for fdInstall action
                                   format: int32
                                   type: integer
