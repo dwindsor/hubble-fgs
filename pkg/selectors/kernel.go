@@ -264,6 +264,9 @@ func parseMatchValues(k *kernelSelectorState, values []string, ty uint32) error 
 		switch ty {
 		case argTypeFd, argTypeFile:
 			mnt := "/"
+			if strings.HasPrefix(v, "/") {
+				v = v[1:]
+			}
 			swapV := mnt + reader.SwapPath(v)
 			value, size := argSelectorValue(swapV)
 			writeSelectorUint32(k, size)
