@@ -673,6 +673,15 @@ func (pm *ProcessManager) GetProcessExec(
 		fgsParent = parent.process
 	}
 	for _, a := range ancestors {
+		// If we have a docker link, but the pod info lookup
+		// failed then this is a nested docker environment. In
+		// this case inherit the pod-info from our ancestors.
+		if fgsProcess.Docker != "" &&
+			fgsProcess.Pod == nil &&
+			a.process.Pod != nil {
+			pod := *a.process.Pod
+			fgsProcess.Pod = &pod
+		}
 		fgsAncestors = append(fgsAncestors, a.process)
 	}
 	// If this is not a clone we need to decrement parent refcnt because
