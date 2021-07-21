@@ -1916,6 +1916,201 @@ var _ interface {
 	ErrorName() string
 } = ProcessTracepointValidationError{}
 
+// Validate checks the field values on SockInfo with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *SockInfo) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for SourceIp
+
+	if v, ok := interface{}(m.GetSourcePort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return SockInfoValidationError{
+				field:  "SourcePort",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for DestinationIp
+
+	if v, ok := interface{}(m.GetDestinationPort()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return SockInfoValidationError{
+				field:  "DestinationPort",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for SockCookie
+
+	return nil
+}
+
+// SockInfoValidationError is the validation error returned by
+// SockInfo.Validate if the designated constraints aren't met.
+type SockInfoValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e SockInfoValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e SockInfoValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e SockInfoValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e SockInfoValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e SockInfoValidationError) ErrorName() string { return "SockInfoValidationError" }
+
+// Error satisfies the builtin error interface
+func (e SockInfoValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sSockInfo.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = SockInfoValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = SockInfoValidationError{}
+
+// Validate checks the field values on ProcessSockStats with the rules defined
+// in the proto definition for this message. If any rules are violated, an
+// error is returned.
+func (m *ProcessSockStats) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetProcess()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessSockStatsValidationError{
+				field:  "Process",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetParent()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessSockStatsValidationError{
+				field:  "Parent",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetSocket()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessSockStatsValidationError{
+				field:  "Socket",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetStats()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessSockStatsValidationError{
+				field:  "Stats",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// ProcessSockStatsValidationError is the validation error returned by
+// ProcessSockStats.Validate if the designated constraints aren't met.
+type ProcessSockStatsValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ProcessSockStatsValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ProcessSockStatsValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ProcessSockStatsValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ProcessSockStatsValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ProcessSockStatsValidationError) ErrorName() string { return "ProcessSockStatsValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ProcessSockStatsValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sProcessSockStats.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ProcessSockStatsValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ProcessSockStatsValidationError{}
+
 // Validate checks the field values on Test with the rules defined in the proto
 // definition for this message. If any rules are violated, an error is returned.
 func (m *Test) Validate() error {
@@ -4524,6 +4719,18 @@ func (m *GetEventsResponse) Validate() error {
 			if err := v.Validate(); err != nil {
 				return GetEventsResponseValidationError{
 					field:  "ProcessTracepoint",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *GetEventsResponse_ProcessSockstats:
+
+		if v, ok := interface{}(m.GetProcessSockstats()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsResponseValidationError{
+					field:  "ProcessSockstats",
 					reason: "embedded message failed validation",
 					cause:  err,
 				}

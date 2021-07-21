@@ -198,6 +198,21 @@ message ProcessTracepoint {
     repeated KprobeArgument args = 6;
 }
 
+message SockInfo {
+    string source_ip = 1;
+    google.protobuf.UInt32Value source_port = 2;
+    string destination_ip = 3;
+    google.protobuf.UInt32Value destination_port = 4;
+    uint64 sock_cookie = 5;
+}
+
+message ProcessSockStats {
+    Process process = 1;
+    Process parent = 2;
+    SockInfo socket = 3;
+    SocketStats stats = 4;
+}
+
 message Test {
 	uint64 arg0 = 1;
 	uint64 arg1 = 2;
@@ -440,6 +455,7 @@ message GetEventsResponse {
         ProcessCred process_cred = 8;
         ProcessKprobe process_kprobe = 9;
         ProcessTracepoint process_tracepoint = 10;
+        ProcessSockStats process_sockstats = 11;
 
         Test test = 40000;
     }
@@ -469,6 +485,7 @@ enum EventType {
 	PROCESS_CRED = 10;
 	PROCESS_KPROBE = 13;
 	PROCESS_TRACEPOINT = 14;
+	PROCESS_SOCKSTATS = 15;
 
 	TEST = 254;
 }
