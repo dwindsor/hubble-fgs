@@ -76,6 +76,9 @@ const (
 	MSG_OP_GENERIC_KPROBE     = 13
 	MSG_OP_GENERIC_TRACEPOINT = 14
 
+	// MSG_OP_TCPSTATS event report socket stats for TCP sockets.
+	MSG_OP_IPV4_TCPSTATS = 15
+
 	// just for testing
 	MSG_OP_TEST = 254
 )

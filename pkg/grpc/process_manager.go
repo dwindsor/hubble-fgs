@@ -250,6 +250,17 @@ func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.Ge
 				Time:     ktimeToProto(msg.Common.Ktime),
 			}
 		}
+
+	case api.MSG_OP_IPV4_TCPSTATS:
+		s := pm.GetProcessSockStats(msg)
+		if s != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessSockstats{ProcessSockstats: s},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
+		}
+
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")
 	}
@@ -906,6 +917,74 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	if proc == nil || (proc.Docker != "" && proc.Pod == nil) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	return fgsEvent
+}
+
+func (pm *ProcessManager) getProcessTuple(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.SockInfo {
+	var sourcePort, destinationPort *wrappers.UInt32Value
+
+	if event.Tuple.SPort != 0 {
+		sourcePort = &wrappers.UInt32Value{
+			Value: uint32(reader.GetSport(event.Tuple.SPort)),
+		}
+	}
+	if event.Tuple.DPort != 0 {
+		destinationPort = &wrappers.UInt32Value{
+			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
+		}
+	}
+
+	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
+
+	return &fgs.SockInfo{
+		SourcePort:      sourcePort,
+		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		DestinationIp:   destinationIP.String(),
+		DestinationPort: destinationPort,
+		SockCookie:      event.SockCookie,
+	}
+}
+
+// GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
+func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessSockStats {
+	var fgsParent, fgsProcess *fgs.Process
+
+	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process == nil {
+		fgsProcess = &fgs.Process{
+			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
+	} else {
+		fgsProcess = process.process
+	}
+	if parent == nil {
+		fgsParent = &fgs.Process{}
+	} else {
+		fgsParent = parent.process
+	}
+
+	fgsTuple := pm.getProcessTuple(event)
+	fgsSocketStats := reader.GetSocketStats(&event.SocketStats)
+
+	fgsEvent := &fgs.ProcessSockStats{
+		Process: fgsProcess,
+		Parent:  fgsParent,
+		Socket:  fgsTuple,
+		Stats:   fgsSocketStats,
+	}
+
+	if fgsProcess.Docker != "" {
+		endpoint := pm.getProcessEndpoint(fgsProcess)
+		// Its possible to receive an event before its podInfo is received in
+		// this case we don't want to block waiting for it (we may have more
+		// events in the queue) so instead send it to a queue to be processed
+		// later.
+		if pm.enableEventCache == true && (endpoint == nil || fgsEvent.Process.Pod == nil) {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+			return nil
+		}
 	}
 	return fgsEvent
 }
