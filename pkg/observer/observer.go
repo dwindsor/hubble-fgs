@@ -538,6 +538,9 @@ type ObserverKprobe struct {
 
 	/* Sensor Controller */
 	ObserverSync *ObserverSync
+
+	/* Sock Statistic */
+	tcpStatSegRate uint32
 }
 
 func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
@@ -596,7 +599,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	}
 
 	k.startUpdateMapMetrics()
-	if err := k.configureSockStatSampler(128); err != nil {
+	if err := k.configureSockStatSampler(k.tcpStatSegRate); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting sample config error: %w", err)
 	}
 	k.populateExecve(ctx)
@@ -608,20 +611,21 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 }
 
 func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string, genericTracepoints []GenericTracepointConf,
-	tls, tlstc, pretty, crd bool) *ObserverKprobe {
+	tls, tlstc, pretty, crd bool, tcpStatRate uint32) *ObserverKprobe {
 	return &ObserverKprobe{
-		bpfDir:        bpfDir,
-		mapDir:        mapDir,
-		ciliumDir:     ciliumDir,
-		interfaces:    interfaces,
-		enableTLS:     tls,
-		enableTLSTC:   tlstc,
-		prettyPrinter: pretty,
-		listeners:     make(map[Listener]struct{}),
-		log:           logger.GetLogger(),
-		tlsInProgress: make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
-		configFile:    configFile,
-		enableCRD:     crd,
+		bpfDir:         bpfDir,
+		mapDir:         mapDir,
+		ciliumDir:      ciliumDir,
+		interfaces:     interfaces,
+		enableTLS:      tls,
+		enableTLSTC:    tlstc,
+		prettyPrinter:  pretty,
+		listeners:      make(map[Listener]struct{}),
+		log:            logger.GetLogger(),
+		tlsInProgress:  make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
+		configFile:     configFile,
+		enableCRD:      crd,
+		tcpStatSegRate: tcpStatRate,
 	}
 }
 

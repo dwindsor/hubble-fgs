@@ -75,7 +75,7 @@ func hubbleFGSExecute() error {
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
 		networkInterfaces, configFile, []observer.GenericTracepointConf{},
 		tls, tlstc,
-		debug, enableK8sAPI)
+		debug, enableK8sAPI, exportTCPStatsSampleSeg)
 
 	/* Remove any stale programs, otherwise feature set change can cause
 	 * old programs to linger resulting in undefined behavior. And because
@@ -305,6 +305,9 @@ func execute() error {
 	// JSON export filter options
 	flags.String(keyExportAllowlist, "", "JSON export allowlist")
 	flags.String(keyExportDenylist, "", "JSON export denylist")
+
+	// TCP Statisticss options
+	flags.Uint32(keyTCPStatsSampleSeg, 0, "TCP statistics sample seg rate")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()

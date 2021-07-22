@@ -59,6 +59,8 @@ const (
 
 	keyExportAllowlist = "export-allowlist"
 	keyExportDenylist  = "export-denylist"
+
+	keyTCPStatsSampleSeg = "tcp-stats-sample-segs"
 )
 
 var (
@@ -90,6 +92,9 @@ var (
 	enableExportAggregation     bool
 	exportAggregationWindowSize time.Duration
 	exportAggregationBufferSize uint64
+
+	// Sample confiugration options
+	exportTCPStatsSampleSeg uint32
 )
 
 func readAndSetFlags() {
@@ -127,4 +132,6 @@ func readAndSetFlags() {
 	enableExportAggregation = viper.GetBool(keyEnableExportAggregation)
 	exportAggregationWindowSize = viper.GetDuration(keyExportAggregationWindowSize)
 	exportAggregationBufferSize = viper.GetUint64(keyExportAggregationBufferSize)
+
+	exportTCPStatsSampleSeg = viper.GetUint32(keyTCPStatsSampleSeg)
 }

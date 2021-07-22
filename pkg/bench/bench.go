@@ -43,7 +43,7 @@ type BenchArguments struct {
 	Baseline      bool
 
 	RequestResponse bool
-	UseNetperf bool
+	UseNetperf      bool
 	ReqSize         int
 }
 
@@ -112,7 +112,8 @@ func runFgs(fgsEnableTls, fgsDebug bool, summary *BenchSummary, ctx context.Cont
 		"" /* network interfaces */, "", /* config file */
 		[]observer.GenericTracepointConf{},
 		fgsEnableTls /* tls */, false, /* tlstc */
-		fgsDebug /* debug */, false /* enable-crd */)
+		fgsDebug /* debug */, false, /* enable-crd */
+		0 /* tcp statistics */)
 
 	defer kprobe.RemovePrograms()
 
