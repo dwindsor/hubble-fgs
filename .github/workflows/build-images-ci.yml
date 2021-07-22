@@ -13,6 +13,15 @@ on:
 jobs:
   build-and-push-prs:
     runs-on: ubuntu-20.04
+    strategy:
+      matrix:
+        include:
+          - name: hubble-enterprise
+            dockerfile: ./Dockerfile
+
+          - name: hubble-enterprise-operator
+            dockerfile: ./operator.Dockerfile
+
     steps:
       - name: Login to quay.io for CI
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
@@ -43,20 +52,20 @@ jobs:
         id: docker_build_ci_master
         with:
           context: .
-          file: ./Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
           platforms: linux/amd64
           tags: |
-            quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:latest
-            quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:${{ steps.tag.outputs.tag }}
+            quay.io/${{ github.repository_owner }}/${{ matrix.name }}-ci:latest
+            quay.io/${{ github.repository_owner }}/${{ matrix.name }}-ci:${{ steps.tag.outputs.tag }}
 
       - name: CI Image Releases digests (master)
         if: ${{ github.event_name != 'pull_request_target' }}
         shell: bash
         run: |
           mkdir -p image-digest/
-          echo "quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:latest@${{ steps.docker_build_ci_master.outputs.digest }}" > image-digest/hubble-enterprise.txt
-          echo "quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_ci_master.outputs.digest }}" >> image-digest/hubble-enterprise.txt
+          echo "quay.io/${{ github.repository_owner }}/${{ matrix.name }}-ci:latest@${{ steps.docker_build_ci_master.outputs.digest }}" > image-digest/${{ matrix.name }}.txt
+          echo "quay.io/${{ github.repository_owner }}/${{ matrix.name }}-ci:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_ci_master.outputs.digest }}" >> image-digest/${{ matrix.name }}.txt
 
       # PR updates
       - name: CI Build (PR)
@@ -65,24 +74,24 @@ jobs:
         id: docker_build_ci_pr
         with:
           context: .
-          file: ./Dockerfile
+          file: ${{ matrix.dockerfile }}
           push: true
           platforms: linux/amd64
           tags: |
-            quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:${{ steps.tag.outputs.tag }}
+            quay.io/${{ github.repository_owner }}/${{ matrix.name }}-ci:${{ steps.tag.outputs.tag }}
 
       - name: CI Image Releases digests (PR)
         if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         run: |
           mkdir -p image-digest/
-          echo "quay.io/${{ github.repository_owner }}/hubble-enterprise-ci:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_ci_pr.outputs.digest }}" >> image-digest/hubble-enterprise.txt
+          echo "quay.io/${{ github.repository_owner }}/${{ matrix.name }}-ci:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_ci_pr.outputs.digest }}" >> image-digest/${{ matrix.name }}.txt
 
       # Upload artifact digests
       - name: Upload artifact digests
         uses: actions/upload-artifact@27121b0bdffd731efa15d66772be8dc71245d074
         with:
-          name: image-digest hubble-enterprise
+          name: image-digest ${{ matrix.name }}
           path: image-digest
           retention-days: 1
 
