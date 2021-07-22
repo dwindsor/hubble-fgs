@@ -12,7 +12,24 @@
 package v1alpha1
 
 import (
+	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
+)
+
+const (
+	// Tracing Policy (TP)
+
+	// TPSingularName is the singular name of Cilium Egress NAT Policy
+	TPSingularName = "tracingpolicy"
+
+	// TPPluralName is the plural name of Cilium Egress NAT Policy
+	TPPluralName = "tracingpolicies"
+
+	// TPKindDefinition is the kind name of Cilium Egress NAT Policy
+	TPKindDefinition = "TracingPolicy"
+
+	// TPName is the full name of Cilium Egress NAT Policy
+	TPName = TPPluralName + "." + isovalentcom.GroupName
 )
 
 // +genclient

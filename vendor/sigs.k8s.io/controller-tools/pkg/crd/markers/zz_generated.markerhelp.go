@@ -139,17 +139,6 @@ func (MaxLength) Help() *markers.DefinitionHelp {
 	}
 }
 
-func (MaxProperties) Help() *markers.DefinitionHelp {
-	return &markers.DefinitionHelp{
-		Category: "CRD validation",
-		DetailedHelp: markers.DetailedHelp{
-			Summary: "restricts the number of keys in an object",
-			Details: "",
-		},
-		FieldHelp: map[string]markers.DetailedHelp{},
-	}
-}
-
 func (Maximum) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
@@ -183,22 +172,11 @@ func (MinLength) Help() *markers.DefinitionHelp {
 	}
 }
 
-func (MinProperties) Help() *markers.DefinitionHelp {
-	return &markers.DefinitionHelp{
-		Category: "CRD validation",
-		DetailedHelp: markers.DetailedHelp{
-			Summary: "restricts the number of keys in an object",
-			Details: "",
-		},
-		FieldHelp: map[string]markers.DetailedHelp{},
-	}
-}
-
 func (Minimum) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
 		DetailedHelp: markers.DetailedHelp{
-			Summary: "specifies the minimum numeric value that this field can have. Negative integers are supported.",
+			Summary: "specifies the minimum numeric value that this field can have.",
 			Details: "",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{},
@@ -407,6 +385,17 @@ func (UnservedVersion) Help() *markers.DefinitionHelp {
 	}
 }
 
+func (TopLevelDesc) Help() *markers.DefinitionHelp {
+	return &markers.DefinitionHelp{
+		Category: "CRD",
+		DetailedHelp: markers.DetailedHelp{
+			Summary: "specifies that a top-level description field will be added to the validation schema.",
+			Details: "This is useful for CRDs that want a top-level description field to describe the resource.",
+		},
+		FieldHelp: map[string]markers.DetailedHelp{},
+	}
+}
+
 func (XEmbeddedResource) Help() *markers.DefinitionHelp {
 	return &markers.DefinitionHelp{
 		Category: "CRD validation",
@@ -423,7 +412,7 @@ func (XPreserveUnknownFields) Help() *markers.DefinitionHelp {
 		Category: "CRD processing",
 		DetailedHelp: markers.DetailedHelp{
 			Summary: "PreserveUnknownFields stops the apiserver from pruning fields which are not specified. ",
-			Details: "By default the apiserver drops unknown fields from the request payload during the decoding step. This marker stops the API server from doing so. It affects fields recursively, but switches back to normal pruning behaviour if nested  properties or additionalProperties are specified in the schema. This can either be true or undefined. False is forbidden. \n NB: The kubebuilder:validation:XPreserveUnknownFields variant is deprecated in favor of the kubebuilder:pruning:PreserveUnknownFields variant.  They function identically.",
+			Details: "By default the apiserver drops unknown fields from the request payload during the decoding step. This marker stops the API server from doing so. It affects fields recursively, but switches back to normal pruning behaviour if nested  properties or additionalProperties are specified in the schema. This can either be true or undefined. False is forbidden.",
 		},
 		FieldHelp: map[string]markers.DetailedHelp{},
 	}

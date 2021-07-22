@@ -41,6 +41,9 @@ hubble-fgs:
 hubble-enterprise:
 	$(GO) build -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-enterprise/
 
+hubble-enterprise-operator:
+	$(GO) build -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./operator
+
 .PHONY: ksyms
 ksyms:
 	$(GO) build ./cmd/ksyms/
@@ -104,6 +107,11 @@ image-btf:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
 
+image-operator:
+	$(CONTAINER_ENGINE) build -f operator.Dockerfile -t "isovalent/hubble-enterprise-operator:${DOCKER_IMAGE_TAG}" .
+	$(QUIET)echo "Push like this when ready:"
+	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-enterprise-operator:$(DOCKER_IMAGE_TAG)"
+
 image-test:
 	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
@@ -136,7 +144,7 @@ fetch-testdata:
 tools-install: libbpf-install clang-install
 
 generate:
-	./tools/controller-gen crd paths=./pkg/k8s/apis/... output:dir=./crds
+	./tools/controller-gen crd paths=./pkg/k8s/apis/... output:dir=pkg/k8s/apis/isovalent.com/client/crds/v1alpha1
 	bash vendor/k8s.io/code-generator/generate-groups.sh all \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \

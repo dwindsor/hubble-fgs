@@ -8,6 +8,9 @@ github.com/PuerkitoBio/urlesc
 github.com/asaskevich/govalidator
 # github.com/beorn7/perks v1.0.1
 github.com/beorn7/perks/quantile
+# github.com/blang/semver v3.5.0+incompatible
+## explicit
+github.com/blang/semver
 # github.com/cespare/xxhash/v2 v2.1.1
 github.com/cespare/xxhash/v2
 # github.com/cilium/cilium v1.7.0-rc2.0.20200311180626-711b37ed100c
@@ -55,6 +58,7 @@ github.com/cilium/cilium/pkg/safetime
 github.com/cilium/cilium/pkg/source
 github.com/cilium/cilium/pkg/spanstat
 github.com/cilium/cilium/pkg/version
+github.com/cilium/cilium/pkg/versioncheck
 # github.com/cilium/hubble v0.5.1
 ## explicit
 github.com/cilium/hubble/api/v1/flow
@@ -72,6 +76,8 @@ github.com/cilium/hubble/pkg/servicecache
 ## explicit
 github.com/ckaznocha/protoc-gen-lint
 github.com/ckaznocha/protoc-gen-lint/linter
+# github.com/cpuguy83/go-md2man/v2 v2.0.0
+github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/davecgh/go-spew v1.1.1
 github.com/davecgh/go-spew/spew
 # github.com/emicklei/go-restful v2.9.5+incompatible
@@ -210,9 +216,9 @@ github.com/magiconair/properties
 github.com/mailru/easyjson/buffer
 github.com/mailru/easyjson/jlexer
 github.com/mailru/easyjson/jwriter
-# github.com/mattn/go-colorable v0.1.2
+# github.com/mattn/go-colorable v0.0.9
 github.com/mattn/go-colorable
-# github.com/mattn/go-isatty v0.0.8
+# github.com/mattn/go-isatty v0.0.4
 github.com/mattn/go-isatty
 # github.com/matttproud/golang_protobuf_extensions v1.0.1
 github.com/matttproud/golang_protobuf_extensions/pbutil
@@ -252,8 +258,12 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
+# github.com/russross/blackfriday/v2 v2.0.1
+github.com/russross/blackfriday/v2
 # github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa
 github.com/sasha-s/go-deadlock
+# github.com/shurcooL/sanitized_anchor_name v1.0.0
+github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.4.2
 ## explicit
 github.com/sirupsen/logrus
@@ -266,6 +276,7 @@ github.com/spf13/cast
 # github.com/spf13/cobra v1.0.0
 ## explicit
 github.com/spf13/cobra
+github.com/spf13/cobra/doc
 # github.com/spf13/jwalterweatherman v1.0.0
 github.com/spf13/jwalterweatherman
 # github.com/spf13/pflag v1.0.5
@@ -343,6 +354,7 @@ golang.org/x/oauth2/jws
 golang.org/x/oauth2/jwt
 # golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
 ## explicit
+golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20201231184435-2d18734c6014
 ## explicit
@@ -462,13 +474,11 @@ gopkg.in/ini.v1
 # gopkg.in/natefinch/lumberjack.v2 v2.0.0
 ## explicit
 gopkg.in/natefinch/lumberjack.v2
-# gopkg.in/yaml.v2 v2.3.0
+# gopkg.in/yaml.v2 v2.4.0
 ## explicit
 gopkg.in/yaml.v2
 # gopkg.in/yaml.v3 v3.0.0-20190905181640-827449938966
 gopkg.in/yaml.v3
-# honnef.co/go/tools v0.0.1-2020.1.6
-## explicit
 # k8s.io/api v0.18.4
 ## explicit
 k8s.io/api/admissionregistration/v1
@@ -512,9 +522,14 @@ k8s.io/api/storage/v1
 k8s.io/api/storage/v1alpha1
 k8s.io/api/storage/v1beta1
 # k8s.io/apiextensions-apiserver v0.18.2
+## explicit
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1
 k8s.io/apiextensions-apiserver/pkg/apis/apiextensions/v1beta1
+k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset
+k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/scheme
+k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1
+k8s.io/apiextensions-apiserver/pkg/client/clientset/clientset/typed/apiextensions/v1beta1
 # k8s.io/apimachinery v0.18.4
 ## explicit
 k8s.io/apimachinery/pkg/api/equality
@@ -778,7 +793,7 @@ k8s.io/utils/buffer
 k8s.io/utils/integer
 k8s.io/utils/pointer
 k8s.io/utils/trace
-# sigs.k8s.io/controller-tools v0.4.1
+# sigs.k8s.io/controller-tools v0.4.1 => github.com/christarazi/controller-tools v0.3.1-0.20200911184030-7e668c1fb4c2
 ## explicit
 sigs.k8s.io/controller-tools/cmd/controller-gen
 sigs.k8s.io/controller-tools/pkg/crd
@@ -797,8 +812,10 @@ sigs.k8s.io/controller-tools/pkg/webhook
 # sigs.k8s.io/structured-merge-diff/v3 v3.0.0
 sigs.k8s.io/structured-merge-diff/v3/value
 # sigs.k8s.io/yaml v1.2.0
+## explicit
 sigs.k8s.io/yaml
 # github.com/miekg/dns => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3
 # github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
 # github.com/vishvananda/netlink => github.com/jrfastab/netlink v1.1.1
 # k8s.io/client-go => github.com/cilium/client-go v0.0.0-20200525133704-d13039a12d08
+# sigs.k8s.io/controller-tools => github.com/christarazi/controller-tools v0.3.1-0.20200911184030-7e668c1fb4c2
