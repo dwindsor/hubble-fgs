@@ -233,9 +233,10 @@ var (
 	/* Event Ring map */
 	ObserverTCPMonMap = ObserverMap{"tcpmon_map", "", &ObserverExecve, bpfLoadStateIdle(), -1}
 	/* Networking and Process Monitoring maps */
-	ObserverExecveMap = ObserverMap{"execve_map", "", &ObserverExecve, bpfLoadStateIdle(), -1}
-	ObserverSocketMap = ObserverMap{"socket_map", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1}
-	ObserverTcpMap    = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1} // NB: This seems to be unused?
+	ObserverExecveMap           = ObserverMap{"execve_map", "", &ObserverExecve, bpfLoadStateIdle(), -1}
+	ObserverSocketMap           = ObserverMap{"socket_map", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1}
+	ObserverTcpMap              = ObserverMap{"ipv4_tcp_map", "", &ObserverTCPConnect, bpfLoadStateIdle(), -1} // NB: This seems to be unused?
+	ObserverTcpSendCheckSampler = ObserverMap{"tcp_send_check_sampler", "", &ObserverTCPSendCheck, bpfLoadStateIdle(), -1}
 	/* Internal statistics for debugging */
 	ObserverExecveStats = ObserverMap{"execve_map_stats", "", &ObserverExecve, bpfLoadStateIdle(), -1}
 	ObserverSocketStats = ObserverMap{"socket_map_stats", "", &ObserverExecve, bpfLoadStateIdle(), -1}
@@ -252,6 +253,7 @@ var (
 		&ObserverSocketStats,
 		&ObserverTlsStats,
 		&ObserverCiliumSnat,
+		&ObserverTcpSendCheckSampler,
 	}
 )
 
@@ -337,6 +339,7 @@ func createInitialObserverSensor(enableTLS, enableTLSTC bool) *observerSensor {
 		&ObserverExecveStats,
 		&ObserverSocketStats,
 		&ObserverTlsStats, // NB: Maybe this should be under k.enableTLS?
+		&ObserverTcpSendCheckSampler,
 	}
 
 	// tlsSensor is special, it has both a CLI option and

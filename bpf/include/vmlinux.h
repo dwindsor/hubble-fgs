@@ -18,6 +18,8 @@ enum generic_func_args_enum {
 	argreturn = 0x31,
 	/* actions enabled */
 	sigkill = 0x40,
+	/* tcp sock stat sample info */
+	send_check_pkt_sample = 0x50,
 	/*
 	 * Tracepoints are using the same enum as kprobes
 	 */

@@ -596,6 +596,9 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	}
 
 	k.startUpdateMapMetrics()
+	if err := k.configureSockStatSampler(128); err != nil {
+		return fmt.Errorf("hubble-fgs, Aborting sample config error: %w", err)
+	}
 	k.populateExecve(ctx)
 	k.perfConfig = bpf.DefaultPerfEventConfig()
 	if err := k.runEvents(ctx); err != nil {

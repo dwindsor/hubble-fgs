@@ -25,6 +25,28 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 )
 
+type SockStatKey struct {
+	Zero uint32
+}
+
+func (k *SockStatKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
+func (k *SockStatKey) NewValue() bpf.MapValue     { return &SockStatValue{} }
+func (k *SockStatKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
+func (k *SockStatKey) DeepCopyMapKey() bpf.MapKey { return &SockStatKey{} }
+
+type SockStatValue struct {
+	SegsCntr   uint32
+	SegsSample uint32
+}
+
+func (v *SockStatValue) String() string {
+	return fmt.Sprintf("segsCntr: %d segsSample: %d", v.SegsCntr, v.SegsSample)
+}
+func (v *SockStatValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
+func (v *SockStatValue) DeepCopyMapValue() bpf.MapValue {
+	return &SockStatValue{}
+}
+
 type SocketMapKey struct {
 	Saddr     uint32
 	Daddr     uint32
@@ -214,4 +236,23 @@ func (k *ObserverKprobe) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map, 
 		Pad2:    0,
 	}
 	m.Update(key, val)
+}
+
+func (k *ObserverKprobe) configureSockStatSampler(sampleRate uint32) error {
+	m, err := bpf.OpenMap(filepath.Join(k.mapDir, ObserverTcpSendCheckSampler.mapName))
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	key := &SockStatKey{
+		Zero: uint32(0),
+	}
+	value := &SockStatValue{
+		SegsCntr:   0,
+		SegsSample: sampleRate,
+	}
+	m.Update(key, value)
+	k.log.Info("Configured TCP sock statistic sampler: ", value)
+	return nil
 }

@@ -22,17 +22,22 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
+struct tcp_send_check_sample_cfg {
+	__u32 segs_cntr;
+	__u32 segs_sample;
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_sampler = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(struct tcp_send_check_sample_cfg),
+	.max_entries = 1,
+};
+
 struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct msg_ipv4_tcp_event),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_sampler = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(__u32),
 	.max_entries = 1,
 };
 
@@ -52,15 +57,13 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 	 * we probably want this anyways to provide more data about these
 	 * types of flows. We can make a better algorithm if we want.
 	 */
-	const __u32 sample_segs = 128;
+	struct tcp_send_check_sample_cfg *cfg;
 	bool sample = false;
-	__u32 *sample_cntr;
 
-	sample_cntr = map_lookup_elem(&tcp_send_check_sampler, &zero);
-	if (sample_cntr) {
+	cfg = map_lookup_elem(&tcp_send_check_sampler, &zero);
+	if (!cfg)
 		return 0;
-	}
-	sample = !!(*sample_cntr++ % sample_segs);
+	sample = !(cfg->segs_cntr++ % cfg->segs_sample);
 
 	/* Check for zero window event. On zero window events we want to
 	 * do some extra accounting to report these events to user space.
@@ -69,7 +72,7 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 	tcp = (struct tcp_sock *)skp;
 
 	probe_read(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
-	if (rcv_wnd | !sample)
+	if (rcv_wnd && !sample)
 		return 1;
 
 	/* Collect socket tuple and process info, updating state so close
