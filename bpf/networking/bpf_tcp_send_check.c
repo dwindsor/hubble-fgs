@@ -22,6 +22,20 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
+struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_event_map = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_sampler = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 1,
+};
+
 __attribute__((section(("kprobe/tcp_v4_send_check")), used))
 int event_tcp_v4_send_check(struct pt_regs *ctx)
 {
@@ -31,14 +45,37 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 	struct net *netns;
 	struct sock *skp;
 	__u32 rcv_wnd;
+	int zero = 0;
 
+	/* Stat events are generated using a sample rate, every N packets
+	 * for now. This will favor noisy flows over quieter flows, but
+	 * we probably want this anyways to provide more data about these
+	 * types of flows. We can make a better algorithm if we want.
+	 */
+	const __u32 sample_segs = 128;
+	bool sample = false;
+	__u32 *sample_cntr;
+
+	sample_cntr = map_lookup_elem(&tcp_send_check_sampler, &zero);
+	if (sample_cntr) {
+		return 0;
+	}
+	sample = !!(*sample_cntr++ % sample_segs);
+
+	/* Check for zero window event. On zero window events we want to
+	 * do some extra accounting to report these events to user space.
+	 */
 	skp = (void *)((ctx)->di);
 	tcp = (struct tcp_sock *)skp;
 
 	probe_read(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
-	if (rcv_wnd)
+	if (rcv_wnd | !sample)
 		return 1;
 
+	/* Collect socket tuple and process info, updating state so close
+	 * event will read zero window stats. If sampling we push event
+	 * to user space.
+	 */
 	probe_read(&tuple.saddr, sizeof(tuple.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
 	probe_read(&tuple.sport, sizeof(tuple.sport), _(&(skp->__sk_common.skc_num)));
 	probe_read(&tuple.daddr, sizeof(tuple.daddr), _(&(skp->__sk_common.skc_daddr)));
@@ -57,7 +94,38 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 	if (!is_tuple_local(&tuple))
 		tuple.uid = 0;
 	process = lookup_socketmap(&tuple);
-	if (process)
-		process->zero_window++;
+	if (process) {
+		struct msg_ipv4_tcp_event *val;
+		size_t size;
+
+		if (!rcv_wnd)
+			process->zero_window++;
+
+		if (!sample)
+			goto out;
+
+		val = map_lookup_elem(&tcp_send_check_event_map, &zero);
+		if (!val)
+			return 1;
+
+		*val = (struct msg_ipv4_tcp_event) {
+			.common.op = MSG_OP_IPV4_TCPSTATS,
+			.common.size = sizeof(struct msg_ipv4_tcp_event),
+			.common.ktime = ktime_get_ns(),
+
+			.key.pid = process->key.pid,
+			.key.ktime = process->key.ktime,
+
+			.tuple.saddr = tuple.saddr,
+			.tuple.daddr = tuple.saddr,
+			.tuple.dport = tuple.dport,
+			.tuple.sport = tuple.sport,
+			.socket_cookie = get_cookie(skp),
+		};
+		get_socket_stats(skp, netns, process->zero_window, &val->stats);
+		size = sizeof(struct msg_ipv4_tcp_event);
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+	}
+out:
 	return 1;
 }
