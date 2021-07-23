@@ -69,6 +69,14 @@ func procsFindDockerId(cgroups string) (string, int, error) {
 		if strings.Contains(s, "pids:") && (strings.Contains(s, "pods") || strings.Contains(s, "docker")) {
 			dockerFields := strings.Split(s, "/")
 			dockerString := dockerFields[len(dockerFields)-1]
+			// Special case for syscont-cgroup-root installed by
+			// sysbox nested containers. In this case set with
+			// outermost container.
+			if strings.Contains(dockerString, "syscont-cgroup-root") {
+				if len(dockerFields) > 4 {
+					dockerString = dockerFields[4]
+				}
+			}
 			docker, i, err := procsDockerIdOffset(dockerString)
 			// return first 31 chars to match BPF generated values.
 			// If the string is less than 31 chars its not a docker
