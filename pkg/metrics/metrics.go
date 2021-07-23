@@ -58,6 +58,40 @@ const (
 )
 
 var (
+	// TCP socket metrics
+	SocketStatsTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "isovalent_fgs_socket_stats_txbytes",
+		Help: "TCP socket TX bytes statistics",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsTxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "isovalent_fgs_socket_stats_txsegs",
+		Help: "TCP socket TX segment statistics",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "isovalent_fgs_socket_stats_rxbytes",
+		Help: "TCP socket RX bytes statistics",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "isovalent_fgs_socket_stats_rxsegs",
+		Help: "TCP socket RX segment statistics",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsRetranBytes = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "isovalent_fgs_socket_stats_retransmitbytes",
+		Help: "TCP socket retransmit bytes statistics",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsRetranSegs = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "isovalent_fgs_socket_stats_retransmitsegs",
+		Help: "TCP socket retransmit seg statistics",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsZeroWindow = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "isovalent_fgs_socket_stats_zerowindow",
+		Help: "TCP socket zero window events",
+	}, []string{"namespace", "pod", "binary"})
+	SocketStatsSrtt = promauto.NewSummaryVec(prometheus.SummaryOpts{
+		Name:       "isovalent_fgs_socket_stats_srtt",
+		Help:       "TCP socket smoothed RTT latency distribution.",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	}, []string{"namespace", "pod", "binary"})
 	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:        "isovalent_fgs_events_total",
 		Help:        "The total number of FGS events",
@@ -90,14 +124,15 @@ var (
 	}, []string{"type"})
 )
 
-func getProcessInfo(process *fgs.Process) (binary string, namespace string) {
+func getProcessInfo(process *fgs.Process) (binary, pod, namespace string) {
 	if process != nil {
 		binary = process.Binary
 		if process.Pod != nil {
 			namespace = process.Pod.Namespace
+			pod = process.Pod.Name
 		}
 	}
-	return binary, namespace
+	return binary, pod, namespace
 }
 
 func handleOriginalEvent(originalEvent interface{}) {
@@ -111,11 +146,46 @@ func handleOriginalEvent(originalEvent interface{}) {
 	}
 }
 
+func postSocketStats(ev *fgs.GetEventsResponse, s *fgs.SocketStats) {
+	binary, pod, namespace := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+
+	c := float64(s.BytesSent)
+	SocketStatsTxBytes.WithLabelValues(namespace, pod, binary).Add(c)
+	c = float64(s.SegsOut)
+	SocketStatsTxSegs.WithLabelValues(namespace, pod, binary).Add(c)
+
+	c = float64(s.BytesReceived)
+	SocketStatsRxBytes.WithLabelValues(namespace, pod, binary).Add(c)
+	c = float64(s.SegsIn)
+	SocketStatsRxSegs.WithLabelValues(namespace, pod, binary).Add(c)
+
+	c = float64(s.RetransmitsBytes)
+	SocketStatsRetranBytes.WithLabelValues(namespace, pod, binary).Add(c)
+	c = float64(s.RetransmitsSegs)
+	SocketStatsRetranSegs.WithLabelValues(namespace, pod, binary).Add(c)
+
+	c = float64(s.ToZeroWindow)
+	SocketStatsZeroWindow.WithLabelValues(namespace, pod, binary).Add(c)
+
+	c = float64(s.Srtt)
+	SocketStatsSrtt.WithLabelValues(namespace, pod, binary).Observe(c)
+}
+
+func handleSocketEvent(processedEvent interface{}) {
+	switch ev := processedEvent.(type) {
+	case *fgs.GetEventsResponse:
+		switch res := ev.Event.(type) {
+		case *fgs.GetEventsResponse_ProcessClose:
+			postSocketStats(ev, res.ProcessClose.Stats)
+		}
+	}
+}
+
 func handleProcessedEvent(processedEvent interface{}) {
 	var eventType, namespace, binary string
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
-		binary, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+		binary, _, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 		switch ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessConnect:
 			eventType = fgs.EventType_PROCESS_CONNECT.String()
@@ -147,12 +217,12 @@ func handleProcessedEvent(processedEvent interface{}) {
 		eventType = "unknown"
 	}
 	EventsProcessed.WithLabelValues(eventType, namespace, binary).Inc()
-
 }
 
 func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
 	handleOriginalEvent(originalEvent)
 	handleProcessedEvent(processedEvent)
+	handleSocketEvent(processedEvent)
 }
 
 func EnableMetrics(address string) {
