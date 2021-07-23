@@ -12,7 +12,6 @@ package observer
 
 import (
 	"context"
-	"errors"
 	"fmt"
 	"os"
 	"sync"
@@ -178,35 +177,38 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	exitWG.Wait()
 
 	tpEventsNr := 0
-	checkEventFn := func(event *fgs.GetEventsResponse, t *testing.T) error {
+	nextCheck := func(event *fgs.GetEventsResponse, l CheckerLogger) (bool, error) {
 		switch tpEvent := event.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessTracepoint:
 			if err := checkFn(tpEvent.ProcessTracepoint); err != nil {
-				return err
+				return false, err
 			}
 			eventPid := tpEvent.ProcessTracepoint.Process.Pid.Value
 			if int(eventPid) != pid {
-				return fmt.Errorf("Unexpected pid=%d (filter is for pid %d)", eventPid, pid)
+				return false, fmt.Errorf("Unexpected pid=%d (filter is for pid %d)", eventPid, pid)
 			}
 			tpEventsNr += 1
-			return nil
+			return false, nil
 		default:
-			return fmt.Errorf("not a tracepoint event: %T", tpEvent)
+			return false, fmt.Errorf("not a tracepoint event: %T", tpEvent)
 
 		}
-		return errors.New("internal error")
+	}
+	finalCheck := func(l CheckerLogger) error {
+		// NB: in some cases we get more than one events. I think this
+		// might be due to -EINTR or similar return values.
+		if tpEventsNr < 1 {
+			return fmt.Errorf("Got %d events while expecting at least 1", tpEventsNr)
+		}
+		return nil
+	}
+	checker := ResponsesCheckerFns{
+		NextCheckFn:  nextCheck,
+		FinalCheckFn: finalCheck,
 	}
 
-	if err := jsonTestCheck(t, nil, eventCheckerFn(checkEventFn)); err != nil {
+	if err := jsonTestCheck(t, nil, &checker); err != nil {
 		t.Logf("error: %s", err)
-		t.Fail()
-	}
-
-	// NB: in some cases we get more events. I think this
-	// might be to -EINTR or similar. Will need to include the return value
-	// to do proper testing.
-	if tpEventsNr < 1 {
-		t.Logf("Got %d events while expecting at least 1", tpEventsNr)
 		t.Fail()
 	}
 

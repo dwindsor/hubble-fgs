@@ -20,9 +20,11 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func socketCookieTest(t *testing.T) (eventChecker, error) {
+func socketCookieTest(t *testing.T) (ResponsesChecker, error) {
 
-	var lFD, cFD int = -1, -1
+	// initialize listen, connect, and accept file descriptors, and ensure that they
+	// are closed once we return
+	var lFD, cFD, aFD int = -1, -1, -1
 	defer func() {
 		if lFD != -1 {
 			syscall.Close(lFD)
@@ -30,9 +32,13 @@ func socketCookieTest(t *testing.T) (eventChecker, error) {
 		if cFD != -1 {
 			syscall.Close(cFD)
 		}
+		if aFD != -1 {
+			syscall.Close(aFD)
+		}
 	}()
-	checks := []eventChecker{}
-	addCheck := func(c eventChecker) {
+
+	checks := []ResponseChecker{}
+	addCheck := func(c ResponseChecker) {
 		checks = append(checks, c)
 	}
 
@@ -57,7 +63,7 @@ func socketCookieTest(t *testing.T) (eventChecker, error) {
 	if err := unix.Listen(lFD, 1); err != nil {
 		return nil, fmt.Errorf("listen failed: %w", err)
 	}
-	addCheck(newChainEventChecker().isListenEvent().hasCookie(lCookie).match())
+	addCheck(NewListenEventChecker().HasCookie(lCookie).End())
 
 	laddr, err := unix.Getsockname(lFD)
 	if err != nil {
@@ -73,24 +79,29 @@ func socketCookieTest(t *testing.T) (eventChecker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect failed: %w", err)
 	}
-	addCheck(newChainEventChecker().isConnectEvent().hasCookie(cCookie).match())
+	addCheck(NewConnectEventChecker().HasCookie(cCookie).End())
 
-	aFD, _, err := unix.Accept(lFD)
+	aFD, _, err = unix.Accept(lFD)
 	if err != nil {
 		return nil, fmt.Errorf("accept failed: %w", err)
 	}
 	// cannot set cookie for accept from user-space
-	addCheck(newChainEventChecker().isAcceptEvent().match())
+	addCheck(NewAcceptEventChecker().End())
+
 	unix.Close(aFD)
+	aFD = -1
+	addCheck(NewCloseEventChecker().End())
 
-	cl := newChainEventChecker().isCloseEvent().hasCookie(lCookie).match()
-	cc := newChainEventChecker().isCloseEvent().hasCookie(cCookie).match()
-	ca := newChainEventChecker().isCloseEvent().match()
-	addCheck(newUnorderedListEventChecker(cl, cc, ca))
+	unix.Close(cFD)
+	cFD = -1
+	addCheck(NewCloseEventChecker().HasCookie(cCookie).End())
 
-	return &listEventChecker{
-		checkers: checks,
-	}, nil
+	unix.Close(lFD)
+	lFD = -1
+	addCheck(NewCloseEventChecker().HasCookie(lCookie).End())
+
+	checker := NewOrderedResponsesChecker(checks...)
+	return &checker, nil
 }
 
 func TestSocketCookie(t *testing.T) {

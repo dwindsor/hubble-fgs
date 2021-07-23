@@ -514,7 +514,7 @@ func jsonTestSaveCopy(jsonFile *os.File) (string, error) {
 	return out.Name(), nil
 }
 
-func jsonTestCheck(t *testing.T, jsonFile *os.File, c eventChecker) error {
+func jsonTestCheck(t *testing.T, jsonFile *os.File, c ResponsesChecker) error {
 
 	var err error
 	if jsonFile == nil {
@@ -535,17 +535,19 @@ func jsonTestCheck(t *testing.T, jsonFile *os.File, c eventChecker) error {
 			return fmt.Errorf("unmarshal failed: %w", err)
 		}
 		count += 1
-		err = c.check(&ev, t)
-		if err == nil {
-			t.Logf("jsonTestCheck/line:%04d: event:%s => final match", count, eventTypeString(ev.Event))
-			t.Logf("jsonTestCheck: DONE!\n")
+		done, err := c.NextCheck(&ev, t)
+		prefix := fmt.Sprintf("jsonTestCheck/line:%04d: event:%s", count, eventTypeString(ev.Event))
+		if done && err == nil {
+			t.Logf("%s => final match", prefix)
+			t.Logf("jsonTestCheck: DONE!")
 			return nil
-		}
-
-		if e, ok := err.(*eventCheckerMadeProgress); ok {
-			t.Logf("jsonTestCheck/line:%04d: event:%s made progress. continuing: %s\n", count, eventTypeString(ev.Event), e.Error())
+		} else if err == nil {
+			t.Logf("%s => match, continuing", prefix)
+		} else if done && err != nil {
+			t.Logf("%s => terminating error: %s", prefix, err)
+			return err
 		} else {
-			t.Logf("jsonTestCheck/line:%04d: event:%s did not match: %s\n", count, eventTypeString(ev.Event), err)
+			t.Logf("%s => no match: %s, continuing", prefix, err)
 		}
 
 		// no match: move to the next event
@@ -554,7 +556,10 @@ func jsonTestCheck(t *testing.T, jsonFile *os.File, c eventChecker) error {
 		}
 	}
 
-	return fmt.Errorf("jsonTestCheck: failed to match after %d events", count)
+	if err := c.FinalCheck(t); err != nil {
+		return fmt.Errorf("jsonTestCheck: failed to match after %d events: %w", count, err)
+	}
+	return nil
 }
 
 func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attempts, found int) (bool, error) {
