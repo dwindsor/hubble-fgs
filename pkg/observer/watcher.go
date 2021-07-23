@@ -85,6 +85,9 @@ func watchTracePolicy(s *ObserverSync, ctx context.Context) {
 				return
 			}
 			/* Deep Equals */
+			// FIXME: add proper DeepEquals. The resource might have different
+			//  resource versions but the fields that matter to us are still the
+			//  same.
 			if oldPolicy.ResourceVersion == newPolicy.ResourceVersion {
 				return
 			}
@@ -106,8 +109,14 @@ func watchTracePolicy(s *ObserverSync, ctx context.Context) {
 		DeleteFunc: func(obj interface{}) {
 			policy, ok := obj.(*v1alpha1.TracingPolicy)
 			if !ok {
-				logger.GetLogger().WithField("obj", obj).Warn("invalid type in delete func")
-				return
+				dfsu, ok := obj.(cache.DeletedFinalStateUnknown)
+				if ok {
+					policy, ok = dfsu.Obj.(*v1alpha1.TracingPolicy)
+				}
+				if !ok {
+					logger.GetLogger().WithField("obj", obj).Warn("invalid type in delete func")
+					return
+				}
 			}
 			logger.GetLogger().WithField("policy", policy.Spec).Info("tracing policy deleted")
 			err := s.DelTracingPolicy(ctx, policy.ObjectMeta.Name)
@@ -121,5 +130,4 @@ func watchTracePolicy(s *ObserverSync, ctx context.Context) {
 	go factory.Start(wait.NeverStop)
 	factory.WaitForCacheSync(wait.NeverStop)
 	logger.GetLogger().Info("Started watching tracing policies")
-	select {}
 }
