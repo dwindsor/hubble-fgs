@@ -15,7 +15,6 @@ import (
 	"context"
 	"strings"
 	"sync"
-	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
@@ -59,7 +58,7 @@ func watchTracePolicy(s *ObserverSync, ctx context.Context) {
 		logger.GetLogger().WithError(err).Fatal("couldn't get cluster config")
 	}
 	client := versioned.NewForConfigOrDie(conf)
-	factory := externalversions.NewSharedInformerFactory(client, 5*time.Minute)
+	factory := externalversions.NewSharedInformerFactory(client, 0)
 	informer := factory.Isovalent().V1alpha1().TracingPolicies()
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
