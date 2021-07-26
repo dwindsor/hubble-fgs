@@ -24,6 +24,7 @@ import (
 
 	"github.com/golang/protobuf/jsonpb"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/sirupsen/logrus"
 )
@@ -514,7 +515,7 @@ func jsonTestSaveCopy(jsonFile *os.File) (string, error) {
 	return out.Name(), nil
 }
 
-func jsonTestCheck(t *testing.T, jsonFile *os.File, c ResponsesChecker) error {
+func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.ResponsesChecker) error {
 
 	var err error
 	if jsonFile == nil {

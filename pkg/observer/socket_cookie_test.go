@@ -17,10 +17,12 @@ import (
 	"syscall"
 	"testing"
 
+	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+
 	"golang.org/x/sys/unix"
 )
 
-func socketCookieTest(t *testing.T) (ResponsesChecker, error) {
+func socketCookieTest(t *testing.T) (ec.ResponsesChecker, error) {
 
 	// initialize listen, connect, and accept file descriptors, and ensure that they
 	// are closed once we return
@@ -37,8 +39,8 @@ func socketCookieTest(t *testing.T) (ResponsesChecker, error) {
 		}
 	}()
 
-	checks := []ResponseChecker{}
-	addCheck := func(c ResponseChecker) {
+	checks := []ec.ResponseChecker{}
+	addCheck := func(c ec.ResponseChecker) {
 		checks = append(checks, c)
 	}
 
@@ -63,7 +65,7 @@ func socketCookieTest(t *testing.T) (ResponsesChecker, error) {
 	if err := unix.Listen(lFD, 1); err != nil {
 		return nil, fmt.Errorf("listen failed: %w", err)
 	}
-	addCheck(NewListenEventChecker().HasCookie(lCookie).End())
+	addCheck(ec.NewListenEventChecker().HasCookie(lCookie).End())
 
 	laddr, err := unix.Getsockname(lFD)
 	if err != nil {
@@ -79,28 +81,28 @@ func socketCookieTest(t *testing.T) (ResponsesChecker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect failed: %w", err)
 	}
-	addCheck(NewConnectEventChecker().HasCookie(cCookie).End())
+	addCheck(ec.NewConnectEventChecker().HasCookie(cCookie).End())
 
 	aFD, _, err = unix.Accept(lFD)
 	if err != nil {
 		return nil, fmt.Errorf("accept failed: %w", err)
 	}
 	// cannot set cookie for accept from user-space
-	addCheck(NewAcceptEventChecker().End())
+	addCheck(ec.NewAcceptEventChecker().End())
 
 	unix.Close(aFD)
 	aFD = -1
-	addCheck(NewCloseEventChecker().End())
+	addCheck(ec.NewCloseEventChecker().End())
 
 	unix.Close(cFD)
 	cFD = -1
-	addCheck(NewCloseEventChecker().HasCookie(cCookie).End())
+	addCheck(ec.NewCloseEventChecker().HasCookie(cCookie).End())
 
 	unix.Close(lFD)
 	lFD = -1
-	addCheck(NewCloseEventChecker().HasCookie(lCookie).End())
+	addCheck(ec.NewCloseEventChecker().HasCookie(lCookie).End())
 
-	checker := NewOrderedResponsesChecker(checks...)
+	checker := ec.NewOrderedResponsesChecker(checks...)
 	return &checker, nil
 }
 

@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
@@ -177,7 +178,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	exitWG.Wait()
 
 	tpEventsNr := 0
-	nextCheck := func(event *fgs.GetEventsResponse, l CheckerLogger) (bool, error) {
+	nextCheck := func(event *fgs.GetEventsResponse, l ec.Logger) (bool, error) {
 		switch tpEvent := event.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessTracepoint:
 			if err := checkFn(tpEvent.ProcessTracepoint); err != nil {
@@ -194,7 +195,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 
 		}
 	}
-	finalCheck := func(l CheckerLogger) error {
+	finalCheck := func(l ec.Logger) error {
 		// NB: in some cases we get more than one events. I think this
 		// might be due to -EINTR or similar return values.
 		if tpEventsNr < 1 {
@@ -202,7 +203,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		}
 		return nil
 	}
-	checker := ResponsesCheckerFns{
+	checker := ec.ResponsesCheckerFns{
 		NextCheckFn:  nextCheck,
 		FinalCheckFn: finalCheck,
 	}

@@ -8,8 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 //
-
-package observer
+package eventchecker
 
 import (
 	"container/list"
@@ -18,8 +17,8 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 )
 
-// CheckerLogger interface to be used in checkers
-type CheckerLogger interface {
+// Logger interface to be used in checkers
+type Logger interface {
 	Log(args ...interface{})
 	Logf(format string, args ...interface{})
 	Fatal(args ...interface{})
@@ -29,14 +28,14 @@ type CheckerLogger interface {
 // ResponseChecker checks a single response
 type ResponseChecker interface {
 	// Check checks a single response.
-	Check(*fgs.GetEventsResponse, CheckerLogger) error
+	Check(*fgs.GetEventsResponse, Logger) error
 }
 
 // eventCheckerFn is a wrapper that allows a function to be used as an eventChecker
-type ResponseCheckerFn func(*fgs.GetEventsResponse, CheckerLogger) error
+type ResponseCheckerFn func(*fgs.GetEventsResponse, Logger) error
 
 // check implements ResponseChecker interface
-func (f ResponseCheckerFn) Check(e *fgs.GetEventsResponse, log CheckerLogger) error {
+func (f ResponseCheckerFn) Check(e *fgs.GetEventsResponse, log Logger) error {
 	return f(e, log)
 }
 
@@ -51,23 +50,23 @@ type ResponsesChecker interface {
 	// (false, !nil): this response check not was succesful, but need to check more events
 	// (true,   nil): checker was successful, no need to check more responses
 	// (true,  !nil): checker failed, no need to check more responses
-	NextCheck(*fgs.GetEventsResponse, CheckerLogger) (bool, error)
+	NextCheck(*fgs.GetEventsResponse, Logger) (bool, error)
 
 	// FinalCheck indicates that the sequence of events has ended, and asks
 	// the checker to make a final decision.
-	FinalCheck(CheckerLogger) error
+	FinalCheck(Logger) error
 }
 
 type ResponsesCheckerFns struct {
-	NextCheckFn  func(*fgs.GetEventsResponse, CheckerLogger) (bool, error)
-	FinalCheckFn func(CheckerLogger) error
+	NextCheckFn  func(*fgs.GetEventsResponse, Logger) (bool, error)
+	FinalCheckFn func(Logger) error
 }
 
-func (fns *ResponsesCheckerFns) NextCheck(r *fgs.GetEventsResponse, l CheckerLogger) (bool, error) {
+func (fns *ResponsesCheckerFns) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
 	return fns.NextCheckFn(r, l)
 }
 
-func (fns *ResponsesCheckerFns) FinalCheck(l CheckerLogger) error {
+func (fns *ResponsesCheckerFns) FinalCheck(l Logger) error {
 	return fns.FinalCheckFn(l)
 }
 
@@ -85,7 +84,7 @@ func NewOrderedResponsesChecker(checkers ...ResponseChecker) OrderedResponsesChe
 	}
 }
 
-func (c *OrderedResponsesChecker) NextCheck(r *fgs.GetEventsResponse, l CheckerLogger) (bool, error) {
+func (c *OrderedResponsesChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
 	// all checkers have been verified
 	if c.idx >= len(c.checkers) {
 		return true, nil
@@ -106,7 +105,7 @@ func (c *OrderedResponsesChecker) NextCheck(r *fgs.GetEventsResponse, l CheckerL
 	}
 }
 
-func (c *OrderedResponsesChecker) FinalCheck(l CheckerLogger) error {
+func (c *OrderedResponsesChecker) FinalCheck(l Logger) error {
 	if c.idx >= len(c.checkers) {
 		return nil
 	}
@@ -133,7 +132,7 @@ func NewUnorderedResponsesChecker(checkers ...ResponseChecker) *UnorderedRespons
 	}
 }
 
-func (c *UnorderedResponsesChecker) NextCheck(ev *fgs.GetEventsResponse, log CheckerLogger) (bool, error) {
+func (c *UnorderedResponsesChecker) NextCheck(ev *fgs.GetEventsResponse, log Logger) (bool, error) {
 	clen := c.checkers.Len()
 	if clen == 0 {
 		return true, nil
@@ -163,7 +162,7 @@ func (c *UnorderedResponsesChecker) NextCheck(ev *fgs.GetEventsResponse, log Che
 	return false, fmt.Errorf("UnorderedResponsesChecker: all %d checks failed", c.checkers.Len())
 }
 
-func (c *UnorderedResponsesChecker) FinalCheck(log CheckerLogger) error {
+func (c *UnorderedResponsesChecker) FinalCheck(log Logger) error {
 	if l := c.checkers.Len(); l == 0 {
 		return nil
 	} else {
@@ -179,11 +178,11 @@ type fgsEvent interface {
 }
 
 type eventChainChecker struct {
-	responseCheck func(*fgs.GetEventsResponse, CheckerLogger) (error, fgsEvent)
-	eventCheck    func(fgsEvent, CheckerLogger) error
+	responseCheck func(*fgs.GetEventsResponse, Logger) (error, fgsEvent)
+	eventCheck    func(fgsEvent, Logger) error
 }
 
-func checkEvent(r *fgs.GetEventsResponse, l CheckerLogger, types ...fgs.EventType) (error, fgsEvent) {
+func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (error, fgsEvent) {
 
 	checkTypes := func(ty fgs.EventType) error {
 		for i := range types {
@@ -239,10 +238,10 @@ func checkEvent(r *fgs.GetEventsResponse, l CheckerLogger, types ...fgs.EventTyp
 // NewListenEventChecker creates a new eventChainChecker for Listen events
 func NewListenEventChecker() *eventChainChecker {
 	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l CheckerLogger) (error, fgsEvent) {
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_LISTEN)
 		},
-		eventCheck: func(ev fgsEvent, l CheckerLogger) error {
+		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
 		},
 	}
@@ -251,10 +250,10 @@ func NewListenEventChecker() *eventChainChecker {
 // NewConnectEventChecker creates a new eventChainChecker for Connect events
 func NewConnectEventChecker() *eventChainChecker {
 	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l CheckerLogger) (error, fgsEvent) {
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_CONNECT)
 		},
-		eventCheck: func(ev fgsEvent, l CheckerLogger) error {
+		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
 		},
 	}
@@ -263,10 +262,10 @@ func NewConnectEventChecker() *eventChainChecker {
 // NewAcceptEventChecker creates a new eventChainChecker for Accept events
 func NewAcceptEventChecker() *eventChainChecker {
 	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l CheckerLogger) (error, fgsEvent) {
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_ACCEPT)
 		},
-		eventCheck: func(ev fgsEvent, l CheckerLogger) error {
+		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
 		},
 	}
@@ -275,10 +274,10 @@ func NewAcceptEventChecker() *eventChainChecker {
 // NewCloseEventChecker creates a new eventChainChecker for Close events
 func NewCloseEventChecker() *eventChainChecker {
 	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l CheckerLogger) (error, fgsEvent) {
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_CLOSE)
 		},
-		eventCheck: func(ev fgsEvent, l CheckerLogger) error {
+		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
 		},
 	}
@@ -286,7 +285,7 @@ func NewCloseEventChecker() *eventChainChecker {
 
 // End ends the chain
 func (e *eventChainChecker) End() ResponseChecker {
-	fn := func(r *fgs.GetEventsResponse, l CheckerLogger) error {
+	fn := func(r *fgs.GetEventsResponse, l Logger) error {
 		if err, ev := e.responseCheck(r, l); err != nil {
 			return err
 		} else {
@@ -334,7 +333,7 @@ func eventHasCookie(e fgsEvent, cookie uint64) error {
 // HasCookie adds a check that the event has a cookie value matching to the argument
 func (e *eventChainChecker) HasCookie(cookie uint64) *eventChainChecker {
 	oldEventCheck := e.eventCheck
-	e.eventCheck = func(e fgsEvent, l CheckerLogger) error {
+	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
 			return err
 		}
