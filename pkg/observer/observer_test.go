@@ -37,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
@@ -228,39 +229,26 @@ func TestConnectEvent(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: selfBinary},
-					Parent:  &fgs.Process{Binary: ""},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "127.0.0.1"},
-					Parent: &fgs.Process{Binary: selfBinary},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "127.0.0.1"},
-					Parent: &fgs.Process{
-						Binary: selfBinary},
-					DestinationIp:   "127.0.0.1",
-					DestinationPort: &wrappers.UInt32Value{Value: 80},
-				},
-			},
-		},
-	}
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	curlChecker := ec.ProcessWithCommand(
+		ec.SuffixStringMatch("curl"), ec.FullStringMatch("127.0.0.1"),
+	)
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(selfChecker).
+			HasParent().
+			End(),
+		ec.NewExecEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			End(),
+		ec.NewConnectEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			HasDstIP("127.0.0.1").
+			HasDstPort(80).
+			End(),
+	)
 
 	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
 	if err != nil {
@@ -269,9 +257,8 @@ func TestConnectEvent(t *testing.T) {
 
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWGCurl(&execWG, &exitWG, "127.0.0.1")
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+	err = jsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
