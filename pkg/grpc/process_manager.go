@@ -13,6 +13,7 @@ package grpc
 import (
 	"encoding/base64"
 	"fmt"
+	"net"
 	"os"
 	"path/filepath"
 	"strings"
@@ -1051,6 +1052,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 		}
 		if endpoint != nil {
 			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 		}
 	}
 	return fgsEvent
@@ -1112,6 +1114,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 		if endpoint != nil {
 			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 		}
+		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	return fgsEvent
 }
@@ -1172,8 +1175,22 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 		if endpoint != nil {
 			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 		}
+		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	return fgsEvent
+}
+
+func (pm *ProcessManager) getPodInfoOfIp(ip net.IP) *fgs.Pod {
+	endpoint, ok := pm.ciliumState.GetEndpointsHandler().GetEndpoint(ip)
+	if !ok {
+		return nil
+	}
+	return &fgs.Pod{
+		Namespace: endpoint.PodNamespace,
+		Name:      endpoint.PodName,
+		Labels:    endpoint.Labels,
+		Container: nil,
+	}
 }
 
 func (pm *ProcessManager) getPodInfo(containerID string, binary string, args string, nspid uint32) (*fgs.Pod, *v1.Endpoint) {
