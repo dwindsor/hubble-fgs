@@ -62,36 +62,36 @@ var (
 	SocketStatsTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "isovalent_fgs_socket_stats_txbytes",
 		Help: "TCP socket TX bytes statistics",
-	}, []string{"namespace", "pod", "binary"})
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod"})
 	SocketStatsTxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "isovalent_fgs_socket_stats_txsegs",
 		Help: "TCP socket TX segment statistics",
-	}, []string{"namespace", "pod", "binary"})
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod"})
 	SocketStatsRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "isovalent_fgs_socket_stats_rxbytes",
 		Help: "TCP socket RX bytes statistics",
-	}, []string{"namespace", "pod", "binary"})
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod"})
 	SocketStatsRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "isovalent_fgs_socket_stats_rxsegs",
 		Help: "TCP socket RX segment statistics",
-	}, []string{"namespace", "pod", "binary"})
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod"})
 	SocketStatsRetranBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "isovalent_fgs_socket_stats_retransmitbytes",
 		Help: "TCP socket retransmit bytes statistics",
-	}, []string{"namespace", "pod", "binary"})
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod"})
 	SocketStatsRetranSegs = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "isovalent_fgs_socket_stats_retransmitsegs",
 		Help: "TCP socket retransmit seg statistics",
-	}, []string{"namespace", "pod", "binary"})
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod"})
 	SocketStatsZeroWindow = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "isovalent_fgs_socket_stats_zerowindow",
 		Help: "TCP socket zero window events",
-	}, []string{"namespace", "pod", "binary"})
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod"})
 	SocketStatsSrtt = promauto.NewSummaryVec(prometheus.SummaryOpts{
 		Name:       "isovalent_fgs_socket_stats_srtt",
 		Help:       "TCP socket smoothed RTT latency distribution.",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
-	}, []string{"namespace", "pod", "binary"})
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod"})
 	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:        "isovalent_fgs_events_total",
 		Help:        "The total number of FGS events",
@@ -124,6 +124,14 @@ var (
 	}, []string{"type"})
 )
 
+func getDstPodInfo(dstPod *fgs.Pod) (pod, ns string) {
+	if dstPod != nil {
+		ns = dstPod.Namespace
+		pod = dstPod.Name
+	}
+	return pod, ns
+}
+
 func getProcessInfo(process *fgs.Process) (binary, pod, namespace string) {
 	if process != nil {
 		binary = process.Binary
@@ -146,29 +154,30 @@ func handleOriginalEvent(originalEvent interface{}) {
 	}
 }
 
-func postSocketStats(ev *fgs.GetEventsResponse, s *fgs.SocketStats) {
-	binary, pod, namespace := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+func postSocketStats(ev *fgs.GetEventsResponse, dstPod *fgs.Pod, s *fgs.SocketStats) {
+	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+	dstpod, dstns := getDstPodInfo(dstPod)
 
 	c := float64(s.BytesSent)
-	SocketStatsTxBytes.WithLabelValues(namespace, pod, binary).Add(c)
+	SocketStatsTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod).Add(c)
 	c = float64(s.SegsOut)
-	SocketStatsTxSegs.WithLabelValues(namespace, pod, binary).Add(c)
+	SocketStatsTxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod).Add(c)
 
 	c = float64(s.BytesReceived)
-	SocketStatsRxBytes.WithLabelValues(namespace, pod, binary).Add(c)
+	SocketStatsRxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod).Add(c)
 	c = float64(s.SegsIn)
-	SocketStatsRxSegs.WithLabelValues(namespace, pod, binary).Add(c)
+	SocketStatsRxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod).Add(c)
 
 	c = float64(s.RetransmitsBytes)
-	SocketStatsRetranBytes.WithLabelValues(namespace, pod, binary).Add(c)
+	SocketStatsRetranBytes.WithLabelValues(ns, pod, binary, dstns, dstpod).Add(c)
 	c = float64(s.RetransmitsSegs)
-	SocketStatsRetranSegs.WithLabelValues(namespace, pod, binary).Add(c)
+	SocketStatsRetranSegs.WithLabelValues(ns, pod, binary, dstns, dstpod).Add(c)
 
 	c = float64(s.ToZeroWindow)
-	SocketStatsZeroWindow.WithLabelValues(namespace, pod, binary).Add(c)
+	SocketStatsZeroWindow.WithLabelValues(ns, pod, binary, dstns, dstpod).Add(c)
 
 	c = float64(s.Srtt)
-	SocketStatsSrtt.WithLabelValues(namespace, pod, binary).Observe(c)
+	SocketStatsSrtt.WithLabelValues(ns, pod, binary, dstns, dstpod).Observe(c)
 }
 
 func handleSocketEvent(processedEvent interface{}) {
@@ -176,7 +185,7 @@ func handleSocketEvent(processedEvent interface{}) {
 	case *fgs.GetEventsResponse:
 		switch res := ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessClose:
-			postSocketStats(ev, res.ProcessClose.Stats)
+			postSocketStats(ev, res.ProcessClose.GetDestinationPod(), res.ProcessClose.Stats)
 		}
 	}
 }
