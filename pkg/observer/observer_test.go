@@ -267,74 +267,40 @@ func TestExecEventClone(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	rcwd := cwdPath(true)
-	fcwd := cwdPath(false)
+	selfChecker := ec.NewProcessCheckerAND().WithBinary(ec.SuffixStringMatch(selfBinary))
+	ncSrvChecker := ec.NewProcessCheckerAND().
+		WithBinary(ec.SuffixStringMatch("nc.traditional")).
+		WithArguments(ec.FullStringMatch("-nvlp 8081"))
+	ncCliChecker := ec.NewProcessCheckerAND().
+		WithBinary(ec.SuffixStringMatch("nc.traditional")).
+		WithArguments(ec.FullStringMatch("127.0.0.1 8081 -e /bin/sh"))
 
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: selfBinary},
-					Parent:  &fgs.Process{Binary: ""},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{Binary: selfBinary,
-						Cwd: rcwd},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessListen{
-				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{
-						Binary: selfBinary,
-						Cwd:    rcwd},
-					Ip:   "0.0.0.0",
-					Port: &wrappers.UInt32Value{Value: 8081},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "127.0.0.1 8081 -e /bin/sh",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{
-						Binary: selfBinary,
-						Cwd:    rcwd},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "127.0.0.1 8081 -e /bin/sh",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{
-						Binary: selfBinary,
-						Cwd:    rcwd},
-					DestinationIp:   "127.0.0.1",
-					DestinationPort: &wrappers.UInt32Value{Value: 8081},
-				},
-			},
-		},
-	}
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(selfChecker).
+			HasParent().
+			End(),
+		ec.NewExecEventChecker().
+			HasProcess(ncSrvChecker).
+			HasParent(selfChecker).
+			End(),
+		ec.NewListenEventChecker().
+			HasProcess(ncSrvChecker).
+			HasParent(selfChecker).
+			HasIP("0.0.0.0").
+			HasPort(8081).
+			End(),
+		ec.NewExecEventChecker().
+			HasProcess(ncCliChecker).
+			HasParent(selfChecker).
+			End(),
+		ec.NewConnectEventChecker().
+			HasProcess(ncCliChecker).
+			HasParent(selfChecker).
+			HasDstIP("127.0.0.1").
+			HasDstPort(8081).
+			End(),
+	)
 
 	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
 	if err != nil {
@@ -365,9 +331,8 @@ func TestExecEventClone(t *testing.T) {
 	if cmdClient != nil {
 		cmdClient.Process.Kill()
 	}
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+	err = jsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	testDone(t, kprobe)
 }
 
