@@ -489,8 +489,13 @@ func (s ByTime) Less(i, j int) bool {
 }
 
 // jsonTestSaveCopy saves a copy of the json file
-func jsonTestSaveCopy(jsonFile *os.File) (string, error) {
+func jsonTestSaveCopy(fnamePrefix string, jsonFile *os.File) (string, error) {
 	var err error
+
+	if fnamePrefix == "" {
+		fnamePrefix = "hubble-fgs.gotest"
+	}
+
 	if jsonFile == nil {
 		fmt.Printf("jsonTestIterate: openning: %s\n", exportFile)
 		jsonFile, err = os.Open(exportFile)
@@ -500,7 +505,7 @@ func jsonTestSaveCopy(jsonFile *os.File) (string, error) {
 		defer jsonFile.Close()
 	}
 
-	out, err := ioutil.TempFile("/tmp/", fmt.Sprintf("hubble-fgs.gotest.*"))
+	out, err := ioutil.TempFile("/tmp/", fmt.Sprintf("%s.*.json", fnamePrefix))
 	if err != nil {
 		return "", fmt.Errorf("opening destination file failed: %w", err)
 	}
@@ -524,8 +529,16 @@ func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 		if err != nil {
 			return fmt.Errorf("opening json faile faied: %w", err)
 		}
-		defer jsonFile.Close()
 	}
+	defer func() {
+		if err != nil {
+			jsonFile.Seek(0, os.SEEK_SET)
+			fnamePrefix := fmt.Sprintf("hubble-fgs.gotest.%s", t.Name())
+			fname, _ := jsonTestSaveCopy(fnamePrefix, jsonFile)
+			t.Logf("test failed: json file copied to %s", fname)
+		}
+		jsonFile.Close()
+	}()
 
 	count := 0
 	dec := json.NewDecoder(jsonFile)
@@ -533,7 +546,8 @@ func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 		ev := fgs.GetEventsResponse{}
 		err := jsonpb.UnmarshalNext(dec, &ev)
 		if err != nil {
-			return fmt.Errorf("unmarshal failed: %w", err)
+			err = fmt.Errorf("unmarshal failed: %w", err)
+			return err
 		}
 		count += 1
 		prefix := fmt.Sprintf("jsonTestCheck/line:%04d ", count)
@@ -558,10 +572,10 @@ func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 		}
 	}
 
-	if err := c.FinalCheck(t); err != nil {
-		return fmt.Errorf("jsonTestCheck: failed to match after %d events: %w", count, err)
+	if err = c.FinalCheck(t); err != nil {
+		err = fmt.Errorf("jsonTestCheck: failed to match after %d events: %w", count, err)
 	}
-	return nil
+	return err
 }
 
 func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attempts, found int) (bool, error) {

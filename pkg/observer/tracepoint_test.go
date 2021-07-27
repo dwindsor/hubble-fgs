@@ -108,7 +108,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, selfOp func(), checkFn func(*fgs.ProcessTracepoint) error) {
 	defer func() {
 		if t.Failed() {
-			if fname, err := jsonTestSaveCopy(nil); err != nil {
+			if fname, err := jsonTestSaveCopy("", nil); err != nil {
 				t.Logf("Failed to save a copy of json out: %s", err)
 			} else {
 				t.Logf("Saved a copy of json out: %s", fname)
