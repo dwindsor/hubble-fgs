@@ -20,14 +20,6 @@ import (
 	"github.com/golang/protobuf/ptypes/wrappers"
 )
 
-// Logger interface to be used in checkers
-type Logger interface {
-	Log(args ...interface{})
-	Logf(format string, args ...interface{})
-	Fatal(args ...interface{})
-	Fatalf(format string, args ...interface{})
-}
-
 // ResponseChecker checks a single response
 type ResponseChecker interface {
 	// Check checks a single response.
@@ -391,38 +383,14 @@ func (e *eventChainChecker) End() ResponseChecker {
 }
 
 func eventHasDstIP(e fgsEvent, ip string) error {
-	switch v := e.(type) {
-	case *fgs.ProcessConnect:
-		if v.GetDestinationIp() == ip {
+	if ev, ok := e.(interface{ GetDestinationIp() string }); ok {
+		evIP := ev.GetDestinationIp()
+		if evIP == ip {
 			return nil
-		} else {
-			return fmt.Errorf("Expecting ip %s but ProcessConnect has %s", ip, v.GetDestinationIp())
 		}
-
-	case *fgs.ProcessClose:
-		if v.GetDestinationIp() == ip {
-			return nil
-		} else {
-			return fmt.Errorf("Expecting ip %s but ProcesClose has %s", ip, v.GetDestinationIp())
-		}
-
-	case *fgs.ProcessAccept:
-		if v.GetDestinationIp() == ip {
-			return nil
-		} else {
-			return fmt.Errorf("Expecting ip %s but ProcesAccept has %s", ip, v.GetDestinationIp())
-		}
-
-	case *fgs.Tls:
-		if v.GetDestinationIp() == ip {
-			return nil
-		} else {
-			return fmt.Errorf("Expecting ip %s but Tls has %s", ip, v.GetDestinationIp())
-		}
-
-	default:
-		return fmt.Errorf("type %T does not have destination IP", v)
+		return fmt.Errorf("Expecting DstIP %s but %T has %s", ip, ev, evIP)
 	}
+	return fmt.Errorf("type %T does not have DstIP", e)
 }
 
 // HasDstIP adds a check that the event has a destination IP value matching to the argument
@@ -437,45 +405,26 @@ func (e *eventChainChecker) HasDstIP(ip string) *eventChainChecker {
 	return e
 }
 
+func checkPort(port uint32, val *wrappers.UInt32Value) error {
+	if val == nil {
+		return fmt.Errorf("%d does not match nil value", port)
+	}
+	if val.Value != port {
+		return fmt.Errorf("%d does not match %d value", port, val.Value)
+	}
+	return nil
+}
+
 func eventHasDstPort(e fgsEvent, port uint32) error {
-
-	checkPort := func(val *wrappers.UInt32Value) error {
-		if val == nil {
-			return fmt.Errorf("%d does not match nil value", port)
+	if ev, ok := e.(interface{ GetDestinationPort() *wrappers.UInt32Value }); ok {
+		evPort := ev.GetDestinationPort()
+		if err := checkPort(port, evPort); err == nil {
+			return nil
+		} else {
+			return fmt.Errorf("%T port check failed: %w", ev, err)
 		}
-		if val.Value != port {
-			return fmt.Errorf("%d does not match %d value", port, val.Value)
-		}
-		return nil
 	}
-
-	switch v := e.(type) {
-	case *fgs.ProcessConnect:
-		if err := checkPort(v.GetDestinationPort()); err != nil {
-			return fmt.Errorf("ProcessConnect event does not have matching port: %w", err)
-		}
-		return nil
-	case *fgs.ProcessClose:
-		if err := checkPort(v.GetDestinationPort()); err != nil {
-			return fmt.Errorf("ProcessClose event does not have matching port: %w", err)
-		}
-		return nil
-
-	case *fgs.ProcessAccept:
-		if err := checkPort(v.GetDestinationPort()); err != nil {
-			return fmt.Errorf("ProcessAccept event does not have matching port: %w", err)
-		}
-		return nil
-
-	case *fgs.Tls:
-		if err := checkPort(v.GetDestinationPort()); err != nil {
-			return fmt.Errorf("Tls event does not have matching port: %w", err)
-		}
-		return nil
-
-	default:
-		return fmt.Errorf("type %T does not have destination port", v)
-	}
+	return fmt.Errorf("type %T does not have Dst Port", e)
 }
 
 // HasDstIP adds a check that the event has a destination IP value matching to the argument
@@ -537,6 +486,53 @@ func (e *eventChainChecker) HasCookie(cookie uint64) *eventChainChecker {
 	return e
 }
 
+func eventHasIP(e fgsEvent, IP string) error {
+	if ev, ok := e.(interface{ GetIp() string }); ok {
+		evIP := ev.GetIp()
+		if evIP == IP {
+			return nil
+		}
+		return fmt.Errorf("Expecting IP %s but %T has %s", IP, ev, evIP)
+	}
+	return fmt.Errorf("type %T does not have IP", e)
+}
+
+// HasIP adds a check that the event has an IP matching the argument
+func (e *eventChainChecker) HasIP(IP string) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasIP(e, IP)
+	}
+	return e
+}
+
+func eventHasPort(e fgsEvent, port uint32) error {
+	if ev, ok := e.(interface{ GetPort() *wrappers.UInt32Value }); ok {
+		evPort := ev.GetPort()
+		if err := checkPort(port, evPort); err == nil {
+			return nil
+		} else {
+			return fmt.Errorf("%T port check failed: %w", ev, err)
+		}
+	}
+	return fmt.Errorf("type %T does not have IP", e)
+}
+
+// HasPort adds a check that the event has an port matching the argument
+func (e *eventChainChecker) HasPort(port uint32) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasPort(e, port)
+	}
+	return e
+}
+
 // ProcessChecker checks a process
 type ProcessChecker interface {
 	// Check checks a single response.
@@ -545,107 +541,121 @@ type ProcessChecker interface {
 
 type ProcessCheckerFn func(*fgs.Process, Logger) error
 
-// check implements ResponseChecker interface
+// Check implements ResponseChecker interface
 func (f ProcessCheckerFn) Check(p *fgs.Process, log Logger) error {
 	return f(p, log)
 }
 
-type StrMatch int
-
-const (
-	StrFullMatch StrMatch = iota // NB: 0
-	StrPrefixMatch
-	StrSuffixMatch
-	// StrRegexMatch?
-)
-
-type StringMatcher struct {
-	s string
-	m StrMatch
+// ProcessCheckerAND can be used to build a check that is a conjuction of other checkers
+type ProcessCheckerAND struct {
+	checks []ProcessChecker
 }
 
-func FullStringMatch(s string) StringMatcher {
-	return StringMatcher{s: s, m: StrFullMatch}
+func NewProcessCheckerAND() *ProcessCheckerAND {
+	return &ProcessCheckerAND{}
 }
 
-func PrefixStringMatch(s string) StringMatcher {
-	return StringMatcher{s: s, m: StrPrefixMatch}
+// With adds another process checker
+func (o *ProcessCheckerAND) With(c ...ProcessChecker) *ProcessCheckerAND {
+	o.checks = append(o.checks, c...)
+	return o
 }
 
-func SuffixStringMatch(s string) StringMatcher {
-	return StringMatcher{s: s, m: StrSuffixMatch}
+func (o *ProcessCheckerAND) WithBinary(sm StringMatcher) *ProcessCheckerAND {
+	o.checks = append(o.checks, ProcessWithBinary(sm))
+	return o
 }
 
-func (sm StringMatcher) GetMatcher() func(string) error {
-	switch sm.m {
-	case StrFullMatch:
-		return func(x string) error {
-			if x == sm.s {
-				return nil
-			}
-			return fmt.Errorf("%s does not match %s", x, sm.s)
-		}
-	case StrPrefixMatch:
-		return func(x string) error {
-			if strings.HasPrefix(x, sm.s) {
-				return nil
-			}
-			return fmt.Errorf("%s does not match prefix %s", x, sm.s)
-		}
-	case StrSuffixMatch:
-		return func(x string) error {
-			if strings.HasSuffix(x, sm.s) {
-				return nil
-			}
-			return fmt.Errorf("%s does not match suffix %s", x, sm.s)
+func (o *ProcessCheckerAND) WithArguments(sm StringMatcher) *ProcessCheckerAND {
+	o.checks = append(o.checks, ProcessWithArguments(sm))
+	return o
+}
+
+func (o *ProcessCheckerAND) WithCWD(sm StringMatcher) *ProcessCheckerAND {
+	o.checks = append(o.checks, ProcessWithCWD(sm))
+	return o
+}
+
+func (o *ProcessCheckerAND) Check(p *fgs.Process, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(p, l); err != nil {
+			return err
 		}
 	}
-	return func(x string) error {
-		return fmt.Errorf("internal error: Unknown matcher: %d", sm.m)
-	}
+	return nil
 }
 
+func processWithString(
+	sm StringMatcher,
+	getter func(p *fgs.Process) string,
+	desc string, // desc is used for helpful error messages
+) ProcessChecker {
+	matcher := sm.GetMatcher()
+	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+		if p == nil {
+			return fmt.Errorf("process is nil and cannot match %s using %v", desc, sm)
+		}
+		s := getter(p)
+		if err := matcher(s); err != nil {
+			return fmt.Errorf("failed check on %s: %w", desc, err)
+		}
+		return nil
+	})
+}
+
+// ProcessWithCWD matches the cwd field
+func ProcessWithCWD(sm StringMatcher) ProcessChecker {
+	matcher := sm.GetMatcher()
+	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+		if p == nil {
+			return fmt.Errorf("process is nil and cannot match cwd usnig %v", sm)
+		}
+		cwd := p.Cwd
+		if strings.Contains(p.Flags, "nocwd") {
+			log.Logf("cwd check: nocwd flag set, test considered successful", cwd)
+			return nil
+		}
+		if len(cwd) > 1 && strings.HasSuffix(cwd, "/") {
+			cwd = strings.TrimSuffix(cwd, "/")
+			log.Logf("cwd check: removed trailing /: cwd=%s", cwd)
+		}
+		if err := matcher(cwd); err != nil {
+			return fmt.Errorf("failed check on %s: %w", "cwd", err)
+		}
+		return nil
+	})
+}
+
+// ProcessWithBinary matches the Binary field
 func ProcessWithBinary(sm StringMatcher) ProcessChecker {
-	matcher := sm.GetMatcher()
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
-		if p == nil {
-			return fmt.Errorf("process is nil and cannot match %v", sm)
-		}
-		if err := matcher(p.Binary); err != nil {
-			return fmt.Errorf("process binary %s does not match:%w", p.Binary, err)
-		}
-		return nil
-	})
+	return processWithString(
+		sm,
+		func(p *fgs.Process) string {
+			return p.Binary
+		},
+		"binary",
+	)
 }
 
+// ProcessWithBinary matches the Arguments field
 func ProcessWithArguments(sm StringMatcher) ProcessChecker {
-	matcher := sm.GetMatcher()
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
-		if p == nil {
-			return fmt.Errorf("process is nil and cannot match %+v", sm)
-		}
-		if err := matcher(p.Arguments); err != nil {
-			return fmt.Errorf("process arguments %s do not match:%w", p.Binary, err)
-		}
-		return nil
-	})
+	return processWithString(
+		sm,
+		func(p *fgs.Process) string {
+			return p.Arguments
+		},
+		"arguments",
+	)
 }
 
+// ProcessWithCommand matches the Binary and Arguments field
 func ProcessWithCommand(binary StringMatcher, args StringMatcher) ProcessChecker {
-	binMatcher := binary.GetMatcher()
-	argMatcher := args.GetMatcher()
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
-		if p == nil {
-			return fmt.Errorf("process is nil annd cannot match binary (%+v)/args (%+v)", binary, args)
-		}
-		if err := binMatcher(p.Binary); err != nil {
-			return fmt.Errorf("process binary %s does not match:%w", p.Binary, err)
-		}
-		if err := argMatcher(p.Arguments); err != nil {
-			return fmt.Errorf("process arguments %s do not match:%w", p.Binary, err)
-		}
-		return nil
-	})
+	return &ProcessCheckerAND{
+		checks: []ProcessChecker{
+			ProcessWithBinary(binary),
+			ProcessWithArguments(args),
+		},
+	}
 }
 
 func (e *eventChainChecker) HasProcess(cs ...ProcessChecker) *eventChainChecker {
@@ -660,7 +670,7 @@ func (e *eventChainChecker) HasProcess(cs ...ProcessChecker) *eventChainChecker 
 		}
 		for i := range cs {
 			if err := cs[i].Check(process, l); err != nil {
-				return err
+				return fmt.Errorf("process check failed: %w", err)
 			}
 		}
 		return nil
@@ -676,11 +686,11 @@ func (e *eventChainChecker) HasParent(cs ...ProcessChecker) *eventChainChecker {
 		}
 		process := eventGetParent(e)
 		if process == nil {
-			return fmt.Errorf("process is nil")
+			return fmt.Errorf("parent is nil")
 		}
 		for i := range cs {
 			if err := cs[i].Check(process, l); err != nil {
-				return err
+				return fmt.Errorf("parent check faield: %w", err)
 			}
 		}
 		return nil

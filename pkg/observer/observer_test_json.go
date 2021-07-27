@@ -536,8 +536,9 @@ func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 			return fmt.Errorf("unmarshal failed: %w", err)
 		}
 		count += 1
-		done, err := c.NextCheck(&ev, t)
-		prefix := fmt.Sprintf("jsonTestCheck/line:%04d: event:%s", count, eventTypeString(ev.Event))
+		prefix := fmt.Sprintf("jsonTestCheck/line:%04d ", count)
+		done, err := c.NextCheck(&ev, &ec.TestPrefixLogger{Prefix: prefix, T: t})
+		prefix = fmt.Sprintf("%sevent:%s", prefix, eventTypeString(ev.Event))
 		if done && err == nil {
 			t.Logf("%s => final match", prefix)
 			t.Logf("jsonTestCheck: DONE!")
