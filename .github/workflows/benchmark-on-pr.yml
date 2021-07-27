@@ -21,6 +21,7 @@ jobs:
         env:
           GOPATH: /home/runner/work/hubble-fgs/hubble-fgs/go
           BENCH_DURATION: 10s
+          GCP_SA_KEY: ${{secrets.GCP_SA_KEY}}
         run: |
           docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
           sudo apt install libelf-dev netperf
@@ -33,7 +34,7 @@ jobs:
           sudo sed -i '/env_reset/d' /etc/sudoers
           sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
           sudo make hubble-bpf
-          sudo -E ./contrib/pr-benchmark.sh $(git rev-parse --short ${{ github.event.pull_request.head.sha }})
+          sudo -E ./contrib/pr-benchmark.sh "$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" "$GCP_SA_KEY"
 
       - name: Find Comment
         uses: peter-evans/find-comment@v1

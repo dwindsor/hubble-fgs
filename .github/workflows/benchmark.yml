@@ -39,5 +39,5 @@ jobs:
         echo `clang --version`
         sudo make hubble-bpf
         sudo -E go test github.com/isovalent/hubble-fgs/pkg/bench -benchtime $BENCH_DURATION -timeout 30m -bench .
-        find results -name "*.json" | xargs sudo -E go run ./cmd/fgs-bench-publish/fgs-bench-publish.go "$GITHUB_SHA" "$GCP_SA_KEY"
+        find results -name "*.json" | xargs sudo -E go run ./cmd/fgs-bench-publish/fgs-bench-publish.go publish "$GITHUB_SHA" "$GCP_SA_KEY"
 
