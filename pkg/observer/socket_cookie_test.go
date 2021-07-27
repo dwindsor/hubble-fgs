@@ -22,7 +22,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func socketCookieTest(t *testing.T) (ec.ResponsesChecker, error) {
+func socketCookieTest(t *testing.T) (ec.MultiResponseChecker, error) {
 
 	// initialize listen, connect, and accept file descriptors, and ensure that they
 	// are closed once we return
@@ -102,7 +102,7 @@ func socketCookieTest(t *testing.T) (ec.ResponsesChecker, error) {
 	lFD = -1
 	addCheck(ec.NewCloseEventChecker().HasCookie(lCookie).End())
 
-	checker := ec.NewOrderedResponsesChecker(checks...)
+	checker := ec.NewOrderedMultiResponseChecker(checks...)
 	return &checker, nil
 }
 

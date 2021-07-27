@@ -515,7 +515,7 @@ func jsonTestSaveCopy(jsonFile *os.File) (string, error) {
 	return out.Name(), nil
 }
 
-func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.ResponsesChecker) error {
+func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) error {
 
 	var err error
 	if jsonFile == nil {

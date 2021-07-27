@@ -39,8 +39,8 @@ func (f ResponseCheckerFn) Check(e *fgs.GetEventsResponse, log Logger) error {
 	return f(e, log)
 }
 
-// ResponsesChecker is a stateful checker for checking a series of responses
-type ResponsesChecker interface {
+// MultiResponseChecker is a stateful checker for checking a series of responses
+type MultiResponseChecker interface {
 	// NextCheck checks a response and returns a boolean value indicating
 	// whether the checker has concluded, and an error indicating whether the
 	// check was successful. The boolean value allows short-circuting checks.
@@ -57,34 +57,34 @@ type ResponsesChecker interface {
 	FinalCheck(Logger) error
 }
 
-type ResponsesCheckerFns struct {
+type MultiResponseCheckerFns struct {
 	NextCheckFn  func(*fgs.GetEventsResponse, Logger) (bool, error)
 	FinalCheckFn func(Logger) error
 }
 
-func (fns *ResponsesCheckerFns) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
+func (fns *MultiResponseCheckerFns) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
 	return fns.NextCheckFn(r, l)
 }
 
-func (fns *ResponsesCheckerFns) FinalCheck(l Logger) error {
+func (fns *MultiResponseCheckerFns) FinalCheck(l Logger) error {
 	return fns.FinalCheckFn(l)
 }
 
-// OrderedResponsesChecker matches a list of ResponseCheckers over a sequence of responses
-type OrderedResponsesChecker struct {
+// OrderedMultiResponseChecker matches a list of ResponseCheckers over a sequence of responses
+type OrderedMultiResponseChecker struct {
 	checkers []ResponseChecker
 	idx      int
 }
 
-// NewOrderedResponsesChecker retuns a new OrderedResponsesChecker
-func NewOrderedResponsesChecker(checkers ...ResponseChecker) OrderedResponsesChecker {
-	return OrderedResponsesChecker{
+// NewOrderedMultiResponseChecker retuns a new OrderedMultiResponseChecker
+func NewOrderedMultiResponseChecker(checkers ...ResponseChecker) OrderedMultiResponseChecker {
+	return OrderedMultiResponseChecker{
 		checkers: checkers,
 		idx:      0,
 	}
 }
 
-func (c *OrderedResponsesChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
+func (c *OrderedMultiResponseChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
 	// all checkers have been verified
 	if c.idx >= len(c.checkers) {
 		return true, nil
@@ -97,76 +97,76 @@ func (c *OrderedResponsesChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) 
 
 	c.idx += 1
 	if c.idx == len(c.checkers) {
-		l.Logf("OrderedResponsesChecker: all %d checks succeeded", len(c.checkers))
+		l.Logf("OrderedMultiResponseChecker: all %d checks succeeded", len(c.checkers))
 		return true, nil
 	} else {
-		l.Logf("OrderedResponsesChecker: %d/%d matched", c.idx, len(c.checkers))
+		l.Logf("OrderedMultiResponseChecker: %d/%d matched", c.idx, len(c.checkers))
 		return false, nil
 	}
 }
 
-func (c *OrderedResponsesChecker) FinalCheck(l Logger) error {
+func (c *OrderedMultiResponseChecker) FinalCheck(l Logger) error {
 	if c.idx >= len(c.checkers) {
 		return nil
 	}
-	return fmt.Errorf("OrderedResponsesChecker: only %d/%d matched", c.idx, len(c.checkers))
+	return fmt.Errorf("OrderedMultiResponseChecker: only %d/%d matched", c.idx, len(c.checkers))
 }
 
-// UnorderedResponsesChecker matches a list of ResponseCheckers over a
+// UnorderedMultiResponseChecker matches a list of ResponseCheckers over a
 // squence of responses. The checkers can match in any order (no
 // backtracking).
-type UnorderedResponsesChecker struct {
+type UnorderedMultiResponseChecker struct {
 	checkers        *list.List
 	total_ncheckers int
 }
 
-func NewUnorderedResponsesChecker(checkers ...ResponseChecker) *UnorderedResponsesChecker {
+func NewUnorderedMultiResponseChecker(checkers ...ResponseChecker) *UnorderedMultiResponseChecker {
 	l := list.New()
 	for _, c := range checkers {
 		l.PushBack(c)
 	}
 
-	return &UnorderedResponsesChecker{
+	return &UnorderedMultiResponseChecker{
 		checkers:        l,
 		total_ncheckers: len(checkers),
 	}
 }
 
-func (c *UnorderedResponsesChecker) NextCheck(ev *fgs.GetEventsResponse, log Logger) (bool, error) {
+func (c *UnorderedMultiResponseChecker) NextCheck(ev *fgs.GetEventsResponse, log Logger) (bool, error) {
 	clen := c.checkers.Len()
 	if clen == 0 {
 		return true, nil
 	}
 
-	log.Logf("UnorderedResponsesChecker: %d/%d checkers remain", clen, c.total_ncheckers)
+	log.Logf("UnorderedMultiResponseChecker: %d/%d checkers remain", clen, c.total_ncheckers)
 	idx := 1
 	for e := c.checkers.Front(); e != nil; e = e.Next() {
 		checker := e.Value.(ResponseChecker)
 		err := checker.Check(ev, log)
 		if err == nil {
-			log.Logf("UnorderedResponsesChecker: checking %d/%d: success", idx, clen)
+			log.Logf("UnorderedMultiResponseChecker: checking %d/%d: success", idx, clen)
 			c.checkers.Remove(e)
 			clen--
 			if clen > 0 {
-				log.Logf("UnorderedResponsesChecker: success: %d/%d matchers remaining", clen, c.total_ncheckers)
+				log.Logf("UnorderedMultiResponseChecker: success: %d/%d matchers remaining", clen, c.total_ncheckers)
 				return false, nil
 			} else {
-				log.Logf("UnorderedResponsesChecker: success: all %d matches matched", c.total_ncheckers)
+				log.Logf("UnorderedMultiResponseChecker: success: all %d matches matched", c.total_ncheckers)
 				return true, nil
 			}
 		}
-		log.Logf("UnorderedResponsesChecker: checking %d/%d: failure: %s", idx, clen, err)
+		log.Logf("UnorderedMultiResponseChecker: checking %d/%d: failure: %s", idx, clen, err)
 		idx += 1
 	}
 
-	return false, fmt.Errorf("UnorderedResponsesChecker: all %d checks failed", c.checkers.Len())
+	return false, fmt.Errorf("UnorderedMultiResponseChecker: all %d checks failed", c.checkers.Len())
 }
 
-func (c *UnorderedResponsesChecker) FinalCheck(log Logger) error {
+func (c *UnorderedMultiResponseChecker) FinalCheck(log Logger) error {
 	if l := c.checkers.Len(); l == 0 {
 		return nil
 	} else {
-		return fmt.Errorf("UnorderedResponsesChecker: %d checks remain", c.checkers.Len())
+		return fmt.Errorf("UnorderedMultiResponseChecker: %d checks remain", c.checkers.Len())
 	}
 }
 

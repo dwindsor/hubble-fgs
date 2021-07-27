@@ -203,7 +203,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		}
 		return nil
 	}
-	checker := ec.ResponsesCheckerFns{
+	checker := ec.MultiResponseCheckerFns{
 		NextCheckFn:  nextCheck,
 		FinalCheckFn: finalCheck,
 	}
