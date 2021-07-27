@@ -95,6 +95,7 @@ message ProcessConnect {
     google.protobuf.UInt32Value destination_port = 6;
     repeated string destination_names = 7;
     uint64 sock_cookie = 8;
+    Pod destination_pod = 9;
 }
 
 message ProcessClose {
@@ -107,6 +108,7 @@ message ProcessClose {
     repeated string destination_names = 7;
     uint64 sock_cookie = 8;
     SocketStats stats = 9;
+    Pod destination_pod = 10;
 }
 
 message ProcessListen {
@@ -126,6 +128,7 @@ message ProcessAccept {
     google.protobuf.UInt32Value destination_port = 6;
     repeated string destination_names = 7;
     uint64 sock_cookie = 8;
+    Pod destination_pod = 9;
 }
 
 message ProcessExec {

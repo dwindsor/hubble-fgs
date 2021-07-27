@@ -622,6 +622,16 @@ func (m *ProcessConnect) Validate() error {
 
 	// no validation rules for SockCookie
 
+	if v, ok := interface{}(m.GetDestinationPod()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessConnectValidationError{
+				field:  "DestinationPod",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
 	return nil
 }
 
@@ -737,6 +747,16 @@ func (m *ProcessClose) Validate() error {
 		if err := v.Validate(); err != nil {
 			return ProcessCloseValidationError{
 				field:  "Stats",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetDestinationPod()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessCloseValidationError{
+				field:  "DestinationPod",
 				reason: "embedded message failed validation",
 				cause:  err,
 			}
@@ -952,6 +972,16 @@ func (m *ProcessAccept) Validate() error {
 	}
 
 	// no validation rules for SockCookie
+
+	if v, ok := interface{}(m.GetDestinationPod()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessAcceptValidationError{
+				field:  "DestinationPod",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
 
 	return nil
 }
