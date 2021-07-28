@@ -94,24 +94,6 @@ type observerSockopsSensor struct {
 	name string
 }
 
-type observerSkmsgSensor struct {
-	name string
-}
-
-func init() {
-	sockops := &observerSockopsSensor{
-		name: "sockops loader",
-	}
-	RegisterProbeType("sockops", sockops)
-
-	tls := &observerTlsSensor{
-		name: "tls sensor",
-	}
-	RegisterProbeType("tc_ingress", tls)
-	RegisterProbeType("tc_egress", tls)
-	registerTracingSensorsAtIinit(tls.name, tls)
-}
-
 func (sockops *observerSockopsSensor) loadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *bpfLoad,
@@ -126,6 +108,47 @@ func (sockops *observerSockopsSensor) loadProbe(
 
 func (tls *observerSockopsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
 	return nil, nil
+}
+
+type observerSkmsgTlsSensor struct {
+	name string
+}
+
+func (skmsg *observerSkmsgTlsSensor) loadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *bpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+	return bpf.LoadSkmsgProgram(
+		version, Verbosity,
+		btfObj,
+		load.Observer__program,
+		load.observer__label,
+		bpfDir+load.observer__prog,
+		mapDir)
+}
+
+func (skmsg *observerSkmsgTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	return nil, nil
+}
+
+func init() {
+	skmsg := &observerSkmsgTlsSensor{
+		name: "skmsg tls sensor",
+	}
+	RegisterProbeType("skmsg", skmsg)
+
+	sockops := &observerSockopsSensor{
+		name: "sockops loader",
+	}
+	RegisterProbeType("sockops", sockops)
+
+	tls := &observerTlsSensor{
+		name: "tls sensor",
+	}
+	RegisterProbeType("tc_ingress", tls)
+	RegisterProbeType("tc_egress", tls)
+	registerTracingSensorsAtIinit(tls.name, tls)
 }
 
 func EnableTlsParser(tls, tc bool) *observerSensor {
