@@ -257,6 +257,14 @@ func eventGetParent(ev_ fgsEvent) *fgs.Process {
 	return nil
 }
 
+type EventTypeError struct {
+	Err error
+}
+
+func (e EventTypeError) Error() string {
+	return e.Err.Error()
+}
+
 func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (error, fgsEvent) {
 
 	checkTypes := func(ty fgs.EventType) error {
@@ -265,7 +273,9 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (err
 				return nil
 			}
 		}
-		return fmt.Errorf("type %s not in %+v", fgs.EventType_name[int32(ty)], types)
+		return EventTypeError{
+			Err: fmt.Errorf("type %s not in %+v", fgs.EventType_name[int32(ty)], types),
+		}
 	}
 
 	switch ev := r.Event.(type) {
@@ -535,10 +545,9 @@ func (e *eventChainChecker) HasPort(port uint32) *eventChainChecker {
 
 // ProcessChecker checks a process
 type ProcessChecker interface {
-	// Check checks a single response.
+	// Check checks a process.
 	Check(*fgs.Process, Logger) error
 }
-
 type ProcessCheckerFn func(*fgs.Process, Logger) error
 
 // Check implements ResponseChecker interface
@@ -546,12 +555,42 @@ func (f ProcessCheckerFn) Check(p *fgs.Process, log Logger) error {
 	return f(p, log)
 }
 
+type PodChecker interface {
+	// Check checks a Pod
+	Check(*fgs.Pod, Logger) error
+}
+type PodCheckerFn func(*fgs.Pod, Logger) error
+
+func (f PodCheckerFn) Check(p *fgs.Pod, log Logger) error {
+	return f(p, log)
+}
+
+type ContainerChecker interface {
+	// Check checks a Container
+	Check(*fgs.Container, Logger) error
+}
+type ContainerCheckerFn func(*fgs.Container, Logger) error
+
+func (f ContainerCheckerFn) Check(c *fgs.Container, log Logger) error {
+	return f(c, log)
+}
+
+type ImageChecker interface {
+	// Check checks a container image
+	Check(*fgs.Image, Logger) error
+}
+type ImageCheckerFn func(*fgs.Image, Logger) error
+
+func (f ImageCheckerFn) Check(i *fgs.Image, log Logger) error {
+	return f(i, log)
+}
+
 // ProcessCheckerAND can be used to build a check that is a conjuction of other checkers
 type ProcessCheckerAND struct {
 	checks []ProcessChecker
 }
 
-func NewProcessCheckerAND() *ProcessCheckerAND {
+func NewProcessChecker() *ProcessCheckerAND {
 	return &ProcessCheckerAND{}
 }
 
@@ -561,12 +600,19 @@ func (o *ProcessCheckerAND) With(c ...ProcessChecker) *ProcessCheckerAND {
 	return o
 }
 
-func (o *ProcessCheckerAND) WithBinary(sm StringMatcher) *ProcessCheckerAND {
+func (o *ProcessCheckerAND) WithBinary(arg StringArg) *ProcessCheckerAND {
+	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithBinary(sm))
 	return o
 }
 
-func (o *ProcessCheckerAND) WithArguments(sm StringMatcher) *ProcessCheckerAND {
+func (o *ProcessCheckerAND) WithPod(arg PodChecker) *ProcessCheckerAND {
+	o.checks = append(o.checks, ProcessWithPod(arg))
+	return o
+}
+
+func (o *ProcessCheckerAND) WithArguments(arg StringArg) *ProcessCheckerAND {
+	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithArguments(sm))
 	return o
 }
@@ -599,6 +645,7 @@ func processWithString(
 		if err := matcher(s); err != nil {
 			return fmt.Errorf("failed check on %s: %w", desc, err)
 		}
+		log.Logf("**** MATCH on %s: %s", desc, s)
 		return nil
 	})
 }
@@ -608,7 +655,7 @@ func ProcessWithCWD(sm StringMatcher) ProcessChecker {
 	matcher := sm.GetMatcher()
 	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
 		if p == nil {
-			return fmt.Errorf("process is nil and cannot match cwd usnig %v", sm)
+			return fmt.Errorf("process is nil and cannot match cwd using %v", sm)
 		}
 		cwd := p.Cwd
 		if strings.Contains(p.Flags, "nocwd") {
@@ -622,6 +669,7 @@ func ProcessWithCWD(sm StringMatcher) ProcessChecker {
 		if err := matcher(cwd); err != nil {
 			return fmt.Errorf("failed check on %s: %w", "cwd", err)
 		}
+		log.Logf("**** MATCH on %s: %s", "cwd", p.Cwd)
 		return nil
 	})
 }
@@ -658,6 +706,18 @@ func ProcessWithCommand(binary StringMatcher, args StringMatcher) ProcessChecker
 	}
 }
 
+func ProcessWithPod(pc PodChecker) ProcessChecker {
+	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+		if p == nil {
+			return fmt.Errorf("process is nil and cannot match pod")
+		}
+		if err := pc.Check(p.Pod, log); err != nil {
+			return fmt.Errorf("failed check on %s: %w", "pod", err)
+		}
+		return nil
+	})
+}
+
 func (e *eventChainChecker) HasProcess(cs ...ProcessChecker) *eventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
@@ -684,16 +744,289 @@ func (e *eventChainChecker) HasParent(cs ...ProcessChecker) *eventChainChecker {
 		if err := oldEventCheck(e, l); err != nil {
 			return err
 		}
+
 		process := eventGetParent(e)
 		if process == nil {
 			return fmt.Errorf("parent is nil")
 		}
 		for i := range cs {
 			if err := cs[i].Check(process, l); err != nil {
-				return fmt.Errorf("parent check faield: %w", err)
+				return fmt.Errorf("parent check failed: %w", err)
 			}
 		}
 		return nil
 	}
 	return e
+}
+
+func (e *eventChainChecker) HasAncestor(idx int, cs ...ProcessChecker) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+
+		ev, ok := e.(interface{ GetAncestors() []*fgs.Process })
+		if !ok {
+			return fmt.Errorf("type %T does not have ancestors", e)
+		}
+
+		ancestors := ev.GetAncestors()
+		if idx < 0 || len(ancestors) <= idx {
+			return fmt.Errorf("event has %d ancestors: index %d is invalid", len(ancestors), idx)
+		}
+
+		process := ancestors[idx]
+		if process == nil {
+			return fmt.Errorf("ancestor idx=%d is nil", idx)
+		}
+		for i := range cs {
+			if err := cs[i].Check(process, l); err != nil {
+				return fmt.Errorf("ancestor check failed: %w", err)
+			}
+		}
+		return nil
+	}
+	return e
+}
+
+// PodCheckerAND can be used to build a check that is a conjuction of other checkers
+type PodCheckerAND struct {
+	checks []PodChecker
+}
+
+func NewPodChecker() *PodCheckerAND {
+	return &PodCheckerAND{}
+}
+
+func (o *PodCheckerAND) Check(p *fgs.Pod, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(p, l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func podWithString(
+	sm StringMatcher,
+	getter func(p *fgs.Pod) string,
+	desc string, // desc is used for helpful error messages
+) PodChecker {
+	matcher := sm.GetMatcher()
+	return PodCheckerFn(func(p *fgs.Pod, log Logger) error {
+		if p == nil {
+			return fmt.Errorf("pod is nil and cannot match %s using %v", desc, sm)
+		}
+		s := getter(p)
+		if err := matcher(s); err != nil {
+			return fmt.Errorf("failed check on %s: %w", desc, err)
+		}
+		log.Logf("**** MATCH on %s: %s", desc, s)
+		return nil
+	})
+}
+
+func PodWithName(sm StringMatcher) PodChecker {
+	return podWithString(
+		sm,
+		func(p *fgs.Pod) string {
+			return p.Name
+		},
+		"pod-name",
+	)
+}
+
+func PodWithNamespace(sm StringMatcher) PodChecker {
+	return podWithString(
+		sm,
+		func(p *fgs.Pod) string {
+			return p.Namespace
+		},
+		"pod-namespace",
+	)
+}
+
+func (o *PodCheckerAND) WithName(arg StringArg) *PodCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, PodWithName(sm))
+	return o
+}
+
+func (o *PodCheckerAND) WithNamePrefix(prefix string) *PodCheckerAND {
+	sm := PrefixStringMatch(prefix)
+	o.checks = append(o.checks, PodWithName(sm))
+	return o
+}
+
+func (o *PodCheckerAND) WithNamespace(arg StringArg) *PodCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, PodWithNamespace(sm))
+	return o
+}
+
+func PodWithLabels(labels ...LabelMatch) PodChecker {
+	labelMatchers := make(map[string]func(string) error)
+	for i := range labels {
+		labelMatchers[labels[i].Key] = labels[i].Val.GetMatcher()
+	}
+
+	// build a warning that we can pass to the closure below and inform the
+	// user that something might be wrong
+	warn := ""
+	if len(labelMatchers) != len(labels) {
+		warn = fmt.Sprintf("Warning: WithLabels() argument %+v has colliding keys", labels)
+	}
+
+	return PodCheckerFn(func(p *fgs.Pod, l Logger) error {
+		if warn != "" {
+			l.Logf(warn)
+		}
+		matchedLabels := map[string]struct{}{}
+		for _, label := range p.Labels {
+			kv := strings.SplitN(label, "=", 2)
+			if len(kv) != 2 {
+				l.Logf("label %s does not match key=val format. Ignoring", label)
+				continue
+			}
+			key := kv[0]
+			val := kv[1]
+			if matcher, ok := labelMatchers[key]; ok {
+				if err := matcher(val); err != nil {
+					return fmt.Errorf("label %s mismatch: %w", key, err)
+				}
+			}
+			matchedLabels[key] = struct{}{}
+		}
+
+		if len(matchedLabels) != len(labelMatchers) {
+			unMatchedLabels := []string{}
+			for k, _ := range labelMatchers {
+				if _, ok := matchedLabels[k]; !ok {
+					unMatchedLabels = append(unMatchedLabels, k)
+				}
+			}
+			return fmt.Errorf("unmatched labels: %+v", unMatchedLabels)
+		}
+
+		l.Logf("**** MATCH on %s: %s", "labels", p.Labels)
+		return nil
+	})
+}
+
+// WithLabels will try and match all the given labels. Specifically, it will
+// check that the argument labels are a _subset_ of the pod labels.
+func (o *PodCheckerAND) WithLabels(labels ...LabelMatch) *PodCheckerAND {
+	o.checks = append(o.checks, PodWithLabels(labels...))
+	return o
+}
+
+type ContainerCheckerAND struct {
+	checks []ContainerChecker
+}
+
+func NewContainerChecker() *ContainerCheckerAND {
+	return &ContainerCheckerAND{}
+}
+
+func (o *ContainerCheckerAND) Check(p *fgs.Container, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(p, l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func PodWithContainer(cc ContainerChecker) PodChecker {
+	return PodCheckerFn(func(p *fgs.Pod, log Logger) error {
+		if p == nil {
+			return fmt.Errorf("pod is nil and cannot match container")
+		}
+		if err := cc.Check(p.Container, log); err != nil {
+			return fmt.Errorf("failed check on %s: %w", "container", err)
+		}
+		return nil
+	})
+}
+
+func (o *PodCheckerAND) WithContainer(arg ContainerChecker) *PodCheckerAND {
+	o.checks = append(o.checks, PodWithContainer(arg))
+	return o
+}
+
+func containerWithString(
+	sm StringMatcher,
+	getter func(p *fgs.Container) string,
+	desc string, // desc is used for helpful error messages
+) ContainerChecker {
+	matcher := sm.GetMatcher()
+	return ContainerCheckerFn(func(c *fgs.Container, log Logger) error {
+		if c == nil {
+			return fmt.Errorf("container is nil and cannot match %s using %v", desc, sm)
+		}
+		s := getter(c)
+		if err := matcher(s); err != nil {
+			return fmt.Errorf("failed check on %s: %w", desc, err)
+		}
+		log.Logf("**** MATCH on %s: %s", desc, s)
+		return nil
+	})
+}
+
+func ContainerWithName(sm StringMatcher) ContainerChecker {
+	return containerWithString(
+		sm,
+		func(c *fgs.Container) string {
+			return c.Name
+		},
+		"container-name",
+	)
+}
+
+func (o *ContainerCheckerAND) WithName(arg StringArg) *ContainerCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ContainerWithName(sm))
+	return o
+}
+
+func (o *ContainerCheckerAND) WithNamePrefix(prefix string) *ContainerCheckerAND {
+	sm := PrefixStringMatch(prefix)
+	o.checks = append(o.checks, ContainerWithName(sm))
+	return o
+}
+
+func ContainerWithID(sm StringMatcher) ContainerChecker {
+	return containerWithString(
+		sm,
+		func(c *fgs.Container) string {
+			return c.Id
+		},
+		"container-id",
+	)
+}
+
+func ContainerWithImageName(sm StringMatcher) ContainerChecker {
+	matcher := sm.GetMatcher()
+	return ContainerCheckerFn(func(c *fgs.Container, log Logger) error {
+		desc := "container-image-name"
+		if c == nil {
+			return fmt.Errorf("container is nil and cannot match %s using %v", desc, sm)
+		}
+		if c.Image == nil {
+			return fmt.Errorf("container is nil and cannot match %s using %v", desc, sm)
+		}
+		s := c.Image.Name
+		if err := matcher(s); err != nil {
+			return fmt.Errorf("failed check on %s: %w", desc, err)
+		}
+		log.Logf("**** MATCH on %s: %s", desc, s)
+		return nil
+	})
+}
+
+func (o *ContainerCheckerAND) WithImageName(arg StringArg) *ContainerCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ContainerWithImageName(sm))
+	return o
 }

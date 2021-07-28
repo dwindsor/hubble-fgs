@@ -520,8 +520,48 @@ func jsonTestSaveCopy(fnamePrefix string, jsonFile *os.File) (string, error) {
 	return out.Name(), nil
 }
 
-func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) error {
+func JsonCheck(jsonFile *os.File, checker ec.MultiResponseChecker, log ec.Logger) error {
+	count := 0
+	dec := json.NewDecoder(jsonFile)
+	for {
+		ev := fgs.GetEventsResponse{}
+		err := jsonpb.UnmarshalNext(dec, &ev)
+		if err != nil {
+			err = fmt.Errorf("unmarshal failed: %w", err)
+			return err
+		}
+		count += 1
+		prefix := fmt.Sprintf("jsonTestCheck/line:%04d ", count)
+		done, err := checker.NextCheck(&ev, &ec.PrefixLogger{Prefix: prefix, Logger: log})
+		prefix = fmt.Sprintf("%sevent:%s", prefix, eventTypeString(ev.Event))
+		if done && err == nil {
+			log.Logf("%s =>  FINAL MATCH ", prefix)
+			log.Logf("jsonTestCheck: DONE!")
+			return nil
+		} else if err == nil {
+			log.Logf("%s => MATCH, continuing", prefix)
+		} else if done && err != nil {
+			log.Logf("%s => terminating error: %s", prefix, err)
+			return err
+		} else {
+			if _, ok := err.(ec.EventTypeError); !ok {
+				log.Logf("%s => no match: %s, continuing", prefix, err)
+			}
+		}
 
+		// no match: move to the next event
+		if !dec.More() {
+			break
+		}
+	}
+
+	if err := checker.FinalCheck(log); err != nil {
+		return fmt.Errorf("jsonTestCheck: failed to match after %d events: %w", count, err)
+	}
+	return nil
+}
+
+func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) error {
 	var err error
 	if jsonFile == nil {
 		fmt.Printf("jsonTestIterate: openning: %s\n", exportFile)
@@ -539,42 +579,7 @@ func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 		}
 		jsonFile.Close()
 	}()
-
-	count := 0
-	dec := json.NewDecoder(jsonFile)
-	for {
-		ev := fgs.GetEventsResponse{}
-		err := jsonpb.UnmarshalNext(dec, &ev)
-		if err != nil {
-			err = fmt.Errorf("unmarshal failed: %w", err)
-			return err
-		}
-		count += 1
-		prefix := fmt.Sprintf("jsonTestCheck/line:%04d ", count)
-		done, err := c.NextCheck(&ev, &ec.TestPrefixLogger{Prefix: prefix, T: t})
-		prefix = fmt.Sprintf("%sevent:%s", prefix, eventTypeString(ev.Event))
-		if done && err == nil {
-			t.Logf("%s => final match", prefix)
-			t.Logf("jsonTestCheck: DONE!")
-			return nil
-		} else if err == nil {
-			t.Logf("%s => match, continuing", prefix)
-		} else if done && err != nil {
-			t.Logf("%s => terminating error: %s", prefix, err)
-			return err
-		} else {
-			t.Logf("%s => no match: %s, continuing", prefix, err)
-		}
-
-		// no match: move to the next event
-		if !dec.More() {
-			break
-		}
-	}
-
-	if err = c.FinalCheck(t); err != nil {
-		err = fmt.Errorf("jsonTestCheck: failed to match after %d events: %w", count, err)
-	}
+	err = JsonCheck(jsonFile, c, t)
 	return err
 }
 

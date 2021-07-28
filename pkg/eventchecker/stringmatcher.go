@@ -29,6 +29,22 @@ type StringMatcher struct {
 	m StrMatch
 }
 
+type StringArg interface {
+	// string -> FullMatch
+	// StringMatcher
+}
+
+func stringMatcherFromArg(arg StringArg) StringMatcher {
+	switch v := arg.(type) {
+	case StringMatcher:
+		return v
+	case string:
+		return FullStringMatch(v)
+	}
+
+	panic(fmt.Sprintf("stringMatcherFromArg: Unexpected type: %T", arg))
+}
+
 func FullStringMatch(s string) StringMatcher {
 	return StringMatcher{s: s, m: StrFullMatch}
 }

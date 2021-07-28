@@ -267,11 +267,11 @@ func TestExecEventClone(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	selfChecker := ec.NewProcessCheckerAND().WithBinary(ec.SuffixStringMatch(selfBinary))
-	ncSrvChecker := ec.NewProcessCheckerAND().
+	selfChecker := ec.NewProcessChecker().WithBinary(ec.SuffixStringMatch(selfBinary))
+	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(ec.SuffixStringMatch("nc.traditional")).
 		WithArguments(ec.FullStringMatch("-nvlp 8081"))
-	ncCliChecker := ec.NewProcessCheckerAND().
+	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(ec.SuffixStringMatch("nc.traditional")).
 		WithArguments(ec.FullStringMatch("127.0.0.1 8081 -e /bin/sh"))
 

@@ -12,7 +12,7 @@ package eventchecker
 //
 
 import (
-	"testing"
+	"github.com/sirupsen/logrus"
 )
 
 // Logger interface to be used in checkers
@@ -23,30 +23,50 @@ type Logger interface {
 	Fatalf(format string, args ...interface{})
 }
 
-// TestPrefixLogger is a simple wrapper of testing.T that allows to log with a prefix
-type TestPrefixLogger struct {
+// TestPrefixLogger is a simple wrapper of Logger that allows to log with a prefix
+type PrefixLogger struct {
 	Prefix string
-	T      *testing.T
+	Logger Logger
 }
 
-func (l *TestPrefixLogger) Log(args ...interface{}) {
+func (l *PrefixLogger) Log(args ...interface{}) {
 	newargs := append([]interface{}{l.Prefix}, args...)
-	l.T.Log(newargs...)
+	l.Logger.Log(newargs...)
 }
 
-func (l *TestPrefixLogger) Fatal(args ...interface{}) {
+func (l *PrefixLogger) Fatal(args ...interface{}) {
 	newargs := append([]interface{}{l.Prefix}, args...)
-	l.T.Fatal(newargs...)
+	l.Logger.Fatal(newargs...)
 }
 
-func (l *TestPrefixLogger) Logf(format string, args ...interface{}) {
+func (l *PrefixLogger) Logf(format string, args ...interface{}) {
 	newfmt := "%s" + format
 	newargs := append([]interface{}{l.Prefix}, args...)
-	l.T.Logf(newfmt, newargs...)
+	l.Logger.Logf(newfmt, newargs...)
 }
 
-func (l *TestPrefixLogger) Fatalf(format string, args ...interface{}) {
+func (l *PrefixLogger) Fatalf(format string, args ...interface{}) {
 	newfmt := "%s" + format
 	newargs := append([]interface{}{l.Prefix}, args...)
-	l.T.Fatalf(newfmt, newargs...)
+	l.Logger.Fatalf(newfmt, newargs...)
+}
+
+type LogrusLogger struct {
+	L *logrus.Logger
+}
+
+func (l *LogrusLogger) Log(args ...interface{}) {
+	l.L.Log(logrus.InfoLevel, args...)
+}
+
+func (l *LogrusLogger) Fatal(args ...interface{}) {
+	l.L.Fatal(args...)
+}
+
+func (l *LogrusLogger) Logf(format string, args ...interface{}) {
+	l.L.Logf(logrus.InfoLevel, format, args...)
+}
+
+func (l *LogrusLogger) Fatalf(format string, args ...interface{}) {
+	l.L.Fatalf(format, args...)
 }
