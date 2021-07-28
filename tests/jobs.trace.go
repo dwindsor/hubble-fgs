@@ -4,101 +4,65 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+
+	"github.com/sirupsen/logrus"
 )
 
 var (
-	jobsTrace = []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: "/usr/local/bin/node",
-						Arguments: "server.js",
-						Pod: &fgs.Pod{
-							Namespace: "tenant-jobs",
-							Name:      "jobposting",
-							Labels: []string{"k8s:app=jobposting",
-								"k8s:io.cilium.k8s.policy.cluster=fgs-cli-ci-11",
-								"k8s:io.cilium.k8s.policy.serviceaccount=default",
-								"k8s:io.kubernetes.pod.namespace=tenant-jobs"},
-							Container: &fgs.Container{
-								Name: "jobposting",
-								Image: &fgs.Image{
-									Name: "quay.io/isovalent/jobs-app-jobposting:latest",
-								},
-							},
-						},
-					},
-					Parent: &fgs.Process{Binary: "/bin/sh",
-						Arguments: "-c \"PORT=9080 node server.js\"",
-						Pod: &fgs.Pod{
-							Namespace: "tenant-jobs",
-							Name:      "jobposting",
-							Labels: []string{"k8s:app=jobposting",
-								"k8s:io.cilium.k8s.policy.cluster=fgs-cli-ci-11",
-								"k8s:io.cilium.k8s.policy.serviceaccount=default",
-								"k8s:io.kubernetes.pod.namespace=tenant-jobs"},
-							Container: &fgs.Container{
-								Name: "jobposting",
-								Image: &fgs.Image{
-									Name: "quay.io/isovalent/jobs-app-jobposting:latest",
-								},
-							},
-						},
-					},
-					Ancestors: []*fgs.Process{
-						&fgs.Process{
-							Binary:    "/usr/local/bin/docker-entrypoint.sh",
-							Arguments: "/usr/local/bin/docker-entrypoint.sh /bin/sh -c \"PORT=9080 node server.js\"",
-							Pod: &fgs.Pod{
-								Namespace: "tenant-jobs",
-								Name:      "jobposting",
-								Labels: []string{"k8s:app=jobposting",
-									"k8s:io.cilium.k8s.policy.cluster=fgs-cli-ci-11",
-									"k8s:io.cilium.k8s.policy.serviceaccount=default",
-									"k8s:io.kubernetes.pod.namespace=tenant-jobs"},
-								Container: &fgs.Container{
-									Name: "jobposting",
-									Image: &fgs.Image{
-										Name: "quay.io/isovalent/jobs-app-jobposting:latest",
-									},
-								},
-							},
-						},
-						&fgs.Process{
-							Binary:    "/usr/bin/containerd-shim",
-							Arguments: "-namespace moby -workdir /var/lib/containerd/io.containerd.runtime.v1.linux/moby/",
-						},
-					},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "/usr/local/bin/node",
-						Arguments: "server.js"},
-					Parent:          &fgs.Process{Binary: ""},
-					DestinationPort: &wrappers.UInt32Value{Value: 9080},
-				},
-			},
-		},
-	}
+	jc = ec.NewPodChecker().
+		WithNamespace("tenant-jobs").
+		WithNamePrefix("jobposting").
+		WithLabels(
+			ec.LabelMatchVal("k8s:app", "jobposting"),
+			ec.LabelMatchValPrefix("k8s:io.cilium.k8s.policy.cluster", "fgs-cli-ci"),
+			ec.LabelMatchVal("k8s:io.cilium.k8s.policy.serviceaccount", "default"),
+			ec.LabelMatchVal("k8s:io.kubernetes.pod.namespace", "tenant-jobs"),
+		).
+		WithContainer(ec.NewContainerChecker().
+			WithName("jobposting").
+			WithImageName("quay.io/isovalent/jobs-app-jobposting:latest"),
+		)
+
+	checker = ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(ec.NewProcessChecker().
+				WithBinary("/usr/local/bin/node").
+				WithArguments("server.js").
+				WithPod(jc)).
+			HasParent(ec.NewProcessChecker().
+				WithBinary("/bin/sh").
+				WithArguments("-c \"PORT=9080 node server.js\"").
+				WithPod(jc)).
+			HasAncestor(0, ec.NewProcessChecker().
+				WithBinary("/usr/local/bin/docker-entrypoint.sh").
+				WithArguments("/usr/local/bin/docker-entrypoint.sh /bin/sh -c \"PORT=9080 node server.js\"").
+				WithPod(jc)).
+			HasAncestor(1, ec.NewProcessChecker().
+				WithBinary("/usr/bin/containerd-shim-runc-v2"),
+			).End(),
+		ec.NewConnectEventChecker().
+			HasProcess(ec.NewProcessChecker().
+				WithBinary("/usr/local/bin/node").
+				WithArguments("server.js")).
+			HasDstPort(9080).
+			End(),
+	)
 )
 
 func main() {
-	ok, err := observer.JsonTestCompare(jobsTrace, os.Args[1], 1, 0)
+	jsonFile, err := os.Open(os.Args[1])
 	if err != nil {
-		fmt.Printf("🔥 Failed: no dice: %v\n", err)
+		fmt.Errorf("🔥 opening json file failed: %w", err)
 		os.Exit(1)
 	}
-	if !ok {
-		fmt.Printf("🔥 Failed: no dice\n")
-		os.Exit(1)
+	logger := ec.LogrusLogger{logrus.New()}
+	err = observer.JsonCheck(jsonFile, &checker, &logger)
+	if err != nil {
+		fmt.Printf("🔥 Failed: no dice: %s\n", err)
+	} else {
+		fmt.Printf("🚢 Passed: ship it\n")
 	}
-	fmt.Printf("🚢 Passed: ship it\n")
 	os.Exit(0)
 }
