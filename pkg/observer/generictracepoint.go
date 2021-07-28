@@ -46,7 +46,15 @@ var (
 	tracepointLog logrus.FieldLogger
 )
 
+type observerTracepointSensor struct {
+	name string
+}
+
 func init() {
+	tp := &observerTracepointSensor{
+		name: "tracepoint sensor",
+	}
+	registerTracingSensorsAtIinit(tp.name, tp)
 	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
 }
 
@@ -524,4 +532,14 @@ func handleGenericTracepoint(r *bytes.Reader) (interface{}, error) {
 		}
 	}
 	return unix, nil
+}
+
+func (t *observerTracepointSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
+		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
+	}
+	if len(spec.Tracepoints) > 0 {
+		return createGenericTracepointSensor(spec.Tracepoints)
+	}
+	return nil, nil
 }

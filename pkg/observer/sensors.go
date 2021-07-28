@@ -379,8 +379,21 @@ func getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
 	if err != nil {
 		return nil, err
 	}
-	return getSensorFromTracingPolicy(&cnf.Spec)
 
+	// This is only used from testing code at the moment. So lets
+	// assume only one sensor per Spec and that we can return the
+	// first sensor we find.
+	for _, s := range registeredTracingSensors {
+		sensor, err := s.specHandler(&cnf.Spec)
+		if err != nil {
+			return nil, err
+		}
+		if sensor == nil {
+			continue
+		}
+		return sensor, nil
+	}
+	return nil, nil
 }
 
 func getSensorFromTracingPolicyFname(fname string) (*observerSensor, error) {

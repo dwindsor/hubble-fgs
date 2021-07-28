@@ -866,21 +866,12 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUn
 	return enterEv
 }
 
-func getSensorFromTracingPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
-	kprobes := spec.KProbes
-	tracepoints := spec.Tracepoints
-	if len(kprobes) > 0 && len(tracepoints) > 0 {
-		// TODO: requires some refactoring (see also below)
-		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
-	} else if len(kprobes) > 0 {
-		return addGenericKprobeSensors(kprobes, ObserverBTF)
-	} else if len(tracepoints) > 0 {
-		return createGenericTracepointSensor(tracepoints)
-	} else {
-		return nil, nil
-	}
-}
-
 func (k *observerKprobeSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
-	return getSensorFromTracingPolicy(spec)
+	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
+		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
+	}
+	if len(spec.KProbes) > 0 {
+		return addGenericKprobeSensors(spec.KProbes, ObserverBTF)
+	}
+	return nil, nil
 }
