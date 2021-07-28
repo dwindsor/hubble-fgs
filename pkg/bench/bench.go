@@ -110,7 +110,6 @@ func runFgs(fgsEnableTls, fgsDebug bool, summary *BenchSummary, ctx context.Cont
 
 	kprobe := observer.NewObserverKprobe("/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
 		"" /* network interfaces */, "", /* config file */
-		[]observer.GenericTracepointConf{},
 		fgsEnableTls /* tls */, false, /* tlstc */
 		fgsDebug /* debug */, false, /* enable-crd */
 		0 /* tcp statistics */)

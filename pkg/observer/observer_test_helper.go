@@ -41,13 +41,12 @@ var (
 )
 
 type testObserverOptions struct {
-	tls         bool
-	tlstc       bool
-	pretty      bool
-	crd         bool
-	probes      string
-	config      string
-	tracepoints []GenericTracepointConf
+	tls    bool
+	tlstc  bool
+	pretty bool
+	crd    bool
+	probes string
+	config string
 }
 
 type testExporterOptions struct {

@@ -100,7 +100,7 @@ func newDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, *tes
 	return NewObserverKprobe(observerTestDir,
 			observerTestDir,
 			"", "",
-			oo.config, oo.tracepoints, oo.tls, oo.tlstc, oo.pretty, oo.crd,
+			oo.config, oo.tls, oo.tlstc, oo.pretty, oo.crd,
 			0),
 		options
 }
