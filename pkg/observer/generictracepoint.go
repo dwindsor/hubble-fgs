@@ -26,6 +26,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/tracepoint"
 	"github.com/sirupsen/logrus"
+
+	. "github.com/isovalent/hubble-fgs/pkg/generictypes"
 )
 
 const (

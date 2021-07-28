@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 //
-package observer
+package generictypes
 
 const (
 	GenericIntType    = 1
@@ -32,7 +32,7 @@ const (
 	GenericInvalidType = -2
 )
 
-func genericTypeFromString(arg string) int {
+func GenericTypeFromString(arg string) int {
 	switch arg {
 	case "string":
 		return GenericStringType

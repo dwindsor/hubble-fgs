@@ -26,6 +26,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
+
+	. "github.com/isovalent/hubble-fgs/pkg/generictypes"
 )
 
 const (
@@ -382,7 +384,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 
 		// Parse Arguments
 		for j, a := range f.Args {
-			argType := genericTypeFromString(a.Type)
+			argType := GenericTypeFromString(a.Type)
 			if argType == GenericInvalidType {
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
 			}
@@ -416,7 +418,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// instructs the BPF kretprobe program which type of copy to use. And
 		// argReturnPrinters tell golang printer piece how to print the event.
 		if f.Return {
-			argType := genericTypeFromString(f.ReturnArg.Type)
+			argType := GenericTypeFromString(f.ReturnArg.Type)
 			if argType == GenericInvalidType {
 				if f.ReturnArg.Type == "" {
 					return nil, fmt.Errorf("ReturnArg not specified with Return=true.")
@@ -438,7 +440,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			argsBTFSet[api.ReturnArgIndex] = true
 			setRetprobe = true
 
-			argType := genericTypeFromString(argRetprobe.Type)
+			argType := GenericTypeFromString(argRetprobe.Type)
 			argP := argPrinters{index: int(argRetprobe.Index), ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
 		}
