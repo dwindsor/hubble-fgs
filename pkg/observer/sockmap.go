@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -88,13 +90,42 @@ type observerTlsSensor struct {
 	name string
 }
 
+type observerSockopsSensor struct {
+	name string
+}
+
+type observerSkmsgSensor struct {
+	name string
+}
+
 func init() {
+	sockops := &observerSockopsSensor{
+		name: "sockops loader",
+	}
+	RegisterProbeType("sockops", sockops)
+
 	tls := &observerTlsSensor{
 		name: "tls sensor",
 	}
 	RegisterProbeType("tc_ingress", tls)
 	RegisterProbeType("tc_egress", tls)
 	registerTracingSensorsAtIinit(tls.name, tls)
+}
+
+func (sockops *observerSockopsSensor) loadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *bpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+	return bpf.LoadSockopsProgram(version, Verbosity, btfObj,
+		load.Observer__program,
+		load.observer__label,
+		bpfDir+load.observer__prog,
+		mapDir)
+}
+
+func (tls *observerSockopsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	return nil, nil
 }
 
 func EnableTlsParser(tls, tc bool) *observerSensor {
