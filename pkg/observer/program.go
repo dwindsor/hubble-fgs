@@ -548,22 +548,6 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verb
 			load.observer__label,
 			bpfDir+load.observer__prog,
 			mapDir)
-	} else if load.probeType == "sk_skb_verdict" {
-		return bpf.LoadSkSkbVerdictProgram(
-			version, Verbosity,
-			btfObj,
-			load.Observer__program,
-			load.observer__label,
-			bpfDir+load.observer__prog,
-			mapDir)
-	} else if load.probeType == "sk_skb_parser" {
-		return bpf.LoadSkSkbParserProgram(
-			version, Verbosity,
-			btfObj,
-			load.Observer__program,
-			load.observer__label,
-			bpfDir+load.observer__prog,
-			mapDir)
 	} else if load.probeType == "cgrp_ingress" {
 		return bpf.LoadCgroupProgram(
 			version, Verbosity,

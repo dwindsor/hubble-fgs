@@ -132,7 +132,64 @@ func (skmsg *observerSkmsgTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpe
 	return nil, nil
 }
 
+type observerSkSkbVerdictTlsSensor struct {
+	name string
+}
+
+func (skSkbVerdict *observerSkSkbVerdictTlsSensor) loadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *bpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+	return bpf.LoadSkSkbVerdictProgram(
+		version, Verbosity,
+		btfObj,
+		load.Observer__program,
+		load.observer__label,
+		bpfDir+load.observer__prog,
+		mapDir)
+}
+
+func (skmsg *observerSkSkbVerdictTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	return nil, nil
+}
+
+type observerSkSkbParserTlsSensor struct {
+	name string
+}
+
+func (skSkbParser *observerSkSkbParserTlsSensor) loadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *bpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+	return bpf.LoadSkSkbParserProgram(
+		version, Verbosity,
+		btfObj,
+		load.Observer__program,
+		load.observer__label,
+		bpfDir+load.observer__prog,
+		mapDir)
+}
+
+func (skmsg *observerSkSkbParserTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+	return nil, nil
+}
+
 func init() {
+	skskbVerdict := &observerSkSkbVerdictTlsSensor{
+		name: "skskb verdict tls sensor",
+	}
+	RegisterProbeType("sk_skb_verdict", skskbVerdict)
+
+	// The skskb parser is only needed on 5.10 and earlier kernels.
+	// After 5.10 we can run with only the skskb verdict programs
+	// improving performance.
+	skskbParser := &observerSkSkbParserTlsSensor{
+		name: "skskb parser tls sensor",
+	}
+	RegisterProbeType("sk_skb_parser", skskbParser)
+
 	skmsg := &observerSkmsgTlsSensor{
 		name: "skmsg tls sensor",
 	}
