@@ -39,6 +39,8 @@ var (
 	availableSensors map[string]*observerSensor = map[string]*observerSensor{}
 	// list of registered Tracing handlers, see registerTracingHandler()
 	registeredTracingSensors map[string]observerTracingSensor = map[string]observerTracingSensor{}
+	// list of registers loaders, see registerProbeType()
+	registeredProbeLoad map[string]observerTracingSensor = map[string]observerTracingSensor{}
 	// observerSync
 	observerSync *ObserverSync
 )
@@ -65,6 +67,7 @@ type observerSensorImpl interface {
 
 type observerTracingSensor interface {
 	specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error)
+	loadProbe(bpfDir, mapDir, ciliumDir string, l *bpfLoad, version, verbose int, x64 bool) (error, int)
 }
 
 // registerTracingSensorsAtIinit registers a handler for Tracing policy.
@@ -77,6 +80,17 @@ func registerTracingSensorsAtIinit(name string, s observerTracingSensor) {
 		panic(fmt.Sprintf("registerTracingSensor called, but %s is already registered", name))
 	}
 	registeredTracingSensors[name] = s
+}
+
+// RegisterProbeType registers a handler for a probe type string
+//
+// This function is meant to be called in an init() by sensors that
+// need extra logic when loading a specific probe type.
+func RegisterProbeType(probeType string, s observerTracingSensor) {
+	if _, exists := registeredProbeLoad[probeType]; exists {
+		panic(fmt.Sprintf("RegisterProbeType called, but %s is already registered", probeType))
+	}
+	registeredProbeLoad[probeType] = s
 }
 
 // observerSensor is a set of bpf programs and maps that are managed as a unit.

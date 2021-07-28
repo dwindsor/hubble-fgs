@@ -92,6 +92,8 @@ func init() {
 	tls := &observerTlsSensor{
 		name: "tls sensor",
 	}
+	RegisterProbeType("tc_ingress", tls)
+	RegisterProbeType("tc_egress", tls)
 	registerTracingSensorsAtIinit(tls.name, tls)
 }
 
@@ -160,6 +162,13 @@ func getSensorFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSenso
 
 func (tls *observerTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
 	return getSensorFromParserPolicy(spec)
+}
+
+func (tls *observerTlsSensor) loadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *bpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	return observerLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity)
 }
 
 func getSensorFromParserPolicyString(yaml string) (*observerSensor, error) {

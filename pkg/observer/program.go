@@ -588,13 +588,10 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verb
 			load.observer__label,
 			bpfDir+load.observer__prog,
 			mapDir)
-	} else if load.probeType == "tc_ingress" || load.probeType == "tc_egress" {
-		return observerLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity)
-	} else if load.probeType == "generic_kprobe" {
-		return loadGenericKprobeSensor(bpfDir, mapDir, load, version, Verbosity)
-	} else if load.probeType == "generic_tracepoint" {
-		return LoadGenericTracepointSensor(bpfDir, mapDir, load, version, Verbosity, x64)
 	} else {
+		if s, ok := registeredProbeLoad[load.probeType]; ok {
+			return s.loadProbe(bpfDir, mapDir, ciliumDir, load, version, Verbosity, x64)
+		}
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,
 			btfObj,

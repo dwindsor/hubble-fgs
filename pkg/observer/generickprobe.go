@@ -42,13 +42,15 @@ var (
 )
 
 type observerKprobeSensor struct {
-	name string
+	name      string
+	probeType string
 }
 
 func init() {
 	kprobe := &observerKprobeSensor{
 		name: "kprobe sensor",
 	}
+	RegisterProbeType("generic_kprobe", kprobe)
 	registerTracingSensorsAtIinit(kprobe.name, kprobe)
 	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
 }
@@ -874,4 +876,11 @@ func (k *observerKprobeSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*o
 		return addGenericKprobeSensors(spec.KProbes, ObserverBTF)
 	}
 	return nil, nil
+}
+
+func (k *observerKprobeSensor) loadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *bpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	return loadGenericKprobeSensor(bpfDir, mapDir, load, version, Verbosity)
 }

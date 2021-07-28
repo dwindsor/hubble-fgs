@@ -54,6 +54,7 @@ func init() {
 	tp := &observerTracepointSensor{
 		name: "tracepoint sensor",
 	}
+	RegisterProbeType("generic_tracepoint", tp)
 	registerTracingSensorsAtIinit(tp.name, tp)
 	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
 }
@@ -542,4 +543,11 @@ func (t *observerTracepointSensor) specHandler(spec *v1alpha1.TracingPolicySpec)
 		return createGenericTracepointSensor(spec.Tracepoints)
 	}
 	return nil, nil
+}
+
+func (t *observerTracepointSensor) loadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *bpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	return LoadGenericTracepointSensor(bpfDir, mapDir, load, version, verbose, x64)
 }
