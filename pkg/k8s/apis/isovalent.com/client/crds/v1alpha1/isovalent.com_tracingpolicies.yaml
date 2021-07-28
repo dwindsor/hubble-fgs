@@ -89,6 +89,11 @@ spec:
                       description: Name of the function to apply the kprobe spec to.
                       type: string
                     return:
+                      default: false
+                      description: Indicates whether to collect return value of the
+                        traced function.
+                      type: boolean
+                    returnArg:
                       description: A return argument to include in the trace output.
                       properties:
                         index:
