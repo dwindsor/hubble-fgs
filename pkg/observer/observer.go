@@ -373,9 +373,6 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		}
 		k.handleKfreeSkb(&m)
 
-	case api.MSG_OP_GENERIC_TRACEPOINT:
-		k.handleGenericTracepoint(r)
-
 	default:
 		if h, ok := eventHandler[op]; ok {
 			if unix, err := h(r); err == nil {

@@ -44,6 +44,10 @@ var (
 	tracepointLog logrus.FieldLogger
 )
 
+func init() {
+	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
+}
+
 // genericTracepoint is the internal representation of a tracepoint
 type genericTracepoint struct {
 	Info *tracepoint.Tracepoint
@@ -458,12 +462,11 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *bpfLoad, version, 
 		kernelSelectors)
 }
 
-func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
+func handleGenericTracepoint(r *bytes.Reader) (interface{}, error) {
 	m := api.MsgGenericTracepoint{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
-		k.log.WithError(err).Warnf("Failed to read tracepoint")
-		return
+		return nil, fmt.Errorf("Failed to read tracepoint: %w", err)
 	}
 
 	unix := &api.MsgGenericTracepointUnix{
@@ -476,9 +479,8 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 
 	tp, err := genericTracepointTable.getTracepoint(int(m.Id))
 	if err != nil {
-		k.log.WithField("id", m.Id).WithError(err).Warnf("genericTracepoint info not found")
-		k.observerListenersGenericTracepoint(unix)
-		return
+		logger.GetLogger().WithField("id", m.Id).WithError(err).Warnf("genericTracepoint info not found")
+		return unix, nil
 	}
 
 	unix.Subsys = tp.Info.Subsys
@@ -495,7 +497,7 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 			var val uint64
 			err := binary.Read(r, binary.LittleEndian, &val)
 			if err != nil {
-				k.log.WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
+				logger.GetLogger().WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
 			}
 			unix.Args = append(unix.Args, val)
 
@@ -504,7 +506,7 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 
 			err := binary.Read(r, binary.LittleEndian, &val)
 			if err != nil {
-				k.log.WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
+				logger.GetLogger().WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
 			}
 			unix.Args = append(unix.Args, val)
 
@@ -512,21 +514,12 @@ func (k *ObserverKprobe) handleGenericTracepoint(r *bytes.Reader) {
 			if arg, err := ReadArgBytes(r, idx); err == nil {
 				unix.Args = append(unix.Args, arg.Value)
 			} else {
-				k.log.WithError(err).Warnf("failed to read bytes argument")
+				logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
 			}
 
 		default:
-			k.log.Warnf("handleGenericTracepoint: ignoring:  %+v", out)
+			logger.GetLogger().Warnf("handleGenericTracepoint: ignoring:  %+v", out)
 		}
 	}
-	k.observerListenersGenericTracepoint(unix)
-}
-
-func (k *ObserverKprobe) observerListenersGenericTracepoint(msg *api.MsgGenericTracepointUnix) {
-	for listener, _ := range k.listeners {
-		if err := listener.Notify(msg); err != nil {
-			k.log.Debug("Write failure removing Listener")
-			k.RemoveListener(listener)
-		}
-	}
+	return unix, nil
 }
