@@ -317,8 +317,8 @@ type bpfLoad struct {
 	loaderData interface{}
 }
 
-// createInitialObserverSensor retruns the observerSensor that is loaded at initialization time
-func createInitialObserverSensor(enableTLS, enableTLSTC bool) *observerSensor {
+// createInitialObserverSensor retruns the ObserverSensor that is loaded at initialization time
+func createInitialObserverSensor(enableTLS, enableTLSTC bool) *ObserverSensor {
 	progs := []*bpfLoad{
 		&ObserverExecve,
 		&ObserverExit,
@@ -352,7 +352,7 @@ func createInitialObserverSensor(enableTLS, enableTLSTC bool) *observerSensor {
 		)
 	}
 
-	return &observerSensor{
+	return &ObserverSensor{
 		name:  "__main__",
 		progs: append(progs, tlsSensor.progs...),
 		maps:  append(maps, tlsSensor.maps...),
@@ -420,7 +420,7 @@ func disableBpfLoad(bpf *bpfLoad) {
 	}
 }
 
-func observerFindProgs(ctx context.Context, sensor *observerSensor) error {
+func observerFindProgs(ctx context.Context, sensor *ObserverSensor) error {
 	for _, p := range sensor.progs {
 		if _, err := os.Stat(p.Observer__program); err == nil {
 			continue
@@ -447,7 +447,7 @@ func observerFindProgs(ctx context.Context, sensor *observerSensor) error {
 	return nil
 }
 
-func observerLoadSensorMaps(stopCtx context.Context, sensor *observerSensor, mapDir string) error {
+func observerLoadSensorMaps(stopCtx context.Context, sensor *ObserverSensor, mapDir string) error {
 	version, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	if err != nil {
 		return err
@@ -609,7 +609,7 @@ func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, stopC
 	return nil
 }
 
-func observerUnloadSensor(bpfDir, mapDir string, sensor *observerSensor, ctx context.Context) error {
+func observerUnloadSensor(bpfDir, mapDir string, sensor *ObserverSensor, ctx context.Context) error {
 	logger.GetLogger().Infof("Unloading sensor %s", sensor.name)
 	if !sensor.loaded {
 		logger.GetLogger().Warningf("attempted to unload sensor %s which is not loaded", sensor.name)
@@ -628,7 +628,7 @@ func observerUnloadSensor(bpfDir, mapDir string, sensor *observerSensor, ctx con
 	return nil
 }
 
-func ObserverLoadSensor(bpfDir, mapDir, ciliumDir string, stopCtx context.Context, sensor *observerSensor) error {
+func ObserverLoadSensor(bpfDir, mapDir, ciliumDir string, stopCtx context.Context, sensor *ObserverSensor) error {
 	if sensor == nil {
 		return nil
 	}

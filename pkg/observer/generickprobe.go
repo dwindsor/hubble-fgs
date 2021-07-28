@@ -343,7 +343,7 @@ func argValue(a v1alpha1.ArgSelector) ([]byte, uint32, error) {
 	return value, 0, nil
 }
 
-func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*observerSensor, error) {
+func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*ObserverSensor, error) {
 	var progs []*bpfLoad
 
 	btfobj := bpf.BTFNil
@@ -571,7 +571,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		logger.GetLogger().Infof("Added generic kprobe sensor: %s -> %s", load.Observer__program, load.observer__attach)
 	}
 
-	return &observerSensor{
+	return &ObserverSensor{
 		name:  "__generic_kprobe_sensors__",
 		progs: progs,
 		maps:  []*ObserverMap{},
@@ -868,7 +868,7 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUn
 	return enterEv
 }
 
-func (k *observerKprobeSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func (k *observerKprobeSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	}

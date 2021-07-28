@@ -106,7 +106,7 @@ func (sockops *observerSockopsSensor) loadProbe(
 		mapDir)
 }
 
-func (tls *observerSockopsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func (tls *observerSockopsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return nil, nil
 }
 
@@ -128,7 +128,7 @@ func (skmsg *observerSkmsgTlsSensor) loadProbe(
 		mapDir)
 }
 
-func (skmsg *observerSkmsgTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func (skmsg *observerSkmsgTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return nil, nil
 }
 
@@ -150,7 +150,7 @@ func (skSkbVerdict *observerSkSkbVerdictTlsSensor) loadProbe(
 		mapDir)
 }
 
-func (skmsg *observerSkSkbVerdictTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func (skmsg *observerSkSkbVerdictTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return nil, nil
 }
 
@@ -172,7 +172,7 @@ func (skSkbParser *observerSkSkbParserTlsSensor) loadProbe(
 		mapDir)
 }
 
-func (skmsg *observerSkSkbParserTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func (skmsg *observerSkSkbParserTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return nil, nil
 }
 
@@ -208,7 +208,7 @@ func init() {
 	registerTracingSensorsAtIinit(tls.name, tls)
 }
 
-func EnableTlsParser(tls, tc bool) *observerSensor {
+func EnableTlsParser(tls, tc bool) *ObserverSensor {
 	var progs []*bpfLoad
 	var maps []*ObserverMap
 
@@ -240,14 +240,14 @@ func EnableTlsParser(tls, tc bool) *observerSensor {
 		)
 	}
 
-	return &observerSensor{
+	return &ObserverSensor{
 		name:  "__parser_sensors__",
 		progs: progs,
 		maps:  maps,
 	}
 }
 
-func addParserSensors(parser v1alpha1.ParserPolicySpec) (*observerSensor, error) {
+func addParserSensors(parser v1alpha1.ParserPolicySpec) (*ObserverSensor, error) {
 	enableTls := false
 	enableTlsTc := false
 
@@ -267,11 +267,11 @@ func addParserSensors(parser v1alpha1.ParserPolicySpec) (*observerSensor, error)
 	return EnableTlsParser(enableTls, enableTlsTc), nil
 }
 
-func getSensorFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func getSensorFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return addParserSensors(spec.Parser)
 }
 
-func (tls *observerTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func (tls *observerTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return getSensorFromParserPolicy(spec)
 }
 
@@ -282,7 +282,7 @@ func (tls *observerTlsSensor) loadProbe(
 	return observerLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity)
 }
 
-func getSensorFromParserPolicyString(yaml string) (*observerSensor, error) {
+func getSensorFromParserPolicyString(yaml string) (*ObserverSensor, error) {
 	cnf, err := config.ReadConfigYaml(yaml)
 	if err != nil {
 		return nil, err
@@ -290,7 +290,7 @@ func getSensorFromParserPolicyString(yaml string) (*observerSensor, error) {
 	return addParserSensors(cnf.Spec.Parser)
 }
 
-func getSensorFromParserPolicyFname(fname string) (*observerSensor, error) {
+func getSensorFromParserPolicyFname(fname string) (*ObserverSensor, error) {
 	yamlData, err := os.ReadFile(fname)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read yaml file %s: %w", fname, err)

@@ -61,12 +61,12 @@ type PacketdropSensorImpl struct {
 	config PacketdropSensorConfig
 }
 
-func createPacketDropSensor() *observerSensor {
+func createPacketDropSensor() *ObserverSensor {
 	progs := []*bpfLoad{&ObserverKfreeSkb}
 	maps := []*ObserverMap{}
 	impl := PacketdropSensorImpl{}
 	packetdropCfg = &impl.config
-	return &observerSensor{
+	return &ObserverSensor{
 		name:  "packet-drop",
 		progs: progs,
 		maps:  maps,

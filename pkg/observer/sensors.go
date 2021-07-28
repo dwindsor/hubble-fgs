@@ -36,7 +36,7 @@ import (
 
 var (
 	// list of availableSensors, see registerSensor()
-	availableSensors map[string]*observerSensor = map[string]*observerSensor{}
+	availableSensors map[string]*ObserverSensor = map[string]*ObserverSensor{}
 	// list of registered Tracing handlers, see registerTracingHandler()
 	registeredTracingSensors map[string]observerTracingSensor = map[string]observerTracingSensor{}
 	// list of registers loaders, see registerProbeType()
@@ -56,7 +56,7 @@ type sensorLoadArg struct {
 
 type sensorUnloadArg = sensorLoadArg
 
-// observerSensorIface is the interface to the underlying sensor implementations
+// ObserverSensorIface is the interface to the underlying sensor implementations
 type observerSensorImpl interface {
 	sensorLoaded(arg sensorLoadArg)
 	sensorUnloaded(arg sensorUnloadArg)
@@ -66,7 +66,7 @@ type observerSensorImpl interface {
 }
 
 type observerTracingSensor interface {
-	specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error)
+	specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error)
 	loadProbe(bpfDir, mapDir, ciliumDir string, l *bpfLoad, version, verbose int, x64 bool) (error, int)
 }
 
@@ -93,12 +93,12 @@ func RegisterProbeType(probeType string, s observerTracingSensor) {
 	registeredProbeLoad[probeType] = s
 }
 
-// observerSensor is a set of bpf programs and maps that are managed as a unit.
+// ObserverSensor is a set of bpf programs and maps that are managed as a unit.
 //
 // NB: For now we assume that sensors use disjoint sets of progs and maps.  If
 // that assumption breaks, we need to be smarter about loading/deleting programs
 // and maps (e.g., keep reference counts).
-type observerSensor struct {
+type ObserverSensor struct {
 	name   string
 	progs  []*bpfLoad
 	maps   []*ObserverMap
@@ -112,7 +112,7 @@ type observerSensor struct {
 // This ensures that the function is called before controller goroutine starts,
 // and that the availableSensors is setup without having to worry about
 // synchronization.
-func registerSensorAtInit(s *observerSensor) {
+func registerSensorAtInit(s *ObserverSensor) {
 
 	if _, exists := availableSensors[s.name]; exists {
 		panic(fmt.Sprintf("registerSensor called, but %s is already registered", s.name))
@@ -148,7 +148,7 @@ type tracingPolicyDel struct {
 type sensorAdd struct {
 	ctx     context.Context
 	name    string
-	sensor  *observerSensor
+	sensor  *ObserverSensor
 	retChan chan error
 }
 
@@ -249,7 +249,7 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 			switch op := op_.(type) {
 
 			case *tracingPolicyAdd:
-				var sensor *observerSensor
+				var sensor *ObserverSensor
 				if _, exists := availableSensors[op.sensorName]; exists {
 					err = fmt.Errorf("sensor %s already exists", op.sensorName)
 					break
@@ -388,7 +388,7 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 	return &sensor, nil
 }
 
-func getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
+func getSensorFromTracingPolicyString(yaml string) (*ObserverSensor, error) {
 	cnf, err := config.ReadConfigYaml(yaml)
 	if err != nil {
 		return nil, err
@@ -410,7 +410,7 @@ func getSensorFromTracingPolicyString(yaml string) (*observerSensor, error) {
 	return nil, nil
 }
 
-func getSensorFromTracingPolicyFname(fname string) (*observerSensor, error) {
+func getSensorFromTracingPolicyFname(fname string) (*ObserverSensor, error) {
 	yamlData, err := os.ReadFile(fname)
 	if err != nil {
 		return nil, fmt.Errorf("failed to read yaml file %s: %w", fname, err)
@@ -439,7 +439,7 @@ func (h *ObserverSync) EnableSensor(ctx context.Context, name string) error {
 }
 
 // AddSensor adds a sensor
-func (h *ObserverSync) AddSensor(ctx context.Context, name string, sensor *observerSensor) error {
+func (h *ObserverSync) AddSensor(ctx context.Context, name string, sensor *ObserverSensor) error {
 	retc := make(chan error)
 	op := &sensorAdd{
 		ctx:     ctx,

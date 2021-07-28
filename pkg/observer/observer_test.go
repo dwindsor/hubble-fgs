@@ -852,7 +852,7 @@ func TestSensorLseekLoad(t *testing.T) {
 	}
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
-	sensor := &observerSensor{name: "lseekTest", progs: progs, maps: maps}
+	sensor := &ObserverSensor{name: "lseekTest", progs: progs, maps: maps}
 	if err := observerFindProgs(ctx, sensor); err != nil {
 		t.Fatalf("observerFindProgs error: %s", err)
 	}
@@ -902,7 +902,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	sensorName := "lseekTest"
 	progs := []*bpfLoad{&ObserverLseekTest}
 	maps := []*ObserverMap{}
-	sensor := &observerSensor{name: sensorName, progs: progs, maps: maps}
+	sensor := &ObserverSensor{name: sensorName, progs: progs, maps: maps}
 	registerSensorAtInit(sensor)
 
 	sensorCtl, err := StartSensorCtl(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir)

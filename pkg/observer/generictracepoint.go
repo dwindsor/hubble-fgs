@@ -301,7 +301,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 }
 
 // createGenericTracepointSensor will create a sensor that can be loaded based on a generic tracepoint configuration
-func createGenericTracepointSensor(confs []GenericTracepointConf) (*observerSensor, error) {
+func createGenericTracepointSensor(confs []GenericTracepointConf) (*ObserverSensor, error) {
 
 	tracepoints := make([]*genericTracepoint, 0, len(confs))
 	for _, conf := range confs {
@@ -332,7 +332,7 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*observerSens
 		progs = append(progs, &prog0)
 	}
 
-	return &observerSensor{
+	return &ObserverSensor{
 		name:  "generic_tracepoint_sensor",
 		progs: progs,
 		maps:  maps,
@@ -535,7 +535,7 @@ func handleGenericTracepoint(r *bytes.Reader) (interface{}, error) {
 	return unix, nil
 }
 
-func (t *observerTracepointSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*observerSensor, error) {
+func (t *observerTracepointSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	}
