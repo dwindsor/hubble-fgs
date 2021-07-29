@@ -67,7 +67,7 @@ type observerSensorImpl interface {
 
 type observerTracingSensor interface {
 	specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error)
-	loadProbe(bpfDir, mapDir, ciliumDir string, l *bpfLoad, version, verbose int, x64 bool) (error, int)
+	loadProbe(bpfDir, mapDir, ciliumDir string, l *BpfLoad, version, verbose int, x64 bool) (error, int)
 }
 
 // registerTracingSensorsAtIinit registers a handler for Tracing policy.
@@ -100,7 +100,7 @@ func RegisterProbeType(probeType string, s observerTracingSensor) {
 // and maps (e.g., keep reference counts).
 type ObserverSensor struct {
 	name   string
-	progs  []*bpfLoad
+	progs  []*BpfLoad
 	maps   []*ObserverMap
 	loaded bool
 	impl   observerSensorImpl

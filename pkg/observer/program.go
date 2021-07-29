@@ -29,7 +29,7 @@ import (
 )
 
 var (
-	ObserverExecve = bpfLoad{
+	ObserverExecve = BpfLoad{
 		"bpf_execve_event.o",
 		"sched/sched_process_exec",
 		"sched/sched_process_exec",
@@ -46,7 +46,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverExit = bpfLoad{
+	ObserverExit = BpfLoad{
 		"bpf_exit.o",
 		"sched/sched_process_exit",
 		"sched/sched_process_exit",
@@ -63,7 +63,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverFork = bpfLoad{
+	ObserverFork = BpfLoad{
 		"bpf_fork.o",
 		"wake_up_new_task",
 		"wake_up_new_task",
@@ -80,7 +80,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverCred = bpfLoad{
+	ObserverCred = BpfLoad{
 		"bpf_cred.o",
 		"commit_creds",
 		"commit_creds",
@@ -97,7 +97,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverTCPConnect = bpfLoad{
+	ObserverTCPConnect = BpfLoad{
 		"bpf_tcpmon.o",
 		"tcp_connect",
 		"tcp_connect",
@@ -114,7 +114,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverTCPConnectRet = bpfLoad{
+	ObserverTCPConnectRet = BpfLoad{
 		"bpf_tcpmonret.o",
 		"__x64_sys_connect",
 		"sys_connect",
@@ -131,7 +131,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverTCPClose = bpfLoad{
+	ObserverTCPClose = BpfLoad{
 		"bpf_tcpclose.o",
 		"tcp_set_state",
 		"tcp_set_state",
@@ -148,7 +148,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverTCPSendCheck = bpfLoad{
+	ObserverTCPSendCheck = BpfLoad{
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
 		"tcp_v4_send_check",
@@ -165,7 +165,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverListen = bpfLoad{
+	ObserverListen = BpfLoad{
 		"bpf_listen.o",
 		"__inet_hash",
 		"__inet_hash",
@@ -182,7 +182,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverTLSTCIngress = bpfLoad{
+	ObserverTLSTCIngress = BpfLoad{
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
 		"ingress_tcp",
@@ -199,7 +199,7 @@ var (
 		struct{}{},
 	}
 
-	ObserverTLSTCEgress = bpfLoad{
+	ObserverTLSTCEgress = BpfLoad{
 		"bpf_tc_egress.o",
 		"egress_tcp",
 		"egress_tcp",
@@ -216,7 +216,7 @@ var (
 		struct{}{},
 	}
 
-	observerAllPrograms = []*bpfLoad{
+	observerAllPrograms = []*BpfLoad{
 		&ObserverExecve,
 		&ObserverExit,
 		&ObserverFork,
@@ -299,7 +299,7 @@ func (s *bpfLoadState) setLoaded() {
 	s.count = 1
 }
 
-type bpfLoad struct {
+type BpfLoad struct {
 	Observer__program    string
 	observer__x64_attach string
 	observer__attach     string
@@ -319,7 +319,7 @@ type bpfLoad struct {
 
 // createInitialObserverSensor retruns the ObserverSensor that is loaded at initialization time
 func createInitialObserverSensor(enableTLS, enableTLSTC bool) *ObserverSensor {
-	progs := []*bpfLoad{
+	progs := []*BpfLoad{
 		&ObserverExecve,
 		&ObserverExit,
 		&ObserverFork,
@@ -359,7 +359,7 @@ func createInitialObserverSensor(enableTLS, enableTLSTC bool) *ObserverSensor {
 	}
 }
 
-func removeProgram(bpfDir string, prog *bpfLoad) {
+func removeProgram(bpfDir string, prog *BpfLoad) {
 	os.Remove(bpfDir + prog.observer__prog)
 	if prog.probeType == "generic_kprobe" {
 		coreFile := ""
@@ -410,7 +410,7 @@ func RemovePrograms(bpfDir, mapDir string) {
 	btf.FreeCachedBTF()
 }
 
-func disableBpfLoad(bpf *bpfLoad) {
+func disableBpfLoad(bpf *BpfLoad) {
 	bpf.loadState.setDisabled()
 	for _, om := range observerAllMaps {
 		if om.bpf == bpf {
@@ -499,7 +499,7 @@ func getDefaultRouteLinks() ([]netlink.Link, error) {
 	return links, nil
 }
 
-func observerLoadTC(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verbosity int) (error, int) {
+func observerLoadTC(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verbosity int) (error, int) {
 	var attachLinks []netlink.Link
 
 	btfObj := uintptr(btf.GetCachedBTF())
@@ -530,7 +530,7 @@ func observerLoadTC(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Ve
 	return nil, 0
 }
 
-func loadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verbosity int, x64 bool) (error, int) {
+func loadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verbosity int, x64 bool) (error, int) {
 	var attach string
 
 	if x64 {
@@ -572,7 +572,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, version, Verb
 	}
 }
 
-func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *bpfLoad, stopCtx context.Context) error {
+func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, stopCtx context.Context) error {
 	var fd int
 
 	version, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)

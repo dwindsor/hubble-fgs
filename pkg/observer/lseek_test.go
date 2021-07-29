@@ -13,7 +13,7 @@ package observer
 // This bpf_lseek is a simple BPF program used for tests
 
 var (
-	ObserverLseekTest = bpfLoad{
+	ObserverLseekTest = BpfLoad{
 		"bpf_lseek.o",
 		"syscalls/sys_enter_lseek",
 		"syscalls/sys_enter_lseek",

@@ -25,7 +25,7 @@ import (
 )
 
 var (
-	ObserverKfreeSkb = bpfLoad{
+	ObserverKfreeSkb = BpfLoad{
 		"bpf_kfree_skb.o",
 		"kfree_skb",
 		"kfree_skb",
@@ -62,7 +62,7 @@ type PacketdropSensorImpl struct {
 }
 
 func createPacketDropSensor() *ObserverSensor {
-	progs := []*bpfLoad{&ObserverKfreeSkb}
+	progs := []*BpfLoad{&ObserverKfreeSkb}
 	maps := []*ObserverMap{}
 	impl := PacketdropSensorImpl{}
 	packetdropCfg = &impl.config

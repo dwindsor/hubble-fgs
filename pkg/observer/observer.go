@@ -109,7 +109,7 @@ func NameToProgType(n string) int {
 type ObserverMap struct {
 	mapName  string
 	mapType  string
-	bpf      *bpfLoad
+	bpf      *BpfLoad
 	pinState bpfLoadState
 	fd       int
 }

@@ -313,10 +313,10 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*ObserverSens
 	}
 
 	maps := []*ObserverMap{}
-	progs := make([]*bpfLoad, 0, len(tracepoints))
+	progs := make([]*BpfLoad, 0, len(tracepoints))
 	for _, tp := range tracepoints {
 		attach := fmt.Sprintf("%s/%s", tp.Info.Subsys, tp.Info.Event)
-		prog0 := bpfLoad{
+		prog0 := BpfLoad{
 			Observer__program:    path.Join(HubbleLib, "bpf_generic_tracepoint.o"),
 			observer__x64_attach: attach,
 			observer__attach:     attach,
@@ -339,7 +339,7 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*ObserverSens
 	}, nil
 }
 
-func LoadGenericTracepointSensor(bpfDir, mapDir string, load *bpfLoad, version, verbose int, x64 bool) (error, int) {
+func LoadGenericTracepointSensor(bpfDir, mapDir string, load *BpfLoad, version, verbose int, x64 bool) (error, int) {
 	tracepointLog = logger.GetLogger()
 
 	btfCtxOffsetFn := func(i int) string {
@@ -547,7 +547,7 @@ func (t *observerTracepointSensor) specHandler(spec *v1alpha1.TracingPolicySpec)
 
 func (t *observerTracepointSensor) loadProbe(
 	bpfDir, mapDir, ciliumDir string,
-	load *bpfLoad,
+	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
 	return LoadGenericTracepointSensor(bpfDir, mapDir, load, version, verbose, x64)
 }
