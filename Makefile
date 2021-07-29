@@ -47,7 +47,7 @@ hubble-bpf-container:
 	docker rm hubble-llvm
 
 hubble-fgs:
-	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
+	$(GO) build -tags enterprise -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
 
 hubble-enterprise:
 	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-enterprise/
@@ -77,7 +77,7 @@ clean:
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:
-	$(GO) build ./cmd/fgs-bench
+	$(GO) build -tags enterprise ./cmd/fgs-bench
 
 fgs-bench-image:
 	GOOS=linux GOARCH=amd64 $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fgs-bench
@@ -102,6 +102,7 @@ test-compile:
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/tracepoint      -o go-tests/tracepoint.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/config          -o go-tests/config.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/idtable         -o go-tests/idtable.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/sockmap -o go-tests/sockmap.test
 
 test-kernels:
 	#kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
