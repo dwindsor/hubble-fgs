@@ -17,11 +17,11 @@ GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Versi
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/isovalent/hubble-fgs -v /proc:/procRoot isovalent/hubble-fgs-test
 
--include Makefile.docker
-
 all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench test-compile
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
+
+-include Makefile.docker
 
 ifeq (1,$(LOCAL_CLANG))
 hubble-bpf: hubble-bpf-local
