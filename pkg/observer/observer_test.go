@@ -546,7 +546,12 @@ func TestLoadTCTls(t *testing.T) {
 	if kernels.MinKernelVersion("4.19.0") != true {
 		return
 	}
-	kprobe, err := getDefaultObserverWithWatchers(t, withTLSTC())
+	tlsConfig := []byte(tlstc)
+	err := ioutil.WriteFile(testConfigFile, tlsConfig, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
@@ -583,55 +588,6 @@ spec:
 )
 
 func TestTCTls13(t *testing.T) {
-	if kernels.MinKernelVersion("4.19.0") != true {
-		return
-	}
-
-	traceTcTls13 := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://google.com"},
-					Parent: &fgs.Process{Binary: selfBinary},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://google.com"},
-					Parent: &fgs.Process{
-						Binary: selfBinary},
-					DestinationPort: &wrappers.UInt32Value{Value: 443},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{Event: curlTlsEvent},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
-	defer cancel()
-
-	kprobe, err := getDefaultObserverWithWatchers(t, withTLSTC())
-	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
-	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
-	time.Sleep(3000 * time.Millisecond)
-	execWGCurl(&execWG, &exitWG, "https://google.com")
-	time.Sleep(3000 * time.Millisecond)
-	ok, err := JsonTestCompare(traceTcTls13, exportFile, jsonRetries, 0)
-	assert.NoError(t, err)
-	assert.True(t, ok)
-	testDone(t, kprobe)
-}
-
-func TestConfigTCTls13(t *testing.T) {
 	if kernels.MinKernelVersion("4.19.0") != true {
 		return
 	}
@@ -738,7 +694,10 @@ func TestTCTls12(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withTLSTC())
+	if err := writeConfigFile(testConfigFile, tlstc); err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}

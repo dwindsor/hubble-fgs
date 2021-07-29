@@ -61,18 +61,6 @@ type testOptions struct {
 
 type testOption func(*testOptions)
 
-func withTLS() testOption {
-	return func(o *testOptions) {
-		o.observer.tls = true
-	}
-}
-
-func withTLSTC() testOption {
-	return func(o *testOptions) {
-		o.observer.tlstc = true
-	}
-}
-
 func withPretty() testOption {
 	return func(o *testOptions) {
 		o.observer.pretty = true
