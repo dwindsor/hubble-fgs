@@ -26,8 +26,6 @@ const (
 	keyProcFS           = "procfs"
 	keyKernelVersion    = "kernel"
 	keyVerbosity        = "verbose"
-	keyTLS              = "tls"
-	keyTLSTC            = "tlstc"
 	keyProcessCacheSize = "process-cache-size"
 
 	keyLogLevel  = "log-level"
@@ -106,8 +104,6 @@ func readAndSetFlags() {
 	observer.IgnoreMissingProgs = viper.GetBool(keyIgnoreMissingProgs)
 
 	debug = viper.GetBool(keyDebug)
-	tls = viper.GetBool(keyTLS)
-	tlstc = viper.GetBool(keyTLSTC)
 	processCacheSize = viper.GetInt(keyProcessCacheSize)
 
 	enableK8sAPI = viper.GetBool(keyEnableK8sAPI)

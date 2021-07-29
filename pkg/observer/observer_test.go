@@ -143,7 +143,7 @@ func TestObjectLoad(t *testing.T) {
 	if err := btf.InitCachedBTF(HubbleLib, context.TODO()); err != nil {
 		t.Fatalf("ConfigureBTF error: %s", err)
 	}
-	initialSensor := createInitialObserverSensor(kprobe.enableTLS, kprobe.enableTLSTC)
+	initialSensor := createInitialObserverSensor()
 	if err := observerFindProgs(context.TODO(), initialSensor); err != nil {
 		t.Fatalf("observerFindProgs error: %s", err)
 	}

@@ -141,7 +141,6 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	if err := LoadDefaultSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir,
-		kprobe.enableTLS, kprobe.enableTLSTC,
 		context.TODO()); err != nil {
 		t.Fatalf("LoadDefaultSensor error: %s\n", err)
 	}

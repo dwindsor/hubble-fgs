@@ -343,7 +343,7 @@ func SensorBuilder(name string, p []*BpfLoad, m []*ObserverMap) *ObserverSensor 
 }
 
 // createInitialObserverSensor retruns the ObserverSensor that is loaded at initialization time
-func createInitialObserverSensor(enableTLS, enableTLSTC bool) *ObserverSensor {
+func createInitialObserverSensor() *ObserverSensor {
 	progs := []*BpfLoad{
 		&ObserverExecve,
 		&ObserverExit,
@@ -367,20 +367,10 @@ func createInitialObserverSensor(enableTLS, enableTLSTC bool) *ObserverSensor {
 		&ObserverTcpSendCheckSampler,
 	}
 
-	// tlsSensor is special, it has both a CLI option and
-	// a configFile/CRD setup path.
-	tlsSensor := EnableTlsParser(enableTLS, enableTLSTC)
-
-	if false {
-		maps = append(maps,
-			&ObserverCiliumSnat,
-		)
-	}
-
 	return &ObserverSensor{
 		name:  "__main__",
-		progs: append(progs, tlsSensor.progs...),
-		maps:  append(maps, tlsSensor.maps...),
+		progs: progs,
+		maps:  maps,
 	}
 }
 
@@ -710,7 +700,7 @@ func createDir(bpfDir, mapDir string) {
 	os.Mkdir(mapDir, os.ModeDir)
 }
 
-func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, tls, tlsTC bool, ctx context.Context) error {
+func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, ctx context.Context) error {
 	createDir(bpfDir, mapDir)
 
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
@@ -721,7 +711,7 @@ func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, tls, tlsTC bool, ctx co
 	// This is technically not a sensor since we are loading this
 	// statically when we start, but it allows us to have a single path for
 	// loading bpf programs.
-	initialSensor := createInitialObserverSensor(tls, tlsTC)
+	initialSensor := createInitialObserverSensor()
 
 	if err := observerFindProgs(ctx, initialSensor); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)

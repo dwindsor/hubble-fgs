@@ -506,8 +506,6 @@ type ObserverKprobe struct {
 	perfConfig *bpf.PerfEventConfig
 	/* Features */
 	prettyPrinter bool
-	enableTLS     bool
-	enableTLSTC   bool
 	/* Statistics */
 	lostCntr   int
 	errorCntr  int
@@ -553,7 +551,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		k.log.Warningf("failed to initialize ksyms: %s", err)
 	}
 
-	if err := LoadDefaultSensor(k.bpfDir, k.mapDir, k.ciliumDir, k.enableTLS, k.enableTLSTC, ctx); err != nil {
+	if err := LoadDefaultSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx); err != nil {
 		return err
 	}
 
@@ -614,8 +612,6 @@ func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 		mapDir:         mapDir,
 		ciliumDir:      ciliumDir,
 		interfaces:     interfaces,
-		enableTLS:      tls,
-		enableTLSTC:    tlstc,
 		prettyPrinter:  pretty,
 		listeners:      make(map[Listener]struct{}),
 		log:            logger.GetLogger(),
