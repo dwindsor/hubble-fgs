@@ -375,7 +375,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 
 	default:
 		if h, ok := eventHandler[op]; ok {
-			if unix, err := h(r); err == nil {
+			if unix, err := h(r); err == nil && unix != nil {
 				k.observerListeners(unix)
 			}
 		} else {
