@@ -87,6 +87,7 @@ func BenchFGS(args *BenchArguments, readyCb func()) *BenchSummary {
 }
 
 func runFgs(fgsEnableTls, fgsDebug bool, summary *BenchSummary, ctx context.Context, cancel context.CancelFunc, ready chan bool) {
+	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	if fgsEnableTls {
