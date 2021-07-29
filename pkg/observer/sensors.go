@@ -70,14 +70,14 @@ type observerTracingSensor interface {
 	LoadProbe(bpfDir, mapDir, ciliumDir string, l *BpfLoad, version, verbose int, x64 bool) (error, int)
 }
 
-// registerTracingSensorsAtIinit registers a handler for Tracing policy.
+// RegisterTracingSensorsAtInit registers a handler for Tracing policy.
 //
 // This function is meant to be called in an init().
 // This will register a CRD or config file handler so that the config file
 // or CRDs will be passed to the handler to be parsed.
-func registerTracingSensorsAtIinit(name string, s observerTracingSensor) {
+func RegisterTracingSensorsAtInit(name string, s observerTracingSensor) {
 	if _, exists := availableSensors[name]; exists {
-		panic(fmt.Sprintf("registerTracingSensor called, but %s is already registered", name))
+		panic(fmt.Sprintf("RegisterTracingSensor called, but %s is already registered", name))
 	}
 	registeredTracingSensors[name] = s
 }

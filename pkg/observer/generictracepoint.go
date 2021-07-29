@@ -55,7 +55,7 @@ func init() {
 		name: "tracepoint sensor",
 	}
 	RegisterProbeType("generic_tracepoint", tp)
-	registerTracingSensorsAtIinit(tp.name, tp)
+	RegisterTracingSensorsAtInit(tp.name, tp)
 	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
 }
 

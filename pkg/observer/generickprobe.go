@@ -51,7 +51,7 @@ func init() {
 		name: "kprobe sensor",
 	}
 	RegisterProbeType("generic_kprobe", kprobe)
-	registerTracingSensorsAtIinit(kprobe.name, kprobe)
+	RegisterTracingSensorsAtInit(kprobe.name, kprobe)
 	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
 }
 
