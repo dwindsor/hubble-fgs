@@ -317,6 +317,31 @@ type BpfLoad struct {
 	loaderData interface{}
 }
 
+func BpfLoadBuilder(program, x64_attach, attach, label, prog string,
+	ret, errFatal bool,
+	ty string) *BpfLoad {
+	return &BpfLoad{
+		program, x64_attach, attach, label, prog, ret, errFatal, ty,
+		bpfLoadStateIdle(), -1, struct{}{},
+	}
+}
+
+func GetBpfLoad(l *BpfLoad) (program, label, prog string) {
+	return l.Observer__program, l.observer__label, l.observer__prog
+}
+
+func BpfMapBuilder(name, ty string, ld *BpfLoad) *ObserverMap {
+	return &ObserverMap{name, ty, ld, bpfLoadStateIdle(), -1}
+}
+
+func SensorBuilder(name string, p []*BpfLoad, m []*ObserverMap) *ObserverSensor {
+	return &ObserverSensor{
+		name:  name,
+		progs: p,
+		maps:  m,
+	}
+}
+
 // createInitialObserverSensor retruns the ObserverSensor that is loaded at initialization time
 func createInitialObserverSensor(enableTLS, enableTLSTC bool) *ObserverSensor {
 	progs := []*BpfLoad{
