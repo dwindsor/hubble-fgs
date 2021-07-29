@@ -535,7 +535,7 @@ func handleGenericTracepoint(r *bytes.Reader) (interface{}, error) {
 	return unix, nil
 }
 
-func (t *observerTracepointSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	}
@@ -545,7 +545,7 @@ func (t *observerTracepointSensor) specHandler(spec *v1alpha1.TracingPolicySpec)
 	return nil, nil
 }
 
-func (t *observerTracepointSensor) loadProbe(
+func (t *observerTracepointSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {

@@ -94,7 +94,7 @@ type observerSockopsSensor struct {
 	name string
 }
 
-func (sockops *observerSockopsSensor) loadProbe(
+func (sockops *observerSockopsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
@@ -106,7 +106,7 @@ func (sockops *observerSockopsSensor) loadProbe(
 		mapDir)
 }
 
-func (tls *observerSockopsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (tls *observerSockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return nil, nil
 }
 
@@ -114,7 +114,7 @@ type observerSkmsgTlsSensor struct {
 	name string
 }
 
-func (skmsg *observerSkmsgTlsSensor) loadProbe(
+func (skmsg *observerSkmsgTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
@@ -128,7 +128,7 @@ func (skmsg *observerSkmsgTlsSensor) loadProbe(
 		mapDir)
 }
 
-func (skmsg *observerSkmsgTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (skmsg *observerSkmsgTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return nil, nil
 }
 
@@ -136,7 +136,7 @@ type observerSkSkbVerdictTlsSensor struct {
 	name string
 }
 
-func (skSkbVerdict *observerSkSkbVerdictTlsSensor) loadProbe(
+func (skSkbVerdict *observerSkSkbVerdictTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
@@ -150,7 +150,7 @@ func (skSkbVerdict *observerSkSkbVerdictTlsSensor) loadProbe(
 		mapDir)
 }
 
-func (skmsg *observerSkSkbVerdictTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (skmsg *observerSkSkbVerdictTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return nil, nil
 }
 
@@ -158,7 +158,7 @@ type observerSkSkbParserTlsSensor struct {
 	name string
 }
 
-func (skSkbParser *observerSkSkbParserTlsSensor) loadProbe(
+func (skSkbParser *observerSkSkbParserTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
@@ -172,7 +172,7 @@ func (skSkbParser *observerSkSkbParserTlsSensor) loadProbe(
 		mapDir)
 }
 
-func (skmsg *observerSkSkbParserTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (skmsg *observerSkSkbParserTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return nil, nil
 }
 
@@ -205,7 +205,7 @@ func init() {
 	}
 	RegisterProbeType("tc_ingress", tls)
 	RegisterProbeType("tc_egress", tls)
-	registerTracingSensorsAtIinit(tls.name, tls)
+	RegisterTracingSensorsAtInit(tls.name, tls)
 }
 
 func EnableTlsParser(tls, tc bool) *ObserverSensor {
@@ -271,11 +271,11 @@ func getSensorFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*ObserverSenso
 	return addParserSensors(spec.Parser)
 }
 
-func (tls *observerTlsSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (tls *observerTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return getSensorFromParserPolicy(spec)
 }
 
-func (tls *observerTlsSensor) loadProbe(
+func (tls *observerTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {

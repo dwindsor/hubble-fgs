@@ -568,7 +568,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 			return err
 		}
 		for _, s := range registeredTracingSensors {
-			sensor, err := s.specHandler(&cnf.Spec)
+			sensor, err := s.SpecHandler(&cnf.Spec)
 			if err != nil {
 				return err
 			}

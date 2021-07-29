@@ -868,7 +868,7 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUn
 	return enterEv
 }
 
-func (k *observerKprobeSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (k *observerKprobeSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	}
@@ -878,7 +878,7 @@ func (k *observerKprobeSensor) specHandler(spec *v1alpha1.TracingPolicySpec) (*O
 	return nil, nil
 }
 
-func (k *observerKprobeSensor) loadProbe(
+func (k *observerKprobeSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {

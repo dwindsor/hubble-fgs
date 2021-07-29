@@ -583,7 +583,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verb
 			mapDir)
 	} else {
 		if s, ok := registeredProbeLoad[load.probeType]; ok {
-			return s.loadProbe(bpfDir, mapDir, ciliumDir, load, version, Verbosity, x64)
+			return s.LoadProbe(bpfDir, mapDir, ciliumDir, load, version, Verbosity, x64)
 		}
 		return bpf.LoadKprobeProgram(
 			version, Verbosity,

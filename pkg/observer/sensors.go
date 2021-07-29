@@ -66,8 +66,8 @@ type observerSensorImpl interface {
 }
 
 type observerTracingSensor interface {
-	specHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error)
-	loadProbe(bpfDir, mapDir, ciliumDir string, l *BpfLoad, version, verbose int, x64 bool) (error, int)
+	SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error)
+	LoadProbe(bpfDir, mapDir, ciliumDir string, l *BpfLoad, version, verbose int, x64 bool) (error, int)
 }
 
 // registerTracingSensorsAtIinit registers a handler for Tracing policy.
@@ -255,7 +255,7 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 					break
 				}
 				for _, s := range registeredTracingSensors {
-					sensor, err = s.specHandler(op.spec)
+					sensor, err = s.SpecHandler(op.spec)
 					if err != nil {
 						break
 					}
@@ -398,7 +398,7 @@ func getSensorFromTracingPolicyString(yaml string) (*ObserverSensor, error) {
 	// assume only one sensor per Spec and that we can return the
 	// first sensor we find.
 	for _, s := range registeredTracingSensors {
-		sensor, err := s.specHandler(&cnf.Spec)
+		sensor, err := s.SpecHandler(&cnf.Spec)
 		if err != nil {
 			return nil, err
 		}
