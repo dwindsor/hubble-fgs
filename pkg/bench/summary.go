@@ -18,94 +18,86 @@ import (
 	"time"
 )
 
-// Summary of the benchmark results. Serializes to JSON.
+// BenchSummary gathers benchmark results. Serializes to JSON.
 // This is updated from multiple places concurrently, but currently
 // there is no overlap on writes, so this isn't yet protected by a mutex.
 type BenchSummary struct {
 	TestName string
-	Args *BenchArguments
+	Args     *BenchArguments
 
-	TlsEvents, ExitEvents, ExecEvents, TcpEvents int64
+	TLSEvents, ExitEvents, ExecEvents, TCPEvents int64
 
 	StartTime          time.Time
 	EndTime            time.Time
 	SetupDurationNanos time.Duration
 	TestDurationNanos  time.Duration
 
+	SinkStats   SinkStats
 	SourceStats SourceStats
+	ProxyStats  ProxyStats
 
-	JsonEncodingDurationNanos time.Duration
+	JSONEncodingDurationNanos time.Duration
 
-	FgsCpuUsage    CpuUsage
-	SourceCpuUsage CpuUsage
-	SinkCpuUsage   CpuUsage
+	FgsCPUUsage CPUUsage
 
 	BpfStats map[int64]*BpfProgStats
-}
 
+	Error string
+}
 
 // Reset the summary for another run. Unfortunate hack to be able
 // to reuse the FGS setup for multiple different tests (it has pointer
 // to summary). TODO: Might be cleaner to register another fresh listener.
-func (ts *BenchSummary) ResetForNewRun() {
-	ts.TlsEvents = 0
-	ts.ExitEvents = 0
-	ts.ExecEvents = 0
-	ts.TcpEvents = 0
-	ts.BpfStats = nil
-	ts.StartTime = time.Time{}
-	ts.EndTime = time.Time{}
-	ts.TestDurationNanos = 0
-	ts.FgsCpuUsage = CpuUsage{}
-	ts.SourceCpuUsage = CpuUsage{}
-	ts.SinkCpuUsage = CpuUsage{}
-	ts.SourceStats = SourceStats{}
-	ts.JsonEncodingDurationNanos = 0
-	ts.BpfStats = make(map[int64]*BpfProgStats)
+func (s *BenchSummary) ResetForNewRun() {
+	*s = BenchSummary{TestName: s.TestName, Args: s.Args, SetupDurationNanos: s.SetupDurationNanos}
 }
 
-func (ts *BenchSummary) Dump() {
-	err := json.NewEncoder(os.Stdout).Encode(ts)
+func (s *BenchSummary) Dump() {
+	err := json.NewEncoder(os.Stdout).Encode(s)
 	if err != nil {
 		log.Fatalf("json.Encode: %v", err)
 	}
 }
 
-func (ts *BenchSummary) PrettyPrint() {
+func (s *BenchSummary) PrettyPrint() {
 	fmt.Println("Benchmark summary")
 	fmt.Println("-----------------")
-	fmt.Printf("Started:           %s\n", ts.StartTime)
-	fmt.Printf("Ended:             %s\n", ts.EndTime)
-	fmt.Printf("Arguments:         %v\n", ts.Args)
-	fmt.Printf("Total duration:    %s\n", ts.EndTime.Sub(ts.StartTime))
-	fmt.Printf("Setup duration:    %s\n", ts.SetupDurationNanos)
-	fmt.Printf("Test duration:     %s\n", ts.TestDurationNanos)
-	fmt.Printf("FGS cpu usage:     %s\n", ts.FgsCpuUsage)
-	fmt.Printf("Source cpu usage:  %s\n", ts.SourceCpuUsage)
-	fmt.Printf("Sink cpu usage:    %s\n", ts.SinkCpuUsage)
-	fmt.Printf("Connection rate:   %.2f per second\n", ts.SourceStats.ActualConnRate)
-	fmt.Printf("Request rate:      %.2f per second\n", ts.SourceStats.ActualReqRate)
-	fmt.Printf("Latency 50th:      %s\n", ts.SourceStats.LatencyP50)
-	fmt.Printf("Latency 90th:      %s\n", ts.SourceStats.LatencyP90)
-	fmt.Printf("Latency 99th:      %s\n", ts.SourceStats.LatencyP99)
+	fmt.Printf("Started:           %s\n", s.StartTime)
+	fmt.Printf("Ended:             %s\n", s.EndTime)
+	fmt.Printf("Arguments:         %v\n", s.Args)
+	fmt.Printf("Total duration:    %s\n", s.EndTime.Sub(s.StartTime))
+	fmt.Printf("Setup duration:    %s\n", s.SetupDurationNanos)
+	fmt.Printf("Test duration:     %s\n", s.TestDurationNanos)
+	fmt.Printf("FGS cpu usage:     %s\n", s.FgsCPUUsage)
+	fmt.Printf("Source cpu usage:  %s\n", s.SourceStats.CPUUsage)
+	fmt.Printf("Proxy cpu usage:   %s\n", s.ProxyStats.CPUUsage)
+	fmt.Printf("Sink cpu usage:    %s\n", s.SinkStats.CPUUsage)
+	fmt.Printf("Actual rate:       %.2f per second\n", s.SourceStats.ActualRate)
+	fmt.Printf("Latency 50th:      %s\n", s.SourceStats.LatencyP50)
+	fmt.Printf("Latency 90th:      %s\n", s.SourceStats.LatencyP90)
+	fmt.Printf("Latency 99th:      %s\n", s.SourceStats.LatencyP99)
 
-	if ts.SourceStats.Errors > 0 {
-		fmt.Printf("Errors:            %d\n", ts.SourceStats.Errors)
-		fmt.Printf("Last error:        %s\n", ts.SourceStats.LastError)
+	if s.SourceStats.Errors > 0 {
+		fmt.Printf("Errors:            %d\n", s.SourceStats.Errors)
+		fmt.Printf("Last error:        %s\n", s.SourceStats.LastError)
 	}
 	fmt.Println("BPF statistics:")
-	for _, bps := range ts.BpfStats {
+	for _, bps := range s.BpfStats {
 		fmt.Printf("  %s\n", bps)
+	}
+
+	if s.Error != "" {
+		fmt.Printf("Error:             %s\n", s.Error)
 	}
 }
 
-func (ts *BenchSummary) WriteFile(path string) error {
+func (s *BenchSummary) WriteFile(path string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
 	}
 	defer f.Close()
-	return json.NewEncoder(f).Encode(ts)
+	return json.NewEncoder(f).Encode(s)
 }
 
 func newBenchSummary(args *BenchArguments) *BenchSummary {

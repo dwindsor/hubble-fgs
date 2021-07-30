@@ -8,10 +8,13 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
+// +build linux,bench_tests
+
 package bench
 
 import (
 	"context"
+	"flag"
 	"os"
 	"path"
 	"strings"
@@ -21,136 +24,75 @@ import (
 	"github.com/spf13/viper"
 )
 
-func resultFilename(b *testing.B) string {
-	// NOTE: working directory is pkg/bench when running with "go test". We're
-	// also packaging up the benchmark suite into a binary and running it in CI
-	// in which case we're dumping the results to current directory.
-	file := strings.ReplaceAll(b.Name(), "/", "_") + ".json"
-	if _, err := os.Stat("bench_test.go"); err == nil {
-		return path.Join("..", "..", "results", file)
-	} else {
-		return file
-	}
+func resultFilename(t *testing.T) string {
+	file := strings.ReplaceAll(t.Name(), "/", "_") + ".json"
+	return path.Join("..", "..", "results", file)
 }
 
-func BenchmarkBaseline(b *testing.B) {
-	for _, mode := range SupportedModes {
-		b.Run(mode, func(b *testing.B) {
+type sourceProxySink struct {
+	source string
+	proxy  string
+	sink   string
+}
+
+var benchmarkSourceProxySinks = []sourceProxySink{
+	sourceProxySink{"http-rr-go", "none", "http-nginx"},
+	sourceProxySink{"http-crr-go", "none", "http-nginx"},
+	sourceProxySink{"netperf-crr", "none", "netperf"},
+	sourceProxySink{"netperf-rr", "none", "netperf"},
+	sourceProxySink{"tls-crr", "none", "tls-go"},
+}
+
+var benchmarkDuration = 5 * time.Second
+
+func TestMain(m *testing.M) {
+	flag.DurationVar(&benchmarkDuration, "fgs-bench-duration", benchmarkDuration, "Duration for the FGS benchmark tests")
+	flag.Parse()
+	os.Exit(m.Run())
+}
+
+// NOTE: These are not written as BenchmarkXxx as that tries to find an iteration count `b.N` that
+// is stable (or fits within -benchtime). This doesn't make sense for fgs-bench since it already
+// has a duration setting and the setup phase may be long to run over and over. Using "testing"
+// is useful as it combines with the build and provides test filtering.
+
+func TestBenchBaseline(t *testing.T) {
+	for _, srcProxySink := range benchmarkSourceProxySinks {
+		t.Run(srcProxySink.source, func(t *testing.T) {
 			summary := BenchBaseline(
 				&BenchArguments{
-					NumSteps: b.N,
-					ConnRate: 0, // Unlimited
-					Mode:     mode,
-					Baseline: true,
+					SourceArgs: SourceArgs{Duration: benchmarkDuration},
+					Source:     SourceNameOrPanic(srcProxySink.source),
+					Proxy:      ProxyNameOrPanic(srcProxySink.proxy),
+					Sink:       SinkNameOrPanic(srcProxySink.sink),
+					Baseline:   true,
 				})
-			summary.TestName = b.Name()
-			if err := summary.WriteFile(resultFilename(b)); err != nil {
-				b.Fatalf("summary.WriteFile failed: %s", err)
+			summary.TestName = t.Name()
+			if err := summary.WriteFile(resultFilename(t)); err != nil {
+				t.Fatalf("summary.WriteFile failed: %s", err)
+			}
+			if summary.Error != "" {
+				t.Fatalf("test failed: %s", summary.Error)
 			}
 		})
 	}
 }
 
-func BenchmarkBaselineTcpRequestResponse(b *testing.B) {
-	summary := BenchBaseline(
-		&BenchArguments{
-			NumSteps:        b.N,
-			ConnRate:        0, // Unlimited
-			Mode:            "tcp",
-			Baseline:        true,
-			RequestResponse: true,
-			UseNetperf:      true,
-		})
-
-	summary.TestName = b.Name()
-	if err := summary.WriteFile(resultFilename(b)); err != nil {
-		b.Fatalf("summary.WriteFile failed: %s", err)
-	}
+func TestFGSNoTLS(t *testing.T) {
+	benchmarkFgs(t, &BenchArguments{
+		FgsEnableTLS:  false,
+		FgsJSONEncode: true,
+	})
 }
 
-func BenchmarkFgsTcpRequestResponse(b *testing.B) {
-	benchmarkFgs(b,
-		[]string{"tcp"},
-		&BenchArguments{
-			NumSteps:        1,
-			ConnRate:        0, // Unlimited
-			Mode:            "tcp",
-			FgsEnableTls:    false,
-			Baseline:        false,
-			RequestResponse: true,
-			UseNetperf:      true,
-		})
+func TestFGSTLS(t *testing.T) {
+	benchmarkFgs(t, &BenchArguments{
+		FgsEnableTLS:  true,
+		FgsJSONEncode: true,
+	})
 }
 
-func BenchmarkFgsTls_TcpRequestResponse(b *testing.B) {
-	benchmarkFgs(b,
-		[]string{"tcp"},
-		&BenchArguments{
-			NumSteps:        1,
-			ConnRate:        0, // Unlimited
-			Mode:            "tcp",
-			FgsEnableTls:    true,
-			Baseline:        false,
-			RequestResponse: true,
-			UseNetperf:      true,
-		})
-}
-
-func BenchmarkBaselineHttpRequestResponse(b *testing.B) {
-	summary := BenchBaseline(
-		&BenchArguments{
-			NumSteps:        b.N,
-			ConnRate:        0, // Unlimited
-			Mode:            "http",
-			Baseline:        true,
-			RequestResponse: true,
-			UseNetperf:      false,
-		})
-	summary.TestName = b.Name()
-	if err := summary.WriteFile(resultFilename(b)); err != nil {
-		b.Fatalf("summary.WriteFile failed: %s", err)
-	}
-}
-
-func BenchmarkFgsHttpRequestResponse(b *testing.B) {
-	benchmarkFgs(b,
-		[]string{"http"},
-		&BenchArguments{
-			NumSteps:        1,
-			ConnRate:        0, // Unlimited
-			Mode:            "http",
-			FgsEnableTls:    false,
-			Baseline:        false,
-			RequestResponse: true,
-			UseNetperf:      false,
-		})
-}
-
-func BenchmarkFgsNoTls(b *testing.B) {
-	benchmarkFgs(b,
-		SupportedModes,
-		&BenchArguments{
-			NumSteps:     1,
-			ConnRate:     0, // Unlimited
-			Mode:         "tcp",
-			FgsEnableTls: false,
-			Baseline:     false,
-		})
-}
-
-func BenchmarkFgsTls(b *testing.B) {
-	benchmarkFgs(b,
-		SupportedModes,
-		&BenchArguments{
-			NumSteps:     1,
-			ConnRate:     0, // Unlimited
-			Mode:         "tcp",
-			FgsEnableTls: true,
-			Baseline:     false,
-		})
-}
-
-func benchmarkFgs(b *testing.B, modes []string, args *BenchArguments) {
+func benchmarkFgs(t *testing.T, args *BenchArguments) {
 	viper.Set("log-level", "error")
 	viper.Set("debug", false)
 
@@ -160,24 +102,29 @@ func benchmarkFgs(b *testing.B, modes []string, args *BenchArguments) {
 	fgsReady := make(chan bool)
 	fgsFinished := make(chan bool)
 	go func() {
-		runFgs(args.FgsEnableTls, false, summary, fgsCtx, fgsCancel, fgsReady)
+		runFgs(args.FgsEnableTLS, false, summary, fgsCtx, fgsCancel, fgsReady)
 		fgsFinished <- true
 	}()
 
 	<-fgsReady
 	summary.SetupDurationNanos = time.Since(summary.StartTime)
-	for _, mode := range modes {
-		b.Run(mode, func(b *testing.B) {
+	for _, srcProxySink := range benchmarkSourceProxySinks {
+		t.Run(srcProxySink.source, func(t *testing.T) {
 			loadCtx, loadCancel := context.WithCancel(context.Background())
 			summary.ResetForNewRun()
 			summary.StartTime = time.Now()
-			summary.TestName = b.Name()
-			args.Mode = mode
-			args.NumSteps = b.N
+			summary.TestName = t.Name()
+			args.SourceArgs = SourceArgs{Duration: benchmarkDuration}
+			args.Source = SourceNameOrPanic(srcProxySink.source)
+			args.Sink = SinkNameOrPanic(srcProxySink.sink)
+			args.Proxy = ProxyNameOrPanic(srcProxySink.proxy)
 			go sigHandler(loadCtx, loadCancel)
 			runFgsBenchmark(args, summary, loadCtx, loadCancel)
-			if err := summary.WriteFile(resultFilename(b)); err != nil {
-				b.Fatalf("summary.WriteFile failed: %s", err)
+			if err := summary.WriteFile(resultFilename(t)); err != nil {
+				t.Fatalf("summary.WriteFile failed: %s", err)
+			}
+			if summary.Error != "" {
+				t.Fatalf("test failed: %s", summary.Error)
 			}
 		})
 	}

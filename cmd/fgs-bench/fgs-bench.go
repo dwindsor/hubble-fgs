@@ -17,48 +17,41 @@ import (
 	"os"
 	"os/user"
 	"strings"
+	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/bench"
 )
 
 // Command-line flags
 var (
-	mode       *string
-	numSteps *int
-	connRate   *int
-	fgsTls     *bool
-	noDelay    *bool
-	debug      *bool
-	jsonEncode *bool
-	baseline   *bool
+	duration        *time.Duration
+	rate            *int
+	fgsTLS          *bool
+	noDelay         *bool
+	debug           *bool
+	jsonEncode      *bool
+	baseline        *bool
 	requestResponse *bool
-	requestSize *int
-	useNetperf *bool
+	requestSize     *int
+
+	source *string
+	proxy  *string
+	sink   *string
 )
 
-func checkMode() {
-	for _, m := range bench.SupportedModes {
-		if *mode == m {
-			return
-		}
-	}
-	log.Fatalf("unknown mode: %s, pick on of: %s",
-	           *mode, strings.Join(bench.SupportedModes, ","))
-}
-
 func init() {
-	numSteps = flag.Int("n", 1000, "number of connections or requests")
-	connRate = flag.Int("rate", 100, "connections per second, use 0 for unlimited")
-	fgsTls = flag.Bool("fgs-tls", false, "enable TLS in FGS")
+	duration = flag.Duration("duration", 10*time.Second, "test duration")
+
+	rate = flag.Int("rate", 0, "connections/requests per second, use 0 for unlimited")
+	fgsTLS = flag.Bool("fgs-tls", false, "enable TLS in FGS")
 	debug = flag.Bool("debug", false, "enable FGS debugging")
 	jsonEncode = flag.Bool("json-encode", false, "JSON encode the events and measure overhead")
 	baseline = flag.Bool("baseline", false, "run a baseline benchmark without FGS")
-
-	mode = flag.String("mode", "tcp", "connection mode, one of: "+strings.Join(bench.SupportedModes, ","))
-
-	requestResponse = flag.Bool("rr", false, "run a request-response test")
 	requestSize = flag.Int("req-size", 64, "request size for request-response test")
-	useNetperf = flag.Bool("netperf", true, "use netperf in request-response test (in TCP mode)")
+
+	source = flag.String("source", "none", "source to use, one of: "+strings.Join(bench.SupportedSources(), ","))
+	proxy = flag.String("proxy", "none", "proxy to use, one of: "+strings.Join(bench.SupportedProxies(), ","))
+	sink = flag.String("sink", "tcp", "sink to use, one of: "+strings.Join(bench.SupportedSinks(), ","))
 }
 
 func main() {
@@ -68,20 +61,21 @@ func main() {
 	}
 
 	flag.Parse()
-	checkMode()
 	log.SetOutput(os.Stderr)
 
 	args := &bench.BenchArguments{
-		NumSteps:      *numSteps,
-		ConnRate:      *connRate,
-		FgsEnableTls:  *fgsTls,
+		FgsEnableTLS:  *fgsTLS,
 		FgsDebug:      *debug,
-		FgsJsonEncode: *jsonEncode,
-		Mode:          *mode,
+		FgsJSONEncode: *jsonEncode,
 		Baseline:      *baseline,
-		RequestResponse: *requestResponse,
-		ReqSize: *requestSize,
-		UseNetperf: *useNetperf,
+		Source:        bench.SourceNameOrPanic(*source),
+		SourceArgs: bench.SourceArgs{
+			Duration:   *duration,
+			RatePerSec: float64(*rate),
+			ReqSize:    *requestSize,
+		},
+		Proxy: bench.ProxyNameOrPanic(*proxy),
+		Sink:  bench.SinkNameOrPanic(*sink),
 	}
 
 	var summary *bench.BenchSummary
