@@ -1,6 +1,8 @@
 #ifndef __TLS_MAP_H
 #define __TLS_MAP_H
 
+#include "../bpf_sockops.h"
+
 struct bpf_map_def __attribute__((section("maps"), used)) tls_calls = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
@@ -37,10 +39,82 @@ void del_tlsmap(struct msg_tls_ipv4 *tuple)
 		*cntr = *cntr - 1;
 }
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_filter_map = {
+struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = 128,
 	.max_entries = 1,
 };
+
+#define TLS_SKIP  0
+#define TLS_TRACK 1
+
+#define TLS_MAX_PORTS 10
+#define TLS_MAX_SELECTORS 2
+
+#define DO_TLS_PORT_FILTER_ONE(j)			     \
+	p = *(__u32 *)&filter[offset + 4 + 4 + 4 + (4 * j)]; \
+	if (p == key->dport) goto track;		     \
+	if (++j >= ports) goto skip;			     \
+
+
+#define DO_TLS_PORT_FILTER	   \
+{				   \
+	int j = 0;		   \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+}
+
+static inline __attribute__((always_inline))
+int tls_filter(struct sock_key *key) {
+	int i, zero = 0;
+	__u32 selectors;
+	u8 *filter;
+
+	filter = map_lookup_elem(&filter_map, &zero);
+	if (!filter)
+		return TLS_TRACK;
+
+	/* Supports upto 10 selectors any more and we simply
+	 * mark it as tracked so we fail open. Userspace should
+	 * catch this though. And also more than 1 selector
+	 * for ports is not useful.
+	 */
+	selectors = (__u32)filter[0];
+	if (!selectors)
+		goto track;
+
+	/* More than a single selector is unlikely to work unless
+	 * we bump up element size.
+	 *
+	 * TLS selector layout is the following.
+	 *
+	 *    #OfSelectors         uint32
+	 *    OffsetOfEachSelector uint32
+	 *    #OfMatchPorts        uint32
+	 *    Port1 .... PortN     uint32, uint32, ...
+	 */
+	for (i = 0; i < 3 && i < (selectors & 0x3); i++) {
+		__u32 p, offset, ports;
+
+		i &= 0xf;
+		offset = filter[4 + i * 4];
+
+		offset &= 0x1f;
+		ports = filter[offset + 4 + 4]; // max 39
+		if (!ports)
+			goto track;
+
+		// Zero iteration of hand unrolled loop
+		DO_TLS_PORT_FILTER
+	}
+skip:
+	return TLS_SKIP;
+track:
+	return TLS_TRACK;
+}
+
 #endif

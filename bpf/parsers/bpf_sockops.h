@@ -1,6 +1,10 @@
+#ifndef __BPF_SOCKOPS_H
+#define __BPF_SOCKOPS_H
 /* Structure representing an L7 sock */
 struct sock_key {
 	__u64 cookie;
+	__u32 dport;
+	__u32 sport;
 } __attribute__((packed));
 
 #define SOCKOPS_MAP_SIZE 65535
@@ -45,4 +49,13 @@ static void sk_extract4_key(struct bpf_sock_ops *ops,
 			    struct sock_key *key)
 {
 	key->cookie = get_socket_cookie(ops);
+	if (ops->sk) {
+		key->dport = ops->sk->dst_port;
+		key->sport = ops->sk->src_port;
+	}
+	/* We only use sockops on 5.4+ kernels in these cases
+	 * the ops->sk is set so we can skip else case.
+	 */
 }
+
+#endif //__BPF_SOCKOPS_H

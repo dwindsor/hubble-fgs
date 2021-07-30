@@ -13,6 +13,7 @@ struct bpf_map_def {
 
 #include "hubble_msg.h"
 #include "bpf_sockops.h"
+#include "./tls/tls_map.h"
 
 /* Hard coding policy until we have policy map in place. */
 #define TLS_PORT 443
@@ -23,7 +24,9 @@ static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 	struct sock_key key = {};
 
 	sk_extract4_key(skops, &key);
-	sock_hash_update(skops, &tls_sock_map, &key, BPF_NOEXIST);
+	if (tls_filter(&key) == TLS_TRACK) {
+		sock_hash_update(skops, &tls_sock_map, &key, BPF_NOEXIST);
+	}
 }
 
 __section("sockops/fgs_sockops")
@@ -46,3 +49,5 @@ int bpf_sockmap(struct bpf_sock_ops *skops)
 
 	return 0;
 }
+
+char _license[] __attribute__((section(("license")), used)) = "GPL";

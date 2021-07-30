@@ -11,6 +11,7 @@
 package observer
 
 import (
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 )
@@ -18,7 +19,12 @@ import (
 func parseTlsMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32) error {
 	selectors.WriteSelectorUint32(k, uint32(len(matchPorts)))
 	for _, port := range matchPorts {
-		selectors.WriteSelectorUint32(k, port)
+		/* Some byte hackery here because ports are 16bits in packet, but
+		 * we use them as 32bit types (this helps code generation and verifier)
+		 * throughout BPF side. But we swap here to avoid doing the swap on data
+		 * read from sock/packet.
+		 */
+		selectors.WriteSelectorUint32(k, uint32(api.SwapByte(uint16(port))))
 	}
 	return nil
 }

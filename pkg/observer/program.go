@@ -526,14 +526,17 @@ func ObserverLoadSkSkb(
 func ObserverLoadSockops(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
+	version, verbose int,
+	x64 bool,
+	filters [128]byte) (error, int) {
 	btfObj := uintptr(btf.GetCachedBTF())
 
 	return bpf.LoadSockopsProgram(version, Verbosity, btfObj,
 		load.Observer__program,
 		load.observer__label,
 		bpfDir+load.observer__prog,
-		mapDir)
+		mapDir,
+		filters)
 }
 
 func ObserverLoadTC(bpfDir, mapDir, ciliumDir string,
