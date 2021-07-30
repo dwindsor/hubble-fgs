@@ -18,16 +18,16 @@ import (
 )
 
 func TestWriteSelectorUint32(t *testing.T) {
-	k := &kernelSelectorState{off: 0}
+	k := &KernelSelectorState{off: 0}
 	v := uint32(0x1234abcd)
-	writeSelectorUint32(k, v)
+	WriteSelectorUint32(k, v)
 	if k.e[3] != 0x12 || k.e[2] != 0x34 || k.e[1] != 0xab || k.e[0] != 0xcd {
 		t.Errorf("SelectorStateWrite failed: %x %x %x %x\n",
 			k.e[0], k.e[1], k.e[2], k.e[3])
 	}
 
 	k.off = 1024
-	writeSelectorUint32(k, v)
+	WriteSelectorUint32(k, v)
 	if k.e[1027] != 0x12 || k.e[1026] != 0x34 || k.e[1025] != 0xab || k.e[1024] != 0xcd {
 		t.Errorf("SelectorStateWrite offset(1024) failed: %x %x %x %x\n",
 			k.e[1027], k.e[1026], k.e[1025], k.e[1024])
@@ -35,20 +35,20 @@ func TestWriteSelectorUint32(t *testing.T) {
 }
 
 func TestWriteSelectorLength(t *testing.T) {
-	k := &kernelSelectorState{off: 0}
+	k := &KernelSelectorState{off: 0}
 	v := uint32(0x1234abcd)
 
 	e1 := 8
 	e2 := 12
 
-	off := advanceSelectorLength(k)
-	writeSelectorUint32(k, v)
-	writeSelectorLength(k, off)
+	off := AdvanceSelectorLength(k)
+	WriteSelectorUint32(k, v)
+	WriteSelectorLength(k, off)
 
-	off = advanceSelectorLength(k)
-	writeSelectorUint32(k, v)
-	writeSelectorUint32(k, v)
-	writeSelectorLength(k, off)
+	off = AdvanceSelectorLength(k)
+	WriteSelectorUint32(k, v)
+	WriteSelectorUint32(k, v)
+	WriteSelectorLength(k, off)
 
 	// Length fields include the length value
 	if k.e[3] != 0 || k.e[2] != 0 || k.e[1] != 0 || k.e[0] != 8 {
@@ -60,14 +60,14 @@ func TestWriteSelectorLength(t *testing.T) {
 }
 
 func TestWriteSelectorByteArray(t *testing.T) {
-	k := &kernelSelectorState{off: 0}
+	k := &KernelSelectorState{off: 0}
 	v := []byte{1, 2, 3, 4, 5, 6, 7, 8, 9, 0xa, 0xb, 0xc, 0xd, 0xe, 0xf}
 
-	off1 := advanceSelectorLength(k)
-	off2 := advanceSelectorLength(k)
-	writeSelectorByteArray(k, v, uint32(len(v)))
-	writeSelectorLength(k, off2)
-	writeSelectorLength(k, off1)
+	off1 := AdvanceSelectorLength(k)
+	off2 := AdvanceSelectorLength(k)
+	WriteSelectorByteArray(k, v, uint32(len(v)))
+	WriteSelectorLength(k, off2)
+	WriteSelectorLength(k, off1)
 
 	// Length fields include the length value
 	if k.e[3] != 0 || k.e[2] != 0 || k.e[1] != 0 || k.e[0] != 23 {
@@ -89,7 +89,7 @@ func TestWriteSelectorByteArray(t *testing.T) {
 func TestArgSelectorValue(t *testing.T) {
 	astring := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
 
-	b, l := argSelectorValue(astring.Values[0])
+	b, l := ArgSelectorValue(astring.Values[0])
 	if bytes.Equal(b, []byte("foobar")) == false || l != 6 {
 		t.Errorf("argSelectorValue: expected %v %v actual %v %v\n", []byte("foobar"), 6, b, l)
 	}
@@ -160,7 +160,7 @@ func TestParseMatchArg(t *testing.T) {
 	}
 
 	arg1 := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
-	k := &kernelSelectorState{off: 0}
+	k := &KernelSelectorState{off: 0}
 	expected1 := []byte{
 		0x01, 0x00, 0x00, 0x00, // Index == 1
 		0x03, 0x00, 0x00, 0x00, // operator == equal
@@ -191,7 +191,7 @@ func TestParseMatchArg(t *testing.T) {
 	expected3 := append(length, expected1[:]...)
 	expected3 = append(expected3, expected2[:]...)
 	arg3 := []v1alpha1.ArgSelector{*arg1, *arg2}
-	ks := &kernelSelectorState{off: 0}
+	ks := &KernelSelectorState{off: 0}
 	if err := parseMatchArgs(ks, arg3, sig); err != nil || bytes.Equal(expected3, ks.e[0:ks.off]) == false {
 		t.Errorf("parseMatchArgs: error %v expected %v bytes %v parsing %v\n", err, expected3, ks.e[0:k.off], arg3)
 	}
@@ -199,7 +199,7 @@ func TestParseMatchArg(t *testing.T) {
 
 func TestParseMatchPid(t *testing.T) {
 	pid1 := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
-	k := &kernelSelectorState{off: 0}
+	k := &KernelSelectorState{off: 0}
 	expected1 := []byte{
 		0x05, 0x00, 0x00, 0x00, // op == In
 		0x03, 0x00, 0x00, 0x00, // flags == 0x3
@@ -231,7 +231,7 @@ func TestParseMatchPid(t *testing.T) {
 	expected3 := append(length, expected1[:]...)
 	expected3 = append(expected3, expected2[:]...)
 	pid3 := []v1alpha1.PIDSelector{*pid1, *pid2}
-	ks := &kernelSelectorState{off: 0}
+	ks := &KernelSelectorState{off: 0}
 	if err := parseMatchPids(ks, pid3); err != nil || bytes.Equal(expected3, ks.e[0:ks.off]) == false {
 		t.Errorf("parseMatchPid: error %v expected %v bytes %v parsing %v\n", err, expected3, ks.e[0:ks.off], pid3)
 	}
@@ -240,7 +240,7 @@ func TestParseMatchPid(t *testing.T) {
 func TestParseMatchAction(t *testing.T) {
 	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "post"}
-	k := &kernelSelectorState{off: 0}
+	k := &KernelSelectorState{off: 0}
 	expected1 := []byte{
 		0x00, 0x00, 0x00, 0x00, // Action = "post"
 	}
@@ -258,7 +258,7 @@ func TestParseMatchAction(t *testing.T) {
 	expected = append(expected, expected2[:]...)
 
 	act := []v1alpha1.ActionSelector{*act1, *act2}
-	ks := &kernelSelectorState{off: 0}
+	ks := &KernelSelectorState{off: 0}
 	if err := parseMatchActions(ks, act); err != nil || bytes.Equal(expected, ks.e[0:ks.off]) == false {
 		t.Errorf("parseMatchActions: error %v expected %v bytes %v parsing %v\n", err, expected, ks.e[0:ks.off], act)
 	}

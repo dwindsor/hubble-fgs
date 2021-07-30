@@ -21,44 +21,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
-type kernelSelectorState struct {
-	off uint32     // offset into encoding
-	e   [4096]byte // kernel encoding of selectors
-}
-
-func writeSelectorUint32(k *kernelSelectorState, v uint32) {
-	binary.LittleEndian.PutUint32(k.e[k.off:], v)
-	k.off += 4
-}
-
-func writeSelectorUint64(k *kernelSelectorState, v uint64) {
-	binary.LittleEndian.PutUint64(k.e[k.off:], v)
-	k.off += 8
-}
-
-func writeSelectorLength(k *kernelSelectorState, loff uint32) {
-	diff := k.off - loff
-	binary.LittleEndian.PutUint32(k.e[loff:], diff)
-}
-
-func writeSelectorByteArray(k *kernelSelectorState, b []byte, size uint32) {
-	for l := uint32(0); l < size; l++ {
-		k.e[k.off+l] = b[l]
-	}
-	k.off += size
-}
-
-func advanceSelectorLength(k *kernelSelectorState) uint32 {
-	off := k.off
-	k.off += 4
-	return off
-}
-
-func argSelectorValue(v string) ([]byte, uint32) {
-	b := []byte(v)
-	return b, uint32(len(b))
-}
-
 const (
 	actionTypePost       = 0
 	actionTypeFollowFd   = 1
@@ -216,30 +178,30 @@ func pidSelectorValue(pid *v1alpha1.PIDSelector) ([]byte, uint32) {
 	return b, uint32(len(b))
 }
 
-func parseMatchPid(k *kernelSelectorState, pid *v1alpha1.PIDSelector) error {
+func parseMatchPid(k *KernelSelectorState, pid *v1alpha1.PIDSelector) error {
 	op, err := selectorOp(pid.Operator)
 	if err != nil {
 		return fmt.Errorf("matchpid error: %s\n", err)
 	}
-	writeSelectorUint32(k, op)
+	WriteSelectorUint32(k, op)
 
 	flags := pidSelectorFlags(pid)
-	writeSelectorUint32(k, flags)
+	WriteSelectorUint32(k, flags)
 
 	value, size := pidSelectorValue(pid)
-	writeSelectorUint32(k, size/4)
-	writeSelectorByteArray(k, value, size)
+	WriteSelectorUint32(k, size/4)
+	WriteSelectorByteArray(k, value, size)
 	return nil
 }
 
-func parseMatchPids(k *kernelSelectorState, matchPids []v1alpha1.PIDSelector) error {
-	loff := advanceSelectorLength(k)
+func parseMatchPids(k *KernelSelectorState, matchPids []v1alpha1.PIDSelector) error {
+	loff := AdvanceSelectorLength(k)
 	for _, p := range matchPids {
 		if err := parseMatchPid(k, &p); err != nil {
 			return err
 		}
 	}
-	writeSelectorLength(k, loff)
+	WriteSelectorLength(k, loff)
 	return nil
 }
 
@@ -262,7 +224,7 @@ func argSelectorType(arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) (uint3
 	return 0, fmt.Errorf("argFilter for unknown index")
 }
 
-func parseMatchValues(k *kernelSelectorState, values []string, ty uint32) error {
+func parseMatchValues(k *KernelSelectorState, values []string, ty uint32) error {
 	for _, v := range values {
 		switch ty {
 		case argTypeFd, argTypeFile:
@@ -271,25 +233,25 @@ func parseMatchValues(k *kernelSelectorState, values []string, ty uint32) error 
 				v = v[1:]
 			}
 			swapV := mnt + reader.SwapPath(v)
-			value, size := argSelectorValue(swapV)
-			writeSelectorUint32(k, size)
-			writeSelectorByteArray(k, value, size)
+			value, size := ArgSelectorValue(swapV)
+			WriteSelectorUint32(k, size)
+			WriteSelectorByteArray(k, value, size)
 		case argTypeString, argTypeCharBuf:
-			value, size := argSelectorValue(v)
-			writeSelectorUint32(k, size)
-			writeSelectorByteArray(k, value, size)
+			value, size := ArgSelectorValue(v)
+			WriteSelectorUint32(k, size)
+			WriteSelectorByteArray(k, value, size)
 		case argTypeU32, argTypeS32, argTypeInt, argTypeSizet:
 			i, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
 			}
-			writeSelectorUint32(k, uint32(i))
+			WriteSelectorUint32(k, uint32(i))
 		case argTypeU64, argTypeS64:
 			i, err := strconv.ParseInt(v, 10, 64)
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
 			}
-			writeSelectorUint64(k, uint64(i))
+			WriteSelectorUint64(k, uint64(i))
 		case argTypeSkb, argTypeCharIovec:
 			return fmt.Errorf("MatchArgs values %s unsupported\n", v)
 		}
@@ -297,66 +259,66 @@ func parseMatchValues(k *kernelSelectorState, values []string, ty uint32) error 
 	return nil
 }
 
-func parseMatchArg(k *kernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
-	writeSelectorUint32(k, arg.Index)
+func parseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
+	WriteSelectorUint32(k, arg.Index)
 
 	op, err := selectorOp(arg.Operator)
 	if err != nil {
 		return fmt.Errorf("matcharg error: %s\n", err)
 	}
-	writeSelectorUint32(k, op)
-	moff := advanceSelectorLength(k)
+	WriteSelectorUint32(k, op)
+	moff := AdvanceSelectorLength(k)
 	ty, err := argSelectorType(arg, sig)
 	if err != nil {
 		return fmt.Errorf("argSelector error: %s\n", err)
 	}
-	writeSelectorUint32(k, ty)
+	WriteSelectorUint32(k, ty)
 	err = parseMatchValues(k, arg.Values, ty)
 	if err != nil {
 		return fmt.Errorf("parseMatchValues error: %s\n", err)
 	}
-	writeSelectorLength(k, moff)
+	WriteSelectorLength(k, moff)
 	return err
 }
 
-func parseMatchArgs(k *kernelSelectorState, args []v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
-	loff := advanceSelectorLength(k)
+func parseMatchArgs(k *KernelSelectorState, args []v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
+	loff := AdvanceSelectorLength(k)
 	for _, a := range args {
 		if err := parseMatchArg(k, &a, sig); err != nil {
 			return err
 		}
 	}
-	writeSelectorLength(k, loff)
+	WriteSelectorLength(k, loff)
 	return nil
 }
 
-func parseMatchAction(k *kernelSelectorState, action *v1alpha1.ActionSelector) error {
+func parseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector) error {
 	act, ok := actionTypeTable[strings.ToLower(action.Action)]
 	if !ok {
 		return fmt.Errorf("parseMatchAction: actionType %s unknown\n", action.Action)
 	}
-	writeSelectorUint32(k, act)
+	WriteSelectorUint32(k, act)
 	switch act {
 	case actionTypeFollowFd:
-		writeSelectorUint32(k, action.ArgFd)
-		writeSelectorUint32(k, action.ArgName)
+		WriteSelectorUint32(k, action.ArgFd)
+		WriteSelectorUint32(k, action.ArgName)
 	}
 	return nil
 }
 
-func parseMatchActions(k *kernelSelectorState, actions []v1alpha1.ActionSelector) error {
-	loff := advanceSelectorLength(k)
+func parseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector) error {
+	loff := AdvanceSelectorLength(k)
 	for _, a := range actions {
 		if err := parseMatchAction(k, &a); err != nil {
 			return err
 		}
 	}
-	writeSelectorLength(k, loff)
+	WriteSelectorLength(k, loff)
 	return nil
 }
 
 func parseSelector(
-	k *kernelSelectorState,
+	k *KernelSelectorState,
 	selectors *v1alpha1.KProbeSelector,
 	args []v1alpha1.KProbeArg) error {
 	if err := parseMatchPids(k, selectors.MatchPIDs); err != nil {
@@ -381,22 +343,22 @@ func parseSelector(
 func InitKernelSelectors(spec *v1alpha1.KProbeSpec) ([4096]byte, error) {
 	selectors := spec.Selectors
 	args := spec.Args
-	kernelSelectors := &kernelSelectorState{}
+	kernelSelectors := &KernelSelectorState{}
 	totaloff := 2
 
-	writeSelectorUint32(kernelSelectors, uint32(len(selectors)))
+	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
 	soff := make([]uint32, len(selectors))
 	for i, _ := range selectors {
-		soff[i] = advanceSelectorLength(kernelSelectors)
+		soff[i] = AdvanceSelectorLength(kernelSelectors)
 		totaloff++
 	}
 	for i, s := range selectors {
-		writeSelectorLength(kernelSelectors, soff[i])
-		loff := advanceSelectorLength(kernelSelectors)
+		WriteSelectorLength(kernelSelectors, soff[i])
+		loff := AdvanceSelectorLength(kernelSelectors)
 		if err := parseSelector(kernelSelectors, &s, args); err != nil {
 			return kernelSelectors.e, err
 		}
-		writeSelectorLength(kernelSelectors, loff)
+		WriteSelectorLength(kernelSelectors, loff)
 	}
 	return kernelSelectors.e, nil
 }
@@ -404,22 +366,22 @@ func InitKernelSelectors(spec *v1alpha1.KProbeSpec) ([4096]byte, error) {
 func InitTracepointSelectors(spec *v1alpha1.TracepointSpec) ([4096]byte, error) {
 	selectors := spec.Selectors
 	args := spec.Args
-	kernelSelectors := &kernelSelectorState{}
+	kernelSelectors := &KernelSelectorState{}
 	totaloff := 2
 
-	writeSelectorUint32(kernelSelectors, uint32(len(selectors)))
+	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
 	soff := make([]uint32, len(selectors))
 	for i, _ := range selectors {
-		soff[i] = advanceSelectorLength(kernelSelectors)
+		soff[i] = AdvanceSelectorLength(kernelSelectors)
 		totaloff++
 	}
 	for i, s := range selectors {
-		writeSelectorLength(kernelSelectors, soff[i])
-		loff := advanceSelectorLength(kernelSelectors)
+		WriteSelectorLength(kernelSelectors, soff[i])
+		loff := AdvanceSelectorLength(kernelSelectors)
 		if err := parseSelector(kernelSelectors, &s, args); err != nil {
 			return kernelSelectors.e, err
 		}
-		writeSelectorLength(kernelSelectors, loff)
+		WriteSelectorLength(kernelSelectors, loff)
 	}
 	return kernelSelectors.e, nil
 }
