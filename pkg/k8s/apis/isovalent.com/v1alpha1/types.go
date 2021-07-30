@@ -162,6 +162,12 @@ type TracepointSpec struct {
 	Selectors []KProbeSelector `json:"selectors"`
 }
 
+type TlsSelector struct {
+	// +kubebuilder:validation:Optional
+	// A list of ports to match. Ports are ORd.
+	MatchPorts []uint32 `json:"matchPorts"`
+}
+
 type TlsSpec struct {
 	// TLS enable parser
 	Enable bool `json:"enable"`
@@ -169,6 +175,9 @@ type TlsSpec struct {
 	// +kubebuilder:validation:Enum=socket;tc;
 	// TLS parser type
 	Mode string `json:"mode"`
+	// +kubebuilder:validation:Optional
+	// Selectors to apply TLS parser against. Selectors are ORed.
+	Selectors []TlsSelector `json:"selectors"`
 }
 
 type ParserPolicySpec struct {
