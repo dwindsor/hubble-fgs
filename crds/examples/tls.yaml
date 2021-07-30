@@ -7,3 +7,9 @@ spec:
     tls:
       enable: true
       mode: "tc"
+    selectors:
+    - matchports:
+      - 443
+      - 993
+      - 465
+      - 995
