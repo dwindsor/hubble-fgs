@@ -68,9 +68,8 @@ func hubbleFGSExecute() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
-	if tls {
-		bpf.CheckOrMountCgroup2()
-	}
+	bpf.CheckOrMountCgroup2()
+
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
 		networkInterfaces, configFile,
