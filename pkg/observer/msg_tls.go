@@ -21,6 +21,7 @@ import (
 var (
 	/* Runtime Containers */
 	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert = make(map[api.MsgTLSIPv4]*MsgTLSEventCert)
+	tlsSelectors  [128]byte
 )
 
 const (

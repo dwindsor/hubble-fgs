@@ -308,11 +308,15 @@ int tc_loader(const int version,
 		   const char *label,
 		   const char *__prog,
 		   const char *mapdir,
-		   const char *ciliumdir)
+		   const char *ciliumdir,
+		   void *filter)
 {
 	char tc_calls_name[255];
 	struct bpf_object *obj;
 	int i, fd, map_fd, err;
+	char *tls_filter_map = "filter_map";
+	int zero = 0;
+
 
 	obj = __loader(version, verbosity, btf, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
 	if (!obj)
@@ -324,6 +328,21 @@ int tc_loader(const int version,
 		goto out;
 	}
 
+	// Install filter
+	map_fd = bpf_object__find_map_fd_by_name(obj, tls_filter_map);
+	if (map_fd >= 0) {
+		err = bpf_map_update_elem(map_fd, &zero, filter, BPF_ANY);
+		if (err) {
+			fprintf(stderr, "bpf_map_update_elem: obj(%s) failed filter\n",
+				__prog);
+			goto out;
+		}
+	} else {
+		fprintf(stderr, "bpf_object__find_map_fd_by_name: obj(%s) could not find %s\n", __prog, tls_filter_map);
+		goto out;
+	}
+
+	// Install tail calls
 	snprintf(tc_calls_name, sizeof(tc_calls_name), "%s/tls_calls", mapdir);
 	map_fd = bpf_obj_get(tc_calls_name);
 	if (map_fd >= 0) {
@@ -1071,7 +1090,9 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
 }
 
 func LoadTC(__version, __verbosity int,
-	btf uintptr, object, __label, __prog, __mapdir, __ciliumdir string) (error, int) {
+	btf uintptr,
+	object, __label, __prog, __mapdir, __ciliumdir string,
+	filters [128]byte) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
@@ -1079,7 +1100,7 @@ func LoadTC(__version, __verbosity int,
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
 	ciliumdir := C.CString(__ciliumdir)
-	loader_fd := C.tc_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, ciliumdir)
+	loader_fd := C.tc_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, ciliumdir, unsafe.Pointer(&filters))
 	loaderFd := int(loader_fd)
 	if loaderFd < 0 {
 		return fmt.Errorf("Unable to load tc program: %d %s", loaderFd, object), 0

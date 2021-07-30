@@ -36,4 +36,11 @@ void del_tlsmap(struct msg_tls_ipv4 *tuple)
 	if (!err && (cntr = map_lookup_elem(&tls_map_stats, &zero)))
 		*cntr = *cntr - 1;
 }
+
+struct bpf_map_def __attribute__((section("maps"), used)) tls_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 128,
+	.max_entries = 1,
+};
 #endif

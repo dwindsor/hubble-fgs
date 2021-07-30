@@ -536,7 +536,10 @@ func ObserverLoadSockops(
 		mapDir)
 }
 
-func ObserverLoadTC(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verbosity int) (error, int) {
+func ObserverLoadTC(bpfDir, mapDir, ciliumDir string,
+	load *BpfLoad,
+	version, Verbosity int,
+	filters [128]byte) (error, int) {
 	var attachLinks []netlink.Link
 
 	btfObj := uintptr(btf.GetCachedBTF())
@@ -546,7 +549,8 @@ func ObserverLoadTC(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Ve
 		load.observer__label,
 		bpfDir+load.observer__prog,
 		mapDir,
-		ciliumDir)
+		ciliumDir,
+		filters)
 	if err != nil {
 		return err, fd
 	}

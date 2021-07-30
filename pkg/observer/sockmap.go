@@ -220,6 +220,8 @@ func EnableTlsParser(tls, tc bool) *ObserverSensor {
 }
 
 func addParserSensors(parser v1alpha1.ParserPolicySpec) (*ObserverSensor, error) {
+	var err error
+
 	enableTls := false
 	enableTlsTc := false
 
@@ -236,6 +238,10 @@ func addParserSensors(parser v1alpha1.ParserPolicySpec) (*ObserverSensor, error)
 		return nil, nil
 	}
 
+	tlsSelectors, err = ParseTlsSpec(&parser.Tls)
+	if err != nil {
+		return nil, err
+	}
 	return EnableTlsParser(enableTls, enableTlsTc), nil
 }
 
@@ -251,7 +257,7 @@ func (tls *observerTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity)
+	return ObserverLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity, tlsSelectors)
 }
 
 func getSensorFromParserPolicyString(yaml string) (*ObserverSensor, error) {

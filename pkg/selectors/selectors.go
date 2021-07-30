@@ -20,6 +20,10 @@ type KernelSelectorState struct {
 	e   [4096]byte // kernel encoding of selectors
 }
 
+func GetSelectorBuffer(k *KernelSelectorState) [4096]byte {
+	return k.e
+}
+
 func WriteSelectorUint32(k *KernelSelectorState, v uint32) {
 	binary.LittleEndian.PutUint32(k.e[k.off:], v)
 	k.off += 4
