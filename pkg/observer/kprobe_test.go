@@ -18,7 +18,6 @@ import (
 	"sync"
 	"syscall"
 	"testing"
-	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
@@ -71,7 +70,7 @@ spec:
 // NB: This is similar to TestKprobeObjectWriteRead, but it's a bit easier to
 // debug because we can write things on stdout which will not generate events.
 func TestKprobeLseek(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -118,7 +117,7 @@ spec:
 }
 
 func TestKprobeObjectWriteRead(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -193,7 +192,7 @@ spec:
 }
 
 func TestKprobeObjectRead(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -308,7 +307,7 @@ func testKprobeObjectFiltered(t *testing.T,
 	readHook string,
 	trace []*fgs.GetEventsResponse,
 	invertResult bool) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
@@ -570,7 +569,7 @@ func helloIovecWorldWritev() (err error) {
 }
 
 func TestKprobeObjectWriteVRead(t *testing.T) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 	pidStr := strconv.Itoa(int(getMyPid()))
