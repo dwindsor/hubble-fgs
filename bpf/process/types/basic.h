@@ -720,6 +720,12 @@ long read_call_arg(struct msg_generic_kprobe *e,
 			asm volatile("%[bytes] &= 0xf;\n": [bytes] "+r"(bytes):);
 			probe_read(&args[0], bytes + 4, (char *)&val->file[0]);
 			size = bytes + 4;
+		} else {
+			/* If filter specification is fd type then we
+			 * expect the fd has been previously followed
+			 * otherwise drop the event.
+			 */
+			return -1;
 		}
 		}
 		break;
