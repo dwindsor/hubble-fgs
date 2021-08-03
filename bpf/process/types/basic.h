@@ -47,6 +47,7 @@ enum {
 	ACTION_FOLLOWFD = 1,
 	/* Actual SIGKILL value, but we dont want to pull headers in */
 	ACTION_SIGKILL = 2,
+	ACTION_UNFOLLOWFD = 3,
 };
 
 enum {
@@ -526,12 +527,11 @@ struct bpf_map_def __attribute__((section("maps"), used)) fdinstall_map = {
 };
 
 static inline __attribute__((always_inline))
-void installfd(struct msg_generic_kprobe *e, int fd, int name)
+void installfd(struct msg_generic_kprobe *e, int fd, int name, bool follow)
 {
 	struct fdinstall_value val = {0};
 	struct fdinstall_key key = {0};
 	long fdoff, nameoff;
-	__u32 size;
 
 	/* Satisfies verifier but is a bit ugly, ideally we
 	 * can just '&' and drop the '>' case.
@@ -546,34 +546,42 @@ void installfd(struct msg_generic_kprobe *e, int fd, int name)
 	key.fd = *(__u32 *)&e->args[fdoff];
 	key.tid = get_current_pid_tgid() >> 32;
 
-	asm volatile("%[name] &= 0xf;\n": [name] "+r"(name):);
-	if (name > 5)
-		return;
-	nameoff = e->argsoff[name];
-	asm volatile("%[nameoff] &= 0xeff;\n": [nameoff] "+r"(nameoff):);
+	if (follow) {
+		__u32 size;
 
-	size = *(__u32 *)&e->args[nameoff];
-	asm volatile("%[size] &= 0xf;\n": [size] "+r"(size):);
+		asm volatile("%[name] &= 0xf;\n": [name] "+r"(name):);
+		if (name > 5)
+			return;
+		nameoff = e->argsoff[name];
+		asm volatile("%[nameoff] &= 0xeff;\n": [nameoff] "+r"(nameoff):);
 
-	probe_read(&val.file[4],
-		   size,
-		   &e->args[nameoff+4]);
+		size = *(__u32 *)&e->args[nameoff];
+		asm volatile("%[size] &= 0xf;\n": [size] "+r"(size):);
 
-	*(__u32 *)&val.file[0] = size;
-	map_update_elem(&fdinstall_map, &key, &val, BPF_ANY);
+		probe_read(&val.file[4],
+			   size,
+			   &e->args[nameoff+4]);
+
+		*(__u32 *)&val.file[0] = size;
+		map_update_elem(&fdinstall_map, &key, &val, BPF_ANY);
+	} else {
+		map_delete_elem(&fdinstall_map, &key);
+	}
 }
 
 static inline __attribute__((always_inline))
 long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *actions)
 {
 	enum generic_func_args_enum fgs_args;
+	int action = actions->act[i];
 	int fdi, namei;
 
-	switch (actions->act[i]) {
+	switch (action) {
+	case ACTION_UNFOLLOWFD:
 	case ACTION_FOLLOWFD:
 		fdi = actions->act[++i];
 		namei = actions->act[++i];
-		installfd(e, fdi, namei);
+		installfd(e, fdi, namei, action == ACTION_FOLLOWFD);
 		break;
 	case ACTION_SIGKILL:
 		if (bpf_core_enum_value(fgs_args, sigkill))

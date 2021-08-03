@@ -60,21 +60,24 @@ func argSelectorValue(v string) ([]byte, uint32) {
 }
 
 const (
-	actionTypePost     = 0
-	actionTypeFollowFd = 1
-	actionTypeSigKill  = 2
+	actionTypePost       = 0
+	actionTypeFollowFd   = 1
+	actionTypeSigKill    = 2
+	actionTypeUnfollowFd = 3
 )
 
 var actionTypeTable = map[string]uint32{
-	"post":     actionTypePost,
-	"followfd": actionTypeFollowFd,
-	"sigkill":  actionTypeSigKill,
+	"post":       actionTypePost,
+	"followfd":   actionTypeFollowFd,
+	"unfollowfd": actionTypeUnfollowFd,
+	"sigkill":    actionTypeSigKill,
 }
 
 var actionTypeStringTable = map[uint32]string{
-	actionTypePost:     "post",
-	actionTypeFollowFd: "followfd",
-	actionTypeSigKill:  "sigkill",
+	actionTypePost:       "post",
+	actionTypeFollowFd:   "followfd",
+	actionTypeUnfollowFd: "unfollowfd",
+	actionTypeSigKill:    "sigkill",
 }
 
 func MatchActionSigKill(spec *v1alpha1.KProbeSpec) bool {

@@ -154,6 +154,7 @@ spec:
                                   enum:
                                   - Post
                                   - FollowFD
+                                  - UnfollowFD
                                   - Sigkill
                                   type: string
                                 argFd:
@@ -334,6 +335,7 @@ spec:
                                   enum:
                                   - Post
                                   - FollowFD
+                                  - UnfollowFD
                                   - Sigkill
                                   type: string
                                 argFd:
