@@ -186,6 +186,8 @@ spec:
                                   enum:
                                   - Equal
                                   - NotEqual
+                                  - Prefix
+                                  - Postfix
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -364,6 +366,8 @@ spec:
                                   enum:
                                   - Equal
                                   - NotEqual
+                                  - Prefix
+                                  - Postfix
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
