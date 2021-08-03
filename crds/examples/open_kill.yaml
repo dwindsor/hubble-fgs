@@ -28,6 +28,23 @@ spec:
       - action: FollowFD
         argFd: 0
         argName: 1
+  - call: "__x64_sys_close"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    selectors:
+    - matchPIDs:
+      - operator: NotIn
+        followForks: true
+        isNamespacePID: true
+        values:
+        - 0
+        - 1
+      matchActions:
+      - action: UnfollowFD
+        argFd: 0
+        argName: 0
   - call: "__x64_sys_write"
     syscall: true
     args:
@@ -46,5 +63,10 @@ spec:
         values:
         - 0
         - 1
+      matchArgs:
+      - index: 0
+        operator: "Prefix"
+        values:
+        - "/etc/passwd"
       matchActions:
       - action: Sigkill
