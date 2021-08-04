@@ -54,19 +54,23 @@ func observerFindBTF(lib, btf string, ctx context.Context) (string, error) {
 			return btf, fmt.Errorf("Kernel version lookup (uname -r) failing. Use '--kernel' to set manually: %s\n", err)
 		}
 		n := bytes.IndexByte(uname.Release[:], 0)
-		runFile := path.Join(lib, "metadata", "vmlinux-"+string(uname.Release[:n]))
+
+		// Preference of BTF files, first search for kernel exposed BTF, then
+		// check for vmlinux- hubble metadata, and finally if all those are missing
+		// search the lib directory for a btf file.
+		runFile := path.Join("/sys", "kernel", "btf", "vmlinux")
+		if _, err := os.Stat(runFile); err == nil {
+			return runFile, nil
+		}
+		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
+
+		runFile = path.Join(lib, "metadata", "vmlinux-"+string(uname.Release[:n]))
 		if _, err := os.Stat(runFile); err == nil {
 			return runFile, nil
 		}
 		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
 
 		runFile = path.Join(lib, "btf")
-		if _, err := os.Stat(runFile); err == nil {
-			return runFile, nil
-		}
-		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
-
-		runFile = path.Join("/sys", "kernel", "btf", "vmlinux")
 		if _, err := os.Stat(runFile); err == nil {
 			return runFile, nil
 		}
