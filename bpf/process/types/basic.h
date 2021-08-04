@@ -516,7 +516,7 @@ struct fdinstall_key {
 };
 
 struct fdinstall_value {
-	char file[100]; // JF, made this up tdb clean up string lengths
+	char file[260]; // 256B paths + 4B length.
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) fdinstall_map = {
@@ -556,13 +556,11 @@ void installfd(struct msg_generic_kprobe *e, int fd, int name, bool follow)
 		asm volatile("%[nameoff] &= 0xeff;\n": [nameoff] "+r"(nameoff):);
 
 		size = *(__u32 *)&e->args[nameoff];
-		asm volatile("%[size] &= 0xf;\n": [size] "+r"(size):);
+		asm volatile("%[size] &= 0xff;\n": [size] "+r"(size):);
 
-		probe_read(&val.file[4],
-			   size,
-			   &e->args[nameoff+4]);
-
-		*(__u32 *)&val.file[0] = size;
+		probe_read(&val.file[0],
+			   size + 4,
+			   &e->args[nameoff]);
 		map_update_elem(&fdinstall_map, &key, &val, BPF_ANY);
 	} else {
 		map_delete_elem(&fdinstall_map, &key);
@@ -725,7 +723,7 @@ long read_call_arg(struct msg_generic_kprobe *e,
 		if (val) {
 			__u32 bytes = (__u32)val->file[0];
 
-			asm volatile("%[bytes] &= 0xf;\n": [bytes] "+r"(bytes):);
+			asm volatile("%[bytes] &= 0xff;\n": [bytes] "+r"(bytes):);
 			probe_read(&args[0], bytes + 4, (char *)&val->file[0]);
 			size = bytes + 4;
 		} else {
