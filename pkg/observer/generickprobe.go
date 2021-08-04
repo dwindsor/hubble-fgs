@@ -378,7 +378,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			if warn, ok := err.(*btf.ValidationWarn); ok {
 				logger.GetLogger().Warnf("kprobe spec validation: %s", warn)
 			} else {
-				return nil, fmt.Errorf("invalid kprobe spec: %w", err)
+				logger.GetLogger().Warnf("invalid or old kprobe spec: %w", err)
 			}
 		}
 
