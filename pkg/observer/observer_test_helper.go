@@ -265,3 +265,14 @@ func waitForProcess(process string) error {
 	}
 	return fmt.Errorf("process '%s' did not start", process)
 }
+
+func writeConfigFile(fileName, config string) error {
+	out, err := os.Create(fileName)
+	if err != nil {
+		return err
+	}
+	if _, err := out.Write([]byte(config)); err != nil {
+		return err
+	}
+	return out.Sync()
+}

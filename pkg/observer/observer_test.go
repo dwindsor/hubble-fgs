@@ -666,11 +666,10 @@ func TestConfigTCTls13(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	tlsConfig := []byte(tlstc)
-	err := ioutil.WriteFile(testConfigFile, tlsConfig, 0644)
-	if err != nil {
+	if err := writeConfigFile(testConfigFile, tlstc); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
+
 	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
