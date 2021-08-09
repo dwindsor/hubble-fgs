@@ -1,5 +1,6 @@
 #include "operations.h"
 #include "bpf_events.h"
+#include "skb.h"
 
 /* Type IDs form API with user space generickprobe.go */
 enum {
@@ -33,13 +34,6 @@ enum {
 	char_buf_pagefault = -2,
 	char_buf_toolarge = -3,
 	char_buf_saved_for_retprobe = -4,
-};
-
-struct skb_type {
-	__u32 hash;
-	__u32 len;
-	__u32 priority;
-	__u32 mark;
 };
 
 enum {
@@ -220,10 +214,15 @@ long copy_skb(char *args, unsigned long arg)
 	struct sk_buff *skb = (struct sk_buff *)arg;
 	struct skb_type *skb_event = (struct skb_type *)args;
 
+	/* struct values */
 	probe_read(&skb_event->hash, sizeof(__u32), _(&skb->hash));
 	probe_read(&skb_event->len, sizeof(__u32), _(&skb->len));
 	probe_read(&skb_event->priority, sizeof(__u32), _(&skb->priority));
 	probe_read(&skb_event->mark, sizeof(__u32), _(&skb->mark));
+
+	/* socket data */
+	set_event_from_skb(skb_event, skb);
+
 	return sizeof(struct skb_type);
 }
 

@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/idtable"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 
 	. "github.com/isovalent/hubble-fgs/pkg/generictypes"
@@ -803,6 +804,11 @@ func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
 			arg.Len = skb.Len
 			arg.Priority = skb.Priority
 			arg.Mark = skb.Mark
+			arg.Saddr = reader.GetIP(skb.Saddr, 0).String()
+			arg.Daddr = reader.GetIP(skb.Daddr, 0).String()
+			arg.Sport = uint32(api.SwapByte(uint16(skb.Sport)))
+			arg.Dport = uint32(api.SwapByte(uint16(skb.Dport)))
+			arg.Proto = skb.Proto
 			unix.Args = append(unix.Args, arg)
 		case GenericSizeType:
 			var output uint64

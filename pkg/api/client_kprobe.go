@@ -101,6 +101,11 @@ type MsgGenericKprobeSkb struct {
 	Len      uint32
 	Priority uint32
 	Mark     uint32
+	Saddr    uint32
+	Daddr    uint32
+	Sport    uint32
+	Dport    uint32
+	Proto    uint32
 }
 
 type MsgGenericKprobeArgSkb struct {
@@ -109,6 +114,11 @@ type MsgGenericKprobeArgSkb struct {
 	Len      uint32
 	Priority uint32
 	Mark     uint32
+	Saddr    string
+	Daddr    string
+	Sport    uint32
+	Dport    uint32
+	Proto    uint32
 }
 
 func (m MsgGenericKprobeArgSkb) GetIndex() uint64 {

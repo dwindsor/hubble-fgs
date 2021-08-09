@@ -154,6 +154,11 @@ message KprobeSkb {
     uint32 len = 2;
     uint32 priority = 3;
     uint32 mark = 4;
+    string saddr = 5;
+    string daddr = 6;
+    uint32 sport = 7;
+    uint32 dport = 8;
+    uint32 proto = 9;
 }
 
 message KprobePath {

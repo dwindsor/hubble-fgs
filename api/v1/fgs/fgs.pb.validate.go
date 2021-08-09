@@ -1335,6 +1335,16 @@ func (m *KprobeSkb) Validate() error {
 
 	// no validation rules for Mark
 
+	// no validation rules for Saddr
+
+	// no validation rules for Daddr
+
+	// no validation rules for Sport
+
+	// no validation rules for Dport
+
+	// no validation rules for Proto
+
 	return nil
 }
 
