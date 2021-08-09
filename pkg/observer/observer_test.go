@@ -554,7 +554,40 @@ func TestLoadTCTls(t *testing.T) {
 }
 
 var (
-	traceTcTls13 = []*fgs.GetEventsResponse{
+	curlTlsEvent = &fgs.GetEventsResponse_Tls{
+		Tls: &fgs.Tls{
+			Process: &fgs.Process{
+				Binary:    "curl",
+				Arguments: "https://google.com"},
+			NegotiatedVersion: "TLS1.3",
+			ClientVersion:     "TLS 1.2",
+			ServerVersion:     "TLS 1.2",
+			SniType:           "host_name",
+			SniName:           "www.google.com",
+			ClientFlags:       "ExtVersion",
+			ServerFlags:       "ExtVersion",
+		},
+	}
+
+	tlstc = `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "tls"
+spec:
+  description: "tls parser spec"
+  parser:
+    tls:
+      enable: true
+      mode: "tc"
+`
+)
+
+func TestTCTls13(t *testing.T) {
+	if kernels.MinKernelVersion("4.19.0") != true {
+		return
+	}
+
+	traceTcTls13 := []*fgs.GetEventsResponse{
 		&fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
@@ -577,39 +610,7 @@ var (
 				},
 			},
 		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_Tls{
-				Tls: &fgs.Tls{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://google.com"},
-					NegotiatedVersion: "TLS1.3",
-					ClientVersion:     "TLS 1.2",
-					ServerVersion:     "TLS 1.2",
-					SniType:           "host_name",
-					SniName:           "www.google.com",
-					ClientFlags:       "ExtVersion",
-					ServerFlags:       "ExtVersion",
-				},
-			},
-		},
-	}
-	tlstc = `
-apiVersion: hubble-enterprise.io/v1
-metadata:
-  name: "tls"
-spec:
-  description: "tls parser spec"
-  parser:
-    tls:
-      enable: true
-      mode: "tc"
-`
-)
-
-func TestTCTls13(t *testing.T) {
-	if kernels.MinKernelVersion("4.19.0") != true {
-		return
+		&fgs.GetEventsResponse{Event: curlTlsEvent},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
@@ -631,6 +632,32 @@ func TestTCTls13(t *testing.T) {
 func TestConfigTCTls13(t *testing.T) {
 	if kernels.MinKernelVersion("4.19.0") != true {
 		return
+	}
+
+	traceTcTls13 := []*fgs.GetEventsResponse{
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessExec{
+				ProcessExec: &fgs.ProcessExec{
+					Process: &fgs.Process{
+						Binary:    "curl",
+						Arguments: "https://google.com"},
+					Parent: &fgs.Process{Binary: selfBinary},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{
+			Event: &fgs.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &fgs.ProcessConnect{
+					Process: &fgs.Process{
+						Binary:    "curl",
+						Arguments: "https://google.com"},
+					Parent: &fgs.Process{
+						Binary: selfBinary},
+					DestinationPort: &wrappers.UInt32Value{Value: 443},
+				},
+			},
+		},
+		&fgs.GetEventsResponse{Event: curlTlsEvent},
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
