@@ -622,7 +622,9 @@ func TestTCTls13(t *testing.T) {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	time.Sleep(3000 * time.Millisecond)
 	execWGCurl(&execWG, &exitWG, "https://google.com")
+	time.Sleep(3000 * time.Millisecond)
 	ok, err := JsonTestCompare(traceTcTls13, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
