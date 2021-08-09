@@ -42,11 +42,11 @@ int set_event_from_skb(struct skb_type *event, struct sk_buff *skb) {
 		probe_read(&event->daddr, sizeof(event->daddr), _(&ip->daddr));
 		typeof(skb->transport_header) l4_off;
 		probe_read(&l4_off, sizeof(l4_off), _(&skb->transport_header));
-		if (v4_prot == 0x06) { // TCP
+		if (v4_prot == IPPROTO_TCP) { // TCP
 			struct tcphdr *tcp = (struct tcphdr *)(skb_head + l4_off);
 			probe_read(&event->sport, sizeof(event->sport), _(&tcp->source));
 			probe_read(&event->dport, sizeof(event->dport), _(&tcp->dest));
-		} else if (v4_prot == 0x11) { // UDP
+		} else if (v4_prot == IPPROTO_UDP) { // UDP
 			struct udphdr *udp = (struct udphdr *)(skb_head + l4_off);
 			probe_read(&event->sport, sizeof(event->sport), _(&udp->source));
 			probe_read(&event->dport, sizeof(event->dport), _(&udp->dest));
