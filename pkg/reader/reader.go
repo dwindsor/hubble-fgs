@@ -287,6 +287,9 @@ func GetTLSFlags(flags uint32) string {
 	if (flags & api.TlsFlagHelloMsgMiss) != 0 {
 		s = append(s, "HelloMsgMiss")
 	}
+	if (flags & api.TlsFlagHandshakeMsgMiss) != 0 {
+		s = append(s, "HandshakeMsgMiss")
+	}
 	if (flags & api.TlsFlagCipherError) != 0 {
 		s = append(s, "CipherError")
 	}

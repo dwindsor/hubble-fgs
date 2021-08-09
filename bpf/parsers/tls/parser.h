@@ -240,7 +240,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, __u64 dummy, struct msg_tl
 	cipher_length = get_data(ctx, offset, 2);
 	if (!cipher_length) {
 		tls->flags |= TLS_CIPHER_ERROR;
-		return -EIO;
+		return SK_PASS;
 	}
 	data = (void *)(long)ctx->data;
 	data_end = (void *)(long)ctx->data_end;
@@ -263,7 +263,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, __u64 dummy, struct msg_tl
 
 	if (adv_cipher > 255) {
 		tls->flags |= TLS_CIPHER_TOO_LARGE;
-		return -EIO;
+		return SK_PASS;
 	}
 	asm volatile (
 		"if %[adv_cipher] s> 0 goto +1;\n"
@@ -274,7 +274,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, __u64 dummy, struct msg_tl
 	compression = get_data(ctx, offset, 1);
 	if (!compression) {
 		tls->flags |= TLS_COMPRESSION_ERROR;
-		return -EIO;
+		return SK_PASS;
 	}
 
 	if (client)
@@ -286,7 +286,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, __u64 dummy, struct msg_tl
 	adv_compression &= 0x7f;
 	if (adv_compression > 255) {
 		tls->flags |= TLS_COMPRESSION_TOO_LARGE;
-		return -EIO;
+		return SK_PASS;
 	}
 
 	offset += adv_compression + 1;
@@ -294,7 +294,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, __u64 dummy, struct msg_tl
 	extension = get_data(ctx, offset, 6);
 	if (!extension) {
 		tls->flags |= TLS_EXT_ERROR;
-		return -EIO;
+		return SK_PASS;
 	}
 
 	extlength = *(u16 *)extension;
@@ -307,7 +307,7 @@ int bpf_parse_tls_client_hello(struct sk_msg_md *ctx, __u64 dummy, struct msg_tl
 	extension = get_data(ctx, offset, extlength);
 	if (!extension) {
 		tls->flags |= TLS_EXT_ERROR;
-		return -EIO;
+		return SK_PASS;
 	}
 	data_end = (void *)(long)ctx->data_end;
 	extension = (void *)extension + 2;
@@ -486,8 +486,10 @@ int bpf_parse_tls(struct __sk_buff *ctx,
 
 		if (payload + sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr) > data_end) {
 			payload = get_data(ctx, payload_off, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
-			if (!payload)
-				return -1;
+			if (!payload) {
+				tls->flags |= TLS_HANDSHAKE_MSG_MISS;
+				return SK_PASS;
+			}
 		}
 		handshake = (struct tls_handshake_hdr *)(payload + sizeof(struct tls_hdr));
 		tls->subtype = handshake->type;

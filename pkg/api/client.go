@@ -195,6 +195,7 @@ const (
 	TlsFlagExtTooLarge         = 0x0200
 	TlsFlagVersion             = 0x0400
 	TlsFlagCert                = 0x0800
+	TlsFlagHandshakeMsgMiss    = 0x1000
 )
 
 // TLS Certificate Errors

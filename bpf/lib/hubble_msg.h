@@ -215,6 +215,7 @@ struct msg_calltrace {
 #define TLS_EXT_TOO_LARGE	  0x200
 #define TLS_VERSION		  0x400
 #define TLS_CERT		  0x800
+#define TLS_HANDSHAKE_MSG_MISS    0x1000
 
 struct msg_tls {
 	__u16 version;
