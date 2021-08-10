@@ -140,9 +140,6 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 		}
 
 		if sensor != nil {
-			if err := observerFindProgs(context.TODO(), sensor); err != nil {
-				t.Fatalf("find observerLoadSensors error: %s\n", err)
-			}
 			if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), sensor); err != nil {
 				t.Fatalf("generic observerLoadSensors error: Could not load kprobe sensors: %s", err)
 			}

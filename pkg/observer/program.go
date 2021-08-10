@@ -657,6 +657,9 @@ func ObserverLoadSensor(bpfDir, mapDir, ciliumDir string, stopCtx context.Contex
 	_, verStr, _ := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	logger.GetLogger().Infof("Loading kernel version %s", verStr)
 
+	if err := observerFindProgs(stopCtx, sensor); err != nil {
+		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
+	}
 	if err := observerLoadSensorMaps(stopCtx, sensor, mapDir); err != nil {
 		return err
 	}
