@@ -146,31 +146,17 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	}
 
 	if kprobe.configFile != "" {
-		genericKprobeSensor, err := getSensorFromTracingPolicyFname(kprobe.configFile)
+		sensor, err := getSensorFromTracingPolicyFname(kprobe.configFile)
 		if err != nil {
 			t.Fatalf("createGenericKprobeSensors error: Could not create kprobe sensor: %s", err)
 		}
 
-		if genericKprobeSensor != nil {
-			if err := observerFindProgs(context.TODO(), genericKprobeSensor); err != nil {
+		if sensor != nil {
+			if err := observerFindProgs(context.TODO(), sensor); err != nil {
 				t.Fatalf("find observerLoadSensors error: %s\n", err)
 			}
-			if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), genericKprobeSensor); err != nil {
+			if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), sensor); err != nil {
 				t.Fatalf("generic observerLoadSensors error: Could not load kprobe sensors: %s", err)
-			}
-		}
-
-		parserSensor, err := getSensorFromParserPolicyFname(kprobe.configFile)
-		if err != nil {
-			t.Fatalf("getSensorFromParserPolicyFname error: %s\n", err)
-		}
-		if parserSensor != nil {
-			if err := observerFindProgs(context.TODO(), parserSensor); err != nil {
-				t.Fatalf("find observerLoadSensors error: %s\n", err)
-			}
-
-			if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), parserSensor); err != nil {
-				t.Fatalf("parser observerLoadSensors error: %s\n", err)
 			}
 		}
 	}
