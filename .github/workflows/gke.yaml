@@ -113,7 +113,7 @@ jobs:
           timeout_minutes: 1
           max_attempts: 5
           command: |
-            kubectl wait -n kube-system --for=condition=Ready --all pod --timeout=30s
+            kubectl wait -n kube-system --for=condition=Ready --all pod -l app.kubernetes.io/name=hubble-enterprise --timeout=30s
 
       - name: Demo Application
         run: |
