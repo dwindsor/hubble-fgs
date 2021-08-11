@@ -15,7 +15,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
-	"runtime"
 	"syscall"
 
 	"log"
@@ -29,29 +28,22 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 )
 
-var (
-	SupportedModes = []string{"tcp", "tls", "http"}
-)
-
 type BenchArguments struct {
-	NumSteps      int
-	ConnRate      int
-	FgsEnableTls  bool
+	FgsEnableTLS  bool
 	FgsDebug      bool
-	FgsJsonEncode bool
-	Mode          string
-	Baseline      bool
+	FgsJSONEncode bool
 
-	RequestResponse bool
-	UseNetperf      bool
-	ReqSize         int
+	SourceArgs SourceArgs
+	Source     sourceName
+	Sink       sinkName
+	Proxy      proxyName
+
+	Baseline bool
 }
 
 func (args *BenchArguments) String() string {
-	return fmt.Sprintf("n=%d, rate=%d, tls=%v, debug=%v, json-encode=%v, mode=%s, rr=%v, netperf=%v, req-size=%v",
-		args.NumSteps, args.ConnRate, args.FgsEnableTls,
-		args.FgsDebug, args.FgsJsonEncode, args.Mode,
-		args.RequestResponse, args.UseNetperf, args.ReqSize)
+	return fmt.Sprintf("sink=%s, source=%s, proxy=%s, source-args={%s}, fgs-tls=%v, json-encode=%v",
+		args.Sink, args.Source, args.Proxy, args.SourceArgs.String(), args.FgsEnableTLS, args.FgsJSONEncode)
 }
 
 func BenchBaseline(args *BenchArguments) *BenchSummary {
@@ -78,7 +70,7 @@ func BenchFGS(args *BenchArguments, readyCb func()) *BenchSummary {
 		finished <- true
 	}()
 
-	runFgs(args.FgsEnableTls, args.FgsDebug, summary, ctx, cancel, ready)
+	runFgs(args.FgsEnableTLS, args.FgsDebug, summary, ctx, cancel, ready)
 
 	// Wait for final summary
 	<-finished
@@ -86,11 +78,11 @@ func BenchFGS(args *BenchArguments, readyCb func()) *BenchSummary {
 	return summary
 }
 
-func runFgs(fgsEnableTls, fgsDebug bool, summary *BenchSummary, ctx context.Context, cancel context.CancelFunc, ready chan bool) {
+func runFgs(fgsEnableTLS, fgsDebug bool, summary *BenchSummary, ctx context.Context, cancel context.CancelFunc, ready chan bool) {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
-	if fgsEnableTls {
+	if fgsEnableTLS {
 		bpf.CheckOrMountCgroup2()
 	}
 
@@ -111,7 +103,7 @@ func runFgs(fgsEnableTls, fgsDebug bool, summary *BenchSummary, ctx context.Cont
 
 	kprobe := observer.NewObserverKprobe("/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
 		"" /* network interfaces */, "", /* config file */
-		fgsEnableTls /* tls */, false, /* tlstc */
+		fgsEnableTLS /* tls */, false, /* tlstc */
 		fgsDebug /* debug */, false, /* enable-crd */
 		0 /* tcp statistics */)
 
@@ -138,35 +130,39 @@ type benchmarkListener struct {
 	encoder *json.Encoder
 	writer  CountingDiscardWriter
 
-	cpuUsageWhenReady CpuUsage
+	cpuUsageWhenReady CPUUsage
 }
 
 func runFgsBenchmark(args *BenchArguments, summary *BenchSummary, ctx context.Context, cancel context.CancelFunc) {
-	cpuUsageBefore := GetCpuUsage(CPU_USAGE_ALL_THREADS)
+	cpuUsageBefore := GetCPUUsage(CPU_USAGE_ALL_THREADS)
 	runConnectionLoad(ctx, cancel, args, summary)
-	cpuUsageAfter := GetCpuUsage(CPU_USAGE_ALL_THREADS)
-	summary.FgsCpuUsage =
-		cpuUsageAfter.Sub(cpuUsageBefore).Sub(summary.SinkCpuUsage).Sub(summary.SourceCpuUsage)
+	cpuUsageAfter := GetCPUUsage(CPU_USAGE_ALL_THREADS)
+	summary.FgsCPUUsage = cpuUsageAfter.Sub(cpuUsageBefore)
+	if !summary.SinkStats.Forked {
+		summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SinkStats.CPUUsage)
+	}
+	if !summary.SourceStats.Forked {
+		summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SourceStats.CPUUsage)
+	}
 }
 
 func (bl *benchmarkListener) Notify(msg interface{}) error {
-	if bl.summary.Args.FgsJsonEncode {
+	if bl.summary.Args.FgsJSONEncode {
 		t0 := time.Now()
 		err := bl.encoder.Encode(msg)
-		bl.summary.JsonEncodingDurationNanos += time.Now().Sub(t0)
-
+		bl.summary.JSONEncodingDurationNanos += time.Since(t0)
 		if err != nil {
-			log.Fatalf("json encode error: %v", err)
+			log.Printf("JSON encoding error: %v", err)
 		}
 	}
 
 	switch msg.(type) {
 	case *api.MsgFGSReady:
-		bl.cpuUsageWhenReady = GetCpuUsage(CPU_USAGE_THIS_THREAD)
+		bl.cpuUsageWhenReady = GetCPUUsage(CPU_USAGE_THIS_THREAD)
 		bl.ready <- true
 
 	case *api.MsgTLSEventUnix:
-		bl.summary.TlsEvents++
+		bl.summary.TLSEvents++
 
 	case *api.MsgExitEventUnix:
 		bl.summary.ExitEvents++
@@ -175,20 +171,19 @@ func (bl *benchmarkListener) Notify(msg interface{}) error {
 		bl.summary.ExecEvents++
 
 	case *api.MsgIPv4TcpEventUnix:
-		bl.summary.TcpEvents++
+		bl.summary.TCPEvents++
 	}
 
 	return nil
 }
 
-func (cl *benchmarkListener) Close() error {
+func (bl *benchmarkListener) Close() error {
 	return nil
 }
 
 func startBenchmarkListener(summary *BenchSummary, ready chan bool,
 	kprobe *observer.ObserverKprobe,
 	ctx context.Context, cancel context.CancelFunc) error {
-	runtime.LockOSThread()
 	listener := &benchmarkListener{
 		summary: summary,
 		ctx:     ctx,
@@ -205,43 +200,47 @@ func runConnectionLoad(ctx context.Context, cancel context.CancelFunc, args *Ben
 	EnableBpfStats()
 	oldBpfStats := GetBpfStats()
 
-	sinkReady := make(chan int)
-	sinkCpuUsage := make(chan CpuUsage)
-
-	go func() {
-		// Lock to specific thread to collect rusage
-		runtime.LockOSThread()
-		cpuUsageBefore := GetCpuUsage(CPU_USAGE_THIS_THREAD)
-		if args.Mode == "tcp" && args.RequestResponse && args.UseNetperf {
-			netperfSink(ctx, args.Mode, sinkReady)
-		} else {
-			sink(ctx, args.Mode, sinkReady)
-		}
-		sinkCpuUsage <- GetCpuUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore)
-	}()
-
-	// Lock to specific thread to collect rusage
-	runtime.LockOSThread()
-	sinkPort := <-sinkReady
-	cpuUsageBefore := GetCpuUsage(CPU_USAGE_THIS_THREAD)
-
-	if args.RequestResponse {
-		if args.Mode == "tcp" && args.UseNetperf {
-			summary.SourceStats = netperfSource(ctx, sinkPort, args.Mode, args.NumSteps, args.ReqSize)
-		} else {
-			summary.SourceStats = rrSource(ctx, sinkPort, args.Mode, args.NumSteps, args.ReqSize)
-		}
-	} else {
-		summary.SourceStats = source(ctx, sinkPort, args.Mode, args.NumSteps, float64(args.ConnRate))
+	// Start the sink.
+	log.Printf("Starting sink '%s'...\n", args.Sink)
+	sinkPort, sinkStats, err := sinks[args.Sink].Start(ctx)
+	if err != nil {
+		summary.Error = fmt.Sprintf("Sink %s failed: %s", args.Sink, err)
+		cancel()
+		return
 	}
-	summary.SourceCpuUsage = GetCpuUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore)
+
+	// Start an optional proxy between the sink and source. If no proxy required it
+	// passes the sink port through.
+	log.Printf("Starting proxy '%s'...\n", args.Proxy)
+	targetPort, proxyStats, err := proxies[args.Proxy].Start(ctx, sinkPort)
+	if err != nil {
+		summary.Error = fmt.Sprintf("Proxy %s failed: %s", args.Proxy, err)
+		cancel()
+		return
+	}
+
+	// Run the source and wait for it to terminate
+	log.Printf("Starting source '%s'...\n", args.Source)
+	sourceStats, err := sources[args.Source].Run(ctx, targetPort, args.SourceArgs)
+	if err != nil {
+		summary.Error = fmt.Sprintf("Source %s failed: %s", args.Source, err)
+		cancel()
+		return
+	}
+
+	summary.SourceStats = sourceStats
 	summary.BpfStats = GetBpfStatsSince(oldBpfStats)
 	summary.EndTime = time.Now()
 	summary.TestDurationNanos = summary.EndTime.Sub(summary.StartTime)
 
-	// Cancel the context to stop FGS & sink
+	// Now that the source finished, cancel the context to stop everything and collect stats.
 	cancel()
-	summary.SinkCpuUsage = <-sinkCpuUsage
+	if proxyStats != nil {
+		summary.ProxyStats = <-proxyStats
+	}
+	summary.SinkStats = <-sinkStats
+
+	log.Printf("Benchmark finished: %.2f per sec, %d error(s)", sourceStats.ActualRate, sourceStats.Errors)
 }
 
 func sigHandler(ctx context.Context, cancel context.CancelFunc) {

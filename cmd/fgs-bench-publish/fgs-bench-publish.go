@@ -13,6 +13,7 @@ import (
 	"strings"
 	"syscall"
 	"time"
+	"math"
 
 	"github.com/isovalent/hubble-fgs/pkg/bench"
 	"google.golang.org/api/option"
@@ -28,23 +29,23 @@ const (
 // Sheet identifiers (see gid= in URL).
 // Used as the BatchUpdate requests work on the id instead of the name.
 var testNameToSheetId = map[string]int64{
-	"BenchmarkBaseline/tls":  503947610,
-	"BenchmarkBaseline/tcp":  371755781,
-	"BenchmarkBaseline/http": 78820048,
+	"TestBenchBaseline/tls-crr":  503947610,
+	"TestBenchBaseline/netperf-crr":  371755781,
+	"TestBenchBaseline/http-crr-go": 78820048,
 
-	"BenchmarkFgsNoTls/tls":  1814748783,
-	"BenchmarkFgsNoTls/tcp":  2060975911,
-	"BenchmarkFgsNoTls/http": 1585471493,
+	"TestFGSNoTLS/tls-crr":  1814748783,
+	"TestFGSNoTLS/netperf-crr":  2060975911,
+	"TestFGSNoTls/http-crr-go": 1585471493,
 
-	"BenchmarkFgsTls/tls":  2026607124,
-	"BenchmarkFgsTls/tcp":  839882648,
-	"BenchmarkFgsTls/http": 1872945073,
+	"TestFGSTLS/tls-crr":  2026607124,
+	"TestFGSTLS/netperf-crr":  839882648,
+	"TestFGSTLS/http-crr-go": 1872945073,
 
-	"BenchmarkFgsTcpRequestResponse/tcp":  1072107619,
-	"BenchmarkBaselineTcpRequestResponse": 2098922345,
+	"TestFGSTLS/netperf-rr":  1072107619,
+	"TestBenchBaseline/netperf-rr": 2098922345,
 
-	"BenchmarkBaselineHttpRequestResponse": 1043261075,
-	"BenchmarkFgsHttpRequestResponse/http": 794354699,
+	"TestBenchBaseline/http-rr-go": 1043261075,
+	"TestFGSTLS/http-rr-go": 794354699,
 }
 
 func summaryToSheetId(summary *bench.BenchSummary) int64 {
@@ -139,7 +140,7 @@ func getSystemVersions() string {
 	return fmt.Sprintf("%s / %s-%s", goVersion, utsnameToString(utsname.Sysname), osVersion)
 }
 
-func getCpuName() string {
+func getCPUName() string {
 	// The internal/sysinfo package would have this, but likely best not to
 	// rely on an internal unstable API.
 	f, err := os.Open("/proc/cpuinfo")
@@ -171,7 +172,15 @@ func valueToCellData(value interface{}) *sheets.CellData {
 	case int64:
 		ev.NumberValue = float64(v)
 	case float64:
-		ev.NumberValue = float64(v)
+		if math.IsInf(v, 1) {
+			ev.StringValue = "+Inf"
+		} else if math.IsInf(v, -1) {
+			ev.StringValue = "-Inf"
+		} else if math.IsNaN(v) {
+			ev.StringValue = "NaN"
+		} else {
+			ev.NumberValue = v
+		}
 	default:
 		log.Fatalf("cannot format value: %v", value)
 	}
@@ -180,35 +189,35 @@ func valueToCellData(value interface{}) *sheets.CellData {
 
 func valuesFromSummary(gitRev string, summary *bench.BenchSummary) []*sheets.CellData {
 
-	fgsSystemCpuPercent := 100.0 * float64(summary.FgsCpuUsage.SystemTime) / float64(summary.TestDurationNanos)
-	fgsUserCpuPercent := 100.0 * float64(summary.FgsCpuUsage.UserTime) / float64(summary.TestDurationNanos)
+	fgsSystemCPUPercent := 100.0 * float64(summary.FgsCPUUsage.SystemTime) / float64(summary.TestDurationNanos)
+	fgsUserCPUPercent := 100.0 * float64(summary.FgsCPUUsage.UserTime) / float64(summary.TestDurationNanos)
 
-	sourceSystemCpuPercent := 100.0 * float64(summary.SourceCpuUsage.SystemTime) / float64(summary.TestDurationNanos)
-	sourceUserCpuPercent := 100.0 * float64(summary.SourceCpuUsage.UserTime) / float64(summary.TestDurationNanos)
+	sourceSystemCPUPercent := 100.0 * float64(summary.SourceStats.CPUUsage.SystemTime) / float64(summary.TestDurationNanos)
+	sourceUserCPUPercent := 100.0 * float64(summary.SourceStats.CPUUsage.UserTime) / float64(summary.TestDurationNanos)
 
-	sinkSystemCpuPercent := 100.0 * float64(summary.SinkCpuUsage.SystemTime) / float64(summary.TestDurationNanos)
-	sinkUserCpuPercent := 100.0 * float64(summary.SinkCpuUsage.UserTime) / float64(summary.TestDurationNanos)
+	sinkSystemCPUPercent := 100.0 * float64(summary.SinkStats.CPUUsage.SystemTime) / float64(summary.TestDurationNanos)
+	sinkUserCPUPercent := 100.0 * float64(summary.SinkStats.CPUUsage.UserTime) / float64(summary.TestDurationNanos)
 
-	if summary.Args.RequestResponse {
+	if summary.Args.Source.IsRequestResponse() {
 		return []*sheets.CellData{
 			valueToCellData(summary.StartTime.Format(time.RFC3339)),
 			valueToCellData(durationToSecs(summary.SetupDurationNanos)),
 			valueToCellData(durationToSecs(summary.TestDurationNanos)),
 
 			// Rates and latencies
-			valueToCellData(summary.SourceStats.ActualReqRate),
+			valueToCellData(summary.SourceStats.ActualRate),
 			valueToCellData(durationToSecs(summary.SourceStats.LatencyP50)),
 			valueToCellData(durationToSecs(summary.SourceStats.LatencyP90)),
 			valueToCellData(durationToSecs(summary.SourceStats.LatencyP99)),
 
 			// Resource usage
-			valueToCellData(fgsSystemCpuPercent),
-			valueToCellData(fgsUserCpuPercent),
-			valueToCellData(summary.FgsCpuUsage.MaxRss),
-			valueToCellData(sourceSystemCpuPercent),
-			valueToCellData(sourceUserCpuPercent),
-			valueToCellData(sinkSystemCpuPercent),
-			valueToCellData(sinkUserCpuPercent),
+			valueToCellData(fgsSystemCPUPercent),
+			valueToCellData(fgsUserCPUPercent),
+			valueToCellData(summary.FgsCPUUsage.MaxRss),
+			valueToCellData(sourceSystemCPUPercent),
+			valueToCellData(sourceUserCPUPercent),
+			valueToCellData(sinkSystemCPUPercent),
+			valueToCellData(sinkUserCPUPercent),
 
 			// BPF stats
 			valueToCellData(getBpfStatForSheets("event_sys_liste", summary)),
@@ -222,23 +231,23 @@ func valuesFromSummary(gitRev string, summary *bench.BenchSummary) []*sheets.Cel
 			// Meta
 			valueToCellData(gitRev),
 			valueToCellData(getSystemVersions()),
-			valueToCellData(getCpuName()),
+			valueToCellData(getCPUName()),
 		}
 	} else {
 		return []*sheets.CellData{
 			valueToCellData(summary.StartTime.Format(time.RFC3339)),
 			valueToCellData(durationToSecs(summary.SetupDurationNanos)),
 			valueToCellData(durationToSecs(summary.TestDurationNanos)),
-			valueToCellData(summary.SourceStats.ActualConnRate),
+			valueToCellData(summary.SourceStats.ActualRate),
 
 			// Resource usage
-			valueToCellData(fgsSystemCpuPercent),
-			valueToCellData(fgsUserCpuPercent),
-			valueToCellData(summary.FgsCpuUsage.MaxRss),
-			valueToCellData(sourceSystemCpuPercent),
-			valueToCellData(sourceUserCpuPercent),
-			valueToCellData(sinkSystemCpuPercent),
-			valueToCellData(sinkUserCpuPercent),
+			valueToCellData(fgsSystemCPUPercent),
+			valueToCellData(fgsUserCPUPercent),
+			valueToCellData(summary.FgsCPUUsage.MaxRss),
+			valueToCellData(sourceSystemCPUPercent),
+			valueToCellData(sourceUserCPUPercent),
+			valueToCellData(sinkSystemCPUPercent),
+			valueToCellData(sinkUserCPUPercent),
 
 			// BPF stats
 			valueToCellData(getBpfStatForSheets("event_sys_liste", summary)),
@@ -252,7 +261,7 @@ func valuesFromSummary(gitRev string, summary *bench.BenchSummary) []*sheets.Cel
 			// Meta
 			valueToCellData(gitRev),
 			valueToCellData(getSystemVersions()),
-			valueToCellData(getCpuName()),
+			valueToCellData(getCPUName()),
 		}
 	}
 
@@ -295,7 +304,7 @@ func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *benc
 
 	_, err := sheetsService.Spreadsheets.BatchUpdate(SHEET_DOC_ID, &r).Do()
 	if err != nil {
-		log.Fatalf("BatchUpdate failed: %s", err)
+		log.Fatalf("BatchUpdate of %s failed: %s", summary.TestName, err)
 	}
 
 	log.Printf("Append to %s / %d OK.\n", SHEET_DOC_ID, sheetId)
@@ -309,8 +318,6 @@ func getDerivedDataColumn(sheetsService *sheets.Service, column string) float64 
 		log.Fatalf("Failed to retrieve derived data value: %s", err)
 	}
 
-	fmt.Printf("Retrieved value: %v\n", resp.Values[0][0])
-
 	f, err := strconv.ParseFloat(strings.TrimRight(fmt.Sprintf("%s", resp.Values[0][0]), "%"), 64)
 	if err != nil {
 		log.Fatalf("Failed to parse derived data value: %s", err)
@@ -319,28 +326,29 @@ func getDerivedDataColumn(sheetsService *sheets.Service, column string) float64 
 }
 
 
-func getConnRatePercent(testA, testB string, summaries map[string]*bench.BenchSummary) float64 {
-	return 100.0 * summaries[testA].SourceStats.ActualConnRate / summaries[testB].SourceStats.ActualConnRate
-}
-
-func getReqRatePercent(testA, testB string, summaries map[string]*bench.BenchSummary) float64 {
-	return 100.0 * summaries[testA].SourceStats.ActualReqRate / summaries[testB].SourceStats.ActualReqRate
+func getRatePercent(testA, testB string, summaries map[string]*bench.BenchSummary) float64 {
+	sumA, okA := summaries[testA]
+	sumB, okB := summaries[testB]
+	if !okA || !okB {
+		log.Fatalf("%s or %s not found", testA, testB)
+	}
+	return 100.0 * sumA.SourceStats.ActualRate / sumB.SourceStats.ActualRate
 }
 
 const prCommentTemplate = `Benchmark results ({{.GitRev}}):
-- TLS connection rate with FGS (tls enabled) vs baseline: {{.TlsCrrPercent}}%
-- TCP connection rate with FGS (tls enabled) vs baseline: {{.TcpCrrPercent}}% (vs master: {{.TcpCrrPercentDiff}}%)
-- TCP request response rate with FGS (no tls) vs baseline: {{.TcpRrPercent}}%
-- TCP request response rate with FGS (tls enabled) vs baseline: {{.TcpTlsRrPercent}}%
+- TLS connection rate with FGS (tls enabled) vs baseline: {{.TLSCrrPercent}}%
+- TCP connection rate with FGS (tls enabled) vs baseline: {{.TCPCrrPercent}}% (vs master: {{.TCPCrrPercentDiff}}%)
+- TCP request response rate with FGS (no tls) vs baseline: {{.TCPRrPercent}}%
+- TCP request response rate with FGS (tls enabled) vs baseline: {{.TCPTLSRrPercent}}%
 `
 
 type PRCommentData struct {
 	GitRev string
-	TlsCrrPercent string
-	TcpCrrPercent string
-	TcpCrrPercentDiff string
-	TcpRrPercent string
-	TcpTlsRrPercent string
+	TLSCrrPercent string
+	TCPCrrPercent string
+	TCPCrrPercentDiff string
+	TCPRrPercent string
+	TCPTLSRrPercent string
 }
 
 // Pretty-print the benchmark results for the PR comment that includes the difference to the latest
@@ -350,13 +358,13 @@ func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries ma
 		return fmt.Sprintf("%.1f", f)
 	}
 
-	tcpCrrPercent := getConnRatePercent("BenchmarkFgsTls/tcp", "BenchmarkBaseline/tcp", summaries)
-        tlsCrrPercent := getConnRatePercent("BenchmarkFgsTls/tls", "BenchmarkBaseline/tls", summaries)
-	tcpRrPercent := getReqRatePercent("BenchmarkFgsTcpRequestResponse/tcp", "BenchmarkBaselineTcpRequestResponse", summaries)
-        tcpTlsRrPercent := getReqRatePercent("BenchmarkFgsTls_TcpRequestResponse/tcp", "BenchmarkBaselineTcpRequestResponse", summaries)
-	masterTcpCrrPercent := getDerivedDataColumn(sheetsService, "C")
-	tcpCrrPercentDiff := fmtFloat(masterTcpCrrPercent - tcpCrrPercent)
-	if masterTcpCrrPercent - tcpCrrPercent >= 0.0 {
+	tcpCrrPercent := getRatePercent("TestFGSTLS/netperf-crr", "TestBenchBaseline/netperf-crr", summaries)
+        tlsCrrPercent := getRatePercent("TestFGSTLS/tls-crr", "TestBenchBaseline/tls-crr", summaries)
+	tcpRrPercent := getRatePercent("TestFGSNoTLS/netperf-rr", "TestBenchBaseline/netperf-rr", summaries)
+        tcpTLSRrPercent := getRatePercent("TestFGSTLS/netperf-rr", "TestBenchBaseline/netperf-rr", summaries)
+	masterTCPCrrPercent := getDerivedDataColumn(sheetsService, "C")
+	tcpCrrPercentDiff := fmtFloat(masterTCPCrrPercent - tcpCrrPercent)
+	if masterTCPCrrPercent - tcpCrrPercent >= 0.0 {
 		tcpCrrPercentDiff = "+" + tcpCrrPercentDiff
 	}
 
@@ -368,11 +376,11 @@ func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries ma
 	err := template.Must(template.New("comment").Parse(tmpl)).Execute(os.Stdout,
 	          PRCommentData{
 		          GitRev: gitRev,
-		          TlsCrrPercent: fmtFloat(tlsCrrPercent),
-		          TcpCrrPercent: fmtFloat(tcpCrrPercent),
-		          TcpCrrPercentDiff: tcpCrrPercentDiff,
-		          TcpRrPercent: fmtFloat(tcpRrPercent),
-		          TcpTlsRrPercent: fmtFloat(tcpTlsRrPercent),
+		          TLSCrrPercent: fmtFloat(tlsCrrPercent),
+		          TCPCrrPercent: fmtFloat(tcpCrrPercent),
+		          TCPCrrPercentDiff: tcpCrrPercentDiff,
+		          TCPRrPercent: fmtFloat(tcpRrPercent),
+		          TCPTLSRrPercent: fmtFloat(tcpTLSRrPercent),
 	          })
 
 	if err != nil {

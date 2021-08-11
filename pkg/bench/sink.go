@@ -14,12 +14,29 @@ import (
 	"context"
 	"crypto/tls"
 	_ "embed"
+	"fmt"
+	"io"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"os/exec"
+	"runtime"
+	"strconv"
+	"strings"
 	"syscall"
 )
+
+type SinkStats struct {
+	Forked   bool // true if the sink forks a separate process
+	CPUUsage CPUUsage
+}
+
+type sinkName string
+
+type Sink interface {
+	Start(ctx context.Context) (int, chan SinkStats, error)
+}
 
 var (
 	//go:embed cert.pem
@@ -27,33 +44,79 @@ var (
 
 	//go:embed key.pem
 	keyPem []byte
+
+	sinks = map[sinkName]Sink{
+		"tcp-go":     tcpOrTLSSink{tls: false},
+		"http-go":    goHTTPSink{},
+		"http-nginx": nginxSink{},
+		"tls-go":     tcpOrTLSSink{tls: true},
+		"netperf":    netperfSink{},
+	}
 )
 
-func acceptAndClose(l net.Listener) {
-	buf := make([]byte, 8192)
+func SinkNameOrPanic(s string) sinkName {
+	if _, ok := sinks[sinkName(s)]; ok {
+		return sinkName(s)
+	} else {
+		log.Fatalf("Unknown sink '%s', use on of: %s", s, strings.Join(SupportedSources(), ", "))
+		return sinkName("")
+	}
+}
+
+func SupportedSinks() []string {
+	keys := make([]string, 0, len(sinks))
+	for k := range sinks {
+		keys = append(keys, string(k))
+	}
+	return keys
+}
+
+//
+// TCP/TLS sink
+//
+
+type tcpOrTLSSink struct {
+	tls bool
+}
+
+func (sink tcpOrTLSSink) Start(ctx context.Context) (int, chan SinkStats, error) {
+	listener, port, err := tcpListen(ctx)
+	if err != nil {
+		return -1, nil, fmt.Errorf("TCP listen error: %w", err)
+	}
+
+	if sink.tls {
+		cert, err := tls.X509KeyPair(certPem, keyPem)
+		if err != nil {
+			listener.Close()
+			return -1, nil, fmt.Errorf("X509KeyPair error: %s", err)
+		}
+		listener = tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{cert}})
+	}
+	statsCh := make(chan SinkStats, 1)
+	withStats(statsCh, func() {
+		sink.acceptCopyLoop(listener)
+		listener.Close()
+	})
+
+	return port, statsCh, nil
+}
+
+func (sink tcpOrTLSSink) acceptCopyLoop(l net.Listener) {
 	for {
 		c, err := l.Accept()
 		if err != nil {
 			return
 		}
-		for {
-			n, err := c.Read(buf)
-			if err != nil {
-				break
-			}
-			_, err = c.Write(buf[:n])
-			if err != nil {
-				break
-			}
-		}
+		io.Copy(c, c)
 		c.Close()
 	}
 }
 
-func tcpListen(ctx context.Context) (net.Listener, int) {
+func tcpListen(ctx context.Context) (net.Listener, int, error) {
 	l, err := net.Listen("tcp4", "127.0.0.1:0")
 	if err != nil {
-		log.Fatalf("Listen: %s", err)
+		return nil, -1, err
 	}
 
 	go func() {
@@ -62,65 +125,90 @@ func tcpListen(ctx context.Context) (net.Listener, int) {
 	}()
 
 	port := l.Addr().(*net.TCPAddr).Port
-	return l, port
+	return l, port, nil
 }
 
-func tcpSink(ctx context.Context, sinkReady chan int) {
-	l, port := tcpListen(ctx)
-	sinkReady <- port
-	acceptAndClose(l)
-	l.Close()
-}
+//
+// HTTP/1.1 sink
+//
+//
 
-func httpSink(ctx context.Context, sinkReady chan int) {
-	l, port := tcpListen(ctx)
-	sinkReady <- port
+type goHTTPSink struct{}
+
+func (sink goHTTPSink) Start(ctx context.Context) (int, chan SinkStats, error) {
+	l, port, err := tcpListen(ctx)
+	if err != nil {
+		return -1, nil, fmt.Errorf("TCP listen error: %w", err)
+	}
 
 	buf := []byte("helloworld")
 
-	http.Serve(l,
-		http.HandlerFunc(
-			func(w http.ResponseWriter, r *http.Request) {
-				w.Write(buf)
-			}),
-	)
-}
-
-func tlsSink(ctx context.Context, sinkReady chan int) {
-	cert, err := tls.X509KeyPair(certPem, keyPem)
-	if err != nil {
-		log.Fatal(err)
-	}
-
-	l, port := tcpListen(ctx)
-	l = tls.NewListener(l, &tls.Config{Certificates: []tls.Certificate{cert}})
-
-	sinkReady <- port
-	acceptAndClose(l)
-	l.Close()
-}
-
-func sink(ctx context.Context, mode string, sinkReady chan int) {
-	switch mode {
-	case "http":
-		httpSink(ctx, sinkReady)
-	case "tls":
-		tlsSink(ctx, sinkReady)
-	case "tcp":
-		tcpSink(ctx, sinkReady)
-	default:
-		log.Fatal("unknown mode")
-	}
-}
-
-func netperfSink(ctx context.Context, mode string, sinkReady chan int) {
-	cmd := exec.Command("netserver", "-D", "-N")
-
-	// Terminate the process gracefully as netserver forks.
+	statsCh := make(chan SinkStats, 1)
 	go func() {
-		<- ctx.Done()
-		cmd.Process.Signal(syscall.SIGTERM)
+		// Start blocking serve. Will exit when the listener is closed.
+		http.Serve(l,
+			http.HandlerFunc(
+				func(w http.ResponseWriter, r *http.Request) {
+					w.Write(buf)
+				}),
+		)
+
+		// TODO: No good way to collect CPU usage statistics since "net/http" forks
+		// bunch of goroutines.
+		statsCh <- SinkStats{Forked: false}
 	}()
+	return port, statsCh, nil
+}
+
+//
+// NGINX sink
+//
+
+type nginxSink struct{}
+
+func (sink nginxSink) Start(ctx context.Context) (int, chan SinkStats, error) {
+	cmd := exec.Command(
+		"docker", "run", "--detach", "--rm", "--network=host",
+		"--name=fgs-bench-nginx",
+		"nginx",
+	)
+
+	cmd.Stderr = os.Stderr
+	out, err := cmd.Output()
+	if err != nil {
+		return -1, nil, fmt.Errorf("failed to start nginx: %w", err)
+	}
+	containerID := strings.TrimSpace(string(out))
+
+	statsCh := make(chan SinkStats, 1)
+	go func() {
+		<-ctx.Done()
+		stats := SinkStats{Forked: true}
+		stats.CPUUsage = CPUUsageFromCPUAcct(containerID)
+		exec.Command("docker", "stop", containerID).Run()
+		statsCh <- stats
+	}()
+
+	// Wait for nginx to be ready.
+	if !ProbeTCPPort(80) {
+		exec.Command("docker", "stop", containerID).Run()
+		return -1, nil, fmt.Errorf("nginx did not start up on time")
+	}
+
+	return 80, statsCh, nil
+}
+
+//
+// Netperf sink
+//
+
+type netperfSink struct{}
+
+func (sink netperfSink) Start(ctx context.Context) (int, chan SinkStats, error) {
+	// Use a non-standard port in case the machine already has netserver running.
+	port := 12866
+
+	cmd := exec.Command("netserver", "-D", "-N", "-f", "-4", "-p", strconv.Itoa(port))
 
 	// netserver sets the output file permissions and with -D the output
 	// file is /dev/null, so don't run netserver as root to avoid changing
@@ -129,6 +217,45 @@ func netperfSink(ctx context.Context, mode string, sinkReady chan int) {
 	cmd.SysProcAttr = &syscall.SysProcAttr{
 		Credential: &syscall.Credential{Uid: 1},
 	}
-	cmd.Start()
-	sinkReady <- 1
+	if err := cmd.Start(); err != nil {
+		return -1, nil, fmt.Errorf("failed to start netserver: %w", err)
+	}
+
+	// Wait for netserver to be ready.
+	if !ProbeTCPPort(port) {
+		cmd.Process.Signal(syscall.SIGTERM)
+		cmd.Wait()
+		return -1, nil, fmt.Errorf("netserver did not start up on time")
+	}
+
+	statsCh := make(chan SinkStats, 1)
+	// Terminate the process gracefully as netserver forks.
+	go func() {
+		<-ctx.Done()
+		cmd.Process.Signal(syscall.SIGTERM)
+		cmd.Wait()
+		statsCh <- SinkStats{
+			Forked:   true,
+			CPUUsage: CPUUsageFromRusage(cmd.ProcessState.SysUsage().(*syscall.Rusage)),
+		}
+	}()
+
+	return port, statsCh, nil
+}
+
+// Helper for non-forking sinks to collect statistics.
+func withStats(sinkStats chan SinkStats, run func()) {
+	stats := SinkStats{Forked: false}
+
+	go func() {
+		// Lock to specific thread so we can collect stats.
+		// The sink sholudn't fork goroutines as those won't
+		// be included in the cpu usage stats.
+		runtime.LockOSThread()
+
+		cpuUsageBefore := GetCPUUsage(CPU_USAGE_THIS_THREAD)
+		run()
+		stats.CPUUsage = GetCPUUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore)
+		sinkStats <- stats
+	}()
 }
