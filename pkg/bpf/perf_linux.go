@@ -226,15 +226,19 @@ import (
 	"os"
 	"reflect"
 	"runtime"
+	"strings"
 	"syscall"
 	"time"
 	"unsafe"
 
+	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
 const (
 	MAX_POLL_EVENTS = 32
+
+	PossibleCPUSysfsPath = "/sys/devices/system/cpu/possible"
 )
 
 type PerfEventConfig struct {
@@ -247,14 +251,61 @@ type PerfEventConfig struct {
 	WakeupEvents int
 }
 
+// GetNumPossibleCPUs returns a total number of possible CPUS, i.e. CPUs that
+// have been allocated resources and can be brought online if they are present.
+// The number is retrieved by parsing /sys/device/system/cpu/possible.
+//
+// See https://git.kernel.org/pub/scm/linux/kernel/git/torvalds/linux.git/tree/include/linux/cpumask.h?h=v4.19#n50
+// for more details.
+func GetNumPossibleCPUs() int {
+	f, err := os.Open(PossibleCPUSysfsPath)
+	if err != nil {
+		return 0
+	}
+	defer f.Close()
+
+	return getNumPossibleCPUsFromReader(f)
+}
+
+func getNumPossibleCPUsFromReader(r io.Reader) int {
+	out, err := io.ReadAll(r)
+	if err != nil {
+		return 0
+	}
+
+	var start, end int
+	count := 0
+	for _, s := range strings.Split(string(out), ",") {
+		// Go's scanf will return an error if a format cannot be fully matched.
+		// So, just ignore it, as a partial match (e.g. when there is only one
+		// CPU) is expected.
+		n, _ := fmt.Sscanf(s, "%d-%d", &start, &end)
+
+		switch n {
+		case 0:
+			return 0
+		case 1:
+			count++
+		default:
+			count += (end - start + 1)
+		}
+	}
+
+	return count
+}
+
 func DefaultPerfEventConfig() *PerfEventConfig {
+	numCpus := GetNumPossibleCPUs()
+	if numCpus == 0 {
+		numCpus = runtime.NumCPU()
+	}
 	return &PerfEventConfig{
 		MapName:      EventsMapName,
 		Type:         PERF_TYPE_SOFTWARE,
 		Config:       PERF_COUNT_SW_BPF_OUTPUT,
 		SampleType:   PERF_SAMPLE_RAW,
 		WakeupEvents: 1,
-		NumCpus:      runtime.NumCPU(),
+		NumCpus:      numCpus,
 		NumPages:     128,
 	}
 }
@@ -613,7 +664,7 @@ type bpfAttrMapOpElem struct {
 	flags uint64
 }
 
-func NewPerCpuEvents(config *PerfEventConfig) (*PerCpuEvents, error) {
+func NewPerCpuEvents(config *PerfEventConfig, log logrus.FieldLogger) (*PerCpuEvents, error) {
 	var err error
 
 	e := &PerCpuEvents{
@@ -640,12 +691,19 @@ func NewPerCpuEvents(config *PerfEventConfig) (*PerCpuEvents, error) {
 		return nil, err
 	}
 
+	usedCpus := int(0)
 	for cpu := int(0); cpu < e.Cpus; cpu++ {
-		event, err := PerfEventOpen(config, -1, cpu, -1, 0)
+		event, err := PerfEventOpen(config, -1, cpu, -1, unix.PERF_FLAG_FD_CLOEXEC)
 		if err != nil {
-			return nil, err
+			continue
 		}
 		e.event[event.Fd] = event
+		usedCpus++
+
+		if err := unix.SetNonblock(event.Fd, true); err != nil {
+			unix.Close(event.Fd)
+			return nil, err
+		}
 
 		if err = e.poll.AddFD(event.Fd, unix.EPOLLIN); err != nil {
 			return nil, err
@@ -659,6 +717,7 @@ func NewPerCpuEvents(config *PerfEventConfig) (*PerCpuEvents, error) {
 			return nil, err
 		}
 	}
+	log.WithField("Cpus", usedCpus).WithField("Possible Cpus", e.Cpus).Info("Perf event ring configured")
 
 	uba := bpfAttrMapOpElem{
 		mapFd: uint32(e.eventMap.fd),

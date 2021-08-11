@@ -422,8 +422,9 @@ func isCtxDone(ctx context.Context) bool {
 }
 
 func (k *ObserverKprobe) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, error) {
-	e, err := bpf.NewPerCpuEvents(k.perfConfig)
+	e, err := bpf.NewPerCpuEvents(k.perfConfig, k.log)
 	if err != nil {
+		k.log.WithError(err).Warn("Cpu Events configuration failed\n")
 		return nil, fmt.Errorf("failed kprobe events NewPerCpuEvents: %s\n", err)
 	}
 	return e, nil
