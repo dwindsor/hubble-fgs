@@ -24,7 +24,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/sirupsen/logrus"
@@ -551,35 +550,8 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		k.log.Warningf("failed to initialize ksyms: %s", err)
 	}
 
-	if err := LoadDefaultSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx); err != nil {
+	if err := LoadDefaultSensor(k.bpfDir, k.mapDir, k.ciliumDir, k.configFile, ctx); err != nil {
 		return err
-	}
-
-	// Load initial set of generic kprobe sensors */
-	if k.configFile != "" {
-		yamlData, err := os.ReadFile(k.configFile)
-		if err != nil {
-			return fmt.Errorf("failed to read yaml file %s: %w", k.configFile, err)
-		}
-		cnf, err := config.ReadConfigYaml(string(yamlData))
-		if err != nil {
-			return err
-		}
-		for _, s := range registeredTracingSensors {
-			sensor, err := s.SpecHandler(&cnf.Spec)
-			if err != nil {
-				return err
-			}
-			if sensor == nil {
-				continue
-			}
-
-			availableSensors[sensor.name] = sensor
-			err = ObserverLoadSensor(k.bpfDir, k.mapDir, k.ciliumDir, ctx, sensor)
-			if err != nil {
-				return err
-			}
-		}
 	}
 
 	// start sensor controller and stt manager

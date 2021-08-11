@@ -279,22 +279,12 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 }
 
 func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
-	if err := LoadDefaultSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir,
+	if err := LoadDefaultSensor(kprobe.bpfDir,
+		kprobe.mapDir,
+		kprobe.ciliumDir,
+		kprobe.configFile,
 		context.TODO()); err != nil {
 		t.Fatalf("LoadDefaultSensor error: %s\n", err)
-	}
-
-	if kprobe.configFile != "" {
-		sensor, err := getSensorFromTracingPolicyFname(kprobe.configFile)
-		if err != nil {
-			t.Fatalf("createGenericKprobeSensors error: Could not create kprobe sensor: %s", err)
-		}
-
-		if sensor != nil {
-			if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), sensor); err != nil {
-				t.Fatalf("generic observerLoadSensors error: Could not load kprobe sensors: %s", err)
-			}
-		}
 	}
 
 	kprobe.populateExecve(context.TODO())

@@ -21,6 +21,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/vishvananda/netlink"
@@ -703,7 +704,50 @@ func createDir(bpfDir, mapDir string) {
 	os.Mkdir(mapDir, os.ModeDir)
 }
 
-func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, ctx context.Context) error {
+func createConfigSensors(configFile string) ([]*ObserverSensor, error) {
+	var sensors []*ObserverSensor
+
+	if configFile == "" {
+		return nil, nil
+	}
+
+	yamlData, err := os.ReadFile(configFile)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read yaml file %s: %w", configFile, err)
+	}
+	cnf, err := config.ReadConfigYaml(string(yamlData))
+	if err != nil {
+		return nil, err
+	}
+	for _, s := range registeredTracingSensors {
+		sensor, err := s.SpecHandler(&cnf.Spec)
+		if err != nil {
+			return nil, err
+		}
+		if sensor == nil {
+			continue
+		}
+		sensors = append(sensors, sensor)
+	}
+	return sensors, nil
+}
+
+func mergeSensors(sensors []*ObserverSensor) *ObserverSensor {
+	var progs []*BpfLoad
+	var maps []*ObserverMap
+
+	for _, s := range sensors {
+		progs = append(progs, s.progs...)
+		maps = append(maps, s.maps...)
+	}
+	return &ObserverSensor{
+		name:  "__main__",
+		progs: progs,
+		maps:  maps,
+	}
+}
+
+func LoadDefaultSensor(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
 	createDir(bpfDir, mapDir)
 
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
@@ -714,13 +758,15 @@ func LoadDefaultSensor(bpfDir, mapDir, ciliumDir string, ctx context.Context) er
 	// This is technically not a sensor since we are loading this
 	// statically when we start, but it allows us to have a single path for
 	// loading bpf programs.
-	initialSensor := createInitialObserverSensor()
-
-	if err := observerFindProgs(ctx, initialSensor); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
+	initialSensors := createInitialObserverSensor()
+	configSensors, err := createConfigSensors(configFile)
+	if err != nil {
+		return err
 	}
+	sensors := append([]*ObserverSensor{initialSensors}, configSensors...)
+	load := mergeSensors(sensors)
 
-	if err := ObserverLoadSensor(bpfDir, mapDir, ciliumDir, ctx, initialSensor); err != nil {
+	if err := ObserverLoadSensor(bpfDir, mapDir, ciliumDir, ctx, load); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
 	}
 
