@@ -34,7 +34,9 @@ jobs:
           sudo sed -i '/env_reset/d' /etc/sudoers
           sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
           sudo make hubble-bpf
-          sudo -E ./contrib/pr-benchmark.sh "$(git rev-parse --short ${{ github.event.pull_request.head.sha }})" "$GCP_SA_KEY"
+          sudo go test github.com/isovalent/hubble-fgs/pkg/bench -fgs-bench-duration $BENCH_DURATION -timeout 30m -tags bench_tests -test.v
+          GIT_REV="$(git rev-parse --short ${{ github.event.pull_request.head.sha }})"
+          go run cmd/fgs-bench-publish/fgs-bench-publish.go pretty "$GIT_REV" "$GCP_SA_KEY" results/*.json
 
       - name: Find Comment
         uses: peter-evans/find-comment@v1
