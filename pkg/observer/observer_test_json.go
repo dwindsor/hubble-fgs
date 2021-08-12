@@ -604,10 +604,7 @@ func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attemp
 		ev := fgs.GetEventsResponse{}
 		err = jsonpb.UnmarshalNext(dec, &ev)
 		if err != nil {
-			if err == io.EOF {
-				break
-			}
-			return false, err
+			break
 		}
 		events = append(events, ev)
 		if !dec.More() {
