@@ -342,12 +342,6 @@ int tc_loader(const int version,
 				goto out;
 			}
 			snprintf(pin_name, sizeof(pin_name), "%s_%i", __prog, i);
-			bpf_program__unpin(prog, pin_name);
-			err = bpf_program__pin(prog, pin_name);
-			if (err) {
-				printf("program pin %s tailcall err %d\n", pin_name, err);
-				goto out;
-			}
 			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
 			if (err) {
 				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
