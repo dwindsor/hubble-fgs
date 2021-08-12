@@ -765,6 +765,12 @@ func LoadDefaultSensor(bpfDir, mapDir, ciliumDir, configFile string, ctx context
 	}
 	sensors := append([]*ObserverSensor{initialSensors}, configSensors...)
 	load := mergeSensors(sensors)
+	// Add config file loaded programs and maps to observerAll* so unload will
+	// cleanup these as well as default programs/maps.
+	for _, s := range configSensors {
+		observerAllPrograms = append(observerAllPrograms, s.progs...)
+		observerAllMaps = append(observerAllMaps, s.maps...)
+	}
 
 	if err := ObserverLoadSensor(bpfDir, mapDir, ciliumDir, ctx, load); err != nil {
 		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
