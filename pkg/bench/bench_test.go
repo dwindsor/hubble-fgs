@@ -36,11 +36,11 @@ type sourceProxySink struct {
 }
 
 var benchmarkSourceProxySinks = []sourceProxySink{
-	sourceProxySink{"http-rr-go", "none", "http-nginx"},
-	sourceProxySink{"http-crr-go", "none", "http-nginx"},
-	sourceProxySink{"netperf-crr", "none", "netperf"},
-	sourceProxySink{"netperf-rr", "none", "netperf"},
-	sourceProxySink{"tls-crr", "none", "tls-go"},
+	{"http-rr-go", "none", "http-nginx"},
+	{"http-crr-go", "none", "http-nginx"},
+	{"netperf-crr", "none", "netperf"},
+	{"netperf-rr", "none", "netperf"},
+	{"tls-crr", "none", "tls-go"},
 }
 
 var benchmarkDuration = 5 * time.Second
@@ -76,6 +76,34 @@ func TestBenchBaseline(t *testing.T) {
 			}
 		})
 	}
+}
+
+// A separate test to run a baseline HTTP load test with Envoy in between. Not
+// in the "benchmarkSourceProxySinks" list as we don't need results with FGS and
+// these are fairly large images to download for every PR.
+func TestEnvoyOverhead(t *testing.T) {
+
+	if testing.Short() {
+		t.Skip("skipping envoy overhead test as running in short mode.")
+	}
+
+	source, proxy, sink := "http-rr-go", "envoy", "http-nginx"
+	summary := BenchBaseline(
+		&BenchArguments{
+			SourceArgs: SourceArgs{Duration: benchmarkDuration},
+			Source:     SourceNameOrPanic(source),
+			Proxy:      ProxyNameOrPanic(proxy),
+			Sink:       SinkNameOrPanic(sink),
+			Baseline:   true,
+		})
+	summary.TestName = t.Name()
+	if err := summary.WriteFile(resultFilename(t)); err != nil {
+		t.Fatalf("summary.WriteFile failed: %s", err)
+	}
+	if summary.Error != "" {
+		t.Fatalf("test failed: %s", summary.Error)
+	}
+
 }
 
 func TestFGSNoTLS(t *testing.T) {
