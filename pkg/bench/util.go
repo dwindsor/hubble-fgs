@@ -20,6 +20,7 @@ import (
 	"io/ioutil"
 	"log"
 	"net"
+	"strings"
 	"syscall"
 	"time"
 )
@@ -50,24 +51,39 @@ func CPUUsageFromRusage(rusage *syscall.Rusage) (cpuUsage CPUUsage) {
 
 func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 	userHz := time.Duration(getUserHZ())
-	cpuAcctFilename := fmt.Sprintf("/sys/fs/cgroup/cpuacct/docker/%s/cpuacct.stat", containerID)
-
-	cpuAcctStat, err := ioutil.ReadFile(cpuAcctFilename)
-	if err != nil {
-		log.Printf("Could not read cpuacct.stat: %s\n", err)
-		return CPUUsage{}
-	}
 
 	var userTicks, sysTicks int64
-	if _, err := fmt.Sscanf(string(cpuAcctStat), "user %d\nsystem %d\n", &userTicks, &sysTicks); err != nil {
-		log.Printf("Failed to parse cpuacct.stat: %s\n", err)
+	cpuStatFilename := fmt.Sprintf("/sys/fs/cgroup/cpuacct/docker/%s/cpuacct.stat", containerID)
+	cpuStat, err := ioutil.ReadFile(cpuStatFilename)
+	if err != nil {
+		log.Printf("Failed to read cpuacct.stat: %s\n", err)
 		return CPUUsage{}
+	} else {
+		if _, err := fmt.Sscanf(string(cpuStat), "user %d\nsystem %d\n", &userTicks, &sysTicks); err != nil {
+			log.Printf("Failed to parse cpuacct.stat ('%s'): %s\n", cpuStat, err)
+			return CPUUsage{}
+		}
+	}
+
+	memStatFilename := fmt.Sprintf("/sys/fs/cgroup/memory/docker/%s/memory.stat", containerID)
+	rss := int64(0)
+	memStat, err := ioutil.ReadFile(memStatFilename)
+	if err != nil {
+		log.Printf("Failed to read memory.stat: %s\n", err)
+	} else {
+		for _, line := range(strings.Split(string(memStat), "\n")) {
+			if strings.HasPrefix(line, "total_rss ") {
+				if _, err := fmt.Sscanf(line, "total_rss %d", &rss); err != nil {
+					log.Printf("Failed to parse memory.stat ('%s'): %s\n", line, err)
+				}
+			}
+		}
 	}
 
 	return CPUUsage{
 		UserTime: (time.Duration(userTicks) * time.Second) / userHz,
 		SystemTime: (time.Duration(sysTicks) * time.Second) / userHz,
-		MaxRss: 0,
+		MaxRss: rss,
 	}
 }
 
