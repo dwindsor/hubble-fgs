@@ -726,6 +726,7 @@ func NewPerCpuEvents(config *PerfEventConfig, log logrus.FieldLogger) (*PerCpuEv
 	ubaPtr := uintptr(unsafe.Pointer(&uba))
 	ubaSizeOf := unsafe.Sizeof(uba)
 
+	usedEvents := int(0)
 	for _, event := range e.event {
 		// FIXME: Not sure what to do here, the map has already been updated and we can't
 		// fully restore it.
@@ -734,7 +735,9 @@ func NewPerCpuEvents(config *PerfEventConfig, log logrus.FieldLogger) (*PerCpuEv
 		if err := e.eventMap.Update(e.eventMap.fd, ubaPtr, ubaSizeOf); err != nil {
 			return nil, err
 		}
+		usedEvents++
 	}
+	log.WithField("Event map", mapPath).WithField("Events", usedEvents).Info("Event map configured")
 
 	return e, nil
 }

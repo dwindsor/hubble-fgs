@@ -485,7 +485,7 @@ func observerLoadSensorMaps(stopCtx context.Context, sensor *ObserverSensor, map
 		if err != nil {
 			return fmt.Errorf("failed %d load map (%s): %s\n", m.fd, m.mapType, err)
 		}
-		logger.GetLogger().Infof("hubble-fgs, map %s was loaded.\n", m.mapName)
+		logger.GetLogger().Infof("hubble-fgs, map %s was loaded at %s.\n", m.mapName, pin)
 	}
 
 	return nil
