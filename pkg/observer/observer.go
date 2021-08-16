@@ -45,10 +45,6 @@ const (
 )
 
 const (
-	TLS_MIN_CERT_SIZE = 12
-)
-
-const (
 	BPF_PROG_TYPE_UNSPEC                  = 0
 	BPF_PROG_TYPE_SOCKET_FILTER           = 1
 	BPF_PROG_TYPE_KPROBE                  = 2
@@ -157,23 +153,6 @@ func (k *ObserverKprobe) RemoveListener(listener Listener) {
 	}
 }
 
-func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errState api.MsgTLSParserState) *api.MsgTLSEventUnix {
-	unix := &api.MsgTLSEventUnix{}
-
-	unix.Common = m.Common
-	unix.Tuple = m.Tuple
-	unix.ClientHello = m.ClientHello
-	unix.ServerHello = m.ServerHello
-	unix.ProcessKey = m.ProcessKey
-
-	if errCode > 0 {
-		unix.ServerCert.Error = errCode
-		unix.ServerCert.ParserState = errState
-	} else {
-		unix.ServerCert.Certificates = certs
-	}
-	return unix
-}
 func msgToExecveUnix(m *api.MsgExecveEvent, offset int) *api.MsgExecveEventUnix {
 	unix := &api.MsgExecveEventUnix{}
 
@@ -484,12 +463,6 @@ type MsgFilter struct {
 	run        MsgFilterRun
 	filterPass int
 	filterDrop int
-}
-
-type MsgTLSEventCert struct {
-	tls    *api.MsgTLSEvent
-	cert   []byte
-	header uint32
 }
 
 type ObserverKprobe struct {

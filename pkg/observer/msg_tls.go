@@ -23,6 +23,34 @@ var (
 	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert = make(map[api.MsgTLSIPv4]*MsgTLSEventCert)
 )
 
+const (
+	TLS_MIN_CERT_SIZE = 12
+)
+
+type MsgTLSEventCert struct {
+	tls    *api.MsgTLSEvent
+	cert   []byte
+	header uint32
+}
+
+func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errState api.MsgTLSParserState) *api.MsgTLSEventUnix {
+	unix := &api.MsgTLSEventUnix{}
+
+	unix.Common = m.Common
+	unix.Tuple = m.Tuple
+	unix.ClientHello = m.ClientHello
+	unix.ServerHello = m.ServerHello
+	unix.ProcessKey = m.ProcessKey
+
+	if errCode > 0 {
+		unix.ServerCert.Error = errCode
+		unix.ServerCert.ParserState = errState
+	} else {
+		unix.ServerCert.Certificates = certs
+	}
+	return unix
+}
+
 func HandleTls(r *bytes.Reader) (interface{}, error) {
 	var errState api.MsgTLSParserState
 	var certStrings []string
