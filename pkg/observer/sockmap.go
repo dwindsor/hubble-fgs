@@ -80,6 +80,41 @@ var (
 
 		struct{}{},
 	}
+
+	ObserverTLSTCIngress = BpfLoad{
+		"bpf_tc_ingress.o",
+		"ingress_tcp",
+		"ingress_tcp",
+		"classifier/ingress_tcp",
+		"classifier_ingress_tcp",
+
+		false,
+		true,
+		"tc_ingress",
+		bpfLoadStateIdle(),
+
+		-1,
+
+		struct{}{},
+	}
+
+	ObserverTLSTCEgress = BpfLoad{
+		"bpf_tc_egress.o",
+		"egress_tcp",
+		"egress_tcp",
+		"tc/egress_tcp",
+		"tc_egress_tcp",
+
+		false,
+		true,
+		"tc_egress",
+		bpfLoadStateIdle(),
+
+		-1,
+
+		struct{}{},
+	}
+
 	/* TLS maps */
 	ObserverTCTLSMap     = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle(), -1}
 	ObserverSockMap      = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle(), -1}
