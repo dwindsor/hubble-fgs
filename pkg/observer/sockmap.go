@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
@@ -206,6 +207,8 @@ func init() {
 	RegisterProbeType("tc_ingress", tls)
 	RegisterProbeType("tc_egress", tls)
 	RegisterTracingSensorsAtInit(tls.name, tls)
+	RegisterEventHandlerAtInit(api.MSG_OP_TLS, HandleTls)
+	RegisterEventHandlerAtInit(api.MSG_OP_TLS_CONT, HandleTlsCont)
 }
 
 func EnableTlsParser(tls, tc bool) *ObserverSensor {

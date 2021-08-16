@@ -23,7 +23,7 @@ var (
 	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert = make(map[api.MsgTLSIPv4]*MsgTLSEventCert)
 )
 
-func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
+func HandleTls(r *bytes.Reader) (interface{}, error) {
 	var errState api.MsgTLSParserState
 	var certStrings []string
 	var m *api.MsgTLSEvent
@@ -32,7 +32,7 @@ func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
 	m = &api.MsgTLSEvent{}
 	err := binary.Read(r, binary.LittleEndian, m)
 	if err != nil {
-		return
+		return nil, err
 	}
 
 	/* Certificates will be part of continuation message we cache
@@ -43,16 +43,10 @@ func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
 		v.tls = m
 		v.cert = make([]byte, 0)
 		tlsInProgress[m.Tuple] = v
-		return
+		return nil, nil
 	}
 
-	msgUnix := msgToTLSEventUnix(m, certStrings, errCode, errState)
-	/* OR filter together */
-	k.observerListeners(msgUnix)
-	/* Keeping pretty printer because it helps debugging filters */
-	if k.prettyPrinter {
-		reader.ObserverTLSPrinter(msgUnix, k.log)
-	}
+	return msgToTLSEventUnix(m, certStrings, errCode, errState), nil
 }
 
 // bpf_skskb_post_cert and bpf_skskb_post_more_cert return additional
@@ -70,7 +64,7 @@ func errorHasState(errType uint32) bool {
 	return false
 }
 
-func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
+func HandleTlsCont(r *bytes.Reader) (interface{}, error) {
 	var certStrings []string
 	var errCode uint32
 	var errState api.MsgTLSParserState
@@ -138,7 +132,7 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 			m.cert = nil
 			m.header = bytes + m.header
 			tlsInProgress[key] = m
-			return
+			return nil, nil
 		}
 		m.header = 0
 
@@ -155,7 +149,7 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 				m.cert = cert
 				m.header = 0
 				tlsInProgress[key] = m
-				return
+				return nil, nil
 			}
 
 			certStrings, code = reader.GetTLSCertificateString(cert)
@@ -166,12 +160,5 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 	}
 
 	delete(tlsInProgress, key)
-	msgUnix := msgToTLSEventUnix(m.tls, certStrings, errCode, errState)
-
-	/* OR filter together */
-	k.observerListeners(msgUnix)
-	/* Keeping pretty printer because it helps debugging filters */
-	if k.prettyPrinter {
-		reader.ObserverTLSPrinter(msgUnix, k.log)
-	}
+	return msgToTLSEventUnix(m.tls, certStrings, errCode, errState), nil
 }

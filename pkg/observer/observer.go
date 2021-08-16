@@ -304,10 +304,6 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	r := bytes.NewReader(data)
 
 	switch op {
-	case api.MSG_OP_TLS:
-		k.handleTls(r)
-	case api.MSG_OP_TLS_CONT:
-		k.handleTlsCont(r)
 	case api.MSG_OP_EXECVE:
 		m := api.MsgExecveEvent{}
 		err := binary.Read(r, binary.LittleEndian, &m)
