@@ -522,9 +522,6 @@ type ObserverKprobe struct {
 	/* Runtime docker Id info */
 	dockerIdOffsetWriter int
 
-	/* Runtime Containers */
-	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert
-
 	/* YAML Configuration File */
 	configFile string
 
@@ -588,7 +585,6 @@ func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 		prettyPrinter:  pretty,
 		listeners:      make(map[Listener]struct{}),
 		log:            logger.GetLogger(),
-		tlsInProgress:  make(map[api.MsgTLSIPv4]*MsgTLSEventCert),
 		configFile:     configFile,
 		enableCRD:      crd,
 		tcpStatSegRate: tcpStatRate,

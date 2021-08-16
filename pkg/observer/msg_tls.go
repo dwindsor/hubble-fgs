@@ -18,6 +18,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
+var (
+	/* Runtime Containers */
+	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert = make(map[api.MsgTLSIPv4]*MsgTLSEventCert)
+)
+
 func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
 	var errState api.MsgTLSParserState
 	var certStrings []string
@@ -37,7 +42,7 @@ func (k *ObserverKprobe) handleTls(r *bytes.Reader) {
 		v := &MsgTLSEventCert{}
 		v.tls = m
 		v.cert = make([]byte, 0)
-		k.tlsInProgress[m.Tuple] = v
+		tlsInProgress[m.Tuple] = v
 		return
 	}
 
@@ -82,7 +87,7 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 	remaining := key.Remaining
 	key.Remaining = 0
 
-	m := k.tlsInProgress[key]
+	m := tlsInProgress[key]
 	/* If m is nil this implies either we incorrectly deleted a map
 	 * entry. (datapath indicated no more bytes, but then sent more?)
 	 * Or the entry was never populated in the first place. This would
@@ -132,7 +137,7 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 		if bytes < header {
 			m.cert = nil
 			m.header = bytes + m.header
-			k.tlsInProgress[key] = m
+			tlsInProgress[key] = m
 			return
 		}
 		m.header = 0
@@ -149,7 +154,7 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 				/* Need to store and submit when remaining bits show up. */
 				m.cert = cert
 				m.header = 0
-				k.tlsInProgress[key] = m
+				tlsInProgress[key] = m
 				return
 			}
 
@@ -160,7 +165,7 @@ func (k *ObserverKprobe) handleTlsCont(r *bytes.Reader) {
 		}
 	}
 
-	delete(k.tlsInProgress, key)
+	delete(tlsInProgress, key)
 	msgUnix := msgToTLSEventUnix(m.tls, certStrings, errCode, errState)
 
 	/* OR filter together */
