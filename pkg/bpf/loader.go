@@ -417,7 +417,7 @@ int skskb_verdict_loader(const int version,
 			 const char *__prog,
 			 const char *mapdir)
 {
-	char *path = "/sys/fs/bpf/tcpmon/fgs_sock_map";
+	char *path = "/sys/fs/bpf/tcpmon/tls_sock_map";
 	const int type = BPF_PROG_TYPE_SK_SKB;
 	const int attach = BPF_SK_SKB_STREAM_VERDICT;
 
@@ -433,7 +433,7 @@ int skskb_parser_loader(const int version,
 			const char *__prog,
 			const char *mapdir)
 {
-	char *path = "/sys/fs/bpf/tcpmon/fgs_sock_map";
+	char *path = "/sys/fs/bpf/tcpmon/tls_sock_map";
 	const int type = BPF_PROG_TYPE_SK_SKB;
 	const int attach = BPF_SK_SKB_STREAM_PARSER;
 
@@ -449,7 +449,7 @@ int skmsg_loader(const int version,
 		 const char *__prog,
 		 const char *mapdir)
 {
-	char *path = "/sys/fs/bpf/tcpmon/fgs_sock_map";
+	char *path = "/sys/fs/bpf/tcpmon/tls_sock_map";
 	const int type = BPF_PROG_TYPE_SK_MSG;
 	const int attach = BPF_SK_MSG_VERDICT;
 

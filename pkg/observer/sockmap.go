@@ -73,7 +73,7 @@ var (
 
 	/* TLS maps */
 	ObserverTCTLSMap     = BpfMapBuilder("tls_map", "tc_ingress", ObserverTLSTCEgress)
-	ObserverSockMap      = BpfMapBuilder("fgs_sock_map", "sockops", ObserverSockopsEstablished)
+	ObserverSockMap      = BpfMapBuilder("tls_sock_map", "sockops", ObserverSockopsEstablished)
 	ObserverTLSMap       = BpfMapBuilder("tls_map", "skmsg", ObserverSkmsg)
 	ObserverTLSTailCalls = BpfMapBuilder("tls_calls", "tc_ingress", ObserverTLSTCIngress)
 )

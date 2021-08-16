@@ -23,7 +23,7 @@ static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 	struct sock_key key = {};
 
 	sk_extract4_key(skops, &key);
-	sock_hash_update(skops, &fgs_sock_map, &key, BPF_NOEXIST);
+	sock_hash_update(skops, &tls_sock_map, &key, BPF_NOEXIST);
 }
 
 __section("sockops/fgs_sockops")
