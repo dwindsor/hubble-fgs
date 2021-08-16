@@ -186,7 +186,7 @@ func checkOrMountCustomLocation(bpfRoot string) error {
 	// If the custom location has no mount, let's mount BPFFS there.
 	if !mounted {
 		SetMapRoot(bpfRoot)
-		if err := mountFS(mapRoot, "bpf"); err != nil {
+		if err := mountFS(mapRoot, mountinfo.FilesystemTypeBPFFS); err != nil {
 			return err
 		}
 
@@ -270,7 +270,7 @@ func checkOrMountDefaultLocations() error {
 	// If /sys/fs/bpf is not mounted at all, we should mount
 	// BPFFS there.
 	if !mounted {
-		if err := mountFS(mapRoot, "bpf"); err != nil {
+		if err := mountFS(mapRoot, mountinfo.FilesystemTypeBPFFS); err != nil {
 			return err
 		}
 
@@ -300,7 +300,7 @@ func checkOrMountDefaultLocations() error {
 			return err
 		}
 		if !cMounted {
-			if err := mountFS(mapRoot, "bpf"); err != nil {
+			if err := mountFS(mapRoot, mountinfo.FilesystemTypeBPFFS); err != nil {
 				return err
 			}
 		} else if !cBpffsInstance {
