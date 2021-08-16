@@ -10,8 +10,6 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/cilium/cilium/pkg/option"
-	gops "github.com/google/gops/agent"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
@@ -24,6 +22,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/version"
+
+	// Imported to allow sensors to be initialized inside init().
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
+
+	"github.com/cilium/cilium/pkg/option"
+	gops "github.com/google/gops/agent"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"

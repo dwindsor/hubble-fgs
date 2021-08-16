@@ -32,6 +32,9 @@ import (
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+
+	// Imported to allow sensors to be initialized inside init().
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
 type BenchArguments struct {

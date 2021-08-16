@@ -25,15 +25,13 @@ import (
 	"testing"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
+
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -367,157 +365,6 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	TestDone(t, kprobe)
-}
-
-var (
-	curlTlsEvent = &fgs.GetEventsResponse_Tls{
-		Tls: &fgs.Tls{
-			Process: &fgs.Process{
-				Binary:    "curl",
-				Arguments: "https://google.com"},
-			NegotiatedVersion: "TLS1.3",
-			ClientVersion:     "TLS 1.2",
-			ServerVersion:     "TLS 1.2",
-			SniType:           "host_name",
-			SniName:           "www.google.com",
-			ClientFlags:       "ExtVersion",
-			ServerFlags:       "ExtVersion",
-		},
-	}
-
-	tlstc = `
-apiVersion: hubble-enterprise.io/v1
-metadata:
-  name: "tls"
-spec:
-  description: "tls parser spec"
-  parser:
-    tls:
-      enable: true
-      mode: "tc"
-`
-)
-
-func TestTCTls13(t *testing.T) {
-	if kernels.MinKernelVersion("4.19.0") != true {
-		return
-	}
-
-	traceTcTls13 := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://google.com"},
-					Parent: &fgs.Process{Binary: selfBinary},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://google.com"},
-					Parent: &fgs.Process{
-						Binary: selfBinary},
-					DestinationPort: &wrapperspb.UInt32Value{Value: 443},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{Event: curlTlsEvent},
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
-	defer cancel()
-
-	if err := WriteConfigFile(testConfigFile, tlstc); err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
-	}
-
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
-	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
-	}
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
-	ExecWGCurl(&execWG, &exitWG, "https://google.com")
-	ok, err := JsonTestCompare(traceTcTls13, exportFile, jsonRetries, 0)
-	assert.NoError(t, err)
-	assert.True(t, ok)
-	TestDone(t, kprobe)
-}
-
-func TestTCTls12(t *testing.T) {
-	if kernels.MinKernelVersion("4.19.0") != true {
-		return
-	}
-
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
-	defer cancel()
-
-	certs := []string{
-		"CN=*.badssl.com,O=Lucas Garron Torres,L=Walnut Creek,ST=California,C=US",
-		"CN=DigiCert SHA2 Secure Server CA,O=DigiCert Inc,C=US",
-	}
-
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://tls-v1-2.badssl.com:1012/"},
-					Parent: &fgs.Process{Binary: selfBinary},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://tls-v1-2.badssl.com:1012/"},
-					Parent: &fgs.Process{
-						Binary: selfBinary},
-					DestinationPort: &wrapperspb.UInt32Value{Value: 1012},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_Tls{
-				Tls: &fgs.Tls{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://tls-v1-2.badssl.com:1012/"},
-					DestinationPort: &wrapperspb.UInt32Value{Value: 1012},
-					ClientVersion:   "TLS 1.2",
-					ServerVersion:   "TLS 1.2",
-					SniType:         "host_name",
-					SniName:         "tls-v1-2.badssl.com",
-					ClientFlags:     "ExtVersion",
-					ServerFlags:     "",
-					Certificates:    certs,
-				},
-			},
-		},
-	}
-
-	if err := WriteConfigFile(testConfigFile, tlstc); err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
-	}
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
-	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
-	}
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
-	ExecWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
-	assert.NoError(t, err)
-	assert.True(t, ok)
 	TestDone(t, kprobe)
 }
 

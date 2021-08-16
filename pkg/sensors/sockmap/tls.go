@@ -7,33 +7,20 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
-package observer
+
+package sockmap
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
-func parseMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32) error {
-	selectors.WriteSelectorUint32(k, uint32(len(matchPorts)))
-	for _, port := range matchPorts {
-		/* Some byte hackery here because ports are 16bits in packet, but
-		 * we use them as 32bit types (this helps code generation and verifier)
-		 * throughout BPF side. But we swap here to avoid doing the swap on data
-		 * read from sock/packet.
-		 */
-		selectors.WriteSelectorUint32(k, uint32(api.SwapByte(uint16(port))))
-	}
-	return nil
+func parseTLSSelector(k *selectors.KernelSelectorState, s v1alpha1.TlsSelector) error {
+	return utils.ParseMatchPorts(k, s.MatchPorts)
 }
 
-func parseTlsSelector(k *selectors.KernelSelectorState, s v1alpha1.TlsSelector) error {
-	return parseMatchPorts(k, s.MatchPorts)
-}
-
-// ParseTlsSpec parses the input yaml/crd and outputs the kernel selectors
+// ParseTLSSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to run match logic.
 //
 // TLS selector layout is the following.
@@ -41,7 +28,7 @@ func parseTlsSelector(k *selectors.KernelSelectorState, s v1alpha1.TlsSelector) 
 //    OffsetOfEachSelector uint32
 //    #OfMatchPorts        uint32
 //    Port1 .... PortN     uint32, uint32, ...
-func ParseTlsSpec(spec *v1alpha1.TlsSpec) ([128]byte, error) {
+func ParseTLSSpec(spec *v1alpha1.TlsSpec) ([128]byte, error) {
 	var match [128]byte
 	var e [4096]byte
 	k := &selectors.KernelSelectorState{}
@@ -55,7 +42,7 @@ func ParseTlsSpec(spec *v1alpha1.TlsSpec) ([128]byte, error) {
 	for i, s := range spec.Selectors {
 		selectors.WriteSelectorLength(k, soff[i])
 		loff := selectors.AdvanceSelectorLength(k)
-		if err := parseTlsSelector(k, s); err != nil {
+		if err := parseTLSSelector(k, s); err != nil {
 			return match, err
 		}
 		selectors.WriteSelectorLength(k, loff)

@@ -7,8 +7,8 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
-package observer
+
+package sockmap
 
 import (
 	"bytes"
@@ -46,7 +46,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		Mode:      "tc",
 		Selectors: selectors,
 	}
-	b, _ := ParseTlsSpec(&spec)
+	b, _ := ParseTLSSpec(&spec)
 	if bytes.Equal(expected[0:len(expected)], b[0:len(expected)]) == false {
 		t.Errorf("ParseTlsSpec: expected %v bytes %v\n", expected, b[0:len(expected)])
 	}

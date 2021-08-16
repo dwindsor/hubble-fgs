@@ -373,3 +373,7 @@ func WriteConfigFile(fileName, config string) error {
 	}
 	return out.Sync()
 }
+
+func GetDefaultObserverWithLib(t *testing.T, config, lib string) (*ObserverKprobe, error) {
+	return getDefaultObserverWithWatchers(t, withConfig(config), withLib(lib))
+}

@@ -7,9 +7,8 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
 
-package observer
+package http
 
 import (
 	"bytes"
@@ -19,33 +18,35 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"golang.org/x/net/http2"
-	"golang.org/x/net/http2/hpack"
-
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/yalue/native_endian"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 )
 
 var (
-	httpSelectors [128]byte
+	Selectors [128]byte
 
 	// Runtime aggregation of request/response
-	httpAggregate       *lru.Cache
-	httpAggregateEnable bool
-	httpCacheSize       = 1024
+	aggregate       *lru.Cache
+	aggregateEnable bool
+	cacheSize       = 1024
 
 	// Per-connection HTTP2 header decoders. Required to maintain compression state over the
 	// lifetime of the connection.
-	http2Decoders          *lru.Cache
-	http2DecodersCacheSize = 1024
+	decoders2          *lru.Cache
+	decoders2CacheSize = 1024
 )
 
 var (
-	ObserverHttpSkmsg = BpfLoadBuilder(
+	Skmsg = observer.BpfLoadBuilder(
 		"bpf_http.o",
 		"sk_msg",
 		"sk_msg",
@@ -56,7 +57,7 @@ var (
 		true,
 		"http_skmsg")
 
-	ObserverHttpSkSkbParser = BpfLoadBuilder(
+	SkSkbParser = observer.BpfLoadBuilder(
 		"bpf_http_parser.o",
 		"sk_skb",
 		"sk_skb",
@@ -67,7 +68,7 @@ var (
 		true,
 		"sk_skb_parser")
 
-	ObserverHttpSkSkbVerdict = BpfLoadBuilder(
+	SkSkbVerdict = observer.BpfLoadBuilder(
 		"bpf_http_verdict.o",
 		"sk_skb",
 		"sk_skb",
@@ -79,141 +80,141 @@ var (
 		"sk_skb_verdict")
 
 	/* Http maps */
-	httpSockMapName          = "http_sock_map"
-	ObserverHttpSockMap      = BpfMapBuilder(httpSockMapName, "sockops", ObserverSockopsEstablished)
-	ObserverHttpTailCalls    = BpfMapBuilder("http1_calls", "http_skmsg", ObserverHttpSkmsg)
-	ObserverHttpSkbTailCalls = BpfMapBuilder("http1_calls_skb", "sk_skb_verdict", ObserverHttpSkSkbVerdict)
-	ObserverHttpContext      = BpfMapBuilder("http_map", "http_skmsg", ObserverHttpSkmsg)
+	httpSockMapName = "http_sock_map"
+	SockMap         = observer.BpfMapBuilder(httpSockMapName, "sockops", sockops.ObserverSockopsEstablished)
+	TailCalls       = observer.BpfMapBuilder("http1_calls", "http_skmsg", Skmsg)
+	SkbTailCalls    = observer.BpfMapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
+	HTTPContext     = observer.BpfMapBuilder("http_map", "http_skmsg", Skmsg)
 )
 
-type observerHttpSensor struct {
+type sensor struct {
 	name string
 }
 
-func (sockops *observerHttpSensor) LoadProbe(
+func (sockops *sensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
-	load *BpfLoad, version, verbose int,
+	load *observer.BpfLoad, version, verbose int,
 	x64 bool,
 ) (error, int) {
 	path := filepath.Join(mapDir, httpSockMapName)
-	err, i := ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
+	err, i := observer.ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
 	if err != nil {
 		return err, i
 	}
 
-	if skSkbParserRequired() {
-		err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbParser, version, 0, x64, path)
+	if utils.SkSkbParserRequired() {
+		err, i = observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, SkSkbParser, version, 0, x64, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbVerdict, version, 0, x64, path)
+	return observer.ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, SkSkbVerdict, version, 0, x64, path)
 }
 
-func (tls *observerHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
-	return getSensorFromParserPolicy(spec)
+func (tls *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+	return AddHTTPSensor(spec.Parser)
 }
 
-type observerSkSkbVerdictHttpSensor struct {
+type skSkbVerdictSensor struct {
 	name string
 }
 
-func (skSkbVerdict *observerSkSkbVerdictHttpSensor) LoadProbe(
+func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
-	load *BpfLoad,
+	load *observer.BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, httpSockMapName))
+	return observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, httpSockMapName))
 }
 
-func (skmsg *observerSkSkbVerdictHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (skmsg *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
 	return nil, nil
 }
 
-type observerSkSkbParserHttpSensor struct {
+type skSkbParserSensor struct {
 	name string
 }
 
-func (skSkbParser *observerSkSkbParserHttpSensor) LoadProbe(
+func (skSkbParser *skSkbParserSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
-	load *BpfLoad,
+	load *observer.BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, httpSockMapName))
+	return observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, httpSockMapName))
 }
 
-func (skmsg *observerSkSkbParserHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (skmsg *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
 	return nil, nil
 }
 
 func init() {
-	AddHttp()
+	AddHTTP()
 }
 
-func AddHttp() {
+func AddHTTP() {
 	var err error
 
-	httpAggregate, err = lru.New(httpCacheSize)
+	aggregate, err = lru.New(cacheSize)
 	if err != nil {
 		logger.GetLogger().Errorf("HTTP aggregation disabled: %s\n", err)
-		httpAggregateEnable = false
+		aggregateEnable = false
 	} else {
-		httpAggregateEnable = true
+		aggregateEnable = true
 	}
 
-	http2Decoders, err = lru.New(http2DecodersCacheSize)
+	decoders2, err = lru.New(decoders2CacheSize)
 	if err != nil {
 		logger.GetLogger().Fatal(err)
 	}
 
-	skmsg := &observerHttpSensor{
+	skmsg := &sensor{
 		name: "skmsg http sensor",
 	}
 
-	if skSkbParserRequired() {
-		skskbParser := &observerSkSkbParserHttpSensor{
+	if utils.SkSkbParserRequired() {
+		skskbParser := &skSkbParserSensor{
 			name: "skskb parser http sensor",
 		}
-		RegisterProbeType("http_skskb_parser", skskbParser)
+		observer.RegisterProbeType("http_skskb_parser", skskbParser)
 	}
 
-	skskbVerdict := &observerSkSkbVerdictHttpSensor{
+	skskbVerdict := &skSkbVerdictSensor{
 		name: "skskb verdict http sensor",
 	}
-	RegisterProbeType("http_skskb_verdict", skskbVerdict)
+	observer.RegisterProbeType("http_skskb_verdict", skskbVerdict)
 
-	RegisterProbeType("http_skmsg", skmsg)
+	observer.RegisterProbeType("http_skmsg", skmsg)
 
-	RegisterTracingSensorsAtInit(skmsg.name, skmsg)
-	RegisterEventHandlerAtInit(api.MSG_OP_HTTP, handleHttp)
+	observer.RegisterTracingSensorsAtInit(skmsg.name, skmsg)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_HTTP, handleHTTP)
 }
 
 /* Add sensor from CRD */
-func EnableHttpParser() *ObserverSensor {
+func EnableHTTPParser() *observer.ObserverSensor {
 	logger.GetLogger().Infof("Enable HTTP")
 
-	progs := []*BpfLoad{
-		ObserverHttpSkmsg,
-		ObserverHttpSkSkbVerdict,
+	progs := []*observer.BpfLoad{
+		Skmsg,
+		SkSkbVerdict,
 	}
 
-	if skSkbParserRequired() {
-		progs = append(progs, ObserverHttpSkSkbParser)
+	if utils.SkSkbParserRequired() {
+		progs = append(progs, SkSkbParser)
 	}
 
-	maps := []*ObserverMap{
-		ObserverHttpSockMap,
-		ObserverHttpTailCalls,
-		ObserverHttpSkbTailCalls,
-		ObserverHttpContext,
+	maps := []*observer.ObserverMap{
+		SockMap,
+		TailCalls,
+		SkbTailCalls,
+		HTTPContext,
 	}
 
-	return SensorBuilder("__parser_sensors__", progs, maps)
+	return observer.SensorBuilder("__parser_sensors__", progs, maps)
 }
 
-func parseHttpSelector(k *selectors.KernelSelectorState, s v1alpha1.HttpSelector) error {
-	return parseMatchPorts(k, s.MatchPorts)
+func parseHTTPSelector(k *selectors.KernelSelectorState, s v1alpha1.HttpSelector) error {
+	return utils.ParseMatchPorts(k, s.MatchPorts)
 }
 
-// ParseHttpSpec parses the input yaml/crd and outputs the kernel selectors
+// ParseHTTPSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to run match logic.
 //
 // Http selector layout is the following.
@@ -221,21 +222,21 @@ func parseHttpSelector(k *selectors.KernelSelectorState, s v1alpha1.HttpSelector
 //    OffsetOfEachSelector uint32
 //    #OfMatchPorts        uint32
 //    Port1 .... PortN     uint32, uint32, ...
-func ParseHttpSpec(spec *v1alpha1.HttpSpec) ([128]byte, error) {
+func ParseHTTPSpec(spec *v1alpha1.HttpSpec) ([128]byte, error) {
 	var match [128]byte
 	var e [4096]byte
 	k := &selectors.KernelSelectorState{}
 
 	selectors.WriteSelectorUint32(k, uint32(len(spec.Selectors)))
 	soff := make([]uint32, len(spec.Selectors))
-	for i, _ := range spec.Selectors {
+	for i := range spec.Selectors {
 		soff[i] = selectors.AdvanceSelectorLength(k)
 	}
 
 	for i, s := range spec.Selectors {
 		selectors.WriteSelectorLength(k, soff[i])
 		loff := selectors.AdvanceSelectorLength(k)
-		if err := parseHttpSelector(k, s); err != nil {
+		if err := parseHTTPSelector(k, s); err != nil {
 			return match, err
 		}
 		selectors.WriteSelectorLength(k, loff)
@@ -246,50 +247,50 @@ func ParseHttpSpec(spec *v1alpha1.HttpSpec) ([128]byte, error) {
 	return match, nil
 }
 
-func AddHttpSensor(parser v1alpha1.ParserPolicySpec) (*ObserverSensor, error) {
+func AddHTTPSensor(parser v1alpha1.ParserPolicySpec) (*observer.ObserverSensor, error) {
 	var err error
 
 	if !parser.Http.Enable {
 		return nil, nil
 	}
 
-	httpSelectors, err = ParseHttpSpec(&parser.Http)
+	Selectors, err = ParseHTTPSpec(&parser.Http)
 	if err != nil {
 		return nil, err
 	}
-	return EnableHttpParser(), nil
+	return EnableHTTPParser(), nil
 }
 
 var (
-	HttpRequestDone          = uint32(0)
-	HttpRequestUrl           = uint32(1)
-	HttpRequestHost          = uint32(2)
-	HttpRequestProtocol      = uint32(3)
-	HttpRequestUserAgent     = uint32(5)
-	HttpRequestContentLength = uint32(6)
-	HttpRequestUnknown       = uint32(7)
-	HttpResponseProtocol     = uint32(8)
-	HttpResponseCode         = uint32(9)
-	HttpResponseReason       = uint32(10)
-	Http2HeaderFrame         = uint32(11)
+	RequestDone          = uint32(0)
+	RequestURL           = uint32(1)
+	RequestHost          = uint32(2)
+	RequestProtocol      = uint32(3)
+	RequestUserAgent     = uint32(5)
+	RequestContentLength = uint32(6)
+	RequestUnknown       = uint32(7)
+	ResponseProtocol     = uint32(8)
+	ResponseCode         = uint32(9)
+	ResponseReason       = uint32(10)
+	HTTP2HeaderFrame     = uint32(11)
 
-	HttpMethodError    = uint32(0)
-	HttpMethodConnect  = uint32(1)
-	HttpMethodDelete   = uint32(2)
-	HttpMethodGet      = uint32(3)
-	HttpMethodHead     = uint32(4)
-	HttpMethodOptions  = uint32(5)
-	HttpMethodPost     = uint32(6)
-	HttpMethodPut      = uint32(7)
-	HttpMethodPatch    = uint32(8)
-	HttpMethodTrace    = uint32(9)
-	HttpMethodUnknown  = uint32(10)
-	HttpMethodResponse = uint32(11)
-	HttpMethodPri      = uint32(12)
+	MethodError    = uint32(0)
+	MethodConnect  = uint32(1)
+	MethodDelete   = uint32(2)
+	MethodGet      = uint32(3)
+	MethodHead     = uint32(4)
+	MethodOptions  = uint32(5)
+	MethodPost     = uint32(6)
+	MethodPut      = uint32(7)
+	MethodPatch    = uint32(8)
+	MethodTrace    = uint32(9)
+	MethodUnknown  = uint32(10)
+	MethodResponse = uint32(11)
+	MethodPRI      = uint32(12)
 )
 
 /* HTTP Event handler */
-func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
+func msgToHTTPEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 	unix := &api.MsgHttpEventUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
@@ -299,9 +300,9 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
 
 	switch m.Request.Method {
-	case HttpMethodPri:
-		return http2ToHttpEventUnix(m, unix)
-	case HttpMethodResponse:
+	case MethodPRI:
+		return http2ToHTTPEventUnix(m, unix)
+	case MethodResponse:
 		unix.Request.RequestId = m.Request.RespId
 	default:
 		unix.Request.RequestId = m.Request.ReqId
@@ -316,27 +317,27 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 		}
 
 		switch typ {
-		case HttpRequestUrl:
+		case RequestURL:
 			unix.Request.Uri = chunk
-		case HttpRequestProtocol:
+		case RequestProtocol:
 			unix.Request.Protocol = chunk
-		case HttpRequestHost:
+		case RequestHost:
 			unix.Request.Host = chunk
-		case HttpRequestUserAgent:
+		case RequestUserAgent:
 			unix.Request.UserAgent = chunk
-		case HttpRequestContentLength:
-			if m.Request.Method == HttpMethodResponse {
+		case RequestContentLength:
+			if m.Request.Method == MethodResponse {
 				unix.Request.RespContentLength = chunk
 			} else {
 				unix.Request.ContentLength = chunk
 			}
-		case HttpResponseProtocol:
+		case ResponseProtocol:
 			unix.Request.RespVersion = chunk
-		case HttpResponseCode:
+		case ResponseCode:
 			unix.Request.Code = chunk
-		case HttpResponseReason:
+		case ResponseReason:
 			unix.Request.Reason = chunk
-		case HttpRequestUnknown:
+		case RequestUnknown:
 			continue
 		default:
 			return nil, fmt.Errorf("unhandled HTTP payload type: %d", typ)
@@ -356,18 +357,18 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 	}
 
 	// If aggregation is disabled just push events as we see them.
-	if !httpAggregateEnable {
+	if !aggregateEnable {
 		return unix, nil
 	}
 
 	/* If this is not a response then its a request and we need to cache it
 	 * until we get a response so we can merge the request/response.
 	 */
-	if m.Request.Method != HttpMethodResponse {
-		httpAggregate.Add(key, unix)
+	if m.Request.Method != MethodResponse {
+		aggregate.Add(key, unix)
 		return nil, nil
 	} else {
-		entry, ok := httpAggregate.Get(key)
+		entry, ok := aggregate.Get(key)
 		if ok {
 			r := entry.(*api.MsgHttpEventUnix)
 			unix.Request.Method = r.Request.Method
@@ -378,13 +379,13 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 			unix.Request.ContentLength = r.Request.ContentLength
 			unix.Request.Ktime = r.Common.Ktime
 			unix.ProcessKey = r.ProcessKey
-			httpAggregate.Remove(key)
+			aggregate.Remove(key)
 		}
 	}
 	return unix, nil
 }
 
-func http2ToHttpEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) (*api.MsgHttpEventUnix, error) {
+func http2ToHTTPEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) (*api.MsgHttpEventUnix, error) {
 	iter := reader.NewTypedChunkIterator(m.Request.Url[:])
 	emit := false
 
@@ -394,7 +395,7 @@ func http2ToHttpEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) (*api
 			break
 		}
 
-		if typ != Http2HeaderFrame {
+		if typ != HTTP2HeaderFrame {
 			// TODO log error etc.
 			return nil, nil
 		}
@@ -407,7 +408,7 @@ func http2ToHttpEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) (*api
 	}
 }
 
-func handleHttp(r *bytes.Reader) (interface{}, error) {
+func handleHTTP(r *bytes.Reader) (interface{}, error) {
 	var m *api.MsgHttpEvent
 
 	m = &api.MsgHttpEvent{}
@@ -416,7 +417,7 @@ func handleHttp(r *bytes.Reader) (interface{}, error) {
 		return nil, err
 	}
 
-	u, err := msgToHttpEventUnix(m)
+	u, err := msgToHTTPEventUnix(m)
 	if u == nil {
 		return nil, err
 	}
@@ -427,11 +428,11 @@ func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool 
 	r := bytes.NewReader(frameBytes)
 	framer := http2.NewFramer(nil, r)
 
-	if f, ok := http2Decoders.Get(unix.Tuple); ok {
+	if f, ok := decoders2.Get(unix.Tuple); ok {
 		framer.ReadMetaHeaders = f.(*hpack.Decoder)
 	} else {
 		framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
-		http2Decoders.Add(unix.Tuple, framer.ReadMetaHeaders)
+		decoders2.Add(unix.Tuple, framer.ReadMetaHeaders)
 	}
 
 	frame, err := framer.ReadFrame()
@@ -472,10 +473,10 @@ func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool 
 	}
 
 	if isRequest {
-		httpAggregate.Add(key, unix)
+		aggregate.Add(key, unix)
 		return false
 	} else {
-		entry, ok := httpAggregate.Get(key)
+		entry, ok := aggregate.Get(key)
 		if ok {
 			r := entry.(*api.MsgHttpEventUnix)
 			unix.Request.Method = r.Request.Method
@@ -486,7 +487,7 @@ func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool 
 			unix.Request.ContentLength = r.Request.ContentLength
 			unix.Request.Ktime = r.Common.Ktime
 			unix.ProcessKey = r.ProcessKey
-			httpAggregate.Remove(key)
+			aggregate.Remove(key)
 		}
 		return true
 	}
