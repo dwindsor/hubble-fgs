@@ -58,7 +58,7 @@ spec:
 	if err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
-	kprobe, err := getDefaultObserver(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserver(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -104,16 +104,16 @@ spec:
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	fmt.Printf("Calling lseek...\n")
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestKprobeObjectWriteRead(t *testing.T) {
@@ -176,11 +176,11 @@ spec:
 		},
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	_, err = syscall.Write(1, []byte("hello world"))
 	exitWG.Wait()
@@ -188,7 +188,7 @@ spec:
 	ok, err := JsonTestCompare(trace, exportFile, retries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestKprobeObjectRead(t *testing.T) {
@@ -259,11 +259,11 @@ spec:
 			},
 		},
 	}
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	hello := []byte("hello world")
 	n, errno := syscall.Write(fd, hello)
@@ -282,7 +282,7 @@ spec:
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 // __x64_sys_openat trace
@@ -324,11 +324,11 @@ func testKprobeObjectFiltered(t *testing.T,
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	fd2, errno := syscall.Open("/tmp/testfile", syscall.O_RDWR, 0x770)
 	if fd2 < 0 {
@@ -345,7 +345,7 @@ func testKprobeObjectFiltered(t *testing.T,
 	if (invertResult && ok) || (!invertResult && !ok) {
 		t.Fail()
 	}
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestKprobeObjectOpen(t *testing.T) {
@@ -624,18 +624,18 @@ spec:
 		},
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	err = helloIovecWorldWritev()
 	execWG.Wait()
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 var (

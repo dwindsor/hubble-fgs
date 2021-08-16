@@ -24,20 +24,30 @@ import (
 	"testing"
 	"time"
 
+	hubbleV1 "github.com/cilium/hubble/pkg/api/v1"
+	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
+
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 
-	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
 	"gopkg.in/natefinch/lumberjack.v2"
 	corev1 "k8s.io/api/core/v1"
+	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
 	observerTestDir = "/sys/fs/bpf/testObserver/"
 	exportFile      = "/tmp/hubble-fgs.gotest"
 	jsonRetries     = 10
+)
+
+const (
+	dfltVerbosity = 0
 )
 
 type testObserverOptions struct {
@@ -47,6 +57,7 @@ type testObserverOptions struct {
 	crd    bool
 	probes string
 	config string
+	lib    string
 }
 
 type testExporterOptions struct {
@@ -89,6 +100,146 @@ func withCiliumState(s *hubbleCilium.State) testOption {
 	return func(o *testOptions) {
 		o.exporter.ciliumState = s
 	}
+}
+
+func withLib(lib string) testOption {
+	return func(o *testOptions) {
+		o.observer.lib = lib
+	}
+}
+
+func TestDone(t *testing.T, kprobe *ObserverKprobe) {
+	kprobe.RemovePrograms()
+	kprobe.PrintStats()
+}
+
+// Create a fake Cilium state to avoid the events getting delayed due to missing pod info
+func createFakeCiliumState(testPod, testNamespace string) *hubbleCilium.State {
+	s := cilium.GetFakeCiliumState()
+	s.GetEndpointsHandler().UpdateEndpoint(&hubbleV1.Endpoint{
+		ID:           1234,
+		PodName:      testPod,
+		PodNamespace: testNamespace,
+	})
+	return s
+}
+
+// Create a fake K8s watcher to avoid delayed event due to missing pod info
+func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
+	return &fakeK8sWatcher{
+		OnFindPod: func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
+			if containerID == "" {
+				return nil, nil, false
+			}
+
+			container := corev1.ContainerStatus{
+				Name:        containerID,
+				Image:       "image",
+				ImageID:     "id",
+				ContainerID: "docker://" + containerID,
+				State: corev1.ContainerState{
+					Running: &corev1.ContainerStateRunning{
+						StartedAt: v1.Time{
+							Time: time.Unix(1, 2),
+						},
+					},
+				},
+			}
+			pod := corev1.Pod{
+				ObjectMeta: v1.ObjectMeta{
+					Name:      testPod,
+					Namespace: testNamespace,
+				},
+				Status: corev1.PodStatus{
+					ContainerStatuses: []corev1.ContainerStatus{
+						container,
+					},
+				},
+			}
+
+			return &pod, &container, true
+		},
+	}
+}
+
+func newDefaultTestOptions(t *testing.T, opts ...testOption) *testOptions {
+	// default values
+	options := &testOptions{
+		observer: testObserverOptions{
+			tls:    false,
+			tlstc:  false,
+			pretty: false,
+			crd:    false,
+			config: "",
+			lib:    "",
+		},
+		exporter: testExporterOptions{
+			watcher:     fgsGrpc.NewFakeK8sWatcher(nil),
+			ciliumState: cilium.GetFakeCiliumState(),
+		},
+	}
+	// apply user options
+	for _, opt := range opts {
+		opt(options)
+	}
+
+	return options
+}
+
+func newDefaultObserver(t *testing.T, oo *testObserverOptions) *ObserverKprobe {
+	return NewObserverKprobe(observerTestDir,
+		observerTestDir,
+		"", "",
+		oo.config, oo.tls, oo.tlstc, oo.pretty, oo.crd,
+		0)
+}
+
+func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
+	ctx, _ := context.WithCancel(context.Background())
+	o := newDefaultTestOptions(t, opts...)
+
+	HubbleLib = os.Getenv("FGS_LIB")
+	if HubbleLib == "" {
+		HubbleLib = o.observer.lib
+	}
+	procfs := os.Getenv("FGS_PROCFS")
+	if procfs != "" {
+		ProcFS = procfs
+	}
+
+	kprobe := newDefaultObserver(t, &o.observer)
+	if testing.Verbose() {
+		Verbosity = dfltVerbosity
+	}
+
+	if err := btf.InitCachedBTF(HubbleLib, ctx); err != nil {
+		return nil, err
+	}
+
+	loadExporter(t, kprobe, &o.exporter)
+	loadObserver(t, kprobe)
+
+	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
+	kprobe.perfConfig.MapName = observerTestDir + "tcpmon_map"
+	return kprobe, nil
+}
+
+func getDefaultObserverWithWatchers(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
+	const (
+		testPod       = "pod-1"
+		testNamespace = "ns-1"
+	)
+
+	w := createFakeWatcher(testPod, testNamespace)
+	s := createFakeCiliumState(testPod, testNamespace)
+
+	opts = append(opts, withK8sWatcher(w))
+	opts = append(opts, withCiliumState(s))
+	return getDefaultObserver(t, opts...)
+}
+
+func GetDefaultObserverWithFile(t *testing.T, file, lib string) (*ObserverKprobe, error) {
+	return getDefaultObserverWithWatchers(t, withConfig(file), withPretty(), withLib(lib))
 }
 
 func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOptions) error {
@@ -149,7 +300,7 @@ func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
 	kprobe.populateExecve(context.TODO())
 }
 
-func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKprobe, ctx context.Context) {
+func LoopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKprobe, ctx context.Context) {
 	exitWG.Add(1)
 	execWG.Add(1)
 	go func() {
@@ -165,7 +316,7 @@ func loopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKp
 	}()
 }
 
-func execWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
+func ExecWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
 	execWG.Wait()
 	cmd := exec.Command("/usr/bin/curl", args)
 	err := cmd.Run()
@@ -236,7 +387,7 @@ func waitForProcess(process string) error {
 	return fmt.Errorf("process '%s' did not start", process)
 }
 
-func writeConfigFile(fileName, config string) error {
+func WriteConfigFile(fileName, config string) error {
 	out, err := os.Create(fileName)
 	if err != nil {
 		return err

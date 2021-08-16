@@ -28,24 +28,17 @@ import (
 	"testing"
 	"time"
 
-	hubbleV1 "github.com/cilium/hubble/pkg/api/v1"
-	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
-
 	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
-	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
-	corev1 "k8s.io/api/core/v1"
-	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
@@ -63,7 +56,6 @@ func init() {
 	flag.StringVar(&fgsLib, "hubble-lib", "../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
 	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 	flag.IntVar(&verboseLevel, "verbosity-level", 0, "verbosity level of verbose mode. (Requires verbose mode to be enabled.)")
-
 }
 
 func TestMain(m *testing.M) {
@@ -76,67 +68,8 @@ func TestMain(m *testing.M) {
 	os.Exit(exitCode)
 }
 
-func newDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, *testOptions) {
-	// default values
-	options := &testOptions{
-		observer: testObserverOptions{
-			tls:    false,
-			tlstc:  false,
-			pretty: false,
-			crd:    false,
-			config: "",
-		},
-		exporter: testExporterOptions{
-			watcher:     fgsGrpc.NewFakeK8sWatcher(nil),
-			ciliumState: cilium.GetFakeCiliumState(),
-		},
-	}
-	// apply user options
-	for _, opt := range opts {
-		opt(options)
-	}
-
-	oo := &options.observer
-	return NewObserverKprobe(observerTestDir,
-			observerTestDir,
-			"", "",
-			oo.config, oo.tls, oo.tlstc, oo.pretty, oo.crd,
-			0),
-		options
-}
-
-func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
-	ctx, _ := context.WithCancel(context.Background())
-
-	HubbleLib = fgsLib
-	envFgsLib := os.Getenv("FGS_LIB")
-	if envFgsLib != "" {
-		HubbleLib = envFgsLib
-	}
-	procfs := os.Getenv("FGS_PROCFS")
-	if procfs != "" {
-		ProcFS = procfs
-	}
-
-	kprobe, o := newDefaultObserver(t, opts...)
-	if testing.Verbose() {
-		Verbosity = verboseLevel
-	}
-
-	if err := btf.InitCachedBTF(HubbleLib, ctx); err != nil {
-		return nil, err
-	}
-
-	loadExporter(t, kprobe, &o.exporter)
-	loadObserver(t, kprobe)
-
-	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
-	kprobe.perfConfig.MapName = observerTestDir + "tcpmon_map"
-	return kprobe, nil
-}
-
 func TestObjectLoad(t *testing.T) {
-	kprobe, err := getDefaultObserver(t)
+	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -219,11 +152,6 @@ func getMyPid() uint32 {
 	return uint32(os.Getpid())
 }
 
-func testDone(t *testing.T, kprobe *ObserverKprobe) {
-	kprobe.RemovePrograms()
-	kprobe.PrintStats()
-}
-
 func TestConnectEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
@@ -250,16 +178,16 @@ func TestConnectEvent(t *testing.T) {
 			End(),
 	)
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
-	execWGCurl(&execWG, &exitWG, "127.0.0.1")
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	ExecWGCurl(&execWG, &exitWG, "127.0.0.1")
 	err = jsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestExecEventClone(t *testing.T) {
@@ -302,7 +230,7 @@ func TestExecEventClone(t *testing.T) {
 			End(),
 	)
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
@@ -315,7 +243,7 @@ func TestExecEventClone(t *testing.T) {
 	/* Verify KprobeEvent Execve '-e /bin/sh' without clone() */
 	//	kprobe.AttachFilter(&ncExecCloneFilter)
 
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
 	execWG.Wait()
 	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
@@ -333,7 +261,7 @@ func TestExecEventClone(t *testing.T) {
 	}
 	err = jsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestExistingListenEvent(t *testing.T) {
@@ -376,7 +304,7 @@ func TestExistingListenEvent(t *testing.T) {
 	cmdServer.Start()
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserverWithWatchers(t)
+	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
@@ -388,7 +316,7 @@ func TestExistingListenEvent(t *testing.T) {
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestExistingAcceptEvent(t *testing.T) {
@@ -455,11 +383,11 @@ func TestExistingAcceptEvent(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserverWithWatchers(t)
+	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
 	execWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
@@ -478,7 +406,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestExistingRootCWDListenEvent(t *testing.T) {
@@ -528,7 +456,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserverWithWatchers(t)
+	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
@@ -539,7 +467,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 var (
@@ -606,20 +534,20 @@ func TestTCTls13(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	if err := writeConfigFile(testConfigFile, tlstc); err != nil {
+	if err := WriteConfigFile(testConfigFile, tlstc); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
-	execWGCurl(&execWG, &exitWG, "https://google.com")
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	ExecWGCurl(&execWG, &exitWG, "https://google.com")
 	ok, err := JsonTestCompare(traceTcTls13, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestTCTls12(t *testing.T) {
@@ -678,19 +606,19 @@ func TestTCTls12(t *testing.T) {
 		},
 	}
 
-	if err := writeConfigFile(testConfigFile, tlstc); err != nil {
+	if err := WriteConfigFile(testConfigFile, tlstc); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
+	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
-	execWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	ExecWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestListenAcceptClose(t *testing.T) {
@@ -776,11 +704,11 @@ func TestListenAcceptClose(t *testing.T) {
 		*/
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
 	execWG.Wait()
 	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
@@ -799,7 +727,7 @@ func TestListenAcceptClose(t *testing.T) {
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func TestSensorLseekLoad(t *testing.T) {
@@ -817,7 +745,7 @@ func TestSensorLseekLoad(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t)
+	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
@@ -831,7 +759,7 @@ func TestSensorLseekLoad(t *testing.T) {
 		kprobe.RemovePrograms()
 		t.Fatalf("observerLoadSensor error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
@@ -861,7 +789,7 @@ func TestSensorLseekEnable(t *testing.T) {
 		},
 	}
 
-	kprobe, err := getDefaultObserverWithWatchers(t)
+	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
@@ -899,7 +827,7 @@ func TestSensorLseekEnable(t *testing.T) {
 		}
 	}()
 
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
@@ -907,69 +835,6 @@ func TestSensorLseekEnable(t *testing.T) {
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-}
-
-// Create a fake Cilium state to avoid the events getting delayed due to missing pod info
-func createFakeCiliumState(testPod, testNamespace string) *hubbleCilium.State {
-	s := cilium.GetFakeCiliumState()
-	s.GetEndpointsHandler().UpdateEndpoint(&hubbleV1.Endpoint{
-		ID:           1234,
-		PodName:      testPod,
-		PodNamespace: testNamespace,
-	})
-	return s
-}
-
-// Create a fake K8s watcher to avoid delayed event due to missing pod info
-func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
-	return &fakeK8sWatcher{
-		OnFindPod: func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
-			if containerID == "" {
-				return nil, nil, false
-			}
-
-			container := corev1.ContainerStatus{
-				Name:        containerID,
-				Image:       "image",
-				ImageID:     "id",
-				ContainerID: "docker://" + containerID,
-				State: corev1.ContainerState{
-					Running: &corev1.ContainerStateRunning{
-						StartedAt: v1.Time{
-							Time: time.Unix(1, 2),
-						},
-					},
-				},
-			}
-			pod := corev1.Pod{
-				ObjectMeta: v1.ObjectMeta{
-					Name:      testPod,
-					Namespace: testNamespace,
-				},
-				Status: corev1.PodStatus{
-					ContainerStatuses: []corev1.ContainerStatus{
-						container,
-					},
-				},
-			}
-
-			return &pod, &container, true
-		},
-	}
-}
-
-func getDefaultObserverWithWatchers(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
-	const (
-		testPod       = "pod-1"
-		testNamespace = "ns-1"
-	)
-
-	w := createFakeWatcher(testPod, testNamespace)
-	s := createFakeCiliumState(testPod, testNamespace)
-
-	opts = append(opts, withK8sWatcher(w))
-	opts = append(opts, withCiliumState(s))
-	return getDefaultObserver(t, opts...)
 }
 
 func TestDockerListenConnect(t *testing.T) {
@@ -982,11 +847,11 @@ func TestDockerListenConnect(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	var serverDockerID, clientDockerID string
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
 	execWG.Wait()
 	serverDockerID = dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
@@ -1072,7 +937,7 @@ func TestDockerListenConnect(t *testing.T) {
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }
 
 func Test_msgToExecveUnix(t *testing.T) {
@@ -1115,11 +980,11 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	/* Create kprobe */
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty())
+	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	loopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -1172,5 +1037,5 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, kprobe)
+	TestDone(t, kprobe)
 }

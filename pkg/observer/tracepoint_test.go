@@ -42,7 +42,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 	}
 
 	// initialize observer
-	observer, err := getDefaultObserverWithWatchers(t)
+	observer, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -93,7 +93,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 		},
 	}
 
-	loopEvents(t, &exitWG, &execWG, observer, ctx)
+	LoopEvents(t, &exitWG, &execWG, observer, ctx)
 	execWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
@@ -102,7 +102,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 	ok, err := JsonTestCompare(trace, exportFile, retries, 0)
 	assert.NoError(t, err)
 	assert.True(t, ok)
-	testDone(t, observer)
+	TestDone(t, observer)
 }
 
 func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, selfOp func(), checkFn func(*fgs.ProcessTracepoint) error) {
@@ -136,7 +136,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		conf.Selectors = make([]v1alpha1.KProbeSelector, 1)
 	}
 	conf.Selectors[0].MatchPIDs = append(conf.Selectors[0].MatchPIDs, pidSelector)
-	observer, err := getDefaultObserverWithWatchers(t)
+	observer, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -172,7 +172,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	}()
 
 	var exitWG, execWG sync.WaitGroup
-	loopEvents(t, &exitWG, &execWG, observer, ctx)
+	LoopEvents(t, &exitWG, &execWG, observer, ctx)
 	execWG.Wait()
 	selfOp()
 	exitWG.Wait()
@@ -213,7 +213,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		t.Fail()
 	}
 
-	testDone(t, observer)
+	TestDone(t, observer)
 }
 
 func TestGenericTracepointPidFilterLseek(t *testing.T) {
