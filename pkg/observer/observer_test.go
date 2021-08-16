@@ -542,22 +542,6 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	testDone(t, kprobe)
 }
 
-func TestLoadTCTls(t *testing.T) {
-	if kernels.MinKernelVersion("4.19.0") != true {
-		return
-	}
-	tlsConfig := []byte(tlstc)
-	err := ioutil.WriteFile(testConfigFile, tlsConfig, 0644)
-	if err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
-	}
-	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile))
-	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
-	}
-	testDone(t, kprobe)
-}
-
 var (
 	curlTlsEvent = &fgs.GetEventsResponse_Tls{
 		Tls: &fgs.Tls{
