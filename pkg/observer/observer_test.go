@@ -87,10 +87,15 @@ func TestObjectLoad(t *testing.T) {
 func removeMountPoint(dir string) string {
 	var accum string
 
+	infos, err := mountinfo.GetMountInfo()
+	if err != nil {
+		return ""
+	}
+
 	dirs := strings.Split(dir, "/")
 	for _, i := range dirs {
 		accum += "/" + i
-		pt, _, err := mountinfo.IsMountFS("", accum)
+		pt, _ := mountinfo.IsMountFS(infos, "", accum)
 		if err != nil || pt == true {
 			accum = ""
 		}

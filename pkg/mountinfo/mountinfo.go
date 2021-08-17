@@ -149,12 +149,6 @@ func isMountFS(mountInfos []*MountInfo, mntType string, mapRoot string) (bool, b
 // IsMountFS returns two boolean values:checks whether the current mapRoot:
 // - whether the current mapRoot has any mount
 // - whether that mount's filesystem is of type mntType
-func IsMountFS(mntType string, mapRoot string) (bool, bool, error) {
-	mountInfos, err := GetMountInfo()
-	if err != nil {
-		return false, false, err
-	}
-
-	mounted, mntTypeInstance := isMountFS(mountInfos, mntType, mapRoot)
-	return mounted, mntTypeInstance, nil
+func IsMountFS(infos []*MountInfo, mntType string, mapRoot string) (bool, bool) {
+	return isMountFS(infos, mntType, mapRoot)
 }

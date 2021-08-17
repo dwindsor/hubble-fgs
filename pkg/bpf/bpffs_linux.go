@@ -177,11 +177,13 @@ func hasMultipleMounts() (bool, error) {
 func checkOrMountCustomLocation(bpfRoot string) error {
 	SetMapRoot(bpfRoot)
 
-	// Check whether the custom location has a BPFFS mount.
-	mounted, bpffsInstance, err := mountinfo.IsMountFS(mountinfo.FilesystemTypeBPFFS, bpfRoot)
+	infos, err := mountinfo.GetMountInfo()
 	if err != nil {
 		return err
 	}
+
+	// Check whether the custom location has a BPFFS mount.
+	mounted, bpffsInstance := mountinfo.IsMountFS(infos, mountinfo.FilesystemTypeBPFFS, bpfRoot)
 
 	// If the custom location has no mount, let's mount BPFFS there.
 	if !mounted {
@@ -205,11 +207,13 @@ func checkOrMountCustomLocation(bpfRoot string) error {
 }
 
 func checkOrMountDebugFSDefaultLocations() error {
-	// Check whether /sys/fs/bpf has a BPFFS mount.
-	mounted, debugfsInstance, err := mountinfo.IsMountFS(mountinfo.FilesystemTypeDebugFS, debugFSRoot)
+	infos, err := mountinfo.GetMountInfo()
 	if err != nil {
 		return err
 	}
+
+	// Check whether /sys/fs/bpf has a BPFFS mount.
+	mounted, debugfsInstance := mountinfo.IsMountFS(infos, mountinfo.FilesystemTypeDebugFS, debugFSRoot)
 
 	// If /sys/kernel/debug is not mounted at all, we should mount
 	// DebugFS there.
@@ -227,11 +231,13 @@ func checkOrMountDebugFSDefaultLocations() error {
 }
 
 func checkOrMountCgroupDefaultLocation() error {
-	// Check whether /run/hubble-fgs/cgroup2 has a mount.
-	mounted, cgroupInstance, err := mountinfo.IsMountFS(mountinfo.FilesystemTypeCgroup2, cgroup2Root)
+	infos, err := mountinfo.GetMountInfo()
 	if err != nil {
 		return err
 	}
+
+	// Check whether /run/hubble-fgs/cgroup2 has a mount.
+	mounted, cgroupInstance := mountinfo.IsMountFS(infos, mountinfo.FilesystemTypeCgroup2, cgroup2Root)
 
 	// If /run/hubble-fgs/cgroup2/ is not mounted at all, we should mount
 	// cgroup2 there.
@@ -261,11 +267,13 @@ func checkOrMountCgroupDefaultLocation() error {
 //    from host, but host doesn't have proper BPFFS mount, so that mount is just
 //    the empty directory. In that case, mount BPFFS under /run/cilium/bpffs.
 func checkOrMountDefaultLocations() error {
-	// Check whether /sys/fs/bpf has a BPFFS mount.
-	mounted, bpffsInstance, err := mountinfo.IsMountFS(mountinfo.FilesystemTypeBPFFS, mapRoot)
+	infos, err := mountinfo.GetMountInfo()
 	if err != nil {
 		return err
 	}
+
+	// Check whether /sys/fs/bpf has a BPFFS mount.
+	mounted, bpffsInstance := mountinfo.IsMountFS(infos, mountinfo.FilesystemTypeBPFFS, mapRoot)
 
 	// If /sys/fs/bpf is not mounted at all, we should mount
 	// BPFFS there.
@@ -295,10 +303,12 @@ func checkOrMountDefaultLocations() error {
 		)
 		SetMapRoot(defaults.DefaultMapRootFallback)
 
-		cMounted, cBpffsInstance, err := mountinfo.IsMountFS(mountinfo.FilesystemTypeBPFFS, mapRoot)
+		infos, err = mountinfo.GetMountInfo()
 		if err != nil {
 			return err
 		}
+
+		cMounted, cBpffsInstance := mountinfo.IsMountFS(infos, mountinfo.FilesystemTypeBPFFS, mapRoot)
 		if !cMounted {
 			if err := mountFS(mapRoot, mountinfo.FilesystemTypeBPFFS); err != nil {
 				return err
