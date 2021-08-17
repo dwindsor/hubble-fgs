@@ -5,121 +5,77 @@ import (
 	"os"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 var (
-	ObserverSockopsEstablished = BpfLoad{
+	ObserverSockopsEstablished = BpfLoadBuilder(
 		"bpf_sockops.o",
 		"sockops",
 		"sockops",
 		"sockops/fgs_sockops",
 		"sockops_fgs_sockops",
-
 		false,
 		true,
-		"sockops",
-		bpfLoadStateIdle(),
+		"sockops")
 
-		-1,
-
-		struct{}{},
-	}
-
-	ObserverSkmsg = BpfLoad{
+	ObserverSkmsg = BpfLoadBuilder(
 		"bpf_skmsg.o",
 		"sk_msg",
 		"sk_msg",
 		"sk_msg/fgs",
 		"sk_msg_fgs",
-
 		false,
 		true,
-		"skmsg",
-		bpfLoadStateIdle(),
+		"skmsg")
 
-		-1,
-
-		struct{}{},
-	}
-
-	ObserverSkSkbVerdict = BpfLoad{
+	ObserverSkSkbVerdict = BpfLoadBuilder(
 		"bpf_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb",
 		"sk_skb_verdict/fgs",
 		"sk_skb_verdict_fgs",
-
 		false,
 		true,
-		"sk_skb_verdict",
-		bpfLoadStateIdle(),
+		"sk_skb_verdict")
 
-		-1,
-
-		struct{}{},
-	}
-
-	ObserverSkSkbParser = BpfLoad{
+	ObserverSkSkbParser = BpfLoadBuilder(
 		"bpf_skskb_parser.o",
 		"sk_skb",
 		"sk_skb",
 		"sk_skb_parser/fgs",
 		"sk_skb_parser_fgs",
-
 		false,
 		true,
-		"sk_skb_parser",
-		bpfLoadStateIdle(),
+		"sk_skb_parser")
 
-		-1,
-
-		struct{}{},
-	}
-
-	ObserverTLSTCIngress = BpfLoad{
+	ObserverTLSTCIngress = BpfLoadBuilder(
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
 		"ingress_tcp",
 		"classifier/ingress_tcp",
 		"classifier_ingress_tcp",
-
 		false,
 		true,
-		"tc_ingress",
-		bpfLoadStateIdle(),
+		"tc_ingress")
 
-		-1,
-
-		struct{}{},
-	}
-
-	ObserverTLSTCEgress = BpfLoad{
+	ObserverTLSTCEgress = BpfLoadBuilder(
 		"bpf_tc_egress.o",
 		"egress_tcp",
 		"egress_tcp",
 		"tc/egress_tcp",
 		"tc_egress_tcp",
-
 		false,
 		true,
-		"tc_egress",
-		bpfLoadStateIdle(),
-
-		-1,
-
-		struct{}{},
-	}
+		"tc_egress")
 
 	/* TLS maps */
-	ObserverTCTLSMap     = ObserverMap{"tls_map", "tc_ingress", &ObserverTLSTCEgress, bpfLoadStateIdle(), -1}
-	ObserverSockMap      = ObserverMap{"fgs_sock_map", "sockops", &ObserverSockopsEstablished, bpfLoadStateIdle(), -1}
-	ObserverTLSMap       = ObserverMap{"tls_map", "skmsg", &ObserverSkmsg, bpfLoadStateIdle(), -1}
-	ObserverTLSTailCalls = ObserverMap{"tls_calls", "tc_ingress", &ObserverTLSTCIngress, bpfLoadStateIdle(), -1}
+	ObserverTCTLSMap     = BpfMapBuilder("tls_map", "tc_ingress", ObserverTLSTCEgress)
+	ObserverSockMap      = BpfMapBuilder("fgs_sock_map", "sockops", ObserverSockopsEstablished)
+	ObserverTLSMap       = BpfMapBuilder("tls_map", "skmsg", ObserverSkmsg)
+	ObserverTLSTailCalls = BpfMapBuilder("tls_calls", "tc_ingresl", ObserverTLSTCIngress)
 )
 
 type observerTlsSensor struct {
@@ -134,12 +90,7 @@ func (sockops *observerSockopsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	return bpf.LoadSockopsProgram(version, Verbosity, btfObj,
-		load.Observer__program,
-		load.observer__label,
-		bpfDir+load.observer__prog,
-		mapDir)
+	return ObserverLoadSockops(bpfDir, mapDir, ciliumDir, load, version, 0, x64)
 }
 
 func (tls *observerSockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -154,14 +105,7 @@ func (skmsg *observerSkmsgTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	return bpf.LoadSkmsgProgram(
-		version, Verbosity,
-		btfObj,
-		load.Observer__program,
-		load.observer__label,
-		bpfDir+load.observer__prog,
-		mapDir)
+	return ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64)
 }
 
 func (skmsg *observerSkmsgTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -176,14 +120,7 @@ func (skSkbVerdict *observerSkSkbVerdictTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	return bpf.LoadSkSkbVerdictProgram(
-		version, Verbosity,
-		btfObj,
-		load.Observer__program,
-		load.observer__label,
-		bpfDir+load.observer__prog,
-		mapDir)
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64)
 }
 
 func (skmsg *observerSkSkbVerdictTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -198,14 +135,7 @@ func (skSkbParser *observerSkSkbParserTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	return bpf.LoadSkSkbParserProgram(
-		version, Verbosity,
-		btfObj,
-		load.Observer__program,
-		load.observer__label,
-		bpfDir+load.observer__prog,
-		mapDir)
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64)
 }
 
 func (skmsg *observerSkSkbParserTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -253,36 +183,32 @@ func EnableTlsParser(tls, tc bool) *ObserverSensor {
 	if tls {
 		logger.GetLogger().Infof("Enable TLS")
 		progs = append(progs,
-			&ObserverSockopsEstablished,
-			&ObserverSkmsg,
-			&ObserverSkSkbVerdict,
-			&ObserverSkSkbParser,
+			ObserverSockopsEstablished,
+			ObserverSkmsg,
+			ObserverSkSkbVerdict,
+			ObserverSkSkbParser,
 		)
 
 		maps = append(maps,
-			&ObserverSockMap,
-			&ObserverTLSMap,
+			ObserverSockMap,
+			ObserverTLSMap,
 		)
 	}
 
 	if tc {
 		logger.GetLogger().Infof("Enable TLS TC")
 		progs = append(progs,
-			&ObserverTLSTCEgress,
-			&ObserverTLSTCIngress,
+			ObserverTLSTCEgress,
+			ObserverTLSTCIngress,
 		)
 
 		maps = append(maps,
-			&ObserverTCTLSMap,
-			&ObserverTLSTailCalls,
+			ObserverTCTLSMap,
+			ObserverTLSTailCalls,
 		)
 	}
 
-	return &ObserverSensor{
-		name:  "__parser_sensors__",
-		progs: progs,
-		maps:  maps,
-	}
+	return SensorBuilder("__parser_sensors__", progs, maps)
 }
 
 func addParserSensors(parser v1alpha1.ParserPolicySpec) (*ObserverSensor, error) {
@@ -317,7 +243,7 @@ func (tls *observerTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return observerLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity)
+	return ObserverLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity)
 }
 
 func getSensorFromParserPolicyString(yaml string) (*ObserverSensor, error) {

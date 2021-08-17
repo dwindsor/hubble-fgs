@@ -478,7 +478,65 @@ func getDefaultRouteLinks() ([]netlink.Link, error) {
 	return links, nil
 }
 
-func observerLoadTC(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verbosity int) (error, int) {
+func ObserverLoadSkmsg(
+	bpfDir, mapDir, ciliumDir string,
+	load *BpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+
+	return bpf.LoadSkmsgProgram(
+		version, Verbosity,
+		btfObj,
+		load.Observer__program,
+		load.observer__label,
+		bpfDir+load.observer__prog,
+		mapDir)
+}
+
+func ObserverLoadSkSkbVerdict(
+	bpfDir, mapDir, ciliumDir string,
+	load *BpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+
+	return bpf.LoadSkSkbVerdictProgram(
+		version, Verbosity,
+		btfObj,
+		load.Observer__program,
+		load.observer__label,
+		bpfDir+load.observer__prog,
+		mapDir)
+}
+
+func ObserverLoadSkSkb(
+	bpfDir, mapDir, ciliumDir string,
+	load *BpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+
+	return bpf.LoadSkSkbParserProgram(
+		version, Verbosity,
+		btfObj,
+		load.Observer__program,
+		load.observer__label,
+		bpfDir+load.observer__prog,
+		mapDir)
+}
+
+func ObserverLoadSockops(
+	bpfDir, mapDir, ciliumDir string,
+	load *BpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+
+	return bpf.LoadSockopsProgram(version, Verbosity, btfObj,
+		load.Observer__program,
+		load.observer__label,
+		bpfDir+load.observer__prog,
+		mapDir)
+}
+
+func ObserverLoadTC(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verbosity int) (error, int) {
 	var attachLinks []netlink.Link
 
 	btfObj := uintptr(btf.GetCachedBTF())
