@@ -16,7 +16,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 )
 
-func parseTlsMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32) error {
+func parseMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32) error {
 	selectors.WriteSelectorUint32(k, uint32(len(matchPorts)))
 	for _, port := range matchPorts {
 		/* Some byte hackery here because ports are 16bits in packet, but
@@ -30,7 +30,7 @@ func parseTlsMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32) e
 }
 
 func parseTlsSelector(k *selectors.KernelSelectorState, s v1alpha1.TlsSelector) error {
-	return parseTlsMatchPorts(k, s.MatchPorts)
+	return parseMatchPorts(k, s.MatchPorts)
 }
 
 // ParseTlsSpec parses the input yaml/crd and outputs the kernel selectors

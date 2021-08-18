@@ -298,6 +298,19 @@ func BpfMapBuilder(name, ty string, ld *BpfLoad) *ObserverMap {
 	return &ObserverMap{name, ty, ld, bpfLoadStateIdle(), -1}
 }
 
+func SensorCombine(name string, a, b *ObserverSensor) *ObserverSensor {
+	if a != nil && b != nil {
+		progs := append(a.progs, b.progs...)
+		maps := append(a.maps, b.maps...)
+		return SensorBuilder(name, progs, maps)
+	} else if a != nil {
+		return a
+	} else if b != nil {
+		return b
+	}
+	return nil
+}
+
 func SensorBuilder(name string, p []*BpfLoad, m []*ObserverMap) *ObserverSensor {
 	return &ObserverSensor{
 		name:  name,

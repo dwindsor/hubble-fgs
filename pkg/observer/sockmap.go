@@ -94,7 +94,7 @@ func (sockops *observerSockopsSensor) LoadProbe(
 }
 
 func (tls *observerSockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
-	return nil, nil
+	return getSensorFromParserPolicy(spec)
 }
 
 type observerSkmsgTlsSensor struct {
@@ -220,6 +220,18 @@ func EnableTlsParser(tls, tc bool) *ObserverSensor {
 }
 
 func addParserSensors(parser v1alpha1.ParserPolicySpec) (*ObserverSensor, error) {
+	tls, err := addTlsSensor(parser)
+	if err != nil {
+		return nil, err
+	}
+	http, err := AddHttpSensor(parser)
+	if err != nil {
+		return nil, err
+	}
+	return SensorCombine("__parser_sensors__", http, tls), nil
+}
+
+func addTlsSensor(parser v1alpha1.ParserPolicySpec) (*ObserverSensor, error) {
 	var err error
 
 	enableTls := false
@@ -250,7 +262,7 @@ func getSensorFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*ObserverSenso
 }
 
 func (tls *observerTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
-	return getSensorFromParserPolicy(spec)
+	return nil, nil
 }
 
 func (tls *observerTlsSensor) LoadProbe(

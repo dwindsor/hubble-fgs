@@ -79,6 +79,8 @@ const (
 	// MSG_OP_TCPSTATS event report socket stats for TCP sockets.
 	MSG_OP_IPV4_TCPSTATS = 15
 
+	MSG_OP_HTTP = 16
+
 	// just for testing
 	MSG_OP_TEST = 254
 )
@@ -437,6 +439,18 @@ type MsgTLSEventUnix struct {
 	ServerHello MsgTLS
 	ServerCert  MsgTLSCertificates
 	ProcessKey  MsgExecveKey
+}
+
+type MsgHttpEventUnix struct {
+	Common     MsgCommon
+	Tuple      MsgIPv4Tuple
+	ProcessKey MsgExecveKey
+}
+
+type MsgHttpEvent struct {
+	Common     MsgCommon
+	Tuple      MsgIPv4Tuple
+	ProcessKey MsgExecveKey
 }
 
 type MsgExitEvent struct {
