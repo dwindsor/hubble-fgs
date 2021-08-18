@@ -180,10 +180,27 @@ type TlsSpec struct {
 	Selectors []TlsSelector `json:"selectors"`
 }
 
+type HttpSelector struct {
+	// +kubebuilder:validation:Optional
+	// A list of ports to match. Ports are ORd.
+	MatchPorts []uint32 `json:"matchPorts"`
+}
+
+type HttpSpec struct {
+	// Http enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Selectors to apply TLS parser against. Selectors are ORed.
+	Selectors []HttpSelector `json:"selectors"`
+}
+
 type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A Tls specs.
 	Tls TlsSpec `json:"tls"`
+	// +kubebuilder:validation:Optional
+	// A Http spec.
+	Http HttpSpec `json:"http"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
