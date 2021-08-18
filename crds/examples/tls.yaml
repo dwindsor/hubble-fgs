@@ -15,4 +15,5 @@ spec:
       enable: true
       selectors:
       - matchports:
+        - 8080
         - 80

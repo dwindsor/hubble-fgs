@@ -90,7 +90,7 @@ int fgs_map_loader(const int version,
 	obj = bpf_object__open(prog);
 	err = libbpf_get_error(obj);
 	if (err) {
-		fprintf(stderr, "bpf_object__open: %i %s\n", err, prog);
+		fprintf(stderr, "fgs_map_loader: bpf_object__open: %i %s\n", err, prog);
 		return err;
 	}
 
@@ -125,20 +125,20 @@ int fgs_map_loader(const int version,
 	err = bpf_map__pin(map_bpf, __map);
 	if (err < 0) {
 		fprintf(stderr,
-		       "bpf_map__pin: failed obj(%s) map(%s) %i\n",
-		       prog, __label_map, err);
+			"fgs_map_loader: bpf_map__pin: failed obj(%s) map(%s) pin(%s) %i\n",
+		       prog, __label_map, __map,  err);
 		goto cleanup;
 	}
 	map_fd = bpf_map__fd(map_bpf);
 	if (map_fd < 0) {
 		fprintf(stderr,
-			"bpf_map__fd: failed obj(%s) map(%s) %i\n",
+			"fgs_map_loader: bpf_map__fd: failed obj(%s) map(%s) %i\n",
 			prog, __label_map, err);
 	}
 	err = bpf_object__unload(obj);
 	if (err < 0) {
 		fprintf(stderr,
-			"bpf_objecT__unload: failed obj(%s) map(%s) %i\n",
+			"fgs_map_loader: bpf_object__unload: failed obj(%s) map(%s) %i\n",
 			prog, __label_map, err);
 	}
 	close(map_fd);
@@ -446,9 +446,9 @@ int skskb_verdict_loader(const int version,
 			 const char *prog,
 			 const char *label,
 			 const char *__prog,
-			 const char *mapdir)
+			 const char *mapdir,
+			 char *path)
 {
-	char *path = "/sys/fs/bpf/tcpmon/tls_sock_map";
 	const int type = BPF_PROG_TYPE_SK_SKB;
 	const int attach = BPF_SK_SKB_STREAM_VERDICT;
 
@@ -462,9 +462,9 @@ int skskb_parser_loader(const int version,
 			const char *prog,
 			const char *label,
 			const char *__prog,
-			const char *mapdir)
+			const char *mapdir,
+			char *path)
 {
-	char *path = "/sys/fs/bpf/tcpmon/tls_sock_map";
 	const int type = BPF_PROG_TYPE_SK_SKB;
 	const int attach = BPF_SK_SKB_STREAM_PARSER;
 
@@ -478,9 +478,9 @@ int skmsg_loader(const int version,
 		 const char *prog,
 		 const char *label,
 		 const char *__prog,
-		 const char *mapdir)
+		 const char *mapdir,
+		 char *path)
 {
-	char *path = "/sys/fs/bpf/tcpmon/tls_sock_map";
 	const int type = BPF_PROG_TYPE_SK_MSG;
 	const int attach = BPF_SK_MSG_VERDICT;
 
@@ -909,14 +909,15 @@ func LoadCgroupProgram(__version, __verbosity int, btf uintptr, object, __label,
 	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
 
-func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
+func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	loader_fd := C.skmsg_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir)
+	path := C.CString(__path)
+	loader_fd := C.skmsg_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, path)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to skmsg load: %d %s", loaderInt, object), 0
@@ -931,7 +932,8 @@ func LoadSkSkbVerdictProgram(__version, __verbosity int, btf uintptr, object, __
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	loader_fd := C.skskb_verdict_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir)
+	path := C.CString("/sys/fs/bpf/tcpmon/tls_sock_map")
+	loader_fd := C.skskb_verdict_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, path)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to skskb load: %d %s", loaderInt, object), 0
@@ -946,7 +948,8 @@ func LoadSkSkbParserProgram(__version, __verbosity int, btf uintptr, object, __l
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	loader_fd := C.skskb_parser_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir)
+	path := C.CString("/sys/fs/bpf/tcpmon/tls_sock_map")
+	loader_fd := C.skskb_parser_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, path)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to skskb load: %d %s", loaderInt, object), 0

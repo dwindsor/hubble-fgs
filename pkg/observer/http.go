@@ -16,8 +16,6 @@ import (
 	"encoding/binary"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
@@ -51,10 +49,8 @@ func (sockops *observerHttpSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	program, label, prog := GetBpfLoad(load)
-	dir := bpfDir + prog
-	return bpf.LoadSkmsgProgram(version, Verbosity, btfObj, program, label, dir, mapDir)
+	path := "/sys/fs/bpf/tcpmon/http_sock_map"
+	return ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
 }
 
 func (tls *observerHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {

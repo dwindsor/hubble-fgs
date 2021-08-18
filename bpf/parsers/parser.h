@@ -373,3 +373,13 @@ int large_ctx_copy(
 	to = to + offset;
 	return pkt_copy(to, data_end, data, copy);
 }
+
+#ifdef SK_MSG
+static inline __attribute__((always_inline))
+void msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key) {
+	key->daddr = msg->remote_ip4;
+	key->saddr = msg->local_ip4;
+	key->dport = msg->sk->dst_port;
+	key->sport = msg->sk->src_port;
+}
+#endif
