@@ -90,7 +90,7 @@ func (sockops *observerSockopsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSockops(bpfDir, mapDir, ciliumDir, load, version, 0, x64, tlsSelectors)
+	return ObserverLoadSockops(bpfDir, mapDir, ciliumDir, load, version, 0, x64, tlsSelectors, httpSelectors)
 }
 
 func (tls *observerSockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {

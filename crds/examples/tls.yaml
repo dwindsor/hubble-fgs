@@ -11,3 +11,8 @@ spec:
       - matchports:
         - 443
         - 993
+    http:
+      enable: true
+      selectors:
+      - matchports:
+        - 80

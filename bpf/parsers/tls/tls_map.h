@@ -39,15 +39,22 @@ void del_tlsmap(struct msg_tls_ipv4 *tuple)
 		*cntr = *cntr - 1;
 }
 
-struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
+struct bpf_map_def __attribute__((section("maps"), used)) tls_filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = 128,
 	.max_entries = 1,
 };
 
-#define TLS_SKIP  0
-#define TLS_TRACK 1
+struct bpf_map_def __attribute__((section("maps"), used)) http_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 128,
+	.max_entries = 1,
+};
+
+#define PROTO_SKIP  0
+#define PROTO_TRACK 1
 
 #define TLS_MAX_PORTS 10
 #define TLS_MAX_SELECTORS 2
@@ -69,14 +76,9 @@ struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 }
 
 static inline __attribute__((always_inline))
-int tls_filter(struct sock_key *key) {
-	int i, zero = 0;
+int map_key_filter(u8 *filter, struct sock_key *key) {
 	__u32 selectors;
-	u8 *filter;
-
-	filter = map_lookup_elem(&filter_map, &zero);
-	if (!filter)
-		return TLS_TRACK;
+	int i;
 
 	/* Supports upto 10 selectors any more and we simply
 	 * mark it as tracked so we fail open. Userspace should
@@ -112,9 +114,33 @@ int tls_filter(struct sock_key *key) {
 		DO_TLS_PORT_FILTER
 	}
 skip:
-	return TLS_SKIP;
+	return PROTO_SKIP;
 track:
-	return TLS_TRACK;
+	return PROTO_TRACK;
+}
+
+static inline __attribute__((always_inline))
+int tls_filter(struct sock_key *key) {
+	int zero = 0;
+	u8 *filter;
+
+	filter = map_lookup_elem(&tls_filter_map, &zero);
+	if (!filter)
+		return PROTO_TRACK;
+
+	return map_key_filter(filter, key);
+}
+
+static inline __attribute__((always_inline))
+int http_filter(struct sock_key *key) {
+	int zero = 0;
+	u8 *filter;
+
+	filter = map_lookup_elem(&http_filter_map, &zero);
+	if (!filter)
+		return PROTO_TRACK;
+
+	return map_key_filter(filter, key);
 }
 
 #endif

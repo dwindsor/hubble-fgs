@@ -7,7 +7,8 @@ struct sock_key {
 	__u32 sport;
 } __attribute__((packed));
 
-#define SOCKOPS_MAP_SIZE 65535
+#define SOCKOPS_TLS_MAP_SIZE 65535
+#define SOCKOPS_HTTP_MAP_SIZE 2000
 #define AF_INET 2
 
 #define BPF_NOEXIST 1
@@ -41,7 +42,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_sock_map = {
 	.type           = BPF_MAP_TYPE_SOCKHASH,
 	.key_size       = sizeof(struct sock_key),
 	.value_size     = sizeof(int),
-	.max_entries	= SOCKOPS_MAP_SIZE,
+	.max_entries	= SOCKOPS_TLS_MAP_SIZE,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) http_sock_map = {
+	.type           = BPF_MAP_TYPE_SOCKHASH,
+	.key_size       = sizeof(struct sock_key),
+	.value_size     = sizeof(int),
+	.max_entries	= SOCKOPS_HTTP_MAP_SIZE,
 };
 
 __attribute__((unused))

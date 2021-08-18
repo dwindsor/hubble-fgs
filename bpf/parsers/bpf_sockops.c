@@ -24,9 +24,11 @@ static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 	struct sock_key key = {};
 
 	sk_extract4_key(skops, &key);
-	if (tls_filter(&key) == TLS_TRACK) {
+	if (tls_filter(&key) == PROTO_TRACK) {
 		sock_hash_update(skops, &tls_sock_map, &key, BPF_NOEXIST);
 	}
+	if (http_filter(&key) == PROTO_TRACK)
+		sock_hash_update(skops, &http_sock_map, &key, BPF_NOEXIST);
 }
 
 __section("sockops/fgs_sockops")

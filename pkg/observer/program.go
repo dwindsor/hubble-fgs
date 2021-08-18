@@ -541,7 +541,8 @@ func ObserverLoadSockops(
 	load *BpfLoad,
 	version, verbose int,
 	x64 bool,
-	filters [128]byte) (error, int) {
+	tls_filters [128]byte,
+	http_filters [128]byte) (error, int) {
 	btfObj := uintptr(btf.GetCachedBTF())
 
 	return bpf.LoadSockopsProgram(version, Verbosity, btfObj,
@@ -549,7 +550,7 @@ func ObserverLoadSockops(
 		load.observer__label,
 		bpfDir+load.observer__prog,
 		mapDir,
-		filters)
+		tls_filters, http_filters)
 }
 
 func ObserverLoadTC(bpfDir, mapDir, ciliumDir string,
