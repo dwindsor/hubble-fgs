@@ -75,7 +75,7 @@ var (
 	ObserverTCTLSMap     = BpfMapBuilder("tls_map", "tc_ingress", ObserverTLSTCEgress)
 	ObserverSockMap      = BpfMapBuilder("fgs_sock_map", "sockops", ObserverSockopsEstablished)
 	ObserverTLSMap       = BpfMapBuilder("tls_map", "skmsg", ObserverSkmsg)
-	ObserverTLSTailCalls = BpfMapBuilder("tls_calls", "tc_ingresl", ObserverTLSTCIngress)
+	ObserverTLSTailCalls = BpfMapBuilder("tls_calls", "tc_ingress", ObserverTLSTCIngress)
 )
 
 type observerTlsSensor struct {
@@ -105,7 +105,15 @@ func (skmsg *observerSkmsgTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64)
+	err, i := ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64)
+	if err != nil {
+		return err, i
+	}
+	err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverSkSkbParser, version, 0, x64)
+	if err != nil {
+		return err, i
+	}
+	return ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, ObserverSkSkbVerdict, version, 0, x64)
 }
 
 func (skmsg *observerSkmsgTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
