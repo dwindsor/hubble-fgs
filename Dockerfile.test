@@ -1,8 +1,8 @@
 FROM quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2 as bpf-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
-COPY . ./
 RUN apt update
 RUN apt install -y linux-libc-dev
+COPY . ./
 RUN make hubble-bpf && pwd
 
 FROM quay.io/isovalent/hubble-libbpf:v0.2.2 as hubble-libbpf
