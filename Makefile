@@ -30,11 +30,11 @@ hubble-bpf: hubble-bpf-container
 endif
 
 hubble-bpf-local:
-	make -C ./bpf
+	$(MAKE) -C ./bpf
 
 hubble-bpf-container:
 	docker rm hubble-llvm || true
-	docker run -v $(CURDIR):/hubble-fgs -u $$(id -u)  --name hubble-llvm $(CLANG_IMAGE) make -C /hubble-fgs/bpf
+	docker run -v $(CURDIR):/hubble-fgs -u $$(id -u)  --name hubble-llvm $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf
 	docker rm hubble-llvm
 
 hubble-fgs:
@@ -63,7 +63,7 @@ install:
 	$(INSTALL) -m 0755 ./hubble-fgs $(DESTDIR)$(BINDIR)
 
 clean:
-	make -C ./bpf clean
+	$(MAKE) -C ./bpf clean
 	rm -f go-tests/*.test
 
 .PHONY: fgs-bench
