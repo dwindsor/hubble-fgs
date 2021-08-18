@@ -2357,6 +2357,479 @@ var _ interface {
 	ErrorName() string
 } = TlsValidationError{}
 
+// Validate checks the field values on HttpHeader with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *HttpHeader) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	// no validation rules for Name
+
+	// no validation rules for Value
+
+	return nil
+}
+
+// HttpHeaderValidationError is the validation error returned by
+// HttpHeader.Validate if the designated constraints aren't met.
+type HttpHeaderValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e HttpHeaderValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e HttpHeaderValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e HttpHeaderValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e HttpHeaderValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e HttpHeaderValidationError) ErrorName() string { return "HttpHeaderValidationError" }
+
+// Error satisfies the builtin error interface
+func (e HttpHeaderValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sHttpHeader.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = HttpHeaderValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = HttpHeaderValidationError{}
+
+// Validate checks the field values on HttpRequest with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *HttpRequest) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetTimestamp()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HttpRequestValidationError{
+				field:  "Timestamp",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for Method
+
+	// no validation rules for Uri
+
+	// no validation rules for Version
+
+	// no validation rules for Host
+
+	// no validation rules for Agent
+
+	if v, ok := interface{}(m.GetContentLength()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HttpRequestValidationError{
+				field:  "ContentLength",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	for idx, item := range m.GetHeaders() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return HttpRequestValidationError{
+					field:  fmt.Sprintf("Headers[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// HttpRequestValidationError is the validation error returned by
+// HttpRequest.Validate if the designated constraints aren't met.
+type HttpRequestValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e HttpRequestValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e HttpRequestValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e HttpRequestValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e HttpRequestValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e HttpRequestValidationError) ErrorName() string { return "HttpRequestValidationError" }
+
+// Error satisfies the builtin error interface
+func (e HttpRequestValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sHttpRequest.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = HttpRequestValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = HttpRequestValidationError{}
+
+// Validate checks the field values on HttpResponse with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *HttpResponse) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetTimestamp()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HttpResponseValidationError{
+				field:  "Timestamp",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	// no validation rules for Version
+
+	// no validation rules for Code
+
+	// no validation rules for Reason
+
+	if v, ok := interface{}(m.GetContentLength()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HttpResponseValidationError{
+				field:  "ContentLength",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	for idx, item := range m.GetHeaders() {
+		_, _ = idx, item
+
+		if v, ok := interface{}(item).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return HttpResponseValidationError{
+					field:  fmt.Sprintf("Headers[%v]", idx),
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	}
+
+	return nil
+}
+
+// HttpResponseValidationError is the validation error returned by
+// HttpResponse.Validate if the designated constraints aren't met.
+type HttpResponseValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e HttpResponseValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e HttpResponseValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e HttpResponseValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e HttpResponseValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e HttpResponseValidationError) ErrorName() string { return "HttpResponseValidationError" }
+
+// Error satisfies the builtin error interface
+func (e HttpResponseValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sHttpResponse.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = HttpResponseValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = HttpResponseValidationError{}
+
+// Validate checks the field values on HttpInfo with the rules defined in the
+// proto definition for this message. If any rules are violated, an error is returned.
+func (m *HttpInfo) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetRequest()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HttpInfoValidationError{
+				field:  "Request",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetResponse()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HttpInfoValidationError{
+				field:  "Response",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetLatency()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return HttpInfoValidationError{
+				field:  "Latency",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// HttpInfoValidationError is the validation error returned by
+// HttpInfo.Validate if the designated constraints aren't met.
+type HttpInfoValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e HttpInfoValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e HttpInfoValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e HttpInfoValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e HttpInfoValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e HttpInfoValidationError) ErrorName() string { return "HttpInfoValidationError" }
+
+// Error satisfies the builtin error interface
+func (e HttpInfoValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sHttpInfo.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = HttpInfoValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = HttpInfoValidationError{}
+
+// Validate checks the field values on ProcessHttp with the rules defined in
+// the proto definition for this message. If any rules are violated, an error
+// is returned.
+func (m *ProcessHttp) Validate() error {
+	if m == nil {
+		return nil
+	}
+
+	if v, ok := interface{}(m.GetProcess()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessHttpValidationError{
+				field:  "Process",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetSocket()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessHttpValidationError{
+				field:  "Socket",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	if v, ok := interface{}(m.GetHttp()).(interface{ Validate() error }); ok {
+		if err := v.Validate(); err != nil {
+			return ProcessHttpValidationError{
+				field:  "Http",
+				reason: "embedded message failed validation",
+				cause:  err,
+			}
+		}
+	}
+
+	return nil
+}
+
+// ProcessHttpValidationError is the validation error returned by
+// ProcessHttp.Validate if the designated constraints aren't met.
+type ProcessHttpValidationError struct {
+	field  string
+	reason string
+	cause  error
+	key    bool
+}
+
+// Field function returns field value.
+func (e ProcessHttpValidationError) Field() string { return e.field }
+
+// Reason function returns reason value.
+func (e ProcessHttpValidationError) Reason() string { return e.reason }
+
+// Cause function returns cause value.
+func (e ProcessHttpValidationError) Cause() error { return e.cause }
+
+// Key function returns key value.
+func (e ProcessHttpValidationError) Key() bool { return e.key }
+
+// ErrorName returns error name.
+func (e ProcessHttpValidationError) ErrorName() string { return "ProcessHttpValidationError" }
+
+// Error satisfies the builtin error interface
+func (e ProcessHttpValidationError) Error() string {
+	cause := ""
+	if e.cause != nil {
+		cause = fmt.Sprintf(" | caused by: %v", e.cause)
+	}
+
+	key := ""
+	if e.key {
+		key = "key for "
+	}
+
+	return fmt.Sprintf(
+		"invalid %sProcessHttp.%s: %s%s",
+		key,
+		e.field,
+		e.reason,
+		cause)
+}
+
+var _ error = ProcessHttpValidationError{}
+
+var _ interface {
+	Field() string
+	Reason() string
+	Key() bool
+	Cause() error
+	ErrorName() string
+} = ProcessHttpValidationError{}
+
 // Validate checks the field values on StackAddress with the rules defined in
 // the proto definition for this message. If any rules are violated, an error
 // is returned.
@@ -4771,6 +5244,18 @@ func (m *GetEventsResponse) Validate() error {
 			if err := v.Validate(); err != nil {
 				return GetEventsResponseValidationError{
 					field:  "ProcessSockstats",
+					reason: "embedded message failed validation",
+					cause:  err,
+				}
+			}
+		}
+
+	case *GetEventsResponse_ProcessHttp:
+
+		if v, ok := interface{}(m.GetProcessHttp()).(interface{ Validate() error }); ok {
+			if err := v.Validate(); err != nil {
+				return GetEventsResponseValidationError{
+					field:  "ProcessHttp",
 					reason: "embedded message failed validation",
 					cause:  err,
 				}

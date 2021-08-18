@@ -273,6 +273,45 @@ message Tls {
     uint32 parser_state_skblen = 24;
 }
 
+/*
+ * HTTP PARSER
+ */
+message HttpHeader {
+   string name  = 1;
+   string value = 2;
+}
+
+message HttpRequest {
+   google.protobuf.Timestamp timestamp = 1;
+   string method               = 2;
+   string uri                  = 3;
+   string version              = 4;
+   string host                 = 5;
+   string agent                = 6;
+   google.protobuf.UInt32Value content_length = 7;
+   repeated HttpHeader headers = 8;
+}
+
+message HttpResponse {
+   google.protobuf.Timestamp timestamp = 1;
+   string version               = 2;
+   uint32 code                  = 3;
+   string reason                = 4;
+   google.protobuf.UInt32Value content_length = 5;
+   repeated HttpHeader headers  = 6;
+}
+
+message HttpInfo {
+   HttpRequest request              = 1;
+   HttpResponse response            = 2;
+   google.protobuf.Duration latency = 3;
+}
+
+message ProcessHttp {
+    Process process = 1;
+    SockInfo socket = 2;
+    HttpInfo http   = 3;
+}
 
 /**
  * Stack traces
@@ -464,6 +503,7 @@ message GetEventsResponse {
         ProcessKprobe process_kprobe = 9;
         ProcessTracepoint process_tracepoint = 10;
         ProcessSockStats process_sockstats = 11;
+        ProcessHttp process_http = 12;
 
         Test test = 40000;
     }
@@ -494,6 +534,7 @@ enum EventType {
 	PROCESS_KPROBE = 13;
 	PROCESS_TRACEPOINT = 14;
 	PROCESS_SOCKSTATS = 15;
+	PROCESS_HTTP = 16;
 
 	TEST = 254;
 }
