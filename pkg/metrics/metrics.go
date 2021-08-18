@@ -204,6 +204,8 @@ func handleProcessedEvent(processedEvent interface{}) {
 			eventType = fgs.EventType_PROCESS_EXEC.String()
 		case *fgs.GetEventsResponse_ProcessListen:
 			eventType = fgs.EventType_PROCESS_LISTEN.String()
+		case *fgs.GetEventsResponse_ProcessHttp:
+			eventType = fgs.EventType_PROCESS_HTTP.String()
 		case *fgs.GetEventsResponse_Tls:
 			eventType = fgs.EventType_PROCESS_TLS.String()
 		case *fgs.GetEventsResponse_ProcessExit:

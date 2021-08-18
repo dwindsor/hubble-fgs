@@ -68,6 +68,8 @@ func (f *EventTypeFilter) OnBuildFilter(_ context.Context, ff *fgs.Filter) ([]hu
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_Test{})
 			case api.MSG_OP_GENERIC_KPROBE:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessKprobe{})
+			case api.MSG_OP_HTTP:
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessHttp{})
 			default:
 				return nil, fmt.Errorf("Unknown EventType %s", s)
 			}

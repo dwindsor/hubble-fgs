@@ -121,6 +121,64 @@ func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEve
 	return res
 }
 
+func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHttp {
+	var proc *fgs.Process
+
+	processID := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processInt, err := pm.cache.get(processID)
+	if err != nil {
+		pm.log.WithField("id in HTTP event", processID).Debug("process not found in cache")
+	} else {
+		proc = processInt.process
+
+	}
+	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
+
+	fgsHttpRequest := &fgs.HttpRequest{
+		Timestamp: ktimeToProto(event.Common.Ktime),
+		Method:    event.Request.Method,
+		Uri:       event.Request.Uri,
+		Version:   event.Request.Protocol,
+		Host:      event.Request.Host,
+		Agent:     event.Request.UserAgent,
+	}
+	fgsHttpResponse := &fgs.HttpResponse{} // TBD
+	fgsHttp := &fgs.HttpInfo{
+		Request:  fgsHttpRequest,
+		Response: fgsHttpResponse,
+	}
+
+	fgsEvent := &fgs.ProcessHttp{
+		Process: proc,
+		Socket:  fgsTuple,
+		Http:    fgsHttp,
+	}
+
+	if proc == nil || (proc.Docker != "" && proc.Pod == nil) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
+	}
+	return fgsEvent
+}
+
+func (pm *ProcessManager) handleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_HTTP:
+		t := pm.GetHttp(msg)
+		if t != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: t},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
+		}
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
 func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
@@ -441,6 +499,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		// pass
 	case *api.MsgTLSEventUnix:
 		processedEvent = pm.handleTLSMessage(msg)
+	case *api.MsgHttpEventUnix:
+		processedEvent = pm.handleHttpMessage(msg)
 	case *api.MsgExecveEventUnix:
 		processedEvent = pm.handleExecveMessage(msg)
 	case *api.MsgIPv4TcpEventUnix:
@@ -930,29 +990,33 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	return fgsEvent
 }
 
-func (pm *ProcessManager) getProcessTuple(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.SockInfo {
+func (pm *ProcessManager) __getProcessTuple(tuple *fgsAPI.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo {
 	var sourcePort, destinationPort *wrappers.UInt32Value
 
-	if event.Tuple.SPort != 0 {
+	if tuple.SPort != 0 {
 		sourcePort = &wrappers.UInt32Value{
-			Value: uint32(reader.GetSport(event.Tuple.SPort)),
+			Value: uint32(reader.GetSport(tuple.SPort)),
 		}
 	}
-	if event.Tuple.DPort != 0 {
+	if tuple.DPort != 0 {
 		destinationPort = &wrappers.UInt32Value{
-			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
+			Value: uint32(fgsAPI.SwapByte(tuple.DPort)),
 		}
 	}
 
-	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
+	destinationIP := reader.GetIP(tuple.DAddr, op)
 
 	return &fgs.SockInfo{
 		SourcePort:      sourcePort,
-		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourceIp:        reader.GetIP(tuple.SAddr, op).String(),
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
-		SockCookie:      event.SockCookie,
+		SockCookie:      cookie,
 	}
+}
+
+func (pm *ProcessManager) getProcessTuple(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.SockInfo {
+	return pm.__getProcessTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 }
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.

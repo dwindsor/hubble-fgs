@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 )
 
@@ -138,13 +139,51 @@ func AddHttpSensor(parser v1alpha1.ParserPolicySpec) (*ObserverSensor, error) {
 	return EnableHttpParser(), nil
 }
 
+var (
+	HttpRequestDone          = uint32(0)
+	HttpRequestUrl           = uint32(1)
+	HttpRequestHost          = uint32(2)
+	HttpRequestProtocol      = uint32(3)
+	HttpRequestUserAgent     = uint32(5)
+	HttpRequestContentLength = uint32(6)
+	HttpRequestUnknown       = uint32(7)
+)
+
 /* HTTP Event handler */
 func msgToHttpEventUnix(m *api.MsgHttpEvent) *api.MsgHttpEventUnix {
-	return &api.MsgHttpEventUnix{
+	unix := &api.MsgHttpEventUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
 		ProcessKey: m.ProcessKey,
 	}
+
+	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
+
+	offset := uint32(0)
+	ty := uint32(m.Request.Url[offset])
+
+	for ty != 0 {
+		sz := uint32(m.Request.Url[offset+4])
+
+		start := 8 + offset
+		end := 8 + offset + sz
+
+		switch ty {
+		case HttpRequestUrl:
+			unix.Request.Uri = string(m.Request.Url[start:end])
+		case HttpRequestProtocol:
+			unix.Request.Protocol = string(m.Request.Url[start:end])
+		case HttpRequestHost:
+			unix.Request.Host = string(m.Request.Url[start:end])
+		case HttpRequestUserAgent:
+			unix.Request.UserAgent = string(m.Request.Url[start:end])
+		case HttpRequestContentLength:
+			unix.Request.ContentLength = string(m.Request.Url[start:end])
+		}
+		offset += sz + 8
+		ty = uint32(m.Request.Url[offset])
+	}
+	return unix
 }
 
 func handleHttp(r *bytes.Reader) (interface{}, error) {

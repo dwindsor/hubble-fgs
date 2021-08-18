@@ -122,6 +122,8 @@ func GetProcess(event *v1.Event) *fgs.Process {
 			return res.ProcessAccept.Process
 		case *fgs.GetEventsResponse_ProcessKprobe:
 			return res.ProcessKprobe.Process
+		case *fgs.GetEventsResponse_ProcessHttp:
+			return res.ProcessHttp.Process
 		default:
 			return (*fgs.Process)(nil)
 		}

@@ -441,16 +441,40 @@ type MsgTLSEventUnix struct {
 	ProcessKey  MsgExecveKey
 }
 
+const (
+	HTTP_METHOD_POST = 1
+	HTTP_METHOD_GET  = 2
+)
+
+type MsgHttpUnix struct {
+	Method        string
+	Uri           string
+	Host          string
+	Protocol      string
+	UserAgent     string
+	ContentLength string
+}
+
+type MsgHttp struct {
+	Method uint32
+	Url    [256]byte
+	Pad1   uint32
+	Pad2   uint32
+	Pad3   uint32
+}
+
 type MsgHttpEventUnix struct {
 	Common     MsgCommon
 	Tuple      MsgIPv4Tuple
 	ProcessKey MsgExecveKey
+	Request    MsgHttpUnix
 }
 
 type MsgHttpEvent struct {
 	Common     MsgCommon
 	Tuple      MsgIPv4Tuple
 	ProcessKey MsgExecveKey
+	Request    MsgHttp
 }
 
 type MsgExitEvent struct {
