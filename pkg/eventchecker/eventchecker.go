@@ -19,6 +19,11 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+// NB(kkourt): this package is in a somewhat unstable state since I'm
+// experimenting with different approaches and tradeoffs. Once its interface
+// stabilizes somewhat, I'd like to investigate generating code directly from
+// the protbuf descriptions via a protoc plugin.
+
 // ResponseChecker checks a single response
 type ResponseChecker interface {
 	// Check checks a single response.
@@ -372,6 +377,18 @@ func NewCloseEventChecker() *eventChainChecker {
 	return &eventChainChecker{
 		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_CLOSE)
+		},
+		eventCheck: func(ev fgsEvent, l Logger) error {
+			return nil
+		},
+	}
+}
+
+// NewTlsEventChecker creates a new eventChainChecker for TLS events
+func NewTlsEventChecker() *eventChainChecker {
+	return &eventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+			return checkEvent(r, l, fgs.EventType_PROCESS_TLS)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -1032,4 +1049,229 @@ func (o *ContainerCheckerAND) WithImageName(arg StringArg) *ContainerCheckerAND 
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ContainerWithImageName(sm))
 	return o
+}
+
+type TlsChecker interface {
+	// Check checks a TLS event
+	Check(*fgs.Tls, Logger) error
+}
+
+type TlsCheckerFn func(*fgs.Tls, Logger) error
+
+func (f TlsCheckerFn) Check(c *fgs.Tls, log Logger) error {
+	return f(c, log)
+}
+
+func tlsWithString(
+	sm StringMatcher,
+	getter func(*fgs.Tls) string,
+	desc string, // desc is used for helpful error messages
+) TlsChecker {
+	matcher := sm.GetMatcher()
+	return TlsCheckerFn(func(t *fgs.Tls, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("tls is nil and cannot match %s using %v", desc, sm)
+		}
+		s := getter(t)
+		if err := matcher(s); err != nil {
+			return fmt.Errorf("failed tls check on %s: %w", desc, err)
+		}
+		log.Logf("**** MATCH tls on %s: %s", desc, s)
+		return nil
+	})
+}
+
+// TlsWithNegotiatedVersion matches the NegotiatedVersion field
+func TlsWithNegotiatedVersion(sm StringMatcher) TlsChecker {
+	return tlsWithString(
+		sm,
+		func(t *fgs.Tls) string {
+			return t.NegotiatedVersion
+		},
+		"NegotiatedVersion",
+	)
+}
+
+// TlsWithClientVersion matches the ClientVersion field
+func TlsWithClientVersion(sm StringMatcher) TlsChecker {
+	return tlsWithString(
+		sm,
+		func(t *fgs.Tls) string {
+			return t.ClientVersion
+		},
+		"ClientVersion",
+	)
+}
+
+// TlsWithServerVersion matches the ServerVersion field
+func TlsWithServerVersion(sm StringMatcher) TlsChecker {
+	return tlsWithString(
+		sm,
+		func(t *fgs.Tls) string {
+			return t.ServerVersion
+		},
+		"ServerVersion",
+	)
+}
+
+// TlsWithSniType matches the SniType field
+func TlsWithSniType(sm StringMatcher) TlsChecker {
+	return tlsWithString(
+		sm,
+		func(t *fgs.Tls) string {
+			return t.SniType
+		},
+		"SniType",
+	)
+}
+
+// TlsWithSniName matches the SniName field
+func TlsWithSniName(sm StringMatcher) TlsChecker {
+	return tlsWithString(
+		sm,
+		func(t *fgs.Tls) string {
+			return t.SniName
+		},
+		"SniName",
+	)
+}
+
+// TlsWithClientFlags matches the ClientFlags field
+func TlsWithClientFlags(sm StringMatcher) TlsChecker {
+	return tlsWithString(
+		sm,
+		func(t *fgs.Tls) string {
+			return t.ClientFlags
+		},
+		"ClientFlags",
+	)
+}
+
+// TlsWithServerFlags matches the ServerFlags field
+func TlsWithServerFlags(sm StringMatcher) TlsChecker {
+	return tlsWithString(
+		sm,
+		func(t *fgs.Tls) string {
+			return t.ServerFlags
+		},
+		"ServerFlags",
+	)
+}
+
+// TlsWithCertificates matches the Certificates field
+// NB: eventually we might want other type of matches for matching a list such
+// as subset checks, but for now we check that the elemnts of the lists match
+// one-by-one.
+func TlsWithCertificates(matchers []StringMatcher) TlsChecker {
+	return TlsCheckerFn(func(t *fgs.Tls, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("tls is nil and cannot match matchers: %+v", matchers)
+		}
+
+		if len(t.Certificates) != len(matchers) {
+			return fmt.Errorf("failed to match tls certificates of length %d to matchers: %+v", len(t.Certificates), matchers)
+		}
+
+		for i := range t.Certificates {
+			matcher := matchers[i].GetMatcher()
+			cert := t.Certificates[i]
+			if err := matcher(cert); err != nil {
+				return fmt.Errorf("failed check certificate %s (idx=%d): %w", cert, i, err)
+			}
+		}
+
+		log.Logf("**** MATCH tls certificates: %s", t.Certificates)
+		return nil
+	})
+}
+
+type TlsCheckerAND struct {
+	checks []TlsChecker
+}
+
+func NewTlsChecker() *TlsCheckerAND {
+	return &TlsCheckerAND{}
+}
+
+func (o *TlsCheckerAND) Check(t *fgs.Tls, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(t, l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WithNegotiatedVersion ads a NegotiatedVersion chekc to a Tls checker
+func (o *TlsCheckerAND) WithNegotiatedVersion(arg StringArg) *TlsCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, TlsWithNegotiatedVersion(sm))
+	return o
+}
+
+// WithClientVersion ads a ClientVersion chekc to a Tls checker
+func (o *TlsCheckerAND) WithClientVersion(arg StringArg) *TlsCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, TlsWithClientVersion(sm))
+	return o
+}
+
+// WithServerVersion ads a ServerVersion chekc to a Tls checker
+func (o *TlsCheckerAND) WithServerVersion(arg StringArg) *TlsCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, TlsWithServerVersion(sm))
+	return o
+}
+
+// WithSniType ads a SniType chekc to a Tls checker
+func (o *TlsCheckerAND) WithSniType(arg StringArg) *TlsCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, TlsWithSniType(sm))
+	return o
+}
+
+// WithSniName ads a SniName chekc to a Tls checker
+func (o *TlsCheckerAND) WithSniName(arg StringArg) *TlsCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, TlsWithSniName(sm))
+	return o
+}
+
+// WithClientFlags ads a ClientFlags chekc to a Tls checker
+func (o *TlsCheckerAND) WithClientFlags(arg StringArg) *TlsCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, TlsWithClientFlags(sm))
+	return o
+}
+
+// WithServerFlags ads a ServerFlags chekc to a Tls checker
+func (o *TlsCheckerAND) WithServerFlags(arg StringArg) *TlsCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, TlsWithServerFlags(sm))
+	return o
+}
+
+func (o *TlsCheckerAND) WithCertificates(args []StringArg) *TlsCheckerAND {
+	matchers := make([]StringMatcher, len(args))
+	for i := range args {
+		matchers[i] = stringMatcherFromArg(args[i])
+	}
+	o.checks = append(o.checks, TlsWithCertificates(matchers))
+	return o
+}
+
+func (e *eventChainChecker) HasTls(tlscheck TlsChecker) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+
+		if tlsEv, ok := e.(*fgs.Tls); ok {
+			return tlscheck.Check(tlsEv, l)
+		}
+		return fmt.Errorf("event has type %T: not a tls event", e)
+
+	}
+	return e
 }
