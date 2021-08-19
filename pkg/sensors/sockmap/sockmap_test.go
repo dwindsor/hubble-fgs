@@ -20,14 +20,12 @@ import (
 	"testing"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
 	"github.com/stretchr/testify/assert"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -138,52 +136,37 @@ func TestTCTLS12(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	certs := []string{
-		"CN=*.badssl.com,O=Lucas Garron Torres,L=Walnut Creek,ST=California,C=US",
-		"CN=DigiCert SHA2 Secure Server CA,O=DigiCert Inc,C=US",
-	}
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	curlChecker := ec.ProcessWithCommand(
+		ec.SuffixStringMatch("curl"), ec.FullStringMatch("https://tls-v1-2.badssl.com:1012/"),
+	)
+	tlsCh := ec.NewTlsChecker().
+		WithClientVersion("TLS 1.2").
+		WithServerVersion("TLS 1.2").
+		WithSniType("host_name").
+		WithSniName("tls-v1-2.badssl.com").
+		WithClientFlags("ExtVersion").
+		WithServerFlags("").
+		WithCertificates([]ec.StringArg{
+			"CN=*.badssl.com,O=Lucas Garron Torres,L=Walnut Creek,ST=California,C=US",
+			"CN=DigiCert SHA2 Secure Server CA,O=DigiCert Inc,C=US",
+		})
 
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://tls-v1-2.badssl.com:1012/"},
-					Parent: &fgs.Process{Binary: selfBinary},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://tls-v1-2.badssl.com:1012/"},
-					Parent: &fgs.Process{
-						Binary: selfBinary},
-					DestinationPort: &wrapperspb.UInt32Value{Value: 1012},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_Tls{
-				Tls: &fgs.Tls{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://tls-v1-2.badssl.com:1012/"},
-					DestinationPort: &wrapperspb.UInt32Value{Value: 1012},
-					ClientVersion:   "TLS 1.2",
-					ServerVersion:   "TLS 1.2",
-					SniType:         "host_name",
-					SniName:         "tls-v1-2.badssl.com",
-					ClientFlags:     "ExtVersion",
-					ServerFlags:     "",
-					Certificates:    certs,
-				},
-			},
-		},
-	}
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			End(),
+		ec.NewConnectEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			HasDstPort(1012).
+			End(),
+		ec.NewTlsEventChecker().
+			HasProcess(curlChecker).
+			HasTls(tlsCh).
+			End(),
+	)
 
 	if err := observer.WriteConfigFile(testConfigFile, tlstc); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
