@@ -28,6 +28,16 @@ To run image in docker,
 
 ## Testing
 
+### Dependencies to compile / run / test FGS locally
+
+Run
+
+    make tools-install
+
+Then you can proceed to the below instructions.
+
+---
+
 To build a docker image for running go tests, (note below 'docker run' pulls
 in current code directory this just gets us golang and some tools needed to
 run hubble-fgs go tests)
