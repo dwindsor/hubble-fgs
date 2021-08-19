@@ -87,7 +87,7 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench lib/libbpf.so.0
 
 test:
-	$(GO) test $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover $$(go list $(GOFLAGS) ./...)
+	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./...
 
 test-compile:
 	mkdir -p go-tests
