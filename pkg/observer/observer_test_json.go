@@ -553,7 +553,7 @@ func JsonCheck(jsonFile *os.File, checker ec.MultiResponseChecker, log ec.Logger
 	return nil
 }
 
-func jsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) error {
+func JsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) error {
 	var err error
 	if jsonFile == nil {
 		fmt.Printf("jsonTestIterate: openning: %s\n", exportFile)

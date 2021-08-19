@@ -190,7 +190,7 @@ func TestConnectEvent(t *testing.T) {
 
 	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	ExecWGCurl(&execWG, &exitWG, "127.0.0.1")
-	err = jsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 	TestDone(t, kprobe)
 }
@@ -264,7 +264,7 @@ func TestExecEventClone(t *testing.T) {
 	if cmdClient != nil {
 		cmdClient.Process.Kill()
 	}
-	err = jsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 	TestDone(t, kprobe)
 }

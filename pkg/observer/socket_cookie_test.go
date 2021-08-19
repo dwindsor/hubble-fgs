@@ -123,7 +123,7 @@ func TestSocketCookie(t *testing.T) {
 	}
 	exitWG.Wait()
 
-	if err := jsonTestCheck(t, nil, checker); err != nil {
+	if err := JsonTestCheck(t, nil, checker); err != nil {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}
