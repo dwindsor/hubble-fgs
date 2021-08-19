@@ -1,6 +1,12 @@
 #ifndef _HTTP_PARSER_
 #define _HTTP_PARSER_
 
+#include "hubble_msg.h"
+#include "bpf_events.h"
+#include "../bpf_sockops.h"
+#include "../parser.h"
+#include "http.h"
+
 struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
@@ -30,7 +36,7 @@ static inline __attribute__((always_inline))
 char *get_chars(ctx_md *msg, long offset, long cnt)
 {
 	void *data_end = (void *)(long)msg->data_end;
-	void *payload = msg->data;
+	void *payload = (void *)(long)msg->data;
 
 	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
 	asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);

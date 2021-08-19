@@ -13,11 +13,6 @@ struct bpf_map_def {
 
 #define SK_MSG
 
-#include "hubble_msg.h"
-#include "bpf_events.h"
-#include "../bpf_sockops.h"
-#include "../parser.h"
-#include "http.h"
 #include "http_parser.h"
 
 __attribute__((section(("sk_msg/fgs")), used))
