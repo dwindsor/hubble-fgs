@@ -64,7 +64,7 @@ install:
 
 clean:
 	$(MAKE) -C ./bpf clean
-	rm -f go-tests/*.test
+	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs
 
 .PHONY: fgs-bench
 fgs-bench:
