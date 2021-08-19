@@ -110,11 +110,11 @@ func (skmsg *observerSkmsgTlsSensor) LoadProbe(
 	if err != nil {
 		return err, i
 	}
-	err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverSkSkbParser, version, 0, x64)
+	err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverSkSkbParser, version, 0, x64, path)
 	if err != nil {
 		return err, i
 	}
-	return ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, ObserverSkSkbVerdict, version, 0, x64)
+	return ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, ObserverSkSkbVerdict, version, 0, x64, path)
 }
 
 func (skmsg *observerSkmsgTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -129,7 +129,8 @@ func (skSkbVerdict *observerSkSkbVerdictTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64)
+	path := "/sys/fs/bpf/tcpmon/tls_sock_map"
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, path)
 }
 
 func (skmsg *observerSkSkbVerdictTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -144,7 +145,8 @@ func (skSkbParser *observerSkSkbParserTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64)
+	path := "/sys/fs/bpf/tcpmon/tls_sock_map"
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, path)
 }
 
 func (skmsg *observerSkSkbParserTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {

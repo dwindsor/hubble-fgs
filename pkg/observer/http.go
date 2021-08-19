@@ -14,6 +14,7 @@ package observer
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -38,6 +39,28 @@ var (
 		true,
 		"http_skmsg")
 
+	ObserverHttpSkSkbParser = BpfLoadBuilder(
+		"bpf_http_parser.o",
+		"sk_skb",
+		"sk_skb",
+		"sk_skb_http_parser/fgshttp",
+		"sk_skb_parser",
+
+		false,
+		true,
+		"sk_skb_parser")
+
+	ObserverHttpSkSkbVerdict = BpfLoadBuilder(
+		"bpf_http_verdict.o",
+		"sk_skb",
+		"sk_skb",
+		"sk_skb_http_verdict/fgshttp",
+		"sk_skb_verdict",
+
+		false,
+		true,
+		"sk_skb_verdict")
+
 	/* Http maps */
 	ObserverHttpSockMap = BpfMapBuilder("http_sock_map", "sockops", ObserverSockopsEstablished)
 )
@@ -51,11 +74,55 @@ func (sockops *observerHttpSensor) LoadProbe(
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
 	path := "/sys/fs/bpf/tcpmon/http_sock_map"
-	return ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
+	err, i := ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
+	if err != nil {
+		return err, i
+	}
+	fmt.Printf("LoadProbe sockops\n")
+	err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbParser, version, 0, x64, path)
+	if err != nil {
+		return err, i
+	}
+	return ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbVerdict, version, 0, x64, path)
+	return err, i
 }
 
 func (tls *observerHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
 	return getSensorFromParserPolicy(spec)
+}
+
+type observerSkSkbVerdictHttpSensor struct {
+	name string
+}
+
+func (skSkbVerdict *observerSkSkbVerdictHttpSensor) LoadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *BpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	path := "/sys/fs/bpf/tcpmon/http_sock_map"
+
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, path)
+}
+
+func (skmsg *observerSkSkbVerdictHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+	return nil, nil
+}
+
+type observerSkSkbParserHttpSensor struct {
+	name string
+}
+
+func (skSkbParser *observerSkSkbParserHttpSensor) LoadProbe(
+	bpfDir, mapDir, ciliumDir string,
+	load *BpfLoad,
+	version, verbose int, x64 bool) (error, int) {
+	path := "/sys/fs/bpf/tcpmon/http_sock_map"
+
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, path)
+}
+
+func (skmsg *observerSkSkbParserHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+	return nil, nil
 }
 
 func init() {
@@ -66,8 +133,17 @@ func AddHttp() {
 	skmsg := &observerHttpSensor{
 		name: "skmsg http sensor",
 	}
+	skskbParser := &observerSkSkbParserHttpSensor{
+		name: "skskb parser http sensor",
+	}
+	skskbVerdict := &observerSkSkbVerdictHttpSensor{
+		name: "skskb verdict http sensor",
+	}
 
+	RegisterProbeType("http_skskb_parser", skskbParser)
+	RegisterProbeType("http_skskb_verdict", skskbVerdict)
 	RegisterProbeType("http_skmsg", skmsg)
+
 	RegisterTracingSensorsAtInit(skmsg.name, skmsg)
 	RegisterEventHandlerAtInit(api.MSG_OP_HTTP, handleHttp)
 }
@@ -80,6 +156,8 @@ func EnableHttpParser() *ObserverSensor {
 	logger.GetLogger().Infof("Enable HTTP")
 	progs = append(progs,
 		ObserverHttpSkmsg,
+		ObserverHttpSkSkbVerdict,
+		ObserverHttpSkSkbParser,
 	)
 
 	maps = append(maps,

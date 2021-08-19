@@ -512,7 +512,7 @@ func ObserverLoadSkmsg(
 func ObserverLoadSkSkbVerdict(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
+	version, verbose int, x64 bool, path string) (error, int) {
 	btfObj := uintptr(btf.GetCachedBTF())
 
 	return bpf.LoadSkSkbVerdictProgram(
@@ -521,13 +521,14 @@ func ObserverLoadSkSkbVerdict(
 		load.Observer__program,
 		load.observer__label,
 		bpfDir+load.observer__prog,
-		mapDir)
+		mapDir,
+		path)
 }
 
 func ObserverLoadSkSkb(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
+	version, verbose int, x64 bool, path string) (error, int) {
 	btfObj := uintptr(btf.GetCachedBTF())
 
 	return bpf.LoadSkSkbParserProgram(
@@ -536,7 +537,8 @@ func ObserverLoadSkSkb(
 		load.Observer__program,
 		load.observer__label,
 		bpfDir+load.observer__prog,
-		mapDir)
+		mapDir,
+		path)
 }
 
 func ObserverLoadSockops(

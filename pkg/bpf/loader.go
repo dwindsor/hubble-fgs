@@ -925,14 +925,14 @@ func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, 
 	return nil, loaderInt
 }
 
-func LoadSkSkbVerdictProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
+func LoadSkSkbVerdictProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	path := C.CString("/sys/fs/bpf/tcpmon/tls_sock_map")
+	path := C.CString(__path)
 	loader_fd := C.skskb_verdict_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, path)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
@@ -941,14 +941,14 @@ func LoadSkSkbVerdictProgram(__version, __verbosity int, btf uintptr, object, __
 	return nil, loaderInt
 }
 
-func LoadSkSkbParserProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
+func LoadSkSkbParserProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
 	l := C.CString(__label)
 	p := C.CString(__prog)
 	mapdir := C.CString(__mapdir)
-	path := C.CString("/sys/fs/bpf/tcpmon/tls_sock_map")
+	path := C.CString(__path)
 	loader_fd := C.skskb_parser_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, path)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
