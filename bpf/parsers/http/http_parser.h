@@ -11,6 +11,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 #define MAX_HTTP_HDR 512
 #define MAX_HTTP_CHARS 32
 
+/* relax_verifier is a dummy helper call to introduce a pruning checkpoint
+ * to help relax the verifier to avoid reaching complexity limits.
+ */
+static inline __attribute__((always_inline)) void relax_verifier(void)
+{
+       volatile int __maybe_unused id = get_smp_processor_id();
+}
+
 static inline __attribute__((always_inline))
 char *get_chars(struct sk_msg_md *msg, long offset, long cnt)
 {
@@ -20,7 +28,7 @@ char *get_chars(struct sk_msg_md *msg, long offset, long cnt)
 	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
 	asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);
 	if (payload + offset + cnt > data_end) {
-		bpf_printk("dummy load %d\n", 0);
+		relax_verifier();
 		return 0;
 	}
 
@@ -149,7 +157,7 @@ void get_string(struct sk_msg_md *msg, struct msg_http *http,
 	dstsz[0] = ty;
 	dstsz[1] = i;
 	http->url_offset += i + 8;
-	bpf_printk("write %d length %d\n", ty, i);
+	relax_verifier();
 }
 
 static inline __attribute__((always_inline))
