@@ -22,6 +22,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
@@ -59,21 +60,6 @@ func TestMain(m *testing.M) {
 }
 
 var (
-	curlTLSEvent = &fgs.GetEventsResponse_Tls{
-		Tls: &fgs.Tls{
-			Process: &fgs.Process{
-				Binary:    "curl",
-				Arguments: "https://google.com"},
-			NegotiatedVersion: "TLS1.3",
-			ClientVersion:     "TLS 1.2",
-			ServerVersion:     "TLS 1.2",
-			SniType:           "host_name",
-			SniName:           "www.google.com",
-			ClientFlags:       "ExtVersion",
-			ServerFlags:       "ExtVersion",
-		},
-	}
-
 	tlstc = `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -92,31 +78,35 @@ func TestTCTLS13(t *testing.T) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
-	traceTCTLS13 := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://google.com"},
-					Parent: &fgs.Process{Binary: selfBinary},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "curl",
-						Arguments: "https://google.com"},
-					Parent: &fgs.Process{
-						Binary: selfBinary},
-					DestinationPort: &wrapperspb.UInt32Value{Value: 443},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{Event: curlTLSEvent},
-	}
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	curlChecker := ec.ProcessWithCommand(
+		ec.SuffixStringMatch("curl"), ec.FullStringMatch("https://www.google.com"),
+	)
+
+	tlsCh := ec.NewTlsChecker().
+		WithNegotiatedVersion("TLS1.3").
+		WithClientVersion("TLS 1.2").
+		WithServerVersion("TLS 1.2").
+		WithSniType("host_name").
+		WithSniName("www.google.com").
+		WithClientFlags("ExtVersion").
+		WithServerFlags("ExtVersion")
+
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			End(),
+		ec.NewConnectEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			HasDstPort(443).
+			End(),
+		ec.NewTlsEventChecker().
+			HasProcess(curlChecker).
+			HasTls(tlsCh).
+			End(),
+	)
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
