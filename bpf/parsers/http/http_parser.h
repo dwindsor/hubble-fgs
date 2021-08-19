@@ -11,6 +11,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 #define MAX_HTTP_HDR 512
 #define MAX_HTTP_CHARS 32
 
+#ifdef SK_MSG
+typedef struct sk_msg_md ctx_md;
+#else
+typedef struct __sk_buff ctx_md;
+#endif
+
+
 /* relax_verifier is a dummy helper call to introduce a pruning checkpoint
  * to help relax the verifier to avoid reaching complexity limits.
  */
@@ -20,7 +27,7 @@ static inline __attribute__((always_inline)) void relax_verifier(void)
 }
 
 static inline __attribute__((always_inline))
-char *get_chars(struct sk_msg_md *msg, long offset, long cnt)
+char *get_chars(ctx_md *msg, long offset, long cnt)
 {
 	void *data_end = (void *)(long)msg->data_end;
 	void *payload = msg->data;
@@ -36,13 +43,13 @@ char *get_chars(struct sk_msg_md *msg, long offset, long cnt)
 }
 
 static inline __attribute__((always_inline))
-char *get_next_char(struct sk_msg_md *msg, struct msg_http *http)
+char *get_next_char(ctx_md *msg, struct msg_http *http)
 {
 	return get_chars(msg, http->offset, 1);
 }
 
 static inline __attribute__((always_inline))
-char *eat_next_char(struct sk_msg_md *msg, struct msg_http *http)
+char *eat_next_char(ctx_md *msg, struct msg_http *http)
 {
 	char *c = get_next_char(msg, http);
 
@@ -51,7 +58,7 @@ char *eat_next_char(struct sk_msg_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-__u32 __get_method(struct sk_msg_md *msg, struct msg_http *http)
+__u32 __get_method(ctx_md *msg, struct msg_http *http)
 {
 	char *c = get_chars(msg, http->offset, 3);
 
@@ -99,7 +106,7 @@ __u32 __get_method(struct sk_msg_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-__u32 get_method(struct sk_msg_md *msg, struct msg_http *http)
+__u32 get_method(ctx_md *msg, struct msg_http *http)
 {
 	http->method = __get_method(msg, http);
 	return http->method == http_method_error;
@@ -121,7 +128,7 @@ bool is_space(char c)
  * Implementing the above logic is TBD.
  */
 static inline __attribute__((always_inline))
-void get_string_scratch(struct sk_msg_md *msg, struct msg_http *http, char term)
+void get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
 {
 	__u32 *dstsz;
 	int i;
@@ -138,7 +145,7 @@ void get_string_scratch(struct sk_msg_md *msg, struct msg_http *http, char term)
 }
 
 static inline __attribute__((always_inline))
-void get_string(struct sk_msg_md *msg, struct msg_http *http,
+void get_string(ctx_md *msg, struct msg_http *http,
 		char *dst, int ty, int max, char term)
 {
 	__u32 offset = http->url_offset;
@@ -161,19 +168,19 @@ void get_string(struct sk_msg_md *msg, struct msg_http *http,
 }
 
 static inline __attribute__((always_inline))
-void method_get_url(struct sk_msg_md *msg, struct msg_http *http)
+void method_get_url(ctx_md *msg, struct msg_http *http)
 {
 	get_string(msg, http, http->url, http_request_url, 256, chr_sp);
 }
 
 static inline __attribute__((always_inline))
-void method_get_protocol(struct sk_msg_md *msg, struct msg_http *http)
+void method_get_protocol(ctx_md *msg, struct msg_http *http)
 {
 	get_string(msg, http, http->url, http_request_protocol, 256, chr_r);
 }
 
 static inline __attribute__((always_inline))
-int map_header_to_type(struct sk_msg_md *msg, struct msg_http *http)
+int map_header_to_type(ctx_md *msg, struct msg_http *http)
 {
 	__u32 *sz;
 
@@ -214,7 +221,7 @@ int map_header_to_type(struct sk_msg_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-void find_host_header(struct sk_msg_md *msg, struct msg_http *http)
+void find_host_header(ctx_md *msg, struct msg_http *http)
 {
 	int t;
 
@@ -268,7 +275,7 @@ void find_host_header(struct sk_msg_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-void method_get_headers(struct sk_msg_md *msg, struct msg_http *http)
+void method_get_headers(ctx_md *msg, struct msg_http *http)
 {
 	__u32 saved_offset = http->offset;
 
@@ -277,7 +284,7 @@ void method_get_headers(struct sk_msg_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-void http_parse_request(struct sk_msg_md *msg,
+void http_parse_request(ctx_md *msg,
 			struct msg_tls_ipv4 *tuple,
 			struct msg_http *http)
 {
@@ -322,7 +329,7 @@ out:
 }
 
 static inline __attribute__((always_inline))
-void post_http_event(struct sk_msg_md *msg,
+void post_http_event(ctx_md *msg,
 		     struct msg_tls_ipv4 *key,
 		     struct msg_http *http)
 {
@@ -356,7 +363,7 @@ void post_http_event(struct sk_msg_md *msg,
 }
 
 static inline __attribute__((always_inline))
-int http_do_parser(struct sk_msg_md *msg, struct msg_tls_ipv4 *tuple)
+int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 {
 	struct msg_http *http;
 
