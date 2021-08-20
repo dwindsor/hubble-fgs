@@ -11,6 +11,10 @@
 
 package reader
 
+import (
+	"strconv"
+)
+
 var httpMethod = map[uint32]string{
 	0: "internal-error",
 	1: "CONNECT",
@@ -30,4 +34,12 @@ func GetHttpMethod(code uint32) string {
 		return "unknown-method"
 	}
 	return methodName
+}
+
+func GetHttpCode(code string) (uint32, error) {
+	i, err := strconv.ParseUint(code, 10, 32)
+	if err != nil {
+		return uint32(0), err
+	}
+	return uint32(i), err
 }

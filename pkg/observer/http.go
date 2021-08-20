@@ -225,6 +225,9 @@ var (
 	HttpRequestUserAgent     = uint32(5)
 	HttpRequestContentLength = uint32(6)
 	HttpRequestUnknown       = uint32(7)
+	HttpResponseProtocol     = uint32(8)
+	HttpResponseCode         = uint32(9)
+	HttpResponseReason       = uint32(10)
 )
 
 /* HTTP Event handler */
@@ -257,6 +260,12 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) *api.MsgHttpEventUnix {
 			unix.Request.UserAgent = string(m.Request.Url[start:end])
 		case HttpRequestContentLength:
 			unix.Request.ContentLength = string(m.Request.Url[start:end])
+		case HttpResponseProtocol:
+			unix.Request.RespVersion = string(m.Request.Url[start:end])
+		case HttpResponseCode:
+			unix.Request.Code = string(m.Request.Url[start:end])
+		case HttpResponseReason:
+			unix.Request.Reason = string(m.Request.Url[start:end])
 		}
 		offset += sz + 8
 		ty = uint32(m.Request.Url[offset])

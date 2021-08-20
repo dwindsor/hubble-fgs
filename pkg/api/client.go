@@ -453,6 +453,9 @@ type MsgHttpUnix struct {
 	Protocol      string
 	UserAgent     string
 	ContentLength string
+	Code          string
+	Reason        string
+	RespVersion   string
 }
 
 type MsgHttp struct {

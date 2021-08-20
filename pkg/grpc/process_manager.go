@@ -123,6 +123,10 @@ func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEve
 
 func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHttp {
 	var proc *fgs.Process
+	var code uint32
+
+	fgsHttpResponse := &fgs.HttpResponse{}
+	fgsHttpRequest := &fgs.HttpRequest{}
 
 	processID := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	processInt, err := pm.cache.get(processID)
@@ -134,15 +138,30 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	}
 	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
 
-	fgsHttpRequest := &fgs.HttpRequest{
-		Timestamp: ktimeToProto(event.Common.Ktime),
-		Method:    event.Request.Method,
-		Uri:       event.Request.Uri,
-		Version:   event.Request.Protocol,
-		Host:      event.Request.Host,
-		Agent:     event.Request.UserAgent,
+	if len(event.Request.Code) != 0 {
+		code, err = reader.GetHttpCode(event.Request.Code)
+		if err != nil {
+			pm.log.WithField("Unknown Response Code", event.Request.Code).Info("unknown code")
+		}
+
+		fgsHttpResponse = &fgs.HttpResponse{
+			Version: event.Request.RespVersion,
+			Code:    code,
+			Reason:  event.Request.Reason,
+		}
 	}
-	fgsHttpResponse := &fgs.HttpResponse{} // TBD
+
+	if code == 0 {
+		fgsHttpRequest = &fgs.HttpRequest{
+			Timestamp: ktimeToProto(event.Common.Ktime),
+			Method:    event.Request.Method,
+			Uri:       event.Request.Uri,
+			Version:   event.Request.Protocol,
+			Host:      event.Request.Host,
+			Agent:     event.Request.UserAgent,
+		}
+	}
+
 	fgsHttp := &fgs.HttpInfo{
 		Request:  fgsHttpRequest,
 		Response: fgsHttpResponse,
