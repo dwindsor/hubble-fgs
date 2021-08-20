@@ -145,9 +145,10 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		}
 
 		fgsHttpResponse = &fgs.HttpResponse{
-			Version: event.Request.RespVersion,
-			Code:    code,
-			Reason:  event.Request.Reason,
+			Timestamp: ktimeToProto(event.Common.Ktime),
+			Version:   event.Request.RespVersion,
+			Code:      code,
+			Reason:    event.Request.Reason,
 		}
 	}
 
