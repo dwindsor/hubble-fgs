@@ -118,7 +118,8 @@ __u32 __get_method(ctx_md *msg, struct msg_http *http)
 static inline __attribute__((always_inline))
 __u32 get_method(ctx_md *msg, struct msg_http *http)
 {
-	return __get_method(msg, http);
+	http->method = __get_method(msg, http);
+	return http->method;
 }
 
 #if 0
@@ -332,13 +333,14 @@ static inline __attribute__((always_inline))
 void http_parse(ctx_md *msg, struct msg_tls_ipv4 *tuple, struct msg_http *http)
 {
 	if (http->state == http_start) {
-		int err = get_method(msg, http);
+		int m = get_method(msg, http);
 
-		if (err != http_method_error) {
-			if (err == http_method_response)
+		if (m != http_method_error) {
+			if (m == http_method_response) {
 				http_parse_response(msg, http);
-			else
+			} else {
 				http_parse_request(msg, http);
+			}
 		}
 	}
 	http->state = http_done;
@@ -395,6 +397,12 @@ void post_http_event(ctx_md *msg,
 		e->execve.ktime = process->key.ktime;
 	}
 
+	/* Bounce counters this is a request or response */
+	if (http->method == http_method_response)
+		http->recv_cntr++;
+	else
+		http->send_cntr++;
+
 	e->common.ktime = ktime_get_ns();
 	e->common.op = MSG_OP_HTTP;
 	e->common.size = sizeof(struct msg_http_event);
@@ -417,7 +425,6 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 		return SK_PASS;
 
 	http_parse(msg, tuple, http);
-
 	if (http->state == http_done) {
 		post_http_event(msg, tuple, http);
 	}

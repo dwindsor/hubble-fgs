@@ -16,16 +16,18 @@ import (
 )
 
 var httpMethod = map[uint32]string{
-	0: "internal-error",
-	1: "CONNECT",
-	2: "DELETE",
-	3: "GET",
-	4: "HEAD",
-	5: "OPTIONS",
-	6: "POST",
-	7: "PULL",
-	8: "PATCH",
-	9: "tRACE",
+	0:  "internal-error",
+	1:  "CONNECT",
+	2:  "DELETE",
+	3:  "GET",
+	4:  "HEAD",
+	5:  "OPTIONS",
+	6:  "POST",
+	7:  "PULL",
+	8:  "PATCH",
+	9:  "TRACE",
+	10: "unknown",
+	11: "response",
 }
 
 func GetHttpMethod(code uint32) string {

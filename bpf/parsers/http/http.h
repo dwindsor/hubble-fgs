@@ -70,6 +70,13 @@ enum http_request_state {
 
 struct __msg_http {
 	__u32 method;
+	__u32 pad;
+	/* counters to use for IDs in sender and receiver
+	 * side. These must only be used under sock_lock
+	 * to ensure single reader/writer.
+	 */
+	__u64 send_cntr;
+	__u64 recv_cntr;
 	char url[256]; //tbd optimize to dynamic length
 	// below is private state for BPF parser
 	__u32 state;
@@ -79,11 +86,19 @@ struct __msg_http {
 
 struct msg_http {
 	__u32 method;
+	__u32 pad;
+	/* counters to use for IDs in sender and receiver
+	 * side. These must only be used under sock_lock
+	 * to ensure single reader/writer.
+	 */
+	__u64 send_cntr;
+	__u64 recv_cntr;
 	char url[256]; //tbd optimize to dynamic length
-	// below is private state for BPF parser
+	// Below is BPF parser pushed to user space to allow debugging
 	__u32 state;
 	__u32 offset;
 	__u32 url_offset;
+	// Below is internal only state and is not pushed to userspace.
 	char scratch[512]; // extra space
 } __attribute__((packed));
 

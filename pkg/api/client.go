@@ -446,6 +446,11 @@ const (
 	HTTP_METHOD_GET  = 2
 )
 
+type HttpKey struct {
+	Tuple MsgIPv4Tuple
+	Id    uint64
+}
+
 type MsgHttpUnix struct {
 	Method        string
 	Uri           string
@@ -456,10 +461,14 @@ type MsgHttpUnix struct {
 	Code          string
 	Reason        string
 	RespVersion   string
+	RequestId     uint64
 }
 
 type MsgHttp struct {
 	Method uint32
+	Pad    uint32
+	ReqId  uint64
+	RespId uint64
 	Url    [256]byte
 	Pad1   uint32
 	Pad2   uint32

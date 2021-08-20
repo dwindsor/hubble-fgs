@@ -21,10 +21,17 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
+
+	lru "github.com/hashicorp/golang-lru"
 )
 
 var (
 	httpSelectors [128]byte
+
+	// Runtime aggregation of request/response
+	httpAggregate       *lru.Cache
+	httpAggregateEnable bool
+	httpCacheSize       = 1024
 )
 
 var (
@@ -130,6 +137,16 @@ func init() {
 }
 
 func AddHttp() {
+	var err error
+
+	httpAggregate, err = lru.New(httpCacheSize)
+	if err != nil {
+		logger.GetLogger().Errorf("HTTP aggregation disabled: %s\n", err)
+		httpAggregateEnable = false
+	} else {
+		httpAggregateEnable = true
+	}
+
 	skmsg := &observerHttpSensor{
 		name: "skmsg http sensor",
 	}
@@ -228,10 +245,23 @@ var (
 	HttpResponseProtocol     = uint32(8)
 	HttpResponseCode         = uint32(9)
 	HttpResponseReason       = uint32(10)
+
+	HttpMethodError    = uint32(0)
+	HttpMethodConnect  = uint32(1)
+	HttpMethodDelete   = uint32(2)
+	HttpMethodGet      = uint32(3)
+	HttpMethodHead     = uint32(4)
+	HttpMethodOptions  = uint32(5)
+	HttpMethodPost     = uint32(6)
+	HttpMethodPut      = uint32(7)
+	HttpMethodPatch    = uint32(8)
+	HttpMethodTrace    = uint32(9)
+	HttpMethodUnknown  = uint32(10)
+	HttpMethodResponse = uint32(11)
 )
 
 /* HTTP Event handler */
-func msgToHttpEventUnix(m *api.MsgHttpEvent) *api.MsgHttpEventUnix {
+func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 	unix := &api.MsgHttpEventUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
@@ -239,6 +269,11 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) *api.MsgHttpEventUnix {
 	}
 
 	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
+	if m.Request.Method == HttpMethodResponse {
+		unix.Request.RequestId = m.Request.RespId
+	} else {
+		unix.Request.RequestId = m.Request.ReqId
+	}
 
 	offset := uint32(0)
 	ty := uint32(m.Request.Url[offset])
@@ -270,7 +305,35 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) *api.MsgHttpEventUnix {
 		offset += sz + 8
 		ty = uint32(m.Request.Url[offset])
 	}
-	return unix
+
+	key := api.HttpKey{
+		Tuple: unix.Tuple,
+		Id:    unix.Request.RequestId,
+	}
+	// If aggregation is disabled just push events as we see them.
+	if !httpAggregateEnable {
+		return unix, nil
+	}
+	/* If this is not a response then its a request and we need to cache it
+	 * until we get a response so we can merge the request/response.
+	 */
+	if m.Request.Method != HttpMethodResponse {
+		httpAggregate.Add(key, unix)
+		return nil, nil
+	} else {
+		entry, ok := httpAggregate.Get(key)
+		if ok {
+			r := entry.(*api.MsgHttpEventUnix)
+			unix.Request.Method = r.Request.Method
+			unix.Request.Uri = r.Request.Uri
+			unix.Request.Host = r.Request.Host
+			unix.Request.Protocol = r.Request.Protocol
+			unix.Request.UserAgent = r.Request.UserAgent
+			unix.Request.ContentLength = r.Request.ContentLength
+			httpAggregate.Remove(key)
+		}
+	}
+	return unix, nil
 }
 
 func handleHttp(r *bytes.Reader) (interface{}, error) {
@@ -282,6 +345,9 @@ func handleHttp(r *bytes.Reader) (interface{}, error) {
 		return nil, err
 	}
 
-	msgUnix := msgToHttpEventUnix(m)
-	return msgUnix, nil
+	u, err := msgToHttpEventUnix(m)
+	if u == nil {
+		return nil, err
+	}
+	return u, err
 }

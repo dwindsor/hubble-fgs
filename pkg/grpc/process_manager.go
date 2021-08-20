@@ -152,7 +152,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		}
 	}
 
-	if code == 0 {
+	if len(event.Request.Method) != 0 {
 		fgsHttpRequest = &fgs.HttpRequest{
 			Timestamp: ktimeToProto(event.Common.Ktime),
 			Method:    event.Request.Method,
