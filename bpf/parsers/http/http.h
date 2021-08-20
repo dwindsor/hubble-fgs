@@ -15,6 +15,9 @@ enum http_method {
 
 	// list of method errors
 	http_method_unknown,
+
+	// use pseudo method response to indicate status line
+	http_method_response,
 };
 
 enum http_request_header {
@@ -26,6 +29,9 @@ enum http_request_header {
 	http_request_user_agent,
 	http_request_content_length,
 	http_request_unknown,
+	http_response_protocol,
+	http_response_code,
+	http_response_reason
 };
 
 #define chr_sp	   ' '

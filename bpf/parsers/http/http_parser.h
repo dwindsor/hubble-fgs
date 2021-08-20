@@ -83,6 +83,10 @@ __u32 __get_method(ctx_md *msg, struct msg_http *http)
 		http->offset = http_method_get_off;
 		return http_method_get;
 	case 'H':
+		if (c[1] == 'T') {
+			http->offset = 0;
+			return http_method_response;
+		}
 		http->offset = http_method_head_off;
 		return http_method_head;
 	case 'O':
@@ -114,8 +118,7 @@ __u32 __get_method(ctx_md *msg, struct msg_http *http)
 static inline __attribute__((always_inline))
 __u32 get_method(ctx_md *msg, struct msg_http *http)
 {
-	http->method = __get_method(msg, http);
-	return http->method == http_method_error;
+	return __get_method(msg, http);
 }
 
 #if 0
@@ -290,18 +293,52 @@ void method_get_headers(ctx_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-void http_parse_request(ctx_md *msg,
-			struct msg_tls_ipv4 *tuple,
-			struct msg_http *http)
+void http_parse_request(ctx_md *msg, struct msg_http *http)
+{
+	http->url_offset = 0;
+	method_get_url(msg, http);
+	method_get_protocol(msg, http);
+	method_get_headers(msg, http);
+}
+
+static inline __attribute__((always_inline))
+void response_get_protocol(ctx_md *msg, struct msg_http *http)
+{
+	get_string(msg, http, http->url, http_response_protocol, 256, chr_sp);
+}
+
+static inline __attribute__((always_inline))
+void response_get_code(ctx_md *msg, struct msg_http *http)
+{
+	get_string(msg, http, http->url, http_response_code, 256, chr_sp);
+}
+
+static inline __attribute__((always_inline))
+void response_get_reason(ctx_md *msg, struct msg_http *http)
+{
+	get_string(msg, http, http->url, http_response_reason, 256, chr_r);
+}
+
+static inline __attribute__((always_inline))
+void http_parse_response(ctx_md *msg, struct msg_http *http)
+{
+	http->url_offset = 0;
+	response_get_protocol(msg, http);
+	response_get_code(msg, http);
+	response_get_reason(msg, http);
+}
+
+static inline __attribute__((always_inline))
+void http_parse(ctx_md *msg, struct msg_tls_ipv4 *tuple, struct msg_http *http)
 {
 	if (http->state == http_start) {
 		int err = get_method(msg, http);
 
-		if (!err) {
-			http->url_offset = 0;
-			method_get_url(msg, http);
-			method_get_protocol(msg, http);
-			method_get_headers(msg, http);
+		if (err != http_method_error) {
+			if (err == http_method_response)
+				http_parse_response(msg, http);
+			else
+				http_parse_request(msg, http);
 		}
 	}
 	http->state = http_done;
@@ -379,7 +416,7 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	if (!is_expected_request(http))
 		return SK_PASS;
 
-	http_parse_request(msg, tuple, http);
+	http_parse(msg, tuple, http);
 
 	if (http->state == http_done) {
 		post_http_event(msg, tuple, http);
