@@ -154,7 +154,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 
 	if len(event.Request.Method) != 0 {
 		fgsHttpRequest = &fgs.HttpRequest{
-			Timestamp: ktimeToProto(event.Common.Ktime),
+			Timestamp: ktimeToProto(event.Request.Ktime),
 			Method:    event.Request.Method,
 			Uri:       event.Request.Uri,
 			Version:   event.Request.Protocol,

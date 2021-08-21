@@ -462,6 +462,7 @@ type MsgHttpUnix struct {
 	Reason        string
 	RespVersion   string
 	RequestId     uint64
+	Ktime         uint64
 }
 
 type MsgHttp struct {

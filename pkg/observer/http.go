@@ -330,6 +330,7 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 			unix.Request.Protocol = r.Request.Protocol
 			unix.Request.UserAgent = r.Request.UserAgent
 			unix.Request.ContentLength = r.Request.ContentLength
+			unix.Request.Ktime = r.Common.Ktime
 			httpAggregate.Remove(key)
 		}
 	}
