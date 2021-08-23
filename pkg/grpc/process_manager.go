@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/hubble/pkg/cilium"
@@ -34,6 +35,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/sirupsen/logrus"
 	coreV1 "k8s.io/api/core/v1"
+
+	durationpb "github.com/golang/protobuf/ptypes/duration"
 )
 
 type listener interface {
@@ -166,6 +169,18 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	fgsHttp := &fgs.HttpInfo{
 		Request:  fgsHttpRequest,
 		Response: fgsHttpResponse,
+	}
+
+	if len(event.Request.Code) != 0 &&
+		len(event.Request.Method) != 0 {
+		l := reader.DiffKtime(event.Request.Ktime, event.Common.Ktime)
+		nano := l.Nanoseconds()
+		sec := nano / int64(time.Second)
+		remainder := nano % int64(time.Second)
+		fgsHttp.Latency = &durationpb.Duration{
+			Seconds: sec,
+			Nanos:   int32(remainder),
+		}
 	}
 
 	fgsEvent := &fgs.ProcessHttp{

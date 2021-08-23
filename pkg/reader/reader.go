@@ -113,6 +113,10 @@ func DecodeCommonFlags(flags uint32) []string {
 	return s
 }
 
+func DiffKtime(start, end uint64) time.Duration {
+	return time.Duration(int64(end - start))
+}
+
 func DecodeKtime(ktime int64) (time.Time, error) {
 	clk := int32(unix.CLOCK_MONOTONIC)
 	currentTime := unix.Timespec{}
