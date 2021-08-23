@@ -155,12 +155,19 @@ void get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
 }
 
 static inline __attribute__((always_inline))
+bool is_digit(int c)
+{
+	return (c <= '9' && c >= '0');
+}
+
+static inline __attribute__((always_inline))
 void get_string(ctx_md *msg, struct msg_http *http,
 		char *dst, int ty, int max, char term)
 {
 	__u32 offset = http->url_offset;
 	__u32 *dstsz;
 	int i;
+	int do_push = (ty == http_request_content_length);
 
 	asm volatile ("%[offset] &= 0xff;\n": [offset] "+r"(offset)::);
 	for (i = 0; i < max - 8; i++) {
@@ -174,7 +181,32 @@ void get_string(ctx_md *msg, struct msg_http *http,
 	dstsz[0] = ty;
 	dstsz[1] = i;
 	http->url_offset += i + 8;
+
+	/* verifier needs a prune point here otherwise we fail on
+	 * some kernels.
+	 */
 	relax_verifier();
+
+	/* Walk the loop again if its content length and convert
+	 * into an integer. We can't find a way to convince verifier
+	 * to run it above inline with the first loop walk so we
+	 * pull it out into its own loop and guard it by contentLength
+	 * header type.
+	 */
+	if (do_push) {
+		char *c = (char *)&dstsz[2];
+		int value = 0;
+
+		for (i = 0; i < 4; i++) {
+			int dig = is_digit(c[i]);
+
+			if (dig) {
+				value *= 10;
+				value += (int)(c[i]-'0');
+			}
+		}
+		http->consume_bytes = value;
+	}
 }
 
 static inline __attribute__((always_inline))
@@ -380,6 +412,7 @@ void post_http_event(ctx_md *msg,
 {
 	struct socketmap_value *process;
 	struct msg_http_event *e;
+	__u32 skip = 0;
 	int zero = 0;
 	size_t size;
 
@@ -411,6 +444,10 @@ void post_http_event(ctx_md *msg,
 
 	size = sizeof(struct __msg_http_event);
 	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, e, size);
+	skip = http->consume_bytes + http->offset;
+#ifdef SK_MSG
+	msg_apply_bytes(msg, skip);
+#endif
 }
 
 static inline __attribute__((always_inline))

@@ -98,6 +98,7 @@ struct msg_http {
 	__u32 state;
 	__u32 offset;
 	__u32 url_offset;
+	__u64 consume_bytes;
 	// Below is internal only state and is not pushed to userspace.
 	char scratch[512]; // extra space
 } __attribute__((packed));
