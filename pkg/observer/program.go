@@ -720,7 +720,7 @@ func ObserverLoadSensor(bpfDir, mapDir, ciliumDir string, stopCtx context.Contex
 		return fmt.Errorf("hubble-fgs, aborting could not find BPF programs: %w", err)
 	}
 	if err := observerLoadSensorMaps(stopCtx, sensor, mapDir); err != nil {
-		return err
+		return fmt.Errorf("hubble-fgs, aborting could not load sensor BPF maps: %w", err)
 	}
 
 	for _, p := range sensor.progs {
