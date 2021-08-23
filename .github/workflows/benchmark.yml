@@ -3,41 +3,65 @@ on:
   workflow_dispatch:
   schedule:
     - cron:  '0 1 * * *'
+  pull_request:
 
 jobs:
-  build:
+  benchmark:
     runs-on: ${{ matrix.os }}
     timeout-minutes: 30
     strategy:
       matrix:
         os: [ ubuntu-20.04 ]
     steps:
-    - uses: actions/checkout@master
-      with:
-        path: go/src/github.com/isovalent/hubble-fgs/
-    - uses: actions/setup-go@v1
-      with:
-        go-version: '1.16'
-    - name: Run benchmark and publish
-      env:
-        GOPATH: /home/runner/work/hubble-fgs/hubble-fgs/go
-        GCP_SA_KEY: ${{secrets.GCP_SA_KEY}}
-        BENCH_DURATION: 1m
-      run: |
-        docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
-        sudo apt install libelf-dev netcat-traditional netperf
-        export PATH=${GOPATH}/bin:${PATH}
-        sudo -E echo "copy build tools from images"
-        cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs
-        sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
-        sudo -E ldconfig /usr/local/
-        sudo sed -i '/secure_path/d' /etc/sudoers
-        sudo sed -i '/env_reset/d' /etc/sudoers
-        sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
-        echo `which clang`
-        echo `which llc`
-        echo `clang --version`
-        sudo make hubble-bpf
-        sudo -E go test github.com/isovalent/hubble-fgs/pkg/bench -benchtime $BENCH_DURATION -timeout 30m -bench .
-        find results -name "*.json" | xargs sudo -E go run ./cmd/fgs-bench-publish/fgs-bench-publish.go publish "$GITHUB_SHA" "$GCP_SA_KEY"
+      - uses: actions/checkout@master
+        with:
+          path: go/src/github.com/isovalent/hubble-fgs/
+      - uses: actions/setup-go@v1
+        with:
+          go-version: '1.16'
+      - name: Run benchmark
+        id: run-benchmark
+        env:
+          GOPATH: /home/runner/work/hubble-fgs/hubble-fgs/go
+          GCP_SA_KEY: ${{secrets.GCP_SA_KEY}}
+        run: |
+          docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
+          sudo apt install libelf-dev netperf
+          export PATH=${GOPATH}/bin:${PATH}
+          sudo -E echo "copy build tools from images"
+          cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs
+          sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
+          sudo -E ldconfig /usr/local/
+          sudo sed -i '/secure_path/d' /etc/sudoers
+          sudo sed -i '/env_reset/d' /etc/sudoers
+          sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
+          sudo make hubble-bpf
+          GIT_REV="$(git rev-parse --short ${{ github.event.pull_request.head.sha }})"
+          if [ "${{ github.event_name }}" == "pull_request" ]; then
+            BENCH_DURATION=10s
+            CMD="pretty"
+          else
+            BENCH_DURATION=1m
+            CMD="publish"
+          fi
+          sudo go test github.com/isovalent/hubble-fgs/pkg/bench -fgs-bench-duration $BENCH_DURATION -timeout 30m -tags bench_tests -test.v
+          go run cmd/fgs-bench-publish/fgs-bench-publish.go pretty "$GIT_REV" "$GCP_SA_KEY" results/*.json
+
+      - name: Find Comment
+        uses: peter-evans/find-comment@v1
+        if: github.event_name == 'pull_request'
+        id: fc
+        with:
+          issue-number: ${{ github.event.pull_request.number }}
+          comment-author: 'github-actions[bot]'
+          body-includes: Benchmark results
+
+      - name: Update comment
+        uses: peter-evans/create-or-update-comment@v1
+        if: github.event_name == 'pull_request'
+        with:
+          comment-id: ${{ steps.fc.outputs.comment-id }}
+          issue-number: ${{ github.event.pull_request.number }}
+          body: ${{ steps.run-benchmark.outputs.body }}
+          edit-mode: replace
 
