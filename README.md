@@ -167,3 +167,18 @@ certain events. If you don't see any events in `export-stdout` log, you might ne
 edit `EXPORT_{ALLOW,DENY}_LIST` environment variables:
 
     kubectl edit ds -n cilium hubble-enterprise
+
+### Minikube with 5.4 Kernel
+
+This is useful for testing / demoing features that require >=5.4 kernel without having
+to spin up a GKE cluster.
+
+    vagrant up
+    minikube start --driver=ssh \
+      --ssh-ip-address=192.168.33.11 \
+      --ssh-user=vagrant \
+      --ssh-key=./.vagrant/machines/default/virtualbox/private_key
+
+    helm repo add isovalent https://helm.isovalent.com
+    helm repo update
+    helm install -n kube-system cilium-enterprise isovalent/cilium-enterprise
