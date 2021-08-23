@@ -865,7 +865,7 @@ func LoadAndPinMaps(__version, __verbosity int, btf uintptr, __prog, __map, __ma
 	fd := C.fgs_map_loader(version, verbosity, unsafe.Pointer(btf), p, m, ml, pt)
 	fdInt := int(fd)
 	if fdInt < 0 {
-		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)\n", fdInt, __prog, __map, __map_label)
+		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)", fdInt, __prog, __map, __map_label)
 	}
 	return fdInt, nil
 }
@@ -1067,12 +1067,12 @@ func LoadTracepointArgsProgram(__version, __verbosity int,
 func QdiscTCInsert(linkName string, ingress bool) error {
 	link, err := netlink.LinkByName(linkName)
 	if err != nil {
-		return fmt.Errorf("LinkByName failed (%s): %s\n", linkName, err)
+		return fmt.Errorf("LinkByName failed (%s): %w", linkName, err)
 	}
 
 	qdiscs, err := netlink.QdiscList(link)
 	if err != nil {
-		return fmt.Errorf("QdiscList failed (%s): %s\n", linkName, err)
+		return fmt.Errorf("QdiscList failed (%s): %w", linkName, err)
 	}
 	// If the qdisc exists nothing to do so return nil
 	for _, qdisc := range qdiscs {
@@ -1090,7 +1090,7 @@ func QdiscTCInsert(linkName string, ingress bool) error {
 		},
 	}
 	if err := netlink.QdiscAdd(qdisc); err != nil {
-		return fmt.Errorf("QdiscAdd failed (%s): %s\n", linkName, err)
+		return fmt.Errorf("QdiscAdd failed (%s): %w", linkName, err)
 	}
 	return nil
 }
@@ -1101,7 +1101,7 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
 
 	link, err := netlink.LinkByName(linkName)
 	if err != nil {
-		return fmt.Errorf("LinkByName failed (%s): %s\n", linkName, err), 0
+		return fmt.Errorf("LinkByName failed (%s): %w", linkName, err), 0
 	}
 
 	if ingress {
@@ -1126,10 +1126,10 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
 		DirectAction: true,
 	}
 	if filter.Fd < 0 {
-		return fmt.Errorf("BpfFilter failed (%s): %d\n", linkName, filter.Fd), 0
+		return fmt.Errorf("BpfFilter failed (%s): %d", linkName, filter.Fd), 0
 	}
 	if err = netlink.FilterReplace(filter); err != nil {
-		return fmt.Errorf("FilterAdd failed (%s): %s\n", linkName, err), 0
+		return fmt.Errorf("FilterAdd failed (%s): %w", linkName, err), 0
 	}
 	return err, 0
 }

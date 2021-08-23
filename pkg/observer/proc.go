@@ -53,7 +53,7 @@ func procsDockerIdOffset(docker string) (string, int, error) {
 		return s[1], len(s[0]) + 1, nil
 	}
 
-	return "", 0, fmt.Errorf("Docker string (%s) parse error\n", docker)
+	return "", 0, fmt.Errorf("Docker string (%s) parse error", docker)
 }
 
 func procsFilename(args []byte) (string, string) {

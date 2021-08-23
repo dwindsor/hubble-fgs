@@ -128,11 +128,11 @@ func getClkTck() (uint64, error) {
 	out := new(bytes.Buffer)
 	cmd.Stdout = out
 	if err := cmd.Run(); err != nil {
-		return 0, fmt.Errorf("command getconf failed: %s\n", err)
+		return 0, fmt.Errorf("command getconf failed: %w", err)
 	}
 	clktck, err := strconv.ParseUint(strings.TrimSpace(out.String()), 10, 64)
 	if err != nil {
-		return 0, fmt.Errorf("command getconf parse failed: %s\n", err)
+		return 0, fmt.Errorf("command getconf parse failed: %w", err)
 	}
 	return clktck, nil
 }
@@ -297,13 +297,13 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 
 			pcmdline, err = ioutil.ReadFile(filepath.Join(ProcFS, ppid, "cmdline"))
 			if err != nil {
-				k.log.WithError(err).Warnf("ReadFile: %s /cmdline error\n", filepath.Join(ProcFS, d.Name(), "cmdline"))
+				k.log.WithError(err).Warnf("ReadFile: %s /cmdline error", filepath.Join(ProcFS, d.Name(), "cmdline"))
 				continue
 			}
 
 			pstatline, err = ioutil.ReadFile(filepath.Join(ProcFS, ppid, "stat"))
 			if err != nil {
-				k.log.WithError(err).Warnf("ReadFile: %s /stat error\n", filepath.Join(ProcFS, d.Name(), "cmdline"))
+				k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(ProcFS, d.Name(), "cmdline"))
 				continue
 			}
 			pstats = r.FindAllString(string(pstatline), -1)
@@ -400,7 +400,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
 		}
 	}
-	k.log.Infof("Read ProcFS %s appended %d/%d entries\n", ProcFS, len(procs), len(procFS))
+	k.log.Infof("Read ProcFS %s appended %d/%d entries", ProcFS, len(procs), len(procFS))
 
 	k.pushEvents(procs, entryMap, push, write)
 	return procs

@@ -41,7 +41,7 @@ func validate(btf bpf.BTF, spec *v1alpha1.KProbeSpec) (bpf.BtfID, error) {
 
 	llCallTy, err := btf.TypeByID(llCallID)
 	if err != nil {
-		fmt.Errorf("failed to to find syscall type by id: %s", err)
+		fmt.Errorf("failed to to find syscall type by id: %w", err)
 	}
 
 	return btf.UnderlyingType(llCallTy)
@@ -62,7 +62,7 @@ func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
 	}
 	callTy, err := btf.TypeByID(callID)
 	if err != nil {
-		fmt.Errorf("failed to find type by id: %s", err)
+		fmt.Errorf("failed to find type by id: %w", err)
 	}
 
 	callProtoID, err := btf.UnderlyingType(callTy)
@@ -96,12 +96,12 @@ func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
 
 	callProtoTy, err := btf.TypeByID(callProtoID)
 	if err != nil {
-		fmt.Errorf("failed to find type by id: %s", err)
+		fmt.Errorf("failed to find type by id: %w", err)
 	}
 
 	callProtoStr, err := btf.DumpTy(callProtoID)
 	if err != nil {
-		fmt.Errorf("failed to dump function prototype by id: %s", err)
+		fmt.Errorf("failed to dump function prototype by id: %w", err)
 	}
 
 	fnNArgs := uint32(callProtoTy.Vlen())
@@ -118,7 +118,7 @@ func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
 
 		paramTyStr, err := btf.DumpTy(paramID)
 		if err != nil {
-			return fmt.Errorf("failed to dump paramemter type by id: %s", err)
+			return fmt.Errorf("failed to dump paramemter type by id: %w", err)
 		}
 
 		if !typesCompatible(specArg.Type, paramTyStr) {
@@ -213,7 +213,7 @@ func init() {
 func validateSycall(kspec *v1alpha1.KProbeSpec, name string) error {
 	if kspec.Return {
 		if !typesCompatible(kspec.ReturnArg.Type, "long") {
-			return fmt.Errorf("unexpected syscall spec return type: %s\n", kspec.ReturnArg.Type)
+			return fmt.Errorf("unexpected syscall spec return type: %s", kspec.ReturnArg.Type)
 		}
 	}
 

@@ -74,11 +74,11 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	m.Kube.Cgrpid = 0
 	m.Kube.Docker, i, err = procsDockerId(p.pid)
 	if err != nil {
-		k.log.Warn("Procfs execve event pods/ identifier error: %s\n", err)
+		k.log.WithError(err).Warn("Procfs execve event pods/ identifier error")
 	} else if i > 0 {
 		err := procDockerIdOffsetWriter(i, btf.GetCachedBTF())
 		if err != nil {
-			k.log.Warn("procDockerIdOffsetWriter error: %s", err)
+			k.log.WithError(err).Warn("Write to Docker ID BTF error")
 		}
 		k.dockerIdOffsetWriter = i
 	}
@@ -111,12 +111,12 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
 
 	if ObserverExecveMap.pinState.isDisabled() {
-		k.log.Infof("hubble-fgs, map %s is disabled, skipping.\n", ObserverExecveMap.mapName)
+		k.log.Infof("hubble-fgs, map %s is disabled, skipping.", ObserverExecveMap.mapName)
 		return
 	}
 
 	if ObserverExecveMap.pinState.isLoaded() {
-		k.log.Infof("hubble-fgs, map %s is already loaded, skipping.\n", ObserverExecveMap.mapName)
+		k.log.Infof("hubble-fgs, map %s is already loaded, skipping.", ObserverExecveMap.mapName)
 		return
 	}
 

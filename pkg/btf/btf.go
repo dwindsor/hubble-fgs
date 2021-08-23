@@ -51,7 +51,7 @@ func observerFindBTF(lib, btf string, ctx context.Context) (string, error) {
 
 		err := unix.Uname(&uname)
 		if err != nil {
-			return btf, fmt.Errorf("Kernel version lookup (uname -r) failing. Use '--kernel' to set manually: %s\n", err)
+			return btf, fmt.Errorf("Kernel version lookup (uname -r) failing. Use '--kernel' to set manually: %w", err)
 		}
 		n := bytes.IndexByte(uname.Release[:], 0)
 
@@ -76,10 +76,10 @@ func observerFindBTF(lib, btf string, ctx context.Context) (string, error) {
 		}
 		logger.GetLogger().WithField("file", runFile).Info("candidate btf file does not exist")
 
-		return btf, fmt.Errorf("Kernel version '%s' BTF search failed kernel is not included in supported list. Use --btf option to specify BTF path and/or '--kernel' to specify kernel version.", uname.Release[:n])
+		return btf, fmt.Errorf("Kernel version %q BTF search failed kernel is not included in supported list. Use --btf option to specify BTF path and/or '--kernel' to specify kernel version.", uname.Release[:n])
 	} else {
 		if err := btfFileExists(btf); err != nil {
-			return btf, fmt.Errorf("User specified BTF does not exist. %s\n", err)
+			return btf, fmt.Errorf("User specified BTF does not exist: %w", err)
 		}
 	}
 	return btf, nil
@@ -95,7 +95,7 @@ func InitCachedBTF(lib string, ctx context.Context) error {
 	// Find BTF metdaata and populate btf opaqu object
 	btfFile, err = observerFindBTF(lib, "", ctx)
 	if err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting kernel autodiscovery failed. %s\n", err)
+		return fmt.Errorf("hubble-fgs, aborting kernel autodiscovery failed: %w", err)
 	}
 	btfObj, err = NewBTF()
 	return err

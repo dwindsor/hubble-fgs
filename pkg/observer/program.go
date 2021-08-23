@@ -24,8 +24,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
-	"github.com/vishvananda/netlink"
 
+	"github.com/sirupsen/logrus"
+	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
 
@@ -406,7 +407,7 @@ func disableBpfLoad(bpf *BpfLoad) {
 	bpf.loadState.setDisabled()
 	for _, om := range observerAllMaps {
 		if om.bpf == bpf {
-			logger.GetLogger().Infof("disabling map %s", om.mapName)
+			logger.GetLogger().WithField("map", om.mapName).Infof("Disabling map")
 			om.pinState.setDisabled()
 		}
 	}
@@ -417,7 +418,7 @@ func observerFindProgs(ctx context.Context, sensor *ObserverSensor) error {
 		if _, err := os.Stat(p.Observer__program); err == nil {
 			continue
 		}
-		logger.GetLogger().WithField("file", p.Observer__program).Info("candidate bpf file does not exist")
+		logger.GetLogger().WithField("file", p.Observer__program).Info("Candidate bpf file does not exist")
 		last := strings.Split(p.Observer__program, "/")
 		filename := last[len(last)-1]
 
@@ -426,15 +427,15 @@ func observerFindProgs(ctx context.Context, sensor *ObserverSensor) error {
 			p.Observer__program = path
 			continue
 		}
-		logger.GetLogger().WithField("file", path).Info("candidate bpf file does not exist")
+		logger.GetLogger().WithField("file", path).Info("Candidate bpf file does not exist")
 
 		if IgnoreMissingProgs {
-			logger.GetLogger().Warningf("failed to find BPF prog %s, but was told to ignore such errors. Disabling it and moving on.", p.Observer__program)
+			logger.GetLogger().Warningf("Failed to find BPF prog %s, but was told to ignore such errors. Disabling it and moving on.", p.Observer__program)
 			disableBpfLoad(p)
 			continue
 		}
 
-		return fmt.Errorf("Observer Program '%s' can not be found\n", p.Observer__program)
+		return fmt.Errorf("Observer Program %q can not be found", p.Observer__program)
 	}
 	return nil
 }
@@ -445,11 +446,12 @@ func observerLoadSensorMaps(stopCtx context.Context, sensor *ObserverSensor, map
 		return err
 	}
 
+	l := logger.GetLogger()
 	for _, m := range sensor.maps {
 		var err error
 
 		if m.pinState.isDisabled() {
-			logger.GetLogger().Infof("hubble-fgs, map %s is disabled, skipping.\n", m.mapName)
+			l.WithField("map", m.mapName).Info("hubble-fgs, map is disabled, skipping.")
 			continue
 		}
 
@@ -457,11 +459,14 @@ func observerLoadSensorMaps(stopCtx context.Context, sensor *ObserverSensor, map
 		btfObj := uintptr(btf.GetCachedBTF())
 		m.fd, err = bpf.LoadAndPinMaps(version, Verbosity, btfObj, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
-		logger.GetLogger().Debugf("LoadAndPinMaps(%s, %s, %s)\n", m.bpf.Observer__program, pin, m.mapName)
+		l.Debugf("LoadAndPinMaps(%s, %s, %s)", m.bpf.Observer__program, pin, m.mapName)
 		if err != nil {
-			return fmt.Errorf("failed %d load map (%s): %s\n", m.fd, m.mapType, err)
+			return fmt.Errorf("failed %d load map (%s): %w", m.fd, m.mapType, err)
 		}
-		logger.GetLogger().Infof("hubble-fgs, map %s was loaded at %s.\n", m.mapName, pin)
+		l.WithFields(logrus.Fields{
+			"map":  m.mapName,
+			"path": pin,
+		}).Info("hubble-fgs, map loaded.")
 	}
 
 	return nil
@@ -473,12 +478,12 @@ func getDefaultRouteLinks() ([]netlink.Link, error) {
 	nilDst := &netlink.Route{Dst: nil}
 	routes, err := netlink.RouteListFiltered(netlink.FAMILY_V4, nilDst, netlink.RT_FILTER_DST)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("RouteListFiltered failed:")
+		logger.GetLogger().WithError(err).Warn("Failed to list filtered routes")
 		return nil, err
 	}
 	allLinks, err := netlink.LinkList()
 	if err != nil {
-		logger.GetLogger().WithError(err).Warn("LinkList failed:")
+		logger.GetLogger().WithError(err).Warn("Failed to list links")
 		return nil, err
 	}
 	for _, route := range routes {
@@ -643,16 +648,22 @@ func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, stopC
 		return err
 	}
 
-	logger.GetLogger().Debugf("prog %s kern_version %d\n", load.Observer__program, version)
+	l := logger.GetLogger()
+	l.WithFields(logrus.Fields{
+		"prog":         load.Observer__program,
+		"kern_version": version,
+	}).Debug("observerLoadInstance", load.Observer__program, version)
 	if load.probeType == "tracepoint" {
 		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, Verbosity, true)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
-			logger.GetLogger().Infof("Tracepoint %s exists: removing and retrying", load.Observer__program)
+			l.WithField(
+				"tracepoint", load.Observer__program,
+			).Info("Tracepoint exists: removing and retrying")
 			removeTracepoint(load.tracefd)
 			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, Verbosity, true)
 		}
 		if err != nil {
-			return fmt.Errorf("Failed prog %s kern_version %d err %d LoadTracingProgram: %s\n",
+			return fmt.Errorf("failed prog %s kern_version %d err %d LoadTracingProgram: %w",
 				load.Observer__program, version, fd, err)
 		}
 	} else {
@@ -663,7 +674,7 @@ func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, stopC
 			 */
 			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, Verbosity, false)
 			if err != nil && load.errorFatal {
-				return fmt.Errorf("Failed prog %s kern_version %d LoadKprobeProgram: %s\n",
+				return fmt.Errorf("failed prog %s kern_version %d LoadKprobeProgram: %w",
 					load.Observer__program, version, err)
 			}
 		}
@@ -675,7 +686,6 @@ func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, stopC
 func observerUnloadSensor(bpfDir, mapDir string, sensor *ObserverSensor, ctx context.Context) error {
 	logger.GetLogger().Infof("Unloading sensor %s", sensor.name)
 	if !sensor.loaded {
-		logger.GetLogger().Warningf("attempted to unload sensor %s which is not loaded", sensor.name)
 		return fmt.Errorf("unload of sensor %s failed: sensor not loaded", sensor.name)
 	}
 
@@ -696,17 +706,18 @@ func ObserverLoadSensor(bpfDir, mapDir, ciliumDir string, stopCtx context.Contex
 		return nil
 	}
 
-	logger.GetLogger().Infof("Loading sensor %s", sensor.name)
+	l := logger.GetLogger()
+
+	l.WithField("name", sensor.name).Info("Loading sensor")
 	if sensor.loaded {
-		logger.GetLogger().Warningf("attempted to load sensor %s which is already loaded", sensor.name)
 		return fmt.Errorf("loading sensor %s failed: sensor already loaded", sensor.name)
 	}
 
 	_, verStr, _ := kernels.GetKernelVersion(KernelVersion, ProcFS)
-	logger.GetLogger().Infof("Loading kernel version %s", verStr)
+	l.Infof("Loading kernel version %s", verStr)
 
 	if err := observerFindProgs(stopCtx, sensor); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting could not find BPF programs. %s\n", err)
+		return fmt.Errorf("hubble-fgs, aborting could not find BPF programs: %w", err)
 	}
 	if err := observerLoadSensorMaps(stopCtx, sensor, mapDir); err != nil {
 		return err
@@ -714,17 +725,18 @@ func ObserverLoadSensor(bpfDir, mapDir, ciliumDir string, stopCtx context.Contex
 
 	for _, p := range sensor.progs {
 		if p.loadState.isDisabled() {
-			logger.GetLogger().Infof("hubble-fgs, prog %s is disabled, skipping.\n", p.Observer__program)
+			l.WithField("prog", p.Observer__program).Info("BPF prog is disabled, skipping")
 			continue
 		}
 
 		if err := observerLoadInstance(bpfDir, mapDir, ciliumDir, p, stopCtx); err != nil {
 			return err
 		}
+
 		p.loadState.setLoaded()
-		logger.GetLogger().Infof("hubble-fgs, prog %s was loaded.\n", p.Observer__program)
+		l.WithField("prog", p.Observer__program).Info("BPF prog was loaded")
 	}
-	logger.GetLogger().Infof("hubble-fgs, loaded BPF maps and events for sensor %s successfully.\n", sensor.name)
+	l.WithField("sensor", sensor.name).Infof("Loaded BPF maps and events for sensor successfully")
 	sensor.loaded = true
 	return nil
 }
@@ -741,7 +753,7 @@ func removeTracepoint(fd int) {
 func observerMinReqs(ctx context.Context) (bool, error) {
 	_, _, err := kernels.GetKernelVersion(KernelVersion, ProcFS)
 	if err != nil {
-		return false, fmt.Errorf("Kernel version lookup failed, required for kprobe.\n")
+		return false, fmt.Errorf("kernel version lookup failed, required for kprobe")
 	}
 	return true, nil
 }
@@ -799,7 +811,7 @@ func LoadDefaultSensor(bpfDir, mapDir, ciliumDir, configFile string, ctx context
 
 	logger.GetLogger().WithField("metadata", ObserverBTF).Info("Using metadata file")
 	if _, err := observerMinReqs(ctx); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting minimum requirements not met. %s\n", err)
+		return fmt.Errorf("hubble-fgs, aborting minimum requirements not met: %w", err)
 	}
 
 	// This is technically not a sensor since we are loading this
@@ -820,7 +832,7 @@ func LoadDefaultSensor(bpfDir, mapDir, ciliumDir, configFile string, ctx context
 	}
 
 	if err := ObserverLoadSensor(bpfDir, mapDir, ciliumDir, ctx, load); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting could not load BPF programs. %s\n", err)
+		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
 
 	return nil

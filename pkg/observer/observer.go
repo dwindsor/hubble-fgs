@@ -353,7 +353,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 				k.observerListeners(unix)
 			}
 		} else {
-			k.log.Infof("unknown op ignored: %v \n", op)
+			k.log.Infof("unknown op ignored: %v", op)
 		}
 	}
 }
@@ -399,8 +399,7 @@ func isCtxDone(ctx context.Context) bool {
 func (k *ObserverKprobe) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, error) {
 	e, err := bpf.NewPerCpuEvents(k.perfConfig, k.log)
 	if err != nil {
-		k.log.WithError(err).Warn("Cpu Events configuration failed\n")
-		return nil, fmt.Errorf("failed kprobe events NewPerCpuEvents: %s\n", err)
+		return nil, fmt.Errorf("failed kprobe events NewPerCpuEvents: %w", err)
 	}
 	return e, nil
 }
@@ -417,11 +416,11 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 		todo, err := e.Poll(pollTimeout)
 		switch {
 		case isCtxDone(stopCtx):
-			k.log.Debug("isCtxDone completed")
+			k.log.Debug("Context cancelled inside __loopEvents")
 			return nil
 
 		case err == syscall.EBADF:
-			return fmt.Errorf("kprobe events syscall.EBADF: %s", err)
+			return fmt.Errorf("kprobe events syscall.EBADF: %w", err)
 
 		case err != nil:
 			k.log.WithError(err).Debug("kprobe events poll failed")
@@ -534,12 +533,12 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 
 	k.startUpdateMapMetrics()
 	if err := k.configureSockStatSampler(k.tcpStatSegRate); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting sample config error: %w", err)
+		return fmt.Errorf("hubble-fgs, aborting sample config error: %w", err)
 	}
 	k.populateExecve(ctx)
 	k.perfConfig = bpf.DefaultPerfEventConfig()
 	if err := k.runEvents(ctx); err != nil {
-		return fmt.Errorf("hubble-fgs, Aborting runtime error. %s", err)
+		return fmt.Errorf("hubble-fgs, aborting runtime error: %w", err)
 	}
 	return nil
 }

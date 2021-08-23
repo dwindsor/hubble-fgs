@@ -386,7 +386,7 @@ func PerfEventOpen(config *PerfEventConfig, pid int, cpu int, groupFD int, flags
 			Fd:  int(ret),
 		}, nil
 	}
-	return nil, fmt.Errorf("Unable to open perf event: %s", err)
+	return nil, fmt.Errorf("Unable to open perf event: %w", err)
 }
 
 func (e *PerfEvent) Mmap(pagesize int, npages int) error {
@@ -402,7 +402,7 @@ func (e *PerfEvent) Mmap(pagesize int, npages int) error {
 		unix.PROT_READ|unix.PROT_WRITE,
 		unix.MAP_SHARED)
 	if err != nil {
-		return fmt.Errorf("Unable to mmap perf event: %s", err)
+		return fmt.Errorf("Unable to mmap perf event: %w", err)
 	}
 
 	e.pagesize = pagesize

@@ -89,7 +89,7 @@ func (sink tcpOrTLSSink) Start(ctx context.Context) (int, chan SinkStats, error)
 		cert, err := tls.X509KeyPair(certPem, keyPem)
 		if err != nil {
 			listener.Close()
-			return -1, nil, fmt.Errorf("X509KeyPair error: %s", err)
+			return -1, nil, fmt.Errorf("X509KeyPair error: %w", err)
 		}
 		listener = tls.NewListener(listener, &tls.Config{Certificates: []tls.Certificate{cert}})
 	}

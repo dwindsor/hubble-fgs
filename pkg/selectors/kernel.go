@@ -181,7 +181,7 @@ func pidSelectorValue(pid *v1alpha1.PIDSelector) ([]byte, uint32) {
 func parseMatchPid(k *KernelSelectorState, pid *v1alpha1.PIDSelector) error {
 	op, err := selectorOp(pid.Operator)
 	if err != nil {
-		return fmt.Errorf("matchpid error: %s\n", err)
+		return fmt.Errorf("matchpid error: %w", err)
 	}
 	WriteSelectorUint32(k, op)
 
@@ -253,7 +253,7 @@ func parseMatchValues(k *KernelSelectorState, values []string, ty uint32) error 
 			}
 			WriteSelectorUint64(k, uint64(i))
 		case argTypeSkb, argTypeCharIovec:
-			return fmt.Errorf("MatchArgs values %s unsupported\n", v)
+			return fmt.Errorf("MatchArgs values %s unsupported", v)
 		}
 	}
 	return nil
@@ -264,18 +264,18 @@ func parseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 
 	op, err := selectorOp(arg.Operator)
 	if err != nil {
-		return fmt.Errorf("matcharg error: %s\n", err)
+		return fmt.Errorf("matcharg error: %w", err)
 	}
 	WriteSelectorUint32(k, op)
 	moff := AdvanceSelectorLength(k)
 	ty, err := argSelectorType(arg, sig)
 	if err != nil {
-		return fmt.Errorf("argSelector error: %s\n", err)
+		return fmt.Errorf("argSelector error: %w", err)
 	}
 	WriteSelectorUint32(k, ty)
 	err = parseMatchValues(k, arg.Values, ty)
 	if err != nil {
-		return fmt.Errorf("parseMatchValues error: %s\n", err)
+		return fmt.Errorf("parseMatchValues error: %w", err)
 	}
 	WriteSelectorLength(k, moff)
 	return err
@@ -295,7 +295,7 @@ func parseMatchArgs(k *KernelSelectorState, args []v1alpha1.ArgSelector, sig []v
 func parseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector) error {
 	act, ok := actionTypeTable[strings.ToLower(action.Action)]
 	if !ok {
-		return fmt.Errorf("parseMatchAction: actionType %s unknown\n", action.Action)
+		return fmt.Errorf("parseMatchAction: actionType %s unknown", action.Action)
 	}
 	WriteSelectorUint32(k, act)
 	switch act {

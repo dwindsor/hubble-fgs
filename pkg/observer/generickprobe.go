@@ -389,7 +389,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		for j, a := range f.Args {
 			argType := GenericTypeFromString(a.Type)
 			if argType == GenericInvalidType {
-				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported\n", j, a.Type)
+				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported", j, a.Type)
 			}
 			argMValue := getMetaValue(&a)
 			if argMValue == argReturnCopy {
@@ -430,7 +430,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			}
 			retVal := btfobj.AddEnumValue(argreturn, argType)
 			if retVal < 0 {
-				return nil, fmt.Errorf("Error add enum value '%s'='%d' failed %d\n", argreturn, argType, retVal)
+				return nil, fmt.Errorf("Error add enum value '%s'='%d' failed %d", argreturn, argType, retVal)
 			}
 			argsBTFSet[api.ReturnArgIndex] = true
 			argP := argPrinters{index: api.ReturnArgIndex, ty: argType}
@@ -438,7 +438,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		} else if argRetprobe != nil {
 			retVal := btfobj.AddEnumValue(argreturn, 0)
 			if retVal < 0 {
-				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d\n", argreturn, retVal)
+				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d", argreturn, retVal)
 			}
 			argsBTFSet[api.ReturnArgIndex] = true
 			setRetprobe = true
