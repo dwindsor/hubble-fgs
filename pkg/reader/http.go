@@ -13,6 +13,7 @@ package reader
 
 import (
 	"strconv"
+	"strings"
 )
 
 var httpMethod = map[uint32]string{
@@ -39,9 +40,17 @@ func GetHttpMethod(code uint32) string {
 }
 
 func GetHttpCode(code string) (uint32, error) {
-	i, err := strconv.ParseUint(code, 10, 32)
+	i, err := strconv.ParseUint(code, 10, 0)
 	if err != nil {
 		return uint32(0), err
 	}
 	return uint32(i), err
+}
+
+func GetHttpContentLength(code string) (uint32, error) {
+	if code == "" {
+		return 0, nil
+	}
+	v, err := strconv.ParseUint(strings.TrimSpace(code), 10, 32)
+	return uint32(v), err
 }

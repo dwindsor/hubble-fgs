@@ -58,7 +58,7 @@ enum http_request_header {
 // Supported header fields
 #define HOST      {'H', 'o', 's', 't'};
 #define USERAGENT {'U','s','e','r','-','A','g','e','n','t'}
-#define CONTENT   {'C','o','n','t','e','n','t','-','l','e','n','g','t','h'}
+#define CONTENT   {'C','o','n','t','e','n','t','-','L','e','n','g','t','h'}
 
 enum http_request_state {
 	http_start,
