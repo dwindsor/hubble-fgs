@@ -14,7 +14,6 @@ package observer
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -85,7 +84,6 @@ func (sockops *observerHttpSensor) LoadProbe(
 	if err != nil {
 		return err, i
 	}
-	fmt.Printf("LoadProbe sockops\n")
 	err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbParser, version, 0, x64, path)
 	if err != nil {
 		return err, i
