@@ -460,6 +460,15 @@ void post_http_event(ctx_md *msg,
 }
 
 static inline __attribute__((always_inline))
+void http_reset_state(struct msg_http *http)
+{
+	http->state = http_start;
+	http->offset = 0;
+	http->url_offset = 0;
+	http->consume_bytes = 0;
+}
+
+static inline __attribute__((always_inline))
 int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 {
 	struct msg_http *http;
@@ -473,6 +482,7 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	http_parse(msg, tuple, http);
 	if (http->state == http_done) {
 		post_http_event(msg, tuple, http);
+		http_reset_state(http);
 	}
 	return SK_PASS;
 }
