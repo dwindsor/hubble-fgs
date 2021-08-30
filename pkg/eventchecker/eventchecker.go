@@ -319,6 +319,11 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (err
 		}
 		return nil, ev.ProcessAccept
 
+	case *fgs.GetEventsResponse_Test:
+		if err := checkTypes(fgs.EventType_TEST); err != nil {
+			return err, nil
+		}
+		return nil, ev.Test
 	}
 
 	return fmt.Errorf("Unknown event type (%T)", r.Event), nil
@@ -353,6 +358,18 @@ func NewExecEventChecker() *eventChainChecker {
 	return &eventChainChecker{
 		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_EXEC)
+		},
+		eventCheck: func(ev fgsEvent, l Logger) error {
+			return nil
+		},
+	}
+}
+
+// NewTestEventChecker creates a new eventChainChecker for Test events
+func NewTestEventChecker() *eventChainChecker {
+	return &eventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+			return checkEvent(r, l, fgs.EventType_TEST)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
