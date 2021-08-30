@@ -602,21 +602,19 @@ spec:
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: 1}}
-	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{BytesArg: []byte("hello iovec world")}}
+	kpChecker := ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_writev").
+		WithArgs([]ec.GenericArgChecker{
+			ec.GenericArgIntCheck(1),
+			ec.GenericArgBytesCheck([]byte("hello iovec world")),
+		})
 
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessKprobe{
-				ProcessKprobe: &fgs.ProcessKprobe{
-					Process:      &fgs.Process{Binary: selfBinary},
-					Parent:       &fgs.Process{Binary: ""},
-					FunctionName: "__x64_sys_writev",
-					Args:         []*fgs.KprobeArgument{arg0, arg1},
-				},
-			},
-		},
-	}
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasProcess(ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))).
+			HasKprobe(kpChecker).
+			End(),
+	)
 
 	kprobe, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
 	if err != nil {
@@ -626,9 +624,9 @@ spec:
 	execWG.Wait()
 	err = helloIovecWorldWritev()
 	execWG.Wait()
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	TestDone(t, kprobe)
 }
 
