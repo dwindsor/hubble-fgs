@@ -431,6 +431,29 @@ func (e *eventChainChecker) HasDstIP(ip string) *eventChainChecker {
 	return e
 }
 
+func eventHasSrcIP(e fgsEvent, ip string) error {
+	if ev, ok := e.(interface{ GetSourceIp() string }); ok {
+		evIP := ev.GetSourceIp()
+		if evIP == ip {
+			return nil
+		}
+		return fmt.Errorf("Expecting SrcIP %s but %T has %s", ip, ev, evIP)
+	}
+	return fmt.Errorf("type %T does not have SrcIP", e)
+}
+
+// HasSrcIP adds a check that the event has a source IP value matching to the argument
+func (e *eventChainChecker) HasSrcIP(ip string) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasSrcIP(e, ip)
+	}
+	return e
+}
+
 func checkPort(port uint32, val *wrapperspb.UInt32Value) error {
 	if val == nil {
 		return fmt.Errorf("%d does not match nil value", port)
@@ -463,6 +486,32 @@ func (e *eventChainChecker) HasDstPort(port uint32) *eventChainChecker {
 			return err
 		}
 		return eventHasDstPort(e, port)
+	}
+	return e
+}
+
+func eventHasSrcPort(e fgsEvent, port uint32) error {
+	if ev, ok := e.(interface {
+		GetSourcePort() *wrapperspb.UInt32Value
+	}); ok {
+		evPort := ev.GetSourcePort()
+		if err := checkPort(port, evPort); err == nil {
+			return nil
+		} else {
+			return fmt.Errorf("%T port check failed: %w", ev, err)
+		}
+	}
+	return fmt.Errorf("type %T does not have Src Port", e)
+}
+
+// HasSrcIP adds a check that the event has a source IP value matching to the argument
+func (e *eventChainChecker) HasSrcPort(port uint32) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasSrcPort(e, port)
 	}
 	return e
 }
