@@ -581,83 +581,43 @@ func TestListenAcceptClose(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	rcwd := cwdPath(true)
-	fcwd := cwdPath(false)
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	ncSrvChecker := ec.ProcessWithCommand(
+		ec.SuffixStringMatch("nc.traditional"), ec.FullStringMatch("-nvlp 8081"),
+	)
 
-	ncProc := &fgs.Process{
-		Binary:    "nc.traditional",
-		Arguments: "-nvlp 8081",
-		Cwd:       fcwd,
-	}
-	selfProc := &fgs.Process{
-		Binary: selfBinary,
-		Cwd:    rcwd,
-	}
-
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: selfBinary},
-					Parent:  &fgs.Process{Binary: ""},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: ncProc,
-					Parent:  selfProc,
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessListen{
-				ProcessListen: &fgs.ProcessListen{
-					Process: ncProc,
-					Parent:  selfProc,
-					Ip:      "0.0.0.0",
-					Port:    &wrapperspb.UInt32Value{Value: 8081},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessAccept{
-				ProcessAccept: &fgs.ProcessAccept{
-					Process:    ncProc,
-					Parent:     selfProc,
-					SourceIp:   "127.0.0.1",
-					SourcePort: &wrapperspb.UInt32Value{Value: 8081},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessClose{
-				ProcessClose: &fgs.ProcessClose{
-					Process:    ncProc,
-					Parent:     selfProc,
-					SourceIp:   "0.0.0.0",
-					SourcePort: &wrapperspb.UInt32Value{Value: 8081},
-				},
-			},
-		},
-		/* I would also like to test this, but it goes into TIME_WAIT and then
-		 * eventually close and I don't want to wait for it. So we need some
-		 * go way to close the sockets.
-		 */
-		/*
-			&fgs.GetEventsResponse{
-				Event: &fgs.GetEventsResponse_ProcessClose{
-					ProcessClose: &fgs.ProcessClose{
-						Process: ncProc,
-						Parent: selfProc,
-						SourceIp:   "127.0.0.1",
-						SourcePort: &wrapperspb.UInt32Value{Value: 8081},
-					},
-				},
-			},
-		*/
-	}
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(selfChecker).
+			HasParent().
+			End(),
+		ec.NewExecEventChecker().
+			HasProcess(ncSrvChecker).
+			HasParent(selfChecker).
+			End(),
+		ec.NewListenEventChecker().
+			HasProcess(ncSrvChecker).
+			HasParent(selfChecker).
+			HasIP("0.0.0.0").
+			HasPort(8081).
+			End(),
+		ec.NewAcceptEventChecker().
+			HasProcess(ncSrvChecker).
+			HasParent(selfChecker).
+			HasSrcIP("127.0.0.1").
+			HasSrcPort(8081).
+			End(),
+		ec.NewCloseEventChecker().
+			HasProcess(ncSrvChecker).
+			HasParent(selfChecker).
+			HasSrcIP("0.0.0.0").
+			HasSrcPort(8081).
+			End(),
+		// TODO: it would be good if we could also check the close event on
+		// the accept socket, but it goes into TIME_WAIT and then
+		// eventually close and I don't want to wait for it. So we need
+		// some go way to close the sockets.
+	)
 
 	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
@@ -679,9 +639,9 @@ func TestListenAcceptClose(t *testing.T) {
 	if cmdServer != nil {
 		cmdServer.Process.Signal(syscall.SIGKILL)
 	}
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	TestDone(t, kprobe)
 }
 
