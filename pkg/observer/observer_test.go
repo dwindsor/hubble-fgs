@@ -654,11 +654,9 @@ func TestSensorLseekLoad(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_Test{},
-		},
-	}
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewTestEventChecker().End(),
+	)
 
 	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
@@ -679,9 +677,8 @@ func TestSensorLseekLoad(t *testing.T) {
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
 
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 
 	observerUnloadSensor(kprobe.bpfDir, kprobe.mapDir, sensor, ctx)
 
