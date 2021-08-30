@@ -316,57 +316,33 @@ func TestExistingAcceptEvent(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	rcwd := cwdPath(true)
-	fcwd := cwdPath(false)
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	ncChecker := ec.ProcessWithCommand(
+		ec.SuffixStringMatch("nc.traditional"), ec.FullStringMatch("-nvlp 8081"),
+	)
 
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: selfBinary},
-					Parent:  &fgs.Process{Binary: ""},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081"},
-					Parent: &fgs.Process{Binary: selfBinary},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessListen{
-				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081"},
-					Parent: &fgs.Process{
-						Binary: selfBinary},
-					Ip:   "0.0.0.0",
-					Port: &wrapperspb.UInt32Value{Value: 8081},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessAccept{
-				ProcessAccept: &fgs.ProcessAccept{
-					Process: &fgs.Process{
-						Binary:    "nc.traditional",
-						Arguments: "-nvlp 8081",
-						Cwd:       fcwd},
-					Parent: &fgs.Process{
-						Binary: selfBinary,
-						Cwd:    rcwd},
-					SourceIp:   "127.0.0.1",
-					SourcePort: &wrapperspb.UInt32Value{Value: 8081},
-				},
-			},
-		},
-	}
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(selfChecker).
+			HasParent().
+			End(),
+		ec.NewExecEventChecker().
+			HasProcess(ncChecker).
+			HasParent(selfChecker).
+			End(),
+		ec.NewListenEventChecker().
+			HasProcess(ncChecker).
+			HasParent(selfChecker).
+			HasIP("0.0.0.0").
+			HasPort(8081).
+			End(),
+		ec.NewAcceptEventChecker().
+			HasProcess(ncChecker).
+			HasParent(selfChecker).
+			HasSrcIP("127.0.0.1").
+			HasSrcPort(8081).
+			End(),
+	)
 
 	/* Start server before creating kprobe */
 	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
@@ -395,9 +371,8 @@ func TestExistingAcceptEvent(t *testing.T) {
 		cmdServer.Process.Signal(syscall.SIGKILL)
 	}
 
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	TestDone(t, kprobe)
 }
 
