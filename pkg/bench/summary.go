@@ -16,16 +16,17 @@ import (
 	"log"
 	"os"
 	"time"
+
+	"github.com/fatih/color"
 )
 
 // BenchSummary gathers benchmark results. Serializes to JSON.
 // This is updated from multiple places concurrently, but currently
 // there is no overlap on writes, so this isn't yet protected by a mutex.
 type BenchSummary struct {
-	TestName string
 	Args     *BenchArguments
 
-	TLSEvents, ExitEvents, ExecEvents, TCPEvents int64
+	TLSEvents, HTTPEvents, ExitEvents, ExecEvents, TCPEvents int64
 
 	StartTime          time.Time
 	EndTime            time.Time
@@ -45,13 +46,6 @@ type BenchSummary struct {
 	Error string
 }
 
-// Reset the summary for another run. Unfortunate hack to be able
-// to reuse the FGS setup for multiple different tests (it has pointer
-// to summary). TODO: Might be cleaner to register another fresh listener.
-func (s *BenchSummary) ResetForNewRun() {
-	*s = BenchSummary{TestName: s.TestName, Args: s.Args, SetupDurationNanos: s.SetupDurationNanos}
-}
-
 func (s *BenchSummary) Dump() {
 	err := json.NewEncoder(os.Stdout).Encode(s)
 	if err != nil {
@@ -60,8 +54,10 @@ func (s *BenchSummary) Dump() {
 }
 
 func (s *BenchSummary) PrettyPrint() {
+	color.Set(color.FgBlue)
 	fmt.Println("Benchmark summary")
 	fmt.Println("-----------------")
+	color.Unset()
 	fmt.Printf("Started:           %s\n", s.StartTime)
 	fmt.Printf("Ended:             %s\n", s.EndTime)
 	fmt.Printf("Arguments:         %v\n", s.Args)
@@ -77,17 +73,29 @@ func (s *BenchSummary) PrettyPrint() {
 	fmt.Printf("Latency 90th:      %s\n", s.SourceStats.LatencyP90)
 	fmt.Printf("Latency 99th:      %s\n", s.SourceStats.LatencyP99)
 
+	if !s.Args.Baseline {
+		fmt.Printf("Events:            tls=%d, http=%d, tcp=%d, exit=%d, exec=%d\n",
+			s.TLSEvents, s.HTTPEvents, s.TCPEvents,
+			s.ExitEvents, s.ExecEvents)
+	}
+
 	if s.SourceStats.Errors > 0 {
-		fmt.Printf("Errors:            %d\n", s.SourceStats.Errors)
-		fmt.Printf("Last error:        %s\n", s.SourceStats.LastError)
+		color.Set(color.FgRed)
+		fmt.Printf("Source Errors:     %d\n", s.SourceStats.Errors)
+		fmt.Printf("Last source error: %s\n", s.SourceStats.LastError)
+		color.Unset()
 	}
 	fmt.Println("BPF statistics:")
 	for _, bps := range s.BpfStats {
-		fmt.Printf("  %s\n", bps)
+		if bps.RunCnt > 0 {
+			fmt.Printf("  %s\n", bps)
+		}
 	}
 
 	if s.Error != "" {
+		color.Set(color.FgRed)
 		fmt.Printf("Error:             %s\n", s.Error)
+		color.Unset()
 	}
 }
 

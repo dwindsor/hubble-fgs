@@ -26,32 +26,35 @@ import (
 var (
 	duration        *time.Duration
 	rate            *int
-	fgsTLS          *bool
 	noDelay         *bool
 	debug           *bool
 	jsonEncode      *bool
 	baseline        *bool
 	requestResponse *bool
 	requestSize     *int
+	parsers         *string
+	printEvents     *bool
 
 	source *string
 	proxy  *string
 	sink   *string
+
+	supportedParsers = []string{"tls", "http"}
 )
 
 func init() {
 	duration = flag.Duration("duration", 10*time.Second, "test duration")
-
 	rate = flag.Int("rate", 0, "connections/requests per second, use 0 for unlimited")
-	fgsTLS = flag.Bool("fgs-tls", false, "enable TLS in FGS")
+	parsers = flag.String("parsers", "", "comma-separated list of FGS parsers to enable, one of:"+strings.Join(supportedParsers, ", "))
 	debug = flag.Bool("debug", false, "enable FGS debugging")
 	jsonEncode = flag.Bool("json-encode", false, "JSON encode the events and measure overhead")
 	baseline = flag.Bool("baseline", false, "run a baseline benchmark without FGS")
 	requestSize = flag.Int("req-size", 64, "request size for request-response test")
+	printEvents = flag.Bool("print", false, "print events in JSON to stdout")
 
-	source = flag.String("source", "none", "source to use, one of: "+strings.Join(bench.SupportedSources(), ","))
-	proxy = flag.String("proxy", "none", "proxy to use, one of: "+strings.Join(bench.SupportedProxies(), ","))
-	sink = flag.String("sink", "tcp", "sink to use, one of: "+strings.Join(bench.SupportedSinks(), ","))
+	source = flag.String("source", "none", "source to use, one of: "+strings.Join(bench.SupportedSources(), ", "))
+	proxy = flag.String("proxy", "none", "proxy to use, one of: "+strings.Join(bench.SupportedProxies(), ", "))
+	sink = flag.String("sink", "tcp", "sink to use, one of: "+strings.Join(bench.SupportedSinks(), ", "))
 }
 
 func main() {
@@ -63,10 +66,26 @@ func main() {
 	flag.Parse()
 	log.SetOutput(os.Stderr)
 
+	var tlsParser, httpParser bool
+
+	for _, p := range strings.Split(*parsers, ",") {
+		switch p {
+		case "http":
+			httpParser = true
+		case "tls":
+			tlsParser = true
+		case "":
+		default:
+			log.Fatalf("Unknown parser: %s, use on of: %s", p, strings.Join(supportedParsers, ", "))
+		}
+	}
+
 	args := &bench.BenchArguments{
-		FgsEnableTLS:  *fgsTLS,
+		FgsEnableTLS:  tlsParser,
+		FgsEnableHTTP: httpParser,
 		FgsDebug:      *debug,
-		FgsJSONEncode: *jsonEncode,
+		FgsJSONEncode: *jsonEncode || *printEvents,
+		PrintEvents:   *printEvents,
 		Baseline:      *baseline,
 		Source:        bench.SourceNameOrPanic(*source),
 		SourceArgs: bench.SourceArgs{
@@ -78,12 +97,9 @@ func main() {
 		Sink:  bench.SinkNameOrPanic(*sink),
 	}
 
-	var summary *bench.BenchSummary
-	if *baseline {
-		summary = bench.BenchBaseline(args)
-	} else {
-		summary = bench.BenchFGS(args, func() {})
-	}
-
+	summary := bench.RunBenchmark(args)
 	summary.PrettyPrint()
+	if summary.Error != "" {
+		os.Exit(1)
+	}
 }

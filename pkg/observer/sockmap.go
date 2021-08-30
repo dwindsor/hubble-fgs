@@ -7,6 +7,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
@@ -110,9 +111,11 @@ func (skmsg *observerSkmsgTlsSensor) LoadProbe(
 	if err != nil {
 		return err, i
 	}
-	err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverSkSkbParser, version, 0, x64, path)
-	if err != nil {
-		return err, i
+	if skSkbParserRequired() {
+		err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverSkSkbParser, version, 0, x64, path)
+		if err != nil {
+			return err, i
+		}
 	}
 	return ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, ObserverSkSkbVerdict, version, 0, x64, path)
 }
@@ -159,13 +162,12 @@ func init() {
 	}
 	RegisterProbeType("sk_skb_verdict", skskbVerdict)
 
-	// The skskb parser is only needed on 5.10 and earlier kernels.
-	// After 5.10 we can run with only the skskb verdict programs
-	// improving performance.
-	skskbParser := &observerSkSkbParserTlsSensor{
-		name: "skskb parser tls sensor",
+	if skSkbParserRequired() {
+		skskbParser := &observerSkSkbParserTlsSensor{
+			name: "skskb parser tls sensor",
+		}
+		RegisterProbeType("sk_skb_parser", skskbParser)
 	}
-	RegisterProbeType("sk_skb_parser", skskbParser)
 
 	skmsg := &observerSkmsgTlsSensor{
 		name: "skmsg tls sensor",
@@ -197,8 +199,10 @@ func EnableTlsParser(tls, tc bool) *ObserverSensor {
 			ObserverSockopsEstablished,
 			ObserverSkmsg,
 			ObserverSkSkbVerdict,
-			ObserverSkSkbParser,
 		)
+		if skSkbParserRequired() {
+			progs = append(progs, ObserverSkSkbParser)
+		}
 
 		maps = append(maps,
 			ObserverSockMap,
@@ -289,4 +293,11 @@ func getSensorFromParserPolicyFname(fname string) (*ObserverSensor, error) {
 		return nil, fmt.Errorf("failed to read yaml file %s: %w", fname, err)
 	}
 	return getSensorFromParserPolicyString(string(yamlData))
+}
+
+func skSkbParserRequired() bool {
+	// The skskb parser is only needed on 5.10 and earlier kernels.
+	// After 5.10 we can run with only the skskb verdict programs
+	// improving performance.
+	return !kernels.MinKernelVersion("5.10.0")
 }

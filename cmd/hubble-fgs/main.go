@@ -73,7 +73,6 @@ func hubbleFGSExecute() error {
 	bpf.ConfigureResourceLimits()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
 		networkInterfaces, configFile,
-		tls, tlstc,
 		debug, enableK8sAPI, exportTCPStatsSampleSeg)
 
 	/* Remove any stale programs, otherwise feature set change can cause

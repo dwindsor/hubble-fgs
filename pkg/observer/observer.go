@@ -544,7 +544,7 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 }
 
 func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
-	tls, tlstc, pretty, crd bool, tcpStatRate uint32) *ObserverKprobe {
+	pretty, crd bool, tcpStatRate uint32) *ObserverKprobe {
 	return &ObserverKprobe{
 		bpfDir:         bpfDir,
 		mapDir:         mapDir,

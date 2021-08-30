@@ -51,8 +51,6 @@ const (
 )
 
 type testObserverOptions struct {
-	tls    bool
-	tlstc  bool
 	pretty bool
 	crd    bool
 	probes string
@@ -166,8 +164,6 @@ func newDefaultTestOptions(t *testing.T, opts ...testOption) *testOptions {
 	// default values
 	options := &testOptions{
 		observer: testObserverOptions{
-			tls:    false,
-			tlstc:  false,
 			pretty: false,
 			crd:    false,
 			config: "",
@@ -190,7 +186,7 @@ func newDefaultObserver(t *testing.T, oo *testObserverOptions) *ObserverKprobe {
 	return NewObserverKprobe(observerTestDir,
 		observerTestDir,
 		"", "",
-		oo.config, oo.tls, oo.tlstc, oo.pretty, oo.crd,
+		oo.config, oo.pretty, oo.crd,
 		0)
 }
 
