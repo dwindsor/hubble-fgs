@@ -868,47 +868,29 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	// Current code reports binary behind symlink in proc case (binaries running
 	// before fgs starts), but in runtime event we report the name of the symlink.
 	// In this test the difference is busybox vs nc.
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: selfBinary},
-					Parent:  &fgs.Process{Binary: ""},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "/bin/busybox",
-						Arguments: "-nvlp 8081",
-						Cwd:       "/",
-						Uid:       &wrapperspb.UInt32Value{Value: 0},
-					},
-					Parent: &fgs.Process{},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessListen{
-				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
-						Binary:    "/bin/busybox",
-						Arguments: "-nvlp 8081",
-						Cwd:       "/",
-						Uid:       &wrapperspb.UInt32Value{Value: 0},
-					},
-					Parent: &fgs.Process{},
-					Ip:     "0.0.0.0",
-					Port:   &wrapperspb.UInt32Value{Value: 8081},
-				},
-			},
-		},
-	}
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary("/bin/busybox").
+		WithArguments("-nvlp 8081").
+		WithCWD("/").
+		WithUID(0)
 
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(selfChecker).
+			HasParent().
+			End(),
+		ec.NewExecEventChecker().
+			HasProcess(ncSrvChecker).
+			End(),
+		ec.NewListenEventChecker().
+			HasProcess(ncSrvChecker).
+			HasIP("0.0.0.0").
+			HasPort(8081).
+			End(),
+	)
+
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	TestDone(t, kprobe)
 }
