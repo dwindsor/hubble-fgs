@@ -772,80 +772,44 @@ func TestDockerListenConnect(t *testing.T) {
 	fgsServerID := serverDockerID[:31]
 	fgsClientID := clientDockerID[:31]
 
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: selfBinary},
-					Parent:  &fgs.Process{Binary: ""},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "/usr/bin/nc",
-						Arguments: "-nvlp 8081",
-						Cwd:       "/",
-						Docker:    fgsServerID,
-						Uid:       &wrapperspb.UInt32Value{Value: 0},
-					},
-					Parent: &fgs.Process{},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessListen{
-				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
-						Binary:    "/usr/bin/nc",
-						Arguments: "-nvlp 8081",
-						Cwd:       "/",
-						Docker:    fgsServerID,
-						Uid:       &wrapperspb.UInt32Value{Value: 0},
-					},
-					Parent: &fgs.Process{},
-					Ip:     "0.0.0.0",
-					Port:   &wrapperspb.UInt32Value{Value: 8081},
-				},
-			},
-		},
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessExec{
-				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Binary:    "/usr/bin/nc",
-						Arguments: "fgs-test-server 8081",
-						Cwd:       "/",
-						Docker:    fgsClientID,
-						Uid:       &wrapperspb.UInt32Value{Value: 0},
-					},
-					Parent: &fgs.Process{},
-				},
-			},
-		},
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary("/usr/bin/nc").
+		WithArguments("-nvlp 8081").
+		WithCWD("/").
+		WithUID(0).
+		WithDocker(fgsServerID)
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary("/usr/bin/nc").
+		WithArguments("fgs-test-server 8081").
+		WithCWD("/").
+		WithUID(0).
+		WithDocker(fgsClientID)
 
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Binary:    "/usr/bin/nc",
-						Arguments: "fgs-test-server 8081",
-						Cwd:       "/",
-						Docker:    fgsClientID,
-						Uid:       &wrapperspb.UInt32Value{Value: 0},
-					},
-					Parent:          &fgs.Process{},
-					DestinationPort: &wrapperspb.UInt32Value{Value: 8081},
-				},
-			},
-		},
-	}
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(selfChecker).
+			HasParent().
+			End(),
+		ec.NewExecEventChecker().
+			HasProcess(ncSrvChecker).
+			End(),
+		ec.NewListenEventChecker().
+			HasProcess(ncSrvChecker).
+			HasIP("0.0.0.0").
+			HasPort(8081).
+			End(),
+		ec.NewExecEventChecker().
+			HasProcess(ncCliChecker).
+			End(),
+		ec.NewConnectEventChecker().
+			HasProcess(ncCliChecker).
+			HasDstPort(8081).
+			End(),
+	)
 
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	TestDone(t, kprobe)
 }
 
