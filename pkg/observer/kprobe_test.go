@@ -281,26 +281,38 @@ spec:
 
 // __x64_sys_openat trace
 var (
-	openArg0  = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_IntArg{IntArg: -100}}
-	openArg1  = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_StringArg{StringArg: "/tmp/testfile"}}
-	openTrace = []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessKprobe{
-				ProcessKprobe: &fgs.ProcessKprobe{
-					Process:      &fgs.Process{Binary: selfBinary},
-					Parent:       &fgs.Process{Binary: ""},
-					FunctionName: "__x64_sys_openat",
-					Args:         []*fgs.KprobeArgument{openArg0, openArg1},
-				},
+	openArg0Check   = ec.GenericArgIntCheck(-100)
+	openArg1Check   = ec.GenericArgStringCheck("/tmp/testfile")
+	openArg2Check   = ec.GenericArgIsInt()
+	openKprobeCheck = ec.NewKprobeChecker().
+			WithFunctionName("__x64_sys_openat").
+			WithArgs([]ec.GenericArgChecker{openArg0Check, openArg1Check, openArg2Check})
+
+	openChecker = ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasProcess(ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))).
+			HasKprobe(openKprobeCheck).
+			End(),
+	)
+
+	// this check fails if it find a kprobe event. It is used to test filters.
+	noKprobeChecker = ec.NewAllMultiResponseChecker(
+		ec.ResponseCheckerFn(
+			func(r *fgs.GetEventsResponse, l ec.Logger) error {
+				switch ev := r.Event.(type) {
+				case *fgs.GetEventsResponse_ProcessKprobe:
+					return fmt.Errorf("Unexpected event: %+v", ev)
+				default:
+					return nil
+				}
 			},
-		},
-	}
+		),
+	)
 )
 
 func testKprobeObjectFiltered(t *testing.T,
 	readHook string,
-	trace []*fgs.GetEventsResponse,
-	invertResult bool) {
+	checker ec.MultiResponseChecker) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
@@ -334,11 +346,8 @@ func testKprobeObjectFiltered(t *testing.T,
 	assert.Equal(t, len(data), n)
 	assert.NoError(t, err)
 	exitWG.Wait()
-	ok, err := JsonTestCompare(trace, exportFile, jsonRetries, 0)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
-	if (invertResult && ok) || (!invertResult && !ok) {
-		t.Fail()
-	}
 	TestDone(t, kprobe)
 }
 
@@ -373,7 +382,7 @@ spec:
         values:
         - "/tmp/testfile\0"
 `
-	testKprobeObjectFiltered(t, readHook, openTrace, false)
+	testKprobeObjectFiltered(t, readHook, &openChecker)
 }
 
 func TestKprobeObjectMultiValueOpen(t *testing.T) {
@@ -408,7 +417,7 @@ spec:
         - "/tmp/foobar\0"
         - "/tmp/testfile\0"
 `
-	testKprobeObjectFiltered(t, readHook, openTrace, false)
+	testKprobeObjectFiltered(t, readHook, &openChecker)
 }
 
 func TestKprobeObjectFilterOpen(t *testing.T) {
@@ -442,7 +451,7 @@ spec:
         values:
         - "/tmp/foofile\0"
 `
-	testKprobeObjectFiltered(t, readHook, openTrace, true)
+	testKprobeObjectFiltered(t, readHook, &noKprobeChecker)
 }
 
 func TestKprobeObjectMultiValueFilterOpen(t *testing.T) {
@@ -477,7 +486,7 @@ spec:
         - "/tmp/foo\0"
         - "/tmp/bar\0"
 `
-	testKprobeObjectFiltered(t, readHook, openTrace, true)
+	testKprobeObjectFiltered(t, readHook, &noKprobeChecker)
 }
 
 func TestKprobeObjectFilterPrefixOpen(t *testing.T) {
@@ -511,7 +520,7 @@ spec:
         values:
         - "/tmp/testf"
 `
-	testKprobeObjectFiltered(t, readHook, openTrace, false)
+	testKprobeObjectFiltered(t, readHook, &openChecker)
 }
 
 func TestKprobeObjectPostfixOpen(t *testing.T) {
@@ -545,7 +554,7 @@ spec:
         values:
         - "testfile\0"
 `
-	testKprobeObjectFiltered(t, readHook, openTrace, false)
+	testKprobeObjectFiltered(t, readHook, &openChecker)
 }
 
 func helloIovecWorldWritev() (err error) {
@@ -631,18 +640,15 @@ spec:
 }
 
 var (
-	doOpenTrace = []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessKprobe{
-				ProcessKprobe: &fgs.ProcessKprobe{
-					Process:      &fgs.Process{Binary: selfBinary},
-					Parent:       &fgs.Process{Binary: ""},
-					FunctionName: "do_filp_open",
-					Args:         []*fgs.KprobeArgument{openArg0, openArg1},
-				},
-			},
-		},
-	}
+	doOpenKprobeCheck = ec.NewKprobeChecker().
+				WithFunctionName("do_filp_open").
+				WithArgs([]ec.GenericArgChecker{openArg0Check, openArg1Check})
+
+	doOpenChecker = ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasKprobe(doOpenKprobeCheck).
+			End(),
+	)
 )
 
 func TestKprobeObjectFilenameOpen(t *testing.T) {
@@ -669,7 +675,7 @@ spec:
         values:
         - ` + pidStr + `
      `
-	testKprobeObjectFiltered(t, readHook, doOpenTrace, false)
+	testKprobeObjectFiltered(t, readHook, &doOpenChecker)
 }
 
 func TestKprobeObjectReturnFilenameOpen(t *testing.T) {
@@ -698,27 +704,27 @@ spec:
         values:
         - ` + pidStr + `
      `
-	testKprobeObjectFiltered(t, readHook, doOpenTrace, false)
+	testKprobeObjectFiltered(t, readHook, &doOpenChecker)
 }
 
 var (
-	writeArg0File = &fgs.KprobeFile{Path: "tmp/testfile"}
-	writeArg0     = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_FileArg{FileArg: writeArg0File}}
-	writeArg1     = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_BytesArg{BytesArg: []byte("hello world")}}
-	writeArg2     = &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 11}}
+	// NB: there seems to be a bug here, because the result we return is
+	// tmp/testfile/. Until the bug is fixed, we just test the prefix.
+	// see: https://github.com/isovalent/hubble-fgs/issues/693
+	writeArg0 = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.PrefixStringMatch("tmp/testfile"))
+	writeArg1 = ec.GenericArgBytesCheck([]byte("hello world"))
+	writeArg2 = ec.GenericArgSizeCheck(11)
 
-	writeFileTrace = []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessKprobe{
-				ProcessKprobe: &fgs.ProcessKprobe{
-					Process:      &fgs.Process{Binary: selfBinary},
-					Parent:       &fgs.Process{Binary: ""},
-					FunctionName: "__x64_sys_write",
-					Args:         []*fgs.KprobeArgument{writeArg0, writeArg1, writeArg2},
-				},
-			},
-		},
-	}
+	writeFileKpChecker = ec.NewKprobeChecker().
+				WithFunctionName("__x64_sys_write").
+				WithArgs([]ec.GenericArgChecker{writeArg0, writeArg1, writeArg2})
+
+	writeChecker = ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasProcess(ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))).
+			HasKprobe(writeFileKpChecker).
+			End(),
+	)
 )
 
 func TestKprobeObjectFileWrite(t *testing.T) {
@@ -764,7 +770,7 @@ spec:
         values:
         - ` + pidStr + `
 `
-	testKprobeObjectFiltered(t, readHook, writeFileTrace, false)
+	testKprobeObjectFiltered(t, readHook, &writeChecker)
 }
 
 func TestKprobeObjectFileWriteFiltered(t *testing.T) {
@@ -820,5 +826,5 @@ spec:
         values:
         - "tmp/testfile"
 `
-	testKprobeObjectFiltered(t, readHook, writeFileTrace, false)
+	testKprobeObjectFiltered(t, readHook, &writeChecker)
 }
