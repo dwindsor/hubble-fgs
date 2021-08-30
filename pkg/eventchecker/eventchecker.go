@@ -111,6 +111,32 @@ func (c *OrderedMultiResponseChecker) FinalCheck(l Logger) error {
 	return fmt.Errorf("OrderedMultiResponseChecker: only %d/%d matched", c.idx, len(c.checkers))
 }
 
+// AllMultiResponseChecker matches all checkers for all responses
+type AllMultiResponseChecker struct {
+	checkers []ResponseChecker
+}
+
+// NewAllMultiResponseChecker retuns a new AllMultiResponseChecker
+func NewAllMultiResponseChecker(checkers ...ResponseChecker) AllMultiResponseChecker {
+	return AllMultiResponseChecker{
+		checkers: checkers,
+	}
+}
+
+func (c *AllMultiResponseChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
+	for i := range c.checkers {
+		if err := c.checkers[i].Check(r, l); err != nil {
+			return true, err
+		}
+	}
+	return false, nil
+}
+
+func (c *AllMultiResponseChecker) FinalCheck(l Logger) error {
+	l.Logf("AllMultiResponseChecker: all %d checks succeeded for all events", len(c.checkers))
+	return nil
+}
+
 // UnorderedMultiResponseChecker matches a list of ResponseCheckers over a
 // squence of responses. The checkers can match in any order (no
 // backtracking).
@@ -197,6 +223,12 @@ func responseGetProcess(r *fgs.GetEventsResponse) *fgs.Process {
 		return ev.ProcessClose.Process
 	case *fgs.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept.Process
+	case *fgs.GetEventsResponse_ProcessKprobe:
+		return ev.ProcessKprobe.Process
+	case *fgs.GetEventsResponse_ProcessTracepoint:
+		return ev.ProcessTracepoint.Process
+	default:
+		panic("Unhandled type")
 	}
 	return nil
 }
@@ -217,6 +249,12 @@ func eventGetProcess(ev_ fgsEvent) *fgs.Process {
 		return ev.Process
 	case *fgs.ProcessAccept:
 		return ev.Process
+	case *fgs.ProcessKprobe:
+		return ev.Process
+	case *fgs.ProcessTracepoint:
+		return ev.Process
+	default:
+		panic("Unhandled type")
 	}
 	return nil
 }
@@ -318,6 +356,18 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (err
 			return err, nil
 		}
 		return nil, ev.ProcessAccept
+
+	case *fgs.GetEventsResponse_ProcessTracepoint:
+		if err := checkTypes(fgs.EventType_PROCESS_TRACEPOINT); err != nil {
+			return err, nil
+		}
+		return nil, ev.ProcessTracepoint
+
+	case *fgs.GetEventsResponse_ProcessKprobe:
+		if err := checkTypes(fgs.EventType_PROCESS_KPROBE); err != nil {
+			return err, nil
+		}
+		return nil, ev.ProcessKprobe
 
 	case *fgs.GetEventsResponse_Test:
 		if err := checkTypes(fgs.EventType_TEST); err != nil {
@@ -1376,4 +1426,328 @@ func (e *eventChainChecker) HasTls(tlscheck TlsChecker) *eventChainChecker {
 
 	}
 	return e
+}
+
+type TracepointChecker interface {
+	// Check checks a Tracepoint event
+	Check(*fgs.ProcessTracepoint, Logger) error
+}
+
+type TracepointCheckerFn func(*fgs.ProcessTracepoint, Logger) error
+
+func (f TracepointCheckerFn) Check(c *fgs.ProcessTracepoint, log Logger) error {
+	return f(c, log)
+}
+
+type TracepointCheckerAND struct {
+	checks []TracepointChecker
+}
+
+func (o *TracepointCheckerAND) Check(t *fgs.ProcessTracepoint, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(t, l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func NewTracepointChecker() *TracepointCheckerAND {
+	return &TracepointCheckerAND{}
+}
+
+// WithSubsys adds a subystem check
+func (o *TracepointCheckerAND) WithSubsys(arg StringArg) *TracepointCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	matcher := sm.GetMatcher()
+	check := TracepointCheckerFn(func(t *fgs.ProcessTracepoint, log Logger) error {
+		if err := matcher(t.Subsys); err != nil {
+			return fmt.Errorf("failed check on subsys: %w", err)
+		}
+		log.Logf("**** MATCH tracepoint subsys: %s", t.Subsys)
+		return nil
+	})
+	o.checks = append(o.checks, check)
+	return o
+}
+
+// WithEvent adds an event check
+func (o *TracepointCheckerAND) WithEvent(arg StringArg) *TracepointCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	matcher := sm.GetMatcher()
+	check := TracepointCheckerFn(func(t *fgs.ProcessTracepoint, log Logger) error {
+		if err := matcher(t.Event); err != nil {
+			return fmt.Errorf("failed check on event: %w", err)
+		}
+		log.Logf("**** MATCH tracepoint event: %s", t.Event)
+		return nil
+	})
+	o.checks = append(o.checks, check)
+	return o
+}
+
+// TracepointWithArgs matches the Args field
+// NB: eventually we might want other type of matches for matching a list such
+// as subset checks, but for now we check that the elemnts of the lists match
+// one-by-one.
+func TracepointWithArgs(checkers []GenericArgChecker) TracepointChecker {
+	return TracepointCheckerFn(func(t *fgs.ProcessTracepoint, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("tracepoint is nil and cannot match checkers: %+v", checkers)
+		}
+
+		if len(t.Args) != len(checkers) {
+			return fmt.Errorf("failed to match tracepoint args of length %d to checkers: %+v", len(t.Args), checkers)
+		}
+
+		for i := range t.Args {
+			checkArg := checkers[i]
+			arg := t.Args[i]
+			if err := checkArg.Check(arg, log); err != nil {
+				return fmt.Errorf("failed check arg %s (idx=%d): %w", arg, i, err)
+			}
+		}
+
+		log.Logf("**** MATCH tracepoint args: %s", t.Args)
+		return nil
+	})
+}
+
+func (o *TracepointCheckerAND) WithArgs(argCheckers []GenericArgChecker) *TracepointCheckerAND {
+	o.checks = append(o.checks, TracepointWithArgs(argCheckers))
+	return o
+}
+
+// NewTracepointEventChecker creates a new eventChainChecker for tracepoint events
+func NewTracepointEventChecker() *eventChainChecker {
+	return &eventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+			return checkEvent(r, l, fgs.EventType_PROCESS_TRACEPOINT)
+		},
+		eventCheck: func(ev fgsEvent, l Logger) error {
+			return nil
+		},
+	}
+}
+
+func (e *eventChainChecker) HasTracepoint(tpCheck TracepointChecker) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+
+		if tpEv, ok := e.(*fgs.ProcessTracepoint); ok {
+			return tpCheck.Check(tpEv, l)
+		}
+		return fmt.Errorf("event has type %T: not a tracepoint event", e)
+
+	}
+	return e
+}
+
+type KprobeChecker interface {
+	// Check checks a generic kprobe event
+	Check(*fgs.ProcessKprobe, Logger) error
+}
+
+type KprobeCheckerFn func(*fgs.ProcessKprobe, Logger) error
+
+func (f KprobeCheckerFn) Check(c *fgs.ProcessKprobe, log Logger) error {
+	return f(c, log)
+}
+
+type KprobeCheckerAND struct {
+	checks []KprobeChecker
+}
+
+func (o *KprobeCheckerAND) Check(t *fgs.ProcessKprobe, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(t, l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+func NewKprobeChecker() *KprobeCheckerAND {
+	return &KprobeCheckerAND{}
+}
+
+// WithFunctionName adds a function name check
+func (o *KprobeCheckerAND) WithFunctionName(arg StringArg) *KprobeCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	matcher := sm.GetMatcher()
+	check := KprobeCheckerFn(func(t *fgs.ProcessKprobe, log Logger) error {
+		if err := matcher(t.FunctionName); err != nil {
+			return fmt.Errorf("failed check on function name: %w", err)
+		}
+		log.Logf("**** MATCH kprobe function name: %s", t.FunctionName)
+		return nil
+	})
+	o.checks = append(o.checks, check)
+	return o
+}
+
+// KprobeWithArgs matches the Args field
+// NB: eventually we might want other type of matches for matching a list such
+// as subset checks, but for now we check that the elemnts of the lists match
+// one-by-one.
+func KprobeWithArgs(checkers []GenericArgChecker) KprobeChecker {
+	return KprobeCheckerFn(func(k *fgs.ProcessKprobe, log Logger) error {
+		if k == nil {
+			return fmt.Errorf("kprobe is nil and cannot match checkers: %+v", checkers)
+		}
+
+		if len(k.Args) != len(checkers) {
+			return fmt.Errorf("failed to match kprobe args of length %d to checkers: %+v", len(k.Args), checkers)
+		}
+
+		for i := range k.Args {
+			checkArg := checkers[i]
+			arg := k.Args[i]
+			if err := checkArg.Check(arg, log); err != nil {
+				return fmt.Errorf("failed check arg %s (idx=%d): %w", arg, i, err)
+			}
+		}
+
+		log.Logf("**** MATCH kprobe args: %s", k.Args)
+		return nil
+	})
+}
+
+func (o *KprobeCheckerAND) WithArgs(argCheckers []GenericArgChecker) *KprobeCheckerAND {
+	o.checks = append(o.checks, KprobeWithArgs(argCheckers))
+	return o
+}
+
+// NewKprobeEventChecker creates a new eventChainChecker for tracepoint events
+func NewKprobeEventChecker() *eventChainChecker {
+	return &eventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+			return checkEvent(r, l, fgs.EventType_PROCESS_KPROBE)
+		},
+		eventCheck: func(ev fgsEvent, l Logger) error {
+			return nil
+		},
+	}
+}
+
+func (e *eventChainChecker) HasKprobe(kpCheck KprobeChecker) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+
+		if kpEv, ok := e.(*fgs.ProcessKprobe); ok {
+			return kpCheck.Check(kpEv, l)
+		}
+		return fmt.Errorf("event has type %T: not a kprobe event", e)
+
+	}
+	return e
+}
+
+type GenericArgChecker interface {
+	// Check checks a generic argument
+	Check(*fgs.KprobeArgument, Logger) error
+}
+
+type GenericArgCheckerFn func(*fgs.KprobeArgument, Logger) error
+
+func (f GenericArgCheckerFn) Check(c *fgs.KprobeArgument, log Logger) error {
+	return f(c, log)
+}
+
+func GenericArgSizeCheck(val uint64) GenericArgChecker {
+	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
+		if sa, ok := arg.Arg.(*fgs.KprobeArgument_SizeArg); ok {
+			if sa.SizeArg != val {
+				return fmt.Errorf("failed size arg check: %d does not match %d", sa.SizeArg, val)
+			}
+			log.Logf("**** MATCH generic size arg with value %d", val)
+			return nil
+		}
+		return fmt.Errorf("failed arg check: %T is not a size arg", arg.Arg)
+	})
+}
+
+func GenericArgIsInt() GenericArgChecker {
+	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
+		if _, ok := arg.Arg.(*fgs.KprobeArgument_IntArg); ok {
+			log.Logf("**** MATCH generic int arg")
+			return nil
+		}
+		return fmt.Errorf("failed arg check: %T is not an int arg", arg.Arg)
+	})
+}
+
+func GenericArgIntCheck(val int32) GenericArgChecker {
+	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
+		if ia, ok := arg.Arg.(*fgs.KprobeArgument_IntArg); ok {
+			if ia.IntArg != val {
+				return fmt.Errorf("failed int arg check: %d does not match %d", ia.IntArg, val)
+			}
+			log.Logf("**** MATCH generic int arg with value %d", val)
+			return nil
+		}
+		return fmt.Errorf("failed arg check: %T is not an int arg", arg.Arg)
+	})
+}
+
+func GenericArgBytesCheck(val []byte) GenericArgChecker {
+	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
+		if ba, ok := arg.Arg.(*fgs.KprobeArgument_BytesArg); ok {
+			if len(ba.BytesArg) != len(val) {
+				return fmt.Errorf("failed bytes arg check: length %d does not match length %d", len(ba.BytesArg), len(val))
+			}
+			for xi, xb := range ba.BytesArg {
+				if xb != val[xi] {
+					return fmt.Errorf("failed bytes arg check: byte %d is %x and does not match %x", xi, xb, val[xi])
+				}
+			}
+			log.Logf("**** MATCH generic bytes arg with value %s", val)
+			return nil
+		}
+		return fmt.Errorf("failed arg check: %T is not a bytes arg", arg.Arg)
+	})
+}
+
+func GenericArgStringCheck(val StringArg) GenericArgChecker {
+	sm := stringMatcherFromArg(val)
+	matcher := sm.GetMatcher()
+	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
+		if sa, ok := arg.Arg.(*fgs.KprobeArgument_StringArg); ok {
+			if err := matcher(sa.StringArg); err != nil {
+				return fmt.Errorf("failed string arg check: %w", err)
+			}
+			log.Logf("**** MATCH generic string arg with value %s", val)
+			return nil
+		}
+		return fmt.Errorf("failed arg check: %T is not a string arg", arg.Arg)
+	})
+}
+
+func GenericArgFileChecker(mount, path StringArg) GenericArgChecker {
+	smMount := stringMatcherFromArg(mount)
+	smPath := stringMatcherFromArg(path)
+	matcherMount := smMount.GetMatcher()
+	matcherPath := smPath.GetMatcher()
+	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
+		if fa, ok := arg.Arg.(*fgs.KprobeArgument_FileArg); ok {
+			if fa.FileArg == nil {
+				return fmt.Errorf("failed file arg check because FileArg is nil")
+			}
+			if err := matcherMount(fa.FileArg.Mount); err != nil {
+				return fmt.Errorf("failed file arg check on mountpoint: %w", err)
+			}
+			if err := matcherPath(fa.FileArg.Path); err != nil {
+				return fmt.Errorf("failed file arg check on path: %w", err)
+			}
+			log.Logf("**** MATCH generic file arg: %+v", fa.FileArg)
+			return nil
+		}
+		return fmt.Errorf("failed arg check: %T is not a file arg", arg.Arg)
+	})
 }

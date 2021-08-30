@@ -22,6 +22,7 @@ const (
 	StrPrefixMatch
 	StrSuffixMatch
 	StrContainsMatch
+	StrAlwaysMatch
 )
 
 type StringMatcher struct {
@@ -61,6 +62,10 @@ func ContainsStringMatch(s string) StringMatcher {
 	return StringMatcher{s: s, m: StrContainsMatch}
 }
 
+func StringMatchAlways() StringMatcher {
+	return StringMatcher{s: "", m: StrAlwaysMatch}
+}
+
 func (sm StringMatcher) GetMatcher() func(string) error {
 	switch sm.m {
 	case StrFullMatch:
@@ -90,6 +95,10 @@ func (sm StringMatcher) GetMatcher() func(string) error {
 				return nil
 			}
 			return fmt.Errorf("'%s' does not contain '%s'", x, sm.s)
+		}
+	case StrAlwaysMatch:
+		return func(x string) error {
+			return nil
 		}
 	}
 	return func(x string) error {
