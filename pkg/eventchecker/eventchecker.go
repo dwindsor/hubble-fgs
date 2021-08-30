@@ -1304,49 +1304,49 @@ func (o *TlsCheckerAND) Check(t *fgs.Tls, l Logger) error {
 	return nil
 }
 
-// WithNegotiatedVersion ads a NegotiatedVersion chekc to a Tls checker
+// WithNegotiatedVersion adds a NegotiatedVersion check to a Tls checker
 func (o *TlsCheckerAND) WithNegotiatedVersion(arg StringArg) *TlsCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, TlsWithNegotiatedVersion(sm))
 	return o
 }
 
-// WithClientVersion ads a ClientVersion chekc to a Tls checker
+// WithClientVersion adds a ClientVersion check to a Tls checker
 func (o *TlsCheckerAND) WithClientVersion(arg StringArg) *TlsCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, TlsWithClientVersion(sm))
 	return o
 }
 
-// WithServerVersion ads a ServerVersion chekc to a Tls checker
+// WithServerVersion adds a ServerVersion check to a Tls checker
 func (o *TlsCheckerAND) WithServerVersion(arg StringArg) *TlsCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, TlsWithServerVersion(sm))
 	return o
 }
 
-// WithSniType ads a SniType chekc to a Tls checker
+// WithSniType adds a SniType check to a Tls checker
 func (o *TlsCheckerAND) WithSniType(arg StringArg) *TlsCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, TlsWithSniType(sm))
 	return o
 }
 
-// WithSniName ads a SniName chekc to a Tls checker
+// WithSniName adds a SniName check to a Tls checker
 func (o *TlsCheckerAND) WithSniName(arg StringArg) *TlsCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, TlsWithSniName(sm))
 	return o
 }
 
-// WithClientFlags ads a ClientFlags chekc to a Tls checker
+// WithClientFlags adds a ClientFlags check to a Tls checker
 func (o *TlsCheckerAND) WithClientFlags(arg StringArg) *TlsCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, TlsWithClientFlags(sm))
 	return o
 }
 
-// WithServerFlags ads a ServerFlags chekc to a Tls checker
+// WithServerFlags adds a ServerFlags check to a Tls checker
 func (o *TlsCheckerAND) WithServerFlags(arg StringArg) *TlsCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, TlsWithServerFlags(sm))
