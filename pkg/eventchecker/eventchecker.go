@@ -703,8 +703,20 @@ func (o *ProcessCheckerAND) WithArguments(arg StringArg) *ProcessCheckerAND {
 	return o
 }
 
-func (o *ProcessCheckerAND) WithCWD(sm StringMatcher) *ProcessCheckerAND {
+func (o *ProcessCheckerAND) WithCWD(arg StringArg) *ProcessCheckerAND {
+	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithCWD(sm))
+	return o
+}
+
+func (o *ProcessCheckerAND) WithDocker(arg StringArg) *ProcessCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ProcessWithDocker(sm))
+	return o
+}
+
+func (o *ProcessCheckerAND) WithUID(uid uint32) *ProcessCheckerAND {
+	o.checks = append(o.checks, ProcessWithUID(uid))
 	return o
 }
 
@@ -771,7 +783,7 @@ func ProcessWithBinary(sm StringMatcher) ProcessChecker {
 	)
 }
 
-// ProcessWithBinary matches the Arguments field
+// ProcessWithArguments matches the Arguments field
 func ProcessWithArguments(sm StringMatcher) ProcessChecker {
 	return processWithString(
 		sm,
@@ -799,6 +811,30 @@ func ProcessWithPod(pc PodChecker) ProcessChecker {
 		}
 		if err := pc.Check(p.Pod, log); err != nil {
 			return fmt.Errorf("failed check on %s: %w", "pod", err)
+		}
+		return nil
+	})
+}
+
+// ProcessWithDocker matches the Docker field
+func ProcessWithDocker(sm StringMatcher) ProcessChecker {
+	return processWithString(
+		sm,
+		func(p *fgs.Process) string {
+			return p.Docker
+		},
+		"docker",
+	)
+}
+
+// ProcessWithUID matches the Uid field
+func ProcessWithUID(uid uint32) ProcessChecker {
+	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+		if p.Uid == nil {
+			return fmt.Errorf("uid %d does not match nil value", uid)
+		}
+		if p.Uid.Value != uid {
+			return fmt.Errorf("uid %d does not match %d value", uid, p.Uid.Value)
 		}
 		return nil
 	})
