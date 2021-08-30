@@ -78,30 +78,27 @@ func TestGenericTracepointSimple(t *testing.T) {
 		observer.ObserverSync.DisableSensor(ctx, sensorName)
 	}()
 
-	// sensor was enabled, test it
-	arg0 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 4444}}
-	arg1 := &fgs.KprobeArgument{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 18446744073709551615}} // -1
-	trace := []*fgs.GetEventsResponse{
-		&fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessTracepoint{
-				ProcessTracepoint: &fgs.ProcessTracepoint{
-					Subsys: "syscalls",
-					Event:  "sys_enter_lseek",
-					Args:   []*fgs.KprobeArgument{arg0, arg1},
-				},
-			},
-		},
-	}
+	tpChecker := ec.NewTracepointChecker().
+		WithSubsys("syscalls").
+		WithEvent("sys_enter_lseek").
+		WithArgs([]ec.GenericArgChecker{
+			ec.GenericArgSizeCheck(4444),
+			ec.GenericArgSizeCheck(18446744073709551615), // -1
+		})
+
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewTracepointEventChecker().
+			HasTracepoint(tpChecker).
+			End(),
+	)
 
 	LoopEvents(t, &exitWG, &execWG, observer, ctx)
 	execWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
-	retries := jsonRetries
 	time.Sleep(1000 * time.Millisecond)
-	ok, err := JsonTestCompare(trace, exportFile, retries, 0)
+	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	assert.True(t, ok)
 	TestDone(t, observer)
 }
 
