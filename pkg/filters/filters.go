@@ -124,6 +124,10 @@ func GetProcess(event *v1.Event) *fgs.Process {
 			return res.ProcessKprobe.Process
 		case *fgs.GetEventsResponse_ProcessHttp:
 			return res.ProcessHttp.Process
+		case *fgs.GetEventsResponse_ProcessSockstats:
+			return res.ProcessSockstats.Process
+		case *fgs.GetEventsResponse_ProcessTracepoint:
+			return res.ProcessTracepoint.Process
 		default:
 			return (*fgs.Process)(nil)
 		}
