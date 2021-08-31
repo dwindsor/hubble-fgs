@@ -61,8 +61,8 @@ func main() {
 	err = observer.JsonCheck(jsonFile, &checker, &logger)
 	if err != nil {
 		fmt.Printf("🔥 Failed: no dice: %s\n", err)
-	} else {
-		fmt.Printf("🚢 Passed: ship it\n")
+		os.Exit(1)
 	}
+	fmt.Printf("🚢 Passed: ship it\n")
 	os.Exit(0)
 }
