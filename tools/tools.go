@@ -12,15 +12,16 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
+//go:build tools
 // +build tools
 
 package tools
 
 import (
 	_ "github.com/ckaznocha/protoc-gen-lint"
-	_ "github.com/envoyproxy/protoc-gen-validate"
-	_ "github.com/golang/protobuf/protoc-gen-go"
 	_ "github.com/mitchellh/protoc-gen-go-json"
+	_ "google.golang.org/grpc/cmd/protoc-gen-go-grpc"
+	_ "google.golang.org/protobuf/cmd/protoc-gen-go"
 	_ "k8s.io/code-generator"
 	_ "k8s.io/code-generator/cmd/client-gen"
 	_ "sigs.k8s.io/controller-tools/cmd/controller-gen"

@@ -2,4 +2,4 @@
 
 SCRIPT_PATH="$( cd "$(dirname "$0")" || exit ; pwd -P )"
 
-GO111MODULE=off go run "${SCRIPT_PATH}"/../vendor/github.com/golang/protobuf/protoc-gen-go "$@"
+GO111MODULE=off go run "${SCRIPT_PATH}"/../vendor/google.golang.org/protobuf/cmd/protoc-gen-go "$@"

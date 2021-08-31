@@ -20,6 +20,8 @@ import "google/protobuf/wrappers.proto";
 
 package fgs;
 
+option go_package = "github.com/isovalent/hubble-fgs/api/v1/fgs";
+
 message Image {
     string id = 1;
     string name = 2;

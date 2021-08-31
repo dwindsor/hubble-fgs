@@ -4,1123 +4,997 @@
 package fgs
 
 import (
-	"bytes"
-
-	"github.com/golang/protobuf/jsonpb"
+	"google.golang.org/protobuf/encoding/protojson"
 )
 
 // MarshalJSON implements json.Marshaler
 func (msg *Image) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *Image) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *Container) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *Container) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *Pod) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *Pod) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *Capabilities) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *Capabilities) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *Process) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *Process) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *SocketStats) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *SocketStats) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessConnect) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessConnect) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessClose) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessClose) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessListen) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessListen) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessAccept) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessAccept) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessExec) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessExec) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessExit) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessExit) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessCred) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessCred) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *KprobeSkb) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *KprobeSkb) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *KprobePath) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *KprobePath) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *KprobeFile) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *KprobeFile) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *KprobeTruncatedBytes) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *KprobeTruncatedBytes) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *KprobeArgument) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *KprobeArgument) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessKprobe) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessKprobe) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessTracepoint) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessTracepoint) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *SockInfo) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *SockInfo) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessSockStats) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessSockStats) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *Test) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *Test) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *Tls) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *Tls) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *HttpHeader) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *HttpHeader) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *HttpRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *HttpRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *HttpResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *HttpResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *HttpInfo) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *HttpInfo) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ProcessHttp) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ProcessHttp) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *StackAddress) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *StackAddress) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *StackTrace) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *StackTrace) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *StackTraceLabel) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *StackTraceLabel) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *StackTraceNode) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *StackTraceNode) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ListSensorsRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ListSensorsRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *SensorStatus) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *SensorStatus) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *ListSensorsResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *ListSensorsResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *AddTracingPolicyRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *AddTracingPolicyRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *AddTracingPolicyResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *AddTracingPolicyResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *DeleteTracingPolicyRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *DeleteTracingPolicyRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *DeleteTracingPolicyResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *DeleteTracingPolicyResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *RemoveSensorRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *RemoveSensorRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *RemoveSensorResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *RemoveSensorResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *EnableSensorRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *EnableSensorRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *EnableSensorResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *EnableSensorResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *DisableSensorRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *DisableSensorRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *SetSensorConfigRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *SetSensorConfigRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *SetSensorConfigResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *SetSensorConfigResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetSensorConfigRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetSensorConfigRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetSensorConfigResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetSensorConfigResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *DisableSensorResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *DisableSensorResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetStackTraceTreeRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetStackTraceTreeRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetStackTraceTreeResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetStackTraceTreeResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetVersionRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetVersionRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetVersionResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetVersionResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetHealthStatusRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetHealthStatusRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *HealthStatus) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *HealthStatus) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetHealthStatusResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetHealthStatusResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *AggregationOptions) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *AggregationOptions) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetEventsRequest) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetEventsRequest) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *AggregationInfo) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *AggregationInfo) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *GetEventsResponse) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *GetEventsResponse) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
 
 // MarshalJSON implements json.Marshaler
 func (msg *Filter) MarshalJSON() ([]byte, error) {
-	var buf bytes.Buffer
-	err := (&jsonpb.Marshaler{
-		EnumsAsInts:  false,
-		EmitDefaults: false,
-		OrigName:     true,
-	}).Marshal(&buf, msg)
-	return buf.Bytes(), err
+	return protojson.MarshalOptions{
+		UseEnumNumbers:  false,
+		EmitUnpopulated: false,
+		UseProtoNames:   true,
+	}.Marshal(msg)
 }
 
 // UnmarshalJSON implements json.Unmarshaler
 func (msg *Filter) UnmarshalJSON(b []byte) error {
-	return (&jsonpb.Unmarshaler{
-		AllowUnknownFields: false,
-	}).Unmarshal(bytes.NewReader(b), msg)
+	return protojson.UnmarshalOptions{
+		DiscardUnknown: false,
+	}.Unmarshal(b, msg)
 }
