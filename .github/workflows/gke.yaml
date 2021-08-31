@@ -141,7 +141,10 @@ jobs:
           python cilium-sysdump.zip --output cilium-sysdump-out
           kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
               -n kube-system -o custom-columns=name:metadata.name --no-headers \
-              | xargs -I{} kubectl cp -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
+              | xargs -I{} sh -c 'kubectl logs -c enterprise -n kube-system {} > ./hubble-enterprise-pod-{}.log'
+          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
+              -n kube-system -o custom-columns=name:metadata.name --no-headers \
+              | xargs -I{} kubectl cp -c enterprise -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
           cat ./hubble-fgs*.log >> fgs.log
           gcloud container clusters delete --quiet ${{ env.clusterName }} --zone ${{ env.zone }}
         shell: bash {0}
@@ -161,6 +164,14 @@ jobs:
         with:
           name: cilium-sysdump-out.zip
           path: cilium-sysdump-out.zip
+          retention-days: 5
+
+      - name: Upload FGS pod logs
+        if: ${{ always() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: hubble-enterprise-logs
+          path: ./hubble-enterprise-pod*.log
           retention-days: 5
 
       - name: Upload FGS Artifacts
