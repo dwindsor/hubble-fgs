@@ -15,11 +15,11 @@ import (
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
 type eventNetObj interface {
@@ -28,14 +28,14 @@ type eventNetObj interface {
 
 type eventNetCacheObj struct {
 	event     eventNetObj
-	timestamp *timestamp.Timestamp
+	timestamp *timestamppb.Timestamp
 	color     int
 	msg       interface{}
 }
 
 type eventProcCacheObj struct {
 	process   *fgs.ProcessExec
-	timestamp *timestamp.Timestamp
+	timestamp *timestamppb.Timestamp
 	color     int
 	msg       *api.MsgExecveEventUnix
 }
@@ -238,13 +238,13 @@ func newEventCache(log logrus.FieldLogger, pm *ProcessManager) *eventCache {
 	return ec
 }
 
-func (ec *eventCache) add(e eventNetObj, t *timestamp.Timestamp, msg interface{}) {
+func (ec *eventCache) add(e eventNetObj, t *timestamppb.Timestamp, msg interface{}) {
 	event := eventNetCacheObj{event: e, timestamp: t, msg: msg}
 	metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheNetworkCount)).Inc()
 	ec.netCache = append(ec.netCache, event)
 }
 
-func (ec *eventCache) addProc(e *fgs.ProcessExec, t *timestamp.Timestamp, msg *api.MsgExecveEventUnix) {
+func (ec *eventCache) addProc(e *fgs.ProcessExec, t *timestamppb.Timestamp, msg *api.MsgExecveEventUnix) {
 	event := eventProcCacheObj{process: e, timestamp: t, msg: msg}
 	metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheProcessCount)).Inc()
 	ec.procCache = append(ec.procCache, event)

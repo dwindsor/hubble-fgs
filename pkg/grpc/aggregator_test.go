@@ -19,16 +19,16 @@ import (
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/golang/protobuf/ptypes/duration"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func Test_connectEventBasic(t *testing.T) {
 	mock := mockServer{make(chan *fgs.GetEventsResponse, 10)}
 	options := fgs.AggregationOptions{
-		WindowSize:        &duration.Duration{Seconds: 1},
+		WindowSize:        &durationpb.Duration{Seconds: 1},
 		ChannelBufferSize: 100,
 	}
 	agg, err := NewAggregator(&mock, &options)
@@ -39,9 +39,9 @@ func Test_connectEventBasic(t *testing.T) {
 		},
 		Parent:           nil,
 		SourceIp:         "1.1.1.1",
-		SourcePort:       &wrappers.UInt32Value{Value: 45678},
+		SourcePort:       &wrapperspb.UInt32Value{Value: 45678},
 		DestinationIp:    "2.2.2.2",
-		DestinationPort:  &wrappers.UInt32Value{Value: 80},
+		DestinationPort:  &wrapperspb.UInt32Value{Value: 80},
 		DestinationNames: nil,
 	}
 	for i := 0; i < 10; i++ {
@@ -60,7 +60,7 @@ func Test_connectEventBasic(t *testing.T) {
 func Test_acceptEventBasic(t *testing.T) {
 	mock := mockServer{make(chan *fgs.GetEventsResponse, 10)}
 	options := fgs.AggregationOptions{
-		WindowSize:        &duration.Duration{Seconds: 1},
+		WindowSize:        &durationpb.Duration{Seconds: 1},
 		ChannelBufferSize: 100,
 	}
 	agg, err := NewAggregator(&mock, &options)
@@ -71,9 +71,9 @@ func Test_acceptEventBasic(t *testing.T) {
 		},
 		Parent:           nil,
 		SourceIp:         "1.1.1.1",
-		SourcePort:       &wrappers.UInt32Value{Value: 80},
+		SourcePort:       &wrapperspb.UInt32Value{Value: 80},
 		DestinationIp:    "2.2.2.2",
-		DestinationPort:  &wrappers.UInt32Value{Value: 45678},
+		DestinationPort:  &wrapperspb.UInt32Value{Value: 45678},
 		DestinationNames: nil,
 	}
 	for i := 0; i < 10; i++ {

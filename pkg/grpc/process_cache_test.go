@@ -14,17 +14,17 @@ import (
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestProcessCache(t *testing.T) {
 	// add a process to the cache.
 	cache, err := newProcessCache(logrus.New(), 10)
 	require.NoError(t, err)
-	pid := wrappers.UInt32Value{Value: 1234}
+	pid := wrapperspb.UInt32Value{Value: 1234}
 	execID := "process1"
 	proc := processInternal{
 		process: &fgs.Process{

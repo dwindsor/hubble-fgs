@@ -16,8 +16,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-
-	"github.com/golang/protobuf/ptypes/wrappers"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // ResponseChecker checks a single response
@@ -415,7 +414,7 @@ func (e *eventChainChecker) HasDstIP(ip string) *eventChainChecker {
 	return e
 }
 
-func checkPort(port uint32, val *wrappers.UInt32Value) error {
+func checkPort(port uint32, val *wrapperspb.UInt32Value) error {
 	if val == nil {
 		return fmt.Errorf("%d does not match nil value", port)
 	}
@@ -426,7 +425,9 @@ func checkPort(port uint32, val *wrappers.UInt32Value) error {
 }
 
 func eventHasDstPort(e fgsEvent, port uint32) error {
-	if ev, ok := e.(interface{ GetDestinationPort() *wrappers.UInt32Value }); ok {
+	if ev, ok := e.(interface {
+		GetDestinationPort() *wrapperspb.UInt32Value
+	}); ok {
 		evPort := ev.GetDestinationPort()
 		if err := checkPort(port, evPort); err == nil {
 			return nil
@@ -520,7 +521,9 @@ func (e *eventChainChecker) HasIP(IP string) *eventChainChecker {
 }
 
 func eventHasPort(e fgsEvent, port uint32) error {
-	if ev, ok := e.(interface{ GetPort() *wrappers.UInt32Value }); ok {
+	if ev, ok := e.(interface {
+		GetPort() *wrapperspb.UInt32Value
+	}); ok {
 		evPort := ev.GetPort()
 		if err := checkPort(port, evPort); err == nil {
 			return nil

@@ -22,10 +22,6 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/hubble/pkg/cilium"
-	"github.com/golang/protobuf/proto"
-	"github.com/golang/protobuf/ptypes"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
@@ -34,9 +30,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
+	"google.golang.org/protobuf/types/known/durationpb"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	coreV1 "k8s.io/api/core/v1"
-
-	durationpb "github.com/golang/protobuf/ptypes/duration"
 )
 
 type listener interface {
@@ -369,7 +367,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
@@ -468,7 +466,7 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 	process, parent := pm.getParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: msg.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
 			StartTime: ktimeToProto(msg.ProcessKey.Ktime),
 		}
 	} else {
@@ -569,22 +567,15 @@ func (pm *ProcessManager) Close() error {
 	return nil
 }
 
-func ktimeToProto(ktime uint64) *timestamp.Timestamp {
+func ktimeToProto(ktime uint64) *timestamppb.Timestamp {
 	decodedTime, err := reader.DecodeKtime(int64(ktime))
 	if err != nil {
 		logrus.WithError(err).WithField("ktime", ktime).Warn("Failed to decode ktime")
-		return ptypes.TimestampNow()
+		return timestamppb.Now()
 	}
-	ts, err := ptypes.TimestampProto(decodedTime)
-	if err != nil {
-		logrus.WithError(err).
-			WithField("decoded time", decodedTime).
-			Warn("Failed to convert decoded time to protobuf timestamp")
-		return ptypes.TimestampNow()
-
-	}
-	return ts
+	return timestamppb.New(decodedTime)
 }
+
 func (pm *ProcessManager) getParentProcess(pid uint32, ktime uint64) (*fgs.Process, *fgs.Process) {
 	var process, parent *fgs.Process
 	procInternal, parentInternal := pm.getParentProcessInternal(pid, ktime)
@@ -673,14 +664,14 @@ func (pm *ProcessManager) getProcess(
 	caps := pm.getCapabilities(capabilities)
 	return &processInternal{
 		process: &fgs.Process{
-			Pid:          &wrappers.UInt32Value{Value: process.PID},
-			Uid:          &wrappers.UInt32Value{Value: process.UID},
+			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
+			Uid:          &wrapperspb.UInt32Value{Value: process.UID},
 			Cwd:          cwd,
 			Binary:       getBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
 			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
 			StartTime:    ktimeToProto(process.Ktime),
-			Auid:         &wrappers.UInt32Value{Value: process.AUID},
+			Auid:         &wrapperspb.UInt32Value{Value: process.AUID},
 			Pod:          protoPod,
 			ExecId:       execID,
 			Docker:       containerID,
@@ -826,10 +817,10 @@ func (pm *ProcessManager) GetProcessListen(
 	event *fgsAPI.MsgIPv4TcpEventUnix,
 ) *fgs.ProcessListen {
 	var fgsProcess, fgsParent *fgs.Process
-	var port *wrappers.UInt32Value
+	var port *wrapperspb.UInt32Value
 
 	if event.Tuple.SPort != 0 {
-		port = &wrappers.UInt32Value{
+		port = &wrapperspb.UInt32Value{
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
@@ -839,7 +830,7 @@ func (pm *ProcessManager) GetProcessListen(
 		fgsProcess = process.process
 	} else {
 		fgsProcess = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	}
@@ -875,7 +866,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		fgsProcess = process.process
 	} else {
 		fgsProcess = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	}
@@ -908,7 +899,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 	var process, parent *fgs.Process
 	if processInt == nil {
 		process = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
@@ -970,14 +961,14 @@ func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
 
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
-	var sourcePort, destinationPort *wrappers.UInt32Value
+	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	if event.Tuple.SPort != 0 {
-		sourcePort = &wrappers.UInt32Value{
+		sourcePort = &wrapperspb.UInt32Value{
 			Value: uint32(event.Tuple.SPort),
 		}
 	}
 	if event.Tuple.DPort != 0 {
-		destinationPort = &wrappers.UInt32Value{
+		destinationPort = &wrapperspb.UInt32Value{
 			Value: uint32(event.Tuple.DPort),
 		}
 	}
@@ -1026,15 +1017,15 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 }
 
 func (pm *ProcessManager) __getProcessTuple(tuple *fgsAPI.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo {
-	var sourcePort, destinationPort *wrappers.UInt32Value
+	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple.SPort != 0 {
-		sourcePort = &wrappers.UInt32Value{
+		sourcePort = &wrapperspb.UInt32Value{
 			Value: uint32(reader.GetSport(tuple.SPort)),
 		}
 	}
 	if tuple.DPort != 0 {
-		destinationPort = &wrappers.UInt32Value{
+		destinationPort = &wrapperspb.UInt32Value{
 			Value: uint32(fgsAPI.SwapByte(tuple.DPort)),
 		}
 	}
@@ -1061,7 +1052,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4TcpEventUnix)
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
@@ -1099,16 +1090,16 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4TcpEventUnix)
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessClose {
-	var sourcePort, destinationPort *wrappers.UInt32Value
+	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 
 	if event.Tuple.SPort != 0 {
-		sourcePort = &wrappers.UInt32Value{
+		sourcePort = &wrapperspb.UInt32Value{
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
 	if event.Tuple.DPort != 0 {
-		destinationPort = &wrappers.UInt32Value{
+		destinationPort = &wrapperspb.UInt32Value{
 			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
 		}
 	}
@@ -1116,7 +1107,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
@@ -1168,15 +1159,15 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessConnect {
 	var fgsProcess, fgsParent *fgs.Process
-	var sourcePort, destinationPort *wrappers.UInt32Value
+	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if event.Tuple.SPort != 0 {
-		sourcePort = &wrappers.UInt32Value{
+		sourcePort = &wrapperspb.UInt32Value{
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
 	if event.Tuple.DPort != 0 {
-		destinationPort = &wrappers.UInt32Value{
+		destinationPort = &wrapperspb.UInt32Value{
 			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
 		}
 	}
@@ -1184,7 +1175,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
@@ -1228,16 +1219,16 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessAccept {
-	var sourcePort, destinationPort *wrappers.UInt32Value
+	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 
 	if event.Tuple.SPort != 0 {
-		sourcePort = &wrappers.UInt32Value{
+		sourcePort = &wrapperspb.UInt32Value{
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
 	if event.Tuple.DPort != 0 {
-		destinationPort = &wrappers.UInt32Value{
+		destinationPort = &wrapperspb.UInt32Value{
 			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
 		}
 	}
@@ -1245,7 +1236,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
-			Pid:       &wrappers.UInt32Value{Value: event.ProcessKey.Pid},
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
@@ -1309,15 +1300,12 @@ func (pm *ProcessManager) getPodInfo(containerID string, binary string, args str
 		pm.log.WithField("container id", containerID).Trace("failed to get pod")
 		return nil, nil
 	}
-	var startTime *timestamp.Timestamp
+	var startTime *timestamppb.Timestamp
 	livenessProbe, readinessProbe := getProbes(pod, container)
 	maybeExecProbe := filters.MaybeExecProbe(binary, args, livenessProbe) ||
 		filters.MaybeExecProbe(binary, args, readinessProbe)
-	var err error
 	if container.State.Running != nil {
-		if startTime, err = ptypes.TimestampProto(container.State.Running.StartedAt.Time); err != nil {
-			pm.log.WithField("container", container).Warn("failed to convert start time")
-		}
+		startTime = timestamppb.New(container.State.Running.StartedAt.Time)
 	}
 	endpoint, ok := pm.ciliumState.GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
 	var labels []string
@@ -1326,9 +1314,9 @@ func (pm *ProcessManager) getPodInfo(containerID string, binary string, args str
 	}
 
 	// Don't set container PIDs if it's zero.
-	var containerPID *wrappers.UInt32Value
+	var containerPID *wrapperspb.UInt32Value
 	if nspid > 0 {
-		containerPID = &wrappers.UInt32Value{
+		containerPID = &wrapperspb.UInt32Value{
 			Value: nspid,
 		}
 	}

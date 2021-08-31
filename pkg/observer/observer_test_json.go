@@ -7,7 +7,7 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
+
 package observer
 
 import (
@@ -22,7 +22,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/jsonpb"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -523,12 +522,10 @@ func jsonTestSaveCopy(fnamePrefix string, jsonFile *os.File) (string, error) {
 func JsonCheck(jsonFile *os.File, checker ec.MultiResponseChecker, log ec.Logger) error {
 	count := 0
 	dec := json.NewDecoder(jsonFile)
-	for {
-		ev := fgs.GetEventsResponse{}
-		err := jsonpb.UnmarshalNext(dec, &ev)
-		if err != nil {
-			err = fmt.Errorf("unmarshal failed: %w", err)
-			return err
+	for dec.More() {
+		var ev fgs.GetEventsResponse
+		if err := dec.Decode(&ev); err != nil {
+			return fmt.Errorf("unmarshal failed: %w", err)
 		}
 		count += 1
 		prefix := fmt.Sprintf("jsonTestCheck/line:%04d ", count)
@@ -547,11 +544,6 @@ func JsonCheck(jsonFile *os.File, checker ec.MultiResponseChecker, log ec.Logger
 			if _, ok := err.(ec.EventTypeError); !ok {
 				log.Logf("%s => no match: %s, continuing", prefix, err)
 			}
-		}
-
-		// no match: move to the next event
-		if !dec.More() {
-			break
 		}
 	}
 
@@ -600,16 +592,13 @@ func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attemp
 	defer jsonFile.Close()
 
 	dec = json.NewDecoder(jsonFile)
-	for {
-		ev := fgs.GetEventsResponse{}
-		err = jsonpb.UnmarshalNext(dec, &ev)
+	for dec.More() {
+		var ev fgs.GetEventsResponse
+		err = dec.Decode(&ev)
 		if err != nil {
 			break
 		}
 		events = append(events, ev)
-		if !dec.More() {
-			break
-		}
 	}
 	sort.Stable(ByTime{events})
 

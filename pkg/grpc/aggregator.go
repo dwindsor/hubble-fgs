@@ -22,7 +22,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
-	"github.com/golang/protobuf/ptypes"
 )
 
 type Aggregator struct {
@@ -41,10 +40,7 @@ func NewAggregator(
 	}
 	window := 15 * time.Second
 	if options.WindowSize != nil {
-		var err error
-		if window, err = ptypes.Duration(options.WindowSize); err != nil {
-			return nil, err
-		}
+		window = options.WindowSize.AsDuration()
 	}
 	return &Aggregator{
 		server,

@@ -17,8 +17,8 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func Test_canBeHealthCheck(t *testing.T) {
@@ -62,11 +62,11 @@ func Test_maybeExecProbe(t *testing.T) {
 
 func Test_healthCheckFilter(t *testing.T) {
 	maybeHealthCheck, err := BuildFilterList(context.Background(),
-		[]*fgs.Filter{{HealthCheck: &wrappers.BoolValue{Value: true}}},
+		[]*fgs.Filter{{HealthCheck: &wrapperspb.BoolValue{Value: true}}},
 		[]OnBuildFilter{&HealthCheckFilter{}})
 	assert.NoError(t, err)
 	notHealthCheck, err := BuildFilterList(context.Background(),
-		[]*fgs.Filter{{HealthCheck: &wrappers.BoolValue{Value: false}}},
+		[]*fgs.Filter{{HealthCheck: &wrapperspb.BoolValue{Value: false}}},
 		[]OnBuildFilter{&HealthCheckFilter{}})
 	assert.NoError(t, err)
 

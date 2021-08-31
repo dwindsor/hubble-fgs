@@ -17,9 +17,11 @@ package filters
 import (
 	"testing"
 
+	"github.com/google/go-cmp/cmp"
+	"github.com/google/go-cmp/cmp/cmpopts"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestParseFilterList(t *testing.T) {
@@ -31,14 +33,21 @@ func TestParseFilterList(t *testing.T) {
 {"event_set":["PROCESS_CONNECT", "PROCESS_LISTEN"]}`
 	filterProto, err := ParseFilterList(f)
 	assert.NoError(t, err)
-	assert.Equal(t, []*fgs.Filter{
-		{Namespace: []string{"kube-system", ""}},
-		{HealthCheck: &wrappers.BoolValue{Value: true}},
-		{BinaryRegex: []string{"kube.*", "iptables"}},
-		{BinaryRegex: []string{"/usr/sbin/.*"}, Namespace: []string{"default"}},
-		{PidSet: []uint32{1}},
-		{EventSet: []fgs.EventType{fgs.EventType_PROCESS_CONNECT, fgs.EventType_PROCESS_LISTEN}},
-	}, filterProto)
+	if diff := cmp.Diff(
+		[]*fgs.Filter{
+			{Namespace: []string{"kube-system", ""}},
+			{HealthCheck: &wrapperspb.BoolValue{Value: true}},
+			{BinaryRegex: []string{"kube.*", "iptables"}},
+			{BinaryRegex: []string{"/usr/sbin/.*"}, Namespace: []string{"default"}},
+			{PidSet: []uint32{1}},
+			{EventSet: []fgs.EventType{fgs.EventType_PROCESS_CONNECT, fgs.EventType_PROCESS_LISTEN}},
+		},
+		filterProto,
+		cmpopts.IgnoreUnexported(fgs.Filter{}),
+		cmpopts.IgnoreUnexported(wrapperspb.BoolValue{}),
+	); diff != "" {
+		t.Errorf("filter mismatch (-want +got):\n%s", diff)
+	}
 	_, err = ParseFilterList("invalid filter json")
 	assert.Error(t, err)
 	filterProto, err = ParseFilterList("")

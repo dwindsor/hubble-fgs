@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/cilium/cilium/pkg/option"
-	"github.com/golang/protobuf/ptypes"
 	gops "github.com/google/gops/agent"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -29,6 +28,7 @@ import (
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
+	"google.golang.org/protobuf/types/known/durationpb"
 	"gopkg.in/natefinch/lumberjack.v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
@@ -182,7 +182,7 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 	var aggregationOptions *fgs.AggregationOptions
 	if enableExportAggregation {
 		aggregationOptions = &fgs.AggregationOptions{
-			WindowSize:        ptypes.DurationProto(exportAggregationWindowSize),
+			WindowSize:        durationpb.New(exportAggregationWindowSize),
 			ChannelBufferSize: exportAggregationBufferSize,
 		}
 	}

@@ -23,10 +23,10 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
-	"github.com/golang/protobuf/ptypes/timestamp"
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
+	"google.golang.org/protobuf/types/known/timestamppb"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -78,11 +78,11 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 					Id:   podA.Status.ContainerStatuses[0].ImageID,
 					Name: podA.Status.ContainerStatuses[0].Image,
 				},
-				StartTime: &timestamp.Timestamp{
+				StartTime: &timestamppb.Timestamp{
 					Seconds: int64(podA.Status.ContainerStatuses[0].State.Running.StartedAt.Second()),
 					Nanos:   int32(podA.Status.ContainerStatuses[0].State.Running.StartedAt.Nanosecond()),
 				},
-				Pid: &wrappers.UInt32Value{Value: 1234},
+				Pid: &wrapperspb.UInt32Value{Value: 1234},
 			},
 		}, pod)
 	assert.Nil(t, endpoint)
@@ -134,7 +134,7 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 				Id:             podA.Status.ContainerStatuses[0].ContainerID,
 				Name:           podA.Status.ContainerStatuses[0].Name,
 				Image:          &fgs.Image{},
-				Pid:            &wrappers.UInt32Value{Value: 1234},
+				Pid:            &wrapperspb.UInt32Value{Value: 1234},
 				MaybeExecProbe: true,
 			},
 		}, pod)

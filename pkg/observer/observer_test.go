@@ -28,7 +28,6 @@ import (
 	"testing"
 	"time"
 
-	"github.com/golang/protobuf/ptypes/wrappers"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -39,6 +38,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -298,7 +298,7 @@ func TestExistingListenEvent(t *testing.T) {
 					Parent: &fgs.Process{
 						Binary: selfBinary},
 					Ip:   "0.0.0.0",
-					Port: &wrappers.UInt32Value{Value: 8081},
+					Port: &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -360,7 +360,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 					Parent: &fgs.Process{
 						Binary: selfBinary},
 					Ip:   "0.0.0.0",
-					Port: &wrappers.UInt32Value{Value: 8081},
+					Port: &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -375,7 +375,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 						Binary: selfBinary,
 						Cwd:    rcwd},
 					SourceIp:   "127.0.0.1",
-					SourcePort: &wrappers.UInt32Value{Value: 8081},
+					SourcePort: &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -443,7 +443,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 					Parent: &fgs.Process{
 						Binary: selfBinary},
 					Ip:   "0.0.0.0",
-					Port: &wrappers.UInt32Value{Value: 8081},
+					Port: &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -528,7 +528,7 @@ func TestTCTls13(t *testing.T) {
 						Arguments: "https://google.com"},
 					Parent: &fgs.Process{
 						Binary: selfBinary},
-					DestinationPort: &wrappers.UInt32Value{Value: 443},
+					DestinationPort: &wrapperspb.UInt32Value{Value: 443},
 				},
 			},
 		},
@@ -588,7 +588,7 @@ func TestTCTls12(t *testing.T) {
 						Arguments: "https://tls-v1-2.badssl.com:1012/"},
 					Parent: &fgs.Process{
 						Binary: selfBinary},
-					DestinationPort: &wrappers.UInt32Value{Value: 1012},
+					DestinationPort: &wrapperspb.UInt32Value{Value: 1012},
 				},
 			},
 		},
@@ -598,7 +598,7 @@ func TestTCTls12(t *testing.T) {
 					Process: &fgs.Process{
 						Binary:    "curl",
 						Arguments: "https://tls-v1-2.badssl.com:1012/"},
-					DestinationPort: &wrappers.UInt32Value{Value: 1012},
+					DestinationPort: &wrapperspb.UInt32Value{Value: 1012},
 					ClientVersion:   "TLS 1.2",
 					ServerVersion:   "TLS 1.2",
 					SniType:         "host_name",
@@ -667,7 +667,7 @@ func TestListenAcceptClose(t *testing.T) {
 					Process: ncProc,
 					Parent:  selfProc,
 					Ip:      "0.0.0.0",
-					Port:    &wrappers.UInt32Value{Value: 8081},
+					Port:    &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -677,7 +677,7 @@ func TestListenAcceptClose(t *testing.T) {
 					Process:    ncProc,
 					Parent:     selfProc,
 					SourceIp:   "127.0.0.1",
-					SourcePort: &wrappers.UInt32Value{Value: 8081},
+					SourcePort: &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -687,7 +687,7 @@ func TestListenAcceptClose(t *testing.T) {
 					Process:    ncProc,
 					Parent:     selfProc,
 					SourceIp:   "0.0.0.0",
-					SourcePort: &wrappers.UInt32Value{Value: 8081},
+					SourcePort: &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -702,7 +702,7 @@ func TestListenAcceptClose(t *testing.T) {
 						Process: ncProc,
 						Parent: selfProc,
 						SourceIp:   "127.0.0.1",
-						SourcePort: &wrappers.UInt32Value{Value: 8081},
+						SourcePort: &wrapperspb.UInt32Value{Value: 8081},
 					},
 				},
 			},
@@ -885,7 +885,7 @@ func TestDockerListenConnect(t *testing.T) {
 						Arguments: "-nvlp 8081",
 						Cwd:       "/",
 						Docker:    fgsServerID,
-						Uid:       &wrappers.UInt32Value{Value: 0},
+						Uid:       &wrapperspb.UInt32Value{Value: 0},
 					},
 					Parent: &fgs.Process{},
 				},
@@ -899,11 +899,11 @@ func TestDockerListenConnect(t *testing.T) {
 						Arguments: "-nvlp 8081",
 						Cwd:       "/",
 						Docker:    fgsServerID,
-						Uid:       &wrappers.UInt32Value{Value: 0},
+						Uid:       &wrapperspb.UInt32Value{Value: 0},
 					},
 					Parent: &fgs.Process{},
 					Ip:     "0.0.0.0",
-					Port:   &wrappers.UInt32Value{Value: 8081},
+					Port:   &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -915,7 +915,7 @@ func TestDockerListenConnect(t *testing.T) {
 						Arguments: "fgs-test-server 8081",
 						Cwd:       "/",
 						Docker:    fgsClientID,
-						Uid:       &wrappers.UInt32Value{Value: 0},
+						Uid:       &wrapperspb.UInt32Value{Value: 0},
 					},
 					Parent: &fgs.Process{},
 				},
@@ -930,10 +930,10 @@ func TestDockerListenConnect(t *testing.T) {
 						Arguments: "fgs-test-server 8081",
 						Cwd:       "/",
 						Docker:    fgsClientID,
-						Uid:       &wrappers.UInt32Value{Value: 0},
+						Uid:       &wrapperspb.UInt32Value{Value: 0},
 					},
 					Parent:          &fgs.Process{},
-					DestinationPort: &wrappers.UInt32Value{Value: 8081},
+					DestinationPort: &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},
@@ -1016,7 +1016,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 						Binary:    "/bin/busybox",
 						Arguments: "-nvlp 8081",
 						Cwd:       "/",
-						Uid:       &wrappers.UInt32Value{Value: 0},
+						Uid:       &wrapperspb.UInt32Value{Value: 0},
 					},
 					Parent: &fgs.Process{},
 				},
@@ -1029,11 +1029,11 @@ func TestDockerExistingListenEvent(t *testing.T) {
 						Binary:    "/bin/busybox",
 						Arguments: "-nvlp 8081",
 						Cwd:       "/",
-						Uid:       &wrappers.UInt32Value{Value: 0},
+						Uid:       &wrapperspb.UInt32Value{Value: 0},
 					},
 					Parent: &fgs.Process{},
 					Ip:     "0.0.0.0",
-					Port:   &wrappers.UInt32Value{Value: 8081},
+					Port:   &wrapperspb.UInt32Value{Value: 8081},
 				},
 			},
 		},

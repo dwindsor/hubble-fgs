@@ -7,7 +7,7 @@ require (
 	github.com/cilium/cilium v1.7.0-rc2.0.20200311180626-711b37ed100c
 	github.com/cilium/hubble v0.5.1
 	github.com/ckaznocha/protoc-gen-lint v0.2.1
-	github.com/golang/protobuf v1.5.2
+	github.com/google/go-cmp v0.5.6
 	github.com/google/gops v0.3.14
 	github.com/hashicorp/golang-lru v0.5.4
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
