@@ -15,10 +15,10 @@ import (
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
-	"github.com/golang/protobuf/ptypes/timestamp"
 	"github.com/sirupsen/logrus"
 )
 
@@ -140,6 +140,18 @@ func (ec *eventCache) handleNetEvents() {
 		case *fgs.Tls:
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_Tls{Tls: event},
+				NodeName: ec.pm.nodeName,
+				Time:     e.timestamp,
+			}
+		case *fgs.ProcessHttp:
+			processedEvent = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: event},
+				NodeName: ec.pm.nodeName,
+				Time:     e.timestamp,
+			}
+		case *fgs.ProcessSockStats:
+			processedEvent = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessSockstats{ProcessSockstats: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
