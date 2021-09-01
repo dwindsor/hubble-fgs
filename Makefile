@@ -122,6 +122,11 @@ image-test:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
 
+.PHONY: tools-install tools-clean libbpf-install clang-install
+tools-install: libbpf-install clang-install
+tools-clean:
+	rm -rf $(LIBBPF_INSTALL_DIR)
+	rm -rf $(CLANG_INSTALL_DIR)
 libbpf-install:
 	$(eval id=$(shell docker create $(LIBBPF_IMAGE)))
 	mkdir -p $(LIBBPF_INSTALL_DIR)
@@ -144,9 +149,6 @@ fetch-testdata:
 	mkdir -p testdata/btf
 	docker cp fgs-md-temp:/var/run/hubble-fgs/vmlinux-5.4.104+ testdata/btf
 	docker stop fgs-md-temp || true
-
-
-tools-install: libbpf-install clang-install
 
 generate:
 	./tools/controller-gen crd paths=./pkg/k8s/apis/... output:dir=pkg/k8s/apis/isovalent.com/client/crds/v1alpha1
