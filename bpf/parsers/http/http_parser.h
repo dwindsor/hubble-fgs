@@ -158,7 +158,7 @@ void get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
 	for (i = 0; i < 256 - 4; i++) {
 		char *c = eat_next_char(msg, http);
 
-		if (c == 0 || term == c[0])
+		if (c == 0 || term == c[0] || chr_r == c[0])
 			break;
 		http->scratch[i+4] = c[0];
 	}
@@ -282,50 +282,54 @@ void find_host_header(ctx_md *msg, struct msg_http *http)
 	// 1
 	get_string_scratch(msg, http, chr_colon);
 	t = map_header_to_type(msg, http);
-	if (t == http_request_done) {
-		return;
-	}
+	if (t == http_request_done)
+		goto out;
 	get_string(msg, http, http->url, t, 256, chr_r);
 
 	// 2
 	get_string_scratch(msg, http, chr_colon);
 	t = map_header_to_type(msg, http);
-	if (t == http_request_done) {
-		return;
-	}
+	if (t == http_request_done)
+		goto out;
 	get_string(msg, http, http->url, t, 256, chr_r);
 
 	// 3
 	get_string_scratch(msg, http, chr_colon);
 	t = map_header_to_type(msg, http);
-	if (t == http_request_done) {
-		return;
-	}
+	if (t == http_request_done)
+		goto out;
 	get_string(msg, http, http->url, t, 256, chr_r);
 
 	// 4
 	get_string_scratch(msg, http, chr_colon);
 	t = map_header_to_type(msg, http);
-	if (t == http_request_done) {
-		return;
-	}
+	if (t == http_request_done)
+		goto out;
 	get_string(msg, http, http->url, t, 256, chr_r);
 
 	// 5
 	get_string_scratch(msg, http, chr_colon);
 	t = map_header_to_type(msg, http);
-	if (t == http_request_done) {
-		return;
-	}
+	if (t == http_request_done)
+		goto out;
 	get_string(msg, http, http->url, t, 256, chr_r);
 
 	// 6
 	get_string_scratch(msg, http, chr_colon);
 	t = map_header_to_type(msg, http);
-	if (t == http_request_done) {
-		return;
-	}
+	if (t == http_request_done)
+		goto out;
 	get_string(msg, http, http->url, t, 256, chr_r);
+	return;
+out:
+	/* Advance past \r\n, we just bump offset because we don't care
+	 * about using the char for anything. We may want to add a strict
+	 * mode later to ensure it is actually a chr_r. Using relax here
+	 * is not ideal, so would be nice to find a better way to satisfy
+	 * complexity limits.
+	 */
+	relax_verifier();
+	http->offset++;
 }
 
 static inline __attribute__((always_inline))
