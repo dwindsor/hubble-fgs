@@ -19,8 +19,20 @@ struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 
 #ifdef SK_MSG
 typedef struct sk_msg_md ctx_md;
+
+static inline __attribute__((always_inline))
+int ctx_pull_data(struct sk_msg_md *ctx, __u32 len)
+{
+	return msg_pull_data(ctx, 0, len, 0);
+}
 #else
 typedef struct __sk_buff ctx_md;
+
+static inline __attribute__((always_inline))
+int ctx_pull_data(struct __sk_buff *ctx, __u32 len)
+{
+	return skb_pull_data(ctx, len);
+}
 #endif
 
 
@@ -41,7 +53,7 @@ char *get_chars(ctx_md *msg, long offset, long cnt)
 	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
 	asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);
 	if (payload + offset + cnt > data_end) {
-		relax_verifier();
+		ctx_pull_data(msg, offset + cnt);
 		return 0;
 	}
 
