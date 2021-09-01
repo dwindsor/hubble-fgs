@@ -15,7 +15,6 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"path/filepath"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -70,8 +69,7 @@ var (
 		"sk_skb_verdict")
 
 	/* Http maps */
-	httpSockMapName     = "http_sock_map"
-	ObserverHttpSockMap = BpfMapBuilder(httpSockMapName, "sockops", ObserverSockopsEstablished)
+	ObserverHttpSockMap = BpfMapBuilder("http_sock_map", "sockops", ObserverSockopsEstablished)
 )
 
 type observerHttpSensor struct {
@@ -82,7 +80,7 @@ func (sockops *observerHttpSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	path := filepath.Join(bpfDir, "tcpmon", httpSockMapName)
+	path := "/sys/fs/bpf/tcpmon/http_sock_map"
 	err, i := ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
 	if err != nil {
 		return err, i
@@ -108,7 +106,9 @@ func (skSkbVerdict *observerSkSkbVerdictHttpSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(bpfDir, "tcpmon", httpSockMapName))
+	path := "/sys/fs/bpf/tcpmon/http_sock_map"
+
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, path)
 }
 
 func (skmsg *observerSkSkbVerdictHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -123,7 +123,9 @@ func (skSkbParser *observerSkSkbParserHttpSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(bpfDir, "tcpmon", httpSockMapName))
+	path := "/sys/fs/bpf/tcpmon/http_sock_map"
+
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, path)
 }
 
 func (skmsg *observerSkSkbParserHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {

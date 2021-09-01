@@ -16,7 +16,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path"
-	"path/filepath"
 	"strings"
 	"syscall"
 
@@ -354,8 +353,7 @@ func createInitialObserverSensor() *ObserverSensor {
 }
 
 func removeProgram(bpfDir string, prog *BpfLoad) {
-	path := filepath.Join(bpfDir, prog.observer__prog)
-	os.Remove(path)
+	os.Remove(bpfDir + prog.observer__prog)
 	if prog.probeType == "generic_kprobe" {
 		coreFile := ""
 		splitProg := strings.Split(prog.observer__prog, "__")
@@ -374,14 +372,14 @@ func removeProgram(bpfDir string, prog *BpfLoad) {
 			for _, f := range files {
 				if strings.Contains(f.Name(), coreFile) {
 					if f.IsDir() {
-						os.RemoveAll(filepath.Join(bpfDir, f.Name()))
+						os.RemoveAll(bpfDir + f.Name())
 					} else {
-						os.Remove(filepath.Join(bpfDir, f.Name()))
+						os.Remove(bpfDir + f.Name())
 					}
 				}
 			}
 		}
-		os.Remove(path + "-kp-calls")
+		os.Remove(bpfDir + prog.observer__prog + "-kp-calls")
 	}
 	if prog.tracefd >= 0 {
 		removeTracepoint(prog.tracefd)
@@ -398,7 +396,7 @@ func RemovePrograms(bpfDir, mapDir string) {
 		if m.fd > 0 {
 			syscall.Close(m.fd)
 		}
-		os.Remove(filepath.Join(mapDir, m.mapName))
+		os.Remove(mapDir + m.mapName)
 	}
 	os.Remove(bpfDir)
 	os.Remove(mapDir)
@@ -457,7 +455,7 @@ func observerLoadSensorMaps(stopCtx context.Context, sensor *ObserverSensor, map
 			continue
 		}
 
-		pin := filepath.Join(mapDir, m.mapName)
+		pin := mapDir + m.mapName
 		btfObj := uintptr(btf.GetCachedBTF())
 		m.fd, err = bpf.LoadAndPinMaps(version, Verbosity, btfObj, m.bpf.Observer__program, pin, m.mapName,
 			NameToProgType(m.bpf.probeType))
@@ -511,7 +509,7 @@ func ObserverLoadSkmsg(
 		btfObj,
 		load.Observer__program,
 		load.observer__label,
-		filepath.Join(bpfDir, load.observer__prog),
+		bpfDir+load.observer__prog,
 		mapDir,
 		path)
 }
@@ -527,7 +525,7 @@ func ObserverLoadSkSkbVerdict(
 		btfObj,
 		load.Observer__program,
 		load.observer__label,
-		filepath.Join(bpfDir, load.observer__prog),
+		bpfDir+load.observer__prog,
 		mapDir,
 		path)
 }
@@ -543,7 +541,7 @@ func ObserverLoadSkSkb(
 		btfObj,
 		load.Observer__program,
 		load.observer__label,
-		filepath.Join(bpfDir, load.observer__prog),
+		bpfDir+load.observer__prog,
 		mapDir,
 		path)
 }
@@ -560,7 +558,7 @@ func ObserverLoadSockops(
 	return bpf.LoadSockopsProgram(version, Verbosity, btfObj,
 		load.Observer__program,
 		load.observer__label,
-		filepath.Join(bpfDir, load.observer__prog),
+		bpfDir+load.observer__prog,
 		mapDir,
 		tls_filters, http_filters)
 }
@@ -576,7 +574,7 @@ func ObserverLoadTC(bpfDir, mapDir, ciliumDir string,
 		btfObj,
 		load.Observer__program,
 		load.observer__label,
-		filepath.Join(bpfDir, load.observer__prog),
+		bpfDir+load.observer__prog,
 		mapDir,
 		ciliumDir,
 		filters)
@@ -616,7 +614,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verb
 			load.Observer__program,
 			attach,
 			load.observer__label,
-			filepath.Join(bpfDir, load.observer__prog),
+			bpfDir+load.observer__prog,
 			mapDir)
 	} else if load.probeType == "cgrp_ingress" {
 		return bpf.LoadCgroupProgram(
@@ -624,7 +622,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verb
 			btfObj,
 			load.Observer__program,
 			load.observer__label,
-			filepath.Join(bpfDir, load.observer__prog),
+			bpfDir+load.observer__prog,
 			mapDir)
 	} else {
 		if s, ok := registeredProbeLoad[load.probeType]; ok {
@@ -636,7 +634,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *BpfLoad, version, Verb
 			load.Observer__program,
 			attach,
 			load.observer__label,
-			filepath.Join(bpfDir, load.observer__prog),
+			bpfDir+load.observer__prog,
 			mapDir,
 			load.retProbe)
 	}
@@ -696,7 +694,7 @@ func observerUnloadSensor(bpfDir, mapDir string, sensor *ObserverSensor, ctx con
 	}
 
 	for _, m := range sensor.maps {
-		os.Remove(filepath.Join(mapDir, m.mapName))
+		os.Remove(mapDir + m.mapName)
 	}
 
 	sensor.loaded = false

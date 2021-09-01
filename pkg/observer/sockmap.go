@@ -3,7 +3,6 @@ package observer
 import (
 	"fmt"
 	"os"
-	"path/filepath"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/config"
@@ -73,9 +72,8 @@ var (
 		"tc_egress")
 
 	/* TLS maps */
-	tlsSockMapName       = "tls_sock_map"
 	ObserverTCTLSMap     = BpfMapBuilder("tls_map", "tc_ingress", ObserverTLSTCEgress)
-	ObserverSockMap      = BpfMapBuilder(tlsSockMapName, "sockops", ObserverSockopsEstablished)
+	ObserverSockMap      = BpfMapBuilder("tls_sock_map", "sockops", ObserverSockopsEstablished)
 	ObserverTLSMap       = BpfMapBuilder("tls_map", "skmsg", ObserverSkmsg)
 	ObserverTLSTailCalls = BpfMapBuilder("tls_calls", "tc_ingress", ObserverTLSTCIngress)
 )
@@ -107,7 +105,7 @@ func (skmsg *observerSkmsgTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	path := filepath.Join(bpfDir, "tcpmon", tlsSockMapName)
+	path := "/sys/fs/bpf/tcpmon/tls_sock_map"
 	err, i := ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
 	if err != nil {
 		return err, i
@@ -131,7 +129,8 @@ func (skSkbVerdict *observerSkSkbVerdictTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(bpfDir, "tcpmon", tlsSockMapName))
+	path := "/sys/fs/bpf/tcpmon/tls_sock_map"
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, path)
 }
 
 func (skmsg *observerSkSkbVerdictTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -146,7 +145,8 @@ func (skSkbParser *observerSkSkbParserTlsSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(bpfDir, "tcpmon", tlsSockMapName))
+	path := "/sys/fs/bpf/tcpmon/tls_sock_map"
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, path)
 }
 
 func (skmsg *observerSkSkbParserTlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
