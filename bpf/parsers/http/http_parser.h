@@ -319,10 +319,7 @@ void find_host_header(ctx_md *msg, struct msg_http *http)
 static inline __attribute__((always_inline))
 void method_get_headers(ctx_md *msg, struct msg_http *http)
 {
-	__u32 saved_offset = http->offset;
-
 	find_host_header(msg, http);
-	http->offset = saved_offset;
 }
 
 static inline __attribute__((always_inline))
