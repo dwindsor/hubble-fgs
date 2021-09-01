@@ -46,7 +46,7 @@ jobs:
             CMD="publish"
           fi
           sudo go test github.com/isovalent/hubble-fgs/pkg/bench -fgs-bench-duration $BENCH_DURATION -timeout 30m -tags bench_tests -test.v
-          go run cmd/fgs-bench-publish/fgs-bench-publish.go pretty "$GIT_REV" "$GCP_SA_KEY" results/*.json
+          go run cmd/fgs-bench-publish/fgs-bench-publish.go $CMD "$GIT_REV" "$GCP_SA_KEY" results/*.json
 
       - name: Find Comment
         uses: peter-evans/find-comment@v1
