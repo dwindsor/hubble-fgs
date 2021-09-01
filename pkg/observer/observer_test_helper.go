@@ -220,7 +220,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 	loadObserver(t, kprobe)
 
 	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
-	kprobe.perfConfig.MapName = observerTestDir + "tcpmon_map"
+	kprobe.perfConfig.MapName = filepath.Join(observerTestDir, "tcpmon_map")
 	return kprobe, nil
 }
 

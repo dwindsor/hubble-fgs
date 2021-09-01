@@ -17,6 +17,7 @@ import (
 	"errors"
 	"fmt"
 	"path"
+	"path/filepath"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -467,7 +468,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *BpfLoad, version, 
 		load.Observer__program,
 		attach,
 		load.observer__label,
-		bpfDir+load.observer__prog,
+		filepath.Join(bpfDir, load.observer__prog),
 		mapDir,
 		load.retProbe,
 		kernelSelectors)

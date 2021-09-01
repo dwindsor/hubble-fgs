@@ -171,7 +171,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 	}
 
 	for _, d := range procFD {
-		socket, err := os.Readlink(fdDir + "/" + d.Name())
+		socket, err := os.Readlink(filepath.Join(fdDir, d.Name()))
 		if err != nil && Verbosity > 0 {
 			k.log.WithError(err).Warnf("Readlink error %s", d.Name())
 		}

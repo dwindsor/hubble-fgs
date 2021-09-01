@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"os"
 	"path"
+	"path/filepath"
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
@@ -580,12 +581,13 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 }
 
 func loadGenericKprobe(bpfDir, mapDir string, version int, p *BpfLoad, btf uintptr, genmapDir string, filters [4096]byte) error {
+	progpath := filepath.Join(bpfDir, p.observer__prog)
 	err, _ := bpf.LoadGenericKprobeProgram(
 		version, Verbosity, btf,
 		p.Observer__program,
 		p.observer__x64_attach,
 		p.observer__label,
-		bpfDir+p.observer__prog,
+		progpath,
 		mapDir,
 		genmapDir,
 		filters)
@@ -595,7 +597,7 @@ func loadGenericKprobe(bpfDir, mapDir string, version int, p *BpfLoad, btf uintp
 			p.Observer__program,
 			p.observer__attach,
 			p.observer__label,
-			bpfDir+p.observer__prog,
+			progpath,
 			mapDir,
 			genmapDir,
 			filters)
