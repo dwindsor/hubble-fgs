@@ -81,7 +81,7 @@ func (sockops *observerHttpSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	path := filepath.Join(bpfDir, "tcpmon", httpSockMapName)
+	path := filepath.Join(mapDir, httpSockMapName)
 	err, i := ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
 	if err != nil {
 		return err, i
@@ -106,7 +106,7 @@ func (skSkbVerdict *observerSkSkbVerdictHttpSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(bpfDir, "tcpmon", httpSockMapName))
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, httpSockMapName))
 }
 
 func (skmsg *observerSkSkbVerdictHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
@@ -121,7 +121,7 @@ func (skSkbParser *observerSkSkbParserHttpSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
-	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(bpfDir, "tcpmon", httpSockMapName))
+	return ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, httpSockMapName))
 }
 
 func (skmsg *observerSkSkbParserHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {

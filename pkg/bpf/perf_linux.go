@@ -303,7 +303,7 @@ func DefaultPerfEventConfig() *PerfEventConfig {
 		numCpus = runtime.NumCPU()
 	}
 	return &PerfEventConfig{
-		MapName:      filepath.Join(GetMapRoot(), "tcpmon", eventsMapName),
+		MapName:      filepath.Join(MapPrefixPath(), eventsMapName),
 		Type:         PERF_TYPE_SOFTWARE,
 		Config:       PERF_COUNT_SW_BPF_OUTPUT,
 		SampleType:   PERF_SAMPLE_RAW,

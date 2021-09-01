@@ -158,6 +158,7 @@ int bpf_loader_set_map(struct bpf_object *obj,
 		       int verbosity)
 {
 	struct bpf_map *map;
+	const char slash[] = "/";
 
 	bpf_object__for_each_map(map, obj) {
 		const char *name = bpf_map__name(map);
@@ -166,6 +167,7 @@ int bpf_loader_set_map(struct bpf_object *obj,
 
 		errno = 0;
 		strncpy(pinfd, mapdir, sizeof(pinfd));
+		strncat(pinfd, slash, sizeof(slash));
 		strncat(pinfd, name, sizeof(pinfd) - 1);
 		fd = bpf_obj_get(pinfd);
 		if (fd < 0) {
