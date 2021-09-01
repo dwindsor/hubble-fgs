@@ -224,6 +224,7 @@ import (
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
 	"reflect"
 	"runtime"
 	"strings"
@@ -294,13 +295,15 @@ func getNumPossibleCPUsFromReader(r io.Reader) int {
 	return count
 }
 
+// DefaultPerfEventConfig returns the default perf event configuration. It
+// relies on the map root to be set.
 func DefaultPerfEventConfig() *PerfEventConfig {
 	numCpus := GetNumPossibleCPUs()
 	if numCpus == 0 {
 		numCpus = runtime.NumCPU()
 	}
 	return &PerfEventConfig{
-		MapName:      EventsMapName,
+		MapName:      filepath.Join(GetMapRoot(), "tcpmon", eventsMapName),
 		Type:         PERF_TYPE_SOFTWARE,
 		Config:       PERF_COUNT_SW_BPF_OUTPUT,
 		SampleType:   PERF_SAMPLE_RAW,
