@@ -12,7 +12,7 @@
 package bpf
 
 const (
-	eventsMapName = "tcpmon_map"
+	EventsMapName = "/sys/fs/bpf/tcpmon/tcpmon_map"
 
 	PERF_TYPE_SOFTWARE = 1
 

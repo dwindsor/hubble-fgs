@@ -6,7 +6,6 @@ import (
 	"net"
 	"os"
 	"os/signal"
-	"path/filepath"
 	"syscall"
 	"time"
 
@@ -33,6 +32,8 @@ import (
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
+
+const observerDir = "/sys/fs/bpf/tcpmon/"
 
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
 	allowList, err := filters.ParseFilterList(viper.GetString(keyExportAllowlist))
@@ -70,7 +71,6 @@ func hubbleFGSExecute() error {
 	bpf.CheckOrMountCgroup2()
 
 	bpf.ConfigureResourceLimits()
-	observerDir := getObserverDir()
 	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
 		networkInterfaces, configFile,
 		tls, tlstc,
@@ -134,14 +134,6 @@ func hubbleFGSExecute() error {
 	kprobe.AddListener(processManager)
 	saveInitInfo()
 	return kprobe.Start(ctx)
-}
-
-// getObserverDir returns the path to the observer directory based on the BPF
-// map root. This function relies on the map root to be set properly via
-// github.com/isovalent/hubble-fgs/pkg/bpf.CheckOrMountFS().
-func getObserverDir() string {
-	const observerDir = "tcpmon"
-	return filepath.Join(bpf.GetMapRoot(), observerDir)
 }
 
 func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
