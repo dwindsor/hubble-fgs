@@ -153,14 +153,20 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		}
 	}
 
+	length, err := reader.GetHttpContentLength(event.Request.ContentLength)
+	if err != nil {
+		pm.log.WithError(err).WithField("ContentLength", event.Request.ContentLength).Info("Content-Length strconv error")
+	}
+
 	if len(event.Request.Method) != 0 {
 		fgsHttpRequest = &fgs.HttpRequest{
-			Timestamp: ktimeToProto(event.Request.Ktime),
-			Method:    event.Request.Method,
-			Uri:       event.Request.Uri,
-			Version:   event.Request.Protocol,
-			Host:      event.Request.Host,
-			Agent:     event.Request.UserAgent,
+			Timestamp:     ktimeToProto(event.Request.Ktime),
+			Method:        event.Request.Method,
+			Uri:           event.Request.Uri,
+			Version:       event.Request.Protocol,
+			Host:          event.Request.Host,
+			Agent:         event.Request.UserAgent,
+			ContentLength: &wrapperspb.UInt32Value{Value: uint32(length)},
 		}
 	}
 
