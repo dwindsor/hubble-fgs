@@ -559,7 +559,7 @@ func JsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 		fmt.Printf("jsonTestIterate: openning: %s\n", exportFile)
 		jsonFile, err = os.Open(exportFile)
 		if err != nil {
-			return fmt.Errorf("opening json faile faied: %w", err)
+			return fmt.Errorf("opening json file failed: %w", err)
 		}
 	}
 	defer func() {
@@ -571,7 +571,24 @@ func JsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 		}
 		jsonFile.Close()
 	}()
-	err = JsonCheck(jsonFile, c, t)
+
+	cnt := 0
+	for {
+		err = JsonCheck(jsonFile, c, t)
+		if err == nil {
+			break
+		}
+
+		cnt++
+		if cnt == jsonRetries {
+			err = fmt.Errorf("JsonTestCheck failed after %d retries: %w", jsonRetries, err)
+			break
+		}
+		t.Logf("JsonCheck (retry=%d) failed: %s. Retrying after %s", cnt, err, retryDelay)
+		jsonFile.Seek(0, os.SEEK_SET)
+		time.Sleep(retryDelay)
+	}
+
 	return err
 }
 
