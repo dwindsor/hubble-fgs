@@ -150,7 +150,8 @@ tools-install: libbpf-install clang-install
 
 generate:
 	./tools/controller-gen crd paths=./pkg/k8s/apis/... output:dir=pkg/k8s/apis/isovalent.com/client/crds/v1alpha1
-	bash vendor/k8s.io/code-generator/generate-groups.sh all \
+	export GOPATH=$$(go env GOPATH); \
+	  bash vendor/k8s.io/code-generator/generate-groups.sh all \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
 	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
 	  isovalent.com:v1alpha1 \
