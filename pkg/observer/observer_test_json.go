@@ -587,6 +587,7 @@ func JsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 		t.Logf("JsonCheck (retry=%d) failed: %s. Retrying after %s", cnt, err, retryDelay)
 		jsonFile.Seek(0, os.SEEK_SET)
 		time.Sleep(retryDelay)
+		c.Reset()
 	}
 
 	return err

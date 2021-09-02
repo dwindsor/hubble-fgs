@@ -54,11 +54,15 @@ type MultiResponseChecker interface {
 	// FinalCheck indicates that the sequence of events has ended, and asks
 	// the checker to make a final decision.
 	FinalCheck(Logger) error
+
+	// Reset resets the checker so that it can be used again
+	Reset()
 }
 
 type MultiResponseCheckerFns struct {
 	NextCheckFn  func(*fgs.GetEventsResponse, Logger) (bool, error)
 	FinalCheckFn func(Logger) error
+	ResetFn      func()
 }
 
 func (fns *MultiResponseCheckerFns) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
@@ -67,6 +71,10 @@ func (fns *MultiResponseCheckerFns) NextCheck(r *fgs.GetEventsResponse, l Logger
 
 func (fns *MultiResponseCheckerFns) FinalCheck(l Logger) error {
 	return fns.FinalCheckFn(l)
+}
+
+func (fns *MultiResponseCheckerFns) Reset() {
+	fns.Reset()
 }
 
 // OrderedMultiResponseChecker matches a list of ResponseCheckers over a sequence of responses
@@ -111,6 +119,10 @@ func (c *OrderedMultiResponseChecker) FinalCheck(l Logger) error {
 	return fmt.Errorf("OrderedMultiResponseChecker: only %d/%d matched", c.idx, len(c.checkers))
 }
 
+func (c *OrderedMultiResponseChecker) Reset() {
+	c.idx = 0
+}
+
 // AllMultiResponseChecker matches all checkers for all responses
 type AllMultiResponseChecker struct {
 	checkers []ResponseChecker
@@ -136,6 +148,8 @@ func (c *AllMultiResponseChecker) FinalCheck(l Logger) error {
 	l.Logf("AllMultiResponseChecker: all %d checks succeeded for all events", len(c.checkers))
 	return nil
 }
+
+func (c *AllMultiResponseChecker) Reset() {}
 
 // UnorderedMultiResponseChecker matches a list of ResponseCheckers over a
 // squence of responses. The checkers can match in any order (no

@@ -200,9 +200,13 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		}
 		return nil
 	}
+	Reset := func() {
+		tpEventsNr = 0
+	}
 	checker := ec.MultiResponseCheckerFns{
 		NextCheckFn:  nextCheck,
 		FinalCheckFn: finalCheck,
+		ResetFn:      Reset,
 	}
 
 	if err := JsonTestCheck(t, nil, &checker); err != nil {
