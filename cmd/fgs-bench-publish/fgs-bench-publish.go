@@ -51,10 +51,10 @@ var testNameToSheetId = map[string]int64{
 }
 
 func summaryToSheetId(summary *bench.BenchSummary) int64 {
-	if id, ok := testNameToSheetId[summary.TestName]; ok {
+	if id, ok := testNameToSheetId[summary.Args.TestName]; ok {
 		return id
 	} else {
-		log.Printf("No sheet for %s, defaulting to 'Test'\n", summary.TestName)
+		log.Printf("No sheet for %s, defaulting to 'Test'\n", summary.Args.TestName)
 		return 0 // Test sheet
 	}
 }
@@ -87,7 +87,7 @@ func main() {
 			log.Fatalf("Unable to decode %s: %s", file, err)
 		}
 		f.Close()
-		summaries[summary.TestName] = &summary
+		summaries[summary.Args.TestName] = &summary
 	}
 
 	if cmd == "publish" {
@@ -305,7 +305,7 @@ func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *benc
 
 	_, err := sheetsService.Spreadsheets.BatchUpdate(SHEET_DOC_ID, &r).Do()
 	if err != nil {
-		log.Fatalf("BatchUpdate of %s failed: %s", summary.TestName, err)
+		log.Fatalf("BatchUpdate of %s failed: %s", summary.Args.TestName, err)
 	}
 
 	log.Printf("Append to %s / %d OK.\n", SHEET_DOC_ID, sheetId)

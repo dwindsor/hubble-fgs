@@ -13,6 +13,7 @@ struct bpf_map_def {
 #include "api.h"
 #include "hubble_msg.h"
 #include "../parsers/tls/tls_map.h"
+#include "../parsers/http/http.h"
 #include "bpf_events.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
@@ -135,6 +136,7 @@ int event_ipv4_close(struct pt_regs *ctx)
 		del_socketmap(&tuple);
 		tuple.dport = bpf_htons(tuple.dport);
 		map_delete_elem(&tls_map, &tuple);
+		map_delete_elem(&http_map, &tuple);
 	}
 	return 1;
 }

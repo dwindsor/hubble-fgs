@@ -13,7 +13,6 @@
 package bench
 
 import (
-	"context"
 	"flag"
 	"os"
 	"path"
@@ -59,15 +58,15 @@ func TestMain(m *testing.M) {
 func TestBenchBaseline(t *testing.T) {
 	for _, srcProxySink := range benchmarkSourceProxySinks {
 		t.Run(srcProxySink.source, func(t *testing.T) {
-			summary := BenchBaseline(
+			summary := RunBenchmark(
 				&BenchArguments{
+					TestName:   t.Name(),
 					SourceArgs: SourceArgs{Duration: benchmarkDuration},
 					Source:     SourceNameOrPanic(srcProxySink.source),
 					Proxy:      ProxyNameOrPanic(srcProxySink.proxy),
 					Sink:       SinkNameOrPanic(srcProxySink.sink),
 					Baseline:   true,
 				})
-			summary.TestName = t.Name()
 			if err := summary.WriteFile(resultFilename(t)); err != nil {
 				t.Fatalf("summary.WriteFile failed: %s", err)
 			}
@@ -88,15 +87,15 @@ func TestEnvoyOverhead(t *testing.T) {
 	}
 
 	source, proxy, sink := "http-rr-go", "envoy", "http-nginx"
-	summary := BenchBaseline(
+	summary := RunBenchmark(
 		&BenchArguments{
+			TestName:   t.Name(),
 			SourceArgs: SourceArgs{Duration: benchmarkDuration},
 			Source:     SourceNameOrPanic(source),
 			Proxy:      ProxyNameOrPanic(proxy),
 			Sink:       SinkNameOrPanic(sink),
 			Baseline:   true,
 		})
-	summary.TestName = t.Name()
 	if err := summary.WriteFile(resultFilename(t)); err != nil {
 		t.Fatalf("summary.WriteFile failed: %s", err)
 	}
@@ -120,34 +119,37 @@ func TestFGSTLS(t *testing.T) {
 	})
 }
 
+func TestFGSHTTP(t *testing.T) {
+	viper.Set("log-level", "error")
+	viper.Set("debug", false)
+	summary := RunBenchmark(
+		&BenchArguments{
+			TestName:   t.Name(),
+			SourceArgs: SourceArgs{Duration: benchmarkDuration},
+			Source:     SourceNameOrPanic("http-crr-go"),
+			Proxy:      ProxyNameOrPanic("none"),
+			Sink:       SinkNameOrPanic("http-nginx"),
+		})
+	if err := summary.WriteFile(resultFilename(t)); err != nil {
+		t.Fatalf("summary.WriteFile failed: %s", err)
+	}
+	if summary.Error != "" {
+		t.Fatalf("test failed: %s", summary.Error)
+	}
+}
+
 func benchmarkFgs(t *testing.T, args *BenchArguments) {
 	viper.Set("log-level", "error")
 	viper.Set("debug", false)
 
-	summary := newBenchSummary(args)
-
-	fgsCtx, fgsCancel := context.WithCancel(context.Background())
-	fgsReady := make(chan bool)
-	fgsFinished := make(chan bool)
-	go func() {
-		runFgs(args.FgsEnableTLS, false, summary, fgsCtx, fgsCancel, fgsReady)
-		fgsFinished <- true
-	}()
-
-	<-fgsReady
-	summary.SetupDurationNanos = time.Since(summary.StartTime)
 	for _, srcProxySink := range benchmarkSourceProxySinks {
 		t.Run(srcProxySink.source, func(t *testing.T) {
-			loadCtx, loadCancel := context.WithCancel(context.Background())
-			summary.ResetForNewRun()
-			summary.StartTime = time.Now()
-			summary.TestName = t.Name()
 			args.SourceArgs = SourceArgs{Duration: benchmarkDuration}
 			args.Source = SourceNameOrPanic(srcProxySink.source)
 			args.Sink = SinkNameOrPanic(srcProxySink.sink)
 			args.Proxy = ProxyNameOrPanic(srcProxySink.proxy)
-			go sigHandler(loadCtx, loadCancel)
-			runFgsBenchmark(args, summary, loadCtx, loadCancel)
+			args.TestName = t.Name()
+			summary := RunBenchmark(args)
 			if err := summary.WriteFile(resultFilename(t)); err != nil {
 				t.Fatalf("summary.WriteFile failed: %s", err)
 			}
@@ -156,7 +158,4 @@ func benchmarkFgs(t *testing.T, args *BenchArguments) {
 			}
 		})
 	}
-	fgsCancel()
-	<-fgsFinished
-
 }

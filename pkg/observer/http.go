@@ -18,6 +18,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
@@ -86,9 +87,12 @@ func (sockops *observerHttpSensor) LoadProbe(
 	if err != nil {
 		return err, i
 	}
-	err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbParser, version, 0, x64, path)
-	if err != nil {
-		return err, i
+
+	if skSkbParserRequired() {
+		err, i = ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbParser, version, 0, x64, path)
+		if err != nil {
+			return err, i
+		}
 	}
 	return ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbVerdict, version, 0, x64, path)
 	return err, i
@@ -146,15 +150,19 @@ func AddHttp() {
 	skmsg := &observerHttpSensor{
 		name: "skmsg http sensor",
 	}
-	skskbParser := &observerSkSkbParserHttpSensor{
-		name: "skskb parser http sensor",
+
+	if skSkbParserRequired() {
+		skskbParser := &observerSkSkbParserHttpSensor{
+			name: "skskb parser http sensor",
+		}
+		RegisterProbeType("http_skskb_parser", skskbParser)
 	}
+
 	skskbVerdict := &observerSkSkbVerdictHttpSensor{
 		name: "skskb verdict http sensor",
 	}
-
-	RegisterProbeType("http_skskb_parser", skskbParser)
 	RegisterProbeType("http_skskb_verdict", skskbVerdict)
+
 	RegisterProbeType("http_skmsg", skmsg)
 
 	RegisterTracingSensorsAtInit(skmsg.name, skmsg)
@@ -163,19 +171,21 @@ func AddHttp() {
 
 /* Add sensor from CRD */
 func EnableHttpParser() *ObserverSensor {
-	var progs []*BpfLoad
-	var maps []*ObserverMap
-
 	logger.GetLogger().Infof("Enable HTTP")
-	progs = append(progs,
+
+	progs := []*BpfLoad{
 		ObserverHttpSkmsg,
 		ObserverHttpSkSkbVerdict,
-		ObserverHttpSkSkbParser,
-	)
+	}
 
-	maps = append(maps,
+	if skSkbParserRequired() {
+		progs = append(progs, ObserverHttpSkSkbParser)
+	}
+
+	maps := []*ObserverMap{
 		ObserverHttpSockMap,
-	)
+	}
+
 	return SensorBuilder("__parser_sensors__", progs, maps)
 }
 
@@ -306,6 +316,7 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 		Tuple: unix.Tuple,
 		Id:    unix.Request.RequestId,
 	}
+
 	// If aggregation is disabled just push events as we see them.
 	if !httpAggregateEnable {
 		return unix, nil
@@ -327,6 +338,7 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 			unix.Request.UserAgent = r.Request.UserAgent
 			unix.Request.ContentLength = r.Request.ContentLength
 			unix.Request.Ktime = r.Common.Ktime
+			unix.ProcessKey = r.ProcessKey
 			httpAggregate.Remove(key)
 		}
 	}

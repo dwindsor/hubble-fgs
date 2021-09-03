@@ -15,7 +15,9 @@ import (
 	"encoding/json"
 	"fmt"
 	"path"
+	"strings"
 	"syscall"
+	"text/template"
 
 	"log"
 	"os"
@@ -29,9 +31,13 @@ import (
 )
 
 type BenchArguments struct {
+	TestName      string
+	Fgs           bool
 	FgsEnableTLS  bool
+	FgsEnableHTTP bool
 	FgsDebug      bool
 	FgsJSONEncode bool
+	PrintEvents   bool
 
 	SourceArgs SourceArgs
 	Source     sourceName
@@ -46,43 +52,57 @@ func (args *BenchArguments) String() string {
 		args.Sink, args.Source, args.Proxy, args.SourceArgs.String(), args.FgsEnableTLS, args.FgsJSONEncode)
 }
 
-func BenchBaseline(args *BenchArguments) *BenchSummary {
+func RunBenchmark(args *BenchArguments) *BenchSummary {
 	summary := newBenchSummary(args)
 	summary.StartTime = time.Now()
 	ctx, cancel := context.WithCancel(context.Background())
 	go sigHandler(ctx, cancel)
 
-	runConnectionLoad(ctx, cancel, args, summary)
+	cpuUsageBefore := GetCPUUsage(CPU_USAGE_ALL_THREADS)
+	runBenchmark(ctx, cancel, args, summary)
+	cpuUsageAfter := GetCPUUsage(CPU_USAGE_ALL_THREADS)
+
+	if !args.Baseline {
+		summary.FgsCPUUsage = cpuUsageAfter.Sub(cpuUsageBefore)
+		if !summary.SinkStats.Forked {
+			summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SinkStats.CPUUsage)
+		}
+		if !summary.SourceStats.Forked {
+			summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SourceStats.CPUUsage)
+		}
+
+		// Roughly validate the event counters
+		if summary.Error == "" {
+			if args.FgsEnableTLS && strings.Contains(string(args.Source), "tls") {
+				if summary.TLSEvents < 1 {
+					summary.Error += "No TLS events received! "
+				}
+			}
+
+			/* TODO(JM): Disabled due to HTTP parser broken on localhost connections.
+			 * (skb non-linear and data not pulled)
+
+			if args.FgsEnableHTTP && strings.Contains(string(args.Source), "http") {
+				if summary.HTTPEvents < 1 {
+					summary.Error += "No HTTP events received! "
+				}
+			}
+			*/
+
+			if summary.TCPEvents < 1 {
+				summary.Error += "No TCP events received! "
+			}
+		}
+	}
+
 	return summary
 }
 
-func BenchFGS(args *BenchArguments, readyCb func()) *BenchSummary {
-	summary := newBenchSummary(args)
-	ready := make(chan bool)
-	finished := make(chan bool)
-	ctx, cancel := context.WithCancel(context.Background())
-	go sigHandler(ctx, cancel)
-	go func() {
-		<-ready
-		readyCb()
-		summary.SetupDurationNanos = time.Since(summary.StartTime)
-		runFgsBenchmark(args, summary, ctx, cancel)
-		finished <- true
-	}()
-
-	runFgs(args.FgsEnableTLS, args.FgsDebug, summary, ctx, cancel, ready)
-
-	// Wait for final summary
-	<-finished
-
-	return summary
-}
-
-func runFgs(fgsEnableTLS, fgsDebug bool, summary *BenchSummary, ctx context.Context, cancel context.CancelFunc, ready chan bool) {
+func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx context.Context, ready chan bool) {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
-	if fgsEnableTLS {
+	if args.FgsEnableTLS {
 		bpf.CheckOrMountCgroup2()
 	}
 
@@ -101,49 +121,36 @@ func runFgs(fgsEnableTLS, fgsDebug bool, summary *BenchSummary, ctx context.Cont
 		}
 	}
 
-	kprobe := observer.NewObserverKprobe("/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
-		"" /* network interfaces */, "", /* config file */
-		fgsEnableTLS /* tls */, false, /* tlstc */
-		fgsDebug /* debug */, false, /* enable-crd */
-		0 /* tcp statistics */)
+	configFile := generateCrd(args, sinkPort)
+	defer os.Remove(configFile)
 
-	defer kprobe.RemovePrograms()
+	kprobe := observer.NewObserverKprobe("/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
+		"", /* network interfaces */
+		configFile,
+		args.FgsDebug /* debug */, false, /* enable-crd */
+		0 /* tcp statistics */)
 
 	if err := btf.InitCachedBTF(observer.HubbleLib, ctx); err != nil {
 		log.Fatal(err)
 	}
 
-	err := startBenchmarkListener(summary, ready, kprobe, ctx, cancel)
+	err := startBenchmarkListener(summary, ready, kprobe, ctx)
 	if err != nil {
 		log.Fatalf("Starting FGS failed: %v", err)
 	}
 
 	<-ctx.Done()
+	kprobe.RemovePrograms()
 }
 
 type benchmarkListener struct {
 	summary *BenchSummary
 	ready   chan bool
 	ctx     context.Context
-	cancel  context.CancelFunc
 	kprobe  *observer.ObserverKprobe
 	encoder *json.Encoder
-	writer  CountingDiscardWriter
 
 	cpuUsageWhenReady CPUUsage
-}
-
-func runFgsBenchmark(args *BenchArguments, summary *BenchSummary, ctx context.Context, cancel context.CancelFunc) {
-	cpuUsageBefore := GetCPUUsage(CPU_USAGE_ALL_THREADS)
-	runConnectionLoad(ctx, cancel, args, summary)
-	cpuUsageAfter := GetCPUUsage(CPU_USAGE_ALL_THREADS)
-	summary.FgsCPUUsage = cpuUsageAfter.Sub(cpuUsageBefore)
-	if !summary.SinkStats.Forked {
-		summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SinkStats.CPUUsage)
-	}
-	if !summary.SourceStats.Forked {
-		summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SourceStats.CPUUsage)
-	}
 }
 
 func (bl *benchmarkListener) Notify(msg interface{}) error {
@@ -172,6 +179,9 @@ func (bl *benchmarkListener) Notify(msg interface{}) error {
 
 	case *api.MsgIPv4TcpEventUnix:
 		bl.summary.TCPEvents++
+
+	case *api.MsgHttpEventUnix:
+		bl.summary.HTTPEvents++
 	}
 
 	return nil
@@ -183,20 +193,28 @@ func (bl *benchmarkListener) Close() error {
 
 func startBenchmarkListener(summary *BenchSummary, ready chan bool,
 	kprobe *observer.ObserverKprobe,
-	ctx context.Context, cancel context.CancelFunc) error {
+	ctx context.Context) error {
+
+	var encoder *json.Encoder
+	if summary.Args.PrintEvents {
+		encoder = json.NewEncoder(os.Stdout)
+		encoder.SetIndent("", "\t")
+	} else {
+		encoder = json.NewEncoder(&CountingDiscardWriter{})
+	}
+
 	listener := &benchmarkListener{
 		summary: summary,
 		ctx:     ctx,
-		cancel:  cancel,
 		kprobe:  kprobe,
 		ready:   ready,
+		encoder: encoder,
 	}
-	listener.encoder = json.NewEncoder(&listener.writer)
 	kprobe.AddListener(listener)
 	return kprobe.Start(ctx)
 }
 
-func runConnectionLoad(ctx context.Context, cancel context.CancelFunc, args *BenchArguments, summary *BenchSummary) {
+func runBenchmark(ctx context.Context, cancel context.CancelFunc, args *BenchArguments, summary *BenchSummary) {
 	EnableBpfStats()
 	oldBpfStats := GetBpfStats()
 
@@ -208,6 +226,22 @@ func runConnectionLoad(ctx context.Context, cancel context.CancelFunc, args *Ben
 		cancel()
 		return
 	}
+
+	// Start FGS if requested.
+	fgsFinished := make(chan bool, 1)
+	if !args.Baseline {
+		ready := make(chan bool)
+		log.Printf("Starting FGS...\n")
+		go func() {
+			runFgs(sinkPort, args, summary, ctx, ready)
+			fgsFinished <- true
+		}()
+		// Wait for FGS to initialize.
+		<-ready
+	} else {
+		fgsFinished <- true
+	}
+	summary.SetupDurationNanos = time.Since(summary.StartTime)
 
 	// Start an optional proxy between the sink and source. If no proxy required it
 	// passes the sink port through.
@@ -240,6 +274,9 @@ func runConnectionLoad(ctx context.Context, cancel context.CancelFunc, args *Ben
 	}
 	summary.SinkStats = <-sinkStats
 
+	// Wait for FGS to finish cleaning up.
+	<-fgsFinished
+
 	log.Printf("Benchmark finished: %.2f per sec, %d error(s)", sourceStats.ActualRate, sourceStats.Errors)
 }
 
@@ -255,4 +292,64 @@ func sigHandler(ctx context.Context, cancel context.CancelFunc) {
 		cancel()
 		return
 	}
+}
+
+func generateCrd(args *BenchArguments, sinkPort int) string {
+	tmpl := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "benchmark spec"
+spec:
+  description: "parser spec"
+  parser:
+    http:
+      enable: {{.FgsHttp}}
+      selectors:
+      - matchports:
+        - 80
+        {{.MatchPortHTTP}}
+    tls:
+      enable: {{.FgsTls}}
+      mode: socket
+      selectors:
+      - matchports:
+        - 443
+        {{.MatchPortTLS}}
+`
+
+	f, err := os.CreateTemp("/tmp", "fgs-bench-crd-*.yaml")
+	if err != nil {
+		log.Fatal(err)
+	}
+	defer f.Close()
+
+	var matchPortHTTP, matchPortTLS string
+
+	if strings.Contains(string(args.Source), "tls") {
+		matchPortTLS = fmt.Sprintf("- %d", sinkPort)
+	}
+	if strings.Contains(string(args.Source), "http") {
+		matchPortHTTP = fmt.Sprintf("- %d", sinkPort)
+	}
+
+	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
+	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
+
+	templateArgs :=
+		struct {
+			FgsHttp, FgsTls           bool
+			MatchPortHTTP, MatchPortTLS string
+		}{
+			FgsHttp:      args.FgsEnableHTTP,
+			FgsTls:       args.FgsEnableTLS,
+			MatchPortHTTP: matchPortHTTP,
+			MatchPortTLS:  matchPortTLS,
+		}
+
+	err = template.Must(template.New("crd").Parse(tmpl)).Execute(f, templateArgs)
+	if err != nil {
+		log.Fatal(err)
+
+	}
+	return f.Name()
 }
