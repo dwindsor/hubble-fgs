@@ -306,12 +306,14 @@ spec:
       enable: {{.FgsHttp}}
       selectors:
       - matchports:
+        - 80
         {{.MatchPortHTTP}}
     tls:
       enable: {{.FgsTls}}
       mode: socket
       selectors:
       - matchports:
+        - 443
         {{.MatchPortTLS}}
 `
 

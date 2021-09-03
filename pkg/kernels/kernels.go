@@ -73,14 +73,17 @@ func MinKernelVersion(kernel string) bool {
 	if err := unix.Uname(&uname); err != nil {
 		return true
 	}
-	//n := bytes.IndexByte(uname.Release[:], 0)
+	n := bytes.IndexByte(uname.Release[:], 0)
 	// vendors like to define kernel 4.14.128-foo but
 	// everything after '-' is meaningless from BPF
 	// side so toss it out.
-	release := strings.Split(string(uname.Release[:]), "-")
-	numeric := strings.TrimRight(release[0], "+")
-	runningVersion := int(KernelStringToNumeric(numeric))
+	release := strings.TrimSuffix(
+		strings.Split(string(uname.Release[:n]), "-")[0],
+		"+")
+
+	runningVersion := int(KernelStringToNumeric(release))
 	minVersion := int(KernelStringToNumeric(kernel))
+
 	if minVersion <= runningVersion {
 		return true
 	}
