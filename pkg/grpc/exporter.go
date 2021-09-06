@@ -16,7 +16,6 @@ package grpc
 
 import (
 	"context"
-	"encoding/json"
 	"sync/atomic"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -24,11 +23,15 @@ import (
 	"google.golang.org/grpc/metadata"
 )
 
+type ExportEncoder interface {
+	Encode(v interface{}) error
+}
+
 type Exporter struct {
 	ctx         context.Context
 	request     *fgs.GetEventsRequest
 	server      *Server
-	encoder     *json.Encoder
+	encoder     ExportEncoder
 	rateLimiter *RateLimiter
 	done        chan bool
 }
@@ -37,7 +40,7 @@ func NewExporter(
 	ctx context.Context,
 	request *fgs.GetEventsRequest,
 	server *Server,
-	encoder *json.Encoder,
+	encoder ExportEncoder,
 	rateLimiter *RateLimiter,
 ) *Exporter {
 	return &Exporter{ctx, request, server, encoder, rateLimiter, make(chan bool)}
@@ -45,7 +48,9 @@ func NewExporter(
 
 func (e *Exporter) Start() {
 	if err := e.server.GetEvents(e.request, e); err != nil {
-		logger.GetLogger().WithError(err).Error("Failed to start JSON exporter")
+		if e.ctx.Err() == nil {
+			logger.GetLogger().WithError(err).Error("Failed to start JSON exporter")
+		}
 	}
 	e.done <- true
 }

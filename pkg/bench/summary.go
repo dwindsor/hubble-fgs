@@ -64,6 +64,7 @@ func (s *BenchSummary) PrettyPrint() {
 	fmt.Printf("Total duration:    %s\n", s.EndTime.Sub(s.StartTime))
 	fmt.Printf("Setup duration:    %s\n", s.SetupDurationNanos)
 	fmt.Printf("Test duration:     %s\n", s.TestDurationNanos)
+	fmt.Printf("Export duration:   %s\n", s.JSONEncodingDurationNanos)
 	fmt.Printf("FGS cpu usage:     %s\n", s.FgsCPUUsage)
 	fmt.Printf("Source cpu usage:  %s\n", s.SourceStats.CPUUsage)
 	fmt.Printf("Proxy cpu usage:   %s\n", s.ProxyStats.CPUUsage)

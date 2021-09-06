@@ -55,6 +55,17 @@ func TestMain(m *testing.M) {
 // has a duration setting and the setup phase may be long to run over and over. Using "testing"
 // is useful as it combines with the build and provides test filtering.
 
+func checkSummaryForErrors(t *testing.T, summary *BenchSummary) {
+	if summary.Error != "" {
+		t.Fatalf("test failed: %s", summary.Error)
+	}
+	if summary.SourceStats.Errors > 0 {
+		t.Fatalf("test failed due to source errors (%d), last error was: %s",
+		         summary.SourceStats.Errors,
+		         summary.Error)
+	}
+}
+
 func TestBenchBaseline(t *testing.T) {
 	for _, srcProxySink := range benchmarkSourceProxySinks {
 		t.Run(srcProxySink.source, func(t *testing.T) {
@@ -70,9 +81,7 @@ func TestBenchBaseline(t *testing.T) {
 			if err := summary.WriteFile(resultFilename(t)); err != nil {
 				t.Fatalf("summary.WriteFile failed: %s", err)
 			}
-			if summary.Error != "" {
-				t.Fatalf("test failed: %s", summary.Error)
-			}
+			checkSummaryForErrors(t, summary)
 		})
 	}
 }
@@ -99,10 +108,7 @@ func TestEnvoyOverhead(t *testing.T) {
 	if err := summary.WriteFile(resultFilename(t)); err != nil {
 		t.Fatalf("summary.WriteFile failed: %s", err)
 	}
-	if summary.Error != "" {
-		t.Fatalf("test failed: %s", summary.Error)
-	}
-
+	checkSummaryForErrors(t, summary)
 }
 
 func TestFGSNoTLS(t *testing.T) {
@@ -133,9 +139,7 @@ func TestFGSHTTP(t *testing.T) {
 	if err := summary.WriteFile(resultFilename(t)); err != nil {
 		t.Fatalf("summary.WriteFile failed: %s", err)
 	}
-	if summary.Error != "" {
-		t.Fatalf("test failed: %s", summary.Error)
-	}
+	checkSummaryForErrors(t, summary)
 }
 
 func benchmarkFgs(t *testing.T, args *BenchArguments) {
@@ -153,9 +157,7 @@ func benchmarkFgs(t *testing.T, args *BenchArguments) {
 			if err := summary.WriteFile(resultFilename(t)); err != nil {
 				t.Fatalf("summary.WriteFile failed: %s", err)
 			}
-			if summary.Error != "" {
-				t.Fatalf("test failed: %s", summary.Error)
-			}
+			checkSummaryForErrors(t, summary)
 		})
 	}
 }

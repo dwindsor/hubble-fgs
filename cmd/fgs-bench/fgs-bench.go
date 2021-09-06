@@ -20,6 +20,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/bench"
+	"github.com/spf13/viper"
 )
 
 // Command-line flags
@@ -50,7 +51,7 @@ func init() {
 	jsonEncode = flag.Bool("json-encode", false, "JSON encode the events and measure overhead")
 	baseline = flag.Bool("baseline", false, "run a baseline benchmark without FGS")
 	requestSize = flag.Int("req-size", 64, "request size for request-response test")
-	printEvents = flag.Bool("print", false, "print events in JSON to stdout")
+	printEvents = flag.Bool("print", false, "print events in YAML to stdout")
 
 	source = flag.String("source", "none", "source to use, one of: "+strings.Join(bench.SupportedSources(), ", "))
 	proxy = flag.String("proxy", "none", "proxy to use, one of: "+strings.Join(bench.SupportedProxies(), ", "))
@@ -65,6 +66,10 @@ func main() {
 
 	flag.Parse()
 	log.SetOutput(os.Stderr)
+
+	if *debug {
+		viper.Set("log-level", "debug")
+	}
 
 	var tlsParser, httpParser bool
 

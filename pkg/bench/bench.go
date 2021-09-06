@@ -16,6 +16,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
+	"sync"
 	"syscall"
 	"text/template"
 
@@ -24,10 +25,15 @@ import (
 	"os/signal"
 	"time"
 
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"gopkg.in/yaml.v2"
 )
 
 type BenchArguments struct {
@@ -135,8 +141,22 @@ func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx conte
 		log.Fatal(err)
 	}
 
-	err := startBenchmarkListener(summary, ready, kprobe, ctx)
-	if err != nil {
+	listener := &benchmarkListener{
+		summary: summary,
+		ctx:     ctx,
+		kprobe:  kprobe,
+		ready:   ready,
+	}
+	kprobe.AddListener(listener)
+
+	if args.FgsJSONEncode {
+		err := startBenchmarkExporter(ctx, kprobe, summary)
+		if err != nil {
+			log.Fatalf("Starting exporter failed: %v", err)
+		}
+	}
+
+	if err := kprobe.Start(ctx); err != nil {
 		log.Fatalf("Starting FGS failed: %v", err)
 	}
 
@@ -149,21 +169,11 @@ type benchmarkListener struct {
 	ready   chan bool
 	ctx     context.Context
 	kprobe  *observer.ObserverKprobe
-	encoder *json.Encoder
 
 	cpuUsageWhenReady CPUUsage
 }
 
 func (bl *benchmarkListener) Notify(msg interface{}) error {
-	if bl.summary.Args.FgsJSONEncode {
-		t0 := time.Now()
-		err := bl.encoder.Encode(msg)
-		bl.summary.JSONEncodingDurationNanos += time.Since(t0)
-		if err != nil {
-			log.Printf("JSON encoding error: %v", err)
-		}
-	}
-
 	switch msg.(type) {
 	case *api.MsgFGSReady:
 		bl.cpuUsageWhenReady = GetCPUUsage(CPU_USAGE_THIS_THREAD)
@@ -192,27 +202,58 @@ func (bl *benchmarkListener) Close() error {
 	return nil
 }
 
-func startBenchmarkListener(summary *BenchSummary, ready chan bool,
-	kprobe *observer.ObserverKprobe,
-	ctx context.Context) error {
+type timingEncoder struct {
+	sync.Mutex
+	totalDuration time.Duration
+	inner         fgsGrpc.ExportEncoder
+}
 
-	var encoder *json.Encoder
+func (te *timingEncoder) Encode(v interface{}) error {
+	t0 := time.Now()
+	err := te.inner.Encode(v)
+	te.Lock()
+	te.totalDuration += time.Since(t0)
+	te.Unlock()
+	return err
+}
+
+func startBenchmarkExporter(ctx context.Context, kprobe *observer.ObserverKprobe, summary *BenchSummary) error {
+	processCacheSize := 32768
+	enableProcessCred := false
+	enableCiliumAPI := false
+
+	processManager, err := fgsGrpc.NewProcessManager(
+		logger.GetLogger(),
+		processCacheSize,
+		fgsGrpc.NewFakeK8sWatcher(nil),
+		cilium.GetFakeCiliumState(),
+		enableProcessCred,
+		enableCiliumAPI)
+	if err != nil {
+		return err
+	}
+	server := fgsGrpc.NewServer(processManager, kprobe.ObserverSync)
+
+	var encoder fgsGrpc.ExportEncoder
 	if summary.Args.PrintEvents {
-		encoder = json.NewEncoder(os.Stdout)
-		encoder.SetIndent("", "\t")
+		encoder = yaml.NewEncoder(os.Stdout)
 	} else {
 		encoder = json.NewEncoder(&CountingDiscardWriter{})
 	}
 
-	listener := &benchmarkListener{
-		summary: summary,
-		ctx:     ctx,
-		kprobe:  kprobe,
-		ready:   ready,
-		encoder: encoder,
-	}
-	kprobe.AddListener(listener)
-	return kprobe.Start(ctx)
+	timingEncoder := timingEncoder{inner: encoder}
+	go func() {
+		// FIXME I'm racy, someone might read summary before this is written.
+		// Likely not an issue since we wait for slower things to exit.
+		<-ctx.Done()
+		summary.JSONEncodingDurationNanos = timingEncoder.totalDuration
+	}()
+
+	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
+	exporter := fgsGrpc.NewExporter(ctx, &req, server, &timingEncoder, nil)
+	go exporter.Start()
+	kprobe.AddListener(processManager)
+	return nil
 }
 
 func runBenchmark(ctx context.Context, cancel context.CancelFunc, args *BenchArguments, summary *BenchSummary) {
