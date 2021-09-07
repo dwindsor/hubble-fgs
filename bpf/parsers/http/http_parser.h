@@ -375,7 +375,7 @@ void http_parse_response(ctx_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-void http_parse(ctx_md *msg, struct msg_tls_ipv4 *tuple, struct msg_http *http)
+void http_parse(ctx_md *msg, struct msg_http *http)
 {
 	if (http->state == http_start) {
 		int m = get_method(msg, http);
@@ -483,7 +483,7 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	if (!is_expected_request(http))
 		return SK_PASS;
 
-	http_parse(msg, tuple, http);
+	http_parse(msg, http);
 	if (http->state == http_done) {
 		post_http_event(msg, tuple, http);
 		http_reset_state(http);
