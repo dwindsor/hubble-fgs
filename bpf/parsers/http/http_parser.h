@@ -453,6 +453,7 @@ void post_http_event(ctx_md *msg,
 	e->common.op = MSG_OP_HTTP;
 	e->common.size = sizeof(struct msg_http_event);
 	e->tuple = *key;
+	e->tuple.remaining = 0; // clear internal direction bit
 	e->request = *http;
 
 	size = sizeof(struct __msg_http_event);

@@ -329,6 +329,13 @@ struct msg_ipv4_tcp_key {
 	__u16 pad;
 } __attribute__((packed));
 
+/* For HTTP users of msg_tls_ipv4 we set remaining field
+ * to the direction. Either sender (HTTP_SEND) or receiver
+ * (HTTP_RECV).
+ */
+#define HTTP_SEND 0
+#define HTTP_RECV 1
+
 struct msg_tls_ipv4 {
 	__u32 saddr;
 	__u32 daddr;
