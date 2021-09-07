@@ -53,6 +53,9 @@ func (args *BenchArguments) String() string {
 }
 
 func RunBenchmark(args *BenchArguments) *BenchSummary {
+	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
+	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
+	
 	summary := newBenchSummary(args)
 	summary.StartTime = time.Now()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -102,9 +105,7 @@ func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx conte
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
-	if args.FgsEnableTLS {
-		bpf.CheckOrMountCgroup2()
-	}
+	bpf.CheckOrMountCgroup2()
 
 	if _, err := os.Stat("../../bpf/objs"); err == nil {
 		observer.HubbleLib = "../../bpf/objs"
@@ -331,9 +332,6 @@ spec:
 	if strings.Contains(string(args.Source), "http") {
 		matchPortHTTP = fmt.Sprintf("- %d", sinkPort)
 	}
-
-	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
-	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
 
 	templateArgs :=
 		struct {
