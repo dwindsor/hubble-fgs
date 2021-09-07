@@ -70,8 +70,9 @@ var (
 		"sk_skb_verdict")
 
 	/* Http maps */
-	httpSockMapName     = "http_sock_map"
-	ObserverHttpSockMap = BpfMapBuilder(httpSockMapName, "sockops", ObserverSockopsEstablished)
+	httpSockMapName       = "http_sock_map"
+	ObserverHttpSockMap   = BpfMapBuilder(httpSockMapName, "sockops", ObserverSockopsEstablished)
+	ObserverHttpTailCalls = BpfMapBuilder("http1_calls", "http_skmsg", ObserverHttpSkmsg)
 )
 
 type observerHttpSensor struct {
@@ -184,6 +185,7 @@ func EnableHttpParser() *ObserverSensor {
 
 	maps := []*ObserverMap{
 		ObserverHttpSockMap,
+		ObserverHttpTailCalls,
 	}
 
 	return SensorBuilder("__parser_sensors__", progs, maps)

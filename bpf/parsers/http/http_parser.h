@@ -7,6 +7,13 @@
 #include "../parser.h"
 #include "http.h"
 
+struct bpf_map_def __attribute__((section("maps"), used)) http1_calls = {
+	.type		= BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size	= sizeof(__u32),
+	.value_size	= sizeof(__u32),
+	.max_entries	= 2,
+};
+
 struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
