@@ -303,6 +303,45 @@ int bpf_loader_pin(struct bpf_object *obj,
 	return err;
 }
 
+int bpf_install_tail_calls(struct bpf_object *obj,
+			   const char *progname,
+			   const char *mapdir, char *mapname, char *progtype)
+{
+	char calls_name[255];
+	int i, map_fd;
+	int err = 0;
+
+	snprintf(calls_name, sizeof(calls_name), "%s/%s", mapdir, mapname);
+
+	map_fd = bpf_obj_get(calls_name);
+	if (map_fd >= 0) {
+		for (i = 0; i < 6; i++) {
+			struct bpf_program *prog;
+			char prog_name[20];
+			char pin_name[200];
+			int fd;
+
+			snprintf(prog_name, sizeof(prog_name), "%s/%i", progtype, i);
+			prog = bpf_object__find_program_by_title(obj, progname);
+			if (!prog)
+				continue;
+			fd = bpf_program__fd(prog);
+			if (fd < 0) {
+				err = errno;
+				goto out;
+			}
+			snprintf(pin_name, sizeof(pin_name), "%s_%i", progname, i);
+			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
+			if (err) {
+				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
+				goto out;
+			}
+		}
+	}
+out:
+	return err;
+}
+
 int tc_loader(const int version,
 		   const int verbosity,
 		   void *btf,
@@ -313,9 +352,8 @@ int tc_loader(const int version,
 		   const char *ciliumdir,
 		   void *filter)
 {
-	char tc_calls_name[255];
 	struct bpf_object *obj;
-	int i, fd, map_fd, err;
+	int fd, map_fd, err;
 	char *tls_filter_map = "tls_filter_map";
 	int zero = 0;
 
@@ -345,31 +383,7 @@ int tc_loader(const int version,
 	}
 
 	// Install tail calls
-	snprintf(tc_calls_name, sizeof(tc_calls_name), "%s/tls_calls", mapdir);
-	map_fd = bpf_obj_get(tc_calls_name);
-	if (map_fd >= 0) {
-		for (i = 0; i < 6; i++) {
-			struct bpf_program *prog;
-			char prog_name[20];
-			char pin_name[200];
-
-			snprintf(prog_name, sizeof(prog_name), "classifier/%i", i);
-			prog = bpf_object__find_program_by_title(obj, prog_name);
-			if (!prog)
-				continue;
-			fd = bpf_program__fd(prog);
-			if (fd < 0) {
-				err = errno;
-				goto out;
-			}
-			snprintf(pin_name, sizeof(pin_name), "%s_%i", __prog, i);
-			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
-			if (err) {
-				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
-				goto out;
-			}
-		}
-	}
+	bpf_install_tail_calls(obj, __prog, mapdir, "tls_calls", "classifier");
 
 	fd = bpf_obj_get(__prog);
 	bpf_object__close(obj);
