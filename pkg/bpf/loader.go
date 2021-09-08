@@ -105,8 +105,8 @@ int fgs_map_loader(const int version,
 
 		libbpf_strerror(err, errstr, sizeof(errstr));
 		fprintf(stderr,
-			"bpf_object__load_xattr: failed %i: %s\n",
-			err, errstr);
+			"map_loader bpf_object__load_xattr (%s): failed %i: %s\n",
+			prog, err, errstr);
 		goto cleanup;
 	}
 
@@ -244,7 +244,7 @@ static struct bpf_object *__loader(const int version,
 		char errstr[256];
 
 		libbpf_strerror(err, errstr, sizeof(errstr));
-		fprintf(stderr, "bpf_object__load_xattr: failed %i: %s\n", err, errstr);
+		fprintf(stderr, "__loader bpf_object__load_xattr(%s): failed %i: %s\n", prog, err, errstr);
 		return NULL;
 	}
 	return obj;
@@ -322,7 +322,7 @@ int bpf_install_tail_calls(struct bpf_object *obj,
 			int fd;
 
 			snprintf(prog_name, sizeof(prog_name), "%s/%i", progtype, i);
-			prog = bpf_object__find_program_by_title(obj, progname);
+			prog = bpf_object__find_program_by_title(obj, prog_name);
 			if (!prog)
 				continue;
 			fd = bpf_program__fd(prog);
