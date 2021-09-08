@@ -14,6 +14,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) http1_calls = {
 	.value_size	= sizeof(__u32),
 	.max_entries	= 2,
 };
+#else
+struct bpf_map_def __attribute__((section("maps"), used)) http1_calls_skb = {
+	.type		= BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size	= sizeof(__u32),
+	.value_size	= sizeof(__u32),
+	.max_entries	= 2,
+};
 #endif
 
 struct bpf_map_def __attribute__((section("maps"), used)) heap = {
@@ -394,13 +401,13 @@ void http_parse(ctx_md *msg, struct msg_http *http)
 #ifdef SK_MSG
 				tail_call(msg, &http1_calls, 0);
 #else
-				http_parse_response(msg, http);
+				tail_call(msg, &http1_calls_skb, 0);
 #endif
 			} else {
 #ifdef SK_MSG
 				tail_call(msg, &http1_calls, 1);
 #else
-				http_parse_request(msg, http);
+				tail_call(msg, &http1_calls_skb, 1);
 #endif
 			}
 		}

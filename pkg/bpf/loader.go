@@ -450,7 +450,7 @@ int fgs_loader(const int version,
 		goto out;
 	}
 	bpf_install_tail_calls(obj, __prog, mapdir, "http1_calls", "sk_msg");
-	bpf_install_tail_calls(obj, __prog, mapdir, "http1_calls", "sk_skb_http_verdict");
+	bpf_install_tail_calls(obj, __prog, mapdir, "http1_calls_skb", "sk_skb");
 	fd = bpf_link(link_path, __prog, attach_type);
 	bpf_object__close(obj);
 	return fd;
