@@ -78,6 +78,10 @@ const (
 )
 
 func NameToProgType(n string) int {
+	if strings.Contains(n, "skmsg") {
+		n = "skmsg"
+	}
+
 	switch n {
 	case "kprobe":
 		return BPF_PROG_TYPE_KPROBE
