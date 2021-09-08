@@ -7,12 +7,14 @@
 #include "../parser.h"
 #include "http.h"
 
+#ifdef SK_MSG
 struct bpf_map_def __attribute__((section("maps"), used)) http1_calls = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
 	.value_size	= sizeof(__u32),
 	.max_entries	= 2,
 };
+#endif
 
 struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
@@ -389,9 +391,17 @@ void http_parse(ctx_md *msg, struct msg_http *http)
 
 		if (m != http_method_error) {
 			if (m == http_method_response) {
+#ifdef SK_MSG
+				tail_call(msg, &http1_calls, 0);
+#else
 				http_parse_response(msg, http);
+#endif
 			} else {
+#ifdef SK_MSG
+				tail_call(msg, &http1_calls, 1);
+#else
 				http_parse_request(msg, http);
+#endif
 			}
 		}
 	}
