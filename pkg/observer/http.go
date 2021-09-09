@@ -306,7 +306,11 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 		case HttpRequestUserAgent:
 			unix.Request.UserAgent = string(m.Request.Url[start:end])
 		case HttpRequestContentLength:
-			unix.Request.ContentLength = string(m.Request.Url[start:end])
+			if m.Request.Method == HttpMethodResponse {
+				unix.Request.RespContentLength = string(m.Request.Url[start:end])
+			} else {
+				unix.Request.ContentLength = string(m.Request.Url[start:end])
+			}
 		case HttpResponseProtocol:
 			unix.Request.RespVersion = string(m.Request.Url[start:end])
 		case HttpResponseCode:

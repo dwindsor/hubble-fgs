@@ -452,17 +452,18 @@ type HttpKey struct {
 }
 
 type MsgHttpUnix struct {
-	Method        string
-	Uri           string
-	Host          string
-	Protocol      string
-	UserAgent     string
-	ContentLength string
-	Code          string
-	Reason        string
-	RespVersion   string
-	RequestId     uint64
-	Ktime         uint64
+	Method            string
+	Uri               string
+	Host              string
+	Protocol          string
+	UserAgent         string
+	ContentLength     string
+	RespContentLength string
+	Code              string
+	Reason            string
+	RespVersion       string
+	RequestId         uint64
+	Ktime             uint64
 }
 
 type MsgHttp struct {

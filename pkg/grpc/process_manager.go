@@ -145,17 +145,23 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 			pm.log.WithField("Unknown Response Code", event.Request.Code).Info("unknown code")
 		}
 
+		length, err := reader.GetHttpContentLength(event.Request.RespContentLength)
+		if err != nil {
+			pm.log.WithError(err).WithField("RespContentLength", event.Request.RespContentLength).Info("Response Content-Length strconv error")
+		}
+
 		fgsHttpResponse = &fgs.HttpResponse{
-			Timestamp: ktimeToProto(event.Common.Ktime),
-			Version:   event.Request.RespVersion,
-			Code:      code,
-			Reason:    event.Request.Reason,
+			Timestamp:     ktimeToProto(event.Common.Ktime),
+			Version:       event.Request.RespVersion,
+			Code:          code,
+			Reason:        event.Request.Reason,
+			ContentLength: &wrapperspb.UInt32Value{Value: uint32(length)},
 		}
 	}
 
 	length, err := reader.GetHttpContentLength(event.Request.ContentLength)
 	if err != nil {
-		pm.log.WithError(err).WithField("ContentLength", event.Request.ContentLength).Info("Content-Length strconv error")
+		pm.log.WithError(err).WithField("ContentLength", event.Request.ContentLength).Info("Request Content-Length strconv error")
 	}
 
 	if len(event.Request.Method) != 0 {
