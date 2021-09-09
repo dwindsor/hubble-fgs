@@ -284,10 +284,10 @@ int map_header_to_type(ctx_md *msg, struct msg_http *http)
 
 		if (r1 == h1 && r2 == h2 && r3 == h3)
 			return http_request_content_length;
-	} else if (*sz > 1) {
-		return http_request_unknown;
+	} else if (*sz == 0) {
+		return http_request_done;
 	}
-	return http_request_done;
+	return http_request_unknown;
 }
 
 static inline __attribute__((always_inline))
