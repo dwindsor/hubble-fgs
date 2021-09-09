@@ -336,6 +336,14 @@ void find_host_header(ctx_md *msg, struct msg_http *http)
 	if (t == http_request_done)
 		goto out;
 	get_string(msg, http, http->url, t, 256, chr_r);
+
+	// 7
+	get_string_scratch(msg, http, chr_colon);
+	t = map_header_to_type(msg, http);
+	if (t == http_request_done)
+		goto out;
+	get_string(msg, http, http->url, t, 256, chr_r);
+
 	return;
 out:
 	/* Advance past \r\n, we just bump offset because we don't care
