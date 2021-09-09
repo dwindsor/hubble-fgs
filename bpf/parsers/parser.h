@@ -381,5 +381,6 @@ void msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key) {
 	key->saddr = msg->local_ip4;
 	key->dport = msg->sk->dst_port;
 	key->sport = msg->sk->src_port;
+	key->remaining = HTTP_SEND;
 }
 #endif
