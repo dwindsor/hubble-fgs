@@ -37,7 +37,6 @@ import (
 func main() {
 	if len(os.Args) < 2 {
 		fmt.Fprintf(os.Stderr, "Usage: %s <addr>\n", os.Args[0])
-		return
 		os.Exit(1)
 	}
 
@@ -65,5 +64,4 @@ func main() {
 	} else {
 		fmt.Printf("addr 0x%x: error: %s\n", addr, err)
 	}
-
 }

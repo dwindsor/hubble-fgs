@@ -244,7 +244,6 @@ func responseGetProcess(r *fgs.GetEventsResponse) *fgs.Process {
 	default:
 		panic("Unhandled type")
 	}
-	return nil
 }
 
 func eventGetProcess(ev_ fgsEvent) *fgs.Process {
@@ -270,7 +269,6 @@ func eventGetProcess(ev_ fgsEvent) *fgs.Process {
 	default:
 		panic("Unhandled type")
 	}
-	return nil
 }
 
 func responseGetParent(r *fgs.GetEventsResponse) *fgs.Process {

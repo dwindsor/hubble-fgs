@@ -83,8 +83,9 @@ type observerHttpSensor struct {
 
 func (sockops *observerHttpSensor) LoadProbe(
 	bpfDir, mapDir, ciliumDir string,
-	load *BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
+	load *BpfLoad, version, verbose int,
+	x64 bool,
+) (error, int) {
 	path := filepath.Join(mapDir, httpSockMapName)
 	err, i := ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
 	if err != nil {
@@ -98,7 +99,6 @@ func (sockops *observerHttpSensor) LoadProbe(
 		}
 	}
 	return ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, ObserverHttpSkSkbVerdict, version, 0, x64, path)
-	return err, i
 }
 
 func (tls *observerHttpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {

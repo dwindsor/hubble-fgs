@@ -67,7 +67,6 @@ func (k *ObserverKprobe) CompareK8sStrict(x, y *api.MsgK8sUnix) bool {
 	if y.Cgrpid != 0 && y.Cgrpid != x.Cgrpid {
 		k.Printf("y.Cgrpid != x.Cgrpid %d != %d\n", y.Cgrpid, x.Cgrpid)
 		return false
-		return false
 	}
 	if y.Docker != "" && y.Docker != x.Docker {
 		k.Printf("y.Docker != x.Docker %s != %s\n", y.Docker, x.Docker)
