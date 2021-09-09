@@ -64,16 +64,27 @@ func hubbleFGSExecute() error {
 	logger.GetLogger().WithField("config", viper.AllSettings()).Info("config settings")
 	readAndSetFlags()
 
-	ctx, cancel := context.WithCancel(context.Background())
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.CheckOrMountCgroup2()
 
 	bpf.ConfigureResourceLimits()
 	observerDir := getObserverDir()
-	kprobe := observer.NewObserverKprobe(observerDir, observerDir, ciliumBPF,
-		networkInterfaces, configFile,
-		debug, enableK8sAPI, exportTCPStatsSampleSeg)
+	kprobe := observer.NewObserverKprobe(
+		observerDir,
+		observerDir,
+		ciliumBPF,
+		networkInterfaces,
+		configFile,
+		debug,
+		enableK8sAPI,
+		exportTCPStatsSampleSeg,
+	)
+	if err := kprobe.InitObserverSync(); err != nil {
+		return err
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
 
 	/* Remove any stale programs, otherwise feature set change can cause
 	 * old programs to linger resulting in undefined behavior. And because

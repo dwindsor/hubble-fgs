@@ -524,10 +524,10 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		return err
 	}
 
-	// start sensor controller and stt manager
-	k.ObserverSync, err = StartSensorCtl(k.bpfDir, k.mapDir, k.ciliumDir)
-	if err != nil {
-		return err
+	if k.ObserverSync == nil {
+		if err := k.InitObserverSync(); err != nil {
+			return err
+		}
 	}
 
 	// start CRD watcher
@@ -545,6 +545,13 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 		return fmt.Errorf("hubble-fgs, aborting runtime error: %w", err)
 	}
 	return nil
+}
+
+// InitObserverSync starts the sensor controller and stt manager.
+func (k *ObserverKprobe) InitObserverSync() error {
+	var err error
+	k.ObserverSync, err = StartSensorCtl(k.bpfDir, k.mapDir, k.ciliumDir)
+	return err
 }
 
 func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
