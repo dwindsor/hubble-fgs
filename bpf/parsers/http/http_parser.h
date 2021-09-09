@@ -388,6 +388,7 @@ void http_parse_response(ctx_md *msg, struct msg_http *http)
 	response_get_protocol(msg, http);
 	response_get_code(msg, http);
 	response_get_reason(msg, http);
+	method_get_headers(msg, http);
 }
 
 static inline __attribute__((always_inline))
