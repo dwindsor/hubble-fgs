@@ -47,8 +47,7 @@ func init() {
 }
 
 func sttPrint(client fgs.FineGuidanceSensorsClient, stt string) {
-	ctx, _ := context.WithCancel(context.Background())
-	res, err := client.GetStackTraceTree(ctx, &fgs.GetStackTraceTreeRequest{Name: stt})
+	res, err := client.GetStackTraceTree(context.Background(), &fgs.GetStackTraceTreeRequest{Name: stt})
 	if err != nil {
 		fmt.Printf("error printing stt %s: %s\n", stt, err)
 		return

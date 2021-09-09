@@ -122,8 +122,7 @@ func init() {
 }
 
 func listSensors(client fgs.FineGuidanceSensorsClient) {
-	ctx, _ := context.WithCancel(context.Background())
-	sensors, err := client.ListSensors(ctx, &fgs.ListSensorsRequest{})
+	sensors, err := client.ListSensors(context.Background(), &fgs.ListSensorsRequest{})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 		return
@@ -149,8 +148,7 @@ func addTracingPolicy(client fgs.FineGuidanceSensorsClient, yamlFname string) {
 		return
 	}
 
-	ctx, _ := context.WithCancel(context.Background())
-	_, err = client.AddTracingPolicy(ctx, &fgs.AddTracingPolicyRequest{
+	_, err = client.AddTracingPolicy(context.Background(), &fgs.AddTracingPolicyRequest{
 		Yaml: string(yamlb),
 	})
 	if err != nil {
@@ -159,8 +157,7 @@ func addTracingPolicy(client fgs.FineGuidanceSensorsClient, yamlFname string) {
 }
 
 func removeSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
-	ctx, _ := context.WithCancel(context.Background())
-	_, err := client.RemoveSensor(ctx, &fgs.RemoveSensorRequest{
+	_, err := client.RemoveSensor(context.Background(), &fgs.RemoveSensorRequest{
 		Name: sensor,
 	})
 	if err != nil {
@@ -169,8 +166,7 @@ func removeSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
 }
 
 func enableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
-	ctx, _ := context.WithCancel(context.Background())
-	_, err := client.EnableSensor(ctx, &fgs.EnableSensorRequest{Name: sensor})
+	_, err := client.EnableSensor(context.Background(), &fgs.EnableSensorRequest{Name: sensor})
 	if err == nil {
 		fmt.Printf("sensor %s enabled\n", sensor)
 	} else {
@@ -179,8 +175,7 @@ func enableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
 }
 
 func disableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
-	ctx, _ := context.WithCancel(context.Background())
-	_, err := client.DisableSensor(ctx, &fgs.DisableSensorRequest{Name: sensor})
+	_, err := client.DisableSensor(context.Background(), &fgs.DisableSensorRequest{Name: sensor})
 	if err == nil {
 		fmt.Printf("sensor %s disabled\n", sensor)
 	} else {
@@ -189,9 +184,8 @@ func disableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
 }
 
 func sensorGetConfig(client fgs.FineGuidanceSensorsClient, sensor string, cfgkey string) {
-	ctx, _ := context.WithCancel(context.Background())
 	req := fgs.GetSensorConfigRequest{Name: sensor, Cfgkey: cfgkey}
-	res, err := client.GetSensorConfig(ctx, &req)
+	res, err := client.GetSensorConfig(context.Background(), &req)
 	if err == nil {
 		fmt.Printf("%s\n", res.Cfgval)
 	} else {
@@ -200,9 +194,8 @@ func sensorGetConfig(client fgs.FineGuidanceSensorsClient, sensor string, cfgkey
 }
 
 func sensorSetConfig(client fgs.FineGuidanceSensorsClient, sensor string, cfgkey string, cfgval string) {
-	ctx, _ := context.WithCancel(context.Background())
 	req := fgs.SetSensorConfigRequest{Name: sensor, Cfgkey: cfgkey, Cfgval: cfgval}
-	_, err := client.SetSensorConfig(ctx, &req)
+	_, err := client.SetSensorConfig(context.Background(), &req)
 	if err != nil {
 		fmt.Printf("error setting %s=%s config for %s: %s\n", cfgkey, cfgval, sensor, err)
 	}

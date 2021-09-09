@@ -191,7 +191,6 @@ func newDefaultObserver(t *testing.T, oo *testObserverOptions) *ObserverKprobe {
 }
 
 func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
-	ctx, _ := context.WithCancel(context.Background())
 	o := newDefaultTestOptions(t, opts...)
 
 	HubbleLib = os.Getenv("FGS_LIB")
@@ -208,7 +207,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 		Verbosity = dfltVerbosity
 	}
 
-	if err := btf.InitCachedBTF(HubbleLib, ctx); err != nil {
+	if err := btf.InitCachedBTF(HubbleLib, context.Background()); err != nil {
 		return nil, err
 	}
 
@@ -239,8 +238,6 @@ func GetDefaultObserverWithFile(t *testing.T, file, lib string) (*ObserverKprobe
 }
 
 func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOptions) error {
-	ctx, _ := context.WithCancel(context.Background())
-
 	os.Remove(exportFile)
 
 	watcher := opts.watcher
@@ -268,7 +265,7 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 	}
 	denyList, _ := filters.ParseFilterList("")
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
-	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder, nil)
+	exporter := fgsGrpc.NewExporter(context.Background(), &req, server, encoder, nil)
 	go exporter.Start()
 	kprobe.AddListener(processManager)
 	return nil

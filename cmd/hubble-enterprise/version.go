@@ -40,8 +40,7 @@ func init() {
 		Run: func(cmd *cobra.Command, args []string) {
 			cliRunErr(
 				func(cli fgs.FineGuidanceSensorsClient) {
-					ctx, _ := context.WithCancel(context.Background())
-					res, err := cli.GetVersion(ctx, &fgs.GetVersionRequest{})
+					res, err := cli.GetVersion(context.Background(), &fgs.GetVersionRequest{})
 					printVersion(res, err)
 				},
 				func(err error) {

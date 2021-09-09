@@ -42,8 +42,7 @@ func cliRun(fn func(cli fgs.FineGuidanceSensorsClient)) {
 }
 
 func getStatus(client fgs.FineGuidanceSensorsClient) {
-	ctx, _ := context.WithCancel(context.Background())
-	response, err := client.GetHealth(ctx, &fgs.GetHealthStatusRequest{})
+	response, err := client.GetHealth(context.Background(), &fgs.GetHealthStatusRequest{})
 	if err != nil {
 		fmt.Printf("status error: %s\n", err)
 		return
