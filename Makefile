@@ -17,6 +17,9 @@ GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Versi
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/isovalent/hubble-fgs -v /proc:/procRoot isovalent/hubble-fgs-test
 
+GOLANGCILINT_WANT_VERSION = 1.42.1
+GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
+
 all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench test-compile
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
@@ -159,4 +162,11 @@ generate:
 	  isovalent.com:v1alpha1 \
 	  --go-header-file hack/custom-boilerplate.go.txt
 
-.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate
+ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
+check:
+	golangci-lint run
+else
+check:
+	docker run --rm -v `pwd`:/app -w /app docker.io/golangci/golangci-lint:v$(GOLANGCILINT_WANT_VERSION) golangci-lint run
+endif
+.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check
