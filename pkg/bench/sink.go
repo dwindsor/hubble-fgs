@@ -221,13 +221,6 @@ func (sink netperfSink) Start(ctx context.Context) (int, chan SinkStats, error) 
 		return -1, nil, fmt.Errorf("failed to start netserver: %w", err)
 	}
 
-	// Wait for netserver to be ready.
-	if !ProbeTCPPort(port) {
-		cmd.Process.Signal(syscall.SIGTERM)
-		cmd.Wait()
-		return -1, nil, fmt.Errorf("netserver did not start up on time")
-	}
-
 	statsCh := make(chan SinkStats, 1)
 	// Terminate the process gracefully as netserver forks.
 	go func() {

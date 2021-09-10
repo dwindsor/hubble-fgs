@@ -429,40 +429,49 @@ type netperfSource struct {
 }
 
 func (src netperfSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
-	cmd := exec.Command("netperf",
-		"-H127.0.0.1",
-		fmt.Sprintf("-p%d", sinkPort),
-		fmt.Sprintf("-l%d", args.Duration/time.Second),
-		"-P0", // No header
-		"-t"+src.test,
-		"--",
-		"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency")
+	// NOTE(JM): Probing of netserver readiness with connect() seems to cause flaky results,
+	// so lets do retries instead.
+	for retry := 0; retry < 3; retry++ {
+		cmd := exec.Command("netperf",
+			"-H127.0.0.1",
+			fmt.Sprintf("-p%d", sinkPort),
+			fmt.Sprintf("-l%d", args.Duration/time.Second),
+			"-P0", // No header
+			"-t"+src.test,
+			"--",
+			"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency")
 
-	out, err := cmd.CombinedOutput()
-	if err != nil {
-		err = fmt.Errorf("netperf failed: %w (out: %s)", err, out)
+		var out []byte
+		out, err = cmd.CombinedOutput()
+		if err != nil {
+			err = fmt.Errorf("netperf failed: %w (out: %s)", err, out)
+			log.Printf("netperf failed: %s. Retrying.\n", err)
+			time.Sleep(100*time.Millisecond)
+			continue
+		}
+
+		stats.CPUUsage = CPUUsageFromRusage(cmd.ProcessState.SysUsage().(*syscall.Rusage))
+
+		reader := csv.NewReader(bytes.NewReader(out))
+		var rs []string
+		rs, err = reader.Read()
+		if err != nil {
+			err = fmt.Errorf("netperf csv output parse failed: %w", err)
+			return
+		}
+
+		stats.ActualRate, err = strconv.ParseFloat(rs[1], 64)
+		if err != nil {
+			err = fmt.Errorf("netperf req rate parse failed: %w", err)
+			return
+		}
+		stats.Forked = true
+		stats.LatencyP50 = time.Duration(xAtoi(rs[2])) * time.Microsecond
+		stats.LatencyP90 = time.Duration(xAtoi(rs[3])) * time.Microsecond
+		stats.LatencyP99 = time.Duration(xAtoi(rs[4])) * time.Microsecond
+		err = nil
 		return
 	}
-
-	stats.CPUUsage = CPUUsageFromRusage(cmd.ProcessState.SysUsage().(*syscall.Rusage))
-
-	reader := csv.NewReader(bytes.NewReader(out))
-	rs, err := reader.Read()
-	if err != nil {
-		err = fmt.Errorf("netperf csv output parse failed: %w", err)
-		return
-	}
-
-	stats.ActualRate, err = strconv.ParseFloat(rs[1], 64)
-	if err != nil {
-		err = fmt.Errorf("netperf req rate parse failed: %w", err)
-		return
-	}
-	stats.Forked = true
-	stats.LatencyP50 = time.Duration(xAtoi(rs[2])) * time.Microsecond
-	stats.LatencyP90 = time.Duration(xAtoi(rs[3])) * time.Microsecond
-	stats.LatencyP99 = time.Duration(xAtoi(rs[4])) * time.Microsecond
-
 	return
 }
 
