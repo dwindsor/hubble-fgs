@@ -57,10 +57,8 @@ int bpf_skskb_http_response(struct __sk_buff *skb)
 
 	http_parse_response(skb, http);
 	http->state = http_done;
-	if (http->state == http_done) {
+	if (http->state == http_done)
 		post_http_event(skb, &key, http);
-		http_reset_state(http);
-	}
 	return SK_PASS;
 }
 
@@ -77,10 +75,8 @@ int bpf_skskb_http_request(struct __sk_buff *skb)
 
 	http_parse_request(skb, http);
 	http->state = http_done;
-	if (http->state == http_done) {
+	if (http->state == http_done)
 		post_http_event(skb, &key, http);
-		http_reset_state(http);
-	}
 	return SK_PASS;
 }
 

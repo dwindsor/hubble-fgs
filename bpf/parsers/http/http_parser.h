@@ -495,6 +495,15 @@ out:
 }
 
 static inline __attribute__((always_inline))
+void http_reset_state(struct msg_http *http)
+{
+	http->state = http_start;
+	http->offset = 0;
+	http->url_offset = 0;
+	http->consume_bytes = 0;
+}
+
+static inline __attribute__((always_inline))
 void post_http_event(ctx_md *msg,
 		     struct msg_tls_ipv4 *key,
 		     struct msg_http *http)
@@ -543,18 +552,10 @@ void post_http_event(ctx_md *msg,
 	size = sizeof(struct __msg_http_event);
 	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, e, size);
 	skip = http->consume_bytes + http->offset;
+	http_reset_state(http);
 #ifdef SK_MSG
 	msg_apply_bytes(msg, skip);
 #endif
-}
-
-static inline __attribute__((always_inline))
-void http_reset_state(struct msg_http *http)
-{
-	http->state = http_start;
-	http->offset = 0;
-	http->url_offset = 0;
-	http->consume_bytes = 0;
 }
 
 static inline __attribute__((always_inline))
@@ -579,10 +580,8 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	}
 
 	http_parse(msg, http, tuple);
-	if (http->state == http_done) {
+	if (http->state == http_done)
 		post_http_event(msg, tuple, http);
-		http_reset_state(http);
-	}
 	return SK_PASS;
 }
 
