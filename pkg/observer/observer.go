@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"context"
 	"encoding/binary"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -423,7 +424,7 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 			k.log.Debug("Context cancelled inside __loopEvents")
 			return nil
 
-		case err == syscall.EBADF:
+		case errors.Is(err, syscall.EBADF):
 			return fmt.Errorf("kprobe events syscall.EBADF: %w", err)
 
 		case err != nil:
