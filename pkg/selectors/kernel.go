@@ -114,18 +114,6 @@ const (
 	selectorOpPostfix = 9
 )
 
-// The kernel side could learn this but it would require a reference
-// to the arg type. Its easier to type check up front and insert the
-// type in the encoding.
-const (
-	valueTypeNil    = 0
-	valueTypeUint32 = 1
-	valueTypeUint64 = 2
-	valueTypeInt32  = 3
-	valueTypeInt64  = 4
-	valueTypeString = 5
-)
-
 func selectorOp(op string) (uint32, error) {
 	switch op {
 	case "gt":

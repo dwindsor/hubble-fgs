@@ -36,16 +36,8 @@ const (
 	argReturnCopy = -1
 )
 
-var (
-	// genericKprobeProgs stores dynamic kprobes added/removed from CRD.
-	// Kprobes managed from init config file are pushed through
-	// observerAllPrograms.
-	genericKprobeProgs = map[string]*BpfLoad{}
-)
-
 type observerKprobeSensor struct {
-	name      string
-	probeType string
+	name string
 }
 
 func init() {
@@ -203,94 +195,6 @@ var (
 	MaxFilterIntArgs = 8
 )
 
-const (
-	genericKprobeFilterGT  = 1
-	genericKprobeFilterLT  = 2
-	genericKprobeFilterEQ  = 3
-	genericKprobeFilterNEQ = 4
-	// PID ops
-	genercKprobeFilterIn    = 5
-	genercKprobeFilterNotIn = 6
-	// String ops
-	genericKprobeFilterStringContains = 7
-	genericKprobeFilterStringPrefix   = 8
-	genericKprobeFilterStringPostfix  = 9
-)
-
-func (k *ObserverKprobe) opFilterStrToType(ty string) (int, error) {
-	switch ty {
-	case "gt":
-		return genericKprobeFilterGT, nil
-	case "lt":
-		return genericKprobeFilterLT, nil
-	case "eq":
-		return genericKprobeFilterEQ, nil
-	case "neq":
-		return genericKprobeFilterNEQ, nil
-	case "stringcontains":
-		return genericKprobeFilterStringContains, nil
-	case "stringprefix":
-		return genericKprobeFilterStringPrefix, nil
-	case "stringpostfix":
-		return genericKprobeFilterStringPostfix, nil
-	}
-
-	return 0, fmt.Errorf("Unknown op '%s'", ty)
-}
-
-func goStringToAscii(s string) []byte {
-	r := []rune(s)
-
-	b := make([]byte, len(s))
-	for i := 0; i < len(r); i++ {
-		b[i] = byte(r[i])
-	}
-	return b
-}
-
-func opFilterStringSupported(op int) bool {
-	switch op {
-	case genericKprobeFilterEQ,
-		genericKprobeFilterStringPrefix,
-		genericKprobeFilterStringPostfix:
-		return true
-	}
-	return false
-}
-
-func (k *ObserverKprobe) pidFilterValue(value uint32) (int, error) {
-	return int(value), nil
-}
-
-func (k *ObserverKprobe) kprobeEventFilterWriteBTF(btf bpf.BTF, ty string, op, value int) error {
-	retVal := btf.AddEnumValue(ty+"_type", op)
-	if retVal < 0 {
-		return fmt.Errorf("Error add enum value '%s_type' failed %d", ty, retVal)
-	}
-
-	retVal = btf.AddEnumValue(ty+"_value", value)
-	if retVal < 0 {
-		return fmt.Errorf("Error add enum value '%s_value' failed %d", ty, retVal)
-	}
-	return nil
-}
-
-// hard coded all our restrictions on filters here for now.
-func (k *ObserverKprobe) checkFilterRestrictions(ty, opName string, op int) error {
-	switch ty {
-	case "notpidset":
-	case "nspidset":
-	case "notnspidset":
-		// Its unclear to me what these filters even mean if
-		// its not an equality test. For now skip them and
-		// we can come back later if they seem useful.
-		if op != genericKprobeFilterEQ && op != genericKprobeFilterNEQ {
-			return fmt.Errorf("Event filter '%s' op '%s' unsupported for type", ty, opName)
-		}
-	}
-	return nil
-}
-
 func getMetaValue(arg *v1alpha1.KProbeArg) int {
 	if arg.SizeArgIndex > 0 {
 		return int(arg.SizeArgIndex)
@@ -299,49 +203,6 @@ func getMetaValue(arg *v1alpha1.KProbeArg) int {
 		return argReturnCopy
 	}
 	return 0
-}
-
-func (k *ObserverKprobe) assignArgFilter(value []byte, filter *api.KprobeArgs, index uint32) {
-	switch int(index) {
-	case 0:
-		filter.Args0 = value
-	case 1:
-		filter.Args1 = value
-	case 2:
-		filter.Args2 = value
-	case 3:
-		filter.Args3 = value
-	case 4:
-		filter.Args4 = value
-	}
-}
-
-func pidOpValue(p v1alpha1.PIDSelector) (uint32, error) {
-	return 0, nil
-}
-
-func pidFlagValue(p v1alpha1.PIDSelector) (uint32, error) {
-	return 0, nil
-}
-
-func pidValue(p v1alpha1.PIDSelector) ([]byte, uint32, error) {
-	var value []byte
-
-	return value, 0, nil
-}
-
-func argIndexValue(a v1alpha1.ArgSelector) (uint32, error) {
-	return 0, nil
-}
-
-func argOpValue(a v1alpha1.ArgSelector) (uint32, error) {
-	return 0, nil
-}
-
-func argValue(a v1alpha1.ArgSelector) ([]byte, uint32, error) {
-	var value []byte
-
-	return value, 0, nil
 }
 
 func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*ObserverSensor, error) {

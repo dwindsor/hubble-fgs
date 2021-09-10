@@ -192,10 +192,8 @@ func getPIDNS(filename string) (uint32, uint64, uint64, uint64) {
 
 type ObserverProcs struct {
 	psize       uint32
-	puid        uint32
 	ppid        uint32
 	pnspid      uint32
-	pauid       uint32
 	pflags      uint32
 	pktime      uint64
 	pargs       []byte

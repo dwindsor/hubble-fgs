@@ -94,26 +94,13 @@ func (v *SocketMapValue) DeepCopyMapValue() bpf.MapValue {
 }
 
 type procTCPEntry struct {
-	id                   int
-	localIP              uint32
-	localPort            uint16
-	remoteIP             uint32
-	remotePort           uint16
-	state                uint32
-	txq                  int
-	rxq                  int
-	timerActive          int
-	jiffiesExpire        uint64
-	jiffiesRTO           uint64
-	uid                  uint32
-	unansweredProbes     uint32
-	inode                uint32
-	socketRefCount       uint32
-	locationSocketMemory uint64
-	retransTimeout       uint64
-	predictedTick        uint64
-	congestionWindow     uint64
-	slowstartThresh      uint64
+	id         int
+	localIP    uint32
+	localPort  uint16
+	remoteIP   uint32
+	remotePort uint16
+	state      uint32
+	inode      uint32
 }
 
 func (k *ObserverKprobe) getPidNetNsInode(pid uint32) uint64 {

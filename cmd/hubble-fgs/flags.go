@@ -63,8 +63,6 @@ const (
 
 var (
 	debug            bool
-	tls              bool
-	tlstc            bool
 	processCacheSize int
 
 	enableK8sAPI    bool

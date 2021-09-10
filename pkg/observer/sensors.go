@@ -15,11 +15,9 @@ import (
 	"context"
 	"errors"
 	"fmt"
-	"os"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	sttManager "github.com/isovalent/hubble-fgs/pkg/observer/stt"
@@ -203,7 +201,6 @@ type sensorConfigGet struct {
 // sensorCtlStop stops the controller
 type sensorCtlStop struct {
 	ctx     context.Context
-	name    string
 	retChan chan error
 }
 
@@ -386,36 +383,6 @@ func StartSensorCtl(bpfDir, mapDir, ciliumDir string) (*ObserverSync, error) {
 	sensor.sttManager = sttManager.StartSttManager()
 	sensor.sensorCtl = c
 	return &sensor, nil
-}
-
-func getSensorFromTracingPolicyString(yaml string) (*ObserverSensor, error) {
-	cnf, err := config.ReadConfigYaml(yaml)
-	if err != nil {
-		return nil, err
-	}
-
-	// This is only used from testing code at the moment. So lets
-	// assume only one sensor per Spec and that we can return the
-	// first sensor we find.
-	for _, s := range registeredTracingSensors {
-		sensor, err := s.SpecHandler(&cnf.Spec)
-		if err != nil {
-			return nil, err
-		}
-		if sensor == nil {
-			continue
-		}
-		return sensor, nil
-	}
-	return nil, nil
-}
-
-func getSensorFromTracingPolicyFname(fname string) (*ObserverSensor, error) {
-	yamlData, err := os.ReadFile(fname)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read yaml file %s: %w", fname, err)
-	}
-	return getSensorFromTracingPolicyString(string(yamlData))
 }
 
 /*

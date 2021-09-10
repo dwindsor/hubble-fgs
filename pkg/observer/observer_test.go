@@ -11,13 +11,10 @@
 package observer
 
 import (
-	"bytes"
 	"context"
-	"encoding/binary"
 	"flag"
 	"fmt"
 	"io/ioutil"
-	"net"
 	"os"
 	"os/exec"
 	"path/filepath"
@@ -34,8 +31,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
-	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -82,56 +77,6 @@ func TestObjectLoad(t *testing.T) {
 	}
 	ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), initialSensor)
 	kprobe.RemovePrograms()
-}
-
-func removeMountPoint(dir string) string {
-	var accum string
-
-	infos, err := mountinfo.GetMountInfo()
-	if err != nil {
-		return ""
-	}
-
-	dirs := strings.Split(dir, "/")
-	for _, i := range dirs {
-		accum += "/" + i
-		pt, _ := mountinfo.IsMountFS(infos, "", accum)
-		if err != nil || pt == true {
-			accum = ""
-		}
-	}
-	return accum
-}
-
-func cwdPath(swap bool) string {
-	pathb := make([]byte, 1000)
-
-	_, err := syscall.Getcwd(pathb)
-	if err != nil {
-		return ""
-	}
-	pathb = bytes.Trim(pathb, "\x00")
-	path := string(pathb)
-	path = removeMountPoint(path)
-	if swap {
-		path = reader.SwapPath(path)
-		if len(path) > 0 {
-			path = path[:len(path)-1]
-		}
-	}
-	return path
-}
-
-func ipToInt(ip string) uint32 {
-	ipParsed := net.ParseIP(ip)
-	if ipParsed == nil {
-		return 0
-	}
-	return binary.LittleEndian.Uint32(ipParsed.To4())
-}
-
-func localIP() uint32 {
-	return ipToInt("127.0.0.1")
 }
 
 func getMyPid() uint32 {

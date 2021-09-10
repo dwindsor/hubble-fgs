@@ -243,10 +243,6 @@ func (s *bpfLoadState) isLoaded() bool {
 	return s.count > 0
 }
 
-func (s *bpfLoadState) isIdle() bool {
-	return s.count == 0
-}
-
 func (s bpfLoadState) isDisabled() bool {
 	return s.count == -1
 }

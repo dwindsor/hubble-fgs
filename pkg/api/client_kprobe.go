@@ -11,7 +11,6 @@
 package api
 
 const (
-	sizeofArgsFilter = 80
 	// 5 arguments + 1 return argument
 	MaxArgsSupported = 6
 	ReturnArgIndex   = MaxArgsSupported - 1

@@ -1,12 +1,9 @@
 package observer
 
 import (
-	"fmt"
-	"os"
 	"path/filepath"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -277,22 +274,6 @@ func (tls *observerTlsSensor) LoadProbe(
 	load *BpfLoad,
 	version, verbose int, x64 bool) (error, int) {
 	return ObserverLoadTC(bpfDir, mapDir, ciliumDir, load, version, Verbosity, tlsSelectors)
-}
-
-func getSensorFromParserPolicyString(yaml string) (*ObserverSensor, error) {
-	cnf, err := config.ReadConfigYaml(yaml)
-	if err != nil {
-		return nil, err
-	}
-	return addParserSensors(cnf.Spec.Parser)
-}
-
-func getSensorFromParserPolicyFname(fname string) (*ObserverSensor, error) {
-	yamlData, err := os.ReadFile(fname)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read yaml file %s: %w", fname, err)
-	}
-	return getSensorFromParserPolicyString(string(yamlData))
 }
 
 func skSkbParserRequired() bool {

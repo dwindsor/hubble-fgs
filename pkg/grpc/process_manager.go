@@ -588,18 +588,6 @@ func ktimeToProto(ktime uint64) *timestamppb.Timestamp {
 	return timestamppb.New(decodedTime)
 }
 
-func (pm *ProcessManager) getParentProcess(pid uint32, ktime uint64) (*fgs.Process, *fgs.Process) {
-	var process, parent *fgs.Process
-	procInternal, parentInternal := pm.getParentProcessInternal(pid, ktime)
-	if procInternal != nil {
-		process = procInternal.process
-	}
-	if parentInternal != nil {
-		parent = parentInternal.process
-	}
-	return process, parent
-}
-
 func (pm *ProcessManager) getParentProcessInternal(pid uint32, ktime uint64) (*processInternal, *processInternal) {
 	var parent, process *processInternal
 	var err error

@@ -17,7 +17,6 @@ import (
 )
 
 var (
-	observerDir   = "/sys/fs/bpf/tcpmon/"
 	serverAddress string
 	status        bool
 

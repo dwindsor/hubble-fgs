@@ -126,9 +126,7 @@ var (
 	Verbosity          int
 	IgnoreMissingProgs bool
 
-	observerTimeout = 5 * time.Minute
-	execTimeout     = 5 * time.Minute
-	pollTimeout     = 5 * time.Second
+	pollTimeout = 5 * time.Second
 
 	eventHandler = make(map[uint8]func(r *bytes.Reader) (interface{}, error))
 )
@@ -255,30 +253,6 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 	}
 
 	return execUnix, false, nil
-}
-
-func (k *ObserverKprobe) runFilters(msgUnix *api.MsgIPv4TcpEventUnix) bool {
-	pass := true
-	for _, f := range k.msgFilter {
-		res := f.run(msgUnix, k)
-
-		if res {
-			f.filterPass++
-			pass = true
-			break
-		} else {
-			f.filterDrop++
-			pass = false
-		}
-	}
-
-	if pass {
-		k.filterPass++
-	} else {
-		k.filterDrop++
-	}
-
-	return pass
 }
 
 func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
@@ -470,9 +444,6 @@ func (k *ObserverKprobe) populateExecve(ctx context.Context) {
 type MsgFilterRun func(*api.MsgIPv4TcpEventUnix, *ObserverKprobe) bool
 
 type MsgFilter struct {
-	run        MsgFilterRun
-	filterPass int
-	filterDrop int
 }
 
 type ObserverKprobe struct {
@@ -512,10 +483,6 @@ type ObserverKprobe struct {
 
 	/* Sock Statistic */
 	tcpStatSegRate uint32
-}
-
-func defaultFilter(msg *api.MsgIPv4TcpEventUnix) bool {
-	return true
 }
 
 func (k *ObserverKprobe) Start(ctx context.Context) error {

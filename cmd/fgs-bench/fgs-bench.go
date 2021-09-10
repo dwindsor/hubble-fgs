@@ -25,16 +25,14 @@ import (
 
 // Command-line flags
 var (
-	duration        *time.Duration
-	rate            *int
-	noDelay         *bool
-	debug           *bool
-	jsonEncode      *bool
-	baseline        *bool
-	requestResponse *bool
-	requestSize     *int
-	parsers         *string
-	printEvents     *bool
+	duration    *time.Duration
+	rate        *int
+	debug       *bool
+	jsonEncode  *bool
+	baseline    *bool
+	requestSize *int
+	parsers     *string
+	printEvents *bool
 
 	source *string
 	proxy  *string

@@ -221,31 +221,6 @@ type eventChainChecker struct {
 	eventCheck    func(fgsEvent, Logger) error
 }
 
-func responseGetProcess(r *fgs.GetEventsResponse) *fgs.Process {
-	switch ev := r.Event.(type) {
-	case *fgs.GetEventsResponse_ProcessExec:
-		return ev.ProcessExec.Process
-	case *fgs.GetEventsResponse_ProcessConnect:
-		return ev.ProcessConnect.Process
-	case *fgs.GetEventsResponse_ProcessListen:
-		return ev.ProcessListen.Process
-	case *fgs.GetEventsResponse_Tls:
-		return ev.Tls.Process
-	case *fgs.GetEventsResponse_ProcessExit:
-		return ev.ProcessExit.Process
-	case *fgs.GetEventsResponse_ProcessClose:
-		return ev.ProcessClose.Process
-	case *fgs.GetEventsResponse_ProcessAccept:
-		return ev.ProcessAccept.Process
-	case *fgs.GetEventsResponse_ProcessKprobe:
-		return ev.ProcessKprobe.Process
-	case *fgs.GetEventsResponse_ProcessTracepoint:
-		return ev.ProcessTracepoint.Process
-	default:
-		panic("Unhandled type")
-	}
-}
-
 func eventGetProcess(ev_ fgsEvent) *fgs.Process {
 	switch ev := ev_.(type) {
 	case *fgs.ProcessExec:
@@ -269,26 +244,6 @@ func eventGetProcess(ev_ fgsEvent) *fgs.Process {
 	default:
 		panic("Unhandled type")
 	}
-}
-
-func responseGetParent(r *fgs.GetEventsResponse) *fgs.Process {
-	switch ev := r.Event.(type) {
-	case *fgs.GetEventsResponse_ProcessExec:
-		return ev.ProcessExec.Parent
-	case *fgs.GetEventsResponse_ProcessConnect:
-		return ev.ProcessConnect.Parent
-	case *fgs.GetEventsResponse_ProcessListen:
-		return ev.ProcessListen.Parent
-	case *fgs.GetEventsResponse_Tls:
-		return nil
-	case *fgs.GetEventsResponse_ProcessExit:
-		return ev.ProcessExit.Parent
-	case *fgs.GetEventsResponse_ProcessClose:
-		return ev.ProcessClose.Parent
-	case *fgs.GetEventsResponse_ProcessAccept:
-		return ev.ProcessAccept.Parent
-	}
-	return nil
 }
 
 func eventGetParent(ev_ fgsEvent) *fgs.Process {

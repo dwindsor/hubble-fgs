@@ -22,7 +22,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"sync"
 	"syscall"
 	"unsafe"
 
@@ -69,20 +68,11 @@ type MapInfo struct {
 	InnerID       uint32
 }
 
-type cacheEntry struct {
-	Key   MapKey
-	Value MapValue
-
-	DesiredAction DesiredAction
-	LastError     error
-}
-
 type Map struct {
 	MapInfo
 	fd   int
 	name string
 	path string
-	once sync.Once
 	lock lock.RWMutex
 
 	// DumpParser is a function for parsing keys and values from BPF maps
