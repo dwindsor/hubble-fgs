@@ -5,15 +5,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"text/template"
 	"log"
+	"math"
 	"os"
 	"runtime"
 	"strconv"
 	"strings"
 	"syscall"
+	"text/template"
 	"time"
-	"math"
 
 	"github.com/isovalent/hubble-fgs/pkg/bench"
 	"google.golang.org/api/option"
@@ -29,23 +29,23 @@ const (
 // Sheet identifiers (see gid= in URL).
 // Used as the BatchUpdate requests work on the id instead of the name.
 var testNameToSheetId = map[string]int64{
-	"TestBenchBaseline/tls-crr":  503947610,
-	"TestBenchBaseline/netperf-crr":  371755781,
+	"TestBenchBaseline/tls-crr":     503947610,
+	"TestBenchBaseline/netperf-crr": 371755781,
 	"TestBenchBaseline/http-crr-go": 78820048,
 
-	"TestFGSNoTLS/tls-crr":  1814748783,
-	"TestFGSNoTLS/netperf-crr":  2060975911,
+	"TestFGSNoTLS/tls-crr":     1814748783,
+	"TestFGSNoTLS/netperf-crr": 2060975911,
 	"TestFGSNoTls/http-crr-go": 1585471493,
 
-	"TestFGSTLS/tls-crr":  2026607124,
-	"TestFGSTLS/netperf-crr":  839882648,
+	"TestFGSTLS/tls-crr":     2026607124,
+	"TestFGSTLS/netperf-crr": 839882648,
 	"TestFGSTLS/http-crr-go": 1872945073,
 
-	"TestFGSTLS/netperf-rr":  1072107619,
+	"TestFGSTLS/netperf-rr":        1072107619,
 	"TestBenchBaseline/netperf-rr": 2098922345,
 
 	"TestBenchBaseline/http-rr-go": 1043261075,
-	"TestFGSTLS/http-rr-go": 794354699,
+	"TestFGSTLS/http-rr-go":        794354699,
 
 	"TestEnvoyOverhead": 14732349,
 }
@@ -313,7 +313,7 @@ func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *benc
 
 func getDerivedDataColumn(sheetsService *sheets.Service, column string) float64 {
 	resp, err := sheetsService.Spreadsheets.Values.Get(SHEET_DOC_ID,
-	                                      fmt.Sprintf("Derived Data!%s2:%s2", column, column)).Do()
+		fmt.Sprintf("Derived Data!%s2:%s2", column, column)).Do()
 
 	if err != nil {
 		log.Fatalf("Failed to retrieve derived data value: %s", err)
@@ -325,7 +325,6 @@ func getDerivedDataColumn(sheetsService *sheets.Service, column string) float64 
 	}
 	return f
 }
-
 
 func getRatePercent(testA, testB string, summaries map[string]*bench.BenchSummary) float64 {
 	sumA, okA := summaries[testA]
@@ -344,12 +343,12 @@ const prCommentTemplate = `Benchmark results ({{.GitRev}}):
 `
 
 type PRCommentData struct {
-	GitRev string
-	TLSCrrPercent string
-	TCPCrrPercent string
+	GitRev            string
+	TLSCrrPercent     string
+	TCPCrrPercent     string
 	TCPCrrPercentDiff string
-	TCPRrPercent string
-	TCPTLSRrPercent string
+	TCPRrPercent      string
+	TCPTLSRrPercent   string
 }
 
 // Pretty-print the benchmark results for the PR comment that includes the difference to the latest
@@ -360,12 +359,12 @@ func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries ma
 	}
 
 	tcpCrrPercent := getRatePercent("TestFGSTLS/netperf-crr", "TestBenchBaseline/netperf-crr", summaries)
-        tlsCrrPercent := getRatePercent("TestFGSTLS/tls-crr", "TestBenchBaseline/tls-crr", summaries)
+	tlsCrrPercent := getRatePercent("TestFGSTLS/tls-crr", "TestBenchBaseline/tls-crr", summaries)
 	tcpRrPercent := getRatePercent("TestFGSNoTLS/netperf-rr", "TestBenchBaseline/netperf-rr", summaries)
-        tcpTLSRrPercent := getRatePercent("TestFGSTLS/netperf-rr", "TestBenchBaseline/netperf-rr", summaries)
+	tcpTLSRrPercent := getRatePercent("TestFGSTLS/netperf-rr", "TestBenchBaseline/netperf-rr", summaries)
 	masterTCPCrrPercent := getDerivedDataColumn(sheetsService, "C")
 	tcpCrrPercentDiff := fmtFloat(masterTCPCrrPercent - tcpCrrPercent)
-	if masterTCPCrrPercent - tcpCrrPercent >= 0.0 {
+	if masterTCPCrrPercent-tcpCrrPercent >= 0.0 {
 		tcpCrrPercentDiff = "+" + tcpCrrPercentDiff
 	}
 
@@ -375,14 +374,14 @@ func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries ma
 	fmt.Print("::set-output name=body::")
 
 	err := template.Must(template.New("comment").Parse(tmpl)).Execute(os.Stdout,
-	          PRCommentData{
-		          GitRev: gitRev,
-		          TLSCrrPercent: fmtFloat(tlsCrrPercent),
-		          TCPCrrPercent: fmtFloat(tcpCrrPercent),
-		          TCPCrrPercentDiff: tcpCrrPercentDiff,
-		          TCPRrPercent: fmtFloat(tcpRrPercent),
-		          TCPTLSRrPercent: fmtFloat(tcpTLSRrPercent),
-	          })
+		PRCommentData{
+			GitRev:            gitRev,
+			TLSCrrPercent:     fmtFloat(tlsCrrPercent),
+			TCPCrrPercent:     fmtFloat(tcpCrrPercent),
+			TCPCrrPercentDiff: tcpCrrPercentDiff,
+			TCPRrPercent:      fmtFloat(tcpRrPercent),
+			TCPTLSRrPercent:   fmtFloat(tcpTLSRrPercent),
+		})
 
 	if err != nil {
 		log.Fatal(err)

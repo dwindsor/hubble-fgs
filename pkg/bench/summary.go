@@ -24,7 +24,7 @@ import (
 // This is updated from multiple places concurrently, but currently
 // there is no overlap on writes, so this isn't yet protected by a mutex.
 type BenchSummary struct {
-	Args     *BenchArguments
+	Args *BenchArguments
 
 	TLSEvents, HTTPEvents, ExitEvents, ExecEvents, TCPEvents int64
 

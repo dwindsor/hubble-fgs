@@ -12,7 +12,7 @@
 package v1alpha1
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com"
+	isovalentcom "github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

@@ -16,9 +16,9 @@ import (
 	"sync/atomic"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
-	lru "github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
 )
 

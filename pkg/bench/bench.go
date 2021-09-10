@@ -335,11 +335,11 @@ spec:
 
 	templateArgs :=
 		struct {
-			FgsHttp, FgsTls           bool
+			FgsHttp, FgsTls             bool
 			MatchPortHTTP, MatchPortTLS string
 		}{
-			FgsHttp:      args.FgsEnableHTTP,
-			FgsTls:       args.FgsEnableTLS,
+			FgsHttp:       args.FgsEnableHTTP,
+			FgsTls:        args.FgsEnableTLS,
 			MatchPortHTTP: matchPortHTTP,
 			MatchPortTLS:  matchPortTLS,
 		}

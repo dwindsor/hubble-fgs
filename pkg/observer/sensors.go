@@ -22,7 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/observer/stt"
+	sttManager "github.com/isovalent/hubble-fgs/pkg/observer/stt"
 )
 
 // Sensors
