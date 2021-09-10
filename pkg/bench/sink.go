@@ -26,6 +26,9 @@ import (
 	"strconv"
 	"strings"
 	"syscall"
+
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 type SinkStats struct {
@@ -49,6 +52,7 @@ var (
 	sinks = map[sinkName]Sink{
 		"tcp-go":     tcpOrTLSSink{tls: false},
 		"http-go":    goHTTPSink{},
+		"http2-go":   goHTTP2Sink{},
 		"http-nginx": nginxSink{},
 		"tls-go":     tcpOrTLSSink{tls: true},
 		"netperf":    netperfSink{},
@@ -132,7 +136,6 @@ func tcpListen(ctx context.Context) (net.Listener, int, error) {
 //
 // HTTP/1.1 sink
 //
-//
 
 type goHTTPSink struct{}
 
@@ -153,6 +156,38 @@ func (sink goHTTPSink) Start(ctx context.Context) (int, chan SinkStats, error) {
 					w.Write(buf)
 				}),
 		)
+
+		// TODO: No good way to collect CPU usage statistics since "net/http" forks
+		// bunch of goroutines.
+		statsCh <- SinkStats{Forked: false}
+	}()
+	return port, statsCh, nil
+}
+
+//
+// HTTP/2.0 sink
+
+type goHTTP2Sink struct{}
+
+func (sink goHTTP2Sink) Start(ctx context.Context) (int, chan SinkStats, error) {
+	l, port, err := tcpListen(ctx)
+	if err != nil {
+		return -1, nil, fmt.Errorf("TCP listen error: %w", err)
+	}
+
+	buf := []byte("helloworld")
+
+	statsCh := make(chan SinkStats, 1)
+	go func() {
+		// Start blocking serve. Will exit when the listener is closed.
+		handler := http.HandlerFunc(
+			func(w http.ResponseWriter, r *http.Request) {
+				w.Write(buf)
+			})
+		s := http.Server{
+			Handler: h2c.NewHandler(handler, &http2.Server{}),
+		}
+		s.Serve(l)
 
 		// TODO: No good way to collect CPU usage statistics since "net/http" forks
 		// bunch of goroutines.
