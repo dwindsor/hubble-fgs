@@ -240,6 +240,7 @@ func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
 }
 
 func EnableMetrics(address string) {
+	logger.GetLogger().WithField("addr", address).Info("Starting metrics server")
 	http.Handle("/metrics", promhttp.Handler())
 	http.ListenAndServe(address, nil)
 }
