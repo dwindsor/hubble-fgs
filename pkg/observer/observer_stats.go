@@ -27,17 +27,31 @@ type statKey struct {
 }
 
 type statValue struct {
-	Value [64]int64 // kernel rounds up to 64bits so pretend its a 64bit here
+	Value []int64 // kernel rounds up to 64bits so pretend its a 64bit here
 }
 
-func (k *statKey) String() string             { return fmt.Sprintf("key=%d", k.Key) }
-func (k *statKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *statKey) NewValue() bpf.MapValue     { return &statValue{} }
+func (k *statKey) String() string            { return fmt.Sprintf("key=%d", k.Key) }
+func (k *statKey) GetKeyPtr() unsafe.Pointer { return unsafe.Pointer(k) }
+func (k *statKey) NewValue() bpf.MapValue {
+	return &statValue{
+		Value: make([]int64, runtime.NumCPU()),
+	}
+}
 func (k *statKey) DeepCopyMapKey() bpf.MapKey { return &statKey{k.Key} }
 
-func (s *statValue) String() string                 { return fmt.Sprintf("value=%d", s.Value) }
-func (s *statValue) GetValuePtr() unsafe.Pointer    { return unsafe.Pointer(s) }
-func (s *statValue) DeepCopyMapValue() bpf.MapValue { return &statValue{s.Value} }
+func (s *statValue) String() string {
+	return fmt.Sprintf("%v", s.Value)
+}
+func (s *statValue) GetValuePtr() unsafe.Pointer {
+	return unsafe.Pointer(&s.Value[0])
+}
+func (s *statValue) DeepCopyMapValue() bpf.MapValue {
+	v := &statValue{
+		Value: make([]int64, runtime.NumCPU()),
+	}
+	copy(v.Value, s.Value)
+	return v
+}
 
 func (k *ObserverKprobe) startUpdateMapMetrics() {
 	update := func() {
