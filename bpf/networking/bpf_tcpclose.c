@@ -137,6 +137,8 @@ int event_ipv4_close(struct pt_regs *ctx)
 		tuple.dport = bpf_htons(tuple.dport);
 		map_delete_elem(&tls_map, &tuple);
 		map_delete_elem(&http_map, &tuple);
+		tuple.remaining = 1;
+		map_delete_elem(&http_map, &tuple);
 	}
 	return 1;
 }
