@@ -268,6 +268,9 @@ github.com/vishvananda/netlink
 github.com/vishvananda/netlink/nl
 # github.com/vishvananda/netns v0.0.0-20191106174202-0a2b9b5464df
 github.com/vishvananda/netns
+# github.com/yalue/native_endian v1.0.1
+## explicit
+github.com/yalue/native_endian
 # go.mongodb.org/mongo-driver v1.3.0
 go.mongodb.org/mongo-driver/bson
 go.mongodb.org/mongo-driver/bson/bsoncodec

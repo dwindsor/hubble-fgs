@@ -14,6 +14,7 @@ package observer
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"path/filepath"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
@@ -287,39 +288,40 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 		unix.Request.RequestId = m.Request.ReqId
 	}
 
-	offset := uint32(0)
-	ty := uint32(m.Request.Url[offset])
+	iter := reader.NewTypedChunkIterator(m.Request.Url[:])
+	for {
+		chunk, typ, ok := iter.NextString()
+		if !ok {
+			break
+		}
 
-	for ty != 0 {
-		sz := uint32(m.Request.Url[offset+4])
-
-		start := 8 + offset
-		end := 8 + offset + sz
-
-		switch ty {
+		switch typ {
 		case HttpRequestUrl:
-			unix.Request.Uri = string(m.Request.Url[start:end])
+			unix.Request.Uri = chunk
 		case HttpRequestProtocol:
-			unix.Request.Protocol = string(m.Request.Url[start:end])
+			unix.Request.Protocol = chunk
 		case HttpRequestHost:
-			unix.Request.Host = string(m.Request.Url[start:end])
+			unix.Request.Host = chunk
 		case HttpRequestUserAgent:
-			unix.Request.UserAgent = string(m.Request.Url[start:end])
+			unix.Request.UserAgent = chunk
 		case HttpRequestContentLength:
 			if m.Request.Method == HttpMethodResponse {
-				unix.Request.RespContentLength = string(m.Request.Url[start:end])
+				unix.Request.RespContentLength = chunk
 			} else {
-				unix.Request.ContentLength = string(m.Request.Url[start:end])
+				unix.Request.ContentLength = chunk
 			}
 		case HttpResponseProtocol:
-			unix.Request.RespVersion = string(m.Request.Url[start:end])
+			unix.Request.RespVersion = chunk
 		case HttpResponseCode:
-			unix.Request.Code = string(m.Request.Url[start:end])
+			unix.Request.Code = chunk
 		case HttpResponseReason:
-			unix.Request.Reason = string(m.Request.Url[start:end])
+			unix.Request.Reason = chunk
+		default:
+			return nil, fmt.Errorf("unhandled HTTP payload type: %d", typ)
 		}
-		offset += sz + 8
-		ty = uint32(m.Request.Url[offset])
+	}
+	if err := iter.Err(); err != nil {
+		logger.GetLogger().Warnf("Error iterating HTTP data: %s", err)
 	}
 
 	key := api.HttpKey{
@@ -331,6 +333,7 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 	if !httpAggregateEnable {
 		return unix, nil
 	}
+
 	/* If this is not a response then its a request and we need to cache it
 	 * until we get a response so we can merge the request/response.
 	 */
