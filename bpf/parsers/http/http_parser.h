@@ -102,35 +102,35 @@ __u32 __get_method(ctx_md *msg, struct msg_http *http)
 
 	switch (c[0]) {
 	case 'C':
-		http->offset = http_method_connect_off;
+		http->offset += http_method_connect_off;
 		return http_method_connect;
 	case 'D':
-		http->offset = http_method_delete_off;
+		http->offset += http_method_delete_off;
 		return http_method_delete;
 	case 'G':
-		http->offset = http_method_get_off;
+		http->offset += http_method_get_off;
 		return http_method_get;
 	case 'H':
 		if (c[1] == 'T') {
-			http->offset = 0;
+			http->offset += 0;
 			return http_method_response;
 		}
 		http->offset = http_method_head_off;
 		return http_method_head;
 	case 'O':
-		http->offset = http_method_options_off;
+		http->offset += http_method_options_off;
 		return http_method_options;
 	case 'P':
 		if (c[1] == 'O') {
-			http->offset = http_method_post_off;
+			http->offset += http_method_post_off;
 			return http_method_post;
 		}
 		if (c[1] == 'U') {
-			http->offset = http_method_put_off;
+			http->offset += http_method_put_off;
 			return http_method_put;
 		}
 		if (c[1] == 'A') {
-			http->offset = http_method_patch_off;
+			http->offset += http_method_patch_off;
 			return http_method_patch;
 		}
 		if (c[1] == 'R' && c[2] == 'I') {
@@ -138,7 +138,7 @@ __u32 __get_method(ctx_md *msg, struct msg_http *http)
 		}
 		return http_method_unknown;
 	case 'T':
-		http->offset = http_method_trace_off;
+		http->offset += http_method_trace_off;
 		return http_method_trace;
 	default:
 		return http_method_unknown;
@@ -504,6 +504,37 @@ out:
 	return http;
 }
 
+#ifndef SK_MSG
+/* sk_skb_eat_bytes is used to skip the payload of a request/response we are
+ * receiving. There are three cases to handle here. First, 'skb->len' is the
+ * entire HTTP message (headers and payload) so we can simply consume the
+ * skb and reset the parser. The next condition is 'skb->len > skip'. This
+ * means we have the start of a new message in the skb. In order to handle
+ * this we need to advance the offset to the start of the new header and
+ * rekick the parser from this point. And finally the last case is
+ * 'skb->len < skip'. In this case we need to consume some number of bytes
+ * from the next skb as well.
+ */
+static inline __attribute__((always_inline))
+void sk_skb_eat_bytes(ctx_md *skb,
+		      struct msg_http_event *event,
+		      struct msg_tls_ipv4 *key,
+		      __u32 skip)
+{
+	struct msg_http *http = &event->request;
+
+	if (skb->len == skip) {
+		http->consume_bytes = 0; // do nothing we eat entire skb with SK_PASS
+	} else if (skb->len > skip) {
+		http->offset = skip;
+		http->consume_bytes = 0;    // do nothing we eat entire skb with SK_PASS
+		http_parse(skb, event, key); // tail calls into http parser
+	} else {
+		http->consume_bytes = skip - skb->len;
+	}
+}
+#endif
+
 static inline __attribute__((always_inline))
 void http_reset_state(struct msg_http *http)
 {
@@ -559,6 +590,8 @@ void post_http_event(ctx_md *msg,
 	http_reset_state(&http->request);
 #ifdef SK_MSG
 	msg_apply_bytes(msg, skip);
+#else
+	sk_skb_eat_bytes(msg, http, key, skip);
 #endif
 }
 
@@ -583,6 +616,12 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 		return SK_PASS;
 	}
 
+#ifndef SK_MSG
+	if (http->request.consume_bytes) {
+		sk_skb_eat_bytes(msg, http, tuple, http->request.consume_bytes);
+		return SK_PASS;
+	}
+#endif
 	http_parse(msg, http, tuple);
 	if (http->request.state == http_done)
 		post_http_event(msg, tuple, http);
