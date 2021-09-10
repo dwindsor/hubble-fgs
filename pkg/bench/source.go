@@ -446,7 +446,7 @@ func (src netperfSource) Run(ctx context.Context, sinkPort int, args SourceArgs)
 		if err != nil {
 			err = fmt.Errorf("netperf failed: %w (out: %s)", err, out)
 			log.Printf("netperf failed: %s. Retrying.\n", err)
-			time.Sleep(100*time.Millisecond)
+			time.Sleep(100 * time.Millisecond)
 			continue
 		}
 
