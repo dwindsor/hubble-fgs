@@ -126,7 +126,7 @@ var (
 
 	observerTimeout = 5 * time.Minute
 	execTimeout     = 5 * time.Minute
-	pollTimeout     = 5000
+	pollTimeout     = 5 * time.Second
 
 	eventHandler = make(map[uint8]func(r *bytes.Reader) (interface{}, error))
 )
@@ -418,7 +418,7 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 	k.observerListeners(&api.MsgFGSReady{})
 
 	for !isCtxDone(stopCtx) {
-		todo, err := e.Poll(pollTimeout)
+		todo, err := e.Poll(int(pollTimeout.Seconds()))
 		switch {
 		case isCtxDone(stopCtx):
 			k.log.Debug("Context cancelled inside __loopEvents")
