@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/yalue/native_endian"
 )
 
 var (
@@ -362,7 +363,7 @@ func handleHttp(r *bytes.Reader) (interface{}, error) {
 	var m *api.MsgHttpEvent
 
 	m = &api.MsgHttpEvent{}
-	err := binary.Read(r, binary.LittleEndian, m)
+	err := binary.Read(r, native_endian.NativeEndian(), m)
 	if err != nil {
 		return nil, err
 	}
