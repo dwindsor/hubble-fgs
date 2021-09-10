@@ -14,6 +14,7 @@ struct bpf_map_def {
 #define SK_MSG
 
 #include "http_parser.h"
+#include "http2_parser.h"
 
 __attribute__((section(("sk_msg/fgs")), used))
 int bpf_http_sk_msg_fgs(struct sk_msg_md *msg)
@@ -80,6 +81,15 @@ int bpf_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 	if (http->state == http_done)
 		post_http_event(msg, &tuple, http);
 	return SK_PASS;
+}
+
+__attribute__((section(("sk_msg/3")), used))
+int bpf_skmsg_http2(struct sk_msg_md *msg)
+{
+	struct msg_tls_ipv4 tuple = {0};
+
+	msg_tls_key(msg, &tuple);
+	return http2_do_parser(msg, &tuple);
 }
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";

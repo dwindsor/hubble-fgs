@@ -19,6 +19,8 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/hpack"
 
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -35,6 +37,11 @@ var (
 	httpAggregate       *lru.Cache
 	httpAggregateEnable bool
 	httpCacheSize       = 1024
+
+	// Per-connection HTTP2 header decoders. Required to maintain compression state over the
+	// lifetime of the connection.
+	http2Decoders          *lru.Cache
+	http2DecodersCacheSize = 1024
 )
 
 var (
@@ -152,6 +159,11 @@ func AddHttp() {
 		httpAggregateEnable = true
 	}
 
+	http2Decoders, err = lru.New(http2DecodersCacheSize)
+	if err != nil {
+		logger.GetLogger().Fatal(err)
+	}
+
 	skmsg := &observerHttpSensor{
 		name: "skmsg http sensor",
 	}
@@ -259,6 +271,7 @@ var (
 	HttpResponseProtocol     = uint32(8)
 	HttpResponseCode         = uint32(9)
 	HttpResponseReason       = uint32(10)
+	Http2HeaderFrame         = uint32(11)
 
 	HttpMethodError    = uint32(0)
 	HttpMethodConnect  = uint32(1)
@@ -272,6 +285,7 @@ var (
 	HttpMethodTrace    = uint32(9)
 	HttpMethodUnknown  = uint32(10)
 	HttpMethodResponse = uint32(11)
+	HttpMethodPri      = uint32(12)
 )
 
 /* HTTP Event handler */
@@ -283,13 +297,18 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 	}
 
 	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
-	if m.Request.Method == HttpMethodResponse {
+
+	switch m.Request.Method {
+	case HttpMethodPri:
+		return http2ToHttpEventUnix(m, unix)
+	case HttpMethodResponse:
 		unix.Request.RequestId = m.Request.RespId
-	} else {
+	default:
 		unix.Request.RequestId = m.Request.ReqId
 	}
 
 	iter := reader.NewTypedChunkIterator(m.Request.Url[:])
+
 	for {
 		chunk, typ, ok := iter.NextString()
 		if !ok {
@@ -327,6 +346,10 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 		logger.GetLogger().Warnf("Error iterating HTTP data: %s", err)
 	}
 
+	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
+	// header decoders.
+	unix.Tuple.Proto = 0
+
 	key := api.HttpKey{
 		Tuple: unix.Tuple,
 		Id:    unix.Request.RequestId,
@@ -361,6 +384,29 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 	return unix, nil
 }
 
+func http2ToHttpEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) (*api.MsgHttpEventUnix, error) {
+	iter := reader.NewTypedChunkIterator(m.Request.Url[:])
+	emit := false
+
+	for {
+		chunk, typ, ok := iter.Next()
+		if !ok {
+			break
+		}
+
+		if typ != Http2HeaderFrame {
+			// TODO log error etc.
+			return nil, nil
+		}
+		emit = emit || handleHttp2HeaderFrame(unix, chunk)
+	}
+	if emit {
+		return unix, nil
+	} else {
+		return nil, nil
+	}
+}
+
 func handleHttp(r *bytes.Reader) (interface{}, error) {
 	var m *api.MsgHttpEvent
 
@@ -375,4 +421,73 @@ func handleHttp(r *bytes.Reader) (interface{}, error) {
 		return nil, err
 	}
 	return u, err
+}
+
+func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool {
+	r := bytes.NewReader(frameBytes)
+	framer := http2.NewFramer(nil, r)
+
+	if f, ok := http2Decoders.Get(unix.Tuple); ok {
+		framer.ReadMetaHeaders = f.(*hpack.Decoder)
+	} else {
+		framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
+		http2Decoders.Add(unix.Tuple, framer.ReadMetaHeaders)
+	}
+
+	frame, err := framer.ReadFrame()
+	if err != nil {
+		logger.GetLogger().Printf("HTTP2: failed to read frame: %v (key: %v)\n", err, unix.Tuple)
+		return false
+	}
+
+	headers, ok := frame.(*http2.MetaHeadersFrame)
+	if !ok {
+		return false
+	}
+
+	streamId := headers.Header().StreamID
+	for _, field := range headers.Fields {
+		switch field.Name {
+		case ":method":
+			unix.Request.Method = field.Value
+		case ":status":
+			unix.Request.Code = field.Value
+		case ":authority":
+			unix.Request.Host = field.Value
+		case ":path":
+			unix.Request.Uri = field.Value
+		case "user-agent":
+			unix.Request.UserAgent = field.Value
+		case "content-length":
+			unix.Request.ContentLength = field.Value
+		}
+	}
+
+	isRequest := unix.Tuple.Proto == 0
+	unix.Tuple.Proto = 0
+
+	key := api.HttpKey{
+		Tuple: unix.Tuple,
+		Id:    uint64(streamId),
+	}
+
+	if isRequest {
+		httpAggregate.Add(key, unix)
+		return false
+	} else {
+		entry, ok := httpAggregate.Get(key)
+		if ok {
+			r := entry.(*api.MsgHttpEventUnix)
+			unix.Request.Method = r.Request.Method
+			unix.Request.Uri = r.Request.Uri
+			unix.Request.Host = r.Request.Host
+			unix.Request.Protocol = r.Request.Protocol
+			unix.Request.UserAgent = r.Request.UserAgent
+			unix.Request.ContentLength = r.Request.ContentLength
+			unix.Request.Ktime = r.Common.Ktime
+			unix.ProcessKey = r.ProcessKey
+			httpAggregate.Remove(key)
+		}
+		return true
+	}
 }

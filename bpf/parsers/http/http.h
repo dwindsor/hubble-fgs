@@ -18,6 +18,9 @@ enum http_method {
 
 	// use pseudo method response to indicate status line
 	http_method_response,
+
+	// a PRI method, likely HTTP/2 with prior knowledge
+	http_method_pri,
 };
 
 enum http_request_header {
@@ -31,7 +34,8 @@ enum http_request_header {
 	http_request_unknown,
 	http_response_protocol,
 	http_response_code,
-	http_response_reason
+	http_response_reason,
+	http2_header_frame,
 };
 
 #define chr_sp	   ' '
@@ -66,6 +70,11 @@ enum http_request_state {
 	http_req_method_cont,
 	http_done,
 	http_error,
+
+	/* when state is above this we tail-call into http2 parser */
+
+	http2_expect_preface,
+	http2_expect_frame,
 };
 
 struct __msg_http {
@@ -137,3 +146,4 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_event_map = {
 	.value_size = sizeof(struct msg_http_event),
 	.max_entries = 1,
 };
+

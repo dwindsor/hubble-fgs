@@ -14,6 +14,7 @@ struct bpf_map_def {
 #define SK_SKB
 
 #include "http_parser.h"
+#include "http2_parser.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
@@ -97,5 +98,15 @@ int bpf_skskb_get_more_headers(struct __sk_buff *skb)
 	http->state = http_done;
 	if (http->state == http_done)
 		post_http_event(skb, &key, http);
+	return SK_PASS;
+}
+
+__attribute__((section(("sk_skb/3")), used))
+int bpf_skskb_http2(struct __sk_buff *skb)
+{
+	struct msg_tls_ipv4 key = {0};
+
+	skskb_http_key(skb, &key);
+	http2_do_parser(skb, &key);
 	return SK_PASS;
 }
