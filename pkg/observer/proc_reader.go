@@ -223,7 +223,7 @@ func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32
 		k.pushExecveEvents(p, tcpEntries, pushExecve, writeMaps)
 	}
 	// Ensure we have at least a default dockerId offset if we failed
-	// to disover one while walking proc
+	// to discover one while walking proc
 	err := procDockerIdOffsetDefault(btf.GetCachedBTF())
 	if err != nil {
 		k.log.Warn("prodDockerIdOffsetDefault error: %s", err)

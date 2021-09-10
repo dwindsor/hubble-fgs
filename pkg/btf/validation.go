@@ -20,7 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 )
 
-// ValidationWarn is used to mark that validation was not succesful but it's not
+// ValidationWarn is used to mark that validation was not successful but it's not
 // clear that the spec is problematic. Callers may use this error to issue a
 // warning instead of aborting
 type ValidationWarn struct {

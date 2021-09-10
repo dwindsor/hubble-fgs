@@ -26,7 +26,7 @@ const (
 	// MSG_OP_IPV4_TCPCONNECT event indicates a TCP connect() syscall
 	// has been started. The event is generated on entry into a connect() call
 	// and includes the info listed in `MsgIPv4TcpConnect`. It does _not_
-	// imply the connect call will be succesful and the 'Return' field
+	// imply the connect call will be successful and the 'Return' field
 	// is undefined at this point. The event is disabled by default users
 	// should use TCPCONNECTRET events which populate the 'Return' field.
 	// The other fields `Kube`, `Common`, and `PID' will be populated using

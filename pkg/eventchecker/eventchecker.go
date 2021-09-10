@@ -45,8 +45,8 @@ type MultiResponseChecker interface {
 	// check was successful. The boolean value allows short-circuting checks.
 	//
 	// Specifically:
-	// (false,  nil): this response check was succesful, but need to check more events
-	// (false, !nil): this response check not was succesful, but need to check more events
+	// (false,  nil): this response check was successful, but need to check more events
+	// (false, !nil): this response check not was successful, but need to check more events
 	// (true,   nil): checker was successful, no need to check more responses
 	// (true,  !nil): checker failed, no need to check more responses
 	NextCheck(*fgs.GetEventsResponse, Logger) (bool, error)
@@ -83,7 +83,7 @@ type OrderedMultiResponseChecker struct {
 	idx      int
 }
 
-// NewOrderedMultiResponseChecker retuns a new OrderedMultiResponseChecker
+// NewOrderedMultiResponseChecker returns a new OrderedMultiResponseChecker
 func NewOrderedMultiResponseChecker(checkers ...ResponseChecker) OrderedMultiResponseChecker {
 	return OrderedMultiResponseChecker{
 		checkers: checkers,
@@ -128,7 +128,7 @@ type AllMultiResponseChecker struct {
 	checkers []ResponseChecker
 }
 
-// NewAllMultiResponseChecker retuns a new AllMultiResponseChecker
+// NewAllMultiResponseChecker returns a new AllMultiResponseChecker
 func NewAllMultiResponseChecker(checkers ...ResponseChecker) AllMultiResponseChecker {
 	return AllMultiResponseChecker{
 		checkers: checkers,
@@ -733,7 +733,7 @@ func (f ImageCheckerFn) Check(i *fgs.Image, log Logger) error {
 	return f(i, log)
 }
 
-// ProcessCheckerAND can be used to build a check that is a conjuction of other checkers
+// ProcessCheckerAND can be used to build a check that is a conjunction of other checkers
 type ProcessCheckerAND struct {
 	checks []ProcessChecker
 }
@@ -974,7 +974,7 @@ func (e *eventChainChecker) HasAncestor(idx int, cs ...ProcessChecker) *eventCha
 	return e
 }
 
-// PodCheckerAND can be used to build a check that is a conjuction of other checkers
+// PodCheckerAND can be used to build a check that is a conjunction of other checkers
 type PodCheckerAND struct {
 	checks []PodChecker
 }
