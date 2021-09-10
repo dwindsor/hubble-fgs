@@ -123,6 +123,21 @@ var (
 		Help:        "The total number of FGS event cache access/errors. For internal use only.",
 		ConstLabels: nil,
 	}, []string{"type"})
+	RingBufPerfEventReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "isovalent_fgs_ringbuf_perf_event_received",
+		Help:        "The total number of FGS ringbuf perf events received.",
+		ConstLabels: nil,
+	}, nil)
+	RingBufPerfEventLost = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "isovalent_fgs_ringbuf_perf_event_lost",
+		Help:        "The total number of FGS ringbuf perf events lost.",
+		ConstLabels: nil,
+	}, nil)
+	RingBufPerfEventErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name:        "isovalent_fgs_ringbuf_perf_event_errors",
+		Help:        "The total number of FGS ringbuf perf event error count.",
+		ConstLabels: nil,
+	}, nil)
 )
 
 func getDstPodInfo(dstPod *fgs.Pod) (pod, ns string) {

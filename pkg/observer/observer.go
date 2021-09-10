@@ -27,6 +27,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/metrics"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -435,6 +437,10 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 			if err := e.ReadAll(receiveEvent, observerLost, observerError); err != nil {
 				k.log.WithError(err).Warn("kprobe events read failed")
 			}
+
+			metrics.RingBufPerfEventReceived.WithLabelValues().Set(float64(k.recvCntr))
+			metrics.RingBufPerfEventLost.WithLabelValues().Set(float64(k.lostCntr))
+			metrics.RingBufPerfEventErrors.WithLabelValues().Set(float64(k.errorCntr))
 		}
 	}
 	return nil
