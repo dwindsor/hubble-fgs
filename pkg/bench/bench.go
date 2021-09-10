@@ -112,6 +112,10 @@ func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx conte
 	bpf.CheckOrMountDebugFS()
 	bpf.CheckOrMountCgroup2()
 
+	if args.FgsDebug {
+		observer.Verbosity = 5
+	}
+
 	if _, err := os.Stat("../../bpf/objs"); err == nil {
 		observer.HubbleLib = "../../bpf/objs"
 	} else {
