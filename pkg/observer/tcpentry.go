@@ -132,7 +132,7 @@ func (k *ObserverKprobe) getPidNetNsInode(pid uint32) uint64 {
 	inode := fields[1]
 	inode = strings.TrimRight(inode, "]")
 	inode = strings.TrimLeft(inode, "[")
-	inodeEntry, err := strconv.ParseUint(inode, 10, 32)
+	inodeEntry, _ := strconv.ParseUint(inode, 10, 32)
 	return inodeEntry
 }
 

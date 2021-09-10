@@ -748,7 +748,6 @@ func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
 			err := binary.Read(r, binary.LittleEndian, &output)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("Int type error")
-				err = nil
 			}
 
 			arg.Index = uint64(a.index)
@@ -773,13 +772,11 @@ func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
 			err := binary.Read(r, binary.LittleEndian, &b)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("StringSz type err")
-				err = nil
 			}
 			outputStr := make([]byte, b)
 			err = binary.Read(r, binary.LittleEndian, &outputStr)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("String with size %d type err", b)
-				err = nil
 			}
 
 			arg.Index = uint64(a.index)
@@ -803,7 +800,6 @@ func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
 			err := binary.Read(r, binary.LittleEndian, &skb)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("skb type err")
-				err = nil
 			}
 
 			arg.Index = uint64(a.index)
@@ -824,7 +820,6 @@ func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
 			err := binary.Read(r, binary.LittleEndian, &output)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
-				err = nil
 			}
 
 			arg.Index = uint64(a.index)

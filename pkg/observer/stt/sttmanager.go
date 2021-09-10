@@ -11,7 +11,6 @@
 package sttManager
 
 import (
-	"errors"
 	"fmt"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -69,7 +68,7 @@ func StartSttManager() SttManagerHandle {
 		done := false
 		for !done {
 			op_ := <-c
-			err := errors.New("BUG in sttManager: unset error value")
+			var err error
 			switch op := op_.(type) {
 			case *SttMgCreateTree:
 				treeMap[op.TreeName] = stt.CreateSttree()

@@ -102,7 +102,7 @@ func HandleTlsCont(r *bytes.Reader) (interface{}, error) {
 
 	binary.Read(r, binary.LittleEndian, &op)
 	key := api.MsgTLSIPv4{}
-	err := binary.Read(r, binary.LittleEndian, &key)
+	binary.Read(r, binary.LittleEndian, &key)
 
 	/* We hide a completion bit in the struct, but is not used to
 	 * as part of the key lookup.
@@ -128,12 +128,11 @@ func HandleTlsCont(r *bytes.Reader) (interface{}, error) {
 		m = &MsgTLSEventCert{}
 		m.tls = &api.MsgTLSEvent{}
 		errCode = api.TlsCertificateErrorNullRead
-	} else if err = binary.Read(r, binary.LittleEndian, &bytes); err != nil {
+	} else if err := binary.Read(r, binary.LittleEndian, &bytes); err != nil {
 		errCode = api.TlsCertificateErrorLengthRead
 	} else if bytes == 0 {
 		var errBpf uint32
 
-		errCode = api.TlsCertificateErrorLengthRead
 		err := binary.Read(r, binary.LittleEndian, &errBpf)
 		if err == nil {
 			errCode = uint32(errBpf)

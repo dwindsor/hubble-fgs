@@ -180,6 +180,7 @@ spec:
 	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	_, err = syscall.Write(1, []byte("hello world"))
+	assert.NoError(t, err)
 	exitWG.Wait()
 
 	err = JsonTestCheck(t, nil, &checker)
@@ -632,6 +633,7 @@ spec:
 	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 	execWG.Wait()
 	err = helloIovecWorldWritev()
+	assert.NoError(t, err)
 	execWG.Wait()
 
 	err = JsonTestCheck(t, nil, &checker)

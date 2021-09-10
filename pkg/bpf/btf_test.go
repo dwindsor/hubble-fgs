@@ -53,14 +53,14 @@ func TestBtf54(t *testing.T) {
 		t.Fatalf("unexpected function signature: %s", s)
 	}
 
-	funcProtoTy, err := btf.TypeByID(funcProtoTyID)
+	funcProtoTy, _ := btf.TypeByID(funcProtoTyID)
 	p0Name, _ := btf.ParamName(funcProtoTy, 0)
 	if p0Name != "regs" {
 		t.Fatalf("unexpected parameter name: %s", p0Name)
 	}
 
-	retTyID, err := btf.UnderlyingType(funcProtoTy)
-	s, err = btf.DumpTy(retTyID)
+	retTyID, _ := btf.UnderlyingType(funcProtoTy)
+	s, _ = btf.DumpTy(retTyID)
 	if s != "long int" {
 		t.Fatalf("unexpected function return type: %s", s)
 	}
