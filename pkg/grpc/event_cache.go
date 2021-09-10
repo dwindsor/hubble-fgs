@@ -49,9 +49,6 @@ type eventCache struct {
 
 // garbage collection states
 const (
-	newEntry     = iota
-	oneStrikes   = 1
-	twoStrikes   = 2
 	threeStrikes = 3
 )
 

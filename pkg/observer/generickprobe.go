@@ -66,7 +66,6 @@ const (
 	arg2            = "arg2"
 	arg3            = "arg3"
 	arg4            = "arg4"
-	arg5            = "arg5"
 	argreturn       = "argreturn"
 	is_syscall      = "syscall"
 	argm0           = "arg0m"

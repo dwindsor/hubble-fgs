@@ -43,7 +43,6 @@ const (
 // garbage collection run interval
 const (
 	intervalGC = time.Second * 30
-	colorsGC   = 2
 )
 
 // processInternal is the internal representation of a process.

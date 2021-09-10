@@ -55,7 +55,6 @@ func MatchActionSigKill(spec *v1alpha1.KProbeSpec) bool {
 }
 
 const (
-	argTypeNop       = 0
 	argTypeInt       = 1
 	argTypeCharBuf   = 2
 	argTypeCharIovec = 3
@@ -111,9 +110,8 @@ const (
 	selectorOpIn    = 5
 	selectorOpNotIn = 6
 	// String ops
-	selectorOpContains = 7
-	selectorOpPrefix   = 8
-	selectorOpPostfix  = 9
+	selectorOpPrefix  = 8
+	selectorOpPostfix = 9
 )
 
 // The kernel side could learn this but it would require a reference
