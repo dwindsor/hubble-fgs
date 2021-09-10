@@ -18,6 +18,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 // ValidationWarn is used to mark that validation was not successful but it's not
@@ -62,12 +63,12 @@ func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
 	}
 	callTy, err := btf.TypeByID(callID)
 	if err != nil {
-		fmt.Errorf("failed to find type by id: %w", err)
+		logger.GetLogger().WithError(err).Debug("failed to find type by id")
 	}
 
 	callProtoID, err := btf.UnderlyingType(callTy)
 	if err != nil {
-		fmt.Errorf("failed to find prorotype for %s: %w", kspec.Call, err)
+		logger.GetLogger().WithError(err).WithField("call", kspec.Call).Debug("failed to find prototype")
 	}
 
 	// Syscalls are special.
@@ -96,12 +97,12 @@ func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
 
 	callProtoTy, err := btf.TypeByID(callProtoID)
 	if err != nil {
-		fmt.Errorf("failed to find type by id: %w", err)
+		logger.GetLogger().WithError(err).Debug("failed to find type by id")
 	}
 
 	callProtoStr, err := btf.DumpTy(callProtoID)
 	if err != nil {
-		fmt.Errorf("failed to dump function prototype by id: %w", err)
+		logger.GetLogger().WithError(err).Debug("failed to dump function prototype by id")
 	}
 
 	fnNArgs := uint32(callProtoTy.Vlen())
@@ -129,11 +130,11 @@ func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
 	if kspec.Return {
 		retID, err := btf.UnderlyingType(callProtoTy)
 		if err != nil {
-			fmt.Errorf("failed to find return type for %s: %w", kspec.Call, err)
+			logger.GetLogger().WithError(err).WithField("call", kspec.Call).Debug("failed to find return type")
 		}
 		retTyStr, err := btf.DumpTy(retID)
 		if err != nil {
-			fmt.Errorf("failed to dump return type of %s: %w", kspec.Call, err)
+			logger.GetLogger().WithError(err).WithField("call", kspec.Call).Debug("failed to dump return type")
 		}
 		if !typesCompatible(kspec.ReturnArg.Type, retTyStr) {
 			return &ValidationWarn{s: fmt.Sprintf("return type (%s) does not match spec return type (%s)\n", retTyStr, kspec.ReturnArg.Type)}

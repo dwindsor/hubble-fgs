@@ -54,7 +54,7 @@ var (
 func main() {
 	jsonFile, err := os.Open(os.Args[1])
 	if err != nil {
-		fmt.Errorf("🔥 opening json file failed: %w", err)
+		fmt.Printf("🔥 opening json file failed: %s", err)
 		os.Exit(1)
 	}
 	logger := ec.LogrusLogger{logrus.New()}
