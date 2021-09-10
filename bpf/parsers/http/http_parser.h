@@ -12,14 +12,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) http1_calls = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
 	.value_size	= sizeof(__u32),
-	.max_entries	= 2,
+	.max_entries	= 3,
 };
 #else
 struct bpf_map_def __attribute__((section("maps"), used)) http1_calls_skb = {
 	.type		= BPF_MAP_TYPE_PROG_ARRAY,
 	.key_size	= sizeof(__u32),
 	.value_size	= sizeof(__u32),
-	.max_entries	= 2,
+	.max_entries	= 3,
 };
 #endif
 
@@ -291,6 +291,16 @@ int map_header_to_type(ctx_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
+void get_more_headers(ctx_md *msg)
+{
+#ifdef SK_MSG
+	tail_call(msg, &http1_calls, 2);
+#else
+	tail_call(msg, &http1_calls_skb, 2);
+#endif
+}
+
+static inline __attribute__((always_inline))
 void find_host_header(ctx_md *msg, struct msg_http *http)
 {
 	int t;
@@ -344,6 +354,10 @@ void find_host_header(ctx_md *msg, struct msg_http *http)
 		goto out;
 	get_string(msg, http, http->url, t, 256, chr_r);
 
+	/* There are still unprocessed headers to lets do a recursive
+	 * tail call and eat more headers.
+	 */
+	get_more_headers(msg);
 	return;
 out:
 	/* Advance past \r\n, we just bump offset because we don't care

@@ -82,3 +82,20 @@ int bpf_skskb_http_request(struct __sk_buff *skb)
 	}
 	return SK_PASS;
 }
+
+__attribute__((section(("sk_skb/2")), used))
+int bpf_skskb_get_more_headers(struct __sk_buff *skb)
+{
+	struct msg_tls_ipv4 key = {0};
+	struct msg_http *http;
+
+	skskb_http_key(skb, &key);
+	http = get_http_context(&key);
+	if (unlikely(!http))
+		return SK_PASS;
+	find_host_header(skb, http);
+	http->state = http_done;
+	if (http->state == http_done)
+		post_http_event(skb, &key, http);
+	return SK_PASS;
+}
