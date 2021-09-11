@@ -4,6 +4,7 @@ BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
 LOCAL_CLANG ?= 1
+NOOPT ?= 0
 LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.2
 CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
 METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
@@ -11,6 +12,7 @@ METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 LIBBPF_INSTALL_DIR ?= ./lib
 CLANG_INSTALL_DIR  ?= ./bin
 VERSION=$(shell git describe --tags --always)
+GO_GCFLAGS ?= ""
 GO_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Version=$(VERSION)'"
 GO_IMAGE_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Version=$(VERSION)' -linkmode external -extldflags -static"
 GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Version=$(VERSION)' -s -w"
@@ -32,6 +34,10 @@ else
 hubble-bpf: hubble-bpf-container
 endif
 
+ifeq (1,$(NOOPT))
+GO_GCFLAGS = "all=-N -l"
+endif
+
 hubble-bpf-local:
 	$(MAKE) -C ./bpf
 
@@ -41,13 +47,13 @@ hubble-bpf-container:
 	docker rm hubble-llvm
 
 hubble-fgs:
-	$(GO) build -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
 
 hubble-enterprise:
-	$(GO) build -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-enterprise/
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-enterprise/
 
 hubble-enterprise-operator:
-	$(GO) build -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./operator
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./operator
 
 .PHONY: ksyms
 ksyms:
