@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os"
@@ -205,10 +206,12 @@ func (sink nginxSink) Start(ctx context.Context) (int, chan SinkStats, error) {
 type netperfSink struct{}
 
 func (sink netperfSink) Start(ctx context.Context) (int, chan SinkStats, error) {
-	// Use a non-standard port in case the machine already has netserver running.
-	port := 12866
-
+	port := findFreePort()
 	cmd := exec.Command("netserver", "-D", "-N", "-f", "-4", "-p", strconv.Itoa(port))
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+
+	log.Printf("Spawning netserver on port %d\n", port)
 
 	// netserver sets the output file permissions and with -D the output
 	// file is /dev/null, so don't run netserver as root to avoid changing
@@ -251,4 +254,44 @@ func withStats(sinkStats chan SinkStats, run func()) {
 		stats.CPUUsage = GetCPUUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore)
 		sinkStats <- stats
 	}()
+}
+
+// findFreePort tries to pick a random available port number. Used for
+// sinks that don't have a good way of letting the kernel allocate the port
+// number (e.g. netserver). We need this for netserver as it's not setting
+// SO_REUSEPORT and hence fails if two netperf tests are run back to back
+// on same port.
+func findFreePort() int {
+	taken := tcpListenPorts()
+	for try := 0; try < 10; try++ {
+		port := 14000 + rand.Intn(10000)
+		if _, ok := taken[port]; ok {
+			continue
+		}
+		return port
+	}
+	log.Fatal("Failed to find free port")
+	return -1
+}
+
+func tcpListenPorts() map[int]struct{} {
+	ports := make(map[int]struct{})
+	cmd := exec.Command("/bin/sh", "-c", "ss -l -n -t -H|awk '{ split($4,x,\":\"); print x[length(x)] }'|sort -nu")
+	out, err := cmd.Output()
+	if err != nil {
+		log.Printf("Failed to get TCP listen ports: %s", err)
+		return ports
+	}
+	for _, s := range strings.Split(string(out), "\n") {
+		if s == "" {
+			continue
+		}
+		p, err := strconv.ParseInt(s, 10, 32)
+		if err != nil {
+			log.Printf("Failed to parse port number: %s", err)
+		} else {
+			ports[int(p)] = struct{}{}
+		}
+	}
+	return ports
 }
