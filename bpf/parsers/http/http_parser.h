@@ -417,8 +417,25 @@ void http_parse_response(ctx_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-void http_parse(ctx_md *msg, struct msg_http *http, struct msg_tls_ipv4 *key)
+int put_reverse_http_context(struct msg_tls_ipv4 *key, struct msg_http_event *event)
 {
+	/* Add the receive side entry, so that we'll process the response as HTTP/2 */
+	struct msg_tls_ipv4 rkey = {
+		.saddr = key->saddr,
+		.daddr = key->daddr,
+		.dport = key->dport,
+		.sport = key->sport,
+		.remaining = HTTP_RECV,
+	};
+	event->request.state = http2_expect_frame;
+	return map_update_elem(&http_map, &rkey, event, BPF_NOEXIST);
+}
+
+static inline __attribute__((always_inline))
+void http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key)
+{
+	struct msg_http *http = &event->request;
+
 	if (http->state == http_start) {
 		int m = get_method(msg, http);
 
@@ -435,18 +452,7 @@ void http_parse(ctx_md *msg, struct msg_http *http, struct msg_tls_ipv4 *key)
 			break;
 
 		case http_method_pri:
-			{
-				/* Add the receive side entry, so that we'll process the response as HTTP/2 */
-				struct msg_tls_ipv4 rkey = {
-					.saddr = key->saddr,
-					.daddr = key->daddr,
-					.dport = key->dport,
-					.sport = key->sport,
-					.remaining = HTTP_RECV,
-				};
-				http->state = http2_expect_frame;
-				map_update_elem(&http_map, &rkey, http, BPF_NOEXIST);
-			}
+			put_reverse_http_context(key, event);
 			http->state = http2_expect_preface;
 #ifdef SK_MSG
 			tail_call(msg, &http1_calls, 3);
@@ -474,13 +480,13 @@ bool is_expected_request(struct msg_http *http)
 }
 
 static inline __attribute__((always_inline))
-struct msg_http *get_http_context(struct msg_tls_ipv4 *key)
+struct msg_http_event *get_http_context(struct msg_tls_ipv4 *key)
 {
-	struct msg_http *http;
+	struct msg_http_event *http;
 
 	http = map_lookup_elem(&http_map, key);
 	if (!http) {
-		struct msg_http *__http;
+		struct msg_http_event *__http;
 		int zero = 0;
 
 		__http = map_lookup_elem(&http_map_heap, &zero);
@@ -506,53 +512,47 @@ void http_reset_state(struct msg_http *http)
 static inline __attribute__((always_inline))
 void post_http_event(ctx_md *msg,
 		     struct msg_tls_ipv4 *key,
-		     struct msg_http *http)
+		     struct msg_http_event *http)
 {
 	struct socketmap_value *process;
-	struct msg_http_event *e;
 	__u32 skip = 0;
-	int zero = 0;
 	size_t size;
 	__u32 *dst;
 
-	e = map_lookup_elem(&http_event_map, &zero);
-	if (!e)
-		return;
-
 	process = lookup_socketmap(key);
 	if (process) {
-		e->execve.pid = process->key.pid;
-		e->execve.pad[0] = 0;
-		e->execve.pad[1] = 0;
-		e->execve.pad[2] = 0;
-		e->execve.pad[3] = 0;
-		e->execve.ktime = process->key.ktime;
+		http->execve.pid = process->key.pid;
+		http->execve.pad[0] = 0;
+		http->execve.pad[1] = 0;
+		http->execve.pad[2] = 0;
+		http->execve.pad[3] = 0;
+		http->execve.ktime = process->key.ktime;
 	}
 
 	/* Bounce counters this is a request or response */
-	if (http->method == http_method_response)
-		http->recv_cntr++;
+	if (http->request.method == http_method_response)
+		http->request.recv_cntr++;
 	else
-		http->send_cntr++;
+		http->request.send_cntr++;
 
 	/* Terminate the payload */
-	dst = (__u32*)&http->url[http->url_offset & 0xff];
+	dst = (__u32*)&http->request.url[http->request.url_offset & 0xff];
 	dst[0] = 0;
 	dst[1] = 0;
 
-	e->common.ktime = ktime_get_ns();
-	e->common.op = MSG_OP_HTTP;
-	e->common.size = sizeof(struct msg_http_event);
-	e->tuple = *key;
+	http->common.ktime = ktime_get_ns();
+	http->common.op = MSG_OP_HTTP;
+	http->common.size = sizeof(struct msg_http_event);
+	http->tuple = *key;
 	/* NOTE(JM): This workarounds a weird llc bug related to struct packing.
-         * Without this assignment "llc" takes 90s or more instead of <10s */
-	e->tuple.remaining = key->remaining;
-	e->request = *http;
+	 * Without this assignment "llc" takes 90s or more instead of <10s
+	 */
+	http->tuple.remaining = key->remaining;
 
 	size = sizeof(struct __msg_http_event);
-	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, e, size);
-	skip = http->consume_bytes + http->offset;
-	http_reset_state(http);
+	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);
+	skip = http->request.consume_bytes + http->request.offset;
+	http_reset_state(&http->request);
 #ifdef SK_MSG
 	msg_apply_bytes(msg, skip);
 #endif
@@ -561,16 +561,16 @@ void post_http_event(ctx_md *msg,
 static inline __attribute__((always_inline))
 int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 {
-	struct msg_http *http;
+	struct msg_http_event *http;
 
 	http = get_http_context(tuple);
 	if (unlikely(!http))
 		return SK_PASS;
 
-	if (!is_expected_request(http))
+	if (!is_expected_request(&http->request))
 		return SK_PASS;
 
-	if (unlikely(http->state >= http2_expect_preface)) {
+	if (unlikely(http->request.state >= http2_expect_preface)) {
 #ifdef SK_MSG
 		tail_call(msg, &http1_calls, 3);
 #else
@@ -580,7 +580,7 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	}
 
 	http_parse(msg, http, tuple);
-	if (http->state == http_done)
+	if (http->request.state == http_done)
 		post_http_event(msg, tuple, http);
 	return SK_PASS;
 }

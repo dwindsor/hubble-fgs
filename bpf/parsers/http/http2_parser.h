@@ -83,8 +83,9 @@ u8 *get_header_bytes(struct sk_msg_md *msg, __u32 offset)
 #endif
 
 static inline __attribute__((always_inline))
-int emit_headers(ctx_md *msg, struct msg_http *http, struct msg_tls_ipv4 *key, __u32 offset, __u32 length)
+int emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key, __u32 offset, __u32 length)
 {
+	struct msg_http *http = &event->request;
 	u32 url_off = http->url_offset & 0xff;
 	u32 *dst = (__u32*)&http->url[url_off];
 	int err;
@@ -128,7 +129,7 @@ int emit_headers(ctx_md *msg, struct msg_http *http, struct msg_tls_ipv4 *key, _
 	dst[0] = 0;
 	dst[1] = 0;
 
-	post_http_event(msg, key, http);
+	post_http_event(msg, key, event);
 
 	http->url_offset = 0;
 	
@@ -136,9 +137,11 @@ int emit_headers(ctx_md *msg, struct msg_http *http, struct msg_tls_ipv4 *key, _
 }
 
 static inline __attribute__((always_inline))
-int http2_parse_frame(struct msg_http *http, struct msg_tls_ipv4 *key, ctx_md *msg, __u32 offset, bool *stop)
+int http2_parse_frame(struct msg_http_event *event, struct msg_tls_ipv4 *key, ctx_md *msg, __u32 offset, bool *stop)
 {
+	struct msg_http *http = &event->request;
 	u8 *data = get_header_bytes(msg, offset);
+
 	if (!data) {
 		// TODO(JM): Handle the partial write:
 		// - stash the <9 bytes into http->scratch
@@ -161,7 +164,7 @@ int http2_parse_frame(struct msg_http *http, struct msg_tls_ipv4 *key, ctx_md *m
 	switch (type) {
 	case HTTP2_FRAME_TYPE_HEADERS: {
 		if (flags & HTTP2_FLAG_END_HEADERS) {
-			if (emit_headers(msg, http, key, offset, length)) {
+			if (emit_headers(msg, event, key, offset, length)) {
 				// TODO(JM): How to handle failure here? Due to header compression
 				// we may not be able to read future frames in this stream so likely
 				// best to stop.
@@ -222,13 +225,15 @@ bool http2_is_preface(ctx_md *msg)
 static inline __attribute__((always_inline))
 int http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 {
+	struct msg_http_event *event;
 	struct msg_http *http;
 	bool stop = false;
 	u32 offset = 0;
 
-	http = get_http_context(tuple);
-	if (unlikely(!http))
+	event = get_http_context(tuple);
+	if (unlikely(!event))
 		return SK_PASS;
+	http = &event->request;
 
 	switch (http->state) {
 	case http2_expect_preface:
@@ -252,7 +257,7 @@ int http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 
 #pragma unroll
 	for (int frame = 0; frame < HTTP2_MAX_FRAMES; frame++) {
-		offset += http2_parse_frame(http, tuple, msg, offset, &stop);
+		offset += http2_parse_frame(event, tuple, msg, offset, &stop);
 		if (stop) return SK_PASS;
 	}
 

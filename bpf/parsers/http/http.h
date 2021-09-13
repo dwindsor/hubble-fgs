@@ -129,18 +129,11 @@ struct __msg_http_event {
 struct bpf_map_def __attribute__((section("maps"), used)) http_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct msg_http),
+	.value_size = sizeof(struct msg_http_event),
 	.max_entries = 1000,
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) http_map_heap = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_http),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) http_event_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct msg_http_event),

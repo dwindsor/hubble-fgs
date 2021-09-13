@@ -48,16 +48,16 @@ __attribute__((section(("sk_skb/0")), used))
 int bpf_skskb_http_response(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
-	struct msg_http *http;
+	struct msg_http_event *http;
 
 	skskb_http_key(skb, &key);
 	http = get_http_context(&key);
 	if (unlikely(!http))
 		return SK_PASS;
 
-	http_parse_response(skb, http);
-	http->state = http_done;
-	if (http->state == http_done)
+	http_parse_response(skb, &http->request);
+	http->request.state = http_done;
+	if (http->request.state == http_done)
 		post_http_event(skb, &key, http);
 	return SK_PASS;
 }
@@ -66,16 +66,16 @@ __attribute__((section(("sk_skb/1")), used))
 int bpf_skskb_http_request(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
-	struct msg_http *http;
+	struct msg_http_event *http;
 
 	skskb_http_key(skb, &key);
 	http = get_http_context(&key);
 	if (unlikely(!http))
 		return SK_PASS;
 
-	http_parse_request(skb, http);
-	http->state = http_done;
-	if (http->state == http_done)
+	http_parse_request(skb, &http->request);
+	http->request.state = http_done;
+	if (http->request.state == http_done)
 		post_http_event(skb, &key, http);
 	return SK_PASS;
 }
@@ -84,15 +84,15 @@ __attribute__((section(("sk_skb/2")), used))
 int bpf_skskb_get_more_headers(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
-	struct msg_http *http;
+	struct msg_http_event *http;
 
 	skskb_http_key(skb, &key);
 	http = get_http_context(&key);
 	if (unlikely(!http))
 		return SK_PASS;
-	find_host_header(skb, http);
-	http->state = http_done;
-	if (http->state == http_done)
+	find_host_header(skb, &http->request);
+	http->request.state = http_done;
+	if (http->request.state == http_done)
 		post_http_event(skb, &key, http);
 	return SK_PASS;
 }
