@@ -461,6 +461,7 @@ void post_http_event(ctx_md *msg,
 	__u32 skip = 0;
 	int zero = 0;
 	size_t size;
+	__u32 *dst;
 
 	e = map_lookup_elem(&http_event_map, &zero);
 	if (!e)
@@ -481,6 +482,11 @@ void post_http_event(ctx_md *msg,
 		http->recv_cntr++;
 	else
 		http->send_cntr++;
+
+	/* Terminate the payload */
+	dst = (__u32*)&http->url[http->url_offset & 0xff];
+	dst[0] = 0;
+	dst[1] = 0;
 
 	e->common.ktime = ktime_get_ns();
 	e->common.op = MSG_OP_HTTP;
