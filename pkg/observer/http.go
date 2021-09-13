@@ -317,6 +317,8 @@ func msgToHttpEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 			unix.Request.Code = chunk
 		case HttpResponseReason:
 			unix.Request.Reason = chunk
+		case HttpRequestUnknown:
+			continue
 		default:
 			return nil, fmt.Errorf("unhandled HTTP payload type: %d", typ)
 		}
