@@ -56,6 +56,12 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 	cpuStatFilename := fmt.Sprintf("/sys/fs/cgroup/cpuacct/docker/%s/cpuacct.stat", containerID)
 	cpuStat, err := ioutil.ReadFile(cpuStatFilename)
 	if err != nil {
+		// Fallback to the path observed in CI
+		cpuStatFilename = fmt.Sprintf("/sys/fs/cgroup/cpu,cpuacct/actions_job/%s/cpuacct.stat", containerID)
+		cpuStat, err = ioutil.ReadFile(cpuStatFilename)
+	}
+
+	if err != nil {
 		log.Printf("Failed to read cpuacct.stat: %s\n", err)
 		return CPUUsage{}
 	} else {
@@ -65,9 +71,15 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 		}
 	}
 
-	memStatFilename := fmt.Sprintf("/sys/fs/cgroup/memory/docker/%s/memory.stat", containerID)
 	rss := int64(0)
+	memStatFilename := fmt.Sprintf("/sys/fs/cgroup/memory/docker/%s/memory.stat", containerID)
 	memStat, err := ioutil.ReadFile(memStatFilename)
+	if err != nil {
+		// Fallback to the path observed in CI
+		memStatFilename = fmt.Sprintf("/sys/fs/cgroup/memory/actions_job/%s/memory.stat", containerID)
+		memStat, err = ioutil.ReadFile(memStatFilename)
+	}
+
 	if err != nil {
 		log.Printf("Failed to read memory.stat: %s\n", err)
 	} else {
