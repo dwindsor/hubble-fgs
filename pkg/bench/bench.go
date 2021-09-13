@@ -16,7 +16,7 @@ import (
 	"fmt"
 	"path"
 	"strings"
-	"sync"
+	"sync/atomic"
 	"syscall"
 	"text/template"
 
@@ -33,7 +33,6 @@ import (
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"gopkg.in/yaml.v2"
 )
 
 type BenchArguments struct {
@@ -61,7 +60,7 @@ func (args *BenchArguments) String() string {
 func RunBenchmark(args *BenchArguments) *BenchSummary {
 	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
 	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
-	
+
 	summary := newBenchSummary(args)
 	summary.StartTime = time.Now()
 	ctx, cancel := context.WithCancel(context.Background())
@@ -203,17 +202,14 @@ func (bl *benchmarkListener) Close() error {
 }
 
 type timingEncoder struct {
-	sync.Mutex
-	totalDuration time.Duration
+	totalDuration uint64
 	inner         fgsGrpc.ExportEncoder
 }
 
 func (te *timingEncoder) Encode(v interface{}) error {
 	t0 := time.Now()
 	err := te.inner.Encode(v)
-	te.Lock()
-	te.totalDuration += time.Since(t0)
-	te.Unlock()
+	atomic.AddUint64(&te.totalDuration, uint64(time.Since(t0)))
 	return err
 }
 
@@ -236,7 +232,7 @@ func startBenchmarkExporter(ctx context.Context, kprobe *observer.ObserverKprobe
 
 	var encoder fgsGrpc.ExportEncoder
 	if summary.Args.PrintEvents {
-		encoder = yaml.NewEncoder(os.Stdout)
+		encoder = json.NewEncoder(os.Stdout)
 	} else {
 		encoder = json.NewEncoder(&CountingDiscardWriter{})
 	}
@@ -246,7 +242,7 @@ func startBenchmarkExporter(ctx context.Context, kprobe *observer.ObserverKprobe
 		// FIXME I'm racy, someone might read summary before this is written.
 		// Likely not an issue since we wait for slower things to exit.
 		<-ctx.Done()
-		summary.JSONEncodingDurationNanos = timingEncoder.totalDuration
+		summary.JSONEncodingDurationNanos = time.Duration(timingEncoder.totalDuration)
 	}()
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
