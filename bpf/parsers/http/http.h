@@ -86,7 +86,7 @@ struct __msg_http {
 	 */
 	__u64 send_cntr;
 	__u64 recv_cntr;
-	char url[256]; //tbd optimize to dynamic length
+	char url[512]; //tbd optimize to dynamic length
 	// below is private state for BPF parser
 	__u32 state;
 	__u32 offset;
@@ -102,7 +102,7 @@ struct msg_http {
 	 */
 	__u64 send_cntr;
 	__u64 recv_cntr;
-	char url[256]; //tbd optimize to dynamic length
+	char url[512]; //tbd optimize to dynamic length
 	// Below is BPF parser pushed to user space to allow debugging
 	__u32 state;
 	__u32 offset;

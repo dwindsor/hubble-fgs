@@ -200,7 +200,7 @@ void get_string(ctx_md *msg, struct msg_http *http,
 	int i;
 	int do_push = (ty == http_request_content_length);
 
-	asm volatile ("%[offset] &= 0xff;\n": [offset] "+r"(offset)::);
+	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
 	for (i = 0; i < max - 8; i++) {
 		char *c = eat_next_char(msg, http);
 
@@ -536,7 +536,7 @@ void post_http_event(ctx_md *msg,
 		http->request.send_cntr++;
 
 	/* Terminate the payload */
-	dst = (__u32*)&http->request.url[http->request.url_offset & 0xff];
+	dst = (__u32*)&http->request.url[http->request.url_offset & 0x1ff];
 	dst[0] = 0;
 	dst[1] = 0;
 
