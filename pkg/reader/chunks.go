@@ -54,17 +54,14 @@ func (it *TypedChunkIterator) Next() ([]byte, uint32, bool) {
 		return nil, 0, false
 	}
 	if ty == 0 {
-		fmt.Printf("ty=%d, stopping\n", ty)
 		return nil, 0, false
 	}
-	fmt.Printf("read chunk ty=%d\n", ty)
 
 	size, err := it.readNativeUint32()
 	if err != nil {
 		it.err = fmt.Errorf("failed to read %d > %d", size, it.buf.Len())
 		return nil, 0, false
 	}
-	fmt.Printf("read chunk size=%d\n", size)
 	if it.buf.Len() < int(size) {
 		it.err = fmt.Errorf("chunk size overruns the buffer: %d > %d", size, it.buf.Len())
 		return nil, 0, false
