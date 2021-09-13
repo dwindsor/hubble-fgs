@@ -287,7 +287,11 @@ int map_header_to_type(ctx_md *msg, struct msg_http *http)
 
 		if (r1 == h1 && r2 == h2 && r3 == h3)
 			return http_request_content_length;
-	} else if (*sz == 0) {
+	/* A header field of 1 indicates we read a \r directly and so this
+	 * is a CRLF on a line of its own. If size is zero the parser is lost
+	 * but lets try to continue in this case.
+	 */
+	} else if (*sz <= 1) {
 		return http_request_done;
 	}
 	return http_request_unknown;
