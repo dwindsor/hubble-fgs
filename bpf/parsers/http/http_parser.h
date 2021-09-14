@@ -153,13 +153,11 @@ __u32 get_method(ctx_md *msg, struct msg_http *http)
 	return http->method;
 }
 
-#if 0
 static inline __attribute__((always_inline))
 bool is_space(char c)
 {
 	return c == ' ';
 }
-#endif
 
 /* To handle streaming we must copy header fields to a buffer so
  * that when we reach the end of a buffer and need more bytes we
@@ -228,12 +226,14 @@ void get_string(ctx_md *msg, struct msg_http *http,
 		char *c = (char *)&dstsz[2];
 		int value = 0;
 
-		for (i = 0; i < 4; i++) {
+		for (i = 0; i < 10; i++) {
 			int dig = is_digit(c[i]);
 
 			if (dig) {
 				value *= 10;
 				value += (int)(c[i]-'0');
+			} else if (!is_space(c[i])) {
+				break;
 			}
 		}
 		http->consume_bytes = value;
