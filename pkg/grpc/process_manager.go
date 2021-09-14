@@ -425,7 +425,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			}
 		case api.MsgGenericKprobeArgFile:
 			fileArg := &fgs.KprobeFile{
-				Path: reader.SwapPath(e.Value),
+				Path: strings.TrimSuffix(reader.SwapPath(e.Value), "/"),
 			}
 			a.Arg = &fgs.KprobeArgument_FileArg{FileArg: fileArg}
 		case api.MsgGenericKprobeArgPath:
