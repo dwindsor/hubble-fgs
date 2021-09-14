@@ -653,7 +653,13 @@ func handleGenericKprobeString(r *bytes.Reader) string {
 
 	err := binary.Read(r, binary.LittleEndian, &b)
 	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("StringSz type err")
+		/* If no size then path walk was not possible and file was either
+		 * a mount point or not a "file" at all which can happen if running
+		 * without any filters and kernel opens an anonymous inode. For this
+		 * lets just report its on "/" all though pid filtering will mostly
+		 * catch this.
+		 */
+		return "/"
 	}
 	outputStr := make([]byte, b)
 	err = binary.Read(r, binary.LittleEndian, &outputStr)
