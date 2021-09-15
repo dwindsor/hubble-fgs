@@ -255,7 +255,7 @@ func enableTLSParser(tls, tc bool) *observer.ObserverSensor {
 }
 
 func (tls *tlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
-	return nil, nil
+	return AddParserSensors(spec.Parser)
 }
 
 func (tls *tlsSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
