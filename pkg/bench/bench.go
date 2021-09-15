@@ -19,7 +19,6 @@ import (
 	"sync/atomic"
 	"syscall"
 	"text/template"
-
 	"log"
 	"os"
 	"os/signal"

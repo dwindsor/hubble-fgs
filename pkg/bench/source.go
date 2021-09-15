@@ -26,6 +26,7 @@ import (
 	"sort"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
@@ -281,55 +282,19 @@ func (src tcpOrTLSRRSource) Run(ctx context.Context, sinkPort int, args SourceAr
 type goHTTPRRSource struct{}
 
 func (src goHTTPRRSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
-	runtime.LockOSThread()
-	cpuUsageBefore := GetCPUUsage(CPU_USAGE_THIS_THREAD)
-	limiter := rate.NewLimiter(rate.Limit(args.RatePerSec), 5 /* burst */)
 	url := fmt.Sprintf("http://localhost:%d", sinkPort)
-	tstart := time.Now()
-	tend := tstart.Add(args.Duration)
-	latencies := make([]time.Duration, 0, 1024)
-
-	for {
-		treq := time.Now()
-		if ctx.Err() != nil || treq.After(tend) {
-			break
+	act := func() error {
+		resp, err := http.Get(url)
+		if err != nil {
+			return err
 		}
-
-		if resp, err := http.Get(url); err != nil {
-			stats.LastError = err.Error()
-			stats.Errors++
-		} else {
-			if _, err := ioutil.ReadAll(resp.Body); err != nil {
-				stats.LastError = err.Error()
-				stats.Errors++
-			}
-			resp.Body.Close()
+		defer resp.Body.Close()
+		if _, err := ioutil.ReadAll(resp.Body); err != nil {
+			return err
 		}
-
-		latencies = append(latencies, time.Since(treq))
-
-		if args.RatePerSec > 0.0 {
-			if err := limiter.Wait(ctx); err != nil {
-				stats.LastError = err.Error()
-				stats.Errors++
-				log.Printf("limiter.Wait fail: %v\n", err)
-				break
-			}
-		}
+		return nil
 	}
-
-	n := len(latencies)
-	tend = time.Now()
-	elapsedSecs := float64(tend.Sub(tstart)) / float64(time.Second)
-	stats.ActualRate = float64(n) / elapsedSecs
-	if n > 0 {
-		sort.Sort(ByDuration(latencies))
-		stats.LatencyP50 = latencies[n/2]
-		stats.LatencyP90 = latencies[(n*9)/10]
-		stats.LatencyP99 = latencies[(n*99)/100]
-	}
-	stats.CPUUsage = GetCPUUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore)
-	return
+	return genGoSource(ctx, sinkPort, args, act)
 }
 
 //
@@ -339,72 +304,90 @@ func (src goHTTPRRSource) Run(ctx context.Context, sinkPort int, args SourceArgs
 type goHTTPCRRSource struct{}
 
 func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
-	runtime.LockOSThread()
-	cpuUsageBefore := GetCPUUsage(CPU_USAGE_THIS_THREAD)
-	limiter := rate.NewLimiter(rate.Limit(args.RatePerSec), 5 /* burst */)
-	tstart := time.Now()
-	tend := tstart.Add(args.Duration)
-	latencies := make([]time.Duration, 0, 1024)
 	dialer := &net.Dialer{Timeout: 5000 * time.Millisecond}
 	target := "127.0.0.1:" + strconv.Itoa(sinkPort)
 	req := []byte("GET / HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n")
-
-	logError := func(what string, err error) {
-		log.Printf("%s error: %s\n", what, err)
-		stats.LastError = err.Error()
-		stats.Errors++
-	}
-
-	for {
-		treq := time.Now()
-		if ctx.Err() != nil || treq.After(tend) {
-			break
-		}
-
-		if args.RatePerSec > 0.0 {
-			if err = limiter.Wait(ctx); err != nil {
-				stats.LastError = err.Error()
-				stats.Errors++
-				log.Printf("limiter.Wait fail: %v\n", err)
-				break
-			}
-		}
-
+	act := func() error {
 		conn, err := dialer.DialContext(ctx, "tcp4", target)
 		if err != nil {
-			logError("Dial", err)
-			continue
+			return fmt.Errorf("Dial: %w", err)
 		}
+		defer conn.Close()
 
 		_, err = conn.Write(req)
 		if err != nil {
-			logError("conn.Write", err)
-			conn.Close()
-			continue
+			return fmt.Errorf("Write: %w", err)
 		}
 
 		reader := bufio.NewReader(conn)
 		resp, err := http.ReadResponse(reader, nil)
 		if err != nil {
-			logError("http.ReadResponse", err)
-			conn.Close()
-			continue
+			return fmt.Errorf("http.ReadResponse: %w", err)
 		}
+		defer resp.Body.Close()
 
 		_, err = ioutil.ReadAll(resp.Body)
 		if err != nil {
-			logError("ioutil.ReadAll", err)
+			return fmt.Errorf("ReadAll: %w", err)
 		}
-
-		if err = resp.Body.Close(); err != nil {
-			logError("resp.Body.Close", err)
-		}
-		if err = conn.Close(); err != nil {
-			logError("conn.Close", err)
-		}
-
-		latencies = append(latencies, time.Since(treq))
+		return nil
 	}
+	return genGoSource(ctx, sinkPort, args, act)
+}
+
+func genGoSource(ctx context.Context, sinkPort int, args SourceArgs, act func() error) (stats SourceStats, err error) {
+	wg := sync.WaitGroup{}
+	mu := sync.Mutex{}
+	limiter := rate.NewLimiter(rate.Limit(args.RatePerSec), 50 /* burst */)
+	tstart := time.Now()
+	tend := tstart.Add(args.Duration)
+	latencies := make([]time.Duration, 0, 1024)
+
+	logError := func(err error) {
+		log.Printf("Error: %s\n", err)
+		mu.Lock()
+		stats.LastError = err.Error()
+		stats.Errors++
+		mu.Unlock()
+	}
+
+	stats.CPUUsage = CPUUsage{}
+	ncpu := runtime.NumCPU()
+	wg.Add(ncpu)
+	for i := 0; i < ncpu; i++ {
+		go func() {
+			runtime.LockOSThread()
+			latenciesPerThread := make([]time.Duration, 0, 1024)
+			cpuUsageBefore := GetCPUUsage(CPU_USAGE_THIS_THREAD)
+			for {
+				treq := time.Now()
+				if ctx.Err() != nil || treq.After(tend) {
+					break
+				}
+
+				if args.RatePerSec > 0.0 {
+					if err = limiter.Wait(ctx); err != nil {
+						logError(fmt.Errorf("limiter.Wait: %w", err))
+						break
+					}
+				}
+
+				if err := act(); err != nil {
+					logError(err)
+				}
+
+				latenciesPerThread = append(latenciesPerThread, time.Since(treq))
+			}
+
+			mu.Lock()
+			latencies = append(latencies, latenciesPerThread...)
+			stats.CPUUsage = stats.CPUUsage.Add(GetCPUUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore))
+			mu.Unlock()
+			wg.Done()
+		}()
+	}
+
+	wg.Wait()
 
 	n := len(latencies)
 	tend = time.Now()
@@ -416,7 +399,6 @@ func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 		stats.LatencyP90 = latencies[(n*9)/10]
 		stats.LatencyP99 = latencies[(n*99)/100]
 	}
-	stats.CPUUsage = GetCPUUsage(CPU_USAGE_THIS_THREAD).Sub(cpuUsageBefore)
 	return
 }
 
@@ -429,6 +411,10 @@ type netperfSource struct {
 }
 
 func (src netperfSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
+	if args.RatePerSec > 0.0 {
+		log.Printf("Netperf does not support fixed rate, ignoring requested rate.\n")
+	}
+
 	// NOTE(JM): Probing of netserver readiness with connect() seems to cause flaky results,
 	// so lets do retries instead.
 	for retry := 0; retry < 3; retry++ {

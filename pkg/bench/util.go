@@ -122,6 +122,12 @@ func (cu CPUUsage) Sub(cu2 CPUUsage) CPUUsage {
 	return cu
 }
 
+func (cu CPUUsage) Add(cu2 CPUUsage) CPUUsage {
+	cu.UserTime += cu2.UserTime
+	cu.SystemTime += cu2.SystemTime
+	return cu
+}
+
 func (cu CPUUsage) String() string {
 	return fmt.Sprintf("system=%s, user=%s, rss=%d, ctxsw=%d", cu.SystemTime, cu.UserTime, cu.MaxRss, cu.ContextSwitches)
 }
