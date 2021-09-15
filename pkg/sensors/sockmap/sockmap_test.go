@@ -88,8 +88,8 @@ spec:
 )
 
 func TestTCTLS13(t *testing.T) {
-	if kernels.MinKernelVersion("4.19.0") != true {
-		return
+	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
 	traceTCTLS13 := []*fgs.GetEventsResponse{
@@ -140,8 +140,8 @@ func TestTCTLS13(t *testing.T) {
 }
 
 func TestTCTLS12(t *testing.T) {
-	if kernels.MinKernelVersion("4.19.0") != true {
-		return
+	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
