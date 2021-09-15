@@ -141,6 +141,8 @@ func hubbleFGSExecute() error {
 			return err
 		}
 	}
+
+	logger.GetLogger().WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
 	kprobe.AddListener(processManager)
 	saveInitInfo()
 	return kprobe.Start(ctx)
