@@ -57,55 +57,6 @@ func (args *BenchArguments) String() string {
 		args.Sink, args.Source, args.Proxy, args.SourceArgs.String(), args.FgsEnableTLS, args.FgsJSONEncode)
 }
 
-func RunBenchmark(args *BenchArguments) *BenchSummary {
-	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
-	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
-
-	summary := newBenchSummary(args)
-	summary.StartTime = time.Now()
-	ctx, cancel := context.WithCancel(context.Background())
-	go sigHandler(ctx, cancel)
-
-	cpuUsageBefore := GetCPUUsage(CPU_USAGE_ALL_THREADS)
-	runBenchmark(ctx, cancel, args, summary)
-	cpuUsageAfter := GetCPUUsage(CPU_USAGE_ALL_THREADS)
-
-	if !args.Baseline {
-		summary.FgsCPUUsage = cpuUsageAfter.Sub(cpuUsageBefore)
-		if !summary.SinkStats.Forked {
-			summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SinkStats.CPUUsage)
-		}
-		if !summary.SourceStats.Forked {
-			summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SourceStats.CPUUsage)
-		}
-
-		// Roughly validate the event counters
-		if summary.Error == "" {
-			if args.FgsEnableTLS && strings.Contains(string(args.Source), "tls") {
-				if summary.TLSEvents < 1 {
-					summary.Error += "No TLS events received! "
-				}
-			}
-
-			/* TODO(JM): Disabled due to HTTP parser broken on localhost connections.
-			 * (skb non-linear and data not pulled)
-
-			if args.FgsEnableHTTP && strings.Contains(string(args.Source), "http") {
-				if summary.HTTPEvents < 1 {
-					summary.Error += "No HTTP events received! "
-				}
-			}
-			*/
-
-			if summary.TCPEvents < 1 {
-				summary.Error += "No TCP events received! "
-			}
-		}
-	}
-
-	return summary
-}
-
 func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx context.Context, ready chan bool) {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
@@ -256,7 +207,16 @@ func startBenchmarkExporter(ctx context.Context, kprobe *observer.ObserverKprobe
 	return nil
 }
 
-func runBenchmark(ctx context.Context, cancel context.CancelFunc, args *BenchArguments, summary *BenchSummary) {
+func RunBenchmark(args *BenchArguments) (summary *BenchSummary) {
+	ctx, cancel := context.WithCancel(context.Background())
+	go sigHandler(ctx, cancel)
+	
+	summary = newBenchSummary(args)
+	summary.StartTime = time.Now()
+
+	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
+	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
+	
 	EnableBpfStats()
 	oldBpfStats := GetBpfStats()
 
@@ -292,10 +252,10 @@ func runBenchmark(ctx context.Context, cancel context.CancelFunc, args *BenchArg
 	if err != nil {
 		summary.Error = fmt.Sprintf("Proxy %s failed: %s", args.Proxy, err)
 		cancel()
-		return
 	}
 
 	// Run the source and wait for it to terminate
+	cpuUsageBefore := GetCPUUsage(CPU_USAGE_ALL_THREADS)
 	log.Printf("Starting source '%s'...\n", args.Source)
 	sourceStats, err := sources[args.Source].Run(ctx, targetPort, args.SourceArgs)
 	if err != nil {
@@ -303,6 +263,7 @@ func runBenchmark(ctx context.Context, cancel context.CancelFunc, args *BenchArg
 		cancel()
 		return
 	}
+	cpuUsageAfter := GetCPUUsage(CPU_USAGE_ALL_THREADS)
 
 	summary.SourceStats = sourceStats
 	summary.BpfStats = GetBpfStatsSince(oldBpfStats)
@@ -319,7 +280,42 @@ func runBenchmark(ctx context.Context, cancel context.CancelFunc, args *BenchArg
 	// Wait for FGS to finish cleaning up.
 	<-fgsFinished
 
+	if !args.Baseline {
+		summary.FgsCPUUsage = cpuUsageAfter.Sub(cpuUsageBefore)
+		if !summary.SinkStats.Forked {
+			summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SinkStats.CPUUsage)
+		}
+		if !summary.SourceStats.Forked {
+			summary.FgsCPUUsage = summary.FgsCPUUsage.Sub(summary.SourceStats.CPUUsage)
+		}
+
+		// Roughly validate the event counters
+		if summary.Error == "" {
+			if args.FgsEnableTLS && strings.Contains(string(args.Source), "tls") {
+				if summary.TLSEvents < 1 {
+					summary.Error += "No TLS events received! "
+				}
+			}
+
+			/* TODO(JM): Disabled due to HTTP parser broken on localhost connections.
+			 * (skb non-linear and data not pulled)
+
+			if args.FgsEnableHTTP && strings.Contains(string(args.Source), "http") {
+				if summary.HTTPEvents < 1 {
+					summary.Error += "No HTTP events received! "
+				}
+			}
+			*/
+
+			if summary.TCPEvents < 1 {
+				summary.Error += "No TCP events received! "
+			}
+		}
+	}
+
+
 	log.Printf("Benchmark finished: %.2f per sec, %d error(s)", sourceStats.ActualRate, sourceStats.Errors)
+	return
 }
 
 func sigHandler(ctx context.Context, cancel context.CancelFunc) {
@@ -328,6 +324,7 @@ func sigHandler(ctx context.Context, cancel context.CancelFunc) {
 
 	select {
 	case <-ctx.Done():
+		close(sigs)
 		return
 	case sig := <-sigs:
 		log.Printf("Signal '%s' received, stopping...\n", sig)
