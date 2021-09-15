@@ -45,8 +45,9 @@ func (bps *BpfProgStats) String() string {
 		name = "<unnamed>"
 	}
 
-	return fmt.Sprintf("%-16s [%s/%d]:\t%s",
-		name, bps.Type, bps.Id, duration)
+	return fmt.Sprintf("%-16s [%s/%d]:\t%.2fµs (%d)",
+		name, bps.Type, bps.Id,
+		float64(duration)/float64(time.Microsecond), bps.RunCnt)
 }
 
 func GetBpfStatsSince(oldStats map[int64]*BpfProgStats) map[int64]*BpfProgStats {
