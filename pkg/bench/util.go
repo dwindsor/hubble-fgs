@@ -33,6 +33,7 @@ type CPUUsage struct {
 	SystemTime time.Duration
 	UserTime   time.Duration
 	MaxRss     int64
+	ContextSwitches int64
 }
 
 type CPUUsageTarget int
@@ -46,6 +47,7 @@ func CPUUsageFromRusage(rusage *syscall.Rusage) (cpuUsage CPUUsage) {
 	cpuUsage.UserTime = timevalToDuration(rusage.Utime)
 	cpuUsage.SystemTime = timevalToDuration(rusage.Stime)
 	cpuUsage.MaxRss = rusage.Maxrss
+	cpuUsage.ContextSwitches = rusage.Nivcsw + rusage.Nvcsw
 	return
 }
 
@@ -116,11 +118,12 @@ func timevalToDuration(tv syscall.Timeval) time.Duration {
 func (cu CPUUsage) Sub(cu2 CPUUsage) CPUUsage {
 	cu.UserTime -= cu2.UserTime
 	cu.SystemTime -= cu2.SystemTime
+	cu.ContextSwitches -= cu2.ContextSwitches
 	return cu
 }
 
 func (cu CPUUsage) String() string {
-	return fmt.Sprintf("system=%s, user=%s, rss=%d", cu.SystemTime, cu.UserTime, cu.MaxRss)
+	return fmt.Sprintf("system=%s, user=%s, rss=%d, ctxsw=%d", cu.SystemTime, cu.UserTime, cu.MaxRss, cu.ContextSwitches)
 }
 
 type CountingDiscardWriter struct {
