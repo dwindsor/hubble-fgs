@@ -18,6 +18,9 @@ import (
 	"time"
 
 	"github.com/fatih/color"
+	"github.com/isovalent/hubble-fgs/pkg/metrics"
+	"github.com/prometheus/client_golang/prometheus"
+	dto "github.com/prometheus/client_model/go"
 )
 
 // BenchSummary gathers benchmark results. Serializes to JSON.
@@ -53,6 +56,13 @@ func (s *BenchSummary) Dump() {
 	}
 }
 
+func getGaugeValue(gauge prometheus.Gauge) int {
+	// Yep, this does seem to be the only way to read it.
+	var d dto.Metric
+	gauge.Write(&d)
+	return int(*d.Gauge.Value)
+}
+
 func (s *BenchSummary) PrettyPrint() {
 	color.Set(color.FgBlue)
 	fmt.Println("Benchmark summary")
@@ -78,6 +88,10 @@ func (s *BenchSummary) PrettyPrint() {
 		fmt.Printf("Events:            tls=%d, http=%d, tcp=%d, exit=%d, exec=%d\n",
 			s.TLSEvents, s.HTTPEvents, s.TCPEvents,
 			s.ExitEvents, s.ExecEvents)
+		fmt.Printf("Ring buffer:       received=%d, lost=%d, errors=%d\n",
+		           getGaugeValue(metrics.RingBufPerfEventReceived.WithLabelValues()),
+		           getGaugeValue(metrics.RingBufPerfEventLost.WithLabelValues()),
+		           getGaugeValue(metrics.RingBufPerfEventErrors.WithLabelValues()))
 	}
 
 	if s.SourceStats.Errors > 0 {
