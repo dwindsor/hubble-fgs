@@ -21,7 +21,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"testing"
 	"time"
 
@@ -143,12 +142,28 @@ func TestExecEventClone(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
+	orig := "nc.traditional"
+	server := orig
+	client := server
+	if _, err := exec.LookPath(server); err != nil {
+		server = "nc"
+		client = server
+
+		if _, err := exec.LookPath(server); err != nil {
+			t.Fatalf("Binary server=%q,client=%q doesn't exist on host machine, cannot continue",
+				server, client)
+		}
+
+		t.Logf("Using server=%v,client=%v instead of original programs (server=%v,client=%v)",
+			server, client, orig, orig)
+	}
+
 	selfChecker := ec.NewProcessChecker().WithBinary(ec.SuffixStringMatch(selfBinary))
 	ncSrvChecker := ec.NewProcessChecker().
-		WithBinary(ec.SuffixStringMatch("nc.traditional")).
+		WithBinary(ec.SuffixStringMatch(server)).
 		WithArguments(ec.FullStringMatch("-nvlp 8081"))
 	ncCliChecker := ec.NewProcessChecker().
-		WithBinary(ec.SuffixStringMatch("nc.traditional")).
+		WithBinary(ec.SuffixStringMatch(client)).
 		WithArguments(ec.FullStringMatch("127.0.0.1 8081 -e /bin/sh"))
 
 	checker := ec.NewOrderedMultiResponseChecker(
@@ -194,28 +209,27 @@ func TestExecEventClone(t *testing.T) {
 	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
 	execWG.Wait()
-	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
-	cmdServer.Start()
+	cmdServer := exec.Command(server, "-nvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command("nc.traditional", "127.0.0.1", "8081", "-e", "/bin/sh")
-	cmdClient.Start()
+	cmdClient := exec.Command(client, "127.0.0.1", "8081", "-e", "/bin/sh")
+	assert.NoError(t, cmdClient.Start())
 	exitWG.Wait()
 
-	if cmdServer != nil {
-		cmdServer.Process.Kill()
-	}
-	if cmdClient != nil {
-		cmdClient.Process.Kill()
-	}
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
+
 	TestDone(t, kprobe)
 }
 
 func TestExistingListenEvent(t *testing.T) {
+	server := getNCCommand(t, "nc.traditional")
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
 	ncChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("nc.traditional"), ec.FullStringMatch("-nvlp 8081"),
+		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
 	)
 
 	checker := ec.NewOrderedMultiResponseChecker(
@@ -236,8 +250,8 @@ func TestExistingListenEvent(t *testing.T) {
 	)
 
 	/* Start server before creating kprobe */
-	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
-	cmdServer.Start()
+	cmdServer := exec.Command(server, "-nvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
 
 	/* Create kprobe */
 	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
@@ -245,12 +259,11 @@ func TestExistingListenEvent(t *testing.T) {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
-	if cmdServer != nil {
-		cmdServer.Process.Kill()
-	}
+	killAndWaitCommand(t, cmdServer)
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
+
 	TestDone(t, kprobe)
 }
 
@@ -259,9 +272,12 @@ func TestExistingAcceptEvent(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
+	server := getNCCommand(t, "nc.traditional")
+	client := server
+
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
 	ncChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("nc.traditional"), ec.FullStringMatch("-nvlp 8081"),
+		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
 	)
 
 	checker := ec.NewOrderedMultiResponseChecker(
@@ -288,9 +304,9 @@ func TestExistingAcceptEvent(t *testing.T) {
 	)
 
 	/* Start server before creating kprobe */
-	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
+	cmdServer := exec.Command(server, "-nvlp", "8081")
 	fmt.Printf("cmd: %s\n", cmdServer)
-	cmdServer.Start()
+	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create kprobe */
@@ -302,27 +318,25 @@ func TestExistingAcceptEvent(t *testing.T) {
 
 	execWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command("nc.traditional", "127.0.0.1", "8081")
+	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	fmt.Printf("cmd: %s\n", cmdClient)
-	cmdClient.Start()
+	assert.NoError(t, cmdClient.Start())
 	exitWG.Wait()
 
-	if cmdClient != nil {
-		cmdClient.Process.Signal(syscall.SIGKILL)
-	}
-	if cmdServer != nil {
-		cmdServer.Process.Signal(syscall.SIGKILL)
-	}
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
+
 	TestDone(t, kprobe)
 }
 
 func TestExistingRootCWDListenEvent(t *testing.T) {
+	server := getNCCommand(t, "nc.traditional")
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
 	ncChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("nc.traditional"), ec.FullStringMatch("-nvlp 8081"),
+		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
 	)
 
 	checker := ec.NewOrderedMultiResponseChecker(
@@ -349,8 +363,8 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 
 	/* Start server in '/' before creating kprobe */
 	os.Chdir("/")
-	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
-	cmdServer.Start()
+	cmdServer := exec.Command(server, "-nvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
 	os.Chdir(path)
 
 	/* Create kprobe */
@@ -359,12 +373,11 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
-	if cmdServer != nil {
-		cmdServer.Process.Kill()
-	}
+	killAndWaitCommand(t, cmdServer)
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
+
 	TestDone(t, kprobe)
 }
 
@@ -373,9 +386,12 @@ func TestListenAcceptClose(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
+	server := getNCCommand(t, "nc.traditional")
+	client := server
+
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
 	ncSrvChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("nc.traditional"), ec.FullStringMatch("-nvlp 8081"),
+		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
 	)
 
 	checker := ec.NewOrderedMultiResponseChecker(
@@ -418,23 +434,45 @@ func TestListenAcceptClose(t *testing.T) {
 	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
 
 	execWG.Wait()
-	cmdServer := exec.Command("nc.traditional", "-nvlp", "8081")
-	cmdServer.Start()
+	cmdServer := exec.Command(server, "-nvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command("nc.traditional", "127.0.0.1", "8081")
-	cmdClient.Start()
+	cmdClient := exec.Command(client, "127.0.0.1", "8081")
+	assert.NoError(t, cmdClient.Start())
 	exitWG.Wait()
 
-	if cmdClient != nil {
-		cmdClient.Process.Signal(syscall.SIGKILL)
-	}
-	if cmdServer != nil {
-		cmdServer.Process.Signal(syscall.SIGKILL)
-	}
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
+
 	TestDone(t, kprobe)
+}
+
+func getNCCommand(t *testing.T, orig string) string {
+	if _, err := exec.LookPath(orig); err == nil {
+		return orig
+	}
+
+	server := "nc"
+	if _, err := exec.LookPath(server); err != nil {
+		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
+	}
+	t.Logf("Using %q instead of original program %q", server, orig)
+
+	return server
+}
+
+func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
+	if cmd != nil {
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		} else {
+			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
+		}
+		_ = cmd.Wait()
+	}
 }
 
 func TestSensorLseekLoad(t *testing.T) {
