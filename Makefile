@@ -87,21 +87,21 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench lib/libbpf.so.0
 
 test:
-	$(GO) test $(GOFLAGS) -timeout 20m -failfast -cover $$(go list $(GOFLAGS) ./...)
+	$(GO) test $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover $$(go list $(GOFLAGS) ./...)
 
 test-compile:
 	mkdir -p go-tests
-	$(GO) test -c ./pkg/bugtool               -o go-tests/bugtool.test
-	$(GO) test -c ./pkg/filters               -o go-tests/filters.test
-	$(GO) test -c ./pkg/grpc                  -o go-tests/grpc.test
-	$(GO) test -c ./pkg/metrics               -o go-tests/metrics.test
-	$(GO) test -c ./pkg/observer              -o go-tests/observer.test
-	$(GO) test -c ./pkg/reader                -o go-tests/reader.test
-	$(GO) test -c ./pkg/stacktracetree        -o go-tests/stacktracetree.test
-	$(GO) test -c ./pkg/vtuplefilter          -o go-tests/vtuplefilter.test
-	$(GO) test -c ./pkg/tracepoint            -o go-tests/tracepoint.test
-	$(GO) test -c ./pkg/config               -o go-tests/config.test
-	$(GO) test -c ./pkg/idtable               -o go-tests/idtable.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/bugtool         -o go-tests/bugtool.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/filters         -o go-tests/filters.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/grpc            -o go-tests/grpc.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/metrics         -o go-tests/metrics.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/observer        -o go-tests/observer.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/reader          -o go-tests/reader.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/stacktracetree  -o go-tests/stacktracetree.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/vtuplefilter    -o go-tests/vtuplefilter.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/tracepoint      -o go-tests/tracepoint.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/config          -o go-tests/config.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/idtable         -o go-tests/idtable.test
 
 test-kernels:
 	#kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
