@@ -131,7 +131,7 @@ spec:
   description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
-    return: false 
+    return: false
     syscall: true
     args:
     - index: 0
@@ -710,10 +710,7 @@ spec:
 }
 
 var (
-	// NB: there seems to be a bug here, because the result we return is
-	// tmp/testfile/. Until the bug is fixed, we just test the prefix.
-	// see: https://github.com/isovalent/hubble-fgs/issues/693
-	writeArg0 = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.PrefixStringMatch("tmp/testfile"))
+	writeArg0 = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch("testfile"))
 	writeArg1 = ec.GenericArgBytesCheck([]byte("hello world"))
 	writeArg2 = ec.GenericArgSizeCheck(11)
 
