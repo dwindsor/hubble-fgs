@@ -44,6 +44,7 @@ jobs:
         with:
           persist-credentials: false
           ref: ${{ steps.tag.outputs.tag }}
+          fetch-depth: 0
 
       # master branch pushes
       - name: CI Build (master)
