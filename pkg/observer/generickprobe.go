@@ -748,9 +748,6 @@ func (k *observerKprobeSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*O
 	return nil, nil
 }
 
-func (k *observerKprobeSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	return loadGenericKprobeSensor(bpfDir, mapDir, load, version, Verbosity)
+func (k *observerKprobeSensor) LoadProbe(args LoadProbeArgs) (error, int) {
+	return loadGenericKprobeSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose)
 }

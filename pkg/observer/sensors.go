@@ -65,7 +65,15 @@ type observerSensorImpl interface {
 
 type observerTracingSensor interface {
 	SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error)
-	LoadProbe(bpfDir, mapDir, ciliumDir string, l *BpfLoad, version, verbose int, x64 bool) (error, int)
+	LoadProbe(args LoadProbeArgs) (error, int)
+}
+
+// LoadProbeArgs are the args to the LoadProbe function.
+type LoadProbeArgs struct {
+	BPFDir, MapDir, CiliumDir string
+	Load                      *BpfLoad
+	Version, Verbose          int
+	X64                       bool
 }
 
 // RegisterTracingSensorsAtInit registers a handler for Tracing policy.

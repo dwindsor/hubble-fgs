@@ -115,11 +115,8 @@ type sockopsSensor struct {
 	name string
 }
 
-func (*sockopsSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *observer.BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	return observer.ObserverLoadSockops(bpfDir, mapDir, ciliumDir, load, version, 0, x64, tlsSelectors, http.Selectors)
+func (*sockopsSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+	return observer.ObserverLoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors)
 }
 
 func (*sockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
@@ -144,22 +141,19 @@ type skmsgTLSSensor struct {
 	name string
 }
 
-func (skmsg *skmsgTLSSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *observer.BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	path := filepath.Join(mapDir, tlsSockMapName)
-	err, i := observer.ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
+func (skmsg *skmsgTLSSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+	path := filepath.Join(args.MapDir, tlsSockMapName)
+	err, i := observer.ObserverLoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
 	if err != nil {
 		return err, i
 	}
 	if utils.SkSkbParserRequired() {
-		err, i = observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, SkSkbParser, version, 0, x64, path)
+		err, i = observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return observer.ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, SkSkbVerdict, version, 0, x64, path)
+	return observer.ObserverLoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
 }
 
 func (skmsg *skmsgTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
@@ -170,11 +164,8 @@ type skSkbVerdictTLSSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *observer.BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	return observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, tlsSockMapName))
+func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+	return observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
 }
 
 func (skmsg *skSkbVerdictTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
@@ -185,11 +176,8 @@ type skSkbParserTLSSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserTLSSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *observer.BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	return observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, tlsSockMapName))
+func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+	return observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
 }
 
 func (skmsg *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
@@ -270,9 +258,6 @@ func (tls *tlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.O
 	return nil, nil
 }
 
-func (tls *tlsSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *observer.BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	return observer.ObserverLoadTC(bpfDir, mapDir, ciliumDir, load, version, observer.Verbosity, tlsSelectors)
+func (tls *tlsSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+	return observer.ObserverLoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
 }

@@ -546,9 +546,6 @@ func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec)
 	return nil, nil
 }
 
-func (t *observerTracepointSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	return LoadGenericTracepointSensor(bpfDir, mapDir, load, version, verbose, x64)
+func (t *observerTracepointSensor) LoadProbe(args LoadProbeArgs) (error, int) {
+	return LoadGenericTracepointSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose, args.X64)
 }

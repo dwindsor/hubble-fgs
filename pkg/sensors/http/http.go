@@ -91,24 +91,20 @@ type sensor struct {
 	name string
 }
 
-func (sockops *sensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *observer.BpfLoad, version, verbose int,
-	x64 bool,
-) (error, int) {
-	path := filepath.Join(mapDir, httpSockMapName)
-	err, i := observer.ObserverLoadSkmsg(bpfDir, mapDir, ciliumDir, load, version, 0, x64, path)
+func (sockops *sensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+	path := filepath.Join(args.MapDir, httpSockMapName)
+	err, i := observer.ObserverLoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
 	if err != nil {
 		return err, i
 	}
 
 	if utils.SkSkbParserRequired() {
-		err, i = observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, SkSkbParser, version, 0, x64, path)
+		err, i = observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return observer.ObserverLoadSkSkbVerdict(bpfDir, mapDir, ciliumDir, SkSkbVerdict, version, 0, x64, path)
+	return observer.ObserverLoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
 }
 
 func (tls *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
@@ -119,11 +115,8 @@ type skSkbVerdictSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *observer.BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	return observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, httpSockMapName))
+func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+	return observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
 }
 
 func (skmsg *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
@@ -134,11 +127,8 @@ type skSkbParserSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserSensor) LoadProbe(
-	bpfDir, mapDir, ciliumDir string,
-	load *observer.BpfLoad,
-	version, verbose int, x64 bool) (error, int) {
-	return observer.ObserverLoadSkSkb(bpfDir, mapDir, ciliumDir, load, version, verbose, x64, filepath.Join(mapDir, httpSockMapName))
+func (skSkbParser *skSkbParserSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+	return observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
 }
 
 func (skmsg *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
