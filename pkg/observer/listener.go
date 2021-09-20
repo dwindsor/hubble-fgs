@@ -17,7 +17,9 @@ import (
 	"net"
 )
 
-// Listener defines the interface to receive events from ObserverKprobe.
+// Listener defines the interface to receive events from Observer. Listeners
+// will merge and complete out-of-order events before they're passed to
+// human-readable sinks such as the printer or GRPC encoder.
 type Listener interface {
 	// Notify gets called for each events from ObserverKprobe.
 	Notify(msg interface{}) error

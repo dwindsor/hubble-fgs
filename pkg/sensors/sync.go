@@ -1,0 +1,522 @@
+package sensors
+
+import (
+	"context"
+	"errors"
+	"fmt"
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"strings"
+
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	sttManager "github.com/isovalent/hubble-fgs/pkg/observer/stt"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
+)
+
+// StartSensorManager initializes the sensorCtlHandle by spawning a sensor
+// controller goroutine.
+//
+// The purpose of this goroutine is to serialize loading and unloading of
+// sensors as requested from different goroutines (e.g., different GRPC
+// clients).
+func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
+	var m Manager
+
+	if manager != nil {
+		return nil, fmt.Errorf("failed to start sensor controller: channel already exists")
+	}
+
+	c := make(chan sensorOp)
+	go func() {
+		done := false
+		for !done {
+			op_ := <-c
+			err := errors.New("BUG in SensorCtl: unset error value")
+			switch op := op_.(type) {
+
+			case *tracingPolicyAdd:
+				var sensor *Sensor
+				if _, exists := availableSensors[op.sensorName]; exists {
+					err = fmt.Errorf("sensor %s already exists", op.sensorName)
+					break
+				}
+				for _, s := range registeredTracingSensors {
+					sensor, err = s.SpecHandler(op.spec)
+					if err != nil {
+						break
+					}
+					if sensor == nil {
+						continue
+					}
+
+					availableSensors[op.sensorName] = sensor
+					err = sensor.Load(op.ctx, bpfDir, mapDir, ciliumDir)
+					if err != nil {
+						break
+					}
+				}
+
+			case *tracingPolicyDel:
+				sensor, exists := availableSensors[op.sensorName]
+				if !exists {
+					err = fmt.Errorf("sensor %s does not exist", op.sensorName)
+					break
+				}
+				if err = UnloadSensor(bpfDir, mapDir, sensor, op.ctx); err == nil {
+					delete(availableSensors, op.sensorName)
+				}
+
+			case *sensorAdd:
+				if _, exists := availableSensors[op.name]; exists {
+					err = fmt.Errorf("sensor %s already exists", op.name)
+					break
+				}
+				availableSensors[op.name] = op.sensor
+				err = nil
+
+			case *sensorRemove:
+				sensor, exists := availableSensors[op.name]
+				if !exists {
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+				if sensor.Loaded {
+					err = fmt.Errorf("sensor %s enabled, please disable it before removing", op.name)
+					break
+				}
+				delete(availableSensors, op.name)
+				err = nil
+
+			case *sensorEnable:
+				sensor := availableSensors[op.name]
+				if sensor == nil {
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+
+				// NB: For now, we don't treat a sensor already loaded as an error
+				// because that would complicate the client side, but we might have
+				// to reconsider
+				if sensor.Loaded {
+					logger.GetLogger().Infof("ignoring enableSensor %s since sensor is already enabled", sensor.Name)
+					err = nil
+					break
+				}
+				err = sensor.Load(op.ctx, bpfDir, mapDir, ciliumDir)
+				if err == nil && sensor.Ops != nil {
+					sensor.Ops.Loaded(LoadArg{STTManagerHandle: op.sttManagerHandle})
+				}
+
+			case *sensorDisable:
+				sensor := availableSensors[op.name]
+				if sensor == nil {
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+				// NB: ditto as sensorEnable
+				if !sensor.Loaded {
+					logger.GetLogger().Infof("ignoring disableSensor %s since sensor is not enabled", sensor.Name)
+					err = nil
+					break
+				}
+				err = UnloadSensor(bpfDir, mapDir, sensor, op.ctx)
+				if err == nil && sensor.Ops != nil {
+					sensor.Ops.Unloaded(UnloadArg{STTManagerHandle: op.sttManagerHandle})
+				}
+
+			case *sensorList:
+				ret := make([]api.SensorStatus, 0, len(availableSensors))
+				for n, s := range availableSensors {
+					ret = append(ret, api.SensorStatus{n, s.Loaded})
+				}
+				op.result = &ret
+				err = nil
+
+			case *sensorConfigSet:
+				sensor := availableSensors[op.name]
+				if sensor == nil {
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+				if sensor.Ops == nil {
+					err = fmt.Errorf("sensor %s does not support configuration", op.name)
+					break
+				}
+				err = sensor.Ops.SetConfig(op.key, op.val)
+
+			case *sensorConfigGet:
+				sensor := availableSensors[op.name]
+				if sensor == nil {
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+				if sensor.Ops == nil {
+					err = fmt.Errorf("sensor %s does not support configuration", op.name)
+					break
+				}
+				op.val, err = sensor.Ops.GetConfig(op.key)
+
+			case *sensorCtlStop:
+				logger.GetLogger().Debugf("stopping sensor controller...")
+				done = true
+				err = nil
+
+			default:
+				err = fmt.Errorf("unknown sensorOp: %v", op)
+			}
+
+			op_.sensorOpDone(err)
+		}
+	}()
+
+	m.STTManager = sttManager.StartSttManager()
+	m.sensorCtl = c
+	return &m, nil
+}
+
+func RemoveProgram(bpfDir string, prog *bpf.Program) {
+	path := filepath.Join(bpfDir, prog.PinPath)
+	os.Remove(path)
+	if prog.Type == "generic_kprobe" {
+		coreFile := ""
+		splitProg := strings.Split(prog.PinPath, "__")
+		if (len(splitProg)) > 1 {
+			coreFile = splitProg[1]
+		} else {
+			splitProg = strings.Split(prog.PinPath, "kprobe_")
+			if len(splitProg) < 2 {
+				splitProg = strings.Split(prog.PinPath, "kretprobe_")
+			}
+			coreFile = splitProg[1]
+		}
+		fmt.Printf("remove strings %s\n", coreFile)
+		files, err := ioutil.ReadDir(bpfDir)
+		if err == nil {
+			for _, f := range files {
+				if strings.Contains(f.Name(), coreFile) {
+					if f.IsDir() {
+						os.RemoveAll(filepath.Join(bpfDir, f.Name()))
+					} else {
+						os.Remove(filepath.Join(bpfDir, f.Name()))
+					}
+				}
+			}
+		}
+		os.Remove(path + "-kp-calls")
+	}
+	if prog.TraceFD >= 0 {
+		removeTracepoint(prog.TraceFD)
+		prog.TraceFD = -1
+	}
+}
+
+func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) error {
+	logger.GetLogger().Infof("Unloading sensor %s", sensor.Name)
+	if !sensor.Loaded {
+		return fmt.Errorf("unload of sensor %s failed: sensor not loaded", sensor.Name)
+	}
+
+	for _, p := range sensor.Progs {
+		RemoveProgram(bpfDir, p)
+	}
+
+	for _, m := range sensor.Maps {
+		os.Remove(filepath.Join(mapDir, m.Name))
+	}
+
+	sensor.Loaded = false
+	return nil
+}
+
+/*
+ * Sensor operations
+ */
+
+// EnableSensor enables a sensor by name
+func (h *Manager) EnableSensor(ctx context.Context, name string) error {
+	retc := make(chan error)
+	op := &sensorEnable{
+		ctx:              ctx,
+		name:             name,
+		sttManagerHandle: h.STTManager,
+		retChan:          retc,
+	}
+
+	h.sensorCtl <- op
+	err := <-retc
+
+	return err
+}
+
+// AddSensor adds a sensor
+func (h *Manager) AddSensor(ctx context.Context, name string, sensor *Sensor) error {
+	retc := make(chan error)
+	op := &sensorAdd{
+		ctx:     ctx,
+		name:    name,
+		sensor:  sensor,
+		retChan: retc,
+	}
+
+	h.sensorCtl <- op
+	return <-retc
+}
+
+// DisableSensor disables a sensor by name
+func (h *Manager) DisableSensor(ctx context.Context, name string) error {
+	retc := make(chan error)
+	op := &sensorDisable{
+		ctx:              ctx,
+		name:             name,
+		sttManagerHandle: h.STTManager,
+		retChan:          retc,
+	}
+
+	h.sensorCtl <- op
+	return <-retc
+}
+
+func (h *Manager) ListSensors(ctx context.Context) (*[]api.SensorStatus, error) {
+	retc := make(chan error)
+	op := &sensorList{
+		ctx:     ctx,
+		retChan: retc,
+	}
+
+	h.sensorCtl <- op
+	err := <-retc
+	if err == nil {
+		return op.result, nil
+	} else {
+		return nil, err
+	}
+}
+
+func (h *Manager) GetSensorConfig(ctx context.Context, name string, cfgkey string) (string, error) {
+	retc := make(chan error)
+	op := &sensorConfigGet{
+		ctx:     ctx,
+		name:    name,
+		key:     cfgkey,
+		retChan: retc,
+	}
+
+	h.sensorCtl <- op
+	err := <-retc
+	if err == nil {
+		return op.val, nil
+	} else {
+		return "", err
+	}
+}
+
+func (h *Manager) SetSensorConfig(ctx context.Context, name string, cfgkey string, cfgval string) error {
+	retc := make(chan error)
+	op := &sensorConfigSet{
+		ctx:     ctx,
+		name:    name,
+		key:     cfgkey,
+		val:     cfgval,
+		retChan: retc,
+	}
+
+	h.sensorCtl <- op
+	return <-retc
+}
+
+// AddTracingPolicy adds a new sensor based on a tracing policy
+func (h *Manager) AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error {
+	retc := make(chan error)
+	op := &tracingPolicyAdd{
+		ctx:        ctx,
+		sensorName: sensorName,
+		spec:       spec,
+		retChan:    retc,
+	}
+
+	h.sensorCtl <- op
+	err := <-retc
+
+	return err
+}
+
+// DelTracingPolicy deletes a new sensor based on a tracing policy
+func (h *Manager) DelTracingPolicy(ctx context.Context, sensorName string) error {
+	retc := make(chan error)
+	op := &tracingPolicyDel{
+		ctx:        ctx,
+		sensorName: sensorName,
+		retChan:    retc,
+	}
+
+	h.sensorCtl <- op
+	err := <-retc
+
+	return err
+}
+
+func (h *Manager) RemoveSensor(ctx context.Context, sensorName string) error {
+	retc := make(chan error)
+	op := &sensorRemove{
+		ctx:     ctx,
+		name:    sensorName,
+		retChan: retc,
+	}
+
+	h.sensorCtl <- op
+	err := <-retc
+
+	return err
+}
+
+func (h *Manager) StopSensorManager(ctx context.Context) error {
+	retc := make(chan error)
+	op := &sensorCtlStop{
+		ctx:     ctx,
+		retChan: retc,
+	}
+
+	h.sensorCtl <- op
+	return <-retc
+}
+
+func (s *Manager) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error) {
+	h := s.STTManager
+	if h == nil {
+		return nil, fmt.Errorf("GetTreeProto failed, sttManagerHandle is nil")
+	}
+
+	retc := make(chan error)
+	op := &sttManager.SttMgTreeToProto{
+		TreeName: tname,
+		RetChan:  retc,
+	}
+	h <- op
+	err := <-retc
+	if err != nil {
+		return nil, err
+	} else {
+		return op.RootNode, nil
+	}
+}
+
+// Manager handles dynamic sensor management, such as adding / removing sensors
+// at runtime.
+type Manager struct {
+	sensorCtl  sensorCtlHandle
+	STTManager sttManager.SttManagerHandle
+}
+
+// There are 6 commands that can be passed to the controller goroutine:
+// - tracingPolicyAdd
+// - tracingPolicyDel
+// - sensorList
+// - sensorEnable
+// - sensorDisable
+// - sensorRemove
+// - sensorCtlStop
+
+// tracingPolicyAdd adds a sensor based on a the provided tracing policy
+type tracingPolicyAdd struct {
+	ctx        context.Context
+	sensorName string
+	spec       *v1alpha1.TracingPolicySpec
+	retChan    chan error
+}
+
+type tracingPolicyDel struct {
+	ctx        context.Context
+	sensorName string
+	retChan    chan error
+}
+
+// sensorOp is an interface for the sensor operations.
+// Not strictly needed but allows for better type checking.
+type sensorOp interface {
+	sensorOpDone(error)
+}
+
+// sensorAdd adds a sensor
+type sensorAdd struct {
+	ctx     context.Context
+	name    string
+	sensor  *Sensor
+	retChan chan error
+}
+
+// sensorRemove removes a sensor (for now, used only for tracing policies)
+type sensorRemove struct {
+	ctx     context.Context
+	name    string
+	retChan chan error
+}
+
+// sensorEnable enables a sensor
+type sensorEnable struct {
+	ctx              context.Context
+	name             string
+	sttManagerHandle sttManager.SttManagerHandle
+	retChan          chan error
+}
+
+// sensorDisable disables a sensor
+type sensorDisable struct {
+	ctx              context.Context
+	name             string
+	sttManagerHandle sttManager.SttManagerHandle
+	retChan          chan error
+}
+
+// sensorList returns a list of the active sensors
+type sensorList struct {
+	ctx     context.Context
+	result  *[]api.SensorStatus
+	retChan chan error
+}
+
+// set a configuration option on a sensor
+type sensorConfigSet struct {
+	ctx     context.Context
+	name    string
+	key     string
+	val     string
+	retChan chan error
+}
+
+// get a configuration option on a sensor
+type sensorConfigGet struct {
+	ctx     context.Context
+	name    string
+	key     string
+	val     string
+	retChan chan error
+}
+
+// sensorCtlStop stops the controller
+type sensorCtlStop struct {
+	ctx     context.Context
+	retChan chan error
+}
+
+type LoadArg struct {
+	STTManagerHandle sttManager.SttManagerHandle
+}
+type UnloadArg = LoadArg
+
+// trivial sensorOpDone implementations for commands
+func (s *tracingPolicyAdd) sensorOpDone(e error) { s.retChan <- e }
+func (s *tracingPolicyDel) sensorOpDone(e error) { s.retChan <- e }
+func (s *sensorAdd) sensorOpDone(e error)        { s.retChan <- e }
+func (s *sensorRemove) sensorOpDone(e error)     { s.retChan <- e }
+func (s *sensorEnable) sensorOpDone(e error)     { s.retChan <- e }
+func (s *sensorDisable) sensorOpDone(e error)    { s.retChan <- e }
+func (s *sensorList) sensorOpDone(e error)       { s.retChan <- e }
+func (s *sensorConfigSet) sensorOpDone(e error)  { s.retChan <- e }
+func (s *sensorConfigGet) sensorOpDone(e error)  { s.retChan <- e }
+func (s *sensorCtlStop) sensorOpDone(e error)    { s.retChan <- e }
+
+type sensorCtlHandle = chan<- sensorOp

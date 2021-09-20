@@ -32,9 +32,11 @@ import (
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 )
 
 type BenchArguments struct {
@@ -66,65 +68,66 @@ func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx conte
 	bpf.CheckOrMountCgroup2()
 
 	if args.FgsDebug {
-		observer.Verbosity = 5
+		option.Config.Verbosity = 5
 	}
 
 	if _, err := os.Stat("../../bpf/objs"); err == nil {
-		observer.HubbleLib = "../../bpf/objs"
+		option.Config.HubbleLib = "../../bpf/objs"
 	} else {
 		exePath, err := os.Executable()
 		if err != nil {
 			log.Fatal(err)
 		}
-		observer.HubbleLib = path.Join(path.Dir(exePath), "bpf/objs")
+		option.Config.HubbleLib = path.Join(path.Dir(exePath), "bpf/objs")
 
-		if _, err := os.Stat(observer.HubbleLib); err != nil {
+		if _, err := os.Stat(option.Config.HubbleLib); err != nil {
 			// Running outside the source tree, fall back to default location.
-			observer.HubbleLib = "/var/lib/hubble-fgs"
+			option.Config.HubbleLib = "/var/lib/hubble-fgs"
 		}
 	}
 
 	configFile := generateCrd(args, sinkPort)
 	defer os.Remove(configFile)
 
-	kprobe := observer.NewObserverKprobe("/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
+	obs := observer.NewObserver(
+		"/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
 		"", /* network interfaces */
 		configFile,
 		args.FgsDebug /* debug */, false, /* enable-crd */
 		0 /* tcp statistics */)
 
-	if err := btf.InitCachedBTF(observer.HubbleLib, "", ctx); err != nil {
+	if err := btf.InitCachedBTF(option.Config.HubbleLib, "", ctx); err != nil {
 		log.Fatal(err)
 	}
 
 	listener := &benchmarkListener{
-		summary: summary,
-		ctx:     ctx,
-		kprobe:  kprobe,
-		ready:   ready,
+		summary:  summary,
+		ctx:      ctx,
+		observer: obs,
+		ready:    ready,
 	}
-	kprobe.AddListener(listener)
+	obs.AddListener(listener)
 
 	if args.FgsJSONEncode {
-		err := startBenchmarkExporter(ctx, kprobe, summary)
+		err := startBenchmarkExporter(ctx, obs, summary)
 		if err != nil {
 			log.Fatalf("Starting exporter failed: %v", err)
 		}
 	}
 
-	if err := kprobe.Start(ctx); err != nil {
+	if err := obs.Start(ctx); err != nil {
 		log.Fatalf("Starting FGS failed: %v", err)
 	}
 
 	<-ctx.Done()
-	kprobe.RemovePrograms()
+	obs.RemovePrograms()
 }
 
 type benchmarkListener struct {
-	summary *BenchSummary
-	ready   chan bool
-	ctx     context.Context
-	kprobe  *observer.ObserverKprobe
+	summary  *BenchSummary
+	ready    chan bool
+	ctx      context.Context
+	observer *observer.Observer
 
 	cpuUsageWhenReady CPUUsage
 }
@@ -170,7 +173,7 @@ func (te *timingEncoder) Encode(v interface{}) error {
 	return err
 }
 
-func startBenchmarkExporter(ctx context.Context, kprobe *observer.ObserverKprobe, summary *BenchSummary) error {
+func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary *BenchSummary) error {
 	processCacheSize := 32768
 	enableProcessCred := false
 	enableCiliumAPI := false
@@ -181,11 +184,12 @@ func startBenchmarkExporter(ctx context.Context, kprobe *observer.ObserverKprobe
 		fgsGrpc.NewFakeK8sWatcher(nil),
 		cilium.GetFakeCiliumState(),
 		enableProcessCred,
-		enableCiliumAPI)
+		enableCiliumAPI,
+	)
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, kprobe.ObserverSync)
+	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
 
 	var encoder fgsGrpc.ExportEncoder
 	if summary.Args.PrintEvents {
@@ -205,7 +209,7 @@ func startBenchmarkExporter(ctx context.Context, kprobe *observer.ObserverKprobe
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
 	exporter := fgsGrpc.NewExporter(ctx, &req, server, &timingEncoder, nil)
 	go exporter.Start()
-	kprobe.AddListener(processManager)
+	obs.AddListener(processManager)
 	return nil
 }
 

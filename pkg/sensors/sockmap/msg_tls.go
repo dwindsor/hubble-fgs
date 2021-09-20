@@ -53,7 +53,7 @@ func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errSt
 	return unix
 }
 
-func HandleTls(r *bytes.Reader) (interface{}, error) {
+func HandleTLS(r *bytes.Reader) (interface{}, error) {
 	var errState api.MsgTLSParserState
 	var certStrings []string
 	var m *api.MsgTLSEvent
@@ -94,7 +94,10 @@ func errorHasState(errType uint32) bool {
 	return false
 }
 
-func HandleTlsCont(r *bytes.Reader) (interface{}, error) {
+// HandleTLSCont handles a TLS continuation event that was split up by the
+// kernel. It will merge them together and pass it up to the TLS Listener as a
+// full event.
+func HandleTLSCont(r *bytes.Reader) (interface{}, error) {
 	var certStrings []string
 	var errCode uint32
 	var errState api.MsgTLSParserState

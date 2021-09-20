@@ -12,26 +12,27 @@ package observer
 
 import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 
 	"fmt"
 )
 
-func (k *ObserverKprobe) Printf(format string, a ...interface{}) (n int, err error) {
-	if Verbosity < 4 {
+func (k *Observer) Printf(format string, a ...interface{}) (n int, err error) {
+	if option.Config.Verbosity < 4 {
 		return 0, nil
 	}
 
 	return fmt.Printf(format, a...)
 }
 
-func (k *ObserverKprobe) CompareCommonStrict(x, y *api.MsgCommon) bool {
+func (k *Observer) CompareCommonStrict(x, y *api.MsgCommon) bool {
 	if y.Op != 0 && y.Op != x.Op {
 		return false
 	}
 	return true
 }
 
-func (k *ObserverKprobe) CompareTcpConnectStrict(x, y *api.MsgIPv4Tuple) bool {
+func (k *Observer) CompareTcpConnectStrict(x, y *api.MsgIPv4Tuple) bool {
 	if y.SAddr != 0 && y.SAddr != x.SAddr {
 		k.Printf("y.SAddr != x.Saddr %d != %d\n", y.SAddr, x.SAddr)
 		return false
@@ -55,7 +56,7 @@ func (k *ObserverKprobe) CompareTcpConnectStrict(x, y *api.MsgIPv4Tuple) bool {
 	return true
 }
 
-func (k *ObserverKprobe) CompareK8sStrict(x, y *api.MsgK8sUnix) bool {
+func (k *Observer) CompareK8sStrict(x, y *api.MsgK8sUnix) bool {
 	if y.NetNS != 0 && y.NetNS != x.NetNS {
 		k.Printf("y.NetNS != x.NetNS %d != %d\n", y.NetNS, x.NetNS)
 		return false
@@ -75,7 +76,7 @@ func (k *ObserverKprobe) CompareK8sStrict(x, y *api.MsgK8sUnix) bool {
 	return true
 }
 
-func (k *ObserverKprobe) CompareMsgExecStrict(x, y *api.MsgExecUnix) bool {
+func (k *Observer) CompareMsgExecStrict(x, y *api.MsgExecUnix) bool {
 	if y.Size != 0 && y.Size != x.Size {
 		k.Printf("y.Size != x.Size %d != %d\n", y.Size, x.Size)
 		return false
@@ -113,7 +114,7 @@ func (k *ObserverKprobe) CompareMsgExecStrict(x, y *api.MsgExecUnix) bool {
 	return true
 }
 
-func (k *ObserverKprobe) CompareStrict(x, y *api.MsgIPv4TcpEventUnix) bool {
+func (k *Observer) CompareStrict(x, y *api.MsgIPv4TcpEventUnix) bool {
 	if res := k.CompareCommonStrict(&x.Common, &y.Common); res == false {
 		return false
 	}

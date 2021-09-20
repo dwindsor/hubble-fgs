@@ -111,11 +111,11 @@ func TestSocketCookie(t *testing.T) {
 	defer cancel()
 	var exitWG, execWG sync.WaitGroup
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 	execWG.Wait()
 	checker, err := socketCookieTest(t)
 	if err != nil {
@@ -127,5 +127,5 @@ func TestSocketCookie(t *testing.T) {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }

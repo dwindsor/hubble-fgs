@@ -7,7 +7,7 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
+
 package observer
 
 import (
@@ -19,6 +19,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -34,6 +35,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	"gopkg.in/natefinch/lumberjack.v2"
 	corev1 "k8s.io/api/core/v1"
@@ -99,9 +102,9 @@ func withLib(lib string) testOption {
 	}
 }
 
-func TestDone(t *testing.T, kprobe *ObserverKprobe) {
-	kprobe.RemovePrograms()
-	kprobe.PrintStats()
+func TestDone(t *testing.T, obs *Observer) {
+	obs.RemovePrograms()
+	obs.PrintStats()
 }
 
 // Create a fake Cilium state to avoid the events getting delayed due to missing pod info
@@ -175,44 +178,44 @@ func newDefaultTestOptions(t *testing.T, opts ...testOption) *testOptions {
 	return options
 }
 
-func newDefaultObserver(t *testing.T, oo *testObserverOptions) *ObserverKprobe {
-	return NewObserverKprobe(observerTestDir,
+func newDefaultObserver(t *testing.T, oo *testObserverOptions) *Observer {
+	return NewObserver(observerTestDir,
 		observerTestDir,
 		"", "",
 		oo.config, oo.pretty, oo.crd,
 		0)
 }
 
-func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
+func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 	o := newDefaultTestOptions(t, opts...)
 
-	HubbleLib = os.Getenv("FGS_LIB")
-	if HubbleLib == "" {
-		HubbleLib = o.observer.lib
+	option.Config.HubbleLib = os.Getenv("FGS_LIB")
+	if option.Config.HubbleLib == "" {
+		option.Config.HubbleLib = o.observer.lib
 	}
 	procfs := os.Getenv("FGS_PROCFS")
 	if procfs != "" {
-		ProcFS = procfs
+		option.Config.ProcFS = procfs
 	}
 
-	kprobe := newDefaultObserver(t, &o.observer)
+	obs := newDefaultObserver(t, &o.observer)
 	if testing.Verbose() {
-		Verbosity = dfltVerbosity
+		option.Config.Verbosity = dfltVerbosity
 	}
 
-	if err := btf.InitCachedBTF(HubbleLib, "", context.Background()); err != nil {
+	if err := btf.InitCachedBTF(option.Config.HubbleLib, "", context.Background()); err != nil {
 		return nil, err
 	}
 
-	loadExporter(t, kprobe, &o.exporter)
-	loadObserver(t, kprobe)
+	loadExporter(t, obs, &o.exporter)
+	loadObserver(t, obs)
 
-	kprobe.perfConfig = bpf.DefaultPerfEventConfig()
-	kprobe.perfConfig.MapName = filepath.Join(observerTestDir, "tcpmon_map")
-	return kprobe, nil
+	obs.perfConfig = bpf.DefaultPerfEventConfig()
+	obs.perfConfig.MapName = filepath.Join(observerTestDir, "tcpmon_map")
+	return obs, nil
 }
 
-func getDefaultObserverWithWatchers(t *testing.T, opts ...testOption) (*ObserverKprobe, error) {
+func getDefaultObserverWithWatchers(t *testing.T, opts ...testOption) (*Observer, error) {
 	const (
 		testPod       = "pod-1"
 		testNamespace = "ns-1"
@@ -226,11 +229,11 @@ func getDefaultObserverWithWatchers(t *testing.T, opts ...testOption) (*Observer
 	return getDefaultObserver(t, opts...)
 }
 
-func GetDefaultObserverWithFile(t *testing.T, file, lib string) (*ObserverKprobe, error) {
+func GetDefaultObserverWithFile(t *testing.T, file, lib string) (*Observer, error) {
 	return getDefaultObserverWithWatchers(t, withConfig(file), withPretty(), withLib(lib))
 }
 
-func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOptions) error {
+func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error {
 	os.Remove(exportFile)
 
 	watcher := opts.watcher
@@ -240,7 +243,7 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, kprobe.ObserverSync)
+	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
 	writer := lumberjack.Logger{
 		Filename:   exportFile,
 		MaxSize:    10,
@@ -251,7 +254,7 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 
 	// temporarily disable the allow list while we fixup TLS events
 	// to include parent reference as well
-	f := "" //fmt.Sprintf(`{"pid_set":[%d]}`, getMyPid())
+	f := "" //fmt.Sprintf(`{"pid_set":[%d]}`, GetMyPid())
 	allowList, err := filters.ParseFilterList(f)
 	if err != nil {
 		t.Fatalf("observerLoadExporter: %s\n", err)
@@ -260,35 +263,35 @@ func loadExporter(t *testing.T, kprobe *ObserverKprobe, opts *testExporterOption
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
 	exporter := fgsGrpc.NewExporter(context.Background(), &req, server, encoder, nil)
 	go exporter.Start()
-	kprobe.AddListener(processManager)
+	obs.AddListener(processManager)
 	return nil
 }
 
-func loadObserver(t *testing.T, kprobe *ObserverKprobe) {
-	if err := LoadDefaultSensor(kprobe.bpfDir,
-		kprobe.mapDir,
-		kprobe.ciliumDir,
-		kprobe.configFile,
+func loadObserver(t *testing.T, obs *Observer) {
+	if err := sensors.LoadDefault(obs.bpfDir,
+		obs.mapDir,
+		obs.ciliumDir,
+		obs.configFile,
 		context.TODO()); err != nil {
 		t.Fatalf("LoadDefaultSensor error: %s\n", err)
 	}
 
-	kprobe.populateExecve(context.TODO())
+	obs.populateExecve(context.TODO())
 }
 
-func LoopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, kprobe *ObserverKprobe, ctx context.Context) {
+func LoopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, obs *Observer, ctx context.Context) {
 	exitWG.Add(1)
 	execWG.Add(1)
 	go func() {
 		defer exitWG.Done()
-		e, err := kprobe.__runEvents(ctx)
+		e, err := obs.__runEvents(ctx)
 		if err != nil {
-			RemovePrograms(kprobe.bpfDir, kprobe.mapDir)
+			RemovePrograms(obs.bpfDir, obs.mapDir)
 			t.Fatalf("runEvents error: %s", err)
 		}
 		defer e.CloseAll()
 		execWG.Done()
-		kprobe.__loopEvents(ctx, e)
+		obs.__loopEvents(ctx, e)
 	}()
 }
 
@@ -334,8 +337,8 @@ func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 	return f.OnFindPod(containerID)
 }
 
-// Used to wait for a process to start, we do a lookup on PROCFS
-// because this may be called before kprobe is created.
+// Used to wait for a process to start, we do a lookup on PROCFS because this
+// may be called before obs is created.
 func waitForProcess(process string) error {
 	var b []byte
 	b = append(b, 0x00)
@@ -374,6 +377,30 @@ func WriteConfigFile(fileName, config string) error {
 	return out.Sync()
 }
 
-func GetDefaultObserverWithLib(t *testing.T, config, lib string) (*ObserverKprobe, error) {
+func GetDefaultObserverWithLib(t *testing.T, config, lib string) (*Observer, error) {
 	return getDefaultObserverWithWatchers(t, withConfig(config), withLib(lib))
+}
+
+func GetMyPid() uint32 {
+	selfBinary := filepath.Base(os.Args[0])
+	if procfs := os.Getenv("FGS_PROCFS"); procfs != "" {
+		procFS, _ := ioutil.ReadDir(procfs)
+		for _, d := range procFS {
+			if d.IsDir() == false {
+				continue
+			}
+			cmdline, err := ioutil.ReadFile(filepath.Join(procfs, d.Name(), "/cmdline"))
+			if err != nil {
+				continue
+			}
+			if strings.Contains(string(cmdline), selfBinary) {
+				pid, err := strconv.ParseUint(d.Name(), 10, 32)
+				if err != nil {
+					continue
+				}
+				return uint32(pid)
+			}
+		}
+	}
+	return uint32(os.Getpid())
 }

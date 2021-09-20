@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
 type ExecveKey struct {
@@ -55,7 +56,7 @@ func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue {
 	return &ExecveValue{}
 }
 
-func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
+func (k *Observer) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
 	var err error
 	var i int
 
@@ -108,21 +109,21 @@ func (k *ObserverKprobe) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32
 	k.pushTCPEvents(&m, tcpEntries, writeMaps, pushExecve)
 }
 
-func (k *ObserverKprobe) writeExecveMap(procs []ObserverProcs) {
+func (k *Observer) writeExecveMap(procs []ObserverProcs) {
 
-	if ObserverExecveMap.pinState.isDisabled() {
-		k.log.Infof("hubble-fgs, map %s is disabled, skipping.", ObserverExecveMap.mapName)
+	if sensors.ExecveMap.PinState.IsDisabled() {
+		k.log.Infof("hubble-fgs, map %s is disabled, skipping.", sensors.ExecveMap.Name)
 		return
 	}
 
-	if ObserverExecveMap.pinState.isLoaded() {
-		k.log.Infof("hubble-fgs, map %s is already loaded, skipping.", ObserverExecveMap.mapName)
+	if sensors.ExecveMap.PinState.IsLoaded() {
+		k.log.Infof("hubble-fgs, map %s is already loaded, skipping.", sensors.ExecveMap.Name)
 		return
 	}
 
-	m, err := bpf.OpenMap(filepath.Join(k.mapDir, ObserverExecveMap.mapName))
+	m, err := bpf.OpenMap(filepath.Join(k.mapDir, sensors.ExecveMap.Name))
 	for i := 0; err != nil; i++ {
-		m, err = bpf.OpenMap(filepath.Join(k.mapDir, ObserverExecveMap.mapName))
+		m, err = bpf.OpenMap(filepath.Join(k.mapDir, sensors.ExecveMap.Name))
 		if err != nil {
 			time.Sleep(mapRetryDelay * time.Second)
 		}

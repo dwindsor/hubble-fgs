@@ -26,8 +26,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/idtable"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	sensorsbpf "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 
 	. "github.com/isovalent/hubble-fgs/pkg/generictypes"
 )
@@ -44,8 +47,8 @@ func init() {
 	kprobe := &observerKprobeSensor{
 		name: "kprobe sensor",
 	}
-	RegisterProbeType("generic_kprobe", kprobe)
-	RegisterTracingSensorsAtInit(kprobe.name, kprobe)
+	sensors.RegisterProbeType("generic_kprobe", kprobe)
+	sensors.RegisterTracingSensorsAtInit(kprobe.name, kprobe)
 	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
 }
 
@@ -183,9 +186,9 @@ func genericKprobeTableGet(id idtable.EntryID) (*genericKprobe, error) {
 	}
 }
 
-func genericKprobeFromBpfLoad(l *BpfLoad) (*genericKprobe, error) {
-	if id, ok := l.loaderData.(idtable.EntryID); !ok {
-		return nil, fmt.Errorf("invalid loadData type: expecting idtable.EntryID and got: %T (%v)", l.loaderData, l.loaderData)
+func genericKprobeFromBpfLoad(l *sensorsbpf.Program) (*genericKprobe, error) {
+	if id, ok := l.LoaderData.(idtable.EntryID); !ok {
+		return nil, fmt.Errorf("invalid loadData type: expecting idtable.EntryID and got: %T (%v)", l.LoaderData, l.LoaderData)
 	} else {
 		return genericKprobeTableGet(id)
 	}
@@ -205,8 +208,8 @@ func getMetaValue(arg *v1alpha1.KProbeArg) int {
 	return 0
 }
 
-func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*ObserverSensor, error) {
-	var progs []*BpfLoad
+func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*sensors.Sensor, error) {
+	var progs []*sensorsbpf.Program
 
 	btfobj := bpf.BTFNil
 	defer func() {
@@ -400,97 +403,101 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// tracepoints case) and release it there, which seems like a simpler option.
 		btfobj = bpf.BTFNil
 
-		load := &BpfLoad{}
-		load.observer__x64_attach = funcName
-		load.Observer__program = path.Join(HubbleLib, "bpf_generic_kprobe.o")
-		load.observer__label = "kprobe/generic_kprobe"
-		load.observer__attach = funcName
-		load.observer__prog = "kprobe" + "_" + funcName
-		load.retProbe = false
-		load.errorFatal = true
-		load.probeType = "generic_kprobe"
-		load.loadState = bpfLoadStateIdle()
-		load.tracefd = -1
-		load.loaderData = kprobeEntry.tableId
+		load := &sensorsbpf.Program{}
+		load.X64Attach = funcName
+		load.Name = path.Join(option.Config.HubbleLib, "bpf_generic_kprobe.o")
+		load.Label = "kprobe/generic_kprobe"
+		load.Attach = funcName
+		load.PinPath = "kprobe" + "_" + funcName
+		load.RetProbe = false
+		load.ErrorFatal = true
+		load.Type = "generic_kprobe"
+		load.LoadState = sensorsbpf.Idle()
+		load.TraceFD = -1
+		load.LoaderData = kprobeEntry.tableId
 		progs = append(progs, load)
 
 		if setRetprobe {
-			loadret := &BpfLoad{}
-			loadret.observer__x64_attach = funcName
-			loadret.Observer__program = path.Join(HubbleLib, "bpf_generic_retkprobe.o")
-			loadret.observer__label = "kprobe/generic_retkprobe"
-			loadret.observer__attach = funcName
-			loadret.observer__prog = "kretprobe" + "_" + funcName
-			loadret.retProbe = true
-			loadret.errorFatal = true
-			loadret.probeType = "generic_kprobe"
-			loadret.loadState = bpfLoadStateIdle()
-			loadret.tracefd = -1
-			loadret.loaderData = kprobeEntry.tableId
+			loadret := &sensorsbpf.Program{}
+			loadret.X64Attach = funcName
+			loadret.Name = path.Join(option.Config.HubbleLib, "bpf_generic_retkprobe.o")
+			loadret.Label = "kprobe/generic_retkprobe"
+			loadret.Attach = funcName
+			loadret.PinPath = "kretprobe" + "_" + funcName
+			loadret.RetProbe = true
+			loadret.ErrorFatal = true
+			loadret.Type = "generic_kprobe"
+			loadret.LoadState = sensorsbpf.Idle()
+			loadret.TraceFD = -1
+			loadret.LoaderData = kprobeEntry.tableId
 			progs = append(progs, loadret)
 		}
 
-		logger.GetLogger().Infof("Added generic kprobe sensor: %s -> %s", load.Observer__program, load.observer__attach)
+		logger.GetLogger().Infof("Added generic kprobe sensor: %s -> %s", load.Name, load.Attach)
 	}
 
-	return &ObserverSensor{
-		name:  "__generic_kprobe_sensors__",
-		progs: progs,
-		maps:  []*ObserverMap{},
+	return &sensors.Sensor{
+		Name:  "__generic_kprobe_sensors__",
+		Progs: progs,
+		Maps:  []*sensorsbpf.Map{},
 	}, nil
 }
 
-func loadGenericKprobe(bpfDir, mapDir string, version int, p *BpfLoad, btf uintptr, genmapDir string, filters [4096]byte) error {
-	progpath := filepath.Join(bpfDir, p.observer__prog)
+func loadGenericKprobe(bpfDir, mapDir string, version int, p *sensorsbpf.Program, btf uintptr, genmapDir string, filters [4096]byte) error {
+	progpath := filepath.Join(bpfDir, p.PinPath)
 	err, _ := bpf.LoadGenericKprobeProgram(
-		version, Verbosity, btf,
-		p.Observer__program,
-		p.observer__x64_attach,
-		p.observer__label,
+		version, option.Config.Verbosity, btf,
+		p.Name,
+		p.X64Attach,
+		p.Label,
 		progpath,
 		mapDir,
 		genmapDir,
-		filters)
+		filters,
+	)
 	if err != nil {
 		err, _ = bpf.LoadGenericKprobeProgram(
-			version, Verbosity, btf,
-			p.Observer__program,
-			p.observer__attach,
-			p.observer__label,
+			version, option.Config.Verbosity, btf,
+			p.Name,
+			p.Attach,
+			p.Label,
 			progpath,
 			mapDir,
 			genmapDir,
-			filters)
+			filters,
+		)
 	}
 	if err == nil {
-		logger.GetLogger().Infof("Loaded generic kprobe sensor: %s -> %s", p.Observer__program, p.observer__attach)
+		logger.GetLogger().Infof("Loaded generic kprobe sensor: %s -> %s", p.Name, p.Attach)
 	}
 	return err
 }
 
-func loadGenericKprobeRet(bpfDir, mapDir string, version int, p *BpfLoad, btf uintptr, genmapDir string) error {
+func loadGenericKprobeRet(bpfDir, mapDir string, version int, p *sensorsbpf.Program, btf uintptr, genmapDir string) error {
 	err, _ := bpf.LoadGenericKprobeRetProgram(
-		version, Verbosity, btf,
-		p.Observer__program,
-		p.observer__x64_attach,
-		p.observer__label,
-		path.Join(bpfDir, p.observer__prog),
+		version, option.Config.Verbosity, btf,
+		p.Name,
+		p.X64Attach,
+		p.Label,
+		path.Join(bpfDir, p.PinPath),
 		mapDir,
-		genmapDir)
+		genmapDir,
+	)
 	if err != nil {
 		err, _ = bpf.LoadGenericKprobeRetProgram(
-			version, Verbosity, btf,
-			p.Observer__program,
-			p.observer__attach,
-			p.observer__label,
-			path.Join(bpfDir, p.observer__prog),
+			version, option.Config.Verbosity, btf,
+			p.Name,
+			p.Attach,
+			p.Label,
+			path.Join(bpfDir, p.PinPath),
 			mapDir,
-			genmapDir)
+			genmapDir,
+		)
 	}
 	return err
 }
 
-func loadGenericKprobeSensor(bpfDir, mapDir string, load *BpfLoad, version, verbose int) (error, int) {
+func loadGenericKprobeSensor(bpfDir, mapDir string, load *sensorsbpf.Program, version, verbose int) (error, int) {
 	gk, err := genericKprobeFromBpfLoad(load)
 	if err != nil {
 		return err, 0
@@ -499,8 +506,8 @@ func loadGenericKprobeSensor(bpfDir, mapDir string, load *BpfLoad, version, verb
 	genmapDir := gk.getMapDir(mapDir)
 	os.Mkdir(genmapDir, os.ModeDir)
 
-	observerAllPrograms = append(observerAllPrograms, load)
-	retprobe := strings.Contains(load.Observer__program, "ret")
+	sensors.AllPrograms = append(sensors.AllPrograms, load)
+	retprobe := strings.Contains(load.Name, "ret")
 	if retprobe {
 		return loadGenericKprobeRet(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir), 0
 	} else {
@@ -738,16 +745,16 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUn
 	return enterEv
 }
 
-func (k *observerKprobeSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (k *observerKprobeSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	}
 	if len(spec.KProbes) > 0 {
-		return addGenericKprobeSensors(spec.KProbes, ObserverBTF)
+		return addGenericKprobeSensors(spec.KProbes, option.Config.BTF)
 	}
 	return nil, nil
 }
 
-func (k *observerKprobeSensor) LoadProbe(args LoadProbeArgs) (error, int) {
+func (k *observerKprobeSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return loadGenericKprobeSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose)
 }

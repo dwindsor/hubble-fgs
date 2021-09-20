@@ -23,6 +23,8 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
 type SockStatKey struct {
@@ -103,9 +105,9 @@ type procTCPEntry struct {
 	inode      uint32
 }
 
-func (k *ObserverKprobe) getPidNetNsInode(pid uint32) uint64 {
+func (k *Observer) getPidNetNsInode(pid uint32) uint64 {
 	pidStr := strconv.Itoa(int(pid))
-	netns := filepath.Join(ProcFS, pidStr, "ns", "net")
+	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", "net")
 	netStr, err := os.Readlink(netns)
 	if err != nil {
 		k.log.WithError(err).Warnf("NetNSInode read (%d) failed", pid)
@@ -123,7 +125,7 @@ func (k *ObserverKprobe) getPidNetNsInode(pid uint32) uint64 {
 	return inodeEntry
 }
 
-func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
+func (k *Observer) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
 	var m *bpf.Map
 
 	pid := msg.Process.PID
@@ -135,7 +137,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 
 	netns := k.getPidNetNsInode(pid)
 
-	fdDir := fmt.Sprintf("%s/%d/fd", ProcFS, pid)
+	fdDir := fmt.Sprintf("%s/%d/fd", option.Config.ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)
 	if err != nil {
 		k.log.WithError(err).Warnf("ReadDir %d/fd/ failed", pid)
@@ -144,9 +146,9 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 	if writeMaps {
 		var err error
 
-		m, err = bpf.OpenMap(filepath.Join(k.mapDir, ObserverSocketMap.mapName))
+		m, err = bpf.OpenMap(filepath.Join(k.mapDir, sensors.SocketMap.Name))
 		for i := 0; err != nil; i++ {
-			m, err = bpf.OpenMap(filepath.Join(k.mapDir, ObserverSocketMap.mapName))
+			m, err = bpf.OpenMap(filepath.Join(k.mapDir, sensors.SocketMap.Name))
 			if err != nil {
 				time.Sleep(mapRetryDelay * time.Second)
 			}
@@ -159,7 +161,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 
 	for _, d := range procFD {
 		socket, err := os.Readlink(filepath.Join(fdDir, d.Name()))
-		if err != nil && Verbosity > 0 {
+		if err != nil && option.Config.Verbosity > 0 {
 			k.log.WithError(err).Warnf("Readlink error %s", d.Name())
 		}
 		if strings.Contains(socket, "socket") == true {
@@ -205,7 +207,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 	}
 }
 
-func (k *ObserverKprobe) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map, uid uint64) {
+func (k *Observer) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map, uid uint64) {
 	key := &SocketMapKey{
 		Saddr:     tcp.Tuple.SAddr,
 		Daddr:     tcp.Tuple.DAddr,
@@ -225,8 +227,8 @@ func (k *ObserverKprobe) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map, 
 	m.Update(key, val)
 }
 
-func (k *ObserverKprobe) configureSockStatSampler(sampleRate uint32) error {
-	m, err := bpf.OpenMap(filepath.Join(k.mapDir, ObserverTcpSendCheckSampler.mapName))
+func (k *Observer) configureSockStatSampler(sampleRate uint32) error {
+	m, err := bpf.OpenMap(filepath.Join(k.mapDir, sensors.TCPSendCheckSampler.Name))
 	if err != nil {
 		return err
 	}

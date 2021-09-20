@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/sirupsen/logrus"
 )
 
@@ -464,7 +465,7 @@ func eventTypeString(ev interface{}) string {
 }
 
 func verbosePrintf(s string) {
-	if Verbosity > 0 {
+	if option.Config.Verbosity > 0 {
 		fmt.Printf(s)
 	}
 }
@@ -630,7 +631,7 @@ func JsonTestCompare(trace []*fgs.GetEventsResponse, jsonFilename string, attemp
 
 			evTyStr := eventTypeString(ev.Event)
 			trTyStr := eventTypeString(t.Event)
-			if Verbosity > 0 {
+			if option.Config.Verbosity > 0 {
 				fmt.Printf("tidx=%d found=%d => got %s looking for %s\n", tidx, found, evTyStr, trTyStr)
 			}
 			switch res := ev.Event.(type) {

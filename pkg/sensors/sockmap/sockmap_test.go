@@ -111,20 +111,20 @@ func TestTCTLS13(t *testing.T) {
 	defer cancel()
 
 	if err := observer.WriteConfigFile(testConfigFile, tlstc); err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	kprobe, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
 	observer.ExecWGCurl(&execWG, &exitWG, "https://www.google.com")
 
 	err = observer.JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 
-	observer.TestDone(t, kprobe)
+	observer.TestDone(t, obs)
 }
 
 func TestTCTLS12(t *testing.T) {
@@ -171,15 +171,15 @@ func TestTCTLS12(t *testing.T) {
 	if err := observer.WriteConfigFile(testConfigFile, tlstc); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
-	kprobe, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	observer.LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
 	observer.ExecWGCurl(&execWG, &exitWG, "https://tls-v1-2.badssl.com:1012/")
 
 	err = observer.JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 
-	observer.TestDone(t, kprobe)
+	observer.TestDone(t, obs)
 }

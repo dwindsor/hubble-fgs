@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 var (
@@ -91,7 +92,7 @@ func procsFindDockerId(cgroups string) (string, int, error) {
 
 func procsDockerId(pid uint32) (string, int, error) {
 	pidstr := fmt.Sprint(pid)
-	cgroups, err := ioutil.ReadFile(filepath.Join(ProcFS, pidstr, "cgroup"))
+	cgroups, err := ioutil.ReadFile(filepath.Join(option.Config.ProcFS, pidstr, "cgroup"))
 	if err != nil {
 		return "", 0, err
 	}

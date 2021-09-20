@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 func stringToUTF8(s []byte) []byte {
@@ -85,9 +86,9 @@ func stringToTCPEntry(s string) (*procTCPEntry, error) {
 	return &entry, nil
 }
 
-func (k *ObserverKprobe) _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, file string) error {
+func (k *Observer) _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, file string) error {
 	pidStr := strconv.Itoa(int(pid))
-	tcp, err := os.Open(filepath.Join(ProcFS, pidStr, file))
+	tcp, err := os.Open(filepath.Join(option.Config.ProcFS, pidStr, file))
 	if err != nil {
 		return err
 	}
@@ -101,7 +102,7 @@ func (k *ObserverKprobe) _getTCPConnections(entryMap map[uint32]procTCPEntry, pi
 		// lets ensure we log it.
 		if err != nil {
 			if file != "/net/tcp6" {
-				k.log.Warn("ProcFS: /%s/%d/%s TCPConnections error: %s", ProcFS, pidStr, file, err)
+				k.log.Warn("ProcFS: /%s/%d/%s TCPConnections error: %s", option.Config.ProcFS, pidStr, file, err)
 			}
 			continue
 		}
@@ -113,7 +114,7 @@ func (k *ObserverKprobe) _getTCPConnections(entryMap map[uint32]procTCPEntry, pi
 	return nil
 }
 
-func (k *ObserverKprobe) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64) error {
+func (k *Observer) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64) error {
 	if err := k._getTCPConnections(entryMap, pid, "/net/tcp"); err != nil {
 		return err
 	}
@@ -210,7 +211,7 @@ type ObserverProcs struct {
 	permitted   uint64
 }
 
-func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
+func (k *Observer) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
 	if writeMaps {
 		k.writeExecveMap(procs)
 	}
@@ -228,10 +229,10 @@ func (k *ObserverKprobe) pushEvents(procs []ObserverProcs, tcpEntries map[uint32
 	}
 }
 
-func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
+func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 	var entryMap = make(map[uint32]procTCPEntry)
 	var procs []ObserverProcs
-	procFS, _ := ioutil.ReadDir(ProcFS)
+	procFS, _ := ioutil.ReadDir(option.Config.ProcFS)
 	r := regexp.MustCompile(`[^\s\(]+|(\({1,2}[^\)]*\){1,2})`)
 
 	clktck, err := getClkTck()
@@ -250,21 +251,21 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		if d.IsDir() == false {
 			continue
 		}
-		cmdline, err := ioutil.ReadFile(filepath.Join(ProcFS, d.Name(), "cmdline"))
+		cmdline, err := ioutil.ReadFile(filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
 		if err != nil {
 			continue
 		}
 		if string(cmdline) == "" {
 			continue
 		}
-		statline, err := ioutil.ReadFile(filepath.Join(ProcFS, d.Name(), "stat"))
+		statline, err := ioutil.ReadFile(filepath.Join(option.Config.ProcFS, d.Name(), "stat"))
 		if err != nil {
-			k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(ProcFS, d.Name(), "cmdline"))
+			k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
 			continue
 		}
 		pid, err := strconv.ParseUint(d.Name(), 10, 32)
 		if err != nil {
-			k.log.WithError(err).Warnf("ReadFile: %s /parseuint error", filepath.Join(ProcFS, d.Name(), "cmdline"))
+			k.log.WithError(err).Warnf("ReadFile: %s /parseuint error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
 			continue
 		}
 
@@ -278,11 +279,11 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		_ktime := stats[21]
 		ktime, err := strconv.ParseUint(_ktime, 10, 64)
 		if err != nil {
-			k.log.WithError(err).Warnf("Ktime parsing error: %s: %s", _ktime, filepath.Join(ProcFS, ppid, "stat"))
+			k.log.WithError(err).Warnf("Ktime parsing error: %s: %s", _ktime, filepath.Join(option.Config.ProcFS, ppid, "stat"))
 			ktime = 0
 		}
 		ktime = ktime * (nanoPerSeconds / clktck)
-		nspid, permitted, effective, inheritable := getPIDNS(filepath.Join(ProcFS, d.Name(), "status"))
+		nspid, permitted, effective, inheritable := getPIDNS(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
 
 		// On error procsDockerId zeros dockerId so we can ignore any errors.
 		dockerId, _, _ := procsDockerId(uint32(pid))
@@ -293,27 +294,27 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 		if _ppid != 0 {
 			var err error
 
-			pcmdline, err = ioutil.ReadFile(filepath.Join(ProcFS, ppid, "cmdline"))
+			pcmdline, err = ioutil.ReadFile(filepath.Join(option.Config.ProcFS, ppid, "cmdline"))
 			if err != nil {
-				k.log.WithError(err).Warnf("ReadFile: %s /cmdline error", filepath.Join(ProcFS, d.Name(), "cmdline"))
+				k.log.WithError(err).Warnf("ReadFile: %s /cmdline error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
 				continue
 			}
 
-			pstatline, err = ioutil.ReadFile(filepath.Join(ProcFS, ppid, "stat"))
+			pstatline, err = ioutil.ReadFile(filepath.Join(option.Config.ProcFS, ppid, "stat"))
 			if err != nil {
-				k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(ProcFS, d.Name(), "cmdline"))
+				k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
 				continue
 			}
 			pstats = r.FindAllString(string(pstatline), -1)
 			_pktime := pstats[21]
 			pktime, err = strconv.ParseUint(_pktime, 10, 64)
 			if err != nil {
-				k.log.WithError(err).Warnf("Warning: Parent ktime parsing error: %s: %s", _pktime, filepath.Join(ProcFS, ppid, "stat"))
+				k.log.WithError(err).Warnf("Warning: Parent ktime parsing error: %s: %s", _pktime, filepath.Join(option.Config.ProcFS, ppid, "stat"))
 				pktime = 0
 			}
 			pktime = pktime * (nanoPerSeconds / clktck)
 			if dockerId != "" {
-				pnspid, _, _, _ = getPIDNS(filepath.Join(ProcFS, ppid, "status"))
+				pnspid, _, _, _ = getPIDNS(filepath.Join(option.Config.ProcFS, ppid, "status"))
 			}
 		} else {
 			pcmdline = nil
@@ -323,13 +324,13 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			pnspid = 0
 		}
 
-		execPath, err := os.Readlink(filepath.Join(ProcFS, d.Name(), "exe"))
+		execPath, err := os.Readlink(filepath.Join(option.Config.ProcFS, d.Name(), "exe"))
 		if err == nil {
 			cmdline = prependPath(execPath, cmdline)
 		}
 
 		if _ppid != 0 {
-			pexecPath, err = os.Readlink(filepath.Join(ProcFS, ppid, "exe"))
+			pexecPath, err = os.Readlink(filepath.Join(option.Config.ProcFS, ppid, "exe"))
 			if err == nil {
 				pcmdline = prependPath(pexecPath, pcmdline)
 			}
@@ -398,7 +399,7 @@ func (k *ObserverKprobe) getRunningProcs(write, push bool) []ObserverProcs {
 			k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
 		}
 	}
-	k.log.Infof("Read ProcFS %s appended %d/%d entries", ProcFS, len(procs), len(procFS))
+	k.log.Infof("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
 
 	k.pushEvents(procs, entryMap, push, write)
 	return procs

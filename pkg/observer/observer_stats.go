@@ -20,6 +20,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
 type statKey struct {
@@ -53,10 +54,10 @@ func (s *statValue) DeepCopyMapValue() bpf.MapValue {
 	return v
 }
 
-func (k *ObserverKprobe) startUpdateMapMetrics() {
+func (k *Observer) startUpdateMapMetrics() {
 	update := func() {
-		for _, m := range observerAllMaps {
-			pin := filepath.Join(k.mapDir, m.mapName)
+		for _, m := range sensors.AllMaps {
+			pin := filepath.Join(k.mapDir, m.Name)
 			pinStats := pin + "_stats"
 
 			mapLinkStats, err := bpf.OpenMap(pinStats)
@@ -82,7 +83,7 @@ func (k *ObserverKprobe) startUpdateMapMetrics() {
 			for cpu := int(0); cpu < runtime.NumCPU(); cpu++ {
 				sum += v.Value[cpu]
 			}
-			metrics.ExecveMapSize.WithLabelValues(m.mapName, strconv.Itoa(int(mapLink.MapInfo.MaxEntries))).Set(float64(sum))
+			metrics.ExecveMapSize.WithLabelValues(m.Name, strconv.Itoa(int(mapLink.MapInfo.MaxEntries))).Set(float64(sum))
 			mapLink.Close()
 			mapLinkStats.Close()
 		}

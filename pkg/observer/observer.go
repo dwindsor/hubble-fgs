@@ -7,7 +7,6 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
 
 package observer
 
@@ -28,17 +27,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
+	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	Progsize = 64
-	MaxArgs  = 5
-	ArgSize  = 32
-
-	MaxSupportedPids = 32768
-
 	nanoPerSeconds = 1000000000
 
 	TCP_PROC_STATE_LISTEN = 10
@@ -47,85 +42,7 @@ const (
 	mapRetryDelay = 1
 )
 
-const (
-	BPF_PROG_TYPE_UNSPEC                  = 0
-	BPF_PROG_TYPE_SOCKET_FILTER           = 1
-	BPF_PROG_TYPE_KPROBE                  = 2
-	BPF_PROG_TYPE_SCHED_CLS               = 3
-	BPF_PROG_TYPE_SCHED_ACT               = 4
-	BPF_PROG_TYPE_TRACEPOINT              = 5
-	BPF_PROG_TYPE_XDP                     = 6
-	BPF_PROG_TYPE_PERF_EVENT              = 7
-	BPF_PROG_TYPE_CGROUP_SKB              = 8
-	BPF_PROG_TYPE_CGROUP_SOCK             = 9
-	BPF_PROG_TYPE_LWT_IN                  = 10
-	BPF_PROG_TYPE_LWT_OUT                 = 11
-	BPF_PROG_TYPE_LWT_XMIT                = 12
-	BPF_PROG_TYPE_SOCK_OPS                = 13
-	BPF_PROG_TYPE_SK_SKB                  = 14
-	BPF_PROG_TYPE_CGROUP_DEVICE           = 15
-	BPF_PROG_TYPE_SK_MSG                  = 16
-	BPF_PROG_TYPE_RAW_TRACEPOINT          = 17
-	BPF_PROG_TYPE_CGROUP_SOCK_ADDR        = 18
-	BPF_PROG_TYPE_LWT_SEG6LOCAL           = 19
-	BPF_PROG_TYPE_LIRC_MODE2              = 20
-	BPF_PROG_TYPE_SK_REUSEPORT            = 21
-	BPF_PROG_TYPE_FLOW_DISSECTOR          = 22
-	BPF_PROG_TYPE_CGROUP_SYSCTL           = 23
-	BPF_PROG_TYPE_RAW_TRACEPOINT_WRITABLE = 24
-	BPF_PROG_TYPE_CGROUP_SOCKOPT          = 25
-	BPF_PROG_TYPE_TRACING                 = 26
-	BPF_PROG_TYPE_STRUCT_OPS              = 27
-	BPF_PROG_TYPE_EXT                     = 28
-	BPF_PROG_TYPE_LSM                     = 29
-)
-
-func NameToProgType(n string) int {
-	if strings.Contains(n, "skmsg") {
-		n = "skmsg"
-	}
-
-	switch n {
-	case "kprobe":
-		return BPF_PROG_TYPE_KPROBE
-	case "tracepoint":
-		return BPF_PROG_TYPE_KPROBE
-	case "sockops":
-		return BPF_PROG_TYPE_SOCK_OPS
-	case "skmsg":
-		return BPF_PROG_TYPE_SK_MSG
-	case "sk_skb_parser":
-		return BPF_PROG_TYPE_SK_SKB
-	case "sk_skb_verdict":
-		return BPF_PROG_TYPE_SK_SKB
-	case "cgrp_ingress":
-		return BPF_PROG_TYPE_CGROUP_SKB
-	case "tc_ingress":
-		return BPF_PROG_TYPE_SCHED_CLS
-	case "tc_egress":
-		return BPF_PROG_TYPE_SCHED_CLS
-	}
-	return -1
-}
-
-type ObserverMap struct {
-	mapName  string
-	mapType  string
-	bpf      *BpfLoad
-	pinState bpfLoadState
-	fd       int
-}
-
 var (
-	ProcFS        = "/proc/"
-	KernelVersion = ""
-	SetPidMax     = false
-
-	HubbleLib          string
-	ObserverBTF        string
-	Verbosity          int
-	IgnoreMissingProgs bool
-
 	pollTimeout = 5 * time.Second
 
 	eventHandler = make(map[uint8]func(r *bytes.Reader) (interface{}, error))
@@ -135,7 +52,7 @@ func RegisterEventHandlerAtInit(ev uint8, handler func(r *bytes.Reader) (interfa
 	eventHandler[ev] = handler
 }
 
-func (k *ObserverKprobe) observerListeners(msg interface{}) {
+func (k *Observer) observerListeners(msg interface{}) {
 	for listener, _ := range k.listeners {
 		if err := listener.Notify(msg); err != nil {
 			k.log.Debug("Write failure removing Listener")
@@ -144,13 +61,13 @@ func (k *ObserverKprobe) observerListeners(msg interface{}) {
 	}
 }
 
-func (k *ObserverKprobe) AddListener(listener Listener) {
+func (k *Observer) AddListener(listener Listener) {
 	k.log.WithField("listener", listener).Debug("Add listener")
 	k.listeners[listener] = struct{}{}
 	k.getRunningProcs(false, true)
 }
 
-func (k *ObserverKprobe) RemoveListener(listener Listener) {
+func (k *Observer) RemoveListener(listener Listener) {
 	k.log.WithField("listener", listener).Debug("Delete listener")
 	delete(k.listeners, listener)
 	if err := listener.Close(); err != nil {
@@ -255,13 +172,17 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 	return execUnix, false, nil
 }
 
-func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
+func (k *Observer) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	data := msg.DataDirect()
 	var op uint8 = data[0]
 	var empty bool
 
 	k.recvCntr++
 	r := bytes.NewReader(data)
+
+	// TODO: Most of these ops can be converted into sensors. Ideally, this
+	// switch case shouldn't even exist; it should just do what's already
+	// happening inside the default case.
 
 	switch op {
 	case api.MSG_OP_EXECVE:
@@ -329,6 +250,7 @@ func (k *ObserverKprobe) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		k.handleKfreeSkb(&m)
 
 	default:
+		// These ops handlers are registered by RegisterEventHandlerAtInit().
 		if h, ok := eventHandler[op]; ok {
 			if unix, err := h(r); err == nil && unix != nil {
 				k.observerListeners(unix)
@@ -347,7 +269,7 @@ func getCWD(pid uint32) (string, uint32) {
 		return "", flags
 	}
 
-	cwd, err := os.Readlink(filepath.Join(ProcFS, pidstr, "cwd"))
+	cwd, err := os.Readlink(filepath.Join(option.Config.ProcFS, pidstr, "cwd"))
 	if err != nil {
 		flags |= api.EventRootCWD | api.EventErrorCWD
 		return " ", flags
@@ -360,11 +282,11 @@ func getCWD(pid uint32) (string, uint32) {
 	return cwd, flags
 }
 
-func (k *ObserverKprobe) observerLost(msg *bpf.PerfEventLost, cpu int) {
+func (k *Observer) observerLost(msg *bpf.PerfEventLost, cpu int) {
 	k.lostCntr++
 }
 
-func (k *ObserverKprobe) observerError(msg *bpf.PerfEvent) {
+func (k *Observer) observerError(msg *bpf.PerfEvent) {
 	k.errorCntr++
 }
 
@@ -377,7 +299,7 @@ func isCtxDone(ctx context.Context) bool {
 	}
 }
 
-func (k *ObserverKprobe) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, error) {
+func (k *Observer) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, error) {
 	e, err := bpf.NewPerCpuEvents(k.perfConfig, k.log)
 	if err != nil {
 		return nil, fmt.Errorf("failed kprobe events NewPerCpuEvents: %w", err)
@@ -385,7 +307,7 @@ func (k *ObserverKprobe) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents
 	return e, nil
 }
 
-func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) error {
+func (k *Observer) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) error {
 	receiveEvent := k.receiveEvent
 	observerLost := k.observerLost
 	observerError := k.observerError
@@ -420,7 +342,7 @@ func (k *ObserverKprobe) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEven
 	return nil
 }
 
-func (k *ObserverKprobe) runEvents(stopCtx context.Context) error {
+func (k *Observer) runEvents(stopCtx context.Context) error {
 	e, err := k.__runEvents(stopCtx)
 	if err != nil {
 		return err
@@ -437,16 +359,20 @@ func prependPath(s string, b []byte) []byte {
 	return []byte(fullCmd)
 }
 
-func (k *ObserverKprobe) populateExecve(ctx context.Context) {
+func (k *Observer) populateExecve(ctx context.Context) {
 	k.getRunningProcs(true, false)
 }
 
-type MsgFilterRun func(*api.MsgIPv4TcpEventUnix, *ObserverKprobe) bool
+type MsgFilterRun func(*api.MsgIPv4TcpEventUnix, *Observer) bool
 
 type MsgFilter struct {
 }
 
-type ObserverKprobe struct {
+// Observer represents the link between the BPF perf ring and the listeners. It
+// manages the perf ring and receive events from it. It ensures that the BPF
+// event we are receiving from the kernel is complete. The listeners are
+// notified of their corresponding events.
+type Observer struct {
 	/* Configuration */
 	bpfDir     string
 	mapDir     string
@@ -478,35 +404,35 @@ type ObserverKprobe struct {
 	/* enable CRD */
 	enableCRD bool
 
-	/* Sensor Controller */
-	ObserverSync *ObserverSync
-
 	/* Sock Statistic */
 	tcpStatSegRate uint32
+
+	/* SensorManager handles dynamic sensors loading / unloading. */
+	SensorManager *sensors.Manager
 }
 
-func (k *ObserverKprobe) Start(ctx context.Context) error {
+func (k *Observer) Start(ctx context.Context) error {
 	// initialize kernel symbol lookup
-	ksyms, err := ksyms.NewKsyms(ProcFS)
+	ksyms, err := ksyms.NewKsyms(option.Config.ProcFS)
 	if err == nil {
 		k.ksyms = ksyms
 	} else {
 		k.log.Warningf("failed to initialize ksyms: %s", err)
 	}
 
-	if err := LoadDefaultSensor(k.bpfDir, k.mapDir, k.ciliumDir, k.configFile, ctx); err != nil {
+	if err := sensors.LoadDefault(k.bpfDir, k.mapDir, k.ciliumDir, k.configFile, ctx); err != nil {
 		return err
 	}
 
-	if k.ObserverSync == nil {
-		if err := k.InitObserverSync(); err != nil {
+	if k.SensorManager == nil {
+		if err := k.InitSensorManager(); err != nil {
 			return err
 		}
 	}
 
 	// start CRD watcher
 	if k.enableCRD {
-		go watchTracePolicy(k.ObserverSync, ctx)
+		go watchTracePolicy(k.SensorManager, ctx)
 	}
 
 	k.startUpdateMapMetrics()
@@ -521,16 +447,16 @@ func (k *ObserverKprobe) Start(ctx context.Context) error {
 	return nil
 }
 
-// InitObserverSync starts the sensor controller and stt manager.
-func (k *ObserverKprobe) InitObserverSync() error {
+// InitSensorManager starts the sensor controller and stt manager.
+func (k *Observer) InitSensorManager() error {
 	var err error
-	k.ObserverSync, err = StartSensorCtl(k.bpfDir, k.mapDir, k.ciliumDir)
+	k.SensorManager, err = sensors.StartSensorManager(k.bpfDir, k.mapDir, k.ciliumDir)
 	return err
 }
 
-func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
-	pretty, crd bool, tcpStatRate uint32) *ObserverKprobe {
-	return &ObserverKprobe{
+func NewObserver(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
+	pretty, crd bool, tcpStatRate uint32) *Observer {
+	return &Observer{
 		bpfDir:         bpfDir,
 		mapDir:         mapDir,
 		ciliumDir:      ciliumDir,
@@ -544,15 +470,15 @@ func NewObserverKprobe(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 	}
 }
 
-func (k *ObserverKprobe) PrintStats() {
+func (k *Observer) PrintStats() {
 	k.log.Infof("Observer Stats: errors %d lost %d recvd %d filterPass %d filterDrop %d",
 		k.errorCntr, k.lostCntr, k.recvCntr, k.filterPass, k.filterDrop)
 }
 
-func (k *ObserverKprobe) AttachFilter(f *MsgFilter) {
+func (k *Observer) AttachFilter(f *MsgFilter) {
 	k.msgFilter = append(k.msgFilter, f)
 }
 
-func (k *ObserverKprobe) RemovePrograms() {
+func (k *Observer) RemovePrograms() {
 	RemovePrograms(k.bpfDir, k.mapDir)
 }

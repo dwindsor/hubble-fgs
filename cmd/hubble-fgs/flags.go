@@ -13,7 +13,7 @@ package main
 import (
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/spf13/viper"
 )
@@ -94,12 +94,12 @@ var (
 )
 
 func readAndSetFlags() {
-	observer.HubbleLib = viper.GetString(keyHubbleLib)
-	observer.ObserverBTF = viper.GetString(keyBTF)
-	observer.ProcFS = viper.GetString(keyProcFS)
-	observer.KernelVersion = viper.GetString(keyKernelVersion)
-	observer.Verbosity = viper.GetInt(keyVerbosity)
-	observer.IgnoreMissingProgs = viper.GetBool(keyIgnoreMissingProgs)
+	option.Config.HubbleLib = viper.GetString(keyHubbleLib)
+	option.Config.BTF = viper.GetString(keyBTF)
+	option.Config.ProcFS = viper.GetString(keyProcFS)
+	option.Config.KernelVersion = viper.GetString(keyKernelVersion)
+	option.Config.Verbosity = viper.GetInt(keyVerbosity)
+	option.Config.IgnoreMissingProgs = viper.GetBool(keyIgnoreMissingProgs)
 
 	debug = viper.GetBool(keyDebug)
 	processCacheSize = viper.GetInt(keyProcessCacheSize)

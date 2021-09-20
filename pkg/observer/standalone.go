@@ -30,7 +30,7 @@ func (sl *standaloneListener) Close() error {
 	return nil
 }
 
-func (k *ObserverKprobe) StartStandalone(ctx context.Context) error {
+func (k *Observer) StartStandalone(ctx context.Context) error {
 	if len(k.listeners) > 0 {
 		return fmt.Errorf("hubble-fgs, Cowardly refusing to start in standalone mode with other listeners registered")
 	}

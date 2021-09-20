@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
@@ -48,12 +49,12 @@ func TestGenericTracepointSimple(t *testing.T) {
 	}
 
 	// We do not call observer.Start(), so we need to start the sensor controller
-	observer.ObserverSync, err = StartSensorCtl(observer.bpfDir, observer.mapDir, observer.ciliumDir)
+	observer.SensorManager, err = sensors.StartSensorManager(observer.bpfDir, observer.mapDir, observer.ciliumDir)
 	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
 	defer func() {
-		err := observer.ObserverSync.stopSensorCtl(ctx)
+		err := observer.SensorManager.StopSensorManager(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
@@ -65,17 +66,17 @@ func TestGenericTracepointSimple(t *testing.T) {
 		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
 	}
 	sensorName := "GtpLseekTest"
-	if err := observer.ObserverSync.AddSensor(ctx, sensorName, sensor); err != nil {
+	if err := observer.SensorManager.AddSensor(ctx, sensorName, sensor); err != nil {
 		t.Fatalf("failed to add generic tracepoint sensor: %s", err)
 	}
 	defer func() {
-		observer.ObserverSync.RemoveSensor(ctx, sensorName)
+		observer.SensorManager.RemoveSensor(ctx, sensorName)
 	}()
-	if err := observer.ObserverSync.EnableSensor(ctx, sensorName); err != nil {
+	if err := observer.SensorManager.EnableSensor(ctx, sensorName); err != nil {
 		t.Fatalf("EnableSensor error: %s", err)
 	}
 	defer func() {
-		observer.ObserverSync.DisableSensor(ctx, sensorName)
+		observer.SensorManager.DisableSensor(ctx, sensorName)
 	}()
 
 	tpChecker := ec.NewTracepointChecker().
@@ -120,7 +121,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	pid := int(getMyPid())
+	pid := int(GetMyPid())
 	t.Logf("filtering for my pid (%d)", pid)
 	pidSelector := v1alpha1.PIDSelector{
 		Operator:       "In",
@@ -138,12 +139,12 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
 	// We do not call observer.Start(), so we need to start the sensor controller
-	observer.ObserverSync, err = StartSensorCtl(observer.bpfDir, observer.mapDir, observer.ciliumDir)
+	observer.SensorManager, err = sensors.StartSensorManager(observer.bpfDir, observer.mapDir, observer.ciliumDir)
 	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
 	defer func() {
-		err := observer.ObserverSync.stopSensorCtl(ctx)
+		err := observer.SensorManager.StopSensorManager(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
@@ -155,17 +156,17 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
 	}
 	sensorName := "GtpLseekTest"
-	if err := observer.ObserverSync.AddSensor(ctx, sensorName, sensor); err != nil {
+	if err := observer.SensorManager.AddSensor(ctx, sensorName, sensor); err != nil {
 		t.Fatalf("failed to add generic tracepoint sensor: %s", err)
 	}
 	defer func() {
-		observer.ObserverSync.RemoveSensor(ctx, sensorName)
+		observer.SensorManager.RemoveSensor(ctx, sensorName)
 	}()
-	if err := observer.ObserverSync.EnableSensor(ctx, sensorName); err != nil {
+	if err := observer.SensorManager.EnableSensor(ctx, sensorName); err != nil {
 		t.Fatalf("EnableSensor error: %s", err)
 	}
 	defer func() {
-		observer.ObserverSync.DisableSensor(ctx, sensorName)
+		observer.SensorManager.DisableSensor(ctx, sensorName)
 	}()
 
 	var exitWG, execWG sync.WaitGroup

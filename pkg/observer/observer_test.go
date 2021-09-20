@@ -7,18 +7,16 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
+
 package observer
 
 import (
 	"context"
 	"flag"
 	"fmt"
-	"io/ioutil"
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -28,6 +26,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	sensorsbpf "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
@@ -61,42 +62,19 @@ func TestMain(m *testing.M) {
 }
 
 func TestObjectLoad(t *testing.T) {
-	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	obs, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	if err := btf.InitCachedBTF(HubbleLib, "", context.TODO()); err != nil {
+	if err := btf.InitCachedBTF(option.Config.HubbleLib, "", context.TODO()); err != nil {
 		t.Fatalf("ConfigureBTF error: %s", err)
 	}
-	initialSensor := createInitialObserverSensor()
-	if err := observerFindProgs(context.TODO(), initialSensor); err != nil {
-		t.Fatalf("observerFindProgs error: %s", err)
+	initialSensor := sensors.GetInitialSensor()
+	if err := initialSensor.FindPrograms(context.TODO()); err != nil {
+		t.Fatalf("ObserverFindProgs error: %s", err)
 	}
-	ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, context.TODO(), initialSensor)
-	kprobe.RemovePrograms()
-}
-
-func getMyPid() uint32 {
-	if procfs := os.Getenv("FGS_PROCFS"); procfs != "" {
-		procFS, _ := ioutil.ReadDir(procfs)
-		for _, d := range procFS {
-			if d.IsDir() == false {
-				continue
-			}
-			cmdline, err := ioutil.ReadFile(filepath.Join(procfs, d.Name(), "/cmdline"))
-			if err != nil {
-				continue
-			}
-			if strings.Contains(string(cmdline), selfBinary) {
-				pid, err := strconv.ParseUint(d.Name(), 10, 32)
-				if err != nil {
-					continue
-				}
-				return uint32(pid)
-			}
-		}
-	}
-	return uint32(os.Getpid())
+	initialSensor.Load(context.TODO(), obs.bpfDir, obs.mapDir, obs.ciliumDir)
+	obs.RemovePrograms()
 }
 
 func TestConnectEvent(t *testing.T) {
@@ -125,16 +103,16 @@ func TestConnectEvent(t *testing.T) {
 			End(),
 	)
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 	ExecWGCurl(&execWG, &exitWG, "127.0.0.1")
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }
 
 func TestExecEventClone(t *testing.T) {
@@ -193,20 +171,20 @@ func TestExecEventClone(t *testing.T) {
 			End(),
 	)
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
 	/* Verify initial KprobeEvent Execve "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
-	//	kprobe.AttachFilter(&ncExecFilter)
+	//	obs.AttachFilter(&ncExecFilter)
 	/* Verify KprobeEvent TCPConnectReturn "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
-	//	kprobe.AttachFilter(&ncListen)
-	//	kprobe.AttachFilter(&ncConnect)
+	//	obs.AttachFilter(&ncListen)
+	//	obs.AttachFilter(&ncConnect)
 	/* Verify KprobeEvent Execve '-e /bin/sh' without clone() */
-	//	kprobe.AttachFilter(&ncExecCloneFilter)
+	//	obs.AttachFilter(&ncExecCloneFilter)
 
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 
 	execWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
@@ -222,7 +200,7 @@ func TestExecEventClone(t *testing.T) {
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }
 
 func TestExistingListenEvent(t *testing.T) {
@@ -249,12 +227,12 @@ func TestExistingListenEvent(t *testing.T) {
 			End(),
 	)
 
-	/* Start server before creating kprobe */
+	/* Start server before creating obs */
 	cmdServer := exec.Command(server, "-nvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
 
-	/* Create kprobe */
-	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	/* Create obs */
+	obs, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
@@ -264,7 +242,7 @@ func TestExistingListenEvent(t *testing.T) {
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }
 
 func TestExistingAcceptEvent(t *testing.T) {
@@ -303,18 +281,18 @@ func TestExistingAcceptEvent(t *testing.T) {
 			End(),
 	)
 
-	/* Start server before creating kprobe */
+	/* Start server before creating obs */
 	cmdServer := exec.Command(server, "-nvlp", "8081")
 	fmt.Printf("cmd: %s\n", cmdServer)
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	/* Create kprobe */
-	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	/* Create obs */
+	obs, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 
 	execWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
@@ -329,7 +307,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }
 
 func TestExistingRootCWDListenEvent(t *testing.T) {
@@ -361,14 +339,14 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 		t.Fail()
 	}
 
-	/* Start server in '/' before creating kprobe */
+	/* Start server in '/' before creating observer */
 	os.Chdir("/")
 	cmdServer := exec.Command(server, "-nvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
 	os.Chdir(path)
 
-	/* Create kprobe */
-	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	/* Create obs */
+	obs, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
@@ -378,7 +356,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }
 
 func TestListenAcceptClose(t *testing.T) {
@@ -427,11 +405,11 @@ func TestListenAcceptClose(t *testing.T) {
 		// some go way to close the sockets.
 	)
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 
 	execWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
@@ -447,7 +425,7 @@ func TestListenAcceptClose(t *testing.T) {
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }
 
 func getNCCommand(t *testing.T, orig string) string {
@@ -488,21 +466,21 @@ func TestSensorLseekLoad(t *testing.T) {
 		ec.NewTestEventChecker().End(),
 	)
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	obs, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	progs := []*BpfLoad{&ObserverLseekTest}
-	maps := []*ObserverMap{}
-	sensor := &ObserverSensor{name: "lseekTest", progs: progs, maps: maps}
-	if err := observerFindProgs(ctx, sensor); err != nil {
-		t.Fatalf("observerFindProgs error: %s", err)
+	progs := []*sensorsbpf.Program{&ObserverLseekTest}
+	maps := []*sensorsbpf.Map{}
+	sensor := &sensors.Sensor{Name: "lseekTest", Progs: progs, Maps: maps}
+	if err := sensor.FindPrograms(ctx); err != nil {
+		t.Fatalf("ObserverFindProgs error: %s", err)
 	}
-	if err := ObserverLoadSensor(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir, ctx, sensor); err != nil {
-		kprobe.RemovePrograms()
+	if err := sensor.Load(ctx, obs.bpfDir, obs.mapDir, obs.ciliumDir); err != nil {
+		obs.RemovePrograms()
 		t.Fatalf("observerLoadSensor error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 	execWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
@@ -510,10 +488,10 @@ func TestSensorLseekLoad(t *testing.T) {
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 
-	observerUnloadSensor(kprobe.bpfDir, kprobe.mapDir, sensor, ctx)
+	sensors.UnloadSensor(obs.bpfDir, obs.mapDir, sensor, ctx)
 
-	kprobe.RemovePrograms()
-	kprobe.PrintStats()
+	obs.RemovePrograms()
+	obs.PrintStats()
 }
 
 func TestSensorLseekEnable(t *testing.T) {
@@ -529,45 +507,45 @@ func TestSensorLseekEnable(t *testing.T) {
 		ec.NewTestEventChecker().End(),
 	)
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	obs, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	defer func() {
-		kprobe.RemovePrograms()
-		kprobe.PrintStats()
+		obs.RemovePrograms()
+		obs.PrintStats()
 	}()
 
 	sensorName := "lseekTest"
-	progs := []*BpfLoad{&ObserverLseekTest}
-	maps := []*ObserverMap{}
-	sensor := &ObserverSensor{name: sensorName, progs: progs, maps: maps}
-	registerSensorAtInit(sensor)
+	progs := []*sensorsbpf.Program{&ObserverLseekTest}
+	maps := []*sensorsbpf.Map{}
+	sensor := &sensors.Sensor{Name: sensorName, Progs: progs, Maps: maps}
+	sensors.RegisterSensorAtInit(sensor)
 
-	sensorCtl, err := StartSensorCtl(kprobe.bpfDir, kprobe.mapDir, kprobe.ciliumDir)
+	smanager, err := sensors.StartSensorManager(obs.bpfDir, obs.mapDir, obs.ciliumDir)
 	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
-	kprobe.ObserverSync = sensorCtl
+	obs.SensorManager = smanager
 	defer func() {
-		err := sensorCtl.stopSensorCtl(ctx)
+		err := smanager.StopSensorManager(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
 	}()
 
-	if err := sensorCtl.EnableSensor(ctx, sensorName); err != nil {
+	if err := smanager.EnableSensor(ctx, sensorName); err != nil {
 		t.Fatalf("EnableSensor error: %s", err)
 	}
 
 	defer func() {
-		err := sensorCtl.DisableSensor(ctx, sensorName)
+		err := smanager.DisableSensor(ctx, sensorName)
 		if err != nil {
 			fmt.Printf("DisableSensor failed: %s\n", err)
 		}
 	}()
 
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 	execWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	exitWG.Wait()
@@ -586,11 +564,11 @@ func TestDockerListenConnect(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	var serverDockerID, clientDockerID string
 
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 
 	execWG.Wait()
 	serverDockerID = dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
@@ -640,7 +618,7 @@ func TestDockerListenConnect(t *testing.T) {
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }
 
 func Test_msgToExecveUnix(t *testing.T) {
@@ -677,17 +655,17 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	defer cancel()
 	var exitWG, execWG sync.WaitGroup
 
-	/* Start server before creating kprobe */
+	/* Start server before creating obs */
 	dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
 	waitForProcess("nc -nvlp 8081")
 	time.Sleep(2 * time.Second)
 
-	/* Create kprobe */
-	kprobe, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	/* Create obs */
+	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, kprobe, ctx)
+	LoopEvents(t, &exitWG, &execWG, obs, ctx)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -722,5 +700,5 @@ func TestDockerExistingListenEvent(t *testing.T) {
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
-	TestDone(t, kprobe)
+	TestDone(t, obs)
 }

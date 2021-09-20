@@ -19,13 +19,15 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	sensorsbpf "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 	stt "github.com/isovalent/hubble-fgs/pkg/stacktracetree"
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 	"github.com/isovalent/hubble-fgs/pkg/vtuplefilter"
 )
 
 var (
-	ObserverKfreeSkb = BpfLoad{
+	ObserverKfreeSkb = sensorsbpf.Program{
 		"bpf_kfree_skb.o",
 		"kfree_skb",
 		"kfree_skb",
@@ -35,7 +37,7 @@ var (
 		false,
 		true,
 		"kprobe",
-		bpfLoadStateIdle(),
+		sensorsbpf.Idle(),
 
 		-1,
 
@@ -46,10 +48,8 @@ var (
 )
 
 func init() {
-	observerAllPrograms = append(observerAllPrograms, &ObserverKfreeSkb)
-	sensor := createPacketDropSensor()
-	registerSensorAtInit(sensor)
-
+	sensors.AllPrograms = append(sensors.AllPrograms, &ObserverKfreeSkb)
+	sensors.RegisterSensorAtInit(createPacketDropSensor())
 }
 
 type PacketdropSensorConfig struct {
@@ -61,29 +61,28 @@ type PacketdropSensorImpl struct {
 	config PacketdropSensorConfig
 }
 
-func createPacketDropSensor() *ObserverSensor {
-	progs := []*BpfLoad{&ObserverKfreeSkb}
-	maps := []*ObserverMap{}
+func createPacketDropSensor() *sensors.Sensor {
+	progs := []*sensorsbpf.Program{&ObserverKfreeSkb}
+	maps := []*sensorsbpf.Map{}
 	impl := PacketdropSensorImpl{}
 	packetdropCfg = &impl.config
-	return &ObserverSensor{
-		name:  "packet-drop",
-		progs: progs,
-		maps:  maps,
-		impl:  &impl,
+	return &sensors.Sensor{
+		Name:  "packet-drop",
+		Progs: progs,
+		Maps:  maps,
+		Ops:   &impl,
 	}
-
 }
 
-func (pd *PacketdropSensorImpl) sensorLoaded(arg sensorLoadArg) {
-	arg.sttManagerHandle.CreateTree("packet-drop")
+func (pd *PacketdropSensorImpl) Loaded(arg sensors.LoadArg) {
+	arg.STTManagerHandle.CreateTree("packet-drop")
 }
 
-func (pd *PacketdropSensorImpl) sensorUnloaded(arg sensorUnloadArg) {
-	arg.sttManagerHandle.DestroyTree("packet-drop")
+func (pd *PacketdropSensorImpl) Unloaded(arg sensors.UnloadArg) {
+	arg.STTManagerHandle.DestroyTree("packet-drop")
 }
 
-func (pd *PacketdropSensorImpl) sensorGetConfig(key_ string) (string, error) {
+func (pd *PacketdropSensorImpl) GetConfig(key_ string) (string, error) {
 	key := strings.ToLower(key_)
 	switch key {
 
@@ -104,7 +103,7 @@ func (pd *PacketdropSensorImpl) sensorGetConfig(key_ string) (string, error) {
 	}
 }
 
-func (pd *PacketdropSensorImpl) sensorSetConfig(key_ string, param string) error {
+func (pd *PacketdropSensorImpl) SetConfig(key_ string, param string) error {
 	key := strings.ToLower(key_)
 	switch key {
 	case "filter":
@@ -171,7 +170,7 @@ func msgToKfreeSkbUnix(m *api.MsgKfreeSkb, ksyms *ksyms.Ksyms) *api.MsgKfreeSkbU
 	return &ret
 }
 
-func (k *ObserverKprobe) handleKfreeSkb(m *api.MsgKfreeSkb) {
+func (k *Observer) handleKfreeSkb(m *api.MsgKfreeSkb) {
 
 	msgUnix := msgToKfreeSkbUnix(m, k.ksyms)
 
@@ -193,7 +192,7 @@ func (k *ObserverKprobe) handleKfreeSkb(m *api.MsgKfreeSkb) {
 
 	stt_lbl := []string{vtuple.StringRep(&msgUnix.Tuple)}
 	stt := stt.SttFromCalltrace(msgUnix.Calltrace, stt_lbl)
-	k.ObserverSync.sttManager.Insert("packet-drop", stt)
+	k.SensorManager.STTManager.Insert("packet-drop", stt)
 
 	// NB: Currently, we don't push these events to listens, but we might
 	// want to change that at some point.

@@ -22,6 +22,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
@@ -46,7 +48,7 @@ var (
 )
 
 var (
-	Skmsg = observer.BpfLoadBuilder(
+	Skmsg = bpf.ProgramBuilder(
 		"bpf_http.o",
 		"sk_msg",
 		"sk_msg",
@@ -57,7 +59,7 @@ var (
 		true,
 		"http_skmsg")
 
-	SkSkbParser = observer.BpfLoadBuilder(
+	SkSkbParser = bpf.ProgramBuilder(
 		"bpf_http_parser.o",
 		"sk_skb",
 		"sk_skb",
@@ -68,7 +70,7 @@ var (
 		true,
 		"sk_skb_parser")
 
-	SkSkbVerdict = observer.BpfLoadBuilder(
+	SkSkbVerdict = bpf.ProgramBuilder(
 		"bpf_http_verdict.o",
 		"sk_skb",
 		"sk_skb",
@@ -81,33 +83,33 @@ var (
 
 	/* Http maps */
 	httpSockMapName = "http_sock_map"
-	SockMap         = observer.BpfMapBuilder(httpSockMapName, "sockops", sockops.ObserverSockopsEstablished)
-	TailCalls       = observer.BpfMapBuilder("http1_calls", "http_skmsg", Skmsg)
-	SkbTailCalls    = observer.BpfMapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
-	HTTPContext     = observer.BpfMapBuilder("http_map", "http_skmsg", Skmsg)
+	SockMap         = bpf.MapBuilder(httpSockMapName, "sockops", sockops.SockopsEstablished)
+	TailCalls       = bpf.MapBuilder("http1_calls", "http_skmsg", Skmsg)
+	SkbTailCalls    = bpf.MapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
+	HTTPContext     = bpf.MapBuilder("http_map", "http_skmsg", Skmsg)
 )
 
 type sensor struct {
 	name string
 }
 
-func (sockops *sensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, httpSockMapName)
-	err, i := observer.ObserverLoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
+	err, i := bpf.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
 	if err != nil {
 		return err, i
 	}
 
 	if utils.SkSkbParserRequired() {
-		err, i = observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return observer.ObserverLoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
+	return bpf.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
 }
 
-func (tls *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+func (tls *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return AddHTTPSensor(spec.Parser)
 }
 
@@ -115,11 +117,11 @@ type skSkbVerdictSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
-	return observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
+func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	return bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
 }
 
-func (skmsg *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+func (skmsg *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -127,11 +129,11 @@ type skSkbParserSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
-	return observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
+func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	return bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
 }
 
-func (skmsg *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+func (skmsg *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -163,25 +165,25 @@ func AddHTTP() {
 		skskbParser := &skSkbParserSensor{
 			name: "skskb parser http sensor",
 		}
-		observer.RegisterProbeType("http_skskb_parser", skskbParser)
+		sensors.RegisterProbeType("http_skskb_parser", skskbParser)
 	}
 
 	skskbVerdict := &skSkbVerdictSensor{
 		name: "skskb verdict http sensor",
 	}
-	observer.RegisterProbeType("http_skskb_verdict", skskbVerdict)
+	sensors.RegisterProbeType("http_skskb_verdict", skskbVerdict)
 
-	observer.RegisterProbeType("http_skmsg", skmsg)
+	sensors.RegisterProbeType("http_skmsg", skmsg)
 
-	observer.RegisterTracingSensorsAtInit(skmsg.name, skmsg)
+	sensors.RegisterTracingSensorsAtInit(skmsg.name, skmsg)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_HTTP, handleHTTP)
 }
 
 /* Add sensor from CRD */
-func EnableHTTPParser() *observer.ObserverSensor {
+func EnableHTTPParser() *sensors.Sensor {
 	logger.GetLogger().Infof("Enable HTTP")
 
-	progs := []*observer.BpfLoad{
+	progs := []*bpf.Program{
 		Skmsg,
 		SkSkbVerdict,
 	}
@@ -190,14 +192,14 @@ func EnableHTTPParser() *observer.ObserverSensor {
 		progs = append(progs, SkSkbParser)
 	}
 
-	maps := []*observer.ObserverMap{
+	maps := []*bpf.Map{
 		SockMap,
 		TailCalls,
 		SkbTailCalls,
 		HTTPContext,
 	}
 
-	return observer.SensorBuilder("__parser_sensors__", progs, maps)
+	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
 }
 
 func parseHTTPSelector(k *selectors.KernelSelectorState, s v1alpha1.HttpSelector) error {
@@ -237,7 +239,7 @@ func ParseHTTPSpec(spec *v1alpha1.HttpSpec) ([128]byte, error) {
 	return match, nil
 }
 
-func AddHTTPSensor(parser v1alpha1.ParserPolicySpec) (*observer.ObserverSensor, error) {
+func AddHTTPSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 	var err error
 
 	if !parser.Http.Enable {

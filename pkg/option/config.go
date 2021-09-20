@@ -7,6 +7,22 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
 
-package observer
+package option
+
+// Config contains all the configuration used by FGS.
+var Config = config{
+	// Initialize global defaults below.
+
+	// ProcFS defaults to /proc.
+	ProcFS: "/proc",
+}
+
+type config struct {
+	ProcFS             string
+	KernelVersion      string
+	HubbleLib          string
+	BTF                string
+	Verbosity          int
+	IgnoreMissingProgs bool
+}

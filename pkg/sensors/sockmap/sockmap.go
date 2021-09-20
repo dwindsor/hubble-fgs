@@ -17,13 +17,18 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
 var (
-	Skmsg = observer.BpfLoadBuilder(
+	// Socket mode
+	// Supports 5.4 kernels or newer.
+
+	TLSSkmsg = bpf.ProgramBuilder(
 		"bpf_skmsg.o",
 		"sk_msg",
 		"sk_msg",
@@ -33,7 +38,7 @@ var (
 		true,
 		"skmsg")
 
-	SkSkbVerdict = observer.BpfLoadBuilder(
+	TLSSkSkbVerdict = bpf.ProgramBuilder(
 		"bpf_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb",
@@ -43,7 +48,7 @@ var (
 		true,
 		"sk_skb_verdict")
 
-	SkSkbParser = observer.BpfLoadBuilder(
+	TLSSkSkbParser = bpf.ProgramBuilder(
 		"bpf_skskb_parser.o",
 		"sk_skb",
 		"sk_skb",
@@ -53,7 +58,11 @@ var (
 		true,
 		"sk_skb_parser")
 
-	TLSTCIngress = observer.BpfLoadBuilder(
+	// TC mode
+	// 4.19 kernels and below.
+	// Susceptible to out-of-order packets.
+
+	TLSTCIngress = bpf.ProgramBuilder(
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
 		"ingress_tcp",
@@ -63,7 +72,7 @@ var (
 		true,
 		"tc_ingress")
 
-	TLSTCEgress = observer.BpfLoadBuilder(
+	TLSTCEgress = bpf.ProgramBuilder(
 		"bpf_tc_egress.o",
 		"egress_tcp",
 		"egress_tcp",
@@ -75,13 +84,13 @@ var (
 
 	/* TLS maps */
 	tlsSockMapName = "tls_sock_map"
-	TCTLSMap       = observer.BpfMapBuilder("tls_map", "tc_ingress", TLSTCEgress)
-	SockMap        = observer.BpfMapBuilder(tlsSockMapName, "sockops", sockops.ObserverSockopsEstablished)
-	TLSMap         = observer.BpfMapBuilder("tls_map", "skmsg", Skmsg)
-	TLSTailCalls   = observer.BpfMapBuilder("tls_calls", "tc_ingress", TLSTCIngress)
+	TCTLSMap       = bpf.MapBuilder("tls_map", "tc_ingress", TLSTCEgress)
+	SockMap        = bpf.MapBuilder(tlsSockMapName, "sockops", sockops.SockopsEstablished)
+	TLSMap         = bpf.MapBuilder("tls_map", "skmsg", TLSSkmsg)
+	TLSTailCalls   = bpf.MapBuilder("tls_calls", "tc_ingress", TLSTCIngress)
 )
 
-func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*observer.ObserverSensor, error) {
+func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 	var err error
 
 	enableTLS := false
@@ -111,21 +120,27 @@ type tlsSensor struct {
 	name string
 }
 
+// TODO: Pull this out to into the sockops package. Implement the SpecHandler
+// to load this sockops sensor if TLS || HTTP.
+
 type sockopsSensor struct {
 	name string
 }
 
-func (*sockopsSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
-	return observer.ObserverLoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors)
+func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	// TODO: The sockops program cannot be loaded twice; HTTP and TLS
+	// require this program to be loaded. Don't load it again if it's
+	// already there.
+	return bpf.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors)
 }
 
-func (*sockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+func (*sockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return AddParserSensors(spec.Parser)
 }
 
 // AddParserSensors will add and combine the sensors that are enabled inside
 // the parser policy spec.
-func AddParserSensors(parser v1alpha1.ParserPolicySpec) (*observer.ObserverSensor, error) {
+func AddParserSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 	tls, err := AddTLSSensor(parser)
 	if err != nil {
 		return nil, err
@@ -134,29 +149,29 @@ func AddParserSensors(parser v1alpha1.ParserPolicySpec) (*observer.ObserverSenso
 	if err != nil {
 		return nil, err
 	}
-	return observer.SensorCombine("__parser_sensors__", http, tls), nil
+	return sensors.SensorCombine("__parser_sensors__", http, tls), nil
 }
 
 type skmsgTLSSensor struct {
 	name string
 }
 
-func (skmsg *skmsgTLSSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
+func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, tlsSockMapName)
-	err, i := observer.ObserverLoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
+	err, i := bpf.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
 	if err != nil {
 		return err, i
 	}
 	if utils.SkSkbParserRequired() {
-		err, i = observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbParser, args.Version, args.Verbose, args.X64, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return observer.ObserverLoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
+	return bpf.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbVerdict, args.Version, args.Verbose, args.X64, path)
 }
 
-func (skmsg *skmsgTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+func (skmsg *skmsgTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -164,11 +179,11 @@ type skSkbVerdictTLSSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
-	return observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
+func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	return bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
 }
 
-func (skmsg *skSkbVerdictTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+func (skmsg *skSkbVerdictTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -176,11 +191,11 @@ type skSkbParserTLSSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
-	return observer.ObserverLoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
+func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	return bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
 }
 
-func (skmsg *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+func (skmsg *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -188,48 +203,48 @@ func init() {
 	skskbVerdict := &skSkbVerdictTLSSensor{
 		name: "skskb verdict tls sensor",
 	}
-	observer.RegisterProbeType("sk_skb_verdict", skskbVerdict)
+	sensors.RegisterProbeType("sk_skb_verdict", skskbVerdict)
 
 	if utils.SkSkbParserRequired() {
 		skskbParser := &skSkbParserTLSSensor{
 			name: "skskb parser tls sensor",
 		}
-		observer.RegisterProbeType("sk_skb_parser", skskbParser)
+		sensors.RegisterProbeType("sk_skb_parser", skskbParser)
 	}
 
 	skmsg := &skmsgTLSSensor{
 		name: "skmsg tls sensor",
 	}
-	observer.RegisterProbeType("skmsg", skmsg)
+	sensors.RegisterProbeType("skmsg", skmsg)
 
 	sockops := &sockopsSensor{
 		name: "sockops loader",
 	}
-	observer.RegisterProbeType("sockops", sockops)
+	sensors.RegisterProbeType("sockops", sockops)
 
 	tls := &tlsSensor{
 		name: "tls sensor",
 	}
-	observer.RegisterProbeType("tc_ingress", tls)
-	observer.RegisterProbeType("tc_egress", tls)
-	observer.RegisterTracingSensorsAtInit(tls.name, tls)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_TLS, HandleTls)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_TLS_CONT, HandleTlsCont)
+	sensors.RegisterProbeType("tc_ingress", tls)
+	sensors.RegisterProbeType("tc_egress", tls)
+	sensors.RegisterTracingSensorsAtInit(tls.name, tls)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_TLS, HandleTLS)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_TLS_CONT, HandleTLSCont)
 }
 
-func enableTLSParser(tls, tc bool) *observer.ObserverSensor {
-	var progs []*observer.BpfLoad
-	var maps []*observer.ObserverMap
+func enableTLSParser(tls, tc bool) *sensors.Sensor {
+	var progs []*bpf.Program
+	var maps []*bpf.Map
 
 	if tls {
 		logger.GetLogger().Infof("Enable TLS")
 		progs = append(progs,
-			sockops.ObserverSockopsEstablished,
-			Skmsg,
-			SkSkbVerdict,
+			sockops.SockopsEstablished,
+			TLSSkmsg,
+			TLSSkSkbVerdict,
 		)
 		if utils.SkSkbParserRequired() {
-			progs = append(progs, SkSkbParser)
+			progs = append(progs, TLSSkSkbParser)
 		}
 
 		maps = append(maps,
@@ -251,13 +266,13 @@ func enableTLSParser(tls, tc bool) *observer.ObserverSensor {
 		)
 	}
 
-	return observer.SensorBuilder("__parser_sensors__", progs, maps)
+	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
 }
 
-func (tls *tlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*observer.ObserverSensor, error) {
+func (tls *tlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return AddParserSensors(spec.Parser)
 }
 
-func (tls *tlsSensor) LoadProbe(args observer.LoadProbeArgs) (error, int) {
-	return observer.ObserverLoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
+func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	return bpf.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
 }

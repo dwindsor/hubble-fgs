@@ -21,12 +21,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
-	"github.com/cilium/cilium/pkg/option"
+	ciliumopt "github.com/cilium/cilium/pkg/option"
 	gops "github.com/google/gops/agent"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
@@ -53,8 +55,8 @@ func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
 func saveInitInfo() error {
 	info := bugtool.InitInfo{
 		ExportFname: exportFilename,
-		LibDir:      observer.HubbleLib,
-		BtfFname:    observer.ObserverBTF,
+		LibDir:      option.Config.HubbleLib,
+		BtfFname:    option.Config.BTF,
 		MetricsAddr: metricsServer,
 		ServerAddr:  serverAddress,
 	}
@@ -74,7 +76,7 @@ func hubbleFGSExecute() error {
 
 	bpf.ConfigureResourceLimits()
 	observerDir := getObserverDir()
-	kprobe := observer.NewObserverKprobe(
+	obs := observer.NewObserver(
 		observerDir,
 		observerDir,
 		ciliumBPF,
@@ -84,7 +86,7 @@ func hubbleFGSExecute() error {
 		enableK8sAPI,
 		exportTCPStatsSampleSeg,
 	)
-	if err := kprobe.InitObserverSync(); err != nil {
+	if err := obs.InitSensorManager(); err != nil {
 		return err
 	}
 
@@ -95,23 +97,23 @@ func hubbleFGSExecute() error {
 	 * we recapture current running state from proc and/or have cache of
 	 * events no state should be lost/missed.
 	 */
-	kprobe.RemovePrograms()
+	obs.RemovePrograms()
 	os.Mkdir(defaults.DefaultRunDir, os.ModeDir)
 	go func() {
 		<-sigs
-		kprobe.PrintStats()
-		kprobe.RemovePrograms()
+		obs.PrintStats()
+		obs.RemovePrograms()
 		cancel()
 		os.Exit(1)
 	}()
 
-	err := btf.InitCachedBTF(observer.HubbleLib, observer.ObserverBTF, ctx)
+	err := btf.InitCachedBTF(option.Config.HubbleLib, option.Config.BTF, ctx)
 	if err != nil {
 		return err
 	}
 
 	if runStandalone {
-		return kprobe.StartStandalone(ctx)
+		return obs.StartStandalone(ctx)
 	}
 
 	if metricsServer != "" {
@@ -136,7 +138,7 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, kprobe.ObserverSync)
+	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
 	if err = Serve(ctx, serverAddress, server); err != nil {
 		return err
 	}
@@ -147,9 +149,9 @@ func hubbleFGSExecute() error {
 	}
 
 	logger.GetLogger().WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
-	kprobe.AddListener(processManager)
+	obs.AddListener(processManager)
 	saveInitInfo()
-	return kprobe.Start(ctx)
+	return obs.Start(ctx)
 }
 
 // getObserverDir returns the path to the observer directory based on the BPF
@@ -269,7 +271,7 @@ func execute() error {
 		}
 		if viper.IsSet(keyConfigDir) {
 			configDir := viper.GetString(keyConfigDir)
-			cm, err := option.ReadDirConfig(configDir)
+			cm, err := ciliumopt.ReadDirConfig(configDir)
 			if err != nil {
 				logger.GetLogger().WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to read config from directory")
 			}

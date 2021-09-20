@@ -7,13 +7,18 @@
 //  protected by trade secret or copyright law.  Dissemination of this information
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
-//
+
 package observer
+
+import (
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
+)
 
 // This bpf_lseek is a simple BPF program used for tests
 
 var (
-	ObserverLseekTest = BpfLoad{
+	ObserverLseekTest = bpf.Program{
 		"bpf_lseek.o",
 		"syscalls/sys_enter_lseek",
 		"syscalls/sys_enter_lseek",
@@ -23,7 +28,7 @@ var (
 		false,
 		true,
 		"tracepoint",
-		bpfLoadStateIdle(),
+		bpf.Idle(),
 
 		-1,
 
@@ -32,5 +37,5 @@ var (
 )
 
 func init() {
-	observerAllPrograms = append(observerAllPrograms, &ObserverLseekTest)
+	sensors.AllPrograms = append(sensors.AllPrograms, &ObserverLseekTest)
 }

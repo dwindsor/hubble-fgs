@@ -24,7 +24,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	sensorsbpf "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/tracepoint"
 	"github.com/sirupsen/logrus"
 
@@ -55,8 +58,8 @@ func init() {
 	tp := &observerTracepointSensor{
 		name: "tracepoint sensor",
 	}
-	RegisterProbeType("generic_tracepoint", tp)
-	RegisterTracingSensorsAtInit(tp.name, tp)
+	sensors.RegisterProbeType("generic_tracepoint", tp)
+	sensors.RegisterTracingSensorsAtInit(tp.name, tp)
 	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
 }
 
@@ -302,7 +305,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 }
 
 // createGenericTracepointSensor will create a sensor that can be loaded based on a generic tracepoint configuration
-func createGenericTracepointSensor(confs []GenericTracepointConf) (*ObserverSensor, error) {
+func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sensor, error) {
 
 	tracepoints := make([]*genericTracepoint, 0, len(confs))
 	for _, conf := range confs {
@@ -313,48 +316,48 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*ObserverSens
 		tracepoints = append(tracepoints, tp)
 	}
 
-	maps := []*ObserverMap{}
-	progs := make([]*BpfLoad, 0, len(tracepoints))
+	maps := []*sensorsbpf.Map{}
+	progs := make([]*sensorsbpf.Program, 0, len(tracepoints))
 	for _, tp := range tracepoints {
 		attach := fmt.Sprintf("%s/%s", tp.Info.Subsys, tp.Info.Event)
-		prog0 := BpfLoad{
-			Observer__program:    path.Join(HubbleLib, "bpf_generic_tracepoint.o"),
-			observer__x64_attach: attach,
-			observer__attach:     attach,
-			observer__label:      "tracepoint/generic_tracepoint",
-			observer__prog:       fmt.Sprintf("tracepoint-%s-%s", tp.Info.Subsys, tp.Info.Event),
-			retProbe:             false,
-			errorFatal:           true,
-			probeType:            "generic_tracepoint",
-			loadState:            bpfLoadStateIdle(),
-			tracefd:              -1,
-			loaderData:           tp.tableIdx,
+		prog0 := sensorsbpf.Program{
+			Name:       path.Join(option.Config.HubbleLib, "bpf_generic_tracepoint.o"),
+			X64Attach:  attach,
+			Attach:     attach,
+			Label:      "tracepoint/generic_tracepoint",
+			PinPath:    fmt.Sprintf("tracepoint-%s-%s", tp.Info.Subsys, tp.Info.Event),
+			RetProbe:   false,
+			ErrorFatal: true,
+			Type:       "generic_tracepoint",
+			LoadState:  sensorsbpf.Idle(),
+			TraceFD:    -1,
+			LoaderData: tp.tableIdx,
 		}
 		progs = append(progs, &prog0)
 	}
 
-	return &ObserverSensor{
-		name:  "generic_tracepoint_sensor",
-		progs: progs,
-		maps:  maps,
+	return &sensors.Sensor{
+		Name:  "generic_tracepoint_sensor",
+		Progs: progs,
+		Maps:  maps,
 	}, nil
 }
 
-func LoadGenericTracepointSensor(bpfDir, mapDir string, load *BpfLoad, version, verbose int, x64 bool) (error, int) {
+func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensorsbpf.Program, version, verbose int, x64 bool) (error, int) {
 	tracepointLog = logger.GetLogger()
 
 	btfCtxOffsetFn := func(i int) string {
 		return fmt.Sprintf("t_arg%d_ctx_off", i)
 	}
 
-	tpIdx, ok := load.loaderData.(int)
+	tpIdx, ok := load.LoaderData.(int)
 	if !ok {
-		return fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int).", load.Observer__program, load.loaderData, load.loaderData), 0
+		return fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int).", load.Name, load.LoaderData, load.LoaderData), 0
 	}
 
 	tp, err := genericTracepointTable.getTracepoint(tpIdx)
 	if err != nil {
-		return fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.observer__attach, err), 0
+		return fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.Attach, err), 0
 	}
 
 	btfObj, err := btf.NewBTF()
@@ -457,21 +460,22 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *BpfLoad, version, 
 
 	var attach string
 	if x64 {
-		attach = load.observer__x64_attach
+		attach = load.X64Attach
 	} else {
-		attach = load.observer__attach
+		attach = load.Attach
 	}
 
 	return bpf.LoadTracepointArgsProgram(
-		version, Verbosity,
+		version, option.Config.Verbosity,
 		uintptr(btfObj),
-		load.Observer__program,
+		load.Name,
 		attach,
-		load.observer__label,
-		filepath.Join(bpfDir, load.observer__prog),
+		load.Label,
+		filepath.Join(bpfDir, load.PinPath),
 		mapDir,
-		load.retProbe,
-		kernelSelectors)
+		load.RetProbe,
+		kernelSelectors,
+	)
 }
 
 func handleGenericTracepoint(r *bytes.Reader) (interface{}, error) {
@@ -536,7 +540,7 @@ func handleGenericTracepoint(r *bytes.Reader) (interface{}, error) {
 	return unix, nil
 }
 
-func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*ObserverSensor, error) {
+func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	}
@@ -546,6 +550,6 @@ func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec)
 	return nil, nil
 }
 
-func (t *observerTracepointSensor) LoadProbe(args LoadProbeArgs) (error, int) {
+func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return LoadGenericTracepointSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose, args.X64)
 }
