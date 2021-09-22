@@ -349,22 +349,25 @@ func GetTLSSNI(sni [api.SNI_BUFFER_SIZE]byte) (string, string) {
 	return typeSNI, string(sni[5 : 5+nameLength])
 }
 
-func GetTLSSupportedVersions(vers [16]byte, offset int) string {
+func GetTLSSupportedVersions(vers []byte, hasLength bool) string {
 	var s []string
-	var length int
 
-	if offset == 1 {
-		length = int(vers[0])
-		if length > 16 {
-			length = 16
+	if len(vers) < 2 {
+		return ""
+	} else if hasLength {
+		length := int(vers[0])
+		if length > len(vers) {
+			length = len(vers)
 		}
+		vers = vers[1:length]
 	} else {
 		// serverHello supported versions extensions only has the
 		// single entry with the the negotiated version. And does
 		// not have a length field.
-		length = 2
+		vers = vers[0:2]
 	}
-	for i := offset; i < length; i += 2 {
+
+	for i := 0; i <= len(vers)-2; i += 2 {
 		t := binary.LittleEndian.Uint16(vers[i : i+2])
 
 		switch t {
@@ -457,8 +460,8 @@ func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
 		"Server-TLS-Version":           GetTLSVersion(msg.ServerHello.Version),
 		"SNI-Type":                     typeSNI,
 		"SNI-Name":                     nameSNI,
-		"Client-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ClientHello.SupportedVersions, 1),
-		"Server-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ServerHello.SupportedVersions, 0),
+		"Client-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ClientHello.SupportedVersions[:], true),
+		"Server-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ServerHello.SupportedVersions[:], false),
 		"cipher":                       GetTLSCipher(api.SwapByte(msg.ServerHello.Cipher)),
 	}).Warn()
 }
