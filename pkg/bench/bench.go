@@ -14,14 +14,14 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
+	"os"
+	"os/signal"
 	"path"
 	"strings"
 	"sync/atomic"
 	"syscall"
 	"text/template"
-	"log"
-	"os"
-	"os/signal"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -209,13 +209,13 @@ func startBenchmarkExporter(ctx context.Context, kprobe *observer.ObserverKprobe
 func RunBenchmark(args *BenchArguments) (summary *BenchSummary) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go sigHandler(ctx, cancel)
-	
+
 	summary = newBenchSummary(args)
 	summary.StartTime = time.Now()
 
 	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
 	args.FgsEnableTLS = args.FgsEnableTLS || args.FgsEnableHTTP
-	
+
 	EnableBpfStats()
 	oldBpfStats := GetBpfStats()
 
@@ -311,7 +311,6 @@ func RunBenchmark(args *BenchArguments) (summary *BenchSummary) {
 			}
 		}
 	}
-
 
 	log.Printf("Benchmark finished: %.2f per sec, %d error(s)", sourceStats.ActualRate, sourceStats.Errors)
 	return
