@@ -50,12 +50,13 @@ var (
 	keyPem []byte
 
 	sinks = map[sinkName]Sink{
-		"tcp-go":     tcpOrTLSSink{tls: false},
-		"http-go":    goHTTPSink{},
-		"http2-go":   goHTTP2Sink{},
-		"http-nginx": nginxSink{},
-		"tls-go":     tcpOrTLSSink{tls: true},
-		"netperf":    netperfSink{},
+		"tcp-go":      tcpOrTLSSink{tls: false},
+		"http-go":     goHTTPSink{},
+		"http2-go":    goHTTP2Sink{},
+		"http-nginx":  nginxSink{},
+		"tls-go":      tcpOrTLSSink{tls: true},
+		"tcp-fuzz-go": tcpOrTLSSink{tls: false, fuzz: true},
+		"netperf":     netperfSink{},
 	}
 )
 
@@ -63,7 +64,7 @@ func SinkNameOrPanic(s string) sinkName {
 	if _, ok := sinks[sinkName(s)]; ok {
 		return sinkName(s)
 	} else {
-		log.Fatalf("Unknown sink '%s', use on of: %s", s, strings.Join(SupportedSources(), ", "))
+		log.Fatalf("Unknown sink '%s', use on of: %s", s, strings.Join(SupportedSinks(), ", "))
 		return sinkName("")
 	}
 }
@@ -82,6 +83,7 @@ func SupportedSinks() []string {
 
 type tcpOrTLSSink struct {
 	tls bool
+	fuzz bool
 }
 
 func (sink tcpOrTLSSink) Start(ctx context.Context) (int, chan SinkStats, error) {
@@ -113,7 +115,19 @@ func (sink tcpOrTLSSink) acceptCopyLoop(l net.Listener) {
 		if err != nil {
 			return
 		}
-		io.Copy(c, c)
+		if sink.fuzz {
+			// Discard random amount, source expected to always write
+			// at least 32 bytes.
+			c.Read(make([]byte, rand.Int31n(32)))
+
+			// Write random amount of random
+			n := rand.Int31n(1024)
+			buf := make([]byte, n)
+			rand.Read(buf)
+			c.Write(buf)
+		} else {
+			io.Copy(c, c)
+		}
 		c.Close()
 	}
 }

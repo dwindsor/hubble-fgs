@@ -19,6 +19,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"log"
+	"math/rand"
 	"net"
 	"net/http"
 	"os/exec"
@@ -68,6 +69,10 @@ var (
 		"tcp-rr": tcpOrTLSRRSource{tls: false},
 		"tls-rr": tcpOrTLSRRSource{tls: true},
 
+		// Fuzz test of the TLS parser. Just send random garbage on the
+		// TLS parsed port.
+		"tls-crr-fuzz": tcpOrTLSCRRSource{tls: false, fuzz: true},
+
 		"http-rr-go":     goHTTPRRSource{},
 		"http-crr-go":    goHTTPCRRSource{},
 		"http-rr-h2load": h2LoadSource{http2: false},
@@ -107,7 +112,8 @@ func SupportedSources() []string {
 //
 
 type tcpOrTLSCRRSource struct {
-	tls bool
+	tls  bool
+	fuzz bool
 }
 
 func (src tcpOrTLSCRRSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (SourceStats, error) {
@@ -120,10 +126,20 @@ func (src tcpOrTLSCRRSource) Run(ctx context.Context, sinkPort int, args SourceA
 	} else {
 		dialer = &net.Dialer{Timeout: 5000 * time.Millisecond}
 	}
-	return sourceLoop(ctx, sinkPort, dialer, args.Duration, args.RatePerSec)
+	return src.sourceLoop(ctx, sinkPort, dialer, args.Duration, args.RatePerSec)
 }
 
-func sourceLoop(ctx context.Context, sinkPort int, dialer ContextDialer, duration time.Duration, ratePerSec float64) (SourceStats, error) {
+func genRandomBytes(minSize, maxSize int32) []byte {
+	n := minSize + rand.Int31n(maxSize - minSize)
+	buf := make([]byte, n)
+	_, err := rand.Read(buf)
+	if err != nil {
+		log.Fatalf("rand.Read(): %s", err)
+	}
+	return buf
+}
+
+func (src tcpOrTLSCRRSource) sourceLoop(ctx context.Context, sinkPort int, dialer ContextDialer, duration time.Duration, ratePerSec float64) (SourceStats, error) {
 	// Lock to specific thread to collect rusage.
 	runtime.LockOSThread()
 	cpuUsageBefore := GetCPUUsage(CPU_USAGE_THIS_THREAD)
@@ -155,6 +171,11 @@ func sourceLoop(ctx context.Context, sinkPort int, dialer ContextDialer, duratio
 			stats.Errors++
 			continue
 		}
+
+		if src.fuzz {
+			buf = genRandomBytes(32, 1024)
+		}
+
 		_, err = conn.Write(buf)
 		if err != nil {
 			log.Printf("Write error: %v\n", err)
