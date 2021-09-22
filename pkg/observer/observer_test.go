@@ -68,7 +68,7 @@ func TestObjectLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	if err := btf.InitCachedBTF(HubbleLib, context.TODO()); err != nil {
+	if err := btf.InitCachedBTF(HubbleLib, "", context.TODO()); err != nil {
 		t.Fatalf("ConfigureBTF error: %s", err)
 	}
 	initialSensor := createInitialObserverSensor()

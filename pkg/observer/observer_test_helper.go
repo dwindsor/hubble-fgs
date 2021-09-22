@@ -200,7 +200,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*ObserverKprobe, erro
 		Verbosity = dfltVerbosity
 	}
 
-	if err := btf.InitCachedBTF(HubbleLib, context.Background()); err != nil {
+	if err := btf.InitCachedBTF(HubbleLib, "", context.Background()); err != nil {
 		return nil, err
 	}
 

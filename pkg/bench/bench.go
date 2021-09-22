@@ -90,7 +90,7 @@ func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx conte
 		args.FgsDebug /* debug */, false, /* enable-crd */
 		0 /* tcp statistics */)
 
-	if err := btf.InitCachedBTF(observer.HubbleLib, ctx); err != nil {
+	if err := btf.InitCachedBTF(observer.HubbleLib, "", ctx); err != nil {
 		log.Fatal(err)
 	}
 
