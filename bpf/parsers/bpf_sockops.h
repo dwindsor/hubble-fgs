@@ -38,20 +38,6 @@ struct sock_key {
 	({ typeof(x) __val = (v); __WRITE_ONCE(x, __val); compiler_barrier(); __val; })
 #endif
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_sock_map = {
-	.type           = BPF_MAP_TYPE_SOCKHASH,
-	.key_size       = sizeof(struct sock_key),
-	.value_size     = sizeof(int),
-	.max_entries	= SOCKOPS_TLS_MAP_SIZE,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) http_sock_map = {
-	.type           = BPF_MAP_TYPE_SOCKHASH,
-	.key_size       = sizeof(struct sock_key),
-	.value_size     = sizeof(int),
-	.max_entries	= SOCKOPS_HTTP_MAP_SIZE,
-};
-
 __attribute__((unused))
 static void sk_extract4_key(struct bpf_sock_ops *ops,
 			    struct sock_key *key)

@@ -12,7 +12,6 @@ struct bpf_map_def {
 
 #include "api.h"
 #include "hubble_msg.h"
-#include "../parsers/tls/tls_map.h"
 #include "bpf_events.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
