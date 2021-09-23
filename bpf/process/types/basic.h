@@ -526,18 +526,19 @@ struct bpf_map_def __attribute__((section("maps"), used)) fdinstall_map = {
 };
 
 static inline __attribute__((always_inline))
-void installfd(struct msg_generic_kprobe *e, int fd, int name, bool follow)
+int installfd(struct msg_generic_kprobe *e, int fd, int name, bool follow)
 {
 	struct fdinstall_value val = {0};
 	struct fdinstall_key key = {0};
 	long fdoff, nameoff;
+	int err = 0;
 
 	/* Satisfies verifier but is a bit ugly, ideally we
 	 * can just '&' and drop the '>' case.
 	 */
 	asm volatile("%[fd] &= 0xf;\n": [fd] "+r"(fd):);
 	if (fd > 5) {
-		return;
+		return 0;
 	}
 	fdoff = e->argsoff[fd];
 	asm volatile("%[fdoff] &= 0xeff;\n": [fdoff] "+r"(fdoff):);
@@ -550,7 +551,7 @@ void installfd(struct msg_generic_kprobe *e, int fd, int name, bool follow)
 
 		asm volatile("%[name] &= 0xf;\n": [name] "+r"(name):);
 		if (name > 5)
-			return;
+			return 0;
 		nameoff = e->argsoff[name];
 		asm volatile("%[nameoff] &= 0xeff;\n": [nameoff] "+r"(nameoff):);
 
@@ -562,8 +563,9 @@ void installfd(struct msg_generic_kprobe *e, int fd, int name, bool follow)
 			   &e->args[nameoff]);
 		map_update_elem(&fdinstall_map, &key, &val, BPF_ANY);
 	} else {
-		map_delete_elem(&fdinstall_map, &key);
+		err = map_delete_elem(&fdinstall_map, &key);
 	}
+	return err;
 }
 
 static inline __attribute__((always_inline))
@@ -572,13 +574,14 @@ long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *a
 	enum generic_func_args_enum fgs_args;
 	int action = actions->act[i];
 	int fdi, namei;
+	int err = 0;
 
 	switch (action) {
 	case ACTION_UNFOLLOWFD:
 	case ACTION_FOLLOWFD:
 		fdi = actions->act[++i];
 		namei = actions->act[++i];
-		installfd(e, fdi, namei, action == ACTION_FOLLOWFD);
+		err = installfd(e, fdi, namei, action == ACTION_FOLLOWFD);
 		break;
 	case ACTION_SIGKILL:
 		if (bpf_core_enum_value(fgs_args, sigkill))
@@ -587,7 +590,9 @@ long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *a
 	default:
 		break;
 	}
-	return ++i;
+	if (!err)
+		return ++i;
+	return -1;
 }
 
 static inline __attribute__((always_inline))
@@ -599,11 +604,11 @@ long do_actions(struct msg_generic_kprobe *e, struct selector_action *actions)
 
 	/* Clang really doesn't want to unwind a loop here. */
 	i = __do_action(i, e, actions);
-	if (i > cntr)
+	if (i)
 		goto out;
 	i = __do_action(i, e, actions);
 out:
-	return true;
+	return i > 0 ? true : 0;
 }
 
 #define MAX_SELECTORS 8
