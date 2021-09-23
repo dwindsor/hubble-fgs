@@ -8,6 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
+//go:build linux && bench_tests
 // +build linux,bench_tests
 
 package bench
@@ -61,8 +62,8 @@ func checkSummaryForErrors(t *testing.T, summary *BenchSummary) {
 	}
 	if summary.SourceStats.Errors > 0 {
 		t.Fatalf("test failed due to source errors (%d), last error was: %s",
-		         summary.SourceStats.Errors,
-		         summary.Error)
+			summary.SourceStats.Errors,
+			summary.Error)
 	}
 }
 

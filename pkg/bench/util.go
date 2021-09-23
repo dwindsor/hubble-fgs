@@ -30,9 +30,9 @@ func getUserHZ() int64 {
 }
 
 type CPUUsage struct {
-	SystemTime time.Duration
-	UserTime   time.Duration
-	MaxRss     int64
+	SystemTime      time.Duration
+	UserTime        time.Duration
+	MaxRss          int64
 	ContextSwitches int64
 }
 
@@ -85,7 +85,7 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 	if err != nil {
 		log.Printf("Failed to read memory.stat: %s\n", err)
 	} else {
-		for _, line := range(strings.Split(string(memStat), "\n")) {
+		for _, line := range strings.Split(string(memStat), "\n") {
 			if strings.HasPrefix(line, "total_rss ") {
 				if _, err := fmt.Sscanf(line, "total_rss %d", &rss); err != nil {
 					log.Printf("Failed to parse memory.stat ('%s'): %s\n", line, err)
@@ -95,9 +95,9 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 	}
 
 	return CPUUsage{
-		UserTime: (time.Duration(userTicks) * time.Second) / userHz,
+		UserTime:   (time.Duration(userTicks) * time.Second) / userHz,
 		SystemTime: (time.Duration(sysTicks) * time.Second) / userHz,
-		MaxRss: rss,
+		MaxRss:     rss,
 	}
 }
 

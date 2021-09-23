@@ -9,6 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
+//go:build linux
 // +build linux
 
 package bpf

@@ -89,9 +89,9 @@ func (s *BenchSummary) PrettyPrint() {
 			s.TLSEvents, s.HTTPEvents, s.TCPEvents,
 			s.ExitEvents, s.ExecEvents)
 		fmt.Printf("Ring buffer:       received=%d, lost=%d, errors=%d\n",
-		           getGaugeValue(metrics.RingBufPerfEventReceived.WithLabelValues()),
-		           getGaugeValue(metrics.RingBufPerfEventLost.WithLabelValues()),
-		           getGaugeValue(metrics.RingBufPerfEventErrors.WithLabelValues()))
+			getGaugeValue(metrics.RingBufPerfEventReceived.WithLabelValues()),
+			getGaugeValue(metrics.RingBufPerfEventLost.WithLabelValues()),
+			getGaugeValue(metrics.RingBufPerfEventErrors.WithLabelValues()))
 	}
 
 	if s.SourceStats.Errors > 0 {
