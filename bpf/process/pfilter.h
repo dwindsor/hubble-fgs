@@ -185,6 +185,10 @@ int selector_process_filter(__u32 *f,
 		pid = enter->key.pid;
 	}
 
+	/* For NotIn op we AND results so default to 1 so we fallthru open */
+	if (ty == op_filter_pid_notin)
+		res1 = res2 = res3 = res4 = 1;
+
 #define MAX_SELECTOR_VALUES 4
 	/* Unrolling this loop was problematic for clang so rather
 	 * than fight with clang just open code it. Its hard to see
@@ -208,7 +212,10 @@ one:
 	res1 = process_filter(0, index, f, ty, flags, pid, enter);
 	index = next_pid_value(index, f, ty);
 
-	return res1 | res2 | res3 | res4;
+	if (ty == op_filter_pid_notin)
+		return res1 & res2 & res3 & res4;
+	else
+		return res1 | res2 | res3 | res4;
 }
 
 #define MAX_SELECTORS 8
