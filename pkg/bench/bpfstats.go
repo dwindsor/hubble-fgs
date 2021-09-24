@@ -64,13 +64,15 @@ func GetBpfStatsSince(oldStats map[int64]*BpfProgStats) map[int64]*BpfProgStats 
 func GetBpfStats() map[int64]*BpfProgStats {
 	out, err := exec.Command("/bin/sh", "-c", "bpftool prog show -j").Output()
 	if err != nil {
-		log.Fatalf("failed to query bpf stats: %v", err)
+		log.Printf("Failed to query bpf stats: %s\n", err)
+		return nil
 	}
 
 	var stats []BpfProgStats
 	err = json.Unmarshal(out, &stats)
 	if err != nil {
-		log.Fatalf("failed to parse bpf stats: %v", err)
+		log.Printf("Failed to parse bpf stats: %s\n", err)
+		return nil
 	}
 
 	m := make(map[int64]*BpfProgStats)

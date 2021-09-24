@@ -5,3 +5,4 @@ lib/*
 /fgs-bench
 observer.test
 go-tests
+fgs-bench-rootfs*

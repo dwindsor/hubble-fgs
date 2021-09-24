@@ -15,12 +15,12 @@ import (
 	"flag"
 	"log"
 	"os"
-	"os/user"
 	"strings"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/bench"
 	"github.com/spf13/viper"
+	"golang.org/x/sys/unix"
 )
 
 // Command-line flags
@@ -57,8 +57,7 @@ func init() {
 }
 
 func main() {
-	u, err := user.Current()
-	if err != nil || u.Uid != "0" {
+	if unix.Getuid() != 0 {
 		log.Fatalf("You need to run fgs-bench as root.")
 	}
 

@@ -204,7 +204,7 @@ const BTFNil = BTF(0)
 func NewBTF(path string) (BTF, error) {
 	ret := C.getBtf(C.CString(path))
 	if err := C.getError(ret); err != 0 {
-		return BTF(0), fmt.Errorf("failed to parse BTF: %d", err)
+		return BTF(0), fmt.Errorf("failed to parse BTF %s: %d", path, err)
 	}
 	return BTF(uintptr(ret)), nil
 }

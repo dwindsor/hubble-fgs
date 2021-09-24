@@ -75,9 +75,12 @@ clean:
 	$(MAKE) -C ./bpf clean
 	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs
 
-.PHONY: fgs-bench
+.PHONY: fgs-bench fgs-bench-image
 fgs-bench:
 	$(GO) build ./cmd/fgs-bench
+
+fgs-bench-image:
+	GOOS=linux GOARCH=amd64 $(GO) build -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fgs-bench
 
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
