@@ -26,4 +26,5 @@ type MsgGenericTracepoint struct {
 	ProcessKey MsgExecveKey
 	Id         int64
 	ThreadId   uint64
+	ActionId   uint64
 }

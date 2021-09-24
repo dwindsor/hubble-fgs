@@ -262,7 +262,7 @@ size_t generic_kprobe_common_size()
 {
 	return sizeof(struct msg_common)
 		+ sizeof(struct msg_execve_key)
-		+ sizeof(__u64) + sizeof(__u64);
+		+ sizeof(__u64) + sizeof(__u64) + sizeof(__u64);
 }
 
 #define MAX_POSSIBLE_ARGS 5
@@ -275,6 +275,7 @@ struct msg_generic_kprobe {
 	struct msg_execve_key current;
 	__u64 id;
 	__u64 thread_id;
+	__u64 action;
 	char args[24000];
 	unsigned long a0,a1,a2,a3,a4;
 	long argsoff[MAX_POSSIBLE_ARGS];

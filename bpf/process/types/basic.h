@@ -590,8 +590,10 @@ long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *a
 	default:
 		break;
 	}
-	if (!err)
+	if (!err) {
+		e->action = action;
 		return ++i;
+	}
 	return -1;
 }
 
