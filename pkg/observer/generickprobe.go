@@ -590,6 +590,7 @@ func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
 	unix.Common = m.Common
 	unix.ProcessKey = m.ProcessKey
 	unix.Id = m.Id
+	unix.Action = m.ActionId
 	unix.FuncName = gk.funcName
 
 	returnEvent := m.Common.Pad[0] > 0

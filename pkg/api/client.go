@@ -505,6 +505,13 @@ type MsgCredEvent struct {
 
 type MsgCredEventUnix = MsgCredEvent
 
+const (
+	ActionPost       = 0
+	ActionFollowFd   = 1
+	ActionSigKill    = 2
+	ActionUnfollowFd = 3
+)
+
 type MsgGenericKprobe struct {
 	Common     MsgCommon
 	ProcessKey MsgExecveKey

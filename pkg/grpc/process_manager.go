@@ -449,6 +449,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 		FunctionName: event.FuncName,
 		Args:         fgsArgs,
 		Return:       fgsReturnArg,
+		Action:       reader.KprobeAction(event.Action),
 	}
 
 	if fgsProcess.Docker != "" {

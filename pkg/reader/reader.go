@@ -474,3 +474,18 @@ func ObserverKfreeSkbPrinter(msg *api.MsgKfreeSkb, log logrus.FieldLogger) {
 		"calltrace": msg.Calltrace.Stack,
 	}).Debug()
 }
+
+func KprobeAction(act uint64) fgs.KprobeAction {
+	switch act {
+	case api.ActionPost:
+		return fgs.KprobeAction_KPROBE_ACTION_POST
+	case api.ActionFollowFd:
+		return fgs.KprobeAction_KPROBE_ACTION_FOLLOWFD
+	case api.ActionSigKill:
+		return fgs.KprobeAction_KPROBE_ACTION_SIGKILL
+	case api.ActionUnfollowFd:
+		return fgs.KprobeAction_KPROBE_ACTION_UNFOLLOWFD
+	default:
+		return fgs.KprobeAction_KPROBE_ACTION_UNKNOWN
+	}
+}

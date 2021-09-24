@@ -137,6 +137,7 @@ type MsgGenericKprobeUnix struct {
 	Common     MsgCommon
 	ProcessKey MsgExecveKey
 	Id         uint64
+	Action     uint64
 	FuncName   string
 	Args       []MsgGenericKprobeArg
 }
