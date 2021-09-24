@@ -11,7 +11,7 @@ jobs:
     steps:
       - uses: actions/checkout@v2
       - name: Install Go
-        uses: actions/setup-go@37335c7bb261b353407cff977110895fa0b4f7d8
+        uses: actions/setup-go@v2.1.4
         with:
           go-version: '1.16.7'
       - name: Run static checks
