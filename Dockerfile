@@ -19,7 +19,7 @@ RUN ldconfig /usr/local/; export LD_LIBRARY_PATH=/usr/local/lib/
 COPY . ./
 RUN make hubble-fgs-image
 
-FROM docker.io/library/golang:1.16.7-alpine3.13 as gops
+FROM docker.io/library/golang:1.17.0-alpine3.13 as gops
 RUN apk add --no-cache binutils git \
  && git clone https://github.com/google/gops /go/src/github.com/google/gops \
  && cd /go/src/github.com/google/gops \
