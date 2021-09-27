@@ -32,7 +32,7 @@ RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
     mkdir /var/run/hubble-fgs/ && \
     mkdir libs		       && \
-    apk add --no-cache --update bash curl jq
+    apk add --no-cache --update bash
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
 COPY --from=gops /go/bin/gops /bin /usr/bin/
