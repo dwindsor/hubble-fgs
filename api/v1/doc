@@ -71,6 +71,7 @@
     - [EventType](#fgs.EventType)
     - [HealthStatusResult](#fgs.HealthStatusResult)
     - [HealthStatusType](#fgs.HealthStatusType)
+    - [KprobeAction](#fgs.KprobeAction)
     - [TlsCertificateError](#fgs.TlsCertificateError)
   
     - [FineGuidanceSensors](#fgs.FineGuidanceSensors)
@@ -867,6 +868,7 @@ HTTP PARSER
 | function_name | [string](#string) |  |  |
 | args | [KprobeArgument](#fgs.KprobeArgument) | repeated |  |
 | return | [KprobeArgument](#fgs.KprobeArgument) |  |  |
+| action | [KprobeAction](#fgs.KprobeAction) |  |  |
 
 
 
@@ -1032,6 +1034,7 @@ HTTP PARSER
 | retransmits_bytes | [uint64](#uint64) |  |  |
 | retransmits_segs | [uint32](#uint32) |  |  |
 | to_zero_window | [uint32](#uint32) |  |  |
+| sk_drop | [uint32](#uint32) |  |  |
 
 
 
@@ -1269,6 +1272,21 @@ EventType constants are based on the ones from pkg/api/client
 | ---- | ------ | ----------- |
 | HEALTH_STATUS_TYPE_UNDEF | 0 |  |
 | HEALTH_STATUS_TYPE_STATUS | 1 |  |
+
+
+
+<a name="fgs.KprobeAction"></a>
+
+### KprobeAction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| KPROBE_ACTION_UNKNOWN | 0 |  |
+| KPROBE_ACTION_POST | 1 |  |
+| KPROBE_ACTION_FOLLOWFD | 2 |  |
+| KPROBE_ACTION_SIGKILL | 3 |  |
+| KPROBE_ACTION_UNFOLLOWFD | 4 |  |
 
 
 
