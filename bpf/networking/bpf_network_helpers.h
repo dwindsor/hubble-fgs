@@ -13,6 +13,7 @@ void get_socket_stats(struct sock *sk,
 	probe_read(&stats->srtt, sizeof(__u32), _(&(tcp->srtt_us)));
 	probe_read(&stats->retranssegs, sizeof(__u32), _(&(tcp->total_retrans)));
 	probe_read(&stats->retransbytes, sizeof(__u64), _(&(tcp->bytes_retrans)));
+	probe_read(&stats->sk_drops, sizeof(__u32), _(&(sk->sk_drops)));
 	//stats->tozerowin populated in-band TCP hook watching for zero window
 	stats->tozerowin = zerowin;
 }

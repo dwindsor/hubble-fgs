@@ -310,7 +310,7 @@ struct msg_socket_stats {
 	__u32 retranssegs;
 	__u64 retransbytes;
 	__u32 tozerowin;
-	__u32 padding;
+	__u32 sk_drops;
 } __attribute__((packed));
 
 // separate data structs for ipv4 and ipv6

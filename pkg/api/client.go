@@ -334,7 +334,7 @@ type MsgSocketStats struct {
 	RetransmitSegs  uint32
 	RetransmitBytes uint64
 	ToZeroWindow    uint32
-	Padding         uint32
+	SkDrop          uint32
 }
 
 type MsgIPv4TcpEventUnix struct {
