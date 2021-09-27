@@ -130,7 +130,7 @@ func (src tcpOrTLSCRRSource) Run(ctx context.Context, sinkPort int, args SourceA
 }
 
 func genRandomBytes(minSize, maxSize int32) []byte {
-	n := minSize + rand.Int31n(maxSize - minSize)
+	n := minSize + rand.Int31n(maxSize-minSize)
 	buf := make([]byte, n)
 	_, err := rand.Read(buf)
 	if err != nil {

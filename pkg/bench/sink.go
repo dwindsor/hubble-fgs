@@ -82,7 +82,7 @@ func SupportedSinks() []string {
 //
 
 type tcpOrTLSSink struct {
-	tls bool
+	tls  bool
 	fuzz bool
 }
 
