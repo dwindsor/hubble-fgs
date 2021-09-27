@@ -180,7 +180,7 @@ func (k *ObserverKprobe) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries m
 				}
 				tcp.Tuple.SAddr = entry.localIP
 				tcp.Tuple.DAddr = entry.remoteIP
-				tcp.Tuple.DPort = entry.remotePort
+				tcp.Tuple.DPort = api.SwapByte(entry.remotePort)
 				tcp.Tuple.SPort = entry.localPort
 				tcp.Tuple.Proto = 2
 
