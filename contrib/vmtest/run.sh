@@ -49,12 +49,19 @@ sudo chmod +x mnt/init.sh
 sudo umount mnt
 
 echo "Starting VM..."
+
+KVMARGS=""
+if [ -a /dev/kvm ]; then
+	KVMARGS="-cpu kvm64 -enable-kvm"
+fi
+
 qemu-system-x86_64 \
-	-nodefaults -display none -serial mon:stdio -cpu kvm64 -enable-kvm \
+	-nodefaults -display none -serial mon:stdio \
 	-smp 4 -m 2G -no-reboot \
 	-drive file=$IMAGE,format=raw,index=1,media=disk,if=virtio,cache=none \
 	-kernel $KERNEL \
-	-append "root=/dev/vda rw console=ttyS0,115200 panic=-1 init=/init.sh"
+	-append "root=/dev/vda rw console=ttyS0,115200 panic=-1 init=/init.sh" \
+	$KVMARGS
 
 sudo mount -o loop $IMAGE mnt
 EXITSTATUS="$(cat mnt/exit-status)"
