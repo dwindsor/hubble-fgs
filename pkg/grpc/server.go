@@ -63,6 +63,25 @@ func (l *getEventsListener) notify(res *fgs.GetEventsResponse) {
 	l.events <- res
 }
 
+// removeNotifierAndDrain removes the events listener while draining
+// any events that may arrive during removal. This is required in order
+// not to deadlock the process manager.
+func (s *Server) removeNotifierAndDrain(l *getEventsListener) {
+	done := make(chan struct{})
+	go func() {
+		s.notifier.removeListener(l)
+		done <- struct{}{}
+	}()
+
+	for {
+		select {
+		case <-l.events:
+		case <-done:
+			return
+		}
+	}
+}
+
 func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanceSensors_GetEventsServer) error {
 	logger.GetLogger().WithField("request", request).Debug("Received a GetEvents request")
 	allowList, err := filters.BuildFilterList(context.Background(), request.AllowList, filters.Filters)
@@ -83,7 +102,7 @@ func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanc
 
 	l := newListener()
 	s.notifier.addListener(l)
-	defer s.notifier.removeListener(l)
+	defer s.removeNotifierAndDrain(l)
 	for {
 		select {
 		case event := <-l.events:
