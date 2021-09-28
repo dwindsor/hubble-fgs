@@ -10,24 +10,16 @@
 
 package bench
 
-/*
-#include <unistd.h>
-*/
-import "C"
-
 import (
 	"fmt"
 	"io/ioutil"
 	"log"
 	"net"
+	"strconv"
 	"strings"
 	"syscall"
 	"time"
 )
-
-func getUserHZ() int64 {
-	return int64(C.sysconf(C._SC_CLK_TCK))
-}
 
 type CPUUsage struct {
 	SystemTime      time.Duration
@@ -52,26 +44,6 @@ func CPUUsageFromRusage(rusage *syscall.Rusage) (cpuUsage CPUUsage) {
 }
 
 func CPUUsageFromCPUAcct(containerID string) CPUUsage {
-	userHz := time.Duration(getUserHZ())
-
-	var userTicks, sysTicks int64
-	cpuStatFilename := fmt.Sprintf("/sys/fs/cgroup/cpuacct/docker/%s/cpuacct.stat", containerID)
-	cpuStat, err := ioutil.ReadFile(cpuStatFilename)
-	if err != nil {
-		// Fallback to the path observed in CI
-		cpuStatFilename = fmt.Sprintf("/sys/fs/cgroup/cpu,cpuacct/actions_job/%s/cpuacct.stat", containerID)
-		cpuStat, err = ioutil.ReadFile(cpuStatFilename)
-	}
-
-	if err != nil {
-		log.Printf("Failed to read cpuacct.stat: %s\n", err)
-		return CPUUsage{}
-	} else {
-		if _, err := fmt.Sscanf(string(cpuStat), "user %d\nsystem %d\n", &userTicks, &sysTicks); err != nil {
-			log.Printf("Failed to parse cpuacct.stat ('%s'): %s\n", cpuStat, err)
-			return CPUUsage{}
-		}
-	}
 
 	rss := int64(0)
 	memStatFilename := fmt.Sprintf("/sys/fs/cgroup/memory/docker/%s/memory.stat", containerID)
@@ -94,9 +66,29 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 		}
 	}
 
+	readUsageNanos := func(suffix string) uint64 {
+		cpuStatFilename := fmt.Sprintf("/sys/fs/cgroup/cpuacct/docker/%s/cpuacct.usage_%s", containerID, suffix)
+		cpuStat, err := ioutil.ReadFile(cpuStatFilename)
+		if err != nil {
+			// Fallback to the path observed in CI
+			cpuStatFilename = fmt.Sprintf("/sys/fs/cgroup/cpu,cpuacct/actions_job/%s/cpuacct.usage_%s", containerID, suffix)
+			cpuStat, err = ioutil.ReadFile(cpuStatFilename)
+		}
+		if err != nil {
+			log.Printf("Failed to read cpuacct.usage_%s: %s\n", suffix, err)
+			return 0
+		}
+		usage, err := strconv.ParseUint(strings.TrimSpace(string(cpuStat)), 10, 64)
+		if err != nil {
+			log.Printf("Failed to parse cpuacct.usage_%s: %s (\"%s\")\n", suffix, err, string(cpuStat))
+			return 0
+		}
+		return usage
+	}
+
 	return CPUUsage{
-		UserTime:   (time.Duration(userTicks) * time.Second) / userHz,
-		SystemTime: (time.Duration(sysTicks) * time.Second) / userHz,
+		UserTime:   time.Duration(readUsageNanos("user")),
+		SystemTime: time.Duration(readUsageNanos("sys")),
 		MaxRss:     rss,
 	}
 }
