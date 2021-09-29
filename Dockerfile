@@ -5,7 +5,7 @@ RUN apt-get install -y linux-libc-dev
 COPY . ./
 RUN make hubble-bpf
 
-FROM quay.io/isovalent/hubble-libbpf:v0.2.2 as hubble-libbpf
+FROM quay.io/isovalent/hubble-libbpf:v0.2.3 as hubble-libbpf
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 COPY . ./
 

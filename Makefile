@@ -5,7 +5,7 @@ CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
 LOCAL_CLANG ?= 1
 NOOPT ?= 0
-LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.2
+LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.3
 CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
 METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 
