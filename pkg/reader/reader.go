@@ -356,11 +356,11 @@ func GetTLSSupportedVersions(vers []byte, hasLength bool) string {
 	if len(vers) < 2 {
 		return ""
 	} else if hasLength {
-		length := int(vers[0])
-		if length > len(vers) {
-			length = len(vers)
+		end := int(vers[0]) + 1
+		if end > len(vers) {
+			end = len(vers)
 		}
-		vers = vers[1:length]
+		vers = vers[1:end]
 	} else {
 		// serverHello supported versions extensions only has the
 		// single entry with the the negotiated version. And does

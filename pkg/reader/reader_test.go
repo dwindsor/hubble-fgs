@@ -54,35 +54,35 @@ func TestGetTLSSupportedVersions(t *testing.T) {
 		t.Errorf("GetTLSSupportedVersions([], false) = %q, expected \"\"", s)
 	}
 
-	// Test length overflow
-	s = GetTLSSupportedVersions([]byte{100, 0, 0, 0, 0}, true)
-	if s != "" {
-		t.Errorf("GetTLSSupportedVersions([100], true) = %q, expected \"\"", s)
-	}
-
-	// Test short length
-	s = GetTLSSupportedVersions([]byte{2, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, true)
+	// Test short lengths
+	s = GetTLSSupportedVersions([]byte{1, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, true)
 	if s != "" {
 		t.Errorf("GetTLSSupportedVersions([2, TLS13], true) = %q, expected \"\"", s)
 	}
 
 	// Test single version
-	s = GetTLSSupportedVersions([]byte{3, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, true)
+	s = GetTLSSupportedVersions([]byte{2, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, true)
 	ex := "TLS1.3"
 	if s != ex {
 		t.Errorf("GetTLSSupportedVersions([2, TLS13], true) = %q, expected \"%s\"", s, ex)
+	}
+
+	// Test graceful handling of length overflow
+	s = GetTLSSupportedVersions([]byte{3, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, true)
+	if s != ex {
+		t.Errorf("GetTLSSupportedVersions([100], true) = %q, expected %q", s, ex)
 	}
 
 	// Test lengthless single version
 	s = GetTLSSupportedVersions([]byte{byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, false)
 	ex = "TLS1.3"
 	if s != ex {
-		t.Errorf("GetTLSSupportedVersions([TLS13], true) = %q, expected \"%s\"", s, ex)
+		t.Errorf("GetTLSSupportedVersions([TLS13], true) = %q, expected %q", s, ex)
 	}
 
 	// Test multiple versions
 	s = GetTLSSupportedVersions(
-		[]byte{5,
+		[]byte{4,
 			byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8),
 			byte(api.TLSVersion10 & 0xff), byte(api.TLSVersion10 >> 8),
 		},
@@ -95,7 +95,7 @@ func TestGetTLSSupportedVersions(t *testing.T) {
 
 	// Test unknown versions
 	s = GetTLSSupportedVersions(
-		[]byte{5, 0x01, 0x00, 0x02, 0x00},
+		[]byte{4, 0x01, 0x00, 0x02, 0x00},
 		true,
 	)
 	ex = "unknown(1) unknown(2)"
