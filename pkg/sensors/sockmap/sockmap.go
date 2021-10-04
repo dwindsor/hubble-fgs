@@ -128,28 +128,30 @@ type sockopsSensor struct {
 }
 
 func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	// TODO: The sockops program cannot be loaded twice; HTTP and TLS
-	// require this program to be loaded. Don't load it again if it's
-	// already there.
 	return bpf.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors)
 }
 
+func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
+	if (parser.Tls.Enable && parser.Tls.Mode == "socket") || parser.Http.Enable {
+		var progs []*bpf.Program
+		var maps []*bpf.Map
+
+		logger.GetLogger().Infof("Enable Sockops")
+		progs = append(progs, sockops.SockopsEstablished)
+		maps = append(maps, SockMap)
+
+		return sensors.SensorBuilder("__sockops_sensors__", progs, maps), nil
+	}
+	return nil, nil
+}
 func (*sockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
-	return AddParserSensors(spec.Parser)
+	return AddSockopsSensors(spec.Parser)
 }
 
 // AddParserSensors will add and combine the sensors that are enabled inside
 // the parser policy spec.
 func AddParserSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	tls, err := AddTLSSensor(parser)
-	if err != nil {
-		return nil, err
-	}
-	http, err := http.AddHTTPSensor(parser)
-	if err != nil {
-		return nil, err
-	}
-	return sensors.SensorCombine("__parser_sensors__", http, tls), nil
+	return AddTLSSensor(parser)
 }
 
 type skmsgTLSSensor struct {
@@ -221,6 +223,7 @@ func init() {
 		name: "sockops loader",
 	}
 	sensors.RegisterProbeType("sockops", sockops)
+	sensors.RegisterTracingSensorsAtInit(sockops.name, sockops)
 
 	tls := &tlsSensor{
 		name: "tls sensor",

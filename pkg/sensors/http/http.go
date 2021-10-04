@@ -109,7 +109,7 @@ func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return bpf.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
 }
 
-func (tls *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (http *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return AddHTTPSensor(spec.Parser)
 }
 
