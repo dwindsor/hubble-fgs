@@ -40,7 +40,6 @@ int bpf_skskb_http_verdict(struct __sk_buff *skb)
 	struct msg_tls_ipv4 key = {0};
 
 	skskb_http_key(skb, &key);
-	key.remaining = HTTP_RECV;
 	return http_do_parser(skb, &key);
 }
 
