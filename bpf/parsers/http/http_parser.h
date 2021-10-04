@@ -70,7 +70,13 @@ char *get_chars(ctx_md *msg, long offset, long cnt)
 	asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);
 	if (payload + offset + cnt > data_end) {
 		ctx_pull_data(msg, offset + cnt);
-		return 0;
+
+		data_end = (void *)(long)msg->data_end;
+		payload = (void *)(long)msg->data;
+
+		if (payload + offset + cnt > data_end)
+			return 0;
+		return payload + offset;
 	}
 
 	return payload + offset;
@@ -320,41 +326,6 @@ void find_host_header(ctx_md *msg, struct msg_http *http)
 	get_string(msg, http, http->url, t, 256, chr_r);
 
 	// 2
-	get_string_scratch(msg, http, chr_colon);
-	t = map_header_to_type(msg, http);
-	if (t == http_request_done)
-		goto out;
-	get_string(msg, http, http->url, t, 256, chr_r);
-
-	// 3
-	get_string_scratch(msg, http, chr_colon);
-	t = map_header_to_type(msg, http);
-	if (t == http_request_done)
-		goto out;
-	get_string(msg, http, http->url, t, 256, chr_r);
-
-	// 4
-	get_string_scratch(msg, http, chr_colon);
-	t = map_header_to_type(msg, http);
-	if (t == http_request_done)
-		goto out;
-	get_string(msg, http, http->url, t, 256, chr_r);
-
-	// 5
-	get_string_scratch(msg, http, chr_colon);
-	t = map_header_to_type(msg, http);
-	if (t == http_request_done)
-		goto out;
-	get_string(msg, http, http->url, t, 256, chr_r);
-
-	// 6
-	get_string_scratch(msg, http, chr_colon);
-	t = map_header_to_type(msg, http);
-	if (t == http_request_done)
-		goto out;
-	get_string(msg, http, http->url, t, 256, chr_r);
-
-	// 7
 	get_string_scratch(msg, http, chr_colon);
 	t = map_header_to_type(msg, http);
 	if (t == http_request_done)
