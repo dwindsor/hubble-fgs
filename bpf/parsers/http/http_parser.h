@@ -549,11 +549,13 @@ void post_http_event(ctx_md *msg,
 		     struct msg_tls_ipv4 *key,
 		     struct msg_http_event *http)
 {
+	__u32 remaining = key->remaining;
 	struct socketmap_value *process;
 	__u32 skip = 0;
 	size_t size;
 	__u32 *dst;
 
+	key->remaining = 0;
 	process = lookup_socketmap(key);
 	if (process) {
 		http->execve.pid = process->key.pid;
@@ -582,7 +584,7 @@ void post_http_event(ctx_md *msg,
 	/* NOTE(JM): This workarounds a weird llc bug related to struct packing.
 	 * Without this assignment "llc" takes 90s or more instead of <10s
 	 */
-	http->tuple.remaining = key->remaining;
+	http->tuple.remaining = remaining;
 
 	size = sizeof(struct __msg_http_event);
 	perf_event_output(msg, &tcpmon_map, BPF_F_CURRENT_CPU, http, size);

@@ -22,7 +22,6 @@ int bpf_http_sk_msg_fgs(struct sk_msg_md *msg)
 	struct msg_tls_ipv4 tuple = {0};
 
 	msg_tls_key(msg, &tuple);
-	tuple.remaining = HTTP_SEND;
 	return http_do_parser(msg, &tuple);
 }
 
