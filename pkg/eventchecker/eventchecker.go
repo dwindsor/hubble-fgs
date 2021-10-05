@@ -231,6 +231,8 @@ func eventGetProcess(ev_ fgsEvent) *fgs.Process {
 		return ev.Process
 	case *fgs.Tls:
 		return ev.Process
+	case *fgs.ProcessHttp:
+		return ev.Process
 	case *fgs.ProcessExit:
 		return ev.Process
 	case *fgs.ProcessClose:
@@ -255,6 +257,8 @@ func eventGetParent(ev_ fgsEvent) *fgs.Process {
 	case *fgs.ProcessListen:
 		return ev.Parent
 	case *fgs.Tls:
+		return nil
+	case *fgs.ProcessHttp:
 		return nil
 	case *fgs.ProcessExit:
 		return ev.Parent
@@ -335,6 +339,12 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (err
 			return err, nil
 		}
 		return nil, ev.ProcessKprobe
+
+	case *fgs.GetEventsResponse_ProcessHttp:
+		if err := checkTypes(fgs.EventType_PROCESS_HTTP); err != nil {
+			return err, nil
+		}
+		return nil, ev.ProcessHttp
 
 	case *fgs.GetEventsResponse_Test:
 		if err := checkTypes(fgs.EventType_TEST); err != nil {
@@ -423,6 +433,18 @@ func NewTlsEventChecker() *eventChainChecker {
 	return &eventChainChecker{
 		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_TLS)
+		},
+		eventCheck: func(ev fgsEvent, l Logger) error {
+			return nil
+		},
+	}
+}
+
+// NewHttpEventChecker creates a new eventChainChecker for Http events
+func NewHttpEventChecker() *eventChainChecker {
+	return &eventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+			return checkEvent(r, l, fgs.EventType_PROCESS_HTTP)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -1168,6 +1190,182 @@ func (o *ContainerCheckerAND) WithImageName(arg StringArg) *ContainerCheckerAND 
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ContainerWithImageName(sm))
 	return o
+}
+
+type HttpChecker interface {
+	// Check checks a HTTP event
+	Check(*fgs.ProcessHttp, Logger) error
+}
+
+type HttpCheckerFn func(*fgs.ProcessHttp, Logger) error
+
+func (f HttpCheckerFn) Check(c *fgs.ProcessHttp, log Logger) error {
+	return f(c, log)
+}
+
+func httpWithString(
+	sm StringMatcher,
+	getter func(*fgs.ProcessHttp) string,
+	desc string, // desc is used for helpful error messages
+) HttpChecker {
+	matcher := sm.GetMatcher()
+	return HttpCheckerFn(func(t *fgs.ProcessHttp, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("Http is nil and cannot match %s using %v", desc, sm)
+		}
+		s := getter(t)
+		if err := matcher(s); err != nil {
+			return fmt.Errorf("failed http check on %s: %w", desc, err)
+		}
+		log.Logf("**** MATCH Http on %s: %s", desc, s)
+		return nil
+	})
+}
+
+func HttpWithRequestMethod(sm StringMatcher) HttpChecker {
+	return httpWithString(
+		sm,
+		func(t *fgs.ProcessHttp) string {
+			return t.Http.Request.Method
+		},
+		"Method",
+	)
+}
+
+func HttpWithRequestUri(sm StringMatcher) HttpChecker {
+	return httpWithString(
+		sm,
+		func(t *fgs.ProcessHttp) string {
+			return t.Http.Request.Uri
+		},
+		"Uri",
+	)
+}
+
+func HttpWithRequestVersion(sm StringMatcher) HttpChecker {
+	return httpWithString(
+		sm,
+		func(t *fgs.ProcessHttp) string {
+			return t.Http.Request.Version
+		},
+		"Version",
+	)
+}
+
+func HttpWithRequestHost(sm StringMatcher) HttpChecker {
+	return httpWithString(
+		sm,
+		func(t *fgs.ProcessHttp) string {
+			return t.Http.Request.Host
+		},
+		"Host",
+	)
+}
+
+func HttpWithRequestAgent(sm StringMatcher) HttpChecker {
+	return httpWithString(
+		sm,
+		func(t *fgs.ProcessHttp) string {
+			return t.Http.Request.Agent
+		},
+		"Agent",
+	)
+}
+
+func HttpWithResponseVersion(sm StringMatcher) HttpChecker {
+	return httpWithString(
+		sm,
+		func(t *fgs.ProcessHttp) string {
+			return t.Http.Response.Version
+		},
+		"ResponseVersion",
+	)
+}
+
+func HttpWithResponseReason(sm StringMatcher) HttpChecker {
+	return httpWithString(
+		sm,
+		func(t *fgs.ProcessHttp) string {
+			return t.Http.Response.Reason
+		},
+		"ResponseReason",
+	)
+}
+
+type HttpCheckerAND struct {
+	checks []HttpChecker
+}
+
+func NewHttpChecker() *HttpCheckerAND {
+	return &HttpCheckerAND{}
+}
+
+func (o *HttpCheckerAND) Check(t *fgs.ProcessHttp, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(t, l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WithRequestMethod adds a Request.Method check to a Http checker
+func (o *HttpCheckerAND) WithRequestMethod(arg StringArg) *HttpCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, HttpWithRequestMethod(sm))
+	return o
+}
+
+func (o *HttpCheckerAND) WithRequestUri(arg StringArg) *HttpCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, HttpWithRequestUri(sm))
+	return o
+}
+
+func (o *HttpCheckerAND) WithRequestVersion(arg StringArg) *HttpCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, HttpWithRequestVersion(sm))
+	return o
+}
+
+func (o *HttpCheckerAND) WithRequestHost(arg StringArg) *HttpCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, HttpWithRequestHost(sm))
+	return o
+}
+
+func (o *HttpCheckerAND) WithRequestAgent(arg StringArg) *HttpCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, HttpWithRequestAgent(sm))
+	return o
+}
+
+func (o *HttpCheckerAND) WithResponseVersion(arg StringArg) *HttpCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, HttpWithResponseVersion(sm))
+	return o
+}
+
+func (o *HttpCheckerAND) WithResponseReason(arg StringArg) *HttpCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, HttpWithResponseReason(sm))
+	return o
+}
+
+func (e *eventChainChecker) HasHttp(httpcheck HttpChecker) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+
+		if httpEv, ok := e.(*fgs.ProcessHttp); ok {
+			return httpcheck.Check(httpEv, l)
+		}
+		return fmt.Errorf("event has type %T: not a http event", e)
+
+	}
+	return e
 }
 
 type TlsChecker interface {
