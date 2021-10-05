@@ -183,3 +183,78 @@ func TestTCTLS12(t *testing.T) {
 
 	observer.TestDone(t, obs)
 }
+
+var (
+	httpConfig = `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "http"
+spec:
+  description: "http parser spec"
+  parser:
+    http:
+      enable: true
+      selectors:
+      - matchports:
+        - 8080
+        - 80
+`
+)
+
+func TestHttp11Curl(t *testing.T) {
+	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	curlChecker := ec.ProcessWithCommand(
+		ec.SuffixStringMatch("curl"), ec.FullStringMatch("http://www.google.com"),
+	)
+
+	httpCh := ec.NewHttpChecker().
+		WithRequestMethod("GET").
+		WithRequestUri("/").
+		WithRequestVersion("HTTP/1.1").
+		WithRequestAgent(ec.ContainsStringMatch("curl")).
+		WithRequestHost(ec.ContainsStringMatch("www.google.com")).
+		WithResponseVersion("HTTP/1.1").
+		WithResponseReason("OK")
+
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			End(),
+		ec.NewConnectEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			HasDstPort(80).
+			End(),
+		ec.NewHttpEventChecker().
+			HasProcess(curlChecker).
+			HasHttp(httpCh).
+			End(),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	if err := observer.WriteConfigFile(testConfigFile, httpConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
+	observer.ExecWGCurl(&execWG, &exitWG, "http://www.google.com")
+
+	err = observer.JsonTestCheck(t, nil, &checker)
+	assert.NoError(t, err)
+
+	observer.TestDone(t, obs)
+}
