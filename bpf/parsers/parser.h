@@ -379,8 +379,15 @@ static inline __attribute__((always_inline))
 void msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key) {
 	key->daddr = msg->remote_ip4;
 	key->saddr = msg->local_ip4;
-	key->dport = msg->sk->dst_port;
-	key->sport = msg->sk->src_port;
+	/* Compiler generated code verifier could not pass with if/else
+	 * construct so we just reset {s|d}port for now.
+	 */
+	key->dport = 0;
+	key->sport = msg->local_port;
+	if (bpf_core_field_exists(msg->sk)) {
+		key->dport = msg->sk->dst_port;
+		key->sport = msg->sk->src_port;
+	}
 	key->remaining = HTTP_SEND;
 }
 #endif
