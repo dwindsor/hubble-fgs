@@ -58,8 +58,8 @@ const (
 	PidMapMissOnRemove ErrorType = "pid_map_miss_on_remove"
 )
 
+// TCP socket metrics
 var (
-	// TCP socket metrics
 	SocketStatsTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: "isovalent_fgs_socket_stats_txbytes",
 		Help: "TCP socket TX bytes statistics",
@@ -93,6 +93,10 @@ var (
 		Help:       "TCP socket smoothed RTT latency distribution.",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+)
+
+// FGS debugging and core info metrics
+var (
 	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:        "isovalent_fgs_events_total",
 		Help:        "The total number of FGS events",
