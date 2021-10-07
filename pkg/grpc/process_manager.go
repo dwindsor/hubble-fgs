@@ -199,10 +199,28 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
-	if proc == nil || (proc.Docker != "" && proc.Pod == nil) {
+	if proc == nil && pm.enableEventCache == true {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
+
+	if proc.Docker != "" {
+		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
+		endpoint := pm.getProcessEndpoint(proc)
+		// Its possible to receive an event before its podInfo is received in
+		// this case we don't want to block waiting for it (we may have more
+		// events in the queue) so instead send it to a queue to be processed
+		// later.
+		if pm.enableEventCache == true && (endpoint == nil || fgsEvent.Process.Pod == nil) {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+			return nil
+		}
+		if endpoint != nil {
+			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		}
+	}
+
 	return fgsEvent
 }
 
