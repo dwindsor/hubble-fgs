@@ -86,8 +86,8 @@ static inline __attribute__((always_inline))
 int emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key, __u32 offset, __u32 length)
 {
 	struct msg_http *http = &event->request;
-	u32 url_off = http->url_offset & 0xff;
-	u32 *dst = (__u32*)&http->url[url_off];
+	u32 url_off, *dst;
+	__u64 __maybe_unused copy;
 	int err;
 
 	if (http->url_offset + length + HTTP2_FRAME_HEADER_LENGTH + 8 + 8 /* for termination */ > sizeof(http->url)) {
@@ -97,10 +97,13 @@ int emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 
 		return -1;
 	}
 
+	url_off = http->url_offset;
+	asm volatile ("%[url_off] &= 0x1ff;\n": [url_off] "+r"(url_off)::);
+	dst = (__u32*)&http->url[url_off];
 	dst[0] = http2_header_frame;
 	dst[1] = length + HTTP2_FRAME_HEADER_LENGTH;
-	offset &= 0x1ff;
-	length &= 0x1ff;
+	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
+	asm volatile ("%[length] &= 0x1ff;\n": [length] "+r"(length)::);
 
 #ifdef SK_SKB
 	err = skb_load_bytes(msg, offset, (void*)&dst[2], length + HTTP2_FRAME_HEADER_LENGTH);
@@ -114,18 +117,26 @@ int emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 
 	u8 *data = (void*)(long)msg->data;
 	u8 *data_end = (void*)(long)msg->data_end;
 
-	if (data + HTTP2_FRAME_HEADER_LENGTH + length <= data_end) {
+	url_off = http->url_offset;
+	asm volatile ("%[url_off] &= 0x1ff;\n": [url_off] "+r"(url_off)::);
+	dst = (__u32*)&http->url[url_off];
+	asm volatile ("%[length] &= 0x1ff;\n": [length] "+r"(length)::);
+	copy = HTTP2_FRAME_HEADER_LENGTH + length;
+	asm volatile ("%[copy] &= 0x1ff;\n": [copy] "+r"(copy)::);
+	if (data + copy <= data_end) {
 		pkt_copy((u8*)&dst[2],
 		         data_end,
 			 data, 
-		         length + HTTP2_FRAME_HEADER_LENGTH);
+		         copy);
 	} else {
 		return -1;
 	}
 #endif
 
 	http->url_offset += 8 + length + HTTP2_FRAME_HEADER_LENGTH;
-	dst = (__u32*)&http->url[http->url_offset & 0xff];
+	url_off = http->url_offset;
+	asm volatile ("%[url_off] &= 0x1ff;\n": [url_off] "+r"(url_off)::);
+	dst = (__u32*)&http->url[url_off];
 	dst[0] = 0;
 	dst[1] = 0;
 

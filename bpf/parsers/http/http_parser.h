@@ -74,6 +74,8 @@ char *get_chars(ctx_md *msg, long offset, long cnt)
 		data_end = (void *)(long)msg->data_end;
 		payload = (void *)(long)msg->data;
 
+		asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
+		asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);
 		if (payload + offset + cnt > data_end)
 			return 0;
 		return payload + offset;
@@ -210,8 +212,15 @@ void get_string(ctx_md *msg, struct msg_http *http,
 
 		if (c == 0 || term == c[0])
 			break;
+		if (offset > 0x1ff)
+			break;
 		dst[offset+i+8] = c[0];
 	}
+	/* Verifier lost offset bound on older kernels <5.10 presumably because
+	 * it was pushed into stack and we only recently added bounds tracking
+	 * through stack. So duplicate the offset bound here.
+	 */
+	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
 	dstsz = (__u32*)&dst[offset];
 	dstsz[0] = ty;
 	dstsz[1] = i;
