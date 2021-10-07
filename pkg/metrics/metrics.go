@@ -15,6 +15,7 @@
 package metrics
 
 import (
+	"fmt"
 	"net/http"
 	"strings"
 
@@ -95,6 +96,14 @@ var (
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 
+// HTTP metrics
+var (
+	HttpStatsReturnCodes = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: "isovalent_fgs_http_stats_return_code",
+		Help: "HTTP return code statistics",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host", "code"})
+)
+
 // FGS debugging and core info metrics
 var (
 	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -171,6 +180,32 @@ func handleOriginalEvent(originalEvent interface{}) {
 	}
 	for _, flag := range reader.DecodeCommonFlags(flags) {
 		FlagCount.WithLabelValues(flag).Inc()
+	}
+}
+
+func postHttpStats(ev *fgs.GetEventsResponse, res *fgs.ProcessHttp) {
+	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+	dstPod := res.GetDestinationPod()
+	dstpod, dstns := getDstPodInfo(dstPod)
+	dstLabels := strings.Join(res.DestinationNames, ",")
+
+	http := res.Http
+	code := fmt.Sprintf("%d", http.Response.Code)
+	host := http.Request.Host
+
+	// We may consider adding URI here as well, but without a configuration mechanism
+	// to enable/disable it this could have poor scaling properties. Imagine a user
+	// scanning for URIs behind a host.
+	HttpStatsReturnCodes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, host, code).Inc()
+}
+
+func handleHttpEvent(processedEvent interface{}) {
+	switch ev := processedEvent.(type) {
+	case *fgs.GetEventsResponse:
+		switch res := ev.Event.(type) {
+		case *fgs.GetEventsResponse_ProcessHttp:
+			postHttpStats(ev, res.ProcessHttp)
+		}
 	}
 }
 
@@ -256,6 +291,7 @@ func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
 	handleOriginalEvent(originalEvent)
 	handleProcessedEvent(processedEvent)
 	handleSocketEvent(processedEvent)
+	handleHttpEvent(processedEvent)
 }
 
 func EnableMetrics(address string) {
