@@ -323,6 +323,8 @@ message ProcessHttp {
     Process process = 1;
     SockInfo socket = 2;
     HttpInfo http   = 3;
+    repeated string destination_names = 4;
+    Pod destination_pod = 5;
 }
 
 /**
