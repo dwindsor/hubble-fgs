@@ -400,20 +400,15 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) (*api
 	}
 }
 
-func handleHTTP(r *bytes.Reader) (interface{}, error) {
-	var m *api.MsgHttpEvent
-
-	m = &api.MsgHttpEvent{}
+func handleHTTP(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+	m := &api.MsgHttpEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), m)
 	if err != nil {
 		return nil, err
 	}
 
 	u, err := msgToHTTPEventUnix(m)
-	if u == nil {
-		return nil, err
-	}
-	return u, err
+	return []observer.ObserverEvent{u}, err
 }
 
 func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool {

@@ -579,7 +579,7 @@ func ReadArgBytes(r *bytes.Reader, index int) (*api.MsgGenericKprobeArgBytes, er
 
 }
 
-func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
+func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 	m := api.MsgGenericKprobe{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -713,7 +713,7 @@ func handleGenericKprobe(r *bytes.Reader) (interface{}, error) {
 			err = fmt.Errorf("pendingEvents")
 		}
 	}
-	return unix, err
+	return []ObserverEvent{unix}, err
 }
 
 // retprobeMerge merges the two events: the one from they entry and one from the return

@@ -16,6 +16,7 @@ import (
 	"encoding/binary"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
@@ -53,7 +54,7 @@ func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errSt
 	return unix
 }
 
-func HandleTLS(r *bytes.Reader) (interface{}, error) {
+func HandleTLS(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	var errState api.MsgTLSParserState
 	var certStrings []string
 	var m *api.MsgTLSEvent
@@ -76,7 +77,7 @@ func HandleTLS(r *bytes.Reader) (interface{}, error) {
 		return nil, nil
 	}
 
-	return msgToTLSEventUnix(m, certStrings, errCode, errState), nil
+	return []observer.ObserverEvent{msgToTLSEventUnix(m, certStrings, errCode, errState)}, nil
 }
 
 // bpf_skskb_post_cert and bpf_skskb_post_more_cert return additional
@@ -97,7 +98,7 @@ func errorHasState(errType uint32) bool {
 // HandleTLSCont handles a TLS continuation event that was split up by the
 // kernel. It will merge them together and pass it up to the TLS Listener as a
 // full event.
-func HandleTLSCont(r *bytes.Reader) (interface{}, error) {
+func HandleTLSCont(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	var certStrings []string
 	var errCode uint32
 	var errState api.MsgTLSParserState
@@ -192,5 +193,5 @@ func HandleTLSCont(r *bytes.Reader) (interface{}, error) {
 	}
 
 	delete(tlsInProgress, key)
-	return msgToTLSEventUnix(m.tls, certStrings, errCode, errState), nil
+	return []observer.ObserverEvent{msgToTLSEventUnix(m.tls, certStrings, errCode, errState)}, nil
 }

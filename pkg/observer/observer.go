@@ -45,10 +45,12 @@ const (
 var (
 	pollTimeout = 5 * time.Second
 
-	eventHandler = make(map[uint8]func(r *bytes.Reader) (interface{}, error))
+	eventHandler = make(map[uint8]func(r *bytes.Reader) ([]ObserverEvent, error))
 )
 
-func RegisterEventHandlerAtInit(ev uint8, handler func(r *bytes.Reader) (interface{}, error)) {
+type ObserverEvent interface{}
+
+func RegisterEventHandlerAtInit(ev uint8, handler func(r *bytes.Reader) ([]ObserverEvent, error)) {
 	eventHandler[ev] = handler
 }
 
@@ -252,8 +254,10 @@ func (k *Observer) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 	default:
 		// These ops handlers are registered by RegisterEventHandlerAtInit().
 		if h, ok := eventHandler[op]; ok {
-			if unix, err := h(r); err == nil && unix != nil {
-				k.observerListeners(unix)
+			if events, err := h(r); err == nil {
+				for _, event := range events {
+					k.observerListeners(event)
+				}
 			}
 		} else {
 			k.log.Infof("unknown op ignored: %v", op)
