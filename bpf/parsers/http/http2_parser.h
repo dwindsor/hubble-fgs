@@ -138,10 +138,8 @@ enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 {
 	struct http_event_chunk *chunk = head_chunk(http);
 	u32 chunk_len = chunk->length & 0x1ff;
-	u32 offset = http->offset & 0x1ff;
-	u32 requested;
-
-	len &= 0x1ff;
+	u32 offset = http->offset;
+	u32 requested = len - chunk_len;
 
 	DBG("append_to_chunk, offset=%d, len=%d, chunk_len=%d\n", offset, len, chunk_len);
 
@@ -150,11 +148,11 @@ enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 		return CHUNK_OK;
 	}
 
-	requested = (len - chunk_len) & 0x1ff;
-
 	void *data = ctx_data(skb);
 	void *data_end = ctx_data_end(skb);
 
+	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
+	asm volatile ("%[requested] &= 0x1ff;\n": [requested] "+r"(requested)::);
 	if (data + offset + requested > data_end) {
 		if (requested > ctx_len(skb) - offset) {
 			/* Append can be only partially satisfied, read whatever we can. */
@@ -176,6 +174,8 @@ enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	}
 
 	/* Recheck bounds */
+	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
+	asm volatile ("%[requested] &= 0x1ff;\n": [requested] "+r"(requested)::);
 	if (data + offset + requested > data_end) {
 		DBG("unexpected: data still not available! ctx->len = %d\n", ctx_len(skb));
 		DBG("offset = %d, requested = %d, linear = %d\n",
@@ -183,6 +183,7 @@ enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 		return CHUNK_ERROR;
 	}
 
+	asm volatile ("%[chunk_len] &= 0x1ff;\n": [chunk_len] "+r"(chunk_len)::);
 	void *to = chunk->data + chunk_len;
 
 	if (to + requested > &http->url[sizeof(http->url) - 8])
@@ -292,7 +293,6 @@ static inline __attribute__((always_inline))
 bool http2_parse_frame(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key)
 {
 	struct msg_http *http = &event->request;
-	//u32 skip;
 
 	/* Try to append the frame header to chunk */
 	switch (append_to_chunk(msg, http, HTTP2_FRAME_HEADER_LENGTH)) {
@@ -338,10 +338,8 @@ bool http2_parse_frame(ctx_md *msg, struct msg_http_event *event, struct msg_tls
 	}
 
 	default: 
-		/* Discard the header */
+		/* Discard the header copied into the chunk and skip over this frame. */
 		head_chunk(http)->length = 0;
-
-		// FIXME(JM): Need to deal with this going across into next message
 
 		u32 skip = http->offset + length;
 #ifdef SK_MSG
@@ -362,8 +360,6 @@ int http2_is_preface(ctx_md *msg, struct msg_http *http)
 {
 	u8 preface[HTTP2_PREFACE_LENGTH] = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
 	u8 *data = head_chunk(http)->data;
-
-	// XXX cleanup
 
 	switch (append_to_chunk(msg, http, HTTP2_PREFACE_LENGTH)) {
 	case CHUNK_OK:
