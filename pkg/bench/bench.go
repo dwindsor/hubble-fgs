@@ -301,15 +301,11 @@ func RunBenchmark(args *BenchArguments) (summary *BenchSummary) {
 				}
 			}
 
-			/* TODO(JM): Disabled due to HTTP parser broken on localhost connections.
-			 * (skb non-linear and data not pulled)
-
 			if args.FgsEnableHTTP && strings.Contains(string(args.Source), "http") {
 				if summary.HTTPEvents < 1 {
 					summary.Error += "No HTTP events received! "
 				}
 			}
-			*/
 
 			if summary.TCPEvents < 1 {
 				summary.Error += "No TCP events received! "

@@ -41,11 +41,23 @@ var (
 	aggregateEnable bool
 	cacheSize       = 1024
 
-	// Per-connection HTTP2 header decoders. Required to maintain compression state over the
-	// lifetime of the connection.
-	decoders2          *lru.Cache
-	decoders2CacheSize = 1024
+	// The per-connection and per-direction HTTP/2 state that is required to decompress the
+	// header frames.
+	http2StateCache     *lru.Cache
+	http2StateCacheSize = 16384
+
+	// Number of frames we can queue. If a HTTP/2 frame with an event sequence number that is
+	// beyond 'frameQueueSize' away from the next expected one is received the queue is reset
+	// and frames are potentially lost. This may potentially confuse the header decoder and some future
+	// frames may fail to decode.
+	frameQueueSize = 512
 )
+
+// TODO(JM): Refactor this into a "HTTP2 stream" object and add methods to it.
+type http2State struct {
+	decoder    *hpack.Decoder
+	frameQueue *http2FrameQueue
+}
 
 var (
 	Skmsg = bpf.ProgramBuilder(
@@ -152,7 +164,7 @@ func AddHTTP() {
 		aggregateEnable = true
 	}
 
-	decoders2, err = lru.New(decoders2CacheSize)
+	http2StateCache, err = lru.New(http2StateCacheSize)
 	if err != nil {
 		logger.GetLogger().Fatal(err)
 	}
@@ -282,7 +294,7 @@ var (
 )
 
 /* HTTP Event handler */
-func msgToHTTPEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
+func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 	unix := &api.MsgHttpEventUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
@@ -350,7 +362,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 
 	// If aggregation is disabled just push events as we see them.
 	if !aggregateEnable {
-		return unix, nil
+		return []observer.ObserverEvent{unix}, nil
 	}
 
 	/* If this is not a response then its a request and we need to cache it
@@ -374,30 +386,50 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) (*api.MsgHttpEventUnix, error) {
 			aggregate.Remove(key)
 		}
 	}
-	return unix, nil
+	return []observer.ObserverEvent{unix}, nil
 }
 
-func http2ToHTTPEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) (*api.MsgHttpEventUnix, error) {
-	iter := reader.NewTypedChunkIterator(m.Request.Url[:])
-	emit := false
+func http2ToHTTPEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) ([]observer.ObserverEvent, error) {
 
+	var state *http2State
+	if x, ok := http2StateCache.Get(m.Tuple); ok {
+		state = x.(*http2State)
+	} else {
+		state = &http2State{
+			decoder:    hpack.NewDecoder(4096, nil),
+			frameQueue: newHttp2FrameQueue(frameQueueSize),
+		}
+		http2StateCache.Add(m.Tuple, state)
+	}
+
+	//fmt.Printf("http2 event: key: %v, reqId: %d\n", m.Tuple, m.Request.ReqId)
+
+	state.frameQueue.push(m)
+
+	events := make([]observer.ObserverEvent, 0, 16)
 	for {
-		chunk, typ, ok := iter.Next()
-		if !ok {
+		m := state.frameQueue.pop()
+		if m == nil {
 			break
 		}
+		iter := reader.NewTypedChunkIterator(m.Request.Url[:])
 
-		if typ != HTTP2HeaderFrame {
-			// TODO log error etc.
-			return nil, nil
+		for {
+			chunk, typ, ok := iter.Next()
+			if !ok {
+				break
+			}
+
+			if typ != HTTP2HeaderFrame {
+				return nil, fmt.Errorf("unexpected chunk type in event: %d, expected %d", typ, HTTP2HeaderFrame)
+			}
+
+			if handleHttp2HeaderFrame(state.decoder, unix, chunk) {
+				events = append(events, unix)
+			}
 		}
-		emit = emit || handleHttp2HeaderFrame(unix, chunk)
 	}
-	if emit {
-		return unix, nil
-	} else {
-		return nil, nil
-	}
+	return events, nil
 }
 
 func handleHTTP(r *bytes.Reader) ([]observer.ObserverEvent, error) {
@@ -407,20 +439,17 @@ func handleHTTP(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 		return nil, err
 	}
 
-	u, err := msgToHTTPEventUnix(m)
-	return []observer.ObserverEvent{u}, err
+	return msgToHTTPEventUnix(m)
 }
 
-func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool {
+func handleHttp2HeaderFrame(decoder *hpack.Decoder, unix *api.MsgHttpEventUnix, frameBytes []byte) bool {
+	// FIXME(JM): Don't recreate the framer over and over, but rather have a persistent reader
+	// that we can feed bytes into.
 	r := bytes.NewReader(frameBytes)
 	framer := http2.NewFramer(nil, r)
+	framer.ReadMetaHeaders = decoder
 
-	if f, ok := decoders2.Get(unix.Tuple); ok {
-		framer.ReadMetaHeaders = f.(*hpack.Decoder)
-	} else {
-		framer.ReadMetaHeaders = hpack.NewDecoder(4096, nil)
-		decoders2.Add(unix.Tuple, framer.ReadMetaHeaders)
-	}
+	//fmt.Printf("handle frame: size: %d, bytes: %v\n", len(frameBytes), frameBytes)
 
 	frame, err := framer.ReadFrame()
 	if err != nil {
@@ -433,8 +462,11 @@ func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool 
 		return false
 	}
 
+	isRequest := unix.Tuple.Proto == 0
+
 	streamId := headers.Header().StreamID
 	for _, field := range headers.Fields {
+		//fmt.Printf("field[%v] %s = %s\n", isRequest, field.Name, field.Value)
 		switch field.Name {
 		case ":method":
 			unix.Request.Method = field.Value
@@ -447,11 +479,16 @@ func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool 
 		case "user-agent":
 			unix.Request.UserAgent = field.Value
 		case "content-length":
-			unix.Request.ContentLength = field.Value
+			if isRequest {
+				unix.Request.ContentLength = field.Value
+			} else {
+				unix.Request.RespContentLength = field.Value
+			}
 		}
 	}
 
-	isRequest := unix.Tuple.Proto == 0
+	//fmt.Printf("HEADERS FRAME: %s\n", headers)
+
 	unix.Tuple.Proto = 0
 
 	key := api.HttpKey{
@@ -471,8 +508,8 @@ func handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool 
 			unix.Request.Host = r.Request.Host
 			unix.Request.Protocol = r.Request.Protocol
 			unix.Request.UserAgent = r.Request.UserAgent
-			unix.Request.ContentLength = r.Request.ContentLength
 			unix.Request.Ktime = r.Common.Ktime
+			unix.Request.ContentLength = r.Request.ContentLength
 			unix.ProcessKey = r.ProcessKey
 			aggregate.Remove(key)
 		}

@@ -453,6 +453,12 @@ void http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *
 #endif
 			break;
 		}
+	} else if (http->state >= http2_expect_preface) {
+#ifdef SK_MSG
+			tail_call(msg, &http1_calls, 3);
+#else
+			tail_call(msg, &http1_calls_skb, 3);
+#endif
 	}
 	http->state = http_done;
 }
@@ -583,15 +589,7 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	if (unlikely(!http))
 		return SK_PASS;
 
-	if (!is_expected_request(&http->request))
-		return SK_PASS;
-
-	if (unlikely(http->request.state >= http2_expect_preface)) {
-#ifdef SK_MSG
-		tail_call(msg, &http1_calls, 3);
-#else
-		tail_call(msg, &http1_calls_skb, 3);
-#endif
+	if (!is_expected_request(&http->request)) {
 		return SK_PASS;
 	}
 
@@ -601,6 +599,7 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 		return SK_PASS;
 	}
 #endif
+
 	http_parse(msg, http, tuple);
 	if (http->request.state == http_done)
 		post_http_event(msg, tuple, http);
