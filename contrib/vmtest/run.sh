@@ -39,6 +39,9 @@ echo 130 > /exit-status
 set -eux
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
+mount -t debugfs debugfs /sys/kernel/debug
+mount -t tracefs tracefs /sys/kernel/debug/tracing
+cat /sys/kernel/debug/tracing/trace_pipe &
 ip addr add dev lo 127.0.0.1/8
 ip link set dev lo up
 /usr/bin/fgs-bench $FGS_BENCH_ARGS
