@@ -559,6 +559,7 @@ type h2LoadSource struct {
 
 func (src h2LoadSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
 	nCPU := runtime.NumCPU()
+	nClients := 5 * nCPU
 
 	cmdArgs := []string{
 		"run", "--rm", "--network=host",
@@ -566,15 +567,17 @@ func (src h2LoadSource) Run(ctx context.Context, sinkPort int, args SourceArgs) 
 		"--entrypoint=/usr/bin/time", // For measuring CPU usage
 		"joamaki/nghttp2-alpine",     // Custom build to get the latest version with --duration support.
 		"h2load",
-		fmt.Sprintf("--clients=%d", 10*nCPU), // 10 connections per thread.
+		fmt.Sprintf("--clients=%d", nClients),
 		fmt.Sprintf("--threads=%d", nCPU),
 		fmt.Sprintf("--duration=%ds", args.Duration/time.Second),
+		"--max-concurrent-streams=5",
 	}
 	if !src.http2 {
 		cmdArgs = append(cmdArgs, "--h1")
 	}
+
 	if args.RatePerSec > 0.0 {
-		cmdArgs = append(cmdArgs, fmt.Sprintf("--rps=%d", int(args.RatePerSec)))
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--rps=%f", args.RatePerSec/float64(nClients)))
 	}
 	cmdArgs = append(cmdArgs, fmt.Sprintf("http://localhost:%d", sinkPort))
 
