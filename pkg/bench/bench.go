@@ -128,14 +128,11 @@ type benchmarkListener struct {
 	ready    chan bool
 	ctx      context.Context
 	observer *observer.Observer
-
-	cpuUsageWhenReady CPUUsage
 }
 
 func (bl *benchmarkListener) Notify(msg interface{}) error {
 	switch msg.(type) {
 	case *api.MsgFGSReady:
-		bl.cpuUsageWhenReady = GetCPUUsage(CPU_USAGE_THIS_THREAD)
 		bl.ready <- true
 
 	case *api.MsgTLSEventUnix:
@@ -269,6 +266,7 @@ func RunBenchmark(args *BenchArguments) (summary *BenchSummary) {
 		cancel()
 		return
 	}
+	// TODO(JM): Slightly inaccurate as the source may terminate before FGS has processed all events
 	cpuUsageAfter := GetCPUUsage(CPU_USAGE_ALL_THREADS)
 
 	summary.SourceStats = sourceStats

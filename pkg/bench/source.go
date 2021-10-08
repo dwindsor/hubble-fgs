@@ -16,6 +16,7 @@ import (
 	"context"
 	"crypto/tls"
 	"encoding/csv"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"log"
@@ -31,6 +32,7 @@ import (
 	"syscall"
 	"time"
 
+	"golang.org/x/net/http2"
 	"golang.org/x/time/rate"
 )
 
@@ -73,8 +75,11 @@ var (
 		// TLS parsed port.
 		"tls-crr-fuzz": tcpOrTLSCRRSource{tls: false, fuzz: true},
 
-		"http-rr-go":     goHTTPRRSource{},
-		"http-crr-go":    goHTTPCRRSource{},
+		"http-rr-go":  goHTTPRRSource{},
+		"http-crr-go": goHTTPCRRSource{},
+
+		"http2-rr-go": goHTTP2RRSource{},
+
 		"http-rr-h2load": h2LoadSource{http2: false},
 
 		"http2-rr-h2load": h2LoadSource{http2: true},
@@ -250,7 +255,7 @@ func rrSourceLoop(ctx context.Context, sinkPort int, dialer ContextDialer, durat
 		if ctx.Err() != nil || treq.After(tend) {
 			break
 		}
-		_, err = conn.Write(buf)
+		_, err = ChunkingConn{conn}.Write(buf)
 		if err != nil {
 			log.Printf("Write error: %v\n", err)
 			stats.LastError = err.Error()
@@ -297,17 +302,68 @@ func (src tcpOrTLSRRSource) Run(ctx context.Context, sinkPort int, args SourceAr
 }
 
 //
-// Go HTTP Request-Response source
+// Go HTTP/1.1 Request-Response source
 //
 
 type goHTTPRRSource struct{}
 
 func (src goHTTPRRSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
-	url := fmt.Sprintf("http://localhost:%d", sinkPort)
+	url := fmt.Sprintf("http://127.0.0.1:%d", sinkPort)
 	act := func() error {
 		resp, err := http.Get(url)
 		if err != nil {
 			return err
+		}
+		defer resp.Body.Close()
+		if _, err := ioutil.ReadAll(resp.Body); err != nil {
+			return err
+		}
+		return nil
+	}
+	return genGoSource(ctx, sinkPort, args, act)
+}
+
+//
+// Go HTTP/2 Request-Response source
+//
+
+type goHTTP2RRSource struct{}
+
+func (src goHTTP2RRSource) Run(ctx context.Context, sinkPort int, args SourceArgs) (stats SourceStats, err error) {
+	client := http.Client{
+		Transport: &http2.Transport{
+			AllowHTTP: true,
+			// Fake a TLS connection so the Go HTTP client uses HTTP/2.
+			DialTLS: func(network, addr string, cfg *tls.Config) (net.Conn, error) {
+				conn, err := net.Dial(network, addr)
+				if err != nil {
+					return nil, err
+				}
+				// Use a ChunkingConn to split the writes into random-sized chunks
+				// to stress the http/2 parser implementation.
+				return ChunkingConn{conn}, nil
+			},
+		},
+		Timeout: time.Second,
+	}
+	url := fmt.Sprintf("http://127.0.0.1:%d", sinkPort)
+	methodCounter := 0
+	act := func() error {
+		methodCounter++
+		var (
+			resp *http.Response
+			err  error
+		)
+		if methodCounter%2 == 0 {
+			resp, err = client.Get(url)
+			if err != nil {
+				return err
+			}
+		} else {
+			resp, err = client.Post(url, "text/plain", bytes.NewBufferString("hello world"))
+			if err != nil {
+				return err
+			}
 		}
 		defer resp.Body.Close()
 		if _, err := ioutil.ReadAll(resp.Body); err != nil {
@@ -335,7 +391,7 @@ func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 		}
 		defer conn.Close()
 
-		_, err = conn.Write(req)
+		_, err = ChunkingConn{conn}.Write(req)
 		if err != nil {
 			return fmt.Errorf("Write: %w", err)
 		}
@@ -359,10 +415,22 @@ func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 func genGoSource(ctx context.Context, sinkPort int, args SourceArgs, act func() error) (stats SourceStats, err error) {
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
-	limiter := rate.NewLimiter(rate.Limit(args.RatePerSec), 50 /* burst */)
+	ncpu := runtime.NumCPU()
+	limiter := rate.NewLimiter(rate.Limit(args.RatePerSec), 5 /* burst */)
 	tstart := time.Now()
-	tend := tstart.Add(args.Duration)
 	latencies := make([]time.Duration, 0, 1024)
+
+	// Use a separate context for stopping the source after requested duration is reached.
+	// Needed to cancel the limiter.Wait call without having to cancel the parent context.
+	srcCtx, srcCancel := context.WithCancel(context.Background())
+	go func() {
+		select {
+		case <-time.After(args.Duration):
+			srcCancel()
+		case <-ctx.Done():
+			srcCancel()
+		}
+	}()
 
 	logError := func(err error) {
 		log.Printf("Error: %s\n", err)
@@ -373,22 +441,20 @@ func genGoSource(ctx context.Context, sinkPort int, args SourceArgs, act func() 
 	}
 
 	stats.CPUUsage = CPUUsage{}
-	ncpu := runtime.NumCPU()
 	wg.Add(ncpu)
 	for i := 0; i < ncpu; i++ {
 		go func() {
 			runtime.LockOSThread()
 			latenciesPerThread := make([]time.Duration, 0, 1024)
 			cpuUsageBefore := GetCPUUsage(CPU_USAGE_THIS_THREAD)
-			for {
+			for srcCtx.Err() == nil {
 				treq := time.Now()
-				if ctx.Err() != nil || treq.After(tend) {
-					break
-				}
 
 				if args.RatePerSec > 0.0 {
-					if err = limiter.Wait(ctx); err != nil {
-						logError(fmt.Errorf("limiter.Wait: %w", err))
+					if err := limiter.Wait(srcCtx); err != nil {
+						if !errors.Is(err, context.Canceled) {
+							logError(fmt.Errorf("limiter.Wait: %w", err))
+						}
 						break
 					}
 				}
@@ -411,7 +477,7 @@ func genGoSource(ctx context.Context, sinkPort int, args SourceArgs, act func() 
 	wg.Wait()
 
 	n := len(latencies)
-	tend = time.Now()
+	tend := time.Now()
 	elapsedSecs := float64(tend.Sub(tstart)) / float64(time.Second)
 	stats.ActualRate = float64(n) / elapsedSecs
 	sort.Sort(ByDuration(latencies))
@@ -599,4 +665,25 @@ func xAtoi(s string) int64 {
 		return -1
 	}
 	return n
+}
+
+// ChunkingConn is a net.Conn that splits up a Write() into multiple random sized chunks.
+type ChunkingConn struct {
+	net.Conn
+}
+
+func (cc ChunkingConn) Write(b []byte) (int, error) {
+	written := 0
+
+	for remaining := len(b); remaining > 0; {
+		size := 1 + rand.Intn(remaining)
+		n, err := cc.Conn.Write(b[written : written+size])
+		written += n
+		remaining -= n
+		if err != nil {
+			return written, err
+		}
+	}
+
+	return written, nil
 }

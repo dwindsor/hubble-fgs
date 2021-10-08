@@ -188,6 +188,7 @@ func (sink goHTTP2Sink) Start(ctx context.Context) (int, chan SinkStats, error) 
 	if err != nil {
 		return -1, nil, fmt.Errorf("TCP listen error: %w", err)
 	}
+	l = ChunkingListener{l}
 
 	buf := []byte("helloworld")
 
@@ -343,4 +344,18 @@ func tcpListenPorts() map[int]struct{} {
 		}
 	}
 	return ports
+}
+
+// ChunkingListener returns a listener that returns connections, which
+// split up writes into multiple random-sized chunks.
+type ChunkingListener struct {
+	net.Listener
+}
+
+func (cl ChunkingListener) Accept() (net.Conn, error) {
+	conn, err := cl.Listener.Accept()
+	if err != nil {
+		return nil, err
+	}
+	return ChunkingConn{conn}, nil
 }
