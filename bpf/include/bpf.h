@@ -2526,7 +2526,8 @@ struct sk_msg_md {
 	__u32 remote_ip6[4];	/* Stored in network byte order */
 	__u32 local_ip6[4];	/* Stored in network byte order */
 	__u32 remote_port;	/* Stored in network byte order */
-	__u32 local_port;	/* stored in host byte order */
+	__u32 local_port;	/* Stored in host byte order */
+	__u32 size;		/* Total size of the message */
 };
 
 struct sk_reuseport_md {
