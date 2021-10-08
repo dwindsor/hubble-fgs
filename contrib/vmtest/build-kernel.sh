@@ -20,10 +20,11 @@ KSRC=$1
 KOUT=$2
 SELFDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" &> /dev/null && pwd )"
 NCPU=$(nproc)
-MAKECMD="make --silent -j $NCPU -C $KSRC KCONFIG_CONFIG=${SELFDIR}/kernel.config KBUILD_OUTPUT=$KOUT"
+MAKECMD="make --silent -j $NCPU -C $KSRC KCONFIG_CONFIG=${KOUT}/config KBUILD_OUTPUT=$KOUT"
 
 set -x
 
+cp "${SELFDIR}/kernel.config" "${KOUT}/config"
 $MAKECMD olddefconfig
 $MAKECMD
 
