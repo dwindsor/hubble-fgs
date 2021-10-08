@@ -349,7 +349,7 @@ func (src goHTTP2RRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 	url := fmt.Sprintf("http://127.0.0.1:%d", sinkPort)
 	methodCounter := 0
 	act := func() error {
-		methodCounter++
+		methodCounter++ // thread-unsafe, but doesn't matter for this case.
 		var (
 			resp *http.Response
 			err  error
@@ -415,7 +415,7 @@ func (src goHTTPCRRSource) Run(ctx context.Context, sinkPort int, args SourceArg
 func genGoSource(ctx context.Context, sinkPort int, args SourceArgs, act func() error) (stats SourceStats, err error) {
 	wg := sync.WaitGroup{}
 	mu := sync.Mutex{}
-	ncpu := runtime.NumCPU()
+	nthreads := runtime.NumCPU()
 	limiter := rate.NewLimiter(rate.Limit(args.RatePerSec), 5 /* burst */)
 	tstart := time.Now()
 	latencies := make([]time.Duration, 0, 1024)
@@ -441,8 +441,8 @@ func genGoSource(ctx context.Context, sinkPort int, args SourceArgs, act func() 
 	}
 
 	stats.CPUUsage = CPUUsage{}
-	wg.Add(ncpu)
-	for i := 0; i < ncpu; i++ {
+	wg.Add(nthreads)
+	for i := 0; i < nthreads; i++ {
 		go func() {
 			runtime.LockOSThread()
 			latenciesPerThread := make([]time.Duration, 0, 1024)

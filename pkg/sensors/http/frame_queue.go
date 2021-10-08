@@ -40,7 +40,7 @@ func newHttp2FrameQueue(windowSize int) *http2FrameQueue {
 }
 
 func (it *http2FrameQueue) reset(event *api.MsgHttpEvent) {
-	it.next = event.Request.ReqId + 1
+	it.next = event.Request.ReqId
 	it.head = 0
 	it.window = make([]*api.MsgHttpEvent, len(it.window))
 	it.window[0] = event
@@ -53,38 +53,57 @@ func (it *http2FrameQueue) push(event *api.MsgHttpEvent) {
 		// This is the first event to arrive into the window.
 		it.window[it.head] = event
 		it.next = id
-		//fmt.Printf("push %d, next=0 so pushing to head, head=%d, next=%d\n", id, it.head, it.next)
 		return
 	}
 
-	// Difference to the current expected next event.
-	diff := int(id - it.next)
+	if id < it.next {
+		// Initialization out of order as an older event received. Reset.
+		it.reset(event)
+		return
+	}
 
-	if id < it.next || diff >= len(it.window) {
+	// Difference to the current expected next event. Used to position the new event into the window.
+	diff := int(id - it.next)
+	if diff >= len(it.window) {
 		// It may happen that the fixed window is too small and events
 		// are too much out of order. When this happens we'll log a message
 		// here and reset the state. This can also happen if the initial
 		// event that we push into the window is out of order.
-		logger.GetLogger().Warnf("HTTP/2 frame too out of order (diff %d, max %d, received id %d, expected id %d). Dropping queued frames and carrying on",
-			diff, len(it.window), id, it.next)
-		it.reset(event)
-		return
-	}
+		//
+		// We try to recover from this by skipping over all the older missed events
+		// and then trying again to insert this event into the window. If that fails,
+		// then we reset the window.
 
-	//fmt.Printf("diff: %d\n", diff)
+		// Drain window until we hit an event.
+		skipped := 0
+		end := (it.head - 1) % len(it.window)
+		for it.head != end && it.window[it.head] == nil {
+			it.head = (it.head + 1) % len(it.window)
+			it.next++
+			skipped++
+		}
+
+		logger.GetLogger().Warnf("HTTP/2 frame too out of order (diff %d, max %d, received id %d, expected id %d). Skipping %d unseen events.",
+			diff, len(it.window), id, it.next, skipped)
+
+		// Check again if the event would fit
+		diff = int(id - it.next)
+		if diff >= len(it.window) {
+			// Still not fitting into the window, just reset.
+			logger.GetLogger().Warn("Frame still didn't fit into window after draining. Resetting.")
+			it.reset(event)
+			return
+		}
+	}
 
 	// Insert the event into the window.
 	pos := (it.head + diff) % len(it.window)
 
-	// Check the invariant that we never overwrite events.
+	// Verify the invariant that we never overwrite events.
 	if it.window[pos] != nil {
-		logger.GetLogger().Warnf("Impossible: frame_queue tried to overwrite existing frame. Resetting.")
-		it.reset(event)
-		return
+		panic("Impossible: frame_queue tried to overwrite existing frame.")
 	}
 	it.window[pos] = event
-
-	//fmt.Printf("push %d, pos=%d, head=%d\n", id, pos, it.head)
 }
 
 func (it *http2FrameQueue) pop() *api.MsgHttpEvent {
