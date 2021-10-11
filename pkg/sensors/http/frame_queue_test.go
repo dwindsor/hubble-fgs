@@ -49,7 +49,7 @@ func TestFrameQueue(t *testing.T) {
 	withPermutations(append([]uint64{}, ids...), func(xs []uint64) {
 		// Use a queue size that will wrap around, but is big enough to handle all permutations without
 		// overflowing.
-		q := newHttp2FrameQueue(len(ids))
+		q := newHttp2FrameQueue(len(ids), 1)
 
 		q.push(makeEvent(1))
 		e := q.pop()
@@ -91,7 +91,7 @@ func TestFrameQueue(t *testing.T) {
 }
 
 func TestFrameQueueWrapAround(t *testing.T) {
-	q := newHttp2FrameQueue(8)
+	q := newHttp2FrameQueue(8, 1)
 	i := uint64(0)
 
 	checkPop := func(i uint64) {
@@ -121,26 +121,5 @@ func TestFrameQueueWrapAround(t *testing.T) {
 		q.push(makeEvent(i))
 		checkPop(i)
 		checkPop(i + 1)
-	}
-}
-
-func TestFrameQueueInitialOutOfOrder(t *testing.T) {
-	q := newHttp2FrameQueue(16)
-
-	// Push an initial out of order event
-	q.push(makeEvent(3))
-	if e := q.pop(); e.Request.ReqId != 3 {
-		t.Error("expected 3")
-	}
-
-	// Push a newer event. This will reset the queue.
-	q.push(makeEvent(1))
-	if e := q.pop(); e.Request.ReqId != 1 {
-		t.Error("expected 2")
-	}
-
-	q.push(makeEvent(2))
-	if e := q.pop(); e.Request.ReqId != 2 {
-		t.Error("expected 2")
 	}
 }

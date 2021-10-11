@@ -31,10 +31,10 @@ type http2FrameQueue struct {
 	head int
 }
 
-func newHttp2FrameQueue(windowSize int) *http2FrameQueue {
+func newHttp2FrameQueue(windowSize int, nextId uint64) *http2FrameQueue {
 	return &http2FrameQueue{
 		window: make([]*api.MsgHttpEvent, windowSize),
-		next:   0,
+		next:   nextId,
 		head:   0,
 	}
 }
@@ -49,20 +49,14 @@ func (it *http2FrameQueue) reset(event *api.MsgHttpEvent) {
 func (it *http2FrameQueue) push(event *api.MsgHttpEvent) {
 	id := event.Request.ReqId
 
-	if it.next == 0 {
-		// This is the first event to arrive into the window.
-		it.window[it.head] = event
-		it.next = id
-		return
-	}
-
 	if id < it.next {
 		// Initialization out of order as an older event received. Reset.
+		logger.GetLogger().Warnf("HTTP/2 frame too old (%d < %d), resetting.", id, it.next)
 		it.reset(event)
 		return
 	}
 
-	// Difference to the current expected next event. Used to position the new event into the window.
+	// Difference to the expected next event. Used to position the new event into the window.
 	diff := int(id - it.next)
 	if diff >= len(it.window) {
 		// It may happen that the fixed window is too small and events

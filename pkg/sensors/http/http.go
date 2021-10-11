@@ -294,7 +294,6 @@ func handleHTTP(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-
 	return msgToHTTPEventUnix(m)
 }
 
@@ -412,7 +411,7 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) ([]ob
 			reader:     reader,
 			decoder:    hpack.NewDecoder(4096, nil),
 			framer:     http2.NewFramer(nil, reader),
-			frameQueue: newHttp2FrameQueue(frameQueueSize),
+			frameQueue: newHttp2FrameQueue(frameQueueSize, 1),
 		}
 		http2StateCache.Add(m.Tuple, state)
 	}
