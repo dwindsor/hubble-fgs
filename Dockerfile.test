@@ -10,7 +10,7 @@ FROM quay.io/isovalent/hubble-libbpf:v0.2.3 as hubble-libbpf
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 COPY . ./
 
-FROM golang:1.17.3
+FROM docker.io/library/golang:1.17.6@sha256:204c2e4637f7bcd0ebb32886d6f2d03f2deda92cf2f77e5a76746a77ff8c1de8
 RUN apt update
 RUN apt install -y linux-libc-dev rpm2cpio cpio git flex bison autoconf libelf-dev bc netcat-traditional
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
