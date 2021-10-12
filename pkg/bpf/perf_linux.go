@@ -177,8 +177,10 @@ int perf_event_read(int page_size, void *_page, void *_state,
 	int trunc = 0;
 	void *begin;
 
+	// mark previous event as consumed
 	data_tail = up->data_tail + state->last_size;
 	perf_write_tail(up, data_tail);
+	state->last_size = 0;
 	if (perf_read_head(up) == data_tail)
 		return 0;
 
@@ -217,6 +219,18 @@ int perf_event_read(int page_size, void *_page, void *_state,
 
 	return 1 + trunc;
 }
+
+void perf_event_stop(void *_page, void *_state)
+{
+	struct perf_event_mmap_page *up = _page;
+	struct read_state *state = _state;
+
+	if (state->last_size) {
+		perf_write_tail(up, up->data_tail + state->last_size);
+		state->last_size = 0;
+	}
+}
+
 */
 import "C"
 
@@ -463,14 +477,17 @@ func (e *PerfEvent) Disable() error {
 	return ret
 }
 
-// Read attempts to read all events from the perf event buffer, calling one of
-// the receive / lost functions for each event. receiveFn is called when the
-// event is a valid sample; lostFn is called when the kernel has attempted to
-// write an event into the ringbuffer but ran out of space for the event.
+// Read attempts to read at most 'maxEvents' events from the perf
+// event buffer, calling one of the receive / lost functions for
+// each event. receiveFn is called when the event is a valid sample;
+// lostFn is called when the kernel has attempted to write an event
+// into the ringbuffer but ran out of space for the event.
 //
-// If all events are not read within a time period (default 20s), it will call
-// errFn() and stop reading events.
-func (e *PerfEvent) Read(receive ReceiveFunc, lostFn LostFunc, err ErrorFunc) {
+// If all events are not read within a time period (default 20s),
+// it will call errFn() and stop reading events.
+//
+// Returns the number of events read from the ring.
+func (e *PerfEvent) Read(maxEvents int, receive ReceiveFunc, lostFn LostFunc, err ErrorFunc) (nread int) {
 	// Prepare for reading and check if events are available
 	available := C.perf_event_read_init(C.int(e.npages), C.int(e.pagesize),
 		unsafe.Pointer(&e.data[0]), unsafe.Pointer(e.state))
@@ -507,6 +524,7 @@ read:
 			break
 		}
 		e.buf = wrapBuf
+		nread++
 
 		if ok == 2 {
 			e.trunc++
@@ -529,7 +547,17 @@ read:
 			break read
 		default:
 		}
+
+		maxEvents--
+		if maxEvents <= 0 {
+			// Maximum events to process for this ring reached. Update
+			// the tail pointer to mark the last event as consumed.
+			C.perf_event_stop(unsafe.Pointer(&e.data[0]), unsafe.Pointer(e.state))
+			break
+		}
 	}
+
+	return
 }
 
 func (e *PerfEvent) Close() {
@@ -564,8 +592,8 @@ func (ep *EPoll) AddFD(fd int, events uint32) error {
 	return unix.EpollCtl(ep.fd, unix.EPOLL_CTL_ADD, fd, &ev)
 }
 
-func (ep *EPoll) Poll(timeout int) (int, error) {
-	nfds, err := unix.EpollWait(ep.fd, ep.events[0:], timeout)
+func (ep *EPoll) Poll(timeoutMillis int) (int, error) {
+	nfds, err := unix.EpollWait(ep.fd, ep.events[0:], timeoutMillis)
 	if err != nil {
 		return 0, err
 	}
@@ -746,17 +774,24 @@ func NewPerCpuEvents(config *PerfEventConfig, log logrus.FieldLogger) (*PerCpuEv
 	return e, nil
 }
 
-func (e *PerCpuEvents) Poll(timeout int) (int, error) {
-	return e.poll.Poll(timeout)
+func (e *PerCpuEvents) Poll(timeoutMillis int) (int, error) {
+	return e.poll.Poll(timeoutMillis)
 }
 
 // ReadAll reads perf events
-func (e *PerCpuEvents) ReadAll(receive ReceiveFunc, lost LostFunc, handleError ErrorFunc) error {
-	for i := 0; i < e.poll.nfds; i++ {
-		fd := int(e.poll.events[i].Fd)
-		if event, ok := e.event[fd]; ok {
-			event.Read(receive, lost, handleError)
+func (e *PerCpuEvents) ReadAll(maxEvents int, receive ReceiveFunc, lost LostFunc, handleError ErrorFunc) error {
+	nread := 0
+	// Iterate on processing 'maxEvents' from each ring in turn, until all rings are empty
+	// after which we return back to polling the rings.
+	for {
+		for _, event := range e.event {
+			nread += event.Read(maxEvents, receive, lost, handleError)
 		}
+		if nread == 0 {
+			// No events read, return to polling.
+			break
+		}
+		nread = 0
 	}
 
 	return nil

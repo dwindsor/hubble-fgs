@@ -40,6 +40,12 @@ const (
 
 	maxMapRetries = 4
 	mapRetryDelay = 1
+
+	// Max events to read from each ring in one go. This is used to
+	// reduce the likelyhood of events being out of order and the
+	// limit is required for HTTP/2 parsing to function correctly
+	// which relies on frame ordering (it does limited reordering)
+	maxEventsPerRing = 4
 )
 
 var (
@@ -315,12 +321,13 @@ func (k *Observer) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) er
 	receiveEvent := k.receiveEvent
 	observerLost := k.observerLost
 	observerError := k.observerError
+	pollTimeoutMsec := int(pollTimeout / time.Millisecond)
 
 	k.log.Info("Listening for events...")
 	k.observerListeners(&api.MsgFGSReady{})
 
 	for !isCtxDone(stopCtx) {
-		todo, err := e.Poll(int(pollTimeout.Seconds()))
+		_, err := e.Poll(pollTimeoutMsec)
 		switch {
 		case isCtxDone(stopCtx):
 			k.log.Debug("Context cancelled inside __loopEvents")
@@ -333,15 +340,14 @@ func (k *Observer) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) er
 			k.log.WithError(err).Debug("kprobe events poll failed")
 			continue
 		}
-		if todo > 0 {
-			if err := e.ReadAll(receiveEvent, observerLost, observerError); err != nil {
-				k.log.WithError(err).Warn("kprobe events read failed")
-			}
 
-			metrics.RingBufPerfEventReceived.WithLabelValues().Set(float64(k.recvCntr))
-			metrics.RingBufPerfEventLost.WithLabelValues().Set(float64(k.lostCntr))
-			metrics.RingBufPerfEventErrors.WithLabelValues().Set(float64(k.errorCntr))
+		if err := e.ReadAll(maxEventsPerRing, receiveEvent, observerLost, observerError); err != nil {
+			k.log.WithError(err).Warn("kprobe events read failed")
 		}
+
+		metrics.RingBufPerfEventReceived.WithLabelValues().Set(float64(k.recvCntr))
+		metrics.RingBufPerfEventLost.WithLabelValues().Set(float64(k.lostCntr))
+		metrics.RingBufPerfEventErrors.WithLabelValues().Set(float64(k.errorCntr))
 	}
 	return nil
 }
