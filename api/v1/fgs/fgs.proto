@@ -164,6 +164,14 @@ message ProcessCred {
     Capabilities cap = 3;
 }
 
+message KprobeSock {
+    string family = 1;
+    string type = 2;
+    string protocol = 3;
+    uint32 mark = 4;
+    uint32 priority = 5;
+}
+
 message KprobeSkb {
     uint32 hash = 1;
     uint32 len = 2;
@@ -201,6 +209,7 @@ message KprobeArgument {
 	KprobePath path_arg = 6;
 	KprobeFile file_arg = 7;
 	KprobeTruncatedBytes truncated_bytes_arg = 8;
+	KprobeSock sock_arg = 9;
     }
 }
 
