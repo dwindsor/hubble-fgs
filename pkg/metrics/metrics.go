@@ -102,6 +102,11 @@ var (
 		Name: "isovalent_fgs_http_stats_return_code",
 		Help: "HTTP return code statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host", "code"})
+	HttpRequestDurationSeconds = promauto.NewSummaryVec(prometheus.SummaryOpts{
+		Name:       "isovalent_fgs_http_stats_latency",
+		Help:       "HTTP latency statistics",
+		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host"})
 )
 
 // FGS debugging and core info metrics
@@ -197,6 +202,9 @@ func postHttpStats(ev *fgs.GetEventsResponse, res *fgs.ProcessHttp) {
 	// to enable/disable it this could have poor scaling properties. Imagine a user
 	// scanning for URIs behind a host.
 	HttpStatsReturnCodes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, host, code).Inc()
+
+	c := float64(http.Latency.AsDuration().Seconds())
+	HttpRequestDurationSeconds.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, host).Observe(c)
 }
 
 func handleHttpEvent(processedEvent interface{}) {
