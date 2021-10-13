@@ -61,7 +61,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_filter_map = {
 
 #define DO_TLS_PORT_FILTER_ONE(j)			     \
 	p = *(__u32 *)&filter[offset + 4 + 4 + 4 + (4 * j)]; \
-	if (p == key->dport) goto track;		     \
+	if (p == key->dport || p == key->sport) goto track;  \
 	if (++j >= ports) goto skip;			     \
 
 
