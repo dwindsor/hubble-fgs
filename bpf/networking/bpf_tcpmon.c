@@ -28,7 +28,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcp_connect_event_map 
 };
 
 __attribute__((section(("kprobe/tcp_connect")), used))
-int event_ipv4_connect(struct pt_regs *ctx)
+int event_tcp4_connect(struct pt_regs *ctx)
 {
 	struct execve_map_value *process = 0;
 	struct msg_ipv4_tcp_event *val;

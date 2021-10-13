@@ -31,7 +31,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcp_close_event_map = 
 };
 
 __attribute__((section(("kprobe/tcp_set_state")), used))
-int event_ipv4_close(struct pt_regs *ctx)
+int event_tcp4_close(struct pt_regs *ctx)
 {
 	struct msg_ipv4_tcp_event *val;
 	struct socketmap_value *process;
