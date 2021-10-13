@@ -1,6 +1,7 @@
 #include "operations.h"
 #include "bpf_events.h"
 #include "skb.h"
+#include "sock.h"
 
 /* Type IDs form API with user space generickprobe.go */
 enum {
@@ -12,6 +13,7 @@ enum {
 	size_type = 4,
 	skb_type = 5,
 	string_type = 6,
+	sock_type = 7,
 
 	s64_ty = 10,
 	u64_ty = 11,
@@ -227,6 +229,17 @@ long copy_skb(char *args, unsigned long arg)
 }
 
 static inline __attribute__((always_inline))
+long copy_sock(char *args, unsigned long arg)
+{
+	struct sock *sk = (struct sock *)arg;
+	struct sk_type *sk_event = (struct sk_type *)args;
+
+	set_event_from_sock(sk_event, sk);
+
+	return sizeof(struct sk_type);
+}
+
+static inline __attribute__((always_inline))
 long copy_char_buf(char *args, unsigned long arg, unsigned long argm)
 {
 	int *s = (int *)args;
@@ -380,6 +393,8 @@ size_t type_to_min_size(int type)
 		return 4;
 	case skb_type:
 		return sizeof(struct skb_type);
+	case sock_type:
+		return sizeof(struct sk_type);
 	case size_type:
 	case s64_ty:
 	case u64_ty:
@@ -766,6 +781,9 @@ long read_call_arg(struct msg_generic_kprobe *e,
 		break;
 	case skb_type:
 		size = copy_skb(args, arg);
+		break;
+	case sock_type:
+		size = copy_sock(args, arg);
 		break;
 	case char_buf:
 		size = copy_char_buf(args, arg, argm);

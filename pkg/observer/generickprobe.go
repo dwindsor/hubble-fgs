@@ -682,6 +682,22 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 			arg.Dport = uint32(api.SwapByte(uint16(skb.Dport)))
 			arg.Proto = skb.Proto
 			unix.Args = append(unix.Args, arg)
+		case GenericSockType:
+			var sock api.MsgGenericKprobeSock
+			var arg api.MsgGenericKprobeArgSock
+
+			err := binary.Read(r, binary.LittleEndian, &sock)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("sock type err")
+			}
+
+			arg.Index = uint64(a.index)
+			arg.Family = sock.Family
+			arg.Type = sock.Type
+			arg.Protocol = sock.Protocol
+			arg.Mark = sock.Mark
+			arg.Priority = sock.Priority
+			unix.Args = append(unix.Args, arg)
 		case GenericSizeType:
 			var output uint64
 			var arg api.MsgGenericKprobeArgSize

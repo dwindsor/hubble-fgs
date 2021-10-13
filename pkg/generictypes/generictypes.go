@@ -17,6 +17,7 @@ const (
 	GenericSizeType   = 4
 	GenericSkbType    = 5
 	GenericStringType = 6
+	GenericSockType   = 7
 
 	GenericS64Type = 10
 	GenericU64Type = 11
@@ -48,6 +49,8 @@ func GenericTypeFromString(arg string) int {
 		return GenericS32Type
 	case "skb":
 		return GenericSkbType
+	case "sock":
+		return GenericSockType
 	case "size_t":
 		return GenericSizeType
 	case "char_buf":

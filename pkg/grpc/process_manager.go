@@ -420,6 +420,15 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			a.Arg = &fgs.KprobeArgument_SizeArg{SizeArg: e.Value}
 		case api.MsgGenericKprobeArgString:
 			a.Arg = &fgs.KprobeArgument_StringArg{StringArg: e.Value}
+		case api.MsgGenericKprobeArgSock:
+			sockArg := &fgs.KprobeSock{
+				Family:   reader.InetFamily(e.Family),
+				Type:     reader.InetType(e.Type),
+				Protocol: reader.InetProtocol(e.Protocol),
+				Mark:     e.Mark,
+				Priority: e.Priority,
+			}
+			a.Arg = &fgs.KprobeArgument_SockArg{SockArg: sockArg}
 		case api.MsgGenericKprobeArgSkb:
 			skbArg := &fgs.KprobeSkb{
 				Hash:     e.Hash,

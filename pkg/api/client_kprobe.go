@@ -95,6 +95,32 @@ func (m MsgGenericKprobeArgSize) IsReturnArg() bool {
 	return m.Index == ReturnArgIndex
 }
 
+type MsgGenericKprobeSock struct {
+	Family   uint16
+	Type     uint16
+	Protocol uint16
+	Pad      uint16
+	Mark     uint32
+	Priority uint32
+}
+
+type MsgGenericKprobeArgSock struct {
+	Index    uint64
+	Family   uint16
+	Type     uint16
+	Protocol uint16
+	Mark     uint32
+	Priority uint32
+}
+
+func (m MsgGenericKprobeArgSock) GetIndex() uint64 {
+	return m.Index
+}
+
+func (m MsgGenericKprobeArgSock) IsReturnArg() bool {
+	return m.Index == ReturnArgIndex
+}
+
 type MsgGenericKprobeSkb struct {
 	Hash     uint32
 	Len      uint32

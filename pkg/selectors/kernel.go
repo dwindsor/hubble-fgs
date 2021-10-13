@@ -61,6 +61,7 @@ const (
 	argTypeSizet     = 4
 	argTypeSkb       = 5
 	argTypeString    = 6
+	argTypeSock      = 7
 
 	argTypeS64 = 10
 	argTypeU64 = 11
@@ -84,6 +85,7 @@ var argTypeTable = map[string]uint32{
 	"string":     argTypeString,
 	"fd":         argTypeFd,
 	"file":       argTypeFile,
+	"sock":       argTypeSock,
 }
 
 var argTypeStringTable = map[uint32]string{
@@ -99,6 +101,7 @@ var argTypeStringTable = map[uint32]string{
 	argTypeString:    "string",
 	argTypeFd:        "fd",
 	argTypeFile:      "file",
+	argTypeSock:      "sock",
 }
 
 const (
@@ -238,7 +241,7 @@ func parseMatchValues(k *KernelSelectorState, values []string, ty uint32) error 
 				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
 			}
 			WriteSelectorUint64(k, uint64(i))
-		case argTypeSkb, argTypeCharIovec:
+		case argTypeSock, argTypeSkb, argTypeCharIovec:
 			return fmt.Errorf("MatchArgs values %s unsupported", v)
 		}
 	}
