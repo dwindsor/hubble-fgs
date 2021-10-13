@@ -14,6 +14,8 @@ package sockmap
 import (
 	"context"
 	"flag"
+	"fmt"
+	"net/http"
 	"os"
 	"path/filepath"
 	"sync"
@@ -26,6 +28,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
 	"github.com/stretchr/testify/assert"
+	"golang.org/x/net/http2"
+	"golang.org/x/net/http2/h2c"
 )
 
 var (
@@ -197,6 +201,7 @@ spec:
       selectors:
       - matchports:
         - 8080
+        - 8282
         - 80
 `
 )
@@ -252,6 +257,74 @@ func TestHttp11Curl(t *testing.T) {
 	}
 	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
 	observer.ExecWGCurl(&execWG, &exitWG, "http://www.google.com")
+
+	err = observer.JsonTestCheck(t, nil, &checker)
+	assert.NoError(t, err)
+
+	observer.TestDone(t, obs)
+}
+
+func http2Server(ctx context.Context, port int) {
+	handler := http.HandlerFunc(
+		func(w http.ResponseWriter, r *http.Request) {
+			w.Write([]byte("hello world"))
+		})
+	s := http.Server{
+		Addr:    fmt.Sprintf("127.0.0.1:%d", port),
+		Handler: h2c.NewHandler(handler, &http2.Server{}),
+	}
+	go func() {
+		<-ctx.Done()
+		s.Shutdown(ctx)
+	}()
+	s.ListenAndServe()
+}
+
+func TestHttp20CurlPriorKnowledge(t *testing.T) {
+	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	httpCh := ec.NewHttpChecker().
+		WithRequestMethod("GET").
+		WithRequestUri("/").
+		WithRequestVersion("HTTP/2").
+		WithRequestAgent(ec.ContainsStringMatch("curl")).
+		WithRequestHost(ec.ContainsStringMatch("localhost:8282")).
+		WithResponseVersion("HTTP/2").
+		WithResponseReason("OK")
+
+	// NOTE(JM): Not checking for process data due to issue #747
+	// Process information unavailable as tuple.uid set to netns id
+	// for local connections. It's set because otherwise the connection
+	// tuple is not unique.
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewConnectEventChecker().
+			HasDstPort(8282).
+			End(),
+		ec.NewHttpEventChecker().
+			HasHttp(httpCh).
+			End(),
+	)
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	var exitWG, execWG sync.WaitGroup
+	defer cancel()
+
+	go http2Server(ctx, 8282)
+
+	if err := observer.WriteConfigFile(testConfigFile, httpConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
+	observer.ExecWGCurl(&execWG, &exitWG, "-v", "--http2-prior-knowledge", "http://localhost:8282")
 
 	err = observer.JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)

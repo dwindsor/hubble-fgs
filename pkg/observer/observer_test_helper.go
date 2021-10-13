@@ -295,9 +295,9 @@ func LoopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, obs *Observer, ctx
 	}()
 }
 
-func ExecWGCurl(execWG, exitWG *sync.WaitGroup, args string) {
+func ExecWGCurl(execWG, exitWG *sync.WaitGroup, args ...string) {
 	execWG.Wait()
-	cmd := exec.Command("/usr/bin/curl", args)
+	cmd := exec.Command("/usr/bin/curl", args...)
 	err := cmd.Run()
 	fmt.Printf("cmd %v err %v\n", cmd, err)
 	exitWG.Wait()

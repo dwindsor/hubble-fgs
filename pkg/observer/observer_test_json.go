@@ -68,7 +68,7 @@ func jsonTestSaveCopy(fnamePrefix string, jsonFile *os.File) (string, error) {
 	}
 
 	if jsonFile == nil {
-		fmt.Printf("jsonTestIterate: openning: %s\n", exportFile)
+		fmt.Printf("jsonTestIterate: opening: %s\n", exportFile)
 		jsonFile, err = os.Open(exportFile)
 		if err != nil {
 			return "", fmt.Errorf("opening json file failed: %w", err)

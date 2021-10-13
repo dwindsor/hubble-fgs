@@ -14,7 +14,9 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"net/http"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
@@ -472,6 +474,9 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 			unix.Request.Method = field.Value
 		case ":status":
 			unix.Request.Code = field.Value
+			if code, err := strconv.ParseInt(field.Value, 10, 32); err == nil {
+				unix.Request.Reason = http.StatusText(int(code))
+			}
 		case ":authority":
 			unix.Request.Host = field.Value
 		case ":path":
@@ -518,10 +523,11 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 			unix.Request.Method = r.Request.Method
 			unix.Request.Uri = r.Request.Uri
 			unix.Request.Host = r.Request.Host
-			unix.Request.Protocol = r.Request.Protocol
 			unix.Request.UserAgent = r.Request.UserAgent
 			unix.Request.Ktime = r.Common.Ktime
 			unix.Request.ContentLength = r.Request.ContentLength
+			unix.Request.Protocol = "HTTP/2"
+			unix.Request.RespVersion = "HTTP/2"
 			unix.ProcessKey = r.ProcessKey
 			aggregate.Remove(key)
 		}
