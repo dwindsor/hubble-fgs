@@ -204,7 +204,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		return nil
 	}
 
-	if proc.Docker != "" {
+	if proc != nil && proc.Docker != "" {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(proc)
 		// Its possible to receive an event before its podInfo is received in
