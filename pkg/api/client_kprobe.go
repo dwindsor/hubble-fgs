@@ -122,28 +122,32 @@ func (m MsgGenericKprobeArgSock) IsReturnArg() bool {
 }
 
 type MsgGenericKprobeSkb struct {
-	Hash     uint32
-	Len      uint32
-	Priority uint32
-	Mark     uint32
-	Saddr    uint32
-	Daddr    uint32
-	Sport    uint32
-	Dport    uint32
-	Proto    uint32
+	Hash        uint32
+	Len         uint32
+	Priority    uint32
+	Mark        uint32
+	Saddr       uint32
+	Daddr       uint32
+	Sport       uint32
+	Dport       uint32
+	Proto       uint32
+	SecPathLen  uint32
+	SecPathOLen uint32
 }
 
 type MsgGenericKprobeArgSkb struct {
-	Index    uint64
-	Hash     uint32
-	Len      uint32
-	Priority uint32
-	Mark     uint32
-	Saddr    string
-	Daddr    string
-	Sport    uint32
-	Dport    uint32
-	Proto    uint32
+	Index       uint64
+	Hash        uint32
+	Len         uint32
+	Priority    uint32
+	Mark        uint32
+	Saddr       string
+	Daddr       string
+	Sport       uint32
+	Dport       uint32
+	Proto       uint32
+	SecPathLen  uint32
+	SecPathOLen uint32
 }
 
 func (m MsgGenericKprobeArgSkb) GetIndex() uint64 {

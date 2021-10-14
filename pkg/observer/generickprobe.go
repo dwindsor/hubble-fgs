@@ -681,6 +681,8 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 			arg.Sport = uint32(api.SwapByte(uint16(skb.Sport)))
 			arg.Dport = uint32(api.SwapByte(uint16(skb.Dport)))
 			arg.Proto = skb.Proto
+			arg.SecPathLen = skb.SecPathLen
+			arg.SecPathOLen = skb.SecPathOLen
 			unix.Args = append(unix.Args, arg)
 		case GenericSockType:
 			var sock api.MsgGenericKprobeSock

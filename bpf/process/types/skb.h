@@ -11,6 +11,8 @@ struct skb_type {
 	__u32 sport;
 	__u32 dport;
 	__u32 proto;
+	__u32 secpath_len;
+	__u32 secpath_olen;
 };
 
 /* set_event_from_skb(skb)
@@ -52,6 +54,25 @@ int set_event_from_skb(struct skb_type *event, struct sk_buff *skb) {
 			probe_read(&event->dport, sizeof(event->dport), _(&udp->dest));
 		}
 
+		if (bpf_core_field_exists(skb->active_extensions)) {
+			struct sec_path *sp;
+			struct skb_ext *ext;
+			u64 offset;
+
+#define SKB_EXT_SEC_PATH 1 // TBD do this with BTF
+			probe_read(&ext, sizeof(ext), _(&skb->extensions));
+			if (ext) {
+			bpf_printk("ext pointer %x\n", ext);
+        		probe_read(&offset, sizeof(offset), _(&ext->offset[SKB_EXT_SEC_PATH]));
+			bpf_printk("offset value %x\n", offset);
+			sp = (void *)ext + (offset << 3);
+
+			probe_read(&event->secpath_len, sizeof(event->secpath_len), _(&sp->len));
+			probe_read(&event->secpath_olen, sizeof(event->secpath_olen), _(&sp->olen));
+			bpf_printk("active extensions exists ... %d\n", 0);
+			bpf_printk("secpath len %d  0x%x\n", event->secpath_len, offset);
+			}
+		}
 		return 0;
 	} else if (ip_ver == 6) {
 		return -1;

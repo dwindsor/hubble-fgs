@@ -431,15 +431,18 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			a.Arg = &fgs.KprobeArgument_SockArg{SockArg: sockArg}
 		case api.MsgGenericKprobeArgSkb:
 			skbArg := &fgs.KprobeSkb{
-				Hash:     e.Hash,
-				Len:      e.Len,
-				Priority: e.Priority,
-				Mark:     e.Mark,
-				Saddr:    e.Saddr,
-				Daddr:    e.Daddr,
-				Sport:    e.Sport,
-				Dport:    e.Dport,
-				Proto:    e.Proto}
+				Hash:        e.Hash,
+				Len:         e.Len,
+				Priority:    e.Priority,
+				Mark:        e.Mark,
+				Saddr:       e.Saddr,
+				Daddr:       e.Daddr,
+				Sport:       e.Sport,
+				Dport:       e.Dport,
+				Proto:       e.Proto,
+				SecPathLen:  e.SecPathLen,
+				SecPathOlen: e.SecPathOLen,
+			}
 			a.Arg = &fgs.KprobeArgument_SkbArg{SkbArg: skbArg}
 		case api.MsgGenericKprobeArgBytes:
 			if e.OrigSize > uint64(len(e.Value)) {

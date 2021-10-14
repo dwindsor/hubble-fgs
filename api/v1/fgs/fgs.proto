@@ -182,6 +182,8 @@ message KprobeSkb {
     uint32 sport = 7;
     uint32 dport = 8;
     uint32 proto = 9;
+    uint32 sec_path_len = 10;
+    uint32 sec_path_olen = 11;
 }
 
 message KprobePath {

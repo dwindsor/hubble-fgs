@@ -73,6 +73,7 @@ spec:
                             - char_iovec
                             - size_t
                             - skb
+                            - sock
                             - string
                             - fd
                             - file
@@ -125,6 +126,7 @@ spec:
                           - char_iovec
                           - size_t
                           - skb
+                          - sock
                           - string
                           - fd
                           - file
@@ -337,6 +339,7 @@ spec:
                             - char_iovec
                             - size_t
                             - skb
+                            - sock
                             - string
                             - fd
                             - file

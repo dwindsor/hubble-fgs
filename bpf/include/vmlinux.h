@@ -13894,7 +13894,7 @@ struct pipe_buf_operations {
 
 struct skb_ext {
 	refcount_t refcnt;
-	u8 offset[1];
+	u8 offset[4];
 	u8 chunks;
 	short: 16;
 	char data[0];
