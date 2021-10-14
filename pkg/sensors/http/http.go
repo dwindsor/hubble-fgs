@@ -15,6 +15,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"path/filepath"
+	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -329,7 +330,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 		case RequestProtocol:
 			unix.Request.Protocol = chunk
 		case RequestHost:
-			unix.Request.Host = chunk
+			unix.Request.Host = strings.TrimSpace(chunk)
 		case RequestUserAgent:
 			unix.Request.UserAgent = chunk
 		case RequestContentLength:
