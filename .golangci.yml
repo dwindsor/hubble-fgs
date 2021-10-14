@@ -27,3 +27,5 @@ issues:
       # Most exported consts are self-descriptive.
     - linters: [revive]
       text: "exported const"
+    - linters: [revive]
+      text: "var-naming"
