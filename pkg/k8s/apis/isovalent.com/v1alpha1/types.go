@@ -108,6 +108,9 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches
 	MatchActions []ActionSelector `json:"matchActions"`
+	// +kubebuilder:validation:Optional
+	// A list of argument filters. MatchArgs are ANDed.
+	MatchReturnArgs []ArgSelector `json:"matchReturnArgs"`
 }
 
 type PIDSelector struct {

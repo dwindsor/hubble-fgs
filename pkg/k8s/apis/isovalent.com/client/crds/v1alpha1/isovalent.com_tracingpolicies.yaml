@@ -235,6 +235,36 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchReturnArgs:
+                            description: A list of argument filters. MatchArgs are
+                              ANDed.
+                            items:
+                              properties:
+                                index:
+                                  description: Position of the argument to apply fhe
+                                    filter to.
+                                  format: int32
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - Postfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
+                              - operator
+                              - values
+                              type: object
+                            type: array
                         type: object
                       type: array
                     syscall:
@@ -448,6 +478,36 @@ spec:
                                     type: integer
                                   type: array
                               required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                          matchReturnArgs:
+                            description: A list of argument filters. MatchArgs are
+                              ANDed.
+                            items:
+                              properties:
+                                index:
+                                  description: Position of the argument to apply fhe
+                                    filter to.
+                                  format: int32
+                                  minimum: 0
+                                  type: integer
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - Postfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - index
                               - operator
                               - values
                               type: object

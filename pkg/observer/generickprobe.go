@@ -18,6 +18,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
@@ -144,6 +145,11 @@ type genericKprobe struct {
 	argSigPrinters    []argPrinters
 	argReturnPrinters []argPrinters
 	funcName          string
+
+	// userReturnFilters are filter specs implemented in userspace after
+	// receiving events on the return value. We currently use this for return
+	// arg filtering.
+	userReturnFilters []v1alpha1.ArgSelector
 
 	// for kprobes that have a retprobe, we maintain the enter events in
 	// the map, so that we can merge them when the return event is
@@ -335,6 +341,14 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			return nil, err
 		}
 
+		// Copy over userspace return filters
+		var userReturnFilters []v1alpha1.ArgSelector
+		for _, s := range f.Selectors {
+			for _, returnArg := range s.MatchReturnArgs {
+				userReturnFilters = append(userReturnFilters, returnArg)
+			}
+		}
+
 		// Write attributes into BTF ptr for use with load
 		is_syscall = f.Syscall
 		if !setRetprobe {
@@ -377,6 +391,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			},
 			argSigPrinters:    argSigPrinters,
 			argReturnPrinters: argReturnPrinters,
+			userReturnFilters: userReturnFilters,
 			funcName:          funcName,
 			pendingEvents:     map[uint64]pendingEvent{},
 			tableId:           idtable.UninitializedEntryID,
@@ -717,6 +732,10 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 		}
 	}
 
+	// Cache return value on merge and run return filters below before
+	// passing up to notify hooks.
+	var retArg *api.MsgGenericKprobeArg = nil
+
 	// there are two events for this probe (entry and return)
 	if gk.loadArgs.retprobe {
 		// if an event exist already, try to merge them. Otherwise, add
@@ -724,7 +743,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 		curr := pendingEvent{ev: unix, returnEvent: returnEvent}
 		if prev, exists := gk.pendingEvents[m.ThreadId]; exists {
 			delete(gk.pendingEvents, m.ThreadId)
-			unix = retprobeMerge(prev, curr)
+			unix, retArg = retprobeMerge(prev, curr)
 		} else {
 			gk.pendingEvents[m.ThreadId] = curr
 			unix = nil
@@ -734,12 +753,79 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 	if unix == nil {
 		return []ObserverEvent{}, err
 	}
+	// Last layer of filtering done before Notify upper layers. This is
+	// needed for filters and actions that can't be committed in kernel
+	// space. For example if we simply dropped a return arg because of
+	// a filter we wouldn't be able to cleanup initial event from entry.
+	// Alternatively, some actions have no kernel analog, such as pause
+	// pod.
+	if filterReturnArg(gk.userReturnFilters, retArg) {
+		return []ObserverEvent{}, err
+	}
+
 	return []ObserverEvent{unix}, err
 }
 
+func filterReturnArg(userReturnFilters []v1alpha1.ArgSelector, retArg *api.MsgGenericKprobeArg) bool {
+	// Short circuit, returnFilter indicates we should eat this event.
+	if retArg == nil {
+		return false
+	}
+
+	// If no filters are specified default to allow.
+	if len(userReturnFilters) == 0 {
+		return false
+	}
+
+	// Multiple selectors will be logical OR together.
+	for _, uFilter := range userReturnFilters {
+		// MatchPIDs only supported in kernel space because we have
+		// full support back to 4.14 kernels.
+
+		// MatchArgs handlers, uFilters only necessary for return
+		// arg filters at the moment. Also we simply assume its an
+		// int which is naive, but good enough someone should devote
+		// more time to make this amazing tech(tm).
+		switch uFilter.Operator {
+		case "Equal":
+			// If retarg Equals any value in the set {Values} accept event
+			for _, v := range uFilter.Values {
+				if vint, err := strconv.Atoi(v); err == nil {
+					switch compare := (*retArg).(type) {
+					case api.MsgGenericKprobeArgInt:
+						if vint == int(compare.Value) {
+							return false
+						}
+					}
+				}
+			}
+		case "NotEqual":
+			inSet := false
+			for _, v := range uFilter.Values {
+				if vint, err := strconv.Atoi(v); err == nil {
+					switch compare := (*retArg).(type) {
+					case api.MsgGenericKprobeArgInt:
+						if vint == int(compare.Value) {
+							inSet = true
+						}
+					}
+				}
+			}
+			// If retarg was not in set {Values} accept event
+			if !inSet {
+				return false
+			}
+		}
+
+	}
+	// We walked all selectors and no selectors matched, eat the event.
+	return true
+}
+
 // retprobeMerge merges the two events: the one from they entry and one from the return
-func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUnix {
+func retprobeMerge(prev pendingEvent, curr pendingEvent) (*api.MsgGenericKprobeUnix, *api.MsgGenericKprobeArg) {
 	var retEv, enterEv *api.MsgGenericKprobeUnix
+	var ret *api.MsgGenericKprobeArg = nil
 
 	if prev.returnEvent && !curr.returnEvent {
 		retEv = prev.ev
@@ -749,10 +835,10 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUn
 		enterEv = prev.ev
 	} else if prev.returnEvent && curr.returnEvent {
 		logger.GetLogger().Warnf("cannot merge two return events: prev:%+v curr:%+v", prev, curr)
-		return nil
+		return nil, nil
 	} else {
 		logger.GetLogger().Warnf("cannot merge two enter events: prev:%+v curr:%+v", prev, curr)
-		return nil
+		return nil, nil
 	}
 
 	for _, retArg := range retEv.Args {
@@ -761,9 +847,10 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) *api.MsgGenericKprobeUn
 			enterEv.Args[index] = retArg
 		} else {
 			enterEv.Args = append(enterEv.Args, retArg)
+			ret = &retArg
 		}
 	}
-	return enterEv
+	return enterEv, ret
 }
 
 func (k *observerKprobeSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

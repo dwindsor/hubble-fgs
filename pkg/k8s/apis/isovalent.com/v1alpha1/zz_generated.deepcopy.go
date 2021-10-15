@@ -130,6 +130,13 @@ func (in *KProbeSelector) DeepCopyInto(out *KProbeSelector) {
 		*out = make([]ActionSelector, len(*in))
 		copy(*out, *in)
 	}
+	if in.MatchReturnArgs != nil {
+		in, out := &in.MatchReturnArgs, &out.MatchReturnArgs
+		*out = make([]ArgSelector, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 
