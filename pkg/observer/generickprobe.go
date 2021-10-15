@@ -729,6 +729,9 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 			err = fmt.Errorf("pendingEvents")
 		}
 	}
+	if unix == nil {
+		return []ObserverEvent{}, err
+	}
 	return []ObserverEvent{unix}, err
 }
 
