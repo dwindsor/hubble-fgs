@@ -82,11 +82,19 @@ message SocketStats {
     uint64 bytes_received = 2;
     uint32 segs_in = 3;
     uint32 segs_out = 4;
+
+    // TCP specific:
     uint32 srtt = 5;
     uint64 retransmits_bytes = 6;
     uint32 retransmits_segs = 7;
     uint32 to_zero_window = 8;
+
     uint32 sk_drop = 9;
+}
+
+enum SocketProtocol {
+    UNKNOWN = 0;
+    TCP = 6;
 }
 
 message ProcessConnect {
@@ -99,6 +107,7 @@ message ProcessConnect {
     repeated string destination_names = 7;
     uint64 sock_cookie = 8;
     Pod destination_pod = 9;
+    SocketProtocol protocol = 10;
 }
 
 message ProcessClose {
@@ -112,6 +121,7 @@ message ProcessClose {
     uint64 sock_cookie = 8;
     SocketStats stats = 9;
     Pod destination_pod = 10;
+    SocketProtocol protocol = 11;
 }
 
 message ProcessListen {
@@ -120,6 +130,7 @@ message ProcessListen {
     string ip = 3;
     google.protobuf.UInt32Value port = 4;
     uint64 sock_cookie = 5;
+    SocketProtocol protocol = 6;
 }
 
 message ProcessAccept {
@@ -132,6 +143,7 @@ message ProcessAccept {
     repeated string destination_names = 7;
     uint64 sock_cookie = 8;
     Pod destination_pod = 9;
+    SocketProtocol protocol = 10;
 }
 
 message ProcessExec {
@@ -224,7 +236,8 @@ message SockInfo {
     string destination_ip = 3;
     google.protobuf.UInt32Value destination_port = 4;
     uint64 sock_cookie = 5;
-}
+    SocketProtocol protocol = 6;
+  }
 
 message ProcessSockStats {
     Process process = 1;
