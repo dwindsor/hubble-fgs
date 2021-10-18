@@ -56,52 +56,52 @@ func Test_handleProcessedEvent(t *testing.T) {
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
 		Process: &fgs.Process{
 			Binary: "binary_a",
-			Pod:    &fgs.Pod{Namespace: "namespace_a"},
+			Pod:    &fgs.Pod{Namespace: "namespace_a", Name: "pod_a"},
 		},
 	}}})
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
 		Process: &fgs.Process{
 			Binary: "binary_b",
-			Pod:    &fgs.Pod{Namespace: "namespace_b"},
+			Pod:    &fgs.Pod{Namespace: "namespace_b", Name: "pod_b"},
 		},
 	}}})
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
 		Process: &fgs.Process{
 			Binary: "binary_c",
-			Pod:    &fgs.Pod{Namespace: "namespace_c"},
+			Pod:    &fgs.Pod{Namespace: "namespace_c", Name: "pod_c"},
 		},
 	}}})
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
 		Process: &fgs.Process{
 			Binary: "binary_d",
-			Pod:    &fgs.Pod{Namespace: "namespace_d"},
+			Pod:    &fgs.Pod{Namespace: "namespace_d", Name: "pod_d"},
 		},
 	}}})
 	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
 		Process: &fgs.Process{
 			Binary: "binary_e",
-			Pod:    &fgs.Pod{Namespace: "namespace_e"},
+			Pod:    &fgs.Pod{Namespace: "namespace_e", Name: "pod_e"},
 		},
 	}}})
 
 	expected := strings.NewReader(`# HELP isovalent_events_total The total number of FGS events
 # TYPE isovalent_events_total counter
-isovalent_events_total{binary="",namespace="",type="PROCESS_CONNECT"} 1
-isovalent_events_total{binary="",namespace="",type="PROCESS_EXEC"} 1
-isovalent_events_total{binary="",namespace="",type="PROCESS_EXIT"} 1
-isovalent_events_total{binary="",namespace="",type="PROCESS_LISTEN"} 1
-isovalent_events_total{binary="",namespace="",type="PROCESS_TLS"} 1
-isovalent_events_total{binary="",namespace="",type="unknown"} 1
-isovalent_events_total{binary="binary_a",namespace="",type="PROCESS_CONNECT"} 1
-isovalent_events_total{binary="binary_a",namespace="namespace_a",type="PROCESS_CONNECT"} 1
-isovalent_events_total{binary="binary_b",namespace="",type="PROCESS_EXEC"} 1
-isovalent_events_total{binary="binary_b",namespace="namespace_b",type="PROCESS_EXEC"} 1
-isovalent_events_total{binary="binary_c",namespace="",type="PROCESS_LISTEN"} 1
-isovalent_events_total{binary="binary_c",namespace="namespace_c",type="PROCESS_LISTEN"} 1
-isovalent_events_total{binary="binary_d",namespace="",type="PROCESS_TLS"} 1
-isovalent_events_total{binary="binary_d",namespace="namespace_d",type="PROCESS_TLS"} 1
-isovalent_events_total{binary="binary_e",namespace="",type="PROCESS_EXIT"} 1
-isovalent_events_total{binary="binary_e",namespace="namespace_e",type="PROCESS_EXIT"} 1
+isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_CONNECT"} 1
+isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_EXEC"} 1
+isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_EXIT"} 1
+isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_LISTEN"} 1
+isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_TLS"} 1
+isovalent_events_total{binary="",namespace="",pod="",type="unknown"} 1
+isovalent_events_total{binary="binary_a",namespace="",pod="",type="PROCESS_CONNECT"} 1
+isovalent_events_total{binary="binary_a",namespace="namespace_a",pod="pod_a",type="PROCESS_CONNECT"} 1
+isovalent_events_total{binary="binary_b",namespace="",pod="",type="PROCESS_EXEC"} 1
+isovalent_events_total{binary="binary_b",namespace="namespace_b",pod="pod_b",type="PROCESS_EXEC"} 1
+isovalent_events_total{binary="binary_c",namespace="",pod="",type="PROCESS_LISTEN"} 1
+isovalent_events_total{binary="binary_c",namespace="namespace_c",pod="pod_c",type="PROCESS_LISTEN"} 1
+isovalent_events_total{binary="binary_d",namespace="",pod="",type="PROCESS_TLS"} 1
+isovalent_events_total{binary="binary_d",namespace="namespace_d",pod="pod_d",type="PROCESS_TLS"} 1
+isovalent_events_total{binary="binary_e",namespace="",pod="",type="PROCESS_EXIT"} 1
+isovalent_events_total{binary="binary_e",namespace="namespace_e",pod="pod_e",type="PROCESS_EXIT"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(EventsProcessed, expected))
 }

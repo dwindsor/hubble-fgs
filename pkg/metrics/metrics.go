@@ -117,7 +117,7 @@ var (
 		Name:        MetricNamePrefix + "events_total",
 		Help:        "The total number of FGS events",
 		ConstLabels: nil,
-	}, []string{"type", "namespace", "binary"})
+	}, []string{"type", "namespace", "pod", "binary"})
 	FlagCount = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:        MetricNamePrefix + "flags_total",
 		Help:        "The total number of FGS flags. For internal use only.",
@@ -258,10 +258,10 @@ func handleSocketEvent(processedEvent interface{}) {
 }
 
 func handleProcessedEvent(processedEvent interface{}) {
-	var eventType, namespace, binary string
+	var eventType, namespace, pod, binary string
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
-		binary, _, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+		binary, pod, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 		switch ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessConnect:
 			eventType = fgs.EventType_PROCESS_CONNECT.String()
@@ -294,7 +294,7 @@ func handleProcessedEvent(processedEvent interface{}) {
 	default:
 		eventType = "unknown"
 	}
-	EventsProcessed.WithLabelValues(eventType, namespace, binary).Inc()
+	EventsProcessed.WithLabelValues(eventType, namespace, pod, binary).Inc()
 }
 
 func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
