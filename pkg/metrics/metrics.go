@@ -57,40 +57,42 @@ const (
 	PidMapEvicted ErrorType = "pid_map_evicted"
 	// PID not found in the pid map on remove() call.
 	PidMapMissOnRemove ErrorType = "pid_map_miss_on_remove"
+	// MetricNamePrefix defines the prefix for Prometheus metrics.
+	MetricNamePrefix string = "isovalent_"
 )
 
 // TCP socket metrics
 var (
 	SocketStatsTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "isovalent_fgs_socket_stats_txbytes",
+		Name: MetricNamePrefix + "socket_stats_txbytes",
 		Help: "TCP socket TX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsTxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "isovalent_fgs_socket_stats_txsegs",
+		Name: MetricNamePrefix + "socket_stats_txsegs",
 		Help: "TCP socket TX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "isovalent_fgs_socket_stats_rxbytes",
+		Name: MetricNamePrefix + "socket_stats_rxbytes",
 		Help: "TCP socket RX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "isovalent_fgs_socket_stats_rxsegs",
+		Name: MetricNamePrefix + "_socket_stats_rxsegs",
 		Help: "TCP socket RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRetranBytes = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "isovalent_fgs_socket_stats_retransmitbytes",
+		Name: MetricNamePrefix + "socket_stats_retransmitbytes",
 		Help: "TCP socket retransmit bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRetranSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "isovalent_fgs_socket_stats_retransmitsegs",
+		Name: MetricNamePrefix + "socket_stats_retransmitsegs",
 		Help: "TCP socket retransmit seg statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsZeroWindow = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "isovalent_fgs_socket_stats_zerowindow",
+		Name: MetricNamePrefix + "socket_stats_zerowindow",
 		Help: "TCP socket zero window events",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsSrtt = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       "isovalent_fgs_socket_stats_srtt",
+		Name:       MetricNamePrefix + "socket_stats_srtt",
 		Help:       "TCP socket smoothed RTT latency distribution.",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
@@ -99,11 +101,11 @@ var (
 // HTTP metrics
 var (
 	HttpResponseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: "isovalent_http_response_total",
+		Name: MetricNamePrefix + "http_response_total",
 		Help: "HTTP return code statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host", "code"})
 	HttpRequestDurationSeconds = promauto.NewSummaryVec(prometheus.SummaryOpts{
-		Name:       "isovalent_http_stats_latency",
+		Name:       MetricNamePrefix + "http_stats_latency",
 		Help:       "HTTP latency statistics",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host"})
@@ -112,47 +114,47 @@ var (
 // FGS debugging and core info metrics
 var (
 	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:        "isovalent_fgs_events_total",
+		Name:        MetricNamePrefix + "events_total",
 		Help:        "The total number of FGS events",
 		ConstLabels: nil,
 	}, []string{"type", "namespace", "binary"})
 	FlagCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:        "isovalent_fgs_flags_total",
+		Name:        MetricNamePrefix + "flags_total",
 		Help:        "The total number of FGS flags. For internal use only.",
 		ConstLabels: nil,
 	}, []string{"type"})
 	ErrorCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:        "isovalent_fgs_errors_total",
+		Name:        MetricNamePrefix + "errors_total",
 		Help:        "The total number of FGS errors. For internal use only.",
 		ConstLabels: nil,
 	}, []string{"type"})
 	ExecveMapSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "isovalent_fgs_map_in_use_gauge",
+		Name:        MetricNamePrefix + "map_in_use_gauge",
 		Help:        "The total number of in-use entries per map.",
 		ConstLabels: nil,
 	}, []string{"map", "total"})
 	LruMapSize = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "isovalent_fgs_lru_in_use_gauge",
+		Name:        MetricNamePrefix + "lru_in_use_gauge",
 		Help:        "The total number of LRU in-use entries.",
 		ConstLabels: nil,
 	}, []string{"map", "total"})
 	EventCacheCount = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name:        "isovalent_fgs_event_cache",
+		Name:        MetricNamePrefix + "event_cache",
 		Help:        "The total number of FGS event cache access/errors. For internal use only.",
 		ConstLabels: nil,
 	}, []string{"type"})
 	RingBufPerfEventReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "isovalent_fgs_ringbuf_perf_event_received",
+		Name:        MetricNamePrefix + "ringbuf_perf_event_received",
 		Help:        "The total number of FGS ringbuf perf events received.",
 		ConstLabels: nil,
 	}, nil)
 	RingBufPerfEventLost = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "isovalent_fgs_ringbuf_perf_event_lost",
+		Name:        MetricNamePrefix + "ringbuf_perf_event_lost",
 		Help:        "The total number of FGS ringbuf perf events lost.",
 		ConstLabels: nil,
 	}, nil)
 	RingBufPerfEventErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
-		Name:        "isovalent_fgs_ringbuf_perf_event_errors",
+		Name:        MetricNamePrefix + "ringbuf_perf_event_errors",
 		Help:        "The total number of FGS ringbuf perf event error count.",
 		ConstLabels: nil,
 	}, nil)

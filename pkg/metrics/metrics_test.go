@@ -84,24 +84,24 @@ func Test_handleProcessedEvent(t *testing.T) {
 		},
 	}}})
 
-	expected := strings.NewReader(`# HELP isovalent_fgs_events_total The total number of FGS events
-# TYPE isovalent_fgs_events_total counter
-isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_CONNECT"} 1
-isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_EXEC"} 1
-isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_EXIT"} 1
-isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_LISTEN"} 1
-isovalent_fgs_events_total{binary="",namespace="",type="PROCESS_TLS"} 1
-isovalent_fgs_events_total{binary="",namespace="",type="unknown"} 1
-isovalent_fgs_events_total{binary="binary_a",namespace="",type="PROCESS_CONNECT"} 1
-isovalent_fgs_events_total{binary="binary_a",namespace="namespace_a",type="PROCESS_CONNECT"} 1
-isovalent_fgs_events_total{binary="binary_b",namespace="",type="PROCESS_EXEC"} 1
-isovalent_fgs_events_total{binary="binary_b",namespace="namespace_b",type="PROCESS_EXEC"} 1
-isovalent_fgs_events_total{binary="binary_c",namespace="",type="PROCESS_LISTEN"} 1
-isovalent_fgs_events_total{binary="binary_c",namespace="namespace_c",type="PROCESS_LISTEN"} 1
-isovalent_fgs_events_total{binary="binary_d",namespace="",type="PROCESS_TLS"} 1
-isovalent_fgs_events_total{binary="binary_d",namespace="namespace_d",type="PROCESS_TLS"} 1
-isovalent_fgs_events_total{binary="binary_e",namespace="",type="PROCESS_EXIT"} 1
-isovalent_fgs_events_total{binary="binary_e",namespace="namespace_e",type="PROCESS_EXIT"} 1
+	expected := strings.NewReader(`# HELP isovalent_events_total The total number of FGS events
+# TYPE isovalent_events_total counter
+isovalent_events_total{binary="",namespace="",type="PROCESS_CONNECT"} 1
+isovalent_events_total{binary="",namespace="",type="PROCESS_EXEC"} 1
+isovalent_events_total{binary="",namespace="",type="PROCESS_EXIT"} 1
+isovalent_events_total{binary="",namespace="",type="PROCESS_LISTEN"} 1
+isovalent_events_total{binary="",namespace="",type="PROCESS_TLS"} 1
+isovalent_events_total{binary="",namespace="",type="unknown"} 1
+isovalent_events_total{binary="binary_a",namespace="",type="PROCESS_CONNECT"} 1
+isovalent_events_total{binary="binary_a",namespace="namespace_a",type="PROCESS_CONNECT"} 1
+isovalent_events_total{binary="binary_b",namespace="",type="PROCESS_EXEC"} 1
+isovalent_events_total{binary="binary_b",namespace="namespace_b",type="PROCESS_EXEC"} 1
+isovalent_events_total{binary="binary_c",namespace="",type="PROCESS_LISTEN"} 1
+isovalent_events_total{binary="binary_c",namespace="namespace_c",type="PROCESS_LISTEN"} 1
+isovalent_events_total{binary="binary_d",namespace="",type="PROCESS_TLS"} 1
+isovalent_events_total{binary="binary_d",namespace="namespace_d",type="PROCESS_TLS"} 1
+isovalent_events_total{binary="binary_e",namespace="",type="PROCESS_EXIT"} 1
+isovalent_events_total{binary="binary_e",namespace="namespace_e",type="PROCESS_EXIT"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(EventsProcessed, expected))
 }
@@ -115,10 +115,10 @@ func Test_handleOriginalEvent(t *testing.T) {
 			Flags: api.EventClone | api.EventExecve,
 		},
 	})
-	expected := strings.NewReader(`# HELP isovalent_fgs_flags_total The total number of FGS flags. For internal use only.
-# TYPE isovalent_fgs_flags_total counter
-isovalent_fgs_flags_total{type="clone"} 1
-isovalent_fgs_flags_total{type="execve"} 1
+	expected := strings.NewReader(`# HELP isovalent_flags_total The total number of FGS flags. For internal use only.
+# TYPE isovalent_flags_total counter
+isovalent_flags_total{type="clone"} 1
+isovalent_flags_total{type="execve"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(FlagCount, expected))
 }
