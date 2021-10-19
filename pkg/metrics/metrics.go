@@ -76,7 +76,7 @@ var (
 		Help: "TCP socket RX bytes statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
-		Name: MetricNamePrefix + "_socket_stats_rxsegs",
+		Name: MetricNamePrefix + "socket_stats_rxsegs",
 		Help: "TCP socket RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsRetranBytes = promauto.NewCounterVec(prometheus.CounterOpts{
