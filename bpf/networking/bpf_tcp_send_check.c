@@ -119,7 +119,7 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 			.key.ktime = process->key.ktime,
 
 			.tuple.saddr = tuple.saddr,
-			.tuple.daddr = tuple.saddr,
+			.tuple.daddr = tuple.daddr,
 			.tuple.dport = tuple.dport,
 			.tuple.sport = tuple.sport,
 			.socket_cookie = get_cookie(skp),
