@@ -583,7 +583,7 @@ func TestDockerListenConnect(t *testing.T) {
 	execWG.Wait()
 	serverDockerID = dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
 	time.Sleep(1 * time.Second)
-	clientDockerID = dockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "fgs-test-server", "8081")
+	clientDockerID = dockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-p", "9876", "fgs-test-server", "8081")
 	exitWG.Wait()
 
 	// FGS picks up the first 32 bytes
@@ -599,7 +599,7 @@ func TestDockerListenConnect(t *testing.T) {
 		WithDocker(fgsServerID)
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary("/usr/bin/nc").
-		WithArguments("fgs-test-server 8081").
+		WithArguments("-p 9876 fgs-test-server 8081").
 		WithCWD("/").
 		WithUID(0).
 		WithDocker(fgsClientID)
@@ -623,6 +623,7 @@ func TestDockerListenConnect(t *testing.T) {
 		ec.NewConnectEventChecker().
 			HasProcess(ncCliChecker).
 			HasDstPort(8081).
+			HasSrcPort(9876).
 			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 	)
