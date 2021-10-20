@@ -240,14 +240,14 @@ long copy_sock(char *args, unsigned long arg)
 }
 
 static inline __attribute__((always_inline))
-long copy_char_buf(char *args, unsigned long arg, unsigned long argm)
+long copy_char_buf(void *ctx, char *args, unsigned long arg, unsigned long argm)
 {
 	int *s = (int *)args;
 	size_t bytes = 0, rd_bytes;
 	int err;
 
 	if (argm == -1) {
-		u64 tid = get_current_pid_tgid();
+		u64 tid = retprobe_map_get_key(ctx);
 		retprobe_map_set(tid, arg);
 		return return_error(s, char_buf_saved_for_retprobe);
 	}
@@ -308,13 +308,13 @@ skip_string:
 }
 
 static inline __attribute__((always_inline))
-long copy_char_iovec(char *args, unsigned long arg, unsigned long argm)
+long copy_char_iovec(void *ctx, char *args, unsigned long arg, unsigned long argm)
 {
 	long size, off = 0;
 	int err, i = 0, cnt, *s = (int *)&args[off];
 
 	if (argm == -1) {
-		u64 tid = get_current_pid_tgid();
+		u64 tid = retprobe_map_get_key(ctx);
 		retprobe_map_set(tid, arg);
 		return return_error(s, char_buf_saved_for_retprobe);
 	}
@@ -701,7 +701,8 @@ long filter_read_arg(void *ctx, int index,
  * Returns the size of data appended to @args.
  */
 static inline __attribute__((always_inline))
-long read_call_arg(struct msg_generic_kprobe *e,
+long read_call_arg(void *ctx,
+		  struct msg_generic_kprobe *e,
 		  int index, int type, long orig_off,
 		  unsigned long arg, unsigned long argm,
 		  void *filter_map)
@@ -786,10 +787,10 @@ long read_call_arg(struct msg_generic_kprobe *e,
 		size = copy_sock(args, arg);
 		break;
 	case char_buf:
-		size = copy_char_buf(args, arg, argm);
+		size = copy_char_buf(ctx, args, arg, argm);
 		break;
 	case char_iovec:
-		size = copy_char_iovec(args, arg, argm);
+		size = copy_char_iovec(ctx, args, arg, argm);
 		break;
 	default:
 		size = 0;

@@ -46,7 +46,7 @@ int generic_process_event0(
 	e->current.pad[3] = 0;
 
 	e->id = bpf_core_enum_value(fgs_args, func_id);
-	e->thread_id = get_current_pid_tgid();
+	e->thread_id = retprobe_map_get_key(ctx);
 
 	/* If return arg is needed mark retprobe */
 #ifdef GENERIC_KPROBE
@@ -63,7 +63,7 @@ int generic_process_event0(
 
 		a0m = bpf_core_enum_value(fgs_args, arg0m);
 		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e, 0, ty, total, a0, arg_meta, map);
+		errv = read_call_arg(ctx, e, 0, ty, total, a0, arg_meta, map);
 		if (errv > 0)
 			total += errv;
 		/* Follow filter lookup failed so lets abort the event.
@@ -173,7 +173,7 @@ int generic_process_event1(
 
 		a1m = bpf_core_enum_value(fgs_args, arg1m);
 		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e, 1, ty, total, a1, arg_meta, map);
+		errv = read_call_arg(ctx, e, 1, ty, total, a1, arg_meta, map);
 		if (errv > 0)
 			total += errv;
 		if (errv < 0)
@@ -224,7 +224,7 @@ int generic_process_event2(
 
 		a2m = bpf_core_enum_value(fgs_args, arg2m);
 		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e, 2, ty, total, a2, arg_meta, map);
+		errv = read_call_arg(ctx, e, 2, ty, total, a2, arg_meta, map);
 		if (errv > 0)
 			total += errv;
 		if (errv < 0)
@@ -276,7 +276,7 @@ int generic_process_event3(
 
 		a3m = bpf_core_enum_value(fgs_args, arg3m);
 		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e, 3, ty, total, a3, arg_meta, map);
+		errv = read_call_arg(ctx, e, 3, ty, total, a3, arg_meta, map);
 		if (errv > 0)
 			total += errv;
 		if (errv < 0)
@@ -328,7 +328,7 @@ int generic_process_event4(
 
 		a4m = bpf_core_enum_value(fgs_args, arg4m);
 		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(e, 4, ty, total, a4, arg_meta, map);
+		errv = read_call_arg(ctx, e, 4, ty, total, a4, arg_meta, map);
 		if (errv > 0)
 			total += errv;
 		if (errv < 0)

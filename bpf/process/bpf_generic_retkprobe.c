@@ -35,7 +35,6 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	struct msg_generic_kprobe *e;
 	bool walker = false;
 	int zero = 0;
-	__u64 tid;
 	__u32 ppid;
 	long total = 0;
 	long size, orig_size;
@@ -46,16 +45,15 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	if (!e)
 		return 0;
 
-	tid = get_current_pid_tgid();
-	e->thread_id = tid;
+	e->thread_id = retprobe_map_get_key(ctx);
 
 	ty = bpf_core_enum_value(fgs_args, argreturn);
-	retprobe_buffer = retprobe_map_get(tid);
+	retprobe_buffer = retprobe_map_get(e->thread_id);
 	if (!retprobe_buffer)
 		return 0;
 
 	if (ty) {
-		size = read_call_arg(e, 0, ty, 0, (unsigned long)ctx->ax, 0, 0);
+		size = read_call_arg(ctx, e, 0, ty, 0, (unsigned long)ctx->ax, 0, 0);
 	} else {
 		int *s;
 
