@@ -22,6 +22,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
+var (
+	kernelPid = uint32(0)
+)
+
 type ExecveKey struct {
 	Pid uint32
 }
@@ -54,6 +58,29 @@ func (v *ExecveValue) String() string {
 func (v *ExecveValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue {
 	return &ExecveValue{}
+}
+
+func (k *Observer) procKernel() ObserverProcs {
+	kernelArgs := []byte("<kernel>\u0000")
+	return ObserverProcs{
+		psize:       uint32(api.SIZEOF_EXECVE + len(kernelArgs) + api.MAX_SIZEOF_CWD),
+		ppid:        kernelPid,
+		pnspid:      0,
+		pflags:      api.EventProcFS,
+		pktime:      1,
+		pargs:       kernelArgs,
+		size:        uint32(api.SIZEOF_EXECVE + len(kernelArgs) + api.MAX_SIZEOF_CWD),
+		uid:         0,
+		pid:         kernelPid,
+		nspid:       0,
+		auid:        0,
+		flags:       api.EventProcFS,
+		ktime:       1,
+		args:        kernelArgs,
+		effective:   0,
+		inheritable: 0,
+		permitted:   0,
+	}
 }
 
 func (k *Observer) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
@@ -145,5 +172,21 @@ func (k *Observer) writeExecveMap(procs []ObserverProcs) {
 
 		m.Update(k, v)
 	}
+	// In order for kprobe events from kernel ctx to not abort we need the
+	// execve lookup to map to a valid entry. So to simplify the kernel side
+	// and avoid having to add another branch of logic there to handle pid==0
+	// case we simply add it here.
+	m.Update(&ExecveKey{Pid: kernelPid}, &ExecveValue{
+		Parent: api.MsgExecveKey{
+			Pid:   kernelPid,
+			Ktime: 1},
+		Process: api.MsgExecveKey{
+			Pid:   kernelPid,
+			Ktime: 1,
+		},
+		Flags:  0,
+		Nspid:  0,
+		Buffer: 0,
+	})
 	m.Close()
 }

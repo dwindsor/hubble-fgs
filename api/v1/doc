@@ -37,6 +37,7 @@
     - [KprobeFile](#fgs.KprobeFile)
     - [KprobePath](#fgs.KprobePath)
     - [KprobeSkb](#fgs.KprobeSkb)
+    - [KprobeSock](#fgs.KprobeSock)
     - [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes)
     - [ListSensorsRequest](#fgs.ListSensorsRequest)
     - [ListSensorsResponse](#fgs.ListSensorsResponse)
@@ -571,6 +572,7 @@ HTTP PARSER
 | path_arg | [KprobePath](#fgs.KprobePath) |  |  |
 | file_arg | [KprobeFile](#fgs.KprobeFile) |  |  |
 | truncated_bytes_arg | [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes) |  |  |
+| sock_arg | [KprobeSock](#fgs.KprobeSock) |  |  |
 
 
 
@@ -626,6 +628,27 @@ HTTP PARSER
 | sport | [uint32](#uint32) |  |  |
 | dport | [uint32](#uint32) |  |  |
 | proto | [uint32](#uint32) |  |  |
+| sec_path_len | [uint32](#uint32) |  |  |
+| sec_path_olen | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="fgs.KprobeSock"></a>
+
+### KprobeSock
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| family | [string](#string) |  |  |
+| type | [string](#string) |  |  |
+| protocol | [string](#string) |  |  |
+| mark | [uint32](#uint32) |  |  |
+| priority | [uint32](#uint32) |  |  |
 
 
 

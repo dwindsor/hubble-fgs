@@ -218,6 +218,7 @@ func (k *Observer) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procT
 	sort.Slice(procs, func(i, j int) bool {
 		return procs[i].ppid < procs[j].ppid
 	})
+	procs = append(procs, k.procKernel())
 	for _, p := range procs {
 		k.pushExecveEvents(p, tcpEntries, pushExecve, writeMaps)
 	}
