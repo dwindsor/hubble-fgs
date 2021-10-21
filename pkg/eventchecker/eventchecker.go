@@ -510,6 +510,30 @@ func (e *eventChainChecker) HasSrcIP(ip string) *eventChainChecker {
 	return e
 }
 
+func eventHasProtocol(e fgsEvent, proto fgs.SocketProtocol) error {
+	if ev, ok := e.(interface {
+		GetProtocol() fgs.SocketProtocol
+	}); ok {
+		evProto := ev.GetProtocol()
+		if evProto == proto {
+			return nil
+		}
+		return fmt.Errorf("Expecting Protocol %s but %T has %s", proto, ev, evProto)
+	}
+	return fmt.Errorf("type %T does not have Protocol", e)
+}
+
+func (e *eventChainChecker) HasProtocol(proto fgs.SocketProtocol) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasProtocol(e, proto)
+	}
+	return e
+}
+
 func checkPort(port uint32, val *wrapperspb.UInt32Value) error {
 	if val == nil {
 		return fmt.Errorf("%d does not match nil value", port)
