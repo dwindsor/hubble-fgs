@@ -22,6 +22,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
@@ -100,6 +101,7 @@ func TestConnectEvent(t *testing.T) {
 			HasParent(selfChecker).
 			HasDstIP("127.0.0.1").
 			HasDstPort(80).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 	)
 
@@ -158,6 +160,7 @@ func TestExecEventClone(t *testing.T) {
 			HasParent(selfChecker).
 			HasIP("0.0.0.0").
 			HasPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 		ec.NewExecEventChecker().
 			HasProcess(ncCliChecker).
@@ -168,6 +171,7 @@ func TestExecEventClone(t *testing.T) {
 			HasParent(selfChecker).
 			HasDstIP("127.0.0.1").
 			HasDstPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 	)
 
@@ -224,6 +228,7 @@ func TestExistingListenEvent(t *testing.T) {
 			HasParent(selfChecker).
 			HasIP("0.0.0.0").
 			HasPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 	)
 
@@ -272,12 +277,14 @@ func TestExistingAcceptEvent(t *testing.T) {
 			HasParent(selfChecker).
 			HasIP("0.0.0.0").
 			HasPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 		ec.NewAcceptEventChecker().
 			HasProcess(ncChecker).
 			HasParent(selfChecker).
 			HasSrcIP("127.0.0.1").
 			HasSrcPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 	)
 
@@ -331,6 +338,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 			HasParent(selfChecker).
 			HasIP("0.0.0.0").
 			HasPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 	)
 
@@ -386,18 +394,21 @@ func TestListenAcceptClose(t *testing.T) {
 			HasParent(selfChecker).
 			HasIP("0.0.0.0").
 			HasPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 		ec.NewAcceptEventChecker().
 			HasProcess(ncSrvChecker).
 			HasParent(selfChecker).
 			HasSrcIP("127.0.0.1").
 			HasSrcPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 		ec.NewCloseEventChecker().
 			HasProcess(ncSrvChecker).
 			HasParent(selfChecker).
 			HasSrcIP("0.0.0.0").
 			HasSrcPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 		// TODO: it would be good if we could also check the close event on
 		// the accept socket, but it goes into TIME_WAIT and then
@@ -613,6 +624,7 @@ func TestDockerListenConnect(t *testing.T) {
 		ec.NewConnectEventChecker().
 			HasProcess(ncCliChecker).
 			HasDstPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 	)
 
@@ -695,6 +707,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 			HasProcess(ncSrvChecker).
 			HasIP("0.0.0.0").
 			HasPort(8081).
+			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
 	)
 
