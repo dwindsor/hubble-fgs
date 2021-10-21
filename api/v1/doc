@@ -72,6 +72,7 @@
     - [HealthStatusResult](#fgs.HealthStatusResult)
     - [HealthStatusType](#fgs.HealthStatusType)
     - [KprobeAction](#fgs.KprobeAction)
+    - [SocketProtocol](#fgs.SocketProtocol)
     - [TlsCertificateError](#fgs.TlsCertificateError)
   
     - [FineGuidanceSensors](#fgs.FineGuidanceSensors)
@@ -735,6 +736,7 @@ HTTP PARSER
 | destination_names | [string](#string) | repeated |  |
 | sock_cookie | [uint64](#uint64) |  |  |
 | destination_pod | [Pod](#fgs.Pod) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
 
 
 
@@ -759,6 +761,7 @@ HTTP PARSER
 | sock_cookie | [uint64](#uint64) |  |  |
 | stats | [SocketStats](#fgs.SocketStats) |  |  |
 | destination_pod | [Pod](#fgs.Pod) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
 
 
 
@@ -782,6 +785,7 @@ HTTP PARSER
 | destination_names | [string](#string) | repeated |  |
 | sock_cookie | [uint64](#uint64) |  |  |
 | destination_pod | [Pod](#fgs.Pod) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
 
 
 
@@ -890,6 +894,7 @@ HTTP PARSER
 | ip | [string](#string) |  |  |
 | port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | sock_cookie | [uint64](#uint64) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
 
 
 
@@ -1014,6 +1019,7 @@ HTTP PARSER
 | destination_ip | [string](#string) |  |  |
 | destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | sock_cookie | [uint64](#uint64) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
 
 
 
@@ -1032,7 +1038,7 @@ HTTP PARSER
 | bytes_received | [uint64](#uint64) |  |  |
 | segs_in | [uint32](#uint32) |  |  |
 | segs_out | [uint32](#uint32) |  |  |
-| srtt | [uint32](#uint32) |  |  |
+| srtt | [uint32](#uint32) |  | TCP specific: |
 | retransmits_bytes | [uint64](#uint64) |  |  |
 | retransmits_segs | [uint32](#uint32) |  |  |
 | to_zero_window | [uint32](#uint32) |  |  |
@@ -1289,6 +1295,18 @@ EventType constants are based on the ones from pkg/api/client
 | KPROBE_ACTION_FOLLOWFD | 2 |  |
 | KPROBE_ACTION_SIGKILL | 3 |  |
 | KPROBE_ACTION_UNFOLLOWFD | 4 |  |
+
+
+
+<a name="fgs.SocketProtocol"></a>
+
+### SocketProtocol
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNKNOWN | 0 |  |
+| TCP | 6 |  |
 
 
 
