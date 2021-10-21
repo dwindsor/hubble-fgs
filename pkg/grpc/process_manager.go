@@ -862,6 +862,8 @@ func (pm *ProcessManager) GetProcessListen(
 		Parent:  fgsParent,
 		Ip:      reader.GetIP(event.Tuple.SAddr, 0).String(),
 		Port:    port,
+
+		Protocol: reader.MsgToProtocol(event),
 	}
 
 	if event.SockCookie != 0 {
@@ -1057,6 +1059,8 @@ func (pm *ProcessManager) __getProcessTuple(tuple *fgsAPI.MsgIPv4Tuple, cookie u
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      cookie,
+
+		Protocol: reader.MsgOpToProtocol(op),
 	}
 }
 
@@ -1151,6 +1155,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		Stats:           socketStats,
+		Protocol:        reader.MsgToProtocol(event),
 	}
 
 	if event.SockCookie != 0 {
@@ -1216,6 +1221,8 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
+
+		Protocol: reader.MsgToProtocol(event),
 	}
 
 	if event.SockCookie != 0 {
@@ -1277,6 +1284,8 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *f
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
+
+		Protocol: reader.MsgToProtocol(event),
 	}
 
 	if event.SockCookie != 0 {

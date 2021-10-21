@@ -42,6 +42,25 @@ func GetSocketStats(stats *api.MsgSocketStats) *fgs.SocketStats {
 	}
 }
 
+func MsgOpToProtocol(op uint8) fgs.SocketProtocol {
+	switch op {
+	case api.MSG_OP_IPV4_TCPCONNECT,
+		api.MSG_OP_IPV4_TCPCONNECTRET,
+		api.MSG_OP_IPV4_TCPCLOSE,
+		api.MSG_OP_IPV4_BIND,
+		api.MSG_OP_IPV4_LISTEN,
+		api.MSG_OP_IPV4_ACCEPT,
+		api.MSG_OP_IPV4_TCPSTATS:
+		return fgs.SocketProtocol_TCP
+	default:
+		return fgs.SocketProtocol_UNKNOWN
+	}
+}
+
+func MsgToProtocol(event *api.MsgIPv4TcpEventUnix) fgs.SocketProtocol {
+	return MsgOpToProtocol(event.Common.Op)
+}
+
 func GetIP(i uint32, op uint8) net.IP {
 	if op == api.MSG_OP_IPV4_BIND {
 		return net.IPv4zero
