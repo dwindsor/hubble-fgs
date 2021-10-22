@@ -303,7 +303,15 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *bpf.Program, version, 
 			filepath.Join(bpfDir, load.PinPath),
 			mapDir)
 	} else if load.Type == "cgrp_ingress" {
-		return loader.LoadCgroupProgram(
+		return loader.LoadCgroupInetIngressProgram(
+			version, verbose,
+			btfObj,
+			load.Name,
+			load.Label,
+			filepath.Join(bpfDir, load.PinPath),
+			mapDir)
+	} else if load.Type == "cgrp_egress" {
+		return loader.LoadCgroupInetEgressProgram(
 			version, verbose,
 			btfObj,
 			load.Name,

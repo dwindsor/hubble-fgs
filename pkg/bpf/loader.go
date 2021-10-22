@@ -921,9 +921,16 @@ func LoadSockopsProgram(__version, __verbosity int, btf uintptr, object, __label
 	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(&httpFilter))
 }
 
-func LoadCgroupProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
+func LoadCgroupInetIngressProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
 	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
 	attach_type := 0 // BPF_CGROUP_INET_INGRESS
+
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil))
+}
+
+func LoadCgroupInetEgressProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
+	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
+	attach_type := 1 // BPF_CGROUP_INET_INGRESS
 
 	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
