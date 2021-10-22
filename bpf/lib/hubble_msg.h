@@ -314,7 +314,7 @@ struct msg_socket_stats {
 } __attribute__((packed));
 
 // separate data structs for ipv4 and ipv6
-struct msg_ipv4_tcp_event {
+struct msg_ipv4_event {
 	struct msg_common     common;
 	struct msg_ipv4_tuple tuple;
 	unsigned long int     ret;
@@ -323,7 +323,7 @@ struct msg_ipv4_tcp_event {
 	struct msg_socket_stats stats;
 } __attribute__((packed));
 
-struct msg_ipv4_tcp_key {
+struct msg_ipv4_key {
 	__u32 pid;
 	__u32 saddr;
 	__u16 sport;
@@ -369,15 +369,15 @@ struct event {
 #ifdef BTF
 struct {
 	unsigned int (*type)[BPF_MAP_TYPE_PERCPU_ARRAY];
-	unsigned int (*key_size)[sizeof(struct msg_ipv4_tcp_key)];
-	unsigned int (*value_size)[sizeof(struct msg_ipv4_tcp_event)];
+	unsigned int (*key_size)[sizeof(struct msg_ipv4_key)];
+	unsigned int (*value_size)[sizeof(struct msg_ipv4_event)];
 	unsigned int (*max_entries)[1];
 } ipv4_tcp_map __attribute__((section((".maps")), used));
 #else
 struct bpf_map_def __attribute__((section("maps"), used)) ipv4_tcp_map = {
 	.type = BPF_MAP_TYPE_PERCPU_HASH,
-	.key_size = sizeof(struct msg_ipv4_tcp_key),
-	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.key_size = sizeof(struct msg_ipv4_key),
+	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 #endif // BTF

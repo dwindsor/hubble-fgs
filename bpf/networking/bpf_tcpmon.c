@@ -23,7 +23,7 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 struct bpf_map_def __attribute__((section("maps"), used)) tcp_connect_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 
@@ -31,8 +31,8 @@ __attribute__((section(("kprobe/tcp_connect")), used))
 int event_tcp4_connect(struct pt_regs *ctx)
 {
 	struct execve_map_value *process = 0;
-	struct msg_ipv4_tcp_event *val;
-	struct msg_ipv4_tcp_key key;
+	struct msg_ipv4_event *val;
+	struct msg_ipv4_key key;
 	__u32 ppid = 0, pid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
@@ -59,10 +59,10 @@ int event_tcp4_connect(struct pt_regs *ctx)
 	probe_read(&daddr, sizeof(daddr), _(&(skp->__sk_common.skc_daddr)));
 	probe_read(&dport, sizeof(dport), _(&(skp->__sk_common.skc_dport)));
 
-	*val = (struct msg_ipv4_tcp_event){
+	*val = (struct msg_ipv4_event){
 		.common.op = MSG_OP_IPV4_TCPCONNECTRET,
 		.common.ktime = ktime_get_ns(),
-		.common.size = sizeof(struct msg_ipv4_tcp_event),
+		.common.size = sizeof(struct msg_ipv4_event),
 		.tuple.saddr = key.saddr,
 		.tuple.daddr = daddr,
 		.tuple.dport = dport,
@@ -74,7 +74,7 @@ int event_tcp4_connect(struct pt_regs *ctx)
 
 	map_update_elem(&ipv4_tcp_map, &key, val, 0);
 
-	size = sizeof(struct msg_ipv4_tcp_event);
+	size = sizeof(struct msg_ipv4_event);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 
 	/* tuple is on the stack and verifier wont use stack in call happily

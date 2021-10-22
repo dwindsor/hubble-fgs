@@ -23,16 +23,16 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 struct bpf_map_def __attribute__((section("maps"), used)) tcp_listen_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 
 __attribute__((section(("kprobe/inet_hash")), used))
 int event_sys_listen(struct pt_regs *ctx)
 {
-	struct msg_ipv4_tcp_event *val;
+	struct msg_ipv4_event *val;
 	struct execve_map_value *process = 0;
-	struct msg_ipv4_tcp_key key;
+	struct msg_ipv4_key key;
 	__u32 pid, ppid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
@@ -53,19 +53,19 @@ int event_sys_listen(struct pt_regs *ctx)
 	key.pid = pid;
 	key.pad = 0;
 
-	*val = (struct msg_ipv4_tcp_event){
+	*val = (struct msg_ipv4_event){
 		.tuple.saddr = key.saddr,
 		.tuple.sport = key.sport,
 		.common.op = MSG_OP_IPV4_LISTEN,
 		.common.ktime = ktime_get_ns(),
-		.common.size = sizeof(struct msg_ipv4_tcp_event),
+		.common.size = sizeof(struct msg_ipv4_event),
 		.key.pid = pid,
 		.key.ktime = process->key.ktime,
 		.socket_cookie = get_cookie(skp),
 	};
 
 	map_update_elem(&ipv4_tcp_map, &key, val, 0);
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_ipv4_tcp_event));
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_ipv4_event));
 
 	{
 		struct socketmap_value v;

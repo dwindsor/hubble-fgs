@@ -26,14 +26,14 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 struct bpf_map_def __attribute__((section("maps"), used)) tcp_close_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 
 __attribute__((section(("kprobe/tcp_set_state")), used))
 int event_tcp4_close(struct pt_regs *ctx)
 {
-	struct msg_ipv4_tcp_event *val;
+	struct msg_ipv4_event *val;
 	struct socketmap_value *process;
 	struct msg_tls_ipv4 tuple;
 	struct net *netns;
@@ -68,8 +68,8 @@ int event_tcp4_close(struct pt_regs *ctx)
 		return 0;
 	}
 
-	*val = (struct msg_ipv4_tcp_event){
-		.common.size = sizeof(struct msg_ipv4_tcp_event),
+	*val = (struct msg_ipv4_event){
+		.common.size = sizeof(struct msg_ipv4_event),
 		.common.ktime = ktime_get_ns(),
 
 		.tuple.saddr = tuple.saddr,
@@ -92,7 +92,7 @@ int event_tcp4_close(struct pt_regs *ctx)
 					 process->zero_window,
 					 &val->stats);
 
-			size = sizeof(struct msg_ipv4_tcp_event);
+			size = sizeof(struct msg_ipv4_event);
 			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 		}
 	} else { // state == TCP_ESTABLISHED
@@ -119,7 +119,7 @@ int event_tcp4_close(struct pt_regs *ctx)
 			val->common.op = MSG_OP_IPV4_TCPACCEPT;
 			val->key.pid = copy.key.pid;
 			val->key.ktime = copy.key.ktime;
-			size = sizeof(struct msg_ipv4_tcp_event);
+			size = sizeof(struct msg_ipv4_event);
 			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 			tuple.daddr = daddr;
 			tuple.dport = dport;

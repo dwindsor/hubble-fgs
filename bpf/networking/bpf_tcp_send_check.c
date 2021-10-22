@@ -36,7 +36,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_sampler
 struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_tcp_event),
+	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 
@@ -97,7 +97,7 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 		tuple.uid = 0;
 	process = lookup_socketmap(&tuple);
 	if (process) {
-		struct msg_ipv4_tcp_event *val;
+		struct msg_ipv4_event *val;
 		size_t size;
 
 		if (!rcv_wnd)
@@ -110,9 +110,9 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 		if (!val)
 			return 1;
 
-		*val = (struct msg_ipv4_tcp_event) {
+		*val = (struct msg_ipv4_event) {
 			.common.op = MSG_OP_IPV4_TCPSTATS,
-			.common.size = sizeof(struct msg_ipv4_tcp_event),
+			.common.size = sizeof(struct msg_ipv4_event),
 			.common.ktime = ktime_get_ns(),
 
 			.key.pid = process->key.pid,
@@ -125,7 +125,7 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 			.socket_cookie = get_cookie(skp),
 		};
 		get_socket_stats(skp, netns, process->zero_window, &val->stats);
-		size = sizeof(struct msg_ipv4_tcp_event);
+		size = sizeof(struct msg_ipv4_event);
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	}
 out:
