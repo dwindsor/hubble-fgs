@@ -333,7 +333,7 @@ func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetE
 	return res
 }
 
-func (pm *ProcessManager) handleTCPMessage(msg *api.MsgIPv4TcpEventUnix) *fgs.GetEventsResponse {
+func (pm *ProcessManager) handleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_IPV4_TCPCONNECTRET:
@@ -579,8 +579,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleHttpMessage(msg)
 	case *api.MsgExecveEventUnix:
 		processedEvent = pm.handleExecveMessage(msg)
-	case *api.MsgIPv4TcpEventUnix:
-		processedEvent = pm.handleTCPMessage(msg)
+	case *api.MsgIPv4EventUnix:
+		processedEvent = pm.handleIpMessage(msg)
 	case *api.MsgExitEventUnix:
 		processedEvent = pm.handleExitMessage(msg)
 	case *api.MsgCredEventUnix:
@@ -845,7 +845,7 @@ func (pm *ProcessManager) GetProcessExec(
 
 // GetProcessListen returns Listen protobuf message for a given process, including the ancestor list.
 func (pm *ProcessManager) GetProcessListen(
-	event *fgsAPI.MsgIPv4TcpEventUnix,
+	event *fgsAPI.MsgIPv4EventUnix,
 ) *fgs.ProcessListen {
 	var fgsProcess, fgsParent *fgs.Process
 	var port *wrapperspb.UInt32Value
@@ -1076,12 +1076,12 @@ func (pm *ProcessManager) __getProcessTuple(tuple *fgsAPI.MsgIPv4Tuple, cookie u
 	}
 }
 
-func (pm *ProcessManager) getProcessTuple(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.SockInfo {
+func (pm *ProcessManager) getProcessTuple(event *fgsAPI.MsgIPv4EventUnix) *fgs.SockInfo {
 	return pm.__getProcessTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 }
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessSockStats {
+func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessSockStats {
 	var fgsParent, fgsProcess *fgs.Process
 
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -1124,7 +1124,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4TcpEventUnix)
 }
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessClose {
+func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 
@@ -1193,7 +1193,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4TcpEventUnix) *fg
 }
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessConnect {
+func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessConnect {
 	var fgsProcess, fgsParent *fgs.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
@@ -1256,7 +1256,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4TcpEventUnix) *
 }
 
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4TcpEventUnix) *fgs.ProcessAccept {
+func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessAccept {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 

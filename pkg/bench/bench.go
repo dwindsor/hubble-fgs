@@ -144,7 +144,7 @@ func (bl *benchmarkListener) Notify(msg interface{}) error {
 	case *api.MsgExecveEventUnix:
 		bl.summary.ExecEvents++
 
-	case *api.MsgIPv4TcpEventUnix:
+	case *api.MsgIPv4EventUnix:
 		bl.summary.TCPEvents++
 
 	case *api.MsgHttpEventUnix:

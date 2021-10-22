@@ -114,7 +114,7 @@ func (k *Observer) CompareMsgExecStrict(x, y *api.MsgExecUnix) bool {
 	return true
 }
 
-func (k *Observer) CompareStrict(x, y *api.MsgIPv4TcpEventUnix) bool {
+func (k *Observer) CompareStrict(x, y *api.MsgIPv4EventUnix) bool {
 	if res := k.CompareCommonStrict(&x.Common, &y.Common); res == false {
 		return false
 	}

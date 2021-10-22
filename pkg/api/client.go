@@ -291,7 +291,7 @@ type MsgK8s struct {
 	Docker [DOCKER_ID_LENGTH]byte
 }
 
-type MsgIPv4Tcp struct {
+type MsgIPv4Event struct {
 	Common      MsgCommon
 	Tuple       MsgIPv4Tuple
 	Return      int64
@@ -337,7 +337,7 @@ type MsgSocketStats struct {
 	SkDrop          uint32
 }
 
-type MsgIPv4TcpEventUnix struct {
+type MsgIPv4EventUnix struct {
 	Common      MsgCommon
 	Tuple       MsgIPv4Tuple
 	Kube        MsgK8sUnix

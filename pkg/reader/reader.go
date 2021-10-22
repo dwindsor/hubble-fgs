@@ -57,7 +57,7 @@ func MsgOpToProtocol(op uint8) fgs.SocketProtocol {
 	}
 }
 
-func MsgToProtocol(event *api.MsgIPv4TcpEventUnix) fgs.SocketProtocol {
+func MsgToProtocol(event *api.MsgIPv4EventUnix) fgs.SocketProtocol {
 	return MsgOpToProtocol(event.Common.Op)
 }
 
@@ -222,7 +222,7 @@ func GetDport(dport uint16, op uint8) uint16 {
 	return api.SwapByte(dport)
 }
 
-func ObserverIPV4TCPPrinter(msg *api.MsgIPv4TcpEventUnix, log logrus.FieldLogger) {
+func ObserverIPV4TCPPrinter(msg *api.MsgIPv4EventUnix, log logrus.FieldLogger) {
 	e := syscall.Errno(uintptr(-msg.Return))
 	/* In the event of an error time is {0} so will be obvious at printer time
 	 * and its not clear what to do with this error so ignore it for now.

@@ -129,7 +129,7 @@ func (k *Observer) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uin
 	var m *bpf.Map
 
 	pid := msg.Process.PID
-	tcp := api.MsgIPv4TcpEventUnix{}
+	tcp := api.MsgIPv4EventUnix{}
 
 	tcp.ProcessKey.Pid = pid
 	tcp.ProcessKey.Ktime = msg.Process.Ktime
@@ -207,7 +207,7 @@ func (k *Observer) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uin
 	}
 }
 
-func (k *Observer) writeSockMap(tcp *api.MsgIPv4TcpEventUnix, m *bpf.Map, uid uint64) {
+func (k *Observer) writeSockMap(tcp *api.MsgIPv4EventUnix, m *bpf.Map, uid uint64) {
 	key := &SocketMapKey{
 		Saddr:     tcp.Tuple.SAddr,
 		Daddr:     tcp.Tuple.DAddr,

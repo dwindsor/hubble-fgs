@@ -109,8 +109,8 @@ func msgToExitUnix(m *api.MsgExitEvent) *api.MsgExitEventUnix {
 	return m
 }
 
-func msgToTcpUnix(m *api.MsgIPv4Tcp) *api.MsgIPv4TcpEventUnix {
-	unix := &api.MsgIPv4TcpEventUnix{}
+func msgToIPv4Unix(m *api.MsgIPv4Event) *api.MsgIPv4EventUnix {
+	unix := &api.MsgIPv4EventUnix{}
 
 	unix.Common = m.Common
 	unix.Tuple = m.Tuple
@@ -231,12 +231,12 @@ func (k *Observer) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		api.MSG_OP_IPV4_LISTEN,
 		api.MSG_OP_IPV4_ACCEPT,
 		api.MSG_OP_IPV4_TCPSTATS:
-		m := api.MsgIPv4Tcp{}
+		m := api.MsgIPv4Event{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
 			break
 		}
-		msgUnix := msgToTcpUnix(&m)
+		msgUnix := msgToIPv4Unix(&m)
 		k.observerListeners(msgUnix)
 
 	case api.MSG_OP_TEST:
@@ -373,7 +373,7 @@ func (k *Observer) populateExecve(ctx context.Context) {
 	k.getRunningProcs(true, false)
 }
 
-type MsgFilterRun func(*api.MsgIPv4TcpEventUnix, *Observer) bool
+type MsgFilterRun func(*api.MsgIPv4EventUnix, *Observer) bool
 
 type MsgFilter struct {
 }
