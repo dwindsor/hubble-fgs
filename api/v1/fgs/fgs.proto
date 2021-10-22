@@ -95,6 +95,7 @@ message SocketStats {
 enum SocketProtocol {
     UNKNOWN = 0;
     TCP = 6;
+    UDP = 17;
 }
 
 message ProcessConnect {
