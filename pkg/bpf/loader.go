@@ -935,6 +935,13 @@ func LoadCgroupInetEgressProgram(__version, __verbosity int, btf uintptr, object
 	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
 
+func LoadCgroupInetSocketProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
+	prog_type := 9   // BPF_PROG_TYPE_CGROUP_SOCK
+	attach_type := 2 // BPF_CGROUP_INET_SOCK_CREATE
+
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil))
+}
+
 func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
