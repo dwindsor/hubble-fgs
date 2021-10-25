@@ -1330,6 +1330,7 @@ EventType constants are based on the ones from pkg/api/client
 | ---- | ------ | ----------- |
 | UNKNOWN | 0 |  |
 | TCP | 6 |  |
+| UDP | 17 |  |
 
 
 
