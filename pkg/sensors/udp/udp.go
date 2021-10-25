@@ -35,6 +35,18 @@ var (
 		true,
 		"cgrp_socket")
 
+	InetSend = bpf.ProgramBuilder(
+		"bpf_inet_send.o",
+		"inet_send",
+		"inet_send",
+		"cgroup_skb/egress",
+		"cgroup_skb_egress",
+
+		false,
+		true,
+		"cgrp_egress",
+	)
+
 	SocketCookieMap = bpf.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
 )
 
@@ -51,6 +63,7 @@ func EnableUdpParser() *sensors.Sensor {
 
 	progs := []*bpf.Program{
 		SockCreate,
+		InetSend,
 	}
 	maps := []*bpf.Map{
 		SocketCookieMap,

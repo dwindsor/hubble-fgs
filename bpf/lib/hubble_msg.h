@@ -141,6 +141,8 @@ enum msg_ops {
 	MSG_OP_IPV4_TCPSTATS = 15,
 	MSG_OP_HTTP = 16,
 
+	MSG_OP_IPV4_UDPCONNECT = 18,
+
 	MSG_OP_MAX,
 
 	// testing
