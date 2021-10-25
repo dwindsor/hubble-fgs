@@ -80,6 +80,8 @@ func TestTCTLS13(t *testing.T) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
+	bpf.CheckOrMountCgroup2()
+
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
 	curlChecker := ec.ProcessWithCommand(
 		ec.SuffixStringMatch("curl"), ec.FullStringMatch("https://www.google.com"),
@@ -135,6 +137,8 @@ func TestTCTLS12(t *testing.T) {
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
+
+	bpf.CheckOrMountCgroup2()
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	var exitWG, execWG sync.WaitGroup
