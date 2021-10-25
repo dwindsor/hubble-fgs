@@ -204,6 +204,15 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A Http spec.
 	Http HttpSpec `json:"http"`
+	// +kubebuilder:validation:Optional
+	// UDP policy specification
+	Udp UdpPolicySpec `json:"udp"`
+}
+
+type UdpPolicySpec struct {
+	// +kubebuilder:validation:Optional
+	// Enable UDP observability
+	Enable bool `json:"enable"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

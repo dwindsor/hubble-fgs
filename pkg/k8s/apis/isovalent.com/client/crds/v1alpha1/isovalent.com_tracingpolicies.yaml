@@ -330,6 +330,13 @@ spec:
                     - enable
                     - mode
                     type: object
+                  udp:
+                    description: UDP policy specification
+                    properties:
+                      enable:
+                        description: Enable UDP observability
+                        type: boolean
+                    type: object
                 type: object
               tracepoints:
                 description: A list of tracepoint specs.

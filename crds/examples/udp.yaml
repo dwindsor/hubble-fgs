@@ -1,0 +1,8 @@
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "udp"
+spec:
+  description: "udp parser spec"
+  parser:
+    udp:
+      enable: true
