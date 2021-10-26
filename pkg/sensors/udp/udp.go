@@ -16,6 +16,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -47,6 +48,18 @@ var (
 		"cgrp_egress",
 	)
 
+	UdpSend = bpf.ProgramBuilder(
+		"bpf_udp_sendmsg.o",
+		"udp_sendmsg",
+		"udp_sendmsg",
+		"kprobe/udp_sendmsg",
+		"kprobe/udp_sendmsg",
+
+		false,
+		true,
+		"kprobe",
+	)
+
 	SocketCookieMap = bpf.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
 )
 
@@ -59,14 +72,22 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 }
 
 func EnableUdpParser() *sensors.Sensor {
-	logger.GetLogger().Infof("Enable UDP")
+	var progs []*bpf.Program
+	var maps []*bpf.Map
 
-	progs := []*bpf.Program{
-		SockCreate,
-		InetSend,
-	}
-	maps := []*bpf.Map{
-		SocketCookieMap,
+	logger.GetLogger().Infof("Enable UDP")
+	if !kernels.MinKernelVersion("5.10.0") {
+		progs = []*bpf.Program{
+			UdpSend,
+		}
+	} else {
+		progs = []*bpf.Program{
+			SockCreate,
+			InetSend,
+		}
+		maps = []*bpf.Map{
+			SocketCookieMap,
+		}
 	}
 	return sensors.SensorBuilder("__udp_sensor__", progs, maps)
 }
