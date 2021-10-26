@@ -12,7 +12,8 @@ BPFTESTDIR := test/
 
 PARSERS = bpf_sockops.o bpf_skmsg.o bpf_skskb_parser.o bpf_skskb_verdict.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
 TLSTC = bpf_tc_ingress.o bpf_tc_egress.o
-NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o bpf_kfree_skb.o bpf_tcp_send_check.o
+NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o bpf_tcp_send_check.o \
+	     bpf_kfree_skb.o bpf_sock.o
 PROCESS = bpf_execve_event.o bpf_fork.o bpf_exit.o bpf_cred.o bpf_generic_kprobe.o bpf_generic_retkprobe.o bpf_generic_tracepoint.o
 BPFTEST = bpf_lseek.o
 

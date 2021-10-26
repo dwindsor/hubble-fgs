@@ -109,7 +109,7 @@ func msgToExitUnix(m *api.MsgExitEvent) *api.MsgExitEventUnix {
 	return m
 }
 
-func msgToIPv4Unix(m *api.MsgIPv4Event) *api.MsgIPv4EventUnix {
+func MsgToIPv4Unix(m *api.MsgIPv4Event) *api.MsgIPv4EventUnix {
 	unix := &api.MsgIPv4EventUnix{}
 
 	unix.Common = m.Common
@@ -236,7 +236,7 @@ func (k *Observer) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		if err != nil {
 			break
 		}
-		msgUnix := msgToIPv4Unix(&m)
+		msgUnix := MsgToIPv4Unix(&m)
 		k.observerListeners(msgUnix)
 
 	case api.MSG_OP_TEST:

@@ -336,7 +336,8 @@ func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetE
 func (pm *ProcessManager) handleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case api.MSG_OP_IPV4_TCPCONNECTRET:
+	case api.MSG_OP_IPV4_TCPCONNECTRET,
+		api.MSG_OP_IPV4_UDPCONNECT:
 		cnct := pm.GetProcessConnect(msg)
 		if cnct != nil {
 			res = &fgs.GetEventsResponse{

@@ -81,6 +81,8 @@ const (
 
 	MSG_OP_HTTP = 16
 
+	MSG_OP_IPV4_UDPCONNECT = 18
+
 	// just for testing
 	MSG_OP_TEST = 254
 )

@@ -5,4 +5,5 @@ package main
 
 import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 )
