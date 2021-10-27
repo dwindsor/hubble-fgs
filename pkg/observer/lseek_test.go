@@ -12,13 +12,12 @@ package observer
 
 import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 )
 
 // This bpf_lseek is a simple BPF program used for tests
 
 var (
-	ObserverLseekTest = bpf.Program{
+	ObserverLseekTest = sensors.Program{
 		"bpf_lseek.o",
 		"syscalls/sys_enter_lseek",
 		"syscalls/sys_enter_lseek",
@@ -28,7 +27,7 @@ var (
 		false,
 		true,
 		"tracepoint",
-		bpf.Idle(),
+		sensors.Idle(),
 
 		-1,
 

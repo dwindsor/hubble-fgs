@@ -18,7 +18,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -28,7 +27,7 @@ var (
 	// Socket mode
 	// Supports 5.4 kernels or newer.
 
-	TLSSkmsg = bpf.ProgramBuilder(
+	TLSSkmsg = sensors.ProgramBuilder(
 		"bpf_skmsg.o",
 		"sk_msg",
 		"sk_msg",
@@ -38,7 +37,7 @@ var (
 		true,
 		"skmsg")
 
-	TLSSkSkbVerdict = bpf.ProgramBuilder(
+	TLSSkSkbVerdict = sensors.ProgramBuilder(
 		"bpf_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb",
@@ -48,7 +47,7 @@ var (
 		true,
 		"sk_skb_verdict")
 
-	TLSSkSkbParser = bpf.ProgramBuilder(
+	TLSSkSkbParser = sensors.ProgramBuilder(
 		"bpf_skskb_parser.o",
 		"sk_skb",
 		"sk_skb",
@@ -62,7 +61,7 @@ var (
 	// 4.19 kernels and below.
 	// Susceptible to out-of-order packets.
 
-	TLSTCIngress = bpf.ProgramBuilder(
+	TLSTCIngress = sensors.ProgramBuilder(
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
 		"ingress_tcp",
@@ -72,7 +71,7 @@ var (
 		true,
 		"tc_ingress")
 
-	TLSTCEgress = bpf.ProgramBuilder(
+	TLSTCEgress = sensors.ProgramBuilder(
 		"bpf_tc_egress.o",
 		"egress_tcp",
 		"egress_tcp",
@@ -84,10 +83,10 @@ var (
 
 	/* TLS maps */
 	tlsSockMapName = "tls_sock_map"
-	TCTLSMap       = bpf.MapBuilder("tls_map", "tc_ingress", TLSTCEgress)
-	SockMap        = bpf.MapBuilder(tlsSockMapName, "sockops", sockops.SockopsEstablished)
-	TLSMap         = bpf.MapBuilder("tls_map", "skmsg", TLSSkmsg)
-	TLSTailCalls   = bpf.MapBuilder("tls_calls", "tc_ingress", TLSTCIngress)
+	TCTLSMap       = sensors.MapBuilder("tls_map", "tc_ingress", TLSTCEgress)
+	SockMap        = sensors.MapBuilder(tlsSockMapName, "sockops", sockops.SockopsEstablished)
+	TLSMap         = sensors.MapBuilder("tls_map", "skmsg", TLSSkmsg)
+	TLSTailCalls   = sensors.MapBuilder("tls_calls", "tc_ingress", TLSTCIngress)
 )
 
 func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
@@ -128,13 +127,13 @@ type sockopsSensor struct {
 }
 
 func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return bpf.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors)
+	return sensors.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors)
 }
 
 func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 	if (parser.Tls.Enable && parser.Tls.Mode == "socket") || parser.Http.Enable {
-		var progs []*bpf.Program
-		var maps []*bpf.Map
+		var progs []*sensors.Program
+		var maps []*sensors.Map
 
 		logger.GetLogger().Infof("Enable Sockops")
 		progs = append(progs, sockops.SockopsEstablished)
@@ -160,17 +159,17 @@ type skmsgTLSSensor struct {
 
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, tlsSockMapName)
-	err, i := bpf.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
+	err, i := sensors.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
 	if err != nil {
 		return err, i
 	}
 	if utils.SkSkbParserRequired() {
-		err, i = bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbParser, args.Version, args.Verbose, args.X64, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return bpf.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbVerdict, args.Version, args.Verbose, args.X64, path)
+	return sensors.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbVerdict, args.Version, args.Verbose, args.X64, path)
 }
 
 func (skmsg *skmsgTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -182,7 +181,7 @@ type skSkbVerdictTLSSensor struct {
 }
 
 func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
+	return sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
 }
 
 func (skmsg *skSkbVerdictTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -194,7 +193,7 @@ type skSkbParserTLSSensor struct {
 }
 
 func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
+	return sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
 }
 
 func (skmsg *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -236,8 +235,8 @@ func init() {
 }
 
 func enableTLSParser(tls, tc bool) *sensors.Sensor {
-	var progs []*bpf.Program
-	var maps []*bpf.Map
+	var progs []*sensors.Program
+	var maps []*sensors.Map
 
 	if tls {
 		logger.GetLogger().Infof("Enable TLS")
@@ -277,5 +276,5 @@ func (tls *tlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 }
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return bpf.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
+	return sensors.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
 }

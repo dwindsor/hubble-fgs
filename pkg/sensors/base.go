@@ -10,10 +10,8 @@
 
 package sensors
 
-import "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
-
 var (
-	Execve = bpf.Program{
+	Execve = Program{
 		"bpf_execve_event.o",
 		"sched/sched_process_exec",
 		"sched/sched_process_exec",
@@ -23,14 +21,14 @@ var (
 		false,
 		true,
 		"tracepoint",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
 		struct{}{},
 	}
 
-	Exit = bpf.Program{
+	Exit = Program{
 		"bpf_exit.o",
 		"sched/sched_process_exit",
 		"sched/sched_process_exit",
@@ -40,14 +38,14 @@ var (
 		false,
 		true,
 		"tracepoint",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
 		struct{}{},
 	}
 
-	Fork = bpf.Program{
+	Fork = Program{
 		"bpf_fork.o",
 		"wake_up_new_task",
 		"wake_up_new_task",
@@ -57,14 +55,14 @@ var (
 		false,
 		true,
 		"kprobe",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
 		struct{}{},
 	}
 
-	Cred = bpf.Program{
+	Cred = Program{
 		"bpf_cred.o",
 		"commit_creds",
 		"commit_creds",
@@ -74,14 +72,14 @@ var (
 		false,
 		true,
 		"kprobe",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
 		struct{}{},
 	}
 
-	TCPConnect = bpf.Program{
+	TCPConnect = Program{
 		"bpf_tcpmon.o",
 		"tcp_connect",
 		"tcp_connect",
@@ -91,14 +89,14 @@ var (
 		false,
 		true,
 		"kprobe",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
 		struct{}{},
 	}
 
-	TCPConnectRet = bpf.Program{
+	TCPConnectRet = Program{
 		"bpf_tcpmonret.o",
 		"__x64_sys_connect",
 		"sys_connect",
@@ -108,14 +106,14 @@ var (
 		true,
 		true,
 		"kprobe",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
 		struct{}{},
 	}
 
-	TCPClose = bpf.Program{
+	TCPClose = Program{
 		"bpf_tcpclose.o",
 		"tcp_set_state",
 		"tcp_set_state",
@@ -125,14 +123,14 @@ var (
 		false,
 		true,
 		"kprobe",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
 		struct{}{},
 	}
 
-	TCPSendCheck = bpf.Program{
+	TCPSendCheck = Program{
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
 		"tcp_v4_send_check",
@@ -142,14 +140,14 @@ var (
 		false,
 		true,
 		"kprobe",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
 		struct{}{},
 	}
 
-	Listen = bpf.Program{
+	Listen = Program{
 		"bpf_listen.o",
 		"__inet_hash",
 		"__inet_hash",
@@ -159,7 +157,7 @@ var (
 		false,
 		true,
 		"kprobe",
-		bpf.Idle(),
+		Idle(),
 
 		-1,
 
@@ -167,16 +165,16 @@ var (
 	}
 
 	/* Event Ring map */
-	TCPMonMap = bpf.Map{"tcpmon_map", "", &Execve, bpf.Idle(), -1}
+	TCPMonMap = Map{"tcpmon_map", "", &Execve, Idle(), -1}
 	/* Networking and Process Monitoring maps */
-	ExecveMap           = bpf.Map{"execve_map", "", &Execve, bpf.Idle(), -1}
-	SocketMap           = bpf.Map{"socket_map", "", &TCPConnect, bpf.Idle(), -1}
-	TCPMap              = bpf.Map{"ipv4_tcp_map", "", &TCPConnect, bpf.Idle(), -1} // NB: This seems to be unused?
-	TCPSendCheckSampler = bpf.Map{"tcp_send_check_sampler", "", &TCPSendCheck, bpf.Idle(), -1}
+	ExecveMap           = Map{"execve_map", "", &Execve, Idle(), -1}
+	SocketMap           = Map{"socket_map", "", &TCPConnect, Idle(), -1}
+	TCPMap              = Map{"ipv4_tcp_map", "", &TCPConnect, Idle(), -1} // NB: This seems to be unused?
+	TCPSendCheckSampler = Map{"tcp_send_check_sampler", "", &TCPSendCheck, Idle(), -1}
 	/* Internal statistics for debugging */
-	ExecveStats = bpf.Map{"execve_map_stats", "", &Execve, bpf.Idle(), -1}
-	SocketStats = bpf.Map{"socket_map_stats", "", &Execve, bpf.Idle(), -1}
-	TLSStats    = bpf.Map{"tls_map_stats", "", &Execve, bpf.Idle(), -1}
+	ExecveStats = Map{"execve_map_stats", "", &Execve, Idle(), -1}
+	SocketStats = Map{"socket_map_stats", "", &Execve, Idle(), -1}
+	TLSStats    = Map{"tls_map_stats", "", &Execve, Idle(), -1}
 	/* Cilium maps */
-	CiliumSNAT = bpf.Map{"cilium_snat_v4_external", "", &TCPConnect, bpf.Idle(), -1}
+	CiliumSNAT = Map{"cilium_snat_v4_external", "", &TCPConnect, Idle(), -1}
 )

@@ -24,7 +24,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
@@ -227,8 +226,8 @@ func createConfigSensors(configFile string) ([]*Sensor, error) {
 }
 
 func mergeSensors(sensors []*Sensor) *Sensor {
-	var progs []*bpf.Program
-	var maps []*bpf.Map
+	var progs []*Program
+	var maps []*Map
 
 	for _, s := range sensors {
 		progs = append(progs, s.Progs...)
@@ -241,7 +240,7 @@ func mergeSensors(sensors []*Sensor) *Sensor {
 	}
 }
 
-func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *bpf.Program, stopCtx context.Context) error {
+func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *Program, stopCtx context.Context) error {
 	var fd int
 
 	version, _, err := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
@@ -284,7 +283,7 @@ func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *bpf.Program, s
 	return nil
 }
 
-func loadInstance(bpfDir, mapDir, ciliumDir string, load *bpf.Program, version, verbose int, x64 bool) (error, int) {
+func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verbose int, x64 bool) (error, int) {
 	var attach string
 
 	if x64 {
@@ -363,7 +362,7 @@ func createDir(bpfDir, mapDir string) {
 	os.Mkdir(mapDir, os.ModeDir)
 }
 
-func disableBpfLoad(prog *bpf.Program) {
+func disableBpfLoad(prog *Program) {
 	prog.LoadState.SetDisabled()
 	for _, om := range AllMaps {
 		if om.Prog == prog {

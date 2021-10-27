@@ -27,7 +27,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	sensorsbpf "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/tracepoint"
 	"github.com/sirupsen/logrus"
 
@@ -316,11 +315,11 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 		tracepoints = append(tracepoints, tp)
 	}
 
-	maps := []*sensorsbpf.Map{}
-	progs := make([]*sensorsbpf.Program, 0, len(tracepoints))
+	maps := []*sensors.Map{}
+	progs := make([]*sensors.Program, 0, len(tracepoints))
 	for _, tp := range tracepoints {
 		attach := fmt.Sprintf("%s/%s", tp.Info.Subsys, tp.Info.Event)
-		prog0 := sensorsbpf.Program{
+		prog0 := sensors.Program{
 			Name:       path.Join(option.Config.HubbleLib, "bpf_generic_tracepoint.o"),
 			X64Attach:  attach,
 			Attach:     attach,
@@ -329,7 +328,7 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 			RetProbe:   false,
 			ErrorFatal: true,
 			Type:       "generic_tracepoint",
-			LoadState:  sensorsbpf.Idle(),
+			LoadState:  sensors.Idle(),
 			TraceFD:    -1,
 			LoaderData: tp.tableIdx,
 		}
@@ -343,7 +342,7 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 	}, nil
 }
 
-func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensorsbpf.Program, version, verbose int, x64 bool) (error, int) {
+func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, version, verbose int, x64 bool) (error, int) {
 	tracepointLog = logger.GetLogger()
 
 	btfCtxOffsetFn := func(i int) string {

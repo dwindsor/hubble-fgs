@@ -14,7 +14,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	sttManager "github.com/isovalent/hubble-fgs/pkg/observer/stt"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 )
 
 // StartSensorManager initializes the sensorCtlHandle by spawning a sensor
@@ -178,7 +177,7 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 	return &m, nil
 }
 
-func RemoveProgram(bpfDir string, prog *bpf.Program) {
+func RemoveProgram(bpfDir string, prog *Program) {
 	path := filepath.Join(bpfDir, prog.PinPath)
 	os.Remove(path)
 	if prog.Type == "generic_kprobe" {

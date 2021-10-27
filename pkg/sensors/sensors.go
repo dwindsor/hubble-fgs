@@ -14,11 +14,10 @@ import (
 	"fmt"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 )
 
 var (
-	AllPrograms = []*bpf.Program{
+	AllPrograms = []*Program{
 		&Execve,
 		&Exit,
 		&Fork,
@@ -30,7 +29,7 @@ var (
 		&Listen,
 	}
 
-	AllMaps = []*bpf.Map{
+	AllMaps = []*Map{
 		&SocketMap,
 		&ExecveMap,
 		&TCPMonMap,
@@ -45,7 +44,7 @@ var (
 // GetInitialSensor returns the collection of Sensor that is loaded at
 // initialization time.
 func GetInitialSensor() *Sensor {
-	progs := []*bpf.Program{
+	progs := []*Program{
 		&Execve,
 		&Exit,
 		&Fork,
@@ -57,7 +56,7 @@ func GetInitialSensor() *Sensor {
 		&Listen,
 	}
 
-	maps := []*bpf.Map{
+	maps := []*Map{
 		&TCPMonMap,
 		&ExecveMap,
 		&SocketMap,
@@ -93,9 +92,9 @@ type Sensor struct {
 	// Name is a human-readbale description.
 	Name string
 	// Progs are all the BPF programs that exist on the filesystem.
-	Progs []*bpf.Program
+	Progs []*Program
 	// Maps are all the BPF Maps that the progs use.
-	Maps []*bpf.Map
+	Maps []*Map
 	// Loaded indicates whether the sensor has been Loaded.
 	Loaded bool
 	// Ops contains an implementation to perform on this sensor.
@@ -124,7 +123,7 @@ func SensorCombine(name string, a, b *Sensor) *Sensor {
 	return nil
 }
 
-func SensorBuilder(name string, p []*bpf.Program, m []*bpf.Map) *Sensor {
+func SensorBuilder(name string, p []*Program, m []*Map) *Sensor {
 	return &Sensor{
 		Name:  name,
 		Progs: p,
@@ -174,7 +173,7 @@ type tracingSensor interface {
 // LoadProbeArgs are the args to the LoadProbe function.
 type LoadProbeArgs struct {
 	BPFDir, MapDir, CiliumDir string
-	Load                      *bpf.Program
+	Load                      *Program
 	Version, Verbose          int
 	X64                       bool
 }

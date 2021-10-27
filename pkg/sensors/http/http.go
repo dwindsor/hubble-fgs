@@ -26,7 +26,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
@@ -57,7 +56,7 @@ var (
 )
 
 var (
-	Skmsg = bpf.ProgramBuilder(
+	Skmsg = sensors.ProgramBuilder(
 		"bpf_http.o",
 		"sk_msg",
 		"sk_msg",
@@ -68,7 +67,7 @@ var (
 		true,
 		"http_skmsg")
 
-	SkSkbParser = bpf.ProgramBuilder(
+	SkSkbParser = sensors.ProgramBuilder(
 		"bpf_http_parser.o",
 		"sk_skb",
 		"sk_skb",
@@ -79,7 +78,7 @@ var (
 		true,
 		"sk_skb_parser")
 
-	SkSkbVerdict = bpf.ProgramBuilder(
+	SkSkbVerdict = sensors.ProgramBuilder(
 		"bpf_http_verdict.o",
 		"sk_skb",
 		"sk_skb",
@@ -92,10 +91,10 @@ var (
 
 	/* Http maps */
 	httpSockMapName = "http_sock_map"
-	SockMap         = bpf.MapBuilder(httpSockMapName, "sockops", sockops.SockopsEstablished)
-	TailCalls       = bpf.MapBuilder("http1_calls", "http_skmsg", Skmsg)
-	SkbTailCalls    = bpf.MapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
-	HTTPContext     = bpf.MapBuilder("http_map", "http_skmsg", Skmsg)
+	SockMap         = sensors.MapBuilder(httpSockMapName, "sockops", sockops.SockopsEstablished)
+	TailCalls       = sensors.MapBuilder("http1_calls", "http_skmsg", Skmsg)
+	SkbTailCalls    = sensors.MapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
+	HTTPContext     = sensors.MapBuilder("http_map", "http_skmsg", Skmsg)
 )
 
 type sensor struct {
@@ -104,18 +103,18 @@ type sensor struct {
 
 func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, httpSockMapName)
-	err, i := bpf.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
+	err, i := sensors.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
 	if err != nil {
 		return err, i
 	}
 
 	if utils.SkSkbParserRequired() {
-		err, i = bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return bpf.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
+	return sensors.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
 }
 
 func (http *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -127,7 +126,7 @@ type skSkbVerdictSensor struct {
 }
 
 func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
+	return sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
 }
 
 func (skmsg *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -139,7 +138,7 @@ type skSkbParserSensor struct {
 }
 
 func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return bpf.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
+	return sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
 }
 
 func (skmsg *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -192,7 +191,7 @@ func AddHTTP() {
 func EnableHTTPParser() *sensors.Sensor {
 	logger.GetLogger().Infof("Enable HTTP")
 
-	progs := []*bpf.Program{
+	progs := []*sensors.Program{
 		Skmsg,
 		SkSkbVerdict,
 	}
@@ -201,7 +200,7 @@ func EnableHTTPParser() *sensors.Sensor {
 		progs = append(progs, SkSkbParser)
 	}
 
-	maps := []*bpf.Map{
+	maps := []*sensors.Map{
 		SockMap,
 		TailCalls,
 		SkbTailCalls,

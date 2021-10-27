@@ -10,11 +10,11 @@
 
 package sockops
 
-import "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
+import "github.com/isovalent/hubble-fgs/pkg/sensors"
 
 var (
 	// Needed on both the HTTP and TLS programs.
-	SockopsEstablished = bpf.ProgramBuilder(
+	SockopsEstablished = sensors.ProgramBuilder(
 		"bpf_sockops.o",
 		"sockops",
 		"sockops",

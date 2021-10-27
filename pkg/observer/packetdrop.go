@@ -20,14 +20,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	sensorsbpf "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 	stt "github.com/isovalent/hubble-fgs/pkg/stacktracetree"
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 	"github.com/isovalent/hubble-fgs/pkg/vtuplefilter"
 )
 
 var (
-	ObserverKfreeSkb = sensorsbpf.Program{
+	ObserverKfreeSkb = sensors.Program{
 		"bpf_kfree_skb.o",
 		"kfree_skb",
 		"kfree_skb",
@@ -37,7 +36,7 @@ var (
 		false,
 		true,
 		"kprobe",
-		sensorsbpf.Idle(),
+		sensors.Idle(),
 
 		-1,
 
@@ -62,8 +61,8 @@ type PacketdropSensorImpl struct {
 }
 
 func createPacketDropSensor() *sensors.Sensor {
-	progs := []*sensorsbpf.Program{&ObserverKfreeSkb}
-	maps := []*sensorsbpf.Map{}
+	progs := []*sensors.Program{&ObserverKfreeSkb}
+	maps := []*sensors.Map{}
 	impl := PacketdropSensorImpl{}
 	packetdropCfg = &impl.config
 	return &sensors.Sensor{

@@ -29,7 +29,6 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	sensorsbpf "github.com/isovalent/hubble-fgs/pkg/sensors/bpf"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
@@ -481,8 +480,8 @@ func TestSensorLseekLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	progs := []*sensorsbpf.Program{&ObserverLseekTest}
-	maps := []*sensorsbpf.Map{}
+	progs := []*sensors.Program{&ObserverLseekTest}
+	maps := []*sensors.Map{}
 	sensor := &sensors.Sensor{Name: "lseekTest", Progs: progs, Maps: maps}
 	if err := sensor.FindPrograms(ctx); err != nil {
 		t.Fatalf("ObserverFindProgs error: %s", err)
@@ -528,8 +527,8 @@ func TestSensorLseekEnable(t *testing.T) {
 	}()
 
 	sensorName := "lseekTest"
-	progs := []*sensorsbpf.Program{&ObserverLseekTest}
-	maps := []*sensorsbpf.Map{}
+	progs := []*sensors.Program{&ObserverLseekTest}
+	maps := []*sensors.Map{}
 	sensor := &sensors.Sensor{Name: sensorName, Progs: progs, Maps: maps}
 	sensors.RegisterSensorAtInit(sensor)
 
