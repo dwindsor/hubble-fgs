@@ -99,8 +99,9 @@ func NewProcessManager(
 		enableEventCache:  enableEventCache,
 	}
 
-	eventCache := newEventCache(log, pm)
-	pm.eventCache = eventCache
+	if enableEventCache {
+		pm.eventCache = newEventCache(log, pm)
+	}
 	return pm, nil
 }
 
@@ -199,7 +200,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
-	if proc == nil && pm.enableEventCache == true {
+	if proc == nil && pm.enableEventCache {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -211,7 +212,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		// this case we don't want to block waiting for it (we may have more
 		// events in the queue) so instead send it to a queue to be processed
 		// later.
-		if pm.enableEventCache == true && (endpoint == nil || fgsEvent.Process.Pod == nil) {
+		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
@@ -248,7 +249,7 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 	case api.MSG_OP_EXECVE:
 		proc := pm.Add(msg)
 		procEvent := pm.GetProcessExec(proc)
-		if pm.enableEventCache == true && procEvent.Process.Docker != "" && procEvent.Process.Pod == nil {
+		if pm.enableEventCache && procEvent.Process.Docker != "" && procEvent.Process.Pod == nil {
 			pm.eventCache.addProc(procEvent, ktimeToProto(msg.Common.Ktime), msg)
 		} else {
 			res = &fgs.GetEventsResponse{
@@ -484,7 +485,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	}
 
 	if fgsProcess.Docker != "" {
-		if pm.enableEventCache == true && fgsEvent.Process.Pod == nil {
+		if pm.enableEventCache && fgsEvent.Process.Pod == nil {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
@@ -555,7 +556,7 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 	}
 
 	if fgsProcess.Docker != "" {
-		if pm.enableEventCache == true && fgsEvent.Process.Pod == nil {
+		if pm.enableEventCache && fgsEvent.Process.Pod == nil {
 			pm.eventCache.add(fgsEvent, ktimeToProto(msg.Common.Ktime), msg)
 			return nil
 		}
@@ -883,7 +884,7 @@ func (pm *ProcessManager) GetProcessListen(
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	if pm.enableEventCache == true && fgsProcess.Docker != "" && fgsProcess.Pod == nil {
+	if pm.enableEventCache && fgsProcess.Docker != "" && fgsProcess.Pod == nil {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -920,7 +921,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		Process: fgsProcess,
 		Parent:  fgsParent,
 	}
-	if fgsProcess.Docker != "" && fgsProcess.Pod == nil {
+	if pm.enableEventCache && fgsProcess.Docker != "" && fgsProcess.Pod == nil {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -951,7 +952,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		Parent:  parent,
 		Cap:     pm.getCapabilities(event.Capabilities),
 	}
-	if process.Docker != "" && process.Pod == nil {
+	if pm.enableEventCache && process.Docker != "" && process.Pod == nil {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -1043,7 +1044,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		ParserStateCsize:  event.ServerCert.ParserState.Csize,
 		ParserStateSkblen: event.ServerCert.ParserState.SkbLen,
 	}
-	if proc == nil || (proc.Docker != "" && proc.Pod == nil) {
+	if pm.enableEventCache && (proc == nil || (proc.Docker != "" && proc.Pod == nil)) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -1116,7 +1117,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 		// this case we don't want to block waiting for it (we may have more
 		// events in the queue) so instead send it to a queue to be processed
 		// later.
-		if pm.enableEventCache == true && (endpoint == nil || fgsEvent.Process.Pod == nil) {
+		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
@@ -1181,7 +1182,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		// this case we don't want to block waiting for it (we may have more
 		// events in the queue) so instead send it to a queue to be processed
 		// later.
-		if pm.enableEventCache == true && (endpoint == nil || fgsEvent.Process.Pod == nil) {
+		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
@@ -1244,7 +1245,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 
 	if fgsProcess.Docker != "" {
 		endpoint := pm.getProcessEndpoint(fgsProcess)
-		if pm.enableEventCache == true && endpoint == nil || fgsEvent.Process.Pod == nil {
+		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
@@ -1307,7 +1308,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 
 	if fgsProcess.Docker != "" {
 		endpoint := pm.getProcessEndpoint(fgsProcess)
-		if pm.enableEventCache == true && endpoint == nil || fgsEvent.Process.Pod == nil {
+		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
