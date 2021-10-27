@@ -11,21 +11,23 @@ struct udp_info_value {
 	u64 rx_bytes;
 	u64 segs_in;
 	u64 segs_out;
+	u64 ktime;
+	u64 pid_ktime;
 	u32 pid;
 	u32 sk_drops;
-	u64 ktime;
 } __attribute__((packed));
 
 struct udp_info_key {
-	u32 saddr;
-	u32 daddr;
-	u16 dport;
-	u16 sport;
 	/* socket cookie is necessary because multiple sockets may be
 	 * sending to the same tuple and we want to be sure we attribute
 	 * the traffic to the correct socket and process.
 	 */
 	u64 cookie;
+	u32 saddr;
+	u32 daddr;
+	u16 sport;
+	u16 dport;
+	u32 padding;
 } __attribute__((packed));
 
 
@@ -73,7 +75,7 @@ void emit_udp_event(void *ctx, int op, struct udp_info_key *k, struct udp_info_v
 		.common.size = sizeof(struct msg_ipv4_event),
 		.common.ktime = ktime_get_ns(),
 		.key.pid = v->pid,
-		.key.ktime = v->ktime,
+		.key.ktime = v->pid_ktime,
 		.tuple.saddr = k->saddr,
 		/* FGS expects host byte-order */
 		.tuple.sport = k->sport,
@@ -93,5 +95,13 @@ static inline __attribute__((always_inline))
 void emit_udp_connect_event(void *ctx, struct udp_info_key *k, struct udp_info_value *v)
 {
 	emit_udp_event(ctx, MSG_OP_IPV4_UDPCONNECT, k, v);
+}
+
+static inline __attribute__((always_inline))
+void udp_info_reset(struct udp_info_value *v)
+{
+	v->tx_bytes = v->rx_bytes = 0;
+	v->segs_out = v->segs_in = 0;
+	v->ktime = ktime_get_ns();
 }
 #endif // __BPF_UDP_H__

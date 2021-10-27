@@ -399,7 +399,8 @@ func nameToProgType(n string) int {
 		return BPF_PROG_TYPE_SK_SKB
 	case "sk_skb_verdict":
 		return BPF_PROG_TYPE_SK_SKB
-	case "cgrp_ingress":
+	case "cgrp_ingress",
+		"cgrp_egress":
 		return BPF_PROG_TYPE_CGROUP_SKB
 	case "tc_ingress":
 		return BPF_PROG_TYPE_SCHED_CLS

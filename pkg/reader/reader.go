@@ -139,6 +139,15 @@ func DiffKtime(start, end uint64) time.Duration {
 	return time.Duration(int64(end - start))
 }
 
+func NanoTimeSince(ktime int64) (time.Duration, error) {
+	clk := int32(unix.CLOCK_MONOTONIC)
+	currentTime := unix.Timespec{}
+	if err := unix.ClockGettime(clk, &currentTime); err != nil {
+		return 0, err
+	}
+	diff := currentTime.Nano() - ktime
+	return time.Duration(diff), nil
+}
 func DecodeKtime(ktime int64) (time.Time, error) {
 	clk := int32(unix.CLOCK_MONOTONIC)
 	currentTime := unix.Timespec{}

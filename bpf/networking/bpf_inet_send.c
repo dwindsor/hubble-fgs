@@ -49,6 +49,7 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	key->sport = udp->source;
 	key->dport = udp->dest;
 	key->cookie = get_socket_cookie(skb);
+	key->padding = 0;
 
 	value = map_lookup_elem(&udp_map, key);
 	if (!value) {
@@ -58,14 +59,18 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 		if (!value)
 			return 1;
 
+		udp_info_reset(value);
 		process = map_lookup_elem(&socket_cookie_to_proc_map,
 					  &key->cookie);
 		if (process) {
 			value->pid = process->key.pid;
-			value->ktime = process->key.ktime;
+			value->pid_ktime = process->key.ktime;
 		}
+		value->ktime = ktime_get_ns();
 		map_update_elem(&udp_map, key, value, 0);
 		emit_udp_connect_event(skb, key, value);
+	} else {
+		value->ktime = ktime_get_ns();
 	}
 	return 1;
 }

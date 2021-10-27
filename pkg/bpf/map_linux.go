@@ -19,12 +19,15 @@ package bpf
 
 import (
 	"bufio"
+	"bytes"
+	"encoding/binary"
 	"fmt"
 	"os"
 	"path"
 	"syscall"
 	"unsafe"
 
+	"github.com/cilium/cilium/pkg/byteorder"
 	"github.com/isovalent/hubble-fgs/pkg/lock"
 
 	"golang.org/x/sys/unix"
@@ -223,8 +226,26 @@ func (m *Map) Reopen() error {
 }
 
 type DumpParser func(key []byte, value []byte, mapKey MapKey, mapValue MapValue) (MapKey, MapValue, error)
-type DumpCallback func(key MapKey, value MapValue)
+type DumpCallback func(m *Map, key MapKey, value MapValue)
 type MapValidator func(path string) (bool, error)
+
+// ConvertKeyValue converts key and value from bytes to given Golang struct pointers.
+func ConvertKeyValue(bKey []byte, bValue []byte, key MapKey, value MapValue) (MapKey, MapValue, error) {
+
+	if len(bKey) > 0 {
+		if err := binary.Read(bytes.NewReader(bKey), byteorder.Native, key); err != nil {
+			return nil, nil, fmt.Errorf("Unable to convert key: %w", err)
+		}
+	}
+
+	if len(bValue) > 0 {
+		if err := binary.Read(bytes.NewReader(bValue), byteorder.Native, value); err != nil {
+			return nil, nil, fmt.Errorf("Unable to convert value: %w", err)
+		}
+	}
+
+	return key, value, nil
+}
 
 // DumpWithCallback iterates over the Map and calls the given callback
 // function on each iteration. That callback function is receiving the
@@ -273,13 +294,13 @@ func (m *Map) DumpWithCallback(cb DumpCallback) error {
 			return err
 		}
 
-		mk, mv, err = m.dumpParser(nextKey, value, mk, mv)
+		mk, mv, err = ConvertKeyValue(nextKey, value, mk, mv)
 		if err != nil {
 			return err
 		}
 
 		if cb != nil {
-			cb(mk, mv)
+			cb(m, mk, mv)
 		}
 
 		copy(key, nextKey)
@@ -310,7 +331,7 @@ func (m *Map) DumpWithCallbackIfExists(cb DumpCallback) error {
 // Dump returns the map (type map[string][]string) which contains all
 // data stored in BPF map.
 func (m *Map) Dump(hash map[string][]string) error {
-	callback := func(key MapKey, value MapValue) {
+	callback := func(m *Map, key MapKey, value MapValue) {
 		// No need to deep copy since we are creating strings.
 		hash[key.String()] = append(hash[key.String()], value.String())
 	}
@@ -452,4 +473,35 @@ func (m *Map) exist() (bool, error) {
 	}
 
 	return false, nil
+}
+
+func deleteElement(fd int, key unsafe.Pointer) (uintptr, unix.Errno) {
+	uba := bpfAttrMapOpElem{
+		mapFd: uint32(fd),
+		key:   uint64(uintptr(key)),
+	}
+	ret, _, err := unix.Syscall(
+		unix.SYS_BPF,
+		BPF_MAP_DELETE_ELEM,
+		uintptr(unsafe.Pointer(&uba)),
+		unsafe.Sizeof(uba),
+	)
+	return ret, err
+}
+
+// deleteMapEntry deletes the map entry corresponding to the given key.
+// If ignoreMissing is set to true and the entry is not found, then
+// the error metric is not incremented for missing entries and nil error is returned.
+func (m *Map) DeleteKey(key MapKey) error {
+	_, errno := deleteElement(m.fd, key.GetKeyPtr())
+
+	// Error handling is skipped in the case ignoreMissing is set and the
+	// error is ENOENT. This removes false positives in the delete metrics
+	// and skips the deferred cleanup of non-existing entries. This situation
+	// occurs at least in the context of cleanup of NAT mappings from CT GC.
+	handleError := errno != unix.ENOENT
+	if errno != 0 && handleError {
+		return fmt.Errorf("unable to delete element %s from map %s: %d", key, m.name, errno)
+	}
+	return nil
 }

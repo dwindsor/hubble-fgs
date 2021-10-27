@@ -47,6 +47,7 @@ struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
 	}
 	probe_read(&key->saddr, sizeof(u32), _(&(inet->inet_saddr)));
 	probe_read(&key->sport, sizeof(u16), _(&(inet->inet_sport)));
+	key->padding = 0;
 	return key;
 }
 
@@ -71,13 +72,16 @@ int udp4_send(struct pt_regs *ctx)
 		if (!value)
 			return 0;
 
+		udp_info_reset(value);
 		process = event_find_curr(&ppid, 0, &walker);
 		if (process) {
 			value->pid = process->key.pid;
-			value->ktime = process->key.ktime;
+			value->pid_ktime = process->key.ktime;
 		}
 		map_update_elem(&udp_map, key, value, 0);
 		emit_udp_connect_event(ctx, key, value);
+	} else {
+		value->ktime = ktime_get_ns();
 	}
 	return 0;
 }
