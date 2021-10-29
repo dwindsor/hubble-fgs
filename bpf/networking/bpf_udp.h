@@ -98,10 +98,20 @@ void emit_udp_connect_event(void *ctx, struct udp_info_key *k, struct udp_info_v
 }
 
 static inline __attribute__((always_inline))
-void udp_info_reset(struct udp_info_value *v)
+void udp_info_reset(struct udp_info_value *v, int len)
 {
-	v->tx_bytes = v->rx_bytes = 0;
-	v->segs_out = v->segs_in = 0;
+	v->tx_bytes = len;
+	v->rx_bytes = 0;
+	v->segs_out = 1;
+	v->segs_in = 0;
+	v->ktime = ktime_get_ns();
+}
+
+static inline __attribute__((always_inline))
+void update_tx_value(struct udp_info_value *v, u32 len)
+{
+	v->tx_bytes += len;
+	v->segs_out++;
 	v->ktime = ktime_get_ns();
 }
 #endif // __BPF_UDP_H__

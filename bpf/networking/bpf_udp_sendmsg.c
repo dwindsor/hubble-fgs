@@ -72,7 +72,7 @@ int udp4_send(struct pt_regs *ctx)
 		if (!value)
 			return 0;
 
-		udp_info_reset(value);
+		udp_info_reset(value, 0);
 		process = event_find_curr(&ppid, 0, &walker);
 		if (process) {
 			value->pid = process->key.pid;
@@ -81,7 +81,7 @@ int udp4_send(struct pt_regs *ctx)
 		map_update_elem(&udp_map, key, value, 0);
 		emit_udp_connect_event(ctx, key, value);
 	} else {
-		value->ktime = ktime_get_ns();
+		update_tx_value(value, 0);
 	}
 	return 0;
 }
