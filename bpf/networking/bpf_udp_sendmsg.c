@@ -20,6 +20,13 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
+struct bpf_map_def __attribute__((section("maps"), used)) udp_retprobe_map = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(__u64),
+	.value_size = sizeof(struct udp_info_key),
+	.max_entries = 1024,
+};
+
 static inline __attribute__((always_inline))
 struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
 {
@@ -54,6 +61,7 @@ struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
 __attribute__((section(("kprobe/udp_sendmsg")), used))
 int udp4_send(struct pt_regs *ctx)
 {
+	u64 pid = get_current_pid_tgid();
 	struct udp_info_value *value;
 	struct udp_info_key *key;
 
@@ -79,9 +87,34 @@ int udp4_send(struct pt_regs *ctx)
 			value->pid_ktime = process->key.ktime;
 		}
 		map_update_elem(&udp_map, key, value, 0);
-		emit_udp_connect_event(ctx, key, value);
 	} else {
 		update_tx_value(value, 0);
+	}
+	map_update_elem(&udp_retprobe_map, &pid, key, 0);
+	return 0;
+}
+
+__attribute__((section(("kretprobe/udp_sendmsg")), used))
+int udp4_sendret(struct pt_regs *ctx)
+{
+	u64 pid = get_current_pid_tgid();
+	struct udp_info_key *key;
+	int ret;
+
+	ret = ctx->ax;
+	if (ret < 0)
+		return 0;
+
+	key = map_lookup_elem(&udp_retprobe_map, &pid);
+	if (key) {
+		struct udp_info_value *value = map_lookup_elem(&udp_map, key);
+
+		if (value) {
+			value->tx_bytes += ret;
+			value->segs_out++;
+			emit_udp_connect_event(ctx, key, value);
+		}
+		map_delete_elem(&udp_retprobe_map, &pid);
 	}
 	return 0;
 }

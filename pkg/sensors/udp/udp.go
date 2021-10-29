@@ -33,6 +33,7 @@ var (
 	UdpGCIntervalDefault = time.Duration(60 * time.Second)
 	UdpDeleteInterval    = time.Duration(60 * time.Second)
 	UdpMapName           = "udp_map"
+	UdpRetprobeMapName   = "udp_retprobe_map"
 
 	mapDir = "/sys/fs/bpf/tcpmon"
 )
@@ -73,9 +74,21 @@ var (
 		"kprobe",
 	)
 
+	UdpRetSend = sensors.ProgramBuilder(
+		"bpf_udp_sendmsg.o",
+		"udp_sendmsg",
+		"udp_sendmsg",
+		"kretprobe/udp_sendmsg",
+		"kpretrobe/udp_sendmsg",
+
+		true,
+		true,
+		"kprobe",
+	)
 	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
 	UdpMap          = sensors.MapBuilder(UdpMapName, "", InetSend)
 	UdpMapKprobe    = sensors.MapBuilder(UdpMapName, "", UdpSend)
+	UdpRetprobeMap  = sensors.MapBuilder(UdpRetprobeMapName, "", UdpSend)
 )
 
 type udpInfoKey struct {
@@ -192,9 +205,11 @@ func EnableUdpParser() *sensors.Sensor {
 	if !kernels.MinKernelVersion("5.10.0") {
 		progs = []*sensors.Program{
 			UdpSend,
+			UdpRetSend,
 		}
 		maps = []*sensors.Map{
 			UdpMapKprobe,
+			UdpRetprobeMap,
 		}
 	} else {
 		progs = []*sensors.Program{
