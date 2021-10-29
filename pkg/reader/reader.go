@@ -52,7 +52,8 @@ func MsgOpToProtocol(op uint8) fgs.SocketProtocol {
 		api.MSG_OP_IPV4_ACCEPT,
 		api.MSG_OP_IPV4_TCPSTATS:
 		return fgs.SocketProtocol_TCP
-	case api.MSG_OP_IPV4_UDPCONNECT:
+	case api.MSG_OP_IPV4_UDPCONNECT,
+		api.MSG_OP_IPV4_UDPSTATS:
 		return fgs.SocketProtocol_UDP
 	default:
 		return fgs.SocketProtocol_UNKNOWN

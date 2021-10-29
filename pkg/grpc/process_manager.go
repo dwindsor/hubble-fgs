@@ -390,7 +390,7 @@ func (pm *ProcessManager) handleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 			}
 		}
 
-	case api.MSG_OP_IPV4_TCPSTATS:
+	case api.MSG_OP_IPV4_TCPSTATS, api.MSG_OP_IPV4_UDPSTATS:
 		s := pm.GetProcessSockStats(msg)
 		if s != nil {
 			res = &fgs.GetEventsResponse{

@@ -52,6 +52,8 @@ var (
 	pollTimeout = 5 * time.Second
 
 	eventHandler = make(map[uint8]func(r *bytes.Reader) ([]ObserverEvent, error))
+
+	observerList []*Observer
 )
 
 type ObserverEvent interface{}
@@ -66,6 +68,12 @@ func (k *Observer) observerListeners(msg interface{}) {
 			k.log.Debug("Write failure removing Listener")
 			k.RemoveListener(listener)
 		}
+	}
+}
+
+func AllListeners(msg interface{}) {
+	for _, o := range observerList {
+		o.observerListeners(msg)
 	}
 }
 
@@ -230,7 +238,8 @@ func (k *Observer) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
 		api.MSG_OP_IPV4_BIND,
 		api.MSG_OP_IPV4_LISTEN,
 		api.MSG_OP_IPV4_ACCEPT,
-		api.MSG_OP_IPV4_TCPSTATS:
+		api.MSG_OP_IPV4_TCPSTATS,
+		api.MSG_OP_IPV4_UDPSTATS:
 		m := api.MsgIPv4Event{}
 		err := binary.Read(r, binary.LittleEndian, &m)
 		if err != nil {
@@ -466,7 +475,7 @@ func (k *Observer) InitSensorManager() error {
 
 func NewObserver(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 	pretty, crd bool, tcpStatRate uint32) *Observer {
-	return &Observer{
+	o := &Observer{
 		bpfDir:         bpfDir,
 		mapDir:         mapDir,
 		ciliumDir:      ciliumDir,
@@ -478,6 +487,8 @@ func NewObserver(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 		enableCRD:      crd,
 		tcpStatSegRate: tcpStatRate,
 	}
+	observerList = append(observerList, o)
+	return o
 }
 
 func (k *Observer) PrintStats() {

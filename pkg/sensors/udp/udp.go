@@ -31,6 +31,7 @@ import (
 
 var (
 	UdpGCIntervalDefault = time.Duration(60 * time.Second)
+	UdpStatInterval      = time.Duration(60 * time.Second)
 	UdpDeleteInterval    = time.Duration(60 * time.Second)
 	UdpMapName           = "udp_map"
 	UdpRetprobeMapName   = "udp_retprobe_map"
@@ -149,6 +150,37 @@ func (s *udpInfoValue) DeepCopyMapValue() bpf.MapValue {
 	return &v
 }
 
+func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
+	unix := api.MsgIPv4EventUnix{}
+
+	unix.Common = api.MsgCommon{
+		Op:    api.MSG_OP_IPV4_UDPSTATS,
+		Size:  1,
+		Ktime: v.Ktime,
+	}
+	unix.Tuple = api.MsgIPv4Tuple{
+		SAddr: k.SAddr,
+		DAddr: k.DAddr,
+		SPort: k.SPort,
+		DPort: k.DPort,
+		Proto: 0,
+	}
+	unix.Return = 0
+	unix.ProcessKey = api.MsgExecveKey{
+		Pid:   v.Pid,
+		Ktime: v.PidKtime,
+	}
+	unix.SocketStats = api.MsgSocketStats{
+		BytesSent:     v.TXBytes,
+		BytesReceived: v.RXBytes,
+		SegsIn:        uint32(v.SegsIn),
+		SegsOut:       uint32(v.SegsOut),
+		SkDrop:        v.SkDrops,
+	}
+	observer.AllListeners(&unix)
+	return
+}
+
 func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	udpValue := v.(*udpInfoValue)
 	t, err := reader.NanoTimeSince(int64(udpValue.Ktime))
@@ -158,6 +190,9 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 
 	if t > UdpDeleteInterval {
 		m.DeleteKey(k)
+	}
+	if t <= UdpStatInterval {
+		emitStatEvent(k.(*udpInfoKey), v.(*udpInfoValue))
 	}
 }
 
