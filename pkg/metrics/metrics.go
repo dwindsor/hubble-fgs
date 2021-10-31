@@ -98,6 +98,26 @@ var (
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 
+// UDP socket metrics
+var (
+	SocketStatsUDPTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_udp_txbytes",
+		Help: "UDP socket TX bytes statistics",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsUDPTxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_udp_txsegs",
+		Help: "UDP socket TX segment statistics",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsUDPRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_udp_rxbytes",
+		Help: "UDP socket RX bytes statistics",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsUDPRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_udp_rxsegs",
+		Help: "UDP socket RX segment statistics",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+)
+
 // HTTP metrics
 var (
 	HttpResponseTotal = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -219,7 +239,19 @@ func handleHttpEvent(processedEvent interface{}) {
 	}
 }
 
-func postSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
+func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
+	c := float64(s.BytesSent)
+	SocketStatsUDPTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	c = float64(s.SegsOut)
+	SocketStatsUDPTxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+
+	c = float64(s.BytesReceived)
+	SocketStatsUDPRxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+	c = float64(s.SegsIn)
+	SocketStatsUDPRxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+}
+
+func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
 	c := float64(s.BytesSent)
 	SocketStatsTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsOut)
@@ -248,7 +280,11 @@ func postCloseEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessClose,
 	dstpod, dstns := getDstPodInfo(dstPod)
 	dstLabels := strings.Join(res.DestinationNames, ",")
 
-	postSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, s)
+	if res.Protocol == fgs.SocketProtocol_TCP {
+		postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, s)
+	} else if res.Protocol == fgs.SocketProtocol_UDP {
+		postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, s)
+	}
 }
 
 func postStatsEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessSockStats) {
@@ -257,7 +293,11 @@ func postStatsEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessSockSt
 	dstpod, dstns := getDstPodInfo(dstPod)
 	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
 
-	postSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
+	if res.Socket.Protocol == fgs.SocketProtocol_TCP {
+		postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
+	} else if res.Socket.Protocol == fgs.SocketProtocol_UDP {
+		postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
+	}
 }
 
 func handleSocketEvent(processedEvent interface{}) {
