@@ -239,7 +239,12 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	watcher := opts.watcher
 	ciliumState := opts.ciliumState
 	processCacheSize := 32768
-	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState, true, true)
+	// For testing we disable the eventcache and cilium cache by default. If we
+	// enable these then every tests would need to wait for the 1.5 mimutes needed
+	// to bounce events through the cache waiting for Cilium to reply with endpoints
+	// and K8s cache data to be completed. We currently only stub them enough to
+	// report nil or a pre-defined value. So no cache needed.
+	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState, true, false, false)
 	if err != nil {
 		return err
 	}

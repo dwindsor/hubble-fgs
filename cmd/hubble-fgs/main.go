@@ -134,6 +134,7 @@ func hubbleFGSExecute() error {
 		watcher,
 		ciliumState,
 		enableProcessCred,
+		enableK8sAPI,
 		enableCiliumAPI)
 	if err != nil {
 		return err

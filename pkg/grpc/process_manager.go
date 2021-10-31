@@ -59,6 +59,7 @@ type ProcessManager struct {
 	ciliumState       *cilium.State
 	enableProcessCred bool
 	enableEventCache  bool
+	enableCilium      bool
 }
 
 // getNodeNameForExport returns node name string for JSON export. It uses NODE_NAME
@@ -83,6 +84,7 @@ func NewProcessManager(
 	ciliumState *cilium.State,
 	enableProcessCred bool,
 	enableEventCache bool,
+	enableCilium bool,
 ) (*ProcessManager, error) {
 	cache, err := newProcessCache(log, processCacheSize)
 	if err != nil {
@@ -97,6 +99,7 @@ func NewProcessManager(
 		listeners:         make(map[listener]struct{}),
 		enableProcessCred: enableProcessCred,
 		enableEventCache:  enableEventCache,
+		enableCilium:      enableCilium,
 	}
 
 	if enableEventCache {
@@ -121,6 +124,22 @@ func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEve
 		pm.log.WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
+}
+
+// We handle two race conditions here one where the event races with
+// an FGS execve event and the other -- much more common -- where we
+// race with K8s watcher.
+// case 1 (execve race):
+//  Its possible to receive this FGS event before the process event cache
+//  has been populated with a FGS execve event. In this case we need to
+//  cache the event until the process cache is populated.
+// case 2 (k8s watcher race):
+//  Its possible to receive an event before the k8s watcher receives the
+//  podInfo event and populates the local cache. If we expect podInfo,
+//  indicated by having a nonZero dockerID we cache the event until the
+//  podInfo arrives.
+func (pm *ProcessManager) processCacheNeeded(proc *fgs.Process) bool {
+	return pm.enableEventCache && (proc == nil || (proc.Docker != "" && proc.Pod == nil))
 }
 
 func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHttp {
@@ -200,28 +219,24 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
-	if proc == nil && pm.enableEventCache {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-		return nil
-	}
-
-	if proc != nil && proc.Docker != "" {
+	// When CiliumAPI is enable annotate data with Cilium info. If the data
+	// is missing and enableEventCache is enabled we push event into the
+	// cache where a retry will happen.
+	if pm.enableCilium && proc != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(proc)
-		// Its possible to receive an event before its podInfo is received in
-		// this case we don't want to block waiting for it (we may have more
-		// events in the queue) so instead send it to a queue to be processed
-		// later.
-		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
 		if endpoint != nil {
 			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		} else if pm.enableEventCache {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+			return nil
 		}
 	}
-
+	if pm.processCacheNeeded(proc) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
+	}
 	return fgsEvent
 }
 
@@ -249,7 +264,7 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 	case api.MSG_OP_EXECVE:
 		proc := pm.Add(msg)
 		procEvent := pm.GetProcessExec(proc)
-		if pm.enableEventCache && procEvent.Process.Docker != "" && procEvent.Process.Pod == nil {
+		if pm.processCacheNeeded(procEvent.Process) {
 			pm.eventCache.addProc(procEvent, ktimeToProto(msg.Common.Ktime), msg)
 		} else {
 			res = &fgs.GetEventsResponse{
@@ -484,11 +499,9 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 		Action:       reader.KprobeAction(event.Action),
 	}
 
-	if fgsProcess.Docker != "" {
-		if pm.enableEventCache && fgsEvent.Process.Pod == nil {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
+	if pm.processCacheNeeded(fgsProcess) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
 	}
 	return fgsEvent
 }
@@ -555,11 +568,9 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 		Args:    fgsArgs,
 	}
 
-	if fgsProcess.Docker != "" {
-		if pm.enableEventCache && fgsEvent.Process.Pod == nil {
-			pm.eventCache.add(fgsEvent, ktimeToProto(msg.Common.Ktime), msg)
-			return nil
-		}
+	if pm.processCacheNeeded(fgsProcess) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(msg.Common.Ktime), msg)
+		return nil
 	}
 
 	return &fgs.GetEventsResponse{
@@ -884,7 +895,7 @@ func (pm *ProcessManager) GetProcessListen(
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	if pm.enableEventCache && fgsProcess.Docker != "" && fgsProcess.Pod == nil {
+	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -921,7 +932,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		Process: fgsProcess,
 		Parent:  fgsParent,
 	}
-	if pm.enableEventCache && fgsProcess.Docker != "" && fgsProcess.Pod == nil {
+	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -952,7 +963,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		Parent:  parent,
 		Cap:     pm.getCapabilities(event.Capabilities),
 	}
-	if pm.enableEventCache && process.Docker != "" && process.Pod == nil {
+	if pm.processCacheNeeded(process) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -1044,7 +1055,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		ParserStateCsize:  event.ServerCert.ParserState.Csize,
 		ParserStateSkblen: event.ServerCert.ParserState.SkbLen,
 	}
-	if pm.enableEventCache && (proc == nil || (proc.Docker != "" && proc.Pod == nil)) {
+	if pm.processCacheNeeded(proc) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -1111,16 +1122,9 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 		Stats:   fgsSocketStats,
 	}
 
-	if fgsProcess.Docker != "" {
-		endpoint := pm.getProcessEndpoint(fgsProcess)
-		// Its possible to receive an event before its podInfo is received in
-		// this case we don't want to block waiting for it (we may have more
-		// events in the queue) so instead send it to a queue to be processed
-		// later.
-		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
+	if pm.processCacheNeeded(fgsProcess) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
 	}
 	return fgsEvent
 }
@@ -1176,20 +1180,23 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	if fgsProcess.Docker != "" {
+	// When CiliumAPI is enable annotate data with Cilium info. If the data
+	// is missing and enableEventCache is enabled we push event into the
+	// cache where a retry will happen.
+	if pm.enableCilium && fgsProcess != nil {
+		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(fgsProcess)
-		// Its possible to receive an event before its podInfo is received in
-		// this case we don't want to block waiting for it (we may have more
-		// events in the queue) so instead send it to a queue to be processed
-		// later.
-		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
 		if endpoint != nil {
 			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		} else if pm.enableEventCache {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+			return nil
 		}
+	}
+	if pm.processCacheNeeded(fgsProcess) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
 	}
 	return fgsEvent
 }
@@ -1243,16 +1250,23 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	if fgsProcess.Docker != "" {
+	// When CiliumAPI is enable annotate data with Cilium info. If the data
+	// is missing and enableEventCache is enabled we push event into the
+	// cache where a retry will happen.
+	if pm.enableCilium && fgsProcess != nil {
+		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(fgsProcess)
-		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
+		if endpoint != nil {
+			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		} else if pm.enableEventCache {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
-		if endpoint != nil {
-			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
-		}
-		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+	}
+	if pm.processCacheNeeded(fgsProcess) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
 	}
 	return fgsEvent
 }
@@ -1306,17 +1320,25 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	if fgsProcess.Docker != "" {
+	// When CiliumAPI is enable annotate data with Cilium info. If the data
+	// is missing and enableEventCache is enabled we push event into the
+	// cache where a retry will happen.
+	if pm.enableCilium && fgsProcess != nil {
+		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(fgsProcess)
-		if pm.enableEventCache && (endpoint == nil || fgsEvent.Process.Pod == nil) {
+		if endpoint != nil {
+			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		} else if pm.enableEventCache {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 			return nil
 		}
-		if endpoint != nil {
-			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
-		}
-		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
+	if pm.processCacheNeeded(fgsProcess) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
+	}
+
 	return fgsEvent
 }
 

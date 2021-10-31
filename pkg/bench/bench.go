@@ -174,6 +174,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	processCacheSize := 32768
 	enableProcessCred := false
 	enableCiliumAPI := false
+	enableEventCache := false
 
 	processManager, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
@@ -181,6 +182,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 		fgsGrpc.NewFakeK8sWatcher(nil),
 		cilium.GetFakeCiliumState(),
 		enableProcessCred,
+		enableEventCache,
 		enableCiliumAPI,
 	)
 	if err != nil {
