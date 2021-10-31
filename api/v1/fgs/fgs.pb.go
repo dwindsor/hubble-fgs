@@ -2509,12 +2509,14 @@ type SockInfo struct {
 	sizeCache     protoimpl.SizeCache
 	unknownFields protoimpl.UnknownFields
 
-	SourceIp        string                  `protobuf:"bytes,1,opt,name=source_ip,json=sourceIp,proto3" json:"source_ip,omitempty"`
-	SourcePort      *wrapperspb.UInt32Value `protobuf:"bytes,2,opt,name=source_port,json=sourcePort,proto3" json:"source_port,omitempty"`
-	DestinationIp   string                  `protobuf:"bytes,3,opt,name=destination_ip,json=destinationIp,proto3" json:"destination_ip,omitempty"`
-	DestinationPort *wrapperspb.UInt32Value `protobuf:"bytes,4,opt,name=destination_port,json=destinationPort,proto3" json:"destination_port,omitempty"`
-	SockCookie      uint64                  `protobuf:"varint,5,opt,name=sock_cookie,json=sockCookie,proto3" json:"sock_cookie,omitempty"`
-	Protocol        SocketProtocol          `protobuf:"varint,6,opt,name=protocol,proto3,enum=fgs.SocketProtocol" json:"protocol,omitempty"`
+	SourceIp         string                  `protobuf:"bytes,1,opt,name=source_ip,json=sourceIp,proto3" json:"source_ip,omitempty"`
+	SourcePort       *wrapperspb.UInt32Value `protobuf:"bytes,2,opt,name=source_port,json=sourcePort,proto3" json:"source_port,omitempty"`
+	DestinationIp    string                  `protobuf:"bytes,3,opt,name=destination_ip,json=destinationIp,proto3" json:"destination_ip,omitempty"`
+	DestinationPort  *wrapperspb.UInt32Value `protobuf:"bytes,4,opt,name=destination_port,json=destinationPort,proto3" json:"destination_port,omitempty"`
+	SockCookie       uint64                  `protobuf:"varint,5,opt,name=sock_cookie,json=sockCookie,proto3" json:"sock_cookie,omitempty"`
+	Protocol         SocketProtocol          `protobuf:"varint,6,opt,name=protocol,proto3,enum=fgs.SocketProtocol" json:"protocol,omitempty"`
+	DestinationNames []string                `protobuf:"bytes,7,rep,name=destination_names,json=destinationNames,proto3" json:"destination_names,omitempty"`
+	DestinationPod   *Pod                    `protobuf:"bytes,8,opt,name=destination_pod,json=destinationPod,proto3" json:"destination_pod,omitempty"`
 }
 
 func (x *SockInfo) Reset() {
@@ -2589,6 +2591,20 @@ func (x *SockInfo) GetProtocol() SocketProtocol {
 		return x.Protocol
 	}
 	return SocketProtocol_UNKNOWN
+}
+
+func (x *SockInfo) GetDestinationNames() []string {
+	if x != nil {
+		return x.DestinationNames
+	}
+	return nil
+}
+
+func (x *SockInfo) GetDestinationPod() *Pod {
+	if x != nil {
+		return x.DestinationPod
+	}
+	return nil
 }
 
 type ProcessSockStats struct {
@@ -5541,7 +5557,7 @@ var file_fgs_fgs_proto_rawDesc = []byte{
 	0x52, 0x05, 0x65, 0x76, 0x65, 0x6e, 0x74, 0x12, 0x27, 0x0a, 0x04, 0x61, 0x72, 0x67, 0x73, 0x18,
 	0x06, 0x20, 0x03, 0x28, 0x0b, 0x32, 0x13, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f,
 	0x62, 0x65, 0x41, 0x72, 0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x52, 0x04, 0x61, 0x72, 0x67, 0x73,
-	0x22, 0xa8, 0x02, 0x0a, 0x08, 0x53, 0x6f, 0x63, 0x6b, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1b, 0x0a,
+	0x22, 0x88, 0x03, 0x0a, 0x08, 0x53, 0x6f, 0x63, 0x6b, 0x49, 0x6e, 0x66, 0x6f, 0x12, 0x1b, 0x0a,
 	0x09, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x5f, 0x69, 0x70, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09,
 	0x52, 0x08, 0x73, 0x6f, 0x75, 0x72, 0x63, 0x65, 0x49, 0x70, 0x12, 0x3d, 0x0a, 0x0b, 0x73, 0x6f,
 	0x75, 0x72, 0x63, 0x65, 0x5f, 0x70, 0x6f, 0x72, 0x74, 0x18, 0x02, 0x20, 0x01, 0x28, 0x0b, 0x32,
@@ -5559,7 +5575,13 @@ var file_fgs_fgs_proto_rawDesc = []byte{
 	0x73, 0x6f, 0x63, 0x6b, 0x43, 0x6f, 0x6f, 0x6b, 0x69, 0x65, 0x12, 0x2f, 0x0a, 0x08, 0x70, 0x72,
 	0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0e, 0x32, 0x13, 0x2e, 0x66,
 	0x67, 0x73, 0x2e, 0x53, 0x6f, 0x63, 0x6b, 0x65, 0x74, 0x50, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f,
-	0x6c, 0x52, 0x08, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x22, 0xaf, 0x01, 0x0a, 0x10,
+	0x6c, 0x52, 0x08, 0x70, 0x72, 0x6f, 0x74, 0x6f, 0x63, 0x6f, 0x6c, 0x12, 0x2b, 0x0a, 0x11, 0x64,
+	0x65, 0x73, 0x74, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x6e, 0x61, 0x6d, 0x65, 0x73,
+	0x18, 0x07, 0x20, 0x03, 0x28, 0x09, 0x52, 0x10, 0x64, 0x65, 0x73, 0x74, 0x69, 0x6e, 0x61, 0x74,
+	0x69, 0x6f, 0x6e, 0x4e, 0x61, 0x6d, 0x65, 0x73, 0x12, 0x31, 0x0a, 0x0f, 0x64, 0x65, 0x73, 0x74,
+	0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x5f, 0x70, 0x6f, 0x64, 0x18, 0x08, 0x20, 0x01, 0x28,
+	0x0b, 0x32, 0x08, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x50, 0x6f, 0x64, 0x52, 0x0e, 0x64, 0x65, 0x73,
+	0x74, 0x69, 0x6e, 0x61, 0x74, 0x69, 0x6f, 0x6e, 0x50, 0x6f, 0x64, 0x22, 0xaf, 0x01, 0x0a, 0x10,
 	0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x53, 0x6f, 0x63, 0x6b, 0x53, 0x74, 0x61, 0x74, 0x73,
 	0x12, 0x26, 0x0a, 0x07, 0x70, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28,
 	0x0b, 0x32, 0x0c, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x50, 0x72, 0x6f, 0x63, 0x65, 0x73, 0x73, 0x52,
@@ -6228,85 +6250,86 @@ var file_fgs_fgs_proto_depIdxs = []int32{
 	71,  // 57: fgs.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
 	71,  // 58: fgs.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
 	0,   // 59: fgs.SockInfo.protocol:type_name -> fgs.SocketProtocol
-	11,  // 60: fgs.ProcessSockStats.process:type_name -> fgs.Process
-	11,  // 61: fgs.ProcessSockStats.parent:type_name -> fgs.Process
-	28,  // 62: fgs.ProcessSockStats.socket:type_name -> fgs.SockInfo
-	12,  // 63: fgs.ProcessSockStats.stats:type_name -> fgs.SocketStats
-	11,  // 64: fgs.Tls.process:type_name -> fgs.Process
-	71,  // 65: fgs.Tls.source_port:type_name -> google.protobuf.UInt32Value
-	71,  // 66: fgs.Tls.destination_port:type_name -> google.protobuf.UInt32Value
-	2,   // 67: fgs.Tls.certificate_error:type_name -> fgs.TlsCertificateError
-	70,  // 68: fgs.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
-	71,  // 69: fgs.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
-	32,  // 70: fgs.HttpRequest.headers:type_name -> fgs.HttpHeader
-	70,  // 71: fgs.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
-	71,  // 72: fgs.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
-	32,  // 73: fgs.HttpResponse.headers:type_name -> fgs.HttpHeader
-	33,  // 74: fgs.HttpInfo.request:type_name -> fgs.HttpRequest
-	34,  // 75: fgs.HttpInfo.response:type_name -> fgs.HttpResponse
-	72,  // 76: fgs.HttpInfo.latency:type_name -> google.protobuf.Duration
-	11,  // 77: fgs.ProcessHttp.process:type_name -> fgs.Process
-	28,  // 78: fgs.ProcessHttp.socket:type_name -> fgs.SockInfo
-	35,  // 79: fgs.ProcessHttp.http:type_name -> fgs.HttpInfo
-	9,   // 80: fgs.ProcessHttp.destination_pod:type_name -> fgs.Pod
-	37,  // 81: fgs.StackTrace.addresses:type_name -> fgs.StackAddress
-	37,  // 82: fgs.StackTraceNode.address:type_name -> fgs.StackAddress
-	39,  // 83: fgs.StackTraceNode.labels:type_name -> fgs.StackTraceLabel
-	40,  // 84: fgs.StackTraceNode.children:type_name -> fgs.StackTraceNode
-	42,  // 85: fgs.ListSensorsResponse.sensors:type_name -> fgs.SensorStatus
-	40,  // 86: fgs.GetStackTraceTreeResponse.root:type_name -> fgs.StackTraceNode
-	3,   // 87: fgs.GetHealthStatusRequest.event_set:type_name -> fgs.HealthStatusType
-	3,   // 88: fgs.HealthStatus.event:type_name -> fgs.HealthStatusType
-	4,   // 89: fgs.HealthStatus.status:type_name -> fgs.HealthStatusResult
-	63,  // 90: fgs.GetHealthStatusResponse.health_status:type_name -> fgs.HealthStatus
-	72,  // 91: fgs.AggregationOptions.window_size:type_name -> google.protobuf.Duration
-	69,  // 92: fgs.GetEventsRequest.allow_list:type_name -> fgs.Filter
-	69,  // 93: fgs.GetEventsRequest.deny_list:type_name -> fgs.Filter
-	65,  // 94: fgs.GetEventsRequest.aggregation_options:type_name -> fgs.AggregationOptions
-	17,  // 95: fgs.GetEventsResponse.process_exec:type_name -> fgs.ProcessExec
-	13,  // 96: fgs.GetEventsResponse.process_connect:type_name -> fgs.ProcessConnect
-	15,  // 97: fgs.GetEventsResponse.process_listen:type_name -> fgs.ProcessListen
-	31,  // 98: fgs.GetEventsResponse.tls:type_name -> fgs.Tls
-	18,  // 99: fgs.GetEventsResponse.process_exit:type_name -> fgs.ProcessExit
-	14,  // 100: fgs.GetEventsResponse.process_close:type_name -> fgs.ProcessClose
-	16,  // 101: fgs.GetEventsResponse.process_accept:type_name -> fgs.ProcessAccept
-	19,  // 102: fgs.GetEventsResponse.process_cred:type_name -> fgs.ProcessCred
-	26,  // 103: fgs.GetEventsResponse.process_kprobe:type_name -> fgs.ProcessKprobe
-	27,  // 104: fgs.GetEventsResponse.process_tracepoint:type_name -> fgs.ProcessTracepoint
-	29,  // 105: fgs.GetEventsResponse.process_sockstats:type_name -> fgs.ProcessSockStats
-	36,  // 106: fgs.GetEventsResponse.process_http:type_name -> fgs.ProcessHttp
-	30,  // 107: fgs.GetEventsResponse.test:type_name -> fgs.Test
-	70,  // 108: fgs.GetEventsResponse.time:type_name -> google.protobuf.Timestamp
-	67,  // 109: fgs.GetEventsResponse.aggregation_info:type_name -> fgs.AggregationInfo
-	73,  // 110: fgs.Filter.health_check:type_name -> google.protobuf.BoolValue
-	5,   // 111: fgs.Filter.event_set:type_name -> fgs.EventType
-	66,  // 112: fgs.FineGuidanceSensors.GetEvents:input_type -> fgs.GetEventsRequest
-	62,  // 113: fgs.FineGuidanceSensors.GetHealth:input_type -> fgs.GetHealthStatusRequest
-	44,  // 114: fgs.FineGuidanceSensors.AddTracingPolicy:input_type -> fgs.AddTracingPolicyRequest
-	48,  // 115: fgs.FineGuidanceSensors.RemoveSensor:input_type -> fgs.RemoveSensorRequest
-	41,  // 116: fgs.FineGuidanceSensors.ListSensors:input_type -> fgs.ListSensorsRequest
-	50,  // 117: fgs.FineGuidanceSensors.EnableSensor:input_type -> fgs.EnableSensorRequest
-	52,  // 118: fgs.FineGuidanceSensors.DisableSensor:input_type -> fgs.DisableSensorRequest
-	53,  // 119: fgs.FineGuidanceSensors.SetSensorConfig:input_type -> fgs.SetSensorConfigRequest
-	55,  // 120: fgs.FineGuidanceSensors.GetSensorConfig:input_type -> fgs.GetSensorConfigRequest
-	58,  // 121: fgs.FineGuidanceSensors.GetStackTraceTree:input_type -> fgs.GetStackTraceTreeRequest
-	60,  // 122: fgs.FineGuidanceSensors.GetVersion:input_type -> fgs.GetVersionRequest
-	68,  // 123: fgs.FineGuidanceSensors.GetEvents:output_type -> fgs.GetEventsResponse
-	64,  // 124: fgs.FineGuidanceSensors.GetHealth:output_type -> fgs.GetHealthStatusResponse
-	45,  // 125: fgs.FineGuidanceSensors.AddTracingPolicy:output_type -> fgs.AddTracingPolicyResponse
-	49,  // 126: fgs.FineGuidanceSensors.RemoveSensor:output_type -> fgs.RemoveSensorResponse
-	43,  // 127: fgs.FineGuidanceSensors.ListSensors:output_type -> fgs.ListSensorsResponse
-	51,  // 128: fgs.FineGuidanceSensors.EnableSensor:output_type -> fgs.EnableSensorResponse
-	57,  // 129: fgs.FineGuidanceSensors.DisableSensor:output_type -> fgs.DisableSensorResponse
-	54,  // 130: fgs.FineGuidanceSensors.SetSensorConfig:output_type -> fgs.SetSensorConfigResponse
-	56,  // 131: fgs.FineGuidanceSensors.GetSensorConfig:output_type -> fgs.GetSensorConfigResponse
-	59,  // 132: fgs.FineGuidanceSensors.GetStackTraceTree:output_type -> fgs.GetStackTraceTreeResponse
-	61,  // 133: fgs.FineGuidanceSensors.GetVersion:output_type -> fgs.GetVersionResponse
-	123, // [123:134] is the sub-list for method output_type
-	112, // [112:123] is the sub-list for method input_type
-	112, // [112:112] is the sub-list for extension type_name
-	112, // [112:112] is the sub-list for extension extendee
-	0,   // [0:112] is the sub-list for field type_name
+	9,   // 60: fgs.SockInfo.destination_pod:type_name -> fgs.Pod
+	11,  // 61: fgs.ProcessSockStats.process:type_name -> fgs.Process
+	11,  // 62: fgs.ProcessSockStats.parent:type_name -> fgs.Process
+	28,  // 63: fgs.ProcessSockStats.socket:type_name -> fgs.SockInfo
+	12,  // 64: fgs.ProcessSockStats.stats:type_name -> fgs.SocketStats
+	11,  // 65: fgs.Tls.process:type_name -> fgs.Process
+	71,  // 66: fgs.Tls.source_port:type_name -> google.protobuf.UInt32Value
+	71,  // 67: fgs.Tls.destination_port:type_name -> google.protobuf.UInt32Value
+	2,   // 68: fgs.Tls.certificate_error:type_name -> fgs.TlsCertificateError
+	70,  // 69: fgs.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
+	71,  // 70: fgs.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
+	32,  // 71: fgs.HttpRequest.headers:type_name -> fgs.HttpHeader
+	70,  // 72: fgs.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
+	71,  // 73: fgs.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
+	32,  // 74: fgs.HttpResponse.headers:type_name -> fgs.HttpHeader
+	33,  // 75: fgs.HttpInfo.request:type_name -> fgs.HttpRequest
+	34,  // 76: fgs.HttpInfo.response:type_name -> fgs.HttpResponse
+	72,  // 77: fgs.HttpInfo.latency:type_name -> google.protobuf.Duration
+	11,  // 78: fgs.ProcessHttp.process:type_name -> fgs.Process
+	28,  // 79: fgs.ProcessHttp.socket:type_name -> fgs.SockInfo
+	35,  // 80: fgs.ProcessHttp.http:type_name -> fgs.HttpInfo
+	9,   // 81: fgs.ProcessHttp.destination_pod:type_name -> fgs.Pod
+	37,  // 82: fgs.StackTrace.addresses:type_name -> fgs.StackAddress
+	37,  // 83: fgs.StackTraceNode.address:type_name -> fgs.StackAddress
+	39,  // 84: fgs.StackTraceNode.labels:type_name -> fgs.StackTraceLabel
+	40,  // 85: fgs.StackTraceNode.children:type_name -> fgs.StackTraceNode
+	42,  // 86: fgs.ListSensorsResponse.sensors:type_name -> fgs.SensorStatus
+	40,  // 87: fgs.GetStackTraceTreeResponse.root:type_name -> fgs.StackTraceNode
+	3,   // 88: fgs.GetHealthStatusRequest.event_set:type_name -> fgs.HealthStatusType
+	3,   // 89: fgs.HealthStatus.event:type_name -> fgs.HealthStatusType
+	4,   // 90: fgs.HealthStatus.status:type_name -> fgs.HealthStatusResult
+	63,  // 91: fgs.GetHealthStatusResponse.health_status:type_name -> fgs.HealthStatus
+	72,  // 92: fgs.AggregationOptions.window_size:type_name -> google.protobuf.Duration
+	69,  // 93: fgs.GetEventsRequest.allow_list:type_name -> fgs.Filter
+	69,  // 94: fgs.GetEventsRequest.deny_list:type_name -> fgs.Filter
+	65,  // 95: fgs.GetEventsRequest.aggregation_options:type_name -> fgs.AggregationOptions
+	17,  // 96: fgs.GetEventsResponse.process_exec:type_name -> fgs.ProcessExec
+	13,  // 97: fgs.GetEventsResponse.process_connect:type_name -> fgs.ProcessConnect
+	15,  // 98: fgs.GetEventsResponse.process_listen:type_name -> fgs.ProcessListen
+	31,  // 99: fgs.GetEventsResponse.tls:type_name -> fgs.Tls
+	18,  // 100: fgs.GetEventsResponse.process_exit:type_name -> fgs.ProcessExit
+	14,  // 101: fgs.GetEventsResponse.process_close:type_name -> fgs.ProcessClose
+	16,  // 102: fgs.GetEventsResponse.process_accept:type_name -> fgs.ProcessAccept
+	19,  // 103: fgs.GetEventsResponse.process_cred:type_name -> fgs.ProcessCred
+	26,  // 104: fgs.GetEventsResponse.process_kprobe:type_name -> fgs.ProcessKprobe
+	27,  // 105: fgs.GetEventsResponse.process_tracepoint:type_name -> fgs.ProcessTracepoint
+	29,  // 106: fgs.GetEventsResponse.process_sockstats:type_name -> fgs.ProcessSockStats
+	36,  // 107: fgs.GetEventsResponse.process_http:type_name -> fgs.ProcessHttp
+	30,  // 108: fgs.GetEventsResponse.test:type_name -> fgs.Test
+	70,  // 109: fgs.GetEventsResponse.time:type_name -> google.protobuf.Timestamp
+	67,  // 110: fgs.GetEventsResponse.aggregation_info:type_name -> fgs.AggregationInfo
+	73,  // 111: fgs.Filter.health_check:type_name -> google.protobuf.BoolValue
+	5,   // 112: fgs.Filter.event_set:type_name -> fgs.EventType
+	66,  // 113: fgs.FineGuidanceSensors.GetEvents:input_type -> fgs.GetEventsRequest
+	62,  // 114: fgs.FineGuidanceSensors.GetHealth:input_type -> fgs.GetHealthStatusRequest
+	44,  // 115: fgs.FineGuidanceSensors.AddTracingPolicy:input_type -> fgs.AddTracingPolicyRequest
+	48,  // 116: fgs.FineGuidanceSensors.RemoveSensor:input_type -> fgs.RemoveSensorRequest
+	41,  // 117: fgs.FineGuidanceSensors.ListSensors:input_type -> fgs.ListSensorsRequest
+	50,  // 118: fgs.FineGuidanceSensors.EnableSensor:input_type -> fgs.EnableSensorRequest
+	52,  // 119: fgs.FineGuidanceSensors.DisableSensor:input_type -> fgs.DisableSensorRequest
+	53,  // 120: fgs.FineGuidanceSensors.SetSensorConfig:input_type -> fgs.SetSensorConfigRequest
+	55,  // 121: fgs.FineGuidanceSensors.GetSensorConfig:input_type -> fgs.GetSensorConfigRequest
+	58,  // 122: fgs.FineGuidanceSensors.GetStackTraceTree:input_type -> fgs.GetStackTraceTreeRequest
+	60,  // 123: fgs.FineGuidanceSensors.GetVersion:input_type -> fgs.GetVersionRequest
+	68,  // 124: fgs.FineGuidanceSensors.GetEvents:output_type -> fgs.GetEventsResponse
+	64,  // 125: fgs.FineGuidanceSensors.GetHealth:output_type -> fgs.GetHealthStatusResponse
+	45,  // 126: fgs.FineGuidanceSensors.AddTracingPolicy:output_type -> fgs.AddTracingPolicyResponse
+	49,  // 127: fgs.FineGuidanceSensors.RemoveSensor:output_type -> fgs.RemoveSensorResponse
+	43,  // 128: fgs.FineGuidanceSensors.ListSensors:output_type -> fgs.ListSensorsResponse
+	51,  // 129: fgs.FineGuidanceSensors.EnableSensor:output_type -> fgs.EnableSensorResponse
+	57,  // 130: fgs.FineGuidanceSensors.DisableSensor:output_type -> fgs.DisableSensorResponse
+	54,  // 131: fgs.FineGuidanceSensors.SetSensorConfig:output_type -> fgs.SetSensorConfigResponse
+	56,  // 132: fgs.FineGuidanceSensors.GetSensorConfig:output_type -> fgs.GetSensorConfigResponse
+	59,  // 133: fgs.FineGuidanceSensors.GetStackTraceTree:output_type -> fgs.GetStackTraceTreeResponse
+	61,  // 134: fgs.FineGuidanceSensors.GetVersion:output_type -> fgs.GetVersionResponse
+	124, // [124:135] is the sub-list for method output_type
+	113, // [113:124] is the sub-list for method input_type
+	113, // [113:113] is the sub-list for extension type_name
+	113, // [113:113] is the sub-list for extension extendee
+	0,   // [0:113] is the sub-list for field type_name
 }
 
 func init() { file_fgs_fgs_proto_init() }

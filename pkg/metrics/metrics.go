@@ -219,12 +219,7 @@ func handleHttpEvent(processedEvent interface{}) {
 	}
 }
 
-func postSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessClose, s *fgs.SocketStats) {
-	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
-	dstPod := res.GetDestinationPod()
-	dstpod, dstns := getDstPodInfo(dstPod)
-	dstLabels := strings.Join(res.DestinationNames, ",")
-
+func postSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
 	c := float64(s.BytesSent)
 	SocketStatsTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsOut)
@@ -247,12 +242,32 @@ func postSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessClose, s *fgs.So
 	SocketStatsSrtt.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Observe(c)
 }
 
+func postCloseEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessClose, s *fgs.SocketStats) {
+	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+	dstPod := res.GetDestinationPod()
+	dstpod, dstns := getDstPodInfo(dstPod)
+	dstLabels := strings.Join(res.DestinationNames, ",")
+
+	postSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, s)
+}
+
+func postStatsEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessSockStats) {
+	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+	dstPod := res.Socket.GetDestinationPod()
+	dstpod, dstns := getDstPodInfo(dstPod)
+	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
+
+	postSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
+}
+
 func handleSocketEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
 		switch res := ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessClose:
-			postSocketStats(ev, res.ProcessClose, res.ProcessClose.Stats)
+			postCloseEventSocketStats(ev, res.ProcessClose, res.ProcessClose.Stats)
+		case *fgs.GetEventsResponse_ProcessSockstats:
+			postStatsEventSocketStats(ev, res.ProcessSockstats)
 		}
 	}
 }

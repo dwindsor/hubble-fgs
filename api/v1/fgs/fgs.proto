@@ -249,6 +249,8 @@ message SockInfo {
     google.protobuf.UInt32Value destination_port = 4;
     uint64 sock_cookie = 5;
     SocketProtocol protocol = 6;
+    repeated string destination_names = 7;
+    Pod destination_pod = 8;
   }
 
 message ProcessSockStats {
