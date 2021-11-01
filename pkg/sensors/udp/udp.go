@@ -68,7 +68,7 @@ var (
 		"udp_sendmsg",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
-		"kprobe/udp_sendmsg",
+		"kprobe_udp_sendmsg",
 
 		false,
 		true,
@@ -80,7 +80,7 @@ var (
 		"udp_sendmsg",
 		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
-		"kpretrobe/udp_sendmsg",
+		"kretprobe_udp_sendmsg",
 
 		true,
 		true,
