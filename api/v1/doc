@@ -1043,6 +1043,8 @@ HTTP PARSER
 | destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | sock_cookie | [uint64](#uint64) |  |  |
 | protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
 
 
 
