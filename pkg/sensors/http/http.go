@@ -109,7 +109,7 @@ func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	}
 
 	if utils.SkSkbParserRequired() {
-		err, i = sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = sensors.LoadSkSkbParser(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
 		if err != nil {
 			return err, i
 		}
@@ -126,7 +126,7 @@ type skSkbVerdictSensor struct {
 }
 
 func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
+	return nil, 0
 }
 
 func (skmsg *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -138,7 +138,7 @@ type skSkbParserSensor struct {
 }
 
 func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, httpSockMapName))
+	return nil, 0
 }
 
 func (skmsg *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

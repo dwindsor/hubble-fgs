@@ -58,7 +58,7 @@ func LoadSkSkbVerdict(
 	)
 }
 
-func LoadSkSkb(
+func LoadSkSkbParser(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,
 	version, verbose int,

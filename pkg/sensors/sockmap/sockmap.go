@@ -164,7 +164,7 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) 
 		return err, i
 	}
 	if utils.SkSkbParserRequired() {
-		err, i = sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = sensors.LoadSkSkbParser(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbParser, args.Version, args.Verbose, args.X64, path)
 		if err != nil {
 			return err, i
 		}
@@ -181,7 +181,7 @@ type skSkbVerdictTLSSensor struct {
 }
 
 func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
+	return nil, 0
 }
 
 func (skmsg *skSkbVerdictTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -193,7 +193,7 @@ type skSkbParserTLSSensor struct {
 }
 
 func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadSkSkb(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, filepath.Join(args.MapDir, tlsSockMapName))
+	return nil, 0
 }
 
 func (skmsg *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
