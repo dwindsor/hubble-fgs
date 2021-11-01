@@ -24,9 +24,8 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 #endif
 
 static inline __attribute__((always_inline))
-int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end)
+struct udp_info_key *udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end)
 {
-	struct udp_info_value *value;
 	struct udp_info_key *key;
 	struct udphdr *udp;
 	int zero = 0;
@@ -34,7 +33,7 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 
 	key = map_lookup_elem(&udp_key_heap, &zero);
 	if (!key)
-		return 1;
+		return 0;
 
 	udp_off = ip->ihl;
 	udp_off &= 0x0f;
@@ -42,7 +41,7 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 
 	udp = (struct udphdr *)(data + udp_off);
 	if (data + udp_off + sizeof(*udp) > data_end)
-		return 1;
+		return 0;
 
 	key->saddr = ip->saddr;
 	key->daddr = ip->daddr;
@@ -50,6 +49,19 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	key->dport = udp->dest;
 	key->cookie = get_socket_cookie(skb);
 	key->padding = 0;
+	return key;
+}
+
+static inline __attribute__((always_inline))
+int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end)
+{
+	struct udp_info_value *value;
+	struct udp_info_key *key;
+	int zero = 0;
+
+	key = udp4_key(skb, ip, data, data_end);
+	if (!key)
+		return 1;
 
 	value = map_lookup_elem(&udp_map, key);
 	if (!value) {
