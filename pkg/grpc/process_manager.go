@@ -105,6 +105,11 @@ func NewProcessManager(
 	if enableEventCache {
 		pm.eventCache = newEventCache(log, pm)
 	}
+	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
+		"enableEventCache":  enableEventCache,
+		"enableProcessCred": enableProcessCred,
+		"processCacheSize":  processCacheSize,
+	}).Info("Starting process manager")
 	return pm, nil
 }
 
