@@ -1242,8 +1242,8 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
-
-		Protocol: reader.MsgToProtocol(event),
+		SockCookie:      event.SockCookie,
+		Protocol:        reader.MsgToProtocol(event),
 	}
 
 	if event.SockCookie != 0 {

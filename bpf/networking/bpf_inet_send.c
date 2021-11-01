@@ -53,7 +53,19 @@ struct udp_info_key *udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *dat
 }
 
 static inline __attribute__((always_inline))
-int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end)
+void swap_key(struct udp_info_key *key)
+{
+	u32 addr = key->saddr;
+	u16 port = key->sport;
+
+	key->saddr = key->daddr;
+	key->sport = key->dport;
+	key->daddr = addr;
+	key->dport = port;
+}
+
+static inline __attribute__((always_inline))
+int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, int send)
 {
 	struct udp_info_value *value;
 	struct udp_info_key *key;
@@ -63,6 +75,12 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	if (!key)
 		return 1;
 
+	if (!send) {
+		swap_key(key);
+		key->sport = bpf_ntohs(key->sport);
+	} else {
+		key->sport = bpf_ntohs(key->sport);
+	}
 	value = map_lookup_elem(&udp_map, key);
 	if (!value) {
 		struct execve_map_value *process;
@@ -71,7 +89,7 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 		if (!value)
 			return 1;
 
-		udp_info_reset(value, skb->len);
+		udp_info_tx_reset(value, skb->len);
 		process = map_lookup_elem(&socket_cookie_to_proc_map,
 					  &key->cookie);
 		if (process) {
@@ -87,8 +105,8 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	return 1;
 }
 
-__attribute__((section(("cgroup_skb/egress")), used))
-int inet_send(struct __sk_buff *skb)
+static inline __attribute__((always_inline))
+void inet_handler(struct __sk_buff *skb, int send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
@@ -96,14 +114,28 @@ int inet_send(struct __sk_buff *skb)
 	u8 v4_prot;
 
 	if (data + sizeof(struct iphdr) > data_end)
-		return 1;
+		return;
 	ip = (struct iphdr *)data;
 	v4_prot = ip->protocol;
 
 	if (v4_prot == IPPROTO_TCP) { // TCP
-		return 1;
+		return; 
 	} else if (v4_prot == IPPROTO_UDP) { // UDP
-		return udp4_send(skb, ip, data, data_end);
+		udp4_send(skb, ip, data, data_end, send);
 	}
+	return;
+}
+
+__attribute__((section(("cgroup_skb/egress")), used))
+int inet_send(struct __sk_buff *skb)
+{
+	inet_handler(skb, 1);
+	return SK_PASS;
+}
+
+__attribute__((section(("cgroup_skb/ingress")), used))
+int inet_recv(struct __sk_buff *skb)
+{
+	inet_handler(skb, 0);
 	return SK_PASS;
 }

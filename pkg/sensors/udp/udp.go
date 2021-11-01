@@ -63,6 +63,18 @@ var (
 		"cgrp_egress",
 	)
 
+	InetRecv = sensors.ProgramBuilder(
+		"bpf_inet_send.o",
+		"inet_recv",
+		"inet_recv",
+		"cgroup_skb/ingress",
+		"cgroup_skb_ingress",
+
+		false,
+		true,
+		"cgrp_ingress",
+	)
+
 	UdpSend = sensors.ProgramBuilder(
 		"bpf_udp_sendmsg.o",
 		"udp_sendmsg",
@@ -86,6 +98,19 @@ var (
 		true,
 		"kprobe",
 	)
+
+	UdpRecv = sensors.ProgramBuilder(
+		"bpf_udp_sendmsg.o",
+		"skb_consume_udp",
+		"skb_consume_udp",
+		"kprobe/skb_consume_udp",
+		"kprobe_skb_consume_udp",
+
+		false,
+		true,
+		"kprobe",
+	)
+
 	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
 	UdpMap          = sensors.MapBuilder(UdpMapName, "", InetSend)
 	UdpMapKprobe    = sensors.MapBuilder(UdpMapName, "", UdpSend)
@@ -165,6 +190,7 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 		DPort: k.DPort,
 		Proto: 0,
 	}
+	unix.SockCookie = k.Cookie
 	unix.Return = 0
 	unix.ProcessKey = api.MsgExecveKey{
 		Pid:   v.Pid,
@@ -241,6 +267,7 @@ func EnableUdpParser() *sensors.Sensor {
 		progs = []*sensors.Program{
 			UdpSend,
 			UdpRetSend,
+			UdpRecv,
 		}
 		maps = []*sensors.Map{
 			UdpMapKprobe,
@@ -250,6 +277,7 @@ func EnableUdpParser() *sensors.Sensor {
 		progs = []*sensors.Program{
 			SockCreate,
 			InetSend,
+			InetRecv,
 		}
 		maps = []*sensors.Map{
 			SocketCookieMap,
