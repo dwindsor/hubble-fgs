@@ -180,6 +180,15 @@ var (
 	}, nil)
 )
 
+// TLS metrics
+
+var (
+	TlsHandshakeTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "tls_handshakes_total",
+		Help: "TLS handshake statistics",
+	}, []string{"namespace", "pod", "binaray", "version", "cipher", "sni_name"})
+)
+
 func getDstPodInfo(dstPod *fgs.Pod) (pod, ns string) {
 	if dstPod != nil {
 		ns = dstPod.Namespace
@@ -352,11 +361,23 @@ func handleProcessedEvent(processedEvent interface{}) {
 	EventsProcessed.WithLabelValues(eventType, namespace, pod, binary).Inc()
 }
 
+func handleTlsEvent(processedEvent interface{}) {
+	switch ev := processedEvent.(type) {
+	case *fgs.GetEventsResponse:
+		switch res := ev.Event.(type) {
+		case *fgs.GetEventsResponse_Tls:
+			binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+			TlsHandshakeTotal.WithLabelValues(ns, pod, binary, res.Tls.NegotiatedVersion, res.Tls.Cipher, res.Tls.SniName).Inc()
+		}
+	}
+}
+
 func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
 	handleOriginalEvent(originalEvent)
 	handleProcessedEvent(processedEvent)
 	handleSocketEvent(processedEvent)
 	handleHttpEvent(processedEvent)
+	handleTlsEvent(processedEvent)
 }
 
 func EnableMetrics(address string) {
