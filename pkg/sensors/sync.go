@@ -51,7 +51,10 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 					if sensor == nil {
 						continue
 					}
-
+					if err = sensor.FindPrograms(op.ctx); err != nil {
+						err = fmt.Errorf("sensor %s could not be found", op.sensorName)
+						break
+					}
 					availableSensors[op.sensorName] = sensor
 					err = sensor.Load(op.ctx, bpfDir, mapDir, ciliumDir)
 					if err != nil {

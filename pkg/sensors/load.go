@@ -137,30 +137,41 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 	return nil
 }
 
+func (s *Sensor) findProgram(p *Program) error {
+	if _, err := os.Stat(p.Name); err == nil {
+		return nil
+	}
+	logger.GetLogger().WithField("file", p.Name).Info("Candidate bpf file does not exist")
+	last := strings.Split(p.Name, "/")
+	filename := last[len(last)-1]
+
+	path := path.Join(option.Config.HubbleLib, filename)
+	if _, err := os.Stat(path); err == nil {
+		p.Name = path
+		return nil
+	}
+	logger.GetLogger().WithField("file", path).Info("Candidate bpf file does not exist")
+
+	if option.Config.IgnoreMissingProgs {
+		logger.GetLogger().Warningf("Failed to find BPF prog %s, but was told to ignore such errors. Disabling it and moving on.", p.Name)
+		disableBpfLoad(p)
+		return nil
+	}
+
+	return fmt.Errorf("sensor program %q can not be found", p.Name)
+}
+
 // FindPrograms finds all the BPF programs in the sensor on the filesytem.
 func (s *Sensor) FindPrograms(ctx context.Context) error {
 	for _, p := range s.Progs {
-		if _, err := os.Stat(p.Name); err == nil {
-			continue
+		if err := s.findProgram(p); err != nil {
+			return err
 		}
-		logger.GetLogger().WithField("file", p.Name).Info("Candidate bpf file does not exist")
-		last := strings.Split(p.Name, "/")
-		filename := last[len(last)-1]
-
-		path := path.Join(option.Config.HubbleLib, filename)
-		if _, err := os.Stat(path); err == nil {
-			p.Name = path
-			continue
+	}
+	for _, m := range s.Maps {
+		if err := s.findProgram(m.Prog); err != nil {
+			return err
 		}
-		logger.GetLogger().WithField("file", path).Info("Candidate bpf file does not exist")
-
-		if option.Config.IgnoreMissingProgs {
-			logger.GetLogger().Warningf("Failed to find BPF prog %s, but was told to ignore such errors. Disabling it and moving on.", p.Name)
-			disableBpfLoad(p)
-			continue
-		}
-
-		return fmt.Errorf("sensor program %q can not be found", p.Name)
 	}
 	return nil
 }
