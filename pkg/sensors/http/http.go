@@ -353,7 +353,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 		}
 	}
 	if err := iter.Err(); err != nil {
-		logger.GetLogger().Warnf("Error iterating HTTP data: %s", err)
+		logger.GetLogger().Debugf("Error iterating HTTP data: %s", err)
 	}
 
 	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
