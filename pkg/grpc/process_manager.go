@@ -176,6 +176,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 			Code:          code,
 			Reason:        event.Request.Reason,
 			ContentLength: &wrapperspb.UInt32Value{Value: uint32(length)},
+			Flags:         strings.Join(reader.HttpErrorFlags(event.Request.FlagsResponse), " "),
 		}
 	}
 
@@ -193,6 +194,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 			Host:          event.Request.Host,
 			Agent:         event.Request.UserAgent,
 			ContentLength: &wrapperspb.UInt32Value{Value: uint32(length)},
+			Flags:         strings.Join(reader.HttpErrorFlags(event.Request.Flags), " "),
 		}
 	}
 

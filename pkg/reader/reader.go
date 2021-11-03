@@ -521,3 +521,15 @@ func KprobeAction(act uint64) fgs.KprobeAction {
 		return fgs.KprobeAction_KPROBE_ACTION_UNKNOWN
 	}
 }
+
+func HttpErrorFlags(flags uint32) []string {
+	var s []string
+
+	if (flags & IterErrorCodeRead) != 0 {
+		s = append(s, "ChunkReadFailed")
+	}
+	if (flags & IterErrorCodeOverrun) != 0 {
+		s = append(s, "ChunkTooLarge")
+	}
+	return s
+}
