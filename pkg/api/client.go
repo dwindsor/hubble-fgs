@@ -466,11 +466,13 @@ type MsgHttpUnix struct {
 	RespVersion       string
 	RequestId         uint64
 	Ktime             uint64
+	Flags             uint32
+	FlagsResponse     uint32
 }
 
 type MsgHttp struct {
 	Method uint32
-	Pad    uint32
+	Flags  uint32
 	ReqId  uint64
 	RespId uint64
 	Url    [512]byte

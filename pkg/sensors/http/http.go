@@ -307,6 +307,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 	}
 
 	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
+	unix.Request.Flags = 0
 
 	switch m.Request.Method {
 	case MethodPRI:
@@ -354,6 +355,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 	}
 	if err := iter.Err(); err != nil {
 		logger.GetLogger().Debugf("Error iterating HTTP data: %s", err)
+		unix.Request.Flags = iter.ErrorToCode()
 	}
 
 	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
@@ -387,6 +389,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 			unix.Request.UserAgent = r.Request.UserAgent
 			unix.Request.ContentLength = r.Request.ContentLength
 			unix.Request.Ktime = r.Common.Ktime
+			unix.Request.FlagsResponse = r.Request.Flags
 			unix.ProcessKey = r.ProcessKey
 			aggregate.Remove(key)
 		}

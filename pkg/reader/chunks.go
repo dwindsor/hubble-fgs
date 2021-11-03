@@ -20,16 +20,22 @@ import (
 	"github.com/yalue/native_endian"
 )
 
+const (
+	IterErrorCodeRead    = 0x10
+	IterErrorCodeOverrun = 0x20
+)
+
 // TypedChunkIterator is an utility for iterating over a stream of
 // [ type (u32) | size (u32) | payload ]
 // Type and size are in the native byte-order.
 type TypedChunkIterator struct {
-	buf *bytes.Buffer
-	err error
+	buf     *bytes.Buffer
+	err     error
+	errCode uint32
 }
 
 func NewTypedChunkIterator(buf []byte) *TypedChunkIterator {
-	return &TypedChunkIterator{bytes.NewBuffer(buf), nil}
+	return &TypedChunkIterator{bytes.NewBuffer(buf), nil, 0}
 }
 
 func (it *TypedChunkIterator) readNativeUint32() (uint32, error) {
@@ -60,10 +66,12 @@ func (it *TypedChunkIterator) Next() ([]byte, uint32, bool) {
 	size, err := it.readNativeUint32()
 	if err != nil {
 		it.err = fmt.Errorf("failed to read %d > %d", size, it.buf.Len())
+		it.errCode = IterErrorCodeRead
 		return nil, 0, false
 	}
 	if it.buf.Len() < int(size) {
 		it.err = fmt.Errorf("chunk size overruns the buffer: %d > %d", size, it.buf.Len())
+		it.errCode = IterErrorCodeOverrun
 		return nil, 0, false
 	}
 
@@ -73,4 +81,8 @@ func (it *TypedChunkIterator) Next() ([]byte, uint32, bool) {
 func (it *TypedChunkIterator) NextString() (string, uint32, bool) {
 	b, typ, ok := it.Next()
 	return string(b), typ, ok
+}
+
+func (it *TypedChunkIterator) ErrorToCode() uint32 {
+	return it.errCode
 }

@@ -79,7 +79,7 @@ enum http_request_state {
 
 struct __msg_http {
 	__u32 method;
-	__u32 pad;
+	__u32 flags;
 	/* counters to use for IDs in sender and receiver
 	 * side. These must only be used under sock_lock
 	 * to ensure single reader/writer.
