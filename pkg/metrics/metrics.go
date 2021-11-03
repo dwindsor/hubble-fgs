@@ -361,13 +361,26 @@ func handleProcessedEvent(processedEvent interface{}) {
 	EventsProcessed.WithLabelValues(eventType, namespace, pod, binary).Inc()
 }
 
+func getNegotiatedVersion(tls *fgs.Tls) string {
+	if tls.NegotiatedVersion != "" {
+		// For TLS 1.3 the negotiated version field is set. Use it.
+		return tls.NegotiatedVersion
+	} else if tls.ClientVersion < tls.ServerVersion {
+		// For TLS < 1.3, pick the older version between client and server versions.
+		return tls.ClientVersion
+	} else {
+		return tls.ServerVersion
+	}
+}
+
 func handleTlsEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
 		switch res := ev.Event.(type) {
 		case *fgs.GetEventsResponse_Tls:
 			binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
-			TlsHandshakeTotal.WithLabelValues(ns, pod, binary, res.Tls.NegotiatedVersion, res.Tls.Cipher, res.Tls.SniName).Inc()
+			version := getNegotiatedVersion(res.Tls)
+			TlsHandshakeTotal.WithLabelValues(ns, pod, binary, version, res.Tls.Cipher, res.Tls.SniName).Inc()
 		}
 	}
 }

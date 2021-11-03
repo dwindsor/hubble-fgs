@@ -122,3 +122,14 @@ isovalent_flags_total{type="execve"} 1
 `)
 	assert.NoError(t, testutil.CollectAndCompare(FlagCount, expected))
 }
+
+func Test_getNegotiatedVersion(t *testing.T) {
+	version := getNegotiatedVersion(&fgs.Tls{NegotiatedVersion: "hello"})
+	assert.Equal(t, "hello", version)
+	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: "TLS 1.2", ServerVersion: "TLS 1.1"})
+	assert.Equal(t, "TLS 1.1", version)
+	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: "TLS 1.1", ServerVersion: "TLS 1.2"})
+	assert.Equal(t, "TLS 1.1", version)
+	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: "TLS 1.0", ServerVersion: "TLS 1.0"})
+	assert.Equal(t, "TLS 1.0", version)
+}
