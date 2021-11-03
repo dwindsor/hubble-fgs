@@ -514,6 +514,7 @@ HTTP PARSER
 | agent | [string](#string) |  |  |
 | content_length | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | headers | [HttpHeader](#fgs.HttpHeader) | repeated |  |
+| flags | [string](#string) |  |  |
 
 
 
@@ -534,6 +535,7 @@ HTTP PARSER
 | reason | [string](#string) |  |  |
 | content_length | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | headers | [HttpHeader](#fgs.HttpHeader) | repeated |  |
+| flags | [string](#string) |  |  |
 
 
 

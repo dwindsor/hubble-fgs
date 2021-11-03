@@ -329,6 +329,7 @@ message HttpRequest {
    string agent                = 6;
    google.protobuf.UInt32Value content_length = 7;
    repeated HttpHeader headers = 8;
+   string flags                = 9;
 }
 
 message HttpResponse {
@@ -338,6 +339,7 @@ message HttpResponse {
    string reason                = 4;
    google.protobuf.UInt32Value content_length = 5;
    repeated HttpHeader headers  = 6;
+   string flags                 = 7;
 }
 
 message HttpInfo {
