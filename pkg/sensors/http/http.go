@@ -39,9 +39,12 @@ var (
 	Selectors [128]byte
 
 	// Runtime aggregation of request/response
-	aggregate       *lru.Cache
-	aggregateEnable bool
-	cacheSize       = 1024
+	aggregate          *lru.Cache
+	moreBytes          *lru.Cache
+	aggregateEnable    bool
+	moreBytesEnable    bool
+	cacheSize          = 1024
+	moreBytesCacheSize = 32
 
 	// The per-connection and per-direction HTTP/2 state that is required to decompress the
 	// header frames.
@@ -54,6 +57,17 @@ var (
 	// frames may fail to decode.
 	frameQueueSize = 128
 )
+
+var (
+	HttpMoreHeadersNeeded = uint32(1)
+)
+
+func httpNeedsMoreBytes(flags uint32) bool {
+	if HttpMoreHeadersNeeded&flags > 0 {
+		return true
+	}
+	return false
+}
 
 var (
 	Skmsg = sensors.ProgramBuilder(
@@ -151,6 +165,14 @@ func init() {
 
 func AddHTTP() {
 	var err error
+
+	moreBytes, err = lru.New(moreBytesCacheSize)
+	if err != nil {
+		logger.GetLogger().Errorf("HTTP More bytes cache failed, may drop data: %s\n", err)
+		moreBytesEnable = false
+	} else {
+		moreBytesEnable = true
+	}
 
 	aggregate, err = lru.New(cacheSize)
 	if err != nil {
@@ -318,6 +340,22 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 		unix.Request.RequestId = m.Request.ReqId
 	}
 
+	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
+	// header decoders.
+	unix.Tuple.Proto = 0
+	key := api.HttpKey{
+		Tuple: unix.Tuple,
+		Id:    unix.Request.RequestId,
+	}
+
+	if moreBytesEnable {
+		entry, ok := moreBytes.Get(key)
+		if ok {
+			unix = entry.(*api.MsgHttpEventUnix)
+			moreBytes.Remove(key)
+		}
+	}
+
 	iter := reader.NewTypedChunkIterator(m.Request.Url[:])
 
 	for {
@@ -358,18 +396,14 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 		unix.Request.Flags = iter.ErrorToCode()
 	}
 
-	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
-	// header decoders.
-	unix.Tuple.Proto = 0
-
-	key := api.HttpKey{
-		Tuple: unix.Tuple,
-		Id:    unix.Request.RequestId,
-	}
-
 	// If aggregation is disabled just push events as we see them.
 	if !aggregateEnable {
 		return []observer.ObserverEvent{unix}, nil
+	}
+
+	if httpNeedsMoreBytes(m.Request.Flags) {
+		moreBytes.Add(key, unix)
+		return nil, nil
 	}
 
 	/* If this is not a response then its a request and we need to cache it
