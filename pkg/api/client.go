@@ -475,7 +475,7 @@ type MsgHttp struct {
 	Flags  uint32
 	ReqId  uint64
 	RespId uint64
-	Url    [512]byte
+	Url    [1024]byte
 	Pad1   uint32
 	Pad2   uint32
 	Pad3   uint32

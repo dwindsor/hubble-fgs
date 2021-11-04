@@ -76,7 +76,7 @@ char *get_chars(ctx_md *msg, long offset, long cnt)
 		data_end = (void *)(long)msg->data_end;
 		payload = (void *)(long)msg->data;
 
-		asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
+		asm volatile ("%[offset] &= 0x3ff;\n": [offset] "+r"(offset)::);
 		asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);
 		if (payload + offset + cnt > data_end)
 			return 0;
@@ -211,20 +211,20 @@ void get_string(ctx_md *msg,
 	int i;
 	int do_push = (ty == http_request_content_length);
 
-	if (offset + max > 0x1ff) {
+	if (offset + max > 0x3ff) {
 		http->flags = HTTP_MORE_HEADERS_NEEDED;
 		http->state = http_more_headers_needed;
 		post_http_event(msg, key, event);
 		return;
 	}
 
-	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
+	asm volatile ("%[offset] &= 0x3ff;\n": [offset] "+r"(offset)::);
 	for (i = 0; i < max - 8; i++) {
 		char *c = eat_next_char(msg, http);
 
 		if (c == 0 || term == c[0])
 			break;
-		if (offset > 0x1ff)
+		if (offset > 0x3ff)
 			break;
 		dst[offset+i+8] = c[0];
 	}
@@ -232,7 +232,7 @@ void get_string(ctx_md *msg,
 	 * it was pushed into stack and we only recently added bounds tracking
 	 * through stack. So duplicate the offset bound here.
 	 */
-	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
+	asm volatile ("%[offset] &= 0x3ff;\n": [offset] "+r"(offset)::);
 	dstsz = (__u32*)&dst[offset];
 	dstsz[0] = ty;
 	dstsz[1] = i;
@@ -603,7 +603,7 @@ void post_http_event(ctx_md *msg,
 	}
 
 	/* Terminate the payload */
-	dst = (__u32*)&http->request.url[http->request.url_offset & 0x1ff];
+	dst = (__u32*)&http->request.url[http->request.url_offset & 0x3ff];
 	dst[0] = 0;
 	dst[1] = 0;
 
