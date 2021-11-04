@@ -347,12 +347,14 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 		Tuple: unix.Tuple,
 		Id:    unix.Request.RequestId,
 	}
+	usedMoreBytes := uint32(0)
 
 	if moreBytesEnable {
 		entry, ok := moreBytes.Get(key)
 		if ok {
 			unix = entry.(*api.MsgHttpEventUnix)
 			moreBytes.Remove(key)
+			usedMoreBytes |= reader.HttpMultiMessage
 		}
 	}
 
@@ -423,7 +425,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 			unix.Request.UserAgent = r.Request.UserAgent
 			unix.Request.ContentLength = r.Request.ContentLength
 			unix.Request.Ktime = r.Common.Ktime
-			unix.Request.FlagsResponse = r.Request.Flags
+			unix.Request.FlagsResponse = r.Request.Flags | usedMoreBytes
 			unix.ProcessKey = r.ProcessKey
 			aggregate.Remove(key)
 		}
