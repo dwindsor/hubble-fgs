@@ -68,7 +68,7 @@ char *get_chars(ctx_md *msg, long offset, long cnt)
 	void *data_end = (void *)(long)msg->data_end;
 	void *payload = (void *)(long)msg->data;
 
-	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
+	asm volatile ("%[offset] &= 0x7fff;\n": [offset] "+r"(offset)::);
 	asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);
 	if (payload + offset + cnt > data_end) {
 		ctx_pull_data(msg, offset + cnt);
