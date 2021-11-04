@@ -36,7 +36,7 @@ int bpf_http_sk_msg_fgs_response(struct sk_msg_md *msg)
 	if (unlikely(!http))
 		return SK_PASS;
 
-	http_parse_response(msg, &http->request);
+	http_parse_response(msg, &tuple, http, &http->request);
 	http->request.state = http_done;
 	if (http->request.state == http_done)
 		post_http_event(msg, &tuple, http);
@@ -54,7 +54,7 @@ int bpf_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 	if (unlikely(!http))
 		return SK_PASS;
 
-	http_parse_request(msg, &http->request);
+	http_parse_request(msg, &tuple, http);
 	http->request.state = http_done;
 	if (http->request.state == http_done)
 		post_http_event(msg, &tuple, http);
@@ -71,10 +71,9 @@ int bpf_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 	http = get_http_context(&tuple);
 	if (unlikely(!http))
 		return SK_PASS;
-	find_host_header(msg, &http->request);
-	http->request.state = http_done;
-	if (http->request.state == http_done)
-		post_http_event(msg, &tuple, http);
+	http->request.state = http_get_headers;
+	find_host_header(msg, &tuple, http, &http->request);
+	post_http_event(msg, &tuple, http);
 	return SK_PASS;
 }
 

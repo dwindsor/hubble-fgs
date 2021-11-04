@@ -307,7 +307,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 	}
 
 	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
-	unix.Request.Flags = 0
+	unix.Request.Flags = m.Request.Flags
 
 	switch m.Request.Method {
 	case MethodPRI:

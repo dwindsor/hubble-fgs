@@ -54,7 +54,7 @@ int bpf_skskb_http_response(struct __sk_buff *skb)
 	if (unlikely(!http))
 		return SK_PASS;
 
-	http_parse_response(skb, &http->request);
+	http_parse_response(skb, &key, http, &http->request);
 	http->request.state = http_done;
 	if (http->request.state == http_done)
 		post_http_event(skb, &key, http);
@@ -72,7 +72,7 @@ int bpf_skskb_http_request(struct __sk_buff *skb)
 	if (unlikely(!http))
 		return SK_PASS;
 
-	http_parse_request(skb, &http->request);
+	http_parse_request(skb, &key, http);
 	http->request.state = http_done;
 	if (http->request.state == http_done)
 		post_http_event(skb, &key, http);
@@ -89,7 +89,8 @@ int bpf_skskb_get_more_headers(struct __sk_buff *skb)
 	http = get_http_context(&key);
 	if (unlikely(!http))
 		return SK_PASS;
-	find_host_header(skb, &http->request);
+	http->request.state = http_get_headers;
+	find_host_header(skb, &key, http, &http->request);
 	http->request.state = http_done;
 	if (http->request.state == http_done)
 		post_http_event(skb, &key, http);

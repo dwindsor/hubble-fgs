@@ -71,11 +71,16 @@ enum http_request_state {
 	http_done,
 	http_error,
 
+	http_get_headers,
+	http_more_headers_needed,
+
 	/* when state is above this we tail-call into http2 parser */
 
 	http2_expect_preface,
 	http2_expect_frame,
 };
+
+#define HTTP_MORE_HEADERS_NEEDED 0x1
 
 struct __msg_http {
 	__u32 method;
@@ -95,7 +100,7 @@ struct __msg_http {
 
 struct msg_http {
 	__u32 method;
-	__u32 pad;
+	__u32 flags;
 	/* counters to use for IDs in sender and receiver
 	 * side. These must only be used under sock_lock
 	 * to ensure single reader/writer.
