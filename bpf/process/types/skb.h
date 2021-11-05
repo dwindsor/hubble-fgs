@@ -62,15 +62,11 @@ int set_event_from_skb(struct skb_type *event, struct sk_buff *skb) {
 #define SKB_EXT_SEC_PATH 1 // TBD do this with BTF
 			probe_read(&ext, sizeof(ext), _(&skb->extensions));
 			if (ext) {
-			bpf_printk("ext pointer %x\n", ext);
         		probe_read(&offset, sizeof(offset), _(&ext->offset[SKB_EXT_SEC_PATH]));
-			bpf_printk("offset value %x\n", offset);
 			sp = (void *)ext + (offset << 3);
 
 			probe_read(&event->secpath_len, sizeof(event->secpath_len), _(&sp->len));
 			probe_read(&event->secpath_olen, sizeof(event->secpath_olen), _(&sp->olen));
-			bpf_printk("active extensions exists ... %d\n", 0);
-			bpf_printk("secpath len %d  0x%x\n", event->secpath_len, offset);
 			}
 		}
 		return 0;
