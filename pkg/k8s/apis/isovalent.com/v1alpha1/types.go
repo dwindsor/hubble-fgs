@@ -197,6 +197,11 @@ type HttpSpec struct {
 	Selectors []HttpSelector `json:"selectors"`
 }
 
+type InterfacePolicySpec struct {
+	// Interface enable parser
+	Enable bool `json:"enable"`
+}
+
 type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A Tls specs.
@@ -207,6 +212,9 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// UDP policy specification
 	Udp UdpPolicySpec `json:"udp"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Interface InterfacePolicySpec `json:"interface"`
 }
 
 type UdpPolicySpec struct {

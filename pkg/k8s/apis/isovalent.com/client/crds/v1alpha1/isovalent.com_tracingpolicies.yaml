@@ -300,6 +300,15 @@ spec:
                     required:
                     - enable
                     type: object
+                  interface:
+                    description: Network policy specification
+                    properties:
+                      enable:
+                        description: Interface enable parser
+                        type: boolean
+                    required:
+                    - enable
+                    type: object
                   tls:
                     description: A Tls specs.
                     properties:
