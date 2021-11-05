@@ -351,6 +351,8 @@ func handleProcessedEvent(processedEvent interface{}) {
 			eventType = fgs.EventType_PROCESS_TRACEPOINT.String()
 		case *fgs.GetEventsResponse_ProcessSockstats:
 			eventType = fgs.EventType_PROCESS_SOCKSTATS.String()
+		case *fgs.GetEventsResponse_InterfaceStats:
+			eventType = fgs.EventType_INTERFACE_STATS.String()
 		default:
 			logger.GetLogger().WithField("event", processedEvent).Warn("metrics: handleProcessedEvent: unhandled event")
 			eventType = "unhandled"

@@ -84,6 +84,8 @@ const (
 	MSG_OP_IPV4_UDPCONNECT = 18
 	MSG_OP_IPV4_UDPSTATS   = 19
 
+	MSG_OP_INTERFACE_STATS = 20
+
 	// just for testing
 	MSG_OP_TEST = 254
 )
@@ -348,6 +350,29 @@ type MsgIPv4EventUnix struct {
 	ProcessKey  MsgExecveKey
 	SockCookie  uint64
 	SocketStats MsgSocketStats
+}
+
+type MsgInterfaceStats struct {
+	BytesSent       uint64
+	BytesReceived   uint64
+	PacketsSent     uint64
+	PacketsReceived uint64
+	TxErrors        uint64
+	RxErrors        uint64
+	RxDrops         uint64
+	TxDrops         uint64
+}
+
+type MsgInterface struct {
+	Name  string
+	Index int
+}
+
+type MsgInterfaceEventUnix struct {
+	Common MsgCommon
+	Kube   MsgK8sUnix
+	Iface  MsgInterface
+	Stats  MsgInterfaceStats
 }
 
 var MsgUnixSize uint32 = 640

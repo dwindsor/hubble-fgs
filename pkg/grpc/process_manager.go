@@ -513,6 +513,40 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	return fgsEvent
 }
 
+func (pm *ProcessManager) GetInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs.InterfaceStats {
+	fgsEvent := &fgs.InterfaceStats{
+		InterfaceName:    msg.Iface.Name,
+		InterfaceIfindex: uint32(msg.Iface.Index),
+		BytesSent:        msg.Stats.BytesSent,
+		BytesReceived:    msg.Stats.BytesReceived,
+		PacketsSent:      msg.Stats.PacketsSent,
+		PacketsReceived:  msg.Stats.PacketsReceived,
+		TxErrors:         msg.Stats.TxErrors,
+		RxErrors:         msg.Stats.RxErrors,
+		TxDrops:          msg.Stats.TxDrops,
+		RxDrops:          msg.Stats.RxDrops,
+	}
+	return fgsEvent
+}
+
+func (pm *ProcessManager) handleInterfaceMessage(msg *api.MsgInterfaceEventUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_INTERFACE_STATS:
+		stats := pm.GetInterfaceStats(msg)
+		if stats != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_InterfaceStats{InterfaceStats: stats},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
+		}
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
 func (pm *ProcessManager) handleGenericKprobeMessage(msg *api.MsgGenericKprobeUnix) *fgs.GetEventsResponse {
 	k := pm.GetProcessKprobe(msg)
 	if k == nil {
@@ -601,6 +635,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleExecveMessage(msg)
 	case *api.MsgIPv4EventUnix:
 		processedEvent = pm.handleIpMessage(msg)
+	case *api.MsgInterfaceEventUnix:
+		processedEvent = pm.handleInterfaceMessage(msg)
 	case *api.MsgExitEventUnix:
 		processedEvent = pm.handleExitMessage(msg)
 	case *api.MsgCredEventUnix:
