@@ -1,8 +1,8 @@
-apiVersion: hubble-enterprise.io/v1
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "udp"
 spec:
-  description: "udp parser spec"
   parser:
     udp:
       enable: true
