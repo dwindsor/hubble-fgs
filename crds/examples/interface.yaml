@@ -1,0 +1,8 @@
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "interface-stats"
+spec:
+  parser:
+    interface:
+      enable: true
