@@ -33,6 +33,7 @@
     - [HttpRequest](#fgs.HttpRequest)
     - [HttpResponse](#fgs.HttpResponse)
     - [Image](#fgs.Image)
+    - [InterfaceStats](#fgs.InterfaceStats)
     - [KprobeArgument](#fgs.KprobeArgument)
     - [KprobeFile](#fgs.KprobeFile)
     - [KprobePath](#fgs.KprobePath)
@@ -320,6 +321,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_tracepoint | [ProcessTracepoint](#fgs.ProcessTracepoint) |  |  |
 | process_sockstats | [ProcessSockStats](#fgs.ProcessSockStats) |  |  |
 | process_http | [ProcessHttp](#fgs.ProcessHttp) |  |  |
+| interface_stats | [InterfaceStats](#fgs.InterfaceStats) |  |  |
 | test | [Test](#fgs.Test) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
 | time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed.
@@ -552,6 +554,31 @@ HTTP PARSER
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.InterfaceStats"></a>
+
+### InterfaceStats
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| interface_name | [string](#string) |  |  |
+| interface_ifindex | [uint32](#uint32) |  |  |
+| bytes_sent | [uint64](#uint64) |  |  |
+| bytes_received | [uint64](#uint64) |  |  |
+| packets_sent | [uint64](#uint64) |  |  |
+| packets_received | [uint64](#uint64) |  |  |
+| tx_errors | [uint64](#uint64) |  |  |
+| rx_errors | [uint64](#uint64) |  |  |
+| tx_drops | [uint64](#uint64) |  |  |
+| rx_drops | [uint64](#uint64) |  |  |
+| pod | [Pod](#fgs.Pod) |  |  |
 
 
 
@@ -1280,6 +1307,7 @@ EventType constants are based on the ones from pkg/api/client
 | PROCESS_TRACEPOINT | 14 |  |
 | PROCESS_SOCKSTATS | 15 |  |
 | PROCESS_HTTP | 16 |  |
+| INTERFACE_STATS | 17 |  |
 | TEST | 254 |  |
 
 
