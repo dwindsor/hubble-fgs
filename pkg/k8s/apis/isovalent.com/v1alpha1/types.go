@@ -200,6 +200,9 @@ type HttpSpec struct {
 type InterfacePolicySpec struct {
 	// Interface enable parser
 	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Interface interval in seconds
+	StatsInterval uint32 `json:"StatsInterval"`
 }
 
 type ParserPolicySpec struct {

@@ -303,6 +303,10 @@ spec:
                   interface:
                     description: Network policy specification
                     properties:
+                      StatsInterval:
+                        description: Interface interval in seconds
+                        format: int32
+                        type: integer
                       enable:
                         description: Interface enable parser
                         type: boolean

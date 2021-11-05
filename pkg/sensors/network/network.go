@@ -82,8 +82,14 @@ func (net *networkSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return nil, 0
 }
 
-func EnableNetworkParser() *sensors.Sensor {
-	defaultCBInterval := NetworkStatInterval
+func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
+	var defaultCBInterval time.Duration
+
+	if statInterval == 0 {
+		defaultCBInterval = NetworkStatInterval
+	} else {
+		defaultCBInterval = time.Duration(time.Duration(statInterval) * time.Second)
+	}
 
 	logger.GetLogger().Infof("Enable Interface Statistics")
 	networkCB(defaultCBInterval)
@@ -94,7 +100,7 @@ func (net *networkSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensor
 	if !spec.Parser.Interface.Enable {
 		return nil, nil
 	}
-	return EnableNetworkParser(), nil
+	return EnableNetworkParser(spec.Parser.Interface.StatsInterval), nil
 }
 
 func init() {

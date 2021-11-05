@@ -6,3 +6,4 @@ spec:
   parser:
     interface:
       enable: true
+      statsInterval: 10
