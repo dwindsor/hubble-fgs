@@ -89,8 +89,8 @@ func TestTCTLS13(t *testing.T) {
 
 	tlsCh := ec.NewTlsChecker().
 		WithNegotiatedVersion("TLS1.3").
-		WithClientVersion("TLS 1.2").
-		WithServerVersion("TLS 1.2").
+		WithClientVersion("TLS1.2").
+		WithServerVersion("TLS1.2").
 		WithSniType("host_name").
 		WithSniName("www.google.com").
 		WithClientFlags("ExtVersion").
@@ -149,8 +149,8 @@ func TestTCTLS12(t *testing.T) {
 		ec.SuffixStringMatch("curl"), ec.FullStringMatch("https://tls-v1-2.badssl.com:1012/"),
 	)
 	tlsCh := ec.NewTlsChecker().
-		WithClientVersion("TLS 1.2").
-		WithServerVersion("TLS 1.2").
+		WithClientVersion("TLS1.2").
+		WithServerVersion("TLS1.2").
 		WithSniType("host_name").
 		WithSniName("tls-v1-2.badssl.com").
 		WithClientFlags("ExtVersion").

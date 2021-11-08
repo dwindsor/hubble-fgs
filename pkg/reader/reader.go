@@ -355,16 +355,16 @@ func GetTLSFlags(flags uint32) string {
 
 func GetTLSVersion(version uint16) string {
 	switch version {
-	case 0x0403:
-		return "TLS 1.3"
-	case 0x0303:
-		return "TLS 1.2"
-	case 0x0203:
-		return "TLS 1.1"
-	case 0x0103:
-		return "TLS 1.0"
+	case api.TLSVersion13:
+		return "TLS1.3"
+	case api.TLSVersion12:
+		return "TLS1.2"
+	case api.TLSVersion11:
+		return "TLS1.1"
+	case api.TLSVersion10:
+		return "TLS1.0"
 	default:
-		return fmt.Sprintf("%x", version)
+		return "unknown(" + strconv.FormatUint(uint64(version), 10) + ")"
 	}
 }
 
@@ -401,20 +401,7 @@ func GetTLSSupportedVersions(vers []byte, hasLength bool) string {
 
 	for i := 0; i <= len(vers)-2; i += 2 {
 		t := binary.LittleEndian.Uint16(vers[i : i+2])
-
-		switch t {
-		case api.TLSVersion13:
-			s = append(s, "TLS1.3")
-		case api.TLSVersion12:
-			s = append(s, "TLS1.2")
-		case api.TLSVersion11:
-			s = append(s, "TLS1.1")
-		case api.TLSVersion10:
-			s = append(s, "TLS1.0")
-		case 0:
-		default:
-			s = append(s, "unknown("+strconv.FormatUint(uint64(t), 10)+")")
-		}
+		s = append(s, GetTLSVersion(t))
 	}
 	return strings.Join(s, " ")
 }
