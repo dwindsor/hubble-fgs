@@ -14,10 +14,13 @@ package sockmap
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
+	"io"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/yalue/native_endian"
 )
 
 var (
@@ -31,9 +34,8 @@ const (
 )
 
 type MsgTLSEventCert struct {
-	tls    *api.MsgTLSEvent
-	cert   []byte
-	header uint32
+	tls  *api.MsgTLSEvent
+	cert []byte
 }
 
 func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errState api.MsgTLSParserState) *api.MsgTLSEventUnix {
@@ -61,7 +63,7 @@ func HandleTLS(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	errCode := uint32(0)
 
 	m = &api.MsgTLSEvent{}
-	err := binary.Read(r, binary.LittleEndian, m)
+	err := binary.Read(r, native_endian.NativeEndian(), m)
 	if err != nil {
 		return nil, err
 	}
@@ -80,21 +82,6 @@ func HandleTLS(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	return []observer.ObserverEvent{msgToTLSEventUnix(m, certStrings, errCode, errState)}, nil
 }
 
-// bpf_skskb_post_cert and bpf_skskb_post_more_cert return additional
-// information around their specific errors.
-func errorHasState(errType uint32) bool {
-	switch errType {
-	case api.TlsCertificateErrorTooLarge,
-		api.TlsCertificateErrorGetDataHdr,
-		api.TlsCertificateErrorGetDataCert,
-		api.TlsCertificateErrorGetDataMoreCert,
-		api.TlsCertificateErrorCopyCert,
-		api.TlsCertificateErrorCopyMoreCert:
-		return true
-	}
-	return false
-}
-
 // HandleTLSCont handles a TLS continuation event that was split up by the
 // kernel. It will merge them together and pass it up to the TLS Listener as a
 // full event.
@@ -105,14 +92,17 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	var bytes uint32
 	var op uint8
 
-	binary.Read(r, binary.LittleEndian, &op)
+	if err := binary.Read(r, native_endian.NativeEndian(), &op); err != nil {
+		return nil, err
+	}
 	key := api.MsgTLSIPv4{}
-	binary.Read(r, binary.LittleEndian, &key)
+	if err := binary.Read(r, native_endian.NativeEndian(), &key); err != nil {
+		return nil, err
+	}
 
 	/* We hide a completion bit in the struct, but is not used to
 	 * as part of the key lookup.
 	 */
-	remaining := key.Remaining
 	key.Remaining = 0
 
 	m := tlsInProgress[key]
@@ -120,74 +110,38 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	 * entry. (datapath indicated no more bytes, but then sent more?)
 	 * Or the entry was never populated in the first place. This would
 	 * indicate a MSG_OP_TLS_CONT event without a matching MSG_OP_TLS
-	 * event. A small aside, apparently there is some small window
-	 * where this could happen due to OOO events. To trigger this case
-	 * one core would have to submit MSG_OP_TLS+MSG_OP_TLS_CONT event
-	 * and then signal more data is needed. At this point in-theory an
-	 * skb could be received on a different core and that cpu could
-	 * post a MSG_OP_TLS_CONT event. But, really RSS should keep a
-	 * TLS flow pinned to a core so somehow RSS would have to break
-	 * first. TBD handle in-theory case with yet another cache?
-	 */
+	 * event. */
 	if m == nil {
 		m = &MsgTLSEventCert{}
 		m.tls = &api.MsgTLSEvent{}
-		errCode = api.TlsCertificateErrorNullRead
-	} else if err := binary.Read(r, binary.LittleEndian, &bytes); err != nil {
-		errCode = api.TlsCertificateErrorLengthRead
-	} else if bytes == 0 {
-		var errBpf uint32
-
-		err := binary.Read(r, binary.LittleEndian, &errBpf)
-		if err == nil {
-			errCode = uint32(errBpf)
-			if errorHasState(errCode) {
-				binary.Read(r, binary.LittleEndian, &errState)
-			}
-		} else {
-			errCode = api.TlsCertificateErrorMissingCode
-		}
+		errCode = api.TlsCertificateErrorSpuriousCerts
 	} else {
-		header := uint32(4)
-		var code uint32
+		if err := binary.Read(r, native_endian.NativeEndian(), &bytes); err != nil {
+			errCode = api.TlsCertificateErrorLengthRead
+		} else if bytes == 0 {
+			var errBpf uint32
 
-		/* If we are glueing together fragments we don't have a header */
-		if len(m.cert) != 0 {
-			header = 0
-		}
-
-		if m.header != 0 {
-			header -= m.header
-		}
-
-		/* Its possible we don't even have the header to read */
-		if bytes < header {
-			m.cert = nil
-			m.header = bytes + m.header
-			tlsInProgress[key] = m
-			return nil, nil
-		}
-		m.header = 0
-
-		cert := make([]byte, bytes-header)
-		err = binary.Read(r, binary.LittleEndian, &cert)
-		if err != nil {
-			errCode = api.TlsCertificateErrorCertRead
+			err := binary.Read(r, native_endian.NativeEndian(), &errBpf)
+			if err == nil {
+				errCode = uint32(errBpf)
+				if errCode != 0 {
+					err = binary.Read(r, native_endian.NativeEndian(), &errState)
+					if err != nil {
+						errCode = api.TlsCertificateErrorMissingError
+					}
+				}
+			} else {
+				errCode = api.TlsCertificateErrorMissingError
+			}
 		} else {
-			if len(m.cert) != 0 {
-				cert = append(m.cert, cert...)
-			}
-			if remaining != 0 || len(cert) < TLS_MIN_CERT_SIZE {
-				/* Need to store and submit when remaining bits show up. */
-				m.cert = cert
-				m.header = 0
-				tlsInProgress[key] = m
-				return nil, nil
-			}
-
-			certStrings, code = reader.GetTLSCertificateString(cert)
-			if code != 0 {
-				errCode = code
+			m.cert = make([]byte, bytes)
+			n, err := r.Read(m.cert)
+			if err != nil && !errors.Is(err, io.EOF) {
+				errCode = api.TlsCertificateErrorCertRead
+			} else if n != int(bytes) {
+				errCode = api.TlsCertificateErrorCertRead
+			} else {
+				certStrings, errCode = reader.GetTLSCertificateString(m.cert)
 			}
 		}
 	}

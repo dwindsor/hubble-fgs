@@ -1214,10 +1214,10 @@ HTTP PARSER
 | server_session | [string](#string) |  |  |
 | certificates | [string](#string) | repeated |  |
 | certificate_error | [TlsCertificateError](#fgs.TlsCertificateError) |  |  |
-| parser_state_next | [uint32](#uint32) |  |  |
-| parser_state_needed | [uint32](#uint32) |  |  |
-| parser_state_csize | [uint32](#uint32) |  |  |
-| parser_state_skblen | [uint32](#uint32) |  |  |
+| parser_state_length | [uint32](#uint32) |  |  |
+| parser_state_type | [uint32](#uint32) |  |  |
+| parser_state_subtype | [uint32](#uint32) |  |  |
+| parser_state_offset | [uint32](#uint32) |  |  |
 
 
 
@@ -1375,19 +1375,13 @@ EventType constants are based on the ones from pkg/api/client
 | ---- | ------ | ----------- |
 | TLS_CERT_ERROR_UNDEF | 0 |  |
 | TLS_CERT_ERROR_UNKNOWN | 1 |  |
-| TLS_CERT_ERROR_TOO_LARGE | 2 |  |
-| TLS_CERT_ERROR_GET_DATA_HDR | 3 |  |
-| TLS_CERT_ERROR_NO_BUFFER | 4 |  |
-| TLS_CERT_ERROR_COPY | 5 |  |
-| TLS_CERT_ERROR_LENGTH_READ | 6 |  |
-| TLS_CERT_ERROR_CERT_READ | 7 |  |
-| TLS_CERT_ERROR_CERT_PARTIAL | 8 |  |
-| TLS_CERT_ERROR_PARSE_X509 | 9 |  |
-| TLS_CERT_ERROR_MISSING_CODE | 10 |  |
-| TLS_CERT_ERROR_GET_DATA_CERT | 11 |  |
-| TLS_CERT_ERROR_GET_DATA_MORECERT | 12 |  |
-| TLS_CERT_ERROR_COPY_CERT | 13 |  |
-| TLS_CERT_ERROR_COPY_MORE_CERT | 14 |  |
+| TLS_CERT_ERROR_BAD_HEADER | 2 |  |
+| TLS_CERT_ERROR_LENGTH_READ | 3 |  |
+| TLS_CERT_ERROR_MISSING_ERROR | 4 |  |
+| TLS_CERT_ERROR_CERT_READ | 5 |  |
+| TLS_CERT_ERROR_CERT_PARTIAL | 6 |  |
+| TLS_CERT_ERROR_PARSE_X509 | 7 |  |
+| TLS_CERT_ERROR_SPURIOUS_CERTS | 8 |  |
 
 
  

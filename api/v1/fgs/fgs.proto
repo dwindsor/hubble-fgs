@@ -284,19 +284,13 @@ message Test {
 enum TlsCertificateError {
 	TLS_CERT_ERROR_UNDEF          = 0;
 	TLS_CERT_ERROR_UNKNOWN        = 1;
-	TLS_CERT_ERROR_TOO_LARGE      = 2;
-	TLS_CERT_ERROR_GET_DATA_HDR   = 3;
-	TLS_CERT_ERROR_NO_BUFFER      = 4;
-	TLS_CERT_ERROR_COPY           = 5;
-	TLS_CERT_ERROR_LENGTH_READ    = 6;
-	TLS_CERT_ERROR_CERT_READ      = 7;
-	TLS_CERT_ERROR_CERT_PARTIAL   = 8;
-	TLS_CERT_ERROR_PARSE_X509     = 9;
-	TLS_CERT_ERROR_MISSING_CODE   = 10;
-	TLS_CERT_ERROR_GET_DATA_CERT     = 11;
-	TLS_CERT_ERROR_GET_DATA_MORECERT = 12;
-	TLS_CERT_ERROR_COPY_CERT      = 13;
-	TLS_CERT_ERROR_COPY_MORE_CERT = 14;
+	TLS_CERT_ERROR_BAD_HEADER     = 2;
+	TLS_CERT_ERROR_LENGTH_READ    = 3;
+	TLS_CERT_ERROR_MISSING_ERROR  = 4;
+	TLS_CERT_ERROR_CERT_READ      = 5;
+	TLS_CERT_ERROR_CERT_PARTIAL   = 6;
+	TLS_CERT_ERROR_PARSE_X509     = 7;
+	TLS_CERT_ERROR_SPURIOUS_CERTS = 8;
 }
 
 message Tls {
@@ -320,10 +314,10 @@ message Tls {
     string server_session = 18;
     repeated string certificates = 19;
     TlsCertificateError certificate_error = 20;
-    uint32 parser_state_next = 21;
-    uint32 parser_state_needed =22;
-    uint32 parser_state_csize = 23;
-    uint32 parser_state_skblen = 24;
+    uint32 parser_state_length = 21;
+    uint32 parser_state_type = 22;
+    uint32 parser_state_subtype = 23;
+    uint32 parser_state_offset = 24;
 }
 
 /*

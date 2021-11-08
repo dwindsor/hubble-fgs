@@ -208,23 +208,15 @@ const (
 
 // TLS Certificate Errors
 const (
-	// BPF size errors
-	TlsCertificateErrorNone            = 0x0000
-	TlsCertificateErrorTooLarge        = 0x0001
-	TlsCertificateErrorGetDataHdr      = 0x0002
-	TlsCertificateErrorNoBuffer        = 0x0003
-	TlsCertificateErrorCopyError       = 0x0004
-	TlsCertificateErrorGetDataCert     = 0x0005
-	TlsCertificateErrorGetDataMoreCert = 0x0006
-	TlsCertificateErrorCopyCert        = 0x0007
-	TlsCertificateErrorCopyMoreCert    = 0x0008
+	TlsCertificateErrorNone      = 0x0000
+	TlsCertificateErrorBadHeader = 0x0001
 	// Userspace errors
-	TlsCertificateErrorLengthRead  = 0x0100
-	TlsCertificateErrorMissingCode = 0x0200
-	TlsCertificateErrorCertRead    = 0x0400
-	TlsCertificateErrorCertPartial = 0x0800
-	TlsCertificateErrorParseX509   = 0x1000
-	TlsCertificateErrorNullRead    = 0x2000
+	TlsCertificateErrorLengthRead    = 0x0100
+	TlsCertificateErrorMissingError  = 0x0200
+	TlsCertificateErrorCertRead      = 0x0400
+	TlsCertificateErrorCertPartial   = 0x0800
+	TlsCertificateErrorParseX509     = 0x1000
+	TlsCertificateErrorSpuriousCerts = 0x2000
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
@@ -427,10 +419,10 @@ type MsgTLS struct {
 }
 
 type MsgTLSParserState struct {
-	Next   uint32
-	Needed uint32
-	Csize  uint32
-	SkbLen uint32
+	Length  uint32
+	Type    uint32
+	Subtype uint32
+	Offset  uint32
 }
 
 type MsgTLSCertificates struct {

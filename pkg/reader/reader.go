@@ -415,56 +415,75 @@ func GetTLSSupportedVersions(vers []byte, hasLength bool) string {
 //	jj
 //}
 
-func GetTLSCertificateString(cert []byte) ([]string, uint32) {
-	var certificateString []string
+func defragHandshake(fragments []byte) ([]byte, uint32) {
+	handshake := make([]byte, 0, len(fragments))
 
-	// Handshake Protocol Certificate: single byte offset because we
-	// already accounted for Type, Version, and first byte of Length
-	// by reading in 4B length that datapath used to cache total message
-	// length.
-	cIndex := 1
-	// Certficate Length: Length of all the certificates
-	certificatesLengthIndex := cIndex + 4
-	// Point at first certificate, will advance as we parse each cert
-	certificatesIndex := cIndex + 7
+	for len(fragments) >= 5 {
+		// TLS record header: [ type 8b | version 16b | length 16b ]
+		typ := fragments[0]
+		if typ != 22 {
+			return nil, api.TlsCertificateErrorBadHeader
+		}
+		length := int(fragments[3])<<8 | int(fragments[4])
+		fragments = fragments[5:]
 
-	if len(cert) < 4 {
-		return certificateString, api.TlsCertificateErrorCertPartial
-	}
-
-	cLength := make([]byte, 4)
-	cLength[1] = cert[certificatesLengthIndex]
-	cLength[2] = cert[certificatesLengthIndex+1]
-	cLength[3] = cert[certificatesLengthIndex+2]
-	length := binary.BigEndian.Uint32(cLength)
-
-	// Ensure length always can read at least the length field
-	for length > 4 {
-		cLength[1] = cert[certificatesIndex]
-		cLength[2] = cert[certificatesIndex+1]
-		cLength[3] = cert[certificatesIndex+2]
-		cIntLength := binary.BigEndian.Uint32(cLength)
-
-		if uint32(len(cert)) < uint32(certificatesIndex)+3+cIntLength {
-			return certificateString, api.TlsCertificateErrorCertPartial
+		if len(fragments) < length {
+			return nil, api.TlsCertificateErrorCertPartial
 		}
 
-		certificate := cert[certificatesIndex+3 : uint32(certificatesIndex)+3+cIntLength]
+		handshake = append(handshake, fragments[:length]...)
+		fragments = fragments[length:]
+	}
+
+	if len(fragments) > 0 {
+		return nil, api.TlsCertificateErrorCertPartial
+	}
+
+	return handshake, 0
+}
+
+func GetTLSCertificateString(fragments []byte) ([]string, uint32) {
+	cert, code := defragHandshake(fragments)
+	if code != 0 {
+		return nil, code
+	}
+	if len(cert) < 6 {
+		return nil, api.TlsCertificateErrorCertPartial
+	}
+
+	// Header: [ type 8b | length 24b | certs length 24b ]
+	handshakeType := cert[0]
+	if handshakeType != 11 {
+		return nil, api.TlsCertificateErrorBadHeader
+	}
+	// Jump type + handshake length and parse the certificates length.
+	cert = cert[4:]
+
+	// Length of all certificates
+	length := int(cert[0])<<16 | int(cert[1])<<8 | int(cert[2])
+	cert = cert[3 : 3+length]
+
+	var certSubjects []string
+
+	for len(cert) > 3 {
+		length = int(cert[0])<<16 | int(cert[1])<<8 | int(cert[2])
+
+		if len(cert) < length {
+			return certSubjects, api.TlsCertificateErrorCertPartial
+		}
+
+		certificate := cert[3 : 3+length]
+		cert = cert[3+length:]
+
 		parsedCert, err := x509.ParseCertificate(certificate)
 		if err != nil {
-			return certificateString, api.TlsCertificateErrorParseX509
+			return certSubjects, api.TlsCertificateErrorParseX509
 		}
 
 		subjectRsdn := parsedCert.Subject.ToRDNSequence()
-		certificateString = append(certificateString, subjectRsdn.String())
-
-		length -= (cIntLength + 3)
-		certificatesIndex += int(cIntLength) + 3
+		certSubjects = append(certSubjects, subjectRsdn.String())
 	}
-	if length != 0 {
-		return certificateString, api.TlsCertificateErrorCertPartial
-	}
-	return certificateString, 0
+	return certSubjects, 0
 }
 
 func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {

@@ -1018,32 +1018,21 @@ func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
 	switch err {
 	case api.TlsCertificateErrorNone:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_UNDEF
-	case api.TlsCertificateErrorTooLarge:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_TOO_LARGE
-	case api.TlsCertificateErrorGetDataHdr:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA_HDR
-	case api.TlsCertificateErrorGetDataCert:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA_CERT
-	case api.TlsCertificateErrorGetDataMoreCert:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_GET_DATA_MORECERT
-	case api.TlsCertificateErrorCopyCert:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_COPY_CERT
-	case api.TlsCertificateErrorCopyMoreCert:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_COPY_MORE_CERT
-	case api.TlsCertificateErrorNoBuffer:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_NO_BUFFER
-	case api.TlsCertificateErrorCopyError:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_COPY
+	case api.TlsCertificateErrorBadHeader:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_BAD_HEADER
+
 	case api.TlsCertificateErrorLengthRead:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_LENGTH_READ
-	case api.TlsCertificateErrorMissingCode:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_MISSING_CODE
+	case api.TlsCertificateErrorMissingError:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_MISSING_ERROR
 	case api.TlsCertificateErrorCertRead:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_READ
 	case api.TlsCertificateErrorCertPartial:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_PARTIAL
 	case api.TlsCertificateErrorParseX509:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_PARSE_X509
+	case api.TlsCertificateErrorSpuriousCerts:
+		return fgs.TlsCertificateError_TLS_CERT_ERROR_SPURIOUS_CERTS
 	}
 	return fgs.TlsCertificateError_TLS_CERT_ERROR_UNKNOWN
 }
@@ -1073,30 +1062,30 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	}
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI)
 	fgsEvent := &fgs.Tls{
-		Process:           proc,
-		SourceIp:          reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
-		SourcePort:        sourcePort,
-		DestinationIp:     reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
-		DestinationPort:   destinationPort,
-		NegotiatedVersion: reader.GetTLSSupportedVersions(event.ServerHello.SupportedVersions[:], false),
-		SupportedVersions: reader.GetTLSSupportedVersions(event.ClientHello.SupportedVersions[:], true),
-		SniName:           nameSNI,
-		SniType:           typeSNI,
-		Cipher:            reader.GetTLSCipher(api.SwapByte(event.ServerHello.Cipher)),
-		ClientFlags:       reader.GetTLSFlags(event.ClientHello.Flags),
-		ServerFlags:       reader.GetTLSFlags(event.ServerHello.Flags),
-		ClientVersion:     reader.GetTLSVersion(event.ClientHello.Version),
-		ServerVersion:     reader.GetTLSVersion(event.ServerHello.Version),
-		ClientAlert:       reader.GetTLSAlert(event.ClientHello.AlertLevel, event.ClientHello.AlertDescription),
-		ServerAlert:       reader.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
-		ClientSession:     reader.GetTLSSession(event.ClientHello.Session),
-		ServerSession:     reader.GetTLSSession(event.ServerHello.Session),
-		Certificates:      event.ServerCert.Certificates,
-		CertificateError:  getTLSCertificateErrorCode(event.ServerCert.Error),
-		ParserStateNext:   event.ServerCert.ParserState.Next,
-		ParserStateNeeded: event.ServerCert.ParserState.Needed,
-		ParserStateCsize:  event.ServerCert.ParserState.Csize,
-		ParserStateSkblen: event.ServerCert.ParserState.SkbLen,
+		Process:            proc,
+		SourceIp:           reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourcePort:         sourcePort,
+		DestinationIp:      reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
+		DestinationPort:    destinationPort,
+		NegotiatedVersion:  reader.GetTLSSupportedVersions(event.ServerHello.SupportedVersions[:], false),
+		SupportedVersions:  reader.GetTLSSupportedVersions(event.ClientHello.SupportedVersions[:], true),
+		SniName:            nameSNI,
+		SniType:            typeSNI,
+		Cipher:             reader.GetTLSCipher(api.SwapByte(event.ServerHello.Cipher)),
+		ClientFlags:        reader.GetTLSFlags(event.ClientHello.Flags),
+		ServerFlags:        reader.GetTLSFlags(event.ServerHello.Flags),
+		ClientVersion:      reader.GetTLSVersion(event.ClientHello.Version),
+		ServerVersion:      reader.GetTLSVersion(event.ServerHello.Version),
+		ClientAlert:        reader.GetTLSAlert(event.ClientHello.AlertLevel, event.ClientHello.AlertDescription),
+		ServerAlert:        reader.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
+		ClientSession:      reader.GetTLSSession(event.ClientHello.Session),
+		ServerSession:      reader.GetTLSSession(event.ServerHello.Session),
+		Certificates:       event.ServerCert.Certificates,
+		CertificateError:   getTLSCertificateErrorCode(event.ServerCert.Error),
+		ParserStateLength:  event.ServerCert.ParserState.Length,
+		ParserStateType:    event.ServerCert.ParserState.Type,
+		ParserStateSubtype: event.ServerCert.ParserState.Subtype,
+		ParserStateOffset:  event.ServerCert.ParserState.Offset,
 	}
 	if pm.processCacheNeeded(proc) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)

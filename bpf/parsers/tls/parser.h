@@ -1,7 +1,7 @@
 #include "api.h"
 #include "../parser.h"
 #include "tls_map.h"
-#include "msg_bottle.h"
+#include "../msg_bottle.h"
 
 #ifdef SK_MSG
 typedef struct sk_msg_md ctx_md;
@@ -583,22 +583,20 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 }
 #endif
 
+/*
+ * Certificate parsing
+ *
+ * The BPF side for certificate parsing finds the end of the last certificate
+ * fragment message and sends all fragments to the agent for reassembly.
+ */
+#ifndef SK_MSG
+
 /* TLS Certificate Error Codes */
-// FIXME(JM): Redo these.
-#define ENEXTTOOLARGE		1
-#define EGETDATAHDR		2
-#define ENOBUFFER		3
-#define ECOPYERROR		4
-#define EGETDATACERT		5
-#define EGETDATAMORECERT	6
-#define ECOPYCERT		7
-#define ECOPYMORECERT		8
+#define EBADHEADER 0x0001
 
 /* TLS Certificate Hdr offset */
 #define TLS_HEADER_BYTES 9
 
-/* TBD: JF, extend verifier to understand void functions */
-#ifndef SK_MSG
 
 #define ERROUT_LEN (5*24)
 
@@ -612,6 +610,7 @@ void errout_pack(int *errout, int code, int a, int b, int c, int d) {
 }
 
 #define CERT_FRAG_MIN_LEN 6
+#define FRAG_MAX_ITER 16
 
 /* Find the end of a potentially fragmented handshake */
 static inline __attribute__((always_inline))
@@ -631,10 +630,8 @@ int tls_find_handshake_end(struct msg_bottle *bottle, int offset, int *type, int
 	hdr = (struct tls_hdr*)data;
 
 	*type = hdr->type;
-	if (hdr->type != TLS_TYPE_HANDSHAKE) {
-		bpf_printk("not a handshake: %d", hdr->type);
+	if (hdr->type != TLS_TYPE_HANDSHAKE)
 		return TLS_PARSE_BAD_DATA;
-	}
 
 	data += sizeof(struct tls_hdr);
 
@@ -647,7 +644,7 @@ int tls_find_handshake_end(struct msg_bottle *bottle, int offset, int *type, int
 
 	/* Iterate over the fragments until we find the end of the last fragment. */
 #pragma unroll
-	for (int i = 0; i < 16; i++) {
+	for (int i = 0; i < FRAG_MAX_ITER; i++) {
 		u32 frag_len = bpf_ntohs(hdr->length) & 0xfff;
 		offset += sizeof(struct tls_hdr);
 
@@ -666,7 +663,7 @@ int tls_find_handshake_end(struct msg_bottle *bottle, int offset, int *type, int
 			return TLS_PARSE_OUT_OF_DATA;
 	}
 
-	/* 16 records was not enough. Give up. */
+	/* Too many fragments. Give up. */
 	if (remaining > 0)
 		return TLS_PARSE_BAD_DATA;
 
@@ -685,24 +682,16 @@ int bpf_parse_tls_cert(ctx_md *ctx,
 	int end_offset;
 	int event_len;
 	int zero = 0;
+	int errcode = 0;
 
 	/* First find where the handshake protocol ends. This may span
          * multiple fragments and packets. */
 	end_offset = tls_find_handshake_end(bottle, offset, &type, &subtype);
-	if (end_offset == TLS_PARSE_OUT_OF_DATA) {
-		bpf_printk("tls_cert: out of data", 0);
+	if (end_offset == TLS_PARSE_OUT_OF_DATA)
 		return TLS_PARSE_OUT_OF_DATA;
-	}
 
-	if (end_offset <= 0) {
-		bpf_printk("tls_cert: end_offset=%d", end_offset);
-		goto fail;
-	}
-
-	bpf_printk("tls_cert: end_offset=%d", end_offset);
-
-	if (subtype != TLS_HANDSHAKE_TYPE_CERTIFICATE) {
-		bpf_printk("tls_cert: not a certificate", 0);
+	if (end_offset <= 0 || subtype != TLS_HANDSHAKE_TYPE_CERTIFICATE) {
+		errcode = EBADHEADER;
 		goto fail;
 	}
 
@@ -710,19 +699,16 @@ int bpf_parse_tls_cert(ctx_md *ctx,
 	event_len = (sizeof(struct msg_tls_cont_event) + end_offset - offset);
 	BOTTLE_MASK(event_len);
 
-	/* To avoid a copy we write the event header on top of the now irrelevant packet data. */
-	// TODO: static assert that bottle->scratch is bigger than msg_tls_cont_event?
+	/* To avoid a copy we write the event header on top of the now irrelevant data. */
 	event = msg_bottle_get_data(bottle, offset - sizeof(struct msg_tls_cont_event), event_len);
 	if (!event) {
-		bpf_printk("tls_cert: unexpected get_data fail for %d bytes", event_len);
+		errcode = EBADHEADER;
 		goto fail;
 	}
 
 	event->op = MSG_OP_TLS_CONT;
 	event->tuple = *key;
 	event->payload_size = end_offset - offset;
-
-	bpf_printk("tls_cert: ok, sending event of %d bytes", event_len);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
 	                  event, event_len);
@@ -737,15 +723,18 @@ fail:
 	event->tuple = *key;
 	event->payload_size = 0;
 
-	// TODO refine error reporting
-	errout_pack((int*)event->payload, EGETDATACERT, bottle->len, type, subtype, offset);
-
-	bpf_printk("tls_cert: fail, sending errout", 0);
+	errout_pack((int*)event->payload, errcode, bottle->len, type, subtype, offset);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
 	                  event, sizeof(*event) + ERROUT_LEN);
 	return 0;
+}
 
+/* Mark a TLS entry as completed to stop further parsing. */
+static inline __attribute__((always_inline))
+void tls_mark_complete(struct msg_tls *tls)
+{
+	tls->type = 0;
 }
 
 static inline __attribute__((always_inline))
@@ -755,15 +744,9 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 	struct msg_tls *event;
 	int zero = 0;
 
-	bpf_printk("ingress for:", 0);
-	bpf_printk("... %x:%d", key->saddr, key->sport);
-	bpf_printk("... %x:%d", key->daddr, key->dport);
-
 	event = map_lookup_elem(&tls_map, key);
-	if (!event) {
-		bpf_printk("no tls_map entry.", 0);
+	if (!event)
 		return;
-	}
 
 	if (is_expected_tls_client_hello(event)) {
 		struct msg_tls_event *post;
@@ -771,15 +754,12 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 		int next;
 
 		post = map_lookup_elem(&tls_heap, &zero);
-		if (!post) {
-			bpf_printk("post lookup fail", 0);
+		if (!post)
 			return;
-		}
 
 		bottle = skb_bottle_fill(skb, key, offset);
 		if (!bottle) {
-			event->type = 0;
-			bpf_printk("bottle fill fail (off: %d)", offset);
+			tls_mark_complete(event);
 			return;
 		}
 
@@ -804,7 +784,8 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
 
-		// FIXME(JM): Clean up the byte order mess.
+		/* Set dport to network byte order as that's what socketmap
+                 * expects. */
 		key->dport = bpf_htons(key->dport);
 		execve  = lookup_socketmap(key);
 		if (execve)
