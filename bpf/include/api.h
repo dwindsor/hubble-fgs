@@ -199,6 +199,7 @@ static int BPF_FUNC(sock_hash_update, struct bpf_sock_ops *skops, void *map, voi
 static int BPF_FUNC(msg_redirect_hash, struct sk_msg_md *md, void *map, void *key, uint64_t flags);
 static int BPF_FUNC(msg_pull_data, struct sk_msg_md *md, __u32 start, __u32 end, __u64 flags);
 static int BPF_FUNC(msg_apply_bytes, struct sk_msg_md *md, __u32 bytes);
+static int BPF_FUNC(msg_cork_bytes, struct sk_msg_md *md, __u32 bytes);
 
 static int BPF_FUNC(fib_lookup, void *ctx, struct bpf_fib_lookup *params, uint32_t plen, uint32_t flags);
 
