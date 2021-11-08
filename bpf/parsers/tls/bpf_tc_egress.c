@@ -18,34 +18,49 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
-struct bpf_map_def __attribute__((section("maps"), used)) clienthello_mem = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_tls),
-	.max_entries = 1,
-};
-
 __attribute__((section(("classifier/egress_tcp")), used))
 int event_tc_egress_tcp(struct __sk_buff *skb)
 {
+	struct msg_tls clienthello = {0};
 	struct msg_tls_ipv4 tuple = {0};
-	struct msg_tls *clienthello;
-	int zero = 0, off = 0;
+	struct skb_bottle *bottle;
 	struct tcphdr *tcp;
-	void *payload;
+	int off = 0;
 
 	tcp = skb_tls_key(skb, &off, &tuple);
 	if (!tcp)
 		return TC_ACT_UNSPEC;
-	payload = skb_tcp_payload(skb, tcp, &off);
-	if (!payload)
+
+	if (!skb_tcp_payload(skb, tcp, &off)) {
 		return TC_ACT_UNSPEC;
-	clienthello = map_lookup_elem(&clienthello_mem, &zero);
-	if (!clienthello)
+	}
+
+	if (map_lookup_elem(&tls_map, &tuple) != 0)
+		/* Already parsed, or parsing failed and should ignore. */
 		return TC_ACT_UNSPEC;
-	clienthello->type = 0;
-	bpf_parse_tls(skb, payload, off, clienthello);
-	if (is_expected_tls_client_hello(clienthello))
-		add_tlsmap(&tuple, clienthello);
+
+	bottle = skb_bottle_fill(skb, &tuple, off);
+	if (!bottle)
+		return TC_ACT_UNSPEC;
+
+	switch (bpf_parse_tls(bottle, &clienthello)) {
+	case TLS_PARSE_BAD_DATA:
+		/* Parsing failed. Add an entry to stop parsing further packets. */
+		tls_mark_complete(&clienthello);
+		map_delete_elem(&skb_bottles, &tuple);
+		add_tlsmap(&tuple, &clienthello);
+		break;
+
+	case TLS_PARSE_OUT_OF_DATA:
+		/* Parser ran out of data. Try again later with more data. */
+		break;
+
+	default:
+		/* Success! Add the tls entry to start parsing ingress data. */
+		map_delete_elem(&skb_bottles, &tuple);
+		add_tlsmap(&tuple, &clienthello);
+		break;
+	}
+
 	return TC_ACT_UNSPEC;
 }

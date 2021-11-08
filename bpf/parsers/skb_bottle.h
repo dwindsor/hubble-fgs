@@ -11,9 +11,9 @@ struct skb_bottle {
 	u8 scratch[32];
 
 	/* Note that this is twice as large as it needs to be in order
-         * to convince the verifier that it's safe to access. Bounds checks
-         * based on bottle->len are not sufficient.
-         */
+	 * to convince the verifier that it's safe to access. Bounds checks
+	 * based on bottle->len are not sufficient.
+	 */
 	u8 data[BOTTLE_DATA_SIZE*2];
 };
 
@@ -106,9 +106,6 @@ void *skb_bottle_get_data(struct skb_bottle *bottle, u32 off, u32 len)
 		return 0;
 	}
 
-	//off &= BOTTLE_MASK;
-	//len &= BOTTLE_MASK;
-	//bpf_printk("returning ptr to %d..%d", off, off+len);
 	BOTTLE_MASK(off);
 	BOTTLE_MASK(len);
 

@@ -342,6 +342,7 @@ struct msg_ipv4_key {
 struct msg_tls_ipv4 {
 	__u32 saddr;
 	__u32 daddr;
+	/* Both ports are in host byte-order */
 	__u16 dport;
 	__u16 sport;
 	__u32 remaining;
@@ -356,6 +357,13 @@ struct msg_tls_event {
 	struct msg_tls	      clienthello;
 	struct msg_tls	      serverhello;
 	struct msg_execve_key execve;
+} __attribute__((packed));
+
+struct msg_tls_cont_event {
+	__u8 op;
+	struct msg_tls_ipv4 tuple;
+	__u32 payload_size; /* Payload size, or if zero an error follows */
+	__u8 payload[0];
 } __attribute__((packed));
 
 struct msg_kfree_skb {

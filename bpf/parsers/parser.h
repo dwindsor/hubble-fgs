@@ -318,10 +318,10 @@ int pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u64 copy)
 	return copy - len;
 }
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
+struct bpf_map_def __attribute__((section("maps"), used)) pkt_heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 8192 + sizeof(struct msg_tls_ipv4),
+	.value_size = 16384,
 	.max_entries = 1,
 };
 
@@ -363,7 +363,7 @@ int large_ctx_copy(
 	 *
 	 * TBD: JF, extend verifier to understand pointers/struct args.
 	 */
-	to = map_lookup_elem(&tls_heap, &zero);
+	to = map_lookup_elem(&pkt_heap, &zero);
 	if (!to)
 		return 0;
 

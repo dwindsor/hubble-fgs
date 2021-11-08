@@ -13,12 +13,20 @@ struct bpf_map_def {
 
 #define SK_SKB
 
-#include "tls/bpf_skskb_verdict_tls.h"
+#include "hubble_msg.h"
+#include "bpf_events.h"
+#include "bpf_sockops.h"
+#include "tls/tls_map.h"
+#include "tls/parser.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
 __attribute__((section(("sk_skb_verdict/fgs")), used))
 int bpf_skskb_verdict(struct __sk_buff *skb)
 {
-	return bpf_skskb_verdict_tls(skb);
+	struct msg_tls_ipv4 key = {0};
+
+	sk_skb_tls_key(skb, &key);
+	bpf_parse_ingress_skb(skb, &key, 0);
+	return SK_PASS;
 }
