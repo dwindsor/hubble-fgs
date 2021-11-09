@@ -96,6 +96,10 @@ var (
 		Help:       "TCP socket smoothed RTT latency distribution.",
 		Objectives: map[float64]float64{0.5: 0.05, 0.9: 0.01, 0.99: 0.001},
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsDrops = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_drops",
+		Help: "TCP socket socket drops statistics",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 
 // UDP socket metrics
@@ -115,6 +119,10 @@ var (
 	SocketStatsUDPRxSegs = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: MetricNamePrefix + "socket_stats_udp_rxsegs",
 		Help: "UDP socket RX segment statistics",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsUDPDrops = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_udp_drops",
+		Help: "UDP socket drops statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
 
@@ -258,6 +266,9 @@ func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs
 	SocketStatsUDPRxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsIn)
 	SocketStatsUDPRxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+
+	c = float64(s.SkDrop)
+	SocketStatsUDPDrops.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 }
 
 func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
@@ -281,6 +292,9 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs
 
 	c = float64(s.Srtt)
 	SocketStatsSrtt.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Observe(c)
+
+	c = float64(s.SkDrop)
+	SocketStatsDrops.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 }
 
 func postCloseEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessClose, s *fgs.SocketStats) {
