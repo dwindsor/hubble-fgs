@@ -25,7 +25,6 @@ To run image in docker,
 
     docker run --name hubble-fgs --env FGS_BTF=/var/lib/hubble-fgs/btf --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti quay.io/isovalent/hubble-fgs
 
-
 ## Testing
 
 ### Dependencies to compile / run / test FGS locally
@@ -192,3 +191,39 @@ to spin up a GKE cluster.
     helm repo add isovalent https://helm.isovalent.com
     helm repo update
     helm install -n kube-system cilium-enterprise isovalent/cilium-enterprise
+
+
+## Developing BPF programs
+
+### fgs-bench
+
+For benchmarking and general low-level FGS BPF development a useful tool
+is the fgs-bench, a benchmarking tool that runs FGS alongside some load,
+e.g. tcp, tls, netperf, http, etc. See BENCHMARK.md for details and pkg/bench
+for the implementation.
+
+### hubble-bpf-verify
+
+One is also often hitting verifier limitations when writing BPF programs
+and it's useful to be able to quickly get feedback whether or not
+your latest change will pass the verifier or not. For this we've added,
+"fgs-verify-programs", a script around bpftool that loads FGS BPF objects
+and dumps some useful stats:
+
+	Verifying /var/lib/hubble-fgs/bpf_skmsg.o...
+	OK:
+	; int bpf_sk_msg_fgs(struct sk_msg_md *skmsg)
+	verification time 2663524 usec
+	stack depth 200
+	processed 93226 insns (limit 1000000) max_states_per_insn 16 total_states 7809 peak_states 1497 mark_read 202
+
+You can compile the BPF objects and invoke the tool with `make hubble-bpf-verify`.
+It assumes you have the right `clang` in PATH (`make clang-install` to get it to `bin/`).
+Also required is to have libbpf.so in `lib/` (`make libbpf-install`).
+
+### fgs vmtest
+
+Another often arising issue is having BPF programs rejected on older kernels.
+To aid with testing FGS on arbitrary kernel versions we have tooling around
+qemu-kvm in `contrib/vmtest` that allows running the fgs-bench against a
+kernel compiled from sources. See `contrib/vmtest/README.md` for more info.
