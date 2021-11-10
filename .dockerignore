@@ -1,3 +1,5 @@
 fgs-bench-rootfs*
 mnt
 bin
+ksrc
+kbuild

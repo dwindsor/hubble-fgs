@@ -6,3 +6,5 @@ lib/*
 observer.test
 go-tests
 fgs-bench-rootfs*
+ksrc
+kbuild

@@ -4,6 +4,11 @@
 #
 set -u
 
+RED="\033[31m"
+BLUEUNDER="\033[34;4m"
+GREEN="\033[32m"
+NOCOLOR="\033[0m"
+
 FGSDIR=/var/lib/hubble-fgs
 if [ $# -eq 1 ]; then
 	if [ ! -d $1 ]; then
@@ -27,25 +32,26 @@ for obj in $FGSDIR/*.o; do
 		continue
 	fi
 
-	echo "Verifying $obj..."
+	echo -e -n "Verifying $BLUEUNDER$obj$NOCOLOR... "
 	OUT="/tmp/fgs-verify-$B"
-	bpftool -d prog loadall "$obj" "$PINDIR" &> $OUT
 
+	bpftool -d prog loadall "$obj" "$PINDIR" &> $OUT
 	if [ $? -ne 0 ]; then
-		echo "Failed:"
+		echo -e "${RED}Failed!${NOCOLOR}"
 		awk '/^func/ { in_func=1 } /^;/ { if (in_func) { print $0; print "..."; exit } }' < $OUT
 		tail -20 $OUT
 		echo "Full output left in $OUT"
 		STATUS=1
 	else
-		echo "OK:"
+		echo -e "${GREEN}OK${NOCOLOR}"
 		awk '
 /^func/ { in_func=1 }
-/^;/ { if (in_func) { print $0; in_func=0; } }
+/^;/ { if (in_func) { print "  " $0; in_func=0; } }
 /^verification time/ { verify_lines=3 }
-/^/ { if (verify_lines) { verify_lines -= 1; print $0 } }' < $OUT
+/^/ { if (verify_lines) { verify_lines -= 1; print "  " $0 } }' < $OUT
 		rm $OUT
 	fi
+	echo
 	rm -rf $PINDIR
 done
 

@@ -30,12 +30,13 @@ cleanup() {
 }
 trap cleanup EXIT
 
-echo "Creating init script:"
+echo "Creating init script..."
 mkdir -p mnt
 sudo umount mnt || true
 sudo mount -o loop $IMAGE mnt
-sudo tee mnt/init.sh <<EOF
+sudo tee mnt/init.sh >/dev/null <<EOF
 #!/bin/sh
+trap sync EXIT
 echo 130 > /exit-status
 set -eux
 mount -t proc proc /proc
@@ -43,9 +44,11 @@ mount -t sysfs sysfs /sys
 mount -t bpf none /sys/fs/bpf
 mount -t debugfs debugfs /sys/kernel/debug
 mount -t tracefs tracefs /sys/kernel/debug/tracing
+echo 7 > /proc/sys/kernel/printk
 cat /sys/kernel/debug/tracing/trace_pipe &
 ip addr add dev lo 127.0.0.1/8
 ip link set dev lo up
+/usr/bin/fgs-verify-programs
 /usr/bin/fgs-bench $FGS_BENCH_ARGS
 echo "\$?" > /exit-status
 poweroff -f
@@ -64,10 +67,10 @@ fi
 
 qemu-system-x86_64 \
 	-nodefaults -display none -serial mon:stdio \
-	-smp 4 -m 2G -no-reboot \
+	-smp 4 -m 8G -no-reboot \
 	-drive file=$IMAGE,format=raw,index=1,media=disk,if=virtio,cache=none \
 	-kernel "${KOUT}/bzImage" \
-	-append "root=/dev/vda rw console=ttyS0,115200 panic=-1 init=/init.sh" \
+	-append "root=/dev/vda rw loglevel=4 console=ttyS0,115200 panic=-1 init=/init.sh" \
 	$KVMARGS
 
 sudo mount -o loop $IMAGE mnt
