@@ -1,4 +1,5 @@
 #!/usr/bin/env bash
+SCRIPTDIR="$(dirname "${BASH_SOURCE[0]}")"
 set -eu
 
 echo "Building fgs-bench docker image..."

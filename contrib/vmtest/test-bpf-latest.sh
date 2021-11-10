@@ -17,6 +17,6 @@ curl -sL https://kernel.googlesource.com/pub/scm/linux/kernel/git/bpf/bpf.git/+a
 contrib/vmtest/build-kernel.sh $PWD/ksrc $PWD/kbuild
 
 # Run fgs-bench in qemu-kvm with the latest bpf kernel.
-contrib/vmtest/run.sh $PWD/kbuild/arch/x86/boot/bzImage $PWD/fgs-bench-rootfs*.img \
+contrib/vmtest/run.sh $PWD/kbuild $PWD/fgs-bench-rootfs*.img \
   -source tls-crr -sink tls-go -parsers=tls -duration=5m
 

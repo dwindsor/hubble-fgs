@@ -6,17 +6,17 @@
 set -e
 
 if [ $# -lt 3 ]; then
-	echo "usage: vmtest.sh <KERNEL> <ROOTFS> <FGS BENCH ARGS>..."
+	echo "usage: vmtest.sh <KOUT> <ROOTFS> <FGS BENCH ARGS>..."
 	exit 1
 fi
 
-KERNEL=$1
+KOUT=$1
 IMAGE=$2
 shift 2
 FGS_BENCH_ARGS="$*"
 
-if [ ! -f "$KERNEL" ]; then
-	echo "Kernel $KERNEL not found"
+if [ ! -f "${KOUT}/bzImage" ]; then
+	echo "Kernel not found from ${KOUT}/bzImage"
 	exit 1
 fi
 
@@ -32,6 +32,7 @@ trap cleanup EXIT
 
 echo "Creating init script:"
 mkdir -p mnt
+sudo umount mnt || true
 sudo mount -o loop $IMAGE mnt
 sudo tee mnt/init.sh <<EOF
 #!/bin/sh
@@ -39,6 +40,7 @@ echo 130 > /exit-status
 set -eux
 mount -t proc proc /proc
 mount -t sysfs sysfs /sys
+mount -t bpf none /sys/fs/bpf
 mount -t debugfs debugfs /sys/kernel/debug
 mount -t tracefs tracefs /sys/kernel/debug/tracing
 cat /sys/kernel/debug/tracing/trace_pipe &
@@ -49,6 +51,8 @@ echo "\$?" > /exit-status
 poweroff -f
 EOF
 sudo chmod +x mnt/init.sh
+
+sudo cp "${KOUT}/bpftool" mnt/bin
 sudo umount mnt
 
 echo "Starting VM..."
@@ -62,7 +66,7 @@ qemu-system-x86_64 \
 	-nodefaults -display none -serial mon:stdio \
 	-smp 4 -m 2G -no-reboot \
 	-drive file=$IMAGE,format=raw,index=1,media=disk,if=virtio,cache=none \
-	-kernel $KERNEL \
+	-kernel "${KOUT}/bzImage" \
 	-append "root=/dev/vda rw console=ttyS0,115200 panic=-1 init=/init.sh" \
 	$KVMARGS
 

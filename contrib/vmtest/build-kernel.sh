@@ -28,4 +28,7 @@ cp "${SELFDIR}/kernel.config" "${KOUT}/config"
 $MAKECMD olddefconfig
 $MAKECMD
 
-ls -l $KOUT/arch/x86/boot/bzImage
+make -C $KSRC/tools/bpf/bpftool LDFLAGS=-static
+cp $KSRC/tools/bpf/bpftool/bpftool $KOUT/bpftool
+cp $KOUT/arch/x86/boot/bzImage $KOUT/bzImage
+
