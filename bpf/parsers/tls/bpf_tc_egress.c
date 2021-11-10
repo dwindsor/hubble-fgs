@@ -25,7 +25,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) clienthello_mem = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("tc/egress_tcp")), used))
+__attribute__((section(("classifier/egress_tcp")), used))
 int event_tc_egress_tcp(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 tuple = {0};

@@ -41,6 +41,9 @@ endif
 hubble-bpf-local:
 	$(MAKE) -C ./bpf
 
+hubble-bpf-verify: hubble-bpf-local
+	sudo contrib/vmtest/fgs-verify-programs bpf/objs
+
 hubble-bpf-container:
 	docker rm hubble-llvm || true
 	docker run -v $(CURDIR):/hubble-fgs -u $$(id -u)  --name hubble-llvm $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf

@@ -1,0 +1,52 @@
+#!/usr/bin/env bash
+#
+# Script to verify all FGS programs by loading them with bpftool.
+#
+set -u
+
+FGSDIR=/var/lib/hubble-fgs
+if [ $# -eq 1 ]; then
+	if [ ! -d $1 ]; then
+		echo "usage: fgs-verify-programs [FGSDIR]"
+		exit 1
+	fi
+	FGSDIR=$1
+fi
+
+PINDIR=/sys/fs/bpf/fgs-verify
+cleanup() {
+	rm -rf $PINDIR
+}
+trap cleanup EXIT
+
+STATUS=0
+
+for obj in $FGSDIR/*.o; do
+	B=$(basename $obj)
+	if [[ $B == bpf_generic* ]]; then
+		continue
+	fi
+
+	echo "Verifying $obj..."
+	OUT="/tmp/fgs-verify-$B"
+	bpftool -d prog loadall "$obj" "$PINDIR" &> $OUT
+
+	if [ $? -ne 0 ]; then
+		echo "Failed:"
+		awk '/^func/ { in_func=1 } /^;/ { if (in_func) { print $0; print "..."; exit } }' < $OUT
+		tail -20 $OUT
+		echo "Full output left in $OUT"
+		STATUS=1
+	else
+		echo "OK:"
+		awk '
+/^func/ { in_func=1 }
+/^;/ { if (in_func) { print $0; in_func=0; } }
+/^verification time/ { verify_lines=3 }
+/^/ { if (verify_lines) { verify_lines -= 1; print $0 } }' < $OUT
+		rm $OUT
+	fi
+	rm -rf $PINDIR
+done
+
+exit $STATUS

@@ -15,6 +15,7 @@ mkfs.ext4 -q $IMG
 mkdir -p mnt
 sudo mount -o loop $IMG mnt
 docker export $CONTID | sudo tar x -C mnt
+sudo cp "${SCRIPTDIR}/fgs-verify-programs" mnt/usr/bin
 sudo umount mnt
 docker stop $CONTID
 

@@ -75,7 +75,7 @@ var (
 		"bpf_tc_egress.o",
 		"egress_tcp",
 		"egress_tcp",
-		"tc/egress_tcp",
+		"classifier/egress_tcp",
 		"tc_egress_tcp",
 		false,
 		true,
