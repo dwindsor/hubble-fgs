@@ -294,7 +294,7 @@ func execute() error {
 	flags.String(keyProcFS, "/proc/", "Location of procfs to consume existing PIDs")
 	flags.String(keyKernelVersion, "", "Kernel version")
 	flags.Int(keyVerbosity, 0, "set verbosity level")
-	flags.Int(keyProcessCacheSize, 64000, "Size of the process cache")
+	flags.Int(keyProcessCacheSize, 65536, "Size of the process cache")
 	flags.String(keyExportFilename, "", "Filename for JSON export. Disabled by default")
 	flags.Int(keyExportFileMaxSizeMB, 10, "Size in MB for rotating JSON export files")
 	flags.Duration(keyExportFileRotationInterval, 0, "Interval at which to rotate JSON export files in addition to rotating them by size")
