@@ -133,3 +133,65 @@ func Test_getNegotiatedVersion(t *testing.T) {
 	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: "TLS 1.0", ServerVersion: "TLS 1.0"})
 	assert.Equal(t, "TLS 1.0", version)
 }
+
+func Test_handleInterfaceStatsEvent(t *testing.T) {
+	handleInterfaceStatsEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_InterfaceStats{InterfaceStats: &fgs.InterfaceStats{
+		InterfaceName:   "eth0",
+		BytesSent:       1,
+		BytesReceived:   2,
+		PacketsSent:     3,
+		PacketsReceived: 4,
+		TxErrors:        5,
+		RxErrors:        6,
+		TxDrops:         7,
+		RxDrops:         8,
+	}}})
+
+	expected := strings.NewReader(`# HELP isovalent_interface_txbytes Bytes sent per network interface
+# TYPE isovalent_interface_txbytes gauge
+isovalent_interface_txbytes{name="eth0"} 1
+`)
+	assert.NoError(t, testutil.CollectAndCompare(InterfaceBytesSent, expected))
+
+	expected = strings.NewReader(`# HELP isovalent_interface_rxbytes Bytes received per network interface
+# TYPE isovalent_interface_rxbytes gauge
+isovalent_interface_rxbytes{name="eth0"} 2
+`)
+	assert.NoError(t, testutil.CollectAndCompare(InterfaceBytesReceived, expected))
+
+	expected = strings.NewReader(`# HELP isovalent_interface_txsegs Segments sent per network interface
+# TYPE isovalent_interface_txsegs gauge
+isovalent_interface_txsegs{name="eth0"} 3
+`)
+	assert.NoError(t, testutil.CollectAndCompare(InterfaceSegmentsSent, expected))
+
+	expected = strings.NewReader(`# HELP isovalent_interface_rxsegs Segments received per network interface
+# TYPE isovalent_interface_rxsegs gauge
+isovalent_interface_rxsegs{name="eth0"} 4
+`)
+	assert.NoError(t, testutil.CollectAndCompare(InterfaceSegmentsReceived, expected))
+
+	expected = strings.NewReader(`# HELP isovalent_interface_txerrors TX errors per network interface
+# TYPE isovalent_interface_txerrors gauge
+isovalent_interface_txerrors{name="eth0"} 5
+`)
+	assert.NoError(t, testutil.CollectAndCompare(InterfaceTxErrors, expected))
+
+	expected = strings.NewReader(`# HELP isovalent_interface_rxerrors RX errors per network interface
+# TYPE isovalent_interface_rxerrors gauge
+isovalent_interface_rxerrors{name="eth0"} 6
+`)
+	assert.NoError(t, testutil.CollectAndCompare(InterfaceRxErrors, expected))
+
+	expected = strings.NewReader(`# HELP isovalent_interface_txdrops TX drops per network interface
+# TYPE isovalent_interface_txdrops gauge
+isovalent_interface_txdrops{name="eth0"} 7
+`)
+	assert.NoError(t, testutil.CollectAndCompare(InterfaceTxDrops, expected))
+
+	expected = strings.NewReader(`# HELP isovalent_interface_rxdrops RX drops per network interface
+# TYPE isovalent_interface_rxdrops gauge
+isovalent_interface_rxdrops{name="eth0"} 8
+`)
+	assert.NoError(t, testutil.CollectAndCompare(InterfaceRxDrops, expected))
+}

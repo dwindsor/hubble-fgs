@@ -197,6 +197,43 @@ var (
 	}, []string{"namespace", "pod", "binaray", "version", "cipher", "sni_name"})
 )
 
+// Interface metrics
+
+var (
+	InterfaceBytesSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: MetricNamePrefix + "interface_txbytes",
+		Help: "Bytes sent per network interface",
+	}, []string{"name"})
+	InterfaceBytesReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: MetricNamePrefix + "interface_rxbytes",
+		Help: "Bytes received per network interface",
+	}, []string{"name"})
+	InterfaceSegmentsSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: MetricNamePrefix + "interface_txsegs",
+		Help: "Segments sent per network interface",
+	}, []string{"name"})
+	InterfaceSegmentsReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: MetricNamePrefix + "interface_rxsegs",
+		Help: "Segments received per network interface",
+	}, []string{"name"})
+	InterfaceTxErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: MetricNamePrefix + "interface_txerrors",
+		Help: "TX errors per network interface",
+	}, []string{"name"})
+	InterfaceRxErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: MetricNamePrefix + "interface_rxerrors",
+		Help: "RX errors per network interface",
+	}, []string{"name"})
+	InterfaceTxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: MetricNamePrefix + "interface_txdrops",
+		Help: "TX drops per network interface",
+	}, []string{"name"})
+	InterfaceRxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: MetricNamePrefix + "interface_rxdrops",
+		Help: "RX drops per network interface",
+	}, []string{"name"})
+)
+
 func getDstPodInfo(dstPod *fgs.Pod) (pod, ns string) {
 	if dstPod != nil {
 		ns = dstPod.Namespace
@@ -401,12 +438,31 @@ func handleTlsEvent(processedEvent interface{}) {
 	}
 }
 
+func handleInterfaceStatsEvent(processedEvent interface{}) {
+	switch ev := processedEvent.(type) {
+	case *fgs.GetEventsResponse:
+		switch res := ev.Event.(type) {
+		case *fgs.GetEventsResponse_InterfaceStats:
+			name := res.InterfaceStats.InterfaceName
+			InterfaceBytesSent.WithLabelValues(name).Set(float64(res.InterfaceStats.BytesSent))
+			InterfaceBytesReceived.WithLabelValues(name).Set(float64(res.InterfaceStats.BytesReceived))
+			InterfaceSegmentsSent.WithLabelValues(name).Set(float64(res.InterfaceStats.PacketsSent))
+			InterfaceSegmentsReceived.WithLabelValues(name).Set(float64(res.InterfaceStats.PacketsReceived))
+			InterfaceTxErrors.WithLabelValues(name).Set(float64(res.InterfaceStats.TxErrors))
+			InterfaceRxErrors.WithLabelValues(name).Set(float64(res.InterfaceStats.RxErrors))
+			InterfaceTxDrops.WithLabelValues(name).Set(float64(res.InterfaceStats.TxDrops))
+			InterfaceRxDrops.WithLabelValues(name).Set(float64(res.InterfaceStats.RxDrops))
+		}
+	}
+}
+
 func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
 	handleOriginalEvent(originalEvent)
 	handleProcessedEvent(processedEvent)
 	handleSocketEvent(processedEvent)
 	handleHttpEvent(processedEvent)
 	handleTlsEvent(processedEvent)
+	handleInterfaceStatsEvent(processedEvent)
 }
 
 func EnableMetrics(address string) {
