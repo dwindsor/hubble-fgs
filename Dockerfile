@@ -23,7 +23,7 @@ FROM docker.io/library/golang:1.17.3-alpine3.13 as gops
 RUN apk add --no-cache binutils git \
  && git clone https://github.com/google/gops /go/src/github.com/google/gops \
  && cd /go/src/github.com/google/gops \
- && git checkout -b v0.3.15 v0.3.15 \
+ && git checkout -b v0.3.22 v0.3.22 \
  && go install \
  && strip /go/bin/gops
 
