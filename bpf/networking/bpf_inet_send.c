@@ -89,7 +89,11 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 		if (!value)
 			return 1;
 
-		udp_info_tx_reset(value, skb->len);
+		if (send)
+			udp_info_tx_reset(value, skb->len);
+		else
+			udp_info_rx_reset(value, skb->len);
+
 		process = map_lookup_elem(&socket_cookie_to_proc_map,
 					  &key->cookie);
 		if (process) {
@@ -100,7 +104,10 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 		map_update_elem(&udp_map, key, value, 0);
 		emit_udp_connect_event(skb, key, value);
 	} else {
-		update_tx_value(value, skb->len);
+		if (send)
+			update_tx_value(value, skb->len);
+		else
+			update_rx_value(value, skb->len);
 	}
 	return 1;
 }
