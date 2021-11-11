@@ -1,0 +1,47 @@
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "sys-read-follow-prefix"
+spec:
+  kprobes:
+  - call: "fd_install"
+    syscall: false
+    return: false
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "file"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        isnamespacepid: false
+        values:
+        - 33034
+      matchargs:
+      - index: 1
+        operator: "Prefix"
+        values:
+        - "/home/john/.local/share/bar/runtime/"
+      matchactions:
+      - action: FollowFD
+        argfd: 0
+        argname: 1
+  - call: "__x64_sys_read"
+    syscall: true
+    args:
+    - index: 0
+      type: "fd"
+    - index: 1
+      type: "char_buf"
+      returncopy: true
+    - index: 2
+      type: "size_t"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        isnamespacepid: false
+        values:
+        - 33034

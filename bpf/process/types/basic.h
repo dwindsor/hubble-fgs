@@ -165,6 +165,73 @@ int parse_iovec_array(char *args, unsigned long arg, int i, __u64 off) {
 
 #define MAX_STRING_FILTER 128
 
+/* Unfortunately, clang really wanted to optimize this and was fairly
+ * difficult to convince it otherwise. Clang tries to join the bounding
+ * operations and group the memory accesses sometimes using a couple
+ * registers and shuffling values through them. All this confuses the
+ * verifiers especially on <5.x series. So we get the following ASM
+ * blob which I find easier to read than C code that would work here.
+ */
+#define ASM_RCMP { \
+	t = s1;						  \
+	asm volatile("%[n] &= 0x7f;\n"			  \
+		     "r0 = %[t];\n" 			  \
+		     "r0 += %[n];\n"			  \
+		     "%[c] = *(u8*)(r0 + 0);\n"		  \
+		     : [c] "=r" (c1)			  \
+		     : [n]  "+r"(n1),			  \
+		       [t]  "+r:"(t) : "r0");		  \
+	t = s2;					  	  \
+	asm volatile("%[n] &= 0x7f;\n"			  \
+		     "r0 = %[t];\n"			  \
+		     "r0 += %[n];\n"			  \
+		     "%[c] = *(u8*)(r0 + 0);\n"    	  \
+		     : [c] "=r" (c2)			  \
+		     : [n] "+r"(n2),			  \
+		       [t] "+r"(t) : "c2", "r0");	  \
+	if (c1 != c2) goto failed;			  \
+	n1--; n2--;					  \
+	if (n1 < 1 || n2 < 1) goto accept; \
+}
+
+#define ASM_RCMP5 {\
+	ASM_RCMP   \
+	ASM_RCMP   \
+	ASM_RCMP   \
+	ASM_RCMP   \
+	ASM_RCMP   \
+}
+
+#define ASM_RCMP20 {\
+	ASM_RCMP5  \
+	ASM_RCMP5  \
+	ASM_RCMP5  \
+	ASM_RCMP5  \
+}
+
+#define ASM_RCMP50 { \
+	ASM_RCMP20  \
+	ASM_RCMP20  \
+	ASM_RCMP5   \
+}
+
+#define ASM_RCMP100 { \
+	ASM_RCMP50    \
+	ASM_RCMP50    \
+}
+
+static inline __attribute__((always_inline))
+int rcmpbytes(char *s1, char *s2, u64 n1, u64 n2)
+{
+	char c1 = 0, c2 = 0, *t;
+
+	ASM_RCMP50
+accept:
+	return 0;
+failed:
+	return -1;
+}
+
 static inline __attribute__((always_inline))
 int cmpbytes(char *s1, char *s2, size_t n)
 {
@@ -173,7 +240,6 @@ int cmpbytes(char *s1, char *s2, size_t n)
 	for (i = 0; i < MAX_STRING_FILTER; i++) {
 		if (i < n && s1[i] != s2[i]) return -1;
 	}
-
 	return 0;
 }
 
@@ -304,6 +370,57 @@ skip_string:
 		if (j + 8 >= filter->vallen)
 			break;
 	}
+	return 0;
+}
+
+static inline __attribute__((always_inline))
+long __filter_file_buf(char *value, char *args, __u32 op)
+{
+	int err;
+	__u64 v, a;
+
+	/* filter->vallen is pulled from user input so we also need to
+	 * ensure its bounded.
+	 */
+	v = (unsigned int)value[0];
+	a = (unsigned int)args[0];
+	if (op == op_filter_eq) {
+		if (v != a)
+			goto skip_string;
+	} else if (op == op_filter_str_prefix) {
+		if (a < v)
+			goto skip_string;
+	}
+	err = rcmpbytes(&value[4], &args[4], v-1, a-1);
+	if (!err)
+		return 0;
+skip_string:
+	return v + 4;
+}
+
+/* filter_file_buf: runs a comparison between the file path in args against the
+ * filter file path. This is slightly different from a string compare because
+ * files are stored in reverse order. We could swap them in kernel but this is
+ * problematic as well from a complexity angle. At the moment it seems easiest
+ * to simply special case filepaths and do a reverse search over them. Notice
+ * for 'equals' operatore either direction would work. But for prefix and
+ * postfix mappings direction matters.
+ */
+static inline __attribute__((always_inline))
+long filter_file_buf(struct selector_arg_filter *filter, char *args)
+{
+	char *value = (char *)&filter->value;
+	int next;
+
+	next = __filter_file_buf(value, args, filter->op);
+	if (!next)
+		return 1;
+	else if (next + 8 > filter->vallen)
+		return 0;
+	value += (next & 0x7f);
+	next = __filter_file_buf(value, args, filter->op);
+	if (!next)
+		return 1;
 	return 0;
 }
 
@@ -461,6 +578,8 @@ int selector_arg_offset(__u8 *f,
 	switch (filter->type) {
 	case file_ty:
 	case fd_ty:
+		pass = filter_file_buf(filter, args);
+		break;
 	case string_type:
 	case char_buf:
 		pass = filter_char_buf(filter, args);
