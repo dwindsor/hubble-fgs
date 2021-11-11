@@ -13,6 +13,7 @@ package api
 
 import (
 	"encoding/binary"
+	"fmt"
 
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 )
@@ -423,6 +424,13 @@ type MsgTLSParserState struct {
 	Type    uint32
 	Subtype uint32
 	Offset  uint32
+}
+
+func (s *MsgTLSParserState) String() string {
+	if s.Length != 0 || s.Type != 0 || s.Subtype != 0 || s.Offset != 0 {
+		return fmt.Sprintf("len=%d:type=%d:subtype=%d:offset=%d", s.Length, s.Type, s.Subtype, s.Offset)
+	}
+	return ""
 }
 
 type MsgTLSCertificates struct {

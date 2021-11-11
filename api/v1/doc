@@ -1214,10 +1214,7 @@ HTTP PARSER
 | server_session | [string](#string) |  |  |
 | certificates | [string](#string) | repeated |  |
 | certificate_error | [TlsCertificateError](#fgs.TlsCertificateError) |  |  |
-| parser_state_length | [uint32](#uint32) |  |  |
-| parser_state_type | [uint32](#uint32) |  |  |
-| parser_state_subtype | [uint32](#uint32) |  |  |
-| parser_state_offset | [uint32](#uint32) |  |  |
+| parser_internal_state | [string](#string) |  |  |
 
 
 
