@@ -7,8 +7,9 @@ RUN make hubble-bpf
 
 FROM quay.io/isovalent/hubble-libbpf:v0.2.3 as hubble-libbpf
 
-FROM quay.io/cilium/cilium-builder:309d6c32ce304efe7490876be24804622f698999 as hubble-builder
+FROM quay.io/cilium/cilium-builder:b7a9dcdcadd77d38db87bbd06b9bc238e9dab5a0@sha256:eecc017a6ccf0c7884f1ffcf10e58462a272f5e41c0ece09adb351e8839e3157 as hubble-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
+RUN apt-get update && apt-get install -y libelf-dev zlib1g-dev
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /usr/local/lib/
