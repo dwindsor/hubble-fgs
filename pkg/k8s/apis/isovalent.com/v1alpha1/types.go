@@ -224,6 +224,12 @@ type UdpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Enable UDP observability
 	Enable bool `json:"enable"`
+	// +kubebuilder:default=true
+	// +kubebuilder:validation;Optional
+	// UDP has two modes one for newer kernels (cgroup) and then an
+	// older fallback mode for kprobe use cases. Allow running older
+	// kprobe version on newer kernels by setting cgroup knob to false.
+	Cgroup bool `json:"cgroup"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

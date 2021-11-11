@@ -257,13 +257,14 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return nil, 0
 }
 
-func EnableUdpParser() *sensors.Sensor {
+func EnableUdpParser(cgroup bool) *sensors.Sensor {
 	var progs []*sensors.Program
 	var maps []*sensors.Map
+	var versionStr string
+
 	defaultGCInterval := UdpGCIntervalDefault
 
-	logger.GetLogger().Infof("Enable UDP")
-	if !kernels.MinKernelVersion("5.10.0") {
+	if !kernels.MinKernelVersion("5.10.0") || !cgroup {
 		progs = []*sensors.Program{
 			UdpSend,
 			UdpRetSend,
@@ -273,6 +274,7 @@ func EnableUdpParser() *sensors.Sensor {
 			UdpMapKprobe,
 			UdpRetprobeMap,
 		}
+		versionStr = "__udp_sensor_probe__"
 	} else {
 		progs = []*sensors.Program{
 			SockCreate,
@@ -283,16 +285,18 @@ func EnableUdpParser() *sensors.Sensor {
 			SocketCookieMap,
 			UdpMap,
 		}
+		versionStr = "__udp_sensor_cgroup__"
 	}
 	udpGC(defaultGCInterval)
-	return sensors.SensorBuilder("__udp_sensor__", progs, maps)
+	logger.GetLogger().WithField("sensorName", versionStr).Infof("Enable UDP")
+	return sensors.SensorBuilder(versionStr, progs, maps)
 }
 
 func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	if !spec.Parser.Udp.Enable {
 		return nil, nil
 	}
-	return EnableUdpParser(), nil
+	return EnableUdpParser(spec.Parser.Udp.Cgroup), nil
 }
 
 func handleUdpConnect(r *bytes.Reader) ([]observer.ObserverEvent, error) {

@@ -346,9 +346,18 @@ spec:
                   udp:
                     description: UDP policy specification
                     properties:
+                      cgroup:
+                        default: true
+                        description: UDP has two modes one for newer kernels (cgroup)
+                          and then an older fallback mode for kprobe use cases. Allow
+                          running older kprobe version on newer kernels by setting
+                          cgroup knob to false.
+                        type: boolean
                       enable:
                         description: Enable UDP observability
                         type: boolean
+                    required:
+                    - cgroup
                     type: object
                 type: object
               tracepoints:
