@@ -526,6 +526,108 @@ spec:
 	testKprobeObjectFiltered(t, readHook, &openChecker)
 }
 
+func TestKprobeObjectFilterPrefixExactOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
+      matchargs:
+      - index: 1
+        operator: "Prefix"
+        values:
+        - "/tmp/testfile"
+`
+	testKprobeObjectFiltered(t, readHook, &openChecker)
+}
+
+func TestKprobeObjectFilterPrefixSubdirOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
+      matchargs:
+      - index: 1
+        operator: "Prefix"
+        values:
+        - "/tmp/"
+`
+	testKprobeObjectFiltered(t, readHook, &openChecker)
+}
+
+func TestKprobeObjectFilterPrefixMissOpen(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "open filtered hook"
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    selectors:
+    - matchpids:
+      - operator: In
+        followforks: true
+        values:
+        - ` + pidStr + `
+      matchargs:
+      - index: 1
+        operator: "Prefix"
+        values:
+        - "/foo/"
+`
+	testKprobeObjectFiltered(t, readHook, &noKprobeChecker)
+}
+
 func TestKprobeObjectPostfixOpen(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	readHook := `
