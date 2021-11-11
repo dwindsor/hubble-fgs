@@ -346,6 +346,10 @@ spec:
                   udp:
                     description: UDP policy specification
                     properties:
+                      StatsInterval:
+                        description: Configures the Stat collection interval in seconds
+                        format: int32
+                        type: integer
                       cgroup:
                         default: true
                         description: UDP has two modes one for newer kernels (cgroup)
@@ -357,6 +361,7 @@ spec:
                         description: Enable UDP observability
                         type: boolean
                     required:
+                    - StatsInterval
                     - cgroup
                     type: object
                 type: object

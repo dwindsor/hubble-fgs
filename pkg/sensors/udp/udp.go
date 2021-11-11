@@ -27,6 +27,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/yalue/native_endian"
+
+	"github.com/sirupsen/logrus"
 )
 
 var (
@@ -257,12 +259,10 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return nil, 0
 }
 
-func EnableUdpParser(cgroup bool) *sensors.Sensor {
+func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	var progs []*sensors.Program
 	var maps []*sensors.Map
 	var versionStr string
-
-	defaultGCInterval := UdpGCIntervalDefault
 
 	if !kernels.MinKernelVersion("5.10.0") || !cgroup {
 		progs = []*sensors.Program{
@@ -287,16 +287,24 @@ func EnableUdpParser(cgroup bool) *sensors.Sensor {
 		}
 		versionStr = "__udp_sensor_cgroup__"
 	}
-	udpGC(defaultGCInterval)
-	logger.GetLogger().WithField("sensorName", versionStr).Infof("Enable UDP")
+	udpGC(interval)
+	logger.GetLogger().WithFields(logrus.Fields{
+		"sensorName":    versionStr,
+		"statsInterval": interval,
+	}).Infof("Enable UDP")
 	return sensors.SensorBuilder(versionStr, progs, maps)
 }
 
 func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+	var interval = time.Duration(UdpGCIntervalDefault)
+
 	if !spec.Parser.Udp.Enable {
 		return nil, nil
 	}
-	return EnableUdpParser(spec.Parser.Udp.Cgroup), nil
+	if spec.Parser.Udp.StatsInterval > 0 {
+		interval = time.Duration(spec.Parser.Udp.StatsInterval) * time.Second
+	}
+	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
 }
 
 func handleUdpConnect(r *bytes.Reader) ([]observer.ObserverEvent, error) {

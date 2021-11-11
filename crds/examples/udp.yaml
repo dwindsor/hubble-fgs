@@ -6,3 +6,5 @@ spec:
   parser:
     udp:
       enable: true
+      cgroup: true
+      statsinterval: 20

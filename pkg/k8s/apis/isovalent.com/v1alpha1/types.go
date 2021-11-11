@@ -230,6 +230,9 @@ type UdpPolicySpec struct {
 	// older fallback mode for kprobe use cases. Allow running older
 	// kprobe version on newer kernels by setting cgroup knob to false.
 	Cgroup bool `json:"cgroup"`
+	// +kubebuilder:validation;Optional
+	// Configures the Stat collection interval in seconds
+	StatsInterval uint32 `json:"StatsInterval"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
