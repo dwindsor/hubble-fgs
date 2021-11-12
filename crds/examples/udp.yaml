@@ -8,3 +8,5 @@ spec:
       enable: true
       cgroup: true
       statsinterval: 20
+      mintimesocketinterval: 20
+      deleteidlesocketinterval: 20

@@ -233,6 +233,12 @@ type UdpPolicySpec struct {
 	// +kubebuilder:validation;Optional
 	// Configures the Stat collection interval in seconds
 	StatsInterval uint32 `json:"StatsInterval"`
+	// +kubebuilder:validation;Optional
+	// Configure min time between socket stat events in seconds
+	MinTimeSocketInterval uint32 `json:"MinTimeSocketInterval"`
+	// +kubebuilder:validation;Optional
+	// Configure socket idle time to delete sockets in seconds
+	DeleteIdleSocketInterval uint32 `json:"DeleteIdleSocketInterval"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

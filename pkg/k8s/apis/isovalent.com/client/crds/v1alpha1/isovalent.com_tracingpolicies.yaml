@@ -346,6 +346,16 @@ spec:
                   udp:
                     description: UDP policy specification
                     properties:
+                      DeleteIdleSocketInterval:
+                        description: Configure socket idle time to delete sockets
+                          in seconds
+                        format: int32
+                        type: integer
+                      MinTimeSocketInterval:
+                        description: Configure min time between socket stat events
+                          in seconds
+                        format: int32
+                        type: integer
                       StatsInterval:
                         description: Configures the Stat collection interval in seconds
                         format: int32
@@ -361,6 +371,8 @@ spec:
                         description: Enable UDP observability
                         type: boolean
                     required:
+                    - DeleteIdleSocketInterval
+                    - MinTimeSocketInterval
                     - StatsInterval
                     - cgroup
                     type: object

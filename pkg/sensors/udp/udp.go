@@ -323,8 +323,10 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	}
 	udpGC(interval)
 	logger.GetLogger().WithFields(logrus.Fields{
-		"sensorName":    versionStr,
-		"statsInterval": interval,
+		"sensorName":     versionStr,
+		"statsInterval":  interval,
+		"deleteInterval": UdpDeleteInterval,
+		"socketInterval": UdpStatInterval,
 	}).Infof("Enable UDP")
 	return sensors.SensorBuilder(versionStr, progs, maps)
 }
@@ -337,6 +339,12 @@ func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors
 	}
 	if spec.Parser.Udp.StatsInterval > 0 {
 		interval = time.Duration(spec.Parser.Udp.StatsInterval) * time.Second
+	}
+	if spec.Parser.Udp.MinTimeSocketInterval > 0 {
+		UdpStatInterval = time.Duration(spec.Parser.Udp.MinTimeSocketInterval) * time.Second
+	}
+	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
+		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 	}
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
 }
