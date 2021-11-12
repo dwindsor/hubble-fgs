@@ -16,7 +16,7 @@ COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
-RUN ldconfig /usr/local/; export LD_LIBRARY_PATH=/usr/local/lib/
+RUN ldconfig /usr/local/
 COPY . ./
 RUN make hubble-fgs-image
 
