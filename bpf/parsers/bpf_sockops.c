@@ -36,16 +36,18 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_sock_map = {
 static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 {
 	struct sock_key key = {};
+	struct sock_key filter_key;
 
 	sk_extract4_key(skops, &key);
 
-	key.sport = bpf_ntohs(key.sport);
+	/* Filtering requires network byte-order for both sport and dport. */
+	filter_key = key;
+	filter_key.sport = bpf_ntohs(filter_key.sport);
 
-	if (tls_filter(&key) == PROTO_TRACK) {
-		key.sport = bpf_ntohs(key.sport);
+	if (tls_filter(&filter_key) == PROTO_TRACK) {
 		sock_hash_update(skops, &tls_sock_map, &key, BPF_NOEXIST);
-	} else if (http_filter(&key) == PROTO_TRACK) {
-		key.sport = bpf_ntohs(key.sport);
+	}
+	if (http_filter(&filter_key) == PROTO_TRACK) {
 		sock_hash_update(skops, &http_sock_map, &key, BPF_NOEXIST);
 	}
 }
