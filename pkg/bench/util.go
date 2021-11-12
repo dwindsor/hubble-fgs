@@ -93,6 +93,38 @@ func CPUUsageFromCPUAcct(containerID string) CPUUsage {
 	}
 }
 
+// CPUUsageFromTime parses the CPU usage from /usr/bin/time output
+// Assumes POSIX format, use "-p" with the GNU version.
+// TODO: Could also use the "time -v" format which both GNU and Busybox versions support.
+// It includes maxrss and context switches. Annoying if it's interspersed with other output
+// that also needs to be parsed. Perhaps nicer would be to just use the GNU version with
+// custom format, but this would require custom docker images for nginx, h2load and netperf.
+func CPUUsageFromTime(output string, otherLine func(line string)) (cpuUsage CPUUsage, err error) {
+	for _, line := range strings.Split(output, "\n") {
+		if strings.HasPrefix(line, "user") {
+			var secs float64
+			if _, err = fmt.Sscanf(line, "user %f", &secs); err != nil {
+				err = fmt.Errorf("failed to parse user line '%s': %w", line, err)
+				return
+			}
+			cpuUsage.UserTime = time.Duration(secs * float64(time.Second))
+		} else if strings.HasPrefix(line, "sys") {
+			var secs float64
+			if _, err = fmt.Sscanf(line, "sys %f", &secs); err != nil {
+				err = fmt.Errorf("failed to parse sys line '%s': %w", line, err)
+				return
+			}
+			cpuUsage.SystemTime = time.Duration(secs * float64(time.Second))
+		} else if line == "" || strings.HasPrefix(line, "real") {
+			/* ... */
+		} else {
+			otherLine(line)
+		}
+
+	}
+	return
+}
+
 func GetCPUUsage(tgt CPUUsageTarget) CPUUsage {
 	var rusage syscall.Rusage
 	if err := syscall.Getrusage(int(tgt), &rusage); err != nil {

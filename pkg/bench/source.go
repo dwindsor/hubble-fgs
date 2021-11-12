@@ -15,7 +15,6 @@ import (
 	"bytes"
 	"context"
 	"crypto/tls"
-	"encoding/csv"
 	"errors"
 	"fmt"
 	"io/ioutil"
@@ -29,7 +28,6 @@ import (
 	"strconv"
 	"strings"
 	"sync"
-	"syscall"
 	"time"
 
 	"golang.org/x/net/http2"
@@ -502,49 +500,50 @@ func (src netperfSource) Run(ctx context.Context, sinkPort int, args SourceArgs)
 		log.Printf("Netperf does not support fixed rate, ignoring requested rate.\n")
 	}
 
-	// NOTE(JM): Probing of netserver readiness with connect() seems to cause flaky results,
-	// so lets do retries instead.
-	for retry := 0; retry < 3; retry++ {
-		cmd := exec.Command("netperf",
-			"-H127.0.0.1",
-			fmt.Sprintf("-p%d", sinkPort),
-			fmt.Sprintf("-l%d", args.Duration/time.Second),
-			"-P0", // No header
-			"-t"+src.test,
-			"--",
-			"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency")
+	netperfArgs := []string{
+		"-H127.0.0.1",
+		fmt.Sprintf("-p%d", sinkPort),
+		fmt.Sprintf("-l%d", args.Duration/time.Second),
+		"-P0", // No header
+		"-t" + src.test,
+		"--",
+		"-o", "elapsed_time,throughput,p50_latency,p90_latency,p99_latency",
+	}
 
-		var out []byte
-		out, err = cmd.CombinedOutput()
-		if err != nil {
-			err = fmt.Errorf("netperf failed: %w (out: %s)", err, out)
-			log.Printf("netperf failed: %s. Retrying.\n", err)
-			time.Sleep(100 * time.Millisecond)
-			continue
-		}
+	cmdArgs := []string{
+		"run", "--rm", "--network=host",
+		"--name=fgs-bench-netperf",
+		"--entrypoint=/usr/bin/time",
+		"joamaki/netperf-docker", // Custom build for the EAGAIN fix
+		"-p", "netperf",
+	}
 
-		stats.CPUUsage = CPUUsageFromRusage(cmd.ProcessState.SysUsage().(*syscall.Rusage))
+	cmd := exec.Command("docker", append(cmdArgs, netperfArgs...)...)
 
-		reader := csv.NewReader(bytes.NewReader(out))
-		var rs []string
-		rs, err = reader.Read()
-		if err != nil {
-			err = fmt.Errorf("netperf csv output parse failed: %w", err)
-			return
-		}
-
-		stats.ActualRate, err = strconv.ParseFloat(rs[1], 64)
-		if err != nil {
-			err = fmt.Errorf("netperf req rate parse failed: %w", err)
-			return
-		}
-		stats.Forked = true
-		stats.LatencyP50 = time.Duration(xAtoi(rs[2])) * time.Microsecond
-		stats.LatencyP90 = time.Duration(xAtoi(rs[3])) * time.Microsecond
-		stats.LatencyP99 = time.Duration(xAtoi(rs[4])) * time.Microsecond
-		err = nil
+	// Read combined output as 'time' outputs to stderr.
+	out, err := cmd.CombinedOutput()
+	if err != nil {
+		err = fmt.Errorf("starting netperf failed: %w, out: %s", err, out)
 		return
 	}
+
+	stats.CPUUsage, _ = CPUUsageFromTime(string(out),
+		func(line string) {
+			var elapsed, throughput float64
+			var l50us, l90us, l99us int
+
+			if _, err = fmt.Sscanf(line, "%f,%f,%d,%d,%d", &elapsed, &throughput, &l50us, &l90us, &l99us); err != nil {
+				err = fmt.Errorf("failed to parse netperf output '%s': %w", line, err)
+				return
+			}
+			stats.ActualRate = throughput
+			stats.LatencyP50 = time.Duration(l50us) * time.Microsecond
+			stats.LatencyP90 = time.Duration(l90us) * time.Microsecond
+			stats.LatencyP99 = time.Duration(l99us) * time.Microsecond
+		})
+
+	stats.Forked = true
+
 	return
 }
 
@@ -561,17 +560,21 @@ func (src h2LoadSource) Run(ctx context.Context, sinkPort int, args SourceArgs) 
 	nCPU := runtime.NumCPU()
 	nClients := 5 * nCPU
 
-	cmdArgs := []string{
-		"run", "--rm", "--network=host",
-		"--name=fgs-bench-h2load",
-		"--entrypoint=/usr/bin/time", // For measuring CPU usage
-		"joamaki/nghttp2-alpine",     // Custom build to get the latest version with --duration support.
-		"h2load",
+	h2loadArgs := []string{
 		fmt.Sprintf("--clients=%d", nClients),
 		fmt.Sprintf("--threads=%d", nCPU),
 		fmt.Sprintf("--duration=%ds", args.Duration/time.Second),
 		"--max-concurrent-streams=5",
 	}
+
+	cmdArgs := []string{
+		"run", "--rm", "--network=host",
+		"--entrypoint=/usr/bin/time",
+		"--name=fgs-bench-h2load",
+		"joamaki/nghttp2-alpine", // Custom build to get the latest version with --duration support.
+		"-p", "h2load",
+	}
+	cmdArgs = append(cmdArgs, h2loadArgs...)
 	if !src.http2 {
 		cmdArgs = append(cmdArgs, "--h1")
 	}
@@ -590,58 +593,40 @@ func (src h2LoadSource) Run(ctx context.Context, sinkPort int, args SourceArgs) 
 		return
 	}
 
-	lines := strings.Split(string(out), "\n")
-
 	var reqPerSec float64
 	var max, mean time.Duration
 
-	for _, line := range lines {
-		if strings.HasPrefix(line, "finished") {
-			var durationS, throughputS string
-			if _, err = fmt.Sscanf(strings.ReplaceAll(line, ",", ""),
-				"finished in %s %f req/s %s",
-				&durationS, &reqPerSec, &throughputS); err != nil {
-				err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
-				return
+	stats.CPUUsage, _ = CPUUsageFromTime(string(out),
+		func(line string) {
+			if strings.HasPrefix(line, "finished") {
+				var durationS, throughputS string
+				if _, err = fmt.Sscanf(strings.ReplaceAll(line, ",", ""),
+					"finished in %s %f req/s %s",
+					&durationS, &reqPerSec, &throughputS); err != nil {
+					err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
+					return
+				}
+			} else if strings.HasPrefix(line, "requests") {
+				var total, started, done, succeeded, failed, errored, timeout int64
+				if _, err = fmt.Sscanf(line, "requests: %d total, %d started, %d done, %d succeeded, %d failed, %d errored, %d timeout",
+					&total, &started, &done, &succeeded, &failed, &errored, &timeout); err != nil {
+					err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
+					return
+				}
+				stats.Errors = errored
+				if errored > 0 {
+					stats.LastError = "h2load encountered errors"
+				}
+			} else if strings.HasPrefix(line, "time for request") {
+				var minS, maxS, meanS, sdS, sdSP string
+				if _, err = fmt.Sscanf(line, "time for request: %s %s %s %s %s", &minS, &maxS, &meanS, &sdS, &sdSP); err != nil {
+					err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
+					return
+				}
+				max, _ = time.ParseDuration(maxS)
+				mean, _ = time.ParseDuration(meanS)
 			}
-		} else if strings.HasPrefix(line, "requests") {
-			var total, started, done, succeeded, failed, errored, timeout int64
-			if _, err = fmt.Sscanf(line, "requests: %d total, %d started, %d done, %d succeeded, %d failed, %d errored, %d timeout",
-				&total, &started, &done, &succeeded, &failed, &errored, &timeout); err != nil {
-				err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
-				return
-			}
-			stats.Errors = errored
-			if errored > 0 {
-				stats.LastError = "h2load encountered errors"
-			}
-		} else if strings.HasPrefix(line, "time for request") {
-			var minS, maxS, meanS, sdS, sdSP string
-			if _, err = fmt.Sscanf(line, "time for request: %s %s %s %s %s", &minS, &maxS, &meanS, &sdS, &sdSP); err != nil {
-				err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
-				return
-			}
-			max, _ = time.ParseDuration(maxS)
-			mean, _ = time.ParseDuration(meanS)
-		} else if strings.HasPrefix(line, "user") {
-			// NOTE(JM): Couldn't figure out a better way for getting rusage out from a docker container that
-			// terminates on its own. The cpuacct files are gone and unreadable even if opened before
-			// the container exits. Using /usr/bin/time seemed easiest. Yes I spent too much time on this.
-			var mins, secs float64
-			if _, err = fmt.Sscanf(line, "user %fm %fs", &mins, &secs); err != nil {
-				err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
-				return
-			}
-			stats.CPUUsage.UserTime = time.Duration(mins*float64(time.Minute)) + time.Duration(secs*float64(time.Second))
-		} else if strings.HasPrefix(line, "sys") {
-			var mins, secs float64
-			if _, err = fmt.Sscanf(line, "sys %fm %fs", &mins, &secs); err != nil {
-				err = fmt.Errorf("failed to parse h2load output '%s': %w", line, err)
-				return
-			}
-			stats.CPUUsage.SystemTime = time.Duration(mins*float64(time.Minute)) + time.Duration(secs*float64(time.Second))
-		}
-	}
+		})
 
 	stats.Forked = true
 	stats.ActualRate = reqPerSec

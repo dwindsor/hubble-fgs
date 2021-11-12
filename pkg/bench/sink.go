@@ -11,6 +11,7 @@
 package bench
 
 import (
+	"bytes"
 	"context"
 	"crypto/tls"
 	_ "embed"
@@ -20,12 +21,10 @@ import (
 	"math/rand"
 	"net"
 	"net/http"
-	"os"
 	"os/exec"
 	"runtime"
 	"strconv"
 	"strings"
-	"syscall"
 
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
@@ -219,30 +218,37 @@ type nginxSink struct{}
 
 func (sink nginxSink) Start(ctx context.Context) (int, chan SinkStats, error) {
 	cmd := exec.Command(
-		"docker", "run", "--detach", "--rm", "--network=host",
+		"docker", "run", "--rm", "--network=host",
 		"--name=fgs-bench-nginx",
 		"nginx",
+		"bash", "-c", "time -p nginx -g \"daemon off;\"",
 	)
-
-	cmd.Stderr = os.Stderr
-	out, err := cmd.Output()
-	if err != nil {
-		return -1, nil, fmt.Errorf("failed to start nginx: %w", err)
-	}
-	containerID := strings.TrimSpace(string(out))
 
 	statsCh := make(chan SinkStats, 1)
 	go func() {
-		<-ctx.Done()
 		stats := SinkStats{Forked: true}
-		stats.CPUUsage = CPUUsageFromCPUAcct(containerID)
-		exec.Command("docker", "stop", containerID).Run()
+
+		var b bytes.Buffer
+		cmd.Stdout = io.Discard
+		cmd.Stderr = &b
+		err := cmd.Run()
+		if err != nil {
+			log.Printf("nginx failed %s: %s\n", b.String(), err)
+		} else {
+			stats.CPUUsage, _ = CPUUsageFromTime(b.String(), func(line string) {})
+		}
 		statsCh <- stats
+	}()
+
+	go func() {
+		<-ctx.Done()
+		exec.Command("docker", "exec", "fgs-bench-nginx", "nginx", "-s", "stop").Run()
+		exec.Command("docker", "stop", "fgs-bench-nginx").Run()
 	}()
 
 	// Wait for nginx to be ready.
 	if !ProbeTCPPort(80) {
-		exec.Command("docker", "stop", containerID).Run()
+		exec.Command("docker", "stop", "fgs-bench-nginx").Run()
 		return -1, nil, fmt.Errorf("nginx did not start up on time")
 	}
 
@@ -257,34 +263,43 @@ type netperfSink struct{}
 
 func (sink netperfSink) Start(ctx context.Context) (int, chan SinkStats, error) {
 	port := findFreePort()
-	cmd := exec.Command("netserver", "-D", "-N", "-f", "-4", "-p", strconv.Itoa(port))
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
+
+	cmd := exec.Command(
+		"docker", "run", "--user=1", "--rm", "--network=host",
+		"--name=fgs-bench-netserver",
+		"--entrypoint=/usr/bin/time",
+		"joamaki/netperf-docker",
+		"-p", "netserver",
+		"-D", "-N", "-f", "-4", fmt.Sprintf("-p %d", port),
+	)
 
 	log.Printf("Spawning netserver on port %d\n", port)
 
-	// netserver sets the output file permissions and with -D the output
-	// file is /dev/null, so don't run netserver as root to avoid changing
-	// permissions of /dev/null.
-	// https://github.com/HewlettPackard/netperf/issues/26
-	cmd.SysProcAttr = &syscall.SysProcAttr{
-		Credential: &syscall.Credential{Uid: 1},
-	}
-	if err := cmd.Start(); err != nil {
-		return -1, nil, fmt.Errorf("failed to start netserver: %w", err)
-	}
-
 	statsCh := make(chan SinkStats, 1)
-	// Terminate the process gracefully as netserver forks.
+	go func() {
+		stats := SinkStats{Forked: true}
+		var b bytes.Buffer
+		cmd.Stdout = io.Discard
+		cmd.Stderr = &b
+		cmd.Run()
+		var err error
+		stats.CPUUsage, err = CPUUsageFromTime(b.String(), func(line string) {})
+		if err != nil {
+			log.Printf("netserver CPU usage parsing failed: %s\n", err)
+		}
+		statsCh <- stats
+	}()
+
 	go func() {
 		<-ctx.Done()
-		cmd.Process.Signal(syscall.SIGTERM)
-		cmd.Wait()
-		statsCh <- SinkStats{
-			Forked:   true,
-			CPUUsage: CPUUsageFromRusage(cmd.ProcessState.SysUsage().(*syscall.Rusage)),
-		}
+		exec.Command("docker", "exec", "fgs-bench-netserver", "killall", "netserver").Run()
+		exec.Command("docker", "stop", "fgs-bench-netserver").Run()
 	}()
+
+	// Wait for it to be ready.
+	if !ProbeTCPPort(port) {
+		return -1, nil, fmt.Errorf("netserver did not start up on time")
+	}
 
 	return port, statsCh, nil
 }
