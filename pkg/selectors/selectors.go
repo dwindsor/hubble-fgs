@@ -24,6 +24,11 @@ func GetSelectorBuffer(k *KernelSelectorState) [4096]byte {
 	return k.e
 }
 
+func WriteSelectorInt32(k *KernelSelectorState, v int32) {
+	binary.LittleEndian.PutUint32(k.e[k.off:], uint32(v))
+	k.off += 4
+}
+
 func WriteSelectorUint32(k *KernelSelectorState, v uint32) {
 	binary.LittleEndian.PutUint32(k.e[k.off:], v)
 	k.off += 4

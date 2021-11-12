@@ -83,10 +83,14 @@ int map_key_filter(u8 *filter, struct sock_key *key) {
 	/* Supports upto 10 selectors any more and we simply
 	 * mark it as tracked so we fail open. Userspace should
 	 * catch this though. And also more than 1 selector
-	 * for ports is not useful.
+	 * for ports is not useful. An empty filter map indicates
+	 * user zero'd filter so we skip the parser. User will
+	 * insert -1 to indicate always parse.
 	 */
 	selectors = (__u32)filter[0];
 	if (!selectors)
+		goto skip;
+	if (selectors < 0)
 		goto track;
 
 	/* More than a single selector is unlikely to work unless
@@ -126,7 +130,7 @@ int tls_filter(struct sock_key *key) {
 
 	filter = map_lookup_elem(&tls_filter_map, &zero);
 	if (!filter)
-		return PROTO_TRACK;
+		return PROTO_SKIP;
 
 	return map_key_filter(filter, key);
 }
@@ -138,7 +142,7 @@ int http_filter(struct sock_key *key) {
 
 	filter = map_lookup_elem(&http_filter_map, &zero);
 	if (!filter)
-		return PROTO_TRACK;
+		return PROTO_SKIP;
 
 	return map_key_filter(filter, key);
 }

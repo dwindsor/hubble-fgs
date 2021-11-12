@@ -249,19 +249,23 @@ func ParseHTTPSpec(spec *v1alpha1.HttpSpec) ([128]byte, error) {
 	var e [4096]byte
 	k := &selectors.KernelSelectorState{}
 
-	selectors.WriteSelectorUint32(k, uint32(len(spec.Selectors)))
-	soff := make([]uint32, len(spec.Selectors))
-	for i := range spec.Selectors {
-		soff[i] = selectors.AdvanceSelectorLength(k)
-	}
-
-	for i, s := range spec.Selectors {
-		selectors.WriteSelectorLength(k, soff[i])
-		loff := selectors.AdvanceSelectorLength(k)
-		if err := parseHTTPSelector(k, s); err != nil {
-			return match, err
+	if len(spec.Selectors) == 0 {
+		selectors.WriteSelectorInt32(k, -1)
+	} else {
+		selectors.WriteSelectorUint32(k, uint32(len(spec.Selectors)))
+		soff := make([]uint32, len(spec.Selectors))
+		for i := range spec.Selectors {
+			soff[i] = selectors.AdvanceSelectorLength(k)
 		}
-		selectors.WriteSelectorLength(k, loff)
+
+		for i, s := range spec.Selectors {
+			selectors.WriteSelectorLength(k, soff[i])
+			loff := selectors.AdvanceSelectorLength(k)
+			if err := parseHTTPSelector(k, s); err != nil {
+				return match, err
+			}
+			selectors.WriteSelectorLength(k, loff)
+		}
 	}
 
 	e = selectors.GetSelectorBuffer(k)
