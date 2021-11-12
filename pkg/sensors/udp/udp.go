@@ -18,6 +18,7 @@ import (
 	"time"
 	"unsafe"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -39,6 +40,9 @@ var (
 	UdpRetprobeMapName   = "udp_retprobe_map"
 
 	mapDir = "/sys/fs/bpf/tcpmon"
+
+	stats          *lru.Cache
+	stataCacheSize = 32000
 )
 
 var (
@@ -143,7 +147,7 @@ func (k *udpInfoKey) String() string {
 	ipDst := reader.GetIP(k.DAddr, api.MSG_OP_IPV4_UDPCONNECT)
 	ipSrc := reader.GetIP(k.SAddr, api.MSG_OP_IPV4_UDPCONNECT)
 	return fmt.Sprintf("SAddr=%s:%d DAddr=%s:%d Cookie=%d",
-		ipSrc, api.SwapByte(k.SPort), ipDst, api.SwapByte(k.DPort), k.Cookie)
+		ipSrc, k.SPort, ipDst, api.SwapByte(k.DPort), k.Cookie)
 }
 func (k *udpInfoKey) GetKeyPtr() unsafe.Pointer { return unsafe.Pointer(k) }
 func (k *udpInfoKey) NewValue() bpf.MapValue {
@@ -209,18 +213,48 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	return
 }
 
+func udpDiffValues(last *udpInfoValue, curr *udpInfoValue) udpInfoValue {
+	return udpInfoValue{
+		TXBytes:  curr.TXBytes - last.TXBytes,
+		RXBytes:  curr.RXBytes - last.RXBytes,
+		SegsIn:   curr.SegsIn - last.SegsIn,
+		SegsOut:  curr.SegsOut - last.SegsOut,
+		SkDrops:  curr.SkDrops - last.SkDrops,
+		Ktime:    curr.Ktime,
+		PidKtime: curr.PidKtime,
+		Pid:      curr.Pid,
+	}
+}
+
 func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	udpValue := v.(*udpInfoValue)
+	udpKey := k.(*udpInfoKey)
+
 	t, err := reader.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
 		return
 	}
 
-	if t > UdpDeleteInterval {
-		m.DeleteKey(k)
-	}
 	if t <= UdpStatInterval {
-		emitStatEvent(k.(*udpInfoKey), v.(*udpInfoValue))
+		entry, ok := stats.Get(udpKey.Cookie)
+		if ok {
+			last := entry.(*udpInfoValue)
+			if *udpValue != *last {
+				diffValue := udpDiffValues(last, udpValue)
+				mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
+				stats.Add(udpKey.Cookie, mapUpdate)
+				emitStatEvent(udpKey, &diffValue)
+			}
+		} else {
+			udpValue = v.DeepCopyMapValue().(*udpInfoValue)
+			stats.Add(udpKey.Cookie, udpValue)
+			emitStatEvent(udpKey, udpValue)
+		}
+	}
+
+	if t > UdpDeleteInterval {
+		stats.Remove(udpKey.Cookie)
+		m.DeleteKey(k)
 	}
 }
 
@@ -322,6 +356,14 @@ func init() {
 }
 
 func AddUDP() {
+	var err error
+
+	stats, err = lru.New(stataCacheSize)
+	if err != nil {
+		logger.GetLogger().WithError(err).Errorf("UDP cache failed. Disabling UDP")
+		return
+	}
+
 	udp := &udpSensor{
 		name: "UDP sensor",
 	}

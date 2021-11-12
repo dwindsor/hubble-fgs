@@ -342,8 +342,6 @@ func postCloseEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessClose,
 
 	if res.Protocol == fgs.SocketProtocol_TCP {
 		postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, s)
-	} else if res.Protocol == fgs.SocketProtocol_UDP {
-		postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, s)
 	}
 }
 
