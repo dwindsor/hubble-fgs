@@ -99,6 +99,9 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 		if (process) {
 			value->pid = process->key.pid;
 			value->pid_ktime = process->key.ktime;
+		} else {
+			value->pid = 0;
+			value->pid_ktime = 0;
 		}
 
 		map_update_elem(&udp_map, key, value, 0);
