@@ -129,15 +129,29 @@ on a system with a new test program, but its also a bit annoying on the code sid
 
 #### 1. Create a GKE cluster and Install Cilium
 
-Follow https://docs.cilium.io/en/latest/gettingstarted/k8s-install-gke/ to create a
-GKE cluster and install Cilium. You might want to specify
-[`--release-channel` flag](https://cloud.google.com/kubernetes-engine/docs/concepts/release-channels)
-during cluster creation depending on which kernel version you need.
+Follow https://docs.cilium.io/en/v1.10/gettingstarted/k8s-install-default/ to create a
+GKE cluster and install Cilium. Use the following command to create a GKE cluster instead
+of the one in the Cilium to get kernel version `5.10.68+`:
+
+    export NAME="$(whoami)-$RANDOM"
+    gcloud container clusters create "${NAME}" \
+      --node-taints node.cilium.io/agent-not-ready=true:NoSchedule \
+      --zone us-west2-a \
+      --release-channel rapid \
+      --image-type COS \
+      --num-nodes 1 \
+      --cluster-version 1.22.3-gke.700
 
 #### 2. Install the latest FGS
 
+To install hubble-enterprise using the latest Helm chart, run:
+
     helm repo add isovalent https://helm.isovalent.com
-    helm install -n cilium --version 9999.9999.9999-dev cilium-enterprise isovalent/cilium-enterprise --set cilium.enabled=false
+    helm install -n kube-system hubble-enterprise isovalent/hubble-enterprise \
+      --version 9999.9999.9999-dev \
+      --set enterprise.image.tag=latest \
+      --set hubbleEnterpriseOperator.image.tag=latest \
+      --set imagePullPolicy=Always
 
 ### Minikube on Mac
 
