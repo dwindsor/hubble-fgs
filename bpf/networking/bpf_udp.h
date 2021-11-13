@@ -1,6 +1,14 @@
 #ifndef __BPF_UDP_H__
 #define __BPF_UDP_H__
 
+#ifndef __WRITE_ONCE
+# define __WRITE_ONCE(x, v)	(*(volatile typeof(x) *)&x) = (v)
+#endif
+#ifndef WRITE_ONCE
+#define WRITE_ONCE(x, v)	\
+	({ typeof(x) __val = (v); __WRITE_ONCE(x, __val); compiler_barrier(); __val; })
+#endif
+
 /* Maximum number of simultaniously existing UDP sockets that we track
  * statistics for.
  */
@@ -120,17 +128,17 @@ void udp_info_rx_reset(struct udp_info_value *v, int len)
 static inline __attribute__((always_inline))
 void update_tx_value(struct udp_info_value *v, u32 len)
 {
-	v->tx_bytes += len;
-	v->segs_out++;
-	v->ktime = ktime_get_ns();
+	__sync_fetch_and_add(&v->tx_bytes, len);
+	__sync_fetch_and_add(&v->segs_out, 1);
+	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
 
 static inline __attribute__((always_inline))
 void update_rx_value(struct udp_info_value *v, u32 len)
 {
-	v->rx_bytes += len;
-	v->segs_in++;
-	v->ktime = ktime_get_ns();
+	__sync_fetch_and_add(&v->rx_bytes, len);
+	__sync_fetch_and_add(&v->segs_in, 1);
+	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
 
 #endif // __BPF_UDP_H__

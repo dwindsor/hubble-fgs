@@ -81,6 +81,24 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	} else {
 		key->sport = bpf_ntohs(key->sport);
 	}
+	/* This logic is a bit racy, but we can handle it. Thinking through the
+	 * cases. Multiple sends may happen concurrently on the same key. If
+	 * the key is not in the map we may have multiple cores in the !value
+	 * branch. This is OK as long as the user space is aware this may happen.
+	 * In this case user space will see duplicate 'connect' events and
+	 * metrics will correctly aggreagate them. One of these connects will
+	 * win the map_update_elem race. And any future lookups from BPF side
+	 * will be additive on that event. The value branch must be slightly
+	 * careful with pkt/byte couonter updates to ensure concurrent update
+	 * on the value are handled, we use __fetch_and_adds here for this to
+	 * be safe. And the only remaining ugly bit is ktime can't be trusted.
+	 * If more than one core is writing into ktime we may corrupt it. So
+	 * we need a WRITE_ONCE to ensure the compiler does this in a single
+	 * store. Then we get a coherent ktime although we don't know what
+	 * core its from. We don't really care though as long as its
+	 * approximately accurate which it will be or we wouldn't have
+	 * concurrent cores here.
+	 */
 	value = map_lookup_elem(&udp_map, key);
 	if (!value) {
 		struct execve_map_value *process;
