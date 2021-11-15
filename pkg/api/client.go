@@ -186,6 +186,7 @@ const (
 	TLSVersion12 = 0x0303
 	TLSVersion11 = 0x0203
 	TLSVersion10 = 0x0103
+	TLSNone      = 0x0000
 )
 
 // TLS flags

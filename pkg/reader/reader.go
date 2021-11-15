@@ -363,6 +363,8 @@ func GetTLSVersion(version uint16) string {
 		return "TLS1.1"
 	case api.TLSVersion10:
 		return "TLS1.0"
+	case api.TLSNone:
+		return ""
 	default:
 		return "unknown(" + strconv.FormatUint(uint64(version), 10) + ")"
 	}
