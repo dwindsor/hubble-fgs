@@ -412,15 +412,40 @@ func handleProcessedEvent(processedEvent interface{}) {
 	EventsProcessed.WithLabelValues(eventType, namespace, pod, binary).Inc()
 }
 
+func getNegotiatedVersion12(tls *fgs.Tls) string {
+	c := tls.ClientVersion
+	s := tls.ServerVersion
+
+	// TLS version degrade to lowest common protocol support, so
+	// walk through TLS versions starting at lowest and working
+	// up checking if either client or server indicate the version.
+	// If c or s have an unknown protocol we report that to ensure
+	// we don't make an incorrect assumption.
+	if strings.Contains(c, "unknown") {
+		return c
+	} else if strings.Contains(s, "unknown") {
+		return s
+	} else if c == "TLS 1.0" || s == "TLS 1.0" {
+		return "TLS 1.0"
+	} else if c == "TLS 1.1" || s == "TLS 1.1" {
+		return "TLS 1.1"
+	} else if c == "TLS 1.2" || s == "TLS 1.2" {
+		return "TLS 1.2"
+	} else {
+		// We should never get here if we do lets use the
+		// code below and we can count it in metrics because
+		// it is unique from grpc layers unknown(#) syntax.
+		return "unknown(c|s)"
+	}
+}
+
 func getNegotiatedVersion(tls *fgs.Tls) string {
 	if tls.NegotiatedVersion != "" {
 		// For TLS 1.3 the negotiated version field is set. Use it.
 		return tls.NegotiatedVersion
-	} else if tls.ClientVersion < tls.ServerVersion {
-		// For TLS < 1.3, pick the older version between client and server versions.
-		return tls.ClientVersion
 	} else {
-		return tls.ServerVersion
+		// For <TLS 1.3 do version discovery
+		return getNegotiatedVersion12(tls)
 	}
 }
 
