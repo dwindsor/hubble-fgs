@@ -59,6 +59,10 @@ const (
 	PidMapMissOnRemove ErrorType = "pid_map_miss_on_remove"
 	// MetricNamePrefix defines the prefix for Prometheus metrics.
 	MetricNamePrefix string = "isovalent_"
+
+	tlsVersion1_0 = "TLS1.0"
+	tlsVersion1_1 = "TLS1.1"
+	tlsVersion1_2 = "TLS1.2"
 )
 
 // TCP socket metrics
@@ -425,12 +429,12 @@ func getNegotiatedVersion12(tls *fgs.Tls) string {
 		return c
 	} else if strings.Contains(s, "unknown") {
 		return s
-	} else if c == "TLS 1.0" || s == "TLS 1.0" {
-		return "TLS 1.0"
-	} else if c == "TLS 1.1" || s == "TLS 1.1" {
-		return "TLS 1.1"
-	} else if c == "TLS 1.2" || s == "TLS 1.2" {
-		return "TLS 1.2"
+	} else if c == tlsVersion1_0 || s == tlsVersion1_0 {
+		return tlsVersion1_0
+	} else if c == tlsVersion1_1 || s == tlsVersion1_1 {
+		return tlsVersion1_1
+	} else if c == tlsVersion1_2 || s == tlsVersion1_2 {
+		return tlsVersion1_2
 	} else {
 		// We should never get here if we do lets use the
 		// code below and we can count it in metrics because
