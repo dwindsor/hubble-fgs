@@ -14,7 +14,6 @@ package parsertest
 import (
 	"bytes"
 	"fmt"
-	"log"
 	"text/scanner"
 )
 
@@ -60,7 +59,7 @@ type TestStepPacket struct {
 type TestStepEgress TestStepPacket
 
 func (e *TestStepEgress) Exec(ctx *TestContext) *TestStepError {
-	log.Printf("EGRESS %s | %d bytes\n", e.Description, len(e.Payload))
+	ctx.t.Logf("EGRESS  %-20s => %d bytes\n", e.Description, len(e.Payload))
 	if err := ctx.emitEgress(e.Payload); err != nil {
 		return &TestStepError{
 			Position:    e.Position,
@@ -78,7 +77,7 @@ func (e *TestStepEgress) Exec(ctx *TestContext) *TestStepError {
 type TestStepIngress TestStepPacket
 
 func (e *TestStepIngress) Exec(ctx *TestContext) *TestStepError {
-	log.Printf("INGRESS %s | %d bytes\n", e.Description, len(e.Payload))
+	ctx.t.Logf("INGRESS %-20s <= %d bytes\n", e.Description, len(e.Payload))
 	if err := ctx.emitIngress(e.Payload); err != nil {
 		return &TestStepError{
 			Position:    e.Position,
@@ -105,6 +104,7 @@ func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
 		return &TestStepError{e.Position, "waitForEvent", nil}
 	}
 	r := bytes.NewReader(event)
+	ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
 	for _, m := range e.Matchers {
 		_, err := m.Match(r)
 		if err != nil {

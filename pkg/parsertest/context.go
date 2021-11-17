@@ -14,12 +14,14 @@ package parsertest
 import (
 	"fmt"
 	"net"
+	"testing"
 )
 
 type TestContext struct {
 	egressConn  *net.TCPConn
 	ingressConn *net.TCPConn
 	perOpChans  map[int]chan []byte
+	t           *testing.T
 }
 
 func (ctx *TestContext) Close() {
