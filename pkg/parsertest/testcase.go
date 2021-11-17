@@ -1,0 +1,135 @@
+package parsertest
+
+import (
+	"bytes"
+	"fmt"
+	"log"
+	"text/scanner"
+)
+
+//
+// Test case and step definitions
+//
+
+type TestCase struct {
+	// Name of the test case. Derived from filename.
+	Name string
+
+	// Test tags
+	Tags []string
+
+	// The test steps to execute.
+	Steps []TestStep
+}
+
+type TestStepError struct {
+	Position    scanner.Position
+	Description string
+	Inner       error
+}
+
+func (e *TestStepError) Error() string {
+	return fmt.Sprintf("%s error at %s: %s", e.Description, e.Position, e.Inner)
+}
+
+type TestStep interface {
+	Exec(ctx *TestContext) *TestStepError
+}
+
+type TestStepPacket struct {
+	Position    scanner.Position
+	Description string
+	Payload     []byte
+}
+
+//
+// Egress step
+//
+
+type TestStepEgress TestStepPacket
+
+func (e *TestStepEgress) Exec(ctx *TestContext) *TestStepError {
+	log.Printf("EGRESS %s | %d bytes\n", e.Description, len(e.Payload))
+	if err := ctx.emitEgress(e.Payload); err != nil {
+		return &TestStepError{
+			Position:    e.Position,
+			Description: "INGRESS",
+			Inner:       err,
+		}
+	}
+	return nil
+}
+
+//
+// Ingress step
+//
+
+type TestStepIngress TestStepPacket
+
+func (e *TestStepIngress) Exec(ctx *TestContext) *TestStepError {
+	log.Printf("INGRESS %s | %d bytes\n", e.Description, len(e.Payload))
+	if err := ctx.emitIngress(e.Payload); err != nil {
+		return &TestStepError{
+			Position:    e.Position,
+			Description: "INGRESS",
+			Inner:       err,
+		}
+	}
+	return nil
+}
+
+//
+// Event matching step
+//
+
+type TestStepEvent struct {
+	Position scanner.Position
+	Op       int
+	Matchers []AnnMatcher
+}
+
+func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
+	event, ok := ctx.waitForEvent(e.Op)
+	if !ok {
+		return &TestStepError{e.Position, "waitForEvent", nil}
+	}
+	r := bytes.NewReader(event)
+	for _, m := range e.Matchers {
+		_, err := m.Match(r)
+		if err != nil {
+			return &TestStepError{m.Position, "match", err}
+		}
+	}
+	return nil
+}
+
+//
+// Event dumping step
+//
+
+type TestStepEventDump struct {
+	Position scanner.Position
+	Op       int
+}
+
+func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
+	event, ok := ctx.waitForEvent(e.Op)
+	if !ok {
+		return &TestStepError{e.Position, "waitForEvent", nil}
+	}
+
+	fmt.Printf("EVENT DUMP\n")
+	fmt.Printf("-- cut from here --")
+
+	for i := range event {
+		if (i % 16) == 0 {
+			fmt.Printf("\n  $")
+		}
+		fmt.Printf(" %02x", event[i])
+	}
+	fmt.Printf("\n")
+
+	fmt.Printf("-- cut to here--\n")
+
+	return nil
+}

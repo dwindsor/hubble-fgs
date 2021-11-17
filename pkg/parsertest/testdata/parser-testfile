@@ -1,0 +1,99 @@
+# Test file for the test-case parser
+
+TAGS foo bar
+EGRESS test egress
+  # Different length hex matchers
+  $ 16
+  $ 16 3f # an inline comment
+  $ aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c
+  $ aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c
+
+  # Word matchers
+  2 0 28 65535
+  h2 0 42 65535
+  4 0 131072 4294967295
+  h4 0 131072 4294967295
+
+  # IPs
+  I 127.0.0.1
+  I 0.0.0.0
+  I 255.255.255.255
+
+  # Different strings
+  "foobar"
+  "foobarbaz\r\n"
+  `
+a raw string
+`
+
+  # Bytes for wildcard
+  $ 01
+  $ 3f 12 1f
+  "helloworld"
+END
+
+INGRESS test ingress
+  # Different length hex matchers
+  $ 16
+  $ 16 3f # an inline comment
+  $ aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c
+  $ aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c
+
+  # Word matchers
+  2 0 28 65535
+  h2 0 42 65535
+  4 0 131072 4294967295
+  h4 0 131072 4294967295
+
+  # IPs
+  I 127.0.0.1
+  I 0.0.0.0
+  I 255.255.255.255
+
+  # Different strings
+  "foobar"
+  "foobarbaz\r\n"
+  `
+a raw string
+`
+
+  # Bytes for wildcard
+  $ 01
+  $ 3f 12 1f
+  "helloworld"
+END
+
+
+EVENT tls
+  # Different length hex matchers
+  $ 16
+  $ 16 3f # an inline comment
+  $ aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c
+  $ aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c aa 8b 7a 17 d3 0b 3b de 7f 69 bc a8 50 37 62 3c
+
+  # Word matchers
+  2 0 28 65535
+  h2 0 42 65535
+  4 0 131072 4294967295
+  h4 0 131072 4294967295
+
+  # IPs
+  I 127.0.0.1
+  I 0.0.0.0
+  I 255.255.255.255
+
+  # Different strings
+  "foobar"
+  "foobarbaz\r\n"
+  `
+a raw string
+`
+
+  # Wildcards
+  $ ??
+  $ 3f ?? 1f
+  ? 10
+END
+
+EVENTDUMP http
+
