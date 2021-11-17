@@ -346,20 +346,6 @@ spec:
                   udp:
                     description: UDP policy specification
                     properties:
-                      DeleteIdleSocketInterval:
-                        description: Configure socket idle time to delete sockets
-                          in seconds
-                        format: int32
-                        type: integer
-                      MinTimeSocketInterval:
-                        description: Configure min time between socket stat events
-                          in seconds
-                        format: int32
-                        type: integer
-                      StatsInterval:
-                        description: Configures the Stat collection interval in seconds
-                        format: int32
-                        type: integer
                       cgroup:
                         default: true
                         description: UDP has two modes one for newer kernels (cgroup)
@@ -367,14 +353,25 @@ spec:
                           running older kprobe version on newer kernels by setting
                           cgroup knob to false.
                         type: boolean
+                      deleteIdleSocketInterval:
+                        description: Configure socket idle time to delete sockets
+                          in seconds
+                        format: int32
+                        type: integer
                       enable:
                         description: Enable UDP observability
                         type: boolean
+                      minTimeSocketInterval:
+                        description: Configure min time between socket stat events
+                          in seconds
+                        format: int32
+                        type: integer
+                      statsInterval:
+                        description: Configures the Stat collection interval in seconds
+                        format: int32
+                        type: integer
                     required:
-                    - DeleteIdleSocketInterval
-                    - MinTimeSocketInterval
-                    - StatsInterval
-                    - cgroup
+                    - enable
                     type: object
                 type: object
               tracepoints:

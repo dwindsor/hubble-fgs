@@ -221,24 +221,23 @@ type ParserPolicySpec struct {
 }
 
 type UdpPolicySpec struct {
-	// +kubebuilder:validation:Optional
 	// Enable UDP observability
 	Enable bool `json:"enable"`
 	// +kubebuilder:default=true
-	// +kubebuilder:validation;Optional
+	// +kubebuilder:validation:Optional
 	// UDP has two modes one for newer kernels (cgroup) and then an
 	// older fallback mode for kprobe use cases. Allow running older
 	// kprobe version on newer kernels by setting cgroup knob to false.
 	Cgroup bool `json:"cgroup"`
-	// +kubebuilder:validation;Optional
+	// +kubebuilder:validation:Optional
 	// Configures the Stat collection interval in seconds
-	StatsInterval uint32 `json:"StatsInterval"`
-	// +kubebuilder:validation;Optional
+	StatsInterval uint32 `json:"statsInterval"`
+	// +kubebuilder:validation:Optional
 	// Configure min time between socket stat events in seconds
-	MinTimeSocketInterval uint32 `json:"MinTimeSocketInterval"`
-	// +kubebuilder:validation;Optional
+	MinTimeSocketInterval uint32 `json:"minTimeSocketInterval"`
+	// +kubebuilder:validation:Optional
 	// Configure socket idle time to delete sockets in seconds
-	DeleteIdleSocketInterval uint32 `json:"DeleteIdleSocketInterval"`
+	DeleteIdleSocketInterval uint32 `json:"deleteIdleSocketInterval"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
