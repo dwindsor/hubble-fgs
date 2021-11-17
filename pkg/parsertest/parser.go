@@ -1,3 +1,14 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+//
+
 package parsertest
 
 import (
@@ -350,22 +361,6 @@ func (p *Parser) parseHexMatcher() (ms []Matcher, err error) {
 		}
 	}
 	return nil, fmt.Errorf("EOF while parsing hex matcher")
-}
-
-func (p *Parser) parseStringMatcher() ([]Matcher, error) {
-	sm := ""
-	for tok := p.scanner.Scan(); tok != scanner.EOF; tok = p.scanner.Scan() {
-		if tok == '\n' || tok == '#' {
-			if tok == '#' {
-				p.skipComment()
-			}
-			sm = strings.ReplaceAll(sm, "\\r", "\r")
-			sm = strings.ReplaceAll(sm, "\\n", "\n")
-			return []Matcher{StringMatcher(sm)}, nil
-		}
-		sm += p.scanner.TokenText()
-	}
-	return nil, fmt.Errorf("EOF while parsing string")
 }
 
 // AnnMatcher is an annotated matcher that includes line
