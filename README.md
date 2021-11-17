@@ -153,6 +153,14 @@ To install hubble-enterprise using the latest Helm chart, run:
       --set hubbleEnterpriseOperator.image.tag=latest \
       --set imagePullPolicy=Always
 
+#### 3. Deploy CRD with set of recent features
+
+Alpo testing cluster runs most Alpha/Beta features that are ready for
+testing and exploratory use. For a good set of features to put you on
+the cutting edge consider using a similar policy linked here,
+
+ https://github.com/isovalent/cilium-enterprise-dogfooding/blob/main/flux/bases/tracing-policies/trace-all.yaml
+
 ### Minikube on Mac
 
 #### 1. Check minikube version
