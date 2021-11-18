@@ -70,6 +70,12 @@ func (f *EventTypeFilter) OnBuildFilter(_ context.Context, ff *fgs.Filter) ([]hu
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessKprobe{})
 			case api.MSG_OP_HTTP:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessHttp{})
+			case api.MSG_OP_IPV4_UDPSTATS:
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessSockstats{})
+			case api.MSG_OP_IPV4_TCPSTATS:
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessSockstats{})
+			case api.MSG_OP_INTERFACE_STATS:
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_InterfaceStats{})
 			default:
 				return nil, fmt.Errorf("Unknown EventType %s", s)
 			}
