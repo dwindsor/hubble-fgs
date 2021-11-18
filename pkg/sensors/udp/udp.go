@@ -214,6 +214,9 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 }
 
 func udpDiffValues(last *udpInfoValue, curr *udpInfoValue) udpInfoValue {
+	if curr.TXBytes < last.TXBytes {
+		logger.GetLogger().Warnf("curr %s < last %s\n", curr, last)
+	}
 	return udpInfoValue{
 		TXBytes:  curr.TXBytes - last.TXBytes,
 		RXBytes:  curr.RXBytes - last.RXBytes,
@@ -242,18 +245,18 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 			if *udpValue != *last {
 				diffValue := udpDiffValues(last, udpValue)
 				mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
-				stats.Add(udpKey.Cookie, mapUpdate)
+				stats.Add(udpKey, mapUpdate)
 				emitStatEvent(udpKey, &diffValue)
 			}
 		} else {
 			udpValue = v.DeepCopyMapValue().(*udpInfoValue)
-			stats.Add(udpKey.Cookie, udpValue)
+			stats.Add(udpKey, udpValue)
 			emitStatEvent(udpKey, udpValue)
 		}
 	}
 
 	if t > UdpDeleteInterval {
-		stats.Remove(udpKey.Cookie)
+		stats.Remove(udpKey)
 		m.DeleteKey(k)
 	}
 }
