@@ -2,7 +2,7 @@ package parsertest
 
 import (
 	"sync"
-	"syscall"
+	"syscall" //nolint
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
