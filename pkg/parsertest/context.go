@@ -24,11 +24,6 @@ type TestContext struct {
 	t           *testing.T
 }
 
-func (ctx *TestContext) Close() {
-	ctx.egressConn.Close()
-	ctx.ingressConn.Close()
-}
-
 func (ctx *TestContext) emitEgress(pkt []byte) error {
 	n, err := ctx.egressConn.Write(pkt)
 	if err != nil {

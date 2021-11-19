@@ -100,8 +100,9 @@ func TestParse(t *testing.T) {
 		}
 
 		r := bytes.NewReader(expectedPacketPayload)
+		var ctx TestContext
 		for _, m := range eventStep.Matchers {
-			_, err := m.Match(r)
+			_, err := m.Match(&ctx, r)
 			if err != nil {
 				t.Errorf("matcher at %s failed: %s",
 					m.Position, err)

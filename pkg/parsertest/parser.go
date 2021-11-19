@@ -148,6 +148,8 @@ func (p *Parser) parseOp() (int, error) {
 	switch p.scanner.TokenText() {
 	case "TLS", "tls":
 		return api.MSG_OP_TLS, nil
+	case "TLSCONT", "tlscont":
+		return api.MSG_OP_TLS_CONT, nil
 	case "HTTP", "http":
 		return api.MSG_OP_HTTP, nil
 	default:
@@ -220,6 +222,8 @@ scan:
 				goto scan
 			case "I":
 				ms, err = p.parseIPMatcher()
+			case "A":
+				ms, err = p.parseAddrMatcher()
 			case "$":
 				ms, err = p.parseHexMatcher()
 			case "2":
@@ -243,7 +247,6 @@ scan:
 			return nil, err
 		}
 		for _, m := range ms {
-			// TODO position too coarse?
 			ams = append(ams, AnnMatcher{m, pos})
 		}
 	}
@@ -256,6 +259,39 @@ func (p *Parser) parseWildcard() (ms []Matcher, err error) {
 		return nil, err
 	}
 	return []Matcher{WildcardMatcher(int(n))}, nil
+}
+
+func (p *Parser) parseAddrMatcher() ([]Matcher, error) {
+	tok := p.scanner.Scan()
+	if tok == scanner.EOF || tok == '\n' || tok == '#' {
+		return nil, fmt.Errorf("EOF while parsing addr matcher")
+	}
+	var m ConnAddrMatcher
+
+	// TODO(JM): the keywords are pretty ugly. figure out something neater.
+	switch p.scanner.TokenText() {
+	case "SRV_ADDR":
+		m.kind = CMK_IP_RAW
+	case "CLI_ADDR":
+		m.kind = CMK_IP_RAW
+		m.isClient = true
+	case "SRV_ADDR_STR":
+		m.kind = CMK_IP_STRING
+	case "CLI_ADDR_STR":
+		m.kind = CMK_IP_STRING
+		m.isClient = true
+	case "SRV_PORT":
+		m.kind = CMK_PORT_NET
+	case "CLI_PORT":
+		m.kind = CMK_PORT_NET
+		m.isClient = true
+	case "SRV_PORT_HOST":
+		m.kind = CMK_PORT_HOST
+	case "CLI_PORT_HOST":
+		m.isClient = true
+		m.kind = CMK_PORT_HOST
+	}
+	return []Matcher{m}, nil
 }
 
 func (p *Parser) parseHalfWord(network bool) (ms []Matcher, err error) {

@@ -26,9 +26,9 @@ const (
 )
 
 const (
-	FGS_INITIAL = iota
-	FGS_TLS
-	FGS_HTTP
+	SENS_INITIAL = iota
+	SENS_TLS
+	SENS_HTTP
 )
 
 func init() {
@@ -72,7 +72,8 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	sensor := sensors.GetInitialSensor()
 
 	var spec v1alpha1.ParserPolicySpec
-	if cfg == FGS_TLS {
+	switch cfg {
+	case SENS_TLS:
 		spec = v1alpha1.ParserPolicySpec{
 			Http: v1alpha1.HttpSpec{
 				Enable: false,
@@ -94,7 +95,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 		}
 		sensor = sensors.SensorCombine("init+tls", sensor, tlsSensor)
 
-	} else if cfg == FGS_HTTP {
+	case SENS_HTTP:
 		spec = v1alpha1.ParserPolicySpec{
 			Http: v1alpha1.HttpSpec{
 				Enable: true,
@@ -127,7 +128,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 }
 
 func runTests(t *testing.T, cfg int, dir string) {
-	handle := startSensors(FGS_TLS, t)
+	handle := startSensors(SENS_TLS, t)
 	defer handle.Close()
 
 	dispatcher, err := NewEventDispatcher()
@@ -163,5 +164,5 @@ func runTests(t *testing.T, cfg int, dir string) {
 }
 
 func TestTLS(t *testing.T) {
-	runTests(t, FGS_TLS, "tls")
+	runTests(t, SENS_TLS, "tls")
 }

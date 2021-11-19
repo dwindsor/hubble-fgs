@@ -97,10 +97,10 @@ EVENT tls
   $ 06 00 00 00             # op + pad
   h4 384                    # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
-  I 127.0.0.87              # saddr
-  I 127.0.0.88              # daddr
+  A CLI_ADDR                # saddr
+  A SRV_ADDR                # daddr
   h2 443                    # dport (always 443 (host-order) for TLS)
-  $ ?? ??                   # sport
+  A CLI_PORT_HOST           # sport (host-order)
   $ 00 00 00 00             # remaining
   $ 00 00 00 00 00 00 00 00 # uid
 
@@ -133,8 +133,9 @@ EVENT tls
   # session id
   $ 35 b8 1f cd 90 0f 6f f0 a0 2f 42 b8 c9 27 db 75
   $ 57 a3 06 e6 83 27 18 9d 89 cd e5 7f d4 39 7e 3f
-  $ 00 3e 13 02 13 03 13 01 c0 2c c0 30 00 9f cc a9
-  $ cc a8 cc aa c0 2b c0 2f 00 9e c0 24 c0 28 00 6b
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  # TODO: ^ why the last 32 bytes are zeroed?
 
   # bytes
   $ 00 00 00 00
@@ -151,7 +152,6 @@ EVENT tls
 
   # supported versions
   $ 03 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  # $ 00 00 00 00 00 00 00 00 00 00 04 03 04 03 03 00
 
   # cipher
   $ 13 02

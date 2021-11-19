@@ -1,9 +1,9 @@
 package parsertest
 
 import (
+	"context"
 	"sync"
 	"syscall" //nolint
-	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -78,7 +78,7 @@ func (ed *EventDispatcher) UnsubscribeAll() {
 	ed.subs = nil
 }
 
-func (ed *EventDispatcher) Run(duration time.Duration, ready, done chan bool) error {
+func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) error {
 	defer ed.UnsubscribeAll()
 
 	ready <- true
@@ -103,14 +103,7 @@ func (ed *EventDispatcher) Run(duration time.Duration, ready, done chan bool) er
 		ed.log.Errorf("PerfEvent error")
 	}
 
-	end := time.Now().Add(duration)
-	for perfEventError == nil && time.Now().Before(end) {
-		select {
-		case <-done:
-			return nil
-		default:
-		}
-
+	for perfEventError == nil && ctx.Err() == nil {
 		_, err := ed.perCpuEvents.Poll(100)
 		if err != nil {
 			if errno, ok := err.(syscall.Errno); ok && errno.Temporary() {
@@ -121,6 +114,7 @@ func (ed *EventDispatcher) Run(duration time.Duration, ready, done chan bool) er
 			return err
 		}
 		if err := ed.perCpuEvents.ReadAll(100, evRecv, evLost, evErr); err != nil {
+			ed.log.Errorf("ReadAll failed: %s", err)
 			return err
 		}
 	}

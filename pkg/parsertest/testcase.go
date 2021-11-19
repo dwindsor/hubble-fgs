@@ -101,12 +101,12 @@ type TestStepEvent struct {
 func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
 	event, ok := ctx.waitForEvent(e.Op)
 	if !ok {
-		return &TestStepError{e.Position, "waitForEvent", nil}
+		return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on op %d event channel", e.Op)}
 	}
 	r := bytes.NewReader(event)
 	ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
 	for _, m := range e.Matchers {
-		_, err := m.Match(r)
+		_, err := m.Match(ctx, r)
 		if err != nil {
 			return &TestStepError{m.Position, "match", err}
 		}
