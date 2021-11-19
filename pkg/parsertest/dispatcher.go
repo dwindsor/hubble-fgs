@@ -3,8 +3,9 @@ package parsertest
 import (
 	"context"
 	"sync"
-	"syscall" //nolint
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/perf"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/sirupsen/logrus"
@@ -24,21 +25,32 @@ type EventSubscription struct {
 
 type EventDispatcher struct {
 	sync.Mutex
-	log          logrus.FieldLogger
-	nextSubId    int
-	subs         map[int]*EventSubscription
-	perCpuEvents *bpf.PerCpuEvents
+	log        logrus.FieldLogger
+	nextSubId  int
+	subs       map[int]*EventSubscription
+	perfReader *perf.Reader
 }
 
 func NewEventDispatcher() (*EventDispatcher, error) {
 	log := logger.GetLogger()
-	e, err := bpf.NewPerCpuEvents(bpf.DefaultPerfEventConfig(), log)
+	cfg := bpf.DefaultPerfEventConfig()
+	pinOpts := ebpf.LoadPinOptions{}
+
+	perfMap, err := ebpf.LoadPinnedMap(cfg.MapName, &pinOpts)
 	if err != nil {
+		log.Errorf("ebpf.LoadPinnedMap error: %s", err)
 		return nil, err
 	}
+
+	perfReader, err := perf.NewReader(perfMap, 65536)
+	if err != nil {
+		log.Errorf("perf.NewReader error: %s", err)
+		return nil, err
+	}
+
 	return &EventDispatcher{
-		log:          log,
-		perCpuEvents: e,
+		log:        log,
+		perfReader: perfReader,
 	}, nil
 }
 
@@ -50,7 +62,7 @@ func (ed *EventDispatcher) Close() error {
 		close(sub.Events)
 	}
 	ed.subs = nil
-	return ed.perCpuEvents.CloseAll()
+	return ed.perfReader.Close()
 }
 
 func (ed *EventDispatcher) Subscribe(op byte) *EventSubscription {
@@ -89,49 +101,28 @@ func (ed *EventDispatcher) UnsubscribeAll() {
 	ed.subs = nil
 }
 
-func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) error {
+func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) {
 	defer ed.UnsubscribeAll()
-
 	ready <- true
-	done := ctx.Done()
-
-	evRecv := func(msg *bpf.PerfEventSample, cpu int) {
-		data := msg.DataDirect()
-		op := data[0]
-
-		ed.Lock()
-		for _, sub := range ed.subs {
-			if sub.Op == op {
-				select {
-				case sub.Events <- data:
-				case <-done:
-				}
-			}
-		}
-		ed.Unlock()
-	}
-	evLost := func(msg *bpf.PerfEventLost, cpu int) {
-		ed.log.Errorf("Event lost: %v\n", msg)
-	}
-
-	evErr := func(msg *bpf.PerfEvent) {
-		ed.log.Errorf("PerfEvent error")
-	}
 
 	for ctx.Err() == nil {
-		_, err := ed.perCpuEvents.Poll(100)
+		record, err := ed.perfReader.Read()
 		if err != nil {
-			if errno, ok := err.(syscall.Errno); ok && errno.Temporary() {
-				continue
+			if ctx.Err() == nil {
+				ed.log.Errorf("perf.Read failed: %s", err)
 			}
-
-			ed.log.Errorf("Poll failed: %s", err)
-			return err
+			return
 		}
-		if err := ed.perCpuEvents.ReadAll(100, evRecv, evLost, evErr); err != nil {
-			ed.log.Errorf("ReadAll failed: %s", err)
-			return err
+
+		if len(record.RawSample) > 0 {
+			op := record.RawSample[0]
+			ed.Lock()
+			for _, sub := range ed.subs {
+				if sub.Op == op {
+					sub.Events <- record.RawSample
+				}
+			}
+			ed.Unlock()
 		}
 	}
-	return nil
 }

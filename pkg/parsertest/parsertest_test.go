@@ -200,12 +200,6 @@ func runTests(t *testing.T, sensor int, dir string) {
 	handle := startSensors(sensor, t)
 	defer handle.Close()
 
-	dispatcher, err := NewEventDispatcher()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dispatcher.Close()
-
 	addSelfToEvecveMap(t)
 
 	fs.WalkDir(
@@ -227,7 +221,7 @@ func runTests(t *testing.T, sensor int, dir string) {
 				}
 
 				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
-					err = tc.Run(t, dispatcher, testTimeout)
+					err = tc.Run(t, testTimeout)
 					if err != nil {
 						if tc.IsBroken() {
 							t.Skipf("Broken test failed as expected:\n%s", err)
