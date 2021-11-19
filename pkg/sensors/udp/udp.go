@@ -155,11 +155,12 @@ func (k *udpInfoKey) NewValue() bpf.MapValue {
 }
 func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 	return &udpInfoKey{
-		SAddr:  k.SAddr,
-		DAddr:  k.DAddr,
-		DPort:  k.DPort,
-		SPort:  k.SPort,
-		Cookie: k.Cookie,
+		SAddr:   k.SAddr,
+		DAddr:   k.DAddr,
+		DPort:   k.DPort,
+		SPort:   k.SPort,
+		Cookie:  k.Cookie,
+		Padding: 0,
 	}
 }
 
@@ -213,9 +214,9 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	return
 }
 
-func udpDiffValues(last *udpInfoValue, curr *udpInfoValue) udpInfoValue {
+func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) udpInfoValue {
 	if curr.TXBytes < last.TXBytes {
-		logger.GetLogger().Warnf("curr %s < last %s\n", curr, last)
+		logger.GetLogger().Warnf("key %s\n    curr %s < last %s\n", key, curr, last)
 	}
 	return udpInfoValue{
 		TXBytes:  curr.TXBytes - last.TXBytes,
@@ -233,30 +234,43 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	udpValue := v.(*udpInfoValue)
 	udpKey := k.(*udpInfoKey)
 
+	// When FGS starts we add cookies to sockets as we see
+	// them. But, for some time after starting its possible
+	// that the IP hooks see flows without a cookie. At
+	// this point the flow is not unique and as a result we
+	// may end up accumulating bytes in the wrong buckets.
+	// Instead lets simply omit these metrics. Note, we
+	// never unload our socket cookie stamper program so
+	// restarts will not cause this condition.
+	if udpKey.Cookie == 0 {
+		return
+	}
+
 	t, err := reader.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
 		return
 	}
 
 	if t <= UdpStatInterval {
-		entry, ok := stats.Get(udpKey.Cookie)
+		entry, ok := stats.Get(*udpKey)
 		if ok {
-			last := entry.(*udpInfoValue)
-			if *udpValue != *last {
-				diffValue := udpDiffValues(last, udpValue)
+			last := entry.(udpInfoValue)
+			if *udpValue != last {
+				diffValue := udpDiffValues(udpKey, &last, udpValue)
 				mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
-				stats.Add(udpKey, mapUpdate)
+				udpKey = k.DeepCopyMapKey().(*udpInfoKey)
+				stats.Add(*udpKey, *mapUpdate)
 				emitStatEvent(udpKey, &diffValue)
 			}
 		} else {
 			udpValue = v.DeepCopyMapValue().(*udpInfoValue)
-			stats.Add(udpKey, udpValue)
+			stats.Add(*udpKey, *udpValue)
 			emitStatEvent(udpKey, udpValue)
 		}
 	}
 
 	if t > UdpDeleteInterval {
-		stats.Remove(udpKey)
+		stats.Remove(*udpKey)
 		m.DeleteKey(k)
 	}
 }
