@@ -10,8 +10,8 @@ NETWORKINGDIR := networking/
 PROCESSDIR := process/
 BPFTESTDIR := test/
 
-PARSERS = bpf_sockops.o bpf_skmsg.o bpf_skskb_parser.o bpf_skskb_verdict.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
-TLSTC = bpf_tc_ingress.o bpf_tc_egress.o
+PARSERS = bpf_sockops.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
+TLS = bpf_tc_ingress.o bpf_tc_egress.o bpf_tls_skmsg.o bpf_tls_skskb_parser.o bpf_tls_skskb_verdict.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o bpf_tcp_send_check.o \
 	     bpf_kfree_skb.o bpf_sock.o bpf_inet_send.o \
 	     bpf_udp_sendmsg.o
@@ -39,11 +39,11 @@ OBJSDIR       := objs/
 DEPSDIR       := deps/
 
 PARSEROBJ     := $(addprefix $(OBJSDIR),$(PARSERS))
-TLSTCOBJ      := $(addprefix $(OBJSDIR),$(TLSTC))
+TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
 NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
-OBJS          := $(PARSEROBJ) ${TLSTCOBJ} $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
+OBJS          := $(PARSEROBJ) ${TLSOBJ} $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
 LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
 DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 

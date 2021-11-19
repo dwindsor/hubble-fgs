@@ -14,7 +14,7 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "tls_map.h"
-#include "parser.h"
+#include "tls_parser.h"
 #include "ingress.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";

@@ -5,7 +5,7 @@
 #include "bpf_events.h"
 #include "../bpf_sockops.h"
 #include "tls_map.h"
-#include "parser.h"
+#include "tls_parser.h"
 
 static inline __attribute__((always_inline))
 void bpf_parse_tls_egress(ctx_md *ctx)

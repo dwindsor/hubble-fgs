@@ -15,15 +15,15 @@ struct bpf_map_def {
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
-#include "bpf_sockops.h"
-#include "tls/tls_map.h"
-#include "tls/parser.h"
-#include "tls/ingress.h"
+#include "../bpf_sockops.h"
+#include "tls_map.h"
+#include "tls_parser.h"
+#include "ingress.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
-__attribute__((section(("sk_skb_verdict/fgs")), used))
-int bpf_skskb_verdict(struct __sk_buff *skb)
+__attribute__((section(("sk_skb_verdict/fgs_tls")), used))
+int bpf_tls_skskb_verdict(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
 

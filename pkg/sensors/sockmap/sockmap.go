@@ -28,31 +28,31 @@ var (
 	// Supports 5.4 kernels or newer.
 
 	TLSSkmsg = sensors.ProgramBuilder(
-		"bpf_skmsg.o",
+		"bpf_tls_skmsg.o",
 		"sk_msg",
 		"sk_msg",
-		"sk_msg/fgs",
-		"sk_msg_fgs",
+		"sk_msg/fgs_tls",
+		"bpf_tls_sk_msg_fgs",
 		false,
 		true,
 		"skmsg")
 
 	TLSSkSkbVerdict = sensors.ProgramBuilder(
-		"bpf_skskb_verdict.o",
+		"bpf_tls_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb",
-		"sk_skb_verdict/fgs",
-		"sk_skb_verdict_fgs",
+		"sk_skb_verdict/fgs_tls",
+		"bpf_tls_skskb_verdict_fgs",
 		false,
 		true,
 		"sk_skb_verdict")
 
 	TLSSkSkbParser = sensors.ProgramBuilder(
-		"bpf_skskb_parser.o",
+		"bpf_tls_skskb_parser.o",
 		"sk_skb",
 		"sk_skb",
-		"sk_skb_parser/fgs",
-		"sk_skb_parser_fgs",
+		"sk_skb_parser/fgs_tls",
+		"bpf_tls_skskb_parser_fgs",
 		false,
 		true,
 		"sk_skb_parser")
