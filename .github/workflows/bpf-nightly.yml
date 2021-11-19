@@ -7,7 +7,7 @@ on:
 jobs:
   bpf-nightly:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 120
+    timeout-minutes: 180
     strategy:
       matrix:
         os: [ ubuntu-20.04 ]
