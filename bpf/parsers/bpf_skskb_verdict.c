@@ -18,6 +18,7 @@ struct bpf_map_def {
 #include "bpf_sockops.h"
 #include "tls/tls_map.h"
 #include "tls/parser.h"
+#include "tls/ingress.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
@@ -26,7 +27,7 @@ int bpf_skskb_verdict(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = {0};
 
-	sk_skb_tls_key(skb, &key);
+	skskb_tls_key(skb, &key);
 	bpf_parse_ingress_skb(skb, &key, 0);
 	return SK_PASS;
 }

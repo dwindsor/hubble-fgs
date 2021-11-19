@@ -13,6 +13,7 @@ struct bpf_map_def {
 #include "api.h"
 #include "hubble_msg.h"
 #include "../parsers/tls/tls_map.h"
+#include "../parsers/bottle.h"
 #include "../parsers/http/http.h"
 #include "bpf_events.h"
 #include "cookie.h"
@@ -139,6 +140,7 @@ int event_tcp4_close(struct pt_regs *ctx)
 		map_delete_elem(&http_map, &tuple);
 		tuple.remaining = 1;
 		map_delete_elem(&http_map, &tuple);
+		bottle_drop(&tuple);
 	}
 	return 1;
 }

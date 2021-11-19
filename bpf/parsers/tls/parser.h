@@ -1,13 +1,10 @@
+#ifndef tls_parser_h_INCLUDED
+#define tls_parser_h_INCLUDED
+
 #include "api.h"
 #include "../parser.h"
+#include "../bottle.h"
 #include "tls_map.h"
-#include "../msg_bottle.h"
-
-#ifdef SK_MSG
-typedef struct sk_msg_md ctx_md;
-#else
-typedef struct __sk_buff ctx_md;
-#endif
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
@@ -185,7 +182,7 @@ struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void 
 }
 
 static inline __attribute__((always_inline))
-int bpf_parse_tls_client_hello(struct msg_bottle *bottle, struct msg_tls *tls, bool client)
+int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool client)
 {
 	__u16 *cipher_length, adv_cipher, extlength;
 	int offset = sizeof(struct tls_hdr);
@@ -194,7 +191,7 @@ int bpf_parse_tls_client_hello(struct msg_bottle *bottle, struct msg_tls *tls, b
 	struct tls_extension *extension;
 	void *data_end;
 
-	client_hello = msg_bottle_get_data(bottle, offset, sizeof(struct tls_handshake_client_hello));
+	client_hello = bottle_get_data(bottle, offset, sizeof(struct tls_handshake_client_hello));
 	if (!client_hello) {
 		tls->flags |= TLS_HELLO_MSG_MISS;
 		return TLS_PARSE_OUT_OF_DATA;
@@ -205,18 +202,14 @@ int bpf_parse_tls_client_hello(struct msg_bottle *bottle, struct msg_tls *tls, b
 	adv_session = client_hello->session_id_length;
 	adv_session &= 0x7fff;
 
-	session = msg_bottle_get_data(bottle, offset, adv_session);
+	session = bottle_get_data(bottle, offset, adv_session);
 	if (!session)
 		return TLS_PARSE_OUT_OF_DATA;
 	offset += adv_session;
 
-#ifdef SK_MSG
-	small_pkt_copy(tls->session, bottle->data_end, session, 64);
-#else
 	small_pkt_copy(tls->session, (void*)client_hello + offset, session, 64);
-#endif
 
-	cipher_length = msg_bottle_get_data(bottle, offset, 2);
+	cipher_length = bottle_get_data(bottle, offset, 2);
 	if (!cipher_length)
 		return TLS_PARSE_OUT_OF_DATA;
 	offset += 2;
@@ -240,7 +233,7 @@ int bpf_parse_tls_client_hello(struct msg_bottle *bottle, struct msg_tls *tls, b
 
 	offset += adv_cipher;
 
-	compression = msg_bottle_get_data(bottle, offset, 1);
+	compression = bottle_get_data(bottle, offset, 1);
 	if (!compression) {
 		tls->flags |= TLS_COMPRESSION_ERROR;
 		return TLS_PARSE_OUT_OF_DATA;
@@ -259,7 +252,7 @@ int bpf_parse_tls_client_hello(struct msg_bottle *bottle, struct msg_tls *tls, b
 	}
 	offset += adv_compression + 1;
 
-	extension = msg_bottle_get_data(bottle, offset, 2);
+	extension = bottle_get_data(bottle, offset, 2);
 	if (!extension) {
 		tls->flags |= TLS_EXT_ERROR;
 		return TLS_PARSE_OUT_OF_DATA;
@@ -272,16 +265,13 @@ int bpf_parse_tls_client_hello(struct msg_bottle *bottle, struct msg_tls *tls, b
 		"if %[extlength] > 2 goto +1;\n"
 		"%[extlength] = 0;\n"
 		: [extlength] "+r"(extlength)::);
-	extension = msg_bottle_get_data(bottle, offset, extlength);
+	extension = bottle_get_data(bottle, offset, extlength);
 	if (!extension) {
 		tls->flags |= TLS_EXT_ERROR;
 		return TLS_PARSE_OUT_OF_DATA;
 	}
-#ifdef SK_MSG
-	data_end = bottle->data_end;
-#else
 	data_end = (void*)extension + extlength;
-#endif
+
 	TWENTY_EXTENSIONS
 	tls->flags |= TLS_MAX_TLVS;
 extension_macro_out:
@@ -417,14 +407,14 @@ bool is_expected_tls_server_hello(struct msg_tls *tls)
 }
 
 static inline __attribute__((always_inline))
-int bpf_parse_tls(struct msg_bottle *bottle,
+int bpf_parse_tls(struct bottle *bottle,
 		  struct msg_tls *tls)
 {
 	struct tls_hdr *hdr;
 	int next = 0, err;
 	void *payload;
 
-	payload = msg_bottle_get_data(bottle, 0, sizeof(struct tls_hdr));
+	payload = bottle_get_data(bottle, 0, sizeof(struct tls_hdr));
 	if (!payload)
 		return TLS_PARSE_OUT_OF_DATA;
 
@@ -438,7 +428,7 @@ int bpf_parse_tls(struct msg_bottle *bottle,
 		struct tls_handshake_hdr *handshake;
 		bool client = false;
 
-		payload = msg_bottle_get_data(bottle, 0, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
+		payload = bottle_get_data(bottle, 0, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
 		if (!payload) {
 			tls->flags |= TLS_HANDSHAKE_MSG_MISS;
 			return TLS_PARSE_OUT_OF_DATA;
@@ -462,7 +452,7 @@ int bpf_parse_tls(struct msg_bottle *bottle,
 	} else if (hdr->type == TLS_TYPE_ALERT) {
 		struct tls_alert *tls_alert;
 
-		payload = msg_bottle_get_data(bottle, 0,
+		payload = bottle_get_data(bottle, 0,
 			sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
 
 		if (!payload)
@@ -481,17 +471,17 @@ int bpf_parse_tls(struct msg_bottle *bottle,
 #define ETH_P_IP 0x800
 #define TLS_REMOTE_PORT 443
 
-#ifdef SK_MSG
+#if defined(SK_MSG)
 static inline __attribute__((always_inline))
-void skb_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
-	key->daddr = skmsg->remote_ip4;
-	key->saddr = skmsg->local_ip4;
-	key->dport = TLS_REMOTE_PORT;
-	key->sport = skmsg->local_port;
+void skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
+        key->daddr = skmsg->remote_ip4;
+        key->saddr = skmsg->local_ip4;
+        key->dport = TLS_REMOTE_PORT;
+        key->sport = skmsg->local_port;
 }
 #elif defined(SK_SKB)
 static inline __attribute__((always_inline))
-void sk_skb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
+void skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
 {
 	key->daddr = skb->remote_ip4;
 	key->saddr = skb->local_ip4;
@@ -583,252 +573,4 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 }
 #endif
 
-/*
- * Certificate parsing
- *
- * The BPF side for certificate parsing finds the end of the last certificate
- * fragment message and sends all fragments to the agent for reassembly.
- */
-#ifndef SK_MSG
-
-/* TLS Certificate Error Codes */
-#define EBADHEADER 0x0001
-
-/* TLS Certificate Hdr offset */
-#define TLS_HEADER_BYTES 9
-
-
-#define ERROUT_LEN (5*24)
-
-static inline __attribute__((always_inline))
-void errout_pack(int *errout, int code, int a, int b, int c, int d) {
-	errout[1] = code;
-	errout[2] = a;
-	errout[3] = b;
-	errout[4] = c;
-	errout[5] = d;
-}
-
-#define CERT_FRAG_MIN_LEN 6
-#define FRAG_MAX_ITER 16
-
-/* Find the end of a potentially fragmented handshake */
-static inline __attribute__((always_inline))
-int tls_find_handshake_end(struct msg_bottle *bottle, int offset, int *type, int *subtype)
-{
-	struct tls_hdr *hdr;
-	int remaining;
-	u8 *data;
-
-	/* Read the TLS record header + enough of the handshake header to figure
-         * out the handshake message size. We assume that the handshake header
-         * cannot be fragmented. */
-	data = msg_bottle_get_data(bottle, offset, sizeof(struct tls_hdr) + CERT_FRAG_MIN_LEN);
-	if (!data)
-		return TLS_PARSE_OUT_OF_DATA;
-
-	hdr = (struct tls_hdr*)data;
-
-	*type = hdr->type;
-	if (hdr->type != TLS_TYPE_HANDSHAKE)
-		return TLS_PARSE_BAD_DATA;
-
-	data += sizeof(struct tls_hdr);
-
-	/* Parse the subtype and length out of the handshake header
-         * [ type (8b) | handshake length (24b) | ... ]
-         */
-	*subtype = *data++;
-	remaining = *data << 16 | *(data + 1) << 8 | *(data + 2);
-	remaining += 4;
-
-	/* Iterate over the fragments until we find the end of the last fragment. */
-#pragma unroll
-	for (int i = 0; i < FRAG_MAX_ITER; i++) {
-		u32 frag_len = bpf_ntohs(hdr->length) & 0xfff;
-		offset += sizeof(struct tls_hdr);
-
-		data = msg_bottle_get_data(bottle, offset, frag_len);
-		if (!data)
-			return TLS_PARSE_OUT_OF_DATA;
-
-		offset += frag_len;
-		remaining -= frag_len;
-		if (remaining <= 0) {
-			break;
-		}
-
-		hdr = msg_bottle_get_data(bottle, offset, sizeof(struct tls_hdr));
-		if (!hdr)
-			return TLS_PARSE_OUT_OF_DATA;
-	}
-
-	/* Too many fragments. Give up. */
-	if (remaining > 0)
-		return TLS_PARSE_BAD_DATA;
-
-	return offset;
-}
-
-static inline __attribute__((always_inline))
-int bpf_parse_tls_cert(ctx_md *ctx,
-                       struct msg_bottle *bottle,
-                       struct msg_tls *tls,
-                       struct msg_tls_ipv4 *key,
-                       u32 offset)
-{
-	struct msg_tls_cont_event *event;
-	int type = 0, subtype = 0;
-	int end_offset;
-	int event_len;
-	int zero = 0;
-	int errcode = 0;
-
-	/* First find where the handshake protocol ends. This may span
-         * multiple fragments and packets. */
-	end_offset = tls_find_handshake_end(bottle, offset, &type, &subtype);
-	if (end_offset == TLS_PARSE_OUT_OF_DATA)
-		return TLS_PARSE_OUT_OF_DATA;
-
-	if (end_offset <= 0 || subtype != TLS_HANDSHAKE_TYPE_CERTIFICATE) {
-		errcode = EBADHEADER;
-		goto fail;
-	}
-
-	/* Now that all the data is accounted for, send the fragments to the agent. */
-	event_len = (sizeof(struct msg_tls_cont_event) + end_offset - offset);
-	BOTTLE_MASK(event_len);
-
-	/* To avoid a copy we write the event header on top of the now irrelevant data. */
-	event = msg_bottle_get_data(bottle, offset - sizeof(struct msg_tls_cont_event), event_len);
-	if (!event) {
-		errcode = EBADHEADER;
-		goto fail;
-	}
-
-	event->op = MSG_OP_TLS_CONT;
-	event->tuple = *key;
-	event->payload_size = end_offset - offset;
-
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
-	                  event, event_len);
-	return 0;
-
-fail:
-	event = map_lookup_elem(&tls_heap, &zero);
-	if (!event)
-		return TLS_PARSE_BAD_DATA;
-
-	event->op = MSG_OP_TLS_CONT;
-	event->tuple = *key;
-	event->payload_size = 0;
-
-	errout_pack((int*)event->payload, errcode, bottle->len, type, subtype, offset);
-
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
-	                  event, sizeof(*event) + ERROUT_LEN);
-	return 0;
-}
-
-/* Mark a TLS entry as completed to stop further parsing. */
-static inline __attribute__((always_inline))
-void tls_mark_complete(struct msg_tls *tls)
-{
-	tls->type = 0;
-}
-
-static inline __attribute__((always_inline))
-void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int offset)
-{
-	struct socketmap_value *execve;
-	struct msg_tls *event;
-	int zero = 0;
-
-	event = map_lookup_elem(&tls_map, key);
-	if (!event)
-		return;
-
-	if (is_expected_tls_client_hello(event)) {
-		struct msg_tls_event *post;
-		struct skb_bottle *bottle;
-		int next;
-
-		post = map_lookup_elem(&tls_heap, &zero);
-		if (!post)
-			return;
-
-		bottle = skb_bottle_fill(skb, key, offset);
-		if (!bottle) {
-			tls_mark_complete(event);
-			return;
-		}
-
-		post->clienthello = *event;
-		memset(&post->serverhello, 0, sizeof(post->serverhello));
-
-		next = bpf_parse_tls(bottle, &post->serverhello);
-		if (next < 0)
-			goto out;
-
-		if (!is_expected_tls_server_hello(&post->serverhello))
-			goto out;
-
-		/* If this there is a next pointer and it is TLSv1.2 lets assume
-		 * its the cert and push it to user space.
-		 */
-		if (!(post->serverhello.flags & TLS_VERSION))
-			post->serverhello.flags |= TLS_CERT;
-
-		post->tuple = *key;
-		post->common.op = MSG_OP_TLS;
-		post->common.size = sizeof(struct msg_tls_event);
-		post->common.ktime = ktime_get_ns();
-
-		/* Set dport to network byte order as that's what socketmap
-                 * expects. */
-		key->dport = bpf_htons(key->dport);
-		execve  = lookup_socketmap(key);
-		if (execve)
-			post->execve = execve->key;
-		key->dport = bpf_ntohs(key->dport);
-
-		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
-				  sizeof(struct msg_tls_event));
-		post->serverhello.alert_level = 0;
-		post->clienthello.alert_level = 0;
-
-		if (post->serverhello.flags & TLS_CERT) {
-			event->bytes = next;
-			next = bpf_parse_tls_cert(skb, bottle, event, key, next);
-			if (next < 0) {
-				event->type = TLS_TYPE_MORE_DATA;
-			}
-		}
-
-out:
-		if (next != TLS_PARSE_OUT_OF_DATA) {
-			/* Parsing has failed. Drop the data. */
-			tls_mark_complete(event);
-			map_delete_elem(&skb_bottles, key);
-		}
-
-	}  else if (is_expected_tls_data(event)) {
-		struct skb_bottle *bottle;
-		int err;
-
-		bottle = skb_bottle_fill(skb, key, offset);
-		if (!bottle)
-			// TODO need to post an error event?
-			return;
-
-		err = bpf_parse_tls_cert(skb, bottle, event, key, event->bytes);
-		if (err == TLS_PARSE_OUT_OF_DATA) {
-			event->type = TLS_TYPE_MORE_DATA;
-		} else {
-			tls_mark_complete(event);
-			map_delete_elem(&skb_bottles, key);
-		}
-	}
-}
-
-#endif
+#endif /* tls_parser_h_INCLUDED */

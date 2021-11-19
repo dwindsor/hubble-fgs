@@ -1,13 +1,20 @@
+#ifndef parser_h_INCLUDED
+#define parser_h_INCLUDED
+
 #include "api.h"
 
-static inline __attribute__((always_inline))
 #ifdef SK_MSG
-void *get_data(struct sk_msg_md *ctx, int off, int needed)
+typedef struct sk_msg_md ctx_md;
+#else
+typedef struct __sk_buff ctx_md;
+#endif
+
+static inline __attribute__((always_inline))
+void *get_data(ctx_md *ctx, int off, int needed)
 {
+#ifdef SK_MSG
 	int err = msg_pull_data(ctx, 0, off + needed, 0);
 #else
-void *get_data(struct __sk_buff *ctx, int off, int needed)
-{
 	int err = skb_pull_data(ctx, off + needed);
 #endif
 	void *data_end, *data, *tmp;
@@ -329,13 +336,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) pkt_heap = {
  * avoid complexity and insn count overrun even with 1mil insns.
  */
 static inline
-int large_ctx_copy(
-#ifdef SK_MSG
-		struct sk_msg_md *ctx,
-#else
-		struct __sk_buff *ctx,
-#endif
-		__u64 next, __u64 offset, __u64 copy)
+int large_ctx_copy(ctx_md *ctx, __u64 next, __u64 offset, __u64 copy)
 {
 	void *data, *data_end;
 	int zero = 0;
@@ -376,7 +377,8 @@ int large_ctx_copy(
 
 #ifdef SK_MSG
 static inline __attribute__((always_inline))
-void msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key) {
+void msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key)
+{
 	key->daddr = msg->remote_ip4;
 	key->saddr = msg->local_ip4;
 	/* Compiler generated code verifier could not pass with if/else
@@ -391,3 +393,5 @@ void msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key) {
 	key->remaining = HTTP_SEND;
 }
 #endif
+
+#endif /* parser_h_INCLUDED */
