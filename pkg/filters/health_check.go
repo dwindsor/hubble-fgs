@@ -25,16 +25,31 @@ import (
 )
 
 func MaybeExecProbe(binary string, args string, execProbe []string) bool {
+	// If the exec probe is empty for whatever reason, return false.
+	if len(execProbe) == 0 {
+		return false
+	}
 	argList, err := shell.Split(args)
 	if err != nil {
 		return false
 	}
-	processCommand := append([]string{path.Base(binary)}, argList...)
+	processCommand := append([]string{binary}, argList...)
 	if len(execProbe) != len(processCommand) {
 		return false
 	}
-	for idx, val := range execProbe {
-		if val != processCommand[idx] {
+	if path.IsAbs(execProbe[0]) {
+		// exec probe path is absolute. Compare the full paths.
+		if processCommand[0] != execProbe[0] {
+			return false
+		}
+	} else {
+		// exec probe path is relative. Only compare the basenames.
+		if path.Base(processCommand[0]) != path.Base(execProbe[0]) {
+			return false
+		}
+	}
+	for i := 1; i < len(execProbe); i++ {
+		if execProbe[i] != processCommand[i] {
 			return false
 		}
 	}

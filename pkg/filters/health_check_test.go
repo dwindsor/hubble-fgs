@@ -58,6 +58,10 @@ func Test_maybeExecProbe(t *testing.T) {
 		"/bin/ash",
 		"-c \"! curl -s --fail --connect-timeout 5 -o /dev/null echo-a/private\"",
 		[]string{"ash", "-c", "! curl -s --fail --connect-timeout 5 -o /dev/null echo-a/private"}))
+	assert.True(t, MaybeExecProbe("/bin/grpc_health_probe", "-addr=:5050", []string{"/bin/grpc_health_probe", "-addr=:5050"}))
+	assert.False(t, MaybeExecProbe("/some/other/path/to/grpc_health_probe", "-addr=:5050", []string{"/bin/grpc_health_probe", "-addr=:5050"}))
+	assert.True(t, MaybeExecProbe("/bin/grpc_health_probe", "-addr=:5050", []string{"grpc_health_probe", "-addr=:5050"}))
+	assert.False(t, MaybeExecProbe("/bin/grpc_health_probe", "-addr=:5050", []string{}))
 }
 
 func Test_healthCheckFilter(t *testing.T) {
