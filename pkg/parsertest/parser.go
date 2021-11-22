@@ -48,7 +48,8 @@ func ParseTestCase(file string) (*TestCase, error) {
 	parser.scanner.Init(f)
 	parser.scanner.Filename = path.Base(file)
 	parser.scanner.Whitespace ^= 1 << '\n'
-	parser.scanner.Mode = scanner.SkipComments | scanner.ScanIdents | scanner.ScanStrings | scanner.ScanRawStrings
+	parser.scanner.Mode =
+		scanner.ScanComments | scanner.SkipComments | scanner.ScanIdents | scanner.ScanStrings | scanner.ScanRawStrings
 	parser.testCase.Name = path.Base(file)
 
 	for {
