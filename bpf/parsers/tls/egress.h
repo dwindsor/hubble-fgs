@@ -76,12 +76,16 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 	case TLS_PARSE_ERROR:
 		/* Parsing failed, mark parsing as completed to stop further parsing. */
 		tls_inc_egress_parse_error();
-		tls_mark_complete(clienthello);
 
-                /* Post the event to user-space */
-                // TODO(JM): Commented out for now. Tests need adjusting.
-                // egress_post_event(ctx, &tuple, clienthello);
+		/* Post the event to user-space */
+		egress_post_event(ctx, &tuple, clienthello);
+
+		/* Add an entry to stop parsing further packets */
+		tls_mark_complete(clienthello);
+		bottle_drop(&tuple);
+		add_tlsmap(&tuple, clienthello);
 		break;
+
 	default:
 		tls_inc_egress_ok();
 		break;
