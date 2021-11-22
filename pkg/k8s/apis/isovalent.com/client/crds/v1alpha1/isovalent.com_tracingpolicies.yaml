@@ -361,11 +361,6 @@ spec:
                       enable:
                         description: Enable UDP observability
                         type: boolean
-                      minTimeSocketInterval:
-                        description: Configure min time between socket stat events
-                          in seconds
-                        format: int32
-                        type: integer
                       statsInterval:
                         description: Configures the Stat collection interval in seconds
                         format: int32

@@ -34,7 +34,6 @@ import (
 
 var (
 	UdpGCIntervalDefault = time.Duration(60 * time.Second)
-	UdpStatInterval      = time.Duration(60 * time.Second)
 	UdpDeleteInterval    = time.Duration(60 * time.Second)
 	UdpMapName           = "udp_map"
 	UdpRetprobeMapName   = "udp_retprobe_map"
@@ -248,25 +247,24 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 
 	t, err := reader.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
+		logger.GetLogger().WithError(err).WithField("time", udpValue.Ktime).Warn("UDP NanoTimeSince failed.")
 		return
 	}
 
-	if t <= UdpStatInterval {
-		entry, ok := stats.Get(*udpKey)
-		if ok {
-			last := entry.(udpInfoValue)
-			if *udpValue != last {
-				diffValue := udpDiffValues(udpKey, &last, udpValue)
-				mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
-				udpKey = k.DeepCopyMapKey().(*udpInfoKey)
-				stats.Add(*udpKey, *mapUpdate)
-				emitStatEvent(udpKey, &diffValue)
-			}
-		} else {
-			udpValue = v.DeepCopyMapValue().(*udpInfoValue)
-			stats.Add(*udpKey, *udpValue)
-			emitStatEvent(udpKey, udpValue)
+	entry, ok := stats.Get(*udpKey)
+	if ok {
+		last := entry.(udpInfoValue)
+		if *udpValue != last {
+			diffValue := udpDiffValues(udpKey, &last, udpValue)
+			mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
+			udpKey = k.DeepCopyMapKey().(*udpInfoKey)
+			stats.Add(*udpKey, *mapUpdate)
+			emitStatEvent(udpKey, &diffValue)
 		}
+	} else {
+		udpValue = v.DeepCopyMapValue().(*udpInfoValue)
+		stats.Add(*udpKey, *udpValue)
+		emitStatEvent(udpKey, udpValue)
 	}
 
 	if t > UdpDeleteInterval {
@@ -343,7 +341,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		"sensorName":     versionStr,
 		"statsInterval":  interval,
 		"deleteInterval": UdpDeleteInterval,
-		"socketInterval": UdpStatInterval,
 	}).Infof("Enable UDP")
 	return sensors.SensorBuilder(versionStr, progs, maps)
 }
@@ -356,9 +353,6 @@ func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors
 	}
 	if spec.Parser.Udp.StatsInterval > 0 {
 		interval = time.Duration(spec.Parser.Udp.StatsInterval) * time.Second
-	}
-	if spec.Parser.Udp.MinTimeSocketInterval > 0 {
-		UdpStatInterval = time.Duration(spec.Parser.Udp.MinTimeSocketInterval) * time.Second
 	}
 	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
