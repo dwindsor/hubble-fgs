@@ -34,7 +34,7 @@ import (
 
 var (
 	UdpGCIntervalDefault = time.Duration(60 * time.Second)
-	UdpDeleteInterval    = time.Duration(60 * time.Second)
+	UdpDeleteInterval    = time.Duration(600 * time.Second)
 	UdpMapName           = "udp_map"
 	UdpRetprobeMapName   = "udp_retprobe_map"
 
