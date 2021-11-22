@@ -11,6 +11,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	sttManager "github.com/isovalent/hubble-fgs/pkg/observer/stt"
@@ -182,7 +183,6 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 
 func RemoveProgram(bpfDir string, prog *Program) {
 	path := filepath.Join(bpfDir, prog.PinPath)
-	os.Remove(path)
 	if prog.Type == "generic_kprobe" {
 		coreFile := ""
 		splitProg := strings.Split(prog.PinPath, "__")
@@ -209,7 +209,12 @@ func RemoveProgram(bpfDir string, prog *Program) {
 			}
 		}
 		os.Remove(path + "-kp-calls")
+	} else if prog.Type == "cgrp_egress" {
+		bpf.CgroupDestroyEgress(path)
+	} else if prog.Type == "cgrp_ingress" {
+		bpf.CgroupDestroyIngress(path)
 	}
+	os.Remove(path)
 	if prog.TraceFD >= 0 {
 		removeTracepoint(prog.TraceFD)
 		prog.TraceFD = -1

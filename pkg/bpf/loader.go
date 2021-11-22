@@ -68,6 +68,35 @@ void bpf_loader_programs(struct bpf_object *obj, int type, int verbosity) {
 	}
 }
 
+#define __NR_bpf 321
+
+void cgroup_delete(const char *target, const char *prog, int attach_type)
+{
+	int err, target_fd, prog_fd;
+	union bpf_attr attr;
+
+	target_fd = open(target, O_RDONLY);
+	if (target_fd < 0) {
+		fprintf(stderr, "open('%s') failed on load error %i.\n",
+				target, target_fd);
+		return;
+	}
+
+	prog_fd = bpf_obj_get(prog);
+	if (prog_fd < 0) {
+		fprintf(stderr, "bpf_obj_get('%s') failed on load error %i.\n",
+				prog, prog_fd);
+		return;
+	}
+
+	memset(&attr, 0, sizeof(attr));
+	attr.target_fd = target_fd;
+	attr.attach_bpf_fd = prog_fd;
+	attr.attach_type = attach_type;
+
+	syscall(__NR_bpf, BPF_PROG_DETACH, &attr, sizeof(attr));
+}
+
 int fgs_map_loader(const int version,
 		   const int verbosity,
 		   void *btf,
@@ -1184,4 +1213,18 @@ func LoadTC(__version, __verbosity int,
 		return fmt.Errorf("Unable to load tc program: %d %s", loaderFd, object), 0
 	}
 	return nil, loaderFd
+}
+
+func CgroupDestroyEgress(progPath string) {
+	targetPath := "/run/hubble-fgs/cgroup2"
+	attach_type := int(0) // BPF_CGROUP_INET_INGRESS
+
+	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
+
+}
+func CgroupDestroyIngress(progPath string) {
+	targetPath := "/run/hubble-fgs/cgroup2"
+	attach_type := int(1) // BPF_CGROUP_INET_INGRESS
+
+	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
 }
