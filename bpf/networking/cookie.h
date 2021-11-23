@@ -11,7 +11,7 @@ __u64 get_cookie(struct sock *skp) {
 #endif
 
 struct bpf_map_def __attribute__((section("maps"), used)) socket_cookie_to_proc_map = {
-	.type = BPF_MAP_TYPE_HASH,
+	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(u64),
 	.value_size = sizeof(struct execve_map_value),
 	.max_entries = 32768,

@@ -56,6 +56,17 @@ var (
 		true,
 		"cgrp_socket")
 
+	SockRelease = sensors.ProgramBuilder(
+		"bpf_sock_release.o",
+		"__sock_release",
+		"__sock_release",
+		"kprobe/sock_release",
+		"kprobe_sock_release",
+
+		false,
+		true,
+		"kprobe")
+
 	InetSend = sensors.ProgramBuilder(
 		"bpf_inet_send.o",
 		"inet_send",
@@ -327,6 +338,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	} else {
 		progs = []*sensors.Program{
 			SockCreate,
+			SockRelease,
 			InetSend,
 			InetRecv,
 		}
