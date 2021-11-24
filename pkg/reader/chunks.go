@@ -16,6 +16,7 @@ import (
 	"encoding/binary"
 	"fmt"
 	"io"
+	"strings"
 
 	"github.com/yalue/native_endian"
 )
@@ -80,7 +81,7 @@ func (it *TypedChunkIterator) Next() ([]byte, uint32, bool) {
 
 func (it *TypedChunkIterator) NextString() (string, uint32, bool) {
 	b, typ, ok := it.Next()
-	return string(b), typ, ok
+	return strings.ToValidUTF8(string(b), "?"), typ, ok
 }
 
 func (it *TypedChunkIterator) ErrorToCode() uint32 {
