@@ -3,19 +3,31 @@
 # Script to verify all FGS programs by loading them with bpftool.
 #
 set -u
+shopt -s nullglob
 
 RED="\033[31m"
 BLUEUNDER="\033[34;4m"
 GREEN="\033[32m"
 NOCOLOR="\033[0m"
-
 FGSDIR=/var/lib/hubble-fgs
-if [ $# -eq 1 ]; then
-	if [ ! -d $1 ]; then
-		echo "usage: fgs-verify-programs [FGSDIR]"
-		exit 1
+DEBUG=0
+
+usage() {
+	echo "usage: fgs-verify-programs [-d] [FGSDIR]"
+	echo "-d to run bpftool with -d and dump number of processed instructions"
+	exit 1
+}
+
+if [ $# -ge 1 ]; then
+	if [ "$1" == "-d" ]; then
+		DEBUG=1
+		shift 1
 	fi
-	FGSDIR=$1
+
+	if [ $# -ge 1 ]; then
+		[ -d $1 ] || usage
+		FGSDIR=$1
+	fi
 fi
 
 PINDIR=/sys/fs/bpf/fgs-verify
@@ -35,7 +47,9 @@ for obj in $FGSDIR/*.o; do
 	echo -e -n "Verifying $BLUEUNDER$obj$NOCOLOR... "
 	OUT="/tmp/fgs-verify-$B"
 
-	bpftool -d prog loadall "$obj" "$PINDIR" &> $OUT
+	FLAGS=""
+	[ $DEBUG -eq 1 ] && FLAGS="-d"
+	bpftool $FLAGS prog loadall "$obj" "$PINDIR" &> $OUT
 	if [ $? -ne 0 ]; then
 		echo -e "${RED}Failed!${NOCOLOR}"
 		awk '/^func/ { in_func=1 } /^;/ { if (in_func) { print $0; print "..."; exit } }' < $OUT
