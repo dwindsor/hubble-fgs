@@ -192,23 +192,26 @@ func TestTCTLS12(t *testing.T) {
 	observer.TestDone(t, obs)
 }
 
-var (
-	httpConfig = `
+func httpConfig(port int) string {
+	return fmt.Sprintf(`
 apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "http"
 spec:
   description: "http parser spec"
   parser:
+    tls:
+      enable: false
+      selectors:
+      - matchports:
+        - 1
     http:
       enable: true
       selectors:
       - matchports:
-        - 8080
-        - 8282
-        - 80
-`
-)
+        - %d
+`, port)
+}
 
 func TestHttp11Curl(t *testing.T) {
 	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
@@ -251,7 +254,7 @@ func TestHttp11Curl(t *testing.T) {
 	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, httpConfig); err != nil {
+	if err := observer.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
@@ -319,7 +322,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 
 	go http2Server(ctx, 8282)
 
-	if err := observer.WriteConfigFile(testConfigFile, httpConfig); err != nil {
+	if err := observer.WriteConfigFile(testConfigFile, httpConfig(8282)); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
