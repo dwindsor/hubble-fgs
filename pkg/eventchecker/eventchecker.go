@@ -1091,7 +1091,9 @@ func PodWithLabels(labels ...LabelMatch) PodChecker {
 					unMatchedLabels = append(unMatchedLabels, k)
 				}
 			}
-			return fmt.Errorf("unmatched labels: %+v", unMatchedLabels)
+			if len(unMatchedLabels) > 0 {
+				return fmt.Errorf("unmatched labels: %+v", unMatchedLabels)
+			}
 		}
 
 		l.Logf("**** MATCH on %s: %s", "labels", p.Labels)
