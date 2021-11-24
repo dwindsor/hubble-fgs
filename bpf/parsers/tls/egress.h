@@ -74,11 +74,12 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 		return;
 
 	case TLS_PARSE_ERROR:
-		/* Parsing failed, mark parsing as completed to stop further parsing. */
 		tls_inc_egress_parse_error();
 
-		/* Post the event to user-space */
-		egress_post_event(ctx, &tuple, clienthello);
+		/* Post the event to user-space, if port filtering is enabled
+                 * and we're not expecting to see non-TLS traffic. */
+                if (tls_filter_is_populated())
+			egress_post_event(ctx, &tuple, clienthello);
 
 		/* Add an entry to stop parsing further packets */
 		tls_mark_complete(clienthello);

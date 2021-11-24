@@ -143,6 +143,18 @@ int tls_filter(struct sock_key *key) {
 }
 
 static inline __attribute__((always_inline))
+bool tls_filter_is_populated() {
+	int zero = 0;
+	u8 *filter;
+
+	filter = map_lookup_elem(&tls_filter_map, &zero);
+	if (!filter)
+		return false;
+
+	return !(*(__u32*)filter);
+}
+
+static inline __attribute__((always_inline))
 int http_filter(struct sock_key *key) {
 	int zero = 0;
 	u8 *filter;
