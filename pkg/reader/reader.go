@@ -15,6 +15,7 @@ import (
 	"bytes"
 	"crypto/x509"
 	"encoding/binary"
+	"encoding/hex"
 	"fmt"
 	"net"
 	"strconv"
@@ -25,6 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/sirupsen/logrus"
+	"github.com/yalue/native_endian"
 	"golang.org/x/sys/unix"
 )
 
@@ -259,19 +261,10 @@ func ObserverIPV4TCPPrinter(msg *api.MsgIPv4EventUnix, log logrus.FieldLogger) {
 	}).Warn()
 }
 
-func GetTLSSession(session [64]uint8) string {
-	var s []string
-	size := session[32]
-	if size > 31 {
-		size = 31
-	}
-	if size == 0 {
-		return ""
-	}
-	for _, h := range session[32+1 : size+32] {
-		s = append(s, fmt.Sprintf("%02x", h))
-	}
-	return strings.Join(s, "")
+func GetTLSSession(flv *api.FLV64) (s string) {
+	session, _ := flv.Bytes()
+	//       ^ TODO handle truncation?
+	return hex.EncodeToString(session)
 }
 
 func GetTLSAlertLevel(level uint8) string {
@@ -384,8 +377,10 @@ func GetTLSSNI(sni [api.SNI_BUFFER_SIZE]byte) (string, string) {
 	return typeSNI, string(sni[5 : 5+nameLength])
 }
 
-func GetTLSSupportedVersions(vers []byte, hasLength bool) string {
+func GetTLSSupportedVersions(flv *api.FLV16, hasLength bool) string {
 	var s []string
+	vers, _ := flv.Bytes()
+	//    ^ TODO handle truncated versions?
 
 	if len(vers) < 2 {
 		return ""
@@ -403,7 +398,7 @@ func GetTLSSupportedVersions(vers []byte, hasLength bool) string {
 	}
 
 	for i := 0; i <= len(vers)-2; i += 2 {
-		t := binary.LittleEndian.Uint16(vers[i : i+2])
+		t := native_endian.NativeEndian().Uint16(vers[i : i+2])
 		s = append(s, GetTLSVersion(t))
 	}
 	return strings.Join(s, " ")
@@ -489,7 +484,7 @@ func GetTLSCertificateString(fragments []byte) ([]string, uint32) {
 
 func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
 	op := msg.Common.Op
-	typeSNI, nameSNI := GetTLSSNI(msg.ClientHello.SNI)
+	typeSNI, nameSNI := GetTLSSNI(msg.ClientHello.SNI.Value)
 
 	log.WithFields(logrus.Fields{
 		"op":                           api.OpCode(op).String(),
@@ -501,9 +496,9 @@ func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
 		"Server-TLS-Version":           GetTLSVersion(msg.ServerHello.Version),
 		"SNI-Type":                     typeSNI,
 		"SNI-Name":                     nameSNI,
-		"Client-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ClientHello.SupportedVersions[:], true),
-		"Server-TLS-SupportedVersions": GetTLSSupportedVersions(msg.ServerHello.SupportedVersions[:], false),
-		"cipher":                       GetTLSCipher(api.SwapByte(msg.ServerHello.Cipher)),
+		"Client-TLS-SupportedVersions": GetTLSSupportedVersions(&msg.ClientHello.SupportedVersions, true),
+		"Server-TLS-SupportedVersions": GetTLSSupportedVersions(&msg.ServerHello.SupportedVersions, false),
+		"cipher":                       GetTLSCiphers(&msg.ServerHello.Cipher),
 	}).Warn()
 }
 

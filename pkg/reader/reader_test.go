@@ -49,32 +49,56 @@ func TestDecodeCommonFlags(t *testing.T) {
 
 func TestGetTLSSupportedVersions(t *testing.T) {
 	// Test empty versions
-	s := GetTLSSupportedVersions([]byte{}, false)
+	s := GetTLSSupportedVersions(&api.FLV16{}, false)
 	if s != "" {
 		t.Errorf("GetTLSSupportedVersions([], false) = %q, expected \"\"", s)
 	}
 
 	// Test short lengths
-	s = GetTLSSupportedVersions([]byte{1, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, true)
+	s = GetTLSSupportedVersions(
+		&api.FLV16{
+			Length: 3,
+			Value:  [16]uint8{1, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)},
+		},
+		true,
+	)
 	if s != "" {
 		t.Errorf("GetTLSSupportedVersions([2, TLS13], true) = %q, expected \"\"", s)
 	}
 
 	// Test single version
-	s = GetTLSSupportedVersions([]byte{2, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, true)
+	s = GetTLSSupportedVersions(
+		&api.FLV16{
+			Length: 3,
+			Value:  [16]uint8{2, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)},
+		},
+		true,
+	)
 	ex := "TLS1.3"
 	if s != ex {
 		t.Errorf("GetTLSSupportedVersions([2, TLS13], true) = %q, expected \"%s\"", s, ex)
 	}
 
 	// Test graceful handling of length overflow
-	s = GetTLSSupportedVersions([]byte{3, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, true)
+	s = GetTLSSupportedVersions(
+		&api.FLV16{
+			Length: 3,
+			Value:  [16]uint8{3, byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)},
+		},
+		true,
+	)
 	if s != ex {
 		t.Errorf("GetTLSSupportedVersions([100], true) = %q, expected %q", s, ex)
 	}
 
 	// Test lengthless single version
-	s = GetTLSSupportedVersions([]byte{byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)}, false)
+	s = GetTLSSupportedVersions(
+		&api.FLV16{
+			Length: 2,
+			Value:  [16]uint8{byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8)},
+		},
+		false,
+	)
 	ex = "TLS1.3"
 	if s != ex {
 		t.Errorf("GetTLSSupportedVersions([TLS13], true) = %q, expected %q", s, ex)
@@ -82,9 +106,12 @@ func TestGetTLSSupportedVersions(t *testing.T) {
 
 	// Test multiple versions
 	s = GetTLSSupportedVersions(
-		[]byte{4,
-			byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8),
-			byte(api.TLSVersion10 & 0xff), byte(api.TLSVersion10 >> 8),
+		&api.FLV16{
+			Length: 5,
+			Value: [16]uint8{4,
+				byte(api.TLSVersion13 & 0xff), byte(api.TLSVersion13 >> 8),
+				byte(api.TLSVersion10 & 0xff), byte(api.TLSVersion10 >> 8),
+			},
 		},
 		true,
 	)
@@ -95,7 +122,10 @@ func TestGetTLSSupportedVersions(t *testing.T) {
 
 	// Test unknown versions
 	s = GetTLSSupportedVersions(
-		[]byte{4, 0x01, 0x00, 0x02, 0x00},
+		&api.FLV16{
+			Length: 5,
+			Value:  [16]uint8{4, 0x01, 0x00, 0x02, 0x00},
+		},
 		true,
 	)
 	ex = "unknown(1) unknown(2)"

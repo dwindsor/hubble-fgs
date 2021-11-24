@@ -426,20 +426,52 @@ type MsgTLSIPv4 struct {
 	Uid       uint64
 }
 
+// FLV64 is a length-value pair with a maximum length of 64 bytes
+type FLV64 struct {
+	Length uint8
+	Value  [64]uint8
+}
+
+func (flv *FLV64) Bytes() ([]byte, error) {
+	var err error
+	length := flv.Length
+	if flv.Length > 64 {
+		err = fmt.Errorf("value truncated from %d to 64", flv.Length)
+		length = 64
+	}
+	return flv.Value[:length], err
+}
+
+// FLV16 is a length-value pair with a maximum length of 16 bytes
+type FLV16 struct {
+	Length uint8
+	Value  [16]uint8
+}
+
+func (flv *FLV16) Bytes() ([]byte, error) {
+	var err error
+	length := flv.Length
+	if flv.Length > 16 {
+		err = fmt.Errorf("value truncated from %d to 16", flv.Length)
+		length = 16
+	}
+	return flv.Value[:length], err
+}
+
 type MsgTLS struct {
 	Version           uint16
 	Length            uint16
 	Type              uint8
 	Subtype           uint8
 	LegacyyVersion    uint16
-	SNI               [64]uint8
-	SupportedVersions [16]uint8
-	Cipher            uint16
+	Flags             uint32
+	Bytes             uint32
 	AlertLevel        uint8
 	AlertDescription  uint8
-	Flags             uint32
-	Session           [64]uint8
-	Bytes             uint32
+	Session           FLV64
+	Cipher            FLV64
+	SNI               FLV64
+	SupportedVersions FLV16
 }
 
 type MsgTLSParserState struct {

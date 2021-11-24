@@ -39,7 +39,7 @@ EGRESS client hello
   2 13       # list length
   $ 00       # type host_name
   2 10       # name length
-  "google.com"
+  "foobar.baz"
 
   # ext: supported_versions: TLS1.2, TLS1.3
   $ 00 2b 00 05 04 03 04 03 03
@@ -93,9 +93,8 @@ INGRESS server hello
 END
 
 EVENT tls
-  # TODO add a MsgCommon matcher?
   $ 06 00 00 00             # op + pad
-  h4 384                    # size
+  h4 516                    # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
   A CLI_ADDR                # saddr
   A SRV_ADDR                # daddr
@@ -112,33 +111,39 @@ EVENT tls
   $ 01                      # subtype client_hello
   $ 00 00                   # legacy version
 
-  2 13                      # server_name list length
-  $ 00                      # type: host_name
-  2 10                      # name length
-  "google.com"              # host name
-  ? 49                      # padding (SNI [64]uint8)
+  # flags (TLS_VERSION)
+  $ 00 04 00 00
 
-  # supported versions
-  $ 04 03 04 03 03 00 00 00 00 00 00 00 00 00 00 00
-
-  # cipher
-  $ 00 00
+  # bytes
+  $ 00 00 00 00
 
   # alert level & description
   $ 00 00
 
-  # flags (TLS_VERSION)
-  $ 00 04 00 00
-
   # session id
+  $ 20 # 32 bytes
   $ 35 b8 1f cd 90 0f 6f f0 a0 2f 42 b8 c9 27 db 75
   $ 57 a3 06 e6 83 27 18 9d 89 cd e5 7f d4 39 7e 3f
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  # TODO: ^ why the last 32 bytes are zeroed?
+  ? 32
 
-  # bytes
-  $ 00 00 00 00
+  # cipher
+  $ 3e # 62 bytes
+  $ 13 02 13 03 13 01 c0 2c c0 30 00 9f cc a9 cc a8
+  $ cc aa c0 2b c0 2f 00 9e c0 24 c0 28 00 6b c0 23
+  $ c0 27 00 67 c0 0a c0 14 00 39 c0 09 c0 13 00 33
+  $ 00 9d 00 9c 00 3d 00 3c 00 35 00 2f 00 ff ?? ??
+
+  # sni
+  $ 0f # 15 bytes
+  2 13                      # server_name list length
+  $ 00                      # type: host_name
+  2 10                      # name length
+  "foobar.baz"              # host name
+  ? 49                      # padding
+
+  # supported versions
+  $ 05
+  $ 04 03 04 03 03 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??
 
   ### Server hello
 
@@ -148,32 +153,37 @@ EVENT tls
   $ 02                      # subtype server_hello
   $ 00 00                   # legacy version
 
-  ? 64                      # empty SNI
-
-  # supported versions
-  $ 03 04 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-
-  # cipher
-  $ 13 02
-
-  # alert level & description
-  $ 00 00
-
-  # flags
+  # flags (TLS_VERSION)
   $ 00 04 00 00
-
-  # session id
-  $ 35 b8 1f cd 90 0f 6f f0 a0 2f 42 b8 c9 27 db 75
-  $ 57 a3 06 e6 83 27 18 9d 89 cd e5 7f d4 39 7e 3f
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  # TODO: ^ why the last 32 bytes are zeroed?
 
   # bytes
   $ 00 00 00 00
 
+  # alert level & description
+  $ 00 00
+
+  # session id
+  $ 20 # 32 bytes
+  $ 35 b8 1f cd 90 0f 6f f0 a0 2f 42 b8 c9 27 db 75
+  $ 57 a3 06 e6 83 27 18 9d 89 cd e5 7f d4 39 7e 3f
+  ? 32
+
+  # cipher
+  $ 02
+  $ 13 02
+  ? 62
+
+  # sni (not set)
+  $ 00
+  ? 64
+
+  # supported versions
+  $ 02
+  $ 03 04 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??
+
   ### Process key. Missing due to the tuple.uid issue.
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00
+  $ 00 00 00 00 # pid
+  $ 00 00 00 00 # pad
+  $ 00 00 00 00 00 00 00 00 # ktime
 END
 

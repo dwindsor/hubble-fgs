@@ -4,7 +4,7 @@
 #include "parser.h"
 
 #define BOTTLE_DATA_SIZE 8192
-#define BOTTLE_MASK(var) asm volatile ("%0 &= 0x1fff;\n": [var] "+r"(var)::)
+#define BOTTLE_MASK(var) asm volatile ("%0 &= 0x1fff;\n": "+r"(var)::)
 
 struct bottle {
 	u32 len;
@@ -39,14 +39,10 @@ void *bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 {
 	u32 bottle_len = bottle->len;
 	BOTTLE_MASK(bottle_len);
-
 	if (off + len > bottle_len) {
 		return 0;
 	}
-
 	BOTTLE_MASK(off);
-	BOTTLE_MASK(len);
-
 	return bottle->data + off;
 }
 

@@ -19,11 +19,6 @@ struct tls_hdr {
 	__u16 length;
 } __attribute__((packed));
 
-struct tls_random {
-	__u32 gmt_unix_time;
-	__u8  random[28];
-} __attribute__((packed));
-
 struct tls_alert {
 	__u8 level;
 	__u8 description;
@@ -35,45 +30,7 @@ struct tls_handshake_hdr {
 	__u16 version;
 } __attribute__((packed));
 
-struct tls_handshake_client_hello {
-	__u32 type:8;
-	__u32 length:24;
-	__u16 version;
-	struct tls_random random;
-	__u8  session_id_length;
-} __attribute__((packed));
-
-struct tls_handshake_server_hello {
-	__u32 type:8;
-	__u32 length:24;
-	__u16 version;
-	struct tls_random random;
-	__u8  session_id_length;
-} __attribute__((packed));
-
-struct tls_extension {
-	__u16 type;
-	__u16 length;
-} __attribute__((packed));
-
-#ifndef bpf_ntohs
-#define bpf_ntohs(x)		__builtin_bswap16(x)
-#endif
-
-#ifndef bpf_htons
-#define bpf_htons(x)		__builtin_bswap16(x)
-#endif
-
-#ifndef bpf_ntohl
-#define bpf_ntohl(x)		__builtin_bswap32(x)
-#endif
-
-#ifndef bpf_htonl
-#define bpf_htonl(x)		__builtin_bswap32(x)
-#endif
-
 #define TLS_TYPE_MORE_DATA  1
-#define TLS_TYPE_HANDSHAKE_COMPLETE 2
 #define TLS_TYPE_ALERT 21
 #define TLS_TYPE_HANDSHAKE 22
 
@@ -102,222 +59,103 @@ enum tls_handshake_type {
 	finished = 20,
 };
 
-static inline __attribute__((always_inline))
-int bpf_parse_tls_hello_request(struct sk_msg_md *msg)
-{
-	return 0;
-}
-
 #define MAX_EXT_LENGTH 255
-#define EXTENSION { \
-	extension = bpf_parse_extension(extension, data_end, tls); \
-	if (!extension)						   \
-		goto extension_macro_out;			   \
-}
-
-#define TWO_EXTENSIONS { \
-	EXTENSION	 \
-	EXTENSION	 \
-}
-#define TEN_EXTENSIONS { \
-	TWO_EXTENSIONS   \
-	TWO_EXTENSIONS   \
-	TWO_EXTENSIONS   \
-	TWO_EXTENSIONS   \
-	TWO_EXTENSIONS   \
-}
-
-#define TWENTY_EXTENSIONS { \
-	TEN_EXTENSIONS      \
-	TEN_EXTENSIONS      \
-}
-
 #define EXT_SERVER_NAME 0
 #define EXT_SUPPORTED_VERSION 43
-
-static inline __attribute__((always_inline))
-struct tls_extension *bpf_parse_extension(struct tls_extension *extension, void *data_end, struct msg_tls *tls)
-{
-	__u16 extlength, exttype;
-	void *dst = 0;
-
-	if ((void *)extension + 4 > data_end)
-		return 0;
-
-	extlength = bpf_htons(extension->length);
-	exttype = bpf_htons(extension->type);
-
-	switch (exttype) {
-	case EXT_SERVER_NAME:
-		dst = tls->sni;
-		break;
-	case EXT_SUPPORTED_VERSION:
-		dst = tls->supported_versions;
-		tls->flags |= TLS_VERSION;
-		break;
-	}
-
-	if (dst) {
-		stack_pkt_copy(dst, data_end, (void *)extension + 4, extlength);
-		if (extlength > EXT_SERVER_NAME_LENGTH)
-			tls->flags |= TLS_COPY_ERROR;
-	}
-
-	/* Assuming SNI is first extension, per specification */
-	if (tls->flags & TLS_VERSION)
-		return 0;
-
-	/* Force compiler to use same register for min/max bound generators */
-	asm volatile (
-		"%[extlength] &= 0x7fff;\n"
-		"if %[extlength] >= 255 goto +3;\n"
-		"%[extlength] += 4;\n"
-		"%[extension] += %[extlength];\n"
-		"goto + 1;\n"
-		"%[extension] = 0;\n"
-		: [extlength] "+r"(extlength),
-		  [extension] "+r"(extension)
-		:  :);
-	return extension;
-}
+#define MAX_EXTS 20
 
 static inline __attribute__((always_inline))
 int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool client)
 {
-	__u16 *cipher_length, adv_cipher, extlength;
-	int offset = sizeof(struct tls_hdr);
-	struct tls_handshake_client_hello *client_hello;
-	__u8 *session, *compression, adv_compression, adv_session;
-	struct tls_extension *extension;
 	void *data_end;
+	u16 length;
+	u8 *data;
 
-	client_hello = bottle_get_data(bottle, offset, sizeof(struct tls_handshake_client_hello));
-	if (!client_hello) {
-		tls->flags |= TLS_HELLO_MSG_MISS;
+	length = bpf_ntohs(tls->length);
+	data = bottle_get_data(bottle, sizeof(struct tls_hdr), length);
+	if (!data)
 		return TLS_PARSE_OUT_OF_DATA;
-	}
-	offset += sizeof(struct tls_handshake_client_hello);
 
-	compiler_barrier();
-	adv_session = client_hello->session_id_length;
-	adv_session &= 0x7fff;
+	data_end = data + length;
 
-	session = bottle_get_data(bottle, offset, adv_session);
-	if (!session)
-		return TLS_PARSE_OUT_OF_DATA;
-	offset += adv_session;
+	/* Skip handshake header and the random bytes */
+	data += 1  /* type */ +
+		3  /* length */ +
+	        2  /* version */ +
+		32 /* random */;
 
-	small_pkt_copy(tls->session, (void*)client_hello + offset, session, 64);
+#define READ_BE16() ({u16 x = ((u16)*data) << 8 | *(data + 1); data += 2; x; })
+#define BOUNDS(val, flag, mask) ({ \
+	if ((val) > (mask)) { \
+		tls->flags |= flag; \
+                return TLS_PARSE_BAD_DATA; \
+	} \
+	asm volatile("%1 &= " #mask ";\n": "+r"(val)::); \
+})
 
-	cipher_length = bottle_get_data(bottle, offset, 2);
-	if (!cipher_length)
-		return TLS_PARSE_OUT_OF_DATA;
-	offset += 2;
+	/* Session ID */
+	length = *data++;
+	FLV_COPY(tls->flv_session_id, data, length);
+	data += length;
 
+	/* Cipher */
 	if (client) {
-		adv_cipher = *cipher_length;
-		adv_cipher = bpf_htons(adv_cipher);
+		// TODO(JM): Or keep the old behaviour?
+		length = READ_BE16();
+		BOUNDS(length, TLS_CIPHER_TOO_LARGE, 0xff);
+		FLV_COPY(tls->flv_cipher, data, length);
+		data += length;
 	} else {
-		tls->cipher = *(__u16*)cipher_length;
-		adv_cipher = 0;
+		FLV_COPY(tls->flv_cipher, data, 2);
+		data += 2;
 	}
 
-	if (adv_cipher > 255) {
-		tls->flags |= TLS_CIPHER_TOO_LARGE;
-		return TLS_PARSE_BAD_DATA;
+	/* Compression */
+	length = *data++;
+	data += length;
+
+	/* Extensions */
+	length = READ_BE16();
+	BOUNDS(length, TLS_EXT_TOO_LARGE, 0xfff);
+	data_end = data + length;
+
+#pragma unroll
+	for (int ext = 0; ext < MAX_EXTS; ext++) {
+		if (data + 2 > data_end)
+			return 0;
+
+		u16 ext_type = READ_BE16();
+		u16 ext_length = READ_BE16();
+
+		switch (ext_type) {
+		case EXT_SERVER_NAME:
+			FLV_COPY(tls->flv_sni, data, ext_length);
+			break;
+		case EXT_SUPPORTED_VERSION:
+			tls->flags |= TLS_VERSION;
+			FLV_COPY(tls->flv_supported_versions, data, ext_length);
+
+			/* Assuming SNI is first extension, per specification */
+			goto out;
+		}
+
+		BOUNDS(ext_length, TLS_EXT_TOO_LARGE, 0xff);
+		data += ext_length;
 	}
-	asm volatile (
-		"if %[adv_cipher] s> 0 goto +1;\n"
-		"%[adv_cipher] = 0;\n"
-		: [adv_cipher] "+r" (adv_cipher)::);
 
-	offset += adv_cipher;
-
-	compression = bottle_get_data(bottle, offset, 1);
-	if (!compression) {
-		tls->flags |= TLS_COMPRESSION_ERROR;
-		return TLS_PARSE_OUT_OF_DATA;
-	}
-
-	if (client)
-		adv_compression = *compression;
-	else
-		adv_compression = 0;
-
-	compiler_barrier();
-	adv_compression &= 0x7f;
-	if (adv_compression > 255) {
-		tls->flags |= TLS_COMPRESSION_TOO_LARGE;
-		return TLS_PARSE_BAD_DATA;
-	}
-	offset += adv_compression + 1;
-
-	extension = bottle_get_data(bottle, offset, 2);
-	if (!extension) {
-		tls->flags |= TLS_EXT_ERROR;
-		return TLS_PARSE_OUT_OF_DATA;
-	}
-	offset += 2;
-
-	extlength = *(u16 *)extension;
-	extlength = bpf_htons(extlength);
-	asm volatile (
-		"if %[extlength] > 2 goto +1;\n"
-		"%[extlength] = 0;\n"
-		: [extlength] "+r"(extlength)::);
-	extension = bottle_get_data(bottle, offset, extlength);
-	if (!extension) {
-		tls->flags |= TLS_EXT_ERROR;
-		return TLS_PARSE_OUT_OF_DATA;
-	}
-	data_end = (void*)extension + extlength;
-
-	TWENTY_EXTENSIONS
 	tls->flags |= TLS_MAX_TLVS;
-extension_macro_out:
+
+out:
+	/* We check overflow only at the end to avoid unnecessary branches. */
+	if (data > data_end) {
+		tls->flags |= TLS_FRAME_TOO_LARGE; // FIXME proper flag
+		return TLS_PARSE_BAD_DATA;
+	}
+
 	return 0;
-}
 
-static inline __attribute__((always_inline))
-int bpf_parse_tls_certificate(struct sk_msg_md *msg)
-{
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline))
-int bpf_parse_tls_server_key_exchange(struct sk_msg_md *msg)
-{
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline))
-int bpf_parse_tls_certificate_request(struct sk_msg_md *msg)
-{
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline))
-int bpf_parse_tls_server_hello_done(struct sk_msg_md *msg)
-{
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline))
-int bpf_parse_tls_certificate_verify(struct sk_msg_md *msg)
-{
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline))
-int bpf_parse_tls_client_key_exchange(struct sk_msg_md *msg)
-{
-	return SK_PASS;
-}
-
-static inline __attribute__((always_inline))
-int bpf_parse_tls_finished(struct sk_msg_md *msg)
-{
-	return SK_PASS;
+#undef READ_BE16
+#undef BOUNDS
 }
 
 static inline __attribute__((always_inline))
@@ -429,16 +267,16 @@ int bpf_parse_tls(struct bottle *bottle,
 		bool client = false;
 
 		payload = bottle_get_data(bottle, 0, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
-		if (!payload) {
-			tls->flags |= TLS_HANDSHAKE_MSG_MISS;
+		if (!payload)
 			return TLS_PARSE_OUT_OF_DATA;
-		}
+
 		handshake = (struct tls_handshake_hdr *)(payload + sizeof(struct tls_hdr));
 		tls->subtype = handshake->type;
 		tls->version = handshake->version;
 		switch (handshake->type) {
 		case client_hello:
 			client = true;
+			/* fallthrough */
 		case server_hello:
 			err = bpf_parse_tls_client_hello(bottle, tls, client);
 			if (err)
@@ -465,6 +303,7 @@ int bpf_parse_tls(struct bottle *bottle,
 	} else {
 		return TLS_PARSE_BAD_DATA;
 	}
+
 	return next;
 }
 

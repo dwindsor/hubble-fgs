@@ -14,10 +14,13 @@ package reader
 import (
 	"testing"
 
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/stretchr/testify/assert"
 )
 
 func TestGetTLSCipher(t *testing.T) {
-	assert.Equal(t, "TLS_SRP_SHA_DSS_WITH_3DES_EDE_CBC_SHA", GetTLSCipher(0xC01C)) // known value
-	assert.Equal(t, "0xffff", GetTLSCipher(0xffff))                                // unknown value
+	assert.Equal(t, "TLS_SRP_SHA_DSS_WITH_3DES_EDE_CBC_SHA",
+		GetTLSCiphers(&api.FLV64{Length: 2, Value: [64]uint8{0xC0, 0x1C}})) // known value
+	assert.Equal(t, "0xffff",
+		GetTLSCiphers(&api.FLV64{Length: 2, Value: [64]uint8{0xff, 0xff}})) // unknown value
 }

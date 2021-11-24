@@ -221,21 +221,34 @@ struct msg_calltrace {
 #define TLS_CERT		  0x800
 #define TLS_HANDSHAKE_MSG_MISS    0x1000
 
+/* A length-value, with a fixed max length. */
+#define FLV(max_len) \
+	struct { \
+		__u8 length; \
+		__u8 value[(max_len)]; \
+	}
+
+#define FLV_COPY(_tlv, _from, _len) do { \
+	(_tlv).length = (_len); \
+        memcpy((_tlv).value, (_from), sizeof((_tlv).value)); \
+} while(0)
+
 struct msg_tls {
 	__u16 version;
 	__u16 length;
-	__u8  type;
-	__u8  subtype;
+	__u8 type;
+	__u8 subtype;
 	__u16 negotiated_version;
-	__u8  sni[EXT_SERVER_NAME_LENGTH];
-	__u8  supported_versions[EXT_VERSION_LENGTH];
-	__u16 cipher;
+	__u32 flags;
+	__u32 bytes;
 	__u8  alert_level;
 	__u8  alert_description;
-	__u32 flags;
-	__u8  session[64];
-	__u32 bytes;
-};
+
+	FLV(64) flv_session_id;
+	FLV(64) flv_cipher;
+	FLV(EXT_SERVER_NAME_LENGTH) flv_sni;
+	FLV(EXT_VERSION_LENGTH) flv_supported_versions;
+} __attribute__((packed));
 
 struct msg_execve_key {
 	__u32 pid;

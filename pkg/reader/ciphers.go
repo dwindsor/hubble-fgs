@@ -11,14 +11,28 @@
 
 package reader
 
-import "fmt"
+import (
+	"fmt"
+	"strings"
 
-func GetTLSCipher(cipherCode uint16) string {
-	suiteName := cipherSuites[cipherCode]
-	if suiteName == "" {
-		return fmt.Sprintf("0x%x", cipherCode)
+	"github.com/isovalent/hubble-fgs/pkg/api"
+)
+
+func GetTLSCiphers(flv *api.FLV64) (cipher string) {
+	suites, _ := flv.Bytes()
+	//      ^ TODO handle truncation?
+	var ciphers []string
+
+	for len(suites) >= 2 {
+		cipherCode := uint16(suites[0])<<8 | uint16(suites[1])
+		suites = suites[2:]
+		suiteName := cipherSuites[cipherCode]
+		if suiteName == "" {
+			suiteName = fmt.Sprintf("0x%x", cipherCode)
+		}
+		ciphers = append(ciphers, suiteName)
 	}
-	return suiteName
+	return strings.Join(ciphers, ", ")
 }
 
 // From https://www.iana.org/assignments/tls-parameters/tls-parameters-4.csv

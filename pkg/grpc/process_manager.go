@@ -1125,26 +1125,26 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	} else {
 		proc = processInt.process
 	}
-	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI)
+	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI.Value)
 	fgsEvent := &fgs.Tls{
 		Process:             proc,
 		SourceIp:            reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:          sourcePort,
 		DestinationIp:       reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
 		DestinationPort:     destinationPort,
-		NegotiatedVersion:   reader.GetTLSSupportedVersions(event.ServerHello.SupportedVersions[:], false),
-		SupportedVersions:   reader.GetTLSSupportedVersions(event.ClientHello.SupportedVersions[:], true),
+		NegotiatedVersion:   reader.GetTLSSupportedVersions(&event.ServerHello.SupportedVersions, false),
+		SupportedVersions:   reader.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),
 		SniName:             nameSNI,
 		SniType:             typeSNI,
-		Cipher:              reader.GetTLSCipher(api.SwapByte(event.ServerHello.Cipher)),
+		Cipher:              reader.GetTLSCiphers(&event.ServerHello.Cipher),
 		ClientFlags:         reader.GetTLSFlags(event.ClientHello.Flags),
 		ServerFlags:         reader.GetTLSFlags(event.ServerHello.Flags),
 		ClientVersion:       reader.GetTLSVersion(event.ClientHello.Version),
 		ServerVersion:       reader.GetTLSVersion(event.ServerHello.Version),
 		ClientAlert:         reader.GetTLSAlert(event.ClientHello.AlertLevel, event.ClientHello.AlertDescription),
 		ServerAlert:         reader.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
-		ClientSession:       reader.GetTLSSession(event.ClientHello.Session),
-		ServerSession:       reader.GetTLSSession(event.ServerHello.Session),
+		ClientSession:       reader.GetTLSSession(&event.ClientHello.Session),
+		ServerSession:       reader.GetTLSSession(&event.ServerHello.Session),
 		Certificates:        event.ServerCert.Certificates,
 		CertificateError:    getTLSCertificateErrorCode(event.ServerCert.Error),
 		ParserInternalState: event.ServerCert.ParserState.String(),
