@@ -1047,7 +1047,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(event.Tuple.DPort),
+			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
 		}
 	}
 

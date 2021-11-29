@@ -99,7 +99,7 @@ EVENT tls
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
   A CLI_ADDR                # saddr
   A SRV_ADDR                # daddr
-  h2 443                    # dport (always 443 (host-order) for TLS)
+  2 443                     # dport (always 443 (network-order) for TLS)
   A CLI_PORT_HOST           # sport (host-order)
   $ 00 00 00 00             # remaining
   $ 00 00 00 00 00 00 00 00 # uid

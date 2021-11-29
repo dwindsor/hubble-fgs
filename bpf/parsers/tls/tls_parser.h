@@ -476,7 +476,7 @@ static inline __attribute__((always_inline))
 void skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
         key->daddr = skmsg->remote_ip4;
         key->saddr = skmsg->local_ip4;
-        key->dport = TLS_REMOTE_PORT;
+        key->dport = bpf_htons(TLS_REMOTE_PORT);
         key->sport = skmsg->local_port;
 }
 #elif defined(SK_SKB)
@@ -485,7 +485,7 @@ void skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
 {
 	key->daddr = skb->remote_ip4;
 	key->saddr = skb->local_ip4;
-	key->dport = TLS_REMOTE_PORT;
+	key->dport = bpf_htons(TLS_REMOTE_PORT);
 	key->sport = skb->local_port;
 }
 #else
@@ -534,8 +534,8 @@ void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
 		data_end = (void *)(long)skb->data_end;
 	}
 
-	key->dport = bpf_htons(tcphdr->dest);
-	key->sport = bpf_htons(tcphdr->source);
+	key->dport = tcphdr->dest;
+	key->sport = tcphdr->source;
 	*off = tcp_off + sizeof(struct ethhdr);
 	return (void *)tcphdr;
 }

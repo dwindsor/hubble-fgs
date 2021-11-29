@@ -26,6 +26,10 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 	if (!skb_tcp_payload(ctx, tcp, &off)) {
 		return;
 	}
+	/* TC hooks read sport in network order, but rest of stack
+	 * expects host order for sport so we do conversion here.
+	 */
+	tuple.sport = bpf_ntohs(tuple.sport);
 #endif
 
 	if (map_lookup_elem(&tls_map, &tuple) != 0)

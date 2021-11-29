@@ -113,6 +113,14 @@ int event_tc_ingress_tcp(struct __sk_buff *skb)
 	}
 
 	skb_tls_key_ct_xchg(&key);
+	/* TC hooks read sport in network order, but rest of stack
+	 * expects host order for sport so we do conversion here after
+	 * xchg to get correct sport/dports. We do not need to do
+	 * anything with dport because the original pre-xchged sport
+	 * was in network byte order being read directly from packet
+	 * data.
+	 */
+	key.sport = bpf_ntohs(key.sport);
 	bpf_parse_ingress_skb(skb, &key, off);
 
 	return TC_ACT_UNSPEC;

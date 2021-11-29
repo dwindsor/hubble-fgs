@@ -194,13 +194,9 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
 
-		/* Set dport to network byte order as that's what socketmap
-                 * expects. */
-		key->dport = bpf_htons(key->dport);
 		execve  = lookup_socketmap(key);
 		if (execve)
 			post->execve = execve->key;
-		key->dport = bpf_ntohs(key->dport);
 
 		perf_event_output(skb, &tcpmon_map, BPF_F_CURRENT_CPU, post,
 				  sizeof(struct msg_tls_event));
