@@ -406,6 +406,8 @@ func handleProcessedEvent(processedEvent interface{}) {
 			eventType = fgs.EventType_PROCESS_SOCKSTATS.String()
 		case *fgs.GetEventsResponse_InterfaceStats:
 			eventType = fgs.EventType_INTERFACE_STATS.String()
+		case *fgs.GetEventsResponse_ProcessDns:
+			eventType = fgs.EventType_PROCESS_DNS.String()
 		default:
 			logger.GetLogger().WithField("event", processedEvent).Warn("metrics: handleProcessedEvent: unhandled event")
 			eventType = "unhandled"

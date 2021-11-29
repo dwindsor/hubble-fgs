@@ -38,11 +38,15 @@ struct udp_info_key {
 	u32 padding;
 } __attribute__((packed));
 
+struct msg_ipv4_udp_event {
+	struct msg_ipv4_event     event;
+	char payload[2048];
+};
 
 struct bpf_map_def __attribute__((section("maps"), used)) udp_event_heap = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_ipv4_event),
+	.value_size = sizeof(struct msg_ipv4_udp_event),
 	.max_entries = 1,
 };
 
@@ -97,6 +101,46 @@ void emit_udp_event(void *ctx, int op, struct udp_info_key *k, struct udp_info_v
 	};
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	return;
+}
+
+static inline __attribute__((always_inline))
+void emit_udp_payload_event(void *ctx, struct udp_info_key *k, struct udp_info_value *v, int off, int payload_size)
+{
+	struct __sk_buff *skb = (struct __sk_buff *)ctx;
+	size_t size = sizeof(struct msg_ipv4_udp_event);
+	struct msg_ipv4_udp_event *val;
+	int zero = 0;
+
+	val = map_lookup_elem(&udp_event_heap, &zero);
+	if (!val)
+		return;
+
+	payload_size &= 0x7ff;
+	size = payload_size + sizeof(struct msg_ipv4_event);
+
+	val->event = (struct msg_ipv4_event) {
+		.common.op = MSG_OP_IPV4_UDPPAYLOAD,
+		.common.size = size,
+		.common.ktime = ktime_get_ns(),
+		.key.pid = v->pid,
+		.key.ktime = v->pid_ktime,
+		.tuple.saddr = k->saddr,
+		/* FGS expects host byte-order */
+		.tuple.sport = k->sport,
+		.tuple.daddr = k->daddr,
+		.tuple.dport = k->dport,
+		.stats.segs_in = v->segs_in,
+		.stats.segs_out = v->segs_out,
+		.stats.bytes_sent = v->tx_bytes,
+		.stats.bytes_received = v->rx_bytes,
+		.stats.sk_drops = v->sk_drops,
+	};
+
+	// +1 to ensure payload_size is non-zero; And keeps verifier happy that
+	// we wont do a load_bytes with size == 0.
+	asm volatile("%[payload_size] += 1;\n" :: [payload_size] "+r"(payload_size):);
+	skb_load_bytes(skb, off, &val->payload, payload_size);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 }
 
 static inline __attribute__((always_inline))

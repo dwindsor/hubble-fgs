@@ -265,6 +265,72 @@ func (pm *ProcessManager) handleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetE
 	return res
 }
 
+func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
+	var proc *fgs.Process
+
+	processID := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processInt, err := pm.cache.get(processID)
+	if err != nil {
+		pm.log.WithField("id in DNS event", processID).Debug("process not found in cache")
+	} else {
+		proc = processInt.process
+
+	}
+	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
+
+	fgsDns := &fgs.DnsInfo{
+		Rcode:         int32(event.Dns.RCode),
+		Ips:           event.Dns.IPs,
+		Names:         event.Dns.Names,
+		QuestionTypes: event.Dns.QuestionTypes,
+		AnswerTypes:   event.Dns.AnswerTypes,
+	}
+
+	fgsEvent := &fgs.ProcessDns{
+		Process: proc,
+		Socket:  fgsTuple,
+		Dns:     fgsDns,
+	}
+
+	// When CiliumAPI is enable annotate data with Cilium info. If the data
+	// is missing and enableEventCache is enabled we push event into the
+	// cache where a retry will happen.
+	if pm.enableCilium && proc != nil {
+		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_IPV4_DNS)
+		endpoint := pm.getProcessEndpoint(proc)
+		if endpoint != nil {
+			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
+			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		} else if pm.enableEventCache {
+			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+			return nil
+		}
+	}
+	if pm.processCacheNeeded(proc) {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
+	}
+	return fgsEvent
+}
+
+func (pm *ProcessManager) handleDnsMessage(msg *api.MsgIPv4DnsUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_IPV4_DNS:
+		t := pm.GetDns(msg)
+		if t != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: t},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
+		}
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
 func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
@@ -633,6 +699,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleIpMessage(msg)
 	case *api.MsgInterfaceEventUnix:
 		processedEvent = pm.handleInterfaceMessage(msg)
+	case *api.MsgIPv4DnsUnix:
+		processedEvent = pm.handleDnsMessage(msg)
 	case *api.MsgExitEventUnix:
 		processedEvent = pm.handleExitMessage(msg)
 	case *api.MsgCredEventUnix:

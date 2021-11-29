@@ -14,6 +14,7 @@
     - [DeleteTracingPolicyResponse](#fgs.DeleteTracingPolicyResponse)
     - [DisableSensorRequest](#fgs.DisableSensorRequest)
     - [DisableSensorResponse](#fgs.DisableSensorResponse)
+    - [DnsInfo](#fgs.DnsInfo)
     - [EnableSensorRequest](#fgs.EnableSensorRequest)
     - [EnableSensorResponse](#fgs.EnableSensorResponse)
     - [Filter](#fgs.Filter)
@@ -48,6 +49,7 @@
     - [ProcessClose](#fgs.ProcessClose)
     - [ProcessConnect](#fgs.ProcessConnect)
     - [ProcessCred](#fgs.ProcessCred)
+    - [ProcessDns](#fgs.ProcessDns)
     - [ProcessExec](#fgs.ProcessExec)
     - [ProcessExit](#fgs.ProcessExit)
     - [ProcessHttp](#fgs.ProcessHttp)
@@ -235,6 +237,26 @@ AggregationOptions defines configuration options for aggregating events.
 
 
 
+<a name="fgs.DnsInfo"></a>
+
+### DnsInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| question_types | [uint32](#uint32) | repeated |  |
+| answer_types | [uint32](#uint32) | repeated |  |
+| rcode | [int32](#int32) |  |  |
+| names | [string](#string) | repeated |  |
+| ips | [string](#string) | repeated |  |
+| query | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="fgs.EnableSensorRequest"></a>
 
 ### EnableSensorRequest
@@ -322,6 +344,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_sockstats | [ProcessSockStats](#fgs.ProcessSockStats) |  |  |
 | process_http | [ProcessHttp](#fgs.ProcessHttp) |  |  |
 | interface_stats | [InterfaceStats](#fgs.InterfaceStats) |  |  |
+| process_dns | [ProcessDns](#fgs.ProcessDns) |  |  |
 | test | [Test](#fgs.Test) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
 | time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed.
@@ -861,6 +884,25 @@ HTTP PARSER
 
 
 
+<a name="fgs.ProcessDns"></a>
+
+### ProcessDns
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| socket | [SockInfo](#fgs.SockInfo) |  |  |
+| dns | [DnsInfo](#fgs.DnsInfo) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
+
+
+
+
+
+
 <a name="fgs.ProcessExec"></a>
 
 ### ProcessExec
@@ -1305,6 +1347,7 @@ EventType constants are based on the ones from pkg/api/client
 | PROCESS_SOCKSTATS | 15 |  |
 | PROCESS_HTTP | 16 |  |
 | INTERFACE_STATS | 17 |  |
+| PROCESS_DNS | 18 |  |
 | TEST | 254 |  |
 
 

@@ -205,6 +205,11 @@ type InterfacePolicySpec struct {
 	StatsInterval uint32 `json:"StatsInterval"`
 }
 
+type DnsPolicySpec struct {
+	// DNS enable parser
+	Enable bool `json:"enable"`
+}
+
 type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A Tls specs.
@@ -218,6 +223,9 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Network policy specification
 	Interface InterfacePolicySpec `json:"interface"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Dns DnsPolicySpec `json:"dns"`
 }
 
 type UdpPolicySpec struct {

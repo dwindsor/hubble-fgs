@@ -278,6 +278,15 @@ spec:
               parser:
                 description: Parser policy specification.
                 properties:
+                  dns:
+                    description: Network policy specification
+                    properties:
+                      enable:
+                        description: DNS enable parser
+                        type: boolean
+                    required:
+                    - enable
+                    type: object
                   http:
                     description: A Http spec.
                     properties:

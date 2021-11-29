@@ -87,8 +87,13 @@ const (
 
 	MSG_OP_INTERFACE_STATS = 20
 
+	MSG_OP_IPV4_UDPPAYLOAD = 21
+
 	// just for testing
 	MSG_OP_TEST = 254
+
+	// for user space payload parsers
+	MSG_OP_IPV4_DNS = 128
 )
 
 const (
@@ -297,6 +302,23 @@ type MsgIPv4Event struct {
 	ProcessKey  MsgExecveKey
 	SockCookie  uint64
 	SocketStats MsgSocketStats
+}
+
+type MsgDns struct {
+	RCode         uint16
+	AnswerTypes   []uint32
+	QuestionTypes []uint32
+	Names         []string
+	IPs           []string
+}
+
+type MsgIPv4DnsUnix struct {
+	Common     MsgCommon
+	Tuple      MsgIPv4Tuple
+	Return     int64
+	ProcessKey MsgExecveKey
+	SockCookie uint64
+	Dns        MsgDns
 }
 
 type MsgCalltrace struct {

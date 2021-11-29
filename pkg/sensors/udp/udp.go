@@ -42,6 +42,8 @@ var (
 
 	stats          *lru.Cache
 	stataCacheSize = 32000
+
+	udpSelectors [128]byte
 )
 
 var (
@@ -369,6 +371,10 @@ func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors
 	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 	}
+	if spec.Parser.Dns.Enable {
+		udpSelectors, _ = ParseDnsSpec(spec)
+	}
+
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
 }
 
@@ -401,4 +407,5 @@ func AddUDP() {
 	sensors.RegisterProbeType("udp_sensor", udp)
 	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPCONNECT, handleUdpConnect)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_DNS, handleUdpPayload)
 }

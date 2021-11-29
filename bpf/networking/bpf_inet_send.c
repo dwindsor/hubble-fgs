@@ -24,7 +24,7 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 #endif
 
 static inline __attribute__((always_inline))
-struct udp_info_key *udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end)
+struct udp_info_key *udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, int *payload_off, int *payload_sz)
 {
 	struct udp_info_key *key;
 	struct udphdr *udp;
@@ -49,6 +49,9 @@ struct udp_info_key *udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *dat
 	key->dport = udp->dest;
 	key->cookie = get_socket_cookie(skb);
 	key->padding = 0;
+
+	*payload_off = udp_off + sizeof(struct udphdr);
+	*payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	return key;
 }
 
@@ -67,11 +70,12 @@ void swap_key(struct udp_info_key *key)
 static inline __attribute__((always_inline))
 int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, int send)
 {
+	int zero = 0, payload_off, payload_sz;
+
 	struct udp_info_value *value;
 	struct udp_info_key *key;
-	int zero = 0;
 
-	key = udp4_key(skb, ip, data, data_end);
+	key = udp4_key(skb, ip, data, data_end, &payload_off, &payload_sz);
 	if (!key)
 		return 1;
 
@@ -81,6 +85,7 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	} else {
 		key->sport = bpf_ntohs(key->sport);
 	}
+
 	/* This logic is a bit racy, but we can handle it. Thinking through the
 	 * cases. Multiple sends may happen concurrently on the same key. If
 	 * the key is not in the map we may have multiple cores in the !value
@@ -129,6 +134,14 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 			update_tx_value(value, skb->len);
 		else
 			update_rx_value(value, skb->len);
+	}
+
+	if (key->sport == 53 || bpf_ntohs(key->dport) == 53) {
+		/* We subtract 1 from payload_sz because we need to +1 it
+		 * later to sat verifier constraint that skb_load_bytes
+		 * must be nonzero.
+		 */
+		emit_udp_payload_event(skb, key, value, payload_off, payload_sz - 1);
 	}
 	return 1;
 }
