@@ -426,13 +426,11 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 		}
 	} else {
 		fgsProcess = process.process
-		pm.cache.refInc(process)
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
 		fgsParent = parent.process
-		pm.cache.refInc(parent)
 	}
 
 	for _, arg := range event.Args {
@@ -570,13 +568,11 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 		}
 	} else {
 		fgsProcess = process.process
-		pm.cache.refInc(process)
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
 		fgsParent = parent.process
-		pm.cache.refInc(parent)
 	}
 
 	var fgsArgs []*fgs.KprobeArgument
