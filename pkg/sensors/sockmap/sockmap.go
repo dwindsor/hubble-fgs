@@ -87,6 +87,7 @@ var (
 	SockMap        = sensors.MapBuilder(tlsSockMapName, "sockops", sockops.SockopsEstablished)
 	TLSMap         = sensors.MapBuilder("tls_map", "skmsg", TLSSkmsg)
 	TLSTailCalls   = sensors.MapBuilder("tls_calls", "tc_ingress", TLSTCIngress)
+	TLSParserStats = sensors.MapBuilder("tls_parser_stats", "sockops", sockops.SockopsEstablished)
 )
 
 func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
@@ -252,6 +253,7 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 		maps = append(maps,
 			SockMap,
 			TLSMap,
+			TLSParserStats,
 		)
 	}
 
@@ -265,6 +267,7 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 		maps = append(maps,
 			TCTLSMap,
 			TLSTailCalls,
+			TLSParserStats,
 		)
 	}
 

@@ -34,6 +34,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) bottles = {
        .max_entries = 1024,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) bottle_map_stats = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__s32),
+	.value_size = sizeof(__s64),
+	.max_entries = 1,
+};
+
+
 static inline __attribute__((always_inline))
 void *bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 {
@@ -49,7 +57,11 @@ void *bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 static inline __attribute__((always_inline))
 void bottle_drop(struct msg_tls_ipv4 *key)
 {
-	map_delete_elem(&bottles, key);
+	int err = map_delete_elem(&bottles, key);
+	int zero = 0;
+	s64 *cntr;
+	if (!err && (cntr = map_lookup_elem(&bottle_map_stats, &zero)))
+		*cntr = *cntr - 1;
 }
 
 static inline __attribute__((always_inline))
@@ -60,14 +72,21 @@ struct bottle *bottle_fill(ctx_md *ctx, struct msg_tls_ipv4 *key,
 
 	if (!bottle) {
 		int zero = 0;
+		int err;
+
 		bottle = map_lookup_elem(&bottle_heap, &zero);
 		if (!bottle)
 			return 0;
 
 		bottle->len = 0;
 
-		if (map_update_elem(&bottles, key, bottle, 0))
+		err = map_update_elem(&bottles, key, bottle, 0);
+		if (err) {
 			return 0;
+		} else {
+			s64 *cntr = map_lookup_elem(&bottle_map_stats, &zero);
+			if (cntr) *cntr = *cntr + 1;
+		}
 
 		bottle = map_lookup_elem(&bottles, key);
 		if (!bottle)

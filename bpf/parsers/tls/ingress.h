@@ -14,7 +14,6 @@
 /* TLS Certificate Hdr offset */
 #define TLS_HEADER_BYTES 9
 
-
 #define ERROUT_LEN (5*24)
 
 static inline __attribute__((always_inline))
@@ -48,7 +47,7 @@ int tls_find_handshake_end(struct bottle *bottle, int offset, int *type, int *su
 
 	*type = hdr->type;
 	if (hdr->type != TLS_TYPE_HANDSHAKE)
-		return TLS_PARSE_BAD_DATA;
+		return TLS_PARSE_ERROR;
 
 	data += sizeof(struct tls_hdr);
 
@@ -82,7 +81,7 @@ int tls_find_handshake_end(struct bottle *bottle, int offset, int *type, int *su
 
 	/* Too many fragments. Give up. */
 	if (remaining > 0)
-		return TLS_PARSE_BAD_DATA;
+		return TLS_PARSE_ERROR;
 
 	return offset;
 }
@@ -134,7 +133,7 @@ int bpf_parse_tls_cert(ctx_md *ctx,
 fail:
 	event = map_lookup_elem(&tls_heap, &zero);
 	if (!event)
-		return TLS_PARSE_BAD_DATA;
+		return TLS_PARSE_ERROR;
 
 	event->op = MSG_OP_TLS_CONT;
 	event->tuple = *key;
@@ -169,6 +168,7 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 
 		bottle = bottle_fill(skb, key, offset);
 		if (!bottle) {
+			tls_inc_bottle_fill_failed();
 			tls_mark_complete(event);
 			return;
 		}
@@ -206,31 +206,42 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 		if (post->serverhello.flags & TLS_CERT) {
 			event->bytes = next;
 			next = bpf_parse_tls_cert(skb, bottle, event, key, next);
-			if (next < 0) {
+			if (next == TLS_PARSE_OUT_OF_DATA) {
 				event->type = TLS_TYPE_MORE_DATA;
 			}
 		}
 
 out:
-		if (next != TLS_PARSE_OUT_OF_DATA) {
-			/* Parsing has failed. Drop the data. */
+		if (next == TLS_PARSE_OUT_OF_DATA) {
+			tls_inc_ingress_out_of_data();
+		} else {
+			if (next < 0)
+				tls_inc_ingress_parse_error();
+			else
+				tls_inc_ingress_ok();
+
 			tls_mark_complete(event);
 			bottle_drop(key);
 		}
-
 	}  else if (is_expected_tls_data(event)) {
 		struct bottle *bottle;
 		int err;
 
 		bottle = bottle_fill(skb, key, offset);
-		if (!bottle)
-			// TODO need to post an error event?
+		if (!bottle) {
+			tls_inc_bottle_fill_failed();
 			return;
+		}
 
 		err = bpf_parse_tls_cert(skb, bottle, event, key, event->bytes);
 		if (err == TLS_PARSE_OUT_OF_DATA) {
+			tls_inc_ingress_out_of_data();
 			event->type = TLS_TYPE_MORE_DATA;
 		} else {
+			if (err < 0)
+				tls_inc_ingress_parse_error();
+			else
+				tls_inc_ingress_ok();
 			tls_mark_complete(event);
 			bottle_drop(key);
 		}

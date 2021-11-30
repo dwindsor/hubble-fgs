@@ -42,7 +42,7 @@ struct tls_handshake_hdr {
 #define TLS_VERSION_10 0x0103
 
 enum tls_parser_error {
-	TLS_PARSE_BAD_DATA = -1,
+	TLS_PARSE_ERROR = -1,
 	TLS_PARSE_OUT_OF_DATA = -2,
 };
 
@@ -88,7 +88,7 @@ int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool 
 #define BOUNDS(val, flag, mask) ({ \
 	if ((val) > (mask)) { \
 		tls->flags |= flag; \
-                return TLS_PARSE_BAD_DATA; \
+                return TLS_PARSE_ERROR; \
 	} \
 	asm volatile("%1 &= " #mask ";\n": "+r"(val)::); \
 })
@@ -149,7 +149,7 @@ out:
 	/* We check overflow only at the end to avoid unnecessary branches. */
 	if (data > data_end) {
 		tls->flags |= TLS_FRAME_TOO_LARGE; // FIXME proper flag
-		return TLS_PARSE_BAD_DATA;
+		return TLS_PARSE_ERROR;
 	}
 
 	return 0;
@@ -301,7 +301,7 @@ int bpf_parse_tls(struct bottle *bottle,
 		/* Advance pointer to end of alert */
 		next = sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr);
 	} else {
-		return TLS_PARSE_BAD_DATA;
+		return TLS_PARSE_ERROR;
 	}
 
 	return next;

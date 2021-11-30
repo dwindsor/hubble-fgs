@@ -154,4 +154,44 @@ int http_filter(struct sock_key *key) {
 	return map_key_filter(filter, key);
 }
 
+struct __tls_parser_stats {
+	__u64 cnt_egress_out_of_data;
+	__u64 cnt_egress_parse_error;
+	__u64 cnt_egress_ok;
+
+	__u64 cnt_ingress_out_of_data;
+	__u64 cnt_ingress_parse_error;
+	__u64 cnt_ingress_ok;
+
+	__u64 cnt_bottle_fill_failed;
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) tls_parser_stats = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__s32),
+	.value_size = sizeof(struct __tls_parser_stats),
+	.max_entries = 1,
+};
+
+
+#define INC_TLS_PARSER_STATS_FUNC(field)                                 \
+	static inline __attribute__((always_inline))                     \
+	void tls_inc_##field () {                                        \
+		int zero = 0;                                            \
+		struct __tls_parser_stats *stats;                        \
+		stats = map_lookup_elem(&tls_parser_stats, &zero);   \
+		if (stats)                                               \
+			stats->cnt_##field ++;                           \
+	}
+
+INC_TLS_PARSER_STATS_FUNC(egress_out_of_data); /* tls_inc_egress_out_of_data() */
+INC_TLS_PARSER_STATS_FUNC(egress_parse_error);
+INC_TLS_PARSER_STATS_FUNC(egress_ok);
+
+INC_TLS_PARSER_STATS_FUNC(ingress_out_of_data);
+INC_TLS_PARSER_STATS_FUNC(ingress_parse_error);
+INC_TLS_PARSER_STATS_FUNC(ingress_ok);
+
+INC_TLS_PARSER_STATS_FUNC(bottle_fill_failed);
+
 #endif

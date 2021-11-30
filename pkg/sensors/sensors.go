@@ -35,7 +35,7 @@ var (
 		&TCPMonMap,
 		&ExecveStats,
 		&SocketStats,
-		&TLSStats,
+		&TLSMapStats,
 		&CiliumSNAT,
 		&TCPSendCheckSampler,
 	}
@@ -63,7 +63,7 @@ func GetInitialSensor() *Sensor {
 		/* &ObserverTcpMap */
 		&ExecveStats,
 		&SocketStats,
-		&TLSStats, // NB: Maybe this should be under k.enableTLS?
+		&TLSMapStats, // NB: Maybe this should be under k.enableTLS?
 		&TCPSendCheckSampler,
 	}
 

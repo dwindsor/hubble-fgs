@@ -58,8 +58,10 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 		return;
 
 	bottle = bottle_fill(ctx, &tuple, off);
-	if (!bottle)
+	if (!bottle) {
+		tls_inc_bottle_fill_failed();
 		return;
+	}
 
 	clienthello = map_lookup_elem(&tls_heap, &zero);
 	if (!clienthello)
@@ -68,22 +70,24 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 	switch (bpf_parse_tls(bottle, clienthello)) {
 	case TLS_PARSE_OUT_OF_DATA:
 		/* Parser ran out of data. Try again later with more data. */
+		tls_inc_egress_out_of_data();
 		return;
 
-	case TLS_PARSE_BAD_DATA:
+	case TLS_PARSE_ERROR:
 		/* Parsing failed, mark parsing as completed to stop further parsing. */
+		tls_inc_egress_parse_error();
 		tls_mark_complete(clienthello);
 
                 /* Post the event to user-space */
                 // TODO(JM): Commented out for now. Tests need adjusting.
                 // egress_post_event(ctx, &tuple, clienthello);
-
-		/* fallthrough */
+		break;
 	default:
-		bottle_drop(&tuple);
-		add_tlsmap(&tuple, clienthello);
+		tls_inc_egress_ok();
 		break;
 	}
+	bottle_drop(&tuple);
+	add_tlsmap(&tuple, clienthello);
 }
 
 #endif // egress_h_INCLUDED

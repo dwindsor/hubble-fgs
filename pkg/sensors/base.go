@@ -173,8 +173,8 @@ var (
 	TCPSendCheckSampler = Map{"tcp_send_check_sampler", "", &TCPSendCheck, Idle(), -1}
 	/* Internal statistics for debugging */
 	ExecveStats = Map{"execve_map_stats", "", &Execve, Idle(), -1}
-	SocketStats = Map{"socket_map_stats", "", &Execve, Idle(), -1}
-	TLSStats    = Map{"tls_map_stats", "", &Execve, Idle(), -1}
+	SocketStats = Map{"socket_map_stats", "", &TCPConnect, Idle(), -1}
+	TLSMapStats = Map{"tls_map_stats", "", &TCPConnect, Idle(), -1}
 	/* Cilium maps */
 	CiliumSNAT = Map{"cilium_snat_v4_external", "", &TCPConnect, Idle(), -1}
 )
