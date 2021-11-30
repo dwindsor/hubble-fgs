@@ -21,6 +21,8 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -43,7 +45,7 @@ var (
 	stats          *lru.Cache
 	stataCacheSize = 32000
 
-	udpSelectors [128]byte
+	Selectors [128]byte
 )
 
 var (
@@ -318,6 +320,25 @@ type udpSensor struct {
 }
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+	if args.Load.Type == "cgrp_egress" {
+		return loader.LoadCgroupInetEgressProgram(
+			args.Version, args.Verbose,
+			btfObj,
+			args.Load.Name,
+			args.Load.Label,
+			filepath.Join(args.BPFDir, args.Load.PinPath),
+			args.MapDir,
+			Selectors)
+	} else if args.Load.Type == "cgrp_ingress" {
+		return loader.LoadCgroupInetIngressProgram(
+			args.Version, args.Verbose,
+			btfObj,
+			args.Load.Name,
+			args.Load.Label,
+			filepath.Join(args.BPFDir, args.Load.PinPath),
+			args.MapDir, Selectors)
+	}
 	return nil, 0
 }
 
@@ -371,10 +392,7 @@ func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors
 	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 	}
-	if spec.Parser.Dns.Enable {
-		udpSelectors, _ = ParseDnsSpec(spec)
-	}
-
+	Selectors, _ = ParseDnsSpec(spec)
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
 }
 
@@ -407,5 +425,8 @@ func AddUDP() {
 	sensors.RegisterProbeType("udp_sensor", udp)
 	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPCONNECT, handleUdpConnect)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_DNS, handleUdpPayload)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPPAYLOAD, handleUdpPayload)
+
+	sensors.RegisterProbeType("cgrp_ingress", udp)
+	sensors.RegisterProbeType("cgrp_egress", udp)
 }

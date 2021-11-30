@@ -9,3 +9,5 @@ spec:
       cgroup: true
       statsinterval: 20
       deleteidlesocketinterval: 60
+    dns:
+      enable: true

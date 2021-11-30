@@ -312,22 +312,6 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verb
 			load.Label,
 			filepath.Join(bpfDir, load.PinPath),
 			mapDir)
-	} else if load.Type == "cgrp_ingress" {
-		return loader.LoadCgroupInetIngressProgram(
-			version, verbose,
-			btfObj,
-			load.Name,
-			load.Label,
-			filepath.Join(bpfDir, load.PinPath),
-			mapDir)
-	} else if load.Type == "cgrp_egress" {
-		return loader.LoadCgroupInetEgressProgram(
-			version, verbose,
-			btfObj,
-			load.Name,
-			load.Label,
-			filepath.Join(bpfDir, load.PinPath),
-			mapDir)
 	} else if load.Type == "cgrp_socket" {
 		return loader.LoadCgroupInetSocketProgram(
 			version, verbose,

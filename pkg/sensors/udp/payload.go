@@ -3,13 +3,13 @@ package udp
 import (
 	"bytes"
 	"encoding/binary"
-	"fmt"
 	"net"
 	"unsafe"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/yalue/native_endian"
 
 	"golang.org/x/net/dns/dnsmessage"
@@ -29,10 +29,7 @@ func handleUdpPayload(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	if uint16(dnsPort) == m.Tuple.SPort || uint16(dnsPort) == m.Tuple.DPort {
-		return handleUdpDns(&m, r)
-	}
-	return nil, fmt.Errorf("handleUdpPayload: unknown payload protocol")
+	return handleUdpDns(&m, r)
 }
 
 func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEvent, error) {
@@ -124,10 +121,23 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 // needed for BPF to identify DNS and run DNS parser on it.
 //
 // DNS selector layout is the following.
-// #OfMatchPorts uint32
-// Port1 ... PortN uint32, uint32, ...
+// MatchPort
+//
+// For now we support a single port and its configured here. When disabled
+// we use 0 expecting this does not match real port values.
 func ParseDnsSpec(spec *v1alpha1.TracingPolicySpec) ([128]byte, error) {
 	var match [128]byte
+	var e [4096]byte
 
+	k := &selectors.KernelSelectorState{}
+
+	if spec.Parser.Dns.Enable {
+		selectors.WriteSelectorUint32(k, uint32(defaultDnsPort))
+	} else {
+		selectors.WriteSelectorUint32(k, 0)
+	}
+
+	e = selectors.GetSelectorBuffer(k)
+	copy(match[:], e[:128])
 	return match, nil
 }

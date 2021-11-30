@@ -12,6 +12,13 @@ struct bpf_map_def {
 
 #define SOCK_CTX
 
+struct bpf_map_def __attribute__((section("maps"), used)) udp_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 128,
+	.max_entries = 1,
+};
+
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
@@ -71,6 +78,7 @@ static inline __attribute__((always_inline))
 int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, int send)
 {
 	int zero = 0, payload_off, payload_sz;
+	u32 dnsport, *filter;
 
 	struct udp_info_value *value;
 	struct udp_info_key *key;
@@ -136,7 +144,12 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 			update_rx_value(value, skb->len);
 	}
 
-	if (key->sport == 53 || bpf_ntohs(key->dport) == 53) {
+	filter = map_lookup_elem(&udp_filter_map, &zero);
+	if (!filter)
+		return 1;
+
+	dnsport = (u32)filter[0];
+	if (key->sport == dnsport || bpf_ntohs(key->dport) == dnsport) {
 		/* We subtract 1 from payload_sz because we need to +1 it
 		 * later to sat verifier constraint that skb_load_bytes
 		 * must be nonzero.
