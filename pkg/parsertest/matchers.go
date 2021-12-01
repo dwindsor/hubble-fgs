@@ -3,7 +3,6 @@ package parsertest
 import (
 	"bytes"
 	"encoding/binary"
-	"encoding/hex"
 	"fmt"
 	"io"
 	"net"
@@ -39,14 +38,28 @@ func (sm StringMatcher) Serialize() []byte {
 
 type BytesMatcher []byte
 
+func (bm BytesMatcher) String() string {
+	s := "$ "
+	for i, b := range bm {
+		s += fmt.Sprintf("%x", b)
+		if i != len(bm)-1 {
+			s += " "
+		}
+	}
+	return s
+}
+
 func (bm BytesMatcher) Match(_ *TestContext, r io.Reader) (int, error) {
 	buf := make([]byte, len(bm))
 	n, err := r.Read(buf)
 	if err != nil {
-		return 0, err
+		return 0, fmt.Errorf("failed to read %d bytes: %w", len(bm), err)
 	}
-	if n != len(bm) || !bytes.Equal(bm, buf) {
-		return 0, fmt.Errorf("mismatch, expected %s, got %s", hex.EncodeToString(bm), hex.EncodeToString(buf))
+	if n != len(bm) {
+		return 0, fmt.Errorf("EOF, expected %d, but only got %d bytes", n, len(bm))
+	}
+	if !bytes.Equal(bm, buf) {
+		return 0, fmt.Errorf("mismatch, expected %s, got %s", bm, BytesMatcher(buf))
 	}
 	return len(bm), nil
 }
@@ -59,6 +72,9 @@ type WildcardMatcher int
 
 func (n WildcardMatcher) Match(_ *TestContext, r io.Reader) (int, error) {
 	m, err := io.CopyN(io.Discard, r, int64(n))
+	if err != nil {
+		err = fmt.Errorf("wildcard match failed, read %d bytes, expected %d bytes: %w", m, n, err)
+	}
 	return int(m), err
 }
 

@@ -128,7 +128,7 @@ func (tc *TestCase) Run(t *testing.T, dispatch *EventDispatcher, timeout time.Du
 			return err
 		default:
 			if err := step.Exec(testCtx); err != nil {
-				return fmt.Errorf("test failed at step %d/%d: %w", i+1, nsteps, err)
+				return fmt.Errorf("test failed at step %d/%d:\n%w", i+1, nsteps, err)
 			}
 		}
 	}

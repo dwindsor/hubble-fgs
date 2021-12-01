@@ -14,6 +14,7 @@ package parsertest
 import (
 	"bytes"
 	"fmt"
+	"io"
 	"text/scanner"
 )
 
@@ -111,6 +112,12 @@ func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
 			return &TestStepError{m.Position, "match", err}
 		}
 	}
+
+	n, _ := io.Copy(io.Discard, r)
+	if n != 0 {
+		return &TestStepError{e.Position, "match", fmt.Errorf("%d unmatched bytes remain", n)}
+	}
+
 	return nil
 }
 

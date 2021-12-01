@@ -86,6 +86,7 @@ func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) error {
 	evRecv := func(msg *bpf.PerfEventSample, cpu int) {
 		data := msg.DataDirect()
 		op := data[0]
+
 		ed.Lock()
 		for _, sub := range ed.subs {
 			if sub.Op == op {

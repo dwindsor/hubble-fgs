@@ -2,6 +2,7 @@ package parsertest
 
 import (
 	"context"
+	"fmt"
 	"io/fs"
 	"log"
 	"os"
@@ -17,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 )
 
 const (
@@ -75,12 +77,6 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	switch cfg {
 	case SENS_TLS:
 		spec = v1alpha1.ParserPolicySpec{
-			Http: v1alpha1.HttpSpec{
-				Enable: false,
-				Selectors: []v1alpha1.HttpSelector{
-					{MatchPorts: []uint32{1}},
-				},
-			},
 			Tls: v1alpha1.TlsSpec{
 				Enable: true,
 				Mode:   "socket",
@@ -103,13 +99,6 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 					{MatchPorts: []uint32{8888}},
 				},
 			},
-			Tls: v1alpha1.TlsSpec{
-				Enable: false,
-				Mode:   "socket",
-				Selectors: []v1alpha1.TlsSelector{
-					{MatchPorts: []uint32{1}},
-				},
-			},
 		}
 
 		httpSensor, err := http.AddHTTPSensor(spec)
@@ -117,6 +106,15 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 			t.Fatalf("AddHTTPSensor: %s\n", err)
 		}
 		sensor = sensors.SensorCombine("init+http", sensor, httpSensor)
+
+		// Add the sockops program.
+		sensor = sensors.SensorCombine("sensor", sensor,
+			sensors.SensorBuilder("sensor",
+				[]*sensors.Program{sockops.SockopsEstablished},
+				[]*sensors.Map{}))
+
+	default:
+		panic(fmt.Sprintf("unimplemented %d", cfg))
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -127,8 +125,8 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	return SensorsHandle{sensor, ctx, cancel}
 }
 
-func runTests(t *testing.T, cfg int, dir string) {
-	handle := startSensors(SENS_TLS, t)
+func runTests(t *testing.T, sensor int, dir string) {
+	handle := startSensors(sensor, t)
 	defer handle.Close()
 
 	dispatcher, err := NewEventDispatcher()
@@ -165,4 +163,8 @@ func runTests(t *testing.T, cfg int, dir string) {
 
 func TestTLS(t *testing.T) {
 	runTests(t, SENS_TLS, "tls")
+}
+
+func TestHTTP(t *testing.T) {
+	runTests(t, SENS_HTTP, "http")
 }

@@ -195,7 +195,13 @@ func (p *Parser) scanInt() (uint64, bool, error) {
 		}
 		numString += p.scanner.TokenText()
 	}
-	n, err := strconv.ParseUint(numString, 10, 64)
+	base := 10
+	if strings.HasPrefix(numString, "0x") {
+		base = 16
+		numString = numString[2:]
+	}
+
+	n, err := strconv.ParseUint(numString, base, 64)
 	return n, stop, err
 }
 
