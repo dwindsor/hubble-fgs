@@ -20,7 +20,7 @@
 		goto accept;				\
 	}						\
 	}						\
-	filter = map_lookup_event(filter->pkey.pid);	\
+	filter = map_lookup_elem(&execve_map, &filter->pkey.pid); \
 }
 
 #define FIND_PIDSET10(VAL, ISNS) {	\
