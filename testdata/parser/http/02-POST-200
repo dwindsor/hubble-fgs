@@ -1,0 +1,220 @@
+EGRESS
+	"POST / HTTP/1.1\r\n"
+	"Host: foobar.baz\r\n"
+	"Content-Length: 10\r\n"
+	"\r\n"
+	"helloworld"
+END
+
+# Event from the client socket.
+EVENT http
+  $ 10 00 00 00 # op + pad
+  $ 64 06 00 00 # size
+  ? 8           # ktime
+
+  ## tuple
+  A CLI_ADDR
+  A SRV_ADDR
+  A SRV_PORT
+  A CLI_PORT_HOST
+  $ 00 00 00 00             # direction (egress)
+  $ 00 00 00 00 00 00 00 00 # uid
+
+  ## process
+  ? 4           # pid
+  $ 00 00 00 00 # pad
+  ? 8           # ktime
+
+  ## http
+  h4 6          # method=POST
+  h4 0x0        # flags
+  $ 01 00 00 00 00 00 00 00 # send
+  $ 00 00 00 00 00 00 00 00 # recv
+
+  ## payload
+  h4 1 # type: request_url
+  h4 1 # length
+  "/"
+
+  h4 3 # type: request_protocol
+  h4 8 # length
+  "HTTP/1.1"
+
+  h4 2  # type: request_host
+  h4 11 # length
+  " foobar.baz"
+
+  h4 6 # type: request_content_length
+  h4 3 # length
+  " 10"
+
+  # termination
+  h4 0
+  h4 0
+
+  ? 973
+END
+
+# Event from the server socket.
+EVENT http
+  $ 10 00 00 00 # op + pad
+  $ 64 06 00 00 # size
+  ? 8           # ktime
+
+  ## tuple
+  A SRV_ADDR
+  A CLI_ADDR
+  A CLI_PORT
+  A SRV_PORT_HOST
+  $ 01 00 00 00             # direction (egress)
+  $ 00 00 00 00 00 00 00 00 # uid
+
+  ## process
+  ? 4           # pid
+  $ 00 00 00 00 # pad
+  ? 8           # ktime
+
+  ## http
+  h4 6          # method=POST
+  h4 0x0        # flags
+  $ 01 00 00 00 00 00 00 00 # send
+  $ 00 00 00 00 00 00 00 00 # recv
+
+  ## payload
+  h4 1 # type: request_url
+  h4 1 # length
+  "/"
+
+  h4 3 # type: request_protocol
+  h4 8 # length
+  "HTTP/1.1"
+
+  h4 2  # type: request_host
+  h4 11 # length
+  " foobar.baz"
+
+  h4 6 # type: request_content_length
+  h4 3 # length
+  " 10"
+
+  # termination
+  h4 0
+  h4 0
+
+  ? 973
+END
+
+INGRESS
+	"HTTP/1.1 200 OK\r\n"
+	"Location: http://foobar.baz\r\n"
+	"Content-Length: 0\r\n"
+	"\r\n"
+END
+
+# Event from client socket
+EVENT http
+  $ 10 00 00 00 # op + pad
+  $ 64 06 00 00 # size
+  ? 8           # ktime
+
+  ## tuple
+  A SRV_ADDR
+  A CLI_ADDR
+  A CLI_PORT
+  A SRV_PORT_HOST
+  $ 00 00 00 00             # direction (egress)
+  $ 00 00 00 00 00 00 00 00 # uid
+
+  ## process
+  ? 4           # pid
+  $ 00 00 00 00 # pad
+  ? 8           # ktime
+
+  ## http
+  h4 11         # method=RESPONSE
+  h4 0x0        # flags
+  $ 00 00 00 00 00 00 00 00 # send
+  $ 01 00 00 00 00 00 00 00 # recv
+
+  ## payload
+  h4 8 # type: response_protocol
+  h4 8 # length
+  "HTTP/1.1"
+
+  h4 9 # type: response_code
+  h4 3 # length
+  "200"
+
+  h4 10 # type: response_reason
+  h4 2  # length
+  "OK"
+
+  h4 7  # type: request_unknown
+  h4 18 # length
+  " http://foobar.baz"
+
+  h4 6 # type: request_content_length
+  h4 2 # length
+  " 0"
+
+  # termination
+  h4 0
+  h4 0
+
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  ? 939
+END
+
+# Event from server socket
+EVENT http
+  $ 10 00 00 00 # op + pad
+  $ 64 06 00 00 # size
+  ? 8           # ktime
+
+  ## tuple
+  A CLI_ADDR
+  A SRV_ADDR
+  A SRV_PORT
+  A CLI_PORT_HOST
+  $ 01 00 00 00             # direction (egress)
+  $ 00 00 00 00 00 00 00 00 # uid
+
+  ## process
+  ? 4           # pid
+  $ 00 00 00 00 # pad
+  ? 8           # ktime
+
+  ## http
+  h4 11         # method=RESPONSE
+  h4 0x0        # flags
+  $ 00 00 00 00 00 00 00 00 # send
+  $ 01 00 00 00 00 00 00 00 # recv
+
+  ## payload
+  h4 8 # type: response_protocol
+  h4 8 # length
+  "HTTP/1.1"
+
+  h4 9 # type: response_code
+  h4 3 # length
+  "200"
+
+  h4 10 # type: response_reason
+  h4 2  # length
+  "OK"
+
+  h4 7  # type: request_unknown
+  h4 18 # length
+  " http://foobar.baz"
+
+  h4 6 # type: request_content_length
+  h4 2 # length
+  " 0"
+
+  # termination
+  h4 0
+  h4 0
+
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  ? 939
+END
