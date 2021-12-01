@@ -56,6 +56,10 @@ struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
 	probe_read(&key->sport, sizeof(u16), _(&(inet->inet_sport)));
 	key->cookie = (u64)sk;
 	key->padding = 0;
+	/* Keys are expected to be in network byte order with source port
+	 * in host byte order.
+	 */
+	key->sport = bpf_ntohs(key->sport);
 	return key;
 }
 
@@ -142,10 +146,15 @@ struct udp_info_key *udp4_get_skb_key(struct pt_regs *ctx, int *len)
 	probe_read(&iph, sizeof(iph), skb_head + network_header);
 	probe_read(&udph, sizeof(udph), skb_head + transport_header);
 
+	/* skb keys are in network byte order and to be consistent across
+	 * sock generated keys and packet generated keys we byte swap the
+	 * source port to be in host byte order, aligning with socket
+	 * struct.
+	 */
 	key->saddr = iph.daddr;
 	key->daddr = iph.saddr;
 	key->sport = bpf_ntohs(udph.dest);
-	key->dport = bpf_ntohs(udph.source);
+	key->dport = udph.source;
 	key->cookie = (u64)sk;
 	key->padding = 0;
 
