@@ -105,7 +105,7 @@ func (p *Parser) parseBlock() error {
 			p.testCase.Steps = append(p.testCase.Steps, step)
 
 		case "EVENT":
-			op, err := p.parseOp()
+			op, _, err := p.parseOp()
 			if err != nil {
 				return err
 			}
@@ -116,11 +116,14 @@ func (p *Parser) parseBlock() error {
 			p.testCase.Steps = append(p.testCase.Steps, &TestStepEvent{pos, op, matchers})
 
 		case "EVENTDUMP":
-			op, err := p.parseOp()
+			op, name, err := p.parseOp()
 			if err != nil {
 				return err
 			}
-			p.testCase.Steps = append(p.testCase.Steps, &TestStepEventDump{pos, op})
+			p.testCase.Steps = append(p.testCase.Steps, &TestStepEventDump{pos, op, name})
+
+		case "CLOSE":
+			p.testCase.Steps = append(p.testCase.Steps, &TestStepClose{pos})
 
 		default:
 			return fmt.Errorf("unknown keyword '%s'", kw)
@@ -140,20 +143,32 @@ func (p *Parser) parseTags() error {
 	return nil
 }
 
-func (p *Parser) parseOp() (int, error) {
+func (p *Parser) parseOp() (int, string, error) {
 	tok := p.scanner.Scan()
 	if tok == scanner.EOF {
-		return 0, fmt.Errorf("EOF when scanning event op")
+		return 0, "", fmt.Errorf("EOF when scanning event op")
 	}
-	switch p.scanner.TokenText() {
-	case "TLS", "tls":
-		return api.MSG_OP_TLS, nil
-	case "TLSCONT", "tlscont":
-		return api.MSG_OP_TLS_CONT, nil
-	case "HTTP", "http":
-		return api.MSG_OP_HTTP, nil
+	name := strings.ToUpper(p.scanner.TokenText())
+
+	switch name {
+	case "TLS":
+		return api.MSG_OP_TLS, name, nil
+	case "TLSCONT":
+		return api.MSG_OP_TLS_CONT, name, nil
+	case "HTTP":
+		return api.MSG_OP_HTTP, name, nil
+	case "TCPCONNECT":
+		return api.MSG_OP_IPV4_TCPCONNECT, name, nil
+	case "TCPCONNECTRET":
+		return api.MSG_OP_IPV4_TCPCONNECTRET, name, nil
+	case "TCPACCEPT":
+		return api.MSG_OP_IPV4_ACCEPT, name, nil
+	case "TCPCLOSE":
+		return api.MSG_OP_IPV4_TCPCLOSE, name, nil
+	case "TCPSTATS":
+		return api.MSG_OP_IPV4_TCPSTATS, name, nil
 	default:
-		return 0, fmt.Errorf("unrecognized event op '%s", p.scanner.TokenText())
+		return 0, name, fmt.Errorf("unrecognized event op '%s", p.scanner.TokenText())
 	}
 }
 
@@ -240,6 +255,10 @@ scan:
 				ms, err = p.parseWord(true)
 			case "h4":
 				ms, err = p.parseWord(false)
+			case "8":
+				ms, err = p.parseDoubleWord(true)
+			case "h8":
+				ms, err = p.parseDoubleWord(false)
 			case "?":
 				ms, err = p.parseWildcard()
 			case "END":
@@ -334,6 +353,28 @@ func (p *Parser) parseWord(network bool) (ms []Matcher, err error) {
 			binary.BigEndian.PutUint32(bm, uint32(n))
 		} else {
 			native_endian.NativeEndian().PutUint32(bm, uint32(n))
+		}
+		ms = append(ms, bm)
+
+		if stop {
+			break
+		}
+	}
+	return
+}
+
+func (p *Parser) parseDoubleWord(network bool) (ms []Matcher, err error) {
+	for {
+		n, stop, err := p.scanInt()
+		if err != nil {
+			return nil, err
+		}
+
+		var bm BytesMatcher = make([]byte, 8)
+		if network {
+			binary.BigEndian.PutUint64(bm, n)
+		} else {
+			native_endian.NativeEndian().PutUint64(bm, n)
 		}
 		ms = append(ms, bm)
 

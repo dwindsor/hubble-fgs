@@ -48,6 +48,18 @@ func (ctx *TestContext) emitIngress(pkt []byte) error {
 	return nil
 }
 
+func (ctx *TestContext) closeConns() error {
+	err := ctx.egressConn.Close()
+	if err != nil {
+		return err
+	}
+	err = ctx.ingressConn.Close()
+	if err != nil {
+		return err
+	}
+	return nil
+}
+
 func (ctx *TestContext) waitForEvent(op int) (data []byte, eof bool) {
 	if ch, ok := ctx.perOpChans[op]; ok {
 		data, ok := <-ch

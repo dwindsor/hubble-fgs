@@ -128,6 +128,7 @@ func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
 type TestStepEventDump struct {
 	Position scanner.Position
 	Op       int
+	OpName   string
 }
 
 func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
@@ -136,8 +137,9 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 		return &TestStepError{e.Position, "waitForEvent", nil}
 	}
 
-	fmt.Printf("EVENT DUMP\n")
-	fmt.Printf("-- cut from here --")
+	fmt.Printf("-- EVENTDUMP %s --\n", e.OpName)
+
+	fmt.Printf("EVENT %s", e.OpName)
 
 	for i := range event {
 		if (i % 16) == 0 {
@@ -146,8 +148,21 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 		fmt.Printf(" %02x", event[i])
 	}
 	fmt.Printf("\n")
+	fmt.Printf("  # ^ %d bytes\n", len(event))
+	fmt.Printf("END\n")
 
 	fmt.Printf("-- cut to here--\n")
 
+	return nil
+}
+
+type TestStepClose struct {
+	Position scanner.Position
+}
+
+func (e *TestStepClose) Exec(ctx *TestContext) *TestStepError {
+	if err := ctx.closeConns(); err != nil {
+		return &TestStepError{e.Position, "closeConns", err}
+	}
 	return nil
 }

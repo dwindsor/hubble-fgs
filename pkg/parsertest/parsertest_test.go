@@ -12,9 +12,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
@@ -142,6 +144,8 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 				[]*sensors.Program{sockops.SockopsEstablished},
 				[]*sensors.Map{}))
 
+	case SENS_INITIAL:
+
 	default:
 		panic(fmt.Sprintf("unimplemented %d", cfg))
 	}
@@ -154,6 +158,27 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	return SensorsHandle{sensor, ctx, cancel}
 }
 
+func addSelfToEvecveMap(t *testing.T) {
+	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), sensors.ExecveMap.Name))
+	if err != nil {
+		t.Fatalf("OpenMap: %s\n", err)
+	}
+
+	pid := uint32(os.Getpid())
+	ppid := uint32(os.Getppid())
+
+	err = m.Update(
+		&observer.ExecveKey{Pid: pid},
+		&observer.ExecveValue{
+			Parent:  api.MsgExecveKey{ppid, 0, 0xcacababa},
+			Process: api.MsgExecveKey{pid, 0, 0x01020304deadbeef},
+		},
+	)
+	if err != nil {
+		t.Fatalf("Map.Update: %s\n", err)
+	}
+}
+
 func runTests(t *testing.T, sensor int, dir string) {
 	handle := startSensors(sensor, t)
 	defer handle.Close()
@@ -162,6 +187,8 @@ func runTests(t *testing.T, sensor int, dir string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+
+	addSelfToEvecveMap(t)
 
 	fs.WalkDir(
 		os.DirFS(testsRoot), dir,
@@ -203,4 +230,8 @@ func TestHTTP(t *testing.T) {
 	}
 
 	runTests(t, SENS_HTTP, "http")
+}
+
+func TestTCP(t *testing.T) {
+	runTests(t, SENS_INITIAL, "tcp")
 }
