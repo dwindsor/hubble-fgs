@@ -25,7 +25,11 @@ int event_commit_creds(struct pt_regs *ctx)
 	struct msg_creds c;
 	__u32 pid;
 
-	pid = get_current_pid_tgid() & 0xFFFFffff;
+	/* Safe to use map_lookup_event() here because we must have a
+	 * valid tgid here because exec happened previously to populate
+	 * it. This saves some overhead doing full process/parent lookup.
+	 */
+	pid = get_current_pid_tgid() >> 32;
 	enter = map_lookup_event(pid);
 	if (!enter)
 		return 0;

@@ -20,10 +20,31 @@ __attribute__((section(("tracepoint/sys_exit")), used))
 int event_exit(struct sched_execve_args *ctx)
 {
 	struct execve_map_value *enter;
-	__u32 pid;
+	__u32 pid, tgid;
+	__u64 current;
 
-	pid = get_current_pid_tgid() & 0xFFFFffff;
-	enter = map_lookup_event(pid);
+	current = get_current_pid_tgid();
+
+	pid = current & 0xFFFFffff;
+	tgid = current >> 32;
+
+	/* We are only tracking group leaders so if tgid is not
+	 * the same as the pid then this is an untracked child
+	 * and we can skip the lookup/insert/delete cycle that
+	 * would otherwise occur.
+	 */
+	if (pid != tgid)
+		return 0;
+
+	/* It is safe to do a map_lookup_event() here because
+	 * we must have captured the execve case in order for an
+	 * exit to happen. Or in the FGS startup case we pre
+	 * populated it before loading BPF programs. At any rate
+	 * if the entry is _not_ in the execve_map the lookup
+	 * will create an empty entry, the ktime check below will
+	 * catch it and we will quickly delete the entry again.
+	 */
+	enter = map_lookup_event(tgid);
 	if (!enter)
 		return 0;
 	if (enter->key.ktime) {
@@ -37,7 +58,7 @@ int event_exit(struct sched_execve_args *ctx)
 		exit.common.size = size;
 		exit.common.ktime = ktime_get_ns();
 
-		exit.current.pid = pid;
+		exit.current.pid = tgid;
 		exit.current.pad[0] = 0;
 		exit.current.pad[1] = 0;
 		exit.current.pad[2] = 0;
@@ -45,6 +66,6 @@ int event_exit(struct sched_execve_args *ctx)
 		exit.current.ktime = enter->key.ktime;
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &exit, size);
 	}
-	map_delete_event(pid);
+	map_delete_event(tgid);
 	return 0;
 }
