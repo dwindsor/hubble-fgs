@@ -1,0 +1,150 @@
+EGRESS
+	"hello"
+END
+
+INGRESS
+	"bye"
+END
+
+EVENT TCPACCEPT
+  $ 09 00 00 00 # op+pad
+  h4 120        # size
+  ? 8           # ktime
+
+  ## tuple
+  A SRV_ADDR
+  A CLI_ADDR
+  A CLI_PORT
+  A SRV_PORT_HOST
+  $ 00                      # proto
+  $ 00 00 00 00             # post daddr
+  $ 00 00                   # post dport
+  $ 00 00 00 00 00          # pad
+  $ 00 00 00 00 00 00 00 00 # ret
+
+  ## process key
+  $ ?? ?? ?? ??         # pid
+  $ 00 00 00 00         # pad
+  h8 0x01020304deadbeef # ktime
+  ? 8                   # socket cookie
+
+  ## socket stats, zeroes for ACCEPT
+  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 00 00 00 00
+END
+
+EVENT TCPCONNECTRET
+  $ 02 00 00 00 # op+pad
+  h4 120        # size
+  ? 8           # ktime
+
+  ## tuple
+  A CLI_ADDR
+  A SRV_ADDR
+  A SRV_PORT
+  A CLI_PORT_HOST
+  $ 00                      # proto
+  $ 00 00 00 00             # post daddr
+  $ 00 00                   # post dport
+  $ 00 00 00 00 00          # pad
+  $ 00 00 00 00 00 00 00 00 # ret
+
+  ## process key
+  $ ?? ?? ?? ?? # pid
+  $ 00 00 00 00 # pad
+  h8 0x01020304deadbeef # ktime
+  ? 8 # socket cookie
+
+  ## socket stats
+  h8 0 # bytes sent
+  h8 0 # bytes received
+  h4 0 # segs in
+  h4 0 # segs out
+  h4 0 # srtt
+  h4 0 # retransmitted segs
+  h8 0 # retransmitted bytes
+  h4 0 # to zero window
+  h4 0 # skdrop
+  $ 00 00 00 00
+END
+
+# Close the server socket first
+CLOSE SERVER
+
+EVENT TCPCLOSE
+  $ 08 00 00 00 # op+pad
+  h4 120        # size
+  ? 8           # ktime
+
+  ## tuple
+  A SRV_ADDR
+  A CLI_ADDR
+  A CLI_PORT
+  A SRV_PORT_HOST
+  $ 00                      # proto
+  $ 00 00 00 00             # post daddr
+  $ 00 00                   # post dport
+  $ 00 00 00 00 00          # pad
+  $ 00 00 00 00 00 00 00 00 # ret
+
+  ## process key
+  $ ?? ?? ?? ??         # pid
+  $ 00 00 00 00         # pad
+  h8 0x01020304deadbeef # ktime
+  ? 8                   # socket cookie
+
+  ## socket stats
+  h8 3 # bytes sent
+  h8 5 # bytes received
+  h4 5 # segs in
+  h4 3 # segs out
+  ? 4  # srtt
+  h4 0 # retransmitted segs
+  h8 0 # retransmitted bytes
+  h4 0 # to zero window
+  h4 0 # skdrop
+  $ 00 00 00 00
+  # ^ Where is the padding coming from?
+END
+
+# And finally close the client socket.
+CLOSE CLIENT
+
+EVENT TCPCLOSE
+  $ 08 00 00 00 # op+pad
+  h4 120        # size
+  ? 8           # ktime
+
+  ## tuple
+  A CLI_ADDR
+  A SRV_ADDR
+  A SRV_PORT
+  A CLI_PORT_HOST
+  $ 00                      # proto
+  $ 00 00 00 00             # post daddr
+  $ 00 00                   # post dport
+  $ 00 00 00 00 00          # pad
+  $ 00 00 00 00 00 00 00 00 # ret
+
+  ## process key
+  $ ?? ?? ?? ??         # pid
+  $ 00 00 00 00         # pad
+  h8 0x01020304deadbeef # ktime
+  ? 8                   # socket cookie
+
+  ## socket stats
+  h8 5 # bytes sent
+  h8 4 # bytes received (3 for "bye" + FIN)
+  h4 5 # segs in
+  h4 6 # segs out
+  ? 4  # srtt
+  h4 0 # retransmitted segs
+  h8 0 # retransmitted bytes
+  h4 0 # to zero window
+  h4 0 # skdrop
+  $ 00 00 00 00
+  # ^ Where is the padding coming from?
+END
+

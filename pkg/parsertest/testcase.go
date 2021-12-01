@@ -156,13 +156,29 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 	return nil
 }
 
+const (
+	CLOSE_SERVER = iota
+	CLOSE_CLIENT
+	CLOSE_BOTH
+)
+
 type TestStepClose struct {
 	Position scanner.Position
+	which    int
 }
 
 func (e *TestStepClose) Exec(ctx *TestContext) *TestStepError {
-	if err := ctx.closeConns(); err != nil {
-		return &TestStepError{e.Position, "closeConns", err}
+	var err error
+	switch e.which {
+	case CLOSE_SERVER:
+		err = ctx.ingressConn.Close()
+	case CLOSE_CLIENT:
+		err = ctx.egressConn.Close()
+	case CLOSE_BOTH:
+		err = ctx.closeConns()
+	}
+	if err != nil {
+		return &TestStepError{e.Position, "CLOSE", err}
 	}
 	return nil
 }

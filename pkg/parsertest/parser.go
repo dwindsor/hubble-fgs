@@ -123,7 +123,11 @@ func (p *Parser) parseBlock() error {
 			p.testCase.Steps = append(p.testCase.Steps, &TestStepEventDump{pos, op, name})
 
 		case "CLOSE":
-			p.testCase.Steps = append(p.testCase.Steps, &TestStepClose{pos})
+			dir, err := p.parseCloseDirection()
+			if err != nil {
+				return err
+			}
+			p.testCase.Steps = append(p.testCase.Steps, &TestStepClose{pos, dir})
 
 		default:
 			return fmt.Errorf("unknown keyword '%s'", kw)
@@ -146,7 +150,7 @@ func (p *Parser) parseTags() error {
 func (p *Parser) parseOp() (int, string, error) {
 	tok := p.scanner.Scan()
 	if tok == scanner.EOF {
-		return 0, "", fmt.Errorf("EOF when scanning event op")
+		return 0, "", fmt.Errorf("EOF when parsing event op")
 	}
 	name := strings.ToUpper(p.scanner.TokenText())
 
@@ -169,6 +173,27 @@ func (p *Parser) parseOp() (int, string, error) {
 		return api.MSG_OP_IPV4_TCPSTATS, name, nil
 	default:
 		return 0, name, fmt.Errorf("unrecognized event op '%s", p.scanner.TokenText())
+	}
+}
+
+func (p *Parser) parseCloseDirection() (int, error) {
+	tok := p.scanner.Scan()
+	if tok == scanner.EOF {
+		return 0, fmt.Errorf("EOF when parsing close direction")
+	}
+	if tok == '\n' || tok == '#' {
+		return CLOSE_BOTH, nil
+	}
+
+	switch strings.ToUpper(p.scanner.TokenText()) {
+	case "CLIENT":
+		return CLOSE_CLIENT, nil
+	case "SERVER":
+		return CLOSE_SERVER, nil
+	case "BOTH":
+		return CLOSE_BOTH, nil
+	default:
+		return 0, fmt.Errorf("expected CLIENT/SERVER/BOTH for CLOSE")
 	}
 }
 
