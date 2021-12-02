@@ -435,7 +435,8 @@ func (pm *ProcessManager) handleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 				Time:     ktimeToProto(msg.Common.Ktime),
 			}
 		}
-	case api.MSG_OP_IPV4_TCPCLOSE:
+	case api.MSG_OP_IPV4_TCPCLOSE,
+		api.MSG_OP_IPV4_UDPCLOSE:
 		c := pm.GetProcessClose(msg)
 		if c != nil {
 			res = &fgs.GetEventsResponse{

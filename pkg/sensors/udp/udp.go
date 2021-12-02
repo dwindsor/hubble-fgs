@@ -196,11 +196,12 @@ func (s *udpInfoValue) DeepCopyMapValue() bpf.MapValue {
 	return &v
 }
 
-func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
+// emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
+func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
 	unix := api.MsgIPv4EventUnix{}
 
 	unix.Common = api.MsgCommon{
-		Op:    api.MSG_OP_IPV4_UDPSTATS,
+		Op:    0,
 		Size:  1,
 		Ktime: v.Ktime,
 	}
@@ -224,8 +225,21 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 		SegsOut:       uint32(v.SegsOut),
 		SkDrop:        v.SkDrops,
 	}
-	observer.AllListeners(&unix)
-	return
+	return &unix
+}
+
+func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
+	unix := emitUdpEvent(k, v)
+	unix.Common.Op = api.MSG_OP_IPV4_UDPCLOSE
+
+	observer.AllListeners(unix)
+}
+
+func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
+	unix := emitUdpEvent(k, v)
+	unix.Common.Op = api.MSG_OP_IPV4_UDPSTATS
+
+	observer.AllListeners(unix)
 }
 
 func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) udpInfoValue {
@@ -283,6 +297,7 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	}
 
 	if t > UdpDeleteInterval {
+		emitCloseEvent(udpKey, udpValue)
 		stats.Remove(*udpKey)
 		m.DeleteKey(k)
 	}
