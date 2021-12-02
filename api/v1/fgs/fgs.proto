@@ -104,6 +104,12 @@ message SocketStats {
     uint32 to_zero_window = 8;
 
     uint32 sk_drop = 9;
+
+    // UDP specific:
+    uint64 bytes_consumed = 10;
+    uint64 bytes_submitted = 11;
+    uint32 segs_consumed = 12;
+    uint32 segs_submitted = 13;
 }
 
 enum SocketProtocol {

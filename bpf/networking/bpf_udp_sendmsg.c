@@ -14,6 +14,7 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "bpf_udp.h"
+#include "cookie.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -54,7 +55,7 @@ struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
 	}
 	probe_read(&key->saddr, sizeof(u32), _(&(inet->inet_saddr)));
 	probe_read(&key->sport, sizeof(u16), _(&(inet->inet_sport)));
-	key->cookie = (u64)sk;
+	key->cookie = get_cookie(sk);
 	key->padding = 0;
 	/* Keys are expected to be in network byte order with source port
 	 * in host byte order.
@@ -114,8 +115,8 @@ int udp4_sendret(struct pt_regs *ctx)
 		struct udp_info_value *value = map_lookup_elem(&udp_map, key);
 
 		if (value) {
-			value->tx_bytes += ret;
-			value->segs_out++;
+			value->submitted_bytes += ret;
+			value->submitted_segs++;
 		}
 		map_delete_elem(&udp_retprobe_map, &pid);
 	}
@@ -155,7 +156,7 @@ struct udp_info_key *udp4_get_skb_key(struct pt_regs *ctx, int *len)
 	key->daddr = iph.saddr;
 	key->sport = bpf_ntohs(udph.dest);
 	key->dport = udph.source;
-	key->cookie = (u64)sk;
+	key->cookie = get_cookie(sk);
 	key->padding = 0;
 
 	*len = bpf_ntohs(udph.len) - sizeof(udph);
@@ -184,7 +185,7 @@ int udp4_recv(struct pt_regs *ctx)
 		if (!value)
 			return 0;
 
-		udp_info_rx_reset(value, len);
+		udp_info_consumed_reset(value, len);
 		process = event_find_curr(&ppid, 0, &walker);
 		if (process) {
 			value->pid = process->key.pid;
@@ -193,7 +194,7 @@ int udp4_recv(struct pt_regs *ctx)
 		map_update_elem(&udp_map, key, value, 0);
 		emit_udp_connect_event(ctx, key, value);
 	} else {
-		update_rx_value(value, len);
+		update_consumed_value(value, len);
 	}
 	return 0;
 }

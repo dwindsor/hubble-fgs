@@ -1140,6 +1140,10 @@ HTTP PARSER
 | retransmits_segs | [uint32](#uint32) |  |  |
 | to_zero_window | [uint32](#uint32) |  |  |
 | sk_drop | [uint32](#uint32) |  |  |
+| bytes_consumed | [uint64](#uint64) |  | UDP specific: |
+| bytes_submitted | [uint64](#uint64) |  |  |
+| segs_consumed | [uint32](#uint32) |  |  |
+| segs_submitted | [uint32](#uint32) |  |  |
 
 
 

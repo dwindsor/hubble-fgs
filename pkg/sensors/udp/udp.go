@@ -147,14 +147,18 @@ type udpInfoKey struct {
 }
 
 type udpInfoValue struct {
-	TXBytes  uint64
-	RXBytes  uint64
-	SegsIn   uint64
-	SegsOut  uint64
-	Ktime    uint64
-	PidKtime uint64
-	Pid      uint32
-	SkDrops  uint32
+	SubmittedBytes uint64
+	TXBytes        uint64
+	ConsumedBytes  uint64
+	RXBytes        uint64
+	ConsumedSegs   uint64
+	SegsIn         uint64
+	SubmittedSegs  uint64
+	SegsOut        uint64
+	Ktime          uint64
+	PidKtime       uint64
+	Pid            uint32
+	SkDrops        uint32
 }
 
 func (k *udpInfoKey) String() string {
@@ -181,10 +185,12 @@ func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 func (v *udpInfoValue) String() string {
 	return fmt.Sprintf(
 		"Pid: %d Ktime %d\n"+
+			"SubmittedBytes: %d ConsumedBytes %d\n"+
 			"TXBytes: %d RXBytes%d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n",
 		v.Pid, v.Ktime,
+		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes, v.SegsOut, v.SegsIn, v.SkDrops)
 }
 func (s *udpInfoValue) GetValuePtr() unsafe.Pointer {
@@ -218,12 +224,16 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
 		Pid:   v.Pid,
 		Ktime: v.PidKtime,
 	}
-	unix.SocketStats = api.MsgSocketStats{
-		BytesSent:     v.TXBytes,
-		BytesReceived: v.RXBytes,
-		SegsIn:        uint32(v.SegsIn),
-		SegsOut:       uint32(v.SegsOut),
-		SkDrop:        v.SkDrops,
+	unix.SocketStats = api.MsgSocketStatsUnix{
+		BytesSubmitted: v.SubmittedBytes,
+		BytesConsumed:  v.ConsumedBytes,
+		BytesSent:      v.TXBytes,
+		BytesReceived:  v.RXBytes,
+		ConsumedSegs:   uint32(v.ConsumedSegs),
+		SegsIn:         uint32(v.SegsIn),
+		SubmittedSegs:  uint32(v.SubmittedSegs),
+		SegsOut:        uint32(v.SegsOut),
+		SkDrop:         v.SkDrops,
 	}
 	return &unix
 }
@@ -247,14 +257,18 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) udpInfoValue {
 		logger.GetLogger().Warnf("key %s\n    curr %s < last %s\n", key, curr, last)
 	}
 	return udpInfoValue{
-		TXBytes:  curr.TXBytes - last.TXBytes,
-		RXBytes:  curr.RXBytes - last.RXBytes,
-		SegsIn:   curr.SegsIn - last.SegsIn,
-		SegsOut:  curr.SegsOut - last.SegsOut,
-		SkDrops:  curr.SkDrops - last.SkDrops,
-		Ktime:    curr.Ktime,
-		PidKtime: curr.PidKtime,
-		Pid:      curr.Pid,
+		SubmittedBytes: curr.SubmittedBytes - last.SubmittedBytes,
+		ConsumedBytes:  curr.ConsumedBytes - last.ConsumedBytes,
+		TXBytes:        curr.TXBytes - last.TXBytes,
+		RXBytes:        curr.RXBytes - last.RXBytes,
+		ConsumedSegs:   curr.ConsumedSegs - last.ConsumedSegs,
+		SubmittedSegs:  curr.SubmittedSegs - last.SubmittedSegs,
+		SegsIn:         curr.SegsIn - last.SegsIn,
+		SegsOut:        curr.SegsOut - last.SegsOut,
+		SkDrops:        curr.SkDrops - last.SkDrops,
+		Ktime:          curr.Ktime,
+		PidKtime:       curr.PidKtime,
+		Pid:            curr.Pid,
 	}
 }
 
@@ -379,9 +393,14 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			SockRelease,
 			InetSend,
 			InetRecv,
+			UdpSend,
+			UdpRetSend,
+			UdpRecv,
 		}
 		maps = []*sensors.Map{
 			SocketCookieMap,
+			UdpMapKprobe,
+			UdpRetprobeMap,
 			UdpMap,
 		}
 		versionStr = "__udp_sensor_cgroup__"

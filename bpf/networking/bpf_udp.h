@@ -15,9 +15,13 @@
 #define MAX_UDP_ENDPOINTS 32768
 
 struct udp_info_value {
+	u64 submitted_bytes;
 	u64 tx_bytes;
+	u64 consumed_bytes;
 	u64 rx_bytes;
+	u64 consumed_segs;
 	u64 segs_in;
+	u64 submitted_segs;
 	u64 segs_out;
 	u64 ktime;
 	u64 pid_ktime;
@@ -152,20 +156,32 @@ void emit_udp_connect_event(void *ctx, struct udp_info_key *k, struct udp_info_v
 static inline __attribute__((always_inline))
 void udp_info_tx_reset(struct udp_info_value *v, int len)
 {
+	v->submitted_bytes = 0;
 	v->tx_bytes = len;
+	v->consumed_bytes = 0;
 	v->rx_bytes = 0;
+
+	v->submitted_segs = 0;
 	v->segs_out = len ? 1 : 0;
+	v->consumed_segs = 0;
 	v->segs_in = 0;
+
 	v->ktime = ktime_get_ns();
 }
 
 static inline __attribute__((always_inline))
 void udp_info_rx_reset(struct udp_info_value *v, int len)
 {
+	v->submitted_bytes = 0;
 	v->tx_bytes = 0;
+	v->consumed_bytes = 0;
 	v->rx_bytes = len;
+
+	v->submitted_segs = 0;
 	v->segs_out = 0;
+	v->consumed_segs = 0;
 	v->segs_in = 1;
+
 	v->ktime = ktime_get_ns();
 }
 
@@ -185,4 +201,52 @@ void update_rx_value(struct udp_info_value *v, u32 len)
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
 
+static inline __attribute__((always_inline))
+void udp_info_submitted_reset(struct udp_info_value *v, int len)
+{
+	v->submitted_bytes = len;
+	v->tx_bytes = 0;
+	v->consumed_bytes = 0;
+	v->rx_bytes = 0;
+	
+	v->submitted_segs = len ? 1 : 0;
+	v->segs_out = 0;
+	v->consumed_segs = 0;
+	v->segs_in = 0;
+
+	v->ktime = ktime_get_ns();
+}
+
+static inline __attribute__((always_inline))
+void udp_info_consumed_reset(struct udp_info_value *v, int len)
+{
+	v->submitted_bytes = 0;
+	v->tx_bytes = 0;
+	v->consumed_bytes = len;
+	v->rx_bytes = 0;
+
+	v->submitted_segs = 0;
+	v->segs_out = 0;
+	v->consumed_segs = 1;
+	v->segs_in = 0;
+
+	v->ktime = ktime_get_ns();
+}
+
+
+static inline __attribute__((always_inline))
+void update_submitted_value(struct udp_info_value *v, u32 len)
+{
+	__sync_fetch_and_add(&v->submitted_bytes, len);
+	__sync_fetch_and_add(&v->submitted_segs, 1);
+	WRITE_ONCE(v->ktime, ktime_get_ns());
+}
+
+static inline __attribute__((always_inline))
+void update_consumed_value(struct udp_info_value *v, u32 len)
+{
+	__sync_fetch_and_add(&v->consumed_bytes, len);
+	__sync_fetch_and_add(&v->consumed_segs, 1);
+	WRITE_ONCE(v->ktime, ktime_get_ns());
+}
 #endif // __BPF_UDP_H__

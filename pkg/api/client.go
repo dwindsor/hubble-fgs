@@ -348,6 +348,22 @@ type MsgK8sUnix struct {
 	Docker string
 }
 
+type MsgSocketStatsUnix struct {
+	BytesSubmitted  uint64
+	BytesSent       uint64
+	BytesConsumed   uint64
+	BytesReceived   uint64
+	ConsumedSegs    uint32
+	SegsIn          uint32
+	SubmittedSegs   uint32
+	SegsOut         uint32
+	SRtt            uint32
+	RetransmitSegs  uint32
+	RetransmitBytes uint64
+	ToZeroWindow    uint32
+	SkDrop          uint32
+}
+
 type MsgSocketStats struct {
 	BytesSent       uint64
 	BytesReceived   uint64
@@ -367,7 +383,7 @@ type MsgIPv4EventUnix struct {
 	Return      int64
 	ProcessKey  MsgExecveKey
 	SockCookie  uint64
-	SocketStats MsgSocketStats
+	SocketStats MsgSocketStatsUnix
 }
 
 type MsgInterfaceStats struct {

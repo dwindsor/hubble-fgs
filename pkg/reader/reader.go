@@ -30,11 +30,15 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func GetSocketStats(stats *api.MsgSocketStats) *fgs.SocketStats {
+func GetSocketStats(stats *api.MsgSocketStatsUnix) *fgs.SocketStats {
 	return &fgs.SocketStats{
+		BytesSubmitted:   stats.BytesSubmitted,
+		BytesConsumed:    stats.BytesConsumed,
 		BytesSent:        stats.BytesSent,
 		BytesReceived:    stats.BytesReceived,
+		SegsConsumed:     stats.ConsumedSegs,
 		SegsIn:           stats.SegsIn,
+		SegsSubmitted:    stats.SubmittedSegs,
 		SegsOut:          stats.SegsOut,
 		Srtt:             stats.SRtt,
 		RetransmitsBytes: stats.RetransmitBytes,
