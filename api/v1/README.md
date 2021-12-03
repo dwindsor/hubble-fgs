@@ -4,28 +4,80 @@
 ## Table of Contents
 
 - [fgs.proto](#fgs.proto)
+    - [AddTracingPolicyRequest](#fgs.AddTracingPolicyRequest)
+    - [AddTracingPolicyResponse](#fgs.AddTracingPolicyResponse)
+    - [AggregationInfo](#fgs.AggregationInfo)
+    - [AggregationOptions](#fgs.AggregationOptions)
+    - [Capabilities](#fgs.Capabilities)
     - [Container](#fgs.Container)
+    - [DeleteTracingPolicyRequest](#fgs.DeleteTracingPolicyRequest)
+    - [DeleteTracingPolicyResponse](#fgs.DeleteTracingPolicyResponse)
+    - [DisableSensorRequest](#fgs.DisableSensorRequest)
+    - [DisableSensorResponse](#fgs.DisableSensorResponse)
+    - [DnsInfo](#fgs.DnsInfo)
+    - [EnableSensorRequest](#fgs.EnableSensorRequest)
+    - [EnableSensorResponse](#fgs.EnableSensorResponse)
     - [Filter](#fgs.Filter)
     - [GetEventsRequest](#fgs.GetEventsRequest)
     - [GetEventsResponse](#fgs.GetEventsResponse)
     - [GetHealthStatusRequest](#fgs.GetHealthStatusRequest)
     - [GetHealthStatusResponse](#fgs.GetHealthStatusResponse)
+    - [GetSensorConfigRequest](#fgs.GetSensorConfigRequest)
+    - [GetSensorConfigResponse](#fgs.GetSensorConfigResponse)
+    - [GetStackTraceTreeRequest](#fgs.GetStackTraceTreeRequest)
+    - [GetStackTraceTreeResponse](#fgs.GetStackTraceTreeResponse)
+    - [GetVersionRequest](#fgs.GetVersionRequest)
+    - [GetVersionResponse](#fgs.GetVersionResponse)
     - [HealthStatus](#fgs.HealthStatus)
+    - [HttpHeader](#fgs.HttpHeader)
+    - [HttpInfo](#fgs.HttpInfo)
+    - [HttpRequest](#fgs.HttpRequest)
+    - [HttpResponse](#fgs.HttpResponse)
     - [Image](#fgs.Image)
+    - [InterfaceStats](#fgs.InterfaceStats)
+    - [KprobeArgument](#fgs.KprobeArgument)
+    - [KprobeFile](#fgs.KprobeFile)
+    - [KprobePath](#fgs.KprobePath)
+    - [KprobeSkb](#fgs.KprobeSkb)
+    - [KprobeSock](#fgs.KprobeSock)
+    - [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes)
+    - [ListSensorsRequest](#fgs.ListSensorsRequest)
+    - [ListSensorsResponse](#fgs.ListSensorsResponse)
     - [Pod](#fgs.Pod)
     - [Process](#fgs.Process)
     - [ProcessAccept](#fgs.ProcessAccept)
     - [ProcessClose](#fgs.ProcessClose)
     - [ProcessConnect](#fgs.ProcessConnect)
+    - [ProcessCred](#fgs.ProcessCred)
+    - [ProcessDns](#fgs.ProcessDns)
     - [ProcessExec](#fgs.ProcessExec)
     - [ProcessExit](#fgs.ProcessExit)
+    - [ProcessHttp](#fgs.ProcessHttp)
+    - [ProcessKprobe](#fgs.ProcessKprobe)
     - [ProcessListen](#fgs.ProcessListen)
+    - [ProcessSockStats](#fgs.ProcessSockStats)
+    - [ProcessTracepoint](#fgs.ProcessTracepoint)
+    - [RemoveSensorRequest](#fgs.RemoveSensorRequest)
+    - [RemoveSensorResponse](#fgs.RemoveSensorResponse)
+    - [SensorStatus](#fgs.SensorStatus)
+    - [SetSensorConfigRequest](#fgs.SetSensorConfigRequest)
+    - [SetSensorConfigResponse](#fgs.SetSensorConfigResponse)
+    - [SockInfo](#fgs.SockInfo)
+    - [SocketStats](#fgs.SocketStats)
+    - [StackAddress](#fgs.StackAddress)
+    - [StackTrace](#fgs.StackTrace)
+    - [StackTraceLabel](#fgs.StackTraceLabel)
+    - [StackTraceNode](#fgs.StackTraceNode)
     - [Test](#fgs.Test)
     - [Tls](#fgs.Tls)
   
+    - [CapabilitiesType](#fgs.CapabilitiesType)
     - [EventType](#fgs.EventType)
     - [HealthStatusResult](#fgs.HealthStatusResult)
     - [HealthStatusType](#fgs.HealthStatusType)
+    - [KprobeAction](#fgs.KprobeAction)
+    - [SocketProtocol](#fgs.SocketProtocol)
+    - [TlsCertificateError](#fgs.TlsCertificateError)
   
     - [FineGuidanceSensors](#fgs.FineGuidanceSensors)
   
@@ -37,6 +89,79 @@
 <p align="right"><a href="#top">Top</a></p>
 
 ## fgs.proto
+
+
+
+<a name="fgs.AddTracingPolicyRequest"></a>
+
+### AddTracingPolicyRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| yaml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.AddTracingPolicyResponse"></a>
+
+### AddTracingPolicyResponse
+
+
+
+
+
+
+
+<a name="fgs.AggregationInfo"></a>
+
+### AggregationInfo
+AggregationInfo contains information about aggregation results.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| count | [uint64](#uint64) |  | Total count of events in this aggregation time window. |
+
+
+
+
+
+
+<a name="fgs.AggregationOptions"></a>
+
+### AggregationOptions
+AggregationOptions defines configuration options for aggregating events.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| window_size | [google.protobuf.Duration](#google.protobuf.Duration) |  | Aggregation window size. Defaults to 15 seconds if this field is not set. |
+| channel_buffer_size | [uint64](#uint64) |  | Size of the buffer for the aggregator to receive incoming events. If the buffer becomes full, the aggregator will log a warning and start dropping incoming events. |
+
+
+
+
+
+
+<a name="fgs.Capabilities"></a>
+
+### Capabilities
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| permitted | [CapabilitiesType](#fgs.CapabilitiesType) | repeated |  |
+| effective | [CapabilitiesType](#fgs.CapabilitiesType) | repeated |  |
+| inheritable | [CapabilitiesType](#fgs.CapabilitiesType) | repeated |  |
+
+
+
 
 
 
@@ -56,6 +181,102 @@
 | maybe_exec_probe | [bool](#bool) |  | If this is set true, it means that the process might have been originated from a Kubernetes exec probe. For this field to be true, the following must be true:
 
 1. The binary field matches the first element of the exec command list for either liveness or readiness probe excluding the basename. For example, &#34;/bin/ls&#34; and &#34;ls&#34; are considered a match. 2. The arguments field exactly matches the rest of the exec command list. |
+
+
+
+
+
+
+<a name="fgs.DeleteTracingPolicyRequest"></a>
+
+### DeleteTracingPolicyRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| yaml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.DeleteTracingPolicyResponse"></a>
+
+### DeleteTracingPolicyResponse
+
+
+
+
+
+
+
+<a name="fgs.DisableSensorRequest"></a>
+
+### DisableSensorRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.DisableSensorResponse"></a>
+
+### DisableSensorResponse
+
+
+
+
+
+
+
+<a name="fgs.DnsInfo"></a>
+
+### DnsInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| question_types | [uint32](#uint32) | repeated |  |
+| answer_types | [uint32](#uint32) | repeated |  |
+| rcode | [int32](#int32) |  |  |
+| names | [string](#string) | repeated |  |
+| ips | [string](#string) | repeated |  |
+| query | [string](#string) |  |  |
+| response | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="fgs.EnableSensorRequest"></a>
+
+### EnableSensorRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.EnableSensorResponse"></a>
+
+### EnableSensorResponse
+
 
 
 
@@ -94,6 +315,9 @@
 | deny_list | [Filter](#fgs.Filter) | repeated | deny_list specifies a list of filters to apply to exclude certain events from the results. If multiple filters are specified, at least one of them has to match for an event to be excluded.
 
 If both allow_list and deny_list are specified, the results contain the set difference allow_list - deny_list. |
+| aggregation_options | [AggregationOptions](#fgs.AggregationOptions) |  | aggregation_options configures aggregation options for this request. If this field is not set, responses will not be aggregated.
+
+Note that currently only process_accept and process_connect events are aggregated. Other events remain unaggregated. |
 
 
 
@@ -115,9 +339,19 @@ If both allow_list and deny_list are specified, the results contain the set diff
 | process_exit | [ProcessExit](#fgs.ProcessExit) |  |  |
 | process_close | [ProcessClose](#fgs.ProcessClose) |  |  |
 | process_accept | [ProcessAccept](#fgs.ProcessAccept) |  |  |
+| process_cred | [ProcessCred](#fgs.ProcessCred) |  |  |
+| process_kprobe | [ProcessKprobe](#fgs.ProcessKprobe) |  |  |
+| process_tracepoint | [ProcessTracepoint](#fgs.ProcessTracepoint) |  |  |
+| process_sockstats | [ProcessSockStats](#fgs.ProcessSockStats) |  |  |
+| process_http | [ProcessHttp](#fgs.ProcessHttp) |  |  |
+| interface_stats | [InterfaceStats](#fgs.InterfaceStats) |  |  |
+| process_dns | [ProcessDns](#fgs.ProcessDns) |  |  |
 | test | [Test](#fgs.Test) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
-| time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed. |
+| time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed.
+
+For an aggregated response, this field to set to the timestamp at which the event was observed for the first time in a given aggregation time window. |
+| aggregation_info | [AggregationInfo](#fgs.AggregationInfo) |  | aggregation_info contains information about aggregation results. This field is set only for aggregated responses. |
 
 
 
@@ -154,6 +388,92 @@ If both allow_list and deny_list are specified, the results contain the set diff
 
 
 
+<a name="fgs.GetSensorConfigRequest"></a>
+
+### GetSensorConfigRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| cfgkey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.GetSensorConfigResponse"></a>
+
+### GetSensorConfigResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| cfgval | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.GetStackTraceTreeRequest"></a>
+
+### GetStackTraceTreeRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.GetStackTraceTreeResponse"></a>
+
+### GetStackTraceTreeResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| root | [StackTraceNode](#fgs.StackTraceNode) |  |  |
+
+
+
+
+
+
+<a name="fgs.GetVersionRequest"></a>
+
+### GetVersionRequest
+
+
+
+
+
+
+
+<a name="fgs.GetVersionResponse"></a>
+
+### GetVersionResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| version | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="fgs.HealthStatus"></a>
 
 ### HealthStatus
@@ -171,6 +491,83 @@ If both allow_list and deny_list are specified, the results contain the set diff
 
 
 
+<a name="fgs.HttpHeader"></a>
+
+### HttpHeader
+HTTP PARSER
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.HttpInfo"></a>
+
+### HttpInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| request | [HttpRequest](#fgs.HttpRequest) |  |  |
+| response | [HttpResponse](#fgs.HttpResponse) |  |  |
+| latency | [google.protobuf.Duration](#google.protobuf.Duration) |  |  |
+
+
+
+
+
+
+<a name="fgs.HttpRequest"></a>
+
+### HttpRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| timestamp | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  |  |
+| method | [string](#string) |  |  |
+| uri | [string](#string) |  |  |
+| version | [string](#string) |  |  |
+| host | [string](#string) |  |  |
+| agent | [string](#string) |  |  |
+| content_length | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
+| headers | [HttpHeader](#fgs.HttpHeader) | repeated |  |
+| flags | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.HttpResponse"></a>
+
+### HttpResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| timestamp | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  |  |
+| version | [string](#string) |  |  |
+| code | [uint32](#uint32) |  |  |
+| reason | [string](#string) |  |  |
+| content_length | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
+| headers | [HttpHeader](#fgs.HttpHeader) | repeated |  |
+| flags | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="fgs.Image"></a>
 
 ### Image
@@ -181,6 +578,172 @@ If both allow_list and deny_list are specified, the results contain the set diff
 | ----- | ---- | ----- | ----------- |
 | id | [string](#string) |  |  |
 | name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.InterfaceStats"></a>
+
+### InterfaceStats
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| interface_name | [string](#string) |  |  |
+| interface_ifindex | [uint32](#uint32) |  |  |
+| bytes_sent | [uint64](#uint64) |  |  |
+| bytes_received | [uint64](#uint64) |  |  |
+| packets_sent | [uint64](#uint64) |  |  |
+| packets_received | [uint64](#uint64) |  |  |
+| tx_errors | [uint64](#uint64) |  |  |
+| rx_errors | [uint64](#uint64) |  |  |
+| tx_drops | [uint64](#uint64) |  |  |
+| rx_drops | [uint64](#uint64) |  |  |
+| pod | [Pod](#fgs.Pod) |  |  |
+| netns | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.KprobeArgument"></a>
+
+### KprobeArgument
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| string_arg | [string](#string) |  |  |
+| int_arg | [int32](#int32) |  |  |
+| skb_arg | [KprobeSkb](#fgs.KprobeSkb) |  |  |
+| size_arg | [uint64](#uint64) |  |  |
+| bytes_arg | [bytes](#bytes) |  |  |
+| path_arg | [KprobePath](#fgs.KprobePath) |  |  |
+| file_arg | [KprobeFile](#fgs.KprobeFile) |  |  |
+| truncated_bytes_arg | [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes) |  |  |
+| sock_arg | [KprobeSock](#fgs.KprobeSock) |  |  |
+
+
+
+
+
+
+<a name="fgs.KprobeFile"></a>
+
+### KprobeFile
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mount | [string](#string) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.KprobePath"></a>
+
+### KprobePath
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mount | [string](#string) |  |  |
+| path | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.KprobeSkb"></a>
+
+### KprobeSkb
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| hash | [uint32](#uint32) |  |  |
+| len | [uint32](#uint32) |  |  |
+| priority | [uint32](#uint32) |  |  |
+| mark | [uint32](#uint32) |  |  |
+| saddr | [string](#string) |  |  |
+| daddr | [string](#string) |  |  |
+| sport | [uint32](#uint32) |  |  |
+| dport | [uint32](#uint32) |  |  |
+| proto | [uint32](#uint32) |  |  |
+| sec_path_len | [uint32](#uint32) |  |  |
+| sec_path_olen | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="fgs.KprobeSock"></a>
+
+### KprobeSock
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| family | [string](#string) |  |  |
+| type | [string](#string) |  |  |
+| protocol | [string](#string) |  |  |
+| mark | [uint32](#uint32) |  |  |
+| priority | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="fgs.KprobeTruncatedBytes"></a>
+
+### KprobeTruncatedBytes
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bytes_arg | [bytes](#bytes) |  |  |
+| orig_size | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="fgs.ListSensorsRequest"></a>
+
+### ListSensorsRequest
+
+
+
+
+
+
+
+<a name="fgs.ListSensorsResponse"></a>
+
+### ListSensorsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| sensors | [SensorStatus](#fgs.SensorStatus) | repeated |  |
 
 
 
@@ -226,6 +789,7 @@ If both allow_list and deny_list are specified, the results contain the set diff
 | docker | [string](#string) |  |  |
 | parent_exec_id | [string](#string) |  |  |
 | refcnt | [uint32](#uint32) |  |  |
+| cap | [Capabilities](#fgs.Capabilities) |  |  |
 
 
 
@@ -247,6 +811,9 @@ If both allow_list and deny_list are specified, the results contain the set diff
 | destination_ip | [string](#string) |  |  |
 | destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | destination_names | [string](#string) | repeated |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
 
 
 
@@ -268,6 +835,11 @@ If both allow_list and deny_list are specified, the results contain the set diff
 | destination_ip | [string](#string) |  |  |
 | destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | destination_names | [string](#string) | repeated |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| stats | [SocketStats](#fgs.SocketStats) |  |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
+| socket_type | [string](#string) |  |  |
 
 
 
@@ -289,6 +861,45 @@ If both allow_list and deny_list are specified, the results contain the set diff
 | destination_ip | [string](#string) |  |  |
 | destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | destination_names | [string](#string) | repeated |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
+
+
+
+
+
+
+<a name="fgs.ProcessCred"></a>
+
+### ProcessCred
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| parent | [Process](#fgs.Process) |  |  |
+| cap | [Capabilities](#fgs.Capabilities) |  |  |
+
+
+
+
+
+
+<a name="fgs.ProcessDns"></a>
+
+### ProcessDns
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| socket | [SockInfo](#fgs.SockInfo) |  |  |
+| dns | [DnsInfo](#fgs.DnsInfo) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
 
 
 
@@ -328,6 +939,45 @@ If both allow_list and deny_list are specified, the results contain the set diff
 
 
 
+<a name="fgs.ProcessHttp"></a>
+
+### ProcessHttp
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| socket | [SockInfo](#fgs.SockInfo) |  |  |
+| http | [HttpInfo](#fgs.HttpInfo) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
+
+
+
+
+
+
+<a name="fgs.ProcessKprobe"></a>
+
+### ProcessKprobe
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| parent | [Process](#fgs.Process) |  |  |
+| function_name | [string](#string) |  |  |
+| args | [KprobeArgument](#fgs.KprobeArgument) | repeated |  |
+| return | [KprobeArgument](#fgs.KprobeArgument) |  |  |
+| action | [KprobeAction](#fgs.KprobeAction) |  |  |
+
+
+
+
+
+
 <a name="fgs.ProcessListen"></a>
 
 ### ProcessListen
@@ -340,6 +990,227 @@ If both allow_list and deny_list are specified, the results contain the set diff
 | parent | [Process](#fgs.Process) |  |  |
 | ip | [string](#string) |  |  |
 | port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
+
+
+
+
+
+
+<a name="fgs.ProcessSockStats"></a>
+
+### ProcessSockStats
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| parent | [Process](#fgs.Process) |  |  |
+| socket | [SockInfo](#fgs.SockInfo) |  |  |
+| stats | [SocketStats](#fgs.SocketStats) |  |  |
+
+
+
+
+
+
+<a name="fgs.ProcessTracepoint"></a>
+
+### ProcessTracepoint
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| parent | [Process](#fgs.Process) |  |  |
+| subsys | [string](#string) |  |  |
+| event | [string](#string) |  |  |
+| args | [KprobeArgument](#fgs.KprobeArgument) | repeated | TODO: once we implement all we want, rename KprobeArgument to GenericArgument |
+
+
+
+
+
+
+<a name="fgs.RemoveSensorRequest"></a>
+
+### RemoveSensorRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.RemoveSensorResponse"></a>
+
+### RemoveSensorResponse
+
+
+
+
+
+
+
+<a name="fgs.SensorStatus"></a>
+
+### SensorStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| enabled | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="fgs.SetSensorConfigRequest"></a>
+
+### SetSensorConfigRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| cfgkey | [string](#string) |  |  |
+| cfgval | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.SetSensorConfigResponse"></a>
+
+### SetSensorConfigResponse
+
+
+
+
+
+
+
+<a name="fgs.SockInfo"></a>
+
+### SockInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| source_ip | [string](#string) |  |  |
+| source_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
+| destination_ip | [string](#string) |  |  |
+| destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
+
+
+
+
+
+
+<a name="fgs.SocketStats"></a>
+
+### SocketStats
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bytes_sent | [uint64](#uint64) |  |  |
+| bytes_received | [uint64](#uint64) |  |  |
+| segs_in | [uint32](#uint32) |  |  |
+| segs_out | [uint32](#uint32) |  |  |
+| srtt | [uint32](#uint32) |  | TCP specific: |
+| retransmits_bytes | [uint64](#uint64) |  |  |
+| retransmits_segs | [uint32](#uint32) |  |  |
+| to_zero_window | [uint32](#uint32) |  |  |
+| sk_drop | [uint32](#uint32) |  |  |
+| bytes_consumed | [uint64](#uint64) |  | UDP specific: |
+| bytes_submitted | [uint64](#uint64) |  |  |
+| segs_consumed | [uint32](#uint32) |  |  |
+| segs_submitted | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="fgs.StackAddress"></a>
+
+### StackAddress
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [uint64](#uint64) |  |  |
+| symbol | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="fgs.StackTrace"></a>
+
+### StackTrace
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| addresses | [StackAddress](#fgs.StackAddress) | repeated |  |
+
+
+
+
+
+
+<a name="fgs.StackTraceLabel"></a>
+
+### StackTraceLabel
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| count | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="fgs.StackTraceNode"></a>
+
+### StackTraceNode
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [StackAddress](#fgs.StackAddress) |  |  |
+| count | [uint64](#uint64) |  |  |
+| labels | [StackTraceLabel](#fgs.StackTraceLabel) | repeated |  |
+| children | [StackTraceNode](#fgs.StackTraceNode) | repeated |  |
 
 
 
@@ -350,6 +1221,14 @@ If both allow_list and deny_list are specified, the results contain the set diff
 
 ### Test
 
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| arg0 | [uint64](#uint64) |  |  |
+| arg1 | [uint64](#uint64) |  |  |
+| arg2 | [uint64](#uint64) |  |  |
+| arg3 | [uint64](#uint64) |  |  |
 
 
 
@@ -382,12 +1261,80 @@ If both allow_list and deny_list are specified, the results contain the set diff
 | server_alert | [string](#string) |  |  |
 | client_session | [string](#string) |  |  |
 | server_session | [string](#string) |  |  |
+| certificates | [string](#string) | repeated |  |
+| certificate_error | [TlsCertificateError](#fgs.TlsCertificateError) |  |  |
+| parser_state_next | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_needed | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_csize | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_skblen | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_internal_state | [string](#string) |  |  |
 
 
 
 
 
  
+
+
+<a name="fgs.CapabilitiesType"></a>
+
+### CapabilitiesType
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| CAP_CHOWN | 0 | In a system with the [_POSIX_CHOWN_RESTRICTED] option defined, this overrides the restriction of changing file ownership and group ownership.
+
+Override all DAC access, including ACL execute access if [_POSIX_ACL] is defined. Excluding DAC access covered by CAP_LINUX_IMMUTABLE. |
+| DAC_OVERRIDE | 1 |  |
+| CAP_DAC_READ_SEARCH | 2 | Overrides all DAC restrictions regarding read and search on files and directories, including ACL restrictions if [_POSIX_ACL] is defined. Excluding DAC access covered by &#34;$1&#34;_LINUX_IMMUTABLE. |
+| CAP_FOWNER | 3 |  |
+| CAP_FSETID | 4 |  |
+| CAP_KILL | 5 |  |
+| CAP_SETGID | 6 |  |
+| CAP_SETUID | 7 |  |
+| CAP_SETPCAP | 8 |  |
+| CAP_LINUX_IMMUTABLE | 9 |  |
+| CAP_NET_BIND_SERVICE | 10 |  |
+| CAP_NET_BROADCAST | 11 |  |
+| CAP_NET_ADMIN | 12 |  |
+| CAP_NET_RAW | 13 |  |
+| CAP_IPC_LOCK | 14 |  |
+| CAP_IPC_OWNER | 15 |  |
+| CAP_SYS_MODULE | 16 | Insert and remove kernel modules - modify kernel without limit |
+| CAP_SYS_RAWIO | 17 |  |
+| CAP_SYS_CHROOT | 18 |  |
+| CAP_SYS_PTRACE | 19 | Allow configuration of process accounting |
+| CAP_SYS_PACCT | 20 |  |
+| CAP_SYS_ADMIN | 21 |  |
+| CAP_SYS_BOOT | 22 |  |
+| CAP_SYS_NICE | 23 |  |
+| CAP_SYS_RESOURCE | 24 |  |
+| CAP_SYS_TIME | 25 |  |
+| CAP_SYS_TTY_CONFIG | 26 |  |
+| CAP_MKNOD | 27 |  |
+| CAP_LEASE | 28 |  |
+| CAP_AUDIT_WRITE | 29 |  |
+| CAP_AUDIT_CONTROL | 30 |  |
+| CAP_SETFCAP | 31 |  |
+| CAP_MAC_OVERRIDE | 32 |  |
+| CAP_MAC_ADMIN | 33 |  |
+| CAP_SYSLOG | 34 |  |
+| CAP_WAKE_ALARM | 35 |  |
+| CAP_BLOCK_SUSPEND | 36 |  |
+| CAP_AUDIT_READ | 37 |  |
+| CAP_PERFMON | 38 |  |
+| CAP_BPF | 39 | CAP_BPF allows the following BPF operations: - Creating all types of BPF maps - Advanced verifier features - Indirect variable access - Bounded loops - BPF to BPF function calls - Scalar precision tracking - Larger complexity limits - Dead code elimination - And potentially other features - Loading BPF Type Format (BTF) data - Retrieve xlated and JITed code of BPF programs - Use bpf_spin_lock() helper
+
+CAP_PERFMON relaxes the verifier checks further: - BPF progs can use of pointer-to-integer conversions - speculation attack hardening measures are bypassed - bpf_probe_read to read arbitrary kernel memory is allowed - bpf_trace_printk to print kernel memory is allowed
+
+CAP_SYS_ADMIN is required to use bpf_probe_write_user.
+
+CAP_SYS_ADMIN is required to iterate system wide loaded programs, maps, links, BTFs and convert their IDs to file descriptors.
+
+CAP_PERFMON and CAP_BPF are required to load tracing programs. CAP_NET_ADMIN and CAP_BPF are required to load networking programs. |
+| CAP_CHECKPOINT_RESTORE | 40 |  |
+
 
 
 <a name="fgs.EventType"></a>
@@ -405,6 +1352,13 @@ EventType constants are based on the ones from pkg/api/client
 | PROCESS_EXIT | 7 |  |
 | PROCESS_CLOSE | 8 |  |
 | PROCESS_ACCEPT | 9 |  |
+| PROCESS_CRED | 10 |  |
+| PROCESS_KPROBE | 13 |  |
+| PROCESS_TRACEPOINT | 14 |  |
+| PROCESS_SOCKSTATS | 15 |  |
+| PROCESS_HTTP | 16 |  |
+| INTERFACE_STATS | 17 |  |
+| PROCESS_DNS | 18 |  |
 | TEST | 254 |  |
 
 
@@ -434,6 +1388,62 @@ EventType constants are based on the ones from pkg/api/client
 | HEALTH_STATUS_TYPE_STATUS | 1 |  |
 
 
+
+<a name="fgs.KprobeAction"></a>
+
+### KprobeAction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| KPROBE_ACTION_UNKNOWN | 0 |  |
+| KPROBE_ACTION_POST | 1 |  |
+| KPROBE_ACTION_FOLLOWFD | 2 |  |
+| KPROBE_ACTION_SIGKILL | 3 |  |
+| KPROBE_ACTION_UNFOLLOWFD | 4 |  |
+
+
+
+<a name="fgs.SocketProtocol"></a>
+
+### SocketProtocol
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNKNOWN | 0 |  |
+| TCP | 6 |  |
+| UDP | 17 |  |
+
+
+
+<a name="fgs.TlsCertificateError"></a>
+
+### TlsCertificateError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TLS_CERT_ERROR_UNDEF | 0 |  |
+| TLS_CERT_ERROR_UNKNOWN | 1 |  |
+| TLS_CERT_ERROR_TOO_LARGE | 2 |  |
+| TLS_CERT_ERROR_GET_DATA_HDR | 3 |  |
+| TLS_CERT_ERROR_NO_BUFFER | 4 |  |
+| TLS_CERT_ERROR_COPY | 5 |  |
+| TLS_CERT_ERROR_LENGTH_READ | 6 |  |
+| TLS_CERT_ERROR_CERT_READ | 7 |  |
+| TLS_CERT_ERROR_CERT_PARTIAL | 8 |  |
+| TLS_CERT_ERROR_PARSE_X509 | 9 |  |
+| TLS_CERT_ERROR_MISSING_CODE | 10 |  |
+| TLS_CERT_ERROR_GET_DATA_CERT | 11 |  |
+| TLS_CERT_ERROR_GET_DATA_MORECERT | 12 |  |
+| TLS_CERT_ERROR_COPY_CERT | 13 |  |
+| TLS_CERT_ERROR_COPY_MORE_CERT | 14 |  |
+| TLS_CERT_ERROR_BAD_HEADER | 15 |  |
+| TLS_CERT_ERROR_MISSING_ERROR | 16 |  |
+| TLS_CERT_ERROR_SPURIOUS_CERTS | 17 |  |
+
+
  
 
  
@@ -448,6 +1458,15 @@ EventType constants are based on the ones from pkg/api/client
 | ----------- | ------------ | ------------- | ------------|
 | GetEvents | [GetEventsRequest](#fgs.GetEventsRequest) | [GetEventsResponse](#fgs.GetEventsResponse) stream |  |
 | GetHealth | [GetHealthStatusRequest](#fgs.GetHealthStatusRequest) | [GetHealthStatusResponse](#fgs.GetHealthStatusResponse) |  |
+| AddTracingPolicy | [AddTracingPolicyRequest](#fgs.AddTracingPolicyRequest) | [AddTracingPolicyResponse](#fgs.AddTracingPolicyResponse) |  |
+| RemoveSensor | [RemoveSensorRequest](#fgs.RemoveSensorRequest) | [RemoveSensorResponse](#fgs.RemoveSensorResponse) |  |
+| ListSensors | [ListSensorsRequest](#fgs.ListSensorsRequest) | [ListSensorsResponse](#fgs.ListSensorsResponse) |  |
+| EnableSensor | [EnableSensorRequest](#fgs.EnableSensorRequest) | [EnableSensorResponse](#fgs.EnableSensorResponse) |  |
+| DisableSensor | [DisableSensorRequest](#fgs.DisableSensorRequest) | [DisableSensorResponse](#fgs.DisableSensorResponse) |  |
+| SetSensorConfig | [SetSensorConfigRequest](#fgs.SetSensorConfigRequest) | [SetSensorConfigResponse](#fgs.SetSensorConfigResponse) |  |
+| GetSensorConfig | [GetSensorConfigRequest](#fgs.GetSensorConfigRequest) | [GetSensorConfigResponse](#fgs.GetSensorConfigResponse) |  |
+| GetStackTraceTree | [GetStackTraceTreeRequest](#fgs.GetStackTraceTreeRequest) | [GetStackTraceTreeResponse](#fgs.GetStackTraceTreeResponse) |  |
+| GetVersion | [GetVersionRequest](#fgs.GetVersionRequest) | [GetVersionResponse](#fgs.GetVersionResponse) |  |
 
  
 

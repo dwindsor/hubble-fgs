@@ -168,20 +168,20 @@ func valueToCellData(value interface{}) *sheets.CellData {
 	ev := &sheets.ExtendedValue{}
 	switch v := value.(type) {
 	case string:
-		ev.StringValue = v
+		*ev.StringValue = v
 	case bool:
-		ev.BoolValue = v
+		*ev.BoolValue = v
 	case int64:
-		ev.NumberValue = float64(v)
+		*ev.NumberValue = float64(v)
 	case float64:
 		if math.IsInf(v, 1) {
-			ev.StringValue = "+Inf"
+			*ev.StringValue = "+Inf"
 		} else if math.IsInf(v, -1) {
-			ev.StringValue = "-Inf"
+			*ev.StringValue = "-Inf"
 		} else if math.IsNaN(v) {
-			ev.StringValue = "NaN"
+			*ev.StringValue = "NaN"
 		} else {
-			ev.NumberValue = v
+			*ev.NumberValue = v
 		}
 	default:
 		log.Fatalf("cannot format value: %v", value)

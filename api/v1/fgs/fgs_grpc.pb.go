@@ -11,7 +11,8 @@ import (
 
 // This is a compile-time assertion to ensure that this generated file
 // is compatible with the grpc package it is being compiled against.
-const _ = grpc.SupportPackageIsVersion6
+// Requires gRPC-Go v1.32.0 or later.
+const _ = grpc.SupportPackageIsVersion7
 
 // FineGuidanceSensorsClient is the client API for FineGuidanceSensors service.
 //
@@ -39,7 +40,7 @@ func NewFineGuidanceSensorsClient(cc grpc.ClientConnInterface) FineGuidanceSenso
 }
 
 func (c *fineGuidanceSensorsClient) GetEvents(ctx context.Context, in *GetEventsRequest, opts ...grpc.CallOption) (FineGuidanceSensors_GetEventsClient, error) {
-	stream, err := c.cc.NewStream(ctx, &_FineGuidanceSensors_serviceDesc.Streams[0], "/fgs.FineGuidanceSensors/GetEvents", opts...)
+	stream, err := c.cc.NewStream(ctx, &FineGuidanceSensors_ServiceDesc.Streams[0], "/fgs.FineGuidanceSensors/GetEvents", opts...)
 	if err != nil {
 		return nil, err
 	}
@@ -181,42 +182,49 @@ type FineGuidanceSensorsServer interface {
 type UnimplementedFineGuidanceSensorsServer struct {
 }
 
-func (*UnimplementedFineGuidanceSensorsServer) GetEvents(*GetEventsRequest, FineGuidanceSensors_GetEventsServer) error {
+func (UnimplementedFineGuidanceSensorsServer) GetEvents(*GetEventsRequest, FineGuidanceSensors_GetEventsServer) error {
 	return status.Errorf(codes.Unimplemented, "method GetEvents not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) GetHealth(context.Context, *GetHealthStatusRequest) (*GetHealthStatusResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) GetHealth(context.Context, *GetHealthStatusRequest) (*GetHealthStatusResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetHealth not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) AddTracingPolicy(context.Context, *AddTracingPolicyRequest) (*AddTracingPolicyResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) AddTracingPolicy(context.Context, *AddTracingPolicyRequest) (*AddTracingPolicyResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method AddTracingPolicy not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) RemoveSensor(context.Context, *RemoveSensorRequest) (*RemoveSensorResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) RemoveSensor(context.Context, *RemoveSensorRequest) (*RemoveSensorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method RemoveSensor not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) ListSensors(context.Context, *ListSensorsRequest) (*ListSensorsResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) ListSensors(context.Context, *ListSensorsRequest) (*ListSensorsResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method ListSensors not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) EnableSensor(context.Context, *EnableSensorRequest) (*EnableSensorResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) EnableSensor(context.Context, *EnableSensorRequest) (*EnableSensorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method EnableSensor not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) DisableSensor(context.Context, *DisableSensorRequest) (*DisableSensorResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) DisableSensor(context.Context, *DisableSensorRequest) (*DisableSensorResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method DisableSensor not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) SetSensorConfig(context.Context, *SetSensorConfigRequest) (*SetSensorConfigResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) SetSensorConfig(context.Context, *SetSensorConfigRequest) (*SetSensorConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method SetSensorConfig not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) GetSensorConfig(context.Context, *GetSensorConfigRequest) (*GetSensorConfigResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) GetSensorConfig(context.Context, *GetSensorConfigRequest) (*GetSensorConfigResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetSensorConfig not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) GetStackTraceTree(context.Context, *GetStackTraceTreeRequest) (*GetStackTraceTreeResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) GetStackTraceTree(context.Context, *GetStackTraceTreeRequest) (*GetStackTraceTreeResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetStackTraceTree not implemented")
 }
-func (*UnimplementedFineGuidanceSensorsServer) GetVersion(context.Context, *GetVersionRequest) (*GetVersionResponse, error) {
+func (UnimplementedFineGuidanceSensorsServer) GetVersion(context.Context, *GetVersionRequest) (*GetVersionResponse, error) {
 	return nil, status.Errorf(codes.Unimplemented, "method GetVersion not implemented")
 }
 
-func RegisterFineGuidanceSensorsServer(s *grpc.Server, srv FineGuidanceSensorsServer) {
-	s.RegisterService(&_FineGuidanceSensors_serviceDesc, srv)
+// UnsafeFineGuidanceSensorsServer may be embedded to opt out of forward compatibility for this service.
+// Use of this interface is not recommended, as added methods to FineGuidanceSensorsServer will
+// result in compilation errors.
+type UnsafeFineGuidanceSensorsServer interface {
+	mustEmbedUnimplementedFineGuidanceSensorsServer()
+}
+
+func RegisterFineGuidanceSensorsServer(s grpc.ServiceRegistrar, srv FineGuidanceSensorsServer) {
+	s.RegisterService(&FineGuidanceSensors_ServiceDesc, srv)
 }
 
 func _FineGuidanceSensors_GetEvents_Handler(srv interface{}, stream grpc.ServerStream) error {
@@ -420,7 +428,10 @@ func _FineGuidanceSensors_GetVersion_Handler(srv interface{}, ctx context.Contex
 	return interceptor(ctx, in, info, handler)
 }
 
-var _FineGuidanceSensors_serviceDesc = grpc.ServiceDesc{
+// FineGuidanceSensors_ServiceDesc is the grpc.ServiceDesc for FineGuidanceSensors service.
+// It's only intended for direct use with grpc.RegisterService,
+// and not to be introspected or modified (even as a copy)
+var FineGuidanceSensors_ServiceDesc = grpc.ServiceDesc{
 	ServiceName: "fgs.FineGuidanceSensors",
 	HandlerType: (*FineGuidanceSensorsServer)(nil),
 	Methods: []grpc.MethodDesc{

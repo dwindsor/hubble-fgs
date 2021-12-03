@@ -26,5 +26,5 @@ jobs:
       - name: Validate that generated files are up to date.
         run: |
           make generate
-          make -C api/v1 doc
+          make -C api doc
           test -z "$(git status --porcelain)" || (git status --porcelain; exit 1)
