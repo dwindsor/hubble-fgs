@@ -143,6 +143,14 @@ var (
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "host"})
 )
 
+// DNS metrics
+var (
+	DnsRequestTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "dns_total",
+		Help: "Dns request/response statistics",
+	}, []string{"namespace", "pod", "binary", "names", "rcodes", "response"})
+)
+
 // FGS debugging and core info metrics
 var (
 	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
@@ -293,6 +301,34 @@ func handleHttpEvent(processedEvent interface{}) {
 		switch res := ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessHttp:
 			postHttpStats(ev, res.ProcessHttp)
+		}
+	}
+}
+
+func postDnsMetric(ev *fgs.GetEventsResponse, res *fgs.ProcessDns) {
+	var rr string
+
+	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+
+	dns := res.Dns
+	names := strings.Join(dns.GetNames(), ",")
+	codes := reader.GetRCodeString(uint16(dns.GetRcode()))
+
+	if dns.Response {
+		rr = "Response"
+	} else {
+		rr = "Request"
+	}
+
+	DnsRequestTotal.WithLabelValues(ns, pod, binary, names, codes, rr).Inc()
+}
+
+func handleDnsEvent(processedEvent interface{}) {
+	switch ev := processedEvent.(type) {
+	case *fgs.GetEventsResponse:
+		switch res := ev.Event.(type) {
+		case *fgs.GetEventsResponse_ProcessDns:
+			postDnsMetric(ev, res.ProcessDns)
 		}
 	}
 }
@@ -490,6 +526,7 @@ func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
 	handleProcessedEvent(processedEvent)
 	handleSocketEvent(processedEvent)
 	handleHttpEvent(processedEvent)
+	handleDnsEvent(processedEvent)
 	handleTlsEvent(processedEvent)
 	handleInterfaceStatsEvent(processedEvent)
 }

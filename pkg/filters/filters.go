@@ -128,6 +128,8 @@ func GetProcess(event *v1.Event) *fgs.Process {
 			return res.ProcessSockstats.Process
 		case *fgs.GetEventsResponse_ProcessTracepoint:
 			return res.ProcessTracepoint.Process
+		case *fgs.GetEventsResponse_ProcessDns:
+			return res.ProcessDns.Process
 		default:
 			return (*fgs.Process)(nil)
 		}
