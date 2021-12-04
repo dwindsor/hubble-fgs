@@ -306,6 +306,7 @@ type MsgIPv4Event struct {
 }
 
 type MsgDns struct {
+	Response      bool
 	RCode         uint16
 	AnswerTypes   []uint32
 	QuestionTypes []uint32

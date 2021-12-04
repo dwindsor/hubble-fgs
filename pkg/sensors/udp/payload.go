@@ -99,6 +99,7 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 	}
 
 	msgDns := api.MsgDns{
+		Response:      hdr.Response,
 		RCode:         uint16(hdr.RCode),
 		AnswerTypes:   aTypes,
 		QuestionTypes: qTypes,

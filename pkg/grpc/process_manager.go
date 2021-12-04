@@ -279,6 +279,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
 
 	fgsDns := &fgs.DnsInfo{
+		Response:      event.Dns.Response,
 		Rcode:         int32(event.Dns.RCode),
 		Ips:           event.Dns.IPs,
 		Names:         event.Dns.Names,

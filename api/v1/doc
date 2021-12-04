@@ -251,6 +251,7 @@ AggregationOptions defines configuration options for aggregating events.
 | names | [string](#string) | repeated |  |
 | ips | [string](#string) | repeated |  |
 | query | [string](#string) |  |  |
+| response | [bool](#bool) |  |  |
 
 
 

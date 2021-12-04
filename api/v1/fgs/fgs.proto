@@ -368,6 +368,7 @@ message DnsInfo {
     repeated string names = 4;
     repeated string ips = 5;
     string query = 6;
+    bool response = 7;
 }
 
 message ProcessDns {
