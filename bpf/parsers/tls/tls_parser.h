@@ -345,15 +345,25 @@ void skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
         key->saddr = skmsg->local_ip4;
         key->dport = bpf_htons(TLS_REMOTE_PORT);
         key->sport = skmsg->local_port;
+
+	if (bpf_core_field_exists(skmsg->sk)) {
+		key->dport = skmsg->sk->dst_port;
+		key->sport = skmsg->sk->src_port;
+	}
 }
 #elif defined(SK_SKB)
 static inline __attribute__((always_inline))
 void skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
 {
+	struct bpf_sock *sk;
+
 	key->daddr = skb->remote_ip4;
 	key->saddr = skb->local_ip4;
-	key->dport = bpf_htons(TLS_REMOTE_PORT);
-	key->sport = skb->local_port;
+	sk = skb->sk;
+	if (sk) {
+		key->dport = skb->sk->dst_port;
+		key->sport = skb->sk->src_port;
+	}
 }
 #else
 static inline __attribute__((always_inline))

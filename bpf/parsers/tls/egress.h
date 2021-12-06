@@ -33,7 +33,7 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 	int zero = 0;
 
 #ifdef SK_MSG
-	skmsg_tls_key(ctx, &tuple);
+	msg_tls_key(ctx, &tuple);
 #else
 	struct tcphdr *tcp;
 	tcp = skb_tls_key(ctx, &off, &tuple);
