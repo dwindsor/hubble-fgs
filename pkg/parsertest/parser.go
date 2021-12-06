@@ -129,6 +129,13 @@ func (p *Parser) parseBlock() error {
 			}
 			p.testCase.Steps = append(p.testCase.Steps, &TestStepClose{pos, dir})
 
+		case "ASSERT":
+			a, err := p.parseAssert()
+			if err != nil {
+				return err
+			}
+			p.testCase.Steps = append(p.testCase.Steps, a)
+
 		default:
 			return fmt.Errorf("unknown keyword '%s'", kw)
 		}
@@ -210,6 +217,73 @@ func (p *Parser) parseDescription() (string, error) {
 		desc = append(desc, p.scanner.TokenText())
 	}
 	return strings.Join(desc, " "), nil
+}
+
+func (p *Parser) parseIdent() (string, error) {
+	tok := p.scanner.Scan()
+
+	if tok == scanner.EOF {
+		return "", fmt.Errorf("EOF when parsing identifier")
+	}
+	if tok == '\n' || tok == '#' {
+		return "", fmt.Errorf("unexpected newline or comment when expecting identifier")
+	}
+
+	return p.scanner.TokenText(), nil
+}
+
+func (p *Parser) parseAssert() (*TestStepAssert, error) {
+	tok := p.scanner.Scan()
+	if tok == scanner.EOF {
+		return nil, fmt.Errorf("EOF when scanning event op")
+	}
+	kind := strings.ToUpper(p.scanner.TokenText())
+
+	switch kind {
+	case "MAP": // ASSERT MAP ...
+		mapName, err := p.parseIdent()
+		if err != nil {
+			return nil, err
+		}
+
+	skip:
+		assertion, err := p.parseIdent()
+		if err != nil {
+			return nil, err
+		}
+		switch assertion {
+		case "IS", "HAS": // ASSERT MAP foobar IS ...
+			goto skip
+
+		case "COUNT": // ASSERT MAP foobar HAS COUNT 1
+			cnt, _, err := p.scanInt()
+			if err != nil {
+				return nil, err
+			}
+			return &TestStepAssert{
+				Position: p.scanner.Position,
+				MapName:  mapName,
+				Type:     AssertMapCount,
+				Count:    int(cnt),
+			}, nil
+
+		case "EMPTY": // ASSERT MAP foobar IS EMPTY
+			return &TestStepAssert{
+				Position: p.scanner.Position,
+				MapName:  mapName,
+				Type:     AssertMapCount,
+				Count:    0,
+			}, nil
+
+		default:
+			return nil, fmt.Errorf("unknown MAP assertion '%s', expected EMPTY", assertion)
+
+		}
+
+	default:
+		return nil, fmt.Errorf("unknown assertion '%s', expected MAP", kind)
+	}
+
 }
 
 func (p *Parser) skipComment() {

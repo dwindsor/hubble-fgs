@@ -247,6 +247,43 @@ func ConvertKeyValue(bKey []byte, bValue []byte, key MapKey, value MapValue) (Ma
 	return key, value, nil
 }
 
+// Count returns the number of elements in the map by iterating
+// over it with BPF_MAP_GET_NEXT_KEY.
+func (m *Map) Count() (int, error) {
+	m.lock.RLock()
+	defer m.lock.RUnlock()
+
+	key := make([]byte, m.KeySize)
+	nextKey := make([]byte, m.KeySize)
+
+	if err := m.Open(); err != nil {
+		return 0, err
+	}
+
+	if err := GetFirstKey(m.fd, unsafe.Pointer(&nextKey[0])); err != nil {
+		return 0, nil
+	}
+
+	bpfCurrentKey := bpfAttrMapOpElem{
+		mapFd: uint32(m.fd),
+		key:   uint64(uintptr(unsafe.Pointer(&key[0]))),
+		value: uint64(uintptr(unsafe.Pointer(&nextKey[0]))),
+	}
+	bpfCurrentKeyPtr := uintptr(unsafe.Pointer(&bpfCurrentKey))
+	bpfCurrentKeySize := unsafe.Sizeof(bpfCurrentKey)
+
+	count := 0
+	for {
+		copy(key, nextKey)
+		if err := GetNextKeyFromPointers(m.fd, bpfCurrentKeyPtr, bpfCurrentKeySize); err != nil {
+			break
+		}
+		count++
+	}
+	return count, nil
+
+}
+
 // DumpWithCallback iterates over the Map and calls the given callback
 // function on each iteration. That callback function is receiving the
 // actual key and value. The callback function should consider creating a

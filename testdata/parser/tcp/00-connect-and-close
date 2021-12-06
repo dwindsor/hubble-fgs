@@ -1,3 +1,8 @@
+
+# Connection has been established and we should
+# at this point see 2 sockets.
+ASSERT MAP socket_map HAS COUNT 2
+
 EGRESS
 	"hello"
 END
@@ -70,8 +75,13 @@ EVENT TCPCONNECTRET
   $ 00 00 00 00
 END
 
+
 # Close the server socket first
 CLOSE SERVER
+
+# Closing the socket does not yet free it, since
+# it's in CLOSE_WAIT state until the client closes.
+ASSERT MAP socket_map HAS COUNT 2
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
@@ -111,6 +121,7 @@ END
 
 # And finally close the client socket.
 CLOSE CLIENT
+ASSERT MAP socket_map HAS COUNT 0
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad

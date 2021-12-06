@@ -15,7 +15,10 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"path"
 	"text/scanner"
+
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
 )
 
 //
@@ -179,6 +182,43 @@ func (e *TestStepClose) Exec(ctx *TestContext) *TestStepError {
 	}
 	if err != nil {
 		return &TestStepError{e.Position, "CLOSE", err}
+	}
+	return nil
+}
+
+//
+// Assertion step
+//
+
+type AssertType int
+
+const (
+	AssertMapCount = iota
+)
+
+type TestStepAssert struct {
+	Position scanner.Position
+	MapName  string
+	Type     AssertType
+	Count    int
+}
+
+func (a *TestStepAssert) Exec(ctx *TestContext) *TestStepError {
+	m, err := bpf.OpenMap(path.Join(bpf.MapPrefixPath(), a.MapName))
+	if err != nil {
+		return &TestStepError{a.Position, "ASSERT MAP", err}
+	}
+
+	switch a.Type {
+	case AssertMapCount:
+		count, err := m.Count()
+		if err != nil {
+			return &TestStepError{a.Position, "ASSERT MAP", fmt.Errorf("failed to get map count: %w", err)}
+		}
+		if a.Count != count {
+			return &TestStepError{a.Position, "ASSERT MAP",
+				fmt.Errorf("expected %d elements, but map %s has %d element(s)", a.Count, a.MapName, count)}
+		}
 	}
 	return nil
 }
