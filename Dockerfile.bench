@@ -17,7 +17,7 @@ COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a 
 #COPY lib/libbpf.a /usr/local/lib/
 RUN ldconfig /usr/local/
 COPY . ./
-RUN make fgs-bench-image
+RUN make fgs-bench-image parsertest-image
 
 FROM docker.io/library/alpine:3.12
 RUN addgroup hubble	       && \
@@ -26,5 +26,7 @@ RUN addgroup hubble	       && \
     mkdir libs		       && \
     apk add --no-cache --update bash curl jq strace
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/fgs-bench /usr/bin/
+COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/parsertest /usr/bin/
+COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/testdata/ testdata/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
 CMD ["sh", "-c", "/usr/bin/fgs-bench -baseline -source=http-rr-go -sink=http-go"]

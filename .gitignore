@@ -3,6 +3,7 @@ lib/*
 /hubble-fgs
 /hubble-enterprise
 /fgs-bench
+/parsertest
 observer.test
 go-tests
 fgs-bench-rootfs*

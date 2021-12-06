@@ -49,6 +49,7 @@ cat /sys/kernel/debug/tracing/trace_pipe &
 ip addr add dev lo 127.0.0.1/8
 ip link set dev lo up
 /usr/bin/fgs-verify-programs
+/usr/bin/parsertest -test.v -test.parallel 1
 /usr/bin/fgs-bench $FGS_BENCH_ARGS
 echo "\$?" > /exit-status
 poweroff -f

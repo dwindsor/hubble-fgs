@@ -14,6 +14,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
@@ -22,10 +23,12 @@ import (
 )
 
 const (
-	// Test-case root directory, relative to this package.
-	testsRoot   = "../../testdata/parser"
 	testTimeout = 10 * time.Second
 )
+
+// Testdata directory. We'll probe for it's location
+// by changing working directory upwards towards /.
+var testsRoot = "testdata/parser"
 
 const (
 	SENS_INITIAL = iota
@@ -34,13 +37,39 @@ const (
 )
 
 func init() {
+	if os.Geteuid() != 0 {
+		panic("This test needs to be run as root")
+	}
+
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.CheckOrMountCgroup2()
 	bpf.SetMapPrefix("fgs-parsertest")
 	os.Mkdir(bpf.MapPrefixPath(), os.ModeDir)
-	option.Config.HubbleLib = "../../bpf/objs"
+
+	// Try to probe for FGS bpf object location
+	wd, _ := os.Getwd()
+	if _, err := os.Stat("../../bpf/objs"); err == nil {
+		option.Config.HubbleLib = path.Clean(path.Join(wd, "../../bpf/objs"))
+	} else if _, err := os.Stat("bpf/objs"); err == nil {
+		option.Config.HubbleLib = path.Clean(path.Join(wd, "bpf/objs"))
+	} else {
+		option.Config.HubbleLib = "/var/lib/hubble-fgs"
+	}
+
+	// Probe for the testdata. Changing the working directory
+	// to keep the test-case filenames short.
+	for {
+		if _, err := os.Stat(testsRoot); err == nil {
+			break
+		}
+		wd, _ := os.Getwd()
+		if wd == "/" {
+			panic("could not find testdata/parser")
+		}
+		os.Chdir("..")
+	}
 }
 
 type SensorsHandle struct {
@@ -162,9 +191,16 @@ func runTests(t *testing.T, sensor int, dir string) {
 }
 
 func TestTLS(t *testing.T) {
+	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
 	runTests(t, SENS_TLS, "tls")
 }
 
 func TestHTTP(t *testing.T) {
+	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
 	runTests(t, SENS_HTTP, "http")
 }

@@ -13,6 +13,7 @@ package parsertest
 
 import (
 	"bytes"
+	"os"
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
@@ -29,6 +30,11 @@ var expectedPacketPayload = []byte{
 }
 
 func TestParse(t *testing.T) {
+
+	if _, err := os.Stat("testdata/parser-testfile"); err != nil {
+		t.Logf("skipping as testdata/parser-testfile not found")
+		return
+	}
 
 	tc, err := ParseTestCase("testdata/parser-testfile")
 	if err != nil {
