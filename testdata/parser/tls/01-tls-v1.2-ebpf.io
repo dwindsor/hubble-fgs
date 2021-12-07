@@ -419,7 +419,7 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 384                    # size
+  h4 516 # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
   A CLI_ADDR                # saddr
   A SRV_ADDR                # daddr
@@ -432,6 +432,29 @@ EVENT tls
   $ 03 03       # version v1.2
   2 217         # length
   $ 16 01 00 00 # handshake, client_hello, negotiated version
+
+  # flags
+  h4 0x000
+
+  # bytes
+  $ 00 00 00 00
+
+  # alert level & description
+  $ 00 00
+
+  # session id
+  $ 00
+  ? 64
+
+  # cipher
+  $ 38
+  $ c0 2c c0 30 00 9f cc a9 cc a8 cc aa c0 2b c0 2f
+  $ 00 9e c0 24 c0 28 00 6b c0 23 c0 27 00 67 c0 0a
+  $ c0 14 00 39 c0 09 c0 13 00 33 00 9d 00 9c 00 3d
+  $ 00 3c 00 35 00 2f 00 ff ?? ?? ?? ?? ?? ?? ?? ??
+
+  # sni: ebpf.io
+  $ 0c
   2 10          # list len
   $ 00          # type host_name
   2 7           # name len
@@ -439,46 +462,46 @@ EVENT tls
   ? 52          # SNI padding
 
   # supported versions
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00
+  ? 16
 
-  # cipher
-  $ 00 00
+  ## Server hello
+  $ 03 03 # version
+  $ 00 62 # length
+  $ 16 02 00 00 # handshake, server_hello, version
+
+  # flags (TLS_CERT)
+  h4 0x800
+
+  # bytes
+  $ 00 00 00 00
 
   # alert level & description
   $ 00 00
 
-  # flags
-  $ 00 00 00 00
-
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-
-  # "bytes"
-  $ 00 00 00 00
-
-  ## Server hello
-  $ 03 03 00 62
-  $ 16 02 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 c0 2c 00 00 00 08 00 00
-
   # Session ID
+  $ 20
   $ a2 67 b7 8d dd 0e e2 ae e0 5c 1e 9e 7a 02 92 11
   $ 69 e7 6c 27 58 00 b1 7f a9 54 e0 d2 b3 5f 93 44
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
+  ? 32
 
-  # "bytes"
-  $ 00 00 00 00
+  # cipher
+  $ 02
+  $ c0 2c
+  ? 62
 
-  # process key
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00
+  # sni (not set)
+  $ 00
+  ? 64
+
+  # supported versions
+  $ 00
+  ? 16
+
+  # process key. missing due to the tuple.uid issue.
+  $ 00 00 00 00 # pid
+  $ 00 00 00 00 # pad
+  $ 00 00 00 00 00 00 00 00 # ktime
 END
 
 EVENT tlscont

@@ -41,7 +41,7 @@ type BytesMatcher []byte
 func (bm BytesMatcher) String() string {
 	s := "$ "
 	for i, b := range bm {
-		s += fmt.Sprintf("%x", b)
+		s += fmt.Sprintf("%02x", b)
 		if i != len(bm)-1 {
 			s += " "
 		}
