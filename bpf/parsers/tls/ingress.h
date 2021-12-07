@@ -26,7 +26,7 @@ void errout_pack(int *errout, int code, int a, int b, int c, int d) {
 }
 
 #define CERT_FRAG_MIN_LEN 6
-#define FRAG_MAX_ITER 16
+#define FRAG_MAX_ITER 8
 
 /* Find the end of a potentially fragmented handshake */
 static inline __attribute__((always_inline))

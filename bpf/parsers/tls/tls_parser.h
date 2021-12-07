@@ -64,25 +64,20 @@ enum tls_handshake_type {
 #define EXT_SUPPORTED_VERSION 43
 #define MAX_EXTS 20
 
+/* relax_verifier is a dummy helper call to introduce a pruning checkpoint
+ * to help relax the verifier to avoid reaching complexity limits.
+ */
+static inline __attribute__((always_inline)) void relax_verifier(void)
+{
+       volatile int __maybe_unused id = get_smp_processor_id();
+}
+
 static inline __attribute__((always_inline))
 int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool client)
 {
 	void *data_end;
 	u16 length;
 	u8 *data;
-
-	length = bpf_ntohs(tls->length);
-	data = bottle_get_data(bottle, sizeof(struct tls_hdr), length);
-	if (!data)
-		return TLS_PARSE_OUT_OF_DATA;
-
-	data_end = data + length;
-
-	/* Skip handshake header and the random bytes */
-	data += 1  /* type */ +
-		3  /* length */ +
-	        2  /* version */ +
-		32 /* random */;
 
 #define READ_BE16() ({u16 x = ((u16)*data) << 8 | *(data + 1); data += 2; x; })
 #define BOUNDS(val, flag, mask) ({ \
@@ -93,6 +88,20 @@ int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool 
 	asm volatile("%1 &= " #mask ";\n": "+r"(val)::); \
 })
 
+	length = bpf_ntohs(tls->length);
+	data = bottle_get_data(bottle, sizeof(struct tls_hdr), length);
+	if (!data)
+		return TLS_PARSE_OUT_OF_DATA;
+
+	BOUNDS(length, TLS_FRAME_TOO_LARGE, 0x1fff);
+	data_end = data + length;
+
+	/* Skip handshake header and the random bytes */
+	data += 1  /* type */ +
+		3  /* length */ +
+	        2  /* version */ +
+		32 /* random */;
+
 	/* Session ID */
 	length = *data++;
 	FLV_COPY(tls->flv_session_id, data, length);
@@ -100,7 +109,6 @@ int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool 
 
 	/* Cipher */
 	if (client) {
-		// TODO(JM): Or keep the old behaviour?
 		length = READ_BE16();
 		BOUNDS(length, TLS_CIPHER_TOO_LARGE, 0xff);
 		FLV_COPY(tls->flv_cipher, data, length);
@@ -112,44 +120,71 @@ int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool 
 
 	/* Compression */
 	length = *data++;
+	BOUNDS(length, TLS_COMPRESSION_TOO_LARGE, 0xff);
 	data += length;
 
 	/* Extensions */
 	length = READ_BE16();
 	BOUNDS(length, TLS_EXT_TOO_LARGE, 0xfff);
+	if (data + length > data_end) {
+		tls->flags |= TLS_EXT_TOO_LARGE;
+		return TLS_PARSE_ERROR;
+	}
+	/* Constrain to end of extensions */
 	data_end = data + length;
 
+	relax_verifier();
+
+	/* Find the SNI and supported versions extensions.
+         * We do it this way to avoid doing too much work within
+         * the unrolled loop in order to stay below the 4096
+         * instruction limit of 4.x kernels. */
+	u8 *ext_sni = 0;
+	u16 ext_sni_len = 0;
+	u8 *ext_ver = 0;
+	u16 ext_ver_len = 0;
+	int ext;
+
 #pragma unroll
-	for (int ext = 0; ext < MAX_EXTS; ext++) {
+	for (ext = 0; ext < MAX_EXTS; ext++) {
 		if (data + 2 > data_end)
-			return 0;
+			break;
 
 		u16 ext_type = READ_BE16();
-		u16 ext_length = READ_BE16();
+		length = READ_BE16();
+		BOUNDS(length, TLS_EXT_TOO_LARGE, 0xff);
 
-		switch (ext_type) {
-		case EXT_SERVER_NAME:
-			FLV_COPY(tls->flv_sni, data, ext_length);
+		u8 *start = data;
+		data += length;
+
+		if (ext_type == EXT_SERVER_NAME) {
+			ext_sni = start;
+			ext_sni_len = length;
+		} else if (ext_type == EXT_SUPPORTED_VERSION) {
+			ext_ver = start;
+			ext_ver_len = length;
+
+			/* SNI comes before supported versions according to
+                         * spec, so we can stop when we find the version */
 			break;
-		case EXT_SUPPORTED_VERSION:
-			tls->flags |= TLS_VERSION;
-			FLV_COPY(tls->flv_supported_versions, data, ext_length);
-
-			/* Assuming SNI is first extension, per specification */
-			goto out;
 		}
-
-		BOUNDS(ext_length, TLS_EXT_TOO_LARGE, 0xff);
-		data += ext_length;
 	}
 
-	tls->flags |= TLS_MAX_TLVS;
-
-out:
-	/* We check overflow only at the end to avoid unnecessary branches. */
+	/* Check that we didn't overflow. */
 	if (data > data_end) {
-		tls->flags |= TLS_FRAME_TOO_LARGE; // FIXME proper flag
+		tls->flags |= TLS_EXT_TOO_LARGE;
 		return TLS_PARSE_ERROR;
+	}
+
+	if (ext >= MAX_EXTS)
+		tls->flags |= TLS_MAX_TLVS;
+
+	if (ext_sni)
+		FLV_COPY(tls->flv_sni, ext_sni, ext_sni_len);
+
+	if (ext_ver) {
+		tls->flags |= TLS_VERSION;
+		FLV_COPY(tls->flv_supported_versions, ext_ver, ext_ver_len);
 	}
 
 	return 0;
