@@ -23,6 +23,7 @@ int event_execve(struct sched_execve_args *ctx)
 	struct msg_execve_event *event;
 	struct execve_map_value *curr, *parent;
 	struct event_execve *execve;
+	uint32_t binary;
 	bool walker = 0;
 	__u32 zero = 0;
 	uint64_t size;
@@ -41,7 +42,7 @@ int event_execve(struct sched_execve_args *ctx)
 
 	execve = (struct event_execve *)event->pid;
 	fileoff = ctx->filename & 0xFFFF;
-	event_filename_builder(execve, pid, EVENT_EXECVE, (char *)ctx + fileoff);
+	binary = event_filename_builder(execve, pid, EVENT_EXECVE, (char *)ctx + fileoff);
 	event_args_builder(event);
 	compiler_barrier();
 	__event_get_task_info(event, MSG_OP_EXECVE, walker, true);
@@ -56,6 +57,7 @@ int event_execve(struct sched_execve_args *ctx)
 			event_set_clone(execve);
 		}
 		curr->flags = 0;
+		curr->binary = binary;
 	}
 
 	event->common.flags = 0;

@@ -418,12 +418,20 @@ __u32 get_task_pid_vnr(void)
 }
 
 static inline __attribute__((always_inline))
-void event_filename_builder(struct event_execve *curr,
-			    __u32 curr_pid, __u32 flags,
-			    void *filename)
+uint32_t event_filename_builder(struct event_execve *curr,
+				__u32 curr_pid, __u32 flags,
+				void *filename)
 {
 	int64_t size = 0;
+	uint32_t *value;
 	char *earg;
+
+	/* For now we set pathname on stack with zero initializer because its
+	 * easy. We should push this into a map or do string compare directly
+	 * to make it work for longer pathnames. For now lets get the mechanics
+	 * working with short names.
+	 */
+	char pathname[256] = {0};
 
 	/* This is a bit parnoid but was previously having trouble on
 	 * 4.14 kernels tracking offset of curr through filename_builder
@@ -444,6 +452,12 @@ void event_filename_builder(struct event_execve *curr,
 	curr->nspid = get_task_pid_vnr();
 	curr->ktime = ktime_get_ns();
 	curr->size = size + offsetof(struct event_execve, args);
+
+	probe_read_str(pathname, 255, filename);
+	value = map_lookup_elem(&names_map, pathname);
+	if (value)
+		return *value;
+	return 0;
 }
 
 #define PROBE_ARG_HEADER				\

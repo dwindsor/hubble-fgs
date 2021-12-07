@@ -55,6 +55,12 @@ struct selector_action {
 	__u32 act[];
 };
 
+struct selector_binary_filter {
+	__u32 arglen;
+	__u32 op;
+	__u32 index[4];
+};
+
 struct selector_arg_filter {
 	__u32 arglen;
 	__u32 index;
@@ -531,6 +537,7 @@ int selector_arg_offset(__u8 *f,
 			__u32 selector)
 {
 	struct selector_arg_filter *filter;
+	struct selector_binary_filter *binary;
 	long seloff, argoff, pass;
 	__u32 *tmp, len, index;
 	char *args;
@@ -554,14 +561,38 @@ int selector_arg_offset(__u8 *f,
 	::);
 
 	/* seloff must leave space for verifier to walk strings
-	 * so we set inside 4k maximum.
+	 * so we set inside 4k maximum. Advance to binary matches.
 	 */
 	seloff = selector + 8 + len;
+	binary = (struct selector_binary_filter *)&f[seloff];
+
+	/* Advance to matchArgs we use fixed size binary filters for now. It helps
+	 * the verifier and its still unclear how many entries are needed. At any
+	 * rate each entry is a uint32 now and we should really be able to pack
+	 * an entry into a byte which would give us 4x more entries.
+	 */
+	seloff += sizeof(struct selector_binary_filter);
 	if (seloff > 3800) {
 		return 0;
 	}
+
+	/* Making binary selectors fixes size helps on some kernels */
 	asm volatile("%[seloff] &= 0xeff;\n" :: [seloff] "+r"(seloff):);
 	filter = (struct selector_arg_filter *)&f[seloff];
+
+	/* Run binary name filters
+	 */
+	if (binary->op == op_filter_pid_in) {
+		struct execve_map_value *execve = map_lookup_event(get_current_pid_tgid() >> 32);
+
+		if (!execve)
+			return 0;
+		if (binary->index[0] != execve->binary &&
+		    binary->index[1] != execve->binary &&
+		    binary->index[2] != execve->binary &&
+		    binary->index[3] != execve->binary)
+			return 0;
+	}
 
 	if (filter->arglen <= 4) // no filters
 		return seloff;

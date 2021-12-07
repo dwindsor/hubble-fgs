@@ -213,6 +213,17 @@ func getMetaValue(arg *v1alpha1.KProbeArg) int {
 	return 0
 }
 
+var binaryNames []v1alpha1.BinarySelector
+
+func initBinaryNames(spec *v1alpha1.KProbeSpec) error {
+	for _, s := range spec.Selectors {
+		for _, b := range s.MatchBinarys {
+			binaryNames = append(binaryNames, b)
+		}
+	}
+	return nil
+}
+
 func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*sensors.Sensor, error) {
 	var progs []*sensors.Program
 
@@ -337,6 +348,11 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// Parse Filters into kernel filter logic
 		kernelSelectors, err := selectors.InitKernelSelectors(f)
 		if err != nil {
+			return nil, err
+		}
+
+		// Parse Binary Name into kernel data structures
+		if err := initBinaryNames(f); err != nil {
 			return nil, err
 		}
 
@@ -484,6 +500,17 @@ func loadGenericKprobe(bpfDir, mapDir string, version int, p *sensors.Program, b
 	if err == nil {
 		logger.GetLogger().Infof("Loaded generic kprobe sensor: %s -> %s", p.Name, p.Attach)
 	}
+
+	m, err := bpf.OpenMap(filepath.Join(mapDir, sensors.NamesMap.Name))
+	if err != nil {
+		return err
+	}
+	for i, b := range binaryNames {
+		for _, path := range b.Values {
+			writeBinaryMap(i+1, path, m)
+		}
+	}
+
 	return err
 }
 

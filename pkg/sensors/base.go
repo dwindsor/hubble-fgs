@@ -166,15 +166,21 @@ var (
 
 	/* Event Ring map */
 	TCPMonMap = Map{"tcpmon_map", "", &Execve, Idle(), -1}
+
 	/* Networking and Process Monitoring maps */
 	ExecveMap           = Map{"execve_map", "", &Execve, Idle(), -1}
 	SocketMap           = Map{"socket_map", "", &TCPConnect, Idle(), -1}
 	TCPMap              = Map{"ipv4_tcp_map", "", &TCPConnect, Idle(), -1} // NB: This seems to be unused?
 	TCPSendCheckSampler = Map{"tcp_send_check_sampler", "", &TCPSendCheck, Idle(), -1}
+
+	/* Policy maps populated from base programs */
+	NamesMap = Map{"names_map", "", &Execve, Idle(), -1}
+
 	/* Internal statistics for debugging */
 	ExecveStats = Map{"execve_map_stats", "", &Execve, Idle(), -1}
 	SocketStats = Map{"socket_map_stats", "", &TCPConnect, Idle(), -1}
 	TLSMapStats = Map{"tls_map_stats", "", &TCPConnect, Idle(), -1}
+
 	/* Cilium maps */
 	CiliumSNAT = Map{"cilium_snat_v4_external", "", &TCPConnect, Idle(), -1}
 )

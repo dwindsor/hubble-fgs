@@ -30,6 +30,7 @@ var (
 	}
 
 	AllMaps = []*Map{
+		&NamesMap,
 		&SocketMap,
 		&ExecveMap,
 		&TCPMonMap,
@@ -57,6 +58,7 @@ func GetInitialSensor() *Sensor {
 	}
 
 	maps := []*Map{
+		&NamesMap,
 		&TCPMonMap,
 		&ExecveMap,
 		&SocketMap,

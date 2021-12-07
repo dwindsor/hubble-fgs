@@ -96,6 +96,14 @@ type KProbeArg struct {
 	ReturnCopy bool `json:"returnCopy"`
 }
 
+type BinarySelector struct {
+	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;Postfix
+	// Filter operation.
+	Operator string `json:"operator"`
+	// Value to compare the argument against.
+	Values []string `json:"values"`
+}
+
 // KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
 // results of MatchPIDs and MatchArgs are ANDed.
 type KProbeSelector struct {
@@ -111,6 +119,9 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of argument filters. MatchArgs are ANDed.
 	MatchReturnArgs []ArgSelector `json:"matchReturnArgs"`
+	// +kubebuilder:validation:Optional
+	// A list of binary exec name filters.
+	MatchBinarys []BinarySelector `json:"matchBinarys"`
 }
 
 type PIDSelector struct {

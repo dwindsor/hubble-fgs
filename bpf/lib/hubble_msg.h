@@ -411,6 +411,8 @@ struct execve_map_value {
 	struct msg_execve_key pkey;
 	__u32  flags;
 	__u32 nspid;
+	__u32 binary;
+	__u32 pad;
 } __attribute__((packed));
 
 #ifdef BTF
@@ -428,6 +430,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) execve_value_heap_map 
 	.max_entries = 1,
 };
 #endif // BTF
+
+struct bpf_map_def __attribute__((section("maps"), used)) names_map = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(char) * 256,
+	.value_size = sizeof(__u32),
+	.max_entries = 64,
+};
 
 #ifdef BTF
 struct {

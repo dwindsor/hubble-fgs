@@ -203,6 +203,28 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchBinarys:
+                            description: A list of binary exec name filters.
+                            items:
+                              properties:
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - Postfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
                           matchPIDs:
                             description: A list of process ID filters. MatchPIDs are
                               ANDed.
@@ -493,6 +515,28 @@ spec:
                                   type: array
                               required:
                               - index
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                          matchBinarys:
+                            description: A list of binary exec name filters.
+                            items:
+                              properties:
+                                operator:
+                                  description: Filter operation.
+                                  enum:
+                                  - Equal
+                                  - NotEqual
+                                  - Prefix
+                                  - Postfix
+                                  type: string
+                                values:
+                                  description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
                               - operator
                               - values
                               type: object

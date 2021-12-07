@@ -269,7 +269,6 @@ func parseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 	WriteSelectorLength(k, moff)
 	return err
 }
-
 func parseMatchArgs(k *KernelSelectorState, args []v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
 	loff := AdvanceSelectorLength(k)
 	for _, a := range args {
@@ -306,12 +305,49 @@ func parseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector
 	return nil
 }
 
+func parseMatchBinary(k *KernelSelectorState, index uint32, b *v1alpha1.BinarySelector) error {
+	op, err := selectorOp(b.Operator)
+	if err != nil {
+		return fmt.Errorf("matchpid error: %w", err)
+	}
+	WriteSelectorUint32(k, op)
+	WriteSelectorUint32(k, index)
+	WriteSelectorUint32(k, index)
+	WriteSelectorUint32(k, index)
+	WriteSelectorUint32(k, index)
+	return nil
+}
+
+func parseMatchBinarys(k *KernelSelectorState, binarys []v1alpha1.BinarySelector) error {
+	loff := AdvanceSelectorLength(k)
+	if len(binarys) > 1 {
+		return fmt.Errorf("Only support single binary selector")
+	} else if len(binarys) == 0 {
+		// To aid verifier we always zero in binary fields to allow
+		// BPF to assume the values exist.
+		WriteSelectorUint32(k, 0)
+		WriteSelectorUint32(k, 0)
+		WriteSelectorUint32(k, 0)
+		WriteSelectorUint32(k, 0)
+		WriteSelectorUint32(k, 0)
+	} else {
+		if err := parseMatchBinary(k, 1, &binarys[0]); err != nil {
+			return err
+		}
+	}
+	WriteSelectorLength(k, loff)
+	return nil
+}
+
 func parseSelector(
 	k *KernelSelectorState,
 	selectors *v1alpha1.KProbeSelector,
 	args []v1alpha1.KProbeArg) error {
 	if err := parseMatchPids(k, selectors.MatchPIDs); err != nil {
 		return fmt.Errorf("parseMatchPids error: %w", err)
+	}
+	if err := parseMatchBinarys(k, selectors.MatchBinarys); err != nil {
+		return fmt.Errorf("parseMatchBinarys error: %w", err)
 	}
 	if err := parseMatchArgs(k, selectors.MatchArgs, args); err != nil {
 		return fmt.Errorf("parseMatchArgs  error: %w", err)
@@ -323,8 +359,9 @@ func parseSelector(
 }
 
 // array := [number][filter1][filter2][...][filtern]
-// filter := [length][matchPIDs][matchArgs]
+// filter := [length][matchPIDs][matchBinarys][matchArgs]
 // matchPIDs := [num][PID1][PID2]...[PIDn]
+// matchBinarys := [num][op][Index]...[Index]
 // matchArgs := [num][ARGx][ARGy]...[ARGn]
 // PIDn := [op][flags][value]
 // Argn := [index][op][value]
