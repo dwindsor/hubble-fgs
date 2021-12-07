@@ -39,3 +39,4 @@ sudo $KATA_IMG $ver
 set -e
 
 sudo $FGS_DIR/contrib/kata-runner.sh -c $dockerimage -x './go-tests/observer.test -test.v -hubble-lib /var/lib/hubble-fgs/'
+sudo $FGS_DIR/contrib/kata-runner.sh -c $dockerimage -x './go-tests/sockmap.test -test.v -hubble-lib /var/lib/hubble-fgs/'
