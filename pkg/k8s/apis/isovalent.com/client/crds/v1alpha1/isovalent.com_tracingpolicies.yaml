@@ -210,10 +210,7 @@ spec:
                                 operator:
                                   description: Filter operation.
                                   enum:
-                                  - Equal
-                                  - NotEqual
-                                  - Prefix
-                                  - Postfix
+                                  - In
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
@@ -526,10 +523,7 @@ spec:
                                 operator:
                                   description: Filter operation.
                                   enum:
-                                  - Equal
-                                  - NotEqual
-                                  - Prefix
-                                  - Postfix
+                                  - In
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
