@@ -79,10 +79,6 @@ END
 # Close the server socket first
 CLOSE SERVER
 
-# Closing the socket does not yet free it, since
-# it's in CLOSE_WAIT state until the client closes.
-ASSERT MAP socket_map HAS COUNT 2
-
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
   h4 120        # size
@@ -119,7 +115,8 @@ EVENT TCPCLOSE
   # ^ Where is the padding coming from?
 END
 
-# And finally close the client socket.
+# And finally close the client socket and verify
+# that socket_map has been cleaned up.
 CLOSE CLIENT
 ASSERT MAP socket_map HAS COUNT 0
 
