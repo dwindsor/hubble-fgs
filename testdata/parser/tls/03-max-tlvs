@@ -3,7 +3,7 @@
 EGRESS "client hello (too many exts)"
   # handshake, TLS 1.0
   $ 16 03 01
-  2 362
+  2 365
 
   # client hello, 163 bytes, version TLS 1.2
   $ 01
@@ -134,11 +134,11 @@ EVENT tls
 
   ## Client hello
   $ 03 03
-  2 362
+  2 365
   $ 16 01 00 00
 
   # flags: TLS_MAX_TLVS
-  h4 0x002
+  h4 0x02
 
   ? 464
 END
