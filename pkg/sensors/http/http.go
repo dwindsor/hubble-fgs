@@ -332,17 +332,17 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 		ProcessKey: m.ProcessKey,
 	}
 
-	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
-	unix.Request.Flags = m.Request.Flags
-
 	switch m.Request.Method {
 	case MethodPRI:
-		return http2ToHTTPEventUnix(m, unix)
+		return http2ToHTTPEventUnix(m)
 	case MethodResponse:
 		unix.Request.RequestId = m.Request.RespId
 	default:
 		unix.Request.RequestId = m.Request.ReqId
 	}
+
+	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
+	unix.Request.Flags = m.Request.Flags
 
 	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
 	// header decoders.
@@ -448,7 +448,7 @@ type http2State struct {
 	frameQueue *http2FrameQueue
 }
 
-func http2ToHTTPEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) ([]observer.ObserverEvent, error) {
+func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 
 	var state *http2State
 	if x, ok := http2StateCache.Get(m.Tuple); ok {
@@ -486,6 +486,13 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent, unix *api.MsgHttpEventUnix) ([]ob
 				return nil, fmt.Errorf("unexpected chunk type in event: %d, expected %d", typ, HTTP2HeaderFrame)
 			}
 
+			unix := &api.MsgHttpEventUnix{
+				Common:     m.Common,
+				Tuple:      m.Tuple,
+				ProcessKey: m.ProcessKey,
+			}
+			unix.Request.Flags = m.Request.Flags
+
 			if state.handleHttp2HeaderFrame(unix, chunk) {
 				events = append(events, unix)
 			}
@@ -508,8 +515,6 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 		return false
 	}
 
-	isRequest := unix.Tuple.Proto == 0
-
 	s.decoder.SetEmitEnabled(true)
 	s.decoder.SetMaxStringLength(256 /* XXX */)
 	defer s.decoder.SetEmitFunc(func(hf hpack.HeaderField) {})
@@ -529,11 +534,8 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 		case "user-agent":
 			unix.Request.UserAgent = field.Value
 		case "content-length":
-			if isRequest {
-				unix.Request.ContentLength = field.Value
-			} else {
-				unix.Request.RespContentLength = field.Value
-			}
+			unix.Request.ContentLength = field.Value
+			unix.Request.RespContentLength = field.Value
 		}
 	})
 
@@ -550,6 +552,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 	}
 
 	streamId := headers.Header().StreamID
+	isRequest := unix.Request.Code == ""
 
 	unix.Tuple.Proto = 0
 

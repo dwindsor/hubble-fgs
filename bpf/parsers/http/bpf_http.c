@@ -21,6 +21,10 @@ int bpf_http_sk_msg_fgs(struct sk_msg_md *msg)
 {
 	struct msg_tls_ipv4 tuple = {0};
 
+	/* Workaround to clear any applied bytes from
+         * previous execution on the same message. */
+	msg_apply_bytes(msg, 0);
+
 	msg_tls_key(msg, &tuple);
 	return http_do_parser(msg, &tuple);
 }

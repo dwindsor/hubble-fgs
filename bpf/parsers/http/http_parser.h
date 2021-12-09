@@ -453,13 +453,13 @@ void http_parse_response(ctx_md *msg,
 static inline __attribute__((always_inline))
 int put_reverse_http_context(struct msg_tls_ipv4 *key, struct msg_http_event *event)
 {
-	/* Add the receive side entry, so that we'll process the response as HTTP/2 */
+	/* Add the reverse context, so that we'll process the other direction as HTTP/2 */
 	struct msg_tls_ipv4 rkey = {
 		.saddr = key->saddr,
 		.daddr = key->daddr,
 		.dport = key->dport,
 		.sport = key->sport,
-		.remaining = HTTP_RECV,
+		.remaining = !key->remaining,
 	};
 	event->request.state = http2_expect_frame;
 	return map_update_elem(&http_map, &rkey, event, BPF_NOEXIST);

@@ -4,7 +4,7 @@
 #include "http_parser.h"
 
 #undef HTTP2_DEBUG
-// #define HTTP2_DEBUG
+//#define HTTP2_DEBUG
 
 #define HTTP2_MAX_FRAMES 8
 #define HTTP2_FRAME_HEADER_LENGTH 9
@@ -215,8 +215,11 @@ void post_http2_event(ctx_md *msg,
 	struct msg_http *http = &event->request;
 	struct socketmap_value *process;
 	size_t size;
+	u32 remaining = key->remaining;
 
+	key->remaining = 0;
 	process = lookup_socketmap(key);
+	key->remaining = remaining;
 	if (process) {
 		event->execve.pid = process->key.pid;
 		event->execve.pad[0] = 0;
@@ -242,13 +245,13 @@ void post_http2_event(ctx_md *msg,
 	/* NOTE(JM): This workarounds a weird llc bug related to struct packing.
 	 * Without this assignment "llc" takes 90s or more instead of <10s
 	 */
-	event->tuple.remaining = key->remaining;
+	event->tuple.remaining = remaining;
 
 	/* Reuse the HTTP/1.1 send_cntr to assign a sequence number for each event we're sending. 
          * Due to per-cpu rings the events we send here may be read out-of-order in user-space. Because HTTP/2
          * header decompression is stateful we do need to process the frames in order. With the sequence number
          * we can reorder the frames.
-         */ 
+         */
 	http->send_cntr++;
 
 	size = sizeof(struct __msg_http_event);
@@ -337,7 +340,7 @@ bool http2_parse_frame(ctx_md *msg, struct msg_http_event *event, struct msg_tls
 		break;
 	}
 
-	default: 
+	default:
 		/* Discard the header copied into the chunk and skip over this frame. */
 		head_chunk(http)->length = 0;
 
@@ -392,9 +395,9 @@ int http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	http = &event->request;
 
 #ifdef SK_MSG
-	DBG("MSG http2_do_parser: skip %d, consume %d\n", http->offset, http->consume_bytes);
+	DBG("MSG http2_do_parser: len %d, skip %d, consume %d\n", ctx_len(msg), http->offset, http->consume_bytes);
 #else
-	DBG("SKB http2_do_parser: skip %d, consume %d\n", http->offset, http->consume_bytes);
+	DBG("SKB http2_do_parser: len %d, skip %d, consume %d\n", ctx_len(msg), http->offset, http->consume_bytes);
 #endif
 
 #ifndef SK_MSG
