@@ -75,7 +75,6 @@ EVENT TCPCONNECTRET
   $ 00 00 00 00
 END
 
-
 # Close the server socket first
 CLOSE SERVER
 
@@ -104,8 +103,8 @@ EVENT TCPCLOSE
   ## socket stats
   h8 3 # bytes sent
   h8 5 # bytes received
-  h4 5 # segs in
-  h4 3 # segs out
+  NZ 4 # segs in
+  NZ 4 # segs out
   ? 4  # srtt
   h4 0 # retransmitted segs
   h8 0 # retransmitted bytes
@@ -144,9 +143,48 @@ EVENT TCPCLOSE
 
   ## socket stats
   h8 5 # bytes sent
-  h8 4 # bytes received (3 for "bye" + FIN)
-  h4 5 # segs in
-  h4 6 # segs out
+  NZ 8 # bytes received (fluctuates between 3 and 4 (if FIN was counted))
+  NZ 4 # segs in
+  NZ 4 # segs out
+  ? 4  # srtt
+  h4 0 # retransmitted segs
+  h8 0 # retransmitted bytes
+  h4 0 # to zero window
+  h4 0 # skdrop
+  $ 00 00 00 00
+  # ^ Where is the padding coming from?
+END
+
+CLOSE LISTENER
+
+EVENT TCPCLOSE
+  $ 08 00 00 00 # op+pad
+  h4 120        # size
+  ? 8           # ktime
+
+  ## tuple
+  A SRV_ADDR
+  I 0.0.0.0
+  $ 00 00
+  A SRV_PORT_HOST
+
+  $ 00                      # proto
+  $ 00 00 00 00             # post daddr
+  $ 00 00                   # post dport
+  $ 00 00 00 00 00          # pad
+  $ 00 00 00 00 00 00 00 00 # ret
+
+  ## process key
+  $ ?? ?? ?? ??         # pid
+  $ 00 00 00 00         # pad
+  h8 0x01020304deadbeef # ktime
+  ? 8                   # socket cookie
+
+  ## socket stats
+  h8 0 # bytes sent
+  h8 0 # bytes received
+  h4 0 # segs in
+  h4 0 # segs out
   ? 4  # srtt
   h4 0 # retransmitted segs
   h8 0 # retransmitted bytes
