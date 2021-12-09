@@ -243,6 +243,13 @@ func TestHTTP(t *testing.T) {
 	runTests(t, SENS_HTTP, "http")
 }
 
+func TestHTTP2(t *testing.T) {
+	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+	runTests(t, SENS_HTTP, "http2")
+}
+
 func TestTCP(t *testing.T) {
 	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
