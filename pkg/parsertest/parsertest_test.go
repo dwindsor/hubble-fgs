@@ -197,6 +197,7 @@ func runTests(t *testing.T, sensor int, dir string) {
 	if err != nil {
 		t.Fatal(err)
 	}
+	defer dispatcher.Close()
 
 	addSelfToEvecveMap(t)
 

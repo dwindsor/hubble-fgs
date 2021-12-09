@@ -42,6 +42,17 @@ func NewEventDispatcher() (*EventDispatcher, error) {
 	}, nil
 }
 
+func (ed *EventDispatcher) Close() error {
+	ed.Lock()
+	defer ed.Unlock()
+
+	for _, sub := range ed.subs {
+		close(sub.Events)
+	}
+	ed.subs = nil
+	return ed.perCpuEvents.CloseAll()
+}
+
 func (ed *EventDispatcher) Subscribe(op byte) *EventSubscription {
 	ed.Lock()
 	defer ed.Unlock()
