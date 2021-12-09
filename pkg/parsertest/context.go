@@ -20,6 +20,7 @@ import (
 type TestContext struct {
 	egressConn  *net.TCPConn
 	ingressConn *net.TCPConn
+	listener    net.Listener
 	perOpChans  map[int]chan []byte
 	t           *testing.T
 }
@@ -49,13 +50,17 @@ func (ctx *TestContext) emitIngress(pkt []byte) error {
 }
 
 func (ctx *TestContext) closeConns() error {
-	err := ctx.egressConn.Close()
-	if err != nil {
-		return err
+	err1 := ctx.egressConn.Close()
+	err2 := ctx.ingressConn.Close()
+	err3 := ctx.listener.Close()
+	if err1 != nil {
+		return err1
 	}
-	err = ctx.ingressConn.Close()
-	if err != nil {
-		return err
+	if err2 != nil {
+		return err2
+	}
+	if err3 != nil {
+		return err3
 	}
 	return nil
 }
@@ -65,5 +70,5 @@ func (ctx *TestContext) waitForEvent(op int) (data []byte, eof bool) {
 		data, ok := <-ch
 		return data, ok
 	}
-	return nil, false
+	panic(fmt.Sprintf("Impossible: Not subscribed for op %d", op))
 }

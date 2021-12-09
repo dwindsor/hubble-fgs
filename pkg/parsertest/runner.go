@@ -45,24 +45,23 @@ func (tc *TestCase) Run(t *testing.T, dispatch *EventDispatcher, timeout time.Du
 	// Create the ingress and egress connections
 	//
 
+	// TODO(JM): Pick a random port. Need to reorganize so we can load TLS and HTTP
+	// with right filter.
 	srvAddr, err := net.ResolveTCPAddr("tcp4", "127.0.0.88:8888")
 	if err != nil {
 		return err
 	}
 
-	// TODO(JM): Client address needs to be unique for each test case.
-	// Consider having a matcher that matches on the server and client
-	// addresses.
 	cliAddr, err := net.ResolveTCPAddr("tcp4", "127.0.0.87:0")
 	if err != nil {
 		return err
 	}
 
-	l, err := net.ListenTCP("tcp4", srvAddr)
+	listener, err := net.ListenTCP("tcp4", srvAddr)
 	if err != nil {
 		return err
 	}
-	defer l.Close()
+	defer listener.Close()
 
 	// Concurrently connect and accept. This is a bit funny as we want
 	// to fail right away if either of them fail.
@@ -73,7 +72,7 @@ func (tc *TestCase) Run(t *testing.T, dispatch *EventDispatcher, timeout time.Du
 	}
 	egressConnOrError := make(chan ConnOrError)
 	go func() {
-		conn, err := net.DialTCP("tcp4", cliAddr, srvAddr)
+		conn, err := net.DialTCP("tcp4", cliAddr, listener.Addr().(*net.TCPAddr))
 		if err != nil {
 			fmt.Printf("DialTCP fail: %s\n", err)
 		}
@@ -82,7 +81,7 @@ func (tc *TestCase) Run(t *testing.T, dispatch *EventDispatcher, timeout time.Du
 
 	ingressConnOrError := make(chan ConnOrError)
 	go func() {
-		conn, err := l.AcceptTCP()
+		conn, err := listener.AcceptTCP()
 		ingressConnOrError <- ConnOrError{conn, err}
 	}()
 
@@ -115,6 +114,7 @@ func (tc *TestCase) Run(t *testing.T, dispatch *EventDispatcher, timeout time.Du
 		perOpChans:  perOpChans,
 		egressConn:  egressConn,
 		ingressConn: ingressConn,
+		listener:    listener,
 		t:           t,
 	}
 
@@ -128,6 +128,8 @@ func (tc *TestCase) Run(t *testing.T, dispatch *EventDispatcher, timeout time.Du
 			return err
 		default:
 			if err := step.Exec(testCtx); err != nil {
+				cancel()
+				<-dispatcherErrChan
 				return fmt.Errorf("test failed at step %d/%d:\n%w", i+1, nsteps, err)
 			}
 		}

@@ -190,7 +190,7 @@ func (p *Parser) parseCloseDirection() (int, error) {
 		return 0, fmt.Errorf("EOF when parsing close direction")
 	}
 	if tok == '\n' || tok == '#' {
-		return CLOSE_BOTH, nil
+		return CLOSE_ALL, nil
 	}
 
 	switch strings.ToUpper(p.scanner.TokenText()) {
@@ -198,8 +198,10 @@ func (p *Parser) parseCloseDirection() (int, error) {
 		return CLOSE_CLIENT, nil
 	case "SERVER":
 		return CLOSE_SERVER, nil
-	case "BOTH":
-		return CLOSE_BOTH, nil
+	case "LISTENER":
+		return CLOSE_LISTENER, nil
+	case "BOTH", "ALL":
+		return CLOSE_ALL, nil
 	default:
 		return 0, fmt.Errorf("expected CLIENT/SERVER/BOTH for CLOSE")
 	}
@@ -361,6 +363,9 @@ scan:
 				ms, err = p.parseDoubleWord(false)
 			case "?":
 				ms, err = p.parseWildcard()
+			case "NZ":
+				ms, err = p.parseNonZero()
+
 			case "END":
 				return
 			default:
@@ -384,6 +389,14 @@ func (p *Parser) parseWildcard() (ms []Matcher, err error) {
 		return nil, err
 	}
 	return []Matcher{WildcardMatcher(int(n))}, nil
+}
+
+func (p *Parser) parseNonZero() (ms []Matcher, err error) {
+	n, _, err := p.scanInt()
+	if err != nil {
+		return nil, err
+	}
+	return []Matcher{NonZeroMatcher(int(n))}, nil
 }
 
 func (p *Parser) parseAddrMatcher() ([]Matcher, error) {

@@ -2,6 +2,7 @@ package parsertest
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"io/fs"
 	"log"
@@ -31,6 +32,8 @@ const (
 // Testdata directory. We'll probe for it's location
 // by changing working directory upwards towards /.
 var testsRoot = "testdata/parser"
+
+var numRunsPerTestcase = 3
 
 const (
 	SENS_INITIAL = iota
@@ -72,6 +75,13 @@ func init() {
 		}
 		os.Chdir("..")
 	}
+}
+
+func TestMain(m *testing.M) {
+	flag.IntVar(&numRunsPerTestcase, "parsertest-runs", numRunsPerTestcase,
+		"Number of times to repeat each testcase")
+	flag.Parse()
+	os.Exit(m.Run())
 }
 
 type SensorsHandle struct {
@@ -201,17 +211,19 @@ func runTests(t *testing.T, sensor int, dir string) {
 				return nil
 			}
 
-			t.Run(path.Base(relpath), func(t *testing.T) {
-				tc, err := ParseTestCase(path.Join(testsRoot, relpath))
-				if err != nil {
-					t.Fatal(err)
-				}
+			for i := 0; i < numRunsPerTestcase; i++ {
+				t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
+					tc, err := ParseTestCase(path.Join(testsRoot, relpath))
+					if err != nil {
+						t.Fatal(err)
+					}
 
-				err = tc.Run(t, dispatcher, testTimeout)
-				if err != nil {
-					t.Fatal(err)
-				}
-			})
+					err = tc.Run(t, dispatcher, testTimeout)
+					if err != nil {
+						t.Fatal(err)
+					}
+				})
+			}
 			return nil
 		})
 

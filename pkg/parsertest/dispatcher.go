@@ -99,12 +99,11 @@ func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) error {
 		ed.log.Errorf("Event lost: %v\n", msg)
 	}
 
-	var perfEventError error = nil
 	evErr := func(msg *bpf.PerfEvent) {
 		ed.log.Errorf("PerfEvent error")
 	}
 
-	for perfEventError == nil && ctx.Err() == nil {
+	for ctx.Err() == nil {
 		_, err := ed.perCpuEvents.Poll(100)
 		if err != nil {
 			if errno, ok := err.(syscall.Errno); ok && errno.Temporary() {
@@ -119,5 +118,5 @@ func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) error {
 			return err
 		}
 	}
-	return perfEventError
+	return nil
 }

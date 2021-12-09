@@ -82,6 +82,25 @@ func (n WildcardMatcher) Serialize() []byte {
 	panic("Cannot serialize a wildcard")
 }
 
+type NonZeroMatcher int
+
+func (n NonZeroMatcher) Match(_ *TestContext, r io.Reader) (int, error) {
+	zeroes := make([]byte, n)
+	buf := make([]byte, n)
+	m, err := r.Read(buf)
+	if m != int(n) {
+		err = fmt.Errorf("non-zero match failed, read %d bytes, expected %d bytes: %w", m, n, err)
+	}
+	if bytes.Equal(zeroes, buf) {
+		err = fmt.Errorf("mismatch, expected %d non-zero bytes, but found all zeroes", n)
+	}
+	return int(m), err
+}
+
+func (n NonZeroMatcher) Serialize() []byte {
+	panic("Cannot serialize a non-zero matcher")
+}
+
 const (
 	CMK_IP_RAW = iota
 	CMK_IP_STRING

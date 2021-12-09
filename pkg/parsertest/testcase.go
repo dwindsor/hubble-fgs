@@ -162,7 +162,8 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 const (
 	CLOSE_SERVER = iota
 	CLOSE_CLIENT
-	CLOSE_BOTH
+	CLOSE_LISTENER
+	CLOSE_ALL
 )
 
 type TestStepClose struct {
@@ -177,7 +178,9 @@ func (e *TestStepClose) Exec(ctx *TestContext) *TestStepError {
 		err = ctx.ingressConn.Close()
 	case CLOSE_CLIENT:
 		err = ctx.egressConn.Close()
-	case CLOSE_BOTH:
+	case CLOSE_LISTENER:
+		err = ctx.listener.Close()
+	case CLOSE_ALL:
 		err = ctx.closeConns()
 	}
 	if err != nil {
