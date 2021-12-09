@@ -13,12 +13,16 @@ package parsertest
 
 import (
 	"bytes"
+	"encoding/binary"
 	"fmt"
 	"io"
 	"path"
 	"text/scanner"
+	"unsafe"
 
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/yalue/native_endian"
 )
 
 //
@@ -142,7 +146,19 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 
 	fmt.Printf("-- EVENTDUMP %s --\n", e.OpName)
 
-	fmt.Printf("EVENT %s", e.OpName)
+	fmt.Printf("EVENT %s\n", e.OpName)
+
+	var common api.MsgCommon
+	err := binary.Read(bytes.NewReader(event), native_endian.NativeEndian(), &common)
+	if err != nil {
+		return &TestStepError{e.Position, "Read MsgCommon", err}
+	}
+
+	fmt.Printf("  ## Common\n")
+	fmt.Printf("  $ %02x 00 00 00 # op + pad\n", common.Op)
+	fmt.Printf("  h4 %-10d # size\n", common.Size)
+	fmt.Printf("  ? 8           # ktime\n")
+	event = event[unsafe.Sizeof(common):]
 
 	for i := range event {
 		if (i % 16) == 0 {
@@ -151,7 +167,6 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 		fmt.Printf(" %02x", event[i])
 	}
 	fmt.Printf("\n")
-	fmt.Printf("  # ^ %d bytes\n", len(event))
 	fmt.Printf("END\n")
 
 	fmt.Printf("-- cut to here--\n")
