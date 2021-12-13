@@ -166,7 +166,11 @@ func (ec *eventCache) handleNetEvents() {
 			}
 		}
 
-		ec.pm.notifyListeners(e.msg, processedEvent)
+		if processedEvent == nil {
+			ec.log.WithField("event", e.event).Warn("eventType unhandled")
+		} else {
+			ec.pm.notifyListeners(e.msg, processedEvent)
+		}
 	}
 	ec.netCache = tmp
 }
