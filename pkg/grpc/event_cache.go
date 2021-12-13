@@ -158,6 +158,12 @@ func (ec *eventCache) handleNetEvents() {
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
+		case *fgs.ProcessDns:
+			processedEvent = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: event},
+				NodeName: ec.pm.nodeName,
+				Time:     e.timestamp,
+			}
 		}
 
 		ec.pm.notifyListeners(e.msg, processedEvent)
