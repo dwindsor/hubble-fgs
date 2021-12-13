@@ -55,7 +55,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_event_heap = {
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) udp_map = {
-	.type = BPF_MAP_TYPE_HASH,
+	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(struct udp_info_key),
 	.value_size = sizeof(struct udp_info_value),
 	.max_entries = MAX_UDP_ENDPOINTS,
