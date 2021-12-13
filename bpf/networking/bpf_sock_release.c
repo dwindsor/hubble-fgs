@@ -20,7 +20,7 @@ char _license[] __attribute__((section(("license")), used)) = "GPL";
 int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section(("kprobe/sock_release")), used))
+__attribute__((section(("kprobe/inet_release")), used))
 int sock_release(struct pt_regs *ctx)
 {
 	struct socket *socket = (void *)((ctx)->di);
@@ -29,6 +29,8 @@ int sock_release(struct pt_regs *ctx)
 
 	probe_read(&sk, sizeof(sk), _(&(socket->sk)));
 	cookie = get_cookie(sk);
+	if (!cookie)
+		return 0;
 	map_delete_elem(&socket_cookie_to_proc_map, &cookie);
 	return 0;
 }

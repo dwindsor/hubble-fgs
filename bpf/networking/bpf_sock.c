@@ -23,11 +23,14 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 #endif
 
 __attribute__((section(("cgroup/sock_create")), used))
-int sock_create(void *ctx)
+int sock_create(struct bpf_sock *ctx)
 {
 	u32 pid = get_current_pid_tgid(ctx) >> 32;
 	u64 sock = get_socket_cookie(ctx);
 	struct execve_map_value *value;
+
+	if (ctx->type != SOCK_DGRAM && ctx->type != SOCK_STREAM)
+		return 1;
 
 	value = map_lookup_event(pid);
 	if (!value) {

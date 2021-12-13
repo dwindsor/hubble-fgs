@@ -62,9 +62,9 @@ var (
 
 	SockRelease = sensors.ProgramBuilder(
 		"bpf_sock_release.o",
-		"__sock_release",
-		"__sock_release",
-		"kprobe/sock_release",
+		"inet_release",
+		"inet_release",
+		"kprobe/inet_release",
 		"kprobe_sock_release",
 
 		false,
