@@ -8,6 +8,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/yalue/native_endian"
@@ -27,6 +28,7 @@ func handleUdpPayload(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
+		logger.GetLogger().WithError(err).Warnf("Udp Payload Read error")
 		return nil, err
 	}
 	return handleUdpDns(&m, r)
@@ -41,6 +43,7 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 	buf := make([]byte, int(m.Common.Size)-int(unsafe.Sizeof(m)))
 
 	if _, err := r.Read(buf); err != nil {
+		logger.GetLogger().WithError(err).Warnf("Read error")
 		return nil, err
 	}
 
@@ -52,11 +55,13 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 
 	hdr, err := p.Start(buf)
 	if err != nil {
+		logger.GetLogger().WithError(err).Warnf("Start error")
 		return nil, err
 	}
 
 	qs, err := p.AllQuestions()
 	if err != nil {
+		logger.GetLogger().WithError(err).Warnf("Questions error")
 		return nil, err
 	}
 
@@ -70,26 +75,27 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 			break
 		}
 		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("Answer parse error")
 			return nil, err
-		}
-
-		if (h.Type != dnsmessage.TypeA && h.Type != dnsmessage.TypeAAAA) || h.Class != dnsmessage.ClassINET {
-			continue
 		}
 
 		switch h.Type {
 		case dnsmessage.TypeA:
 			r, err := p.AResource()
 			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("Resource parse error")
 				return nil, err
 			}
 			ips = append(ips, r.A[:])
 		case dnsmessage.TypeAAAA:
 			r, err := p.AAAAResource()
 			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("AAAA Resource parse error")
 				return nil, err
 			}
 			ips = append(ips, r.AAAA[:])
+		default:
+			p.SkipAnswer()
 		}
 		aTypes = append(aTypes, uint32(h.Type))
 	}
