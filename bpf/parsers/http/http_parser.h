@@ -100,7 +100,7 @@ __u32 __get_method(ctx_md *msg, struct msg_http *http)
 	char *c = get_chars(msg, http->offset, 3);
 
 	if (!c) {
-		return http_method_error;
+		return http_method_bytes_needed;
 	}
 
 	switch (c[0]) {
@@ -458,6 +458,10 @@ void http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *
 		case http_method_error:
 			break;
 
+		case http_method_bytes_needed:
+			http->state = http_method_bytes_needed;
+			goto out;
+
 		case http_method_response:
 #ifdef SK_MSG
 			tail_call(msg, &http1_calls, 0);
@@ -492,6 +496,8 @@ void http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *
 #endif
 	}
 	http->state = http_done;
+out:
+	return;
 }
 
 static inline __attribute__((always_inline))

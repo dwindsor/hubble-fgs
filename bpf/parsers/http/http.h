@@ -74,6 +74,8 @@ enum http_request_state {
 	http_get_headers,
 	http_more_headers_needed,
 
+	http_method_bytes_needed,
+
 	/* when state is above this we tail-call into http2 parser */
 
 	http2_expect_preface,
