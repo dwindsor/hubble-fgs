@@ -20,6 +20,25 @@ import (
 	"github.com/vishvananda/netlink"
 )
 
+func LoadSockOpt(
+	bpfDir, mapDir, ciliumDir string,
+	load *Program,
+	version, verbose int,
+	x64 bool,
+	path string,
+) (error, int) {
+	btfObj := uintptr(btf.GetCachedBTF())
+	return bpf.LoadSockOptProgram(
+		version, verbose,
+		btfObj,
+		load.Name,
+		load.Label,
+		filepath.Join(bpfDir, load.PinPath),
+		mapDir,
+		path,
+	)
+}
+
 func LoadSkmsg(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,

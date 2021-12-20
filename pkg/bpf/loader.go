@@ -301,7 +301,7 @@ int bpf_link(char *target, const char *source, int type)
 
 	err = bpf_prog_attach(source_fd, target_fd, type, 0);
 	if (err)
-		fprintf(stderr, "bpf_prog_attach: failed (%s->%s) err %i\n", source, target, err);
+		fprintf(stderr, "bpf_prog_attach: failed (%s->%s) err %i %d\n", source, target, err, errno);
 	close(target_fd);
 	close(source_fd);
 	return err;
@@ -976,6 +976,13 @@ func LoadCgroupInetSocketProgram(__version, __verbosity int, btf uintptr, object
 	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
 
+func LoadSockOptProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
+	prog_type := 25   // BPF_PROG_TYPE_CGROUP_SOCKOPT
+	attach_type := 22 // BPF_CGROUP_SETSOCKOPT
+
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
+}
+
 func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
@@ -1227,9 +1234,17 @@ func CgroupDestroyEgress(progPath string) {
 	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
 
 }
+
 func CgroupDestroyIngress(progPath string) {
 	targetPath := "/run/hubble-fgs/cgroup2"
 	attach_type := int(1) // BPF_CGROUP_INET_INGRESS
+
+	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
+}
+
+func CgroupDestroySockOpt(progPath string) {
+	targetPath := "/run/hubble-fgs/cgroup2"
+	attach_type := int(22) // BPF_CGROUP_SETSOCKOPT
 
 	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
 }

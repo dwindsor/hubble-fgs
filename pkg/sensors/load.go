@@ -397,6 +397,9 @@ func nameToProgType(n string) int {
 	case "cgrp_ingress",
 		"cgrp_egress":
 		return BPF_PROG_TYPE_CGROUP_SKB
+	case "cgrp_socketopt",
+		"cgrp_getsockopt":
+		return BPF_PROG_TYPE_CGROUP_SOCKOPT
 	case "tc_ingress":
 		return BPF_PROG_TYPE_SCHED_CLS
 	case "tc_egress":

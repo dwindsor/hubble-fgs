@@ -213,6 +213,8 @@ func RemoveProgram(bpfDir string, prog *Program) {
 		bpf.CgroupDestroyEgress(path)
 	} else if prog.Type == "cgrp_ingress" {
 		bpf.CgroupDestroyIngress(path)
+	} else if prog.Type == "cgrp_socket" {
+		bpf.CgroupDestroySockOpt(path)
 	}
 	os.Remove(path)
 	if prog.TraceFD >= 0 {
