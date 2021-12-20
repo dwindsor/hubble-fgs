@@ -1,3 +1,6 @@
+#ifndef __HUBBLE_MSG_
+#define __HUBBLE_MSG_
+
 /* These are your sizing variables. Because we are running in BPF and must
  * be bounded in terms of loop iterations and memory usage we have to set
  * worse case bounds.
@@ -563,3 +566,4 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
 #ifndef bpf_htonl
 #define bpf_htonl(x)		__builtin_bswap32(x)
 #endif
+#endif // __HUBBLE_MSG_

@@ -1,3 +1,6 @@
+#ifndef __VMLINUX_
+#define __VMLINUX_
+
 /* User configurable BTF */
 enum generic_func_args_enum {
 	func_id = 0x1,
@@ -85023,4 +85026,4 @@ struct amd_hostbridge {
 	u32 slot;
 	u32 device;
 };
-
+#endif
