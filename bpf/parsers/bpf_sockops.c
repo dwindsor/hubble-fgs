@@ -35,8 +35,9 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_sock_map = {
 
 static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 {
-	struct sock_key key = {};
 	struct sock_key filter_key;
+	struct sock_key key = {};
+	int result;
 
 	sk_extract4_key(skops, &key);
 
@@ -44,12 +45,13 @@ static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 	filter_key = key;
 	filter_key.sport = bpf_ntohs(filter_key.sport);
 
-	if (tls_filter(&filter_key) == PROTO_TRACK) {
+	result = tls_filter(&filter_key);
+	if (result != PROTO_SKIP)
 		sock_hash_update(skops, &tls_sock_map, &key, BPF_NOEXIST);
-	}
-	if (http_filter(&filter_key) == PROTO_TRACK) {
+
+	result = http_filter(&filter_key);
+	if (result != PROTO_SKIP)
 		sock_hash_update(skops, &http_sock_map, &key, BPF_NOEXIST);
-	}
 }
 
 __section("sockops/fgs_sockops")

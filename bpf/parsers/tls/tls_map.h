@@ -68,7 +68,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_filter_map = {
 
 #define DO_TLS_PORT_FILTER_ONE(j)			     \
 	p = *(__u32 *)&filter[offset + 4 + 4 + 4 + (4 * j)]; \
-	if (p == key->dport || p == key->sport) goto track;  \
+	if ((p & 0xffff) == key->dport || (p & 0xffff) == key->sport) goto track;  \
 	if (++j >= ports) goto skip;			     \
 
 
@@ -84,7 +84,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_filter_map = {
 
 static inline __attribute__((always_inline))
 int map_key_filter(u8 *filter, struct sock_key *key) {
-	__u32 selectors;
+	__u32 selectors, p = 0;
 	int i;
 
 	/* Supports upto 10 selectors any more and we simply
@@ -111,7 +111,7 @@ int map_key_filter(u8 *filter, struct sock_key *key) {
 	 *    Port1 .... PortN     uint32, uint32, ...
 	 */
 	for (i = 0; i < 3 && i < (selectors & 0x3); i++) {
-		__u32 p, offset, ports;
+		__u32 offset, ports;
 
 		i &= 0xf;
 		offset = filter[4 + i * 4];
@@ -127,7 +127,7 @@ int map_key_filter(u8 *filter, struct sock_key *key) {
 skip:
 	return PROTO_SKIP;
 track:
-	return PROTO_TRACK;
+	return p;
 }
 
 static inline __attribute__((always_inline))
