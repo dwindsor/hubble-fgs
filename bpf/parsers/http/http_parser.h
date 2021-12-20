@@ -6,6 +6,7 @@
 #include "../bpf_sockops.h"
 #include "../parser.h"
 #include "http.h"
+#include "bpf_helpers.h"
 
 #ifdef SK_MSG
 struct bpf_map_def __attribute__((section("maps"), used)) http1_calls = {
@@ -53,14 +54,6 @@ int ctx_pull_data(struct __sk_buff *ctx, __u32 len)
 
 static inline __attribute__((always_inline))
 void post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key, struct msg_http_event *http);
-
-/* relax_verifier is a dummy helper call to introduce a pruning checkpoint
- * to help relax the verifier to avoid reaching complexity limits.
- */
-static inline __attribute__((always_inline)) void relax_verifier(void)
-{
-       volatile int __maybe_unused id = get_smp_processor_id();
-}
 
 static inline __attribute__((always_inline))
 char *get_chars(ctx_md *msg, long offset, long cnt)

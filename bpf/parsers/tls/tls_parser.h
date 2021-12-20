@@ -5,6 +5,7 @@
 #include "../parser.h"
 #include "../bottle.h"
 #include "tls_map.h"
+#include "bpf_helpers.h"
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
 	.type = BPF_MAP_TYPE_ARRAY,
@@ -63,14 +64,6 @@ enum tls_handshake_type {
 #define EXT_SERVER_NAME 0
 #define EXT_SUPPORTED_VERSION 43
 #define MAX_EXTS 20
-
-/* relax_verifier is a dummy helper call to introduce a pruning checkpoint
- * to help relax the verifier to avoid reaching complexity limits.
- */
-static inline __attribute__((always_inline)) void relax_verifier(void)
-{
-       volatile int __maybe_unused id = get_smp_processor_id();
-}
 
 static inline __attribute__((always_inline))
 int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool client)
