@@ -224,6 +224,8 @@ struct msg_calltrace {
 #define TLS_CERT		  0x800
 #define TLS_HANDSHAKE_MSG_MISS    0x1000
 
+#define TLS_HTTP_VERSION          0xFFFF
+
 /* A length-value, with a fixed max length. */
 #define FLV(max_len) \
 	struct { \

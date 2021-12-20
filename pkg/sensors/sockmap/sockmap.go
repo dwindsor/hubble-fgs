@@ -57,6 +57,18 @@ var (
 		true,
 		"sk_skb_parser")
 
+	SockoptSet = sensors.ProgramBuilder(
+		"bpf_setsockopt.o",
+		"cgroup",
+		"cgroup",
+		"cgroup/setsockopt",
+		"cgroup_setsockopt",
+
+		false,
+		true,
+		"cgrp_socketopt",
+	)
+
 	// TC mode
 	// 4.19 kernels and below.
 	// Susceptible to out-of-order packets.
@@ -161,7 +173,13 @@ type skmsgTLSSensor struct {
 
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, tlsSockMapName)
-	err, i := sensors.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
+
+	err, i := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Version, args.Verbose, args.X64, path)
+	if err != nil {
+		return err, i
+	}
+
+	err, i = sensors.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
 	if err != nil {
 		return err, i
 	}
@@ -202,6 +220,18 @@ func (skmsg *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec)
 	return nil, nil
 }
 
+type socketOptSensor struct {
+	name string
+}
+
+func (s *socketOptSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	return nil, 0
+}
+
+func (s *socketOptSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+	return nil, nil
+}
+
 func init() {
 	skskbVerdict := &skSkbVerdictTLSSensor{
 		name: "skskb verdict tls sensor",
@@ -229,8 +259,15 @@ func init() {
 	tls := &tlsSensor{
 		name: "tls sensor",
 	}
+
+	socketopt := &socketOptSensor{
+		name: "socket option sensor",
+	}
+
 	sensors.RegisterProbeType("tc_ingress", tls)
 	sensors.RegisterProbeType("tc_egress", tls)
+	sensors.RegisterProbeType("cgrp_socketopt", socketopt)
+
 	sensors.RegisterTracingSensorsAtInit(tls.name, tls)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_TLS, HandleTLS)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_TLS_CONT, HandleTLSCont)
@@ -246,6 +283,7 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 			sockops.SockopsEstablished,
 			TLSSkmsg,
 			TLSSkSkbVerdict,
+			SockoptSet,
 		)
 		if utils.SkSkbParserRequired() {
 			progs = append(progs, TLSSkSkbParser)

@@ -11,7 +11,7 @@ PROCESSDIR := process/
 BPFTESTDIR := test/
 
 PARSERS = bpf_sockops.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
-TLS = bpf_tc_ingress.o bpf_tc_egress.o bpf_tls_skmsg.o bpf_tls_skskb_parser.o bpf_tls_skskb_verdict.o
+TLS = bpf_tc_ingress.o bpf_tc_egress.o bpf_tls_skmsg.o bpf_tls_skskb_parser.o bpf_tls_skskb_verdict.o bpf_setsockopt.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o bpf_tcp_send_check.o \
 	     bpf_kfree_skb.o bpf_sock.o bpf_sock_release.o bpf_inet_send.o \
 	     bpf_udp_sendmsg.o
