@@ -27,7 +27,7 @@ func SkSkbParserRequired() bool {
 
 // ParseMatchPorts parses the matchPorts portion of a policy into the
 // KernelSelectorState.
-func ParseMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32) error {
+func ParseMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32, annotation uint32) error {
 	selectors.WriteSelectorUint32(k, uint32(len(matchPorts)))
 	for _, port := range matchPorts {
 		/* Some byte hackery here because ports are 16bits in packet, but
@@ -35,7 +35,7 @@ func ParseMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32) erro
 		 * throughout BPF side. But we swap here to avoid doing the swap on data
 		 * read from sock/packet.
 		 */
-		selectors.WriteSelectorUint32(k, uint32(api.SwapByte(uint16(port))))
+		selectors.WriteSelectorUint32(k, uint32(api.SwapByte(uint16(port)))|annotation)
 	}
 	return nil
 }

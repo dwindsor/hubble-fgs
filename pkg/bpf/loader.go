@@ -976,11 +976,11 @@ func LoadCgroupInetSocketProgram(__version, __verbosity int, btf uintptr, object
 	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
 
-func LoadSockOptProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
+func LoadSockOptProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string, tlsFilter [128]byte) (error, int) {
 	prog_type := 25   // BPF_PROG_TYPE_CGROUP_SOCKOPT
 	attach_type := 22 // BPF_CGROUP_SETSOCKOPT
 
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
 
 func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {

@@ -9,7 +9,6 @@ spec:
       mode: "socket"
       selectors:
       - matchports:
-        - 443
         - 993
         - 1012
     http:
@@ -18,3 +17,12 @@ spec:
       - matchports:
         - 8080
         - 80
+    https:
+      enable: true
+      selectors:
+      - matchports:
+        - 443
+    udp:
+      enable: true
+    dns:
+      enable: true

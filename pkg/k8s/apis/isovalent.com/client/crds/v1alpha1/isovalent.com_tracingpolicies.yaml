@@ -328,6 +328,28 @@ spec:
                     required:
                     - enable
                     type: object
+                  https:
+                    description: A Tls specs.
+                    properties:
+                      enable:
+                        description: HTTPS enable parser
+                        type: boolean
+                      selectors:
+                        description: Selectors to apply TLS parser against. Selectors
+                          are ORed.
+                        items:
+                          properties:
+                            matchPorts:
+                              description: A list of ports to match. Ports are ORd.
+                              items:
+                                format: int32
+                                type: integer
+                              type: array
+                          type: object
+                        type: array
+                    required:
+                    - enable
+                    type: object
                   interface:
                     description: Network policy specification
                     properties:

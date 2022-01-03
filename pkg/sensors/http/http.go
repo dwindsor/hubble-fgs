@@ -201,8 +201,8 @@ func AddHTTP() {
 	skskbVerdict := &skSkbVerdictSensor{
 		name: "skskb verdict http sensor",
 	}
-	sensors.RegisterProbeType("http_skskb_verdict", skskbVerdict)
 
+	sensors.RegisterProbeType("http_skskb_verdict", skskbVerdict)
 	sensors.RegisterProbeType("http_skmsg", skmsg)
 
 	sensors.RegisterTracingSensorsAtInit(skmsg.name, skmsg)
@@ -233,7 +233,7 @@ func EnableHTTPParser() *sensors.Sensor {
 }
 
 func parseHTTPSelector(k *selectors.KernelSelectorState, s v1alpha1.HttpSelector) error {
-	return utils.ParseMatchPorts(k, s.MatchPorts)
+	return utils.ParseMatchPorts(k, s.MatchPorts, 0)
 }
 
 // ParseHTTPSpec parses the input yaml/crd and outputs the kernel selectors
@@ -403,7 +403,10 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 	}
 
 	// If aggregation is disabled just push events as we see them.
-	if !aggregateEnable {
+	// Workaround kernel bug for HTTPS while waiting for upstream kernel fix
+	// to land. Instead of spending time to work out per port disabling just
+	// hard code and we will revert when fix lands.
+	if !aggregateEnable || unix.Tuple.DPort == 47873 {
 		return []observer.ObserverEvent{unix}, nil
 	}
 

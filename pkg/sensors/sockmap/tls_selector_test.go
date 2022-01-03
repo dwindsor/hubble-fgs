@@ -46,7 +46,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		Mode:      "tc",
 		Selectors: selectors,
 	}
-	b, _ := ParseTLSSpec(&spec)
+	b, _ := ParseTLSSpec(&spec, nil)
 	if bytes.Equal(expected[0:len(expected)], b[0:len(expected)]) == false {
 		t.Errorf("ParseTlsSpec: expected %v bytes %v\n", expected, b[0:len(expected)])
 	}

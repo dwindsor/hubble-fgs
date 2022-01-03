@@ -1,6 +1,9 @@
 #ifndef ingress_h_INCLUDED
 #define ingress_h_INCLUDED
 
+/* HTTP used for KTLS handlers */
+#include "../http/http_parser.h"
+
 /*
  * Certificate parsing
  *
@@ -156,6 +159,14 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 	event = map_lookup_elem(&tls_map, key);
 	if (!event)
 		return;
+
+	if (event->version == TLS_HTTP_VERSION) {
+		/* Disabled ingress parsing waiting for upstream kernel bugfix to
+		 * land in backports stable kernels.
+		 */
+	//	http_do_parser(skb, key);
+		return;
+	}
 
 	if (is_expected_tls_client_hello(event)) {
 		struct msg_tls_event *post;

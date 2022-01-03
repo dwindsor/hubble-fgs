@@ -40,6 +40,8 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 #define TLS_RX 2
 #endif
 
+#define TLS_HTTPS (1 << 16)
+
 static inline __attribute__((always_inline))
 void sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key) {
 	struct bpf_sock *sk = ctx->sk;
@@ -63,7 +65,20 @@ int setsockopt(struct bpf_sockopt *ctx)
 
 	sockopt_tls_key(ctx, &key);
 	event = map_lookup_elem(&tls_map, &key);
-	if (event)
-		event->version = TLS_HTTP_VERSION;
+	if (event) {
+		struct sock_key filter_key = {0};
+		int result;
+
+		/* TLS filters are simple port base filters so we can
+		 * skip more complex key extracting of addrs and cookies.
+		 * Remembering to convert sport from network order to
+		 * byte order to match filter format.
+		 */
+		filter_key.sport = bpf_ntohs(key.sport);
+		filter_key.dport = key.dport;
+		result = tls_filter(&filter_key);
+		if (result & TLS_HTTPS)
+			event->version = TLS_HTTP_VERSION;
+	}
 	return 1;
 }

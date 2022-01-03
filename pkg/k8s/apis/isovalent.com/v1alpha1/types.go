@@ -194,6 +194,20 @@ type TlsSpec struct {
 	Selectors []TlsSelector `json:"selectors"`
 }
 
+type HttpsSelector struct {
+	// +kubebuilder:validation:Optional
+	// A list of ports to match. Ports are ORd.
+	MatchPorts []uint32 `json:"matchPorts"`
+}
+
+type HttpsSpec struct {
+	// HTTPS enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Selectors to apply TLS parser against. Selectors are ORed.
+	Selectors []HttpsSelector `json:"selectors"`
+}
+
 type HttpSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
@@ -225,6 +239,9 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A Tls specs.
 	Tls TlsSpec `json:"tls"`
+	// +kubebuilder:validation:Optional
+	// A Tls specs.
+	Https HttpsSpec `json:"https"`
 	// +kubebuilder:validation:Optional
 	// A Http spec.
 	Http HttpSpec `json:"http"`

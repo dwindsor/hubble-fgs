@@ -26,6 +26,7 @@ func LoadSockOpt(
 	version, verbose int,
 	x64 bool,
 	path string,
+	tls_filters [128]byte,
 ) (error, int) {
 	btfObj := uintptr(btf.GetCachedBTF())
 	return bpf.LoadSockOptProgram(
@@ -36,6 +37,7 @@ func LoadSockOpt(
 		filepath.Join(bpfDir, load.PinPath),
 		mapDir,
 		path,
+		tls_filters,
 	)
 }
 

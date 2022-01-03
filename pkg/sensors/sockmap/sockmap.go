@@ -113,6 +113,11 @@ func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 		return nil, nil
 	}
 
+	parserHttps := &parser.Https
+	if !parser.Https.Enable {
+		parserHttps = nil
+	}
+
 	switch parser.Tls.Mode {
 	case "socket":
 		enableTLS = true
@@ -122,10 +127,11 @@ func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 		return nil, nil
 	}
 
-	tlsSelectors, err = ParseTLSSpec(&parser.Tls)
+	tlsSelectors, err = ParseTLSSpec(&parser.Tls, parserHttps)
 	if err != nil {
 		return nil, err
 	}
+
 	return enableTLSParser(enableTLS, enableTLSTC), nil
 }
 
@@ -174,7 +180,7 @@ type skmsgTLSSensor struct {
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, tlsSockMapName)
 
-	err, i := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Version, args.Verbose, args.X64, path)
+	err, i := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Version, args.Verbose, args.X64, path, tlsSelectors)
 	if err != nil {
 		return err, i
 	}

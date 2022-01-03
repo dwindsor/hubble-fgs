@@ -7,6 +7,9 @@
 #include "tls_map.h"
 #include "tls_parser.h"
 
+/* HTTP used for KTLS handlers */
+#include "../http/http_parser.h"
+
 static inline __attribute__((always_inline))
 void egress_post_event(ctx_md *ctx, struct msg_tls_ipv4 *key, struct msg_tls_event *post)
 {
@@ -24,6 +27,7 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 	struct msg_tls_ipv4 tuple = {0};
 	struct msg_tls_event *event;
 	struct msg_tls *clienthello;
+	struct msg_tls *state;
 	struct bottle *bottle;
 	int off = 0;
 	int zero = 0;
@@ -45,9 +49,17 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 	tuple.sport = bpf_ntohs(tuple.sport);
 #endif
 
-	if (map_lookup_elem(&tls_map, &tuple) != 0)
-		/* Already parsed, or parsing failed and should ignore. */
+	state = map_lookup_elem(&tls_map, &tuple);
+	if (state) {
+		/* An event here indicates we have TLS state associated
+		 * with this socket and/or we have aborted parsing on the
+		 * TLS socket. If it is a KTLS socket we can also pass to
+		 * HTTP parser for handling
+		 */
+		if (state->version == TLS_HTTP_VERSION)
+			http_do_parser(ctx, &tuple);
 		return;
+	}
 
 	bottle = bottle_fill(ctx, &tuple, off);
 	if (!bottle) {
