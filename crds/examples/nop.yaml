@@ -1,0 +1,11 @@
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "nop"
+spec:
+  parser:
+    nop:
+      enable: true
+      selectors:
+      - matchports:
+        - 1234
