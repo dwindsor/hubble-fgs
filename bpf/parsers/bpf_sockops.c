@@ -33,6 +33,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_sock_map = {
 	.max_entries	= SOCKOPS_HTTP_MAP_SIZE,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) nop_sock_map = {
+	.type           = BPF_MAP_TYPE_SOCKHASH,
+	.key_size       = sizeof(struct sock_key),
+	.value_size     = sizeof(int),
+	.max_entries	= SOCKOPS_NOP_MAP_SIZE,
+};
+
 static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 {
 	struct sock_key filter_key;
@@ -52,6 +59,11 @@ static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 	result = http_filter(&filter_key);
 	if (result != PROTO_SKIP)
 		sock_hash_update(skops, &http_sock_map, &key, BPF_NOEXIST);
+
+	result = nop_filter(&filter_key);
+	if (result != PROTO_SKIP)
+		sock_hash_update(skops, &nop_sock_map, &key, BPF_NOEXIST);
+
 }
 
 __section("sockops/fgs_sockops")

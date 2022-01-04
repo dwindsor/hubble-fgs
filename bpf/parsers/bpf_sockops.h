@@ -9,6 +9,7 @@ struct sock_key {
 
 #define SOCKOPS_TLS_MAP_SIZE 65535
 #define SOCKOPS_HTTP_MAP_SIZE 2000
+#define SOCKOPS_NOP_MAP_SIZE 32
 
 #define AF_INET 2
 

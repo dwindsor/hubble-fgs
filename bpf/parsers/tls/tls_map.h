@@ -60,6 +60,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_filter_map = {
 	.max_entries = 1,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) nop_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 128,
+	.max_entries = 1,
+};
+
 #define PROTO_SKIP  0
 #define PROTO_TRACK 1
 
@@ -160,6 +167,18 @@ int http_filter(struct sock_key *key) {
 	u8 *filter;
 
 	filter = map_lookup_elem(&http_filter_map, &zero);
+	if (!filter)
+		return PROTO_SKIP;
+
+	return map_key_filter(filter, key);
+}
+
+static inline __attribute__((always_inline))
+int nop_filter(struct sock_key *key) {
+	int zero = 0;
+	u8 *filter;
+
+	filter = map_lookup_elem(&nop_filter_map, &zero);
 	if (!filter)
 		return PROTO_SKIP;
 

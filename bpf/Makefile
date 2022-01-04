@@ -5,6 +5,7 @@ SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
 
 TLSDIR := parsers/tls/
 HTTPDIR := parsers/http/
+NOPDIR := parsers/nop/
 PARSERDIR = parsers/
 NETWORKINGDIR := networking/
 PROCESSDIR := process/
@@ -12,6 +13,7 @@ BPFTESTDIR := test/
 
 PARSERS = bpf_sockops.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
 TLS = bpf_tc_ingress.o bpf_tc_egress.o bpf_tls_skmsg.o bpf_tls_skskb_parser.o bpf_tls_skskb_verdict.o bpf_setsockopt.o
+NOP = bpf_nop.o bpf_nop_verdict.o bpf_nop_parser.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o bpf_tcp_send_check.o \
 	     bpf_kfree_skb.o bpf_sock.o bpf_sock_release.o bpf_inet_send.o \
 	     bpf_udp_sendmsg.o
@@ -40,10 +42,11 @@ DEPSDIR       := deps/
 
 PARSEROBJ     := $(addprefix $(OBJSDIR),$(PARSERS))
 TLSOBJ        := $(addprefix $(OBJSDIR),$(TLS))
+NOPOBJ        := $(addprefix $(OBJSDIR),$(NOP))
 NETWORKINGOBJ := $(addprefix $(OBJSDIR),$(NETWORKING))
 PROCESSOBJ    := $(addprefix $(OBJSDIR),$(PROCESS))
 TESTOBJ       := $(addprefix $(OBJSDIR),$(BPFTEST))
-OBJS          := $(PARSEROBJ) ${TLSOBJ} $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ)
+OBJS          := $(PARSEROBJ) ${TLSOBJ} $(NETWORKINGOBJ) $(PROCESSOBJ) $(TESTOBJ) $(NOPOBJ)
 LLOBJS        := $(patsubst $(OBJSDIR)%.o,$(OBJSDIR)%.ll,$(OBJS))
 DEPS          := $(patsubst $(OBJSDIR)%.ll,$(DEPSDIR)%.d,$(LLOBJS))
 
@@ -82,6 +85,14 @@ objs/%.ll: $(HTTPDIR)%.c
 
 $(DEPSDIR)%.d: $(HTTPDIR)%.c
 	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+# NOPDIR
+objs/%.ll: $(NOPDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -I ${NOPDIR} -c $< -o $@
+
+$(DEPSDIR)%.d: $(NOPDIR)%.c
+	${CLANG} ${CLANG_FLAGS} -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
 
 # NETWORKINGDIR
 objs/%.ll: $(NETWORKINGDIR)%.c
