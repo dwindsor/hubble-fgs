@@ -235,6 +235,20 @@ type DnsPolicySpec struct {
 	Enable bool `json:"enable"`
 }
 
+type NopSelector struct {
+	// +kubebuilder:validation:Optional
+	// A list of ports to match. Ports are ORd.
+	MatchPorts []uint32 `json:"matchPorts"`
+}
+
+type NopSpec struct {
+	// Nop enable parser
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Selectors to apply Nop parser against. Selectors are ORed.
+	Selectors []NopSelector `json:"selectors"`
+}
+
 type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A Tls specs.
@@ -254,6 +268,9 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Network policy specification
 	Dns DnsPolicySpec `json:"dns"`
+	// +kubebuilder:validation:Optional
+	// nop parsre policy specification
+	Nop NopSpec `json:"nop"`
 }
 
 type UdpPolicySpec struct {

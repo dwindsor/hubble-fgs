@@ -102,7 +102,7 @@ func LoadSockops(
 	load *Program,
 	version, verbose int,
 	x64 bool,
-	tls_filters, http_filters [128]byte,
+	tls_filters, http_filters, nop_filters [128]byte,
 ) (error, int) {
 	btfObj := uintptr(btf.GetCachedBTF())
 	return bpf.LoadSockopsProgram(version, verbose, btfObj,
@@ -110,7 +110,7 @@ func LoadSockops(
 		load.Label,
 		filepath.Join(bpfDir, load.PinPath),
 		mapDir,
-		tls_filters, http_filters,
+		tls_filters, http_filters, nop_filters,
 	)
 }
 

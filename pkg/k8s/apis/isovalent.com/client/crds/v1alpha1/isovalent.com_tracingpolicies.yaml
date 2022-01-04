@@ -363,6 +363,28 @@ spec:
                     required:
                     - enable
                     type: object
+                  nop:
+                    description: nop parsre policy specification
+                    properties:
+                      enable:
+                        description: Nop enable parser
+                        type: boolean
+                      selectors:
+                        description: Selectors to apply Nop parser against. Selectors
+                          are ORed.
+                        items:
+                          properties:
+                            matchPorts:
+                              description: A list of ports to match. Ports are ORd.
+                              items:
+                                format: int32
+                                type: integer
+                              type: array
+                          type: object
+                        type: array
+                    required:
+                    - enable
+                    type: object
                   tls:
                     description: A Tls specs.
                     properties:

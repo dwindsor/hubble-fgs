@@ -454,7 +454,7 @@ int fgs_loader(const int version,
 		   char *link_path,
 		   const int prog_type,
 		   const int attach_type,
-		   void *tlsfilter, void *httpfilter, void *udpfilter)
+		   void *tlsfilter, void *httpfilter, void *udpfilter, void *nopfilter)
 {
 	char *tls_filter_map = "tls_filter_map";
 	char *http_filter_map = "http_filter_map";
@@ -475,6 +475,10 @@ int fgs_loader(const int version,
 		goto out;
 
 	err = fgs_load_filter(obj, "udp_filter_map", udpfilter);
+	if (err)
+		goto out;
+
+	err = fgs_load_filter(obj, "nop_filter_map", nopfilter);
 	if (err)
 		goto out;
 
@@ -505,7 +509,7 @@ int skskb_verdict_loader(const int version,
 	const int attach = BPF_SK_SKB_STREAM_VERDICT;
 
 	return fgs_loader(version, verbosity, btf, prog, label,
-	                  __prog, mapdir, path, type, attach, 0, 0, 0);
+	                  __prog, mapdir, path, type, attach, 0, 0, 0, 0);
 }
 
 int skskb_parser_loader(const int version,
@@ -521,7 +525,7 @@ int skskb_parser_loader(const int version,
 	const int attach = BPF_SK_SKB_STREAM_PARSER;
 
 	return fgs_loader(version, verbosity, btf, prog, label,
-	                  __prog, mapdir, path, type, attach, 0, 0, 0);
+	                  __prog, mapdir, path, type, attach, 0, 0, 0, 0);
 }
 
 int skmsg_loader(const int version,
@@ -537,7 +541,7 @@ int skmsg_loader(const int version,
 	const int attach = BPF_SK_MSG_VERDICT;
 
 	return fgs_loader(version, verbosity, btf, prog, label,
-	                  __prog, mapdir, path, type, attach, 0, 0, 0);
+	                  __prog, mapdir, path, type, attach, 0, 0, 0, 0);
 }
 
 
@@ -552,13 +556,14 @@ int sockops_loader(const int version,
 		   const int attach_type,
 		   void *tlsfilter,
 	   	   void *httpfilter,
-	   	   void *udpfilter)
+	   	   void *udpfilter,
+	   	   void *nopfilter)
 {
 	char *path = "/run/hubble-fgs/cgroup2";
 
 	return fgs_loader(version, verbosity, btf, prog, label,
 	                  __prog, mapdir, path, prog_type, attach_type,
-			  tlsfilter, httpfilter, udpfilter);
+			  tlsfilter, httpfilter, udpfilter, nopfilter);
 }
 
 int __tracepoint_loader(struct bpf_object *obj,
@@ -927,7 +932,7 @@ func LoadProgram(__version, __verbosity int,
 	btf uintptr,
 	object, __label, __prog, __mapdir string,
 	__prog_type, __attach_type int,
-	tlsFilter, httpFilter, udpFilter unsafe.Pointer) (error, int) {
+	tlsFilter, httpFilter, udpFilter, nopFilter unsafe.Pointer) (error, int) {
 
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
@@ -940,7 +945,7 @@ func LoadProgram(__version, __verbosity int,
 	loader_fd := C.sockops_loader(
 		version, verbosity,
 		unsafe.Pointer(btf), o, l, p, mapdir, pt, at,
-		tlsFilter, httpFilter, udpFilter)
+		tlsFilter, httpFilter, udpFilter, nopFilter)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
 		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
@@ -948,39 +953,39 @@ func LoadProgram(__version, __verbosity int,
 	return nil, loaderInt
 }
 
-func LoadSockopsProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, tlsFilter, httpFilter [128]byte) (error, int) {
+func LoadSockopsProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, tlsFilter, httpFilter, nopFilter [128]byte) (error, int) {
 	prog_type := 13  // BPF_PROG_TYPE_SOCK_OPS
 	attach_type := 3 // BPF_CGROUP_SOCK_OPS
 
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(&httpFilter), unsafe.Pointer(nil))
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(&httpFilter), unsafe.Pointer(nil), unsafe.Pointer(&nopFilter))
 }
 
 func LoadCgroupInetIngressProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, udpFilter [128]byte) (error, int) {
 	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
 	attach_type := 0 // BPF_CGROUP_INET_INGRESS
 
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter))
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter), unsafe.Pointer(&udpFilter))
 }
 
 func LoadCgroupInetEgressProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, udpFilter [128]byte) (error, int) {
 	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
 	attach_type := 1 // BPF_CGROUP_INET_INGRESS
 
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter))
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter), unsafe.Pointer(&udpFilter))
 }
 
 func LoadCgroupInetSocketProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
 	prog_type := 9   // BPF_PROG_TYPE_CGROUP_SOCK
 	attach_type := 2 // BPF_CGROUP_INET_SOCK_CREATE
 
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
 
 func LoadSockOptProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string, tlsFilter [128]byte) (error, int) {
 	prog_type := 25   // BPF_PROG_TYPE_CGROUP_SOCKOPT
 	attach_type := 22 // BPF_CGROUP_SETSOCKOPT
 
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(nil), unsafe.Pointer(nil))
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
 
 func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {

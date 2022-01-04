@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -147,11 +148,13 @@ type sockopsSensor struct {
 }
 
 func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors)
+	return sensors.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors, nop.Selectors)
 }
 
 func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	if (parser.Tls.Enable && parser.Tls.Mode == "socket") || parser.Http.Enable {
+	if (parser.Tls.Enable && parser.Tls.Mode == "socket") ||
+		parser.Http.Enable ||
+		parser.Nop.Enable {
 		var progs []*sensors.Program
 		var maps []*sensors.Map
 
