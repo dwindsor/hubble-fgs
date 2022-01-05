@@ -55,9 +55,10 @@ int bpf_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 		return SK_PASS;
 
 	http_parse_request(msg, &tuple, http);
+	if (http->request.state == http_more_headers_needed)
+		return SK_PASS;
 	http->request.state = http_done;
-	if (http->request.state == http_done)
-		post_http_event(msg, &tuple, http);
+	post_http_event(msg, &tuple, http);
 	return SK_PASS;
 }
 
@@ -73,6 +74,9 @@ int bpf_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 		return SK_PASS;
 	http->request.state = http_get_headers;
 	find_host_header(msg, &tuple, http, &http->request);
+	if (http->request.state == http_more_headers_needed)
+		return SK_PASS;
+	http->request.state = http_done;
 	post_http_event(msg, &tuple, http);
 	return SK_PASS;
 }

@@ -172,18 +172,31 @@ bool is_space(char c)
 static inline __attribute__((always_inline))
 void get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
 {
-	__u32 *dstsz;
-	int i;
+	__u32 *dstsz = (__u32*)http->scratch;
+	__u64 off = (int)dstsz[0];
+	__u64 i;
+	char v, *c = 0;
 
 	for (i = 0; i < 256 - 4; i++) {
-		char *c = eat_next_char(msg, http);
-
-		if (c == 0 || term == c[0] || chr_r == c[0])
+		c = eat_next_char(msg, http);
+		if (!c)
 			break;
-		http->scratch[i+4] = c[0];
+		v = *c;
+		if (term == v || chr_r == v)
+			break;
+		if (v >= 'A' & v <= 'Z')
+			v += 32;
+		asm volatile ("%[off] &= 0xff;\n": [off] "+r"(off)::);
+		http->scratch[off+i+4] = v;
 	}
-	dstsz = (__u32*)http->scratch;
-	dstsz[0] = i;
+	dstsz[0] = i + off;
+	/* Buffer does not contain terminating char so we build
+	 * a continuation state
+	 */
+	if (!c) {
+		http->offset = 0;
+		http->state = http_more_headers_needed;
+	}
 }
 
 static inline __attribute__((always_inline))
@@ -343,17 +356,23 @@ void find_host_header(ctx_md *msg,
 
 	// 1
 	get_string_scratch(msg, http, chr_colon);
+	if (http->state == http_more_headers_needed)
+		return;
 	t = map_header_to_type(msg, http);
 	if (t == http_request_done)
 		goto out;
 	get_string(msg, key, event, http, http->url, t, 256, chr_r);
+	http->scratch[0] = (u32)0;
 
 	// 2
 	get_string_scratch(msg, http, chr_colon);
+	if (http->state == http_more_headers_needed)
+		return;
 	t = map_header_to_type(msg, http);
 	if (t == http_request_done)
 		goto out;
 	get_string(msg, key, event, http, http->url, t, 256, chr_r);
+	http->scratch[0] = (u32)0;
 
 	/* There are still unprocessed headers to lets do a recursive
 	 * tail call and eat more headers.
@@ -378,7 +397,7 @@ void method_get_headers(ctx_md *msg,
 			struct msg_http_event *event,
 			struct msg_http *http)
 {
-	http->state = http_more_headers_needed;
+	http->state = http_get_headers;
 	find_host_header(msg, key, event, http);
 }
 
@@ -494,7 +513,10 @@ void http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *
 #else
 			tail_call(msg, &http1_calls_skb, 3);
 #endif
+	} else if (http->state == http_more_headers_needed) {
+		get_more_headers(msg);
 	}
+
 	http->state = http_done;
 out:
 	return;
