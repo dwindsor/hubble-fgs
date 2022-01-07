@@ -138,19 +138,22 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 }
 
 func (s *Sensor) findProgram(p *Program) error {
+	logger.GetLogger().WithField("file", p.Name).Debug("Checking for bpf file")
 	if _, err := os.Stat(p.Name); err == nil {
+		logger.GetLogger().WithField("file", p.Name).Debug("Found bpf file")
 		return nil
 	}
-	logger.GetLogger().WithField("file", p.Name).Info("Candidate bpf file does not exist")
+	logger.GetLogger().WithField("file", p.Name).Debug("Candidate bpf file does not exist")
 	last := strings.Split(p.Name, "/")
 	filename := last[len(last)-1]
 
 	path := path.Join(option.Config.HubbleLib, filename)
 	if _, err := os.Stat(path); err == nil {
 		p.Name = path
+		logger.GetLogger().WithField("file", path).Debug("Found bpf file")
 		return nil
 	}
-	logger.GetLogger().WithField("file", path).Info("Candidate bpf file does not exist")
+	logger.GetLogger().WithField("file", path).Debug("Candidate bpf file does not exist")
 
 	if option.Config.IgnoreMissingProgs {
 		logger.GetLogger().Warningf("Failed to find BPF prog %s, but was told to ignore such errors. Disabling it and moving on.", p.Name)
