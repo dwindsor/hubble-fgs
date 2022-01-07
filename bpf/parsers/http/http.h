@@ -74,6 +74,7 @@ enum http_request_state {
 
 	http_get_headers,
 	http_more_headers_needed,
+	http_more_headers_value_needed,
 
 	http_method_bytes_needed,
 
@@ -115,6 +116,7 @@ struct msg_http {
 	__u32 state;
 	__u32 offset;
 	__u32 url_offset;
+	__u32 url_continue;
 	__u64 consume_bytes;
 	// Below is internal only state and is not pushed to userspace.
 	char scratch[512]; // extra space

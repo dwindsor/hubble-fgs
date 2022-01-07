@@ -210,12 +210,13 @@ void get_string(ctx_md *msg,
 		struct msg_tls_ipv4 *key,
 		struct msg_http_event *event,
 		struct msg_http *http,
-		char *dst, int ty, int max, char term)
+		char *dst, int ty, __u64 max, char term)
 {
+	int do_push = (ty == http_request_content_length);
 	__u32 offset = http->url_offset;
 	__u32 *dstsz;
+	char *c;
 	int i;
-	int do_push = (ty == http_request_content_length);
 
 	if (offset + max > 0x3ff) {
 		http->flags = HTTP_MORE_HEADERS_NEEDED;
@@ -224,9 +225,17 @@ void get_string(ctx_md *msg,
 		return;
 	}
 
+	offset += http->url_continue;
+	/* Playing games with the verifier here, in order to get a good prune
+	 * point we introduce a nop. TBD sort out the details around this and
+	 * see if we can fix verifier/clang to do the right thing without
+	 * introducing cryptic and ugly asm.
+	 */
+	asm volatile ("%[i] += 0;\n": [i] "+r"(i)::);
 	asm volatile ("%[offset] &= 0x3ff;\n": [offset] "+r"(offset)::);
+
 	for (i = 0; i < max - 8; i++) {
-		char *c = eat_next_char(msg, http);
+		c = eat_next_char(msg, http);
 
 		if (c == 0 || term == c[0])
 			break;
@@ -234,15 +243,37 @@ void get_string(ctx_md *msg,
 			break;
 		dst[offset+i+8] = c[0];
 	}
+
+	/* If we consumed the buffer and never found the '\r\n' pattern to
+	 * terminate the header value, mark the state as more data needed
+	 * and wait for next buffer.
+	 */
+	if (!c) {
+		http->url_continue += i;
+		http->offset = 0;
+		http->state = http_more_headers_value_needed;
+		/* nop necessary to convince clang not to spill this register
+		 * which then causes the verifier to lose the bounds. Note
+		 * a relax_verifier() is insufficient to convince verifier
+		 * here.
+		 */
+		asm volatile ("%[cont] += 0;\n": [cont] "+r"(http->url_continue)::);
+		return;
+	}
+
 	/* Verifier lost offset bound on older kernels <5.10 presumably because
 	 * it was pushed into stack and we only recently added bounds tracking
 	 * through stack. So duplicate the offset bound here.
 	 */
+	offset = http->url_offset;
 	asm volatile ("%[offset] &= 0x3ff;\n": [offset] "+r"(offset)::);
 	dstsz = (__u32*)&dst[offset];
 	dstsz[0] = ty;
-	dstsz[1] = i;
-	http->url_offset += i + 8;
+	dstsz[1] = i + http->url_continue;
+
+	http->state = http_get_headers;
+	http->url_offset = offset + http->url_continue + i + 8;
+	http->url_continue = 0;
 
 	/* verifier needs a prune point here otherwise we fail on
 	 * some kernels.
@@ -347,6 +378,22 @@ void get_more_headers(ctx_md *msg)
 }
 
 static inline __attribute__((always_inline))
+void continue_header_string(ctx_md *msg,
+			    struct msg_tls_ipv4 *key,
+			    struct msg_http_event *event,
+			    struct msg_http *http)
+{
+	int t = map_header_to_type(msg, http);
+
+	get_string(msg, key, event, http, http->url, t, 256, chr_r);
+	if (http->state == http_more_headers_value_needed)
+		return;
+	http->scratch[0] = (u32)0;
+	get_more_headers(msg);
+	return;
+}
+
+static inline __attribute__((always_inline))
 void find_host_header(ctx_md *msg,
 		      struct msg_tls_ipv4 *key,
 		      struct msg_http_event *event,
@@ -362,6 +409,8 @@ void find_host_header(ctx_md *msg,
 	if (t == http_request_done)
 		goto out;
 	get_string(msg, key, event, http, http->url, t, 256, chr_r);
+	if (http->state == http_more_headers_value_needed)
+		return;
 	http->scratch[0] = (u32)0;
 
 	// 2
@@ -372,6 +421,8 @@ void find_host_header(ctx_md *msg,
 	if (t == http_request_done)
 		goto out;
 	get_string(msg, key, event, http, http->url, t, 256, chr_r);
+	if (http->state == http_more_headers_value_needed)
+		return;
 	http->scratch[0] = (u32)0;
 
 	/* There are still unprocessed headers to lets do a recursive
@@ -515,6 +566,13 @@ void http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *
 #endif
 	} else if (http->state == http_more_headers_needed) {
 		get_more_headers(msg);
+		/* get_more_headers is a tail call so this should
+		 * never be reached, added for readability.
+		 */
+		return;
+	} else if (http->state == http_more_headers_value_needed) {
+		continue_header_string(msg, key, event, http);
+		return;
 	}
 
 	http->state = http_done;
@@ -586,6 +644,7 @@ void http_reset_state(struct msg_http *http)
 	http->state = http_start;
 	http->offset = 0;
 	http->url_offset = 0;
+	http->url_continue = 0;
 	http->consume_bytes = 0;
 }
 
