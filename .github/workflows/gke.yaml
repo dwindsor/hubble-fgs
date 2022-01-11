@@ -128,8 +128,11 @@ jobs:
             kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=30s
 
       # Let the demo app do its thing to generate all the events. Would be nice if we could avoid sleeping.
-      - name: Sleep
-        run: sleep 60
+      # We run a dummy curl command here to force the node server to generate an accept event.
+      - name: Allow events to generate
+        run: |
+          kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 1 || true
+          sleep 60
 
       - name: Cleanup
         if: ${{ always() }}

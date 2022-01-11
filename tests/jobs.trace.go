@@ -45,7 +45,29 @@ var (
 		ec.NewConnectEventChecker().
 			HasProcess(ec.NewProcessChecker().
 				WithBinary("/usr/local/bin/node").
-				WithArguments("server.js")).
+				WithArguments("server.js").
+				WithPod(jc)).
+			HasDstPort(9080).
+			End(),
+		ec.NewListenEventChecker().
+			HasProcess(ec.NewProcessChecker().
+				WithBinary("/usr/local/bin/node").
+				WithArguments("server.js").
+				WithPod(jc)).
+			HasPort(9080).
+			End(),
+		ec.NewAcceptEventChecker().
+			HasProcess(ec.NewProcessChecker().
+				WithBinary("/usr/local/bin/node").
+				WithArguments("server.js").
+				WithPod(jc)).
+			HasSrcPort(9080).
+			End(),
+		ec.NewCloseEventChecker().
+			HasProcess(ec.NewProcessChecker().
+				WithBinary("/usr/local/bin/node").
+				WithArguments("server.js").
+				WithPod(jc)).
 			HasDstPort(9080).
 			End(),
 	)
