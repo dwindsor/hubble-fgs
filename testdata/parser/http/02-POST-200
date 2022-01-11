@@ -9,7 +9,7 @@ END
 # Event from the client socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  $ 64 06 00 00 # size
+  $ 5C 04 00 00 # size
   ? 8           # ktime
 
   ## tuple
@@ -58,7 +58,7 @@ END
 # Event from the server socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  $ 64 06 00 00 # size
+  $ 5C 04 00 00 # size
   ? 8           # ktime
 
   ## tuple
@@ -114,7 +114,7 @@ END
 # Event from client socket
 EVENT http
   $ 10 00 00 00 # op + pad
-  $ 64 06 00 00 # size
+  $ 5C 04 00 00 # size
   ? 8           # ktime
 
   ## tuple
@@ -168,7 +168,7 @@ END
 # Event from server socket
 EVENT http
   $ 10 00 00 00 # op + pad
-  $ 64 06 00 00 # size
+  $ 5C 04 00 00 # size
   ? 8           # ktime
 
   ## tuple

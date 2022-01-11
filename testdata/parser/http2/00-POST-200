@@ -33,7 +33,7 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1636       # size
+  h4 1116       # size
   ? 8           # ktime
 
   ## Tuple
@@ -78,7 +78,7 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1636       # size
+  h4 1116       # size
   ? 8           # ktime
 
   ## Tuple
@@ -137,7 +137,7 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1636       # size
+  h4 1116       # size
   ? 8           # ktime
 
   ## Tuple
@@ -183,7 +183,7 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1636       # size
+  h4 1116       # size
   ? 8           # ktime
 
   ## Tuple
@@ -273,7 +273,7 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1636       # size
+  h4 1116       # size
   ? 8           # ktime
 
   ## Tuple
@@ -318,7 +318,7 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1636       # size
+  h4 1116       # size
   ? 8           # ktime
 
   ## Tuple
@@ -389,7 +389,7 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1636       # size
+  h4 1116       # size
   ? 8           # ktime
 
   ## Tuple
@@ -435,7 +435,7 @@ END
 EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
-  h4 1636       # size
+  h4 1116       # size
   ? 8           # ktime
 
   ## Tuple

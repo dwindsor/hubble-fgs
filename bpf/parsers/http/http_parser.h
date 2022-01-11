@@ -689,7 +689,7 @@ void post_http_event(ctx_md *msg,
 
 	http->common.ktime = ktime_get_ns();
 	http->common.op = MSG_OP_HTTP;
-	http->common.size = sizeof(struct msg_http_event);
+	http->common.size = sizeof(struct __msg_http_event);
 	http->tuple = *key;
 	http->tuple.remaining = remaining;
 

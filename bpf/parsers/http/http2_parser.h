@@ -240,7 +240,7 @@ void post_http2_event(ctx_md *msg,
 
 	event->common.ktime = ktime_get_ns();
 	event->common.op = MSG_OP_HTTP;
-	event->common.size = sizeof(struct msg_http_event);
+	event->common.size = sizeof(struct __msg_http_event);
 	event->tuple = *key;
 	/* NOTE(JM): This workarounds a weird llc bug related to struct packing.
 	 * Without this assignment "llc" takes 90s or more instead of <10s
