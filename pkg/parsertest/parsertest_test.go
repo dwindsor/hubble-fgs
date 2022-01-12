@@ -15,6 +15,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -62,6 +63,9 @@ func init() {
 	} else {
 		option.Config.HubbleLib = "/var/lib/hubble-fgs"
 	}
+
+	// Setup BTF cache
+	btf.InitCachedBTF(option.Config.HubbleLib, "", context.Background())
 
 	// Probe for the testdata. Changing the working directory
 	// to keep the test-case filenames short.
