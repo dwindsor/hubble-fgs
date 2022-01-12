@@ -1,4 +1,4 @@
-mkdir .btf
+mkdir -p .btf
 set -e
 pushd .btf
 wget $1

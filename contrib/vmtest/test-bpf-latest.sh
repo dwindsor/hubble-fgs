@@ -8,7 +8,7 @@ IMAGE="$(contrib/vmtest/build-rootfs.sh)"
 if [ -d ksrc ]; then
 	echo "ksrc already exists, skipping download!"
 else
-	mkdir ksrc kbuild
+	mkdir -p ksrc kbuild
 	# NOTE: Using kernel.googlesource.com instead of git.kernel.org to reduce the load on kernel.org.
 	# kernel.googlesource.com JSON output has a corrupted first line, hence the "sed 1d". We might need to change this if it gets fixed.
 	# format=TEXT would've been nicer, but it doesn't list the commit and it's base64 encoded as well. Wonderful software.

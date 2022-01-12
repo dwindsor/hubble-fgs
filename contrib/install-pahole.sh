@@ -8,7 +8,7 @@ git clone --depth=1 --shallow-submodules --recurse-submodules \
   https://git.kernel.org/pub/scm/devel/pahole/pahole.git \
   /tmp/pahole
 cd /tmp/pahole
-mkdir build
+mkdir -p build
 cd build
 cmake -D__LIB=lib ..
 make
