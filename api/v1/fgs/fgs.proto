@@ -288,15 +288,24 @@ message Test {
 }
 
 enum TlsCertificateError {
-	TLS_CERT_ERROR_UNDEF          = 0;
-	TLS_CERT_ERROR_UNKNOWN        = 1;
-	TLS_CERT_ERROR_BAD_HEADER     = 2;
-	TLS_CERT_ERROR_LENGTH_READ    = 3;
-	TLS_CERT_ERROR_MISSING_ERROR  = 4;
-	TLS_CERT_ERROR_CERT_READ      = 5;
-	TLS_CERT_ERROR_CERT_PARTIAL   = 6;
-	TLS_CERT_ERROR_PARSE_X509     = 7;
-	TLS_CERT_ERROR_SPURIOUS_CERTS = 8;
+    TLS_CERT_ERROR_UNDEF             = 0;
+    TLS_CERT_ERROR_UNKNOWN           = 1;
+    TLS_CERT_ERROR_TOO_LARGE         = 2 [deprecated=true];
+    TLS_CERT_ERROR_GET_DATA_HDR      = 3 [deprecated=true];
+    TLS_CERT_ERROR_NO_BUFFER         = 4 [deprecated=true];
+    TLS_CERT_ERROR_COPY              = 5 [deprecated=true];
+    TLS_CERT_ERROR_LENGTH_READ       = 6;
+    TLS_CERT_ERROR_CERT_READ         = 7;
+    TLS_CERT_ERROR_CERT_PARTIAL      = 8;
+    TLS_CERT_ERROR_PARSE_X509        = 9;
+    TLS_CERT_ERROR_MISSING_CODE      = 10 [deprecated=true];
+    TLS_CERT_ERROR_GET_DATA_CERT     = 11 [deprecated=true];
+    TLS_CERT_ERROR_GET_DATA_MORECERT = 12 [deprecated=true];
+    TLS_CERT_ERROR_COPY_CERT         = 13 [deprecated=true];
+    TLS_CERT_ERROR_COPY_MORE_CERT    = 14 [deprecated=true];
+    TLS_CERT_ERROR_BAD_HEADER        = 15;
+    TLS_CERT_ERROR_MISSING_ERROR     = 16;
+    TLS_CERT_ERROR_SPURIOUS_CERTS    = 17;
 }
 
 message Tls {
