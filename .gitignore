@@ -9,3 +9,4 @@ go-tests
 fgs-bench-rootfs*
 ksrc
 kbuild
+latest.json
