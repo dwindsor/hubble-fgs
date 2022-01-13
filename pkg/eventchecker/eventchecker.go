@@ -157,18 +157,31 @@ func (c *AllMultiResponseChecker) Reset() {}
 type UnorderedMultiResponseChecker struct {
 	pendingCheckers *list.List
 	totalCheckers   int
+
+	allCheckers *list.List
 }
 
 func NewUnorderedMultiResponseChecker(checkers ...ResponseChecker) *UnorderedMultiResponseChecker {
-	l := list.New()
+	allList := list.New()
 	for _, c := range checkers {
-		l.PushBack(c)
+		allList.PushBack(c)
 	}
 
+	pendingList := list.New()
+	pendingList.PushBackList(allList)
+
 	return &UnorderedMultiResponseChecker{
-		pendingCheckers: l,
+		allCheckers:     allList,
+		pendingCheckers: pendingList,
 		totalCheckers:   len(checkers),
 	}
+}
+
+func (c *UnorderedMultiResponseChecker) Reset() {
+	c.pendingCheckers = list.New()
+	c.pendingCheckers.PushBackList(c.allCheckers)
+	c.totalCheckers = c.pendingCheckers.Len()
+
 }
 
 func (c *UnorderedMultiResponseChecker) NextCheck(ev *fgs.GetEventsResponse, log Logger) (bool, error) {
