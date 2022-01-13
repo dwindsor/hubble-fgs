@@ -69,7 +69,7 @@ EVENT HTTP
 
   ? 952
 
-  $ 09 00 00 00 # pad1 (state)
+  $ 0a 00 00 00 # pad1 (state)
   $ 25 00 00 00 # pad2 (offset)
   $ 40 00 00 00 # pad3 (url_offset)
 END
@@ -114,7 +114,7 @@ EVENT HTTP
 
   ? 952
 
-  $ 09 00 00 00 # pad1 (state)
+  $ 0a 00 00 00 # pad1 (state)
   $ 25 00 00 00 # pad2 (offset)
   $ 40 00 00 00 # pad3 (url_offset)
 END
@@ -174,7 +174,7 @@ EVENT HTTP
 
   ? 950
 
-  $ 09 00 00 00 # pad1 (state)
+  $ 0a 00 00 00 # pad1 (state)
   $ 1f 00 00 00 # pad2 (offset)
   $ 42 00 00 00 # pad3 (url_offset)
 END
@@ -220,7 +220,7 @@ EVENT HTTP
 
   ? 950
 
-  $ 09 00 00 00 # pad1 (state)
+  $ 0a 00 00 00 # pad1 (state)
   $ 1f 00 00 00 # pad2 (offset)
   $ 42 00 00 00 # pad3 (url_offset)
 END
@@ -309,7 +309,7 @@ EVENT HTTP
 
   ? 952
 
-  $ 09 00 00 00 # pad1 (state)
+  $ 0a 00 00 00 # pad1 (state)
   $ 2f 00 00 00 # pad2 (offset)
   $ 40 00 00 00 # pad3 (url_offset)
 END
@@ -354,7 +354,7 @@ EVENT HTTP
 
   ? 952
 
-  $ 09 00 00 00 # pad1 (state)
+  $ 0a 00 00 00 # pad1 (state)
   $ 2f 00 00 00 # pad2 (offset)
   $ 40 00 00 00 # pad3 (url_offset)
 END
@@ -426,7 +426,7 @@ EVENT HTTP
 
   ? 950
 
-  $ 09 00 00 00 # pad1 (state)
+  $ 0a 00 00 00 # pad1 (state)
   $ 2d 00 00 00 # pad2 (offset)
   $ 42 00 00 00 # pad3 (url_offset)
 END
@@ -472,7 +472,7 @@ EVENT HTTP
 
   ? 950
 
-  $ 09 00 00 00 # pad1 (state)
+  $ 0a 00 00 00 # pad1 (state)
   $ 2d 00 00 00 # pad2 (offset)
   $ 42 00 00 00 # pad3 (url_offset)
 END
