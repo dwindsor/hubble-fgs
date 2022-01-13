@@ -964,14 +964,14 @@ func LoadCgroupInetIngressProgram(__version, __verbosity int, btf uintptr, objec
 	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
 	attach_type := 0 // BPF_CGROUP_INET_INGRESS
 
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter), unsafe.Pointer(&udpFilter))
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter), unsafe.Pointer(nil))
 }
 
 func LoadCgroupInetEgressProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, udpFilter [128]byte) (error, int) {
 	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
 	attach_type := 1 // BPF_CGROUP_INET_INGRESS
 
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter), unsafe.Pointer(&udpFilter))
+	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter), unsafe.Pointer(nil))
 }
 
 func LoadCgroupInetSocketProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
