@@ -181,18 +181,17 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 	execUnix.Ktime = exec.Ktime
 	execUnix.AUID = exec.AUID
 
-	size := exec.Size - api.SIZEOF_EXECVE
-	if size > api.ARGSBUFFER {
+	size := exec.Size - api.MSG_SIZEOF_EXECVE
+	if size > api.MSG_SIZEOF_BUFFER-api.MSG_SIZEOF_EXECVE {
 		err := fmt.Errorf("msg exec size larger than argsbuffer")
-		exec.Size = api.SIZEOF_EXECVE
+		exec.Size = api.MSG_SIZEOF_EXECVE
 		execUnix.Args = "enomem enomem"
 		execUnix.Filename = "enomem"
 		return execUnix, false, err
 	} else {
 		args := make([]byte, size) //+2)
 		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
-			fmt.Printf("read error: binary reader error size %d exec.Size %d api %d\n", size, exec.Size, api.SIZEOF_EXECVE)
-			execUnix.Size = api.SIZEOF_EXECVE
+			execUnix.Size = api.MSG_SIZEOF_EXECVE
 			execUnix.Args = "enomem enomem"
 			execUnix.Filename = "enomem"
 			return execUnix, false, err
