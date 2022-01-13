@@ -419,8 +419,17 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 	 * until we get a response so we can merge the request/response.
 	 */
 	if m.Request.Method != MethodResponse {
-		aggregate.Add(key, unix)
-		return nil, nil
+		entry, ok := aggregate.Get(key)
+		if !ok {
+			aggregate.Add(key, unix)
+			return nil, nil
+		} else {
+			r := entry.(*api.MsgHttpEventUnix)
+			unix.Request.Code = r.Request.Code
+			unix.Request.Reason = r.Request.Reason
+			unix.Request.RespContentLength = r.Request.RespContentLength
+			aggregate.Remove(key)
+		}
 	} else {
 		entry, ok := aggregate.Get(key)
 		if ok {
@@ -435,6 +444,10 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 			unix.Request.FlagsResponse = r.Request.Flags | usedMoreBytes
 			unix.ProcessKey = r.ProcessKey
 			aggregate.Remove(key)
+		} else {
+			/* Response seen before request, stash the response and wait for request. */
+			aggregate.Add(key, unix)
+			return nil, nil
 		}
 	}
 	return []observer.ObserverEvent{unix}, nil
@@ -562,8 +575,17 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 	}
 
 	if isRequest {
-		aggregate.Add(key, unix)
-		return false
+		entry, ok := aggregate.Get(key)
+		if !ok {
+			aggregate.Add(key, unix)
+			return false
+		} else {
+			r := entry.(*api.MsgHttpEventUnix)
+			unix.Request.Code = r.Request.Code
+			unix.Request.Reason = r.Request.Reason
+			unix.Request.RespContentLength = r.Request.RespContentLength
+			aggregate.Remove(key)
+		}
 	} else {
 		entry, ok := aggregate.Get(key)
 		if ok {
@@ -578,7 +600,11 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 			unix.Request.RespVersion = "HTTP/2"
 			unix.ProcessKey = r.ProcessKey
 			aggregate.Remove(key)
+		} else {
+			/* Response seen before request, stash the response and wait for request. */
+			aggregate.Add(key, unix)
+			return false
 		}
-		return true
 	}
+	return true
 }
