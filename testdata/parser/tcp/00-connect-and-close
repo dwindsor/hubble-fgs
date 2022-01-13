@@ -13,7 +13,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 120        # size
+  h4 128        # size
   ? 8           # ktime
 
   ## tuple
@@ -38,11 +38,16 @@ EVENT TCPACCEPT
   $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 00 00 00 00
+
+  ## socket flags
+  h4 0x00
+
+  h4 0x00 # pad
 END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 120        # size
+  h4 128        # size
   ? 8           # ktime
 
   ## tuple
@@ -72,7 +77,14 @@ EVENT TCPCONNECTRET
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+
+  ## socket flags
+  h4 0x00
+
+  h4 0x00 # pad
+
   $ 00 00 00 00
+  # ^ Where is the padding coming from?
 END
 
 # Close the server socket first
@@ -80,7 +92,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 120        # size
+  h4 128        # size
   ? 8           # ktime
 
   ## tuple
@@ -110,6 +122,12 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+
+  ## socket flags
+  h4 0x02 # accept
+
+  h4 0x00 # pad
+
   $ 00 00 00 00
   # ^ Where is the padding coming from?
 END
@@ -121,7 +139,7 @@ ASSERT MAP socket_map HAS COUNT 0
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 120        # size
+  h4 128        # size
   ? 8           # ktime
 
   ## tuple
@@ -151,6 +169,12 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+
+  ## socket flags
+  h4 0x01 # connect
+
+  h4 0x00 # pad
+
   $ 00 00 00 00
   # ^ Where is the padding coming from?
 END
@@ -159,7 +183,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 120        # size
+  h4 128        # size
   ? 8           # ktime
 
   ## tuple
@@ -190,6 +214,12 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+
+  ## socket flags
+  h4 0x04 # listen
+
+  h4 0x00 # pad
+
   $ 00 00 00 00
   # ^ Where is the padding coming from?
 END

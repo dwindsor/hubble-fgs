@@ -226,6 +226,14 @@ struct msg_calltrace {
 
 #define TLS_HTTP_VERSION          0xFFFF
 
+/* Socket Flags */
+#define SOCKFLAGS_TYPE_UNKNOWN	0x0
+#define SOCKFLAGS_TYPE_CONNECT	0x1
+#define SOCKFLAGS_TYPE_ACCEPT	0x2
+#define SOCKFLAGS_TYPE_LISTEN	0x4
+
+#define SOCKFLAGS_TYPE_MASK	0x7
+
 /* A length-value, with a fixed max length. */
 #define FLV(max_len) \
 	struct { \
@@ -342,6 +350,8 @@ struct msg_ipv4_event {
 	struct msg_execve_key key;
 	__u64                 socket_cookie;
 	struct msg_socket_stats stats;
+	__u32                 socket_flags;
+	__u32                 pad;
 } __attribute__((packed));
 
 struct msg_ipv4_key {
@@ -493,6 +503,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
 struct socketmap_value {
 	struct msg_execve_key key;
 	__u32 zero_window;
+	__u32 socket_flags;
 };
 
 #ifdef BTF

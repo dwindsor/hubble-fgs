@@ -226,6 +226,14 @@ const (
 	TlsCertificateErrorSpuriousCerts = 0x2000
 )
 
+// Socket Flags
+const (
+	SOCKFLAGS_TYPE_UNKNOWN = 0x0
+	SOCKFLAGS_TYPE_CONNECT = 0x1
+	SOCKFLAGS_TYPE_ACCEPT  = 0x2
+	SOCKFLAGS_TYPE_LISTEN  = 0x4
+)
+
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
 type MsgCommon struct {
 	Op    uint8
@@ -303,6 +311,8 @@ type MsgIPv4Event struct {
 	ProcessKey  MsgExecveKey
 	SockCookie  uint64
 	SocketStats MsgSocketStats
+	SocketFlags uint32
+	Pad         uint32
 }
 
 type MsgDns struct {
@@ -384,6 +394,7 @@ type MsgIPv4EventUnix struct {
 	ProcessKey  MsgExecveKey
 	SockCookie  uint64
 	SocketStats MsgSocketStatsUnix
+	SocketFlags uint32
 }
 
 type MsgInterfaceStats struct {

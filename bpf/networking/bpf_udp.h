@@ -102,6 +102,8 @@ void emit_udp_event(void *ctx, int op, struct udp_info_key *k, struct udp_info_v
 		.stats.bytes_sent = v->tx_bytes,
 		.stats.bytes_received = v->rx_bytes,
 		.stats.sk_drops = v->sk_drops,
+		.socket_flags = 0,
+		.pad = 0,
 	};
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	return;

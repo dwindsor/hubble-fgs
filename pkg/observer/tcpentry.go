@@ -63,7 +63,7 @@ type SocketMapValue struct {
 	Pad1    uint32
 	Ktime   uint64
 	ZeroWin uint32
-	Pad2    uint32
+	SFlags  uint32
 }
 
 func bpfIpToString(ip uint32) string {
@@ -222,7 +222,7 @@ func (k *Observer) writeSockMap(tcp *api.MsgIPv4EventUnix, m *bpf.Map, uid uint6
 		Pad1:    0,
 		Ktime:   tcp.ProcessKey.Ktime,
 		ZeroWin: 0,
-		Pad2:    0,
+		SFlags:  0,
 	}
 	m.Update(key, val)
 }

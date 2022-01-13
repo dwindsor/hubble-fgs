@@ -534,6 +534,30 @@ func (e *eventChainChecker) HasProtocol(proto fgs.SocketProtocol) *eventChainChe
 	return e
 }
 
+func eventHasType(e fgsEvent, proto string) error {
+	if ev, ok := e.(interface {
+		GetSocketType() string
+	}); ok {
+		evProto := ev.GetSocketType()
+		if evProto == proto {
+			return nil
+		}
+		return fmt.Errorf("Expecting Type %s but %T has %s", proto, ev, evProto)
+	}
+	return fmt.Errorf("type %T does not have Type", e)
+}
+
+func (e *eventChainChecker) HasType(proto string) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasType(e, proto)
+	}
+	return e
+}
+
 func checkPort(port uint32, val *wrapperspb.UInt32Value) error {
 	if val == nil {
 		return fmt.Errorf("%d does not match nil value", port)

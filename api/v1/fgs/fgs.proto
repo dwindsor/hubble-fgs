@@ -143,6 +143,7 @@ message ProcessClose {
     SocketStats stats = 9;
     Pod destination_pod = 10;
     SocketProtocol protocol = 11;
+    string socket_type = 12;
 }
 
 message ProcessListen {

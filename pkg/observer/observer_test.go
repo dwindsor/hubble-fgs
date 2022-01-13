@@ -102,6 +102,14 @@ func TestConnectEvent(t *testing.T) {
 			HasDstPort(80).
 			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
+		ec.NewCloseEventChecker().
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
+			HasDstIP("127.0.0.1").
+			HasDstPort(80).
+			HasProtocol(fgs.SocketProtocol_TCP).
+			HasType("connect").
+			End(),
 	)
 
 	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
@@ -408,6 +416,7 @@ func TestListenAcceptClose(t *testing.T) {
 			HasSrcIP("0.0.0.0").
 			HasSrcPort(8081).
 			HasProtocol(fgs.SocketProtocol_TCP).
+			HasType("listen").
 			End(),
 		// TODO: it would be good if we could also check the close event on
 		// the accept socket, but it goes into TIME_WAIT and then
@@ -625,6 +634,19 @@ func TestDockerListenConnect(t *testing.T) {
 			HasDstPort(8081).
 			HasSrcPort(9876).
 			HasProtocol(fgs.SocketProtocol_TCP).
+			End(),
+		ec.NewCloseEventChecker().
+			HasProcess(ncSrvChecker).
+			HasSrcIP("0.0.0.0").
+			HasSrcPort(8081).
+			HasType("listen").
+			End(),
+		ec.NewCloseEventChecker().
+			HasProcess(ncCliChecker).
+			HasDstPort(8081).
+			HasSrcPort(9876).
+			HasProtocol(fgs.SocketProtocol_TCP).
+			HasType("connect").
 			End(),
 	)
 
