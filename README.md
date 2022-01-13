@@ -1,12 +1,61 @@
 # Hubble-FGS: The Hubble Fine Guidance Sensors
 
-"
-The Fine Guidance Sensor (FGS) is an optical sensor used on the Hubble Space
-Telescope to provide pointing information for the spacecraft and as a scientific
-instrument for astrometric science
-"
+> The Fine Guidance Sensor (FGS) is an optical sensor used on the Hubble Space
+> Telescope to provide pointing information for the spacecraft and as a scientific
+> instrument for astrometric science
 
-## Docker
+FGS is the internal name for the Cilium enterprise
+([soon](https://github.com/isovalent/hubble-fgs/pull/961) to be partly
+open-sourced) component that enables enhanced visibility into in-kernel
+process events via eBPF.
+
+Some of the features of FGS are:
+
+ * Maintains the process hierarchy, and makes it available on the various
+   events it generates
+
+ * Supports a variety of different types of events
+     - process events (e.g., exec)
+     - network events (e.g., connect, listen, etc.)
+     - protocol-specific events:
+       [TLS](bpf/parsers/tls),
+       [HTTP and HTTP/2](bpf/parsers/http),
+       [DNS](https://github.com/isovalent/hubble-fgs/pull/895)
+
+  * Supports generic kprobe and tracepoint events. These events are called
+    "generic events" because they allow users, via a proper configuration, to
+    to insert functionality on arbitrary points in the kernel (mainly on
+    functions/tracepoints).
+
+    Users can define where the hooks are added (e.g., in what system calls) and
+    what they do. Typically they will generate events exported by FGS, but they
+    can also take other actions (e.g., send the KILL signal). Users can also
+    define what information is added into generated events (e.g., function
+    arguments/return value), filters that define certain conditions of when the
+    action hooks are triggerd (e.g., generate events only for specific PIDs or
+    when arguments have specific values). There is also support for extracting
+    information that is not avaialble via normal means: such as the buffers of
+    system calls, filenames based on fd arguments, and others.
+
+    The configuration specification for above events can be found in the CRD
+    [spec](k8s/apis/isovalent.com/client/crds/v1alpha1/isovalent.com_tracingpolicies.yaml).
+    There are also [examples](/crds/examples/) of how the CRD can be used to configure FGS, not
+    only for the generic events, but also for other parsers (e.g., TLS).
+
+
+
+## BTF
+
+FGS distributes its bpf programs as object files. As a result, it depends on
+proper relocations (e.g., for struct offsets) that depend on internal kernel
+information. This enformation is encoded using
+[BTF](https://facebookmicrosites.github.io/bpf/blog/2020/02/19/bpf-portability-and-co-re.html).
+Have a look at [the
+README](https://github.com/isovalent/hubble-builder/tree/master/fgs-btf/README.md)
+of the  [hubble-builder](https://github.com/isovalent/hubble-builder/)
+repository for more details.
+
+## Exeucte FGS via Docker
 
 To run docker image with custom BTF link btf in /var/lib/hubble-fgs/btf as shown
 below. If BTF link is omitted hubble-fgs will attempt to search for it in the
@@ -124,6 +173,51 @@ should be added so we can skip this step. It is a bit useful to replace a progra
 on a system with a new test program, but its also a bit annoying on the code side.
 
 ## Running FGS
+
+### By Building it on a Linux machine
+
+FGS has two components to build:
+  * the bpf programs under `./bpf` (written in C)
+  * the agent code (written in go)
+
+The bpf programs require to be compiled with a custom version of `clang`. The
+agent uses cgo and a custom version of libbpf to load the programs. There are
+docker containers that include binary versions the custom `clang` and `libbpf`.
+
+On a Linux machine, they can be installed using `make  tools-install`:
+
+```
+$ make tools-install
+mkdir -p ./lib
+docker cp 7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so ./lib
+docker cp 7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 ./lib
+docker cp 7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 ./lib
+docker stop 7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5
+7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5
+mkdir -p ./bin
+docker cp f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510:/usr/local/bin/clang-11 ./bin/clang
+docker cp f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510:/usr/local/bin/llc ./bin/llc
+docker stop f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510
+f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510
+```
+
+And then used to build and run FGS locally:
+
+```
+$ PATH=$(pwd)/bin:$PATH  make
+...
+$ sudo sh -c 'LD_LIBRARY_PATH=./lib ./hubble-fgs --hubble-lib ./bpf/objs'
+```
+
+Once the agent (`./hubble-fgs`) is running, events can be observerd using the
+`./hubble-enterprise` cli:
+
+```
+$ ./hubble-enterprise getevents
+{"process_exec":{"process":{"exec_id":"OjMwNTIxMjQ0NzUxMDg4MDoyNTEzMjE=","pid":251321," ...
+```
+
+Or by passing an `--export-filename` flag to the agent.
 
 ### GKE
 
@@ -249,3 +343,13 @@ Another often arising issue is having BPF programs rejected on older kernels.
 To aid with testing FGS on arbitrary kernel versions we have tooling around
 qemu-kvm in `contrib/vmtest` that allows running the fgs-bench against a
 kernel compiled from sources. See `contrib/vmtest/README.md` for more info.
+
+## More Info
+ * Natalia's blog about  [cntainer escape](https://www.isovalent.com/blog/post/2021-11-container-escape)
+ * [https://docs.isovalent.com/quick-start/security_visibility.html](https://docs.isovalent.com/quick-start/security_visibility.html)
+ * Talk: Join the FGS ci force side, by the Jedi master John. [Recording](https://drive.google.com/file/d/1fEtpjQoKURTHp5me78egs01cxTTVhi0Z/view?usp=sharing) and [Slides](https://docs.google.com/presentation/d/1Kw2EqHSuvPwDO5Fv6PbhlSUdTdYBWflBXVqzjqg9T6w/edit?usp=sharing).
+ * Video recordings by Kornilios:
+    * [FGS events and other info](https://drive.google.com/drive/folders/1ZwsXk9vEmmofhrfSOGLDSWBRIcvdrl1b)
+    * [the followfd primitive for generic kprobes](https://drive.google.com/drive/folders/1Vq7GHREAEf358IikZT32uVYmGlwoWO7T)
+    * [event checker demo](https://drive.google.com/drive/folders/1Gwqpv9BICP3nVoJlFBZVVqg8V7FVKaBW)
+
