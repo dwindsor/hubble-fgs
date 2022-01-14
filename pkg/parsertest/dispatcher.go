@@ -93,6 +93,7 @@ func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) error {
 	defer ed.UnsubscribeAll()
 
 	ready <- true
+	done := ctx.Done()
 
 	evRecv := func(msg *bpf.PerfEventSample, cpu int) {
 		data := msg.DataDirect()
@@ -101,7 +102,10 @@ func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) error {
 		ed.Lock()
 		for _, sub := range ed.subs {
 			if sub.Op == op {
-				sub.Events <- data
+				select {
+				case sub.Events <- data:
+				case <-done:
+				}
 			}
 		}
 		ed.Unlock()

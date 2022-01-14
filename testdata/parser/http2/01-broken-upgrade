@@ -1,0 +1,162 @@
+TAGS broken
+
+EGRESS
+  "GET / HTTP/1.1\r\n"
+  "Host: foobar.baz\r\n"
+  "Connection: Upgrade, HTTP2-Settings\r\n"
+  "Upgrade: h2c\r\n"
+  "HTTP2-Settings: foobar\r\n"
+  "\r\n"
+END
+
+INGRESS
+  "HTTP/1.1 101 Switching Protocols\r\n"
+  "Connection: Upgrade\r\n"
+  "Upgrade: h2c\r\n"
+  "\r\n"
+
+  # The server connection preface:
+  ### Stream: SETTINGS, Stream ID: 0, Length 18
+  $ 00 00 12 # Length: 18
+  $ 04       # Type: SETTINGS (4)
+  $ 00       # Flags: 0x00
+  $ 00 00 00 00 # 0... .... .... .... .... .... .... .... = Reserved: 0x0
+  ### Settings - Enable PUSH : 0
+  $ 00 02       # Settings Identifier: Enable PUSH (2)
+  $ 00 00 00 00 # Enable PUSH: 0
+  ### Settings - Initial Windows size : 4194304
+  $ 00 04       # Settings Identifier: Initial Windows size (4)
+  $ 00 40 00 00 # Initial Windows Size: 4194304
+  ### Settings - Max header list size : 10485760
+  $ 00 06       # Settings Identifier: Max header list size (6)
+  $ 00 a0 00 00 # Max header list size: 10485760
+END
+
+EGRESS
+  "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n"
+
+  ### Stream: SETTINGS, Stream ID: 0, Length 18
+  $ 00 00 12 # Length: 18
+  $ 04       # Type: SETTINGS (4)
+  $ 00       # Flags: 0x00
+  $ 00 00 00 00 # 0... .... .... .... .... .... .... .... = Reserved: 0x0
+  ### Settings - Enable PUSH : 0
+  $ 00 02       # Settings Identifier: Enable PUSH (2)
+  $ 00 00 00 00 # Enable PUSH: 0
+  ### Settings - Initial Windows size : 4194304
+  $ 00 04       # Settings Identifier: Initial Windows size (4)
+  $ 00 40 00 00 # Initial Windows Size: 4194304
+  ### Settings - Max header list size : 10485760
+  $ 00 06       # Settings Identifier: Max header list size (6)
+  $ 00 a0 00 00 # Max header list size: 10485760
+END
+
+#
+# Now send the actual request over the upgraded HTTP/2 connection,
+# and check that we see it from both the client and server perspective.
+#
+
+EGRESS
+  ### Stream: HEADERS, Stream ID: 3, Length 47, POST /
+  $ 00 00 2f # Length: 47
+  $ 01       # Type: HEADERS (1)
+  $ 04       # Flags: 0x04, End Headers
+  $ 00 00 00 03 # Stream ID: 3
+  $ 41 89 08 9d 5c 0b 81 70 dc 78
+  $ 1f 83 84 86 5f 87 49 7c a5 8a e8 19 aa 5c 02 31 31 50 83 9b d9 ab 7a 8d c4 75 a7 4a 6b 58 94 18 b5 25 81 2e 0f
+END
+
+# Event from the client socket
+EVENT HTTP
+  ## Common
+  $ 10 00 00 00 # op + pad
+  h4 1116       # size
+  ? 8           # ktime
+
+  ## Tuple
+  A CLI_ADDR                # saddr
+  A SRV_ADDR                # daddr
+  A SRV_PORT                # dport
+  A CLI_PORT_HOST           # sport (host-order)
+  $ 00 00 00 00             # remaining (HTTP_SEND)
+  $ 00 00 00 00 00 00 00 00 # uid
+
+  ## Process
+  $ ?? ?? ?? ??             # pid
+  $ 00 00 00 00             # pad
+  $ ef be ad de 04 03 02 01 # ktime
+
+  # TODO: Here we're expecting the HTTP parser to ignore the connection
+  # upgrade and parse the subsequent HTTP/2 frames correctly.
+  # This is unimplemented yet, hence this test is marked broken and half-finished.
+
+  h4 0xc # PRI method
+  # ...
+
+  ? 1056
+END
+
+# Event from the server socket
+EVENT HTTP
+  ## Common
+  $ 10 00 00 00 # op + pad
+  h4 1116       # size
+  ? 8           # ktime
+
+  # TODO: Fill this in
+
+  ? 1100
+END
+
+#
+# Now send the response from the server and again check events for both client and server.
+#
+
+INGRESS
+  ### Stream: HEADERS, Stream ID: 3, Length 49, 200 OK
+  $ 00 00 31 # Length: 49
+  $ 01       # Type: HEADERS (1)
+  $ 04       # Flags: 0x04, End Headers
+  $ 00 00 00 03 #  Stream ID: 3
+
+  $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a
+  $ 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
+END
+
+# Event from the server socket
+EVENT HTTP
+  ## Common
+  $ 10 00 00 00 # op + pad
+  h4 1116       # size
+  ? 8           # ktime
+
+  ## Tuple
+  A SRV_ADDR                # saddr
+  A CLI_ADDR                # daddr
+  A CLI_PORT                # dport
+  A SRV_PORT_HOST           # sport (host-order)
+  $ 01 00 00 00             # remaining (HTTP_RECV)
+  $ 00 00 00 00 00 00 00 00 # uid
+
+  ? 1100
+END
+
+# Event from the client socket
+EVENT HTTP
+  ## Common
+  $ 10 00 00 00 # op + pad
+  h4 1116       # size
+  ? 8           # ktime
+
+  ## Tuple
+  A CLI_ADDR                # saddr
+  A SRV_ADDR                # daddr
+  A SRV_PORT                # dport
+  A CLI_PORT_HOST           # sport (host-order)
+  $ 01 00 00 00             # remaining (HTTP_RECV)
+  $ 00 00 00 00 00 00 00 00 # uid
+
+  # TODO: Fill this in
+  ? 1100
+END
+

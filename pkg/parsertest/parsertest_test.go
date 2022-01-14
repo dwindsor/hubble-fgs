@@ -34,6 +34,9 @@ const (
 // by changing working directory upwards towards /.
 var testsRoot = "testdata/parser"
 
+// Number of times to execute each test case. Useful to execute each test multiple
+// times to make sure no events are left unhandled and that parser's work over multiple
+// runs.
 var numRunsPerTestcase = 3
 
 const (
@@ -216,18 +219,26 @@ func runTests(t *testing.T, sensor int, dir string) {
 				return nil
 			}
 
-			for i := 0; i < numRunsPerTestcase; i++ {
-				t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
-					tc, err := ParseTestCase(path.Join(testsRoot, relpath))
-					if err != nil {
-						t.Fatal(err)
-					}
+			ok := true
+			for i := 0; i < numRunsPerTestcase && ok; i++ {
+				tc, err := ParseTestCase(path.Join(testsRoot, relpath))
+				if err != nil {
+					t.Fatal(err)
+				}
 
+				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
 					err = tc.Run(t, dispatcher, testTimeout)
 					if err != nil {
-						t.Fatal(err)
+						if tc.IsBroken() {
+							t.Skipf("Broken test failed as expected:\n%s", err)
+						} else {
+							t.Fatal(err)
+						}
+					} else if tc.IsBroken() {
+						t.Skip("Broken test succeeded, consider dropping 'broken' tag?")
 					}
 				})
+				ok = ok && !tc.IsBroken()
 			}
 			return nil
 		})
