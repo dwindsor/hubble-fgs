@@ -1,0 +1,32 @@
+# Public key for ssh
+PUBKEY="$HOME/.ssh/id_rsa.pub"
+# Path to store the created vm image
+ROOTIMG="img/kvm.img"
+# Path to mount the created image for chroot + debootstrap
+MNTDIR=mnt
+# Packages to install with debootstrap
+PACKAGES=("less" "vim" "sudo" "openssh-server" "python3" "curl" "iptables" "build-essential" "libelf-dev")
+
+# Disk size for the VM
+# This currently needs to be at least 13GiB to support running in KinD
+# and at least 4GiB to run FGS locally.
+VMDISK=16G
+# RAM for the VM
+VMRAM=4G
+# Number of CPUs to the use for the VM
+VMCPUS="$(($(nproc) / 2))"
+# MAC address for VM's NIC
+MACADDR="52:54:00:12:34:56"
+# Port to use for SSH on the host
+SSHPORT=3000
+
+# Name of kernel config to use
+KCONFIG=kernel.config
+# Path to download kernel sources
+KSRCDIR=.ksrc
+# Path place kernel bzImage and bpftool
+KOUT=kout
+# Path to install kernel modules
+MODULESDIR=modules
+
+# vi:ft=sh #

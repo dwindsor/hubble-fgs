@@ -3,3 +3,4 @@ mnt
 bin
 ksrc
 kbuild
+contrib/kvm
