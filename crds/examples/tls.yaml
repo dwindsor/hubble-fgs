@@ -24,5 +24,6 @@ spec:
         - 443
     udp:
       enable: true
+      cgroup: true
     dns:
       enable: true
