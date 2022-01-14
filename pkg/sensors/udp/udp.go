@@ -95,6 +95,30 @@ var (
 		"cgrp_ingress",
 	)
 
+	InetSendLazy = sensors.ProgramBuilder(
+		"bpf_inet_send_lazy.o",
+		"inet_lazy_send",
+		"inet_lazy_send",
+		"cgroup_skb/egress",
+		"cgroup_skb_egress",
+
+		false,
+		true,
+		"cgrp_egress",
+	)
+
+	InetRecvLazy = sensors.ProgramBuilder(
+		"bpf_inet_send_lazy.o",
+		"inet_lazy_recv",
+		"inet_lazy_recv",
+		"cgroup_skb/ingress",
+		"cgroup_skb_ingress",
+
+		false,
+		true,
+		"cgrp_ingress",
+	)
+
 	UdpSend = sensors.ProgramBuilder(
 		"bpf_udp_sendmsg.o",
 		"udp_sendmsg",
@@ -276,18 +300,6 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	udpValue := v.(*udpInfoValue)
 	udpKey := k.(*udpInfoKey)
 
-	// When FGS starts we add cookies to sockets as we see
-	// them. But, for some time after starting its possible
-	// that the IP hooks see flows without a cookie. At
-	// this point the flow is not unique and as a result we
-	// may end up accumulating bytes in the wrong buckets.
-	// Instead lets simply omit these metrics. Note, we
-	// never unload our socket cookie stamper program so
-	// restarts will not cause this condition.
-	if udpKey.Cookie == 0 {
-		return
-	}
-
 	t, err := reader.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("time", udpValue.Ktime).Warn("UDP NanoTimeSince failed.")
@@ -378,6 +390,8 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 
 	if !kernels.MinKernelVersion("5.10.0") || !cgroup {
 		progs = []*sensors.Program{
+			InetSendLazy,
+			InetRecvLazy,
 			UdpSend,
 			UdpRetSend,
 			UdpRecv,

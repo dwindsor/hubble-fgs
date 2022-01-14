@@ -163,6 +163,22 @@ struct udp_info_key *udp4_get_skb_key(struct pt_regs *ctx, int *len)
 	return key;
 }
 
+static inline __attribute__((always_inline))
+int add_process_ctx(struct udp_info_value *value)
+{
+	struct execve_map_value *process;
+	bool walker;
+	u32 ppid;
+
+	process = event_find_curr(&ppid, 0, &walker);
+	if (process) {
+		value->pid = process->key.pid;
+		value->pid_ktime = process->key.ktime;
+		return 1;
+	}
+	return 0;
+}
+
 __attribute__((section(("kprobe/skb_consume_udp")), used))
 int udp4_recv(struct pt_regs *ctx)
 {
@@ -176,25 +192,28 @@ int udp4_recv(struct pt_regs *ctx)
 
 	value = map_lookup_elem(&udp_map, key);
 	if (!value) {
-		struct execve_map_value *process;
-		int zero = 0;
-		bool walker;
-		u32 ppid;
+		int hasctx, zero = 0;
 
 		value = map_lookup_elem(&udp_value_heap, &zero);
 		if (!value)
 			return 0;
 
 		udp_info_consumed_reset(value, len);
-		process = event_find_curr(&ppid, 0, &walker);
-		if (process) {
-			value->pid = process->key.pid;
-			value->pid_ktime = process->key.ktime;
-		}
+		hasctx = add_process_ctx(value);
 		map_update_elem(&udp_map, key, value, 0);
-		emit_udp_connect_event(ctx, key, value);
+		if (hasctx)
+			emit_udp_connect_event(ctx, key, value);
 	} else {
 		update_consumed_value(value, len);
+		if (!value->pid) {
+			/* If ctx lookup fails here something is very wrong,
+			 * it means exec path failed to build the process
+			 * tree. So post an event so we at least get something
+			 * in user land.
+			 */
+			add_process_ctx(value);
+			emit_udp_connect_event(ctx, key, value);
+		}
 	}
 	return 0;
 }

@@ -7,7 +7,7 @@ spec:
     udp:
       enable: true
       cgroup: true
-      statsinterval: 20
-      deleteidlesocketinterval: 60
+      statsInterval: 20
+      deleteIdleSocketInterval: 60
     dns:
       enable: true
