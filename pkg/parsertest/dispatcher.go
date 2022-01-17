@@ -104,6 +104,7 @@ func (ed *EventDispatcher) UnsubscribeAll() {
 func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) {
 	defer ed.UnsubscribeAll()
 	ready <- true
+	done := ctx.Done()
 
 	for ctx.Err() == nil {
 		record, err := ed.perfReader.Read()
@@ -119,7 +120,12 @@ func (ed *EventDispatcher) Run(ctx context.Context, ready chan bool) {
 			ed.Lock()
 			for _, sub := range ed.subs {
 				if sub.Op == op {
-					sub.Events <- record.RawSample
+					select {
+					case sub.Events <- record.RawSample:
+					case <-done:
+						ed.Unlock()
+						return
+					}
 				}
 			}
 			ed.Unlock()

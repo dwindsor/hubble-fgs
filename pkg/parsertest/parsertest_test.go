@@ -98,6 +98,8 @@ type SensorsHandle struct {
 }
 
 func (h *SensorsHandle) Close() {
+	h.cancel()
+
 	bpfDir := bpf.MapPrefixPath()
 	for _, l := range h.sensor.Progs {
 		sensors.RemoveProgram(bpfDir, l)
@@ -180,6 +182,7 @@ func addSelfToEvecveMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenMap: %s\n", err)
 	}
+	defer m.Close()
 
 	pid := uint32(os.Getpid())
 	ppid := uint32(os.Getppid())
