@@ -19,9 +19,12 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/perf"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
@@ -46,6 +49,13 @@ const (
 	// limit is required for HTTP/2 parsing to function correctly
 	// which relies on frame ordering (it does limited reordering)
 	maxEventsPerRing = 4
+
+	perCPUBufferBytes = 65535
+
+	// Use cilium/ebpf to read events from the perf ring. Since we're
+	// incrementally rolling this out we're keeping the old code functional
+	// in case we need to quickly roll back.
+	useCiliumEbpfReader = true
 )
 
 var (
@@ -207,8 +217,7 @@ func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
 	return execUnix, false, nil
 }
 
-func (k *Observer) receiveEvent(msg *bpf.PerfEventSample, cpu int) {
-	data := msg.DataDirect()
+func (k *Observer) receiveEvent(data []byte, cpu int) {
 	var op uint8 = data[0]
 	var empty bool
 
@@ -346,7 +355,7 @@ func (k *Observer) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, erro
 }
 
 func (k *Observer) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) error {
-	receiveEvent := k.receiveEvent
+	receiveEvent := func(msg *bpf.PerfEventSample, cpu int) { k.receiveEvent(msg.DataDirect(), cpu) }
 	observerLost := k.observerLost
 	observerError := k.observerError
 	pollTimeoutMsec := int(pollTimeout / time.Millisecond)
@@ -388,6 +397,58 @@ func (k *Observer) runEvents(stopCtx context.Context) error {
 	defer e.CloseAll()
 	k.__loopEvents(stopCtx, e)
 	return nil
+}
+
+func (k *Observer) runEventsNew(stopCtx context.Context, ready func()) error {
+	pinOpts := ebpf.LoadPinOptions{}
+
+	perfMap, err := ebpf.LoadPinnedMap(k.perfConfig.MapName, &pinOpts)
+	if err != nil {
+		return fmt.Errorf("opening pinned map failed: %w", err)
+	}
+	defer perfMap.Close()
+
+	perfReader, err := perf.NewReader(perfMap, perCPUBufferBytes)
+	if err != nil {
+		return fmt.Errorf("creating perf array reader failed: %w", err)
+	}
+
+	// Inform caller that we're about to start processing events.
+	k.observerListeners(&api.MsgFGSReady{})
+	ready()
+
+	// Start reading records from the perf array. Reads until the reader is closed.
+	var wg sync.WaitGroup
+	wg.Add(1)
+	defer wg.Wait()
+	go func() {
+		defer wg.Done()
+		for stopCtx.Err() == nil {
+			record, err := perfReader.Read()
+			if err != nil {
+				// NOTE(JM): Keeping the old behaviour for now and just counting the errors without stopping
+				if stopCtx.Err() == nil {
+					k.errorCntr++
+					metrics.RingBufPerfEventErrors.WithLabelValues().Set(float64(k.errorCntr))
+					k.log.WithError(err).Warn("kprobe events read failed")
+				}
+			} else {
+				if len(record.RawSample) > 0 {
+					k.receiveEvent(record.RawSample, record.CPU)
+					metrics.RingBufPerfEventReceived.WithLabelValues().Set(float64(k.recvCntr))
+				}
+
+				if record.LostSamples > 0 {
+					k.lostCntr += int(record.LostSamples)
+					metrics.RingBufPerfEventLost.WithLabelValues().Set(float64(k.lostCntr))
+				}
+			}
+		}
+	}()
+
+	// Wait for context to be cancelled and then stop.
+	<-stopCtx.Done()
+	return perfReader.Close()
 }
 
 func prependPath(s string, b []byte) []byte {
@@ -478,8 +539,14 @@ func (k *Observer) Start(ctx context.Context) error {
 		return fmt.Errorf("hubble-fgs, aborting sample config error: %w", err)
 	}
 	k.populateExecve(ctx)
+
 	k.perfConfig = bpf.DefaultPerfEventConfig()
-	if err := k.runEvents(ctx); err != nil {
+	if useCiliumEbpfReader {
+		err = k.runEventsNew(ctx, func() {})
+	} else {
+		err = k.runEvents(ctx)
+	}
+	if err != nil {
 		return fmt.Errorf("hubble-fgs, aborting runtime error: %w", err)
 	}
 	return nil

@@ -289,14 +289,11 @@ func LoopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, obs *Observer, ctx
 	execWG.Add(1)
 	go func() {
 		defer exitWG.Done()
-		e, err := obs.__runEvents(ctx)
-		if err != nil {
+
+		if err := obs.runEventsNew(ctx, func() { execWG.Done() }); err != nil {
 			RemovePrograms(obs.bpfDir, obs.mapDir)
 			t.Fatalf("runEvents error: %s", err)
 		}
-		defer e.CloseAll()
-		execWG.Done()
-		obs.__loopEvents(ctx, e)
 	}()
 }
 
