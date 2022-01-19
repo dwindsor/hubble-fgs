@@ -148,8 +148,28 @@ func DecodeCommonFlags(flags uint32) []string {
 	if (flags & api.EventDockerCgroupsErr) != 0 {
 		s = append(s, "errorDockerCgroups")
 	}
-
+	if (flags & api.EventErrorMountPoints) != 0 {
+		s = append(s, "errorMountsResolutionCwd")
+	}
+	if (flags & api.EventErrorPathComponents) != 0 {
+		s = append(s, "errorPathResolutionCwd")
+	}
 	return s
+}
+
+func FilePathFlagsToStr(flags uint32) string {
+	var retval string
+
+	if (flags & api.UnresolvedMountPoints) != 0 {
+		retval += "unresolvedMountPoints"
+	}
+	if (flags & api.UnresolvedPathComponents) != 0 {
+		if len(retval) > 0 {
+			retval += " "
+		}
+		retval += "unresolvedPathComponents"
+	}
+	return retval
 }
 
 func DiffKtime(start, end uint64) time.Duration {

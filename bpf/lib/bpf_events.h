@@ -22,6 +22,8 @@ enum bpf_enum_value_kind {
 
 #include "bpf_core_read.h"
 
+#define MAX_MOUNT_POINTS 32
+
 static inline void compiler_barrier(void) {
 	asm volatile("" ::: "memory");
 }
@@ -210,7 +212,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 
 #define PROBE_CWD_READ_LOOP_HEADER				\
 	CWD_DENTRY_REG " = *(u64 *)%[dentry];\n"		\
-	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];\n"		\
+	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];\n" \
 	CWD_OFFSET_REG " = *(u32 *)%[offset];\n"
 
 #define PROBE_CWD_READ	  	   			\
@@ -228,6 +230,8 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"if r4 == 0x0 goto %l[a];\n"			\
 	/* if (vfsmnt_dentry && dentry == vfsmnt_dentry) { */ \
 	"if " CWD_VFSMNT_DENTRY_REG " == " CWD_DENTRY_REG " goto %l[a];\n" \
+	/* if (dentry == dentry->d_parent) { */	\
+	"if r4 == " CWD_DENTRY_REG " goto %l[a];\n" \
 	/* name = &dentry->d_name; */			\
 	/* dentry = parent; */				\
 	/* probe_read(&dname, sizeof(dname), &name->name); */ \
@@ -262,19 +266,27 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"if r0 s< 1 goto %l[a];\n"			\
 	"r0 -= 1\n;"					\
 	CWD_OFFSET_REG " += r0;\n"			\
-	"*(u32 *)%[offset] = " CWD_OFFSET_REG ";\n"
+	"*(u32 *)%[offset] = " CWD_OFFSET_REG ";\n" \
+	/* count iterations */ \
+	"r3 = *(u32 *)%[iter];\n"		\
+	"r3 += 1;\n" \
+	"*(u32 *)%[iter] = r3;\n"
 
 #define offsetof_btf(s, memb) \
 	((size_t)((char *)_(&((s *)0)->memb) - (char *)0))
 
+#define container_of_btf(ptr, type, member) ({				\
+	void *__mptr = (void *)(ptr);					\
+	((type *)(__mptr - offsetof_btf(type, member))); })
+
 static inline __attribute__((always_inline))
-long getpath(void *curr, struct path path, volatile long offset)
+u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile u32 offset, u32 *flags)
 {
-	struct dentry *dentry, *vfsmnt_dentry;
 	long dentry_parent, dentry_name;
-	struct vfsmount *vfsmnt;
+	struct dentry *vfsmnt_dentry = 0;
 	char slash, *pslash;
 	long *ptr = 0;
+	volatile u32 iter = 0;
 
 	/* Verify complains if this is not a constant (compiler optimizes
 	 * us into a corner ottherwise). So for now note qstr->name is 8
@@ -285,9 +297,8 @@ long getpath(void *curr, struct path path, volatile long offset)
 	slash = '/';
 	pslash = &slash;
 
-	dentry = path.dentry;
-	vfsmnt = path.mnt;
-	probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), _(&vfsmnt->mnt_root));
+	if (vfsmnt)
+		probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), _(&vfsmnt->mnt_root));
 
 	dentry_parent = offsetof_btf(struct dentry, d_parent);
 	dentry_name = offsetof_btf(struct dentry, d_name);
@@ -317,21 +328,20 @@ long getpath(void *curr, struct path path, volatile long offset)
 	 */
 	asm volatile goto (
 			PROBE_CWD_READ_LOOP_HEADER
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
-			PROBE_CWD_READ
+			PROBE_CWD_READ /* 1 */
+			PROBE_CWD_READ /* 2 */
+			PROBE_CWD_READ /* 3 */
+			PROBE_CWD_READ /* 4 */
+			PROBE_CWD_READ /* 5 */
+			PROBE_CWD_READ /* 6 */
+			PROBE_CWD_READ /* 7 */
+			PROBE_CWD_READ /* 8 */
+			PROBE_CWD_READ /* 9 */
+			PROBE_CWD_READ /* 10 */
+			PROBE_CWD_READ /* 11 */
+			PROBE_CWD_READ /* 12 */
+			PROBE_CWD_READ /* 13 */
+#define PROBE_CWD_READ_ITERATIONS 13 /* should match the above */
 		:
 		: [pid]    "m"(curr),
 		  [vfsmnt] "m"(vfsmnt_dentry),
@@ -340,10 +350,91 @@ long getpath(void *curr, struct path path, volatile long offset)
 		  [slash]  "m"(pslash),
 		  [dentry_parent] "m"(dentry_parent),
 		  [dentry_name] "m"(dentry_name),
-		  [offset] "+m"(offset)
+		  [offset] "+m"(offset),
+		  [iter] "+m"(iter)
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9", "memory"
 		: a);
 a:
+	if (flags && iter >= PROBE_CWD_READ_ITERATIONS)
+		*flags |= UNRESOLVED_PATH_COMPONENTS;
+	return offset;
+}
+
+static inline __attribute__((always_inline))
+u32 mark_unresolved(void *curr, volatile u32 offset, struct mount *mnt, u32 *flags)
+{
+	struct mount *local_mnt;
+	struct dentry *dentry, *dentry_parent;
+
+	probe_read(&local_mnt, sizeof(struct mount *), _(&(mnt->mnt_parent)));
+	probe_read(&dentry, sizeof(struct dentry *),  _(&(local_mnt->mnt_mountpoint)));
+	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
+
+	if (dentry == dentry_parent) // IS_ROOT(dentry)
+		return offset;
+
+	if (flags)
+		*flags |= UNRESOLVED_MOUNT_POINTS;
+	return offset;
+}
+
+static inline __attribute__((always_inline))
+struct mount *real_mount(struct vfsmount *mnt)
+{
+	return container_of_btf(mnt, struct mount, mnt);
+}
+
+static inline __attribute__((always_inline))
+struct mount *follow_mount_point(struct mount *mnt, void *argp, u32 *size, u32 *flags)
+{
+	struct dentry *dentry, *dentry_parent;
+	struct mount *local_mnt;
+
+	if (!mnt)
+		return 0;
+
+	probe_read(&local_mnt, sizeof(struct mount *), _(&(mnt->mnt_parent)));
+	probe_read(&dentry, sizeof(struct dentry *),  _(&(local_mnt->mnt_mountpoint)));
+	*size = getpath(argp, dentry, 0, *size, flags);
+
+	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
+	if (dentry == dentry_parent) // IS_ROOT(dentry)
+		return 0;
+
+	return local_mnt;
+}
+
+static inline __attribute__((always_inline))
+u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
+{
+	struct path pwd;
+	struct mount *mnt;
+	struct dentry *dentry, *dentry_parent;
+	int i;
+
+	probe_read(&pwd, sizeof(pwd), path);
+	offset = getpath(argp, pwd.dentry,  pwd.mnt, offset, flags);
+
+	/* get first mount point through mnt->mnt_mountpoint */
+	mnt = real_mount(pwd.mnt);
+	probe_read(&dentry, sizeof(struct dentry *),  _(&(mnt->mnt_mountpoint)));
+	offset = getpath(argp, dentry, 0, offset, flags);
+
+	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
+	if (dentry != dentry_parent) { // !IS_ROOT(dentry)
+		// if (bpf_core_field_exists(task->cpus_ptr)) { // introduced in 5.3
+		if (0) {
+			for (i = 0; i < MAX_MOUNT_POINTS; ++i)
+				if((mnt = follow_mount_point(mnt, argp, &offset, flags)) == 0)
+					break;
+		} else {
+			// one more call to support at max 2 mount points
+			mnt = follow_mount_point(mnt, argp, &offset, flags);
+		}
+
+		offset = mark_unresolved(argp, offset, mnt, flags);
+	}
+
 	return offset;
 }
 
@@ -354,7 +445,7 @@ int64_t getcwd(struct event_execve *curr,
 	struct task_struct *task = get_task_from_pid(proc_pid);
 	__u32 orig_size = curr->size, orig_offset = offset;
 	struct fs_struct *fs;
-	struct path pwd;
+	u32 flags = 0;
 
 	probe_read(&fs, sizeof(fs), _(&task->fs));
 	if (!fs) {
@@ -362,13 +453,16 @@ int64_t getcwd(struct event_execve *curr,
 		return 0;
 	}
 
-	probe_read(&pwd, sizeof(pwd), _(&fs->pwd));
-	offset = getpath(curr, pwd, offset);
+	offset = get_full_path(_(&fs->pwd), curr, offset, &flags);
 	curr->size = offset;
 	// Unfortunate special case for '/' where nothing was added we need
 	// to truncate with '\n' for parser.
 	if (curr->size == orig_offset)
 		curr->flags |= EVENT_ROOT_CWD;
+	if (flags & UNRESOLVED_MOUNT_POINTS)
+		curr->flags |= EVENT_ERROR_MOUNT_POINTS;
+	if (flags & UNRESOLVED_PATH_COMPONENTS)
+		curr->flags |= EVENT_ERROR_PATH_COMPONENTS;
 
 	/* If the size was preallocated from user space side (ProcFS entry)
 	 * then we need to keep the same size so we can find parent/child
@@ -586,12 +680,6 @@ void event_args_builder(struct msg_execve_event *event)
 	}
 	//c->size -= base;
 	return;
-}
-
-static inline __attribute__((always_inline))
-void event_cwd_builder(struct event_execve *process, __u32 curr_pid)
-{
-	getcwd(process, process->size, process->pid, 0);
 }
 
 static inline __attribute__((always_inline))

@@ -212,11 +212,13 @@ message KprobeSkb {
 message KprobePath {
     string mount = 1;
     string path  = 2;
+    string flags = 3;
 }
 
 message KprobeFile {
     string mount = 1;
     string path  = 2;
+    string flags = 3;
 }
 
 message KprobeTruncatedBytes {

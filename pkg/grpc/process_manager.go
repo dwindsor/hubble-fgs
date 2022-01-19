@@ -559,13 +559,19 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 				a.Arg = &fgs.KprobeArgument_BytesArg{BytesArg: e.Value}
 			}
 		case api.MsgGenericKprobeArgFile:
+			filePath := strings.TrimSuffix(reader.SwapPath(e.Value), "/")
+			if len(filePath) > 0 && filePath[0] != '/' {
+				filePath = "/" + filePath
+			}
 			fileArg := &fgs.KprobeFile{
-				Path: strings.TrimSuffix(reader.SwapPath(e.Value), "/"),
+				Path:  filePath,
+				Flags: reader.FilePathFlagsToStr(e.Flags),
 			}
 			a.Arg = &fgs.KprobeArgument_FileArg{FileArg: fileArg}
 		case api.MsgGenericKprobeArgPath:
 			pathArg := &fgs.KprobePath{
-				Path: reader.SwapPath(e.Value),
+				Path:  reader.SwapPath(e.Value),
+				Flags: reader.FilePathFlagsToStr(e.Flags),
 			}
 			a.Arg = &fgs.KprobeArgument_PathArg{PathArg: pathArg}
 		default:

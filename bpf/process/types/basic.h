@@ -253,17 +253,41 @@ static inline __attribute__((always_inline))
 long copy_path(char *args, unsigned long arg)
 {
 	int *s = (int *)args;
-	struct path path;
-	long size;
+	u32 size = 0, flags = 0;
 
-	probe_read(&path, sizeof(path), (void *)arg);
-	size = getpath(&args[4], path, 0);
-	*s = (__u32)size;
+	size = get_full_path((void *)arg, &args[4], size, &flags);
+	*s = size;
 	if (size < 0)
 		return filter;
 	else if (size == 0)
 		return 0;
 	size += 4;
+
+	/*
+	 * the format of the path is:
+	 * -------------------------------
+	 * | 4 bytes | N bytes | 4 bytes |
+	 * | pathlen |  path   |  flags  |
+	 * -------------------------------
+	 * Next we set up the flags.
+	 */
+	asm volatile goto (
+		"r1 = *(u64 *)%[pid];\n" \
+		"r7 = *(u32 *)%[offset];\n" \
+		"if r7 s< 0 goto %l[a];\n" \
+		"if r7 s> 1188 goto %l[a];\n" \
+		"r1 += r7;\n" \
+		"r2 = *(u32 *)%[flags];\n" \
+		"*(u32 *)(r1 + 0) = r2;\n"
+		:
+		: [pid]    "m"(args),
+		  [flags]  "m"(flags),
+		  [offset] "+m"(size)
+		: "r0", "r1", "r2", "r7", "memory"
+		: a);
+a:
+	size += sizeof(u32); // for the flags
+
 	return size;
 }
 

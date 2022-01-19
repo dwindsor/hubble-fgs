@@ -643,6 +643,7 @@ HTTP PARSER
 | ----- | ---- | ----- | ----------- |
 | mount | [string](#string) |  |  |
 | path | [string](#string) |  |  |
+| flags | [string](#string) |  |  |
 
 
 
@@ -659,6 +660,7 @@ HTTP PARSER
 | ----- | ---- | ----- | ----------- |
 | mount | [string](#string) |  |  |
 | path | [string](#string) |  |  |
+| flags | [string](#string) |  |  |
 
 
 

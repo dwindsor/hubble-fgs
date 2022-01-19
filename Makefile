@@ -79,7 +79,7 @@ install:
 
 clean:
 	$(MAKE) -C ./bpf clean
-	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker
+	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:

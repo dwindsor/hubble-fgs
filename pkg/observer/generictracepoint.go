@@ -364,6 +364,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 		return err, 0
 	}
 	defer btfObj.Close()
+
 	btfAddEnumValue := func(s string, val int) error {
 		if ret := btfObj.AddEnumValue(s, val); ret < 0 {
 			return fmt.Errorf("failed to add %s=%d BTF value (error=%d)", s, val, ret)

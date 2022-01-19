@@ -19,6 +19,7 @@ const (
 type MsgGenericKprobeArgPath struct {
 	Index uint64
 	Value string
+	Flags uint32
 }
 
 func (m MsgGenericKprobeArgPath) GetIndex() uint64 {
@@ -32,6 +33,7 @@ func (m MsgGenericKprobeArgPath) IsReturnArg() bool {
 type MsgGenericKprobeArgFile struct {
 	Index uint64
 	Value string
+	Flags uint32
 }
 
 func (m MsgGenericKprobeArgFile) GetIndex() uint64 {

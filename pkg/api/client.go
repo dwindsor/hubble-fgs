@@ -190,6 +190,15 @@ const (
 	EventDockerSubsysCgrpErr = 0x040000
 	EventDockerSubsysErr     = 0x080000
 	EventDockerCgroupsErr    = 0x100000
+
+	// Errors in path resolution because we have limits due to program size
+	EventErrorMountPoints    = 0x200000
+	EventErrorPathComponents = 0x400000
+)
+
+const (
+	UnresolvedMountPoints    = 0x1
+	UnresolvedPathComponents = 0x2
 )
 
 // TLS supported version 8bit codes

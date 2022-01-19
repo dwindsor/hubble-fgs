@@ -252,6 +252,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		if err != nil {
 			return nil, err
 		}
+
 		ret := btfobj.AddEnum(genericFuncArgsEnum, 4)
 		if ret < 0 {
 			return nil, fmt.Errorf("Error add enum args (%s) failed %d", genericFuncArgsEnum, ret)
@@ -663,17 +664,41 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
-		case GenericFileType, GenericFdType:
+		case GenericFdType:
 			var arg api.MsgGenericKprobeArgFile
 
 			arg.Index = uint64(a.index)
-			arg.Value = handleGenericKprobeString(r)
+			arg.Value = handleGenericKprobeString(r) + "/"
+			unix.Args = append(unix.Args, arg)
+		case GenericFileType:
+			var arg api.MsgGenericKprobeArgFile
+			var flags uint32
+
+			arg.Index = uint64(a.index)
+			arg.Value = handleGenericKprobeString(r) + "/"
+
+			// read the first byte that keeps the flags
+			err := binary.Read(r, binary.LittleEndian, &flags)
+			if err != nil {
+				flags = 0
+			}
+
+			arg.Flags = flags
 			unix.Args = append(unix.Args, arg)
 		case GenericPathType:
 			var arg api.MsgGenericKprobeArgPath
+			var flags uint32
 
 			arg.Index = uint64(a.index)
-			arg.Value = handleGenericKprobeString(r)
+			arg.Value = handleGenericKprobeString(r) + "/"
+
+			// read the first byte that keeps the flags
+			err := binary.Read(r, binary.LittleEndian, &flags)
+			if err != nil {
+				flags = 0
+			}
+
+			arg.Flags = flags
 			unix.Args = append(unix.Args, arg)
 		case GenericFilenameType, GenericStringType:
 			var b int32
