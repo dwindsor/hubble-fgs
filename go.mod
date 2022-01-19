@@ -5,7 +5,7 @@ go 1.17
 require (
 	github.com/blang/semver v3.5.0+incompatible
 	github.com/cilium/cilium v1.7.0-rc2.0.20200311180626-711b37ed100c
-	github.com/cilium/ebpf v0.7.0
+	github.com/cilium/ebpf v0.8.1-0.20220125132352-732bf912e846
 	github.com/cilium/hubble v0.5.1
 	github.com/ckaznocha/protoc-gen-lint v0.2.1
 	github.com/fatih/color v1.7.0
