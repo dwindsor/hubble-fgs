@@ -1,6 +1,8 @@
 package grpc
 
 import (
+	"fmt"
+
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 )
@@ -23,7 +25,7 @@ func newDnsCache() (*dnsCache, error) {
 	}, nil
 }
 
-func (c *dnsCache) GetIp(ip string) []string {
+func (c *dnsCache) GetIp(ip string) ([]string, error) {
 	// There is a race we still need to handle where
 	// dnsEvent is handled after network event due to
 	// events happening on different cpus. To fix we
@@ -32,9 +34,9 @@ func (c *dnsCache) GetIp(ip string) []string {
 	// fix is TBD.
 	entry, ok := c.cache.Get(ip)
 	if !ok {
-		return nil
+		return nil, fmt.Errorf("no dns entry found")
 	}
-	return entry.([]string)
+	return entry.([]string), nil
 }
 
 func (c *dnsCache) AddIp(dns *fgs.DnsInfo) {

@@ -159,6 +159,7 @@ func (pm *ProcessManager) processCacheNeeded(proc *fgs.Process) bool {
 func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHttp {
 	var proc *fgs.Process
 	var code uint32
+	var err error
 
 	fgsHttpResponse := &fgs.HttpResponse{}
 	fgsHttpRequest := &fgs.HttpRequest{}
@@ -235,7 +236,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
-	fgsEvent.DestinationNames = pm.dns.GetIp(fgsEvent.Socket.DestinationIp)
+	fgsEvent.DestinationNames, _ = pm.dns.GetIp(fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -277,6 +278,7 @@ func (pm *ProcessManager) handleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetE
 
 func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	var proc *fgs.Process
+	var err error
 
 	processID := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	processInt, err := pm.cache.get(processID)
@@ -305,7 +307,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		Dns:     fgsDns,
 	}
 
-	fgsEvent.DestinationNames = pm.dns.GetIp(fgsEvent.Socket.DestinationIp)
+	fgsEvent.DestinationNames, _ = pm.dns.GetIp(fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -1253,6 +1255,7 @@ func SocketFlagsToType(t uint32) string {
 func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
+	var err error
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -1301,7 +1304,11 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames = pm.dns.GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
+	if err != nil && pm.enableEventCache {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
+	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -1327,6 +1334,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessConnect {
 	var fgsProcess, fgsParent *fgs.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
+	var err error
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -1372,7 +1380,11 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames = pm.dns.GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
+	if err != nil && pm.enableEventCache {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
+	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -1398,6 +1410,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessAccept {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
+	var err error
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -1443,7 +1456,11 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames = pm.dns.GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
+	if err != nil && pm.enableEventCache {
+		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		return nil
+	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

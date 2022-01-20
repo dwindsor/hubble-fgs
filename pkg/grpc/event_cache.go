@@ -59,13 +59,17 @@ const (
 
 func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, destinationIp string) []string {
 	var labels []string
+	var err error
 
 	if endpoint == nil {
 		return labels
 	}
 	ip := net.ParseIP(destinationIp)
 	if ip == nil {
-		labels = ec.pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, ip)
+		labels, err = ec.pm.dns.GetIp(destinationIp)
+		if err != nil && ec.pm.enableCilium {
+			labels = ec.pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, ip)
+		}
 	}
 
 	return labels
