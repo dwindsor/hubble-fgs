@@ -344,6 +344,30 @@ To aid with testing FGS on arbitrary kernel versions we have tooling around
 qemu-kvm in `contrib/vmtest` that allows running the fgs-bench against a
 kernel compiled from sources. See `contrib/vmtest/README.md` for more info.
 
+## Troubleshooting FGS errors for developers
+
+This section contains common error scenarios when running FGS while developing
+and how to resolve them. These include errors where FGS fails to start up or
+events aren't generated properly, etc.
+
+### Kernel verifier blocks program loading or Unable to pin map: -4007
+
+```
+map_loader bpf_object__load_xattr (bpf/objs/bpf_execve_event.o): failed -4007: Kernel verifier blocks program loading
+time="2022-01-20T17:20:08-08:00" level=debug msg="LoadAndPinMaps(bpf/objs/bpf_execve_event.o, /sys/fs/bpf/tcpmon/names_map, names_map)"
+time="2022-01-20T17:20:08-08:00" level=fatal msg="Failed to start hubble-fgs" error="hubble-fgs, aborting could not load BPF programs: hubble-fgs, aborting could not load sensor BPF maps: failed 0 load map (): Unable to pin map: -4007 (bpf/objs/bpf_execve_event.o /sys/fs/bpf/tcpmon/names_map names_map)"
+```
+
+This can be caused by the BPF object files being compiled by an incompatible
+compiler installed on your system. Try the following steps:
+
+1. `make -j $(nproc) clean`
+2. `make -j $(nproc) hubble-bpf-container`
+3. `make -j $(nproc) hubble-fgs`
+
+This will return the repository to a clean slate, compile the BPF programs with
+a known working compiler, and compile FGS itself.
+
 ## More Info
  * Natalia's blog about  [cntainer escape](https://www.isovalent.com/blog/post/2021-11-container-escape)
  * [https://docs.isovalent.com/quick-start/security_visibility.html](https://docs.isovalent.com/quick-start/security_visibility.html)
@@ -352,4 +376,3 @@ kernel compiled from sources. See `contrib/vmtest/README.md` for more info.
     * [FGS events and other info](https://drive.google.com/drive/folders/1ZwsXk9vEmmofhrfSOGLDSWBRIcvdrl1b)
     * [the followfd primitive for generic kprobes](https://drive.google.com/drive/folders/1Vq7GHREAEf358IikZT32uVYmGlwoWO7T)
     * [event checker demo](https://drive.google.com/drive/folders/1Gwqpv9BICP3nVoJlFBZVVqg8V7FVKaBW)
-
