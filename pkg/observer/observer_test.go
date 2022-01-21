@@ -640,8 +640,7 @@ func Test_msgToExecveUnix(t *testing.T) {
 	prefix := "docker-"
 	minikubeID := prefix + "9e123a99b140a6ea4a8d15040ca2c8ee2d5ee9605e81d66ae4e3e29c3f0ef220.scope"
 	copy(event.Kube.Docker[:], minikubeID)
-	_, offset, err := procsDockerIdOffset(minikubeID)
-	assert.NoError(t, err)
+	_, offset := procsDockerIdOffset(minikubeID)
 	result := msgToExecveUnix(&event, offset)
 	assert.Equal(t, strings.Split(minikubeID, "-")[1][:api.DOCKER_ID_LENGTH-len(prefix)], result.Kube.Docker)
 	event.Kube.Docker[0] = 0
