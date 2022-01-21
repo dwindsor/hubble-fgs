@@ -24,13 +24,6 @@ struct bpf_map_def __attribute__((section("maps"), used)) http1_calls_skb = {
 };
 #endif
 
-struct bpf_map_def __attribute__((section("maps"), used)) heap = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_http_event),
-	.max_entries = 1,
-};
-
 #define MAX_HTTP_HDR 512
 #define MAX_HTTP_CHARS 32
 

@@ -144,7 +144,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_map = {
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) http_map_heap = {
-	.type = BPF_MAP_TYPE_ARRAY,
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct msg_http_event),
 	.max_entries = 1,
