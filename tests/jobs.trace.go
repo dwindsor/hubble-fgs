@@ -39,8 +39,11 @@ var (
 				WithBinary("/usr/local/bin/docker-entrypoint.sh").
 				WithArguments("/usr/local/bin/docker-entrypoint.sh /bin/sh -c \"PORT=9080 node server.js\"").
 				WithPod(jc)).
-			HasAncestor(1, ec.NewProcessChecker().
-				WithBinary("/usr/bin/containerd-shim-runc-v2"),
+			HasAncestor(1, ec.NewProcessCheckerOr().
+				With(ec.NewProcessChecker().
+					WithBinary("/usr/bin/containerd-shim-runc-v2")).
+				With(ec.NewProcessChecker().
+					WithBinary("/usr/local/bin/containerd-shim-runc-v2")),
 			).End(),
 		ec.NewConnectEventChecker().
 			HasProcess(ec.NewProcessChecker().

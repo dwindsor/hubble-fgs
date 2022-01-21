@@ -829,6 +829,67 @@ func (o *ProcessCheckerAND) Check(p *fgs.Process, l Logger) error {
 	return nil
 }
 
+// ProcessCheckerOR can be used to build a check that is a disjunction of other checkers
+type ProcessCheckerOR struct {
+	checks []ProcessChecker
+}
+
+func NewProcessCheckerOr() *ProcessCheckerOR {
+	return &ProcessCheckerOR{}
+}
+
+// With adds another process checker
+func (o *ProcessCheckerOR) With(c ...ProcessChecker) *ProcessCheckerOR {
+	o.checks = append(o.checks, c...)
+	return o
+}
+
+func (o *ProcessCheckerOR) WithBinary(arg StringArg) *ProcessCheckerOR {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ProcessWithBinary(sm))
+	return o
+}
+
+func (o *ProcessCheckerOR) WithPod(arg PodChecker) *ProcessCheckerOR {
+	o.checks = append(o.checks, ProcessWithPod(arg))
+	return o
+}
+
+func (o *ProcessCheckerOR) WithArguments(arg StringArg) *ProcessCheckerOR {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ProcessWithArguments(sm))
+	return o
+}
+
+func (o *ProcessCheckerOR) WithCWD(arg StringArg) *ProcessCheckerOR {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ProcessWithCWD(sm))
+	return o
+}
+
+func (o *ProcessCheckerOR) WithDocker(arg StringArg) *ProcessCheckerOR {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ProcessWithDocker(sm))
+	return o
+}
+
+func (o *ProcessCheckerOR) WithUID(uid uint32) *ProcessCheckerOR {
+	o.checks = append(o.checks, ProcessWithUID(uid))
+	return o
+}
+
+func (o *ProcessCheckerOR) Check(p *fgs.Process, l Logger) error {
+	var failures []error
+	for i := range o.checks {
+		err := o.checks[i].Check(p, l)
+		if err == nil {
+			return nil
+		}
+		failures = append(failures, err)
+	}
+	return fmt.Errorf("failed to match any checks %v", failures)
+}
+
 func processWithString(
 	sm StringMatcher,
 	getter func(p *fgs.Process) string,
