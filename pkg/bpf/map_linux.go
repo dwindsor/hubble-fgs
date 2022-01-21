@@ -272,7 +272,7 @@ func (m *Map) Count() (int, error) {
 	bpfCurrentKeyPtr := uintptr(unsafe.Pointer(&bpfCurrentKey))
 	bpfCurrentKeySize := unsafe.Sizeof(bpfCurrentKey)
 
-	count := 0
+	count := 1
 	for {
 		copy(key, nextKey)
 		if err := GetNextKeyFromPointers(m.fd, bpfCurrentKeyPtr, bpfCurrentKeySize); err != nil {
