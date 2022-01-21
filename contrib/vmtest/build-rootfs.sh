@@ -18,4 +18,5 @@ sudo cp "${SCRIPTDIR}/fgs-verify-programs" mnt/usr/bin
 sudo umount mnt
 docker stop $CONTID 1>&2
 
+ln -sf $IMG fgs-bench-rootfs-latest.img
 echo $IMG
