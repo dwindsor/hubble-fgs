@@ -122,7 +122,7 @@ void emit_udp_payload_event(void *ctx, struct udp_info_key *k, struct udp_info_v
 		return;
 
 	payload_size &= 0x7ff;
-	size = payload_size + sizeof(struct msg_ipv4_event);
+	size = payload_size + sizeof(struct msg_ipv4_event) + 1;
 
 	val->event = (struct msg_ipv4_event) {
 		.common.op = MSG_OP_IPV4_UDPPAYLOAD,
