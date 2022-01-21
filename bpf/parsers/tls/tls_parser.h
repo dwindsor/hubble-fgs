@@ -349,6 +349,9 @@ void skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
 	if (bpf_core_field_exists(skmsg->sk)) {
 		key->dport = skmsg->sk->dst_port;
 		key->sport = skmsg->sk->src_port;
+
+		if (is_tuple_local(key))
+		        key->uid = msg_netns(skmsg);
 	}
 }
 #elif defined(SK_SKB)
@@ -363,6 +366,9 @@ void skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
 	if (sk) {
 		key->dport = skb->sk->dst_port;
 		key->sport = skb->sk->src_port;
+
+		if (is_tuple_local(key))
+			key->uid = skskb_netns(skb);
 	}
 }
 #else

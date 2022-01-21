@@ -1,4 +1,3 @@
-
 # Connection has been established and we should see 3 sockets:
 # accept, connect and listen.
 ASSERT MAP socket_map HAS COUNT 3
@@ -132,8 +131,7 @@ EVENT TCPCLOSE
   # ^ Where is the padding coming from?
 END
 
-# And finally close the client socket and verify
-# that socket_map has been cleaned up.
+# Close the client socket and verify the sockets have been removed.
 CLOSE CLIENT
 ASSERT MAP socket_map HAS COUNT 1
 

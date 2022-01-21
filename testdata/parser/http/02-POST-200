@@ -10,20 +10,20 @@ END
 EVENT http
   $ 10 00 00 00 # op + pad
   $ 5C 04 00 00 # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## tuple
   A CLI_ADDR
   A SRV_ADDR
   A SRV_PORT
   A CLI_PORT_HOST
-  $ 00 00 00 00             # direction (egress)
-  $ 00 00 00 00 00 00 00 00 # uid
+  $ 00 00 00 00 # direction (egress)
+  NZ 8          # netns id
 
   ## process
-  ? 4           # pid
+  NZ 4          # pid
   $ 00 00 00 00 # pad
-  ? 8           # ktime
+  $ ef be ad de 04 03 02 01 # ktime
 
   ## http
   h4 6          # method=POST
@@ -59,20 +59,20 @@ END
 EVENT http
   $ 10 00 00 00 # op + pad
   $ 5C 04 00 00 # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## tuple
   A SRV_ADDR
   A CLI_ADDR
   A CLI_PORT
   A SRV_PORT_HOST
-  $ 01 00 00 00             # direction (egress)
-  $ 00 00 00 00 00 00 00 00 # uid
+  $ 01 00 00 00    # direction (egress)
+  NZ 8             # netns id
 
   ## process
-  ? 4           # pid
+  NZ 4          # pid
   $ 00 00 00 00 # pad
-  ? 8           # ktime
+  $ ef be ad de 04 03 02 01 # ktime
 
   ## http
   h4 6          # method=POST
@@ -115,20 +115,20 @@ END
 EVENT http
   $ 10 00 00 00 # op + pad
   $ 5C 04 00 00 # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## tuple
   A SRV_ADDR
   A CLI_ADDR
   A CLI_PORT
   A SRV_PORT_HOST
-  $ 00 00 00 00             # direction (egress)
-  $ 00 00 00 00 00 00 00 00 # uid
+  $ 00 00 00 00   # direction (egress)
+  NZ 8            # netns id
 
   ## process
-  ? 4           # pid
+  NZ 4          # pid
   $ 00 00 00 00 # pad
-  ? 8           # ktime
+  $ ef be ad de 04 03 02 01 # ktime
 
   ## http
   h4 11         # method=RESPONSE
@@ -169,20 +169,20 @@ END
 EVENT http
   $ 10 00 00 00 # op + pad
   $ 5C 04 00 00 # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## tuple
   A CLI_ADDR
   A SRV_ADDR
   A SRV_PORT
   A CLI_PORT_HOST
-  $ 01 00 00 00             # direction (egress)
-  $ 00 00 00 00 00 00 00 00 # uid
+  $ 01 00 00 00   # direction (egress)
+  NZ 8            # netns id
 
   ## process
-  ? 4           # pid
+  NZ 4           # pid
   $ 00 00 00 00 # pad
-  ? 8           # ktime
+  $ ef be ad de 04 03 02 01 # ktime
 
   ## http
   h4 11         # method=RESPONSE

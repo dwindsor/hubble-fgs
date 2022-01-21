@@ -504,6 +504,7 @@ int put_reverse_http_context(struct msg_tls_ipv4 *key, struct msg_http_event *ev
 		.dport = key->dport,
 		.sport = key->sport,
 		.remaining = !key->remaining,
+		.uid = key->uid,
 	};
 	event->request.state = http2_expect_frame;
 	return map_update_elem(&http_map, &rkey, event, BPF_NOEXIST);

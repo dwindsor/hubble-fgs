@@ -29,6 +29,9 @@ void skskb_http_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key) {
 	if (sk) {
 		key->dport = skb->sk->dst_port;
 		key->sport = skb->sk->src_port;
+
+		if (is_tuple_local(key))
+			key->uid = skskb_netns(skb);
 	}
 	key->remaining = HTTP_RECV;
 	// tbd, cover sk null case for ealier kernels.

@@ -36,18 +36,18 @@ EVENTS HTTP
     ## Common
     $ 10 00 00 00 # op + pad
     h4 1116       # size
-    ? 8           # ktime
+    NZ 8          # ktime
 
     ## Tuple
-    A CLI_ADDR                # saddr
-    A SRV_ADDR                # daddr
-    A SRV_PORT                # dport
-    A CLI_PORT_HOST           # sport (host-order)
-    $ 00 00 00 00             # remaining (HTTP_SEND)
-    $ 00 00 00 00 00 00 00 00 # uid
+    A CLI_ADDR       # saddr
+    A SRV_ADDR       # daddr
+    A SRV_PORT       # dport
+    A CLI_PORT_HOST  # sport (host-order)
+    $ 00 00 00 00    # remaining (HTTP_SEND)
+    NZ 8             # netns id
 
     ## Process
-    $ ?? ?? ?? ??             # pid
+    NZ 4                      # pid
     $ 00 00 00 00             # pad
     $ ef be ad de 04 03 02 01 # ktime
 
@@ -81,18 +81,18 @@ EVENTS HTTP
     ## Common
     $ 10 00 00 00 # op + pad
     h4 1116       # size
-    ? 8           # ktime
+    NZ 8          # ktime
 
     ## Tuple
-    A SRV_ADDR                # saddr
-    A CLI_ADDR                # daddr
-    A CLI_PORT                # dport
-    A SRV_PORT_HOST           # sport (host-order)
-    $ 01 00 00 00             # remaining (HTTP_RECV)
-    $ 00 00 00 00 00 00 00 00 # uid
+    A SRV_ADDR       # saddr
+    A CLI_ADDR       # daddr
+    A CLI_PORT       # dport
+    A SRV_PORT_HOST  # sport (host-order)
+    $ 01 00 00 00    # remaining (HTTP_RECV)
+    NZ 8             # netns id
 
     ## Process
-    $ ?? ?? ?? ??             # pid
+    NZ 4                      # pid
     $ 00 00 00 00             # pad
     $ ef be ad de 04 03 02 01 # ktime
 
@@ -137,96 +137,100 @@ INGRESS
   $ 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
 END
 
-# Event from the server socket
-EVENT HTTP
-  ## Common
-  $ 10 00 00 00 # op + pad
-  h4 1116       # size
-  ? 8           # ktime
+EVENTS HTTP
 
-  ## Tuple
-  A SRV_ADDR                # saddr
-  A CLI_ADDR                # daddr
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # remaining (HTTP_SEND)
-  $ 00 00 00 00 00 00 00 00 # uid
+  # Event from the server socket
+  EVENT
+    ## Common
+    $ 10 00 00 00 # op + pad
+    h4 1116       # size
+    NZ 8          # ktime
 
-  ## Process
-  $ ?? ?? ?? ??             # pid
-  $ 00 00 00 00             # pad
-  $ ef be ad de 04 03 02 01 # ktime
+    ## Tuple
+    A SRV_ADDR       # saddr
+    A CLI_ADDR       # daddr
+    A CLI_PORT       # dport
+    A SRV_PORT_HOST  # sport (host-order)
+    $ 00 00 00 00    # remaining (HTTP_SEND)
+    NZ 8             # netns id
 
-  $ 0c 00 00 00 # method
-  $ 00 00 00 00 # flags
-  $ 01 00 00 00 00 00 00 00 # request id
-  $ 00 00 00 00 00 00 00 00 # response id
+    ## Process
+    NZ 4                      # pid
+    $ 00 00 00 00             # pad
+    $ ef be ad de 04 03 02 01 # ktime
 
-  ## Chunks (1024 bytes)
-  h4 11 # http2_header_frame
-  h4 58 # length
+    $ 0c 00 00 00 # method
+    $ 00 00 00 00 # flags
+    $ 01 00 00 00 00 00 00 00 # request id
+    $ 00 00 00 00 00 00 00 00 # response id
 
-  $ 00 00 31 # Length: 49
-  $ 01       # Type: HEADERS (1)
-  $ 04       # Flags: 0x04, End Headers
-  $ 00 00 00 03 #  Stream ID: 3
+    ## Chunks (1024 bytes)
+    h4 11 # http2_header_frame
+    h4 58 # length
 
-  $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
+    $ 00 00 31 # Length: 49
+    $ 01       # Type: HEADERS (1)
+    $ 04       # Flags: 0x04, End Headers
+    $ 00 00 00 03 #  Stream ID: 3
 
-  h4 0 # termination
-  h4 0
+    $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
 
-  ? 950
+    h4 0 # termination
+    h4 0
 
-  $ 0a 00 00 00 # pad1 (state)
-  $ 1f 00 00 00 # pad2 (offset)
-  $ 42 00 00 00 # pad3 (url_offset)
-END
+    ? 950
 
-# Event from the client socket
-EVENT HTTP
-  ## Common
-  $ 10 00 00 00 # op + pad
-  h4 1116       # size
-  ? 8           # ktime
+    $ 0a 00 00 00 # pad1 (state)
+    $ 1f 00 00 00 # pad2 (offset)
+    $ 42 00 00 00 # pad3 (url_offset)
+  END
 
-  ## Tuple
-  A CLI_ADDR                # saddr
-  A SRV_ADDR                # daddr
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # remaining (HTTP_RECV)
-  $ 00 00 00 00 00 00 00 00 # uid
+  # Event from the client socket
+  EVENT
+    ## Common
+    $ 10 00 00 00 # op + pad
+    h4 1116       # size
+    NZ 8          # ktime
 
-  ## Process
-  $ ?? ?? ?? ??             # pid
-  $ 00 00 00 00             # pad
-  $ ef be ad de 04 03 02 01 # ktime
+    ## Tuple
+    A CLI_ADDR      # saddr
+    A SRV_ADDR      # daddr
+    A SRV_PORT      # dport
+    A CLI_PORT_HOST # sport (host-order)
+    $ 01 00 00 00   # remaining (HTTP_RECV)
+    NZ 8            # netns id
 
-  $ 0c 00 00 00 # method
-  $ 00 00 00 00 # flags
-  $ 01 00 00 00 00 00 00 00 # request id
-  $ 00 00 00 00 00 00 00 00 # response id
+    ## Process
+    NZ 4                      # pid
+    $ 00 00 00 00             # pad
+    $ ef be ad de 04 03 02 01 # ktime
 
-  ## Chunks (1024 bytes)
-  h4 11 # http2_header_frame
-  h4 58 # length
+    $ 0c 00 00 00 # method
+    $ 00 00 00 00 # flags
+    $ 01 00 00 00 00 00 00 00 # request id
+    $ 00 00 00 00 00 00 00 00 # response id
 
-  $ 00 00 31 # Length: 49
-  $ 01       # Type: HEADERS (1)
-  $ 04       # Flags: 0x04, End Headers
-  $ 00 00 00 03 #  Stream ID: 3
+    ## Chunks (1024 bytes)
+    h4 11 # http2_header_frame
+    h4 58 # length
 
-  $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
+    $ 00 00 31 # Length: 49
+    $ 01       # Type: HEADERS (1)
+    $ 04       # Flags: 0x04, End Headers
+    $ 00 00 00 03 #  Stream ID: 3
 
-  h4 0 # termination
-  h4 0
+    $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
 
-  ? 950
+    h4 0 # termination
+    h4 0
 
-  $ 0a 00 00 00 # pad1 (state)
-  $ 1f 00 00 00 # pad2 (offset)
-  $ 42 00 00 00 # pad3 (url_offset)
+    ? 950
+
+    $ 0a 00 00 00 # pad1 (state)
+    $ 1f 00 00 00 # pad2 (offset)
+    $ 42 00 00 00 # pad3 (url_offset)
+  END
+
 END
 
 
@@ -278,18 +282,18 @@ EVENTS HTTP
     ## Common
     $ 10 00 00 00 # op + pad
     h4 1116       # size
-    ? 8           # ktime
+    NZ 8          # ktime
 
     ## Tuple
-    A CLI_ADDR                # saddr
-    A SRV_ADDR                # daddr
-    A SRV_PORT                # dport
-    A CLI_PORT_HOST           # sport (host-order)
-    $ 00 00 00 00             # remaining (HTTP_SEND)
-    $ 00 00 00 00 00 00 00 00 # uid
+    A CLI_ADDR      # saddr
+    A SRV_ADDR      # daddr
+    A SRV_PORT      # dport
+    A CLI_PORT_HOST # sport (host-order)
+    $ 00 00 00 00   # remaining (HTTP_SEND)
+    NZ 8            # netns id
 
     ## Process
-    $ ?? ?? ?? ??             # pid
+    NZ 4                      # pid
     $ 00 00 00 00             # pad
     $ ef be ad de 04 03 02 01 # ktime
 
@@ -323,18 +327,18 @@ EVENTS HTTP
     ## Common
     $ 10 00 00 00 # op + pad
     h4 1116       # size
-    ? 8           # ktime
+    NZ 8          # ktime
 
     ## Tuple
-    A SRV_ADDR                # saddr
-    A CLI_ADDR                # daddr
-    A CLI_PORT                # dport
-    A SRV_PORT_HOST           # sport (host-order)
-    $ 01 00 00 00             # remaining (HTTP_RECV)
-    $ 00 00 00 00 00 00 00 00 # uid
+    A SRV_ADDR      # saddr
+    A CLI_ADDR      # daddr
+    A CLI_PORT      # dport
+    A SRV_PORT_HOST # sport (host-order)
+    $ 01 00 00 00   # remaining (HTTP_RECV)
+    NZ 8            # netns id
 
     ## Process
-    $ ?? ?? ?? ??             # pid
+    NZ 4                      # pid
     $ 00 00 00 00             # pad
     $ ef be ad de 04 03 02 01 # ktime
 
@@ -391,95 +395,96 @@ INGRESS
   $ 2e a9 8b 46 ff
 END
 
-# Event from the server socket
-EVENT HTTP
-  ## Common
-  $ 10 00 00 00 # op + pad
-  h4 1116       # size
-  ? 8           # ktime
+EVENTS HTTP
+  # Event from the server socket
+  EVENT
+    ## Common
+    $ 10 00 00 00 # op + pad
+    h4 1116       # size
+    NZ 8          # ktime
 
-  ## Tuple
-  A SRV_ADDR                # saddr
-  A CLI_ADDR                # daddr
-  A CLI_PORT                # dport
-  A SRV_PORT_HOST           # sport (host-order)
-  $ 00 00 00 00             # remaining (HTTP_SEND)
-  $ 00 00 00 00 00 00 00 00 # uid
+    ## Tuple
+    A SRV_ADDR                # saddr
+    A CLI_ADDR                # daddr
+    A CLI_PORT                # dport
+    A SRV_PORT_HOST           # sport (host-order)
+    $ 00 00 00 00             # remaining (HTTP_SEND)
+    NZ 8                      # netns id
 
-  ## Process
-  $ ?? ?? ?? ??             # pid
-  $ 00 00 00 00             # pad
-  $ ef be ad de 04 03 02 01 # ktime
+    ## Process
+    NZ 4                      # pid
+    $ 00 00 00 00             # pad
+    $ ef be ad de 04 03 02 01 # ktime
 
-  $ 0c 00 00 00 # method
-  $ 00 00 00 00 # flags
-  $ 02 00 00 00 00 00 00 00 # request id
-  $ 00 00 00 00 00 00 00 00 # response id
+    $ 0c 00 00 00 # method
+    $ 00 00 00 00 # flags
+    $ 02 00 00 00 00 00 00 00 # request id
+    $ 00 00 00 00 00 00 00 00 # response id
 
-  ## Chunks (1024 bytes)
-  h4 11 # http2_header_frame
-  h4 58 # length
+    ## Chunks (1024 bytes)
+    h4 11 # http2_header_frame
+    h4 58 # length
 
-  $ 00 00 31 # Length: 49
-  $ 01       # Type: HEADERS (1)
-  $ 04       # Flags: 0x04, End Headers
-  $ 00 00 00 03 #  Stream ID: 3
+    $ 00 00 31 # Length: 49
+    $ 01       # Type: HEADERS (1)
+    $ 04       # Flags: 0x04, End Headers
+    $ 00 00 00 03 #  Stream ID: 3
 
-  $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
+    $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
 
-  h4 0 # termination
-  h4 0
+    h4 0 # termination
+    h4 0
 
-  ? 950
+    ? 950
 
-  $ 0a 00 00 00 # pad1 (state)
-  $ 2d 00 00 00 # pad2 (offset)
-  $ 42 00 00 00 # pad3 (url_offset)
+    $ 0a 00 00 00 # pad1 (state)
+    $ 2d 00 00 00 # pad2 (offset)
+    $ 42 00 00 00 # pad3 (url_offset)
+  END
+
+  # Event from the client socket
+  EVENT
+    ## Common
+    $ 10 00 00 00 # op + pad
+    h4 1116       # size
+    NZ 8          # ktime
+
+    ## Tuple
+    A CLI_ADDR                # saddr
+    A SRV_ADDR                # daddr
+    A SRV_PORT                # dport
+    A CLI_PORT_HOST           # sport (host-order)
+    $ 01 00 00 00             # remaining (HTTP_RECV)
+    NZ 8                      # netns id
+
+    ## Process
+    NZ 4                      # pid
+    $ 00 00 00 00             # pad
+    $ ef be ad de 04 03 02 01 # ktime
+
+    $ 0c 00 00 00 # method
+    $ 00 00 00 00 # flags
+    $ 02 00 00 00 00 00 00 00 # request id
+    $ 00 00 00 00 00 00 00 00 # response id
+
+    ## Chunks (1024 bytes)
+    h4 11 # http2_header_frame
+    h4 58 # length
+
+    $ 00 00 31 # Length: 49
+    $ 01       # Type: HEADERS (1)
+    $ 04       # Flags: 0x04, End Headers
+    $ 00 00 00 03 #  Stream ID: 3
+
+    $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
+
+    h4 0 # termination
+    h4 0
+
+    ? 950
+
+    $ 0a 00 00 00 # pad1 (state)
+    $ 2d 00 00 00 # pad2 (offset)
+    $ 42 00 00 00 # pad3 (url_offset)
+  END
 END
-
-# Event from the client socket
-EVENT HTTP
-  ## Common
-  $ 10 00 00 00 # op + pad
-  h4 1116       # size
-  ? 8           # ktime
-
-  ## Tuple
-  A CLI_ADDR                # saddr
-  A SRV_ADDR                # daddr
-  A SRV_PORT                # dport
-  A CLI_PORT_HOST           # sport (host-order)
-  $ 01 00 00 00             # remaining (HTTP_RECV)
-  $ 00 00 00 00 00 00 00 00 # uid
-
-  ## Process
-  $ ?? ?? ?? ??             # pid
-  $ 00 00 00 00             # pad
-  $ ef be ad de 04 03 02 01 # ktime
-
-  $ 0c 00 00 00 # method
-  $ 00 00 00 00 # flags
-  $ 02 00 00 00 00 00 00 00 # request id
-  $ 00 00 00 00 00 00 00 00 # response id
-
-  ## Chunks (1024 bytes)
-  h4 11 # http2_header_frame
-  h4 58 # length
-
-  $ 00 00 31 # Length: 49
-  $ 01       # Type: HEADERS (1)
-  $ 04       # Flags: 0x04, End Headers
-  $ 00 00 00 03 #  Stream ID: 3
-
-  $ 88 5f 92 49 7c a5 8a e8 19 aa fb 50 93 8e c4 15 30 5a 99 56 7b 5c 02 31 30 61 96 e4 59 3e 94 03 ca 5f 29 14 10 04 15 02 1b 8d 86 e3 2e a9 8b 46 ff
-
-  h4 0 # termination
-  h4 0
-
-  ? 950
-
-  $ 0a 00 00 00 # pad1 (state)
-  $ 2d 00 00 00 # pad2 (offset)
-  $ 42 00 00 00 # pad3 (url_offset)
-END
-

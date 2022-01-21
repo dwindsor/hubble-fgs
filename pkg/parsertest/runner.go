@@ -33,6 +33,8 @@ func (tc *TestCase) Run(t *testing.T, timeout time.Duration) error {
 		switch s := step.(type) {
 		case *TestStepEvent:
 			perOpChans[s.Op] = nil
+		case *TestStepEvents:
+			perOpChans[s.Op] = nil
 		case *TestStepEventDump:
 			perOpChans[s.Op] = nil
 		}

@@ -1,3 +1,11 @@
+
+# Connection has been established and we should see:
+# listen, accept and connect sockets.
+ASSERT MAP socket_map HAS COUNT 3
+
+# We're not expecting anything in http_map yet.
+ASSERT MAP http_map HAS COUNT 0
+
 EGRESS
 	"GET / HTTP/1.1\r\n"
 	"Host: foobar.baz\r\n"
@@ -8,20 +16,20 @@ END
 EVENT http
   $ 10 00 00 00 # op + pad
   $ 5C 04 00 00 # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## tuple
   A CLI_ADDR
   A SRV_ADDR
   A SRV_PORT
   A CLI_PORT_HOST
-  $ 00 00 00 00             # direction (egress)
-  $ 00 00 00 00 00 00 00 00 # uid
+  $ 00 00 00 00 # direction (egress)
+  NZ 8          # netns id should be set.
 
   ## process
-  ? 4           # pid
+  NZ 4          # pid should be set.
   $ 00 00 00 00 # pad
-  ? 8           # ktime
+  $ ef be ad de 04 03 02 01 # ktime
 
   ## http
   h4 3          # method=GET
@@ -53,20 +61,20 @@ END
 EVENT http
   $ 10 00 00 00 # op + pad
   $ 5C 04 00 00 # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## tuple
   A SRV_ADDR
   A CLI_ADDR
   A CLI_PORT
   A SRV_PORT_HOST
-  $ 01 00 00 00             # direction (ingress)
-  $ 00 00 00 00 00 00 00 00 # uid
+  $ 01 00 00 00 # direction (ingress)
+  NZ 8          # netns id should be set.
 
   ## process
-  ? 4           # pid
+  NZ 4          # pid should be set.
   $ 00 00 00 00 # pad
-  ? 8           # ktime
+  $ ef be ad de 04 03 02 01 # ktime
 
   ## http
   h4 3          # method=GET
@@ -105,20 +113,20 @@ END
 EVENT http
   $ 10 00 00 00 # op + pad
   $ 5C 04 00 00 # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## tuple
   A SRV_ADDR
   A CLI_ADDR
   A CLI_PORT
   A SRV_PORT_HOST
-  $ 00 00 00 00             # direction (ingress)
-  $ 00 00 00 00 00 00 00 00 # uid
+  $ 00 00 00 00 # direction (ingress)
+  NZ 8          # netns id should be set.
 
   ## process
-  ? 4           # pid
+  NZ 4          # pid should be set.
   $ 00 00 00 00 # pad
-  ? 8           # ktime
+  $ ef be ad de 04 03 02 01 # ktime
 
   ## http
   h4 11         # method=GET
@@ -158,20 +166,20 @@ END
 EVENT http
   $ 10 00 00 00 # op + pad
   $ 5C 04 00 00 # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## tuple
   A CLI_ADDR
   A SRV_ADDR
   A SRV_PORT
   A CLI_PORT_HOST
-  $ 01 00 00 00             # direction (egress)
-  $ 00 00 00 00 00 00 00 00 # uid
+  $ 01 00 00 00 # direction (egress)
+  NZ 8          # netns id should be set.
 
   ## process
-  ? 4           # pid
+  NZ 4          # pid should be set.
   $ 00 00 00 00 # pad
-  ? 8           # ktime
+  $ ef be ad de 04 03 02 01 # ktime
 
   ## http
   h4 11         # method=GET
@@ -207,3 +215,12 @@ EVENT http
   $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
   ? 939
 END
+
+# 2 entries for client socket, 2 for server.
+ASSERT MAP http_map HAS COUNT 4
+
+# Close both sockets and verify that maps are cleaned up.
+CLOSE
+ASSERT MAP http_map HAS COUNT 0
+ASSERT MAP socket_map HAS COUNT 0
+

@@ -71,7 +71,7 @@ EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
   h4 1116       # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## Tuple
   A CLI_ADDR                # saddr
@@ -79,7 +79,7 @@ EVENT HTTP
   A SRV_PORT                # dport
   A CLI_PORT_HOST           # sport (host-order)
   $ 00 00 00 00             # remaining (HTTP_SEND)
-  $ 00 00 00 00 00 00 00 00 # uid
+  NZ 8                      # netns id
 
   ## Process
   $ ?? ?? ?? ??             # pid
@@ -128,7 +128,7 @@ EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
   h4 1116       # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## Tuple
   A SRV_ADDR                # saddr
@@ -136,7 +136,7 @@ EVENT HTTP
   A CLI_PORT                # dport
   A SRV_PORT_HOST           # sport (host-order)
   $ 01 00 00 00             # remaining (HTTP_RECV)
-  $ 00 00 00 00 00 00 00 00 # uid
+  NZ 8                      # netns id
 
   ? 1100
 END
@@ -146,7 +146,7 @@ EVENT HTTP
   ## Common
   $ 10 00 00 00 # op + pad
   h4 1116       # size
-  ? 8           # ktime
+  NZ 8          # ktime
 
   ## Tuple
   A CLI_ADDR                # saddr
@@ -154,7 +154,7 @@ EVENT HTTP
   A SRV_PORT                # dport
   A CLI_PORT_HOST           # sport (host-order)
   $ 01 00 00 00             # remaining (HTTP_RECV)
-  $ 00 00 00 00 00 00 00 00 # uid
+  NZ 8                      # netns id
 
   # TODO: Fill this in
   ? 1100

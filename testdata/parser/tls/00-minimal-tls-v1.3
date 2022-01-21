@@ -98,10 +98,10 @@ EVENT tls
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
   A CLI_ADDR                # saddr
   A SRV_ADDR                # daddr
-  2 443                     # dport (always 443 (network-order) for TLS)
+  A SRV_PORT                # dport
   A CLI_PORT_HOST           # sport (host-order)
   $ 00 00 00 00             # remaining
-  $ 00 00 00 00 00 00 00 00 # uid
+  NZ 8                      # uid
 
   ### Client hello
 
@@ -181,14 +181,14 @@ EVENT tls
   $ 02
   $ 03 04 ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ?? ??
 
-  ### Process key. Missing due to the tuple.uid issue.
-  $ 00 00 00 00 # pid
+  ### Process key.
+  NZ 4          # pid
   $ 00 00 00 00 # pad
-  $ 00 00 00 00 00 00 00 00 # ktime
+  NZ 8          # ktime
 END
 
 CLOSE
 
-# TODO: waiting for tls dport fix in PR #915
-# ASSERT MAP tls_map IS EMPTY
+# Verify that the map has been cleared.
+ASSERT MAP tls_map IS EMPTY
 

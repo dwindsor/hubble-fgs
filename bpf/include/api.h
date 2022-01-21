@@ -203,15 +203,18 @@ static int BPF_FUNC(msg_cork_bytes, struct sk_msg_md *md, __u32 bytes);
 
 static int BPF_FUNC(fib_lookup, void *ctx, struct bpf_fib_lookup *params, uint32_t plen, uint32_t flags);
 
-static int BPF_FUNC(probe_read, void *dst, uint32_t size, const void *src); 
-static int BPF_FUNC(probe_read_str, void *dst, int size, const void *src); 
-static uint64_t BPF_FUNC(get_current_task); 
+static int BPF_FUNC(probe_read, void *dst, uint32_t size, const void *src);
+static int BPF_FUNC(probe_read_str, void *dst, int size, const void *src);
+static int BPF_FUNC(probe_read_kernel, void *dst, uint32_t size, const void *src);
+
+static uint64_t BPF_FUNC(get_current_task);
+
 #ifdef BPF_FUNC_get_current_cgroup_id
-static uint64_t BPF_FUNC(get_current_cgroup_id); 
+static uint64_t BPF_FUNC(get_current_cgroup_id);
 #endif
 static uint64_t BPF_FUNC(get_current_uid_gid);
 static uint64_t BPF_FUNC(get_current_pid_tgid);
-static int BPF_FUNC(get_current_comm, char *buf, uint32_t size); 
+static int BPF_FUNC(get_current_comm, char *buf, uint32_t size);
 
 static int BPF_FUNC(perf_event_output, void *ctx, void *map, uint64_t flags, void *data, uint64_t size);
 

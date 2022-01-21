@@ -94,10 +94,10 @@ EVENT tls
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
   A CLI_ADDR                # saddr
   A SRV_ADDR                # daddr
-  2 443                     # dport (always 443)
+  A SRV_PORT                # dport
   A CLI_PORT_HOST           # sport (host-order)
   $ 00 00 00 00             # remaining
-  $ 00 00 00 00 00 00 00 00 # uid
+  NZ 8                      # netns id
 
   ## Client hello
   $ 03 03 # version

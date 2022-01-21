@@ -140,6 +140,7 @@ int event_tcp4_close(struct pt_regs *ctx)
 		if (!is_tuple_local(&tuple))
 			tuple.uid = 0;
 		del_socketmap(&tuple);
+
 		map_delete_elem(&tls_map, &tuple);
 		map_delete_elem(&http_map, &tuple);
 		tuple.remaining = 1;

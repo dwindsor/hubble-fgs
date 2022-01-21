@@ -423,10 +423,10 @@ EVENT tls
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
   A CLI_ADDR                # saddr
   A SRV_ADDR                # daddr
-  2 443                     # dport
+  A SRV_PORT                # dport
   A CLI_PORT_HOST           # sport (host-order)
   $ 00 00 00 00             # remaining
-  $ 00 00 00 00 00 00 00 00 # uid
+  NZ 8                      # netns id
 
   ## Client hello
   $ 03 03       # version v1.2
@@ -498,10 +498,10 @@ EVENT tls
   $ 00
   ? 16
 
-  # process key. missing due to the tuple.uid issue.
-  $ 00 00 00 00 # pid
+  # process key
+  NZ 4          # pid
   $ 00 00 00 00 # pad
-  $ 00 00 00 00 00 00 00 00 # ktime
+  NZ 8          # ktime
 END
 
 EVENT tlscont
@@ -511,10 +511,10 @@ EVENT tlscont
   ## tuple
   A CLI_ADDR                  # saddr
   A SRC_ADDR                  # daddr
-  2 443                       # dport
+  A SRV_PORT                  # dport
   A CLI_PORT_HOST             # sport
   $ 00 00 00 00               # remaining
-  $ 00 00 00 00 00 00 00 00   # uid
+  NZ 8                        # netns id
 
   ## length
   h4 3837

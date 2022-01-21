@@ -286,6 +286,7 @@ func (a *TestStepAssert) Exec(ctx *TestContext) *TestStepError {
 	if err != nil {
 		return &TestStepError{a.Position, "ASSERT MAP", err}
 	}
+	defer m.Close()
 
 	switch a.Type {
 	case AssertMapCount:
