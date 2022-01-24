@@ -60,9 +60,28 @@ The following keywords are supported:
     program.
 
 - EVENT <op> <description>:
-    A match block for a FGS "Msg" as defined in `pkg/api/client.go`.
+    A match block for a BPF event with given op. Message structure
+    defined by `bpf/lib/hubble_msg.h`.
 
-- END: End of a match block started by EGRESS, INGRESS or EVENT.
+- EVENTS <op>:
+    A block for matching multiple events of given op in arbitrary order.
+    Events are declared using `EVENT` without arguments, e.g.:
+
+      EVENTS HTTP
+        EVENT
+          $ 10 00 00 00
+          $ 01
+          ...
+        END
+
+        EVENT
+          $ 10 00 00 00
+          $ 02
+          ...
+        END
+      END
+
+- END: End of a match block started by EGRESS, INGRESS, EVENT or EVENTS.
 
 Comments are marked with `#` and they can be at the start of the line,
 or at the end of the line as usual.
@@ -70,13 +89,18 @@ or at the end of the line as usual.
 Match blocks are a set of lines describing how a packet or an event should
 look like.  The following match clauses are supported:
 
-- `$ 1b 01 3f 4b`  : Match hexadecimal bytes. Any number of them can be specified per line.
-- `"a utf8 string"`: Match a UTF-8 string
-- `2 12345 10 15`  : Match 16-bit network byte-order unsigned integers
-- `4 131072 1 38`  : Match 32-bit network byte-order unsigned integers
-- `h2 12345 10 15` : Match 16-bit host byte-order unsigned integers
-- `h4 131072 1 38` : Match 32-bit host byte-order unsigned integers
-- `I 127.0.0.1`    : Match an IP address
-- `? 13`           : Match any N bytes (only EVENT)
-- `$ 1b ?? 3f ??`  : Match hexadecimal bytes, unless `??`, which matches any byte (only EVENT).
-
+- `$ 1b 01 3f 4b`   : Match hexadecimal bytes. Any number of them can be specified per line.
+- `"a utf8 string"` : Match a UTF-8 string
+- `2 12345 10 15`   : Match 16-bit network byte-order unsigned integers
+- `4 131072 1 38`   : Match 32-bit network byte-order unsigned integers
+- `h2 12345 10 15`  : Match 16-bit host byte-order unsigned integers
+- `h4 131072 1 38`  : Match 32-bit host byte-order unsigned integers
+- `I 127.0.0.1`     : Match an IP address
+- `? 13`            : Match any N bytes (only EVENT)
+- `$ 1b ?? 3f ??`   : Match hexadecimal bytes, unless `??`, which matches any byte (only EVENT).
+- `A SRV_ADDR`      : Match IP of the server
+- `A CLI_ADDR`      : Match IP of the client
+- `A SRV_PORT`      : Match server port (network-endian)
+- `A SRV_PORT_HOST` : Match server port (host's endian)
+- `A CLI_PORT`      : Match client port (network-endian)
+- `A CLI_PORT_HOST` : Match client port (host's endian)

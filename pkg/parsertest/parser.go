@@ -105,6 +105,18 @@ func (p *Parser) parseBlock() error {
 			}
 			p.testCase.Steps = append(p.testCase.Steps, step)
 
+		case "EVENTS":
+			op, _, err := p.parseOp()
+			if err != nil {
+				return err
+			}
+			subevents, err := p.parseSubevents()
+			if err != nil {
+				return err
+			}
+
+			p.testCase.Steps = append(p.testCase.Steps, &TestStepEvents{pos, op, subevents})
+
 		case "EVENT":
 			op, _, err := p.parseOp()
 			if err != nil {
@@ -143,6 +155,35 @@ func (p *Parser) parseBlock() error {
 
 	}
 	return nil
+}
+
+func (p *Parser) parseSubevents() ([]*Subevent, error) {
+	subevents := []*Subevent{}
+	for tok := p.scanner.Scan(); tok != scanner.EOF; tok = p.scanner.Scan() {
+		if tok == '\n' {
+			continue
+		}
+		pos := p.scanner.Position
+		kw := p.scanner.TokenText()
+		switch kw {
+		case "#":
+			p.skipComment()
+
+		case "EVENT":
+			matchers, err := p.parseMatchers()
+			if err != nil {
+				return nil, err
+			}
+			subevents = append(subevents, &Subevent{pos, matchers})
+
+		case "END":
+			return subevents, nil
+
+		default:
+			return nil, fmt.Errorf("unknown keyword '%s', expected 'EVENT'", kw)
+		}
+	}
+	return nil, fmt.Errorf("expected 'END'")
 }
 
 func (p *Parser) parseTags() error {

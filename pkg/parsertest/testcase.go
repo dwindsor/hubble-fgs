@@ -135,6 +135,60 @@ func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
 }
 
 //
+// Multiple unordered event matching step
+//
+
+type Subevent struct {
+	Position scanner.Position
+	Matchers []AnnMatcher
+}
+
+func (s *Subevent) Match(ctx *TestContext, event []byte) *TestStepError {
+	r := bytes.NewReader(event)
+	for _, m := range s.Matchers {
+		_, err := m.Match(ctx, r)
+		if err != nil {
+			return &TestStepError{m.Position, "match", err}
+		}
+	}
+	return nil
+}
+
+type TestStepEvents struct {
+	Position  scanner.Position
+	Op        int
+	Subevents []*Subevent
+}
+
+func (e *TestStepEvents) Exec(ctx *TestContext) *TestStepError {
+	remaining := make(map[int]*Subevent)
+	for i, s := range e.Subevents {
+		remaining[i] = s
+	}
+
+	for len(remaining) > 0 {
+		event, ok := ctx.waitForEvent(e.Op)
+		if !ok {
+			return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on op %d event channel", e.Op)}
+		}
+		ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
+
+		var lastError *TestStepError
+		for i, s := range remaining {
+			lastError = s.Match(ctx, event)
+			if lastError == nil {
+				delete(remaining, i)
+				break
+			}
+		}
+		if lastError != nil {
+			return lastError
+		}
+	}
+	return nil
+}
+
+//
 // Event dumping step
 //
 
