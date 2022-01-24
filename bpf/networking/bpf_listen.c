@@ -32,7 +32,8 @@ int event_sys_listen(struct pt_regs *ctx)
 {
 	struct msg_ipv4_event *val;
 	struct execve_map_value *process = 0;
-	struct msg_ipv4_key key;
+	__u32 saddr;
+	__u16 sport;
 	__u32 pid, ppid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
@@ -48,14 +49,12 @@ int event_sys_listen(struct pt_regs *ctx)
 	}
 
 	skp = (void *)((ctx)->di);
-	probe_read(&key.saddr, sizeof(key.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&key.sport, sizeof(key.sport), _(&(skp->__sk_common.skc_num)));
-	key.pid = pid;
-	key.pad = 0;
+	probe_read(&saddr, sizeof(saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
+	probe_read(&sport, sizeof(sport), _(&(skp->__sk_common.skc_num)));
 
 	*val = (struct msg_ipv4_event){
-		.tuple.saddr = key.saddr,
-		.tuple.sport = key.sport,
+		.tuple.saddr = saddr,
+		.tuple.sport = sport,
 		.common.op = MSG_OP_IPV4_LISTEN,
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ipv4_event),
@@ -64,7 +63,6 @@ int event_sys_listen(struct pt_regs *ctx)
 		.socket_cookie = get_cookie(skp),
 	};
 
-	map_update_elem(&ipv4_tcp_map, &key, val, 0);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_ipv4_event));
 
 	{
@@ -73,10 +71,10 @@ int event_sys_listen(struct pt_regs *ctx)
 		struct msg_tls_ipv4 tuple;
 		struct net *netns;
 
-		tuple.saddr = key.saddr;
+		tuple.saddr = saddr;
 		tuple.daddr = 0;
 		tuple.dport = 0;
-		tuple.sport = key.sport;
+		tuple.sport = sport;
 		tuple.uid = 0;
 		tuple.remaining = 0;
 

@@ -32,7 +32,8 @@ int event_tcp4_connect(struct pt_regs *ctx)
 {
 	struct execve_map_value *process = 0;
 	struct msg_ipv4_event *val;
-	struct msg_ipv4_key key;
+	__u32 saddr;
+  __u16 sport;
 	__u32 ppid = 0, pid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
@@ -52,10 +53,8 @@ int event_tcp4_connect(struct pt_regs *ctx)
 
 
 	skp = (void *)((ctx)->di);
-	key.pid = pid;
-	key.pad = 0;
-	probe_read(&key.saddr, sizeof(key.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&key.sport, sizeof(key.sport), _(&(skp->__sk_common.skc_num)));
+	probe_read(&saddr, sizeof(saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
+	probe_read(&sport, sizeof(sport), _(&(skp->__sk_common.skc_num)));
 	probe_read(&daddr, sizeof(daddr), _(&(skp->__sk_common.skc_daddr)));
 	probe_read(&dport, sizeof(dport), _(&(skp->__sk_common.skc_dport)));
 
@@ -63,16 +62,14 @@ int event_tcp4_connect(struct pt_regs *ctx)
 		.common.op = MSG_OP_IPV4_TCPCONNECTRET,
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ipv4_event),
-		.tuple.saddr = key.saddr,
+		.tuple.saddr = saddr,
 		.tuple.daddr = daddr,
 		.tuple.dport = dport,
-		.tuple.sport = key.sport,
+		.tuple.sport = sport,
 		.key.pid = process->key.pid,
 		.key.ktime = process->key.ktime,
 		.socket_cookie = get_cookie(skp),
 	};
-
-	map_update_elem(&ipv4_tcp_map, &key, val, 0);
 
 	size = sizeof(struct msg_ipv4_event);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
@@ -86,10 +83,10 @@ int event_tcp4_connect(struct pt_regs *ctx)
 		struct msg_tls_ipv4 tuple;
 		struct net *netns;
 
-		tuple.saddr = key.saddr;
+		tuple.saddr = saddr;
 		tuple.daddr = daddr;
 		tuple.dport = dport;
-		tuple.sport = key.sport;
+		tuple.sport = sport;
 		tuple.uid = 0;
 		tuple.remaining = 0;
 
