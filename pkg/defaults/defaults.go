@@ -33,4 +33,12 @@ const (
 
 	// DefaultRunDir is the default run directory for runtime
 	DefaultRunDir = "/var/run/hubble-fgs/"
+
+	// DedfaultNetnsDir is the default network namespace directory for runtime
+	DefaultNetnsDir = "/var/run/docker/netns/"
+)
+
+var (
+	// NetnsDir is the network namespace directory for runtime
+	NetnsDir = DefaultNetnsDir
 )

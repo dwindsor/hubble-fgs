@@ -59,6 +59,8 @@ const (
 	keyExportDenylist  = "export-denylist"
 
 	keyTCPStatsSampleSeg = "tcp-stats-sample-segs"
+
+	keyNetnsDir = "netns-dir"
 )
 
 var (

@@ -18,6 +18,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/defaults"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -28,8 +29,6 @@ import (
 
 var (
 	NetworkStatInterval = time.Duration(60 * time.Second)
-
-	dockerNSDir = "/var/run/docker/netns/"
 )
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string) {
@@ -69,9 +68,9 @@ func runNetworkCB() {
 		}
 	}
 
-	nsDir, err := ioutil.ReadDir(dockerNSDir)
+	nsDir, err := ioutil.ReadDir(defaults.NetnsDir)
 	if err != nil {
-		logger.GetLogger().WithError(err).Infof("dockerNSDir read failed")
+		logger.GetLogger().WithError(err).Infof("netns dir read failed")
 		return
 	}
 
@@ -93,7 +92,7 @@ func runNetworkCB() {
 
 	for fileIndex := range nsDir {
 		nsFile := nsDir[fileIndex]
-		nsFileName := filepath.Join(dockerNSDir, nsFile.Name())
+		nsFileName := filepath.Join(defaults.NetnsDir, nsFile.Name())
 
 		ns, err := netns.GetFromPath(nsFileName)
 		if err != nil {

@@ -70,6 +70,10 @@ func hubbleFGSExecute() error {
 	logger.GetLogger().WithField("config", viper.AllSettings()).Info("config settings")
 	readAndSetFlags()
 
+	if viper.IsSet(keyNetnsDir) {
+		defaults.NetnsDir = viper.GetString(keyNetnsDir)
+	}
+
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.CheckOrMountCgroup2()
@@ -332,6 +336,9 @@ func execute() error {
 
 	// TCP Statisticss options
 	flags.Uint32(keyTCPStatsSampleSeg, 0, "TCP statistics sample seg rate")
+
+	// Network namespace options
+	flags.String(keyNetnsDir, "/var/run/docker/netns/", "Network namespace dir")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
