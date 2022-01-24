@@ -11,6 +11,10 @@
 package network
 
 import (
+	"io/ioutil"
+	"os"
+	"path/filepath"
+	"runtime"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
@@ -19,10 +23,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/vishvananda/netlink"
+	"github.com/vishvananda/netns"
 )
 
 var (
 	NetworkStatInterval = time.Duration(60 * time.Second)
+
+	dockerNSDir = "/var/run/docker/netns/"
 )
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs) {
@@ -56,6 +63,53 @@ func runNetworkCB() {
 	if err != nil {
 		logger.GetLogger().WithError(err).Infof("Link list failed")
 	} else {
+		for _, l := range links {
+			emitInterfaceEvent(l.Attrs())
+		}
+	}
+
+	nsDir, err := ioutil.ReadDir(dockerNSDir)
+	if err != nil {
+		logger.GetLogger().WithError(err).Infof("dockerNSDir read failed")
+		return
+	}
+
+	runtime.LockOSThread()
+	rootNS, err := netns.Get() //netlink.GetNetNsIdByPid(os.Getpid())
+	if err != nil {
+		logger.GetLogger().WithField("pid", os.Getpid()).WithError(err).Infof("netns root lookup failed")
+		runtime.UnlockOSThread()
+		return
+	}
+
+	defer func() {
+		err := netns.Set(rootNS)
+		if err != nil {
+			panic("failed to restore network ns, bailing")
+		}
+		runtime.UnlockOSThread()
+	}()
+
+	for fileIndex := range nsDir {
+		nsFile := nsDir[fileIndex]
+		nsFileName := filepath.Join(dockerNSDir, nsFile.Name())
+
+		ns, err := netns.GetFromPath(nsFileName)
+		if err != nil {
+			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("netns get from path failed")
+			continue
+		}
+
+		err = netns.Set(ns)
+		if err != nil {
+			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("set netns failed")
+			continue
+		}
+		links, err = netlink.LinkList()
+		if err != nil {
+			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("netns LinkList failed")
+			continue
+		}
 		for _, l := range links {
 			emitInterfaceEvent(l.Attrs())
 		}
