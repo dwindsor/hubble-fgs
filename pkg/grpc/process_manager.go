@@ -596,6 +596,7 @@ func (pm *ProcessManager) GetInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs
 	fgsEvent := &fgs.InterfaceStats{
 		InterfaceName:    msg.Iface.Name,
 		InterfaceIfindex: uint32(msg.Iface.Index),
+		Netns:            msg.Iface.Netns,
 		BytesSent:        msg.Stats.BytesSent,
 		BytesReceived:    msg.Stats.BytesReceived,
 		PacketsSent:      msg.Stats.PacketsSent,

@@ -89,6 +89,7 @@ message InterfaceStats {
     uint64 tx_drops = 9;
     uint64 rx_drops = 10;
     Pod    pod = 11;
+    string netns = 12;
 }
 
 message SocketStats {

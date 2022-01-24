@@ -32,7 +32,7 @@ var (
 	dockerNSDir = "/var/run/docker/netns/"
 )
 
-func emitInterfaceEvent(attrs *netlink.LinkAttrs) {
+func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string) {
 	unix := api.MsgInterfaceEventUnix{
 		Common: api.MsgCommon{
 			Op:    api.MSG_OP_INTERFACE_STATS,
@@ -42,6 +42,7 @@ func emitInterfaceEvent(attrs *netlink.LinkAttrs) {
 		Iface: api.MsgInterface{
 			Index: attrs.Index,
 			Name:  attrs.Name,
+			Netns: netns,
 		},
 		Stats: api.MsgInterfaceStats{
 			BytesSent:       attrs.Statistics.TxBytes,
@@ -64,7 +65,7 @@ func runNetworkCB() {
 		logger.GetLogger().WithError(err).Infof("Link list failed")
 	} else {
 		for _, l := range links {
-			emitInterfaceEvent(l.Attrs())
+			emitInterfaceEvent(l.Attrs(), "")
 		}
 	}
 
@@ -111,7 +112,7 @@ func runNetworkCB() {
 			continue
 		}
 		for _, l := range links {
-			emitInterfaceEvent(l.Attrs())
+			emitInterfaceEvent(l.Attrs(), nsFile.Name())
 		}
 	}
 }

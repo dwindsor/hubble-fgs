@@ -603,6 +603,7 @@ HTTP PARSER
 | tx_drops | [uint64](#uint64) |  |  |
 | rx_drops | [uint64](#uint64) |  |  |
 | pod | [Pod](#fgs.Pod) |  |  |
+| netns | [string](#string) |  |  |
 
 
 

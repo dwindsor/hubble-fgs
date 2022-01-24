@@ -416,6 +416,7 @@ type MsgInterfaceStats struct {
 type MsgInterface struct {
 	Name  string
 	Index int
+	Netns string
 }
 
 type MsgInterfaceEventUnix struct {
