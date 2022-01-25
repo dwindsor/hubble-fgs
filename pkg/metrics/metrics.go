@@ -215,35 +215,35 @@ var (
 	InterfaceBytesSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: MetricNamePrefix + "interface_txbytes",
 		Help: "Bytes sent per network interface",
-	}, []string{"name"})
+	}, []string{"name", "netns"})
 	InterfaceBytesReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: MetricNamePrefix + "interface_rxbytes",
 		Help: "Bytes received per network interface",
-	}, []string{"name"})
+	}, []string{"name", "netns"})
 	InterfaceSegmentsSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: MetricNamePrefix + "interface_txsegs",
 		Help: "Segments sent per network interface",
-	}, []string{"name"})
+	}, []string{"name", "netns"})
 	InterfaceSegmentsReceived = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: MetricNamePrefix + "interface_rxsegs",
 		Help: "Segments received per network interface",
-	}, []string{"name"})
+	}, []string{"name", "netns"})
 	InterfaceTxErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: MetricNamePrefix + "interface_txerrors",
 		Help: "TX errors per network interface",
-	}, []string{"name"})
+	}, []string{"name", "netns"})
 	InterfaceRxErrors = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: MetricNamePrefix + "interface_rxerrors",
 		Help: "RX errors per network interface",
-	}, []string{"name"})
+	}, []string{"name", "netns"})
 	InterfaceTxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: MetricNamePrefix + "interface_txdrops",
 		Help: "TX drops per network interface",
-	}, []string{"name"})
+	}, []string{"name", "netns"})
 	InterfaceRxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: MetricNamePrefix + "interface_rxdrops",
 		Help: "RX drops per network interface",
-	}, []string{"name"})
+	}, []string{"name", "netns"})
 )
 
 func getDstPodInfo(dstPod *fgs.Pod) (pod, ns string) {
@@ -509,14 +509,15 @@ func handleInterfaceStatsEvent(processedEvent interface{}) {
 		switch res := ev.Event.(type) {
 		case *fgs.GetEventsResponse_InterfaceStats:
 			name := res.InterfaceStats.InterfaceName
-			InterfaceBytesSent.WithLabelValues(name).Set(float64(res.InterfaceStats.BytesSent))
-			InterfaceBytesReceived.WithLabelValues(name).Set(float64(res.InterfaceStats.BytesReceived))
-			InterfaceSegmentsSent.WithLabelValues(name).Set(float64(res.InterfaceStats.PacketsSent))
-			InterfaceSegmentsReceived.WithLabelValues(name).Set(float64(res.InterfaceStats.PacketsReceived))
-			InterfaceTxErrors.WithLabelValues(name).Set(float64(res.InterfaceStats.TxErrors))
-			InterfaceRxErrors.WithLabelValues(name).Set(float64(res.InterfaceStats.RxErrors))
-			InterfaceTxDrops.WithLabelValues(name).Set(float64(res.InterfaceStats.TxDrops))
-			InterfaceRxDrops.WithLabelValues(name).Set(float64(res.InterfaceStats.RxDrops))
+			ns := res.InterfaceStats.Netns
+			InterfaceBytesSent.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.BytesSent))
+			InterfaceBytesReceived.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.BytesReceived))
+			InterfaceSegmentsSent.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.PacketsSent))
+			InterfaceSegmentsReceived.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.PacketsReceived))
+			InterfaceTxErrors.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.TxErrors))
+			InterfaceRxErrors.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.RxErrors))
+			InterfaceTxDrops.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.TxDrops))
+			InterfaceRxDrops.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.RxDrops))
 		}
 	}
 }
