@@ -42,7 +42,7 @@ var (
 		"bpf_tls_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb",
-		"sk_skb_verdict/fgs_tls",
+		"sk_skb/stream_verdict/fgs_tls",
 		"bpf_tls_skskb_verdict_fgs",
 		false,
 		true,
@@ -52,7 +52,7 @@ var (
 		"bpf_tls_skskb_parser.o",
 		"sk_skb",
 		"sk_skb",
-		"sk_skb_parser/fgs_tls",
+		"sk_skb/stream_parser/fgs_tls",
 		"bpf_tls_skskb_parser_fgs",
 		false,
 		true,
@@ -188,17 +188,17 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) 
 		return err, i
 	}
 
-	err, i = sensors.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
+	err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, path)
 	if err != nil {
 		return err, i
 	}
 	if utils.SkSkbParserRequired() {
-		err, i = sensors.LoadSkSkbParser(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbParser, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return sensors.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, TLSSkSkbVerdict, args.Version, args.Verbose, args.X64, path)
+	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbVerdict, path)
 }
 
 func (skmsg *skmsgTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

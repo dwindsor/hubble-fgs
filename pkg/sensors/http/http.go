@@ -96,8 +96,8 @@ var (
 		"bpf_http_verdict.o",
 		"sk_skb",
 		"sk_skb",
-		"sk_skb_http_verdict/fgshttp",
-		"sk_skb_verdict",
+		"sk_skb/stream_verdict/fgshttp",
+		"bpf_skskb_http_verdict",
 
 		false,
 		true,
@@ -117,18 +117,18 @@ type sensor struct {
 
 func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, httpSockMapName)
-	err, i := sensors.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
+	err, i := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, path)
 	if err != nil {
 		return err, i
 	}
 
 	if utils.SkSkbParserRequired() {
-		err, i = sensors.LoadSkSkbParser(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return sensors.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
+	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, path)
 }
 
 func (http *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

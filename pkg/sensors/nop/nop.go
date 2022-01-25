@@ -70,18 +70,18 @@ type sensor struct {
 
 func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, nopSockMapName)
-	err, i := sensors.LoadSkmsg(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, path)
+	err, i := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, path)
 	if err != nil {
 		return err, i
 	}
 
 	if utils.SkSkbParserRequired() {
-		err, i = sensors.LoadSkSkbParser(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbParser, args.Version, args.Verbose, args.X64, path)
+		err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, path)
 		if err != nil {
 			return err, i
 		}
 	}
-	return sensors.LoadSkSkbVerdict(args.BPFDir, args.MapDir, args.CiliumDir, SkSkbVerdict, args.Version, args.Verbose, args.X64, path)
+	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, path)
 }
 
 func (nop *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

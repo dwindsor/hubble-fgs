@@ -11,13 +11,19 @@
 package sensors
 
 import (
+	"fmt"
+	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 
 	"github.com/vishvananda/netlink"
+
+	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/link"
 )
 
 func LoadSockOpt(
@@ -41,60 +47,153 @@ func LoadSockOpt(
 	)
 }
 
-func LoadSkmsg(
-	bpfDir, mapDir, ciliumDir string,
-	load *Program,
-	version, verbose int,
-	x64 bool,
-	path string,
-) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	return bpf.LoadSkmsgProgram(
-		version, verbose,
-		btfObj,
-		load.Name,
-		load.Label,
-		filepath.Join(bpfDir, load.PinPath),
-		mapDir,
-		path,
-	)
+func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection) error {
+	secToProgName := make(map[string]string)
+	for name, prog := range spec.Programs {
+		secToProgName[prog.SectionName] = name
+	}
+
+	install := func(mapName string, secPrefix string) error {
+		tailCallsMap, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
+		if err != nil {
+			return fmt.Errorf("failed to open map '%s': %w", mapName, err)
+		}
+		defer tailCallsMap.Close()
+
+		for i := 0; i < 6; i++ {
+			secName := fmt.Sprintf("%s/%d", secPrefix, i)
+			if progName, ok := secToProgName[secName]; ok {
+				if prog, ok := coll.Programs[progName]; ok {
+					err := tailCallsMap.Update(uint32(i), uint32(prog.FD()), ebpf.UpdateAny)
+					if err != nil {
+						return fmt.Errorf("update of tail-call map '%s' failed: %w", mapName, err)
+					}
+				}
+			}
+		}
+		return nil
+	}
+
+	if err := install("http1_calls", "sk_msg"); err != nil {
+		return err
+	}
+	if err := install("http1_calls_skb", "sk_skb/stream_verdict"); err != nil {
+		return err
+	}
+
+	return nil
 }
 
-func LoadSkSkbVerdict(
-	bpfDir, mapDir, ciliumDir string,
+func LoadSkProgram(
+	bpfDir, mapDir string,
 	load *Program,
-	version, verbose int,
-	x64 bool,
-	path string,
+	targetSockmap string,
 ) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	return bpf.LoadSkSkbVerdictProgram(
-		version, verbose,
-		btfObj,
-		load.Name,
-		load.Label,
-		filepath.Join(bpfDir, load.PinPath),
-		mapDir,
-		path,
-	)
-}
+	var btfFile *os.File
+	if btfFilePath := btf.GetCachedBTFFile(); btfFilePath != "/sys/kernel/btf/vmlinux" {
+		// Non-standard path to BTF, open it and provide it as 'TargetBTF'.
+		var err error
+		btfFile, err = os.Open(btfFilePath)
+		if err != nil {
+			return fmt.Errorf("opening BTF file '%s' failed: %w", btfFilePath, err), 0
+		}
+		defer btfFile.Close()
+	}
 
-func LoadSkSkbParser(
-	bpfDir, mapDir, ciliumDir string,
-	load *Program,
-	version, verbose int,
-	x64 bool,
-	path string,
-) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	return bpf.LoadSkSkbParserProgram(
-		version, verbose,
-		btfObj,
-		load.Name,
-		load.Label,
-		filepath.Join(bpfDir, load.PinPath),
-		mapDir,
-		path)
+	spec, err := ebpf.LoadCollectionSpec(load.Name)
+	if err != nil {
+		return fmt.Errorf("loading collection spec failed: %w", err), 0
+	}
+
+	var progSpec *ebpf.ProgramSpec
+
+	// Find the program spec for the target program
+	for _, prog := range spec.Programs {
+		if prog.SectionName == load.Label {
+			progSpec = prog
+			break
+		}
+	}
+
+	if progSpec == nil {
+		return fmt.Errorf("program for section '%s' not found", load.Label), 0
+	}
+
+	// Find all the maps referenced by the program, so we'll rewrite only
+	// the ones used.
+	refMaps := make(map[string]bool)
+	for _, inst := range progSpec.Instructions {
+		if inst.Reference != "" {
+			refMaps[inst.Reference] = true
+		}
+	}
+
+	pinnedMaps := make(map[string]*ebpf.Map)
+	for name := range refMaps {
+		mapPath := filepath.Join(mapDir, name)
+		m, err := ebpf.LoadPinnedMap(mapPath, nil)
+		if err == nil {
+			defer m.Close()
+			pinnedMaps[name] = m
+		}
+		// TODO(JM): Would be great to be more declarative about which
+		// maps we need pinned and which can be program local.
+	}
+	if err := spec.RewriteMaps(pinnedMaps); err != nil {
+		return fmt.Errorf("rewrite maps failed: %w", err), 0
+	}
+
+	var opts ebpf.CollectionOptions
+	if btfFile != nil {
+		opts.Programs.TargetBTF = btfFile
+	}
+
+	coll, err := ebpf.NewCollectionWithOptions(spec, opts)
+	if err != nil {
+		return fmt.Errorf("opening collection failed: %w", err), 0
+	}
+	defer coll.Close()
+
+	prog, ok := coll.Programs[progSpec.Name]
+	if !ok {
+		return fmt.Errorf("program for section '%s' not found", load.Label), 0
+	}
+
+	targetMap, err := ebpf.LoadPinnedMap(targetSockmap, nil)
+	if err != nil {
+		return fmt.Errorf("loading '%s' failed: %w", targetSockmap, err), 0
+	}
+	defer targetMap.Close()
+
+	pinPath := filepath.Join(bpfDir, load.PinPath)
+	if err := prog.Pin(pinPath); err != nil {
+		return fmt.Errorf("pinning '%s' to '%s' failed: %w", load.Label, pinPath, err), 0
+	}
+
+	err = link.RawAttachProgram(link.RawAttachProgramOptions{
+		Target:  targetMap.FD(),
+		Program: prog,
+		Attach:  progSpec.AttachType,
+	})
+	if err != nil {
+		if err := prog.Unpin(); err != nil {
+			logger.GetLogger().WithError(err).Warn("Failed to unpin program after failed attach")
+		}
+		return fmt.Errorf("attaching '%s' failed: %w", load.Label, err), 0
+	}
+
+	if strings.Contains(load.Name, "_http") {
+		// TODO(JM): Use cilium/ebpf's prog array initialization and remove this.
+		err := installTailCalls(mapDir, spec, coll)
+		if err != nil {
+			if err := prog.Unpin(); err != nil {
+				logger.GetLogger().WithError(err).Warn("Failed to unpin program after failed tail call install")
+			}
+			return fmt.Errorf("installing tail calls failed: %w", err), 0
+		}
+	}
+
+	return nil, 0
 }
 
 func LoadSockops(

@@ -101,6 +101,10 @@ func InitCachedBTF(lib, btf string, ctx context.Context) error {
 	return err
 }
 
+func GetCachedBTFFile() string {
+	return btfFile
+}
+
 func GetCachedBTF() bpf.BTF {
 	return btfObj
 }

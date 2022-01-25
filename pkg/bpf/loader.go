@@ -496,55 +496,6 @@ out:
 	return err;
 }
 
-int skskb_verdict_loader(const int version,
-			 const int verbosity,
-			 void *btf,
-			 const char *prog,
-			 const char *label,
-			 const char *__prog,
-			 const char *mapdir,
-			 char *path)
-{
-	const int type = BPF_PROG_TYPE_SK_SKB;
-	const int attach = BPF_SK_SKB_STREAM_VERDICT;
-
-	return fgs_loader(version, verbosity, btf, prog, label,
-	                  __prog, mapdir, path, type, attach, 0, 0, 0, 0);
-}
-
-int skskb_parser_loader(const int version,
-			const int verbosity,
-			void *btf,
-			const char *prog,
-			const char *label,
-			const char *__prog,
-			const char *mapdir,
-			char *path)
-{
-	const int type = BPF_PROG_TYPE_SK_SKB;
-	const int attach = BPF_SK_SKB_STREAM_PARSER;
-
-	return fgs_loader(version, verbosity, btf, prog, label,
-	                  __prog, mapdir, path, type, attach, 0, 0, 0, 0);
-}
-
-int skmsg_loader(const int version,
-		 const int verbosity,
-		 void *btf,
-		 const char *prog,
-		 const char *label,
-		 const char *__prog,
-		 const char *mapdir,
-		 char *path)
-{
-	const int type = BPF_PROG_TYPE_SK_MSG;
-	const int attach = BPF_SK_MSG_VERDICT;
-
-	return fgs_loader(version, verbosity, btf, prog, label,
-	                  __prog, mapdir, path, type, attach, 0, 0, 0, 0);
-}
-
-
 int sockops_loader(const int version,
 		   const int verbosity,
 		   void *btf,
@@ -986,54 +937,6 @@ func LoadSockOptProgram(__version, __verbosity int, btf uintptr, object, __label
 	attach_type := 22 // BPF_CGROUP_SETSOCKOPT
 
 	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
-}
-
-func LoadSkmsgProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
-	version := C.int(__version)
-	verbosity := C.int(__verbosity)
-	o := C.CString(object)
-	l := C.CString(__label)
-	p := C.CString(__prog)
-	mapdir := C.CString(__mapdir)
-	path := C.CString(__path)
-	loader_fd := C.skmsg_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, path)
-	loaderInt := int(loader_fd)
-	if loaderInt < 0 {
-		return fmt.Errorf("Unable to skmsg load: %d %s", loaderInt, object), 0
-	}
-	return nil, loaderInt
-}
-
-func LoadSkSkbVerdictProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
-	version := C.int(__version)
-	verbosity := C.int(__verbosity)
-	o := C.CString(object)
-	l := C.CString(__label)
-	p := C.CString(__prog)
-	mapdir := C.CString(__mapdir)
-	path := C.CString(__path)
-	loader_fd := C.skskb_verdict_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, path)
-	loaderInt := int(loader_fd)
-	if loaderInt < 0 {
-		return fmt.Errorf("Unable to skskb load: %d %s", loaderInt, object), 0
-	}
-	return nil, loaderInt
-}
-
-func LoadSkSkbParserProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string) (error, int) {
-	version := C.int(__version)
-	verbosity := C.int(__verbosity)
-	o := C.CString(object)
-	l := C.CString(__label)
-	p := C.CString(__prog)
-	mapdir := C.CString(__mapdir)
-	path := C.CString(__path)
-	loader_fd := C.skskb_parser_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, path)
-	loaderInt := int(loader_fd)
-	if loaderInt < 0 {
-		return fmt.Errorf("Unable to skskb load: %d %s", loaderInt, object), 0
-	}
-	return nil, loaderInt
 }
 
 func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string) (error, int) {
