@@ -102,8 +102,8 @@ func socketCookieTest(t *testing.T) (ec.MultiResponseChecker, error) {
 	lFD = -1
 	addCheck(ec.NewCloseEventChecker().HasCookie(lCookie).End())
 
-	checker := ec.NewOrderedMultiResponseChecker(checks...)
-	return &checker, nil
+	checker := ec.NewUnorderedMultiResponseChecker(checks...)
+	return checker, nil
 }
 
 func TestSocketCookie(t *testing.T) {

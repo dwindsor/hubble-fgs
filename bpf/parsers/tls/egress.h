@@ -51,13 +51,19 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 
 	state = map_lookup_elem(&tls_map, &tuple);
 	if (state) {
-		/* An event here indicates we have TLS state associated
-		 * with this socket and/or we have aborted parsing on the
-		 * TLS socket. If it is a KTLS socket we can also pass to
-		 * HTTP parser for handling
-		 */
-		if (state->version == TLS_HTTP_VERSION)
-			http_do_parser(ctx, &tuple);
+#if defined(SK_MSG) || defined(SK_SKB)
+		struct sk_msg_md *msg = 0;
+
+		if (bpf_core_field_exists(msg->sk)) {
+			/* An event here indicates we have TLS state associated
+			 * with this socket and/or we have aborted parsing on the
+			 * TLS socket. If it is a KTLS socket we can also pass to
+			 * HTTP parser for handling
+			 */
+			if (state->version == TLS_HTTP_VERSION)
+				http_do_parser(ctx, &tuple);
+		}
+#endif
 		return;
 	}
 

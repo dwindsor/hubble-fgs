@@ -9,9 +9,20 @@ import (
 	"time"
 )
 
-func (tc *TestCase) Run(t *testing.T, dispatch *EventDispatcher, timeout time.Duration) error {
+func (tc *TestCase) Run(t *testing.T, timeout time.Duration) error {
+	dispatch, err := NewEventDispatcher()
+	if err != nil {
+		return err
+	}
+
 	runCtx, cancel := context.WithTimeout(context.Background(), timeout)
 	defer cancel()
+
+	dispatcherErrChan := make(chan error, 1)
+	go func() {
+		<-runCtx.Done()
+		dispatcherErrChan <- dispatch.Close()
+	}()
 
 	//
 	// Subscribe to all relevant events and start
@@ -33,10 +44,7 @@ func (tc *TestCase) Run(t *testing.T, dispatch *EventDispatcher, timeout time.Du
 	}
 
 	ready := make(chan bool)
-	dispatcherErrChan := make(chan error, 1)
-	go func() {
-		dispatcherErrChan <- dispatch.Run(runCtx, ready)
-	}()
+	go dispatch.Run(runCtx, ready)
 
 	// Wait for dispatcher to become ready.
 	<-ready

@@ -45,16 +45,11 @@ func procDockerIdOffsetDefault(btf bpf.BTF) error {
 	return procDockerIdOffsetWriter(0, btf)
 }
 
-func procsDockerIdOffset(docker string) (string, int, error) {
+func procsDockerIdOffset(docker string) (string, int) {
+	off := strings.LastIndex(docker, "-") + 1
 	s := strings.Split(docker, "-")
 
-	if len(s) == 1 {
-		return s[0], 0, nil
-	} else if len(s) > 1 {
-		return s[1], len(s[0]) + 1, nil
-	}
-
-	return "", 0, fmt.Errorf("Docker string (%s) parse error", docker)
+	return s[len(s)-1], off
 }
 
 func procsFilename(args []byte) (string, string) {
@@ -64,7 +59,7 @@ func procsFilename(args []byte) (string, string) {
 	return cmds, filename
 }
 
-func procsFindDockerId(cgroups string) (string, int, error) {
+func procsFindDockerId(cgroups string) (string, int) {
 	docker := strings.Split(cgroups, "\n")
 	for _, s := range docker {
 		if strings.Contains(s, "pids:") && (strings.Contains(s, "pods") || strings.Contains(s, "docker")) {
@@ -78,16 +73,16 @@ func procsFindDockerId(cgroups string) (string, int, error) {
 					dockerString = dockerFields[4]
 				}
 			}
-			docker, i, err := procsDockerIdOffset(dockerString)
+			docker, i := procsDockerIdOffset(dockerString)
 			// return first 31 chars to match BPF generated values.
 			// If the string is less than 31 chars its not a docker
 			// ID so skip it. For example docker.server will get here.
 			if len(docker) > 30 {
-				return docker[:31], i, err
+				return docker[:31], i
 			}
 		}
 	}
-	return "", 0, nil
+	return "", 0
 }
 
 func procsDockerId(pid uint32) (string, int, error) {
@@ -96,5 +91,6 @@ func procsDockerId(pid uint32) (string, int, error) {
 	if err != nil {
 		return "", 0, err
 	}
-	return procsFindDockerId(string(cgroups))
+	off, id := procsFindDockerId(string(cgroups))
+	return off, id, nil
 }

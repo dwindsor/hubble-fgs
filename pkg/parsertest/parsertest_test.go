@@ -15,6 +15,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -33,6 +34,9 @@ const (
 // by changing working directory upwards towards /.
 var testsRoot = "testdata/parser"
 
+// Number of times to execute each test case. Useful to execute each test multiple
+// times to make sure no events are left unhandled and that parser's work over multiple
+// runs.
 var numRunsPerTestcase = 3
 
 const (
@@ -63,6 +67,9 @@ func init() {
 		option.Config.HubbleLib = "/var/lib/hubble-fgs"
 	}
 
+	// Setup BTF cache
+	btf.InitCachedBTF(option.Config.HubbleLib, "", context.Background())
+
 	// Probe for the testdata. Changing the working directory
 	// to keep the test-case filenames short.
 	for {
@@ -91,6 +98,8 @@ type SensorsHandle struct {
 }
 
 func (h *SensorsHandle) Close() {
+	h.cancel()
+
 	bpfDir := bpf.MapPrefixPath()
 	for _, l := range h.sensor.Progs {
 		sensors.RemoveProgram(bpfDir, l)
@@ -173,6 +182,7 @@ func addSelfToEvecveMap(t *testing.T) {
 	if err != nil {
 		t.Fatalf("OpenMap: %s\n", err)
 	}
+	defer m.Close()
 
 	pid := uint32(os.Getpid())
 	ppid := uint32(os.Getppid())
@@ -193,12 +203,6 @@ func runTests(t *testing.T, sensor int, dir string) {
 	handle := startSensors(sensor, t)
 	defer handle.Close()
 
-	dispatcher, err := NewEventDispatcher()
-	if err != nil {
-		t.Fatal(err)
-	}
-	defer dispatcher.Close()
-
 	addSelfToEvecveMap(t)
 
 	fs.WalkDir(
@@ -212,46 +216,54 @@ func runTests(t *testing.T, sensor int, dir string) {
 				return nil
 			}
 
-			for i := 0; i < numRunsPerTestcase; i++ {
-				t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
-					tc, err := ParseTestCase(path.Join(testsRoot, relpath))
-					if err != nil {
-						t.Fatal(err)
-					}
+			ok := true
+			for i := 0; i < numRunsPerTestcase && ok; i++ {
+				tc, err := ParseTestCase(path.Join(testsRoot, relpath))
+				if err != nil {
+					t.Fatal(err)
+				}
 
-					err = tc.Run(t, dispatcher, testTimeout)
+				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
+					err = tc.Run(t, testTimeout)
 					if err != nil {
-						t.Fatal(err)
+						if tc.IsBroken() {
+							t.Skipf("Broken test failed as expected:\n%s", err)
+						} else {
+							t.Fatal(err)
+						}
+					} else if tc.IsBroken() {
+						t.Skip("Broken test succeeded, consider dropping 'broken' tag?")
 					}
 				})
+				ok = ok && !tc.IsBroken()
 			}
 			return nil
 		})
 
 }
 
-func TestTLS(t *testing.T) {
+func Test_tls(t *testing.T) {
 	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	runTests(t, SENS_TLS, "tls")
 }
 
-func TestHTTP(t *testing.T) {
+func Test_http(t *testing.T) {
 	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	runTests(t, SENS_HTTP, "http")
 }
 
-func TestHTTP2(t *testing.T) {
+func Test_http2(t *testing.T) {
 	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 	runTests(t, SENS_HTTP, "http2")
 }
 
-func TestTCP(t *testing.T) {
+func Test_tcp(t *testing.T) {
 	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}

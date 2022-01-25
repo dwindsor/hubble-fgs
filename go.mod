@@ -5,6 +5,7 @@ go 1.17
 require (
 	github.com/blang/semver v3.5.0+incompatible
 	github.com/cilium/cilium v1.7.0-rc2.0.20200311180626-711b37ed100c
+	github.com/cilium/ebpf v0.7.0
 	github.com/cilium/hubble v0.5.1
 	github.com/ckaznocha/protoc-gen-lint v0.2.1
 	github.com/fatih/color v1.7.0
@@ -23,7 +24,7 @@ require (
 	github.com/yalue/native_endian v1.0.1
 	golang.org/x/net v0.0.0-20200226121028-0de0cce0169b
 	golang.org/x/sync v0.0.0-20190911185100-cd5d95a43a6e
-	golang.org/x/sys v0.0.0-20201231184435-2d18734c6014
+	golang.org/x/sys v0.0.0-20210906170528-6f6e22806c34
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
 	google.golang.org/api v0.4.0
 	google.golang.org/grpc v1.29.1

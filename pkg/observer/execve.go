@@ -63,13 +63,13 @@ func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue {
 func (k *Observer) procKernel() ObserverProcs {
 	kernelArgs := []byte("<kernel>\u0000")
 	return ObserverProcs{
-		psize:       uint32(api.SIZEOF_EXECVE + len(kernelArgs) + api.MAX_SIZEOF_CWD),
+		psize:       uint32(api.MSG_SIZEOF_EXECVE + len(kernelArgs) + api.MSG_SIZEOF_CWD),
 		ppid:        kernelPid,
 		pnspid:      0,
 		pflags:      api.EventProcFS,
 		pktime:      1,
 		pargs:       kernelArgs,
-		size:        uint32(api.SIZEOF_EXECVE + len(kernelArgs) + api.MAX_SIZEOF_CWD),
+		size:        uint32(api.MSG_SIZEOF_EXECVE + len(kernelArgs) + api.MSG_SIZEOF_CWD),
 		uid:         0,
 		pid:         kernelPid,
 		nspid:       0,

@@ -60,6 +60,7 @@ type ProcessManager struct {
 	enableProcessCred bool
 	enableEventCache  bool
 	enableCilium      bool
+	dns               *dnsCache
 }
 
 // getNodeNameForExport returns node name string for JSON export. It uses NODE_NAME
@@ -90,6 +91,12 @@ func NewProcessManager(
 	if err != nil {
 		return nil, err
 	}
+
+	dnsCache, err := newDnsCache()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DNS cache %w", err)
+	}
+
 	pm := &ProcessManager{
 		log:               log,
 		cache:             cache,
@@ -100,11 +107,13 @@ func NewProcessManager(
 		enableProcessCred: enableProcessCred,
 		enableEventCache:  enableEventCache,
 		enableCilium:      enableCilium,
+		dns:               dnsCache,
 	}
 
 	if enableEventCache {
 		pm.eventCache = newEventCache(log, pm)
 	}
+
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
 		"enableProcessCred": enableProcessCred,
@@ -226,6 +235,8 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
+	fgsEvent.DestinationNames = pm.dns.GetIp(fgsEvent.Socket.DestinationIp)
+
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
@@ -233,7 +244,6 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(proc)
 		if endpoint != nil {
-			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 		} else if pm.enableEventCache {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
@@ -287,11 +297,15 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		AnswerTypes:   event.Dns.AnswerTypes,
 	}
 
+	pm.dns.AddIp(fgsDns)
+
 	fgsEvent := &fgs.ProcessDns{
 		Process: proc,
 		Socket:  fgsTuple,
 		Dns:     fgsDns,
 	}
+
+	fgsEvent.DestinationNames = pm.dns.GetIp(fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -300,7 +314,6 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_IPV4_DNS)
 		endpoint := pm.getProcessEndpoint(proc)
 		if endpoint != nil {
-			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 		} else if pm.enableEventCache {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
@@ -1287,6 +1300,8 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
+	fgsEvent.DestinationNames = pm.dns.GetIp(destinationIP.String())
+
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
@@ -1294,7 +1309,6 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(fgsProcess)
 		if endpoint != nil {
-			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 		} else if pm.enableEventCache {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
@@ -1357,6 +1371,8 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
+	fgsEvent.DestinationNames = pm.dns.GetIp(destinationIP.String())
+
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
@@ -1364,7 +1380,6 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(fgsProcess)
 		if endpoint != nil {
-			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 		} else if pm.enableEventCache {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
@@ -1427,6 +1442,8 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
+	fgsEvent.DestinationNames = pm.dns.GetIp(destinationIP.String())
+
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
@@ -1434,7 +1451,6 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		endpoint := pm.getProcessEndpoint(fgsProcess)
 		if endpoint != nil {
-			fgsEvent.DestinationNames = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, destinationIP)
 			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 		} else if pm.enableEventCache {
 			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)

@@ -155,42 +155,55 @@ func (c *AllMultiResponseChecker) Reset() {}
 // squence of responses. The checkers can match in any order (no
 // backtracking).
 type UnorderedMultiResponseChecker struct {
-	checkers        *list.List
-	total_ncheckers int
+	pendingCheckers *list.List
+	totalCheckers   int
+
+	allCheckers *list.List
 }
 
 func NewUnorderedMultiResponseChecker(checkers ...ResponseChecker) *UnorderedMultiResponseChecker {
-	l := list.New()
+	allList := list.New()
 	for _, c := range checkers {
-		l.PushBack(c)
+		allList.PushBack(c)
 	}
 
+	pendingList := list.New()
+	pendingList.PushBackList(allList)
+
 	return &UnorderedMultiResponseChecker{
-		checkers:        l,
-		total_ncheckers: len(checkers),
+		allCheckers:     allList,
+		pendingCheckers: pendingList,
+		totalCheckers:   len(checkers),
 	}
 }
 
+func (c *UnorderedMultiResponseChecker) Reset() {
+	c.pendingCheckers = list.New()
+	c.pendingCheckers.PushBackList(c.allCheckers)
+	c.totalCheckers = c.pendingCheckers.Len()
+
+}
+
 func (c *UnorderedMultiResponseChecker) NextCheck(ev *fgs.GetEventsResponse, log Logger) (bool, error) {
-	clen := c.checkers.Len()
+	clen := c.pendingCheckers.Len()
 	if clen == 0 {
 		return true, nil
 	}
 
-	log.Logf("UnorderedMultiResponseChecker: %d/%d checkers remain", clen, c.total_ncheckers)
+	log.Logf("UnorderedMultiResponseChecker: %d/%d checkers remain", clen, c.totalCheckers)
 	idx := 1
-	for e := c.checkers.Front(); e != nil; e = e.Next() {
+	for e := c.pendingCheckers.Front(); e != nil; e = e.Next() {
 		checker := e.Value.(ResponseChecker)
 		err := checker.Check(ev, log)
 		if err == nil {
 			log.Logf("UnorderedMultiResponseChecker: checking %d/%d: success", idx, clen)
-			c.checkers.Remove(e)
+			c.pendingCheckers.Remove(e)
 			clen--
 			if clen > 0 {
-				log.Logf("UnorderedMultiResponseChecker: success: %d/%d matchers remaining", clen, c.total_ncheckers)
+				log.Logf("UnorderedMultiResponseChecker: success: %d/%d matchers remaining", clen, c.totalCheckers)
 				return false, nil
 			} else {
-				log.Logf("UnorderedMultiResponseChecker: success: all %d matches matched", c.total_ncheckers)
+				log.Logf("UnorderedMultiResponseChecker: success: all %d matches matched", c.totalCheckers)
 				return true, nil
 			}
 		}
@@ -198,14 +211,14 @@ func (c *UnorderedMultiResponseChecker) NextCheck(ev *fgs.GetEventsResponse, log
 		idx += 1
 	}
 
-	return false, fmt.Errorf("UnorderedMultiResponseChecker: all %d checks failed", c.checkers.Len())
+	return false, fmt.Errorf("UnorderedMultiResponseChecker: all %d checks failed", c.pendingCheckers.Len())
 }
 
 func (c *UnorderedMultiResponseChecker) FinalCheck(log Logger) error {
-	if l := c.checkers.Len(); l == 0 {
+	if l := c.pendingCheckers.Len(); l == 0 {
 		return nil
 	} else {
-		return fmt.Errorf("UnorderedMultiResponseChecker: %d checks remain", c.checkers.Len())
+		return fmt.Errorf("UnorderedMultiResponseChecker: %d checks remain", c.pendingCheckers.Len())
 	}
 }
 

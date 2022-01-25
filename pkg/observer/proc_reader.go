@@ -354,26 +354,26 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 			inheritable: inheritable,
 		}
 
-		p.size = uint32(api.SIZEOF_EXECVE + len(p.args) + api.MAX_SIZEOF_CWD)
-		p.psize = uint32(api.SIZEOF_EXECVE + len(p.pargs) + api.MAX_SIZEOF_CWD)
+		p.size = uint32(api.MSG_SIZEOF_EXECVE + len(p.args) + api.MSG_SIZEOF_CWD)
+		p.psize = uint32(api.MSG_SIZEOF_EXECVE + len(p.pargs) + api.MSG_SIZEOF_CWD)
 		/* If we can't fit this in the buffer lets trim some parts and
 		 * make it fit.
 		 */
-		if p.size+p.psize > api.ARGSBUFFER {
+		if p.size+p.psize > api.MSG_SIZEOF_BUFFER {
 			var deduct uint32
 			var need int32
 
-			need = int32((p.size + p.psize) - api.ARGSBUFFER)
+			need = int32((p.size + p.psize) - api.MSG_SIZEOF_BUFFER)
 			// First consume CWD space from parent because this speculative extra space
 			// next try to consume CWD space from child and finally start truncating args
 			// if necessary.
-			deduct = api.MAX_SIZEOF_CWD
+			deduct = api.MSG_SIZEOF_CWD
 			p.pflags = p.pflags & ^uint32(api.EventNeedsCWD)
 			p.pflags = p.pflags | api.EventNoCWDSupport
 			p.psize -= deduct
 			need -= int32(deduct)
 			if need > 0 {
-				deduct = api.MAX_SIZEOF_CWD
+				deduct = api.MSG_SIZEOF_CWD
 				p.size -= deduct
 				p.flags = p.flags & ^uint32(api.EventNeedsCWD)
 				p.flags = p.flags | api.EventNoCWDSupport

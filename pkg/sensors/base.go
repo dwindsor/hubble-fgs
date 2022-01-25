@@ -170,7 +170,6 @@ var (
 	/* Networking and Process Monitoring maps */
 	ExecveMap           = Map{"execve_map", "", &Execve, Idle(), -1}
 	SocketMap           = Map{"socket_map", "", &TCPConnect, Idle(), -1}
-	TCPMap              = Map{"ipv4_tcp_map", "", &TCPConnect, Idle(), -1} // NB: This seems to be unused?
 	TCPSendCheckSampler = Map{"tcp_send_check_sampler", "", &TCPSendCheck, Idle(), -1}
 
 	/* Policy maps populated from base programs */

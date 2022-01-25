@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"sort"
 	"text/scanner"
 	"unsafe"
 
@@ -38,6 +39,11 @@ type TestCase struct {
 
 	// The test steps to execute.
 	Steps []TestStep
+}
+
+func (tc *TestCase) IsBroken() bool {
+	sort.Strings(tc.Tags)
+	return sort.SearchStrings(tc.Tags, "broken") != len(tc.Tags)
 }
 
 type TestStepError struct {
