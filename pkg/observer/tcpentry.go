@@ -59,11 +59,11 @@ type SocketMapKey struct {
 }
 
 type SocketMapValue struct {
-	Pid     uint32
+	Pid     uint32 `align:"key"`
 	Pad1    uint32
 	Ktime   uint64
-	ZeroWin uint32
-	SFlags  uint32
+	ZeroWin uint32 `align:"zero_window"`
+	SFlags  uint32 `align:"socket_flags"`
 }
 
 func bpfIpToString(ip uint32) string {

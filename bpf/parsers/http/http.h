@@ -136,6 +136,7 @@ struct __msg_http_event {
 	struct __msg_http     request;
 } __attribute__((packed));
 
+#ifndef ALIGNCHECKER
 struct bpf_map_def __attribute__((section("maps"), used)) http_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(struct msg_tls_ipv4),
@@ -149,4 +150,4 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_map_heap = {
 	.value_size = sizeof(struct msg_http_event),
 	.max_entries = 1,
 };
-
+#endif // ALIGNCHECKER

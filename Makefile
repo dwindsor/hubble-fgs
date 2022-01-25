@@ -22,7 +22,7 @@ KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-
 GOLANGCILINT_WANT_VERSION = 1.42.1
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 
-all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench test-compile
+all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
@@ -58,6 +58,9 @@ hubble-enterprise:
 hubble-enterprise-operator:
 	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./operator
 
+fgs-alignchecker:
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./tools/alignchecker/
+
 .PHONY: ksyms
 ksyms:
 	$(GO) build ./cmd/ksyms/
@@ -76,7 +79,7 @@ install:
 
 clean:
 	$(MAKE) -C ./bpf clean
-	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs
+	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:

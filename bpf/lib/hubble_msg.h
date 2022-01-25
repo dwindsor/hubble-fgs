@@ -414,6 +414,34 @@ struct execve_map_value {
 	__u32 pad;
 } __attribute__((packed));
 
+struct socketmap_value {
+	struct msg_execve_key key;
+	__u32 zero_window;
+	__u32 socket_flags;
+};
+
+#define BPF_F_INDEX_MASK		0xffffffffULL
+#define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
+
+#define bpf_printk(fmt, ...)				\
+({							\
+	char ____fmt[] = fmt;				\
+	trace_printk(____fmt, sizeof(____fmt),	\
+			 ##__VA_ARGS__);		\
+})
+
+/* tracepoint args */
+struct sched_execve_args {
+	unsigned short common_type;
+	unsigned char common_flags;
+	unsigned char common_preempt_count;
+	int common_pid;
+	int filename;
+	int pid;
+	int old_pid;
+};
+
+#ifndef ALIGNCHECKER
 struct bpf_map_def __attribute__((section("maps"), used)) names_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(char) * 256,
@@ -436,7 +464,6 @@ struct bpf_map_def __attribute__((section("maps"), used)) execve_msg_heap_map = 
 	.max_entries = 1,
 };
 #endif // BTF
-
 
 #ifdef BTF
 struct {
@@ -466,13 +493,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct event),
 };
-#endif
-
-struct socketmap_value {
-	struct msg_execve_key key;
-	__u32 zero_window;
-	__u32 socket_flags;
-};
+#endif // BTF
 
 #ifdef BTF
 struct {
@@ -488,28 +509,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
 	.value_size = sizeof(struct socketmap_value),
 	.max_entries = 32768,
 };
-#endif
-
-#define BPF_F_INDEX_MASK		0xffffffffULL
-#define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
-
-#define bpf_printk(fmt, ...)				\
-({							\
-	char ____fmt[] = fmt;				\
-	trace_printk(____fmt, sizeof(____fmt),	\
-			 ##__VA_ARGS__);		\
-})
-
-/* tracepoint args */
-struct sched_execve_args {
-	unsigned short common_type;
-	unsigned char common_flags;
-	unsigned char common_preempt_count;
-	int common_pid;
-	int filename;
-	int pid;
-	int old_pid;
-};
+#endif // BTF
 
 struct bpf_map_def __attribute__((section("maps"), used)) execve_map_stats = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
@@ -531,6 +531,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
 	.value_size = sizeof(__s64),
 	.max_entries = 1,
 };
+#endif // ALIGNCHECKER
 
 #ifndef bpf_ntohs
 #define bpf_ntohs(x)		__builtin_bswap16(x)

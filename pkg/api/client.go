@@ -350,14 +350,14 @@ type MsgK8s struct {
 }
 
 type MsgIPv4Event struct {
-	Common      MsgCommon
-	Tuple       MsgIPv4Tuple
-	Return      int64
-	ProcessKey  MsgExecveKey
-	SockCookie  uint64
-	SocketStats MsgSocketStats
-	SocketFlags uint32
-	Pad         uint32
+	Common      MsgCommon      `align:"common"`
+	Tuple       MsgIPv4Tuple   `align:"tuple"`
+	Return      int64          `align:"ret"`
+	ProcessKey  MsgExecveKey   `align:"key"`
+	SockCookie  uint64         `align:"socket_cookie"`
+	SocketStats MsgSocketStats `align:"stats"`
+	SocketFlags uint32         `align:"socket_flags"`
+	Pad         uint32         `align:"pad"`
 }
 
 type MsgDns struct {
@@ -582,11 +582,11 @@ type MsgTLSAlert struct {
 }
 
 type MsgTLSEvent struct {
-	Common      MsgCommon
-	Tuple       MsgTLSIPv4
-	ClientHello MsgTLS
-	ServerHello MsgTLS
-	ProcessKey  MsgExecveKey
+	Common      MsgCommon    `align:"common"`
+	Tuple       MsgTLSIPv4   `align:"tuple"`
+	ClientHello MsgTLS       `align:"clienthello"`
+	ServerHello MsgTLS       `align:"serverhello"`
+	ProcessKey  MsgExecveKey `align:"execve"`
 }
 
 type MsgTLSEventUnix struct {
@@ -651,16 +651,16 @@ type MsgHttpEvent struct {
 }
 
 type MsgExitEvent struct {
-	Common     MsgCommon
-	ProcessKey MsgExecveKey
+	Common     MsgCommon    `align:"common"`
+	ProcessKey MsgExecveKey `align:"current"`
 }
 
 type MsgExitEventUnix = MsgExitEvent
 
 type MsgCredEvent struct {
-	Common       MsgCommon
-	ProcessKey   MsgExecveKey
-	Capabilities MsgCapabilities
+	Common       MsgCommon       `align:"common"`
+	ProcessKey   MsgExecveKey    `align:"current"`
+	Capabilities MsgCapabilities `align:"caps"`
 }
 
 type MsgCredEventUnix = MsgCredEvent
@@ -681,11 +681,11 @@ type MsgGenericKprobe struct {
 }
 
 type MsgTestEvent struct {
-	Common MsgCommon
-	Arg0   uint64
-	Arg1   uint64
-	Arg2   uint64
-	Arg3   uint64
+	Common MsgCommon `align:"common"`
+	Arg0   uint64    `align:"arg0"`
+	Arg1   uint64    `align:"arg1"`
+	Arg2   uint64    `align:"arg2"`
+	Arg3   uint64    `align:"arg3"`
 }
 
 type MsgTestEventUnix = MsgTestEvent
@@ -700,9 +700,9 @@ func SwapByte(b uint16) uint16 {
 }
 
 type MsgKfreeSkb struct {
-	Common    MsgCommon
-	Calltrace MsgCalltrace
-	Tuple     MsgIPv4Tuple
+	Common    MsgCommon    `align:"common"`
+	Calltrace MsgCalltrace `align:"calltrace"`
+	Tuple     MsgIPv4Tuple `align:"tuple"`
 }
 
 type StackAddr struct {

@@ -2,8 +2,6 @@
 #ifndef __BPF_ELF__
 #define __BPF_ELF__
 
-#include <asm/types.h>
-
 /* Note:
  *
  * Below ELF section names and bpf_elf_map structure definition

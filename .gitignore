@@ -3,6 +3,7 @@ lib/*
 /hubble-fgs
 /hubble-enterprise
 /fgs-bench
+/fgs-alignchecker
 /parsertest
 observer.test
 go-tests
