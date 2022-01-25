@@ -78,6 +78,8 @@ int event_tcp4_close(struct pt_regs *ctx)
 		.tuple.dport = tuple.dport,
 		.tuple.sport = tuple.sport,
 		.socket_cookie = get_cookie(skp),
+		.socket_flags = 0,
+		.pad = 0,
 	};
 
 	if (state == TCP_CLOSE) {
@@ -88,6 +90,7 @@ int event_tcp4_close(struct pt_regs *ctx)
 			val->common.op = MSG_OP_IPV4_TCPCLOSE;
 			val->key.pid = process->key.pid;
 			val->key.ktime = process->key.ktime;
+			val->socket_flags = process->socket_flags;
 
 			get_socket_stats(skp, netns,
 					 process->zero_window,
@@ -125,6 +128,8 @@ int event_tcp4_close(struct pt_regs *ctx)
 			tuple.daddr = daddr;
 			tuple.dport = dport;
 			tuple.saddr = saddr;
+			copy.socket_flags &= ~SOCKFLAGS_TYPE_MASK; // clear all types but keep the rest
+			copy.socket_flags |= SOCKFLAGS_TYPE_ACCEPT;
 			if (!is_tuple_local(&tuple))
 				tuple.uid = 0;
 			add_socketmap(&tuple, &copy);

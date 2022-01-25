@@ -144,6 +144,8 @@ func MsgToIPv4Unix(m *api.MsgIPv4Event) *api.MsgIPv4EventUnix {
 	unix.ProcessKey = m.ProcessKey
 	unix.SockCookie = m.SockCookie
 	unix.SocketStats = MsgToSocketStatsUnix(&m.SocketStats)
+	unix.SocketFlags = m.SocketFlags
+	// no need to copy the pad here
 
 	return unix
 }

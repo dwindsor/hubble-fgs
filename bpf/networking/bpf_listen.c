@@ -61,12 +61,14 @@ int event_sys_listen(struct pt_regs *ctx)
 		.key.pid = pid,
 		.key.ktime = process->key.ktime,
 		.socket_cookie = get_cookie(skp),
+		.socket_flags = 0,
+		.pad = 0,
 	};
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_ipv4_event));
 
 	{
-		struct socketmap_value v;
+		struct socketmap_value v = {0};
 		struct msg_execve_key ev = {0};
 		struct msg_tls_ipv4 tuple;
 		struct net *netns;
@@ -89,6 +91,7 @@ int event_sys_listen(struct pt_regs *ctx)
 		ev.ktime = process->key.ktime;
 		v.key = ev;
 		v.zero_window = 0;
+		v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
 
 		add_socketmap(&tuple, &v);
 	}

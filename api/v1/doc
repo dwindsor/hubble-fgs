@@ -838,6 +838,7 @@ HTTP PARSER
 | stats | [SocketStats](#fgs.SocketStats) |  |  |
 | destination_pod | [Pod](#fgs.Pod) |  |  |
 | protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
+| socket_type | [string](#string) |  |  |
 
 
 

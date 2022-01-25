@@ -123,6 +123,8 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 			.tuple.dport = tuple.dport,
 			.tuple.sport = tuple.sport,
 			.socket_cookie = get_cookie(skp),
+			.socket_flags = 0,
+			.pad = 0,
 		};
 		get_socket_stats(skp, netns, process->zero_window, &val->stats);
 		size = sizeof(struct msg_ipv4_event);

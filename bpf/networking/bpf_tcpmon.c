@@ -69,6 +69,8 @@ int event_tcp4_connect(struct pt_regs *ctx)
 		.key.pid = process->key.pid,
 		.key.ktime = process->key.ktime,
 		.socket_cookie = get_cookie(skp),
+		.socket_flags = 0,
+		.pad = 0,
 	};
 
 	size = sizeof(struct msg_ipv4_event);
@@ -99,6 +101,7 @@ int event_tcp4_connect(struct pt_regs *ctx)
 
 		v.key.pid = process->key.pid;
 		v.key.ktime = process->key.ktime;
+		v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
 
 		if (!is_tuple_local(&tuple))
 			tuple.uid = 0;

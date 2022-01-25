@@ -1237,6 +1237,17 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 	return fgsEvent
 }
 
+func SocketFlagsToType(t uint32) string {
+	if t&api.SOCKFLAGS_TYPE_CONNECT != 0 {
+		return "connect"
+	} else if t&api.SOCKFLAGS_TYPE_ACCEPT != 0 {
+		return "accept"
+	} else if t&api.SOCKFLAGS_TYPE_LISTEN != 0 {
+		return "listen"
+	}
+	return "unknown"
+}
+
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
@@ -1282,6 +1293,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		DestinationPort: destinationPort,
 		Stats:           socketStats,
 		Protocol:        reader.MsgToProtocol(event),
+		SocketType:      SocketFlagsToType(event.SocketFlags),
 	}
 
 	if event.SockCookie != 0 {
