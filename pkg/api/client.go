@@ -258,10 +258,33 @@ const (
 	MsgOpIPv4Bind
 	MsgOpIPv4Listen
 	MsgOpExecve
+	MsgOpTLS
+	MsgOpExit
+	MsgOpIPv4TCPClose
+	MsgOpIPv4Accept
+	MsgOpCred
 	MsgOpKfreeSkb
+	MsgOpTLSCont
+	MsgOpGenericKprobe
+	MsgOpGeneric_Tracepoint
+	MsgOpIPv4TCPStats
+	MsgOpHTTP
+	MsgOpIPv4UDPClose
+	MsgOpIPv4UDPConnect
+	MsgOpIPv4UDPStats
+	MsgOpInterfaceStats
+	MsgOpIPv4UDPPayload
+	MsgOpTest    = 254
+	MsgOpIPv4DNS = 128
 )
 
 func (op OpCode) String() string {
+	if op == MSG_OP_TEST {
+		return "Test"
+	}
+	if op == MSG_OP_IPV4_DNS {
+		return "DNS"
+	}
 	return [...]string{
 		"Undef",
 		"TCPConnect",
@@ -270,7 +293,22 @@ func (op OpCode) String() string {
 		"TCPListen",
 		"Execve",
 		"TLS",
-		"KfreeSkb"}[op]
+		"Exit",
+		"TCPClose",
+		"TCPAccept",
+		"Cred",
+		"KfreeSkb",
+		"TLSCont",
+		"GenericKprobe",
+		"GenericTracepoint",
+		"TCPStats",
+		"HTTP",
+		"UDPClose",
+		"UDPConnect",
+		"UDPStats",
+		"InterfaceStats",
+		"UDPPayload",
+	}[op]
 }
 
 type MsgFGSReady struct{}
