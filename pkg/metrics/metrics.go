@@ -153,6 +153,11 @@ var (
 
 // FGS debugging and core info metrics
 var (
+	MsgOpsCount = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:        MetricNamePrefix + "msg_op_total",
+		Help:        "The total number of times we encounter a given message opcode. For internal use only.",
+		ConstLabels: nil,
+	}, []string{"msg_op"})
 	EventsProcessed = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name:        MetricNamePrefix + "events_total",
 		Help:        "The total number of FGS events",

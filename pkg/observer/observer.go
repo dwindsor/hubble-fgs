@@ -234,6 +234,9 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 	k.recvCntr++
 	r := bytes.NewReader(data)
 
+	// Increment the counter for the msg opcode
+	metrics.MsgOpsCount.WithLabelValues(api.OpCode(op).String()).Add(1)
+
 	// TODO: Most of these ops can be converted into sensors. Ideally, this
 	// switch case shouldn't even exist; it should just do what's already
 	// happening inside the default case.
