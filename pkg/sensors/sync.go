@@ -231,10 +231,12 @@ func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) er
 
 	for _, p := range sensor.Progs {
 		RemoveProgram(bpfDir, p)
+		p.LoadState = Idle()
 	}
 
 	for _, m := range sensor.Maps {
 		os.Remove(filepath.Join(mapDir, m.Name))
+		m.PinState = Idle()
 	}
 
 	sensor.Loaded = false

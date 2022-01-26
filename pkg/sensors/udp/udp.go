@@ -21,8 +21,6 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
-	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -361,26 +359,10 @@ type udpSensor struct {
 }
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	btfObj := uintptr(btf.GetCachedBTF())
-	if args.Load.Type == "cgrp_egress" {
-		return loader.LoadCgroupInetEgressProgram(
-			args.Version, args.Verbose,
-			btfObj,
-			args.Load.Name,
-			args.Load.Label,
-			filepath.Join(args.BPFDir, args.Load.PinPath),
-			args.MapDir,
-			Selectors)
-	} else if args.Load.Type == "cgrp_ingress" {
-		return loader.LoadCgroupInetIngressProgram(
-			args.Version, args.Verbose,
-			btfObj,
-			args.Load.Name,
-			args.Load.Label,
-			filepath.Join(args.BPFDir, args.Load.PinPath),
-			args.MapDir, Selectors)
-	}
-	return nil, 0
+	return sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load,
+		[]sensors.Selector{
+			{"tls_filter_map", Selectors},
+		})
 }
 
 func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {

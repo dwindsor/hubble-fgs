@@ -280,33 +280,6 @@ static struct bpf_object *__loader(const int version,
 	return obj;
 }
 
-int bpf_link(char *target, const char *source, int type)
-{
-	int err, target_fd, source_fd = bpf_obj_get(source);
-
-	if (source_fd < 0) {
-		fprintf(stderr, "bpf_obj_get('%s') failed on load error %i.\n", source, source_fd);
-		return -1;
-	}
-
-	target_fd = open(target, O_RDONLY);
-	if (target_fd < 0) {
-		target_fd = bpf_obj_get(target);
-		if (target_fd < 0) {
-			fprintf(stderr, "open('%s') and bpf_obj_get('%s') failed on load error %i.\n",
-				target, target, target_fd);
-			return -1;
-		}
-	}
-
-	err = bpf_prog_attach(source_fd, target_fd, type, 0);
-	if (err)
-		fprintf(stderr, "bpf_prog_attach: failed (%s->%s) err %i %d\n", source, target, err, errno);
-	close(target_fd);
-	close(source_fd);
-	return err;
-}
-
 int bpf_loader_pin(struct bpf_object *obj,
 		   const char *label, const char *__prog)
 {
@@ -421,100 +394,6 @@ int tc_loader(const int version,
 out:
 	bpf_object__close(obj);
 	return err;
-}
-
-int fgs_load_filter(struct bpf_object *obj, char *map_name, void  *filter)
-{
-	int map_fd, err;
-	int zero = 0;
-
-	if (!filter)
-		return 0;
-
-	map_fd = bpf_object__find_map_fd_by_name(obj, map_name);
-	if (map_fd >= 0) {
-		err = bpf_map_update_elem(map_fd, &zero, filter, BPF_ANY);
-		if (err) {
-			printf("WARNING: map update elem %s error %d\n", map_name, err);
-		}
-	} else {
-		err = errno;
-		printf("WARNING: attempted to set filter args on program %s without filters\n", map_name);
-	}
-	return err;
-}
-
-int fgs_loader(const int version,
-		   const int verbosity,
-		   void *btf,
-		   const char *prog,
-		   const char *label,
-		   const char *__prog,
-		   const char *mapdir,
-		   char *link_path,
-		   const int prog_type,
-		   const int attach_type,
-		   void *tlsfilter, void *httpfilter, void *udpfilter, void *nopfilter)
-{
-	char *tls_filter_map = "tls_filter_map";
-	char *http_filter_map = "http_filter_map";
-	int fd, err, map_fd, zero = 0;
-	struct bpf_object *obj;
-
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, prog_type);
-	if (!obj) {
-		err = -1;
-		goto out;
-	}
-
-	err = fgs_load_filter(obj, "tls_filter_map", tlsfilter);
-	if (err)
-		goto out;
-	err = fgs_load_filter(obj, "http_filter_map", httpfilter);
-	if (err)
-		goto out;
-
-	err = fgs_load_filter(obj, "udp_filter_map", udpfilter);
-	if (err)
-		goto out;
-
-	err = fgs_load_filter(obj, "nop_filter_map", nopfilter);
-	if (err)
-		goto out;
-
-	err = bpf_loader_pin(obj, label, __prog);
-	if (err) {
-		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
-		goto out;
-	}
-	bpf_install_tail_calls(obj, __prog, mapdir, "http1_calls", "sk_msg");
-	bpf_install_tail_calls(obj, __prog, mapdir, "http1_calls_skb", "sk_skb");
-	fd = bpf_link(link_path, __prog, attach_type);
-	bpf_object__close(obj);
-	return fd;
-out:
-	return err;
-}
-
-int sockops_loader(const int version,
-		   const int verbosity,
-		   void *btf,
-		   const char *prog,
-		   const char *label,
-		   const char *__prog,
-		   const char *mapdir,
-		   const int prog_type,
-		   const int attach_type,
-		   void *tlsfilter,
-	   	   void *httpfilter,
-	   	   void *udpfilter,
-	   	   void *nopfilter)
-{
-	char *path = "/run/hubble-fgs/cgroup2";
-
-	return fgs_loader(version, verbosity, btf, prog, label,
-	                  __prog, mapdir, path, prog_type, attach_type,
-			  tlsfilter, httpfilter, udpfilter, nopfilter);
 }
 
 int __tracepoint_loader(struct bpf_object *obj,
@@ -877,66 +756,6 @@ func LoadAndPinMaps(__version, __verbosity int, btf uintptr, __prog, __map, __ma
 		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)", fdInt, __prog, __map, __map_label)
 	}
 	return fdInt, nil
-}
-
-func LoadProgram(__version, __verbosity int,
-	btf uintptr,
-	object, __label, __prog, __mapdir string,
-	__prog_type, __attach_type int,
-	tlsFilter, httpFilter, udpFilter, nopFilter unsafe.Pointer) (error, int) {
-
-	version := C.int(__version)
-	verbosity := C.int(__verbosity)
-	o := C.CString(object)
-	l := C.CString(__label)
-	p := C.CString(__prog)
-	mapdir := C.CString(__mapdir)
-	pt := C.int(__prog_type)
-	at := C.int(__attach_type)
-	loader_fd := C.sockops_loader(
-		version, verbosity,
-		unsafe.Pointer(btf), o, l, p, mapdir, pt, at,
-		tlsFilter, httpFilter, udpFilter, nopFilter)
-	loaderInt := int(loader_fd)
-	if loaderInt < 0 {
-		return fmt.Errorf("Unable to sockops load: %d %s", loaderInt, object), 0
-	}
-	return nil, loaderInt
-}
-
-func LoadSockopsProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, tlsFilter, httpFilter, nopFilter [128]byte) (error, int) {
-	prog_type := 13  // BPF_PROG_TYPE_SOCK_OPS
-	attach_type := 3 // BPF_CGROUP_SOCK_OPS
-
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(&httpFilter), unsafe.Pointer(nil), unsafe.Pointer(&nopFilter))
-}
-
-func LoadCgroupInetIngressProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, udpFilter [128]byte) (error, int) {
-	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
-	attach_type := 0 // BPF_CGROUP_INET_INGRESS
-
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter), unsafe.Pointer(nil))
-}
-
-func LoadCgroupInetEgressProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string, udpFilter [128]byte) (error, int) {
-	prog_type := 8   // BPF_PROG_TYPE_CGROUP_SKB
-	attach_type := 1 // BPF_CGROUP_INET_INGRESS
-
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(&udpFilter), unsafe.Pointer(nil))
-}
-
-func LoadCgroupInetSocketProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir string) (error, int) {
-	prog_type := 9   // BPF_PROG_TYPE_CGROUP_SOCK
-	attach_type := 2 // BPF_CGROUP_INET_SOCK_CREATE
-
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
-}
-
-func LoadSockOptProgram(__version, __verbosity int, btf uintptr, object, __label, __prog, __mapdir, __path string, tlsFilter [128]byte) (error, int) {
-	prog_type := 25   // BPF_PROG_TYPE_CGROUP_SOCKOPT
-	attach_type := 22 // BPF_CGROUP_SETSOCKOPT
-
-	return LoadProgram(__version, __verbosity, btf, object, __label, __prog, __mapdir, prog_type, attach_type, unsafe.Pointer(&tlsFilter), unsafe.Pointer(nil), unsafe.Pointer(nil), unsafe.Pointer(nil))
 }
 
 func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string) (error, int) {
