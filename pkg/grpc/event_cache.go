@@ -11,7 +11,6 @@
 package grpc
 
 import (
-	"net"
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
@@ -57,22 +56,30 @@ const (
 	eventRetryTimer = time.Second * 10
 )
 
-func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, destinationIp string) []string {
+func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, event *eventNetCacheObj) ([]string, error) {
+	destinationIp := ""
 	var labels []string
-	var err error
 
-	if endpoint == nil {
-		return labels
-	}
-	ip := net.ParseIP(destinationIp)
-	if ip == nil {
-		labels, err = ec.pm.dns.GetIp(destinationIp)
-		if err != nil && ec.pm.enableCilium {
-			labels = ec.pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, ip)
+	switch e := event.event.(type) {
+	case *fgs.ProcessConnect:
+		destinationIp = e.GetDestinationIp()
+		if len(e.DestinationNames) > 0 {
+			return e.DestinationNames, nil
 		}
+	case *fgs.ProcessClose:
+		destinationIp = e.GetDestinationIp()
+		if len(e.DestinationNames) > 0 {
+			return e.DestinationNames, nil
+		}
+	case *fgs.ProcessAccept:
+		destinationIp = e.GetDestinationIp()
+		if len(e.DestinationNames) > 0 {
+			return e.DestinationNames, nil
+		}
+	default:
+		return labels, nil
 	}
-
-	return labels
+	return ec.pm.dns.GetIp(destinationIp)
 }
 
 func (ec *eventCache) handleNetEvents() {
@@ -98,23 +105,33 @@ func (ec *eventCache) handleNetEvents() {
 			}
 		}
 
+		labels, err := ec.eventLabels(endpoint, &e)
+		if err != nil {
+			e.color++
+			if e.color != threeStrikes {
+				tmp = append(tmp, e)
+				continue
+			}
+			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheEndpointRetryFailed)).Inc()
+		}
+
 		switch event := e.event.(type) {
 		case *fgs.ProcessClose:
-			event.DestinationNames = ec.eventLabels(endpoint, event.GetDestinationIp())
+			event.DestinationNames = labels
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessConnect:
-			event.DestinationNames = ec.eventLabels(endpoint, event.GetDestinationIp())
+			event.DestinationNames = labels
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessAccept:
-			event.DestinationNames = ec.eventLabels(endpoint, event.GetDestinationIp())
+			event.DestinationNames = labels
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: event},
 				NodeName: ec.pm.nodeName,
