@@ -18,6 +18,7 @@ import (
 	"io"
 	"path"
 	"sort"
+	"strings"
 	"text/scanner"
 	"unsafe"
 
@@ -160,12 +161,22 @@ type TestStepEvents struct {
 	Subevents []*Subevent
 }
 
+func formatErrors(errors []*TestStepError) error {
+	errStrings := []string{}
+	for _, e := range errors {
+		errStrings = append(errStrings, e.Error())
+	}
+
+	return fmt.Errorf("no matches in EVENTS block:\n%s", strings.Join(errStrings, "\n"))
+}
+
 func (e *TestStepEvents) Exec(ctx *TestContext) *TestStepError {
 	remaining := make(map[int]*Subevent)
 	for i, s := range e.Subevents {
 		remaining[i] = s
 	}
 
+outer:
 	for len(remaining) > 0 {
 		event, ok := ctx.waitForEvent(e.Op)
 		if !ok {
@@ -173,17 +184,20 @@ func (e *TestStepEvents) Exec(ctx *TestContext) *TestStepError {
 		}
 		ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
 
-		var lastError *TestStepError
+		errors := []*TestStepError{}
 		for i, s := range remaining {
-			lastError = s.Match(ctx, event)
-			if lastError == nil {
+			err := s.Match(ctx, event)
+			if err == nil {
+				// Found a matching event, delete it and keep
+				// looking for the rest.
 				delete(remaining, i)
-				break
+				continue outer
 			}
+			errors = append(errors, err)
 		}
-		if lastError != nil {
-			return lastError
-		}
+
+		// Nothing in the block matched this event.
+		return &TestStepError{e.Position, "EVENTS", formatErrors(errors)}
 	}
 	return nil
 }
