@@ -16,16 +16,22 @@ if ! kind get clusters | grep "$CLUSTER_NAME" &>/dev/null; then
     exit -1
 fi
 
-echo "Deploying demo app..." 1>&2
 kubectl cluster-info --context "kind-$CLUSTER_NAME"
+
+echo "Applying tracing policies..." 1>&2
+kubectl apply -f crds/isovalent.com_tracingpolicies.yaml --wait
+sleep 5 # FIXME: why is waiting above not enough?
+kubectl apply -f crds/examples/tls.yaml --wait
+
+echo "Deploying demo app..." 1>&2
 kubectl create namespace tenant-jobs || true
 kubectl -n tenant-jobs apply -f https://docs.isovalent.com/public/jobs-app-attack.yaml
 echo "Waiting for demo app to be ready..." 1>&2
-kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=30s
+kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=5m
 
 echo "Running workload..." 1>&2
 kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 1 || true
-kubectl exec -n tenant-jobs deployment/jobposting -- curl https://google.com -m 30
+kubectl exec -n tenant-jobs deployment/jobposting -- curl -4 https://google.com -m 30
 echo "Sleeping for 60 seconds..." 1>&2
 sleep 60
 

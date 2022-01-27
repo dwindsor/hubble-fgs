@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
@@ -24,8 +25,12 @@ var (
 			WithName("jobposting").
 			WithImageName("quay.io/isovalent/jobs-app-jobposting:latest"),
 		)
+)
 
-	checker = ec.NewOrderedMultiResponseChecker(
+func test_socket_end_to_end(file *os.File, log ec.Logger) error {
+	file.Seek(0, 0)
+
+	network_checker := ec.NewOrderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(ec.NewProcessChecker().
 				WithBinary("/usr/local/bin/node").
@@ -74,20 +79,81 @@ var (
 			HasDstPort(9080).
 			End(),
 	)
-)
+
+	if err := observer.JsonCheck(file, &network_checker, log); err != nil {
+		return err
+	}
+
+	return nil
+}
+
+func test_tls_end_to_end(file *os.File, log ec.Logger) error {
+	file.Seek(0, 0)
+
+	curl_checker := ec.NewProcessChecker().
+		WithBinary(ec.SuffixStringMatch("curl")).
+		WithArguments("-4 https://google.com -m 30").
+		WithPod(jc)
+	tls_checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().HasProcess(curl_checker).
+			HasAncestor(0, ec.NewProcessChecker().
+				WithBinary(ec.SuffixStringMatch("containerd-shim-runc-v2")),
+			).
+			HasAncestor(1, ec.NewProcessChecker().
+				WithBinary(ec.SuffixStringMatch("containerd-shim-runc-v2")),
+			).
+			End(),
+		// ec.NewConnectEventChecker().
+		// 	HasProcess(curl_checker).
+		// 	HasDstPort(53).
+		// 	HasProtocol(fgs.SocketProtocol_UDP).
+		// 	End(),
+		// TODO: Add a DnsEventChecker here after implementing one
+		ec.NewConnectEventChecker().
+			HasProcess(curl_checker).
+			HasDstPort(443).
+			HasProtocol(fgs.SocketProtocol_TCP).
+			End(),
+		ec.NewTlsEventChecker().
+			HasProcess(curl_checker).
+			HasDstPort(443).
+			HasNegotiatedVersion("TLS1.3").
+			HasSupportedVersions([]string{"TLS1.3", "TLS1.2", "TLS1.1", "TLS1.0"}).
+			HasSniName("google.com").
+			HasSniType("host_name").
+			End(),
+		ec.NewCloseEventChecker().
+			HasProcess(curl_checker).
+			HasDstPort(443).
+			End(),
+	)
+
+	if err := observer.JsonCheck(file, &tls_checker, log); err != nil {
+		return err
+	}
+
+	return nil
+}
 
 func main() {
+	logger := ec.LogrusLogger{L: logrus.New()}
+
 	jsonFile, err := os.Open(os.Args[1])
 	if err != nil {
 		fmt.Printf("🔥 opening json file failed: %s", err)
 		os.Exit(1)
 	}
-	logger := ec.LogrusLogger{logrus.New()}
-	err = observer.JsonCheck(jsonFile, &checker, &logger)
-	if err != nil {
+
+	if err := test_socket_end_to_end(jsonFile, &logger); err != nil {
 		fmt.Printf("🔥 Failed: no dice: %s\n", err)
 		os.Exit(1)
 	}
+
+	if err := test_tls_end_to_end(jsonFile, &logger); err != nil {
+		fmt.Printf("🔥 Failed: no dice: %s\n", err)
+		os.Exit(1)
+	}
+
 	fmt.Printf("🚢 Passed: ship it\n")
 	os.Exit(0)
 }

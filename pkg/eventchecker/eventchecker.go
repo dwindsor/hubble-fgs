@@ -13,6 +13,7 @@ package eventchecker
 import (
 	"container/list"
 	"fmt"
+	"reflect"
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -725,6 +726,111 @@ func (e *eventChainChecker) HasPort(port uint32) *eventChainChecker {
 			return err
 		}
 		return eventHasPort(e, port)
+	}
+	return e
+}
+
+func eventHasNegotiatedVersion(e fgsEvent, version string) error {
+	if ev, ok := e.(interface{ GetNegotiatedVersion() string }); ok {
+		evVersion := ev.GetNegotiatedVersion()
+		if evVersion == version {
+			return nil
+		}
+		return fmt.Errorf("Expecting NegotiatedVersion %s but %T has %s", version, ev, evVersion)
+	}
+	return fmt.Errorf("type %T does not have NegotiatedVersion", e)
+}
+
+// HasNegotiatedVersion adds a check that the event has a negotiated TLS version matching
+// the argument
+func (e *eventChainChecker) HasNegotiatedVersion(version string) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasNegotiatedVersion(e, version)
+	}
+	return e
+}
+
+func eventHasSupportedVersions(e fgsEvent, versions []string) error {
+	if ev, ok := e.(interface{ GetSupportedVersions() string }); ok {
+		evVersionsString := ev.GetSupportedVersions()
+		evVersions := strings.Split(evVersionsString, " ")
+		evVersionsSet := make(map[string]bool)
+		for _, version := range evVersions {
+			evVersionsSet[version] = true
+		}
+		versionsSet := make(map[string]bool)
+		for _, version := range versions {
+			versionsSet[version] = true
+		}
+		if reflect.DeepEqual(versionsSet, evVersionsSet) {
+			return nil
+		}
+		return fmt.Errorf("Expecting SupportedVersions %s but %T has %s", versions, ev, evVersions)
+	}
+	return fmt.Errorf("type %T does not have SupportedVersions", e)
+}
+
+// HasSupportedVersions adds a check that the event has a set of supported versions
+// exactly matching the set of versions given as an argument
+func (e *eventChainChecker) HasSupportedVersions(versions []string) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasSupportedVersions(e, versions)
+	}
+	return e
+}
+
+func eventHasSniType(e fgsEvent, _type string) error {
+	if ev, ok := e.(interface{ GetSniType() string }); ok {
+		evType := ev.GetSniType()
+		if evType == _type {
+			return nil
+		}
+		return fmt.Errorf("Expecting SniType %s but %T has %s", _type, ev, evType)
+	}
+	return fmt.Errorf("type %T does not have SniType", e)
+}
+
+// HasSniType adds a check that the event has a negotiated TLS type matching
+// the argument
+func (e *eventChainChecker) HasSniType(_type string) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasSniType(e, _type)
+	}
+	return e
+}
+
+func eventHasSniName(e fgsEvent, name string) error {
+	if ev, ok := e.(interface{ GetSniName() string }); ok {
+		evName := ev.GetSniName()
+		if evName == name {
+			return nil
+		}
+		return fmt.Errorf("Expecting SniName %s but %T has %s", name, ev, evName)
+	}
+	return fmt.Errorf("type %T does not have SniName", e)
+}
+
+// HasSniName adds a check that the event has a negotiated TLS name matching
+// the argument
+func (e *eventChainChecker) HasSniName(name string) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasSniName(e, name)
 	}
 	return e
 }
