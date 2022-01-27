@@ -1,26 +1,27 @@
-apiVersion: hubble-enterprise.io/v1
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
 metadata:
   name: "tls"
 spec:
-  description: "tls parser spec"
   parser:
     tls:
       enable: true
       mode: "socket"
       selectors:
-      - matchports:
+      - matchPorts:
+        - 443
         - 993
         - 1012
     http:
       enable: true
       selectors:
-      - matchports:
+      - matchPorts:
         - 8080
         - 80
     https:
       enable: true
       selectors:
-      - matchports:
+      - matchPorts:
         - 443
     udp:
       enable: true
