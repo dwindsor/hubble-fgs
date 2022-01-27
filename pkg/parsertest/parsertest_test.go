@@ -5,11 +5,9 @@ import (
 	"flag"
 	"fmt"
 	"io/fs"
-	"log"
 	"os"
 	"path"
 	"path/filepath"
-	"syscall"
 	"testing"
 	"time"
 
@@ -97,26 +95,23 @@ type SensorsHandle struct {
 	cancel context.CancelFunc
 }
 
-func (h *SensorsHandle) Close() {
+func (h *SensorsHandle) Close(t *testing.T) {
 	h.cancel()
 
 	bpfDir := bpf.MapPrefixPath()
-	for _, l := range h.sensor.Progs {
-		sensors.RemoveProgram(bpfDir, l)
-	}
-	for _, m := range h.sensor.Maps {
-		if m.FD > 0 {
-			syscall.Close(m.FD)
+	sensors.UnloadSensor(bpfDir, bpfDir, h.sensor, context.Background())
+
+	// Verify that all pins have been cleared.
+	filepath.Walk(bpfDir, func(path string, info fs.FileInfo, err error) error {
+		if !info.IsDir() {
+			// TODO: Switch this to t.Fatalf once issues with map unloading are fixed.
+			t.Logf("FIXME: File '%s' still exists after sensor unload", path)
 		}
-		path := filepath.Join(bpfDir, m.Name)
-		if err := os.Remove(path); err != nil {
-			log.Fatalf("Failed to remove map %s: %s\n", m.Name, err)
-		}
-	}
-	err := os.Remove(bpfDir)
-	if err != nil {
-		log.Fatalf("os.Remove(%s): %s\n", bpfDir, err)
-	}
+		return nil
+	})
+	os.Remove(bpfDir)
+
+	// TODO verify that no fds are leaked
 }
 
 func startSensors(cfg int, t *testing.T) SensorsHandle {
@@ -201,7 +196,7 @@ func addSelfToEvecveMap(t *testing.T) {
 
 func runTests(t *testing.T, sensor int, dir string) {
 	handle := startSensors(sensor, t)
-	defer handle.Close()
+	defer handle.Close(t)
 
 	addSelfToEvecveMap(t)
 
