@@ -237,6 +237,8 @@ const (
 	SOCKFLAGS_TYPE_CONNECT = 0x1
 	SOCKFLAGS_TYPE_ACCEPT  = 0x2
 	SOCKFLAGS_TYPE_LISTEN  = 0x4
+	// User space flag space 0x00F0
+	SOCKFLAGS_TYPE_DNSREADY = 0x10
 )
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent

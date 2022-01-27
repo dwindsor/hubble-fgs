@@ -140,6 +140,9 @@ func ParseDnsSpec(spec *v1alpha1.TracingPolicySpec) ([128]byte, error) {
 
 	if spec.Parser.Dns.Enable {
 		selectors.WriteSelectorUint32(k, uint32(defaultDnsPort))
+		// Enable DNS cache in core, abstraction breaking but
+		// fix is to do in kernel BPF parser.
+		observer.EnableDns()
 	} else {
 		selectors.WriteSelectorUint32(k, 0)
 	}

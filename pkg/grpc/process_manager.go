@@ -1251,6 +1251,10 @@ func SocketFlagsToType(t uint32) string {
 	return "unknown"
 }
 
+func SocketFlagsDnsEnabled(t uint32) bool {
+	return (t & api.SOCKFLAGS_TYPE_DNSREADY) != 0
+}
+
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
 func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
@@ -1305,7 +1309,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 	}
 
 	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
-	if err != nil && pm.enableEventCache {
+	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -1381,7 +1385,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 	}
 
 	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
-	if err != nil && pm.enableEventCache {
+	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -1457,7 +1461,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 	}
 
 	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
-	if err != nil && pm.enableEventCache {
+	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
