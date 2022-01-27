@@ -331,6 +331,10 @@ message Tls {
     string server_session = 18;
     repeated string certificates = 19;
     TlsCertificateError certificate_error = 20;
+    uint32 parser_state_next = 21 [deprecated=true];
+    uint32 parser_state_needed = 22 [deprecated=true];
+    uint32 parser_state_csize = 23 [deprecated=true];
+    uint32 parser_state_skblen = 24 [deprecated=true];
     string parser_internal_state = 25;
 }
 

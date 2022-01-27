@@ -1263,6 +1263,10 @@ HTTP PARSER
 | server_session | [string](#string) |  |  |
 | certificates | [string](#string) | repeated |  |
 | certificate_error | [TlsCertificateError](#fgs.TlsCertificateError) |  |  |
+| parser_state_next | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_needed | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_csize | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_skblen | [uint32](#uint32) |  | **Deprecated.**  |
 | parser_internal_state | [string](#string) |  |  |
 
 
