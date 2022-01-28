@@ -155,7 +155,7 @@ func TestExecEventClone(t *testing.T) {
 		WithArguments(ec.FullStringMatch("-nvlp 8081"))
 	ncCliChecker := ec.NewProcessChecker().
 		WithBinary(ec.SuffixStringMatch(client)).
-		WithArguments(ec.FullStringMatch("127.0.0.1 8081 -e /bin/sh"))
+		WithArguments(ec.FullStringMatch("127.0.0.1 8081"))
 
 	checker := ec.NewOrderedMultiResponseChecker(
 		ec.NewExecEventChecker().
@@ -191,21 +191,13 @@ func TestExecEventClone(t *testing.T) {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
-	/* Verify initial KprobeEvent Execve "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
-	//	obs.AttachFilter(&ncExecFilter)
-	/* Verify KprobeEvent TCPConnectReturn "nc.traditional 127.0.0.1 8081 -e /bin/sh" */
-	//	obs.AttachFilter(&ncListen)
-	//	obs.AttachFilter(&ncConnect)
-	/* Verify KprobeEvent Execve '-e /bin/sh' without clone() */
-	//	obs.AttachFilter(&ncExecCloneFilter)
-
 	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
-	cmdClient := exec.Command(client, "127.0.0.1", "8081", "-e", "/bin/sh")
+	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
 	err = JsonTestCheck(t, nil, &checker)
