@@ -19,6 +19,7 @@ fi
 
 cp "$PUBKEY" ./id_rsa.pub
 
+mkdir -p "$KOUT"
 mkdir -p "$MNTDIR"
 mkdir -p "$(dirname "$ROOTIMG")"
 truncate -s "$VMDISK" "$ROOTIMG"
