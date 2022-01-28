@@ -159,7 +159,8 @@ jobs:
           sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
           sudo -E ldconfig /usr/local/
           go mod verify
-          go run ./tests/jobs.trace.go ../fgs.log
+          # We pass the "gke" argument here to skip tests that don't work on GKE
+          go run ./tests/jobs.trace.go ../fgs.log gke
       - name: Upload Cilium Artifacts
         if: ${{ always() }}
         uses: actions/upload-artifact@v2

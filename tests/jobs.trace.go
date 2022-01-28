@@ -149,6 +149,14 @@ func main() {
 		os.Exit(1)
 	}
 
+	// Tests below this line won't be run in GKE ----------------------
+	if len(os.Args) >= 3 {
+		if os.Args[2] == "gke" {
+			fmt.Println("Running in GKE, skipping remaining tests...")
+			return
+		}
+	}
+
 	if err := test_tls_end_to_end(jsonFile, &logger); err != nil {
 		fmt.Printf("🔥 Failed: no dice: %s\n", err)
 		os.Exit(1)
