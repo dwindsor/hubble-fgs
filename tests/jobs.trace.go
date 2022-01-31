@@ -27,10 +27,10 @@ var (
 		)
 )
 
-func test_socket_end_to_end(file *os.File, log ec.Logger) error {
+func test_demo_app_end_to_end(file *os.File, log ec.Logger) error {
 	file.Seek(0, 0)
 
-	network_checker := ec.NewOrderedMultiResponseChecker(
+	demo_checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(ec.NewProcessChecker().
 				WithBinary("/usr/local/bin/node").
@@ -49,7 +49,19 @@ func test_socket_end_to_end(file *os.File, log ec.Logger) error {
 					WithBinary("/usr/bin/containerd-shim-runc-v2")).
 				With(ec.NewProcessChecker().
 					WithBinary("/usr/local/bin/containerd-shim-runc-v2")),
-			).End(),
+			).
+			End(),
+		ec.NewDnsEventChecker().
+			HasProcess(ec.NewProcessChecker().
+				WithBinary("/usr/local/bin/node").
+				WithArguments("server.js").
+				WithPod(jc)).
+			HasDns(ec.NewDnsChecker().
+				WithAnswerTypes([]uint32{1}).
+				WithNames([]ec.StringArg{"coreapi.tenant-jobs.svc.cluster.local."}).
+				IsResponse(true),
+			).
+			End(),
 		ec.NewConnectEventChecker().
 			HasProcess(ec.NewProcessChecker().
 				WithBinary("/usr/local/bin/node").
@@ -80,7 +92,7 @@ func test_socket_end_to_end(file *os.File, log ec.Logger) error {
 			End(),
 	)
 
-	if err := observer.JsonCheck(file, &network_checker, log); err != nil {
+	if err := observer.JsonCheck(file, demo_checker, log); err != nil {
 		return err
 	}
 
@@ -94,7 +106,7 @@ func test_tls_end_to_end(file *os.File, log ec.Logger) error {
 		WithBinary(ec.SuffixStringMatch("curl")).
 		WithArguments("-4 https://google.com -m 30").
 		WithPod(jc)
-	tls_checker := ec.NewOrderedMultiResponseChecker(
+	tls_checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().HasProcess(curl_checker).
 			HasAncestor(0, ec.NewProcessChecker().
 				WithBinary(ec.SuffixStringMatch("containerd-shim-runc-v2")),
@@ -103,12 +115,14 @@ func test_tls_end_to_end(file *os.File, log ec.Logger) error {
 				WithBinary(ec.SuffixStringMatch("containerd-shim-runc-v2")),
 			).
 			End(),
-		// ec.NewConnectEventChecker().
-		// 	HasProcess(curl_checker).
-		// 	HasDstPort(53).
-		// 	HasProtocol(fgs.SocketProtocol_UDP).
-		// 	End(),
-		// TODO: Add a DnsEventChecker here after implementing one
+		ec.NewDnsEventChecker().
+			HasProcess(curl_checker).
+			HasDns(ec.NewDnsChecker().
+				WithAnswerTypes([]uint32{1}).
+				WithNames([]ec.StringArg{"google.com."}).
+				IsResponse(true),
+			).
+			End(),
 		ec.NewConnectEventChecker().
 			HasProcess(curl_checker).
 			HasDstPort(443).
@@ -128,7 +142,7 @@ func test_tls_end_to_end(file *os.File, log ec.Logger) error {
 			End(),
 	)
 
-	if err := observer.JsonCheck(file, &tls_checker, log); err != nil {
+	if err := observer.JsonCheck(file, tls_checker, log); err != nil {
 		return err
 	}
 
@@ -183,7 +197,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := test_socket_end_to_end(jsonFile, &logger); err != nil {
+	if err := test_demo_app_end_to_end(jsonFile, &logger); err != nil {
 		fmt.Printf("🔥 Demo app check failed: no dice: %s\n", err)
 		os.Exit(1)
 	}

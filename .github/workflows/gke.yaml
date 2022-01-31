@@ -114,6 +114,22 @@ jobs:
           command: |
             kubectl wait -n kube-system --for=condition=Ready --all pod -l app.kubernetes.io/name=hubble-enterprise --timeout=30s
 
+      - name: Enable DNS policy
+        run: |
+          cat <<-EOF | kubectl apply -f -
+          apiVersion: isovalent.com/v1alpha1
+          kind: TracingPolicy
+          metadata:
+            name: "dns"
+          spec:
+            parser:
+              udp:
+                enable: true
+                cgroup: true
+              dns:
+                enable: true
+          EOF
+
       - name: Demo Application
         run: |
           kubectl create namespace tenant-jobs
