@@ -38,70 +38,70 @@ const (
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 // +kubebuilder:resource:singular="tracingpolicy",path="tracingpolicies",scope="Cluster",shortName={}
 type TracingPolicy struct {
-	metav1.TypeMeta   `json:",inline"`
-	metav1.ObjectMeta `json:"metadata"`
+	metav1.TypeMeta   `json:",inline" yaml:",inline"`
+	metav1.ObjectMeta `json:"metadata" yaml:"metadata"`
 	// Tracing policy specification.
-	Spec TracingPolicySpec `json:"spec"`
+	Spec TracingPolicySpec `json:"spec" yaml:"spec"`
 }
 
 type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A list of kprobe specs.
-	KProbes []KProbeSpec `json:"kprobes"`
+	KProbes []KProbeSpec `json:"kprobes" yaml:"kprobes"`
 	// +kubebuilder:validation:Optional
 	// A list of tracepoint specs.
-	Tracepoints []TracepointSpec `json:"tracepoints"`
+	Tracepoints []TracepointSpec `json:"tracepoints" yaml:"tracepoints"`
 	// +kubebuilder:validation:Optional
 	// Parser policy specification.
-	Parser ParserPolicySpec `json:"parser"`
+	Parser ParserPolicySpec `json:"parser" yaml:"parser"`
 }
 
 type KProbeSpec struct {
 	// Name of the function to apply the kprobe spec to.
-	Call string `json:"call"`
+	Call string `json:"call" yaml:"call"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// Indicates whether to collect return value of the traced function.
-	Return bool `json:"return"`
+	Return bool `json:"return" yaml:"return"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=true
 	// Indicates whether the traced function is a syscall.
-	Syscall bool `json:"syscall"`
+	Syscall bool `json:"syscall" yaml:"syscall"`
 	// +kubebuilder:validation:Optional
 	// A list of function arguments to include in the trace output.
-	Args []KProbeArg `json:"args"`
+	Args []KProbeArg `json:"args" yaml:"args"`
 	// +kubebuilder:validation:Optional
 	// A return argument to include in the trace output.
-	ReturnArg KProbeArg `json:"returnArg"`
+	ReturnArg KProbeArg `json:"returnArg" yaml:"returnArg"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
-	Selectors []KProbeSelector `json:"selectors"`
+	Selectors []KProbeSelector `json:"selectors" yaml:"selectors"`
 }
 
 type KProbeArg struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument.
-	Index uint32 `json:"index"`
+	Index uint32 `json:"index" yaml:"index"`
 	// +kubebuilder:validation:Enum=int;uint32;int32;uint64;int64;char_buf;char_iovec;size_t;skb;sock;string;fd;file;filename;path;nop;
 	// Argument type.
-	Type string `json:"type"`
+	Type string `json:"type" yaml:"type"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:validation:Minimum=0
 	// Specifies the position of the corresponding size argument for this argument.
 	// This field is used only for char_buf and char_iovec types.
-	SizeArgIndex uint32 `json:"sizeArgIndex"`
+	SizeArgIndex uint32 `json:"sizeArgIndex" yaml:"sizeArgIndex"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// This field is used only for char_buf and char_iovec types.
-	ReturnCopy bool `json:"returnCopy"`
+	ReturnCopy bool `json:"returnCopy" yaml:"returnCopy"`
 }
 
 type BinarySelector struct {
 	// +kubebuilder:validation:Enum=In
 	// Filter operation.
-	Operator string `json:"operator"`
+	Operator string `json:"operator" yaml:"operator"`
 	// Value to compare the argument against.
-	Values []string `json:"values"`
+	Values []string `json:"values" yaml:"values"`
 }
 
 // KProbeSelector selects function calls for kprobe based on PIDs and function arguments. The
@@ -109,190 +109,190 @@ type BinarySelector struct {
 type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of process ID filters. MatchPIDs are ANDed.
-	MatchPIDs []PIDSelector `json:"matchPIDs"`
+	MatchPIDs []PIDSelector `json:"matchPIDs" yaml:"matchPIDs"`
 	// +kubebuilder:validation:Optional
 	// A list of argument filters. MatchArgs are ANDed.
-	MatchArgs []ArgSelector `json:"matchArgs"`
+	MatchArgs []ArgSelector `json:"matchArgs" yaml:"matchArgs"`
 	// +kubebuilder:validation:Optional
 	// A list of actions to execute when this selector matches
-	MatchActions []ActionSelector `json:"matchActions"`
+	MatchActions []ActionSelector `json:"matchActions" yaml:"matchActions"`
 	// +kubebuilder:validation:Optional
 	// A list of argument filters. MatchArgs are ANDed.
-	MatchReturnArgs []ArgSelector `json:"matchReturnArgs"`
+	MatchReturnArgs []ArgSelector `json:"matchReturnArgs" yaml:"matchReturnArgs"`
 	// +kubebuilder:validation:Optional
 	// A list of binary exec name filters.
-	MatchBinarys []BinarySelector `json:"matchBinarys"`
+	MatchBinarys []BinarySelector `json:"matchBinarys" yaml:"matchBinarys"`
 }
 
 type PIDSelector struct {
 	// +kubebuilder:validation:Enum=In;NotIn
 	// PID selector operator.
-	Operator string `json:"operator"`
+	Operator string `json:"operator" yaml:"operator"`
 	// Process IDs to match.
-	Values []uint32 `json:"values"`
+	Values []uint32 `json:"values" yaml:"values"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// Indicates whether PIDs are namespace PIDs.
-	IsNamespacePID bool `json:"isNamespacePID"`
+	IsNamespacePID bool `json:"isNamespacePID" yaml:"isNamespacePID"`
 	// +kubebuilder:validation:Optional
 	// +kubebuilder:default=false
 	// Matches any descendant processes of the matching PIDs.
-	FollowForks bool `json:"followForks"`
+	FollowForks bool `json:"followForks" yaml:"followForks"`
 }
 
 type ArgSelector struct {
 	// +kubebuilder:validation:Minimum=0
 	// Position of the argument to apply fhe filter to.
-	Index uint32 `json:"index"`
+	Index uint32 `json:"index" yaml:"index"`
 	// +kubebuilder:validation:Enum=Equal;NotEqual;Prefix;Postfix
 	// Filter operation.
-	Operator string `json:"operator"`
+	Operator string `json:"operator" yaml:"operator"`
 	// Value to compare the argument against.
-	Values []string `json:"values"`
+	Values []string `json:"values" yaml:"values"`
 }
 
 type ActionSelector struct {
 	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill
 	// Action to execute.
-	Action string `json:"action"`
+	Action string `json:"action" yaml:"action"`
 	// +kubebuilder:validation:Optional
 	// An arg index for the fd for fdInstall action
-	ArgFd uint32 `json:"argFd"`
+	ArgFd uint32 `json:"argFd" yaml:"argFd"`
 	// +kubebuilder:validation:Optional
 	// An arg index for the filename for fdInstall action
-	ArgName uint32 `json:"argName"`
+	ArgName uint32 `json:"argName" yaml:"argName"`
 }
 
 type TracepointSpec struct {
 	// Tracepoint subsystem
-	Subsystem string `json:"subsystem"`
+	Subsystem string `json:"subsystem" yaml:"subsystem"`
 	// Tracepoint event
-	Event string `json:"event"`
+	Event string `json:"event" yaml:"event"`
 	// +kubebuilder:validation:Optional
 	// A list of function arguments to include in the trace output.
-	Args []KProbeArg `json:"args"`
+	Args []KProbeArg `json:"args" yaml:"args"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply before producing trace output. Selectors are ORed.
-	Selectors []KProbeSelector `json:"selectors"`
+	Selectors []KProbeSelector `json:"selectors" yaml:"selectors"`
 }
 
 type TlsSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
-	MatchPorts []uint32 `json:"matchPorts"`
+	MatchPorts []uint32 `json:"matchPorts" yaml:"matchPorts"`
 }
 
 type TlsSpec struct {
 	// TLS enable parser
-	Enable bool `json:"enable"`
+	Enable bool `json:"enable" yaml:"enable"`
 	// +kubebuilder:default="tc"
 	// +kubebuilder:validation:Enum=socket;tc;
 	// TLS parser type
-	Mode string `json:"mode"`
+	Mode string `json:"mode" yaml:"mode"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply TLS parser against. Selectors are ORed.
-	Selectors []TlsSelector `json:"selectors"`
+	Selectors []TlsSelector `json:"selectors" yaml:"selectors"`
 }
 
 type HttpsSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
-	MatchPorts []uint32 `json:"matchPorts"`
+	MatchPorts []uint32 `json:"matchPorts" yaml:"matchPorts"`
 }
 
 type HttpsSpec struct {
 	// HTTPS enable parser
-	Enable bool `json:"enable"`
+	Enable bool `json:"enable" yaml:"enable"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply TLS parser against. Selectors are ORed.
-	Selectors []HttpsSelector `json:"selectors"`
+	Selectors []HttpsSelector `json:"selectors" yaml:"selectors"`
 }
 
 type HttpSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
-	MatchPorts []uint32 `json:"matchPorts"`
+	MatchPorts []uint32 `json:"matchPorts" yaml:"matchPorts"`
 }
 
 type HttpSpec struct {
 	// Http enable parser
-	Enable bool `json:"enable"`
+	Enable bool `json:"enable" yaml:"enable"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply TLS parser against. Selectors are ORed.
-	Selectors []HttpSelector `json:"selectors"`
+	Selectors []HttpSelector `json:"selectors" yaml:"selectors"`
 }
 
 type InterfacePolicySpec struct {
 	// Interface enable parser
-	Enable bool `json:"enable"`
+	Enable bool `json:"enable" yaml:"enable"`
 	// +kubebuilder:validation:Optional
 	// Interface interval in seconds
-	StatsInterval uint32 `json:"StatsInterval"`
+	StatsInterval uint32 `json:"StatsInterval" yaml:"StatsInterval"`
 }
 
 type DnsPolicySpec struct {
 	// DNS enable parser
-	Enable bool `json:"enable"`
+	Enable bool `json:"enable" yaml:"enable"`
 }
 
 type NopSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of ports to match. Ports are ORd.
-	MatchPorts []uint32 `json:"matchPorts"`
+	MatchPorts []uint32 `json:"matchPorts" yaml:"matchPorts"`
 }
 
 type NopSpec struct {
 	// Nop enable parser
-	Enable bool `json:"enable"`
+	Enable bool `json:"enable" yaml:"enable"`
 	// +kubebuilder:validation:Optional
 	// Selectors to apply Nop parser against. Selectors are ORed.
-	Selectors []NopSelector `json:"selectors"`
+	Selectors []NopSelector `json:"selectors" yaml:"selectors"`
 }
 
 type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// A Tls specs.
-	Tls TlsSpec `json:"tls"`
+	Tls TlsSpec `json:"tls" yaml:"tls"`
 	// +kubebuilder:validation:Optional
 	// A Tls specs.
-	Https HttpsSpec `json:"https"`
+	Https HttpsSpec `json:"https" yaml:"https"`
 	// +kubebuilder:validation:Optional
 	// A Http spec.
-	Http HttpSpec `json:"http"`
+	Http HttpSpec `json:"http" yaml:"http"`
 	// +kubebuilder:validation:Optional
 	// UDP policy specification
-	Udp UdpPolicySpec `json:"udp"`
+	Udp UdpPolicySpec `json:"udp" yaml:"udp"`
 	// +kubebuilder:validation:Optional
 	// Network policy specification
-	Interface InterfacePolicySpec `json:"interface"`
+	Interface InterfacePolicySpec `json:"interface" yaml:"interface"`
 	// +kubebuilder:validation:Optional
 	// Network policy specification
-	Dns DnsPolicySpec `json:"dns"`
+	Dns DnsPolicySpec `json:"dns" yaml:"dns"`
 	// +kubebuilder:validation:Optional
 	// nop parsre policy specification
-	Nop NopSpec `json:"nop"`
+	Nop NopSpec `json:"nop" yaml:"nop"`
 }
 
 type UdpPolicySpec struct {
 	// Enable UDP observability
-	Enable bool `json:"enable"`
+	Enable bool `json:"enable" yaml:"enable"`
 	// +kubebuilder:default=true
 	// +kubebuilder:validation:Optional
 	// UDP has two modes one for newer kernels (cgroup) and then an
 	// older fallback mode for kprobe use cases. Allow running older
 	// kprobe version on newer kernels by setting cgroup knob to false.
-	Cgroup bool `json:"cgroup"`
+	Cgroup bool `json:"cgroup" yaml:"cgroup"`
 	// +kubebuilder:validation:Optional
 	// Configures the Stat collection interval in seconds
-	StatsInterval uint32 `json:"statsInterval"`
+	StatsInterval uint32 `json:"statsInterval" yaml:"statsInterval"`
 	// +kubebuilder:validation:Optional
 	// Configure socket idle time to delete sockets in seconds
-	DeleteIdleSocketInterval uint32 `json:"deleteIdleSocketInterval"`
+	DeleteIdleSocketInterval uint32 `json:"deleteIdleSocketInterval" yaml:"deleteIdleSocketInterval"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object
 type TracingPolicyList struct {
-	metav1.TypeMeta `json:",inline"`
-	metav1.ListMeta `json:"metadata"`
-	Items           []TracingPolicy `json:"items"`
+	metav1.TypeMeta `json:",inline" yaml:",inline"`
+	metav1.ListMeta `json:"metadata" yaml:"metadata"`
+	Items           []TracingPolicy `json:"items" yaml:"items"`
 }
