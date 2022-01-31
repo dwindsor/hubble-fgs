@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cilium/ebpf"
 	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
@@ -187,35 +188,50 @@ func (s *Sensor) FindPrograms(ctx context.Context) error {
 
 // LoadMaps loads all the BPF maps in the sensor.
 func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
-	version, _, err := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
-	if err != nil {
-		return err
-	}
-
 	l := logger.GetLogger()
 	for _, m := range s.Maps {
 		if m.PinState.IsDisabled() {
 			l.WithField("map", m.Name).Info("hubble-fgs, map is disabled, skipping.")
 			continue
 		}
+		if m.Map != nil {
+			l.WithField("map", m.Name).Info("hubble-fgs, map is already loaded, skipping.")
+			continue
+		}
 
-		pin := filepath.Join(mapDir, m.Name)
+		pinPath := filepath.Join(mapDir, m.Name)
 
 		// Try to open the pinPath and if it exist use the previously
 		// pinned map otherwise pin the map and next user will find
 		// it here.
-		if _, err := os.Stat(pin); err != nil {
-			btfObj := uintptr(btf.GetCachedBTF())
-			m.FD, err = loader.LoadAndPinMaps(version, option.Config.Verbosity, btfObj, m.Prog.Name, pin, m.Name, nameToProgType(m.Prog.Type))
-			l.Debugf("LoadAndPinMaps(%s, %s, %s)", m.Prog.Name, pin, m.Name)
+		if _, err := os.Stat(pinPath); err == nil {
+			m.Map, err = ebpf.LoadPinnedMap(pinPath, nil)
 			if err != nil {
-				return fmt.Errorf("failed %d load map (%s): %w", m.FD, m.Type, err)
+				return fmt.Errorf("loading pinned map failed: %w", err)
+			}
+		} else {
+			spec, err := ebpf.LoadCollectionSpec(m.Prog.Name)
+			if err != nil {
+				return fmt.Errorf("failed to open collection '%s': %w", m.Prog.Name, err)
+			}
+			mapSpec, ok := spec.Maps[m.Name]
+			if !ok {
+				return fmt.Errorf("map '%s' not found from '%s'", m.Name, m.Prog.Name)
+			}
+
+			m.Map, err = ebpf.NewMap(mapSpec)
+			if err != nil {
+				return fmt.Errorf("failed to open map '%s': %w", m.Name, err)
+			}
+			if err := m.Map.Pin(pinPath); err != nil {
+				m.Map.Close()
+				return fmt.Errorf("failed to pin to %s: %w", pinPath, err)
 			}
 		}
 
 		l.WithFields(logrus.Fields{
 			"map":  m.Name,
-			"path": pin,
+			"path": pinPath,
 		}).Info("hubble-fgs, map loaded.")
 	}
 
@@ -368,12 +384,14 @@ func disableBpfLoad(prog *Program) {
 }
 
 func removeTracepoint(fd int) {
-	PERF_EVENT_IOC_DISABLE := uint(0x2401)
-	err := unix.IoctlSetInt(fd, PERF_EVENT_IOC_DISABLE, 0)
-	if err != nil && option.Config.Verbosity > 1 {
-		logger.GetLogger().WithError(err).Warnf("Warning failed tracepoint removal")
+	if fd > 0 {
+		PERF_EVENT_IOC_DISABLE := uint(0x2401)
+		err := unix.IoctlSetInt(fd, PERF_EVENT_IOC_DISABLE, 0)
+		if err != nil && option.Config.Verbosity > 1 {
+			logger.GetLogger().WithError(err).Warnf("Warning failed tracepoint removal")
+		}
+		unix.Close(fd)
 	}
-	unix.Close(fd)
 }
 
 func nameToProgType(n string) int {

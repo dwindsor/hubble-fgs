@@ -13,7 +13,6 @@ package observer
 import (
 	"os"
 	"path/filepath"
-	"syscall"
 
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -25,8 +24,9 @@ func RemovePrograms(bpfDir, mapDir string) {
 	}
 
 	for _, m := range sensors.GetAllMaps() {
-		if m.FD > 0 {
-			syscall.Close(m.FD)
+		if m.Map != nil {
+			m.Map.Close()
+			m.Map = nil
 		}
 		os.Remove(filepath.Join(mapDir, m.Name))
 	}

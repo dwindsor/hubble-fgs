@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
-	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
@@ -168,6 +167,8 @@ func LoadCgroupProgram(
 }
 
 func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection) error {
+	// FIXME(JM): This should be replaced by using the cilium/ebpf prog array initialization.
+
 	secToProgName := make(map[string]string)
 	for name, prog := range spec.Programs {
 		secToProgName[prog.SectionName] = name
@@ -176,7 +177,7 @@ func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 	install := func(mapName string, secPrefix string) error {
 		tailCallsMap, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 		if err != nil {
-			return fmt.Errorf("failed to open map '%s': %w", mapName, err)
+			return nil
 		}
 		defer tailCallsMap.Close()
 
@@ -198,6 +199,9 @@ func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 		return err
 	}
 	if err := install("http1_calls_skb", "sk_skb/stream_verdict"); err != nil {
+		return err
+	}
+	if err := install("tls_calls", "classifier"); err != nil {
 		return err
 	}
 
@@ -222,7 +226,8 @@ func loadProgram(
 	var btfFile *os.File
 	if btfFilePath := btf.GetCachedBTFFile(); btfFilePath != "/sys/kernel/btf/vmlinux" {
 		// Non-standard path to BTF, open it and provide it as 'TargetBTF'.
-		btfFile, err := os.Open(btfFilePath)
+		var err error
+		btfFile, err = os.Open(btfFilePath)
 		if err != nil {
 			return fmt.Errorf("opening BTF file '%s' failed: %w", btfFilePath, err)
 		}
@@ -281,13 +286,9 @@ func loadProgram(
 	}
 	defer coll.Close()
 
-	// TODO(JM): withCollection? meh.
-	if strings.Contains(load.Name, "_http") {
-		// TODO(JM): Use cilium/ebpf's prog array initialization and remove this.
-		err = installTailCalls(mapDir, spec, coll)
-		if err != nil {
-			return fmt.Errorf("installing tail calls failed: %w", err)
-		}
+	err = installTailCalls(mapDir, spec, coll)
+	if err != nil {
+		return fmt.Errorf("installing tail calls failed: %s", err)
 	}
 
 	prog, ok := coll.Programs[progSpec.Name]

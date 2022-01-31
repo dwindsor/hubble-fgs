@@ -49,29 +49,29 @@ var (
 	// do not access that directly outside of this file
 	// use {get|set}AllMaps()
 	AllMaps = []*Map{
-		&NamesMap,
-		&SocketMap,
-		&ExecveMap,
-		&TCPMonMap,
-		&ExecveStats,
-		&SocketStats,
-		&TLSMapStats,
-		&CiliumSNAT,
-		&TCPSendCheckSampler,
-		&HTTPContext,
+		NamesMap,
+		SocketMap,
+		ExecveMap,
+		TCPMonMap,
+		ExecveStats,
+		SocketStats,
+		TLSMapStats,
+		CiliumSNAT,
+		TCPSendCheckSampler,
+		HTTPContext,
 	}
 
 	AllMapsV53 = []*Map{
-		&NamesMapV53,
-		&SocketMap,
-		&ExecveMapV53,
-		&TCPMonMapV53,
-		&ExecveStatsV53,
-		&SocketStats,
-		&TLSMapStats,
-		&CiliumSNAT,
-		&TCPSendCheckSampler,
-		&HTTPContext,
+		NamesMapV53,
+		SocketMap,
+		ExecveMapV53,
+		TCPMonMapV53,
+		ExecveStatsV53,
+		SocketStats,
+		TLSMapStats,
+		CiliumSNAT,
+		TCPSendCheckSampler,
+		HTTPContext,
 	}
 )
 
@@ -134,27 +134,27 @@ func GetInitialSensor() *Sensor {
 	}
 
 	maps := []*Map{
-		&NamesMap,
-		&TCPMonMap,
-		&ExecveMap,
-		&SocketMap,
+		NamesMap,
+		TCPMonMap,
+		ExecveMap,
+		SocketMap,
 		/* &ObserverTcpMap */
-		&ExecveStats,
-		&SocketStats,
-		&TLSMapStats, // NB: Maybe this should be under k.enableTLS?
-		&TCPSendCheckSampler,
+		ExecveStats,
+		SocketStats,
+		TLSMapStats, // NB: Maybe this should be under k.enableTLS?
+		TCPSendCheckSampler,
 	}
 	if kernels.EnableLargeProgs() {
 		maps = []*Map{
-			&NamesMapV53,
-			&TCPMonMapV53,
-			&ExecveMapV53,
-			&SocketMap,
+			NamesMapV53,
+			TCPMonMapV53,
+			ExecveMapV53,
+			SocketMap,
 			/* &ObserverTcpMap */
-			&ExecveStatsV53,
-			&SocketStats,
-			&TLSMapStats, // NB: Maybe this should be under k.enableTLS?
-			&TCPSendCheckSampler,
+			ExecveStatsV53,
+			SocketStats,
+			TLSMapStats, // NB: Maybe this should be under k.enableTLS?
+			TCPSendCheckSampler,
 		}
 	}
 

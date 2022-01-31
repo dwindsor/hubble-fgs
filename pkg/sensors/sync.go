@@ -276,6 +276,12 @@ func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) er
 	for _, m := range sensor.Maps {
 		os.Remove(filepath.Join(mapDir, m.Name))
 		m.PinState = Idle()
+		if m.Map != nil {
+			if err := m.Map.Close(); err != nil {
+				logger.GetLogger().Warnf("Failed to close map %s: %s", m.Name, err)
+			}
+			m.Map = nil
+		}
 	}
 
 	sensor.Loaded = false

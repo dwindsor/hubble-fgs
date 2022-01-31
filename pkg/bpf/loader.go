@@ -33,18 +33,6 @@ package bpf
 #include "libbpf__bpf.h"
 #include "hubble_msg.h"
 
-#define NUM_PAGES 8
-// hash map only added updates from map value in 4.18
-#define MIN_HASH_VERSION 266752
-
-#ifndef BPF_PROG_TYPE_SK_MSG
-#define BPF_PROG_TYPE_SK_MSG 16
-#endif
-
-#ifndef BPF_SK_MSG_VERDICT
-#define BPF_SK_MSG_VERDICT 7
-#endif
-
 static int __print(enum libbpf_print_level level __attribute__((unused)),
 		   const char *format, va_list args)
 {
@@ -99,86 +87,6 @@ void cgroup_delete(const char *target, const char *prog, int attach_type)
 
 	close(target_fd);
 	close(prog_fd);
-}
-
-int fgs_map_loader(const int version,
-		   const int verbosity,
-		   void *btf,
-		   const char *prog,
-		   const char *__map,
-		   const char *__label_map,
-	   	   const int type)
-{
-	struct bpf_object_load_attr attr = {0};
-	struct bpf_program *prog_bpf;
-	struct bpf_map *map_bpf;
-	struct bpf_map_def *map_def;
-	struct bpf_object *obj;
-	int err, map_fd;
-
-	if (verbosity > 1)
-		libbpf_set_print(__print);
-	else
-		libbpf_set_print(__quiet);
-
-	obj = bpf_object__open(prog);
-	err = libbpf_get_error(obj);
-	if (err) {
-		fprintf(stderr, "fgs_map_loader: bpf_object__open: %i %s\n", err, prog);
-		return err;
-	}
-
-	bpf_loader_programs(obj, type, verbosity);
-
-	attr.obj = obj;
-	attr.target_btf = btf;
-	attr.kern_version = version;
-	err = bpf_object__load_xattr(&attr);
-	if (err < 0) {
-		char errstr[256];
-
-		libbpf_strerror(err, errstr, sizeof(errstr));
-		fprintf(stderr,
-			"map_loader bpf_object__load_xattr (%s): failed %i: %s\n",
-			prog, err, errstr);
-		goto cleanup;
-	}
-
-
-	map_bpf = bpf_object__find_map_by_name(obj, __label_map);
-	err = libbpf_get_error(map_bpf);
-	if (err) {
-		fprintf(stderr,
-			"bpf_object__find_map_by_name: fgs map loader obj(%s) map(%s) failed",
-			prog, __label_map);
-		goto cleanup;
-	}
-
-	err = libbpf_get_error(obj);
-	bpf_map__unpin(map_bpf, __map);
-	err = bpf_map__pin(map_bpf, __map);
-	if (err < 0) {
-		fprintf(stderr,
-			"fgs_map_loader: bpf_map__pin: failed obj(%s) map(%s) pin(%s) %i\n",
-		       prog, __label_map, __map,  err);
-		goto cleanup;
-	}
-	map_fd = bpf_map__fd(map_bpf);
-	if (map_fd < 0) {
-		fprintf(stderr,
-			"fgs_map_loader: bpf_map__fd: failed obj(%s) map(%s) %i\n",
-			prog, __label_map, err);
-	}
-	err = bpf_object__unload(obj);
-	if (err < 0) {
-		fprintf(stderr,
-			"fgs_map_loader: bpf_object__unload: failed obj(%s) map(%s) %i\n",
-			prog, __label_map, err);
-	}
-	close(map_fd);
-cleanup:
-	bpf_object__close(obj);
-	return err;
 }
 
 int __bpf_obj_get(const char *file)
@@ -629,22 +537,6 @@ import (
 	"github.com/vishvananda/netlink"
 	"golang.org/x/sys/unix"
 )
-
-func LoadAndPinMaps(__version, __verbosity int, btf uintptr, __prog, __map, __map_label string, __prog_type int) (int, error) {
-	version := C.int(__version)
-	verbosity := C.int(__verbosity)
-	p := C.CString(__prog)
-	m := C.CString(__map)
-	ml := C.CString(__map_label)
-	pt := C.int(__prog_type)
-
-	fd := C.fgs_map_loader(version, verbosity, unsafe.Pointer(btf), p, m, ml, pt)
-	fdInt := int(fd)
-	if fdInt < 0 {
-		return 0, fmt.Errorf("Unable to pin map: %d (%s %s %s)", fdInt, __prog, __map, __map_label)
-	}
-	return fdInt, nil
-}
 
 func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string) (error, int) {
 	version := C.int(__version)

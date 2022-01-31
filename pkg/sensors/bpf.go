@@ -10,7 +10,11 @@
 
 package sensors
 
-import "fmt"
+import (
+	"fmt"
+
+	"github.com/cilium/ebpf"
+)
 
 func ProgramBuilder(
 	program, x64_attach, attach, label, prog string,
@@ -108,9 +112,9 @@ type Map struct {
 	Type     string
 	Prog     *Program
 	PinState State
-	FD       int
+	Map      *ebpf.Map
 }
 
 func MapBuilder(name, ty string, ld *Program) *Map {
-	return &Map{name, ty, ld, Idle(), -1}
+	return &Map{name, ty, ld, Idle(), nil}
 }

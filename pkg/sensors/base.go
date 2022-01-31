@@ -182,28 +182,28 @@ var (
 	}
 
 	/* Event Ring map */
-	TCPMonMap    = Map{"tcpmon_map", "", &Execve, Idle(), -1}
-	TCPMonMapV53 = Map{"tcpmon_map", "", &ExecveV53, Idle(), -1}
+	TCPMonMap    = MapBuilder("tcpmon_map", "", &Execve)
+	TCPMonMapV53 = MapBuilder("tcpmon_map", "", &ExecveV53)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap           = Map{"execve_map", "", &Execve, Idle(), -1}
-	ExecveMapV53        = Map{"execve_map", "", &ExecveV53, Idle(), -1}
-	SocketMap           = Map{"socket_map", "", &TCPConnect, Idle(), -1}
-	TCPSendCheckSampler = Map{"tcp_send_check_sampler", "", &TCPSendCheck, Idle(), -1}
+	ExecveMap           = MapBuilder("execve_map", "", &Execve)
+	ExecveMapV53        = MapBuilder("execve_map", "", &ExecveV53)
+	SocketMap           = MapBuilder("socket_map", "", &TCPConnect)
+	TCPSendCheckSampler = MapBuilder("tcp_send_check_sampler", "", &TCPSendCheck)
 
 	/* Policy maps populated from base programs */
-	NamesMap    = Map{"names_map", "", &Execve, Idle(), -1}
-	NamesMapV53 = Map{"names_map", "", &ExecveV53, Idle(), -1}
+	NamesMap    = MapBuilder("names_map", "", &Execve)
+	NamesMapV53 = MapBuilder("names_map", "", &ExecveV53)
 
 	/* Internal statistics for debugging */
-	ExecveStats    = Map{"execve_map_stats", "", &Execve, Idle(), -1}
-	ExecveStatsV53 = Map{"execve_map_stats", "", &ExecveV53, Idle(), -1}
-	SocketStats    = Map{"socket_map_stats", "", &TCPConnect, Idle(), -1}
-	TLSMapStats    = Map{"tls_map_stats", "", &TCPConnect, Idle(), -1}
+	ExecveStats    = MapBuilder("execve_map_stats", "", &Execve)
+	ExecveStatsV53 = MapBuilder("execve_map_stats", "", &ExecveV53)
+	SocketStats    = MapBuilder("socket_map_stats", "", &TCPConnect)
+	TLSMapStats    = MapBuilder("tls_map_stats", "", &TCPConnect)
 
 	/* Cilium maps */
-	CiliumSNAT = Map{"cilium_snat_v4_external", "", &TCPConnect, Idle(), -1}
+	CiliumSNAT = MapBuilder("cilium_snat_v4_external", "", &TCPConnect)
 
 	/* Parser maps */
-	HTTPContext = Map{"http_map", "", &TCPClose, Idle(), -1}
+	HTTPContext = MapBuilder("http_map", "", &TCPClose)
 )
