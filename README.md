@@ -414,3 +414,4 @@ a known working compiler, and compile FGS itself.
     * [FGS events and other info](https://drive.google.com/drive/folders/1ZwsXk9vEmmofhrfSOGLDSWBRIcvdrl1b)
     * [the followfd primitive for generic kprobes](https://drive.google.com/drive/folders/1Vq7GHREAEf358IikZT32uVYmGlwoWO7T)
     * [event checker demo](https://drive.google.com/drive/folders/1Gwqpv9BICP3nVoJlFBZVVqg8V7FVKaBW)
+ * [Hacking on FGS](HACKING.md)
