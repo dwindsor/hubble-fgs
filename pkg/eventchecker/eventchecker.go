@@ -74,7 +74,7 @@ func (fns *MultiResponseCheckerFns) FinalCheck(l Logger) error {
 }
 
 func (fns *MultiResponseCheckerFns) Reset() {
-	fns.Reset()
+	fns.ResetFn()
 }
 
 // OrderedMultiResponseChecker matches a list of ResponseCheckers over a sequence of responses
