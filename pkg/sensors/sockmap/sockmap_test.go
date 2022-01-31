@@ -15,9 +15,12 @@ import (
 	"context"
 	"flag"
 	"fmt"
+	"net"
 	"net/http"
 	"os"
 	"path/filepath"
+	"strconv"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -277,20 +280,28 @@ func TestHttp11Curl(t *testing.T) {
 	observer.TestDone(t, obs)
 }
 
-func http2Server(ctx context.Context, port int) {
+func spawnHttp2Server(t *testing.T, ctx context.Context) string {
 	handler := http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("hello world"))
 		})
 	s := http.Server{
-		Addr:    fmt.Sprintf("127.0.0.1:%d", port),
+		Addr:    "127.0.0.1:0",
 		Handler: h2c.NewHandler(handler, &http2.Server{}),
 	}
+	ln, err := net.Listen("tcp", s.Addr)
+	if err != nil {
+		t.Fatalf("spawnHttp2Server: failed to listen at %s: %s", s.Addr, err)
+	}
+
 	go func() {
 		<-ctx.Done()
 		s.Shutdown(ctx)
+		ln.Close()
 	}()
-	s.ListenAndServe()
+	go s.Serve(ln)
+
+	return ln.Addr().String()
 }
 
 func TestHttp20CurlPriorKnowledge(t *testing.T) {
@@ -298,38 +309,44 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	http2Addr := spawnHttp2Server(t, ctx)
+	http2Port, _ := strconv.ParseUint(strings.Split(http2Addr, ":")[1], 10, 32)
+
 	bpf.CheckOrMountCgroup2()
+	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	curlChecker := ec.ProcessWithCommand(
+		ec.SuffixStringMatch("curl"),
+		ec.FullStringMatch("-v4 --http2-prior-knowledge http://"+http2Addr),
+	)
 
 	httpCh := ec.NewHttpChecker().
 		WithRequestMethod("GET").
 		WithRequestUri("/").
 		WithRequestVersion("HTTP/2").
 		WithRequestAgent(ec.ContainsStringMatch("curl")).
-		WithRequestHost(ec.ContainsStringMatch("localhost:8282")).
+		WithRequestHost(ec.ContainsStringMatch(http2Addr)).
 		WithResponseVersion("HTTP/2").
 		WithResponseReason("OK")
 
-	// NOTE(JM): Not checking for process data due to issue #747
-	// Process information unavailable as tuple.uid set to netns id
-	// for local connections. It's set because otherwise the connection
-	// tuple is not unique.
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewConnectEventChecker().
-			HasDstPort(8282).
+			HasDstPort(uint32(http2Port)).
+			HasProcess(curlChecker).
+			HasParent(selfChecker).
 			End(),
+
 		ec.NewHttpEventChecker().
+			HasProcess(curlChecker).
 			HasHttp(httpCh).
 			End(),
 	)
 
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	defer cancel()
-
-	go http2Server(ctx, 8282)
-
-	if err := observer.WriteConfigFile(testConfigFile, httpConfig(8282)); err != nil {
+	if err := observer.WriteConfigFile(testConfigFile, httpConfig(int(http2Port))); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
@@ -338,9 +355,9 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
-	observer.ExecWGCurl(&readyWG, "-v4", "--http2-prior-knowledge", "http://localhost:8282")
+	observer.ExecWGCurl(&readyWG, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
-	err = observer.JsonTestCheck(t, nil, &checker)
+	err = observer.JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 
 	observer.TestDone(t, obs)
