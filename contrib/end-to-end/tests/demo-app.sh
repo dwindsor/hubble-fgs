@@ -24,7 +24,8 @@ sleep 5 # FIXME: why is waiting above not enough?
 kubectl apply -f crds/examples/tls.yaml --wait
 
 echo "Deploying demo app..." 1>&2
-kubectl create namespace tenant-jobs || true
+kubectl delete namespace tenant-jobs || true
+kubectl create namespace tenant-jobs
 kubectl -n tenant-jobs apply -f https://docs.isovalent.com/public/jobs-app-attack.yaml
 echo "Waiting for demo app to be ready..." 1>&2
 kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=5m
