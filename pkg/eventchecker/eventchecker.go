@@ -245,6 +245,8 @@ func eventGetProcess(ev_ fgsEvent) *fgs.Process {
 		return ev.Process
 	case *fgs.Tls:
 		return ev.Process
+	case *fgs.ProcessDns:
+		return ev.Process
 	case *fgs.ProcessHttp:
 		return ev.Process
 	case *fgs.ProcessExit:
@@ -273,6 +275,8 @@ func eventGetParent(ev_ fgsEvent) *fgs.Process {
 	case *fgs.Tls:
 		return nil
 	case *fgs.ProcessHttp:
+		return nil
+	case *fgs.ProcessDns:
 		return nil
 	case *fgs.ProcessExit:
 		return ev.Parent
@@ -477,6 +481,18 @@ func NewTlsEventChecker() *eventChainChecker {
 	return &eventChainChecker{
 		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_TLS)
+		},
+		eventCheck: func(ev fgsEvent, l Logger) error {
+			return nil
+		},
+	}
+}
+
+// NewDnsEventChecker creates a new eventChainChecker for DNS events
+func NewDnsEventChecker() *eventChainChecker {
+	return &eventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+			return checkEvent(r, l, fgs.EventType_PROCESS_DNS)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -1865,6 +1881,228 @@ func (e *eventChainChecker) HasTls(tlscheck TlsChecker) *eventChainChecker {
 			return tlscheck.Check(tlsEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a tls event", e)
+
+	}
+	return e
+}
+
+type DnsChecker interface {
+	// Check checks a DNS event
+	Check(*fgs.ProcessDns, Logger) error
+}
+
+type DnsCheckerFn func(*fgs.ProcessDns, Logger) error
+
+func (f DnsCheckerFn) Check(c *fgs.ProcessDns, log Logger) error {
+	return f(c, log)
+}
+
+func dnsWithString(
+	sm StringMatcher,
+	getter func(*fgs.ProcessDns) string,
+	desc string, // desc is used for helpful error messages
+) DnsChecker {
+	matcher := sm.GetMatcher()
+	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("DNS is nil and cannot match %s using %v", desc, sm)
+		}
+		s := getter(t)
+		if err := matcher(s); err != nil {
+			return fmt.Errorf("failed DNS check on %s: %w", desc, err)
+		}
+		log.Logf("**** MATCH DNS on %s: %s", desc, s)
+		return nil
+	})
+}
+
+// Check whether Dns event is a response
+func DnsIsResponse(isResponse bool) DnsChecker {
+	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("DNS is nil and cannot match Response: %t", isResponse)
+		}
+		if t.Dns.Response != isResponse {
+			return fmt.Errorf("expecting DNS Response to be %t but got %t", isResponse, t.Dns.Response)
+		}
+		log.Logf("**** MATCH DNS on Response: %t", t.Dns.Response)
+		return nil
+	})
+}
+
+// Check Dns with a specific Rcode
+func DnsHasRcode(rcode int32) DnsChecker {
+	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("DNS is nil and cannot match Rcode: %d", rcode)
+		}
+		if t.Dns.Rcode != rcode {
+			return fmt.Errorf("expecting Dns Rcode to be %d but got %d", rcode, t.Dns.Rcode)
+		}
+		log.Logf("**** MATCH DNS on Rcode: %t", t.Dns.Rcode)
+		return nil
+	})
+}
+
+// Check Dns with a Query field
+func DnsHasQuery(sm StringMatcher) DnsChecker {
+	return dnsWithString(
+		sm,
+		func(t *fgs.ProcessDns) string {
+			return t.Dns.Query
+		},
+		"Query",
+	)
+}
+
+// Check Dns with a specific set of answer types.
+// N.B. This check is order-preserving and expects a full match.
+func DnsHasAnswerTypes(answerTypes []uint32) DnsChecker {
+	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("DNS is nil and cannot match AnswerTypes: %+v", answerTypes)
+		}
+		if !reflect.DeepEqual(t.Dns.AnswerTypes, answerTypes) {
+			return fmt.Errorf("expecting DNS AnswerTypes to be %+v but got %+v", answerTypes, t.Dns.AnswerTypes)
+		}
+		log.Logf("**** MATCH DNS on AnswerTypes: %+v", t.Dns.AnswerTypes)
+		return nil
+	})
+}
+
+// Check Dns with a specific set of question types.
+// N.B. This check is order-preserving and expects a full match.
+func DnsHasQuestionTypes(questionTypes []uint32) DnsChecker {
+	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("DNS is nil and cannot match QuestionTypes: %+v", questionTypes)
+		}
+		if !reflect.DeepEqual(t.Dns.QuestionTypes, questionTypes) {
+			return fmt.Errorf("expecting DNs QuestionTypes to be %+v but got %+v", questionTypes, t.Dns.QuestionTypes)
+		}
+		log.Logf("**** MATCH DNS on QuestionTypes: %+v", t.Dns.QuestionTypes)
+		return nil
+	})
+}
+
+// Check Dns with a specific set of names.
+// N.B. This check is order-preserving and expects a full match.
+func DnsHasNames(matchers []StringMatcher) DnsChecker {
+	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("DNS is nil and cannot match Names: %+v", matchers)
+		}
+		for i := range t.Dns.Names {
+			matcher := matchers[i].GetMatcher()
+			name := t.Dns.Names[i]
+			if err := matcher(name); err != nil {
+				return fmt.Errorf("failed check on name %s (idx=%d): %w", name, i, err)
+			}
+		}
+		log.Logf("**** MATCH DNS on Names: %s", t.Dns.Names)
+		return nil
+	})
+}
+
+// Check Dns with a specific set of ips.
+// N.B. This check is order-preserving and expects a full match.
+func DnsHasIps(matchers []StringMatcher) DnsChecker {
+	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("DNS is nil and cannot match IPs: %+v", matchers)
+		}
+		for i := range t.Dns.Ips {
+			matcher := matchers[i].GetMatcher()
+			ip := t.Dns.Ips[i]
+			if err := matcher(ip); err != nil {
+				return fmt.Errorf("failed check on IP %s (idx=%d): %w", ip, i, err)
+			}
+		}
+		log.Logf("**** MATCH DNS on IPs: %s", t.Dns.Ips)
+		return nil
+	})
+}
+
+type DnsCheckerAND struct {
+	checks []DnsChecker
+}
+
+func NewDnsChecker() *DnsCheckerAND {
+	return &DnsCheckerAND{}
+}
+
+func (o *DnsCheckerAND) Check(t *fgs.ProcessDns, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(t, l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// Adds a Dns.Response check to a Dns checker
+func (o *DnsCheckerAND) IsResponse(isResponse bool) *DnsCheckerAND {
+	o.checks = append(o.checks, DnsIsResponse(isResponse))
+	return o
+}
+
+// Adds a Dns.Rcode check to a Dns checker
+func (o *DnsCheckerAND) WithRcode(rcode int32) *DnsCheckerAND {
+	o.checks = append(o.checks, DnsHasRcode(rcode))
+	return o
+}
+
+// Adds a Dns.Query check to a Dns checker
+func (o *DnsCheckerAND) WithQuery(query StringArg) *DnsCheckerAND {
+	sm := stringMatcherFromArg(query)
+	o.checks = append(o.checks, DnsHasQuery(sm))
+	return o
+}
+
+// Adds a Dns.AnswerTypes check to a Dns checker
+func (o *DnsCheckerAND) WithAnswerTypes(answerTypes []uint32) *DnsCheckerAND {
+	o.checks = append(o.checks, DnsHasAnswerTypes(answerTypes))
+	return o
+}
+
+// Adds a Dns.QuestionTypes check to a Dns checker
+func (o *DnsCheckerAND) WithQuestionTypes(questionTypes []uint32) *DnsCheckerAND {
+	o.checks = append(o.checks, DnsHasQuestionTypes(questionTypes))
+	return o
+}
+
+// Adds a Dns.Ips check to a Dns checker
+func (o *DnsCheckerAND) WithIps(ips []StringArg) *DnsCheckerAND {
+	matchers := make([]StringMatcher, len(ips))
+	for i := range matchers {
+		matchers[i] = stringMatcherFromArg(ips[i])
+	}
+	o.checks = append(o.checks, DnsHasIps(matchers))
+	return o
+}
+
+// Adds a Dns.Names check to a Dns checker
+func (o *DnsCheckerAND) WithNames(names []StringArg) *DnsCheckerAND {
+	matchers := make([]StringMatcher, len(names))
+	for i := range matchers {
+		matchers[i] = stringMatcherFromArg(names[i])
+	}
+	o.checks = append(o.checks, DnsHasNames(matchers))
+	return o
+}
+
+// Adds a Dns checker to the event check
+func (e *eventChainChecker) HasDns(dnscheck DnsChecker) *eventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+
+		if dnsEv, ok := e.(*fgs.ProcessDns); ok {
+			return dnscheck.Check(dnsEv, l)
+		}
+		return fmt.Errorf("event has type %T: not a dns event", e)
 
 	}
 	return e
