@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	"github.com/sirupsen/logrus"
@@ -110,9 +111,7 @@ func msgToExecveUnix(m *api.MsgExecveEvent, offset int) *api.MsgExecveEventUnix 
 	unix.Kube.Cgrpid = m.Kube.Cgrpid
 	// The first byte is set to zero if there is no docker ID for this event.
 	if m.Kube.Docker[0] != 0x00 {
-		unix.Kube.Docker = strings.TrimFunc(string(m.Kube.Docker[offset:]), func(c rune) bool {
-			return c == 0x00
-		})
+		unix.Kube.Docker = reader.FromCString(m.Kube.Docker[offset:])
 	}
 	unix.Parent = m.Parent
 	unix.Capabilities = m.Capabilities

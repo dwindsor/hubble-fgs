@@ -602,9 +602,10 @@ func TestDockerListenConnect(t *testing.T) {
 	time.Sleep(1 * time.Second)
 	clientDockerID := dockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-p", "9876", "fgs-test-server", "8081")
 
-	// FGS picks up the first 32 bytes
-	fgsServerID := serverDockerID[:31]
-	fgsClientID := clientDockerID[:31]
+	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
+	// match only on the first 24 bytes.
+	fgsServerID := ec.PrefixStringMatch(serverDockerID[:24])
+	fgsClientID := ec.PrefixStringMatch(clientDockerID[:24])
 
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
 	ncSrvChecker := ec.NewProcessChecker().

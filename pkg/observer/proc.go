@@ -62,7 +62,7 @@ func procsFilename(args []byte) (string, string) {
 func procsFindDockerId(cgroups string) (string, int) {
 	docker := strings.Split(cgroups, "\n")
 	for _, s := range docker {
-		if strings.Contains(s, "pids:") && (strings.Contains(s, "pods") || strings.Contains(s, "docker")) {
+		if strings.Contains(s, "pods") || strings.Contains(s, "docker") {
 			dockerFields := strings.Split(s, "/")
 			dockerString := dockerFields[len(dockerFields)-1]
 			// Special case for syscont-cgroup-root installed by

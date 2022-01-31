@@ -30,6 +30,15 @@ import (
 	"golang.org/x/sys/unix"
 )
 
+func FromCString(cstr []byte) string {
+	for i, c := range cstr {
+		if c == 0 {
+			return string(cstr[:i])
+		}
+	}
+	return string(cstr)
+}
+
 func GetSocketStats(stats *api.MsgSocketStatsUnix) *fgs.SocketStats {
 	return &fgs.SocketStats{
 		BytesSubmitted:   stats.BytesSubmitted,
