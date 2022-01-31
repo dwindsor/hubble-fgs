@@ -78,8 +78,10 @@ func TestObjectLoad(t *testing.T) {
 }
 
 func TestConnectEvent(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
@@ -117,16 +119,18 @@ func TestConnectEvent(t *testing.T) {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	ExecWGCurl(&execWG, &exitWG, "127.0.0.1")
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	ExecWGCurl(&readyWG, "127.0.0.1")
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
 
 func TestExecEventClone(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	orig := "nc.traditional"
@@ -195,21 +199,20 @@ func TestExecEventClone(t *testing.T) {
 	/* Verify KprobeEvent Execve '-e /bin/sh' without clone() */
 	//	obs.AttachFilter(&ncExecCloneFilter)
 
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 
-	execWG.Wait()
+	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "127.0.0.1", "8081", "-e", "/bin/sh")
 	assert.NoError(t, cmdClient.Start())
-	exitWG.Wait()
-
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 
 	TestDone(t, obs)
 }
@@ -258,8 +261,10 @@ func TestExistingListenEvent(t *testing.T) {
 }
 
 func TestExistingAcceptEvent(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	server := getNCCommand(t, "nc.traditional")
@@ -306,20 +311,19 @@ func TestExistingAcceptEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 
-	execWG.Wait()
+	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	fmt.Printf("cmd: %s\n", cmdClient)
 	assert.NoError(t, cmdClient.Start())
-	exitWG.Wait()
-
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 
 	TestDone(t, obs)
 }
@@ -375,8 +379,10 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 }
 
 func TestListenAcceptClose(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	server := getNCCommand(t, "nc.traditional")
@@ -428,21 +434,20 @@ func TestListenAcceptClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 
-	execWG.Wait()
+	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
-	exitWG.Wait()
-
-	killAndWaitCommand(t, cmdServer)
-	killAndWaitCommand(t, cmdClient)
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 
 	TestDone(t, obs)
 }
@@ -477,8 +482,10 @@ func TestSensorLseekLoad(t *testing.T) {
 		t.Skip("cannot use syscall tracepoints (consider enabling CONFIG_FTRACE_SYSCALLS)")
 	}
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	checker := ec.NewOrderedMultiResponseChecker(
@@ -499,10 +506,9 @@ func TestSensorLseekLoad(t *testing.T) {
 		obs.RemovePrograms()
 		t.Fatalf("observerLoadSensor error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
-	exitWG.Wait()
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
@@ -518,8 +524,10 @@ func TestSensorLseekEnable(t *testing.T) {
 		t.Skip("cannot use syscall tracepoints (consider enabling CONFIG_FTRACE_SYSCALLS)")
 	}
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	checker := ec.NewOrderedMultiResponseChecker(
@@ -564,10 +572,9 @@ func TestSensorLseekEnable(t *testing.T) {
 		}
 	}()
 
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
-	exitWG.Wait()
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
@@ -578,22 +585,22 @@ func TestDockerListenConnect(t *testing.T) {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
-	var exitWG, execWG sync.WaitGroup
-	var serverDockerID, clientDockerID string
 
 	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 
-	execWG.Wait()
-	serverDockerID = dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
+	readyWG.Wait()
+	serverDockerID := dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
 	time.Sleep(1 * time.Second)
-	clientDockerID = dockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-p", "9876", "fgs-test-server", "8081")
-	exitWG.Wait()
+	clientDockerID := dockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-p", "9876", "fgs-test-server", "8081")
 
 	// FGS picks up the first 32 bytes
 	fgsServerID := serverDockerID[:31]
@@ -684,9 +691,11 @@ func TestDockerExistingListenEvent(t *testing.T) {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
-	var exitWG, execWG sync.WaitGroup
 
 	/* Start server before creating obs */
 	dockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
@@ -698,7 +707,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that

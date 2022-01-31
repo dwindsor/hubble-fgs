@@ -284,25 +284,24 @@ func loadObserver(t *testing.T, obs *Observer) {
 	obs.populateExecve(context.TODO())
 }
 
-func LoopEvents(t *testing.T, exitWG, execWG *sync.WaitGroup, obs *Observer, ctx context.Context) {
-	exitWG.Add(1)
-	execWG.Add(1)
+func LoopEvents(t *testing.T, doneWG, readyWG *sync.WaitGroup, obs *Observer, ctx context.Context) {
+	doneWG.Add(1)
+	readyWG.Add(1)
 	go func() {
-		defer exitWG.Done()
+		defer doneWG.Done()
 
-		if err := obs.runEventsNew(ctx, func() { execWG.Done() }); err != nil {
+		if err := obs.runEventsNew(ctx, func() { readyWG.Done() }); err != nil {
 			RemovePrograms(obs.bpfDir, obs.mapDir)
 			t.Fatalf("runEvents error: %s", err)
 		}
 	}()
 }
 
-func ExecWGCurl(execWG, exitWG *sync.WaitGroup, args ...string) {
-	execWG.Wait()
+func ExecWGCurl(readyWG *sync.WaitGroup, args ...string) {
+	readyWG.Wait()
 	cmd := exec.Command("/usr/bin/curl", args...)
 	err := cmd.Run()
 	fmt.Printf("cmd %v err %v\n", cmd, err)
-	exitWG.Wait()
 }
 
 // dockerRun starts a new docker container in the background. The container will

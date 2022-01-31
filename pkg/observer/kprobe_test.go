@@ -73,8 +73,10 @@ spec:
 // NB: This is similar to TestKprobeObjectWriteRead, but it's a bit easier to
 // debug because we can write things on stdout which will not generate events.
 func TestKprobeLseek(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	pidStr := strconv.Itoa(int(GetMyPid()))
@@ -111,17 +113,18 @@ spec:
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
 	fmt.Printf("Calling lseek...\n")
 	unix.Seek(-1, 0, 4444)
-	exitWG.Wait()
 	TestDone(t, obs)
 }
 
 func TestKprobeObjectWriteRead(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	pidStr := strconv.Itoa(int(GetMyPid()))
@@ -179,11 +182,10 @@ spec:
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
 	_, err = syscall.Write(1, []byte("hello world"))
 	assert.NoError(t, err)
-	exitWG.Wait()
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
@@ -191,8 +193,10 @@ spec:
 }
 
 func TestKprobeObjectRead(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	// Create file with hello world to read
@@ -260,8 +264,8 @@ spec:
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
 	hello := []byte("hello world")
 	n, errno := syscall.Write(fd, hello)
 	if n < 0 {
@@ -275,7 +279,6 @@ spec:
 		fmt.Printf("syscall.Read failed: %s\n", errno)
 		t.Fatal()
 	}
-	exitWG.Wait()
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
@@ -316,8 +319,10 @@ var (
 func testKprobeObjectFiltered(t *testing.T,
 	readHook string,
 	checker ec.MultiResponseChecker) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	// Create file to open later
@@ -337,8 +342,8 @@ func testKprobeObjectFiltered(t *testing.T,
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
 	fd2, errno := syscall.Open("/tmp/testfile", syscall.O_RDWR, 0x770)
 	if fd2 < 0 {
 		fmt.Printf("File open from read failed: %s\n", errno)
@@ -348,7 +353,6 @@ func testKprobeObjectFiltered(t *testing.T,
 	n, err := syscall.Write(fd2, []byte(data))
 	assert.Equal(t, len(data), n)
 	assert.NoError(t, err)
-	exitWG.Wait()
 	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
@@ -677,8 +681,10 @@ func helloIovecWorldWritev() (err error) {
 }
 
 func TestKprobeObjectWriteVRead(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 	pidStr := strconv.Itoa(int(GetMyPid()))
 
@@ -734,11 +740,10 @@ spec:
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
 	err = helloIovecWorldWritev()
 	assert.NoError(t, err)
-	execWG.Wait()
 
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)

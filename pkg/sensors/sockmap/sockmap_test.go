@@ -112,8 +112,10 @@ func TestTCTLS13(t *testing.T) {
 			End(),
 	)
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	if err := observer.WriteConfigFile(testConfigFile, tlstc); err != nil {
@@ -124,8 +126,8 @@ func TestTCTLS13(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	observer.ExecWGCurl(&execWG, &exitWG, "--tlsv1.3", "-4", "https://www.google.com")
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.ExecWGCurl(&readyWG, "--tlsv1.3", "-4", "https://www.google.com")
 
 	err = observer.JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
@@ -140,8 +142,10 @@ func TestTCTLS12(t *testing.T) {
 
 	bpf.CheckOrMountCgroup2()
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
@@ -183,8 +187,8 @@ func TestTCTLS12(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	observer.ExecWGCurl(&execWG, &exitWG, "-4", "https://tls-v1-2.badssl.com:1012/")
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.ExecWGCurl(&readyWG, "-4", "https://tls-v1-2.badssl.com:1012/")
 
 	err = observer.JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
@@ -250,8 +254,10 @@ func TestHttp11Curl(t *testing.T) {
 			End(),
 	)
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	if err := observer.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
@@ -262,8 +268,8 @@ func TestHttp11Curl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	observer.ExecWGCurl(&execWG, &exitWG, "-4", "http://www.google.com")
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.ExecWGCurl(&readyWG, "-4", "http://www.google.com")
 
 	err = observer.JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
@@ -316,8 +322,9 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 			End(),
 	)
 
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	go http2Server(ctx, 8282)
@@ -330,8 +337,8 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	observer.ExecWGCurl(&execWG, &exitWG, "-v4", "--http2-prior-knowledge", "http://localhost:8282")
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.ExecWGCurl(&readyWG, "-v4", "--http2-prior-knowledge", "http://localhost:8282")
 
 	err = observer.JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)

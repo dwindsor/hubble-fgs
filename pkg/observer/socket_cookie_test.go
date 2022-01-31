@@ -107,21 +107,22 @@ func socketCookieTest(t *testing.T) (ec.MultiResponseChecker, error) {
 }
 
 func TestSocketCookie(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
-	var exitWG, execWG sync.WaitGroup
 
 	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &exitWG, &execWG, obs, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
 	checker, err := socketCookieTest(t)
 	if err != nil {
 		t.Fatalf("socketCookieTest failed: %s", err)
 	}
-	exitWG.Wait()
 
 	if err := JsonTestCheck(t, nil, checker); err != nil {
 		t.Logf("error: %s", err)

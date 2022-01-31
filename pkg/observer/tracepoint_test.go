@@ -29,8 +29,10 @@ import (
 
 // TestGenericTracepointSimple is a simple generic tracepoint test that creates a tracepoint for lseek()
 func TestGenericTracepointSimple(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	var exitWG, execWG sync.WaitGroup
 	defer cancel()
 
 	lseekConf := GenericTracepointConf{
@@ -93,10 +95,9 @@ func TestGenericTracepointSimple(t *testing.T) {
 			End(),
 	)
 
-	LoopEvents(t, &exitWG, &execWG, observer, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, observer, ctx)
+	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
-	exitWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
 	err = JsonTestCheck(t, nil, &checker)
 	assert.NoError(t, err)
@@ -117,6 +118,9 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	if _, err := os.Stat("/sys/kernel/debug/tracing/events/syscalls"); os.IsNotExist(err) {
 		t.Skip("cannot use syscall tracepoints (consider enabling CONFIG_FTRACE_SYSCALLS)")
 	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
@@ -169,11 +173,9 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		observer.SensorManager.DisableSensor(ctx, sensorName)
 	}()
 
-	var exitWG, execWG sync.WaitGroup
-	LoopEvents(t, &exitWG, &execWG, observer, ctx)
-	execWG.Wait()
+	LoopEvents(t, &doneWG, &readyWG, observer, ctx)
+	readyWG.Wait()
 	selfOp()
-	exitWG.Wait()
 
 	tpEventsNr := 0
 	nextCheck := func(event *fgs.GetEventsResponse, l ec.Logger) (bool, error) {
