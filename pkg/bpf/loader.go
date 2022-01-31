@@ -284,122 +284,6 @@ static struct bpf_object *__loader(const int version,
 	return obj;
 }
 
-int bpf_loader_pin(struct bpf_object *obj,
-		   const char *label, const char *__prog)
-{
-	struct bpf_program *prog_bpf;
-	int err;
-
-	prog_bpf = bpf_object__find_program_by_title(obj, label);
-	if (!prog_bpf) {
-		fprintf(stderr, "bpf_object__find_program_by_title: can't find %s\n", label);
-		return -1;
-	}
-	err = libbpf_get_error(prog_bpf);
-	if (err) {
-		fprintf(stderr, "bpf_object__find_program_by_title: failed\n");
-		return -1;
-	}
-
-	bpf_program__unpin(prog_bpf, __prog);
-	err = bpf_program__pin(prog_bpf, __prog);
-	if (err < 0) {
-		fprintf(stderr, "bpf_program__pin: failed %i\n", err);
-		return -1;
-	}
-	return err;
-}
-
-int bpf_install_tail_calls(struct bpf_object *obj,
-			   const char *progname,
-			   const char *mapdir, char *mapname, char *progtype)
-{
-	char calls_name[255];
-	int i, map_fd;
-	int err = 0;
-
-	snprintf(calls_name, sizeof(calls_name), "%s/%s", mapdir, mapname);
-
-	map_fd = bpf_obj_get(calls_name);
-	if (map_fd >= 0) {
-		for (i = 0; i < 6; i++) {
-			struct bpf_program *prog;
-			char prog_name[20];
-			char pin_name[200];
-			int fd;
-
-			snprintf(prog_name, sizeof(prog_name), "%s/%i", progtype, i);
-			prog = bpf_object__find_program_by_title(obj, prog_name);
-			if (!prog)
-				continue;
-			fd = bpf_program__fd(prog);
-			if (fd < 0) {
-				err = errno;
-				goto out;
-			}
-			snprintf(pin_name, sizeof(pin_name), "%s_%i", progname, i);
-			err = bpf_map_update_elem(map_fd, &i, &fd, BPF_ANY);
-			if (err) {
-				printf("map updat elem  i %i tailcall err %d %d\n", i, err, errno);
-				goto out;
-			}
-		}
-	}
-out:
-	return err;
-}
-
-int tc_loader(const int version,
-		   const int verbosity,
-		   void *btf,
-		   const char *prog,
-		   const char *label,
-		   const char *__prog,
-		   const char *mapdir,
-		   const char *ciliumdir,
-		   void *filter)
-{
-	struct bpf_object *obj;
-	int fd, map_fd, err;
-	char *tls_filter_map = "tls_filter_map";
-	int zero = 0;
-
-
-	obj = __loader(version, verbosity, btf, prog, mapdir, ciliumdir, BPF_PROG_TYPE_SCHED_CLS);
-	if (!obj)
-		return -1;
-
-	err = bpf_loader_pin(obj, label, __prog);
-	if (err) {
-		fprintf(stderr, "bpf_loader_pin failed: %i\n", err);
-		goto out;
-	}
-
-	// Install filter
-	map_fd = bpf_object__find_map_fd_by_name(obj, tls_filter_map);
-	if (map_fd >= 0) {
-		err = bpf_map_update_elem(map_fd, &zero, filter, BPF_ANY);
-		if (err) {
-			fprintf(stderr, "bpf_map_update_elem: obj(%s) failed filter\n",
-				__prog);
-			goto out;
-		}
-	} else {
-		fprintf(stderr, "bpf_object__find_map_fd_by_name: obj(%s) could not find %s\n", __prog, tls_filter_map);
-		goto out;
-	}
-
-	// Install tail calls
-	bpf_install_tail_calls(obj, __prog, mapdir, "tls_calls", "classifier");
-
-	fd = bpf_obj_get(__prog);
-	bpf_object__close(obj);
-	return fd;
-out:
-	bpf_object__close(obj);
-	return err;
-}
-
 int __tracepoint_loader(struct bpf_object *obj,
 		      const int verbosity,
 		      void *btf,
@@ -900,13 +784,13 @@ func QdiscTCInsert(linkName string, ingress bool) error {
 	return nil
 }
 
-func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
+func AttachTCIngress(progFd int, linkName string, ingress bool) error {
 	var parent uint32
 	var name string
 
 	link, err := netlink.LinkByName(linkName)
 	if err != nil {
-		return fmt.Errorf("LinkByName failed (%s): %w", linkName, err), 0
+		return fmt.Errorf("LinkByName failed (%s): %w", linkName, err)
 	}
 
 	if ingress {
@@ -931,31 +815,12 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) (error, int) {
 		DirectAction: true,
 	}
 	if filter.Fd < 0 {
-		return fmt.Errorf("BpfFilter failed (%s): %d", linkName, filter.Fd), 0
+		return fmt.Errorf("BpfFilter failed (%s): %d", linkName, filter.Fd)
 	}
 	if err = netlink.FilterReplace(filter); err != nil {
-		return fmt.Errorf("FilterAdd failed (%s): %w", linkName, err), 0
+		return fmt.Errorf("FilterAdd failed (%s): %w", linkName, err)
 	}
-	return err, 0
-}
-
-func LoadTC(__version, __verbosity int,
-	btf uintptr,
-	object, __label, __prog, __mapdir, __ciliumdir string,
-	filters [128]byte) (error, int) {
-	version := C.int(__version)
-	verbosity := C.int(__verbosity)
-	o := C.CString(object)
-	l := C.CString(__label)
-	p := C.CString(__prog)
-	mapdir := C.CString(__mapdir)
-	ciliumdir := C.CString(__ciliumdir)
-	loader_fd := C.tc_loader(version, verbosity, unsafe.Pointer(btf), o, l, p, mapdir, ciliumdir, unsafe.Pointer(&filters))
-	loaderFd := int(loader_fd)
-	if loaderFd < 0 {
-		return fmt.Errorf("Unable to load tc program: %d %s", loaderFd, object), 0
-	}
-	return nil, loaderFd
+	return err
 }
 
 func CgroupDestroyEgress(progPath string) {

@@ -45,6 +45,25 @@ func LoadSockOpt(
 	return LoadCgroupProgram(bpfDir, mapDir, load)
 }
 
+type WithProgramFunc func(*ebpf.Program, *ebpf.ProgramSpec) error
+
+func rawAttachWithProgram(targetFD int) WithProgramFunc {
+	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) error {
+		err := link.RawAttachProgram(link.RawAttachProgramOptions{
+			Target:  targetFD,
+			Program: prog,
+			Attach:  spec.AttachType,
+		})
+		if err != nil {
+			if err := prog.Unpin(); err != nil {
+				logger.GetLogger().WithError(err).Warn("Failed to unpin program after failed attach")
+			}
+			return fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
+		}
+		return nil
+	}
+}
+
 func LoadSkProgram(
 	bpfDir, mapDir string,
 	load *Program,
@@ -56,7 +75,8 @@ func LoadSkProgram(
 	}
 	defer targetMap.Close()
 
-	return loadProgram(bpfDir, mapDir, load, targetMap.FD())
+	return loadProgram(bpfDir, mapDir, load,
+		rawAttachWithProgram(targetMap.FD())), 0
 }
 
 // Sockops is different from other programs, in that it is shared across
@@ -84,36 +104,28 @@ func LoadTC(
 	version, verbose int,
 	selectors [128]byte,
 ) (error, int) {
-	var attachLinks []netlink.Link
+	attach := func(prog *ebpf.Program, spec *ebpf.ProgramSpec) error {
+		attachLinks, err := getDefaultRouteLinks()
+		if err != nil {
+			return err
+		}
 
-	btfObj := uintptr(btf.GetCachedBTF())
-	err, fd := bpf.LoadTC(
-		version, verbose,
-		btfObj,
-		load.Name,
-		load.Label,
-		filepath.Join(bpfDir, load.PinPath),
-		mapDir,
-		ciliumDir,
-		selectors,
-	)
-	if err != nil {
-		return err, fd
+		for _, link := range attachLinks {
+			logger.GetLogger().Infof("Attaching %s to device %s", load.Type, link.Attrs().Name)
+			isIngress := "tc_ingress" == load.Type
+			if err := bpf.QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
+				return err
+			}
+			if err := bpf.AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
+				return err
+			}
+		}
+		return nil
 	}
-	attachLinks, err = getDefaultRouteLinks()
+	err := loadProgram(bpfDir, mapDir, load, attach)
 	if err != nil {
 		return err, 0
 	}
-
-	for _, link := range attachLinks {
-		logger.GetLogger().Infof("Attaching %s to device %s", load.Type, link.Attrs().Name)
-		isIngress := "tc_ingress" == load.Type
-		if err = bpf.QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
-			return err, 0
-		}
-		bpf.AttachTCIngress(fd, link.Attrs().Name, isIngress)
-	}
-
 	return nil, 0
 }
 
@@ -152,7 +164,7 @@ func LoadCgroupProgram(
 	defer f.Close()
 
 	// TODO: Use AttachCgroup?
-	return loadProgram(bpfDir, mapDir, load, int(f.Fd()))
+	return loadProgram(bpfDir, mapDir, load, rawAttachWithProgram(int(f.Fd()))), 0
 }
 
 func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection) error {
@@ -205,20 +217,21 @@ func SetFilter(mapDir string, mapName string, selectors [128]byte) error {
 func loadProgram(
 	bpfDir, mapDir string,
 	load *Program,
-	targetFD int) (err error, fd int) {
+	withProgram WithProgramFunc,
+) error {
 	var btfFile *os.File
 	if btfFilePath := btf.GetCachedBTFFile(); btfFilePath != "/sys/kernel/btf/vmlinux" {
 		// Non-standard path to BTF, open it and provide it as 'TargetBTF'.
-		btfFile, err = os.Open(btfFilePath)
+		btfFile, err := os.Open(btfFilePath)
 		if err != nil {
-			return fmt.Errorf("opening BTF file '%s' failed: %w", btfFilePath, err), 0
+			return fmt.Errorf("opening BTF file '%s' failed: %w", btfFilePath, err)
 		}
 		defer btfFile.Close()
 	}
 
 	spec, err := ebpf.LoadCollectionSpec(load.Name)
 	if err != nil {
-		return fmt.Errorf("loading collection spec failed: %w", err), 0
+		return fmt.Errorf("loading collection spec failed: %w", err)
 	}
 
 	var progSpec *ebpf.ProgramSpec
@@ -232,7 +245,7 @@ func loadProgram(
 	}
 
 	if progSpec == nil {
-		return fmt.Errorf("program for section '%s' not found", load.Label), 0
+		return fmt.Errorf("program for section '%s' not found", load.Label)
 	}
 
 	// Find all the maps referenced by the program, so we'll rewrite only
@@ -254,7 +267,7 @@ func loadProgram(
 		}
 	}
 	if err := spec.RewriteMaps(pinnedMaps); err != nil {
-		return fmt.Errorf("rewrite maps failed: %w", err), 0
+		return fmt.Errorf("rewrite maps failed: %w", err)
 	}
 
 	var opts ebpf.CollectionOptions
@@ -264,21 +277,22 @@ func loadProgram(
 
 	coll, err := ebpf.NewCollectionWithOptions(spec, opts)
 	if err != nil {
-		return fmt.Errorf("opening collection failed: %w", err), 0
+		return fmt.Errorf("opening collection failed: %w", err)
 	}
 	defer coll.Close()
 
+	// TODO(JM): withCollection? meh.
 	if strings.Contains(load.Name, "_http") {
 		// TODO(JM): Use cilium/ebpf's prog array initialization and remove this.
 		err = installTailCalls(mapDir, spec, coll)
 		if err != nil {
-			return fmt.Errorf("installing tail calls failed: %w", err), 0
+			return fmt.Errorf("installing tail calls failed: %w", err)
 		}
 	}
 
 	prog, ok := coll.Programs[progSpec.Name]
 	if !ok {
-		return fmt.Errorf("program for section '%s' not found", load.Label), 0
+		return fmt.Errorf("program for section '%s' not found", load.Label)
 	}
 
 	pinPath := filepath.Join(bpfDir, load.PinPath)
@@ -291,19 +305,13 @@ func loadProgram(
 	}
 
 	if err := prog.Pin(pinPath); err != nil {
-		return fmt.Errorf("pinning '%s' to '%s' failed: %w", load.Label, pinPath, err), 0
+		return fmt.Errorf("pinning '%s' to '%s' failed: %w", load.Label, pinPath, err)
 	}
 
-	err = link.RawAttachProgram(link.RawAttachProgramOptions{
-		Target:  targetFD,
-		Program: prog,
-		Attach:  progSpec.AttachType,
-	})
+	err = withProgram(prog, progSpec)
 	if err != nil {
-		if err := prog.Unpin(); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to unpin program after failed attach")
-		}
-		return fmt.Errorf("attaching '%s' failed: %w", load.Label, err), 0
+		return err
 	}
-	return nil, 0
+
+	return nil
 }
