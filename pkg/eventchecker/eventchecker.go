@@ -312,6 +312,12 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (err
 		}
 		return nil, ev.ProcessExec
 
+	case *fgs.GetEventsResponse_ProcessExit:
+		if err := checkTypes(fgs.EventType_PROCESS_EXIT); err != nil {
+			return err, nil
+		}
+		return nil, ev.ProcessExit
+
 	case *fgs.GetEventsResponse_ProcessConnect:
 		if err := checkTypes(fgs.EventType_PROCESS_CONNECT); err != nil {
 			return err, nil
@@ -330,11 +336,29 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (err
 		}
 		return nil, ev.Tls
 
+	case *fgs.GetEventsResponse_ProcessDns:
+		if err := checkTypes(fgs.EventType_PROCESS_DNS); err != nil {
+			return err, nil
+		}
+		return nil, ev.ProcessDns
+
+	case *fgs.GetEventsResponse_ProcessSockstats:
+		if err := checkTypes(fgs.EventType_PROCESS_SOCKSTATS); err != nil {
+			return err, nil
+		}
+		return nil, ev.ProcessSockstats
+
 	case *fgs.GetEventsResponse_ProcessClose:
 		if err := checkTypes(fgs.EventType_PROCESS_CLOSE); err != nil {
 			return err, nil
 		}
 		return nil, ev.ProcessClose
+
+	case *fgs.GetEventsResponse_ProcessCred:
+		if err := checkTypes(fgs.EventType_PROCESS_CRED); err != nil {
+			return err, nil
+		}
+		return nil, ev.ProcessCred
 
 	case *fgs.GetEventsResponse_ProcessAccept:
 		if err := checkTypes(fgs.EventType_PROCESS_ACCEPT); err != nil {
@@ -359,6 +383,12 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (err
 			return err, nil
 		}
 		return nil, ev.ProcessHttp
+
+	case *fgs.GetEventsResponse_InterfaceStats:
+		if err := checkTypes(fgs.EventType_INTERFACE_STATS); err != nil {
+			return err, nil
+		}
+		return nil, ev.InterfaceStats
 
 	case *fgs.GetEventsResponse_Test:
 		if err := checkTypes(fgs.EventType_TEST); err != nil {

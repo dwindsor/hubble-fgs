@@ -42,12 +42,22 @@ func eventTypeString(ev interface{}) string {
 		return "ProcessAccept"
 	case *fgs.GetEventsResponse_Tls:
 		return "Tls"
+	case *fgs.GetEventsResponse_ProcessDns:
+		return "ProcessDns"
+	case *fgs.GetEventsResponse_ProcessHttp:
+		return "ProcessHttp"
+	case *fgs.GetEventsResponse_ProcessSockstats:
+		return "ProcessSockstats"
 	case *fgs.GetEventsResponse_ProcessExec:
 		return fmt.Sprintf("ProcessExec(proc.cmd=%s)", xev.ProcessExec.Process.Binary)
 	case *fgs.GetEventsResponse_ProcessExit:
 		return "ProcessExit"
 	case *fgs.GetEventsResponse_ProcessClose:
 		return "ProcessClose"
+	case *fgs.GetEventsResponse_ProcessCred:
+		return "ProcessCred"
+	case *fgs.GetEventsResponse_InterfaceStats:
+		return "InterfaceStats"
 	case *fgs.GetEventsResponse_Test:
 		return "Test"
 	case *fgs.GetEventsResponse_ProcessKprobe:
