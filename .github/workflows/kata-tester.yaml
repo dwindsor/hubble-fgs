@@ -62,6 +62,19 @@ jobs:
       run: |
         [ -f BUILD_OK ] && echo "Build OK!"
         ssh -t -t ${{ env.vmHost }} "sh -c 'KATA_IMG=/home/kkourt/hubble-builder/kata-tester/contrib/kata-img hubble-fgs/contrib/gh-kata-tester.sh 4.19 hubble-fgs-dev'"
+    - name: Fetch FGS logs
+      if: failure()
+      run: |
+        scp -r ${{ env.vmHost }}:hubble-fgs/logs logs
+        find logs
+    - name: Upload FGS logs
+      if: failure()
+      uses: actions/upload-artifact@v2
+      # NB: this will copy the logs for all cases, and not just the failing
+      # ones, but I think that's OK for now.
+      with:
+        name: hubble-fgs-logs
+        path: logs
     - name: destroy VM
       if: ${{ always() }}
       run: |

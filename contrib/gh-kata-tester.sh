@@ -38,5 +38,8 @@ sudo $KATA_IMG $ver
 
 set -e
 
-sudo $FGS_DIR/contrib/kata-runner.sh -c $dockerimage -x './go-tests/observer.test -test.v -hubble-lib /var/lib/hubble-fgs/'
-sudo $FGS_DIR/contrib/kata-runner.sh -c $dockerimage -x './go-tests/sockmap.test -test.v -hubble-lib /var/lib/hubble-fgs/'
+tmpdir="${FGS_DIR}/logs/kata-tester-${ver}"
+mkdir -p $tmpdir
+
+sudo $FGS_DIR/contrib/kata-runner.sh -T $tmpdir -c $dockerimage -x './go-tests/observer.test -test.v -hubble-lib /var/lib/hubble-fgs/'
+sudo $FGS_DIR/contrib/kata-runner.sh -T $tmpdir -c $dockerimage -x './go-tests/sockmap.test -test.v -hubble-lib /var/lib/hubble-fgs/'

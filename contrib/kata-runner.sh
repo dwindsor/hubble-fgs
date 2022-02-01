@@ -13,7 +13,7 @@ container="isovalent/hubble-fgs"
 opt_test=0
 
 usage() {
-    echo "Usage: $0 [-h] [-d|-t|-c <container>] [-s|-e] [-l] [-D]"
+    echo "Usage: $0 [-h] [-d|-t|-c <container>] [-s|-e] [-l] [-D] [-T <tempdir>]"
     echo "Options:"
     echo "  -h: help"
 
@@ -26,6 +26,7 @@ usage() {
     echo "  -e: exec inside container"
 
     echo "  -l: mount local dir inside container"
+    echo "  -T: mount argument as /tmp inside the container"
 
     echo "  -D: print commands of this script"
 
@@ -34,7 +35,7 @@ usage() {
 container=${CONTAINER_FGS}
 docker_volumes="-v /proc:/procRoot"
 
-while getopts "hdtc:sexlDb:" opt; do
+while getopts "hdtc:sexlDb:T:" opt; do
     case $opt in
         h)
             usage
@@ -63,6 +64,10 @@ while getopts "hdtc:sexlDb:" opt; do
            ;;
         l)
            docker_volumes="$docker_volumes -v ${FGS_DIR}:/go/src/github.com/isovalent/hubble-fgs"
+           ;;
+
+        T)
+           docker_volumes="$docker_volumes -v ${OPTARG}:/tmp"
            ;;
 
         D)
