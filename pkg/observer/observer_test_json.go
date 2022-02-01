@@ -137,14 +137,14 @@ func JsonCheck(jsonFile *os.File, checker ec.MultiResponseChecker, log ec.Logger
 
 func JsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) error {
 	var err error
-	if jsonFile == nil {
-		fmt.Printf("jsonTestIterate: openning: %s\n", exportFile)
-		jsonFile, err = os.Open(exportFile)
-		if err != nil {
-			return fmt.Errorf("opening json file failed: %w", err)
-		}
-	}
+
+	// cleanup function
 	defer func() {
+		if jsonFile == nil {
+			t.Logf("test failed: was not able to open json file")
+			return
+		}
+
 		if err != nil {
 			jsonFile.Seek(0, os.SEEK_SET)
 			fnamePrefix := fmt.Sprintf("hubble-fgs.gotest.%s", t.Name())
@@ -153,6 +153,24 @@ func JsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 		}
 		jsonFile.Close()
 	}()
+
+	// attempt to open the export file
+	if jsonFile == nil {
+		openRetries := 5
+		for i := 0; ; i++ {
+			t.Logf("jsonTestIterate: openning: %s\n", exportFile)
+			jsonFile, err = os.Open(exportFile)
+			if err == nil {
+				break
+			}
+			if i < openRetries {
+				t.Logf("opening json file failed: %s (attempts: %d/%d). Will retry.", err, i, openRetries)
+				time.Sleep(retryDelay)
+			} else {
+				return fmt.Errorf("opening json file failed: %w (attempts: %d/%d). Bailing out.", err, i, openRetries)
+			}
+		}
+	}
 
 	cnt := 0
 	for {
