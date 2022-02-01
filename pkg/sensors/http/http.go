@@ -569,6 +569,9 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 
 	unix.Tuple.Proto = 0
 
+	unix.Request.Protocol = "HTTP/2"
+	unix.Request.RespVersion = "HTTP/2"
+
 	key := api.HttpKey{
 		Tuple: unix.Tuple,
 		Id:    uint64(streamId),
@@ -596,8 +599,6 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 			unix.Request.UserAgent = r.Request.UserAgent
 			unix.Request.Ktime = r.Common.Ktime
 			unix.Request.ContentLength = r.Request.ContentLength
-			unix.Request.Protocol = "HTTP/2"
-			unix.Request.RespVersion = "HTTP/2"
 			unix.ProcessKey = r.ProcessKey
 			aggregate.Remove(key)
 		} else {
