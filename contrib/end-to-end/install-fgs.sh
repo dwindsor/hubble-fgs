@@ -37,6 +37,7 @@ install_fgs() {
          --set enterprise.image.repository=isovalent/hubble-fgs \
          --set enterprise.image.tag=latest \
          --set enterprise.exportAllowList="" \
+         --set enterprise.enableTLSEvents=true \
          --namespace kube-system
     echo "Waiting for FGS to become ready..." 1>&2
     kubectl wait -n kube-system --for=condition=Ready --all pod \
