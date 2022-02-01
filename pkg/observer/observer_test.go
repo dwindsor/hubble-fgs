@@ -613,7 +613,7 @@ func TestDockerListenConnect(t *testing.T) {
 		WithUID(0).
 		WithDocker(fgsClientID)
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(selfChecker).
 			HasParent().
@@ -650,7 +650,7 @@ func TestDockerListenConnect(t *testing.T) {
 			End(),
 	)
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -718,7 +718,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 		WithCWD("/").
 		WithUID(0)
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(selfChecker).
 			HasParent().
@@ -734,7 +734,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 			End(),
 	)
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
