@@ -58,12 +58,12 @@ while getopts "hdtc:sexlDb:" opt; do
         e)
             opt_exec=true
             ;;
-	x)
+        x)
            opt_arg=true
-	   ;;
+           ;;
         l)
-	    docker_volumes="$docker_volumes -v ${FGS_DIR}:/go/src/github.com/isovalent/hubble-fgs"
-            ;;
+           docker_volumes="$docker_volumes -v ${FGS_DIR}:/go/src/github.com/isovalent/hubble-fgs"
+           ;;
 
         D)
             set -x
@@ -77,10 +77,10 @@ done
 
 KATA_RUNTIME=$(docker -D info | grep Runtimes: | grep -o 'kata[^ ]*')
 if [ -z "$KATA_RUNTIME" ]; then
-	echo "Cannot find kata runtime. Bailing out."
-	exit 1
+    echo "Cannot find kata runtime. Bailing out."
+    exit 1
 else
-	echo "Using $KATA_RUNTIME as kata runtime"
+    echo "Using $KATA_RUNTIME as kata runtime"
 fi
 
 docker_volumes="$docker_volumes -v ${btf}:/var/lib/hubble-fgs/btf"
