@@ -32,6 +32,7 @@ kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=5m
 echo "Running workload..." 1>&2
 kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 1 || true
 kubectl exec -n tenant-jobs deployment/jobposting -- curl -4 https://google.com -m 30
+kubectl exec -n tenant-jobs deployment/jobposting -- curl -4 http://google.com -m 30
 echo "Sleeping for 60 seconds..." 1>&2
 sleep 60
 
