@@ -652,7 +652,6 @@ void post_http_event(ctx_md *msg,
 	struct socketmap_value *process;
 	__u32 skip = 0;
 	size_t size;
-	__u32 *dst;
 
 	key->remaining = 0;
 	process = lookup_socketmap(key);
@@ -676,11 +675,6 @@ void post_http_event(ctx_md *msg,
 	if (http->request.state != http_more_headers_needed) {
 		http->request.flags &= ~HTTP_MORE_HEADERS_NEEDED;
 	}
-
-	/* Terminate the payload */
-	dst = (__u32*)&http->request.url[http->request.url_offset & 0x3ff];
-	dst[0] = 0;
-	dst[1] = 0;
 
 	http->common.ktime = ktime_get_ns();
 	http->common.op = MSG_OP_HTTP;
