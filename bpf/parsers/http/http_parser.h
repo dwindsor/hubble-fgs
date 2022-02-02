@@ -640,6 +640,7 @@ void http_reset_state(struct msg_http *http)
 	http->url_offset = 0;
 	http->url_continue = 0;
 	http->consume_bytes = 0;
+	http->flags = 0;
 }
 
 static inline __attribute__((always_inline))
