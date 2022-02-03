@@ -63,3 +63,29 @@ https://github.com/isovalent/hubble-fgs/blob/04173c81ba672af7c62d042ef710e2613d4
 
 
 
+## What should I do if I see a checker failure?
+
+The tests using checker work by creating an expected pattern executing a series
+of steps and then match the resulting logs with the expected pattern. In case of
+a failure, you will something like:
+
+```
+observer_test_json.go:152: test failed: json file copied to /tmp/hubble-fgs.gotest.TestListenAcceptClose.179286710.json
+	Error Trace:	observer_test.go:447
+	Error:      	Received unexpected error:
+	            	JsonTestCheck failed after 10 retries: jsonTestCheck: failed to match after 230 events: OrderedMultiResponseChecker: only 4/5 matched
+	Test:       	TestListenAcceptClose
+```
+
+You can then have a look at the expected patterns in the test, and determine
+what went wrong.
+
+In this case, the pattern was:
+https://github.com/isovalent/hubble-fgs/blob/cc63b8dd490764f5bee6e7c7060c3a6bafa2b968/pkg/observer/observer_test.go#L388-L418
+
+And the issue was that we used an ordered event checker, but the events were out
+of order: https://github.com/isovalent/hubble-fgs/pull/1036.
+
+If you can find fix the issue, great! Otherwise, please create an issue that
+includes the JSON file and any analysis you performed.
+
