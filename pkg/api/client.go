@@ -252,10 +252,13 @@ const (
 
 // API between Kernel BPF and Userspace hubble-fgs Golang agent
 type MsgCommon struct {
-	Op    uint8
-	Pad   [3]uint8
-	Size  uint32
-	Ktime uint64
+	Op uint8
+	// Flags is used to:
+	//  - distinguish between an entry and a return kprobe event
+	Flags  uint8
+	Pad_v2 [2]uint8
+	Size   uint32
+	Ktime  uint64
 }
 
 type OpCode int

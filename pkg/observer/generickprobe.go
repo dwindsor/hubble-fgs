@@ -642,7 +642,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 	unix.Action = m.ActionId
 	unix.FuncName = gk.funcName
 
-	returnEvent := m.Common.Pad[0] > 0
+	returnEvent := m.Common.Flags > 0
 
 	var printers []argPrinters
 	if returnEvent {
