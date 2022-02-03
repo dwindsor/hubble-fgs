@@ -288,17 +288,18 @@ func AddHTTPSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 }
 
 var (
-	RequestDone          = uint32(0)
-	RequestURL           = uint32(1)
-	RequestHost          = uint32(2)
-	RequestProtocol      = uint32(3)
-	RequestUserAgent     = uint32(5)
-	RequestContentLength = uint32(6)
-	RequestUnknown       = uint32(7)
-	ResponseProtocol     = uint32(8)
-	ResponseCode         = uint32(9)
-	ResponseReason       = uint32(10)
-	HTTP2HeaderFrame     = uint32(11)
+	RequestDone             = uint32(0)
+	RequestURL              = uint32(1)
+	RequestHost             = uint32(2)
+	RequestProtocol         = uint32(3)
+	RequestUserAgent        = uint32(5)
+	RequestContentLength    = uint32(6)
+	RequestUnknown          = uint32(7)
+	ResponseProtocol        = uint32(8)
+	ResponseCode            = uint32(9)
+	ResponseReason          = uint32(10)
+	HTTP2HeaderFrame        = uint32(11)
+	RequestTransferEncoding = uint32(12)
 
 	MethodError    = uint32(0)
 	MethodConnect  = uint32(1)
@@ -385,6 +386,12 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 			} else {
 				unix.Request.ContentLength = chunk
 			}
+		case RequestTransferEncoding:
+			if m.Request.Method == MethodResponse {
+				unix.Request.RespTransferEncoding = strings.TrimSpace(chunk)
+			} else {
+				unix.Request.TransferEncoding = strings.TrimSpace(chunk)
+			}
 		case ResponseProtocol:
 			unix.Request.RespVersion = chunk
 		case ResponseCode:
@@ -428,6 +435,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 			unix.Request.Code = r.Request.Code
 			unix.Request.Reason = r.Request.Reason
 			unix.Request.RespContentLength = r.Request.RespContentLength
+			unix.Request.RespTransferEncoding = r.Request.RespTransferEncoding
 			aggregate.Remove(key)
 		}
 	} else {
@@ -440,6 +448,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 			unix.Request.Protocol = r.Request.Protocol
 			unix.Request.UserAgent = r.Request.UserAgent
 			unix.Request.ContentLength = r.Request.ContentLength
+			unix.Request.TransferEncoding = r.Request.TransferEncoding
 			unix.Request.Ktime = r.Common.Ktime
 			unix.Request.FlagsResponse = r.Request.Flags | usedMoreBytes
 			unix.ProcessKey = r.ProcessKey
