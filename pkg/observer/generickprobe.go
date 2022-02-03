@@ -152,7 +152,7 @@ type genericKprobe struct {
 
 	// for kprobes that have a retprobe, we maintain the enter events in
 	// the map, so that we can merge them when the return event is
-	// generated. The envets are maintained in the map below, using
+	// generated. The events are maintained in the map below, using
 	// ThreadId as the key.
 	pendingEvents map[uint64]pendingEvent
 
@@ -873,7 +873,7 @@ func filterReturnArg(userReturnFilters []v1alpha1.ArgSelector, retArg *api.MsgGe
 	return true
 }
 
-// retprobeMerge merges the two events: the one from they entry and one from the return
+// retprobeMerge merges the two events: the one from the entry probe with the one from the return probe
 func retprobeMerge(prev pendingEvent, curr pendingEvent) (*api.MsgGenericKprobeUnix, *api.MsgGenericKprobeArg) {
 	var retEv, enterEv *api.MsgGenericKprobeUnix
 	var ret *api.MsgGenericKprobeArg = nil
