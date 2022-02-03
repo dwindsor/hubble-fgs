@@ -385,7 +385,7 @@ func TestListenAcceptClose(t *testing.T) {
 		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
 	)
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(selfChecker).
 			HasParent().
@@ -435,7 +435,7 @@ func TestListenAcceptClose(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
