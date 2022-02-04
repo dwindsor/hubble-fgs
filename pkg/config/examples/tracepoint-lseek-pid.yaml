@@ -10,13 +10,13 @@ spec:
     - index: 7
     - index: 5
     selectors:
-    - matchpids:
+    - matchPIDs:
         - operator: eq
           values:
           - 1111
-          followforks: true
-          isnamespacepid: false
-      matchargs:
+          followForks: true
+          isNamespacePID: false
+      matchArgs:
       - index: 7
         operator: eq
         values:

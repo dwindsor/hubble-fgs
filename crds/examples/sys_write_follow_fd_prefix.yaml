@@ -13,21 +13,21 @@ spec:
     - index: 1
       type: "file"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
-        isnamespacepid: false
+        followForks: true
+        isNamespacePID: false
         values:
         - 33034
-      matchargs:
+      matchArgs:
       - index: 1
         operator: "Prefix"
         values:
         - "/home/john/.local/share/bar/runtime/"
-      matchactions:
+      matchActions:
       - action: FollowFD
-        argfd: 0
-        argname: 1
+        argFd: 0
+        argName: 1
   - call: "__x64_sys_read"
     syscall: true
     args:
@@ -35,13 +35,13 @@ spec:
       type: "fd"
     - index: 1
       type: "char_buf"
-      returncopy: true
+      returnCopy: true
     - index: 2
       type: "size_t"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
-        isnamespacepid: false
+        followForks: true
+        isNamespacePID: false
         values:
         - 33034

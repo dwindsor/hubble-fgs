@@ -7,5 +7,5 @@ spec:
     nop:
       enable: true
       selectors:
-      - matchports:
+      - matchPorts:
         - 1234

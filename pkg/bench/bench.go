@@ -345,14 +345,14 @@ spec:
     http:
       enable: {{.FgsHttp}}
       selectors:
-      - matchports:
+      - matchPorts:
         - 80
         {{.MatchPortHTTP}}
     tls:
       enable: {{.FgsTls}}
       mode: socket
       selectors:
-      - matchports:
+      - matchPorts:
         - 443
         {{.MatchPortTLS}}
 `

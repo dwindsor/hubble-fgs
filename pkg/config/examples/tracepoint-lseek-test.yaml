@@ -10,7 +10,7 @@ spec:
     - index: 7
     - index: 5
     selectors:
-    - matchargs:
+    - matchArgs:
       - index: 7
         operator: Equal
         values:

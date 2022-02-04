@@ -69,15 +69,15 @@ spec:
       type: "int"
     - index: 1
       type: "char_buf"
-      sizeargindex: 2
+      sizeArgIndex: 2
     - index: 2
       type: "size_t"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
         values:
         - 25587
-    matchargs:
+    matchArgs:
     - index: 0
       operator: Equal
       values:
@@ -123,10 +123,10 @@ spec:
     - index: 0
       type: "int"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
-        isnamespacepid: false
+        followForks: true
+        isNamespacePID: false
         values:
         - ` + pidStr
 
@@ -170,17 +170,17 @@ spec:
       type: "int"
     - index: 1
       type: "char_buf"
-      sizeargindex: 3
+      sizeArgIndex: 3
     - index: 2
       type: "size_t"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
-        isnamespacepid: false
+        followForks: true
+        isNamespacePID: false
         values:
         - ` + pidStr + `
-      matchargs:
+      matchArgs:
       - index: 0
         operator: "Equal"
         values:
@@ -253,16 +253,16 @@ spec:
       type: "int"
     - index: 1
       type: "char_buf"
-      returncopy: true
+      returnCopy: true
     - index: 2
       type: "size_t"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
+        followForks: true
         values:
         - ` + pidStr + `
-      matchargs:
+      matchArgs:
       - index: 0
         operator: "Equal"
         values:
@@ -426,12 +426,12 @@ func testKprobeObjectOpenHook(pidStr string, path string) string {
       - index: 2
         type: "int"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
+          followForks: true
           values:
           - ` + pidStr + `
-        matchargs:
+        matchArgs:
         - index: 1
           operator: "Equal"
           values:
@@ -470,12 +470,12 @@ func testKprobeObjectMultiValueOpenHook(pidStr string, path string) string {
       - index: 2
         type: "int"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
+          followForks: true
           values:
           - ` + pidStr + `
-        matchargs:
+        matchArgs:
         - index: 1
           operator: "Equal"
           values:
@@ -516,12 +516,12 @@ spec:
     - index: 2
       type: "int"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
+        followForks: true
         values:
         - ` + pidStr + `
-      matchargs:
+      matchArgs:
       - index: 1
         operator: "Equal"
         values:
@@ -550,12 +550,12 @@ spec:
     - index: 2
       type: "int"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
+        followForks: true
         values:
         - ` + pidStr + `
-      matchargs:
+      matchArgs:
       - index: 1
         operator: "Equal"
         values:
@@ -584,12 +584,12 @@ func testKprobeObjectFilterPrefixOpenHook(pidStr string, path string) string {
       - index: 2
         type: "int"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
+          followForks: true
           values:
           - ` + pidStr + `
-        matchargs:
+        matchArgs:
         - index: 1
           operator: "Prefix"
           values:
@@ -628,12 +628,12 @@ func testKprobeObjectFilterPrefixExactOpenHook(pidStr string, path string) strin
       - index: 2
         type: "int"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
+          followForks: true
           values:
           - ` + pidStr + `
-        matchargs:
+        matchArgs:
         - index: 1
           operator: "Prefix"
           values:
@@ -672,12 +672,12 @@ func testKprobeObjectFilterPrefixSubdirOpenHook(pidStr string, path string) stri
       - index: 2
         type: "int"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
+          followForks: true
           values:
           - ` + pidStr + `
-        matchargs:
+        matchArgs:
         - index: 1
           operator: "Prefix"
           values:
@@ -717,12 +717,12 @@ spec:
     - index: 2
       type: "int"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
+        followForks: true
         values:
         - ` + pidStr + `
-      matchargs:
+      matchArgs:
       - index: 1
         operator: "Prefix"
         values:
@@ -751,12 +751,12 @@ spec:
     - index: 2
       type: "int"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
+        followForks: true
         values:
         - ` + pidStr + `
-      matchargs:
+      matchArgs:
       - index: 1
         operator: "Postfix"
         values:
@@ -802,14 +802,14 @@ spec:
       type: "int"
     - index: 1
       type: "char_iovec"
-      sizeargindex: 3
+      sizeArgIndex: 3
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
+        followForks: true
         values:
         - ` + pidStr + `
-      matchargs:
+      matchArgs:
       - index: 0
         operator: Equal
         values:
@@ -879,9 +879,9 @@ spec:
     - index: 1
       type: "filename"
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
+        followForks: true
         values:
         - ` + pidStr + `
      `
@@ -905,12 +905,12 @@ spec:
       type: int
     - index: 1
       type: "filename"
-    returnarg:
+    returnArg:
       type: file
     selectors:
-    - matchpids:
+    - matchPIDs:
       - operator: In
-        followforks: true
+        followForks: true
         values:
         - ` + pidStr + `
      `
@@ -934,15 +934,15 @@ func testKprobeObjectFileWriteHook(pidStr string) string {
       - index: 1
         type: "file"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
+          followForks: true
           values:
           - ` + pidStr + `
-        matchactions:
+        matchActions:
         - action: followfd
-          argfd: 0
-          argname: 1
+          argFd: 0
+          argName: 1
     - call: "__x64_sys_write"
       syscall: true
       args:
@@ -950,11 +950,11 @@ func testKprobeObjectFileWriteHook(pidStr string) string {
         type: "fd"
       - index: 1
         type: "char_buf"
-        sizeargindex: 3
+        sizeArgIndex: 3
       - index: 2
         type: "size_t"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
           values:
           - ` + pidStr + `
@@ -978,20 +978,20 @@ func testKprobeObjectFileWriteFilteredHook(pidStr string, dir string) string {
       - index: 1
         type: "file"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
+          followForks: true
           values:
           - ` + pidStr + `
-        matchargs:
+        matchArgs:
         - index: 1
           operator: "Equal"
           values:
           - "` + dir + `/testfile"
-        matchactions:
+        matchActions:
         - action: followfd
-          argfd: 0
-          argname: 1
+          argFd: 0
+          argName: 1
     - call: "__x64_sys_write"
       syscall: true
       args:
@@ -999,15 +999,15 @@ func testKprobeObjectFileWriteFilteredHook(pidStr string, dir string) string {
         type: "fd"
       - index: 1
         type: "char_buf"
-        sizeargindex: 3
+        sizeArgIndex: 3
       - index: 2
         type: "size_t"
       selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
           values:
           - ` + pidStr + `
-        matchargs:
+        matchArgs:
         - index: 0
           operator: "Equal"
           values:

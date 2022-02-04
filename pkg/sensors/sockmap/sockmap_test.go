@@ -210,12 +210,12 @@ spec:
     tls:
       enable: false
       selectors:
-      - matchports:
+      - matchPorts:
         - 1
     http:
       enable: true
       selectors:
-      - matchports:
+      - matchPorts:
         - %d
 `, port)
 }

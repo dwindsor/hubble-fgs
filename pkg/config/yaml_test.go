@@ -34,17 +34,17 @@ spec:
         type: "int"
       - index: 1
         type: "char_buf"
-        sizeargindex: 3
+        sizeArgIndex: 3
       - index: 2
         type: "size_t"
     selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
-          isnamespacepid: false
+          followForks: true
+          isNamespacePID: false
           values:
             - 1
-        matchargs:
+        matchArgs:
         - index: 0
           operator: "equal"
           values:
@@ -133,14 +133,14 @@ spec:
     - index: 3
       type: "string"
     selectors:
-      - matchpids:
+      - matchPIDs:
         - operator: In
-          followforks: true
-          isnamespacepid: false
+          followForks: true
+          isNamespacePID: false
           values:
             - 1
             - 2
-        matchargs:
+        matchArgs:
         - index: 0
           operator: "equal"
           values:
