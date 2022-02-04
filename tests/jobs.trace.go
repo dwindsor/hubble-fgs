@@ -135,6 +135,45 @@ func test_tls_end_to_end(file *os.File, log ec.Logger) error {
 	return nil
 }
 
+func test_http_end_to_end(file *os.File, log ec.Logger) error {
+	curl_checker := ec.NewProcessChecker().
+		WithBinary(ec.SuffixStringMatch("curl")).
+		WithArguments("-4 http://google.com -m 30").
+		WithPod(jc)
+
+	http_checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(curl_checker).
+			HasAncestor(0, ec.NewProcessChecker().
+				WithBinary(ec.SuffixStringMatch("containerd-shim-runc-v2")),
+			).
+			HasAncestor(1, ec.NewProcessChecker().
+				WithBinary(ec.SuffixStringMatch("containerd-shim-runc-v2")),
+			).
+			End(),
+		ec.NewHttpEventChecker().
+			HasProcess(curl_checker).
+			HasHttp(ec.NewHttpChecker().
+				WithRequestAgent(ec.ContainsStringMatch("curl")).
+				WithRequestHost("google.com").
+				WithRequestVersion("HTTP/1.1").
+				WithRequestMethod("GET").
+				WithRequestUri("/").
+				WithResponseVersion("HTTP/1.1").
+				WithResponseReason("Moved Permanently").
+				WithResponseCode(301),
+			).
+			End(),
+	)
+
+	file.Seek(0, 0)
+	if err := observer.JsonCheck(file, &http_checker, log); err != nil {
+		return err
+	}
+
+	return nil
+}
+
 func main() {
 	logger := ec.LogrusLogger{L: logrus.New()}
 
@@ -145,7 +184,7 @@ func main() {
 	}
 
 	if err := test_socket_end_to_end(jsonFile, &logger); err != nil {
-		fmt.Printf("🔥 Failed: no dice: %s\n", err)
+		fmt.Printf("🔥 Demo app check failed: no dice: %s\n", err)
 		os.Exit(1)
 	}
 
@@ -158,7 +197,12 @@ func main() {
 	}
 
 	if err := test_tls_end_to_end(jsonFile, &logger); err != nil {
-		fmt.Printf("🔥 Failed: no dice: %s\n", err)
+		fmt.Printf("🔥 TLS check failed: no dice: %s\n", err)
+		os.Exit(1)
+	}
+
+	if err := test_http_end_to_end(jsonFile, &logger); err != nil {
+		fmt.Printf("🔥 HTTP check failed: no dice: %s\n", err)
 		os.Exit(1)
 	}
 
