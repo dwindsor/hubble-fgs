@@ -21,6 +21,7 @@ import (
 	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
+	"github.com/isovalent/hubble-fgs/pkg/defaults"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
@@ -62,10 +63,15 @@ const (
 	BPF_PROG_TYPE_LSM                     = 29
 )
 
+var (
+	MapDir = defaults.DefaultMapDir
+)
+
 // LoadDefault loads the default sensor, including any from the configuration
 // file.
 func LoadDefault(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
 	createDir(bpfDir, mapDir)
+	MapDir = mapDir
 
 	logger.GetLogger().WithField("metadata", option.Config.BTF).Info("Using metadata file")
 	if _, err := observerMinReqs(ctx); err != nil {

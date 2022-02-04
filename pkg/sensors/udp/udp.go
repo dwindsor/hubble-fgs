@@ -38,8 +38,6 @@ var (
 	UdpMapName           = "udp_map"
 	UdpRetprobeMapName   = "udp_retprobe_map"
 
-	mapDir = "/sys/fs/bpf/tcpmon"
-
 	stats          *lru.Cache
 	stataCacheSize = 32000
 
@@ -328,7 +326,7 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 }
 
 func runUdpGC() {
-	file := filepath.Join(mapDir, UdpMapName)
+	file := filepath.Join(sensors.MapDir, UdpMapName)
 
 	m, err := bpf.OpenMap(file)
 	if err != nil {
