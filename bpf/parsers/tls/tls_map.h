@@ -87,6 +87,11 @@ struct bpf_map_def __attribute__((section("maps"), used)) nop_filter_map = {
 	DO_TLS_PORT_FILTER_ONE(j)  \
 	DO_TLS_PORT_FILTER_ONE(j)  \
 	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
+	DO_TLS_PORT_FILTER_ONE(j)  \
 }
 
 static inline __attribute__((always_inline))
