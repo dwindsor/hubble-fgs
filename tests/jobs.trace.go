@@ -27,7 +27,7 @@ var (
 		)
 )
 
-func test_demo_app_end_to_end(file *os.File, log ec.Logger) error {
+func test_demo_app_end_to_end(file *os.File, log ec.Logger, is_gke bool) error {
 	file.Seek(0, 0)
 
 	demo_checker := ec.NewUnorderedMultiResponseChecker(
@@ -49,17 +49,6 @@ func test_demo_app_end_to_end(file *os.File, log ec.Logger) error {
 					WithBinary("/usr/bin/containerd-shim-runc-v2")).
 				With(ec.NewProcessChecker().
 					WithBinary("/usr/local/bin/containerd-shim-runc-v2")),
-			).
-			End(),
-		ec.NewDnsEventChecker().
-			HasProcess(ec.NewProcessChecker().
-				WithBinary("/usr/local/bin/node").
-				WithArguments("server.js").
-				WithPod(jc)).
-			HasDns(ec.NewDnsChecker().
-				WithAnswerTypes([]uint32{1}).
-				WithNames([]ec.StringArg{"coreapi.tenant-jobs.svc.cluster.local."}).
-				IsResponse(true),
 			).
 			End(),
 		ec.NewConnectEventChecker().
@@ -94,6 +83,25 @@ func test_demo_app_end_to_end(file *os.File, log ec.Logger) error {
 
 	if err := observer.JsonCheck(file, demo_checker, log); err != nil {
 		return err
+	}
+
+	if !is_gke {
+		dns_checker := ec.NewUnorderedMultiResponseChecker(ec.NewDnsEventChecker().
+			HasProcess(ec.NewProcessChecker().
+				WithBinary("/usr/local/bin/node").
+				WithArguments("server.js").
+				WithPod(jc)).
+			HasDns(ec.NewDnsChecker().
+				WithAnswerTypes([]uint32{1}).
+				WithNames([]ec.StringArg{"coreapi.tenant-jobs.svc.cluster.local."}).
+				IsResponse(true),
+			).
+			End())
+
+		file.Seek(0, 0)
+		if err := observer.JsonCheck(file, dns_checker, log); err != nil {
+			return err
+		}
 	}
 
 	return nil
@@ -190,6 +198,14 @@ func test_http_end_to_end(file *os.File, log ec.Logger) error {
 
 func main() {
 	logger := ec.LogrusLogger{L: logrus.New()}
+	is_gke := false
+
+	if len(os.Args) >= 3 {
+		if os.Args[2] == "gke" {
+			fmt.Println("Running in GKE, skipping some tests...")
+			is_gke = true
+		}
+	}
 
 	jsonFile, err := os.Open(os.Args[1])
 	if err != nil {
@@ -197,17 +213,14 @@ func main() {
 		os.Exit(1)
 	}
 
-	if err := test_demo_app_end_to_end(jsonFile, &logger); err != nil {
+	if err := test_demo_app_end_to_end(jsonFile, &logger, is_gke); err != nil {
 		fmt.Printf("🔥 Demo app check failed: no dice: %s\n", err)
 		os.Exit(1)
 	}
 
 	// Tests below this line won't be run in GKE ----------------------
-	if len(os.Args) >= 3 {
-		if os.Args[2] == "gke" {
-			fmt.Println("Running in GKE, skipping remaining tests...")
-			return
-		}
+	if is_gke {
+		return
 	}
 
 	if err := test_tls_end_to_end(jsonFile, &logger); err != nil {
