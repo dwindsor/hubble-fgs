@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/version"
+	"google.golang.org/protobuf/proto"
 )
 
 type observer interface {
@@ -110,6 +111,13 @@ func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanc
 				// Event is filtered out. Nothing to do here. Continue.
 				continue
 			}
+
+			// Issue #1038: The event may contain fields that are mutated. That
+			// makes marshalling unsafe and breaks at least varint encoding.
+			// Work around this problem by always making a copy before marshalling.
+			// TBD to remove the copy and make the mutation of the events safe.
+			event = proto.Clone(event).(*fgs.GetEventsResponse)
+
 			if aggregator != nil {
 				// Send event to aggregator.
 				select {
