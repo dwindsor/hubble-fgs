@@ -86,12 +86,12 @@ func test_demo_app_end_to_end(file *os.File, log ec.Logger, is_gke bool) error {
 	}
 
 	if !is_gke {
-		dns_checker := ec.NewUnorderedMultiResponseChecker(ec.NewDnsEventChecker().
+		dns_checker := ec.NewUnorderedMultiResponseChecker(ec.NewDNSEventChecker().
 			HasProcess(ec.NewProcessChecker().
 				WithBinary("/usr/local/bin/node").
 				WithArguments("server.js").
 				WithPod(jc)).
-			HasDns(ec.NewDnsChecker().
+			HasDNS(ec.NewDNSChecker().
 				WithAnswerTypes([]uint32{1}).
 				WithNames([]ec.StringArg{"coreapi.tenant-jobs.svc.cluster.local."}).
 				IsResponse(true),
@@ -123,9 +123,9 @@ func test_tls_end_to_end(file *os.File, log ec.Logger) error {
 				WithBinary(ec.SuffixStringMatch("containerd-shim-runc-v2")),
 			).
 			End(),
-		ec.NewDnsEventChecker().
+		ec.NewDNSEventChecker().
 			HasProcess(curl_checker).
-			HasDns(ec.NewDnsChecker().
+			HasDNS(ec.NewDNSChecker().
 				WithAnswerTypes([]uint32{1}).
 				WithNames([]ec.StringArg{"google.com."}).
 				IsResponse(true),
@@ -136,7 +136,7 @@ func test_tls_end_to_end(file *os.File, log ec.Logger) error {
 			HasDstPort(443).
 			HasProtocol(fgs.SocketProtocol_TCP).
 			End(),
-		ec.NewTlsEventChecker().
+		ec.NewTLSEventChecker().
 			HasProcess(curl_checker).
 			HasDstPort(443).
 			HasNegotiatedVersion("TLS1.3").
@@ -173,14 +173,14 @@ func test_http_end_to_end(file *os.File, log ec.Logger) error {
 				WithBinary(ec.SuffixStringMatch("containerd-shim-runc-v2")),
 			).
 			End(),
-		ec.NewHttpEventChecker().
+		ec.NewHTTPEventChecker().
 			HasProcess(curl_checker).
-			HasHttp(ec.NewHttpChecker().
+			HasHTTP(ec.NewHTTPChecker().
 				WithRequestAgent(ec.ContainsStringMatch("curl")).
 				WithRequestHost("google.com").
 				WithRequestVersion("HTTP/1.1").
 				WithRequestMethod("GET").
-				WithRequestUri("/").
+				WithRequestURI("/").
 				WithResponseVersion("HTTP/1.1").
 				WithResponseReason("Moved Permanently").
 				WithResponseCode(301),

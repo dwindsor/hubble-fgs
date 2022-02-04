@@ -90,7 +90,7 @@ func TestTCTLS13(t *testing.T) {
 		ec.SuffixStringMatch("curl"), ec.FullStringMatch("--tlsv1.3 -4 https://www.google.com"),
 	)
 
-	tlsCh := ec.NewTlsChecker().
+	tlsCh := ec.NewTLSChecker().
 		WithNegotiatedVersion("TLS1.3").
 		WithClientVersion("TLS1.2").
 		WithServerVersion("TLS1.2").
@@ -109,9 +109,9 @@ func TestTCTLS13(t *testing.T) {
 			HasParent(selfChecker).
 			HasDstPort(443).
 			End(),
-		ec.NewTlsEventChecker().
+		ec.NewTLSEventChecker().
 			HasProcess(curlChecker).
-			HasTls(tlsCh).
+			HasTLS(tlsCh).
 			End(),
 	)
 
@@ -155,7 +155,7 @@ func TestTCTLS12(t *testing.T) {
 	curlChecker := ec.ProcessWithCommand(
 		ec.SuffixStringMatch("curl"), ec.FullStringMatch("-4 https://tls-v1-2.badssl.com:1012/"),
 	)
-	tlsCh := ec.NewTlsChecker().
+	tlsCh := ec.NewTLSChecker().
 		WithClientVersion("TLS1.2").
 		WithServerVersion("TLS1.2").
 		WithSniType("host_name").
@@ -177,9 +177,9 @@ func TestTCTLS12(t *testing.T) {
 			HasParent(selfChecker).
 			HasDstPort(1012).
 			End(),
-		ec.NewTlsEventChecker().
+		ec.NewTLSEventChecker().
 			HasProcess(curlChecker).
-			HasTls(tlsCh).
+			HasTLS(tlsCh).
 			End(),
 	)
 
@@ -232,9 +232,9 @@ func TestHttp11Curl(t *testing.T) {
 		ec.SuffixStringMatch("curl"), ec.FullStringMatch("-4 http://www.google.com"),
 	)
 
-	httpCh := ec.NewHttpChecker().
+	httpCh := ec.NewHTTPChecker().
 		WithRequestMethod("GET").
-		WithRequestUri("/").
+		WithRequestURI("/").
 		WithRequestVersion("HTTP/1.1").
 		WithRequestAgent(ec.ContainsStringMatch("curl")).
 		WithRequestHost(ec.ContainsStringMatch("www.google.com")).
@@ -251,9 +251,9 @@ func TestHttp11Curl(t *testing.T) {
 			HasParent(selfChecker).
 			HasDstPort(80).
 			End(),
-		ec.NewHttpEventChecker().
+		ec.NewHTTPEventChecker().
 			HasProcess(curlChecker).
-			HasHttp(httpCh).
+			HasHTTP(httpCh).
 			End(),
 	)
 
@@ -324,9 +324,9 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 		ec.FullStringMatch("-v4 --http2-prior-knowledge http://"+http2Addr),
 	)
 
-	httpCh := ec.NewHttpChecker().
+	httpCh := ec.NewHTTPChecker().
 		WithRequestMethod("GET").
-		WithRequestUri("/").
+		WithRequestURI("/").
 		WithRequestVersion("HTTP/2").
 		WithRequestAgent(ec.ContainsStringMatch("curl")).
 		WithRequestHost(ec.ContainsStringMatch(http2Addr)).
@@ -340,9 +340,9 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 			HasParent(selfChecker).
 			End(),
 
-		ec.NewHttpEventChecker().
+		ec.NewHTTPEventChecker().
 			HasProcess(curlChecker).
-			HasHttp(httpCh).
+			HasHTTP(httpCh).
 			End(),
 	)
 

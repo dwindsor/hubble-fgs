@@ -31,10 +31,10 @@ type ResponseChecker interface {
 	Check(*fgs.GetEventsResponse, Logger) error
 }
 
-// eventCheckerFn is a wrapper that allows a function to be used as an eventChecker
+// ResponseCheckerFn is a wrapper that allows a function to be used as an eventChecker
 type ResponseCheckerFn func(*fgs.GetEventsResponse, Logger) error
 
-// check implements ResponseChecker interface
+// Check implements ResponseChecker interface
 func (f ResponseCheckerFn) Check(e *fgs.GetEventsResponse, log Logger) error {
 	return f(e, log)
 }
@@ -60,20 +60,25 @@ type MultiResponseChecker interface {
 	Reset()
 }
 
+// MultiResponseCheckerFns is a wrapper that enables functions to be used as a stateful
+// checker for checking a series of responses
 type MultiResponseCheckerFns struct {
 	NextCheckFn  func(*fgs.GetEventsResponse, Logger) (bool, error)
 	FinalCheckFn func(Logger) error
 	ResetFn      func()
 }
 
+// NextCheck calls NextCheckFn
 func (fns *MultiResponseCheckerFns) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
 	return fns.NextCheckFn(r, l)
 }
 
+// FinalCheck calls FinalCheckFn
 func (fns *MultiResponseCheckerFns) FinalCheck(l Logger) error {
 	return fns.FinalCheckFn(l)
 }
 
+// Reset calls ResetFn
 func (fns *MultiResponseCheckerFns) Reset() {
 	fns.ResetFn()
 }
@@ -92,6 +97,7 @@ func NewOrderedMultiResponseChecker(checkers ...ResponseChecker) OrderedMultiRes
 	}
 }
 
+// NextCheck verifies that the next check succeeds in the chain
 func (c *OrderedMultiResponseChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
 	// all checkers have been verified
 	if c.idx >= len(c.checkers) {
@@ -103,16 +109,17 @@ func (c *OrderedMultiResponseChecker) NextCheck(r *fgs.GetEventsResponse, l Logg
 		return false, err
 	}
 
-	c.idx += 1
+	c.idx++
 	if c.idx == len(c.checkers) {
 		l.Logf("OrderedMultiResponseChecker: all %d checks succeeded", len(c.checkers))
 		return true, nil
-	} else {
-		l.Logf("OrderedMultiResponseChecker: %d/%d matched", c.idx, len(c.checkers))
-		return false, nil
 	}
+
+	l.Logf("OrderedMultiResponseChecker: %d/%d matched", c.idx, len(c.checkers))
+	return false, nil
 }
 
+// FinalCheck verifies that all checks in the chain have succeeded
 func (c *OrderedMultiResponseChecker) FinalCheck(l Logger) error {
 	if c.idx >= len(c.checkers) {
 		return nil
@@ -120,6 +127,7 @@ func (c *OrderedMultiResponseChecker) FinalCheck(l Logger) error {
 	return fmt.Errorf("OrderedMultiResponseChecker: only %d/%d matched", c.idx, len(c.checkers))
 }
 
+// Reset resets the internal state of OrderedMultiResponseChecker
 func (c *OrderedMultiResponseChecker) Reset() {
 	c.idx = 0
 }
@@ -136,6 +144,8 @@ func NewAllMultiResponseChecker(checkers ...ResponseChecker) AllMultiResponseChe
 	}
 }
 
+// NextCheck verifies that all checks in the AllMultiResponseChecker succeeded. Otherwise,
+// we bail out
 func (c *AllMultiResponseChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
 	for i := range c.checkers {
 		if err := c.checkers[i].Check(r, l); err != nil {
@@ -145,11 +155,13 @@ func (c *AllMultiResponseChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) 
 	return false, nil
 }
 
+// FinalCheck logs that all checks have succeeded
 func (c *AllMultiResponseChecker) FinalCheck(l Logger) error {
 	l.Logf("AllMultiResponseChecker: all %d checks succeeded for all events", len(c.checkers))
 	return nil
 }
 
+// Reset is a nop in AllMultiResponseChecker
 func (c *AllMultiResponseChecker) Reset() {}
 
 // UnorderedMultiResponseChecker matches a list of ResponseCheckers over a
@@ -162,6 +174,7 @@ type UnorderedMultiResponseChecker struct {
 	allCheckers *list.List
 }
 
+// NewUnorderedMultiResponseChecker creates a new UnorderedMultiResponseChecker
 func NewUnorderedMultiResponseChecker(checkers ...ResponseChecker) *UnorderedMultiResponseChecker {
 	allList := list.New()
 	for _, c := range checkers {
@@ -178,6 +191,7 @@ func NewUnorderedMultiResponseChecker(checkers ...ResponseChecker) *UnorderedMul
 	}
 }
 
+// Reset resets the list of pending checkers in the UnorderedMultiResponseChecker
 func (c *UnorderedMultiResponseChecker) Reset() {
 	c.pendingCheckers = list.New()
 	c.pendingCheckers.PushBackList(c.allCheckers)
@@ -185,6 +199,7 @@ func (c *UnorderedMultiResponseChecker) Reset() {
 
 }
 
+// NextCheck calls the next pending checker in the pending queue until we run out of events
 func (c *UnorderedMultiResponseChecker) NextCheck(ev *fgs.GetEventsResponse, log Logger) (bool, error) {
 	clen := c.pendingCheckers.Len()
 	if clen == 0 {
@@ -203,24 +218,24 @@ func (c *UnorderedMultiResponseChecker) NextCheck(ev *fgs.GetEventsResponse, log
 			if clen > 0 {
 				log.Logf("UnorderedMultiResponseChecker: success: %d/%d matchers remaining", clen, c.totalCheckers)
 				return false, nil
-			} else {
-				log.Logf("UnorderedMultiResponseChecker: success: all %d matches matched", c.totalCheckers)
-				return true, nil
 			}
+
+			log.Logf("UnorderedMultiResponseChecker: success: all %d matches matched", c.totalCheckers)
+			return true, nil
 		}
 		log.Logf("UnorderedMultiResponseChecker: checking %d/%d: failure: %s", idx, clen, err)
-		idx += 1
+		idx++
 	}
 
 	return false, fmt.Errorf("UnorderedMultiResponseChecker: all %d checks failed", c.pendingCheckers.Len())
 }
 
+// FinalCheck verifies that all checkers succeeded
 func (c *UnorderedMultiResponseChecker) FinalCheck(log Logger) error {
 	if l := c.pendingCheckers.Len(); l == 0 {
 		return nil
-	} else {
-		return fmt.Errorf("UnorderedMultiResponseChecker: %d checks remain", c.pendingCheckers.Len())
 	}
+	return fmt.Errorf("UnorderedMultiResponseChecker: %d checks remain", c.pendingCheckers.Len())
 }
 
 type fgsEvent interface {
@@ -230,48 +245,49 @@ type fgsEvent interface {
 	// etc.
 }
 
-type eventChainChecker struct {
-	responseCheck func(*fgs.GetEventsResponse, Logger) (error, fgsEvent)
+// EventChainChecker is a checker that verifies a chain of events
+type EventChainChecker struct {
+	responseCheck func(*fgs.GetEventsResponse, Logger) (fgsEvent, error)
 	eventCheck    func(fgsEvent, Logger) error
 }
 
-func eventGetProcess(ev_ fgsEvent) *fgs.Process {
-	switch ev := ev_.(type) {
+func eventGetProcess(ev fgsEvent) *fgs.Process {
+	switch v := ev.(type) {
 	case *fgs.ProcessExec:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessConnect:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessListen:
-		return ev.Process
+		return v.Process
 	case *fgs.Tls:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessDns:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessHttp:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessExit:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessClose:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessAccept:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessKprobe:
-		return ev.Process
+		return v.Process
 	case *fgs.ProcessTracepoint:
-		return ev.Process
+		return v.Process
 	default:
-		panic("Unhandled type")
+		panic(fmt.Sprintf("Unhandled type %T", v))
 	}
 }
 
-func eventGetParent(ev_ fgsEvent) *fgs.Process {
-	switch ev := ev_.(type) {
+func eventGetParent(ev fgsEvent) *fgs.Process {
+	switch v := ev.(type) {
 	case *fgs.ProcessExec:
-		return ev.Parent
+		return v.Parent
 	case *fgs.ProcessConnect:
-		return ev.Parent
+		return v.Parent
 	case *fgs.ProcessListen:
-		return ev.Parent
+		return v.Parent
 	case *fgs.Tls:
 		return nil
 	case *fgs.ProcessHttp:
@@ -279,15 +295,16 @@ func eventGetParent(ev_ fgsEvent) *fgs.Process {
 	case *fgs.ProcessDns:
 		return nil
 	case *fgs.ProcessExit:
-		return ev.Parent
+		return v.Parent
 	case *fgs.ProcessClose:
-		return ev.Parent
+		return v.Parent
 	case *fgs.ProcessAccept:
-		return ev.Parent
+		return v.Parent
 	}
 	return nil
 }
 
+// EventTypeError represents an error checking the event type
 type EventTypeError struct {
 	Err error
 }
@@ -296,7 +313,7 @@ func (e EventTypeError) Error() string {
 	return e.Err.Error()
 }
 
-func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (error, fgsEvent) {
+func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (fgsEvent, error) {
 
 	checkTypes := func(ty fgs.EventType) error {
 		for i := range types {
@@ -312,102 +329,102 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (err
 	switch ev := r.Event.(type) {
 	case *fgs.GetEventsResponse_ProcessExec:
 		if err := checkTypes(fgs.EventType_PROCESS_EXEC); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessExec
+		return ev.ProcessExec, nil
 
 	case *fgs.GetEventsResponse_ProcessExit:
 		if err := checkTypes(fgs.EventType_PROCESS_EXIT); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessExit
+		return ev.ProcessExit, nil
 
 	case *fgs.GetEventsResponse_ProcessConnect:
 		if err := checkTypes(fgs.EventType_PROCESS_CONNECT); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessConnect
+		return ev.ProcessConnect, nil
 
 	case *fgs.GetEventsResponse_ProcessListen:
 		if err := checkTypes(fgs.EventType_PROCESS_LISTEN); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessListen
+		return ev.ProcessListen, nil
 
 	case *fgs.GetEventsResponse_Tls:
 		if err := checkTypes(fgs.EventType_PROCESS_TLS); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.Tls
+		return ev.Tls, nil
 
 	case *fgs.GetEventsResponse_ProcessDns:
 		if err := checkTypes(fgs.EventType_PROCESS_DNS); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessDns
+		return ev.ProcessDns, nil
 
 	case *fgs.GetEventsResponse_ProcessSockstats:
 		if err := checkTypes(fgs.EventType_PROCESS_SOCKSTATS); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessSockstats
+		return ev.ProcessSockstats, nil
 
 	case *fgs.GetEventsResponse_ProcessClose:
 		if err := checkTypes(fgs.EventType_PROCESS_CLOSE); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessClose
+		return ev.ProcessClose, nil
 
 	case *fgs.GetEventsResponse_ProcessCred:
 		if err := checkTypes(fgs.EventType_PROCESS_CRED); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessCred
+		return ev.ProcessCred, nil
 
 	case *fgs.GetEventsResponse_ProcessAccept:
 		if err := checkTypes(fgs.EventType_PROCESS_ACCEPT); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessAccept
+		return ev.ProcessAccept, nil
 
 	case *fgs.GetEventsResponse_ProcessTracepoint:
 		if err := checkTypes(fgs.EventType_PROCESS_TRACEPOINT); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessTracepoint
+		return ev.ProcessTracepoint, nil
 
 	case *fgs.GetEventsResponse_ProcessKprobe:
 		if err := checkTypes(fgs.EventType_PROCESS_KPROBE); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessKprobe
+		return ev.ProcessKprobe, nil
 
 	case *fgs.GetEventsResponse_ProcessHttp:
 		if err := checkTypes(fgs.EventType_PROCESS_HTTP); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.ProcessHttp
+		return ev.ProcessHttp, nil
 
 	case *fgs.GetEventsResponse_InterfaceStats:
 		if err := checkTypes(fgs.EventType_INTERFACE_STATS); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.InterfaceStats
+		return ev.InterfaceStats, nil
 
 	case *fgs.GetEventsResponse_Test:
 		if err := checkTypes(fgs.EventType_TEST); err != nil {
-			return err, nil
+			return nil, err
 		}
-		return nil, ev.Test
+		return ev.Test, nil
 	}
 
 	return fmt.Errorf("Unknown event type (%T)", r.Event), nil
 }
 
-// NewListenEventChecker creates a new eventChainChecker for Listen events
-func NewListenEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewListenEventChecker creates a new EventChainChecker for Listen events
+func NewListenEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_LISTEN)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -416,10 +433,10 @@ func NewListenEventChecker() *eventChainChecker {
 	}
 }
 
-// NewConnectEventChecker creates a new eventChainChecker for Connect events
-func NewConnectEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewConnectEventChecker creates a new EventChainChecker for Connect events
+func NewConnectEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_CONNECT)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -428,10 +445,10 @@ func NewConnectEventChecker() *eventChainChecker {
 	}
 }
 
-// NewExecEventChecker creates a new eventChainChecker for Exec events
-func NewExecEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewExecEventChecker creates a new EventChainChecker for Exec events
+func NewExecEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_EXEC)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -440,10 +457,10 @@ func NewExecEventChecker() *eventChainChecker {
 	}
 }
 
-// NewTestEventChecker creates a new eventChainChecker for Test events
-func NewTestEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewTestEventChecker creates a new EventChainChecker for Test events
+func NewTestEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_TEST)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -452,10 +469,10 @@ func NewTestEventChecker() *eventChainChecker {
 	}
 }
 
-// NewAcceptEventChecker creates a new eventChainChecker for Accept events
-func NewAcceptEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewAcceptEventChecker creates a new EventChainChecker for Accept events
+func NewAcceptEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_ACCEPT)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -464,10 +481,10 @@ func NewAcceptEventChecker() *eventChainChecker {
 	}
 }
 
-// NewCloseEventChecker creates a new eventChainChecker for Close events
-func NewCloseEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewCloseEventChecker creates a new EventChainChecker for Close events
+func NewCloseEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_CLOSE)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -476,10 +493,10 @@ func NewCloseEventChecker() *eventChainChecker {
 	}
 }
 
-// NewTlsEventChecker creates a new eventChainChecker for TLS events
-func NewTlsEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewTLSEventChecker creates a new EventChainChecker for TLS events
+func NewTLSEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_TLS)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -488,10 +505,10 @@ func NewTlsEventChecker() *eventChainChecker {
 	}
 }
 
-// NewDnsEventChecker creates a new eventChainChecker for DNS events
-func NewDnsEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewDNSEventChecker creates a new EventChainChecker for DNS events
+func NewDNSEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_DNS)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -500,10 +517,10 @@ func NewDnsEventChecker() *eventChainChecker {
 	}
 }
 
-// NewHttpEventChecker creates a new eventChainChecker for Http events
-func NewHttpEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewHTTPEventChecker creates a new EventChainChecker for Http events
+func NewHTTPEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_HTTP)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -513,13 +530,13 @@ func NewHttpEventChecker() *eventChainChecker {
 }
 
 // End ends the chain
-func (e *eventChainChecker) End() ResponseChecker {
+func (e *EventChainChecker) End() ResponseChecker {
 	fn := func(r *fgs.GetEventsResponse, l Logger) error {
-		if err, ev := e.responseCheck(r, l); err != nil {
+		ev, err := e.responseCheck(r, l)
+		if err != nil {
 			return err
-		} else {
-			return e.eventCheck(ev, l)
 		}
+		return e.eventCheck(ev, l)
 	}
 	return ResponseCheckerFn(fn)
 }
@@ -536,7 +553,7 @@ func eventHasDstIP(e fgsEvent, ip string) error {
 }
 
 // HasDstIP adds a check that the event has a destination IP value matching to the argument
-func (e *eventChainChecker) HasDstIP(ip string) *eventChainChecker {
+func (e *EventChainChecker) HasDstIP(ip string) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -559,7 +576,7 @@ func eventHasSrcIP(e fgsEvent, ip string) error {
 }
 
 // HasSrcIP adds a check that the event has a source IP value matching to the argument
-func (e *eventChainChecker) HasSrcIP(ip string) *eventChainChecker {
+func (e *EventChainChecker) HasSrcIP(ip string) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -583,7 +600,8 @@ func eventHasProtocol(e fgsEvent, proto fgs.SocketProtocol) error {
 	return fmt.Errorf("type %T does not have Protocol", e)
 }
 
-func (e *eventChainChecker) HasProtocol(proto fgs.SocketProtocol) *eventChainChecker {
+// HasProtocol adds a check that the event has the expected socket protocol
+func (e *EventChainChecker) HasProtocol(proto fgs.SocketProtocol) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -607,7 +625,8 @@ func eventHasType(e fgsEvent, proto string) error {
 	return fmt.Errorf("type %T does not have Type", e)
 }
 
-func (e *eventChainChecker) HasType(proto string) *eventChainChecker {
+// HasType adds a check that the event has the expected socket type
+func (e *EventChainChecker) HasType(proto string) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -633,17 +652,17 @@ func eventHasDstPort(e fgsEvent, port uint32) error {
 		GetDestinationPort() *wrapperspb.UInt32Value
 	}); ok {
 		evPort := ev.GetDestinationPort()
-		if err := checkPort(port, evPort); err == nil {
+		err := checkPort(port, evPort)
+		if err == nil {
 			return nil
-		} else {
-			return fmt.Errorf("%T port check failed: %w", ev, err)
 		}
+		return fmt.Errorf("%T port check failed: %w", ev, err)
 	}
 	return fmt.Errorf("type %T does not have Dst Port", e)
 }
 
-// HasDstIP adds a check that the event has a destination IP value matching to the argument
-func (e *eventChainChecker) HasDstPort(port uint32) *eventChainChecker {
+// HasDstPort adds a check that the event has a destination port value matching to the argument
+func (e *EventChainChecker) HasDstPort(port uint32) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -659,17 +678,17 @@ func eventHasSrcPort(e fgsEvent, port uint32) error {
 		GetSourcePort() *wrapperspb.UInt32Value
 	}); ok {
 		evPort := ev.GetSourcePort()
-		if err := checkPort(port, evPort); err == nil {
+		err := checkPort(port, evPort)
+		if err == nil {
 			return nil
-		} else {
-			return fmt.Errorf("%T port check failed: %w", ev, err)
 		}
+		return fmt.Errorf("%T port check failed: %w", ev, err)
 	}
 	return fmt.Errorf("type %T does not have Src Port", e)
 }
 
-// HasSrcIP adds a check that the event has a source IP value matching to the argument
-func (e *eventChainChecker) HasSrcPort(port uint32) *eventChainChecker {
+// HasSrcPort adds a check that the event has a source port value matching to the argument
+func (e *EventChainChecker) HasSrcPort(port uint32) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -685,30 +704,26 @@ func eventHasCookie(e fgsEvent, cookie uint64) error {
 	case *fgs.ProcessListen:
 		if v.SockCookie == cookie {
 			return nil
-		} else {
-			return fmt.Errorf("Expecting cookie %d but ProcessListen has %d", cookie, v.SockCookie)
 		}
+		return fmt.Errorf("Expecting cookie %d but ProcessListen has %d", cookie, v.SockCookie)
 
 	case *fgs.ProcessAccept:
 		if v.SockCookie == cookie {
 			return nil
-		} else {
-			return fmt.Errorf("Expecting cookie %d but ProcessAccept has %d", cookie, v.SockCookie)
 		}
+		return fmt.Errorf("Expecting cookie %d but ProcessAccept has %d", cookie, v.SockCookie)
 
 	case *fgs.ProcessConnect:
 		if v.SockCookie == cookie {
 			return nil
-		} else {
-			return fmt.Errorf("Expecting cookie %d but ProcessConnect has %d", cookie, v.SockCookie)
 		}
+		return fmt.Errorf("Expecting cookie %d but ProcessConnect has %d", cookie, v.SockCookie)
 
 	case *fgs.ProcessClose:
 		if v.SockCookie == cookie {
 			return nil
-		} else {
-			return fmt.Errorf("Expecting cookie %d but ProcessClose has %d", cookie, v.SockCookie)
 		}
+		return fmt.Errorf("Expecting cookie %d but ProcessClose has %d", cookie, v.SockCookie)
 
 	default:
 		return fmt.Errorf("type %T does not have cookie", v)
@@ -716,7 +731,7 @@ func eventHasCookie(e fgsEvent, cookie uint64) error {
 }
 
 // HasCookie adds a check that the event has a cookie value matching to the argument
-func (e *eventChainChecker) HasCookie(cookie uint64) *eventChainChecker {
+func (e *EventChainChecker) HasCookie(cookie uint64) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -739,7 +754,7 @@ func eventHasIP(e fgsEvent, IP string) error {
 }
 
 // HasIP adds a check that the event has an IP matching the argument
-func (e *eventChainChecker) HasIP(IP string) *eventChainChecker {
+func (e *EventChainChecker) HasIP(IP string) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -755,17 +770,17 @@ func eventHasPort(e fgsEvent, port uint32) error {
 		GetPort() *wrapperspb.UInt32Value
 	}); ok {
 		evPort := ev.GetPort()
-		if err := checkPort(port, evPort); err == nil {
+		err := checkPort(port, evPort)
+		if err == nil {
 			return nil
-		} else {
-			return fmt.Errorf("%T port check failed: %w", ev, err)
 		}
+		return fmt.Errorf("%T port check failed: %w", ev, err)
 	}
 	return fmt.Errorf("type %T does not have IP", e)
 }
 
 // HasPort adds a check that the event has an port matching the argument
-func (e *eventChainChecker) HasPort(port uint32) *eventChainChecker {
+func (e *EventChainChecker) HasPort(port uint32) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -789,7 +804,7 @@ func eventHasNegotiatedVersion(e fgsEvent, version string) error {
 
 // HasNegotiatedVersion adds a check that the event has a negotiated TLS version matching
 // the argument
-func (e *eventChainChecker) HasNegotiatedVersion(version string) *eventChainChecker {
+func (e *EventChainChecker) HasNegotiatedVersion(version string) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -822,7 +837,7 @@ func eventHasSupportedVersions(e fgsEvent, versions []string) error {
 
 // HasSupportedVersions adds a check that the event has a set of supported versions
 // exactly matching the set of versions given as an argument
-func (e *eventChainChecker) HasSupportedVersions(versions []string) *eventChainChecker {
+func (e *EventChainChecker) HasSupportedVersions(versions []string) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -846,7 +861,7 @@ func eventHasSniType(e fgsEvent, _type string) error {
 
 // HasSniType adds a check that the event has a negotiated TLS type matching
 // the argument
-func (e *eventChainChecker) HasSniType(_type string) *eventChainChecker {
+func (e *EventChainChecker) HasSniType(_type string) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -870,7 +885,7 @@ func eventHasSniName(e fgsEvent, name string) error {
 
 // HasSniName adds a check that the event has a negotiated TLS name matching
 // the argument
-func (e *eventChainChecker) HasSniName(name string) *eventChainChecker {
+func (e *EventChainChecker) HasSniName(name string) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -886,6 +901,8 @@ type ProcessChecker interface {
 	// Check checks a process.
 	Check(*fgs.Process, Logger) error
 }
+
+// ProcessCheckerFn wraps a function that checks a process
 type ProcessCheckerFn func(*fgs.Process, Logger) error
 
 // Check implements ResponseChecker interface
@@ -893,32 +910,44 @@ func (f ProcessCheckerFn) Check(p *fgs.Process, log Logger) error {
 	return f(p, log)
 }
 
+// PodChecker checks a Pod
 type PodChecker interface {
 	// Check checks a Pod
 	Check(*fgs.Pod, Logger) error
 }
+
+// PodCheckerFn wraps a function that checks a pod
 type PodCheckerFn func(*fgs.Pod, Logger) error
 
+// Check implements ResponseChecker interface
 func (f PodCheckerFn) Check(p *fgs.Pod, log Logger) error {
 	return f(p, log)
 }
 
+// ContainerChecker checks a container
 type ContainerChecker interface {
 	// Check checks a Container
 	Check(*fgs.Container, Logger) error
 }
+
+// ContainerCheckerFn wraps a function that checks a container
 type ContainerCheckerFn func(*fgs.Container, Logger) error
 
+// Check implements ResponseChecker interface
 func (f ContainerCheckerFn) Check(c *fgs.Container, log Logger) error {
 	return f(c, log)
 }
 
+// ImageChecker checks a container image
 type ImageChecker interface {
 	// Check checks a container image
 	Check(*fgs.Image, Logger) error
 }
+
+// ImageCheckerFn wraps a function that checks a container image
 type ImageCheckerFn func(*fgs.Image, Logger) error
 
+// Check implements ResponseChecker interface
 func (f ImageCheckerFn) Check(i *fgs.Image, log Logger) error {
 	return f(i, log)
 }
@@ -928,6 +957,8 @@ type ProcessCheckerAND struct {
 	checks []ProcessChecker
 }
 
+// NewProcessChecker creates a new ProcessCheckerAND to verify a series of checks on
+// a process
 func NewProcessChecker() *ProcessCheckerAND {
 	return &ProcessCheckerAND{}
 }
@@ -938,40 +969,47 @@ func (o *ProcessCheckerAND) With(c ...ProcessChecker) *ProcessCheckerAND {
 	return o
 }
 
+// WithBinary adds a check that the process binary matches the StringArg
 func (o *ProcessCheckerAND) WithBinary(arg StringArg) *ProcessCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithBinary(sm))
 	return o
 }
 
+// WithPod adds a check that the process' pod matches the PodChecker
 func (o *ProcessCheckerAND) WithPod(arg PodChecker) *ProcessCheckerAND {
 	o.checks = append(o.checks, ProcessWithPod(arg))
 	return o
 }
 
+// WithArguments adds a check that the process' arguments match the StringArg
 func (o *ProcessCheckerAND) WithArguments(arg StringArg) *ProcessCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithArguments(sm))
 	return o
 }
 
+// WithCWD adds a check that the process' current working directory matches the StringArg
 func (o *ProcessCheckerAND) WithCWD(arg StringArg) *ProcessCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithCWD(sm))
 	return o
 }
 
+// WithDocker adds a check that the process' docker field matches the StringArg
 func (o *ProcessCheckerAND) WithDocker(arg StringArg) *ProcessCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithDocker(sm))
 	return o
 }
 
+// WithUID adds a check that the process' UID matches the UID
 func (o *ProcessCheckerAND) WithUID(uid uint32) *ProcessCheckerAND {
 	o.checks = append(o.checks, ProcessWithUID(uid))
 	return o
 }
 
+// Check implements ResponseChecker interface
 func (o *ProcessCheckerAND) Check(p *fgs.Process, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(p, l); err != nil {
@@ -986,6 +1024,8 @@ type ProcessCheckerOR struct {
 	checks []ProcessChecker
 }
 
+// NewProcessCheckerOr creates a new ProcessCheckerOR to verify at least one of the checks
+// on a process
 func NewProcessCheckerOr() *ProcessCheckerOR {
 	return &ProcessCheckerOR{}
 }
@@ -996,40 +1036,47 @@ func (o *ProcessCheckerOR) With(c ...ProcessChecker) *ProcessCheckerOR {
 	return o
 }
 
+// WithBinary adds a check that the process binary matches the StringArg
 func (o *ProcessCheckerOR) WithBinary(arg StringArg) *ProcessCheckerOR {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithBinary(sm))
 	return o
 }
 
+// WithPod adds a check that the process' pod matches the PodChecker
 func (o *ProcessCheckerOR) WithPod(arg PodChecker) *ProcessCheckerOR {
 	o.checks = append(o.checks, ProcessWithPod(arg))
 	return o
 }
 
+// WithArguments adds a check that the process' arguments match the StringArg
 func (o *ProcessCheckerOR) WithArguments(arg StringArg) *ProcessCheckerOR {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithArguments(sm))
 	return o
 }
 
+// WithCWD adds a check that the process' current working directory matches the StringArg
 func (o *ProcessCheckerOR) WithCWD(arg StringArg) *ProcessCheckerOR {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithCWD(sm))
 	return o
 }
 
+// WithDocker adds a check that the process' docker field matches the StringArg
 func (o *ProcessCheckerOR) WithDocker(arg StringArg) *ProcessCheckerOR {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessWithDocker(sm))
 	return o
 }
 
+// WithUID adds a check that the process' UID matches the UID
 func (o *ProcessCheckerOR) WithUID(uid uint32) *ProcessCheckerOR {
 	o.checks = append(o.checks, ProcessWithUID(uid))
 	return o
 }
 
+// Check implements ResponseChecker interface
 func (o *ProcessCheckerOR) Check(p *fgs.Process, l Logger) error {
 	var failures []error
 	for i := range o.checks {
@@ -1117,6 +1164,7 @@ func ProcessWithCommand(binary StringMatcher, args StringMatcher) ProcessChecker
 	}
 }
 
+// ProcessWithPod matches the Pod field
 func ProcessWithPod(pc PodChecker) ProcessChecker {
 	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
 		if p == nil {
@@ -1153,7 +1201,8 @@ func ProcessWithUID(uid uint32) ProcessChecker {
 	})
 }
 
-func (e *eventChainChecker) HasProcess(cs ...ProcessChecker) *eventChainChecker {
+// HasProcess adds a check for a process to the event
+func (e *EventChainChecker) HasProcess(cs ...ProcessChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -1173,7 +1222,8 @@ func (e *eventChainChecker) HasProcess(cs ...ProcessChecker) *eventChainChecker 
 	return e
 }
 
-func (e *eventChainChecker) HasParent(cs ...ProcessChecker) *eventChainChecker {
+// HasParent adds a check for a parent process to the event
+func (e *EventChainChecker) HasParent(cs ...ProcessChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -1194,7 +1244,9 @@ func (e *eventChainChecker) HasParent(cs ...ProcessChecker) *eventChainChecker {
 	return e
 }
 
-func (e *eventChainChecker) HasAncestor(idx int, cs ...ProcessChecker) *eventChainChecker {
+// HasAncestor adds a check for an ancestor process `idx` processes back to the event
+// chain, where idx=0 would be the parent process
+func (e *EventChainChecker) HasAncestor(idx int, cs ...ProcessChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -1230,10 +1282,12 @@ type PodCheckerAND struct {
 	checks []PodChecker
 }
 
+// NewPodChecker creates a new PodCheckerAND to verify all checks on a given Pod
 func NewPodChecker() *PodCheckerAND {
 	return &PodCheckerAND{}
 }
 
+// Check implements ResponseChecker interface
 func (o *PodCheckerAND) Check(p *fgs.Pod, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(p, l); err != nil {
@@ -1262,6 +1316,7 @@ func podWithString(
 	})
 }
 
+// PodWithName verifies the Name field
 func PodWithName(sm StringMatcher) PodChecker {
 	return podWithString(
 		sm,
@@ -1272,6 +1327,7 @@ func PodWithName(sm StringMatcher) PodChecker {
 	)
 }
 
+// PodWithNamespace verifies the Namespace field
 func PodWithNamespace(sm StringMatcher) PodChecker {
 	return podWithString(
 		sm,
@@ -1282,24 +1338,29 @@ func PodWithNamespace(sm StringMatcher) PodChecker {
 	)
 }
 
+// WithName adds a check that verifies the pod's name
 func (o *PodCheckerAND) WithName(arg StringArg) *PodCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, PodWithName(sm))
 	return o
 }
 
+// WithNamePrefix adds a check that verifies the pod's name matches a prefix
 func (o *PodCheckerAND) WithNamePrefix(prefix string) *PodCheckerAND {
 	sm := PrefixStringMatch(prefix)
 	o.checks = append(o.checks, PodWithName(sm))
 	return o
 }
 
+// WithNamespace adds a check that verifies the pod's namespace
 func (o *PodCheckerAND) WithNamespace(arg StringArg) *PodCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, PodWithNamespace(sm))
 	return o
 }
 
+// PodWithLabels verifies the Labels field.
+// N.B. that this currently matches _all_ labels in order.
 func PodWithLabels(labels ...LabelMatch) PodChecker {
 	labelMatchers := make(map[string]func(string) error)
 	for i := range labels {
@@ -1336,7 +1397,7 @@ func PodWithLabels(labels ...LabelMatch) PodChecker {
 
 		if len(matchedLabels) != len(labelMatchers) {
 			unMatchedLabels := []string{}
-			for k, _ := range labelMatchers {
+			for k := range labelMatchers {
 				if _, ok := matchedLabels[k]; !ok {
 					unMatchedLabels = append(unMatchedLabels, k)
 				}
@@ -1358,14 +1419,18 @@ func (o *PodCheckerAND) WithLabels(labels ...LabelMatch) *PodCheckerAND {
 	return o
 }
 
+// ContainerCheckerAND can be used to build a check that is a conjunction of other checkers
 type ContainerCheckerAND struct {
 	checks []ContainerChecker
 }
 
+// NewContainerChecker creates a new ContainerCheckerAND to verify a series of checks on
+// a container
 func NewContainerChecker() *ContainerCheckerAND {
 	return &ContainerCheckerAND{}
 }
 
+// Check implements ResponseChecker interface
 func (o *ContainerCheckerAND) Check(p *fgs.Container, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(p, l); err != nil {
@@ -1375,6 +1440,7 @@ func (o *ContainerCheckerAND) Check(p *fgs.Container, l Logger) error {
 	return nil
 }
 
+// PodWithContainer verifies that a pod's container matches a series of container checks
 func PodWithContainer(cc ContainerChecker) PodChecker {
 	return PodCheckerFn(func(p *fgs.Pod, log Logger) error {
 		if p == nil {
@@ -1387,6 +1453,7 @@ func PodWithContainer(cc ContainerChecker) PodChecker {
 	})
 }
 
+// WithContainer adds a check to verify that a pod's container passes a ContainerChecker
 func (o *PodCheckerAND) WithContainer(arg ContainerChecker) *PodCheckerAND {
 	o.checks = append(o.checks, PodWithContainer(arg))
 	return o
@@ -1411,6 +1478,7 @@ func containerWithString(
 	})
 }
 
+// ContainerWithName verifies the Name field
 func ContainerWithName(sm StringMatcher) ContainerChecker {
 	return containerWithString(
 		sm,
@@ -1421,18 +1489,21 @@ func ContainerWithName(sm StringMatcher) ContainerChecker {
 	)
 }
 
+// WithName adds a check that verifies the Name field
 func (o *ContainerCheckerAND) WithName(arg StringArg) *ContainerCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ContainerWithName(sm))
 	return o
 }
 
+// WithNamePrefix adds a check that verifies the Name field matches a prefix
 func (o *ContainerCheckerAND) WithNamePrefix(prefix string) *ContainerCheckerAND {
 	sm := PrefixStringMatch(prefix)
 	o.checks = append(o.checks, ContainerWithName(sm))
 	return o
 }
 
+// ContainerWithID verifies the Id field
 func ContainerWithID(sm StringMatcher) ContainerChecker {
 	return containerWithString(
 		sm,
@@ -1443,6 +1514,7 @@ func ContainerWithID(sm StringMatcher) ContainerChecker {
 	)
 }
 
+// ContainerWithImageName verifies the ImageName field
 func ContainerWithImageName(sm StringMatcher) ContainerChecker {
 	matcher := sm.GetMatcher()
 	return ContainerCheckerFn(func(c *fgs.Container, log Logger) error {
@@ -1462,20 +1534,24 @@ func ContainerWithImageName(sm StringMatcher) ContainerChecker {
 	})
 }
 
+// WithImageName adds a check that verifies the ImageName field
 func (o *ContainerCheckerAND) WithImageName(arg StringArg) *ContainerCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ContainerWithImageName(sm))
 	return o
 }
 
-type HttpChecker interface {
+// HTTPChecker checks the HTTP field of an HTTP event
+type HTTPChecker interface {
 	// Check checks a HTTP event
 	Check(*fgs.ProcessHttp, Logger) error
 }
 
-type HttpCheckerFn func(*fgs.ProcessHttp, Logger) error
+// HTTPCheckerFn wraps a function that checks the HTTP field of an HTTP event
+type HTTPCheckerFn func(*fgs.ProcessHttp, Logger) error
 
-func (f HttpCheckerFn) Check(c *fgs.ProcessHttp, log Logger) error {
+// Check implements ResponseChecker interface
+func (f HTTPCheckerFn) Check(c *fgs.ProcessHttp, log Logger) error {
 	return f(c, log)
 }
 
@@ -1483,9 +1559,9 @@ func httpWithString(
 	sm StringMatcher,
 	getter func(*fgs.ProcessHttp) string,
 	desc string, // desc is used for helpful error messages
-) HttpChecker {
+) HTTPChecker {
 	matcher := sm.GetMatcher()
-	return HttpCheckerFn(func(t *fgs.ProcessHttp, log Logger) error {
+	return HTTPCheckerFn(func(t *fgs.ProcessHttp, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("Http is nil and cannot match %s using %v", desc, sm)
 		}
@@ -1498,7 +1574,8 @@ func httpWithString(
 	})
 }
 
-func HttpWithRequestMethod(sm StringMatcher) HttpChecker {
+// HTTPWithRequestMethod verifies that the request method matches the StringMatcher
+func HTTPWithRequestMethod(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
 		func(t *fgs.ProcessHttp) string {
@@ -1508,7 +1585,8 @@ func HttpWithRequestMethod(sm StringMatcher) HttpChecker {
 	)
 }
 
-func HttpWithRequestUri(sm StringMatcher) HttpChecker {
+// HTTPWithRequestURI verifies that the request URI matches the StringMatcher
+func HTTPWithRequestURI(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
 		func(t *fgs.ProcessHttp) string {
@@ -1518,7 +1596,8 @@ func HttpWithRequestUri(sm StringMatcher) HttpChecker {
 	)
 }
 
-func HttpWithRequestVersion(sm StringMatcher) HttpChecker {
+// HTTPWithRequestVersion verifies that the request version matches the StringMatcher
+func HTTPWithRequestVersion(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
 		func(t *fgs.ProcessHttp) string {
@@ -1528,7 +1607,8 @@ func HttpWithRequestVersion(sm StringMatcher) HttpChecker {
 	)
 }
 
-func HttpWithRequestHost(sm StringMatcher) HttpChecker {
+// HTTPWithRequestHost verifies that the request host matches the StringMatcher
+func HTTPWithRequestHost(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
 		func(t *fgs.ProcessHttp) string {
@@ -1538,7 +1618,8 @@ func HttpWithRequestHost(sm StringMatcher) HttpChecker {
 	)
 }
 
-func HttpWithRequestAgent(sm StringMatcher) HttpChecker {
+// HTTPWithRequestAgent verifies that the request agent string matches the StringMatcher
+func HTTPWithRequestAgent(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
 		func(t *fgs.ProcessHttp) string {
@@ -1548,7 +1629,8 @@ func HttpWithRequestAgent(sm StringMatcher) HttpChecker {
 	)
 }
 
-func HttpWithResponseVersion(sm StringMatcher) HttpChecker {
+// HTTPWithResponseVersion verifies that the response version matches the StringMatcher
+func HTTPWithResponseVersion(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
 		func(t *fgs.ProcessHttp) string {
@@ -1558,7 +1640,8 @@ func HttpWithResponseVersion(sm StringMatcher) HttpChecker {
 	)
 }
 
-func HttpWithResponseReason(sm StringMatcher) HttpChecker {
+// HTTPWithResponseReason verifies that the response reason matches the StringMatcher
+func HTTPWithResponseReason(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
 		func(t *fgs.ProcessHttp) string {
@@ -1568,8 +1651,9 @@ func HttpWithResponseReason(sm StringMatcher) HttpChecker {
 	)
 }
 
-func HttpWithResponseCode(code uint32) HttpChecker {
-	return HttpCheckerFn(func(t *fgs.ProcessHttp, log Logger) error {
+// HTTPWithResponseCode verifies that the response code matches the StringMatcher
+func HTTPWithResponseCode(code uint32) HTTPChecker {
+	return HTTPCheckerFn(func(t *fgs.ProcessHttp, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("Http is nil and cannot match Response.Code using %d", code)
 		}
@@ -1581,15 +1665,19 @@ func HttpWithResponseCode(code uint32) HttpChecker {
 	})
 }
 
-type HttpCheckerAND struct {
-	checks []HttpChecker
+// HTTPCheckerAND can be used to build a check that is a conjunction of other checkers
+type HTTPCheckerAND struct {
+	checks []HTTPChecker
 }
 
-func NewHttpChecker() *HttpCheckerAND {
-	return &HttpCheckerAND{}
+// NewHTTPChecker creates a new HTTPCheckerAND to verify a series of checks on
+// a HTTP event
+func NewHTTPChecker() *HTTPCheckerAND {
+	return &HTTPCheckerAND{}
 }
 
-func (o *HttpCheckerAND) Check(t *fgs.ProcessHttp, l Logger) error {
+// Check implements ResponseChecker interface
+func (o *HTTPCheckerAND) Check(t *fgs.ProcessHttp, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -1599,53 +1687,60 @@ func (o *HttpCheckerAND) Check(t *fgs.ProcessHttp, l Logger) error {
 }
 
 // WithRequestMethod adds a Request.Method check to a Http checker
-func (o *HttpCheckerAND) WithRequestMethod(arg StringArg) *HttpCheckerAND {
+func (o *HTTPCheckerAND) WithRequestMethod(arg StringArg) *HTTPCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, HttpWithRequestMethod(sm))
+	o.checks = append(o.checks, HTTPWithRequestMethod(sm))
 	return o
 }
 
-func (o *HttpCheckerAND) WithRequestUri(arg StringArg) *HttpCheckerAND {
+// WithRequestURI adds a Request.Uri check to a Http checker
+func (o *HTTPCheckerAND) WithRequestURI(arg StringArg) *HTTPCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, HttpWithRequestUri(sm))
+	o.checks = append(o.checks, HTTPWithRequestURI(sm))
 	return o
 }
 
-func (o *HttpCheckerAND) WithRequestVersion(arg StringArg) *HttpCheckerAND {
+// WithRequestVersion adds a Request.Version check to a Http checker
+func (o *HTTPCheckerAND) WithRequestVersion(arg StringArg) *HTTPCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, HttpWithRequestVersion(sm))
+	o.checks = append(o.checks, HTTPWithRequestVersion(sm))
 	return o
 }
 
-func (o *HttpCheckerAND) WithRequestHost(arg StringArg) *HttpCheckerAND {
+// WithRequestHost adds a Request.Host check to a Http checker
+func (o *HTTPCheckerAND) WithRequestHost(arg StringArg) *HTTPCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, HttpWithRequestHost(sm))
+	o.checks = append(o.checks, HTTPWithRequestHost(sm))
 	return o
 }
 
-func (o *HttpCheckerAND) WithRequestAgent(arg StringArg) *HttpCheckerAND {
+// WithRequestAgent adds a Request.Agent check to a Http checker
+func (o *HTTPCheckerAND) WithRequestAgent(arg StringArg) *HTTPCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, HttpWithRequestAgent(sm))
+	o.checks = append(o.checks, HTTPWithRequestAgent(sm))
 	return o
 }
 
-func (o *HttpCheckerAND) WithResponseVersion(arg StringArg) *HttpCheckerAND {
+// WithResponseVersion adds a Response.Version check to a Http checker
+func (o *HTTPCheckerAND) WithResponseVersion(arg StringArg) *HTTPCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, HttpWithResponseVersion(sm))
+	o.checks = append(o.checks, HTTPWithResponseVersion(sm))
 	return o
 }
 
-func (o *HttpCheckerAND) WithResponseReason(arg StringArg) *HttpCheckerAND {
+// WithResponseReason adds a Response.Reason check to a Http checker
+func (o *HTTPCheckerAND) WithResponseReason(arg StringArg) *HTTPCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, HttpWithResponseReason(sm))
+	o.checks = append(o.checks, HTTPWithResponseReason(sm))
 	return o
 }
-func (o *HttpCheckerAND) WithResponseCode(code uint32) *HttpCheckerAND {
-	o.checks = append(o.checks, HttpWithResponseCode(code))
+func (o *HTTPCheckerAND) WithResponseCode(code uint32) *HTTPCheckerAND {
+	o.checks = append(o.checks, HTTPWithResponseCode(code))
 	return o
 }
 
-func (e *eventChainChecker) HasHttp(httpcheck HttpChecker) *eventChainChecker {
+// HasHTTP adds a Response.Http check to a Http checker
+func (e *EventChainChecker) HasHTTP(httpcheck HTTPChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -1661,14 +1756,17 @@ func (e *eventChainChecker) HasHttp(httpcheck HttpChecker) *eventChainChecker {
 	return e
 }
 
-type TlsChecker interface {
+// TLSChecker checks the TLS field of an TLS event
+type TLSChecker interface {
 	// Check checks a TLS event
 	Check(*fgs.Tls, Logger) error
 }
 
-type TlsCheckerFn func(*fgs.Tls, Logger) error
+// TLSCheckerFn wraps a function that checks the TLS field of an TLS event
+type TLSCheckerFn func(*fgs.Tls, Logger) error
 
-func (f TlsCheckerFn) Check(c *fgs.Tls, log Logger) error {
+// Check implements ResponseChecker interface
+func (f TLSCheckerFn) Check(c *fgs.Tls, log Logger) error {
 	return f(c, log)
 }
 
@@ -1676,9 +1774,9 @@ func tlsWithString(
 	sm StringMatcher,
 	getter func(*fgs.Tls) string,
 	desc string, // desc is used for helpful error messages
-) TlsChecker {
+) TLSChecker {
 	matcher := sm.GetMatcher()
-	return TlsCheckerFn(func(t *fgs.Tls, log Logger) error {
+	return TLSCheckerFn(func(t *fgs.Tls, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("tls is nil and cannot match %s using %v", desc, sm)
 		}
@@ -1691,8 +1789,8 @@ func tlsWithString(
 	})
 }
 
-// TlsWithNegotiatedVersion matches the NegotiatedVersion field
-func TlsWithNegotiatedVersion(sm StringMatcher) TlsChecker {
+// TLSWithNegotiatedVersion matches the NegotiatedVersion field
+func TLSWithNegotiatedVersion(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
 		func(t *fgs.Tls) string {
@@ -1702,8 +1800,8 @@ func TlsWithNegotiatedVersion(sm StringMatcher) TlsChecker {
 	)
 }
 
-// TlsWithClientVersion matches the ClientVersion field
-func TlsWithClientVersion(sm StringMatcher) TlsChecker {
+// TLSWithClientVersion matches the ClientVersion field
+func TLSWithClientVersion(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
 		func(t *fgs.Tls) string {
@@ -1713,8 +1811,8 @@ func TlsWithClientVersion(sm StringMatcher) TlsChecker {
 	)
 }
 
-// TlsWithServerVersion matches the ServerVersion field
-func TlsWithServerVersion(sm StringMatcher) TlsChecker {
+// TLSWithServerVersion matches the ServerVersion field
+func TLSWithServerVersion(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
 		func(t *fgs.Tls) string {
@@ -1724,8 +1822,8 @@ func TlsWithServerVersion(sm StringMatcher) TlsChecker {
 	)
 }
 
-// TlsWithSniType matches the SniType field
-func TlsWithSniType(sm StringMatcher) TlsChecker {
+// TLSWithSniType matches the SniType field
+func TLSWithSniType(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
 		func(t *fgs.Tls) string {
@@ -1735,8 +1833,8 @@ func TlsWithSniType(sm StringMatcher) TlsChecker {
 	)
 }
 
-// TlsWithSniName matches the SniName field
-func TlsWithSniName(sm StringMatcher) TlsChecker {
+// TLSWithSniName matches the SniName field
+func TLSWithSniName(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
 		func(t *fgs.Tls) string {
@@ -1746,8 +1844,8 @@ func TlsWithSniName(sm StringMatcher) TlsChecker {
 	)
 }
 
-// TlsWithClientFlags matches the ClientFlags field
-func TlsWithClientFlags(sm StringMatcher) TlsChecker {
+// TLSWithClientFlags matches the ClientFlags field
+func TLSWithClientFlags(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
 		func(t *fgs.Tls) string {
@@ -1757,8 +1855,8 @@ func TlsWithClientFlags(sm StringMatcher) TlsChecker {
 	)
 }
 
-// TlsWithServerFlags matches the ServerFlags field
-func TlsWithServerFlags(sm StringMatcher) TlsChecker {
+// TLSWithServerFlags matches the ServerFlags field
+func TLSWithServerFlags(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
 		func(t *fgs.Tls) string {
@@ -1768,12 +1866,12 @@ func TlsWithServerFlags(sm StringMatcher) TlsChecker {
 	)
 }
 
-// TlsWithCertificates matches the Certificates field
+// TLSWithCertificates matches the Certificates field
 // NB: eventually we might want other type of matches for matching a list such
 // as subset checks, but for now we check that the elemnts of the lists match
 // one-by-one.
-func TlsWithCertificates(matchers []StringMatcher) TlsChecker {
-	return TlsCheckerFn(func(t *fgs.Tls, log Logger) error {
+func TLSWithCertificates(matchers []StringMatcher) TLSChecker {
+	return TLSCheckerFn(func(t *fgs.Tls, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("tls is nil and cannot match matchers: %+v", matchers)
 		}
@@ -1795,15 +1893,19 @@ func TlsWithCertificates(matchers []StringMatcher) TlsChecker {
 	})
 }
 
-type TlsCheckerAND struct {
-	checks []TlsChecker
+// TLSCheckerAND can be used to build a check that is a conjunction of other checkers
+type TLSCheckerAND struct {
+	checks []TLSChecker
 }
 
-func NewTlsChecker() *TlsCheckerAND {
-	return &TlsCheckerAND{}
+// NewTLSChecker creates a new TLSCheckerAND to verify a series of checks on
+// a TLS event
+func NewTLSChecker() *TLSCheckerAND {
+	return &TLSCheckerAND{}
 }
 
-func (o *TlsCheckerAND) Check(t *fgs.Tls, l Logger) error {
+// Check implements ResponseChecker interface
+func (o *TLSCheckerAND) Check(t *fgs.Tls, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -1813,64 +1915,67 @@ func (o *TlsCheckerAND) Check(t *fgs.Tls, l Logger) error {
 }
 
 // WithNegotiatedVersion adds a NegotiatedVersion check to a Tls checker
-func (o *TlsCheckerAND) WithNegotiatedVersion(arg StringArg) *TlsCheckerAND {
+func (o *TLSCheckerAND) WithNegotiatedVersion(arg StringArg) *TLSCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, TlsWithNegotiatedVersion(sm))
+	o.checks = append(o.checks, TLSWithNegotiatedVersion(sm))
 	return o
 }
 
 // WithClientVersion adds a ClientVersion check to a Tls checker
-func (o *TlsCheckerAND) WithClientVersion(arg StringArg) *TlsCheckerAND {
+func (o *TLSCheckerAND) WithClientVersion(arg StringArg) *TLSCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, TlsWithClientVersion(sm))
+	o.checks = append(o.checks, TLSWithClientVersion(sm))
 	return o
 }
 
 // WithServerVersion adds a ServerVersion check to a Tls checker
-func (o *TlsCheckerAND) WithServerVersion(arg StringArg) *TlsCheckerAND {
+func (o *TLSCheckerAND) WithServerVersion(arg StringArg) *TLSCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, TlsWithServerVersion(sm))
+	o.checks = append(o.checks, TLSWithServerVersion(sm))
 	return o
 }
 
 // WithSniType adds a SniType check to a Tls checker
-func (o *TlsCheckerAND) WithSniType(arg StringArg) *TlsCheckerAND {
+func (o *TLSCheckerAND) WithSniType(arg StringArg) *TLSCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, TlsWithSniType(sm))
+	o.checks = append(o.checks, TLSWithSniType(sm))
 	return o
 }
 
 // WithSniName adds a SniName check to a Tls checker
-func (o *TlsCheckerAND) WithSniName(arg StringArg) *TlsCheckerAND {
+func (o *TLSCheckerAND) WithSniName(arg StringArg) *TLSCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, TlsWithSniName(sm))
+	o.checks = append(o.checks, TLSWithSniName(sm))
 	return o
 }
 
 // WithClientFlags adds a ClientFlags check to a Tls checker
-func (o *TlsCheckerAND) WithClientFlags(arg StringArg) *TlsCheckerAND {
+func (o *TLSCheckerAND) WithClientFlags(arg StringArg) *TLSCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, TlsWithClientFlags(sm))
+	o.checks = append(o.checks, TLSWithClientFlags(sm))
 	return o
 }
 
 // WithServerFlags adds a ServerFlags check to a Tls checker
-func (o *TlsCheckerAND) WithServerFlags(arg StringArg) *TlsCheckerAND {
+func (o *TLSCheckerAND) WithServerFlags(arg StringArg) *TLSCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, TlsWithServerFlags(sm))
+	o.checks = append(o.checks, TLSWithServerFlags(sm))
 	return o
 }
 
-func (o *TlsCheckerAND) WithCertificates(args []StringArg) *TlsCheckerAND {
+// WithCertificates adds a Certificates check to a Tls checker
+// N.B. this currently matches _all_ certificates in order.
+func (o *TLSCheckerAND) WithCertificates(args []StringArg) *TLSCheckerAND {
 	matchers := make([]StringMatcher, len(args))
 	for i := range args {
 		matchers[i] = stringMatcherFromArg(args[i])
 	}
-	o.checks = append(o.checks, TlsWithCertificates(matchers))
+	o.checks = append(o.checks, TLSWithCertificates(matchers))
 	return o
 }
 
-func (e *eventChainChecker) HasTls(tlscheck TlsChecker) *eventChainChecker {
+// HasTLS adds a check for a TLS field to the TLS event
+func (e *EventChainChecker) HasTLS(tlscheck TLSChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -1886,14 +1991,17 @@ func (e *eventChainChecker) HasTls(tlscheck TlsChecker) *eventChainChecker {
 	return e
 }
 
-type DnsChecker interface {
+// DNSChecker checks the DNS field of an DNS event
+type DNSChecker interface {
 	// Check checks a DNS event
 	Check(*fgs.ProcessDns, Logger) error
 }
 
-type DnsCheckerFn func(*fgs.ProcessDns, Logger) error
+// DNSCheckerFn wraps a function that checks the DNS field of an DNS event
+type DNSCheckerFn func(*fgs.ProcessDns, Logger) error
 
-func (f DnsCheckerFn) Check(c *fgs.ProcessDns, log Logger) error {
+// Check implements ResponseChecker interface
+func (f DNSCheckerFn) Check(c *fgs.ProcessDns, log Logger) error {
 	return f(c, log)
 }
 
@@ -1901,9 +2009,9 @@ func dnsWithString(
 	sm StringMatcher,
 	getter func(*fgs.ProcessDns) string,
 	desc string, // desc is used for helpful error messages
-) DnsChecker {
+) DNSChecker {
 	matcher := sm.GetMatcher()
-	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match %s using %v", desc, sm)
 		}
@@ -1916,9 +2024,9 @@ func dnsWithString(
 	})
 }
 
-// Check whether Dns event is a response
-func DnsIsResponse(isResponse bool) DnsChecker {
-	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+// DNSIsResponse checks whether a Dns event is a response
+func DNSIsResponse(isResponse bool) DNSChecker {
+	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match Response: %t", isResponse)
 		}
@@ -1930,9 +2038,9 @@ func DnsIsResponse(isResponse bool) DnsChecker {
 	})
 }
 
-// Check Dns with a specific Rcode
-func DnsHasRcode(rcode int32) DnsChecker {
-	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+// DNSHasRcode checks the Rcode field
+func DNSHasRcode(rcode int32) DNSChecker {
+	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match Rcode: %d", rcode)
 		}
@@ -1944,8 +2052,8 @@ func DnsHasRcode(rcode int32) DnsChecker {
 	})
 }
 
-// Check Dns with a Query field
-func DnsHasQuery(sm StringMatcher) DnsChecker {
+// DNSHasQuery checks the Query field
+func DNSHasQuery(sm StringMatcher) DNSChecker {
 	return dnsWithString(
 		sm,
 		func(t *fgs.ProcessDns) string {
@@ -1955,10 +2063,10 @@ func DnsHasQuery(sm StringMatcher) DnsChecker {
 	)
 }
 
-// Check Dns with a specific set of answer types.
+// DNSHasAnswerTypes checks a specific set of answer types.
 // N.B. This check is order-preserving and expects a full match.
-func DnsHasAnswerTypes(answerTypes []uint32) DnsChecker {
-	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+func DNSHasAnswerTypes(answerTypes []uint32) DNSChecker {
+	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match AnswerTypes: %+v", answerTypes)
 		}
@@ -1970,10 +2078,10 @@ func DnsHasAnswerTypes(answerTypes []uint32) DnsChecker {
 	})
 }
 
-// Check Dns with a specific set of question types.
+// DNSHasQuestionTypes checks a specific set of question types.
 // N.B. This check is order-preserving and expects a full match.
-func DnsHasQuestionTypes(questionTypes []uint32) DnsChecker {
-	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+func DNSHasQuestionTypes(questionTypes []uint32) DNSChecker {
+	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match QuestionTypes: %+v", questionTypes)
 		}
@@ -1985,10 +2093,10 @@ func DnsHasQuestionTypes(questionTypes []uint32) DnsChecker {
 	})
 }
 
-// Check Dns with a specific set of names.
+// DNSHasNames checks a specific set of names.
 // N.B. This check is order-preserving and expects a full match.
-func DnsHasNames(matchers []StringMatcher) DnsChecker {
-	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+func DNSHasNames(matchers []StringMatcher) DNSChecker {
+	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match Names: %+v", matchers)
 		}
@@ -2004,10 +2112,10 @@ func DnsHasNames(matchers []StringMatcher) DnsChecker {
 	})
 }
 
-// Check Dns with a specific set of ips.
+// DNSHasIPs checks a specific set of names.
 // N.B. This check is order-preserving and expects a full match.
-func DnsHasIps(matchers []StringMatcher) DnsChecker {
-	return DnsCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+func DNSHasIPs(matchers []StringMatcher) DNSChecker {
+	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match IPs: %+v", matchers)
 		}
@@ -2023,15 +2131,19 @@ func DnsHasIps(matchers []StringMatcher) DnsChecker {
 	})
 }
 
-type DnsCheckerAND struct {
-	checks []DnsChecker
+// DNSCheckerAND can be used to build a check that is a conjunction of other checkers
+type DNSCheckerAND struct {
+	checks []DNSChecker
 }
 
-func NewDnsChecker() *DnsCheckerAND {
-	return &DnsCheckerAND{}
+// NewDNSChecker creates a new DNSCheckerAND to verify a series of checks on
+// a DNS event
+func NewDNSChecker() *DNSCheckerAND {
+	return &DNSCheckerAND{}
 }
 
-func (o *DnsCheckerAND) Check(t *fgs.ProcessDns, l Logger) error {
+// Check implements ResponseChecker interface
+func (o *DNSCheckerAND) Check(t *fgs.ProcessDns, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -2040,59 +2152,59 @@ func (o *DnsCheckerAND) Check(t *fgs.ProcessDns, l Logger) error {
 	return nil
 }
 
-// Adds a Dns.Response check to a Dns checker
-func (o *DnsCheckerAND) IsResponse(isResponse bool) *DnsCheckerAND {
-	o.checks = append(o.checks, DnsIsResponse(isResponse))
+// IsResponse adds a DNS.Response check to a DNS checker
+func (o *DNSCheckerAND) IsResponse(isResponse bool) *DNSCheckerAND {
+	o.checks = append(o.checks, DNSIsResponse(isResponse))
 	return o
 }
 
-// Adds a Dns.Rcode check to a Dns checker
-func (o *DnsCheckerAND) WithRcode(rcode int32) *DnsCheckerAND {
-	o.checks = append(o.checks, DnsHasRcode(rcode))
+// WithRcode adds a DNS.Rcode check to a DNS checker
+func (o *DNSCheckerAND) WithRcode(rcode int32) *DNSCheckerAND {
+	o.checks = append(o.checks, DNSHasRcode(rcode))
 	return o
 }
 
-// Adds a Dns.Query check to a Dns checker
-func (o *DnsCheckerAND) WithQuery(query StringArg) *DnsCheckerAND {
+// WithQuery adds a DNS.Query check to a DNS checker
+func (o *DNSCheckerAND) WithQuery(query StringArg) *DNSCheckerAND {
 	sm := stringMatcherFromArg(query)
-	o.checks = append(o.checks, DnsHasQuery(sm))
+	o.checks = append(o.checks, DNSHasQuery(sm))
 	return o
 }
 
-// Adds a Dns.AnswerTypes check to a Dns checker
-func (o *DnsCheckerAND) WithAnswerTypes(answerTypes []uint32) *DnsCheckerAND {
-	o.checks = append(o.checks, DnsHasAnswerTypes(answerTypes))
+// WithAnswerTypes adds a DNS.AnswerTypes check to a DNS checker
+func (o *DNSCheckerAND) WithAnswerTypes(answerTypes []uint32) *DNSCheckerAND {
+	o.checks = append(o.checks, DNSHasAnswerTypes(answerTypes))
 	return o
 }
 
-// Adds a Dns.QuestionTypes check to a Dns checker
-func (o *DnsCheckerAND) WithQuestionTypes(questionTypes []uint32) *DnsCheckerAND {
-	o.checks = append(o.checks, DnsHasQuestionTypes(questionTypes))
+// WithQuestionTypes adds a DNS.QuestionTypes check to a DNS checker
+func (o *DNSCheckerAND) WithQuestionTypes(questionTypes []uint32) *DNSCheckerAND {
+	o.checks = append(o.checks, DNSHasQuestionTypes(questionTypes))
 	return o
 }
 
-// Adds a Dns.Ips check to a Dns checker
-func (o *DnsCheckerAND) WithIps(ips []StringArg) *DnsCheckerAND {
+// WithIps adds a DNS.Ips check to a DNS checker
+func (o *DNSCheckerAND) WithIps(ips []StringArg) *DNSCheckerAND {
 	matchers := make([]StringMatcher, len(ips))
 	for i := range matchers {
 		matchers[i] = stringMatcherFromArg(ips[i])
 	}
-	o.checks = append(o.checks, DnsHasIps(matchers))
+	o.checks = append(o.checks, DNSHasIPs(matchers))
 	return o
 }
 
-// Adds a Dns.Names check to a Dns checker
-func (o *DnsCheckerAND) WithNames(names []StringArg) *DnsCheckerAND {
+// WithNames adds a Dns.Names check to a Dns checker
+func (o *DNSCheckerAND) WithNames(names []StringArg) *DNSCheckerAND {
 	matchers := make([]StringMatcher, len(names))
 	for i := range matchers {
 		matchers[i] = stringMatcherFromArg(names[i])
 	}
-	o.checks = append(o.checks, DnsHasNames(matchers))
+	o.checks = append(o.checks, DNSHasNames(matchers))
 	return o
 }
 
-// Adds a Dns checker to the event check
-func (e *eventChainChecker) HasDns(dnscheck DnsChecker) *eventChainChecker {
+// HasDNS adds a check for a TLS field to the TLS event
+func (e *EventChainChecker) HasDNS(dnscheck DNSChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -2108,21 +2220,26 @@ func (e *eventChainChecker) HasDns(dnscheck DnsChecker) *eventChainChecker {
 	return e
 }
 
+// TracepointChecker checks a the tracepoint field of a tracepoint event
 type TracepointChecker interface {
 	// Check checks a Tracepoint event
 	Check(*fgs.ProcessTracepoint, Logger) error
 }
 
+// TracepointCheckerFn wraps a function that checks the tracepoint field of an tracepoint event
 type TracepointCheckerFn func(*fgs.ProcessTracepoint, Logger) error
 
+// Check implements ResponseChecker interface
 func (f TracepointCheckerFn) Check(c *fgs.ProcessTracepoint, log Logger) error {
 	return f(c, log)
 }
 
+// TracepointCheckerAND can be used to build a check that is a conjunction of other checkers
 type TracepointCheckerAND struct {
 	checks []TracepointChecker
 }
 
+// Check implements ResponseChecker interface
 func (o *TracepointCheckerAND) Check(t *fgs.ProcessTracepoint, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
@@ -2132,6 +2249,8 @@ func (o *TracepointCheckerAND) Check(t *fgs.ProcessTracepoint, l Logger) error {
 	return nil
 }
 
+// NewTracepointChecker creates a new TracepointCheckerAND to verify a series of checks on
+// a tracepoint event
 func NewTracepointChecker() *TracepointCheckerAND {
 	return &TracepointCheckerAND{}
 }
@@ -2193,15 +2312,16 @@ func TracepointWithArgs(checkers []GenericArgChecker) TracepointChecker {
 	})
 }
 
+// WithArgs adds a check on the tracepoint args
 func (o *TracepointCheckerAND) WithArgs(argCheckers []GenericArgChecker) *TracepointCheckerAND {
 	o.checks = append(o.checks, TracepointWithArgs(argCheckers))
 	return o
 }
 
-// NewTracepointEventChecker creates a new eventChainChecker for tracepoint events
-func NewTracepointEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewTracepointEventChecker creates a new EventChainChecker for tracepoint events
+func NewTracepointEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_TRACEPOINT)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -2210,7 +2330,8 @@ func NewTracepointEventChecker() *eventChainChecker {
 	}
 }
 
-func (e *eventChainChecker) HasTracepoint(tpCheck TracepointChecker) *eventChainChecker {
+// HasTracepoint adds a check for a tracepoint field to the tracepoint event
+func (e *EventChainChecker) HasTracepoint(tpCheck TracepointChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -2226,21 +2347,26 @@ func (e *eventChainChecker) HasTracepoint(tpCheck TracepointChecker) *eventChain
 	return e
 }
 
+// KprobeChecker checks a the tracepoint field of a kprobe event
 type KprobeChecker interface {
 	// Check checks a generic kprobe event
 	Check(*fgs.ProcessKprobe, Logger) error
 }
 
+// KprobeCheckerFn wraps a function that checks the kprobe field of an kprobe event
 type KprobeCheckerFn func(*fgs.ProcessKprobe, Logger) error
 
+// Check implements ResponseChecker interface
 func (f KprobeCheckerFn) Check(c *fgs.ProcessKprobe, log Logger) error {
 	return f(c, log)
 }
 
+// KprobeCheckerAND can be used to build a check that is a conjunction of other checkers
 type KprobeCheckerAND struct {
 	checks []KprobeChecker
 }
 
+// Check implements ResponseChecker interface
 func (o *KprobeCheckerAND) Check(t *fgs.ProcessKprobe, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
@@ -2250,6 +2376,8 @@ func (o *KprobeCheckerAND) Check(t *fgs.ProcessKprobe, l Logger) error {
 	return nil
 }
 
+// NewKprobeChecker creates a new KprobeCheckerAND to verify a series of checks on
+// a kprobe event
 func NewKprobeChecker() *KprobeCheckerAND {
 	return &KprobeCheckerAND{}
 }
@@ -2296,15 +2424,16 @@ func KprobeWithArgs(checkers []GenericArgChecker) KprobeChecker {
 	})
 }
 
+// WithArgs adds a checker on the kprobe args
 func (o *KprobeCheckerAND) WithArgs(argCheckers []GenericArgChecker) *KprobeCheckerAND {
 	o.checks = append(o.checks, KprobeWithArgs(argCheckers))
 	return o
 }
 
-// NewKprobeEventChecker creates a new eventChainChecker for tracepoint events
-func NewKprobeEventChecker() *eventChainChecker {
-	return &eventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (error, fgsEvent) {
+// NewKprobeEventChecker creates a new EventChainChecker for tracepoint events
+func NewKprobeEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_KPROBE)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
@@ -2313,7 +2442,8 @@ func NewKprobeEventChecker() *eventChainChecker {
 	}
 }
 
-func (e *eventChainChecker) HasKprobe(kpCheck KprobeChecker) *eventChainChecker {
+// HasKprobe adds a check for a kprobe field to the kprobe event
+func (e *EventChainChecker) HasKprobe(kpCheck KprobeChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -2329,17 +2459,21 @@ func (e *eventChainChecker) HasKprobe(kpCheck KprobeChecker) *eventChainChecker 
 	return e
 }
 
+// GenericArgChecker checks a generic argument
 type GenericArgChecker interface {
 	// Check checks a generic argument
 	Check(*fgs.KprobeArgument, Logger) error
 }
 
+// GenericArgCheckerFn wraps a function that checks a generic argument
 type GenericArgCheckerFn func(*fgs.KprobeArgument, Logger) error
 
+// Check implements ResponseChecker interface
 func (f GenericArgCheckerFn) Check(c *fgs.KprobeArgument, log Logger) error {
 	return f(c, log)
 }
 
+// GenericArgSizeCheck checks the size of a generic arg
 func GenericArgSizeCheck(val uint64) GenericArgChecker {
 	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
 		if sa, ok := arg.Arg.(*fgs.KprobeArgument_SizeArg); ok {
@@ -2353,6 +2487,7 @@ func GenericArgSizeCheck(val uint64) GenericArgChecker {
 	})
 }
 
+// GenericArgIsInt checks that a generic arg is an integer
 func GenericArgIsInt() GenericArgChecker {
 	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
 		if _, ok := arg.Arg.(*fgs.KprobeArgument_IntArg); ok {
@@ -2363,6 +2498,7 @@ func GenericArgIsInt() GenericArgChecker {
 	})
 }
 
+// GenericArgIntCheck checks the value of an integer arg
 func GenericArgIntCheck(val int32) GenericArgChecker {
 	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
 		if ia, ok := arg.Arg.(*fgs.KprobeArgument_IntArg); ok {
@@ -2376,6 +2512,7 @@ func GenericArgIntCheck(val int32) GenericArgChecker {
 	})
 }
 
+// GenericArgBytesCheck checks the value of a bytes arg
 func GenericArgBytesCheck(val []byte) GenericArgChecker {
 	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
 		if ba, ok := arg.Arg.(*fgs.KprobeArgument_BytesArg); ok {
@@ -2394,6 +2531,7 @@ func GenericArgBytesCheck(val []byte) GenericArgChecker {
 	})
 }
 
+// GenericArgStringCheck checks the value of a string arg
 func GenericArgStringCheck(val StringArg) GenericArgChecker {
 	sm := stringMatcherFromArg(val)
 	matcher := sm.GetMatcher()
@@ -2409,6 +2547,7 @@ func GenericArgStringCheck(val StringArg) GenericArgChecker {
 	})
 }
 
+// GenericArgFileChecker checks the value of a file arg
 func GenericArgFileChecker(mount, path StringArg) GenericArgChecker {
 	smMount := stringMatcherFromArg(mount)
 	smPath := stringMatcherFromArg(path)
