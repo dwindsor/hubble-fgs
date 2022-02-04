@@ -1552,6 +1552,19 @@ func HttpWithResponseReason(sm StringMatcher) HttpChecker {
 	)
 }
 
+func HttpWithResponseCode(code uint32) HttpChecker {
+	return HttpCheckerFn(func(t *fgs.ProcessHttp, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("Http is nil and cannot match Response.Code using %d", code)
+		}
+		if t.Http.Response.Code != code {
+			return fmt.Errorf("expected status code to be %d but got %d", code, t.Http.Response.Code)
+		}
+		log.Logf("**** MATCH Http on Response.Code: %d", code)
+		return nil
+	})
+}
+
 type HttpCheckerAND struct {
 	checks []HttpChecker
 }
@@ -1609,6 +1622,10 @@ func (o *HttpCheckerAND) WithResponseVersion(arg StringArg) *HttpCheckerAND {
 func (o *HttpCheckerAND) WithResponseReason(arg StringArg) *HttpCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, HttpWithResponseReason(sm))
+	return o
+}
+func (o *HttpCheckerAND) WithResponseCode(code uint32) *HttpCheckerAND {
+	o.checks = append(o.checks, HttpWithResponseCode(code))
 	return o
 }
 
