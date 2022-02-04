@@ -429,6 +429,10 @@ func (k *Observer) runEventsNew(stopCtx context.Context, ready func()) error {
 	k.observerListeners(&api.MsgFGSReady{})
 	ready()
 
+	// Listeners are ready and about to start reading from perf reader, tell
+	// user everything is ready.
+	k.log.Info("Listening for events...")
+
 	// Start reading records from the perf array. Reads until the reader is closed.
 	var wg sync.WaitGroup
 	wg.Add(1)
