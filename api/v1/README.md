@@ -541,6 +541,7 @@ HTTP PARSER
 | content_length | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | headers | [HttpHeader](#fgs.HttpHeader) | repeated |  |
 | flags | [string](#string) |  |  |
+| transfer_encoding | [string](#string) |  |  |
 
 
 
@@ -562,6 +563,7 @@ HTTP PARSER
 | content_length | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
 | headers | [HttpHeader](#fgs.HttpHeader) | repeated |  |
 | flags | [string](#string) |  |  |
+| transfer_encoding | [string](#string) |  |  |
 
 
 

@@ -358,6 +358,7 @@ message HttpRequest {
    google.protobuf.UInt32Value content_length = 7;
    repeated HttpHeader headers = 8;
    string flags                = 9;
+   string transfer_encoding    = 10;
 }
 
 message HttpResponse {
@@ -368,6 +369,7 @@ message HttpResponse {
    google.protobuf.UInt32Value content_length = 5;
    repeated HttpHeader headers  = 6;
    string flags                 = 7;
+   string transfer_encoding     = 8;
 }
 
 message HttpInfo {
