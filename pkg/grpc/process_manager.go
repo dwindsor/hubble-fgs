@@ -186,12 +186,13 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		}
 
 		fgsHttpResponse = &fgs.HttpResponse{
-			Timestamp:     ktimeToProto(event.Common.Ktime),
-			Version:       event.Request.RespVersion,
-			Code:          code,
-			Reason:        event.Request.Reason,
-			ContentLength: &wrapperspb.UInt32Value{Value: uint32(length)},
-			Flags:         strings.Join(reader.HttpErrorFlags(event.Request.FlagsResponse), " "),
+			Timestamp:        ktimeToProto(event.Common.Ktime),
+			Version:          event.Request.RespVersion,
+			Code:             code,
+			Reason:           event.Request.Reason,
+			ContentLength:    &wrapperspb.UInt32Value{Value: uint32(length)},
+			Flags:            strings.Join(reader.HttpErrorFlags(event.Request.FlagsResponse), " "),
+			TransferEncoding: event.Request.RespTransferEncoding,
 		}
 	}
 
@@ -202,14 +203,15 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 
 	if len(event.Request.Method) != 0 {
 		fgsHttpRequest = &fgs.HttpRequest{
-			Timestamp:     ktimeToProto(event.Request.Ktime),
-			Method:        event.Request.Method,
-			Uri:           event.Request.Uri,
-			Version:       event.Request.Protocol,
-			Host:          event.Request.Host,
-			Agent:         event.Request.UserAgent,
-			ContentLength: &wrapperspb.UInt32Value{Value: uint32(length)},
-			Flags:         strings.Join(reader.HttpErrorFlags(event.Request.Flags), " "),
+			Timestamp:        ktimeToProto(event.Request.Ktime),
+			Method:           event.Request.Method,
+			Uri:              event.Request.Uri,
+			Version:          event.Request.Protocol,
+			Host:             event.Request.Host,
+			Agent:            event.Request.UserAgent,
+			ContentLength:    &wrapperspb.UInt32Value{Value: uint32(length)},
+			Flags:            strings.Join(reader.HttpErrorFlags(event.Request.Flags), " "),
+			TransferEncoding: event.Request.TransferEncoding,
 		}
 	}
 
