@@ -70,7 +70,6 @@ func runNetworkCB() {
 
 	nsDir, err := ioutil.ReadDir(defaults.NetnsDir)
 	if err != nil {
-		logger.GetLogger().WithError(err).Infof("netns dir read failed")
 		return
 	}
 
