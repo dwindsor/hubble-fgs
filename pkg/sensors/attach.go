@@ -285,7 +285,10 @@ func loadProgram(
 				return fmt.Errorf("selector install failed: %w", err), 0
 			}
 		} else {
-			return fmt.Errorf("selector '%s' not found from program '%s'", selector.MapName, load.Name), 0
+			// TODO(JM): UDP sensor currently loads all programs with the "tls_filter_map" selector,
+			// and this isn't in all of them. Properly fix the load in the UDP sensor.
+			//return fmt.Errorf("selector '%s' not found from program '%s'", selector.MapName, load.Name), 0
+			logger.GetLogger().Warnf("Selector '%s' not found from program '%s', ignoring.", selector.MapName, load.Name)
 		}
 	}
 
