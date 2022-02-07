@@ -128,9 +128,6 @@ github.com/cilium/client-go v0.0.0-20200525133704-d13039a12d08 h1:yc+GQQP2MXeOvD
 github.com/cilium/client-go v0.0.0-20200525133704-d13039a12d08/go.mod h1:4a/dpQEvzAhT1BbuWW09qvIaGw6Gbu1gZYiQZIi1DMw=
 github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3 h1:wenYMyWJ08dgEUUj0Ija8qdK/V9vL3ThAD5sjOYlFlg=
 github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3/go.mod h1:cXN7jgo+gsGlNvQ7Vqu2ELdc3f7i7PPgupHqSkLzzBo=
-github.com/cilium/ebpf v0.0.0-20191113100448-d9fb101ca1fb/go.mod h1:MA5e5Lr8slmEg9bt0VpxxWqJlO4iwu3FBdHUzV7wQVg=
-github.com/cilium/ebpf v0.8.1-0.20220125132352-732bf912e846 h1:bHK4V4op4LNfkC6bLl8bS084T33uIxw3NWQ1YJX8NJM=
-github.com/cilium/ebpf v0.8.1-0.20220125132352-732bf912e846/go.mod h1:f5zLIM0FSNuAkSyLAN7X+Hy6yznlF1mNiWUMfxMtrgk=
 github.com/cilium/hubble v0.0.0-20200304205543-565cbe60f7fb/go.mod h1:GYdTLWzzpzgp2ptyEp0LccPotGo4BxPX9SJRGL4pI5c=
 github.com/cilium/hubble v0.5.1 h1:Vc8IBCTi/wR7BHX9ycSoqyTM4hsv0Z7jgNle4ePJRPQ=
 github.com/cilium/hubble v0.5.1/go.mod h1:OdNhwzmedkPgZBCZAqhNK3LUmVc7GJPOXw1k8g3/w3E=
@@ -465,6 +462,8 @@ github.com/ishidawataru/sctp v0.0.0-20180213033435-07191f837fed/go.mod h1:DM4VvS
 github.com/j-keck/arping v0.0.0-20160618110441-2cf9dc699c56/go.mod h1:ymszkNOg6tORTn+6F6j+Jc8TOr5osrynvN6ivFWZ2GA=
 github.com/jessevdk/go-flags v1.4.0/go.mod h1:4FA24M0QyGHXBuZZK/XkWh8h0e1EYbRYJSGM75WSRxI=
 github.com/jmespath/go-jmespath v0.0.0-20180206201540-c2b33e8439af/go.mod h1:Nht3zPeWKUH0NzdCt2Blrr5ys8VGpn0CEB0cQHVjt7k=
+github.com/joamaki/ebpf v0.8.1-0.20220207152208-4d3a175d59f8 h1:jfyBStrtFQGizgFYGSiGeGebxe8wtNTRnxTBTSi5ZpI=
+github.com/joamaki/ebpf v0.8.1-0.20220207152208-4d3a175d59f8/go.mod h1:f5zLIM0FSNuAkSyLAN7X+Hy6yznlF1mNiWUMfxMtrgk=
 github.com/joho/godotenv v1.3.0/go.mod h1:7hK45KPybAkOC6peb+G5yklZfMxEjkZhHbwpqxOKXbg=
 github.com/jonboulle/clockwork v0.1.0/go.mod h1:Ii8DK3G1RaLaWxj9trq07+26W01tbo22gdxWY5EU2bo=
 github.com/jrfastab/netlink v1.1.1 h1:1tUC07EQtDkvMsTPHy7coOKYUutG+pdHdoZsLmI7xGE=
