@@ -16,6 +16,8 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/isovalent/hubble-fgs/pkg/option"
+
 	"golang.org/x/sys/unix"
 )
 
@@ -88,4 +90,9 @@ func MinKernelVersion(kernel string) bool {
 		return true
 	}
 	return false
+}
+
+func EnableLargeProgs() bool {
+	kernelVer, _, _ := GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
+	return (int64(kernelVer) >= KernelStringToNumeric("5.3.0"))
 }

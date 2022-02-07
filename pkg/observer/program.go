@@ -20,11 +20,11 @@ import (
 )
 
 func RemovePrograms(bpfDir, mapDir string) {
-	for _, l := range sensors.AllPrograms {
+	for _, l := range sensors.GetAllPrograms() {
 		sensors.RemoveProgram(bpfDir, l)
 	}
 
-	for _, m := range sensors.AllMaps {
+	for _, m := range sensors.GetAllMaps() {
 		if m.FD > 0 {
 			syscall.Close(m.FD)
 		}

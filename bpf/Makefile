@@ -19,7 +19,7 @@ NOP = bpf_nop.o bpf_nop_verdict.o bpf_nop_parser.o
 NETWORKING = bpf_tcpmon.o bpf_tcpmonret.o bpf_listen.o bpf_tcpclose.o bpf_tcp_send_check.o \
 	     bpf_kfree_skb.o bpf_sock.o bpf_sock_release.o bpf_inet_send.o bpf_inet_send_lazy.o \
 	     bpf_udp_sendmsg.o
-PROCESS = bpf_execve_event.o bpf_fork.o bpf_exit.o bpf_cred.o bpf_generic_kprobe.o bpf_generic_retkprobe.o bpf_generic_tracepoint.o
+PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_cred.o bpf_generic_kprobe.o bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o
 BPFTEST = bpf_lseek.o
 
 IDIR = ./include/
@@ -114,6 +114,9 @@ $(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
 # PROCESSDIR
 objs/%.ll: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+objs/%_v53.ll: $(PROCESSDIR)%.c
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@

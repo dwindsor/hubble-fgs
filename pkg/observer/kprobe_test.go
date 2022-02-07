@@ -23,6 +23,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	"github.com/stretchr/testify/assert"
@@ -1132,7 +1133,7 @@ func testMultipleMountsFiltered(t *testing.T, readHook string) {
 	var pathStack []string
 
 	// let's create /tmp2/tmp3/tmp4/tmp5 where each dir is a mount point
-	path := ""
+	path := "/"
 	for i := 2; i < 6; i++ {
 		path = filepath.Join(path, fmt.Sprintf("tmp%d", i))
 		pathStack = append(pathStack, path)
@@ -1161,7 +1162,11 @@ func testMultipleMountsFiltered(t *testing.T, readHook string) {
 	})
 
 	filePath := path + "/testfile"
+
 	writeChecker = createWriteChecker("/tmp4/tmp5/testfile", "unresolvedMountPoints")
+	if kernels.EnableLargeProgs() {
+		writeChecker = createWriteChecker("/tmp2/tmp3/tmp4/tmp5/testfile", "")
+	}
 
 	// the full path name is "/tmp2/tmp3/tmp4/tmp5/testfile"
 	// but in the current implementation we support up to 2 mount points
@@ -1200,6 +1205,9 @@ func testMultiplePathComponentsFiltered(t *testing.T, readHook string) {
 
 	filePath := path + "/testfile"
 	writeChecker = createWriteChecker("/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "unresolvedPathComponents")
+	if kernels.EnableLargeProgs() {
+		writeChecker = createWriteChecker("/tmp/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "")
+	}
 
 	// the full path name is "/tmp/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16"
 	// but in the current implementation we support up to 13 path components
@@ -1212,7 +1220,7 @@ func testMultiplePathComponentsFiltered(t *testing.T, readHook string) {
 func testMultipleMountPathFiltered(t *testing.T, readHook string) {
 	var pathStack []string
 	var dirStack []string
-	path := ""
+	path := "/"
 
 	// let's create /tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16
 	// tmp* are mount points
@@ -1266,6 +1274,9 @@ func testMultipleMountPathFiltered(t *testing.T, readHook string) {
 
 	filePath := path + "/testfile"
 	writeChecker = createWriteChecker("/[M]/tmp4/tmp5/[P]/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "unresolvedMountPoints unresolvedPathComponents")
+	if kernels.EnableLargeProgs() {
+		writeChecker = createWriteChecker("/tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "")
+	}
 
 	// the full path name is "/tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/testfile"
 	// but in the current implementation we support up to 13 path components and 2 mount points
@@ -1278,6 +1289,9 @@ func testMultipleMountPathFiltered(t *testing.T, readHook string) {
 func TestMultipleMountsFiltered(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp4/tmp5")
+	if kernels.EnableLargeProgs() {
+		readHook = testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp2/tmp3/tmp4/tmp5")
+	}
 	testMultipleMountsFiltered(t, readHook)
 }
 
@@ -1297,5 +1311,8 @@ func TestMultipleMountPathFiltered(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	// Kernel adds a & in the case of unresolved path. In the userspace we change that to [P]
 	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp4/tmp5/&/5/6/7/8/9/10/11/12/13/14/15/16")
+	if kernels.EnableLargeProgs() {
+		readHook = testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16")
+	}
 	testMultipleMountPathFiltered(t, readHook)
 }

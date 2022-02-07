@@ -36,5 +36,5 @@ var (
 )
 
 func init() {
-	sensors.AllPrograms = append(sensors.AllPrograms, &ObserverLseekTest)
+	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), &ObserverLseekTest))
 }

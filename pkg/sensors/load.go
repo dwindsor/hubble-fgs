@@ -91,8 +91,8 @@ func LoadDefault(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Conte
 	// Add config file loaded programs and maps to All* so unload will cleanup
 	// these as well as default programs/maps.
 	for _, s := range configSensors {
-		AllPrograms = append(AllPrograms, s.Progs...)
-		AllMaps = append(AllMaps, s.Maps...)
+		SetAllPrograms(append(GetAllPrograms(), s.Progs...))
+		SetAllMaps(append(GetAllMaps(), s.Maps...))
 	}
 
 	if err := load.Load(ctx, bpfDir, mapDir, ciliumDir); err != nil {
@@ -359,7 +359,7 @@ func createDir(bpfDir, mapDir string) {
 
 func disableBpfLoad(prog *Program) {
 	prog.LoadState.SetDisabled()
-	for _, om := range AllMaps {
+	for _, om := range GetAllMaps() {
 		if om.Prog == prog {
 			logger.GetLogger().WithField("map", om.Name).Infof("Disabling map")
 			om.PinState.SetDisabled()

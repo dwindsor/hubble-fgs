@@ -22,8 +22,12 @@ enum bpf_enum_value_kind {
 
 #include "bpf_core_read.h"
 
-#define PROBE_CWD_READ_ITERATIONS 13
-#define MAX_MOUNT_POINTS 32
+#ifdef __LARGE_BPF_PROG
+	#define PROBE_CWD_READ_ITERATIONS 24 /* 32 is too much for 5.4 (i.e. The sequence of 8193 jumps is too complex.) but fine for 5.10 */
+	#define MAX_MOUNT_POINTS 32
+#else
+	#define PROBE_CWD_READ_ITERATIONS 13
+#endif
 
 /* Not sure if the following is more clear compared to
  * the previous approach but it will be more same as now
@@ -46,6 +50,7 @@ enum bpf_enum_value_kind {
 #define M_REPEAT_15(X) M_REPEAT_14(X) X
 #define M_REPEAT_16(X) M_REPEAT_15(X) X
 /* 16 should be enough in the case where we have program size limitations */
+#define M_REPEAT_24(X) M_REPEAT_8(X) M_REPEAT_16(X)
 
 #define M_EXPAND(...) __VA_ARGS__
 
@@ -440,7 +445,7 @@ struct mount *follow_mount_point(struct mount *mnt, void *argp, u32 *size, u32 *
 	*size = getpath(argp, dentry, 0, *size, flags);
 
 	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
-	if (dentry == dentry_parent) // IS_ROOT(dentry)
+	if (dentry == dentry_parent) /* IS_ROOT(dentry) */
 		return 0;
 
 	return local_mnt;
@@ -452,7 +457,9 @@ u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
 	struct path pwd;
 	struct mount *mnt;
 	struct dentry *dentry, *dentry_parent;
-	int i;
+#ifdef __LARGE_BPF_PROG
+	int i = 0;
+#endif
 
 	probe_read(&pwd, sizeof(pwd), path);
 	offset = getpath(argp, pwd.dentry,  pwd.mnt, offset, flags);
@@ -464,16 +471,14 @@ u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
 
 	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
 	if (dentry != dentry_parent) { // !IS_ROOT(dentry)
-		// if (bpf_core_field_exists(task->cpus_ptr)) { // introduced in 5.3
-		if (0) {
-			for (i = 0; i < MAX_MOUNT_POINTS; ++i)
-				if((mnt = follow_mount_point(mnt, argp, &offset, flags)) == 0)
-					break;
-		} else {
-			// one more call to support at max 2 mount points
-			mnt = follow_mount_point(mnt, argp, &offset, flags);
-		}
-
+#ifdef __LARGE_BPF_PROG
+		for (i = 0; i < MAX_MOUNT_POINTS; ++i)
+			if((mnt = follow_mount_point(mnt, argp, &offset, flags)) == 0)
+				break;
+#else
+		// one more call to support at max 2 mount points
+		mnt = follow_mount_point(mnt, argp, &offset, flags);
+#endif
 		offset = mark_unresolved(argp, offset, mnt, flags);
 	}
 
@@ -954,12 +959,6 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 	msg->kube.cgrpid = get_current_cgroup_id();
 #endif
 	get_caps(msg, task);
-}
-
-static inline __attribute__((always_inline))
-void event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker)
-{
-	__event_get_task_info(msg, op, walker, false);
 }
 
 static inline __attribute__((always_inline))

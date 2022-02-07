@@ -28,6 +28,23 @@ var (
 		struct{}{},
 	}
 
+	ExecveV53 = Program{
+		"bpf_execve_event_v53.o",
+		"sched/sched_process_exec",
+		"sched/sched_process_exec",
+		"tracepoint/sys_execve",
+		"event_execve",
+
+		false,
+		true,
+		"tracepoint",
+		Idle(),
+
+		-1,
+
+		struct{}{},
+	}
+
 	Exit = Program{
 		"bpf_exit.o",
 		"sched/sched_process_exit",
@@ -165,20 +182,24 @@ var (
 	}
 
 	/* Event Ring map */
-	TCPMonMap = Map{"tcpmon_map", "", &Execve, Idle(), -1}
+	TCPMonMap    = Map{"tcpmon_map", "", &Execve, Idle(), -1}
+	TCPMonMapV53 = Map{"tcpmon_map", "", &ExecveV53, Idle(), -1}
 
 	/* Networking and Process Monitoring maps */
 	ExecveMap           = Map{"execve_map", "", &Execve, Idle(), -1}
+	ExecveMapV53        = Map{"execve_map", "", &ExecveV53, Idle(), -1}
 	SocketMap           = Map{"socket_map", "", &TCPConnect, Idle(), -1}
 	TCPSendCheckSampler = Map{"tcp_send_check_sampler", "", &TCPSendCheck, Idle(), -1}
 
 	/* Policy maps populated from base programs */
-	NamesMap = Map{"names_map", "", &Execve, Idle(), -1}
+	NamesMap    = Map{"names_map", "", &Execve, Idle(), -1}
+	NamesMapV53 = Map{"names_map", "", &ExecveV53, Idle(), -1}
 
 	/* Internal statistics for debugging */
-	ExecveStats = Map{"execve_map_stats", "", &Execve, Idle(), -1}
-	SocketStats = Map{"socket_map_stats", "", &TCPConnect, Idle(), -1}
-	TLSMapStats = Map{"tls_map_stats", "", &TCPConnect, Idle(), -1}
+	ExecveStats    = Map{"execve_map_stats", "", &Execve, Idle(), -1}
+	ExecveStatsV53 = Map{"execve_map_stats", "", &ExecveV53, Idle(), -1}
+	SocketStats    = Map{"socket_map_stats", "", &TCPConnect, Idle(), -1}
+	TLSMapStats    = Map{"tls_map_stats", "", &TCPConnect, Idle(), -1}
 
 	/* Cilium maps */
 	CiliumSNAT = Map{"cilium_snat_v4_external", "", &TCPConnect, Idle(), -1}

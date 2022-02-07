@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
@@ -315,12 +316,17 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 		tracepoints = append(tracepoints, tp)
 	}
 
+	progName := "bpf_generic_tracepoint.o"
+	if kernels.EnableLargeProgs() {
+		progName = "bpf_generic_tracepoint_v53.o"
+	}
+
 	maps := []*sensors.Map{}
 	progs := make([]*sensors.Program, 0, len(tracepoints))
 	for _, tp := range tracepoints {
 		attach := fmt.Sprintf("%s/%s", tp.Info.Subsys, tp.Info.Event)
 		prog0 := sensors.Program{
-			Name:       path.Join(option.Config.HubbleLib, "bpf_generic_tracepoint.o"),
+			Name:       path.Join(option.Config.HubbleLib, progName),
 			X64Attach:  attach,
 			Attach:     attach,
 			Label:      "tracepoint/generic_tracepoint",

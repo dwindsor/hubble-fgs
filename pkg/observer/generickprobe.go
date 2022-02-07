@@ -26,6 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/idtable"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -419,6 +420,13 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			return nil, fmt.Errorf("Error add enum value failed %d", ret)
 		}
 
+		loadProgName := "bpf_generic_kprobe.o"
+		loadProgRetName := "bpf_generic_retkprobe.o"
+		if kernels.EnableLargeProgs() {
+			loadProgName = "bpf_generic_kprobe_v53.o"
+			loadProgRetName = "bpf_generic_retkprobe_v53.o"
+		}
+
 		// NB(kkourt): after we insert the kprobeEntry to the global table
 		// (genericKprobeTable), the btf object will need to be released when we remove the
 		// entry from the table. We set btfobj to nil to indicate this.
@@ -436,7 +444,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 
 		load := &sensors.Program{}
 		load.X64Attach = funcName
-		load.Name = path.Join(option.Config.HubbleLib, "bpf_generic_kprobe.o")
+		load.Name = path.Join(option.Config.HubbleLib, loadProgName)
 		load.Label = "kprobe/generic_kprobe"
 		load.Attach = funcName
 		load.PinPath = "kprobe" + "_" + funcName
@@ -451,7 +459,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		if setRetprobe {
 			loadret := &sensors.Program{}
 			loadret.X64Attach = funcName
-			loadret.Name = path.Join(option.Config.HubbleLib, "bpf_generic_retkprobe.o")
+			loadret.Name = path.Join(option.Config.HubbleLib, loadProgRetName)
 			loadret.Label = "kprobe/generic_retkprobe"
 			loadret.Attach = funcName
 			loadret.PinPath = "kretprobe" + "_" + funcName
@@ -548,7 +556,7 @@ func loadGenericKprobeSensor(bpfDir, mapDir string, load *sensors.Program, versi
 	genmapDir := gk.getMapDir(mapDir)
 	os.Mkdir(genmapDir, os.ModeDir)
 
-	sensors.AllPrograms = append(sensors.AllPrograms, load)
+	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), load))
 	retprobe := strings.Contains(load.Name, "ret")
 	if retprobe {
 		return loadGenericKprobeRet(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir), 0

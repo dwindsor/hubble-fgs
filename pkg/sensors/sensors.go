@@ -13,11 +13,15 @@ package sensors
 import (
 	"fmt"
 
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
+
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 var (
+	// do not access that directly outside of this file
+	// use {get|set}AllPrograms()
 	AllPrograms = []*Program{
 		&Execve,
 		&Exit,
@@ -30,6 +34,20 @@ var (
 		&Listen,
 	}
 
+	AllProgramsV53 = []*Program{
+		&ExecveV53,
+		&Exit,
+		&Fork,
+		&Cred,
+		&TCPConnect,
+		&TCPConnectRet,
+		&TCPClose,
+		&TCPSendCheck,
+		&Listen,
+	}
+
+	// do not access that directly outside of this file
+	// use {get|set}AllMaps()
 	AllMaps = []*Map{
 		&NamesMap,
 		&SocketMap,
@@ -41,7 +59,49 @@ var (
 		&CiliumSNAT,
 		&TCPSendCheckSampler,
 	}
+
+	AllMapsV53 = []*Map{
+		&NamesMapV53,
+		&SocketMap,
+		&ExecveMapV53,
+		&TCPMonMapV53,
+		&ExecveStatsV53,
+		&SocketStats,
+		&TLSMapStats,
+		&CiliumSNAT,
+		&TCPSendCheckSampler,
+	}
 )
+
+func GetAllPrograms() []*Program {
+	if kernels.EnableLargeProgs() {
+		return AllProgramsV53
+	}
+	return AllPrograms
+}
+
+func SetAllPrograms(p []*Program) {
+	if kernels.EnableLargeProgs() {
+		AllProgramsV53 = p
+	} else {
+		AllPrograms = p
+	}
+}
+
+func GetAllMaps() []*Map {
+	if kernels.EnableLargeProgs() {
+		return AllMapsV53
+	}
+	return AllMaps
+}
+
+func SetAllMaps(m []*Map) {
+	if kernels.EnableLargeProgs() {
+		AllMapsV53 = m
+	} else {
+		AllMaps = m
+	}
+}
 
 // GetInitialSensor returns the collection of Sensor that is loaded at
 // initialization time.
@@ -57,6 +117,19 @@ func GetInitialSensor() *Sensor {
 		&TCPSendCheck,
 		&Listen,
 	}
+	if kernels.EnableLargeProgs() {
+		progs = []*Program{
+			&ExecveV53,
+			&Exit,
+			&Fork,
+			&Cred,
+			&TCPConnect,
+			&TCPConnectRet,
+			&TCPClose,
+			&TCPSendCheck,
+			&Listen,
+		}
+	}
 
 	maps := []*Map{
 		&NamesMap,
@@ -68,6 +141,19 @@ func GetInitialSensor() *Sensor {
 		&SocketStats,
 		&TLSMapStats, // NB: Maybe this should be under k.enableTLS?
 		&TCPSendCheckSampler,
+	}
+	if kernels.EnableLargeProgs() {
+		maps = []*Map{
+			&NamesMapV53,
+			&TCPMonMapV53,
+			&ExecveMapV53,
+			&SocketMap,
+			/* &ObserverTcpMap */
+			&ExecveStatsV53,
+			&SocketStats,
+			&TLSMapStats, // NB: Maybe this should be under k.enableTLS?
+			&TCPSendCheckSampler,
+		}
 	}
 
 	return &Sensor{
