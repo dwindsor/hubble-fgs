@@ -22,7 +22,36 @@ enum bpf_enum_value_kind {
 
 #include "bpf_core_read.h"
 
+#define PROBE_CWD_READ_ITERATIONS 13
 #define MAX_MOUNT_POINTS 32
+
+/* Not sure if the following is more clear compared to
+ * the previous approach but it will be more same as now
+ * we use PROBE_CWD_READ_ITERATIONS in more than one places.
+ */
+#define M_REPEAT_1(X) X
+#define M_REPEAT_2(X) M_REPEAT_1(X) X
+#define M_REPEAT_3(X) M_REPEAT_2(X) X
+#define M_REPEAT_4(X) M_REPEAT_3(X) X
+#define M_REPEAT_5(X) M_REPEAT_4(X) X
+#define M_REPEAT_6(X) M_REPEAT_5(X) X
+#define M_REPEAT_7(X) M_REPEAT_6(X) X
+#define M_REPEAT_8(X) M_REPEAT_7(X) X
+#define M_REPEAT_9(X) M_REPEAT_8(X) X
+#define M_REPEAT_10(X) M_REPEAT_9(X) X
+#define M_REPEAT_11(X) M_REPEAT_10(X) X
+#define M_REPEAT_12(X) M_REPEAT_11(X) X
+#define M_REPEAT_13(X) M_REPEAT_12(X) X
+#define M_REPEAT_14(X) M_REPEAT_13(X) X
+#define M_REPEAT_15(X) M_REPEAT_14(X) X
+#define M_REPEAT_16(X) M_REPEAT_15(X) X
+/* 16 should be enough in the case where we have program size limitations */
+
+#define M_EXPAND(...) __VA_ARGS__
+
+#define M_REPEAT__(N, X) M_EXPAND(M_REPEAT_ ## N)(X)
+#define M_REPEAT_(N, X) M_REPEAT__(N, X)
+#define M_REPEAT(N, X) M_REPEAT_(M_EXPAND(N), X)
 
 static inline void compiler_barrier(void) {
 	asm volatile("" ::: "memory");
@@ -272,6 +301,33 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	"r3 += 1;\n" \
 	"*(u32 *)%[iter] = r3;\n"
 
+/* we cannot avoid probe_read calls here as
+ * something line "*(u8 *)(r1 + 0) = r3;\n"
+ * fails.
+ */
+#define MARK_PATH_WITH_SYMBOLS 			\
+	"r1 = *(u64 *)%[pid];\n"			\
+	"if " CWD_OFFSET_REG " < 0 goto %l[a];\n"	\
+	"if " CWD_OFFSET_REG " > 1188 goto %l[a];\n"	\
+	"r1 += " CWD_OFFSET_REG ";\n"			\
+	"r2 = 1;\n"					\
+	"r3 = *(u64 *)%[slash];\n"			\
+	"call 4;\n" 					\
+	CWD_OFFSET_REG " += 1;\n" 			\
+	"r1 = *(u64 *)%[pid];\n"			\
+	"if " CWD_OFFSET_REG " < 0 goto %l[a];\n"	\
+	"if " CWD_OFFSET_REG " > 1188 goto %l[a];\n"	\
+	"r1 += " CWD_OFFSET_REG ";\n"			\
+	"r2 = 1;\n"					\
+	"r3 = *(u64 *)%[symbol];\n"			\
+	"call 4;\n" 					\
+	CWD_OFFSET_REG " += 1;\n"
+
+#define MARK_UNRESOLVED_PATH_IF_NEEDED \
+	"if r3 < " XSTR(PROBE_CWD_READ_ITERATIONS) " goto %l[a];\n" \
+	MARK_PATH_WITH_SYMBOLS \
+	"*(u32 *)%[offset] = " CWD_OFFSET_REG ";\n"
+
 #define offsetof_btf(s, memb) \
 	((size_t)((char *)_(&((s *)0)->memb) - (char *)0))
 
@@ -284,7 +340,8 @@ u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile
 {
 	long dentry_parent, dentry_name;
 	struct dentry *vfsmnt_dentry = 0;
-	char slash, *pslash;
+	char slash= '/', *pslash = &slash;
+	char symbol = '&', *psymbol = &symbol;
 	long *ptr = 0;
 	volatile u32 iter = 0;
 
@@ -293,9 +350,6 @@ u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile
 	 * bytes into struct on all kernels we use.
 	 */
 	const int qstr = 8;
-
-	slash = '/';
-	pslash = &slash;
 
 	if (vfsmnt)
 		probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), _(&vfsmnt->mnt_root));
@@ -328,26 +382,15 @@ u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile
 	 */
 	asm volatile goto (
 			PROBE_CWD_READ_LOOP_HEADER
-			PROBE_CWD_READ /* 1 */
-			PROBE_CWD_READ /* 2 */
-			PROBE_CWD_READ /* 3 */
-			PROBE_CWD_READ /* 4 */
-			PROBE_CWD_READ /* 5 */
-			PROBE_CWD_READ /* 6 */
-			PROBE_CWD_READ /* 7 */
-			PROBE_CWD_READ /* 8 */
-			PROBE_CWD_READ /* 9 */
-			PROBE_CWD_READ /* 10 */
-			PROBE_CWD_READ /* 11 */
-			PROBE_CWD_READ /* 12 */
-			PROBE_CWD_READ /* 13 */
-#define PROBE_CWD_READ_ITERATIONS 13 /* should match the above */
+			M_REPEAT(PROBE_CWD_READ_ITERATIONS, PROBE_CWD_READ)
+			MARK_UNRESOLVED_PATH_IF_NEEDED
 		:
 		: [pid]    "m"(curr),
 		  [vfsmnt] "m"(vfsmnt_dentry),
 		  [dentry] "m"(dentry),
 		  [ptr]    "+r"(&ptr),
 		  [slash]  "m"(pslash),
+		  [symbol]  "m"(psymbol),
 		  [dentry_parent] "m"(dentry_parent),
 		  [dentry_name] "m"(dentry_name),
 		  [offset] "+m"(offset),
@@ -355,7 +398,7 @@ u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9", "memory"
 		: a);
 a:
-	if (flags && iter >= PROBE_CWD_READ_ITERATIONS)
+	if (iter >= PROBE_CWD_READ_ITERATIONS)
 		*flags |= UNRESOLVED_PATH_COMPONENTS;
 	return offset;
 }
@@ -373,8 +416,7 @@ u32 mark_unresolved(void *curr, volatile u32 offset, struct mount *mnt, u32 *fla
 	if (dentry == dentry_parent) // IS_ROOT(dentry)
 		return offset;
 
-	if (flags)
-		*flags |= UNRESOLVED_MOUNT_POINTS;
+	*flags |= UNRESOLVED_MOUNT_POINTS;
 	return offset;
 }
 

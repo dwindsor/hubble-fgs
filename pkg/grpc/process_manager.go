@@ -561,18 +561,14 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 				a.Arg = &fgs.KprobeArgument_BytesArg{BytesArg: e.Value}
 			}
 		case api.MsgGenericKprobeArgFile:
-			filePath := strings.TrimSuffix(reader.SwapPath(e.Value), "/")
-			if len(filePath) > 0 && filePath[0] != '/' {
-				filePath = "/" + filePath
-			}
 			fileArg := &fgs.KprobeFile{
-				Path:  filePath,
+				Path:  reader.MarkUnresolvedPathComponents(reader.GenPath(e.Value), e.Flags),
 				Flags: reader.FilePathFlagsToStr(e.Flags),
 			}
 			a.Arg = &fgs.KprobeArgument_FileArg{FileArg: fileArg}
 		case api.MsgGenericKprobeArgPath:
 			pathArg := &fgs.KprobePath{
-				Path:  reader.SwapPath(e.Value),
+				Path:  reader.MarkUnresolvedPathComponents(reader.GenPath(e.Value), e.Flags),
 				Flags: reader.FilePathFlagsToStr(e.Flags),
 			}
 			a.Arg = &fgs.KprobeArgument_PathArg{PathArg: pathArg}
@@ -843,7 +839,7 @@ func (pm *ProcessManager) getProcess(
 		process: &fgs.Process{
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
 			Uid:          &wrapperspb.UInt32Value{Value: process.UID},
-			Cwd:          cwd,
+			Cwd:          reader.MarkUnresolvedPathComponentsCwd(cwd, process.Flags),
 			Binary:       getBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
 			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),

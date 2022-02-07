@@ -172,6 +172,28 @@ func FilePathFlagsToStr(flags uint32) string {
 	return retval
 }
 
+func MarkUnresolvedPathComponents(path string, flags uint32) string {
+	retval := path
+	if (flags & api.UnresolvedMountPoints) != 0 {
+		retval = "/[M]" + retval
+	}
+	if (flags & api.UnresolvedPathComponents) != 0 {
+		retval = strings.ReplaceAll(retval, "&", "[P]")
+	}
+	return retval
+}
+
+func MarkUnresolvedPathComponentsCwd(path string, flags uint32) string {
+	retval := path
+	if (flags & api.EventErrorMountPoints) != 0 {
+		retval = "/[M]" + retval
+	}
+	if (flags & api.EventErrorPathComponents) != 0 {
+		retval = strings.ReplaceAll(retval, "&", "[P]")
+	}
+	return retval
+}
+
 func DiffKtime(start, end uint64) time.Duration {
 	return time.Duration(int64(end - start))
 }
@@ -210,6 +232,14 @@ func SwapPath(path string) string {
 		dirs[i], dirs[opp] = dirs[opp], dirs[i]
 	}
 	return strings.Join(dirs, "/")
+}
+
+func GenPath(path string) string {
+	filePath := strings.TrimSuffix(SwapPath(path), "/")
+	if len(filePath) > 0 && filePath[0] != '/' {
+		filePath = "/" + filePath
+	}
+	return filePath
 }
 
 func ArgsDecoder(s string, flags uint32) (string, string) {
