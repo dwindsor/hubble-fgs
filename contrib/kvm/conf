@@ -8,9 +8,9 @@ MNTDIR=mnt
 PACKAGES=("less" "vim" "sudo" "openssh-server" "python3" "curl" "iptables" "build-essential" "libelf-dev")
 
 # Disk size for the VM
-# This currently needs to be at least 13GiB to support running in KinD
+# This currently is recommended to be about 20GiB to support running in KinD
 # and at least 4GiB to run FGS locally.
-VMDISK=16G
+VMDISK=20G
 # RAM for the VM
 VMRAM=4G
 # Number of CPUs to the use for the VM
@@ -24,8 +24,12 @@ SSHPORT=3000
 KCONFIG=kernel.config
 # Path to download kernel sources
 KSRCDIR=.ksrc
-# Path place kernel bzImage and bpftool
+# Path to place compiled kernel bzImage and bpftool
 KOUT=kout
+# Full path for kernel bzImage, can be overridden to manually point to other kernel images
+BZIMAGE="$KOUT/bzImage"
+# Path where FGS directory is located, used to mount FGS as a network share
+FGSDIR=../..
 # Path to install kernel modules
 MODULESDIR=modules
 
