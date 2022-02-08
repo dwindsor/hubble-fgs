@@ -97,7 +97,7 @@ func (ec *eventCache) handleNetEvents() {
 			 */
 			if endpoint == nil || e.event.GetProcess().Pod == nil {
 				e.color++
-				if e.color != threeStrikes {
+				if e.color < threeStrikes {
 					tmp = append(tmp, e)
 					continue
 				}
@@ -108,7 +108,7 @@ func (ec *eventCache) handleNetEvents() {
 		labels, err := ec.eventLabels(endpoint, &e)
 		if err != nil {
 			e.color++
-			if e.color != threeStrikes {
+			if e.color < threeStrikes {
 				tmp = append(tmp, e)
 				continue
 			}
