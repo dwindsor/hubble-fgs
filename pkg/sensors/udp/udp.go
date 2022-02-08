@@ -359,7 +359,7 @@ type udpSensor struct {
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load,
 		[]sensors.Selector{
-			{"tls_filter_map", Selectors},
+			{"udp_filter_map", Selectors},
 		})
 }
 

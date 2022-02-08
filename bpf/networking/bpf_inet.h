@@ -22,7 +22,7 @@ struct bpf_map_def {
 struct bpf_map_def __attribute__((section("maps"), used)) udp_filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = sizeof(struct udp_info_value),
+	.value_size = 128,
 	.max_entries = 1,
 };
 
