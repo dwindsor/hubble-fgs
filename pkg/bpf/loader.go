@@ -975,3 +975,34 @@ func CgroupDestroySockOpt(progPath string) {
 
 	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
 }
+
+// Sockops programs are somewhat special because they are attached to
+// many different we assume loader and unloader code is serialized by
+// callers. It must be otherwise we have more problems than a refcnt
+// being incorrect and what BPF programs are running will be generally
+// confused.
+var (
+	sockopsRef int
+)
+
+func CgroupDestroySockops(progPath string) {
+	targetPath := "/run/hubble-fgs/cgroup2"
+	attach_type := int(3) // BPF_CGROUP_SOCK_OPS
+
+	if IsSockopsLoaded() {
+		CgroupSockopsRefDec()
+		C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
+	}
+}
+
+func CgroupSockopsRefInc() {
+	sockopsRef++
+}
+
+func CgroupSockopsRefDec() {
+	sockopsRef--
+}
+
+func IsSockopsLoaded() bool {
+	return sockopsRef != 0
+}

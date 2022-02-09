@@ -60,6 +60,11 @@ func LoadSkProgram(
 	return loadProgram(bpfDir, mapDir, load, targetMap.FD(), []Selector{})
 }
 
+// Sockops is different from other programs, in that it is shared across
+// multiple sensors e.g. TLS and HTTP. So to ensure we only ever have one
+// instance of the sockops lets guard the load by a refcnt check. We
+// assume this is serialized by caller and it must be or else there would
+// be interesting bugs when loaders and unloaders race.
 func LoadSockops(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,
@@ -67,6 +72,10 @@ func LoadSockops(
 	x64 bool,
 	tls_selectors, http_selectors, nop_selectors [128]byte,
 ) (error, int) {
+	if bpf.IsSockopsLoaded() {
+		return nil, 0
+	}
+	bpf.CgroupSockopsRefInc()
 	return LoadCgroupProgram(bpfDir, mapDir, load,
 		[]Selector{
 			{"tls_filter_map", tls_selectors},
