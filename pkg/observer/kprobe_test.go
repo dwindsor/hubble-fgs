@@ -985,7 +985,7 @@ func testKprobeObjectFileWriteFilteredHook(pidStr string, dir string) string {
           - ` + pidStr + `
         matchArgs:
         - index: 1
-          operator: "Equal"
+          operator: "Postfix"
           values:
           - "` + dir + `/testfile"
         matchActions:
@@ -1009,7 +1009,7 @@ func testKprobeObjectFileWriteFilteredHook(pidStr string, dir string) string {
           - ` + pidStr + `
         matchArgs:
         - index: 0
-          operator: "Equal"
+          operator: "Postfix"
           values:
           - "` + dir + `/testfile"
   `
