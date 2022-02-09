@@ -28,31 +28,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func init() {
-	mntPath := "/fgs_tests_mount"
-
-	if _, err := os.Stat(mntPath); !os.IsNotExist(err) {
-		err := syscall.Unmount(mntPath, 0)
-		if err != nil {
-			fmt.Printf("Unmount failed: %s\n", err)
-		}
-
-		err = os.RemoveAll(mntPath)
-		if err != nil {
-			fmt.Printf("RemoveAll failed: %s\n", err)
-		}
-	}
-
-	err := os.Mkdir(mntPath, 0755)
-	if err != nil {
-		fmt.Printf("Mkdir failed: %s\n", err)
-	}
-
-	err = syscall.Mount("tmpfs", mntPath, "tmpfs", 0, "")
-	if err != nil {
-		fmt.Printf("Mount failed: %s\n", err)
-	}
-}
+var mountPath string = "/tmp2"
 
 func TestKprobeObjectLoad(t *testing.T) {
 	writeReadHook := `
@@ -229,14 +205,16 @@ func TestKprobeObjectRead(t *testing.T) {
 	// Create file with hello world to read
 	fd, errno := syscall.Open("/tmp/testfile", syscall.O_CREAT|syscall.O_RDWR, 0x777)
 	if fd < 0 {
-		fmt.Printf("File open failed: %s\n", errno)
+		t.Logf("File open failed: %s\n", errno)
 		t.Fatal()
 	}
+	t.Cleanup(func() { syscall.Close(fd) })
 	fd2, errno := syscall.Open("/tmp/testfile", syscall.O_RDWR, 0x770)
 	if fd2 < 0 {
-		fmt.Printf("File open fro read failed: %s\n", errno)
+		t.Logf("File open fro read failed: %s\n", errno)
 		t.Fatal()
 	}
+	t.Cleanup(func() { syscall.Close(fd2) })
 	fdString := fmt.Sprint(fd2)
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	readHook := `
@@ -296,14 +274,14 @@ spec:
 	hello := []byte("hello world")
 	n, errno := syscall.Write(fd, hello)
 	if n < 0 {
-		fmt.Printf("syscall.Write failed: %s\n", errno)
+		t.Logf("syscall.Write failed: %s\n", errno)
 		t.Fatal()
 	}
 	syscall.Fsync(fd)
 	var readBytes = make([]byte, 11)
 	i, errno := syscall.Read(fd2, readBytes)
 	if i < 0 {
-		fmt.Printf("syscall.Read failed: %s\n", errno)
+		t.Logf("syscall.Read failed: %s\n", errno)
 		t.Fatal()
 	}
 
@@ -316,7 +294,7 @@ spec:
 var (
 	openArg0Check    = ec.GenericArgIntCheck(-100)
 	openArg1Check    = ec.GenericArgStringCheck("/tmp/testfile")
-	openArg1CheckMnt = ec.GenericArgStringCheck("/fgs_tests_mount/testfile")
+	openArg1CheckMnt = ec.GenericArgStringCheck(mountPath + "/testfile")
 	openArg2Check    = ec.GenericArgIsInt()
 
 	openKprobeCheck = ec.NewKprobeChecker().
@@ -363,7 +341,24 @@ func testKprobeObjectFiltered(t *testing.T,
 
 	mntPath := "/tmp"
 	if useMount == true {
-		mntPath = "/fgs_tests_mount"
+		mntPath = mountPath
+
+		if err := os.Mkdir(mntPath, 0755); err != nil {
+			t.Logf("Mkdir failed: %s\n", err)
+			t.Skip()
+		}
+		if err := syscall.Mount("tmpfs", mntPath, "tmpfs", 0, ""); err != nil {
+			t.Logf("Mount failed: %s\n", err)
+			t.Skip()
+		}
+		t.Cleanup(func() {
+			if err := syscall.Unmount(mntPath, 0); err != nil {
+				t.Logf("Unmount failed: %s\n", err)
+			}
+			if err := os.Remove(mntPath); err != nil {
+				t.Logf("Remove failed: %s\n", err)
+			}
+		})
 	}
 
 	var doneWG, readyWG sync.WaitGroup
@@ -377,9 +372,10 @@ func testKprobeObjectFiltered(t *testing.T,
 	// Create file to open later
 	fd, errno := syscall.Open(filePath, syscall.O_CREAT|syscall.O_RDWR, 0x777)
 	if fd < 0 {
-		fmt.Printf("File open failed: %s\n", errno)
+		t.Logf("File open failed: %s\n", errno)
 		t.Fatal()
 	}
+	syscall.Close(fd)
 
 	readConfigHook := []byte(readHook)
 	err := ioutil.WriteFile(testConfigFile, readConfigHook, 0644)
@@ -395,9 +391,10 @@ func testKprobeObjectFiltered(t *testing.T,
 	readyWG.Wait()
 	fd2, errno := syscall.Open(filePath, syscall.O_RDWR, 0x770)
 	if fd2 < 0 {
-		fmt.Printf("File open from read failed: %s\n", errno)
+		t.Logf("File open from read failed: %s\n", errno)
 		t.Fatal()
 	}
+	t.Cleanup(func() { syscall.Close(fd2) })
 	data := "hello world"
 	n, err := syscall.Write(fd2, []byte(data))
 	assert.Equal(t, len(data), n)
@@ -447,7 +444,7 @@ func TestKprobeObjectOpen(t *testing.T) {
 
 func TestKprobeObjectOpenMount(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
-	readHook := testKprobeObjectOpenHook(pidStr, "/fgs_tests_mount")
+	readHook := testKprobeObjectOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, &openCheckerMnt, true)
 }
 
@@ -492,7 +489,7 @@ func TestKprobeObjectMultiValueOpen(t *testing.T) {
 
 func TestKprobeObjectMultiValueOpenMount(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
-	readHook := testKprobeObjectMultiValueOpenHook(pidStr, "/fgs_tests_mount")
+	readHook := testKprobeObjectMultiValueOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, &openCheckerMnt, true)
 }
 
@@ -605,7 +602,7 @@ func TestKprobeObjectFilterPrefixOpen(t *testing.T) {
 
 func TestKprobeObjectFilterPrefixOpenMount(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
-	readHook := testKprobeObjectFilterPrefixOpenHook(pidStr, "/fgs_tests_mount")
+	readHook := testKprobeObjectFilterPrefixOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, &openCheckerMnt, true)
 }
 
@@ -649,7 +646,7 @@ func TestKprobeObjectFilterPrefixExactOpen(t *testing.T) {
 
 func TestKprobeObjectFilterPrefixExactOpenMount(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
-	readHook := testKprobeObjectFilterPrefixExactOpenHook(pidStr, "/fgs_tests_mount")
+	readHook := testKprobeObjectFilterPrefixExactOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, &openCheckerMnt, true)
 }
 
@@ -693,7 +690,7 @@ func TestKprobeObjectFilterPrefixSubdirOpen(t *testing.T) {
 
 func TestKprobeObjectFilterPrefixSubdirOpenMount(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
-	readHook := testKprobeObjectFilterPrefixSubdirOpenHook(pidStr, "/fgs_tests_mount")
+	readHook := testKprobeObjectFilterPrefixSubdirOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, &openCheckerMnt, true)
 }
 
@@ -1017,7 +1014,7 @@ func testKprobeObjectFileWriteFilteredHook(pidStr string, dir string) string {
 
 var (
 	writeArg0    = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch("/tmp/testfile"))
-	writeArg0Mnt = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch("/fgs_tests_mount/testfile"))
+	writeArg0Mnt = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch(mountPath+"/testfile"))
 	writeArg1    = ec.GenericArgBytesCheck([]byte("hello world"))
 	writeArg2    = ec.GenericArgSizeCheck(11)
 
@@ -1064,6 +1061,6 @@ func TestKprobeObjectFileWriteMount(t *testing.T) {
 
 func TestKprobeObjectFileWriteMountFiltered(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
-	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/fgs_tests_mount")
+	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, &writeCheckerMnt, true)
 }
