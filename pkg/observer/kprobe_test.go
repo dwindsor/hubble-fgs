@@ -15,6 +15,7 @@ import (
 	"fmt"
 	"io/ioutil"
 	"os"
+	"path/filepath"
 	"strconv"
 	"sync"
 	"syscall"
@@ -1063,4 +1064,238 @@ func TestKprobeObjectFileWriteMountFiltered(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, &writeCheckerMnt, true)
+}
+
+func createWriteChecker(path string, flags string) ec.OrderedMultiResponseChecker {
+	writeArg0 = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch(path), ec.FullStringMatch(flags))
+	writeArg1 = ec.GenericArgBytesCheck([]byte("hello world"))
+	writeArg2 = ec.GenericArgSizeCheck(11)
+
+	writeFileKpChecker = ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_write").
+		WithArgs([]ec.GenericArgChecker{writeArg0, writeArg1, writeArg2})
+
+	writeChecker = ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasProcess(ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))).
+			HasKprobe(writeFileKpChecker).
+			End(),
+	)
+
+	return writeChecker
+}
+
+func corePathTest(t *testing.T, filePath string, readHook string, writeChecker ec.OrderedMultiResponseChecker) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	// Create file to open later
+	fd, errno := syscall.Open(filePath, syscall.O_CREAT|syscall.O_RDWR, 0x777)
+	if fd < 0 {
+		t.Logf("File open failed: %s\n", errno)
+		t.Fatal()
+	}
+	syscall.Close(fd)
+
+	readConfigHook := []byte(readHook)
+	err := ioutil.WriteFile(testConfigFile, readConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
+
+	fd2, errno := syscall.Open(filePath, syscall.O_RDWR, 0x770)
+	if fd2 < 0 {
+		t.Logf("File open from read failed: %s\n", errno)
+		t.Fatal()
+	}
+	t.Cleanup(func() { syscall.Close(fd2) })
+	data := "hello world"
+	n, err := syscall.Write(fd2, []byte(data))
+	assert.Equal(t, len(data), n)
+	assert.NoError(t, err)
+	err = JsonTestCheck(t, nil, &writeChecker)
+	assert.NoError(t, err)
+	TestDone(t, obs)
+}
+
+func testMultipleMountsFiltered(t *testing.T, readHook string) {
+	var pathStack []string
+
+	// let's create /tmp2/tmp3/tmp4/tmp5 where each dir is a mount point
+	path := ""
+	for i := 2; i < 6; i++ {
+		path = filepath.Join(path, fmt.Sprintf("tmp%d", i))
+		pathStack = append(pathStack, path)
+		if err := os.Mkdir(path, 0755); err != nil {
+			t.Logf("Mkdir failed: %s\n", err)
+			t.Skip()
+		}
+		if err := syscall.Mount("tmpfs", path, "tmpfs", 0, ""); err != nil {
+			t.Logf("Mount failed: %s\n", err)
+			t.Skip()
+		}
+	}
+	t.Cleanup(func() {
+		// let's clear all
+		for len(pathStack) > 0 {
+			n := len(pathStack) - 1
+			path := pathStack[n]
+			if err := syscall.Unmount(path, 0); err != nil {
+				t.Logf("Unmount failed: %s\n", err)
+			}
+			if err := os.Remove(path); err != nil {
+				t.Logf("Remove failed: %s\n", err)
+			}
+			pathStack = pathStack[:n]
+		}
+	})
+
+	filePath := path + "/testfile"
+	writeChecker = createWriteChecker("/tmp4/tmp5/testfile", "unresolvedMountPoints")
+
+	// the full path name is "/tmp2/tmp3/tmp4/tmp5/testfile"
+	// but in the current implementation we support up to 2 mount points
+	// so we will see "/tmp4/tmp5/testfile" and "unresolvedMountPoints" flag
+
+	corePathTest(t, filePath, readHook, writeChecker)
+}
+
+func testMultiplePathComponentsFiltered(t *testing.T, readHook string) {
+	var pathStack []string
+	path := "/tmp"
+
+	// let's create /tmp/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16 where each dir is a directory
+	for i := 0; i <= 16; i++ {
+		path = filepath.Join(path, fmt.Sprintf("%d", i))
+		pathStack = append(pathStack, path)
+		if err := os.Mkdir(path, 0755); err != nil {
+			t.Logf("Mkdir failed: %s\n", err)
+			t.Skip()
+		}
+	}
+	t.Cleanup(func() {
+		if err := os.Remove(path + "/testfile"); err != nil {
+			t.Logf("Remove testfile failed: %s\n", err)
+		}
+		// let's clear all
+		for len(pathStack) > 0 {
+			n := len(pathStack) - 1
+			path := pathStack[n]
+			if err := os.Remove(path); err != nil {
+				t.Logf("Remove failed: %s\n", err)
+			}
+			pathStack = pathStack[:n]
+		}
+	})
+
+	filePath := path + "/testfile"
+	writeChecker = createWriteChecker("/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "unresolvedPathComponents")
+
+	// the full path name is "/tmp/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16"
+	// but in the current implementation we support up to 13 path components
+	// so we will see "/5/6/7/8/9/10/11/12/13/14/15/16/testfile"
+	// and "unresolvedPathComponents" flag
+
+	corePathTest(t, filePath, readHook, writeChecker)
+}
+
+func testMultipleMountPathFiltered(t *testing.T, readHook string) {
+	var pathStack []string
+	var dirStack []string
+	path := ""
+
+	// let's create /tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16
+	// tmp* are mount points
+	// the rest are directories
+	for i := 2; i < 6; i++ {
+		path = filepath.Join(path, fmt.Sprintf("tmp%d", i))
+		pathStack = append(pathStack, path)
+		if err := os.Mkdir(path, 0755); err != nil {
+			t.Logf("Mkdir failed: %s\n", err)
+			t.Skip()
+		}
+		if err := syscall.Mount("tmpfs", path, "tmpfs", 0, ""); err != nil {
+			t.Logf("Mount failed: %s\n", err)
+			t.Skip()
+		}
+	}
+	for i := 0; i <= 16; i++ {
+		path = filepath.Join(path, fmt.Sprintf("%d", i))
+		dirStack = append(dirStack, path)
+		if err := os.Mkdir(path, 0755); err != nil {
+			t.Logf("Mkdir failed: %s\n", err)
+			t.Skip()
+		}
+	}
+	t.Cleanup(func() {
+		if err := os.Remove(path + "/testfile"); err != nil {
+			t.Logf("Remove testfile failed: %s\n", err)
+		}
+
+		// let's clear all
+		for len(dirStack) > 0 {
+			n := len(dirStack) - 1
+			path := dirStack[n]
+			if err := os.Remove(path); err != nil {
+				t.Logf("Remove failed: %s\n", err)
+			}
+			dirStack = dirStack[:n]
+		}
+		for len(pathStack) > 0 {
+			n := len(pathStack) - 1
+			path := pathStack[n]
+			if err := syscall.Unmount(path, 0); err != nil {
+				t.Logf("Unmount failed: %s\n", err)
+			}
+			if err := os.Remove(path); err != nil {
+				t.Logf("Remove failed: %s\n", err)
+			}
+			pathStack = pathStack[:n]
+		}
+	})
+
+	filePath := path + "/testfile"
+	writeChecker = createWriteChecker("/[M]/tmp4/tmp5/[P]/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "unresolvedMountPoints unresolvedPathComponents")
+
+	// the full path name is "/tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/testfile"
+	// but in the current implementation we support up to 13 path components and 2 mount points
+	// so we will see "/tmp4/tmp5/5/6/7/8/9/10/11/12/13/14/15/16/testfile"
+	// and "unresolvedMountPoints unresolvedPathComponents"
+
+	corePathTest(t, filePath, readHook, writeChecker)
+}
+
+func TestMultipleMountsFiltered(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp4/tmp5")
+	testMultipleMountsFiltered(t, readHook)
+}
+
+func TestMultiplePathComponents(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	readHook := testKprobeObjectFileWriteHook(pidStr)
+	testMultiplePathComponentsFiltered(t, readHook)
+}
+
+func TestMultipleMountPath(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	readHook := testKprobeObjectFileWriteHook(pidStr)
+	testMultipleMountPathFiltered(t, readHook)
+}
+
+func TestMultipleMountPathFiltered(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	// Kernel adds a & in the case of unresolved path. In the userspace we change that to [P]
+	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp4/tmp5/&/5/6/7/8/9/10/11/12/13/14/15/16")
+	testMultipleMountPathFiltered(t, readHook)
 }
