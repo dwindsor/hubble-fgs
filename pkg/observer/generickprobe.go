@@ -664,13 +664,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
-		case GenericFdType:
-			var arg api.MsgGenericKprobeArgFile
-
-			arg.Index = uint64(a.index)
-			arg.Value = handleGenericKprobeString(r) + "/"
-			unix.Args = append(unix.Args, arg)
-		case GenericFileType:
+		case GenericFileType, GenericFdType:
 			var arg api.MsgGenericKprobeArgFile
 			var flags uint32
 

@@ -704,7 +704,7 @@ struct fdinstall_key {
 };
 
 struct fdinstall_value {
-	char file[260]; // 256B paths + 4B length.
+	char file[264]; // 256B paths + 4B length + 4B flags
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) fdinstall_map = {
@@ -748,7 +748,7 @@ int installfd(struct msg_generic_kprobe *e, int fd, int name, bool follow)
 		asm volatile("%[size] &= 0xff;\n": [size] "+r"(size):);
 
 		probe_read(&val.file[0],
-			   size + 4,
+			   size + 4 /* size */ + 4 /* flags */,
 			   &e->args[nameoff]);
 		map_update_elem(&fdinstall_map, &key, &val, BPF_ANY);
 	} else {
@@ -922,6 +922,10 @@ long read_call_arg(void *ctx,
 			asm volatile("%[bytes] &= 0xff;\n": [bytes] "+r"(bytes):);
 			probe_read(&args[0], bytes + 4, (char *)&val->file[0]);
 			size = bytes + 4;
+
+			// flags
+			probe_read(&args[size], 4, (char *)&val->file[size]);
+			size += 4;
 		} else {
 			/* If filter specification is fd type then we
 			 * expect the fd has been previously followed
