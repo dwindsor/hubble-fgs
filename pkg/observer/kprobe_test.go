@@ -1013,8 +1013,8 @@ func testKprobeObjectFileWriteFilteredHook(pidStr string, dir string) string {
 }
 
 var (
-	writeArg0    = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch("/tmp/testfile"))
-	writeArg0Mnt = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch(mountPath+"/testfile"))
+	writeArg0    = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch("/tmp/testfile"), ec.FullStringMatch(""))
+	writeArg0Mnt = ec.GenericArgFileChecker(ec.StringMatchAlways(), ec.SuffixStringMatch(mountPath+"/testfile"), ec.FullStringMatch(""))
 	writeArg1    = ec.GenericArgBytesCheck([]byte("hello world"))
 	writeArg2    = ec.GenericArgSizeCheck(11)
 

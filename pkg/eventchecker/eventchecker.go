@@ -2548,11 +2548,13 @@ func GenericArgStringCheck(val StringArg) GenericArgChecker {
 }
 
 // GenericArgFileChecker checks the value of a file arg
-func GenericArgFileChecker(mount, path StringArg) GenericArgChecker {
+func GenericArgFileChecker(mount, path, flags StringArg) GenericArgChecker {
 	smMount := stringMatcherFromArg(mount)
 	smPath := stringMatcherFromArg(path)
+	smFlags := stringMatcherFromArg(flags)
 	matcherMount := smMount.GetMatcher()
 	matcherPath := smPath.GetMatcher()
+	matcherFlags := smFlags.GetMatcher()
 	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
 		if fa, ok := arg.Arg.(*fgs.KprobeArgument_FileArg); ok {
 			if fa.FileArg == nil {
@@ -2563,6 +2565,9 @@ func GenericArgFileChecker(mount, path StringArg) GenericArgChecker {
 			}
 			if err := matcherPath(fa.FileArg.Path); err != nil {
 				return fmt.Errorf("failed file arg check on path: %w", err)
+			}
+			if err := matcherFlags(fa.FileArg.Flags); err != nil {
+				return fmt.Errorf("failed file arg check on flags: %w", err)
 			}
 			log.Logf("**** MATCH generic file arg: %+v", fa.FileArg)
 			return nil
