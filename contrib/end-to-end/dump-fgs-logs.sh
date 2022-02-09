@@ -28,8 +28,14 @@ dump_logs() {
     kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
       -n kube-system -o custom-columns=name:metadata.name --no-headers \
       | xargs -I{} kubectl cp -c enterprise -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
-    cat ./hubble-fgs*.log | jq > fgs.json
+    cat ./hubble-fgs*.log > fgs.json
     rm -f ./hubble-fgs*.log
+    kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
+      -n kube-system -o custom-columns=name:metadata.name --no-headers \
+      | xargs -I{} kubectl exec -c enterprise -n kube-system {} -- hubble-enterprise bugtool -o bugtool-{}.tar.gz
+    kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
+      -n kube-system -o custom-columns=name:metadata.name --no-headers \
+      | xargs -I{} kubectl cp -c enterprise -n kube-system {}:bugtool-{}.tar.gz ./bugtool-{}.tar.gz
 }
 
 dump_logs

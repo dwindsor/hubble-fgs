@@ -1,24 +1,23 @@
 #!/bin/bash
 
-set -xeu
+set -eu
 
 CLUSTER_NAME="fgs-cli-ci"
 PROJECT_ROOT="$(realpath $(dirname "${BASH_SOURCE[0]}")/../../..)"
+SCRIPTDIR="$(realpath $(dirname "${BASH_SOURCE[0]}")/..)"
+source "$SCRIPTDIR/tests/helpers"
+mkdir -p $SCRIPTDIR/logs
 cd "$PROJECT_ROOT"
 
 export PATH="$PATH:/usr/local/go/bin"
+KERNEL_VERSION=$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')
 
-if ! command -v kind; then
-    echo "kind is not in \$PATH... Bailing out!" 1>&2
-    exit -1
-fi
-
-if ! kind get clusters | grep "$CLUSTER_NAME" &>/dev/null; then
-    echo "Cluster \"$CLUSTER_NAME\" does not exist! Bailing out!" 1>&2
-    exit -1
-fi
-
-kubectl cluster-info --context "kind-$CLUSTER_NAME"
+echo "Forwarding gRPC ports..." 1>&2
+forward_grpc
+SERVER_ARGS=()
+for port in ${GRPC_PORTS[@]}; do
+    SERVER_ARGS+=("--server-address" "localhost:$port")
+done
 
 echo "Applying tracing policies..." 1>&2
 kubectl apply -f crds/isovalent.com_tracingpolicies.yaml
@@ -27,21 +26,11 @@ kubectl apply -f crds/examples/tls.yaml
 echo "Waiting to make sure sensors have been loaded..." 1>&2
 sleep 30 # Wait 30 seconds for now to make sure sensors have had a chance to load
 
-echo "Deploying curl pod..." 1>&2
-kubectl apply -f contrib/end-to-end/yaml/http-tls-end-to-end.yaml
-
-echo "Waiting for curl pod to be ready..." 1>&2
-for i in $(seq 3); do
-    kubectl wait -n curl --for=condition=Ready --all pod --timeout=5m && break || sleep 30
-done
-if [ $? -ne 0 ]; then
-    echo "Failed to wait for curl pod..." 1>&2
-    exit 1
-fi
-
-echo "Generating curl http and tls events..." 1>&2
-kubectl exec -n curl deployment/curl -- curl -4 https://google.com -m 30
-kubectl exec -n curl deployment/curl -- curl -4 http://google.com -m 30
+echo "Checking demo app events..." 1>&2
+go run ./cmd/checkerpc --events 20000 --timeout 1200 --check demo-app ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-demo-app.log &
+DEMO_APP_CHECKER_PID=$!
+# Wait long enough for every client to either connect or timeout
+sleep 10
 
 echo "Deploying demo app..." 1>&2
 kubectl delete namespace tenant-jobs || true
@@ -56,10 +45,6 @@ if [ $? -ne 0 ]; then
     echo "Failed to wait for demo app..." 1>&2
     exit 1
 fi
-
-echo "Running workload. Sleeping for 60 seconds..." 1>&2
 kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 15 || true
-sleep 60
 
-contrib/end-to-end/dump-fgs-logs.sh
-go run ./tests/jobs.trace.go contrib/end-to-end/logs/fgs.json
+wait $DEMO_APP_CHECKER_PID

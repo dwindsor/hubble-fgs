@@ -22,7 +22,7 @@ KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-
 GOLANGCILINT_WANT_VERSION = 1.42.1
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 
-all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile contrib-progs
+all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile contrib-progs checkerpc
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
@@ -61,6 +61,9 @@ hubble-enterprise-operator:
 fgs-alignchecker:
 	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./tools/alignchecker/
 
+checkerpc:
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./cmd/checkerpc/
+
 .PHONY: ksyms
 ksyms:
 	$(GO) build ./cmd/ksyms/
@@ -79,7 +82,7 @@ install:
 
 clean:
 	$(MAKE) -C ./bpf clean
-	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench
+	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench ./checkerpc
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:
@@ -191,7 +194,7 @@ else
 check:
 	docker run --rm -v `pwd`:/app -w /app docker.io/golangci/golangci-lint:v$(GOLANGCILINT_WANT_VERSION) golangci-lint run
 endif
-.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check
+.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check checkerpc
 
 
 # generate cscope for bpf files

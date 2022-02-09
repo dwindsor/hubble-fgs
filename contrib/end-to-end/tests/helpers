@@ -1,0 +1,32 @@
+forward_grpc() {
+    # Find enterprise pods
+    ENTERPRISE_PODS=$(kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise -n kube-system -o custom-columns=name:metadata.name --no-headers)
+
+    # Empty bash array
+    PORTFORWARD_PIDS=()
+
+    # We will maintain a list of GRPC ports + i from i=0..n where n is number of
+    # enterprise pods
+    NEXT_GRPC_PORT=54321
+    GRPC_PORTS=()
+
+    for pod in $ENTERPRISE_PODS; do
+        GRPC_PORTS+=($NEXT_GRPC_PORT)
+        kubectl port-forward -n kube-system "$pod" "$NEXT_GRPC_PORT:54321" &>/dev/null &
+        PORTFORWARD_PIDS+=($!)
+        NEXT_GRPC_PORT=$(($NEXT_GRPC_PORT + 1))
+    done
+
+    # Clean up port-forward processes on exit
+    cleanup() {
+        echo Killing ${PORTFORWARD_PIDS[@]}...
+        for pid in ${PORTFORWARD_PIDS[@]}; do
+            kill $pid || true
+            wait $pid || true
+        done
+    }
+    trap cleanup EXIT
+    sleep 5
+}
+
+# - vi:ft=bash -
