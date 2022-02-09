@@ -135,7 +135,7 @@ func SensorBuilder(name string, p []*Program, m []*Map) *Sensor {
 
 var (
 	// list of availableSensors, see registerSensor()
-	availableSensors map[string]*Sensor = map[string]*Sensor{}
+	availableSensors map[string][]*Sensor = map[string][]*Sensor{}
 	// list of registered Tracing handlers, see registerTracingHandler()
 	registeredTracingSensors map[string]tracingSensor = map[string]tracingSensor{}
 	// list of registers loaders, see registerProbeType()
@@ -191,7 +191,7 @@ func RegisterSensorAtInit(s *Sensor) {
 		panic(fmt.Sprintf("registerSensor called, but %s is already registered", s.Name))
 	}
 
-	availableSensors[s.Name] = s
+	availableSensors[s.Name] = []*Sensor{s}
 }
 
 // func GetSensorsFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*Sensor, error) {

@@ -44,6 +44,7 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 					err = fmt.Errorf("sensor %s already exists", op.sensorName)
 					break
 				}
+				sensors := []*Sensor{}
 				for _, s := range registeredTracingSensors {
 					sensor, err = s.SpecHandler(op.spec)
 					if err != nil {
@@ -56,112 +57,146 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 						err = fmt.Errorf("sensor %s could not be found", op.sensorName)
 						break
 					}
-					availableSensors[op.sensorName] = sensor
 					err = sensor.Load(op.ctx, bpfDir, mapDir, ciliumDir)
 					if err != nil {
 						break
 					}
+					sensors = append(sensors, sensor)
 				}
+				availableSensors[op.sensorName] = sensors
 
 			case *tracingPolicyDel:
-				sensor, exists := availableSensors[op.sensorName]
+				sensors, exists := availableSensors[op.sensorName]
 				if !exists {
 					err = fmt.Errorf("sensor %s does not exist", op.sensorName)
 					break
 				}
-				if err = UnloadSensor(bpfDir, mapDir, sensor, op.ctx); err == nil {
-					delete(availableSensors, op.sensorName)
+				errs := []string{}
+				for _, s := range sensors {
+					if !s.Loaded {
+						continue
+					}
+					if err = UnloadSensor(bpfDir, mapDir, s, op.ctx); err != nil {
+						errs = append(errs, err.Error())
+					}
 				}
+				if len(errs) > 0 {
+					err = fmt.Errorf("errors unloading sensor %s: %s", op.sensorName, strings.Join(errs, ", "))
+				}
+				delete(availableSensors, op.sensorName)
 
 			case *sensorAdd:
 				if _, exists := availableSensors[op.name]; exists {
 					err = fmt.Errorf("sensor %s already exists", op.name)
 					break
 				}
-				availableSensors[op.name] = op.sensor
+				availableSensors[op.name] = []*Sensor{op.sensor}
 				err = nil
 
 			case *sensorRemove:
-				sensor, exists := availableSensors[op.name]
+				sensors, exists := availableSensors[op.name]
+				if !exists {
+					fmt.Printf("delete failed !exists: %s\n", op.name)
+					err = fmt.Errorf("sensor %s does not exist", op.name)
+					break
+				}
+				err = nil
+				for _, s := range sensors {
+					if s.Loaded {
+						fmt.Printf("s.Loaded failed: %s\n", op.name)
+						err = fmt.Errorf("sensor %s enabled, please disable it before removing", op.name)
+						break
+					}
+				}
+				if err == nil {
+					delete(availableSensors, op.name)
+				}
+			case *sensorEnable:
+				sensors, exists := availableSensors[op.name]
 				if !exists {
 					err = fmt.Errorf("sensor %s does not exist", op.name)
 					break
 				}
-				if sensor.Loaded {
-					err = fmt.Errorf("sensor %s enabled, please disable it before removing", op.name)
-					break
-				}
-				delete(availableSensors, op.name)
+
 				err = nil
-
-			case *sensorEnable:
-				sensor := availableSensors[op.name]
-				if sensor == nil {
-					err = fmt.Errorf("sensor %s does not exist", op.name)
-					break
-				}
-
-				// NB: For now, we don't treat a sensor already loaded as an error
-				// because that would complicate the client side, but we might have
-				// to reconsider
-				if sensor.Loaded {
-					logger.GetLogger().Infof("ignoring enableSensor %s since sensor is already enabled", sensor.Name)
-					err = nil
-					break
-				}
-				err = sensor.Load(op.ctx, bpfDir, mapDir, ciliumDir)
-				if err == nil && sensor.Ops != nil {
-					sensor.Ops.Loaded(LoadArg{STTManagerHandle: op.sttManagerHandle})
+				for _, s := range sensors {
+					// NB: For now, we don't treat a sensor already loaded as an error
+					// because that would complicate the client side, but we might have
+					// to reconsider
+					if s.Loaded {
+						logger.GetLogger().Infof("ignoring enableSensor %s since sensor is already enabled", s.Name)
+						continue
+					}
+					err = s.Load(op.ctx, bpfDir, mapDir, ciliumDir)
+					if err == nil && s.Ops != nil {
+						s.Ops.Loaded(LoadArg{STTManagerHandle: op.sttManagerHandle})
+					}
 				}
 
 			case *sensorDisable:
-				sensor := availableSensors[op.name]
-				if sensor == nil {
+				sensors, exists := availableSensors[op.name]
+				if !exists {
 					err = fmt.Errorf("sensor %s does not exist", op.name)
 					break
 				}
 				// NB: ditto as sensorEnable
-				if !sensor.Loaded {
-					logger.GetLogger().Infof("ignoring disableSensor %s since sensor is not enabled", sensor.Name)
-					err = nil
-					break
-				}
-				err = UnloadSensor(bpfDir, mapDir, sensor, op.ctx)
-				if err == nil && sensor.Ops != nil {
-					sensor.Ops.Unloaded(UnloadArg{STTManagerHandle: op.sttManagerHandle})
+				err = nil
+				for _, s := range sensors {
+					if !s.Loaded {
+						logger.GetLogger().Infof("ignoring disableSensor %s since sensor is not enabled", s.Name)
+						continue
+					}
+					err = UnloadSensor(bpfDir, mapDir, s, op.ctx)
+					if err == nil && s.Ops != nil {
+						s.Ops.Unloaded(UnloadArg{STTManagerHandle: op.sttManagerHandle})
+					}
 				}
 
 			case *sensorList:
 				ret := make([]api.SensorStatus, 0, len(availableSensors))
-				for n, s := range availableSensors {
-					ret = append(ret, api.SensorStatus{n, s.Loaded})
+				for n, sl := range availableSensors {
+					for _, s := range sl {
+						ret = append(ret, api.SensorStatus{n, s.Loaded})
+					}
 				}
 				op.result = &ret
 				err = nil
 
 			case *sensorConfigSet:
-				sensor := availableSensors[op.name]
-				if sensor == nil {
+				sensors, exists := availableSensors[op.name]
+				if !exists {
 					err = fmt.Errorf("sensor %s does not exist", op.name)
 					break
 				}
-				if sensor.Ops == nil {
-					err = fmt.Errorf("sensor %s does not support configuration", op.name)
-					break
+				for _, s := range sensors {
+					if s.Ops == nil {
+						err = fmt.Errorf("sensor %s does not support configuration", op.name)
+						break
+					}
+					err = s.Ops.SetConfig(op.key, op.val)
+					if err != nil {
+						err = fmt.Errorf("sensor %s SetConfig failed: %w", op.name, err)
+						break
+					}
 				}
-				err = sensor.Ops.SetConfig(op.key, op.val)
 
 			case *sensorConfigGet:
-				sensor := availableSensors[op.name]
-				if sensor == nil {
+				sensors, exists := availableSensors[op.name]
+				if !exists {
 					err = fmt.Errorf("sensor %s does not exist", op.name)
 					break
 				}
-				if sensor.Ops == nil {
-					err = fmt.Errorf("sensor %s does not support configuration", op.name)
-					break
+				for _, s := range sensors {
+					if s.Ops == nil {
+						err = fmt.Errorf("sensor %s does not support configuration", op.name)
+						break
+					}
+					op.val, err = s.Ops.GetConfig(op.key)
+					if err != nil {
+						err = fmt.Errorf("sensor %s GetConfig failed: %s", op.name, err)
+						break
+					}
 				}
-				op.val, err = sensor.Ops.GetConfig(op.key)
 
 			case *sensorCtlStop:
 				logger.GetLogger().Debugf("stopping sensor controller...")
