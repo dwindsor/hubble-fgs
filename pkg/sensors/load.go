@@ -136,7 +136,7 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 		}
 
 		p.LoadState.SetLoaded()
-		l.WithField("prog", p.Name).Info("BPF prog was loaded")
+		l.WithField("prog", p.Name).WithField("label", p.Label).Info("BPF prog was loaded")
 	}
 	l.WithField("sensor", s.Name).Infof("Loaded BPF maps and events for sensor successfully")
 	s.Loaded = true
