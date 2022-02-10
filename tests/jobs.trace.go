@@ -25,11 +25,23 @@ var (
 			WithName("jobposting").
 			WithImageName("quay.io/isovalent/jobs-app-jobposting:latest"),
 		)
+
+	cc = ec.NewPodChecker().
+		WithNamespace("curl").
+		WithNamePrefix("curl").
+		WithLabels(
+			ec.LabelMatchVal("k8s:app", "curl"),
+			ec.LabelMatchValPrefix("k8s:io.cilium.k8s.policy.cluster", "fgs-cli-ci"),
+			ec.LabelMatchVal("k8s:io.cilium.k8s.policy.serviceaccount", "default"),
+			ec.LabelMatchVal("k8s:io.kubernetes.pod.namespace", "curl"),
+		).
+		WithContainer(ec.NewContainerChecker().
+			WithName("curl").
+			WithImageName("docker.io/curlimages/curl:latest"),
+		)
 )
 
 func test_demo_app_end_to_end(file *os.File, log ec.Logger, is_gke bool) error {
-	file.Seek(0, 0)
-
 	demo_checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(ec.NewProcessChecker().
@@ -81,6 +93,7 @@ func test_demo_app_end_to_end(file *os.File, log ec.Logger, is_gke bool) error {
 			End(),
 	)
 
+	file.Seek(0, 0)
 	if err := observer.JsonCheck(file, demo_checker, log); err != nil {
 		return err
 	}
@@ -108,12 +121,10 @@ func test_demo_app_end_to_end(file *os.File, log ec.Logger, is_gke bool) error {
 }
 
 func test_tls_end_to_end(file *os.File, log ec.Logger) error {
-	file.Seek(0, 0)
-
 	curl_checker := ec.NewProcessChecker().
 		WithBinary(ec.SuffixStringMatch("curl")).
 		WithArguments("-4 https://google.com -m 30").
-		WithPod(jc)
+		WithPod(cc)
 	tls_checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().HasProcess(curl_checker).
 			HasAncestor(0, ec.NewProcessChecker().
@@ -150,6 +161,7 @@ func test_tls_end_to_end(file *os.File, log ec.Logger) error {
 			End(),
 	)
 
+	file.Seek(0, 0)
 	if err := observer.JsonCheck(file, tls_checker, log); err != nil {
 		return err
 	}
@@ -161,7 +173,7 @@ func test_http_end_to_end(file *os.File, log ec.Logger) error {
 	curl_checker := ec.NewProcessChecker().
 		WithBinary(ec.SuffixStringMatch("curl")).
 		WithArguments("-4 http://google.com -m 30").
-		WithPod(jc)
+		WithPod(cc)
 
 	http_checker := ec.NewOrderedMultiResponseChecker(
 		ec.NewExecEventChecker().

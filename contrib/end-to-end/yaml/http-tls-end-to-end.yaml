@@ -1,0 +1,30 @@
+kind: Namespace
+apiVersion: v1
+metadata:
+  name: curl
+  labels:
+    name: curl
+
+---
+
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: curl
+  namespace: curl
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: curl
+  template:
+    metadata:
+      labels:
+        app: curl
+    spec:
+      containers:
+        - name: curl
+          image: docker.io/curlimages/curl:latest
+          imagePullPolicy: Always
+          command: ["sleep"]
+          args: ["infinity"]
