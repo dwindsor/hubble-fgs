@@ -84,6 +84,7 @@ void cgroup_delete(const char *target, const char *prog, int attach_type)
 
 	prog_fd = bpf_obj_get(prog);
 	if (prog_fd < 0) {
+		close(target_fd);
 		fprintf(stderr, "bpf_obj_get('%s') failed on load error %i.\n",
 				prog, prog_fd);
 		return;
@@ -95,6 +96,9 @@ void cgroup_delete(const char *target, const char *prog, int attach_type)
 	attr.attach_type = attach_type;
 
 	syscall(__NR_bpf, BPF_PROG_DETACH, &attr, sizeof(attr));
+
+	close(target_fd);
+	close(prog_fd);
 }
 
 int fgs_map_loader(const int version,
