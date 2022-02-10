@@ -73,8 +73,10 @@ func LoadSockops(
 	tls_selectors, http_selectors, nop_selectors [128]byte,
 ) (error, int) {
 	if bpf.IsSockopsLoaded() {
+		logger.GetLogger().WithField("program", load.Name).Infof("Sockops, %d references exist reuse", bpf.SockopsRefCnt())
 		return nil, 0
 	}
+	logger.GetLogger().WithField("program", load.Name).Infof("Sockops, create initial reference")
 	bpf.CgroupSockopsRefInc()
 	return LoadCgroupProgram(bpfDir, mapDir, load,
 		[]Selector{

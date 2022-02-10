@@ -1010,3 +1010,7 @@ func CgroupSockopsRefDec() {
 func IsSockopsLoaded() bool {
 	return sockopsRef != 0
 }
+
+func SockopsRefCnt() int {
+	return sockopsRef
+}
