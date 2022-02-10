@@ -18,8 +18,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -95,13 +93,12 @@ var (
 		"tc_egress")
 
 	/* TLS maps */
-	tlsSockMapName   = "tls_sock_map"
 	TCTLSMap         = sensors.MapBuilder("tls_map", "tc_egress", TLSTCEgress)
 	TCTLSParserStats = sensors.MapBuilder("tls_parser_stats", "tc_egress", TLSTCEgress)
-	SockMap          = sensors.MapBuilder(tlsSockMapName, "sockops", sockops.SockopsEstablished)
 	TLSParserStats   = sensors.MapBuilder("tls_parser_stats", "sockops", sockops.SockopsEstablished)
 	TLSMap           = sensors.MapBuilder("tls_map", "skmsg", TLSSkmsg)
 	TLSTailCalls     = sensors.MapBuilder("tls_calls", "tc_ingress", TLSTCIngress)
+	TlsFilterMap     = sensors.MapBuilder("tls_filter_map", "sockops", sockops.SockopsEstablished)
 )
 
 func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
@@ -140,36 +137,6 @@ type tlsSensor struct {
 	name string
 }
 
-// TODO: Pull this out to into the sockops package. Implement the SpecHandler
-// to load this sockops sensor if TLS || HTTP.
-
-type sockopsSensor struct {
-	name string
-}
-
-func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64, tlsSelectors, http.Selectors, nop.Selectors)
-}
-
-func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
-	if (parser.Tls.Enable && parser.Tls.Mode == "socket") ||
-		parser.Http.Enable ||
-		parser.Nop.Enable {
-		var progs []*sensors.Program
-		var maps []*sensors.Map
-
-		logger.GetLogger().Infof("Enable Sockops")
-		progs = append(progs, sockops.SockopsEstablished)
-		maps = append(maps, SockMap)
-
-		return sensors.SensorBuilder("__sockops_sensors__", progs, maps), nil
-	}
-	return nil, nil
-}
-func (*sockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
-	return AddSockopsSensors(spec.Parser)
-}
-
 // AddParserSensors will add and combine the sensors that are enabled inside
 // the parser policy spec.
 func AddParserSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
@@ -181,9 +148,9 @@ type skmsgTLSSensor struct {
 }
 
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	path := filepath.Join(args.MapDir, tlsSockMapName)
+	path := filepath.Join(args.MapDir, sockops.TlsSockMapName)
 
-	err, i := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Version, args.Verbose, args.X64, path, tlsSelectors)
+	err, i := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Version, args.Verbose, args.X64, path)
 	if err != nil {
 		return err, i
 	}
@@ -198,7 +165,15 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) 
 			return err, i
 		}
 	}
-	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbVerdict, path)
+	err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbVerdict, path)
+	if err != nil {
+		return err, i
+	}
+
+	if err := sensors.SetFilter(args.MapDir, "tls_filter_map", tlsSelectors); err != nil {
+		return err, i
+	}
+	return nil, i
 }
 
 func (skmsg *skmsgTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -259,12 +234,6 @@ func init() {
 	}
 	sensors.RegisterProbeType("skmsg", skmsg)
 
-	sockops := &sockopsSensor{
-		name: "sockops loader",
-	}
-	sensors.RegisterProbeType("sockops", sockops)
-	sensors.RegisterTracingSensorsAtInit(sockops.name, sockops)
-
 	tls := &tlsSensor{
 		name: "tls sensor",
 	}
@@ -299,9 +268,9 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 		}
 
 		maps = append(maps,
-			SockMap,
 			TLSMap,
 			TLSParserStats,
+			TlsFilterMap,
 		)
 	}
 

@@ -10,7 +10,12 @@
 
 package sockops
 
-import "github.com/isovalent/hubble-fgs/pkg/sensors"
+import (
+	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+)
 
 var (
 	// Needed on both the HTTP and TLS programs.
@@ -23,4 +28,55 @@ var (
 		false,
 		true,
 		"sockops")
+
+	TlsSockMapName  = "tls_sock_map"
+	httpSockMapName = "http_sock_map"
+
+	HttpSockMap   = sensors.MapBuilder(httpSockMapName, "sockops", SockopsEstablished)
+	TlsSockMap    = sensors.MapBuilder(TlsSockMapName, "sockops", SockopsEstablished)
+	TlsFilterMap  = sensors.MapBuilder("tls_filter_map", "sockops", SockopsEstablished)
+	HttpFilterMap = sensors.MapBuilder("http_filter_map", "sockops", SockopsEstablished)
+	NopFilterMap  = sensors.MapBuilder("nop_filter_map", "sockops", SockopsEstablished)
 )
+
+func init() {
+	sockops := &sockopsSensor{
+		name: "sockops loader",
+	}
+	sensors.RegisterProbeType("sockops", sockops)
+	sensors.RegisterTracingSensorsAtInit(sockops.name, sockops)
+}
+
+func builder(name string) (*sensors.Sensor, error) {
+	var progs []*sensors.Program
+	var maps []*sensors.Map
+
+	if kernels.MinKernelVersion("5.8.0") {
+		logger.GetLogger().Infof("Enable Sockops")
+		progs = append(progs, SockopsEstablished)
+		maps = append(maps, HttpSockMap, TlsSockMap, HttpFilterMap, TlsFilterMap, NopFilterMap)
+
+		return sensors.SensorBuilder("__sockops_sensors__", progs, maps), nil
+	}
+	return nil, nil
+}
+
+type sockopsSensor struct {
+	name string
+}
+
+func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	return sensors.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64)
+}
+
+func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
+	if (parser.Tls.Enable && parser.Tls.Mode == "socket") ||
+		parser.Http.Enable ||
+		parser.Nop.Enable {
+		return builder("__sockops__sensors__")
+	}
+	return nil, nil
+}
+func (*sockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+	return AddSockopsSensors(spec.Parser)
+}

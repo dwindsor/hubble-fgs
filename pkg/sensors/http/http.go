@@ -36,7 +36,7 @@ import (
 )
 
 var (
-	Selectors [128]byte
+	filters [128]byte
 
 	// Runtime aggregation of request/response
 	aggregate          *lru.Cache
@@ -104,19 +104,18 @@ var (
 		"sk_skb_verdict")
 
 	/* Http maps */
-	httpSockMapName = "http_sock_map"
-	SockMap         = sensors.MapBuilder(httpSockMapName, "sockops", sockops.SockopsEstablished)
-	TailCalls       = sensors.MapBuilder("http1_calls", "http_skmsg", Skmsg)
-	SkbTailCalls    = sensors.MapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
-	HTTPContext     = sensors.MapBuilder("http_map", "http_skmsg", Skmsg)
+	TailCalls     = sensors.MapBuilder("http1_calls", "http_skmsg", Skmsg)
+	SkbTailCalls  = sensors.MapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
+	HTTPContext   = sensors.MapBuilder("http_map", "http_skmsg", Skmsg)
+	HTTPFilterMap = sensors.MapBuilder("http_filter_map", "sockops", sockops.SockopsEstablished)
 )
 
-type sensor struct {
+type httpSensor struct {
 	name string
 }
 
-func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	path := filepath.Join(args.MapDir, httpSockMapName)
+func (sockops *httpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	path := filepath.Join(args.MapDir, "http_sock_map")
 	err, i := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, path)
 	if err != nil {
 		return err, i
@@ -128,10 +127,17 @@ func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 			return err, i
 		}
 	}
-	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, path)
+	err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, path)
+	if err != nil {
+		return err, i
+	}
+	if err := sensors.SetFilter(args.MapDir, "http_filter_map", filters); err != nil {
+		return err, i
+	}
+	return nil, i
 }
 
-func (http *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (http *httpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return AddHTTPSensor(spec.Parser)
 }
 
@@ -187,7 +193,7 @@ func AddHTTP() {
 		logger.GetLogger().Fatal(err)
 	}
 
-	skmsg := &sensor{
+	skmsg := &httpSensor{
 		name: "skmsg http sensor",
 	}
 
@@ -223,10 +229,10 @@ func EnableHTTPParser() *sensors.Sensor {
 	}
 
 	maps := []*sensors.Map{
-		SockMap,
 		TailCalls,
 		SkbTailCalls,
 		HTTPContext,
+		HTTPFilterMap,
 	}
 
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
@@ -280,7 +286,7 @@ func AddHTTPSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 		return nil, nil
 	}
 
-	Selectors, err = ParseHTTPSpec(&parser.Http)
+	filters, err = ParseHTTPSpec(&parser.Http)
 	if err != nil {
 		return nil, err
 	}

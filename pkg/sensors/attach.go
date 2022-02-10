@@ -41,9 +41,8 @@ func LoadSockOpt(
 	version, verbose int,
 	x64 bool,
 	path string,
-	tls_selectors [128]byte,
 ) (error, int) {
-	return LoadCgroupProgram(bpfDir, mapDir, load, []Selector{{"tls_filter_map", tls_selectors}})
+	return LoadCgroupProgram(bpfDir, mapDir, load)
 }
 
 func LoadSkProgram(
@@ -57,7 +56,7 @@ func LoadSkProgram(
 	}
 	defer targetMap.Close()
 
-	return loadProgram(bpfDir, mapDir, load, targetMap.FD(), []Selector{})
+	return loadProgram(bpfDir, mapDir, load, targetMap.FD())
 }
 
 // Sockops is different from other programs, in that it is shared across
@@ -69,21 +68,14 @@ func LoadSockops(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,
 	version, verbose int,
-	x64 bool,
-	tls_selectors, http_selectors, nop_selectors [128]byte,
-) (error, int) {
+	x64 bool) (error, int) {
 	if bpf.IsSockopsLoaded() {
 		logger.GetLogger().WithField("program", load.Name).Infof("Sockops, %d references exist reuse", bpf.SockopsRefCnt())
 		return nil, 0
 	}
 	logger.GetLogger().WithField("program", load.Name).Infof("Sockops, create initial reference")
 	bpf.CgroupSockopsRefInc()
-	return LoadCgroupProgram(bpfDir, mapDir, load,
-		[]Selector{
-			{"tls_filter_map", tls_selectors},
-			{"http_filter_map", http_selectors},
-			{"nop_filter_map", nop_selectors},
-		})
+	return LoadCgroupProgram(bpfDir, mapDir, load)
 }
 
 func LoadTC(
@@ -151,9 +143,7 @@ func getDefaultRouteLinks() ([]netlink.Link, error) {
 
 func LoadCgroupProgram(
 	bpfDir, mapDir string,
-	load *Program,
-	selectors []Selector,
-) (error, int) {
+	load *Program) (error, int) {
 
 	f, err := os.Open(fgsCgroupPath)
 	if err != nil {
@@ -162,7 +152,7 @@ func LoadCgroupProgram(
 	defer f.Close()
 
 	// TODO: Use AttachCgroup?
-	return loadProgram(bpfDir, mapDir, load, int(f.Fd()), selectors)
+	return loadProgram(bpfDir, mapDir, load, int(f.Fd()))
 }
 
 func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection) error {
@@ -202,7 +192,7 @@ func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 	return nil
 }
 
-func setFilter(mapDir string, mapName string, selectors [128]byte) error {
+func SetFilter(mapDir string, mapName string, selectors [128]byte) error {
 	selectorMap, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
 	if err != nil {
 		return fmt.Errorf("failed to open selector map '%s': %w", mapName, err)
@@ -215,9 +205,7 @@ func setFilter(mapDir string, mapName string, selectors [128]byte) error {
 func loadProgram(
 	bpfDir, mapDir string,
 	load *Program,
-	targetFD int,
-	selectors []Selector,
-) (err error, fd int) {
+	targetFD int) (err error, fd int) {
 	var btfFile *os.File
 	if btfFilePath := btf.GetCachedBTFFile(); btfFilePath != "/sys/kernel/btf/vmlinux" {
 		// Non-standard path to BTF, open it and provide it as 'TargetBTF'.
@@ -287,19 +275,6 @@ func loadProgram(
 		err = installTailCalls(mapDir, spec, coll)
 		if err != nil {
 			return fmt.Errorf("installing tail calls failed: %w", err), 0
-		}
-	}
-
-	for _, selector := range selectors {
-		if selectorMap, ok := coll.Maps[selector.MapName]; ok {
-			if err = selectorMap.Update(uint32(0), selector.Selectors, ebpf.UpdateAny); err != nil {
-				return fmt.Errorf("selector install failed: %w", err), 0
-			}
-		} else {
-			// TODO(JM): UDP sensor currently loads all programs with the "tls_filter_map" selector,
-			// and this isn't in all of them. Properly fix the load in the UDP sensor.
-			//return fmt.Errorf("selector '%s' not found from program '%s'", selector.MapName, load.Name), 0
-			logger.GetLogger().Warnf("Selector '%s' not found from program '%s', ignoring.", selector.MapName, load.Name)
 		}
 	}
 

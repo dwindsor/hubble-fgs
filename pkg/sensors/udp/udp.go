@@ -155,6 +155,7 @@ var (
 	UdpMap          = sensors.MapBuilder(UdpMapName, "", InetSend)
 	UdpMapKprobe    = sensors.MapBuilder(UdpMapName, "", UdpSend)
 	UdpRetprobeMap  = sensors.MapBuilder(UdpRetprobeMapName, "", UdpSend)
+	UdpFilterMap    = sensors.MapBuilder("udp_filter_map", "", InetSend)
 )
 
 type udpInfoKey struct {
@@ -357,10 +358,14 @@ type udpSensor struct {
 }
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load,
-		[]sensors.Selector{
-			{"udp_filter_map", Selectors},
-		})
+	err, i := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load)
+	if err != nil {
+		return err, i
+	}
+	if err := sensors.SetFilter(args.MapDir, "udp_filter_map", Selectors); err != nil {
+		return err, i
+	}
+	return nil, i
 }
 
 func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
@@ -379,6 +384,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		maps = []*sensors.Map{
 			UdpMapKprobe,
 			UdpRetprobeMap,
+			UdpFilterMap,
 		}
 		versionStr = "__udp_sensor_probe__"
 	} else {
@@ -395,6 +401,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			SocketCookieMap,
 			UdpMapKprobe,
 			UdpRetprobeMap,
+			UdpFilterMap,
 			UdpMap,
 		}
 		versionStr = "__udp_sensor_cgroup__"
