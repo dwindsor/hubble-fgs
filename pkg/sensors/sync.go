@@ -253,7 +253,9 @@ func RemoveProgram(bpfDir string, prog *Program) {
 	} else if prog.Type == "sockops" {
 		bpf.CgroupDestroySockops(path)
 	}
-	os.Remove(path)
+	if err := os.Remove(path); err != nil {
+		logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
+	}
 	if prog.TraceFD >= 0 {
 		removeTracepoint(prog.TraceFD)
 		prog.TraceFD = -1
