@@ -163,7 +163,7 @@ bool tls_filter_is_populated() {
 	if (!filter)
 		return false;
 
-	return !(*(__u32*)filter);
+	return (*(__u32*)filter) != 0;
 }
 
 static inline __attribute__((always_inline))

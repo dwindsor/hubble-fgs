@@ -97,8 +97,6 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 
 		/* Add an entry to stop parsing further packets */
 		tls_mark_complete(clienthello);
-		bottle_drop(&tuple);
-		add_tlsmap(&tuple, clienthello);
 		break;
 
 	default:
