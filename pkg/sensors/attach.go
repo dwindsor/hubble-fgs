@@ -252,8 +252,6 @@ func loadProgram(
 			defer m.Close()
 			pinnedMaps[name] = m
 		}
-		// TODO(JM): Would be great to be more declarative about which
-		// maps we need pinned and which can be program local.
 	}
 	if err := spec.RewriteMaps(pinnedMaps); err != nil {
 		return fmt.Errorf("rewrite maps failed: %w", err), 0

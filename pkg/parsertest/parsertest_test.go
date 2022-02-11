@@ -19,9 +19,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 )
 
 const (
@@ -115,7 +116,6 @@ func (h *SensorsHandle) Close(t *testing.T) {
 }
 
 func startSensors(cfg int, t *testing.T) SensorsHandle {
-
 	sensor := sensors.GetInitialSensor()
 
 	var spec v1alpha1.ParserPolicySpec
@@ -130,12 +130,6 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 				},
 			},
 		}
-		tlsSensor, err := sockmap.AddTLSSensor(spec)
-		if err != nil {
-			t.Fatalf("AddTLSSensor: %s\n", err)
-		}
-		sensor = sensors.SensorCombine("init+tls", sensor, tlsSensor)
-
 	case SENS_HTTP:
 		spec = v1alpha1.ParserPolicySpec{
 			Http: v1alpha1.HttpSpec{
@@ -145,27 +139,20 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 				},
 			},
 		}
-
-		httpSensor, err := http.AddHTTPSensor(spec)
-		if err != nil {
-			t.Fatalf("AddHTTPSensor: %s\n", err)
-		}
-		sensor = sensors.SensorCombine("init+http", sensor, httpSensor)
-
-		// Add the sockops program.
-		sensor = sensors.SensorCombine("sensor", sensor,
-			sensors.SensorBuilder("sensor",
-				[]*sensors.Program{sockops.SockopsEstablished},
-				[]*sensors.Map{}))
-
 	case SENS_INITIAL:
 
 	default:
 		panic(fmt.Sprintf("unimplemented %d", cfg))
 	}
 
+	parserSensors, err := sensors.GetSensorsFromParserPolicy(&v1alpha1.TracingPolicySpec{Parser: spec})
+	if err != nil {
+		t.Fatalf("GetSensorsFromParserPolicy: %s", err)
+	}
+	sensor = sensors.SensorCombine("all", sensor, parserSensors...)
+
 	ctx, cancel := context.WithCancel(context.Background())
-	err := sensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
+	err = sensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
 	if err != nil {
 		t.Fatalf("s.Load: %s\n", err)
 	}

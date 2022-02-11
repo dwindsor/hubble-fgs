@@ -113,17 +113,17 @@ type Operations interface {
 	SetConfig(cfg string, val string) error
 }
 
-func SensorCombine(name string, a, b *Sensor) *Sensor {
-	if a != nil && b != nil {
-		progs := append(a.Progs, b.Progs...)
-		maps := append(a.Maps, b.Maps...)
-		return SensorBuilder(name, progs, maps)
-	} else if a != nil {
-		return a
-	} else if b != nil {
-		return b
+func SensorCombine(name string, a *Sensor, bs ...*Sensor) *Sensor {
+	if a == nil {
+		return nil
 	}
-	return nil
+	progs := a.Progs
+	maps := a.Maps
+	for _, b := range bs {
+		progs = append(progs, b.Progs...)
+		maps = append(maps, b.Maps...)
+	}
+	return SensorBuilder(name, progs, maps)
 }
 
 func SensorBuilder(name string, p []*Program, m []*Map) *Sensor {
@@ -198,6 +198,17 @@ func RegisterSensorAtInit(s *Sensor) {
 	logger.GetLogger().WithField("name", s.Name).Debug("Sensor registered")
 }
 
-// func GetSensorsFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*Sensor, error) {
-// 	return sockmap.AddParserSensors(spec.Parser)
-// }
+func GetSensorsFromParserPolicy(spec *v1alpha1.TracingPolicySpec) ([]*Sensor, error) {
+	var sensors []*Sensor
+	for _, s := range registeredTracingSensors {
+		sensor, err := s.SpecHandler(spec)
+		if err != nil {
+			return nil, err
+		}
+		if sensor == nil {
+			continue
+		}
+		sensors = append(sensors, sensor)
+	}
+	return sensors, nil
+}

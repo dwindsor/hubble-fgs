@@ -223,8 +223,6 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 }
 
 func createConfigSensors(configFile string) ([]*Sensor, error) {
-	var sensors []*Sensor
-
 	if configFile == "" {
 		return nil, nil
 	}
@@ -237,17 +235,8 @@ func createConfigSensors(configFile string) ([]*Sensor, error) {
 	if err != nil {
 		return nil, err
 	}
-	for _, s := range registeredTracingSensors {
-		sensor, err := s.SpecHandler(&cnf.Spec)
-		if err != nil {
-			return nil, err
-		}
-		if sensor == nil {
-			continue
-		}
-		sensors = append(sensors, sensor)
-	}
-	return sensors, nil
+
+	return GetSensorsFromParserPolicy(&cnf.Spec)
 }
 
 func mergeSensors(sensors []*Sensor) *Sensor {
