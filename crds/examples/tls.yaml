@@ -18,11 +18,6 @@ spec:
       - matchPorts:
         - 8080
         - 80
-    https:
-      enable: true
-      selectors:
-      - matchPorts:
-        - 443
     udp:
       enable: true
       cgroup: true
