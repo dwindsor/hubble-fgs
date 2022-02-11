@@ -71,14 +71,6 @@ var (
 // LoadDefault loads the default sensor, including any from the configuration
 // file.
 func LoadDefault(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
-	createDir(bpfDir, mapDir)
-	MapDir = mapDir
-
-	logger.GetLogger().WithField("metadata", option.Config.BTF).Info("Using metadata file")
-	if _, err := observerMinReqs(ctx); err != nil {
-		return fmt.Errorf("hubble-fgs, aborting minimum requirements not met: %w", err)
-	}
-
 	// This is technically not a sensor since we are loading this
 	// statically when we start, but it allows us to have a single path for
 	// loading bpf programs.
@@ -109,6 +101,14 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 		return nil
 	}
 
+	logger.GetLogger().WithField("metadata", option.Config.BTF).Info("Using metadata file")
+	if _, err := observerMinReqs(stopCtx); err != nil {
+		return fmt.Errorf("hubble-fgs, aborting minimum requirements not met: %w", err)
+	}
+
+	createDir(bpfDir, mapDir)
+	MapDir = mapDir
+
 	l := logger.GetLogger()
 
 	l.WithField("name", s.Name).Info("Loading sensor")
@@ -122,6 +122,7 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 	if err := s.FindPrograms(stopCtx); err != nil {
 		return fmt.Errorf("hubble-fgs, aborting could not find BPF programs: %w", err)
 	}
+
 	if err := s.LoadMaps(stopCtx, mapDir); err != nil {
 		return fmt.Errorf("hubble-fgs, aborting could not load sensor BPF maps: %w", err)
 	}
