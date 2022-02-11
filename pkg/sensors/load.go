@@ -194,20 +194,25 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 
 	l := logger.GetLogger()
 	for _, m := range s.Maps {
-		var err error
-
 		if m.PinState.IsDisabled() {
 			l.WithField("map", m.Name).Info("hubble-fgs, map is disabled, skipping.")
 			continue
 		}
 
 		pin := filepath.Join(mapDir, m.Name)
-		btfObj := uintptr(btf.GetCachedBTF())
-		m.FD, err = loader.LoadAndPinMaps(version, option.Config.Verbosity, btfObj, m.Prog.Name, pin, m.Name, nameToProgType(m.Prog.Type))
-		l.Debugf("LoadAndPinMaps(%s, %s, %s)", m.Prog.Name, pin, m.Name)
-		if err != nil {
-			return fmt.Errorf("failed %d load map (%s): %w", m.FD, m.Type, err)
+
+		// Try to open the pinPath and if it exist use the previously
+		// pinned map otherwise pin the map and next user will find
+		// it here.
+		if _, err := os.Stat(pin); err != nil {
+			btfObj := uintptr(btf.GetCachedBTF())
+			m.FD, err = loader.LoadAndPinMaps(version, option.Config.Verbosity, btfObj, m.Prog.Name, pin, m.Name, nameToProgType(m.Prog.Type))
+			l.Debugf("LoadAndPinMaps(%s, %s, %s)", m.Prog.Name, pin, m.Name)
+			if err != nil {
+				return fmt.Errorf("failed %d load map (%s): %w", m.FD, m.Type, err)
+			}
 		}
+
 		l.WithFields(logrus.Fields{
 			"map":  m.Name,
 			"path": pin,
