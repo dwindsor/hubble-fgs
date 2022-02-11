@@ -22,7 +22,7 @@ kubectl cluster-info --context "kind-$CLUSTER_NAME"
 
 echo "Applying tracing policies..." 1>&2
 kubectl apply -f crds/isovalent.com_tracingpolicies.yaml
-sleep 5 # Wait so that we can give a change for the new CRD to be applied
+sleep 5 # Wait so that we can give a chance for the new CRD to be applied
 kubectl apply -f crds/examples/tls.yaml
 echo "Waiting to make sure sensors have been loaded..." 1>&2
 sleep 30 # Wait 30 seconds for now to make sure sensors have had a chance to load
