@@ -63,10 +63,7 @@ var (
 )
 
 func httpNeedsMoreBytes(flags uint32) bool {
-	if HttpMoreHeadersNeeded&flags > 0 {
-		return true
-	}
-	return false
+	return HttpMoreHeadersNeeded&flags > 0
 }
 
 var (
@@ -114,7 +111,7 @@ type httpSensor struct {
 	name string
 }
 
-func (sockops *httpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, "http_sock_map")
 	err, i := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, path)
 	if err != nil {
@@ -166,10 +163,6 @@ func (skmsg *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*
 }
 
 func init() {
-	AddHTTP()
-}
-
-func AddHTTP() {
 	var err error
 
 	moreBytes, err = lru.New(moreBytesCacheSize)
@@ -193,7 +186,7 @@ func AddHTTP() {
 		logger.GetLogger().Fatal(err)
 	}
 
-	skmsg := &httpSensor{
+	http := &httpSensor{
 		name: "skmsg http sensor",
 	}
 
@@ -209,9 +202,9 @@ func AddHTTP() {
 	}
 
 	sensors.RegisterProbeType("http_skskb_verdict", skskbVerdict)
-	sensors.RegisterProbeType("http_skmsg", skmsg)
+	sensors.RegisterProbeType("http_skmsg", http)
 
-	sensors.RegisterTracingSensorsAtInit(skmsg.name, skmsg)
+	sensors.RegisterTracingSensorsAtInit(http.name, http)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_HTTP, handleHTTP)
 }
 

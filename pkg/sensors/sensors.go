@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 var (
@@ -154,6 +155,7 @@ func RegisterTracingSensorsAtInit(name string, s tracingSensor) {
 		panic(fmt.Sprintf("RegisterTracingSensor called, but %s is already registered", name))
 	}
 	registeredTracingSensors[name] = s
+	logger.GetLogger().WithField("name", name).Debug("Tracing sensor registered")
 }
 
 // RegisterProbeType registers a handler for a probe type string
@@ -165,6 +167,7 @@ func RegisterProbeType(probeType string, s tracingSensor) {
 		panic(fmt.Sprintf("RegisterProbeType called, but %s is already registered", probeType))
 	}
 	registeredProbeLoad[probeType] = s
+	logger.GetLogger().WithField("probeType", probeType).Debug("ProbeType registered")
 }
 
 type tracingSensor interface {
@@ -192,6 +195,7 @@ func RegisterSensorAtInit(s *Sensor) {
 	}
 
 	availableSensors[s.Name] = []*Sensor{s}
+	logger.GetLogger().WithField("name", s.Name).Debug("Sensor registered")
 }
 
 // func GetSensorsFromParserPolicy(spec *v1alpha1.TracingPolicySpec) (*Sensor, error) {
