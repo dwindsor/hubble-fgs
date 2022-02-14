@@ -26,7 +26,7 @@ enum bpf_enum_value_kind {
 	#define PROBE_CWD_READ_ITERATIONS 24 /* 32 is too much for 5.4 (i.e. The sequence of 8193 jumps is too complex.) but fine for 5.10 */
 	#define MAX_MOUNT_POINTS 32
 #else
-	#define PROBE_CWD_READ_ITERATIONS 13
+	#define PROBE_CWD_READ_ITERATIONS 12
 #endif
 
 /* Not sure if the following is more clear compared to

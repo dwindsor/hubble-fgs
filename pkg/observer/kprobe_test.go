@@ -1204,7 +1204,7 @@ func testMultiplePathComponentsFiltered(t *testing.T, readHook string) {
 	})
 
 	filePath := path + "/testfile"
-	writeChecker = createWriteChecker("/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "unresolvedPathComponents")
+	writeChecker = createWriteChecker("/6/7/8/9/10/11/12/13/14/15/16/testfile", "unresolvedPathComponents")
 	if kernels.EnableLargeProgs() {
 		writeChecker = createWriteChecker("/tmp/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "")
 	}
@@ -1273,7 +1273,7 @@ func testMultipleMountPathFiltered(t *testing.T, readHook string) {
 	})
 
 	filePath := path + "/testfile"
-	writeChecker = createWriteChecker("/[M]/tmp4/tmp5/[P]/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "unresolvedMountPoints unresolvedPathComponents")
+	writeChecker = createWriteChecker("/[M]/tmp4/tmp5/[P]/6/7/8/9/10/11/12/13/14/15/16/testfile", "unresolvedMountPoints unresolvedPathComponents")
 	if kernels.EnableLargeProgs() {
 		writeChecker = createWriteChecker("/tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16/testfile", "")
 	}
@@ -1310,7 +1310,7 @@ func TestMultipleMountPath(t *testing.T) {
 func TestMultipleMountPathFiltered(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	// Kernel adds a & in the case of unresolved path. In the userspace we change that to [P]
-	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp4/tmp5/&/5/6/7/8/9/10/11/12/13/14/15/16")
+	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp4/tmp5/&/6/7/8/9/10/11/12/13/14/15/16")
 	if kernels.EnableLargeProgs() {
 		readHook = testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16")
 	}
