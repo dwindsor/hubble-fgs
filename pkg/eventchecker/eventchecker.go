@@ -134,6 +134,13 @@ func (c *OrderedMultiResponseChecker) Reset() {
 	c.idx = 0
 }
 
+// Append adds a new checker to the list of checkers
+func (c *OrderedMultiResponseChecker) Append(checkers ...ResponseChecker) {
+	for _, checker := range checkers {
+		c.checkers = append(c.checkers, checker)
+	}
+}
+
 // NewSingleMultiResponseChecker checks all responses against a single checker
 func NewSingleMultiResponseChecker(checker ResponseChecker) MultiResponseChecker {
 	// NB: no need for a separate implementation
@@ -245,6 +252,14 @@ func (c *UnorderedMultiResponseChecker) FinalCheck(log Logger) error {
 		return nil
 	}
 	return fmt.Errorf("UnorderedMultiResponseChecker: %d checks remain", c.pendingCheckers.Len())
+}
+
+// Append adds a new checker to the list of checkers
+func (c *UnorderedMultiResponseChecker) Append(checkers ...ResponseChecker) {
+	for _, checker := range checkers {
+		c.pendingCheckers.PushBack(checker)
+		c.totalCheckers++
+	}
 }
 
 type fgsEvent interface {
