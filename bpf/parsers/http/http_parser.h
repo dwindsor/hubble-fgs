@@ -209,7 +209,7 @@ void get_string(ctx_md *msg,
 	__u32 offset = http->url_offset;
 	__u32 *dstsz;
 	char *c;
-	int i;
+	__u64 i;
 
 	if (offset + max > 0x3ff) {
 		http->flags = HTTP_MORE_HEADERS_NEEDED;
@@ -231,8 +231,6 @@ void get_string(ctx_md *msg,
 		c = eat_next_char(msg, http);
 
 		if (c == 0 || term == c[0])
-			break;
-		if (offset > 0x3ff)
 			break;
 		dst[offset+i+8] = c[0];
 	}
