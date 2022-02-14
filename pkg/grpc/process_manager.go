@@ -245,13 +245,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	// cache where a retry will happen.
 	if pm.enableCilium && proc != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
-		endpoint := pm.getProcessEndpoint(proc)
-		if endpoint != nil {
-			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
-		} else if pm.enableEventCache {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
+		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
@@ -316,13 +310,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	// cache where a retry will happen.
 	if pm.enableCilium && proc != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_IPV4_DNS)
-		endpoint := pm.getProcessEndpoint(proc)
-		if endpoint != nil {
-			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
-		} else if pm.enableEventCache {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
+		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
@@ -1323,13 +1311,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 	// cache where a retry will happen.
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
-		endpoint := pm.getProcessEndpoint(fgsProcess)
-		if endpoint != nil {
-			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
-		} else if pm.enableEventCache {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
+		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
@@ -1399,13 +1381,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 	// cache where a retry will happen.
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
-		endpoint := pm.getProcessEndpoint(fgsProcess)
-		if endpoint != nil {
-			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
-		} else if pm.enableEventCache {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
+		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
@@ -1475,14 +1451,9 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 	// cache where a retry will happen.
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
-		endpoint := pm.getProcessEndpoint(fgsProcess)
-		if endpoint != nil {
-			fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
-		} else if pm.enableEventCache {
-			pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
-			return nil
-		}
+		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
+
 	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
