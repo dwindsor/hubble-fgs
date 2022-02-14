@@ -17,6 +17,7 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -75,6 +76,67 @@ func TestObjectLoad(t *testing.T) {
 	}
 	initialSensor.Load(context.TODO(), obs.bpfDir, obs.mapDir, obs.ciliumDir)
 	obs.RemovePrograms()
+}
+
+func getPidNsInode(t *testing.T, pid uint32, nsStr string) uint32 {
+	pidStr := strconv.Itoa(int(pid))
+	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", nsStr)
+	netStr, err := os.Readlink(netns)
+	if err != nil {
+		return 0
+	}
+	fields := strings.Split(netStr, ":")
+	if len(fields) < 2 {
+		t.Fatalf("%sNSInode format invalid %s", nsStr, netStr)
+		return 0
+	}
+	inode := fields[1]
+	inode = strings.TrimRight(inode, "]")
+	inode = strings.TrimLeft(inode, "[")
+	inodeEntry, _ := strconv.ParseUint(inode, 10, 32)
+	return uint32(inodeEntry)
+}
+
+func TestNamespaces(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	pid := os.Getpid()
+	rootNs := &fgs.Namespaces{
+		UtsInum:             getPidNsInode(t, uint32(pid), "uts"),
+		IpcInum:             getPidNsInode(t, uint32(pid), "ipc"),
+		MntInum:             getPidNsInode(t, uint32(pid), "mnt"),
+		PidInum:             getPidNsInode(t, uint32(pid), "pid"),
+		PidForChildrenInum:  getPidNsInode(t, uint32(pid), "pid_for_children"),
+		NetInum:             getPidNsInode(t, uint32(pid), "net"),
+		TimeInum:            getPidNsInode(t, uint32(pid), "time"),
+		TimeForChildrenInum: getPidNsInode(t, uint32(pid), "time_for_children"),
+		CgroupInum:          getPidNsInode(t, uint32(pid), "cgroup"),
+		UserInum:            getPidNsInode(t, uint32(pid), "user"),
+	}
+
+	selfChecker := ec.NewProcessChecker().WithBinary(ec.SuffixStringMatch(selfBinary)).WithNs(rootNs)
+
+	checker := ec.NewUnorderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(selfChecker).
+			HasParent().
+			End(),
+	)
+
+	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
+	err = JsonTestCheck(t, nil, checker)
+	assert.NoError(t, err)
+	TestDone(t, obs)
 }
 
 func TestConnectEvent(t *testing.T) {

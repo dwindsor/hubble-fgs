@@ -1009,6 +1009,12 @@ func (o *ProcessCheckerAND) WithUID(uid uint32) *ProcessCheckerAND {
 	return o
 }
 
+// WithNS adds a check that the process' Ns matches the Ns
+func (o *ProcessCheckerAND) WithNs(ns *fgs.Namespaces) *ProcessCheckerAND {
+	o.checks = append(o.checks, ProcessWithNs(ns))
+	return o
+}
+
 // Check implements ResponseChecker interface
 func (o *ProcessCheckerAND) Check(p *fgs.Process, l Logger) error {
 	for i := range o.checks {
@@ -1073,6 +1079,12 @@ func (o *ProcessCheckerOR) WithDocker(arg StringArg) *ProcessCheckerOR {
 // WithUID adds a check that the process' UID matches the UID
 func (o *ProcessCheckerOR) WithUID(uid uint32) *ProcessCheckerOR {
 	o.checks = append(o.checks, ProcessWithUID(uid))
+	return o
+}
+
+// WithNS adds a check that the process' Ns matches the Ns
+func (o *ProcessCheckerOR) WithNs(ns *fgs.Namespaces) *ProcessCheckerOR {
+	o.checks = append(o.checks, ProcessWithNs(ns))
 	return o
 }
 
@@ -1196,6 +1208,46 @@ func ProcessWithUID(uid uint32) ProcessChecker {
 		}
 		if p.Uid.Value != uid {
 			return fmt.Errorf("uid %d does not match %d value", uid, p.Uid.Value)
+		}
+		return nil
+	})
+}
+
+// ProcessWithNs matches the Namespace field
+func ProcessWithNs(ns *fgs.Namespaces) ProcessChecker {
+	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+		if p.Ns == nil {
+			return fmt.Errorf("ns %v does not match nil value", ns)
+		}
+		if p.Ns.UtsInum != ns.UtsInum {
+			return fmt.Errorf("uts_ns %d does not match %d value", ns.UtsInum, p.Ns.UtsInum)
+		}
+		if p.Ns.IpcInum != ns.IpcInum {
+			return fmt.Errorf("ipc_ns %d does not match %d value", ns.IpcInum, p.Ns.IpcInum)
+		}
+		if p.Ns.MntInum != ns.MntInum {
+			return fmt.Errorf("mnt_ns %d does not match %d value", ns.MntInum, p.Ns.MntInum)
+		}
+		if p.Ns.PidInum != ns.PidInum {
+			return fmt.Errorf("pid_ns %d does not match %d value", ns.PidInum, p.Ns.PidInum)
+		}
+		if p.Ns.PidForChildrenInum != ns.PidForChildrenInum {
+			return fmt.Errorf("pid_for_children_ns %d does not match %d value", ns.PidForChildrenInum, p.Ns.PidForChildrenInum)
+		}
+		if p.Ns.NetInum != ns.NetInum {
+			return fmt.Errorf("net_ns %d does not match %d value", ns.NetInum, p.Ns.NetInum)
+		}
+		if p.Ns.TimeInum != ns.TimeInum {
+			return fmt.Errorf("time_ns %d does not match %d value", ns.TimeInum, p.Ns.TimeInum)
+		}
+		if p.Ns.TimeForChildrenInum != ns.TimeForChildrenInum {
+			return fmt.Errorf("time_for_children_ns %d does not match %d value", ns.TimeForChildrenInum, p.Ns.TimeForChildrenInum)
+		}
+		if p.Ns.CgroupInum != ns.CgroupInum {
+			return fmt.Errorf("cgroup_ns %d does not match %d value", ns.TimeInum, p.Ns.TimeInum)
+		}
+		if p.Ns.UserInum != ns.UserInum {
+			return fmt.Errorf("user_ns %d does not match %d value", ns.UserInum, p.Ns.UserInum)
 		}
 		return nil
 	})
