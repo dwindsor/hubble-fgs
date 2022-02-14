@@ -105,26 +105,6 @@ type procTCPEntry struct {
 	inode      uint32
 }
 
-func (k *Observer) getPidNetNsInode(pid uint32) uint64 {
-	pidStr := strconv.Itoa(int(pid))
-	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", "net")
-	netStr, err := os.Readlink(netns)
-	if err != nil {
-		k.log.WithError(err).Warnf("NetNSInode read (%d) failed", pid)
-		return 0
-	}
-	fields := strings.Split(netStr, ":")
-	if len(fields) < 2 {
-		k.log.WithError(err).Warnf("NetNSInode format invalid %s", netStr)
-		return 0
-	}
-	inode := fields[1]
-	inode = strings.TrimRight(inode, "]")
-	inode = strings.TrimLeft(inode, "[")
-	inodeEntry, _ := strconv.ParseUint(inode, 10, 32)
-	return inodeEntry
-}
-
 func (k *Observer) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
 	var m *bpf.Map
 
@@ -135,7 +115,7 @@ func (k *Observer) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uin
 	tcp.ProcessKey.Ktime = msg.Process.Ktime
 	tcp.Common.Ktime = msg.Process.Ktime
 
-	netns := k.getPidNetNsInode(pid)
+	netns := uint64(k.getPidNsInode(pid, "net"))
 
 	fdDir := fmt.Sprintf("%s/%d/fd", option.Config.ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)

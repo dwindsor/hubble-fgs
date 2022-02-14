@@ -115,6 +115,18 @@ func msgToExecveUnix(m *api.MsgExecveEvent, offset int) *api.MsgExecveEventUnix 
 	}
 	unix.Parent = m.Parent
 	unix.Capabilities = m.Capabilities
+
+	unix.Namespaces.UtsInum = m.Namespaces.UtsInum
+	unix.Namespaces.IpcInum = m.Namespaces.IpcInum
+	unix.Namespaces.MntInum = m.Namespaces.MntInum
+	unix.Namespaces.PidInum = m.Namespaces.PidInum
+	unix.Namespaces.PidChildInum = m.Namespaces.PidChildInum
+	unix.Namespaces.NetInum = m.Namespaces.NetInum
+	unix.Namespaces.TimeInum = m.Namespaces.TimeInum
+	unix.Namespaces.TimeChildInum = m.Namespaces.TimeChildInum
+	unix.Namespaces.CgroupInum = m.Namespaces.CgroupInum
+	unix.Namespaces.UserInum = m.Namespaces.UserInum
+
 	return unix
 }
 

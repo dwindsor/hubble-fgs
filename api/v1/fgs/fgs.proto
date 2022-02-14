@@ -59,6 +59,19 @@ message Capabilities {
     repeated CapabilitiesType inheritable = 3;
 }
 
+message Namespaces {
+    uint32 uts_inum = 1;
+    uint32 ipc_inum = 2;
+    uint32 mnt_inum = 3;
+    uint32 pid_inum = 4;
+    uint32 pid_for_children_inum = 5;
+    uint32 net_inum = 6;
+    uint32 time_inum = 7;
+    uint32 time_for_children_inum = 8;
+    uint32 cgroup_inum = 9;
+    uint32 user_inum = 10;
+}
+
 message Process {
     // Exec ID uniquely identifies the process over time across all the nodes in the cluster.
     string exec_id = 1;
@@ -75,6 +88,7 @@ message Process {
     string parent_exec_id = 12;
     uint32 refcnt = 13;
     Capabilities cap = 14;
+    Namespaces ns = 15;
 }
 
 message InterfaceStats {

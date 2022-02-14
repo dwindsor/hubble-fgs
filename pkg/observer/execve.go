@@ -118,6 +118,17 @@ func (k *Observer) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procT
 	m.Capabilities.Effective = p.effective
 	m.Capabilities.Inheritable = p.inheritable
 
+	m.Namespaces.UtsInum = p.uts_ns
+	m.Namespaces.IpcInum = p.ipc_ns
+	m.Namespaces.MntInum = p.mnt_ns
+	m.Namespaces.PidInum = p.pid_ns
+	m.Namespaces.PidChildInum = p.pid_for_children_ns
+	m.Namespaces.NetInum = p.net_ns
+	m.Namespaces.TimeInum = p.time_ns
+	m.Namespaces.TimeChildInum = p.time_for_children_ns
+	m.Namespaces.CgroupInum = p.cgroup_ns
+	m.Namespaces.UserInum = p.user_ns
+
 	m.Process.Size = p.size
 	m.Process.PID = p.pid
 	m.Process.NSPID = p.nspid

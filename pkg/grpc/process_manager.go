@@ -802,6 +802,21 @@ func (pm *ProcessManager) getCapabilities(caps fgsAPI.MsgCapabilities) *fgs.Capa
 	}
 }
 
+func (pm *ProcessManager) getNamespaces(ns fgsAPI.MsgNamespaces) *fgs.Namespaces {
+	return &fgs.Namespaces{
+		UtsInum:             ns.UtsInum,
+		IpcInum:             ns.IpcInum,
+		MntInum:             ns.MntInum,
+		PidInum:             ns.PidInum,
+		PidForChildrenInum:  ns.PidChildInum,
+		NetInum:             ns.NetInum,
+		TimeInum:            ns.TimeInum,
+		TimeForChildrenInum: ns.TimeChildInum,
+		CgroupInum:          ns.CgroupInum,
+		UserInum:            ns.UserInum,
+	}
+}
+
 func getBinaryAbsolutePath(binary string, cwd string) string {
 	if filepath.IsAbs(binary) {
 		return binary
@@ -814,6 +829,7 @@ func (pm *ProcessManager) getProcess(
 	containerID string,
 	parent fgsAPI.MsgExecveKey,
 	capabilities fgsAPI.MsgCapabilities,
+	namespaces fgsAPI.MsgNamespaces,
 ) (*processInternal, *v1.Endpoint) {
 	args, cwd := reader.ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
@@ -823,6 +839,7 @@ func (pm *ProcessManager) getProcess(
 	execID := pm.GetExecID(&process)
 	protoPod, endpoint := pm.getPodInfo(containerID, process.Filename, args, process.NSPID)
 	caps := pm.getCapabilities(capabilities)
+	ns := pm.getNamespaces(namespaces)
 	return &processInternal{
 		process: &fgs.Process{
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
@@ -840,12 +857,13 @@ func (pm *ProcessManager) getProcess(
 			Refcnt:       1,
 		},
 		capabilities: caps,
+		namespaces:   ns,
 	}, endpoint
 }
 
 // Add converts an FGS exec event to protobuf format and adds the protobuf message to the cache.
 func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *processInternal {
-	proc, _ := pm.getProcess(event.Process, event.Kube.Docker, event.Parent, event.Capabilities)
+	proc, _ := pm.getProcess(event.Process, event.Kube.Docker, event.Parent, event.Capabilities, event.Namespaces)
 	pm.cache.add(proc)
 	var parentExecID string
 	if proc.process.Pid != nil {
@@ -936,6 +954,9 @@ func (pm *ProcessManager) GetProcessExec(
 	} else {
 		fgsProcess = proc.process
 	}
+	// do not modify the initial process
+	fgsProcess = copyProcess(fgsProcess)
+	fgsProcess.Ns = proc.namespaces
 	if parent != nil {
 		fgsParent = parent.process
 	}

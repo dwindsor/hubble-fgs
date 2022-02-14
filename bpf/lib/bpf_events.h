@@ -3,6 +3,15 @@
 
 #define _(P) (__builtin_preserve_access_index(P))
 
+/*
+ * Convenience macro to check that field actually exists in target kernel's.
+ * Returns:
+ *    1, if matching field is present in target kernel;
+ *    0, if no matching field found.
+ */
+#define bpf_core_field_exists(field)					    \
+	__builtin_preserve_field_info(field, BPF_FIELD_EXISTS)
+
 /* second argument to __builtin_preserve_enum_value() built-in */
 enum bpf_enum_value_kind {
 	BPF_ENUMVAL_EXISTS = 0,		/* enum value existence in kernel */
@@ -855,6 +864,52 @@ void get_caps(struct msg_execve_event *msg, struct task_struct *task)
 	probe_read(&msg->caps.inheritable, sizeof(__u64), _(&cred->cap_permitted));
 }
 
+static inline __attribute__((always_inline))
+void get_namespaces(struct msg_execve_event *msg, struct task_struct *task)
+{
+	struct nsproxy *nsproxy;
+	struct nsproxy nsp;
+
+	probe_read(&nsproxy, sizeof(nsproxy), _(&task->nsproxy));
+	probe_read(&nsp, sizeof(nsp), _(nsproxy));
+
+	probe_read(&msg->ns.uts_inum, sizeof(msg->ns.uts_inum), _(&nsp.uts_ns->ns.inum));
+	probe_read(&msg->ns.ipc_inum, sizeof(msg->ns.ipc_inum), _(&nsp.ipc_ns->ns.inum));
+	probe_read(&msg->ns.mnt_inum, sizeof(msg->ns.mnt_inum), _(&nsp.mnt_ns->ns.inum));
+	{
+		struct pid *p = 0;
+
+		probe_read(&p, sizeof(p), _(&task->thread_pid));
+		if (p) {
+			int level = 0;
+			struct upid up;
+
+			probe_read(&level, sizeof(level), _(&p->level));
+			probe_read(&up, sizeof(up), _(&p->numbers[level]));
+			probe_read(&msg->ns.pid_inum, sizeof(msg->ns.pid_inum), _(&up.ns->ns.inum));
+		} else
+			msg->ns.pid_inum = 0;
+	}
+	probe_read(&msg->ns.pid_for_children_inum, sizeof(msg->ns.pid_for_children_inum), _(&nsp.pid_ns_for_children->ns.inum));
+	probe_read(&msg->ns.net_inum, sizeof(msg->ns.net_inum), _(&nsp.net_ns->ns.inum));
+
+	// this also includes time_ns_for_children
+	if(bpf_core_field_exists(nsproxy->time_ns)) {
+		probe_read(&msg->ns.time_inum, sizeof(msg->ns.time_inum), _(&nsp.time_ns->ns.inum));
+		probe_read(&msg->ns.time_for_children_inum, sizeof(msg->ns.time_for_children_inum), _(&nsp.time_ns_for_children->ns.inum));
+	}
+
+	probe_read(&msg->ns.cgroup_inum, sizeof(msg->ns.cgroup_inum), _(&nsp.cgroup_ns->ns.inum));
+	{
+		struct mm_struct *mm;
+		struct user_namespace *user_ns;
+
+		probe_read(&mm, sizeof(mm), _(&task->mm));
+		probe_read(&user_ns, sizeof(user_ns), _(&mm->user_ns));
+		probe_read(&msg->ns.user_inum, sizeof(msg->ns.user_inum), _(&user_ns->ns.inum));
+	}
+}
+
 /* Pahole bug does not convert to btf correctly with arbitrary byte holes not
  * near a cacheline. To work-around this we can specify a define with the
  * CGROUPS_OFFSET we read directly out of debug_info section. Note other
@@ -959,6 +1014,7 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 	msg->kube.cgrpid = get_current_cgroup_id();
 #endif
 	get_caps(msg, task);
+	get_namespaces(msg, task);
 }
 
 static inline __attribute__((always_inline))

@@ -43,6 +43,7 @@
     - [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes)
     - [ListSensorsRequest](#fgs.ListSensorsRequest)
     - [ListSensorsResponse](#fgs.ListSensorsResponse)
+    - [Namespaces](#fgs.Namespaces)
     - [Pod](#fgs.Pod)
     - [Process](#fgs.Process)
     - [ProcessAccept](#fgs.ProcessAccept)
@@ -754,6 +755,30 @@ HTTP PARSER
 
 
 
+<a name="fgs.Namespaces"></a>
+
+### Namespaces
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| uts_inum | [uint32](#uint32) |  |  |
+| ipc_inum | [uint32](#uint32) |  |  |
+| mnt_inum | [uint32](#uint32) |  |  |
+| pid_inum | [uint32](#uint32) |  |  |
+| pid_for_children_inum | [uint32](#uint32) |  |  |
+| net_inum | [uint32](#uint32) |  |  |
+| time_inum | [uint32](#uint32) |  |  |
+| time_for_children_inum | [uint32](#uint32) |  |  |
+| cgroup_inum | [uint32](#uint32) |  |  |
+| user_inum | [uint32](#uint32) |  |  |
+
+
+
+
+
+
 <a name="fgs.Pod"></a>
 
 ### Pod
@@ -794,6 +819,7 @@ HTTP PARSER
 | parent_exec_id | [string](#string) |  |  |
 | refcnt | [uint32](#uint32) |  |  |
 | cap | [Capabilities](#fgs.Capabilities) |  |  |
+| ns | [Namespaces](#fgs.Namespaces) |  |  |
 
 
 

@@ -327,12 +327,26 @@ struct msg_test {
 	unsigned long arg3;
 } __attribute__((packed));
 
+struct msg_ns {
+	__u32 uts_inum;
+	__u32 ipc_inum;
+	__u32 mnt_inum;
+	__u32 pid_inum;
+	__u32 pid_for_children_inum;
+	__u32 net_inum;
+	__u32 time_inum;
+	__u32 time_for_children_inum;
+	__u32 cgroup_inum;
+	__u32 user_inum;
+};
+
 struct msg_execve_event {
 	struct msg_common	common;
 	struct msg_k8s		kube;
 	struct msg_execve_key	parent;
 	__u64			parent_flags;
 	struct msg_capabilities caps;
+	struct msg_ns		ns;
 	char			pid[PADDED_BUFFER];
 } __attribute__((packed));
 

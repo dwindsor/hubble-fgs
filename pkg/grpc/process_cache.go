@@ -51,6 +51,7 @@ type processInternal struct {
 	process *fgs.Process
 	// additional internal fields below
 	capabilities *fgs.Capabilities
+	namespaces   *fgs.Namespaces
 	// garbage collector metadata
 	color int
 }

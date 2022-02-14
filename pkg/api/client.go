@@ -486,12 +486,26 @@ type MsgCapabilities struct {
 	Inheritable uint64
 }
 
+type MsgNamespaces struct {
+	UtsInum       uint32
+	IpcInum       uint32
+	MntInum       uint32
+	PidInum       uint32
+	PidChildInum  uint32
+	NetInum       uint32
+	TimeInum      uint32
+	TimeChildInum uint32
+	CgroupInum    uint32
+	UserInum      uint32
+}
+
 type MsgExecveEvent struct {
 	Common       MsgCommon
 	Kube         MsgK8s
 	Parent       MsgExecveKey
 	ParentFlags  uint64
 	Capabilities MsgCapabilities
+	Namespaces   MsgNamespaces
 }
 
 type MsgExecveEventUnix struct {
@@ -500,6 +514,7 @@ type MsgExecveEventUnix struct {
 	Parent       MsgExecveKey
 	ParentFlags  uint64
 	Capabilities MsgCapabilities
+	Namespaces   MsgNamespaces
 	Process      MsgExecUnix
 }
 

@@ -192,23 +192,33 @@ func getPIDNS(filename string) (uint32, uint64, uint64, uint64) {
 }
 
 type ObserverProcs struct {
-	psize       uint32
-	ppid        uint32
-	pnspid      uint32
-	pflags      uint32
-	pktime      uint64
-	pargs       []byte
-	size        uint32
-	uid         uint32
-	pid         uint32
-	nspid       uint32
-	auid        uint32
-	flags       uint32
-	ktime       uint64
-	args        []byte
-	effective   uint64
-	inheritable uint64
-	permitted   uint64
+	psize                uint32
+	ppid                 uint32
+	pnspid               uint32
+	pflags               uint32
+	pktime               uint64
+	pargs                []byte
+	size                 uint32
+	uid                  uint32
+	pid                  uint32
+	nspid                uint32
+	auid                 uint32
+	flags                uint32
+	ktime                uint64
+	args                 []byte
+	effective            uint64
+	inheritable          uint64
+	permitted            uint64
+	uts_ns               uint32
+	ipc_ns               uint32
+	mnt_ns               uint32
+	pid_ns               uint32
+	pid_for_children_ns  uint32
+	net_ns               uint32
+	time_ns              uint32
+	time_for_children_ns uint32
+	cgroup_ns            uint32
+	user_ns              uint32
 }
 
 func (k *Observer) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
@@ -228,6 +238,26 @@ func (k *Observer) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procT
 	if err != nil {
 		k.log.Warn("prodDockerIdOffsetDefault error: %s", err)
 	}
+}
+
+func (k *Observer) getPidNsInode(pid uint32, nsStr string) uint32 {
+	pidStr := strconv.Itoa(int(pid))
+	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", nsStr)
+	netStr, err := os.Readlink(netns)
+	if err != nil {
+		// k.log.WithError(err).Warnf("%sNSInode read (%d) failed", nsStr, pid)
+		return 0
+	}
+	fields := strings.Split(netStr, ":")
+	if len(fields) < 2 {
+		k.log.WithError(err).Warnf("%sNSInode format invalid %s", nsStr, netStr)
+		return 0
+	}
+	inode := fields[1]
+	inode = strings.TrimRight(inode, "]")
+	inode = strings.TrimLeft(inode, "[")
+	inodeEntry, _ := strconv.ParseUint(inode, 10, 32)
+	return uint32(inodeEntry)
 }
 
 func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
@@ -285,6 +315,17 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 		}
 		ktime = ktime * (nanoPerSeconds / clktck)
 		nspid, permitted, effective, inheritable := getPIDNS(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
+
+		uts_ns := k.getPidNsInode(uint32(pid), "uts")
+		ipc_ns := k.getPidNsInode(uint32(pid), "ipc")
+		mnt_ns := k.getPidNsInode(uint32(pid), "mnt")
+		pid_ns := k.getPidNsInode(uint32(pid), "pid")
+		pid_for_children_ns := k.getPidNsInode(uint32(pid), "pid_for_children")
+		net_ns := k.getPidNsInode(uint32(pid), "net")
+		time_ns := k.getPidNsInode(uint32(pid), "time")
+		time_for_children_ns := k.getPidNsInode(uint32(pid), "time_for_children")
+		cgroup_ns := k.getPidNsInode(uint32(pid), "cgroup")
+		user_ns := k.getPidNsInode(uint32(pid), "user")
 
 		// On error procsDockerId zeros dockerId so we can ignore any errors.
 		dockerId, _, _ := procsDockerId(uint32(pid))
@@ -347,11 +388,21 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 			pflags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
 			pktime: pktime,
 			pid:    uint32(pid), nspid: nspid, args: cmdsUTF,
-			flags:       api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
-			ktime:       ktime,
-			permitted:   permitted,
-			effective:   effective,
-			inheritable: inheritable,
+			flags:                api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
+			ktime:                ktime,
+			permitted:            permitted,
+			effective:            effective,
+			inheritable:          inheritable,
+			uts_ns:               uts_ns,
+			ipc_ns:               ipc_ns,
+			mnt_ns:               mnt_ns,
+			pid_ns:               pid_ns,
+			pid_for_children_ns:  pid_for_children_ns,
+			net_ns:               net_ns,
+			time_ns:              time_ns,
+			time_for_children_ns: time_for_children_ns,
+			cgroup_ns:            cgroup_ns,
+			user_ns:              user_ns,
 		}
 
 		p.size = uint32(api.MSG_SIZEOF_EXECVE + len(p.args) + api.MSG_SIZEOF_CWD)
