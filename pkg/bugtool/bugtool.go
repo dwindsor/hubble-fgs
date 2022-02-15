@@ -245,6 +245,11 @@ func (s *bugtoolInfo) addLibFiles(tarWriter *tar.Writer) error {
 				return nil
 			}
 
+			if info.IsDir() && info.Name() == "metadata" {
+				s.multiLog.WithField("path", path).Info("skipping metadata directory")
+				return filepath.SkipDir
+			}
+
 			// We ignore non-regular files.
 			// Note that this also includes symbolic links. We could be smarter about
 			// symlinks if they point within the directory we are archiving, but since
