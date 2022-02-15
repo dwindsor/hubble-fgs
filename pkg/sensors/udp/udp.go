@@ -435,7 +435,7 @@ func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors
 	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 	}
-	Selectors, _ = ParseDnsSpec(spec)
+	Selectors, _ = ParseUdpSpec(spec)
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
 }
 

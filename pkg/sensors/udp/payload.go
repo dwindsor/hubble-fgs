@@ -124,7 +124,23 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 	return []observer.ObserverEvent{msgUnix}, nil
 }
 
-// ParseDNSSepec parsesthe input yaml/crd and outputs the kernel selectors
+// ParseUdpSpec parses the input yaml/crd and outputs the kernel selectors
+// needed for BPF to identify UDP options.
+//
+func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) ([128]byte, error) {
+	var match [128]byte
+	var e [4096]byte
+
+	k := &selectors.KernelSelectorState{}
+
+	ParseDnsSpec(spec, k)
+
+	e = selectors.GetSelectorBuffer(k)
+	copy(match[:], e[:128])
+	return match, nil
+}
+
+// ParseDNSSepec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify DNS and run DNS parser on it.
 //
 // DNS selector layout is the following.
@@ -132,23 +148,15 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 //
 // For now we support a single port and its configured here. When disabled
 // we use 0 expecting this does not match real port values.
-func ParseDnsSpec(spec *v1alpha1.TracingPolicySpec) ([128]byte, error) {
-	var match [128]byte
-	var e [4096]byte
-
-	k := &selectors.KernelSelectorState{}
-
+func ParseDnsSpec(spec *v1alpha1.TracingPolicySpec, k *selectors.KernelSelectorState) {
 	if spec.Parser.Dns.Enable {
-		selectors.WriteSelectorUint32(k, uint32(defaultDnsPort))
+		selectors.WriteSelectorUint64(k, uint64(defaultDnsPort))
 		// Enable DNS cache in core, abstraction breaking but
 		// fix is to do in kernel BPF parser.
 		observer.EnableDns()
 		logger.GetLogger().Info("Enable DNS")
 	} else {
-		selectors.WriteSelectorUint32(k, 0)
+		selectors.WriteSelectorUint64(k, 0)
 	}
-
-	e = selectors.GetSelectorBuffer(k)
-	copy(match[:], e[:128])
-	return match, nil
 }
+

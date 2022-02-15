@@ -27,6 +27,17 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_filter_map = {
 };
 
 static inline __attribute__((always_inline))
+u8 ip_payload_off(struct iphdr *ip)
+{
+	u8 ip_off;
+
+	ip_off = ip->ihl;
+	ip_off &= 0x0f;
+	ip_off *= 4;
+	return ip_off;
+}
+
+static inline __attribute__((always_inline))
 struct udp_info_key *udp4_key_lazy(struct __sk_buff *skb,
 			      struct iphdr *ip,
 			      int *payload_off, int *payload_sz)
@@ -40,9 +51,7 @@ struct udp_info_key *udp4_key_lazy(struct __sk_buff *skb,
 	if (!key)
 		return 0;
 
-	udp_off = ip->ihl;
-	udp_off &= 0x0f;
-	udp_off *= 4;
+	udp_off = ip_payload_off(ip);
 
 	err = skb_load_bytes(skb, udp_off, &udp, sizeof(struct udphdr));
 	if (err)
@@ -72,9 +81,7 @@ struct udp_info_key *udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *dat
 	if (!key)
 		return 0;
 
-	udp_off = ip->ihl;
-	udp_off &= 0x0f;
-	udp_off *= 4;
+	udp_off = ip_payload_off(ip);
 
 	udp = (struct udphdr *)(data + udp_off);
 	if (data + udp_off + sizeof(*udp) > data_end)
@@ -212,7 +219,7 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	int zero, payload_off, payload_sz;
 	struct udp_info_value *info;
 	struct udp_info_key *key;
-	u32 dnsport, *filter;
+	u64 dnsport, *filter;
 
 	key = udp4_key(skb, ip, data, data_end, &payload_off, &payload_sz, cookie);
 	if (!key)
@@ -234,7 +241,7 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	if (!filter)
 		return 1;
 
-	dnsport = (u32)filter[0];
+	dnsport = filter[0];
 	if (key->sport == dnsport || bpf_ntohs(key->dport) == dnsport) {
 		/* We subtract 1 from payload_sz because we need to +1 it
 		 * later to sat verifier constraint that skb_load_bytes
@@ -282,4 +289,5 @@ void inet_handler(struct __sk_buff *skb, int send, int cookie)
 	}
 	return;
 }
+
 #endif //__BPF_INET_H_
