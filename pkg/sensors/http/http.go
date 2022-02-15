@@ -105,6 +105,7 @@ var (
 	SkbTailCalls  = sensors.MapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
 	HTTPContext   = sensors.MapBuilder("http_map", "http_skmsg", Skmsg)
 	HTTPFilterMap = sensors.MapBuilder("http_filter_map", "sockops", sockops.SockopsEstablished)
+	HTTPSockMap   = sensors.MapBuilder("http_sock_map", "sockops", sockops.SockopsEstablished)
 )
 
 type httpSensor struct {
@@ -226,6 +227,7 @@ func EnableHTTPParser() *sensors.Sensor {
 		SkbTailCalls,
 		HTTPContext,
 		HTTPFilterMap,
+		HTTPSockMap,
 	}
 
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
