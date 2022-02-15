@@ -214,6 +214,7 @@ func doBugtool(info *InitInfo, outFname string) error {
 	si.addMetrics(tarWriter)
 	si.execCmd(tarWriter, "dmesg.out", "dmesg")
 	si.addTcInfo(tarWriter)
+	si.addBpftoolInfo(tarWriter)
 	return nil
 }
 
@@ -430,4 +431,11 @@ func (si *bugtoolInfo) addTcInfo(tarWriter *tar.Writer) error {
 	}
 
 	return err
+}
+
+// addBpftoolInfo adds information about loaded eBPF maps and programs
+func (si *bugtoolInfo) addBpftoolInfo(tarWriter *tar.Writer) {
+	si.execCmd(tarWriter, "maps.dump", "bpftool", "map", "show")
+	si.execCmd(tarWriter, "progs.dump", "bpftool", "prog", "show")
+	si.execCmd(tarWriter, "cgroups.dump", "bpftool", "cgroup", "tree")
 }
