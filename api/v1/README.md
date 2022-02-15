@@ -43,6 +43,7 @@
     - [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes)
     - [ListSensorsRequest](#fgs.ListSensorsRequest)
     - [ListSensorsResponse](#fgs.ListSensorsResponse)
+    - [Namespace](#fgs.Namespace)
     - [Namespaces](#fgs.Namespaces)
     - [Pod](#fgs.Pod)
     - [Process](#fgs.Process)
@@ -755,6 +756,22 @@ HTTP PARSER
 
 
 
+<a name="fgs.Namespace"></a>
+
+### Namespace
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| inum | [uint32](#uint32) |  |  |
+| is_host | [bool](#bool) |  |  |
+
+
+
+
+
+
 <a name="fgs.Namespaces"></a>
 
 ### Namespaces
@@ -763,16 +780,16 @@ HTTP PARSER
 
 | Field | Type | Label | Description |
 | ----- | ---- | ----- | ----------- |
-| uts_inum | [uint32](#uint32) |  |  |
-| ipc_inum | [uint32](#uint32) |  |  |
-| mnt_inum | [uint32](#uint32) |  |  |
-| pid_inum | [uint32](#uint32) |  |  |
-| pid_for_children_inum | [uint32](#uint32) |  |  |
-| net_inum | [uint32](#uint32) |  |  |
-| time_inum | [uint32](#uint32) |  |  |
-| time_for_children_inum | [uint32](#uint32) |  |  |
-| cgroup_inum | [uint32](#uint32) |  |  |
-| user_inum | [uint32](#uint32) |  |  |
+| uts | [Namespace](#fgs.Namespace) |  |  |
+| ipc | [Namespace](#fgs.Namespace) |  |  |
+| mnt | [Namespace](#fgs.Namespace) |  |  |
+| pid | [Namespace](#fgs.Namespace) |  |  |
+| pid_for_children | [Namespace](#fgs.Namespace) |  |  |
+| net | [Namespace](#fgs.Namespace) |  |  |
+| time | [Namespace](#fgs.Namespace) |  |  |
+| time_for_children | [Namespace](#fgs.Namespace) |  |  |
+| cgroup | [Namespace](#fgs.Namespace) |  |  |
+| user | [Namespace](#fgs.Namespace) |  |  |
 
 
 

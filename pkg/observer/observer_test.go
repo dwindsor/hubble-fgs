@@ -78,8 +78,7 @@ func TestObjectLoad(t *testing.T) {
 	obs.RemovePrograms()
 }
 
-func getPidNsInode(t *testing.T, pid uint32, nsStr string) uint32 {
-	pidStr := strconv.Itoa(int(pid))
+func getPidNsInode(t *testing.T, pidStr string, nsStr string) uint32 {
 	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", nsStr)
 	netStr, err := os.Readlink(netns)
 	if err != nil {
@@ -97,6 +96,14 @@ func getPidNsInode(t *testing.T, pid uint32, nsStr string) uint32 {
 	return uint32(inodeEntry)
 }
 
+func getSelfNsInode(t *testing.T, nsStr string) uint32 {
+	return getPidNsInode(t, "self", nsStr)
+}
+
+func getHostNsInode(t *testing.T, nsStr string) uint32 {
+	return getPidNsInode(t, "1", nsStr)
+}
+
 func TestNamespaces(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -104,18 +111,55 @@ func TestNamespaces(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	pid := os.Getpid()
+	nses := [10]string{"uts", "ipc", "mnt", "pid", "pid_for_children", "net", "time", "time_for_children", "cgroup", "user"}
+	self_ns := make(map[string]uint32)
+	is_root_ns := make(map[string]bool)
+	for i := 0; i < len(nses); i++ {
+		self_ns[nses[i]] = getSelfNsInode(t, nses[i])
+		is_root_ns[nses[i]] = (self_ns[nses[i]] == getHostNsInode(t, nses[i]))
+	}
+
 	rootNs := &fgs.Namespaces{
-		UtsInum:             getPidNsInode(t, uint32(pid), "uts"),
-		IpcInum:             getPidNsInode(t, uint32(pid), "ipc"),
-		MntInum:             getPidNsInode(t, uint32(pid), "mnt"),
-		PidInum:             getPidNsInode(t, uint32(pid), "pid"),
-		PidForChildrenInum:  getPidNsInode(t, uint32(pid), "pid_for_children"),
-		NetInum:             getPidNsInode(t, uint32(pid), "net"),
-		TimeInum:            getPidNsInode(t, uint32(pid), "time"),
-		TimeForChildrenInum: getPidNsInode(t, uint32(pid), "time_for_children"),
-		CgroupInum:          getPidNsInode(t, uint32(pid), "cgroup"),
-		UserInum:            getPidNsInode(t, uint32(pid), "user"),
+		Uts: &fgs.Namespace{
+			Inum:   self_ns["uts"],
+			IsHost: is_root_ns["uts"],
+		},
+		Ipc: &fgs.Namespace{
+			Inum:   self_ns["ipc"],
+			IsHost: is_root_ns["ipc"],
+		},
+		Mnt: &fgs.Namespace{
+			Inum:   self_ns["mnt"],
+			IsHost: is_root_ns["mnt"],
+		},
+		Pid: &fgs.Namespace{
+			Inum:   self_ns["pid"],
+			IsHost: is_root_ns["pid"],
+		},
+		PidForChildren: &fgs.Namespace{
+			Inum:   self_ns["pid_for_children"],
+			IsHost: is_root_ns["pid_for_children"],
+		},
+		Net: &fgs.Namespace{
+			Inum:   self_ns["net"],
+			IsHost: is_root_ns["net"],
+		},
+		Time: &fgs.Namespace{
+			Inum:   self_ns["time"],
+			IsHost: is_root_ns["time"],
+		},
+		TimeForChildren: &fgs.Namespace{
+			Inum:   self_ns["time_for_children"],
+			IsHost: is_root_ns["time_for_children"],
+		},
+		Cgroup: &fgs.Namespace{
+			Inum:   self_ns["cgroup"],
+			IsHost: is_root_ns["cgroup"],
+		},
+		User: &fgs.Namespace{
+			Inum:   self_ns["user"],
+			IsHost: is_root_ns["user"],
+		},
 	}
 
 	selfChecker := ec.NewProcessChecker().WithBinary(ec.SuffixStringMatch(selfBinary)).WithNs(rootNs)

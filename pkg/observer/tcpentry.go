@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
@@ -115,7 +116,7 @@ func (k *Observer) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uin
 	tcp.ProcessKey.Ktime = msg.Process.Ktime
 	tcp.Common.Ktime = msg.Process.Ktime
 
-	netns := uint64(k.getPidNsInode(pid, "net"))
+	netns := uint64(reader.GetPidNsInode(pid, "net"))
 
 	fdDir := fmt.Sprintf("%s/%d/fd", option.Config.ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)

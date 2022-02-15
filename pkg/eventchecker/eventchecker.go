@@ -1219,35 +1219,55 @@ func ProcessWithNs(ns *fgs.Namespaces) ProcessChecker {
 		if p.Ns == nil {
 			return fmt.Errorf("ns %v does not match nil value", ns)
 		}
-		if p.Ns.UtsInum != ns.UtsInum {
-			return fmt.Errorf("uts_ns %d does not match %d value", ns.UtsInum, p.Ns.UtsInum)
+		if (p.Ns.Uts.Inum != ns.Uts.Inum) || (p.Ns.Uts.IsHost != ns.Uts.IsHost) {
+			return fmt.Errorf("uts_ns [%d|%t] does not match [%d|%t] value",
+				ns.Uts.Inum, ns.Uts.IsHost,
+				p.Ns.Uts.Inum, p.Ns.Uts.IsHost)
 		}
-		if p.Ns.IpcInum != ns.IpcInum {
-			return fmt.Errorf("ipc_ns %d does not match %d value", ns.IpcInum, p.Ns.IpcInum)
+		if (p.Ns.Ipc.Inum != ns.Ipc.Inum) || (p.Ns.Ipc.IsHost != ns.Ipc.IsHost) {
+			return fmt.Errorf("ipc_ns [%d|%t] does not match [%d|%t] value",
+				ns.Ipc.Inum, ns.Ipc.IsHost,
+				p.Ns.Ipc.Inum, p.Ns.Ipc.IsHost)
 		}
-		if p.Ns.MntInum != ns.MntInum {
-			return fmt.Errorf("mnt_ns %d does not match %d value", ns.MntInum, p.Ns.MntInum)
+		if (p.Ns.Mnt.Inum != ns.Mnt.Inum) || (p.Ns.Mnt.IsHost != ns.Mnt.IsHost) {
+			return fmt.Errorf("mnt_ns [%d|%t] does not match [%d|%t] value",
+				ns.Mnt.Inum, ns.Mnt.IsHost,
+				p.Ns.Mnt.Inum, p.Ns.Mnt.IsHost)
 		}
-		if p.Ns.PidInum != ns.PidInum {
-			return fmt.Errorf("pid_ns %d does not match %d value", ns.PidInum, p.Ns.PidInum)
+		if (p.Ns.Pid.Inum != ns.Pid.Inum) || (p.Ns.Pid.IsHost != ns.Pid.IsHost) {
+			return fmt.Errorf("pid_ns [%d|%t] does not match [%d|%t] value",
+				ns.Pid.Inum, ns.Pid.IsHost,
+				p.Ns.Pid.Inum, p.Ns.Pid.IsHost)
 		}
-		if p.Ns.PidForChildrenInum != ns.PidForChildrenInum {
-			return fmt.Errorf("pid_for_children_ns %d does not match %d value", ns.PidForChildrenInum, p.Ns.PidForChildrenInum)
+		if (p.Ns.PidForChildren.Inum != ns.PidForChildren.Inum) || (p.Ns.PidForChildren.IsHost != ns.PidForChildren.IsHost) {
+			return fmt.Errorf("pid_for_children_ns [%d|%t] does not match [%d|%t] value",
+				ns.PidForChildren.Inum, ns.PidForChildren.IsHost,
+				p.Ns.PidForChildren.Inum, p.Ns.PidForChildren.IsHost)
 		}
-		if p.Ns.NetInum != ns.NetInum {
-			return fmt.Errorf("net_ns %d does not match %d value", ns.NetInum, p.Ns.NetInum)
+		if (p.Ns.Net.Inum != ns.Net.Inum) || (p.Ns.Net.IsHost != ns.Net.IsHost) {
+			return fmt.Errorf("net_ns [%d|%t] does not match [%d|%t] value",
+				ns.Net.Inum, ns.Net.IsHost,
+				p.Ns.Net.Inum, p.Ns.Net.IsHost)
 		}
-		if p.Ns.TimeInum != ns.TimeInum {
-			return fmt.Errorf("time_ns %d does not match %d value", ns.TimeInum, p.Ns.TimeInum)
+		if (p.Ns.Time != nil) && ((p.Ns.Time.Inum != ns.Time.Inum) || (p.Ns.Time.IsHost != ns.Time.IsHost)) {
+			return fmt.Errorf("time_ns [%d|%t] does not match [%d|%t] value",
+				ns.Time.Inum, ns.Time.IsHost,
+				p.Ns.Time.Inum, p.Ns.Time.IsHost)
 		}
-		if p.Ns.TimeForChildrenInum != ns.TimeForChildrenInum {
-			return fmt.Errorf("time_for_children_ns %d does not match %d value", ns.TimeForChildrenInum, p.Ns.TimeForChildrenInum)
+		if (p.Ns.TimeForChildren != nil) && ((p.Ns.TimeForChildren.Inum != ns.TimeForChildren.Inum) || (p.Ns.TimeForChildren.IsHost != ns.TimeForChildren.IsHost)) {
+			return fmt.Errorf("time_for_children_ns [%d|%t] does not match [%d|%t] value",
+				ns.TimeForChildren.Inum, ns.TimeForChildren.IsHost,
+				p.Ns.TimeForChildren.Inum, p.Ns.TimeForChildren.IsHost)
 		}
-		if p.Ns.CgroupInum != ns.CgroupInum {
-			return fmt.Errorf("cgroup_ns %d does not match %d value", ns.TimeInum, p.Ns.TimeInum)
+		if (p.Ns.Cgroup.Inum != ns.Cgroup.Inum) || (p.Ns.Cgroup.IsHost != ns.Cgroup.IsHost) {
+			return fmt.Errorf("cgroup_ns [%d|%t] does not match [%d|%t] value",
+				ns.Cgroup.Inum, ns.Cgroup.IsHost,
+				p.Ns.Cgroup.Inum, p.Ns.Cgroup.IsHost)
 		}
-		if p.Ns.UserInum != ns.UserInum {
-			return fmt.Errorf("user_ns %d does not match %d value", ns.UserInum, p.Ns.UserInum)
+		if (p.Ns.User.Inum != ns.User.Inum) || (p.Ns.User.IsHost != ns.User.IsHost) {
+			return fmt.Errorf("user_ns [%d|%t] does not match [%d|%t] value",
+				ns.User.Inum, ns.User.IsHost,
+				p.Ns.User.Inum, p.Ns.User.IsHost)
 		}
 		return nil
 	})

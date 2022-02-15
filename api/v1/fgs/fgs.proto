@@ -59,17 +59,22 @@ message Capabilities {
     repeated CapabilitiesType inheritable = 3;
 }
 
+message Namespace {
+    uint32 inum = 1;
+    bool is_host = 2;
+}
+
 message Namespaces {
-    uint32 uts_inum = 1;
-    uint32 ipc_inum = 2;
-    uint32 mnt_inum = 3;
-    uint32 pid_inum = 4;
-    uint32 pid_for_children_inum = 5;
-    uint32 net_inum = 6;
-    uint32 time_inum = 7;
-    uint32 time_for_children_inum = 8;
-    uint32 cgroup_inum = 9;
-    uint32 user_inum = 10;
+    Namespace uts = 1;
+    Namespace ipc = 2;
+    Namespace mnt = 3;
+    Namespace pid = 4;
+    Namespace pid_for_children = 5;
+    Namespace net = 6;
+    Namespace time = 7;
+    Namespace time_for_children = 8;
+    Namespace cgroup = 9;
+    Namespace user = 10;
 }
 
 message Process {

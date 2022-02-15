@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
 func stringToUTF8(s []byte) []byte {
@@ -240,26 +241,6 @@ func (k *Observer) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procT
 	}
 }
 
-func (k *Observer) getPidNsInode(pid uint32, nsStr string) uint32 {
-	pidStr := strconv.Itoa(int(pid))
-	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", nsStr)
-	netStr, err := os.Readlink(netns)
-	if err != nil {
-		// k.log.WithError(err).Warnf("%sNSInode read (%d) failed", nsStr, pid)
-		return 0
-	}
-	fields := strings.Split(netStr, ":")
-	if len(fields) < 2 {
-		k.log.WithError(err).Warnf("%sNSInode format invalid %s", nsStr, netStr)
-		return 0
-	}
-	inode := fields[1]
-	inode = strings.TrimRight(inode, "]")
-	inode = strings.TrimLeft(inode, "[")
-	inodeEntry, _ := strconv.ParseUint(inode, 10, 32)
-	return uint32(inodeEntry)
-}
-
 func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 	var entryMap = make(map[uint32]procTCPEntry)
 	var procs []ObserverProcs
@@ -316,16 +297,16 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 		ktime = ktime * (nanoPerSeconds / clktck)
 		nspid, permitted, effective, inheritable := getPIDNS(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
 
-		uts_ns := k.getPidNsInode(uint32(pid), "uts")
-		ipc_ns := k.getPidNsInode(uint32(pid), "ipc")
-		mnt_ns := k.getPidNsInode(uint32(pid), "mnt")
-		pid_ns := k.getPidNsInode(uint32(pid), "pid")
-		pid_for_children_ns := k.getPidNsInode(uint32(pid), "pid_for_children")
-		net_ns := k.getPidNsInode(uint32(pid), "net")
-		time_ns := k.getPidNsInode(uint32(pid), "time")
-		time_for_children_ns := k.getPidNsInode(uint32(pid), "time_for_children")
-		cgroup_ns := k.getPidNsInode(uint32(pid), "cgroup")
-		user_ns := k.getPidNsInode(uint32(pid), "user")
+		uts_ns := reader.GetPidNsInode(uint32(pid), "uts")
+		ipc_ns := reader.GetPidNsInode(uint32(pid), "ipc")
+		mnt_ns := reader.GetPidNsInode(uint32(pid), "mnt")
+		pid_ns := reader.GetPidNsInode(uint32(pid), "pid")
+		pid_for_children_ns := reader.GetPidNsInode(uint32(pid), "pid_for_children")
+		net_ns := reader.GetPidNsInode(uint32(pid), "net")
+		time_ns := reader.GetPidNsInode(uint32(pid), "time")
+		time_for_children_ns := reader.GetPidNsInode(uint32(pid), "time_for_children")
+		cgroup_ns := reader.GetPidNsInode(uint32(pid), "cgroup")
+		user_ns := reader.GetPidNsInode(uint32(pid), "user")
 
 		// On error procsDockerId zeros dockerId so we can ignore any errors.
 		dockerId, _, _ := procsDockerId(uint32(pid))
