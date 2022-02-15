@@ -301,19 +301,24 @@ func (s *bugtoolInfo) addLibFiles(tarWriter *tar.Writer) error {
 // addBtfFile adds the btf file to the archive.
 func (s *bugtoolInfo) addBtfFile(tarWriter *tar.Writer) error {
 	btfFname, err := filepath.EvalSymlinks(s.info.BtfFname)
-	if err != nil {
+	if err != nil && s.info.BtfFname != "" {
 		s.multiLog.WithField("btfFname", s.info.BtfFname).Warnf("error resolving btf file: %s", err)
 		return err
 	}
 
-	if rel, err := filepath.Rel(s.info.LibDir, btfFname); err == nil {
-		s.multiLog.WithField("btfFname", s.info.BtfFname).Infof("btf file already in lib dir: %s", rel)
+	if s.info.BtfFname == "" {
+		s.multiLog.Warnf("no btf filename in fgs config, attempting to fall back to /sys/kernel/btf/vmlinux")
+		btfFname = "/sys/kernel/btf/vmlinux"
+	}
+
+	if rel, err := filepath.Rel(s.info.LibDir, btfFname); err == nil && !strings.HasPrefix(rel, "..") {
+		s.multiLog.WithField("btfFname", btfFname).Infof("btf file already in lib dir: %s", rel)
 		return nil
 	}
 
 	err = s.tarAddFile(tarWriter, btfFname, "btf")
 	if err == nil {
-		s.multiLog.WithField("btfFname", s.info.BtfFname).Info("btf file added")
+		s.multiLog.WithField("btfFname", btfFname).Info("btf file added")
 	}
 	return err
 }
