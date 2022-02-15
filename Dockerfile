@@ -28,6 +28,17 @@ RUN apk add --no-cache binutils git \
  && go install \
  && strip /go/bin/gops
 
+# Mostly copied from https://github.com/cilium/image-tools/blob/master/images/bpftool
+FROM quay.io/cilium/image-compilers:c1ba0665b6f9f012d014a642d9882f7c38bdf365@sha256:01c7c957e9b0fc200644996c6bedac297c98b81dea502a3bc3047837e67a7fcb as bpftool-builder
+ENV REV "5e22dd18626726028a93ff1350a8a71a00fd843d"
+RUN curl --fail --show-error --silent --location "https://kernel.googlesource.com/pub/scm/linux/kernel/git/bpf/bpf-next/+archive/${REV}.tar.gz" --output /tmp/linux.tgz
+RUN mkdir -p /src/linux
+RUN tar -xf /tmp/linux.tgz -C /src/linux
+RUN rm -f /tmp/linux.tgz
+WORKDIR /src/linux/tools/bpf/bpftool
+RUN make -j $(nproc) LDFLAGS=-static
+RUN strip bpftool
+
 FROM docker.io/library/alpine:3.15@sha256:21a3deaa0d32a8057914f36584b5288d2e5ecc984380bc0118285c70fa8c9300
 RUN apk add iproute2
 RUN addgroup hubble	       && \
@@ -35,6 +46,7 @@ RUN addgroup hubble	       && \
     mkdir /var/run/hubble-fgs/ && \
     mkdir libs		       && \
     apk add --no-cache --update bash
+COPY --from=bpftool-builder /src/linux/tools/bpf/bpftool/bpftool /usr/bin/bpftool
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
 COPY --from=gops /go/bin/gops /bin /usr/bin/
