@@ -16,6 +16,7 @@ package bugtool
 import (
 	"archive/tar"
 	"bytes"
+	"compress/gzip"
 	"context"
 	"encoding/json"
 	"errors"
@@ -201,7 +202,10 @@ func doBugtool(info *InitInfo, outFname string) error {
 		multiLog:  multiLog,
 	}
 
-	tarWriter := tar.NewWriter(outFile)
+	gzWriter := gzip.NewWriter(outFile)
+	defer gzWriter.Close()
+
+	tarWriter := tar.NewWriter(gzWriter)
 	defer func() {
 		defer tarWriter.Close()
 		si.tarAddBuff(tarWriter, "hubble-enterprise-bugtool.log", logBuff)

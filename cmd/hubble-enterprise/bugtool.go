@@ -33,6 +33,6 @@ func initBugtoolCmd() {
 	}
 
 	flags := bugtoolCmd.Flags()
-	flags.StringVarP(&outFile, "out", "o", "hubble-enterprise-bugtool.tar", "Output filename")
+	flags.StringVarP(&outFile, "out", "o", "hubble-enterprise-bugtool.tar.gz", "Output filename")
 	rootCmd.AddCommand(bugtoolCmd)
 }
