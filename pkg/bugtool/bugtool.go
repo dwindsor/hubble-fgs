@@ -422,10 +422,10 @@ func (s *bugtoolInfo) execCmd(tarWriter *tar.Writer, dstFname string, cmdName st
 }
 
 // addTcInfo adds information about tc filters on the devices
-func (si *bugtoolInfo) addTcInfo(tarWriter *tar.Writer) error {
+func (s *bugtoolInfo) addTcInfo(tarWriter *tar.Writer) error {
 	links, err := netlink.LinkList()
 	if err != nil {
-		si.multiLog.WithError(err).Warn("listing devices failed")
+		s.multiLog.WithError(err).Warn("listing devices failed")
 		return err
 	}
 
@@ -435,16 +435,16 @@ func (si *bugtoolInfo) addTcInfo(tarWriter *tar.Writer) error {
 	// and also provides additional information that may be useful.
 	for _, link := range links {
 		linkName := link.Attrs().Name
-		si.execCmd(tarWriter, fmt.Sprintf("tc-info.%s.ingress", linkName), "tc", "filter", "show", "dev", linkName, "ingress")
-		si.execCmd(tarWriter, fmt.Sprintf("tc-info.%s.egress", linkName), "tc", "filter", "show", "dev", linkName, "egress")
+		s.execCmd(tarWriter, fmt.Sprintf("tc-info.%s.ingress", linkName), "tc", "filter", "show", "dev", linkName, "ingress")
+		s.execCmd(tarWriter, fmt.Sprintf("tc-info.%s.egress", linkName), "tc", "filter", "show", "dev", linkName, "egress")
 	}
 
 	return err
 }
 
 // addBpftoolInfo adds information about loaded eBPF maps and programs
-func (si *bugtoolInfo) addBpftoolInfo(tarWriter *tar.Writer) {
-	si.execCmd(tarWriter, "maps.dump", "bpftool", "map", "show")
-	si.execCmd(tarWriter, "progs.dump", "bpftool", "prog", "show")
-	si.execCmd(tarWriter, "cgroups.dump", "bpftool", "cgroup", "tree")
+func (s *bugtoolInfo) addBpftoolInfo(tarWriter *tar.Writer) {
+	s.execCmd(tarWriter, "maps.dump", "bpftool", "map", "show")
+	s.execCmd(tarWriter, "progs.dump", "bpftool", "prog", "show")
+	s.execCmd(tarWriter, "cgroups.dump", "bpftool", "cgroup", "tree")
 }
