@@ -1225,6 +1225,11 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 		Stats:   fgsSocketStats,
 	}
 
+	if pm.enableCilium && fgsProcess != nil {
+		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
+		fgsEvent.Socket.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+	}
+
 	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
