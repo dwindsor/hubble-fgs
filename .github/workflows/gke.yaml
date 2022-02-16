@@ -177,8 +177,9 @@ jobs:
           go mod verify
           # We pass the "gke" argument here to skip tests that don't work on GKE
           go run ./tests/jobs.trace.go ../fgs.log gke
+
       - name: Upload Cilium Artifacts
-        if: ${{ always() }}
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
           name: cilium-sysdump-out.zip
@@ -186,7 +187,7 @@ jobs:
           retention-days: 5
 
       - name: Upload FGS pod logs
-        if: ${{ always() }}
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
           name: hubble-enterprise-logs
@@ -194,7 +195,7 @@ jobs:
           retention-days: 5
 
       - name: Upload FGS Artifacts
-        if: ${{ always() }}
+        if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
           name: fgs.log
