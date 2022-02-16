@@ -38,6 +38,7 @@ install_fgs() {
          --set enterprise.image.tag=latest \
          --set enterprise.exportAllowList="" \
          --set enterprise.enableTLSEvents=true \
+         --set enterprise.exportFileMaxSizeMB=50 \
          --namespace kube-system
     echo "Waiting for FGS to become ready..." 1>&2
     kubectl wait -n kube-system --for=condition=Ready --all pod \
