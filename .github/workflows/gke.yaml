@@ -164,6 +164,12 @@ jobs:
               -n kube-system -o custom-columns=name:metadata.name --no-headers \
               | xargs -I{} kubectl cp -c enterprise -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
           cat ./hubble-fgs*.log >> fgs.log
+          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
+            -n kube-system -o custom-columns=name:metadata.name --no-headers \
+            | xargs -I{} kubectl exec -c enterprise -n kube-system {} -- hubble-enterprise bugtool -o bugtool-{}.tar.gz
+          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
+            -n kube-system -o custom-columns=name:metadata.name --no-headers \
+            | xargs -I{} kubectl cp -c enterprise -n kube-system {}:bugtool-{}.tar.gz ./bugtool-{}.tar.gz
           gcloud container clusters delete --quiet ${{ env.clusterName }} --zone ${{ env.zone }}
         shell: bash {0}
 
@@ -200,4 +206,12 @@ jobs:
         with:
           name: fgs.log
           path: fgs.log
+          retention-days: 5
+
+      - name: Upload bugtool dumps
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: bugtool-dumps
+          path: ./bugtool*.tar.gz
           retention-days: 5
