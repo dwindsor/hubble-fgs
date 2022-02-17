@@ -129,28 +129,13 @@ jobs:
               dns:
                 enable: true
           EOF
+          sleep 10
 
-      - name: Demo Application
+      - name: Run demo app checker
         run: |
-          kubectl create namespace tenant-jobs
-          kubectl -n tenant-jobs apply -f https://docs.isovalent.com/public/jobs-app-attack.yaml
+          hubble-fgs/contrib/end-to-end/tests/demo-app.sh --no-tracingpolicy
 
-      - name: Wait for demo app pods to become ready
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 5
-          command: |
-            kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=30s
-
-      # Let the demo app do its thing to generate all the events. Would be nice if we could avoid sleeping.
-      # We run a dummy curl command here to force the node server to generate an accept event.
-      - name: Allow events to generate
-        run: |
-          kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 1 || true
-          sleep 60
-
-      - name: Cleanup
+      - name: Copy out logs
         if: ${{ always() }}
         run: |
           cilium status
@@ -170,6 +155,11 @@ jobs:
           kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
             -n kube-system -o custom-columns=name:metadata.name --no-headers \
             | xargs -I{} kubectl cp -c enterprise -n kube-system {}:bugtool-{}.tar.gz ./bugtool-{}.tar.gz
+        shell: bash {0}
+
+      - name: Cleanup
+        if: ${{ always() }}
+        run: |
           gcloud container clusters delete --quiet ${{ env.clusterName }} --zone ${{ env.zone }}
         shell: bash {0}
 

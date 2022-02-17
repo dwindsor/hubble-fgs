@@ -9,6 +9,22 @@ source "$SCRIPTDIR/tests/helpers"
 mkdir -p $SCRIPTDIR/logs
 cd "$PROJECT_ROOT"
 
+usage() {
+    echo "usage: $0 [--no-tracingpolicy]" 1>&2
+    echo "    --no-tracingpolicy  don't load a tracing policy" 1>&2
+}
+
+TRACINGPOLICY=1
+
+while [ $# -ge 1 ]; do
+    if [ "$1" == "--no-tracingpolicy" ]; then
+        TRACINGPOLICY=0
+        shift
+    else
+        usage
+    fi
+done
+
 export PATH="$PATH:/usr/local/go/bin"
 KERNEL_VERSION=$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')
 
@@ -19,12 +35,14 @@ for port in ${GRPC_PORTS[@]}; do
     SERVER_ARGS+=("--server-address" "localhost:$port")
 done
 
-echo "Applying tracing policies..." 1>&2
-kubectl apply -f crds/isovalent.com_tracingpolicies.yaml
-sleep 5 # Wait so that we can give a chance for the new CRD to be applied
-kubectl apply -f crds/examples/tls.yaml
-echo "Waiting to make sure sensors have been loaded..." 1>&2
-sleep 30 # Wait 30 seconds for now to make sure sensors have had a chance to load
+if [ $TRACINGPOLICY == 1 ]; then
+    echo "Applying tracing policies..." 1>&2
+    kubectl apply -f crds/isovalent.com_tracingpolicies.yaml
+    sleep 5 # Wait so that we can give a chance for the new CRD to be applied
+    kubectl apply -f crds/examples/tls.yaml
+    echo "Waiting to make sure sensors have been loaded..." 1>&2
+    sleep 30 # Wait 30 seconds for now to make sure sensors have had a chance to load
+fi
 
 echo "Checking demo app events..." 1>&2
 go run ./cmd/checkerpc --events 20000 --timeout 1200 --check demo-app ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-demo-app.log &
