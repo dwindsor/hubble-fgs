@@ -1014,14 +1014,11 @@ func (pm *ProcessManager) GetProcessExec(
 	}
 	// Set the cap field only if --enable-process-cred flag is set.
 	var fgsParent, fgsProcess *fgs.Process
+	// We always copy here, as we will always set namespaces.
+	fgsProcess = copyProcess(proc.process)
 	if pm.enableProcessCred {
-		fgsProcess = copyProcess(proc.process)
 		fgsProcess.Cap = proc.capabilities
-	} else {
-		fgsProcess = proc.process
 	}
-	// do not modify the initial process
-	fgsProcess = copyProcess(fgsProcess)
 	fgsProcess.Ns = proc.namespaces
 	if parent != nil {
 		fgsParent = parent.process
