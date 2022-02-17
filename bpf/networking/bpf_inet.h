@@ -181,6 +181,14 @@ struct udp_info_value *__udp4_send(struct __sk_buff *skb,
 	return value;
 }
 
+/* Lazy versions of udp4 send have two deficiencies that make them
+ * sub-optimal. First keys do not include cookie info this means we
+ * could in-theory collide across network namespaces, e.g. two sockets
+ * in different network namespaces with the same 5-tuple will aggregate
+ * their statistics -- this feels unlikely. The other one is payload
+ * copy to user land is not supported this is to support loading on
+ * older kernels without the necessary bpf helpers.
+ */
 static inline __attribute__((always_inline))
 int udp4_send_lazy(struct __sk_buff *skb, struct iphdr *ip, bool send)
 {
