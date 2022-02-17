@@ -114,9 +114,7 @@ $(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
 # PROCESSDIR
 objs/%.ll: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
-
-objs/%_v53.ll: $(PROCESSDIR)%.c
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $(shell echo $@ | sed -e s/\.ll/_v53\.ll/g)
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
