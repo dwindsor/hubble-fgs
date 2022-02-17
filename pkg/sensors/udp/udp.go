@@ -151,11 +151,12 @@ var (
 		"kprobe",
 	)
 
-	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
-	UdpMap          = sensors.MapBuilder(UdpMapName, "", InetSend)
-	UdpMapKprobe    = sensors.MapBuilder(UdpMapName, "", UdpSend)
-	UdpRetprobeMap  = sensors.MapBuilder(UdpRetprobeMapName, "", UdpSend)
-	UdpFilterMap    = sensors.MapBuilder("udp_filter_map", "", InetSend)
+	SocketCookieMap  = sensors.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
+	UdpMap           = sensors.MapBuilder(UdpMapName, "", InetSend)
+	UdpMapKprobe     = sensors.MapBuilder(UdpMapName, "", UdpSend)
+	UdpRetprobeMap   = sensors.MapBuilder(UdpRetprobeMapName, "", UdpSend)
+	UdpFilterMap     = sensors.MapBuilder("udp_filter_map", "", InetSend)
+	UdpFilterLazyMap = sensors.MapBuilder("udp_filter_map", "", InetSendLazy)
 )
 
 type udpInfoKey struct {
@@ -384,7 +385,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		maps = []*sensors.Map{
 			UdpMapKprobe,
 			UdpRetprobeMap,
-			UdpFilterMap,
+			UdpFilterLazyMap,
 		}
 		versionStr = "__udp_sensor_probe__"
 	} else {
