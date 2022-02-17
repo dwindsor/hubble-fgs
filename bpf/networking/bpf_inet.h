@@ -125,10 +125,18 @@ void swap_key(struct udp_info_key *key)
  * approximately accurate which it will be or we wouldn't have
  * concurrent cores here.
  *
- * The above doesn't entirely work on old kernels without cookie
- * support because we don't emit connect and no aggregation happens
- * then only one of multiple values stats is accounted for. TBD,
- * account for this somehow.
+ * To accomodate older kernels that do not have cookie set we leave
+ * pid and pid_ktime empty on receive case when no proces is found.
+ * These values are then populated from the skb_consume_udp path where
+ * we are in user context and can get the process info through normal
+ * event_find_curr() hooks. We can't do that here because the current
+ * pointer is set to kernel context at IP stack. This is not ideal
+ * because it can mean if no process calls recv() on the data it may
+ * never be accounted for. It will however, be in the udp_map and
+ * user space can decide how to handle these cases. In the worse
+ * case its expected user space can use the tuple key and timestamp
+ * plus socket events to track back the process in a time series
+ * database.
  */
 static inline __attribute__((always_inline))
 struct udp_info_value *__udp4_send(struct __sk_buff *skb,
@@ -160,18 +168,7 @@ struct udp_info_value *__udp4_send(struct __sk_buff *skb,
 			value->pid = 0;
 			value->pid_ktime = 0;
 		}
-
 		map_update_elem(&udp_map, key, value, 0);
-		/* If we don't have a pid yet, we delay connect event
-		 * until first recv() call with user ctx available. This
-		 * happens on older kernels where we don't have a sock
-		 * create hook to populate the cookie_to_proc map. In this
-		 * case we need to user event_find_curr() to get the pid/ktime
-		 * from the process tree but we can't do that until we have
-		 * a user ctx to get the task struct.
-		 */
-		if (value->pid)
-			emit_udp_connect_event(skb, key, value);
 	} else {
 		if (send)
 			update_tx_value(value, payload_sz);
@@ -232,6 +229,7 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	if (!info)
 		return 1;
 
+	zero = 0;
 	filter = map_lookup_elem(&udp_filter_map, &zero);
 	if (!filter)
 		return 1;
