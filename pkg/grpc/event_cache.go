@@ -11,6 +11,7 @@
 package grpc
 
 import (
+	"net"
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
@@ -118,6 +119,10 @@ func (ec *eventCache) handleNetEvents() {
 		switch event := e.event.(type) {
 		case *fgs.ProcessClose:
 			event.DestinationNames = labels
+			if event.DestinationPod == nil {
+				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
+			}
+
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: event},
 				NodeName: ec.pm.nodeName,
@@ -125,6 +130,10 @@ func (ec *eventCache) handleNetEvents() {
 			}
 		case *fgs.ProcessConnect:
 			event.DestinationNames = labels
+			if event.DestinationPod == nil {
+				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
+			}
+
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: event},
 				NodeName: ec.pm.nodeName,
@@ -132,6 +141,10 @@ func (ec *eventCache) handleNetEvents() {
 			}
 		case *fgs.ProcessAccept:
 			event.DestinationNames = labels
+			if event.DestinationPod == nil {
+				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
+			}
+
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: event},
 				NodeName: ec.pm.nodeName,
@@ -168,6 +181,9 @@ func (ec *eventCache) handleNetEvents() {
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessSockStats:
+			if event.Socket.DestinationPod == nil {
+				event.Socket.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.Socket.DestinationIp))
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessSockstats{ProcessSockstats: event},
 				NodeName: ec.pm.nodeName,
