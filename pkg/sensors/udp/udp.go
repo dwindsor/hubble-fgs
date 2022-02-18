@@ -298,6 +298,13 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	udpValue := v.(*udpInfoValue)
 	udpKey := k.(*udpInfoKey)
 
+	// This case handles kernels <5.10 where map will have udp stats
+	// that are not yet associated to a process between IP stack and
+	// socket handling of the UDP data.
+	if udpValue.Pid == 0 {
+		return
+	}
+
 	t, err := reader.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("time", udpValue.Ktime).Warn("UDP NanoTimeSince failed.")
