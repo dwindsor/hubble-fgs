@@ -27,6 +27,8 @@ import (
 
 const (
 	fgsCgroupPath = "/run/hubble-fgs/cgroup2"
+
+	verifierLogBufferSize = 10 * 1024 * 1024 // 10MB
 )
 
 type Selector struct {
@@ -218,6 +220,41 @@ func SetFilter(mapDir string, mapName string, selectors [128]byte) error {
 	return selectorMap.Update(uint32(0), selectors, ebpf.UpdateAny)
 }
 
+func slimVerifierError(errStr string) string {
+	// The error is potentially up to 'verifierLogBufferSize' bytes long,
+	// and most of it is not interesting. For a user-friendly output, we'll
+	// only keep the first and last N lines.
+
+	nLines := 30
+	headLines := 0
+	headEnd := 0
+
+	for ; headEnd < len(errStr); headEnd++ {
+		c := errStr[headEnd]
+		if c == '\n' {
+			headLines++
+			if headLines >= nLines {
+				break
+			}
+		}
+	}
+
+	tailStart := len(errStr) - 1
+	tailLines := 0
+	for ; tailStart > headEnd; tailStart-- {
+		c := errStr[tailStart]
+		if c == '\n' {
+			tailLines++
+			if tailLines >= nLines {
+				tailStart++
+				break
+			}
+		}
+	}
+
+	return errStr[:headEnd] + "\n...\n" + errStr[tailStart:]
+}
+
 func loadProgram(
 	bpfDir string,
 	mapDirs []string,
@@ -292,7 +329,19 @@ func loadProgram(
 
 	coll, err := ebpf.NewCollectionWithOptions(spec, opts)
 	if err != nil {
-		return fmt.Errorf("opening collection failed: %w", err)
+		// Retry again with logging to capture the verifier log. We don't log by default
+		// as that makes the loading very slow.
+		opts.Programs.LogLevel = 1
+		opts.Programs.LogSize = verifierLogBufferSize
+		coll, err = ebpf.NewCollectionWithOptions(spec, opts)
+		if err != nil {
+			// Log the error directly using the logger so that the verifier log
+			// gets properly pretty-printed.
+			logger.GetLogger().Infof("Opening collection failed, dumping verifier log.")
+			fmt.Println(slimVerifierError(err.Error()))
+
+			return fmt.Errorf("opening collection '%s' failed", load.Name)
+		}
 	}
 	defer coll.Close()
 
