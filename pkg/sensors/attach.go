@@ -41,7 +41,7 @@ func LoadSockOpt(
 	x64 bool,
 	path string,
 ) (error, int) {
-	return LoadCgroupProgram(bpfDir, mapDir, load)
+	return LoadCgroupProgram(bpfDir, mapDir, ciliumDir, load)
 }
 
 type WithProgramFunc func(*ebpf.Program, *ebpf.ProgramSpec) error
@@ -74,7 +74,7 @@ func LoadSkProgram(
 	}
 	defer targetMap.Close()
 
-	return loadProgram(bpfDir, mapDir, load,
+	return loadProgram(bpfDir, []string{mapDir}, load,
 		rawAttachWithProgram(targetMap.FD())), 0
 }
 
@@ -94,7 +94,7 @@ func LoadSockops(
 	}
 	logger.GetLogger().WithField("program", load.Name).Infof("Sockops, create initial reference")
 	bpf.CgroupSockopsRefInc()
-	return LoadCgroupProgram(bpfDir, mapDir, load)
+	return LoadCgroupProgram(bpfDir, mapDir, ciliumDir, load)
 }
 
 func LoadTC(
@@ -121,7 +121,7 @@ func LoadTC(
 		}
 		return nil
 	}
-	err := loadProgram(bpfDir, mapDir, load, attach)
+	err := loadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach)
 	if err != nil {
 		return err, 0
 	}
@@ -153,7 +153,7 @@ func getDefaultRouteLinks() ([]netlink.Link, error) {
 }
 
 func LoadCgroupProgram(
-	bpfDir, mapDir string,
+	bpfDir, mapDir, ciliumDir string,
 	load *Program) (error, int) {
 
 	f, err := os.Open(fgsCgroupPath)
@@ -163,7 +163,7 @@ func LoadCgroupProgram(
 	defer f.Close()
 
 	// TODO: Use AttachCgroup?
-	return loadProgram(bpfDir, mapDir, load, rawAttachWithProgram(int(f.Fd()))), 0
+	return loadProgram(bpfDir, []string{mapDir, ciliumDir}, load, rawAttachWithProgram(int(f.Fd()))), 0
 }
 
 func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection) error {
@@ -219,7 +219,8 @@ func SetFilter(mapDir string, mapName string, selectors [128]byte) error {
 }
 
 func loadProgram(
-	bpfDir, mapDir string,
+	bpfDir string,
+	mapDirs []string,
 	load *Program,
 	withProgram WithProgramFunc,
 ) error {
@@ -264,11 +265,20 @@ func loadProgram(
 
 	pinnedMaps := make(map[string]*ebpf.Map)
 	for name := range refMaps {
-		mapPath := filepath.Join(mapDir, name)
-		m, err := ebpf.LoadPinnedMap(mapPath, nil)
+		var m *ebpf.Map
+		var err error
+		for _, mapDir := range mapDirs {
+			mapPath := filepath.Join(mapDir, name)
+			m, err = ebpf.LoadPinnedMap(mapPath, nil)
+			if err == nil {
+				break
+			}
+		}
 		if err == nil {
 			defer m.Close()
 			pinnedMaps[name] = m
+		} else {
+			logger.GetLogger().WithField("prog", load.Label).Debugf("pin file for map '%s' not found, map is not shared!\n", name)
 		}
 	}
 	if err := spec.RewriteMaps(pinnedMaps); err != nil {
@@ -286,7 +296,7 @@ func loadProgram(
 	}
 	defer coll.Close()
 
-	err = installTailCalls(mapDir, spec, coll)
+	err = installTailCalls(mapDirs[0], spec, coll)
 	if err != nil {
 		return fmt.Errorf("installing tail calls failed: %s", err)
 	}

@@ -366,7 +366,7 @@ type udpSensor struct {
 }
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	err, i := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.Load)
+	err, i := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
 	if err != nil {
 		return err, i
 	}

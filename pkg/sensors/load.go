@@ -336,6 +336,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verb
 		return LoadCgroupProgram(
 			bpfDir,
 			mapDir,
+			ciliumDir,
 			load)
 	} else {
 		if s, ok := registeredProbeLoad[load.Type]; ok {
