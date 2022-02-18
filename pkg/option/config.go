@@ -25,4 +25,5 @@ type config struct {
 	BTF                string
 	Verbosity          int
 	IgnoreMissingProgs bool
+	ForceSmallProgs    bool
 }
