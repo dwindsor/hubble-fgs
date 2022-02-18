@@ -60,6 +60,9 @@ int setsockopt(struct bpf_sockopt *ctx)
 	struct msg_tls_ipv4 key;
 	struct msg_tls *event;
 
+	/* In order to bypass kernel drop on optval>PAGE_SIZE set optlen = 0. */
+	ctx->optlen = 0;
+
 	if (ctx->level != SOL_TLS || ctx->optname != TLS_TX)
 		return 1;
 
