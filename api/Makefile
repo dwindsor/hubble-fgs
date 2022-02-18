@@ -23,5 +23,5 @@ doc:
 	docker container run --rm \
 		--volume $(CURDIR)/v1:/out \
 		--volume $(CURDIR)/v1/fgs:/protos \
-		pseudomuto/protoc-gen-doc \
+		pseudomuto/protoc-gen-doc:1.5.0 \
 		--doc_opt=markdown,README.md
