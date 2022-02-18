@@ -32,7 +32,7 @@ enum bpf_enum_value_kind {
 #include "bpf_core_read.h"
 
 #ifdef __LARGE_BPF_PROG
-	#define PROBE_CWD_READ_ITERATIONS 24 /* 32 is too much for 5.4 (i.e. The sequence of 8193 jumps is too complex.) but fine for 5.10 */
+	#define PROBE_CWD_READ_ITERATIONS 32
 	#define MAX_MOUNT_POINTS 32
 #else
 	#define PROBE_CWD_READ_ITERATIONS 12
@@ -59,7 +59,7 @@ enum bpf_enum_value_kind {
 #define M_REPEAT_15(X) M_REPEAT_14(X) X
 #define M_REPEAT_16(X) M_REPEAT_15(X) X
 /* 16 should be enough in the case where we have program size limitations */
-#define M_REPEAT_24(X) M_REPEAT_8(X) M_REPEAT_16(X)
+#define M_REPEAT_32(X) M_REPEAT_16(X) M_REPEAT_16(X)
 
 #define M_EXPAND(...) __VA_ARGS__
 
@@ -258,7 +258,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];\n" \
 	CWD_OFFSET_REG " = *(u32 *)%[offset];\n"
 
-#define PROBE_CWD_READ	  	   			\
+#define PROBE_CWD_READ					\
 	/* if (!dentry) { break; } */			\
 	"r3 = " CWD_DENTRY_REG ";\n"			\
 	"if r3 == 0 goto %l[a];\n"			\
@@ -288,8 +288,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	/* pcwd = curr + offset */			\
 	/* probe_read(pcwd, 1, &slash); */		\
 	"r1 = *(u64 *)%[pid];\n"			\
-	"if " CWD_OFFSET_REG " s< 0 goto %l[a];\n"	\
-	"if " CWD_OFFSET_REG " s> 1188 goto %l[a];\n"	\
+	CWD_OFFSET_REG " &= 0x3FF;\n" 			\
 	"r1 += " CWD_OFFSET_REG ";\n"			\
 	"r2 = 1;\n"					\
 	"r3 = *(u64 *)%[slash];\n"			\
@@ -298,8 +297,7 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	/* ret = probe_read_str(pcwd, CWD_MAX, dname); */ \
 	CWD_OFFSET_REG " += 1;\n"			\
 	"r1 = *(u64 *)%[pid];\n"			\
-	"if " CWD_OFFSET_REG " < 0 goto %l[a];\n"	\
-	"if " CWD_OFFSET_REG " > 1188 goto %l[a];\n"	\
+	CWD_OFFSET_REG " &= 0x3FF;\n" 			\
 	"r1 += " CWD_OFFSET_REG ";\n"			\
 	"r2 = " XSTR(CWD_MAX) ";\n"			\
 	"r3 = *(u64 *)(%[ptr] + 0);\n"			\
@@ -321,16 +319,14 @@ struct task_struct *get_task_from_pid(__u32 pid)
  */
 #define MARK_PATH_WITH_SYMBOLS 			\
 	"r1 = *(u64 *)%[pid];\n"			\
-	"if " CWD_OFFSET_REG " < 0 goto %l[a];\n"	\
-	"if " CWD_OFFSET_REG " > 1188 goto %l[a];\n"	\
+	CWD_OFFSET_REG " &= 0x3FF;\n"			\
 	"r1 += " CWD_OFFSET_REG ";\n"			\
 	"r2 = 1;\n"					\
 	"r3 = *(u64 *)%[slash];\n"			\
 	"call 4;\n" 					\
 	CWD_OFFSET_REG " += 1;\n" 			\
 	"r1 = *(u64 *)%[pid];\n"			\
-	"if " CWD_OFFSET_REG " < 0 goto %l[a];\n"	\
-	"if " CWD_OFFSET_REG " > 1188 goto %l[a];\n"	\
+	CWD_OFFSET_REG " &= 0x3FF;\n"			\
 	"r1 += " CWD_OFFSET_REG ";\n"			\
 	"r2 = 1;\n"					\
 	"r3 = *(u64 *)%[symbol];\n"			\
@@ -353,11 +349,11 @@ static inline __attribute__((always_inline))
 u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile u32 offset, u32 *flags)
 {
 	long dentry_parent, dentry_name;
-	struct dentry *vfsmnt_dentry = 0;
 	char slash= '/', *pslash = &slash;
 	char symbol = '&', *psymbol = &symbol;
 	long *ptr = 0;
-	volatile u32 iter = 0;
+	struct dentry *vfsmnt_dentry = 0;
+	u32 iter = 0;
 
 	/* Verify complains if this is not a constant (compiler optimizes
 	 * us into a corner ottherwise). So for now note qstr->name is 8
@@ -418,7 +414,7 @@ a:
 }
 
 static inline __attribute__((always_inline))
-u32 mark_unresolved(void *curr, volatile u32 offset, struct mount *mnt, u32 *flags)
+u32 mark_unresolved(void *curr, struct mount *mnt)
 {
 	struct mount *local_mnt;
 	struct dentry *dentry, *dentry_parent;
@@ -428,10 +424,8 @@ u32 mark_unresolved(void *curr, volatile u32 offset, struct mount *mnt, u32 *fla
 	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
 
 	if (dentry == dentry_parent) // IS_ROOT(dentry)
-		return offset;
-
-	*flags |= UNRESOLVED_MOUNT_POINTS;
-	return offset;
+		return 0;
+	return 1;
 }
 
 static inline __attribute__((always_inline))
@@ -466,12 +460,13 @@ u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
 	struct path pwd;
 	struct mount *mnt;
 	struct dentry *dentry, *dentry_parent;
+	u32 mnt_unresolved = 0;
 #ifdef __LARGE_BPF_PROG
 	int i = 0;
 #endif
 
 	probe_read(&pwd, sizeof(pwd), path);
-	offset = getpath(argp, pwd.dentry,  pwd.mnt, offset, flags);
+	offset = getpath(argp, pwd.dentry, pwd.mnt, offset, flags);
 
 	/* get first mount point through mnt->mnt_mountpoint */
 	mnt = real_mount(pwd.mnt);
@@ -488,8 +483,11 @@ u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
 		// one more call to support at max 2 mount points
 		mnt = follow_mount_point(mnt, argp, &offset, flags);
 #endif
-		offset = mark_unresolved(argp, offset, mnt, flags);
+		mnt_unresolved = mark_unresolved(argp, mnt);
 	}
+
+	if (mnt_unresolved)
+		*flags |= UNRESOLVED_MOUNT_POINTS;
 
 	return offset;
 }
