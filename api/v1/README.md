@@ -980,6 +980,8 @@ HTTP PARSER
 | ----- | ---- | ----- | ----------- |
 | process | [Process](#fgs.Process) |  |  |
 | parent | [Process](#fgs.Process) |  |  |
+| signal | [string](#string) |  |  |
+| status | [uint32](#uint32) |  |  |
 
 
 

@@ -281,9 +281,15 @@ struct msg_capabilities {
 	__u64 inheritable;
 };
 
+struct exit_info {
+	__u32 code;
+	__u32 pad;
+};
+
 struct msg_exit {
 	struct msg_common common;
 	struct msg_execve_key current;
+	struct exit_info info;
 };
 
 struct msg_creds {

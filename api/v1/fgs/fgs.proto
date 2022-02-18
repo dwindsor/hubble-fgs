@@ -197,7 +197,9 @@ message ProcessExec {
 
 message ProcessExit {
     Process process = 1;
-    Process parent = 2;
+    Process parent  = 2;
+    string  signal  = 3;
+    uint32  status  = 4;
 }
 
 message ProcessCred {

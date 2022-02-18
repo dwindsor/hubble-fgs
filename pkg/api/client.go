@@ -679,9 +679,15 @@ type MsgHttpEvent struct {
 	Request    MsgHttp
 }
 
+type MsgExitInfo struct {
+	Code uint32 `align:"code"`
+	Pad1 uint32 `align:"pad"`
+}
+
 type MsgExitEvent struct {
 	Common     MsgCommon    `align:"common"`
 	ProcessKey MsgExecveKey `align:"current"`
+	Info       MsgExitInfo  `align:"info"`
 }
 
 type MsgExitEventUnix = MsgExitEvent

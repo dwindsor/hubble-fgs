@@ -1129,9 +1129,15 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 			pm.cache.refDec(a)
 		}
 	}
+
+	code := event.Info.Code >> 8
+	signal := reader.Signal(event.Info.Code & 0xFF)
+
 	fgsEvent := &fgs.ProcessExit{
 		Process: fgsProcess,
 		Parent:  fgsParent,
+		Signal:  signal,
+		Status:  code,
 	}
 	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)

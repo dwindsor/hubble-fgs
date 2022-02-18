@@ -16,6 +16,13 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
+struct bpf_map_def __attribute__((section("maps"), used)) exit_heap_map = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct msg_exit),
+	.max_entries = 1,
+};
+
 __attribute__((section(("tracepoint/sys_exit")), used))
 int event_exit(struct sched_execve_args *ctx)
 {
@@ -48,23 +55,32 @@ int event_exit(struct sched_execve_args *ctx)
 	if (!enter)
 		return 0;
 	if (enter->key.ktime) {
+		struct task_struct *task = (struct task_struct *)get_current_task();
 		size_t size = sizeof(struct msg_exit);
-		struct msg_exit exit;
+		struct msg_exit *exit;
+		int zero = 0;
 
-		exit.common.op = MSG_OP_EXIT;
-		exit.common.flags = 0;
-		exit.common.pad[0] = 0;
-		exit.common.pad[1] = 0;
-		exit.common.size = size;
-		exit.common.ktime = ktime_get_ns();
+		exit = map_lookup_elem(&exit_heap_map, &zero);
+		if (!exit) {
+			return 0;
+		}
+		exit->common.op = MSG_OP_EXIT;
+		exit->common.flags = 0;
+		exit->common.pad[0] = 0;
+		exit->common.pad[1] = 0;
+		exit->common.size = size;
+		exit->common.ktime = ktime_get_ns();
 
-		exit.current.pid = tgid;
-		exit.current.pad[0] = 0;
-		exit.current.pad[1] = 0;
-		exit.current.pad[2] = 0;
-		exit.current.pad[3] = 0;
-		exit.current.ktime = enter->key.ktime;
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &exit, size);
+		exit->current.pid = tgid;
+		exit->current.pad[0] = 0;
+		exit->current.pad[1] = 0;
+		exit->current.pad[2] = 0;
+		exit->current.pad[3] = 0;
+		exit->current.ktime = enter->key.ktime;
+
+		probe_read(&exit->info.code,   sizeof(exit->info.code),   _(&task->exit_code));
+
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, exit, size);
 	}
 	map_delete_event(tgid);
 	return 0;
