@@ -457,6 +457,18 @@ func NewExecEventChecker() *EventChainChecker {
 	}
 }
 
+// NewExitEventChecker creates a new EventChainChecker for Exit Events
+func NewExitEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, fgs.EventType_PROCESS_EXIT)
+		},
+		eventCheck: func(ev fgsEvent, l Logger) error {
+			return nil
+		},
+	}
+}
+
 // NewTestEventChecker creates a new EventChainChecker for Test events
 func NewTestEventChecker() *EventChainChecker {
 	return &EventChainChecker{

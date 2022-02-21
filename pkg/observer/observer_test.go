@@ -528,6 +528,13 @@ func TestListenAcceptClose(t *testing.T) {
 		// some go way to close the sockets.
 	)
 
+	exitChecker := ec.NewUnorderedMultiResponseChecker(
+		ec.NewExitEventChecker().
+			HasProcess(ncSrvChecker).
+			HasParent(selfChecker).
+			End(),
+	)
+
 	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
@@ -546,6 +553,9 @@ func TestListenAcceptClose(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
+
+	err = JsonTestCheck(t, nil, exitChecker)
+	assert.NoError(t, err)
 
 	TestDone(t, obs)
 }
