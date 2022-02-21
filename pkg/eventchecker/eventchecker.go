@@ -15,8 +15,10 @@ import (
 	"fmt"
 	"reflect"
 	"strings"
+	"syscall"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -595,6 +597,29 @@ func (e *EventChainChecker) HasSrcIP(ip string) *EventChainChecker {
 			return err
 		}
 		return eventHasSrcIP(e, ip)
+	}
+	return e
+}
+
+func eventHasSignal(e fgsEvent, s syscall.Signal) error {
+	if ev, ok := e.(interface {
+		GetSignal() string
+	}); ok {
+		evSignal := ev.GetSignal()
+		if evSignal == unix.SignalName(s) {
+			return nil
+		}
+	}
+	return fmt.Errorf("type %T does not have signal", e)
+}
+
+func (e *EventChainChecker) HasSignal(s syscall.Signal) *EventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+		return eventHasSignal(e, s)
 	}
 	return e
 }

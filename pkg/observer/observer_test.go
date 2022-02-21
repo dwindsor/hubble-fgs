@@ -20,6 +20,7 @@ import (
 	"strconv"
 	"strings"
 	"sync"
+	"syscall"
 	"testing"
 	"time"
 
@@ -532,6 +533,7 @@ func TestListenAcceptClose(t *testing.T) {
 		ec.NewExitEventChecker().
 			HasProcess(ncSrvChecker).
 			HasParent(selfChecker).
+			HasSignal(syscall.SIGKILL).
 			End(),
 	)
 
