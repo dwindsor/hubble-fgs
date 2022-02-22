@@ -100,6 +100,9 @@ var (
 	TLSTailCalls     = sensors.MapBuilder("tls_calls", "tc_ingress", TLSTCIngress)
 	TlsFilterMap     = sensors.MapBuilder("tls_filter_map", "sockops", sockops.SockopsEstablished)
 	TLSSockMap       = sensors.MapBuilder("tls_sock_map", "sockops", sockops.SockopsEstablished)
+
+	/* HTTP context is used when promoting a TLS sesions into HTTP sessions */
+	HTTPContext = sensors.MapBuilder("http_map", "skmsg", TLSSkmsg)
 )
 
 func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
@@ -273,6 +276,7 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 			TLSMap,
 			TLSParserStats,
 			TlsFilterMap,
+			HTTPContext,
 		)
 	}
 
