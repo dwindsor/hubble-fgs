@@ -22,7 +22,7 @@ KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-
 GOLANGCILINT_WANT_VERSION = 1.42.1
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 
-all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile
+all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile contrib-progs
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
@@ -198,5 +198,8 @@ endif
 cscope:
 	find bpf -name "*.[chxsS]" -print > cscope.files
 	cscope -b -q -k
-
 .PHONY: cscope
+
+contrib-progs:
+	$(MAKE) -C contrib/sigkill-tester
+.PHONY: contrib-progs
