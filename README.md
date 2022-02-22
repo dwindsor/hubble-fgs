@@ -74,7 +74,9 @@ To run image in docker,
 
     docker run --name hubble-fgs --env FGS_BTF=/var/lib/hubble-fgs/btf --env FGS_PROCFS=/procRoot/ --privileged -v /proc/:/procRoot -v /usr/lib/debug/boot/vmlinux-5.0.0-38-generic:/var/lib/hubble-fgs/btf -ti quay.io/isovalent/hubble-fgs
 
-## Running FGS in KVM
+## Testing
+
+### Running FGS in KVM
 
 The directory `contrib/kvm` has some scripts to facilitate running FGS via qemu and KVM.
 
@@ -112,7 +114,58 @@ The VM image comes with all the tools required to build FGS, run FGS locally, ru
 tests, install FGS into a KinD-based k8s cluster, and run end-to-end tests. You can consult
 [contrib/kvm/README.md](contrib/kvm/README.md) for more information.
 
-## Testing
+### Running and Testing FGS Locally Using KinD
+
+The scripts in `contrib/end-to-end` can be used to run and test FGS locally in a KinD
+cluster.
+
+First, ensure that you have an up-to-date version of [Docker][docker] and [KinD][kind].
+
+Once you have installed the necessary tooling, you can bootstrap a cluster for testing
+with `contrib/end-to-end/bootstrap-cluster.sh`.
+
+After bootstrapping the cluster, you can install the latest FGS from source by running
+`contrib/end-to-end/install-fgs.sh`.
+
+Finally, run the respective test case script located in `contrib/end-to-end/tests` (for
+example, `contrib/end-to-end/tests/demo-app.sh`).
+
+In case you need to test under a different kernel, you can use the `contrib/kvm` scripts
+to bootstrap a minimal environment for running FGS in a KinD cluster (see the [previous
+section](#running-fgs-in-kvm) for details).
+
+[docker]: https://docs.docker.com/engine/install/
+[kind]: https://kind.sigs.k8s.io/docs/user/quick-start/
+
+### Running `checkerpc` Manually
+
+`checkerpc` (checker + rpc) is a tool that can be used to run event checks locally over
+gRPC. Ordinarily, you would run `checkerpc` via the scripts in `contrib/end-to-end/tests`,
+but it can also be run manually if desired.
+
+`checkerpc` supports running event checks over the test cases defined in `tests/` at the
+root of the FGS repository. You can use these as a template for defining additional test
+cases as required. (Don't forget to add the test case to the list of available test cases
+in `cmd/checkerpc/checkerpc_main.go`.)
+
+To use `checkerpc`, first bootstrap a k8s cluster with the latest version of FGS (for
+example, using the helper scripts in `contrib/end-to-end`). Then, you need to expose FGS's
+gRPC server via a port-forward:
+
+    kubectl port-forward -n kube-system ds/hubble-enterprise 54321:54321
+
+Then, simply run `checkerpc` with your desired test case (it will default to using
+`localhost:54321` as the gRPC server address):
+
+    go run ./cmd/checkerpc --check tls
+
+Finally, run the workload needed to produce the desired events. In the case of the TLS
+checks, this could be done as follows:
+
+    kubectl apply -f contrib/end-to-end/yaml/http-tls-end-to-end.yaml
+    kubectl exec -n curl deployment/curl -- curl -4 https://google.com -m 30
+
+Note that the above steps should either be done in separate terminals or run in the background.
 
 ### Dependencies to compile / run / test FGS locally
 
