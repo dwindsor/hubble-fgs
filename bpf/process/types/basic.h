@@ -809,11 +809,8 @@ long __do_action(long i, struct msg_generic_kprobe *e, struct selector_action *a
 static inline __attribute__((always_inline))
 long do_actions(struct msg_generic_kprobe *e, struct selector_action *actions)
 {
-	long i = 0, cntr = (actions->actionlen - 4) / 4;
-
-	asm volatile("%[cntr] &= 0x3;\n": [cntr] "+r"(cntr):);
-
 	/* Clang really doesn't want to unwind a loop here. */
+	long i = 0;
 	i = __do_action(i, e, actions);
 	if (i)
 		goto out;
