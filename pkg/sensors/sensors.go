@@ -58,6 +58,7 @@ var (
 		&TLSMapStats,
 		&CiliumSNAT,
 		&TCPSendCheckSampler,
+		&HTTPContext,
 	}
 
 	AllMapsV53 = []*Map{
@@ -70,6 +71,7 @@ var (
 		&TLSMapStats,
 		&CiliumSNAT,
 		&TCPSendCheckSampler,
+		&HTTPContext,
 	}
 )
 

@@ -203,4 +203,7 @@ var (
 
 	/* Cilium maps */
 	CiliumSNAT = Map{"cilium_snat_v4_external", "", &TCPConnect, Idle(), -1}
+
+	/* Parser maps */
+	HTTPContext = Map{"http_map", "", &TCPClose, Idle(), -1}
 )
