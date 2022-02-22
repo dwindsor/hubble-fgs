@@ -18,6 +18,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
@@ -29,6 +30,16 @@ type ValidationWarn struct {
 }
 
 func (e *ValidationWarn) Error() string {
+	return e.s
+}
+
+// ValidationFailed is used to mark that validation was not successful and that
+// the we should not continue with loading this spec.
+type ValidationFailed struct {
+	s string
+}
+
+func (e *ValidationFailed) Error() string {
 	return e.s
 }
 
@@ -49,12 +60,28 @@ func validate(btf bpf.BTF, spec *v1alpha1.KProbeSpec) (bpf.BtfID, error) {
 }
 */
 
+func hasSigkillAction(kspec *v1alpha1.KProbeSpec) bool {
+	for i := range kspec.Selectors {
+		s := &kspec.Selectors[i]
+		for j := range s.MatchActions {
+			act := strings.ToLower(s.MatchActions[j].Action)
+			if act == "sigkill" {
+				return true
+			}
+		}
+	}
+	return false
+}
+
 // ValidateKprobeSpec validates a kprobe spec based on BTF information
 //
 // NB: turns out we need more than BTF information for the validation (see
 // syscalls). We still keep this code in the btf package for now, and we can
 // move it once we found a better home for it.
 func ValidateKprobeSpec(btf bpf.BTF, kspec *v1alpha1.KProbeSpec) error {
+	if hasSigkillAction(kspec) && !kernels.MinKernelVersion("5.3.0") {
+		return &ValidationFailed{s: "sigkill action requires kernel >= 5.3.0"}
+	}
 
 	// check that the function itself exists
 	callID, err := btf.FindByNameKind(kspec.Call, bpf.BtfKindFunc)

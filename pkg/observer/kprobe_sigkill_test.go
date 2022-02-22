@@ -26,6 +26,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -49,6 +50,10 @@ func logOut(t *testing.T, prefix string, rd *bufio.Reader) {
 }
 
 func TestKprobeSigkill(t *testing.T) {
+	if !kernels.MinKernelVersion("5.3.0") {
+		t.Skip("sigkill requires at least 5.3.0 version")
+	}
+
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
