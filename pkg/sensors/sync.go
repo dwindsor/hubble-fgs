@@ -230,7 +230,7 @@ func RemoveProgram(bpfDir string, prog *Program) {
 			}
 			coreFile = splitProg[1]
 		}
-		fmt.Printf("remove strings %s\n", coreFile)
+		logger.GetLogger().Debugf("remove strings: %s", coreFile)
 		files, err := ioutil.ReadDir(bpfDir)
 		if err == nil {
 			for _, f := range files {
