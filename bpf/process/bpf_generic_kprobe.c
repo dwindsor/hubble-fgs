@@ -72,7 +72,7 @@ int generic_kprobe_start_process_filter(void *ctx) {
  *  filter selectors -> drop if no matches
  *  generate ring buffer event
  *
- * First we filter by pids this allows us to quickly job events
+ * First we filter by pids this allows us to quickly drop events
  * that are not relevant. This is helpful if we end up copying
  * large string values.
  *
