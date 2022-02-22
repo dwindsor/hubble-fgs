@@ -12,6 +12,8 @@ package eventchecker
 //
 
 import (
+	"testing"
+
 	"github.com/sirupsen/logrus"
 )
 
@@ -31,18 +33,27 @@ type PrefixLogger struct {
 
 // Log logs a new message at the INFO level
 func (l *PrefixLogger) Log(args ...interface{}) {
+	if t, ok := l.Logger.(*testing.T); ok {
+		t.Helper()
+	}
 	newargs := append([]interface{}{l.Prefix}, args...)
 	l.Logger.Log(newargs...)
 }
 
 // Fatal logs a new message at the FATAL level
 func (l *PrefixLogger) Fatal(args ...interface{}) {
+	if t, ok := l.Logger.(*testing.T); ok {
+		t.Helper()
+	}
 	newargs := append([]interface{}{l.Prefix}, args...)
 	l.Logger.Fatal(newargs...)
 }
 
 // Logf logs a new message at the INFO level using a format string
 func (l *PrefixLogger) Logf(format string, args ...interface{}) {
+	if t, ok := l.Logger.(*testing.T); ok {
+		t.Helper()
+	}
 	newfmt := "%s" + format
 	newargs := append([]interface{}{l.Prefix}, args...)
 	l.Logger.Logf(newfmt, newargs...)
@@ -50,6 +61,9 @@ func (l *PrefixLogger) Logf(format string, args ...interface{}) {
 
 // Fatalf logs a new message at the FATL level using a format string
 func (l *PrefixLogger) Fatalf(format string, args ...interface{}) {
+	if t, ok := l.Logger.(*testing.T); ok {
+		t.Helper()
+	}
 	newfmt := "%s" + format
 	newargs := append([]interface{}{l.Prefix}, args...)
 	l.Logger.Fatalf(newfmt, newargs...)
