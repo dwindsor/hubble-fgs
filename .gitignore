@@ -11,3 +11,7 @@ fgs-bench-rootfs*
 ksrc
 kbuild
 latest.json
+cscope.files
+cscope.po.out
+cscope.out
+cscope.in.out

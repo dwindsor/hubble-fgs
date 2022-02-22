@@ -192,3 +192,11 @@ check:
 	docker run --rm -v `pwd`:/app -w /app docker.io/golangci/golangci-lint:v$(GOLANGCILINT_WANT_VERSION) golangci-lint run
 endif
 .PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check
+
+
+# generate cscope for bpf files
+cscope:
+	find bpf -name "*.[chxsS]" -print > cscope.files
+	cscope -b -q -k
+
+.PHONY: cscope
