@@ -2506,6 +2506,29 @@ func (o *KprobeCheckerAND) WithFunctionName(arg StringArg) *KprobeCheckerAND {
 	return o
 }
 
+func KprobeWithAction(act fgs.KprobeAction) KprobeChecker {
+	actString := fgs.KprobeAction_name[int32(act)]
+	return KprobeCheckerFn(func(k *fgs.ProcessKprobe, log Logger) error {
+		if k == nil {
+			return fmt.Errorf("kprobe is nil and cannot match action: %+v", act)
+		}
+		kact := k.GetAction()
+		kactString := fgs.KprobeAction_name[int32(kact)]
+		if kact != act {
+			return fmt.Errorf("failed to match kprobe action %d (%s) to %d (%s)",
+				kact, kactString, act, actString)
+		}
+		log.Logf("**** MATCH kprobe action: %d (%s)", act, actString)
+		return nil
+	})
+}
+
+// WithArgs adds a checker on the kprobe args
+func (o *KprobeCheckerAND) WithAction(act fgs.KprobeAction) *KprobeCheckerAND {
+	o.checks = append(o.checks, KprobeWithAction(act))
+	return o
+}
+
 // KprobeWithArgs matches the Args field
 // NB: eventually we might want other type of matches for matching a list such
 // as subset checks, but for now we check that the elemnts of the lists match
