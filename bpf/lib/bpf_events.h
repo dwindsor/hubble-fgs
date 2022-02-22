@@ -567,7 +567,7 @@ __u32 get_task_pid_vnr(void)
 
 static inline __attribute__((always_inline))
 uint32_t event_filename_builder(struct event_execve *curr,
-				__u32 curr_pid, __u32 flags,
+				__u32 curr_pid, __u32 flags, __u32 bin,
 				void *filename)
 {
 	int64_t size = 0;
@@ -605,7 +605,7 @@ uint32_t event_filename_builder(struct event_execve *curr,
 	value = map_lookup_elem(&names_map, pathname);
 	if (value)
 		return *value;
-	return 0;
+	return bin;
 }
 
 #define PROBE_ARG_HEADER				\
