@@ -14,7 +14,9 @@ import (
 	"bufio"
 	"context"
 	"errors"
+	"fmt"
 	"io"
+	"os"
 	"os/exec"
 	"path/filepath"
 	"runtime"
@@ -77,10 +79,19 @@ func TestKprobeSigkill(t *testing.T) {
 		return pidStr
 	}
 
+	kataRun := false
+	if os.Getenv("FGS_KATA_RUNNER") == "1" {
+		t.Log("running inside kata...")
+		kataRun = true
+	}
+
 	// makeSpecFile creates a new spec file bsed on the template, and the provided arguments
 	makeSpecFile := func(pid string) string {
 		data := map[string]string{
 			"MatchedPID": pid,
+			// NB: if this is a kata run, the pid that the sigkill-tester will print,
+			// will be inside the namespace.
+			"NamespacePID": fmt.Sprintf("%t", kataRun),
 		}
 		specName, err := testutils.GetSpecFromTemplate("sigkill.yaml.tmpl", data)
 		if err != nil {

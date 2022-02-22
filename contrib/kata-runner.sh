@@ -108,6 +108,7 @@ docker run \
     --runtime=$KATA_RUNTIME \
     --cap-add all \
     --rm \
+    --env FGS_KATA_RUNNER="1" \
     -ti \
     --ulimit memlock=-1:-1 \
     --name $CONTAINER_NAME \

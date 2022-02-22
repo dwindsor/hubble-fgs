@@ -15,6 +15,7 @@ spec:
       - operator: In
         values:
         - {{.MatchedPID}}
+        isNamespacePID: {{.NamespacePID}}
       matchArgs:
       - index: 2
         operator: Equal
