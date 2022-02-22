@@ -60,6 +60,7 @@ type ProcessManager struct {
 	listeners         map[listener]struct{}
 	ciliumState       *cilium.State
 	enableProcessCred bool
+	enableProcessNs   bool
 	enableEventCache  bool
 	enableCilium      bool
 	dns               *dnsCache
@@ -86,6 +87,7 @@ func NewProcessManager(
 	watcher K8sResourceWatcher,
 	ciliumState *cilium.State,
 	enableProcessCred bool,
+	enableProcessNs bool,
 	enableEventCache bool,
 	enableCilium bool,
 ) (*ProcessManager, error) {
@@ -107,6 +109,7 @@ func NewProcessManager(
 		ciliumState:       ciliumState,
 		listeners:         make(map[listener]struct{}),
 		enableProcessCred: enableProcessCred,
+		enableProcessNs:   enableProcessNs,
 		enableEventCache:  enableEventCache,
 		enableCilium:      enableCilium,
 		dns:               dnsCache,
@@ -119,6 +122,7 @@ func NewProcessManager(
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
 		"enableProcessCred": enableProcessCred,
+		"enableProcessNs":   enableProcessNs,
 		"processCacheSize":  processCacheSize,
 	}).Info("Starting process manager")
 	return pm, nil
@@ -500,9 +504,15 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = copyProcess(process.process)
+		fgsProcess = process.process
 	}
-	fgsProcess.Ns = pm.getNamespaces(event.Namespaces)
+	if pm.enableProcessNs {
+		// if process is nil we have created a new obj, so no need to copy
+		if process != nil {
+			fgsProcess = copyProcess(process.process)
+		}
+		fgsProcess.Ns = pm.getNamespaces(event.Namespaces)
+	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
@@ -1015,12 +1025,18 @@ func (pm *ProcessManager) GetProcessExec(
 	}
 	// Set the cap field only if --enable-process-cred flag is set.
 	var fgsParent, fgsProcess *fgs.Process
-	// We always copy here, as we will always set namespaces.
-	fgsProcess = copyProcess(proc.process)
+	// Create a copy of the process if we need to set Caps or Namespaces
+	if pm.enableProcessCred || pm.enableProcessNs {
+		fgsProcess = copyProcess(proc.process)
+	} else {
+		fgsProcess = proc.process
+	}
 	if pm.enableProcessCred {
 		fgsProcess.Cap = proc.capabilities
 	}
-	fgsProcess.Ns = proc.namespaces
+	if pm.enableProcessNs {
+		fgsProcess.Ns = proc.namespaces
+	}
 	if parent != nil {
 		fgsParent = parent.process
 	}

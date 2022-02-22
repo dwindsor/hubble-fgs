@@ -40,6 +40,7 @@ const (
 	keyServerAddress     = "server-address"
 	keyCiliumBPF         = "cilium-bpf"
 	keyEnableProcessCred = "enable-process-cred"
+	keyEnableProcessNs   = "enable-process-ns"
 	keyConfigFile        = "config-file"
 
 	keyRunStandalone      = "run-standalone"
@@ -76,6 +77,7 @@ var (
 	serverAddress     string
 	ciliumBPF         string
 	enableProcessCred bool
+	enableProcessNs   bool
 	configFile        string
 
 	runStandalone bool
@@ -116,6 +118,7 @@ func readAndSetFlags() {
 	serverAddress = viper.GetString(keyServerAddress)
 	ciliumBPF = viper.GetString(keyCiliumBPF)
 	enableProcessCred = viper.GetBool(keyEnableProcessCred)
+	enableProcessNs = viper.GetBool(keyEnableProcessNs)
 	configFile = viper.GetString(keyConfigFile)
 
 	runStandalone = viper.GetBool(keyRunStandalone)

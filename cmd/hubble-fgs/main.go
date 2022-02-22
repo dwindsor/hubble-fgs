@@ -138,6 +138,7 @@ func hubbleFGSExecute() error {
 		watcher,
 		ciliumState,
 		enableProcessCred,
+		enableProcessNs,
 		enableK8sAPI,
 		enableCiliumAPI)
 	if err != nil {
@@ -315,6 +316,7 @@ func execute() error {
 	flags.String(keyServerAddress, "localhost:54321", "gRPC server address")
 	flags.String(keyCiliumBPF, "", "Cilium BPF directory")
 	flags.Bool(keyEnableProcessCred, false, "Enable process_cred events")
+	flags.Bool(keyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
 
 	// Config files
 	flags.String(keyConfigFile, "", "Configuration file to load from")

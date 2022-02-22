@@ -173,6 +173,7 @@ func (te *timingEncoder) Encode(v interface{}) error {
 func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary *BenchSummary) error {
 	processCacheSize := 32768
 	enableProcessCred := false
+	enableProcessNs := false
 	enableCiliumAPI := false
 	enableEventCache := false
 
@@ -182,6 +183,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 		fgsGrpc.NewFakeK8sWatcher(nil),
 		cilium.GetFakeCiliumState(),
 		enableProcessCred,
+		enableProcessNs,
 		enableEventCache,
 		enableCiliumAPI,
 	)
