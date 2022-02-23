@@ -20,10 +20,16 @@ MACADDR="52:54:00:12:34:56"
 # Port to use for SSH on the host
 SSHPORT=3000
 
+# Optional URL pointing to a Linux kernel tarball, which can be used instead of
+# downloading latest bpf tree kernel. Uncomment this line to use it.
+#KERNELURL=https://cdn.kernel.org/pub/linux/kernel/v5.x/linux-5.16.11.tar.xz
+
+# Path to kernel sources. Uncommenting this will use this path instead of downloading
+# bpf-latest or using $KERNELURL.
+#KSRCDIR=.ksrc
+
 # Name of kernel config to use
 KCONFIG=kernel.config
-# Path to download kernel sources
-KSRCDIR=.ksrc
 # Path to place compiled kernel bzImage and bpftool
 KOUT=kout
 # Full path for kernel bzImage, can be overridden to manually point to other kernel images
