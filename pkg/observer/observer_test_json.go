@@ -156,7 +156,7 @@ func JsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) e
 
 	// attempt to open the export file
 	if jsonFile == nil {
-		openRetries := 5
+		openRetries := 20
 		for i := 0; ; i++ {
 			t.Logf("jsonTestIterate: openning: %s\n", exportFile)
 			jsonFile, err = os.Open(exportFile)
