@@ -1,4 +1,5 @@
 #!/bin/bash
+
 set -xeu
 
 CONF_DIR="$(realpath $(dirname "${BASH_SOURCE[0]}"))"
@@ -7,10 +8,8 @@ cd "$CONF_DIR"
 
 KTREE="${1:-"bpf/bpf"}"
 KCOMMIT="${2:-"$(curl -sL "https://kernel.googlesource.com/pub/scm/linux/kernel/git/$KTREE.git/+/refs/heads/master?format=JSON" | sed 1d | jq -r .commit)"}"
-
 KSRCDIR="$(realpath "$KSRCDIR")/$KTREE-$KCOMMIT"
 
-# Fetch the latest bpf kernel.
 if [ -d "$KSRCDIR" ]; then
 	echo "KSRCDIR already exists, skipping download!" 1>&2
 else
@@ -32,6 +31,13 @@ $MAKECMD olddefconfig
 $MAKECMD
 $MAKECMD INSTALL_MOD_PATH="$MODULESDIR" modules_install
 cp "$KSRCDIR/arch/x86/boot/bzImage" "$KOUT/bzImage"
+
+if command -v pahole &>/dev/null; then
+    echo "Generating BTF info..."
+    pahole --btf_encode_detached="$KOUT/vmlinux" "$KSRCDIR/vmlinux"
+else
+    echo "Pahole not installed, skipping BTF info generation..."
+fi
 
 MAKECMD="make -j $NCPU -C $KSRCDIR/tools/bpf/bpftool LDFLAGS=-static"
 $MAKECMD
