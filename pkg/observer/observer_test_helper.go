@@ -46,7 +46,7 @@ import (
 var (
 	observerTestDir = "/sys/fs/bpf/testObserver/"
 	exportFile      = "/tmp/hubble-fgs.gotest"
-	jsonRetries     = 10
+	jsonRetries     = 20
 )
 
 const (

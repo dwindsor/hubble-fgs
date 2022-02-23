@@ -134,6 +134,13 @@ func (c *OrderedMultiResponseChecker) Reset() {
 	c.idx = 0
 }
 
+// NewSingleMultiResponseChecker checks all responses against a single checker
+func NewSingleMultiResponseChecker(checker ResponseChecker) MultiResponseChecker {
+	// NB: no need for a separate implementation
+	ret := NewOrderedMultiResponseChecker(checker)
+	return &ret
+}
+
 // AllMultiResponseChecker matches all checkers for all responses
 type AllMultiResponseChecker struct {
 	checkers []ResponseChecker

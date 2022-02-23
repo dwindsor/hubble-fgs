@@ -175,7 +175,7 @@ func test_http_end_to_end(file *os.File, log ec.Logger) error {
 		WithArguments("-4 http://google.com -m 30").
 		WithPod(cc)
 
-	http_checker := ec.NewOrderedMultiResponseChecker(
+	http_checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(curl_checker).
 			HasAncestor(0, ec.NewProcessChecker().
@@ -201,7 +201,7 @@ func test_http_end_to_end(file *os.File, log ec.Logger) error {
 	)
 
 	file.Seek(0, 0)
-	if err := observer.JsonCheck(file, &http_checker, log); err != nil {
+	if err := observer.JsonCheck(file, http_checker, log); err != nil {
 		return err
 	}
 

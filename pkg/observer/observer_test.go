@@ -195,7 +195,7 @@ func TestConnectEvent(t *testing.T) {
 	curlChecker := ec.ProcessWithCommand(
 		ec.SuffixStringMatch("curl"), ec.FullStringMatch("127.0.0.1"),
 	)
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(selfChecker).
 			HasParent().
@@ -228,7 +228,7 @@ func TestConnectEvent(t *testing.T) {
 
 	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	ExecWGCurl(&readyWG, "127.0.0.1")
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -264,7 +264,7 @@ func TestExecEventClone(t *testing.T) {
 		WithBinary(ec.SuffixStringMatch(client)).
 		WithArguments(ec.FullStringMatch("127.0.0.1 8081"))
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(selfChecker).
 			HasParent().
@@ -307,7 +307,7 @@ func TestExecEventClone(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -323,7 +323,7 @@ func TestExistingListenEvent(t *testing.T) {
 		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
 	)
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(selfChecker).
 			HasParent().
@@ -353,7 +353,7 @@ func TestExistingListenEvent(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 
 	TestDone(t, obs)
@@ -374,7 +374,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
 	)
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(selfChecker).
 			HasParent().
@@ -418,7 +418,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	fmt.Printf("cmd: %s\n", cmdClient)
 	assert.NoError(t, cmdClient.Start())
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -434,7 +434,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
 	)
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(selfChecker).
 			HasParent().
@@ -471,7 +471,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 
 	TestDone(t, obs)
@@ -598,7 +598,7 @@ func TestSensorLseekLoad(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewSingleMultiResponseChecker(
 		ec.NewTestEventChecker().End(),
 	)
 
@@ -620,7 +620,7 @@ func TestSensorLseekLoad(t *testing.T) {
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 
 	sensors.UnloadSensor(obs.bpfDir, obs.mapDir, sensor, ctx)
@@ -640,7 +640,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewSingleMultiResponseChecker(
 		ec.NewTestEventChecker().End(),
 	)
 
@@ -686,7 +686,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 }
 

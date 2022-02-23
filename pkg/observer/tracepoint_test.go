@@ -89,7 +89,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 			ec.GenericArgSizeCheck(18446744073709551615), // -1
 		})
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewSingleMultiResponseChecker(
 		ec.NewTracepointEventChecker().
 			HasTracepoint(tpChecker).
 			End(),
@@ -99,7 +99,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	time.Sleep(1000 * time.Millisecond)
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 	TestDone(t, observer)
 }

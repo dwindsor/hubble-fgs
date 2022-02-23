@@ -105,7 +105,7 @@ func TestHttp11Curl(t *testing.T) {
 		WithResponseVersion("HTTP/1.1").
 		WithResponseReason("OK")
 
-	checker := ec.NewOrderedMultiResponseChecker(
+	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
 			HasProcess(curlChecker).
 			HasParent(selfChecker).
@@ -138,7 +138,7 @@ func TestHttp11Curl(t *testing.T) {
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	observer.ExecWGCurl(&readyWG, "-4", "http://www.google.com")
 
-	err = observer.JsonTestCheck(t, nil, &checker)
+	err = observer.JsonTestCheck(t, nil, checker)
 	assert.NoError(t, err)
 
 	observer.TestDone(t, obs)
