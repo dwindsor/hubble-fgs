@@ -677,6 +677,12 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 		case GenericFileType, GenericFdType:
 			var arg api.MsgGenericKprobeArgFile
 			var flags uint32
+			var b int32
+
+			/* Eat file descriptor its not used in userland */
+			if a.ty == GenericFdType {
+				binary.Read(r, binary.LittleEndian, &b)
+			}
 
 			arg.Index = uint64(a.index)
 			arg.Value = handleGenericKprobeString(r) + "/"

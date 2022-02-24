@@ -651,8 +651,10 @@ int selector_arg_offset(__u8 *f,
 	args = &e->args[argoff];
 
 	switch (filter->type) {
-	case file_ty:
 	case fd_ty:
+		/* Advance args past fd */
+		args += 4;
+	case file_ty:
 		pass = filter_file_buf(filter, args);
 		break;
 	case string_type:
@@ -936,12 +938,13 @@ long read_call_arg(void *ctx,
 		if (val) {
 			__u32 bytes = (__u32)val->file[0];
 
+			probe_read(&args[0], sizeof(__u32), &fd);
 			asm volatile("%[bytes] &= 0xff;\n": [bytes] "+r"(bytes):);
-			probe_read(&args[0], bytes + 4, (char *)&val->file[0]);
-			size = bytes + 4;
+			probe_read(&args[4], bytes + 4, (char *)&val->file[0]);
+			size = bytes + 4 + 4;
 
 			// flags
-			probe_read(&args[size], 4, (char *)&val->file[size]);
+			probe_read(&args[size], 4, (char *)&val->file[size-4]);
 			size += 4;
 		} else {
 			/* If filter specification is fd type then we
