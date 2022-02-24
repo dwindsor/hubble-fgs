@@ -179,7 +179,7 @@ func TestNamespaces(t *testing.T) {
 
 	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -228,7 +228,7 @@ func TestConnectEvent(t *testing.T) {
 
 	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	ExecWGCurl(&readyWG, "127.0.0.1")
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -307,7 +307,7 @@ func TestExecEventClone(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -353,7 +353,7 @@ func TestExistingListenEvent(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	TestDone(t, obs)
@@ -418,7 +418,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	fmt.Printf("cmd: %s\n", cmdClient)
 	assert.NoError(t, cmdClient.Start())
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -471,7 +471,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	TestDone(t, obs)
@@ -550,13 +550,13 @@ func TestListenAcceptClose(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err = JsonTestCheck(t, nil, exitChecker)
+	err = JsonTestCheck(t, exitChecker)
 	assert.NoError(t, err)
 
 	TestDone(t, obs)
@@ -620,7 +620,7 @@ func TestSensorLseekLoad(t *testing.T) {
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	sensors.UnloadSensor(obs.bpfDir, obs.mapDir, sensor, ctx)
@@ -686,7 +686,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -768,7 +768,7 @@ func TestDockerListenConnect(t *testing.T) {
 			End(),
 	)
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -852,7 +852,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 			End(),
 	)
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }

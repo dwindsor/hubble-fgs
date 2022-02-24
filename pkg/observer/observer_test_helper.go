@@ -37,15 +37,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 
-	"gopkg.in/natefinch/lumberjack.v2"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 
 var (
 	observerTestDir = "/sys/fs/bpf/testObserver/"
-	exportFile      = "/tmp/hubble-fgs.gotest"
 	jsonRetries     = 20
 )
 
@@ -234,8 +233,6 @@ func GetDefaultObserverWithFile(t *testing.T, file, lib string) (*Observer, erro
 }
 
 func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error {
-	os.Remove(exportFile)
-
 	watcher := opts.watcher
 	ciliumState := opts.ciliumState
 	processCacheSize := 32768
@@ -249,13 +246,8 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 		return err
 	}
 	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
-	writer := lumberjack.Logger{
-		Filename:   exportFile,
-		MaxSize:    100,
-		MaxBackups: 1,
-		Compress:   false,
-	}
-	encoder := json.NewEncoder(&writer)
+	outF := testutils.CreateExportFile(t)
+	encoder := json.NewEncoder(outF)
 
 	// temporarily disable the allow list while we fixup TLS events
 	// to include parent reference as well

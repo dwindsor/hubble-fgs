@@ -124,7 +124,7 @@ func TestSocketCookie(t *testing.T) {
 		t.Fatalf("socketCookieTest failed: %s", err)
 	}
 
-	if err := JsonTestCheck(t, nil, checker); err != nil {
+	if err := JsonTestCheck(t, checker); err != nil {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}

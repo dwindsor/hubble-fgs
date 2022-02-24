@@ -43,7 +43,6 @@ var (
 )
 
 const (
-	exportFile     = "/tmp/hubble-fgs.gotest"
 	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
 	jsonRetries    = 10
 )
@@ -138,7 +137,7 @@ func TestHttp11Curl(t *testing.T) {
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	observer.ExecWGCurl(&readyWG, "-4", "http://www.google.com")
 
-	err = observer.JsonTestCheck(t, nil, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	observer.TestDone(t, obs)
@@ -221,7 +220,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	observer.ExecWGCurl(&readyWG, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
-	err = observer.JsonTestCheck(t, nil, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	observer.TestDone(t, obs)

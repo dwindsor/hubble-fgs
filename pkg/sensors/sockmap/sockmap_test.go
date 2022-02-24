@@ -36,7 +36,6 @@ var (
 )
 
 const (
-	exportFile     = "/tmp/hubble-fgs.gotest"
 	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
 	jsonRetries    = 10
 )
@@ -125,7 +124,7 @@ func TestTCTLS13(t *testing.T) {
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	observer.ExecWGCurl(&readyWG, "--tlsv1.3", "-4", "https://www.google.com")
 
-	err = observer.JsonTestCheck(t, nil, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	observer.TestDone(t, obs)
@@ -186,7 +185,7 @@ func TestTCTLS12(t *testing.T) {
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	observer.ExecWGCurl(&readyWG, "-4", "https://tls-v1-2.badssl.com:1012/")
 
-	err = observer.JsonTestCheck(t, nil, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	observer.TestDone(t, obs)

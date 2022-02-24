@@ -23,6 +23,7 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
@@ -99,7 +100,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	time.Sleep(1000 * time.Millisecond)
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, observer)
 }
@@ -107,11 +108,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, selfOp func(), checkFn func(*fgs.ProcessTracepoint) error) {
 	defer func() {
 		if t.Failed() {
-			if fname, err := jsonTestSaveCopy("", nil); err != nil {
-				t.Logf("Failed to save a copy of json out: %s", err)
-			} else {
-				t.Logf("Saved a copy of json out: %s", fname)
-			}
+			testutils.KeepExportFile(t)
 		}
 	}()
 
@@ -212,7 +209,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		ResetFn:      Reset,
 	}
 
-	if err := JsonTestCheck(t, nil, &checker); err != nil {
+	if err := JsonTestCheck(t, &checker); err != nil {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}

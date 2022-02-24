@@ -13,14 +13,13 @@ package observer
 import (
 	"encoding/json"
 	"fmt"
-	"io"
-	"io/ioutil"
 	"os"
 	"testing"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	"github.com/isovalent/hubble-fgs/pkg/testutils"
 )
 
 var (
@@ -69,38 +68,6 @@ func eventTypeString(ev interface{}) string {
 	}
 }
 
-// jsonTestSaveCopy saves a copy of the json file
-func jsonTestSaveCopy(fnamePrefix string, jsonFile *os.File) (string, error) {
-	var err error
-
-	if fnamePrefix == "" {
-		fnamePrefix = "hubble-fgs.gotest"
-	}
-
-	if jsonFile == nil {
-		fmt.Printf("jsonTestIterate: opening: %s\n", exportFile)
-		jsonFile, err = os.Open(exportFile)
-		if err != nil {
-			return "", fmt.Errorf("opening json file failed: %w", err)
-		}
-		defer jsonFile.Close()
-	}
-
-	out, err := ioutil.TempFile("/tmp/", fmt.Sprintf("%s.*.json", fnamePrefix))
-	if err != nil {
-		return "", fmt.Errorf("opening destination file failed: %w", err)
-	}
-	defer out.Close()
-
-	_, err = io.Copy(out, jsonFile)
-	if err != nil {
-		return "", fmt.Errorf("failed to copy json file: %w", err)
-	}
-
-	os.Chmod(out.Name(), 0644)
-	return out.Name(), nil
-}
-
 func JsonCheck(jsonFile *os.File, checker ec.MultiResponseChecker, log ec.Logger) error {
 	count := 0
 	dec := json.NewDecoder(jsonFile)
@@ -135,41 +102,24 @@ func JsonCheck(jsonFile *os.File, checker ec.MultiResponseChecker, log ec.Logger
 	return nil
 }
 
-func JsonTestCheck(t *testing.T, jsonFile *os.File, c ec.MultiResponseChecker) error {
+func JsonTestCheck(t *testing.T, c ec.MultiResponseChecker) error {
 	var err error
 
-	// cleanup function
-	defer func() {
-		if jsonFile == nil {
-			t.Logf("test failed: was not able to open json file")
-			return
-		}
+	jsonFname := testutils.GetExportFilename(t)
 
+	// cleanup function: if test fails, mark export file to be kept
+	defer func() {
 		if err != nil {
-			jsonFile.Seek(0, os.SEEK_SET)
-			fnamePrefix := fmt.Sprintf("hubble-fgs.gotest.%s", t.Name())
-			fname, _ := jsonTestSaveCopy(fnamePrefix, jsonFile)
-			t.Logf("test failed: json file copied to %s", fname)
+			t.Log("test failed, marking export file to be kept")
+			testutils.KeepExportFile(t)
 		}
-		jsonFile.Close()
 	}()
 
 	// attempt to open the export file
-	if jsonFile == nil {
-		openRetries := 20
-		for i := 0; ; i++ {
-			t.Logf("jsonTestIterate: openning: %s\n", exportFile)
-			jsonFile, err = os.Open(exportFile)
-			if err == nil {
-				break
-			}
-			if i < openRetries {
-				t.Logf("opening json file failed: %s (attempts: %d/%d). Will retry.", err, i, openRetries)
-				time.Sleep(retryDelay)
-			} else {
-				return fmt.Errorf("opening json file failed: %w (attempts: %d/%d). Bailing out.", err, i, openRetries)
-			}
-		}
+	t.Logf("jsonTestCheck: openning: %s\n", jsonFname)
+	jsonFile, err := os.Open(jsonFname)
+	if err != nil {
+		return fmt.Errorf("opening json file failed: %w.", err)
 	}
 
 	cnt := 0

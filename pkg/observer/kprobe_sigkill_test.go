@@ -139,7 +139,7 @@ func TestKprobeSigkill(t *testing.T) {
 			HasKprobe(kpChecker).
 			End(),
 	)
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }

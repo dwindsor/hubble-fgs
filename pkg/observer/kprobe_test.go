@@ -192,7 +192,7 @@ spec:
 	_, err = syscall.Write(1, []byte("hello world"))
 	assert.NoError(t, err)
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -287,7 +287,7 @@ spec:
 		t.Fatal()
 	}
 
-	err = JsonTestCheck(t, nil, &checker)
+	err = JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -401,7 +401,7 @@ func testKprobeObjectFiltered(t *testing.T,
 	n, err := syscall.Write(fd2, []byte(data))
 	assert.Equal(t, len(data), n)
 	assert.NoError(t, err)
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -843,7 +843,7 @@ spec:
 	err = helloIovecWorldWritev()
 	assert.NoError(t, err)
 
-	err = JsonTestCheck(t, nil, checker)
+	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
@@ -1124,7 +1124,7 @@ func corePathTest(t *testing.T, filePath string, readHook string, writeChecker e
 	n, err := syscall.Write(fd2, []byte(data))
 	assert.Equal(t, len(data), n)
 	assert.NoError(t, err)
-	err = JsonTestCheck(t, nil, writeChecker)
+	err = JsonTestCheck(t, writeChecker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
 }
