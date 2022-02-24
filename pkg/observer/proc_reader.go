@@ -12,11 +12,9 @@ package observer
 
 import (
 	"bufio"
-	"bytes"
 	"fmt"
 	"io/ioutil"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"regexp"
 	"sort"
@@ -123,20 +121,6 @@ func (k *Observer) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint6
 		return err
 	}
 	return nil
-}
-
-func getClkTck() (uint64, error) {
-	cmd := exec.Command("getconf", "CLK_TCK")
-	out := new(bytes.Buffer)
-	cmd.Stdout = out
-	if err := cmd.Run(); err != nil {
-		return 0, fmt.Errorf("command getconf failed: %w", err)
-	}
-	clktck, err := strconv.ParseUint(strings.TrimSpace(out.String()), 10, 64)
-	if err != nil {
-		return 0, fmt.Errorf("command getconf parse failed: %w", err)
-	}
-	return clktck, nil
 }
 
 func getPIDNS(filename string) (uint32, uint64, uint64, uint64) {
@@ -247,11 +231,11 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 	procFS, _ := ioutil.ReadDir(option.Config.ProcFS)
 	r := regexp.MustCompile(`[^\s\(]+|(\({1,2}[^\)]*\){1,2})`)
 
-	clktck, err := getClkTck()
-	if err != nil {
-		k.log.WithError(err).Warn("procFS wallclock time may be inaccurate")
-		clktck = 1
-	}
+	// CLK_TCK is always constant 100 on all architectures except alpha and ia64 which are both
+	// obsolete and not supported by FGS. Also see
+	// https://lore.kernel.org/lkml/agtlq6$iht$1@penguin.transmeta.com/ and
+	// https://github.com/containerd/cgroups/pull/12
+	clktck := uint64(100)
 
 	for _, d := range procFS {
 		var pcmdline, pstatline []byte
