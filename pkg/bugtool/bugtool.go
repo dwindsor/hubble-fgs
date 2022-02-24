@@ -79,7 +79,12 @@ func doLoadInitInfo(fname string) (*InitInfo, error) {
 }
 
 func doSaveInitInfo(fname string, info *InitInfo) error {
-	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE, 0755)
+	// Create DefaultRunDir if it does not already exist
+	if err := os.MkdirAll(defaults.DefaultRunDir, 0755); err != nil {
+		logger.GetLogger().WithField("infoFile", fname).Warn("failed to directory exists")
+		return err
+	}
+	f, err := os.OpenFile(fname, os.O_WRONLY|os.O_CREATE, 0744)
 	if err != nil {
 		logger.GetLogger().WithField("infoFile", fname).Warn("failed to create file")
 		return err
