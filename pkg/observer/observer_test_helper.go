@@ -251,7 +251,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
 	writer := lumberjack.Logger{
 		Filename:   exportFile,
-		MaxSize:    10,
+		MaxSize:    100,
 		MaxBackups: 1,
 		Compress:   false,
 	}
