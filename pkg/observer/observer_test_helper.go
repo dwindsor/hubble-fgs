@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
@@ -104,6 +105,30 @@ func withLib(lib string) testOption {
 func TestDone(t *testing.T, obs *Observer) {
 	obs.RemovePrograms()
 	obs.PrintStats()
+}
+
+// saveInitInfo saves initial info for subsequent use in bugtool
+func saveInitInfo(o *testOptions, exportFile string) error {
+	exportPath, err := filepath.Abs(exportFile)
+	if err != nil {
+		logger.GetLogger().Warnf("Failed to get export path when saving init info: %v", err)
+	}
+	btfPath, err := filepath.Abs(btf.GetCachedBTFFile())
+	if err != nil {
+		logger.GetLogger().Warnf("Failed to get BTF path when saving init info: %v", err)
+	}
+	libPath, err := filepath.Abs(o.observer.lib)
+	if err != nil {
+		logger.GetLogger().Warnf("Failed to get lib path when saving init info: %v", err)
+	}
+	info := bugtool.InitInfo{
+		ExportFname: exportPath,
+		LibDir:      libPath,
+		BtfFname:    btfPath,
+		MetricsAddr: "",
+		ServerAddr:  "",
+	}
+	return bugtool.SaveInitInfo(&info)
 }
 
 // Create a fake Cilium state to avoid the events getting delayed due to missing pod info
@@ -208,6 +233,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 
 	loadExporter(t, obs, &o.exporter)
 	loadObserver(t, obs)
+	saveInitInfo(o, testutils.GetExportFilename(t))
 
 	obs.perfConfig = bpf.DefaultPerfEventConfig()
 	obs.perfConfig.MapName = filepath.Join(observerTestDir, "tcpmon_map")
