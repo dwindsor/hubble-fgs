@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
@@ -46,6 +47,8 @@ import (
 
 var (
 	observerTestDir = "/sys/fs/bpf/testObserver/"
+	metricsAddr     = "localhost:2112"
+	metricsEnabled  = false
 	jsonRetries     = 20
 )
 
@@ -125,7 +128,7 @@ func saveInitInfo(o *testOptions, exportFile string) error {
 		ExportFname: exportPath,
 		LibDir:      libPath,
 		BtfFname:    btfPath,
-		MetricsAddr: "",
+		MetricsAddr: metricsAddr,
 		ServerAddr:  "",
 	}
 	return bugtool.SaveInitInfo(&info)
@@ -234,6 +237,19 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 	loadExporter(t, obs, &o.exporter)
 	loadObserver(t, obs)
 	saveInitInfo(o, testutils.GetExportFilename(t))
+
+	// There doesn't appear to be a better way to enable the metrics server once and only
+	// once at the beginning of the observer tests. My initial thought was to use the init
+	// function in this file, however that actually ends up interfering with the FGS agent
+	// since it get compiled into the observer package.
+	//
+	// This is horrifically ugly, so we may want to figure out a better way to do this
+	// at some point in the future. I just don't see a better way that doesn't involve
+	// a lot of code changes in a lot of a files.
+	if !metricsEnabled {
+		go metrics.EnableMetrics(metricsAddr)
+		metricsEnabled = true
+	}
 
 	obs.perfConfig = bpf.DefaultPerfEventConfig()
 	obs.perfConfig.MapName = filepath.Join(observerTestDir, "tcpmon_map")
