@@ -104,6 +104,7 @@ jobs:
                  --set enterprise.image.repository=quay.io/isovalent/hubble-enterprise-ci \
                  --set enterprise.image.tag=${{ steps.vars.outputs.sha }} \
                  --set enterprise.exportAllowList="" \
+                 --set enterprise.exportFileMaxSizeMB=50 \
                  --namespace kube-system
 
       - name: Wait for FGS pods to become ready
