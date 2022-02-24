@@ -114,7 +114,14 @@ $(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
 # PROCESSDIR
 objs/%.ll: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
-	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $(shell echo $@ | sed -e s/\.ll/_v53\.ll/g)
+
+objs/bpf_execve_event_v53.ll: process/bpf_execve_event.c
+objs/bpf_generic_kprobe_v53.ll: process/bpf_generic_kprobe.c
+objs/bpf_generic_retkprobe_v53.ll: process/bpf_generic_retkprobe.c
+objs/bpf_generic_tracepoint_v53.ll: process/bpf_generic_tracepoint.c
+
+objs/bpf_execve_event_v53.ll objs/bpf_generic_kprobe_v53.ll objs/bpf_generic_retkprobe_v53.ll objs/bpf_generic_tracepoint_v53.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
