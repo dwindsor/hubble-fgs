@@ -251,6 +251,19 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 		metricsEnabled = true
 	}
 
+	t.Cleanup(func() {
+		if t.Failed() {
+			bugtoolFname := fmt.Sprintf("/tmp/bugtool-%s.tar.gz", t.Name())
+			if err := bugtool.Bugtool(bugtoolFname); err == nil {
+				logger.GetLogger().WithField("test", t.Name()).
+					WithField("file", bugtoolFname).Info("Dumped bugtool info")
+			} else {
+				logger.GetLogger().WithField("test", t.Name()).
+					WithField("file", bugtoolFname).Warnf("Failed to dump bugtool info: %v", err)
+			}
+		}
+	})
+
 	obs.perfConfig = bpf.DefaultPerfEventConfig()
 	obs.perfConfig.MapName = filepath.Join(observerTestDir, "tcpmon_map")
 	return obs, nil
