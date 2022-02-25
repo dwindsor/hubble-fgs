@@ -32,6 +32,8 @@ jobs:
         go mod vendor
         go mod verify
         test -z "$(git status --porcelain)" || (echo "please run 'go mod tidy && go mod vendor', and submit your changes"; exit 1)
+    - name: Increase open file descriptors limit
+      run: echo fs.file-max=1048576 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
     - name: Run go tests
       env:
         GOPATH: /home/runner/work/hubble-fgs/hubble-fgs/go

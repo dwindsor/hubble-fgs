@@ -112,6 +112,7 @@ docker run \
     --env COLUMNS="`tput cols`" --env LINES="`tput lines`" \
     -ti \
     --ulimit memlock=-1:-1 \
+    --ulimit nofile=1048576:1048576 \
     --name $CONTAINER_NAME \
     $docker_volumes \
     $container \
