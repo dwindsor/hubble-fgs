@@ -109,6 +109,7 @@ docker run \
     --cap-add all \
     --rm \
     --env FGS_KATA_RUNNER="1" \
+    --env COLUMNS="`tput cols`" --env LINES="`tput lines`" \
     -ti \
     --ulimit memlock=-1:-1 \
     --name $CONTAINER_NAME \
