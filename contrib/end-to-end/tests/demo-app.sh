@@ -48,7 +48,7 @@ echo "Checking demo app events..." 1>&2
 go run ./cmd/checkerpc --events 20000 --timeout 1200 --check demo-app ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-demo-app.log &
 DEMO_APP_CHECKER_PID=$!
 # Wait long enough for every client to either connect or timeout
-sleep 10
+sleep 20
 
 echo "Deploying demo app..." 1>&2
 kubectl delete namespace tenant-jobs || true

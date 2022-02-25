@@ -42,7 +42,7 @@ echo "Checking HTTP events..." 1>&2
 go run ./cmd/checkerpc --events 20000 --check http ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-http.log &
 HTTP_CHECKER_PID=$!
 # Wait long enough for every client to either connect or timeout
-sleep 10
+sleep 20
 kubectl exec -n curl deployment/curl -- curl -4 http://google.com -m 30
 wait $HTTP_CHECKER_PID
 
@@ -50,6 +50,6 @@ echo "Checking TLS events..." 1>&2
 go run ./cmd/checkerpc --events 20000 --check tls ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-tls.log &
 TLS_CHECKER_PID=$!
 # Wait long enough for every client to either connect or timeout
-sleep $(( 10 * ${#GRPC_PORTS[@]} ))
+sleep 20
 kubectl exec -n curl deployment/curl -- curl -4 https://google.com -m 30
 wait $TLS_CHECKER_PID
