@@ -83,7 +83,7 @@ enum  {
 };
 
 static inline  __attribute__((always_inline))
-int __process_filter(__u64 ty, __u64 flags, __u64 sel, __u64 pid,
+int __process_filter_pid(__u64 ty, __u64 flags, __u64 sel, __u64 pid,
 		   struct execve_map_value *enter)
 {
 	if (flags & PID_SELECTOR_FLAG_FOLLOW) {
@@ -108,10 +108,17 @@ int next_pid_value(__u32 off, __u32 *f, __u32 ty)
 }
 
 static inline __attribute__((always_inline))
-int process_filter(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 flags, __u64 pid,
-		   struct execve_map_value *enter)
+int process_filter_pid(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 flags,
+		   struct execve_map_value *enter, void *heap)
 {
 	__u32 sel;
+	__u64 pid;
+
+	if (flags & PID_SELECTOR_FLAG_NSPID) {
+		pid = enter->nspid;
+	} else {
+		pid = enter->key.pid;
+	}
 
 	if (off > 1000)
 		sel = 0;
@@ -121,17 +128,55 @@ int process_filter(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 flags, __u64 pi
 		asm volatile("%[o] &= 0x3ff;\n":: [o] "+r" (o):);
 		sel = f[o];
 	}
-	return __process_filter(ty, flags, sel, pid, enter);
+	return __process_filter_pid(ty, flags, sel, pid, enter);
+}
+
+#define MAX_SELECTOR_VALUES 4
+
+static inline __attribute__((always_inline))
+int selector_match(__u32 *f, __u32 index, __u64 ty, __u64 flags, __u64 len,
+			struct execve_map_value *enter, void *heap,
+			int (*process_filter)(__u32, __u32, __u32 *, __u64, __u64, struct execve_map_value *, void *))
+{
+	int res1 = 0, res2 = 0, res3 = 0, res4 = 0;
+
+	/* For NotIn op we AND results so default to 1 so we fallthru open */
+	if (ty == op_filter_pid_notin)
+		res1 = res2 = res3 = res4 = 1;
+
+	/* Unrolling this loop was problematic for clang so rather
+	 * than fight with clang just open code it. Its hard to see
+	 * how many pid values will be used anyways. Having zero
+	 * length values is an input error that CRD should catch.
+	 */
+	if (len == 4) goto four;
+	else if (len == 3) goto three;
+	else if (len == 2) goto two;
+	else if (len == 1) goto one;
+four:
+	res4 = process_filter(3, index, f, ty, flags, enter, heap);
+	index = next_pid_value(index, f, ty);
+three:
+	res3 = process_filter(2, index, f, ty, flags, enter, heap);
+	index = next_pid_value(index, f, ty);
+two:
+	res2 = process_filter(1, index, f, ty, flags, enter, heap);
+	index = next_pid_value(index, f, ty);
+one:
+	res1 = process_filter(0, index, f, ty, flags, enter, heap);
+	index = next_pid_value(index, f, ty);
+
+	if (ty == op_filter_pid_notin)
+		return res1 & res2 & res3 & res4;
+	else
+		return res1 | res2 | res3 | res4;
 }
 
 static inline __attribute__((always_inline))
-int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter)
+int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter, void *heap)
 {
 	__u64 pid, ty = 0, flags = 0, len = 0;
 	__u64 tmp = 0;
-	int res1, res2, res3, res4;
-
-	res1 = res2 = res3 = res4 = 0;
 
 	/* Find selector offset byte index */
 	index *= 4;
@@ -177,43 +222,7 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	 */
 	index += 4 + 8 + 12;
 
-	if (flags & PID_SELECTOR_FLAG_NSPID) {
-		pid = enter->nspid;
-	} else {
-		pid = enter->key.pid;
-	}
-
-	/* For NotIn op we AND results so default to 1 so we fallthru open */
-	if (ty == op_filter_pid_notin)
-		res1 = res2 = res3 = res4 = 1;
-
-#define MAX_SELECTOR_VALUES 4
-	/* Unrolling this loop was problematic for clang so rather
-	 * than fight with clang just open code it. Its hard to see
-	 * how many pid values will be used anyways. Having zero
-	 * length values is an input error that CRD should catch.
-	 */
-	if (len == 4) goto four;
-	else if (len == 3) goto three;
-	else if (len == 2) goto two;
-	else if (len == 1) goto one;
-four:
-	res4 = process_filter(3, index, f, ty, flags, pid, enter);
-	index = next_pid_value(index, f, ty);
-three:
-	res3 = process_filter(2, index, f, ty, flags, pid, enter);
-	index = next_pid_value(index, f, ty);
-two:
-	res2 = process_filter(1, index, f, ty, flags, pid, enter);
-	index = next_pid_value(index, f, ty);
-one:
-	res1 = process_filter(0, index, f, ty, flags, pid, enter);
-	index = next_pid_value(index, f, ty);
-
-	if (ty == op_filter_pid_notin)
-		return res1 & res2 & res3 & res4;
-	else
-		return res1 | res2 | res3 | res4;
+	return selector_match(f, index, ty, flags, len, enter, heap, &process_filter_pid);
 }
 
 #define MAX_SELECTORS 8
@@ -241,7 +250,7 @@ int process_filter_done(struct msg_generic_kprobe *msg,
 // for the memory located at index 0 of @msg_heap assuming the value follows the
 // msg_generic_hdr structure.
 static inline  __attribute__((always_inline))
-int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
+int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap, void *heap)
 {
 	struct msg_execve_key *current = &msg->current;
 	struct execve_map_value *enter;
@@ -272,7 +281,7 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
 		if (selectors <= curr)
 			return process_filter_done(msg, enter, current);
 
-		pass = selector_process_filter(f, curr, enter); /* matches the PID */
+		pass = selector_process_filter(f, curr, enter, heap); /* matches the PID */
 		if (pass) {
 			/* Verify lost that msg is not null here so recheck */
 			asm volatile("%[curr] &= 0x1f;\n":: [curr] "r+" (curr):);

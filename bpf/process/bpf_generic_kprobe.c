@@ -41,7 +41,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
 struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 4096,
+	.value_size = FILTER_SIZE,
 	.max_entries = 1,
 };
 
@@ -154,7 +154,7 @@ int generic_kprobe_process_filter(void *ctx)
 	if (!msg)
 		return 0;
 
-	ret = generic_process_filter(msg, &filter_map);
+	ret = generic_process_filter(msg, &filter_map, &process_call_heap);
 	if (ret == PFILTER_CONTINUE)
 		tail_call(ctx, &kprobe_calls, 5);
 	else if (ret == PFILTER_ACCEPT)

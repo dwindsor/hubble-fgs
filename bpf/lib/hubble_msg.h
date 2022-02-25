@@ -97,6 +97,8 @@
 #define ARGSBUFFERMASK (ARGSBUFFER - 1)
 #define MAXARGMASK (MAXARG - 1)
 
+#define FILTER_SIZE 4096
+
 #define XSTR(s) STR(s)
 #define STR(s) #s
 

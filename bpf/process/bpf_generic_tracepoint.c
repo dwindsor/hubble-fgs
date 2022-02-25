@@ -38,7 +38,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tp_heap = {
 struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 4096,
+	.value_size = FILTER_SIZE,
 	.max_entries = 1,
 };
 
@@ -206,7 +206,7 @@ int generic_tracepoint_filter(void *ctx)
 	if (!msg)
 		return 0;
 
-	ret = generic_process_filter(msg, &filter_map);
+	ret = generic_process_filter(msg, &filter_map, &tp_heap);
 	if (ret == PFILTER_CONTINUE)
 		tail_call(ctx, &tp_calls, 5);
 	else if (ret == PFILTER_ACCEPT)
