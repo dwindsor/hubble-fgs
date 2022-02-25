@@ -20,11 +20,3 @@ type MsgGenericTracepointUnix struct {
 	Event      string
 	Args       []MsgGenericTracepointArg
 }
-
-type MsgGenericTracepoint struct {
-	Common     MsgCommon
-	ProcessKey MsgExecveKey
-	Id         int64
-	ThreadId   uint64
-	ActionId   uint64
-}

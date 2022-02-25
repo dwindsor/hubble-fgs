@@ -716,6 +716,14 @@ type MsgGenericKprobe struct {
 	ActionId   uint64
 }
 
+type MsgGenericTracepoint struct {
+	Common     MsgCommon
+	ProcessKey MsgExecveKey
+	Id         int64
+	ThreadId   uint64
+	ActionId   uint64
+}
+
 type MsgTestEvent struct {
 	Common MsgCommon `align:"common"`
 	Arg0   uint64    `align:"arg0"`
