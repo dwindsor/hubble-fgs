@@ -58,9 +58,19 @@ jobs:
         sudo apt install gcc # needed for contrib-progs
         sudo -E make contrib-progs
         sudo -E make test
+
     - name: Upload FGS logs
       if: failure()
       uses: actions/upload-artifact@v2
       with:
         name: hubble-fgs-json
         path: /tmp/hubble-fgs.gotest*
+        retention-days: 5
+
+    - name: Upload bugtool dumps
+      if: failure()
+      uses: actions/upload-artifact@v2
+      with:
+        name: fgs-bugtool
+        path: /tmp/fgs-bugtool-*
+        retention-days: 5

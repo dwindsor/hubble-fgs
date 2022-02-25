@@ -152,10 +152,10 @@ jobs:
           cat ./hubble-fgs*.log >> fgs.log
           kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
             -n kube-system -o custom-columns=name:metadata.name --no-headers \
-            | xargs -I{} kubectl exec -c enterprise -n kube-system {} -- hubble-enterprise bugtool -o bugtool-{}.tar.gz
+            | xargs -I{} kubectl exec -c enterprise -n kube-system {} -- hubble-enterprise bugtool -o fgs-bugtool-{}.tar.gz
           kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
             -n kube-system -o custom-columns=name:metadata.name --no-headers \
-            | xargs -I{} kubectl cp -c enterprise -n kube-system {}:bugtool-{}.tar.gz ./bugtool-{}.tar.gz
+            | xargs -I{} kubectl cp -c enterprise -n kube-system {}:fgs-bugtool-{}.tar.gz ./fgs-bugtool-{}.tar.gz
         shell: bash {0}
 
       - name: Cleanup
@@ -202,6 +202,6 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-          name: bugtool-dumps
-          path: ./bugtool*.tar.gz
+          name: fgs-bugtool
+          path: ./fgs-bugtool*.tar.gz
           retention-days: 5

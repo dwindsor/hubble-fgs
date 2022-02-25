@@ -75,6 +75,7 @@ jobs:
       with:
         name: hubble-fgs-logs
         path: logs
+        retention-days: 5
     - name: destroy VM
       if: ${{ always() }}
       run: |
