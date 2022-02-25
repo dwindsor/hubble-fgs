@@ -710,6 +710,7 @@ const (
 type MsgGenericKprobe struct {
 	Common     MsgCommon
 	ProcessKey MsgExecveKey
+	Namespaces MsgNamespaces
 	Id         uint64
 	ThreadId   uint64
 	ActionId   uint64

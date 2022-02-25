@@ -500,8 +500,9 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = copyProcess(process.process)
 	}
+	fgsProcess.Ns = pm.getNamespaces(event.Namespaces)
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {

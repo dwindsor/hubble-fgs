@@ -48,6 +48,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 static inline __attribute__((always_inline))
 int generic_kprobe_start_process_filter(void *ctx) {
 	struct msg_generic_kprobe *msg;
+	struct task_struct *task;
 	int i, zero = 0;
 
 	msg = map_lookup_elem(&process_call_heap, &zero);
@@ -60,6 +61,9 @@ int generic_kprobe_start_process_filter(void *ctx) {
 		msg->active[i] = 0;
 	/* Initialize accept field to reject */
 	msg->pass = 0;
+	/* Initialize namespaces to apply filters on them */
+	task = (struct task_struct *)get_current_task();
+	get_namespaces(&(msg->ns), task);
 	/* Tail call into filters. */
 	tail_call(ctx, &kprobe_calls, 5);
 	return 0;

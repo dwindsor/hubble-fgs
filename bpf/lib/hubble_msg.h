@@ -298,11 +298,25 @@ struct msg_creds {
 	struct msg_capabilities caps;
 };
 
+struct msg_ns {
+	__u32 uts_inum;
+	__u32 ipc_inum;
+	__u32 mnt_inum;
+	__u32 pid_inum;
+	__u32 pid_for_children_inum;
+	__u32 net_inum;
+	__u32 time_inum;
+	__u32 time_for_children_inum;
+	__u32 cgroup_inum;
+	__u32 user_inum;
+};
+
 static inline __attribute__((always_inline))
 size_t generic_kprobe_common_size()
 {
 	return sizeof(struct msg_common)
 		+ sizeof(struct msg_execve_key)
+		+ sizeof(struct msg_ns)
 		+ sizeof(__u64) + sizeof(__u64) + sizeof(__u64);
 }
 
@@ -314,6 +328,7 @@ size_t generic_kprobe_common_size()
 struct msg_generic_kprobe {
 	struct msg_common common;
 	struct msg_execve_key current;
+	struct msg_ns ns;
 	__u64 id;
 	__u64 thread_id;
 	__u64 action;
@@ -332,19 +347,6 @@ struct msg_test {
 	unsigned long arg2;
 	unsigned long arg3;
 } __attribute__((packed));
-
-struct msg_ns {
-	__u32 uts_inum;
-	__u32 ipc_inum;
-	__u32 mnt_inum;
-	__u32 pid_inum;
-	__u32 pid_for_children_inum;
-	__u32 net_inum;
-	__u32 time_inum;
-	__u32 time_for_children_inum;
-	__u32 cgroup_inum;
-	__u32 user_inum;
-};
 
 struct msg_execve_event {
 	struct msg_common	common;
