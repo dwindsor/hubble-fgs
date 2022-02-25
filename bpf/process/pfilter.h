@@ -197,11 +197,11 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	 * we get a verifier error.
 	 */
 	asm volatile (
-	"if %[index] > 68 goto +9;\n"
+	"%[index] &= 0x3ff;\n"
 	"%[t] = %[m];\n"                    /* tmp = f; */
 	"%[t] += %[index];\n"               /* tmp =+ index; */
 	"%[index] = *(u32 *)(%[t] + 0);\n"  /* index = *(u32 *)tmp; */
-	"if %[index] > 1008 goto +5;\n"
+	"%[index] &= 0x3ff;\n"
 	"%[t] = %[m];\n"                    /* tmp = f; */
 	"%[t] += %[index];\n"               /* tmp += index; */
 	"%[ty] = *(u32 *)(%[t] +12);\n"     /* ty = *(u32 *)(tmp + 12); */ /* +12 to step past headers */
