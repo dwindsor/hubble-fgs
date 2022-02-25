@@ -12,6 +12,7 @@ package selectors
 
 import (
 	"bytes"
+	"strings"
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -152,9 +153,19 @@ func TestPidSelectorValue(t *testing.T) {
 }
 
 func TestNamespaceValue(t *testing.T) {
-	ns := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []uint32{1, 2, 3}}
+	nstype := "Pid"
+	ns := &v1alpha1.NamespaceSelector{Namespace: nstype, Operator: "In", Values: []string{"1", "2", "3"}}
 	expected := []byte{0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0}
-	if b, l := namespaceSelectorValue(ns); bytes.Equal(b, expected) == false || l != 12 {
+	if b, l, _ := namespaceSelectorValue(ns, strings.ToLower(nstype)); bytes.Equal(b, expected) == false || l != 12 {
+		t.Errorf("namespaceSelectorValue: expected %v actual %v\n", expected, b)
+	}
+}
+
+func TestNamespaceValueStr(t *testing.T) {
+	nstype := "Pid"
+	ns := &v1alpha1.NamespaceSelector{Namespace: nstype, Operator: "In", Values: []string{"host_ns"}}
+	expected := []byte{252, 255, 255, 239}
+	if b, l, _ := namespaceSelectorValue(ns, strings.ToLower(nstype)); bytes.Equal(b, expected) == false || l != 4 {
 		t.Errorf("namespaceSelectorValue: expected %v actual %v\n", expected, b)
 	}
 }
@@ -246,7 +257,7 @@ func TestParseMatchPid(t *testing.T) {
 }
 
 func TestParseMatchNamespaces(t *testing.T) {
-	ns1 := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []uint32{1, 2, 3}}
+	ns1 := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []string{"1", "2", "3"}}
 	k := &KernelSelectorState{off: 0}
 	expected1 := []byte{
 		0x03, 0x00, 0x00, 0x00, // namespace == Pid
@@ -261,7 +272,7 @@ func TestParseMatchNamespaces(t *testing.T) {
 	}
 
 	nextPid := k.off
-	ns2 := &v1alpha1.NamespaceSelector{Namespace: "Mnt", Operator: "NotIn", Values: []uint32{1, 2, 3, 4}}
+	ns2 := &v1alpha1.NamespaceSelector{Namespace: "Mnt", Operator: "NotIn", Values: []string{"1", "2", "3", "4"}}
 	expected2 := []byte{
 		0x02, 0x00, 0x00, 0x00, // namespace == Mnt
 		0x06, 0x00, 0x00, 0x00, // op == NotIn
@@ -403,8 +414,8 @@ func TestInitKernelSelectors(t *testing.T) {
 	pid1 := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
 	pid2 := &v1alpha1.PIDSelector{Operator: "NotIn", Values: []uint32{1, 2, 3, 4}, IsNamespacePID: false, FollowForks: false}
 	matchPids := []v1alpha1.PIDSelector{*pid1, *pid2}
-	ns1 := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []uint32{1, 2, 3}}
-	ns2 := &v1alpha1.NamespaceSelector{Namespace: "Net", Operator: "NotIn", Values: []uint32{1}}
+	ns1 := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []string{"1", "2", "3"}}
+	ns2 := &v1alpha1.NamespaceSelector{Namespace: "Net", Operator: "NotIn", Values: []string{"1"}}
 	matchNamespaces := []v1alpha1.NamespaceSelector{*ns1, *ns2}
 
 	act1 := &v1alpha1.ActionSelector{Action: "post"}

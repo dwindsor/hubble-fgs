@@ -53,12 +53,12 @@ spec:
         - namespace: Net
           operator: In
           values:
-            - 4026532024
-            - 4026532025
+            - "4026532024"
+            - "4026532025"
         - namespace: Mnt
           operator: NotIn
           values:
-            - 4026532099
+            - "4026532099"
 `
 
 var expectedWrite = GenericTracingConf{
@@ -106,12 +106,12 @@ var expectedWrite = GenericTracingConf{
 							{
 								Namespace: "Net",
 								Operator:  "In",
-								Values:    []uint32{4026532024, 4026532025},
+								Values:    []string{"4026532024", "4026532025"},
 							},
 							{
 								Namespace: "Mnt",
 								Operator:  "NotIn",
-								Values:    []uint32{4026532099},
+								Values:    []string{"4026532099"},
 							},
 						},
 					},
@@ -258,7 +258,7 @@ var expectedData = GenericTracingConf{
 							{
 								Namespace: "Pid",
 								Operator:  "In",
-								Values:    []uint32{4026532024},
+								Values:    []string{"4026532024"},
 							},
 						},
 					},

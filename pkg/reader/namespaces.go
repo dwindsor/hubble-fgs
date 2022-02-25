@@ -12,6 +12,7 @@
 package reader
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -27,10 +28,12 @@ func GetPidNsInode(pid uint32, nsStr string) uint32 {
 	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", nsStr)
 	netStr, err := os.Readlink(netns)
 	if err != nil {
+		fmt.Printf("GetPidNsInode: Error %s\n", err)
 		return 0
 	}
 	fields := strings.Split(netStr, ":")
 	if len(fields) < 2 {
+		fmt.Printf("GetPidNsInode: Error cannot parse %s\n", netStr)
 		return 0
 	}
 	inode := fields[1]
@@ -64,11 +67,11 @@ func GetMyPidG() uint32 {
 	return uint32(os.Getpid())
 }
 
-func getHostNsInode(nsStr string) uint32 {
+func GetHostNsInode(nsStr string) uint32 {
 	return GetPidNsInode(1, nsStr)
 }
 
-func getSelfNsInode(nsStr string) uint32 {
+func GetSelfNsInode(nsStr string) uint32 {
 	return GetPidNsInode(uint32(GetMyPidG()), nsStr)
 }
 
@@ -77,8 +80,8 @@ func GetCurrentNamespace() *fgs.Namespaces {
 	self_ns := make(map[string]uint32)
 	is_root_ns := make(map[string]bool)
 	for i := 0; i < len(nses); i++ {
-		self_ns[nses[i]] = getSelfNsInode(nses[i])
-		is_root_ns[nses[i]] = (self_ns[nses[i]] == getHostNsInode(nses[i]))
+		self_ns[nses[i]] = GetSelfNsInode(nses[i])
+		is_root_ns[nses[i]] = (self_ns[nses[i]] == GetHostNsInode(nses[i]))
 	}
 
 	return &fgs.Namespaces{

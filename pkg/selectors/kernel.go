@@ -331,19 +331,31 @@ func parseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector
 	return nil
 }
 
-func namespaceSelectorValue(ns *v1alpha1.NamespaceSelector) ([]byte, uint32) {
+func namespaceSelectorValue(ns *v1alpha1.NamespaceSelector, nstype string) ([]byte, uint32, error) {
 	b := make([]byte, len(ns.Values)*4)
 
 	for i, v := range ns.Values {
+		val, err := strconv.ParseUint(v, 10, 32)
+		if err != nil {
+			// the only case that we can accept and is not a uint32 is "<host_ns>"
+			// in this case we should replace that with the approproate value
+			if v == "host_ns" {
+				val = uint64(reader.GetHostNsInode(nstype))
+			} else {
+				return b, 0, fmt.Errorf("Values for matchNamespace can only be numeric or \"host_ns\". (%w)", err)
+			}
+		}
+
 		off := i * 4
-		binary.LittleEndian.PutUint32(b[off:], v)
+		binary.LittleEndian.PutUint32(b[off:], uint32(val))
 	}
-	return b, uint32(len(b))
+	return b, uint32(len(b)), nil
 }
 
 func parseMatchNamespace(k *KernelSelectorState, action *v1alpha1.NamespaceSelector) error {
+	nsstr := strings.ToLower(action.Namespace)
 	// write namespace type
-	ns, ok := namespaceTypeTable[strings.ToLower(action.Namespace)]
+	ns, ok := namespaceTypeTable[nsstr]
 	if !ok {
 		return fmt.Errorf("parseMatchNamespace: actionType %s unknown", action.Namespace)
 	}
@@ -360,7 +372,10 @@ func parseMatchNamespace(k *KernelSelectorState, action *v1alpha1.NamespaceSelec
 	WriteSelectorUint32(k, op)
 
 	// write values
-	value, size := namespaceSelectorValue(action)
+	value, size, err := namespaceSelectorValue(action, nsstr)
+	if err != nil {
+		return err
+	}
 	WriteSelectorUint32(k, size/4)
 	WriteSelectorByteArray(k, value, size)
 	return nil

@@ -135,7 +135,7 @@ type NamespaceSelector struct {
 	// Namespace selector operator.
 	Operator string `json:"operator" yaml:"operator"`
 	// Process IDs to match.
-	Values []uint32 `json:"values" yaml:"values"`
+	Values []string `json:"values" yaml:"values"`
 }
 
 type PIDSelector struct {

@@ -12,6 +12,7 @@ package observer
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -170,6 +171,53 @@ func runKprobeObjectWriteRead(t *testing.T, writeReadHook string) {
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 	TestDone(t, obs)
+}
+
+func TestKprobeObjectWriteReadHostNs(t *testing.T) {
+	// if we run inside a container it will not match the host namespace
+	nsOp := "NotIn"
+	if _, err := os.Stat("/.dockerenv"); errors.Is(err, os.ErrNotExist) {
+		nsOp = "In"
+	}
+	myPid := GetMyPid()
+	pidStr := strconv.Itoa(int(myPid))
+	writeReadHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write"
+spec:
+  description: "write hook"
+  kprobes:
+  - call: "__x64_sys_write"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+      sizeArgIndex: 3
+    - index: 2
+      type: "size_t"
+    selectors:
+    - matchPIDs:
+      - operator: In
+        followForks: true
+        isNamespacePID: false
+        values:
+        - ` + pidStr + `
+      matchNamespaces:
+      - namespace: Mnt
+        operator: ` + nsOp + `
+        values:
+        - "host_ns"
+      matchArgs:
+      - index: 0
+        operator: "Equal"
+        values:
+        - "1"
+`
+	runKprobeObjectWriteRead(t, writeReadHook)
 }
 
 func TestKprobeObjectWriteRead(t *testing.T) {

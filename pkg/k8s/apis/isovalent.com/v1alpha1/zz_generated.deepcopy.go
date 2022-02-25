@@ -74,7 +74,7 @@ func (in *NamespaceSelector) DeepCopyInto(out *NamespaceSelector) {
 	*out = *in
 	if in.Values != nil {
 		in, out := &in.Values, &out.Values
-		*out = make([]uint32, len(*in))
+		*out = make([]string, len(*in))
 		copy(*out, *in)
 	}
 	return

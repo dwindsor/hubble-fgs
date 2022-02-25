@@ -249,8 +249,7 @@ spec:
                                 values:
                                   description: Process IDs to match.
                                   items:
-                                    format: int32
-                                    type: integer
+                                    type: string
                                   type: array
                               required:
                               - namespace
@@ -642,8 +641,7 @@ spec:
                                 values:
                                   description: Process IDs to match.
                                   items:
-                                    format: int32
-                                    type: integer
+                                    type: string
                                   type: array
                               required:
                               - namespace
