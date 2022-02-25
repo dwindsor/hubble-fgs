@@ -1272,63 +1272,67 @@ func ProcessWithUID(uid uint32) ProcessChecker {
 	})
 }
 
+func compareNamespace(p *fgs.Process, ns *fgs.Namespaces) error {
+	if p.Ns == nil {
+		return fmt.Errorf("ns %v does not match nil value", ns)
+	}
+	if (p.Ns.Uts.Inum != ns.Uts.Inum) || (p.Ns.Uts.IsHost != ns.Uts.IsHost) {
+		return fmt.Errorf("uts_ns [%d|%t] does not match [%d|%t] value",
+			ns.Uts.Inum, ns.Uts.IsHost,
+			p.Ns.Uts.Inum, p.Ns.Uts.IsHost)
+	}
+	if (p.Ns.Ipc.Inum != ns.Ipc.Inum) || (p.Ns.Ipc.IsHost != ns.Ipc.IsHost) {
+		return fmt.Errorf("ipc_ns [%d|%t] does not match [%d|%t] value",
+			ns.Ipc.Inum, ns.Ipc.IsHost,
+			p.Ns.Ipc.Inum, p.Ns.Ipc.IsHost)
+	}
+	if (p.Ns.Mnt.Inum != ns.Mnt.Inum) || (p.Ns.Mnt.IsHost != ns.Mnt.IsHost) {
+		return fmt.Errorf("mnt_ns [%d|%t] does not match [%d|%t] value",
+			ns.Mnt.Inum, ns.Mnt.IsHost,
+			p.Ns.Mnt.Inum, p.Ns.Mnt.IsHost)
+	}
+	if (p.Ns.Pid.Inum != ns.Pid.Inum) || (p.Ns.Pid.IsHost != ns.Pid.IsHost) {
+		return fmt.Errorf("pid_ns [%d|%t] does not match [%d|%t] value",
+			ns.Pid.Inum, ns.Pid.IsHost,
+			p.Ns.Pid.Inum, p.Ns.Pid.IsHost)
+	}
+	if (p.Ns.PidForChildren.Inum != ns.PidForChildren.Inum) || (p.Ns.PidForChildren.IsHost != ns.PidForChildren.IsHost) {
+		return fmt.Errorf("pid_for_children_ns [%d|%t] does not match [%d|%t] value",
+			ns.PidForChildren.Inum, ns.PidForChildren.IsHost,
+			p.Ns.PidForChildren.Inum, p.Ns.PidForChildren.IsHost)
+	}
+	if (p.Ns.Net.Inum != ns.Net.Inum) || (p.Ns.Net.IsHost != ns.Net.IsHost) {
+		return fmt.Errorf("net_ns [%d|%t] does not match [%d|%t] value",
+			ns.Net.Inum, ns.Net.IsHost,
+			p.Ns.Net.Inum, p.Ns.Net.IsHost)
+	}
+	if (p.Ns.Time != nil) && ((p.Ns.Time.Inum != ns.Time.Inum) || (p.Ns.Time.IsHost != ns.Time.IsHost)) {
+		return fmt.Errorf("time_ns [%d|%t] does not match [%d|%t] value",
+			ns.Time.Inum, ns.Time.IsHost,
+			p.Ns.Time.Inum, p.Ns.Time.IsHost)
+	}
+	if (p.Ns.TimeForChildren != nil) && ((p.Ns.TimeForChildren.Inum != ns.TimeForChildren.Inum) || (p.Ns.TimeForChildren.IsHost != ns.TimeForChildren.IsHost)) {
+		return fmt.Errorf("time_for_children_ns [%d|%t] does not match [%d|%t] value",
+			ns.TimeForChildren.Inum, ns.TimeForChildren.IsHost,
+			p.Ns.TimeForChildren.Inum, p.Ns.TimeForChildren.IsHost)
+	}
+	if (p.Ns.Cgroup.Inum != ns.Cgroup.Inum) || (p.Ns.Cgroup.IsHost != ns.Cgroup.IsHost) {
+		return fmt.Errorf("cgroup_ns [%d|%t] does not match [%d|%t] value",
+			ns.Cgroup.Inum, ns.Cgroup.IsHost,
+			p.Ns.Cgroup.Inum, p.Ns.Cgroup.IsHost)
+	}
+	if (p.Ns.User.Inum != ns.User.Inum) || (p.Ns.User.IsHost != ns.User.IsHost) {
+		return fmt.Errorf("user_ns [%d|%t] does not match [%d|%t] value",
+			ns.User.Inum, ns.User.IsHost,
+			p.Ns.User.Inum, p.Ns.User.IsHost)
+	}
+	return nil
+}
+
 // ProcessWithNs matches the Namespace field
 func ProcessWithNs(ns *fgs.Namespaces) ProcessChecker {
 	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
-		if p.Ns == nil {
-			return fmt.Errorf("ns %v does not match nil value", ns)
-		}
-		if (p.Ns.Uts.Inum != ns.Uts.Inum) || (p.Ns.Uts.IsHost != ns.Uts.IsHost) {
-			return fmt.Errorf("uts_ns [%d|%t] does not match [%d|%t] value",
-				ns.Uts.Inum, ns.Uts.IsHost,
-				p.Ns.Uts.Inum, p.Ns.Uts.IsHost)
-		}
-		if (p.Ns.Ipc.Inum != ns.Ipc.Inum) || (p.Ns.Ipc.IsHost != ns.Ipc.IsHost) {
-			return fmt.Errorf("ipc_ns [%d|%t] does not match [%d|%t] value",
-				ns.Ipc.Inum, ns.Ipc.IsHost,
-				p.Ns.Ipc.Inum, p.Ns.Ipc.IsHost)
-		}
-		if (p.Ns.Mnt.Inum != ns.Mnt.Inum) || (p.Ns.Mnt.IsHost != ns.Mnt.IsHost) {
-			return fmt.Errorf("mnt_ns [%d|%t] does not match [%d|%t] value",
-				ns.Mnt.Inum, ns.Mnt.IsHost,
-				p.Ns.Mnt.Inum, p.Ns.Mnt.IsHost)
-		}
-		if (p.Ns.Pid.Inum != ns.Pid.Inum) || (p.Ns.Pid.IsHost != ns.Pid.IsHost) {
-			return fmt.Errorf("pid_ns [%d|%t] does not match [%d|%t] value",
-				ns.Pid.Inum, ns.Pid.IsHost,
-				p.Ns.Pid.Inum, p.Ns.Pid.IsHost)
-		}
-		if (p.Ns.PidForChildren.Inum != ns.PidForChildren.Inum) || (p.Ns.PidForChildren.IsHost != ns.PidForChildren.IsHost) {
-			return fmt.Errorf("pid_for_children_ns [%d|%t] does not match [%d|%t] value",
-				ns.PidForChildren.Inum, ns.PidForChildren.IsHost,
-				p.Ns.PidForChildren.Inum, p.Ns.PidForChildren.IsHost)
-		}
-		if (p.Ns.Net.Inum != ns.Net.Inum) || (p.Ns.Net.IsHost != ns.Net.IsHost) {
-			return fmt.Errorf("net_ns [%d|%t] does not match [%d|%t] value",
-				ns.Net.Inum, ns.Net.IsHost,
-				p.Ns.Net.Inum, p.Ns.Net.IsHost)
-		}
-		if (p.Ns.Time != nil) && ((p.Ns.Time.Inum != ns.Time.Inum) || (p.Ns.Time.IsHost != ns.Time.IsHost)) {
-			return fmt.Errorf("time_ns [%d|%t] does not match [%d|%t] value",
-				ns.Time.Inum, ns.Time.IsHost,
-				p.Ns.Time.Inum, p.Ns.Time.IsHost)
-		}
-		if (p.Ns.TimeForChildren != nil) && ((p.Ns.TimeForChildren.Inum != ns.TimeForChildren.Inum) || (p.Ns.TimeForChildren.IsHost != ns.TimeForChildren.IsHost)) {
-			return fmt.Errorf("time_for_children_ns [%d|%t] does not match [%d|%t] value",
-				ns.TimeForChildren.Inum, ns.TimeForChildren.IsHost,
-				p.Ns.TimeForChildren.Inum, p.Ns.TimeForChildren.IsHost)
-		}
-		if (p.Ns.Cgroup.Inum != ns.Cgroup.Inum) || (p.Ns.Cgroup.IsHost != ns.Cgroup.IsHost) {
-			return fmt.Errorf("cgroup_ns [%d|%t] does not match [%d|%t] value",
-				ns.Cgroup.Inum, ns.Cgroup.IsHost,
-				p.Ns.Cgroup.Inum, p.Ns.Cgroup.IsHost)
-		}
-		if (p.Ns.User.Inum != ns.User.Inum) || (p.Ns.User.IsHost != ns.User.IsHost) {
-			return fmt.Errorf("user_ns [%d|%t] does not match [%d|%t] value",
-				ns.User.Inum, ns.User.IsHost,
-				p.Ns.User.Inum, p.Ns.User.IsHost)
-		}
-		return nil
+		return compareNamespace(p, ns)
 	})
 }
 
@@ -2548,6 +2552,19 @@ func KprobeWithAction(act fgs.KprobeAction) KprobeChecker {
 // WithArgs adds a checker on the kprobe args
 func (o *KprobeCheckerAND) WithAction(act fgs.KprobeAction) *KprobeCheckerAND {
 	o.checks = append(o.checks, KprobeWithAction(act))
+	return o
+}
+
+// withNs add namespaces check
+func (o *KprobeCheckerAND) WithNs(ns *fgs.Namespaces) *KprobeCheckerAND {
+	check := KprobeCheckerFn(func(t *fgs.ProcessKprobe, log Logger) error {
+		ret := compareNamespace(t.Process, ns)
+		if ret == nil {
+			log.Logf("**** MATCH kprobe namespace")
+		}
+		return ret
+	})
+	o.checks = append(o.checks, check)
 	return o
 }
 

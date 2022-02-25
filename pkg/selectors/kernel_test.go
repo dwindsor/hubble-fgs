@@ -151,6 +151,14 @@ func TestPidSelectorValue(t *testing.T) {
 	}
 }
 
+func TestNamespaceValue(t *testing.T) {
+	ns := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []uint32{1, 2, 3}}
+	expected := []byte{0x1, 0x0, 0x0, 0x0, 0x2, 0x0, 0x0, 0x0, 0x3, 0x0, 0x0, 0x0}
+	if b, l := namespaceSelectorValue(ns); bytes.Equal(b, expected) == false || l != 12 {
+		t.Errorf("namespaceSelectorValue: expected %v actual %v\n", expected, b)
+	}
+}
+
 func TestParseMatchArg(t *testing.T) {
 	sig := []v1alpha1.KProbeArg{
 		v1alpha1.KProbeArg{Index: 1, Type: "string", SizeArgIndex: 0, ReturnCopy: false},
@@ -237,6 +245,46 @@ func TestParseMatchPid(t *testing.T) {
 	}
 }
 
+func TestParseMatchNamespaces(t *testing.T) {
+	ns1 := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []uint32{1, 2, 3}}
+	k := &KernelSelectorState{off: 0}
+	expected1 := []byte{
+		0x03, 0x00, 0x00, 0x00, // namespace == Pid
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x03, 0x00, 0x00, 0x00, // length == 0x3
+		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+		0x02, 0x00, 0x00, 0x00, // Values[1] == 2
+		0x03, 0x00, 0x00, 0x00, // Values[2] == 3
+	}
+	if err := parseMatchNamespace(k, ns1); err != nil || bytes.Equal(expected1, k.e[0:k.off]) == false {
+		t.Errorf("parseMatchNamespace: error %v expected %v bytes %v parsing %v\n", err, expected1, k.e[0:k.off], ns1)
+	}
+
+	nextPid := k.off
+	ns2 := &v1alpha1.NamespaceSelector{Namespace: "Mnt", Operator: "NotIn", Values: []uint32{1, 2, 3, 4}}
+	expected2 := []byte{
+		0x02, 0x00, 0x00, 0x00, // namespace == Mnt
+		0x06, 0x00, 0x00, 0x00, // op == NotIn
+		0x04, 0x00, 0x00, 0x00, // length == 0x4
+		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+		0x02, 0x00, 0x00, 0x00, // Values[1] == 2
+		0x03, 0x00, 0x00, 0x00, // Values[2] == 3
+		0x04, 0x00, 0x00, 0x00, // Values[2] == 3
+	}
+	if err := parseMatchNamespace(k, ns2); err != nil || bytes.Equal(expected2, k.e[nextPid:k.off]) == false {
+		t.Errorf("parseMatchPid: error %v expected %v bytes %v parsing %v\n", err, expected2, k.e[nextPid:k.off], ns2)
+	}
+
+	length := []byte{56, 0x00, 0x00, 0x00}
+	expected3 := append(length, expected1[:]...)
+	expected3 = append(expected3, expected2[:]...)
+	ns3 := []v1alpha1.NamespaceSelector{*ns1, *ns2}
+	ks := &KernelSelectorState{off: 0}
+	if err := parseMatchNamespaces(ks, ns3); err != nil || bytes.Equal(expected3, ks.e[0:ks.off]) == false {
+		t.Errorf("parseMatchNamespaces: error %v expected %v bytes %v parsing %v\n", err, expected3, ks.e[0:ks.off], ns3)
+	}
+}
+
 func TestParseMatchAction(t *testing.T) {
 	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "post"}
@@ -272,7 +320,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x4, 0x00, 0x00, 0x00, // selector offset list
 
 		// selector header size 4
-		158, 0x00, 0x00, 0x00, // size = pids + binarys + args + actions + 4
+		202, 0x00, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + 4
 
 		// pid header
 		56, 0x00, 0x00, 0x00, // size = sizeof(pid2) + sizeof(pid1) + 4
@@ -293,6 +341,23 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x02, 0x00, 0x00, 0x00, // Values[1] == 2
 		0x03, 0x00, 0x00, 0x00, // Values[2] == 3
 		0x04, 0x00, 0x00, 0x00, // Values[2] == 3
+
+		// namespace header
+		44, 0x00, 0x00, 0x00, // size = sizeof(ns1) + sizeof(ns2) + 4
+
+		// ns1 size = 24
+		0x03, 0x00, 0x00, 0x00, // namespace == Pid
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x03, 0x00, 0x00, 0x00, // length == 0x3
+		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+		0x02, 0x00, 0x00, 0x00, // Values[1] == 2
+		0x03, 0x00, 0x00, 0x00, // Values[2] == 3
+
+		// ns2 size = 16
+		0x05, 0x00, 0x00, 0x00, // namespace == Net
+		0x06, 0x00, 0x00, 0x00, // op == NotIn
+		0x01, 0x00, 0x00, 0x00, // length == 0x1
+		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
 
 		// binaryNames header
 		24, 0x00, 0x00, 0x00, // size = sizeof(uint32) * 4
@@ -338,6 +403,9 @@ func TestInitKernelSelectors(t *testing.T) {
 	pid1 := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
 	pid2 := &v1alpha1.PIDSelector{Operator: "NotIn", Values: []uint32{1, 2, 3, 4}, IsNamespacePID: false, FollowForks: false}
 	matchPids := []v1alpha1.PIDSelector{*pid1, *pid2}
+	ns1 := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []uint32{1, 2, 3}}
+	ns2 := &v1alpha1.NamespaceSelector{Namespace: "Net", Operator: "NotIn", Values: []uint32{1}}
+	matchNamespaces := []v1alpha1.NamespaceSelector{*ns1, *ns2}
 
 	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "followfd",
@@ -347,9 +415,10 @@ func TestInitKernelSelectors(t *testing.T) {
 
 	selectors := []v1alpha1.KProbeSelector{
 		{
-			MatchPIDs:    matchPids,
-			MatchArgs:    matchArgs,
-			MatchActions: matchActions,
+			MatchPIDs:       matchPids,
+			MatchNamespaces: matchNamespaces,
+			MatchArgs:       matchArgs,
+			MatchActions:    matchActions,
 		},
 	}
 	args := []v1alpha1.KProbeArg{

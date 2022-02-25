@@ -49,6 +49,16 @@ spec:
           operator: "equal"
           values:
             - "1"
+        matchNamespaces:
+        - namespace: Net
+          operator: In
+          values:
+            - 4026532024
+            - 4026532025
+        - namespace: Mnt
+          operator: NotIn
+          values:
+            - 4026532099
 `
 
 var expectedWrite = GenericTracingConf{
@@ -90,6 +100,18 @@ var expectedWrite = GenericTracingConf{
 								Index:    0,
 								Operator: "equal",
 								Values:   []string{"1"},
+							},
+						},
+						MatchNamespaces: []v1alpha1.NamespaceSelector{
+							{
+								Namespace: "Net",
+								Operator:  "In",
+								Values:    []uint32{4026532024, 4026532025},
+							},
+							{
+								Namespace: "Mnt",
+								Operator:  "NotIn",
+								Values:    []uint32{4026532099},
 							},
 						},
 					},
@@ -149,6 +171,11 @@ spec:
           operator: "notequal" 
           values:
             - "world"
+        matchNamespaces:
+        - namespace: Pid
+          operator: In
+          values:
+          - 4026532024
 `
 
 var expectedData = GenericTracingConf{
@@ -225,6 +252,13 @@ var expectedData = GenericTracingConf{
 								Index:    1,
 								Operator: "notequal",
 								Values:   []string{"world"},
+							},
+						},
+						MatchNamespaces: []v1alpha1.NamespaceSelector{
+							{
+								Namespace: "Pid",
+								Operator:  "In",
+								Values:    []uint32{4026532024},
 							},
 						},
 					},

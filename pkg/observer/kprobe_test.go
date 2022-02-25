@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	"github.com/stretchr/testify/assert"
@@ -125,13 +126,132 @@ spec:
 	TestDone(t, obs)
 }
 
-func TestKprobeObjectWriteRead(t *testing.T) {
+func getTestKprobeObjectWRChecker() ec.MultiResponseChecker {
+	rootNs := reader.GetCurrentNamespace()
+	kpChecker := ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_write").
+		WithArgs([]ec.GenericArgChecker{
+			ec.GenericArgIntCheck(1),
+			ec.GenericArgBytesCheck([]byte("hello world")),
+			ec.GenericArgSizeCheck(11),
+		}).
+		WithNs(rootNs)
+	return ec.NewSingleMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasKprobe(kpChecker).
+			End(),
+	)
+}
+
+func runKprobeObjectWriteRead(t *testing.T, writeReadHook string) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
+	writeConfigHook := []byte(writeReadHook)
+	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	checker := getTestKprobeObjectWRChecker()
+
+	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
+	_, err = syscall.Write(1, []byte("hello world"))
+	assert.NoError(t, err)
+
+	err = JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+	TestDone(t, obs)
+}
+
+func TestKprobeObjectWriteRead(t *testing.T) {
+	myPid := GetMyPid()
+	pidStr := strconv.Itoa(int(myPid))
+	mntNsStr := strconv.FormatUint(uint64(reader.GetPidNsInode(myPid, "mnt")), 10)
+	writeReadHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write"
+spec:
+  description: "write hook"
+  kprobes:
+  - call: "__x64_sys_write"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+      sizeArgIndex: 3
+    - index: 2
+      type: "size_t"
+    selectors:
+    - matchPIDs:
+      - operator: In
+        followForks: true
+        isNamespacePID: false
+        values:
+        - ` + pidStr + `
+      matchNamespaces:
+      - namespace: Mnt
+        operator: In
+        values:
+        - ` + mntNsStr + `
+      matchArgs:
+      - index: 0
+        operator: "Equal"
+        values:
+        - "1"
+`
+	runKprobeObjectWriteRead(t, writeReadHook)
+}
+
+func TestKprobeObjectWriteReadNsOnly(t *testing.T) {
+	myPid := GetMyPid()
+	mntNsStr := strconv.FormatUint(uint64(reader.GetPidNsInode(myPid, "mnt")), 10)
+	writeReadHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write"
+spec:
+  description: "write hook"
+  kprobes:
+  - call: "__x64_sys_write"
+    return: false
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+      sizeArgIndex: 3
+    - index: 2
+      type: "size_t"
+    selectors:
+    - matchNamespaces:
+      - namespace: Mnt
+        operator: In
+        values:
+        - ` + mntNsStr + `
+      matchArgs:
+      - index: 0
+        operator: "Equal"
+        values:
+        - "1"
+`
+	runKprobeObjectWriteRead(t, writeReadHook)
+}
+
+func TestKprobeObjectWriteReadPidOnly(t *testing.T) {
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	writeReadHook := `
 apiVersion: hubble-enterprise.io/v1
@@ -164,37 +284,7 @@ spec:
         values:
         - "1"
 `
-	writeConfigHook := []byte(writeReadHook)
-	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
-	if err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
-	}
-
-	kpChecker := ec.NewKprobeChecker().
-		WithFunctionName("__x64_sys_write").
-		WithArgs([]ec.GenericArgChecker{
-			ec.GenericArgIntCheck(1),
-			ec.GenericArgBytesCheck([]byte("hello world")),
-			ec.GenericArgSizeCheck(11),
-		})
-	checker := ec.NewSingleMultiResponseChecker(
-		ec.NewKprobeEventChecker().
-			HasKprobe(kpChecker).
-			End(),
-	)
-
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
-	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
-	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
-	readyWG.Wait()
-	_, err = syscall.Write(1, []byte("hello world"))
-	assert.NoError(t, err)
-
-	err = JsonTestCheck(t, checker)
-	assert.NoError(t, err)
-	TestDone(t, obs)
+	runKprobeObjectWriteRead(t, writeReadHook)
 }
 
 func TestKprobeObjectRead(t *testing.T) {
