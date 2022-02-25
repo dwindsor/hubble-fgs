@@ -863,7 +863,7 @@ void get_caps(struct msg_execve_event *msg, struct task_struct *task)
 }
 
 static inline __attribute__((always_inline))
-void get_namespaces(struct msg_execve_event *msg, struct task_struct *task)
+void get_namespaces(struct msg_ns *msg, struct task_struct *task)
 {
 	struct nsproxy *nsproxy;
 	struct nsproxy nsp;
@@ -871,9 +871,9 @@ void get_namespaces(struct msg_execve_event *msg, struct task_struct *task)
 	probe_read(&nsproxy, sizeof(nsproxy), _(&task->nsproxy));
 	probe_read(&nsp, sizeof(nsp), _(nsproxy));
 
-	probe_read(&msg->ns.uts_inum, sizeof(msg->ns.uts_inum), _(&nsp.uts_ns->ns.inum));
-	probe_read(&msg->ns.ipc_inum, sizeof(msg->ns.ipc_inum), _(&nsp.ipc_ns->ns.inum));
-	probe_read(&msg->ns.mnt_inum, sizeof(msg->ns.mnt_inum), _(&nsp.mnt_ns->ns.inum));
+	probe_read(&msg->uts_inum, sizeof(msg->uts_inum), _(&nsp.uts_ns->ns.inum));
+	probe_read(&msg->ipc_inum, sizeof(msg->ipc_inum), _(&nsp.ipc_ns->ns.inum));
+	probe_read(&msg->mnt_inum, sizeof(msg->mnt_inum), _(&nsp.mnt_ns->ns.inum));
 	{
 		struct pid *p = 0;
 
@@ -884,27 +884,27 @@ void get_namespaces(struct msg_execve_event *msg, struct task_struct *task)
 
 			probe_read(&level, sizeof(level), _(&p->level));
 			probe_read(&up, sizeof(up), _(&p->numbers[level]));
-			probe_read(&msg->ns.pid_inum, sizeof(msg->ns.pid_inum), _(&up.ns->ns.inum));
+			probe_read(&msg->pid_inum, sizeof(msg->pid_inum), _(&up.ns->ns.inum));
 		} else
-			msg->ns.pid_inum = 0;
+			msg->pid_inum = 0;
 	}
-	probe_read(&msg->ns.pid_for_children_inum, sizeof(msg->ns.pid_for_children_inum), _(&nsp.pid_ns_for_children->ns.inum));
-	probe_read(&msg->ns.net_inum, sizeof(msg->ns.net_inum), _(&nsp.net_ns->ns.inum));
+	probe_read(&msg->pid_for_children_inum, sizeof(msg->pid_for_children_inum), _(&nsp.pid_ns_for_children->ns.inum));
+	probe_read(&msg->net_inum, sizeof(msg->net_inum), _(&nsp.net_ns->ns.inum));
 
 	// this also includes time_ns_for_children
 	if(bpf_core_field_exists(nsproxy->time_ns)) {
-		probe_read(&msg->ns.time_inum, sizeof(msg->ns.time_inum), _(&nsp.time_ns->ns.inum));
-		probe_read(&msg->ns.time_for_children_inum, sizeof(msg->ns.time_for_children_inum), _(&nsp.time_ns_for_children->ns.inum));
+		probe_read(&msg->time_inum, sizeof(msg->time_inum), _(&nsp.time_ns->ns.inum));
+		probe_read(&msg->time_for_children_inum, sizeof(msg->time_for_children_inum), _(&nsp.time_ns_for_children->ns.inum));
 	}
 
-	probe_read(&msg->ns.cgroup_inum, sizeof(msg->ns.cgroup_inum), _(&nsp.cgroup_ns->ns.inum));
+	probe_read(&msg->cgroup_inum, sizeof(msg->cgroup_inum), _(&nsp.cgroup_ns->ns.inum));
 	{
 		struct mm_struct *mm;
 		struct user_namespace *user_ns;
 
 		probe_read(&mm, sizeof(mm), _(&task->mm));
 		probe_read(&user_ns, sizeof(user_ns), _(&mm->user_ns));
-		probe_read(&msg->ns.user_inum, sizeof(msg->ns.user_inum), _(&user_ns->ns.inum));
+		probe_read(&msg->user_inum, sizeof(msg->user_inum), _(&user_ns->ns.inum));
 	}
 }
 
@@ -1012,7 +1012,7 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 	msg->kube.cgrpid = get_current_cgroup_id();
 #endif
 	get_caps(msg, task);
-	get_namespaces(msg, task);
+	get_namespaces(&(msg->ns), task);
 }
 
 static inline __attribute__((always_inline))
