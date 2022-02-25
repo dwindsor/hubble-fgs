@@ -11,7 +11,7 @@ env:
   zone: us-west2-a
   vmName: fgs-ci-${{ github.run_id }}
   vmHost: fgs@fgs-ci-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci
+  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v2
 
 jobs:
   end-to-end-tests:
@@ -120,9 +120,13 @@ jobs:
             ssh -p 3000 root@localhost 'uname -r'
           EOF
 
-      - name: Bootstrap k8s cluster
-        run: |
-          ssh ${{ env.vmHost }} 'ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/bootstrap-cluster.sh"'
+      - name: Wait for kube-system pods to be ready
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 10
+          command: |
+            ssh ${{ env.vmHost }} 'ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready pods --all --timeout=45s"'
 
       - name: Wait for image to be available
         timeout-minutes: 10
