@@ -207,7 +207,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
 	exporter := fgsGrpc.NewExporter(ctx, &req, server, &timingEncoder, nil)
-	go exporter.Start()
+	exporter.Start()
 	obs.AddListener(processManager)
 	return nil
 }

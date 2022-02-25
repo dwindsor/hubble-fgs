@@ -49,14 +49,12 @@ func (a *arrayWriter) Write(p []byte) (n int, err error) {
 type fakeNotifier struct {
 	mux       sync.Mutex
 	listeners map[listener]struct{}
-	added     chan bool
 	removed   chan bool
 }
 
 func newFakeNotifier() *fakeNotifier {
 	return &fakeNotifier{
 		listeners: make(map[listener]struct{}),
-		added:     make(chan bool),
 		removed:   make(chan bool),
 	}
 }
@@ -64,7 +62,6 @@ func newFakeNotifier() *fakeNotifier {
 func (f *fakeNotifier) addListener(listener listener) {
 	f.mux.Lock()
 	f.listeners[listener] = struct{}{}
-	f.added <- true
 	f.mux.Unlock()
 }
 
@@ -130,8 +127,7 @@ func TestExporter_Send(t *testing.T) {
 	ctx, cancel := context.WithCancel(context.Background())
 	request := fgs.GetEventsRequest{DenyList: []*fgs.Filter{{BinaryRegex: []string{"b"}}}}
 	exporter := NewExporter(ctx, &request, grpcServer, encoder, nil)
-	go exporter.Start()
-	<-eventNotifier.added
+	exporter.Start()
 	eventNotifier.notifyListeners(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessConnect{
 			ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Binary: "a"}},
@@ -238,8 +234,7 @@ func Test_rateLimitExport(t *testing.T) {
 				encoder,
 				NewRateLimiter(ctx, 50*time.Millisecond, tt.rateLimit, encoder),
 			)
-			go exporter.Start()
-			<-eventNotifier.added
+			exporter.Start()
 			for i := 0; i < tt.totalEvents; i++ {
 				eventNotifier.notifyListeners(&fgs.GetEventsResponse{
 					Event: &fgs.GetEventsResponse_ProcessConnect{

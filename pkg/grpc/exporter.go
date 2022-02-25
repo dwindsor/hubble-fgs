@@ -16,6 +16,7 @@ package grpc
 
 import (
 	"context"
+	"sync"
 	"sync/atomic"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -47,12 +48,17 @@ func NewExporter(
 }
 
 func (e *Exporter) Start() {
-	if err := e.server.GetEvents(e.request, e); err != nil {
-		if e.ctx.Err() == nil {
-			logger.GetLogger().WithError(err).Error("Failed to start JSON exporter")
+	var readyWG sync.WaitGroup
+	readyWG.Add(1)
+	go func() {
+		if err := e.server.GetEventsWG(e.request, e, &readyWG); err != nil {
+			if e.ctx.Err() == nil {
+				logger.GetLogger().WithError(err).Error("Failed to start JSON exporter")
+			}
 		}
-	}
-	e.done <- true
+		e.done <- true
+	}()
+	readyWG.Wait()
 }
 
 func (e *Exporter) Send(event *fgs.GetEventsResponse) error {

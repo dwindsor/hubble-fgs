@@ -13,6 +13,7 @@ package grpc
 
 import (
 	"context"
+	"sync"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
@@ -82,8 +83,11 @@ func (s *Server) removeNotifierAndDrain(l *getEventsListener) {
 		}
 	}
 }
-
 func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanceSensors_GetEventsServer) error {
+	return s.GetEventsWG(request, server, nil)
+}
+
+func (s *Server) GetEventsWG(request *fgs.GetEventsRequest, server fgs.FineGuidanceSensors_GetEventsServer, readyWG *sync.WaitGroup) error {
 	logger.GetLogger().WithField("request", request).Debug("Received a GetEvents request")
 	allowList, err := filters.BuildFilterList(context.Background(), request.AllowList, filters.Filters)
 	if err != nil {
@@ -104,6 +108,9 @@ func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanc
 	l := newListener()
 	s.notifier.addListener(l)
 	defer s.removeNotifierAndDrain(l)
+	if readyWG != nil {
+		readyWG.Done()
+	}
 	for {
 		select {
 		case event := <-l.events:

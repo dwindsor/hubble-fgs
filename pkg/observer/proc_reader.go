@@ -228,7 +228,12 @@ func (k *Observer) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procT
 func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 	var entryMap = make(map[uint32]procTCPEntry)
 	var procs []ObserverProcs
-	procFS, _ := ioutil.ReadDir(option.Config.ProcFS)
+	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
+	if err != nil {
+		k.log.WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
+		return nil
+	}
+
 	r := regexp.MustCompile(`[^\s\(]+|(\({1,2}[^\)]*\){1,2})`)
 
 	// CLK_TCK is always constant 100 on all architectures except alpha and ia64 which are both

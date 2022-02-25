@@ -259,7 +259,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	denyList, _ := filters.ParseFilterList("")
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
 	exporter := fgsGrpc.NewExporter(context.Background(), &req, server, encoder, nil)
-	go exporter.Start()
+	exporter.Start()
 	obs.AddListener(processManager)
 	return nil
 }
