@@ -122,6 +122,20 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of binary exec name filters.
 	MatchBinaries []BinarySelector `json:"matchBinaries" yaml:"matchBinaries"`
+	// +kubebuilder:validation:Optional
+	// A list of namespaces and IDs
+	MatchNamespaces []NamespaceSelector `json:"matchNamespaces" yaml:"matchNamespaces"`
+}
+
+type NamespaceSelector struct {
+	// +kubebuilder:validation:Enum=Uts;Ipc;Mnt;Pid;PidForChildren;Net;Time;TimeForChildren;Cgroup;User
+	// Namespace selector name.
+	Namespace string `json:"namespace" yaml:"namespace"`
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Namespace selector operator.
+	Operator string `json:"operator" yaml:"operator"`
+	// Process IDs to match.
+	Values []uint32 `json:"values" yaml:"values"`
 }
 
 type PIDSelector struct {

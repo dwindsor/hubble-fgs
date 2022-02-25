@@ -72,6 +72,7 @@ int generic_kprobe_start_process_filter(void *ctx) {
 /* Generic kprobe pseudocode is the following
  *
  *  filter_pids -> drop if no matches
+ *  filter_namespaces -> drop if no matches
  *  copy arguments buffer
  *  filter selectors -> drop if no matches
  *  generate ring buffer event

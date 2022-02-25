@@ -55,6 +55,32 @@ func MatchActionSigKill(spec *v1alpha1.KProbeSpec) bool {
 }
 
 const (
+	namespaceTypeUts             = 0
+	namespaceTypeIpc             = 1
+	namespaceTypeMnt             = 2
+	namespaceTypePid             = 3
+	namespaceTypePidForChildren  = 4
+	namespaceTypeNet             = 5
+	namespaceTypeTime            = 6
+	namespaceTypeTimeForChildren = 7
+	namespaceTypeCgroup          = 8
+	namespaceTypeUser            = 9
+)
+
+var namespaceTypeTable = map[string]uint32{
+	"uts":             namespaceTypeUts,
+	"ipc":             namespaceTypeIpc,
+	"mnt":             namespaceTypeMnt,
+	"pid":             namespaceTypePid,
+	"pidforchildren":  namespaceTypePidForChildren,
+	"net":             namespaceTypeNet,
+	"time":            namespaceTypeTime,
+	"timeforchildren": namespaceTypeTimeForChildren,
+	"cgroup":          namespaceTypeCgroup,
+	"user":            namespaceTypeUser,
+}
+
+const (
 	argTypeInt       = 1
 	argTypeCharBuf   = 2
 	argTypeCharIovec = 3
@@ -109,7 +135,7 @@ const (
 	selectorOpLT  = 2
 	selectorOpEQ  = 3
 	selectorOpNEQ = 4
-	// Pid ops
+	// Pid and Namespace ops
 	selectorOpIn    = 5
 	selectorOpNotIn = 6
 	// String ops
@@ -305,6 +331,53 @@ func parseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector
 	return nil
 }
 
+func namespaceSelectorValue(ns *v1alpha1.NamespaceSelector) ([]byte, uint32) {
+	b := make([]byte, len(ns.Values)*4)
+
+	for i, v := range ns.Values {
+		off := i * 4
+		binary.LittleEndian.PutUint32(b[off:], v)
+	}
+	return b, uint32(len(b))
+}
+
+func parseMatchNamespace(k *KernelSelectorState, action *v1alpha1.NamespaceSelector) error {
+	// write namespace type
+	ns, ok := namespaceTypeTable[strings.ToLower(action.Namespace)]
+	if !ok {
+		return fmt.Errorf("parseMatchNamespace: actionType %s unknown", action.Namespace)
+	}
+	WriteSelectorUint32(k, ns)
+
+	// write operator
+	op, err := selectorOp(action.Operator)
+	if err != nil {
+		return fmt.Errorf("matchNamespace error: %w", err)
+	}
+	if (op != selectorOpIn) && (op != selectorOpNotIn) {
+		return fmt.Errorf("matchNamespace supports only In and NotIn operators")
+	}
+	WriteSelectorUint32(k, op)
+
+	// write values
+	value, size := namespaceSelectorValue(action)
+	WriteSelectorUint32(k, size/4)
+	WriteSelectorByteArray(k, value, size)
+	return nil
+}
+
+func parseMatchNamespaces(k *KernelSelectorState, actions []v1alpha1.NamespaceSelector) error {
+	loff := AdvanceSelectorLength(k)
+	// maybe write the number of namespace matches
+	for _, a := range actions {
+		if err := parseMatchNamespace(k, &a); err != nil {
+			return err
+		}
+	}
+	WriteSelectorLength(k, loff)
+	return nil
+}
+
 func parseMatchBinary(k *KernelSelectorState, index uint32, b *v1alpha1.BinarySelector) error {
 	op, err := selectorOp(b.Operator)
 	if err != nil {
@@ -346,6 +419,9 @@ func parseSelector(
 	if err := parseMatchPids(k, selectors.MatchPIDs); err != nil {
 		return fmt.Errorf("parseMatchPids error: %w", err)
 	}
+	if err := parseMatchNamespaces(k, selectors.MatchNamespaces); err != nil {
+		return fmt.Errorf("parseMatchNamespaces error: %w", err)
+	}
 	if err := parseMatchBinaries(k, selectors.MatchBinaries); err != nil {
 		return fmt.Errorf("parseMatchBinaries error: %w", err)
 	}
@@ -359,24 +435,25 @@ func parseSelector(
 }
 
 // array := [number][filter1][filter2][...][filtern]
-// filter := [length][matchPIDs][matchBinaries][matchArgs]
+// filter := [length][matchPIDs][matchBinaries][matchArgs][matchNamespaces]
 // matchPIDs := [num][PID1][PID2]...[PIDn]
 // matchBinaries := [num][op][Index]...[Index]
 // matchArgs := [num][ARGx][ARGy]...[ARGn]
-// PIDn := [op][flags][value]
-// Argn := [index][op][value]
-// value := [type][len][v]
+// matchNamespaces := [num][NSx][NSy]...[NSn]
+// PIDn := [op][flags][valueInt]
+// Argn := [index][op][valueGen]
+// NSn := [namespace][op][valueInt]
+// valueGen := [type][len][v]
+// valueInt := [len][v]
 func InitKernelSelectors(spec *v1alpha1.KProbeSpec) ([4096]byte, error) {
 	selectors := spec.Selectors
 	args := spec.Args
 	kernelSelectors := &KernelSelectorState{}
-	totaloff := 2
 
 	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
 	soff := make([]uint32, len(selectors))
 	for i, _ := range selectors {
 		soff[i] = AdvanceSelectorLength(kernelSelectors)
-		totaloff++
 	}
 	for i, s := range selectors {
 		WriteSelectorLength(kernelSelectors, soff[i])

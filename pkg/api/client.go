@@ -719,6 +719,7 @@ type MsgGenericKprobe struct {
 type MsgGenericTracepoint struct {
 	Common     MsgCommon
 	ProcessKey MsgExecveKey
+	Namespaces MsgNamespaces
 	Id         int64
 	ThreadId   uint64
 	ActionId   uint64

@@ -588,7 +588,7 @@ int selector_arg_offset(__u8 *f,
 	struct selector_arg_filter *filter;
 	struct selector_binary_filter *binary;
 	long seloff, argoff, pass;
-	__u32 *tmp, len, index;
+	__u32 *tmp, len, index, nslen;
 	char *args;
 
 	selector *= 4;
@@ -603,16 +603,20 @@ int selector_arg_offset(__u8 *f,
 	"%[t] = %[m];\n"                        /* tmp = f; */
 	"%[t] += %[selector];\n"                /* tmp += selector; */
 	"%[len] = *(u32 *)(%[t] + 8);\n"        /* len = *(u32 *)(tmp + 8); */ // pid header length
+	"%[len] &= 0x3ff;\n"
+	"%[t] += %[len];\n"
+	"%[nslen] = *(u32 *)(%[t] + 8);\n"
 	: [selector] "+r"(selector),
 	  [len] "+r"(len),
 	  [m] "+r"(f),
-	  [t] "+r"(tmp)
+	  [t] "+r"(tmp),
+	  [nslen] "+r"(nslen)
 	::);
 
 	/* seloff must leave space for verifier to walk strings
 	 * so we set inside 4k maximum. Advance to binary matches.
 	 */
-	seloff = selector + 8 + len;
+	seloff = selector + 8 + len + nslen;
 	binary = (struct selector_binary_filter *)&f[seloff];
 
 	/* Advance to matchArgs we use fixed size binary filters for now. It helps

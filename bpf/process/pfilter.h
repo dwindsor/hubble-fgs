@@ -131,6 +131,58 @@ int process_filter_pid(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 flags,
 	return __process_filter_pid(ty, flags, sel, pid, enter);
 }
 
+static inline __attribute__((always_inline))
+int process_filter_namespace(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 nsid,
+		   struct execve_map_value *enter, void *heap)
+{
+	__u32 sel, inum = 0;
+	struct msg_generic_kprobe *msg;
+	int zero = 0;
+
+	if (off > 1000)
+		sel = 0;
+	else {
+		__u64 o = (__u64)off;
+		o = o / 4;
+		asm volatile("%[o] &= 0x3ff;\n":: [o] "+r" (o):);
+		sel = f[o];
+	}
+
+	msg = map_lookup_elem(heap, &zero);
+	if (!msg)
+		return PFILTER_REJECT;
+
+	if (nsid > ns_user)
+		return PFILTER_REJECT;
+
+	if (nsid == ns_uts)
+		inum = msg->ns.uts_inum;
+	else if (nsid == ns_ipc)
+		inum = msg->ns.ipc_inum;
+	else if (nsid == ns_mnt)
+		inum = msg->ns.mnt_inum;
+	else if (nsid == ns_pid)
+		inum = msg->ns.pid_inum;
+	else if (nsid == ns_pid_for_children)
+		inum = msg->ns.pid_for_children_inum;
+	else if (nsid == ns_net)
+		inum = msg->ns.net_inum;
+	else if (nsid == ns_time)
+		inum = msg->ns.time_inum;
+	else if (nsid == ns_time_for_children)
+		inum = msg->ns.time_for_children_inum;
+	else if (nsid == ns_cgroup)
+		inum = msg->ns.cgroup_inum;
+	else if (nsid == ns_user)
+		inum = msg->ns.user_inum;
+
+	if (ty == op_filter_pid_in && sel != inum)
+		return PFILTER_REJECT;
+	else if (ty == op_filter_pid_notin && sel == inum)
+		return PFILTER_REJECT;
+	return PFILTER_ACCEPT;
+}
+
 #define MAX_SELECTOR_VALUES 4
 
 static inline __attribute__((always_inline))
@@ -175,8 +227,10 @@ one:
 static inline __attribute__((always_inline))
 int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter, void *heap)
 {
-	__u64 pid, ty = 0, flags = 0, len = 0;
-	__u64 tmp = 0;
+	__u64 ty = 0, flags = 0, len = 0, tmp = 0;
+	__u32 pidlen;
+	__u32 nslen, nsty, nsop, nsvlen;
+	int res1 = PFILTER_ACCEPT, res2 = PFILTER_ACCEPT;
 
 	/* Find selector offset byte index */
 	index *= 4;
@@ -204,25 +258,47 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	"%[index] &= 0x3ff;\n"
 	"%[t] = %[m];\n"                    /* tmp = f; */
 	"%[t] += %[index];\n"               /* tmp += index; */
+	"%[pidlen] = *(u32 *)(%[t] + 8);\n" /* pid header length */
 	"%[ty] = *(u32 *)(%[t] +12);\n"     /* ty = *(u32 *)(tmp + 12); */ /* +12 to step past headers */
 	"%[flags] = *(u32 *)(%[t] +16);\n"  /* flags = *(u32 *)(tmp + 16); */
 	"%[len] = *(u32 *)(%[t] +20);\n"    /* len = *(u32 *)(tmp + 20); */
+	"%[t] = %[m];\n"                    /* tmp = f; */
+	"%[index] &= 0x3ff;\n"
+	"%[t] += %[index];\n"               /* tmp += index; */
+	"%[pidlen] &= 0x3ff;\n"
+	"%[t] += %[pidlen];\n"
 	: [index] "+r"(index),
 	  [len] "+r"(len),
 	  [flags] "+r"(flags),
 	  [ty] "+r"(ty),
 	  [m] "+r"(f),
-	  [t] "+r"(tmp)
+	  [t] "+r"(tmp),
+	  [pidlen] "+r"(pidlen)
 	::);
+
+	nslen	= *(__u32 *)(tmp + 8);	/* namespace header length (sizeof(ns1) + sizeof(ns2) + ... + 4) */
+	nsty	= *(__u32 *)(tmp + 12);	/* namespace (i.e. ns_uts, ns_net, ns_pid, ...) */
+	nsop	= *(__u32 *)(tmp + 16);	/* op (i.e. op_filter_pid_in or op_filter_pid_notin) */
+	nsvlen	= *(__u32 *)(tmp + 20);	/* number of values */
 
 	/* offset into values
 	 * 4: uint32 selector value
 	 * 8: selector header, pid header
-	 * 12: op, flags, length
 	 */
-	index += 4 + 8 + 12;
+	index += 4 + 8;
+	if (pidlen > 4) { /* we can have only matchNamespace */
+		index += 12; /* 12: op, flags, length */
+		res1 = selector_match(f, index, ty, flags, len, enter, heap, &process_filter_pid);
+		index += ((len * 4) & (FILTER_SIZE - 1)); /* now index points at the end of PID filter */
+	}
 
-	return selector_match(f, index, ty, flags, len, enter, heap, &process_filter_pid);
+	index += 4; /* 4: ns header */
+	if (nslen > 4) { /* we can have only matchPID */
+		index += 12; /* 12: namespace, op, length */
+		res2 = selector_match(f, index, nsop, nsty, nsvlen, enter, heap, &process_filter_namespace);
+	}
+
+	return res1 && res2; /* both pid and namespace should match */
 }
 
 #define MAX_SELECTORS 8
@@ -281,7 +357,7 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap, void *hea
 		if (selectors <= curr)
 			return process_filter_done(msg, enter, current);
 
-		pass = selector_process_filter(f, curr, enter, heap); /* matches the PID */
+		pass = selector_process_filter(f, curr, enter, heap); /* matches the PID and Namespace */
 		if (pass) {
 			/* Verify lost that msg is not null here so recheck */
 			asm volatile("%[curr] &= 0x1f;\n":: [curr] "r+" (curr):);
