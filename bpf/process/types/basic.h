@@ -596,16 +596,16 @@ int selector_arg_offset(__u8 *f,
 
 	asm volatile (
 	"if %[selector] > 68 goto +9;\n"
-	"%[t] = %[m];\n"
-	"%[t] += %[selector];\n"
-	"%[selector] = *(u32 *)(%[t] + 0);\n"
+	"%[t] = %[m];\n"                        /* tmp = f; */
+	"%[t] += %[selector];\n"                /* tmp += selector; */
+	"%[selector] = *(u32 *)(%[t] + 0);\n"   /* selector = *(u32 *)tmp; */
 	"if %[selector] > 1004 goto +5;\n"
-	"%[t] = %[m];\n"
-	"%[t] += %[selector];\n"
-	"%[len] = *(u32 *)(%[t] + 8);\n" // pid header length;
-	:[selector] "+r"(selector),
+	"%[t] = %[m];\n"                        /* tmp = f; */
+	"%[t] += %[selector];\n"                /* tmp += selector; */
+	"%[len] = *(u32 *)(%[t] + 8);\n"        /* len = *(u32 *)(tmp + 8); */ // pid header length
+	: [selector] "+r"(selector),
 	  [len] "+r"(len),
-          [m] "+r"(f),
+	  [m] "+r"(f),
 	  [t] "+r"(tmp)
 	::);
 

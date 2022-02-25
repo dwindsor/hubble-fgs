@@ -125,9 +125,7 @@ int process_filter(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 flags, __u64 pi
 }
 
 static inline __attribute__((always_inline))
-int selector_process_filter(__u32 *f,
-			    __u32 index,
-			    struct execve_map_value *enter)
+int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter)
 {
 	__u64 pid, ty = 0, flags = 0, len = 0;
 	__u64 tmp = 0;
@@ -155,20 +153,20 @@ int selector_process_filter(__u32 *f,
 	 */
 	asm volatile (
 	"if %[index] > 68 goto +9;\n"
-	"%[t] = %[m];\n"
-	"%[t] += %[index];\n"
-	"%[index] = *(u32 *)(%[t] + 0);\n"
+	"%[t] = %[m];\n"                    /* tmp = f; */
+	"%[t] += %[index];\n"               /* tmp =+ index; */
+	"%[index] = *(u32 *)(%[t] + 0);\n"  /* index = *(u32 *)tmp; */
 	"if %[index] > 1008 goto +5;\n"
-	"%[t] = %[m];\n"
-	"%[t] += %[index];\n"
-	"%[ty] = *(u32 *)(%[t] +12);\n"     // +12 to step past headers
-	"%[flags] = *(u32 *)(%[t] +16);\n"
-	"%[len] = *(u32 *)(%[t] +20);\n"
+	"%[t] = %[m];\n"                    /* tmp = f; */
+	"%[t] += %[index];\n"               /* tmp += index; */
+	"%[ty] = *(u32 *)(%[t] +12);\n"     /* ty = *(u32 *)(tmp + 12); */ /* +12 to step past headers */
+	"%[flags] = *(u32 *)(%[t] +16);\n"  /* flags = *(u32 *)(tmp + 16); */
+	"%[len] = *(u32 *)(%[t] +20);\n"    /* len = *(u32 *)(tmp + 20); */
 	: [index] "+r"(index),
 	  [len] "+r"(len),
 	  [flags] "+r"(flags),
 	  [ty] "+r"(ty),
-          [m] "+r"(f),
+	  [m] "+r"(f),
 	  [t] "+r"(tmp)
 	::);
 
@@ -274,7 +272,7 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
 		if (selectors <= curr)
 			return process_filter_done(msg, enter, current);
 
-		pass = selector_process_filter(f, curr, enter);
+		pass = selector_process_filter(f, curr, enter); /* matches the PID */
 		if (pass) {
 			/* Verify lost that msg is not null here so recheck */
 			asm volatile("%[curr] &= 0x1f;\n":: [curr] "r+" (curr):);
@@ -285,7 +283,7 @@ int generic_process_filter(struct msg_generic_kprobe *msg, void *fmap)
 		msg->curr++;
 		if (msg->curr > selectors)
 			return process_filter_done(msg, enter, current);
-		return PFILTER_CONTINUE;
+		return PFILTER_CONTINUE; /* will iterate to the next selector */
 	}
 	return PFILTER_CURR_NOT_FOUND;
 }
