@@ -19,7 +19,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"testing"
@@ -38,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 
@@ -430,25 +430,5 @@ func GetDefaultObserverWithLib(t *testing.T, config, lib string) (*Observer, err
 }
 
 func GetMyPid() uint32 {
-	selfBinary := filepath.Base(os.Args[0])
-	if procfs := os.Getenv("FGS_PROCFS"); procfs != "" {
-		procFS, _ := ioutil.ReadDir(procfs)
-		for _, d := range procFS {
-			if d.IsDir() == false {
-				continue
-			}
-			cmdline, err := ioutil.ReadFile(filepath.Join(procfs, d.Name(), "/cmdline"))
-			if err != nil {
-				continue
-			}
-			if strings.Contains(string(cmdline), selfBinary) {
-				pid, err := strconv.ParseUint(d.Name(), 10, 32)
-				if err != nil {
-					continue
-				}
-				return uint32(pid)
-			}
-		}
-	}
-	return uint32(os.Getpid())
+	return reader.GetMyPidG()
 }

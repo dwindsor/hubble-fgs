@@ -17,7 +17,6 @@ import (
 	"os"
 	"os/exec"
 	"path/filepath"
-	"strconv"
 	"strings"
 	"sync"
 	"syscall"
@@ -30,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	"github.com/stretchr/testify/assert"
@@ -79,32 +79,6 @@ func TestObjectLoad(t *testing.T) {
 	obs.RemovePrograms()
 }
 
-func getPidNsInode(t *testing.T, pidStr string, nsStr string) uint32 {
-	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", nsStr)
-	netStr, err := os.Readlink(netns)
-	if err != nil {
-		return 0
-	}
-	fields := strings.Split(netStr, ":")
-	if len(fields) < 2 {
-		t.Fatalf("%sNSInode format invalid %s", nsStr, netStr)
-		return 0
-	}
-	inode := fields[1]
-	inode = strings.TrimRight(inode, "]")
-	inode = strings.TrimLeft(inode, "[")
-	inodeEntry, _ := strconv.ParseUint(inode, 10, 32)
-	return uint32(inodeEntry)
-}
-
-func getSelfNsInode(t *testing.T, nsStr string) uint32 {
-	return getPidNsInode(t, "self", nsStr)
-}
-
-func getHostNsInode(t *testing.T, nsStr string) uint32 {
-	return getPidNsInode(t, "1", nsStr)
-}
-
 func TestNamespaces(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -112,57 +86,7 @@ func TestNamespaces(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	nses := [10]string{"uts", "ipc", "mnt", "pid", "pid_for_children", "net", "time", "time_for_children", "cgroup", "user"}
-	self_ns := make(map[string]uint32)
-	is_root_ns := make(map[string]bool)
-	for i := 0; i < len(nses); i++ {
-		self_ns[nses[i]] = getSelfNsInode(t, nses[i])
-		is_root_ns[nses[i]] = (self_ns[nses[i]] == getHostNsInode(t, nses[i]))
-	}
-
-	rootNs := &fgs.Namespaces{
-		Uts: &fgs.Namespace{
-			Inum:   self_ns["uts"],
-			IsHost: is_root_ns["uts"],
-		},
-		Ipc: &fgs.Namespace{
-			Inum:   self_ns["ipc"],
-			IsHost: is_root_ns["ipc"],
-		},
-		Mnt: &fgs.Namespace{
-			Inum:   self_ns["mnt"],
-			IsHost: is_root_ns["mnt"],
-		},
-		Pid: &fgs.Namespace{
-			Inum:   self_ns["pid"],
-			IsHost: is_root_ns["pid"],
-		},
-		PidForChildren: &fgs.Namespace{
-			Inum:   self_ns["pid_for_children"],
-			IsHost: is_root_ns["pid_for_children"],
-		},
-		Net: &fgs.Namespace{
-			Inum:   self_ns["net"],
-			IsHost: is_root_ns["net"],
-		},
-		Time: &fgs.Namespace{
-			Inum:   self_ns["time"],
-			IsHost: is_root_ns["time"],
-		},
-		TimeForChildren: &fgs.Namespace{
-			Inum:   self_ns["time_for_children"],
-			IsHost: is_root_ns["time_for_children"],
-		},
-		Cgroup: &fgs.Namespace{
-			Inum:   self_ns["cgroup"],
-			IsHost: is_root_ns["cgroup"],
-		},
-		User: &fgs.Namespace{
-			Inum:   self_ns["user"],
-			IsHost: is_root_ns["user"],
-		},
-	}
-
+	rootNs := reader.GetCurrentNamespace()
 	selfChecker := ec.NewProcessChecker().WithBinary(ec.SuffixStringMatch(selfBinary)).WithNs(rootNs)
 
 	checker := ec.NewUnorderedMultiResponseChecker(
