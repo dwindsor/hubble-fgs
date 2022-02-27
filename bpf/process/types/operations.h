@@ -8,8 +8,8 @@ enum {
 	op_filter_eq   = 3,
 	op_filter_neq  = 4,
 	// pid and namespace ops
-	op_filter_pid_in = 5,
-	op_filter_pid_notin = 6,
+	op_filter_in = 5,
+	op_filter_notin = 6,
 	// string ops
 	op_filter_str_contains = 7,
 	op_filter_str_prefix   = 8,

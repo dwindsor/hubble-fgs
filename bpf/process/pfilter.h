@@ -66,9 +66,9 @@ bool filter_pidsets(__u64 ty,
 	if (isns && !enter->nspid)
 		return 0;
 	found = filter_pidset(sel, isns, enter);
-	if (ty == op_filter_pid_in && !found)
+	if (ty == op_filter_in && !found)
 		return 0;
-	else if (ty == op_filter_pid_notin && found)
+	else if (ty == op_filter_notin && found)
 		return 0;
 	return 1;
 }
@@ -93,9 +93,9 @@ int __process_filter_pid(__u64 ty, __u64 flags, __u64 sel, __u64 pid,
 			return PFILTER_REJECT;
 		return PFILTER_ACCEPT;
 	} else {
-		if (ty == op_filter_pid_in && sel != pid)
+		if (ty == op_filter_in && sel != pid)
 			return PFILTER_REJECT;
-		else if (ty == op_filter_pid_notin && sel == pid)
+		else if (ty == op_filter_notin && sel == pid)
 			return PFILTER_REJECT;
 		return PFILTER_ACCEPT;
 	}
@@ -176,9 +176,9 @@ int process_filter_namespace(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 nsid,
 	else if (nsid == ns_user)
 		inum = msg->ns.user_inum;
 
-	if (ty == op_filter_pid_in && sel != inum)
+	if (ty == op_filter_in && sel != inum)
 		return PFILTER_REJECT;
-	else if (ty == op_filter_pid_notin && sel == inum)
+	else if (ty == op_filter_notin && sel == inum)
 		return PFILTER_REJECT;
 	return PFILTER_ACCEPT;
 }
@@ -193,7 +193,7 @@ int selector_match(__u32 *f, __u32 index, __u64 ty, __u64 flags, __u64 len,
 	int res1 = 0, res2 = 0, res3 = 0, res4 = 0;
 
 	/* For NotIn op we AND results so default to 1 so we fallthru open */
-	if (ty == op_filter_pid_notin)
+	if (ty == op_filter_notin)
 		res1 = res2 = res3 = res4 = 1;
 
 	/* Unrolling this loop was problematic for clang so rather
@@ -218,7 +218,7 @@ one:
 	res1 = process_filter(0, index, f, ty, flags, enter, heap);
 	index = next_pid_value(index, f, ty);
 
-	if (ty == op_filter_pid_notin)
+	if (ty == op_filter_notin)
 		return res1 & res2 & res3 & res4;
 	else
 		return res1 | res2 | res3 | res4;
@@ -278,7 +278,7 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 
 	nslen	= *(__u32 *)(tmp + 8);	/* namespace header length (sizeof(ns1) + sizeof(ns2) + ... + 4) */
 	nsty	= *(__u32 *)(tmp + 12);	/* namespace (i.e. ns_uts, ns_net, ns_pid, ...) */
-	nsop	= *(__u32 *)(tmp + 16);	/* op (i.e. op_filter_pid_in or op_filter_pid_notin) */
+	nsop	= *(__u32 *)(tmp + 16);	/* op (i.e. op_filter_in or op_filter_notin) */
 	nsvlen	= *(__u32 *)(tmp + 20);	/* number of values */
 
 	/* offset into values

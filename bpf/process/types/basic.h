@@ -635,7 +635,7 @@ int selector_arg_offset(__u8 *f,
 
 	/* Run binary name filters
 	 */
-	if (binary->op == op_filter_pid_in) {
+	if (binary->op == op_filter_in) {
 		struct execve_map_value *execve;
 		bool walker = 0;
 		__u32 ppid;
