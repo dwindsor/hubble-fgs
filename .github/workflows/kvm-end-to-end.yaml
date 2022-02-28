@@ -11,7 +11,7 @@ env:
   zone: us-west2-a
   vmName: fgs-ci-${{ github.run_id }}
   vmHost: fgs@fgs-ci-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v2
+  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v3
 
 jobs:
   end-to-end-tests:
@@ -25,6 +25,17 @@ jobs:
       - uses: actions/checkout@master
         with:
           path: hubble-fgs
+
+      - name: Set up ssh client
+        run: |
+            sudo apt-get -y install openssh-client
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            echo "${{ secrets.KVM_SSH_FINGERPRINT }}" >> ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Set up job variables
         id: vars
@@ -67,7 +78,6 @@ jobs:
 
       - name: Set up ssh into VM
         run: |
-          sudo apt-get -y install openssh-client
           gcloud compute ssh fgs@${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a"
           gcloud compute config-ssh
           ssh ${{ env.vmHost }} 'whoami && uname -a'
@@ -78,6 +88,8 @@ jobs:
 
       - name: Spin up KVM
         run: |
+          # Setup custom config file for contrib/kvm so that it points to the right disk
+          # image and kernel
           cat <<-EOF | ssh ${{ env.vmHost }} 'cat > hubble-fgs/contrib/kvm/conf'
             # Public key for ssh
             PUBKEY="\\$HOME/.ssh/id_rsa.pub"
@@ -114,11 +126,17 @@ jobs:
             # Path to install kernel modules
             MODULESDIR=modules
           EOF
+
+          # Spin up KVM
           cat <<-EOF | ssh ${{ env.vmHost }}
-            set -xeu
             hubble-fgs/contrib/kvm/run.sh
-            ssh -p 3000 root@localhost 'uname -r'
           EOF
+
+          # Set up an ssh tunnel into the VM
+          ssh ${{ env.vmHost }} -NL 3000:localhost:3000 & sleep 10
+
+          # Verify we can login via the tunnel
+          ssh -p 3000 root@localhost "uname -a"
 
       - name: Wait for kube-system pods to be ready
         uses: nick-invision/retry@v2
@@ -126,7 +144,7 @@ jobs:
           timeout_minutes: 1
           max_attempts: 10
           command: |
-            ssh ${{ env.vmHost }} 'ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready pods --all --timeout=45s"'
+            ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready pods --all --timeout=45s"
 
       - name: Wait for image to be available
         timeout-minutes: 10
@@ -137,8 +155,8 @@ jobs:
       - name: Install FGS
         run: |
           docker pull ${{ steps.vars.outputs.fgsImage }}
-          docker save ${{ steps.vars.outputs.fgsImage }} | bzip2 | ssh ${{ env.vmHost }} 'ssh -p 3000 root@localhost "docker load"'
-          cat <<-EOF | ssh ${{ env.vmHost }} 'ssh -p 3000 root@localhost'
+          docker save ${{ steps.vars.outputs.fgsImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
+          cat <<-EOF | ssh -p 3000 root@localhost
             set -xeu
             kind load docker-image ${{ steps.vars.outputs.fgsImage }} --name ${{ env.clusterName }}
             helm repo add isovalent https://helm.isovalent.com
@@ -157,24 +175,21 @@ jobs:
           timeout_minutes: 1
           max_attempts: 10
           command: |
-            ssh ${{ env.vmHost }} 'ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready --all pod -l app.kubernetes.io/name=hubble-enterprise --timeout=45s"'
+            ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready --all pod -l app.kubernetes.io/name=hubble-enterprise --timeout=45s"
 
       - name: Run HTTP and TLS tests
         run: |
-          ssh ${{ env.vmHost }} 'ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/http-tls.sh"'
+          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/http-tls.sh"
 
       - name: Run demo app tests
         run: |
-          ssh ${{ env.vmHost }} 'ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/demo-app.sh"'
+          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/demo-app.sh"
 
       - name: Copy out FGS logs
         if: ${{ failure() }}
         run: |
-          cat <<-EOF | ssh ${{ env.vmHost }}
-            mkdir -p ~/logs
-            scp -P 3000 'root@localhost:/fgs/contrib/end-to-end/logs/*' ~/logs
-          EOF
-          scp -r ${{ env.vmHost }}:~/logs logs
+          mkdir -p logs
+          scp -P 3000 root@localhost:/fgs/contrib/end-to-end/logs/* logs
 
       - name: Upload FGS pod logs
         if: ${{ failure() }}
