@@ -232,7 +232,12 @@ int rcmpbytes(char *s1, char *s2, u64 n1, u64 n2)
 {
 	char c1 = 0, c2 = 0, *t;
 
+#ifdef __LARGE_BPF_PROG
 	ASM_RCMP50
+#else
+	ASM_RCMP20
+	ASM_RCMP20
+#endif
 accept:
 	return 0;
 failed:
@@ -627,8 +632,11 @@ int selector_arg_offset(__u8 *f,
 	/* Run binary name filters
 	 */
 	if (binary->op == op_filter_pid_in) {
-		struct execve_map_value *execve = map_lookup_event(get_current_pid_tgid() >> 32);
+		struct execve_map_value *execve;
+		bool walker = 0;
+		__u32 ppid;
 
+		execve = event_find_curr(&ppid, 0, &walker);
 		if (!execve)
 			return 0;
 		if (binary->index[0] != execve->binary &&
