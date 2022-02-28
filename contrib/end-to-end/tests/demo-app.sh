@@ -55,9 +55,12 @@ kubectl delete namespace tenant-jobs || true
 kubectl create namespace tenant-jobs
 kubectl -n tenant-jobs apply -f https://docs.isovalent.com/public/jobs-app-attack.yaml
 
-echo "Waiting for demo app to be ready..." 1>&2
-for i in $(seq 3); do
-    kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=5m && break || sleep 30
+# We don't actually need to wait for the entire demo app to be ready, just the jobposting pod
+# The checkerpc checks will block until all the events we're looking for have fired anyway
+echo "Waiting for jobposting pod to be ready..." 1>&2
+for i in $(seq 10); do
+    sleep 10
+    kubectl wait -n tenant-jobs --for=condition=Available --all deployment/jobposting --timeout=30s && break
 done
 if [ $? -ne 0 ]; then
     echo "Failed to wait for demo app..." 1>&2
