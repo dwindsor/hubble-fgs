@@ -121,7 +121,7 @@ type KProbeSelector struct {
 	MatchReturnArgs []ArgSelector `json:"matchReturnArgs" yaml:"matchReturnArgs"`
 	// +kubebuilder:validation:Optional
 	// A list of binary exec name filters.
-	MatchBinarys []BinarySelector `json:"matchBinarys" yaml:"matchBinarys"`
+	MatchBinaries []BinarySelector `json:"matchBinaries" yaml:"matchBinaries"`
 }
 
 type PIDSelector struct {

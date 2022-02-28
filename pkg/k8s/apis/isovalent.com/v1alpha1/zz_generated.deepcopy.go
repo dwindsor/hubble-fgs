@@ -234,8 +234,8 @@ func (in *KProbeSelector) DeepCopyInto(out *KProbeSelector) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
-	if in.MatchBinarys != nil {
-		in, out := &in.MatchBinarys, &out.MatchBinarys
+	if in.MatchBinaries != nil {
+		in, out := &in.MatchBinaries, &out.MatchBinaries
 		*out = make([]BinarySelector, len(*in))
 		for i := range *in {
 			(*in)[i].DeepCopyInto(&(*out)[i])

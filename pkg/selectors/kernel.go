@@ -318,7 +318,7 @@ func parseMatchBinary(k *KernelSelectorState, index uint32, b *v1alpha1.BinarySe
 	return nil
 }
 
-func parseMatchBinarys(k *KernelSelectorState, binarys []v1alpha1.BinarySelector) error {
+func parseMatchBinaries(k *KernelSelectorState, binarys []v1alpha1.BinarySelector) error {
 	loff := AdvanceSelectorLength(k)
 	if len(binarys) > 1 {
 		return fmt.Errorf("Only support single binary selector")
@@ -346,8 +346,8 @@ func parseSelector(
 	if err := parseMatchPids(k, selectors.MatchPIDs); err != nil {
 		return fmt.Errorf("parseMatchPids error: %w", err)
 	}
-	if err := parseMatchBinarys(k, selectors.MatchBinarys); err != nil {
-		return fmt.Errorf("parseMatchBinarys error: %w", err)
+	if err := parseMatchBinaries(k, selectors.MatchBinaries); err != nil {
+		return fmt.Errorf("parseMatchBinaries error: %w", err)
 	}
 	if err := parseMatchArgs(k, selectors.MatchArgs, args); err != nil {
 		return fmt.Errorf("parseMatchArgs  error: %w", err)
@@ -359,9 +359,9 @@ func parseSelector(
 }
 
 // array := [number][filter1][filter2][...][filtern]
-// filter := [length][matchPIDs][matchBinarys][matchArgs]
+// filter := [length][matchPIDs][matchBinaries][matchArgs]
 // matchPIDs := [num][PID1][PID2]...[PIDn]
-// matchBinarys := [num][op][Index]...[Index]
+// matchBinaries := [num][op][Index]...[Index]
 // matchArgs := [num][ARGx][ARGy]...[ARGn]
 // PIDn := [op][flags][value]
 // Argn := [index][op][value]

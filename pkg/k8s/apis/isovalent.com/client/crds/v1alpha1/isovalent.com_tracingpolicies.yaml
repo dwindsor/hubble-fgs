@@ -203,7 +203,7 @@ spec:
                               - values
                               type: object
                             type: array
-                          matchBinarys:
+                          matchBinaries:
                             description: A list of binary exec name filters.
                             items:
                               properties:
@@ -560,7 +560,7 @@ spec:
                               - values
                               type: object
                             type: array
-                          matchBinarys:
+                          matchBinaries:
                             description: A list of binary exec name filters.
                             items:
                               properties:

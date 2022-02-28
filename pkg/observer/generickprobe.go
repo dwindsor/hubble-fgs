@@ -218,7 +218,7 @@ var binaryNames []v1alpha1.BinarySelector
 
 func initBinaryNames(spec *v1alpha1.KProbeSpec) error {
 	for _, s := range spec.Selectors {
-		for _, b := range s.MatchBinarys {
+		for _, b := range s.MatchBinaries {
 			binaryNames = append(binaryNames, b)
 		}
 	}
