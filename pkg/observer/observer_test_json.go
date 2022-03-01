@@ -121,6 +121,7 @@ func JsonTestCheck(t *testing.T, c ec.MultiResponseChecker) error {
 	if err != nil {
 		return fmt.Errorf("opening json file failed: %w.", err)
 	}
+	t.Cleanup(func() { jsonFile.Close() })
 
 	cnt := 0
 	for {
