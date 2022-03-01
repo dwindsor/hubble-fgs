@@ -334,6 +334,7 @@ struct msg_generic_kprobe {
 	__u64 id;
 	__u64 thread_id;
 	__u64 action;
+	/* if add anything above please also update generic_kprobe_common_size() */
 	char args[24000];
 	unsigned long a0,a1,a2,a3,a4;
 	long argsoff[MAX_POSSIBLE_ARGS];
@@ -357,6 +358,8 @@ struct msg_execve_event {
 	__u64			parent_flags;
 	struct msg_capabilities caps;
 	struct msg_ns		ns;
+	/* if add anything above please also update the args of
+	 * validate_msg_execve_size() in bpf_execve_event.c */
 	char			pid[PADDED_BUFFER];
 } __attribute__((packed));
 
