@@ -33,10 +33,11 @@ import (
 )
 
 var (
-	UdpGCIntervalDefault = time.Duration(60 * time.Second)
-	UdpDeleteInterval    = time.Duration(600 * time.Second)
-	UdpMapName           = "udp_map"
-	UdpRetprobeMapName   = "udp_retprobe_map"
+	UdpGCIntervalDefault       = time.Duration(60 * time.Second)
+	UdpDeleteInterval          = time.Duration(600 * time.Second)
+	UdpMapName                 = "udp_map"
+	UdpRetprobeMapName         = "udp_retprobe_map"
+	ProcessNetworkBurstMapName = "pn_burst_map"
 
 	stats          *lru.Cache
 	stataCacheSize = 32000
@@ -151,12 +152,13 @@ var (
 		"kprobe",
 	)
 
-	SocketCookieMap  = sensors.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
-	UdpMap           = sensors.MapBuilder(UdpMapName, "", InetSend)
-	UdpMapKprobe     = sensors.MapBuilder(UdpMapName, "", UdpSend)
-	UdpRetprobeMap   = sensors.MapBuilder(UdpRetprobeMapName, "", UdpSend)
-	UdpFilterMap     = sensors.MapBuilder("udp_filter_map", "", InetSend)
-	UdpFilterLazyMap = sensors.MapBuilder("udp_filter_map", "", InetSendLazy)
+	SocketCookieMap        = sensors.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
+	UdpMap                 = sensors.MapBuilder(UdpMapName, "", InetSend)
+	UdpMapKprobe           = sensors.MapBuilder(UdpMapName, "", UdpSend)
+	UdpRetprobeMap         = sensors.MapBuilder(UdpRetprobeMapName, "", UdpSend)
+	UdpFilterMap           = sensors.MapBuilder("udp_filter_map", "", InetSend)
+	UdpFilterLazyMap       = sensors.MapBuilder("udp_filter_map", "", InetSendLazy)
+	ProcessNetworkBurstMap = sensors.MapBuilder(ProcessNetworkBurstMapName, "", InetSend)
 )
 
 type udpInfoKey struct {
@@ -181,6 +183,38 @@ type udpInfoValue struct {
 	PidKtime       uint64
 	Pid            uint32
 	SkDrops        uint32
+}
+
+type processNetworkBurstKey struct {
+	Key uint64
+}
+
+type processNetworkBurstValue struct {
+	HistVol        uint64
+	WinVol         uint64
+	LastWinVol     uint64
+	LastPacketTime uint64
+	Burst          uint32
+}
+
+func (k *processNetworkBurstKey) String() string             { return fmt.Sprintf("key=%d", k.Key) }
+func (k *processNetworkBurstKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
+func (k *processNetworkBurstKey) NewValue() bpf.MapValue     { return &processNetworkBurstValue{} }
+func (k *processNetworkBurstKey) DeepCopyMapKey() bpf.MapKey { return &processNetworkBurstKey{k.Key} }
+
+func (v *processNetworkBurstValue) String() string {
+	return fmt.Sprintf(
+		"HistVol: %d\n"+
+			"WinVol: %d\n"+
+			"LastWinVol: %d\n"+
+			"LastPacketTime: %d\n"+
+			"Burst: %d\n",
+		v.HistVol, v.WinVol, v.LastWinVol, v.LastPacketTime, v.Burst)
+}
+func (v *processNetworkBurstValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(&v) }
+func (v *processNetworkBurstValue) DeepCopyMapValue() bpf.MapValue {
+	var n processNetworkBurstValue = *v
+	return &n
 }
 
 func (k *udpInfoKey) String() string {
@@ -449,6 +483,20 @@ func handleUdpConnect(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	return []observer.ObserverEvent{msgUnix}, nil
 }
 
+func msgToProcessNetworkBurstUnix(m *api.MsgProcessNetworkBurstEvent) *api.MsgProcessNetworkBurstEventUnix {
+	return m
+}
+
+func handleProcessNetworkBurst(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+	m := api.MsgProcessNetworkBurstEvent{}
+	err := binary.Read(r, native_endian.NativeEndian(), &m)
+	if err != nil {
+		return nil, err
+	}
+	msgUnix := msgToProcessNetworkBurstUnix(&m)
+	return []observer.ObserverEvent{msgUnix}, nil
+}
+
 func init() {
 	AddUDP()
 }
@@ -469,6 +517,7 @@ func AddUDP() {
 	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPCONNECT, handleUdpConnect)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPPAYLOAD, handleUdpPayload)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, handleProcessNetworkBurst)
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)

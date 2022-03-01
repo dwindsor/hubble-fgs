@@ -283,6 +283,9 @@ type ParserPolicySpec struct {
 	// Network policy specification
 	Dns DnsPolicySpec `json:"dns" yaml:"dns"`
 	// +kubebuilder:validation:Optional
+	// Network policy specification
+	UdpBurst UdpBurstPolicySpec `json:"udpburst" yaml:"udpburst"`
+	// +kubebuilder:validation:Optional
 	// nop parsre policy specification
 	Nop NopSpec `json:"nop" yaml:"nop"`
 }
@@ -302,6 +305,21 @@ type UdpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configure socket idle time to delete sockets in seconds
 	DeleteIdleSocketInterval uint32 `json:"deleteIdleSocketInterval" yaml:"deleteIdleSocketInterval"`
+}
+
+type UdpBurstPolicySpec struct {
+	// Enable UDP burst observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable" yaml:"enable"`
+	// +kubebuilder:default=1000
+	// +kubebuilder:validation:Optional
+	// Configures the burst window size in milliseconds
+	WindowSize uint32 `json:"windowsize" yaml:"windowsize"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent over average deemed to be a burst
+	TriggerPercent uint32 `json:"triggerpercent" yaml:"triggerpercent"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -155,6 +155,8 @@ enum msg_ops {
 	MSG_OP_IPV4_UDPCONNECT = 18,
 	MSG_OP_IPV4_UDPPAYLOAD = 21,
 
+	MSG_OP_IPV4_PROCESS_BURST = 22,
+
 	MSG_OP_MAX,
 
 	// testing
@@ -434,6 +436,17 @@ struct msg_kfree_skb {
 	struct msg_ipv4_tuple tuple;
 } __attribute__((packed));
 
+struct msg_process_network_burst_event {
+	struct msg_common	common;
+	struct msg_execve_key	key;
+	__u32			protocol;
+	__u32			burst_start_dir;
+	__u64			window_size;
+	__u64			hist_avg;
+	__u64			hist_trigger;
+	__u64			window_avg;
+};
+
 struct event {
 	int event;
 };
@@ -564,6 +577,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
 	.value_size = sizeof(__s64),
 	.max_entries = 1,
 };
+
 #endif // ALIGNCHECKER
 
 #ifndef bpf_ntohs

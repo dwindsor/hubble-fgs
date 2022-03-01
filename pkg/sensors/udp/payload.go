@@ -134,6 +134,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) ([128]byte, error) {
 	k := &selectors.KernelSelectorState{}
 
 	ParseDnsSpec(spec, k)
+	ParseUdpBurstSpec(spec, k)
 
 	e = selectors.GetSelectorBuffer(k)
 	copy(match[:], e[:128])
@@ -160,3 +161,28 @@ func ParseDnsSpec(spec *v1alpha1.TracingPolicySpec, k *selectors.KernelSelectorS
 	}
 }
 
+// ParseUdpBurst parses the input yaml/crd and outputs the kernel selectors
+// needed for BPF to identify UDP bursts and run the monitor on it.
+//
+// UdpBurst selector layout is the following.
+// WindowSize
+// TriggerPercent
+func ParseUdpBurstSpec(spec *v1alpha1.TracingPolicySpec, k *selectors.KernelSelectorState) {
+	if spec.Parser.UdpBurst.Enable && spec.Parser.UdpBurst.WindowSize > 0 && spec.Parser.UdpBurst.TriggerPercent > 0 {
+		selectors.WriteSelectorUint64(k, 1)
+		// WindowSize is in milliseconds
+		selectors.WriteSelectorUint64(k, uint64(spec.Parser.UdpBurst.WindowSize))
+		// The actual window size we use in calculations is a) in nanoseconds;
+		// and b) is 2/3 of the provided window size because the measurement window
+		// varies between 1 window (2/3 window size) and 2 windows (4/3 window size), meaning
+		// the average measurement window == window size.
+		selectors.WriteSelectorUint64(k, (uint64(spec.Parser.UdpBurst.WindowSize)*2*1000000)/3)
+		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
+		selectors.WriteSelectorUint64(k, uint64(spec.Parser.UdpBurst.TriggerPercent)+100)
+	} else {
+		selectors.WriteSelectorUint64(k, 0)
+		selectors.WriteSelectorUint64(k, 0)
+		selectors.WriteSelectorUint64(k, 0)
+		selectors.WriteSelectorUint64(k, 0)
+	}
+}

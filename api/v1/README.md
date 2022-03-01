@@ -57,6 +57,7 @@
     - [ProcessHttp](#fgs.ProcessHttp)
     - [ProcessKprobe](#fgs.ProcessKprobe)
     - [ProcessListen](#fgs.ProcessListen)
+    - [ProcessNetworkBurst](#fgs.ProcessNetworkBurst)
     - [ProcessSockStats](#fgs.ProcessSockStats)
     - [ProcessTracepoint](#fgs.ProcessTracepoint)
     - [RemoveSensorRequest](#fgs.RemoveSensorRequest)
@@ -348,6 +349,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_http | [ProcessHttp](#fgs.ProcessHttp) |  |  |
 | interface_stats | [InterfaceStats](#fgs.InterfaceStats) |  |  |
 | process_dns | [ProcessDns](#fgs.ProcessDns) |  |  |
+| process_network_burst | [ProcessNetworkBurst](#fgs.ProcessNetworkBurst) |  |  |
 | test | [Test](#fgs.Test) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
 | time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed.
@@ -1047,6 +1049,29 @@ HTTP PARSER
 
 
 
+<a name="fgs.ProcessNetworkBurst"></a>
+
+### ProcessNetworkBurst
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| parent | [Process](#fgs.Process) |  |  |
+| protocol | [string](#string) |  |  |
+| direction | [string](#string) |  |  |
+| burst_state | [string](#string) |  |  |
+| window_size | [uint64](#uint64) |  |  |
+| hist_avg | [uint64](#uint64) |  |  |
+| hist_trigger | [uint64](#uint64) |  |  |
+| window_avg | [uint64](#uint64) |  |  |
+
+
+
+
+
+
 <a name="fgs.ProcessSockStats"></a>
 
 ### ProcessSockStats
@@ -1408,6 +1433,7 @@ EventType constants are based on the ones from pkg/api/client
 | PROCESS_HTTP | 16 |  |
 | INTERFACE_STATS | 17 |  |
 | PROCESS_DNS | 18 |  |
+| PROCESS_NETWORK_BURST | 19 |  |
 | TEST | 254 |  |
 
 

@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strings"
 	"sync"
+	"syscall"
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
@@ -492,6 +493,25 @@ func (pm *ProcessManager) handleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 	return res
 }
 
+func (pm *ProcessManager) handleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) *fgs.GetEventsResponse {
+	var res *fgs.GetEventsResponse
+	switch msg.Common.Op {
+	case api.MSG_OP_IPV4_PROCESS_BURST:
+		b := pm.GetProcessNetworkBurst(msg)
+		if b != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: b},
+				NodeName: pm.nodeName,
+				Time:     ktimeToProto(msg.Common.Ktime),
+			}
+		}
+
+	default:
+		pm.log.WithField("message", msg).Warn("Unhandled event")
+	}
+	return res
+}
+
 func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKprobe {
 	var fgsParent, fgsProcess *fgs.Process
 	var fgsArgs []*fgs.KprobeArgument
@@ -720,6 +740,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleExecveMessage(msg)
 	case *api.MsgIPv4EventUnix:
 		processedEvent = pm.handleIpMessage(msg)
+	case *api.MsgProcessNetworkBurstEventUnix:
+		processedEvent = pm.handleProcessNetworkBurstMessage(msg)
 	case *api.MsgInterfaceEventUnix:
 		processedEvent = pm.handleInterfaceMessage(msg)
 	case *api.MsgIPv4DnsUnix:
@@ -1191,6 +1213,53 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
+	return fgsEvent
+}
+
+// GetProcessNetworkBurst returns ProcessNetworkBurst protobuf message for a given process.
+func (pm *ProcessManager) GetProcessNetworkBurst(
+	event *fgsAPI.MsgProcessNetworkBurstEventUnix,
+) *fgs.ProcessNetworkBurst {
+	var fgsProcess, fgsParent *fgs.Process
+
+	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process != nil {
+		fgsProcess = process.process
+	} else {
+		fgsProcess = &fgs.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+		}
+	}
+	if parent != nil {
+		fgsParent = parent.process
+	}
+	fgsEvent := &fgs.ProcessNetworkBurst{
+		Process: fgsProcess,
+		Parent:  fgsParent,
+	}
+
+	switch event.Protocol {
+	case syscall.IPPROTO_UDP:
+		fgsEvent.Protocol = "udp"
+	default:
+		fgsEvent.Protocol = "unknown"
+	}
+	if (event.BurstStartDir >> 16) == 0 {
+		fgsEvent.Direction = "ingress"
+	} else {
+		fgsEvent.Direction = "egress"
+	}
+	if (event.BurstStartDir & 1) != 0 {
+		fgsEvent.BurstState = "start"
+	} else {
+		fgsEvent.BurstState = "end"
+	}
+	fgsEvent.WindowSize = event.WindowSize
+	fgsEvent.HistAvg = event.HistAvg
+	fgsEvent.HistTrigger = event.HistTrigger
+	fgsEvent.WindowAvg = event.WindowAvg
+
 	return fgsEvent
 }
 

@@ -90,6 +90,8 @@ const (
 
 	MSG_OP_IPV4_UDPPAYLOAD = 21
 
+	MSG_OP_IPV4_PROCESS_BURST = 22
+
 	// just for testing
 	MSG_OP_TEST = 254
 
@@ -286,6 +288,7 @@ const (
 	MsgOpIPv4UDPStats
 	MsgOpInterfaceStats
 	MsgOpIPv4UDPPayload
+	MsgOpIPv4ProcessBurst
 	MsgOpTest    = 254
 	MsgOpIPv4DNS = 128
 )
@@ -320,6 +323,7 @@ func (op OpCode) String() string {
 		"UDPStats",
 		"InterfaceStats",
 		"UDPPayload",
+		"ProcessNetworkBurst",
 	}[op]
 }
 
@@ -699,6 +703,19 @@ type MsgCredEvent struct {
 }
 
 type MsgCredEventUnix = MsgCredEvent
+
+type MsgProcessNetworkBurstEvent struct {
+	Common        MsgCommon
+	ProcessKey    MsgExecveKey
+	Protocol      uint32 // IP protocol
+	BurstStartDir uint32 // b0=start of burst, otherwise end of burst, b16=egress, otherwise ingress
+	WindowSize    uint64 // Nanoseconds
+	HistAvg       uint64 // Bytes per WindowSize
+	HistTrigger   uint64 // Bytes per WindowSize trigger level
+	WindowAvg     uint64 // Bytes seen in WindowSize
+}
+
+type MsgProcessNetworkBurstEventUnix = MsgProcessNetworkBurstEvent
 
 const (
 	ActionPost       = 0

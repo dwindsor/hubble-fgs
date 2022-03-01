@@ -53,9 +53,11 @@ var (
 		SocketMap,
 		ExecveMap,
 		TCPMonMap,
+		ProcessNetworkBurstMap,
 		ExecveStats,
 		SocketStats,
 		TLSMapStats,
+		PNBurstMapStats,
 		CiliumSNAT,
 		TCPSendCheckSampler,
 		HTTPContext,
@@ -66,9 +68,11 @@ var (
 		SocketMap,
 		ExecveMapV53,
 		TCPMonMapV53,
+		ProcessNetworkBurstMap,
 		ExecveStatsV53,
 		SocketStats,
 		TLSMapStats,
+		PNBurstMapStats,
 		CiliumSNAT,
 		TCPSendCheckSampler,
 		HTTPContext,
@@ -138,10 +142,12 @@ func GetInitialSensor() *Sensor {
 		TCPMonMap,
 		ExecveMap,
 		SocketMap,
+		ProcessNetworkBurstMap,
 		/* &ObserverTcpMap */
 		ExecveStats,
 		SocketStats,
 		TLSMapStats, // NB: Maybe this should be under k.enableTLS?
+		PNBurstMapStats,
 		TCPSendCheckSampler,
 	}
 	if kernels.EnableLargeProgs() {
@@ -150,10 +156,12 @@ func GetInitialSensor() *Sensor {
 			TCPMonMapV53,
 			ExecveMapV53,
 			SocketMap,
+			ProcessNetworkBurstMap,
 			/* &ObserverTcpMap */
 			ExecveStatsV53,
 			SocketStats,
 			TLSMapStats, // NB: Maybe this should be under k.enableTLS?
+			PNBurstMapStats,
 			TCPSendCheckSampler,
 		}
 	}

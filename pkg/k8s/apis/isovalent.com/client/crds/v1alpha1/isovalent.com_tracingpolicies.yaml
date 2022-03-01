@@ -475,6 +475,25 @@ spec:
                     required:
                     - enable
                     type: object
+                  udpburst:
+                    description: Network policy specification
+                    properties:
+                      enable:
+                        default: false
+                        description: Enable UDP burst observability
+                        type: boolean
+                      triggerpercent:
+                        default: 100
+                        description: Configures the percent over average deemed to
+                          be a burst
+                        format: int32
+                        type: integer
+                      windowsize:
+                        default: 1000
+                        description: Configures the burst window size in milliseconds
+                        format: int32
+                        type: integer
+                    type: object
                 type: object
               tracepoints:
                 description: A list of tracepoint specs.

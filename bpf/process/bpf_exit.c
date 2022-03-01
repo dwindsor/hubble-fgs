@@ -13,6 +13,7 @@ struct bpf_map_def {
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "../networking/bpf_burst_process.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
@@ -83,5 +84,6 @@ int event_exit(struct sched_execve_args *ctx)
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, exit, size);
 	}
 	map_delete_event(tgid);
+	map_delete_process_burst(tgid);
 	return 0;
 }

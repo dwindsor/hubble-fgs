@@ -201,6 +201,12 @@ func (ec *eventCache) handleNetEvents() {
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
+		case *fgs.ProcessNetworkBurst:
+			processedEvent = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: event},
+				NodeName: ec.pm.nodeName,
+				Time:     e.timestamp,
+			}
 		}
 
 		if processedEvent == nil {

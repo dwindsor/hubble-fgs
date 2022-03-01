@@ -186,20 +186,22 @@ var (
 	TCPMonMapV53 = MapBuilder("tcpmon_map", "", &ExecveV53)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap           = MapBuilder("execve_map", "", &Execve)
-	ExecveMapV53        = MapBuilder("execve_map", "", &ExecveV53)
-	SocketMap           = MapBuilder("socket_map", "", &TCPConnect)
-	TCPSendCheckSampler = MapBuilder("tcp_send_check_sampler", "", &TCPSendCheck)
+	ExecveMap              = MapBuilder("execve_map", "", &Execve)
+	ExecveMapV53           = MapBuilder("execve_map", "", &ExecveV53)
+	SocketMap              = MapBuilder("socket_map", "", &TCPConnect)
+	TCPSendCheckSampler    = MapBuilder("tcp_send_check_sampler", "", &TCPSendCheck)
+	ProcessNetworkBurstMap = MapBuilder("pn_burst_map", "", &Exit)
 
 	/* Policy maps populated from base programs */
 	NamesMap    = MapBuilder("names_map", "", &Execve)
 	NamesMapV53 = MapBuilder("names_map", "", &ExecveV53)
 
 	/* Internal statistics for debugging */
-	ExecveStats    = MapBuilder("execve_map_stats", "", &Execve)
-	ExecveStatsV53 = MapBuilder("execve_map_stats", "", &ExecveV53)
-	SocketStats    = MapBuilder("socket_map_stats", "", &TCPConnect)
-	TLSMapStats    = MapBuilder("tls_map_stats", "", &TCPConnect)
+	ExecveStats     = MapBuilder("execve_map_stats", "", &Execve)
+	ExecveStatsV53  = MapBuilder("execve_map_stats", "", &ExecveV53)
+	SocketStats     = MapBuilder("socket_map_stats", "", &TCPConnect)
+	TLSMapStats     = MapBuilder("tls_map_stats", "", &TCPConnect)
+	PNBurstMapStats = MapBuilder("pn_burst_map_stats", "", &Exit)
 
 	/* Cilium maps */
 	CiliumSNAT = MapBuilder("cilium_snat_v4_external", "", &TCPConnect)

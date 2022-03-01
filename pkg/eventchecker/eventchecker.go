@@ -289,6 +289,8 @@ func eventGetProcess(ev fgsEvent) *fgs.Process {
 		return v.Process
 	case *fgs.ProcessHttp:
 		return v.Process
+	case *fgs.ProcessNetworkBurst:
+		return v.Process
 	case *fgs.ProcessExit:
 		return v.Process
 	case *fgs.ProcessClose:
@@ -316,6 +318,8 @@ func eventGetParent(ev fgsEvent) *fgs.Process {
 		return nil
 	case *fgs.ProcessHttp:
 		return nil
+	case *fgs.ProcessNetworkBurst:
+		return v.Parent
 	case *fgs.ProcessDns:
 		return nil
 	case *fgs.ProcessExit:
@@ -434,6 +438,12 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (fgs
 			return nil, err
 		}
 		return ev.InterfaceStats, nil
+
+	case *fgs.GetEventsResponse_ProcessNetworkBurst:
+		if err := checkTypes(fgs.EventType_PROCESS_NETWORK_BURST); err != nil {
+			return nil, err
+		}
+		return ev.ProcessNetworkBurst, nil
 
 	case *fgs.GetEventsResponse_Test:
 		if err := checkTypes(fgs.EventType_TEST); err != nil {
@@ -558,6 +568,18 @@ func NewHTTPEventChecker() *EventChainChecker {
 	return &EventChainChecker{
 		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
 			return checkEvent(r, l, fgs.EventType_PROCESS_HTTP)
+		},
+		eventCheck: func(ev fgsEvent, l Logger) error {
+			return nil
+		},
+	}
+}
+
+// NewProcessNetworkBurstEventChecker creates a new EventChainChecker for Process Network Burst events
+func NewProcessNetworkBurstEventChecker() *EventChainChecker {
+	return &EventChainChecker{
+		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, fgs.EventType_PROCESS_NETWORK_BURST)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -1676,6 +1698,50 @@ func (o *ContainerCheckerAND) WithImageName(arg StringArg) *ContainerCheckerAND 
 	return o
 }
 
+// ProcessNetworkBurstChecker checks the fields of a ProcessNetworkBurst event
+type ProcessNetworkBurstChecker interface {
+	// Check checks a ProcessNetworkBurst event
+	Check(*fgs.ProcessNetworkBurst, Logger) error
+}
+
+// ProcessNetworkBurstCheckerFn wraps a function that checks the fields of a ProcessNetworkBurst event
+type ProcessNetworkBurstCheckerFn func(*fgs.ProcessNetworkBurst, Logger) error
+
+// Check implements ResponseChecker interface
+func (f ProcessNetworkBurstCheckerFn) Check(c *fgs.ProcessNetworkBurst, log Logger) error {
+	return f(c, log)
+}
+
+// ProcessNetworkBurstWithRequestMethod verifies that the burst field matches the StringMatcher
+func ProcessNetworkBurstWithBurstDirection(sm StringMatcher) ProcessNetworkBurstChecker {
+	return ProcessNetworkBurstWithString(
+		sm,
+		func(t *fgs.ProcessNetworkBurst) string {
+			return t.Direction
+		},
+		"Direction",
+	)
+}
+
+func ProcessNetworkBurstWithString(
+	sm StringMatcher,
+	getter func(*fgs.ProcessNetworkBurst) string,
+	desc string, // desc is used for helpful error messages
+) ProcessNetworkBurstChecker {
+	matcher := sm.GetMatcher()
+	return ProcessNetworkBurstCheckerFn(func(t *fgs.ProcessNetworkBurst, log Logger) error {
+		if t == nil {
+			return fmt.Errorf("ProcessNetworkBurst is nil and cannot match %s using %v", desc, sm)
+		}
+		s := getter(t)
+		if err := matcher(s); err != nil {
+			return fmt.Errorf("failed ProcessNetworkBurst check on %s: %w", desc, err)
+		}
+		log.Logf("**** MATCH ProcessNetworkBurst on %s: %s", desc, s)
+		return nil
+	})
+}
+
 // HTTPChecker checks the HTTP field of an HTTP event
 type HTTPChecker interface {
 	// Check checks a HTTP event
@@ -1884,6 +1950,51 @@ func (e *EventChainChecker) HasHTTP(httpcheck HTTPChecker) *EventChainChecker {
 
 		if httpEv, ok := e.(*fgs.ProcessHttp); ok {
 			return httpcheck.Check(httpEv, l)
+		}
+		return fmt.Errorf("event has type %T: not a http event", e)
+
+	}
+	return e
+}
+
+// ProcessNetworkBurstCheckerAND can be used to build a check that is a conjunction of other checkers
+type ProcessNetworkBurstCheckerAND struct {
+	checks []ProcessNetworkBurstChecker
+}
+
+// NewProcessNetworkBurstChecker creates a new ProcessNetworkBurstCheckerAND to verify a series of checks on
+// a ProcessNetworkBurst event
+func NewProcessNetworkBurstChecker() *ProcessNetworkBurstCheckerAND {
+	return &ProcessNetworkBurstCheckerAND{}
+}
+
+// Check implements ResponseChecker interface
+func (o *ProcessNetworkBurstCheckerAND) Check(t *fgs.ProcessNetworkBurst, l Logger) error {
+	for i := range o.checks {
+		if err := o.checks[i].Check(t, l); err != nil {
+			return err
+		}
+	}
+	return nil
+}
+
+// WithRequestMethod adds a Request.Method check to a Http checker
+func (o *ProcessNetworkBurstCheckerAND) WithBurstDirection(arg StringArg) *ProcessNetworkBurstCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ProcessNetworkBurstWithBurstDirection(sm))
+	return o
+}
+
+// HasProcessNetworkBurst adds a Response.ProcessNetworkBurst check to a ProcessNetworkBurst checker
+func (e *EventChainChecker) HasProcessNetworkBurst(ProcessNetworkBurstcheck ProcessNetworkBurstChecker) *EventChainChecker {
+	oldEventCheck := e.eventCheck
+	e.eventCheck = func(e fgsEvent, l Logger) error {
+		if err := oldEventCheck(e, l); err != nil {
+			return err
+		}
+
+		if ProcessNetworkBurstEv, ok := e.(*fgs.ProcessNetworkBurst); ok {
+			return ProcessNetworkBurstcheck.Check(ProcessNetworkBurstEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a http event", e)
 

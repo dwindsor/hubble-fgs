@@ -602,6 +602,18 @@ message AggregationInfo {
     uint64 count = 1;
 }
 
+message ProcessNetworkBurst {
+    Process process = 1;
+    Process parent = 2;
+    string protocol = 3;
+    string direction = 4;
+    string burst_state = 5;
+    uint64 window_size = 6;
+    uint64 hist_avg = 7;
+    uint64 hist_trigger = 8;
+    uint64 window_avg = 9;
+}
+
 message GetEventsResponse {
     oneof event {
         ProcessExec process_exec = 1;
@@ -616,8 +628,9 @@ message GetEventsResponse {
         ProcessTracepoint process_tracepoint = 10;
         ProcessSockStats process_sockstats = 11;
         ProcessHttp process_http = 12;
-	InterfaceStats interface_stats = 13;
-	ProcessDns process_dns = 14;
+        InterfaceStats interface_stats = 13;
+        ProcessDns process_dns = 14;
+        ProcessNetworkBurst process_network_burst = 15;
 
         Test test = 40000;
     }
@@ -651,6 +664,7 @@ enum EventType {
 	PROCESS_HTTP = 16;
 	INTERFACE_STATS = 17;
 	PROCESS_DNS = 18;
+	PROCESS_NETWORK_BURST = 19;
 
 	TEST = 254;
 }
