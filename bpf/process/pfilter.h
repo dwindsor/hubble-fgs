@@ -211,6 +211,13 @@ one:
 		return res1 | res2 | res3 | res4;
 }
 
+struct pid_filter {
+	u32 op;		/* op (i.e. op_filter_in or op_filter_notin) */
+	u32 flags;	/* PID_SELECTOR_FLAG_NSPID or PID_SELECTOR_FLAG_FOLLOW */
+	u32 len;	/* number of values */
+	u32 val[];	/* values */
+};
+
 struct ns_filter {
 	u32 ty;		/* namespace (i.e. ns_uts, ns_net, ns_pid, ...) */
 	u32 op;		/* op (i.e. op_filter_in or op_filter_notin) */
@@ -224,59 +231,31 @@ struct ns_filter {
 static inline __attribute__((always_inline))
 int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter, void *heap)
 {
-	__u64 i, ty = 0, flags = 0, len = 0, tmp = 0;
-	__u32 pidlen, nslen;
 	int res1 = PFILTER_ACCEPT, res2 = PFILTER_ACCEPT;
+	struct pid_filter *pid;
 	struct ns_filter *ns;
+	__u32 pidlen, nslen;
+	__u64 i;
 
 	/* Find selector offset byte index */
 	index *= 4;
 	index += 4;
 
-	/* This is a bit unfortunate but if we try to write C code with
-	 * a loop for this compiler generates code,
-	 *
-	 * r3 = r4
-	 * r2 = w9
-	 * if w2 > 0x400 goto pc ...
-	 * r9 = *(u32 *)(r2 +0)
-	 * r0 = *(u32 *)(r3 +0)
-	 *
-	 * The problem here is compiler is "smart" enough to know that r4
-	 * is also w9 and can skip the bounds check, but the verifier on
-	 * the other hand is not smart enough to track this. The result is
-	 * we get a verifier error.
-	 */
-	asm volatile (
-	"%[index] &= 0x3ff;\n"
-	"%[t] = %[m];\n"                    /* tmp = f; */
-	"%[t] += %[index];\n"               /* tmp =+ index; */
-	"%[index] = *(u32 *)(%[t] + 0);\n"  /* index = *(u32 *)tmp; */
-	"%[index] &= 0x3ff;\n"
-	"%[t] = %[m];\n"                    /* tmp = f; */
-	"%[t] += %[index];\n"               /* tmp += index; */
-	"%[pidlen] = *(u32 *)(%[t] + 8);\n" /* pid header length */
-	"%[ty] = *(u32 *)(%[t] +12);\n"     /* ty = *(u32 *)(tmp + 12); */ /* +12 to step past headers */
-	"%[flags] = *(u32 *)(%[t] +16);\n"  /* flags = *(u32 *)(tmp + 16); */
-	"%[len] = *(u32 *)(%[t] +20);\n"    /* len = *(u32 *)(tmp + 20); */
-	: [index] "+r"(index),
-	  [len] "+r"(len),
-	  [flags] "+r"(flags),
-	  [ty] "+r"(ty),
-	  [m] "+r"(f),
-	  [t] "+r"(tmp),
-	  [pidlen] "+r"(pidlen)
-	::);
+	/* read the start offset of the corresponding selector */
+	index = *(__u32 *)((__u64)f + (index & INDEX_MASK));
 
-	/* offset into values
-	 * 4: uint32 selector value
-	 * 8: selector header, pid header
-	 */
-	index += 4 + 8;
+	index &= INDEX_MASK;
+	index += 8; /* 4: selector value and selector header */
+
+	/* matchPid */
+	pidlen = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(pid1) + sizeof(pid2) + ... + 4) */
+	index += 4;  /* 4: pid header */
+
 	if (pidlen > 4) { /* we can have only matchNamespace */
-		index += 12; /* 12: op, flags, length */
-		res1 = selector_match(f, index, ty, flags, len, enter, heap, &process_filter_pid);
-		index += ((len * 4) & (FILTER_SIZE - 1)); /* now index points at the end of PID filter */
+		pid = (struct pid_filter *)((u64)f + index);
+		index += sizeof(struct pid_filter); /* 12: op, flags, length */
+		res1 = selector_match(f, index, pid->op, pid->flags, pid->len, enter, heap, &process_filter_pid);
+		index += ((pid->len * sizeof(pid->val[0])) & VALUES_MASK); /* now index points at the end of PID filter */
 	}
 
 	/* matchNamespace */
