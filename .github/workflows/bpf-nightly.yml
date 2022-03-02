@@ -20,7 +20,7 @@ jobs:
         run: |
           docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
           sudo apt update
-          sudo apt install libelf-dev cmake libdw-dev qemu-system-x86
+          sudo apt install libelf-dev cmake libdw-dev qemu-system-x86 llvm
           cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs
           contrib/install-pahole.sh
           contrib/vmtest/test-bpf-latest.sh
