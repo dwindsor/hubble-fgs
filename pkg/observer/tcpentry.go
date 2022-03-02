@@ -38,12 +38,11 @@ func (k *SockStatKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
 func (k *SockStatKey) DeepCopyMapKey() bpf.MapKey { return &SockStatKey{} }
 
 type SockStatValue struct {
-	SegsCntr   uint32
-	SegsSample uint32
+	KTime uint64
 }
 
 func (v *SockStatValue) String() string {
-	return fmt.Sprintf("segsCntr: %d segsSample: %d", v.SegsCntr, v.SegsSample)
+	return fmt.Sprintf("Sample Time: %d", v.KTime)
 }
 func (v *SockStatValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *SockStatValue) DeepCopyMapValue() bpf.MapValue {
@@ -218,11 +217,12 @@ func (k *Observer) configureSockStatSampler(sampleRate uint32) error {
 	key := &SockStatKey{
 		Zero: uint32(0),
 	}
+	interval := uint64(sampleRate) * uint64(1000000000)
+	/* Convert sample rate from seconds into ns */
 	value := &SockStatValue{
-		SegsCntr:   0,
-		SegsSample: sampleRate,
+		KTime: interval,
 	}
 	m.Update(key, value)
-	k.log.Info("Configured TCP sock statistic sampler: ", value)
+	k.log.WithField("time", sampleRate).Info("Configured TCP sock statistic sampler: ")
 	return nil
 }

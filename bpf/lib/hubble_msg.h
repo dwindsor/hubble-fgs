@@ -487,6 +487,7 @@ struct socketmap_value {
 	struct msg_execve_key key;
 	__u32 zero_window;
 	__u32 socket_flags;
+	__u64 last_time;
 };
 
 #define BPF_F_INDEX_MASK		0xffffffffULL

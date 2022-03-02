@@ -22,8 +22,7 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 #endif
 
 struct tcp_send_check_sample_cfg {
-	__u32 segs_cntr;
-	__u32 segs_sample;
+	__u64 ktime;
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_sampler = {
@@ -48,31 +47,10 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 	struct tcp_sock *tcp;
 	struct net *netns;
 	struct sock *skp;
-	__u32 rcv_wnd;
 	int zero = 0;
 
-	/* Stat events are generated using a sample rate, every N packets
-	 * for now. This will favor noisy flows over quieter flows, but
-	 * we probably want this anyways to provide more data about these
-	 * types of flows. We can make a better algorithm if we want.
-	 */
-	struct tcp_send_check_sample_cfg *cfg;
-	bool sample = false;
-
-	cfg = map_lookup_elem(&tcp_send_check_sampler, &zero);
-	if (!cfg)
-		return 0;
-	sample = !(cfg->segs_cntr++ % cfg->segs_sample);
-
-	/* Check for zero window event. On zero window events we want to
-	 * do some extra accounting to report these events to user space.
-	 */
 	skp = (void *)((ctx)->di);
 	tcp = (struct tcp_sock *)skp;
-
-	probe_read(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
-	if (rcv_wnd && !sample)
-		return 1;
 
 	/* Collect socket tuple and process info, updating state so close
 	 * event will read zero window stats. If sampling we push event
@@ -97,15 +75,26 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 		tuple.uid = 0;
 	process = lookup_socketmap(&tuple);
 	if (process) {
+		struct tcp_send_check_sample_cfg *cfg;
+		u64 current_time_ns = ktime_get_ns();
 		struct msg_ipv4_event *val;
+		__u32 rcv_wnd;
 		size_t size;
 
+		/* Check for zero window event. On zero window events we want to
+		 * do some extra accounting to report these events to user space.
+		 */
+		probe_read(&rcv_wnd, sizeof(__u32), _(&(tcp->rcv_wnd)));
 		if (!rcv_wnd)
 			process->zero_window++;
 
-		if (!sample)
+		cfg = map_lookup_elem(&tcp_send_check_sampler, &zero);
+		if (!cfg)
+			return 0;
+		if (process->last_time + cfg->ktime > current_time_ns)
 			goto out;
 
+		process->last_time = current_time_ns;
 		val = map_lookup_elem(&tcp_send_check_event_map, &zero);
 		if (!val)
 			return 1;
@@ -113,7 +102,7 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 		*val = (struct msg_ipv4_event) {
 			.common.op = MSG_OP_IPV4_TCPSTATS,
 			.common.size = sizeof(struct msg_ipv4_event),
-			.common.ktime = ktime_get_ns(),
+			.common.ktime = current_time_ns,
 
 			.key.pid = process->key.pid,
 			.key.ktime = process->key.ktime,
