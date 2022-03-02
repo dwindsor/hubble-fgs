@@ -285,7 +285,6 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 		api.MSG_OP_IPV4_BIND,
 		api.MSG_OP_IPV4_LISTEN,
 		api.MSG_OP_IPV4_ACCEPT,
-		api.MSG_OP_IPV4_TCPSTATS,
 		api.MSG_OP_IPV4_UDPSTATS:
 		m := api.MsgIPv4Event{}
 		err := binary.Read(r, binary.LittleEndian, &m)
@@ -558,9 +557,6 @@ func (k *Observer) Start(ctx context.Context) error {
 	}
 
 	k.startUpdateMapMetrics()
-	if err := k.configureSockStatSampler(k.tcpStatSegRate); err != nil {
-		return fmt.Errorf("hubble-fgs, aborting sample config error: %w", err)
-	}
 	k.populateExecve(ctx)
 
 	k.perfConfig = bpf.DefaultPerfEventConfig()

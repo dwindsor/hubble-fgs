@@ -28,27 +28,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
-type SockStatKey struct {
-	Zero uint32
-}
-
-func (k *SockStatKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
-func (k *SockStatKey) NewValue() bpf.MapValue     { return &SockStatValue{} }
-func (k *SockStatKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *SockStatKey) DeepCopyMapKey() bpf.MapKey { return &SockStatKey{} }
-
-type SockStatValue struct {
-	KTime uint64
-}
-
-func (v *SockStatValue) String() string {
-	return fmt.Sprintf("Sample Time: %d", v.KTime)
-}
-func (v *SockStatValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *SockStatValue) DeepCopyMapValue() bpf.MapValue {
-	return &SockStatValue{}
-}
-
 type SocketMapKey struct {
 	Saddr     uint32
 	Daddr     uint32
@@ -205,24 +184,4 @@ func (k *Observer) writeSockMap(tcp *api.MsgIPv4EventUnix, m *bpf.Map, uid uint6
 		SFlags:  0,
 	}
 	m.Update(key, val)
-}
-
-func (k *Observer) configureSockStatSampler(sampleRate uint32) error {
-	m, err := bpf.OpenMap(filepath.Join(k.mapDir, sensors.TCPSendCheckSampler.Name))
-	if err != nil {
-		return err
-	}
-	defer m.Close()
-
-	key := &SockStatKey{
-		Zero: uint32(0),
-	}
-	interval := uint64(sampleRate) * uint64(1000000000)
-	/* Convert sample rate from seconds into ns */
-	value := &SockStatValue{
-		KTime: interval,
-	}
-	m.Update(key, value)
-	k.log.WithField("time", sampleRate).Info("Configured TCP sock statistic sampler: ")
-	return nil
 }

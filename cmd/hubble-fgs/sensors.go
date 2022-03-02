@@ -7,5 +7,6 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/network"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 )

@@ -288,6 +288,17 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// nop parsre policy specification
 	Nop NopSpec `json:"nop" yaml:"nop"`
+	// +kubebuilder:validation:Optional
+	// TCP policy specification
+	Tcp TcpPolicySpec `json:"tcp" yaml:"tcp"`
+}
+
+type TcpPolicySpec struct {
+	// Enable TCP statistics
+	Enable bool `json:"enable" yaml:"enable"`
+	// +kubebuilder:validation:Optional
+	// Configures the Stat collection interval in seconds
+	StatsInterval uint32 `json:"statsInterval" yaml:"statsInterval"`
 }
 
 type UdpPolicySpec struct {

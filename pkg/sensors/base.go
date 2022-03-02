@@ -147,23 +147,6 @@ var (
 		struct{}{},
 	}
 
-	TCPSendCheck = Program{
-		"bpf_tcp_send_check.o",
-		"tcp_v4_send_check",
-		"tcp_v4_send_check",
-		"kprobe/tcp_v4_send_check",
-		"kprobe_tcp_v4_send_check",
-
-		false,
-		true,
-		"kprobe",
-		Idle(),
-
-		-1,
-
-		struct{}{},
-	}
-
 	Listen = Program{
 		"bpf_listen.o",
 		"__inet_hash",
@@ -189,7 +172,6 @@ var (
 	ExecveMap              = MapBuilder("execve_map", "", &Execve)
 	ExecveMapV53           = MapBuilder("execve_map", "", &ExecveV53)
 	SocketMap              = MapBuilder("socket_map", "", &TCPConnect)
-	TCPSendCheckSampler    = MapBuilder("tcp_send_check_sampler", "", &TCPSendCheck)
 	ProcessNetworkBurstMap = MapBuilder("pn_burst_map", "", &Exit)
 
 	/* Policy maps populated from base programs */
