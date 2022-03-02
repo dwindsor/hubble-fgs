@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xeu
+set -eu
 
 CLUSTER_NAME="fgs-cli-ci"
 PROJECT_ROOT="$(realpath $(dirname "${BASH_SOURCE[0]}")/../..)"
@@ -8,17 +8,42 @@ cd "$PROJECT_ROOT"
 
 if ! command -v kind; then
     echo "kind is not in \$PATH! Bailing out!" 1>&2
-    exit -1
+    exit 1
 fi
+
+FORCE=0
+
+usage() {
+	echo "usage: bootstrap-cluster.sh [OPTIONS]" 1>&2
+	echo "OPTIONS:" 1>&2
+    echo "    -f,--force  force bootstrapping even if cluster already exists" 1>&2
+}
+
+while [ $# -ge 1 ]; do
+	if [ "$1" == "--force" ] || [ "$1" == "-f" ]; then
+        FORCE=1
+		shift 1
+    else
+        usage
+        exit 1
+	fi
+done
 
 bootstrap_cluster() {
     if ! kind get clusters | grep "$CLUSTER_NAME" &>/dev/null; then
         echo "Creating a new cluster \"$CLUSTER_NAME\"..." 1>&2
+        kind create cluster --name "$CLUSTER_NAME" --wait=2m
     else
-        echo "Cluster \"$CLUSTER_NAME\" already exists! Replacing it..." 1>&2
-        kind delete cluster --name "$CLUSTER_NAME"
+        if [ "$FORCE" != 1 ]; then
+            echo "Cluster already exists... Exiting... (Re-run with -f to force.)" 1>&2
+            exit 0
+        else
+            echo "Recreating cluster..." 1>&2
+            kind delete cluster --name "$CLUSTER_NAME"
+            kind create cluster --name "$CLUSTER_NAME" --wait=2m
+        fi
     fi
-    kind create cluster --name "$CLUSTER_NAME" --wait=2m
+
     kubectl cluster-info --context "kind-$CLUSTER_NAME"
 
     echo "Installing Cilium..." 1>&2
