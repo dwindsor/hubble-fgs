@@ -211,7 +211,7 @@ spec:
         operator: ` + nsOp + `
         values:
         - "host_ns"
-        namespace: Pid
+      - namespace: Pid
         operator: ` + nsOp + `
         values:
         - "host_ns"

@@ -188,6 +188,9 @@ int selector_match(__u32 *f, __u32 index, __u64 ty, __u64 flags, __u64 len,
 	 * how many pid values will be used anyways. Having zero
 	 * length values is an input error that CRD should catch.
 	 */
+	/* Updateing the number of iterations below, you should also
+	 * update the function namespaceSelectorValue() in kernel.go
+	 */
 	if (len == 4) goto four;
 	else if (len == 3) goto three;
 	else if (len == 2) goto two;
@@ -228,6 +231,11 @@ struct ns_filter {
 #define VALUES_MASK 0x1f /* max 4 values with 4 bytes each | 0x1f == 31 */
 #define INDEX_MASK 0x3ff
 
+/* If you update the value of NUM_NS_FILTERS_SMALL below you should
+ * also update parseMatchNamespaces() in kernel.go
+ */
+#define NUM_NS_FILTERS_SMALL 4
+
 static inline __attribute__((always_inline))
 int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter, void *heap)
 {
@@ -267,7 +275,7 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	for (i = 0; i < ns_max_types; i++) {
 #else
 #pragma unroll
-	for (i = 0; i < 4; i++) { /* with more than 4 iterations it results in too big programs */
+	for (i = 0; i < NUM_NS_FILTERS_SMALL; i++) { /* with more than 4 iterations it results in too big programs */
 #endif
 		if (nslen > 0) {
 			ns = (struct ns_filter *)((u64)f + (index & INDEX_MASK));

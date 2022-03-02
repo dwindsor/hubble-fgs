@@ -18,6 +18,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
@@ -334,6 +335,9 @@ func parseMatchActions(k *KernelSelectorState, actions []v1alpha1.ActionSelector
 func namespaceSelectorValue(ns *v1alpha1.NamespaceSelector, nstype string) ([]byte, uint32, error) {
 	b := make([]byte, len(ns.Values)*4)
 
+	if len(ns.Values) > 4 { // 4 should match the number of iterations in selector_match() in pfilter.h
+		return b, 0, fmt.Errorf("matchNamespace supports up to 4 values per filter (current number of values is %d)", len(ns.Values))
+	}
 	for i, v := range ns.Values {
 		val, err := strconv.ParseUint(v, 10, 32)
 		if err != nil {
@@ -382,6 +386,13 @@ func parseMatchNamespace(k *KernelSelectorState, action *v1alpha1.NamespaceSelec
 }
 
 func parseMatchNamespaces(k *KernelSelectorState, actions []v1alpha1.NamespaceSelector) error {
+	max_nactions := 4 // 4 should match the value of the NUM_NS_FILTERS_SMALL in pfilter.h
+	if kernels.EnableLargeProgs() {
+		max_nactions = 10 // 10 should match the value of ns_max_types in hubble_msg.h
+	}
+	if len(actions) > max_nactions {
+		return fmt.Errorf("matchNamespace supports up to %d filters (current number of filters is %d)", max_nactions, len(actions))
+	}
 	loff := AdvanceSelectorLength(k)
 	// maybe write the number of namespace matches
 	for _, a := range actions {

@@ -314,6 +314,9 @@ enum {
 	ns_cgroup = 8,
 	ns_user = 9,
 
+	// If you update the value of ns_max_types you
+	// should also update parseMatchNamespaces()
+	// in kernel.go
 	ns_max_types = 10,
 };
 
