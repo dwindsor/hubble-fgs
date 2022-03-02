@@ -253,7 +253,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 
 	t.Cleanup(func() {
 		if t.Failed() {
-			bugtoolFname := fmt.Sprintf("/tmp/fgs-bugtool-%s.tar.gz", t.Name())
+			bugtoolFname := "/tmp/fgs-bugtool.tar.gz"
 			if err := bugtool.Bugtool(bugtoolFname); err == nil {
 				logger.GetLogger().WithField("test", t.Name()).
 					WithField("file", bugtoolFname).Info("Dumped bugtool info")
