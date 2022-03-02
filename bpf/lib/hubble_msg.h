@@ -302,17 +302,37 @@ struct msg_creds {
 	struct msg_capabilities caps;
 };
 
+enum {
+	ns_uts = 0,
+	ns_ipc = 1,
+	ns_mnt = 2,
+	ns_pid = 3,
+	ns_pid_for_children = 4,
+	ns_net = 5,
+	ns_time = 6,
+	ns_time_for_children = 7,
+	ns_cgroup = 8,
+	ns_user = 9,
+
+	ns_max_types = 10,
+};
+
 struct msg_ns {
-	__u32 uts_inum;
-	__u32 ipc_inum;
-	__u32 mnt_inum;
-	__u32 pid_inum;
-	__u32 pid_for_children_inum;
-	__u32 net_inum;
-	__u32 time_inum;
-	__u32 time_for_children_inum;
-	__u32 cgroup_inum;
-	__u32 user_inum;
+	union {
+		struct {
+			__u32 uts_inum;
+			__u32 ipc_inum;
+			__u32 mnt_inum;
+			__u32 pid_inum;
+			__u32 pid_for_children_inum;
+			__u32 net_inum;
+			__u32 time_inum;
+			__u32 time_for_children_inum;
+			__u32 cgroup_inum;
+			__u32 user_inum;
+		};
+		__u32 inum[ns_max_types];
+	};
 };
 
 static inline __attribute__((always_inline))

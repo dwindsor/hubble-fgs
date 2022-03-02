@@ -16,17 +16,4 @@ enum {
 	op_filter_str_postfix  = 9,
 };
 
-enum {
-	ns_uts = 0,
-	ns_ipc = 1,
-	ns_mnt = 2,
-	ns_pid = 3,
-	ns_pid_for_children = 4,
-	ns_net = 5,
-	ns_time = 6,
-	ns_time_for_children = 7,
-	ns_cgroup = 8,
-	ns_user = 9,
-};
-
 #endif // __OPERATIONS_H__

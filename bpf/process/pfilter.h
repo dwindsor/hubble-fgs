@@ -152,29 +152,16 @@ int process_filter_namespace(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 nsid,
 	if (!msg)
 		return PFILTER_REJECT;
 
-	if (nsid > ns_user)
-		return PFILTER_REJECT;
+	nsid &= 0xf;
+	inum = msg->ns.inum[nsid];
 
-	if (nsid == ns_uts)
-		inum = msg->ns.uts_inum;
-	else if (nsid == ns_ipc)
-		inum = msg->ns.ipc_inum;
-	else if (nsid == ns_mnt)
-		inum = msg->ns.mnt_inum;
-	else if (nsid == ns_pid)
-		inum = msg->ns.pid_inum;
-	else if (nsid == ns_pid_for_children)
-		inum = msg->ns.pid_for_children_inum;
-	else if (nsid == ns_net)
-		inum = msg->ns.net_inum;
-	else if (nsid == ns_time)
-		inum = msg->ns.time_inum;
-	else if (nsid == ns_time_for_children)
-		inum = msg->ns.time_for_children_inum;
-	else if (nsid == ns_cgroup)
-		inum = msg->ns.cgroup_inum;
-	else if (nsid == ns_user)
-		inum = msg->ns.user_inum;
+	/* doing this check before the previous assignment results in for 4.19 kernels:
+	 * "math between map_value pointer and register with unbounded min value is not allowed"
+	 * where "register with unbounded min value" is nsid. We ensure from the user space
+	 * that nsid has a correct value.
+	 */
+	if (nsid >= ns_max_types)
+		return PFILTER_REJECT;
 
 	if (ty == op_filter_in && sel != inum)
 		return PFILTER_REJECT;
