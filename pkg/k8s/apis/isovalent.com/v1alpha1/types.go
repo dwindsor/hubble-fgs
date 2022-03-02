@@ -241,7 +241,7 @@ type InterfacePolicySpec struct {
 	Enable bool `json:"enable" yaml:"enable"`
 	// +kubebuilder:validation:Optional
 	// Interface interval in seconds
-	StatsInterval uint32 `json:"StatsInterval" yaml:"StatsInterval"`
+	StatsInterval uint32 `json:"statsInterval" yaml:"statsInterval"`
 }
 
 type DnsPolicySpec struct {
