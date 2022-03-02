@@ -211,13 +211,23 @@ one:
 		return res1 | res2 | res3 | res4;
 }
 
+struct ns_filter {
+	u32 ty;		/* namespace (i.e. ns_uts, ns_net, ns_pid, ...) */
+	u32 op;		/* op (i.e. op_filter_in or op_filter_notin) */
+	u32 len;	/* number of values */
+	u32 val[];	/* values */
+};
+
+#define VALUES_MASK 0x1f /* max 4 values with 4 bytes each | 0x1f == 31 */
+#define INDEX_MASK 0x3ff
+
 static inline __attribute__((always_inline))
 int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter, void *heap)
 {
-	__u64 ty = 0, flags = 0, len = 0, tmp = 0;
-	__u32 pidlen;
-	__u32 nslen, nsty, nsop, nsvlen;
+	__u64 i, ty = 0, flags = 0, len = 0, tmp = 0;
+	__u32 pidlen, nslen;
 	int res1 = PFILTER_ACCEPT, res2 = PFILTER_ACCEPT;
+	struct ns_filter *ns;
 
 	/* Find selector offset byte index */
 	index *= 4;
@@ -249,11 +259,6 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	"%[ty] = *(u32 *)(%[t] +12);\n"     /* ty = *(u32 *)(tmp + 12); */ /* +12 to step past headers */
 	"%[flags] = *(u32 *)(%[t] +16);\n"  /* flags = *(u32 *)(tmp + 16); */
 	"%[len] = *(u32 *)(%[t] +20);\n"    /* len = *(u32 *)(tmp + 20); */
-	"%[t] = %[m];\n"                    /* tmp = f; */
-	"%[index] &= 0x3ff;\n"
-	"%[t] += %[index];\n"               /* tmp += index; */
-	"%[pidlen] &= 0x3ff;\n"
-	"%[t] += %[pidlen];\n"
 	: [index] "+r"(index),
 	  [len] "+r"(len),
 	  [flags] "+r"(flags),
@@ -262,11 +267,6 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	  [t] "+r"(tmp),
 	  [pidlen] "+r"(pidlen)
 	::);
-
-	nslen	= *(__u32 *)(tmp + 8);	/* namespace header length (sizeof(ns1) + sizeof(ns2) + ... + 4) */
-	nsty	= *(__u32 *)(tmp + 12);	/* namespace (i.e. ns_uts, ns_net, ns_pid, ...) */
-	nsop	= *(__u32 *)(tmp + 16);	/* op (i.e. op_filter_in or op_filter_notin) */
-	nsvlen	= *(__u32 *)(tmp + 20);	/* number of values */
 
 	/* offset into values
 	 * 4: uint32 selector value
@@ -279,10 +279,24 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 		index += ((len * 4) & (FILTER_SIZE - 1)); /* now index points at the end of PID filter */
 	}
 
+	/* matchNamespace */
+	nslen = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(ns1) + sizeof(ns2) + ... + 4) */
 	index += 4; /* 4: ns header */
-	if (nslen > 4) { /* we can have only matchPID */
-		index += 12; /* 12: namespace, op, length */
-		res2 = selector_match(f, index, nsop, nsty, nsvlen, enter, heap, &process_filter_namespace);
+	nslen -= 4;
+
+#ifdef __LARGE_BPF_PROG
+	for (i = 0; i < ns_max_types; i++) {
+#else
+#pragma unroll
+	for (i = 0; i < 4; i++) { /* with more than 4 iterations it results in too big programs */
+#endif
+		if (nslen > 0) {
+			ns = (struct ns_filter *)((u64)f + (index & INDEX_MASK));
+			index += sizeof(struct ns_filter); /* 12: namespace, op, length */
+			res2 &= selector_match(f, index, ns->op, ns->ty, ns->len, enter, heap, &process_filter_namespace);
+			index += ((ns->len * sizeof(ns->val[0])) & VALUES_MASK); /* now index points at the end of namespace filter */
+			nslen -= (sizeof(struct ns_filter) + (ns->len * sizeof(ns->val[0])));
+		}
 	}
 
 	return res1 && res2; /* both pid and namespace should match */

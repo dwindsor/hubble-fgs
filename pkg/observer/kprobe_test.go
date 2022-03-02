@@ -211,6 +211,10 @@ spec:
         operator: ` + nsOp + `
         values:
         - "host_ns"
+        namespace: Pid
+        operator: ` + nsOp + `
+        values:
+        - "host_ns"
       matchArgs:
       - index: 0
         operator: "Equal"
