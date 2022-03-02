@@ -6,6 +6,30 @@ CONF_DIR="$(realpath $(dirname "${BASH_SOURCE[0]}"))"
 source $CONF_DIR/conf
 cd "$CONF_DIR"
 
+usage() {
+	echo "usage: run.sh [OPTIONS]" 1>&2
+	echo "OPTIONS:" 1>&2
+    echo "    --kernel [KERNEL]  path to kernel bzImage (relative to run.sh or absolute)" 1>&2
+    echo "    --disk   [IMAGE]   path to root filesystem image (relative to run.sh or absolute)" 1>&2
+    echo "    --foreground, --fg run in the foreground" 1>&2
+}
+
+while [ $# -ge 1 ]; do
+	if [ "$1" == "--kernel" ]; then
+		BZIMAGE="$2"
+		shift 2
+	elif [ "$1" == "--disk" ]; then
+		ROOTIMG="$2"
+		shift 2
+	elif [ "$1" == "--foreground" ] || [ "$1" == "--fg" ] ; then
+		FOREGROUND=1
+		shift 1
+    else
+        usage
+        exit 1
+	fi
+done
+
 # Get absolute path to bzImage
 BZIMAGE="$(realpath "$BZIMAGE")"
 

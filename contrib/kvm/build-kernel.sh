@@ -58,11 +58,11 @@ cp "$KCONFIG" "$KSRCDIR/.config"
 $MAKECMD olddefconfig
 $MAKECMD
 $MAKECMD INSTALL_MOD_PATH="$MODULESDIR" modules_install
-cp "$KSRCDIR/arch/x86/boot/bzImage" "$KOUT/bzImage"
+cp "$KSRCDIR/arch/x86/boot/bzImage" "$BZIMAGE"
 
-if command -v pahole &>/dev/null; then
+if [ ! -z "$BTF" ] && command -v pahole &>/dev/null; then
     echo "Generating BTF info..."
-    pahole --btf_encode_detached="$KOUT/vmlinux" "$KSRCDIR/vmlinux"
+    pahole --btf_encode_detached="$BTF" "$KSRCDIR/vmlinux"
 else
     echo "Pahole not installed, skipping BTF info generation..."
 fi

@@ -34,6 +34,8 @@ KCONFIG=kernel.config
 KOUT=kout
 # Full path for kernel bzImage, can be overridden to manually point to other kernel images
 BZIMAGE="$KOUT/bzImage"
+# Fill path for kernel BTF, can be overridden to manually point to other BTF files
+BTF="$BZIMAGE.btf"
 # Path where FGS directory is located, used to mount FGS as a network share
 FGSDIR=../..
 # Path to install kernel modules
