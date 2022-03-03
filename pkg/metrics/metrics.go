@@ -379,17 +379,6 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs
 	SocketStatsDrops.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 }
 
-func postCloseEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessClose, s *fgs.SocketStats) {
-	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
-	dstPod := res.GetDestinationPod()
-	dstpod, dstns := getDstPodInfo(dstPod)
-	dstLabels := strings.Join(res.DestinationNames, ",")
-
-	if res.Protocol == fgs.SocketProtocol_TCP {
-		postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, s)
-	}
-}
-
 func postStatsEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessSockStats) {
 	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 	dstPod := res.Socket.GetDestinationPod()
@@ -407,8 +396,6 @@ func handleSocketEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessClose:
-			postCloseEventSocketStats(ev, res.ProcessClose, res.ProcessClose.Stats)
 		case *fgs.GetEventsResponse_ProcessSockstats:
 			postStatsEventSocketStats(ev, res.ProcessSockstats)
 		}
