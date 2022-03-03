@@ -24,6 +24,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -236,6 +237,10 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 
 	r := regexp.MustCompile(`[^\s\(]+|(\({1,2}[^\)]*\){1,2})`)
 
+	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
+	// time and time_for_children namespaces introduced in kernel 5.6
+	hasTimeNs := (int64(kernelVer) >= kernels.KernelStringToNumeric("5.6.0"))
+
 	// CLK_TCK is always constant 100 on all architectures except alpha and ia64 which are both
 	// obsolete and not supported by FGS. Also see
 	// https://lore.kernel.org/lkml/agtlq6$iht$1@penguin.transmeta.com/ and
@@ -292,8 +297,12 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 		pid_ns := reader.GetPidNsInode(uint32(pid), "pid")
 		pid_for_children_ns := reader.GetPidNsInode(uint32(pid), "pid_for_children")
 		net_ns := reader.GetPidNsInode(uint32(pid), "net")
-		time_ns := reader.GetPidNsInode(uint32(pid), "time")
-		time_for_children_ns := reader.GetPidNsInode(uint32(pid), "time_for_children")
+		time_ns := uint32(0)
+		time_for_children_ns := uint32(0)
+		if hasTimeNs {
+			time_ns = reader.GetPidNsInode(uint32(pid), "time")
+			time_for_children_ns = reader.GetPidNsInode(uint32(pid), "time_for_children")
+		}
 		cgroup_ns := reader.GetPidNsInode(uint32(pid), "cgroup")
 		user_ns := reader.GetPidNsInode(uint32(pid), "user")
 

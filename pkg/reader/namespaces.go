@@ -12,7 +12,6 @@
 package reader
 
 import (
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -20,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
@@ -28,12 +28,12 @@ func GetPidNsInode(pid uint32, nsStr string) uint32 {
 	netns := filepath.Join(option.Config.ProcFS, pidStr, "ns", nsStr)
 	netStr, err := os.Readlink(netns)
 	if err != nil {
-		fmt.Printf("GetPidNsInode: Error %s\n", err)
+		logger.GetLogger().WithError(err).Warn("GetPidNsInode")
 		return 0
 	}
 	fields := strings.Split(netStr, ":")
 	if len(fields) < 2 {
-		fmt.Printf("GetPidNsInode: Error cannot parse %s\n", netStr)
+		logger.GetLogger().Errorf("GetPidNsInode: Error cannot parse %s\n", netStr)
 		return 0
 	}
 	inode := fields[1]
