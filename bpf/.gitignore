@@ -1,3 +1,2 @@
-deps/*.d
-objs/*.o
-objs/*.ll
+deps/
+objs/
