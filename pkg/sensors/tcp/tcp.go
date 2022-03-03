@@ -6,6 +6,7 @@ import (
 	"path/filepath"
 	"time"
 
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -20,6 +21,9 @@ import (
 var (
 	TcpIntervalDefault = time.Duration(60 * time.Second)
 	tcpInterval        time.Duration
+
+	stats          *lru.Cache
+	stataCacheSize = 32000
 )
 
 var (
@@ -68,14 +72,43 @@ func (tcp *tcpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 	return EnableTcp(), nil
 }
 
+func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) api.MsgSocketStatsUnix {
+	return api.MsgSocketStatsUnix{
+		BytesSubmitted:  0,
+		BytesSent:       curr.BytesSent - last.BytesSent,
+		BytesConsumed:   0,
+		BytesReceived:   curr.BytesReceived - last.BytesReceived,
+		ConsumedSegs:    0,
+		SegsIn:          curr.SegsIn - last.SegsIn,
+		SubmittedSegs:   0,
+		SegsOut:         curr.SegsOut - last.SegsOut,
+		SRtt:            curr.SRtt,
+		RetransmitSegs:  curr.RetransmitSegs - last.RetransmitSegs,
+		RetransmitBytes: curr.RetransmitBytes - last.RetransmitBytes,
+		ToZeroWindow:    curr.ToZeroWindow - last.ToZeroWindow,
+		SkDrop:          curr.SkDrop - last.SkDrop,
+	}
+}
+
 func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
 	}
-	msgUnix := observer.MsgToIPv4Unix(&m)
-	return []observer.ObserverEvent{msgUnix}, nil
+	tcp := observer.MsgToIPv4Unix(&m)
+
+	entry, ok := stats.Get(tcp.Tuple)
+	if ok {
+		last := entry.(api.MsgSocketStatsUnix)
+
+		stats.Add(tcp.Tuple, tcp.SocketStats)
+		tcp.SocketStats = tcpDiffValues(&last, &tcp.SocketStats)
+	} else {
+		stats.Add(tcp.Tuple, tcp.SocketStats)
+	}
+
+	return []observer.ObserverEvent{tcp}, nil
 }
 
 func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
@@ -96,6 +129,14 @@ func init() {
 }
 
 func AddTCP() {
+	var err error
+
+	stats, err = lru.New(stataCacheSize)
+	if err != nil {
+		logger.GetLogger().WithError(err).Errorf("TCP cache failed. Disabling TCP")
+		return
+	}
+
 	tcp := &tcpSensor{
 		name: "TCP sensor",
 	}
