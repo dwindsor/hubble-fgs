@@ -135,21 +135,6 @@ struct execve_map_value *execve_map_get(__u32 pid)
 }
 
 static inline __attribute__((always_inline))
-struct execve_map_value *map_lookup_array(__u32 pid)
-{
-	return map_lookup_elem(&execve_map, &pid);
-}
-
-static inline __attribute__((always_inline))
-void map_delete_array(__u32 pid)
-{
-	struct execve_map_value *v = map_lookup_array(pid);
-
-	if (v)
-		v->flags = 0; // deleting array element is zero flags
-}
-
-static inline __attribute__((always_inline))
 void map_delete_hash(__u32 pid)
 {
 	int err = map_delete_elem(&execve_map, &pid);
