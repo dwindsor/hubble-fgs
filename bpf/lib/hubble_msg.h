@@ -174,10 +174,12 @@ struct msg_common {
 	__u64 ktime;
 };
 
-/* Manually linked to ARGSBUFFER and PADDED_BUFFER if this changes then please
+/* process information
+ *
+ * Manually linked to ARGSBUFFER and PADDED_BUFFER if this changes then please
  * also change SIZEOF_EVENT.
  */
-struct event_execve {
+struct msg_process {
 	__u32 size;
 	__u32 pid;
 	__u32 nspid;
@@ -385,7 +387,10 @@ struct msg_execve_event {
 	struct msg_ns		ns;
 	/* if add anything above please also update the args of
 	 * validate_msg_execve_size() in bpf_execve_event.c */
-	char			pid[PADDED_BUFFER];
+	union {
+		struct msg_process process;
+		char               buffer[PADDED_BUFFER];
+	};
 } __attribute__((packed));
 
 struct msg_socket_stats {

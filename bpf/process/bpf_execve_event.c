@@ -22,7 +22,7 @@ int event_execve(struct sched_execve_args *ctx)
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct msg_execve_event *event;
 	struct execve_map_value *curr, *parent;
-	struct event_execve *execve;
+	struct msg_process *execve;
 	uint32_t binary = 0;
 	bool walker = 0;
 	__u32 zero = 0;
@@ -42,7 +42,7 @@ int event_execve(struct sched_execve_args *ctx)
 		event_minimal_parent(event, task);
 	}
 
-	execve = (struct event_execve *)event->pid;
+	execve = &event->process;
 	fileoff = ctx->filename & 0xFFFF;
 	binary = event_filename_builder(execve, pid, EVENT_EXECVE, binary, (char *)ctx + fileoff);
 	event_args_builder(event);

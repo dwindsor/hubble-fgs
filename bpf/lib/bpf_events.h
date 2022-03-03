@@ -79,13 +79,13 @@ int64_t validate_arg_size(int64_t size)
 	 * the more explicit greather than followed by less than
 	 * check to accumulate min/max bounds. Size can not be zero
 	 * else older kernels will throw an error on probe_read() we
-	 * require a event_execve header regardless so ensure size
+	 * require a msg_process header regardless so ensure size
 	 * accounts for this at minimum.
 	 */
-	if (size >= BUFFER + offsetof(struct event_execve, args))
-		size = BUFFER + offsetof(struct event_execve, args);
-	if (size < offsetof(struct event_execve, args))
-		size = offsetof(struct event_execve, args);
+	if (size >= BUFFER + offsetof(struct msg_process, args))
+		size = BUFFER + offsetof(struct msg_process, args);
+	if (size < offsetof(struct msg_process, args))
+		size = offsetof(struct msg_process, args);
 	compiler_barrier();
 	return size;
 }
@@ -107,7 +107,7 @@ int64_t validate_msg_execve_size(int64_t size)
 	if (size > max)
 		size = max;
 	if (size < 1)
-		size = offsetof(struct msg_execve_event, pid);
+		size = offsetof(struct msg_execve_event, buffer);
 	compiler_barrier();
 	return size;
 }
@@ -493,7 +493,7 @@ u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
 }
 
 static inline __attribute__((always_inline))
-int64_t getcwd(struct event_execve *curr,
+int64_t getcwd(struct msg_process *curr,
 	       __u32 offset, __u32 proc_pid, bool prealloc)
 {
 	struct task_struct *task = get_task_from_pid(proc_pid);
@@ -566,7 +566,7 @@ __u32 get_task_pid_vnr(void)
 }
 
 static inline __attribute__((always_inline))
-uint32_t event_filename_builder(struct event_execve *curr,
+uint32_t event_filename_builder(struct msg_process *curr,
 				__u32 curr_pid, __u32 flags, __u32 bin,
 				void *filename)
 {
@@ -586,7 +586,7 @@ uint32_t event_filename_builder(struct event_execve *curr,
 	 * resulting in a a verifier error. We can optimize this a bit
 	 * later perhaps and push as an argument.
 	 */
-	earg = (void *)curr + offsetof(struct event_execve, args);
+	earg = (void *)curr + offsetof(struct msg_process, args);
 
 	size = probe_read_str(earg, MAXARGLENGTH - 1, filename);
 	if (size < 0) {
@@ -599,7 +599,7 @@ uint32_t event_filename_builder(struct event_execve *curr,
 	curr->pid = curr_pid;
 	curr->nspid = get_task_pid_vnr();
 	curr->ktime = ktime_get_ns();
-	curr->size = size + offsetof(struct event_execve, args);
+	curr->size = size + offsetof(struct msg_process, args);
 
 	probe_read_str(pathname, 255, filename);
 	value = map_lookup_elem(&names_map, pathname);
@@ -674,7 +674,7 @@ uint32_t event_filename_builder(struct event_execve *curr,
  * I'm looking at you 4.15 kernel running in minikube!
  */
 static inline __attribute__((always_inline))
-void probe_arg_read(struct event_execve *c, char *earg, char *args, char *end_args)
+void probe_arg_read(struct msg_process *c, char *earg, char *args, char *end_args)
 {
 	int off = 0;
 
@@ -712,12 +712,12 @@ static inline __attribute__((always_inline))
 void event_args_builder(struct msg_execve_event *event)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
-	struct event_execve *p, *c;
+	struct msg_process *p, *c;
 	struct mm_struct *mm;
 	//int64_t base;
 
 	/* Calculate absolute offset into buffer */
-	c = (struct event_execve *)event->pid;
+	c = &event->process;
 	c->auid = get_auid();
 	p = c;
 
@@ -737,16 +737,16 @@ void event_args_builder(struct msg_execve_event *event)
 }
 
 static inline __attribute__((always_inline))
-void event_set_clone(struct event_execve *pid)
+void event_set_clone(struct msg_process *pid)
 {
 	pid->flags |= EVENT_CLONE;
 }
 
 static inline __attribute__((always_inline))
-int64_t event_copy_execve(struct event_execve *dst,
-			  struct event_execve *src)
+int64_t event_copy_execve(struct msg_process *dst,
+			  struct msg_process *src)
 {
-	struct event_execve *esrc;
+	struct msg_process *esrc;
 	int64_t size;
 
 	size = validate_arg_size(src->size);
@@ -922,7 +922,7 @@ static inline __attribute__((always_inline))
 void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, bool cwd_always)
 {
 	struct cgroup_subsys_state *subsys;
-	struct event_execve *curr;
+	struct msg_process *curr;
 	struct task_struct *task;
 	struct nsproxy *nsproxy;
 	struct css_set *cgroups;
@@ -933,7 +933,7 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 
 	msg->common.op = op;
 	msg->common.ktime = ktime_get_ns();
-	curr = (struct event_execve *)&msg->pid;
+	curr = &msg->process;
 
 	if (cwd_always || curr->flags & EVENT_NEEDS_CWD) {
 		__u32 offset;
@@ -965,7 +965,7 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 		curr->auid = get_auid();
 		curr->flags = flags;
 	}
-	msg->common.size = offsetof(struct msg_execve_event, pid) + curr->size;
+	msg->common.size = offsetof(struct msg_execve_event, process) + curr->size;
 	curr->uid = get_current_uid_gid();
 	if (walker)
 		curr->flags |= EVENT_TASK_WALK;
@@ -1016,9 +1016,9 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 }
 
 static inline __attribute__((always_inline))
-struct event_execve *event_get_curr_execve(struct msg_execve_event *msg)
+struct msg_process *event_get_curr_execve(struct msg_execve_event *msg)
 {
-	return (struct event_execve *)msg->pid;
+	return &msg->process;
 }
 
 static inline __attribute__((always_inline))
