@@ -990,12 +990,6 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 }
 
 static inline __attribute__((always_inline))
-struct msg_process *event_get_curr_execve(struct msg_execve_event *msg)
-{
-	return &msg->process;
-}
-
-static inline __attribute__((always_inline))
 void add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
 {
 	int err = map_update_elem(&socket_map, tuple, v, 0);
