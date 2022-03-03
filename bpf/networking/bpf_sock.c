@@ -32,7 +32,7 @@ int sock_create(struct bpf_sock *ctx)
 	if (ctx->type != SOCK_DGRAM && ctx->type != SOCK_STREAM)
 		return 1;
 
-	value = map_lookup_event(pid);
+	value = execve_map_get(pid);
 	if (!value) {
 		struct execve_map_value v = {0};
 		/* Error case, should not happen */

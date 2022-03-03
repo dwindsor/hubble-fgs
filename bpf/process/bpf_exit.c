@@ -52,7 +52,7 @@ int event_exit(struct sched_execve_args *ctx)
 	 * will create an empty entry, the ktime check below will
 	 * catch it and we will quickly delete the entry again.
 	 */
-	enter = map_lookup_event(tgid);
+	enter = execve_map_get(tgid);
 	if (!enter)
 		return 0;
 	if (enter->key.ktime) {

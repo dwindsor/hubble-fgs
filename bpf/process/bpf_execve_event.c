@@ -49,7 +49,7 @@ int event_execve(struct sched_execve_args *ctx)
 	compiler_barrier();
 	__event_get_task_info(event, MSG_OP_EXECVE, walker, true);
 
-	curr = map_lookup_event(pid);
+	curr = execve_map_get(pid);
 	if (curr) {
 		curr->key.pid = execve->pid;
 		curr->key.ktime = execve->ktime;

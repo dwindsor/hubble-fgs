@@ -30,7 +30,7 @@ int event_commit_creds(struct pt_regs *ctx)
 	 * it. This saves some overhead doing full process/parent lookup.
 	 */
 	pid = get_current_pid_tgid() >> 32;
-	enter = map_lookup_event(pid);
+	enter = execve_map_get(pid);
 	if (!enter)
 		return 0;
 	if (!enter->key.ktime)

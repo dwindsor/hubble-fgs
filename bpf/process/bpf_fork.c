@@ -31,7 +31,7 @@ int event_wake_up_new_task(struct pt_regs *ctx)
 		return 0;
 
 	probe_read(&pid, sizeof(pid), _(&task->tgid));
-	value = map_lookup_event(pid);
+	value = execve_map_get(pid);
 	if (!value)
 		return 0;
 	value->flags = EVENT_COMMON_FLAG_CLONE;

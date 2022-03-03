@@ -112,8 +112,10 @@ int64_t validate_msg_execve_size(int64_t size)
 	return size;
 }
 
+// execve_map_get will look up if pid exists and return it if it does. If it
+// does not, it will create a new one and return it.
 static inline __attribute__((always_inline))
-struct execve_map_value *map_lookup_hash(__u32 pid)
+struct execve_map_value *execve_map_get(__u32 pid)
 {
 	struct execve_map_value *event;
 
@@ -136,12 +138,6 @@ static inline __attribute__((always_inline))
 struct execve_map_value *map_lookup_array(__u32 pid)
 {
 	return map_lookup_elem(&execve_map, &pid);
-}
-
-static inline __attribute__((always_inline))
-struct execve_map_value *map_lookup_event(__u32 pid)
-{
-	return map_lookup_hash(pid);
 }
 
 static inline __attribute__((always_inline))
@@ -785,7 +781,7 @@ struct execve_map_value *event_find_parent(void)
 		if (!task)
 			break;
 		probe_read(&pid, sizeof(pid), _(&task->tgid));
-		value = map_lookup_event(pid);
+		value = execve_map_get(pid);
 		if (value && value->key.ktime != 0)
 			return value;
 	}
@@ -820,7 +816,7 @@ struct execve_map_value *event_find_curr(__u32 *ppid,
 
 #pragma unroll
 	for (i = 0; i < 4; i++) {
-		value = map_lookup_event(pid);
+		value = execve_map_get(pid);
 		if (value && value->key.ktime != 0)
 			break;
 		value = 0;
@@ -836,7 +832,7 @@ struct execve_map_value *event_find_curr(__u32 *ppid,
 		struct execve_map_value *parent;
 		int zero = 0;
 
-		value = map_lookup_event(zero);
+		value = execve_map_get(zero);
 		if (!value)
 			return 0;
 		parent = event_find_parent();
