@@ -135,20 +135,13 @@ struct execve_map_value *execve_map_get(__u32 pid)
 }
 
 static inline __attribute__((always_inline))
-void map_delete_hash(__u32 pid)
+void execve_map_delete(__u32 pid)
 {
 	int err = map_delete_elem(&execve_map, &pid);
 	int zero = 0;
 	__s64 *cntr;
-
 	if (!err && (cntr = map_lookup_elem(&execve_map_stats, &zero)))
 		*cntr = *cntr - 1;
-}
-
-static inline __attribute__((always_inline))
-void map_delete_event(__u32 pid)
-{
-	map_delete_hash(pid);
 }
 
 static inline __attribute__((always_inline))
