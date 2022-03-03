@@ -16,7 +16,7 @@ env:
 jobs:
   end-to-end-tests:
     runs-on: ubuntu-latest
-    timeout-minutes: 180
+    timeout-minutes: 60
     strategy:
       matrix:
         kernel:
@@ -178,15 +178,18 @@ jobs:
             ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready --all pod -l app.kubernetes.io/name=hubble-enterprise --timeout=45s"
 
       - name: Run HTTP and TLS tests
+        timeout-minutes: 15
         run: |
           ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/http-tls.sh"
 
       - name: Run demo app tests
+        timeout-minutes: 15
         run: |
           ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/demo-app.sh"
 
       - name: Copy out FGS logs
         if: ${{ failure() }}
+        timeout-minutes: 15
         run: |
           mkdir -p logs
           scp -P 3000 root@localhost:/fgs/contrib/end-to-end/logs/* logs
