@@ -177,57 +177,52 @@ func msgToTestUnix(m *api.MsgTestEvent) *api.MsgTestEventUnix {
 	return m
 }
 
-func nopMsgExecUnix() api.MsgExecUnix {
-	execUnix := api.MsgExecUnix{}
-
-	execUnix.Size = 0
-	execUnix.PID = 0
-	execUnix.NSPID = 0
-	execUnix.UID = 0
-	execUnix.Filename = "<enomem>"
-	execUnix.Args = "<enomem>"
-	return execUnix
+func nopMsgProcess() api.MsgProcess {
+	return api.MsgProcess{
+		Filename: "<enomem>",
+		Args:     "<enomem>",
+	}
 }
 
-func execParse(reader *bytes.Reader) (api.MsgExecUnix, bool, error) {
-	execUnix := api.MsgExecUnix{}
+func execParse(reader *bytes.Reader) (api.MsgProcess, bool, error) {
+	proc := api.MsgProcess{}
 	exec := api.MsgExec{}
 
 	if err := binary.Read(reader, binary.LittleEndian, &exec); err != nil {
 		fmt.Printf("read error!\n")
-		return execUnix, true, err
+		return proc, true, err
 	}
 
-	execUnix.Size = exec.Size
-	execUnix.PID = exec.PID
-	execUnix.NSPID = exec.NSPID
-	execUnix.UID = exec.UID
-	execUnix.Flags = exec.Flags
-	execUnix.Ktime = exec.Ktime
-	execUnix.AUID = exec.AUID
+	proc.Size = exec.Size
+	proc.PID = exec.PID
+	proc.NSPID = exec.NSPID
+	proc.UID = exec.UID
+	proc.Flags = exec.Flags
+	proc.Ktime = exec.Ktime
+	proc.AUID = exec.AUID
 
 	size := exec.Size - api.MSG_SIZEOF_EXECVE
 	if size > api.MSG_SIZEOF_BUFFER-api.MSG_SIZEOF_EXECVE {
 		err := fmt.Errorf("msg exec size larger than argsbuffer")
 		exec.Size = api.MSG_SIZEOF_EXECVE
-		execUnix.Args = "enomem enomem"
-		execUnix.Filename = "enomem"
-		return execUnix, false, err
+		proc.Args = "enomem enomem"
+		proc.Filename = "enomem"
+		return proc, false, err
 	} else {
 		args := make([]byte, size) //+2)
 		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
-			execUnix.Size = api.MSG_SIZEOF_EXECVE
-			execUnix.Args = "enomem enomem"
-			execUnix.Filename = "enomem"
-			return execUnix, false, err
+			proc.Size = api.MSG_SIZEOF_EXECVE
+			proc.Args = "enomem enomem"
+			proc.Filename = "enomem"
+			return proc, false, err
 		} else {
 			cmdArgs := bytes.Split(args, []byte{0x00})
-			execUnix.Filename = string(cmdArgs[0])
-			execUnix.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
+			proc.Filename = string(cmdArgs[0])
+			proc.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
 		}
 	}
 
-	return execUnix, false, nil
+	return proc, false, nil
 }
 
 var (
@@ -263,7 +258,7 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 		msgUnix := msgToExecveUnix(&m, k.dockerIdOffsetWriter)
 		msgUnix.Process, empty, err = execParse(r)
 		if err != nil && empty {
-			msgUnix.Process = nopMsgExecUnix()
+			msgUnix.Process = nopMsgProcess()
 		}
 		k.observerListeners(msgUnix)
 	case api.MSG_OP_CRED:

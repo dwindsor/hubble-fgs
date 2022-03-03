@@ -924,7 +924,7 @@ func getBinaryAbsolutePath(binary string, cwd string) string {
 }
 
 func (pm *ProcessManager) getProcess(
-	process fgsAPI.MsgExecUnix,
+	process fgsAPI.MsgProcess,
 	containerID string,
 	parent fgsAPI.MsgExecveKey,
 	capabilities fgsAPI.MsgCapabilities,
@@ -1014,7 +1014,7 @@ func (pm *ProcessManager) GetProcessID(pid uint32, ktime uint64) string {
 }
 
 // GetExecID returns the exec ID of a given process.
-func (pm *ProcessManager) GetExecID(proc *fgsAPI.MsgExecUnix) string {
+func (pm *ProcessManager) GetExecID(proc *fgsAPI.MsgProcess) string {
 	return pm.GetProcessID(proc.PID, proc.Ktime)
 }
 

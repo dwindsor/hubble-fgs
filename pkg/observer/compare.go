@@ -76,7 +76,7 @@ func (k *Observer) CompareK8sStrict(x, y *api.MsgK8sUnix) bool {
 	return true
 }
 
-func (k *Observer) CompareMsgExecStrict(x, y *api.MsgExecUnix) bool {
+func (k *Observer) CompareMsgExecStrict(x, y *api.MsgProcess) bool {
 	if y.Size != 0 && y.Size != x.Size {
 		k.Printf("y.Size != x.Size %d != %d\n", y.Size, x.Size)
 		return false

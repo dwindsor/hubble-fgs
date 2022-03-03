@@ -111,7 +111,7 @@ func Test_handleOriginalEvent(t *testing.T) {
 	handleOriginalEvent(&api.MsgExecveEventUnix{})
 	assert.NoError(t, testutil.CollectAndCompare(FlagCount, strings.NewReader("")))
 	handleOriginalEvent(&api.MsgExecveEventUnix{
-		Process: api.MsgExecUnix{
+		Process: api.MsgProcess{
 			Flags: api.EventClone | api.EventExecve,
 		},
 	})

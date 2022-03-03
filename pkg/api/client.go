@@ -400,7 +400,7 @@ type MsgCalltrace struct {
 }
 
 // API between Userspace hubble-fgs Golang agent and Unix domain socket listener
-type MsgExecUnix struct {
+type MsgProcess struct {
 	Size     uint32
 	PID      uint32
 	NSPID    uint32
@@ -519,7 +519,7 @@ type MsgExecveEventUnix struct {
 	ParentFlags  uint64
 	Capabilities MsgCapabilities
 	Namespaces   MsgNamespaces
-	Process      MsgExecUnix
+	Process      MsgProcess
 }
 
 type MsgTLSIPv4 struct {
