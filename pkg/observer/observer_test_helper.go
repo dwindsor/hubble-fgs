@@ -354,7 +354,7 @@ func ExecWGCurl(readyWG *sync.WaitGroup, args ...string) {
 // dockerRun starts a new docker container in the background. The container will
 // be killed and removed on test cleanup.
 // It returns the containerId on success, or an error if spawning the container failed.
-func dockerRun(t *testing.T, args ...string) (containerId string) {
+func DockerRun(t *testing.T, args ...string) (containerId string) {
 	// note: we are not using `--rm` so we can choose to wait on the container
 	// with `docker wait`. We remove it manually below in t.Cleanup instead
 	args = append([]string{"run", "--detach"}, args...)
@@ -387,7 +387,7 @@ func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 
 // Used to wait for a process to start, we do a lookup on PROCFS because this
 // may be called before obs is created.
-func waitForProcess(process string) error {
+func WaitForProcess(process string) error {
 	var b []byte
 	b = append(b, 0x00)
 
@@ -423,6 +423,10 @@ func WriteConfigFile(fileName, config string) error {
 		return err
 	}
 	return out.Sync()
+}
+
+func GetDefaultObserver(t *testing.T, lib string) (*Observer, error) {
+	return getDefaultObserverWithWatchers(t, withPretty(), withLib(lib))
 }
 
 func GetDefaultObserverWithLib(t *testing.T, config, lib string) (*Observer, error) {
