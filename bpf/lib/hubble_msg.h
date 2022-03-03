@@ -175,7 +175,7 @@ struct msg_common {
 };
 
 /* Manually linked to ARGSBUFFER and PADDED_BUFFER if this changes then please
- * also changeo SIZEOF_EVENT.
+ * also change SIZEOF_EVENT.
  */
 struct event_execve {
 	__u32 size;
