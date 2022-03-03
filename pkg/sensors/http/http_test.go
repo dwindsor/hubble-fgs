@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/http2"

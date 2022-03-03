@@ -24,6 +24,7 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 
 	"github.com/stretchr/testify/assert"
 )
