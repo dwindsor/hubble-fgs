@@ -190,11 +190,6 @@ struct msg_process {
 	char *args;
 };
 
-struct msg_pid {
-	struct event_execve parent;
-	struct event_execve curr;
-};
-
 struct msg_ipv4_tuple {
 	__u32 saddr;
 	__u32 daddr;
