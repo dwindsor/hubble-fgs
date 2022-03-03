@@ -90,14 +90,7 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) api.MsgSocketStatsUnix {
 	}
 }
 
-func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
-	m := api.MsgIPv4Event{}
-	err := binary.Read(r, binary.LittleEndian, &m)
-	if err != nil {
-		return nil, err
-	}
-	tcp := observer.MsgToIPv4Unix(&m)
-
+func correctedStatsEvent(tcp *api.MsgIPv4EventUnix) *api.MsgIPv4EventUnix {
 	entry, ok := stats.Get(tcp.Tuple)
 	if ok {
 		last := entry.(api.MsgSocketStatsUnix)
@@ -107,7 +100,16 @@ func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	} else {
 		stats.Add(tcp.Tuple, tcp.SocketStats)
 	}
+	return tcp
+}
 
+func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+	m := api.MsgIPv4Event{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, err
+	}
+	tcp := correctedStatsEvent(observer.MsgToIPv4Unix(&m))
 	return []observer.ObserverEvent{tcp}, nil
 }
 
@@ -119,7 +121,12 @@ func handleTcpClose(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	}
 	tcp := observer.MsgToIPv4Unix(&m)
 	if tcpInterval > 0 {
-		stats.Remove(tcp.Tuple)
+		cp := *tcp
+		c := correctedStatsEvent(&cp)
+		// Convert to a TCPStats event by simply setting op code
+		c.Common.Op = api.MsgOpIPv4TCPStats
+		stats.Remove(c.Tuple)
+		return []observer.ObserverEvent{tcp, c}, nil
 	}
 	return []observer.ObserverEvent{tcp}, nil
 }
