@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 //
-package observer
+package tcp
 
 import (
 	"context"
@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 
 	"golang.org/x/sys/unix"
 )
@@ -113,20 +114,20 @@ func TestSocketCookie(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserver(t, fgsLib)
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 	checker, err := socketCookieTest(t)
 	if err != nil {
 		t.Fatalf("socketCookieTest failed: %s", err)
 	}
 
-	if err := JsonTestCheck(t, checker); err != nil {
+	if err := observer.JsonTestCheck(t, checker); err != nil {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}
-	TestDone(t, obs)
+	observer.TestDone(t, obs)
 }
