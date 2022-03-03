@@ -11,16 +11,52 @@ env:
   zone: us-west2-a
   vmName: fgs-ci-${{ github.run_id }}
   vmHost: fgs@fgs-ci-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v3
+  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v4
 
 jobs:
+  setup-gcp-vm:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Authenticate with gcloud
+        uses: 'google-github-actions/auth@v0'
+        with:
+          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
+          credentials_json: '${{ secrets.CILIUM_PR_GCP_SA_KEY }}'
+          create_credentials_file: true
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
+
+      - name: Install beta component
+        run: gcloud components install beta && gcloud info
+
+      - name: Create VM
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 10
+          command: |
+            gcloud beta compute instances create ${{ env.vmName }} --quiet --zone ${{ env.zone }} \
+              --machine-type n1-standard-4 --min-cpu-platform "Intel Haswell" \
+              --enable-nested-virtualization \
+              --source-machine-image ${{ env.machineImage }} \
+              --preemptible --no-restart-on-failure --maintenance-policy=terminate \
+              --service-account isovalent-hubble-fgs-sa@cilium-pr.iam.gserviceaccount.com
+
   end-to-end-tests:
     runs-on: ubuntu-latest
     timeout-minutes: 60
+    needs: setup-gcp-vm
     strategy:
+      max-parallel: 1
       matrix:
         kernel:
+          - '5.15-lts'
           - '5.10-lts'
+          - '5.4-lts'
     steps:
       - uses: actions/checkout@master
         with:
@@ -67,20 +103,15 @@ jobs:
       - name: Install beta component
         run: gcloud components install beta && gcloud info
 
-      - name: Create VM
-        run: |
-          gcloud beta compute instances create ${{ env.vmName }} --quiet --zone ${{ env.zone }} \
-            --machine-type n1-standard-4 --min-cpu-platform "Intel Haswell" \
-            --enable-nested-virtualization \
-            --source-machine-image ${{ env.machineImage }} \
-            --preemptible --no-restart-on-failure --maintenance-policy=terminate \
-            --service-account isovalent-hubble-fgs-sa@cilium-pr.iam.gserviceaccount.com
-
       - name: Set up ssh into VM
-        run: |
-          gcloud compute ssh fgs@${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a"
-          gcloud compute config-ssh
-          ssh ${{ env.vmHost }} 'whoami && uname -a'
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 10
+          command: |
+            gcloud compute ssh --quiet fgs@${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a"
+            gcloud compute config-ssh --quiet
+            ssh ${{ env.vmHost }} 'whoami && uname -a'
 
       - name: Copy over FGS
         run: |
@@ -153,6 +184,8 @@ jobs:
           until curl --silent -f -lSL "https://quay.io/api/v1/repository/${{ github.repository_owner }}/hubble-enterprise-ci/tag/${{ steps.vars.outputs.sha }}/images" &> /dev/null; do sleep 45s; done
 
       - name: Install FGS
+        # This is really ugly, but we only want to run this step on the first matrix run
+        if: matrix.kernel == '5.15-lts'
         run: |
           docker pull ${{ steps.vars.outputs.fgsImage }}
           docker save ${{ steps.vars.outputs.fgsImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
@@ -194,11 +227,16 @@ jobs:
           mkdir -p logs
           scp -P 3000 root@localhost:/fgs/contrib/end-to-end/logs/* logs
 
+      - name: Shut off KVM
+        timeout-minutes: 5
+        run: |
+          ssh -p 3000 root@localhost "shutdown now" || true
+
       - name: Upload FGS pod logs
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-          name: hubble-enterprise-logs
+          name: hubble-enterprise-logs-${{ matrix.kernel }}
           path: logs/hubble-enterprise-pod*.log
           retention-days: 5
 
@@ -206,7 +244,7 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-          name: bugtool-dumps
+          name: bugtool-dumps-${{ matrix.kernel }}
           path: logs/bugtool*.tar.gz
           retention-days: 5
 
@@ -214,9 +252,30 @@ jobs:
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-          name: fgs.json
+          name: fgs-logs-${{ matrix.kernel }}
           path: logs/fgs.json
           retention-days: 5
+
+  cleanup:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    needs: [end-to-end-tests, setup-gcp-vm]
+    if: always()
+    steps:
+      - name: Authenticate with gcloud
+        uses: 'google-github-actions/auth@v0'
+        with:
+          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
+          credentials_json: '${{ secrets.CILIUM_PR_GCP_SA_KEY }}'
+          create_credentials_file: true
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
+
+      - name: Install beta component
+        run: gcloud components install beta && gcloud info
 
       - name: Destroy VM
         if: ${{ always() }}
