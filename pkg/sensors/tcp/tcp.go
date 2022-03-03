@@ -111,6 +111,19 @@ func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	return []observer.ObserverEvent{tcp}, nil
 }
 
+func handleTcpClose(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+	m := api.MsgIPv4Event{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, err
+	}
+	tcp := observer.MsgToIPv4Unix(&m)
+	if tcpInterval > 0 {
+		stats.Remove(tcp.Tuple)
+	}
+	return []observer.ObserverEvent{tcp}, nil
+}
+
 func handleTcp(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, binary.LittleEndian, &m)
@@ -158,7 +171,7 @@ func AddTCP() {
 	/* Core set of TCP events */
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCONNECT, handleTcp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCONNECTRET, handleTcp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCLOSE, handleTcp)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCLOSE, handleTcpClose)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_BIND, handleTcp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_LISTEN, handleTcp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_ACCEPT, handleTcp)
