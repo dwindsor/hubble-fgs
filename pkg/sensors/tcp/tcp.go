@@ -111,6 +111,16 @@ func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	return []observer.ObserverEvent{tcp}, nil
 }
 
+func handleTcp(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+	m := api.MsgIPv4Event{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, err
+	}
+	tcp := observer.MsgToIPv4Unix(&m)
+	return []observer.ObserverEvent{tcp}, nil
+}
+
 func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	configureSockStatSampler(tcpInterval)
 	return loader.LoadKprobeProgram(args.Version,
@@ -144,4 +154,12 @@ func AddTCP() {
 	sensors.RegisterProbeType("tcp_sensor", tcp)
 	sensors.RegisterTracingSensorsAtInit(tcp.name, tcp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPSTATS, handleTcpStats)
+
+	/* Core set of TCP events */
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCONNECT, handleTcp)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCONNECTRET, handleTcp)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCLOSE, handleTcp)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_BIND, handleTcp)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_LISTEN, handleTcp)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_ACCEPT, handleTcp)
 }
