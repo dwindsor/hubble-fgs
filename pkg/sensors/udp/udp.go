@@ -301,7 +301,16 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 
 func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) udpInfoValue {
 	if curr.TXBytes < last.TXBytes {
-		logger.GetLogger().Warnf("key %s\n    curr %s < last %s\n", key, curr, last)
+		logger.GetLogger().Warnf("TX UDP stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
+	}
+	if curr.SubmittedBytes < last.SubmittedBytes {
+		logger.GetLogger().Warnf("TX submitted UDP stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
+	}
+	if curr.RXBytes < last.RXBytes {
+		logger.GetLogger().Warnf("RX UDP stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
+	}
+	if curr.ConsumedBytes < last.ConsumedBytes {
+		logger.GetLogger().Warnf("RX UDP consumed stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
 	}
 	return udpInfoValue{
 		SubmittedBytes: curr.SubmittedBytes - last.SubmittedBytes,

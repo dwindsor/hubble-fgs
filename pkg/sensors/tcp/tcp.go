@@ -72,6 +72,12 @@ func (tcp *tcpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 }
 
 func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) api.MsgSocketStatsUnix {
+	if curr.BytesReceived < last.BytesReceived {
+		logger.GetLogger().Warnf("RX TCP stats underflow: %d < %d", curr.BytesReceived, last.BytesReceived)
+	}
+	if curr.BytesSent < last.BytesSent {
+		logger.GetLogger().Warnf("TX TCP stats underflow: %d < %d", curr.BytesReceived, last.BytesReceived)
+	}
 	return api.MsgSocketStatsUnix{
 		BytesSubmitted:  0,
 		BytesSent:       curr.BytesSent - last.BytesSent,
