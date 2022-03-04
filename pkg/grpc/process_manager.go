@@ -1401,6 +1401,11 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 		Stats:   fgsSocketStats,
 	}
 
+	// Stats are pushed on the timer e.g. every 60 seconds by default and at
+	// end of flow so it seems unliklye that DNS entry should be missing. For
+	// now I'll skip bouncing these through DNS entries when missing DNS.
+	fgsEvent.Socket.DestinationNames, _ = pm.dns.GetIp(fgsTuple.DestinationIp)
+
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
 		fgsEvent.Socket.DestinationPod = pm.getPodInfoOfIp(destinationIP)
