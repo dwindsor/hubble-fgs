@@ -19,9 +19,9 @@ jobs:
         with:
           path: hubble-fgs
 
-      - uses: actions/setup-go@v2.1.4
+      - uses: actions/setup-go@v3
         with:
-          go-version: '1.17.6'
+          go-version: '1.17.8'
 
       - name: Set up job variables
         id: vars

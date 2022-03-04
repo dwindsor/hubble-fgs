@@ -73,9 +73,9 @@ chrootconfig() {
 		systemctl enable docker.service
 
 		# Install golang
-		wget https://go.dev/dl/go1.17.6.linux-amd64.tar.gz
-		rm -rf /usr/local/go && tar -C /usr/local -xzf go1.17.6.linux-amd64.tar.gz
-		rm -f go1.17.6.linux-amd64.tar.gz
+		wget https://go.dev/dl/go1.17.8.linux-amd64.tar.gz
+		rm -rf /usr/local/go && tar -C /usr/local -xzf go1.17.8.linux-amd64.tar.gz
+		rm -f go1.17.8.linux-amd64.tar.gz
 
 		# Install kind
 		curl -Lo ./kind "https://kind.sigs.k8s.io/dl/v0.11.1/kind-linux-amd64"
