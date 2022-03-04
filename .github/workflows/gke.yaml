@@ -39,7 +39,7 @@ jobs:
 
       - name: Install Cilium CLI
         run: |
-          curl -sSL --remote-name-all https://github.com/cilium/cilium-cli/releases/download/v0.9.3/cilium-linux-amd64.tar.gz{,.sha256sum}
+          curl -sSL --remote-name-all https://github.com/cilium/cilium-cli/releases/download/v0.10.4/cilium-linux-amd64.tar.gz{,.sha256sum}
           sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
           sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
           rm cilium-linux-amd64.tar.gz{,.sha256sum}
@@ -60,14 +60,18 @@ jobs:
           gcloud info
 
       - name: Create GKE cluster
+        id: cluster
         run: |
           gcloud container clusters create ${{ env.clusterName }} \
             --preemptible \
             --labels "usage=pr,owner=${{ github.event.pull_request.number }}" \
-            --image-type COS \
+            --image-type COS_CONTAINERD \
             --num-nodes 2 \
             --machine-type n1-standard-4 \
+            --node-taints node.cilium.io/agent-not-ready=true:NoExecute \
             --zone ${{ env.zone }}
+          CLUSTER_CIDR=$(gcloud container clusters describe ${{ env.clusterName }} --zone ${{ env.zone }} --format="value(clusterIpv4Cidr)")
+          echo ::set-output name=cluster_cidr::${CLUSTER_CIDR}
 
       - name: Get Credentials
         run: |
@@ -79,6 +83,7 @@ jobs:
             --cluster-name=${{ env.clusterName }} \
             --restart-unmanaged-pods=false \
             --config monitor-aggregation=none \
+            --ipv4-native-routing-cidr=${{ steps.cluster.outputs.cluster_cidr }}
 
       - name: Enable Relay
         run: |

@@ -83,7 +83,7 @@ chrootconfig() {
 		mv ./kind /bin/kind
 
 		# Install cilium cli
-		curl -sSL --remote-name-all https://github.com/cilium/cilium-cli/releases/download/v0.9.3/cilium-linux-amd64.tar.gz{,.sha256sum}
+		curl -sSL --remote-name-all https://github.com/cilium/cilium-cli/releases/download/v0.10.4/cilium-linux-amd64.tar.gz{,.sha256sum}
 		sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
 		sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
 		rm cilium-linux-amd64.tar.gz{,.sha256sum}
