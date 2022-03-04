@@ -27,6 +27,9 @@ dump_logs() {
       | xargs -I{} sh -c 'kubectl logs -c enterprise -n kube-system {} > ./hubble-enterprise-pod-{}.log'
     kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
       -n kube-system -o custom-columns=name:metadata.name --no-headers \
+      | xargs -I{} sh -c 'kubectl logs -p -c enterprise -n kube-system {} > ./hubble-enterprise-pod-{}-prev.log'
+    kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
+      -n kube-system -o custom-columns=name:metadata.name --no-headers \
       | xargs -I{} kubectl cp -c enterprise -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
     cat ./hubble-fgs*.log > fgs.json
     rm -f ./hubble-fgs*.log

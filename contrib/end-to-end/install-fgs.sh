@@ -77,6 +77,7 @@ install_fgs() {
     helm_opts+=("--set" "extraHostPathMounts[0].readOnly=true")
     if [ -f "$BTF_FILE" ]; then
         KIND_ID="$(docker ps -aqf "name=$CLUSTER_NAME-control-plane")"
+        echo "Transferring $BTF_FILE to container $KIND_ID..." 1>&2
         docker cp "$BTF_FILE" "$KIND_ID:/btf"
         helm_opts+=("--set" "enterprise.btf=/btf")
     fi
