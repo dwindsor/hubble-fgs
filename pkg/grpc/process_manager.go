@@ -57,14 +57,15 @@ type ProcessManager struct {
 	nodeName   string
 	watcher    K8sResourceWatcher
 	// synchronize access to the listeners map.
-	mux               sync.Mutex
-	listeners         map[listener]struct{}
-	ciliumState       *cilium.State
-	enableProcessCred bool
-	enableProcessNs   bool
-	enableEventCache  bool
-	enableCilium      bool
-	dns               *dnsCache
+	mux                    sync.Mutex
+	listeners              map[listener]struct{}
+	ciliumState            *cilium.State
+	enableProcessCred      bool
+	enableProcessNs        bool
+	enableEventCache       bool
+	enableCilium           bool
+	enableProcessAncestors bool
+	dns                    *dnsCache
 }
 
 // getNodeNameForExport returns node name string for JSON export. It uses NODE_NAME
@@ -91,6 +92,7 @@ func NewProcessManager(
 	enableProcessNs bool,
 	enableEventCache bool,
 	enableCilium bool,
+	enableProcessAncestors bool,
 ) (*ProcessManager, error) {
 	cache, err := newProcessCache(log, processCacheSize)
 	if err != nil {
@@ -103,17 +105,18 @@ func NewProcessManager(
 	}
 
 	pm := &ProcessManager{
-		log:               log,
-		cache:             cache,
-		nodeName:          getNodeNameForExport(),
-		watcher:           watcher,
-		ciliumState:       ciliumState,
-		listeners:         make(map[listener]struct{}),
-		enableProcessCred: enableProcessCred,
-		enableProcessNs:   enableProcessNs,
-		enableEventCache:  enableEventCache,
-		enableCilium:      enableCilium,
-		dns:               dnsCache,
+		log:                    log,
+		cache:                  cache,
+		nodeName:               getNodeNameForExport(),
+		watcher:                watcher,
+		ciliumState:            ciliumState,
+		listeners:              make(map[listener]struct{}),
+		enableProcessCred:      enableProcessCred,
+		enableProcessNs:        enableProcessNs,
+		enableEventCache:       enableEventCache,
+		enableCilium:           enableCilium,
+		enableProcessAncestors: enableProcessAncestors,
+		dns:                    dnsCache,
 	}
 
 	if enableEventCache {
@@ -1088,6 +1091,9 @@ func (pm *ProcessManager) GetProcessExec(
 				pm.cache.refDec(a)
 			}
 		}
+	}
+	if !pm.enableProcessAncestors {
+		fgsAncestors = nil
 	}
 	return &fgs.ProcessExec{
 		Process:   fgsProcess,

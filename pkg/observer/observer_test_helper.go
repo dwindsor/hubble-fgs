@@ -296,7 +296,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	// to bounce events through the cache waiting for Cilium to reply with endpoints
 	// and K8s cache data to be completed. We currently only stub them enough to
 	// report nil or a pre-defined value. So no cache needed.
-	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState, true, true, true, false)
+	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState, true, true, true, false, true)
 	if err != nil {
 		return err
 	}

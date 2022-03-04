@@ -32,8 +32,9 @@ const (
 	keyLogLevel  = "log-level"
 	keyLogFormat = "log-format"
 
-	keyEnableK8sAPI    = "enable-k8s-api"
-	keyEnableCiliumAPI = "enable-cilium-api"
+	keyEnableK8sAPI           = "enable-k8s-api"
+	keyEnableCiliumAPI        = "enable-cilium-api"
+	keyEnableProcessAncestors = "enable-process-ancestors"
 
 	keyMetricsServer     = "metrics-server"
 	keyNetworkInterfaces = "network-interfaces"
@@ -69,8 +70,9 @@ var (
 	debug            bool
 	processCacheSize int
 
-	enableK8sAPI    bool
-	enableCiliumAPI bool
+	enableK8sAPI           bool
+	enableCiliumAPI        bool
+	enableProcessAncestors bool
 
 	metricsServer     string
 	networkInterfaces string
@@ -112,6 +114,7 @@ func readAndSetFlags() {
 
 	enableK8sAPI = viper.GetBool(keyEnableK8sAPI)
 	enableCiliumAPI = viper.GetBool(keyEnableCiliumAPI)
+	enableProcessAncestors = viper.GetBool(keyEnableProcessAncestors)
 
 	metricsServer = viper.GetString(keyMetricsServer)
 	networkInterfaces = viper.GetString(keyNetworkInterfaces)

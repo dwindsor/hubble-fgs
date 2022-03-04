@@ -140,7 +140,8 @@ func hubbleFGSExecute() error {
 		enableProcessCred,
 		enableProcessNs,
 		enableK8sAPI,
-		enableCiliumAPI)
+		enableCiliumAPI,
+		enableProcessAncestors)
 	if err != nil {
 		return err
 	}
@@ -311,6 +312,7 @@ func execute() error {
 	flags.String(keyLogFormat, "text", "Set log format")
 	flags.Bool(keyEnableK8sAPI, false, "Access Kubernetes API to associate FGS events with Kubernetes pods")
 	flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
+	flags.Bool(keyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.String(keyMetricsServer, "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
 	flags.String(keyNetworkInterfaces, "", "Comma separated list of regex expressions to use to apply protocol parsers")
 	flags.String(keyServerAddress, "localhost:54321", "gRPC server address")

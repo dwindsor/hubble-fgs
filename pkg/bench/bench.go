@@ -176,6 +176,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	enableProcessNs := false
 	enableCiliumAPI := false
 	enableEventCache := false
+	enableProcessAncestors := true
 
 	processManager, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
@@ -186,6 +187,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 		enableProcessNs,
 		enableEventCache,
 		enableCiliumAPI,
+		enableProcessAncestors,
 	)
 	if err != nil {
 		return err
