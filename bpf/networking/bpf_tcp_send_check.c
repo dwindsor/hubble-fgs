@@ -91,8 +91,12 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 		cfg = map_lookup_elem(&tcp_send_check_sampler, &zero);
 		if (!cfg)
 			return 0;
-		if (process->last_time + cfg->ktime > current_time_ns)
+		if (!process->last_time) {
+			process->last_time = current_time_ns;
 			goto out;
+		} else if (process->last_time + cfg->ktime > current_time_ns) {
+			goto out;
+		}
 
 		process->last_time = current_time_ns;
 		val = map_lookup_elem(&tcp_send_check_event_map, &zero);
