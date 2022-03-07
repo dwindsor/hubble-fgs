@@ -115,8 +115,8 @@ int udp4_sendret(struct pt_regs *ctx)
 		struct udp_info_value *value = map_lookup_elem(&udp_map, key);
 
 		if (value) {
-			value->submitted_bytes += ret;
-			value->submitted_segs++;
+			__sync_fetch_and_add(&value->submitted_bytes, ret);
+			__sync_fetch_and_add(&value->submitted_segs, 1);
 		}
 		map_delete_elem(&udp_retprobe_map, &pid);
 	}
