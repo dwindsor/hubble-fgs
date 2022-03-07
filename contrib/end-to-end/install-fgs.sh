@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xeu
+set -eu
 
 CLUSTER_NAME="fgs-cli-ci"
 PROJECT_ROOT="$(realpath $(dirname "${BASH_SOURCE[0]}")/../..)"
@@ -43,8 +43,6 @@ install_fgs() {
         exit -1
     fi
 
-    kubectl cluster-info --context "kind-$CLUSTER_NAME"
-
     if [ -z "$FGS_IMAGE" ]; then
         echo "Building FGS image..." 1>&2
         pushd "$PROJECT_ROOT"
@@ -75,8 +73,13 @@ install_fgs() {
     helm_opts+=("--set" "enterprise.exportAllowList=")
     helm_opts+=("--set" "enterprise.enableTLSEvents=true")
     helm_opts+=("--set" "enterprise.exportFileMaxSizeMB=50")
+    helm_opts+=("--set" "extraHostPathMounts[0].name=btf")
+    helm_opts+=("--set" "extraHostPathMounts[0].mountPath=/btf")
+    helm_opts+=("--set" "extraHostPathMounts[0].readOnly=true")
     if [ -f "$BTF_FILE" ]; then
-        helm_opts+=("--set" "enterprise.btf=$BTF_FILE")
+        KIND_ID="$(docker ps -aqf "name=$CLUSTER_NAME-control-plane")"
+        docker cp "$BTF_FILE" "$KIND_ID:/btf"
+        helm_opts+=("--set" "enterprise.btf=/btf")
     fi
 
     helm install hubble-enterprise isovalent/hubble-enterprise "${helm_opts[@]}"

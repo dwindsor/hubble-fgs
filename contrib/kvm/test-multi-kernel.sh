@@ -74,7 +74,11 @@ make test
 
 # Run end-to-end-tests
 contrib/end-to-end/bootstrap-cluster.sh
-contrib/end-to-end/install-fgs.sh --image isovalent/hubble-fgs:latest
+if [ -f "/fgs/bpf/objs/btf" ]; then
+    contrib/end-to-end/install-fgs.sh --image isovalent/hubble-fgs:latest --btf \$(readlink -f /fgs/bpf/objs/btf)
+else
+    contrib/end-to-end/install-fgs.sh --image isovalent/hubble-fgs:latest
+fi
 contrib/end-to-end/tests/http-tls.sh
 contrib/end-to-end/tests/demo-app.sh
 echo "Done testing on Linux \$(uname -r)!" 1>&2
