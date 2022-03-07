@@ -117,6 +117,7 @@ int udp4_sendret(struct pt_regs *ctx)
 		if (value) {
 			__sync_fetch_and_add(&value->submitted_bytes, ret);
 			__sync_fetch_and_add(&value->submitted_segs, 1);
+			WRITE_ONCE(value->ktime, ktime_get_ns());
 		}
 		map_delete_elem(&udp_retprobe_map, &pid);
 	}
