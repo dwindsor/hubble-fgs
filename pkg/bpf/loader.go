@@ -163,6 +163,8 @@ static struct bpf_object *__loader(const int version,
 
 	if (verbosity > 1)
 		libbpf_set_print(__print);
+    else
+		libbpf_set_print(__quiet);
 
 	obj = bpf_object__open(prog);
 	err = libbpf_get_error(obj);
