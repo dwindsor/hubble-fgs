@@ -573,16 +573,7 @@ func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, 
 	loader_fd := C.kprobe_loader(version, verbosity, unsafe.Pointer(btf), o, a, l, p, mapdir, ret)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
-		// Commit a256aac5 in linux-stable's 4.19.y branch broke userspace by setting version
-		// sublevel to 255 no matter what. This broke kprobes on impacted 4.19 versions
-		// (4.19.221 and onwards). Retry with version number patched with sublevel 255 to
-		// catch this case.
-		version = version&0xffff00 + 255
-		loader_fd = C.kprobe_loader(version, verbosity, unsafe.Pointer(btf), o, a, l, p, mapdir, ret)
-		loaderInt = int(loader_fd)
-		if loaderInt < 0 {
-			return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
-		}
+		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
 	}
 	return nil, loaderInt
 }
@@ -605,19 +596,7 @@ func LoadGenericKprobeProgram(__version, __verbosity int,
 		o, a, l, p, mapdir, genmapdir, unsafe.Pointer(&filters))
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
-		// Commit a256aac5 in linux-stable's 4.19.y branch broke userspace by setting version
-		// sublevel to 255 no matter what. This broke kprobes on impacted 4.19 versions
-		// (4.19.221 and onwards). Retry with version number patched with sublevel 255 to
-		// catch this case.
-		version = version&0xffff00 + 255
-		loader_fd = C.generic_kprobe_loader(version,
-			verbosity,
-			unsafe.Pointer(btf),
-			o, a, l, p, mapdir, genmapdir, unsafe.Pointer(&filters))
-		loaderInt = int(loader_fd)
-		if loaderInt < 0 {
-			return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
-		}
+		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
 	}
 	return nil, loaderInt
 }
@@ -634,16 +613,7 @@ func LoadGenericKprobeRetProgram(__version, __verbosity int, btf uintptr, object
 	loader_fd := C.generic_kprobe_ret_loader(version, verbosity, unsafe.Pointer(btf), o, a, l, p, mapdir, genmapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
-		// Commit a256aac5 in linux-stable's 4.19.y branch broke userspace by setting version
-		// sublevel to 255 no matter what. This broke kprobes on impacted 4.19 versions
-		// (4.19.221 and onwards). Retry with version number patched with sublevel 255 to
-		// catch this case.
-		version = version&0xffff00 + 255
-		loader_fd = C.generic_kprobe_ret_loader(version, verbosity, unsafe.Pointer(btf), o, a, l, p, mapdir, genmapdir)
-		loaderInt = int(loader_fd)
-		if loaderInt < 0 {
-			return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
-		}
+		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
 	}
 	return nil, loaderInt
 }

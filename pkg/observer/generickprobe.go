@@ -496,6 +496,8 @@ func loadGenericKprobe(bpfDir, mapDir string, version int, p *sensors.Program, b
 	)
 	if err == nil {
 		logger.GetLogger().Infof("Loaded generic kprobe sensor: %s -> %s", p.Name, p.Attach)
+	} else {
+		return err
 	}
 
 	m, err := bpf.OpenMap(filepath.Join(mapDir, sensors.NamesMap.Name))
