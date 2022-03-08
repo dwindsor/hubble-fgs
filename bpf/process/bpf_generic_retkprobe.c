@@ -37,9 +37,9 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	int zero = 0;
 	__u32 ppid;
 	long total = 0;
-	long size, orig_size;
+	long size = 0, orig_size;
 	unsigned long retprobe_buffer;
-	long ty;
+	long ty_arg, do_copy;
 
 	e = map_lookup_elem(&process_call_heap, &zero);
 	if (!e)
@@ -47,24 +47,27 @@ int generic_kprobe_event(struct pt_regs *ctx)
 
 	e->thread_id = retprobe_map_get_key(ctx);
 
-	ty = bpf_core_enum_value(fgs_args, argreturn);
 	retprobe_buffer = retprobe_map_get(e->thread_id);
 	if (!retprobe_buffer)
 		return 0;
 
-	if (ty) {
-		size = read_call_arg(ctx, e, 0, ty, 0, (unsigned long)ctx->ax, 0, 0);
-	} else {
+	ty_arg = bpf_core_enum_value(fgs_args, argreturn);
+	do_copy = bpf_core_enum_value(fgs_args, argreturncopy);
+	if (ty_arg)
+		size += read_call_arg(ctx, e, 0, ty_arg, 0, (unsigned long)ctx->ax, 0, 0);
+	if (do_copy) {
+		long saved_size = size;
 		int *s;
 
 		orig_size = size = (int)ctx->ax;
 		size &= 0xfff;
-		s = (int *)&e->args[0];
+		s = (int *)&e->args[saved_size];
 		s[0] = size;
 		s[1] = orig_size;
 		/* tbd error check and signal to userland */
-		probe_read(&e->args[8], size, (char *)retprobe_buffer);
-		size +=8;
+		probe_read(&s[2], size, (char *)retprobe_buffer);
+		size += 8;
+		size += saved_size;
 	}
 	/* Complete message header and send */
 	enter = event_find_curr(&ppid, 0, &walker);

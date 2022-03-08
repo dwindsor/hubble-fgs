@@ -19,6 +19,8 @@ enum generic_func_args_enum {
 	arg4m   = 0x12,
 	/* return arguments */
 	argreturn = 0x31,
+	/* use return argument for buffer copy */
+	argreturncopy = 0x32,
 	/* actions enabled */
 	sigkill = 0x40,
 	/* tcp sock stat sample info */

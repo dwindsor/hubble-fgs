@@ -63,6 +63,7 @@ const (
 	arg3            = "arg3"
 	arg4            = "arg4"
 	argreturn       = "argreturn"
+	argreturncopy   = "argreturncopy"
 	is_syscall      = "syscall"
 	argm0           = "arg0m"
 	argm1           = "arg1m"
@@ -319,17 +320,30 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			argsBTFSet[api.ReturnArgIndex] = true
 			argP := argPrinters{index: api.ReturnArgIndex, ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
-		} else if argRetprobe != nil {
+		} else {
 			retVal := btfobj.AddEnumValue(argreturn, 0)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d", argreturn, retVal)
 			}
+		}
+
+		if argRetprobe != nil {
 			argsBTFSet[api.ReturnArgIndex] = true
 			setRetprobe = true
+
+			ret = btfobj.AddEnumValue(argreturncopy, 1)
+			if ret < 0 {
+				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d", argreturncopy, 1)
+			}
 
 			argType := GenericTypeFromString(argRetprobe.Type)
 			argP := argPrinters{index: int(argRetprobe.Index), ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
+		} else {
+			ret = btfobj.AddEnumValue(argreturncopy, 0)
+			if ret < 0 {
+				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d", argreturncopy, 0)
+			}
 		}
 
 		// Mark remaining arguments as 'nops' the kernel side will skip
