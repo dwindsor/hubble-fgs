@@ -113,23 +113,6 @@ var (
 		struct{}{},
 	}
 
-	TCPConnectRet = Program{
-		"bpf_tcpmonret.o",
-		"__x64_sys_connect",
-		"sys_connect",
-		"kretprobe/sys_connect",
-		"kretprobe_sys_connect",
-
-		true,
-		true,
-		"kprobe",
-		Idle(),
-
-		-1,
-
-		struct{}{},
-	}
-
 	TCPClose = Program{
 		"bpf_tcpclose.o",
 		"tcp_set_state",

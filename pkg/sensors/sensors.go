@@ -28,7 +28,6 @@ var (
 		&Fork,
 		&Cred,
 		&TCPConnect,
-		&TCPConnectRet,
 		&TCPClose,
 		&Listen,
 	}
@@ -39,7 +38,6 @@ var (
 		&Fork,
 		&Cred,
 		&TCPConnect,
-		&TCPConnectRet,
 		&TCPClose,
 		&Listen,
 	}
@@ -114,7 +112,6 @@ func GetInitialSensor() *Sensor {
 		&Fork,
 		&Cred,
 		&TCPConnect,
-		&TCPConnectRet,
 		&TCPClose,
 		&Listen,
 	}
@@ -125,7 +122,6 @@ func GetInitialSensor() *Sensor {
 			&Fork,
 			&Cred,
 			&TCPConnect,
-			&TCPConnectRet,
 			&TCPClose,
 			&Listen,
 		}
