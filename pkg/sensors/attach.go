@@ -40,7 +40,6 @@ func LoadSockOpt(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,
 	version, verbose int,
-	x64 bool,
 	path string,
 ) (error, int) {
 	return LoadCgroupProgram(bpfDir, mapDir, ciliumDir, load)
@@ -88,8 +87,7 @@ func LoadSkProgram(
 func LoadSockops(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,
-	version, verbose int,
-	x64 bool) (error, int) {
+	version, verbose int) (error, int) {
 	if bpf.IsSockopsLoaded() {
 		logger.GetLogger().WithField("program", load.Name).Infof("Sockops, %d references exist reuse", bpf.SockopsRefCnt())
 		return nil, 0

@@ -29,7 +29,6 @@ var (
 	TLSSkmsg = sensors.ProgramBuilder(
 		"bpf_tls_skmsg.o",
 		"sk_msg",
-		"sk_msg",
 		"sk_msg/fgs_tls",
 		"bpf_tls_sk_msg_fgs",
 		false,
@@ -38,7 +37,6 @@ var (
 
 	TLSSkSkbVerdict = sensors.ProgramBuilder(
 		"bpf_tls_skskb_verdict.o",
-		"sk_skb",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgs_tls",
 		"bpf_tls_skskb_verdict_fgs",
@@ -49,7 +47,6 @@ var (
 	TLSSkSkbParser = sensors.ProgramBuilder(
 		"bpf_tls_skskb_parser.o",
 		"sk_skb",
-		"sk_skb",
 		"sk_skb/stream_parser/fgs_tls",
 		"bpf_tls_skskb_parser_fgs",
 		false,
@@ -58,7 +55,6 @@ var (
 
 	SockoptSet = sensors.ProgramBuilder(
 		"bpf_setsockopt.o",
-		"cgroup",
 		"cgroup",
 		"cgroup/setsockopt",
 		"cgroup_setsockopt",
@@ -75,7 +71,6 @@ var (
 	TLSTCIngress = sensors.ProgramBuilder(
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
-		"ingress_tcp",
 		"classifier/ingress_tcp",
 		"classifier_ingress_tcp",
 		false,
@@ -84,7 +79,6 @@ var (
 
 	TLSTCEgress = sensors.ProgramBuilder(
 		"bpf_tc_egress.o",
-		"egress_tcp",
 		"egress_tcp",
 		"classifier/egress_tcp",
 		"tc_egress_tcp",
@@ -154,7 +148,7 @@ type skmsgTLSSensor struct {
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	path := filepath.Join(args.MapDir, sockops.TlsSockMapName)
 
-	err, i := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Version, args.Verbose, args.X64, path)
+	err, i := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Version, args.Verbose, path)
 	if err != nil {
 		return err, i
 	}

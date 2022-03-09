@@ -445,7 +445,6 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		btfobj = bpf.BTFNil
 
 		load := &sensors.Program{}
-		load.X64Attach = funcName
 		load.Name = path.Join(option.Config.HubbleLib, loadProgName)
 		load.Label = "kprobe/generic_kprobe"
 		load.Attach = funcName
@@ -460,7 +459,6 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 
 		if setRetprobe {
 			loadret := &sensors.Program{}
-			loadret.X64Attach = funcName
 			loadret.Name = path.Join(option.Config.HubbleLib, loadProgRetName)
 			loadret.Label = "kprobe/generic_retkprobe"
 			loadret.Attach = funcName
@@ -489,25 +487,13 @@ func loadGenericKprobe(bpfDir, mapDir string, version int, p *sensors.Program, b
 	err, _ := bpf.LoadGenericKprobeProgram(
 		version, option.Config.Verbosity, btf,
 		p.Name,
-		p.X64Attach,
+		p.Attach,
 		p.Label,
 		progpath,
 		mapDir,
 		genmapDir,
 		filters,
 	)
-	if err != nil {
-		err, _ = bpf.LoadGenericKprobeProgram(
-			version, option.Config.Verbosity, btf,
-			p.Name,
-			p.Attach,
-			p.Label,
-			progpath,
-			mapDir,
-			genmapDir,
-			filters,
-		)
-	}
 	if err == nil {
 		logger.GetLogger().Infof("Loaded generic kprobe sensor: %s -> %s", p.Name, p.Attach)
 	}
@@ -529,23 +515,12 @@ func loadGenericKprobeRet(bpfDir, mapDir string, version int, p *sensors.Program
 	err, _ := bpf.LoadGenericKprobeRetProgram(
 		version, option.Config.Verbosity, btf,
 		p.Name,
-		p.X64Attach,
+		p.Attach,
 		p.Label,
 		path.Join(bpfDir, p.PinPath),
 		mapDir,
 		genmapDir,
 	)
-	if err != nil {
-		err, _ = bpf.LoadGenericKprobeRetProgram(
-			version, option.Config.Verbosity, btf,
-			p.Name,
-			p.Attach,
-			p.Label,
-			path.Join(bpfDir, p.PinPath),
-			mapDir,
-			genmapDir,
-		)
-	}
 	return err
 }
 

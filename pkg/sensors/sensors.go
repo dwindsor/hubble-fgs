@@ -264,7 +264,6 @@ type LoadProbeArgs struct {
 	BPFDir, MapDir, CiliumDir string
 	Load                      *Program
 	Version, Verbose          int
-	X64                       bool
 }
 
 // registerSensor registers a sensor so that it is available to users.

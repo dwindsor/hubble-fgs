@@ -49,7 +49,6 @@ var (
 	SockCreate = sensors.ProgramBuilder(
 		"bpf_sock.o",
 		"sock_create",
-		"sock_create",
 		"cgroup/sock_create",
 		"cgroup_sock_create",
 
@@ -60,7 +59,6 @@ var (
 	SockRelease = sensors.ProgramBuilder(
 		"bpf_sock_release.o",
 		"inet_release",
-		"inet_release",
 		"kprobe/inet_release",
 		"kprobe_sock_release",
 
@@ -70,7 +68,6 @@ var (
 
 	InetSend = sensors.ProgramBuilder(
 		"bpf_inet_send.o",
-		"inet_send",
 		"inet_send",
 		"cgroup_skb/egress",
 		"cgroup_skb_egress",
@@ -83,7 +80,6 @@ var (
 	InetRecv = sensors.ProgramBuilder(
 		"bpf_inet_send.o",
 		"inet_recv",
-		"inet_recv",
 		"cgroup_skb/ingress",
 		"cgroup_skb_ingress",
 
@@ -94,7 +90,6 @@ var (
 
 	InetSendLazy = sensors.ProgramBuilder(
 		"bpf_inet_send_lazy.o",
-		"inet_lazy_send",
 		"inet_lazy_send",
 		"cgroup_skb/egress",
 		"cgroup_skb_egress",
@@ -107,7 +102,6 @@ var (
 	InetRecvLazy = sensors.ProgramBuilder(
 		"bpf_inet_send_lazy.o",
 		"inet_lazy_recv",
-		"inet_lazy_recv",
 		"cgroup_skb/ingress",
 		"cgroup_skb_ingress",
 
@@ -118,7 +112,6 @@ var (
 
 	UdpSend = sensors.ProgramBuilder(
 		"bpf_udp_sendmsg.o",
-		"udp_sendmsg",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
 		"kprobe_udp_sendmsg",
@@ -131,7 +124,6 @@ var (
 	UdpRetSend = sensors.ProgramBuilder(
 		"bpf_udp_sendmsg.o",
 		"udp_sendmsg",
-		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
 		"kretprobe_udp_sendmsg",
 
@@ -142,7 +134,6 @@ var (
 
 	UdpRecv = sensors.ProgramBuilder(
 		"bpf_udp_sendmsg.o",
-		"skb_consume_udp",
 		"skb_consume_udp",
 		"kprobe/skb_consume_udp",
 		"kprobe_skb_consume_udp",

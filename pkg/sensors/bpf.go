@@ -17,12 +17,12 @@ import (
 )
 
 func ProgramBuilder(
-	program, x64_attach, attach, label, prog string,
+	program, attach, label, prog string,
 	ret, errFatal bool,
 	ty string,
 ) *Program {
 	return &Program{
-		program, x64_attach, attach, label, prog, ret, errFatal, ty,
+		program, attach, label, prog, ret, errFatal, ty,
 		Idle(), -1, struct{}{},
 	}
 }
@@ -35,9 +35,7 @@ func GetProgramInfo(l *Program) (program, label, prog string) {
 type Program struct {
 	// Name is the name of the BPF object file.
 	Name string
-	// X64Attach is the attach point for x64 systems.
-	X64Attach string
-	// Attach is the Attach point for any other system.
+	// Attach is the attachment point, e.g. the kernel function.
 	Attach string
 	// Label is the program section name to load from program.
 	Label string

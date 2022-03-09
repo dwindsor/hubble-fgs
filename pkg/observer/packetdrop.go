@@ -29,7 +29,6 @@ var (
 	ObserverKfreeSkb = sensors.Program{
 		"bpf_kfree_skb.o",
 		"kfree_skb",
-		"kfree_skb",
 		"kprobe/kfree_skb",
 		"event_kfree_skb",
 

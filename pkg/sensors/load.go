@@ -285,50 +285,37 @@ func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *Program, stopC
 		"kern_version": version,
 	}).Debug("observerLoadInstance", load.Name, version)
 	if load.Type == "tracepoint" {
-		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity, true)
+		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
 			l.WithField(
 				"tracepoint", load.Name,
 			).Info("Tracepoint exists: removing and retrying")
 			removeTracepoint(load.TraceFD)
-			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity, true)
+			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
 		}
 		if err != nil {
 			return fmt.Errorf("failed prog %s kern_version %d err %d LoadTracingProgram: %w",
 				load.Name, version, fd, err)
 		}
 	} else {
-		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity, true)
-		if err != nil {
-			/* If we fail attach with __x64_sys_execve variant try again with
-			 * sys_execve variant.
-			 */
-			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity, false)
-			if err != nil && load.ErrorFatal {
-				return fmt.Errorf("failed prog %s kern_version %d LoadKprobeProgram: %w",
-					load.Name, version, err)
-			}
+		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
+		if err != nil && load.ErrorFatal {
+			return fmt.Errorf("failed prog %s kern_version %d LoadKprobeProgram: %w",
+				load.Name, version, err)
 		}
 	}
 	load.TraceFD = fd
 	return nil
 }
 
-func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verbose int, x64 bool) (error, int) {
-	var attach string
-
-	if x64 {
-		attach = load.X64Attach
-	} else {
-		attach = load.Attach
-	}
+func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verbose int) (error, int) {
 	btfObj := uintptr(btf.GetCachedBTF())
 	if load.Type == "tracepoint" {
 		return loader.LoadTracingProgram(
 			version, verbose,
 			btfObj,
 			load.Name,
-			attach,
+			load.Attach,
 			load.Label,
 			filepath.Join(bpfDir, load.PinPath),
 			mapDir)
@@ -347,14 +334,13 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verb
 				Load:      load,
 				Version:   version,
 				Verbose:   verbose,
-				X64:       x64,
 			})
 		}
 		return loader.LoadKprobeProgram(
 			version, verbose,
 			btfObj,
 			load.Name,
-			attach,
+			load.Attach,
 			load.Label,
 			filepath.Join(bpfDir, load.PinPath),
 			mapDir,

@@ -14,7 +14,6 @@ var (
 	Execve = Program{
 		"bpf_execve_event.o",
 		"sched/sched_process_exec",
-		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
 
@@ -30,7 +29,6 @@ var (
 
 	ExecveV53 = Program{
 		"bpf_execve_event_v53.o",
-		"sched/sched_process_exec",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
@@ -48,7 +46,6 @@ var (
 	Exit = Program{
 		"bpf_exit.o",
 		"sched/sched_process_exit",
-		"sched/sched_process_exit",
 		"tracepoint/sys_exit",
 		"event_exit",
 
@@ -64,7 +61,6 @@ var (
 
 	Fork = Program{
 		"bpf_fork.o",
-		"wake_up_new_task",
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
 		"kprobe_pid_clear",
@@ -82,7 +78,6 @@ var (
 	Cred = Program{
 		"bpf_cred.o",
 		"commit_creds",
-		"commit_creds",
 		"kprobe/commit_creds",
 		"kprobe_commit_creds",
 
@@ -98,7 +93,6 @@ var (
 
 	TCPConnect = Program{
 		"bpf_tcpmon.o",
-		"tcp_connect",
 		"tcp_connect",
 		"kprobe/tcp_connect",
 		"kprobe_tcp_connect",
@@ -116,7 +110,6 @@ var (
 	TCPClose = Program{
 		"bpf_tcpclose.o",
 		"tcp_set_state",
-		"tcp_set_state",
 		"kprobe/tcp_set_state",
 		"kprobe_tcp_set_state",
 
@@ -132,7 +125,6 @@ var (
 
 	Listen = Program{
 		"bpf_listen.o",
-		"__inet_hash",
 		"__inet_hash",
 		"kprobe/inet_hash",
 		"kprobe_inet_hash",

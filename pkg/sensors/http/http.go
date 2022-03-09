@@ -70,7 +70,6 @@ var (
 	Skmsg = sensors.ProgramBuilder(
 		"bpf_http.o",
 		"sk_msg",
-		"sk_msg",
 		"sk_msg/fgs",
 		"sk_msg_fgs",
 
@@ -81,7 +80,6 @@ var (
 	SkSkbParser = sensors.ProgramBuilder(
 		"bpf_http_parser.o",
 		"sk_skb",
-		"sk_skb",
 		"sk_skb_http_parser/fgshttp",
 		"sk_skb_parser",
 
@@ -91,7 +89,6 @@ var (
 
 	SkSkbVerdict = sensors.ProgramBuilder(
 		"bpf_http_verdict.o",
-		"sk_skb",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgshttp",
 		"bpf_skskb_http_verdict",

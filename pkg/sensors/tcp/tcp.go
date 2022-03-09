@@ -30,7 +30,6 @@ var (
 	TCPSendCheck = sensors.ProgramBuilder(
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
-		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",
 		"kprobe_tcp_v4_send_check",
 
@@ -147,7 +146,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 		args.Verbose,
 		uintptr(btf.GetCachedBTF()),
 		args.Load.Name,
-		args.Load.X64Attach,
+		args.Load.Attach,
 		args.Load.Label,
 		filepath.Join(args.BPFDir, args.Load.PinPath),
 		args.MapDir,

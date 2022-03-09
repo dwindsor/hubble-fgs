@@ -327,7 +327,6 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 		attach := fmt.Sprintf("%s/%s", tp.Info.Subsys, tp.Info.Event)
 		prog0 := sensors.Program{
 			Name:       path.Join(option.Config.HubbleLib, progName),
-			X64Attach:  attach,
 			Attach:     attach,
 			Label:      "tracepoint/generic_tracepoint",
 			PinPath:    fmt.Sprintf("tracepoint-%s-%s", tp.Info.Subsys, tp.Info.Event),
@@ -348,7 +347,7 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 	}, nil
 }
 
-func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, version, verbose int, x64 bool) (error, int) {
+func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, version, verbose int) (error, int) {
 	tracepointLog = logger.GetLogger()
 
 	btfCtxOffsetFn := func(i int) string {
@@ -464,18 +463,11 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 		return err, 0
 	}
 
-	var attach string
-	if x64 {
-		attach = load.X64Attach
-	} else {
-		attach = load.Attach
-	}
-
 	return bpf.LoadTracepointArgsProgram(
 		version, option.Config.Verbosity,
 		uintptr(btfObj),
 		load.Name,
-		attach,
+		load.Attach,
 		load.Label,
 		filepath.Join(bpfDir, load.PinPath),
 		mapDir,
@@ -557,5 +549,5 @@ func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec)
 }
 
 func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return LoadGenericTracepointSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose, args.X64)
+	return LoadGenericTracepointSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose)
 }

@@ -22,7 +22,6 @@ var (
 	SockopsEstablished = sensors.ProgramBuilder(
 		"bpf_sockops.o",
 		"sockops",
-		"sockops",
 		"sockops/fgs_sockops",
 		"sockops_fgs_sockops",
 		false,
@@ -66,7 +65,7 @@ type sockopsSensor struct {
 }
 
 func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, args.X64)
+	return sensors.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose)
 }
 
 func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
