@@ -35,7 +35,7 @@ enum bpf_enum_value_kind {
 	#define PROBE_CWD_READ_ITERATIONS 32
 	#define MAX_MOUNT_POINTS 32
 #else
-	#define PROBE_CWD_READ_ITERATIONS 12
+	#define PROBE_CWD_READ_ITERATIONS 11
 #endif
 
 /* Not sure if the following is more clear compared to
@@ -112,6 +112,25 @@ int64_t validate_msg_execve_size(int64_t size)
 	return size;
 }
 
+struct bpf_map_def __attribute__((section("maps"), used)) execve_val = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__s32),
+	.value_size = sizeof(struct execve_map_value),
+	.max_entries = 1,
+};
+
+static inline __attribute__((always_inline))
+void init_execve_map_value(struct execve_map_value *v)
+{
+	v->key.pid = 0;
+	v->key.ktime = 0;
+	v->pkey.pid = 0;
+	v->pkey.ktime = 0;
+	v->flags = 0;
+	v->nspid = 0;
+	v->binary = 0;
+}
+
 // execve_map_get will look up if pid exists and return it if it does. If it
 // does not, it will create a new one and return it.
 static inline __attribute__((always_inline))
@@ -121,17 +140,27 @@ struct execve_map_value *execve_map_get(__u32 pid)
 
 	event = map_lookup_elem(&execve_map, &pid);
 	if (!event) {
-		struct execve_map_value value;
+		struct execve_map_value *value;
 		int err, zero = 0;
 		__s64 *cntr;
 
-		memset(&value, 0, sizeof(struct execve_map_value));
-		err = map_update_elem(&execve_map, &pid, &value, 0);
+		value = map_lookup_elem(&execve_val, &zero);
+		if (!value)
+			return 0;
+
+		init_execve_map_value(value);
+		err = map_update_elem(&execve_map, &pid, value, 0);
 		if (!err && (cntr = map_lookup_elem(&execve_map_stats, &zero)))
 			*cntr = *cntr + 1;
 		event = map_lookup_elem(&execve_map, &pid);
 	}
 	return event;
+}
+
+static inline __attribute__((always_inline))
+struct execve_map_value *execve_map_get_noinit(__u32 pid)
+{
+	return map_lookup_elem(&execve_map, &pid);
 }
 
 static inline __attribute__((always_inline))
