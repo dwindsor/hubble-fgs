@@ -3,6 +3,7 @@ package tcp
 import (
 	"bytes"
 	"encoding/binary"
+	"fmt"
 	"path/filepath"
 	"time"
 
@@ -71,12 +72,14 @@ func (tcp *tcpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 	return EnableTcp(), nil
 }
 
-func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) api.MsgSocketStatsUnix {
+func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, error) {
 	if curr.BytesReceived < last.BytesReceived {
 		logger.GetLogger().Warnf("RX TCP stats underflow: %d < %d", curr.BytesReceived, last.BytesReceived)
+		return *last, fmt.Errorf("TCP BytesReceived stats invalid diff operation")
 	}
 	if curr.BytesSent < last.BytesSent {
-		logger.GetLogger().Warnf("TX TCP stats underflow: %d < %d", curr.BytesReceived, last.BytesReceived)
+		logger.GetLogger().Warnf("TX TCP stats underflow: %d < %d", curr.BytesSent, last.BytesSent)
+		return *last, fmt.Errorf("TCP BytesSent stats invalid diff operation")
 	}
 	return api.MsgSocketStatsUnix{
 		BytesSubmitted:  0,
@@ -92,20 +95,29 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) api.MsgSocketStatsUnix {
 		RetransmitBytes: curr.RetransmitBytes - last.RetransmitBytes,
 		ToZeroWindow:    curr.ToZeroWindow - last.ToZeroWindow,
 		SkDrop:          curr.SkDrop - last.SkDrop,
-	}
+	}, nil
 }
 
-func correctedStatsEvent(tcp *api.MsgIPv4EventUnix) *api.MsgIPv4EventUnix {
+// There is a race condition where two events are sent from BPF side in close
+// proximity time wise to each other. In this case its possible to process the
+// events out of order. Specifically it means when we diff the events the 'last'
+// event in cache will have a newer time than the 'new' event from BPF side. If
+// this happens discard the older event.
+func correctedStatsEvent(tcp *api.MsgIPv4EventUnix) (*api.MsgIPv4EventUnix, error) {
 	entry, ok := stats.Get(tcp.Tuple)
 	if ok {
 		last := entry.(api.MsgSocketStatsUnix)
 
+		tmpSocketStats, err := tcpDiffValues(&last, &tcp.SocketStats)
+		if err != nil {
+			return nil, err
+		}
 		stats.Add(tcp.Tuple, tcp.SocketStats)
-		tcp.SocketStats = tcpDiffValues(&last, &tcp.SocketStats)
+		tcp.SocketStats = tmpSocketStats
 	} else {
 		stats.Add(tcp.Tuple, tcp.SocketStats)
 	}
-	return tcp
+	return tcp, nil
 }
 
 func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
@@ -114,7 +126,10 @@ func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp := correctedStatsEvent(observer.MsgToIPv4Unix(&m))
+	tcp, err := correctedStatsEvent(observer.MsgToIPv4Unix(&m))
+	if err != nil {
+		return nil, nil
+	}
 	return []observer.ObserverEvent{tcp}, nil
 }
 
@@ -127,11 +142,15 @@ func handleTcpClose(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	tcp := observer.MsgToIPv4Unix(&m)
 	if tcpInterval > 0 {
 		cp := *tcp
-		c := correctedStatsEvent(&cp)
+		c, err := correctedStatsEvent(&cp)
 		// Convert to a TCPStats event by simply setting op code
 		c.Common.Op = api.MsgOpIPv4TCPStats
 		stats.Remove(c.Tuple)
-		return []observer.ObserverEvent{tcp, c}, nil
+		if err != nil {
+			return []observer.ObserverEvent{tcp}, nil
+		} else {
+			return []observer.ObserverEvent{tcp, c}, nil
+		}
 	}
 	return []observer.ObserverEvent{tcp}, nil
 }
