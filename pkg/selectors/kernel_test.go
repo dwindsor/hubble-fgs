@@ -296,6 +296,18 @@ func TestParseMatchNamespaces(t *testing.T) {
 	}
 }
 
+func TestParseMatchNamespaceChanges(t *testing.T) {
+	ns1 := &v1alpha1.NamespaceChangesSelector{Operator: "In", Values: []string{"Uts", "Mnt"}}
+	k := &KernelSelectorState{off: 0}
+	expected1 := []byte{
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x05, 0x00, 0x00, 0x00, // values
+	}
+	if err := parseMatchNamespaceChange(k, ns1); err != nil || bytes.Equal(expected1, k.e[0:k.off]) == false {
+		t.Errorf("parseMatchNamespaceChange: error %v expected %v bytes %v parsing %v\n", err, expected1, k.e[0:k.off], ns1)
+	}
+}
+
 func TestParseMatchAction(t *testing.T) {
 	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "post"}
@@ -331,7 +343,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x4, 0x00, 0x00, 0x00, // selector offset list
 
 		// selector header size 4
-		202, 0x00, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + 4
+		214, 0x00, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + namespacesChanges + 4
 
 		// pid header
 		56, 0x00, 0x00, 0x00, // size = sizeof(pid2) + sizeof(pid1) + 4
@@ -369,6 +381,13 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x06, 0x00, 0x00, 0x00, // op == NotIn
 		0x01, 0x00, 0x00, 0x00, // length == 0x1
 		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+
+		// namespace changes header
+		12, 0x00, 0x00, 0x00, // size = sizeof(nc1) + sizeof(nc2) + 4
+
+		// nc1 size = 8
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x05, 0x00, 0x00, 0x00, // values
 
 		// binaryNames header
 		24, 0x00, 0x00, 0x00, // size = sizeof(uint32) * 4
@@ -417,6 +436,8 @@ func TestInitKernelSelectors(t *testing.T) {
 	ns1 := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []string{"1", "2", "3"}}
 	ns2 := &v1alpha1.NamespaceSelector{Namespace: "Net", Operator: "NotIn", Values: []string{"1"}}
 	matchNamespaces := []v1alpha1.NamespaceSelector{*ns1, *ns2}
+	nc := &v1alpha1.NamespaceChangesSelector{Operator: "In", Values: []string{"Uts", "Mnt"}}
+	matchNamespaceChanges := []v1alpha1.NamespaceChangesSelector{*nc}
 
 	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "followfd",
@@ -426,10 +447,11 @@ func TestInitKernelSelectors(t *testing.T) {
 
 	selectors := []v1alpha1.KProbeSelector{
 		{
-			MatchPIDs:       matchPids,
-			MatchNamespaces: matchNamespaces,
-			MatchArgs:       matchArgs,
-			MatchActions:    matchActions,
+			MatchPIDs:             matchPids,
+			MatchNamespaces:       matchNamespaces,
+			MatchNamespaceChanges: matchNamespaceChanges,
+			MatchArgs:             matchArgs,
+			MatchActions:          matchActions,
 		},
 	}
 	args := []v1alpha1.KProbeArg{

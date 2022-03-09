@@ -59,6 +59,13 @@ spec:
           operator: NotIn
           values:
             - "4026532099"
+        matchNamespaceChanges:
+        - operator: In
+          values:
+          - "Mnt"
+          - "Pid"
+          - "User"
+          - "Uts"
 `
 
 var expectedWrite = GenericTracingConf{
@@ -112,6 +119,12 @@ var expectedWrite = GenericTracingConf{
 								Namespace: "Mnt",
 								Operator:  "NotIn",
 								Values:    []string{"4026532099"},
+							},
+						},
+						MatchNamespaceChanges: []v1alpha1.NamespaceChangesSelector{
+							{
+								Operator: "In",
+								Values:   []string{"Mnt", "Pid", "User", "Uts"},
 							},
 						},
 					},
@@ -176,6 +189,12 @@ spec:
           operator: In
           values:
           - 4026532024
+        matchNamespaceChanges:
+        - operator: In
+          values:
+          - "Mnt"
+          - "Pid"
+          - "Net"
 `
 
 var expectedData = GenericTracingConf{
@@ -259,6 +278,12 @@ var expectedData = GenericTracingConf{
 								Namespace: "Pid",
 								Operator:  "In",
 								Values:    []string{"4026532024"},
+							},
+						},
+						MatchNamespaceChanges: []v1alpha1.NamespaceChangesSelector{
+							{
+								Operator: "In",
+								Values:   []string{"Mnt", "Pid", "Net"},
 							},
 						},
 					},
