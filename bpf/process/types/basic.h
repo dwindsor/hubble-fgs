@@ -617,20 +617,6 @@ int selector_arg_offset(__u8 *f,
 	seloff = (selector & INDEX_MASK);
 	binary = (struct selector_binary_filter *)&f[seloff];
 
-	/* Advance to matchArgs we use fixed size binary filters for now. It helps
-	 * the verifier and its still unclear how many entries are needed. At any
-	 * rate each entry is a uint32 now and we should really be able to pack
-	 * an entry into a byte which would give us 4x more entries.
-	 */
-	seloff += sizeof(struct selector_binary_filter);
-	if (seloff > 3800) {
-		return 0;
-	}
-
-	/* Making binary selectors fixes size helps on some kernels */
-	asm volatile("%[seloff] &= 0xeff;\n" :: [seloff] "+r"(seloff):);
-	filter = (struct selector_arg_filter *)&f[seloff];
-
 	/* Run binary name filters
 	 */
 	if (binary->op == op_filter_in) {
@@ -647,6 +633,20 @@ int selector_arg_offset(__u8 *f,
 		    binary->index[3] != execve->binary)
 			return 0;
 	}
+
+	/* Advance to matchArgs we use fixed size binary filters for now. It helps
+	 * the verifier and its still unclear how many entries are needed. At any
+	 * rate each entry is a uint32 now and we should really be able to pack
+	 * an entry into a byte which would give us 4x more entries.
+	 */
+	seloff += sizeof(struct selector_binary_filter);
+	if (seloff > 3800) {
+		return 0;
+	}
+
+	/* Making binary selectors fixes size helps on some kernels */
+	asm volatile("%[seloff] &= 0xeff;\n" :: [seloff] "+r"(seloff):);
+	filter = (struct selector_arg_filter *)&f[seloff];
 
 	if (filter->arglen <= 4) // no filters
 		return seloff;
