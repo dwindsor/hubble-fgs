@@ -44,6 +44,10 @@ for obj in $FGSDIR/*.o; do
 		continue
 	fi
 
+	if [[ $B == bpf_globals* ]]; then
+		continue
+	fi
+
 	if [[ $B == bpf_alignchecker* ]]; then
 		continue
 	fi
