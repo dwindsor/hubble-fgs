@@ -229,7 +229,6 @@ struct ns_filter {
 };
 
 #define VALUES_MASK 0x1f /* max 4 values with 4 bytes each | 0x1f == 31 */
-#define INDEX_MASK 0x3ff
 
 /* If you update the value of NUM_NS_FILTERS_SMALL below you should
  * also update parseMatchNamespaces() in kernel.go

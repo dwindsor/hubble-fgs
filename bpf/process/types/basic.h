@@ -580,6 +580,8 @@ size_t type_to_min_size(int type)
 	}
 }
 
+#define INDEX_MASK 0x3ff
+
 static inline __attribute__((always_inline))
 int selector_arg_offset(__u8 *f,
 			struct msg_generic_kprobe *e,
@@ -588,35 +590,31 @@ int selector_arg_offset(__u8 *f,
 	struct selector_arg_filter *filter;
 	struct selector_binary_filter *binary;
 	long seloff, argoff, pass;
-	__u32 *tmp, len, index, nslen;
+	__u32 len, index;
 	char *args;
 
+	/* Find selector offset byte index */
 	selector *= 4;
 	selector += 4;
 
-	asm volatile (
-	"%[selector] &= 0x3ff;\n"
-	"%[t] = %[m];\n"                        /* tmp = f; */
-	"%[t] += %[selector];\n"                /* tmp += selector; */
-	"%[selector] = *(u32 *)(%[t] + 0);\n"   /* selector = *(u32 *)tmp; */
-	"%[selector] &= 0x3ff;\n"
-	"%[t] = %[m];\n"                        /* tmp = f; */
-	"%[t] += %[selector];\n"                /* tmp += selector; */
-	"%[len] = *(u32 *)(%[t] + 8);\n"        /* len = *(u32 *)(tmp + 8); */ // pid header length
-	"%[len] &= 0x3ff;\n"
-	"%[t] += %[len];\n"
-	"%[nslen] = *(u32 *)(%[t] + 8);\n"
-	: [selector] "+r"(selector),
-	  [len] "+r"(len),
-	  [m] "+r"(f),
-	  [t] "+r"(tmp),
-	  [nslen] "+r"(nslen)
-	::);
+	/* read the start offset of the corresponding selector */
+	selector = *(__u32 *)((__u64)f + (selector & INDEX_MASK));
+
+	selector &= INDEX_MASK;
+	selector += 8; /* 8: selector value and selector header */
+
+	/* matchPid */
+	len = *(__u32 *)((__u64)f + (selector & INDEX_MASK)); /* (sizeof(pid1) + sizeof(pid2) + ... + 4) */
+	selector += len;
+
+	/* matchNamespace */
+	len = *(__u32 *)((__u64)f + (selector & INDEX_MASK)); /* (sizeof(ns1) + sizeof(ns2) + ... + 4) */
+	selector += len;
 
 	/* seloff must leave space for verifier to walk strings
 	 * so we set inside 4k maximum. Advance to binary matches.
 	 */
-	seloff = selector + 8 + len + nslen;
+	seloff = (selector & INDEX_MASK);
 	binary = (struct selector_binary_filter *)&f[seloff];
 
 	/* Advance to matchArgs we use fixed size binary filters for now. It helps
