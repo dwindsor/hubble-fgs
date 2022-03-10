@@ -339,13 +339,7 @@ spec:
 	runKprobeObjectWriteRead(t, writeReadHook)
 }
 
-func TestKprobeObjectRead(t *testing.T) {
-	var doneWG, readyWG sync.WaitGroup
-	defer doneWG.Wait()
-
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
-	defer cancel()
-
+func createTestFile(t *testing.T) (int, int, string) {
 	// Create file with hello world to read
 	fd, errno := syscall.Open("/tmp/testfile", syscall.O_CREAT|syscall.O_RDWR, 0x777)
 	if fd < 0 {
@@ -359,7 +353,17 @@ func TestKprobeObjectRead(t *testing.T) {
 		t.Fatal()
 	}
 	t.Cleanup(func() { syscall.Close(fd2) })
-	fdString := fmt.Sprint(fd2)
+	return fd, fd2, fmt.Sprint(fd2)
+}
+
+func TestKprobeObjectRead(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	fd, fd2, fdString := createTestFile(t)
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
