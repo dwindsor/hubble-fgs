@@ -8,7 +8,7 @@ on:
 jobs:
   benchmark:
     runs-on: ${{ matrix.os }}
-    timeout-minutes: 30
+    timeout-minutes: 50
     strategy:
       matrix:
         os: [ ubuntu-20.04 ]
@@ -66,4 +66,13 @@ jobs:
           issue-number: ${{ github.event.pull_request.number }}
           body: ${{ steps.run-benchmark.outputs.body }}
           edit-mode: replace
+
+      - name: Run race detection
+        id: run-race
+        env:
+          GOPATH: /home/runner/work/hubble-fgs/hubble-fgs/go
+        run: |
+          export PATH=${GOPATH}/bin:${PATH}
+          cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs
+          sudo go test github.com/isovalent/hubble-fgs/pkg/bench -timeout 10m -race -tags race_tests -test.v
 
