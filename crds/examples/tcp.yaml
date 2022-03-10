@@ -9,8 +9,16 @@ spec:
       cgroup: true
       statsInterval: 10
       deleteIdleSocketInterval: 60
+      burst:
+        enable: true
+        windowSize: 1000
+        triggerPercent: 50
     tcp:
       enable: true
       statsInterval: 10
+      burst:
+        enable: true
+        windowSize: 1000
+        triggerPercent: 50
     dns:
       enable: true

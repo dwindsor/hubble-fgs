@@ -492,6 +492,25 @@ spec:
                   tcp:
                     description: TCP policy specification
                     properties:
+                      burst:
+                        description: Network policy specification
+                        properties:
+                          enable:
+                            default: false
+                            description: Enable TCP burst observability
+                            type: boolean
+                          triggerPercent:
+                            default: 100
+                            description: Configures the percent over average deemed
+                              to be a burst
+                            format: int32
+                            type: integer
+                          windowSize:
+                            default: 1000
+                            description: Configures the burst window size in milliseconds
+                            format: int32
+                            type: integer
+                        type: object
                       enable:
                         description: Enable TCP statistics
                         type: boolean

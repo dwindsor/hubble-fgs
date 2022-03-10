@@ -20,8 +20,11 @@ import (
 )
 
 var (
-	TcpIntervalDefault = time.Duration(60 * time.Second)
-	tcpInterval        time.Duration
+	TcpIntervalDefault  = time.Duration(60 * time.Second)
+	tcpInterval         time.Duration
+	tcpBurstEnable      bool
+	tcpBurstWindowSize  uint64
+	tcpBurstTriggerMult uint64
 
 	stats          *lru.Cache
 	stataCacheSize = 32000
@@ -46,7 +49,10 @@ func EnableTcp() *sensors.Sensor {
 		TCPSendCheckSampler,
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
-		"statsInterval": tcpInterval,
+		"statsInterval":    tcpInterval,
+		"burstEnable":      tcpBurstEnable,
+		"burstWindowSize":  tcpBurstWindowSize,
+		"burstTriggerMult": tcpBurstTriggerMult,
 	}).Infof("Enable TCP")
 	return sensors.SensorBuilder("tcp_sensors", progs, maps)
 }
@@ -65,6 +71,15 @@ func (tcp *tcpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 		tcpInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
 	} else {
 		return nil, nil
+	}
+	if spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
+		tcpBurstEnable = true
+		tcpBurstWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
+		tcpBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
+	} else {
+		tcpBurstEnable = false
+		tcpBurstWindowSize = 0
+		tcpBurstTriggerMult = 0
 	}
 	return EnableTcp(), nil
 }
@@ -163,7 +178,7 @@ func handleTcp(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 }
 
 func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	configureSockStatSampler(tcpInterval)
+	configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult)
 	return loader.LoadKprobeProgram(args.Version,
 		args.Verbose,
 		uintptr(btf.GetCachedBTF()),

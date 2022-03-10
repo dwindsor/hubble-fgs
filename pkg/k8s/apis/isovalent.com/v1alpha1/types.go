@@ -323,7 +323,6 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// TCP policy specification
 	Tcp TcpPolicySpec `json:"tcp" yaml:"tcp"`
-	// +kubebuilder:validation:Optional
 }
 
 type TcpPolicySpec struct {
@@ -332,6 +331,24 @@ type TcpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the Stat collection interval in seconds
 	StatsInterval uint32 `json:"statsInterval" yaml:"statsInterval"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Burst TcpBurstPolicySpec `json:"burst" yaml:"burst"`
+}
+
+type TcpBurstPolicySpec struct {
+	// Enable TCP burst observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable" yaml:"enable"`
+	// +kubebuilder:default=1000
+	// +kubebuilder:validation:Optional
+	// Configures the burst window size in milliseconds
+	WindowSize uint32 `json:"windowSize" yaml:"windowSize"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent over average deemed to be a burst
+	TriggerPercent uint32 `json:"triggerPercent" yaml:"triggerPercent"`
 }
 
 type UdpPolicySpec struct {
