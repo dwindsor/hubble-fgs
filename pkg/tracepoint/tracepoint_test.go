@@ -14,6 +14,8 @@ package tracepoint
 import (
 	"reflect"
 	"testing"
+
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 )
 
 func TestTracepointLoadFormat(t *testing.T) {
@@ -26,6 +28,23 @@ func TestTracepointLoadFormat(t *testing.T) {
 	if err != nil {
 		t.Log(err)
 		t.FailNow()
+	}
+
+	var commField TracepointFieldFormat
+	if kernels.MinKernelVersion("5.17.0") {
+		commField = TracepointFieldFormat{
+			FieldStr: "char comm[TASK_COMM_LEN]",
+			Offset:   12,
+			Size:     16,
+			IsSigned: true,
+		}
+	} else {
+		commField = TracepointFieldFormat{
+			FieldStr: "char comm[16]",
+			Offset:   12,
+			Size:     16,
+			IsSigned: true,
+		}
 	}
 
 	fields := []TracepointFieldFormat{
@@ -59,12 +78,7 @@ func TestTracepointLoadFormat(t *testing.T) {
 			Size:     4,
 			IsSigned: true,
 		},
-		TracepointFieldFormat{
-			FieldStr: "char comm[16]",
-			Offset:   12,
-			Size:     16,
-			IsSigned: true,
-		},
+		commField,
 		TracepointFieldFormat{
 			FieldStr: "unsigned long clone_flags",
 			Offset:   32,
