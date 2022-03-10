@@ -356,13 +356,45 @@ func createTestFile(t *testing.T) (int, int, string) {
 	return fd, fd2, fmt.Sprint(fd2)
 }
 
-func TestKprobeObjectRead(t *testing.T) {
+func runKprobeObjectRead(t *testing.T, readHook string, checker ec.MultiResponseChecker, fd, fd2 int) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
+	readConfigHook := []byte(readHook)
+	err := ioutil.WriteFile(testConfigFile, readConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
+	hello := []byte("hello world")
+	n, errno := syscall.Write(fd, hello)
+	if n < 0 {
+		t.Logf("syscall.Write failed: %s\n", errno)
+		t.Fatal()
+	}
+	syscall.Fsync(fd)
+	var readBytes = make([]byte, 11)
+	i, errno := syscall.Read(fd2, readBytes)
+	if i < 0 {
+		t.Logf("syscall.Read failed: %s\n", errno)
+		t.Fatal()
+	}
+
+	err = JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+	TestDone(t, obs)
+}
+
+func TestKprobeObjectRead(t *testing.T) {
 	fd, fd2, fdString := createTestFile(t)
 	pidStr := strconv.Itoa(int(GetMyPid()))
 	readHook := `
@@ -394,12 +426,6 @@ spec:
         values:
         - ` + fdString
 
-	readConfigHook := []byte(readHook)
-	err := ioutil.WriteFile(testConfigFile, readConfigHook, 0644)
-	if err != nil {
-		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
-	}
-
 	kpChecker := ec.NewKprobeChecker().
 		WithFunctionName("__x64_sys_read").
 		WithArgs([]ec.GenericArgChecker{
@@ -413,29 +439,7 @@ spec:
 			End(),
 	)
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
-	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
-	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
-	readyWG.Wait()
-	hello := []byte("hello world")
-	n, errno := syscall.Write(fd, hello)
-	if n < 0 {
-		t.Logf("syscall.Write failed: %s\n", errno)
-		t.Fatal()
-	}
-	syscall.Fsync(fd)
-	var readBytes = make([]byte, 11)
-	i, errno := syscall.Read(fd2, readBytes)
-	if i < 0 {
-		t.Logf("syscall.Read failed: %s\n", errno)
-		t.Fatal()
-	}
-
-	err = JsonTestCheck(t, &checker)
-	assert.NoError(t, err)
-	TestDone(t, obs)
+	runKprobeObjectRead(t, readHook, &checker, fd, fd2)
 }
 
 // __x64_sys_openat trace
