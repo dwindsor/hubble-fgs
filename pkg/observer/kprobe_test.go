@@ -442,6 +442,58 @@ spec:
 	runKprobeObjectRead(t, readHook, &checker, fd, fd2)
 }
 
+func TestKprobeObjectReadReturn(t *testing.T) {
+	fd, fd2, fdString := createTestFile(t)
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	readHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_read"
+spec:
+  description: "read hook"
+  kprobes:
+  - call: "__x64_sys_read"
+    syscall: true
+    return: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_buf"
+      returnCopy: true
+    - index: 2
+      type: "size_t"
+    returnArg:
+      type: "size_t"
+    selectors:
+    - matchPIDs:
+      - operator: In
+        followForks: true
+        values:
+        - ` + pidStr + `
+      matchArgs:
+      - index: 0
+        operator: "Equal"
+        values:
+        - ` + fdString
+
+	kpChecker := ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_read").
+		WithArgsReturn([]ec.GenericArgChecker{
+			ec.GenericArgIntCheck(int32(fd2)),
+			ec.GenericArgBytesCheck([]byte("hello world")),
+			ec.GenericArgSizeCheck(100)},
+			ec.GenericArgSizeCheck(11),
+		)
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasKprobe(kpChecker).
+			End(),
+	)
+
+	runKprobeObjectRead(t, readHook, &checker, fd, fd2)
+}
+
 // __x64_sys_openat trace
 var (
 	openArg0Check    = ec.GenericArgIntCheck(-100)
