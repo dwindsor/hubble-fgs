@@ -75,6 +75,10 @@ var (
 		Name: MetricNamePrefix + "socket_stats_txsegs",
 		Help: "TCP socket TX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsTxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_txbursts",
+		Help: "TCP socket TX bursts statistics",
+	}, []string{"namespace", "pod", "binary"})
 	SocketStatsRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: MetricNamePrefix + "socket_stats_rxbytes",
 		Help: "TCP socket RX bytes statistics",
@@ -83,6 +87,10 @@ var (
 		Name: MetricNamePrefix + "socket_stats_rxsegs",
 		Help: "TCP socket RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsRxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_rxbursts",
+		Help: "TCP socket RX bursts statistics",
+	}, []string{"namespace", "pod", "binary"})
 	SocketStatsRetranBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: MetricNamePrefix + "socket_stats_retransmitbytes",
 		Help: "TCP socket retransmit bytes statistics",
@@ -116,6 +124,10 @@ var (
 		Name: MetricNamePrefix + "socket_stats_udp_txsegs",
 		Help: "UDP socket TX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsUDPTxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_udp_txbursts",
+		Help: "UDP socket TX bursts statistics",
+	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPRxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: MetricNamePrefix + "socket_stats_udp_rxbytes",
 		Help: "UDP socket RX bytes statistics",
@@ -124,6 +136,10 @@ var (
 		Name: MetricNamePrefix + "socket_stats_udp_rxsegs",
 		Help: "UDP socket RX segment statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsUDPRxBursts = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_udp_rxbursts",
+		Help: "UDP socket RX bursts statistics",
+	}, []string{"namespace", "pod", "binary"})
 	SocketStatsUDPDrops = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: MetricNamePrefix + "socket_stats_udp_drops",
 		Help: "UDP socket drops statistics",
@@ -392,12 +408,50 @@ func postStatsEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessSockSt
 	}
 }
 
+func postUDPBurstStats(ns, pod, binary string, s *fgs.ProcessNetworkBurst) {
+	if s.Direction == "egress" {
+		SocketStatsUDPTxBursts.WithLabelValues(ns, pod, binary).Inc()
+	} else {
+		SocketStatsUDPRxBursts.WithLabelValues(ns, pod, binary).Inc()
+	}
+}
+
+func postTCPBurstStats(ns, pod, binary string, s *fgs.ProcessNetworkBurst) {
+	if s.Direction == "egress" {
+		SocketStatsTxBursts.WithLabelValues(ns, pod, binary).Inc()
+	} else {
+		SocketStatsRxBursts.WithLabelValues(ns, pod, binary).Inc()
+	}
+}
+
+func postProcessNetworkBurstEventStats(ev *fgs.GetEventsResponse, res *fgs.ProcessNetworkBurst) {
+	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+	if res.BurstState == "start" {
+		switch res.Protocol {
+		case fgs.SocketProtocol_UDP.String():
+			postUDPBurstStats(ns, pod, binary, res)
+		case fgs.SocketProtocol_TCP.String():
+			postTCPBurstStats(ns, pod, binary, res)
+		}
+	}
+}
+
 func handleSocketEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
 		switch res := ev.Event.(type) {
 		case *fgs.GetEventsResponse_ProcessSockstats:
 			postStatsEventSocketStats(ev, res.ProcessSockstats)
+		}
+	}
+}
+
+func handleProcessBurstEvent(processedEvent interface{}) {
+	switch ev := processedEvent.(type) {
+	case *fgs.GetEventsResponse:
+		switch res := ev.Event.(type) {
+		case *fgs.GetEventsResponse_ProcessNetworkBurst:
+			postProcessNetworkBurstEventStats(ev, res.ProcessNetworkBurst)
 		}
 	}
 }
@@ -520,6 +574,7 @@ func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
 	handleOriginalEvent(originalEvent)
 	handleProcessedEvent(processedEvent)
 	handleSocketEvent(processedEvent)
+	handleProcessBurstEvent(processedEvent)
 	handleHttpEvent(processedEvent)
 	handleDnsEvent(processedEvent)
 	handleTlsEvent(processedEvent)
