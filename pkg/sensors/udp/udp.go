@@ -300,7 +300,26 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	observer.AllListeners(unix)
 }
 
-func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) udpInfoValue {
+func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
+	// The ktime check is to handle a small but observed race condition where
+	// we can read a ktime earlier than a ktime we just read. It requires some
+	// unlucky timing but here we go.
+	//
+	//  cpu0                      cpu1                    cpu2
+	// 1 <- ktime_get_ns()
+	//                         2 <- ktime_get_ns
+	//                         v->ktime = 2
+	//                                                 v2 <- read_map_key()
+	//  v->ktime = 1
+	//                                                 v1 <- read_map_key()
+	//
+	// and violla time travel from read map side. So just skip these entries
+	// using v2 and because we have atomic only incrementing counters we
+	// eventually we get a good entry and correct for any bytes at that time.
+	if curr.Ktime < last.Ktime {
+		return udpInfoValue{}, fmt.Errorf("UDP Skip OOO Event")
+	}
+
 	if curr.TXBytes < last.TXBytes {
 		logger.GetLogger().Warnf("TX UDP stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
 	}
@@ -326,7 +345,7 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) udpInfoValue {
 		Ktime:          curr.Ktime,
 		PidKtime:       curr.PidKtime,
 		Pid:            curr.Pid,
-	}
+	}, nil
 }
 
 func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
@@ -350,12 +369,14 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	if ok {
 		last := entry.(udpInfoValue)
 		if *udpValue != last {
-			diffValue := udpDiffValues(udpKey, &last, udpValue)
-			mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
-			udpKey = k.DeepCopyMapKey().(*udpInfoKey)
-			stats.Add(*udpKey, *mapUpdate)
-			emitStatEvent(udpKey, &diffValue)
-			metrics.LruMapSize.WithLabelValues("lru_udp_stats_map", "32000").Set(float64(stats.Len()))
+			diffValue, err := udpDiffValues(udpKey, &last, udpValue)
+			if err == nil {
+				mapUpdate := v.DeepCopyMapValue().(*udpInfoValue)
+				udpKey = k.DeepCopyMapKey().(*udpInfoKey)
+				stats.Add(*udpKey, *mapUpdate)
+				emitStatEvent(udpKey, &diffValue)
+				metrics.LruMapSize.WithLabelValues("lru_udp_stats_map", "32000").Set(float64(stats.Len()))
+			}
 		}
 	} else {
 		udpValue = v.DeepCopyMapValue().(*udpInfoValue)
