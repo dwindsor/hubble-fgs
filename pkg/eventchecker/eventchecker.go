@@ -1780,7 +1780,7 @@ func (f ProcessNetworkBurstCheckerFn) Check(c *fgs.ProcessNetworkBurst, log Logg
 	return f(c, log)
 }
 
-// ProcessNetworkBurstWithRequestMethod verifies that the burst field matches the StringMatcher
+// ProcessNetworkBurstWithBurstDirection verifies that the burst direction field matches the StringMatcher
 func ProcessNetworkBurstWithBurstDirection(sm StringMatcher) ProcessNetworkBurstChecker {
 	return ProcessNetworkBurstWithString(
 		sm,
@@ -1788,6 +1788,28 @@ func ProcessNetworkBurstWithBurstDirection(sm StringMatcher) ProcessNetworkBurst
 			return t.Direction
 		},
 		"Direction",
+	)
+}
+
+// ProcessNetworkBurstWithBurstState verifies that the burst state field matches the StringMatcher
+func ProcessNetworkBurstWithBurstState(sm StringMatcher) ProcessNetworkBurstChecker {
+	return ProcessNetworkBurstWithString(
+		sm,
+		func(t *fgs.ProcessNetworkBurst) string {
+			return t.BurstState
+		},
+		"BurstState",
+	)
+}
+
+// ProcessNetworkBurstWithProtocol verifies that the protocol field matches the StringMatcher
+func ProcessNetworkBurstWithProtocol(sm StringMatcher) ProcessNetworkBurstChecker {
+	return ProcessNetworkBurstWithString(
+		sm,
+		func(t *fgs.ProcessNetworkBurst) string {
+			return t.Protocol
+		},
+		"Protocol",
 	)
 }
 
@@ -2046,10 +2068,24 @@ func (o *ProcessNetworkBurstCheckerAND) Check(t *fgs.ProcessNetworkBurst, l Logg
 	return nil
 }
 
-// WithRequestMethod adds a Request.Method check to a Http checker
+// WithBurstDirection adds a burst direction check to a ProcessNetworkBurstCheckerAND
 func (o *ProcessNetworkBurstCheckerAND) WithBurstDirection(arg StringArg) *ProcessNetworkBurstCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	o.checks = append(o.checks, ProcessNetworkBurstWithBurstDirection(sm))
+	return o
+}
+
+// WithBurstState adds a burst state check to a ProcessNetworkBurstCheckerAND
+func (o *ProcessNetworkBurstCheckerAND) WithBurstState(arg StringArg) *ProcessNetworkBurstCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ProcessNetworkBurstWithBurstState(sm))
+	return o
+}
+
+// WithBurstProtocol adds a burst protocol check to a ProcessNetworkBurstCheckerAND
+func (o *ProcessNetworkBurstCheckerAND) WithBurstProtocol(arg StringArg) *ProcessNetworkBurstCheckerAND {
+	sm := stringMatcherFromArg(arg)
+	o.checks = append(o.checks, ProcessNetworkBurstWithProtocol(sm))
 	return o
 }
 

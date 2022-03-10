@@ -32,7 +32,7 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	sensors "github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
@@ -147,7 +147,7 @@ func udpClient() {
 	burstRate := 10
 	baselineDuration := 1
 	burstDuration := 1
-	numBursts := 1
+	numBursts := 3
 
 	baselineWait := time.Duration(1000000 / baselineRate)
 	burstWait := time.Duration(1000000 / burstRate)
@@ -196,10 +196,22 @@ func TestUdpBurst(t *testing.T) {
 	clientProcess := ec.ProcessWithCommand(ec.SuffixStringMatch(selfBinary), ec.FullStringMatch("-client"))
 	serverProcess := ec.ProcessWithCommand(ec.SuffixStringMatch(selfBinary), ec.FullStringMatch("-server"))
 
-	ProcessNetworkBurstEgress := ec.NewProcessNetworkBurstChecker().
-		WithBurstDirection("egress")
-	ProcessNetworkBurstIngress := ec.NewProcessNetworkBurstChecker().
-		WithBurstDirection("ingress")
+	ProcessNetworkBurstEgressStart := ec.NewProcessNetworkBurstChecker().
+		WithBurstProtocol("UDP").
+		WithBurstDirection("egress").
+		WithBurstState("start")
+	ProcessNetworkBurstEgressEnd := ec.NewProcessNetworkBurstChecker().
+		WithBurstProtocol("UDP").
+		WithBurstDirection("egress").
+		WithBurstState("end")
+	ProcessNetworkBurstIngressStart := ec.NewProcessNetworkBurstChecker().
+		WithBurstProtocol("UDP").
+		WithBurstDirection("ingress").
+		WithBurstState("start")
+	ProcessNetworkBurstIngressEnd := ec.NewProcessNetworkBurstChecker().
+		WithBurstProtocol("UDP").
+		WithBurstDirection("ingress").
+		WithBurstState("end")
 
 	checker := ec.NewUnorderedMultiResponseChecker(
 		ec.NewExecEventChecker().
@@ -207,14 +219,22 @@ func TestUdpBurst(t *testing.T) {
 			End(),
 		ec.NewProcessNetworkBurstEventChecker().
 			HasProcess(clientProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstEgress).
+			HasProcessNetworkBurst(ProcessNetworkBurstEgressStart).
+			End(),
+		ec.NewProcessNetworkBurstEventChecker().
+			HasProcess(clientProcess).
+			HasProcessNetworkBurst(ProcessNetworkBurstEgressEnd).
 			End(),
 		ec.NewExecEventChecker().
 			HasProcess(serverProcess).
 			End(),
 		ec.NewProcessNetworkBurstEventChecker().
 			HasProcess(serverProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstIngress).
+			HasProcessNetworkBurst(ProcessNetworkBurstIngressStart).
+			End(),
+		ec.NewProcessNetworkBurstEventChecker().
+			HasProcess(serverProcess).
+			HasProcessNetworkBurst(ProcessNetworkBurstIngressEnd).
 			End(),
 	)
 
@@ -256,6 +276,8 @@ func TestUdpBurst(t *testing.T) {
 	serverBuf := bufio.NewReader(serverOutput)
 	serverBuf.ReadLine()
 
+	serverPid := uint32(serverCmd.Process.Pid)
+
 	burstMapFile := filepath.Join(sensors.MapDir, burstEventsPoll.ProcessNetworkBurstMapName)
 	m, err := ebpf.LoadPinnedMap(burstMapFile, nil)
 	if err != nil {
@@ -263,7 +285,7 @@ func TestUdpBurst(t *testing.T) {
 		panic(err)
 	}
 	defer m.Close()
-	processKey := &burstEventsPoll.ProcessNetworkBurstKey{Key: burstEventsPoll.PidToBurstKey(uint32(serverCmd.Process.Pid), syscall.IPPROTO_UDP, 0)}
+	processKey := &burstEventsPoll.ProcessNetworkBurstKey{Key: burstEventsPoll.PidToBurstKey(serverPid, syscall.IPPROTO_UDP, 0)}
 	var processValue burstEventsPoll.ProcessNetworkBurstValue
 	err = m.Lookup(processKey, &processValue)
 	if err == nil {
@@ -286,27 +308,31 @@ func TestUdpBurst(t *testing.T) {
 	err = m.Lookup(processKey, &processValue)
 	if err != nil {
 		fmt.Printf("ERROR Server process not in burst map\n")
+		burstEventsPoll.Stop()
 		panic(err)
 	}
 
-	var serverPid = 0
 	if serverCmd != nil {
 		serverProcess := serverCmd.Process
 		if serverProcess != nil {
-			serverPid = serverProcess.Pid
 			serverProcess.Kill()
+			serverProcess.Wait()
+		} else {
+			fmt.Printf("ERROR serverProcess is nil\n")
+			os.Exit(-1)
 		}
+	} else {
+		fmt.Printf("ERROR serverCmd is nil\n")
+		os.Exit(-1)
 	}
 
-	if serverPid != 0 {
-		quit := false
-		for !quit {
-			_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
-			if err == nil {
-				quit = true
-			}
-			time.Sleep(10 * time.Millisecond)
+	quit := false
+	for !quit {
+		_, err = os.Stat(fmt.Sprintf("/proc/%d", serverPid))
+		if err != nil {
+			quit = true
 		}
+		time.Sleep(10 * time.Millisecond)
 	}
 
 	err = m.Lookup(processKey, &processValue)
