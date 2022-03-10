@@ -382,7 +382,7 @@ func runKprobeObjectRead(t *testing.T, readHook string, checker ec.MultiResponse
 		t.Fatal()
 	}
 	syscall.Fsync(fd)
-	var readBytes = make([]byte, 11)
+	var readBytes = make([]byte, 100)
 	i, errno := syscall.Read(fd2, readBytes)
 	if i < 0 {
 		t.Logf("syscall.Read failed: %s\n", errno)
@@ -431,7 +431,7 @@ spec:
 		WithArgs([]ec.GenericArgChecker{
 			ec.GenericArgIntCheck(int32(fd2)),
 			ec.GenericArgBytesCheck([]byte("hello world")),
-			ec.GenericArgSizeCheck(11),
+			ec.GenericArgSizeCheck(100),
 		})
 	checker := ec.NewOrderedMultiResponseChecker(
 		ec.NewKprobeEventChecker().
