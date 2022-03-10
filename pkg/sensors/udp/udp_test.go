@@ -46,11 +46,9 @@ var (
 )
 
 const (
-	exportFile                        = "/tmp/hubble-fgs.gotest"
-	testConfigFile                    = "/tmp/hubble-fgs.gotest.yaml"
-	jsonRetries                       = 10
-	IPPROTO_UDP                       = 0x11
-	PROCESS_NETWORK_BURST_PROTO_SHIFT = 48
+	exportFile     = "/tmp/hubble-fgs.gotest"
+	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
+	jsonRetries    = 10
 )
 
 func init() {
@@ -90,10 +88,10 @@ spec:
       cgroup: true
       statsInterval: 20
       deleteIdleSocketInterval: 60
-    udpBurst:
-      enable: true
-      windowSize: 1000
-      triggerPercent: 50
+      burst:
+        enable: true
+        windowSize: 1000
+        triggerPercent: 50
     dns:
       enable: true
       ports: [53]
@@ -260,10 +258,10 @@ func TestUdpBurst(t *testing.T) {
 		panic(err)
 	}
 	defer m.Close()
-	m.MapKey = &processNetworkBurstKey{}
+	m.MapKey = &ProcessNetworkBurstKey{}
 	m.KeySize = 8
-	m.MapValue = &processNetworkBurstValue{}
-	processKey := &processNetworkBurstKey{Key: uint64(serverCmd.Process.Pid) | (IPPROTO_UDP << PROCESS_NETWORK_BURST_PROTO_SHIFT)}
+	m.MapValue = &ProcessNetworkBurstValue{}
+	processKey := &ProcessNetworkBurstKey{Key: PidToBurstKey(uint32(serverCmd.Process.Pid), syscall.IPPROTO_UDP, 0)}
 	_, err = m.Lookup(processKey)
 	if err == nil {
 		fmt.Printf("ERROR Server process in burst map before traffic\n")

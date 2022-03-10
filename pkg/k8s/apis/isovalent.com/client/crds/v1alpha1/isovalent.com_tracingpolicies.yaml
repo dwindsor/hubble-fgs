@@ -468,7 +468,7 @@ spec:
                     - enable
                     type: object
                   nop:
-                    description: nop parsre policy specification
+                    description: Network policy specification
                     properties:
                       enable:
                         description: Nop enable parser
@@ -535,6 +535,25 @@ spec:
                   udp:
                     description: UDP policy specification
                     properties:
+                      burst:
+                        description: Network policy specification
+                        properties:
+                          enable:
+                            default: false
+                            description: Enable UDP burst observability
+                            type: boolean
+                          triggerPercent:
+                            default: 100
+                            description: Configures the percent over average deemed
+                              to be a burst
+                            format: int32
+                            type: integer
+                          windowSize:
+                            default: 1000
+                            description: Configures the burst window size in milliseconds
+                            format: int32
+                            type: integer
+                        type: object
                       cgroup:
                         default: true
                         description: UDP has two modes one for newer kernels (cgroup)
@@ -556,25 +575,6 @@ spec:
                         type: integer
                     required:
                     - enable
-                    type: object
-                  udpBurst:
-                    description: Network policy specification
-                    properties:
-                      enable:
-                        default: false
-                        description: Enable UDP burst observability
-                        type: boolean
-                      triggerPercent:
-                        default: 100
-                        description: Configures the percent over average deemed to
-                          be a burst
-                        format: int32
-                        type: integer
-                      windowSize:
-                        default: 1000
-                        description: Configures the burst window size in milliseconds
-                        format: int32
-                        type: integer
                     type: object
                 type: object
               tracepoints:

@@ -34,15 +34,21 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-var (
-	UdpGCIntervalDefault       = time.Duration(60 * time.Second)
-	UdpDeleteInterval          = time.Duration(600 * time.Second)
-	UdpMapName                 = "udp_map"
-	UdpRetprobeMapName         = "udp_retprobe_map"
-	ProcessNetworkBurstMapName = "pn_burst_map"
+const (
+	PROCESS_NETWORK_BURST_PROTO_SHIFT   = 48
+	PROCESS_NETWORK_BURST_KEY_DIR_SHIFT = 32
+	UdpGCIntervalDefault                = time.Duration(60 * time.Second)
+	UdpMapName                          = "udp_map"
+	UdpRetprobeMapName                  = "udp_retprobe_map"
+	ProcessNetworkBurstMapName          = "pn_burst_map"
 
-	stats          *lru.Cache
 	stataCacheSize = 32000
+)
+
+var (
+	UdpDeleteInterval = time.Duration(600 * time.Second)
+
+	stats *lru.Cache
 
 	Config     *udpSensorConfigValue
 	configured = false
@@ -152,36 +158,44 @@ type udpInfoValue struct {
 	SkDrops        uint32
 }
 
-type processNetworkBurstKey struct {
+type ProcessNetworkBurstKey struct {
 	Key uint64
 }
 
-type processNetworkBurstValue struct {
-	HistVol        uint64
-	WinVol         uint64
-	LastWinVol     uint64
-	LastPacketTime uint64
-	Burst          uint32
+type ProcessNetworkBurstValue struct {
+	ProcessStartTime uint64
+	HistVol          uint64
+	WinVol           uint64
+	LastWinVol       uint64
+	LastPacketTime   uint64
+	Burst            uint64
 }
 
-func (k *processNetworkBurstKey) String() string             { return fmt.Sprintf("key=%d", k.Key) }
-func (k *processNetworkBurstKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *processNetworkBurstKey) NewValue() bpf.MapValue     { return &processNetworkBurstValue{} }
-func (k *processNetworkBurstKey) DeepCopyMapKey() bpf.MapKey { return &processNetworkBurstKey{k.Key} }
+func (k *ProcessNetworkBurstKey) String() string             { return fmt.Sprintf("key=%d", k.Key) }
+func (k *ProcessNetworkBurstKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
+func (k *ProcessNetworkBurstKey) NewValue() bpf.MapValue     { return &ProcessNetworkBurstValue{} }
+func (k *ProcessNetworkBurstKey) DeepCopyMapKey() bpf.MapKey { return &ProcessNetworkBurstKey{k.Key} }
 
-func (v *processNetworkBurstValue) String() string {
+func (v *ProcessNetworkBurstValue) String() string {
 	return fmt.Sprintf(
-		"HistVol: %d\n"+
-			"WinVol: %d\n"+
-			"LastWinVol: %d\n"+
-			"LastPacketTime: %d\n"+
-			"Burst: %d\n",
-		v.HistVol, v.WinVol, v.LastWinVol, v.LastPacketTime, v.Burst)
+		"Process start time: %d, "+
+			"HistVol: %d, "+
+			"WinVol: %d, "+
+			"LastWinVol: %d, "+
+			"LastPacketTime: %d, "+
+			"Burst: %d",
+		v.ProcessStartTime, v.HistVol, v.WinVol, v.LastWinVol, v.LastPacketTime, v.Burst)
 }
-func (v *processNetworkBurstValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(&v) }
-func (v *processNetworkBurstValue) DeepCopyMapValue() bpf.MapValue {
-	var n processNetworkBurstValue = *v
-	return &n
+func (v *ProcessNetworkBurstValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
+func (v *ProcessNetworkBurstValue) DeepCopyMapValue() bpf.MapValue {
+	return &ProcessNetworkBurstValue{
+		ProcessStartTime: v.ProcessStartTime,
+		HistVol:          v.HistVol,
+		WinVol:           v.WinVol,
+		LastWinVol:       v.LastWinVol,
+		LastPacketTime:   v.LastPacketTime,
+		Burst:            v.Burst,
+	}
 }
 
 func (k *udpInfoKey) String() string {
@@ -568,7 +582,7 @@ func msgToProcessNetworkBurstUnix(m *api.MsgProcessNetworkBurstEvent) *api.MsgPr
 	return m
 }
 
-func handleProcessNetworkBurst(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func HandleProcessNetworkBurst(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	m := api.MsgProcessNetworkBurstEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
@@ -598,8 +612,12 @@ func AddUDP() {
 	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPCONNECT, handleUdpConnect)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPPAYLOAD, handleUdpPayload)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, handleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, HandleProcessNetworkBurst)
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)
+}
+
+func PidToBurstKey(pid uint32, protocol uint64, send uint64) uint64 {
+	return uint64(pid) | (protocol << PROCESS_NETWORK_BURST_PROTO_SHIFT) | ((send & 1) << PROCESS_NETWORK_BURST_KEY_DIR_SHIFT)
 }

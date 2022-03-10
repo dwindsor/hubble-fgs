@@ -131,7 +131,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*udpSensorConfigValue, erro
 	return &config, nil
 }
 
-// ParseDNSSepec parses the input yaml/crd and outputs the kernel selectors
+// parseDNSSepec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify DNS and run DNS parser on it.
 //
 // The maximum number of DNS ports is fixed to maxDnsPorts. Changing this requires changing
@@ -154,20 +154,20 @@ func ParseDnsSpec(config *udpSensorConfigValue, spec *v1alpha1.TracingPolicySpec
 	}
 }
 
-// ParseUdpBurst parses the input yaml/crd and outputs the kernel selectors
+// parseUdpBurst parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP bursts and run the monitor on it.
 func ParseUdpBurstSpec(config *udpSensorConfigValue, spec *v1alpha1.TracingPolicySpec) {
-	if spec.Parser.UdpBurst.Enable && spec.Parser.UdpBurst.WindowSize > 0 && spec.Parser.UdpBurst.TriggerPercent > 0 {
+	if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
 		config.watermarkEnable = 1
 		// WindowSize is in milliseconds
-		config.watermarkAvgWindowSizeMs = uint64(spec.Parser.UdpBurst.WindowSize)
+		config.watermarkAvgWindowSizeMs = uint64(spec.Parser.Udp.Burst.WindowSize)
 		// The actual window size we use in calculations is a) in nanoseconds;
 		// and b) is 2/3 of the provided window size because the measurement window
 		// varies between 1 window (2/3 window size) and 2 windows (4/3 window size), meaning
 		// the average measurement window == window size.
-		config.watermarkWindowSize = (uint64(spec.Parser.UdpBurst.WindowSize) * 2 * 1000000) / 3
+		config.watermarkWindowSize = (uint64(spec.Parser.Udp.Burst.WindowSize) * 2 * 1000000) / 3
 		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
-		config.watermarkTriggerPercent = uint64(spec.Parser.UdpBurst.TriggerPercent) + 100
+		config.watermarkTriggerPercent = uint64(spec.Parser.Udp.Burst.TriggerPercent) + 100
 	} else {
 		config.watermarkEnable = 0
 		config.watermarkAvgWindowSizeMs = 0

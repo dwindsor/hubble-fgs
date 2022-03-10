@@ -319,13 +319,11 @@ type ParserPolicySpec struct {
 	Dns DnsPolicySpec `json:"dns" yaml:"dns"`
 	// +kubebuilder:validation:Optional
 	// Network policy specification
-	UdpBurst UdpBurstPolicySpec `json:"udpBurst" yaml:"udpBurst"`
-	// +kubebuilder:validation:Optional
-	// nop parsre policy specification
 	Nop NopSpec `json:"nop" yaml:"nop"`
 	// +kubebuilder:validation:Optional
 	// TCP policy specification
 	Tcp TcpPolicySpec `json:"tcp" yaml:"tcp"`
+	// +kubebuilder:validation:Optional
 }
 
 type TcpPolicySpec struct {
@@ -351,6 +349,9 @@ type UdpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configure socket idle time to delete sockets in seconds
 	DeleteIdleSocketInterval uint32 `json:"deleteIdleSocketInterval" yaml:"deleteIdleSocketInterval"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Burst UdpBurstPolicySpec `json:"burst" yaml:"burst"`
 }
 
 type UdpBurstPolicySpec struct {

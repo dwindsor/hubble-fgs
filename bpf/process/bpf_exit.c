@@ -83,7 +83,7 @@ int event_exit(struct sched_execve_args *ctx)
 
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, exit, size);
 	}
+	process_burst_map_delete(ctx, tgid);
 	execve_map_delete(tgid);
-	map_delete_process_burst(tgid);
 	return 0;
 }

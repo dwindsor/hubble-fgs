@@ -9,10 +9,10 @@ spec:
       cgroup: true
       statsInterval: 20
       deleteIdleSocketInterval: 60
-    udpBurst:
-      enable: true
-      windowSize: 1000
-      triggerPercent: 50
+      burst:
+        enable: true
+        windowSize: 1000
+        triggerPercent: 50
     dns:
       enable: true
       ports: [53]

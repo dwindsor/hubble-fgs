@@ -1,21 +1,7 @@
 #ifndef __BPF_UDP_H__
 #define __BPF_UDP_H__
 
-#ifndef __READ_ONCE
-# define __READ_ONCE(x)		(*(volatile typeof(x) *)&x)
-#endif
-#ifndef __WRITE_ONCE
-# define __WRITE_ONCE(x, v)	(*(volatile typeof(x) *)&x) = (v)
-#endif
-
-#ifndef READ_ONCE
-# define READ_ONCE(x)		\
-	({ typeof(x) __val; __val = __READ_ONCE(x); compiler_barrier(); __val; })
-#endif
-#ifndef WRITE_ONCE
-#define WRITE_ONCE(x, v)	\
-	({ typeof(x) __val = (v); __WRITE_ONCE(x, __val); compiler_barrier(); __val; })
-#endif
+#include "../lib/bpf_helpers.h"
 
 /* Maximum number of simultaniously existing UDP sockets that we track
  * statistics for.

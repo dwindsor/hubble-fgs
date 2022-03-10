@@ -23,22 +23,7 @@ struct sock_key {
 #define _(P) (__builtin_preserve_access_index(P))
 
 #include "bpf_core_read.h"
-
-#ifndef __READ_ONCE
-# define __READ_ONCE(x)		(*(volatile typeof(x) *)&x)
-#endif
-#ifndef __WRITE_ONCE
-# define __WRITE_ONCE(x, v)	(*(volatile typeof(x) *)&x) = (v)
-#endif
-
-#ifndef READ_ONCE
-# define READ_ONCE(x)		\
-	({ typeof(x) __val; __val = __READ_ONCE(x); compiler_barrier(); __val; })
-#endif
-#ifndef WRITE_ONCE
-# define WRITE_ONCE(x, v)	\
-	({ typeof(x) __val = (v); __WRITE_ONCE(x, __val); compiler_barrier(); __val; })
-#endif
+#include "../lib/bpf_helpers.h"
 
 __attribute__((unused))
 static void sk_extract4_key(struct bpf_sock_ops *ops,
