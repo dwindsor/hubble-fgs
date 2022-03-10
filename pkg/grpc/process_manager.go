@@ -31,7 +31,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -179,7 +178,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	if err != nil {
 		pm.log.WithField("id in HTTP event", processID).Debug("process not found in cache")
 	} else {
-		proc = processInt.process
+		proc = processInt.GetProcessCopy()
 
 	}
 	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
@@ -291,7 +290,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	if err != nil {
 		pm.log.WithField("id in DNS event", processID).Debug("process not found in cache")
 	} else {
-		proc = processInt.process
+		proc = processInt.GetProcessCopy()
 
 	}
 	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
@@ -527,13 +526,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
-	}
-	// Create a copy of the process if we need to set Caps or Namespaces
-	if pm.enableProcessCred || pm.enableProcessNs {
-		if process != nil {
-			fgsProcess = copyProcess(process.process)
-		}
+		fgsProcess = process.GetProcessCopy()
 	}
 	if pm.enableProcessCred {
 		fgsProcess.Cap = pm.getCapabilities(event.Capabilities)
@@ -544,7 +537,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 	}
 
 	for _, arg := range event.Args {
@@ -685,12 +678,12 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 			StartTime: ktimeToProto(msg.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = process.GetProcessCopy()
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 	}
 
 	var fgsArgs []*fgs.KprobeArgument
@@ -968,10 +961,11 @@ func (pm *ProcessManager) getProcess(
 			ExecId:       execID,
 			Docker:       containerID,
 			ParentExecId: parentExecID,
-			Refcnt:       1,
+			Refcnt:       0,
 		},
 		capabilities: caps,
 		namespaces:   ns,
+		refcnt:       1,
 	}, endpoint
 }
 
@@ -1037,13 +1031,6 @@ func (pm *ProcessManager) GetExecIDFromKey(key *fgsAPI.MsgExecveKey) string {
 	return pm.GetProcessID(key.Pid, key.Ktime)
 }
 
-func copyProcess(process *fgs.Process) *fgs.Process {
-	if process == nil {
-		return nil
-	}
-	return proto.Clone(process).(*fgs.Process)
-}
-
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.
 func (pm *ProcessManager) GetProcessExec(
 	proc *processInternal,
@@ -1062,12 +1049,8 @@ func (pm *ProcessManager) GetProcessExec(
 	}
 	// Set the cap field only if --enable-process-cred flag is set.
 	var fgsParent, fgsProcess *fgs.Process
-	// Create a copy of the process if we need to set Caps or Namespaces
-	if pm.enableProcessCred || pm.enableProcessNs {
-		fgsProcess = copyProcess(proc.process)
-	} else {
-		fgsProcess = proc.process
-	}
+	fgsProcess = proc.GetProcessCopy()
+
 	if pm.enableProcessCred {
 		fgsProcess.Cap = proc.capabilities
 	}
@@ -1075,7 +1058,7 @@ func (pm *ProcessManager) GetProcessExec(
 		fgsProcess.Ns = proc.namespaces
 	}
 	if parent != nil {
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 	}
 	for _, a := range ancestors {
 		// If we have a docker link, but the pod info lookup
@@ -1092,8 +1075,8 @@ func (pm *ProcessManager) GetProcessExec(
 	// If this is not a clone we need to decrement parent refcnt because
 	// the parent has been replaced and will not get its own exit event.
 	// The new process will hold needed refcnts until it is destroyed.
-	if strings.Contains(proc.process.Flags, "clone") == false &&
-		strings.Contains(proc.process.Flags, "procFS") == false &&
+	if strings.Contains(fgsProcess.Flags, "clone") == false &&
+		strings.Contains(fgsProcess.Flags, "procFS") == false &&
 		parent != nil {
 		pm.cache.refDec(parent)
 		ancestors := pm.getAncestors(fgsParent)
@@ -1129,7 +1112,7 @@ func (pm *ProcessManager) GetProcessListen(
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		pm.cache.refInc(process)
-		fgsProcess = process.process
+		fgsProcess = process.GetProcessCopy()
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
@@ -1138,7 +1121,7 @@ func (pm *ProcessManager) GetProcessListen(
 	}
 	if parent != nil {
 		pm.cache.refInc(parent)
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 	}
 	fgsEvent := &fgs.ProcessListen{
 		Process: fgsProcess,
@@ -1167,7 +1150,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		pm.cache.refDec(process)
-		fgsProcess = process.process
+		fgsProcess = process.GetProcessCopy()
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
@@ -1176,7 +1159,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 	}
 	if parent != nil {
 		pm.cache.refDec(parent)
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 	}
 
 	ancestors := pm.getAncestors(fgsProcess)
@@ -1214,12 +1197,12 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		}
 	} else {
 		// Make a copy of the process and set the cap field.
-		process = copyProcess(processInt.process)
+		process = processInt.GetProcessCopy()
 		process.Cap = processInt.capabilities
 	}
 	if parentInt != nil {
 		// Make a copy of the parent and set the cap field.
-		parent = copyProcess(parentInt.process)
+		parent = parentInt.GetProcessCopy()
 		parent.Cap = parentInt.capabilities
 	}
 	fgsEvent := &fgs.ProcessCred{
@@ -1242,7 +1225,7 @@ func (pm *ProcessManager) GetProcessNetworkBurst(
 
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
-		fgsProcess = process.process
+		fgsProcess = process.GetProcessCopy()
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
@@ -1250,7 +1233,7 @@ func (pm *ProcessManager) GetProcessNetworkBurst(
 		}
 	}
 	if parent != nil {
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 	}
 	fgsEvent := &fgs.ProcessNetworkBurst{
 		Process: fgsProcess,
@@ -1328,7 +1311,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		pm.log.WithField("id in TLS event", processID).Debug("process not found in cache")
 		proc = nil
 	} else {
-		proc = processInt.process
+		proc = processInt.GetProcessCopy()
 	}
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI.Value)
 	fgsEvent := &fgs.Tls{
@@ -1403,12 +1386,12 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = process.GetProcessCopy()
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 	}
 
 	fgsTuple := pm.getProcessTuple(event)
@@ -1477,13 +1460,13 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = process.GetProcessCopy()
 		pm.cache.refDec(process)
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 		pm.cache.refDec(parent)
 	}
 
@@ -1550,13 +1533,13 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = process.GetProcessCopy()
 		pm.cache.refInc(process)
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 		pm.cache.refInc(parent)
 	}
 
@@ -1620,13 +1603,13 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = process.GetProcessCopy()
 		pm.cache.refInc(process)
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		fgsParent = parent.process
+		fgsParent = parent.GetProcessCopy()
 		pm.cache.refInc(parent)
 	}
 

@@ -13,6 +13,7 @@ package grpc
 import (
 	"fmt"
 	"strconv"
+	"sync"
 	"sync/atomic"
 	"time"
 
@@ -20,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 )
 
 type processCache struct {
@@ -47,13 +49,27 @@ const (
 
 // processInternal is the internal representation of a process.
 type processInternal struct {
+	// mu protects the modifications to process.
+	mu sync.Mutex
 	// externally visible process struct.
 	process *fgs.Process
 	// additional internal fields below
 	capabilities *fgs.Capabilities
 	namespaces   *fgs.Namespaces
 	// garbage collector metadata
-	color int
+	color  int
+	refcnt uint32
+}
+
+func (pi *processInternal) GetProcessCopy() *fgs.Process {
+	if pi.process == nil {
+		return nil
+	}
+	pi.mu.Lock()
+	proc := proto.Clone(pi.process).(*fgs.Process)
+	pi.mu.Unlock()
+	proc.Refcnt = atomic.LoadUint32(&pi.refcnt)
+	return proc
 }
 
 func (pc *processCache) cacheGarbageCollector() {
@@ -85,7 +101,7 @@ func (pc *processCache) cacheGarbageCollector() {
 					 * later if we care. Also we may try to delete the
 					 * process a second time, but that is harmless.
 					 */
-					ref := atomic.LoadUint32(&p.process.Refcnt)
+					ref := atomic.LoadUint32(&p.refcnt)
 					if ref != 0 {
 						continue
 					}
@@ -128,14 +144,14 @@ func (pc *processCache) deletePending(process *processInternal) {
 }
 
 func (pc *processCache) refDec(p *processInternal) {
-	ref := atomic.AddUint32(&p.process.Refcnt, ^uint32(0))
+	ref := atomic.AddUint32(&p.refcnt, ^uint32(0))
 	if ref == 0 {
 		pc.deletePending(p)
 	}
 }
 
 func (pc *processCache) refInc(p *processInternal) {
-	atomic.AddUint32(&p.process.Refcnt, 1)
+	atomic.AddUint32(&p.refcnt, 1)
 }
 
 func newProcessCache(

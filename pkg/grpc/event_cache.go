@@ -41,10 +41,12 @@ type eventProcCacheObj struct {
 }
 
 type eventCache struct {
-	log       logrus.FieldLogger
-	netCache  []eventNetCacheObj
-	procCache []eventProcCacheObj
-	pm        *ProcessManager
+	netObjsChan  chan eventNetCacheObj
+	procObjsChan chan eventProcCacheObj
+	log          logrus.FieldLogger
+	netCache     []eventNetCacheObj
+	procCache    []eventProcCacheObj
+	pm           *ProcessManager
 }
 
 // garbage collection states
@@ -244,7 +246,9 @@ func (ec *eventCache) handleProcEvents() {
 		if err != nil {
 			ec.log.WithField("Process", e.process.Process).Warn("eventCache to procCache lookup failed ")
 		} else {
+			processInternal.mu.Lock()
 			processInternal.process.Pod = podInfo
+			processInternal.mu.Unlock()
 		}
 		e.process.Process.Pod = podInfo
 		processedEvent := &fgs.GetEventsResponse{
@@ -257,45 +261,50 @@ func (ec *eventCache) handleProcEvents() {
 	ec.procCache = tmp
 }
 
-func (ec *eventCache) eventRetry() {
+func (ec *eventCache) loop() {
 	ticker := time.NewTicker(eventRetryTimer)
+	defer ticker.Stop()
 
-	/* Every 'eventRetryTimer' walk the slice of events pending pod info. If
-	 * an event hasn't completed its podInfo after two iterations send the
-	 * event anyways.
-	 */
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				ec.handleNetEvents()
-				ec.handleProcEvents()
-				metrics.ExecveMapSize.WithLabelValues("netCache", "0").Set(float64(len(ec.netCache)))
-				metrics.ExecveMapSize.WithLabelValues("procCache", "0").Set(float64(len(ec.procCache)))
-			}
+	for {
+		select {
+		case <-ticker.C:
+			/* Every 'eventRetryTimer' walk the slice of events pending pod info. If
+			 * an event hasn't completed its podInfo after two iterations send the
+			 * event anyways.
+			 */
+			ec.handleNetEvents()
+			ec.handleProcEvents()
+			metrics.ExecveMapSize.WithLabelValues("netCache", "0").Set(float64(len(ec.netCache)))
+			metrics.ExecveMapSize.WithLabelValues("procCache", "0").Set(float64(len(ec.procCache)))
+
+		case event := <-ec.netObjsChan:
+			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheNetworkCount)).Inc()
+			ec.netCache = append(ec.netCache, event)
+
+		case event := <-ec.procObjsChan:
+			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheProcessCount)).Inc()
+			ec.procCache = append(ec.procCache, event)
 		}
-	}()
+	}
 }
 
 func newEventCache(log logrus.FieldLogger, pm *ProcessManager) *eventCache {
 	ec := &eventCache{
-		log:       log,
-		netCache:  make([]eventNetCacheObj, 0),
-		procCache: make([]eventProcCacheObj, 0),
-		pm:        pm,
+		netObjsChan:  make(chan eventNetCacheObj),
+		procObjsChan: make(chan eventProcCacheObj),
+		log:          log,
+		netCache:     make([]eventNetCacheObj, 0),
+		procCache:    make([]eventProcCacheObj, 0),
+		pm:           pm,
 	}
-	ec.eventRetry()
+	go ec.loop()
 	return ec
 }
 
 func (ec *eventCache) add(e eventNetObj, t *timestamppb.Timestamp, msg interface{}) {
-	event := eventNetCacheObj{event: e, timestamp: t, msg: msg}
-	metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheNetworkCount)).Inc()
-	ec.netCache = append(ec.netCache, event)
+	ec.netObjsChan <- eventNetCacheObj{event: e, timestamp: t, msg: msg}
 }
 
 func (ec *eventCache) addProc(e *fgs.ProcessExec, t *timestamppb.Timestamp, msg *api.MsgExecveEventUnix) {
-	event := eventProcCacheObj{process: e, timestamp: t, msg: msg}
-	metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheProcessCount)).Inc()
-	ec.procCache = append(ec.procCache, event)
+	ec.procObjsChan <- eventProcCacheObj{process: e, timestamp: t, msg: msg}
 }
