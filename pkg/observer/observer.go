@@ -416,7 +416,7 @@ func (k *Observer) runEventsNew(stopCtx context.Context, ready func()) error {
 
 	perfMap, err := ebpf.LoadPinnedMap(k.perfConfig.MapName, &pinOpts)
 	if err != nil {
-		return fmt.Errorf("opening pinned map failed: %w", err)
+		return fmt.Errorf("opening pinned map '%s' failed: %w", k.perfConfig.MapName, err)
 	}
 	defer perfMap.Close()
 

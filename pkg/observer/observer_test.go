@@ -56,6 +56,7 @@ func TestMain(m *testing.M) {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
+	bpf.SetMapPrefix("testObserver")
 	selfBinary = filepath.Base(os.Args[0])
 	exitCode := m.Run()
 	os.Exit(exitCode)

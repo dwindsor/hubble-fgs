@@ -44,7 +44,7 @@ func (v *SockStatValue) DeepCopyMapValue() bpf.MapValue {
 
 func configureSockStatSampler(sampleRate time.Duration, burstEnable bool, burstAvgWindowSize uint64,
 	burstTriggerMult uint64) error {
-	m, err := bpf.OpenMap(filepath.Join(sensors.MapDir, TCPSendCheckSampler.Name))
+	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), TCPSendCheckSampler.Name))
 	if err != nil {
 		return err
 	}

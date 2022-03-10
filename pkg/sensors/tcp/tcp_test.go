@@ -22,7 +22,6 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	"github.com/stretchr/testify/assert"
@@ -85,6 +84,7 @@ func TestMain(m *testing.M) {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
+	bpf.SetMapPrefix("testObserver")
 	selfBinary = filepath.Base(os.Args[0])
 	exitCode := m.Run()
 	os.Exit(exitCode)
@@ -810,7 +810,7 @@ func TestTcpBurst(t *testing.T) {
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
-	burstMapFile := filepath.Join(sensors.MapDir, burstEventsPoll.ProcessNetworkBurstMapName)
+	burstMapFile := filepath.Join(bpf.MapPrefixPath(), burstEventsPoll.ProcessNetworkBurstMapName)
 	m, err := ebpf.LoadPinnedMap(burstMapFile, nil)
 	if err != nil {
 		fmt.Printf("ERROR Cannot open map file\n")

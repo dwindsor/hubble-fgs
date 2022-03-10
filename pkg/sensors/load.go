@@ -22,7 +22,6 @@ import (
 	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
-	"github.com/isovalent/hubble-fgs/pkg/defaults"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
@@ -64,10 +63,6 @@ const (
 	BPF_PROG_TYPE_LSM                     = 29
 )
 
-var (
-	MapDir = defaults.DefaultMapDir
-)
-
 // LoadDefault loads the default sensor, including any from the configuration
 // file.
 func LoadDefault(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
@@ -107,7 +102,6 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 	}
 
 	createDir(bpfDir, mapDir)
-	MapDir = mapDir
 
 	l := logger.GetLogger()
 

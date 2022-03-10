@@ -403,7 +403,7 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 }
 
 func runUdpGC() {
-	file := filepath.Join(sensors.MapDir, UdpMapName)
+	file := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 
 	m, err := bpf.OpenMap(file)
 	if err != nil {
@@ -420,11 +420,8 @@ func runUdpGC() {
 func udpGC(gcInterval time.Duration) {
 	ticker := time.NewTicker(gcInterval)
 	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				runUdpGC()
-			}
+		for range ticker.C {
+			runUdpGC()
 		}
 	}()
 }
