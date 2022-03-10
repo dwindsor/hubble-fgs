@@ -1,0 +1,207 @@
+name: Nightly BPF regression test
+on:
+  workflow_dispatch:
+  schedule:
+    - cron:  '0 3 * * *'
+
+env:
+  fgsImage: quay.io/${{ github.repository_owner }}/hubble-enterprise:latest
+  clusterName: fgs-cli-ci
+  zone: us-west2-a
+  vmName: fgs-ci-nightly-${{ github.run_id }}
+  vmHost: fgs@fgs-ci-nightly-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
+  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v4
+
+jobs:
+  nightly-tests:
+    runs-on: ubuntu-latest
+    timeout-minutes: 80
+    steps:
+      - uses: actions/checkout@master
+        with:
+          path: hubble-fgs
+
+      - name: Authenticate with gcloud
+        uses: 'google-github-actions/auth@v0'
+        with:
+          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
+          credentials_json: '${{ secrets.CILIUM_PR_GCP_SA_KEY }}'
+          create_credentials_file: true
+
+      - name: Set up gcloud
+        uses: google-github-actions/setup-gcloud@v0
+        with:
+          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
+
+      - name: Install beta component
+        run: gcloud components install beta && gcloud info
+
+      - name: Build kernel
+        run: |
+          # Install build dependencies
+          sudo apt-get -y update
+          sudo apt-get -y install libelf-dev cmake libdw-dev llvm
+          hubble-fgs/contrib/install-pahole.sh
+
+          git clone --depth=1 https://git.kernel.org/pub/scm/linux/kernel/git/bpf/bpf.git /home/runner/bpf
+          rm -rf /home/runner/bpf/.git
+
+          # Setup custom config file for contrib/kvm so that it points to the right disk
+          # image and kernel
+          cat <<-EOF >> hubble-fgs/contrib/kvm/conf
+            KSRCDIR=/home/runner/bpf
+            ROOTIMG=/home/fgs/img/kvm.img
+            FGSDIR="/home/fgs/hubble-fgs"
+          EOF
+
+          # Build the kernel
+          hubble-fgs/contrib/kvm/build-kernel.sh
+
+      - name: Create VM
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 10
+          command: |
+            gcloud beta compute instances create ${{ env.vmName }} --quiet --zone ${{ env.zone }} \
+              --machine-type n1-standard-4 --min-cpu-platform "Intel Haswell" \
+              --enable-nested-virtualization \
+              --source-machine-image ${{ env.machineImage }} \
+              --preemptible --no-restart-on-failure --maintenance-policy=terminate \
+              --service-account isovalent-hubble-fgs-sa@cilium-pr.iam.gserviceaccount.com
+
+      - name: Set up ssh client
+        run: |
+            sudo apt-get -y install openssh-client
+            mkdir -p ~/.ssh && chmod 700 ~/.ssh
+            echo "${{ secrets.KVM_SSH_FINGERPRINT }}" >> ~/.ssh/known_hosts
+            chmod 600 ~/.ssh/known_hosts
+
+      - uses: webfactory/ssh-agent@v0.5.4
+        with:
+            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+
+      - name: Set up ssh into VM
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 10
+          command: |
+            gcloud compute ssh --quiet fgs@${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a"
+            gcloud compute config-ssh --quiet
+            ssh ${{ env.vmHost }} 'whoami && uname -a'
+
+      - name: Copy over FGS
+        run: |
+          tar cz hubble-fgs | ssh ${{ env.vmHost }} 'tar xz'
+
+      - name: Build tests
+        run: |
+          cat <<-EOF | ssh ${{ env.vmHost }}
+            set -e
+            export PATH="\\$PATH:/usr/local/go/bin"
+            cd /home/fgs/hubble-fgs
+            make tools-install
+            LD_LIBRARY_PATH=\\$(realpath ./lib) make LOCAL_CLANG=0 hubble-bpf test-compile contrib-progs
+          EOF
+
+      - name: Spin up KVM
+        run: |
+          # Spin up KVM
+          cat <<-EOF | ssh ${{ env.vmHost }}
+            hubble-fgs/contrib/kvm/run.sh
+          EOF
+
+          # Set up an ssh tunnel into the VM
+          ssh ${{ env.vmHost }} -NL 3000:localhost:3000 & sleep 10
+
+          # Verify we can login via the tunnel
+          ssh -p 3000 root@localhost "uname -a"
+
+      - name: Run unit tests
+        timeout-minutes: 30
+        run: |
+          cat <<-EOF | ssh -p 3000 root@localhost
+            set -e
+            export PATH="\\$PATH:/usr/local/go/bin"
+            mkdir -p /home/fgs && ln -vsnf /fgs /home/fgs/hubble-fgs # needed to make sigkill-tester work
+            cd /fgs
+            make test
+          EOF
+
+      - name: Wait for kube-system pods to be ready
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 10
+          command: |
+            ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready pods --all --timeout=45s"
+
+      - name: Install FGS
+        run: |
+          docker pull ${{ env.fgsImage }}
+          docker save ${{ env.fgsImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
+          cat <<-EOF | ssh -p 3000 root@localhost
+            set -xeu
+            kind load docker-image ${{ env.fgsImage }} --name ${{ env.clusterName }}
+            helm repo add isovalent https://helm.isovalent.com
+            helm repo update
+            helm install hubble-enterprise isovalent/hubble-enterprise \
+                   --version 9999.9999.9999-dev \
+                   --set enterprise.image.repository=quay.io/isovalent/hubble-enterprise \
+                   --set enterprise.image.tag=latest \
+                   --set enterprise.exportAllowList="" \
+                   --namespace kube-system
+          EOF
+
+      - name: Wait for FGS pods to become ready
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 1
+          max_attempts: 10
+          command: |
+            ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready --all pod -l app.kubernetes.io/name=hubble-enterprise --timeout=45s"
+
+      - name: Run HTTP and TLS tests
+        timeout-minutes: 15
+        run: |
+           ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/http-tls.sh"
+
+      - name: Run demo app tests
+        timeout-minutes: 15
+        run: |
+          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/demo-app.sh"
+
+      - name: Copy out FGS logs
+        if: ${{ failure() }}
+        timeout-minutes: 15
+        run: |
+          mkdir -p logs
+          scp -P 3000 'root@localhost:/tmp/*json' logs
+          scp -P 3000 'root@localhost:/tmp/fgs-bugtool*' logs
+
+      - name: Shut off KVM
+        timeout-minutes: 5
+        run: |
+          ssh -p 3000 root@localhost "shutdown now" || true
+
+      - name: Upload bugtool dumps
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: bugtool-dumps-${{ matrix.kernel }}
+          path: logs/fgs-bugtool*.tar.gz
+          retention-days: 5
+
+      - name: Upload FGS artifacts
+        if: ${{ failure() }}
+        uses: actions/upload-artifact@v2
+        with:
+          name: fgs-logs-${{ matrix.kernel }}
+          path: logs/*.json
+          retention-days: 5
+
+      - name: Destroy VM
+        if: ${{ always() }}
+        run: |
+          gcloud beta compute instances delete ${{ env.vmName }} --quiet --zone ${{ env.zone }}
