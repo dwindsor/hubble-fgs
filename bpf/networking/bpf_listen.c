@@ -92,6 +92,8 @@ int event_sys_listen(struct pt_regs *ctx)
 		v.key = ev;
 		v.zero_window = 0;
 		v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
+		v.sent = 0;
+		v.received = 0;
 
 		add_socketmap(&tuple, &v);
 	}

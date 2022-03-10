@@ -10,6 +10,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/yalue/native_endian"
 
 	"golang.org/x/net/dns/dnsmessage"
@@ -131,7 +132,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*udpSensorConfigValue, erro
 	return &config, nil
 }
 
-// parseDNSSepec parses the input yaml/crd and outputs the kernel selectors
+// ParseDNSSepec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify DNS and run DNS parser on it.
 //
 // The maximum number of DNS ports is fixed to maxDnsPorts. Changing this requires changing
@@ -154,7 +155,7 @@ func ParseDnsSpec(config *udpSensorConfigValue, spec *v1alpha1.TracingPolicySpec
 	}
 }
 
-// parseUdpBurst parses the input yaml/crd and outputs the kernel selectors
+// ParseUdpBurst parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP bursts and run the monitor on it.
 func ParseUdpBurstSpec(config *udpSensorConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
@@ -168,6 +169,7 @@ func ParseUdpBurstSpec(config *udpSensorConfigValue, spec *v1alpha1.TracingPolic
 		config.watermarkWindowSize = (uint64(spec.Parser.Udp.Burst.WindowSize) * 2 * 1000000) / 3
 		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
 		config.watermarkTriggerPercent = uint64(spec.Parser.Udp.Burst.TriggerPercent) + 100
+		go burstEventsPoll.Start(spec)
 	} else {
 		config.watermarkEnable = 0
 		config.watermarkAvgWindowSizeMs = 0

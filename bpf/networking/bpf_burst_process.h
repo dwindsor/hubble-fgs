@@ -12,6 +12,7 @@ struct process_network_burst_log {
 	__u64 last_win_vol;
 	__u64 last_packet_time;
 	__u64 burst;
+	__u64 burst_window_size;
 };
 
 struct process_network_burst_config {
@@ -123,11 +124,13 @@ void process_burst_map_delete(void *ctx, __u32 tgid)
 
 		process_burst_check_and_delete(val, ctx, IPPROTO_UDP, BURST_KEY_SEND_INGRESS, cntr);
 		process_burst_check_and_delete(val, ctx, IPPROTO_UDP, BURST_KEY_SEND_EGRESS, cntr);
+		process_burst_check_and_delete(val, ctx, IPPROTO_TCP, BURST_KEY_SEND_INGRESS, cntr);
+		process_burst_check_and_delete(val, ctx, IPPROTO_TCP, BURST_KEY_SEND_EGRESS, cntr);
 	}
 }
 
 static inline __attribute__((always_inline))
-void init_burst_log(u64 burst_key, u64 process_start_time, u64 vol, u64 current_time_ns)
+void init_burst_log(u64 burst_key, u64 process_start_time, u64 vol, u64 current_time_ns, u64 burst_window_size)
 {
 	struct process_network_burst_log *burst_log;
 	int err, zero = 0;
@@ -144,6 +147,7 @@ void init_burst_log(u64 burst_key, u64 process_start_time, u64 vol, u64 current_
 		.last_win_vol = 0,
 		.last_packet_time = current_time_ns,
 		.burst = false,
+		.burst_window_size = burst_window_size,
 	};
 
 	err = map_update_elem(&pn_burst_map, &burst_key, burst_log, BPF_ANY);
@@ -188,7 +192,7 @@ void process_network_burst(struct execve_map_value *process, u64 protocol, u64 s
 		// First packet for this process in this direction, for this protocol.
 		// This could be racy in the sense that multiple cores could initialise the
 		// global entry for this process.
-		init_burst_log(burst_key, process->key.ktime, vol, current_time_ns);
+		init_burst_log(burst_key, process->key.ktime, vol, current_time_ns, c->avg_window_size_ms);
 		return;
 	}
 

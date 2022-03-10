@@ -27,11 +27,13 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/ebpf"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	sensors "github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	"github.com/stretchr/testify/assert"
@@ -92,6 +94,9 @@ spec:
         enable: true
         windowSize: 1000
         triggerPercent: 50
+    burstPoll:
+      enable: true
+      interval: 1000
     dns:
       enable: true
       ports: [53]
@@ -251,18 +256,16 @@ func TestUdpBurst(t *testing.T) {
 	serverBuf := bufio.NewReader(serverOutput)
 	serverBuf.ReadLine()
 
-	burstMapFile := filepath.Join(sensors.MapDir, ProcessNetworkBurstMapName)
-	m, err := bpf.OpenMap(burstMapFile)
+	burstMapFile := filepath.Join(sensors.MapDir, burstEventsPoll.ProcessNetworkBurstMapName)
+	m, err := ebpf.LoadPinnedMap(burstMapFile, nil)
 	if err != nil {
 		fmt.Printf("ERROR Cannot open map file\n")
 		panic(err)
 	}
 	defer m.Close()
-	m.MapKey = &ProcessNetworkBurstKey{}
-	m.KeySize = 8
-	m.MapValue = &ProcessNetworkBurstValue{}
-	processKey := &ProcessNetworkBurstKey{Key: PidToBurstKey(uint32(serverCmd.Process.Pid), syscall.IPPROTO_UDP, 0)}
-	_, err = m.Lookup(processKey)
+	processKey := &burstEventsPoll.ProcessNetworkBurstKey{Key: burstEventsPoll.PidToBurstKey(uint32(serverCmd.Process.Pid), syscall.IPPROTO_UDP, 0)}
+	var processValue burstEventsPoll.ProcessNetworkBurstValue
+	err = m.Lookup(processKey, &processValue)
 	if err == nil {
 		fmt.Printf("ERROR Server process in burst map before traffic\n")
 		os.Exit(-1)
@@ -280,7 +283,7 @@ func TestUdpBurst(t *testing.T) {
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
-	_, err = m.Lookup(processKey)
+	err = m.Lookup(processKey, &processValue)
 	if err != nil {
 		fmt.Printf("ERROR Server process not in burst map\n")
 		panic(err)
@@ -306,7 +309,7 @@ func TestUdpBurst(t *testing.T) {
 		}
 	}
 
-	_, err = m.Lookup(processKey)
+	err = m.Lookup(processKey, &processValue)
 	if err == nil {
 		fmt.Printf("ERROR Server process in burst map after exit\n")
 		os.Exit(-1)

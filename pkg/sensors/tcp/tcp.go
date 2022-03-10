@@ -14,6 +14,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/sirupsen/logrus"
 
 	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -38,7 +39,8 @@ var (
 		"kprobe_tcp_v4_send_check",
 		"tcp_sensor")
 
-	TCPSendCheckSampler = sensors.MapBuilder("tcp_send_check_sampler", TCPSendCheck)
+	TCPSendCheckSampler    = sensors.MapBuilder("tcp_send_check_sampler", TCPSendCheck)
+	ProcessNetworkBurstMap = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, TCPSendCheck)
 )
 
 func EnableTcp() *sensors.Sensor {
@@ -76,6 +78,7 @@ func (tcp *tcpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 		tcpBurstEnable = true
 		tcpBurstWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
 		tcpBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
+		go burstEventsPoll.Start(spec)
 	} else {
 		tcpBurstEnable = false
 		tcpBurstWindowSize = 0
@@ -218,4 +221,5 @@ func AddTCP() {
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_BIND, handleTcp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_LISTEN, handleTcp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_ACCEPT, handleTcp)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
 }

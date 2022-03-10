@@ -1258,7 +1258,9 @@ func (pm *ProcessManager) GetProcessNetworkBurst(
 
 	switch event.Protocol {
 	case syscall.IPPROTO_UDP:
-		fgsEvent.Protocol = "udp"
+		fgsEvent.Protocol = "UDP"
+	case syscall.IPPROTO_TCP:
+		fgsEvent.Protocol = "TCP"
 	default:
 		fgsEvent.Protocol = "unknown"
 	}

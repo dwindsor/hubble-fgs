@@ -323,6 +323,9 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// TCP policy specification
 	Tcp TcpPolicySpec `json:"tcp" yaml:"tcp"`
+	// +kubebuilder:validation:Optional
+	// UDP and TCP burst poll policy specification
+	BurstPoll BurstPollPolicySpec `json:"burstPoll" yaml:"burstPoll"`
 }
 
 type TcpPolicySpec struct {
@@ -384,6 +387,17 @@ type UdpBurstPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the percent over average deemed to be a burst
 	TriggerPercent uint32 `json:"triggerPercent" yaml:"triggerPercent"`
+}
+
+type BurstPollPolicySpec struct {
+	// Enable burst polling for end events from userland
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable" yaml:"enable"`
+	// +kubebuilder:default=1000
+	// +kubebuilder:validation:Optional
+	// Configures the polling interval in milliseconds
+	Interval uint32 `json:"interval" yaml:"interval"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

@@ -20,5 +20,8 @@ spec:
         enable: true
         windowSize: 1000
         triggerPercent: 50
+    burstPoll:
+      enable: true
+      interval: 1000
     dns:
       enable: true

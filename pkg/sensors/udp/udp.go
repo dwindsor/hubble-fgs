@@ -29,18 +29,16 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/yalue/native_endian"
 
 	"github.com/sirupsen/logrus"
 )
 
 const (
-	PROCESS_NETWORK_BURST_PROTO_SHIFT   = 48
-	PROCESS_NETWORK_BURST_KEY_DIR_SHIFT = 32
-	UdpGCIntervalDefault                = time.Duration(60 * time.Second)
-	UdpMapName                          = "udp_map"
-	UdpRetprobeMapName                  = "udp_retprobe_map"
-	ProcessNetworkBurstMapName          = "pn_burst_map"
+	UdpGCIntervalDefault = time.Duration(60 * time.Second)
+	UdpMapName           = "udp_map"
+	UdpRetprobeMapName   = "udp_retprobe_map"
 
 	stataCacheSize = 32000
 )
@@ -131,7 +129,7 @@ var (
 	UdpRetprobeMap         = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
 	UdpConfigMap           = sensors.MapBuilder("udp_config_map", InetSend)
 	UdpConfigLazyMap       = sensors.MapBuilder("udp_config_map", InetSendLazy)
-	ProcessNetworkBurstMap = sensors.MapBuilder(ProcessNetworkBurstMapName, InetSend)
+	ProcessNetworkBurstMap = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
 )
 
 type udpInfoKey struct {
@@ -156,46 +154,6 @@ type udpInfoValue struct {
 	PidKtime       uint64
 	Pid            uint32
 	SkDrops        uint32
-}
-
-type ProcessNetworkBurstKey struct {
-	Key uint64
-}
-
-type ProcessNetworkBurstValue struct {
-	ProcessStartTime uint64
-	HistVol          uint64
-	WinVol           uint64
-	LastWinVol       uint64
-	LastPacketTime   uint64
-	Burst            uint64
-}
-
-func (k *ProcessNetworkBurstKey) String() string             { return fmt.Sprintf("key=%d", k.Key) }
-func (k *ProcessNetworkBurstKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *ProcessNetworkBurstKey) NewValue() bpf.MapValue     { return &ProcessNetworkBurstValue{} }
-func (k *ProcessNetworkBurstKey) DeepCopyMapKey() bpf.MapKey { return &ProcessNetworkBurstKey{k.Key} }
-
-func (v *ProcessNetworkBurstValue) String() string {
-	return fmt.Sprintf(
-		"Process start time: %d, "+
-			"HistVol: %d, "+
-			"WinVol: %d, "+
-			"LastWinVol: %d, "+
-			"LastPacketTime: %d, "+
-			"Burst: %d",
-		v.ProcessStartTime, v.HistVol, v.WinVol, v.LastWinVol, v.LastPacketTime, v.Burst)
-}
-func (v *ProcessNetworkBurstValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *ProcessNetworkBurstValue) DeepCopyMapValue() bpf.MapValue {
-	return &ProcessNetworkBurstValue{
-		ProcessStartTime: v.ProcessStartTime,
-		HistVol:          v.HistVol,
-		WinVol:           v.WinVol,
-		LastWinVol:       v.LastWinVol,
-		LastPacketTime:   v.LastPacketTime,
-		Burst:            v.Burst,
-	}
 }
 
 func (k *udpInfoKey) String() string {
@@ -578,20 +536,6 @@ func handleUdpConnect(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	return []observer.ObserverEvent{msgUnix}, nil
 }
 
-func msgToProcessNetworkBurstUnix(m *api.MsgProcessNetworkBurstEvent) *api.MsgProcessNetworkBurstEventUnix {
-	return m
-}
-
-func HandleProcessNetworkBurst(r *bytes.Reader) ([]observer.ObserverEvent, error) {
-	m := api.MsgProcessNetworkBurstEvent{}
-	err := binary.Read(r, native_endian.NativeEndian(), &m)
-	if err != nil {
-		return nil, err
-	}
-	msgUnix := msgToProcessNetworkBurstUnix(&m)
-	return []observer.ObserverEvent{msgUnix}, nil
-}
-
 func init() {
 	AddUDP()
 }
@@ -612,12 +556,8 @@ func AddUDP() {
 	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPCONNECT, handleUdpConnect)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPPAYLOAD, handleUdpPayload)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)
-}
-
-func PidToBurstKey(pid uint32, protocol uint64, send uint64) uint64 {
-	return uint64(pid) | (protocol << PROCESS_NETWORK_BURST_PROTO_SHIFT) | ((send & 1) << PROCESS_NETWORK_BURST_KEY_DIR_SHIFT)
 }
