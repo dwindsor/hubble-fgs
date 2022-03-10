@@ -164,8 +164,10 @@ jobs:
         shell: bash {0}
 
       - name: Cleanup
+        id: cleanup
         if: ${{ always() }}
         run: |
+          echo ::set-output name=kernel_version::$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')
           gcloud container clusters delete --quiet ${{ env.clusterName }} --zone ${{ env.zone }}
         shell: bash {0}
 
@@ -177,7 +179,7 @@ jobs:
           sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
           sudo -E ldconfig /usr/local/
           go mod verify
-          go run tests/cmd/jobs.trace.go ../fgs.log $(uname -r)
+          go run tests/cmd/jobs.trace.go ../fgs.log =${{ steps.cleanup.outputs.kernel_version }}
 
       - name: Upload Cilium Artifacts
         if: ${{ failure() }}
