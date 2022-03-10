@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -354,6 +355,7 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 			udpKey = k.DeepCopyMapKey().(*udpInfoKey)
 			stats.Add(*udpKey, *mapUpdate)
 			emitStatEvent(udpKey, &diffValue)
+			metrics.LruMapSize.WithLabelValues("lru_udp_stats_map", "32000").Set(float64(stats.Len()))
 		}
 	} else {
 		udpValue = v.DeepCopyMapValue().(*udpInfoValue)
@@ -365,6 +367,7 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 		emitCloseEvent(udpKey, udpValue)
 		stats.Remove(*udpKey)
 		m.DeleteKey(k)
+		metrics.LruMapSize.WithLabelValues("lru_udp_stats_map", "32000").Set(float64(stats.Len()))
 	}
 }
 
