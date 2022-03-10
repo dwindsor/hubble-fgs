@@ -30,14 +30,34 @@ func KernelStringToNumeric(ver string) int64 {
 	numeric := strings.TrimRight(verStr, "+")
 	vers := strings.Split(numeric, ".")
 
-	a, erra := strconv.ParseInt(vers[0], 10, 32)
-	b, errb := strconv.ParseInt(vers[1], 10, 32)
-	c, errc := strconv.ParseInt(vers[2], 10, 32)
-	if erra != nil || errb != nil || errc != nil {
-		return 0
+	// Split out major, minor, and patch versions
+	majorS := vers[0]
+	minorS := ""
+	if len(vers) >= 2 {
+		minorS = vers[1]
+	}
+	patchS := ""
+	if len(vers) >= 3 {
+		patchS = vers[2]
 	}
 
-	return ((a << 16) + (b << 8) + c)
+	// If we have no major version number, all is lost
+	major, err := strconv.ParseInt(majorS, 10, 32)
+	if err != nil {
+		return 0
+	}
+	// Fall back to minor = 0 if we can't parse the minor version
+	minor, err := strconv.ParseInt(minorS, 10, 32)
+	if err != nil {
+		minor = 0
+	}
+	// Fall back to patch = 0 if we can't parse the patch version
+	patch, err := strconv.ParseInt(patchS, 10, 32)
+	if err != nil {
+		patch = 0
+	}
+
+	return ((major << 16) + (minor << 8) + patch)
 }
 
 func GetKernelVersion(kernelVersion, procfs string) (int, string, error) {
