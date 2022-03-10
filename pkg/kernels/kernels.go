@@ -22,13 +22,21 @@ import (
 )
 
 func KernelStringToNumeric(ver string) int64 {
-	vers := strings.Split(ver, ".")
+	// vendors like to define kernel 4.14.128-foo but
+	// everything after '-' is meaningless from BPF
+	// side so toss it out.
+	release := strings.Split(ver, "-")
+	verStr := release[0]
+	numeric := strings.TrimRight(verStr, "+")
+	vers := strings.Split(numeric, ".")
+
 	a, erra := strconv.ParseInt(vers[0], 10, 32)
 	b, errb := strconv.ParseInt(vers[1], 10, 32)
 	c, errc := strconv.ParseInt(vers[2], 10, 32)
 	if erra != nil || errb != nil || errc != nil {
 		return 0
 	}
+
 	return ((a << 16) + (b << 8) + c)
 }
 
@@ -57,13 +65,9 @@ func GetKernelVersion(kernelVersion, procfs string) (int, string, error) {
 				return 0, verStr, nil
 			}
 			n := bytes.IndexByte(uname.Release[:], 0)
-			// vendors like to define kernel 4.14.128-foo but
-			// everything after '-' is meaningless from BPF
-			// side so toss it out.
-			release := strings.Split(string(uname.Release[:n]), "-")
-			verStr = release[0]
-			numeric := strings.TrimRight(verStr, "+")
-			version = int(KernelStringToNumeric(numeric))
+			release := string(uname.Release[:n])
+			verStr = strings.Split(release, "-")[0]
+			version = int(KernelStringToNumeric(release))
 		}
 	}
 	return version, verStr, nil
