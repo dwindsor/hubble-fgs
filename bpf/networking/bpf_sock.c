@@ -32,8 +32,16 @@ int sock_create(struct bpf_sock *ctx)
 	if (ctx->type != SOCK_DGRAM && ctx->type != SOCK_STREAM)
 		return 1;
 
+	/* Ideally we would be able to bind the socket to create early,
+	 * but its possible that we don't have an entry for the thread
+	 * if its a child thread, etc. Perhaps we should always have
+	 * entries, but we don't at the moment. So to ensure we don't
+	 * mislead the next layer to process this we not only need to
+	 * check if the entry exists but also that ktime!=0 which would
+	 * indicate its a stale entry that we are preparing to GC.
+	 */
 	value = execve_map_get(pid);
-	if (!value) {
+	if (!value || value->key.ktime == 0) {
 		struct execve_map_value v = {0};
 		/* Error case, should not happen */
 		map_update_elem(&socket_cookie_to_proc_map, &sock, &v, 0);

@@ -207,10 +207,13 @@ int udp4_recv(struct pt_regs *ctx)
 	} else {
 		update_consumed_value(value, len);
 		if (!value->pid) {
-			/* If ctx lookup fails here something is very wrong,
-			 * it means exec path failed to build the process
-			 * tree. So post an event so we at least get something
-			 * in user land.
+			/* This can happen when sock_create does not
+			 * find a pid because the socket is attached
+			 * to a pid that is not a thread group id
+			 * leader. In this case we update to proper
+			 * pid when we get called from a context that
+			 * has probe_read() available. Namely, the
+			 * recv side with user context.
 			 */
 			add_process_ctx(value);
 			emit_udp_connect_event(ctx, key, value);
