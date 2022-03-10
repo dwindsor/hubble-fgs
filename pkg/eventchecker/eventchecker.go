@@ -2679,6 +2679,21 @@ func (o *KprobeCheckerAND) WithNs(ns *fgs.Namespaces) *KprobeCheckerAND {
 	return o
 }
 
+func compareKprobeArgs(checkers []GenericArgChecker, k *fgs.ProcessKprobe, log Logger) error {
+	if len(k.Args) != len(checkers) {
+		return fmt.Errorf("failed to match kprobe args of length %d to checkers: %+v", len(k.Args), checkers)
+	}
+
+	for i := range k.Args {
+		checkArg := checkers[i]
+		arg := k.Args[i]
+		if err := checkArg.Check(arg, log); err != nil {
+			return fmt.Errorf("failed check arg %s (idx=%d): %w", arg, i, err)
+		}
+	}
+	return nil
+}
+
 // KprobeWithArgs matches the Args field
 // NB: eventually we might want other type of matches for matching a list such
 // as subset checks, but for now we check that the elemnts of the lists match
@@ -2689,16 +2704,8 @@ func KprobeWithArgs(checkers []GenericArgChecker) KprobeChecker {
 			return fmt.Errorf("kprobe is nil and cannot match checkers: %+v", checkers)
 		}
 
-		if len(k.Args) != len(checkers) {
-			return fmt.Errorf("failed to match kprobe args of length %d to checkers: %+v", len(k.Args), checkers)
-		}
-
-		for i := range k.Args {
-			checkArg := checkers[i]
-			arg := k.Args[i]
-			if err := checkArg.Check(arg, log); err != nil {
-				return fmt.Errorf("failed check arg %s (idx=%d): %w", arg, i, err)
-			}
+		if err := compareKprobeArgs(checkers, k, log); err != nil {
+			return err
 		}
 
 		log.Logf("**** MATCH kprobe args: %s", k.Args)
@@ -2709,6 +2716,32 @@ func KprobeWithArgs(checkers []GenericArgChecker) KprobeChecker {
 // WithArgs adds a checker on the kprobe args
 func (o *KprobeCheckerAND) WithArgs(argCheckers []GenericArgChecker) *KprobeCheckerAND {
 	o.checks = append(o.checks, KprobeWithArgs(argCheckers))
+	return o
+}
+
+// KprobeWithArgsReturn matches the Args field together with return value
+func KprobeWithArgsReturn(checkers []GenericArgChecker, retChecker GenericArgChecker) KprobeChecker {
+	return KprobeCheckerFn(func(k *fgs.ProcessKprobe, log Logger) error {
+		if k == nil {
+			return fmt.Errorf("kprobe is nil and cannot match checkers: %+v", checkers)
+		}
+
+		if err := compareKprobeArgs(checkers, k, log); err != nil {
+			return err
+		}
+
+		if err := retChecker.Check(k.Return, log); err != nil {
+			return fmt.Errorf("failed check return value %s: %w", k.Return, err)
+		}
+
+		log.Logf("**** MATCH kprobe args: %s, return: %s", k.Args, k.Return)
+		return nil
+	})
+}
+
+// WithArgsReturn adds a checker on the kprobe args together with return value
+func (o *KprobeCheckerAND) WithArgsReturn(argCheckers []GenericArgChecker, retChecker GenericArgChecker) *KprobeCheckerAND {
+	o.checks = append(o.checks, KprobeWithArgsReturn(argCheckers, retChecker))
 	return o
 }
 
