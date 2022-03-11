@@ -300,7 +300,39 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	observer.AllListeners(unix)
 }
 
+func udpResetEvent(curr *udpInfoValue) bool {
+	if curr.ConsumedSegs == 1 && curr.SegsIn == 0 &&
+		curr.SubmittedSegs == 0 && curr.SegsOut == 0 {
+		return true
+	}
+	if curr.ConsumedSegs == 0 && curr.SegsIn == 0 &&
+		curr.SubmittedSegs == 1 && curr.SegsOut == 0 {
+		return true
+	}
+	if curr.ConsumedSegs == 0 && curr.SegsIn == 0 &&
+		curr.SubmittedSegs == 0 && curr.SegsOut == 1 {
+		return true
+	}
+	if curr.ConsumedSegs == 0 && curr.SegsIn == 1 &&
+		curr.SubmittedSegs == 0 && curr.SegsOut == 0 {
+		return true
+	}
+	return false
+}
+
 func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
+	// We may see duplicate first packet events multiple times because
+	// udp events are not locked calls and we race on value create. This
+	// means with some unfortunate timing we could read different first
+	// events if the walker here falls between those two events and has
+	// a last event for one and a next event for the other. To fix this
+	// lets not do accounting on first packets through the walker instead
+	// we do them directly from the connect event. So simply check if its
+	// a first value event by checking segs counts and skip it.
+	if udpResetEvent(curr) {
+		return udpInfoValue{}, fmt.Errorf("Current UDP event duplicate")
+	}
+
 	// The ktime check is to handle a small but observed race condition where
 	// we can read a ktime earlier than a ktime we just read. It requires some
 	// unlucky timing but here we go.
@@ -504,7 +536,9 @@ func handleUdpConnect(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 		return nil, err
 	}
 	msgUnix := observer.MsgToIPv4Unix(&m)
-	return []observer.ObserverEvent{msgUnix}, nil
+	statsUnix := *msgUnix
+	statsUnix.Common.Op = api.MsgOpIPv4TCPStats
+	return []observer.ObserverEvent{msgUnix, &statsUnix}, nil
 }
 
 func msgToProcessNetworkBurstUnix(m *api.MsgProcessNetworkBurstEvent) *api.MsgProcessNetworkBurstEventUnix {
