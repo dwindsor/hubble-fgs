@@ -128,7 +128,8 @@ spec:
 }
 
 func getTestKprobeObjectWRChecker() ec.MultiResponseChecker {
-	rootNs := reader.GetCurrentNamespace()
+	myNs := reader.GetCurrentNamespace()
+	myCaps := reader.GetCurrentCapabilities()
 	kpChecker := ec.NewKprobeChecker().
 		WithFunctionName("__x64_sys_write").
 		WithArgs([]ec.GenericArgChecker{
@@ -136,7 +137,10 @@ func getTestKprobeObjectWRChecker() ec.MultiResponseChecker {
 			ec.GenericArgBytesCheck([]byte("hello world")),
 			ec.GenericArgSizeCheck(11),
 		}).
-		WithNs(rootNs)
+		WithNs(myNs).
+		WithCaps(myCaps, ec.CapsInheritable).
+		WithCaps(myCaps, ec.CapsEffective).
+		WithCaps(myCaps, ec.CapsPermitted)
 	return ec.NewSingleMultiResponseChecker(
 		ec.NewKprobeEventChecker().
 			HasKprobe(kpChecker).
@@ -258,6 +262,12 @@ spec:
         operator: In
         values:
         - ` + mntNsStr + `
+      matchCapabilities:
+      - type: Permitted
+        operator: In
+        values:
+        - "CAP_SETPCAP"
+        - "CAP_SYS_ADMIN"
       matchArgs:
       - index: 0
         operator: "Equal"
@@ -294,6 +304,12 @@ spec:
         operator: In
         values:
         - ` + mntNsStr + `
+      matchCapabilities:
+      - type: Permitted
+        operator: In
+        values:
+        - "CAP_SETPCAP"
+        - "CAP_SYS_ADMIN"
       matchArgs:
       - index: 0
         operator: "Equal"

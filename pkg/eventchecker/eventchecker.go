@@ -27,6 +27,12 @@ import (
 // stabilizes somewhat, I'd like to investigate generating code directly from
 // the protbuf descriptions via a protoc plugin.
 
+const (
+	CapsEffective   = 0
+	CapsInheritable = 1
+	CapsPermitted   = 2
+)
+
 // ResponseChecker checks a single response
 type ResponseChecker interface {
 	// Check checks a single response.
@@ -1096,6 +1102,12 @@ func (o *ProcessCheckerAND) WithNs(ns *fgs.Namespaces) *ProcessCheckerAND {
 	return o
 }
 
+// WithCaps adds a check that the process' Caps matches the Caps
+func (o *ProcessCheckerAND) WithCaps(ns *fgs.Capabilities, ctype int) *ProcessCheckerAND {
+	o.checks = append(o.checks, ProcessWithCaps(ns, ctype))
+	return o
+}
+
 // Check implements ResponseChecker interface
 func (o *ProcessCheckerAND) Check(p *fgs.Process, l Logger) error {
 	for i := range o.checks {
@@ -1166,6 +1178,12 @@ func (o *ProcessCheckerOR) WithUID(uid uint32) *ProcessCheckerOR {
 // WithNS adds a check that the process' Ns matches the Ns
 func (o *ProcessCheckerOR) WithNs(ns *fgs.Namespaces) *ProcessCheckerOR {
 	o.checks = append(o.checks, ProcessWithNs(ns))
+	return o
+}
+
+// WithCaps adds a check that the process' Caps matches the Caps
+func (o *ProcessCheckerOR) WithCaps(ns *fgs.Capabilities, ctype int) *ProcessCheckerOR {
+	o.checks = append(o.checks, ProcessWithCaps(ns, ctype))
 	return o
 }
 
@@ -1355,6 +1373,56 @@ func compareNamespace(p *fgs.Process, ns *fgs.Namespaces) error {
 func ProcessWithNs(ns *fgs.Namespaces) ProcessChecker {
 	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
 		return compareNamespace(p, ns)
+	})
+}
+
+func compareCaps(a []fgs.CapabilitiesType, b []fgs.CapabilitiesType, ctype int) error {
+	anum := uint64(0)
+	for _, idx := range a {
+		anum |= (1 << idx)
+	}
+	bnum := uint64(0)
+	for _, idx := range b {
+		bnum |= (1 << idx)
+	}
+	if anum != bnum {
+		for i := range fgs.CapabilitiesType_name {
+			if (anum & (1 << i)) != (bnum & (1 << i)) {
+				return fmt.Errorf("caps %s does not match %x - %x type: %d", fgs.CapabilitiesType_name[i], anum, bnum, ctype)
+			}
+		}
+	}
+	return nil
+}
+
+func compareCapabilities(p *fgs.Process, caps *fgs.Capabilities, ctype int) error {
+	if p.Cap == nil {
+		return fmt.Errorf("caps %v does not match nil value", caps)
+	}
+	var lCaps []fgs.CapabilitiesType
+	var rCaps []fgs.CapabilitiesType
+	if ctype == CapsPermitted {
+		lCaps = caps.GetPermitted()
+		rCaps = p.Cap.GetPermitted()
+	} else if ctype == CapsEffective {
+		lCaps = caps.GetEffective()
+		rCaps = p.Cap.GetEffective()
+	} else if ctype == CapsInheritable {
+		lCaps = caps.GetInheritable()
+		rCaps = p.Cap.GetInheritable()
+	} else {
+		return fmt.Errorf("compareCapabilities: Unknown ctype = %d", ctype)
+	}
+	if lCaps == nil && rCaps == nil { // both are nil -> accept
+		return nil
+	}
+	return compareCaps(lCaps, rCaps, ctype)
+}
+
+// ProcessWithCaps matches the Capabilities field
+func ProcessWithCaps(caps *fgs.Capabilities, ctype int) ProcessChecker {
+	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+		return compareCapabilities(p, caps, ctype)
 	})
 }
 
@@ -2672,6 +2740,19 @@ func (o *KprobeCheckerAND) WithNs(ns *fgs.Namespaces) *KprobeCheckerAND {
 		ret := compareNamespace(t.Process, ns)
 		if ret == nil {
 			log.Logf("**** MATCH kprobe namespace")
+		}
+		return ret
+	})
+	o.checks = append(o.checks, check)
+	return o
+}
+
+// withCaps add capabilities check
+func (o *KprobeCheckerAND) WithCaps(caps *fgs.Capabilities, ctype int) *KprobeCheckerAND {
+	check := KprobeCheckerFn(func(t *fgs.ProcessKprobe, log Logger) error {
+		ret := compareCapabilities(t.Process, caps, ctype)
+		if ret == nil {
+			log.Logf("**** MATCH kprobe capabilities")
 		}
 		return ret
 	})
