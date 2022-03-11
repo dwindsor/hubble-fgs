@@ -66,6 +66,18 @@ spec:
           - "Pid"
           - "User"
           - "Uts"
+        matchCapabilities:
+        - type: Effective
+          operator: In
+          isNamespaceCapability: true
+          values:
+            - "CAP_CHOWN"
+            - "CAP_NET_RAW"
+        - type: Inheritable
+          operator: NotIn
+          values:
+            - "CAP_SETPCAP"
+            - "CAP_SYS_ADMIN"
 `
 
 var expectedWrite = GenericTracingConf{
@@ -125,6 +137,20 @@ var expectedWrite = GenericTracingConf{
 							{
 								Operator: "In",
 								Values:   []string{"Mnt", "Pid", "User", "Uts"},
+							},
+						},
+						MatchCapabilities: []v1alpha1.CapabilitiesSelector{
+							{
+								Type:                  "Effective",
+								Operator:              "In",
+								IsNamespaceCapability: true,
+								Values:                []string{"CAP_CHOWN", "CAP_NET_RAW"},
+							},
+							{
+								Type:                  "Inheritable",
+								Operator:              "NotIn",
+								IsNamespaceCapability: false,
+								Values:                []string{"CAP_SETPCAP", "CAP_SYS_ADMIN"},
 							},
 						},
 					},
@@ -195,6 +221,12 @@ spec:
           - "Mnt"
           - "Pid"
           - "Net"
+        matchCapabilities:
+        - type: Effective
+          operator: In
+          isNamespaceCapability: true
+          values:
+            - "CAP_SYS_ADMIN"
 `
 
 var expectedData = GenericTracingConf{
@@ -284,6 +316,14 @@ var expectedData = GenericTracingConf{
 							{
 								Operator: "In",
 								Values:   []string{"Mnt", "Pid", "Net"},
+							},
+						},
+						MatchCapabilities: []v1alpha1.CapabilitiesSelector{
+							{
+								Type:                  "Effective",
+								Operator:              "In",
+								IsNamespaceCapability: true,
+								Values:                []string{"CAP_SYS_ADMIN"},
 							},
 						},
 					},

@@ -283,7 +283,7 @@ func TestParseMatchNamespaces(t *testing.T) {
 		0x04, 0x00, 0x00, 0x00, // Values[2] == 3
 	}
 	if err := parseMatchNamespace(k, ns2); err != nil || bytes.Equal(expected2, k.e[nextPid:k.off]) == false {
-		t.Errorf("parseMatchPid: error %v expected %v bytes %v parsing %v\n", err, expected2, k.e[nextPid:k.off], ns2)
+		t.Errorf("parseMatchNamespace: error %v expected %v bytes %v parsing %v\n", err, expected2, k.e[nextPid:k.off], ns2)
 	}
 
 	length := []byte{56, 0x00, 0x00, 0x00}
@@ -305,6 +305,41 @@ func TestParseMatchNamespaceChanges(t *testing.T) {
 	}
 	if err := parseMatchNamespaceChange(k, ns1); err != nil || bytes.Equal(expected1, k.e[0:k.off]) == false {
 		t.Errorf("parseMatchNamespaceChange: error %v expected %v bytes %v parsing %v\n", err, expected1, k.e[0:k.off], ns1)
+	}
+}
+
+func TestParseMatchCapabilities(t *testing.T) {
+	cap1 := &v1alpha1.CapabilitiesSelector{Type: "Effective", Operator: "In", IsNamespaceCapability: false, Values: []string{"CAP_CHOWN", "CAP_NET_RAW"}}
+	k := &KernelSelectorState{off: 0}
+	expected1 := []byte{
+		0x00, 0x00, 0x00, 0x00, // Type == Effective
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x00, 0x00, 0x00, 0x00, // IsNamespaceCapability = false
+		0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Values (uint64)
+	}
+	if err := parseMatchCaps(k, cap1); err != nil || bytes.Equal(expected1, k.e[0:k.off]) == false {
+		t.Errorf("parseMatchCaps: error %v expected %v bytes %v parsing %v\n", err, expected1, k.e[0:k.off], cap1)
+	}
+
+	nextPid := k.off
+	cap2 := &v1alpha1.CapabilitiesSelector{Type: "Inheritable", Operator: "NotIn", IsNamespaceCapability: false, Values: []string{"CAP_SETPCAP", "CAP_SYS_ADMIN"}}
+	expected2 := []byte{
+		0x01, 0x00, 0x00, 0x00, // Type == Inheritable
+		0x06, 0x00, 0x00, 0x00, // op == In
+		0x00, 0x00, 0x00, 0x00, // IsNamespaceCapability = false
+		0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, // Values (uint64)
+	}
+	if err := parseMatchCaps(k, cap2); err != nil || bytes.Equal(expected2, k.e[nextPid:k.off]) == false {
+		t.Errorf("parseMatchCaps: error %v expected %v bytes %v parsing %v\n", err, expected2, k.e[nextPid:k.off], cap2)
+	}
+
+	length := []byte{44, 0x00, 0x00, 0x00}
+	expected3 := append(length, expected1[:]...)
+	expected3 = append(expected3, expected2[:]...)
+	cap3 := []v1alpha1.CapabilitiesSelector{*cap1, *cap2}
+	ks := &KernelSelectorState{off: 0}
+	if err := parseMatchCapabilities(ks, cap3); err != nil || bytes.Equal(expected3, ks.e[0:ks.off]) == false {
+		t.Errorf("parseMatchCapabilities: error %v expected %v bytes %v parsing %v\n", err, expected3, ks.e[0:ks.off], cap3)
 	}
 }
 
@@ -343,7 +378,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x4, 0x00, 0x00, 0x00, // selector offset list
 
 		// selector header size 4
-		214, 0x00, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + namespacesChanges + 4
+		0x02, 0x01, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + namespacesChanges + capabilities + 4
 
 		// pid header
 		56, 0x00, 0x00, 0x00, // size = sizeof(pid2) + sizeof(pid1) + 4
@@ -381,6 +416,21 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x06, 0x00, 0x00, 0x00, // op == NotIn
 		0x01, 0x00, 0x00, 0x00, // length == 0x1
 		0x01, 0x00, 0x00, 0x00, // Values[0] == 1
+
+		// capabilities header
+		44, 0x00, 0x00, 0x00, // size = sizeof(cap1) + sizeof(cap2) + 4
+
+		// cap1 size = 20
+		0x00, 0x00, 0x00, 0x00, // Type == Effective
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x00, 0x00, 0x00, 0x00, // IsNamespaceCapability = false
+		0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, 0x00, // Values (uint64)
+
+		// cap2 size = 20
+		0x01, 0x00, 0x00, 0x00, // Type == Inheritable
+		0x06, 0x00, 0x00, 0x00, // op == In
+		0x00, 0x00, 0x00, 0x00, // IsNamespaceCapability = false
+		0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, // Values (uint64)
 
 		// namespace changes header
 		12, 0x00, 0x00, 0x00, // size = sizeof(nc1) + sizeof(nc2) + 4
@@ -438,6 +488,9 @@ func TestInitKernelSelectors(t *testing.T) {
 	matchNamespaces := []v1alpha1.NamespaceSelector{*ns1, *ns2}
 	nc := &v1alpha1.NamespaceChangesSelector{Operator: "In", Values: []string{"Uts", "Mnt"}}
 	matchNamespaceChanges := []v1alpha1.NamespaceChangesSelector{*nc}
+	cap1 := &v1alpha1.CapabilitiesSelector{Type: "Effective", Operator: "In", IsNamespaceCapability: false, Values: []string{"CAP_CHOWN", "CAP_NET_RAW"}}
+	cap2 := &v1alpha1.CapabilitiesSelector{Type: "Inheritable", Operator: "NotIn", IsNamespaceCapability: false, Values: []string{"CAP_SETPCAP", "CAP_SYS_ADMIN"}}
+	matchCapabilities := []v1alpha1.CapabilitiesSelector{*cap1, *cap2}
 
 	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "followfd",
@@ -450,6 +503,7 @@ func TestInitKernelSelectors(t *testing.T) {
 			MatchPIDs:             matchPids,
 			MatchNamespaces:       matchNamespaces,
 			MatchNamespaceChanges: matchNamespaceChanges,
+			MatchCapabilities:     matchCapabilities,
 			MatchArgs:             matchArgs,
 			MatchActions:          matchActions,
 		},
