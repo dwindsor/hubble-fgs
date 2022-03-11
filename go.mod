@@ -6,7 +6,7 @@ require (
 	github.com/blang/semver v3.5.0+incompatible
 	github.com/cilium/cilium v1.7.0-rc2.0.20200311180626-711b37ed100c
 	github.com/cilium/ebpf v0.8.1-0.20220125132352-732bf912e846
-	github.com/cilium/hubble v0.5.1
+	github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567
 	github.com/fatih/color v1.7.0
 	github.com/google/go-cmp v0.5.6
 	github.com/google/gops v0.3.14

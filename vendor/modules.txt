@@ -62,7 +62,6 @@ github.com/cilium/cilium/pkg/monitor/payload
 github.com/cilium/cilium/pkg/option
 github.com/cilium/cilium/pkg/proxy/accesslog
 github.com/cilium/cilium/pkg/safetime
-github.com/cilium/cilium/pkg/source
 github.com/cilium/cilium/pkg/spanstat
 github.com/cilium/cilium/pkg/version
 github.com/cilium/cilium/pkg/versioncheck
@@ -77,7 +76,7 @@ github.com/cilium/ebpf/internal/sys
 github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
 github.com/cilium/ebpf/perf
-# github.com/cilium/hubble v0.5.1
+# github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567
 ## explicit; go 1.14
 github.com/cilium/hubble/api/v1/flow
 github.com/cilium/hubble/pkg/api/v1

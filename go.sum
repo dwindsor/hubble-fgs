@@ -129,8 +129,8 @@ github.com/cilium/client-go v0.0.0-20200525133704-d13039a12d08/go.mod h1:4a/dpQE
 github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3 h1:wenYMyWJ08dgEUUj0Ija8qdK/V9vL3ThAD5sjOYlFlg=
 github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3/go.mod h1:cXN7jgo+gsGlNvQ7Vqu2ELdc3f7i7PPgupHqSkLzzBo=
 github.com/cilium/hubble v0.0.0-20200304205543-565cbe60f7fb/go.mod h1:GYdTLWzzpzgp2ptyEp0LccPotGo4BxPX9SJRGL4pI5c=
-github.com/cilium/hubble v0.5.1 h1:Vc8IBCTi/wR7BHX9ycSoqyTM4hsv0Z7jgNle4ePJRPQ=
-github.com/cilium/hubble v0.5.1/go.mod h1:OdNhwzmedkPgZBCZAqhNK3LUmVc7GJPOXw1k8g3/w3E=
+github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567 h1:mMXLbLGCFu1EX22QLC9cVPITfEzY7ZQIHHeKO6p/iuw=
+github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567/go.mod h1:Y522N+KaBBcaZRfmb/wo6xn3M0jNQb4lz/S+YA99+VE=
 github.com/cilium/ipam v0.0.0-20200217195329-a46f8d55f9db/go.mod h1:URWgSDyRFKKBgnY4Svj37siCG145nu3qJt6oHlZRdqU=
 github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b/go.mod h1:ktgizta3CPZBKz5uW272SJyjiro0vn4nOVP7Pk4RopA=
 github.com/cilium/proxy v0.0.0-20191113190709-4c7b379792e6/go.mod h1:lbRnBzpxwMP5KsTu99cM654ShwTWamyhrF6cCLuYqhE=
