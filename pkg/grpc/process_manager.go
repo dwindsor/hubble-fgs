@@ -529,11 +529,16 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	} else {
 		fgsProcess = process.process
 	}
-	if pm.enableProcessNs {
-		// if process is nil we have created a new obj, so no need to copy
+	// Create a copy of the process if we need to set Caps or Namespaces
+	if pm.enableProcessCred || pm.enableProcessNs {
 		if process != nil {
 			fgsProcess = copyProcess(process.process)
 		}
+	}
+	if pm.enableProcessCred {
+		fgsProcess.Cap = pm.getCapabilities(event.Capabilities)
+	}
+	if pm.enableProcessNs {
 		fgsProcess.Ns = pm.getNamespaces(event.Namespaces)
 	}
 	if parent == nil {

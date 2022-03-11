@@ -725,21 +725,23 @@ const (
 )
 
 type MsgGenericKprobe struct {
-	Common     MsgCommon
-	ProcessKey MsgExecveKey
-	Namespaces MsgNamespaces
-	Id         uint64
-	ThreadId   uint64
-	ActionId   uint64
+	Common       MsgCommon
+	ProcessKey   MsgExecveKey
+	Namespaces   MsgNamespaces
+	Capabilities MsgCapabilities
+	Id           uint64
+	ThreadId     uint64
+	ActionId     uint64
 }
 
 type MsgGenericTracepoint struct {
-	Common     MsgCommon
-	ProcessKey MsgExecveKey
-	Namespaces MsgNamespaces
-	Id         int64
-	ThreadId   uint64
-	ActionId   uint64
+	Common       MsgCommon
+	ProcessKey   MsgExecveKey
+	Namespaces   MsgNamespaces
+	Capabilities MsgCapabilities
+	Id           int64
+	ThreadId     uint64
+	ActionId     uint64
 }
 
 type MsgTestEvent struct {

@@ -346,6 +346,7 @@ size_t generic_kprobe_common_size()
 	return sizeof(struct msg_common)
 		+ sizeof(struct msg_execve_key)
 		+ sizeof(struct msg_ns)
+		+ sizeof(struct msg_capabilities)
 		+ sizeof(__u64) + sizeof(__u64) + sizeof(__u64);
 }
 
@@ -358,6 +359,7 @@ struct msg_generic_kprobe {
 	struct msg_common common;
 	struct msg_execve_key current;
 	struct msg_ns ns;
+	struct msg_capabilities caps;
 	__u64 id;
 	__u64 thread_id;
 	__u64 action;

@@ -643,6 +643,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 	unix.Action = m.ActionId
 	unix.FuncName = gk.funcName
 	unix.Namespaces = m.Namespaces
+	unix.Capabilities = m.Capabilities
 
 	returnEvent := m.Common.Flags > 0
 

@@ -166,11 +166,12 @@ type MsgGenericKprobeArg interface {
 }
 
 type MsgGenericKprobeUnix struct {
-	Common     MsgCommon
-	ProcessKey MsgExecveKey
-	Namespaces MsgNamespaces
-	Id         uint64
-	Action     uint64
-	FuncName   string
-	Args       []MsgGenericKprobeArg
+	Common       MsgCommon
+	ProcessKey   MsgExecveKey
+	Namespaces   MsgNamespaces
+	Capabilities MsgCapabilities
+	Id           uint64
+	Action       uint64
+	FuncName     string
+	Args         []MsgGenericKprobeArg
 }

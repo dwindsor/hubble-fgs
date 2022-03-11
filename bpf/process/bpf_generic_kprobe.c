@@ -61,9 +61,11 @@ int generic_kprobe_start_process_filter(void *ctx) {
 		msg->active[i] = 0;
 	/* Initialize accept field to reject */
 	msg->pass = 0;
-	/* Initialize namespaces to apply filters on them */
 	task = (struct task_struct *)get_current_task();
+	/* Initialize namespaces to apply filters on them */
 	get_namespaces(&(msg->ns), task);
+	/* Initialize capabilities to apply filters on them */
+	get_caps(&(msg->caps), task);
 #ifdef __NS_CHANGES_FILTER
 	msg->match_ns = 0;
 #endif
