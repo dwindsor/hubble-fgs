@@ -12,7 +12,15 @@
 package reader
 
 import (
+	"fmt"
+	"io/ioutil"
+	"path/filepath"
+	"strconv"
 	"strings"
+
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 func GetCapabilities(capInt uint64) string {
@@ -329,4 +337,80 @@ var capabilitiesString = map[uint64]string{
 	/* Allow writing to ns_last_pid */
 
 	40: "CAP_CHECKPOINT_RESTORE",
+}
+
+func GetPIDCaps(filename string) (uint32, uint64, uint64, uint64) {
+	pid := uint32(0)
+	permitted := uint64(0)
+	effective := uint64(0)
+	inheritable := uint64(0)
+
+	getValue64Hex := func(line string) (uint64, error) {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, fmt.Errorf("Fields to few arguments")
+		}
+		pidField := fields[len(fields)-1]
+		pid, err := strconv.ParseUint(pidField, 16, 64)
+		return pid, err
+	}
+
+	getValue32Int := func(line string) (uint32, error) {
+		fields := strings.Fields(line)
+		if len(fields) < 2 {
+			return 0, fmt.Errorf("Fields to few arguments")
+		}
+		pidField := fields[len(fields)-1]
+		pid, err := strconv.ParseUint(pidField, 10, 32)
+		return uint32(pid), err
+	}
+
+	file, err := ioutil.ReadFile(filename)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warnf("ReadFile failed: %s", filename)
+		return 0, 0, 0, 0
+	}
+	statuslines := strings.Split(string(file), "\n")
+	for _, line := range statuslines {
+		err = nil
+		if strings.Contains(line, "NStgid:") {
+			pid, err = getValue32Int(line)
+		}
+		if strings.Contains(line, "CapPrm:") {
+			permitted, err = getValue64Hex(line)
+		}
+		if strings.Contains(line, "CapEff:") {
+			effective, err = getValue64Hex(line)
+		}
+		if strings.Contains(line, "CapInh:") {
+			inheritable, err = getValue64Hex(line)
+		}
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("ReadFile (%s) error: %s", line, filename)
+		}
+	}
+	return pid, permitted, effective, inheritable
+}
+
+func GetCapabilitiesTypes(capInt uint64) []fgs.CapabilitiesType {
+	var caps []fgs.CapabilitiesType
+	for i := uint64(0); i < 64; i++ {
+		if (1<<i)&capInt != 0 {
+			e := fgs.CapabilitiesType(i)
+			caps = append(caps, e)
+		}
+	}
+	return caps
+}
+
+func GetCurrentCapabilities() *fgs.Capabilities {
+	pidStr := strconv.Itoa(int(GetMyPidG()))
+	procCaps := filepath.Join(option.Config.ProcFS, pidStr, "status")
+	_, permitted, effective, inheritable := GetPIDCaps(procCaps)
+
+	return &fgs.Capabilities{
+		Permitted:   GetCapabilitiesTypes(permitted),
+		Effective:   GetCapabilitiesTypes(effective),
+		Inheritable: GetCapabilitiesTypes(inheritable),
+	}
 }

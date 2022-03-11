@@ -12,7 +12,6 @@ package observer
 
 import (
 	"bufio"
-	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
@@ -25,7 +24,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
@@ -122,59 +120,6 @@ func (k *Observer) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint6
 		return err
 	}
 	return nil
-}
-
-func getPIDNS(filename string) (uint32, uint64, uint64, uint64) {
-	pid := uint32(0)
-	permitted := uint64(0)
-	effective := uint64(0)
-	inheritable := uint64(0)
-
-	getValue64Hex := func(line string) (uint64, error) {
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			return 0, fmt.Errorf("Fields to few arguments")
-		}
-		pidField := fields[len(fields)-1]
-		pid, err := strconv.ParseUint(pidField, 16, 64)
-		return pid, err
-	}
-
-	getValue32Int := func(line string) (uint32, error) {
-		fields := strings.Fields(line)
-		if len(fields) < 2 {
-			return 0, fmt.Errorf("Fields to few arguments")
-		}
-		pidField := fields[len(fields)-1]
-		pid, err := strconv.ParseUint(pidField, 10, 32)
-		return uint32(pid), err
-	}
-
-	file, err := ioutil.ReadFile(filename)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("ReadFile failed: %s", filename)
-		return 0, 0, 0, 0
-	}
-	statuslines := strings.Split(string(file), "\n")
-	for _, line := range statuslines {
-		err = nil
-		if strings.Contains(line, "NStgid:") {
-			pid, err = getValue32Int(line)
-		}
-		if strings.Contains(line, "CapPrm:") {
-			permitted, err = getValue64Hex(line)
-		}
-		if strings.Contains(line, "CapEff:") {
-			effective, err = getValue64Hex(line)
-		}
-		if strings.Contains(line, "CapInh:") {
-			inheritable, err = getValue64Hex(line)
-		}
-		if err != nil {
-			logger.GetLogger().WithError(err).Warnf("ReadFile (%s) error: %s", line, filename)
-		}
-	}
-	return pid, permitted, effective, inheritable
 }
 
 type ObserverProcs struct {
@@ -289,7 +234,7 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 			ktime = 0
 		}
 		ktime = ktime * (nanoPerSeconds / clktck)
-		nspid, permitted, effective, inheritable := getPIDNS(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
+		nspid, permitted, effective, inheritable := reader.GetPIDCaps(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
 
 		uts_ns := reader.GetPidNsInode(uint32(pid), "uts")
 		ipc_ns := reader.GetPidNsInode(uint32(pid), "ipc")
@@ -335,7 +280,7 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 			}
 			pktime = pktime * (nanoPerSeconds / clktck)
 			if dockerId != "" {
-				pnspid, _, _, _ = getPIDNS(filepath.Join(option.Config.ProcFS, ppid, "status"))
+				pnspid, _, _, _ = reader.GetPIDCaps(filepath.Join(option.Config.ProcFS, ppid, "status"))
 			}
 		} else {
 			pcmdline = nil
