@@ -317,6 +317,10 @@ func udpResetEvent(curr *udpInfoValue) bool {
 		curr.SubmittedSegs == 0 && curr.SegsOut == 0 {
 		return true
 	}
+	if curr.ConsumedSegs == 0 && curr.SegsIn == 0 &&
+		curr.SubmittedSegs == 0 && curr.SegsOut == 0 {
+		return true
+	}
 	return false
 }
 
