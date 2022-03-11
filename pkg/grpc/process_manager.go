@@ -1655,14 +1655,14 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 }
 
 func (pm *ProcessManager) getPodInfoOfIp(ip net.IP) *fgs.Pod {
-	endpoint, ok := pm.ciliumState.GetEndpointsHandler().GetEndpoint(ip)
+	ipcacheEntry, ok := pm.ciliumState.GetIPCache().GetIPIdentity(ip)
 	if !ok {
 		return nil
 	}
 	return &fgs.Pod{
-		Namespace: endpoint.PodNamespace,
-		Name:      endpoint.PodName,
-		Labels:    endpoint.Labels,
+		Namespace: ipcacheEntry.Namespace,
+		Name:      ipcacheEntry.PodName,
+		Labels:    nil,
 		Container: nil,
 	}
 }
