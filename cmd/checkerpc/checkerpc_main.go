@@ -171,7 +171,8 @@ func init() {
 						defer wg.Done()
 						conn, err := grpc.DialContext(ctx, serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 						if err != nil {
-							logger.GetLogger().WithError(err).Fatal("Failed to connect")
+							logger.GetLogger().WithError(err).Error("Failed to connect")
+							os.Exit(1)
 						}
 						queue <- conn
 						logger.GetLogger().WithField("addr", serverAddress).Info("Connected to gRPC server")

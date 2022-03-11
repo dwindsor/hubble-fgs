@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -eu
+set -eu -o pipefail
 
 CLUSTER_NAME="fgs-cli-ci"
 PROJECT_ROOT="$(realpath $(dirname "${BASH_SOURCE[0]}")/../../..)"
