@@ -879,9 +879,9 @@ void get_caps(struct msg_execve_event *msg, struct task_struct *task)
 	const struct cred *cred;
 
 	probe_read(&cred, sizeof(cred), _(&task->real_cred));
-	probe_read(&msg->caps.permitted, sizeof(__u64), _(&cred->cap_effective));
-	probe_read(&msg->caps.effective, sizeof(__u64), _(&cred->cap_inheritable));
-	probe_read(&msg->caps.inheritable, sizeof(__u64), _(&cred->cap_permitted));
+	probe_read(&msg->caps.permitted, sizeof(__u64), _(&cred->cap_permitted));
+	probe_read(&msg->caps.effective, sizeof(__u64), _(&cred->cap_effective));
+	probe_read(&msg->caps.inheritable, sizeof(__u64), _(&cred->cap_inheritable));
 }
 
 static inline __attribute__((always_inline))
