@@ -225,6 +225,46 @@ int process_filter_namespace_change(__u64 ty, __u64 val, struct execve_map_value
 }
 #endif
 
+static inline __attribute__((always_inline))
+int process_filter_capabilities(__u32 ty, __u32 op, __u32 ns, __u64 val, void *heap)
+{
+	struct msg_generic_kprobe *msg;
+	int zero = 0, retval = PFILTER_REJECT;
+	__u32 is_ns_cap = 0;
+	__u64 caps;
+
+	msg = map_lookup_elem(heap, &zero);
+	if (!msg)
+		return PFILTER_REJECT;
+
+	if (ns == 0) {
+		is_ns_cap = 1;
+	} else { /* in this ns contains the host user namespace value */
+		if (msg->ns.user_inum != ns)
+			is_ns_cap = 1;
+	}
+
+	if (ty == caps_effective)
+		caps = msg->caps.effective;
+	else if (ty == caps_inheritable)
+		caps = msg->caps.inheritable;
+	else if (ty == caps_permitted)
+		caps = msg->caps.permitted;
+	else /* We should not reach that. Userspace checks that. */
+		return PFILTER_REJECT;
+
+	if (op == op_filter_in) {
+		if(caps & val)
+			retval = PFILTER_ACCEPT;
+	} else if (op == op_filter_notin){
+		if(!(caps & val))
+			retval = PFILTER_ACCEPT;
+	}
+	if (is_ns_cap)
+		return retval;
+	return PFILTER_REJECT;
+}
+
 #define MAX_SELECTOR_VALUES 4
 
 static inline __attribute__((always_inline))
@@ -274,19 +314,26 @@ struct pid_filter {
 	u32 flags;	/* PID_SELECTOR_FLAG_NSPID or PID_SELECTOR_FLAG_FOLLOW */
 	u32 len;	/* number of values */
 	u32 val[];	/* values */
-};
+} __attribute__((packed));
 
 struct ns_filter {
 	u32 ty;		/* namespace (i.e. ns_uts, ns_net, ns_pid, ...) */
 	u32 op;		/* op (i.e. op_filter_in or op_filter_notin) */
 	u32 len;	/* number of values */
 	u32 val[];	/* values */
-};
+} __attribute__((packed));
+
+struct caps_filter {
+	u32 ty;		/* (i.e. effective, inheritable, or permitted) */
+	u32 op;		/* op (i.e. op_filter_in or op_filter_notin) */
+	u32 ns;		/* IsNamespaceCapability = { true, false} */
+	u64 val;	/* OR-ed capability values */
+} __attribute__((packed));
 
 struct nc_filter {
 	u32 op;		/* op (i.e. op_filter_in or op_filter_notin) */
 	u32 value;	/* contains all namespaces to monitor (i.e. bit 0 is for ns_uts, bit 1 for ns_ipc etc.) */
-};
+} __attribute__((packed));
 
 #define VALUES_MASK 0x1f /* max 4 values with 4 bytes each | 0x1f == 31 */
 
@@ -298,12 +345,13 @@ struct nc_filter {
 static inline __attribute__((always_inline))
 int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter, void *heap)
 {
-	int res1 = PFILTER_ACCEPT, res2 = PFILTER_ACCEPT, res3 = PFILTER_ACCEPT;
+	int res1 = PFILTER_ACCEPT, res2 = PFILTER_ACCEPT, res3 = PFILTER_ACCEPT, res4 = PFILTER_ACCEPT;
 	struct pid_filter *pid;
 	struct ns_filter *ns;
 #ifdef __NS_CHANGES_FILTER
 	struct nc_filter *nc;
 #endif
+	struct caps_filter *caps;
 	__u32 len;
 	__u64 i;
 
@@ -348,20 +396,32 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 		}
 	}
 
+	/* matchCapabilities */
+	len = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(cap1) + sizeof(cap2) + ... + 4) */
+	index += 4; /* 4: caps header */
+	len -= 4;
+
+	if (len > 0) {
+		caps = (struct caps_filter *)((u64)f + (index & INDEX_MASK));
+		index += sizeof(struct caps_filter); /* 20: ty, op, ns, val */
+		res3 = process_filter_capabilities(caps->ty, caps->op, caps->ns, caps->val, heap);
+	}
+
 #ifdef __NS_CHANGES_FILTER
 	/* matchNamespaceChanges */
 	len = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(nc1) + sizeof(nc2) + ... + 4) */
 	index += 4; /* 4: nc header */
+	len -= 4;
 
-	if (len > 4) {
+	if (len > 0) {
 		nc = (struct nc_filter *)((u64)f + (index & INDEX_MASK));
-		/* index += sizeof(struct nc_filter); *//* 8: op, val */
-		res3 = process_filter_namespace_change(nc->op, nc->value, enter, heap);
+		index += sizeof(struct nc_filter); /* 8: op, val */
+		res4 = process_filter_namespace_change(nc->op, nc->value, enter, heap);
 		/* now index points at the end of namespace change filter */
 	}
 #endif
 
-	return res1 && res2 && res3; /* pid, namespace, and namespaceChanges should match */
+	return res1 && res2 && res3 && res4; /* pid, namespace, capabilities, and namespaceChanges should match */
 }
 
 #define MAX_SELECTORS 8

@@ -128,6 +128,9 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// IDs for namespace changes
 	MatchNamespaceChanges []NamespaceChangesSelector `json:"matchNamespaceChanges" yaml:"matchNamespaceChanges"`
+	// +kubebuilder:validation:Optional
+	// A list of capabilities and IDs
+	MatchCapabilities []CapabilitiesSelector `json:"matchCapabilities" yaml:"matchCapabilities"`
 }
 
 type NamespaceChangesSelector struct {
@@ -147,6 +150,23 @@ type NamespaceSelector struct {
 	// Namespace selector operator.
 	Operator string `json:"operator" yaml:"operator"`
 	// Process IDs to match.
+	Values []string `json:"values" yaml:"values"`
+}
+
+type CapabilitiesSelector struct {
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:validation:Enum=Effective;Inheritable;Permitted
+	// +kubebuilder:default=Effective
+	// Type of capabilities
+	Type string `json:"type" yaml:"type"`
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Namespace selector operator.
+	Operator string `json:"operator" yaml:"operator"`
+	// +kubebuilder:validation:Optional
+	// +kubebuilder:default=false
+	// Indicates whether these caps are namespace caps.
+	IsNamespaceCapability bool `json:"isNamespaceCapability" yaml:"isNamespaceCapability"`
+	// Capabilities to match.
 	Values []string `json:"values" yaml:"values"`
 }
 

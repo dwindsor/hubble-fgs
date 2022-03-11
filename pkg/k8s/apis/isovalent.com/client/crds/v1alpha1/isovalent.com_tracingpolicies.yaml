@@ -222,6 +222,39 @@ spec:
                               - values
                               type: object
                             type: array
+                          matchCapabilities:
+                            description: A list of capabilities and IDs
+                            items:
+                              properties:
+                                isNamespaceCapability:
+                                  default: false
+                                  description: Indicates whether these caps are namespace
+                                    caps.
+                                  type: boolean
+                                operator:
+                                  description: Namespace selector operator.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  type: string
+                                type:
+                                  default: Effective
+                                  description: Type of capabilities
+                                  enum:
+                                  - Effective
+                                  - Inheritable
+                                  - Permitted
+                                  type: string
+                                values:
+                                  description: Capabilities to match.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
                           matchNamespaceChanges:
                             description: IDs for namespace changes
                             items:
@@ -669,6 +702,39 @@ spec:
                                   type: string
                                 values:
                                   description: Value to compare the argument against.
+                                  items:
+                                    type: string
+                                  type: array
+                              required:
+                              - operator
+                              - values
+                              type: object
+                            type: array
+                          matchCapabilities:
+                            description: A list of capabilities and IDs
+                            items:
+                              properties:
+                                isNamespaceCapability:
+                                  default: false
+                                  description: Indicates whether these caps are namespace
+                                    caps.
+                                  type: boolean
+                                operator:
+                                  description: Namespace selector operator.
+                                  enum:
+                                  - In
+                                  - NotIn
+                                  type: string
+                                type:
+                                  default: Effective
+                                  description: Type of capabilities
+                                  enum:
+                                  - Effective
+                                  - Inheritable
+                                  - Permitted
+                                  type: string
+                                values:
+                                  description: Capabilities to match.
                                   items:
                                     type: string
                                   type: array

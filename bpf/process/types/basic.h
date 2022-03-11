@@ -611,6 +611,10 @@ int selector_arg_offset(__u8 *f,
 	len = *(__u32 *)((__u64)f + (selector & INDEX_MASK)); /* (sizeof(ns1) + sizeof(ns2) + ... + 4) */
 	selector += len;
 
+	/* matchCapabilities */
+	len = *(__u32 *)((__u64)f + (selector & INDEX_MASK)); /* (sizeof(cap1) + sizeof(cap2) + ... + 4) */
+	selector += len;
+
 	/* matchNamespaceChanges */
 	len = *(__u32 *)((__u64)f + (selector & INDEX_MASK)); /* (sizeof(nc1) + sizeof(nc2) + ... + 4) */
 	selector += len;

@@ -17,6 +17,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -79,6 +80,18 @@ var namespaceTypeTable = map[string]uint32{
 	"timeforchildren": namespaceTypeTimeForChildren,
 	"cgroup":          namespaceTypeCgroup,
 	"user":            namespaceTypeUser,
+}
+
+const (
+	capsEffective   = 0
+	capsInheritable = 1
+	capsPermitted   = 2
+)
+
+var capabilitiesTypeTable = map[string]uint32{
+	"effective":   capsEffective,
+	"inheritable": capsInheritable,
+	"permitted":   capsPermitted,
 }
 
 const (
@@ -447,6 +460,64 @@ func parseMatchNamespaceChanges(k *KernelSelectorState, actions []v1alpha1.Names
 	return nil
 }
 
+func parseMatchCaps(k *KernelSelectorState, action *v1alpha1.CapabilitiesSelector) error {
+	// type
+	tystr := strings.ToLower(action.Type)
+	ty, ok := capabilitiesTypeTable[tystr]
+	if !ok {
+		return fmt.Errorf("parseMatchCapability: actionType %s unknown", action.Type)
+	}
+	WriteSelectorUint32(k, ty)
+
+	// operator
+	op, err := selectorOp(action.Operator)
+	if err != nil {
+		return fmt.Errorf("matchCapabilities error: %w", err)
+	}
+	if (op != selectorOpIn) && (op != selectorOpNotIn) {
+		return fmt.Errorf("matchCapabilities supports only In and NotIn operators")
+	}
+	WriteSelectorUint32(k, op)
+
+	// isnamespacecapability
+	isns := uint32(0) // false by default
+	if action.IsNamespaceCapability {
+		// If IsNamespaceCapability == true will try to match the capabilities
+		//     only when current_user_namespace != host_user_namespace.
+		// If IsNamespaceCapability == false will try to match the capabilities
+		//     ignoring the user_namespace value.
+		// To implement this we pass the "/proc/1/ns/user" value as the host
+		// user namespace to compare with that inside the kernel.
+		isns = reader.GetPidNsInode(1, "user")
+	}
+	WriteSelectorUint32(k, isns)
+
+	// values
+	caps := uint64(0)
+	for _, v := range action.Values {
+		valstr := strings.ToUpper(v)
+		c, ok := fgs.CapabilitiesType_value[valstr]
+		if !ok {
+			return fmt.Errorf("parseMatchCapability: value %s unknown", valstr)
+		}
+		caps |= (1 << c)
+	}
+	WriteSelectorUint64(k, caps)
+
+	return nil
+}
+
+func parseMatchCapabilities(k *KernelSelectorState, actions []v1alpha1.CapabilitiesSelector) error {
+	loff := AdvanceSelectorLength(k)
+	for _, a := range actions {
+		if err := parseMatchCaps(k, &a); err != nil {
+			return err
+		}
+	}
+	WriteSelectorLength(k, loff)
+	return nil
+}
+
 func parseMatchBinary(k *KernelSelectorState, index uint32, b *v1alpha1.BinarySelector) error {
 	op, err := selectorOp(b.Operator)
 	if err != nil {
@@ -491,6 +562,9 @@ func parseSelector(
 	if err := parseMatchNamespaces(k, selectors.MatchNamespaces); err != nil {
 		return fmt.Errorf("parseMatchNamespaces error: %w", err)
 	}
+	if err := parseMatchCapabilities(k, selectors.MatchCapabilities); err != nil {
+		return fmt.Errorf("parseMatchCapabilities error: %w", err)
+	}
 	if err := parseMatchNamespaceChanges(k, selectors.MatchNamespaceChanges); err != nil {
 		return fmt.Errorf("parseMatchNamespaceChanges error: %w", err)
 	}
@@ -507,16 +581,18 @@ func parseSelector(
 }
 
 // array := [number][filter1][filter2][...][filtern]
-// filter := [length][matchPIDs][matchBinaries][matchArgs][matchNamespaces][matchNamespaceChanges]
+// filter := [length][matchPIDs][matchBinaries][matchArgs][matchNamespaces][matchCapabilities][matchNamespaceChanges]
 // matchPIDs := [num][PID1][PID2]...[PIDn]
 // matchBinaries := [num][op][Index]...[Index]
 // matchArgs := [num][ARGx][ARGy]...[ARGn]
 // matchNamespaces := [num][NSx][NSy]...[NSn]
 // matchNamespaceChanges := [num][NCx][NCy]...[NCn]
+// matchCapabilities := [num][CAx][CAy]...[CAn]
 // PIDn := [op][flags][valueInt]
 // Argn := [index][op][valueGen]
 // NSn := [namespace][op][valueInt]
 // NCn := [op][valueInt]
+// CAn := [type][op][namespacecap][valueInt]
 // valueGen := [type][len][v]
 // valueInt := [len][v]
 func InitKernelSelectors(spec *v1alpha1.KProbeSpec) ([4096]byte, error) {
