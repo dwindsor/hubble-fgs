@@ -235,11 +235,15 @@ func (v *udpInfoValue) String() string {
 		"Pid: %d Ktime %d\n"+
 			"SubmittedBytes: %d ConsumedBytes %d\n"+
 			"TXBytes: %d RXBytes%d\n"+
+			"SubmittedSegs: %d ConsumedSegs: %d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n",
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
-		v.TXBytes, v.RXBytes, v.SegsOut, v.SegsIn, v.SkDrops)
+		v.TXBytes, v.RXBytes,
+		v.SubmittedSegs, v.ConsumedSegs,
+		v.SegsOut, v.SegsIn,
+		v.SkDrops)
 }
 func (s *udpInfoValue) GetValuePtr() unsafe.Pointer {
 	return unsafe.Pointer(&s)
