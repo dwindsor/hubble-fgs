@@ -874,14 +874,14 @@ struct execve_map_value *event_find_curr(__u32 *ppid,
 }
 
 static inline __attribute__((always_inline))
-void get_caps(struct msg_execve_event *msg, struct task_struct *task)
+void get_caps(struct msg_capabilities *msg, struct task_struct *task)
 {
 	const struct cred *cred;
 
 	probe_read(&cred, sizeof(cred), _(&task->real_cred));
-	probe_read(&msg->caps.permitted, sizeof(__u64), _(&cred->cap_permitted));
-	probe_read(&msg->caps.effective, sizeof(__u64), _(&cred->cap_effective));
-	probe_read(&msg->caps.inheritable, sizeof(__u64), _(&cred->cap_inheritable));
+	probe_read(&msg->effective, sizeof(__u64), _(&cred->cap_effective));
+	probe_read(&msg->inheritable, sizeof(__u64), _(&cred->cap_inheritable));
+	probe_read(&msg->permitted, sizeof(__u64), _(&cred->cap_permitted));
 }
 
 static inline __attribute__((always_inline))
@@ -1033,7 +1033,7 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 #ifdef BPF_FUNC_get_current_cgroup_id
 	msg->kube.cgrpid = get_current_cgroup_id();
 #endif
-	get_caps(msg, task);
+	get_caps(&(msg->caps), task);
 	get_namespaces(&(msg->ns), task);
 }
 
