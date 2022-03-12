@@ -8,6 +8,7 @@ import (
 )
 
 var (
+	LazyDns             = false
 	dnsDefaultCacheSize = 1024
 )
 

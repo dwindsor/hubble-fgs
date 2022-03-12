@@ -248,7 +248,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
-	fgsEvent.DestinationNames, _ = pm.dns.GetIp(fgsEvent.Socket.DestinationIp)
+	fgsEvent.DestinationNames, _ = pm.getProcessIp(proc, fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -313,7 +313,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		Dns:     fgsDns,
 	}
 
-	fgsEvent.DestinationNames, _ = pm.dns.GetIp(fgsEvent.Socket.DestinationIp)
+	fgsEvent.DestinationNames, _ = pm.getProcessIp(proc, fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -803,6 +803,23 @@ func (pm *ProcessManager) getParentProcessInternal(pid uint32, ktime uint64) (*p
 		return process, nil
 	}
 	return process, parent
+}
+
+func (pm *ProcessManager) getProcessIp(proc *fgs.Process, ip string) ([]string, error) {
+	var entry []string
+
+	if LazyDns {
+		endpoint := pm.getProcessEndpoint(proc)
+		if endpoint == nil {
+			return nil, fmt.Errorf("no endpoint found for GetIp")
+		}
+		entry = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, net.ParseIP(ip))
+		if len(entry) == 0 {
+			return nil, fmt.Errorf("no dns entry found through FQDN Cache")
+		}
+		return entry, nil
+	}
+	return pm.dns.GetIp(ip)
 }
 
 func (pm *ProcessManager) getProcessEndpoint(process *fgs.Process) *v1.Endpoint {
@@ -1410,7 +1427,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 	// Stats are pushed on the timer e.g. every 60 seconds by default and at
 	// end of flow so it seems unliklye that DNS entry should be missing. For
 	// now I'll skip bouncing these through DNS entries when missing DNS.
-	fgsEvent.Socket.DestinationNames, _ = pm.dns.GetIp(fgsTuple.DestinationIp)
+	fgsEvent.Socket.DestinationNames, _ = pm.getProcessIp(fgsProcess, fgsTuple.DestinationIp)
 
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
@@ -1492,7 +1509,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
@@ -1562,7 +1579,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
@@ -1632,7 +1649,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = pm.dns.GetIp(destinationIP.String())
+	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
 		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
