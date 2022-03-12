@@ -26,12 +26,6 @@ func newDnsCache() (*dnsCache, error) {
 }
 
 func (c *dnsCache) GetIp(ip string) ([]string, error) {
-	// There is a race we still need to handle where
-	// dnsEvent is handled after network event due to
-	// events happening on different cpus. To fix we
-	// will have kernel map we can consult that is
-	// done with barriers and order is conserved. The
-	// fix is TBD.
 	entry, ok := c.cache.Get(ip)
 	if !ok {
 		return nil, fmt.Errorf("no dns entry found")
