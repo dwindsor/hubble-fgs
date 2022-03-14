@@ -33,7 +33,7 @@ int event_tcp4_connect(struct pt_regs *ctx)
 	struct execve_map_value *process = 0;
 	struct msg_ipv4_event *val;
 	__u32 saddr;
-  __u16 sport;
+	__u16 sport;
 	__u32 ppid = 0, pid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
