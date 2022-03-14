@@ -305,43 +305,41 @@ func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	observer.AllListeners(unix)
 }
 
-func udpResetEvent(curr *udpInfoValue) bool {
-	if curr.ConsumedSegs == 1 && curr.SegsIn == 0 &&
-		curr.SubmittedSegs == 0 && curr.SegsOut == 0 {
+func udpResetEvent(curr, last *udpInfoValue) bool {
+	// If we have fewer bytes or setgs than last measurement this is a
+	// sure sign we had a data race. Counters in BPF side are monotonic
+	// so a single entry will never be decrementing.
+	if curr.ConsumedSegs < last.ConsumedSegs ||
+		curr.ConsumedBytes < last.ConsumedBytes ||
+		curr.SegsIn < last.SegsIn ||
+		curr.RXBytes < last.RXBytes ||
+		curr.SubmittedSegs < last.SubmittedSegs ||
+		curr.SubmittedBytes < curr.SubmittedBytes ||
+		curr.SegsOut < last.SegsOut ||
+		curr.TXBytes < last.TXBytes {
 		return true
 	}
-	if curr.ConsumedSegs == 0 && curr.SegsIn == 0 &&
-		curr.SubmittedSegs == 1 && curr.SegsOut == 0 {
-		return true
-	}
-	if curr.ConsumedSegs == 0 && curr.SegsIn == 0 &&
-		curr.SubmittedSegs == 0 && curr.SegsOut == 1 {
-		return true
-	}
-	if curr.ConsumedSegs == 0 && curr.SegsIn == 1 &&
-		curr.SubmittedSegs == 0 && curr.SegsOut == 0 {
-		return true
-	}
-	if curr.ConsumedSegs == 0 && curr.SegsIn == 0 &&
-		curr.SubmittedSegs == 0 && curr.SegsOut == 0 {
-		return true
-	}
+
+	// Its tempting to do a check here to test if the segs are the
+	// same, but with different byte counts. The idea being bytes
+	// can't appear without a segs inc as well. However, because
+	// walker might read partial status of an update its possible
+	// in the normal case for this so we can't use this test to
+	// indicate a data race happened.
+	//
+	// Unfortunately what we can't learn is if datapath replaces
+	// an old entry with a valid new entry. At which point we will
+	// incorrectly diff the entry instead of add the entire value.
+	// Hopefully this is rare and experiments show this to be the
+	// case. Also note its more common on RX than TX because TX is
+	// sender side and would mean application is submitting multiple
+	// syscall sends on the same socket where as RX can be triggered
+	// by receiving multiple packets on the same socket on the same
+	// core.
 	return false
 }
 
 func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
-	// We may see duplicate first packet events multiple times because
-	// udp events are not locked calls and we race on value create. This
-	// means with some unfortunate timing we could read different first
-	// events if the walker here falls between those two events and has
-	// a last event for one and a next event for the other. To fix this
-	// lets not do accounting on first packets through the walker instead
-	// we do them directly from the connect event. So simply check if its
-	// a first value event by checking segs counts and skip it.
-	if udpResetEvent(curr) {
-		return udpInfoValue{}, fmt.Errorf("Current UDP event duplicate")
-	}
-
 	// The ktime check is to handle a small but observed race condition where
 	// we can read a ktime earlier than a ktime we just read. It requires some
 	// unlucky timing but here we go.
@@ -361,18 +359,13 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 		return udpInfoValue{}, fmt.Errorf("UDP Skip OOO Event")
 	}
 
-	if curr.TXBytes < last.TXBytes {
-		logger.GetLogger().Warnf("TX UDP stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
+	// Test if this curr and last pair indicate a race condition in the
+	// datapath caused a map_value to replace the last entry. In this case
+	// to avoid dropping bytes on the counter we do not diff the values.
+	if udpResetEvent(curr, last) {
+		return *curr, nil
 	}
-	if curr.SubmittedBytes < last.SubmittedBytes {
-		logger.GetLogger().Warnf("TX submitted UDP stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
-	}
-	if curr.RXBytes < last.RXBytes {
-		logger.GetLogger().Warnf("RX UDP stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
-	}
-	if curr.ConsumedBytes < last.ConsumedBytes {
-		logger.GetLogger().Warnf("RX UDP consumed stats underflow: key %s\n    curr %s < last %s\n", key, curr, last)
-	}
+
 	return udpInfoValue{
 		SubmittedBytes: curr.SubmittedBytes - last.SubmittedBytes,
 		ConsumedBytes:  curr.ConsumedBytes - last.ConsumedBytes,
@@ -546,9 +539,7 @@ func handleUdpConnect(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 		return nil, err
 	}
 	msgUnix := observer.MsgToIPv4Unix(&m)
-	statsUnix := *msgUnix
-	statsUnix.Common.Op = api.MsgOpIPv4TCPStats
-	return []observer.ObserverEvent{msgUnix, &statsUnix}, nil
+	return []observer.ObserverEvent{msgUnix}, nil
 }
 
 func msgToProcessNetworkBurstUnix(m *api.MsgProcessNetworkBurstEvent) *api.MsgProcessNetworkBurstEventUnix {
