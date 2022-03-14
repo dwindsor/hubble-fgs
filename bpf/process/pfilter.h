@@ -170,6 +170,57 @@ int process_filter_namespace(__u32 i, __u32 off, __u32 *f, __u64 ty, __u64 nsid,
 	return PFILTER_ACCEPT;
 }
 
+#ifdef __NS_CHANGES_FILTER
+/* If 'ty == op_filter_in' variable 'val' is the mask of the namespaces that we want to check.
+ * If 'ty == op_filter_notin' variable 'val' is the mask of the namespaces that we do *NOT* want to check.
+ * (namespace bits are defined in the ns_* enum in hubble_msg.h)
+ */
+static inline __attribute__((always_inline))
+int process_filter_namespace_change(__u64 ty, __u64 val, struct execve_map_value *enter, void *heap)
+{
+	struct execve_map_value *init;
+	struct msg_generic_kprobe *curr;
+	__u32 pid;
+	__u64 n;
+	int zero = 0;
+
+	curr = map_lookup_elem(heap, &zero);
+	if (!curr)
+		return PFILTER_REJECT;
+
+	pid = (get_current_pid_tgid() >> 32);
+	init = execve_map_get_noinit(pid); // reject for processes that are not in the execve_map yet
+	if (!init)
+		return PFILTER_REJECT;
+
+	if (ty == op_filter_in) {                // For the op_filter_in
+		for (n = 0; n < ns_max_types; n++) { // ... check all possible namespaces
+			if (val & (1 << n)) {            // ... if the appropriate bit is set (bit positions defined in ns_* enum)
+				if (init->ns.inum[n] == 0)   // namespace not set so just ignore
+					continue;
+				if (init->ns.inum[n] != curr->ns.inum[n]) { // does the namespace value changed?
+					curr->match_ns = 1;
+					return PFILTER_ACCEPT;
+				}
+			}
+		}
+	} else if (ty == op_filter_notin) {      // For the op_filter_notin
+		for (n = 0; n < ns_max_types; n++) { // ... check all possible namespaces
+			if ((val & (1 << n)) == 0) {     // ... if the appropriate bit is *NOT* set (bit positions defined in ns_* enum)
+				if (init->ns.inum[n] == 0)   // namespace not set so just ignore
+					continue;
+				if (init->ns.inum[n] != curr->ns.inum[n]) { // does the namespace value changed?
+					curr->match_ns = 1;
+					return PFILTER_ACCEPT;
+				}
+			}
+		}
+	}
+
+	return PFILTER_REJECT;
+}
+#endif
+
 #define MAX_SELECTOR_VALUES 4
 
 static inline __attribute__((always_inline))
@@ -228,6 +279,11 @@ struct ns_filter {
 	u32 val[];	/* values */
 };
 
+struct nc_filter {
+	u32 op;		/* op (i.e. op_filter_in or op_filter_notin) */
+	u32 value;	/* contains all namespaces to monitor (i.e. bit 0 is for ns_uts, bit 1 for ns_ipc etc.) */
+};
+
 #define VALUES_MASK 0x1f /* max 4 values with 4 bytes each | 0x1f == 31 */
 
 /* If you update the value of NUM_NS_FILTERS_SMALL below you should
@@ -238,10 +294,13 @@ struct ns_filter {
 static inline __attribute__((always_inline))
 int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter, void *heap)
 {
-	int res1 = PFILTER_ACCEPT, res2 = PFILTER_ACCEPT;
+	int res1 = PFILTER_ACCEPT, res2 = PFILTER_ACCEPT, res3 = PFILTER_ACCEPT;
 	struct pid_filter *pid;
 	struct ns_filter *ns;
-	__u32 pidlen, nslen;
+#ifdef __NS_CHANGES_FILTER
+	struct nc_filter *nc;
+#endif
+	__u32 len;
 	__u64 i;
 
 	/* Find selector offset byte index */
@@ -252,13 +311,13 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	index = *(__u32 *)((__u64)f + (index & INDEX_MASK));
 
 	index &= INDEX_MASK;
-	index += 8; /* 4: selector value and selector header */
+	index += 8; /* 8: selector value and selector header */
 
 	/* matchPid */
-	pidlen = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(pid1) + sizeof(pid2) + ... + 4) */
+	len = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(pid1) + sizeof(pid2) + ... + 4) */
 	index += 4;  /* 4: pid header */
 
-	if (pidlen > 4) { /* we can have only matchNamespace */
+	if (len > 4) { /* we can have only matchNamespace */
 		pid = (struct pid_filter *)((u64)f + index);
 		index += sizeof(struct pid_filter); /* 12: op, flags, length */
 		res1 = selector_match(f, index, pid->op, pid->flags, pid->len, enter, heap, &process_filter_pid);
@@ -266,9 +325,9 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	}
 
 	/* matchNamespace */
-	nslen = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(ns1) + sizeof(ns2) + ... + 4) */
+	len = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(ns1) + sizeof(ns2) + ... + 4) */
 	index += 4; /* 4: ns header */
-	nslen -= 4;
+	len -= 4;
 
 #ifdef __LARGE_BPF_PROG
 	for (i = 0; i < ns_max_types; i++) {
@@ -276,16 +335,29 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 #pragma unroll
 	for (i = 0; i < NUM_NS_FILTERS_SMALL; i++) { /* with more than 4 iterations it results in too big programs */
 #endif
-		if (nslen > 0) {
+		if (len > 0) {
 			ns = (struct ns_filter *)((u64)f + (index & INDEX_MASK));
 			index += sizeof(struct ns_filter); /* 12: namespace, op, length */
 			res2 &= selector_match(f, index, ns->op, ns->ty, ns->len, enter, heap, &process_filter_namespace);
 			index += ((ns->len * sizeof(ns->val[0])) & VALUES_MASK); /* now index points at the end of namespace filter */
-			nslen -= (sizeof(struct ns_filter) + (ns->len * sizeof(ns->val[0])));
+			len -= (sizeof(struct ns_filter) + (ns->len * sizeof(ns->val[0])));
 		}
 	}
 
-	return res1 && res2; /* both pid and namespace should match */
+#ifdef __NS_CHANGES_FILTER
+	/* matchNamespaceChanges */
+	len = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(nc1) + sizeof(nc2) + ... + 4) */
+	index += 4; /* 4: nc header */
+
+	if (len > 4) {
+		nc = (struct nc_filter *)((u64)f + (index & INDEX_MASK));
+		/* index += sizeof(struct nc_filter); *//* 8: op, val */
+		res3 = process_filter_namespace_change(nc->op, nc->value, enter, heap);
+		/* now index points at the end of namespace change filter */
+	}
+#endif
+
+	return res1 && res2 && res3; /* pid, namespace, and namespaceChanges should match */
 }
 
 #define MAX_SELECTORS 8

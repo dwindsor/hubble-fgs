@@ -64,6 +64,9 @@ int generic_kprobe_start_process_filter(void *ctx) {
 	/* Initialize namespaces to apply filters on them */
 	task = (struct task_struct *)get_current_task();
 	get_namespaces(&(msg->ns), task);
+#ifdef __NS_CHANGES_FILTER
+	msg->match_ns = 0;
+#endif
 	/* Tail call into filters. */
 	tail_call(ctx, &kprobe_calls, 5);
 	return 0;
@@ -73,6 +76,7 @@ int generic_kprobe_start_process_filter(void *ctx) {
  *
  *  filter_pids -> drop if no matches
  *  filter_namespaces -> drop if no matches
+ *  filter_namespace_changes -> drop if no matches
  *  copy arguments buffer
  *  filter selectors -> drop if no matches
  *  generate ring buffer event

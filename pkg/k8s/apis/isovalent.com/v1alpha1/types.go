@@ -125,6 +125,18 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of namespaces and IDs
 	MatchNamespaces []NamespaceSelector `json:"matchNamespaces" yaml:"matchNamespaces"`
+	// +kubebuilder:validation:Optional
+	// IDs for namespace changes
+	MatchNamespaceChanges []NamespaceChangesSelector `json:"matchNamespaceChanges" yaml:"matchNamespaceChanges"`
+}
+
+type NamespaceChangesSelector struct {
+	// +kubebuilder:validation:Enum=In;NotIn
+	// Namespace selector operator.
+	Operator string `json:"operator" yaml:"operator"`
+	// +kubebuilder:validation:Enum=Uts;Ipc;Mnt;Pid;PidForChildren;Net;Time;TimeForChildren;Cgroup;User
+	// Process IDs to match.
+	Values []string `json:"values" yaml:"values"`
 }
 
 type NamespaceSelector struct {

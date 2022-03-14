@@ -404,6 +404,49 @@ func parseMatchNamespaces(k *KernelSelectorState, actions []v1alpha1.NamespaceSe
 	return nil
 }
 
+func parseMatchNamespaceChange(k *KernelSelectorState, action *v1alpha1.NamespaceChangesSelector) error {
+	// write operator
+	op, err := selectorOp(action.Operator)
+	if err != nil {
+		return fmt.Errorf("matchNamespaceChanges error: %w", err)
+	}
+	if (op != selectorOpIn) && (op != selectorOpNotIn) {
+		return fmt.Errorf("matchNamespaceChanges supports only In and NotIn operators")
+	}
+	WriteSelectorUint32(k, op)
+
+	// process and write values
+	nsval := uint32(0)
+	for _, v := range action.Values {
+		nsstr := strings.ToLower(v)
+		ns, ok := namespaceTypeTable[nsstr]
+		if !ok {
+			return fmt.Errorf("parseMatchNamespaceChange: actionType %s unknown", v)
+		}
+		nsval |= (1 << ns)
+	}
+	WriteSelectorUint32(k, nsval)
+	return nil
+}
+
+func parseMatchNamespaceChanges(k *KernelSelectorState, actions []v1alpha1.NamespaceChangesSelector) error {
+	if len(actions) > 1 {
+		return fmt.Errorf("matchNamespaceChanges supports only a single filter (current number of filters is %d)", len(actions))
+	}
+	if (len(actions) == 1) && (kernels.EnableLargeProgs() == false) {
+		return fmt.Errorf("matchNamespaceChanges is only supported in kernels >= 5.3")
+	}
+	loff := AdvanceSelectorLength(k)
+	// maybe write the number of namespace matches
+	for _, a := range actions {
+		if err := parseMatchNamespaceChange(k, &a); err != nil {
+			return err
+		}
+	}
+	WriteSelectorLength(k, loff)
+	return nil
+}
+
 func parseMatchBinary(k *KernelSelectorState, index uint32, b *v1alpha1.BinarySelector) error {
 	op, err := selectorOp(b.Operator)
 	if err != nil {
@@ -448,6 +491,9 @@ func parseSelector(
 	if err := parseMatchNamespaces(k, selectors.MatchNamespaces); err != nil {
 		return fmt.Errorf("parseMatchNamespaces error: %w", err)
 	}
+	if err := parseMatchNamespaceChanges(k, selectors.MatchNamespaceChanges); err != nil {
+		return fmt.Errorf("parseMatchNamespaceChanges error: %w", err)
+	}
 	if err := parseMatchBinaries(k, selectors.MatchBinaries); err != nil {
 		return fmt.Errorf("parseMatchBinaries error: %w", err)
 	}
@@ -461,14 +507,16 @@ func parseSelector(
 }
 
 // array := [number][filter1][filter2][...][filtern]
-// filter := [length][matchPIDs][matchBinaries][matchArgs][matchNamespaces]
+// filter := [length][matchPIDs][matchBinaries][matchArgs][matchNamespaces][matchNamespaceChanges]
 // matchPIDs := [num][PID1][PID2]...[PIDn]
 // matchBinaries := [num][op][Index]...[Index]
 // matchArgs := [num][ARGx][ARGy]...[ARGn]
 // matchNamespaces := [num][NSx][NSy]...[NSn]
+// matchNamespaceChanges := [num][NCx][NCy]...[NCn]
 // PIDn := [op][flags][valueInt]
 // Argn := [index][op][valueGen]
 // NSn := [namespace][op][valueInt]
+// NCn := [op][valueInt]
 // valueGen := [type][len][v]
 // valueInt := [len][v]
 func InitKernelSelectors(spec *v1alpha1.KProbeSpec) ([4096]byte, error) {

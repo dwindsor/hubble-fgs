@@ -611,6 +611,10 @@ int selector_arg_offset(__u8 *f,
 	len = *(__u32 *)((__u64)f + (selector & INDEX_MASK)); /* (sizeof(ns1) + sizeof(ns2) + ... + 4) */
 	selector += len;
 
+	/* matchNamespaceChanges */
+	len = *(__u32 *)((__u64)f + (selector & INDEX_MASK)); /* (sizeof(nc1) + sizeof(nc2) + ... + 4) */
+	selector += len;
+
 	/* seloff must leave space for verifier to walk strings
 	 * so we set inside 4k maximum. Advance to binary matches.
 	 */
@@ -879,6 +883,17 @@ long filter_read_arg(void *ctx, int index,
 				return 1;
 		}
 	}
+
+#ifdef __NS_CHANGES_FILTER
+	/* update the namespaces if we matched a change on that */
+	if (e->match_ns) {
+		__u32 pid = (get_current_pid_tgid() >> 32);
+		struct task_struct *task = (struct task_struct *)get_current_task();
+		struct execve_map_value *enter = execve_map_get_noinit(pid); // we don't want to init that if it does not exist
+		if (enter)
+			get_namespaces(&(enter->ns), task);
+	}
+#endif
 
 	total = e->common.size + generic_kprobe_common_size();
 	/* Code movement from clang forces us to inline bounds checks here */

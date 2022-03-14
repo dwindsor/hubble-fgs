@@ -132,6 +132,11 @@
 #define UNRESOLVED_MOUNT_POINTS		0x01
 #define UNRESOLVED_PATH_COMPONENTS	0x02
 
+/* The namespace changes filters require later kernels */
+#ifdef __LARGE_BPF_PROG
+#define __NS_CHANGES_FILTER
+#endif
+
 /* Msg Types */
 enum msg_ops {
 	MSG_OP_UNDEF = 0,
@@ -363,6 +368,9 @@ struct msg_generic_kprobe {
 	__u64 curr;
 	__u64 pass;
 	bool active[MAX_CONFIGURED_SELECTORS];
+#ifdef __NS_CHANGES_FILTER
+	__u64 match_ns;
+#endif
 };
 
 struct msg_test {
@@ -477,10 +485,11 @@ struct event {
 struct execve_map_value {
 	struct msg_execve_key key;
 	struct msg_execve_key pkey;
-	__u32  flags;
+	__u32 flags;
 	__u32 nspid;
 	__u32 binary;
 	__u32 pad;
+	struct msg_ns ns;
 } __attribute__((packed));
 
 struct socketmap_value {

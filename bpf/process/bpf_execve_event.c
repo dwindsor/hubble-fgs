@@ -60,6 +60,9 @@ int event_execve(struct sched_execve_args *ctx)
 		}
 		curr->flags = 0;
 		curr->binary = binary;
+#ifdef __NS_CHANGES_FILTER
+		memcpy(&(curr->ns), &(event->ns), sizeof(struct msg_ns));
+#endif
 	}
 
 	event->common.flags = 0;
