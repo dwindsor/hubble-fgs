@@ -126,7 +126,7 @@ replace (
 	github.com/vishvananda/netlink => github.com/jrfastab/netlink v1.1.1
 
 	// Use a fork of lumberjack with patches to ensure compressed logs are created atomically
-	gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220311181849-7e0d26d41c95
+	gopkg.in/natefinch/lumberjack.v2 => github.com/chancez/lumberjack v0.0.0-20220314160755-2b78c6a5f7bc
 	k8s.io/client-go => github.com/cilium/client-go v0.0.0-20200525133704-d13039a12d08
 
 	// Using private fork of controller-tools. See commit msg for more context

@@ -478,13 +478,13 @@ func compressLogFile(src, dst string) (err error) {
 		return fmt.Errorf("failed to stat log file: %v", err)
 	}
 
-	if err := chown(dst, fi); err != nil {
-		return fmt.Errorf("failed to chown compressed log file: %v", err)
-	}
-
 	// Use a different filename to write the file, so that anything looking for
 	// "*.gz" only sees the compressed file after it's been finished writing to.
 	tmpDst := dst + tmpSuffix
+
+	if err := chown(tmpDst, fi); err != nil {
+		return fmt.Errorf("failed to chown compressed log file: %v", err)
+	}
 
 	// If this file already exists, we presume it was created by
 	// a previous attempt to compress the log file.
