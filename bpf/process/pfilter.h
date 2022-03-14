@@ -196,8 +196,10 @@ int process_filter_namespace_change(__u64 ty, __u64 val, struct execve_map_value
 	if (ty == op_filter_in) {                // For the op_filter_in
 		for (n = 0; n < ns_max_types; n++) { // ... check all possible namespaces
 			if (val & (1 << n)) {            // ... if the appropriate bit is set (bit positions defined in ns_* enum)
-				if (init->ns.inum[n] == 0)   // namespace not set so just ignore
+				if (init->ns.inum[n] == 0) { // namespace not set so just ignore
+					curr->match_ns = 1;      // ... but need to setup the correct values at the end
 					continue;
+				}
 				if (init->ns.inum[n] != curr->ns.inum[n]) { // does the namespace value changed?
 					curr->match_ns = 1;
 					return PFILTER_ACCEPT;
@@ -207,8 +209,10 @@ int process_filter_namespace_change(__u64 ty, __u64 val, struct execve_map_value
 	} else if (ty == op_filter_notin) {      // For the op_filter_notin
 		for (n = 0; n < ns_max_types; n++) { // ... check all possible namespaces
 			if ((val & (1 << n)) == 0) {     // ... if the appropriate bit is *NOT* set (bit positions defined in ns_* enum)
-				if (init->ns.inum[n] == 0)   // namespace not set so just ignore
+				if (init->ns.inum[n] == 0) { // namespace not set so just ignore
+					curr->match_ns = 1;      // ... but need to setup the correct values at the end
 					continue;
+				}
 				if (init->ns.inum[n] != curr->ns.inum[n]) { // does the namespace value changed?
 					curr->match_ns = 1;
 					return PFILTER_ACCEPT;

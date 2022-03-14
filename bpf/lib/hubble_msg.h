@@ -490,7 +490,9 @@ struct execve_map_value {
 	__u32 binary;
 	__u32 pad;
 	struct msg_ns ns;
-} __attribute__((packed));
+} __attribute__((packed)) __attribute__ ((aligned (8)));
+
+_Static_assert(sizeof(struct execve_map_value) % 8 == 0, "struct execve_map_value should have size multiple of 8 bytes");
 
 struct socketmap_value {
 	struct msg_execve_key key;
