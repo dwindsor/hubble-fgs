@@ -59,13 +59,20 @@ kubectl -n tenant-jobs apply -f https://docs.isovalent.com/public/jobs-app-attac
 # The checkerpc checks will block until all the events we're looking for have fired anyway
 echo "Waiting for jobposting pod to be ready..." 1>&2
 for i in $(seq 10); do
-    sleep 10
-    kubectl wait -n tenant-jobs --for=condition=Available --all deployment/jobposting --timeout=30s && break
+    kubectl rollout status deployment/jobposting -n tenant-jobs --timeout=30s && break || sleep 10
 done
 if [ $? -ne 0 ]; then
     echo "Failed to wait for demo app..." 1>&2
     exit 1
 fi
-kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 15 || true
+
+for i in $(seq 10); do
+    kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 1 || true
+    sleep 5
+    # If demo app checker is done, leave early
+    if ! ps -p "$DEMO_APP_CHECKER_PID" &>/dev/null; then
+        break
+    fi
+done
 
 wait $DEMO_APP_CHECKER_PID
