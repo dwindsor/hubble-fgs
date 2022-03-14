@@ -67,7 +67,6 @@ func rpcCheck(clients []fgs.FineGuidanceSensorsClient, checker ec.MultiResponseC
 
 	log := &ec.LogrusLogger{L: logrus.New()}
 	eventCount := new(uint64)
-	clientsRemaining := 0
 	var mutex sync.Mutex
 
 	c := make(chan error)
@@ -128,21 +127,14 @@ func rpcCheck(clients []fgs.FineGuidanceSensorsClient, checker ec.MultiResponseC
 		if time_limit > 0 {
 			select {
 			case err := <-c:
-				clientsRemaining--
-				// Either one of our clients has reached
-				if err == nil || clientsRemaining == 0 {
-					return err
-				}
+				return err
 			case <-time.After(time_limit * time.Second):
 				return fmt.Errorf("checker timeout exceeded")
 			}
 		} else {
 			select {
 			case err := <-c:
-				clientsRemaining--
-				if err == nil || clientsRemaining == 0 {
-					return err
-				}
+				return err
 			}
 		}
 	}
