@@ -51,6 +51,11 @@ int event_execve(struct sched_execve_args *ctx)
 
 	curr = execve_map_get(pid);
 	if (curr) {
+#ifdef __NS_CHANGES_FILTER
+		bool ns_init = 0;
+		if (curr->key.pid == 0 && curr->key.ktime == 0) // newly allocated execve_map_value
+			ns_init = 1;
+#endif
 		curr->key.pid = execve->pid;
 		curr->key.ktime = execve->ktime;
 		curr->nspid = execve->nspid;
@@ -61,7 +66,8 @@ int event_execve(struct sched_execve_args *ctx)
 		curr->flags = 0;
 		curr->binary = binary;
 #ifdef __NS_CHANGES_FILTER
-		memcpy(&(curr->ns), &(event->ns), sizeof(struct msg_ns));
+		if (ns_init)
+			memcpy(&(curr->ns), &(event->ns), sizeof(struct msg_ns));
 #endif
 	}
 
