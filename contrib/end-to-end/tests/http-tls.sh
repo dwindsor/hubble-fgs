@@ -30,8 +30,8 @@ echo "Deploying curl pod..." 1>&2
 kubectl apply -f contrib/end-to-end/yaml/http-tls-end-to-end.yaml
 
 echo "Waiting for curl pod to be ready..." 1>&2
-for i in $(seq 3); do
-    kubectl wait -n curl --for=condition=Ready --all pod --timeout=5m && break || sleep 30
+for i in $(seq 10); do
+    kubectl wait -n curl --for=condition=Ready --all pod --timeout=30s && break || sleep 10
 done
 if [ $? -ne 0 ]; then
     echo "Failed to wait for curl pod..." 1>&2
