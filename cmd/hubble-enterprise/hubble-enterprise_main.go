@@ -5,6 +5,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/bugtool"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/spf13/cobra"
@@ -83,7 +84,7 @@ func init() {
 
 	rootCmd.AddCommand(getEventsCmd)
 	rootCmd.AddCommand(statusCmd)
-	initBugtoolCmd()
+	rootCmd.AddCommand(bugtool.New())
 
 	flags := rootCmd.PersistentFlags()
 	flags.BoolP(common.KeyDebug, "d", true, "Enable debug messages")

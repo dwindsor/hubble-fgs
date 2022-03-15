@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+
+package bugtool
 
 import (
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
@@ -23,7 +24,7 @@ var (
 	outFile string
 )
 
-func initBugtoolCmd() {
+func New() *cobra.Command {
 	bugtoolCmd := &cobra.Command{
 		Use:   "bugtool",
 		Short: "Produce a tar archive with debug information",
@@ -34,5 +35,5 @@ func initBugtoolCmd() {
 
 	flags := bugtoolCmd.Flags()
 	flags.StringVarP(&outFile, "out", "o", "hubble-enterprise-bugtool.tar.gz", "Output filename")
-	rootCmd.AddCommand(bugtoolCmd)
+	return bugtoolCmd
 }
