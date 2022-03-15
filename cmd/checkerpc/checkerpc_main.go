@@ -161,7 +161,15 @@ func init() {
 				for _, serverAddress := range serverAddresses {
 					go func(serverAddress string) {
 						defer wg.Done()
-						conn, err := grpc.DialContext(ctx, serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+						var conn *grpc.ClientConn
+						var err error
+						// retry up to 3 times
+						for i := 0; i < 3; i++ {
+							conn, err = grpc.DialContext(ctx, serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+							if err == nil {
+								break
+							}
+						}
 						if err != nil {
 							logger.GetLogger().WithError(err).Error("Failed to connect")
 							os.Exit(1)
