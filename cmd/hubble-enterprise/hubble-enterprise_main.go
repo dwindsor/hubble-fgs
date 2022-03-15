@@ -4,16 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"os"
+	"os/signal"
+
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/bugtool"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/sensors"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/version"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
-	"os"
-	"os/signal"
 )
 
 var (
@@ -86,6 +89,8 @@ func init() {
 	rootCmd.AddCommand(getEventsCmd)
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(bugtool.New())
+	rootCmd.AddCommand(sensors.New())
+	rootCmd.AddCommand(tracingpolicy.New())
 	rootCmd.AddCommand(version.New())
 
 	flags := rootCmd.PersistentFlags()

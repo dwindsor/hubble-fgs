@@ -11,20 +11,19 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+
+package sensors
 
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
-
 	"github.com/spf13/cobra"
 )
 
-func init() {
+func New() *cobra.Command {
 	sensorsCmd := &cobra.Command{
 		Use:   "sensors",
 		Short: "Manage sensors",
@@ -101,25 +100,7 @@ func init() {
 	}
 	sensorsCmd.AddCommand(sensorRmCmd)
 
-	rootCmd.AddCommand(sensorsCmd)
-
-	tpCmd := &cobra.Command{
-		Use:   "tracingpolicy",
-		Short: "Manage tracing policies",
-	}
-
-	tpAddCmd := &cobra.Command{
-		Use:   "add <yaml_file>",
-		Short: "Add a new sennsor based on a tracing policy",
-		Args:  cobra.ExactArgs(1),
-		Run: func(cmd *cobra.Command, args []string) {
-			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-				addTracingPolicy(cli, args[0])
-			})
-		},
-	}
-	tpCmd.AddCommand(tpAddCmd)
-	rootCmd.AddCommand(tpCmd)
+	return sensorsCmd
 }
 
 func listSensors(client fgs.FineGuidanceSensorsClient) {
@@ -139,21 +120,6 @@ func listSensors(client fgs.FineGuidanceSensorsClient) {
 			enabled = "(not enabled)"
 		}
 		fmt.Printf("%s %s\n", sensor.Name, enabled)
-	}
-}
-
-func addTracingPolicy(client fgs.FineGuidanceSensorsClient, yamlFname string) {
-	yamlb, err := os.ReadFile(yamlFname)
-	if err != nil {
-		fmt.Printf("failed to read yaml file %s: %s\n", yamlFname, err)
-		return
-	}
-
-	_, err = client.AddTracingPolicy(context.Background(), &fgs.AddTracingPolicyRequest{
-		Yaml: string(yamlb),
-	})
-	if err != nil {
-		fmt.Printf("failed to add tracing policy: %s\n", err)
 	}
 }
 
