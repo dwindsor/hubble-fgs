@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+
+package version
 
 import (
 	"context"
@@ -33,8 +34,8 @@ func printVersion(res *fgs.GetVersionResponse, err error) {
 	}
 }
 
-func init() {
-	verCmd := &cobra.Command{
+func New() *cobra.Command {
+	return &cobra.Command{
 		Use:   "version",
 		Short: "Print version",
 		Args:  cobra.NoArgs,
@@ -50,5 +51,4 @@ func init() {
 			)
 		},
 	}
-	rootCmd.AddCommand(verCmd)
 }
