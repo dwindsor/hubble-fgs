@@ -55,16 +55,15 @@ install_fgs() {
     echo "Loading FGS image into kind..." 1>&2
     kind load docker-image "$FGS_IMAGE:$FGS_TAG" --name "$CLUSTER_NAME"
 
+    echo "Waiting for all kube-system pods to be ready..." 1>&2
+    for i in $(seq 10); do
+        kubectl wait --for=condition=Ready pods --all --namespace kube-system --timeout=30s && break || sleep 10
+    done
+
     echo "Installing FGS..." 1>&2
     helm repo add isovalent https://helm.isovalent.com
     helm repo update
-    helm uninstall -n kube-system hubble-enterprise || true
-
-    echo "Waiting for existing FGS to be removed..." 1>&2
-    for i in $(seq 10); do
-        kubectl wait -n kube-system --for=delete --all pod \
-            -l app.kubernetes.io/name=hubble-enterprise --timeout=30s && break || true
-    done
+    helm uninstall -n kube-system hubble-enterprise --wait=true || true
 
     # Build up helm options
     declare -a helm_opts=("--version" "9999.9999.9999-dev" "--namespace" "kube-system")
@@ -87,8 +86,7 @@ install_fgs() {
 
     echo "Waiting for FGS to become ready..." 1>&2
     for i in $(seq 10); do
-        kubectl wait -n kube-system --for=condition=Ready --all pod \
-            -l app.kubernetes.io/name=hubble-enterprise --timeout=30s && break || true
+        kubectl rollout status ds/hubble-enterprise -n kube-system --timeout=30s && break || sleep 10
     done
 }
 
