@@ -29,6 +29,9 @@ int event_execve(struct sched_execve_args *ctx)
 	uint64_t size;
 	__u32 pid;
 	unsigned short fileoff;
+#if defined(__NS_CHANGES_FILTER) || defined(__CAP_CHANGES_FILTER)
+	bool init_curr = 0;
+#endif
 
 	event = map_lookup_elem(&execve_msg_heap_map, &zero);
 	if (!event)
@@ -51,10 +54,9 @@ int event_execve(struct sched_execve_args *ctx)
 
 	curr = execve_map_get(pid);
 	if (curr) {
-#ifdef __NS_CHANGES_FILTER
-		bool ns_init = 0;
+#if defined(__NS_CHANGES_FILTER) || defined(__CAP_CHANGES_FILTER)
 		if (curr->key.pid == 0 && curr->key.ktime == 0) // newly allocated execve_map_value
-			ns_init = 1;
+			init_curr = 1;
 #endif
 		curr->key.pid = execve->pid;
 		curr->key.ktime = execve->ktime;
@@ -66,8 +68,15 @@ int event_execve(struct sched_execve_args *ctx)
 		curr->flags = 0;
 		curr->binary = binary;
 #ifdef __NS_CHANGES_FILTER
-		if (ns_init)
+		if (init_curr)
 			memcpy(&(curr->ns), &(event->ns), sizeof(struct msg_ns));
+#endif
+#ifdef __CAP_CHANGES_FILTER
+		if (init_curr) {
+			curr->caps.permitted = event->caps.permitted;
+			curr->caps.effective = event->caps.effective;
+			curr->caps.inheritable = event->caps.inheritable;
+		}
 #endif
 	}
 

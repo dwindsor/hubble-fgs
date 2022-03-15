@@ -304,6 +304,13 @@ func (in *KProbeSelector) DeepCopyInto(out *KProbeSelector) {
 			(*in)[i].DeepCopyInto(&(*out)[i])
 		}
 	}
+	if in.MatchCapabilityChanges != nil {
+		in, out := &in.MatchCapabilityChanges, &out.MatchCapabilityChanges
+		*out = make([]CapabilitiesSelector, len(*in))
+		for i := range *in {
+			(*in)[i].DeepCopyInto(&(*out)[i])
+		}
+	}
 	return
 }
 

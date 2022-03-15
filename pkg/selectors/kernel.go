@@ -518,6 +518,17 @@ func parseMatchCapabilities(k *KernelSelectorState, actions []v1alpha1.Capabilit
 	return nil
 }
 
+func parseMatchCapabilityChanges(k *KernelSelectorState, actions []v1alpha1.CapabilitiesSelector) error {
+	loff := AdvanceSelectorLength(k)
+	for _, a := range actions {
+		if err := parseMatchCaps(k, &a); err != nil {
+			return err
+		}
+	}
+	WriteSelectorLength(k, loff)
+	return nil
+}
+
 func parseMatchBinary(k *KernelSelectorState, index uint32, b *v1alpha1.BinarySelector) error {
 	op, err := selectorOp(b.Operator)
 	if err != nil {
@@ -568,6 +579,9 @@ func parseSelector(
 	if err := parseMatchNamespaceChanges(k, selectors.MatchNamespaceChanges); err != nil {
 		return fmt.Errorf("parseMatchNamespaceChanges error: %w", err)
 	}
+	if err := parseMatchCapabilityChanges(k, selectors.MatchCapabilityChanges); err != nil {
+		return fmt.Errorf("parseMatchCapabilityChanges error: %w", err)
+	}
 	if err := parseMatchBinaries(k, selectors.MatchBinaries); err != nil {
 		return fmt.Errorf("parseMatchBinaries error: %w", err)
 	}
@@ -581,13 +595,14 @@ func parseSelector(
 }
 
 // array := [number][filter1][filter2][...][filtern]
-// filter := [length][matchPIDs][matchBinaries][matchArgs][matchNamespaces][matchCapabilities][matchNamespaceChanges]
+// filter := [length][matchPIDs][matchBinaries][matchArgs][matchNamespaces][matchCapabilities][matchNamespaceChanges][matchCapabilityChanges]
 // matchPIDs := [num][PID1][PID2]...[PIDn]
 // matchBinaries := [num][op][Index]...[Index]
 // matchArgs := [num][ARGx][ARGy]...[ARGn]
 // matchNamespaces := [num][NSx][NSy]...[NSn]
 // matchNamespaceChanges := [num][NCx][NCy]...[NCn]
 // matchCapabilities := [num][CAx][CAy]...[CAn]
+// matchCapabilityChanges := [num][CAx][CAy]...[CAn]
 // PIDn := [op][flags][valueInt]
 // Argn := [index][op][valueGen]
 // NSn := [namespace][op][valueInt]

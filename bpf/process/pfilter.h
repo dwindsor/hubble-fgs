@@ -252,6 +252,47 @@ int process_filter_capabilities(__u32 ty, __u32 op, __u32 ns, __u64 val, void *h
 	return (caps & val) ? PFILTER_ACCEPT : PFILTER_REJECT;
 }
 
+#ifdef __CAP_CHANGES_FILTER
+static inline __attribute__((always_inline))
+int process_filter_capability_change(__u32 ty, __u32 op, __u32 ns, __u64 val, void *heap)
+{
+	struct execve_map_value *init;
+	struct msg_generic_kprobe *curr;
+	int zero = 0;
+	__u64 icaps, ccaps;
+	__u32 pid;
+
+	curr = map_lookup_elem(heap, &zero);
+	if (!curr)
+		return PFILTER_REJECT;
+
+	pid = (get_current_pid_tgid() >> 32);
+	init = execve_map_get_noinit(pid); /* reject for processes that are not in the execve_map yet */
+	if (!init)
+		return PFILTER_REJECT;
+
+	/* if ns != 0 we care only for events in different than the host user namespace */
+	if ((ns != 0) && (curr->ns.user_inum == ns))
+		return PFILTER_REJECT;
+
+	if (ty > caps_inheritable) /* We should not reach that. Userspace checks that. */
+		return PFILTER_REJECT;
+
+	icaps = init->caps.c[ty];
+	ccaps = curr->caps.c[ty];
+
+	/* if op == op_filter_in we care for all bits in vals that are set */
+	if (op == op_filter_notin)
+		val = ~val; /* for op_filter_notin we care for all the rest bits */
+
+	if ((icaps & val) != (ccaps & val)) {
+		curr->match_cap = 1;
+		return PFILTER_ACCEPT;
+	}
+	return PFILTER_REJECT;
+}
+#endif
+
 #define MAX_SELECTOR_VALUES 4
 
 static inline __attribute__((always_inline))
@@ -411,6 +452,21 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 		index += sizeof(struct nc_filter); /* 8: op, val */
 		res = process_filter_namespace_change(nc->op, nc->value, enter, heap);
 		/* now index points at the end of namespace change filter */
+	}
+	if (res == PFILTER_REJECT)
+		return res;
+#endif
+
+#ifdef __CAP_CHANGES_FILTER
+	/* matchCapabilityChanges */
+	len = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(cap1) + sizeof(cap2) + ... + 4) */
+	index += 4; /* 4: caps header */
+	len -= 4;
+
+	if (len > 0) {
+		caps = (struct caps_filter *)((u64)f + (index & INDEX_MASK));
+		index += sizeof(struct caps_filter); /* 20: ty, op, ns, val */
+		res = process_filter_capability_change(caps->ty, caps->op, caps->ns, caps->val, heap);
 	}
 	if (res == PFILTER_REJECT)
 		return res;

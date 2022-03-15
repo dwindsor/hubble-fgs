@@ -131,6 +131,9 @@ type KProbeSelector struct {
 	// +kubebuilder:validation:Optional
 	// A list of capabilities and IDs
 	MatchCapabilities []CapabilitiesSelector `json:"matchCapabilities" yaml:"matchCapabilities"`
+	// +kubebuilder:validation:Optional
+	// IDs for capabilities changes
+	MatchCapabilityChanges []CapabilitiesSelector `json:"matchCapabilityChanges" yaml:"matchCapabilityChanges"`
 }
 
 type NamespaceChangesSelector struct {

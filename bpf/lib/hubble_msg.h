@@ -132,9 +132,10 @@
 #define UNRESOLVED_MOUNT_POINTS		0x01
 #define UNRESOLVED_PATH_COMPONENTS	0x02
 
-/* The namespace changes filters require later kernels */
+/* The namespace and capability changes filters require later kernels */
 #ifdef __LARGE_BPF_PROG
 #define __NS_CHANGES_FILTER
+#define __CAP_CHANGES_FILTER
 #endif
 
 /* Msg Types */
@@ -376,6 +377,9 @@ struct msg_generic_kprobe {
 #ifdef __NS_CHANGES_FILTER
 	__u64 match_ns;
 #endif
+#ifdef __CAP_CHANGES_FILTER
+	__u64 match_cap;
+#endif
 };
 
 static inline __attribute__((always_inline))
@@ -501,6 +505,7 @@ struct execve_map_value {
 	__u32 binary;
 	__u32 pad;
 	struct msg_ns ns;
+	struct msg_capabilities caps;
 } __attribute__((packed)) __attribute__ ((aligned (8)));
 
 _Static_assert(sizeof(struct execve_map_value) % 8 == 0, "struct execve_map_value should have size multiple of 8 bytes");
