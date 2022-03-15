@@ -1,6 +1,6 @@
 forward_grpc() {
     # Find enterprise pods
-    ENTERPRISE_PODS=$(kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise -n kube-system -o custom-columns=name:metadata.name --no-headers)
+    ENTERPRISE_PODS=$(kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise -n kube-system -o custom-columns=name:metadata.name,phase:status.phase --no-headers | grep Running | cut -d ' ' -f1)
 
     # Empty bash array
     PORTFORWARD_PIDS=()

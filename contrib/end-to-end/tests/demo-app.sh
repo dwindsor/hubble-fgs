@@ -28,6 +28,15 @@ done
 export PATH="$PATH:/usr/local/go/bin"
 KERNEL_VERSION=$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')
 
+echo "Waiting for FGS pods to be ready..." 1>&2
+for i in $(seq 10); do
+    kubectl rollout status ds/hubble-enterprise -n kube-system --timeout=30s && break || sleep 10
+done
+if [ $? -ne 0 ]; then
+    echo "Failed to wait for FGS..." 1>&2
+    exit 1
+fi
+
 echo "Forwarding gRPC ports..." 1>&2
 forward_grpc
 SERVER_ARGS=()
@@ -47,7 +56,6 @@ fi
 echo "Checking demo app events..." 1>&2
 go run ./cmd/checkerpc --events 20000 --timeout 1200 --check demo-app ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-demo-app.log &
 DEMO_APP_CHECKER_PID=$!
-# Wait long enough for every client to either connect or timeout
 sleep 20
 
 echo "Deploying demo app..." 1>&2
