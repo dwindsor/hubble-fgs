@@ -18,7 +18,6 @@ import (
 
 var (
 	serverAddress string
-	status        bool
 
 	rootCmd *cobra.Command
 )
@@ -83,11 +82,7 @@ func init() {
 		Use:   "hubble-enterprise",
 		Short: "Hubble Enterprise CLI",
 		Run: func(cmd *cobra.Command, args []string) {
-			if status {
-				cliRun(getStatus)
-			} else {
-				cmd.Help()
-			}
+			cmd.Help()
 		},
 	}
 
@@ -113,7 +108,6 @@ func init() {
 
 	flags := rootCmd.PersistentFlags()
 	flags.BoolP("debug", "d", true, "Enable debug messages")
-	flags.BoolVar(&status, "status", false, "DEPRECATED: Use 'hubble-enterprise status' instead.")
 	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
 	viper.BindPFlags(flags)
 
