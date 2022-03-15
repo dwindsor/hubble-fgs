@@ -86,7 +86,7 @@ install:
 clean:
 	$(MAKE) -C ./bpf clean
 	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench ./checkerpc
-	rm -f contrib/sigkill-tester/sigkill-tester contrib/namespace-tester/test_ns
+	rm -f contrib/sigkill-tester/sigkill-tester contrib/namespace-tester/test_ns contrib/capabilities-tester/test_caps
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:
@@ -223,4 +223,5 @@ cscope:
 contrib-progs:
 	$(MAKE) -C contrib/sigkill-tester
 	$(MAKE) -C contrib/namespace-tester
+	$(MAKE) -C contrib/capabilities-tester
 .PHONY: contrib-progs
