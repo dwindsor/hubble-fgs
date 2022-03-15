@@ -1,6 +1,9 @@
 package main
 
 import (
+	"fmt"
+	"os"
+
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/bugtool"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/getevents"
@@ -17,7 +20,14 @@ var (
 	rootCmd *cobra.Command
 )
 
-func init() {
+func main() {
+	if err := new().Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
+}
+
+func new() *cobra.Command {
 	rootCmd = &cobra.Command{
 		Use:   "hubble-enterprise",
 		Short: "Hubble Enterprise CLI",
@@ -38,9 +48,5 @@ func init() {
 	flags.BoolP(common.KeyDebug, "d", true, "Enable debug messages")
 	flags.String(common.KeyServerAddress, "localhost:54321", "gRPC server address")
 	viper.BindPFlags(flags)
-
-}
-
-func hubbleEnterpriseMain() {
-	rootCmd.Execute()
+	return rootCmd
 }
