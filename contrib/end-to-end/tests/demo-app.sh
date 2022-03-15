@@ -84,3 +84,6 @@ for i in $(seq 10); do
 done
 
 wait $DEMO_APP_CHECKER_PID
+
+# Remove demo app pods
+kubectl delete namespace tenant-jobs || true
