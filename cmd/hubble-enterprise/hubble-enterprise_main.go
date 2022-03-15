@@ -9,6 +9,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
@@ -107,8 +108,8 @@ func init() {
 	initBugtoolCmd()
 
 	flags := rootCmd.PersistentFlags()
-	flags.BoolP("debug", "d", true, "Enable debug messages")
-	flags.StringVar(&serverAddress, "server-address", "localhost:54321", "gRPC server address")
+	flags.BoolP(common.KeyDebug, "d", true, "Enable debug messages")
+	flags.StringVar(&serverAddress, common.KeyServerAddress, "localhost:54321", "gRPC server address")
 	viper.BindPFlags(flags)
 
 }
