@@ -29,13 +29,13 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	ciliumopt "github.com/cilium/cilium/pkg/option"
+	"github.com/cilium/lumberjack/v2"
 	gops "github.com/google/gops/agent"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc"
 	"google.golang.org/protobuf/types/known/durationpb"
-	"gopkg.in/natefinch/lumberjack.v2"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/rest"
 )
