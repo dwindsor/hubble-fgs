@@ -26,6 +26,7 @@ RUN apt-get update -y &&    \
 	bison               \
 	autoconf            \
 	libelf-dev          \
+	libcap-dev          \
 	bc                  \
 	netcat-traditional  \
 	vim                 \
