@@ -4,41 +4,19 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"os"
-	"os/signal"
-	"time"
-
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
-	"google.golang.org/grpc"
+	"os"
+	"os/signal"
 )
 
 var (
-	serverAddress string
-
 	rootCmd *cobra.Command
 )
-
-func cliRunErr(fn func(cli fgs.FineGuidanceSensorsClient), fnErr func(err error)) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
-	defer cancel()
-	conn, err := grpc.DialContext(ctx, serverAddress, grpc.WithInsecure(), grpc.WithBlock())
-	if err != nil {
-		fnErr(err)
-		logger.GetLogger().WithError(err).Fatal("Failed to connect")
-	}
-	defer conn.Close()
-	client := fgs.NewFineGuidanceSensorsClient(conn)
-	fn(client)
-}
-
-func cliRun(fn func(cli fgs.FineGuidanceSensorsClient)) {
-	cliRunErr(fn, func(_ error) {})
-}
 
 func getStatus(client fgs.FineGuidanceSensorsClient) {
 	response, err := client.GetHealth(context.Background(), &fgs.GetHealthStatusRequest{})
@@ -91,7 +69,7 @@ func init() {
 		Use:   "getevents",
 		Short: "Print events",
 		Run: func(cmd *cobra.Command, args []string) {
-			cliRun(getEvents)
+			common.CliRun(getEvents)
 		},
 	}
 
@@ -99,7 +77,7 @@ func init() {
 		Use:   "status",
 		Short: "Print health status",
 		Run: func(cmd *cobra.Command, args []string) {
-			cliRun(getStatus)
+			common.CliRun(getStatus)
 		},
 	}
 
@@ -109,7 +87,7 @@ func init() {
 
 	flags := rootCmd.PersistentFlags()
 	flags.BoolP(common.KeyDebug, "d", true, "Enable debug messages")
-	flags.StringVar(&serverAddress, common.KeyServerAddress, "localhost:54321", "gRPC server address")
+	flags.String(common.KeyServerAddress, "localhost:54321", "gRPC server address")
 	viper.BindPFlags(flags)
 
 }

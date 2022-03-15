@@ -18,6 +18,7 @@ import (
 	"fmt"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 
 	"github.com/spf13/cobra"
@@ -38,7 +39,7 @@ func init() {
 		Short: "Print version",
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
-			cliRunErr(
+			common.CliRunErr(
 				func(cli fgs.FineGuidanceSensorsClient) {
 					res, err := cli.GetVersion(context.Background(), &fgs.GetVersionRequest{})
 					printVersion(res, err)

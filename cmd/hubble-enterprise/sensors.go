@@ -19,6 +19,7 @@ import (
 	"os"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 
 	"github.com/spf13/cobra"
 )
@@ -33,7 +34,7 @@ func init() {
 		Use:   "list",
 		Short: "List available sensors",
 		Run: func(cmd *cobra.Command, args []string) {
-			cliRun(listSensors)
+			common.CliRun(listSensors)
 		},
 	}
 	sensorsCmd.AddCommand(sensorsListCmd)
@@ -44,7 +45,7 @@ func init() {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			sensor := args[0]
-			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
 				enableSensor(cli, sensor)
 			})
 		},
@@ -57,7 +58,7 @@ func init() {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			sensor := args[0]
-			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
 				disableSensor(cli, sensor)
 			})
 		},
@@ -72,15 +73,15 @@ func init() {
 			sensor := args[0]
 			switch len(args) {
 			case 1:
-				cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+				common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
 					sensorGetConfig(cli, sensor, "")
 				})
 			case 2:
-				cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+				common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
 					sensorGetConfig(cli, sensor, args[1])
 				})
 			case 3:
-				cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+				common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
 					sensorSetConfig(cli, sensor, args[1], args[2])
 				})
 			}
@@ -93,7 +94,7 @@ func init() {
 		Short: "remove a sensor",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
 				removeSensor(cli, args[0])
 			})
 		},
@@ -112,7 +113,7 @@ func init() {
 		Short: "Add a new sennsor based on a tracing policy",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
 				addTracingPolicy(cli, args[0])
 			})
 		},

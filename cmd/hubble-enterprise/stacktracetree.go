@@ -20,6 +20,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 
 	"github.com/spf13/cobra"
 )
@@ -36,7 +37,7 @@ func init() {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			stt := args[0]
-			cliRun(func(cli fgs.FineGuidanceSensorsClient) {
+			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
 				sttPrint(cli, stt)
 			})
 		},
