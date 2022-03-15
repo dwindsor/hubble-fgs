@@ -340,16 +340,6 @@ struct msg_ns {
 	};
 };
 
-static inline __attribute__((always_inline))
-size_t generic_kprobe_common_size()
-{
-	return sizeof(struct msg_common)
-		+ sizeof(struct msg_execve_key)
-		+ sizeof(struct msg_ns)
-		+ sizeof(struct msg_capabilities)
-		+ sizeof(__u64) + sizeof(__u64) + sizeof(__u64);
-}
-
 #define MAX_POSSIBLE_ARGS 5
 #define MAX_POSSIBLE_SELECTORS 31
 #define SELECTORS_ACTIVE 31
@@ -363,7 +353,7 @@ struct msg_generic_kprobe {
 	__u64 id;
 	__u64 thread_id;
 	__u64 action;
-	/* if add anything above please also update generic_kprobe_common_size() */
+	/* anything above is shared with the userspace so it should match structs MsgGenericKprobe and MsgGenericTracepoint in Go */
 	char args[24000];
 	unsigned long a0,a1,a2,a3,a4;
 	long argsoff[MAX_POSSIBLE_ARGS];
@@ -374,6 +364,12 @@ struct msg_generic_kprobe {
 	__u64 match_ns;
 #endif
 };
+
+static inline __attribute__((always_inline))
+size_t generic_kprobe_common_size()
+{
+	return offsetof(struct msg_generic_kprobe, args);
+}
 
 struct msg_test {
 	struct msg_common common;
