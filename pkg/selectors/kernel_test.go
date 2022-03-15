@@ -378,7 +378,7 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x4, 0x00, 0x00, 0x00, // selector offset list
 
 		// selector header size 4
-		0x02, 0x01, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + namespacesChanges + capabilities + 4
+		0x1a, 0x01, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + namespacesChanges + capabilities + capabilityChanges + 4
 
 		// pid header
 		56, 0x00, 0x00, 0x00, // size = sizeof(pid2) + sizeof(pid1) + 4
@@ -439,6 +439,15 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x05, 0x00, 0x00, 0x00, // op == In
 		0x05, 0x00, 0x00, 0x00, // values
 
+		// capability changes header
+		24, 0x00, 0x00, 0x00, // size = sizeof(cap1) + sizeof(cap2) + 4
+
+		// cap size = 20
+		0x01, 0x00, 0x00, 0x00, // Type == Effective
+		0x05, 0x00, 0x00, 0x00, // op == In
+		0x00, 0x00, 0x00, 0x00, // IsNamespaceCapability = false
+		0x00, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, // Values (uint64)
+
 		// binaryNames header
 		24, 0x00, 0x00, 0x00, // size = sizeof(uint32) * 4
 
@@ -491,6 +500,8 @@ func TestInitKernelSelectors(t *testing.T) {
 	cap1 := &v1alpha1.CapabilitiesSelector{Type: "Effective", Operator: "In", IsNamespaceCapability: false, Values: []string{"CAP_CHOWN", "CAP_NET_RAW"}}
 	cap2 := &v1alpha1.CapabilitiesSelector{Type: "Inheritable", Operator: "NotIn", IsNamespaceCapability: false, Values: []string{"CAP_SETPCAP", "CAP_SYS_ADMIN"}}
 	matchCapabilities := []v1alpha1.CapabilitiesSelector{*cap1, *cap2}
+	cc := &v1alpha1.CapabilitiesSelector{Type: "Effective", Operator: "In", IsNamespaceCapability: false, Values: []string{"CAP_SYS_ADMIN", "CAP_NET_RAW"}}
+	matchCapabilityChanges := []v1alpha1.CapabilitiesSelector{*cc}
 
 	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "followfd",
@@ -500,12 +511,13 @@ func TestInitKernelSelectors(t *testing.T) {
 
 	selectors := []v1alpha1.KProbeSelector{
 		{
-			MatchPIDs:             matchPids,
-			MatchNamespaces:       matchNamespaces,
-			MatchNamespaceChanges: matchNamespaceChanges,
-			MatchCapabilities:     matchCapabilities,
-			MatchArgs:             matchArgs,
-			MatchActions:          matchActions,
+			MatchPIDs:              matchPids,
+			MatchNamespaces:        matchNamespaces,
+			MatchNamespaceChanges:  matchNamespaceChanges,
+			MatchCapabilities:      matchCapabilities,
+			MatchCapabilityChanges: matchCapabilityChanges,
+			MatchArgs:              matchArgs,
+			MatchActions:           matchActions,
 		},
 	}
 	args := []v1alpha1.KProbeArg{
