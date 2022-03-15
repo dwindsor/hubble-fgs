@@ -17,23 +17,15 @@ import (
 // This bpf_lseek is a simple BPF program used for tests
 
 var (
-	ObserverLseekTest = sensors.Program{
+	ObserverLseekTest = sensors.ProgramBuilder(
 		"bpf_lseek.o",
 		"syscalls/sys_enter_lseek",
 		"tracepoint/sys_enter_lseek",
 		"test_lseek",
-
-		false,
-		true,
 		"tracepoint",
-		sensors.Idle(),
-
-		-1,
-
-		struct{}{},
-	}
+	)
 )
 
 func init() {
-	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), &ObserverLseekTest))
+	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), ObserverLseekTest))
 }

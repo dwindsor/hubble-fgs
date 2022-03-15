@@ -53,9 +53,6 @@ var (
 		"sock_create",
 		"cgroup/sock_create",
 		"cgroup_sock_create",
-
-		false,
-		true,
 		"cgrp_socket")
 
 	SockRelease = sensors.ProgramBuilder(
@@ -63,9 +60,6 @@ var (
 		"inet_release",
 		"kprobe/inet_release",
 		"kprobe_sock_release",
-
-		false,
-		true,
 		"kprobe")
 
 	InetSend = sensors.ProgramBuilder(
@@ -73,9 +67,6 @@ var (
 		"inet_send",
 		"cgroup_skb/egress",
 		"cgroup_skb_egress",
-
-		false,
-		true,
 		"cgrp_egress",
 	)
 
@@ -84,9 +75,6 @@ var (
 		"inet_recv",
 		"cgroup_skb/ingress",
 		"cgroup_skb_ingress",
-
-		false,
-		true,
 		"cgrp_ingress",
 	)
 
@@ -95,9 +83,6 @@ var (
 		"inet_lazy_send",
 		"cgroup_skb/egress",
 		"cgroup_skb_egress",
-
-		false,
-		true,
 		"cgrp_egress",
 	)
 
@@ -106,9 +91,6 @@ var (
 		"inet_lazy_recv",
 		"cgroup_skb/ingress",
 		"cgroup_skb_ingress",
-
-		false,
-		true,
 		"cgrp_ingress",
 	)
 
@@ -117,9 +99,6 @@ var (
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
 		"kprobe_udp_sendmsg",
-
-		false,
-		true,
 		"kprobe",
 	)
 
@@ -128,30 +107,24 @@ var (
 		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
 		"kretprobe_udp_sendmsg",
-
-		true,
-		true,
 		"kprobe",
-	)
+	).SetRetProbe(true)
 
 	UdpRecv = sensors.ProgramBuilder(
 		"bpf_udp_sendmsg.o",
 		"skb_consume_udp",
 		"kprobe/skb_consume_udp",
 		"kprobe_skb_consume_udp",
-
-		false,
-		true,
 		"kprobe",
 	)
 
-	SocketCookieMap        = sensors.MapBuilder("socket_cookie_to_proc_map", "", &sensors.TCPConnect)
-	UdpMap                 = sensors.MapBuilder(UdpMapName, "", InetSend)
-	UdpMapKprobe           = sensors.MapBuilder(UdpMapName, "", UdpSend)
-	UdpRetprobeMap         = sensors.MapBuilder(UdpRetprobeMapName, "", UdpSend)
-	UdpFilterMap           = sensors.MapBuilder("udp_filter_map", "", InetSend)
-	UdpFilterLazyMap       = sensors.MapBuilder("udp_filter_map", "", InetSendLazy)
-	ProcessNetworkBurstMap = sensors.MapBuilder(ProcessNetworkBurstMapName, "", InetSend)
+	SocketCookieMap        = sensors.MapBuilder("socket_cookie_to_proc_map", sensors.TCPConnect)
+	UdpMap                 = sensors.MapBuilder(UdpMapName, InetSend)
+	UdpMapKprobe           = sensors.MapBuilder(UdpMapName, UdpSend)
+	UdpRetprobeMap         = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
+	UdpFilterMap           = sensors.MapBuilder("udp_filter_map", InetSend)
+	UdpFilterLazyMap       = sensors.MapBuilder("udp_filter_map", InetSendLazy)
+	ProcessNetworkBurstMap = sensors.MapBuilder(ProcessNetworkBurstMapName, InetSend)
 )
 
 type udpInfoKey struct {

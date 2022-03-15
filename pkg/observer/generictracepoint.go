@@ -325,19 +325,16 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 	progs := make([]*sensors.Program, 0, len(tracepoints))
 	for _, tp := range tracepoints {
 		attach := fmt.Sprintf("%s/%s", tp.Info.Subsys, tp.Info.Event)
-		prog0 := sensors.Program{
-			Name:       path.Join(option.Config.HubbleLib, progName),
-			Attach:     attach,
-			Label:      "tracepoint/generic_tracepoint",
-			PinPath:    fmt.Sprintf("tracepoint-%s-%s", tp.Info.Subsys, tp.Info.Event),
-			RetProbe:   false,
-			ErrorFatal: true,
-			Type:       "generic_tracepoint",
-			LoadState:  sensors.Idle(),
-			TraceFD:    -1,
-			LoaderData: tp.tableIdx,
-		}
-		progs = append(progs, &prog0)
+		prog0 := sensors.ProgramBuilder(
+			path.Join(option.Config.HubbleLib, progName),
+			attach,
+			"tracepoint/generic_tracepoint",
+			fmt.Sprintf("tracepoint-%s-%s", tp.Info.Subsys, tp.Info.Event),
+			"generic_tracepoint",
+		)
+
+		prog0.LoaderData = tp.tableIdx
+		progs = append(progs, prog0)
 	}
 
 	return &sensors.Sensor{

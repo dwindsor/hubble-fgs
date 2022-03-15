@@ -31,8 +31,6 @@ var (
 		"sk_msg",
 		"sk_msg/fgs_tls",
 		"bpf_tls_sk_msg_fgs",
-		false,
-		true,
 		"skmsg")
 
 	TLSSkSkbVerdict = sensors.ProgramBuilder(
@@ -40,8 +38,6 @@ var (
 		"sk_skb",
 		"sk_skb/stream_verdict/fgs_tls",
 		"bpf_tls_skskb_verdict_fgs",
-		false,
-		true,
 		"sk_skb_verdict")
 
 	TLSSkSkbParser = sensors.ProgramBuilder(
@@ -49,8 +45,6 @@ var (
 		"sk_skb",
 		"sk_skb/stream_parser/fgs_tls",
 		"bpf_tls_skskb_parser_fgs",
-		false,
-		true,
 		"sk_skb_parser")
 
 	SockoptSet = sensors.ProgramBuilder(
@@ -58,9 +52,6 @@ var (
 		"cgroup",
 		"cgroup/setsockopt",
 		"cgroup_setsockopt",
-
-		false,
-		true,
 		"cgrp_socketopt",
 	)
 
@@ -73,8 +64,6 @@ var (
 		"ingress_tcp",
 		"classifier/ingress_tcp",
 		"classifier_ingress_tcp",
-		false,
-		true,
 		"tc_ingress")
 
 	TLSTCEgress = sensors.ProgramBuilder(
@@ -82,21 +71,19 @@ var (
 		"egress_tcp",
 		"classifier/egress_tcp",
 		"tc_egress_tcp",
-		false,
-		true,
 		"tc_egress")
 
 	/* TLS maps */
-	TCTLSMap         = sensors.MapBuilder("tls_map", "tc_egress", TLSTCEgress)
-	TCTLSParserStats = sensors.MapBuilder("tls_parser_stats", "tc_egress", TLSTCEgress)
-	TLSParserStats   = sensors.MapBuilder("tls_parser_stats", "sockops", sockops.SockopsEstablished)
-	TLSMap           = sensors.MapBuilder("tls_map", "skmsg", TLSSkmsg)
-	TLSTailCalls     = sensors.MapBuilder("tls_calls", "tc_ingress", TLSTCIngress)
-	TlsFilterMap     = sensors.MapBuilder("tls_filter_map", "sockops", sockops.SockopsEstablished)
-	TLSSockMap       = sensors.MapBuilder("tls_sock_map", "sockops", sockops.SockopsEstablished)
+	TCTLSMap         = sensors.MapBuilder("tls_map", TLSTCEgress)
+	TCTLSParserStats = sensors.MapBuilder("tls_parser_stats", TLSTCEgress)
+	TLSParserStats   = sensors.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
+	TLSMap           = sensors.MapBuilder("tls_map", TLSSkmsg)
+	TLSTailCalls     = sensors.MapBuilder("tls_calls", TLSTCIngress)
+	TlsFilterMap     = sensors.MapBuilder("tls_filter_map", sockops.SockopsEstablished)
+	TLSSockMap       = sensors.MapBuilder("tls_sock_map", sockops.SockopsEstablished)
 
 	/* HTTP context is used when promoting a TLS sesions into HTTP sessions */
-	HTTPContext = sensors.MapBuilder("http_map", "skmsg", TLSSkmsg)
+	HTTPContext = sensors.MapBuilder("http_map", TLSSkmsg)
 )
 
 func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {

@@ -17,12 +17,11 @@ import (
 )
 
 func ProgramBuilder(
-	program, attach, label, prog string,
-	ret, errFatal bool,
+	objFile, attach, label, pinFile string,
 	ty string,
 ) *Program {
 	return &Program{
-		program, attach, label, prog, ret, errFatal, ty,
+		objFile, attach, label, pinFile, false, true, ty,
 		Idle(), -1, struct{}{},
 	}
 }
@@ -60,10 +59,20 @@ type Program struct {
 	// for example. The FD is to keep a reference to the tracepoint program in
 	// order to delete it. TODO: This can be moved into loaderData for
 	// tracepoints.
-	TraceFD int
+	traceFD int
 
 	// LoaderData represents per-type specific fields.
 	LoaderData interface{}
+}
+
+func (p *Program) SetRetProbe(ret bool) *Program {
+	p.RetProbe = ret
+	return p
+}
+
+func (p *Program) SetLoaderData(d interface{}) *Program {
+	p.LoaderData = d
+	return p
 }
 
 // State represents the state of a BPF program or map.
@@ -106,13 +115,22 @@ func (s *State) SetLoaded() {
 
 // Map represents BPF maps.
 type Map struct {
-	Name     string
-	Type     string
-	Prog     *Program
-	PinState State
-	Map      *ebpf.Map
+	Name      string
+	Prog      *Program
+	PinState  State
+	mapHandle *ebpf.Map
 }
 
-func MapBuilder(name, ty string, ld *Program) *Map {
-	return &Map{name, ty, ld, Idle(), nil}
+func MapBuilder(name string, ld *Program) *Map {
+	return &Map{name, ld, Idle(), nil}
+}
+
+func (m *Map) Close() error {
+	if m.mapHandle != nil {
+		err := m.mapHandle.Close()
+		m.mapHandle = nil
+		return err
+	}
+	m.PinState = Idle()
+	return nil
 }

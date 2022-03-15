@@ -31,9 +31,6 @@ var (
 		"sk_msg",
 		"sk_msg/fgs",
 		"sk_msg_fgs",
-
-		false,
-		true,
 		"nop_skmsg")
 
 	SkSkbParser = sensors.ProgramBuilder(
@@ -41,9 +38,6 @@ var (
 		"sk_skb",
 		"sk_skb_nop_parser/fgsnop",
 		"sk_skb_parser",
-
-		false,
-		true,
 		"nop_skskb_parser")
 
 	SkSkbVerdict = sensors.ProgramBuilder(
@@ -51,14 +45,11 @@ var (
 		"sk_skb",
 		"sk_skb_nop_verdict/fgsnop",
 		"sk_skb_verdict",
-
-		false,
-		true,
 		"nop_skskb_verdict")
 
 	/* NOP maps */
 	nopSockMapName = "nop_sock_map"
-	SockMap        = sensors.MapBuilder(nopSockMapName, "sockops", sockops.SockopsEstablished)
+	SockMap        = sensors.MapBuilder(nopSockMapName, sockops.SockopsEstablished)
 )
 
 type sensor struct {

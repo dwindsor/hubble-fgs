@@ -458,31 +458,24 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// tracepoints case) and release it there, which seems like a simpler option.
 		btfobj = bpf.BTFNil
 
-		load := &sensors.Program{}
-		load.Name = path.Join(option.Config.HubbleLib, loadProgName)
-		load.Label = "kprobe/generic_kprobe"
-		load.Attach = funcName
-		load.PinPath = "kprobe" + "_" + funcName
-		load.RetProbe = false
-		load.ErrorFatal = true
-		load.Type = "generic_kprobe"
-		load.LoadState = sensors.Idle()
-		load.TraceFD = -1
-		load.LoaderData = kprobeEntry.tableId
+		load := sensors.ProgramBuilder(
+			path.Join(option.Config.HubbleLib, loadProgName),
+			funcName,
+			"kprobe/generic_kprobe",
+			"kprobe"+"_"+funcName,
+			"generic_kprobe").
+			SetLoaderData(kprobeEntry.tableId)
 		progs = append(progs, load)
 
 		if setRetprobe {
-			loadret := &sensors.Program{}
-			loadret.Name = path.Join(option.Config.HubbleLib, loadProgRetName)
-			loadret.Label = "kprobe/generic_retkprobe"
-			loadret.Attach = funcName
-			loadret.PinPath = "kretprobe" + "_" + funcName
-			loadret.RetProbe = true
-			loadret.ErrorFatal = true
-			loadret.Type = "generic_kprobe"
-			loadret.LoadState = sensors.Idle()
-			loadret.TraceFD = -1
-			loadret.LoaderData = kprobeEntry.tableId
+			loadret := sensors.ProgramBuilder(
+				path.Join(option.Config.HubbleLib, loadProgRetName),
+				funcName,
+				"kprobe/generic_retkprobe",
+				"kretprobe"+"_"+funcName,
+				"generic_kprobe").
+				SetRetProbe(true).
+				SetLoaderData(kprobeEntry.tableId)
 			progs = append(progs, loadret)
 		}
 

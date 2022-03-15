@@ -26,27 +26,19 @@ import (
 )
 
 var (
-	ObserverKfreeSkb = sensors.Program{
+	ObserverKfreeSkb = sensors.ProgramBuilder(
 		"bpf_kfree_skb.o",
 		"kfree_skb",
 		"kprobe/kfree_skb",
 		"event_kfree_skb",
-
-		false,
-		true,
 		"kprobe",
-		sensors.Idle(),
-
-		-1,
-
-		struct{}{},
-	}
+	)
 
 	packetdropCfg *PacketdropSensorConfig
 )
 
 func init() {
-	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), &ObserverKfreeSkb))
+	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), ObserverKfreeSkb))
 	sensors.RegisterSensorAtInit(createPacketDropSensor())
 }
 
@@ -60,7 +52,7 @@ type PacketdropSensorImpl struct {
 }
 
 func createPacketDropSensor() *sensors.Sensor {
-	progs := []*sensors.Program{&ObserverKfreeSkb}
+	progs := []*sensors.Program{ObserverKfreeSkb}
 	maps := []*sensors.Map{}
 	impl := PacketdropSensorImpl{}
 	packetdropCfg = &impl.config

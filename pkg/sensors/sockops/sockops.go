@@ -24,18 +24,16 @@ var (
 		"sockops",
 		"sockops/fgs_sockops",
 		"sockops_fgs_sockops",
-		false,
-		true,
 		"sockops")
 
 	TlsSockMapName  = "tls_sock_map"
 	httpSockMapName = "http_sock_map"
 
-	HttpSockMap   = sensors.MapBuilder(httpSockMapName, "sockops", SockopsEstablished)
-	TlsSockMap    = sensors.MapBuilder(TlsSockMapName, "sockops", SockopsEstablished)
-	TlsFilterMap  = sensors.MapBuilder("tls_filter_map", "sockops", SockopsEstablished)
-	HttpFilterMap = sensors.MapBuilder("http_filter_map", "sockops", SockopsEstablished)
-	NopFilterMap  = sensors.MapBuilder("nop_filter_map", "sockops", SockopsEstablished)
+	HttpSockMap   = sensors.MapBuilder(httpSockMapName, SockopsEstablished)
+	TlsSockMap    = sensors.MapBuilder(TlsSockMapName, SockopsEstablished)
+	TlsFilterMap  = sensors.MapBuilder("tls_filter_map", SockopsEstablished)
+	HttpFilterMap = sensors.MapBuilder("http_filter_map", SockopsEstablished)
+	NopFilterMap  = sensors.MapBuilder("nop_filter_map", SockopsEstablished)
 )
 
 func init() {

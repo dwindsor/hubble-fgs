@@ -195,7 +195,7 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 			l.WithField("map", m.Name).Info("hubble-fgs, map is disabled, skipping.")
 			continue
 		}
-		if m.Map != nil {
+		if m.mapHandle != nil {
 			l.WithField("map", m.Name).Info("hubble-fgs, map is already loaded, skipping.")
 			continue
 		}
@@ -206,7 +206,7 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 		// pinned map otherwise pin the map and next user will find
 		// it here.
 		if _, err := os.Stat(pinPath); err == nil {
-			m.Map, err = ebpf.LoadPinnedMap(pinPath, nil)
+			m.mapHandle, err = ebpf.LoadPinnedMap(pinPath, nil)
 			if err != nil {
 				return fmt.Errorf("loading pinned map failed: %w", err)
 			}
@@ -220,12 +220,12 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 				return fmt.Errorf("map '%s' not found from '%s'", m.Name, m.Prog.Name)
 			}
 
-			m.Map, err = ebpf.NewMap(mapSpec)
+			m.mapHandle, err = ebpf.NewMap(mapSpec)
 			if err != nil {
 				return fmt.Errorf("failed to open map '%s': %w", m.Name, err)
 			}
-			if err := m.Map.Pin(pinPath); err != nil {
-				m.Map.Close()
+			if err := m.mapHandle.Pin(pinPath); err != nil {
+				m.mapHandle.Close()
 				return fmt.Errorf("failed to pin to %s: %w", pinPath, err)
 			}
 		}
@@ -290,7 +290,7 @@ func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *Program, stopC
 			l.WithField(
 				"tracepoint", load.Name,
 			).Info("Tracepoint exists: removing and retrying")
-			removeTracepoint(load.TraceFD)
+			removeTracepoint(load.traceFD)
 			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
 		}
 		if err != nil {
@@ -304,7 +304,7 @@ func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *Program, stopC
 				load.Name, version, err)
 		}
 	}
-	load.TraceFD = fd
+	load.traceFD = fd
 	return nil
 }
 

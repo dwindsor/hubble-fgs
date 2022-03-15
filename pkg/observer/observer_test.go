@@ -150,7 +150,7 @@ func TestSensorLseekLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	progs := []*sensors.Program{&ObserverLseekTest}
+	progs := []*sensors.Program{ObserverLseekTest}
 	maps := []*sensors.Map{}
 	sensor := &sensors.Sensor{Name: "lseekTest", Progs: progs, Maps: maps}
 	if err := sensor.FindPrograms(ctx); err != nil {
@@ -198,7 +198,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	}()
 
 	sensorName := "lseekTest"
-	progs := []*sensors.Program{&ObserverLseekTest}
+	progs := []*sensors.Program{ObserverLseekTest}
 	maps := []*sensors.Map{}
 	sensor := &sensors.Sensor{Name: sensorName, Progs: progs, Maps: maps}
 	sensors.RegisterSensorAtInit(sensor)

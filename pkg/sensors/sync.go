@@ -256,9 +256,9 @@ func RemoveProgram(bpfDir string, prog *Program) {
 	if err := os.Remove(path); err != nil {
 		logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
 	}
-	if prog.TraceFD >= 0 {
-		removeTracepoint(prog.TraceFD)
-		prog.TraceFD = -1
+	if prog.traceFD >= 0 {
+		removeTracepoint(prog.traceFD)
+		prog.traceFD = -1
 	}
 }
 
@@ -276,11 +276,11 @@ func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) er
 	for _, m := range sensor.Maps {
 		os.Remove(filepath.Join(mapDir, m.Name))
 		m.PinState = Idle()
-		if m.Map != nil {
-			if err := m.Map.Close(); err != nil {
+		if m.mapHandle != nil {
+			if err := m.mapHandle.Close(); err != nil {
 				logger.GetLogger().Warnf("Failed to close map %s: %s", m.Name, err)
 			}
-			m.Map = nil
+			m.mapHandle = nil
 		}
 	}
 

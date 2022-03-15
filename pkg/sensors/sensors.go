@@ -23,23 +23,23 @@ var (
 	// do not access that directly outside of this file
 	// use {get|set}AllPrograms()
 	AllPrograms = []*Program{
-		&Execve,
-		&Exit,
-		&Fork,
-		&Cred,
-		&TCPConnect,
-		&TCPClose,
-		&Listen,
+		Execve,
+		Exit,
+		Fork,
+		Cred,
+		TCPConnect,
+		TCPClose,
+		Listen,
 	}
 
 	AllProgramsV53 = []*Program{
-		&ExecveV53,
-		&Exit,
-		&Fork,
-		&Cred,
-		&TCPConnect,
-		&TCPClose,
-		&Listen,
+		ExecveV53,
+		Exit,
+		Fork,
+		Cred,
+		TCPConnect,
+		TCPClose,
+		Listen,
 	}
 
 	// do not access that directly outside of this file
@@ -107,23 +107,23 @@ func SetAllMaps(m []*Map) {
 // initialization time.
 func GetInitialSensor() *Sensor {
 	progs := []*Program{
-		&Execve,
-		&Exit,
-		&Fork,
-		&Cred,
-		&TCPConnect,
-		&TCPClose,
-		&Listen,
+		Execve,
+		Exit,
+		Fork,
+		Cred,
+		TCPConnect,
+		TCPClose,
+		Listen,
 	}
 	if kernels.EnableLargeProgs() {
 		progs = []*Program{
-			&ExecveV53,
-			&Exit,
-			&Fork,
-			&Cred,
-			&TCPConnect,
-			&TCPClose,
-			&Listen,
+			ExecveV53,
+			Exit,
+			Fork,
+			Cred,
+			TCPConnect,
+			TCPClose,
+			Listen,
 		}
 	}
 

@@ -24,10 +24,7 @@ func RemovePrograms(bpfDir, mapDir string) {
 	}
 
 	for _, m := range sensors.GetAllMaps() {
-		if m.Map != nil {
-			m.Map.Close()
-			m.Map = nil
-		}
+		m.Close()
 		os.Remove(filepath.Join(mapDir, m.Name))
 	}
 	os.Remove(bpfDir)

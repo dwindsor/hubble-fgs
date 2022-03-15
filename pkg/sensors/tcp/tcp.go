@@ -33,12 +33,9 @@ var (
 		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",
 		"kprobe_tcp_v4_send_check",
-
-		false,
-		true,
 		"tcp_sensor")
 
-	TCPSendCheckSampler = sensors.MapBuilder("tcp_send_check_sampler", "", TCPSendCheck)
+	TCPSendCheckSampler = sensors.MapBuilder("tcp_send_check_sampler", TCPSendCheck)
 )
 
 func EnableTcp() *sensors.Sensor {

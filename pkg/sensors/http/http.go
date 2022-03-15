@@ -72,9 +72,6 @@ var (
 		"sk_msg",
 		"sk_msg/fgs",
 		"sk_msg_fgs",
-
-		false,
-		true,
 		"http_skmsg")
 
 	SkSkbParser = sensors.ProgramBuilder(
@@ -82,9 +79,6 @@ var (
 		"sk_skb",
 		"sk_skb_http_parser/fgshttp",
 		"sk_skb_parser",
-
-		false,
-		true,
 		"sk_skb_parser")
 
 	SkSkbVerdict = sensors.ProgramBuilder(
@@ -92,17 +86,14 @@ var (
 		"sk_skb",
 		"sk_skb/stream_verdict/fgshttp",
 		"bpf_skskb_http_verdict",
-
-		false,
-		true,
 		"sk_skb_verdict")
 
 	/* Http maps */
-	TailCalls     = sensors.MapBuilder("http1_calls", "http_skmsg", Skmsg)
-	SkbTailCalls  = sensors.MapBuilder("http1_calls_skb", "sk_skb_verdict", SkSkbVerdict)
-	HTTPContext   = sensors.MapBuilder("http_map", "http_skmsg", Skmsg)
-	HTTPFilterMap = sensors.MapBuilder("http_filter_map", "sockops", sockops.SockopsEstablished)
-	HTTPSockMap   = sensors.MapBuilder("http_sock_map", "sockops", sockops.SockopsEstablished)
+	TailCalls     = sensors.MapBuilder("http1_calls", Skmsg)
+	SkbTailCalls  = sensors.MapBuilder("http1_calls_skb", SkSkbVerdict)
+	HTTPContext   = sensors.MapBuilder("http_map", Skmsg)
+	HTTPFilterMap = sensors.MapBuilder("http_filter_map", sockops.SockopsEstablished)
+	HTTPSockMap   = sensors.MapBuilder("http_sock_map", sockops.SockopsEstablished)
 )
 
 type httpSensor struct {
