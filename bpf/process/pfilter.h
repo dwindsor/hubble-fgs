@@ -345,7 +345,7 @@ struct nc_filter {
 static inline __attribute__((always_inline))
 int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *enter, void *heap)
 {
-	int res1 = PFILTER_ACCEPT, res2 = PFILTER_ACCEPT, res3 = PFILTER_ACCEPT, res4 = PFILTER_ACCEPT;
+	int res = PFILTER_ACCEPT;
 	struct pid_filter *pid;
 	struct ns_filter *ns;
 #ifdef __NS_CHANGES_FILTER
@@ -372,9 +372,11 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	if (len > 4) { /* we can have only matchNamespace */
 		pid = (struct pid_filter *)((u64)f + index);
 		index += sizeof(struct pid_filter); /* 12: op, flags, length */
-		res1 = selector_match(f, index, pid->op, pid->flags, pid->len, enter, heap, &process_filter_pid);
+		res = selector_match(f, index, pid->op, pid->flags, pid->len, enter, heap, &process_filter_pid);
 		index += ((pid->len * sizeof(pid->val[0])) & VALUES_MASK); /* now index points at the end of PID filter */
 	}
+	if (res == PFILTER_REJECT)
+		return res;
 
 	/* matchNamespace */
 	len = *(__u32 *)((__u64)f + (index & INDEX_MASK)); /* (sizeof(ns1) + sizeof(ns2) + ... + 4) */
@@ -390,10 +392,12 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 		if (len > 0) {
 			ns = (struct ns_filter *)((u64)f + (index & INDEX_MASK));
 			index += sizeof(struct ns_filter); /* 12: namespace, op, length */
-			res2 &= selector_match(f, index, ns->op, ns->ty, ns->len, enter, heap, &process_filter_namespace);
+			res = selector_match(f, index, ns->op, ns->ty, ns->len, enter, heap, &process_filter_namespace);
 			index += ((ns->len * sizeof(ns->val[0])) & VALUES_MASK); /* now index points at the end of namespace filter */
 			len -= (sizeof(struct ns_filter) + (ns->len * sizeof(ns->val[0])));
 		}
+		if (res == PFILTER_REJECT)
+			return res;
 	}
 
 	/* matchCapabilities */
@@ -404,8 +408,10 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	if (len > 0) {
 		caps = (struct caps_filter *)((u64)f + (index & INDEX_MASK));
 		index += sizeof(struct caps_filter); /* 20: ty, op, ns, val */
-		res3 = process_filter_capabilities(caps->ty, caps->op, caps->ns, caps->val, heap);
+		res = process_filter_capabilities(caps->ty, caps->op, caps->ns, caps->val, heap);
 	}
+	if (res == PFILTER_REJECT)
+		return res;
 
 #ifdef __NS_CHANGES_FILTER
 	/* matchNamespaceChanges */
@@ -416,12 +422,14 @@ int selector_process_filter(__u32 *f, __u32 index, struct execve_map_value *ente
 	if (len > 0) {
 		nc = (struct nc_filter *)((u64)f + (index & INDEX_MASK));
 		index += sizeof(struct nc_filter); /* 8: op, val */
-		res4 = process_filter_namespace_change(nc->op, nc->value, enter, heap);
+		res = process_filter_namespace_change(nc->op, nc->value, enter, heap);
 		/* now index points at the end of namespace change filter */
 	}
+	if (res == PFILTER_REJECT)
+		return res;
 #endif
 
-	return res1 && res2 && res3 && res4; /* pid, namespace, capabilities, and namespaceChanges should match */
+	return res;
 }
 
 #define MAX_SELECTORS 8
