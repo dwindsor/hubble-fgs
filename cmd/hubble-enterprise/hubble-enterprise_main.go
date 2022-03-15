@@ -11,6 +11,7 @@ import (
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/bugtool"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/sensors"
+	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/stacktracetree"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/version"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -90,6 +91,7 @@ func init() {
 	rootCmd.AddCommand(statusCmd)
 	rootCmd.AddCommand(bugtool.New())
 	rootCmd.AddCommand(sensors.New())
+	rootCmd.AddCommand(stacktracetree.New())
 	rootCmd.AddCommand(tracingpolicy.New())
 	rootCmd.AddCommand(version.New())
 

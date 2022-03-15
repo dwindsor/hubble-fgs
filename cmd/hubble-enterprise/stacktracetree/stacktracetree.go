@@ -11,7 +11,8 @@
 // WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 // See the License for the specific language governing permissions and
 // limitations under the License.
-package main
+
+package stacktracetree
 
 import (
 	"context"
@@ -25,7 +26,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func init() {
+func New() *cobra.Command {
 	sttCmd := &cobra.Command{
 		Use:   "stacktrace-tree",
 		Short: "Manage stacktrace trees",
@@ -44,7 +45,7 @@ func init() {
 	}
 	sttCmd.AddCommand(sttPrintCmd)
 
-	rootCmd.AddCommand(sttCmd)
+	return sttCmd
 }
 
 func sttPrint(client fgs.FineGuidanceSensorsClient, stt string) {
