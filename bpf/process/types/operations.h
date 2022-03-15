@@ -16,10 +16,4 @@ enum {
 	op_filter_str_postfix  = 9,
 };
 
-enum {
-	caps_effective   = 0,
-	caps_inheritable = 1,
-	caps_permitted   = 2,
-};
-
 #endif // __OPERATIONS_H__

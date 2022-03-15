@@ -281,10 +281,23 @@ struct msg_execve_key {
 	__u64 ktime;
 } __attribute__((packed));
 
+// NB: in some cases we want to access the capabilities via an array to simplify the BPF code, which is why we define it as a union.
 struct msg_capabilities {
-	__u64 permitted;
-	__u64 effective;
-	__u64 inheritable;
+	union {
+		struct {
+			__u64 permitted;
+			__u64 effective;
+			__u64 inheritable;
+		};
+		__u64 c[3];
+	};
+};
+
+// indexes to access msg_capabilities's array (->c) -- should have the same order as the fields above.
+enum {
+	caps_permitted   = 0,
+	caps_effective   = 1,
+	caps_inheritable = 2,
 };
 
 struct exit_info {

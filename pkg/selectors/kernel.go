@@ -83,9 +83,9 @@ var namespaceTypeTable = map[string]uint32{
 }
 
 const (
-	capsEffective   = 0
-	capsInheritable = 1
-	capsPermitted   = 2
+	capsPermitted   = 0
+	capsEffective   = 1
+	capsInheritable = 2
 )
 
 var capabilitiesTypeTable = map[string]uint32{

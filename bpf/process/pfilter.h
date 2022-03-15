@@ -244,19 +244,15 @@ int process_filter_capabilities(__u32 ty, __u32 op, __u32 ns, __u64 val, void *h
 			is_ns_cap = 1;
 	}
 
-	if (ty == caps_effective)
-		caps = msg->caps.effective;
-	else if (ty == caps_inheritable)
-		caps = msg->caps.inheritable;
-	else if (ty == caps_permitted)
-		caps = msg->caps.permitted;
-	else /* We should not reach that. Userspace checks that. */
+	if (ty > caps_inheritable) /* We should not reach that. Userspace checks that. */
 		return PFILTER_REJECT;
+
+	caps = msg->caps.c[ty];
 
 	if (op == op_filter_in) {
 		if(caps & val)
 			retval = PFILTER_ACCEPT;
-	} else if (op == op_filter_notin){
+	} else if (op == op_filter_notin) {
 		if(!(caps & val))
 			retval = PFILTER_ACCEPT;
 	}
