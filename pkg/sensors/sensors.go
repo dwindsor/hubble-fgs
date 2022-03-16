@@ -56,6 +56,7 @@ var (
 		PNBurstMapStats,
 		CiliumSNAT,
 		HTTPContext,
+		TLSContext,
 	}
 
 	AllMapsV53 = []*Map{
@@ -70,6 +71,7 @@ var (
 		PNBurstMapStats,
 		CiliumSNAT,
 		HTTPContext,
+		TLSContext,
 	}
 )
 
@@ -138,6 +140,8 @@ func GetInitialSensor() *Sensor {
 		SocketStats,
 		TLSMapStats, // NB: Maybe this should be under k.enableTLS?
 		PNBurstMapStats,
+		HTTPContext,
+		TLSContext,
 	}
 	if kernels.EnableLargeProgs() {
 		maps = []*Map{
@@ -151,6 +155,8 @@ func GetInitialSensor() *Sensor {
 			SocketStats,
 			TLSMapStats, // NB: Maybe this should be under k.enableTLS?
 			PNBurstMapStats,
+			HTTPContext,
+			TLSContext,
 		}
 	}
 

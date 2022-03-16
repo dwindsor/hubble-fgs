@@ -101,4 +101,5 @@ var (
 
 	/* Parser maps */
 	HTTPContext = MapBuilder("http_map", TCPClose)
+	TLSContext  = MapBuilder("tls_map", TCPClose)
 )

@@ -74,10 +74,8 @@ var (
 		"tc_egress")
 
 	/* TLS maps */
-	TCTLSMap         = sensors.MapBuilder("tls_map", TLSTCEgress)
 	TCTLSParserStats = sensors.MapBuilder("tls_parser_stats", TLSTCEgress)
 	TLSParserStats   = sensors.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
-	TLSMap           = sensors.MapBuilder("tls_map", TLSSkmsg)
 	TLSTailCalls     = sensors.MapBuilder("tls_calls", TLSTCIngress)
 	TlsFilterMap     = sensors.MapBuilder("tls_filter_map", sockops.SockopsEstablished)
 	TLSSockMap       = sensors.MapBuilder("tls_sock_map", sockops.SockopsEstablished)
@@ -253,8 +251,8 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 		}
 
 		maps = append(maps,
-			TLSSockMap,
-			TLSMap,
+			sockops.TlsSockMap,
+			sensors.TLSContext,
 			TLSParserStats,
 			TlsFilterMap,
 			HTTPContext,
@@ -269,7 +267,7 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 		)
 
 		maps = append(maps,
-			TCTLSMap,
+			sensors.TLSContext,
 			TLSTailCalls,
 			TCTLSParserStats,
 		)
