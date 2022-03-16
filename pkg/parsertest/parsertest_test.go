@@ -91,16 +91,18 @@ func TestMain(m *testing.M) {
 }
 
 type SensorsHandle struct {
-	sensor *sensors.Sensor
-	ctx    context.Context
-	cancel context.CancelFunc
+	initSensor   *sensors.Sensor
+	parserSensor *sensors.Sensor
+	ctx          context.Context
+	cancel       context.CancelFunc
 }
 
 func (h *SensorsHandle) Close(t *testing.T) {
 	h.cancel()
 
 	bpfDir := bpf.MapPrefixPath()
-	sensors.UnloadSensor(bpfDir, bpfDir, h.sensor, context.Background())
+	sensors.UnloadSensor(bpfDir, bpfDir, h.parserSensor, context.Background())
+	sensors.UnloadSensor(bpfDir, bpfDir, h.initSensor, context.Background())
 
 	// Verify that all pins have been cleared.
 	filepath.Walk(bpfDir, func(path string, info fs.FileInfo, err error) error {
@@ -116,7 +118,15 @@ func (h *SensorsHandle) Close(t *testing.T) {
 }
 
 func startSensors(cfg int, t *testing.T) SensorsHandle {
-	sensor := sensors.GetInitialSensor()
+	ctx, cancel := context.WithCancel(context.Background())
+
+	// Load the initial sensor.
+	initSensor := sensors.GetInitialSensor()
+
+	err := initSensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
+	if err != nil {
+		t.Fatalf("s.Load: %s\n", err)
+	}
 
 	var spec v1alpha1.ParserPolicySpec
 	switch cfg {
@@ -149,14 +159,13 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	if err != nil {
 		t.Fatalf("GetSensorsFromParserPolicy: %s", err)
 	}
-	sensor = sensors.SensorCombine("all", sensor, parserSensors...)
+	parserSensor := sensors.SensorCombine("parser", parserSensors...)
 
-	ctx, cancel := context.WithCancel(context.Background())
-	err = sensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
+	err = parserSensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
 	if err != nil {
 		t.Fatalf("s.Load: %s\n", err)
 	}
-	return SensorsHandle{sensor, ctx, cancel}
+	return SensorsHandle{initSensor, parserSensor, ctx, cancel}
 }
 
 func addSelfToEvecveMap(t *testing.T) {

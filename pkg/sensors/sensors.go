@@ -197,15 +197,12 @@ type Operations interface {
 	SetConfig(cfg string, val string) error
 }
 
-func SensorCombine(name string, a *Sensor, bs ...*Sensor) *Sensor {
-	if a == nil {
-		return nil
-	}
-	progs := a.Progs
-	maps := a.Maps
-	for _, b := range bs {
-		progs = append(progs, b.Progs...)
-		maps = append(maps, b.Maps...)
+func SensorCombine(name string, sensors ...*Sensor) *Sensor {
+	progs := []*Program{}
+	maps := []*Map{}
+	for _, s := range sensors {
+		progs = append(progs, s.Progs...)
+		maps = append(maps, s.Maps...)
 	}
 	return SensorBuilder(name, progs, maps)
 }
