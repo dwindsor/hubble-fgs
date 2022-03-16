@@ -229,36 +229,27 @@ static inline __attribute__((always_inline))
 int process_filter_capabilities(__u32 ty, __u32 op, __u32 ns, __u64 val, void *heap)
 {
 	struct msg_generic_kprobe *msg;
-	int zero = 0, retval = PFILTER_REJECT;
-	__u32 is_ns_cap = 0;
+	int zero = 0;
 	__u64 caps;
 
 	msg = map_lookup_elem(heap, &zero);
 	if (!msg)
 		return PFILTER_REJECT;
 
-	if (ns == 0) {
-		is_ns_cap = 1;
-	} else { /* in this ns contains the host user namespace value */
-		if (msg->ns.user_inum != ns)
-			is_ns_cap = 1;
-	}
+	/* if ns != 0 we care only for events in different than the host user namespace */
+	if ((ns != 0) && (msg->ns.user_inum == ns))
+		return PFILTER_REJECT;
 
 	if (ty > caps_inheritable) /* We should not reach that. Userspace checks that. */
 		return PFILTER_REJECT;
 
 	caps = msg->caps.c[ty];
 
-	if (op == op_filter_in) {
-		if(caps & val)
-			retval = PFILTER_ACCEPT;
-	} else if (op == op_filter_notin) {
-		if(!(caps & val))
-			retval = PFILTER_ACCEPT;
-	}
-	if (is_ns_cap)
-		return retval;
-	return PFILTER_REJECT;
+	/* if op == op_filter_in we care for all bits in vals that are set */
+	if (op == op_filter_notin)
+		val = ~val; /* for op_filter_notin we care for all the rest bits */
+
+	return (caps & val) ? PFILTER_ACCEPT : PFILTER_REJECT;
 }
 
 #define MAX_SELECTOR_VALUES 4
@@ -322,7 +313,7 @@ struct ns_filter {
 struct caps_filter {
 	u32 ty;		/* (i.e. effective, inheritable, or permitted) */
 	u32 op;		/* op (i.e. op_filter_in or op_filter_notin) */
-	u32 ns;		/* IsNamespaceCapability = { true, false} */
+	u32 ns;		/* If ns == 0 <=> IsNamespaceCapability == false. Otheriwse it contains the value of host user namespace. */
 	u64 val;	/* OR-ed capability values */
 } __attribute__((packed));
 
