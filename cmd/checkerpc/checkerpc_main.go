@@ -202,10 +202,11 @@ func init() {
 				err := rpcCheck(clients, checkFn(kernelVersion), time.Duration(checkTimeout), eventLimit)
 				if err != nil {
 					fmt.Printf("🔥 %s check FAILED: no dice: %s\n", check, err)
+					os.Exit(1)
 				} else {
 					fmt.Printf("🚢 %s check PASSED: ship it\n", check)
 				}
-				return err
+				return nil
 			}
 
 			return fmt.Errorf("check \"%s\" is not in %v", check, reflect.ValueOf(checks).MapKeys())
