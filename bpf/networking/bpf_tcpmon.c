@@ -14,6 +14,7 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "cookie.h"
+#include "netns.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -83,7 +84,6 @@ int event_tcp4_connect(struct pt_regs *ctx)
 	{
 		struct socketmap_value v = {0};
 		struct msg_tls_ipv4 tuple;
-		struct net *netns;
 
 		tuple.saddr = saddr;
 		tuple.daddr = daddr;
@@ -92,21 +92,15 @@ int event_tcp4_connect(struct pt_regs *ctx)
 		tuple.uid = 0;
 		tuple.remaining = 0;
 
-		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-		if (netns) {
-			struct ns_common *c = _(&netns->ns);
-
-			probe_read(&tuple.uid, sizeof(c->inum), _(&c->inum));
-		}
-
 		v.key.pid = process->key.pid;
 		v.key.ktime = process->key.ktime;
 		v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
 		v.sent = 0;
 		v.received = 0;
 
-		if (!is_tuple_local(&tuple))
-			tuple.uid = 0;
+		if (is_tuple_local(&tuple))
+			tuple.uid = sock_netns(skp);
+
 		add_socketmap(&tuple, &v);
 	}
 	return 1;

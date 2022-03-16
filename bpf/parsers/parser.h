@@ -2,6 +2,7 @@
 #define parser_h_INCLUDED
 
 #include "api.h"
+#include "../networking/netns.h"
 
 #ifdef SK_MSG
 typedef struct sk_msg_md ctx_md;
@@ -378,36 +379,6 @@ int large_ctx_copy(ctx_md *ctx, __u64 next, __u64 offset, __u64 copy)
 #ifdef SK_MSG
 
 static inline __attribute__((always_inline))
-u32 msg_netns(struct sk_msg_md *msg)
-{
-	struct bpf_sock *bpfsk;
-	struct ns_common *nsc;
-	struct net *netp;
-	struct sock *sk;
-	u32 ns;
-
-	if (!bpf_core_field_exists(msg->sk) || !msg->sk)
-		return 0;
-
-	/* We need to first load the socket pointer onto the stack.
-         * Direct read from &msg->sk yields NULL. */
-	bpfsk = msg->sk;
-	probe_read_kernel(&sk, sizeof(sk), &bpfsk);
-	if (!sk)
-		return 0;
-
-	probe_read_kernel(&netp, sizeof(netp), _(&sk->__sk_common.skc_net));
-	if (!netp)
-		return 0;
-
-	nsc = _(&netp->ns);
-	if (!probe_read_kernel(&ns, sizeof(ns), _(&nsc->inum)))
-		return ns;
-	else
-		return 0;
-}
-
-static inline __attribute__((always_inline))
 void msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key)
 {
 	key->daddr = msg->remote_ip4;
@@ -426,40 +397,6 @@ void msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key)
 	}
 	key->remaining = HTTP_SEND;
 }
-#endif
-
-#ifdef SK_SKB
-
-static inline __attribute__((always_inline))
-u32 skskb_netns(struct __sk_buff *skb)
-{
-	struct bpf_sock *bpfsk;
-	struct ns_common *nsc;
-	struct net *netp;
-	struct sock *sk;
-	u32 ns;
-
-	if (!skb->sk)
-		return 0;
-
-	/* We need to first load the socket pointer onto the stack.
-         * Direct read from &skb->sk yields NULL. */
-	bpfsk = skb->sk;
-	probe_read_kernel(&sk, sizeof(sk), &bpfsk);
-	if (!sk)
-		return 0;
-
-	probe_read_kernel(&netp, sizeof(netp), _(&sk->__sk_common.skc_net));
-	if (!netp)
-		return 0;
-
-	nsc = _(&netp->ns);
-	if (!probe_read_kernel(&ns, sizeof(ns), _(&nsc->inum)))
-		return ns;
-	else
-		return 0;
-}
-
 
 #endif
 

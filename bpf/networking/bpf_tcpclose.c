@@ -18,6 +18,7 @@ struct bpf_map_def {
 #include "bpf_events.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
+#include "netns.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -57,12 +58,8 @@ int event_tcp4_close(struct pt_regs *ctx)
 	tuple.remaining = 0;
 	tuple.uid = 0;
 
-	probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-	if (netns) {
-		struct ns_common *c = _(&netns->ns);
-
-		probe_read(&tuple.uid, sizeof(c->inum), _(&c->inum));
-	}
+	if (is_tuple_local(&tuple))
+		tuple.uid = sock_netns(skp);
 
 	val = map_lookup_elem(&tcp_close_event_map, &zero);
 	if (!val) {
@@ -83,8 +80,6 @@ int event_tcp4_close(struct pt_regs *ctx)
 	};
 
 	if (state == TCP_CLOSE) {
-		if (!is_tuple_local(&tuple))
-			tuple.uid = 0;
 		process = lookup_socketmap(&tuple);
 		if (process) {
 			val->common.op = MSG_OP_IPV4_TCPCLOSE;
@@ -92,6 +87,7 @@ int event_tcp4_close(struct pt_regs *ctx)
 			val->key.ktime = process->key.ktime;
 			val->socket_flags = process->socket_flags;
 
+			probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
 			get_socket_stats(skp, netns,
 					 process->zero_window,
 					 &val->stats);

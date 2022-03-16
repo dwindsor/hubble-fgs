@@ -16,6 +16,7 @@ struct bpf_map_def {
 #include "cookie.h"
 #include "bpf_network_helpers.h"
 #include "bpf_burst_process.h"
+#include "netns.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -70,15 +71,9 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 	tuple.remaining = 0;
 	tuple.uid = 0;
 
-	probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-	if (netns) {
-		struct ns_common *c = _(&netns->ns);
+	if (is_tuple_local(&tuple))
+		tuple.uid = sock_netns(skp);
 
-		probe_read(&tuple.uid, sizeof(c->inum), _(&c->inum));
-	}
-
-	if (!is_tuple_local(&tuple))
-		tuple.uid = 0;
 	process = lookup_socketmap(&tuple);
 	if (process) {
 		struct tcp_send_check_sample_cfg *cfg;
@@ -125,6 +120,7 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 			.socket_flags = 0,
 			.pad = 0,
 		};
+		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
 		get_socket_stats(skp, netns, process->zero_window, &val->stats);
 		size = sizeof(struct msg_ipv4_event);
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
