@@ -15,3 +15,4 @@ spec:
       triggerPercent: 50
     dns:
       enable: true
+      ports: [53]

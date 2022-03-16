@@ -10,18 +10,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/yalue/native_endian"
 
 	"golang.org/x/net/dns/dnsmessage"
 )
 
-var (
+const (
 	defaultDnsPort = 53
-)
-
-var (
-	dnsPort = defaultDnsPort
+	maxDnsPorts    = 4
 )
 
 func handleUdpPayload(r *bytes.Reader) ([]observer.ObserverEvent, error) {
@@ -127,62 +123,55 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 // ParseUdpSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP options.
 //
-func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) ([128]byte, error) {
-	var match [128]byte
-	var e [4096]byte
+func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*udpSensorConfigValue, error) {
+	config := udpSensorConfigValue{}
+	ParseDnsSpec(&config, spec)
+	ParseUdpBurstSpec(&config, spec)
 
-	k := &selectors.KernelSelectorState{}
-
-	ParseDnsSpec(spec, k)
-	ParseUdpBurstSpec(spec, k)
-
-	e = selectors.GetSelectorBuffer(k)
-	copy(match[:], e[:128])
-	return match, nil
+	return &config, nil
 }
 
 // ParseDNSSepec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify DNS and run DNS parser on it.
 //
-// DNS selector layout is the following.
-// MatchPort
-//
-// For now we support a single port and its configured here. When disabled
-// we use 0 expecting this does not match real port values.
-func ParseDnsSpec(spec *v1alpha1.TracingPolicySpec, k *selectors.KernelSelectorState) {
+// The maximum number of DNS ports is fixed to maxDnsPorts. Changing this requires changing
+// the map in bpf_inet.h.
+func ParseDnsSpec(config *udpSensorConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Dns.Enable {
-		selectors.WriteSelectorUint64(k, uint64(defaultDnsPort))
+		// Only consider the first maxDnsPorts ports that are specified
+		if len(spec.Parser.Dns.Ports) == 0 {
+			config.dnsPorts[0] = defaultDnsPort
+		} else if len(spec.Parser.Dns.Ports) <= maxDnsPorts {
+			copy(config.dnsPorts[:], spec.Parser.Dns.Ports)
+		} else {
+			copy(config.dnsPorts[:], spec.Parser.Dns.Ports[0:maxDnsPorts])
+		}
+
 		// Enable DNS cache in core, abstraction breaking but
 		// fix is to do in kernel BPF parser.
 		observer.EnableDns()
 		logger.GetLogger().Info("Enable DNS")
-	} else {
-		selectors.WriteSelectorUint64(k, 0)
 	}
 }
 
 // ParseUdpBurst parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP bursts and run the monitor on it.
-//
-// UdpBurst selector layout is the following.
-// WindowSize
-// TriggerPercent
-func ParseUdpBurstSpec(spec *v1alpha1.TracingPolicySpec, k *selectors.KernelSelectorState) {
+func ParseUdpBurstSpec(config *udpSensorConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.UdpBurst.Enable && spec.Parser.UdpBurst.WindowSize > 0 && spec.Parser.UdpBurst.TriggerPercent > 0 {
-		selectors.WriteSelectorUint64(k, 1)
+		config.watermarkEnable = 1
 		// WindowSize is in milliseconds
-		selectors.WriteSelectorUint64(k, uint64(spec.Parser.UdpBurst.WindowSize))
+		config.watermarkAvgWindowSizeMs = uint64(spec.Parser.UdpBurst.WindowSize)
 		// The actual window size we use in calculations is a) in nanoseconds;
 		// and b) is 2/3 of the provided window size because the measurement window
 		// varies between 1 window (2/3 window size) and 2 windows (4/3 window size), meaning
 		// the average measurement window == window size.
-		selectors.WriteSelectorUint64(k, (uint64(spec.Parser.UdpBurst.WindowSize)*2*1000000)/3)
+		config.watermarkWindowSize = (uint64(spec.Parser.UdpBurst.WindowSize) * 2 * 1000000) / 3
 		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
-		selectors.WriteSelectorUint64(k, uint64(spec.Parser.UdpBurst.TriggerPercent)+100)
+		config.watermarkTriggerPercent = uint64(spec.Parser.UdpBurst.TriggerPercent) + 100
 	} else {
-		selectors.WriteSelectorUint64(k, 0)
-		selectors.WriteSelectorUint64(k, 0)
-		selectors.WriteSelectorUint64(k, 0)
-		selectors.WriteSelectorUint64(k, 0)
+		config.watermarkEnable = 0
+		config.watermarkAvgWindowSizeMs = 0
+		config.watermarkWindowSize = 0
+		config.watermarkTriggerPercent = 0
 	}
 }

@@ -44,7 +44,8 @@ var (
 	stats          *lru.Cache
 	stataCacheSize = 32000
 
-	Selectors [128]byte
+	Config     *udpSensorConfigValue
+	configured = false
 )
 
 var (
@@ -122,8 +123,8 @@ var (
 	UdpMap                 = sensors.MapBuilder(UdpMapName, InetSend)
 	UdpMapKprobe           = sensors.MapBuilder(UdpMapName, UdpSend)
 	UdpRetprobeMap         = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
-	UdpFilterMap           = sensors.MapBuilder("udp_filter_map", InetSend)
-	UdpFilterLazyMap       = sensors.MapBuilder("udp_filter_map", InetSendLazy)
+	UdpConfigMap           = sensors.MapBuilder("udp_config_map", InetSend)
+	UdpConfigLazyMap       = sensors.MapBuilder("udp_config_map", InetSendLazy)
 	ProcessNetworkBurstMap = sensors.MapBuilder(ProcessNetworkBurstMapName, InetSend)
 )
 
@@ -226,6 +227,36 @@ func (s *udpInfoValue) DeepCopyMapValue() bpf.MapValue {
 	var v udpInfoValue
 	v = *s
 	return &v
+}
+
+type udpSensorConfigKey struct {
+	Zero uint32
+}
+
+func (k *udpSensorConfigKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
+func (k *udpSensorConfigKey) NewValue() bpf.MapValue     { return &udpSensorConfigValue{} }
+func (k *udpSensorConfigKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
+func (k *udpSensorConfigKey) DeepCopyMapKey() bpf.MapKey { return &udpSensorConfigKey{} }
+
+type udpSensorConfigValue struct {
+	dnsPorts                 [maxDnsPorts]uint16
+	watermarkEnable          uint64
+	watermarkAvgWindowSizeMs uint64
+	watermarkWindowSize      uint64
+	watermarkTriggerPercent  uint64
+}
+
+func (v *udpSensorConfigValue) String() string {
+	return fmt.Sprintf("dnsPorts: %d, "+
+		"watermarkEnable: %d, "+
+		"watermarkAvgWindowSizeMs: %d, "+
+		"watermarkWindowSize: %d, "+
+		"watermarkTriggerPercent: %d", v.dnsPorts, v.watermarkEnable, v.watermarkAvgWindowSizeMs, v.watermarkWindowSize, v.watermarkTriggerPercent)
+}
+func (v *udpSensorConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
+func (v *udpSensorConfigValue) DeepCopyMapValue() bpf.MapValue {
+	var n udpSensorConfigValue = *v
+	return &n
 }
 
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
@@ -435,10 +466,28 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	if err != nil {
 		return err, i
 	}
-	if err := sensors.SetFilter(args.MapDir, "udp_filter_map", Selectors); err != nil {
-		return err, i
+	if !configured {
+		if err := configureUdpSensor(args.MapDir, "udp_config_map", Config); err != nil {
+			return err, i
+		}
+		configured = true
 	}
 	return nil, i
+}
+
+func configureUdpSensor(mapDir string, mapName string, config *udpSensorConfigValue) error {
+	m, err := bpf.OpenMap(filepath.Join(mapDir, mapName))
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	key := &udpSensorConfigKey{
+		Zero: uint32(0),
+	}
+	m.Update(key, config)
+	logger.GetLogger().WithField("config", config.String()).Info("Configured UDP sock statistic sampler: ")
+	return nil
 }
 
 func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
@@ -457,7 +506,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		maps = []*sensors.Map{
 			UdpMapKprobe,
 			UdpRetprobeMap,
-			UdpFilterLazyMap,
+			UdpConfigLazyMap,
 		}
 		grpc.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
@@ -475,7 +524,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			SocketCookieMap,
 			UdpMapKprobe,
 			UdpRetprobeMap,
-			UdpFilterMap,
+			UdpConfigMap,
 			UdpMap,
 		}
 		versionStr = "__udp_sensor_cgroup__"
@@ -501,7 +550,7 @@ func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors
 	if spec.Parser.Udp.DeleteIdleSocketInterval > 0 {
 		UdpDeleteInterval = time.Duration(spec.Parser.Udp.DeleteIdleSocketInterval) * time.Second
 	}
-	Selectors, _ = ParseUdpSpec(spec)
+	Config, _ = ParseUdpSpec(spec)
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
 }
 

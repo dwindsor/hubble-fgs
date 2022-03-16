@@ -25,11 +25,28 @@ struct bpf_map_def {
 #define MSTONS  1000000L
 #define MSTOSEC 1000L
 
-struct bpf_map_def __attribute__((section("maps"), used)) udp_filter_map = {
+#define MAX_DNS_PORTS 32
+
+struct udp_sensor_config {
+	u16 dnsPorts[4];
+	u64 watermark_enable;
+	u64 watermark_avg_window_size_ms;
+	u64 watermark_window_size;
+	u64 watermark_trigger_percent;
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) udp_config_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = 128,
+	.value_size = sizeof(struct udp_sensor_config),
 	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) dns_ports_map = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(u16),
+	.value_size = sizeof(u8),
+	.max_entries = MAX_DNS_PORTS,
 };
 
 static inline __attribute__((always_inline))
@@ -220,12 +237,24 @@ int udp4_send_lazy(struct __sk_buff *skb, struct iphdr *ip, bool send)
 }
 
 static inline __attribute__((always_inline))
+int dns_port_match(u16 *ports, u16 port1, u16 port2)
+{
+	if (ports[0] == port1 || ports[0] == port2 ||
+		ports[1] == port1 || ports[1] == port2 ||
+		ports[2] == port1 || ports[2] == port2 ||
+		ports[3] == port1 || ports[3] == port2) {
+		return 1;
+	}
+	return 0;
+}
+
+static inline __attribute__((always_inline))
 int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, bool send, bool cookie)
 {
 	int zero, payload_off, payload_sz;
 	struct udp_info_value *info;
 	struct udp_info_key *key;
-	u64 dnsport, *filter;
+	struct udp_sensor_config *config;
 
 	key = udp4_key(skb, ip, data, data_end, &payload_off, &payload_sz, cookie);
 	if (!key)
@@ -243,12 +272,11 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 		return 1;
 
 	zero = 0;
-	filter = map_lookup_elem(&udp_filter_map, &zero);
-	if (!filter)
+	config = map_lookup_elem(&udp_config_map, &zero);
+	if (!config)
 		return 1;
 
-	dnsport = filter[0];
-	if (key->sport == dnsport || bpf_ntohs(key->dport) == dnsport) {
+	if (config->dnsPorts[0] != 0 && dns_port_match(config->dnsPorts, key->sport, bpf_ntohs(key->dport))) {
 		/* We subtract 1 from payload_sz because we need to +1 it
 		 * later to sat verifier constraint that skb_load_bytes
 		 * must be nonzero.
@@ -303,34 +331,21 @@ void init_burst_log(u64 burst_key, u64 vol, u64 current_time_ns)
 static inline __attribute__((always_inline))
 void udp_burst(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, u64 send)
 {
-	u64 window_size;
-	u64 avg_window_size_ms;
-	u64 trigger_mult;
-	u64 watermark;
-	u64 *filter;
-
+	struct udp_sensor_config *config;
 	u64 burst_key;
 	u64 cookie;
 	struct execve_map_value *process;
 	u8 udp_off;
 	struct udphdr *udp;
 	int vol;
-
 	struct process_network_burst_log *burst_log;
 	int zero = 0;
 
 	u64 current_time_ns = ktime_get_ns();
 
-	filter = map_lookup_elem(&udp_filter_map, &zero);
-	if (!filter)
+	config = map_lookup_elem(&udp_config_map, &zero);
+	if (!config || !config->watermark_enable)
 		return;
-	watermark = filter[1];
-	if (!watermark)
-		return;
-
-	avg_window_size_ms = filter[2];
-	window_size = filter[3];
-	trigger_mult = filter[4];
 
 	cookie = get_socket_cookie(skb);
 	process = map_lookup_elem(&socket_cookie_to_proc_map, &cookie);
@@ -354,9 +369,9 @@ void udp_burst(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_e
 		return;
 	}
 
-	u64 ns_since_win_start = (current_time_ns - process->key.ktime) % window_size;
+	u64 ns_since_win_start = (current_time_ns - process->key.ktime) % config->watermark_window_size;
 	u64 current_win_start_ns = current_time_ns - ns_since_win_start;
-	u64 last_win_start_ns = current_win_start_ns - window_size;
+	u64 last_win_start_ns = current_win_start_ns - config->watermark_window_size;
 
 	u32 old_burst = READ_ONCE(burst_log->burst);
 
@@ -414,12 +429,12 @@ void udp_burst(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_e
 	u64 win_vol = READ_ONCE(burst_log->win_vol);
 	u64 last_win_vol = READ_ONCE(burst_log->last_win_vol);
 	u64 hist_avg = (hist_vol * NSTOSEC) / (last_win_start_ns - process->key.ktime);
-	u64 hist_avg_trigger = (hist_avg * trigger_mult) / 100;
+	u64 hist_avg_trigger = (hist_avg * config->watermark_trigger_percent) / 100;
 
 	// Check if the average volume over the last complete window and the current
 	// partial window exceeds the trigger threshold. This approach provides a
 	// fair average of the current rate.
-	u64 new_win_rate = ((last_win_vol + win_vol) * NSTOSEC) / (window_size + ns_since_win_start);
+	u64 new_win_rate = ((last_win_vol + win_vol) * NSTOSEC) / (config->watermark_window_size + ns_since_win_start);
 	if (old_burst ^ (new_win_rate > hist_avg_trigger)) {
 		// If we were already bursting and no longer are, or weren't bursting
 		// but now are (XOR) then emit event.
@@ -438,7 +453,7 @@ void udp_burst(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_e
 			.key.ktime = process->key.ktime,
 			.protocol = IPPROTO_UDP,
 			.burst_start_dir = burst_start_dir(old_burst == 0, send),
-			.window_size = avg_window_size_ms,
+			.window_size = config->watermark_avg_window_size_ms,
 			.hist_avg = hist_avg,
 			.hist_trigger = hist_avg_trigger,
 			.window_avg = new_win_rate,

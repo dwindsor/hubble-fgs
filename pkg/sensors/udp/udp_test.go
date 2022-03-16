@@ -90,12 +90,13 @@ spec:
       cgroup: true
       statsInterval: 20
       deleteIdleSocketInterval: 60
-    udpburst:
+    udpBurst:
       enable: true
-      windowsize: 1000
-      triggerpercent: 50
+      windowSize: 1000
+      triggerPercent: 50
     dns:
       enable: true
+      ports: [53]
 `
 
 const BUFSIZE, BUFVAR = 1024, 256

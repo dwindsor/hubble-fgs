@@ -402,6 +402,11 @@ spec:
                       enable:
                         description: DNS enable parser
                         type: boolean
+                      ports:
+                        description: A list of DNS ports
+                        items:
+                          type: integer
+                        type: array
                     required:
                     - enable
                     type: object
@@ -552,20 +557,20 @@ spec:
                     required:
                     - enable
                     type: object
-                  udpburst:
+                  udpBurst:
                     description: Network policy specification
                     properties:
                       enable:
                         default: false
                         description: Enable UDP burst observability
                         type: boolean
-                      triggerpercent:
+                      triggerPercent:
                         default: 100
                         description: Configures the percent over average deemed to
                           be a burst
                         format: int32
                         type: integer
-                      windowsize:
+                      windowSize:
                         default: 1000
                         description: Configures the burst window size in milliseconds
                         format: int32
