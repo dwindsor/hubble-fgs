@@ -313,7 +313,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		Dns:     fgsDns,
 	}
 
-	fgsEvent.DestinationNames, _ = pm.getProcessIp(proc, fgsEvent.Socket.DestinationIp)
+	fgsEvent.Socket.DestinationNames, _ = pm.getProcessIp(proc, fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

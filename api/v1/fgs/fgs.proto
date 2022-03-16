@@ -421,7 +421,7 @@ message ProcessDns {
     Process process = 1;
     SockInfo socket = 2;
     DnsInfo dns   = 3;
-    repeated string destination_names = 4;
+    reserved 4; // was "repeated string destination_names = 4;", removed in favor of socket.destination_names.
     Pod destination_pod = 5;
 }
 

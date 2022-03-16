@@ -947,7 +947,6 @@ HTTP PARSER
 | process | [Process](#fgs.Process) |  |  |
 | socket | [SockInfo](#fgs.SockInfo) |  |  |
 | dns | [DnsInfo](#fgs.DnsInfo) |  |  |
-| destination_names | [string](#string) | repeated |  |
 | destination_pod | [Pod](#fgs.Pod) |  |  |
 
 
