@@ -17,10 +17,11 @@
 /* TLS Certificate Hdr offset */
 #define TLS_HEADER_BYTES 9
 
-#define ERROUT_LEN (5*24)
+#define ERROUT_LEN (5 * 24)
 
-static inline __attribute__((always_inline))
-void errout_pack(int *errout, int code, int a, int b, int c, int d) {
+static inline __attribute__((always_inline)) void
+errout_pack(int *errout, int code, int a, int b, int c, int d)
+{
 	errout[1] = code;
 	errout[2] = a;
 	errout[3] = b;
@@ -29,11 +30,12 @@ void errout_pack(int *errout, int code, int a, int b, int c, int d) {
 }
 
 #define CERT_FRAG_MIN_LEN 6
-#define FRAG_MAX_ITER 8
+#define FRAG_MAX_ITER	  8
 
 /* Find the end of a potentially fragmented handshake */
-static inline __attribute__((always_inline))
-int tls_find_handshake_end(struct bottle *bottle, int offset, int *type, int *subtype)
+static inline __attribute__((always_inline)) int
+tls_find_handshake_end(struct bottle *bottle, int offset, int *type,
+		       int *subtype)
 {
 	struct tls_hdr *hdr;
 	int remaining;
@@ -42,11 +44,12 @@ int tls_find_handshake_end(struct bottle *bottle, int offset, int *type, int *su
 	/* Read the TLS record header + enough of the handshake header to figure
          * out the handshake message size. We assume that the handshake header
          * cannot be fragmented. */
-	data = bottle_get_data(bottle, offset, sizeof(struct tls_hdr) + CERT_FRAG_MIN_LEN);
+	data = bottle_get_data(bottle, offset,
+			       sizeof(struct tls_hdr) + CERT_FRAG_MIN_LEN);
 	if (!data)
 		return TLS_PARSE_OUT_OF_DATA;
 
-	hdr = (struct tls_hdr*)data;
+	hdr = (struct tls_hdr *)data;
 
 	*type = hdr->type;
 	if (hdr->type != TLS_TYPE_HANDSHAKE)
@@ -89,12 +92,9 @@ int tls_find_handshake_end(struct bottle *bottle, int offset, int *type, int *su
 	return offset;
 }
 
-static inline __attribute__((always_inline))
-int bpf_parse_tls_cert(ctx_md *ctx,
-                       struct bottle *bottle,
-                       struct msg_tls *tls,
-                       struct msg_tls_ipv4 *key,
-                       u32 offset)
+static inline __attribute__((always_inline)) int
+bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
+		   struct msg_tls_ipv4 *key, u32 offset)
 {
 	struct msg_tls_cont_event *event;
 	int type = 0, subtype = 0;
@@ -119,7 +119,8 @@ int bpf_parse_tls_cert(ctx_md *ctx,
 	BOTTLE_MASK(event_len);
 
 	/* To avoid a copy we write the event header on top of the now irrelevant data. */
-	event = bottle_get_data(bottle, offset - sizeof(struct msg_tls_cont_event), event_len);
+	event = bottle_get_data(
+		bottle, offset - sizeof(struct msg_tls_cont_event), event_len);
 	if (!event) {
 		errcode = EBADHEADER;
 		goto fail;
@@ -129,8 +130,8 @@ int bpf_parse_tls_cert(ctx_md *ctx,
 	event->tuple = *key;
 	event->payload_size = end_offset - offset;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
-	                  event, event_len);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event,
+			  event_len);
 	return 0;
 
 fail:
@@ -142,15 +143,17 @@ fail:
 	event->tuple = *key;
 	event->payload_size = 0;
 
-	errout_pack((int*)event->payload, errcode, bottle->len, type, subtype, offset);
+	errout_pack((int *)event->payload, errcode, bottle->len, type, subtype,
+		    offset);
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
-	                  event, sizeof(*event) + ERROUT_LEN);
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event,
+			  sizeof(*event) + ERROUT_LEN);
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int offset)
+static inline __attribute__((always_inline)) void
+bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key,
+		      int offset)
 {
 	struct socketmap_value *execve;
 	struct msg_tls *event;
@@ -164,7 +167,7 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 		/* Disabled ingress parsing waiting for upstream kernel bugfix to
 		 * land in backports stable kernels.
 		 */
-	//	http_do_parser(skb, key);
+		//	http_do_parser(skb, key);
 		return;
 	}
 
@@ -205,7 +208,7 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
 
-		execve  = lookup_socketmap(key);
+		execve = lookup_socketmap(key);
 		if (execve)
 			post->execve = execve->key;
 
@@ -216,13 +219,14 @@ void bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key, int 
 
 		if (post->serverhello.flags & TLS_CERT) {
 			event->bytes = next;
-			next = bpf_parse_tls_cert(skb, bottle, event, key, next);
+			next = bpf_parse_tls_cert(skb, bottle, event, key,
+						  next);
 			if (next == TLS_PARSE_OUT_OF_DATA) {
 				event->type = TLS_TYPE_MORE_DATA;
 			}
 		}
 
-out:
+	out:
 		if (next == TLS_PARSE_OUT_OF_DATA) {
 			tls_inc_ingress_out_of_data();
 		} else {
@@ -234,7 +238,7 @@ out:
 			tls_mark_complete(event);
 			bottle_drop(key);
 		}
-	}  else if (is_expected_tls_data(event)) {
+	} else if (is_expected_tls_data(event)) {
 		struct bottle *bottle;
 		int err;
 
@@ -259,6 +263,4 @@ out:
 	}
 }
 
-
 #endif // ingress_h_INCLUDED
-

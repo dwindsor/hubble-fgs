@@ -35,8 +35,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_config_map = {
 	.max_entries = 1,
 };
 
-static inline __attribute__((always_inline))
-u8 ip_payload_off(struct iphdr *ip)
+static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
 	u8 ip_off;
 
@@ -46,10 +45,9 @@ u8 ip_payload_off(struct iphdr *ip)
 	return ip_off;
 }
 
-static inline __attribute__((always_inline))
-struct udp_info_key *udp4_key_lazy(struct __sk_buff *skb,
-			      struct iphdr *ip,
-			      int *payload_off, int *payload_sz)
+static inline __attribute__((always_inline)) struct udp_info_key *
+udp4_key_lazy(struct __sk_buff *skb, struct iphdr *ip, int *payload_off,
+	      int *payload_sz)
 {
 	struct udp_info_key *key;
 	struct udphdr udp;
@@ -81,8 +79,9 @@ struct udp_info_key *udp4_key_lazy(struct __sk_buff *skb,
 	return key;
 }
 
-static inline __attribute__((always_inline))
-struct udp_info_key *udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, int *payload_off, int *payload_sz, bool cookie)
+static inline __attribute__((always_inline)) struct udp_info_key *
+udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end,
+	 int *payload_off, int *payload_sz, bool cookie)
 {
 	struct udp_info_key *key;
 	struct udphdr *udp;
@@ -114,8 +113,8 @@ struct udp_info_key *udp4_key(struct __sk_buff *skb, struct iphdr *ip, void *dat
 	return key;
 }
 
-static inline __attribute__((always_inline))
-void swap_key(struct udp_info_key *key)
+static inline __attribute__((always_inline)) void
+swap_key(struct udp_info_key *key)
 {
 	u32 addr = key->saddr;
 	u16 port = key->sport;
@@ -157,10 +156,9 @@ void swap_key(struct udp_info_key *key)
  * plus socket events to track back the process in a time series
  * database.
  */
-static inline __attribute__((always_inline))
-struct udp_info_value *__udp4_send(struct __sk_buff *skb,
-				   struct udp_info_key *key,
-				   int payload_off, int payload_sz, bool send)
+static inline __attribute__((always_inline)) struct udp_info_value *
+__udp4_send(struct __sk_buff *skb, struct udp_info_key *key, int payload_off,
+	    int payload_sz, bool send)
 {
 	struct udp_info_value *value;
 	int zero = 0;
@@ -206,8 +204,8 @@ struct udp_info_value *__udp4_send(struct __sk_buff *skb,
  * copy to user land is not supported this is to support loading on
  * older kernels without the necessary bpf helpers.
  */
-static inline __attribute__((always_inline))
-int udp4_send_lazy(struct __sk_buff *skb, struct iphdr *ip, bool send)
+static inline __attribute__((always_inline)) int
+udp4_send_lazy(struct __sk_buff *skb, struct iphdr *ip, bool send)
 {
 	int payload_off, payload_sz;
 	struct udp_info_key *key;
@@ -226,27 +224,28 @@ int udp4_send_lazy(struct __sk_buff *skb, struct iphdr *ip, bool send)
 	return 1;
 }
 
-static inline __attribute__((always_inline))
-int dns_port_match(u16 *ports, u16 port1, u16 port2)
+static inline __attribute__((always_inline)) int
+dns_port_match(u16 *ports, u16 port1, u16 port2)
 {
-	if (ports[0] == port1 || ports[0] == port2 ||
-		ports[1] == port1 || ports[1] == port2 ||
-		ports[2] == port1 || ports[2] == port2 ||
-		ports[3] == port1 || ports[3] == port2) {
+	if (ports[0] == port1 || ports[0] == port2 || ports[1] == port1 ||
+	    ports[1] == port2 || ports[2] == port1 || ports[2] == port2 ||
+	    ports[3] == port1 || ports[3] == port2) {
 		return 1;
 	}
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, bool send, bool cookie)
+static inline __attribute__((always_inline)) int
+udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end,
+	  bool send, bool cookie)
 {
 	int zero, payload_off, payload_sz;
 	struct udp_info_value *info;
 	struct udp_info_key *key;
 	struct udp_sensor_config *config;
 
-	key = udp4_key(skb, ip, data, data_end, &payload_off, &payload_sz, cookie);
+	key = udp4_key(skb, ip, data, data_end, &payload_off, &payload_sz,
+		       cookie);
 	if (!key)
 		return 1;
 
@@ -266,18 +265,22 @@ int udp4_send(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_en
 	if (!config)
 		return 1;
 
-	if (config->dnsPorts[0] != 0 && dns_port_match(config->dnsPorts, key->sport, bpf_ntohs(key->dport))) {
+	if (config->dnsPorts[0] != 0 &&
+	    dns_port_match(config->dnsPorts, key->sport,
+			   bpf_ntohs(key->dport))) {
 		/* We subtract 1 from payload_sz because we need to +1 it
 		 * later to sat verifier constraint that skb_load_bytes
 		 * must be nonzero.
 		 */
-		emit_udp_payload_event(skb, key, info, payload_off, payload_sz - 1);
+		emit_udp_payload_event(skb, key, info, payload_off,
+				       payload_sz - 1);
 	}
 	return 1;
 }
 
-static inline __attribute__((always_inline))
-void udp_burst(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end, u64 send)
+static inline __attribute__((always_inline)) void
+udp_burst(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end,
+	  u64 send)
 {
 	struct udp_sensor_config *config;
 	struct process_network_burst_config c;
@@ -312,8 +315,8 @@ void udp_burst(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_e
 	process_network_burst(process, IPPROTO_UDP, send, vol, &c);
 }
 
-static inline __attribute__((always_inline))
-void inet_handler_lazy(struct __sk_buff *skb, int send)
+static inline __attribute__((always_inline)) void
+inet_handler_lazy(struct __sk_buff *skb, int send)
 {
 	struct iphdr ip;
 	u8 v4_prot;
@@ -329,8 +332,8 @@ void inet_handler_lazy(struct __sk_buff *skb, int send)
 	return;
 }
 
-static inline __attribute__((always_inline))
-void inet_handler(struct __sk_buff *skb, int send, int cookie)
+static inline __attribute__((always_inline)) void
+inet_handler(struct __sk_buff *skb, int send, int cookie)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
@@ -343,7 +346,7 @@ void inet_handler(struct __sk_buff *skb, int send, int cookie)
 	v4_prot = ip->protocol;
 
 	if (v4_prot == IPPROTO_TCP) { // TCP
-		return; 
+		return;
 	} else if (v4_prot == IPPROTO_UDP) { // UDP
 		udp4_send(skb, ip, data, data_end, send, cookie);
 		udp_burst(skb, ip, data, data_end, send);

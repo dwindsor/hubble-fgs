@@ -10,21 +10,22 @@
 /* HTTP used for KTLS handlers */
 #include "../http/http_parser.h"
 
-static inline __attribute__((always_inline))
-void egress_post_event(ctx_md *ctx, struct msg_tls_ipv4 *key, struct msg_tls_event *post)
+static inline __attribute__((always_inline)) void
+egress_post_event(ctx_md *ctx, struct msg_tls_ipv4 *key,
+		  struct msg_tls_event *post)
 {
-       post->tuple = *key;
-       post->common.op = MSG_OP_TLS;
-       post->common.size = sizeof(struct msg_tls_event);
-       post->common.ktime = ktime_get_ns();
-       perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, post,
-                         sizeof(struct msg_tls_event));
+	post->tuple = *key;
+	post->common.op = MSG_OP_TLS;
+	post->common.size = sizeof(struct msg_tls_event);
+	post->common.ktime = ktime_get_ns();
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, post,
+			  sizeof(struct msg_tls_event));
 }
 
-static inline __attribute__((always_inline))
-void bpf_parse_tls_egress(ctx_md *ctx)
+static inline __attribute__((always_inline)) void
+bpf_parse_tls_egress(ctx_md *ctx)
 {
-	struct msg_tls_ipv4 tuple = {0};
+	struct msg_tls_ipv4 tuple = { 0 };
 	struct msg_tls_event *event;
 	struct msg_tls *clienthello;
 	struct msg_tls *state;
@@ -80,7 +81,6 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 	memset(event, 0, sizeof(*event));
 	clienthello = &event->clienthello;
 
-
 	switch (bpf_parse_tls(bottle, clienthello)) {
 	case TLS_PARSE_OUT_OF_DATA:
 		/* Parser ran out of data. Try again later with more data. */
@@ -92,7 +92,7 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 
 		/* Post the event to user-space, if port filtering is enabled
                  * and we're not expecting to see non-TLS traffic. */
-                if (tls_filter_is_populated())
+		if (tls_filter_is_populated())
 			egress_post_event(ctx, &tuple, event);
 
 		/* Add an entry to stop parsing further packets */
@@ -108,4 +108,3 @@ void bpf_parse_tls_egress(ctx_md *ctx)
 }
 
 #endif // egress_h_INCLUDED
-

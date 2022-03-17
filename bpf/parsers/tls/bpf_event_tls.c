@@ -33,10 +33,10 @@ struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 
 #define TLS_TYPE_HELLO 22
 
-__attribute__((section(("kprobe/tcp_v4_fill_cb")), used))
-int event_ingress_tcp(struct pt_regs *ctx)
+__attribute__((section(("kprobe/tcp_v4_fill_cb")), used)) int
+event_ingress_tcp(struct pt_regs *ctx)
 {
-	struct msg_tls_ipv4 key = {0};
+	struct msg_tls_ipv4 key = { 0 };
 	struct msg_tls *event;
 	struct tcphdr *tcphdr;
 	struct iphdr *iphdr;
@@ -50,7 +50,7 @@ int event_ingress_tcp(struct pt_regs *ctx)
 	probe_read(&key.sport, sizeof(key.sport), _(&(tcphdr->dest)));
 	probe_read(&key.dport, sizeof(key.dport), _(&(tcphdr->source)));
 
-	key.dport = 0;//bpf_htons(key.dport);
+	key.dport = 0; //bpf_htons(key.dport);
 	key.sport = bpf_htons(key.sport);
 
 	event = map_lookup_elem(&tls_map, &key);
@@ -65,7 +65,8 @@ int event_ingress_tcp(struct pt_regs *ctx)
 		post->common.op = MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
 
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, post, sizeof(struct msg_tls_event));
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, post,
+				  sizeof(struct msg_tls_event));
 		event->type = 0;
 	}
 	return 0;

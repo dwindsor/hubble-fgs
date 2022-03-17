@@ -5,14 +5,16 @@
 
 #ifndef SOCK_CTX
 // get socket cookie helper
-__u64 get_cookie(struct sock *skp) {
+__u64 get_cookie(struct sock *skp)
+{
 	__u64 cookie = 0;
 	probe_read(&cookie, sizeof(cookie), _(&(skp->__sk_common.skc_cookie)));
 	return cookie;
 }
 #endif
 
-struct bpf_map_def __attribute__((section("maps"), used)) socket_cookie_to_proc_map = {
+struct bpf_map_def __attribute__((section("maps"), used))
+socket_cookie_to_proc_map = {
 	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(u64),
 	.value_size = sizeof(struct execve_map_value),
@@ -30,11 +32,11 @@ struct bpf_map_def __attribute__((section("maps"), used)) socket_cookie_to_proc_
  * with the verifier as is and can fix upstream. So force clang
  * to do simple write with asm.
  */
-static inline __attribute__((always_inline))
-void write_cookie(struct udp_info_key *key, u64 value)
+static inline __attribute__((always_inline)) void
+write_cookie(struct udp_info_key *key, u64 value)
 {
-	asm volatile(
-		"*(u64 *)%[cookie] = %[value];\n"
-	: [cookie] "+m"(key->cookie)
-	: [value] "r"(value):);
+	asm volatile("*(u64 *)%[cookie] = %[value];\n"
+		     : [cookie] "+m"(key->cookie)
+		     : [value] "r"(value)
+		     :);
 }

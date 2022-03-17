@@ -49,33 +49,44 @@ enum http_request_header {
 	http_request_transfer_encoding,
 };
 
-#define chr_sp	   ' '
-#define chr_r	   '\r'
-#define chr_n	   '\n'
-#define chr_colon  ':'
+#define chr_sp	  ' '
+#define chr_r	  '\r'
+#define chr_n	  '\n'
+#define chr_colon ':'
 
-#define http_hdr_host   "Host"
-#define http_hdr_user   "User-Agent"
-#define http_hdr_type   "Content-Type"
+#define http_hdr_host	"Host"
+#define http_hdr_user	"User-Agent"
+#define http_hdr_type	"Content-Type"
 #define http_hdr_length "Content-Length"
 
 // list of supported http methods offsets
-#define http_method_connect_off  sizeof("connect")
-#define http_method_delete_off   sizeof("delete")
-#define http_method_get_off      sizeof("get")
-#define http_method_head_off     sizeof("head")
-#define http_method_options_off  sizeof("options")
-#define http_method_post_off     sizeof("post")
-#define http_method_put_off	 sizeof("put")
-#define http_method_patch_off	 sizeof("patch")
-#define http_method_trace_off	 sizeof("trace")
+#define http_method_connect_off sizeof("connect")
+#define http_method_delete_off	sizeof("delete")
+#define http_method_get_off	sizeof("get")
+#define http_method_head_off	sizeof("head")
+#define http_method_options_off sizeof("options")
+#define http_method_post_off	sizeof("post")
+#define http_method_put_off	sizeof("put")
+#define http_method_patch_off	sizeof("patch")
+#define http_method_trace_off	sizeof("trace")
 
 // Supported header fields, header fields are converted to lower case
 // for parsing.
-#define HOST      {'h', 'o', 's', 't'};
-#define USERAGENT {'u','s','e','r','-','a','g','e','n','t'}
-#define CONTENT   {'c','o','n','t','e','n','t','-','l','e','n','g','t','h'}
-#define TRANSFER  {'t','r','a','n','s','f','e','r','-','e','n','c','o','d','i','n','g'}
+#define HOST { 'h', 'o', 's', 't' };
+#define USERAGENT                                                              \
+	{                                                                      \
+		'u', 's', 'e', 'r', '-', 'a', 'g', 'e', 'n', 't'               \
+	}
+#define CONTENT                                                                \
+	{                                                                      \
+		'c', 'o', 'n', 't', 'e', 'n', 't', '-', 'l', 'e', 'n', 'g',    \
+			't', 'h'                                               \
+	}
+#define TRANSFER                                                               \
+	{                                                                      \
+		't', 'r', 'a', 'n', 's', 'f', 'e', 'r', '-', 'e', 'n', 'c',    \
+			'o', 'd', 'i', 'n', 'g'                                \
+	}
 
 enum http_request_state {
 	http_start,
@@ -135,17 +146,17 @@ struct msg_http {
 } __attribute__((packed));
 
 struct msg_http_event {
-	struct msg_common     common;
-	struct msg_tls_ipv4   tuple;
+	struct msg_common common;
+	struct msg_tls_ipv4 tuple;
 	struct msg_execve_key execve;
-	struct msg_http	      request;
+	struct msg_http request;
 } __attribute__((packed));
 
 struct __msg_http_event {
-	struct msg_common     common;
-	struct msg_tls_ipv4   tuple;
+	struct msg_common common;
+	struct msg_tls_ipv4 tuple;
 	struct msg_execve_key execve;
-	struct __msg_http     request;
+	struct __msg_http request;
 } __attribute__((packed));
 
 #ifndef ALIGNCHECKER
@@ -163,4 +174,3 @@ struct bpf_map_def __attribute__((section("maps"), used)) http_map_heap = {
 	.max_entries = 1,
 };
 #endif // ALIGNCHECKER
-

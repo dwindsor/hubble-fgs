@@ -20,7 +20,8 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
 
 struct tcp_send_check_sample_cfg {
@@ -31,22 +32,24 @@ struct tcp_send_check_sample_cfg {
 	__u64 burstTriggerMult;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_sampler = {
+struct bpf_map_def __attribute__((section("maps"), used))
+tcp_send_check_sampler = {
 	.type = BPF_MAP_TYPE_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct tcp_send_check_sample_cfg),
 	.max_entries = 1,
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) tcp_send_check_event_map = {
+struct bpf_map_def __attribute__((section("maps"), used))
+tcp_send_check_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/tcp_v4_send_check")), used))
-int event_tcp_v4_send_check(struct pt_regs *ctx)
+__attribute__((section(("kprobe/tcp_v4_send_check")), used)) int
+event_tcp_v4_send_check(struct pt_regs *ctx)
 {
 	struct socketmap_value *process;
 	struct msg_tls_ipv4 tuple;
@@ -63,10 +66,14 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 	 * event will read zero window stats. If sampling we push event
 	 * to user space.
 	 */
-	probe_read(&tuple.saddr, sizeof(tuple.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&tuple.sport, sizeof(tuple.sport), _(&(skp->__sk_common.skc_num)));
-	probe_read(&tuple.daddr, sizeof(tuple.daddr), _(&(skp->__sk_common.skc_daddr)));
-	probe_read(&tuple.dport, sizeof(tuple.dport), _(&(skp->__sk_common.skc_dport)));
+	probe_read(&tuple.saddr, sizeof(tuple.saddr),
+		   _(&(skp->__sk_common.skc_rcv_saddr)));
+	probe_read(&tuple.sport, sizeof(tuple.sport),
+		   _(&(skp->__sk_common.skc_num)));
+	probe_read(&tuple.daddr, sizeof(tuple.daddr),
+		   _(&(skp->__sk_common.skc_daddr)));
+	probe_read(&tuple.dport, sizeof(tuple.dport),
+		   _(&(skp->__sk_common.skc_dport)));
 
 	tuple.remaining = 0;
 	tuple.uid = 0;
@@ -104,7 +111,7 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 		if (!val)
 			goto out;
 
-		*val = (struct msg_ipv4_event) {
+		*val = (struct msg_ipv4_event){
 			.common.op = MSG_OP_IPV4_TCPSTATS,
 			.common.size = sizeof(struct msg_ipv4_event),
 			.common.ktime = current_time_ns,
@@ -123,28 +130,39 @@ int event_tcp_v4_send_check(struct pt_regs *ctx)
 		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
 		get_socket_stats(skp, netns, process->zero_window, &val->stats);
 		size = sizeof(struct msg_ipv4_event);
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
-out:
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+				  size);
+	out:
 		if (cfg->burstEnable) {
 			exec_process = execve_map_get(process->key.pid);
 			if (exec_process && exec_process->key.pid != 0) {
 				struct process_network_burst_config c = {
-					.avg_window_size_ms = cfg->burstAvgWindowSize,
+					.avg_window_size_ms =
+						cfg->burstAvgWindowSize,
 					.window_size = cfg->burstWindowSizeNs,
 					.trigger_mult = cfg->burstTriggerMult,
 					.ctx = ctx,
 				};
 				u64 tcp_bytes_sent, tcp_bytes_received;
-				probe_read(&tcp_bytes_sent, sizeof(__u64), _(&(tcp->bytes_sent)));
-				probe_read(&tcp_bytes_received, sizeof(__u64), _(&(tcp->bytes_received)));
+				probe_read(&tcp_bytes_sent, sizeof(__u64),
+					   _(&(tcp->bytes_sent)));
+				probe_read(&tcp_bytes_received, sizeof(__u64),
+					   _(&(tcp->bytes_received)));
 				if (tcp_bytes_sent > process->sent) {
-					process_network_burst(exec_process, IPPROTO_TCP, BURST_KEY_SEND_EGRESS,
-						tcp_bytes_sent - process->sent, &c);
+					process_network_burst(
+						exec_process, IPPROTO_TCP,
+						BURST_KEY_SEND_EGRESS,
+						tcp_bytes_sent - process->sent,
+						&c);
 					process->sent = tcp_bytes_sent;
 				}
 				if (tcp_bytes_received > process->received) {
-					process_network_burst(exec_process, IPPROTO_TCP, BURST_KEY_SEND_INGRESS,
-						tcp_bytes_received - process->received, &c);
+					process_network_burst(
+						exec_process, IPPROTO_TCP,
+						BURST_KEY_SEND_INGRESS,
+						tcp_bytes_received -
+							process->received,
+						&c);
 					process->received = tcp_bytes_received;
 				}
 			}

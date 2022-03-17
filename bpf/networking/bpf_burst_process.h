@@ -36,42 +36,46 @@ struct bpf_map_def __attribute__((section("maps"), used)) pn_burst_map_stats = {
 	.max_entries = 1,
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) pn_burst_event_heap = {
+struct bpf_map_def __attribute__((section("maps"), used))
+pn_burst_event_heap = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct msg_process_network_burst_event),
 	.max_entries = 1,
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) pn_burst_value_heap = {
+struct bpf_map_def __attribute__((section("maps"), used))
+pn_burst_value_heap = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct process_network_burst_log),
 	.max_entries = 1,
 };
 
-#define BURST_KEY_PROTO_SHIFT 48
-#define BURST_KEY_DIR_SHIFT 32
+#define BURST_KEY_PROTO_SHIFT  48
+#define BURST_KEY_DIR_SHIFT    32
 #define BURST_KEY_SEND_INGRESS 0
-#define BURST_KEY_SEND_EGRESS 1
-#define NSTOSEC 1000000000L
-#define BURST_END 0
+#define BURST_KEY_SEND_EGRESS  1
+#define NSTOSEC		       1000000000L
+#define BURST_END	       0
 
-static inline __attribute__((always_inline))
-__u64 tgid_to_burst_key(__u32 tgid, __u64 protocol, __u64 send)
+static inline __attribute__((always_inline)) __u64
+tgid_to_burst_key(__u32 tgid, __u64 protocol, __u64 send)
 {
-	return (__u64)tgid | (protocol << BURST_KEY_PROTO_SHIFT)
-		| ((send & 1) << BURST_KEY_DIR_SHIFT);
+	return (__u64)tgid | (protocol << BURST_KEY_PROTO_SHIFT) |
+	       ((send & 1) << BURST_KEY_DIR_SHIFT);
 }
 
-static inline __attribute__((always_inline))
-__u64 burst_start_dir(__u32 start, __u32 dir)
+static inline __attribute__((always_inline)) __u64 burst_start_dir(__u32 start,
+								   __u32 dir)
 {
 	return start | (dir << 16);
 }
 
-static inline __attribute__((always_inline))
-void process_burst_check_and_delete(struct msg_process_network_burst_event *e, void *ctx, __u64 protocol, __u64 send, __u64 *cntr)
+static inline __attribute__((always_inline)) void
+process_burst_check_and_delete(struct msg_process_network_burst_event *e,
+			       void *ctx, __u64 protocol, __u64 send,
+			       __u64 *cntr)
 {
 	struct process_network_burst_log *burst_log;
 
@@ -81,11 +85,11 @@ void process_burst_check_and_delete(struct msg_process_network_burst_event *e, v
 		// Currently in burst state, so send burst end event
 		e->burst_start_dir = burst_start_dir(BURST_END, send);
 		e->protocol = protocol;
-		e->hist_avg = (burst_log->hist_vol +
-			burst_log->last_win_vol +
-			burst_log->win_vol) * 1000000000 /
-			(e->common.ktime - e->key.ktime);
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e,
+		e->hist_avg = (burst_log->hist_vol + burst_log->last_win_vol +
+			       burst_log->win_vol) *
+			      1000000000 / (e->common.ktime - e->key.ktime);
+		perf_event_output(
+			ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e,
 			sizeof(struct msg_process_network_burst_event));
 	}
 
@@ -94,8 +98,8 @@ void process_burst_check_and_delete(struct msg_process_network_burst_event *e, v
 		*cntr = *cntr - 1;
 }
 
-static inline __attribute__((always_inline))
-void process_burst_map_delete(void *ctx, __u32 tgid)
+static inline __attribute__((always_inline)) void
+process_burst_map_delete(void *ctx, __u32 tgid)
 {
 	int zero = 0;
 	__u64 *cntr;
@@ -108,9 +112,10 @@ void process_burst_map_delete(void *ctx, __u32 tgid)
 
 	if (val && process) {
 		// Complete common event details.
-		*val = (struct msg_process_network_burst_event) {
+		*val = (struct msg_process_network_burst_event){
 			.common.op = MSG_OP_IPV4_PROCESS_BURST,
-			.common.size = sizeof(struct msg_process_network_burst_event),
+			.common.size =
+				sizeof(struct msg_process_network_burst_event),
 			.common.ktime = ktime_get_ns(),
 			.key.pid = tgid,
 			.key.ktime = process->key.ktime,
@@ -122,15 +127,20 @@ void process_burst_map_delete(void *ctx, __u32 tgid)
 			.window_avg = 0,
 		};
 
-		process_burst_check_and_delete(val, ctx, IPPROTO_UDP, BURST_KEY_SEND_INGRESS, cntr);
-		process_burst_check_and_delete(val, ctx, IPPROTO_UDP, BURST_KEY_SEND_EGRESS, cntr);
-		process_burst_check_and_delete(val, ctx, IPPROTO_TCP, BURST_KEY_SEND_INGRESS, cntr);
-		process_burst_check_and_delete(val, ctx, IPPROTO_TCP, BURST_KEY_SEND_EGRESS, cntr);
+		process_burst_check_and_delete(val, ctx, IPPROTO_UDP,
+					       BURST_KEY_SEND_INGRESS, cntr);
+		process_burst_check_and_delete(val, ctx, IPPROTO_UDP,
+					       BURST_KEY_SEND_EGRESS, cntr);
+		process_burst_check_and_delete(val, ctx, IPPROTO_TCP,
+					       BURST_KEY_SEND_INGRESS, cntr);
+		process_burst_check_and_delete(val, ctx, IPPROTO_TCP,
+					       BURST_KEY_SEND_EGRESS, cntr);
 	}
 }
 
-static inline __attribute__((always_inline))
-void init_burst_log(u64 burst_key, u64 process_start_time, u64 vol, u64 current_time_ns, u64 burst_window_size)
+static inline __attribute__((always_inline)) void
+init_burst_log(u64 burst_key, u64 process_start_time, u64 vol,
+	       u64 current_time_ns, u64 burst_window_size)
 {
 	struct process_network_burst_log *burst_log;
 	int err, zero = 0;
@@ -140,7 +150,7 @@ void init_burst_log(u64 burst_key, u64 process_start_time, u64 vol, u64 current_
 	if (!burst_log)
 		return;
 
-	*burst_log = (struct process_network_burst_log) {
+	*burst_log = (struct process_network_burst_log){
 		.process_start_time = process_start_time,
 		.hist_vol = 0,
 		.win_vol = vol,
@@ -150,7 +160,8 @@ void init_burst_log(u64 burst_key, u64 process_start_time, u64 vol, u64 current_
 		.burst_window_size = burst_window_size,
 	};
 
-	err = map_update_elem(&pn_burst_map, &burst_key, burst_log, BPF_NOEXIST);
+	err = map_update_elem(&pn_burst_map, &burst_key, burst_log,
+			      BPF_NOEXIST);
 	if (!err && (cntr = map_lookup_elem(&pn_burst_map_stats, &zero)))
 		*cntr = *cntr + 1;
 }
@@ -177,8 +188,9 @@ void init_burst_log(u64 burst_key, u64 process_start_time, u64 vol, u64 current_
 // must only happen in one thread, and if multiple threads collide, then
 // this approach would fail.
 
-static inline __attribute__((always_inline))
-void process_network_burst(struct execve_map_value *process, u64 protocol, u64 send, u64 vol, struct process_network_burst_config *c)
+static inline __attribute__((always_inline)) void
+process_network_burst(struct execve_map_value *process, u64 protocol, u64 send,
+		      u64 vol, struct process_network_burst_config *c)
 {
 	u64 burst_key;
 	struct process_network_burst_log *burst_log;
@@ -192,11 +204,13 @@ void process_network_burst(struct execve_map_value *process, u64 protocol, u64 s
 		// First packet for this process in this direction, for this protocol.
 		// This could be racy in the sense that multiple cores could initialise the
 		// global entry for this process.
-		init_burst_log(burst_key, process->key.ktime, vol, current_time_ns, c->avg_window_size_ms);
+		init_burst_log(burst_key, process->key.ktime, vol,
+			       current_time_ns, c->avg_window_size_ms);
 		return;
 	}
 
-	u64 ns_since_win_start = (current_time_ns - process->key.ktime) % c->window_size;
+	u64 ns_since_win_start =
+		(current_time_ns - process->key.ktime) % c->window_size;
 	u64 current_win_start_ns = current_time_ns - ns_since_win_start;
 	u64 last_win_start_ns = current_win_start_ns - c->window_size;
 
@@ -232,8 +246,10 @@ void process_network_burst(struct execve_map_value *process, u64 protocol, u64 s
 			//
 			// Move the last window to history, current window to last,
 			// and store current packet in new current window.
-			__sync_fetch_and_add(&burst_log->hist_vol, burst_log->last_win_vol);
-			WRITE_ONCE(burst_log->last_win_vol, READ_ONCE(burst_log->win_vol));
+			__sync_fetch_and_add(&burst_log->hist_vol,
+					     burst_log->last_win_vol);
+			WRITE_ONCE(burst_log->last_win_vol,
+				   READ_ONCE(burst_log->win_vol));
 			WRITE_ONCE(burst_log->win_vol, vol);
 		} else {
 			// The current window volume is actually older than the
@@ -243,8 +259,10 @@ void process_network_burst(struct execve_map_value *process, u64 protocol, u64 s
 			// Move the last window and current window to history,
 			// and store the current packet in new current window.
 			// Also, any existing burst must be over.
-			__sync_fetch_and_add(&burst_log->hist_vol, burst_log->last_win_vol);
-			__sync_fetch_and_add(&burst_log->hist_vol, burst_log->win_vol);
+			__sync_fetch_and_add(&burst_log->hist_vol,
+					     burst_log->last_win_vol);
+			__sync_fetch_and_add(&burst_log->hist_vol,
+					     burst_log->win_vol);
 			WRITE_ONCE(burst_log->win_vol, vol);
 			// Zero the last window
 			WRITE_ONCE(burst_log->last_win_vol, 0);
@@ -255,13 +273,15 @@ void process_network_burst(struct execve_map_value *process, u64 protocol, u64 s
 	u64 hist_vol = READ_ONCE(burst_log->hist_vol);
 	u64 win_vol = READ_ONCE(burst_log->win_vol);
 	u64 last_win_vol = READ_ONCE(burst_log->last_win_vol);
-	u64 hist_avg = (hist_vol * NSTOSEC) / (last_win_start_ns - process->key.ktime);
+	u64 hist_avg =
+		(hist_vol * NSTOSEC) / (last_win_start_ns - process->key.ktime);
 	u64 hist_avg_trigger = (hist_avg * c->trigger_mult) / 100;
 
 	// Check if the average volume over the last complete window and the current
 	// partial window exceeds the trigger threshold. This approach provides a
 	// fair average of the current rate.
-	u64 new_win_rate = ((last_win_vol + win_vol) * NSTOSEC) / (c->window_size + ns_since_win_start);
+	u64 new_win_rate = ((last_win_vol + win_vol) * NSTOSEC) /
+			   (c->window_size + ns_since_win_start);
 	if (old_burst ^ (new_win_rate > hist_avg_trigger)) {
 		// If we were already bursting and no longer are, or weren't bursting
 		// but now are (XOR) then emit event.
@@ -272,23 +292,26 @@ void process_network_burst(struct execve_map_value *process, u64 protocol, u64 s
 		if (!val)
 			return;
 
-		*val = (struct msg_process_network_burst_event) {
+		*val = (struct msg_process_network_burst_event){
 			.common.op = MSG_OP_IPV4_PROCESS_BURST,
-			.common.size = sizeof(struct msg_process_network_burst_event),
+			.common.size =
+				sizeof(struct msg_process_network_burst_event),
 			.common.ktime = current_time_ns,
 			.key.pid = process->key.pid,
 			.key.ktime = process->key.ktime,
 			.protocol = protocol,
-			.burst_start_dir = burst_start_dir(old_burst == 0, send),
+			.burst_start_dir =
+				burst_start_dir(old_burst == 0, send),
 			.window_size = c->avg_window_size_ms,
 			.hist_avg = hist_avg,
 			.hist_trigger = hist_avg_trigger,
 			.window_avg = new_win_rate,
 		};
-		perf_event_output(c->ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_process_network_burst_event));
+		perf_event_output(
+			c->ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+			sizeof(struct msg_process_network_burst_event));
 		WRITE_ONCE(burst_log->burst, (old_burst == 0));
 	}
 }
-
 
 #endif // __BPF_BURST_PROCESS_H__

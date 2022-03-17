@@ -4,10 +4,10 @@
 #include "../bpf_sockops.h"
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_calls = {
-	.type		= BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size	= sizeof(__u32),
-	.value_size	= sizeof(__u32),
-	.max_entries	= 2,
+	.type = BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 2,
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
@@ -18,14 +18,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 };
 
 /* Mark a TLS entry as completed to stop further parsing. */
-static inline __attribute__((always_inline))
-void tls_mark_complete(struct msg_tls *tls)
+static inline __attribute__((always_inline)) void
+tls_mark_complete(struct msg_tls *tls)
 {
 	tls->type = 0;
 }
 
-static inline __attribute__((always_inline))
-void add_tlsmap(struct msg_tls_ipv4 *tuple, struct msg_tls *v)
+static inline __attribute__((always_inline)) void
+add_tlsmap(struct msg_tls_ipv4 *tuple, struct msg_tls *v)
 {
 	int err = map_update_elem(&tls_map, tuple, v, 0);
 	int zero = 0;
@@ -35,8 +35,8 @@ void add_tlsmap(struct msg_tls_ipv4 *tuple, struct msg_tls *v)
 		*cntr = *cntr + 1;
 }
 
-static inline __attribute__((always_inline))
-void del_tlsmap(struct msg_tls_ipv4 *tuple)
+static inline __attribute__((always_inline)) void
+del_tlsmap(struct msg_tls_ipv4 *tuple)
 {
 	int err = map_delete_elem(&tls_map, tuple);
 	int zero = 0;
@@ -70,32 +70,34 @@ struct bpf_map_def __attribute__((section("maps"), used)) nop_filter_map = {
 #define PROTO_SKIP  0
 #define PROTO_TRACK 1
 
-#define TLS_MAX_PORTS 10
+#define TLS_MAX_PORTS	  10
 #define TLS_MAX_SELECTORS 2
 
-#define DO_TLS_PORT_FILTER_ONE(j)			     \
-	p = *(__u32 *)&filter[offset + 4 + 4 + 4 + (4 * j)]; \
-	if ((p & 0xffff) == key->dport || (p & 0xffff) == key->sport) goto track;  \
-	if (++j >= ports) goto skip;			     \
+#define DO_TLS_PORT_FILTER_ONE(j)                                              \
+	p = *(__u32 *)&filter[offset + 4 + 4 + 4 + (4 * j)];                   \
+	if ((p & 0xffff) == key->dport || (p & 0xffff) == key->sport)          \
+		goto track;                                                    \
+	if (++j >= ports)                                                      \
+		goto skip;
 
+#define DO_TLS_PORT_FILTER                                                     \
+	{                                                                      \
+		int j = 0;                                                     \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+		DO_TLS_PORT_FILTER_ONE(j)                                      \
+	}
 
-#define DO_TLS_PORT_FILTER	   \
-{				   \
-	int j = 0;		   \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-	DO_TLS_PORT_FILTER_ONE(j)  \
-}
-
-static inline __attribute__((always_inline))
-int map_key_filter(u8 *filter, struct sock_key *key) {
+static inline __attribute__((always_inline)) int
+map_key_filter(u8 *filter, struct sock_key *key)
+{
 	__u32 selectors, p = 0;
 	int i;
 
@@ -142,8 +144,9 @@ track:
 	return p;
 }
 
-static inline __attribute__((always_inline))
-int tls_filter(struct sock_key *key) {
+static inline __attribute__((always_inline)) int
+tls_filter(struct sock_key *key)
+{
 	int zero = 0;
 	u8 *filter;
 
@@ -154,8 +157,8 @@ int tls_filter(struct sock_key *key) {
 	return map_key_filter(filter, key);
 }
 
-static inline __attribute__((always_inline))
-bool tls_filter_is_populated() {
+static inline __attribute__((always_inline)) bool tls_filter_is_populated()
+{
 	int zero = 0;
 	u8 *filter;
 
@@ -163,11 +166,12 @@ bool tls_filter_is_populated() {
 	if (!filter)
 		return false;
 
-	return (*(__u32*)filter) != 0;
+	return (*(__u32 *)filter) != 0;
 }
 
-static inline __attribute__((always_inline))
-int http_filter(struct sock_key *key) {
+static inline __attribute__((always_inline)) int
+http_filter(struct sock_key *key)
+{
 	int zero = 0;
 	u8 *filter;
 
@@ -178,8 +182,9 @@ int http_filter(struct sock_key *key) {
 	return map_key_filter(filter, key);
 }
 
-static inline __attribute__((always_inline))
-int nop_filter(struct sock_key *key) {
+static inline __attribute__((always_inline)) int
+nop_filter(struct sock_key *key)
+{
 	int zero = 0;
 	u8 *filter;
 
@@ -209,15 +214,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_parser_stats = {
 	.max_entries = 1,
 };
 
-
-#define INC_TLS_PARSER_STATS_FUNC(field)                                 \
-	static inline __attribute__((always_inline))                     \
-	void tls_inc_##field () {                                        \
-		int zero = 0;                                            \
-		struct __tls_parser_stats *stats;                        \
-		stats = map_lookup_elem(&tls_parser_stats, &zero);   \
-		if (stats)                                               \
-			stats->cnt_##field ++;                           \
+#define INC_TLS_PARSER_STATS_FUNC(field)                                       \
+	static inline __attribute__((always_inline)) void tls_inc_##field()    \
+	{                                                                      \
+		int zero = 0;                                                  \
+		struct __tls_parser_stats *stats;                              \
+		stats = map_lookup_elem(&tls_parser_stats, &zero);             \
+		if (stats)                                                     \
+			stats->cnt_##field++;                                  \
 	}
 
 INC_TLS_PARSER_STATS_FUNC(egress_out_of_data); /* tls_inc_egress_out_of_data() */

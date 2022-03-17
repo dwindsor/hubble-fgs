@@ -18,18 +18,20 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
 
-struct bpf_map_def __attribute__((section("maps"), used)) tcp_connect_event_map = {
+struct bpf_map_def __attribute__((section("maps"), used))
+tcp_connect_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/tcp_connect")), used))
-int event_tcp4_connect(struct pt_regs *ctx)
+__attribute__((section(("kprobe/tcp_connect")), used)) int
+event_tcp4_connect(struct pt_regs *ctx)
 {
 	struct execve_map_value *process = 0;
 	struct msg_ipv4_event *val;
@@ -51,7 +53,6 @@ int event_tcp4_connect(struct pt_regs *ctx)
 	if (!val) {
 		return 0;
 	}
-
 
 	skp = (void *)((ctx)->di);
 	probe_read(&saddr, sizeof(saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
@@ -82,7 +83,7 @@ int event_tcp4_connect(struct pt_regs *ctx)
 	 * 32-bit aligned so we really do want it there.
 	 */
 	{
-		struct socketmap_value v = {0};
+		struct socketmap_value v = { 0 };
 		struct msg_tls_ipv4 tuple;
 
 		tuple.saddr = saddr;

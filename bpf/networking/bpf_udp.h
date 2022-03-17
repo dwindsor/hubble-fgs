@@ -37,7 +37,7 @@ struct udp_info_key {
 } __attribute__((packed));
 
 struct msg_ipv4_udp_event {
-	struct msg_ipv4_event     event;
+	struct msg_ipv4_event event;
 	char payload[2048];
 };
 
@@ -69,8 +69,9 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_key_heap = {
 	.max_entries = 1,
 };
 
-static inline __attribute__((always_inline))
-void emit_udp_event(void *ctx, int op, struct udp_info_key *k, struct udp_info_value *v)
+static inline __attribute__((always_inline)) void
+emit_udp_event(void *ctx, int op, struct udp_info_key *k,
+	       struct udp_info_value *v)
 {
 	size_t size = sizeof(struct msg_ipv4_event);
 	struct msg_ipv4_event *val;
@@ -80,7 +81,7 @@ void emit_udp_event(void *ctx, int op, struct udp_info_key *k, struct udp_info_v
 	if (!val)
 		return;
 
-	*val = (struct msg_ipv4_event) {
+	*val = (struct msg_ipv4_event){
 		.common.op = op,
 		.common.size = sizeof(struct msg_ipv4_event),
 		.common.ktime = ktime_get_ns(),
@@ -103,8 +104,9 @@ void emit_udp_event(void *ctx, int op, struct udp_info_key *k, struct udp_info_v
 	return;
 }
 
-static inline __attribute__((always_inline))
-void emit_udp_payload_event(void *ctx, struct udp_info_key *k, struct udp_info_value *v, int off, int payload_size)
+static inline __attribute__((always_inline)) void
+emit_udp_payload_event(void *ctx, struct udp_info_key *k,
+		       struct udp_info_value *v, int off, int payload_size)
 {
 	struct __sk_buff *skb = (struct __sk_buff *)ctx;
 	size_t size = sizeof(struct msg_ipv4_udp_event);
@@ -118,7 +120,7 @@ void emit_udp_payload_event(void *ctx, struct udp_info_key *k, struct udp_info_v
 	payload_size &= 0x7ff;
 	size = payload_size + sizeof(struct msg_ipv4_event) + 1;
 
-	val->event = (struct msg_ipv4_event) {
+	val->event = (struct msg_ipv4_event){
 		.common.op = MSG_OP_IPV4_UDPPAYLOAD,
 		.common.size = size,
 		.common.ktime = ktime_get_ns(),
@@ -138,19 +140,22 @@ void emit_udp_payload_event(void *ctx, struct udp_info_key *k, struct udp_info_v
 
 	// +1 to ensure payload_size is non-zero; And keeps verifier happy that
 	// we wont do a load_bytes with size == 0.
-	asm volatile("%[payload_size] += 1;\n" :: [payload_size] "+r"(payload_size):);
+	asm volatile(
+		"%[payload_size] += 1;\n" ::[payload_size] "+r"(payload_size)
+		:);
 	skb_load_bytes(skb, off, &val->payload, payload_size);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 }
 
-static inline __attribute__((always_inline))
-void emit_udp_connect_event(void *ctx, struct udp_info_key *k, struct udp_info_value *v)
+static inline __attribute__((always_inline)) void
+emit_udp_connect_event(void *ctx, struct udp_info_key *k,
+		       struct udp_info_value *v)
 {
 	emit_udp_event(ctx, MSG_OP_IPV4_UDPCONNECT, k, v);
 }
 
-static inline __attribute__((always_inline))
-void udp_info_tx_reset(struct udp_info_value *v, int len)
+static inline __attribute__((always_inline)) void
+udp_info_tx_reset(struct udp_info_value *v, int len)
 {
 	v->submitted_bytes = 0;
 	v->tx_bytes = len;
@@ -165,8 +170,8 @@ void udp_info_tx_reset(struct udp_info_value *v, int len)
 	v->ktime = ktime_get_ns();
 }
 
-static inline __attribute__((always_inline))
-void udp_info_rx_reset(struct udp_info_value *v, int len)
+static inline __attribute__((always_inline)) void
+udp_info_rx_reset(struct udp_info_value *v, int len)
 {
 	v->submitted_bytes = 0;
 	v->tx_bytes = 0;
@@ -181,30 +186,30 @@ void udp_info_rx_reset(struct udp_info_value *v, int len)
 	v->ktime = ktime_get_ns();
 }
 
-static inline __attribute__((always_inline))
-void update_tx_value(struct udp_info_value *v, u32 len)
+static inline __attribute__((always_inline)) void
+update_tx_value(struct udp_info_value *v, u32 len)
 {
 	__sync_fetch_and_add(&v->tx_bytes, len);
 	__sync_fetch_and_add(&v->segs_out, 1);
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
 
-static inline __attribute__((always_inline))
-void update_rx_value(struct udp_info_value *v, u32 len)
+static inline __attribute__((always_inline)) void
+update_rx_value(struct udp_info_value *v, u32 len)
 {
 	__sync_fetch_and_add(&v->rx_bytes, len);
 	__sync_fetch_and_add(&v->segs_in, 1);
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
 
-static inline __attribute__((always_inline))
-void udp_info_submitted_reset(struct udp_info_value *v, int len)
+static inline __attribute__((always_inline)) void
+udp_info_submitted_reset(struct udp_info_value *v, int len)
 {
 	v->submitted_bytes = len;
 	v->tx_bytes = 0;
 	v->consumed_bytes = 0;
 	v->rx_bytes = 0;
-	
+
 	v->submitted_segs = len ? 1 : 0;
 	v->segs_out = 0;
 	v->consumed_segs = 0;
@@ -213,8 +218,8 @@ void udp_info_submitted_reset(struct udp_info_value *v, int len)
 	v->ktime = ktime_get_ns();
 }
 
-static inline __attribute__((always_inline))
-void udp_info_consumed_reset(struct udp_info_value *v, int len)
+static inline __attribute__((always_inline)) void
+udp_info_consumed_reset(struct udp_info_value *v, int len)
 {
 	v->submitted_bytes = 0;
 	v->tx_bytes = 0;
@@ -229,16 +234,16 @@ void udp_info_consumed_reset(struct udp_info_value *v, int len)
 	v->ktime = ktime_get_ns();
 }
 
-static inline __attribute__((always_inline))
-void update_submitted_value(struct udp_info_value *v, u32 len)
+static inline __attribute__((always_inline)) void
+update_submitted_value(struct udp_info_value *v, u32 len)
 {
 	__sync_fetch_and_add(&v->submitted_bytes, len);
 	__sync_fetch_and_add(&v->submitted_segs, 1);
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
 
-static inline __attribute__((always_inline))
-void update_consumed_value(struct udp_info_value *v, u32 len)
+static inline __attribute__((always_inline)) void
+update_consumed_value(struct udp_info_value *v, u32 len)
 {
 	__sync_fetch_and_add(&v->consumed_bytes, len);
 	__sync_fetch_and_add(&v->consumed_segs, 1);

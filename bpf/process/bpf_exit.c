@@ -24,8 +24,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) exit_heap_map = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("tracepoint/sys_exit")), used))
-int event_exit(struct sched_execve_args *ctx)
+__attribute__((section(("tracepoint/sys_exit")), used)) int
+event_exit(struct sched_execve_args *ctx)
 {
 	struct execve_map_value *enter;
 	__u32 pid, tgid;
@@ -56,7 +56,8 @@ int event_exit(struct sched_execve_args *ctx)
 	if (!enter)
 		return 0;
 	if (enter->key.ktime) {
-		struct task_struct *task = (struct task_struct *)get_current_task();
+		struct task_struct *task =
+			(struct task_struct *)get_current_task();
 		size_t size = sizeof(struct msg_exit);
 		struct msg_exit *exit;
 		int zero = 0;
@@ -79,9 +80,11 @@ int event_exit(struct sched_execve_args *ctx)
 		exit->current.pad[3] = 0;
 		exit->current.ktime = enter->key.ktime;
 
-		probe_read(&exit->info.code,   sizeof(exit->info.code),   _(&task->exit_code));
+		probe_read(&exit->info.code, sizeof(exit->info.code),
+			   _(&task->exit_code));
 
-		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, exit, size);
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, exit,
+				  size);
 	}
 	process_burst_map_delete(ctx, tgid);
 	execve_map_delete(tgid);

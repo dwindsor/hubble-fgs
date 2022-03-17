@@ -20,9 +20,9 @@ struct skb_type {
  * Populate the event args with the SKB 5-tuple when supported. Currently,
  * only supports IPv4 with TCP/UDP.
  */
-static inline __attribute__((unused))
-int set_event_from_skb(struct skb_type *event, struct sk_buff *skb) {
-
+static inline __attribute__((unused)) int
+set_event_from_skb(struct skb_type *event, struct sk_buff *skb)
+{
 	unsigned char *skb_head = 0;
 	u16 l3_off;
 
@@ -33,7 +33,7 @@ int set_event_from_skb(struct skb_type *event, struct sk_buff *skb) {
 	u8 iphdr_byte0;
 	probe_read(&iphdr_byte0, 1, _(ip));
 
-	u8 ip_ver = iphdr_byte0>>4;
+	u8 ip_ver = iphdr_byte0 >> 4;
 	if (ip_ver == 4) { // IPv4
 		u8 v4_prot;
 		probe_read(&v4_prot, 1, _(&ip->protocol));
@@ -45,13 +45,19 @@ int set_event_from_skb(struct skb_type *event, struct sk_buff *skb) {
 		typeof(skb->transport_header) l4_off;
 		probe_read(&l4_off, sizeof(l4_off), _(&skb->transport_header));
 		if (v4_prot == IPPROTO_TCP) { // TCP
-			struct tcphdr *tcp = (struct tcphdr *)(skb_head + l4_off);
-			probe_read(&event->sport, sizeof(event->sport), _(&tcp->source));
-			probe_read(&event->dport, sizeof(event->dport), _(&tcp->dest));
+			struct tcphdr *tcp =
+				(struct tcphdr *)(skb_head + l4_off);
+			probe_read(&event->sport, sizeof(event->sport),
+				   _(&tcp->source));
+			probe_read(&event->dport, sizeof(event->dport),
+				   _(&tcp->dest));
 		} else if (v4_prot == IPPROTO_UDP) { // UDP
-			struct udphdr *udp = (struct udphdr *)(skb_head + l4_off);
-			probe_read(&event->sport, sizeof(event->sport), _(&udp->source));
-			probe_read(&event->dport, sizeof(event->dport), _(&udp->dest));
+			struct udphdr *udp =
+				(struct udphdr *)(skb_head + l4_off);
+			probe_read(&event->sport, sizeof(event->sport),
+				   _(&udp->source));
+			probe_read(&event->dport, sizeof(event->dport),
+				   _(&udp->dest));
 		}
 
 		if (bpf_core_field_exists(skb->active_extensions)) {
@@ -62,11 +68,16 @@ int set_event_from_skb(struct skb_type *event, struct sk_buff *skb) {
 #define SKB_EXT_SEC_PATH 1 // TBD do this with BTF
 			probe_read(&ext, sizeof(ext), _(&skb->extensions));
 			if (ext) {
-        		probe_read(&offset, sizeof(offset), _(&ext->offset[SKB_EXT_SEC_PATH]));
-			sp = (void *)ext + (offset << 3);
+				probe_read(&offset, sizeof(offset),
+					   _(&ext->offset[SKB_EXT_SEC_PATH]));
+				sp = (void *)ext + (offset << 3);
 
-			probe_read(&event->secpath_len, sizeof(event->secpath_len), _(&sp->len));
-			probe_read(&event->secpath_olen, sizeof(event->secpath_olen), _(&sp->olen));
+				probe_read(&event->secpath_len,
+					   sizeof(event->secpath_len),
+					   _(&sp->len));
+				probe_read(&event->secpath_olen,
+					   sizeof(event->secpath_olen),
+					   _(&sp->olen));
 			}
 		}
 		return 0;

@@ -5,8 +5,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) retprobe_map = {
 	.max_entries = 1024,
 };
 
-static inline __attribute__((always_inline))
-unsigned long retprobe_map_get(__u64 tid)
+static inline __attribute__((always_inline)) unsigned long
+retprobe_map_get(__u64 tid)
 {
 	unsigned long *ptr;
 	ptr = map_lookup_elem(&retprobe_map, &tid);
@@ -16,8 +16,7 @@ unsigned long retprobe_map_get(__u64 tid)
 	return *ptr;
 }
 
-static inline __attribute__((always_inline))
-void retprobe_map_clear(__u64 tid)
+static inline __attribute__((always_inline)) void retprobe_map_clear(__u64 tid)
 {
 	unsigned long *ptr = map_lookup_elem(&retprobe_map, &tid);
 
@@ -25,8 +24,8 @@ void retprobe_map_clear(__u64 tid)
 		map_delete_elem(&retprobe_map, &tid);
 }
 
-static inline __attribute__((always_inline))
-void retprobe_map_set(__u64 tid, unsigned long val)
+static inline __attribute__((always_inline)) void
+retprobe_map_set(__u64 tid, unsigned long val)
 {
 	map_update_elem(&retprobe_map, &tid, &val, BPF_ANY);
 }
@@ -61,8 +60,8 @@ void retprobe_map_set(__u64 tid, unsigned long val)
  * this issue by checking first the thread id, and if there is none, we use
  * ctx->bp.
  */
-static inline __attribute__((always_inline))
-__u64 retprobe_map_get_key(struct pt_regs *ctx)
+static inline __attribute__((always_inline)) __u64
+retprobe_map_get_key(struct pt_regs *ctx)
 {
 	__u64 ret = get_current_pid_tgid();
 	if (ret == (__u64)-22) { // -EINVAL -- current == NULL

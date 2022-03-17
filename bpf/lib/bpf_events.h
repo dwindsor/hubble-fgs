@@ -9,13 +9,13 @@
  *    1, if matching field is present in target kernel;
  *    0, if no matching field found.
  */
-#define bpf_core_field_exists(field)					    \
+#define bpf_core_field_exists(field)                                           \
 	__builtin_preserve_field_info(field, BPF_FIELD_EXISTS)
 
 /* second argument to __builtin_preserve_enum_value() built-in */
 enum bpf_enum_value_kind {
-	BPF_ENUMVAL_EXISTS = 0,		/* enum value existence in kernel */
-	BPF_ENUMVAL_VALUE = 1,		/* enum value value relocation */
+	BPF_ENUMVAL_EXISTS = 0, /* enum value existence in kernel */
+	BPF_ENUMVAL_VALUE = 1, /* enum value value relocation */
 };
 
 /*
@@ -26,31 +26,32 @@ enum bpf_enum_value_kind {
  *    present in target kernel's BTF;
  *    0, if no matching enum and/or enum value within that enum is found.
  */
-#define bpf_core_enum_value(enum_type, enum_value)			    \
-	__builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value, BPF_ENUMVAL_VALUE)
+#define bpf_core_enum_value(enum_type, enum_value)                             \
+	__builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value,        \
+				      BPF_ENUMVAL_VALUE)
 
 #include "bpf_core_read.h"
 
 #ifdef __LARGE_BPF_PROG
-	#define PROBE_CWD_READ_ITERATIONS 32
-	#define MAX_MOUNT_POINTS 32
+#define PROBE_CWD_READ_ITERATIONS 32
+#define MAX_MOUNT_POINTS	  32
 #else
-	#define PROBE_CWD_READ_ITERATIONS 11
+#define PROBE_CWD_READ_ITERATIONS 11
 #endif
 
 /* Not sure if the following is more clear compared to
  * the previous approach but it will be more same as now
  * we use PROBE_CWD_READ_ITERATIONS in more than one places.
  */
-#define M_REPEAT_1(X) X
-#define M_REPEAT_2(X) M_REPEAT_1(X) X
-#define M_REPEAT_3(X) M_REPEAT_2(X) X
-#define M_REPEAT_4(X) M_REPEAT_3(X) X
-#define M_REPEAT_5(X) M_REPEAT_4(X) X
-#define M_REPEAT_6(X) M_REPEAT_5(X) X
-#define M_REPEAT_7(X) M_REPEAT_6(X) X
-#define M_REPEAT_8(X) M_REPEAT_7(X) X
-#define M_REPEAT_9(X) M_REPEAT_8(X) X
+#define M_REPEAT_1(X)  X
+#define M_REPEAT_2(X)  M_REPEAT_1(X) X
+#define M_REPEAT_3(X)  M_REPEAT_2(X) X
+#define M_REPEAT_4(X)  M_REPEAT_3(X) X
+#define M_REPEAT_5(X)  M_REPEAT_4(X) X
+#define M_REPEAT_6(X)  M_REPEAT_5(X) X
+#define M_REPEAT_7(X)  M_REPEAT_6(X) X
+#define M_REPEAT_8(X)  M_REPEAT_7(X) X
+#define M_REPEAT_9(X)  M_REPEAT_8(X) X
 #define M_REPEAT_10(X) M_REPEAT_9(X) X
 #define M_REPEAT_11(X) M_REPEAT_10(X) X
 #define M_REPEAT_12(X) M_REPEAT_11(X) X
@@ -63,9 +64,9 @@ enum bpf_enum_value_kind {
 
 #define M_EXPAND(...) __VA_ARGS__
 
-#define M_REPEAT__(N, X) M_EXPAND(M_REPEAT_ ## N)(X)
-#define M_REPEAT_(N, X) M_REPEAT__(N, X)
-#define M_REPEAT(N, X) M_REPEAT_(M_EXPAND(N), X)
+#define M_REPEAT__(N, X) M_EXPAND(M_REPEAT_##N)(X)
+#define M_REPEAT_(N, X)	 M_REPEAT__(N, X)
+#define M_REPEAT(N, X)	 M_REPEAT_(M_EXPAND(N), X)
 
 /* Global variables that are rewritten at program load time.
  *
@@ -86,24 +87,52 @@ enum bpf_enum_value_kind {
  * }
  */
 
-#define GLOBAL_U16 volatile const union { uint16_t __typ; uint64_t __val; }
-#define GLOBAL_I16 volatile const union { int16_t __typ; uint64_t __val; }
-#define GLOBAL_U32 volatile const union { uint32_t __typ; uint64_t __val; }
-#define GLOBAL_I32 volatile const union { int32_t __typ; uint64_t __val; }
-#define GLOBAL_U64 volatile const union { uint64_t __typ; uint64_t __val; }
-#define GLOBAL_I64 volatile const union { int64_t __typ; uint64_t __val; }
+#define GLOBAL_U16                                                             \
+	volatile const union {                                                 \
+		uint16_t __typ;                                                \
+		uint64_t __val;                                                \
+	}
+#define GLOBAL_I16                                                             \
+	volatile const union {                                                 \
+		int16_t __typ;                                                 \
+		uint64_t __val;                                                \
+	}
+#define GLOBAL_U32                                                             \
+	volatile const union {                                                 \
+		uint32_t __typ;                                                \
+		uint64_t __val;                                                \
+	}
+#define GLOBAL_I32                                                             \
+	volatile const union {                                                 \
+		int32_t __typ;                                                 \
+		uint64_t __val;                                                \
+	}
+#define GLOBAL_U64                                                             \
+	volatile const union {                                                 \
+		uint64_t __typ;                                                \
+		uint64_t __val;                                                \
+	}
+#define GLOBAL_I64                                                             \
+	volatile const union {                                                 \
+		int64_t __typ;                                                 \
+		uint64_t __val;                                                \
+	}
 
 /* Macro to read the value of a global variable declared using GLOBAL_XXX above. */
-#define READ_GLOBAL(g) ({ typeof((g).__typ) x = (typeof((g).__typ))(uint64_t)(&((g).__val)); x; })
+#define READ_GLOBAL(g)                                                         \
+	({                                                                     \
+		typeof((g).__typ) x =                                          \
+			(typeof((g).__typ))(uint64_t)(&((g).__val));           \
+		x;                                                             \
+	})
 
-
-
-static inline void compiler_barrier(void) {
+static inline void compiler_barrier(void)
+{
 	asm volatile("" ::: "memory");
 }
 
-static inline __attribute__((always_inline))
-int64_t validate_arg_size(int64_t size)
+static inline __attribute__((always_inline)) int64_t
+validate_arg_size(int64_t size)
 {
 	compiler_barrier();
 	/* Kernels pre 4.15 do not track min values on '&' so we do
@@ -121,8 +150,8 @@ int64_t validate_arg_size(int64_t size)
 	return size;
 }
 
-static inline __attribute__((always_inline))
-int64_t validate_msg_execve_size(int64_t size)
+static inline __attribute__((always_inline)) int64_t
+validate_msg_execve_size(int64_t size)
 {
 	size_t max = sizeof(struct msg_execve_event);
 
@@ -152,8 +181,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) execve_val = {
 
 // execve_map_get will look up if pid exists and return it if it does. If it
 // does not, it will create a new one and return it.
-static inline __attribute__((always_inline))
-struct execve_map_value *execve_map_get(__u32 pid)
+static inline __attribute__((always_inline)) struct execve_map_value *
+execve_map_get(__u32 pid)
 {
 	struct execve_map_value *event;
 
@@ -176,14 +205,13 @@ struct execve_map_value *execve_map_get(__u32 pid)
 	return event;
 }
 
-static inline __attribute__((always_inline))
-struct execve_map_value *execve_map_get_noinit(__u32 pid)
+static inline __attribute__((always_inline)) struct execve_map_value *
+execve_map_get_noinit(__u32 pid)
 {
 	return map_lookup_elem(&execve_map, &pid);
 }
 
-static inline __attribute__((always_inline))
-void execve_map_delete(__u32 pid)
+static inline __attribute__((always_inline)) void execve_map_delete(__u32 pid)
 {
 	int err = map_delete_elem(&execve_map, &pid);
 	int zero = 0;
@@ -192,8 +220,8 @@ void execve_map_delete(__u32 pid)
 		*cntr = *cntr - 1;
 }
 
-static inline __attribute__((always_inline))
-__u64 __get_auid(struct task_struct *task)
+static inline __attribute__((always_inline)) __u64
+__get_auid(struct task_struct *task)
 {
 	// u64 to convince compiler to do 64bit loads early kernels do not
 	// support 32bit loads from stack, e.g. r1 = *(u32 *)(r10 -8).
@@ -210,7 +238,8 @@ __u64 __get_auid(struct task_struct *task)
 		if (bpf_core_field_exists(task->audit)) {
 			probe_read(&audit, sizeof(audit), _(&task->audit));
 			if (audit) {
-				probe_read(&auid, sizeof(__u32), _(&audit->loginuid));
+				probe_read(&auid, sizeof(__u32),
+					   _(&audit->loginuid));
 			}
 		}
 	}
@@ -218,16 +247,15 @@ __u64 __get_auid(struct task_struct *task)
 	return auid;
 }
 
-static inline __attribute__((always_inline))
-__u32 get_auid(void)
+static inline __attribute__((always_inline)) __u32 get_auid(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 
 	return __get_auid(task);
 }
 
-static inline __attribute__((always_inline))
-struct task_struct *get_parent(struct task_struct *t)
+static inline __attribute__((always_inline)) struct task_struct *
+get_parent(struct task_struct *t)
 {
 	struct task_struct *task;
 
@@ -237,16 +265,16 @@ struct task_struct *get_parent(struct task_struct *t)
 	return task;
 }
 
-static inline __attribute__((always_inline))
-__u64 get_parent_auid(struct task_struct *t)
+static inline __attribute__((always_inline)) __u64
+get_parent_auid(struct task_struct *t)
 {
 	struct task_struct *task = get_parent(t);
 
 	return __get_auid(task);
 }
 
-static inline __attribute__((always_inline))
-struct task_struct *get_task_from_pid(__u32 pid)
+static inline __attribute__((always_inline)) struct task_struct *
+get_task_from_pid(__u32 pid)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 cpid = 0;
@@ -271,107 +299,93 @@ struct task_struct *get_task_from_pid(__u32 pid)
 	return task;
 }
 
-#define CWD_DENTRY_REG "r9"
+#define CWD_DENTRY_REG	      "r9"
 #define CWD_VFSMNT_DENTRY_REG "r6"
-#define CWD_OFFSET_REG "r7"
+#define CWD_OFFSET_REG	      "r7"
 
-#define PROBE_CWD_READ_LOOP_HEADER				\
-	CWD_DENTRY_REG " = *(u64 *)%[dentry];\n"		\
-	CWD_VFSMNT_DENTRY_REG " = *(u64 *)%[vfsmnt];\n" \
-	CWD_OFFSET_REG " = *(u32 *)%[offset];\n"
+#define PROBE_CWD_READ_LOOP_HEADER                                             \
+	CWD_DENTRY_REG " = *(u64 *)%[dentry];\n" CWD_VFSMNT_DENTRY_REG         \
+		       " = *(u64 *)%[vfsmnt];\n" CWD_OFFSET_REG                \
+		       " = *(u32 *)%[offset];\n"
 
-#define PROBE_CWD_READ					\
-	/* if (!dentry) { break; } */			\
-	"r3 = " CWD_DENTRY_REG ";\n"			\
-	"if r3 == 0 goto %l[a];\n"			\
-	/* probe_read(&parent, sizeof(parent), &dentry->d_parent); */ \
-	"r2 = *(u32 *)%[dentry_parent];\n"		\
-	"r3 += r2;\n"					\
-	"r2 = 8;\n"					\
-	"r1 = %[ptr];\n"				\
-	"call 4;\n"					\
-	/* if (!parent) { break; } */			\
-	"r4 = *(u64 *)(%[ptr] + 0);\n"			\
-	"if r4 == 0x0 goto %l[a];\n"			\
-	/* if (vfsmnt_dentry && dentry == vfsmnt_dentry) { */ \
-	"if " CWD_VFSMNT_DENTRY_REG " == " CWD_DENTRY_REG " goto %l[a];\n" \
-	/* if (dentry == dentry->d_parent) { */	\
-	"if r4 == " CWD_DENTRY_REG " goto %l[a];\n" \
-	/* name = &dentry->d_name; */			\
-	/* dentry = parent; */				\
-	/* probe_read(&dname, sizeof(dname), &name->name); */ \
-	"r3 = " CWD_DENTRY_REG ";\n"			\
-	"r2 = *(u32 *)%[dentry_name];\n"		\
-	"r3 += r2;\n"					\
-	CWD_DENTRY_REG " = r4;\n" /* r9 = parent */	\
-	"r1 = %[ptr];\n"				\
-	"r2 = 8;\n"					\
-	"call 4;\n"					\
-	/* pcwd = curr + offset */			\
-	/* probe_read(pcwd, 1, &slash); */		\
-	"r1 = *(u64 *)%[pid];\n"			\
-	CWD_OFFSET_REG " &= 0x3FF;\n" 			\
-	"r1 += " CWD_OFFSET_REG ";\n"			\
-	"r2 = 1;\n"					\
-	"r3 = *(u64 *)%[slash];\n"			\
-	"call 4;\n"					\
-	/* pcwd++; */					\
-	/* ret = probe_read_str(pcwd, CWD_MAX, dname); */ \
-	CWD_OFFSET_REG " += 1;\n"			\
-	"r1 = *(u64 *)%[pid];\n"			\
-	CWD_OFFSET_REG " &= 0x3FF;\n" 			\
-	"r1 += " CWD_OFFSET_REG ";\n"			\
-	"r2 = " XSTR(CWD_MAX) ";\n"			\
-	"r3 = *(u64 *)(%[ptr] + 0);\n"			\
-	"call 45;\n"					\
-	/* if (ret < 0) { */				\
-	/* cwdsize += ret */				\
-	"if r0 s< 1 goto %l[a];\n"			\
-	"r0 -= 1\n;"					\
-	CWD_OFFSET_REG " += r0;\n"			\
-	"*(u32 *)%[offset] = " CWD_OFFSET_REG ";\n" \
-	/* count iterations */ \
-	"r3 = *(u32 *)%[iter];\n"		\
-	"r3 += 1;\n" \
-	"*(u32 *)%[iter] = r3;\n"
+#define PROBE_CWD_READ                                                                           \
+	/* if (!dentry) { break; } */                                                            \
+	"r3 = " CWD_DENTRY_REG ";\n"                                                             \
+	"if r3 == 0 goto %l[a];\n" /* probe_read(&parent, sizeof(parent), &dentry->d_parent); */ \
+	"r2 = *(u32 *)%[dentry_parent];\n"                                                       \
+	"r3 += r2;\n"                                                                            \
+	"r2 = 8;\n"                                                                              \
+	"r1 = %[ptr];\n"                                                                         \
+	"call 4;\n" /* if (!parent) { break; } */                                                \
+	"r4 = *(u64 *)(%[ptr] + 0);\n"                                                           \
+	"if r4 == 0x0 goto %l[a];\n" /* if (vfsmnt_dentry && dentry == vfsmnt_dentry) { */       \
+	"if " CWD_VFSMNT_DENTRY_REG " == " CWD_DENTRY_REG                                        \
+	" goto %l[a];\n" /* if (dentry == dentry->d_parent) { */                                 \
+	"if r4 == " CWD_DENTRY_REG                                                               \
+	" goto %l[a];\n" /* name = &dentry->d_name; */                                           \
+	/* dentry = parent; */ /* probe_read(&dname, sizeof(dname), &name->name); */             \
+	"r3 = " CWD_DENTRY_REG ";\n"                                                             \
+	"r2 = *(u32 *)%[dentry_name];\n"                                                         \
+	"r3 += r2;\n" CWD_DENTRY_REG " = r4;\n" /* r9 = parent */                                \
+	"r1 = %[ptr];\n"                                                                         \
+	"r2 = 8;\n"                                                                              \
+	"call 4;\n" /* pcwd = curr + offset */ /* probe_read(pcwd, 1, &slash); */                \
+	"r1 = *(u64 *)%[pid];\n" CWD_OFFSET_REG " &= 0x3FF;\n"                                   \
+	"r1 += " CWD_OFFSET_REG ";\n"                                                            \
+	"r2 = 1;\n"                                                                              \
+	"r3 = *(u64 *)%[slash];\n"                                                               \
+	"call 4;\n" /* pcwd++; */ /* ret = probe_read_str(pcwd, CWD_MAX, dname); */              \
+		CWD_OFFSET_REG " += 1;\n"                                                        \
+	"r1 = *(u64 *)%[pid];\n" CWD_OFFSET_REG " &= 0x3FF;\n"                                   \
+	"r1 += " CWD_OFFSET_REG ";\n"                                                            \
+	"r2 = " XSTR(                                                                            \
+		CWD_MAX) ";\n"                                                                   \
+			 "r3 = *(u64 *)(%[ptr] + 0);\n"                                          \
+			 "call 45;\n" /* if (ret < 0) { */ /* cwdsize += ret */                  \
+			 "if r0 s< 1 goto %l[a];\n"                                              \
+			 "r0 -= 1\n;" CWD_OFFSET_REG " += r0;\n"                                 \
+			 "*(u32 *)%[offset] = " CWD_OFFSET_REG                                   \
+			 ";\n" /* count iterations */                                            \
+			 "r3 = *(u32 *)%[iter];\n"                                               \
+			 "r3 += 1;\n"                                                            \
+			 "*(u32 *)%[iter] = r3;\n"
 
 /* we cannot avoid probe_read calls here as
  * something line "*(u8 *)(r1 + 0) = r3;\n"
  * fails.
  */
-#define MARK_PATH_WITH_SYMBOLS 			\
-	"r1 = *(u64 *)%[pid];\n"			\
-	CWD_OFFSET_REG " &= 0x3FF;\n"			\
-	"r1 += " CWD_OFFSET_REG ";\n"			\
-	"r2 = 1;\n"					\
-	"r3 = *(u64 *)%[slash];\n"			\
-	"call 4;\n" 					\
-	CWD_OFFSET_REG " += 1;\n" 			\
-	"r1 = *(u64 *)%[pid];\n"			\
-	CWD_OFFSET_REG " &= 0x3FF;\n"			\
-	"r1 += " CWD_OFFSET_REG ";\n"			\
-	"r2 = 1;\n"					\
-	"r3 = *(u64 *)%[symbol];\n"			\
-	"call 4;\n" 					\
-	CWD_OFFSET_REG " += 1;\n"
+#define MARK_PATH_WITH_SYMBOLS                                                 \
+	"r1 = *(u64 *)%[pid];\n" CWD_OFFSET_REG " &= 0x3FF;\n"                 \
+	"r1 += " CWD_OFFSET_REG ";\n"                                          \
+	"r2 = 1;\n"                                                            \
+	"r3 = *(u64 *)%[slash];\n"                                             \
+	"call 4;\n" CWD_OFFSET_REG " += 1;\n"                                  \
+	"r1 = *(u64 *)%[pid];\n" CWD_OFFSET_REG " &= 0x3FF;\n"                 \
+	"r1 += " CWD_OFFSET_REG ";\n"                                          \
+	"r2 = 1;\n"                                                            \
+	"r3 = *(u64 *)%[symbol];\n"                                            \
+	"call 4;\n" CWD_OFFSET_REG " += 1;\n"
 
-#define MARK_UNRESOLVED_PATH_IF_NEEDED \
-	"if r3 < " XSTR(PROBE_CWD_READ_ITERATIONS) " goto %l[a];\n" \
-	MARK_PATH_WITH_SYMBOLS \
-	"*(u32 *)%[offset] = " CWD_OFFSET_REG ";\n"
+#define MARK_UNRESOLVED_PATH_IF_NEEDED                                             \
+	"if r3 < " XSTR(                                                           \
+		PROBE_CWD_READ_ITERATIONS) " goto %l[a];\n" MARK_PATH_WITH_SYMBOLS \
+					   "*(u32 *)%[offset] = " CWD_OFFSET_REG   \
+					   ";\n"
 
-#define offsetof_btf(s, memb) \
-	((size_t)((char *)_(&((s *)0)->memb) - (char *)0))
+#define offsetof_btf(s, memb) ((size_t)((char *)_(&((s *)0)->memb) - (char *)0))
 
-#define container_of_btf(ptr, type, member) ({				\
-	void *__mptr = (void *)(ptr);					\
-	((type *)(__mptr - offsetof_btf(type, member))); })
+#define container_of_btf(ptr, type, member)                                    \
+	({                                                                     \
+		void *__mptr = (void *)(ptr);                                  \
+		((type *)(__mptr - offsetof_btf(type, member)));               \
+	})
 
-static inline __attribute__((always_inline))
-u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile u32 offset, u32 *flags)
+static inline __attribute__((always_inline)) u32
+getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt,
+	volatile u32 offset, u32 *flags)
 {
 	long dentry_parent, dentry_name;
-	char slash= '/', *pslash = &slash;
+	char slash = '/', *pslash = &slash;
 	char symbol = '&', *psymbol = &symbol;
 	long *ptr = 0;
 	struct dentry *vfsmnt_dentry = 0;
@@ -384,7 +398,8 @@ u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile
 	const int qstr = 8;
 
 	if (vfsmnt)
-		probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry), _(&vfsmnt->mnt_root));
+		probe_read(&vfsmnt_dentry, sizeof(vfsmnt_dentry),
+			   _(&vfsmnt->mnt_root));
 
 	dentry_parent = offsetof_btf(struct dentry, d_parent);
 	dentry_name = offsetof_btf(struct dentry, d_name);
@@ -412,20 +427,15 @@ u32 getpath(void *curr, struct dentry *dentry, struct vfsmount *vfsmnt, volatile
 	 * offset volatile above and this forces the retrun __offset to reload
 	 * the value from stack.
 	 */
-	asm volatile goto (
-			PROBE_CWD_READ_LOOP_HEADER
-			M_REPEAT(PROBE_CWD_READ_ITERATIONS, PROBE_CWD_READ)
+	asm volatile goto(
+		PROBE_CWD_READ_LOOP_HEADER M_REPEAT(PROBE_CWD_READ_ITERATIONS,
+						    PROBE_CWD_READ)
 			MARK_UNRESOLVED_PATH_IF_NEEDED
 		:
-		: [pid]    "m"(curr),
-		  [vfsmnt] "m"(vfsmnt_dentry),
-		  [dentry] "m"(dentry),
-		  [ptr]    "+r"(&ptr),
-		  [slash]  "m"(pslash),
-		  [symbol]  "m"(psymbol),
-		  [dentry_parent] "m"(dentry_parent),
-		  [dentry_name] "m"(dentry_name),
-		  [offset] "+m"(offset),
+		: [pid] "m"(curr), [vfsmnt] "m"(vfsmnt_dentry),
+		  [dentry] "m"(dentry), [ptr] "+r"(&ptr), [slash] "m"(pslash),
+		  [symbol] "m"(psymbol), [dentry_parent] "m"(dentry_parent),
+		  [dentry_name] "m"(dentry_name), [offset] "+m"(offset),
 		  [iter] "+m"(iter)
 		: "r0", "r1", "r2", "r3", "r4", "r5", "r6", "r7", "r9", "memory"
 		: a);
@@ -435,29 +445,31 @@ a:
 	return offset;
 }
 
-static inline __attribute__((always_inline))
-u32 mark_unresolved(void *curr, struct mount *mnt)
+static inline __attribute__((always_inline)) u32
+mark_unresolved(void *curr, struct mount *mnt)
 {
 	struct mount *local_mnt;
 	struct dentry *dentry, *dentry_parent;
 
 	probe_read(&local_mnt, sizeof(struct mount *), _(&(mnt->mnt_parent)));
-	probe_read(&dentry, sizeof(struct dentry *),  _(&(local_mnt->mnt_mountpoint)));
-	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
+	probe_read(&dentry, sizeof(struct dentry *),
+		   _(&(local_mnt->mnt_mountpoint)));
+	probe_read(&dentry_parent, sizeof(struct dentry *),
+		   _(&(dentry->d_parent)));
 
 	if (dentry == dentry_parent) // IS_ROOT(dentry)
 		return 0;
 	return 1;
 }
 
-static inline __attribute__((always_inline))
-struct mount *real_mount(struct vfsmount *mnt)
+static inline __attribute__((always_inline)) struct mount *
+real_mount(struct vfsmount *mnt)
 {
 	return container_of_btf(mnt, struct mount, mnt);
 }
 
-static inline __attribute__((always_inline))
-struct mount *follow_mount_point(struct mount *mnt, void *argp, u32 *size, u32 *flags)
+static inline __attribute__((always_inline)) struct mount *
+follow_mount_point(struct mount *mnt, void *argp, u32 *size, u32 *flags)
 {
 	struct dentry *dentry, *dentry_parent;
 	struct mount *local_mnt;
@@ -466,18 +478,20 @@ struct mount *follow_mount_point(struct mount *mnt, void *argp, u32 *size, u32 *
 		return 0;
 
 	probe_read(&local_mnt, sizeof(struct mount *), _(&(mnt->mnt_parent)));
-	probe_read(&dentry, sizeof(struct dentry *),  _(&(local_mnt->mnt_mountpoint)));
+	probe_read(&dentry, sizeof(struct dentry *),
+		   _(&(local_mnt->mnt_mountpoint)));
 	*size = getpath(argp, dentry, 0, *size, flags);
 
-	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
+	probe_read(&dentry_parent, sizeof(struct dentry *),
+		   _(&(dentry->d_parent)));
 	if (dentry == dentry_parent) /* IS_ROOT(dentry) */
 		return 0;
 
 	return local_mnt;
 }
 
-static inline __attribute__((always_inline))
-u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
+static inline __attribute__((always_inline)) u32
+get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
 {
 	struct path pwd;
 	struct mount *mnt;
@@ -492,14 +506,16 @@ u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
 
 	/* get first mount point through mnt->mnt_mountpoint */
 	mnt = real_mount(pwd.mnt);
-	probe_read(&dentry, sizeof(struct dentry *),  _(&(mnt->mnt_mountpoint)));
+	probe_read(&dentry, sizeof(struct dentry *), _(&(mnt->mnt_mountpoint)));
 	offset = getpath(argp, dentry, 0, offset, flags);
 
-	probe_read(&dentry_parent, sizeof(struct dentry *), _(&(dentry->d_parent)));
+	probe_read(&dentry_parent, sizeof(struct dentry *),
+		   _(&(dentry->d_parent)));
 	if (dentry != dentry_parent) { // !IS_ROOT(dentry)
 #ifdef __LARGE_BPF_PROG
 		for (i = 0; i < MAX_MOUNT_POINTS; ++i)
-			if((mnt = follow_mount_point(mnt, argp, &offset, flags)) == 0)
+			if ((mnt = follow_mount_point(mnt, argp, &offset,
+						      flags)) == 0)
 				break;
 #else
 		// one more call to support at max 2 mount points
@@ -514,9 +530,8 @@ u32 get_full_path(struct path *path, void *argp, u32 offset, u32 *flags)
 	return offset;
 }
 
-static inline __attribute__((always_inline))
-int64_t getcwd(struct msg_process *curr,
-	       __u32 offset, __u32 proc_pid, bool prealloc)
+static inline __attribute__((always_inline)) int64_t
+getcwd(struct msg_process *curr, __u32 offset, __u32 proc_pid, bool prealloc)
 {
 	struct task_struct *task = get_task_from_pid(proc_pid);
 	__u32 orig_size = curr->size, orig_offset = offset;
@@ -549,8 +564,7 @@ int64_t getcwd(struct msg_process *curr,
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-__u32 get_task_pid_vnr(void)
+static inline __attribute__((always_inline)) __u32 get_task_pid_vnr(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	int thread_pid_exists;
@@ -575,22 +589,24 @@ __u32 get_task_pid_vnr(void)
 		 * sanitize it for the verifier.
 		 */
 		if (!thread_pid_exists)
-			link_sz = 24; // voodoo magic, hard-code 24 to init stack
-		probe_read(&link, link_sz, (void *)_(&task->pids) + (PIDTYPE_PID * link_sz));
+			link_sz =
+				24; // voodoo magic, hard-code 24 to init stack
+		probe_read(&link, link_sz,
+			   (void *)_(&task->pids) + (PIDTYPE_PID * link_sz));
 		pid = link.pid;
 	}
 	upid_sz = bpf_core_field_size(pid->numbers[0]);
 	probe_read(&level, sizeof(level), _(&pid->level));
 	if (level < 1)
 		return 0;
-	probe_read(&upid, upid_sz, (void *)_(&pid->numbers) + (level * upid_sz));
+	probe_read(&upid, upid_sz,
+		   (void *)_(&pid->numbers) + (level * upid_sz));
 	return upid.nr;
 }
 
-static inline __attribute__((always_inline))
-uint32_t event_filename_builder(struct msg_process *curr,
-				__u32 curr_pid, __u32 flags, __u32 bin,
-				void *filename)
+static inline __attribute__((always_inline)) uint32_t
+event_filename_builder(struct msg_process *curr, __u32 curr_pid, __u32 flags,
+		       __u32 bin, void *filename)
 {
 	int64_t size = 0;
 	uint32_t *value;
@@ -601,7 +617,7 @@ uint32_t event_filename_builder(struct msg_process *curr,
 	 * to make it work for longer pathnames. For now lets get the mechanics
 	 * working with short names.
 	 */
-	char pathname[256] = {0};
+	char pathname[256] = { 0 };
 
 	/* This is a bit parnoid but was previously having trouble on
 	 * 4.14 kernels tracking offset of curr through filename_builder
@@ -630,63 +646,65 @@ uint32_t event_filename_builder(struct msg_process *curr,
 	return bin;
 }
 
-#define PROBE_ARG_HEADER				\
-	"%[index] = 0;"
+#define PROBE_ARG_HEADER "%[index] = 0;"
 
-#define PROBE_ARG_READ5 \
-	PROBE_ARG_READ  \
-	PROBE_ARG_READ  \
-	PROBE_ARG_READ  \
-	PROBE_ARG_READ  \
-	PROBE_ARG_READ  \
+#define PROBE_ARG_READ5                                                        \
+	PROBE_ARG_READ                                                         \
+	PROBE_ARG_READ                                                         \
+	PROBE_ARG_READ                                                         \
+	PROBE_ARG_READ                                                         \
+	PROBE_ARG_READ
 
-#define PROBE_ARG_READ10 \
-	PROBE_ARG_READ5  \
+#define PROBE_ARG_READ10                                                       \
+	PROBE_ARG_READ5                                                        \
 	PROBE_ARG_READ5
 
-#define PROBE_ARG_READ50 \
-	PROBE_ARG_READ10 \
-	PROBE_ARG_READ10 \
-	PROBE_ARG_READ10 \
-	PROBE_ARG_READ10 \
+#define PROBE_ARG_READ50                                                       \
+	PROBE_ARG_READ10                                                       \
+	PROBE_ARG_READ10                                                       \
+	PROBE_ARG_READ10                                                       \
+	PROBE_ARG_READ10                                                       \
 	PROBE_ARG_READ10
 
 /* The first argument is the command from cmdline but we already report the
  * filename so its redundant lets walk past it. Do we still need end check?
  * Left for now until we analyze a bit.
  */
-#define PROBE_PAST_CMD					\
-	"r3 = *(u64 *)%[args];"				\
-	"r3 += %[offset];"				\
-	"r4 = *(u64 *)%[end];"				\
-	"if r4 <= r3 goto %l[c];"			\
-	"r4 = *(u32 *)(%[curr] + 0);"			\
-	"if r4 s< 0 goto %l[a];"			\
-	"if r4 s> " XSTR(BUFFER) " goto %l[b];"		\
-	"r1 = *(u64 *)%[earg];"				\
-	"r1 += r4;"					\
-	"r2 = " XSTR(MAXARGLENGTH) ";"			\
-	"call 45;"					\
-	"if r0 s< 0 goto %l[a];"			\
-	"%[offset] += r0;"
+#define PROBE_PAST_CMD                                                         \
+	"r3 = *(u64 *)%[args];"                                                \
+	"r3 += %[offset];"                                                     \
+	"r4 = *(u64 *)%[end];"                                                 \
+	"if r4 <= r3 goto %l[c];"                                              \
+	"r4 = *(u32 *)(%[curr] + 0);"                                          \
+	"if r4 s< 0 goto %l[a];"                                               \
+	"if r4 s> " XSTR(                                                      \
+		BUFFER) " goto %l[b];"                                         \
+			"r1 = *(u64 *)%[earg];"                                \
+			"r1 += r4;"                                            \
+			"r2 = " XSTR(MAXARGLENGTH) ";"                         \
+						   "call 45;"                  \
+						   "if r0 s< 0 goto %l[a];"    \
+						   "%[offset] += r0;"
 
-#define PROBE_ARG_READ		     			\
-	"r3 = *(u64 *)%[args];"				\
-	"r3 += %[offset];"				\
-	"r4 = *(u64 *)%[end];"				\
-	"if r4 <= r3 goto %l[c];"			\
-	"r4 = *(u32 *)(%[curr] + 0);"			\
-	"if r4 s< 0 goto %l[a];"			\
-	"if r4 s> " XSTR(BUFFER) " goto %l[b];"		\
-	"r1 = *(u64 *)%[earg];"				\
-	"r1 += r4;"					\
-	"r2 = " XSTR(MAXARGLENGTH) ";"			\
-	"call 45;"					\
-	"if r0 s< 0 goto %l[a];"			\
-	"%[offset] += r0;"				\
-	"r4 = *(u32 *)(%[curr] + 0);"			\
-	"r0 += r4;"					\
-	"*(u32 *)(%[curr] + 0) = r0;"
+#define PROBE_ARG_READ                                                         \
+	"r3 = *(u64 *)%[args];"                                                \
+	"r3 += %[offset];"                                                     \
+	"r4 = *(u64 *)%[end];"                                                 \
+	"if r4 <= r3 goto %l[c];"                                              \
+	"r4 = *(u32 *)(%[curr] + 0);"                                          \
+	"if r4 s< 0 goto %l[a];"                                               \
+	"if r4 s> " XSTR(                                                      \
+		BUFFER) " goto %l[b];"                                         \
+			"r1 = *(u64 *)%[earg];"                                \
+			"r1 += r4;"                                            \
+			"r2 = " XSTR(                                          \
+				MAXARGLENGTH) ";"                              \
+					      "call 45;"                       \
+					      "if r0 s< 0 goto %l[a];"         \
+					      "%[offset] += r0;"               \
+					      "r4 = *(u32 *)(%[curr] + 0);"    \
+					      "r0 += r4;"                      \
+					      "*(u32 *)(%[curr] + 0) = r0;"
 
 /* To ensure reading args will work across multiple kernels and pass verifier we
  * code it as an asm block to make it friendly for verifiers. Otherwise, the C
@@ -695,22 +713,18 @@ uint32_t event_filename_builder(struct msg_process *curr,
  * is even using LTS kernels so we get kernels with verifier in strange states.
  * I'm looking at you 4.15 kernel running in minikube!
  */
-static inline __attribute__((always_inline))
-void probe_arg_read(struct msg_process *c, char *earg, char *args, char *end_args)
+static inline __attribute__((always_inline)) void
+probe_arg_read(struct msg_process *c, char *earg, char *args, char *end_args)
 {
 	int off = 0;
 
-	asm volatile goto (
-			PROBE_PAST_CMD
-			PROBE_ARG_READ50
-		:
-		: [earg]         "m"(earg),
-		  [args]	 "m"(args),
-		  [end]		 "m"(end_args),
-		  [curr]	 "ri"(c),
-		  [offset]	 "r"(off)
-		: "r0", "r1", "r2", "r3", "r4", "r5"
-		: a, b, c);
+	asm volatile goto(PROBE_PAST_CMD PROBE_ARG_READ50
+			  :
+			  : [earg] "m"(earg), [args] "m"(args),
+			    [end] "m"(end_args), [curr] "ri"(c),
+			    [offset] "r"(off)
+			  : "r0", "r1", "r2", "r3", "r4", "r5"
+			  : a, b, c);
 	c->flags |= EVENT_TRUNC_ARGS;
 c:
 	return;
@@ -730,8 +744,8 @@ a:
  * what happened here this routine should always return with a good
  * event msg that could be passed to userspace.
  */
-static inline __attribute__((always_inline))
-void event_args_builder(struct msg_execve_event *event)
+static inline __attribute__((always_inline)) void
+event_args_builder(struct msg_execve_event *event)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct msg_process *p, *c;
@@ -749,30 +763,31 @@ void event_args_builder(struct msg_execve_event *event)
 	if (mm) {
 		long unsigned int start_stack, end_stack;
 
-		probe_read(&start_stack, sizeof(start_stack), _(&mm->arg_start));
+		probe_read(&start_stack, sizeof(start_stack),
+			   _(&mm->arg_start));
 		probe_read(&end_stack, sizeof(start_stack), _(&mm->arg_end));
 		if (start_stack && end_stack)
-			probe_arg_read(c, (char*)p, (char *)start_stack, (char *)end_stack);
+			probe_arg_read(c, (char *)p, (char *)start_stack,
+				       (char *)end_stack);
 	}
 	//c->size -= base;
 	return;
 }
 
-static inline __attribute__((always_inline))
-void event_set_clone(struct msg_process *pid)
+static inline __attribute__((always_inline)) void
+event_set_clone(struct msg_process *pid)
 {
 	pid->flags |= EVENT_CLONE;
 }
 
-static inline __attribute__((always_inline))
-int64_t event_copy_execve(struct msg_process *dst,
-			  struct msg_process *src)
+static inline __attribute__((always_inline)) int64_t
+event_copy_execve(struct msg_process *dst, struct msg_process *src)
 {
 	struct msg_process *esrc;
 	int64_t size;
 
 	size = validate_arg_size(src->size);
-	esrc = (void*)src + size;
+	esrc = (void *)src + size;
 	compiler_barrier();
 	size = validate_arg_size(esrc->size);
 	compiler_barrier();
@@ -781,8 +796,8 @@ int64_t event_copy_execve(struct msg_process *dst,
 	return size;
 }
 
-static inline __attribute__((always_inline))
-__u32 event_find_parent_pid(struct task_struct *t)
+static inline __attribute__((always_inline)) __u32
+event_find_parent_pid(struct task_struct *t)
 {
 	struct task_struct *task = get_parent(t);
 	__u32 pid;
@@ -793,8 +808,8 @@ __u32 event_find_parent_pid(struct task_struct *t)
 	return pid;
 }
 
-static inline __attribute__((always_inline))
-struct execve_map_value *event_find_parent(void)
+static inline __attribute__((always_inline)) struct execve_map_value *
+event_find_parent(void)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
@@ -814,26 +829,24 @@ struct execve_map_value *event_find_parent(void)
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-void event_minimal_parent(struct msg_execve_event *event, struct task_struct *task)
+static inline __attribute__((always_inline)) void
+event_minimal_parent(struct msg_execve_event *event, struct task_struct *task)
 {
 	event->parent.pid = event_find_parent_pid(task);
 	event->parent.ktime = 0;
 	event->parent_flags = EVENT_MISS;
 }
 
-static inline __attribute__((always_inline))
-void event_minimal_curr(struct execve_map_value *event)
+static inline __attribute__((always_inline)) void
+event_minimal_curr(struct execve_map_value *event)
 {
 	event->key.pid = (get_current_pid_tgid() >> 32);
 	event->key.ktime = 0; // should we insert a time?
 	event->flags = EVENT_MISS;
 }
 
-static inline __attribute__((always_inline))
-struct execve_map_value *event_find_curr(__u32 *ppid,
-					 struct bpf_map_def *map,
-					 bool *walked)
+static inline __attribute__((always_inline)) struct execve_map_value *
+event_find_curr(__u32 *ppid, struct bpf_map_def *map, bool *walked)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	__u32 pid = get_current_pid_tgid() >> 32;
@@ -873,8 +886,8 @@ struct execve_map_value *event_find_curr(__u32 *ppid,
 	return value;
 }
 
-static inline __attribute__((always_inline))
-void get_caps(struct msg_capabilities *msg, struct task_struct *task)
+static inline __attribute__((always_inline)) void
+get_caps(struct msg_capabilities *msg, struct task_struct *task)
 {
 	const struct cred *cred;
 
@@ -884,8 +897,8 @@ void get_caps(struct msg_capabilities *msg, struct task_struct *task)
 	probe_read(&msg->permitted, sizeof(__u64), _(&cred->cap_permitted));
 }
 
-static inline __attribute__((always_inline))
-void get_namespaces(struct msg_ns *msg, struct task_struct *task)
+static inline __attribute__((always_inline)) void
+get_namespaces(struct msg_ns *msg, struct task_struct *task)
 {
 	struct nsproxy *nsproxy;
 	struct nsproxy nsp;
@@ -893,9 +906,12 @@ void get_namespaces(struct msg_ns *msg, struct task_struct *task)
 	probe_read(&nsproxy, sizeof(nsproxy), _(&task->nsproxy));
 	probe_read(&nsp, sizeof(nsp), _(nsproxy));
 
-	probe_read(&msg->uts_inum, sizeof(msg->uts_inum), _(&nsp.uts_ns->ns.inum));
-	probe_read(&msg->ipc_inum, sizeof(msg->ipc_inum), _(&nsp.ipc_ns->ns.inum));
-	probe_read(&msg->mnt_inum, sizeof(msg->mnt_inum), _(&nsp.mnt_ns->ns.inum));
+	probe_read(&msg->uts_inum, sizeof(msg->uts_inum),
+		   _(&nsp.uts_ns->ns.inum));
+	probe_read(&msg->ipc_inum, sizeof(msg->ipc_inum),
+		   _(&nsp.ipc_ns->ns.inum));
+	probe_read(&msg->mnt_inum, sizeof(msg->mnt_inum),
+		   _(&nsp.mnt_ns->ns.inum));
 	{
 		struct pid *p = 0;
 
@@ -906,27 +922,36 @@ void get_namespaces(struct msg_ns *msg, struct task_struct *task)
 
 			probe_read(&level, sizeof(level), _(&p->level));
 			probe_read(&up, sizeof(up), _(&p->numbers[level]));
-			probe_read(&msg->pid_inum, sizeof(msg->pid_inum), _(&up.ns->ns.inum));
+			probe_read(&msg->pid_inum, sizeof(msg->pid_inum),
+				   _(&up.ns->ns.inum));
 		} else
 			msg->pid_inum = 0;
 	}
-	probe_read(&msg->pid_for_children_inum, sizeof(msg->pid_for_children_inum), _(&nsp.pid_ns_for_children->ns.inum));
-	probe_read(&msg->net_inum, sizeof(msg->net_inum), _(&nsp.net_ns->ns.inum));
+	probe_read(&msg->pid_for_children_inum,
+		   sizeof(msg->pid_for_children_inum),
+		   _(&nsp.pid_ns_for_children->ns.inum));
+	probe_read(&msg->net_inum, sizeof(msg->net_inum),
+		   _(&nsp.net_ns->ns.inum));
 
 	// this also includes time_ns_for_children
-	if(bpf_core_field_exists(nsproxy->time_ns)) {
-		probe_read(&msg->time_inum, sizeof(msg->time_inum), _(&nsp.time_ns->ns.inum));
-		probe_read(&msg->time_for_children_inum, sizeof(msg->time_for_children_inum), _(&nsp.time_ns_for_children->ns.inum));
+	if (bpf_core_field_exists(nsproxy->time_ns)) {
+		probe_read(&msg->time_inum, sizeof(msg->time_inum),
+			   _(&nsp.time_ns->ns.inum));
+		probe_read(&msg->time_for_children_inum,
+			   sizeof(msg->time_for_children_inum),
+			   _(&nsp.time_ns_for_children->ns.inum));
 	}
 
-	probe_read(&msg->cgroup_inum, sizeof(msg->cgroup_inum), _(&nsp.cgroup_ns->ns.inum));
+	probe_read(&msg->cgroup_inum, sizeof(msg->cgroup_inum),
+		   _(&nsp.cgroup_ns->ns.inum));
 	{
 		struct mm_struct *mm;
 		struct user_namespace *user_ns;
 
 		probe_read(&mm, sizeof(mm), _(&task->mm));
 		probe_read(&user_ns, sizeof(user_ns), _(&mm->user_ns));
-		probe_read(&msg->user_inum, sizeof(msg->user_inum), _(&user_ns->ns.inum));
+		probe_read(&msg->user_inum, sizeof(msg->user_inum),
+			   _(&user_ns->ns.inum));
 	}
 }
 
@@ -940,8 +965,9 @@ void get_namespaces(struct msg_ns *msg, struct task_struct *task)
  * Todo, fix pahole to avoid doing extra steps to lookup offsets.
  * Edit: pahole has been fixed need to update toolchain.
  */
-static inline __attribute__((always_inline))
-void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, bool cwd_always)
+static inline __attribute__((always_inline)) void
+__event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker,
+		      bool cwd_always)
 {
 	struct cgroup_subsys_state *subsys;
 	struct msg_process *curr;
@@ -978,7 +1004,8 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 		if (!(curr->flags & EVENT_ERROR_CWD)) {
 			err = getcwd(curr, offset, curr->pid, prealloc);
 			if (!err)
-				curr->flags = curr->flags & ~(EVENT_NEEDS_CWD | EVENT_ERROR_CWD);
+				curr->flags = curr->flags & ~(EVENT_NEEDS_CWD |
+							      EVENT_ERROR_CWD);
 		}
 	}
 	if (curr->flags & EVENT_NEEDS_AUID) {
@@ -987,7 +1014,8 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 		curr->auid = get_auid();
 		curr->flags = flags;
 	}
-	msg->common.size = offsetof(struct msg_execve_event, process) + curr->size;
+	msg->common.size =
+		offsetof(struct msg_execve_event, process) + curr->size;
 	curr->uid = get_current_uid_gid();
 	if (walker)
 		curr->flags |= EVENT_TASK_WALK;
@@ -997,7 +1025,8 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 	if (nsproxy) {
 		probe_read(&net_ns, sizeof(net_ns), _(&nsproxy->net_ns));
 		if (net_ns)
-			probe_read(&msg->kube.net_ns, sizeof(msg->kube.net_ns), _(&net_ns->ns.inum));
+			probe_read(&msg->kube.net_ns, sizeof(msg->kube.net_ns),
+				   _(&net_ns->ns.inum));
 	}
 
 	task = (struct task_struct *)get_current_task();
@@ -1009,13 +1038,15 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 			if (cgrp) {
 				probe_read(&kn, sizeof(cgrp->kn), _(&cgrp->kn));
 				if (kn) {
-					probe_read(&name, sizeof(name), _(&kn->name));
+					probe_read(&name, sizeof(name),
+						   _(&kn->name));
 					if (name) {
-						probe_read_str(msg->kube.docker_id,
-							       DOCKER_ID_LENGTH,
-							       name);
+						probe_read_str(
+							msg->kube.docker_id,
+							DOCKER_ID_LENGTH, name);
 					} else {
-						curr->flags |= EVENT_DOCKER_NAME_ERR;
+						curr->flags |=
+							EVENT_DOCKER_NAME_ERR;
 					}
 				}
 				// else case we do not include error flag because it
@@ -1037,8 +1068,8 @@ void __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker, b
 	get_namespaces(&(msg->ns), task);
 }
 
-static inline __attribute__((always_inline))
-void add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
+static inline __attribute__((always_inline)) void
+add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
 {
 	int err = map_update_elem(&socket_map, tuple, v, 0);
 	int zero = 0;
@@ -1048,8 +1079,8 @@ void add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
 		*cntr = *cntr + 1;
 }
 
-static inline __attribute__((always_inline))
-void del_socketmap(struct msg_tls_ipv4 *tuple)
+static inline __attribute__((always_inline)) void
+del_socketmap(struct msg_tls_ipv4 *tuple)
 {
 	int err = map_delete_elem(&socket_map, tuple);
 	int zero = 0;
@@ -1059,17 +1090,17 @@ void del_socketmap(struct msg_tls_ipv4 *tuple)
 		*cntr = *cntr - 1;
 }
 
-static inline __attribute__((always_inline))
-struct socketmap_value *lookup_socketmap(struct msg_tls_ipv4 *tuple)
+static inline __attribute__((always_inline)) struct socketmap_value *
+lookup_socketmap(struct msg_tls_ipv4 *tuple)
 {
 	return map_lookup_elem(&socket_map, tuple);
 }
 
-static inline __attribute__((always_inline))
-int is_tuple_local(struct msg_tls_ipv4 *tuple)
+static inline __attribute__((always_inline)) int
+is_tuple_local(struct msg_tls_ipv4 *tuple)
 {
 	return (tuple->daddr & 0xff) == 127 || // daddr lo addr
 	       (tuple->saddr & 0xff) == 127 || // saddr lo addr
-	       tuple->daddr == 0;              // listening socket no addr always local
+	       tuple->daddr == 0; // listening socket no addr always local
 }
 #endif // _BPF_EVENTS_H

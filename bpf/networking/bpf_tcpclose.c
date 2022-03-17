@@ -22,18 +22,20 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
 
-struct bpf_map_def __attribute__((section("maps"), used)) tcp_close_event_map = {
+struct bpf_map_def __attribute__((section("maps"), used))
+tcp_close_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/tcp_set_state")), used))
-int event_tcp4_close(struct pt_regs *ctx)
+__attribute__((section(("kprobe/tcp_set_state")), used)) int
+event_tcp4_close(struct pt_regs *ctx)
 {
 	struct msg_ipv4_event *val;
 	struct socketmap_value *process;
@@ -50,10 +52,14 @@ int event_tcp4_close(struct pt_regs *ctx)
 
 	skp = (void *)((ctx)->di);
 
-	probe_read(&tuple.saddr, sizeof(tuple.saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&tuple.sport, sizeof(tuple.sport), _(&(skp->__sk_common.skc_num)));
-	probe_read(&tuple.daddr, sizeof(tuple.daddr), _(&(skp->__sk_common.skc_daddr)));
-	probe_read(&tuple.dport, sizeof(tuple.dport), _(&(skp->__sk_common.skc_dport)));
+	probe_read(&tuple.saddr, sizeof(tuple.saddr),
+		   _(&(skp->__sk_common.skc_rcv_saddr)));
+	probe_read(&tuple.sport, sizeof(tuple.sport),
+		   _(&(skp->__sk_common.skc_num)));
+	probe_read(&tuple.daddr, sizeof(tuple.daddr),
+		   _(&(skp->__sk_common.skc_daddr)));
+	probe_read(&tuple.dport, sizeof(tuple.dport),
+		   _(&(skp->__sk_common.skc_dport)));
 
 	tuple.remaining = 0;
 	tuple.uid = 0;
@@ -87,13 +93,14 @@ int event_tcp4_close(struct pt_regs *ctx)
 			val->key.ktime = process->key.ktime;
 			val->socket_flags = process->socket_flags;
 
-			probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-			get_socket_stats(skp, netns,
-					 process->zero_window,
+			probe_read(&netns, sizeof(netns),
+				   _(&skp->__sk_common.skc_net));
+			get_socket_stats(skp, netns, process->zero_window,
 					 &val->stats);
 
 			size = sizeof(struct msg_ipv4_event);
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
+					  val, size);
 		}
 	} else { // state == TCP_ESTABLISHED
 		__u32 daddr = tuple.daddr;
@@ -120,11 +127,13 @@ int event_tcp4_close(struct pt_regs *ctx)
 			val->key.pid = copy.key.pid;
 			val->key.ktime = copy.key.ktime;
 			size = sizeof(struct msg_ipv4_event);
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
+			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
+					  val, size);
 			tuple.daddr = daddr;
 			tuple.dport = dport;
 			tuple.saddr = saddr;
-			copy.socket_flags &= ~SOCKFLAGS_TYPE_MASK; // clear all types but keep the rest
+			copy.socket_flags &=
+				~SOCKFLAGS_TYPE_MASK; // clear all types but keep the rest
 			copy.socket_flags |= SOCKFLAGS_TYPE_ACCEPT;
 			if (!is_tuple_local(&tuple))
 				tuple.uid = 0;

@@ -18,18 +18,20 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
 
-struct bpf_map_def __attribute__((section("maps"), used)) tcp_listen_event_map = {
+struct bpf_map_def __attribute__((section("maps"), used))
+tcp_listen_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct msg_ipv4_event),
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/inet_hash")), used))
-int event_sys_listen(struct pt_regs *ctx)
+__attribute__((section(("kprobe/inet_hash")), used)) int
+event_sys_listen(struct pt_regs *ctx)
 {
 	struct msg_ipv4_event *val;
 	struct execve_map_value *process = 0;
@@ -66,11 +68,12 @@ int event_sys_listen(struct pt_regs *ctx)
 		.pad = 0,
 	};
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_ipv4_event));
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+			  sizeof(struct msg_ipv4_event));
 
 	{
-		struct socketmap_value v = {0};
-		struct msg_execve_key ev = {0};
+		struct socketmap_value v = { 0 };
+		struct msg_execve_key ev = { 0 };
 		struct msg_tls_ipv4 tuple;
 
 		tuple.saddr = saddr;

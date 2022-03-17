@@ -84,53 +84,54 @@
  *
  * Phew all clear now?
  */
-#define CWD_MAX 256
-#define BUFFER 1024
+#define CWD_MAX	     256
+#define BUFFER	     1024
 #define SIZEOF_EVENT 32
-#define PADDED_BUFFER (BUFFER + MAXARGLENGTH + SIZEOF_EVENT + SIZEOF_EVENT + CWD_MAX)
+#define PADDED_BUFFER                                                          \
+	(BUFFER + MAXARGLENGTH + SIZEOF_EVENT + SIZEOF_EVENT + CWD_MAX)
 /* This is the usable buffer size for args and filenames. It is calculated
  * as the (BUFFER SIZE - sizeof(parent) - sizeof(curr) but unfortunately
  * preprocess doesn't know types so we do it manually without sizeof().
  */
-#define ARGSBUFFER (BUFFER - SIZEOF_EVENT - SIZEOF_EVENT)
+#define ARGSBUFFER	 (BUFFER - SIZEOF_EVENT - SIZEOF_EVENT)
 #define __ASM_ARGSBUFFER 976
-#define ARGSBUFFERMASK (ARGSBUFFER - 1)
-#define MAXARGMASK (MAXARG - 1)
+#define ARGSBUFFERMASK	 (ARGSBUFFER - 1)
+#define MAXARGMASK	 (MAXARG - 1)
 
 #define FILTER_SIZE 4096
 
 #define XSTR(s) STR(s)
-#define STR(s) #s
+#define STR(s)	#s
 
 /* Msg flags */
-#define EVENT_UNKNOWN  0x00
-#define EVENT_EXECVE   0x01
-#define EVENT_EXECVEAT 0x02
-#define EVENT_PROCFS   0x04
-#define EVENT_TRUNC_FILENAME 0x08
-#define EVENT_TRUNC_ARGS     0x10
-#define EVENT_TASK_WALK      0x20
-#define EVENT_MISS	     0x40
-#define EVENT_NEEDS_AUID     0x80
-#define EVENT_ERROR_FILENAME 0x100
-#define EVENT_ERROR_ARGS     0x200
-#define EVENT_NEEDS_CWD      0x400
-#define EVENT_NO_CWD_SUPPORT 0x800
-#define EVENT_ROOT_CWD	     0x1000
-#define EVENT_ERROR_CWD	     0x2000
-#define EVENT_CLONE	     0x4000
-#define EVENT_ERROR_SOCK     0x8000
-#define EVENT_DOCKER_NAME_ERR       0x010000
+#define EVENT_UNKNOWN		    0x00
+#define EVENT_EXECVE		    0x01
+#define EVENT_EXECVEAT		    0x02
+#define EVENT_PROCFS		    0x04
+#define EVENT_TRUNC_FILENAME	    0x08
+#define EVENT_TRUNC_ARGS	    0x10
+#define EVENT_TASK_WALK		    0x20
+#define EVENT_MISS		    0x40
+#define EVENT_NEEDS_AUID	    0x80
+#define EVENT_ERROR_FILENAME	    0x100
+#define EVENT_ERROR_ARGS	    0x200
+#define EVENT_NEEDS_CWD		    0x400
+#define EVENT_NO_CWD_SUPPORT	    0x800
+#define EVENT_ROOT_CWD		    0x1000
+#define EVENT_ERROR_CWD		    0x2000
+#define EVENT_CLONE		    0x4000
+#define EVENT_ERROR_SOCK	    0x8000
+#define EVENT_DOCKER_NAME_ERR	    0x010000
 #define EVENT_DOCKER_KN_ERR	    0x020000
 #define EVENT_DOCKER_SUBSYSCGRP_ERR 0x040000
-#define EVENT_DOCKER_SUBSYS_ERR     0x080000
+#define EVENT_DOCKER_SUBSYS_ERR	    0x080000
 #define EVENT_DOCKER_CGROUPS_ERR    0x100000
-#define EVENT_ERROR_MOUNT_POINTS	0x200000
-#define EVENT_ERROR_PATH_COMPONENTS	0x400000
+#define EVENT_ERROR_MOUNT_POINTS    0x200000
+#define EVENT_ERROR_PATH_COMPONENTS 0x400000
 
 /* get_full_path flags */
-#define UNRESOLVED_MOUNT_POINTS		0x01
-#define UNRESOLVED_PATH_COMPONENTS	0x02
+#define UNRESOLVED_MOUNT_POINTS	   0x01
+#define UNRESOLVED_PATH_COMPONENTS 0x02
 
 /* The namespace and capability changes filters require later kernels */
 #ifdef __LARGE_BPF_PROG
@@ -173,7 +174,7 @@ enum msg_ops {
 
 /* Msg Layout */
 struct msg_common {
-	__u8  op;
+	__u8 op;
 	__u8 flags; // internal flags not exported
 	__u8 pad[2];
 	__u32 size;
@@ -201,17 +202,17 @@ struct msg_ipv4_tuple {
 	__u32 daddr;
 	__u16 dport;
 	__u16 sport;
-	__u8  proto;
+	__u8 proto;
 	__u32 post_daddr;
 	__u16 post_dport;
-	__u8  pad[5];
+	__u8 pad[5];
 } __attribute__((packed));
 
 struct msg_k8s {
 	__u32 net_ns;
 	__u32 cid;
 	__u64 cgrpid;
-	char  docker_id[DOCKER_ID_LENGTH];
+	char docker_id[DOCKER_ID_LENGTH];
 } __attribute__((packed));
 
 struct msg_calltrace {
@@ -220,7 +221,7 @@ struct msg_calltrace {
 } __attribute__((packed));
 
 #define EXT_SERVER_NAME_LENGTH 64
-#define EXT_VERSION_LENGTH 16
+#define EXT_VERSION_LENGTH     16
 
 /* TLS Flags */
 #define TLS_COPY_ERROR		  0x001
@@ -229,35 +230,36 @@ struct msg_calltrace {
 #define TLS_HELLO_MSG_MISS	  0x008
 #define TLS_CIPHER_ERROR	  0x010
 #define TLS_CIPHER_TOO_LARGE	  0x020
-#define TLS_COMPRESSION_ERROR     0x040
+#define TLS_COMPRESSION_ERROR	  0x040
 #define TLS_COMPRESSION_TOO_LARGE 0x080
 #define TLS_EXT_ERROR		  0x100
 #define TLS_EXT_TOO_LARGE	  0x200
 #define TLS_VERSION		  0x400
 #define TLS_CERT		  0x800
-#define TLS_HANDSHAKE_MSG_MISS    0x1000
+#define TLS_HANDSHAKE_MSG_MISS	  0x1000
 
-#define TLS_HTTP_VERSION          0xFFFF
+#define TLS_HTTP_VERSION 0xFFFF
 
 /* Socket Flags */
-#define SOCKFLAGS_TYPE_UNKNOWN	0x0
-#define SOCKFLAGS_TYPE_CONNECT	0x1
-#define SOCKFLAGS_TYPE_ACCEPT	0x2
-#define SOCKFLAGS_TYPE_LISTEN	0x4
+#define SOCKFLAGS_TYPE_UNKNOWN 0x0
+#define SOCKFLAGS_TYPE_CONNECT 0x1
+#define SOCKFLAGS_TYPE_ACCEPT  0x2
+#define SOCKFLAGS_TYPE_LISTEN  0x4
 
-#define SOCKFLAGS_TYPE_MASK	0x7
+#define SOCKFLAGS_TYPE_MASK 0x7
 
 /* A length-value, with a fixed max length. */
-#define FLV(max_len) \
-	struct { \
-		__u8 length; \
-		__u8 value[(max_len)]; \
+#define FLV(max_len)                                                           \
+	struct {                                                               \
+		__u8 length;                                                   \
+		__u8 value[(max_len)];                                         \
 	}
 
-#define FLV_COPY(_tlv, _from, _len) do { \
-	(_tlv).length = (_len); \
-        memcpy((_tlv).value, (_from), sizeof((_tlv).value)); \
-} while(0)
+#define FLV_COPY(_tlv, _from, _len)                                            \
+	do {                                                                   \
+		(_tlv).length = (_len);                                        \
+		memcpy((_tlv).value, (_from), sizeof((_tlv).value));           \
+	} while (0)
 
 struct msg_tls {
 	__u16 version;
@@ -267,8 +269,8 @@ struct msg_tls {
 	__u16 negotiated_version;
 	__u32 flags;
 	__u32 bytes;
-	__u8  alert_level;
-	__u8  alert_description;
+	__u8 alert_level;
+	__u8 alert_description;
 
 	FLV(64) flv_session_id;
 	FLV(64) flv_cipher;
@@ -278,7 +280,7 @@ struct msg_tls {
 
 struct msg_execve_key {
 	__u32 pid;
-	__u8  pad[4];
+	__u8 pad[4];
 	__u64 ktime;
 } __attribute__((packed));
 
@@ -295,10 +297,9 @@ struct msg_capabilities {
 };
 
 // indexes to access msg_capabilities's array (->c) -- should have the same order as the fields above.
-enum {
-	caps_permitted   = 0,
-	caps_effective   = 1,
-	caps_inheritable = 2,
+enum { caps_permitted = 0,
+       caps_effective = 1,
+       caps_inheritable = 2,
 };
 
 struct exit_info {
@@ -318,22 +319,21 @@ struct msg_creds {
 	struct msg_capabilities caps;
 };
 
-enum {
-	ns_uts = 0,
-	ns_ipc = 1,
-	ns_mnt = 2,
-	ns_pid = 3,
-	ns_pid_for_children = 4,
-	ns_net = 5,
-	ns_time = 6,
-	ns_time_for_children = 7,
-	ns_cgroup = 8,
-	ns_user = 9,
+enum { ns_uts = 0,
+       ns_ipc = 1,
+       ns_mnt = 2,
+       ns_pid = 3,
+       ns_pid_for_children = 4,
+       ns_net = 5,
+       ns_time = 6,
+       ns_time_for_children = 7,
+       ns_cgroup = 8,
+       ns_user = 9,
 
-	// If you update the value of ns_max_types you
-	// should also update parseMatchNamespaces()
-	// in kernel.go
-	ns_max_types = 10,
+       // If you update the value of ns_max_types you
+       // should also update parseMatchNamespaces()
+       // in kernel.go
+       ns_max_types = 10,
 };
 
 struct msg_ns {
@@ -354,9 +354,9 @@ struct msg_ns {
 	};
 };
 
-#define MAX_POSSIBLE_ARGS 5
-#define MAX_POSSIBLE_SELECTORS 31
-#define SELECTORS_ACTIVE 31
+#define MAX_POSSIBLE_ARGS	 5
+#define MAX_POSSIBLE_SELECTORS	 31
+#define SELECTORS_ACTIVE	 31
 #define MAX_CONFIGURED_SELECTORS MAX_POSSIBLE_SELECTORS + 1
 
 struct msg_generic_kprobe {
@@ -369,7 +369,7 @@ struct msg_generic_kprobe {
 	__u64 action;
 	/* anything above is shared with the userspace so it should match structs MsgGenericKprobe and MsgGenericTracepoint in Go */
 	char args[24000];
-	unsigned long a0,a1,a2,a3,a4;
+	unsigned long a0, a1, a2, a3, a4;
 	long argsoff[MAX_POSSIBLE_ARGS];
 	__u64 curr;
 	__u64 pass;
@@ -382,8 +382,7 @@ struct msg_generic_kprobe {
 #endif
 };
 
-static inline __attribute__((always_inline))
-size_t generic_kprobe_common_size()
+static inline __attribute__((always_inline)) size_t generic_kprobe_common_size()
 {
 	return offsetof(struct msg_generic_kprobe, args);
 }
@@ -397,17 +396,17 @@ struct msg_test {
 } __attribute__((packed));
 
 struct msg_execve_event {
-	struct msg_common	common;
-	struct msg_k8s		kube;
-	struct msg_execve_key	parent;
-	__u64			parent_flags;
+	struct msg_common common;
+	struct msg_k8s kube;
+	struct msg_execve_key parent;
+	__u64 parent_flags;
 	struct msg_capabilities caps;
-	struct msg_ns		ns;
+	struct msg_ns ns;
 	/* if add anything above please also update the args of
 	 * validate_msg_execve_size() in bpf_execve_event.c */
 	union {
 		struct msg_process process;
-		char               buffer[PADDED_BUFFER];
+		char buffer[PADDED_BUFFER];
 	};
 } __attribute__((packed));
 
@@ -425,14 +424,14 @@ struct msg_socket_stats {
 
 // separate data structs for ipv4 and ipv6
 struct msg_ipv4_event {
-	struct msg_common     common;
+	struct msg_common common;
 	struct msg_ipv4_tuple tuple;
-	unsigned long int     ret;
+	unsigned long int ret;
 	struct msg_execve_key key;
-	__u64                 socket_cookie;
+	__u64 socket_cookie;
 	struct msg_socket_stats stats;
-	__u32                 socket_flags;
-	__u32                 pad;
+	__u32 socket_flags;
+	__u32 pad;
 } __attribute__((packed));
 
 struct msg_ipv4_key {
@@ -462,10 +461,10 @@ struct msg_tls_ipv4 {
 #define SOCKET_TLS_DONE 0x0001
 
 struct msg_tls_event {
-	struct msg_common     common;
-	struct msg_tls_ipv4   tuple;
-	struct msg_tls	      clienthello;
-	struct msg_tls	      serverhello;
+	struct msg_common common;
+	struct msg_tls_ipv4 tuple;
+	struct msg_tls clienthello;
+	struct msg_tls serverhello;
 	struct msg_execve_key execve;
 } __attribute__((packed));
 
@@ -483,14 +482,14 @@ struct msg_kfree_skb {
 } __attribute__((packed));
 
 struct msg_process_network_burst_event {
-	struct msg_common	common;
-	struct msg_execve_key	key;
-	__u32			protocol;
-	__u32			burst_start_dir;
-	__u64			window_size;
-	__u64			hist_avg;
-	__u64			hist_trigger;
-	__u64			window_avg;
+	struct msg_common common;
+	struct msg_execve_key key;
+	__u32 protocol;
+	__u32 burst_start_dir;
+	__u64 window_size;
+	__u64 hist_avg;
+	__u64 hist_trigger;
+	__u64 window_avg;
 };
 
 struct event {
@@ -506,9 +505,10 @@ struct execve_map_value {
 	__u32 pad;
 	struct msg_ns ns;
 	struct msg_capabilities caps;
-} __attribute__((packed)) __attribute__ ((aligned (8)));
+} __attribute__((packed)) __attribute__((aligned(8)));
 
-_Static_assert(sizeof(struct execve_map_value) % 8 == 0, "struct execve_map_value should have size multiple of 8 bytes");
+_Static_assert(sizeof(struct execve_map_value) % 8 == 0,
+	       "struct execve_map_value should have size multiple of 8 bytes");
 
 struct socketmap_value {
 	struct msg_execve_key key;
@@ -519,15 +519,14 @@ struct socketmap_value {
 	__u64 received;
 };
 
-#define BPF_F_INDEX_MASK		0xffffffffULL
-#define BPF_F_CURRENT_CPU		BPF_F_INDEX_MASK
+#define BPF_F_INDEX_MASK  0xffffffffULL
+#define BPF_F_CURRENT_CPU BPF_F_INDEX_MASK
 
-#define bpf_printk(fmt, ...)				\
-({							\
-	char ____fmt[] = fmt;				\
-	trace_printk(____fmt, sizeof(____fmt),	\
-			 ##__VA_ARGS__);		\
-})
+#define bpf_printk(fmt, ...)                                                   \
+	({                                                                     \
+		char ____fmt[] = fmt;                                          \
+		trace_printk(____fmt, sizeof(____fmt), ##__VA_ARGS__);         \
+	})
 
 /* tracepoint args */
 struct sched_execve_args {
@@ -556,7 +555,8 @@ struct {
 	unsigned int (*max_entries)[1];
 } execve_msg_heap_map __attribute__((section((".maps")), used));
 #else
-struct bpf_map_def __attribute__((section("maps"), used)) execve_msg_heap_map = {
+struct bpf_map_def __attribute__((section("maps"), used))
+execve_msg_heap_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct msg_execve_event),
@@ -634,18 +634,18 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
 #endif // ALIGNCHECKER
 
 #ifndef bpf_ntohs
-#define bpf_ntohs(x)		__builtin_bswap16(x)
+#define bpf_ntohs(x) __builtin_bswap16(x)
 #endif
 
 #ifndef bpf_htons
-#define bpf_htons(x)		__builtin_bswap16(x)
+#define bpf_htons(x) __builtin_bswap16(x)
 #endif
 
 #ifndef bpf_ntohl
-#define bpf_ntohl(x)		__builtin_bswap32(x)
+#define bpf_ntohl(x) __builtin_bswap32(x)
 #endif
 
 #ifndef bpf_htonl
-#define bpf_htonl(x)		__builtin_bswap32(x)
+#define bpf_htonl(x) __builtin_bswap32(x)
 #endif
 #endif // __HUBBLE_MSG_

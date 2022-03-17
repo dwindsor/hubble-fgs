@@ -25,7 +25,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) https_filter_map = {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
 
 #ifndef SOL_TLS
@@ -42,8 +43,9 @@ int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSI
 
 #define TLS_HTTPS (1 << 16)
 
-static inline __attribute__((always_inline))
-void sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key) {
+static inline __attribute__((always_inline)) void
+sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key)
+{
 	struct bpf_sock *sk = ctx->sk;
 
 	key->saddr = sk->src_ip4;
@@ -54,8 +56,8 @@ void sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key) {
 	key->uid = 0;
 }
 
-__attribute__((section(("cgroup/setsockopt")), used))
-int setsockopt(struct bpf_sockopt *ctx)
+__attribute__((section(("cgroup/setsockopt")), used)) int
+setsockopt(struct bpf_sockopt *ctx)
 {
 	struct msg_tls_ipv4 key;
 	struct msg_tls *event;
@@ -69,7 +71,7 @@ int setsockopt(struct bpf_sockopt *ctx)
 	sockopt_tls_key(ctx, &key);
 	event = map_lookup_elem(&tls_map, &key);
 	if (event) {
-		struct sock_key filter_key = {0};
+		struct sock_key filter_key = { 0 };
 		int result;
 
 		/* TLS filters are simple port base filters so we can

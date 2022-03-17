@@ -20,60 +20,61 @@
 
 #ifdef SK_MSG
 struct bpf_map_def __attribute__((section("maps"), used)) http1_calls = {
-	.type		= BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size	= sizeof(__u32),
-	.value_size	= sizeof(__u32),
-	.max_entries	= 4,
+	.type = BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 4,
 };
 #else
 struct bpf_map_def __attribute__((section("maps"), used)) http1_calls_skb = {
-	.type		= BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size	= sizeof(__u32),
-	.value_size	= sizeof(__u32),
-	.max_entries	= 4,
+	.type = BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 4,
 };
 #endif
 
-#define MAX_HTTP_HDR 512
+#define MAX_HTTP_HDR   512
 #define MAX_HTTP_CHARS 32
 
 #ifdef SK_MSG
 typedef struct sk_msg_md ctx_md;
 
-static inline __attribute__((always_inline))
-int ctx_pull_data(struct sk_msg_md *ctx, __u32 len)
+static inline __attribute__((always_inline)) int
+ctx_pull_data(struct sk_msg_md *ctx, __u32 len)
 {
 	return msg_pull_data(ctx, 0, len, 0);
 }
 #else
 typedef struct __sk_buff ctx_md;
 
-static inline __attribute__((always_inline))
-int ctx_pull_data(struct __sk_buff *ctx, __u32 len)
+static inline __attribute__((always_inline)) int
+ctx_pull_data(struct __sk_buff *ctx, __u32 len)
 {
 	return skb_pull_data(ctx, len);
 }
 #endif
 
-static inline __attribute__((always_inline))
-void post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key, struct msg_http_event *http);
+static inline __attribute__((always_inline)) void
+post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key,
+		struct msg_http_event *http);
 
-static inline __attribute__((always_inline))
-char *get_chars(ctx_md *msg, long offset, long cnt)
+static inline __attribute__((always_inline)) char *
+get_chars(ctx_md *msg, long offset, long cnt)
 {
 	void *data_end = (void *)(long)msg->data_end;
 	void *payload = (void *)(long)msg->data;
 
-	asm volatile ("%[offset] &= 0x7fff;\n": [offset] "+r"(offset)::);
-	asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);
+	asm volatile("%[offset] &= 0x7fff;\n" : [offset] "+r"(offset)::);
+	asm volatile("%[cnt] &= 0x1f;\n" : [cnt] "+r"(cnt)::);
 	if (payload + offset + cnt > data_end) {
 		ctx_pull_data(msg, offset + cnt);
 
 		data_end = (void *)(long)msg->data_end;
 		payload = (void *)(long)msg->data;
 
-		asm volatile ("%[offset] &= 0x3ff;\n": [offset] "+r"(offset)::);
-		asm volatile ("%[cnt] &= 0x1f;\n": [cnt] "+r"(cnt)::);
+		asm volatile("%[offset] &= 0x3ff;\n" : [offset] "+r"(offset)::);
+		asm volatile("%[cnt] &= 0x1f;\n" : [cnt] "+r"(cnt)::);
 		if (payload + offset + cnt > data_end)
 			return 0;
 		return payload + offset;
@@ -82,14 +83,14 @@ char *get_chars(ctx_md *msg, long offset, long cnt)
 	return payload + offset;
 }
 
-static inline __attribute__((always_inline))
-char *get_next_char(ctx_md *msg, struct msg_http *http)
+static inline __attribute__((always_inline)) char *
+get_next_char(ctx_md *msg, struct msg_http *http)
 {
 	return get_chars(msg, http->offset, 1);
 }
 
-static inline __attribute__((always_inline))
-char *eat_next_char(ctx_md *msg, struct msg_http *http)
+static inline __attribute__((always_inline)) char *
+eat_next_char(ctx_md *msg, struct msg_http *http)
 {
 	char *c = get_next_char(msg, http);
 
@@ -97,8 +98,8 @@ char *eat_next_char(ctx_md *msg, struct msg_http *http)
 	return c;
 }
 
-static inline __attribute__((always_inline))
-__u32 __get_method(ctx_md *msg, struct msg_http *http)
+static inline __attribute__((always_inline)) __u32
+__get_method(ctx_md *msg, struct msg_http *http)
 {
 	char *c = get_chars(msg, http->offset, 3);
 
@@ -152,15 +153,14 @@ __u32 __get_method(ctx_md *msg, struct msg_http *http)
 	return http_method_error;
 }
 
-static inline __attribute__((always_inline))
-__u32 get_method(ctx_md *msg, struct msg_http *http)
+static inline __attribute__((always_inline)) __u32
+get_method(ctx_md *msg, struct msg_http *http)
 {
 	http->method = __get_method(msg, http);
 	return http->method;
 }
 
-static inline __attribute__((always_inline))
-bool is_space(char c)
+static inline __attribute__((always_inline)) bool is_space(char c)
 {
 	return c == ' ';
 }
@@ -172,10 +172,10 @@ bool is_space(char c)
  *
  * Implementing the above logic is TBD.
  */
-static inline __attribute__((always_inline))
-void get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
+static inline __attribute__((always_inline)) void
+get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
 {
-	__u32 *dstsz = (__u32*)http->scratch;
+	__u32 *dstsz = (__u32 *)http->scratch;
 	__u64 off = (int)dstsz[0];
 	__u64 i;
 	char v, *c = 0;
@@ -189,8 +189,8 @@ void get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
 			break;
 		if (v >= 'A' & v <= 'Z')
 			v += 32;
-		asm volatile ("%[off] &= 0xff;\n": [off] "+r"(off)::);
-		http->scratch[off+i+4] = v;
+		asm volatile("%[off] &= 0xff;\n" : [off] "+r"(off)::);
+		http->scratch[off + i + 4] = v;
 	}
 	dstsz[0] = i + off;
 	/* Buffer does not contain terminating char so we build
@@ -202,18 +202,14 @@ void get_string_scratch(ctx_md *msg, struct msg_http *http, char term)
 	}
 }
 
-static inline __attribute__((always_inline))
-bool is_digit(int c)
+static inline __attribute__((always_inline)) bool is_digit(int c)
 {
 	return (c <= '9' && c >= '0');
 }
 
-static inline __attribute__((always_inline))
-void get_string(ctx_md *msg,
-		struct msg_tls_ipv4 *key,
-		struct msg_http_event *event,
-		struct msg_http *http,
-		char *dst, int ty, __u64 max, char term)
+static inline __attribute__((always_inline)) void
+get_string(ctx_md *msg, struct msg_tls_ipv4 *key, struct msg_http_event *event,
+	   struct msg_http *http, char *dst, int ty, __u64 max, char term)
 {
 	int do_push = (ty == http_request_content_length);
 	__u32 offset = http->url_offset;
@@ -234,15 +230,15 @@ void get_string(ctx_md *msg,
 	 * see if we can fix verifier/clang to do the right thing without
 	 * introducing cryptic and ugly asm.
 	 */
-	asm volatile ("%[i] += 0;\n": [i] "+r"(i)::);
-	asm volatile ("%[offset] &= 0x3ff;\n": [offset] "+r"(offset)::);
+	asm volatile("%[i] += 0;\n" : [i] "+r"(i)::);
+	asm volatile("%[offset] &= 0x3ff;\n" : [offset] "+r"(offset)::);
 
 	for (i = 0; i < max - 8; i++) {
 		c = eat_next_char(msg, http);
 
 		if (c == 0 || term == c[0])
 			break;
-		dst[offset+i+8] = c[0];
+		dst[offset + i + 8] = c[0];
 	}
 
 	/* If we consumed the buffer and never found the '\r\n' pattern to
@@ -258,7 +254,8 @@ void get_string(ctx_md *msg,
 		 * a relax_verifier() is insufficient to convince verifier
 		 * here.
 		 */
-		asm volatile ("%[cont] += 0;\n": [cont] "+r"(http->url_continue)::);
+		asm volatile("%[cont] += 0;\n"
+			     : [cont] "+r"(http->url_continue)::);
 		return;
 	}
 
@@ -267,8 +264,8 @@ void get_string(ctx_md *msg,
 	 * through stack. So duplicate the offset bound here.
 	 */
 	offset = http->url_offset;
-	asm volatile ("%[offset] &= 0x3ff;\n": [offset] "+r"(offset)::);
-	dstsz = (__u32*)&dst[offset];
+	asm volatile("%[offset] &= 0x3ff;\n" : [offset] "+r"(offset)::);
+	dstsz = (__u32 *)&dst[offset];
 	dstsz[0] = ty;
 	dstsz[1] = i + http->url_continue;
 
@@ -296,7 +293,7 @@ void get_string(ctx_md *msg,
 
 			if (dig) {
 				value *= 10;
-				value += (int)(c[i]-'0');
+				value += (int)(c[i] - '0');
 			} else if (!is_space(c[i])) {
 				break;
 			}
@@ -305,26 +302,24 @@ void get_string(ctx_md *msg,
 	}
 }
 
-static inline __attribute__((always_inline))
-void method_get_url(ctx_md *msg,
-		    struct msg_tls_ipv4 *key,
-		    struct msg_http_event *event,
-		    struct msg_http *http)
+static inline __attribute__((always_inline)) void
+method_get_url(ctx_md *msg, struct msg_tls_ipv4 *key,
+	       struct msg_http_event *event, struct msg_http *http)
 {
-	get_string(msg, key, event, http, http->url, http_request_url, 256, chr_sp);
+	get_string(msg, key, event, http, http->url, http_request_url, 256,
+		   chr_sp);
 }
 
-static inline __attribute__((always_inline))
-void method_get_protocol(ctx_md *msg,
-			 struct msg_tls_ipv4 *key,
-			 struct msg_http_event *event,
-			 struct msg_http *http)
+static inline __attribute__((always_inline)) void
+method_get_protocol(ctx_md *msg, struct msg_tls_ipv4 *key,
+		    struct msg_http_event *event, struct msg_http *http)
 {
-	get_string(msg, key, event, http, http->url, http_request_protocol, 256, chr_r);
+	get_string(msg, key, event, http, http->url, http_request_protocol, 256,
+		   chr_r);
 }
 
-static inline __attribute__((always_inline))
-int map_header_to_type(ctx_md *msg, struct msg_http *http)
+static inline __attribute__((always_inline)) int
+map_header_to_type(ctx_md *msg, struct msg_http *http)
 {
 	__u32 *sz;
 
@@ -363,16 +358,16 @@ int map_header_to_type(ctx_md *msg, struct msg_http *http)
 
 		__u64 h1 = *(__u64 *)&transfer[0];
 		__u64 h2 = *(__u64 *)&transfer[8];
-		__u8  h3 = *(__u8  *)&transfer[16];
+		__u8 h3 = *(__u8 *)&transfer[16];
 
 		__u64 r1 = *(__u64 *)&http->scratch[5];
 		__u64 r2 = *(__u64 *)&http->scratch[13];
-		__u8  r3 = *(__u8  *)&http->scratch[21];
+		__u8 r3 = *(__u8 *)&http->scratch[21];
 
 		if (r1 == h1 && r2 == h2 && r3 == h3)
 			return http_request_transfer_encoding;
 
-	/* A header field of 1 indicates we read a \r directly and so this
+		/* A header field of 1 indicates we read a \r directly and so this
 	 * is a CRLF on a line of its own. If size is zero the parser is lost
 	 * but lets try to continue in this case.
 	 */
@@ -382,8 +377,7 @@ int map_header_to_type(ctx_md *msg, struct msg_http *http)
 	return http_request_unknown;
 }
 
-static inline __attribute__((always_inline))
-void get_more_headers(ctx_md *msg)
+static inline __attribute__((always_inline)) void get_more_headers(ctx_md *msg)
 {
 #ifdef SK_MSG
 	tail_call(msg, &http1_calls, 2);
@@ -392,11 +386,9 @@ void get_more_headers(ctx_md *msg)
 #endif
 }
 
-static inline __attribute__((always_inline))
-void continue_header_string(ctx_md *msg,
-			    struct msg_tls_ipv4 *key,
-			    struct msg_http_event *event,
-			    struct msg_http *http)
+static inline __attribute__((always_inline)) void
+continue_header_string(ctx_md *msg, struct msg_tls_ipv4 *key,
+		       struct msg_http_event *event, struct msg_http *http)
 {
 	int t = map_header_to_type(msg, http);
 
@@ -408,11 +400,9 @@ void continue_header_string(ctx_md *msg,
 	return;
 }
 
-static inline __attribute__((always_inline))
-void find_host_header(ctx_md *msg,
-		      struct msg_tls_ipv4 *key,
-		      struct msg_http_event *event,
-		      struct msg_http *http)
+static inline __attribute__((always_inline)) void
+find_host_header(ctx_md *msg, struct msg_tls_ipv4 *key,
+		 struct msg_http_event *event, struct msg_http *http)
 {
 	int t;
 
@@ -457,18 +447,17 @@ out:
 	http->offset++;
 }
 
-static inline __attribute__((always_inline))
-void method_get_headers(ctx_md *msg,
-			struct msg_tls_ipv4 *key,
-			struct msg_http_event *event,
-			struct msg_http *http)
+static inline __attribute__((always_inline)) void
+method_get_headers(ctx_md *msg, struct msg_tls_ipv4 *key,
+		   struct msg_http_event *event, struct msg_http *http)
 {
 	http->state = http_get_headers;
 	find_host_header(msg, key, event, http);
 }
 
-static inline __attribute__((always_inline))
-void http_parse_request(ctx_md *msg, struct msg_tls_ipv4 *key, struct msg_http_event *http)
+static inline __attribute__((always_inline)) void
+http_parse_request(ctx_md *msg, struct msg_tls_ipv4 *key,
+		   struct msg_http_event *http)
 {
 	http->request.url_offset = 0;
 	method_get_url(msg, key, http, &http->request);
@@ -476,38 +465,33 @@ void http_parse_request(ctx_md *msg, struct msg_tls_ipv4 *key, struct msg_http_e
 	method_get_headers(msg, key, http, &http->request);
 }
 
-static inline __attribute__((always_inline))
-void response_get_protocol(ctx_md *msg,
-			   struct msg_tls_ipv4 *key,
-			   struct msg_http_event *event,
-			   struct msg_http *http)
+static inline __attribute__((always_inline)) void
+response_get_protocol(ctx_md *msg, struct msg_tls_ipv4 *key,
+		      struct msg_http_event *event, struct msg_http *http)
 {
-	get_string(msg, key, event, http, http->url, http_response_protocol, 256, chr_sp);
+	get_string(msg, key, event, http, http->url, http_response_protocol,
+		   256, chr_sp);
 }
 
-static inline __attribute__((always_inline))
-void response_get_code(ctx_md *msg,
-		       struct msg_tls_ipv4 *key,
-		       struct msg_http_event *event,
-		       struct msg_http *http)
+static inline __attribute__((always_inline)) void
+response_get_code(ctx_md *msg, struct msg_tls_ipv4 *key,
+		  struct msg_http_event *event, struct msg_http *http)
 {
-	get_string(msg, key, event, http, http->url, http_response_code, 256, chr_sp);
+	get_string(msg, key, event, http, http->url, http_response_code, 256,
+		   chr_sp);
 }
 
-static inline __attribute__((always_inline))
-void response_get_reason(ctx_md *msg,
-		         struct msg_tls_ipv4 *key,
-			 struct msg_http_event *event,
-			 struct msg_http *http)
+static inline __attribute__((always_inline)) void
+response_get_reason(ctx_md *msg, struct msg_tls_ipv4 *key,
+		    struct msg_http_event *event, struct msg_http *http)
 {
-	get_string(msg, key, event, http, http->url, http_response_reason, 256, chr_r);
+	get_string(msg, key, event, http, http->url, http_response_reason, 256,
+		   chr_r);
 }
 
-static inline __attribute__((always_inline))
-void http_parse_response(ctx_md *msg,
-			 struct msg_tls_ipv4 *key,
-			 struct msg_http_event *event,
-			 struct msg_http *http)
+static inline __attribute__((always_inline)) void
+http_parse_response(ctx_md *msg, struct msg_tls_ipv4 *key,
+		    struct msg_http_event *event, struct msg_http *http)
 {
 	http->url_offset = 0;
 	response_get_protocol(msg, key, event, http);
@@ -516,8 +500,8 @@ void http_parse_response(ctx_md *msg,
 	method_get_headers(msg, key, event, http);
 }
 
-static inline __attribute__((always_inline))
-int put_reverse_http_context(struct msg_tls_ipv4 *key, struct msg_http_event *event)
+static inline __attribute__((always_inline)) int
+put_reverse_http_context(struct msg_tls_ipv4 *key, struct msg_http_event *event)
 {
 	/* Add the reverse context, so that we'll process the other direction as HTTP/2 */
 	struct msg_tls_ipv4 rkey = {
@@ -532,8 +516,8 @@ int put_reverse_http_context(struct msg_tls_ipv4 *key, struct msg_http_event *ev
 	return map_update_elem(&http_map, &rkey, event, BPF_NOEXIST);
 }
 
-static inline __attribute__((always_inline))
-void http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key)
+static inline __attribute__((always_inline)) void
+http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key)
 {
 	struct msg_http *http = &event->request;
 
@@ -576,9 +560,9 @@ void http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *
 		}
 	} else if (http->state >= http2_expect_preface) {
 #ifdef SK_MSG
-			tail_call(msg, &http1_calls, 3);
+		tail_call(msg, &http1_calls, 3);
 #else
-			tail_call(msg, &http1_calls_skb, 3);
+		tail_call(msg, &http1_calls_skb, 3);
 #endif
 	} else if (http->state == http_more_headers_needed) {
 		get_more_headers(msg);
@@ -596,14 +580,14 @@ out:
 	return;
 }
 
-static inline __attribute__((always_inline))
-bool is_expected_request(struct msg_http *http)
+static inline __attribute__((always_inline)) bool
+is_expected_request(struct msg_http *http)
 {
 	return http->state != http_done && http->state != http_error;
 }
 
-static inline __attribute__((always_inline))
-struct msg_http_event *get_http_context(struct msg_tls_ipv4 *key)
+static inline __attribute__((always_inline)) struct msg_http_event *
+get_http_context(struct msg_tls_ipv4 *key)
 {
 	struct msg_http_event *http;
 
@@ -634,19 +618,19 @@ out:
  * 'skb->len < skip'. In this case we need to consume some number of bytes
  * from the next skb as well.
  */
-static inline __attribute__((always_inline))
-void sk_skb_eat_bytes(ctx_md *skb,
-		      struct msg_http_event *event,
-		      struct msg_tls_ipv4 *key,
-		      __u32 skip)
+static inline __attribute__((always_inline)) void
+sk_skb_eat_bytes(ctx_md *skb, struct msg_http_event *event,
+		 struct msg_tls_ipv4 *key, __u32 skip)
 {
 	struct msg_http *http = &event->request;
 
 	if (skb->len == skip) {
-		http->consume_bytes = 0; // do nothing we eat entire skb with SK_PASS
+		http->consume_bytes =
+			0; // do nothing we eat entire skb with SK_PASS
 	} else if (skb->len > skip) {
 		http->offset = skip;
-		http->consume_bytes = 0;    // do nothing we eat entire skb with SK_PASS
+		http->consume_bytes =
+			0; // do nothing we eat entire skb with SK_PASS
 		http_parse(skb, event, key); // tail calls into http parser
 	} else {
 		http->consume_bytes = skip - skb->len;
@@ -654,8 +638,8 @@ void sk_skb_eat_bytes(ctx_md *skb,
 }
 #endif
 
-static inline __attribute__((always_inline))
-void http_reset_state(struct msg_http *http)
+static inline __attribute__((always_inline)) void
+http_reset_state(struct msg_http *http)
 {
 	http->state = http_start;
 	http->offset = 0;
@@ -665,10 +649,9 @@ void http_reset_state(struct msg_http *http)
 	http->flags = 0;
 }
 
-static inline __attribute__((always_inline))
-void post_http_event(ctx_md *msg,
-		     struct msg_tls_ipv4 *key,
-		     struct msg_http_event *http)
+static inline __attribute__((always_inline)) void
+post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key,
+		struct msg_http_event *http)
 {
 	__u32 remaining = key->remaining;
 	struct socketmap_value *process;
@@ -729,8 +712,8 @@ void post_http_event(ctx_md *msg,
 #endif
 }
 
-static inline __attribute__((always_inline))
-int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
+static inline __attribute__((always_inline)) int
+http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 {
 	struct msg_http_event *http;
 
@@ -756,4 +739,3 @@ int http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 }
 
 #endif // _HTTP_PARSER_
-

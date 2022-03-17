@@ -20,24 +20,24 @@ struct bpf_map_def {
 #define SK_MSG
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_sock_map = {
-	.type           = BPF_MAP_TYPE_SOCKHASH,
-	.key_size       = sizeof(struct sock_key),
-	.value_size     = sizeof(int),
-	.max_entries	= SOCKOPS_TLS_MAP_SIZE,
+	.type = BPF_MAP_TYPE_SOCKHASH,
+	.key_size = sizeof(struct sock_key),
+	.value_size = sizeof(int),
+	.max_entries = SOCKOPS_TLS_MAP_SIZE,
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) http_sock_map = {
-	.type           = BPF_MAP_TYPE_SOCKHASH,
-	.key_size       = sizeof(struct sock_key),
-	.value_size     = sizeof(int),
-	.max_entries	= SOCKOPS_HTTP_MAP_SIZE,
+	.type = BPF_MAP_TYPE_SOCKHASH,
+	.key_size = sizeof(struct sock_key),
+	.value_size = sizeof(int),
+	.max_entries = SOCKOPS_HTTP_MAP_SIZE,
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) nop_sock_map = {
-	.type           = BPF_MAP_TYPE_SOCKHASH,
-	.key_size       = sizeof(struct sock_key),
-	.value_size     = sizeof(int),
-	.max_entries	= SOCKOPS_NOP_MAP_SIZE,
+	.type = BPF_MAP_TYPE_SOCKHASH,
+	.key_size = sizeof(struct sock_key),
+	.value_size = sizeof(int),
+	.max_entries = SOCKOPS_NOP_MAP_SIZE,
 };
 
 static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
@@ -63,11 +63,9 @@ static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 	result = nop_filter(&filter_key);
 	if (result != PROTO_SKIP)
 		sock_hash_update(skops, &nop_sock_map, &key, BPF_NOEXIST);
-
 }
 
-__section("sockops/fgs_sockops")
-int bpf_sockmap(struct bpf_sock_ops *skops)
+__section("sockops/fgs_sockops") int bpf_sockmap(struct bpf_sock_ops *skops)
 {
 	__u32 family, op;
 

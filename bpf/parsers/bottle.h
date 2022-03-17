@@ -4,7 +4,7 @@
 #include "parser.h"
 
 #define BOTTLE_DATA_SIZE 8192
-#define BOTTLE_MASK(var) asm volatile ("%0 &= 0x1fff;\n": "+r"(var)::)
+#define BOTTLE_MASK(var) asm volatile("%0 &= 0x1fff;\n" : "+r"(var)::)
 
 struct bottle {
 	u32 len;
@@ -16,22 +16,22 @@ struct bottle {
 	 * to convince the verifier that it's safe to access. Bounds checks
 	 * based on bottle->len are not sufficient.
 	 */
-	u8 data[BOTTLE_DATA_SIZE*2];
+	u8 data[BOTTLE_DATA_SIZE * 2];
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) bottle_heap = {
-       .type = BPF_MAP_TYPE_PERCPU_ARRAY,
-       .key_size = sizeof(int),
-       .value_size = sizeof(struct bottle),
-       .max_entries = 1,
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct bottle),
+	.max_entries = 1,
 
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) bottles = {
-       .type = BPF_MAP_TYPE_LRU_HASH,
-       .key_size = sizeof(struct msg_tls_ipv4),
-       .value_size = sizeof(struct bottle),
-       .max_entries = 1024,
+	.type = BPF_MAP_TYPE_LRU_HASH,
+	.key_size = sizeof(struct msg_tls_ipv4),
+	.value_size = sizeof(struct bottle),
+	.max_entries = 1024,
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) bottle_map_stats = {
@@ -41,9 +41,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) bottle_map_stats = {
 	.max_entries = 1,
 };
 
-
-static inline __attribute__((always_inline))
-void *bottle_get_data(struct bottle *bottle, u32 off, u32 len)
+static inline __attribute__((always_inline)) void *
+bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 {
 	u32 bottle_len = bottle->len;
 	BOTTLE_MASK(bottle_len);
@@ -54,8 +53,8 @@ void *bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 	return bottle->data + off;
 }
 
-static inline __attribute__((always_inline))
-void bottle_drop(struct msg_tls_ipv4 *key)
+static inline __attribute__((always_inline)) void
+bottle_drop(struct msg_tls_ipv4 *key)
 {
 	int err = map_delete_elem(&bottles, key);
 	int zero = 0;
@@ -64,9 +63,8 @@ void bottle_drop(struct msg_tls_ipv4 *key)
 		*cntr = *cntr - 1;
 }
 
-static inline __attribute__((always_inline))
-struct bottle *bottle_fill(ctx_md *ctx, struct msg_tls_ipv4 *key,
-				   int payload_off)
+static inline __attribute__((always_inline)) struct bottle *
+bottle_fill(ctx_md *ctx, struct msg_tls_ipv4 *key, int payload_off)
 {
 	struct bottle *bottle = map_lookup_elem(&bottles, key);
 
@@ -85,7 +83,8 @@ struct bottle *bottle_fill(ctx_md *ctx, struct msg_tls_ipv4 *key,
 			return 0;
 		} else {
 			s64 *cntr = map_lookup_elem(&bottle_map_stats, &zero);
-			if (cntr) *cntr = *cntr + 1;
+			if (cntr)
+				*cntr = *cntr + 1;
 		}
 
 		bottle = map_lookup_elem(&bottles, key);
@@ -115,10 +114,7 @@ struct bottle *bottle_fill(ctx_md *ctx, struct msg_tls_ipv4 *key,
 	BOTTLE_MASK(copy);
 
 #ifdef SK_MSG
-	pkt_copy(bottle->data + bottle_len,
-		 ctx->data_end,
-		 ctx->data,
-		 copy);
+	pkt_copy(bottle->data + bottle_len, ctx->data_end, ctx->data, copy);
 #else
 	if (copy < 2) {
 		/* FIXME verifier off-by-one bug(?), can't make it pass with "copy < 1":
@@ -127,7 +123,8 @@ struct bottle *bottle_fill(ctx_md *ctx, struct msg_tls_ipv4 *key,
 		 * Working around this by doing a copy with constant len=1.
                  */
 		if (copy == 1) {
-			int err = skb_load_bytes(ctx, payload_off, bottle->data + bottle_len, 1);
+			int err = skb_load_bytes(ctx, payload_off,
+						 bottle->data + bottle_len, 1);
 			if (err)
 				goto discard;
 		} else {
@@ -135,7 +132,8 @@ struct bottle *bottle_fill(ctx_md *ctx, struct msg_tls_ipv4 *key,
 			return bottle;
 		}
 	} else {
-		int err = skb_load_bytes(ctx, payload_off, bottle->data + bottle_len, copy);
+		int err = skb_load_bytes(ctx, payload_off,
+					 bottle->data + bottle_len, copy);
 		if (err) {
 			goto discard;
 		}
@@ -151,6 +149,4 @@ discard:
 	return 0;
 }
 
-
 #endif // bottle_h_INCLUDED
-

@@ -16,8 +16,8 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
-__attribute__((section(("kprobe/commit_creds")), used))
-int event_commit_creds(struct pt_regs *ctx)
+__attribute__((section(("kprobe/commit_creds")), used)) int
+event_commit_creds(struct pt_regs *ctx)
 {
 	size_t size = sizeof(struct msg_creds);
 	struct execve_map_value *enter;

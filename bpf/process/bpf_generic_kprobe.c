@@ -31,10 +31,10 @@ struct bpf_map_def __attribute__((section("maps"), used)) process_call_heap = {
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
-	.type		= BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size	= sizeof(__u32),
-	.value_size	= sizeof(__u32),
-	.max_entries	= 11,
+	.type = BPF_MAP_TYPE_PROG_ARRAY,
+	.key_size = sizeof(__u32),
+	.value_size = sizeof(__u32),
+	.max_entries = 11,
 };
 
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
@@ -45,8 +45,9 @@ struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 	.max_entries = 1,
 };
 
-static inline __attribute__((always_inline))
-int generic_kprobe_start_process_filter(void *ctx) {
+static inline __attribute__((always_inline)) int
+generic_kprobe_start_process_filter(void *ctx)
+{
 	struct msg_generic_kprobe *msg;
 	struct task_struct *task;
 	int i, zero = 0;
@@ -100,64 +101,49 @@ int generic_kprobe_start_process_filter(void *ctx) {
  * to get below 4k insns. For 5.x+ kernels with 1m.insns its not
  * an issue.
  */
-__attribute__((section(("kprobe/generic_kprobe")), used))
-int generic_kprobe_event(struct pt_regs *ctx)
+__attribute__((section(("kprobe/generic_kprobe")), used)) int
+generic_kprobe_event(struct pt_regs *ctx)
 {
 	return generic_kprobe_start_process_filter(ctx);
 }
 
-__attribute__((section(("kprobe/0")), used))
-int generic_kprobe_process_event0(void *ctx)
+__attribute__((section(("kprobe/0")), used)) int
+generic_kprobe_process_event0(void *ctx)
 {
-	return generic_process_event_and_setup(
-		ctx,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return generic_process_event_and_setup(ctx, &process_call_heap,
+					       &filter_map, &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/1")), used))
-int generic_kprobe_process_event1(void *ctx)
+__attribute__((section(("kprobe/1")), used)) int
+generic_kprobe_process_event1(void *ctx)
 {
-	return generic_process_event1(
-		ctx,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return generic_process_event1(ctx, &process_call_heap, &filter_map,
+				      &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/2")), used))
-int generic_kprobe_process_event2(void *ctx)
+__attribute__((section(("kprobe/2")), used)) int
+generic_kprobe_process_event2(void *ctx)
 {
-	return generic_process_event2(
-		ctx,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return generic_process_event2(ctx, &process_call_heap, &filter_map,
+				      &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/3")), used))
-int generic_kprobe_process_event3(void *ctx)
+__attribute__((section(("kprobe/3")), used)) int
+generic_kprobe_process_event3(void *ctx)
 {
-	return generic_process_event3(
-		ctx,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return generic_process_event3(ctx, &process_call_heap, &filter_map,
+				      &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/4")), used))
-int generic_kprobe_process_event4(void *ctx)
+__attribute__((section(("kprobe/4")), used)) int
+generic_kprobe_process_event4(void *ctx)
 {
-	return generic_process_event4(
-		ctx,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return generic_process_event4(ctx, &process_call_heap, &filter_map,
+				      &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/5")), used))
-int generic_kprobe_process_filter(void *ctx)
+__attribute__((section(("kprobe/5")), used)) int
+generic_kprobe_process_filter(void *ctx)
 {
 	struct msg_generic_kprobe *msg;
 	int ret, zero = 0;
@@ -177,52 +163,37 @@ int generic_kprobe_process_filter(void *ctx)
 	return PFILTER_REJECT;
 }
 
-__attribute__((section(("kprobe/6")), used))
-int generic_kprobe_filter_arg1(void *ctx)
+__attribute__((section(("kprobe/6")), used)) int
+generic_kprobe_filter_arg1(void *ctx)
 {
-	return filter_read_arg(
-		ctx, 0,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return filter_read_arg(ctx, 0, &process_call_heap, &filter_map,
+			       &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/7")), used))
-int generic_kprobe_filter_arg2(void *ctx)
+__attribute__((section(("kprobe/7")), used)) int
+generic_kprobe_filter_arg2(void *ctx)
 {
-	return filter_read_arg(
-		ctx, 1,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return filter_read_arg(ctx, 1, &process_call_heap, &filter_map,
+			       &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/8")), used))
-int generic_kprobe_filter_arg3(void *ctx)
+__attribute__((section(("kprobe/8")), used)) int
+generic_kprobe_filter_arg3(void *ctx)
 {
-	return filter_read_arg(
-		ctx, 2,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return filter_read_arg(ctx, 2, &process_call_heap, &filter_map,
+			       &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/9")), used))
-int generic_kprobe_filter_arg4(void *ctx)
+__attribute__((section(("kprobe/9")), used)) int
+generic_kprobe_filter_arg4(void *ctx)
 {
-	return filter_read_arg(
-		ctx, 3,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return filter_read_arg(ctx, 3, &process_call_heap, &filter_map,
+			       &kprobe_calls);
 }
 
-__attribute__((section(("kprobe/10")), used))
-int generic_kprobe_filter_arg5(void *ctx)
+__attribute__((section(("kprobe/10")), used)) int
+generic_kprobe_filter_arg5(void *ctx)
 {
-	return filter_read_arg(
-		ctx, 4,
-		&process_call_heap,
-		&filter_map,
-		&kprobe_calls);
+	return filter_read_arg(ctx, 4, &process_call_heap, &filter_map,
+			       &kprobe_calls);
 }

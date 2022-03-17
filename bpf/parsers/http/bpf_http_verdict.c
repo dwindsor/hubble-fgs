@@ -28,8 +28,9 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
-static inline __attribute__((always_inline))
-void skskb_http_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key) {
+static inline __attribute__((always_inline)) void
+skskb_http_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
+{
 	struct bpf_sock *sk;
 
 	key->daddr = skb->remote_ip4;
@@ -47,19 +48,19 @@ void skskb_http_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key) {
 	// tbd, cover sk null case for ealier kernels.
 }
 
-__attribute__((section(("sk_skb/stream_verdict/fgshttp")), used))
-int bpf_skskb_http_verdict(struct __sk_buff *skb)
+__attribute__((section(("sk_skb/stream_verdict/fgshttp")), used)) int
+bpf_skskb_http_verdict(struct __sk_buff *skb)
 {
-	struct msg_tls_ipv4 key = {0};
+	struct msg_tls_ipv4 key = { 0 };
 
 	skskb_http_key(skb, &key);
 	return http_do_parser(skb, &key);
 }
 
-__attribute__((section(("sk_skb/stream_verdict/0")), used))
-int bpf_skskb_http_response(struct __sk_buff *skb)
+__attribute__((section(("sk_skb/stream_verdict/0")), used)) int
+bpf_skskb_http_response(struct __sk_buff *skb)
 {
-	struct msg_tls_ipv4 key = {0};
+	struct msg_tls_ipv4 key = { 0 };
 	struct msg_http_event *http;
 
 	skskb_http_key(skb, &key);
@@ -76,10 +77,10 @@ int bpf_skskb_http_response(struct __sk_buff *skb)
 	return SK_PASS;
 }
 
-__attribute__((section(("sk_skb/stream_verdict/1")), used))
-int bpf_skskb_http_request(struct __sk_buff *skb)
+__attribute__((section(("sk_skb/stream_verdict/1")), used)) int
+bpf_skskb_http_request(struct __sk_buff *skb)
 {
-	struct msg_tls_ipv4 key = {0};
+	struct msg_tls_ipv4 key = { 0 };
 	struct msg_http_event *http;
 
 	skskb_http_key(skb, &key);
@@ -96,10 +97,10 @@ int bpf_skskb_http_request(struct __sk_buff *skb)
 	return SK_PASS;
 }
 
-__attribute__((section(("sk_skb/stream_verdict/2")), used))
-int bpf_skskb_get_more_headers(struct __sk_buff *skb)
+__attribute__((section(("sk_skb/stream_verdict/2")), used)) int
+bpf_skskb_get_more_headers(struct __sk_buff *skb)
 {
-	struct msg_tls_ipv4 key = {0};
+	struct msg_tls_ipv4 key = { 0 };
 	struct msg_http_event *http;
 
 	skskb_http_key(skb, &key);
@@ -116,13 +117,12 @@ int bpf_skskb_get_more_headers(struct __sk_buff *skb)
 	return SK_PASS;
 }
 
-__attribute__((section(("sk_skb/stream_verdict/3")), used))
-int bpf_skskb_http2(struct __sk_buff *skb)
+__attribute__((section(("sk_skb/stream_verdict/3")), used)) int
+bpf_skskb_http2(struct __sk_buff *skb)
 {
-	struct msg_tls_ipv4 key = {0};
+	struct msg_tls_ipv4 key = { 0 };
 
 	skskb_http_key(skb, &key);
 	http2_do_parser(skb, &key);
 	return SK_PASS;
 }
-

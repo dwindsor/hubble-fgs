@@ -1,11 +1,8 @@
 #define MAX_TOTAL 9000
 
-static inline __attribute__((always_inline))
-int generic_process_event0(
-	struct pt_regs *ctx,
-	struct bpf_map_def *heap_map,
-	struct bpf_map_def *map,
-	struct bpf_map_def *tailcals)
+static inline __attribute__((always_inline)) int
+generic_process_event0(struct pt_regs *ctx, struct bpf_map_def *heap_map,
+		       struct bpf_map_def *map, struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
 	struct execve_map_value *enter;
@@ -80,12 +77,11 @@ int generic_process_event0(
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-int generic_process_event_and_setup(
-	struct pt_regs *ctx,
-	struct bpf_map_def *heap_map,
-	struct bpf_map_def *map,
-	struct bpf_map_def *tailcals)
+static inline __attribute__((always_inline)) int
+generic_process_event_and_setup(struct pt_regs *ctx,
+				struct bpf_map_def *heap_map,
+				struct bpf_map_def *map,
+				struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
 	struct msg_generic_kprobe *e;
@@ -119,26 +115,25 @@ int generic_process_event_and_setup(
 	return generic_process_event0(ctx, heap_map, map, tailcals);
 }
 
-static inline __attribute__((always_inline))
-int generic_filter_submit(void *ctx, struct msg_generic_kprobe *e, long total)
+static inline __attribute__((always_inline)) int
+generic_filter_submit(void *ctx, struct msg_generic_kprobe *e, long total)
 {
 	/* Post event */
 	total += generic_kprobe_common_size();
 	/* Code movement from clang forces us to inline bounds checks here */
 	asm volatile("%[total] &= 0x7fff;\n"
-		"if %[total] < 9000 goto +1\n;"
-		"%[total] = 9000;\n"
-		: : [total] "+r"(total):);
+		     "if %[total] < 9000 goto +1\n;"
+		     "%[total] = 9000;\n"
+		     :
+		     : [total] "+r"(total)
+		     :);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-int generic_process_event1(
-	void *ctx,
-	struct bpf_map_def *heap_map,
-	struct bpf_map_def *map,
-	struct bpf_map_def *tailcals)
+static inline __attribute__((always_inline)) int
+generic_process_event1(void *ctx, struct bpf_map_def *heap_map,
+		       struct bpf_map_def *map, struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
 	unsigned long a0, a1, a2, a3, a4;
@@ -184,12 +179,9 @@ int generic_process_event1(
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-int generic_process_event2(
-	void *ctx,
-	struct bpf_map_def *heap_map,
-	struct bpf_map_def *map,
-	struct bpf_map_def *tailcals)
+static inline __attribute__((always_inline)) int
+generic_process_event2(void *ctx, struct bpf_map_def *heap_map,
+		       struct bpf_map_def *map, struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
 	unsigned long a0, a1, a2, a3, a4;
@@ -235,12 +227,9 @@ int generic_process_event2(
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-int generic_process_event3(
-	void *ctx,
-	struct bpf_map_def *heap_map,
-	struct bpf_map_def *map,
-	struct bpf_map_def *tailcals)
+static inline __attribute__((always_inline)) int
+generic_process_event3(void *ctx, struct bpf_map_def *heap_map,
+		       struct bpf_map_def *map, struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
 	unsigned long a0, a1, a2, a3, a4;
@@ -287,12 +276,9 @@ int generic_process_event3(
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-int generic_process_event4(
-	void *ctx,
-	struct bpf_map_def *heap_map,
-	struct bpf_map_def *map,
-	struct bpf_map_def *tailcals)
+static inline __attribute__((always_inline)) int
+generic_process_event4(void *ctx, struct bpf_map_def *heap_map,
+		       struct bpf_map_def *map, struct bpf_map_def *tailcals)
 {
 	enum generic_func_args_enum fgs_args;
 	unsigned long a0, a1, a2, a3, a4;
@@ -302,7 +288,6 @@ int generic_process_event4(
 	bool walker = 0;
 	long ty, total;
 	__u32 ppid;
-
 
 	/* Preamble to setup context */
 	enter = event_find_curr(&ppid, 0, &walker);

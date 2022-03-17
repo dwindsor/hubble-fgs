@@ -18,7 +18,8 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
 
 struct bpf_map_def __attribute__((section("maps"), used)) udp_retprobe_map = {
@@ -28,8 +29,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_retprobe_map = {
 	.max_entries = 1024,
 };
 
-static inline __attribute__((always_inline))
-struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
+static inline __attribute__((always_inline)) struct udp_info_key *
+udp4_get_key(struct pt_regs *ctx)
 {
 	struct sock *sk = (void *)ctx->di;
 	struct inet_sock *inet = (void *)sk;
@@ -44,14 +45,16 @@ struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
 	if (!key)
 		return 0;
 
-	probe_read(&in, sizeof(void*), _(&(msg->msg_name)));
+	probe_read(&in, sizeof(void *), _(&(msg->msg_name)));
 	probe_read(&namelen, sizeof(int), _(&(msg->msg_namelen)));
 	if (in && namelen >= sizeof(*in)) {
 		probe_read(&key->daddr, sizeof(u32), _(&(in->sin_addr.s_addr)));
 		probe_read(&key->dport, sizeof(u16), _(&(in->sin_port)));
 	} else {
-		probe_read(&key->daddr, sizeof(u32), _(&(sk->__sk_common.skc_daddr)));
-		probe_read(&key->dport, sizeof(u16), _(&(sk->__sk_common.skc_dport)));
+		probe_read(&key->daddr, sizeof(u32),
+			   _(&(sk->__sk_common.skc_daddr)));
+		probe_read(&key->dport, sizeof(u16),
+			   _(&(sk->__sk_common.skc_dport)));
 	}
 	probe_read(&key->saddr, sizeof(u32), _(&(inet->inet_saddr)));
 	probe_read(&key->sport, sizeof(u16), _(&(inet->inet_sport)));
@@ -77,8 +80,8 @@ struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
 	return key;
 }
 
-__attribute__((section(("kprobe/udp_sendmsg")), used))
-int udp4_send(struct pt_regs *ctx)
+__attribute__((section(("kprobe/udp_sendmsg")), used)) int
+udp4_send(struct pt_regs *ctx)
 {
 	u64 pid = get_current_pid_tgid();
 	struct udp_info_value *value;
@@ -112,8 +115,8 @@ int udp4_send(struct pt_regs *ctx)
 	return 0;
 }
 
-__attribute__((section(("kretprobe/udp_sendmsg")), used))
-int udp4_sendret(struct pt_regs *ctx)
+__attribute__((section(("kretprobe/udp_sendmsg")), used)) int
+udp4_sendret(struct pt_regs *ctx)
 {
 	u64 pid = get_current_pid_tgid();
 	struct udp_info_key *key;
@@ -137,12 +140,12 @@ int udp4_sendret(struct pt_regs *ctx)
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-struct udp_info_key *udp4_get_skb_key(struct pt_regs *ctx, int *len)
+static inline __attribute__((always_inline)) struct udp_info_key *
+udp4_get_skb_key(struct pt_regs *ctx, int *len)
 {
 	u16 transport_header, network_header;
-	struct sk_buff *skb = (void*)ctx->si;
-	struct sock *sk = (void*)ctx->di;
+	struct sk_buff *skb = (void *)ctx->si;
+	struct sock *sk = (void *)ctx->di;
 	struct udp_info_key *key;
 	int zero = 0;
 
@@ -157,7 +160,7 @@ struct udp_info_key *udp4_get_skb_key(struct pt_regs *ctx, int *len)
 	probe_read(&transport_header, sizeof(u16), _(&skb->transport_header));
 	probe_read(&network_header, sizeof(u16), _(&skb->network_header));
 
-	probe_read(&skb_head, sizeof(void*), _(&skb->head));
+	probe_read(&skb_head, sizeof(void *), _(&skb->head));
 	probe_read(&iph, sizeof(iph), skb_head + network_header);
 	probe_read(&udph, sizeof(udph), skb_head + transport_header);
 
@@ -181,8 +184,8 @@ struct udp_info_key *udp4_get_skb_key(struct pt_regs *ctx, int *len)
 	return key;
 }
 
-static inline __attribute__((always_inline))
-int add_process_ctx(struct udp_info_value *value)
+static inline __attribute__((always_inline)) int
+add_process_ctx(struct udp_info_value *value)
 {
 	struct execve_map_value *process;
 	bool walker;
@@ -197,8 +200,8 @@ int add_process_ctx(struct udp_info_value *value)
 	return 0;
 }
 
-__attribute__((section(("kprobe/skb_consume_udp")), used))
-int udp4_recv(struct pt_regs *ctx)
+__attribute__((section(("kprobe/skb_consume_udp")), used)) int
+udp4_recv(struct pt_regs *ctx)
 {
 	struct udp_info_value *value;
 	struct udp_info_key *key;

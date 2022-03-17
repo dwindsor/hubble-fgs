@@ -27,8 +27,8 @@ struct bpf_map_def __attribute__((section("maps"), used)) process_call_heap = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/generic_retkprobe")), used))
-int generic_kprobe_event(struct pt_regs *ctx)
+__attribute__((section(("kprobe/generic_retkprobe")), used)) int
+generic_kprobe_event(struct pt_regs *ctx)
 {
 	enum generic_func_args_enum fgs_args;
 	struct execve_map_value *enter;
@@ -54,7 +54,8 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	ty_arg = bpf_core_enum_value(fgs_args, argreturn);
 	do_copy = bpf_core_enum_value(fgs_args, argreturncopy);
 	if (ty_arg)
-		size += read_call_arg(ctx, e, 0, ty_arg, 0, (unsigned long)ctx->ax, 0, 0);
+		size += read_call_arg(ctx, e, 0, ty_arg, 0,
+				      (unsigned long)ctx->ax, 0, 0);
 	if (do_copy) {
 		long saved_size = size;
 		int *s;
@@ -95,7 +96,7 @@ int generic_kprobe_event(struct pt_regs *ctx)
 	if (total > 8192)
 		total = 8192;
 	e->common.size = total;
-	asm volatile("%[total] &= 0xfff;\n" : [total] "+r" (total):);
+	asm volatile("%[total] &= 0xfff;\n" : [total] "+r"(total) :);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
 	return 0;
 }

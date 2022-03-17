@@ -3,8 +3,7 @@
 
 #include "api.h"
 
-static inline __attribute__((always_inline))
-u32 sock_netns(struct sock *skp)
+static inline __attribute__((always_inline)) u32 sock_netns(struct sock *skp)
 {
 	struct ns_common *common;
 	struct net *netns;
@@ -25,8 +24,8 @@ u32 sock_netns(struct sock *skp)
 
 #ifdef SK_MSG
 
-static inline __attribute__((always_inline))
-u32 msg_netns(struct sk_msg_md *msg)
+static inline __attribute__((always_inline)) u32
+msg_netns(struct sk_msg_md *msg)
 {
 	struct bpf_sock *bpfsk;
 	struct sock *sk;
@@ -41,15 +40,15 @@ u32 msg_netns(struct sk_msg_md *msg)
 	if (!sk)
 		return 0;
 
-    return sock_netns(sk);
+	return sock_netns(sk);
 }
 
 #endif /* SK_MSG */
 
 #ifdef SK_SKB
 
-static inline __attribute__((always_inline))
-u32 skskb_netns(struct __sk_buff *skb)
+static inline __attribute__((always_inline)) u32
+skskb_netns(struct __sk_buff *skb)
 {
 	struct bpf_sock *bpfsk;
 	struct sock *sk;
@@ -64,7 +63,7 @@ u32 skskb_netns(struct __sk_buff *skb)
 	if (!sk)
 		return 0;
 
-    return sock_netns(sk);
+	return sock_netns(sk);
 }
 
 #endif /* SK_SKB */

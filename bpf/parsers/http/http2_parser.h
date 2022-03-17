@@ -16,28 +16,26 @@
 #undef HTTP2_DEBUG
 //#define HTTP2_DEBUG
 
-#define HTTP2_MAX_FRAMES 8
+#define HTTP2_MAX_FRAMES	  8
 #define HTTP2_FRAME_HEADER_LENGTH 9
-#define HTTP2_PREFACE_LENGTH 24
+#define HTTP2_PREFACE_LENGTH	  24
 
-enum {
-	HTTP2_FRAME_TYPE_DATA          = 0x0,
-	HTTP2_FRAME_TYPE_HEADERS       = 0x1,
-	HTTP2_FRAME_TYPE_PRIORITY      = 0x2,
-	HTTP2_FRAME_TYPE_RST_STREAM    = 0x3,
-	HTTP2_FRAME_TYPE_SETTINGS      = 0x4,
-	HTTP2_FRAME_TYPE_PUSH_PROMISE  = 0x5,
-	HTTP2_FRAME_TYPE_PING          = 0x6,
-	HTTP2_FRAME_TYPE_GOAWAY        = 0x7,
-	HTTP2_FRAME_TYPE_WINDOW_UPDATE = 0x8,
-	HTTP2_FRAME_TYPE_CONTINUATION  = 0x9,
+enum { HTTP2_FRAME_TYPE_DATA = 0x0,
+       HTTP2_FRAME_TYPE_HEADERS = 0x1,
+       HTTP2_FRAME_TYPE_PRIORITY = 0x2,
+       HTTP2_FRAME_TYPE_RST_STREAM = 0x3,
+       HTTP2_FRAME_TYPE_SETTINGS = 0x4,
+       HTTP2_FRAME_TYPE_PUSH_PROMISE = 0x5,
+       HTTP2_FRAME_TYPE_PING = 0x6,
+       HTTP2_FRAME_TYPE_GOAWAY = 0x7,
+       HTTP2_FRAME_TYPE_WINDOW_UPDATE = 0x8,
+       HTTP2_FRAME_TYPE_CONTINUATION = 0x9,
 };
 
-enum {
-	HTTP2_FLAG_END_STREAM  = 0x1,
-	HTTP2_FLAG_END_HEADERS = 0x4,
-	HTTP2_FLAG_PADDED      = 0x8,
-	HTTP2_FLAG_PRIORITY    = 0x20,
+enum { HTTP2_FLAG_END_STREAM = 0x1,
+       HTTP2_FLAG_END_HEADERS = 0x4,
+       HTTP2_FLAG_PADDED = 0x8,
+       HTTP2_FLAG_PRIORITY = 0x20,
 };
 
 #ifdef HTTP2_DEBUG
@@ -54,88 +52,86 @@ struct http_event_chunk {
 	u8 data[0];
 } __attribute__((packed));
 
-static inline __attribute__((always_inline))
-struct http_event_chunk *head_chunk(struct msg_http *http)
+static inline __attribute__((always_inline)) struct http_event_chunk *
+head_chunk(struct msg_http *http)
 {
-	return (struct http_event_chunk*)&http->url[0];
+	return (struct http_event_chunk *)&http->url[0];
 }
 
 /* Helpers for accessing the context, whether it's a sk_buff or sk_msg_md. */
 
 #ifdef SK_SKB
-static inline __attribute__((always_inline))
-void* ctx_data(struct __sk_buff *skb)
+static inline __attribute__((always_inline)) void *
+ctx_data(struct __sk_buff *skb)
 {
 	void *data;
 
 	/* NOTE(JM): llvm emits wrong code that modifies context ptr:
          * r1 = ctx; r1 += 76; r2 = *(u64*)r1 */
-	asm volatile(
-		"%[data] = *(u32 *)(%[skb] + 76);\n"
-		: [data] "=&r"(data)
-		: [skb] "r"(skb):);
+	asm volatile("%[data] = *(u32 *)(%[skb] + 76);\n"
+		     : [data] "=&r"(data)
+		     : [skb] "r"(skb)
+		     :);
 
 	return data;
 }
 
-static inline __attribute__((always_inline))
-void* ctx_data_end(struct __sk_buff *skb)
+static inline __attribute__((always_inline)) void *
+ctx_data_end(struct __sk_buff *skb)
 {
 	void *data_end;
-	asm volatile(
-		"%[data_end] = *(u32 *)(%[skb] + 80);\n"
-		: [data_end] "=&r"(data_end)
-		: [skb] "r"(skb):);
+	asm volatile("%[data_end] = *(u32 *)(%[skb] + 80);\n"
+		     : [data_end] "=&r"(data_end)
+		     : [skb] "r"(skb)
+		     :);
 	return data_end;
 }
 
-#define ctx_len(msg) (msg)->len
+#define ctx_len(msg)		(msg)->len
 #define ctx_pull_data(msg, len) skb_pull_data((msg), (len))
 #else
 
-static inline __attribute__((always_inline))
-void* ctx_data(struct sk_msg_md *msg)
+static inline __attribute__((always_inline)) void *
+ctx_data(struct sk_msg_md *msg)
 {
 	void *data;
 
 	/* NOTE(JM): llvm emits wrong code that modifies context ptr:
          * r1 = ctx; r1 += 76; r2 = *(u64*)r1 */
-	asm volatile(
-		"%[data] = *(u64 *)(%[msg] + 0);\n"
-		: [data] "=&r"(data)
-		: [msg] "r"(msg):);
+	asm volatile("%[data] = *(u64 *)(%[msg] + 0);\n"
+		     : [data] "=&r"(data)
+		     : [msg] "r"(msg)
+		     :);
 
 	return data;
 }
-static inline __attribute__((always_inline))
-void* ctx_data_end(struct sk_msg_md *msg)
+static inline __attribute__((always_inline)) void *
+ctx_data_end(struct sk_msg_md *msg)
 {
 	void *data_end;
-	asm volatile(
-		"%[data_end] = *(u64 *)(%[msg] + 8);\n"
-		: [data_end] "=&r"(data_end)
-		: [msg] "r"(msg):);
+	asm volatile("%[data_end] = *(u64 *)(%[msg] + 8);\n"
+		     : [data_end] "=&r"(data_end)
+		     : [msg] "r"(msg)
+		     :);
 	return data_end;
 }
 
-static inline __attribute__((always_inline))
-u32 ctx_len(struct sk_msg_md *msg)
+static inline __attribute__((always_inline)) u32 ctx_len(struct sk_msg_md *msg)
 {
 	u32 size;
-	asm volatile(
-		"%[size] = *(u32 *)(%[msg] + 68);\n"
-		: [size] "=&r"(size)
-		: [msg] "r"(msg):);
+	asm volatile("%[size] = *(u32 *)(%[msg] + 68);\n"
+		     : [size] "=&r"(size)
+		     : [msg] "r"(msg)
+		     :);
 	return size;
 }
 #define ctx_pull_data(ctx, len) msg_pull_data((ctx), 0, (len), 0)
 #endif
 
-
 enum chunk_status {
-	CHUNK_OK,        /* Chunk is now complete and contains the requested amount of bytes. */
-	CHUNK_EOF,       /* End of message encountered and chunk is still incomplete. */
-	CHUNK_OVERFLOW,  /* Target buffer would overflow */
+	CHUNK_OK, /* Chunk is now complete and contains the requested amount of bytes. */
+	CHUNK_EOF, /* End of message encountered and chunk is still incomplete. */
+	CHUNK_OVERFLOW, /* Target buffer would overflow */
 	CHUNK_ERROR,
 };
 
@@ -143,15 +139,16 @@ enum chunk_status {
  * CHUNK_OK when the chunk's length reaches 'len', or CHUNK_EOF if the message is
  * too short to reach the target length.
  */
-static inline __attribute__((always_inline))
-enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
+static inline __attribute__((always_inline)) enum chunk_status
+append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 {
 	struct http_event_chunk *chunk = head_chunk(http);
 	u32 chunk_len = chunk->length & 0x1ff;
 	u32 offset = http->offset;
 	u32 requested = len - chunk_len;
 
-	DBG("append_to_chunk, offset=%d, len=%d, chunk_len=%d\n", offset, len, chunk_len);
+	DBG("append_to_chunk, offset=%d, len=%d, chunk_len=%d\n", offset, len,
+	    chunk_len);
 
 	if (chunk_len >= len) {
 		/* Chunk already full */
@@ -161,12 +158,14 @@ enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	void *data = ctx_data(skb);
 	void *data_end = ctx_data_end(skb);
 
-	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
-	asm volatile ("%[requested] &= 0x1ff;\n": [requested] "+r"(requested)::);
+	asm volatile("%[offset] &= 0x1ff;\n" : [offset] "+r"(offset)::);
+	asm volatile("%[requested] &= 0x1ff;\n"
+		     : [requested] "+r"(requested)::);
 	if (data + offset + requested > data_end) {
 		if (requested > ctx_len(skb) - offset) {
 			/* Append can be only partially satisfied, read whatever we can. */
-			DBG("skb len=%d, trying to read %d\n", ctx_len(skb), offset + requested);
+			DBG("skb len=%d, trying to read %d\n", ctx_len(skb),
+			    offset + requested);
 			requested = (ctx_len(skb) - offset) & 0x1ff;
 		}
 
@@ -175,7 +174,8 @@ enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 
 		int err = ctx_pull_data(skb, offset + requested);
 		if (err) {
-			DBG("unexpected: skb_pull_data(%d) failed with %d\n", offset + requested, err);
+			DBG("unexpected: skb_pull_data(%d) failed with %d\n",
+			    offset + requested, err);
 			return CHUNK_ERROR;
 		}
 
@@ -184,25 +184,25 @@ enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	}
 
 	/* Recheck bounds */
-	asm volatile ("%[offset] &= 0x1ff;\n": [offset] "+r"(offset)::);
-	asm volatile ("%[requested] &= 0x1ff;\n": [requested] "+r"(requested)::);
+	asm volatile("%[offset] &= 0x1ff;\n" : [offset] "+r"(offset)::);
+	asm volatile("%[requested] &= 0x1ff;\n"
+		     : [requested] "+r"(requested)::);
 	if (data + offset + requested > data_end) {
-		DBG("unexpected: data still not available! ctx->len = %d\n", ctx_len(skb));
-		DBG("offset = %d, requested = %d, linear = %d\n",
-			offset, requested, data_end - data);
+		DBG("unexpected: data still not available! ctx->len = %d\n",
+		    ctx_len(skb));
+		DBG("offset = %d, requested = %d, linear = %d\n", offset,
+		    requested, data_end - data);
 		return CHUNK_ERROR;
 	}
 
-	asm volatile ("%[chunk_len] &= 0x1ff;\n": [chunk_len] "+r"(chunk_len)::);
+	asm volatile("%[chunk_len] &= 0x1ff;\n"
+		     : [chunk_len] "+r"(chunk_len)::);
 	void *to = chunk->data + chunk_len;
 
 	if (to + requested > &http->url[sizeof(http->url) - 8])
 		return CHUNK_OVERFLOW;
 
-	pkt_copy(to,
-	         data_end,
-	         data + offset,
-	         requested);
+	pkt_copy(to, data_end, data + offset, requested);
 
 	DBG("copied %d bytes into chunk\n", requested);
 
@@ -217,10 +217,9 @@ enum chunk_status append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 	}
 }
 
-static inline __attribute__((always_inline))
-void post_http2_event(ctx_md *msg,
-		     struct msg_tls_ipv4 *key,
-		     struct msg_http_event *event)
+static inline __attribute__((always_inline)) void
+post_http2_event(ctx_md *msg, struct msg_tls_ipv4 *key,
+		 struct msg_http_event *event)
 {
 	struct msg_http *http = &event->request;
 	struct socketmap_value *process;
@@ -243,7 +242,8 @@ void post_http2_event(ctx_md *msg,
 	struct http_event_chunk *chunk = head_chunk(http);
 	http->url_offset = sizeof(struct http_event_chunk) + chunk->length;
 	if (http->url_offset + 8 < sizeof(http->url)) {
-		chunk = (struct http_event_chunk *)&http->url[http->url_offset & 0x1ff];
+		chunk = (struct http_event_chunk *)&http
+				->url[http->url_offset & 0x1ff];
 		chunk->type = 0;
 		chunk->length = 0;
 	}
@@ -274,18 +274,21 @@ void post_http2_event(ctx_md *msg,
 	chunk->length = 0;
 }
 
-static inline __attribute__((always_inline))
-int emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key, u32 payload_length)
+static inline __attribute__((always_inline)) int
+emit_headers(ctx_md *msg, struct msg_http_event *event,
+	     struct msg_tls_ipv4 *key, u32 payload_length)
 {
 	struct msg_http *http = &event->request;
 
 	/* Append the frame payload to the current chunk (which already has frame header) */
-	switch (append_to_chunk(msg, http, HTTP2_FRAME_HEADER_LENGTH + payload_length)) {
+	switch (append_to_chunk(msg, http,
+				HTTP2_FRAME_HEADER_LENGTH + payload_length)) {
 	case CHUNK_OK:
 		break;
 
 	case CHUNK_EOF:
-		DBG("EOF when reading frame payload (%d bytes, chunk now at %d)\n", payload_length, head_chunk(http)->length);
+		DBG("EOF when reading frame payload (%d bytes, chunk now at %d)\n",
+		    payload_length, head_chunk(http)->length);
 		return 1;
 
 	case CHUNK_OVERFLOW:
@@ -302,8 +305,9 @@ int emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-bool http2_parse_frame(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key)
+static inline __attribute__((always_inline)) bool
+http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
+		  struct msg_tls_ipv4 *key)
 {
 	struct msg_http *http = &event->request;
 
@@ -312,7 +316,8 @@ bool http2_parse_frame(ctx_md *msg, struct msg_http_event *event, struct msg_tls
 	case CHUNK_OK:
 		break;
 	case CHUNK_EOF:
-		DBG("EOF when reading frame header (chunk now at %d)\n", head_chunk(http)->length);
+		DBG("EOF when reading frame header (chunk now at %d)\n",
+		    head_chunk(http)->length);
 		return true;
 	case CHUNK_OVERFLOW:
 	case CHUNK_ERROR:
@@ -327,8 +332,10 @@ bool http2_parse_frame(ctx_md *msg, struct msg_http_event *event, struct msg_tls
 	u8 flags = *(data + 4);
 
 #ifdef HTTP2_DEBUG
-	u32 stream_id = (*(data + 5) & 0x7f) << 24 | *(data + 6) << 16 | *(data + 7) << 8 | *(data + 8);
-	DBG("Found frame: offset=%d, type=%d, length=%d\n", http->offset, type, length);
+	u32 stream_id = (*(data + 5) & 0x7f) << 24 | *(data + 6) << 16 |
+			*(data + 7) << 8 | *(data + 8);
+	DBG("Found frame: offset=%d, type=%d, length=%d\n", http->offset, type,
+	    length);
 	DBG("...........  stream_id=%d, flags=%d\n", stream_id, flags);
 #endif
 	switch (type) {
@@ -343,7 +350,8 @@ bool http2_parse_frame(ctx_md *msg, struct msg_http_event *event, struct msg_tls
 			// that yet, so stop.
 			// To handle it correctly we'd need combine the multiple header frames in
 			// user-space and then decode them in one go.
-			DBG("HTTP2 headers frame found, but it is split. Bailing out.\n", 0);
+			DBG("HTTP2 headers frame found, but it is split. Bailing out.\n",
+			    0);
 			http->state = http_error;
 			return true;
 		}
@@ -368,8 +376,8 @@ bool http2_parse_frame(ctx_md *msg, struct msg_http_event *event, struct msg_tls
 	return false;
 }
 
-static inline __attribute__((always_inline))
-int http2_is_preface(ctx_md *msg, struct msg_http *http)
+static inline __attribute__((always_inline)) int
+http2_is_preface(ctx_md *msg, struct msg_http *http)
 {
 	u8 preface[HTTP2_PREFACE_LENGTH] = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
 	u8 *data = head_chunk(http)->data;
@@ -392,8 +400,8 @@ int http2_is_preface(ctx_md *msg, struct msg_http *http)
 	}
 }
 
-static inline __attribute__((always_inline))
-int http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
+static inline __attribute__((always_inline)) int
+http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
@@ -405,9 +413,11 @@ int http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	http = &event->request;
 
 #ifdef SK_MSG
-	DBG("MSG http2_do_parser: len %d, skip %d, consume %d\n", ctx_len(msg), http->offset, http->consume_bytes);
+	DBG("MSG http2_do_parser: len %d, skip %d, consume %d\n", ctx_len(msg),
+	    http->offset, http->consume_bytes);
 #else
-	DBG("SKB http2_do_parser: len %d, skip %d, consume %d\n", ctx_len(msg), http->offset, http->consume_bytes);
+	DBG("SKB http2_do_parser: len %d, skip %d, consume %d\n", ctx_len(msg),
+	    http->offset, http->consume_bytes);
 #endif
 
 #ifndef SK_MSG
@@ -421,7 +431,8 @@ int http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 	case http2_expect_preface:
 		switch (http2_is_preface(msg, http)) {
 		case 1:
-			DBG("Expected HTTP/2 preface, but didn't find it.\n", 0);
+			DBG("Expected HTTP/2 preface, but didn't find it.\n",
+			    0);
 			http->state = http_error;
 			return SK_PASS;
 		case -1:
@@ -459,4 +470,3 @@ int http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
 }
 
 #endif /* _HTTP2_PARSER_ */
-

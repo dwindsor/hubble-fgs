@@ -16,8 +16,8 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 
-__attribute__((section(("tracepoint/sys_execve")), used))
-int event_execve(struct sched_execve_args *ctx)
+__attribute__((section(("tracepoint/sys_execve")), used)) int
+event_execve(struct sched_execve_args *ctx)
 {
 	struct task_struct *task = (struct task_struct *)get_current_task();
 	struct msg_execve_event *event;
@@ -47,7 +47,8 @@ int event_execve(struct sched_execve_args *ctx)
 
 	execve = &event->process;
 	fileoff = ctx->filename & 0xFFFF;
-	binary = event_filename_builder(execve, pid, EVENT_EXECVE, binary, (char *)ctx + fileoff);
+	binary = event_filename_builder(execve, pid, EVENT_EXECVE, binary,
+					(char *)ctx + fileoff);
 	event_args_builder(event);
 	compiler_barrier();
 	__event_get_task_info(event, MSG_OP_EXECVE, walker, true);
@@ -55,7 +56,8 @@ int event_execve(struct sched_execve_args *ctx)
 	curr = execve_map_get(pid);
 	if (curr) {
 #if defined(__NS_CHANGES_FILTER) || defined(__CAP_CHANGES_FILTER)
-		if (curr->key.pid == 0 && curr->key.ktime == 0) // newly allocated execve_map_value
+		if (curr->key.pid == 0 &&
+		    curr->key.ktime == 0) // newly allocated execve_map_value
 			init_curr = 1;
 #endif
 		curr->key.pid = execve->pid;
@@ -69,7 +71,8 @@ int event_execve(struct sched_execve_args *ctx)
 		curr->binary = binary;
 #ifdef __NS_CHANGES_FILTER
 		if (init_curr)
-			memcpy(&(curr->ns), &(event->ns), sizeof(struct msg_ns));
+			memcpy(&(curr->ns), &(event->ns),
+			       sizeof(struct msg_ns));
 #endif
 #ifdef __CAP_CHANGES_FILTER
 		if (init_curr) {
@@ -82,13 +85,10 @@ int event_execve(struct sched_execve_args *ctx)
 
 	event->common.flags = 0;
 	size = validate_msg_execve_size(
-			sizeof(struct msg_common)
-			+ sizeof(struct msg_k8s)
-			+ sizeof(struct msg_execve_key)
-			+ sizeof(__u64)
-			+ sizeof(struct msg_capabilities)
-			+ sizeof(struct msg_ns)
-			+ execve->size);
+		sizeof(struct msg_common) + sizeof(struct msg_k8s) +
+		sizeof(struct msg_execve_key) + sizeof(__u64) +
+		sizeof(struct msg_capabilities) + sizeof(struct msg_ns) +
+		execve->size);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event, size);
 	return 0;
 }

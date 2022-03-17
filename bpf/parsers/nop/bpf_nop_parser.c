@@ -11,8 +11,8 @@ struct bpf_map_def {
 };
 #endif
 
-__attribute__((section(("sk_skb_nop_parser/fgsnop")), used))
-int bpf_skskb_nop_parser(struct __sk_buff *skb)
+__attribute__((section(("sk_skb_nop_parser/fgsnop")), used)) int
+bpf_skskb_nop_parser(struct __sk_buff *skb)
 {
 	return skb->len;
 }

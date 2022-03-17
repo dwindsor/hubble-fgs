@@ -23,9 +23,9 @@ GLOBAL_I32 g_i32;
 GLOBAL_U64 g_u64;
 GLOBAL_I64 g_i64;
 
-__attribute__((section(("socket_filter/read_globals_test")), used))
-int read_globals_test(void *ctx) {
-
+__attribute__((section(("socket_filter/read_globals_test")), used)) int
+read_globals_test(void *ctx)
+{
 	if (READ_GLOBAL(g_u16) != 65535)
 		return __LINE__;
 

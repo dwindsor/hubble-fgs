@@ -19,11 +19,12 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
-int  _version __attribute__((section(("version")), used)) = VMLINUX_KERNEL_VERSION;
+int _version __attribute__((section(("version")), used)) =
+	VMLINUX_KERNEL_VERSION;
 #endif
 
-__attribute__((section(("cgroup/sock_create")), used))
-int sock_create(struct bpf_sock *ctx)
+__attribute__((section(("cgroup/sock_create")), used)) int
+sock_create(struct bpf_sock *ctx)
 {
 	u32 pid = get_current_pid_tgid(ctx) >> 32;
 	u64 sock = get_socket_cookie(ctx);
@@ -42,7 +43,7 @@ int sock_create(struct bpf_sock *ctx)
 	 */
 	value = execve_map_get(pid);
 	if (!value || value->key.ktime == 0) {
-		struct execve_map_value v = {0};
+		struct execve_map_value v = { 0 };
 		/* Error case, should not happen */
 		map_update_elem(&socket_cookie_to_proc_map, &sock, &v, 0);
 	} else {

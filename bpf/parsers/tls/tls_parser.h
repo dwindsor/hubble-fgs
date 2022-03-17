@@ -15,7 +15,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
 };
 
 struct tls_hdr {
-	__u8  type;
+	__u8 type;
 	__u16 version;
 	__u16 length;
 } __attribute__((packed));
@@ -26,13 +26,13 @@ struct tls_alert {
 } __attribute__((packed));
 
 struct tls_handshake_hdr {
-	__u32 type:8;
-	__u32 length:24;
+	__u32 type : 8;
+	__u32 length : 24;
 	__u16 version;
 } __attribute__((packed));
 
-#define TLS_TYPE_MORE_DATA  1
-#define TLS_TYPE_ALERT 21
+#define TLS_TYPE_MORE_DATA 1
+#define TLS_TYPE_ALERT	   21
 #define TLS_TYPE_HANDSHAKE 22
 
 #define TLS_HANDSHAKE_TYPE_CERTIFICATE 11
@@ -60,26 +60,33 @@ enum tls_handshake_type {
 	finished = 20,
 };
 
-#define MAX_EXT_LENGTH 255
-#define EXT_SERVER_NAME 0
+#define MAX_EXT_LENGTH	      255
+#define EXT_SERVER_NAME	      0
 #define EXT_SUPPORTED_VERSION 43
-#define MAX_EXTS 20
+#define MAX_EXTS	      20
 
-static inline __attribute__((always_inline))
-int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool client)
+static inline __attribute__((always_inline)) int
+bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls,
+			   bool client)
 {
 	void *data_end;
 	u16 length;
 	u8 *data;
 
-#define READ_BE16() ({u16 x = ((u16)*data) << 8 | *(data + 1); data += 2; x; })
-#define BOUNDS(val, flag, mask) ({ \
-	if ((val) > (mask)) { \
-		tls->flags |= flag; \
-                return TLS_PARSE_ERROR; \
-	} \
-	asm volatile("%1 &= " #mask ";\n": "+r"(val)::); \
-})
+#define READ_BE16()                                                            \
+	({                                                                     \
+		u16 x = ((u16)*data) << 8 | *(data + 1);                       \
+		data += 2;                                                     \
+		x;                                                             \
+	})
+#define BOUNDS(val, flag, mask)                                                \
+	({                                                                     \
+		if ((val) > (mask)) {                                          \
+			tls->flags |= flag;                                    \
+			return TLS_PARSE_ERROR;                                \
+		}                                                              \
+		asm volatile("%1 &= " #mask ";\n" : "+r"(val)::);              \
+	})
 
 	length = bpf_ntohs(tls->length);
 	data = bottle_get_data(bottle, sizeof(struct tls_hdr), length);
@@ -90,9 +97,7 @@ int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool 
 	data_end = data + length;
 
 	/* Skip handshake header and the random bytes */
-	data += 1  /* type */ +
-		3  /* length */ +
-	        2  /* version */ +
+	data += 1 /* type */ + 3 /* length */ + 2 /* version */ +
 		32 /* random */;
 
 	/* Session ID */
@@ -186,11 +191,11 @@ int bpf_parse_tls_client_hello(struct bottle *bottle, struct msg_tls *tls, bool 
 #undef BOUNDS
 }
 
-static inline __attribute__((always_inline))
-int bpf_parse_tls_skb(struct __sk_buff *skb, struct msg_tls *tls)
+static inline __attribute__((always_inline)) int
+bpf_parse_tls_skb(struct __sk_buff *skb, struct msg_tls *tls)
 {
-	void *data_end = (void *)(long) skb->data_end;
-	void *data = (void *)(long) skb->data;
+	void *data_end = (void *)(long)skb->data_end;
+	void *data = (void *)(long)skb->data;
 	struct tls_hdr *copy;
 	__u8 doff, tcp_off;
 	__u8 *ihl, *data_off, *payload;
@@ -210,33 +215,33 @@ int bpf_parse_tls_skb(struct __sk_buff *skb, struct msg_tls *tls)
 	payload = data + tcp_off + doff;
 	if (payload + sizeof(struct tls_hdr) > data_end)
 		return 0;
-	copy = (struct tls_hdr*) payload;
-	tls->type    = copy->type;
-	tls->length  = copy->length;
+	copy = (struct tls_hdr *)payload;
+	tls->type = copy->type;
+	tls->length = copy->length;
 	tls->version = copy->version;
 	return 0;
 }
 
-static inline __attribute__((always_inline))
-bool is_tls_handshake(struct msg_tls *tls)
+static inline __attribute__((always_inline)) bool
+is_tls_handshake(struct msg_tls *tls)
 {
 	return tls->type == TLS_TYPE_HANDSHAKE;
 }
 
-static inline __attribute__((always_inline))
-bool is_tls_client_hello_handshake(struct msg_tls *tls)
+static inline __attribute__((always_inline)) bool
+is_tls_client_hello_handshake(struct msg_tls *tls)
 {
 	return is_tls_handshake(tls) && tls->subtype == client_hello;
 }
 
-static inline __attribute__((always_inline))
-bool is_tls_server_hello_handshake(struct msg_tls *tls)
+static inline __attribute__((always_inline)) bool
+is_tls_server_hello_handshake(struct msg_tls *tls)
 {
 	return is_tls_handshake(tls) && tls->subtype == server_hello;
 }
 
-static inline __attribute__((always_inline))
-bool is_tls_version(struct msg_tls *tls)
+static inline __attribute__((always_inline)) bool
+is_tls_version(struct msg_tls *tls)
 {
 	switch (tls->version) {
 	case TLS_VERSION_12:
@@ -248,33 +253,32 @@ bool is_tls_version(struct msg_tls *tls)
 	}
 }
 
-static inline __attribute__((always_inline))
-bool is_tls_more_data(struct msg_tls*tls)
+static inline __attribute__((always_inline)) bool
+is_tls_more_data(struct msg_tls *tls)
 {
 	return tls->type == TLS_TYPE_MORE_DATA;
 }
 
-static inline __attribute__((always_inline))
-bool is_expected_tls_data(struct msg_tls *tls)
+static inline __attribute__((always_inline)) bool
+is_expected_tls_data(struct msg_tls *tls)
 {
 	return is_tls_more_data(tls);
 }
 
-static inline __attribute__((always_inline))
-bool is_expected_tls_client_hello(struct msg_tls *tls)
+static inline __attribute__((always_inline)) bool
+is_expected_tls_client_hello(struct msg_tls *tls)
 {
 	return is_tls_client_hello_handshake(tls) && is_tls_version(tls);
 }
 
-static inline __attribute__((always_inline))
-bool is_expected_tls_server_hello(struct msg_tls *tls)
+static inline __attribute__((always_inline)) bool
+is_expected_tls_server_hello(struct msg_tls *tls)
 {
 	return is_tls_server_hello_handshake(tls) && is_tls_version(tls);
 }
 
-static inline __attribute__((always_inline))
-int bpf_parse_tls(struct bottle *bottle,
-		  struct msg_tls *tls)
+static inline __attribute__((always_inline)) int
+bpf_parse_tls(struct bottle *bottle, struct msg_tls *tls)
 {
 	struct tls_hdr *hdr;
 	int next = 0, err;
@@ -286,19 +290,24 @@ int bpf_parse_tls(struct bottle *bottle,
 
 	hdr = (struct tls_hdr *)payload;
 
-	tls->type    = hdr->type;
-	tls->length  = hdr->length;
+	tls->type = hdr->type;
+	tls->length = hdr->length;
 	tls->version = hdr->version;
 
 	if (hdr->type == TLS_TYPE_HANDSHAKE) {
 		struct tls_handshake_hdr *handshake;
 		bool client = false;
 
-		payload = bottle_get_data(bottle, 0, sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
+		payload = bottle_get_data(
+			bottle, 0,
+			sizeof(struct tls_hdr) +
+				sizeof(struct tls_handshake_hdr));
 		if (!payload)
 			return TLS_PARSE_OUT_OF_DATA;
 
-		handshake = (struct tls_handshake_hdr *)(payload + sizeof(struct tls_hdr));
+		handshake =
+			(struct tls_handshake_hdr *)(payload +
+						     sizeof(struct tls_hdr));
 		tls->subtype = handshake->type;
 		tls->version = handshake->version;
 		switch (handshake->type) {
@@ -318,16 +327,20 @@ int bpf_parse_tls(struct bottle *bottle,
 	} else if (hdr->type == TLS_TYPE_ALERT) {
 		struct tls_alert *tls_alert;
 
-		payload = bottle_get_data(bottle, 0,
-			sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr));
+		payload = bottle_get_data(
+			bottle, 0,
+			sizeof(struct tls_hdr) +
+				sizeof(struct tls_handshake_hdr));
 
 		if (!payload)
 			return TLS_PARSE_OUT_OF_DATA;
-		tls_alert = (struct tls_alert *)(payload + sizeof(struct tls_hdr));
+		tls_alert =
+			(struct tls_alert *)(payload + sizeof(struct tls_hdr));
 		tls->alert_level = tls_alert->level;
 		tls->alert_description = tls_alert->description;
 		/* Advance pointer to end of alert */
-		next = sizeof(struct tls_hdr) + sizeof(struct tls_handshake_hdr);
+		next = sizeof(struct tls_hdr) +
+		       sizeof(struct tls_handshake_hdr);
 	} else {
 		return TLS_PARSE_ERROR;
 	}
@@ -335,28 +348,29 @@ int bpf_parse_tls(struct bottle *bottle,
 	return next;
 }
 
-#define ETH_P_IP 0x800
+#define ETH_P_IP	0x800
 #define TLS_REMOTE_PORT 443
 
 #if defined(SK_MSG)
-static inline __attribute__((always_inline))
-void skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key) {
-        key->daddr = skmsg->remote_ip4;
-        key->saddr = skmsg->local_ip4;
-        key->dport = bpf_htons(TLS_REMOTE_PORT);
-        key->sport = skmsg->local_port;
+static inline __attribute__((always_inline)) void
+skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key)
+{
+	key->daddr = skmsg->remote_ip4;
+	key->saddr = skmsg->local_ip4;
+	key->dport = bpf_htons(TLS_REMOTE_PORT);
+	key->sport = skmsg->local_port;
 
 	if (bpf_core_field_exists(skmsg->sk)) {
 		key->dport = skmsg->sk->dst_port;
 		key->sport = skmsg->sk->src_port;
 
 		if (is_tuple_local(key))
-		        key->uid = msg_netns(skmsg);
+			key->uid = msg_netns(skmsg);
 	}
 }
 #elif defined(SK_SKB)
-static inline __attribute__((always_inline))
-void skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
+static inline __attribute__((always_inline)) void
+skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
 {
 	struct bpf_sock *sk;
 
@@ -372,8 +386,9 @@ void skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
 	}
 }
 #else
-static inline __attribute__((always_inline))
-void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
+static inline __attribute__((always_inline)) void *
+skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key)
+{
 	void *data, *data_end;
 	struct tcphdr *tcphdr;
 	struct iphdr *iphdr;
@@ -381,14 +396,15 @@ void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
 	__u8 tcp_off;
 	__u16 proto;
 
-	data = (void *)(long) skb->data;
-	data_end = (void *)(long) skb->data_end;
+	data = (void *)(long)skb->data;
+	data_end = (void *)(long)skb->data_end;
 	eth = data;
 	/* TBD soon data, data_end, payload will be streamified and and
 	 * the extra data_end reset will be dropped.
 	 */
 	if (data + sizeof(struct ethhdr) + sizeof(struct iphdr) > data_end) {
-		eth = get_data(skb, 0, sizeof(struct ethhdr) + sizeof(struct iphdr));
+		eth = get_data(skb, 0,
+			       sizeof(struct ethhdr) + sizeof(struct iphdr));
 		if (!eth)
 			return 0;
 		data_end = (void *)(long)skb->data_end;
@@ -410,8 +426,8 @@ void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
 	tcp_off *= 4;
 	tcphdr = (void *)iphdr + tcp_off;
 	if (tcphdr + sizeof(struct tcphdr) > data_end) {
-		tcphdr = get_data(skb,
-				sizeof(struct ethhdr) + tcp_off, sizeof(struct tcphdr));
+		tcphdr = get_data(skb, sizeof(struct ethhdr) + tcp_off,
+				  sizeof(struct tcphdr));
 		if (!tcphdr)
 			return 0;
 		data_end = (void *)(long)skb->data_end;
@@ -423,8 +439,8 @@ void *skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key) {
 	return (void *)tcphdr;
 }
 
-static inline __attribute__((always_inline))
-void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
+static inline __attribute__((always_inline)) void *
+skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 {
 	void *data_end;
 	__u8 doff;
@@ -434,11 +450,10 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 	 * verifier on 4.19 kernels. Lets tell clang how to do this
 	 * with asm.
 	 */
-	asm volatile(
-		"%[data_end] = *(u32*)%[skb_end];\n"
-		: [data_end] "+r"(data_end)
-		:  [skb_end] "m"(skb->data_end)
-		:);
+	asm volatile("%[data_end] = *(u32*)%[skb_end];\n"
+		     : [data_end] "+r"(data_end)
+		     : [skb_end] "m"(skb->data_end)
+		     :);
 
 	/* offset of doff + 4B read */
 	if ((void *)tcphdr + sizeof(struct tcphdr) > data_end) {
@@ -452,7 +467,7 @@ void *skb_tcp_payload(struct __sk_buff *skb, struct tcphdr *tcphdr, int *offset)
 	 * have to track offset instead of just take difference.
 	 */
 	*offset = *offset + doff;
-	return (void*)tcphdr + doff;
+	return (void *)tcphdr + doff;
 }
 #endif
 
