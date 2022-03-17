@@ -54,7 +54,7 @@ if [ $TRACINGPOLICY == 1 ]; then
 fi
 
 echo "Checking demo app events..." 1>&2
-go run ./cmd/checkerpc --events 20000 --timeout 1200 --check demo-app ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-demo-app.log &
+go run ./cmd/checkerpc --events 20000 --timeout 20m --check demo-app ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-demo-app.log &
 DEMO_APP_CHECKER_PID=$!
 sleep 20
 

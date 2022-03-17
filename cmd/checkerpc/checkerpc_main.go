@@ -12,6 +12,7 @@ package main
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"os"
 	"os/signal"
@@ -31,7 +32,9 @@ import (
 	"github.com/spf13/viper"
 	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
+	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/status"
 )
 
 var (
@@ -44,26 +47,15 @@ var (
 	kernelVersion   string
 	serverAddresses []string
 	check           string
-	checkTimeout    uint32
 	eventLimit      uint64
+	checkTimeout    time.Duration
+	connectTimeout  time.Duration
 
 	rootCmd *cobra.Command
 )
 
-func rpcCheck(clients []fgs.FineGuidanceSensorsClient, checker ec.MultiResponseChecker,
+func rpcCheck(ctx context.Context, clients []fgs.FineGuidanceSensorsClient, checker ec.MultiResponseChecker,
 	time_limit time.Duration, eventLimit uint64) error {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, unix.SIGINT, unix.SIGTERM)
-		select {
-		case <-sigs:
-		case <-ctx.Done():
-			signal.Stop(sigs)
-		}
-		cancel()
-	}()
 
 	log := &ec.LogrusLogger{L: logrus.New()}
 	eventCount := new(uint64)
@@ -82,7 +74,7 @@ func rpcCheck(clients []fgs.FineGuidanceSensorsClient, checker ec.MultiResponseC
 		go func(stream fgs.FineGuidanceSensors_GetEventsClient) {
 			for {
 				ev, err := stream.Recv()
-				if err != nil || ev == nil {
+				if err != nil && !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
 					logger.GetLogger().WithError(err).Fatal("Failed to receive event")
 				}
 
@@ -150,9 +142,12 @@ func init() {
 			}
 
 			if checkFn, ok := checks[check]; ok {
-				// Set up connect timeout (10s)
-				ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+				//Set up root context
+				ctx, cancel := signal.NotifyContext(context.Background(), unix.SIGINT, unix.SIGTERM)
 				defer cancel()
+				// Set up connect timeout (10s)
+				connCtx, connCancel := context.WithTimeout(ctx, connectTimeout)
+				defer connCancel()
 
 				// Connect to gRPC servers
 				var wg sync.WaitGroup
@@ -161,15 +156,7 @@ func init() {
 				for _, serverAddress := range serverAddresses {
 					go func(serverAddress string) {
 						defer wg.Done()
-						var conn *grpc.ClientConn
-						var err error
-						// retry up to 3 times
-						for i := 0; i < 3; i++ {
-							conn, err = grpc.DialContext(ctx, serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
-							if err == nil {
-								break
-							}
-						}
+						conn, err := grpc.DialContext(connCtx, serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 						if err != nil {
 							logger.GetLogger().WithError(err).Error("Failed to connect")
 							os.Exit(1)
@@ -199,7 +186,7 @@ func init() {
 				}
 
 				// Perform the checks
-				err := rpcCheck(clients, checkFn(kernelVersion), time.Duration(checkTimeout), eventLimit)
+				err := rpcCheck(ctx, clients, checkFn(kernelVersion), checkTimeout, eventLimit)
 				if err != nil {
 					fmt.Printf("🔥 %s check FAILED: no dice: %s\n", check, err)
 					os.Exit(1)
@@ -220,8 +207,9 @@ func init() {
 	flags.StringVar(&check, "check", "",
 		fmt.Sprintf("check to perform, can be one of %v", reflect.ValueOf(checks).MapKeys()))
 	flags.StringVar(&kernelVersion, "kernel", detectedVersion, "kernel version string under which the tests are running")
-	flags.Uint32Var(&checkTimeout, "timeout", 300, "timeout in seconds for running checks, 0 implies no time limit")
+	flags.DurationVar(&checkTimeout, "timeout", 5*time.Minute, "timeout in seconds for running checks, 0 implies no time limit")
 	flags.Uint64Var(&eventLimit, "events", 1000000, "maximum number of events to check, 0 implies no limit")
+	flags.DurationVar(&connectTimeout, "connect-timemout", 30*time.Second, "timeout in seconds for connecting to gRPC server, 0 implies no time limit")
 	viper.BindPFlags(flags)
 }
 
