@@ -224,6 +224,7 @@ jobs:
         if: ${{ failure() }}
         timeout-minutes: 15
         run: |
+          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/dump-fgs-logs.sh"
           mkdir -p logs
           scp -P 3000 root@localhost:/fgs/contrib/end-to-end/logs/* logs
 

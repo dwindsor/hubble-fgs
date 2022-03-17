@@ -1,6 +1,6 @@
 #!/bin/bash
 
-set -xeu
+set -xu
 
 CLUSTER_NAME="fgs-cli-ci"
 SCRIPT_DIR="$(realpath $(dirname "${BASH_SOURCE[0]}"))"
