@@ -13,29 +13,18 @@ package getevents
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"os"
-	"os/signal"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/spf13/cobra"
-	"golang.org/x/sys/unix"
+	"google.golang.org/grpc/codes"
+	"google.golang.org/grpc/status"
 )
 
-func getEvents(client fgs.FineGuidanceSensorsClient) {
-	ctx, cancel := context.WithCancel(context.Background())
-	defer cancel()
-	go func() {
-		sigs := make(chan os.Signal, 1)
-		signal.Notify(sigs, unix.SIGINT, unix.SIGTERM)
-		select {
-		case <-sigs:
-		case <-ctx.Done():
-			signal.Stop(sigs)
-		}
-		cancel()
-	}()
+func getEvents(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
 	stream, err := client.GetEvents(ctx, &fgs.GetEventsRequest{})
 	if err != nil {
 		logger.GetLogger().WithError(err).Fatal("Failed to call GetEvents")
@@ -44,7 +33,10 @@ func getEvents(client fgs.FineGuidanceSensorsClient) {
 	for {
 		res, err := stream.Recv()
 		if err != nil {
-			logger.GetLogger().WithError(err).Fatal("Failed to receive events")
+			if !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
+				logger.GetLogger().WithError(err).Fatal("Failed to receive events")
+			}
+			return
 		}
 		if err = encoder.Encode(res); err != nil {
 			logger.GetLogger().WithError(err).Fatal("Failed to encode event")

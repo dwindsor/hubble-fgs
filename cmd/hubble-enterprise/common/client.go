@@ -12,28 +12,33 @@ package common
 
 import (
 	"context"
+	"os/signal"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/spf13/viper"
+	"golang.org/x/sys/unix"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func CliRunErr(fn func(cli fgs.FineGuidanceSensorsClient), fnErr func(err error)) {
-	ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+func CliRunErr(fn func(ctx context.Context, cli fgs.FineGuidanceSensorsClient), fnErr func(err error)) {
+	ctx, cancel := signal.NotifyContext(context.Background(), unix.SIGINT, unix.SIGTERM)
 	defer cancel()
-	conn, err := grpc.DialContext(ctx, viper.GetString(KeyServerAddress), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+
+	connCtx, connCancel := context.WithTimeout(ctx, 10*time.Second)
+	defer connCancel()
+	conn, err := grpc.DialContext(connCtx, viper.GetString(KeyServerAddress), grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
 	if err != nil {
 		fnErr(err)
 		logger.GetLogger().WithError(err).Fatal("Failed to connect")
 	}
 	defer conn.Close()
 	client := fgs.NewFineGuidanceSensorsClient(conn)
-	fn(client)
+	fn(ctx, client)
 }
 
-func CliRun(fn func(cli fgs.FineGuidanceSensorsClient)) {
+func CliRun(fn func(ctx context.Context, cli fgs.FineGuidanceSensorsClient)) {
 	CliRunErr(fn, func(_ error) {})
 }

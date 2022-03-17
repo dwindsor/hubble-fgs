@@ -41,8 +41,8 @@ func New() *cobra.Command {
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			common.CliRunErr(
-				func(cli fgs.FineGuidanceSensorsClient) {
-					res, err := cli.GetVersion(context.Background(), &fgs.GetVersionRequest{})
+				func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+					res, err := cli.GetVersion(ctx, &fgs.GetVersionRequest{})
 					printVersion(res, err)
 				},
 				func(err error) {

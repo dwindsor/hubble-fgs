@@ -35,8 +35,8 @@ func New() *cobra.Command {
 		Short: "Add a new sennsor based on a tracing policy",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-				addTracingPolicy(cli, args[0])
+			common.CliRun(func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+				addTracingPolicy(ctx, cli, args[0])
 			})
 		},
 	}
@@ -44,14 +44,14 @@ func New() *cobra.Command {
 	return tpCmd
 }
 
-func addTracingPolicy(client fgs.FineGuidanceSensorsClient, yamlFname string) {
+func addTracingPolicy(ctx context.Context, client fgs.FineGuidanceSensorsClient, yamlFname string) {
 	yamlb, err := os.ReadFile(yamlFname)
 	if err != nil {
 		fmt.Printf("failed to read yaml file %s: %s\n", yamlFname, err)
 		return
 	}
 
-	_, err = client.AddTracingPolicy(context.Background(), &fgs.AddTracingPolicyRequest{
+	_, err = client.AddTracingPolicy(ctx, &fgs.AddTracingPolicyRequest{
 		Yaml: string(yamlb),
 	})
 	if err != nil {

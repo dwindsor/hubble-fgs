@@ -38,8 +38,8 @@ func New() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			stt := args[0]
-			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-				sttPrint(cli, stt)
+			common.CliRun(func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+				sttPrint(ctx, cli, stt)
 			})
 		},
 	}
@@ -48,8 +48,8 @@ func New() *cobra.Command {
 	return sttCmd
 }
 
-func sttPrint(client fgs.FineGuidanceSensorsClient, stt string) {
-	res, err := client.GetStackTraceTree(context.Background(), &fgs.GetStackTraceTreeRequest{Name: stt})
+func sttPrint(ctx context.Context, client fgs.FineGuidanceSensorsClient, stt string) {
+	res, err := client.GetStackTraceTree(ctx, &fgs.GetStackTraceTreeRequest{Name: stt})
 	if err != nil {
 		fmt.Printf("error printing stt %s: %s\n", stt, err)
 		return

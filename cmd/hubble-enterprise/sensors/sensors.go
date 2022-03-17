@@ -44,8 +44,8 @@ func New() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			sensor := args[0]
-			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-				enableSensor(cli, sensor)
+			common.CliRun(func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+				enableSensor(ctx, cli, sensor)
 			})
 		},
 	}
@@ -57,8 +57,8 @@ func New() *cobra.Command {
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
 			sensor := args[0]
-			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-				disableSensor(cli, sensor)
+			common.CliRun(func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+				disableSensor(ctx, cli, sensor)
 			})
 		},
 	}
@@ -72,16 +72,16 @@ func New() *cobra.Command {
 			sensor := args[0]
 			switch len(args) {
 			case 1:
-				common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-					sensorGetConfig(cli, sensor, "")
+				common.CliRun(func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+					sensorGetConfig(ctx, cli, sensor, "")
 				})
 			case 2:
-				common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-					sensorGetConfig(cli, sensor, args[1])
+				common.CliRun(func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+					sensorGetConfig(ctx, cli, sensor, args[1])
 				})
 			case 3:
-				common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-					sensorSetConfig(cli, sensor, args[1], args[2])
+				common.CliRun(func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+					sensorSetConfig(ctx, cli, sensor, args[1], args[2])
 				})
 			}
 		},
@@ -93,8 +93,8 @@ func New() *cobra.Command {
 		Short: "remove a sensor",
 		Args:  cobra.ExactArgs(1),
 		Run: func(cmd *cobra.Command, args []string) {
-			common.CliRun(func(cli fgs.FineGuidanceSensorsClient) {
-				removeSensor(cli, args[0])
+			common.CliRun(func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
+				removeSensor(ctx, cli, args[0])
 			})
 		},
 	}
@@ -103,8 +103,8 @@ func New() *cobra.Command {
 	return sensorsCmd
 }
 
-func listSensors(client fgs.FineGuidanceSensorsClient) {
-	sensors, err := client.ListSensors(context.Background(), &fgs.ListSensorsRequest{})
+func listSensors(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
+	sensors, err := client.ListSensors(ctx, &fgs.ListSensorsRequest{})
 	if err != nil {
 		fmt.Printf("error: %s\n", err)
 		return
@@ -123,8 +123,8 @@ func listSensors(client fgs.FineGuidanceSensorsClient) {
 	}
 }
 
-func removeSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
-	_, err := client.RemoveSensor(context.Background(), &fgs.RemoveSensorRequest{
+func removeSensor(ctx context.Context, client fgs.FineGuidanceSensorsClient, sensor string) {
+	_, err := client.RemoveSensor(ctx, &fgs.RemoveSensorRequest{
 		Name: sensor,
 	})
 	if err != nil {
@@ -132,8 +132,8 @@ func removeSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
 	}
 }
 
-func enableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
-	_, err := client.EnableSensor(context.Background(), &fgs.EnableSensorRequest{Name: sensor})
+func enableSensor(ctx context.Context, client fgs.FineGuidanceSensorsClient, sensor string) {
+	_, err := client.EnableSensor(ctx, &fgs.EnableSensorRequest{Name: sensor})
 	if err == nil {
 		fmt.Printf("sensor %s enabled\n", sensor)
 	} else {
@@ -141,8 +141,8 @@ func enableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
 	}
 }
 
-func disableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
-	_, err := client.DisableSensor(context.Background(), &fgs.DisableSensorRequest{Name: sensor})
+func disableSensor(ctx context.Context, client fgs.FineGuidanceSensorsClient, sensor string) {
+	_, err := client.DisableSensor(ctx, &fgs.DisableSensorRequest{Name: sensor})
 	if err == nil {
 		fmt.Printf("sensor %s disabled\n", sensor)
 	} else {
@@ -150,9 +150,9 @@ func disableSensor(client fgs.FineGuidanceSensorsClient, sensor string) {
 	}
 }
 
-func sensorGetConfig(client fgs.FineGuidanceSensorsClient, sensor string, cfgkey string) {
+func sensorGetConfig(ctx context.Context, client fgs.FineGuidanceSensorsClient, sensor string, cfgkey string) {
 	req := fgs.GetSensorConfigRequest{Name: sensor, Cfgkey: cfgkey}
-	res, err := client.GetSensorConfig(context.Background(), &req)
+	res, err := client.GetSensorConfig(ctx, &req)
 	if err == nil {
 		fmt.Printf("%s\n", res.Cfgval)
 	} else {
@@ -160,9 +160,9 @@ func sensorGetConfig(client fgs.FineGuidanceSensorsClient, sensor string, cfgkey
 	}
 }
 
-func sensorSetConfig(client fgs.FineGuidanceSensorsClient, sensor string, cfgkey string, cfgval string) {
+func sensorSetConfig(ctx context.Context, client fgs.FineGuidanceSensorsClient, sensor string, cfgkey string, cfgval string) {
 	req := fgs.SetSensorConfigRequest{Name: sensor, Cfgkey: cfgkey, Cfgval: cfgval}
-	_, err := client.SetSensorConfig(context.Background(), &req)
+	_, err := client.SetSensorConfig(ctx, &req)
 	if err != nil {
 		fmt.Printf("error setting %s=%s config for %s: %s\n", cfgkey, cfgval, sensor, err)
 	}
