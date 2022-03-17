@@ -4,6 +4,8 @@ BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
 LOCAL_CLANG ?= 1
+LOCAL_CLANG_FORMAT ?= 0
+FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h' -not -path 'bpf/include/vmlinux.h' -not -path 'bpf/include/api.h' -not -path 'bpf/libbpf/*'
 NOOPT ?= 0
 LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.3
 CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
@@ -211,6 +213,25 @@ else
 check:
 	docker run --rm -v `pwd`:/app -w /app docker.io/golangci/golangci-lint:v$(GOLANGCILINT_WANT_VERSION) golangci-lint run
 endif
+
+.PHONY: clang-format
+ifeq (1,$(LOCAL_CLANG_FORMAT))
+clang-format:
+	find bpf $(FORMAT_FIND_FLAGS) | xargs -n 1000 clang-format -i -style=file
+else
+clang-format:
+	$(CONTAINER_ENGINE) build -f Dockerfile.clang-format -t "isovalent/clang-format:${DOCKER_IMAGE_TAG}" .
+	find bpf $(FORMAT_FIND_FLAGS) | xargs -n 1000 \
+		$(CONTAINER_ENGINE) run -v $(shell realpath .):/fgs "isovalent/clang-format:${DOCKER_IMAGE_TAG}" -i -style=file
+endif
+
+.PHONY: go-format
+go-format:
+	find . -name '*.go' -not -path './vendor/*' | xargs gofmt -w
+
+.PHONY: format
+format: go-format clang-format
+
 .PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check checkerpc
 
 
