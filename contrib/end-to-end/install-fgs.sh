@@ -24,7 +24,7 @@ while [ $# -ge 1 ]; do
         FGS_TAG="${IMAGE_TAG_PAIR[1]:-latest}"
 		shift 2
 	elif [ "$1" == "--btf" ]; then
-        BTF_FILE="$2"
+        BTF_FILE="$(readlink -f "$2")"
 		shift 2
     else
         usage
@@ -55,11 +55,6 @@ install_fgs() {
     echo "Loading FGS image into kind..." 1>&2
     kind load docker-image "$FGS_IMAGE:$FGS_TAG" --name "$CLUSTER_NAME"
 
-    echo "Waiting for all kube-system pods to be ready..." 1>&2
-    for i in $(seq 10); do
-        kubectl wait --for=condition=Ready pods --all --namespace kube-system --timeout=30s && break || sleep 10
-    done
-
     echo "Installing FGS..." 1>&2
     helm repo add isovalent https://helm.isovalent.com
     helm repo update
@@ -72,14 +67,14 @@ install_fgs() {
     helm_opts+=("--set" "enterprise.exportAllowList=")
     helm_opts+=("--set" "enterprise.enableTLSEvents=true")
     helm_opts+=("--set" "enterprise.exportFileMaxSizeMB=50")
-    helm_opts+=("--set" "extraHostPathMounts[0].name=btf")
-    helm_opts+=("--set" "extraHostPathMounts[0].mountPath=/btf")
-    helm_opts+=("--set" "extraHostPathMounts[0].readOnly=true")
     if [ -f "$BTF_FILE" ]; then
         KIND_ID="$(docker ps -aqf "name=$CLUSTER_NAME-control-plane")"
         echo "Transferring $BTF_FILE to container $KIND_ID..." 1>&2
         docker cp "$BTF_FILE" "$KIND_ID:/btf"
         helm_opts+=("--set" "enterprise.btf=/btf")
+        helm_opts+=("--set" "extraHostPathMounts[0].name=btf")
+        helm_opts+=("--set" "extraHostPathMounts[0].mountPath=/btf")
+        helm_opts+=("--set" "extraHostPathMounts[0].readOnly=true")
     fi
 
     helm install hubble-enterprise isovalent/hubble-enterprise "${helm_opts[@]}"
