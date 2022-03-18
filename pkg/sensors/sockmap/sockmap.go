@@ -11,8 +11,6 @@
 package sockmap
 
 import (
-	"path/filepath"
-
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -131,32 +129,30 @@ type skmsgTLSSensor struct {
 }
 
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	path := filepath.Join(args.MapDir, sockops.TlsSockMapName)
-
-	err, i := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Version, args.Verbose, path)
+	err := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet)
 	if err != nil {
-		return err, i
+		return err, -1
 	}
 
-	err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, path)
+	err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.TlsSockMap)
 	if err != nil {
-		return err, i
+		return err, -1
 	}
 	if utils.SkSkbParserRequired() {
-		err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbParser, path)
+		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbParser, sockops.TlsSockMap)
 		if err != nil {
-			return err, i
+			return err, -1
 		}
 	}
-	err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbVerdict, path)
+	err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbVerdict, sockops.TlsSockMap)
 	if err != nil {
-		return err, i
+		return err, -1
 	}
 
 	if err := sensors.SetFilter(args.MapDir, "tls_filter_map", tlsSelectors); err != nil {
-		return err, i
+		return err, -1
 	}
-	return nil, i
+	return nil, -1
 }
 
 func (skmsg *skmsgTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -287,5 +283,6 @@ func (tls *tlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 }
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return sensors.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
+	err := sensors.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
+	return err, -1
 }

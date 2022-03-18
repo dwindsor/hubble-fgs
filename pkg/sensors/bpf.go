@@ -22,7 +22,7 @@ func ProgramBuilder(
 ) *Program {
 	return &Program{
 		objFile, attach, label, pinFile, false, true, ty,
-		Idle(), -1, struct{}{},
+		Idle(), -1, struct{}{}, nil,
 	}
 }
 
@@ -63,6 +63,9 @@ type Program struct {
 
 	// LoaderData represents per-type specific fields.
 	LoaderData interface{}
+
+	// unloader for the program. nil if not loaded.
+	unloader Unloader
 }
 
 func (p *Program) SetRetProbe(ret bool) *Program {

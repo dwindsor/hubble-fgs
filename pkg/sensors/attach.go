@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"golang.org/x/sys/unix"
 
 	"github.com/vishvananda/netlink"
 
@@ -31,6 +32,10 @@ const (
 	verifierLogBufferSize = 10 * 1024 * 1024 // 10MB
 )
 
+var (
+	fgsCgroupFD int = -1
+)
+
 type Selector struct {
 	MapName   string
 	Selectors [128]byte
@@ -39,44 +44,48 @@ type Selector struct {
 func LoadSockOpt(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,
-	version, verbose int,
-	path string,
-) (error, int) {
+) error {
 	return LoadCgroupProgram(bpfDir, mapDir, ciliumDir, load)
 }
 
-type WithProgramFunc func(*ebpf.Program, *ebpf.ProgramSpec) error
+// AttachFunc is the type for the various attachment functions. The function is
+// given the program and it's up to it to close it.
+type AttachFunc func(*ebpf.Program, *ebpf.ProgramSpec) (Unloader, error)
 
-func rawAttachWithProgram(targetFD int) WithProgramFunc {
-	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) error {
+func rawAttach(targetFD int) AttachFunc {
+	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (Unloader, error) {
 		err := link.RawAttachProgram(link.RawAttachProgramOptions{
 			Target:  targetFD,
 			Program: prog,
 			Attach:  spec.AttachType,
 		})
 		if err != nil {
-			if err := prog.Unpin(); err != nil {
-				logger.GetLogger().WithError(err).Warn("Failed to unpin program after failed attach")
-			}
-			return fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
+			prog.Close()
+			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
 		}
-		return nil
+		return chainUnloader{
+			pinUnloader{prog},
+			&rawDetachUnloader{
+				targetFD:   targetFD,
+				name:       spec.Name,
+				prog:       prog,
+				attachType: spec.AttachType,
+			},
+		}, nil
 	}
 }
 
 func LoadSkProgram(
 	bpfDir, mapDir string,
 	load *Program,
-	targetSockmap string,
-) (error, int) {
-	targetMap, err := ebpf.LoadPinnedMap(targetSockmap, nil)
-	if err != nil {
-		return fmt.Errorf("loading '%s' failed: %w", targetSockmap, err), 0
-	}
-	defer targetMap.Close()
+	targetSockmap *Map,
+) error {
 
-	return loadProgram(bpfDir, []string{mapDir}, load,
-		rawAttachWithProgram(targetMap.FD())), 0
+	if targetSockmap.mapHandle == nil {
+		return fmt.Errorf("target map %s is not loaded", targetSockmap.Name)
+	}
+
+	return loadProgram(bpfDir, []string{mapDir}, load, rawAttach(targetSockmap.mapHandle.FD()))
 }
 
 // Sockops is different from other programs, in that it is shared across
@@ -87,10 +96,10 @@ func LoadSkProgram(
 func LoadSockops(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,
-	version, verbose int) (error, int) {
+	version, verbose int) error {
 	if bpf.IsSockopsLoaded() {
 		logger.GetLogger().WithField("program", load.Name).Infof("Sockops, %d references exist reuse", bpf.SockopsRefCnt())
-		return nil, 0
+		return nil
 	}
 	logger.GetLogger().WithField("program", load.Name).Infof("Sockops, create initial reference")
 	bpf.CgroupSockopsRefInc()
@@ -102,30 +111,34 @@ func LoadTC(
 	load *Program,
 	version, verbose int,
 	selectors [128]byte,
-) (error, int) {
-	attach := func(prog *ebpf.Program, spec *ebpf.ProgramSpec) error {
+) error {
+	attach := func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (Unloader, error) {
 		attachLinks, err := getDefaultRouteLinks()
 		if err != nil {
-			return err
+			return nil, err
 		}
-
+		var unloader tcUnloader
 		for _, link := range attachLinks {
+			// NOTE: Set outer 'err' and break on error to rewind.
 			logger.GetLogger().Infof("Attaching %s to device %s", load.Type, link.Attrs().Name)
 			isIngress := "tc_ingress" == load.Type
-			if err := bpf.QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
-				return err
+			if err = bpf.QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
+				break
 			}
-			if err := bpf.AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
-				return err
+			if err = bpf.AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
+				break
 			}
+			unloader.attachments = append(unloader.attachments, tcAttachment{link.Attrs().Name, isIngress})
 		}
-		return nil
+		if err != nil {
+			if unloadErr := unloader.Unload(); unloadErr != nil {
+				logger.GetLogger().Warnf("Failed to unload on TC program rewind: %s", unloadErr)
+			}
+			return nil, err
+		}
+		return unloader, nil
 	}
-	err := loadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach)
-	if err != nil {
-		return err, 0
-	}
-	return nil, 0
+	return loadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach)
 }
 
 func getDefaultRouteLinks() ([]netlink.Link, error) {
@@ -154,16 +167,15 @@ func getDefaultRouteLinks() ([]netlink.Link, error) {
 
 func LoadCgroupProgram(
 	bpfDir, mapDir, ciliumDir string,
-	load *Program) (error, int) {
-
-	f, err := os.Open(fgsCgroupPath)
-	if err != nil {
-		return fmt.Errorf("failed to open '%s': %w", fgsCgroupPath, err), 0
+	load *Program) error {
+	if fgsCgroupFD < 0 {
+		fd, err := unix.Open(fgsCgroupPath, unix.O_RDONLY, 0)
+		if err != nil {
+			return fmt.Errorf("failed to open '%s': %w", fgsCgroupPath, err)
+		}
+		fgsCgroupFD = fd
 	}
-	defer f.Close()
-
-	// TODO: Use AttachCgroup?
-	return loadProgram(bpfDir, []string{mapDir, ciliumDir}, load, rawAttachWithProgram(int(f.Fd()))), 0
+	return loadProgram(bpfDir, []string{mapDir, ciliumDir}, load, rawAttach(fgsCgroupFD))
 }
 
 func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection) error {
@@ -257,7 +269,7 @@ func loadProgram(
 	bpfDir string,
 	mapDirs []string,
 	load *Program,
-	withProgram WithProgramFunc,
+	withProgram AttachFunc,
 ) error {
 	var btfFile *os.File
 	if btfFilePath := btf.GetCachedBTFFile(); btfFilePath != "/sys/kernel/btf/vmlinux" {
@@ -362,12 +374,22 @@ func loadProgram(
 		}
 	}
 
+	// Clone the program so it can be passed on to attach function and unloader after
+	// we close the collection.
+	prog, err = prog.Clone()
+	if err != nil {
+		return fmt.Errorf("failed to clone program '%s': %w", load.Label, err)
+	}
+
 	if err := prog.Pin(pinPath); err != nil {
 		return fmt.Errorf("pinning '%s' to '%s' failed: %w", load.Label, pinPath, err)
 	}
 
-	err = withProgram(prog, progSpec)
+	load.unloader, err = withProgram(prog, progSpec)
 	if err != nil {
+		if err := prog.Unpin(); err != nil {
+			logger.GetLogger().Warnf("Unpinning '%s' failed: %w", pinPath, err)
+		}
 		return err
 	}
 

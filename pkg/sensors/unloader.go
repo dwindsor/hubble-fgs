@@ -61,12 +61,8 @@ type pinUnloader struct {
 }
 
 func (pu pinUnloader) Unload() error {
-	err := pu.prog.Unpin()
-	err2 := pu.prog.Close()
-	if err != nil {
-		return err
-	}
-	return err2
+	defer pu.prog.Close()
+	return pu.prog.Unpin()
 }
 
 // linkUnloader unloads a BPF link by closing it.
@@ -87,6 +83,7 @@ type rawDetachUnloader struct {
 }
 
 func (rdu *rawDetachUnloader) Unload() error {
+	defer rdu.prog.Close()
 	err := link.RawDetachProgram(link.RawDetachProgramOptions{
 		Target:  rdu.targetFD,
 		Program: rdu.prog,

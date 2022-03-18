@@ -244,22 +244,32 @@ func RemoveProgram(bpfDir string, prog *Program) {
 			}
 		}
 		os.Remove(path + "-kp-calls")
-	} else if prog.Type == "cgrp_egress" {
-		bpf.CgroupDestroyEgress(path)
-	} else if prog.Type == "cgrp_ingress" {
-		bpf.CgroupDestroyIngress(path)
-	} else if prog.Type == "cgrp_socket" {
-		bpf.CgroupDestroySockOpt(path)
-	} else if prog.Type == "sockops" {
-		bpf.CgroupDestroySockops(path)
-	}
-	if err := os.Remove(path); err != nil {
-		logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
-	}
-	if prog.traceFD >= 0 {
+		if err := os.Remove(path); err != nil {
+			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
+		}
+	} else if prog.traceFD >= 0 {
 		removeTracepoint(prog.traceFD)
 		prog.traceFD = -1
+		if err := os.Remove(path); err != nil {
+			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
+		}
+	} else if prog.Type == "sockops" {
+		// TODO: remove sockops special case and do proper program and map refcounting.
+		bpf.CgroupDestroySockops(path)
+		if err := os.Remove(path); err != nil {
+			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
+		}
+	} else {
+		if prog.unloader == nil {
+			logger.GetLogger().Debugf("Not unloading '%s', no unloader.", prog.Name)
+		} else {
+			if err := prog.unloader.Unload(); err != nil {
+				logger.GetLogger().Warnf("Failed to unload '%s': %s", prog.Name, err)
+			}
+			prog.unloader = nil
+		}
 	}
+	prog.LoadState = Idle()
 }
 
 func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) error {
@@ -270,18 +280,17 @@ func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) er
 
 	for _, p := range sensor.Progs {
 		RemoveProgram(bpfDir, p)
-		p.LoadState = Idle()
 	}
 
 	for _, m := range sensor.Maps {
-		os.Remove(filepath.Join(mapDir, m.Name))
-		m.PinState = Idle()
 		if m.mapHandle != nil {
 			if err := m.mapHandle.Close(); err != nil {
 				logger.GetLogger().Warnf("Failed to close map %s: %s", m.Name, err)
 			}
 			m.mapHandle = nil
 		}
+		os.Remove(filepath.Join(mapDir, m.Name))
+		m.PinState = Idle()
 	}
 
 	sensor.Loaded = false

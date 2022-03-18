@@ -15,7 +15,6 @@ import (
 	"encoding/binary"
 	"fmt"
 	"net/http"
-	"path/filepath"
 	"strconv"
 	"strings"
 
@@ -99,26 +98,25 @@ type httpSensor struct {
 }
 
 func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	path := filepath.Join(args.MapDir, "http_sock_map")
-	err, i := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, path)
+	err := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.HttpSockMap)
 	if err != nil {
-		return err, i
+		return err, -1
 	}
 
 	if utils.SkSkbParserRequired() {
-		err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, path)
+		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.HttpSockMap)
 		if err != nil {
-			return err, i
+			return err, -1
 		}
 	}
-	err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, path)
+	err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.HttpSockMap)
 	if err != nil {
-		return err, i
+		return err, -1
 	}
 	if err := sensors.SetFilter(args.MapDir, "http_filter_map", filters); err != nil {
-		return err, i
+		return err, -1
 	}
-	return nil, i
+	return nil, -1
 }
 
 func (http *httpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

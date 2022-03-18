@@ -11,8 +11,6 @@
 package nop
 
 import (
-	"path/filepath"
-
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
@@ -57,19 +55,18 @@ type sensor struct {
 }
 
 func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	path := filepath.Join(args.MapDir, nopSockMapName)
-	err, i := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, path)
+	err := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, SockMap)
 	if err != nil {
-		return err, i
+		return err, -1
 	}
 
 	if utils.SkSkbParserRequired() {
-		err, i = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, path)
+		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, SockMap)
 		if err != nil {
-			return err, i
+			return err, -1
 		}
 	}
-	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, path)
+	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, SockMap), -1
 }
 
 func (nop *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

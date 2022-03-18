@@ -330,11 +330,12 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verb
 			filepath.Join(bpfDir, load.PinPath),
 			mapDir)
 	} else if load.Type == "cgrp_socket" {
-		return LoadCgroupProgram(
+		err := LoadCgroupProgram(
 			bpfDir,
 			mapDir,
 			ciliumDir,
 			load)
+		return err, -1
 	} else {
 		if s, ok := registeredProbeLoad[load.Type]; ok {
 			return s.LoadProbe(LoadProbeArgs{
