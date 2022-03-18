@@ -63,7 +63,7 @@ var (
 func doLineTest(t *testing.T, c *LineTestCase) {
 	filter, err := FromLine(c.line)
 	if err != nil {
-		t.Errorf("failed to parse line %s: %w", c.line, err)
+		t.Errorf("failed to parse line %s: %s", c.line, err)
 	}
 
 	for _, vtres := range c.tests {
