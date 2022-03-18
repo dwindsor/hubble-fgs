@@ -19,7 +19,7 @@ forward_grpc() {
 
     for pod in $ENTERPRISE_PODS; do
         GRPC_PORTS+=($NEXT_GRPC_PORT)
-        kubectl port-forward -n kube-system "$pod" "$NEXT_GRPC_PORT:54321" &>/dev/null &
+        kubectl port-forward -n kube-system "$pod" "$NEXT_GRPC_PORT:54321" &
         PORTFORWARD_PIDS+=($!)
         NEXT_GRPC_PORT=$(($NEXT_GRPC_PORT + 1))
     done
