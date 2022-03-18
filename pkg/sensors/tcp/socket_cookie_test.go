@@ -129,5 +129,4 @@ func TestSocketCookie(t *testing.T) {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}
-	observer.TestDone(t, obs)
 }

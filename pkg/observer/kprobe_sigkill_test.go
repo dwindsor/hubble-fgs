@@ -141,5 +141,4 @@ func TestKprobeSigkill(t *testing.T) {
 	)
 	err = JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }

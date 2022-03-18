@@ -102,7 +102,6 @@ func TestGenericTracepointSimple(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	TestDone(t, observer)
 }
 
 func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, selfOp func(), checkFn func(*fgs.ProcessTracepoint) error) {
@@ -213,8 +212,6 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		t.Logf("error: %s", err)
 		t.Fail()
 	}
-
-	TestDone(t, observer)
 }
 
 func TestGenericTracepointPidFilterLseek(t *testing.T) {

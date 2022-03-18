@@ -74,7 +74,6 @@ spec:
 	}
 	initialSensor := sensors.GetInitialSensor()
 	initialSensor.Load(context.TODO(), obs.bpfDir, obs.mapDir, obs.ciliumDir)
-	obs.RemovePrograms()
 }
 
 // NB: This is similar to TestKprobeObjectWriteRead, but it's a bit easier to
@@ -124,7 +123,6 @@ spec:
 	readyWG.Wait()
 	fmt.Printf("Calling lseek...\n")
 	unix.Seek(-1, 0, 4444)
-	TestDone(t, obs)
 }
 
 func getTestKprobeObjectWRChecker() ec.MultiResponseChecker {
@@ -174,7 +172,6 @@ func runKprobeObjectWriteRead(t *testing.T, writeReadHook string) {
 
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }
 
 func TestKprobeObjectWriteReadHostNs(t *testing.T) {
@@ -407,7 +404,6 @@ func runKprobeObjectRead(t *testing.T, readHook string, checker ec.MultiResponse
 
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }
 
 func TestKprobeObjectRead(t *testing.T) {
@@ -621,7 +617,6 @@ func testKprobeObjectFiltered(t *testing.T,
 	assert.NoError(t, err)
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }
 
 func testKprobeObjectOpenHook(pidStr string, path string) string {
@@ -1063,7 +1058,6 @@ spec:
 
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }
 
 var (
@@ -1344,7 +1338,6 @@ func corePathTest(t *testing.T, filePath string, readHook string, writeChecker e
 	assert.NoError(t, err)
 	err = JsonTestCheck(t, writeChecker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }
 
 func testMultipleMountsFiltered(t *testing.T, readHook string) {

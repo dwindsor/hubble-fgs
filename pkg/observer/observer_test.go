@@ -74,7 +74,6 @@ func TestObjectLoad(t *testing.T) {
 		t.Fatalf("ObserverFindProgs error: %s", err)
 	}
 	initialSensor.Load(context.TODO(), obs.bpfDir, obs.mapDir, obs.ciliumDir)
-	obs.RemovePrograms()
 }
 
 func TestNamespaces(t *testing.T) {
@@ -103,7 +102,6 @@ func TestNamespaces(t *testing.T) {
 	readyWG.Wait()
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }
 
 func getNCCommand(t *testing.T, orig string) string {
@@ -157,7 +155,6 @@ func TestSensorLseekLoad(t *testing.T) {
 		t.Fatalf("ObserverFindProgs error: %s", err)
 	}
 	if err := sensor.Load(ctx, obs.bpfDir, obs.mapDir, obs.ciliumDir); err != nil {
-		obs.RemovePrograms()
 		t.Fatalf("observerLoadSensor error: %s", err)
 	}
 	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
@@ -168,9 +165,6 @@ func TestSensorLseekLoad(t *testing.T) {
 	assert.NoError(t, err)
 
 	sensors.UnloadSensor(obs.bpfDir, obs.mapDir, sensor, ctx)
-
-	obs.RemovePrograms()
-	obs.PrintStats()
 }
 
 func TestSensorLseekEnable(t *testing.T) {
@@ -192,10 +186,6 @@ func TestSensorLseekEnable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	defer func() {
-		obs.RemovePrograms()
-		obs.PrintStats()
-	}()
 
 	sensorName := "lseekTest"
 	progs := []*sensors.Program{ObserverLseekTest}

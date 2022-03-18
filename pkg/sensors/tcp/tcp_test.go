@@ -136,7 +136,6 @@ func TestConnectEvent(t *testing.T) {
 	observer.ExecWGCurl(&readyWG, "127.0.0.1")
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	observer.TestDone(t, obs)
 }
 
 func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
@@ -229,8 +228,6 @@ func TestExecEventClone(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
-
-	observer.TestDone(t, obs)
 }
 
 func getNCCommand(t *testing.T, orig string) string {
@@ -277,7 +274,7 @@ func TestExistingListenEvent(t *testing.T) {
 	assert.NoError(t, cmdServer.Start())
 
 	/* Create obs */
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
+	_, err := observer.GetDefaultObserver(t, fgsLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -286,8 +283,6 @@ func TestExistingListenEvent(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-
-	observer.TestDone(t, obs)
 }
 
 func TestExistingAcceptEvent(t *testing.T) {
@@ -354,8 +349,6 @@ func TestExistingAcceptEvent(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
-
-	observer.TestDone(t, obs)
 }
 
 func TestExistingRootCWDListenEvent(t *testing.T) {
@@ -395,7 +388,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create obs */
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
+	_, err = observer.GetDefaultObserver(t, fgsLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -404,8 +397,6 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-
-	observer.TestDone(t, obs)
 }
 
 func TestListenAcceptClose(t *testing.T) {
@@ -489,8 +480,6 @@ func TestListenAcceptClose(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, exitChecker)
 	assert.NoError(t, err)
-
-	observer.TestDone(t, obs)
 }
 
 func TestDockerExistingListenEvent(t *testing.T) {
@@ -550,7 +539,6 @@ func TestDockerExistingListenEvent(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	observer.TestDone(t, obs)
 }
 
 func TestDockerListenConnect(t *testing.T) {
@@ -633,7 +621,6 @@ func TestDockerListenConnect(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-	observer.TestDone(t, obs)
 }
 
 const BUFSIZE, BUFVAR = 1024, 256
@@ -884,6 +871,4 @@ func TestTcpBurst(t *testing.T) {
 		fmt.Printf("ERROR Server process in burst map after exit\n")
 		os.Exit(-1)
 	}
-
-	observer.TestDone(t, obs)
 }

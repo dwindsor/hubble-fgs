@@ -141,8 +141,6 @@ func TestHttp11Curl(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-
-	observer.TestDone(t, obs)
 }
 
 func spawnHttp2Server(t *testing.T, ctx context.Context) string {
@@ -224,6 +222,4 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-
-	observer.TestDone(t, obs)
 }

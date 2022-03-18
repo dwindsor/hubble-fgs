@@ -105,7 +105,18 @@ func withLib(lib string) testOption {
 	}
 }
 
-func TestDone(t *testing.T, obs *Observer) {
+func testDone(t *testing.T, obs *Observer) {
+	if t.Failed() {
+		bugtoolFname := "/tmp/fgs-bugtool.tar.gz"
+		if err := bugtool.Bugtool(bugtoolFname); err == nil {
+			logger.GetLogger().WithField("test", t.Name()).
+				WithField("file", bugtoolFname).Info("Dumped bugtool info")
+		} else {
+			logger.GetLogger().WithField("test", t.Name()).
+				WithField("file", bugtoolFname).Warnf("Failed to dump bugtool info: %v", err)
+		}
+	}
+
 	obs.RemovePrograms()
 	obs.PrintStats()
 }
@@ -252,16 +263,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 	}
 
 	t.Cleanup(func() {
-		if t.Failed() {
-			bugtoolFname := "/tmp/fgs-bugtool.tar.gz"
-			if err := bugtool.Bugtool(bugtoolFname); err == nil {
-				logger.GetLogger().WithField("test", t.Name()).
-					WithField("file", bugtoolFname).Info("Dumped bugtool info")
-			} else {
-				logger.GetLogger().WithField("test", t.Name()).
-					WithField("file", bugtoolFname).Warnf("Failed to dump bugtool info: %v", err)
-			}
-		}
+		testDone(t, obs)
 	})
 
 	obs.perfConfig = bpf.DefaultPerfEventConfig()
@@ -338,7 +340,6 @@ func LoopEvents(t *testing.T, doneWG, readyWG *sync.WaitGroup, obs *Observer, ct
 		defer doneWG.Done()
 
 		if err := obs.runEventsNew(ctx, func() { readyWG.Done() }); err != nil {
-			RemovePrograms(obs.bpfDir, obs.mapDir)
 			t.Fatalf("runEvents error: %s", err)
 		}
 	}()

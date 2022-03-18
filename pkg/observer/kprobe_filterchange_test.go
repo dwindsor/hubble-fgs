@@ -107,7 +107,6 @@ func TestKprobeNSChanges(t *testing.T) {
 	)
 	err = JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }
 
 func TestKprobeCapChanges(t *testing.T) {
@@ -191,5 +190,4 @@ func TestKprobeCapChanges(t *testing.T) {
 	)
 	err = JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
-	TestDone(t, obs)
 }

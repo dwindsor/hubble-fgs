@@ -127,8 +127,6 @@ func TestTCTLS13(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-
-	observer.TestDone(t, obs)
 }
 
 func TestTCTLS12(t *testing.T) {
@@ -188,6 +186,4 @@ func TestTCTLS12(t *testing.T) {
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-
-	observer.TestDone(t, obs)
 }
