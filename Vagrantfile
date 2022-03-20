@@ -1,7 +1,7 @@
 Vagrant.configure("2") do |config|
-  config.vm.box = "ubuntu/hirsute64"
+  config.vm.box = "ubuntu/impish64"
   config.vm.provision :docker
-  config.vm.network "private_network", ip: "192.168.33.11"
+  config.vm.network "private_network", ip: "192.168.56.11"
   config.vm.synced_folder ".", "/home/vagrant/go/src/github.com/isovalent/hubble-fgs", create: true
   config.ssh.extra_args = ["-t", "cd /home/vagrant/go/src/github.com/isovalent/hubble-fgs; bash --login"]
   config.vm.provider "virtualbox" do |v|

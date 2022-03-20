@@ -391,7 +391,7 @@ to spin up a GKE cluster.
 
     vagrant up
     minikube start --driver=ssh \
-      --ssh-ip-address=192.168.33.11 \
+      --ssh-ip-address=192.168.56.11 \
       --ssh-user=vagrant \
       --ssh-key=./.vagrant/machines/default/virtualbox/private_key
 
