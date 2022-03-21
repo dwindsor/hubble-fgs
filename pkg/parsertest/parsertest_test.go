@@ -142,11 +142,30 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 		}
 	case SENS_HTTP:
 		spec = v1alpha1.ParserPolicySpec{
+			Tls: v1alpha1.TlsSpec{
+				Enable: true,
+				Mode:   "socket",
+				Selectors: []v1alpha1.TlsSelector{
+					{MatchPorts: []uint32{9999}},
+				},
+			},
 			Http: v1alpha1.HttpSpec{
 				Enable: true,
 				Selectors: []v1alpha1.HttpSelector{
 					{MatchPorts: []uint32{8888}},
 				},
+			},
+			Udp: v1alpha1.UdpPolicySpec{
+				Enable:                   true,
+				Cgroup:                   true,
+				StatsInterval:            0,
+				DeleteIdleSocketInterval: 0,
+				Burst:                    v1alpha1.UdpBurstPolicySpec{},
+			},
+			Tcp: v1alpha1.TcpPolicySpec{
+				Enable:        true,
+				StatsInterval: 0,
+				Burst:         v1alpha1.TcpBurstPolicySpec{},
 			},
 		}
 	case SENS_INITIAL:
