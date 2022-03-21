@@ -91,7 +91,7 @@ var (
 	/* Http maps */
 	TailCalls     = sensors.MapBuilder("http1_calls", Skmsg)
 	SkbTailCalls  = sensors.MapBuilder("http1_calls_skb", SkSkbVerdict)
-	HTTPFilterMap = sensors.MapBuilder("http_filter_map", sockops.SockopsEstablished)
+	HTTPFilterMap = sockops.HttpFilterMap
 )
 
 type httpSensor struct {
