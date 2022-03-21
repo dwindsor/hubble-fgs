@@ -1,6 +1,5 @@
 # Connection has been established and we should see 3 sockets:
 # accept, connect and listen.
-ASSERT MAP socket_map HAS COUNT 3
 
 EGRESS
 	"hello"
@@ -133,7 +132,6 @@ END
 
 # Close the client socket and verify the sockets have been removed.
 CLOSE CLIENT
-ASSERT MAP socket_map HAS COUNT 1
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
@@ -178,7 +176,6 @@ EVENT TCPCLOSE
 END
 
 CLOSE LISTENER
-ASSERT MAP socket_map HAS COUNT 0
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad

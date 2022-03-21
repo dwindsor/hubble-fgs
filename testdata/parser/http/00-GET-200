@@ -1,7 +1,6 @@
 
 # Connection has been established and we should see:
 # listen, accept and connect sockets.
-ASSERT MAP socket_map HAS COUNT 3
 
 # We're not expecting anything in http_map yet.
 ASSERT MAP http_map HAS COUNT 0
@@ -222,5 +221,3 @@ ASSERT MAP http_map HAS COUNT 4
 # Close both sockets and verify that maps are cleaned up.
 CLOSE
 ASSERT MAP http_map HAS COUNT 0
-ASSERT MAP socket_map HAS COUNT 0
-
