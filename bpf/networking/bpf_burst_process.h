@@ -150,7 +150,7 @@ void init_burst_log(u64 burst_key, u64 process_start_time, u64 vol, u64 current_
 		.burst_window_size = burst_window_size,
 	};
 
-	err = map_update_elem(&pn_burst_map, &burst_key, burst_log, BPF_ANY);
+	err = map_update_elem(&pn_burst_map, &burst_key, burst_log, BPF_NOEXIST);
 	if (!err && (cntr = map_lookup_elem(&pn_burst_map_stats, &zero)))
 		*cntr = *cntr + 1;
 }
