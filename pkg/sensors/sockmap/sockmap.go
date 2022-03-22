@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -78,6 +79,9 @@ var (
 	TLSParserStats   = sensors.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
 	TLSTailCalls     = sensors.MapBuilder("tls_calls", TLSTCIngress)
 	TlsFilterMap     = sensors.MapBuilder("tls_filter_map", sockops.SockopsEstablished)
+	HTTPTailCalls    = http.TailCalls
+	HTTPFilterMap    = http.HTTPFilterMap
+	HTTPSockMap      = sockops.HttpSockMap
 )
 
 func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
@@ -252,6 +256,9 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 			TLSParserStats,
 			TlsFilterMap,
 			sensors.HTTPContext,
+			HTTPTailCalls,
+			HTTPFilterMap,
+			HTTPSockMap,
 		)
 	}
 
@@ -266,6 +273,9 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 			sensors.TLSContext,
 			TLSTailCalls,
 			TCTLSParserStats,
+			HTTPTailCalls,
+			HTTPFilterMap,
+			HTTPSockMap,
 		)
 	}
 
