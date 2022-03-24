@@ -29,14 +29,13 @@ event_tcp4_connect(struct pt_regs *ctx)
 	struct msg_ip_event *val;
 	__u32 saddr;
 	__u16 sport;
-	__u32 ppid = 0, pid = 0, zero = 0;
+	__u32 ppid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
 	uint64_t size;
 	__u32 daddr;
 	__u16 dport;
 
-	pid = (get_current_pid_tgid() >> 32);
 	process = event_find_curr(&ppid, 0, &walker);
 	if (!process)
 		return 0;
