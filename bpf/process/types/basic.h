@@ -41,6 +41,7 @@ enum { ACTION_POST = 0,
        /* Actual SIGKILL value, but we dont want to pull headers in */
        ACTION_SIGKILL = 2,
        ACTION_UNFOLLOWFD = 3,
+       ACTION_OVERRIDE = 4,
 };
 
 enum { FGS_SIGKILL = 9,
@@ -821,11 +822,13 @@ installfd(struct msg_generic_kprobe *e, int fd, int name, bool follow)
 
 static inline __attribute__((always_inline)) long
 __do_action(long i, struct msg_generic_kprobe *e,
-	    struct selector_action *actions)
+	    struct selector_action *actions, struct bpf_map_def *override_tasks)
 {
 	enum generic_func_args_enum fgs_args;
 	int action = actions->act[i];
+	__s32 error, *error_p;
 	int fdi, namei;
+	__u64 id;
 	int err = 0;
 
 	switch (action) {
@@ -839,6 +842,23 @@ __do_action(long i, struct msg_generic_kprobe *e,
 		if (bpf_core_enum_value(fgs_args, sigkill))
 			send_signal(FGS_SIGKILL);
 		break;
+	case ACTION_OVERRIDE:
+		error = actions->act[++i];
+		id = get_current_pid_tgid();
+
+		if (!override_tasks)
+			break;
+		/*
+		 * TODO: this should not happen, it means that the override
+		 * program was not executed for some reason, we should do
+		 * warning in here
+		 */
+		error_p = map_lookup_elem(override_tasks, &id);
+		if (error_p)
+			*error_p = error;
+		else
+			map_update_elem(override_tasks, &id, &error, BPF_ANY);
+		break;
 	default:
 		break;
 	}
@@ -850,14 +870,15 @@ __do_action(long i, struct msg_generic_kprobe *e,
 }
 
 static inline __attribute__((always_inline)) long
-do_actions(struct msg_generic_kprobe *e, struct selector_action *actions)
+do_actions(struct msg_generic_kprobe *e, struct selector_action *actions,
+	   struct bpf_map_def *override_tasks)
 {
 	/* Clang really doesn't want to unwind a loop here. */
 	long i = 0;
-	i = __do_action(i, e, actions);
+	i = __do_action(i, e, actions, override_tasks);
 	if (i)
 		goto out;
-	i = __do_action(i, e, actions);
+	i = __do_action(i, e, actions, override_tasks);
 out:
 	return i > 0 ? true : 0;
 }
@@ -866,7 +887,8 @@ out:
 
 static inline __attribute__((always_inline)) long
 filter_read_arg(void *ctx, int index, struct bpf_map_def *heap,
-		struct bpf_map_def *filter, struct bpf_map_def *tailcalls)
+		struct bpf_map_def *filter, struct bpf_map_def *tailcalls,
+		struct bpf_map_def *override_tasks)
 {
 	struct msg_generic_kprobe *e;
 	int pass, zero = 0;
@@ -907,7 +929,7 @@ filter_read_arg(void *ctx, int index, struct bpf_map_def *heap,
 				     :);
 			actions = (struct selector_action *)&f[actoff];
 
-			postit = do_actions(e, actions);
+			postit = do_actions(e, actions, override_tasks);
 			if (!postit)
 				return 1;
 		}

@@ -37,6 +37,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) kprobe_calls = {
 	.max_entries = 11,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) override_tasks = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(__u64),
+	.value_size = sizeof(__s32),
+	.max_entries = 32768,
+};
+
 /* Arrays of size 1 will be rewritten to direct loads in verifier */
 struct bpf_map_def __attribute__((section("maps"), used)) filter_map = {
 	.type = BPF_MAP_TYPE_ARRAY,
@@ -167,33 +174,48 @@ __attribute__((section(("kprobe/6")), used)) int
 generic_kprobe_filter_arg1(void *ctx)
 {
 	return filter_read_arg(ctx, 0, &process_call_heap, &filter_map,
-			       &kprobe_calls);
+			       &kprobe_calls, &override_tasks);
 }
 
 __attribute__((section(("kprobe/7")), used)) int
 generic_kprobe_filter_arg2(void *ctx)
 {
 	return filter_read_arg(ctx, 1, &process_call_heap, &filter_map,
-			       &kprobe_calls);
+			       &kprobe_calls, &override_tasks);
 }
 
 __attribute__((section(("kprobe/8")), used)) int
 generic_kprobe_filter_arg3(void *ctx)
 {
 	return filter_read_arg(ctx, 2, &process_call_heap, &filter_map,
-			       &kprobe_calls);
+			       &kprobe_calls, &override_tasks);
 }
 
 __attribute__((section(("kprobe/9")), used)) int
 generic_kprobe_filter_arg4(void *ctx)
 {
 	return filter_read_arg(ctx, 3, &process_call_heap, &filter_map,
-			       &kprobe_calls);
+			       &kprobe_calls, &override_tasks);
 }
 
 __attribute__((section(("kprobe/10")), used)) int
 generic_kprobe_filter_arg5(void *ctx)
 {
 	return filter_read_arg(ctx, 4, &process_call_heap, &filter_map,
-			       &kprobe_calls);
+			       &kprobe_calls, &override_tasks);
+}
+
+__attribute__((section(("kprobe/override")), used)) int
+generic_kprobe_override(void *ctx)
+{
+	__u64 id = get_current_pid_tgid();
+	__s32 *error;
+
+	error = map_lookup_elem(&override_tasks, &id);
+	if (!error)
+		return 0;
+
+	override_return(ctx, *error);
+	map_delete_elem(&override_tasks, &id);
+	return 0;
 }
