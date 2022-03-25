@@ -18,6 +18,8 @@ package bpf
 #cgo CFLAGS: -I ../../bpf/include -I ../../bpf/libbpf/ -I ../../bpf/lib/
 #cgo LDFLAGS: -L../../lib -L/usr/local/lib -lbpf -lelf -lz
 
+#define _GNU_SOURCE
+#include <stdio.h>
 #include <string.h>
 #include <sched.h>
 #include <unistd.h>
@@ -28,6 +30,7 @@ package bpf
 #include <sys/stat.h>
 #include <sys/types.h>
 #include <errno.h>
+#include <stdlib.h>
 
 #include "libbpf.h"
 #include "libbpf__bpf.h"
@@ -120,6 +123,7 @@ int bpf_loader_set_map(struct bpf_object *obj,
 
 static struct bpf_object *__loader(const int version,
 		    const int verbosity,
+		    bool override,
 		    struct btf *btf,
 		    const char *prog,
 		    const char *mapdir,
@@ -127,6 +131,7 @@ static struct bpf_object *__loader(const int version,
 		    const int type)
 {
 	struct bpf_object_load_attr attr = {0};
+	struct bpf_program *ovr;
 	struct bpf_object *obj;
 	int err;
 
@@ -147,6 +152,15 @@ static struct bpf_object *__loader(const int version,
 	if (err) {
 		fprintf(stderr, "bpf_loader_set_map failed %d\n", err);
 		return NULL;
+	}
+
+	// Do not load override program if we don't want it,
+	// applies only for kprobe, so we don't need to check
+	// for 'not found' case below
+	if (!override) {
+		ovr = bpf_object__find_program_by_title(obj, "kprobe/override");
+		if (ovr)
+			bpf_program__set_autoload(ovr, false);
 	}
 
 	attr.obj = obj;
@@ -230,15 +244,59 @@ int tracepoint_loader(const int version,
 	struct bpf_object *obj;
 	int err;
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
+	obj = __loader(version, verbosity, false, btf, prog, mapdir, 0, BPF_PROG_TYPE_TRACEPOINT);
 	if (!obj)
 		return -1;
 
 	return __tracepoint_loader(obj, verbosity, btf, prog, attach_category, attach_name, label, __prog, mapdir);
 }
 
+static int load_override(struct bpf_object *obj, const char *__prog,
+			 const char *attach, const int verbosity)
+{
+	struct bpf_program *prog;
+	struct bpf_link *link;
+	char *pin;
+	int err;
+
+	prog = bpf_object__find_program_by_title(obj, "kprobe/override");
+	if (!prog) {
+		if (verbosity)
+			fprintf(stderr, "Failed to find 'kprobe/override' program\n");
+		return -1;
+	}
+
+	if (asprintf(&pin, "%s_override", __prog) < 0) {
+		if (verbosity)
+			fprintf(stderr, "Failed to allocate pin path\n");
+		return -1;
+	}
+
+	bpf_program__unpin(prog, pin);
+
+	link = bpf_program__attach_kprobe(prog, false, attach);
+	err = libbpf_get_error(link);
+	if (err) {
+		if (verbosity)
+			fprintf(stderr, "Failed to attach kprobe/override program for %s\n", attach);
+		goto out;
+	}
+
+	err = bpf_program__pin(prog, pin);
+	if (err < 0) {
+		if (verbosity)
+			fprintf(stderr, "Failed to pin 'kprobe/override' program %i\n", err);
+		goto out;
+	}
+
+out:
+	free(pin);
+	return err;
+}
+
 int __kprobe_loader(struct bpf_object *obj,
 		    const int verbosity,
+		    const bool override,
 		    const char *attach,
 		    const char *label,
 		    const char *__prog,
@@ -247,6 +305,11 @@ int __kprobe_loader(struct bpf_object *obj,
 	struct bpf_link *prog_attach;
 	struct bpf_program *prog_bpf;
 	int err;
+
+	if (override && load_override(obj, __prog, attach, verbosity)) {
+		fprintf(stderr, "Failed to load override program\n");
+		return -1;
+	}
 
 	prog_bpf = bpf_object__find_program_by_title(obj, label);
 	if (!prog_bpf) {
@@ -286,6 +349,7 @@ int __kprobe_loader(struct bpf_object *obj,
 void *generic_loader_args(
 	const int version,
 	const int verbosity,
+	bool override,
 	void *btf,
 	const char *prog,
 	const char *attach,
@@ -302,7 +366,7 @@ void *generic_loader_args(
 	char *filter_map = "filter_map";
 	char *fdinstall_map = "fdinstall_map";
 
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, type);
+	obj = __loader(version, verbosity, override, btf, prog, mapdir, 0, type);
 	if (!obj)
 		goto err;
 
@@ -420,6 +484,7 @@ int generic_kprobe_pin_retprobe(struct bpf_object *obj, const char *genmapdir) {
 
 int generic_kprobe_loader(const int version,
 		  const int verbosity,
+		  bool override,
 		  void *btf,
 		  const char *prog,
 		  const char *attach,
@@ -430,7 +495,8 @@ int generic_kprobe_loader(const int version,
 		  void *filters) {
 	struct bpf_object *obj;
 	int err;
-	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, filters, BPF_PROG_TYPE_KPROBE);
+	obj = generic_loader_args(version, verbosity, override, btf, prog, attach,
+				  label, __prog, mapdir, filters, BPF_PROG_TYPE_KPROBE);
 	if (!obj) {
 		return -1;
 	}
@@ -439,7 +505,7 @@ int generic_kprobe_loader(const int version,
 		// TODO: cleanup
 		return -1;
 	}
-	return __kprobe_loader(obj, verbosity, attach, label, __prog, false);
+	return __kprobe_loader(obj, verbosity, override, attach, label, __prog, false);
 }
 
 int generic_kprobe_ret_loader(const int version,
@@ -453,11 +519,11 @@ int generic_kprobe_ret_loader(const int version,
 		  const char *genmapdir)
 {
 	struct bpf_object *obj;
-	obj = __loader(version, verbosity, btf, prog, mapdir, genmapdir, BPF_PROG_TYPE_KPROBE);
+	obj = __loader(version, verbosity, false, btf, prog, mapdir, genmapdir, BPF_PROG_TYPE_KPROBE);
 	if (!obj)
 		return -1;
 
-	return __kprobe_loader(obj, verbosity, attach, label, __prog, true);
+	return __kprobe_loader(obj, verbosity, false, attach, label, __prog, true);
 }
 
 
@@ -474,7 +540,8 @@ int tracepoint_loader_args(const int version,
 		  const bool retprobe,
 		  void *filters) {
 	struct bpf_object *obj;
-	obj = generic_loader_args(version, verbosity, btf, prog, attach, label, __prog, mapdir, filters, BPF_PROG_TYPE_TRACEPOINT);
+	obj = generic_loader_args(version, verbosity, false, btf, prog, attach, label,
+				  __prog, mapdir, filters, BPF_PROG_TYPE_TRACEPOINT);
 	if (!obj)
 		return -1;
 	return __tracepoint_loader(obj, verbosity, btf, prog, attach_category, attach, label, __prog, mapdir);
@@ -491,11 +558,11 @@ int kprobe_loader(const int version,
 		  const bool retprobe)
 {
 	struct bpf_object *obj;
-	obj = __loader(version, verbosity, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
+	obj = __loader(version, verbosity, false, btf, prog, mapdir, 0, BPF_PROG_TYPE_KPROBE);
 	if (!obj)
 		return -1;
 
-	return __kprobe_loader(obj, verbosity, attach, label, __prog, retprobe);
+	return __kprobe_loader(obj, verbosity, false, attach, label, __prog, retprobe);
 }
 */
 import "C"
@@ -547,12 +614,13 @@ func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, 
 	return nil, loaderInt
 }
 
-func LoadGenericKprobeProgram(__version, __verbosity int,
+func LoadGenericKprobeProgram(__version, __verbosity int, __override bool,
 	btf uintptr,
 	object, attach, __label, __prog, __mapdir string, __genmapdir string,
 	filters [4096]byte) (error, int) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
+	override := C.bool(__override)
 	o := C.CString(object)
 	a := C.CString(attach)
 	l := C.CString(__label)
@@ -560,7 +628,7 @@ func LoadGenericKprobeProgram(__version, __verbosity int,
 	mapdir := C.CString(__mapdir)
 	genmapdir := C.CString(__genmapdir)
 	loader_fd := C.generic_kprobe_loader(version,
-		verbosity,
+		verbosity, override,
 		unsafe.Pointer(btf),
 		o, a, l, p, mapdir, genmapdir, unsafe.Pointer(&filters))
 	loaderInt := int(loader_fd)

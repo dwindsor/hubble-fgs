@@ -22,7 +22,7 @@ func ProgramBuilder(
 	ty string,
 ) *Program {
 	return &Program{
-		objFile, attach, label, pinFile, false, true, ty,
+		objFile, attach, label, pinFile, false, true, false, ty,
 		Idle(), -1, struct{}{}, nil,
 	}
 }
@@ -50,6 +50,9 @@ type Program struct {
 	// may change across verions so different names are attempted, hence
 	// avoiding fataling when the first attempt fails.
 	ErrorFatal bool
+
+	// Needs override bpf program
+	Override bool
 
 	// Type is the type of BPF program. For example, tc, skb, tracepoint,
 	// etc.

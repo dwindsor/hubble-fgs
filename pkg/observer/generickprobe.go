@@ -374,6 +374,8 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			return nil, err
 		}
 
+		hasOverride := selectors.HasOverride(f)
+
 		// Copy over userspace return filters
 		var userReturnFilters []v1alpha1.ArgSelector
 		for _, s := range f.Selectors {
@@ -397,6 +399,9 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			retVal := btfobj.AddEnumValue("syscall", 0)
 			if retVal < 0 {
 				return nil, fmt.Errorf("Error add enum value 'syscall = 0' failed %d", retVal)
+			}
+			if hasOverride {
+				return nil, fmt.Errorf("Error override action can be used only with syscalls")
 			}
 		}
 
@@ -465,6 +470,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			"kprobe"+"_"+funcName,
 			"generic_kprobe").
 			SetLoaderData(kprobeEntry.tableId)
+		load.Override = hasOverride
 		progs = append(progs, load)
 
 		if setRetprobe {
@@ -492,7 +498,8 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 func loadGenericKprobe(bpfDir, mapDir string, version int, p *sensors.Program, btf uintptr, genmapDir string, filters [4096]byte) error {
 	progpath := filepath.Join(bpfDir, p.PinPath)
 	err, _ := bpf.LoadGenericKprobeProgram(
-		version, option.Config.Verbosity, btf,
+		version, option.Config.Verbosity,
+		p.Override, btf,
 		p.Name,
 		p.Attach,
 		p.Label,

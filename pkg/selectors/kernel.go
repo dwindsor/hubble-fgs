@@ -658,3 +658,15 @@ func InitTracepointSelectors(spec *v1alpha1.TracepointSpec) ([4096]byte, error) 
 	}
 	return kernelSelectors.e, nil
 }
+
+func HasOverride(spec *v1alpha1.KProbeSpec) bool {
+	for _, s := range spec.Selectors {
+		for _, action := range s.MatchActions {
+			act, _ := actionTypeTable[strings.ToLower(action.Action)]
+			if act == actionTypeOverride {
+				return true
+			}
+		}
+	}
+	return false
+}
