@@ -24,6 +24,7 @@ import (
 	"unsafe"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -1601,4 +1602,109 @@ spec:
 
 	err = JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
+}
+
+// override
+
+func runKprobeOverride(t *testing.T, hook string, checker ec.MultiResponseChecker,
+	testFile string, testErr error) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	if !bpf.HasOverrideHelper() {
+		t.Skip("skipping override test, bpf_override_return helper not available")
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	configHook := []byte(hook)
+	err := ioutil.WriteFile(testConfigFile, configHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
+
+	fd, err := syscall.Open(testFile, syscall.O_RDWR, 0x777)
+	if fd >= 0 {
+		t.Logf("syscall.Open succeded\n")
+		syscall.Close(fd)
+		t.Fatal()
+	}
+
+	if !errors.Is(err, testErr) {
+		t.Logf("syscall.Open succeded\n")
+		syscall.Close(fd)
+		t.Fatal()
+	}
+
+	err = JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestKprobeOverride(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+
+	file, err := ioutil.TempFile("/tmp", "kprobe-override-")
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+	defer os.Remove(file.Name())
+
+	openAtHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "__x64_sys_openat override"
+spec:
+  kprobes:
+  - call: "__x64_sys_openat"
+    return: true
+    syscall: true
+    args:
+    - index: 0
+      type: int
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    returnArg:
+      type: "int"
+    selectors:
+    - matchPIDs:
+      - operator: In
+        followForks: true
+        values:
+        - ` + pidStr + `
+      matchArgs:
+      - index: 1
+        operator: "Equal"
+        values:
+        - "` + file.Name() + `\0"
+      matchActions:
+      - action: Override
+        argError: -2
+`
+
+	kpChecker := ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_openat").
+		WithArgsReturn([]ec.GenericArgChecker{
+			ec.GenericArgIsInt(),
+			ec.GenericArgStringCheck(file.Name()),
+			ec.GenericArgIsInt()},
+			ec.GenericArgIntCheck(-2)).
+		WithAction(fgs.KprobeAction_KPROBE_ACTION_OVERRIDE)
+
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasKprobe(kpChecker).
+			End(),
+	)
+
+	runKprobeOverride(t, openAtHook, &checker, file.Name(), syscall.ENOENT)
 }
