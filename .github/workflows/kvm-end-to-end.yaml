@@ -177,17 +177,19 @@ jobs:
           command: |
             ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready pods --all --timeout=45s"
 
-      - name: Wait for image to be available
-        timeout-minutes: 10
-        shell: bash
-        run: |
-          until curl --silent -f -lSL "https://quay.io/api/v1/repository/${{ github.repository_owner }}/hubble-enterprise-ci/tag/${{ steps.vars.outputs.sha }}/images" &> /dev/null; do sleep 45s; done
+      - name: Attempt to pull the FGS image
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 2
+          max_attempts: 30
+          retry_wait_seconds: 30
+          command: |
+            docker pull ${{ steps.vars.outputs.fgsImage }}
 
       - name: Install FGS
         # This is really ugly, but we only want to run this step on the first matrix run
         if: matrix.kernel == '5.15-lts'
         run: |
-          docker pull ${{ steps.vars.outputs.fgsImage }}
           docker save ${{ steps.vars.outputs.fgsImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
           cat <<-EOF | ssh -p 3000 root@localhost
             set -xeu

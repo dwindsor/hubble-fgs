@@ -36,6 +36,7 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo ::set-output name=sha::${SHA}
+          echo ::set-output name=fgsImage::quay.io/isovalent/hubble-enterprise-ci:${SHA}
 
       - name: Install Cilium CLI
         run: |
@@ -94,11 +95,14 @@ jobs:
           kubectl port-forward -n kube-system deployment/hubble-relay 4245:4245&
           sleep 5s
 
-      - name: Wait for image to be available
-        timeout-minutes: 10
-        shell: bash
-        run: |
-          until curl --silent -f -lSL "https://quay.io/api/v1/repository/${{ github.repository_owner }}/hubble-enterprise-ci/tag/${{ steps.vars.outputs.sha }}/images" &> /dev/null; do sleep 45s; done
+      - name: Attempt to pull the FGS image
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 2
+          max_attempts: 30
+          retry_wait_seconds: 30
+          command: |
+            docker pull ${{ steps.vars.outputs.fgsImage }}
 
       - name: Install FGS
         run: |
