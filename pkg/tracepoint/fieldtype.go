@@ -155,6 +155,12 @@ func parseTy(tyFields []string) (interface{}, error) {
 		return retTy, nil
 	}
 
+	// Linux 5.16 started placing attributes in tracepoint format definitions
+	// Let's just ignore them here for now
+	if strings.HasPrefix(peekField(), "__attribute__") {
+		nextField()
+	}
+
 	rest := nextField()
 	if rest == "*" {
 		retTy = PointerTy{Ty: retTy, Const: isConst}
