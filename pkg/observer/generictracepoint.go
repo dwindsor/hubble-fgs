@@ -392,7 +392,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 
 		_, err := tpArg.setGenericTypeId()
 		if err != nil {
-			return fmt.Errorf("output argument %v unsupported: %w", &tpArg, err), 0
+			return fmt.Errorf("output argument %v unsupported: %w", tpArg, err), 0
 		}
 
 		if err := btfAddEnumValue(kprobeArgToString(i), tpArg.genericTypeId); err != nil {
@@ -432,7 +432,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 
 		ty, err := tpArg.setGenericTypeId()
 		if err != nil {
-			return fmt.Errorf("output argument %v unsupported: %w", &tpArg, err), 0
+			return fmt.Errorf("output argument %v unsupported: %w", tpArg, err), 0
 		}
 
 		if len(tp.Selectors.Args) > i && tp.Selectors.Args[i].Type == "" {
