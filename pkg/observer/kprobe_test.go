@@ -1708,3 +1708,34 @@ spec:
 
 	runKprobeOverride(t, openAtHook, &checker, file.Name(), syscall.ENOENT)
 }
+
+func TestKprobeOverrideNonSyscall(t *testing.T) {
+	closeFdHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "close_fd override"
+spec:
+  kprobes:
+  - call: "close_fd"
+    syscall: false
+    args:
+    - index: 0
+      type: "int"
+    selectors:
+    - matchActions:
+      - action: Override
+        argError: -2
+`
+
+	configHook := []byte(closeFdHook)
+	err := ioutil.WriteFile(testConfigFile, configHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	_, err = getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib), withNotestfail(true))
+	if err == nil {
+		t.Fatalf("getDefaultObserverWithWatchers ok, should fail\n")
+	}
+	assert.Error(t, err)
+}

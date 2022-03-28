@@ -57,10 +57,11 @@ const (
 )
 
 type testObserverOptions struct {
-	pretty bool
-	crd    bool
-	config string
-	lib    string
+	pretty     bool
+	crd        bool
+	config     string
+	lib        string
+	notestfail bool
 }
 
 type testExporterOptions struct {
@@ -102,6 +103,12 @@ func withCiliumState(s *hubbleCilium.State) testOption {
 func withLib(lib string) testOption {
 	return func(o *testOptions) {
 		o.observer.lib = lib
+	}
+}
+
+func withNotestfail(notestfail bool) testOption {
+	return func(o *testOptions) {
+		o.observer.notestfail = notestfail
 	}
 }
 
@@ -246,7 +253,10 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 	}
 
 	loadExporter(t, obs, &o.exporter)
-	loadObserver(t, obs)
+	if err := loadObserver(t, obs, o.observer.notestfail); err != nil {
+		return nil, err
+	}
+
 	saveInitInfo(o, testutils.GetExportFilename(t))
 
 	// There doesn't appear to be a better way to enable the metrics server once and only
@@ -321,12 +331,15 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	return nil
 }
 
-func loadObserver(t *testing.T, obs *Observer) {
+func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
 	if err := sensors.LoadDefault(obs.bpfDir,
 		obs.mapDir,
 		obs.ciliumDir,
 		obs.configFile,
 		context.TODO()); err != nil {
+		if notestfail {
+			return err
+		}
 		t.Fatalf("LoadDefaultSensor error: %s\n", err)
 	}
 
@@ -337,8 +350,12 @@ func loadObserver(t *testing.T, obs *Observer) {
 		obs.ciliumDir,
 		obs.configFile,
 		context.TODO()); err != nil {
+		if notestfail {
+			return err
+		}
 		t.Fatalf("LoadConfig error: %s\n", err)
 	}
+	return nil
 }
 
 func LoopEvents(t *testing.T, doneWG, readyWG *sync.WaitGroup, obs *Observer, ctx context.Context) {
