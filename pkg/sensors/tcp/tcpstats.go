@@ -8,7 +8,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/sirupsen/logrus"
 )
 

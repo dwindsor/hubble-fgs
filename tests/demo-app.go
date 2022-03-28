@@ -32,12 +32,10 @@ func DemoAppChecker(kernelVersion string) ec.MultiResponseChecker {
 			HasProcess(nodejs_checker).
 			HasParent(ec.NewProcessChecker().
 				WithBinary("/bin/sh").
-				WithArguments("-c \"PORT=9080 node server.js\"").
-				WithPod(pod_checker)).
+				WithArguments("-c \"PORT=9080 node server.js\"")).
 			HasAncestor(0, ec.NewProcessChecker().
 				WithBinary("/usr/local/bin/docker-entrypoint.sh").
-				WithArguments("/usr/local/bin/docker-entrypoint.sh /bin/sh -c \"PORT=9080 node server.js\"").
-				WithPod(pod_checker)).
+				WithArguments("/usr/local/bin/docker-entrypoint.sh /bin/sh -c \"PORT=9080 node server.js\"")).
 			HasAncestor(1, ec.NewProcessCheckerOr().
 				With(ec.NewProcessChecker().
 					WithBinary("/usr/bin/containerd-shim-runc-v2")).

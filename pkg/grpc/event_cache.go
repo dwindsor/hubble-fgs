@@ -27,6 +27,7 @@ type eventNetObj interface {
 }
 
 type eventNetCacheObj struct {
+	internal  *processInternal
 	event     eventNetObj
 	timestamp *timestamppb.Timestamp
 	color     int
@@ -34,6 +35,7 @@ type eventNetCacheObj struct {
 }
 
 type eventProcCacheObj struct {
+	internal  *processInternal
 	process   *fgs.ProcessExec
 	timestamp *timestamppb.Timestamp
 	color     int
@@ -98,6 +100,7 @@ func (ec *eventCache) handleNetEvents() {
 			/* If the Pod is nil because process event is incomplete lets
 			 * wait and hopefully it is eventually updated from handleProcEvents.
 			 */
+
 			if endpoint == nil || e.event.GetProcess().Pod == nil {
 				e.color++
 				if e.color < threeStrikes {
@@ -120,6 +123,10 @@ func (ec *eventCache) handleNetEvents() {
 
 		switch event := e.event.(type) {
 		case *fgs.ProcessClose:
+			if e.internal != nil {
+				// Make a copy of the process in order to not hand a mutating object to protobuf/grpc.
+				event.Process = e.internal.GetProcessCopy()
+			}
 			event.DestinationNames = labels
 			if event.DestinationPod == nil {
 				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
@@ -131,6 +138,9 @@ func (ec *eventCache) handleNetEvents() {
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessConnect:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			event.DestinationNames = labels
 			if event.DestinationPod == nil {
 				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
@@ -142,6 +152,9 @@ func (ec *eventCache) handleNetEvents() {
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessAccept:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			event.DestinationNames = labels
 			if event.DestinationPod == nil {
 				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
@@ -153,36 +166,54 @@ func (ec *eventCache) handleNetEvents() {
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessListen:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessCred:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessExit:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.Tls:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_Tls{Tls: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessHttp:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessSockStats:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			if event.Socket.DestinationPod == nil {
 				event.Socket.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.Socket.DestinationIp))
 			}
@@ -192,18 +223,27 @@ func (ec *eventCache) handleNetEvents() {
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessKprobe:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessDns:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: event},
 				NodeName: ec.pm.nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessNetworkBurst:
+			if e.internal != nil {
+				event.Process = e.internal.GetProcessCopy()
+			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: event},
 				NodeName: ec.pm.nodeName,
@@ -237,20 +277,16 @@ func (ec *eventCache) handleProcEvents() {
 			}
 			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCachePodInfoRetryFailed)).Inc()
 		}
-		/* In addition to holding this event until podInfo is available we
-		 * also need to ensure that any future references in the process
-		 * cache will also get the updated podInfo. So reach into the cache
-		 * and set the podInfo.
-		 */
-		processInternal, err := ec.pm.cache.get(e.process.Process.ExecId)
-		if err != nil {
-			ec.log.WithField("Process", e.process.Process).Warn("eventCache to procCache lookup failed ")
+
+		if e.internal != nil {
+			e.internal.mu.Lock()
+			e.internal.process.Pod = podInfo
+			e.internal.mu.Unlock()
+			e.process.Process = e.internal.GetProcessCopy()
 		} else {
-			processInternal.mu.Lock()
-			processInternal.process.Pod = podInfo
-			processInternal.mu.Unlock()
+			e.process.Process.Pod = podInfo
 		}
-		e.process.Process.Pod = podInfo
+
 		processedEvent := &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: e.process},
 			NodeName: ec.pm.nodeName,
@@ -301,10 +337,10 @@ func newEventCache(log logrus.FieldLogger, pm *ProcessManager) *eventCache {
 	return ec
 }
 
-func (ec *eventCache) add(e eventNetObj, t *timestamppb.Timestamp, msg interface{}) {
-	ec.netObjsChan <- eventNetCacheObj{event: e, timestamp: t, msg: msg}
+func (ec *eventCache) add(internal *processInternal, e eventNetObj, t *timestamppb.Timestamp, msg interface{}) {
+	ec.netObjsChan <- eventNetCacheObj{internal: internal, event: e, timestamp: t, msg: msg}
 }
 
-func (ec *eventCache) addProc(e *fgs.ProcessExec, t *timestamppb.Timestamp, msg *api.MsgExecveEventUnix) {
-	ec.procObjsChan <- eventProcCacheObj{process: e, timestamp: t, msg: msg}
+func (ec *eventCache) addProc(internal *processInternal, e *fgs.ProcessExec, t *timestamppb.Timestamp, msg *api.MsgExecveEventUnix) {
+	ec.procObjsChan <- eventProcCacheObj{internal: internal, process: e, timestamp: t, msg: msg}
 }

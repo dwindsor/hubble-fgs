@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"math/rand"
 	"net"
 	"os"
 	"os/exec"
@@ -30,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -68,8 +70,11 @@ func (r *raceK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 	if containerID == "" {
 		return nil, nil, false
 	}
-	// Return a fake pod
-	return &corev1.Pod{}, &corev1.ContainerStatus{Image: "fake"}, true
+	// Return a fake pod, some of the time to simulate the propagation delay.
+	if rand.Int31()%3 == 0 {
+		return &corev1.Pod{}, &corev1.ContainerStatus{Image: "fake"}, true
+	}
+	return nil, nil, false
 }
 
 type raceEncoder struct {
@@ -82,6 +87,19 @@ func (re *raceEncoder) Encode(v interface{}) error {
 	if re.count%1000 == 0 {
 		logger.GetLogger().Infof("FGS RACE: %d events received...", re.count)
 	}
+
+	// Also do protobuf marshalling to catch races
+	event := v.(*fgs.GetEventsResponse)
+	buf, err := proto.Marshal(event)
+	if err != nil {
+		panic(err)
+	}
+	var event2 fgs.GetEventsResponse
+	err = proto.Unmarshal(buf, &event2)
+	if err != nil {
+		panic(err)
+	}
+
 	return re.enc.Encode(v)
 }
 
@@ -110,6 +128,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
 
 	encoder := &raceEncoder{0, json.NewEncoder(io.Discard)}
+	//encoder := &raceEncoder{0, json.NewEncoder(os.Stdout)}
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
 	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder, nil)
@@ -135,7 +154,7 @@ spec:
       enable: true
       statsInterval: 1
     dns:
-      enable: true
+      enable: false
 `
 
 func runRaceFGS(ctx context.Context, ready chan bool) {
@@ -194,18 +213,12 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	obs.RemovePrograms()
 }
 
-func raceExecLoad(ctx context.Context) {
-	for ctx.Err() == nil {
-		exec.Command("/bin/true").Start()
-		time.Sleep(10 * time.Millisecond)
-	}
-}
-
 func raceTCPLoad(ctx context.Context) {
-	l, err := net.Listen("tcp4", "127.0.0.1:0")
+	l, err := net.Listen("tcp4", "127.0.0.1:12345")
 	if err != nil {
 		panic(err)
 	}
+
 	go func() {
 		for {
 			c, err := l.Accept()
@@ -220,15 +233,16 @@ func raceTCPLoad(ctx context.Context) {
 	}()
 
 	for ctx.Err() == nil {
-		buf := make([]byte, 100)
-		c, err := net.Dial("tcp4", l.Addr().String())
-		if err != nil {
-			panic(err)
-		}
-		c.Write([]byte("hello"))
-		c.Read(buf)
-		c.Close()
-		time.Sleep(10 * time.Millisecond)
+		// TODO(JM): execute a loop within docker?
+		cmd := exec.Command("/usr/bin/docker", "run", "-i", "--rm", "--network=host", "subfuzion/netcat", "127.0.0.1", "12345")
+		cmd.Stderr = os.Stderr
+		cmd.Stdout = io.Discard
+		p, _ := cmd.StdinPipe()
+		p.Write([]byte("hello"))
+		p.Close()
+		cmd.Start()
+		time.Sleep(50 * time.Millisecond)
+		cmd.Wait()
 	}
 	l.Close()
 }
@@ -284,12 +298,6 @@ func RunRace() {
 		wg.Done()
 	}()
 	<-ready
-
-	wg.Add(1)
-	go func() {
-		raceExecLoad(ctx)
-		wg.Done()
-	}()
 
 	wg.Add(1)
 	go func() {

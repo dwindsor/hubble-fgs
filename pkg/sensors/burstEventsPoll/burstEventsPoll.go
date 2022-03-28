@@ -18,11 +18,11 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/timer"
 	"github.com/yalue/native_endian"
 )
@@ -79,7 +79,7 @@ func Start(spec *v1alpha1.TracingPolicySpec) {
 	}
 	var err error
 	// open map, allowing for it to be not immediately ready
-	burstMapFile := filepath.Join(sensors.MapDir, ProcessNetworkBurstMapName)
+	burstMapFile := filepath.Join(bpf.MapPrefixPath(), ProcessNetworkBurstMapName)
 	burstMap, err = ebpf.LoadPinnedMap(burstMapFile, nil)
 	for err != nil {
 		time.Sleep(100 * time.Millisecond)

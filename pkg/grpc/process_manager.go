@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/sirupsen/logrus"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -178,7 +179,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	if err != nil {
 		pm.log.WithField("id in HTTP event", processID).Debug("process not found in cache")
 	} else {
-		proc = processInt.GetProcessCopy()
+		proc = processInt.process
 
 	}
 	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
@@ -257,8 +258,11 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(processInt, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if processInt != nil {
+		fgsEvent.Process = processInt.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -290,7 +294,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	if err != nil {
 		pm.log.WithField("id in DNS event", processID).Debug("process not found in cache")
 	} else {
-		proc = processInt.GetProcessCopy()
+		proc = processInt.process
 
 	}
 	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
@@ -322,8 +326,11 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(processInt, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if processInt != nil {
+		fgsEvent.Process = processInt.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -353,8 +360,9 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 		proc := pm.Add(msg)
 		procEvent := pm.GetProcessExec(proc)
 		if pm.processCacheNeeded(procEvent.Process) {
-			pm.eventCache.addProc(procEvent, ktimeToProto(msg.Common.Ktime), msg)
+			pm.eventCache.addProc(proc, procEvent, ktimeToProto(msg.Common.Ktime), msg)
 		} else {
+			procEvent.Process = proc.GetProcessCopy()
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: procEvent},
 				NodeName: pm.nodeName,
@@ -526,14 +534,16 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.GetProcessCopy()
+		fgsProcess = process.process
 	}
+	process.mu.Lock()
 	if pm.enableProcessCred {
 		fgsProcess.Cap = pm.getCapabilities(event.Capabilities)
 	}
 	if pm.enableProcessNs {
 		fgsProcess.Ns = pm.getNamespaces(event.Namespaces)
 	}
+	process.mu.Unlock()
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
@@ -614,8 +624,12 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -678,7 +692,7 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 			StartTime: ktimeToProto(msg.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.GetProcessCopy()
+		fgsProcess = process.process
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
@@ -717,8 +731,11 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(msg.Common.Ktime), msg)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(msg.Common.Ktime), msg)
 		return nil
+	}
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
 	}
 
 	return &fgs.GetEventsResponse{
@@ -1049,14 +1066,17 @@ func (pm *ProcessManager) GetProcessExec(
 	}
 	// Set the cap field only if --enable-process-cred flag is set.
 	var fgsParent, fgsProcess *fgs.Process
-	fgsProcess = proc.GetProcessCopy()
+	fgsProcess = proc.process
 
+	proc.mu.Lock()
 	if pm.enableProcessCred {
 		fgsProcess.Cap = proc.capabilities
 	}
 	if pm.enableProcessNs {
 		fgsProcess.Ns = proc.namespaces
 	}
+	proc.mu.Unlock()
+
 	if parent != nil {
 		fgsParent = parent.GetProcessCopy()
 	}
@@ -1067,8 +1087,8 @@ func (pm *ProcessManager) GetProcessExec(
 		if fgsProcess.Docker != "" &&
 			fgsProcess.Pod == nil &&
 			a.process.Pod != nil {
-			pod := *a.process.Pod
-			fgsProcess.Pod = &pod
+			pod := proto.Clone(a.process.Pod).(*fgs.Pod)
+			fgsProcess.Pod = pod
 		}
 		fgsAncestors = append(fgsAncestors, a.process)
 	}
@@ -1112,7 +1132,7 @@ func (pm *ProcessManager) GetProcessListen(
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		pm.cache.refInc(process)
-		fgsProcess = process.GetProcessCopy()
+		fgsProcess = process.process
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
@@ -1124,11 +1144,10 @@ func (pm *ProcessManager) GetProcessListen(
 		fgsParent = parent.GetProcessCopy()
 	}
 	fgsEvent := &fgs.ProcessListen{
-		Process: fgsProcess,
-		Parent:  fgsParent,
-		Ip:      reader.GetIP(event.Tuple.SAddr, 0).String(),
-		Port:    port,
-
+		Process:  fgsProcess,
+		Parent:   fgsParent,
+		Ip:       reader.GetIP(event.Tuple.SAddr, 0).String(),
+		Port:     port,
 		Protocol: reader.MsgToProtocol(event),
 	}
 
@@ -1137,8 +1156,12 @@ func (pm *ProcessManager) GetProcessListen(
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -1150,7 +1173,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		pm.cache.refDec(process)
-		fgsProcess = process.GetProcessCopy()
+		fgsProcess = process.process
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
@@ -1180,8 +1203,11 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		Status:  code,
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -1196,13 +1222,11 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		// Make a copy of the process and set the cap field.
-		process = processInt.GetProcessCopy()
+		process = processInt.process
 		process.Cap = processInt.capabilities
 	}
 	if parentInt != nil {
-		// Make a copy of the parent and set the cap field.
-		parent = parentInt.GetProcessCopy()
+		parent = parentInt.process
 		parent.Cap = parentInt.capabilities
 	}
 	fgsEvent := &fgs.ProcessCred{
@@ -1211,8 +1235,11 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		Cap:     pm.getCapabilities(event.Capabilities),
 	}
 	if pm.processCacheNeeded(process) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(processInt, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if processInt != nil {
+		fgsEvent.Process = processInt.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -1311,7 +1338,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		pm.log.WithField("id in TLS event", processID).Debug("process not found in cache")
 		proc = nil
 	} else {
-		proc = processInt.GetProcessCopy()
+		proc = processInt.process
 	}
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI.Value)
 	fgsEvent := &fgs.Tls{
@@ -1338,8 +1365,11 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		ParserInternalState: event.ServerCert.ParserState.String(),
 	}
 	if pm.processCacheNeeded(proc) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(processInt, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if processInt != nil {
+		fgsEvent.Process = processInt.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -1386,7 +1416,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.GetProcessCopy()
+		fgsProcess = process.process
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
@@ -1415,8 +1445,11 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -1460,7 +1493,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.GetProcessCopy()
+		fgsProcess = process.process
 		pm.cache.refDec(process)
 	}
 	if parent == nil {
@@ -1491,7 +1524,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -1503,8 +1536,11 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -1533,14 +1569,14 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.GetProcessCopy()
+		fgsProcess = process.process
 		pm.cache.refInc(process)
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		fgsParent = parent.GetProcessCopy()
 		pm.cache.refInc(parent)
+		fgsParent = parent.GetProcessCopy()
 	}
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
@@ -1561,7 +1597,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -1573,8 +1609,11 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -1603,14 +1642,14 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 			StartTime: ktimeToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.GetProcessCopy()
+		fgsProcess = process.process
 		pm.cache.refInc(process)
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		fgsParent = parent.GetProcessCopy()
 		pm.cache.refInc(parent)
+		fgsParent = parent.GetProcessCopy()
 	}
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
@@ -1631,7 +1670,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -1644,8 +1683,11 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
 		return nil
+	}
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
 	}
 
 	return fgsEvent
