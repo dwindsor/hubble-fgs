@@ -45,7 +45,7 @@ func new() *cobra.Command {
 	rootCmd.AddCommand(version.New())
 
 	flags := rootCmd.PersistentFlags()
-	flags.BoolP(common.KeyDebug, "d", true, "Enable debug messages")
+	flags.BoolP(common.KeyDebug, "d", false, "Enable debug messages")
 	flags.String(common.KeyServerAddress, "localhost:54321", "gRPC server address")
 	viper.BindPFlags(flags)
 	return rootCmd
