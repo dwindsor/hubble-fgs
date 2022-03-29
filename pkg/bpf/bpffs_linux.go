@@ -19,16 +19,15 @@ package bpf
 
 import (
 	"fmt"
-	"math"
 	"os"
 	"path/filepath"
 	"sync"
 	"syscall"
 
+	"github.com/cilium/ebpf/rlimit"
 	"github.com/isovalent/hubble-fgs/pkg/defaults"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
-	"golang.org/x/sys/unix"
 )
 
 var (
@@ -366,8 +365,5 @@ func CheckOrMountCgroup2() error {
 }
 
 func ConfigureResourceLimits() error {
-	return unix.Setrlimit(unix.RLIMIT_MEMLOCK, &unix.Rlimit{
-		Cur: math.MaxUint64,
-		Max: math.MaxUint64,
-	})
+	return rlimit.RemoveMemlock()
 }
