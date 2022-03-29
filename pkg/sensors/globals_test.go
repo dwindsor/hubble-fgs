@@ -15,6 +15,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/asm"
+	"github.com/cilium/ebpf/rlimit"
 	"github.com/yalue/native_endian"
 )
 
@@ -123,6 +124,7 @@ func TestRewriteStaticData(t *testing.T) {
 }
 
 func TestBPFReadGlobals(t *testing.T) {
+	rlimit.RemoveMemlock()
 	spec, err := ebpf.LoadCollectionSpec("../../bpf/objs/bpf_globals.o")
 	if err != nil {
 		t.Fatal(err)
