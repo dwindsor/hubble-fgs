@@ -610,6 +610,7 @@ HTTP PARSER
 | rx_drops | [uint64](#uint64) |  |  |
 | pod | [Pod](#fgs.Pod) |  |  |
 | netns | [string](#string) |  |  |
+| container_name | [string](#string) |  |  |
 
 
 

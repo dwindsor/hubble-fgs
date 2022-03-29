@@ -470,9 +470,10 @@ type MsgInterfaceStats struct {
 }
 
 type MsgInterface struct {
-	Name  string
-	Index int
-	Netns string
+	Name          string
+	Index         int
+	Netns         string
+	ContainerName string
 }
 
 type MsgInterfaceEventUnix struct {

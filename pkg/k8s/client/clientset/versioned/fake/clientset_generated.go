@@ -60,7 +60,10 @@ func (c *Clientset) Tracker() testing.ObjectTracker {
 	return c.tracker
 }
 
-var _ clientset.Interface = &Clientset{}
+var (
+	_ clientset.Interface = &Clientset{}
+	_ testing.FakeClient  = &Clientset{}
+)
 
 // IsovalentV1alpha1 retrieves the IsovalentV1alpha1Client
 func (c *Clientset) IsovalentV1alpha1() isovalentv1alpha1.IsovalentV1alpha1Interface {

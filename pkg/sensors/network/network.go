@@ -11,12 +11,15 @@
 package network
 
 import (
+	"context"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"runtime"
 	"time"
 
+	"github.com/docker/docker/api/types"
+	"github.com/docker/docker/client"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/defaults"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -29,9 +32,10 @@ import (
 
 var (
 	NetworkStatInterval = time.Duration(60 * time.Second)
+	sandboxToContainer  = make(map[string]string)
 )
 
-func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string) {
+func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath string) {
 	unix := api.MsgInterfaceEventUnix{
 		Common: api.MsgCommon{
 			Op:    api.MSG_OP_INTERFACE_STATS,
@@ -39,9 +43,10 @@ func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string) {
 			Ktime: 0,
 		},
 		Iface: api.MsgInterface{
-			Index: attrs.Index,
-			Name:  attrs.Name,
-			Netns: netns,
+			Index:         attrs.Index,
+			Name:          attrs.Name,
+			Netns:         netns,
+			ContainerName: getContainerName(netnsFilePath),
 		},
 		Stats: api.MsgInterfaceStats{
 			BytesSent:       attrs.Statistics.TxBytes,
@@ -64,7 +69,7 @@ func runNetworkCB() {
 		logger.GetLogger().WithError(err).Infof("Link list failed")
 	} else {
 		for _, l := range links {
-			emitInterfaceEvent(l.Attrs(), "")
+			emitInterfaceEvent(l.Attrs(), "", "")
 		}
 	}
 
@@ -110,7 +115,7 @@ func runNetworkCB() {
 			continue
 		}
 		for _, l := range links {
-			emitInterfaceEvent(l.Attrs(), nsFile.Name())
+			emitInterfaceEvent(l.Attrs(), nsFile.Name(), nsFileName)
 		}
 	}
 }
@@ -145,6 +150,7 @@ func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
 	}
 
 	logger.GetLogger().Infof("Enable Interface Statistics")
+	populateSandboxToContainer()
 	networkCB(defaultCBInterval)
 	return nil
 }
@@ -166,4 +172,39 @@ func AddNetwork() {
 	}
 	sensors.RegisterProbeType("interface_sensor", net)
 	sensors.RegisterTracingSensorsAtInit(net.name, net)
+}
+
+func getContainerName(sandboxKey string) string {
+	if sandboxKey == "" {
+		return ""
+	}
+	containerName := sandboxToContainer[sandboxKey]
+	if containerName == "" {
+		populateSandboxToContainer()
+		return sandboxToContainer[sandboxKey]
+	}
+	return containerName
+}
+
+func populateSandboxToContainer() {
+	newSandboxToContainer := make(map[string]string)
+	ctx := context.Background()
+	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
+	if err != nil {
+		panic(err)
+	}
+
+	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
+	if err != nil {
+		panic(err)
+	}
+
+	for _, container := range containers {
+		containerDetails, err := cli.ContainerInspect(ctx, container.ID)
+		if err != nil {
+			panic(err)
+		}
+		newSandboxToContainer[containerDetails.NetworkSettings.SandboxKey] = containerDetails.Name
+	}
+	sandboxToContainer = newSandboxToContainer
 }
