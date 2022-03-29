@@ -80,6 +80,7 @@ github.com/cilium/ebpf/internal/sys
 github.com/cilium/ebpf/internal/unix
 github.com/cilium/ebpf/link
 github.com/cilium/ebpf/perf
+github.com/cilium/ebpf/rlimit
 # github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567
 ## explicit; go 1.14
 github.com/cilium/hubble/api/v1/flow
