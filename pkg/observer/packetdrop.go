@@ -38,7 +38,6 @@ var (
 )
 
 func init() {
-	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), ObserverKfreeSkb))
 	sensors.RegisterSensorAtInit(createPacketDropSensor())
 }
 

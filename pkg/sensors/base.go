@@ -10,6 +10,8 @@
 
 package sensors
 
+import "github.com/isovalent/hubble-fgs/pkg/kernels"
+
 var (
 	Execve = ProgramBuilder(
 		"bpf_execve_event.o",
@@ -96,10 +98,15 @@ var (
 	TLSMapStats     = MapBuilder("tls_map_stats", TCPConnect)
 	PNBurstMapStats = MapBuilder("pn_burst_map_stats", Exit)
 
-	/* Cilium maps */
-	CiliumSNAT = MapBuilder("cilium_snat_v4_external", TCPConnect)
-
 	/* Parser maps */
 	HTTPContext = MapBuilder("http_map", TCPClose)
 	TLSContext  = MapBuilder("tls_map", TCPClose)
 )
+
+func GetExecveMap() *Map {
+	if kernels.EnableLargeProgs() {
+		return ExecveMapV53
+	} else {
+		return ExecveMap
+	}
+}

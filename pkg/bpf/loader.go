@@ -58,37 +58,6 @@ void bpf_loader_programs(struct bpf_object *obj, int type, int verbosity) {
 
 #define __NR_bpf 321
 
-void cgroup_delete(const char *target, const char *prog, int attach_type)
-{
-	int err, target_fd, prog_fd;
-	union bpf_attr attr;
-
-	target_fd = open(target, O_RDONLY);
-	if (target_fd < 0) {
-		fprintf(stderr, "open('%s') failed on load error %i.\n",
-				target, target_fd);
-		return;
-	}
-
-	prog_fd = bpf_obj_get(prog);
-	if (prog_fd < 0) {
-		close(target_fd);
-		fprintf(stderr, "bpf_obj_get('%s') failed on load error %i.\n",
-				prog, prog_fd);
-		return;
-	}
-
-	memset(&attr, 0, sizeof(attr));
-	attr.target_fd = target_fd;
-	attr.attach_bpf_fd = prog_fd;
-	attr.attach_type = attach_type;
-
-	syscall(__NR_bpf, BPF_PROG_DETACH, &attr, sizeof(attr));
-
-	close(target_fd);
-	close(prog_fd);
-}
-
 int __bpf_obj_get(const char *file)
 {
 	return bpf_obj_get(file);
@@ -715,61 +684,4 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) error {
 		return fmt.Errorf("FilterAdd failed (%s): %w", linkName, err)
 	}
 	return err
-}
-
-func CgroupDestroyEgress(progPath string) {
-	targetPath := "/run/hubble-fgs/cgroup2"
-	attach_type := int(0) // BPF_CGROUP_INET_INGRESS
-
-	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
-
-}
-
-func CgroupDestroyIngress(progPath string) {
-	targetPath := "/run/hubble-fgs/cgroup2"
-	attach_type := int(1) // BPF_CGROUP_INET_INGRESS
-
-	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
-}
-
-func CgroupDestroySockOpt(progPath string) {
-	targetPath := "/run/hubble-fgs/cgroup2"
-	attach_type := int(22) // BPF_CGROUP_SETSOCKOPT
-
-	C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
-}
-
-// Sockops programs are somewhat special because they are attached to
-// many different we assume loader and unloader code is serialized by
-// callers. It must be otherwise we have more problems than a refcnt
-// being incorrect and what BPF programs are running will be generally
-// confused.
-var (
-	sockopsRef int
-)
-
-func CgroupDestroySockops(progPath string) {
-	targetPath := "/run/hubble-fgs/cgroup2"
-	attach_type := int(3) // BPF_CGROUP_SOCK_OPS
-
-	if IsSockopsLoaded() {
-		CgroupSockopsRefDec()
-		C.cgroup_delete(C.CString(targetPath), C.CString(progPath), C.int(attach_type))
-	}
-}
-
-func CgroupSockopsRefInc() {
-	sockopsRef++
-}
-
-func CgroupSockopsRefDec() {
-	sockopsRef--
-}
-
-func IsSockopsLoaded() bool {
-	return sockopsRef != 0
-}
-
-func SockopsRefCnt() int {
-	return sockopsRef
 }

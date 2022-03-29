@@ -11,7 +11,6 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	sttManager "github.com/isovalent/hubble-fgs/pkg/observer/stt"
@@ -217,6 +216,17 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 }
 
 func RemoveProgram(bpfDir string, prog *Program) {
+	log := logger.GetLogger().WithField("label", prog.Label)
+
+	if !prog.LoadState.IsLoaded() || prog.LoadState.IsDisabled() {
+		log.Debugf("Refusing to remove %s, program not loaded or is disabled", prog.Label)
+		return
+	}
+	if count := prog.LoadState.RefDec(); count > 0 {
+		log.Debugf("Program reference count %d, not unloading yet", count)
+		return
+	}
+
 	path := filepath.Join(bpfDir, prog.PinPath)
 	if prog.Type == "generic_kprobe" {
 		coreFile := ""
@@ -253,12 +263,6 @@ func RemoveProgram(bpfDir string, prog *Program) {
 		if err := os.Remove(path); err != nil {
 			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
 		}
-	} else if prog.Type == "sockops" {
-		// TODO: remove sockops special case and do proper program and map refcounting.
-		bpf.CgroupDestroySockops(path)
-		if err := os.Remove(path); err != nil {
-			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
-		}
 	} else {
 		if prog.unloader == nil {
 			logger.GetLogger().Debugf("Not unloading '%s', no unloader.", prog.Name)
@@ -269,7 +273,8 @@ func RemoveProgram(bpfDir string, prog *Program) {
 			prog.unloader = nil
 		}
 	}
-	prog.LoadState = Idle()
+
+	log.Info("BPF prog was unloaded")
 }
 
 func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) error {
@@ -283,14 +288,9 @@ func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) er
 	}
 
 	for _, m := range sensor.Maps {
-		if m.mapHandle != nil {
-			if err := m.mapHandle.Close(); err != nil {
-				logger.GetLogger().Warnf("Failed to close map %s: %s", m.Name, err)
-			}
-			m.mapHandle = nil
+		if err := m.Unload(); err != nil {
+			logger.GetLogger().Warnf("Failed to unload map %s: %s", m.Name, err)
 		}
-		os.Remove(filepath.Join(mapDir, m.Name))
-		m.PinState = Idle()
 	}
 
 	sensor.Loaded = false

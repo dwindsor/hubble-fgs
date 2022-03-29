@@ -76,12 +76,6 @@ func LoadDefault(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Conte
 	}
 	sensors := append([]*Sensor{initialSensors}, configSensors...)
 	load := mergeSensors(sensors)
-	// Add config file loaded programs and maps to All* so unload will cleanup
-	// these as well as default programs/maps.
-	for _, s := range configSensors {
-		SetAllPrograms(append(GetAllPrograms(), s.Progs...))
-		SetAllMaps(append(GetAllMaps(), s.Maps...))
-	}
 
 	if err := load.Load(ctx, bpfDir, mapDir, ciliumDir); err != nil {
 		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
@@ -95,6 +89,10 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 	if s == nil {
 		return nil
 	}
+
+	// Add the loaded programs and maps to All* so they can be unloaded on shutdown.
+	AllPrograms = append(AllPrograms, s.Progs...)
+	AllMaps = append(AllMaps, s.Maps...)
 
 	logger.GetLogger().WithField("metadata", option.Config.BTF).Info("Using metadata file")
 	if _, err := observerMinReqs(stopCtx); err != nil {
@@ -127,11 +125,16 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 			continue
 		}
 
+		if p.LoadState.IsLoaded() {
+			l.WithField("prog", p.Name).Info("BPF prog is already loaded, incrementing reference count")
+			p.LoadState.RefInc()
+			continue
+		}
+
 		if err := observerLoadInstance(bpfDir, mapDir, ciliumDir, p, stopCtx); err != nil {
 			return err
 		}
-
-		p.LoadState.SetLoaded()
+		p.LoadState.RefInc()
 		l.WithField("prog", p.Name).WithField("label", p.Label).Info("BPF prog was loaded")
 	}
 	l.WithField("sensor", s.Name).Infof("Loaded BPF maps and events for sensor successfully")
@@ -186,11 +189,12 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 	l := logger.GetLogger()
 	for _, m := range s.Maps {
 		if m.PinState.IsDisabled() {
-			l.WithField("map", m.Name).Info("hubble-fgs, map is disabled, skipping.")
+			l.WithField("map", m.Name).Info("map is disabled, skipping.")
 			continue
 		}
-		if m.mapHandle != nil {
-			l.WithField("map", m.Name).Info("hubble-fgs, map is already loaded, skipping.")
+		if m.PinState.IsLoaded() {
+			l.WithField("map", m.Name).Info("map is already loaded, incrementing reference count")
+			m.PinState.RefInc()
 			continue
 		}
 
@@ -223,6 +227,7 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 				return fmt.Errorf("failed to pin to %s: %w", pinPath, err)
 			}
 		}
+		m.PinState.RefInc()
 
 		l.WithFields(logrus.Fields{
 			"map":  m.Name,
@@ -368,7 +373,7 @@ func createDir(bpfDir, mapDir string) {
 
 func disableBpfLoad(prog *Program) {
 	prog.LoadState.SetDisabled()
-	for _, om := range GetAllMaps() {
+	for _, om := range AllMaps {
 		if om.Prog == prog {
 			logger.GetLogger().WithField("map", om.Name).Infof("Disabling map")
 			om.PinState.SetDisabled()
@@ -417,4 +422,19 @@ func nameToProgType(n string) int {
 		return BPF_PROG_TYPE_SCHED_CLS
 	}
 	return -1
+}
+
+func UnloadAll(bpfDir string) {
+	for _, l := range AllPrograms {
+		RemoveProgram(bpfDir, l)
+	}
+
+	for _, m := range AllMaps {
+		if err := m.Unload(); err != nil {
+			logger.GetLogger().Warnf("Failed to unload map %s: %s", m.Name, err)
+		}
+	}
+
+	AllPrograms = []*Program{}
+	AllMaps = []*Map{}
 }

@@ -12,21 +12,13 @@ package observer
 
 import (
 	"os"
-	"path/filepath"
 
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
 func RemovePrograms(bpfDir, mapDir string) {
-	for _, l := range sensors.GetAllPrograms() {
-		sensors.RemoveProgram(bpfDir, l)
-	}
-
-	for _, m := range sensors.GetAllMaps() {
-		m.Close()
-		os.Remove(filepath.Join(mapDir, m.Name))
-	}
+	sensors.UnloadAll(bpfDir)
 	os.Remove(bpfDir)
 	os.Remove(mapDir)
 	btf.FreeCachedBTF()

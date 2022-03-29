@@ -542,7 +542,7 @@ func loadGenericKprobeSensor(bpfDir, mapDir string, load *sensors.Program, versi
 	genmapDir := gk.getMapDir(mapDir)
 	os.Mkdir(genmapDir, os.ModeDir)
 
-	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), load))
+	sensors.AllPrograms = append(sensors.AllPrograms, load)
 	retprobe := strings.Contains(load.Name, "ret")
 	if retprobe {
 		return loadGenericKprobeRet(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir), 0

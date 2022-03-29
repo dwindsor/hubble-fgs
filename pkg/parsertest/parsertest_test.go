@@ -188,7 +188,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 }
 
 func addSelfToEvecveMap(t *testing.T) {
-	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), sensors.ExecveMap.Name))
+	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), sensors.GetExecveMap().Name))
 	if err != nil {
 		t.Fatalf("OpenMap: %s\n", err)
 	}

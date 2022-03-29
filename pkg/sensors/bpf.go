@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/ebpf"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 func ProgramBuilder(
@@ -85,7 +86,7 @@ func (p *Program) SetLoaderData(d interface{}) *Program {
 // to track users of a bpf program.
 type State struct {
 	//   0: idle (not loaded)
-	//   1: loaded
+	//   >=1: loaded, with N references
 	//  -1: disabled
 	count int
 }
@@ -109,11 +110,19 @@ func (s *State) SetDisabled() {
 	s.count = -1
 }
 
-func (s *State) SetLoaded() {
+func (s *State) RefInc() {
 	if s.IsDisabled() {
-		panic(fmt.Errorf("called SetLoaded() while program is disabled (cnt: %d)", s.count))
+		panic(fmt.Errorf("called RefInc() while program is disabled (cnt: %d)", s.count))
 	}
-	s.count = 1
+	s.count++
+}
+
+func (s *State) RefDec() int {
+	if s.IsDisabled() {
+		panic(fmt.Errorf("called RefDec() while program is disabled (cnt: %d)", s.count))
+	}
+	s.count--
+	return s.count
 }
 
 // Map represents BPF maps.
@@ -128,12 +137,22 @@ func MapBuilder(name string, ld *Program) *Map {
 	return &Map{name, ld, Idle(), nil}
 }
 
-func (m *Map) Close() error {
+func (m *Map) Unload() error {
+	log := logger.GetLogger().WithField("map", m.Name)
+	if !m.PinState.IsLoaded() || m.PinState.IsDisabled() {
+		log.WithField("count", m.PinState.count).Debug("Refusing to unload map as it is not loaded or is disabled")
+		return nil
+	}
+	if count := m.PinState.RefDec(); count > 0 {
+		log.WithField("count", count).Debug("Reference exists, not unloading map yet")
+		return nil
+	}
+	log.Info("map was unloaded")
 	if m.mapHandle != nil {
+		m.mapHandle.Unpin()
 		err := m.mapHandle.Close()
 		m.mapHandle = nil
 		return err
 	}
-	m.PinState = Idle()
 	return nil
 }

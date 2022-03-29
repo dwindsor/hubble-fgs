@@ -21,150 +21,66 @@ import (
 )
 
 var (
-	// do not access that directly outside of this file
-	// use {get|set}AllPrograms()
-	AllPrograms = []*Program{
-		Execve,
-		Exit,
-		Fork,
-		Cred,
-		TCPConnect,
-		TCPClose,
-		Listen,
-	}
-
-	AllProgramsV53 = []*Program{
-		ExecveV53,
-		Exit,
-		Fork,
-		Cred,
-		TCPConnect,
-		TCPClose,
-		Listen,
-	}
-
-	// do not access that directly outside of this file
-	// use {get|set}AllMaps()
-	AllMaps = []*Map{
-		NamesMap,
-		SocketMap,
-		ExecveMap,
-		TCPMonMap,
-		ProcessNetworkBurstMap,
-		ExecveStats,
-		SocketStats,
-		TLSMapStats,
-		PNBurstMapStats,
-		CiliumSNAT,
-		HTTPContext,
-		TLSContext,
-	}
-
-	AllMapsV53 = []*Map{
-		NamesMapV53,
-		SocketMap,
-		ExecveMapV53,
-		TCPMonMapV53,
-		ProcessNetworkBurstMap,
-		ExecveStatsV53,
-		SocketStats,
-		TLSMapStats,
-		PNBurstMapStats,
-		CiliumSNAT,
-		HTTPContext,
-		TLSContext,
-	}
+	// AllPrograms are all the loaded programs. For use with Unload().
+	AllPrograms = []*Program{}
+	// AllMaps are all the loaded programs. For use with Unload().
+	AllMaps = []*Map{}
 )
 
-func GetAllPrograms() []*Program {
-	if kernels.EnableLargeProgs() {
-		return AllProgramsV53
+func GetDefaultPrograms() []*Program {
+	progs := []*Program{
+		Cred,
+		Exit,
+		Fork,
+		Listen,
+		TCPClose,
+		TCPConnect,
 	}
-	return AllPrograms
-}
-
-func SetAllPrograms(p []*Program) {
 	if kernels.EnableLargeProgs() {
-		AllProgramsV53 = p
+		progs = append(progs, ExecveV53)
 	} else {
-		AllPrograms = p
+		progs = append(progs, Execve)
 	}
+	return progs
 }
 
-func GetAllMaps() []*Map {
-	if kernels.EnableLargeProgs() {
-		return AllMapsV53
+func GetDefaultMaps() []*Map {
+	maps := []*Map{
+		HTTPContext,
+		PNBurstMapStats,
+		ProcessNetworkBurstMap,
+		SocketMap,
+		SocketStats,
+		TLSContext,
+		TLSMapStats,
 	}
-	return AllMaps
-}
 
-func SetAllMaps(m []*Map) {
 	if kernels.EnableLargeProgs() {
-		AllMapsV53 = m
+		maps = append(maps,
+			ExecveMapV53,
+			ExecveStatsV53,
+			NamesMapV53,
+			TCPMonMapV53,
+		)
 	} else {
-		AllMaps = m
+		maps = append(maps,
+			ExecveMap,
+			ExecveStats,
+			NamesMap,
+			TCPMonMap,
+		)
 	}
+	return maps
+
 }
 
 // GetInitialSensor returns the collection of Sensor that is loaded at
 // initialization time.
 func GetInitialSensor() *Sensor {
-	progs := []*Program{
-		Execve,
-		Exit,
-		Fork,
-		Cred,
-		TCPConnect,
-		TCPClose,
-		Listen,
-	}
-	if kernels.EnableLargeProgs() {
-		progs = []*Program{
-			ExecveV53,
-			Exit,
-			Fork,
-			Cred,
-			TCPConnect,
-			TCPClose,
-			Listen,
-		}
-	}
-
-	maps := []*Map{
-		NamesMap,
-		TCPMonMap,
-		ExecveMap,
-		SocketMap,
-		ProcessNetworkBurstMap,
-		/* &ObserverTcpMap */
-		ExecveStats,
-		SocketStats,
-		TLSMapStats, // NB: Maybe this should be under k.enableTLS?
-		PNBurstMapStats,
-		HTTPContext,
-		TLSContext,
-	}
-	if kernels.EnableLargeProgs() {
-		maps = []*Map{
-			NamesMapV53,
-			TCPMonMapV53,
-			ExecveMapV53,
-			SocketMap,
-			ProcessNetworkBurstMap,
-			/* &ObserverTcpMap */
-			ExecveStatsV53,
-			SocketStats,
-			TLSMapStats, // NB: Maybe this should be under k.enableTLS?
-			PNBurstMapStats,
-			HTTPContext,
-			TLSContext,
-		}
-	}
-
 	return &Sensor{
 		Name:  "__main__",
-		Progs: progs,
-		Maps:  maps,
+		Progs: GetDefaultPrograms(),
+		Maps:  GetDefaultMaps(),
 	}
 }
 

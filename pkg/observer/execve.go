@@ -148,20 +148,16 @@ func (k *Observer) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procT
 }
 
 func (k *Observer) writeExecveMap(procs []ObserverProcs) {
+	execveMap := sensors.GetExecveMap()
 
-	if sensors.ExecveMap.PinState.IsDisabled() {
-		k.log.Infof("hubble-fgs, map %s is disabled, skipping.", sensors.ExecveMap.Name)
+	if execveMap.PinState.IsDisabled() {
+		k.log.Infof("hubble-fgs, map %s is disabled, skipping.", execveMap.Name)
 		return
 	}
 
-	if sensors.ExecveMap.PinState.IsLoaded() {
-		k.log.Infof("hubble-fgs, map %s is already loaded, skipping.", sensors.ExecveMap.Name)
-		return
-	}
-
-	m, err := bpf.OpenMap(filepath.Join(k.mapDir, sensors.ExecveMap.Name))
+	m, err := bpf.OpenMap(filepath.Join(k.mapDir, execveMap.Name))
 	for i := 0; err != nil; i++ {
-		m, err = bpf.OpenMap(filepath.Join(k.mapDir, sensors.ExecveMap.Name))
+		m, err = bpf.OpenMap(filepath.Join(k.mapDir, execveMap.Name))
 		if err != nil {
 			time.Sleep(mapRetryDelay * time.Second)
 		}

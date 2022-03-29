@@ -88,24 +88,6 @@ func LoadSkProgram(
 	return loadProgram(bpfDir, []string{mapDir}, load, rawAttach(targetSockmap.mapHandle.FD()))
 }
 
-// Sockops is different from other programs, in that it is shared across
-// multiple sensors e.g. TLS and HTTP. So to ensure we only ever have one
-// instance of the sockops lets guard the load by a refcnt check. We
-// assume this is serialized by caller and it must be or else there would
-// be interesting bugs when loaders and unloaders race.
-func LoadSockops(
-	bpfDir, mapDir, ciliumDir string,
-	load *Program,
-	version, verbose int) error {
-	if bpf.IsSockopsLoaded() {
-		logger.GetLogger().WithField("program", load.Name).Infof("Sockops, %d references exist reuse", bpf.SockopsRefCnt())
-		return nil
-	}
-	logger.GetLogger().WithField("program", load.Name).Infof("Sockops, create initial reference")
-	bpf.CgroupSockopsRefInc()
-	return LoadCgroupProgram(bpfDir, mapDir, ciliumDir, load)
-}
-
 func LoadTC(
 	bpfDir, mapDir, ciliumDir string,
 	load *Program,
