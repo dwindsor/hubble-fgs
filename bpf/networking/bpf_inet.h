@@ -73,6 +73,9 @@ struct udp_info_key *udp4_key_lazy(struct __sk_buff *skb,
 	key->padding = 0;
 	key->cookie = 0;
 
+	if (skb)
+		write_cookie(key, (u64)skb->sk);
+
 	*payload_off = udp_off + sizeof(struct udphdr);
 	*payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
 	return key;

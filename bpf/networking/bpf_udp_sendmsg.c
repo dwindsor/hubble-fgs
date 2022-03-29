@@ -61,6 +61,19 @@ struct udp_info_key *udp4_get_key(struct pt_regs *ctx)
 	 * in host byte order.
 	 */
 	key->sport = bpf_ntohs(key->sport);
+
+	/* A unique key is needed to identify flows, but without a cookie value
+	 * its possible to have the same tuple on different process's. Either
+	 * because they simply do sendmsg with the same tuple or because its
+	 * multicast traffic and src/dst is a common ip. In these cases we
+	 * can make it unique by using sk addr for cookie. Its not entirely
+	 * unique because the sk addr might be reused later but the 5-tuple
+	 * plus the addr should be mostly unique which is better than the
+	 * current never unique.
+	 */
+	if (!key->cookie)
+		write_cookie(key, (u64)sk);
+
 	return key;
 }
 
@@ -161,6 +174,10 @@ struct udp_info_key *udp4_get_skb_key(struct pt_regs *ctx, int *len)
 	key->padding = 0;
 
 	*len = bpf_ntohs(udph.len) - sizeof(udph);
+
+	if (!key->cookie)
+		write_cookie(key, (u64)sk);
+
 	return key;
 }
 

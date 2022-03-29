@@ -229,7 +229,6 @@ void udp_info_consumed_reset(struct udp_info_value *v, int len)
 	v->ktime = ktime_get_ns();
 }
 
-
 static inline __attribute__((always_inline))
 void update_submitted_value(struct udp_info_value *v, u32 len)
 {
