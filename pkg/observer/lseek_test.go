@@ -25,7 +25,3 @@ var (
 		"tracepoint",
 	)
 )
-
-func init() {
-	sensors.SetAllPrograms(append(sensors.GetAllPrograms(), ObserverLseekTest))
-}

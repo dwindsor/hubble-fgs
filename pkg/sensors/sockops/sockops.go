@@ -28,9 +28,11 @@ var (
 
 	TlsSockMapName  = "tls_sock_map"
 	httpSockMapName = "http_sock_map"
+	NopSockMapName  = "nop_sock_map"
 
 	HttpSockMap   = sensors.MapBuilder(httpSockMapName, SockopsEstablished)
 	TlsSockMap    = sensors.MapBuilder(TlsSockMapName, SockopsEstablished)
+	NopSockMap    = sensors.MapBuilder(NopSockMapName, SockopsEstablished)
 	TlsFilterMap  = sensors.MapBuilder("tls_filter_map", SockopsEstablished)
 	HttpFilterMap = sensors.MapBuilder("http_filter_map", SockopsEstablished)
 	NopFilterMap  = sensors.MapBuilder("nop_filter_map", SockopsEstablished)
@@ -51,7 +53,9 @@ func builder(name string) (*sensors.Sensor, error) {
 	if kernels.MinKernelVersion("5.8.0") {
 		logger.GetLogger().Infof("Enable Sockops")
 		progs = append(progs, SockopsEstablished)
-		maps = append(maps, HttpSockMap, TlsSockMap, HttpFilterMap, TlsFilterMap, NopFilterMap)
+		maps = append(maps,
+			HttpSockMap, TlsSockMap, NopSockMap,
+			HttpFilterMap, TlsFilterMap, NopFilterMap)
 
 		return sensors.SensorBuilder("__sockops_sensors__", progs, maps), nil
 	}
@@ -63,7 +67,7 @@ type sockopsSensor struct {
 }
 
 func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	err := sensors.LoadSockops(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose)
+	err := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
 	return err, -1
 }
 

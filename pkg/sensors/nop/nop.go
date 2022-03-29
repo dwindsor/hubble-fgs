@@ -44,29 +44,25 @@ var (
 		"sk_skb_nop_verdict/fgsnop",
 		"sk_skb_verdict",
 		"nop_skskb_verdict")
-
-	/* NOP maps */
-	nopSockMapName = "nop_sock_map"
-	SockMap        = sensors.MapBuilder(nopSockMapName, sockops.SockopsEstablished)
 )
 
 type sensor struct {
 	name string
 }
 
-func (sockops *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	err := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, SockMap)
+func (nop *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+	err := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.NopSockMap)
 	if err != nil {
 		return err, -1
 	}
 
 	if utils.SkSkbParserRequired() {
-		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, SockMap)
+		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.NopSockMap)
 		if err != nil {
 			return err, -1
 		}
 	}
-	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, SockMap), -1
+	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.NopSockMap), -1
 }
 
 func (nop *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -136,7 +132,7 @@ func EnableNopParser() *sensors.Sensor {
 	}
 
 	maps := []*sensors.Map{
-		SockMap,
+		sockops.NopSockMap,
 	}
 
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
