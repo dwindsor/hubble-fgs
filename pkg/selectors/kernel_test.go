@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/kernels"
 )
 
 func TestWriteSelectorUint32(t *testing.T) {
@@ -371,15 +372,22 @@ func TestParseMatchAction(t *testing.T) {
 }
 
 func TestInitKernelSelectors(t *testing.T) {
-	expected := []byte{
+	expected_header := []byte{
 		// spec header
 		0x01, 0x00, 0x00, 0x00, // single selector
 
-		0x4, 0x00, 0x00, 0x00, // selector offset list
+		0x04, 0x00, 0x00, 0x00, // selector offset list
+	}
 
-		// selector header size 4
+	expected_selsize_small := []byte{
+		0xfe, 0x00, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + capabilities  + 4
+	}
+
+	expected_selsize_large := []byte{
 		0x1a, 0x01, 0x00, 0x00, // size = pids + binarys + args + actions + namespaces + namespacesChanges + capabilities + capabilityChanges + 4
+	}
 
+	expected_filters := []byte{
 		// pid header
 		56, 0x00, 0x00, 0x00, // size = sizeof(pid2) + sizeof(pid1) + 4
 
@@ -431,7 +439,17 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x06, 0x00, 0x00, 0x00, // op == In
 		0x00, 0x00, 0x00, 0x00, // IsNamespaceCapability = false
 		0x00, 0x01, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, // Values (uint64)
+	}
 
+	expected_changes_empty := []byte{
+		// namespace changes header
+		0x04, 0x00, 0x00, 0x00,
+
+		// capability changes header
+		0x04, 0x00, 0x00, 0x00,
+	}
+
+	expected_changes := []byte{
 		// namespace changes header
 		12, 0x00, 0x00, 0x00, // size = sizeof(nc1) + sizeof(nc2) + 4
 
@@ -447,7 +465,9 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x05, 0x00, 0x00, 0x00, // op == In
 		0x00, 0x00, 0x00, 0x00, // IsNamespaceCapability = false
 		0x00, 0x20, 0x20, 0x00, 0x00, 0x00, 0x00, 0x00, // Values (uint64)
+	}
 
+	expected_last := []byte{
 		// binaryNames header
 		24, 0x00, 0x00, 0x00, // size = sizeof(uint32) * 4
 
@@ -486,23 +506,40 @@ func TestInitKernelSelectors(t *testing.T) {
 		0x01, 0x00, 0x00, 0x00, // arg index of string filename
 	}
 
-	arg1 := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
-	arg2 := &v1alpha1.ArgSelector{Index: 2, Operator: "Equal", Values: []string{"1", "2"}}
-	matchArgs := []v1alpha1.ArgSelector{*arg1, *arg2}
+	expected := expected_header
+	if kernels.EnableLargeProgs() {
+		expected = append(expected, expected_selsize_large...)
+		expected = append(expected, expected_filters...)
+		expected = append(expected, expected_changes...)
+	} else {
+		expected = append(expected, expected_selsize_small...)
+		expected = append(expected, expected_filters...)
+		expected = append(expected, expected_changes_empty...)
+	}
+	expected = append(expected, expected_last...)
+
 	pid1 := &v1alpha1.PIDSelector{Operator: "In", Values: []uint32{1, 2, 3}, IsNamespacePID: true, FollowForks: true}
 	pid2 := &v1alpha1.PIDSelector{Operator: "NotIn", Values: []uint32{1, 2, 3, 4}, IsNamespacePID: false, FollowForks: false}
 	matchPids := []v1alpha1.PIDSelector{*pid1, *pid2}
 	ns1 := &v1alpha1.NamespaceSelector{Namespace: "Pid", Operator: "In", Values: []string{"1", "2", "3"}}
 	ns2 := &v1alpha1.NamespaceSelector{Namespace: "Net", Operator: "NotIn", Values: []string{"1"}}
 	matchNamespaces := []v1alpha1.NamespaceSelector{*ns1, *ns2}
-	nc := &v1alpha1.NamespaceChangesSelector{Operator: "In", Values: []string{"Uts", "Mnt"}}
-	matchNamespaceChanges := []v1alpha1.NamespaceChangesSelector{*nc}
 	cap1 := &v1alpha1.CapabilitiesSelector{Type: "Effective", Operator: "In", IsNamespaceCapability: false, Values: []string{"CAP_CHOWN", "CAP_NET_RAW"}}
 	cap2 := &v1alpha1.CapabilitiesSelector{Type: "Inheritable", Operator: "NotIn", IsNamespaceCapability: false, Values: []string{"CAP_SETPCAP", "CAP_SYS_ADMIN"}}
 	matchCapabilities := []v1alpha1.CapabilitiesSelector{*cap1, *cap2}
-	cc := &v1alpha1.CapabilitiesSelector{Type: "Effective", Operator: "In", IsNamespaceCapability: false, Values: []string{"CAP_SYS_ADMIN", "CAP_NET_RAW"}}
-	matchCapabilityChanges := []v1alpha1.CapabilitiesSelector{*cc}
-
+	matchNamespaceChanges := []v1alpha1.NamespaceChangesSelector{}
+	if kernels.EnableLargeProgs() {
+		nc := &v1alpha1.NamespaceChangesSelector{Operator: "In", Values: []string{"Uts", "Mnt"}}
+		matchNamespaceChanges = append(matchNamespaceChanges, *nc)
+	}
+	matchCapabilityChanges := []v1alpha1.CapabilitiesSelector{}
+	if kernels.EnableLargeProgs() {
+		cc := &v1alpha1.CapabilitiesSelector{Type: "Effective", Operator: "In", IsNamespaceCapability: false, Values: []string{"CAP_SYS_ADMIN", "CAP_NET_RAW"}}
+		matchCapabilityChanges = append(matchCapabilityChanges, *cc)
+	}
+	arg1 := &v1alpha1.ArgSelector{Index: 1, Operator: "Equal", Values: []string{"foobar"}}
+	arg2 := &v1alpha1.ArgSelector{Index: 2, Operator: "Equal", Values: []string{"1", "2"}}
+	matchArgs := []v1alpha1.ArgSelector{*arg1, *arg2}
 	act1 := &v1alpha1.ActionSelector{Action: "post"}
 	act2 := &v1alpha1.ActionSelector{Action: "followfd",
 		ArgFd:   0,
@@ -513,8 +550,8 @@ func TestInitKernelSelectors(t *testing.T) {
 		{
 			MatchPIDs:              matchPids,
 			MatchNamespaces:        matchNamespaces,
-			MatchNamespaceChanges:  matchNamespaceChanges,
 			MatchCapabilities:      matchCapabilities,
+			MatchNamespaceChanges:  matchNamespaceChanges,
 			MatchCapabilityChanges: matchCapabilityChanges,
 			MatchArgs:              matchArgs,
 			MatchActions:           matchActions,
