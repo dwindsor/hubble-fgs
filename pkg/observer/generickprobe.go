@@ -375,6 +375,9 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		}
 
 		hasOverride := selectors.HasOverride(f)
+		if hasOverride && !bpf.HasOverrideHelper() {
+			return nil, fmt.Errorf("Error override_return bpf helper not available")
+		}
 
 		// Copy over userspace return filters
 		var userReturnFilters []v1alpha1.ArgSelector
