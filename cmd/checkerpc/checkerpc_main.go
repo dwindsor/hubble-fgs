@@ -75,7 +75,7 @@ func rpcCheck(ctx context.Context, clients []fgs.FineGuidanceSensorsClient, chec
 			for {
 				ev, err := stream.Recv()
 				if err != nil && !errors.Is(err, context.Canceled) && status.Code(err) != codes.Canceled {
-					logger.GetLogger().WithError(err).Fatal("Failed to receive event")
+					logger.GetLogger().WithError(err).Warn("Failed to receive event")
 				}
 
 				atomic.AddUint64(eventCount, 1)
