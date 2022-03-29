@@ -122,11 +122,19 @@ objs/bpf_generic_kprobe_v53.ll: process/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v53.ll: process/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v53.ll: process/bpf_generic_tracepoint.c
 
-objs/bpf_execve_event_v53.ll objs/bpf_generic_kprobe_v53.ll objs/bpf_generic_retkprobe_v53.ll objs/bpf_generic_tracepoint_v53.ll:
+objs/%_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
+
+deps/bpf_execve_event_v53.d: process/bpf_execve_event.c
+deps/bpf_generic_kprobe_v53.d: process/bpf_generic_kprobe.c
+deps/bpf_generic_retkprobe_v53.d: process/bpf_generic_retkprobe.c
+deps/bpf_generic_tracepoint_v53.d: process/bpf_generic_tracepoint.c
+
+$(DEPSDIR)%_v53.d:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
 # BPFTESTDIR
 objs/%.ll: $(BPFTESTDIR)%.c
