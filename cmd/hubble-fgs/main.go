@@ -67,8 +67,9 @@ func hubbleFGSExecute() error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	logger.GetLogger().WithField("config", viper.AllSettings()).Info("config settings")
 	readAndSetFlags()
+	logger.GetLogger().WithField("version", version.Version).Info("Starting hubble-fgs")
+	logger.GetLogger().WithField("config", viper.AllSettings()).Info("config settings")
 
 	if viper.IsSet(keyNetnsDir) {
 		defaults.NetnsDir = viper.GetString(keyNetnsDir)
@@ -258,7 +259,6 @@ func execute() error {
 		Use:   "hubble-fgs SOURCE_DIR BUCKET",
 		Short: "Hubble FGS",
 		Run: func(cmd *cobra.Command, args []string) {
-			logger.GetLogger().WithField("version", version.Version).Info("Starting hubble-fgs")
 			if err := gops.Listen(gops.Options{}); err != nil {
 				logger.GetLogger().WithError(err).Fatal("Failed to start gops")
 			}
