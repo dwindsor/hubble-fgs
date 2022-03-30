@@ -12,8 +12,10 @@ package sensors
 
 import (
 	"fmt"
+	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 )
@@ -252,6 +254,28 @@ func RegisterProbeType(probeType string, s tracingSensor) {
 		panic(fmt.Sprintf("RegisterProbeType called, but %s is already registered", probeType))
 	}
 	registeredProbeLoad[probeType] = s
+}
+
+func LogRegisteredSensorsAndProbes() {
+	log := logger.GetLogger()
+
+	names := []string{}
+	for n := range availableSensors {
+		names = append(names, n)
+	}
+	log.WithField("sensors", strings.Join(names, ", ")).Info("Available sensors")
+
+	names = []string{}
+	for n := range registeredTracingSensors {
+		names = append(names, n)
+	}
+	log.WithField("sensors", strings.Join(names, ", ")).Info("Registered tracing sensors")
+
+	names = []string{}
+	for n := range registeredTracingSensors {
+		names = append(names, n)
+	}
+	log.WithField("types", strings.Join(names, ", ")).Info("Registered probe types")
 }
 
 type tracingSensor interface {

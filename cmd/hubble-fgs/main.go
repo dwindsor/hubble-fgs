@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 
 	// Imported to allow sensors to be initialized inside init().
@@ -78,6 +79,8 @@ func hubbleFGSExecute() error {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.CheckOrMountCgroup2()
+
+	sensors.LogRegisteredSensorsAndProbes()
 
 	bpf.ConfigureResourceLimits()
 	observerDir := getObserverDir()
