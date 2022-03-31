@@ -76,7 +76,7 @@ var (
 	TCTLSParserStats = sensors.MapBuilder("tls_parser_stats", TLSTCEgress)
 	TLSParserStats   = sensors.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
 	TLSTailCalls     = sensors.MapBuilder("tls_calls", TLSTCIngress)
-	TlsFilterMap     = sensors.MapBuilder("tls_filter_map", sockops.SockopsEstablished)
+	TlsFilterMap     = sockops.TlsFilterMap
 	HTTPTailCalls    = http.TailCalls
 	HTTPFilterMap    = http.HTTPFilterMap
 	HTTPSockMap      = sockops.HttpSockMap
