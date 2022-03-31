@@ -183,6 +183,7 @@ struct udp_info_value *__udp4_send(struct __sk_buff *skb,
 		if (process) {
 			value->pid = process->key.pid;
 			value->pid_ktime = process->key.ktime;
+			emit_udp_connect_event(skb, key, value);
 		} else {
 			value->pid = 0;
 			value->pid_ktime = 0;
