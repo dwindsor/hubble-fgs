@@ -21,6 +21,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
+const (
+	ContainerIdLength = 64
+
+	// First 31 chars to match BPF generated values.
+	BpfContainerIdLength = 31
+)
+
 var (
 	dockerIdSet = 0
 )
@@ -45,11 +52,81 @@ func procDockerIdOffsetDefault(btf bpf.BTF) error {
 	return procDockerIdOffsetWriter(0, btf)
 }
 
-func procsDockerIdOffset(docker string) (string, int) {
-	off := strings.LastIndex(docker, "-") + 1
-	s := strings.Split(docker, "-")
+// procsContainerIdOffset Returns the container ID and its offset
+// This can fail, better use procsLookupContainerID to handle different container runtimes.
+func procsContainerIdOffset(subdir string) (string, int) {
+	// If the cgroup subdir contains ":" it means that we are dealing with
+	// Linux.CgroupPath where the cgroup driver is cgroupfs
+	// https://github.com/opencontainers/runc/blob/main/docs/systemd.md
+	// In this case let's split the name and take the last one
+	p := strings.LastIndex(subdir, ":") + 1
+	fields := strings.Split(subdir, ":")
+	idStr := fields[len(fields)-1]
 
-	return s[len(s)-1], off
+	off := strings.LastIndex(idStr, "-") + 1
+	s := strings.Split(idStr, "-")
+
+	return s[len(s)-1], off + p
+}
+
+// procsLookupContainerId returns the container ID as a 31 character string length from the full cgroup path
+// cgroup argument is the full cgroup path
+// walkParent if set then walk the parent hierarchy subdirs and try to find the container ID of the process,
+//    this will allow to return the container id of services running inside, example: init.service etc.
+// Returns the container ID as a string of 31 characters and its offset on the full cgroup path,
+// otherwise on errors an empty string and 0 as offset.
+func procsLookupContainerId(cgroup string, walkParent bool) (string, int) {
+	subDirs := strings.Split(cgroup, "/")
+	subdir := subDirs[len(subDirs)-1]
+
+	// Special case for syscont-cgroup-root installed by
+	// sysbox nested containers. In this case set with
+	// outermost container.
+	if strings.Contains(subdir, "syscont-cgroup-root") {
+		if len(subDirs) > 4 {
+			subdir = subDirs[4]
+			walkParent = false
+		}
+	}
+
+	container, i := procsContainerIdOffset(subdir)
+
+	// Let's first check if this was a valid container id, it can be only the id
+	// or the id.scope
+	// systemd units at the end of a cgroup path can only be a type .scope or .service
+	// However if it is a service then it means some service inside the container, if
+	// we are interested into it then we should walk the parent subdir with
+	// walkParent argument set.
+	if len(container) >= ContainerIdLength && !strings.HasSuffix(container, "service") {
+		// return first 31 chars to match BPF generated values.
+		// If the string is less than 31 chars its not a docker
+		// ID so skip it. For example docker.server will get here.
+		return container[:BpfContainerIdLength], i
+	}
+
+	// Podman may set the last subdir to 'container' so let's walk parent subdir
+	if strings.Contains(cgroup, "libpod") && container == "container" {
+		walkParent = true
+	}
+
+	// Should we walk the parent subdirs
+	if !walkParent {
+		return "", 0
+	}
+
+	// Walk the parent subdirs until the first ancestor which is not included
+	for j := len(subDirs) - 2; j > 1; j-- {
+		container, i = procsContainerIdOffset(subDirs[j])
+		// Either container ID or the first transient scope unit
+		if len(container) == ContainerIdLength || (len(container) > ContainerIdLength && strings.HasSuffix(container, "scope")) {
+			// return first 31 chars to match BPF generated values.
+			// If the string is less than 31 chars its not a docker
+			// ID so skip it. For example docker.server will get here.
+			return container[:BpfContainerIdLength], i
+		}
+	}
+
+	return "", 0
 }
 
 func procsFilename(args []byte) (string, string) {
@@ -60,25 +137,14 @@ func procsFilename(args []byte) (string, string) {
 }
 
 func procsFindDockerId(cgroups string) (string, int) {
-	docker := strings.Split(cgroups, "\n")
-	for _, s := range docker {
-		if strings.Contains(s, "pods") || strings.Contains(s, "docker") {
-			dockerFields := strings.Split(s, "/")
-			dockerString := dockerFields[len(dockerFields)-1]
-			// Special case for syscont-cgroup-root installed by
-			// sysbox nested containers. In this case set with
-			// outermost container.
-			if strings.Contains(dockerString, "syscont-cgroup-root") {
-				if len(dockerFields) > 4 {
-					dockerString = dockerFields[4]
-				}
-			}
-			docker, i := procsDockerIdOffset(dockerString)
-			// return first 31 chars to match BPF generated values.
-			// If the string is less than 31 chars its not a docker
-			// ID so skip it. For example docker.server will get here.
-			if len(docker) > 30 {
-				return docker[:31], i
+	cgrpPaths := strings.Split(cgroups, "\n")
+	for _, s := range cgrpPaths {
+		if strings.Contains(s, "pods") || strings.Contains(s, "docker") ||
+			strings.Contains(s, "libpod") {
+			// Get the container ID and the offset
+			container, i := procsLookupContainerId(s, false)
+			if container != "" {
+				return container, i
 			}
 		}
 	}
