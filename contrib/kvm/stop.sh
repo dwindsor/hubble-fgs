@@ -4,7 +4,7 @@ set -eu
 
 # Use pgrep if it exists on the machine, but fall back to grep and awk for portability
 if command -v pgrep &>/dev/null; then
-    QEMU_PID="$(pgrep "qemu-system" || true)"
+    QEMU_PID="$(pgrep "qemu-system" | head -n 1)"
 else
     QEMU_PID="$(ps ax | grep "qemu-system" | awk 'NR==1{print $1}')"
 fi

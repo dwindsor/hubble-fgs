@@ -11,6 +11,7 @@ usage() {
 	echo "OPTIONS:" 1>&2
     echo "    --kernel [KERNEL]  path to kernel bzImage (relative to run.sh or absolute)" 1>&2
     echo "    --disk   [IMAGE]   path to root filesystem image (relative to run.sh or absolute)" 1>&2
+    echo "    --port   [NUMBER]  port to forward on the host for ssh access" 1>&2
     echo "    --foreground, --fg run in the foreground" 1>&2
 }
 
@@ -24,6 +25,9 @@ while [ $# -ge 1 ]; do
 	elif [ "$1" == "--foreground" ] || [ "$1" == "--fg" ] ; then
 		FOREGROUND=1
 		shift 1
+	elif [ "$1" == "--port" ] ; then
+		SSHPORT="$2"
+		shift 2
     else
         usage
         exit 1
