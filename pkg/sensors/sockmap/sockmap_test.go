@@ -144,18 +144,19 @@ func TestTCTLS12(t *testing.T) {
 
 	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
 	curlChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("curl"), ec.FullStringMatch("-4 https://tls-v1-2.badssl.com:1012/"),
+		ec.SuffixStringMatch("curl"), ec.FullStringMatch("--tlsv1.2 --tls-max 1.2 -4 https://www.google.com/"),
 	)
 	tlsCh := ec.NewTLSChecker().
 		WithClientVersion("TLS1.2").
 		WithServerVersion("TLS1.2").
 		WithSniType("host_name").
-		WithSniName("tls-v1-2.badssl.com").
-		WithClientFlags("ExtVersion").
+		WithSniName("www.google.com").
+		WithClientFlags("").
 		WithServerFlags("").
 		WithCertificates([]ec.StringArg{
-			"CN=*.badssl.com,O=Lucas Garron Torres,L=Walnut Creek,ST=California,C=US",
-			"CN=DigiCert SHA2 Secure Server CA,O=DigiCert Inc,C=US",
+			"CN=www.google.com",
+			"CN=GTS CA 1C3,O=Google Trust Services LLC,C=US",
+			"CN=GTS Root R1,O=Google Trust Services LLC,C=US",
 		})
 
 	checker := ec.NewUnorderedMultiResponseChecker(
@@ -166,7 +167,7 @@ func TestTCTLS12(t *testing.T) {
 		ec.NewConnectEventChecker().
 			HasProcess(curlChecker).
 			HasParent(selfChecker).
-			HasDstPort(1012).
+			HasDstPort(443).
 			End(),
 		ec.NewTLSEventChecker().
 			HasProcess(curlChecker).
@@ -182,7 +183,7 @@ func TestTCTLS12(t *testing.T) {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
-	observer.ExecWGCurl(&readyWG, "-4", "https://tls-v1-2.badssl.com:1012/")
+	observer.ExecWGCurl(&readyWG, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
