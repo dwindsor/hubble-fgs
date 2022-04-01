@@ -36,6 +36,10 @@ func TestProcsContainerIdOffset(t *testing.T) {
 	s, i = procsContainerIdOffset(test3)
 	assert.Equal(t, test1, s, "Expect output is test3")
 	assert.Equal(t, offsetValue3, i, "Expect docker- offset")
+
+	s, i = procsContainerIdOffset("")
+	assert.Equal(t, s, "", "Expect output '' empty string")
+	assert.Equal(t, i, 0, "Expect ContainerId offset should be zero")
 }
 
 func TestProcsContainerId(t *testing.T) {
@@ -168,4 +172,9 @@ func TestProcsFindContainerId(t *testing.T) {
 	d, i = procsFindDockerId(p)
 	assert.Equal(t, i, 80, "ContainerId offset wrong")
 	assert.Equal(t, d, "0ca2b3cd20e5f55a2bbe8d4aa3f811c", "ContainerId wrong")
+
+	p = ""
+	d, i = procsFindDockerId(p)
+	assert.Equal(t, d, "", "Expect output '' empty string")
+	assert.Equal(t, i, 0, "Expect ContainerId offset should be zero")
 }
