@@ -159,6 +159,10 @@ spec:
                                   - UnfollowFD
                                   - Sigkill
                                   type: string
+                                argError:
+                                  description: error value for override action
+                                  format: int32
+                                  type: integer
                                 argFd:
                                   description: An arg index for the fd for fdInstall
                                     action
@@ -171,6 +175,7 @@ spec:
                                   type: integer
                               required:
                               - action
+                              - argError
                               type: object
                             type: array
                           matchArgs:
@@ -717,6 +722,10 @@ spec:
                                   - UnfollowFD
                                   - Sigkill
                                   type: string
+                                argError:
+                                  description: error value for override action
+                                  format: int32
+                                  type: integer
                                 argFd:
                                   description: An arg index for the fd for fdInstall
                                     action
@@ -729,6 +738,7 @@ spec:
                                   type: integer
                               required:
                               - action
+                              - argError
                               type: object
                             type: array
                           matchArgs:

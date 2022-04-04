@@ -1476,6 +1476,7 @@ EventType constants are based on the ones from pkg/api/client
 | KPROBE_ACTION_FOLLOWFD | 2 |  |
 | KPROBE_ACTION_SIGKILL | 3 |  |
 | KPROBE_ACTION_UNFOLLOWFD | 4 |  |
+| KPROBE_ACTION_OVERRIDE | 5 |  |
 
 
 
