@@ -133,7 +133,7 @@ func TestConnectEvent(t *testing.T) {
 	}
 
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
-	observer.ExecWGCurl(&readyWG, "127.0.0.1")
+	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }

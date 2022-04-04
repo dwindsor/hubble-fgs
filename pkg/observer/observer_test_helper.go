@@ -345,11 +345,21 @@ func LoopEvents(t *testing.T, doneWG, readyWG *sync.WaitGroup, obs *Observer, ct
 	}()
 }
 
-func ExecWGCurl(readyWG *sync.WaitGroup, args ...string) {
+func ExecWGCurl(readyWG *sync.WaitGroup, retries uint, args ...string) error {
 	readyWG.Wait()
 	cmd := exec.Command("/usr/bin/curl", args...)
-	err := cmd.Run()
-	fmt.Printf("cmd %v err %v\n", cmd, err)
+
+	var err error
+	// retries=0 -> 1 try, retries=1 -> 2 tries, and so on...
+	for try := uint(0); try < retries+1; try++ {
+		err = cmd.Run()
+		if err == nil {
+			break
+		}
+		logger.GetLogger().Warnf("%v failed with %v (attempt %d/%d)", cmd, err, try+1, retries)
+	}
+
+	return err
 }
 
 // dockerRun starts a new docker container in the background. The container will

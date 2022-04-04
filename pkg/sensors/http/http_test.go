@@ -137,7 +137,7 @@ func TestHttp11Curl(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
-	observer.ExecWGCurl(&readyWG, "-4", "http://www.google.com")
+	observer.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -218,7 +218,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
-	observer.ExecWGCurl(&readyWG, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
+	observer.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
