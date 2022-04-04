@@ -589,6 +589,8 @@ func KprobeAction(act uint64) fgs.KprobeAction {
 		return fgs.KprobeAction_KPROBE_ACTION_SIGKILL
 	case api.ActionUnfollowFd:
 		return fgs.KprobeAction_KPROBE_ACTION_UNFOLLOWFD
+	case api.ActionOverride:
+		return fgs.KprobeAction_KPROBE_ACTION_OVERRIDE
 	default:
 		return fgs.KprobeAction_KPROBE_ACTION_UNKNOWN
 	}

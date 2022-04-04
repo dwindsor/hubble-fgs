@@ -723,6 +723,7 @@ const (
 	ActionFollowFd   = 1
 	ActionSigKill    = 2
 	ActionUnfollowFd = 3
+	ActionOverride   = 4
 )
 
 type MsgGenericKprobe struct {

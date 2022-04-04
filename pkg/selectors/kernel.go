@@ -28,6 +28,7 @@ const (
 	actionTypeFollowFd   = 1
 	actionTypeSigKill    = 2
 	actionTypeUnfollowFd = 3
+	actionTypeOverride   = 4
 )
 
 var actionTypeTable = map[string]uint32{
@@ -35,6 +36,7 @@ var actionTypeTable = map[string]uint32{
 	"followfd":   actionTypeFollowFd,
 	"unfollowfd": actionTypeUnfollowFd,
 	"sigkill":    actionTypeSigKill,
+	"override":   actionTypeOverride,
 }
 
 var actionTypeStringTable = map[uint32]string{
@@ -42,6 +44,7 @@ var actionTypeStringTable = map[uint32]string{
 	actionTypeFollowFd:   "followfd",
 	actionTypeUnfollowFd: "unfollowfd",
 	actionTypeSigKill:    "sigkill",
+	actionTypeOverride:   "override",
 }
 
 func MatchActionSigKill(spec *v1alpha1.KProbeSpec) bool {
@@ -330,6 +333,8 @@ func parseMatchAction(k *KernelSelectorState, action *v1alpha1.ActionSelector) e
 	case actionTypeFollowFd:
 		WriteSelectorUint32(k, action.ArgFd)
 		WriteSelectorUint32(k, action.ArgName)
+	case actionTypeOverride:
+		WriteSelectorInt32(k, action.ArgError)
 	}
 	return nil
 }
