@@ -24,6 +24,7 @@ type Metadata struct {
 
 type GenericTracingConf struct {
 	ApiVersion string                     `json:"apiVersion"`
+	Kind       string                     `json:"kind"`
 	Metadata   Metadata                   `json:"metadata"`
 	Spec       v1alpha1.TracingPolicySpec `json:"spec"`
 }
@@ -31,7 +32,7 @@ type GenericTracingConf struct {
 func ReadConfigYaml(data string) (*GenericTracingConf, error) {
 	var k GenericTracingConf
 
-	err := yaml.Unmarshal([]byte(data), &k)
+	err := yaml.UnmarshalStrict([]byte(data), &k)
 	if err != nil {
 		return nil, err
 	}
