@@ -33,7 +33,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_write"
 spec:
-  description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
     return: false
@@ -189,7 +188,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_write"
 spec:
-  description: "Syscall hook points"
   kprobes:
   - call: "example_func"
     return: true
@@ -444,7 +442,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "tls-example"
 spec:
-  description: "tls parser spec"
   parser:
     tls:
       mode: "tc"

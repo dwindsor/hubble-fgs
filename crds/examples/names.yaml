@@ -17,7 +17,7 @@ spec:
         operator: "Equal"
         values:
         - "/tmp/test"
-      matchBinarys:
+      matchBinaries:
       - operator: "In"
         values:
         - "/usr/bin/vim"
@@ -51,7 +51,7 @@ spec:
         operator: "Equal"
         values:
         - "/tmp/test"
-      matchBinary:
+      matchBinaries:
       - operator: "In"
         values:
         - "/usr/bin/vim"

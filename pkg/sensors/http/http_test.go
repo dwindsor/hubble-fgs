@@ -70,7 +70,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "http"
 spec:
-  description: "http parser spec"
   parser:
     tls:
       enable: false

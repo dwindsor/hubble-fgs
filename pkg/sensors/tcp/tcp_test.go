@@ -50,9 +50,7 @@ spec:
   parser:
     tcp:
       enable: true
-      cgroup: true
       statsInterval: 20
-      deleteIdleSocketInterval: 60
       burst:
         enable: true
         windowSize: 1000

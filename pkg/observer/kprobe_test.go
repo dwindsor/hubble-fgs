@@ -40,7 +40,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_write"
 spec:
-  description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
     syscall: true
@@ -57,11 +56,11 @@ spec:
       - operator: In
         values:
         - 25587
-    matchArgs:
-    - index: 0
-      operator: Equal
-      values:
-      - "1"
+      matchArgs:
+      - index: 0
+        operator: Equal
+        values:
+        - "1"
 `
 	writeConfigHook := []byte(writeReadHook)
 	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
@@ -93,7 +92,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_write"
 spec:
-  description: "lseek hook"
   kprobes:
   - call: "__x64_sys_lseek"
     return: false
@@ -187,7 +185,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_write"
 spec:
-  description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
     return: false
@@ -234,7 +231,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_write"
 spec:
-  description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
     return: false
@@ -282,7 +278,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_write"
 spec:
-  description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
     return: false
@@ -323,7 +318,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_write"
 spec:
-  description: "write hook"
   kprobes:
   - call: "__x64_sys_write"
     return: false
@@ -414,7 +408,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_read"
 spec:
-  description: "read hook"
   kprobes:
   - call: "__x64_sys_read"
     syscall: true
@@ -462,7 +455,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_read"
 spec:
-  description: "read hook"
   kprobes:
   - call: "__x64_sys_read"
     syscall: true
@@ -625,7 +617,6 @@ func testKprobeObjectOpenHook(pidStr string, path string) string {
   metadata:
     name: "sys_read"
   spec:
-    description: "open filtered hook"
     kprobes:
     - call: "__x64_sys_openat"
       return: false
@@ -669,7 +660,6 @@ func testKprobeObjectMultiValueOpenHook(pidStr string, path string) string {
   metadata:
     name: "sys_read"
   spec:
-    description: "open filtered hook"
     kprobes:
     - call: "__x64_sys_openat"
       return: false
@@ -715,7 +705,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_read"
 spec:
-  description: "open filtered hook"
   kprobes:
   - call: "__x64_sys_openat"
     return: false
@@ -749,7 +738,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_read"
 spec:
-  description: "open filtered hook"
   kprobes:
   - call: "__x64_sys_openat"
     return: false
@@ -783,7 +771,6 @@ func testKprobeObjectFilterPrefixOpenHook(pidStr string, path string) string {
   metadata:
     name: "sys_read"
   spec:
-    description: "open filtered hook"
     kprobes:
     - call: "__x64_sys_openat"
       return: false
@@ -827,7 +814,6 @@ func testKprobeObjectFilterPrefixExactOpenHook(pidStr string, path string) strin
   metadata:
     name: "sys_read"
   spec:
-    description: "open filtered hook"
     kprobes:
     - call: "__x64_sys_openat"
       return: false
@@ -871,7 +857,6 @@ func testKprobeObjectFilterPrefixSubdirOpenHook(pidStr string, path string) stri
   metadata:
     name: "sys_read"
   spec:
-    description: "open filtered hook"
     kprobes:
     - call: "__x64_sys_openat"
       return: false
@@ -916,7 +901,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_read"
 spec:
-  description: "open filtered hook"
   kprobes:
   - call: "__x64_sys_openat"
     return: false
@@ -950,7 +934,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_read"
 spec:
-  description: "open filtered hook"
   kprobes:
   - call: "__x64_sys_openat"
     return: false
@@ -1004,7 +987,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "__x64_sys_writev"
 spec:
-  description: "write hook"
   kprobes:
   - call: "__x64_sys_writev"
     return: false
@@ -1079,7 +1061,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_read"
 spec:
-  description: "open filtered hook"
   kprobes:
   - call: "do_filp_open"
     return: false
@@ -1106,7 +1087,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "sys_read"
 spec:
-  description: "open filtered hook"
   kprobes:
   - call: "do_filp_open"
     return: true
@@ -1134,7 +1114,6 @@ func testKprobeObjectFileWriteHook(pidStr string) string {
   metadata:
     name: "sys_read"
   spec:
-    description: "open filtered hook"
     kprobes:
     - call: "fd_install"
       return: false
@@ -1178,7 +1157,6 @@ func testKprobeObjectFileWriteFilteredHook(pidStr string, dir string) string {
   metadata:
     name: "sys_read"
   spec:
-    description: "open filtered hook"
     kprobes:
     - call: "fd_install"
       return: false

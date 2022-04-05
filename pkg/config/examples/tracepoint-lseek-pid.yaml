@@ -2,7 +2,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "tracepoint-lseek"
 spec:
-  description: "tracepoint lseek hook"
   tracepoints:
   - subsystem: "syscalls"
     event: "sys_enter_lseek"

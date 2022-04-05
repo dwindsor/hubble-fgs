@@ -63,7 +63,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "tls"
 spec:
-  description: "tls parser spec"
   parser:
     tls:
       enable: true

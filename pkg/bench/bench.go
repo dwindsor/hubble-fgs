@@ -344,7 +344,6 @@ apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "benchmark spec"
 spec:
-  description: "parser spec"
   parser:
     http:
       enable: {{.FgsHttp}}
