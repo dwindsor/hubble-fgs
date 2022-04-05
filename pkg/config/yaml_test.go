@@ -12,11 +12,20 @@
 package config
 
 import (
+	"bytes"
 	_ "embed"
+	"fmt"
+	"os"
+	"path/filepath"
 	"reflect"
+	"runtime"
+	"strings"
 	"testing"
+	"text/template"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/stretchr/testify/assert"
 )
 
 var writev = `
@@ -188,7 +197,7 @@ spec:
     args:
     - index: 0
       type: "int"
-    - index: 1 
+    - index: 1
       type: "int"
     - index: 2
       type: "int"
@@ -202,7 +211,7 @@ spec:
     args:
     - index: 0
       type: "string"
-    - index: 1 
+    - index: 1
       type: "string"
     - index: 2
       type: "string"
@@ -222,7 +231,7 @@ spec:
           values:
             - "1"
         - index: 1
-          operator: "notequal" 
+          operator: "notequal"
           values:
             - "world"
         matchNamespaces:
@@ -463,4 +472,51 @@ func TestYamlTls(t *testing.T) {
 	if reflect.DeepEqual(expected, *k) != true {
 		t.Errorf("\ngot:\n%+v\nexpected:\n%+v", *k, expected)
 	}
+}
+
+// Read a config file and sub in templated values
+func fileConfigWithTemplate(fileName string, data interface{}) (*GenericTracingConf, error) {
+	templ, err := template.ParseFiles(fileName)
+	if err != nil {
+		return nil, err
+	}
+
+	var buf bytes.Buffer
+	templ.Execute(&buf, data)
+
+	return ReadConfigYaml(buf.String())
+}
+
+func TestExamplesSmoke(t *testing.T) {
+	_, filename, _, _ := runtime.Caller(0)
+	examplesDir := filepath.Join(filepath.Dir(filename), "../../crds/examples")
+	err := filepath.Walk(examplesDir, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			return err
+		}
+
+		// Skip non-directories
+		if info.IsDir() {
+			return nil
+		}
+
+		// Skip non-yaml files with a warning
+		if !strings.HasSuffix(info.Name(), "yaml") || strings.HasSuffix(info.Name(), "yml") {
+			logger.GetLogger().WithField("path", path).Warn("skipping non-yaml file")
+			return nil
+		}
+
+		// Fill this in with template data as needed
+		data := map[string]string{
+			"Pid": fmt.Sprint(os.Getpid()),
+		}
+
+		// Attempt to parse the file
+		_, err = fileConfigWithTemplate(path, data)
+		assert.NoError(t, err, "example %s must parse correctly", info.Name())
+
+		return nil
+	})
+
+	assert.NoError(t, err, "failed to walk examples directory")
 }

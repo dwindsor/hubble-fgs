@@ -1,6 +1,6 @@
 # This comment describes a demo of matchNamespaceChanges. We need 2 terminals
 # here. The first one will run hubble-fgs and the second will run the commands
-# that we want to capture. First step is to replace <MY_PID> in this file with
+# that we want to capture. First step is to replace {{.Pid}} in this file with
 # the PID of the bash running on the second terminal.
 #
 # (1) The first scenario is to run a command in a less priviledged mount
@@ -58,7 +58,7 @@ spec:
         followForks: true
         isNamespacePID: false
         values:
-        - <MY_PID>
+        - {{.Pid}}
       matchArgs:
       - index: 1
         operator: "Postfix"
@@ -84,7 +84,7 @@ spec:
         followForks: true
         isNamespacePID: false
         values:
-        - <MY_PID>
+        - {{.Pid}}
       matchNamespaces:
       - namespace: Mnt
         operator: In
