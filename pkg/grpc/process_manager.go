@@ -795,7 +795,11 @@ func (pm *ProcessManager) Close() error {
 }
 
 func ktimeToProto(ktime uint64) *timestamppb.Timestamp {
-	decodedTime, err := reader.DecodeKtime(int64(ktime))
+	return ktimeToProtoOpt(ktime, true)
+}
+
+func ktimeToProtoOpt(ktime uint64, monotonic bool) *timestamppb.Timestamp {
+	decodedTime, err := reader.DecodeKtime(int64(ktime), monotonic)
 	if err != nil {
 		logrus.WithError(err).WithField("ktime", ktime).Warn("Failed to decode ktime")
 		return timestamppb.Now()
@@ -972,7 +976,7 @@ func (pm *ProcessManager) getProcess(
 			Binary:       getBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
 			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
-			StartTime:    ktimeToProto(process.Ktime),
+			StartTime:    ktimeToProtoOpt(process.Ktime, (process.Flags&api.EventProcFS) == 0),
 			Auid:         &wrapperspb.UInt32Value{Value: process.AUID},
 			Pod:          protoPod,
 			ExecId:       execID,

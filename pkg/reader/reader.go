@@ -207,8 +207,13 @@ func NanoTimeSince(ktime int64) (time.Duration, error) {
 	diff := currentTime.Nano() - ktime
 	return time.Duration(diff), nil
 }
-func DecodeKtime(ktime int64) (time.Time, error) {
-	clk := int32(unix.CLOCK_MONOTONIC)
+func DecodeKtime(ktime int64, monotonic bool) (time.Time, error) {
+	var clk int32
+	if monotonic {
+		clk = int32(unix.CLOCK_MONOTONIC)
+	} else {
+		clk = int32(unix.CLOCK_BOOTTIME)
+	}
 	currentTime := unix.Timespec{}
 	if err := unix.ClockGettime(clk, &currentTime); err != nil {
 		return time.Time{}, err
@@ -305,7 +310,7 @@ func ObserverIPV4TCPPrinter(msg *api.MsgIPv4EventUnix, log logrus.FieldLogger) {
 	/* In the event of an error time is {0} so will be obvious at printer time
 	 * and its not clear what to do with this error so ignore it for now.
 	 */
-	eventTime, _ := DecodeKtime(int64(msg.Common.Ktime))
+	eventTime, _ := DecodeKtime(int64(msg.Common.Ktime), true)
 
 	op := msg.Common.Op
 
