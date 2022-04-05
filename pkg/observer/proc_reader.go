@@ -15,7 +15,6 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"regexp"
 	"sort"
 	"strconv"
 	"strings"
@@ -171,6 +170,44 @@ func (k *Observer) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procT
 	}
 }
 
+// The /proc/PID/stat file consists of a single line of space-separated strings, where
+// the 2nd string contains the process' comm. This string is wrapped in brackets but can
+// contain spaces and brackets. The correct way to parse this stat string is to find all
+// space-separated strings working backwards from the end until a string is found that
+// ends in a space, then find the first string and everything left must be the comm.
+func getProcStatStrings(procStat string) []string {
+	var output []string
+
+	// Build list of strings in reverse order
+	oldIndex := len(procStat)
+	index := strings.LastIndexByte(procStat, ' ')
+	for index > 0 {
+		output = append(output, procStat[index+1:oldIndex])
+		if procStat[index-1] == ')' {
+			break
+		}
+		oldIndex = index
+		index = strings.LastIndexByte(procStat[:oldIndex], ' ')
+	}
+
+	if index == -1 {
+		// Did not hit ')'
+		output = append(output, procStat[:oldIndex])
+	} else {
+		// Find the comm and first field
+		commIndex := strings.IndexByte(procStat, ' ')
+		output = append(output, procStat[commIndex+1:index])
+		output = append(output, procStat[:commIndex])
+	}
+
+	// Reverse the array
+	for i, j := 0, len(output)-1; i < j; i, j = i+1, j-1 {
+		output[i], output[j] = output[j], output[i]
+	}
+
+	return output
+}
+
 func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 	var entryMap = make(map[uint32]procTCPEntry)
 	var procs []ObserverProcs
@@ -179,8 +216,6 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 		k.log.WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
 		return nil
 	}
-
-	r := regexp.MustCompile(`[^\s\(]+|(\({1,2}[^\)]*\){1,2})`)
 
 	kernelVer, _, _ := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
 	// time and time_for_children namespaces introduced in kernel 5.6
@@ -220,7 +255,7 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 			continue
 		}
 
-		stats := r.FindAllString(string(statline), -1)
+		stats := getProcStatStrings(string(statline))
 		ppid := stats[3]
 		_ppid, err := strconv.ParseUint(ppid, 10, 32)
 		if err != nil {
@@ -271,7 +306,7 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 				k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
 				continue
 			}
-			pstats = r.FindAllString(string(pstatline), -1)
+			pstats = getProcStatStrings(string(pstatline))
 			_pktime := pstats[21]
 			pktime, err = strconv.ParseUint(_pktime, 10, 64)
 			if err != nil {
