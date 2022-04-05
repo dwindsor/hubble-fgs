@@ -93,6 +93,20 @@ func GetKernelVersion(kernelVersion, procfs string) (int, string, error) {
 	return version, verStr, nil
 }
 
+func FixKernelVersion(version int) int {
+	// Commit a256aac5 in linux-stable's 4.19.y branch broke userspace by setting version
+	// sublevel to 255 no matter what. This broke kprobes on impacted 4.19 versions
+	// (4.19.221 to 4.19.231). Patch sublevel to 255 to catch this case.
+	if version&0xffff00 == 267008 {
+		sublevel := version & 0xff
+		if sublevel >= 221 && sublevel <= 231 {
+			// Set sublevel to 255
+			version |= 0xff
+		}
+	}
+	return version
+}
+
 func MinKernelVersion(kernel string) bool {
 	var uname unix.Utsname
 
