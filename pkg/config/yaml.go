@@ -15,7 +15,7 @@ import (
 	"io/ioutil"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"gopkg.in/yaml.v2"
+	"sigs.k8s.io/yaml"
 )
 
 type Metadata struct {
@@ -23,9 +23,9 @@ type Metadata struct {
 }
 
 type GenericTracingConf struct {
-	ApiVersion string                     `yaml:"apiVersion"`
-	Metadata   Metadata                   `yaml:"metadata"`
-	Spec       v1alpha1.TracingPolicySpec `yaml:"spec"`
+	ApiVersion string                     `json:"apiVersion"`
+	Metadata   Metadata                   `json:"metadata"`
+	Spec       v1alpha1.TracingPolicySpec `json:"spec"`
 }
 
 func ReadConfigYaml(data string) (*GenericTracingConf, error) {
