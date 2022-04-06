@@ -21,6 +21,7 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"unsafe"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
@@ -1504,4 +1505,100 @@ func TestMultipleMountPathFiltered(t *testing.T) {
 		readHook = testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp2/tmp3/tmp4/tmp5/0/1/2/3/4/5/6/7/8/9/10/11/12/13/14/15/16")
 	}
 	testMultipleMountPathFiltered(t, readHook)
+}
+
+func TestKprobeArgValues(t *testing.T) {
+	pidStr := strconv.Itoa(int(GetMyPid()))
+	readHook := `
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "sys_linkat_args"
+spec:
+  kprobes:
+  - call: "__x64_sys_linkat"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "string"
+    - index: 2
+      type: "int"
+    - index: 3
+      type: "string"
+    - index: 4
+      type: "int"
+    selectors:
+    - matchPIDs:
+      - operator: In
+        followForks: true
+        values:
+        - ` + pidStr + `
+     `
+
+	oldFile := "file-old"
+	newFile := "file-new"
+	var oldFd int32 = -123
+	var newFd int32 = -321
+	var flags int32 = 12345
+
+	kpChecker := ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_linkat").
+		WithArgs([]ec.GenericArgChecker{
+			ec.GenericArgIntCheck(oldFd),
+			ec.GenericArgStringCheck(oldFile),
+			ec.GenericArgIntCheck(newFd),
+			ec.GenericArgStringCheck(newFile),
+			ec.GenericArgIntCheck(flags),
+		})
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasKprobe(kpChecker).
+			End(),
+	)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	readConfigHook := []byte(readHook)
+	err := ioutil.WriteFile(testConfigFile, readConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	readyWG.Wait()
+
+	// linkat syscall is not exported for some reason
+	// so calling linkat via Syscall6 interface
+
+	oldBytes, err := syscall.BytePtrFromString(oldFile)
+	if err != nil {
+		t.Fatalf("BytePtrFromString error: %s", err)
+	}
+
+	newBytes, err := syscall.BytePtrFromString(newFile)
+	if err != nil {
+		t.Fatalf("BytePtrFromString error: %s", err)
+	}
+
+	// we don't need to check for error, it will fail, so there's
+	// no need to cleanup.. we care only about kprobe catching
+	// and storing arguments
+
+	syscall.Syscall6(syscall.SYS_LINKAT,
+		uintptr(oldFd), uintptr(unsafe.Pointer(oldBytes)),
+		uintptr(newFd), uintptr(unsafe.Pointer(newBytes)),
+		uintptr(flags), 0)
+
+	err = JsonTestCheck(t, &checker)
+	assert.NoError(t, err)
 }
