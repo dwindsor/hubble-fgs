@@ -56,4 +56,4 @@ COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.so /usr/local/lib/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/libbpf.a /usr/local/lib/
 RUN ln -s /usr/bin/hubble-enterprise /usr/bin/hubble-fgs-printer
-CMD ["sh", "-c", "/usr/bin/hubble-fgs --procfs=/procRoot/"]
+CMD ["sh", "-c", "/usr/bin/hubble-fgs"]
