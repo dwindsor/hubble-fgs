@@ -182,11 +182,28 @@ __udp4_send(struct __sk_buff *skb, struct udp_info_key *key, int payload_off,
 			value->pid = process->key.pid;
 			value->pid_ktime = process->key.ktime;
 			emit_udp_connect_event(skb, key, value);
+			map_update_elem(&udp_map, key, value, 0);
 		} else {
-			value->pid = 0;
-			value->pid_ktime = 0;
+			/* If we don't have a process link this is problematic
+			 * we either got here because we just started and missed
+			 * the sendmsg OR we got here with sendmsg 0 srcAddr. So
+			 * lets see if we can find our socket with saddr==0. If
+			 * not just omit the pkt and wait for sendmsg to init
+			 * an entry.
+			 */
+			struct udp_info_value *saddr;
+			u32 sa = key->saddr;
+
+			key->saddr = 0;
+			saddr = map_lookup_elem(&udp_map, key);
+			if (saddr && saddr->pid) {
+				key->saddr = sa;
+				value->pid = saddr->pid;
+				value->pid_ktime = saddr->pid_ktime;
+				emit_udp_connect_event(skb, key, value);
+				map_update_elem(&udp_map, key, value, 0);
+			}
 		}
-		map_update_elem(&udp_map, key, value, 0);
 	} else {
 		if (send)
 			update_tx_value(value, payload_sz);

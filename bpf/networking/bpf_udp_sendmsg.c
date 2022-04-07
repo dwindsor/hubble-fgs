@@ -207,6 +207,7 @@ udp4_recv(struct pt_regs *ctx)
 {
 	struct udp_info_value *value;
 	struct udp_info_key *key;
+	int hasctx, zero = 0;
 	int len;
 
 	key = udp4_get_skb_key(ctx, &len);
@@ -215,8 +216,6 @@ udp4_recv(struct pt_regs *ctx)
 
 	value = map_lookup_elem(&udp_map, key);
 	if (!value) {
-		int hasctx, zero = 0;
-
 		value = map_lookup_elem(&udp_value_heap, &zero);
 		if (!value)
 			return 0;
@@ -237,8 +236,10 @@ udp4_recv(struct pt_regs *ctx)
 			 * has probe_read() available. Namely, the
 			 * recv side with user context.
 			 */
-			add_process_ctx(value);
-			emit_udp_connect_event(ctx, key, value);
+			hasctx = add_process_ctx(value);
+			map_update_elem(&udp_map, key, value, 0);
+			if (hasctx)
+				emit_udp_connect_event(ctx, key, value);
 		}
 	}
 	return 0;
