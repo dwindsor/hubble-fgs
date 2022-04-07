@@ -8,6 +8,7 @@ require (
 	github.com/cilium/ebpf v0.8.1-0.20220125132352-732bf912e846
 	github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567
 	github.com/cilium/lumberjack/v2 v2.2.2
+	github.com/containernetworking/plugins v1.0.1
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.7.0
@@ -22,7 +23,6 @@ require (
 	github.com/spf13/viper v1.7.0
 	github.com/stretchr/testify v1.7.0
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
-	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f
 	github.com/yalue/native_endian v1.0.1
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
 	golang.org/x/sync v0.0.0-20210220032951-036812b2e83c
@@ -91,8 +91,6 @@ require (
 	github.com/mitchellh/mapstructure v1.1.2 // indirect
 	github.com/modern-go/concurrent v0.0.0-20180306012644-bacd9c7ef1dd // indirect
 	github.com/modern-go/reflect2 v1.0.2 // indirect
-	github.com/onsi/ginkgo v1.16.4 // indirect
-	github.com/onsi/gomega v1.15.0 // indirect
 	github.com/opencontainers/go-digest v1.0.0 // indirect
 	github.com/opencontainers/image-spec v1.0.2-0.20211117181255-693428a734f5 // indirect
 	github.com/pelletier/go-toml v1.9.3 // indirect
@@ -109,6 +107,7 @@ require (
 	github.com/spf13/jwalterweatherman v1.0.0 // indirect
 	github.com/spf13/pflag v1.0.5 // indirect
 	github.com/subosito/gotenv v1.2.0 // indirect
+	github.com/vishvananda/netns v0.0.0-20210104183010-2eb08e3e575f // indirect
 	go.mongodb.org/mongo-driver v1.3.0 // indirect
 	go.opencensus.io v0.23.0 // indirect
 	golang.org/x/crypto v0.0.0-20210817164053-32db794688a5 // indirect

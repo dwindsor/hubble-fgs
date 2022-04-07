@@ -12,10 +12,10 @@ package network
 
 import (
 	"context"
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
-	"runtime"
 	"time"
 
 	"github.com/docker/docker/api/types"
@@ -27,7 +27,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/vishvananda/netlink"
-	"github.com/vishvananda/netns"
+
+	"github.com/containernetworking/plugins/pkg/ns"
 )
 
 var (
@@ -78,45 +79,28 @@ func runNetworkCB() {
 		return
 	}
 
-	runtime.LockOSThread()
-	rootNS, err := netns.Get() //netlink.GetNetNsIdByPid(os.Getpid())
-	if err != nil {
-		logger.GetLogger().WithField("pid", os.Getpid()).WithError(err).Infof("netns root lookup failed")
-		runtime.UnlockOSThread()
-		return
-	}
-
-	defer func() {
-		err := netns.Set(rootNS)
-		if err != nil {
-			panic("failed to restore network ns, bailing")
-		}
-		runtime.UnlockOSThread()
-	}()
-
 	for fileIndex := range nsDir {
 		nsFile := nsDir[fileIndex]
 		nsFileName := filepath.Join(defaults.NetnsDir, nsFile.Name())
 
-		ns, err := netns.GetFromPath(nsFileName)
+		netns, err := ns.GetNS(nsFileName)
 		if err != nil {
-			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("netns get from path failed")
+			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("GetNS from path failed")
 			continue
 		}
+		defer netns.Close()
 
-		err = netns.Set(ns)
-		if err != nil {
-			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("set netns failed")
-			continue
-		}
-		links, err = netlink.LinkList()
-		if err != nil {
-			logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("netns LinkList failed")
-			continue
-		}
-		for _, l := range links {
-			emitInterfaceEvent(l.Attrs(), nsFile.Name(), nsFileName)
-		}
+		err = netns.Do(func(_ ns.NetNS) error {
+			links, err = netlink.LinkList()
+			if err != nil {
+				logger.GetLogger().WithField("pid", os.Getpid()).WithField("file", nsFileName).WithError(err).Infof("netns LinkList failed")
+				return fmt.Errorf("Netlink LinkList() error: %v", err)
+			}
+			for _, l := range links {
+				emitInterfaceEvent(l.Attrs(), nsFile.Name(), nsFileName)
+			}
+			return nil
+		})
 	}
 }
 
