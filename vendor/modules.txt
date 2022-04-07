@@ -94,7 +94,7 @@ github.com/cilium/hubble/pkg/k8s
 github.com/cilium/hubble/pkg/parser/endpoint
 github.com/cilium/hubble/pkg/parser/getters
 github.com/cilium/hubble/pkg/servicecache
-# github.com/cilium/lumberjack/v2 v2.2.1
+# github.com/cilium/lumberjack/v2 v2.2.2
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
 # github.com/containerd/containerd v1.6.2

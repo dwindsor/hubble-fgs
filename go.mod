@@ -7,7 +7,7 @@ require (
 	github.com/cilium/cilium v1.7.0-rc2.0.20200311180626-711b37ed100c
 	github.com/cilium/ebpf v0.8.1-0.20220125132352-732bf912e846
 	github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567
-	github.com/cilium/lumberjack/v2 v2.2.1
+	github.com/cilium/lumberjack/v2 v2.2.2
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.7.0
