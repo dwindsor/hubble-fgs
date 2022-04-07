@@ -355,14 +355,14 @@ func handleDnsEvent(processedEvent interface{}) {
 }
 
 func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
-	c := float64(s.BytesSent)
+	c := float64(s.BytesSubmitted)
 	SocketStatsUDPTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
-	c = float64(s.SegsOut)
+	c = float64(s.SegsSubmitted)
 	SocketStatsUDPTxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
-	c = float64(s.BytesReceived)
+	c = float64(s.BytesConsumed)
 	SocketStatsUDPRxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
-	c = float64(s.SegsIn)
+	c = float64(s.SegsConsumed)
 	SocketStatsUDPRxSegs.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 
 	c = float64(s.SkDrop)
