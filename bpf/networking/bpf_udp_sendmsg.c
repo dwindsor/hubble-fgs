@@ -80,12 +80,29 @@ udp4_get_key(struct pt_regs *ctx)
 	return key;
 }
 
+static inline __attribute__((always_inline)) int
+add_process_ctx(struct udp_info_value *value)
+{
+	struct execve_map_value *process;
+	bool walker;
+	u32 ppid;
+
+	process = event_find_curr(&ppid, 0, &walker);
+	if (process) {
+		value->pid = process->key.pid;
+		value->pid_ktime = process->key.ktime;
+		return 1;
+	}
+	return 0;
+}
+
 __attribute__((section(("kprobe/udp_sendmsg")), used)) int
 udp4_send(struct pt_regs *ctx)
 {
 	u64 pid = get_current_pid_tgid();
 	struct udp_info_value *value;
 	struct udp_info_key *key;
+	int hasctx;
 
 	key = udp4_get_key(ctx);
 	if (!key)
@@ -93,23 +110,24 @@ udp4_send(struct pt_regs *ctx)
 
 	value = map_lookup_elem(&udp_map, key);
 	if (!value) {
-		struct execve_map_value *process;
 		int zero = 0;
-		bool walker;
-		u32 ppid;
 
 		value = map_lookup_elem(&udp_value_heap, &zero);
 		if (!value)
 			return 0;
 
 		udp_info_tx_reset(value, 0);
-		process = event_find_curr(&ppid, 0, &walker);
-		if (process) {
-			value->pid = process->key.pid;
-			value->pid_ktime = process->key.ktime;
-		}
+		hasctx = add_process_ctx(value);
 		map_update_elem(&udp_map, key, value, 0);
-		emit_udp_connect_event(ctx, key, value);
+		if (hasctx)
+			emit_udp_connect_event(ctx, key, value);
+	} else {
+		if (!value->pid) {
+			hasctx = add_process_ctx(value);
+			map_update_elem(&udp_map, key, value, 0);
+			if (hasctx)
+				emit_udp_connect_event(ctx, key, value);
+		}
 	}
 	map_update_elem(&udp_retprobe_map, &pid, key, 0);
 	return 0;
@@ -182,22 +200,6 @@ udp4_get_skb_key(struct pt_regs *ctx, int *len)
 		write_cookie(key, (u64)sk);
 
 	return key;
-}
-
-static inline __attribute__((always_inline)) int
-add_process_ctx(struct udp_info_value *value)
-{
-	struct execve_map_value *process;
-	bool walker;
-	u32 ppid;
-
-	process = event_find_curr(&ppid, 0, &walker);
-	if (process) {
-		value->pid = process->key.pid;
-		value->pid_ktime = process->key.ktime;
-		return 1;
-	}
-	return 0;
 }
 
 __attribute__((section(("kprobe/skb_consume_udp")), used)) int

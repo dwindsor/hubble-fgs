@@ -539,6 +539,13 @@ func (k *Observer) Start(ctx context.Context) error {
 		return err
 	}
 
+	k.startUpdateMapMetrics()
+	k.populateExecve(ctx)
+
+	if err := sensors.LoadConfig(k.bpfDir, k.mapDir, k.ciliumDir, k.configFile, ctx); err != nil {
+		return err
+	}
+
 	if k.SensorManager == nil {
 		if err := k.InitSensorManager(); err != nil {
 			return err
@@ -549,9 +556,6 @@ func (k *Observer) Start(ctx context.Context) error {
 	if k.enableCRD {
 		go watchTracePolicy(k.SensorManager, ctx)
 	}
-
-	k.startUpdateMapMetrics()
-	k.populateExecve(ctx)
 
 	k.perfConfig = bpf.DefaultPerfEventConfig()
 	if useCiliumEbpfReader {

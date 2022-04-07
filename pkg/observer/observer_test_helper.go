@@ -331,6 +331,14 @@ func loadObserver(t *testing.T, obs *Observer) {
 	}
 
 	obs.populateExecve(context.TODO())
+
+	if err := sensors.LoadConfig(obs.bpfDir,
+		obs.mapDir,
+		obs.ciliumDir,
+		obs.configFile,
+		context.TODO()); err != nil {
+		t.Fatalf("LoadConfig error: %s\n", err)
+	}
 }
 
 func LoopEvents(t *testing.T, doneWG, readyWG *sync.WaitGroup, obs *Observer, ctx context.Context) {

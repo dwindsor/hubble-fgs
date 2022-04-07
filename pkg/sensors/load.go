@@ -65,22 +65,30 @@ const (
 
 // LoadDefault loads the default sensor, including any from the configuration
 // file.
-func LoadDefault(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
-	// This is technically not a sensor since we are loading this
-	// statically when we start, but it allows us to have a single path for
-	// loading bpf programs.
-	initialSensors := GetInitialSensor()
+func LoadConfig(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
 	configSensors, err := createConfigSensors(configFile)
 	if err != nil {
 		return err
 	}
-	sensors := append([]*Sensor{initialSensors}, configSensors...)
-	load := mergeSensors(sensors)
+	load := mergeSensors(configSensors)
 
 	if err := load.Load(ctx, bpfDir, mapDir, ciliumDir); err != nil {
 		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
 	}
 
+	return nil
+}
+
+// LoadDefault loads the default sensor, including any from the configuration
+// file.
+func LoadDefault(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
+	// This is technically not a sensor since we are loading this
+	// statically when we start, but it allows us to have a single path for
+	// loading bpf programs.
+	load := GetInitialSensor()
+	if err := load.Load(ctx, bpfDir, mapDir, ciliumDir); err != nil {
+		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
+	}
 	return nil
 }
 
