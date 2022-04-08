@@ -8,25 +8,56 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 //
-package observer
+package tracing
 
 import (
 	"context"
+	"flag"
 	"fmt"
 	"os"
+	"path/filepath"
 	"sync"
 	"syscall"
 	"testing"
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )
+
+var (
+	selfBinary   string
+	fgsLib       string
+	cmdWaitTime  time.Duration
+	verboseLevel int
+
+	tracepointTestDir = "/sys/fs/bpf/testObserver/"
+	jsonRetries       = 20
+)
+
+func init() {
+	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
+	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
+	flag.IntVar(&verboseLevel, "verbosity-level", 0, "verbosity level of verbose mode. (Requires verbose mode to be enabled.)")
+}
+
+func TestMain(m *testing.M) {
+	flag.Parse()
+	bpf.CheckOrMountFS("")
+	bpf.CheckOrMountDebugFS()
+	bpf.ConfigureResourceLimits()
+	bpf.SetMapPrefix("testObserver")
+	selfBinary = filepath.Base(os.Args[0])
+	exitCode := m.Run()
+	os.Exit(exitCode)
+}
 
 // TestGenericTracepointSimple is a simple generic tracepoint test that creates a tracepoint for lseek()
 func TestGenericTracepointSimple(t *testing.T) {
@@ -46,18 +77,18 @@ func TestGenericTracepointSimple(t *testing.T) {
 	}
 
 	// initialize observer
-	observer, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	obs, err := observer.GetDefaultObserver(t, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
 	// We do not call observer.Start(), so we need to start the sensor controller
-	observer.SensorManager, err = sensors.StartSensorManager(observer.bpfDir, observer.mapDir, observer.ciliumDir)
+	obs.SensorManager, err = sensors.StartSensorManager(tracepointTestDir, tracepointTestDir, "")
 	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
 	defer func() {
-		err := observer.SensorManager.StopSensorManager(ctx)
+		err := obs.SensorManager.StopSensorManager(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
@@ -69,17 +100,17 @@ func TestGenericTracepointSimple(t *testing.T) {
 		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
 	}
 	sensorName := "GtpLseekTest"
-	if err := observer.SensorManager.AddSensor(ctx, sensorName, sensor); err != nil {
+	if err := obs.SensorManager.AddSensor(ctx, sensorName, sensor); err != nil {
 		t.Fatalf("failed to add generic tracepoint sensor: %s", err)
 	}
 	defer func() {
-		observer.SensorManager.RemoveSensor(ctx, sensorName)
+		obs.SensorManager.RemoveSensor(ctx, sensorName)
 	}()
-	if err := observer.SensorManager.EnableSensor(ctx, sensorName); err != nil {
+	if err := obs.SensorManager.EnableSensor(ctx, sensorName); err != nil {
 		t.Fatalf("EnableSensor error: %s", err)
 	}
 	defer func() {
-		observer.SensorManager.DisableSensor(ctx, sensorName)
+		obs.SensorManager.DisableSensor(ctx, sensorName)
 	}()
 
 	tpChecker := ec.NewTracepointChecker().
@@ -96,11 +127,11 @@ func TestGenericTracepointSimple(t *testing.T) {
 			End(),
 	)
 
-	LoopEvents(t, &doneWG, &readyWG, observer, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	time.Sleep(1000 * time.Millisecond)
-	err = JsonTestCheck(t, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -121,7 +152,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	pid := int(GetMyPid())
+	pid := int(observer.GetMyPid())
 	t.Logf("filtering for my pid (%d)", pid)
 	pidSelector := v1alpha1.PIDSelector{
 		Operator:       "In",
@@ -134,17 +165,17 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		conf.Selectors = make([]v1alpha1.KProbeSelector, 1)
 	}
 	conf.Selectors[0].MatchPIDs = append(conf.Selectors[0].MatchPIDs, pidSelector)
-	observer, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	obs, err := observer.GetDefaultObserver(t, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 	// We do not call observer.Start(), so we need to start the sensor controller
-	observer.SensorManager, err = sensors.StartSensorManager(observer.bpfDir, observer.mapDir, observer.ciliumDir)
+	obs.SensorManager, err = sensors.StartSensorManager(tracepointTestDir, tracepointTestDir, "")
 	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
 	defer func() {
-		err := observer.SensorManager.StopSensorManager(ctx)
+		err := obs.SensorManager.StopSensorManager(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
@@ -156,20 +187,20 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
 	}
 	sensorName := "GtpLseekTest"
-	if err := observer.SensorManager.AddSensor(ctx, sensorName, sensor); err != nil {
+	if err := obs.SensorManager.AddSensor(ctx, sensorName, sensor); err != nil {
 		t.Fatalf("failed to add generic tracepoint sensor: %s", err)
 	}
 	defer func() {
-		observer.SensorManager.RemoveSensor(ctx, sensorName)
+		obs.SensorManager.RemoveSensor(ctx, sensorName)
 	}()
-	if err := observer.SensorManager.EnableSensor(ctx, sensorName); err != nil {
+	if err := obs.SensorManager.EnableSensor(ctx, sensorName); err != nil {
 		t.Fatalf("EnableSensor error: %s", err)
 	}
 	defer func() {
-		observer.SensorManager.DisableSensor(ctx, sensorName)
+		obs.SensorManager.DisableSensor(ctx, sensorName)
 	}()
 
-	LoopEvents(t, &doneWG, &readyWG, observer, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 	selfOp()
 
@@ -208,7 +239,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		ResetFn:      Reset,
 	}
 
-	if err := JsonTestCheck(t, &checker); err != nil {
+	if err := observer.JsonTestCheck(t, &checker); err != nil {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}

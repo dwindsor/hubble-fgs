@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package observer
+package tracing
 
 import (
 	"bytes"
@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -60,7 +61,7 @@ func init() {
 	}
 	sensors.RegisterProbeType("generic_tracepoint", tp)
 	sensors.RegisterTracingSensorsAtInit(tp.name, tp)
-	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
 }
 
 // genericTracepoint is the internal representation of a tracepoint
@@ -473,7 +474,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 	)
 }
 
-func handleGenericTracepoint(r *bytes.Reader) ([]ObserverEvent, error) {
+func handleGenericTracepoint(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	m := api.MsgGenericTracepoint{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -491,7 +492,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]ObserverEvent, error) {
 	tp, err := genericTracepointTable.getTracepoint(int(m.Id))
 	if err != nil {
 		logger.GetLogger().WithField("id", m.Id).WithError(err).Warnf("genericTracepoint info not found")
-		return []ObserverEvent{unix}, nil
+		return []observer.ObserverEvent{unix}, nil
 	}
 
 	unix.Subsys = tp.Info.Subsys
@@ -532,7 +533,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]ObserverEvent, error) {
 			logger.GetLogger().Warnf("handleGenericTracepoint: ignoring:  %+v", out)
 		}
 	}
-	return []ObserverEvent{unix}, nil
+	return []observer.ObserverEvent{unix}, nil
 }
 
 func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

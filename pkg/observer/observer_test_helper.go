@@ -299,6 +299,10 @@ func GetDefaultObserverWithFile(t *testing.T, file, lib string) (*Observer, erro
 	return getDefaultObserverWithWatchers(t, withConfig(file), withPretty(), withLib(lib))
 }
 
+func GetDefaultObserverWithFileNoTest(t *testing.T, file, lib string, fail bool) (*Observer, error) {
+	return getDefaultObserverWithWatchers(t, withConfig(file), withPretty(), withLib(lib), withNotestfail(fail))
+}
+
 func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error {
 	watcher := opts.watcher
 	ciliumState := opts.ciliumState

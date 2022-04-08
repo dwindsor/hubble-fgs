@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package observer
+package tracing
 
 import (
 	"context"
@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 )
@@ -77,11 +78,11 @@ func TestKprobeNSChanges(t *testing.T) {
 	specFname := makeSpecFile(pidStr)
 	t.Logf("pid is %s and spec file is %s", pidStr, specFname)
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(specFname), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, specFname, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 
 	if err := testCmd.Start(); err != nil {
@@ -105,7 +106,7 @@ func TestKprobeNSChanges(t *testing.T) {
 			HasKprobe(kpChecker).
 			End(),
 	)
-	err = JsonTestCheck(t, &checker)
+	err = observer.JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
 }
 
@@ -160,11 +161,11 @@ func TestKprobeCapChanges(t *testing.T) {
 	specFname := makeSpecFile(pidStr)
 	t.Logf("pid is %s and spec file is %s", pidStr, specFname)
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(specFname), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, specFname, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 
 	if err := testCmd.Start(); err != nil {
@@ -188,6 +189,6 @@ func TestKprobeCapChanges(t *testing.T) {
 			HasKprobe(kpChecker).
 			End(),
 	)
-	err = JsonTestCheck(t, &checker)
+	err = observer.JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
 }

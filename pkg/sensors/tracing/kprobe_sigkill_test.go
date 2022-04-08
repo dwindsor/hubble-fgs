@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package observer
+package tracing
 
 import (
 	"bufio"
@@ -27,13 +27,14 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 )
 
 func testContribPath(fname string) string {
 	_, testFname, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(testFname), "..", "..", "contrib", fname)
+	return filepath.Join(filepath.Dir(testFname), "..", "..", "..", "contrib", fname)
 }
 
 func logOut(t *testing.T, prefix string, rd *bufio.Reader) {
@@ -114,11 +115,11 @@ func TestKprobeSigkill(t *testing.T) {
 	specFname := makeSpecFile(pidStr)
 	t.Logf("child pid is %s and spec file is %s", pidStr, specFname)
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(specFname), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, specFname, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 
 	t.Logf("waking up test program")
@@ -139,6 +140,6 @@ func TestKprobeSigkill(t *testing.T) {
 			HasKprobe(kpChecker).
 			End(),
 	)
-	err = JsonTestCheck(t, &checker)
+	err = observer.JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
 }

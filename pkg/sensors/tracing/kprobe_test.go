@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package observer
+package tracing
 
 import (
 	"context"
@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
@@ -35,6 +36,11 @@ import (
 )
 
 var mountPath string = "/tmp2"
+
+const (
+	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
+	kprobeTestDir  = "/sys/fs/bpf/testObserver/"
+)
 
 func TestKprobeObjectLoad(t *testing.T) {
 	writeReadHook := `
@@ -69,12 +75,12 @@ spec:
 	if err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
-	obs, err := getDefaultObserver(t, withConfig(testConfigFile), withLib(fgsLib))
+	_, err = observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
 	initialSensor := sensors.GetInitialSensor()
-	initialSensor.Load(context.TODO(), obs.bpfDir, obs.mapDir, obs.ciliumDir)
+	initialSensor.Load(context.TODO(), kprobeTestDir, kprobeTestDir, "")
 }
 
 // NB: This is similar to TestKprobeObjectWriteRead, but it's a bit easier to
@@ -86,7 +92,7 @@ func TestKprobeLseek(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	fmt.Printf("pid=%s\n", pidStr)
 
 	lseekConfigHook_ := `
@@ -115,11 +121,11 @@ spec:
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserver error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 	fmt.Printf("Calling lseek...\n")
 	unix.Seek(-1, 0, 4444)
@@ -161,16 +167,16 @@ func runKprobeObjectWriteRead(t *testing.T, writeReadHook string) {
 
 	checker := getTestKprobeObjectWRChecker()
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 	_, err = syscall.Write(1, []byte("hello world"))
 	assert.NoError(t, err)
 
-	err = JsonTestCheck(t, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -180,7 +186,7 @@ func TestKprobeObjectWriteReadHostNs(t *testing.T) {
 	if _, err := os.Stat("/.dockerenv"); errors.Is(err, os.ErrNotExist) {
 		nsOp = "In"
 	}
-	myPid := GetMyPid()
+	myPid := observer.GetMyPid()
 	pidStr := strconv.Itoa(int(myPid))
 	writeReadHook := `
 apiVersion: hubble-enterprise.io/v1
@@ -225,7 +231,7 @@ spec:
 }
 
 func TestKprobeObjectWriteRead(t *testing.T) {
-	myPid := GetMyPid()
+	myPid := observer.GetMyPid()
 	pidStr := strconv.Itoa(int(myPid))
 	mntNsStr := strconv.FormatUint(uint64(reader.GetPidNsInode(myPid, "mnt")), 10)
 	writeReadHook := `
@@ -273,7 +279,7 @@ spec:
 }
 
 func TestKprobeObjectWriteReadNsOnly(t *testing.T) {
-	myPid := GetMyPid()
+	myPid := observer.GetMyPid()
 	mntNsStr := strconv.FormatUint(uint64(reader.GetPidNsInode(myPid, "mnt")), 10)
 	writeReadHook := `
 apiVersion: hubble-enterprise.io/v1
@@ -314,7 +320,7 @@ spec:
 }
 
 func TestKprobeObjectWriteReadPidOnly(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	writeReadHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -378,11 +384,11 @@ func runKprobeObjectRead(t *testing.T, readHook string, checker ec.MultiResponse
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 	hello := []byte("hello world")
 	n, errno := syscall.Write(fd, hello)
@@ -398,13 +404,13 @@ func runKprobeObjectRead(t *testing.T, readHook string, checker ec.MultiResponse
 		t.Fatal()
 	}
 
-	err = JsonTestCheck(t, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
 func TestKprobeObjectRead(t *testing.T) {
 	fd, fd2, fdString := createTestFile(t)
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -451,7 +457,7 @@ spec:
 
 func TestKprobeObjectReadReturn(t *testing.T) {
 	fd, fd2, fdString := createTestFile(t)
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -593,11 +599,11 @@ func testKprobeObjectFiltered(t *testing.T,
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 	fd2, errno := syscall.Open(filePath, syscall.O_RDWR, 0x770)
 	if fd2 < 0 {
@@ -609,7 +615,7 @@ func testKprobeObjectFiltered(t *testing.T,
 	n, err := syscall.Write(fd2, []byte(data))
 	assert.Equal(t, len(data), n)
 	assert.NoError(t, err)
-	err = JsonTestCheck(t, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -645,13 +651,13 @@ func testKprobeObjectOpenHook(pidStr string, path string) string {
 }
 
 func TestKprobeObjectOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectOpenHook(pidStr, "/tmp")
 	testKprobeObjectFiltered(t, readHook, &openChecker, false)
 }
 
 func TestKprobeObjectOpenMount(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, openCheckerMnt, true)
 }
@@ -689,19 +695,19 @@ func testKprobeObjectMultiValueOpenHook(pidStr string, path string) string {
 }
 
 func TestKprobeObjectMultiValueOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectMultiValueOpenHook(pidStr, "/tmp")
 	testKprobeObjectFiltered(t, readHook, &openChecker, false)
 }
 
 func TestKprobeObjectMultiValueOpenMount(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectMultiValueOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, openCheckerMnt, true)
 }
 
 func TestKprobeObjectFilterOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -734,7 +740,7 @@ spec:
 }
 
 func TestKprobeObjectMultiValueFilterOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -799,13 +805,13 @@ func testKprobeObjectFilterPrefixOpenHook(pidStr string, path string) string {
 }
 
 func TestKprobeObjectFilterPrefixOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFilterPrefixOpenHook(pidStr, "/tmp")
 	testKprobeObjectFiltered(t, readHook, &openChecker, false)
 }
 
 func TestKprobeObjectFilterPrefixOpenMount(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFilterPrefixOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, openCheckerMnt, true)
 }
@@ -842,13 +848,13 @@ func testKprobeObjectFilterPrefixExactOpenHook(pidStr string, path string) strin
 }
 
 func TestKprobeObjectFilterPrefixExactOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFilterPrefixExactOpenHook(pidStr, "/tmp")
 	testKprobeObjectFiltered(t, readHook, &openChecker, false)
 }
 
 func TestKprobeObjectFilterPrefixExactOpenMount(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFilterPrefixExactOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, openCheckerMnt, true)
 }
@@ -885,19 +891,19 @@ func testKprobeObjectFilterPrefixSubdirOpenHook(pidStr string, path string) stri
 }
 
 func TestKprobeObjectFilterPrefixSubdirOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFilterPrefixSubdirOpenHook(pidStr, "/tmp")
 	testKprobeObjectFiltered(t, readHook, &openChecker, false)
 }
 
 func TestKprobeObjectFilterPrefixSubdirOpenMount(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFilterPrefixSubdirOpenHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, openCheckerMnt, true)
 }
 
 func TestKprobeObjectFilterPrefixMissOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -930,7 +936,7 @@ spec:
 }
 
 func TestKprobeObjectPostfixOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -982,7 +988,7 @@ func TestKprobeObjectWriteVRead(t *testing.T) {
 
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 
 	writeReadHook := `
 apiVersion: hubble-enterprise.io/v1
@@ -1031,16 +1037,16 @@ spec:
 			End(),
 	)
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 	err = helloIovecWorldWritev()
 	assert.NoError(t, err)
 
-	err = JsonTestCheck(t, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -1057,7 +1063,7 @@ var (
 )
 
 func TestKprobeObjectFilenameOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -1083,7 +1089,7 @@ spec:
 }
 
 func TestKprobeObjectReturnFilenameOpen(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -1236,25 +1242,25 @@ var (
 )
 
 func TestKprobeObjectFileWrite(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFileWriteHook(pidStr)
 	testKprobeObjectFiltered(t, readHook, writeChecker, false)
 }
 
 func TestKprobeObjectFileWriteFiltered(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp")
 	testKprobeObjectFiltered(t, readHook, writeChecker, false)
 }
 
 func TestKprobeObjectFileWriteMount(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFileWriteHook(pidStr)
 	testKprobeObjectFiltered(t, readHook, writeCheckerMnt, true)
 }
 
 func TestKprobeObjectFileWriteMountFiltered(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, mountPath)
 	testKprobeObjectFiltered(t, readHook, writeCheckerMnt, true)
 }
@@ -1299,11 +1305,11 @@ func corePathTest(t *testing.T, filePath string, readHook string, writeChecker e
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 
 	fd2, errno := syscall.Open(filePath, syscall.O_RDWR, 0x770)
@@ -1316,7 +1322,7 @@ func corePathTest(t *testing.T, filePath string, readHook string, writeChecker e
 	n, err := syscall.Write(fd2, []byte(data))
 	assert.Equal(t, len(data), n)
 	assert.NoError(t, err)
-	err = JsonTestCheck(t, writeChecker)
+	err = observer.JsonTestCheck(t, writeChecker)
 	assert.NoError(t, err)
 }
 
@@ -1478,7 +1484,7 @@ func testMultipleMountPathFiltered(t *testing.T, readHook string) {
 }
 
 func TestMultipleMountsFiltered(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp4/tmp5")
 	if kernels.EnableLargeProgs() {
 		readHook = testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp2/tmp3/tmp4/tmp5")
@@ -1487,19 +1493,19 @@ func TestMultipleMountsFiltered(t *testing.T) {
 }
 
 func TestMultiplePathComponents(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFileWriteHook(pidStr)
 	testMultiplePathComponentsFiltered(t, readHook)
 }
 
 func TestMultipleMountPath(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := testKprobeObjectFileWriteHook(pidStr)
 	testMultipleMountPathFiltered(t, readHook)
 }
 
 func TestMultipleMountPathFiltered(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	// Kernel adds a & in the case of unresolved path. In the userspace we change that to [P]
 	readHook := testKprobeObjectFileWriteFilteredHook(pidStr, "/tmp4/tmp5/&/7/8/9/10/11/12/13/14/15/16")
 	if kernels.EnableLargeProgs() {
@@ -1509,7 +1515,7 @@ func TestMultipleMountPathFiltered(t *testing.T) {
 }
 
 func TestKprobeArgValues(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 	readHook := `
 apiVersion: isovalent.com/v1alpha1
 kind: TracingPolicy
@@ -1571,11 +1577,11 @@ spec:
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 
 	// linkat syscall is not exported for some reason
@@ -1600,7 +1606,7 @@ spec:
 		uintptr(newFd), uintptr(unsafe.Pointer(newBytes)),
 		uintptr(flags), 0)
 
-	err = JsonTestCheck(t, &checker)
+	err = observer.JsonTestCheck(t, &checker)
 	assert.NoError(t, err)
 }
 
@@ -1624,11 +1630,11 @@ func runKprobeOverride(t *testing.T, hook string, checker ec.MultiResponseChecke
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib))
+	obs, err := observer.GetDefaultObserverWithFile(t, testConfigFile, fgsLib)
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
 	readyWG.Wait()
 
 	fd, err := syscall.Open(testFile, syscall.O_RDWR, 0x777)
@@ -1644,12 +1650,12 @@ func runKprobeOverride(t *testing.T, hook string, checker ec.MultiResponseChecke
 		t.Fatal()
 	}
 
-	err = JsonTestCheck(t, checker)
+	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
 func TestKprobeOverride(t *testing.T) {
-	pidStr := strconv.Itoa(int(GetMyPid()))
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
 
 	file, err := ioutil.TempFile("/tmp", "kprobe-override-")
 	if err != nil {
@@ -1733,9 +1739,9 @@ spec:
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
 
-	_, err = getDefaultObserverWithWatchers(t, withConfig(testConfigFile), withLib(fgsLib), withNotestfail(true))
+	_, err = observer.GetDefaultObserverWithFileNoTest(t, testConfigFile, fgsLib, true)
 	if err == nil {
-		t.Fatalf("getDefaultObserverWithWatchers ok, should fail\n")
+		t.Fatalf("GetDefaultObserverWithFileNoTest ok, should fail\n")
 	}
 	assert.Error(t, err)
 }

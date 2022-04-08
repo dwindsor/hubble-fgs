@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 //
-package observer
+package tracing
 
 import (
 	"bytes"
@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
@@ -50,7 +51,7 @@ func init() {
 	}
 	sensors.RegisterProbeType("generic_kprobe", kprobe)
 	sensors.RegisterTracingSensorsAtInit(kprobe.name, kprobe)
-	RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
 }
 
 const (
@@ -625,7 +626,7 @@ func ReadArgBytes(r *bytes.Reader, index int) (*api.MsgGenericKprobeArgBytes, er
 
 }
 
-func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
+func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	m := api.MsgGenericKprobe{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -808,7 +809,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 		}
 	}
 	if unix == nil {
-		return []ObserverEvent{}, err
+		return []observer.ObserverEvent{}, err
 	}
 	// Last layer of filtering done before Notify upper layers. This is
 	// needed for filters and actions that can't be committed in kernel
@@ -817,10 +818,10 @@ func handleGenericKprobe(r *bytes.Reader) ([]ObserverEvent, error) {
 	// Alternatively, some actions have no kernel analog, such as pause
 	// pod.
 	if filterReturnArg(gk.userReturnFilters, retArg) {
-		return []ObserverEvent{}, err
+		return []observer.ObserverEvent{}, err
 	}
 
-	return []ObserverEvent{unix}, err
+	return []observer.ObserverEvent{unix}, err
 }
 
 func filterReturnArg(userReturnFilters []v1alpha1.ArgSelector, retArg *api.MsgGenericKprobeArg) bool {
