@@ -290,7 +290,7 @@ func udpResetEvent(curr, last *udpInfoValue) bool {
 		curr.SegsIn < last.SegsIn ||
 		curr.RXBytes < last.RXBytes ||
 		curr.SubmittedSegs < last.SubmittedSegs ||
-		curr.SubmittedBytes < curr.SubmittedBytes ||
+		curr.SubmittedBytes < last.SubmittedBytes ||
 		curr.SegsOut < last.SegsOut ||
 		curr.TXBytes < last.TXBytes {
 		return true
