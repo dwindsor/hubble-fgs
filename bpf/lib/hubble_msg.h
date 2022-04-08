@@ -21,7 +21,7 @@
  * Minikube for example prepends 'docker-' to the id. So lets copy
  * 32B and assume at least 12B of it is ID info.
  */
-#define DOCKER_ID_LENGTH 32
+#define DOCKER_ID_LENGTH 128
 /* Max number of args to parse */
 #define MAXARGS 20
 /* Max length of any given arg */

@@ -19,7 +19,7 @@ import (
 )
 
 const (
-	DOCKER_ID_LENGTH = 32
+	DOCKER_ID_LENGTH = 128
 
 	MSG_OP_UNDEF = 0
 	// The following events generate MsgIPv4TcpConnectUnix type events.
