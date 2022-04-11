@@ -7,6 +7,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -42,7 +43,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		}
 
 		fgsHttpResponse = &fgs.HttpResponse{
-			Timestamp:        ktimeToProto(event.Common.Ktime),
+			Timestamp:        ktime.ToProto(event.Common.Ktime),
 			Version:          event.Request.RespVersion,
 			Code:             code,
 			Reason:           event.Request.Reason,
@@ -59,7 +60,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 
 	if len(event.Request.Method) != 0 {
 		fgsHttpRequest = &fgs.HttpRequest{
-			Timestamp:        ktimeToProto(event.Request.Ktime),
+			Timestamp:        ktime.ToProto(event.Request.Ktime),
 			Method:           event.Request.Method,
 			Uri:              event.Request.Uri,
 			Version:          event.Request.Protocol,
@@ -104,7 +105,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
-		pm.eventCache.add(processInt, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {
@@ -122,7 +123,7 @@ func (pm *ProcessManager) handleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetE
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: t},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	default:

@@ -4,6 +4,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -80,7 +81,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		ParserInternalState: event.ServerCert.ParserState.String(),
 	}
 	if pm.processCacheNeeded(proc) {
-		pm.eventCache.add(processInt, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {
@@ -98,7 +99,7 @@ func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEve
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_Tls{Tls: t},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	default:

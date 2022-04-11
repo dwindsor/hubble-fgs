@@ -4,6 +4,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -23,7 +24,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 	if processInt == nil {
 		process = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
 		process = processInt.process
@@ -39,7 +40,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		Cap:     pm.getCapabilities(event.Capabilities),
 	}
 	if pm.processCacheNeeded(process) {
-		pm.eventCache.add(processInt, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {
@@ -60,7 +61,7 @@ func (pm *ProcessManager) handleCredMessage(msg *api.MsgCredEventUnix) *fgs.GetE
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: event},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	default:

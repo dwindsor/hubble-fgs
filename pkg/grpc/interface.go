@@ -3,6 +3,7 @@ package grpc
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 )
 
 func (pm *ProcessManager) GetInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs.InterfaceStats {
@@ -32,7 +33,7 @@ func (pm *ProcessManager) handleInterfaceMessage(msg *api.MsgInterfaceEventUnix)
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_InterfaceStats{InterfaceStats: stats},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	default:

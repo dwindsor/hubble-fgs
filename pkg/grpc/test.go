@@ -3,6 +3,7 @@ package grpc
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 )
 
 func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetEventsResponse {
@@ -17,7 +18,7 @@ func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetE
 				Arg3: msg.Arg3,
 			}},
 			NodeName: pm.nodeName,
-			Time:     ktimeToProto(msg.Common.Ktime),
+			Time:     ktime.ToProto(msg.Common.Ktime),
 		}
 	default:
 		pm.log.WithField("message", msg).Warn("Unhandled event")

@@ -6,6 +6,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -87,13 +88,13 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 		proc := pm.Add(msg)
 		procEvent := pm.GetProcessExec(proc)
 		if pm.processCacheNeeded(procEvent.Process) {
-			pm.eventCache.addProc(proc, procEvent, ktimeToProto(msg.Common.Ktime), msg)
+			pm.eventCache.addProc(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: procEvent},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	default:
@@ -113,7 +114,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	}
 	if parent != nil {
@@ -139,7 +140,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		Status:  code,
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -157,7 +158,7 @@ func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetE
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: e},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	default:

@@ -3,6 +3,7 @@ package grpc
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -17,7 +18,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.process
@@ -112,7 +113,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -130,7 +131,7 @@ func (pm *ProcessManager) handleGenericKprobeMessage(msg *api.MsgGenericKprobeUn
 	return &fgs.GetEventsResponse{
 		Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: k},
 		NodeName: pm.nodeName,
-		Time:     ktimeToProto(msg.Common.Ktime),
+		Time:     ktime.ToProto(msg.Common.Ktime),
 	}
 }
 
@@ -141,7 +142,7 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
-			StartTime: ktimeToProto(msg.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(msg.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.process
@@ -183,7 +184,7 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(msg.Common.Ktime), msg)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		return nil
 	}
 	if process != nil {
@@ -193,6 +194,6 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 	return &fgs.GetEventsResponse{
 		Event:    &fgs.GetEventsResponse_ProcessTracepoint{ProcessTracepoint: fgsEvent},
 		NodeName: pm.nodeName,
-		Time:     ktimeToProto(msg.Common.Ktime),
+		Time:     ktime.ToProto(msg.Common.Ktime),
 	}
 }

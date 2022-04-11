@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -111,7 +112,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.process
@@ -142,7 +143,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -154,7 +155,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -195,7 +196,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.process
@@ -229,7 +230,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -241,7 +242,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -269,7 +270,7 @@ func (pm *ProcessManager) GetProcessListen(
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	}
 	if parent != nil {
@@ -289,7 +290,7 @@ func (pm *ProcessManager) GetProcessListen(
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -320,7 +321,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.process
@@ -351,7 +352,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -364,7 +365,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -382,7 +383,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
 		fgsProcess = process.process
@@ -414,7 +415,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktimeToProto(event.Common.Ktime), event)
+		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -433,7 +434,7 @@ func (pm *ProcessManager) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: cnct},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	case api.MSG_OP_IPV4_TCPCLOSE,
@@ -443,7 +444,7 @@ func (pm *ProcessManager) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: c},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	case api.MSG_OP_IPV4_LISTEN:
@@ -452,7 +453,7 @@ func (pm *ProcessManager) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: l},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	case api.MSG_OP_IPV4_ACCEPT:
@@ -461,7 +462,7 @@ func (pm *ProcessManager) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: a},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 
@@ -471,7 +472,7 @@ func (pm *ProcessManager) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessSockstats{ProcessSockstats: s},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 

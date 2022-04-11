@@ -10,6 +10,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/sirupsen/logrus"
@@ -81,7 +82,7 @@ func (pm *ProcessManager) getProcess(
 			Binary:       getBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
 			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
-			StartTime:    ktimeToProtoOpt(process.Ktime, (process.Flags&api.EventProcFS) == 0),
+			StartTime:    ktime.ToProtoOpt(process.Ktime, (process.Flags&api.EventProcFS) == 0),
 			Auid:         &wrapperspb.UInt32Value{Value: process.AUID},
 			Pod:          protoPod,
 			ExecId:       execID,

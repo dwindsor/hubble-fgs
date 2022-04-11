@@ -6,6 +6,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -18,7 +19,7 @@ func (pm *ProcessManager) handleProcessNetworkBurstMessage(msg *api.MsgProcessNe
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: b},
 				NodeName: pm.nodeName,
-				Time:     ktimeToProto(msg.Common.Ktime),
+				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 
@@ -40,7 +41,7 @@ func (pm *ProcessManager) GetProcessNetworkBurst(
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
-			StartTime: ktimeToProto(event.ProcessKey.Ktime),
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	}
 	if parent != nil {
