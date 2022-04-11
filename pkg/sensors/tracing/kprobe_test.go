@@ -356,12 +356,13 @@ spec:
 
 func createTestFile(t *testing.T) (int, int, string) {
 	// Create file with hello world to read
-	fd, errno := syscall.Open("/tmp/testfile", syscall.O_CREAT|syscall.O_RDWR, 0x777)
+	fd, errno := syscall.Open("/tmp/testfile", syscall.O_CREAT|syscall.O_TRUNC|syscall.O_RDWR, 0x777)
 	if fd < 0 {
 		t.Logf("File open failed: %s\n", errno)
 		t.Fatal()
 	}
 	t.Cleanup(func() { syscall.Close(fd) })
+	t.Cleanup(func() { os.Remove("/tmp/testfile") })
 	fd2, errno := syscall.Open("/tmp/testfile", syscall.O_RDWR, 0x770)
 	if fd2 < 0 {
 		t.Logf("File open fro read failed: %s\n", errno)
