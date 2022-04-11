@@ -37,10 +37,6 @@ import (
 	gt "github.com/isovalent/hubble-fgs/pkg/generictypes"
 )
 
-const (
-	argReturnCopy = -1
-)
-
 type observerKprobeSensor struct {
 	name string
 }
@@ -206,14 +202,31 @@ var (
 	MaxFilterIntArgs = 8
 )
 
-func getMetaValue(arg *v1alpha1.KProbeArg) int {
+const (
+	argReturnCopyBit = 1 << 4
+)
+
+func argReturnCopy(meta int) bool {
+	return meta&argReturnCopyBit != 0
+}
+
+// meta value format:
+// bits
+//  0-3 : SizeArgIndex
+//    4 : ReturnCopy
+func getMetaValue(arg *v1alpha1.KProbeArg) (int, error) {
+	var meta int
+
 	if arg.SizeArgIndex > 0 {
-		return int(arg.SizeArgIndex)
+		if arg.SizeArgIndex > 15 {
+			return 0, fmt.Errorf("invalid SizeArgIndex value (>15): %v", arg.SizeArgIndex)
+		}
+		meta = int(arg.SizeArgIndex)
 	}
 	if arg.ReturnCopy {
-		return argReturnCopy
+		meta = meta | argReturnCopyBit
 	}
-	return 0
+	return meta, nil
 }
 
 var binaryNames []v1alpha1.BinarySelector
@@ -277,8 +290,11 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			if argType == gt.GenericInvalidType {
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported", j, a.Type)
 			}
-			argMValue := getMetaValue(&a)
-			if argMValue == argReturnCopy {
+			argMValue, err := getMetaValue(&a)
+			if err != nil {
+				return nil, err
+			}
+			if argReturnCopy(argMValue) {
 				argRetprobe = &f.Args[j]
 			}
 			retVal := btfobj.AddEnumValue(kprobeArgToString(int(a.Index)), argType)

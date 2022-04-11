@@ -363,12 +363,19 @@ static inline __attribute__((always_inline)) long copy_sock(char *args,
 	return sizeof(struct sk_type);
 }
 
+#define ARGM_INDEX_MASK	 ((1 << 4) - 1)
+#define ARGM_RETURN_COPY (1 << 4)
+
+static inline __attribute__((always_inline)) bool
+hasReturnCopy(unsigned long argm)
+{
+	return (argm & ARGM_RETURN_COPY) != 0;
+}
+
 static inline __attribute__((always_inline)) unsigned long
 get_arg_meta(int meta, struct msg_generic_kprobe *e)
 {
-	switch (meta) {
-	case -1:
-		return -1; // tbd what if this collides, seems unlikely.
+	switch (meta & ARGM_INDEX_MASK) {
 	case 1:
 		return e->a0;
 	case 2:
@@ -389,15 +396,16 @@ copy_char_buf(void *ctx, char *args, unsigned long arg, int argm,
 {
 	int *s = (int *)args;
 	size_t bytes = 0, rd_bytes;
+	unsigned long meta;
 	int err;
 
-	argm = get_arg_meta(argm, e);
-	if (argm == -1) {
+	if (hasReturnCopy(argm)) {
 		u64 tid = retprobe_map_get_key(ctx);
 		retprobe_map_set(tid, arg);
 		return return_error(s, char_buf_saved_for_retprobe);
 	}
-	probe_read(&bytes, sizeof(bytes), &argm);
+	meta = get_arg_meta(argm, e);
+	probe_read(&bytes, sizeof(bytes), &meta);
 
 	/* Bound bytes <4095 to ensure bytes does not read past end of buffer */
 	rd_bytes = bytes;
@@ -519,15 +527,16 @@ copy_char_iovec(void *ctx, char *args, unsigned long arg, int argm,
 		struct msg_generic_kprobe *e)
 {
 	long size, off = 0;
+	unsigned long meta;
 	int err, i = 0, cnt, *s = (int *)&args[off];
 
-	argm = get_arg_meta(argm, e);
-	if (argm == -1) {
+	if (hasReturnCopy(argm)) {
 		u64 tid = retprobe_map_get_key(ctx);
 		retprobe_map_set(tid, arg);
 		return return_error(s, char_buf_saved_for_retprobe);
 	}
-	err = probe_read(&cnt, sizeof(cnt), &argm);
+	meta = get_arg_meta(argm, e);
+	err = probe_read(&cnt, sizeof(cnt), &meta);
 	if (err < 0) {
 		return return_stack_error(args, 0, char_buf_pagefault);
 	}
