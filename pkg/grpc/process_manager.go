@@ -12,7 +12,6 @@ package grpc
 
 import (
 	"fmt"
-	"os"
 	"sync"
 
 	"github.com/cilium/hubble/pkg/cilium"
@@ -55,20 +54,6 @@ type ProcessManager struct {
 	dns                    *dnsCache
 }
 
-// getNodeNameForExport returns node name string for JSON export. It uses NODE_NAME
-// env variable by default, which is also used by k8s watcher to watch for local pods:
-//
-//   https://github.com/isovalent/hubble-fgs/blob/a7be620c9fecdc2b693e3633506aca35d46cd3b2/pkg/grpc/watcher.go#L32
-//
-// Set HUBBLE_NODE_NAME to override the node_name field for JSON export.
-func getNodeNameForExport() string {
-	nodeName := os.Getenv("HUBBLE_NODE_NAME")
-	if nodeName != "" {
-		return nodeName
-	}
-	return os.Getenv("NODE_NAME")
-}
-
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
 func NewProcessManager(
 	log logrus.FieldLogger,
@@ -94,7 +79,7 @@ func NewProcessManager(
 	pm := &ProcessManager{
 		log:                    log,
 		cache:                  cache,
-		nodeName:               getNodeNameForExport(),
+		nodeName:               reader.GetNodeNameForExport(),
 		watcher:                watcher,
 		ciliumState:            ciliumState,
 		listeners:              make(map[listener]struct{}),
