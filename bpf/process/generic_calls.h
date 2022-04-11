@@ -55,12 +55,11 @@ generic_process_event0(struct pt_regs *ctx, struct bpf_map_def *heap_map,
 	/* Read out args1-5 */
 	ty = bpf_core_enum_value(fgs_args, arg0);
 	if (total < MAX_TOTAL) {
-		unsigned long a0m, arg_meta;
 		long errv;
+		int a0m;
 
 		a0m = bpf_core_enum_value(fgs_args, arg0m);
-		arg_meta = get_arg_meta(a0m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(ctx, e, 0, ty, total, a0, arg_meta, map);
+		errv = read_call_arg(ctx, e, 0, ty, total, a0, a0m, map);
 		if (errv > 0)
 			total += errv;
 		/* Follow filter lookup failed so lets abort the event.
@@ -163,12 +162,11 @@ generic_process_event1(void *ctx, struct bpf_map_def *heap_map,
 
 	ty = bpf_core_enum_value(fgs_args, arg1);
 	if (total < MAX_TOTAL) {
-		unsigned long a1m, arg_meta;
 		long errv;
+		int a1m;
 
 		a1m = bpf_core_enum_value(fgs_args, arg1m);
-		arg_meta = get_arg_meta(a1m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(ctx, e, 1, ty, total, a1, arg_meta, map);
+		errv = read_call_arg(ctx, e, 1, ty, total, a1, a1m, map);
 		if (errv > 0)
 			total += errv;
 		if (errv < 0)
@@ -211,12 +209,11 @@ generic_process_event2(void *ctx, struct bpf_map_def *heap_map,
 
 	ty = bpf_core_enum_value(fgs_args, arg2);
 	if (total < MAX_TOTAL) {
-		unsigned long a2m, arg_meta;
 		long errv;
+		int a2m;
 
 		a2m = bpf_core_enum_value(fgs_args, arg2m);
-		arg_meta = get_arg_meta(a2m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(ctx, e, 2, ty, total, a2, arg_meta, map);
+		errv = read_call_arg(ctx, e, 2, ty, total, a2, a2m, map);
 		if (errv > 0)
 			total += errv;
 		if (errv < 0)
@@ -260,12 +257,11 @@ generic_process_event3(void *ctx, struct bpf_map_def *heap_map,
 	/* Arg filter and copy logic */
 	ty = bpf_core_enum_value(fgs_args, arg3);
 	if (total < MAX_TOTAL) {
-		unsigned long a3m, arg_meta;
 		long errv;
+		int a3m;
 
 		a3m = bpf_core_enum_value(fgs_args, arg3m);
-		arg_meta = get_arg_meta(a3m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(ctx, e, 3, ty, total, a3, arg_meta, map);
+		errv = read_call_arg(ctx, e, 3, ty, total, a3, a3m, map);
 		if (errv > 0)
 			total += errv;
 		if (errv < 0)
@@ -308,12 +304,11 @@ generic_process_event4(void *ctx, struct bpf_map_def *heap_map,
 
 	ty = bpf_core_enum_value(fgs_args, arg4);
 	if (total < MAX_TOTAL) {
-		unsigned long a4m, arg_meta;
 		long errv;
+		int a4m;
 
 		a4m = bpf_core_enum_value(fgs_args, arg4m);
-		arg_meta = get_arg_meta(a4m, a0, a1, a2, a3, a4);
-		errv = read_call_arg(ctx, e, 4, ty, total, a4, arg_meta, map);
+		errv = read_call_arg(ctx, e, 4, ty, total, a4, a4m, map);
 		if (errv > 0)
 			total += errv;
 		if (errv < 0)

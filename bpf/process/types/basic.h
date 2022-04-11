@@ -363,13 +363,35 @@ static inline __attribute__((always_inline)) long copy_sock(char *args,
 	return sizeof(struct sk_type);
 }
 
+static inline __attribute__((always_inline)) unsigned long
+get_arg_meta(int meta, struct msg_generic_kprobe *e)
+{
+	switch (meta) {
+	case -1:
+		return -1; // tbd what if this collides, seems unlikely.
+	case 1:
+		return e->a0;
+	case 2:
+		return e->a1;
+	case 3:
+		return e->a2;
+	case 4:
+		return e->a3;
+	case 5:
+		return e->a4;
+	}
+	return 0;
+}
+
 static inline __attribute__((always_inline)) long
-copy_char_buf(void *ctx, char *args, unsigned long arg, unsigned long argm)
+copy_char_buf(void *ctx, char *args, unsigned long arg, int argm,
+	      struct msg_generic_kprobe *e)
 {
 	int *s = (int *)args;
 	size_t bytes = 0, rd_bytes;
 	int err;
 
+	argm = get_arg_meta(argm, e);
 	if (argm == -1) {
 		u64 tid = retprobe_map_get_key(ctx);
 		retprobe_map_set(tid, arg);
@@ -493,11 +515,13 @@ filter_file_buf(struct selector_arg_filter *filter, char *args)
 }
 
 static inline __attribute__((always_inline)) long
-copy_char_iovec(void *ctx, char *args, unsigned long arg, unsigned long argm)
+copy_char_iovec(void *ctx, char *args, unsigned long arg, int argm,
+		struct msg_generic_kprobe *e)
 {
 	long size, off = 0;
 	int err, i = 0, cnt, *s = (int *)&args[off];
 
+	argm = get_arg_meta(argm, e);
 	if (argm == -1) {
 		u64 tid = retprobe_map_get_key(ctx);
 		retprobe_map_set(tid, arg);
@@ -987,8 +1011,7 @@ filter_read_arg(void *ctx, int index, struct bpf_map_def *heap,
  */
 static inline __attribute__((always_inline)) long
 read_call_arg(void *ctx, struct msg_generic_kprobe *e, int index, int type,
-	      long orig_off, unsigned long arg, unsigned long argm,
-	      void *filter_map)
+	      long orig_off, unsigned long arg, int argm, void *filter_map)
 {
 	size_t min_size = type_to_min_size(type);
 	char *args = e->args;
@@ -1074,35 +1097,14 @@ read_call_arg(void *ctx, struct msg_generic_kprobe *e, int index, int type,
 		size = copy_sock(args, arg);
 		break;
 	case char_buf:
-		size = copy_char_buf(ctx, args, arg, argm);
+		size = copy_char_buf(ctx, args, arg, argm, e);
 		break;
 	case char_iovec:
-		size = copy_char_iovec(ctx, args, arg, argm);
+		size = copy_char_iovec(ctx, args, arg, argm, e);
 		break;
 	default:
 		size = 0;
 		break;
 	}
 	return size;
-}
-
-static inline __attribute__((always_inline)) unsigned long
-get_arg_meta(int meta, unsigned long a0, unsigned long a1, unsigned long a2,
-	     unsigned long a3, unsigned long a4)
-{
-	switch (meta) {
-	case -1:
-		return -1; // tbd what if this collides, seems unlikely.
-	case 1:
-		return a0;
-	case 2:
-		return a1;
-	case 3:
-		return a2;
-	case 4:
-		return a3;
-	case 5:
-		return a4;
-	}
-	return 0;
 }
