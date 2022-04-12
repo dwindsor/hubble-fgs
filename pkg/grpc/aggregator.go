@@ -51,6 +51,8 @@ func NewAggregator(
 }
 
 func (a *Aggregator) Start() {
+	// nolint Since Aggregator.Start is an endless function,
+	// this qualifies as an acceptable use of time.Tick
 	tick := time.Tick(a.window)
 	for {
 		select {
