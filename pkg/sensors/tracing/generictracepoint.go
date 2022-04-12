@@ -288,7 +288,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 		return &ret.args[argIdx], nil
 	}
 
-	for idx := 0; idx < len(ret.args); idx += 1 {
+	for idx := 0; idx < len(ret.args); idx++ {
 		meta := ret.args[idx].MetaTp
 		if meta == 0 || meta == -1 {
 			ret.args[idx].MetaArg = meta

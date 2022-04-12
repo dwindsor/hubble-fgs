@@ -214,7 +214,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 			if int(eventPid) != pid {
 				return false, fmt.Errorf("Unexpected pid=%d (filter is for pid %d)", eventPid, pid)
 			}
-			tpEventsNr += 1
+			tpEventsNr++
 			return false, nil
 		default:
 			return false, fmt.Errorf("not a tracepoint event: %T", tpEvent)

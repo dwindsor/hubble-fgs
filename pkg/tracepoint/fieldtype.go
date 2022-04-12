@@ -80,7 +80,7 @@ func parseTy(tyFields []string) (interface{}, error) {
 	isConst := false
 	nextField := func() string {
 		ret := tyFields[fidx]
-		fidx += 1
+		fidx++
 		return ret
 	}
 	peekField := func() string {
