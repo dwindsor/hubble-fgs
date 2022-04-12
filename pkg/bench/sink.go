@@ -35,7 +35,7 @@ type SinkStats struct {
 	CPUUsage CPUUsage
 }
 
-type sinkName string
+type SinkName string
 
 type Sink interface {
 	Start(ctx context.Context) (int, chan SinkStats, error)
@@ -48,7 +48,7 @@ var (
 	//go:embed key.pem
 	keyPem []byte
 
-	sinks = map[sinkName]Sink{
+	sinks = map[SinkName]Sink{
 		"tcp-go":      tcpOrTLSSink{tls: false},
 		"http-go":     goHTTPSink{},
 		"http2-go":    goHTTP2Sink{},
@@ -59,12 +59,12 @@ var (
 	}
 )
 
-func SinkNameOrPanic(s string) sinkName {
-	if _, ok := sinks[sinkName(s)]; ok {
-		return sinkName(s)
+func SinkNameOrPanic(s string) SinkName {
+	if _, ok := sinks[SinkName(s)]; ok {
+		return SinkName(s)
 	}
 	log.Fatalf("Unknown sink '%s', use on of: %s", s, strings.Join(SupportedSinks(), ", "))
-	return sinkName("")
+	return SinkName("")
 }
 
 func SupportedSinks() []string {

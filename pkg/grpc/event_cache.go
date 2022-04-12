@@ -27,7 +27,7 @@ type eventNetObj interface {
 }
 
 type eventNetCacheObj struct {
-	internal  *processInternal
+	internal  *ProcessInternal
 	event     eventNetObj
 	timestamp *timestamppb.Timestamp
 	color     int
@@ -35,7 +35,7 @@ type eventNetCacheObj struct {
 }
 
 type eventProcCacheObj struct {
-	internal  *processInternal
+	internal  *ProcessInternal
 	process   *fgs.ProcessExec
 	timestamp *timestamppb.Timestamp
 	color     int
@@ -337,10 +337,10 @@ func newEventCache(log logrus.FieldLogger, pm *ProcessManager) *eventCache {
 	return ec
 }
 
-func (ec *eventCache) add(internal *processInternal, e eventNetObj, t *timestamppb.Timestamp, msg interface{}) {
+func (ec *eventCache) add(internal *ProcessInternal, e eventNetObj, t *timestamppb.Timestamp, msg interface{}) {
 	ec.netObjsChan <- eventNetCacheObj{internal: internal, event: e, timestamp: t, msg: msg}
 }
 
-func (ec *eventCache) addProc(internal *processInternal, e *fgs.ProcessExec, t *timestamppb.Timestamp, msg *api.MsgExecveEventUnix) {
+func (ec *eventCache) addProc(internal *ProcessInternal, e *fgs.ProcessExec, t *timestamppb.Timestamp, msg *api.MsgExecveEventUnix) {
 	ec.procObjsChan <- eventProcCacheObj{internal: internal, process: e, timestamp: t, msg: msg}
 }

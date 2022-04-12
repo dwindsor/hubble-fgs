@@ -807,8 +807,8 @@ func ktimeToProtoOpt(ktime uint64, monotonic bool) *timestamppb.Timestamp {
 	return timestamppb.New(decodedTime)
 }
 
-func (pm *ProcessManager) getParentProcessInternal(pid uint32, ktime uint64) (*processInternal, *processInternal) {
-	var parent, process *processInternal
+func (pm *ProcessManager) getParentProcessInternal(pid uint32, ktime uint64) (*ProcessInternal, *ProcessInternal) {
+	var parent, process *ProcessInternal
 	var err error
 
 	processID := pm.GetProcessID(pid, ktime)
@@ -958,7 +958,7 @@ func (pm *ProcessManager) getProcess(
 	parent fgsAPI.MsgExecveKey,
 	capabilities fgsAPI.MsgCapabilities,
 	namespaces fgsAPI.MsgNamespaces,
-) (*processInternal, *v1.Endpoint) {
+) (*ProcessInternal, *v1.Endpoint) {
 	args, cwd := reader.ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
 	if parent.Pid != 0 {
@@ -968,7 +968,7 @@ func (pm *ProcessManager) getProcess(
 	protoPod, endpoint := pm.getPodInfo(containerID, process.Filename, args, process.NSPID)
 	caps := pm.getCapabilities(capabilities)
 	ns := pm.getNamespaces(namespaces)
-	return &processInternal{
+	return &ProcessInternal{
 		process: &fgs.Process{
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
 			Uid:          &wrapperspb.UInt32Value{Value: process.UID},
@@ -991,7 +991,7 @@ func (pm *ProcessManager) getProcess(
 }
 
 // Add converts an FGS exec event to protobuf format and adds the protobuf message to the cache.
-func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *processInternal {
+func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *ProcessInternal {
 	proc, _ := pm.getProcess(event.Process, event.Kube.Docker, event.Parent, event.Capabilities, event.Namespaces)
 	pm.cache.add(proc)
 	var parentExecID string
@@ -1025,8 +1025,8 @@ func (pm *ProcessManager) Add(event *fgsAPI.MsgExecveEventUnix) *processInternal
 }
 
 // getAncestors builds an ancestor list by traversing the parent exec IDs.
-func (pm *ProcessManager) getAncestors(proc *fgs.Process) []*processInternal {
-	var ancestors []*processInternal
+func (pm *ProcessManager) getAncestors(proc *fgs.Process) []*ProcessInternal {
+	var ancestors []*ProcessInternal
 	for parentExecID := proc.ParentExecId; parentExecID != ""; {
 		entry, err := pm.cache.get(parentExecID)
 		if err != nil {
@@ -1054,9 +1054,9 @@ func (pm *ProcessManager) GetExecIDFromKey(key *fgsAPI.MsgExecveKey) string {
 
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.
 func (pm *ProcessManager) GetProcessExec(
-	proc *processInternal,
+	proc *ProcessInternal,
 ) *fgs.ProcessExec {
-	var parent *processInternal
+	var parent *ProcessInternal
 	var fgsAncestors []*fgs.Process
 
 	ancestors := pm.getAncestors(proc.process)

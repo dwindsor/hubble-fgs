@@ -49,9 +49,9 @@ type BenchArguments struct {
 	PrintEvents   bool
 
 	SourceArgs SourceArgs
-	Source     sourceName
-	Sink       sinkName
-	Proxy      proxyName
+	Source     SourceName
+	Sink       SinkName
+	Proxy      ProxyName
 
 	Baseline bool
 }

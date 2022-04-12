@@ -48,7 +48,7 @@ var (
 
 	stats *lru.Cache
 
-	Config     *udpSensorConfigValue
+	Config     *UdpSensorConfigValue
 	configured = false
 )
 
@@ -206,11 +206,11 @@ type udpSensorConfigKey struct {
 }
 
 func (k *udpSensorConfigKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
-func (k *udpSensorConfigKey) NewValue() bpf.MapValue     { return &udpSensorConfigValue{} }
+func (k *udpSensorConfigKey) NewValue() bpf.MapValue     { return &UdpSensorConfigValue{} }
 func (k *udpSensorConfigKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
 func (k *udpSensorConfigKey) DeepCopyMapKey() bpf.MapKey { return &udpSensorConfigKey{} }
 
-type udpSensorConfigValue struct {
+type UdpSensorConfigValue struct {
 	dnsPorts                 [maxDnsPorts]uint16
 	watermarkEnable          uint64
 	watermarkAvgWindowSizeMs uint64
@@ -218,15 +218,15 @@ type udpSensorConfigValue struct {
 	watermarkTriggerPercent  uint64
 }
 
-func (v *udpSensorConfigValue) String() string {
+func (v *UdpSensorConfigValue) String() string {
 	return fmt.Sprintf("dnsPorts: %d, "+
 		"watermarkEnable: %d, "+
 		"watermarkAvgWindowSizeMs: %d, "+
 		"watermarkWindowSize: %d, "+
 		"watermarkTriggerPercent: %d", v.dnsPorts, v.watermarkEnable, v.watermarkAvgWindowSizeMs, v.watermarkWindowSize, v.watermarkTriggerPercent)
 }
-func (v *udpSensorConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *udpSensorConfigValue) DeepCopyMapValue() bpf.MapValue {
+func (v *UdpSensorConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
+func (v *UdpSensorConfigValue) DeepCopyMapValue() bpf.MapValue {
 	var n = *v
 	return &n
 }
@@ -444,7 +444,7 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return nil, -1
 }
 
-func configureUdpSensor(mapDir string, mapName string, config *udpSensorConfigValue) error {
+func configureUdpSensor(mapDir string, mapName string, config *UdpSensorConfigValue) error {
 	m, err := bpf.OpenMap(filepath.Join(mapDir, mapName))
 	if err != nil {
 		return err

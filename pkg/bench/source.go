@@ -59,10 +59,10 @@ type SourceStats struct {
 	Forked     bool // true if the source is a forked process, e.g. don't deduct its cpu usage
 }
 
-type sourceName string
+type SourceName string
 
 var (
-	sources = map[sourceName]Source{
+	sources = map[SourceName]Source{
 		"tcp-crr": tcpOrTLSCRRSource{tls: false},
 		"tls-crr": tcpOrTLSCRRSource{tls: true},
 
@@ -87,15 +87,15 @@ var (
 	}
 )
 
-func SourceNameOrPanic(s string) sourceName {
-	if _, ok := sources[sourceName(s)]; ok {
-		return sourceName(s)
+func SourceNameOrPanic(s string) SourceName {
+	if _, ok := sources[SourceName(s)]; ok {
+		return SourceName(s)
 	}
 	log.Fatalf("Unknown source '%s', use one of: %s", s, strings.Join(SupportedSources(), ", "))
-	return sourceName("")
+	return SourceName("")
 }
 
-func (name sourceName) IsRequestResponse() bool {
+func (name SourceName) IsRequestResponse() bool {
 	return strings.HasPrefix(string(name), "tcp-rr-") ||
 		strings.HasPrefix(string(name), "tls-rr-") ||
 		strings.HasPrefix(string(name), "http-rr-")

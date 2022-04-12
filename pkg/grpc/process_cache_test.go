@@ -26,7 +26,7 @@ func TestProcessCache(t *testing.T) {
 	require.NoError(t, err)
 	pid := wrapperspb.UInt32Value{Value: 1234}
 	execID := "process1"
-	proc := processInternal{
+	proc := ProcessInternal{
 		process: &fgs.Process{
 			ExecId: execID,
 			Pid:    &pid,

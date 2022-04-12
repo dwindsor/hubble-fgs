@@ -28,21 +28,21 @@ type ProxyStats struct {
 	CPUUsage CPUUsage
 }
 
-type proxyName string
+type ProxyName string
 
 var (
-	proxies = map[proxyName]Proxy{
+	proxies = map[ProxyName]Proxy{
 		"none":  noneProxy{},
 		"envoy": envoyProxy{},
 	}
 )
 
-func ProxyNameOrPanic(s string) proxyName {
-	if _, ok := proxies[proxyName(s)]; ok {
-		return proxyName(s)
+func ProxyNameOrPanic(s string) ProxyName {
+	if _, ok := proxies[ProxyName(s)]; ok {
+		return ProxyName(s)
 	}
 	log.Fatalf("Unknown proxy '%s', use on of: %s", s, strings.Join(SupportedSources(), ", "))
-	return proxyName("")
+	return ProxyName("")
 }
 
 func SupportedProxies() []string {

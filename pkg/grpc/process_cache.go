@@ -27,7 +27,7 @@ import (
 type processCache struct {
 	log        logrus.FieldLogger
 	cache      *lru.Cache
-	deleteChan chan *processInternal
+	deleteChan chan *ProcessInternal
 
 	// pidMap is a map from PID to the most recent exec ID for the PID. This is used to find the parent
 	// of exec events without clone flag.
@@ -47,8 +47,8 @@ const (
 	intervalGC = time.Second * 30
 )
 
-// processInternal is the internal representation of a process.
-type processInternal struct {
+// ProcessInternal is the internal representation of a process.
+type ProcessInternal struct {
 	// mu protects the modifications to process.
 	mu sync.Mutex
 	// externally visible process struct.
@@ -61,7 +61,7 @@ type processInternal struct {
 	refcnt uint32
 }
 
-func (pi *processInternal) GetProcessCopy() *fgs.Process {
+func (pi *ProcessInternal) GetProcessCopy() *fgs.Process {
 	if pi.process == nil {
 		return nil
 	}
@@ -74,10 +74,10 @@ func (pi *processInternal) GetProcessCopy() *fgs.Process {
 
 func (pc *processCache) cacheGarbageCollector() {
 	ticker := time.NewTicker(intervalGC)
-	pc.deleteChan = make(chan *processInternal)
+	pc.deleteChan = make(chan *ProcessInternal)
 
 	go func() {
-		var deleteQueue, newQueue []*processInternal
+		var deleteQueue, newQueue []*ProcessInternal
 
 		for {
 			select {
@@ -139,18 +139,18 @@ func (pc *processCache) cacheGarbageCollector() {
 	}()
 }
 
-func (pc *processCache) deletePending(process *processInternal) {
+func (pc *processCache) deletePending(process *ProcessInternal) {
 	pc.deleteChan <- process
 }
 
-func (pc *processCache) refDec(p *processInternal) {
+func (pc *processCache) refDec(p *ProcessInternal) {
 	ref := atomic.AddUint32(&p.refcnt, ^uint32(0))
 	if ref == 0 {
 		pc.deletePending(p)
 	}
 }
 
-func (pc *processCache) refInc(p *processInternal) {
+func (pc *processCache) refInc(p *ProcessInternal) {
 	atomic.AddUint32(&p.refcnt, 1)
 }
 
@@ -188,14 +188,14 @@ func newProcessCache(
 	return pm, nil
 }
 
-func (pc *processCache) get(processID string) (*processInternal, error) {
+func (pc *processCache) get(processID string) (*ProcessInternal, error) {
 	entry, ok := pc.cache.Get(processID)
 	if !ok {
 		pc.log.WithField("id in event", processID).Debug("process not found in cache")
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnGet)).Inc()
 		return nil, fmt.Errorf("invalid entry for process ID: %s", processID)
 	}
-	process, _ := entry.(*processInternal)
+	process, _ := entry.(*ProcessInternal)
 	if !ok {
 		pc.log.WithField("process entry", entry).Debug("invalid entry in process cache")
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnGet)).Inc()
@@ -204,7 +204,7 @@ func (pc *processCache) get(processID string) (*processInternal, error) {
 	return process, nil
 }
 
-func (pc *processCache) add(process *processInternal) bool {
+func (pc *processCache) add(process *ProcessInternal) bool {
 	evicted := pc.cache.Add(process.process.ExecId, process)
 	if evicted {
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheEvicted)).Inc()
