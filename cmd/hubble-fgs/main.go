@@ -216,7 +216,7 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 		}
 	}
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions}
-	logger.GetLogger().WithFields(logrus.Fields{"logger": writer, "request": req}).Info("Starting JSON exporter")
+	logger.GetLogger().WithFields(logrus.Fields{"logger": &writer, "request": &req}).Info("Starting JSON exporter")
 	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder, rateLimiter)
 	exporter.Start()
 	return nil
