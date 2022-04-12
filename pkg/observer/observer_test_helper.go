@@ -73,45 +73,45 @@ type testExporterOptions struct {
 	ciliumState *hubbleCilium.State
 }
 
-type testOptions struct {
+type TestOptions struct {
 	observer testObserverOptions
 	exporter testExporterOptions
 }
 
-type testOption func(*testOptions)
+type TestOption func(*TestOptions)
 
-func withPretty() testOption {
-	return func(o *testOptions) {
+func withPretty() TestOption {
+	return func(o *TestOptions) {
 		o.observer.pretty = true
 	}
 }
 
-func withConfig(config string) testOption {
-	return func(o *testOptions) {
+func WithConfig(config string) TestOption {
+	return func(o *TestOptions) {
 		o.observer.config = config
 	}
 }
 
-func withK8sWatcher(w watcher.K8sResourceWatcher) testOption {
-	return func(o *testOptions) {
+func withK8sWatcher(w watcher.K8sResourceWatcher) TestOption {
+	return func(o *TestOptions) {
 		o.exporter.watcher = w
 	}
 }
 
-func withCiliumState(s *hubbleCilium.State) testOption {
-	return func(o *testOptions) {
+func withCiliumState(s *hubbleCilium.State) TestOption {
+	return func(o *TestOptions) {
 		o.exporter.ciliumState = s
 	}
 }
 
-func withLib(lib string) testOption {
-	return func(o *testOptions) {
+func WithLib(lib string) TestOption {
+	return func(o *TestOptions) {
 		o.observer.lib = lib
 	}
 }
 
-func withNotestfail(notestfail bool) testOption {
-	return func(o *testOptions) {
+func withNotestfail(notestfail bool) TestOption {
+	return func(o *TestOptions) {
 		o.observer.notestfail = notestfail
 	}
 }
@@ -134,7 +134,7 @@ func testDone(t *testing.T, obs *Observer) {
 }
 
 // saveInitInfo saves initial info for subsequent use in bugtool
-func saveInitInfo(o *testOptions, exportFile string) error {
+func saveInitInfo(o *TestOptions, exportFile string) error {
 	exportPath, err := filepath.Abs(exportFile)
 	if err != nil {
 		logger.GetLogger().Warnf("Failed to get export path when saving init info: %v", err)
@@ -209,10 +209,10 @@ func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
 	}
 }
 
-func newDefaultTestOptions(t *testing.T, opts ...testOption) *testOptions {
+func newDefaultTestOptions(t *testing.T, opts ...TestOption) *TestOptions {
 	ciliumState, _ := cilium.InitCiliumState(context.Background(), false)
 	// default values
-	options := &testOptions{
+	options := &TestOptions{
 		observer: testObserverOptions{
 			pretty: false,
 			crd:    false,
@@ -240,7 +240,7 @@ func newDefaultObserver(t *testing.T, oo *testObserverOptions) *Observer {
 		0)
 }
 
-func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
+func getDefaultObserver(t *testing.T, opts ...TestOption) (*Observer, error) {
 	o := newDefaultTestOptions(t, opts...)
 
 	option.Config.HubbleLib = os.Getenv("FGS_LIB")
@@ -286,7 +286,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 	return obs, nil
 }
 
-func getDefaultObserverWithWatchers(t *testing.T, opts ...testOption) (*Observer, error) {
+func GetDefaultObserverWithWatchers(t *testing.T, opts ...TestOption) (*Observer, error) {
 	const (
 		testPod       = "pod-1"
 		testNamespace = "ns-1"
@@ -301,11 +301,11 @@ func getDefaultObserverWithWatchers(t *testing.T, opts ...testOption) (*Observer
 }
 
 func GetDefaultObserverWithFile(t *testing.T, file, lib string) (*Observer, error) {
-	return getDefaultObserverWithWatchers(t, withConfig(file), withPretty(), withLib(lib))
+	return GetDefaultObserverWithWatchers(t, WithConfig(file), withPretty(), WithLib(lib))
 }
 
 func GetDefaultObserverWithFileNoTest(t *testing.T, file, lib string, fail bool) (*Observer, error) {
-	return getDefaultObserverWithWatchers(t, withConfig(file), withPretty(), withLib(lib), withNotestfail(fail))
+	return GetDefaultObserverWithWatchers(t, WithConfig(file), withPretty(), WithLib(lib), withNotestfail(fail))
 }
 
 func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error {
@@ -499,11 +499,11 @@ func WriteConfigFile(fileName, config string) error {
 }
 
 func GetDefaultObserver(t *testing.T, lib string) (*Observer, error) {
-	return getDefaultObserverWithWatchers(t, withPretty(), withLib(lib))
+	return GetDefaultObserverWithWatchers(t, withPretty(), WithLib(lib))
 }
 
 func GetDefaultObserverWithLib(t *testing.T, config, lib string) (*Observer, error) {
-	return getDefaultObserverWithWatchers(t, withConfig(config), withLib(lib))
+	return GetDefaultObserverWithWatchers(t, WithConfig(config), WithLib(lib))
 }
 
 func GetMyPid() uint32 {

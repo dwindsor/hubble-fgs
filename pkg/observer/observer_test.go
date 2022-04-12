@@ -56,7 +56,7 @@ func TestMain(m *testing.M) {
 }
 
 func TestObjectLoad(t *testing.T) {
-	obs, err := getDefaultObserverWithWatchers(t, withLib(fgsLib))
+	obs, err := GetDefaultObserverWithWatchers(t, WithLib(fgsLib))
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
@@ -87,9 +87,9 @@ func TestNamespaces(t *testing.T) {
 			End(),
 	)
 
-	obs, err := getDefaultObserverWithWatchers(t, withPretty(), withLib(fgsLib))
+	obs, err := GetDefaultObserverWithWatchers(t, withPretty(), WithLib(fgsLib))
 	if err != nil {
-		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+		t.Fatalf("GetDefaultObserverWithWatchers error: %s", err)
 	}
 
 	LoopEvents(ctx, t, &doneWG, &readyWG, obs)
