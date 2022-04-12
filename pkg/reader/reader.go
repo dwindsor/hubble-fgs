@@ -94,6 +94,7 @@ func DecodeCommonFlags(flags uint32) []string {
 	if (flags & api.EventExecve) != 0 {
 		s = append(s, "execve")
 	}
+	// nolint We still want to support this even though it's deprecated
 	if (flags & api.EventExecveAt) != 0 {
 		s = append(s, "execveat")
 	}

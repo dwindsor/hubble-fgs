@@ -34,6 +34,7 @@ func TestDecodeCommonFlags(t *testing.T) {
 		},
 		{
 			name: "multiple flags",
+			// nolint We still want to support this even though it's deprecated
 			args: args{flags: api.EventExecve | api.EventExecveAt | api.EventProcFS},
 			want: "execve execveat procFS",
 		},
