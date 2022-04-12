@@ -104,11 +104,10 @@ func parseTy(tyFields []string) (interface{}, error) {
 				Base:     IntTyInt,
 				Unsigned: true,
 			}, nil
-		} else {
-			// unsigned is a qualifier
-			unsigned = true
-			ty = nextField()
 		}
+		// unsigned is a qualifier
+		unsigned = true
+		ty = nextField()
 	}
 
 	var retTy interface{}

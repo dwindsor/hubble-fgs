@@ -121,9 +121,8 @@ func (t *tracepointTable) addTracepoint(tp *genericTracepoint) {
 func (t *tracepointTable) getTracepoint(idx int) (*genericTracepoint, error) {
 	if idx < len(t.arr) {
 		return t.arr[idx], nil
-	} else {
-		return nil, fmt.Errorf("tracepoint table: invalid id:%d (len=%d)", idx, len(t.arr))
 	}
+	return nil, fmt.Errorf("tracepoint table: invalid id:%d (len=%d)", idx, len(t.arr))
 }
 
 // GenericTracepointConf is the configuration for a generic tracepoint. This is
@@ -294,11 +293,11 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 			ret.args[idx].MetaArg = meta
 			continue
 		}
-		if a, err := getOrAppend(meta); err != nil {
+		a, err := getOrAppend(meta)
+		if err != nil {
 			return nil, err
-		} else {
-			ret.args[idx].MetaArg = int(a.ArgIdx) + 1
 		}
+		ret.args[idx].MetaArg = int(a.ArgIdx) + 1
 	}
 
 	genericTracepointTable.addTracepoint(ret)

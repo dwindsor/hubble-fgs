@@ -92,23 +92,23 @@ func (t *Table) getValidEntryIndex(id EntryID) (int, error) {
 
 // GetEntry returns an entry or an error
 func (t *Table) GetEntry(id EntryID) (Entry, error) {
-	if idx, err := t.getValidEntryIndex(id); err != nil {
+	idx, err := t.getValidEntryIndex(id)
+	if err != nil {
 		return nil, err
-	} else {
-		return t.arr[idx], nil
 	}
+	return t.arr[idx], nil
 }
 
 // RemoveEntry removes an entry and returns it (or an error if entry does not exist)
 func (t *Table) RemoveEntry(id EntryID) (Entry, error) {
-	if idx, err := t.getValidEntryIndex(id); err != nil {
+	idx, err := t.getValidEntryIndex(id)
+	if err != nil {
 		return nil, err
-	} else {
-		entry := t.arr[idx]
-		t.arr[idx] = invalidEntry{}
-		entry.SetID(UninitializedEntryID)
-		return entry, nil
 	}
+	entry := t.arr[idx]
+	t.arr[idx] = invalidEntry{}
+	entry.SetID(UninitializedEntryID)
+	return entry, nil
 }
 
 // Len returns the number of entries

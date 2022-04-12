@@ -379,17 +379,20 @@ func (s *bugtoolInfo) execCmd(tarWriter *tar.Writer, dstFname string, cmdName st
 	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
 	defer cancel()
 	cmd := exec.CommandContext(ctx, cmdName, cmdArgs...)
-	if stdin, err := cmd.StdinPipe(); err != nil {
+
+	stdin, err := cmd.StdinPipe()
+	if err != nil {
 		s.multiLog.Warnf("StdinPipe() failed: %s", err)
 		return err
-	} else {
-		stdin.Close()
 	}
+	stdin.Close()
+
 	stdout, err := cmd.StdoutPipe()
 	if err != nil {
 		s.multiLog.Warnf("StdoutPipe() failed: %v", err)
 		return err
 	}
+
 	stderr, err := cmd.StderrPipe()
 	if err != nil {
 		s.multiLog.Warnf("StderrPipe() failed: %v", err)

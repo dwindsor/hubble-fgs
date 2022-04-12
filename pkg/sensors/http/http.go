@@ -415,14 +415,13 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 		if !ok {
 			aggregate.Add(key, unix)
 			return nil, nil
-		} else {
-			r := entry.(*api.MsgHttpEventUnix)
-			unix.Request.Code = r.Request.Code
-			unix.Request.Reason = r.Request.Reason
-			unix.Request.RespContentLength = r.Request.RespContentLength
-			unix.Request.RespTransferEncoding = r.Request.RespTransferEncoding
-			aggregate.Remove(key)
 		}
+		r := entry.(*api.MsgHttpEventUnix)
+		unix.Request.Code = r.Request.Code
+		unix.Request.Reason = r.Request.Reason
+		unix.Request.RespContentLength = r.Request.RespContentLength
+		unix.Request.RespTransferEncoding = r.Request.RespTransferEncoding
+		aggregate.Remove(key)
 	} else {
 		entry, ok := aggregate.Get(key)
 		if ok {
@@ -576,13 +575,12 @@ func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameByt
 		if !ok {
 			aggregate.Add(key, unix)
 			return false
-		} else {
-			r := entry.(*api.MsgHttpEventUnix)
-			unix.Request.Code = r.Request.Code
-			unix.Request.Reason = r.Request.Reason
-			unix.Request.RespContentLength = r.Request.RespContentLength
-			aggregate.Remove(key)
 		}
+		r := entry.(*api.MsgHttpEventUnix)
+		unix.Request.Code = r.Request.Code
+		unix.Request.Reason = r.Request.Reason
+		unix.Request.RespContentLength = r.Request.RespContentLength
+		aggregate.Remove(key)
 	} else {
 		entry, ok := aggregate.Get(key)
 		if ok {

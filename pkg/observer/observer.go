@@ -208,19 +208,19 @@ func execParse(reader *bytes.Reader) (api.MsgProcess, bool, error) {
 		proc.Args = "enomem enomem"
 		proc.Filename = "enomem"
 		return proc, false, err
-	} else {
-		args := make([]byte, size) //+2)
-		if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
-			proc.Size = api.MSG_SIZEOF_EXECVE
-			proc.Args = "enomem enomem"
-			proc.Filename = "enomem"
-			return proc, false, err
-		} else {
-			cmdArgs := bytes.Split(args, []byte{0x00})
-			proc.Filename = string(cmdArgs[0])
-			proc.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
-		}
 	}
+
+	args := make([]byte, size) //+2)
+	if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
+		proc.Size = api.MSG_SIZEOF_EXECVE
+		proc.Args = "enomem enomem"
+		proc.Filename = "enomem"
+		return proc, false, err
+	}
+
+	cmdArgs := bytes.Split(args, []byte{0x00})
+	proc.Filename = string(cmdArgs[0])
+	proc.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
 
 	return proc, false, nil
 }

@@ -89,9 +89,8 @@ func getNameOrIp(ip string, names []string) string {
 	if len(names) > 0 {
 		sort.Strings(names)
 		return strings.Join(names, ",")
-	} else {
-		return ip
 	}
+	return ip
 }
 
 func (a *Aggregator) handleProcessAccept(event *fgs.GetEventsResponse) {

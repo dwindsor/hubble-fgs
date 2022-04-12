@@ -66,9 +66,8 @@ func filterByHealthCheck(healthCheck bool) hubbleFilters.FilterFunc {
 		parent := GetParent(ev)
 		if healthCheck {
 			return canBeHealthCheck(process) || canBeHealthCheck(parent)
-		} else {
-			return !canBeHealthCheck(process) && !canBeHealthCheck(parent)
 		}
+		return !canBeHealthCheck(process) && !canBeHealthCheck(parent)
 	}
 }
 

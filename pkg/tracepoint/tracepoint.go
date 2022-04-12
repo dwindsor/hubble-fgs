@@ -125,22 +125,22 @@ func tracepointLoadFormat(subsys string, event string) (*TracepointFormat, error
 	}
 
 	nameRe := regexp.MustCompile(`name: (\w+)`)
-	if res, err := getMatches(nameRe, "parsing name field"); err != nil {
+	res, err := getMatches(nameRe, "parsing name field")
+	if err != nil {
 		return nil, err
-	} else {
-		ret.Name = res[1]
 	}
+	ret.Name = res[1]
 
 	idRe := regexp.MustCompile(`ID: (\d+)`)
-	if res, err := getMatches(idRe, "parsing id field"); err != nil {
+	res, err = getMatches(idRe, "parsing id field")
+	if err != nil {
 		return nil, err
-	} else {
-		id, err := strconv.Atoi(res[1])
-		if err != nil {
-			return nil, fmt.Errorf("parsing id field: failed: %w", err)
-		}
-		ret.ID = id
 	}
+	id, err := strconv.Atoi(res[1])
+	if err != nil {
+		return nil, fmt.Errorf("parsing id field: failed: %w", err)
+	}
+	ret.ID = id
 
 	formatRe := regexp.MustCompile(`format:`)
 	if _, err := getMatches(formatRe, "parsing format string"); err != nil {

@@ -106,7 +106,6 @@ var (
 func GetExecveMap() *Map {
 	if kernels.EnableLargeProgs() {
 		return ExecveMapV53
-	} else {
-		return ExecveMap
 	}
+	return ExecveMap
 }

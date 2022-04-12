@@ -90,10 +90,9 @@ var (
 func SourceNameOrPanic(s string) sourceName {
 	if _, ok := sources[sourceName(s)]; ok {
 		return sourceName(s)
-	} else {
-		log.Fatalf("Unknown source '%s', use one of: %s", s, strings.Join(SupportedSources(), ", "))
-		return sourceName("")
 	}
+	log.Fatalf("Unknown source '%s', use one of: %s", s, strings.Join(SupportedSources(), ", "))
+	return sourceName("")
 }
 
 func (name sourceName) IsRequestResponse() bool {

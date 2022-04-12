@@ -195,11 +195,11 @@ func genericKprobeTableGet(id idtable.EntryID) (*genericKprobe, error) {
 }
 
 func genericKprobeFromBpfLoad(l *sensors.Program) (*genericKprobe, error) {
-	if id, ok := l.LoaderData.(idtable.EntryID); !ok {
+	id, ok := l.LoaderData.(idtable.EntryID)
+	if !ok {
 		return nil, fmt.Errorf("invalid loadData type: expecting idtable.EntryID and got: %T (%v)", l.LoaderData, l.LoaderData)
-	} else {
-		return genericKprobeTableGet(id)
 	}
+	return genericKprobeTableGet(id)
 }
 
 var (
@@ -557,9 +557,9 @@ func loadGenericKprobeSensor(bpfDir, mapDir string, load *sensors.Program, versi
 	retprobe := strings.Contains(load.Name, "ret")
 	if retprobe {
 		return loadGenericKprobeRet(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir), 0
-	} else {
-		return loadGenericKprobe(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir, gk.loadArgs.filters), 0
 	}
+
+	return loadGenericKprobe(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir, gk.loadArgs.filters), 0
 }
 
 func handleGenericKprobeString(r *bytes.Reader) string {

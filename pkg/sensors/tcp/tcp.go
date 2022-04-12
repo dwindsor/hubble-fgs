@@ -163,9 +163,8 @@ func handleTcpClose(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 		stats.Remove(c.Tuple)
 		if err != nil {
 			return []observer.ObserverEvent{tcp}, nil
-		} else {
-			return []observer.ObserverEvent{tcp, c}, nil
 		}
+		return []observer.ObserverEvent{tcp, c}, nil
 	}
 	return []observer.ObserverEvent{tcp}, nil
 }

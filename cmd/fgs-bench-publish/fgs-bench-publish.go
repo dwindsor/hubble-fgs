@@ -53,10 +53,9 @@ var testNameToSheetId = map[string]int64{
 func summaryToSheetId(summary *bench.BenchSummary) int64 {
 	if id, ok := testNameToSheetId[summary.Args.TestName]; ok {
 		return id
-	} else {
-		log.Printf("No sheet for %s, defaulting to 'Test'\n", summary.Args.TestName)
-		return 0 // Test sheet
 	}
+	log.Printf("No sheet for %s, defaulting to 'Test'\n", summary.Args.TestName)
+	return 0 // Test sheet
 }
 
 func main() {
@@ -110,9 +109,8 @@ func getBpfStatForSheets(name string, s *bench.BenchSummary) float64 {
 		if stat.Name == name {
 			if stat.RunCnt > 0 {
 				return float64(time.Duration(stat.RunNs/stat.RunCnt)) / float64(time.Microsecond)
-			} else {
-				return 0.0
 			}
+			return 0.0
 		}
 	}
 	return 0.0
@@ -234,36 +232,35 @@ func valuesFromSummary(gitRev string, summary *bench.BenchSummary) []*sheets.Cel
 			valueToCellData(getSystemVersions()),
 			valueToCellData(getCPUName()),
 		}
-	} else {
-		return []*sheets.CellData{
-			valueToCellData(summary.StartTime.Format(time.RFC3339)),
-			valueToCellData(durationToSecs(summary.SetupDurationNanos)),
-			valueToCellData(durationToSecs(summary.TestDurationNanos)),
-			valueToCellData(summary.SourceStats.ActualRate),
+	}
+	return []*sheets.CellData{
+		valueToCellData(summary.StartTime.Format(time.RFC3339)),
+		valueToCellData(durationToSecs(summary.SetupDurationNanos)),
+		valueToCellData(durationToSecs(summary.TestDurationNanos)),
+		valueToCellData(summary.SourceStats.ActualRate),
 
-			// Resource usage
-			valueToCellData(fgsSystemCPUPercent),
-			valueToCellData(fgsUserCPUPercent),
-			valueToCellData(summary.FgsCPUUsage.MaxRss),
-			valueToCellData(sourceSystemCPUPercent),
-			valueToCellData(sourceUserCPUPercent),
-			valueToCellData(sinkSystemCPUPercent),
-			valueToCellData(sinkUserCPUPercent),
+		// Resource usage
+		valueToCellData(fgsSystemCPUPercent),
+		valueToCellData(fgsUserCPUPercent),
+		valueToCellData(summary.FgsCPUUsage.MaxRss),
+		valueToCellData(sourceSystemCPUPercent),
+		valueToCellData(sourceUserCPUPercent),
+		valueToCellData(sinkSystemCPUPercent),
+		valueToCellData(sinkUserCPUPercent),
 
-			// BPF stats
-			valueToCellData(getBpfStatForSheets("event_sys_liste", summary)),
-			valueToCellData(getBpfStatForSheets("event_ret_ipv4_", summary)),
-			valueToCellData(getBpfStatForSheets("event_ipv4_conn", summary)),
-			valueToCellData(getBpfStatForSheets("bpf_sockmap", summary)),
-			valueToCellData(getBpfStatForSheets("bpf_skskb_verdi", summary)),
-			valueToCellData(getBpfStatForSheets("bpf_skskb_parse", summary)),
-			valueToCellData(getBpfStatForSheets("bpf_sk_msg_fgs", summary)),
+		// BPF stats
+		valueToCellData(getBpfStatForSheets("event_sys_liste", summary)),
+		valueToCellData(getBpfStatForSheets("event_ret_ipv4_", summary)),
+		valueToCellData(getBpfStatForSheets("event_ipv4_conn", summary)),
+		valueToCellData(getBpfStatForSheets("bpf_sockmap", summary)),
+		valueToCellData(getBpfStatForSheets("bpf_skskb_verdi", summary)),
+		valueToCellData(getBpfStatForSheets("bpf_skskb_parse", summary)),
+		valueToCellData(getBpfStatForSheets("bpf_sk_msg_fgs", summary)),
 
-			// Meta
-			valueToCellData(gitRev),
-			valueToCellData(getSystemVersions()),
-			valueToCellData(getCPUName()),
-		}
+		// Meta
+		valueToCellData(gitRev),
+		valueToCellData(getSystemVersions()),
+		valueToCellData(getCPUName()),
 	}
 
 }

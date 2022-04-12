@@ -62,10 +62,9 @@ var (
 func SinkNameOrPanic(s string) sinkName {
 	if _, ok := sinks[sinkName(s)]; ok {
 		return sinkName(s)
-	} else {
-		log.Fatalf("Unknown sink '%s', use on of: %s", s, strings.Join(SupportedSinks(), ", "))
-		return sinkName("")
 	}
+	log.Fatalf("Unknown sink '%s', use on of: %s", s, strings.Join(SupportedSinks(), ", "))
+	return sinkName("")
 }
 
 func SupportedSinks() []string {

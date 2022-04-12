@@ -356,9 +356,9 @@ func (h *Manager) ListSensors(ctx context.Context) (*[]api.SensorStatus, error) 
 	err := <-retc
 	if err == nil {
 		return op.result, nil
-	} else {
-		return nil, err
 	}
+
+	return nil, err
 }
 
 func (h *Manager) GetSensorConfig(ctx context.Context, name string, cfgkey string) (string, error) {
@@ -374,9 +374,9 @@ func (h *Manager) GetSensorConfig(ctx context.Context, name string, cfgkey strin
 	err := <-retc
 	if err == nil {
 		return op.val, nil
-	} else {
-		return "", err
 	}
+
+	return "", err
 }
 
 func (h *Manager) SetSensorConfig(ctx context.Context, name string, cfgkey string, cfgval string) error {
@@ -464,9 +464,9 @@ func (s *Manager) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTra
 	err := <-retc
 	if err != nil {
 		return nil, err
-	} else {
-		return op.RootNode, nil
 	}
+
+	return op.RootNode, nil
 }
 
 // Manager handles dynamic sensor management, such as adding / removing sensors

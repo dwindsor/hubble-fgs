@@ -559,10 +559,9 @@ func getNegotiatedVersion(tls *fgs.Tls) string {
 	if tls.NegotiatedVersion != "" {
 		// For TLS 1.3 the negotiated version field is set. Use it.
 		return tls.NegotiatedVersion
-	} else {
-		// For <TLS 1.3 do version discovery
-		return getNegotiatedVersion12(tls)
 	}
+	// For <TLS 1.3 do version discovery
+	return getNegotiatedVersion12(tls)
 }
 
 func handleTlsEvent(processedEvent interface{}) {

@@ -40,10 +40,9 @@ var (
 func ProxyNameOrPanic(s string) proxyName {
 	if _, ok := proxies[proxyName(s)]; ok {
 		return proxyName(s)
-	} else {
-		log.Fatalf("Unknown proxy '%s', use on of: %s", s, strings.Join(SupportedSources(), ", "))
-		return proxyName("")
 	}
+	log.Fatalf("Unknown proxy '%s', use on of: %s", s, strings.Join(SupportedSources(), ", "))
+	return proxyName("")
 }
 
 func SupportedProxies() []string {
