@@ -74,7 +74,7 @@ func RegisterEventHandlerAtInit(ev uint8, handler func(r *bytes.Reader) ([]Obser
 }
 
 func (k *Observer) observerListeners(msg interface{}) {
-	for listener, _ := range k.listeners {
+	for listener := range k.listeners {
 		if err := listener.Notify(msg); err != nil {
 			k.log.Debug("Write failure removing Listener")
 			k.RemoveListener(listener)

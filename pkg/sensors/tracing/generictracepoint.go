@@ -248,7 +248,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 		Selectors: conf,
 	}
 
-	for i, _ := range conf.Args {
+	for i := range conf.Args {
 		arg := GenericTracepointConfArg{
 			Index:        conf.Args[i].Index,
 			SizeArgIndex: conf.Args[i].SizeArgIndex,

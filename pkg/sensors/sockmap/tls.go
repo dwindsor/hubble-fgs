@@ -54,12 +54,12 @@ func ParseTLSSpec(spec *v1alpha1.TlsSpec, https *v1alpha1.HttpsSpec) ([128]byte,
 
 		selectors.WriteSelectorUint32(k, uint32(numSelectors))
 		soff := make([]uint32, numSelectors)
-		for i, _ := range spec.Selectors {
+		for i := range spec.Selectors {
 			soff[i] = selectors.AdvanceSelectorLength(k)
 		}
 
 		if https != nil {
-			for i, _ := range https.Selectors {
+			for i := range https.Selectors {
 				soff[tlsSelOffset+i] = selectors.AdvanceSelectorLength(k)
 			}
 		}

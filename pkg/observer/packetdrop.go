@@ -186,7 +186,7 @@ func (k *Observer) handleKfreeSkb(m *api.MsgKfreeSkb) {
 	// NB: Currently, we don't push these events to listens, but we might
 	// want to change that at some point.
 	if false {
-		for listener, _ := range k.listeners {
+		for listener := range k.listeners {
 			if err := listener.Notify(msgUnix); err != nil {
 				k.log.WithError(err).Debug("Write failure, removing Listener")
 				k.RemoveListener(listener)

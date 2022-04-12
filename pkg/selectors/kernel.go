@@ -622,7 +622,7 @@ func InitKernelSelectors(spec *v1alpha1.KProbeSpec) ([4096]byte, error) {
 
 	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
 	soff := make([]uint32, len(selectors))
-	for i, _ := range selectors {
+	for i := range selectors {
 		soff[i] = AdvanceSelectorLength(kernelSelectors)
 	}
 	for i, s := range selectors {
@@ -644,7 +644,7 @@ func InitTracepointSelectors(spec *v1alpha1.TracepointSpec) ([4096]byte, error) 
 
 	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
 	soff := make([]uint32, len(selectors))
-	for i, _ := range selectors {
+	for i := range selectors {
 		soff[i] = AdvanceSelectorLength(kernelSelectors)
 		totaloff++
 	}
