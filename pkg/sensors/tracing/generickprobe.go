@@ -34,7 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
-	. "github.com/isovalent/hubble-fgs/pkg/generictypes"
+	gt "github.com/isovalent/hubble-fgs/pkg/generictypes"
 )
 
 const (
@@ -273,8 +273,8 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 
 		// Parse Arguments
 		for j, a := range f.Args {
-			argType := GenericTypeFromString(a.Type)
-			if argType == GenericInvalidType {
+			argType := gt.GenericTypeFromString(a.Type)
+			if argType == gt.GenericInvalidType {
 				return nil, fmt.Errorf("Arg(%d) type '%s' unsupported", j, a.Type)
 			}
 			argMValue := getMetaValue(&a)
@@ -307,8 +307,8 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// instructs the BPF kretprobe program which type of copy to use. And
 		// argReturnPrinters tell golang printer piece how to print the event.
 		if f.Return {
-			argType := GenericTypeFromString(f.ReturnArg.Type)
-			if argType == GenericInvalidType {
+			argType := gt.GenericTypeFromString(f.ReturnArg.Type)
+			if argType == gt.GenericInvalidType {
 				if f.ReturnArg.Type == "" {
 					return nil, fmt.Errorf("ReturnArg not specified with Return=true.")
 				}
@@ -337,7 +337,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d", argreturncopy, 1)
 			}
 
-			argType := GenericTypeFromString(argRetprobe.Type)
+			argType := gt.GenericTypeFromString(argRetprobe.Type)
 			argP := argPrinters{index: int(argRetprobe.Index), ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
 		} else {
@@ -351,7 +351,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// copying 'nop' args.
 		for j, a := range argsBTFSet {
 			if a == false {
-				retVal := btfobj.AddEnumValue(kprobeArgToString(j), GenericNopType)
+				retVal := btfobj.AddEnumValue(kprobeArgToString(j), gt.GenericNopType)
 				if retVal < 0 {
 					return nil, fmt.Errorf("Error add enum value '%s' failed %d",
 						kprobeArgToString(j), retVal)
@@ -659,7 +659,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	}
 	for _, a := range printers {
 		switch a.ty {
-		case GenericIntType:
+		case gt.GenericIntType:
 			var output int32
 			var arg api.MsgGenericKprobeArgInt
 
@@ -671,13 +671,13 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 			arg.Index = uint64(a.index)
 			arg.Value = output
 			unix.Args = append(unix.Args, arg)
-		case GenericFileType, GenericFdType:
+		case gt.GenericFileType, gt.GenericFdType:
 			var arg api.MsgGenericKprobeArgFile
 			var flags uint32
 			var b int32
 
 			/* Eat file descriptor its not used in userland */
-			if a.ty == GenericFdType {
+			if a.ty == gt.GenericFdType {
 				binary.Read(r, binary.LittleEndian, &b)
 			}
 
@@ -692,7 +692,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 
 			arg.Flags = flags
 			unix.Args = append(unix.Args, arg)
-		case GenericPathType:
+		case gt.GenericPathType:
 			var arg api.MsgGenericKprobeArgPath
 			var flags uint32
 
@@ -707,7 +707,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 
 			arg.Flags = flags
 			unix.Args = append(unix.Args, arg)
-		case GenericFilenameType, GenericStringType:
+		case gt.GenericFilenameType, gt.GenericStringType:
 			var b int32
 			var arg api.MsgGenericKprobeArgString
 
@@ -729,13 +729,13 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 			}
 			arg.Value = strVal
 			unix.Args = append(unix.Args, arg)
-		case GenericCharBuffer, GenericCharIovec:
+		case gt.GenericCharBuffer, gt.GenericCharIovec:
 			if arg, err := ReadArgBytes(r, a.index); err == nil {
 				unix.Args = append(unix.Args, *arg)
 			} else {
 				logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
 			}
-		case GenericSkbType:
+		case gt.GenericSkbType:
 			var skb api.MsgGenericKprobeSkb
 			var arg api.MsgGenericKprobeArgSkb
 
@@ -757,7 +757,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 			arg.SecPathLen = skb.SecPathLen
 			arg.SecPathOLen = skb.SecPathOLen
 			unix.Args = append(unix.Args, arg)
-		case GenericSockType:
+		case gt.GenericSockType:
 			var sock api.MsgGenericKprobeSock
 			var arg api.MsgGenericKprobeArgSock
 
@@ -773,7 +773,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 			arg.Mark = sock.Mark
 			arg.Priority = sock.Priority
 			unix.Args = append(unix.Args, arg)
-		case GenericSizeType:
+		case gt.GenericSizeType:
 			var output uint64
 			var arg api.MsgGenericKprobeArgSize
 

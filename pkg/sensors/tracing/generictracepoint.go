@@ -32,7 +32,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/tracepoint"
 	"github.com/sirupsen/logrus"
 
-	. "github.com/isovalent/hubble-fgs/pkg/generictypes"
+	gt "github.com/isovalent/hubble-fgs/pkg/generictypes"
 )
 
 const (
@@ -166,7 +166,7 @@ func (conf *GenericTracepointConfArg) configureTracepointArg(tp *genericTracepoi
 		MetaTp:        metaTpIndex,
 		nopTy:         false,
 		format:        &field,
-		genericTypeId: GenericInvalidType,
+		genericTypeId: gt.GenericInvalidType,
 	})
 	return nil
 }
@@ -186,32 +186,32 @@ func (out *genericTracepointArg) setGenericTypeId() (int, error) {
 func (out *genericTracepointArg) getGenericTypeId() (int, error) {
 
 	if out.format == nil {
-		return GenericInvalidType, errors.New("format is nil")
+		return gt.GenericInvalidType, errors.New("format is nil")
 	}
 
 	if out.format.Field == nil {
 		err := out.format.ParseField()
 		if err != nil {
-			return GenericInvalidType, fmt.Errorf("failed to parse field: %w", err)
+			return gt.GenericInvalidType, fmt.Errorf("failed to parse field: %w", err)
 		}
 	}
 
 	switch ty := out.format.Field.Type.(type) {
 	case tracepoint.IntTy:
 		if out.format.Size == 4 && out.format.IsSigned {
-			return GenericS32Type, nil
+			return gt.GenericS32Type, nil
 		} else if out.format.Size == 4 && !out.format.IsSigned {
-			return GenericU32Type, nil
+			return gt.GenericU32Type, nil
 		} else if out.format.Size == 8 && out.format.IsSigned {
-			return GenericS64Type, nil
+			return gt.GenericS64Type, nil
 		} else if out.format.Size == 8 && !out.format.IsSigned {
-			return GenericU64Type, nil
+			return gt.GenericU64Type, nil
 		}
 	case tracepoint.PointerTy:
 		// char *
 		intTy, ok := ty.Ty.(tracepoint.IntTy)
 		if !ok {
-			return GenericInvalidType, fmt.Errorf("cannot handle pointer type to %T", ty)
+			return gt.GenericInvalidType, fmt.Errorf("cannot handle pointer type to %T", ty)
 		}
 		if intTy.Base == tracepoint.IntTyChar {
 			// NB: there is no way to determine if this is a string
@@ -219,16 +219,16 @@ func (out *genericTracepointArg) getGenericTypeId() (int, error) {
 			// build manually ourselves. For now, we only deal with
 			// buffers and expect a metadata argument.
 			if out.MetaTp == 0 {
-				return GenericInvalidType, errors.New("no metadata field for buffer")
+				return gt.GenericInvalidType, errors.New("no metadata field for buffer")
 			}
-			return GenericCharBuffer, nil
+			return gt.GenericCharBuffer, nil
 		}
 
 	case tracepoint.SizeTy:
-		return GenericSizeType, nil
+		return gt.GenericSizeType, nil
 	}
 
-	return GenericInvalidType, fmt.Errorf("Unknown type: %T", out.format.Field.Type)
+	return gt.GenericInvalidType, fmt.Errorf("Unknown type: %T", out.format.Field.Type)
 }
 
 // createGenericTracepoint creates the genericTracepoint information based on
@@ -282,7 +282,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 			MetaArg:       0,
 			nopTy:         true,
 			format:        &field,
-			genericTypeId: GenericInvalidType,
+			genericTypeId: gt.GenericInvalidType,
 		})
 		return &ret.args[argIdx], nil
 	}
@@ -412,7 +412,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 			return err, 0
 		}
 
-		if err := btfAddEnumValue(kprobeArgToString(i), GenericNopType); err != nil {
+		if err := btfAddEnumValue(kprobeArgToString(i), gt.GenericNopType); err != nil {
 			return err, 0
 		}
 
@@ -504,7 +504,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.ObserverEvent, error) 
 		}
 
 		switch out.genericTypeId {
-		case GenericU64Type:
+		case gt.GenericU64Type:
 			var val uint64
 			err := binary.Read(r, binary.LittleEndian, &val)
 			if err != nil {
@@ -512,7 +512,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.ObserverEvent, error) 
 			}
 			unix.Args = append(unix.Args, val)
 
-		case GenericSizeType:
+		case gt.GenericSizeType:
 			var val uint64
 
 			err := binary.Read(r, binary.LittleEndian, &val)
@@ -521,7 +521,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.ObserverEvent, error) 
 			}
 			unix.Args = append(unix.Args, val)
 
-		case GenericCharBuffer, GenericCharIovec:
+		case gt.GenericCharBuffer, gt.GenericCharIovec:
 			if arg, err := ReadArgBytes(r, idx); err == nil {
 				unix.Args = append(unix.Args, arg.Value)
 			} else {

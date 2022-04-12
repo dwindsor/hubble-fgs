@@ -34,6 +34,7 @@ import (
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 
+	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
