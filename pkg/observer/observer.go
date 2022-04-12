@@ -46,7 +46,7 @@ const (
 	mapRetryDelay = 1
 
 	// Max events to read from each ring in one go. This is used to
-	// reduce the likelyhood of events being out of order and the
+	// reduce the likelihood of events being out of order and the
 	// limit is required for HTTP/2 parsing to function correctly
 	// which relies on frame ordering (it does limited reordering)
 	maxEventsPerRing = 4

@@ -1639,13 +1639,13 @@ func runKprobeOverride(t *testing.T, hook string, checker ec.MultiResponseChecke
 
 	fd, err := syscall.Open(testFile, syscall.O_RDWR, 0x777)
 	if fd >= 0 {
-		t.Logf("syscall.Open succeded\n")
+		t.Logf("syscall.Open succeeded\n")
 		syscall.Close(fd)
 		t.Fatal()
 	}
 
 	if !errors.Is(err, testErr) {
-		t.Logf("syscall.Open succeded\n")
+		t.Logf("syscall.Open succeeded\n")
 		syscall.Close(fd)
 		t.Fatal()
 	}
