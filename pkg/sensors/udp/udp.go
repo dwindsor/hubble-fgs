@@ -48,7 +48,7 @@ var (
 
 	stats *lru.Cache
 
-	Config     *UdpSensorConfigValue
+	Config     *ConfigValue
 	configured = false
 )
 
@@ -206,11 +206,11 @@ type udpSensorConfigKey struct {
 }
 
 func (k *udpSensorConfigKey) String() string             { return fmt.Sprintf("Zero: %d", k.Zero) }
-func (k *udpSensorConfigKey) NewValue() bpf.MapValue     { return &UdpSensorConfigValue{} }
+func (k *udpSensorConfigKey) NewValue() bpf.MapValue     { return &ConfigValue{} }
 func (k *udpSensorConfigKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
 func (k *udpSensorConfigKey) DeepCopyMapKey() bpf.MapKey { return &udpSensorConfigKey{} }
 
-type UdpSensorConfigValue struct {
+type ConfigValue struct {
 	dnsPorts                 [maxDnsPorts]uint16
 	watermarkEnable          uint64
 	watermarkAvgWindowSizeMs uint64
@@ -218,15 +218,15 @@ type UdpSensorConfigValue struct {
 	watermarkTriggerPercent  uint64
 }
 
-func (v *UdpSensorConfigValue) String() string {
+func (v *ConfigValue) String() string {
 	return fmt.Sprintf("dnsPorts: %d, "+
 		"watermarkEnable: %d, "+
 		"watermarkAvgWindowSizeMs: %d, "+
 		"watermarkWindowSize: %d, "+
 		"watermarkTriggerPercent: %d", v.dnsPorts, v.watermarkEnable, v.watermarkAvgWindowSizeMs, v.watermarkWindowSize, v.watermarkTriggerPercent)
 }
-func (v *UdpSensorConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *UdpSensorConfigValue) DeepCopyMapValue() bpf.MapValue {
+func (v *ConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
+func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {
 	var n = *v
 	return &n
 }
@@ -444,7 +444,7 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
 	return nil, -1
 }
 
-func configureUdpSensor(mapDir string, mapName string, config *UdpSensorConfigValue) error {
+func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) error {
 	m, err := bpf.OpenMap(filepath.Join(mapDir, mapName))
 	if err != nil {
 		return err
@@ -523,14 +523,14 @@ func (udp *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
 }
 
-func handleUdpConnect(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleUdpConnect(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err
 	}
 	msgUnix := observer.MsgToIPv4Unix(&m)
-	return []observer.ObserverEvent{msgUnix}, nil
+	return []observer.Event{msgUnix}, nil
 }
 
 func init() {

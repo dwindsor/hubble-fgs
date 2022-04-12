@@ -45,7 +45,7 @@ const (
 	VT_UDP6 = VT_IP6 | VT_UDP
 )
 
-type VTupleImpl struct {
+type Impl struct {
 	srcAddr net.IP
 	dstAddr net.IP
 	srcPort uint16
@@ -53,34 +53,34 @@ type VTupleImpl struct {
 	proto   uint16
 }
 
-func (t *VTupleImpl) IsUDP() bool {
+func (t *Impl) IsUDP() bool {
 	return (t.proto & VT_L4_MASK) == VT_UDP
 }
 
-func (t *VTupleImpl) IsTCP() bool {
+func (t *Impl) IsTCP() bool {
 	return (t.proto & VT_L4_MASK) == VT_TCP
 }
-func (t *VTupleImpl) IsIP4() bool {
+func (t *Impl) IsIP4() bool {
 	return (t.proto & VT_L3_MASK) == VT_IP4
 }
-func (t *VTupleImpl) IsIP6() bool {
+func (t *Impl) IsIP6() bool {
 	return (t.proto & VT_L3_MASK) == VT_IP6
 }
-func (t *VTupleImpl) SrcAddr() net.IP {
+func (t *Impl) SrcAddr() net.IP {
 	return t.srcAddr[:]
 }
-func (t *VTupleImpl) DstAddr() net.IP {
+func (t *Impl) DstAddr() net.IP {
 	return t.dstAddr[:]
 }
-func (t *VTupleImpl) SrcPort() uint16 {
+func (t *Impl) SrcPort() uint16 {
 	return t.srcPort
 }
-func (t *VTupleImpl) DstPort() uint16 {
+func (t *Impl) DstPort() uint16 {
 	return t.dstPort
 }
 
-func CreateTCPv4(saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) VTupleImpl {
-	return VTupleImpl{
+func CreateTCPv4(saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) Impl {
+	return Impl{
 		proto:   VT_TCP4,
 		srcAddr: net.IPv4(saddr[0], saddr[1], saddr[2], saddr[3]),
 		dstAddr: net.IPv4(daddr[0], daddr[1], daddr[2], daddr[3]),
@@ -90,8 +90,8 @@ func CreateTCPv4(saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) VTupl
 
 }
 
-func CreateUDPv4(saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) VTupleImpl {
-	return VTupleImpl{
+func CreateUDPv4(saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) Impl {
+	return Impl{
 		proto:   VT_UDP4,
 		srcAddr: net.IPv4(saddr[0], saddr[1], saddr[2], saddr[3]),
 		dstAddr: net.IPv4(daddr[0], daddr[1], daddr[2], daddr[3]),
@@ -109,15 +109,15 @@ func (e *ErrorUnknownV4Protocol) Error() string {
 	return fmt.Sprintf("unsupported protocol: %d", e.proto)
 }
 
-func CreateVTupleV4(proto byte, saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) (VTupleImpl, error) {
+func CreateVTupleV4(proto byte, saddr [4]byte, sport uint16, daddr [4]byte, dport uint16) (Impl, error) {
 
 	switch proto {
 	case VT_TCP, VT_UDP:
 	default:
-		return VTupleImpl{}, &ErrorUnknownV4Protocol{proto: proto}
+		return Impl{}, &ErrorUnknownV4Protocol{proto: proto}
 	}
 
-	return VTupleImpl{
+	return Impl{
 		proto:   VT_IP4 | uint16(proto),
 		srcAddr: net.IPv4(saddr[0], saddr[1], saddr[2], saddr[3]),
 		dstAddr: net.IPv4(daddr[0], daddr[1], daddr[2], daddr[3]),

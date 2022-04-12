@@ -50,7 +50,7 @@ var testNameToSheetId = map[string]int64{
 	"TestEnvoyOverhead": 14732349,
 }
 
-func summaryToSheetId(summary *bench.BenchSummary) int64 {
+func summaryToSheetId(summary *bench.Summary) int64 {
 	if id, ok := testNameToSheetId[summary.Args.TestName]; ok {
 		return id
 	}
@@ -73,9 +73,9 @@ func main() {
 		log.Fatalf("NewService error: %s", err)
 	}
 
-	summaries := make(map[string]*bench.BenchSummary)
+	summaries := make(map[string]*bench.Summary)
 	for _, file := range os.Args[4:] {
-		var summary bench.BenchSummary
+		var summary bench.Summary
 		f, err := os.Open(file)
 		if err != nil {
 			log.Fatalf("Unable to open %s: %s", file, err)
@@ -104,7 +104,7 @@ func durationToSecs(d time.Duration) float64 {
 	return float64(d) / float64(time.Second)
 }
 
-func getBpfStatForSheets(name string, s *bench.BenchSummary) float64 {
+func getBpfStatForSheets(name string, s *bench.Summary) float64 {
 	for _, stat := range s.BpfStats {
 		if stat.Name == name {
 			if stat.RunCnt > 0 {
@@ -187,7 +187,7 @@ func valueToCellData(value interface{}) *sheets.CellData {
 	return &sheets.CellData{UserEnteredValue: ev}
 }
 
-func valuesFromSummary(gitRev string, summary *bench.BenchSummary) []*sheets.CellData {
+func valuesFromSummary(gitRev string, summary *bench.Summary) []*sheets.CellData {
 	fgsSystemCPUPercent := 100.0 * float64(summary.FgsCPUUsage.SystemTime) / float64(summary.TestDurationNanos)
 	fgsUserCPUPercent := 100.0 * float64(summary.FgsCPUUsage.UserTime) / float64(summary.TestDurationNanos)
 
@@ -265,7 +265,7 @@ func valuesFromSummary(gitRev string, summary *bench.BenchSummary) []*sheets.Cel
 
 }
 
-func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *bench.BenchSummary) {
+func publishToSheets(sheetsService *sheets.Service, gitRev string, summary *bench.Summary) {
 
 	sheetId := summaryToSheetId(summary)
 	values := valuesFromSummary(gitRev, summary)
@@ -323,7 +323,7 @@ func getDerivedDataColumn(sheetsService *sheets.Service, column string) float64 
 	return f
 }
 
-func getRatePercent(testA, testB string, summaries map[string]*bench.BenchSummary) float64 {
+func getRatePercent(testA, testB string, summaries map[string]*bench.Summary) float64 {
 	sumA, okA := summaries[testA]
 	sumB, okB := summaries[testB]
 	if !okA || !okB {
@@ -350,7 +350,7 @@ type PRCommentData struct {
 
 // Pretty-print the benchmark results for the PR comment that includes the difference to the latest
 // nightly run.
-func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries map[string]*bench.BenchSummary) {
+func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries map[string]*bench.Summary) {
 	fmtFloat := func(f float64) string {
 		return fmt.Sprintf("%.1f", f)
 	}

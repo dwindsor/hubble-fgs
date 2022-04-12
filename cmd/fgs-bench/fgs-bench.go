@@ -81,7 +81,7 @@ func main() {
 		}
 	}
 
-	args := &bench.BenchArguments{
+	args := &bench.Arguments{
 		FgsEnableTLS:  tlsParser,
 		FgsEnableHTTP: httpParser,
 		FgsDebug:      *debug,

@@ -23,11 +23,11 @@ import (
 	dto "github.com/prometheus/client_model/go"
 )
 
-// BenchSummary gathers benchmark results. Serializes to JSON.
+// Summary gathers benchmark results. Serializes to JSON.
 // This is updated from multiple places concurrently, but currently
 // there is no overlap on writes, so this isn't yet protected by a mutex.
-type BenchSummary struct {
-	Args *BenchArguments
+type Summary struct {
+	Args *Arguments
 
 	TLSEvents, HTTPEvents, ExitEvents, ExecEvents, TCPEvents int64
 
@@ -49,7 +49,7 @@ type BenchSummary struct {
 	Error string
 }
 
-func (s *BenchSummary) Dump() {
+func (s *Summary) Dump() {
 	err := json.NewEncoder(os.Stdout).Encode(s)
 	if err != nil {
 		log.Fatalf("json.Encode: %v", err)
@@ -63,7 +63,7 @@ func getGaugeValue(gauge prometheus.Gauge) int {
 	return int(*d.Gauge.Value)
 }
 
-func (s *BenchSummary) PrettyPrint() {
+func (s *Summary) PrettyPrint() {
 	color.Set(color.FgBlue)
 	fmt.Println("Benchmark summary")
 	fmt.Println("-----------------")
@@ -114,7 +114,7 @@ func (s *BenchSummary) PrettyPrint() {
 	}
 }
 
-func (s *BenchSummary) WriteFile(path string) error {
+func (s *Summary) WriteFile(path string) error {
 	f, err := os.OpenFile(path, os.O_WRONLY|os.O_CREATE|os.O_TRUNC, 0666)
 	if err != nil {
 		return err
@@ -123,8 +123,8 @@ func (s *BenchSummary) WriteFile(path string) error {
 	return json.NewEncoder(f).Encode(s)
 }
 
-func newBenchSummary(args *BenchArguments) *BenchSummary {
-	return &BenchSummary{
+func newSummary(args *Arguments) *Summary {
+	return &Summary{
 		StartTime: time.Now(),
 		Args:      args,
 	}

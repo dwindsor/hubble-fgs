@@ -626,7 +626,7 @@ func ReadArgBytes(r *bytes.Reader, index int) (*api.MsgGenericKprobeArgBytes, er
 
 }
 
-func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgGenericKprobe{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -809,7 +809,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 		}
 	}
 	if unix == nil {
-		return []observer.ObserverEvent{}, err
+		return []observer.Event{}, err
 	}
 	// Last layer of filtering done before Notify upper layers. This is
 	// needed for filters and actions that can't be committed in kernel
@@ -818,10 +818,10 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	// Alternatively, some actions have no kernel analog, such as pause
 	// pod.
 	if filterReturnArg(gk.userReturnFilters, retArg) {
-		return []observer.ObserverEvent{}, err
+		return []observer.Event{}, err
 	}
 
-	return []observer.ObserverEvent{unix}, err
+	return []observer.Event{unix}, err
 }
 
 func filterReturnArg(userReturnFilters []v1alpha1.ArgSelector, retArg *api.MsgGenericKprobeArg) bool {

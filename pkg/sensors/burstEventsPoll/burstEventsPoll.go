@@ -63,14 +63,14 @@ func msgToProcessNetworkBurstUnix(m *api.MsgProcessNetworkBurstEvent) *api.MsgPr
 	return m
 }
 
-func HandleProcessNetworkBurst(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func HandleProcessNetworkBurst(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgProcessNetworkBurstEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err
 	}
 	msgUnix := msgToProcessNetworkBurstUnix(&m)
-	return []observer.ObserverEvent{msgUnix}, nil
+	return []observer.Event{msgUnix}, nil
 }
 
 func Start(spec *v1alpha1.TracingPolicySpec) {

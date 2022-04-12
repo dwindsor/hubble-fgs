@@ -60,9 +60,9 @@ func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue {
 	return &ExecveValue{}
 }
 
-func (k *Observer) procKernel() ObserverProcs {
+func (k *Observer) procKernel() Procs {
 	kernelArgs := []byte("<kernel>\u0000")
-	return ObserverProcs{
+	return Procs{
 		psize:       uint32(api.MSG_SIZEOF_EXECVE + len(kernelArgs) + api.MSG_SIZEOF_CWD),
 		ppid:        kernelPid,
 		pnspid:      0,
@@ -83,7 +83,7 @@ func (k *Observer) procKernel() ObserverProcs {
 	}
 }
 
-func (k *Observer) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
+func (k *Observer) pushExecveEvents(p Procs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
 	var err error
 	var i int
 
@@ -147,7 +147,7 @@ func (k *Observer) pushExecveEvents(p ObserverProcs, tcpEntries map[uint32]procT
 	k.pushTCPEvents(&m, tcpEntries, writeMaps, pushExecve)
 }
 
-func (k *Observer) writeExecveMap(procs []ObserverProcs) {
+func (k *Observer) writeExecveMap(procs []Procs) {
 	execveMap := sensors.GetExecveMap()
 
 	if execveMap.PinState.IsDisabled() {

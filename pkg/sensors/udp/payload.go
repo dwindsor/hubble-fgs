@@ -22,7 +22,7 @@ const (
 	maxDnsPorts    = 4
 )
 
-func handleUdpPayload(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
@@ -32,7 +32,7 @@ func handleUdpPayload(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	return handleUdpDns(&m, r)
 }
 
-func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.Event, error) {
 	var p dnsmessage.Parser
 
 	// Annotate msg with user space parser op type
@@ -120,14 +120,14 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 		SockCookie: m.SockCookie,
 		Dns:        msgDns,
 	}
-	return []observer.ObserverEvent{msgUnix}, nil
+	return []observer.Event{msgUnix}, nil
 }
 
 // ParseUdpSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP options.
 //
-func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*UdpSensorConfigValue, error) {
-	config := UdpSensorConfigValue{}
+func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*ConfigValue, error) {
+	config := ConfigValue{}
 	ParseDnsSpec(&config, spec)
 	ParseUdpBurstSpec(&config, spec)
 
@@ -139,7 +139,7 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*UdpSensorConfigValue, erro
 //
 // The maximum number of DNS ports is fixed to maxDnsPorts. Changing this requires changing
 // the map in bpf_inet.h.
-func ParseDnsSpec(config *UdpSensorConfigValue, spec *v1alpha1.TracingPolicySpec) {
+func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Dns.Enable {
 		// Only consider the first maxDnsPorts ports that are specified
 		if len(spec.Parser.Dns.Ports) == 0 {
@@ -159,7 +159,7 @@ func ParseDnsSpec(config *UdpSensorConfigValue, spec *v1alpha1.TracingPolicySpec
 
 // ParseUdpBurst parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP bursts and run the monitor on it.
-func ParseUdpBurstSpec(config *UdpSensorConfigValue, spec *v1alpha1.TracingPolicySpec) {
+func ParseUdpBurstSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
 		config.watermarkEnable = 1
 		// WindowSize is in milliseconds

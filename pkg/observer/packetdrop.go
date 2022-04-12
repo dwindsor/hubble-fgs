@@ -110,7 +110,7 @@ func (pd *PacketdropSensorImpl) SetConfig(key_ string, param string) error {
 	return nil
 }
 
-func msgTuple4ToVTuple(mt *api.MsgIPv4Tuple) (vtuple.VTupleImpl, error) {
+func msgTuple4ToVTuple(mt *api.MsgIPv4Tuple) (vtuple.Impl, error) {
 
 	getNetPort := func(np uint16) uint16 {
 		b16 := make([]byte, 2)

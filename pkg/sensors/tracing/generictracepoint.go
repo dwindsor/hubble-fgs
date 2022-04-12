@@ -99,7 +99,7 @@ type genericTracepointArg struct {
 	nopTy bool
 
 	// format of the field
-	format *tracepoint.TracepointFieldFormat
+	format *tracepoint.FieldFormat
 
 	// bpf generic type
 	genericTypeId int
@@ -474,7 +474,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 	)
 }
 
-func handleGenericTracepoint(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgGenericTracepoint{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -492,7 +492,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.ObserverEvent, error) 
 	tp, err := genericTracepointTable.getTracepoint(int(m.Id))
 	if err != nil {
 		logger.GetLogger().WithField("id", m.Id).WithError(err).Warnf("genericTracepoint info not found")
-		return []observer.ObserverEvent{unix}, nil
+		return []observer.Event{unix}, nil
 	}
 
 	unix.Subsys = tp.Info.Subsys
@@ -533,7 +533,7 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.ObserverEvent, error) 
 			logger.GetLogger().Warnf("handleGenericTracepoint: ignoring:  %+v", out)
 		}
 	}
-	return []observer.ObserverEvent{unix}, nil
+	return []observer.Event{unix}, nil
 }
 
 func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

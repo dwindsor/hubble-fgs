@@ -62,14 +62,14 @@ const (
 var (
 	pollTimeout = 5 * time.Second
 
-	eventHandler = make(map[uint8]func(r *bytes.Reader) ([]ObserverEvent, error))
+	eventHandler = make(map[uint8]func(r *bytes.Reader) ([]Event, error))
 
 	observerList []*Observer
 )
 
-type ObserverEvent interface{}
+type Event interface{}
 
-func RegisterEventHandlerAtInit(ev uint8, handler func(r *bytes.Reader) ([]ObserverEvent, error)) {
+func RegisterEventHandlerAtInit(ev uint8, handler func(r *bytes.Reader) ([]Event, error)) {
 	eventHandler[ev] = handler
 }
 

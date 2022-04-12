@@ -121,7 +121,7 @@ func (k *Observer) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint6
 	return nil
 }
 
-type ObserverProcs struct {
+type Procs struct {
 	psize                uint32
 	ppid                 uint32
 	pnspid               uint32
@@ -151,7 +151,7 @@ type ObserverProcs struct {
 	user_ns              uint32
 }
 
-func (k *Observer) pushEvents(procs []ObserverProcs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
+func (k *Observer) pushEvents(procs []Procs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
 	if writeMaps {
 		k.writeExecveMap(procs)
 	}
@@ -208,9 +208,9 @@ func getProcStatStrings(procStat string) []string {
 	return output
 }
 
-func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
+func (k *Observer) getRunningProcs(write, push bool) []Procs {
 	var entryMap = make(map[uint32]procTCPEntry)
-	var procs []ObserverProcs
+	var procs []Procs
 	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
 	if err != nil {
 		k.log.WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
@@ -342,7 +342,7 @@ func (k *Observer) getRunningProcs(write, push bool) []ObserverProcs {
 		pcmdsUTF := stringToUTF8(pcmdline)
 		cmdsUTF := stringToUTF8(cmdline)
 
-		p := ObserverProcs{
+		p := Procs{
 			ppid: uint32(_ppid), pnspid: pnspid, pargs: pcmdsUTF,
 			pflags: api.EventProcFS | api.EventNeedsCWD | api.EventNeedsAUID,
 			pktime: pktime,

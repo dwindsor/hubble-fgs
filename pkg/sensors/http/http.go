@@ -302,7 +302,7 @@ var (
 )
 
 /* HTTP Event handler */
-func handleHTTP(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleHTTP(r *bytes.Reader) ([]observer.Event, error) {
 	m := &api.MsgHttpEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), m)
 	if err != nil {
@@ -311,7 +311,7 @@ func handleHTTP(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	return msgToHTTPEventUnix(m)
 }
 
-func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
+func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 	unix := &api.MsgHttpEventUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
@@ -399,7 +399,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 	// to land. Instead of spending time to work out per port disabling just
 	// hard code and we will revert when fix lands.
 	if !aggregateEnable || unix.Tuple.DPort == 47873 {
-		return []observer.ObserverEvent{unix}, nil
+		return []observer.Event{unix}, nil
 	}
 
 	if httpNeedsMoreBytes(m.Request.Flags) {
@@ -443,7 +443,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
 			return nil, nil
 		}
 	}
-	return []observer.ObserverEvent{unix}, nil
+	return []observer.Event{unix}, nil
 }
 
 // http2State is the state required to decode header frames. Specific to a connection and direction.
@@ -454,7 +454,7 @@ type http2State struct {
 	frameQueue *http2FrameQueue
 }
 
-func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error) {
+func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 
 	var state *http2State
 	if x, ok := http2StateCache.Get(m.Tuple); ok {
@@ -473,7 +473,7 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.ObserverEvent, error)
 	// Push the header frame into the queue for ordering.
 	state.frameQueue.push(m)
 
-	events := make([]observer.ObserverEvent, 0, 16)
+	events := make([]observer.Event, 0, 16)
 	for {
 		// Pop frames from the queue in order.
 		m := state.frameQueue.pop()

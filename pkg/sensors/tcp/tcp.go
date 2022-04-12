@@ -135,7 +135,7 @@ func correctedStatsEvent(tcp *api.MsgIPv4EventUnix) (*api.MsgIPv4EventUnix, erro
 	return tcp, nil
 }
 
-func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -145,10 +145,10 @@ func handleTcpStats(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	if err != nil {
 		return nil, nil
 	}
-	return []observer.ObserverEvent{tcp}, nil
+	return []observer.Event{tcp}, nil
 }
 
-func handleTcpClose(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -162,21 +162,21 @@ func handleTcpClose(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 		c.Common.Op = api.MsgOpIPv4TCPStats
 		stats.Remove(c.Tuple)
 		if err != nil {
-			return []observer.ObserverEvent{tcp}, nil
+			return []observer.Event{tcp}, nil
 		}
-		return []observer.ObserverEvent{tcp, c}, nil
+		return []observer.Event{tcp, c}, nil
 	}
-	return []observer.ObserverEvent{tcp}, nil
+	return []observer.Event{tcp}, nil
 }
 
-func handleTcp(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
 	}
 	tcp := observer.MsgToIPv4Unix(&m)
-	return []observer.ObserverEvent{tcp}, nil
+	return []observer.Event{tcp}, nil
 }
 
 func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {

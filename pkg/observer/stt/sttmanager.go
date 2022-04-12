@@ -19,7 +19,7 @@ import (
 )
 
 // StackTrace Tree Manager
-type SttManagerHandle chan<- SttMgOp
+type Handle chan<- SttMgOp
 
 // Operations
 
@@ -61,7 +61,7 @@ func (s *SttMgTreeInsert) SttMgOpDone(e error)  { s.retChan <- e }
 func (s *SttMgTreeToProto) SttMgOpDone(e error) { s.RetChan <- e }
 func (s *SttMgStop) SttMgOpDone(e error)        { s.retChan <- e }
 
-func StartSttManager() SttManagerHandle {
+func StartSttManager() Handle {
 	c := make(chan SttMgOp)
 	treeMap := make(map[string]*stt.Sttree)
 	go func() {
@@ -110,9 +110,9 @@ func StartSttManager() SttManagerHandle {
 	return c
 }
 
-func (h SttManagerHandle) CreateTree(tname string) error {
+func (h Handle) CreateTree(tname string) error {
 	if h == nil {
-		return fmt.Errorf("CreateTree failed, SttManagerHandle is nil")
+		return fmt.Errorf("CreateTree failed, Handle is nil")
 	}
 
 	retc := make(chan error)
@@ -124,9 +124,9 @@ func (h SttManagerHandle) CreateTree(tname string) error {
 	return <-retc
 }
 
-func (h SttManagerHandle) DestroyTree(tname string) error {
+func (h Handle) DestroyTree(tname string) error {
 	if h == nil {
-		return fmt.Errorf("DestroyTree failed, SttManagerHandle is nil")
+		return fmt.Errorf("DestroyTree failed, Handle is nil")
 	}
 
 	retc := make(chan error)
@@ -138,9 +138,9 @@ func (h SttManagerHandle) DestroyTree(tname string) error {
 	return <-retc
 }
 
-func (h SttManagerHandle) Insert(tname string, stt *stt.Stt) error {
+func (h Handle) Insert(tname string, stt *stt.Stt) error {
 	if h == nil {
-		return fmt.Errorf("Instert failed, SttManagerHandle is nil")
+		return fmt.Errorf("Instert failed, Handle is nil")
 	}
 
 	retc := make(chan error)

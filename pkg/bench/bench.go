@@ -39,7 +39,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 )
 
-type BenchArguments struct {
+type Arguments struct {
 	TestName      string
 	Fgs           bool
 	FgsEnableTLS  bool
@@ -56,12 +56,12 @@ type BenchArguments struct {
 	Baseline bool
 }
 
-func (args *BenchArguments) String() string {
+func (args *Arguments) String() string {
 	return fmt.Sprintf("sink=%s, source=%s, proxy=%s, source-args={%s}, fgs-tls=%v, json-encode=%v",
 		args.Sink, args.Source, args.Proxy, args.SourceArgs.String(), args.FgsEnableTLS, args.FgsJSONEncode)
 }
 
-func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx context.Context, ready chan bool) {
+func runFgs(sinkPort int, args *Arguments, summary *Summary, ctx context.Context, ready chan bool) {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
@@ -124,7 +124,7 @@ func runFgs(sinkPort int, args *BenchArguments, summary *BenchSummary, ctx conte
 }
 
 type benchmarkListener struct {
-	summary  *BenchSummary
+	summary  *Summary
 	ready    chan bool
 	ctx      context.Context
 	observer *observer.Observer
@@ -170,7 +170,7 @@ func (te *timingEncoder) Encode(v interface{}) error {
 	return err
 }
 
-func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary *BenchSummary) error {
+func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary *Summary) error {
 	processCacheSize := 32768
 	enableProcessCred := false
 	enableProcessNs := false
@@ -216,11 +216,11 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	return nil
 }
 
-func RunBenchmark(args *BenchArguments) (summary *BenchSummary) {
+func RunBenchmark(args *Arguments) (summary *Summary) {
 	ctx, cancel := context.WithCancel(context.Background())
 	go sigHandler(ctx, cancel)
 
-	summary = newBenchSummary(args)
+	summary = newSummary(args)
 	summary.StartTime = time.Now()
 
 	// NOTE(JM): Currently the HTTP parser also requires the TLS parser to be loaded.
@@ -338,7 +338,7 @@ func sigHandler(ctx context.Context, cancel context.CancelFunc) {
 	}
 }
 
-func generateCrd(args *BenchArguments, sinkPort int) string {
+func generateCrd(args *Arguments, sinkPort int) string {
 	tmpl := `
 apiVersion: hubble-enterprise.io/v1
 metadata:

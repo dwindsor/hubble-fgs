@@ -28,27 +28,27 @@ type Listener interface {
 	io.Closer
 }
 
-// ObserverChannel is a Listener that gob encodes events and sends them to a
+// Channel is a Listener that gob encodes events and sends them to a
 // network connection.
-type ObserverChannel struct {
+type Channel struct {
 	conn    net.Conn
 	encoder *gob.Encoder
 }
 
-// NewObserverChannel initializes ObserverChannel.
-func NewObserverChannel(conn net.Conn) *ObserverChannel {
-	return &ObserverChannel{
+// NewChannel initializes Channel.
+func NewChannel(conn net.Conn) *Channel {
+	return &Channel{
 		conn:    conn,
 		encoder: gob.NewEncoder(conn),
 	}
 }
 
 // Notify implements Listener.Notify.
-func (o ObserverChannel) Notify(msg interface{}) error {
+func (o Channel) Notify(msg interface{}) error {
 	return o.encoder.Encode(msg)
 }
 
 // Close implements Listener.Notify.
-func (o ObserverChannel) Close() error {
+func (o Channel) Close() error {
 	return o.conn.Close()
 }

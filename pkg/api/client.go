@@ -779,7 +779,7 @@ type StackAddr struct {
 type MsgKfreeSkbUnix struct {
 	Common    MsgCommon
 	Calltrace []StackAddr
-	Tuple     vtuple.VTupleImpl
+	Tuple     vtuple.Impl
 }
 
 type KprobeArgs struct {

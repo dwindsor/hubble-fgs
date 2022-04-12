@@ -17,7 +17,7 @@ import (
 )
 
 type VTRes struct {
-	vt  vtuple.VTupleImpl
+	vt  vtuple.Impl
 	res bool
 }
 

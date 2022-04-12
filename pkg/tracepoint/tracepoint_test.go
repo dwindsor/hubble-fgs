@@ -30,16 +30,16 @@ func TestTracepointLoadFormat(t *testing.T) {
 		t.FailNow()
 	}
 
-	var commField TracepointFieldFormat
+	var commField FieldFormat
 	if kernels.MinKernelVersion("5.17.0") {
-		commField = TracepointFieldFormat{
+		commField = FieldFormat{
 			FieldStr: "char comm[TASK_COMM_LEN]",
 			Offset:   12,
 			Size:     16,
 			IsSigned: true,
 		}
 	} else {
-		commField = TracepointFieldFormat{
+		commField = FieldFormat{
 			FieldStr: "char comm[16]",
 			Offset:   12,
 			Size:     16,
@@ -47,45 +47,45 @@ func TestTracepointLoadFormat(t *testing.T) {
 		}
 	}
 
-	fields := []TracepointFieldFormat{
-		TracepointFieldFormat{
+	fields := []FieldFormat{
+		FieldFormat{
 			FieldStr: "unsigned short common_type",
 			Offset:   0,
 			Size:     2,
 			IsSigned: false,
 		},
-		TracepointFieldFormat{
+		FieldFormat{
 			FieldStr: "unsigned char common_flags",
 			Offset:   2,
 			Size:     1,
 			IsSigned: false,
 		},
-		TracepointFieldFormat{
+		FieldFormat{
 			FieldStr: "unsigned char common_preempt_count",
 			Offset:   3,
 			Size:     1,
 			IsSigned: false,
 		},
-		TracepointFieldFormat{
+		FieldFormat{
 			FieldStr: "int common_pid",
 			Offset:   4,
 			Size:     4,
 			IsSigned: true,
 		},
-		TracepointFieldFormat{
+		FieldFormat{
 			FieldStr: "pid_t pid",
 			Offset:   8,
 			Size:     4,
 			IsSigned: true,
 		},
 		commField,
-		TracepointFieldFormat{
+		FieldFormat{
 			FieldStr: "unsigned long clone_flags",
 			Offset:   32,
 			Size:     8,
 			IsSigned: false,
 		},
-		TracepointFieldFormat{
+		FieldFormat{
 			FieldStr: "short oom_score_adj",
 			Offset:   40,
 			Size:     2,

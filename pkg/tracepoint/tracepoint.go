@@ -32,18 +32,18 @@ const (
 type Tracepoint struct {
 	Subsys string
 	Event  string
-	Format *TracepointFormat
+	Format *Format
 }
 
-// TracepointFormat contains the details for the tracepoint: name, id, and fields
-type TracepointFormat struct {
+// Format contains the details for the tracepoint: name, id, and fields
+type Format struct {
 	Name   string
 	ID     int
-	Fields []TracepointFieldFormat
+	Fields []FieldFormat
 }
 
-// TracepointFieldFormat describes the format for each of the tracepoint fields
-type TracepointFieldFormat struct {
+// FieldFormat describes the format for each of the tracepoint fields
+type FieldFormat struct {
 	FieldStr string
 	Field    *Field
 	Offset   uint
@@ -51,7 +51,7 @@ type TracepointFieldFormat struct {
 	IsSigned bool
 }
 
-func (tff *TracepointFieldFormat) ParseField() error {
+func (tff *FieldFormat) ParseField() error {
 	ty, err := parseField(tff.FieldStr)
 	if err != nil {
 		return err
@@ -85,7 +85,7 @@ func (gt *Tracepoint) LoadFormat() error {
 //         field:unsigned int fd;  offset:16;      size:8; signed:0;
 //         field:off_t offset;     offset:24;      size:8; signed:0;
 //         field:unsigned int whence;      offset:32;      size:8; signed:0;
-func tracepointLoadFormat(subsys string, event string) (*TracepointFormat, error) {
+func tracepointLoadFormat(subsys string, event string) (*Format, error) {
 	fname := fmt.Sprintf("%s/%s/%s/format", tracepointsPath, subsys, event)
 	f, err := os.Open(fname)
 	if err != nil {
@@ -93,7 +93,7 @@ func tracepointLoadFormat(subsys string, event string) (*TracepointFormat, error
 	}
 	defer f.Close()
 
-	var ret TracepointFormat
+	var ret Format
 	var ok bool
 	scanner := bufio.NewScanner(f)
 
@@ -180,7 +180,7 @@ FieldsLoop:
 			return nil, fmt.Errorf("parsing signed field failed: %w", err)
 		}
 
-		ret.Fields = append(ret.Fields, TracepointFieldFormat{
+		ret.Fields = append(ret.Fields, FieldFormat{
 			FieldStr: res[1],
 			Offset:   uint(offset64),
 			Size:     uint(size64),

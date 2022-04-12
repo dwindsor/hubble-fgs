@@ -56,7 +56,7 @@ func TestMain(m *testing.M) {
 // has a duration setting and the setup phase may be long to run over and over. Using "testing"
 // is useful as it combines with the build and provides test filtering.
 
-func checkSummaryForErrors(t *testing.T, summary *BenchSummary) {
+func checkSummaryForErrors(t *testing.T, summary *Summary) {
 	if summary.Error != "" {
 		t.Fatalf("test failed: %s", summary.Error)
 	}
@@ -71,7 +71,7 @@ func TestBenchBaseline(t *testing.T) {
 	for _, srcProxySink := range benchmarkSourceProxySinks {
 		t.Run(srcProxySink.source, func(t *testing.T) {
 			summary := RunBenchmark(
-				&BenchArguments{
+				&Arguments{
 					TestName:   t.Name(),
 					SourceArgs: SourceArgs{Duration: benchmarkDuration},
 					Source:     SourceNameOrPanic(srcProxySink.source),
@@ -98,7 +98,7 @@ func TestEnvoyOverhead(t *testing.T) {
 
 	source, proxy, sink := "http-rr-go", "envoy", "http-nginx"
 	summary := RunBenchmark(
-		&BenchArguments{
+		&Arguments{
 			TestName:   t.Name(),
 			SourceArgs: SourceArgs{Duration: benchmarkDuration},
 			Source:     SourceNameOrPanic(source),
@@ -113,14 +113,14 @@ func TestEnvoyOverhead(t *testing.T) {
 }
 
 func TestFGSNoTLS(t *testing.T) {
-	benchmarkFgs(t, &BenchArguments{
+	benchmarkFgs(t, &Arguments{
 		FgsEnableTLS:  false,
 		FgsJSONEncode: true,
 	})
 }
 
 func TestFGSTLS(t *testing.T) {
-	benchmarkFgs(t, &BenchArguments{
+	benchmarkFgs(t, &Arguments{
 		FgsEnableTLS:  true,
 		FgsJSONEncode: true,
 	})
@@ -130,7 +130,7 @@ func TestFGSHTTP(t *testing.T) {
 	viper.Set("log-level", "error")
 	viper.Set("debug", false)
 	summary := RunBenchmark(
-		&BenchArguments{
+		&Arguments{
 			TestName:   t.Name(),
 			SourceArgs: SourceArgs{Duration: benchmarkDuration},
 			Source:     SourceNameOrPanic("http-crr-go"),
@@ -143,7 +143,7 @@ func TestFGSHTTP(t *testing.T) {
 	checkSummaryForErrors(t, summary)
 }
 
-func benchmarkFgs(t *testing.T, args *BenchArguments) {
+func benchmarkFgs(t *testing.T, args *Arguments) {
 	viper.Set("log-level", "error")
 	viper.Set("debug", false)
 

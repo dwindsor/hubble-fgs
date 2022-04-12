@@ -56,7 +56,7 @@ func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errSt
 	return unix
 }
 
-func HandleTLS(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func HandleTLS(r *bytes.Reader) ([]observer.Event, error) {
 	var errState api.MsgTLSParserState
 	var certStrings []string
 	var m *api.MsgTLSEvent
@@ -79,13 +79,13 @@ func HandleTLS(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 		return nil, nil
 	}
 
-	return []observer.ObserverEvent{msgToTLSEventUnix(m, certStrings, errCode, errState)}, nil
+	return []observer.Event{msgToTLSEventUnix(m, certStrings, errCode, errState)}, nil
 }
 
 // HandleTLSCont handles a TLS continuation event that was split up by the
 // kernel. It will merge them together and pass it up to the TLS Listener as a
 // full event.
-func HandleTLSCont(r *bytes.Reader) ([]observer.ObserverEvent, error) {
+func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	var certStrings []string
 	var errCode uint32
 	var errState api.MsgTLSParserState
@@ -147,5 +147,5 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 	}
 
 	delete(tlsInProgress, key)
-	return []observer.ObserverEvent{msgToTLSEventUnix(m.tls, certStrings, errCode, errState)}, nil
+	return []observer.Event{msgToTLSEventUnix(m.tls, certStrings, errCode, errState)}, nil
 }

@@ -473,7 +473,7 @@ func (h *Manager) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTra
 // at runtime.
 type Manager struct {
 	sensorCtl  sensorCtlHandle
-	STTManager sttManager.SttManagerHandle
+	STTManager sttManager.Handle
 }
 
 // There are 6 commands that can be passed to the controller goroutine:
@@ -524,7 +524,7 @@ type sensorRemove struct {
 type sensorEnable struct {
 	ctx              context.Context
 	name             string
-	sttManagerHandle sttManager.SttManagerHandle
+	sttManagerHandle sttManager.Handle
 	retChan          chan error
 }
 
@@ -532,7 +532,7 @@ type sensorEnable struct {
 type sensorDisable struct {
 	ctx              context.Context
 	name             string
-	sttManagerHandle sttManager.SttManagerHandle
+	sttManagerHandle sttManager.Handle
 	retChan          chan error
 }
 
@@ -568,7 +568,7 @@ type sensorCtlStop struct {
 }
 
 type LoadArg struct {
-	STTManagerHandle sttManager.SttManagerHandle
+	STTManagerHandle sttManager.Handle
 }
 type UnloadArg = LoadArg
 
