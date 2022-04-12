@@ -345,7 +345,7 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 	}, nil
 }
 
-func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, version, verbose int) (error, int) {
+func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, version, verbose int) (int, error) {
 	tracepointLog = logger.GetLogger()
 
 	btfCtxOffsetFn := func(i int) string {
@@ -354,17 +354,17 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 
 	tpIdx, ok := load.LoaderData.(int)
 	if !ok {
-		return fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int)", load.Name, load.LoaderData, load.LoaderData), 0
+		return 0, fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int)", load.Name, load.LoaderData, load.LoaderData)
 	}
 
 	tp, err := genericTracepointTable.getTracepoint(tpIdx)
 	if err != nil {
-		return fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.Attach, err), 0
+		return 0, fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.Attach, err)
 	}
 
 	btfObj, err := btf.NewBTF()
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 	defer btfObj.Close()
 
@@ -377,31 +377,31 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 
 	ret := btfObj.AddEnum(genericFuncArgsEnum, 4)
 	if ret < 0 {
-		return fmt.Errorf("failed to add %s=%d BTF enum (ret=%d)", genericFuncArgsEnum, 4, ret), 0
+		return 0, fmt.Errorf("failed to add %s=%d BTF enum (ret=%d)", genericFuncArgsEnum, 4, ret)
 	}
 
 	if err := btfAddEnumValue(kprobeGenericId, tp.tableIdx); err != nil {
-		return err, 0
+		return 0, err
 	}
 
 	// iterate over output arguments
 	for i := range tp.args {
 		tpArg := &tp.args[i]
 		if err := btfAddEnumValue(btfCtxOffsetFn(i), tpArg.CtxOffset); err != nil {
-			return err, 0
+			return 0, err
 		}
 
 		_, err := tpArg.setGenericTypeId()
 		if err != nil {
-			return fmt.Errorf("output argument %v unsupported: %w", tpArg, err), 0
+			return 0, fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
 		}
 
 		if err := btfAddEnumValue(kprobeArgToString(i), tpArg.genericTypeId); err != nil {
-			return err, 0
+			return 0, err
 		}
 
 		if err := btfAddEnumValue(kprobeArgMToString(i), tpArg.MetaArg); err != nil {
-			return err, 0
+			return 0, err
 		}
 
 		tracepointLog.Infof("configured argument #%d: %+v (type:%d)", i, tpArg, tpArg.genericTypeId)
@@ -410,21 +410,21 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 	// nop args
 	for i := len(tp.args); i < genericTP_MaxArgs; i++ {
 		if err := btfAddEnumValue(btfCtxOffsetFn(i), 0); err != nil {
-			return err, 0
+			return 0, err
 		}
 
 		if err := btfAddEnumValue(kprobeArgToString(i), gt.GenericNopType); err != nil {
-			return err, 0
+			return 0, err
 		}
 
 		if err := btfAddEnumValue(kprobeArgMToString(i), 0); err != nil {
-			return err, 0
+			return 0, err
 		}
 	}
 
 	// actions nop
 	if err := btfAddEnumValue("sigkill", 0); err != nil {
-		return err, 0
+		return 0, err
 	}
 
 	// rewrite arg index
@@ -433,7 +433,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 
 		ty, err := tpArg.setGenericTypeId()
 		if err != nil {
-			return fmt.Errorf("output argument %v unsupported: %w", tpArg, err), 0
+			return 0, fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
 		}
 
 		if len(tp.Selectors.Args) > i && tp.Selectors.Args[i].Type == "" {
@@ -458,7 +458,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 
 	kernelSelectors, err := selectors.InitTracepointSelectors(tp.Selectors)
 	if err != nil {
-		return err, 0
+		return 0, err
 	}
 
 	return bpf.LoadTracepointArgsProgram(
@@ -546,6 +546,6 @@ func (t *observerTracepointSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec)
 	return nil, nil
 }
 
-func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	return LoadGenericTracepointSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose)
 }

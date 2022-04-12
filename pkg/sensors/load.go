@@ -291,20 +291,20 @@ func observerLoadInstance(stopCtx context.Context, bpfDir, mapDir, ciliumDir str
 		"kern_version": version,
 	}).Debug("observerLoadInstance", load.Name, version)
 	if load.Type == "tracepoint" {
-		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
+		fd, err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
 		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
 			l.WithField(
 				"tracepoint", load.Name,
 			).Info("Tracepoint exists: removing and retrying")
 			removeTracepoint(load.traceFD)
-			err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
+			fd, err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
 		}
 		if err != nil {
 			return fmt.Errorf("failed prog %s kern_version %d err %d LoadTracingProgram: %w",
 				load.Name, version, fd, err)
 		}
 	} else {
-		err, fd = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
+		fd, err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
 		if err != nil && load.ErrorFatal {
 			return fmt.Errorf("failed prog %s kern_version %d LoadKprobeProgram: %w",
 				load.Name, version, err)
@@ -314,7 +314,7 @@ func observerLoadInstance(stopCtx context.Context, bpfDir, mapDir, ciliumDir str
 	return nil
 }
 
-func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verbose int) (error, int) {
+func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verbose int) (int, error) {
 	version = kernels.FixKernelVersion(version)
 	btfObj := uintptr(btf.GetCachedBTF())
 	if load.Type == "tracepoint" {
@@ -332,7 +332,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verb
 			mapDir,
 			ciliumDir,
 			load)
-		return err, -1
+		return -1, err
 	} else {
 		if s, ok := registeredProbeLoad[load.Type]; ok {
 			return s.LoadProbe(LoadProbeArgs{

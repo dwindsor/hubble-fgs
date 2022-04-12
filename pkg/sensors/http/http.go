@@ -97,26 +97,26 @@ type httpSensor struct {
 	name string
 }
 
-func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	err := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.HttpSockMap)
 	if err != nil {
-		return err, -1
+		return -1, err
 	}
 
 	if utils.SkSkbParserRequired() {
 		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.HttpSockMap)
 		if err != nil {
-			return err, -1
+			return -1, err
 		}
 	}
 	err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.HttpSockMap)
 	if err != nil {
-		return err, -1
+		return -1, err
 	}
 	if err := sensors.SetFilter(args.MapDir, "http_filter_map", filters); err != nil {
-		return err, -1
+		return -1, err
 	}
-	return nil, -1
+	return -1, nil
 }
 
 func (http *httpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -127,8 +127,8 @@ type skSkbVerdictSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return nil, 0
+func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+	return 0, nil
 }
 
 func (skSkbVerdict *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -139,8 +139,8 @@ type skSkbParserSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return nil, 0
+func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+	return 0, nil
 }
 
 func (skSkbParser *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {

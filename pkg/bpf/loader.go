@@ -576,13 +576,13 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string) (error, int) {
+func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string) (int, error) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
 	aa := strings.Split(attach, "/")
 	if len(aa) != 2 {
-		return fmt.Errorf("tracepoint attach argument must be in the form category/tracepoint. Instead got: %s", attach), -1
+		return -1, fmt.Errorf("tracepoint attach argument must be in the form category/tracepoint. Instead got: %s", attach)
 	}
 	a_category := C.CString(aa[0])
 	a_name := C.CString(aa[1])
@@ -592,12 +592,12 @@ func LoadTracingProgram(__version, __verbosity int, btf uintptr, object, attach,
 	loader_fd := C.tracepoint_loader(version, verbosity, unsafe.Pointer(btf), o, a_category, a_name, l, p, mapdir)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
-		return fmt.Errorf("Unable to tracepoint load: %d %s", loaderInt, object), loaderInt
+		return loaderInt, fmt.Errorf("Unable to tracepoint load: %d %s", loaderInt, object)
 	}
-	return nil, loaderInt
+	return loaderInt, nil
 }
 
-func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string, retprobe bool) (error, int) {
+func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, __label, __prog, __mapdir string, retprobe bool) (int, error) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
@@ -609,9 +609,9 @@ func LoadKprobeProgram(__version, __verbosity int, btf uintptr, object, attach, 
 	loader_fd := C.kprobe_loader(version, verbosity, unsafe.Pointer(btf), o, a, l, p, mapdir, ret)
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
-		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
+		return 0, fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object)
 	}
-	return nil, loaderInt
+	return loaderInt, nil
 }
 
 func LoadGenericKprobeProgram(__version, __verbosity int, __override bool,
@@ -659,13 +659,13 @@ func LoadTracepointArgsProgram(__version, __verbosity int,
 	btf uintptr,
 	object, attach, __label, __prog, __mapdir string,
 	retprobe bool,
-	filters [4096]byte) (error, int) {
+	filters [4096]byte) (int, error) {
 	version := C.int(__version)
 	verbosity := C.int(__verbosity)
 	o := C.CString(object)
 	aa := strings.Split(attach, "/")
 	if len(aa) != 2 {
-		return fmt.Errorf("tracepoint attach argument must be in the form category/tracepoint. Instead got: %s", attach), -1
+		return -1, fmt.Errorf("tracepoint attach argument must be in the form category/tracepoint. Instead got: %s", attach)
 	}
 	a_category := C.CString(aa[0])
 	a_name := C.CString(aa[1])
@@ -679,9 +679,9 @@ func LoadTracepointArgsProgram(__version, __verbosity int,
 		o, a_category, a_name, l, p, mapdir, ret, unsafe.Pointer(&filters))
 	loaderInt := int(loader_fd)
 	if loaderInt < 0 {
-		return fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object), 0
+		return 0, fmt.Errorf("Unable to kprobe load: %d %s", loaderInt, object)
 	}
-	return nil, loaderInt
+	return loaderInt, nil
 }
 
 func QdiscTCInsert(linkName string, ingress bool) error {

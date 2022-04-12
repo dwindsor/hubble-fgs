@@ -66,9 +66,9 @@ type sockopsSensor struct {
 	name string
 }
 
-func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	err := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
-	return err, -1
+	return -1, err
 }
 
 func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {

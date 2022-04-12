@@ -179,7 +179,7 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{tcp}, nil
 }
 
-func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult)
 	return loader.LoadKprobeProgram(args.Version,
 		args.Verbose,

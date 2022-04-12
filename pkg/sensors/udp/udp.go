@@ -430,18 +430,18 @@ type udpSensor struct {
 	name string
 }
 
-func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	err := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
 	if err != nil {
-		return err, -1
+		return -1, err
 	}
 	if !configured {
 		if err := configureUdpSensor(args.MapDir, "udp_config_map", Config); err != nil {
-			return err, -1
+			return -1, err
 		}
 		configured = true
 	}
-	return nil, -1
+	return -1, nil
 }
 
 func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) error {

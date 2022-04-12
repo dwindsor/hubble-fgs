@@ -50,19 +50,19 @@ type sensor struct {
 	name string
 }
 
-func (nop *sensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
+func (nop *sensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	err := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.NopSockMap)
 	if err != nil {
-		return err, -1
+		return -1, err
 	}
 
 	if utils.SkSkbParserRequired() {
 		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.NopSockMap)
 		if err != nil {
-			return err, -1
+			return -1, err
 		}
 	}
-	return sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.NopSockMap), -1
+	return -1, sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.NopSockMap)
 }
 
 func (nop *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -73,8 +73,8 @@ type skSkbVerdictSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return nil, 0
+func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+	return 0, nil
 }
 
 func (skSkbVerdict *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
@@ -85,8 +85,8 @@ type skSkbParserSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (error, int) {
-	return nil, 0
+func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+	return 0, nil
 }
 
 func (skSkbParser *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
