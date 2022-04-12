@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package grpc
+package health
 
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -18,7 +18,7 @@ var (
 	grpcHealth = fgs.HealthStatusResult_HEALTH_STATUS_RUNNING
 )
 
-func getHealth() (*fgs.GetHealthStatusResponse, error) {
+func GetHealth() (*fgs.GetHealthStatusResponse, error) {
 	resp := &fgs.GetHealthStatusResponse{}
 	hs := &fgs.HealthStatus{
 		Event:   fgs.HealthStatusType_HEALTH_STATUS_TYPE_STATUS,

@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
+	"github.com/isovalent/hubble-fgs/pkg/health"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/version"
@@ -141,7 +142,7 @@ func (s *Server) GetEventsWG(request *fgs.GetEventsRequest, server fgs.FineGuida
 
 func (s *Server) GetHealth(ctx context.Context, request *fgs.GetHealthStatusRequest) (*fgs.GetHealthStatusResponse, error) {
 	logger.GetLogger().WithField("request", request).Debug("Received a GetHealth request")
-	return getHealth()
+	return health.GetHealth()
 }
 
 func (s *Server) ListSensors(ctx context.Context, request *fgs.ListSensorsRequest) (*fgs.ListSensorsResponse, error) {
