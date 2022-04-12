@@ -109,7 +109,8 @@ func listSensors(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
 		fmt.Printf("error: %s\n", err)
 		return
 	} else if sensors == nil {
-		fmt.Printf("Unexpected error\n")
+		fmt.Printf("error: sensors is nil\n")
+		return
 	}
 
 	for _, sensor := range sensors.Sensors {
