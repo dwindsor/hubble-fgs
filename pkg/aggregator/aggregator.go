@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpc
+package aggregator
 
 import (
 	"fmt"
@@ -133,6 +133,6 @@ func (a *Aggregator) handleProcessConnect(event *fgs.GetEventsResponse) {
 	}
 }
 
-func (a *Aggregator) getEventChannel() chan *fgs.GetEventsResponse {
+func (a *Aggregator) GetEventChannel() chan *fgs.GetEventsResponse {
 	return a.events
 }

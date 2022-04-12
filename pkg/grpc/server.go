@@ -18,6 +18,7 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/aggregator"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
@@ -97,7 +98,7 @@ func (s *Server) GetEventsWG(request *fgs.GetEventsRequest, server fgs.FineGuida
 	if err != nil {
 		return err
 	}
-	aggregator, err := NewAggregator(server, request.AggregationOptions)
+	aggregator, err := aggregator.NewAggregator(server, request.AggregationOptions)
 	if err != nil {
 		return err
 	}
@@ -122,7 +123,7 @@ func (s *Server) GetEventsWG(request *fgs.GetEventsRequest, server fgs.FineGuida
 			if aggregator != nil {
 				// Send event to aggregator.
 				select {
-				case aggregator.getEventChannel() <- event:
+				case aggregator.GetEventChannel() <- event:
 				default:
 					logger.GetLogger().
 						WithField("request", request).

@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package grpc
+package aggregator
 
 import (
 	"context"
@@ -45,7 +45,7 @@ func Test_connectEventBasic(t *testing.T) {
 		DestinationNames: nil,
 	}
 	for i := 0; i < 10; i++ {
-		agg.getEventChannel() <- &fgs.GetEventsResponse{
+		agg.GetEventChannel() <- &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &connectA,
 			},
@@ -77,7 +77,7 @@ func Test_acceptEventBasic(t *testing.T) {
 		DestinationNames: nil,
 	}
 	for i := 0; i < 10; i++ {
-		agg.getEventChannel() <- &fgs.GetEventsResponse{
+		agg.GetEventChannel() <- &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessAccept{
 				ProcessAccept: &acceptA,
 			},
