@@ -170,22 +170,25 @@ func OpenMap(name string) (*Map, error) {
 
 // ObjGet reads the pathname and returns the map's fd read.
 func ObjGet(pathname string) (int, error) {
-	pathStr := syscall.StringBytePtr(pathname)
+	pathStr, err := syscall.BytePtrFromString(pathname)
+	if err != nil {
+		return 0, err
+	}
 	uba := bpfAttrObjOp{
 		pathname: uint64(uintptr(unsafe.Pointer(pathStr))),
 	}
 
-	fd, _, err := unix.Syscall(
+	fd, _, errno := unix.Syscall(
 		unix.SYS_BPF,
 		BPF_OBJ_GET,
 		uintptr(unsafe.Pointer(&uba)),
 		unsafe.Sizeof(uba),
 	)
 
-	if fd == 0 || err != 0 {
+	if fd == 0 || errno != 0 {
 		return 0, &os.PathError{
 			Op:   "Unable to get object",
-			Err:  err,
+			Err:  errno,
 			Path: pathname,
 		}
 	}
