@@ -30,29 +30,29 @@ var (
 	ip10 = [4]byte{10, 1, 1, 10}
 	ip20 = [4]byte{10, 1, 1, 20}
 
-	LineTestCases []LineTestCase = []LineTestCase{
-		LineTestCase{
+	LineTestCases = []LineTestCase{
+		{
 			line: "sport=9999",
 			tests: []VTRes{
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 9999, ip20, 4242), res: true},
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 9999), res: false},
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 1234), res: false},
+				{vt: vtuple.CreateTCPv4(ip10, 9999, ip20, 4242), res: true},
+				{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 9999), res: false},
+				{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 1234), res: false},
 			},
 		},
-		LineTestCase{
+		{
 			line: "dport=9999",
 			tests: []VTRes{
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 9999, ip20, 4242), res: false},
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 9999), res: true},
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 1234), res: false},
+				{vt: vtuple.CreateTCPv4(ip10, 9999, ip20, 4242), res: false},
+				{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 9999), res: true},
+				{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 1234), res: false},
 			},
 		},
-		LineTestCase{
+		{
 			line: "port=9999",
 			tests: []VTRes{
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 9999, ip20, 4242), res: true},
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 9999), res: true},
-				VTRes{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 1234), res: false},
+				{vt: vtuple.CreateTCPv4(ip10, 9999, ip20, 4242), res: true},
+				{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 9999), res: true},
+				{vt: vtuple.CreateTCPv4(ip10, 4242, ip20, 1234), res: false},
 			},
 		},
 

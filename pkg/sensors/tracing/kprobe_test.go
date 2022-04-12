@@ -35,7 +35,7 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-var mountPath string = "/tmp2"
+var mountPath = "/tmp2"
 
 const (
 	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"

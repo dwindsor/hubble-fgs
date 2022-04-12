@@ -234,7 +234,7 @@ func EnableDns() {
 }
 
 func (k *Observer) receiveEvent(data []byte, cpu int) {
-	var op uint8 = data[0]
+	var op = data[0]
 	var empty bool
 
 	k.recvCntr++

@@ -33,7 +33,7 @@ const (
 )
 
 var (
-	fgsCgroupFD int = -1
+	fgsCgroupFD = -1
 )
 
 type Selector struct {

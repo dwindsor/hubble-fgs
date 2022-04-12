@@ -140,11 +140,11 @@ func SensorBuilder(name string, p []*Program, m []*Map) *Sensor {
 
 var (
 	// list of availableSensors, see registerSensor()
-	availableSensors map[string][]*Sensor = map[string][]*Sensor{}
+	availableSensors = map[string][]*Sensor{}
 	// list of registered Tracing handlers, see registerTracingHandler()
-	registeredTracingSensors map[string]tracingSensor = map[string]tracingSensor{}
+	registeredTracingSensors = map[string]tracingSensor{}
 	// list of registers loaders, see registerProbeType()
-	registeredProbeLoad map[string]tracingSensor = map[string]tracingSensor{}
+	registeredProbeLoad = map[string]tracingSensor{}
 
 	manager *Manager
 )

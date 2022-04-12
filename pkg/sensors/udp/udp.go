@@ -227,7 +227,7 @@ func (v *udpSensorConfigValue) String() string {
 }
 func (v *udpSensorConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *udpSensorConfigValue) DeepCopyMapValue() bpf.MapValue {
-	var n udpSensorConfigValue = *v
+	var n = *v
 	return &n
 }
 
