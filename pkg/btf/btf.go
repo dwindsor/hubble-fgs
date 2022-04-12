@@ -35,7 +35,7 @@ func btfFileExists(file string) error {
 	return err
 }
 
-func observerFindBTF(lib, btf string, ctx context.Context) (string, error) {
+func observerFindBTF(ctx context.Context, lib, btf string) (string, error) {
 	if btf == "" {
 		var uname unix.Utsname
 
@@ -88,11 +88,11 @@ func NewBTF() (bpf.BTF, error) {
 	return bpf.NewBTF(btfFile)
 }
 
-func InitCachedBTF(lib, btf string, ctx context.Context) error {
+func InitCachedBTF(ctx context.Context, lib, btf string) error {
 	var err error
 
 	// Find BTF metdaata and populate btf opaqu object
-	btfFile, err = observerFindBTF(lib, btf, ctx)
+	btfFile, err = observerFindBTF(ctx, lib, btf)
 	if err != nil {
 		return fmt.Errorf("hubble-fgs, aborting kernel autodiscovery failed: %w", err)
 	}

@@ -134,14 +134,14 @@ func TestHttp11Curl(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
 
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
-func spawnHttp2Server(t *testing.T, ctx context.Context) string {
+func spawnHttp2Server(ctx context.Context, t *testing.T) string {
 	handler := http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
 			w.Write([]byte("hello world"))
@@ -175,7 +175,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	http2Addr := spawnHttp2Server(t, ctx)
+	http2Addr := spawnHttp2Server(ctx, t)
 	http2Port, _ := strconv.ParseUint(strings.Split(http2Addr, ":")[1], 10, 32)
 
 	bpf.CheckOrMountCgroup2()
@@ -215,7 +215,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
 	err = observer.JsonTestCheck(t, checker)

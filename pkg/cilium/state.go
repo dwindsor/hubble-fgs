@@ -28,7 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
-func GetCiliumState(enableCiliumAPI bool, ctx context.Context) (*cilium.State, error) {
+func GetCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, error) {
 	if !enableCiliumAPI {
 		logger.GetLogger().Info("Disabling Cilium API")
 		return GetFakeCiliumState(), nil

@@ -63,9 +63,8 @@ const (
 	BPF_PROG_TYPE_LSM                     = 29
 )
 
-// LoadDefault loads the default sensor, including any from the configuration
-// file.
-func LoadConfig(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
+// LoadConfig loads the default sensor, including any from the configuration file.
+func LoadConfig(ctx context.Context, bpfDir, mapDir, ciliumDir, configFile string) error {
 	configSensors, err := createConfigSensors(configFile)
 	if err != nil {
 		return err
@@ -81,7 +80,7 @@ func LoadConfig(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Contex
 
 // LoadDefault loads the default sensor, including any from the configuration
 // file.
-func LoadDefault(bpfDir, mapDir, ciliumDir, configFile string, ctx context.Context) error {
+func LoadDefault(ctx context.Context, bpfDir, mapDir, ciliumDir, configFile string) error {
 	// This is technically not a sensor since we are loading this
 	// statically when we start, but it allows us to have a single path for
 	// loading bpf programs.
@@ -139,7 +138,7 @@ func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string)
 			continue
 		}
 
-		if err := observerLoadInstance(bpfDir, mapDir, ciliumDir, p, stopCtx); err != nil {
+		if err := observerLoadInstance(stopCtx, bpfDir, mapDir, ciliumDir, p); err != nil {
 			return err
 		}
 		p.LoadState.RefInc()
@@ -278,7 +277,7 @@ func mergeSensors(sensors []*Sensor) *Sensor {
 	}
 }
 
-func observerLoadInstance(bpfDir, mapDir, ciliumDir string, load *Program, stopCtx context.Context) error {
+func observerLoadInstance(stopCtx context.Context, bpfDir, mapDir, ciliumDir string, load *Program) error {
 	var fd int
 
 	version, _, err := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)

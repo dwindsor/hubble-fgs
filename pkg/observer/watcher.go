@@ -52,7 +52,7 @@ func k8sErrorHandler(e error) {
 	}
 }
 
-func watchTracePolicy(s *sensors.Manager, ctx context.Context) {
+func watchTracePolicy(ctx context.Context, s *sensors.Manager) {
 	log := logger.GetLogger()
 	conf, err := rest.InClusterConfig()
 	if err != nil {

@@ -250,7 +250,7 @@ func TestUdpBurst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	serverCmd := exec.Command(os.Args[0], "-server")

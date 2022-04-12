@@ -67,7 +67,7 @@ func init() {
 	}
 
 	// Setup BTF cache
-	btf.InitCachedBTF(option.Config.HubbleLib, "", context.Background())
+	btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, "")
 
 	// Probe for the testdata. Changing the working directory
 	// to keep the test-case filenames short.
@@ -101,8 +101,8 @@ func (h *SensorsHandle) Close(t *testing.T) {
 	h.cancel()
 
 	bpfDir := bpf.MapPrefixPath()
-	sensors.UnloadSensor(bpfDir, bpfDir, h.parserSensor, context.Background())
-	sensors.UnloadSensor(bpfDir, bpfDir, h.initSensor, context.Background())
+	sensors.UnloadSensor(context.Background(), bpfDir, bpfDir, h.parserSensor)
+	sensors.UnloadSensor(context.Background(), bpfDir, bpfDir, h.initSensor)
 
 	// Verify that all pins have been cleared.
 	filepath.Walk(bpfDir, func(path string, info fs.FileInfo, err error) error {

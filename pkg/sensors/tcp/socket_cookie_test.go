@@ -118,7 +118,7 @@ func TestSocketCookie(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	checker, err := socketCookieTest(t)
 	if err != nil {

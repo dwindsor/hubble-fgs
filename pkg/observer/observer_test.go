@@ -62,7 +62,7 @@ func TestObjectLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserver error: %s", err)
 	}
-	if err := btf.InitCachedBTF(option.Config.HubbleLib, "", context.TODO()); err != nil {
+	if err := btf.InitCachedBTF(context.TODO(), option.Config.HubbleLib, ""); err != nil {
 		t.Fatalf("ConfigureBTF error: %s", err)
 	}
 	initialSensor := sensors.GetInitialSensor()
@@ -94,7 +94,7 @@ func TestNamespaces(t *testing.T) {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
 
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -128,14 +128,14 @@ func TestSensorLseekLoad(t *testing.T) {
 	if err := sensor.Load(ctx, obs.bpfDir, obs.mapDir, obs.ciliumDir); err != nil {
 		t.Fatalf("observerLoadSensor error: %s", err)
 	}
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
-	sensors.UnloadSensor(obs.bpfDir, obs.mapDir, sensor, ctx)
+	sensors.UnloadSensor(ctx, obs.bpfDir, obs.mapDir, sensor)
 }
 
 func TestSensorLseekEnable(t *testing.T) {
@@ -187,7 +187,7 @@ func TestSensorLseekEnable(t *testing.T) {
 		}
 	}()
 
-	LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 

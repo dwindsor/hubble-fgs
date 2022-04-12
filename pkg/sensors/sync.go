@@ -75,7 +75,7 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 					if !s.Loaded {
 						continue
 					}
-					if err = UnloadSensor(bpfDir, mapDir, s, op.ctx); err != nil {
+					if err = UnloadSensor(op.ctx, bpfDir, mapDir, s); err != nil {
 						errs = append(errs, err.Error())
 					}
 				}
@@ -145,7 +145,7 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 						logger.GetLogger().Infof("ignoring disableSensor %s since sensor is not enabled", s.Name)
 						continue
 					}
-					err = UnloadSensor(bpfDir, mapDir, s, op.ctx)
+					err = UnloadSensor(op.ctx, bpfDir, mapDir, s)
 					if err == nil && s.Ops != nil {
 						s.Ops.Unloaded(UnloadArg{STTManagerHandle: op.sttManagerHandle})
 					}
@@ -277,7 +277,7 @@ func RemoveProgram(bpfDir string, prog *Program) {
 	log.Info("BPF prog was unloaded")
 }
 
-func UnloadSensor(bpfDir, mapDir string, sensor *Sensor, ctx context.Context) error {
+func UnloadSensor(ctx context.Context, bpfDir, mapDir string, sensor *Sensor) error {
 	logger.GetLogger().Infof("Unloading sensor %s", sensor.Name)
 	if !sensor.Loaded {
 		return fmt.Errorf("unload of sensor %s failed: sensor not loaded", sensor.Name)

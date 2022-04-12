@@ -535,14 +535,14 @@ func (k *Observer) Start(ctx context.Context) error {
 		k.log.Warningf("failed to initialize ksyms: %s", err)
 	}
 
-	if err := sensors.LoadDefault(k.bpfDir, k.mapDir, k.ciliumDir, k.configFile, ctx); err != nil {
+	if err := sensors.LoadDefault(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
 		return err
 	}
 
 	k.startUpdateMapMetrics()
 	k.populateExecve(ctx)
 
-	if err := sensors.LoadConfig(k.bpfDir, k.mapDir, k.ciliumDir, k.configFile, ctx); err != nil {
+	if err := sensors.LoadConfig(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
 		return err
 	}
 
@@ -554,7 +554,7 @@ func (k *Observer) Start(ctx context.Context) error {
 
 	// start CRD watcher
 	if k.enableCRD {
-		go watchTracePolicy(k.SensorManager, ctx)
+		go watchTracePolicy(ctx, k.SensorManager)
 	}
 
 	k.perfConfig = bpf.DefaultPerfEventConfig()

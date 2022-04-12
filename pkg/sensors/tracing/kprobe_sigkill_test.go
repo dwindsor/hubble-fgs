@@ -119,7 +119,7 @@ func TestKprobeSigkill(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	t.Logf("waking up test program")

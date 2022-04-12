@@ -248,7 +248,7 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 		option.Config.Verbosity = dfltVerbosity
 	}
 
-	if err := btf.InitCachedBTF(option.Config.HubbleLib, "", context.Background()); err != nil {
+	if err := btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, ""); err != nil {
 		return nil, err
 	}
 
@@ -336,11 +336,13 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 }
 
 func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
-	if err := sensors.LoadDefault(obs.bpfDir,
+	if err := sensors.LoadDefault(
+		context.TODO(),
+		obs.bpfDir,
 		obs.mapDir,
 		obs.ciliumDir,
 		obs.configFile,
-		context.TODO()); err != nil {
+	); err != nil {
 		if notestfail {
 			return err
 		}
@@ -349,11 +351,13 @@ func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
 
 	obs.populateExecve(context.TODO())
 
-	if err := sensors.LoadConfig(obs.bpfDir,
+	if err := sensors.LoadConfig(
+		context.TODO(),
+		obs.bpfDir,
 		obs.mapDir,
 		obs.ciliumDir,
 		obs.configFile,
-		context.TODO()); err != nil {
+	); err != nil {
 		if notestfail {
 			return err
 		}
@@ -362,7 +366,7 @@ func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
 	return nil
 }
 
-func LoopEvents(t *testing.T, doneWG, readyWG *sync.WaitGroup, obs *Observer, ctx context.Context) {
+func LoopEvents(ctx context.Context, t *testing.T, doneWG, readyWG *sync.WaitGroup, obs *Observer) {
 	doneWG.Add(1)
 	readyWG.Add(1)
 	go func() {

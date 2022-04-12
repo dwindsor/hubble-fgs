@@ -115,7 +115,7 @@ func hubbleFGSExecute() error {
 		os.Exit(1)
 	}()
 
-	err := btf.InitCachedBTF(option.Config.HubbleLib, option.Config.BTF, ctx)
+	err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, option.Config.BTF)
 	if err != nil {
 		return err
 	}
@@ -132,7 +132,7 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return err
 	}
-	ciliumState, err := cilium.GetCiliumState(enableCiliumAPI, ctx)
+	ciliumState, err := cilium.GetCiliumState(ctx, enableCiliumAPI)
 	if err != nil {
 		return err
 	}

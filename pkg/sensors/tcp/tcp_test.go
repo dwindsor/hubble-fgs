@@ -128,7 +128,7 @@ func TestConnectEvent(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
 	err = observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -210,7 +210,7 @@ func TestExecEventClone(t *testing.T) {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
@@ -332,7 +332,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
@@ -459,7 +459,7 @@ func TestListenAcceptClose(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	cmdServer := exec.Command(server, "-nvlp", "8081")
@@ -499,7 +499,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
 	// scanner from procFS does not match github actions docker env that
@@ -552,7 +552,7 @@ func TestDockerListenConnect(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
@@ -780,7 +780,7 @@ func TestTcpBurst(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	serverCmd := exec.Command(os.Args[0], "-server")

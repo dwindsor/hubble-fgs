@@ -126,7 +126,7 @@ func TestGenericTracepointSimple(t *testing.T) {
 			End(),
 	)
 
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	unix.Seek(-1, 0, 4444)
 	time.Sleep(1000 * time.Millisecond)
@@ -199,7 +199,7 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		obs.SensorManager.DisableSensor(ctx, sensorName)
 	}()
 
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	selfOp()
 

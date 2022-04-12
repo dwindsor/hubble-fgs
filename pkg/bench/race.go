@@ -195,7 +195,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		false /* debug */, false, /* enable-crd */
 		10 /* tcp statistics */)
 
-	if err := btf.InitCachedBTF(option.Config.HubbleLib, "", ctx); err != nil {
+	if err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, ""); err != nil {
 		logger.GetLogger().Fatal(err)
 	}
 

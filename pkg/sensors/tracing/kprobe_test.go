@@ -125,7 +125,7 @@ spec:
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	fmt.Printf("Calling lseek...\n")
 	unix.Seek(-1, 0, 4444)
@@ -171,7 +171,7 @@ func runKprobeObjectWriteRead(t *testing.T, writeReadHook string) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	_, err = syscall.Write(1, []byte("hello world"))
 	assert.NoError(t, err)
@@ -388,7 +388,7 @@ func runKprobeObjectRead(t *testing.T, readHook string, checker ec.MultiResponse
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	hello := []byte("hello world")
 	n, errno := syscall.Write(fd, hello)
@@ -603,7 +603,7 @@ func testKprobeObjectFiltered(t *testing.T,
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	fd2, errno := syscall.Open(filePath, syscall.O_RDWR, 0x770)
 	if fd2 < 0 {
@@ -1041,7 +1041,7 @@ spec:
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 	err = helloIovecWorldWritev()
 	assert.NoError(t, err)
@@ -1309,7 +1309,7 @@ func corePathTest(t *testing.T, filePath string, readHook string, writeChecker e
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	fd2, errno := syscall.Open(filePath, syscall.O_RDWR, 0x770)
@@ -1581,7 +1581,7 @@ spec:
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	// linkat syscall is not exported for some reason
@@ -1634,7 +1634,7 @@ func runKprobeOverride(t *testing.T, hook string, checker ec.MultiResponseChecke
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
 	fd, err := syscall.Open(testFile, syscall.O_RDWR, 0x777)

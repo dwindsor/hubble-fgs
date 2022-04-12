@@ -61,7 +61,7 @@ func (args *Arguments) String() string {
 		args.Sink, args.Source, args.Proxy, args.SourceArgs.String(), args.FgsEnableTLS, args.FgsJSONEncode)
 }
 
-func runFgs(sinkPort int, args *Arguments, summary *Summary, ctx context.Context, ready chan bool) {
+func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary, ready chan bool) {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
@@ -96,7 +96,7 @@ func runFgs(sinkPort int, args *Arguments, summary *Summary, ctx context.Context
 		args.FgsDebug /* debug */, false, /* enable-crd */
 		0 /* tcp statistics */)
 
-	if err := btf.InitCachedBTF(option.Config.HubbleLib, "", ctx); err != nil {
+	if err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, ""); err != nil {
 		log.Fatal(err)
 	}
 
@@ -244,7 +244,7 @@ func RunBenchmark(args *Arguments) (summary *Summary) {
 		ready := make(chan bool)
 		log.Printf("Starting FGS...\n")
 		go func() {
-			runFgs(sinkPort, args, summary, ctx, ready)
+			runFgs(ctx, sinkPort, args, summary, ready)
 			fgsFinished <- true
 		}()
 		// Wait for FGS to initialize.

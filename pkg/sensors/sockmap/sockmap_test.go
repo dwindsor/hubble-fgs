@@ -120,7 +120,7 @@ func TestTCTLS13(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
 
 	err = observer.JsonTestCheck(t, checker)
@@ -180,7 +180,7 @@ func TestTCTLS12(t *testing.T) {
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}
-	observer.LoopEvents(t, &doneWG, &readyWG, obs, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
 	err = observer.JsonTestCheck(t, checker)
