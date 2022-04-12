@@ -3,6 +3,7 @@ package udp
 import (
 	"bytes"
 	"encoding/binary"
+	"errors"
 	"net"
 	"unsafe"
 
@@ -68,7 +69,8 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.ObserverEven
 
 	for {
 		h, err := p.AnswerHeader()
-		if err == dnsmessage.ErrSectionDone {
+
+		if errors.Is(err, dnsmessage.ErrSectionDone) {
 			break
 		}
 		if err != nil {
