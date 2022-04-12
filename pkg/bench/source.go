@@ -646,14 +646,6 @@ type ContextDialer interface {
 	DialContext(ctx context.Context, network, address string) (net.Conn, error)
 }
 
-func xAtoi(s string) int64 {
-	n, err := strconv.ParseInt(s, 10, 64)
-	if err != nil {
-		return -1
-	}
-	return n
-}
-
 // ChunkingConn is a net.Conn that splits up a Write() into multiple random sized chunks.
 type ChunkingConn struct {
 	net.Conn

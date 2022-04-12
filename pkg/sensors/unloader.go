@@ -65,15 +65,6 @@ func (pu pinUnloader) Unload() error {
 	return pu.prog.Unpin()
 }
 
-// linkUnloader unloads a BPF link by closing it.
-type linkUnloader struct {
-	link link.Link
-}
-
-func (lu linkUnloader) Unload() error {
-	return lu.link.Close()
-}
-
 // rawDetachUnloader can be used to unload cgroup and sockmap programs.
 type rawDetachUnloader struct {
 	targetFD   int

@@ -36,6 +36,7 @@ import (
 )
 
 const (
+	// nolint We probably want to keep this even though it's unused at the moment
 	// NB: this should match the size of ->args[] of the output message
 	genericTP_OutputSize = 9000
 	// maximum arguments that bpf-side supports

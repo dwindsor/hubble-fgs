@@ -39,7 +39,6 @@ var (
 	verboseLevel int
 
 	tracepointTestDir = "/sys/fs/bpf/testObserver/"
-	jsonRetries       = 20
 )
 
 func init() {

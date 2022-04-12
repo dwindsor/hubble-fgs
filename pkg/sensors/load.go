@@ -391,38 +391,6 @@ func removeTracepoint(fd int) {
 	}
 }
 
-func nameToProgType(n string) int {
-	if strings.Contains(n, "skmsg") {
-		n = "skmsg"
-	}
-
-	switch n {
-	case "kprobe":
-		return BPF_PROG_TYPE_KPROBE
-	case "tracepoint":
-		return BPF_PROG_TYPE_KPROBE
-	case "sockops":
-		return BPF_PROG_TYPE_SOCK_OPS
-	case "skmsg":
-		return BPF_PROG_TYPE_SK_MSG
-	case "sk_skb_parser":
-		return BPF_PROG_TYPE_SK_SKB
-	case "sk_skb_verdict":
-		return BPF_PROG_TYPE_SK_SKB
-	case "cgrp_ingress",
-		"cgrp_egress":
-		return BPF_PROG_TYPE_CGROUP_SKB
-	case "cgrp_socketopt",
-		"cgrp_getsockopt":
-		return BPF_PROG_TYPE_CGROUP_SOCKOPT
-	case "tc_ingress":
-		return BPF_PROG_TYPE_SCHED_CLS
-	case "tc_egress":
-		return BPF_PROG_TYPE_SCHED_CLS
-	}
-	return -1
-}
-
 func UnloadAll(bpfDir string) {
 	for _, l := range AllPrograms {
 		RemoveProgram(bpfDir, l)

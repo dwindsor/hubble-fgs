@@ -77,9 +77,6 @@ type Map struct {
 	name string
 	path string
 	lock lock.RWMutex
-
-	// DumpParser is a function for parsing keys and values from BPF maps
-	dumpParser DumpParser
 }
 
 func (m *Map) GetFd() int {
@@ -228,7 +225,6 @@ func (m *Map) Reopen() error {
 	return m.Open()
 }
 
-type DumpParser func(key []byte, value []byte, mapKey MapKey, mapValue MapValue) (MapKey, MapValue, error)
 type DumpCallback func(m *Map, key MapKey, value MapValue)
 type MapValidator func(path string) (bool, error)
 

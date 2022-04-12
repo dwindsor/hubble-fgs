@@ -38,7 +38,6 @@ var (
 
 const (
 	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
-	jsonRetries    = 10
 )
 
 func init() {

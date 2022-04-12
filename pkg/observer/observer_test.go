@@ -15,7 +15,6 @@ import (
 	"flag"
 	"fmt"
 	"os"
-	"os/exec"
 	"path/filepath"
 	"strings"
 	"sync"
@@ -39,10 +38,6 @@ var (
 	fgsLib       string
 	cmdWaitTime  time.Duration
 	verboseLevel int
-)
-
-const (
-	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
 )
 
 func init() {
@@ -103,31 +98,6 @@ func TestNamespaces(t *testing.T) {
 	readyWG.Wait()
 	err = JsonTestCheck(t, checker)
 	assert.NoError(t, err)
-}
-
-func getNCCommand(t *testing.T, orig string) string {
-	if _, err := exec.LookPath(orig); err == nil {
-		return orig
-	}
-
-	server := "nc"
-	if _, err := exec.LookPath(server); err != nil {
-		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
-	}
-	t.Logf("Using %q instead of original program %q", server, orig)
-
-	return server
-}
-
-func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
-	if cmd != nil {
-		if cmd.Process != nil {
-			cmd.Process.Kill()
-		} else {
-			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
-		}
-		_ = cmd.Wait()
-	}
 }
 
 func TestSensorLseekLoad(t *testing.T) {
