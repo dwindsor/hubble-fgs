@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 
@@ -204,9 +205,9 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 		}()
 	}
 	encoder := json.NewEncoder(&writer)
-	var rateLimiter *fgsGrpc.RateLimiter
+	var rateLimiter *ratelimit.RateLimiter
 	if exportRateLimit >= 0 {
-		rateLimiter = fgsGrpc.NewRateLimiter(ctx, 1*time.Minute, exportRateLimit, encoder)
+		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, exportRateLimit, encoder)
 	}
 	var aggregationOptions *fgs.AggregationOptions
 	if enableExportAggregation {

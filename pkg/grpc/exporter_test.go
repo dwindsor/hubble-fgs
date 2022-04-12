@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -173,7 +174,7 @@ func checkEvents(t *testing.T, eventsJSON []string, wantEvents, wantRateLimitInf
 			decoded++
 		}
 		if len(ev.RateLimitInfo) > 0 {
-			var r RateLimitInfoEvent
+			var r ratelimit.RateLimitInfoEvent
 			if err := json.Unmarshal([]byte(event), &r); err != nil {
 				t.Fatalf("failed to unmarshal JSON event %q: %v", event, err)
 			}
@@ -232,7 +233,7 @@ func Test_rateLimitExport(t *testing.T) {
 				request,
 				grpcServer,
 				encoder,
-				NewRateLimiter(ctx, 50*time.Millisecond, tt.rateLimit, encoder),
+				ratelimit.NewRateLimiter(ctx, 50*time.Millisecond, tt.rateLimit, encoder),
 			)
 			exporter.Start()
 			for i := 0; i < tt.totalEvents; i++ {

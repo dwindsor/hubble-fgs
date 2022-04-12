@@ -17,10 +17,10 @@ package grpc
 import (
 	"context"
 	"sync"
-	"sync/atomic"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -33,7 +33,7 @@ type Exporter struct {
 	request     *fgs.GetEventsRequest
 	server      *Server
 	encoder     ExportEncoder
-	rateLimiter *RateLimiter
+	rateLimiter *ratelimit.RateLimiter
 	done        chan bool
 }
 
@@ -42,7 +42,7 @@ func NewExporter(
 	request *fgs.GetEventsRequest,
 	server *Server,
 	encoder ExportEncoder,
-	rateLimiter *RateLimiter,
+	rateLimiter *ratelimit.RateLimiter,
 ) *Exporter {
 	return &Exporter{ctx, request, server, encoder, rateLimiter, make(chan bool)}
 }
@@ -63,7 +63,7 @@ func (e *Exporter) Start() {
 
 func (e *Exporter) Send(event *fgs.GetEventsResponse) error {
 	if e.rateLimiter != nil && !e.rateLimiter.Allow() {
-		atomic.AddUint64(&e.rateLimiter.dropped, 1)
+		e.rateLimiter.Drop()
 		return nil
 	}
 	if err := e.encoder.Encode(event); err != nil {

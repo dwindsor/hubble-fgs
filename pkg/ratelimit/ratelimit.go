@@ -8,7 +8,7 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package grpc
+package ratelimit
 
 import (
 	"context"
@@ -84,4 +84,8 @@ func (r *RateLimiter) reportRateLimitInfo(encoder *json.Encoder) {
 			return
 		}
 	}
+}
+
+func (r *RateLimiter) Drop() {
+	atomic.AddUint64(&r.dropped, 1)
 }
