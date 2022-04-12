@@ -167,7 +167,7 @@ func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs)
 	return nil, 0
 }
 
-func (skmsg *skSkbVerdictTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbVerdict *skSkbVerdictTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -179,7 +179,7 @@ func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (
 	return nil, 0
 }
 
-func (skmsg *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbParser *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 

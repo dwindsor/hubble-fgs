@@ -21,7 +21,7 @@ type BinaryMapValue struct {
 }
 
 func (v *BinaryMapValue) String() string                 { return fmt.Sprintf("ID: %d", v.Id) }
-func (k *BinaryMapValue) NewValue() bpf.MapValue         { return &BinaryMapValue{} }
+func (v *BinaryMapValue) NewValue() bpf.MapValue         { return &BinaryMapValue{} }
 func (v *BinaryMapValue) GetValuePtr() unsafe.Pointer    { return unsafe.Pointer(v) }
 func (v *BinaryMapValue) DeepCopyMapValue() bpf.MapValue { return &BinaryMapValue{} }
 

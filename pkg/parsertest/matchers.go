@@ -175,6 +175,6 @@ func (cam ConnAddrMatcher) Match(ctx *TestContext, r io.Reader) (int, error) {
 	}
 }
 
-func (_ ConnAddrMatcher) Serialize() []byte {
+func (cam ConnAddrMatcher) Serialize() []byte {
 	panic("Cannot serialize a connection address matcher")
 }

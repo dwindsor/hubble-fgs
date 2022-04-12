@@ -77,7 +77,7 @@ func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (e
 	return nil, 0
 }
 
-func (skmsg *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbVerdict *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -89,7 +89,7 @@ func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (err
 	return nil, 0
 }
 
-func (skmsg *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbParser *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return nil, nil
 }
 

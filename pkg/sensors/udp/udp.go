@@ -192,13 +192,13 @@ func (v *udpInfoValue) String() string {
 		v.SegsOut, v.SegsIn,
 		v.SkDrops)
 }
-func (s *udpInfoValue) GetValuePtr() unsafe.Pointer {
-	return unsafe.Pointer(&s)
+func (v *udpInfoValue) GetValuePtr() unsafe.Pointer {
+	return unsafe.Pointer(&v)
 }
-func (s *udpInfoValue) DeepCopyMapValue() bpf.MapValue {
-	var v udpInfoValue
-	v = *s
-	return &v
+func (v *udpInfoValue) DeepCopyMapValue() bpf.MapValue {
+	var newV udpInfoValue
+	newV = *v
+	return &newV
 }
 
 type udpSensorConfigKey struct {
@@ -507,7 +507,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	return sensors.SensorBuilder(versionStr, progs, maps)
 }
 
-func (parser *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (udp *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	var interval = time.Duration(UdpGCIntervalDefault)
 
 	if !spec.Parser.Udp.Enable {

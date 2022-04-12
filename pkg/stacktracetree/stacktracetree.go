@@ -32,14 +32,14 @@ type SttNode struct {
 	Children map[Addr]*SttNode
 }
 
-func (n1 *SttNode) merge(n2 *SttNode) {
-	if n1.Addr != n2.Addr {
-		log.Fatalf("cannot merge incompatible nodes with addresses %x and %x", n1.Addr, n2.Addr)
+func (n *SttNode) merge(n2 *SttNode) {
+	if n.Addr != n2.Addr {
+		log.Fatalf("cannot merge incompatible nodes with addresses %x and %x", n.Addr, n2.Addr)
 	}
 
-	n1.Count += n2.Count
+	n.Count += n2.Count
 
-	s1 := n1.Symbol
+	s1 := n.Symbol
 	s2 := n2.Symbol
 
 	if s1 == "" && s2 == "" {
@@ -47,15 +47,15 @@ func (n1 *SttNode) merge(n2 *SttNode) {
 	} else if s1 != "" && s2 == "" {
 		// nothing to do
 	} else if s1 == "" && s2 != "" {
-		n1.Symbol = s2
+		n.Symbol = s2
 	} else if s1 != s2 {
 		// both have symbols defined, but they are different, so
 		// something is wrong
-		log.Printf("error: different symbols (%s,%s) for the same address %x", s1, s2, n1.Addr)
+		log.Printf("error: different symbols (%s,%s) for the same address %x", s1, s2, n.Addr)
 	}
 
 	for lbl, lblCount := range n2.Labels {
-		n1.Labels[lbl] += lblCount
+		n.Labels[lbl] += lblCount
 	}
 
 	if len(n2.Children) > 0 {

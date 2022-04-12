@@ -449,9 +449,9 @@ func (h *Manager) StopSensorManager(ctx context.Context) error {
 	return <-retc
 }
 
-func (s *Manager) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error) {
-	h := s.STTManager
-	if h == nil {
+func (h *Manager) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error) {
+	m := h.STTManager
+	if m == nil {
 		return nil, fmt.Errorf("GetTreeProto failed, sttManagerHandle is nil")
 	}
 
@@ -460,7 +460,7 @@ func (s *Manager) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTra
 		TreeName: tname,
 		RetChan:  retc,
 	}
-	h <- op
+	m <- op
 	err := <-retc
 	if err != nil {
 		return nil, err

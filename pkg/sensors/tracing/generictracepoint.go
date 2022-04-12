@@ -171,8 +171,8 @@ func (conf *GenericTracepointConfArg) configureTracepointArg(tp *genericTracepoi
 	return nil
 }
 
-func (o *genericTracepointArg) String() string {
-	return fmt.Sprintf("genericTracepointArg{CtxOffset: %d format: %+v}", o.CtxOffset, o.format)
+func (out *genericTracepointArg) String() string {
+	return fmt.Sprintf("genericTracepointArg{CtxOffset: %d format: %+v}", out.CtxOffset, out.format)
 }
 
 func (out *genericTracepointArg) setGenericTypeId() (int, error) {
