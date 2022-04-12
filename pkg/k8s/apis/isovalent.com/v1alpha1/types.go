@@ -140,7 +140,6 @@ type NamespaceChangesSelector struct {
 	// +kubebuilder:validation:Enum=In;NotIn
 	// Namespace selector operator.
 	Operator string `json:"operator"`
-	// +kubebuilder:validation:Enum=Uts;Ipc;Mnt;Pid;PidForChildren;Net;Time;TimeForChildren;Cgroup;User
 	// Process IDs to match.
 	Values []string `json:"values"`
 }
