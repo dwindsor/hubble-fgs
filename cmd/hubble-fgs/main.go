@@ -25,6 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/version"
+	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -243,7 +244,7 @@ func Serve(ctx context.Context, address string, server *fgsGrpc.Server) error {
 	return nil
 }
 
-func getWatcher(enableK8sAPI bool) (fgsGrpc.K8sResourceWatcher, error) {
+func getWatcher(enableK8sAPI bool) (watcher.K8sResourceWatcher, error) {
 	if enableK8sAPI {
 		logger.GetLogger().Info("Enabling Kubernetes API")
 		config, err := rest.InClusterConfig()
@@ -251,11 +252,11 @@ func getWatcher(enableK8sAPI bool) (fgsGrpc.K8sResourceWatcher, error) {
 			return nil, err
 		}
 		k8sClient := kubernetes.NewForConfigOrDie(config)
-		return fgsGrpc.NewK8sWatcher(k8sClient, 60*time.Second), nil
+		return watcher.NewK8sWatcher(k8sClient, 60*time.Second), nil
 
 	}
 	logger.GetLogger().Info("Disabling Kubernetes API")
-	return fgsGrpc.NewFakeK8sWatcher(nil), nil
+	return watcher.NewFakeK8sWatcher(nil), nil
 }
 
 func execute() error {

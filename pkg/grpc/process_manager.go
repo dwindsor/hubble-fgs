@@ -20,6 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/sirupsen/logrus"
 )
 
@@ -40,7 +41,7 @@ type ProcessManager struct {
 	cache      *processCache
 	eventCache *eventCache
 	nodeName   string
-	watcher    K8sResourceWatcher
+	watcher    watcher.K8sResourceWatcher
 	// synchronize access to the listeners map.
 	mux                    sync.Mutex
 	listeners              map[listener]struct{}
@@ -57,7 +58,7 @@ type ProcessManager struct {
 func NewProcessManager(
 	log logrus.FieldLogger,
 	processCacheSize int,
-	watcher K8sResourceWatcher,
+	watcher watcher.K8sResourceWatcher,
 	ciliumState *cilium.State,
 	enableProcessCred bool,
 	enableProcessNs bool,

@@ -40,6 +40,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
@@ -65,7 +66,7 @@ type testObserverOptions struct {
 }
 
 type testExporterOptions struct {
-	watcher     fgsGrpc.K8sResourceWatcher
+	watcher     watcher.K8sResourceWatcher
 	ciliumState *hubbleCilium.State
 }
 
@@ -88,7 +89,7 @@ func withConfig(config string) testOption {
 	}
 }
 
-func withK8sWatcher(w fgsGrpc.K8sResourceWatcher) testOption {
+func withK8sWatcher(w watcher.K8sResourceWatcher) testOption {
 	return func(o *testOptions) {
 		o.exporter.watcher = w
 	}
@@ -211,7 +212,7 @@ func newDefaultTestOptions(t *testing.T, opts ...testOption) *testOptions {
 			lib:    "",
 		},
 		exporter: testExporterOptions{
-			watcher:     fgsGrpc.NewFakeK8sWatcher(nil),
+			watcher:     watcher.NewFakeK8sWatcher(nil),
 			ciliumState: cilium.GetFakeCiliumState(),
 		},
 	}

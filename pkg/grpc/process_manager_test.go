@@ -24,6 +24,7 @@ import (
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -60,7 +61,7 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 	pm, err := NewProcessManager(
 		logrus.New(),
 		10,
-		NewFakeK8sWatcher(pods),
+		watcher.NewFakeK8sWatcher(pods),
 		cilium.GetFakeCiliumState(),
 		false, false, false, false, true)
 	assert.NoError(t, err)
@@ -122,7 +123,7 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 	pm, err := NewProcessManager(
 		logrus.New(),
 		10,
-		NewFakeK8sWatcher(pods),
+		watcher.NewFakeK8sWatcher(pods),
 		cilium.GetFakeCiliumState(),
 		false, false, false, false, true)
 	assert.NoError(t, err)
@@ -146,7 +147,7 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 	pm, err := NewProcessManager(
 		logrus.New(),
 		10,
-		NewFakeK8sWatcher(nil),
+		watcher.NewFakeK8sWatcher(nil),
 		cilium.GetFakeCiliumState(),
 		false, false, false, false, true)
 	assert.NoError(t, err)
@@ -191,7 +192,7 @@ func TestProcessManager_GetProcessID(t *testing.T) {
 	pm, err := NewProcessManager(
 		logrus.New(),
 		10,
-		NewFakeK8sWatcher([]interface{}{}),
+		watcher.NewFakeK8sWatcher([]interface{}{}),
 		cilium.GetFakeCiliumState(),
 		false, false, false, false, true)
 	assert.NoError(t, err)

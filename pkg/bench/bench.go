@@ -33,6 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -181,7 +182,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	processManager, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
 		processCacheSize,
-		fgsGrpc.NewFakeK8sWatcher(nil),
+		watcher.NewFakeK8sWatcher(nil),
 		cilium.GetFakeCiliumState(),
 		enableProcessCred,
 		enableProcessNs,
