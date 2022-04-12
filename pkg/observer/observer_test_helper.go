@@ -376,11 +376,11 @@ func LoopEvents(t *testing.T, doneWG, readyWG *sync.WaitGroup, obs *Observer, ct
 
 func ExecWGCurl(readyWG *sync.WaitGroup, retries uint, args ...string) error {
 	readyWG.Wait()
-	cmd := exec.Command("/usr/bin/curl", args...)
 
 	var err error
 	// retries=0 -> 1 try, retries=1 -> 2 tries, and so on...
 	for try := uint(0); try < retries+1; try++ {
+		cmd := exec.Command("/usr/bin/curl", args...)
 		err = cmd.Run()
 		if err == nil {
 			break
