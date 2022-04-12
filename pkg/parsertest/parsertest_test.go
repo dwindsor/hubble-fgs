@@ -200,8 +200,8 @@ func addSelfToEvecveMap(t *testing.T) {
 	err = m.Update(
 		&observer.ExecveKey{Pid: pid},
 		&observer.ExecveValue{
-			Parent:  api.MsgExecveKey{ppid, 0, 0xcacababa},
-			Process: api.MsgExecveKey{pid, 0, 0x01020304deadbeef},
+			Parent:  api.MsgExecveKey{Pid: ppid, Pad: 0, Ktime: 0xcacababa},
+			Process: api.MsgExecveKey{Pid: pid, Pad: 0, Ktime: 0x01020304deadbeef},
 		},
 	)
 	if err != nil {

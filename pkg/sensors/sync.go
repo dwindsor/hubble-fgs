@@ -155,7 +155,7 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 				ret := make([]api.SensorStatus, 0, len(availableSensors))
 				for n, sl := range availableSensors {
 					for _, s := range sl {
-						ret = append(ret, api.SensorStatus{n, s.Loaded})
+						ret = append(ret, api.SensorStatus{Name: n, Enabled: s.Loaded})
 					}
 				}
 				op.result = &ret

@@ -585,10 +585,12 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 			a.Arg = &fgs.KprobeArgument_SkbArg{SkbArg: skbArg}
 		case api.MsgGenericKprobeArgBytes:
 			if e.OrigSize > uint64(len(e.Value)) {
-				a.Arg = &fgs.KprobeArgument_TruncatedBytesArg{&fgs.KprobeTruncatedBytes{
-					OrigSize: e.OrigSize,
-					BytesArg: e.Value,
-				}}
+				a.Arg = &fgs.KprobeArgument_TruncatedBytesArg{
+					TruncatedBytesArg: &fgs.KprobeTruncatedBytes{
+						OrigSize: e.OrigSize,
+						BytesArg: e.Value,
+					},
+				}
 			} else {
 				a.Arg = &fgs.KprobeArgument_BytesArg{BytesArg: e.Value}
 			}
