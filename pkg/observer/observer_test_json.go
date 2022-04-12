@@ -13,6 +13,7 @@ package observer
 import (
 	"encoding/json"
 	"fmt"
+	"io"
 	"os"
 	"testing"
 	"time"
@@ -136,7 +137,7 @@ func JsonTestCheck(t *testing.T, c ec.MultiResponseChecker) error {
 			break
 		}
 		t.Logf("JsonCheck (retry=%d) failed: %s. Retrying after %s", cnt, err, retryDelay)
-		jsonFile.Seek(0, os.SEEK_SET)
+		jsonFile.Seek(0, io.SeekStart)
 		time.Sleep(retryDelay)
 		c.Reset()
 	}
