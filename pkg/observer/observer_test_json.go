@@ -120,7 +120,7 @@ func JsonTestCheck(t *testing.T, c ec.MultiResponseChecker) error {
 	t.Logf("jsonTestCheck: openning: %s\n", jsonFname)
 	jsonFile, err := os.Open(jsonFname)
 	if err != nil {
-		return fmt.Errorf("opening json file failed: %w.", err)
+		return fmt.Errorf("opening json file failed: %w", err)
 	}
 	t.Cleanup(func() { jsonFile.Close() })
 

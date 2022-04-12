@@ -354,7 +354,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 
 	tpIdx, ok := load.LoaderData.(int)
 	if !ok {
-		return fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int).", load.Name, load.LoaderData, load.LoaderData), 0
+		return fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int)", load.Name, load.LoaderData, load.LoaderData), 0
 	}
 
 	tp, err := genericTracepointTable.getTracepoint(tpIdx)

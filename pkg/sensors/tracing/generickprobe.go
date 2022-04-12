@@ -310,7 +310,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			argType := gt.GenericTypeFromString(f.ReturnArg.Type)
 			if argType == gt.GenericInvalidType {
 				if f.ReturnArg.Type == "" {
-					return nil, fmt.Errorf("ReturnArg not specified with Return=true.")
+					return nil, fmt.Errorf("ReturnArg not specified with Return=true")
 				}
 				return nil, fmt.Errorf("ReturnArg type '%s' unsupported", f.ReturnArg.Type)
 			}
