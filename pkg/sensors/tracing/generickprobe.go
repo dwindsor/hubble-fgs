@@ -792,7 +792,7 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.ObserverEvent, error) {
 
 	// Cache return value on merge and run return filters below before
 	// passing up to notify hooks.
-	var retArg *api.MsgGenericKprobeArg = nil
+	var retArg *api.MsgGenericKprobeArg
 
 	// there are two events for this probe (entry and return)
 	if gk.loadArgs.retprobe {
@@ -883,7 +883,7 @@ func filterReturnArg(userReturnFilters []v1alpha1.ArgSelector, retArg *api.MsgGe
 // retprobeMerge merges the two events: the one from the entry probe with the one from the return probe
 func retprobeMerge(prev pendingEvent, curr pendingEvent) (*api.MsgGenericKprobeUnix, *api.MsgGenericKprobeArg) {
 	var retEv, enterEv *api.MsgGenericKprobeUnix
-	var ret *api.MsgGenericKprobeArg = nil
+	var ret *api.MsgGenericKprobeArg
 
 	if prev.returnEvent && !curr.returnEvent {
 		retEv = prev.ev

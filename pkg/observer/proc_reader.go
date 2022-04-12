@@ -28,8 +28,8 @@ import (
 )
 
 func stringToUTF8(s []byte) []byte {
-	var utf8Cursor int = 0
-	var i int = 0
+	var utf8Cursor int
+	var i int
 
 	for i < len(s) {
 		r, size := utf8.DecodeRune(s[i:])

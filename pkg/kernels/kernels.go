@@ -61,8 +61,8 @@ func KernelStringToNumeric(ver string) int64 {
 }
 
 func GetKernelVersion(kernelVersion, procfs string) (int, string, error) {
-	var version int = 0
-	var verStr string = ""
+	var version int
+	var verStr string
 
 	if kernelVersion != "" {
 		version = int(KernelStringToNumeric(kernelVersion))

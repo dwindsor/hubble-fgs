@@ -286,7 +286,7 @@ func (btf BTF) FindByNameKind(name string, kind BtfKind) (BtfID, error) {
 func (btf BTF) TypeByID(id BtfID) (BtfType, error) {
 	ptr := unsafe.Pointer(btf)
 	ret := C.BtfTypeByID(ptr, C.uint(id))
-	var err error = nil
+	var err error
 	if uintptr(ret) == 0 {
 		err = fmt.Errorf("type with id %d does not exist in BTF", id)
 	}

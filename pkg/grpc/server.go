@@ -146,7 +146,7 @@ func (s *Server) GetHealth(ctx context.Context, request *fgs.GetHealthStatusRequ
 
 func (s *Server) ListSensors(ctx context.Context, request *fgs.ListSensorsRequest) (*fgs.ListSensorsResponse, error) {
 	logger.GetLogger().Debug("Received a ListSensors request")
-	var ret *fgs.ListSensorsResponse = nil
+	var ret *fgs.ListSensorsResponse
 	list, err := s.observer.ListSensors(ctx)
 	if err == nil {
 		sensors := make([]*fgs.SensorStatus, 0, len(*list))
@@ -193,7 +193,7 @@ func (s *Server) RemoveSensor(ctx context.Context, req *fgs.RemoveSensorRequest)
 func (s *Server) EnableSensor(ctx context.Context, req *fgs.EnableSensorRequest) (*fgs.EnableSensorResponse, error) {
 	logger.GetLogger().WithField("request", req).Debug("Received a EnableSensor request")
 	err := s.observer.EnableSensor(ctx, req.GetName())
-	var ret *fgs.EnableSensorResponse = nil
+	var ret *fgs.EnableSensorResponse
 	if err == nil {
 		ret = &fgs.EnableSensorResponse{}
 	}
