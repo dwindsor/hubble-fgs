@@ -16,6 +16,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/defaults"
+	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -220,7 +221,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 	}
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions}
 	logger.GetLogger().WithFields(logrus.Fields{"logger": &writer, "request": &req}).Info("Starting JSON exporter")
-	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder, rateLimiter)
+	exporter := exporter.NewExporter(ctx, &req, server, encoder, rateLimiter)
 	exporter.Start()
 	return nil
 }

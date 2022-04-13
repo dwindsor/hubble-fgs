@@ -32,6 +32,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -331,7 +332,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	}
 	denyList, _ := filters.ParseFilterList("")
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
-	exporter := fgsGrpc.NewExporter(context.Background(), &req, server, encoder, nil)
+	exporter := exporter.NewExporter(context.Background(), &req, server, encoder, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil

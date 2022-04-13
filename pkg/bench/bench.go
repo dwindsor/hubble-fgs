@@ -29,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -162,7 +163,7 @@ func (bl *benchmarkListener) Close() error {
 
 type timingEncoder struct {
 	totalDuration uint64
-	inner         fgsGrpc.ExportEncoder
+	inner         exporter.ExportEncoder
 }
 
 func (te *timingEncoder) Encode(v interface{}) error {
@@ -196,7 +197,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	}
 	serve := server.NewServer(processManager, obs.SensorManager)
 
-	var encoder fgsGrpc.ExportEncoder
+	var encoder exporter.ExportEncoder
 	if summary.Args.PrintEvents {
 		encoder = json.NewEncoder(os.Stdout)
 	} else {
@@ -212,7 +213,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	}()
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
-	exporter := fgsGrpc.NewExporter(ctx, &req, serve, &timingEncoder, nil)
+	exporter := exporter.NewExporter(ctx, &req, serve, &timingEncoder, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil

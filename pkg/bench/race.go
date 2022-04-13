@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -133,7 +134,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	//encoder := &raceEncoder{0, json.NewEncoder(os.Stdout)}
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
-	exporter := fgsGrpc.NewExporter(ctx, &req, serve, encoder, nil)
+	exporter := exporter.NewExporter(ctx, &req, serve, encoder, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil
