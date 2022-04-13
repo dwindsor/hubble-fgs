@@ -423,7 +423,7 @@ message ProcessDns {
     Process process = 1;
     SockInfo socket = 2;
     DnsInfo dns   = 3;
-    reserved 4; // was "repeated string destination_names = 4;", removed in favor of socket.destination_names.
+    repeated string destination_names = 4 [deprecated=true]; // deprecated in favor of socket.destination_names.
     Pod destination_pod = 5;
 }
 
