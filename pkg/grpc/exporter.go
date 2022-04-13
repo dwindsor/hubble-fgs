@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
+	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/grpc/metadata"
 )
 
@@ -31,7 +32,7 @@ type ExportEncoder interface {
 type Exporter struct {
 	ctx         context.Context
 	request     *fgs.GetEventsRequest
-	server      *Server
+	server      *server.Server
 	encoder     ExportEncoder
 	rateLimiter *ratelimit.RateLimiter
 	done        chan bool
@@ -40,7 +41,7 @@ type Exporter struct {
 func NewExporter(
 	ctx context.Context,
 	request *fgs.GetEventsRequest,
-	server *Server,
+	server *server.Server,
 	encoder ExportEncoder,
 	rateLimiter *ratelimit.RateLimiter,
 ) *Exporter {

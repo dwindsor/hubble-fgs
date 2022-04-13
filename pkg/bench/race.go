@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/proto"
 	corev1 "k8s.io/api/core/v1"
 
@@ -126,13 +127,13 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
+	serve := server.NewServer(processManager, obs.SensorManager)
 
 	encoder := &raceEncoder{0, json.NewEncoder(io.Discard)}
 	//encoder := &raceEncoder{0, json.NewEncoder(os.Stdout)}
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
-	exporter := fgsGrpc.NewExporter(ctx, &req, server, encoder, nil)
+	exporter := fgsGrpc.NewExporter(ctx, &req, serve, encoder, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil

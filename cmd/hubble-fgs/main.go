@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
@@ -151,7 +152,7 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
+	server := server.NewServer(processManager, obs.SensorManager)
 	if err = Serve(ctx, serverAddress, server); err != nil {
 		return err
 	}
@@ -175,7 +176,7 @@ func getObserverDir() string {
 	return filepath.Join(bpf.GetMapRoot(), observerDir)
 }
 
-func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
+func startExporter(ctx context.Context, server *server.Server) error {
 	allowList, denyList, err := getExportFilters()
 	if err != nil {
 		return err
@@ -224,7 +225,7 @@ func startExporter(ctx context.Context, server *fgsGrpc.Server) error {
 	return nil
 }
 
-func Serve(ctx context.Context, address string, server *fgsGrpc.Server) error {
+func Serve(ctx context.Context, address string, server *server.Server) error {
 	grpcServer := grpc.NewServer()
 	fgs.RegisterFineGuidanceSensorsServer(grpcServer, server)
 	go func(address string) {

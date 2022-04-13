@@ -20,20 +20,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/sirupsen/logrus"
 )
 
 var hostNamespace *fgs.Namespaces
-
-type listener interface {
-	notify(res *fgs.GetEventsResponse)
-}
-
-type notifier interface {
-	addListener(listener listener)
-	removeListener(listener listener)
-}
 
 // ProcessManager maintains a cache of processes from fgs exec events.
 type ProcessManager struct {
@@ -44,7 +36,7 @@ type ProcessManager struct {
 	watcher    watcher.K8sResourceWatcher
 	// synchronize access to the listeners map.
 	mux                    sync.Mutex
-	listeners              map[listener]struct{}
+	listeners              map[server.Listener]struct{}
 	ciliumState            *cilium.State
 	enableProcessCred      bool
 	enableProcessNs        bool
@@ -82,7 +74,7 @@ func NewProcessManager(
 		nodeName:               reader.GetNodeNameForExport(),
 		watcher:                watcher,
 		ciliumState:            ciliumState,
-		listeners:              make(map[listener]struct{}),
+		listeners:              make(map[server.Listener]struct{}),
 		enableProcessCred:      enableProcessCred,
 		enableProcessNs:        enableProcessNs,
 		enableEventCache:       enableEventCache,
@@ -153,14 +145,14 @@ func (pm *ProcessManager) Close() error {
 	return nil
 }
 
-func (pm *ProcessManager) addListener(listener listener) {
+func (pm *ProcessManager) AddListener(listener server.Listener) {
 	logger.GetLogger().WithField("getEventsListener", listener).Debug("Adding a getEventsListener")
 	pm.mux.Lock()
 	defer pm.mux.Unlock()
 	pm.listeners[listener] = struct{}{}
 }
 
-func (pm *ProcessManager) removeListener(listener listener) {
+func (pm *ProcessManager) RemoveListener(listener server.Listener) {
 	logger.GetLogger().WithField("getEventsListener", listener).Debug("Removing a getEventsListener")
 	pm.mux.Lock()
 	defer pm.mux.Unlock()
@@ -171,7 +163,7 @@ func (pm *ProcessManager) notifyListeners(original interface{}, processed *fgs.G
 	pm.mux.Lock()
 	defer pm.mux.Unlock()
 	for l := range pm.listeners {
-		l.notify(processed)
+		l.Notify(processed)
 	}
 	metrics.ProcessEvent(original, processed)
 }

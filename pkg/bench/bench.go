@@ -33,6 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	// Imported to allow sensors to be initialized inside init().
@@ -193,7 +194,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
+	serve := server.NewServer(processManager, obs.SensorManager)
 
 	var encoder fgsGrpc.ExportEncoder
 	if summary.Args.PrintEvents {
@@ -211,7 +212,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	}()
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
-	exporter := fgsGrpc.NewExporter(ctx, &req, server, &timingEncoder, nil)
+	exporter := fgsGrpc.NewExporter(ctx, &req, serve, &timingEncoder, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil

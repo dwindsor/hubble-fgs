@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package grpc
+package server
 
 import (
 	"context"
@@ -27,6 +27,15 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 )
+
+type Listener interface {
+	Notify(res *fgs.GetEventsResponse)
+}
+
+type notifier interface {
+	AddListener(listener Listener)
+	RemoveListener(listener Listener)
+}
 
 type observer interface {
 	AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error
@@ -62,7 +71,7 @@ func newListener() *getEventsListener {
 	}
 }
 
-func (l *getEventsListener) notify(res *fgs.GetEventsResponse) {
+func (l *getEventsListener) Notify(res *fgs.GetEventsResponse) {
 	l.events <- res
 }
 
@@ -72,7 +81,7 @@ func (l *getEventsListener) notify(res *fgs.GetEventsResponse) {
 func (s *Server) removeNotifierAndDrain(l *getEventsListener) {
 	done := make(chan struct{})
 	go func() {
-		s.notifier.removeListener(l)
+		s.notifier.RemoveListener(l)
 		done <- struct{}{}
 	}()
 
@@ -107,7 +116,7 @@ func (s *Server) GetEventsWG(request *fgs.GetEventsRequest, server fgs.FineGuida
 	}
 
 	l := newListener()
-	s.notifier.addListener(l)
+	s.notifier.AddListener(l)
 	defer s.removeNotifierAndDrain(l)
 	if readyWG != nil {
 		readyWG.Done()

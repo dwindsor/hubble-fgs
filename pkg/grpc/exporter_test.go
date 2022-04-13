@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
+	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -49,24 +50,24 @@ func (a *arrayWriter) Write(p []byte) (n int, err error) {
 
 type fakeNotifier struct {
 	mux       sync.Mutex
-	listeners map[listener]struct{}
+	listeners map[server.Listener]struct{}
 	removed   chan bool
 }
 
 func newFakeNotifier() *fakeNotifier {
 	return &fakeNotifier{
-		listeners: make(map[listener]struct{}),
+		listeners: make(map[server.Listener]struct{}),
 		removed:   make(chan bool),
 	}
 }
 
-func (f *fakeNotifier) addListener(listener listener) {
+func (f *fakeNotifier) AddListener(listener server.Listener) {
 	f.mux.Lock()
 	f.listeners[listener] = struct{}{}
 	f.mux.Unlock()
 }
 
-func (f *fakeNotifier) removeListener(listener listener) {
+func (f *fakeNotifier) RemoveListener(listener server.Listener) {
 	f.mux.Lock()
 	delete(f.listeners, listener)
 	f.removed <- true
@@ -76,7 +77,7 @@ func (f *fakeNotifier) removeListener(listener listener) {
 func (f *fakeNotifier) notifyListeners(event *fgs.GetEventsResponse) {
 	f.mux.Lock()
 	for l := range f.listeners {
-		l.notify(event)
+		l.Notify(event)
 	}
 	f.mux.Unlock()
 }
@@ -121,7 +122,7 @@ func (f *fakeObserver) RemoveSensor(ctx context.Context, sensorName string) erro
 
 func TestExporter_Send(t *testing.T) {
 	eventNotifier := newFakeNotifier()
-	grpcServer := NewServer(eventNotifier, &fakeObserver{})
+	grpcServer := server.NewServer(eventNotifier, &fakeObserver{})
 	numRecords := 2
 	results := newArrayWriter(numRecords)
 	encoder := json.NewEncoder(results)
@@ -223,7 +224,7 @@ func Test_rateLimitExport(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s (%d events, %d rate limit)", tt.name, tt.totalEvents, tt.rateLimit), func(t *testing.T) {
 			eventNotifier := newFakeNotifier()
-			grpcServer := NewServer(eventNotifier, &fakeObserver{})
+			grpcServer := server.NewServer(eventNotifier, &fakeObserver{})
 			results := newArrayWriter(tt.totalEvents)
 			encoder := json.NewEncoder(results)
 			ctx, cancel := context.WithCancel(context.Background())

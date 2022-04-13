@@ -39,6 +39,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
@@ -317,7 +318,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	if err != nil {
 		return err
 	}
-	server := fgsGrpc.NewServer(processManager, obs.SensorManager)
+	server := server.NewServer(processManager, obs.SensorManager)
 	outF := testutils.CreateExportFile(t)
 	encoder := json.NewEncoder(outF)
 
