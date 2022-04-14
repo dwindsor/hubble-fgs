@@ -44,6 +44,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
+	hubblev1 "github.com/cilium/hubble/pkg/api/v1"
 	corev1 "k8s.io/api/core/v1"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
@@ -200,6 +201,9 @@ func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
 			}
 
 			return &pod, &container, true
+		},
+		OnGetPodInfo: func(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint) {
+			return nil, nil
 		},
 	}
 }
@@ -423,6 +427,7 @@ func DockerRun(t *testing.T, args ...string) (containerId string) {
 
 type fakeK8sWatcher struct {
 	OnFindPod func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool)
+	OnGetPodInfo func(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint)
 }
 
 func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
@@ -431,6 +436,14 @@ func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 	}
 	return f.OnFindPod(containerID)
 }
+
+func (f *fakeK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint) {
+	if f.OnGetPodInfo == nil {
+		panic("GetPodInfo not implemented")
+	}
+	return f.OnGetPodInfo(containerID, binary, args, nspid)
+}
+
 
 // Used to wait for a process to start, we do a lookup on PROCFS because this
 // may be called before obs is created.

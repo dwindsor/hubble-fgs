@@ -18,7 +18,7 @@ import (
 
 // We handle two race conditions here one where the event races with
 // an FGS execve event and the other -- much more common -- where we
-// race with K8s watcher.
+// race with K8s watcher
 // case 1 (execve race):
 //  Its possible to receive this FGS event before the process event cache
 //  has been populated with a FGS execve event. In this case we need to
@@ -63,7 +63,7 @@ func (pm *ProcessManager) getProcess(
 		parentExecID = pm.GetExecIDFromKey(&parent)
 	}
 	execID := pm.GetExecID(&process)
-	protoPod, endpoint := pm.getPodInfo(containerID, process.Filename, args, process.NSPID)
+	protoPod, endpoint := pm.watcher.GetPodInfo(containerID, process.Filename, args, process.NSPID)
 	caps := reader.GetMsgCapabilities(capabilities)
 	ns := reader.GetMsgNamespaces(namespaces)
 	return &ProcessInternal{

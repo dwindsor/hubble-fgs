@@ -8,6 +8,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -102,7 +103,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	// cache where a retry will happen.
 	if pm.enableCilium && proc != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
-		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
 		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)

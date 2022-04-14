@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
+	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -129,7 +130,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			event.DestinationNames = labels
 			if event.DestinationPod == nil {
-				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
+				event.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.DestinationIp))
 			}
 
 			processedEvent = &fgs.GetEventsResponse{
@@ -143,7 +144,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			event.DestinationNames = labels
 			if event.DestinationPod == nil {
-				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
+				event.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.DestinationIp))
 			}
 
 			processedEvent = &fgs.GetEventsResponse{
@@ -157,7 +158,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			event.DestinationNames = labels
 			if event.DestinationPod == nil {
-				event.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.DestinationIp))
+				event.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.DestinationIp))
 			}
 
 			processedEvent = &fgs.GetEventsResponse{
@@ -215,7 +216,7 @@ func (ec *eventCache) handleNetEvents() {
 				event.Process = e.internal.GetProcessCopy()
 			}
 			if event.Socket.DestinationPod == nil {
-				event.Socket.DestinationPod = ec.pm.getPodInfoOfIp(net.ParseIP(event.Socket.DestinationIp))
+				event.Socket.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.Socket.DestinationIp))
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessSockstats{ProcessSockstats: event},
@@ -268,7 +269,7 @@ func (ec *eventCache) handleProcEvents() {
 		args := e.process.Process.Arguments
 		nspid := e.msg.Process.NSPID
 
-		podInfo, _ := ec.pm.getPodInfo(containerId, filename, args, nspid)
+		podInfo, _ := ec.pm.watcher.GetPodInfo(containerId, filename, args, nspid)
 		if podInfo == nil {
 			e.color++
 			if e.color != threeStrikes {

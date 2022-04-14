@@ -136,7 +136,7 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return err
 	}
-	ciliumState, err := cilium.GetCiliumState(ctx, enableCiliumAPI)
+	ciliumState, err := cilium.InitCiliumState(ctx, enableCiliumAPI)
 	if err != nil {
 		return err
 	}

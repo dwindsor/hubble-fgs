@@ -34,6 +34,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/proto"
+
+	hubblev1 "github.com/cilium/hubble/pkg/api/v1"
 	corev1 "k8s.io/api/core/v1"
 
 	// Imported to allow sensors to be initialized inside init().
@@ -78,6 +80,10 @@ func (r *raceK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 		return &corev1.Pod{}, &corev1.ContainerStatus{Image: "fake"}, true
 	}
 	return nil, nil, false
+}
+
+func (r *raceK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint) {
+	return nil, nil
 }
 
 type raceEncoder struct {

@@ -65,10 +65,10 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 		cilium.GetFakeCiliumState(),
 		false, false, false, false, true)
 	assert.NoError(t, err)
-	pod, endpoint := pm.getPodInfo("container-id-not-found", "", "", 0)
+	pod, endpoint := pm.watcher.GetPodInfo("container-id-not-found", "", "", 0)
 	assert.Nil(t, pod)
 	assert.Nil(t, endpoint)
-	pod, endpoint = pm.getPodInfo("aaaaaaa", "", "", 1234)
+	pod, endpoint = pm.watcher.GetPodInfo("aaaaaaa", "", "", 1234)
 	assert.Equal(t,
 		&fgs.Pod{
 			Namespace: podA.Namespace,
@@ -127,7 +127,7 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 		cilium.GetFakeCiliumState(),
 		false, false, false, false, true)
 	assert.NoError(t, err)
-	pod, endpoint := pm.getPodInfo("aaaaaaa", "/bin/command", "arg-a arg-b", 1234)
+	pod, endpoint := pm.watcher.GetPodInfo("aaaaaaa", "/bin/command", "arg-a arg-b", 1234)
 	assert.Equal(t,
 		&fgs.Pod{
 			Namespace: podA.Namespace,

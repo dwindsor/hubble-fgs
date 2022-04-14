@@ -5,6 +5,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
@@ -46,7 +47,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	// cache where a retry will happen.
 	if pm.enableCilium && proc != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_IPV4_DNS)
-		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
 		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)

@@ -28,7 +28,18 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
-func GetCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, error) {
+var (
+	ciliumState *cilium.State
+)
+
+func GetCiliumState() (*cilium.State) {
+	return ciliumState
+}
+
+func InitCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, error) {
+	if ciliumState != nil {
+		return ciliumState, nil
+	}
 	if !enableCiliumAPI {
 		logger.GetLogger().Info("Disabling Cilium API")
 		return GetFakeCiliumState(), nil
@@ -38,7 +49,7 @@ func GetCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, e
 	if err != nil {
 		return nil, fmt.Errorf("failed to get Cilium client: %v", err)
 	}
-	ciliumState := cilium.NewCiliumState(
+	ciliumState = cilium.NewCiliumState(
 		ciliumClient,
 		v1.NewEndpoints(),
 		ipcache.New(),

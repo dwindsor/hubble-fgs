@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -152,7 +153,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 	// cache where a retry will happen.
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
-		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
@@ -239,7 +240,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 	// cache where a retry will happen.
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
-		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
 		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
@@ -361,7 +362,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 	// cache where a retry will happen.
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
-		fgsEvent.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
@@ -411,7 +412,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 
 	if pm.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
-		fgsEvent.Socket.DestinationPod = pm.getPodInfoOfIp(destinationIP)
+		fgsEvent.Socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
