@@ -3,7 +3,6 @@ package grpc
 import (
 	"encoding/base64"
 	"fmt"
-	"path/filepath"
 	"strings"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
@@ -51,13 +50,6 @@ func (pm *ProcessManager) getParentProcessInternal(pid uint32, ktime uint64) (*P
 	return process, parent
 }
 
-func getBinaryAbsolutePath(binary string, cwd string) string {
-	if filepath.IsAbs(binary) {
-		return binary
-	}
-	return filepath.Join(cwd, binary)
-}
-
 func (pm *ProcessManager) getProcess(
 	process fgsAPI.MsgProcess,
 	containerID string,
@@ -79,7 +71,7 @@ func (pm *ProcessManager) getProcess(
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
 			Uid:          &wrapperspb.UInt32Value{Value: process.UID},
 			Cwd:          reader.MarkUnresolvedPathComponentsCwd(cwd, process.Flags),
-			Binary:       getBinaryAbsolutePath(process.Filename, cwd),
+			Binary:       reader.GetBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
 			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
 			StartTime:    ktime.ToProtoOpt(process.Ktime, (process.Flags&api.EventProcFS) == 0),
