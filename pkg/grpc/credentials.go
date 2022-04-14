@@ -9,14 +9,6 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func (pm *ProcessManager) getCapabilities(caps fgsAPI.MsgCapabilities) *fgs.Capabilities {
-	return &fgs.Capabilities{
-		Permitted:   reader.GetCapabilitiesTypes(caps.Permitted),
-		Effective:   reader.GetCapabilitiesTypes(caps.Effective),
-		Inheritable: reader.GetCapabilitiesTypes(caps.Inheritable),
-	}
-}
-
 // GetProcessCred returns Cred protobuf message for a given process.
 func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.ProcessCred {
 	processInt, parentInt := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -37,7 +29,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 	fgsEvent := &fgs.ProcessCred{
 		Process: process,
 		Parent:  parent,
-		Cap:     pm.getCapabilities(event.Capabilities),
+		Cap:     reader.GetMsgCapabilities(event.Capabilities),
 	}
 	if pm.processCacheNeeded(process) {
 		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)

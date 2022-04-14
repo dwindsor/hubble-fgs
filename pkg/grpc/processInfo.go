@@ -72,7 +72,7 @@ func (pm *ProcessManager) getProcess(
 	}
 	execID := pm.GetExecID(&process)
 	protoPod, endpoint := pm.getPodInfo(containerID, process.Filename, args, process.NSPID)
-	caps := pm.getCapabilities(capabilities)
+	caps := reader.GetMsgCapabilities(capabilities)
 	ns := reader.GetMsgNamespaces(namespaces)
 	return &ProcessInternal{
 		process: &fgs.Process{
