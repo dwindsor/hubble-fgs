@@ -9,6 +9,7 @@ import (
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -22,12 +23,12 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	fgsHttpResponse := &fgs.HttpResponse{}
 	fgsHttpRequest := &fgs.HttpRequest{}
 
-	processID := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	processInt, err := pm.cache.get(processID)
+	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processInt, err := process.Get(processID)
 	if err != nil {
 		pm.log.WithField("id in HTTP event", processID).Debug("process not found in cache")
 	} else {
-		proc = processInt.process
+		proc = processInt.UnsafeGetProcess()
 
 	}
 	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)

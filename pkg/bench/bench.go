@@ -34,6 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
@@ -112,8 +113,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	obs.AddListener(listener)
 
 	if args.FgsJSONEncode {
-		err := startBenchmarkExporter(ctx, obs, summary)
-		if err != nil {
+		if err := startBenchmarkExporter(ctx, obs, summary); err != nil {
 			log.Fatalf("Starting exporter failed: %v", err)
 		}
 	}
@@ -181,10 +181,15 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	enableEventCache := false
 	enableProcessAncestors := true
 
+	if _, err := cilium.InitCiliumState(ctx, enableCiliumAPI); err != nil {
+		return err
+	}
+	if err := process.InitCache(ctx, watcher.NewFakeK8sWatcher(nil), enableCiliumAPI, processCacheSize); err != nil {
+		return err
+	}
+
 	processManager, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
-		processCacheSize,
-		watcher.NewFakeK8sWatcher(nil),
 		cilium.GetFakeCiliumState(),
 		enableProcessCred,
 		enableProcessNs,

@@ -32,7 +32,7 @@ var (
 	ciliumState *cilium.State
 )
 
-func GetCiliumState() (*cilium.State) {
+func GetCiliumState() *cilium.State {
 	return ciliumState
 }
 
@@ -42,22 +42,23 @@ func InitCiliumState(ctx context.Context, enableCiliumAPI bool) (*cilium.State, 
 	}
 	if !enableCiliumAPI {
 		logger.GetLogger().Info("Disabling Cilium API")
-		return GetFakeCiliumState(), nil
+		ciliumState = GetFakeCiliumState()
+	} else {
+		logger.GetLogger().Info("Enabling Cilium API")
+		ciliumClient, err := client.NewClient()
+		if err != nil {
+			return nil, fmt.Errorf("failed to get Cilium client: %v", err)
+		}
+		ciliumState = cilium.NewCiliumState(
+			ciliumClient,
+			v1.NewEndpoints(),
+			ipcache.New(),
+			fqdncache.New(),
+			servicecache.New(),
+			logger.GetLogger().WithField("subsystem", "cilium"))
+		go ciliumState.Start()
+		go HandleMonitorSocket(ctx, ciliumState)
 	}
-	logger.GetLogger().Info("Enabling Cilium API")
-	ciliumClient, err := client.NewClient()
-	if err != nil {
-		return nil, fmt.Errorf("failed to get Cilium client: %v", err)
-	}
-	ciliumState = cilium.NewCiliumState(
-		ciliumClient,
-		v1.NewEndpoints(),
-		ipcache.New(),
-		fqdncache.New(),
-		servicecache.New(),
-		logger.GetLogger().WithField("subsystem", "cilium"))
-	go ciliumState.Start()
-	go HandleMonitorSocket(ctx, ciliumState)
 	return ciliumState, nil
 }
 

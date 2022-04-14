@@ -38,6 +38,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
@@ -209,6 +210,7 @@ func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
 }
 
 func newDefaultTestOptions(t *testing.T, opts ...testOption) *testOptions {
+	ciliumState, _ := cilium.InitCiliumState(context.Background(), false)
 	// default values
 	options := &testOptions{
 		observer: testObserverOptions{
@@ -219,7 +221,7 @@ func newDefaultTestOptions(t *testing.T, opts ...testOption) *testOptions {
 		},
 		exporter: testExporterOptions{
 			watcher:     watcher.NewFakeK8sWatcher(nil),
-			ciliumState: cilium.GetFakeCiliumState(),
+			ciliumState: ciliumState,
 		},
 	}
 	// apply user options
@@ -314,12 +316,17 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	watcher := opts.watcher
 	ciliumState := opts.ciliumState
 	processCacheSize := 32768
+
+	if err := process.InitCache(context.Background(), watcher, false, processCacheSize); err != nil {
+		return err
+	}
+
 	// For testing we disable the eventcache and cilium cache by default. If we
 	// enable these then every tests would need to wait for the 1.5 mimutes needed
 	// to bounce events through the cache waiting for Cilium to reply with endpoints
 	// and K8s cache data to be completed. We currently only stub them enough to
 	// report nil or a pre-defined value. So no cache needed.
-	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), processCacheSize, watcher, ciliumState, true, true, true, false, true)
+	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), ciliumState, true, true, true, false, true)
 	if err != nil {
 		return err
 	}
@@ -426,7 +433,7 @@ func DockerRun(t *testing.T, args ...string) (containerId string) {
 }
 
 type fakeK8sWatcher struct {
-	OnFindPod func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool)
+	OnFindPod    func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool)
 	OnGetPodInfo func(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint)
 }
 
@@ -443,7 +450,6 @@ func (f *fakeK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint
 	}
 	return f.OnGetPodInfo(containerID, binary, args, nspid)
 }
-
 
 // Used to wait for a process to start, we do a lookup on PROCFS because this
 // may be called before obs is created.

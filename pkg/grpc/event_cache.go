@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -28,7 +29,7 @@ type eventNetObj interface {
 }
 
 type eventNetCacheObj struct {
-	internal  *ProcessInternal
+	internal  *process.ProcessInternal
 	event     eventNetObj
 	timestamp *timestamppb.Timestamp
 	color     int
@@ -36,7 +37,7 @@ type eventNetCacheObj struct {
 }
 
 type eventProcCacheObj struct {
-	internal  *ProcessInternal
+	internal  *process.ProcessInternal
 	process   *fgs.ProcessExec
 	timestamp *timestamppb.Timestamp
 	color     int
@@ -269,7 +270,7 @@ func (ec *eventCache) handleProcEvents() {
 		args := e.process.Process.Arguments
 		nspid := e.msg.Process.NSPID
 
-		podInfo, _ := ec.pm.watcher.GetPodInfo(containerId, filename, args, nspid)
+		podInfo, _ := process.GetPodInfo(containerId, filename, args, nspid)
 		if podInfo == nil {
 			e.color++
 			if e.color != threeStrikes {
@@ -280,9 +281,7 @@ func (ec *eventCache) handleProcEvents() {
 		}
 
 		if e.internal != nil {
-			e.internal.mu.Lock()
-			e.internal.process.Pod = podInfo
-			e.internal.mu.Unlock()
+			e.internal.AddPodInfo(podInfo)
 			e.process.Process = e.internal.GetProcessCopy()
 		} else {
 			e.process.Process.Pod = podInfo
@@ -338,10 +337,16 @@ func newEventCache(log logrus.FieldLogger, pm *ProcessManager) *eventCache {
 	return ec
 }
 
-func (ec *eventCache) add(internal *ProcessInternal, e eventNetObj, t *timestamppb.Timestamp, msg interface{}) {
+func (ec *eventCache) add(internal *process.ProcessInternal,
+	e eventNetObj,
+	t *timestamppb.Timestamp,
+	msg interface{}) {
 	ec.netObjsChan <- eventNetCacheObj{internal: internal, event: e, timestamp: t, msg: msg}
 }
 
-func (ec *eventCache) addProc(internal *ProcessInternal, e *fgs.ProcessExec, t *timestamppb.Timestamp, msg *api.MsgExecveEventUnix) {
+func (ec *eventCache) addProc(internal *process.ProcessInternal,
+	e *fgs.ProcessExec,
+	t *timestamppb.Timestamp,
+	msg *api.MsgExecveEventUnix) {
 	ec.procObjsChan <- eventProcCacheObj{internal: internal, process: e, timestamp: t, msg: msg}
 }

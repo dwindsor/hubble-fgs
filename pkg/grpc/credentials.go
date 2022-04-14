@@ -5,13 +5,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 // GetProcessCred returns Cred protobuf message for a given process.
 func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.ProcessCred {
-	processInt, parentInt := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processInt, parentInt := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	var process, parent *fgs.Process
 	if processInt == nil {
 		process = &fgs.Process{
@@ -19,12 +20,12 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		process = processInt.process
-		process.Cap = processInt.capabilities
+		process = processInt.UnsafeGetProcess()
+		process.Cap = processInt.UnsafeGetProcessCap()
 	}
 	if parentInt != nil {
-		parent = parentInt.process
-		parent.Cap = parentInt.capabilities
+		parent = parentInt.UnsafeGetProcess()
+		parent.Cap = parentInt.UnsafeGetProcessCap()
 	}
 	fgsEvent := &fgs.ProcessCred{
 		Process: process,

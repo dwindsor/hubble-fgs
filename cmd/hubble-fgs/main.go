@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
@@ -140,10 +141,13 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return err
 	}
+
+	if err := process.InitCache(ctx, watcher, enableCiliumAPI, processCacheSize); err != nil {
+		return err
+	}
+
 	processManager, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
-		processCacheSize,
-		watcher,
 		ciliumState,
 		enableProcessCred,
 		enableProcessNs,

@@ -15,6 +15,7 @@
 package grpc
 
 import (
+	"context"
 	"encoding/base64"
 	"os"
 	"testing"
@@ -23,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/sirupsen/logrus"
@@ -57,18 +59,14 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 			},
 		},
 	}
+
 	pods := []interface{}{&podA}
-	pm, err := NewProcessManager(
-		logrus.New(),
-		10,
-		watcher.NewFakeK8sWatcher(pods),
-		cilium.GetFakeCiliumState(),
-		false, false, false, false, true)
+	err := process.InitCache(context.Background(), watcher.NewFakeK8sWatcher(pods), false, 10)
 	assert.NoError(t, err)
-	pod, endpoint := pm.watcher.GetPodInfo("container-id-not-found", "", "", 0)
+	pod, endpoint := process.GetPodInfo("container-id-not-found", "", "", 0)
 	assert.Nil(t, pod)
 	assert.Nil(t, endpoint)
-	pod, endpoint = pm.watcher.GetPodInfo("aaaaaaa", "", "", 1234)
+	pod, endpoint = process.GetPodInfo("aaaaaaa", "", "", 1234)
 	assert.Equal(t,
 		&fgs.Pod{
 			Namespace: podA.Namespace,
@@ -120,14 +118,9 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 		},
 	}
 	pods := []interface{}{&podA}
-	pm, err := NewProcessManager(
-		logrus.New(),
-		10,
-		watcher.NewFakeK8sWatcher(pods),
-		cilium.GetFakeCiliumState(),
-		false, false, false, false, true)
+	err := process.InitCache(context.Background(), watcher.NewFakeK8sWatcher(pods), false, 10)
 	assert.NoError(t, err)
-	pod, endpoint := pm.watcher.GetPodInfo("aaaaaaa", "/bin/command", "arg-a arg-b", 1234)
+	pod, endpoint := process.GetPodInfo("aaaaaaa", "/bin/command", "arg-a arg-b", 1234)
 	assert.Equal(t,
 		&fgs.Pod{
 			Namespace: podA.Namespace,
@@ -144,14 +137,14 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 }
 
 func TestProcessManager_GetProcessExec(t *testing.T) {
+	err := process.InitCache(context.Background(), watcher.NewFakeK8sWatcher(nil), false, 10)
+	assert.NoError(t, err)
 	pm, err := NewProcessManager(
 		logrus.New(),
-		10,
-		watcher.NewFakeK8sWatcher(nil),
 		cilium.GetFakeCiliumState(),
 		false, false, false, false, true)
 	assert.NoError(t, err)
-	procInternal := pm.Add(&fgsAPI.MsgExecveEventUnix{
+	procInternal := process.Add(&fgsAPI.MsgExecveEventUnix{
 		Common: fgsAPI.MsgCommon{
 			Ktime: 1234,
 		},
@@ -189,14 +182,10 @@ func Test_getNodeNameForExport(t *testing.T) {
 
 func TestProcessManager_GetProcessID(t *testing.T) {
 	assert.NoError(t, os.Setenv("NODE_NAME", "my-node"))
-	pm, err := NewProcessManager(
-		logrus.New(),
-		10,
-		watcher.NewFakeK8sWatcher([]interface{}{}),
-		cilium.GetFakeCiliumState(),
-		false, false, false, false, true)
+
+	err := process.InitCache(context.Background(), watcher.NewFakeK8sWatcher([]interface{}{}), false, 10)
 	assert.NoError(t, err)
-	id := pm.GetProcessID(1, 2)
+	id := process.GetProcessID(1, 2)
 	decoded, err := base64.StdEncoding.DecodeString(id)
 	assert.NoError(t, err)
 	assert.Equal(t, "my-node:2:1", string(decoded))

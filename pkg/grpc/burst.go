@@ -7,6 +7,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -35,7 +36,7 @@ func (pm *ProcessManager) GetProcessNetworkBurst(
 ) *fgs.ProcessNetworkBurst {
 	var fgsProcess, fgsParent *fgs.Process
 
-	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		fgsProcess = process.GetProcessCopy()
 	} else {

@@ -6,6 +6,7 @@ import (
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
@@ -13,12 +14,12 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	var proc *fgs.Process
 	var err error
 
-	processID := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	processInt, err := pm.cache.get(processID)
+	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processInt, err := process.Get(processID)
 	if err != nil {
 		pm.log.WithField("id in DNS event", processID).Debug("process not found in cache")
 	} else {
-		proc = processInt.process
+		proc = processInt.UnsafeGetProcess()
 
 	}
 	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)

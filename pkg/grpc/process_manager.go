@@ -21,19 +21,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/server"
-	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/sirupsen/logrus"
 )
-
-var hostNamespace *fgs.Namespaces
 
 // ProcessManager maintains a cache of processes from fgs exec events.
 type ProcessManager struct {
 	log        logrus.FieldLogger
-	cache      *processCache
 	eventCache *eventCache
 	nodeName   string
-	watcher    watcher.K8sResourceWatcher
 	// synchronize access to the listeners map.
 	mux                    sync.Mutex
 	listeners              map[server.Listener]struct{}
@@ -49,8 +44,6 @@ type ProcessManager struct {
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
 func NewProcessManager(
 	log logrus.FieldLogger,
-	processCacheSize int,
-	watcher watcher.K8sResourceWatcher,
 	ciliumState *cilium.State,
 	enableProcessCred bool,
 	enableProcessNs bool,
@@ -58,11 +51,6 @@ func NewProcessManager(
 	enableCilium bool,
 	enableProcessAncestors bool,
 ) (*ProcessManager, error) {
-	cache, err := newProcessCache(log, processCacheSize)
-	if err != nil {
-		return nil, err
-	}
-
 	dnsCache, err := newDnsCache()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DNS cache %w", err)
@@ -70,9 +58,7 @@ func NewProcessManager(
 
 	pm := &ProcessManager{
 		log:                    log,
-		cache:                  cache,
 		nodeName:               reader.GetNodeNameForExport(),
-		watcher:                watcher,
 		ciliumState:            ciliumState,
 		listeners:              make(map[server.Listener]struct{}),
 		enableProcessCred:      enableProcessCred,
@@ -91,7 +77,6 @@ func NewProcessManager(
 		"enableEventCache":  enableEventCache,
 		"enableProcessCred": enableProcessCred,
 		"enableProcessNs":   enableProcessNs,
-		"processCacheSize":  processCacheSize,
 	}).Info("Starting process manager")
 	return pm, nil
 }

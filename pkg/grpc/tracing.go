@@ -5,6 +5,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -14,23 +15,17 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	var fgsArgs []*fgs.KprobeArgument
 	var fgsReturnArg *fgs.KprobeArgument
 
-	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = process.UnsafeGetProcess()
 	}
-	process.mu.Lock()
-	if pm.enableProcessCred {
-		fgsProcess.Cap = reader.GetMsgCapabilities(event.Capabilities)
-	}
-	if pm.enableProcessNs {
-		fgsProcess.Ns = reader.GetMsgNamespaces(event.Namespaces)
-	}
-	process.mu.Unlock()
+	process.AnnotateProcess(pm.enableProcessCred, pm.enableProcessNs)
+
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
@@ -138,14 +133,14 @@ func (pm *ProcessManager) handleGenericKprobeMessage(msg *api.MsgGenericKprobeUn
 func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix) *fgs.GetEventsResponse {
 	var fgsParent, fgsProcess *fgs.Process
 
-	process, parent := pm.getParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
 			StartTime: ktime.ToProto(msg.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = process.UnsafeGetProcess()
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}

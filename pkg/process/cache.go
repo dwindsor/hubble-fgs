@@ -8,20 +8,19 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package grpc
+package process
 
 import (
 	"fmt"
 	"strconv"
-	"sync"
 	"sync/atomic"
 	"time"
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/sirupsen/logrus"
-	"google.golang.org/protobuf/proto"
 )
 
 type processCache struct {
@@ -46,31 +45,6 @@ const (
 const (
 	intervalGC = time.Second * 30
 )
-
-// ProcessInternal is the internal representation of a process.
-type ProcessInternal struct {
-	// mu protects the modifications to process.
-	mu sync.Mutex
-	// externally visible process struct.
-	process *fgs.Process
-	// additional internal fields below
-	capabilities *fgs.Capabilities
-	namespaces   *fgs.Namespaces
-	// garbage collector metadata
-	color  int
-	refcnt uint32
-}
-
-func (pi *ProcessInternal) GetProcessCopy() *fgs.Process {
-	if pi.process == nil {
-		return nil
-	}
-	pi.mu.Lock()
-	proc := proto.Clone(pi.process).(*fgs.Process)
-	pi.mu.Unlock()
-	proc.Refcnt = atomic.LoadUint32(&pi.refcnt)
-	return proc
-}
 
 func (pc *processCache) cacheGarbageCollector() {
 	ticker := time.NewTicker(intervalGC)
@@ -154,8 +128,7 @@ func (pc *processCache) refInc(p *ProcessInternal) {
 	atomic.AddUint32(&p.refcnt, 1)
 }
 
-func newProcessCache(
-	log logrus.FieldLogger,
+func NewCache(
 	processCacheSize int,
 ) (*processCache, error) {
 	lruCache, err := lru.New(processCacheSize)
@@ -167,7 +140,6 @@ func newProcessCache(
 		return nil, err
 	}
 	pm := &processCache{
-		log:    log,
 		cache:  lruCache,
 		pidMap: pidMap,
 	}
@@ -191,20 +163,20 @@ func newProcessCache(
 func (pc *processCache) get(processID string) (*ProcessInternal, error) {
 	entry, ok := pc.cache.Get(processID)
 	if !ok {
-		pc.log.WithField("id in event", processID).Debug("process not found in cache")
+		logger.GetLogger().WithField("id in event", processID).Debug("process not found in cache")
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnGet)).Inc()
 		return nil, fmt.Errorf("invalid entry for process ID: %s", processID)
 	}
 	process, _ := entry.(*ProcessInternal)
 	if !ok {
-		pc.log.WithField("process entry", entry).Debug("invalid entry in process cache")
+		logger.GetLogger().WithField("process entry", entry).Debug("invalid entry in process cache")
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnGet)).Inc()
 		return nil, fmt.Errorf("process with ID %s not found in cache", processID)
 	}
 	return process, nil
 }
 
-func (pc *processCache) add(process *ProcessInternal) bool {
+func (pc *processCache) Add(process *ProcessInternal) bool {
 	evicted := pc.cache.Add(process.process.ExecId, process)
 	if evicted {
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheEvicted)).Inc()
@@ -245,7 +217,7 @@ func (pc *processCache) getFromPidMap(pid uint32) string {
 	return execID
 }
 
-func (pc *processCache) addToPidMap(pid uint32, execID string) bool {
+func (pc *processCache) AddToPidMap(pid uint32, execID string) bool {
 	evicted := pc.pidMap.Add(pid, execID)
 	if evicted {
 		pc.log.Warn("Entry evicted from pidMap")

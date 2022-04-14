@@ -5,6 +5,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -47,14 +48,14 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		}
 	}
 
-	processID := pm.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	var proc *fgs.Process
-	processInt, err := pm.cache.get(processID)
+	processInt, err := process.Get(processID)
 	if err != nil {
 		pm.log.WithField("id in TLS event", processID).Debug("process not found in cache")
 		proc = nil
 	} else {
-		proc = processInt.process
+		proc = processInt.UnsafeGetProcess()
 	}
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI.Value)
 	fgsEvent := &fgs.Tls{

@@ -32,6 +32,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/proto"
 
@@ -120,10 +121,15 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	enableEventCache := true
 	enableProcessAncestors := false
 
+	if _, err := cilium.InitCiliumState(ctx, enableCiliumAPI); err != nil {
+		return err
+	}
+	if err := process.InitCache(ctx, &raceK8sWatcher{}, enableCiliumAPI, processCacheSize); err != nil {
+		return err
+	}
+
 	processManager, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
-		processCacheSize,
-		&raceK8sWatcher{},
 		cilium.GetFakeCiliumState(),
 		enableProcessCred,
 		enableProcessNs,

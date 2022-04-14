@@ -8,13 +8,12 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package grpc
+package process
 
 import (
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/require"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -22,7 +21,7 @@ import (
 
 func TestProcessCache(t *testing.T) {
 	// add a process to the cache.
-	cache, err := newProcessCache(logrus.New(), 10)
+	cache, err := NewCache(10)
 	require.NoError(t, err)
 	pid := wrapperspb.UInt32Value{Value: 1234}
 	execID := "process1"
@@ -38,9 +37,9 @@ func TestProcessCache(t *testing.T) {
 			},
 		},
 	}
-	cache.add(&proc)
+	cache.Add(&proc)
 	assert.Equal(t, cache.len(), 1)
-	cache.addToPidMap(pid.Value, execID)
+	cache.AddToPidMap(pid.Value, execID)
 
 	result, err := cache.get(proc.process.ExecId)
 	assert.NoError(t, err)

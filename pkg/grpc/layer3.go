@@ -20,6 +20,7 @@ import (
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -55,16 +56,16 @@ func (pm *ProcessManager) getProcessTuple(event *fgsAPI.MsgIPv4EventUnix) *fgs.S
 	return pm.__getProcessTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 }
 
-func (pm *ProcessManager) getProcessEndpoint(process *fgs.Process) *v1.Endpoint {
-	if process == nil {
+func (pm *ProcessManager) getProcessEndpoint(p *fgs.Process) *v1.Endpoint {
+	if p == nil {
 		return nil
 	}
-	if process.Docker == "" {
+	if p.Docker == "" {
 		return nil
 	}
-	pod, _, ok := pm.watcher.FindPod(process.Docker)
+	pod, _, ok := process.FindPod(p.Docker)
 	if !ok {
-		pm.log.WithField("container id", process.Docker).Trace("failed to get pod")
+		pm.log.WithField("container id", p.Docker).Trace("failed to get pod")
 		return nil
 	}
 	endpoint, _ := pm.ciliumState.GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
@@ -109,20 +110,20 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		}
 	}
 
-	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
-		pm.cache.refInc(process)
+		fgsProcess = process.UnsafeGetProcess()
+		process.RefInc()
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		pm.cache.refInc(parent)
+		parent.RefInc()
 		fgsParent = parent.GetProcessCopy()
 	}
 
@@ -193,21 +194,21 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		}
 	}
 
-	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
-		pm.cache.refDec(process)
+		fgsProcess = process.UnsafeGetProcess()
+		process.RefDec()
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
 		fgsParent = parent.GetProcessCopy()
-		pm.cache.refDec(parent)
+		parent.RefDec()
 	}
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
@@ -264,10 +265,10 @@ func (pm *ProcessManager) GetProcessListen(
 			Value: uint32(reader.GetSport(event.Tuple.SPort)),
 		}
 	}
-	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
-		pm.cache.refInc(process)
-		fgsProcess = process.process
+		process.RefInc()
+		fgsProcess = process.UnsafeGetProcess()
 	} else {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
@@ -275,7 +276,7 @@ func (pm *ProcessManager) GetProcessListen(
 		}
 	}
 	if parent != nil {
-		pm.cache.refInc(parent)
+		parent.RefInc()
 		fgsParent = parent.GetProcessCopy()
 	}
 	fgsEvent := &fgs.ProcessListen{
@@ -318,20 +319,20 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 		}
 	}
 
-	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
-		pm.cache.refInc(process)
+		fgsProcess = process.UnsafeGetProcess()
+		process.RefInc()
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
 	} else {
-		pm.cache.refInc(parent)
+		parent.RefInc()
 		fgsParent = parent.GetProcessCopy()
 	}
 
@@ -380,14 +381,14 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessSockStats {
 	var fgsParent, fgsProcess *fgs.Process
 
-	process, parent := pm.getParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
 		fgsProcess = &fgs.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
 	} else {
-		fgsProcess = process.process
+		fgsProcess = process.UnsafeGetProcess()
 	}
 	if parent == nil {
 		fgsParent = &fgs.Process{}
