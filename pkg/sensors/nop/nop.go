@@ -27,22 +27,22 @@ var (
 	Skmsg = sensors.ProgramBuilder(
 		"bpf_nop.o",
 		"sk_msg",
-		"sk_msg/fgs",
-		"sk_msg_fgs",
+		"sk_msg/fgsnop",
+		"sk_msg_fgs_nop",
 		"nop_skmsg")
 
 	SkSkbParser = sensors.ProgramBuilder(
 		"bpf_nop_parser.o",
 		"sk_skb",
-		"sk_skb_nop_parser/fgsnop",
-		"sk_skb_parser",
+		"sk_skb/stream_parser/fgsnop",
+		"sk_skb_parser_nop",
 		"nop_skskb_parser")
 
 	SkSkbVerdict = sensors.ProgramBuilder(
 		"bpf_nop_verdict.o",
 		"sk_skb",
-		"sk_skb_nop_verdict/fgsnop",
-		"sk_skb_verdict",
+		"sk_skb/stream_verdict/fgsnop",
+		"sk_skb_verdict_nop",
 		"nop_skskb_verdict")
 )
 
