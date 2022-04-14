@@ -28,7 +28,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 		fgsProcess.Cap = pm.getCapabilities(event.Capabilities)
 	}
 	if pm.enableProcessNs {
-		fgsProcess.Ns = pm.getNamespaces(event.Namespaces)
+		fgsProcess.Ns = reader.GetMsgNamespaces(event.Namespaces)
 	}
 	process.mu.Unlock()
 	if parent == nil {
