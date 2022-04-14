@@ -405,7 +405,7 @@ message ProcessHttp {
     Process process = 1;
     SockInfo socket = 2;
     HttpInfo http   = 3;
-    repeated string destination_names = 4;
+    repeated string destination_names = 4 [deprecated=true]; // deprecated in favor of socket.destination_names.
     Pod destination_pod = 5;
 }
 

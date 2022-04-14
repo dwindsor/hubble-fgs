@@ -97,7 +97,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
-	fgsEvent.DestinationNames, _ = pm.getProcessIp(proc, fgsEvent.Socket.DestinationIp)
+	fgsEvent.Socket.DestinationNames, _ = pm.getProcessIp(proc, fgsEvent.Socket.DestinationIp)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

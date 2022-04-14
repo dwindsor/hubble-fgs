@@ -317,7 +317,7 @@ func postHttpStats(ev *fgs.GetEventsResponse, res *fgs.ProcessHttp) {
 	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 	dstPod := res.GetDestinationPod()
 	dstpod, dstns := getDstPodInfo(dstPod)
-	dstLabels := strings.Join(res.DestinationNames, ",")
+	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
 
 	http := res.Http
 	code := fmt.Sprintf("%d", http.Response.Code)

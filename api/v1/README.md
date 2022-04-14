@@ -1002,7 +1002,7 @@ HTTP PARSER
 | process | [Process](#fgs.Process) |  |  |
 | socket | [SockInfo](#fgs.SockInfo) |  |  |
 | http | [HttpInfo](#fgs.HttpInfo) |  |  |
-| destination_names | [string](#string) | repeated |  |
+| destination_names | [string](#string) | repeated | **Deprecated.** deprecated in favor of socket.destination_names. |
 | destination_pod | [Pod](#fgs.Pod) |  |  |
 
 
