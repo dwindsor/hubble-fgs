@@ -27,6 +27,7 @@ type processCache struct {
 	log        logrus.FieldLogger
 	cache      *lru.Cache
 	deleteChan chan *ProcessInternal
+	stopChan   chan bool
 
 	// pidMap is a map from PID to the most recent exec ID for the PID. This is used to find the parent
 	// of exec events without clone flag.
@@ -49,12 +50,16 @@ const (
 func (pc *processCache) cacheGarbageCollector() {
 	ticker := time.NewTicker(intervalGC)
 	pc.deleteChan = make(chan *ProcessInternal)
+	pc.stopChan = make(chan bool)
 
 	go func() {
 		var deleteQueue, newQueue []*ProcessInternal
 
 		for {
 			select {
+			case <-pc.stopChan:
+				ticker.Stop()
+				pc.Purge()
 			case <-ticker.C:
 				newQueue = newQueue[:0]
 				for _, p := range deleteQueue {
@@ -126,6 +131,10 @@ func (pc *processCache) refDec(p *ProcessInternal) {
 
 func (pc *processCache) refInc(p *ProcessInternal) {
 	atomic.AddUint32(&p.refcnt, 1)
+}
+
+func (pc *processCache) Purge() {
+	pc.stopChan <- true
 }
 
 func NewCache(

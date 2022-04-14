@@ -60,9 +60,12 @@ func TestProcessManager_getPodInfo(t *testing.T) {
 		},
 	}
 
-	pods := []interface{}{&podA}
-	err := process.InitCache(context.Background(), watcher.NewFakeK8sWatcher(pods), false, 10)
+	_, err := cilium.InitCiliumState(context.Background(), false)
 	assert.NoError(t, err)
+	pods := []interface{}{&podA}
+	err = process.InitCache(context.Background(), watcher.NewFakeK8sWatcher(pods), false, 10)
+	assert.NoError(t, err)
+	defer process.FreeCache()
 	pod, endpoint := process.GetPodInfo("container-id-not-found", "", "", 0)
 	assert.Nil(t, pod)
 	assert.Nil(t, endpoint)
@@ -120,6 +123,7 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 	pods := []interface{}{&podA}
 	err := process.InitCache(context.Background(), watcher.NewFakeK8sWatcher(pods), false, 10)
 	assert.NoError(t, err)
+	defer process.FreeCache()
 	pod, endpoint := process.GetPodInfo("aaaaaaa", "/bin/command", "arg-a arg-b", 1234)
 	assert.Equal(t,
 		&fgs.Pod{
@@ -139,6 +143,7 @@ func TestProcessManager_getPodInfoMaybeExecProbe(t *testing.T) {
 func TestProcessManager_GetProcessExec(t *testing.T) {
 	err := process.InitCache(context.Background(), watcher.NewFakeK8sWatcher(nil), false, 10)
 	assert.NoError(t, err)
+	defer process.FreeCache()
 	pm, err := NewProcessManager(
 		logrus.New(),
 		cilium.GetFakeCiliumState(),
@@ -185,6 +190,7 @@ func TestProcessManager_GetProcessID(t *testing.T) {
 
 	err := process.InitCache(context.Background(), watcher.NewFakeK8sWatcher([]interface{}{}), false, 10)
 	assert.NoError(t, err)
+	defer process.FreeCache()
 	id := process.GetProcessID(1, 2)
 	decoded, err := base64.StdEncoding.DecodeString(id)
 	assert.NoError(t, err)

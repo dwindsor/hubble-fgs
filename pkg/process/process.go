@@ -78,6 +78,11 @@ func InitCache(ctx context.Context, w watcher.K8sResourceWatcher, enableCilium b
 	return err
 }
 
+func FreeCache() {
+	procCache.Purge()
+	procCache = nil
+}
+
 func (pi *ProcessInternal) GetProcessCopy() *fgs.Process {
 	if pi.process == nil {
 		return nil
