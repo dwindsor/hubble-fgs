@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
@@ -75,7 +76,7 @@ func (pm *ProcessManager) getProcessEndpoint(p *fgs.Process) *v1.Endpoint {
 func (pm *ProcessManager) getProcessIp(proc *fgs.Process, ip string) ([]string, error) {
 	var entry []string
 
-	if LazyDns {
+	if dns.CiliumDnsEnabled() {
 		endpoint := pm.getProcessEndpoint(proc)
 		if endpoint == nil {
 			return nil, fmt.Errorf("no endpoint found for GetIp")

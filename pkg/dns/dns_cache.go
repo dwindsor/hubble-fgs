@@ -1,4 +1,4 @@
-package grpc
+package dns
 
 import (
 	"fmt"
@@ -12,21 +12,21 @@ var (
 	dnsDefaultCacheSize = 1024
 )
 
-type dnsCache struct {
+type Cache struct {
 	cache *lru.Cache
 }
 
-func newDnsCache() (*dnsCache, error) {
+func NewCache() (*Cache, error) {
 	lru, err := lru.New(dnsDefaultCacheSize)
 	if err != nil {
 		return nil, err
 	}
-	return &dnsCache{
+	return &Cache{
 		cache: lru,
 	}, nil
 }
 
-func (c *dnsCache) GetIp(ip string) ([]string, error) {
+func (c *Cache) GetIp(ip string) ([]string, error) {
 	entry, ok := c.cache.Get(ip)
 	if !ok {
 		return nil, fmt.Errorf("no dns entry found")
@@ -34,7 +34,7 @@ func (c *dnsCache) GetIp(ip string) ([]string, error) {
 	return entry.([]string), nil
 }
 
-func (c *dnsCache) AddIp(dns *fgs.DnsInfo) {
+func (c *Cache) AddIp(dns *fgs.DnsInfo) {
 	if !dns.Response {
 		return
 	}
@@ -42,4 +42,8 @@ func (c *dnsCache) AddIp(dns *fgs.DnsInfo) {
 	for _, ip := range dns.Ips {
 		c.cache.Add(ip, dns.Names)
 	}
+}
+
+func CiliumDnsEnabled() bool {
+	return LazyDns
 }

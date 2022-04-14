@@ -21,7 +21,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/grpc"
+	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -477,7 +477,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetprobeMap,
 			UdpConfigLazyMap,
 		}
-		grpc.LazyDns = true
+		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
 	} else {
 		progs = []*sensors.Program{

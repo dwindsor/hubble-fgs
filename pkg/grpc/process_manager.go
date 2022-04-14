@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -38,7 +39,7 @@ type ProcessManager struct {
 	enableEventCache       bool
 	enableCilium           bool
 	enableProcessAncestors bool
-	dns                    *dnsCache
+	dns                    *dns.Cache
 }
 
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
@@ -51,7 +52,7 @@ func NewProcessManager(
 	enableCilium bool,
 	enableProcessAncestors bool,
 ) (*ProcessManager, error) {
-	dnsCache, err := newDnsCache()
+	dnsCache, err := dns.NewCache()
 	if err != nil {
 		return nil, fmt.Errorf("failed to create DNS cache %w", err)
 	}
