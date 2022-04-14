@@ -250,3 +250,19 @@ func Add(event *fgsAPI.MsgExecveEventUnix) *ProcessInternal {
 func Get(execId string) (*ProcessInternal, error) {
 	return procCache.get(execId)
 }
+
+func GetProcessEndpoint(p *fgs.Process) *hubblev1.Endpoint {
+	if p == nil {
+		return nil
+	}
+	if p.Docker == "" {
+		return nil
+	}
+	pod, _, ok := FindPod(p.Docker)
+	if !ok {
+		logger.GetLogger().WithField("container id", p.Docker).Trace("failed to get pod")
+		return nil
+	}
+	endpoint, _ := cilium.GetCiliumState().GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
+	return endpoint
+}

@@ -14,7 +14,6 @@ import (
 	"fmt"
 	"net"
 
-	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
@@ -57,27 +56,11 @@ func (pm *ProcessManager) getProcessTuple(event *fgsAPI.MsgIPv4EventUnix) *fgs.S
 	return pm.__getProcessTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 }
 
-func (pm *ProcessManager) getProcessEndpoint(p *fgs.Process) *v1.Endpoint {
-	if p == nil {
-		return nil
-	}
-	if p.Docker == "" {
-		return nil
-	}
-	pod, _, ok := process.FindPod(p.Docker)
-	if !ok {
-		pm.log.WithField("container id", p.Docker).Trace("failed to get pod")
-		return nil
-	}
-	endpoint, _ := pm.ciliumState.GetEndpointsHandler().GetEndpointByPodName(pod.Namespace, pod.Name)
-	return endpoint
-}
-
 func (pm *ProcessManager) getProcessIp(proc *fgs.Process, ip string) ([]string, error) {
 	var entry []string
 
 	if dns.CiliumDnsEnabled() {
-		endpoint := pm.getProcessEndpoint(proc)
+		endpoint := process.GetProcessEndpoint(proc)
 		if endpoint == nil {
 			return nil, fmt.Errorf("no endpoint found for GetIp")
 		}

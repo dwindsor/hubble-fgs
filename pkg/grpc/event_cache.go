@@ -97,7 +97,7 @@ func (ec *eventCache) handleNetEvents() {
 		/* Ensure we actually have a dockerID, we use this for testing reasons
 		 * mostly. It is nice though if we ever hit this case to just post it.
 		 */
-		endpoint := ec.pm.getProcessEndpoint(e.event.GetProcess())
+		endpoint := process.GetProcessEndpoint(e.event.GetProcess())
 		if e.event.GetProcess().GetDocker() != "" {
 			/* If the Pod is nil because process event is incomplete lets
 			 * wait and hopefully it is eventually updated from handleProcEvents.
