@@ -55,7 +55,7 @@ README](https://github.com/isovalent/hubble-builder/tree/master/fgs-btf/README.m
 of the  [hubble-builder](https://github.com/isovalent/hubble-builder/)
 repository for more details.
 
-## Exeucte FGS via Docker
+## Execute FGS via Docker
 
 To run docker image with custom BTF link btf in /var/lib/hubble-fgs/btf as shown
 below. If BTF link is omitted hubble-fgs will attempt to search for it in the
