@@ -41,7 +41,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
@@ -334,7 +333,6 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	if err != nil {
 		return err
 	}
-	server := server.NewServer(processManager, obs.SensorManager)
 	outF := testutils.CreateExportFile(t)
 	encoder := json.NewEncoder(outF)
 
@@ -347,7 +345,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	}
 	denyList, _ := filters.ParseFilterList("")
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
-	exporter := exporter.NewExporter(context.Background(), &req, server, encoder, nil)
+	exporter := exporter.NewExporter(context.Background(), &req, processManager.Server, encoder, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil

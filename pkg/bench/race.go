@@ -33,7 +33,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/proto"
 
 	hubblev1 "github.com/cilium/hubble/pkg/api/v1"
@@ -141,13 +140,12 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	if err != nil {
 		return err
 	}
-	serve := server.NewServer(processManager, obs.SensorManager)
 
 	encoder := &raceEncoder{0, json.NewEncoder(io.Discard)}
 	//encoder := &raceEncoder{0, json.NewEncoder(os.Stdout)}
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
-	exporter := exporter.NewExporter(ctx, &req, serve, encoder, nil)
+	exporter := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil

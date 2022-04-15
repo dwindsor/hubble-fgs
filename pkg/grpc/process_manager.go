@@ -73,12 +73,8 @@ func NewProcessManager(
 		dns:                    dnsCache,
 	}
 
-	// If manager is nil then we expect users to manage server and
-	// caches directly.
-	if enableEventCache && manager != nil {
-		pm.Server = server.NewServer(pm, manager)
-		pm.eventCache = newEventCache(pm)
-	}
+	pm.Server = server.NewServer(pm, manager)
+	pm.eventCache = newEventCache(pm)
 
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
