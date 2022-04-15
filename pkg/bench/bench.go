@@ -100,6 +100,10 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		args.FgsDebug /* debug */, false, /* enable-crd */
 		0 /* tcp statistics */)
 
+	if err := obs.InitSensorManager(); err != nil {
+		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
+	}
+
 	if err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, ""); err != nil {
 		log.Fatal(err)
 	}
@@ -191,6 +195,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	processManager, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
 		cilium.GetFakeCiliumState(),
+		obs.SensorManager,
 		enableProcessCred,
 		enableProcessNs,
 		enableEventCache,

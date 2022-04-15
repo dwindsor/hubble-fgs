@@ -146,9 +146,10 @@ func hubbleFGSExecute() error {
 		return err
 	}
 
-	processManager, err := fgsGrpc.NewProcessManager(
+	pm, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
 		ciliumState,
+		obs.SensorManager,
 		enableProcessCred,
 		enableProcessNs,
 		enableK8sAPI,
@@ -157,18 +158,17 @@ func hubbleFGSExecute() error {
 	if err != nil {
 		return err
 	}
-	server := server.NewServer(processManager, obs.SensorManager)
-	if err = Serve(ctx, serverAddress, server); err != nil {
+	if err = Serve(ctx, serverAddress, pm.Server); err != nil {
 		return err
 	}
 	if exportFilename != "" {
-		if err = startExporter(ctx, server); err != nil {
+		if err = startExporter(ctx, pm.Server); err != nil {
 			return err
 		}
 	}
 
 	logger.GetLogger().WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
-	obs.AddListener(processManager)
+	obs.AddListener(pm)
 	saveInitInfo()
 	return obs.Start(ctx)
 }

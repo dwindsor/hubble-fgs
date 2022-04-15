@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/sirupsen/logrus"
 )
@@ -30,6 +31,7 @@ type ProcessManager struct {
 	log        logrus.FieldLogger
 	eventCache *eventCache
 	nodeName   string
+	Server     *server.Server
 	// synchronize access to the listeners map.
 	mux                    sync.Mutex
 	listeners              map[server.Listener]struct{}
@@ -46,6 +48,7 @@ type ProcessManager struct {
 func NewProcessManager(
 	log logrus.FieldLogger,
 	ciliumState *cilium.State,
+	manager *sensors.Manager,
 	enableProcessCred bool,
 	enableProcessNs bool,
 	enableEventCache bool,
@@ -70,8 +73,11 @@ func NewProcessManager(
 		dns:                    dnsCache,
 	}
 
-	if enableEventCache {
-		pm.eventCache = newEventCache(log, pm)
+	// If manager is nil then we expect users to manage server and
+	// caches directly.
+	if enableEventCache && manager != nil {
+		pm.Server = server.NewServer(pm, manager)
+		pm.eventCache = newEventCache(pm)
 	}
 
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
@@ -80,6 +86,10 @@ func NewProcessManager(
 		"enableProcessNs":   enableProcessNs,
 	}).Info("Starting process manager")
 	return pm, nil
+}
+
+func (pm *ProcessManager) attachCache(s *server.Server) {
+	pm.eventCache = newEventCache(pm)
 }
 
 // Notify implements Listener.Notify.

@@ -17,10 +17,10 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -47,7 +47,6 @@ type eventProcCacheObj struct {
 type eventCache struct {
 	netObjsChan  chan eventNetCacheObj
 	procObjsChan chan eventProcCacheObj
-	log          logrus.FieldLogger
 	netCache     []eventNetCacheObj
 	procCache    []eventProcCacheObj
 	pm           *ProcessManager
@@ -254,7 +253,7 @@ func (ec *eventCache) handleNetEvents() {
 		}
 
 		if processedEvent == nil {
-			ec.log.WithField("event", e.event).Warn("eventType unhandled")
+			logger.GetLogger().WithField("event", e.event).Warn("eventType unhandled")
 		} else {
 			ec.pm.notifyListeners(e.msg, processedEvent)
 		}
@@ -324,11 +323,10 @@ func (ec *eventCache) loop() {
 	}
 }
 
-func newEventCache(log logrus.FieldLogger, pm *ProcessManager) *eventCache {
+func newEventCache(pm *ProcessManager) *eventCache {
 	ec := &eventCache{
 		netObjsChan:  make(chan eventNetCacheObj),
 		procObjsChan: make(chan eventProcCacheObj),
-		log:          log,
 		netCache:     make([]eventNetCacheObj, 0),
 		procCache:    make([]eventProcCacheObj, 0),
 		pm:           pm,

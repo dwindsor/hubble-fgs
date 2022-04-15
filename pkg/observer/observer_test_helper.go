@@ -257,6 +257,10 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 		option.Config.Verbosity = dfltVerbosity
 	}
 
+	if err := obs.InitSensorManager(); err != nil {
+		return nil, err
+	}
+
 	if err := btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, ""); err != nil {
 		return nil, err
 	}
@@ -326,7 +330,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	// to bounce events through the cache waiting for Cilium to reply with endpoints
 	// and K8s cache data to be completed. We currently only stub them enough to
 	// report nil or a pre-defined value. So no cache needed.
-	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), ciliumState, true, true, true, false, true)
+	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), ciliumState, obs.SensorManager, true, true, true, false, true)
 	if err != nil {
 		return err
 	}

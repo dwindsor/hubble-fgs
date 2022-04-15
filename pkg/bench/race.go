@@ -131,6 +131,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	processManager, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
 		cilium.GetFakeCiliumState(),
+		obs.SensorManager,
 		enableProcessCred,
 		enableProcessNs,
 		enableEventCache,
@@ -208,6 +209,10 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		f.Name(),                 /* config */
 		false /* debug */, false, /* enable-crd */
 		10 /* tcp statistics */)
+
+	if err := obs.InitSensorManager(); err != nil {
+		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
+	}
 
 	if err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, ""); err != nil {
 		logger.GetLogger().Fatal(err)

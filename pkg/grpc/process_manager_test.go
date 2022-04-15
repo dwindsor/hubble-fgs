@@ -147,6 +147,7 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 	pm, err := NewProcessManager(
 		logrus.New(),
 		cilium.GetFakeCiliumState(),
+		nil,
 		false, false, false, false, true)
 	assert.NoError(t, err)
 	procInternal := process.Add(&fgsAPI.MsgExecveEventUnix{
