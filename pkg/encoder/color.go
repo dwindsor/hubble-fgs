@@ -93,6 +93,12 @@ func (c colorer) processInfo(host string, process *fgs.Process) string {
 	return fmt.Sprintf("%s %s", source, proc)
 }
 
+func (c colorer) interfaceInfo(host string, stats *fgs.InterfaceStats) string {
+	source := c.green.Sprint(host)
+	interfaceInfo := c.magenta.Sprint(stats.InterfaceName, "@", stats.InterfaceIfindex)
+	return fmt.Sprintf("%s %s", source, interfaceInfo)
+}
+
 func (c colorer) http(http *fgs.HttpInfo) string {
 	if http.Response == nil || http.Response.Code == 0 {
 		return c.cyan.Sprint(

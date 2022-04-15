@@ -228,6 +228,13 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 		txBytes := humanize.Bytes(stats.Stats.BytesSent)
 		rxBytes := humanize.Bytes(stats.Stats.BytesReceived)
 		return fmt.Sprintf("%s %s %s tx %s rx %s", event, processInfo, destination, txBytes, rxBytes), nil
+	case *fgs.GetEventsResponse_InterfaceStats:
+		stats := response.GetInterfaceStats()
+		interfaceInfo := p.colorer.interfaceInfo(response.NodeName, stats)
+		txBytes := humanize.Bytes(stats.BytesSent)
+		rxBytes := humanize.Bytes(stats.BytesReceived)
+		event := p.colorer.blue.Sprintf("📒 %-7s", "netstat")
+		return fmt.Sprintf("%s %s tx %s rx %s", event, interfaceInfo, txBytes, rxBytes), nil
 	}
 	return "", fmt.Errorf("unknown event type")
 }

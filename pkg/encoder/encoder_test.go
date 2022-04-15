@@ -771,3 +771,22 @@ func TestCompactEncoder_Encode(t *testing.T) {
 	assert.NoError(t, err)
 	assert.Equal(t, "🚀 process kube-system/hubble-enterprise /usr/bin/curl isovalent.com\n", b.String())
 }
+
+func TestCompactEncoder_InterfaceStatsEventToString(t *testing.T) {
+	p := NewCompactEncoder(os.Stdout, Never)
+
+	// open without args
+	result, err := p.eventToString(&fgs.GetEventsResponse{
+		Event: &fgs.GetEventsResponse_InterfaceStats{
+			InterfaceStats: &fgs.InterfaceStats{
+				InterfaceName:    "lo",
+				InterfaceIfindex: 1,
+				BytesSent:        12345,
+				BytesReceived:    67890,
+			},
+		},
+		NodeName: "my-node",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "📒 netstat my-node lo@1 tx 12 kB rx 68 kB", result)
+}
