@@ -46,10 +46,10 @@ type cacheObj struct {
 }
 
 type Cache struct {
-	objsChan  chan cacheObj
-	cache     []cacheObj
-	dns       *dns.Cache
-	server    *server.Server
+	objsChan chan cacheObj
+	cache    []cacheObj
+	dns      *dns.Cache
+	server   *server.Server
 }
 
 func (ec *Cache) handleExecEvents() {

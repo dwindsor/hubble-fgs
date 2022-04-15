@@ -108,7 +108,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -179,7 +179,7 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(msg.Common.Ktime), msg)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		return nil
 	}
 	if process != nil {

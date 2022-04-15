@@ -82,7 +82,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		ParserInternalState: event.ServerCert.ParserState.String(),
 	}
 	if pm.processCacheNeeded(proc) {
-		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {

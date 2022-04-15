@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
@@ -30,7 +31,7 @@ import (
 // ProcessManager maintains a cache of processes from fgs exec events.
 type ProcessManager struct {
 	log        logrus.FieldLogger
-	eventCache *eventCache
+	eventCache *eventcache.Cache
 	execCache  *execcache.Cache
 	nodeName   string
 	Server     *server.Server
@@ -76,7 +77,7 @@ func NewProcessManager(
 	}
 
 	pm.Server = server.NewServer(pm, manager)
-	pm.eventCache = newEventCache(pm.Server, pm.dns)
+	pm.eventCache = eventcache.New(pm.Server, pm.dns)
 	pm.execCache = execcache.New(pm.Server, pm.dns)
 
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
@@ -85,10 +86,6 @@ func NewProcessManager(
 		"enableProcessNs":   enableProcessNs,
 	}).Info("Starting process manager")
 	return pm, nil
-}
-
-func (pm *ProcessManager) attachCache(s *server.Server, dns *dns.Cache) {
-	pm.eventCache = newEventCache(s, dns)
 }
 
 // Notify implements Listener.Notify.

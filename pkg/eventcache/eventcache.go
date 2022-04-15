@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package grpc
+package eventcache
 
 import (
 	"net"
@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -43,7 +44,7 @@ var (
 	nodeName string
 )
 
-type eventCacheObj struct {
+type cacheObj struct {
 	internal  *process.ProcessInternal
 	event     eventObj
 	timestamp *timestamppb.Timestamp
@@ -51,14 +52,14 @@ type eventCacheObj struct {
 	msg       interface{}
 }
 
-type eventCache struct {
-	objsChan chan eventCacheObj
-	cache    []eventCacheObj
+type Cache struct {
+	objsChan chan cacheObj
+	cache    []cacheObj
 	dns      *dns.Cache
 	server   *server.Server
 }
 
-func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, event *eventCacheObj) ([]string, error) {
+func (ec *Cache) eventLabels(endpoint *v1.Endpoint, event *cacheObj) ([]string, error) {
 	destinationIp := ""
 	var labels []string
 
@@ -84,7 +85,7 @@ func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, event *eventCacheObj) (
 	return ec.dns.GetIp(destinationIp)
 }
 
-func (ec *eventCache) handleNetEvents() {
+func (ec *Cache) handleNetEvents() {
 	tmp := ec.cache[:0]
 	for _, e := range ec.cache {
 		var processedEvent *fgs.GetEventsResponse
@@ -257,7 +258,7 @@ func (ec *eventCache) handleNetEvents() {
 	ec.cache = tmp
 }
 
-func (ec *eventCache) loop() {
+func (ec *Cache) loop() {
 	ticker := time.NewTicker(eventRetryTimer)
 	defer ticker.Stop()
 
@@ -278,20 +279,21 @@ func (ec *eventCache) loop() {
 	}
 }
 
-func (ec *eventCache) add(internal *process.ProcessInternal,
+func (ec *Cache) Add(internal *process.ProcessInternal,
 	e eventObj,
 	t *timestamppb.Timestamp,
 	msg interface{}) {
-	ec.objsChan <- eventCacheObj{internal: internal, event: e, timestamp: t, msg: msg}
+	ec.objsChan <- cacheObj{internal: internal, event: e, timestamp: t, msg: msg}
 }
 
-func newEventCache(s *server.Server, dns *dns.Cache) *eventCache {
-	ec := &eventCache{
-		objsChan: make(chan eventCacheObj),
-		cache:    make([]eventCacheObj, 0),
+func New(s *server.Server, dns *dns.Cache) *Cache {
+	ec := &Cache{
+		objsChan: make(chan cacheObj),
+		cache:    make([]cacheObj, 0),
 		dns:      dns,
 		server:   s,
 	}
+	nodeName = reader.GetNodeNameForExport()
 	go ec.loop()
 	return ec
 }

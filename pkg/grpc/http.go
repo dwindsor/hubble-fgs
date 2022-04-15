@@ -107,7 +107,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
-		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {

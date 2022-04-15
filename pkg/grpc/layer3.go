@@ -129,7 +129,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -141,7 +141,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -216,7 +216,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -228,7 +228,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -276,7 +276,7 @@ func (pm *ProcessManager) GetProcessListen(
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -338,7 +338,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 
 	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
 	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -351,7 +351,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -401,7 +401,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 	}
 
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {

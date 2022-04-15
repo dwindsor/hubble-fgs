@@ -51,7 +51,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if pm.processCacheNeeded(proc) {
-		pm.eventCache.add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {

@@ -134,7 +134,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		Status:  code,
 	}
 	if pm.processCacheNeeded(fgsProcess) {
-		pm.eventCache.add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
