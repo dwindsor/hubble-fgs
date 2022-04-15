@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -51,7 +52,6 @@ type eventCache struct {
 	procObjsChan chan eventProcCacheObj
 	netCache     []eventNetCacheObj
 	procCache    []eventProcCacheObj
-	pm           *ProcessManager
 	dns          *dns.Cache
 	server       *server.Server
 }
@@ -64,6 +64,10 @@ const (
 // garbage collection run interval
 const (
 	eventRetryTimer = time.Second * 10
+)
+
+var (
+	nodeName string
 )
 
 func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, event *eventNetCacheObj) ([]string, error) {
@@ -139,7 +143,7 @@ func (ec *eventCache) handleNetEvents() {
 
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessConnect:
@@ -153,7 +157,7 @@ func (ec *eventCache) handleNetEvents() {
 
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessAccept:
@@ -167,7 +171,7 @@ func (ec *eventCache) handleNetEvents() {
 
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessListen:
@@ -176,7 +180,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessCred:
@@ -185,7 +189,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessExit:
@@ -194,7 +198,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.Tls:
@@ -203,7 +207,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_Tls{Tls: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessHttp:
@@ -212,7 +216,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessSockStats:
@@ -224,7 +228,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessSockstats{ProcessSockstats: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessKprobe:
@@ -233,7 +237,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessDns:
@@ -242,7 +246,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		case *fgs.ProcessNetworkBurst:
@@ -251,7 +255,7 @@ func (ec *eventCache) handleNetEvents() {
 			}
 			processedEvent = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: event},
-				NodeName: ec.pm.nodeName,
+				NodeName: nodeName,
 				Time:     e.timestamp,
 			}
 		}
@@ -292,7 +296,7 @@ func (ec *eventCache) handleProcEvents() {
 
 		processedEvent := &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: e.process},
-			NodeName: ec.pm.nodeName,
+			NodeName: nodeName,
 			Time:     e.timestamp,
 		}
 		ec.server.NotifyListeners(e.msg, processedEvent)
@@ -327,16 +331,16 @@ func (ec *eventCache) loop() {
 	}
 }
 
-func newEventCache(s *server.Server, dns *dns.Cache, pm *ProcessManager) *eventCache {
+func newEventCache(s *server.Server, dns *dns.Cache) *eventCache {
 	ec := &eventCache{
 		netObjsChan:  make(chan eventNetCacheObj),
 		procObjsChan: make(chan eventProcCacheObj),
 		netCache:     make([]eventNetCacheObj, 0),
 		procCache:    make([]eventProcCacheObj, 0),
-		pm:           pm,
 		dns:          dns,
 		server:       s,
 	}
+	nodeName = reader.GetNodeNameForExport()
 	go ec.loop()
 	return ec
 }

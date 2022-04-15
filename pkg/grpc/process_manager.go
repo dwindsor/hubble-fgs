@@ -74,7 +74,7 @@ func NewProcessManager(
 	}
 
 	pm.Server = server.NewServer(pm, manager)
-	pm.eventCache = newEventCache(pm.Server, pm.dns, pm)
+	pm.eventCache = newEventCache(pm.Server, pm.dns)
 
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
@@ -85,7 +85,7 @@ func NewProcessManager(
 }
 
 func (pm *ProcessManager) attachCache(s *server.Server, dns *dns.Cache) {
-	pm.eventCache = newEventCache(s, dns, pm)
+	pm.eventCache = newEventCache(s, dns)
 }
 
 // Notify implements Listener.Notify.
