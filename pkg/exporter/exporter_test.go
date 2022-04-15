@@ -74,12 +74,12 @@ func (f *fakeNotifier) RemoveListener(listener server.Listener) {
 	f.mux.Unlock()
 }
 
-func (f *fakeNotifier) notifyListeners(event *fgs.GetEventsResponse) {
+func (f *fakeNotifier) NotifyListener(original interface{}, processed *fgs.GetEventsResponse) {
 	f.mux.Lock()
+	defer f.mux.Unlock()
 	for l := range f.listeners {
-		l.Notify(event)
+		l.Notify(processed)
 	}
-	f.mux.Unlock()
 }
 
 type fakeObserver struct{}
@@ -130,15 +130,15 @@ func TestExporter_Send(t *testing.T) {
 	request := fgs.GetEventsRequest{DenyList: []*fgs.Filter{{BinaryRegex: []string{"b"}}}}
 	exporter := NewExporter(ctx, &request, grpcServer, encoder, nil)
 	exporter.Start()
-	eventNotifier.notifyListeners(&fgs.GetEventsResponse{
+	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessConnect{
 			ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Binary: "a"}},
 		}})
-	eventNotifier.notifyListeners(&fgs.GetEventsResponse{
+	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessExec{
 			ProcessExec: &fgs.ProcessExec{Process: &fgs.Process{Binary: "b"}},
 		}})
-	eventNotifier.notifyListeners(&fgs.GetEventsResponse{
+	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessListen{
 			ProcessListen: &fgs.ProcessListen{Process: &fgs.Process{Binary: "c"}},
 		}})
@@ -238,7 +238,7 @@ func Test_rateLimitExport(t *testing.T) {
 			)
 			exporter.Start()
 			for i := 0; i < tt.totalEvents; i++ {
-				eventNotifier.notifyListeners(&fgs.GetEventsResponse{
+				eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 					Event: &fgs.GetEventsResponse_ProcessConnect{
 						ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Binary: fmt.Sprintf("a%d", i)}},
 					}})

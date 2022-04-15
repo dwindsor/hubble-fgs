@@ -35,6 +35,7 @@ type Listener interface {
 type notifier interface {
 	AddListener(listener Listener)
 	RemoveListener(listener Listener)
+	NotifyListener(original interface{}, processed *fgs.GetEventsResponse)
 }
 
 type observer interface {
@@ -73,6 +74,10 @@ func newListener() *getEventsListener {
 
 func (l *getEventsListener) Notify(res *fgs.GetEventsResponse) {
 	l.events <- res
+}
+
+func (s *Server) NotifyListeners(original interface{}, processed *fgs.GetEventsResponse) {
+	s.notifier.NotifyListener(original, processed)
 }
 
 // removeNotifierAndDrain removes the events listener while draining

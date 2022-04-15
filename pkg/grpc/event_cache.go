@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
+	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
@@ -50,6 +51,7 @@ type eventCache struct {
 	netCache     []eventNetCacheObj
 	procCache    []eventProcCacheObj
 	pm           *ProcessManager
+	server       *server.Server
 }
 
 // garbage collection states
@@ -255,7 +257,7 @@ func (ec *eventCache) handleNetEvents() {
 		if processedEvent == nil {
 			logger.GetLogger().WithField("event", e.event).Warn("eventType unhandled")
 		} else {
-			ec.pm.notifyListeners(e.msg, processedEvent)
+			ec.server.NotifyListeners(e.msg, processedEvent)
 		}
 	}
 	ec.netCache = tmp
@@ -291,7 +293,7 @@ func (ec *eventCache) handleProcEvents() {
 			NodeName: ec.pm.nodeName,
 			Time:     e.timestamp,
 		}
-		ec.pm.notifyListeners(e.msg, processedEvent)
+		ec.server.NotifyListeners(e.msg, processedEvent)
 	}
 	ec.procCache = tmp
 }
@@ -323,13 +325,14 @@ func (ec *eventCache) loop() {
 	}
 }
 
-func newEventCache(pm *ProcessManager) *eventCache {
+func newEventCache(s *server.Server, pm *ProcessManager) *eventCache {
 	ec := &eventCache{
 		netObjsChan:  make(chan eventNetCacheObj),
 		procObjsChan: make(chan eventProcCacheObj),
 		netCache:     make([]eventNetCacheObj, 0),
 		procCache:    make([]eventProcCacheObj, 0),
 		pm:           pm,
+		server:       s,
 	}
 	go ec.loop()
 	return ec

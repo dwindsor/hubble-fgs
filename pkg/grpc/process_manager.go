@@ -74,7 +74,7 @@ func NewProcessManager(
 	}
 
 	pm.Server = server.NewServer(pm, manager)
-	pm.eventCache = newEventCache(pm)
+	pm.eventCache = newEventCache(pm.Server, pm)
 
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
@@ -85,7 +85,7 @@ func NewProcessManager(
 }
 
 func (pm *ProcessManager) attachCache(s *server.Server) {
-	pm.eventCache = newEventCache(pm)
+	pm.eventCache = newEventCache(s, pm)
 }
 
 // Notify implements Listener.Notify.
@@ -127,7 +127,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		return nil
 	}
 	if processedEvent != nil {
-		pm.notifyListeners(event, processedEvent)
+		pm.NotifyListener(event, processedEvent)
 	}
 	return nil
 }
@@ -151,7 +151,7 @@ func (pm *ProcessManager) RemoveListener(listener server.Listener) {
 	delete(pm.listeners, listener)
 }
 
-func (pm *ProcessManager) notifyListeners(original interface{}, processed *fgs.GetEventsResponse) {
+func (pm *ProcessManager) NotifyListener(original interface{}, processed *fgs.GetEventsResponse) {
 	pm.mux.Lock()
 	defer pm.mux.Unlock()
 	for l := range pm.listeners {
