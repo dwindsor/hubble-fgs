@@ -16,13 +16,11 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -294,96 +292,6 @@ func newEventCache(s *server.Server, dns *dns.Cache) *eventCache {
 		dns:      dns,
 		server:   s,
 	}
-	go ec.loop()
-	return ec
-}
-
-type execCacheObj struct {
-	internal  *process.ProcessInternal
-	process   *fgs.ProcessExec
-	timestamp *timestamppb.Timestamp
-	color     int
-	msg       *api.MsgExecveEventUnix
-}
-
-type execCache struct {
-	objsChan chan execCacheObj
-	cache    []execCacheObj
-	dns      *dns.Cache
-	server   *server.Server
-}
-
-func (ec *execCache) handleExecEvents() {
-	tmp := ec.cache[:0]
-	for _, e := range ec.cache {
-		containerId := e.process.Process.Docker
-		filename := e.process.Process.Binary
-		args := e.process.Process.Arguments
-		nspid := e.msg.Process.NSPID
-
-		podInfo, _ := process.GetPodInfo(containerId, filename, args, nspid)
-		if podInfo == nil {
-			e.color++
-			if e.color != threeStrikes {
-				tmp = append(tmp, e)
-				continue
-			}
-			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCachePodInfoRetryFailed)).Inc()
-		}
-
-		if e.internal != nil {
-			e.internal.AddPodInfo(podInfo)
-			e.process.Process = e.internal.GetProcessCopy()
-		} else {
-			e.process.Process.Pod = podInfo
-		}
-
-		processedEvent := &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: e.process},
-			NodeName: nodeName,
-			Time:     e.timestamp,
-		}
-		ec.server.NotifyListeners(e.msg, processedEvent)
-	}
-	ec.cache = tmp
-}
-
-func (ec *execCache) loop() {
-	ticker := time.NewTicker(eventRetryTimer)
-	defer ticker.Stop()
-
-	for {
-		select {
-		case <-ticker.C:
-			/* Every 'eventRetryTimer' walk the slice of events pending pod info. If
-			 * an event hasn't completed its podInfo after two iterations send the
-			 * event anyways.
-			 */
-			ec.handleExecEvents()
-			metrics.ExecveMapSize.WithLabelValues("cache", "0").Set(float64(len(ec.cache)))
-
-		case event := <-ec.objsChan:
-			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheProcessCount)).Inc()
-			ec.cache = append(ec.cache, event)
-		}
-	}
-}
-
-func (ec *execCache) add(internal *process.ProcessInternal,
-	e *fgs.ProcessExec,
-	t *timestamppb.Timestamp,
-	msg *api.MsgExecveEventUnix) {
-	ec.objsChan <- execCacheObj{internal: internal, process: e, timestamp: t, msg: msg}
-}
-
-func newExecCache(s *server.Server, dns *dns.Cache) *execCache {
-	ec := &execCache{
-		objsChan: make(chan execCacheObj),
-		cache:    make([]execCacheObj, 0),
-		dns:      dns,
-		server:   s,
-	}
-	nodeName = reader.GetNodeNameForExport()
 	go ec.loop()
 	return ec
 }

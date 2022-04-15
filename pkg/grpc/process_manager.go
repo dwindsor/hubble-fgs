@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -30,7 +31,7 @@ import (
 type ProcessManager struct {
 	log        logrus.FieldLogger
 	eventCache *eventCache
-	execCache  *execCache
+	execCache  *execcache.Cache
 	nodeName   string
 	Server     *server.Server
 	// synchronize access to the listeners map.
@@ -76,7 +77,7 @@ func NewProcessManager(
 
 	pm.Server = server.NewServer(pm, manager)
 	pm.eventCache = newEventCache(pm.Server, pm.dns)
-	pm.execCache = newExecCache(pm.Server, pm.dns)
+	pm.execCache = execcache.New(pm.Server, pm.dns)
 
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
