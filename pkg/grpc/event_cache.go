@@ -17,6 +17,7 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
@@ -51,6 +52,7 @@ type eventCache struct {
 	netCache     []eventNetCacheObj
 	procCache    []eventProcCacheObj
 	pm           *ProcessManager
+	dns          *dns.Cache
 	server       *server.Server
 }
 
@@ -87,7 +89,7 @@ func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, event *eventNetCacheObj
 	default:
 		return labels, nil
 	}
-	return ec.pm.dns.GetIp(destinationIp)
+	return ec.dns.GetIp(destinationIp)
 }
 
 func (ec *eventCache) handleNetEvents() {
@@ -325,13 +327,14 @@ func (ec *eventCache) loop() {
 	}
 }
 
-func newEventCache(s *server.Server, pm *ProcessManager) *eventCache {
+func newEventCache(s *server.Server, dns *dns.Cache, pm *ProcessManager) *eventCache {
 	ec := &eventCache{
 		netObjsChan:  make(chan eventNetCacheObj),
 		procObjsChan: make(chan eventProcCacheObj),
 		netCache:     make([]eventNetCacheObj, 0),
 		procCache:    make([]eventProcCacheObj, 0),
 		pm:           pm,
+		dns:          dns,
 		server:       s,
 	}
 	go ec.loop()
