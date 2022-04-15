@@ -27,35 +27,6 @@ import (
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
 
-type eventNetObj interface {
-	GetProcess() *fgs.Process
-}
-
-type eventNetCacheObj struct {
-	internal  *process.ProcessInternal
-	event     eventNetObj
-	timestamp *timestamppb.Timestamp
-	color     int
-	msg       interface{}
-}
-
-type eventProcCacheObj struct {
-	internal  *process.ProcessInternal
-	process   *fgs.ProcessExec
-	timestamp *timestamppb.Timestamp
-	color     int
-	msg       *api.MsgExecveEventUnix
-}
-
-type eventCache struct {
-	netObjsChan  chan eventNetCacheObj
-	procObjsChan chan eventProcCacheObj
-	netCache     []eventNetCacheObj
-	procCache    []eventProcCacheObj
-	dns          *dns.Cache
-	server       *server.Server
-}
-
 // garbage collection states
 const (
 	threeStrikes = 3
@@ -66,11 +37,30 @@ const (
 	eventRetryTimer = time.Second * 10
 )
 
+type eventObj interface {
+	GetProcess() *fgs.Process
+}
+
 var (
 	nodeName string
 )
 
-func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, event *eventNetCacheObj) ([]string, error) {
+type eventCacheObj struct {
+	internal  *process.ProcessInternal
+	event     eventObj
+	timestamp *timestamppb.Timestamp
+	color     int
+	msg       interface{}
+}
+
+type eventCache struct {
+	objsChan chan eventCacheObj
+	cache    []eventCacheObj
+	dns      *dns.Cache
+	server   *server.Server
+}
+
+func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, event *eventCacheObj) ([]string, error) {
 	destinationIp := ""
 	var labels []string
 
@@ -97,8 +87,8 @@ func (ec *eventCache) eventLabels(endpoint *v1.Endpoint, event *eventNetCacheObj
 }
 
 func (ec *eventCache) handleNetEvents() {
-	tmp := ec.netCache[:0]
-	for _, e := range ec.netCache {
+	tmp := ec.cache[:0]
+	for _, e := range ec.cache {
 		var processedEvent *fgs.GetEventsResponse
 
 		/* Ensure we actually have a dockerID, we use this for testing reasons
@@ -266,12 +256,66 @@ func (ec *eventCache) handleNetEvents() {
 			ec.server.NotifyListeners(e.msg, processedEvent)
 		}
 	}
-	ec.netCache = tmp
+	ec.cache = tmp
 }
 
-func (ec *eventCache) handleProcEvents() {
-	tmp := ec.procCache[:0]
-	for _, e := range ec.procCache {
+func (ec *eventCache) loop() {
+	ticker := time.NewTicker(eventRetryTimer)
+	defer ticker.Stop()
+
+	for {
+		select {
+		case <-ticker.C:
+			/* Every 'eventRetryTimer' walk the slice of events pending pod info. If
+			 * an event hasn't completed its podInfo after two iterations send the
+			 * event anyways.
+			 */
+			ec.handleNetEvents()
+			metrics.ExecveMapSize.WithLabelValues("netCache", "0").Set(float64(len(ec.cache)))
+
+		case event := <-ec.objsChan:
+			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheNetworkCount)).Inc()
+			ec.cache = append(ec.cache, event)
+		}
+	}
+}
+
+func (ec *eventCache) add(internal *process.ProcessInternal,
+	e eventObj,
+	t *timestamppb.Timestamp,
+	msg interface{}) {
+	ec.objsChan <- eventCacheObj{internal: internal, event: e, timestamp: t, msg: msg}
+}
+
+func newEventCache(s *server.Server, dns *dns.Cache) *eventCache {
+	ec := &eventCache{
+		objsChan: make(chan eventCacheObj),
+		cache:    make([]eventCacheObj, 0),
+		dns:      dns,
+		server:   s,
+	}
+	go ec.loop()
+	return ec
+}
+
+type execCacheObj struct {
+	internal  *process.ProcessInternal
+	process   *fgs.ProcessExec
+	timestamp *timestamppb.Timestamp
+	color     int
+	msg       *api.MsgExecveEventUnix
+}
+
+type execCache struct {
+	objsChan chan execCacheObj
+	cache    []execCacheObj
+	dns      *dns.Cache
+	server   *server.Server
+}
+
+func (ec *execCache) handleExecEvents() {
+	tmp := ec.cache[:0]
+	for _, e := range ec.cache {
 		containerId := e.process.Process.Docker
 		filename := e.process.Process.Binary
 		args := e.process.Process.Arguments
@@ -301,10 +345,10 @@ func (ec *eventCache) handleProcEvents() {
 		}
 		ec.server.NotifyListeners(e.msg, processedEvent)
 	}
-	ec.procCache = tmp
+	ec.cache = tmp
 }
 
-func (ec *eventCache) loop() {
+func (ec *execCache) loop() {
 	ticker := time.NewTicker(eventRetryTimer)
 	defer ticker.Stop()
 
@@ -315,46 +359,31 @@ func (ec *eventCache) loop() {
 			 * an event hasn't completed its podInfo after two iterations send the
 			 * event anyways.
 			 */
-			ec.handleNetEvents()
-			ec.handleProcEvents()
-			metrics.ExecveMapSize.WithLabelValues("netCache", "0").Set(float64(len(ec.netCache)))
-			metrics.ExecveMapSize.WithLabelValues("procCache", "0").Set(float64(len(ec.procCache)))
+			ec.handleExecEvents()
+			metrics.ExecveMapSize.WithLabelValues("cache", "0").Set(float64(len(ec.cache)))
 
-		case event := <-ec.netObjsChan:
-			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheNetworkCount)).Inc()
-			ec.netCache = append(ec.netCache, event)
-
-		case event := <-ec.procObjsChan:
+		case event := <-ec.objsChan:
 			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheProcessCount)).Inc()
-			ec.procCache = append(ec.procCache, event)
+			ec.cache = append(ec.cache, event)
 		}
 	}
 }
 
-func newEventCache(s *server.Server, dns *dns.Cache) *eventCache {
-	ec := &eventCache{
-		netObjsChan:  make(chan eventNetCacheObj),
-		procObjsChan: make(chan eventProcCacheObj),
-		netCache:     make([]eventNetCacheObj, 0),
-		procCache:    make([]eventProcCacheObj, 0),
-		dns:          dns,
-		server:       s,
+func (ec *execCache) add(internal *process.ProcessInternal,
+	e *fgs.ProcessExec,
+	t *timestamppb.Timestamp,
+	msg *api.MsgExecveEventUnix) {
+	ec.objsChan <- execCacheObj{internal: internal, process: e, timestamp: t, msg: msg}
+}
+
+func newExecCache(s *server.Server, dns *dns.Cache) *execCache {
+	ec := &execCache{
+		objsChan: make(chan execCacheObj),
+		cache:    make([]execCacheObj, 0),
+		dns:      dns,
+		server:   s,
 	}
 	nodeName = reader.GetNodeNameForExport()
 	go ec.loop()
 	return ec
-}
-
-func (ec *eventCache) add(internal *process.ProcessInternal,
-	e eventNetObj,
-	t *timestamppb.Timestamp,
-	msg interface{}) {
-	ec.netObjsChan <- eventNetCacheObj{internal: internal, event: e, timestamp: t, msg: msg}
-}
-
-func (ec *eventCache) addProc(internal *process.ProcessInternal,
-	e *fgs.ProcessExec,
-	t *timestamppb.Timestamp,
-	msg *api.MsgExecveEventUnix) {
-	ec.procObjsChan <- eventProcCacheObj{internal: internal, process: e, timestamp: t, msg: msg}
 }

@@ -30,6 +30,7 @@ import (
 type ProcessManager struct {
 	log        logrus.FieldLogger
 	eventCache *eventCache
+	execCache  *execCache
 	nodeName   string
 	Server     *server.Server
 	// synchronize access to the listeners map.
@@ -75,6 +76,7 @@ func NewProcessManager(
 
 	pm.Server = server.NewServer(pm, manager)
 	pm.eventCache = newEventCache(pm.Server, pm.dns)
+	pm.execCache = newExecCache(pm.Server, pm.dns)
 
 	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,

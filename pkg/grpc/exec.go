@@ -82,7 +82,7 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 		proc := process.Add(msg)
 		procEvent := pm.GetProcessExec(proc)
 		if pm.processCacheNeeded(procEvent.Process) {
-			pm.eventCache.addProc(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
+			pm.execCache.add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
 			res = &fgs.GetEventsResponse{
