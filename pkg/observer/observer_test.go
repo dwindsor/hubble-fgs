@@ -214,7 +214,59 @@ func Test_msgToExecveUnix(t *testing.T) {
 	copy(event.Kube.Docker[:], gkeID)
 	result = msgToExecveUnix(&event, 0)
 	assert.Equal(t, gkeID[:BpfContainerIdLength], result.Kube.Docker)
+	assert.Equal(t, BpfContainerIdLength, len(result.Kube.Docker))
 	event.Kube.Docker[0] = 0
 	result = msgToExecveUnix(&event, offset)
+	assert.Empty(t, result.Kube.Docker)
+
+	id := "kubepods-burstable-pod29349498_197c_4919_b13f_9a928e7d001b.slice:cri-containerd:0ca2b3cd20e5f55a2bbe8d4aa3f811cf7963b40f0542ad147054b0fcb60fc400"
+	copy(event.Kube.Docker[:], id)
+	result = msgToExecveUnix(&event, 0)
+	assert.Equal(t, id[80:80+BpfContainerIdLength], result.Kube.Docker)
+	assert.Equal(t, strings.Split(id, ":")[2][:BpfContainerIdLength], result.Kube.Docker)
+	assert.Equal(t, BpfContainerIdLength, len(result.Kube.Docker))
+
+	id = "kubepods-besteffort-pod13cb8437-00ed-40e4-99d8-e17193a58086.slice:cri-containerd:a5a6a3af5d51ad95b915ca948710b90a94abc279e84963b9d22a39f342ce67d9"
+	copy(event.Kube.Docker[:], id)
+	result = msgToExecveUnix(&event, 0)
+	assert.Equal(t, id[81:81+BpfContainerIdLength], result.Kube.Docker)
+	assert.Equal(t, strings.Split(id, ":")[2][:BpfContainerIdLength], result.Kube.Docker)
+	assert.Equal(t, BpfContainerIdLength, len(result.Kube.Docker))
+
+	id = "cri-containerd-5694f82f44168cc048e014ae14d1b0c8ef673bec49f329dc169911ea638f63c2.scope"
+	copy(event.Kube.Docker[:], id)
+	result = msgToExecveUnix(&event, 0)
+	assert.Equal(t, strings.Split(id, "-")[2][:BpfContainerIdLength], result.Kube.Docker)
+	assert.Equal(t, BpfContainerIdLength, len(result.Kube.Docker))
+
+	id = "libpod-01f3c60cfaadbb51e4d5947dd2ef0480d53551cbcee8f3ada8c3723b2bf03bf4"
+	copy(event.Kube.Docker[:], id)
+	result = msgToExecveUnix(&event, 0)
+	assert.Equal(t, strings.Split(id, "-")[1][:BpfContainerIdLength], result.Kube.Docker)
+	assert.Equal(t, BpfContainerIdLength, len(result.Kube.Docker))
+
+	id = ":a5a6a3af5d51ad95b915ca948710b90a94abc279e84963b9d22a39f342ce67d9"
+	copy(event.Kube.Docker[:], id)
+	result = msgToExecveUnix(&event, 0)
+	assert.Equal(t, strings.Split(id, ":")[1][:BpfContainerIdLength], result.Kube.Docker)
+	assert.Equal(t, BpfContainerIdLength, len(result.Kube.Docker))
+
+	// Empty event so we don't fail tests
+	for i := 0; i < api.DOCKER_ID_LENGTH; i++ {
+		event.Kube.Docker[i] = 0
+	}
+	// Not valid
+	id = "ba4c34f800cf9f92881fd55cea8e60d"
+	copy(event.Kube.Docker[:], id)
+	result = msgToExecveUnix(&event, 0)
+	assert.Empty(t, result.Kube.Docker)
+
+	// Empty event so we don't fail tests
+	for i := 0; i < api.DOCKER_ID_LENGTH; i++ {
+		event.Kube.Docker[i] = 0
+	}
+	id = ":ba4c34f800cf9f92881fd55cea8e60d"
+	copy(event.Kube.Docker[:], id)
+	result = msgToExecveUnix(&event, 0)
 	assert.Empty(t, result.Kube.Docker)
 }
