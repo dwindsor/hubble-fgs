@@ -76,6 +76,8 @@ func init() {
 	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 	flag.BoolVar(&client, "client", false, "internal")
 	flag.BoolVar(&server, "server", false, "internal")
+
+	bpf.SetMapPrefix("testObserver")
 }
 
 func getBasicTcpObserver(t *testing.T) *observer.Observer {
