@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package observer
+package tcp
 
 import (
 	"fmt"
@@ -24,9 +24,17 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+)
+
+const (
+	TCP_PROC_STATE_LISTEN = 10
+
+	maxMapRetries = 4
+	mapRetryDelay = 1
 )
 
 type SocketMapKey struct {
@@ -157,7 +165,7 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 				}
 
 				if pushEvents {
-					AllListeners(&tcp)
+					observer.AllListeners(&tcp)
 				}
 				if writeMaps {
 					writeSockMap(&tcp, m, netns)

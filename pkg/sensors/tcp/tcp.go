@@ -181,7 +181,7 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 
 func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult)
-	return loader.LoadKprobeProgram(args.Version,
+	ret, err := loader.LoadKprobeProgram(args.Version,
 		args.Verbose,
 		uintptr(btf.GetCachedBTF()),
 		args.Load.Name,
@@ -190,6 +190,10 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 		filepath.Join(args.BPFDir, args.Load.PinPath),
 		args.MapDir,
 		args.Load.RetProbe)
+	if err == nil {
+		getRunningSockets(true, true)
+	}
+	return ret, err
 }
 
 func init() {
