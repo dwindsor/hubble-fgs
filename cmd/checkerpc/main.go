@@ -10,6 +10,23 @@
 
 package main
 
+import (
+	"context"
+	"fmt"
+	"os"
+	"os/signal"
+
+	"github.com/isovalent/hubble-fgs/cmd/checkerpc/cli"
+	"golang.org/x/sys/unix"
+)
+
 func main() {
-	checkerpcMain()
+	//Set up root context
+	ctx, cancel := signal.NotifyContext(context.Background(), unix.SIGINT, unix.SIGTERM)
+	defer cancel()
+
+	if err := cli.New(ctx).Execute(); err != nil {
+		fmt.Fprintln(os.Stderr, err.Error())
+		os.Exit(1)
+	}
 }
