@@ -382,16 +382,37 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 
 func (k *Observer) getRunningSockets(procs []Procs, writeMaps, pushEvents bool) {
 	var entryMap = make(map[uint32]procTCPEntry)
-
 	// Check for TCP6 support in procfs
 	hasSupportTCP6 := supportTCP6()
 
-	for _, p := range procs {
-		// Collect any TCP connections associated with this pid
-		if err := k.getTCPConnections(entryMap, uint64(p.pid), hasSupportTCP6); err != nil {
+	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
+	if err != nil {
+		logger.GetLogger().WithError(err).Error("GetRunningSockets ProcFS readdir error.")
+		return
+	}
+
+	for _, d := range procFS {
+		pathName := filepath.Join(option.Config.ProcFS, d.Name())
+
+		pid, err := reader.GetProcPid(d.Name())
+		if err != nil {
+			continue
+		}
+
+		stats, err := reader.GetProcStatStrings(pathName)
+		if err != nil {
+			continue
+		}
+
+		ktime, err := reader.GetStatsKtime(stats)
+		if err != nil {
+			continue
+		}
+
+		if err := k.getTCPConnections(entryMap, pid, hasSupportTCP6); err != nil {
 			k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
 		}
-		k.pushTCPEvents(p.pid, p.ktime, entryMap, writeMaps, pushEvents)
+		k.pushTCPEvents(uint32(pid), ktime, entryMap, writeMaps, pushEvents)
 	}
 
 }
