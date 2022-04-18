@@ -17,14 +17,17 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 const (
+	// ContainerIDLength is the standard length of the Container ID
 	ContainerIdLength = 64
 
-	// First 31 chars to match BPF generated values.
+	// BpfContainerIdLength Minimum 31 chars to assume it is a Container ID
+	// in case it was truncated
 	BpfContainerIdLength = 31
 )
 
@@ -53,7 +56,7 @@ func procDockerIdOffsetDefault(btf bpf.BTF) error {
 }
 
 // procsContainerIdOffset Returns the container ID and its offset
-// This can fail, better use procsLookupContainerID to handle different container runtimes.
+// This can fail, better use lookupContainerId to handle different container runtimes.
 func procsContainerIdOffset(subdir string) (string, int) {
 	// If the cgroup subdir contains ":" it means that we are dealing with
 	// Linux.CgroupPath where the cgroup driver is cgroupfs
@@ -69,13 +72,15 @@ func procsContainerIdOffset(subdir string) (string, int) {
 	return s[len(s)-1], off + p
 }
 
-// procsLookupContainerId returns the container ID as a 31 character string length from the full cgroup path
+// lookupContainerId returns the container ID as a 31 character string length from the full cgroup path
 // cgroup argument is the full cgroup path
+// bpfSource is set to true if cgroup was obtained from BPF, otherwise false.
 // walkParent if set then walk the parent hierarchy subdirs and try to find the container ID of the process,
 //    this will allow to return the container id of services running inside, example: init.service etc.
 // Returns the container ID as a string of 31 characters and its offset on the full cgroup path,
 // otherwise on errors an empty string and 0 as offset.
-func procsLookupContainerId(cgroup string, walkParent bool) (string, int) {
+func lookupContainerId(cgroup string, bpfSource bool, walkParent bool) (string, int) {
+	idTruncated := false
 	subDirs := strings.Split(cgroup, "/")
 	subdir := subDirs[len(subDirs)-1]
 
@@ -89,6 +94,18 @@ func procsLookupContainerId(cgroup string, walkParent bool) (string, int) {
 		}
 	}
 
+	// Check if the cgroup was obtained from BPF and if the last subdir
+	// cgroup length equals DOCKER_ID_LENGTH -1, then:
+	// It was probably truncated to DOCKER_ID_LENGTH, let's be flexible
+	// try to match containerID without asserting the
+	// ContainerIDLength == 64 due to the truncation as it will be less anyway.
+	// We trust BPF part that it will always return null terminated
+	// DOCKER_ID_LENGTH. For other cases where we read through /proc/
+	// strings are not truncated.
+	if bpfSource == true && len(subdir) >= api.DOCKER_ID_LENGTH-1 {
+		idTruncated = true
+	}
+
 	container, i := procsContainerIdOffset(subdir)
 
 	// Let's first check if this was a valid container id, it can be only the id
@@ -96,11 +113,13 @@ func procsLookupContainerId(cgroup string, walkParent bool) (string, int) {
 	// systemd units at the end of a cgroup path can only be a type .scope or .service
 	// However if it is a service then it means some service inside the container, if
 	// we are interested into it then we should walk the parent subdir with
-	// walkParent argument set.
-	if len(container) >= ContainerIdLength && !strings.HasSuffix(container, "service") {
-		// return first 31 chars to match BPF generated values.
-		// If the string is less than 31 chars its not a docker
-		// ID so skip it. For example docker.server will get here.
+	// walkParent argument set and get its parent cgroup
+	if !strings.HasSuffix(container, "service") &&
+		((len(container) >= ContainerIdLength) ||
+			(idTruncated == true && len(container) >= BpfContainerIdLength)) {
+		// Return first 31 chars. If the string is less than 31 chars
+		// it's not a docker ID so skip it. For example docker.server
+		// will get here.
 		return container[:BpfContainerIdLength], i
 	}
 
@@ -119,9 +138,9 @@ func procsLookupContainerId(cgroup string, walkParent bool) (string, int) {
 		container, i = procsContainerIdOffset(subDirs[j])
 		// Either container ID or the first transient scope unit
 		if len(container) == ContainerIdLength || (len(container) > ContainerIdLength && strings.HasSuffix(container, "scope")) {
-			// return first 31 chars to match BPF generated values.
-			// If the string is less than 31 chars its not a docker
-			// ID so skip it. For example docker.server will get here.
+			// Return first 31 chars. If the string is less than 31 chars
+			// it's not a docker ID so skip it. For example docker.server
+			// will get here.
 			return container[:BpfContainerIdLength], i
 		}
 	}
@@ -142,7 +161,7 @@ func procsFindDockerId(cgroups string) (string, int) {
 		if strings.Contains(s, "pods") || strings.Contains(s, "docker") ||
 			strings.Contains(s, "libpod") {
 			// Get the container ID and the offset
-			container, i := procsLookupContainerId(s, false)
+			container, i := lookupContainerId(s, false, false)
 			if container != "" {
 				return container, i
 			}

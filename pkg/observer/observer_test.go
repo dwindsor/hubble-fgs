@@ -204,7 +204,7 @@ func Test_msgToExecveUnix(t *testing.T) {
 	copy(event.Kube.Docker[:], minikubeID)
 	_, offset := procsContainerIdOffset(minikubeID)
 	result := msgToExecveUnix(&event, offset)
-	assert.Equal(t, strings.Split(minikubeID, "-")[1][:32], result.Kube.Docker)
+	assert.Equal(t, strings.Split(minikubeID, "-")[1][:BpfContainerIdLength], result.Kube.Docker)
 	event.Kube.Docker[0] = 0
 	result = msgToExecveUnix(&event, offset)
 	assert.Empty(t, result.Kube.Docker)
@@ -213,7 +213,7 @@ func Test_msgToExecveUnix(t *testing.T) {
 	gkeID := "82836ef3675020258bee5075ace6264b3bc5300e20c975543cbc984bea59638f"
 	copy(event.Kube.Docker[:], gkeID)
 	result = msgToExecveUnix(&event, 0)
-	assert.Equal(t, gkeID[:32], result.Kube.Docker)
+	assert.Equal(t, gkeID[:BpfContainerIdLength], result.Kube.Docker)
 	event.Kube.Docker[0] = 0
 	result = msgToExecveUnix(&event, offset)
 	assert.Empty(t, result.Kube.Docker)

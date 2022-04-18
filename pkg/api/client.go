@@ -19,6 +19,8 @@ import (
 )
 
 const (
+	// DOCKER_ID_LENGTH to match BPF side buffer size where we read the
+	// cgroup of the task
 	DOCKER_ID_LENGTH = 128
 
 	MSG_OP_UNDEF = 0
