@@ -184,44 +184,6 @@ func (k *Observer) pushEvents(procs []Procs, pushExecve, writeMaps bool) {
 	}
 }
 
-// The /proc/PID/stat file consists of a single line of space-separated strings, where
-// the 2nd string contains the process' comm. This string is wrapped in brackets but can
-// contain spaces and brackets. The correct way to parse this stat string is to find all
-// space-separated strings working backwards from the end until a string is found that
-// ends in a space, then find the first string and everything left must be the comm.
-func getProcStatStrings(procStat string) []string {
-	var output []string
-
-	// Build list of strings in reverse order
-	oldIndex := len(procStat)
-	index := strings.LastIndexByte(procStat, ' ')
-	for index > 0 {
-		output = append(output, procStat[index+1:oldIndex])
-		if procStat[index-1] == ')' {
-			break
-		}
-		oldIndex = index
-		index = strings.LastIndexByte(procStat[:oldIndex], ' ')
-	}
-
-	if index == -1 {
-		// Did not hit ')'
-		output = append(output, procStat[:oldIndex])
-	} else {
-		// Find the comm and first field
-		commIndex := strings.IndexByte(procStat, ' ')
-		output = append(output, procStat[commIndex+1:index])
-		output = append(output, procStat[:commIndex])
-	}
-
-	// Reverse the array
-	for i, j := 0, len(output)-1; i < j; i, j = i+1, j-1 {
-		output[i], output[j] = output[j], output[i]
-	}
-
-	return output
-}
-
 func (k *Observer) getRunningProcs(write, push bool) []Procs {
 	var procs []Procs
 	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
@@ -234,14 +196,8 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 	// time and time_for_children namespaces introduced in kernel 5.6
 	hasTimeNs := (int64(kernelVer) >= kernels.KernelStringToNumeric("5.6.0"))
 
-	// CLK_TCK is always constant 100 on all architectures except alpha and ia64 which are both
-	// obsolete and not supported by FGS. Also see
-	// https://lore.kernel.org/lkml/agtlq6$iht$1@penguin.transmeta.com/ and
-	// https://github.com/containerd/cgroups/pull/12
-	clktck := uint64(100)
-
 	for _, d := range procFS {
-		var pcmdline, pstatline []byte
+		var pcmdline []byte
 		var pstats []string
 		var pktime uint64
 		var pexecPath string
@@ -250,38 +206,40 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 		if d.IsDir() == false {
 			continue
 		}
-		cmdline, err := ioutil.ReadFile(filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
+
+		pathName := filepath.Join(option.Config.ProcFS, d.Name())
+
+		cmdline, err := ioutil.ReadFile(filepath.Join(pathName, "cmdline"))
 		if err != nil {
 			continue
 		}
 		if string(cmdline) == "" {
 			continue
 		}
-		statline, err := ioutil.ReadFile(filepath.Join(option.Config.ProcFS, d.Name(), "stat"))
+
+		pid, err := reader.GetProcPid(d.Name())
 		if err != nil {
-			k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
-			continue
-		}
-		pid, err := strconv.ParseUint(d.Name(), 10, 32)
-		if err != nil {
-			k.log.WithError(err).Warnf("ReadFile: %s /parseuint error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
+			logger.GetLogger().WithError(err).Warnf("pid read error")
 			continue
 		}
 
-		stats := getProcStatStrings(string(statline))
+		stats, err := reader.GetProcStatStrings(pathName)
+		if err != nil {
+			logger.GetLogger().WithError(err).Warnf("stats read error")
+			continue
+		}
+
 		ppid := stats[3]
 		_ppid, err := strconv.ParseUint(ppid, 10, 32)
 		if err != nil {
 			_ppid = 0 // 0 pid indicates no known parent
 		}
 
-		_ktime := stats[21]
-		ktime, err := strconv.ParseUint(_ktime, 10, 64)
+		ktime, err := reader.GetStatsKtime(stats)
 		if err != nil {
-			k.log.WithError(err).Warnf("Ktime parsing error: %s: %s", _ktime, filepath.Join(option.Config.ProcFS, ppid, "stat"))
-			ktime = 0
+			logger.GetLogger().WithError(err).Warnf("ktime read error")
 		}
-		ktime = ktime * (nanoPerSeconds / clktck)
+
 		nspid, permitted, effective, inheritable := reader.GetPIDCaps(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
 
 		uts_ns := reader.GetPidNsInode(uint32(pid), "uts")
@@ -307,32 +265,30 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 
 		if _ppid != 0 {
 			var err error
+			parentPath := filepath.Join(option.Config.ProcFS, ppid)
 
-			pcmdline, err = ioutil.ReadFile(filepath.Join(option.Config.ProcFS, ppid, "cmdline"))
+			pcmdline, err = ioutil.ReadFile(filepath.Join(parentPath, "cmdline"))
 			if err != nil {
-				k.log.WithError(err).Warnf("ReadFile: %s /cmdline error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
+				logger.GetLogger().WithError(err).WithField("path", parentPath).Warn("parent cmdline error")
 				continue
 			}
 
-			pstatline, err = ioutil.ReadFile(filepath.Join(option.Config.ProcFS, ppid, "stat"))
+			pstats, err = reader.GetProcStatStrings(string(parentPath))
 			if err != nil {
-				k.log.WithError(err).Warnf("ReadFile: %s /stat error", filepath.Join(option.Config.ProcFS, d.Name(), "cmdline"))
+				logger.GetLogger().WithError(err).Warnf("parent stats read error")
 				continue
 			}
-			pstats = getProcStatStrings(string(pstatline))
-			_pktime := pstats[21]
-			pktime, err = strconv.ParseUint(_pktime, 10, 64)
+
+			pktime, err = reader.GetStatsKtime(pstats)
 			if err != nil {
-				k.log.WithError(err).Warnf("Warning: Parent ktime parsing error: %s: %s", _pktime, filepath.Join(option.Config.ProcFS, ppid, "stat"))
-				pktime = 0
+				logger.GetLogger().WithError(err).Warnf("parent ktime read error")
 			}
-			pktime = pktime * (nanoPerSeconds / clktck)
+
 			if dockerId != "" {
 				pnspid, _, _, _ = reader.GetPIDCaps(filepath.Join(option.Config.ProcFS, ppid, "status"))
 			}
 		} else {
 			pcmdline = nil
-			pstatline = nil
 			pstats = nil
 			pktime = 0
 			pnspid = 0

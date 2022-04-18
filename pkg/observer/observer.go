@@ -38,8 +38,6 @@ import (
 )
 
 const (
-	nanoPerSeconds = 1000000000
-
 	TCP_PROC_STATE_LISTEN = 10
 
 	maxMapRetries = 4
