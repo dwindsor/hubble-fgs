@@ -84,15 +84,14 @@ type procTCPEntry struct {
 	inode      uint32
 }
 
-func (k *Observer) pushTCPEvents(msg *api.MsgExecveEventUnix, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
+func (k *Observer) pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
 	var m *bpf.Map
 
-	pid := msg.Process.PID
 	tcp := api.MsgIPv4EventUnix{}
 
 	tcp.ProcessKey.Pid = pid
-	tcp.ProcessKey.Ktime = msg.Process.Ktime
-	tcp.Common.Ktime = msg.Process.Ktime
+	tcp.ProcessKey.Ktime = ktime
+	tcp.Common.Ktime = ktime
 
 	netns := uint64(reader.GetPidNsInode(pid, "net"))
 

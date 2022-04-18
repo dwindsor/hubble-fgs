@@ -165,7 +165,7 @@ type Procs struct {
 	user_ns              uint32
 }
 
-func (k *Observer) pushEvents(procs []Procs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
+func (k *Observer) pushEvents(procs []Procs, pushExecve, writeMaps bool) {
 	if writeMaps {
 		k.writeExecveMap(procs)
 	}
@@ -174,7 +174,7 @@ func (k *Observer) pushEvents(procs []Procs, tcpEntries map[uint32]procTCPEntry,
 	})
 	procs = append(procs, k.procKernel())
 	for _, p := range procs {
-		k.pushExecveEvents(p, tcpEntries, pushExecve, writeMaps)
+		k.pushExecveEvents(p, pushExecve, writeMaps)
 	}
 	// Ensure we have at least a default dockerId offset if we failed
 	// to discover one while walking proc
@@ -223,7 +223,6 @@ func getProcStatStrings(procStat string) []string {
 }
 
 func (k *Observer) getRunningProcs(write, push bool) []Procs {
-	var entryMap = make(map[uint32]procTCPEntry)
 	var procs []Procs
 	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
 	if err != nil {
@@ -240,9 +239,6 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 	// https://lore.kernel.org/lkml/agtlq6$iht$1@penguin.transmeta.com/ and
 	// https://github.com/containerd/cgroups/pull/12
 	clktck := uint64(100)
-
-	// Check for TCP6 support in procfs
-	hasSupportTCP6 := supportTCP6()
 
 	for _, d := range procFS {
 		var pcmdline, pstatline []byte
@@ -421,14 +417,25 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 		}
 
 		procs = append(procs, p)
-
-		// Collect any TCP connections associated with this pid
-		if err = k.getTCPConnections(entryMap, pid, hasSupportTCP6); err != nil {
-			k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
-		}
 	}
 	k.log.Infof("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
 
-	k.pushEvents(procs, entryMap, push, write)
+	k.pushEvents(procs, push, write)
 	return procs
+}
+
+func (k *Observer) getRunningSockets(procs []Procs, writeMaps, pushEvents bool) {
+	var entryMap = make(map[uint32]procTCPEntry)
+
+	// Check for TCP6 support in procfs
+	hasSupportTCP6 := supportTCP6()
+
+	for _, p := range procs {
+		// Collect any TCP connections associated with this pid
+		if err := k.getTCPConnections(entryMap, uint64(p.pid), hasSupportTCP6); err != nil {
+			k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
+		}
+		k.pushTCPEvents(p.pid, p.ktime, entryMap, writeMaps, pushEvents)
+	}
+
 }

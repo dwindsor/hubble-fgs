@@ -83,7 +83,7 @@ func (k *Observer) procKernel() Procs {
 	}
 }
 
-func (k *Observer) pushExecveEvents(p Procs, tcpEntries map[uint32]procTCPEntry, pushExecve, writeMaps bool) {
+func (k *Observer) pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 	var err error
 	var i int
 
@@ -143,8 +143,6 @@ func (k *Observer) pushExecveEvents(p Procs, tcpEntries map[uint32]procTCPEntry,
 	if pushExecve {
 		k.observerListeners(&m)
 	}
-	/* Collect any existing TCP sockets on PID and generate events. */
-	k.pushTCPEvents(&m, tcpEntries, writeMaps, pushExecve)
 }
 
 func (k *Observer) writeExecveMap(procs []Procs) {
