@@ -134,7 +134,7 @@ func rpcCheck(ctx context.Context, clients []fgs.FineGuidanceSensorsClient, chec
 
 				atomic.AddUint64(eventCount, 1)
 				count := atomic.LoadUint64(eventCount)
-				prefix := fmt.Sprintf("rpcCheck/event:%04d", count)
+				prefix := fmt.Sprintf("%s:%d", ec.EventTypeString(ev.GetEvent()), count)
 
 				if eventLimit > 0 && count > eventLimit {
 					log.Logf("%s => event limit exceeded", prefix)
