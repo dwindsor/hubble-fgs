@@ -112,7 +112,7 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 
 	if writeMaps {
 		var err error
-		mapDir := reader.GetObserverDir()
+		mapDir := bpf.MapPrefixPath()
 
 		m, err = bpf.OpenMap(filepath.Join(mapDir, sensors.SocketMap.Name))
 		for i := 0; err != nil; i++ {

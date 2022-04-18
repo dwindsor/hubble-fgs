@@ -66,6 +66,8 @@ spec:
     tls:
       enable: true
       mode: "tc"
+    tcp:
+      enable: true
 `
 )
 

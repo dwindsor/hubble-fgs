@@ -114,7 +114,10 @@ func TestSocketCookie(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
+	if err := observer.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}

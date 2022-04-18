@@ -169,7 +169,12 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 			},
 		}
 	case SENS_INITIAL:
-
+		spec = v1alpha1.ParserPolicySpec{
+			Tcp: v1alpha1.TcpPolicySpec{
+				Enable:        true,
+				StatsInterval: 0,
+			},
+		}
 	default:
 		panic(fmt.Sprintf("unimplemented %d", cfg))
 	}

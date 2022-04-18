@@ -80,6 +80,8 @@ spec:
       selectors:
       - matchPorts:
         - %d
+    tcp:
+      enable: true
 `, port)
 }
 

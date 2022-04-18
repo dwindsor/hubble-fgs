@@ -60,11 +60,33 @@ spec:
       enable: true
 `
 
+const tcpBasicConfig = `
+apiversion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "tcp"
+spec:
+  parser:
+    tcp:
+      enable: true
+`
+
 func init() {
 	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
 	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 	flag.BoolVar(&client, "client", false, "internal")
 	flag.BoolVar(&server, "server", false, "internal")
+}
+
+func getBasicTcpObserver(t *testing.T) *observer.Observer {
+	if err := observer.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	return obs
 }
 
 func TestMain(m *testing.M) {
@@ -80,7 +102,6 @@ func TestMain(m *testing.M) {
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.ConfigureResourceLimits()
-	bpf.SetMapPrefix("testObserver")
 	selfBinary = filepath.Base(os.Args[0])
 	exitCode := m.Run()
 	os.Exit(exitCode)
@@ -123,14 +144,10 @@ func TestConnectEvent(t *testing.T) {
 			End(),
 	)
 
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-
+	obs := getBasicTcpObserver(t)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
-	err = observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -205,11 +222,7 @@ func TestExecEventClone(t *testing.T) {
 			End(),
 	)
 
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-
+	obs := getBasicTcpObserver(t)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -219,7 +232,7 @@ func TestExecEventClone(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err = observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -270,14 +283,10 @@ func TestExistingListenEvent(t *testing.T) {
 	assert.NoError(t, cmdServer.Start())
 
 	/* Create obs */
-	_, err := observer.GetDefaultObserver(t, fgsLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-
+	getBasicTcpObserver(t)
 	killAndWaitCommand(t, cmdServer)
 
-	err = observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -323,24 +332,19 @@ func TestExistingAcceptEvent(t *testing.T) {
 
 	/* Start server before creating obs */
 	cmdServer := exec.Command(server, "-nvlp", "8081")
-	fmt.Printf("cmd: %s\n", cmdServer)
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
 	/* Create obs */
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
+	obs := getBasicTcpObserver(t)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
 	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
-	fmt.Printf("cmd: %s\n", cmdClient)
 	assert.NoError(t, cmdClient.Start())
 
-	err = observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -384,11 +388,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	os.Chdir(path)
 
 	/* Create obs */
-	_, err = observer.GetDefaultObserver(t, fgsLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
-
+	getBasicTcpObserver(t)
 	killAndWaitCommand(t, cmdServer)
 
 	err = observer.JsonTestCheck(t, checker)
@@ -455,10 +455,7 @@ func TestListenAcceptClose(t *testing.T) {
 			End(),
 	)
 
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
+	obs := getBasicTcpObserver(t)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -468,7 +465,7 @@ func TestListenAcceptClose(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err = observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -495,10 +492,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
+	obs := getBasicTcpObserver(t)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	// Ideally we would also verify the dockerID, but our current dockerID
@@ -533,7 +527,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 			End(),
 	)
 
-	err = observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -548,10 +542,7 @@ func TestDockerListenConnect(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
-	if err != nil {
-		t.Fatalf("GetDefaultObserver error: %s", err)
-	}
+	obs := getBasicTcpObserver(t)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -615,7 +606,7 @@ func TestDockerListenConnect(t *testing.T) {
 			End(),
 	)
 
-	err = observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
