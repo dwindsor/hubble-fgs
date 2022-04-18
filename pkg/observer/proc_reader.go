@@ -95,7 +95,7 @@ func supportTCP6() bool {
 	return false
 }
 
-func (k *Observer) _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, file string) error {
+func _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, file string) error {
 	pidStr := strconv.Itoa(int(pid))
 	tcp, err := os.Open(filepath.Join(option.Config.ProcFS, pidStr, file))
 	if err != nil {
@@ -111,7 +111,7 @@ func (k *Observer) _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint
 		// lets ensure we log it.
 		if err != nil {
 			if file != "/net/tcp6" {
-				k.log.Warn("ProcFS: /%s/%d/%s TCPConnections error: %s", option.Config.ProcFS, pidStr, file, err)
+				logger.GetLogger().Warn("ProcFS: /%s/%d/%s TCPConnections error: %s", option.Config.ProcFS, pidStr, file, err)
 			}
 			continue
 		}
@@ -123,12 +123,13 @@ func (k *Observer) _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint
 	return nil
 }
 
-func (k *Observer) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, supportTCP6 bool) error {
-	if err := k._getTCPConnections(entryMap, pid, "/net/tcp"); err != nil {
+func getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, supportTCP6 bool) error {
+	if err := _getTCPConnections(entryMap, pid, "/net/tcp"); err != nil {
 		return err
 	}
+
 	if supportTCP6 {
-		if err := k._getTCPConnections(entryMap, pid, "/net/tcp6"); err != nil {
+		if err := _getTCPConnections(entryMap, pid, "/net/tcp6"); err != nil {
 			return err
 		}
 	}
@@ -172,7 +173,7 @@ func (k *Observer) pushEvents(procs []Procs, pushExecve, writeMaps bool) {
 	sort.Slice(procs, func(i, j int) bool {
 		return procs[i].ppid < procs[j].ppid
 	})
-	procs = append(procs, k.procKernel())
+	procs = append(procs, procKernel())
 	for _, p := range procs {
 		k.pushExecveEvents(p, pushExecve, writeMaps)
 	}
@@ -180,7 +181,7 @@ func (k *Observer) pushEvents(procs []Procs, pushExecve, writeMaps bool) {
 	// to discover one while walking proc
 	err := procDockerIdOffsetDefault(btf.GetCachedBTF())
 	if err != nil {
-		k.log.Warn("prodDockerIdOffsetDefault error: %s", err)
+		logger.GetLogger().Warn("prodDockerIdOffsetDefault error: %s", err)
 	}
 }
 
@@ -188,7 +189,7 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 	var procs []Procs
 	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
 	if err != nil {
-		k.log.WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
+		logger.GetLogger().WithError(err).Errorf("Could not read directory %s", option.Config.ProcFS)
 		return nil
 	}
 
@@ -374,13 +375,13 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 
 		procs = append(procs, p)
 	}
-	k.log.Infof("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
+	logger.GetLogger().Infof("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
 
 	k.pushEvents(procs, push, write)
 	return procs
 }
 
-func (k *Observer) getRunningSockets(procs []Procs, writeMaps, pushEvents bool) {
+func getRunningSockets(procs []Procs, writeMaps, pushEvents bool) {
 	var entryMap = make(map[uint32]procTCPEntry)
 	// Check for TCP6 support in procfs
 	hasSupportTCP6 := supportTCP6()
@@ -409,10 +410,10 @@ func (k *Observer) getRunningSockets(procs []Procs, writeMaps, pushEvents bool) 
 			continue
 		}
 
-		if err := k.getTCPConnections(entryMap, pid, hasSupportTCP6); err != nil {
-			k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
+		if err := getTCPConnections(entryMap, pid, hasSupportTCP6); err != nil {
+			logger.GetLogger().WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
 		}
-		k.pushTCPEvents(uint32(pid), ktime, entryMap, writeMaps, pushEvents)
+		pushTCPEvents(uint32(pid), ktime, entryMap, writeMaps, pushEvents)
 	}
 
 }

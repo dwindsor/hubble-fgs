@@ -90,7 +90,7 @@ func (k *Observer) AddListener(listener Listener) {
 	k.log.WithField("listener", listener).Debug("Add listener")
 	k.listeners[listener] = struct{}{}
 	procs := k.getRunningProcs(false, true)
-	k.getRunningSockets(procs, false, true)
+	getRunningSockets(procs, false, true)
 }
 
 func (k *Observer) RemoveListener(listener Listener) {
@@ -477,7 +477,7 @@ func prependPath(s string, b []byte) []byte {
 
 func (k *Observer) populateExecve(ctx context.Context) {
 	procs := k.getRunningProcs(true, false)
-	k.getRunningSockets(procs, true, false)
+	getRunningSockets(procs, true, false)
 }
 
 type MsgFilterRun func(*api.MsgIPv4EventUnix, *Observer) bool

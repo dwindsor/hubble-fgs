@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
@@ -60,7 +61,7 @@ func (v *ExecveValue) DeepCopyMapValue() bpf.MapValue {
 	return &ExecveValue{}
 }
 
-func (k *Observer) procKernel() Procs {
+func procKernel() Procs {
 	kernelArgs := []byte("<kernel>\u0000")
 	return Procs{
 		psize:       uint32(api.MSG_SIZEOF_EXECVE + len(kernelArgs) + api.MSG_SIZEOF_CWD),
@@ -102,11 +103,11 @@ func (k *Observer) pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 	m.Kube.Cgrpid = 0
 	m.Kube.Docker, i, err = procsDockerId(p.pid)
 	if err != nil {
-		k.log.WithError(err).Warn("Procfs execve event pods/ identifier error")
+		logger.GetLogger().WithError(err).Warn("Procfs execve event pods/ identifier error")
 	} else if i > 0 {
 		err := procDockerIdOffsetWriter(i, btf.GetCachedBTF())
 		if err != nil {
-			k.log.WithError(err).Warn("Write to Docker ID BTF error")
+			logger.GetLogger().WithError(err).Warn("Write to Docker ID BTF error")
 		}
 		k.dockerIdOffsetWriter = i
 	}
@@ -141,7 +142,7 @@ func (k *Observer) pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 	m.Process.Args = args
 
 	if pushExecve {
-		k.observerListeners(&m)
+		AllListeners(&m)
 	}
 }
 
@@ -149,7 +150,7 @@ func (k *Observer) writeExecveMap(procs []Procs) {
 	execveMap := sensors.GetExecveMap()
 
 	if execveMap.PinState.IsDisabled() {
-		k.log.Infof("hubble-fgs, map %s is disabled, skipping.", execveMap.Name)
+		logger.GetLogger().Infof("hubble-fgs, map %s is disabled, skipping.", execveMap.Name)
 		return
 	}
 

@@ -23,6 +23,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -84,7 +85,7 @@ type procTCPEntry struct {
 	inode      uint32
 }
 
-func (k *Observer) pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
+func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
 	var m *bpf.Map
 
 	tcp := api.MsgIPv4EventUnix{}
@@ -98,15 +99,16 @@ func (k *Observer) pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32
 	fdDir := fmt.Sprintf("%s/%d/fd", option.Config.ProcFS, pid)
 	procFD, err := ioutil.ReadDir(fdDir)
 	if err != nil {
-		k.log.WithError(err).Warnf("ReadDir %d/fd/ failed", pid)
+		logger.GetLogger().WithError(err).Warnf("ReadDir %d/fd/ failed", pid)
 	}
 
 	if writeMaps {
 		var err error
+		mapDir := reader.GetObserverDir()
 
-		m, err = bpf.OpenMap(filepath.Join(k.mapDir, sensors.SocketMap.Name))
+		m, err = bpf.OpenMap(filepath.Join(mapDir, sensors.SocketMap.Name))
 		for i := 0; err != nil; i++ {
-			m, err = bpf.OpenMap(filepath.Join(k.mapDir, sensors.SocketMap.Name))
+			m, err = bpf.OpenMap(filepath.Join(mapDir, sensors.SocketMap.Name))
 			if err != nil {
 				time.Sleep(mapRetryDelay * time.Second)
 			}
@@ -120,7 +122,7 @@ func (k *Observer) pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32
 	for _, d := range procFD {
 		socket, err := os.Readlink(filepath.Join(fdDir, d.Name()))
 		if err != nil && option.Config.Verbosity > 0 {
-			k.log.WithError(err).Warnf("Readlink error %s", d.Name())
+			logger.GetLogger().WithError(err).Warnf("Readlink error %s", d.Name())
 		}
 		if strings.Contains(socket, "socket") == true {
 			fields := strings.Split(socket, ":")
@@ -132,7 +134,7 @@ func (k *Observer) pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32
 			inode = strings.TrimLeft(inode, "[")
 			inodeEntry, err := strconv.ParseUint(inode, 10, 32)
 			if err != nil {
-				k.log.WithError(err).Warnf("tcpEntry inode not parsable: %s", inode)
+				logger.GetLogger().WithError(err).Warnf("tcpEntry inode not parsable: %s", inode)
 			} else {
 				entry, ok := tcpEntries[uint32(inodeEntry)]
 				if !ok {
@@ -155,17 +157,17 @@ func (k *Observer) pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32
 				}
 
 				if pushEvents {
-					k.observerListeners(&tcp)
+					AllListeners(&tcp)
 				}
 				if writeMaps {
-					k.writeSockMap(&tcp, m, netns)
+					writeSockMap(&tcp, m, netns)
 				}
 			}
 		}
 	}
 }
 
-func (k *Observer) writeSockMap(tcp *api.MsgIPv4EventUnix, m *bpf.Map, uid uint64) {
+func writeSockMap(tcp *api.MsgIPv4EventUnix, m *bpf.Map, uid uint64) {
 	key := &SocketMapKey{
 		Saddr:     tcp.Tuple.SAddr,
 		Daddr:     tcp.Tuple.DAddr,
