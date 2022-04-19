@@ -21,7 +21,7 @@ GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Versi
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/isovalent/hubble-fgs -v /proc:/procRoot isovalent/hubble-fgs-test
 
-GOLANGCILINT_WANT_VERSION = 1.42.1
+GOLANGCILINT_WANT_VERSION = 1.45.2
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 
 # Directories to enforce copyright headers on
@@ -211,7 +211,8 @@ check:
 	golangci-lint run
 else
 check:
-	docker run --rm -v `pwd`:/app -w /app docker.io/golangci/golangci-lint:v$(GOLANGCILINT_WANT_VERSION) golangci-lint run
+	docker build -t golangci-lint:fgs . -f Dockerfile.golangci-lint
+	docker run --rm -v `pwd`:/app -w /app golangci-lint:fgs golangci-lint run
 endif
 
 .PHONY: clang-format
