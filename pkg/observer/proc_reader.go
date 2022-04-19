@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
@@ -83,6 +84,17 @@ func stringToTCPEntry(s string) (*procTCPEntry, error) {
 	return &entry, nil
 }
 
+// supportTCP6 returns whether or not the kernel has support for /proc/<pid>/net/tcp6
+// entries. We do this by testing for the existence of /proc/net/tcp6.
+func supportTCP6() bool {
+	if _, err := os.Stat("/proc/net/tcp6"); err == nil {
+		logger.GetLogger().Infof("ProcFS: Detected TCP6 support")
+		return true
+	}
+	logger.GetLogger().Infof("ProcFS: Detected no TCP6 support")
+	return false
+}
+
 func (k *Observer) _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, file string) error {
 	pidStr := strconv.Itoa(int(pid))
 	tcp, err := os.Open(filepath.Join(option.Config.ProcFS, pidStr, file))
@@ -111,12 +123,14 @@ func (k *Observer) _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint
 	return nil
 }
 
-func (k *Observer) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64) error {
+func (k *Observer) getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, supportTCP6 bool) error {
 	if err := k._getTCPConnections(entryMap, pid, "/net/tcp"); err != nil {
 		return err
 	}
-	if err := k._getTCPConnections(entryMap, pid, "/net/tcp6"); err != nil {
-		return err
+	if supportTCP6 {
+		if err := k._getTCPConnections(entryMap, pid, "/net/tcp6"); err != nil {
+			return err
+		}
 	}
 	return nil
 }
@@ -226,6 +240,9 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 	// https://lore.kernel.org/lkml/agtlq6$iht$1@penguin.transmeta.com/ and
 	// https://github.com/containerd/cgroups/pull/12
 	clktck := uint64(100)
+
+	// Check for TCP6 support in procfs
+	hasSupportTCP6 := supportTCP6()
 
 	for _, d := range procFS {
 		var pcmdline, pstatline []byte
@@ -406,7 +423,7 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 		procs = append(procs, p)
 
 		// Collect any TCP connections associated with this pid
-		if err = k.getTCPConnections(entryMap, pid); err != nil {
+		if err = k.getTCPConnections(entryMap, pid, hasSupportTCP6); err != nil {
 			k.log.WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
 		}
 	}
