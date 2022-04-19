@@ -39,7 +39,7 @@ WORKDIR /src/linux/tools/bpf/bpftool
 RUN make -j $(nproc) LDFLAGS=-static
 RUN strip bpftool
 
-FROM docker.io/library/alpine:3.15@sha256:21a3deaa0d32a8057914f36584b5288d2e5ecc984380bc0118285c70fa8c9300
+FROM docker.io/library/alpine:3.15.4@sha256:a777c9c66ba177ccfea23f2a216ff6721e78a662cd17019488c417135299cd89
 RUN apk add iproute2
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
