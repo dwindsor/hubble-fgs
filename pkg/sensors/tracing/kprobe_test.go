@@ -1850,3 +1850,58 @@ spec:
 
 	runKprobe_char_iovec(t, configHook, &checker, fdw, fdr, buffer)
 }
+
+func TestKprobe_char_iovec_overflow(t *testing.T) {
+	fdw, fdr, _ := createTestFile(t)
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
+
+	configHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write_writev"
+spec:
+  kprobes:
+  - call: "__x64_sys_writev"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_iovec"
+      sizeArgIndex: 3
+    - index: 2
+      type: "int"
+    selectors:
+    - matchPIDs:
+      - operator: In
+        followForks: true
+        values:
+        - ` + pidStr + `
+      matchArgs:
+      - index: 0
+        operator: "Equal"
+        values:
+        - ` + fmt.Sprint(fdw)
+
+	size := 5000
+	buffer := make([]byte, size)
+
+	for i := 0; i < size; i++ {
+		buffer[i] = 'A' + byte(i%26)
+	}
+
+	kpChecker := ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_writev").
+		WithArgs([]ec.GenericArgChecker{
+			ec.GenericArgIntCheck(int32(fdw)),
+			ec.GenericArgBytesCheck([]byte("CharBufErrorBufTooLarge")),
+			ec.GenericArgIntCheck(1),
+		})
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasKprobe(kpChecker).
+			End(),
+	)
+
+	runKprobe_char_iovec(t, configHook, &checker, fdw, fdr, buffer)
+}
