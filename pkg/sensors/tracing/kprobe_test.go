@@ -1746,3 +1746,107 @@ spec:
 	}
 	assert.Error(t, err)
 }
+
+func runKprobe_char_iovec(t *testing.T, configHook string,
+	checker *ec.OrderedMultiResponseChecker, fdw, fdr int, buffer []byte) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	testConfigHook := []byte(configHook)
+	err := ioutil.WriteFile(testConfigFile, testConfigHook, 0644)
+	if err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := observer.GetDefaultObserverWithWatchers(t, observer.WithConfig(testConfigFile), observer.WithLib(fgsLib))
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithWatchers error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	// use writev file with single buffer
+	// and readv the same file with 8 separate buffers
+
+	var iovw = make([][]byte, 1)
+	var iovr = make([][]byte, 8)
+
+	iovw[0] = buffer
+	_, err = unix.Writev(fdw, iovw)
+	assert.NoError(t, err)
+
+	syscall.Fsync(fdw)
+
+	iovr[0] = make([]byte, 1000)
+	iovr[1] = make([]byte, 1100)
+	iovr[2] = make([]byte, 1200)
+	iovr[3] = make([]byte, 1300)
+	iovr[4] = make([]byte, 1400)
+	iovr[5] = make([]byte, 1500)
+	iovr[6] = make([]byte, 1600)
+	iovr[7] = make([]byte, 1700)
+
+	_, err = unix.Readv(fdr, iovr)
+	assert.NoError(t, err)
+
+	err = observer.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestKprobe_char_iovec(t *testing.T) {
+	fdw, fdr, _ := createTestFile(t)
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
+
+	configHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write_writev"
+spec:
+  kprobes:
+  - call: "__x64_sys_writev"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_iovec"
+      sizeArgIndex: 3
+    - index: 2
+      type: "int"
+    selectors:
+    - matchPIDs:
+      - operator: In
+        followForks: true
+        values:
+        - ` + pidStr + `
+      matchArgs:
+      - index: 0
+        operator: "Equal"
+        values:
+        - ` + fmt.Sprint(fdw)
+
+	size := 4094
+	buffer := make([]byte, size)
+
+	for i := 0; i < size; i++ {
+		buffer[i] = 'A' + byte(i%26)
+	}
+
+	kpChecker := ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_writev").
+		WithArgs([]ec.GenericArgChecker{
+			ec.GenericArgIntCheck(int32(fdw)),
+			ec.GenericArgBytesCheck(buffer),
+			ec.GenericArgIntCheck(1),
+		})
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasKprobe(kpChecker).
+			End(),
+	)
+
+	runKprobe_char_iovec(t, configHook, &checker, fdw, fdr, buffer)
+}
