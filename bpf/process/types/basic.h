@@ -134,8 +134,8 @@ parse_iovec_array(char *args, unsigned long arg, int i, __u64 off)
 	size = iov.iov_len;
 	if (size > 4094)
 		return char_buf_toolarge;
-	asm volatile("%[off] &= 0xeff;\n"
-		     "%[size] &= 0xeff;\n" ::[off] "+r"(off),
+	asm volatile("%[off] &= 0xfff;\n"
+		     "%[size] &= 0xfff;\n" ::[off] "+r"(off),
 		     [size] "+r"(size)
 		     :);
 	err = probe_read(&args[off], size, (char *)iov.iov_base);
