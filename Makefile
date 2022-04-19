@@ -27,7 +27,9 @@ GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 # Directories to enforce copyright headers on
 COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
 
-all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile contrib-progs checkerpc protoc-gen-go-fgs
+TESTER_PROGS_DIR = "contrib/tester-progs"
+
+all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs checkerpc protoc-gen-go-fgs
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
@@ -90,8 +92,8 @@ install:
 
 clean:
 	$(MAKE) -C ./bpf clean
+	$(MAKE) -C $(TESTER_PROGS_DIR) clean
 	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench ./checkerpc ./bin/protoc-gen-go-fgs
-	rm -f contrib/sigkill-tester/sigkill-tester contrib/namespace-tester/test_ns contrib/capabilities-tester/test_caps contrib/dup_tester/test_dup
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:
@@ -252,9 +254,6 @@ cscope:
 	cscope -b -q -k
 .PHONY: cscope
 
-contrib-progs:
-	$(MAKE) -C contrib/sigkill-tester
-	$(MAKE) -C contrib/namespace-tester
-	$(MAKE) -C contrib/capabilities-tester
-	$(MAKE) -C contrib/dup_tester
-.PHONY: contrib-progs
+tester-progs:
+	$(MAKE) -C $(TESTER_PROGS_DIR)
+.PHONY: tester-progs

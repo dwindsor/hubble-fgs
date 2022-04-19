@@ -128,7 +128,7 @@ jobs:
             cd /fgs
             export PATH="\\$PATH:/usr/local/go/bin"
 
-            make  hubble-bpf contrib-progs test
+            make  hubble-bpf tester-progs test
           EOF
 
       - name: Wait for kube-system pods to be ready
