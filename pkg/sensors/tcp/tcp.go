@@ -71,8 +71,6 @@ func (tcp *tcpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 	}
 	if spec.Parser.Tcp.StatsInterval > 0 {
 		tcpInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
-	} else {
-		return nil, nil
 	}
 	if spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
 		tcpBurstEnable = true
@@ -180,19 +178,24 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult)
-	ret, err := loader.LoadKprobeProgram(args.Version,
-		args.Verbose,
-		uintptr(btf.GetCachedBTF()),
-		args.Load.Name,
-		args.Load.Attach,
-		args.Load.Label,
-		filepath.Join(args.BPFDir, args.Load.PinPath),
-		args.MapDir,
-		args.Load.RetProbe)
-	if err == nil {
-		getRunningSockets(true, true)
+	var err error
+	var ret = 0
+
+	err = nil
+
+	if tcpInterval > 0 {
+		configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult)
+		ret, err = loader.LoadKprobeProgram(args.Version,
+			args.Verbose,
+			uintptr(btf.GetCachedBTF()),
+			args.Load.Name,
+			args.Load.Attach,
+			args.Load.Label,
+			filepath.Join(args.BPFDir, args.Load.PinPath),
+			args.MapDir,
+			args.Load.RetProbe)
 	}
+	getRunningSockets(true, true)
 	return ret, err
 }
 
