@@ -1,0 +1,44 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+//
+
+package main
+
+import (
+	"fmt"
+
+	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/eventcache"
+	"google.golang.org/protobuf/compiler/protogen"
+	//"google.golang.org/protobuf/reflect/protoreflect"
+)
+
+func main() {
+	protogen.Options{}.Run(func(gen *protogen.Plugin) error {
+		for _, f := range gen.Files {
+			if !f.Generate {
+				continue
+			}
+			err := generate(gen, f)
+			if err != nil {
+				return fmt.Errorf("Failed to generate file %s: %v", f.Desc.Name(), err)
+			}
+		}
+		return nil
+	})
+}
+
+// generate is the main entrypoint for codegen. All Generate() funcs should be called
+// here.
+func generate(gen *protogen.Plugin, f *protogen.File) error {
+	if err := eventcache.Generate(gen, f); err != nil {
+		return err
+	}
+	return nil
+}

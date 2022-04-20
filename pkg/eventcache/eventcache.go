@@ -11,15 +11,14 @@
 package eventcache
 
 import (
-	"net"
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	codegen "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
-	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/server"
@@ -60,36 +59,16 @@ type Cache struct {
 }
 
 func (ec *Cache) eventLabels(endpoint *v1.Endpoint, event *cacheObj) ([]string, error) {
-	destinationIp := ""
-	var labels []string
-
-	switch e := event.event.(type) {
-	case *fgs.ProcessConnect:
-		destinationIp = e.GetDestinationIp()
-		if len(e.DestinationNames) > 0 {
-			return e.DestinationNames, nil
-		}
-	case *fgs.ProcessClose:
-		destinationIp = e.GetDestinationIp()
-		if len(e.DestinationNames) > 0 {
-			return e.DestinationNames, nil
-		}
-	case *fgs.ProcessAccept:
-		destinationIp = e.GetDestinationIp()
-		if len(e.DestinationNames) > 0 {
-			return e.DestinationNames, nil
-		}
-	default:
-		return labels, nil
+	labels, destinationIp := codegen.DoEventLabels(endpoint, event.event)
+	if destinationIp != nil {
+		return ec.dns.GetIp(*destinationIp)
 	}
-	return ec.dns.GetIp(destinationIp)
+	return labels, nil
 }
 
 func (ec *Cache) handleNetEvents() {
 	tmp := ec.cache[:0]
 	for _, e := range ec.cache {
-		var processedEvent *fgs.GetEventsResponse
-
 		/* Ensure we actually have a dockerID, we use this for testing reasons
 		 * mostly. It is nice though if we ever hit this case to just post it.
 		 */
@@ -119,140 +98,11 @@ func (ec *Cache) handleNetEvents() {
 			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheEndpointRetryFailed)).Inc()
 		}
 
-		switch event := e.event.(type) {
-		case *fgs.ProcessClose:
-			if e.internal != nil {
-				// Make a copy of the process in order to not hand a mutating object to protobuf/grpc.
-				event.Process = e.internal.GetProcessCopy()
-			}
-			event.DestinationNames = labels
-			if event.DestinationPod == nil {
-				event.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.DestinationIp))
-			}
-
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessConnect:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			event.DestinationNames = labels
-			if event.DestinationPod == nil {
-				event.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.DestinationIp))
-			}
-
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessAccept:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			event.DestinationNames = labels
-			if event.DestinationPod == nil {
-				event.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.DestinationIp))
-			}
-
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessListen:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessCred:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessExit:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.Tls:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_Tls{Tls: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessHttp:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessSockStats:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			if event.Socket.DestinationPod == nil {
-				event.Socket.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.Socket.DestinationIp))
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessSockStats{ProcessSockStats: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessKprobe:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessDns:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		case *fgs.ProcessNetworkBurst:
-			if e.internal != nil {
-				event.Process = e.internal.GetProcessCopy()
-			}
-			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: event},
-				NodeName: nodeName,
-				Time:     e.timestamp,
-			}
-		}
-
-		if processedEvent == nil {
-			logger.GetLogger().WithField("event", e.event).Warn("eventType unhandled")
-		} else {
+		processedEvent, err := codegen.DoHandleEvent(e.event, e.internal, labels, nodeName, e.timestamp)
+		if err == nil {
 			ec.server.NotifyListeners(e.msg, processedEvent)
+		} else {
+			logger.GetLogger().WithField("event", e.event).WithError(err).Warn("Error while handling event")
 		}
 	}
 	ec.cache = tmp

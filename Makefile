@@ -27,7 +27,7 @@ GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 # Directories to enforce copyright headers on
 COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
 
-all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile contrib-progs checkerpc
+all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile contrib-progs checkerpc protoc-gen-go-fgs
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
@@ -69,6 +69,9 @@ fgs-alignchecker:
 checkerpc:
 	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./cmd/checkerpc/
 
+protoc-gen-go-fgs:
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o bin/$@ ./cmd/protoc-gen-go-fgs/
+
 .PHONY: ksyms
 ksyms:
 	$(GO) build ./cmd/ksyms/
@@ -87,7 +90,7 @@ install:
 
 clean:
 	$(MAKE) -C ./bpf clean
-	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench ./checkerpc
+	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench ./checkerpc ./bin/protoc-gen-go-fgs
 	rm -f contrib/sigkill-tester/sigkill-tester contrib/namespace-tester/test_ns contrib/capabilities-tester/test_caps
 
 .PHONY: fgs-bench fgs-bench-image
@@ -169,6 +172,11 @@ image-test:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
 
+image-codegen:
+	$(CONTAINER_ENGINE) build -f Dockerfile.codegen -t "isovalent/hubble-fgs-codegen:${DOCKER_IMAGE_TAG}" .
+	$(QUIET)echo "Push like this when ready:"
+	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-codegen:$(DOCKER_IMAGE_TAG)"
+
 .PHONY: tools-install tools-clean libbpf-install clang-install
 tools-install: libbpf-install clang-install
 tools-clean:
@@ -206,6 +214,9 @@ generate:
 	  isovalent.com:v1alpha1 \
 	  --go-header-file hack/custom-boilerplate.go.txt
 
+codegen: image-codegen
+	$(MAKE) -C api
+
 ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
 check:
 	golangci-lint run
@@ -233,7 +244,7 @@ go-format:
 .PHONY: format
 format: go-format clang-format
 
-.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check checkerpc
+.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check checkerpc protoc-gen-go-fgs
 
 
 # generate cscope for bpf files
