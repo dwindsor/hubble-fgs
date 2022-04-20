@@ -74,6 +74,9 @@ if [ $? -ne 0 ]; then
     exit 1
 fi
 
+echo "Dumping pod info for the cluster..." 1>&2
+kubectl get pods -A
+
 for i in $(seq 10); do
     kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 1 || true
     sleep 5
