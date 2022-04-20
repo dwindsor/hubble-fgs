@@ -348,12 +348,13 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 			argsBTFSet[api.ReturnArgIndex] = true
 			setRetprobe = true
 
-			ret = btfobj.AddEnumValue(argreturncopy, 1)
+			argType := gt.GenericTypeFromString(argRetprobe.Type)
+
+			ret = btfobj.AddEnumValue(argreturncopy, argType)
 			if ret < 0 {
-				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d", argreturncopy, 1)
+				return nil, fmt.Errorf("Error add enum value '%s'='0' failed %d", argreturncopy, argType)
 			}
 
-			argType := gt.GenericTypeFromString(argRetprobe.Type)
 			argP := argPrinters{index: int(argRetprobe.Index), ty: argType}
 			argReturnPrinters = append(argReturnPrinters, argP)
 		} else {

@@ -391,21 +391,11 @@ get_arg_meta(int meta, struct msg_generic_kprobe *e)
 }
 
 static inline __attribute__((always_inline)) long
-copy_char_buf(void *ctx, char *args, unsigned long arg, int argm,
-	      struct msg_generic_kprobe *e)
+__copy_char_buf(char *args, unsigned long arg, unsigned long bytes)
 {
 	int *s = (int *)args;
-	size_t bytes = 0, rd_bytes;
-	unsigned long meta;
+	size_t rd_bytes;
 	int err;
-
-	if (hasReturnCopy(argm)) {
-		u64 tid = retprobe_map_get_key(ctx);
-		retprobe_map_set(tid, arg);
-		return return_error(s, char_buf_saved_for_retprobe);
-	}
-	meta = get_arg_meta(argm, e);
-	probe_read(&bytes, sizeof(bytes), &meta);
 
 	/* Bound bytes <4095 to ensure bytes does not read past end of buffer */
 	rd_bytes = bytes;
@@ -416,6 +406,24 @@ copy_char_buf(void *ctx, char *args, unsigned long arg, int argm,
 	s[0] = (int)bytes;
 	s[1] = (int)rd_bytes;
 	return rd_bytes + 8;
+}
+
+static inline __attribute__((always_inline)) long
+copy_char_buf(void *ctx, char *args, unsigned long arg, int argm,
+	      struct msg_generic_kprobe *e)
+{
+	int *s = (int *)args;
+	unsigned long meta;
+	size_t bytes = 0;
+
+	if (hasReturnCopy(argm)) {
+		u64 tid = retprobe_map_get_key(ctx);
+		retprobe_map_set(tid, arg);
+		return return_error(s, char_buf_saved_for_retprobe);
+	}
+	meta = get_arg_meta(argm, e);
+	probe_read(&bytes, sizeof(bytes), &meta);
+	return __copy_char_buf(args, arg, bytes);
 }
 
 static inline __attribute__((always_inline)) long
