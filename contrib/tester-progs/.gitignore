@@ -1,4 +1,5 @@
 dup-tester
 caps-tester
+fork-tester
 namespace-tester
 sigkill-tester
