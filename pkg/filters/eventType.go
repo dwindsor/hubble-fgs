@@ -19,7 +19,6 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 )
 
 func filterByEventType(types []reflect.Type) hubbleFilters.FilterFunc {
@@ -48,37 +47,35 @@ func (f *EventTypeFilter) OnBuildFilter(_ context.Context, ff *fgs.Filter) ([]hu
 			var opCode reflect.Type
 
 			switch s {
-			case api.MSG_OP_IPV4_TCPCONNECT:
+			case fgs.EventType_PROCESS_CONNECT:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessConnect{})
-			case api.MSG_OP_EXECVE:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessExec{})
-			case api.MSG_OP_IPV4_LISTEN:
+			case fgs.EventType_PROCESS_LISTEN:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessListen{})
-			case api.MSG_OP_TLS:
+			case fgs.EventType_PROCESS_EXEC:
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessExec{})
+			case fgs.EventType_PROCESS_TLS:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_Tls{})
-			case api.MSG_OP_EXIT:
+			case fgs.EventType_PROCESS_EXIT:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessExit{})
-			case api.MSG_OP_IPV4_TCPCLOSE:
+			case fgs.EventType_PROCESS_CLOSE:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessClose{})
-			case api.MSG_OP_IPV4_ACCEPT:
+			case fgs.EventType_PROCESS_ACCEPT:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessAccept{})
-			case api.MSG_OP_CRED:
+			case fgs.EventType_PROCESS_CRED:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessCred{})
-			case api.MSG_OP_TEST:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_Test{})
-			case api.MSG_OP_GENERIC_KPROBE:
+			case fgs.EventType_PROCESS_KPROBE:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessKprobe{})
-			case api.MSG_OP_HTTP:
+			case fgs.EventType_PROCESS_TRACEPOINT:
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessTracepoint{})
+			case fgs.EventType_PROCESS_HTTP:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessHttp{})
-			case api.MSG_OP_IPV4_UDPSTATS:
+			case fgs.EventType_PROCESS_SOCKSTATS:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessSockstats{})
-			case api.MSG_OP_IPV4_TCPSTATS:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessSockstats{})
-			case api.MSG_OP_INTERFACE_STATS:
+			case fgs.EventType_INTERFACE_STATS:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_InterfaceStats{})
-			case api.MSG_OP_IPV4_DNS:
+			case fgs.EventType_PROCESS_DNS:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessDns{})
-			case api.MSG_OP_IPV4_PROCESS_BURST:
+			case fgs.EventType_PROCESS_NETWORK_BURST:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessNetworkBurst{})
 			default:
 				return nil, fmt.Errorf("Unknown EventType %s", s)
