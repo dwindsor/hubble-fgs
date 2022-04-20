@@ -279,14 +279,6 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 		}
 		msgUnix := msgToExitUnix(&m)
 		k.observerListeners(msgUnix)
-	case api.MSG_OP_IPV4_UDPSTATS:
-		m := api.MsgIPv4Event{}
-		err := binary.Read(r, binary.LittleEndian, &m)
-		if err != nil {
-			break
-		}
-		msgUnix := MsgToIPv4Unix(&m)
-		k.observerListeners(msgUnix)
 
 	case api.MSG_OP_TEST:
 		m := api.MsgTestEvent{}

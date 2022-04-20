@@ -523,7 +523,7 @@ func (udp *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 	return EnableUdpParser(spec.Parser.Udp.Cgroup, interval), nil
 }
 
-func handleUdpConnect(r *bytes.Reader) ([]observer.Event, error) {
+func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	m := api.MsgIPv4Event{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
@@ -551,7 +551,8 @@ func AddUDP() {
 	}
 	sensors.RegisterProbeType("udp_sensor", udp)
 	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPCONNECT, handleUdpConnect)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPCONNECT, handleUdp)
+	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPSTATS, handleUdp)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPPAYLOAD, handleUdpPayload)
 	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
 
