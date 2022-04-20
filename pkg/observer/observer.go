@@ -280,15 +280,6 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 		msgUnix := msgToExitUnix(&m)
 		k.observerListeners(msgUnix)
 
-	case api.MSG_OP_TEST:
-		m := api.MsgTestEvent{}
-		err := binary.Read(r, binary.LittleEndian, &m)
-		if err != nil {
-			break
-		}
-		msgUnix := msgToTestUnix(&m)
-		k.observerListeners(msgUnix)
-
 	case api.MSG_OP_KFREE_SKB:
 		m := api.MsgKfreeSkb{}
 		err := binary.Read(r, binary.LittleEndian, &m)
