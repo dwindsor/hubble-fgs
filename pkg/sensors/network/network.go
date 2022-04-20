@@ -134,7 +134,10 @@ func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
 	}
 
 	logger.GetLogger().Infof("Enable Interface Statistics")
-	populateSandboxToContainer()
+	err := populateSandboxToContainer()
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Interface statistics running without containerID info")
+	}
 	networkCB(defaultCBInterval)
 	return nil
 }
@@ -164,31 +167,36 @@ func getContainerName(sandboxKey string) string {
 	}
 	containerName := sandboxToContainer[sandboxKey]
 	if containerName == "" {
-		populateSandboxToContainer()
+		err := populateSandboxToContainer()
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("get container name failed")
+			return ""
+		}
 		return sandboxToContainer[sandboxKey]
 	}
 	return containerName
 }
 
-func populateSandboxToContainer() {
+func populateSandboxToContainer() error {
 	newSandboxToContainer := make(map[string]string)
 	ctx := context.Background()
 	cli, err := client.NewClientWithOpts(client.FromEnv, client.WithAPIVersionNegotiation())
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	containers, err := cli.ContainerList(ctx, types.ContainerListOptions{})
 	if err != nil {
-		panic(err)
+		return err
 	}
 
 	for _, container := range containers {
 		containerDetails, err := cli.ContainerInspect(ctx, container.ID)
 		if err != nil {
-			panic(err)
+			logger.GetLogger().WithError(err).WithField("container", container.ID).Warn("container details missing")
 		}
 		newSandboxToContainer[containerDetails.NetworkSettings.SandboxKey] = containerDetails.Name
 	}
 	sandboxToContainer = newSandboxToContainer
+	return nil
 }
