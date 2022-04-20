@@ -70,7 +70,7 @@ func (f *EventTypeFilter) OnBuildFilter(_ context.Context, ff *fgs.Filter) ([]hu
 			case fgs.EventType_PROCESS_HTTP:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessHttp{})
 			case fgs.EventType_PROCESS_SOCKSTATS:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessSockstats{})
+				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessSockStats{})
 			case fgs.EventType_INTERFACE_STATS:
 				opCode = reflect.TypeOf(&fgs.GetEventsResponse_InterfaceStats{})
 			case fgs.EventType_PROCESS_DNS:

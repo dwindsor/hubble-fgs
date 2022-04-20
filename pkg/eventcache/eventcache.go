@@ -216,7 +216,7 @@ func (ec *Cache) handleNetEvents() {
 				event.Socket.DestinationPod = podinfo.GetPodInfoOfIp(net.ParseIP(event.Socket.DestinationIp))
 			}
 			processedEvent = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessSockstats{ProcessSockstats: event},
+				Event:    &fgs.GetEventsResponse_ProcessSockStats{ProcessSockStats: event},
 				NodeName: nodeName,
 				Time:     e.timestamp,
 			}

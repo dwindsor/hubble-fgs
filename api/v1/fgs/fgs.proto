@@ -628,7 +628,7 @@ message GetEventsResponse {
         ProcessCred process_cred = 8;
         ProcessKprobe process_kprobe = 9;
         ProcessTracepoint process_tracepoint = 10;
-        ProcessSockStats process_sockstats = 11;
+        ProcessSockStats process_sock_stats = 11;
         ProcessHttp process_http = 12;
         InterfaceStats interface_stats = 13;
         ProcessDns process_dns = 14;

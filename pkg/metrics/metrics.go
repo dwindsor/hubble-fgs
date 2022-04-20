@@ -466,8 +466,8 @@ func handleSocketEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessSockstats:
-			postStatsEventSocketStats(ev, res.ProcessSockstats)
+		case *fgs.GetEventsResponse_ProcessSockStats:
+			postStatsEventSocketStats(ev, res.ProcessSockStats)
 		}
 	}
 }
@@ -510,7 +510,7 @@ func handleProcessedEvent(processedEvent interface{}) {
 			eventType = fgs.EventType_PROCESS_KPROBE.String()
 		case *fgs.GetEventsResponse_ProcessTracepoint:
 			eventType = fgs.EventType_PROCESS_TRACEPOINT.String()
-		case *fgs.GetEventsResponse_ProcessSockstats:
+		case *fgs.GetEventsResponse_ProcessSockStats:
 			eventType = fgs.EventType_PROCESS_SOCKSTATS.String()
 		case *fgs.GetEventsResponse_InterfaceStats:
 			eventType = fgs.EventType_INTERFACE_STATS.String()

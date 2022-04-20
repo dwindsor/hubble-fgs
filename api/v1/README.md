@@ -345,7 +345,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_cred | [ProcessCred](#fgs.ProcessCred) |  |  |
 | process_kprobe | [ProcessKprobe](#fgs.ProcessKprobe) |  |  |
 | process_tracepoint | [ProcessTracepoint](#fgs.ProcessTracepoint) |  |  |
-| process_sockstats | [ProcessSockStats](#fgs.ProcessSockStats) |  |  |
+| process_sock_stats | [ProcessSockStats](#fgs.ProcessSockStats) |  |  |
 | process_http | [ProcessHttp](#fgs.ProcessHttp) |  |  |
 | interface_stats | [InterfaceStats](#fgs.InterfaceStats) |  |  |
 | process_dns | [ProcessDns](#fgs.ProcessDns) |  |  |

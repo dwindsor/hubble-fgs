@@ -276,16 +276,16 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessSockstats{
-			ProcessSockstats: &fgs.ProcessSockStats{},
+		Event: &fgs.GetEventsResponse_ProcessSockStats{
+			ProcessSockStats: &fgs.ProcessSockStats{},
 		},
 	})
 	assert.Error(t, err)
 
 	// should fail if socket field is nil
 	_, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessSockstats{
-			ProcessSockstats: &fgs.ProcessSockStats{
+		Event: &fgs.GetEventsResponse_ProcessSockStats{
+			ProcessSockStats: &fgs.ProcessSockStats{
 				Process: &fgs.Process{
 					Binary: "/usr/bin/nginx",
 				},
@@ -297,8 +297,8 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 
 	// should fail if stats field is nil
 	_, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessSockstats{
-			ProcessSockstats: &fgs.ProcessSockStats{
+		Event: &fgs.GetEventsResponse_ProcessSockStats{
+			ProcessSockStats: &fgs.ProcessSockStats{
 				Process: &fgs.Process{
 					Binary: "/usr/bin/nginx",
 				},
@@ -311,8 +311,8 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 
 	// with socket and stats fields
 	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessSockstats{
-			ProcessSockstats: &fgs.ProcessSockStats{
+		Event: &fgs.GetEventsResponse_ProcessSockStats{
+			ProcessSockStats: &fgs.ProcessSockStats{
 				Process: &fgs.Process{
 					Binary: "/usr/bin/curl",
 				},

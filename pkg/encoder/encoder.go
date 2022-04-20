@@ -205,8 +205,8 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 		processInfo := p.colorer.processInfo(response.NodeName, dns.Process)
 		args := p.colorer.cyan.Sprint(dns.GetDns().Names, " => ", dns.GetDns().Ips)
 		return fmt.Sprintf("%s %s %s", event, processInfo, args), nil
-	case *fgs.GetEventsResponse_ProcessSockstats:
-		stats := response.GetProcessSockstats()
+	case *fgs.GetEventsResponse_ProcessSockStats:
+		stats := response.GetProcessSockStats()
 		if stats.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}

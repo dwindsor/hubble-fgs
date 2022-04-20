@@ -357,8 +357,8 @@ func EventTypeString(ev interface{}) string {
 		return "ProcessDns"
 	case *fgs.GetEventsResponse_ProcessHttp:
 		return "ProcessHttp"
-	case *fgs.GetEventsResponse_ProcessSockstats:
-		return "ProcessSockstats"
+	case *fgs.GetEventsResponse_ProcessSockStats:
+		return "ProcessSockStats"
 	case *fgs.GetEventsResponse_ProcessExec:
 		return fmt.Sprintf("ProcessExec(proc.cmd=%s)", xev.ProcessExec.Process.Binary)
 	case *fgs.GetEventsResponse_ProcessExit:
@@ -439,11 +439,11 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (fgs
 		}
 		return ev.ProcessDns, nil
 
-	case *fgs.GetEventsResponse_ProcessSockstats:
+	case *fgs.GetEventsResponse_ProcessSockStats:
 		if err := checkTypes(fgs.EventType_PROCESS_SOCKSTATS); err != nil {
 			return nil, err
 		}
-		return ev.ProcessSockstats, nil
+		return ev.ProcessSockStats, nil
 
 	case *fgs.GetEventsResponse_ProcessClose:
 		if err := checkTypes(fgs.EventType_PROCESS_CLOSE); err != nil {

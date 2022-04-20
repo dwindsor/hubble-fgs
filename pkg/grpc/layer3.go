@@ -456,7 +456,7 @@ func (pm *ProcessManager) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 		s := pm.GetProcessSockStats(msg)
 		if s != nil {
 			res = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessSockstats{ProcessSockstats: s},
+				Event:    &fgs.GetEventsResponse_ProcessSockStats{ProcessSockStats: s},
 				NodeName: pm.nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
