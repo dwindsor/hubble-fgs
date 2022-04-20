@@ -30,7 +30,7 @@ func TestParseFilterList(t *testing.T) {
 {"binary_regex":["kube.*","iptables"]}
 {"binary_regex":["/usr/sbin/.*"],"namespace":["default"]}
 {"pid_set":[1]}
-{"event_set":["PROCESS_CONNECT", "PROCESS_LISTEN"]}`
+{"event_set":["PROCESS_CONNECT", "PROCESS_LISTEN", "PROCESS_SOCKSTATS", "INTERFACE_STATS"]}`
 	filterProto, err := ParseFilterList(f)
 	assert.NoError(t, err)
 	if diff := cmp.Diff(
@@ -40,7 +40,7 @@ func TestParseFilterList(t *testing.T) {
 			{BinaryRegex: []string{"kube.*", "iptables"}},
 			{BinaryRegex: []string{"/usr/sbin/.*"}, Namespace: []string{"default"}},
 			{PidSet: []uint32{1}},
-			{EventSet: []fgs.EventType{fgs.EventType_PROCESS_CONNECT, fgs.EventType_PROCESS_LISTEN}},
+			{EventSet: []fgs.EventType{fgs.EventType_PROCESS_CONNECT, fgs.EventType_PROCESS_LISTEN, fgs.EventType_PROCESS_SOCKSTATS, fgs.EventType_INTERFACE_STATS}},
 		},
 		filterProto,
 		cmpopts.IgnoreUnexported(fgs.Filter{}),
