@@ -256,14 +256,6 @@ func getDefaultObserver(t *testing.T, opts ...testOption) (*Observer, error) {
 		option.Config.Verbosity = dfltVerbosity
 	}
 
-	if err := obs.InitSensorManager(); err != nil {
-		return nil, err
-	}
-
-	if err := btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, ""); err != nil {
-		return nil, err
-	}
-
 	loadExporter(t, obs, &o.exporter)
 	if err := loadObserver(t, obs, o.observer.notestfail); err != nil {
 		return nil, err
@@ -319,6 +311,14 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	watcher := opts.watcher
 	ciliumState := opts.ciliumState
 	processCacheSize := 32768
+
+	if err := obs.InitSensorManager(); err != nil {
+		return err
+	}
+
+	if err := btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, ""); err != nil {
+		return err
+	}
 
 	if err := process.InitCache(context.Background(), watcher, false, processCacheSize); err != nil {
 		return err
