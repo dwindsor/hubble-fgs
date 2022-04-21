@@ -173,10 +173,6 @@ func MsgToIPv4Unix(m *api.MsgIPv4Event) *api.MsgIPv4EventUnix {
 	return unix
 }
 
-func msgToTestUnix(m *api.MsgTestEvent) *api.MsgTestEventUnix {
-	return m
-}
-
 func nopMsgProcess() api.MsgProcess {
 	return api.MsgProcess{
 		Filename: "<enomem>",
