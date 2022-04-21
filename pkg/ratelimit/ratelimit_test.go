@@ -35,8 +35,8 @@ func Test_getLimit(t *testing.T) {
 }
 
 func Test_rateLimitJSON(t *testing.T) {
-	ev := RateLimitInfoEvent{
-		RateLimitInfo: &RateLimitInfo{NumberOfDroppedProcessEvents: 10},
+	ev := InfoEvent{
+		RateLimitInfo: &Info{NumberOfDroppedProcessEvents: 10},
 		NodeName:      "my-node",
 		Time:          time.Time{},
 	}

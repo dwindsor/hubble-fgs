@@ -175,7 +175,7 @@ func checkEvents(t *testing.T, eventsJSON []string, wantEvents, wantRateLimitInf
 			decoded++
 		}
 		if len(ev.RateLimitInfo) > 0 {
-			var r ratelimit.RateLimitInfoEvent
+			var r ratelimit.InfoEvent
 			if err := json.Unmarshal([]byte(event), &r); err != nil {
 				t.Fatalf("failed to unmarshal JSON event %q: %v", event, err)
 			}

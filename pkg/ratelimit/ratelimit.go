@@ -51,14 +51,14 @@ func NewRateLimiter(ctx context.Context, interval time.Duration, numEvents int, 
 	return r
 }
 
-type RateLimitInfo struct {
+type Info struct {
 	NumberOfDroppedProcessEvents uint64 `json:"number_of_dropped_process_events"`
 }
 
-type RateLimitInfoEvent struct {
-	RateLimitInfo *RateLimitInfo `json:"rate_limit_info"`
-	NodeName      string         `json:"node_name"`
-	Time          time.Time      `json:"time"`
+type InfoEvent struct {
+	RateLimitInfo *Info     `json:"rate_limit_info"`
+	NodeName      string    `json:"node_name"`
+	Time          time.Time `json:"time"`
 }
 
 func (r *RateLimiter) reportRateLimitInfo(encoder *json.Encoder) {
@@ -68,8 +68,8 @@ func (r *RateLimiter) reportRateLimitInfo(encoder *json.Encoder) {
 		case <-ticker.C:
 			dropped := atomic.SwapUint64(&r.dropped, 0)
 			if dropped > 0 {
-				err := encoder.Encode(&RateLimitInfoEvent{
-					RateLimitInfo: &RateLimitInfo{NumberOfDroppedProcessEvents: dropped},
+				err := encoder.Encode(&InfoEvent{
+					RateLimitInfo: &Info{NumberOfDroppedProcessEvents: dropped},
 					NodeName:      reader.GetNodeNameForExport(),
 					Time:          time.Now(),
 				})
