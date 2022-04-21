@@ -55,7 +55,7 @@ type ProcessInternal struct {
 
 var (
 	nodeName    string
-	procCache   *processCache
+	procCache   *Cache
 	ciliumState *hubble.State
 	k8s         watcher.K8sResourceWatcher
 )

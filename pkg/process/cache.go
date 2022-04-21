@@ -23,7 +23,7 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
-type processCache struct {
+type Cache struct {
 	log        logrus.FieldLogger
 	cache      *lru.Cache
 	deleteChan chan *ProcessInternal
@@ -47,7 +47,7 @@ const (
 	intervalGC = time.Second * 30
 )
 
-func (pc *processCache) cacheGarbageCollector() {
+func (pc *Cache) cacheGarbageCollector() {
 	ticker := time.NewTicker(intervalGC)
 	pc.deleteChan = make(chan *ProcessInternal)
 	pc.stopChan = make(chan bool)
@@ -118,28 +118,28 @@ func (pc *processCache) cacheGarbageCollector() {
 	}()
 }
 
-func (pc *processCache) deletePending(process *ProcessInternal) {
+func (pc *Cache) deletePending(process *ProcessInternal) {
 	pc.deleteChan <- process
 }
 
-func (pc *processCache) refDec(p *ProcessInternal) {
+func (pc *Cache) refDec(p *ProcessInternal) {
 	ref := atomic.AddUint32(&p.refcnt, ^uint32(0))
 	if ref == 0 {
 		pc.deletePending(p)
 	}
 }
 
-func (pc *processCache) refInc(p *ProcessInternal) {
+func (pc *Cache) refInc(p *ProcessInternal) {
 	atomic.AddUint32(&p.refcnt, 1)
 }
 
-func (pc *processCache) Purge() {
+func (pc *Cache) Purge() {
 	pc.stopChan <- true
 }
 
 func NewCache(
 	processCacheSize int,
-) (*processCache, error) {
+) (*Cache, error) {
 	lruCache, err := lru.New(processCacheSize)
 	if err != nil {
 		return nil, err
@@ -148,7 +148,7 @@ func NewCache(
 	if err != nil {
 		return nil, err
 	}
-	pm := &processCache{
+	pm := &Cache{
 		cache:  lruCache,
 		pidMap: pidMap,
 	}
@@ -169,7 +169,7 @@ func NewCache(
 	return pm, nil
 }
 
-func (pc *processCache) get(processID string) (*ProcessInternal, error) {
+func (pc *Cache) get(processID string) (*ProcessInternal, error) {
 	entry, ok := pc.cache.Get(processID)
 	if !ok {
 		logger.GetLogger().WithField("id in event", processID).Debug("process not found in cache")
@@ -185,7 +185,7 @@ func (pc *processCache) get(processID string) (*ProcessInternal, error) {
 	return process, nil
 }
 
-func (pc *processCache) Add(process *ProcessInternal) bool {
+func (pc *Cache) Add(process *ProcessInternal) bool {
 	evicted := pc.cache.Add(process.process.ExecId, process)
 	if evicted {
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheEvicted)).Inc()
@@ -193,7 +193,7 @@ func (pc *processCache) Add(process *ProcessInternal) bool {
 	return evicted
 }
 
-func (pc *processCache) remove(process *fgs.Process) bool {
+func (pc *Cache) remove(process *fgs.Process) bool {
 	present := pc.cache.Remove(process.ExecId)
 	if !present {
 		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnRemove)).Inc()
@@ -207,12 +207,12 @@ func (pc *processCache) remove(process *fgs.Process) bool {
 	return present
 }
 
-func (pc *processCache) len() int {
+func (pc *Cache) len() int {
 	return pc.cache.Len()
 }
 
 // Get the exec ID for a given PID. If PID is not found, it returns an empty string.
-func (pc *processCache) getFromPidMap(pid uint32) string {
+func (pc *Cache) getFromPidMap(pid uint32) string {
 	entry, ok := pc.pidMap.Get(pid)
 	if !ok {
 		return ""
@@ -226,7 +226,7 @@ func (pc *processCache) getFromPidMap(pid uint32) string {
 	return execID
 }
 
-func (pc *processCache) AddToPidMap(pid uint32, execID string) bool {
+func (pc *Cache) AddToPidMap(pid uint32, execID string) bool {
 	evicted := pc.pidMap.Add(pid, execID)
 	if evicted {
 		pc.log.Warn("Entry evicted from pidMap")
