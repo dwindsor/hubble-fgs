@@ -87,10 +87,14 @@ generic_kprobe_event(struct pt_regs *ctx)
 
 	total = size;
 	total += generic_kprobe_common_size();
-	if (total > 8192)
-		total = 8192;
+	/* Code movement from clang forces us to inline bounds checks here */
+	asm volatile("%[total] &= 0x7fff;\n"
+		     "if %[total] < 9000 goto +1\n;"
+		     "%[total] = 9000;\n"
+		     :
+		     : [total] "+r"(total)
+		     :);
 	e->common.size = total;
-	asm volatile("%[total] &= 0xfff;\n" : [total] "+r"(total) :);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, e, total);
 	return 0;
 }
