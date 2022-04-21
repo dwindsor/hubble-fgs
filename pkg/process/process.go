@@ -38,6 +38,8 @@ import (
 )
 
 // ProcessInternal is the internal representation of a process.
+// nolint:revive // This is an acceptable case of "stuttering" since the name "Internal"
+// wouldn't make much sense by itself.
 type ProcessInternal struct {
 	// mu protects the modifications to process.
 	mu sync.Mutex
