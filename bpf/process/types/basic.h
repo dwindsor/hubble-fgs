@@ -120,7 +120,8 @@ return_stack_error(char *args, int orig, int err)
 }
 
 static inline __attribute__((always_inline)) int
-parse_iovec_array(char *args, unsigned long arg, int i, __u64 off)
+parse_iovec_array(char *args, unsigned long arg, int i, __u64 off,
+		  unsigned long max)
 {
 	struct iovec
 		iov; // limit is 1024 using a hack now. For 5.4 kernel we should loop over 1024
@@ -132,6 +133,8 @@ parse_iovec_array(char *args, unsigned long arg, int i, __u64 off)
 	if (err < 0)
 		return char_buf_pagefault;
 	size = iov.iov_len;
+	if (max && size > max)
+		size = max;
 	if (size > 4094)
 		return char_buf_toolarge;
 	asm volatile("%[off] &= 0xfff;\n"
@@ -151,10 +154,15 @@ parse_iovec_array(char *args, unsigned long arg, int i, __u64 off)
 		/* embedding this in the loop counter breaks verifier */       \
 		if (i >= cnt)                                                  \
 			goto char_iovec_done;                                  \
-		c = parse_iovec_array(args, arg, i, off);                      \
+		c = parse_iovec_array(args, arg, i, off, max);                 \
 		if (c < 0)                                                     \
 			return return_stack_error(args, 0, c);                 \
 		size += c;                                                     \
+		if (max) {                                                     \
+			max -= c;                                              \
+			if (!max)                                              \
+				goto char_iovec_done;                          \
+		}                                                              \
 		c &= 0x7fff;                                                   \
 		off += c;                                                      \
 		i++;                                                           \
@@ -535,7 +543,7 @@ copy_char_iovec(void *ctx, char *args, unsigned long arg, int argm,
 		struct msg_generic_kprobe *e)
 {
 	long size, off = 0;
-	unsigned long meta;
+	unsigned long meta, max;
 	int err, i = 0, cnt, *s = (int *)&args[off];
 
 	if (hasReturnCopy(argm)) {
@@ -549,6 +557,7 @@ copy_char_iovec(void *ctx, char *args, unsigned long arg, int argm,
 		return return_stack_error(args, 0, char_buf_pagefault);
 	}
 
+	max = 0;
 	size = 0;
 	off += 8;
 	PARSE_IOVEC_ENTRIES // may return an error directly
