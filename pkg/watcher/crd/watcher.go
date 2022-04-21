@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package observer
+package crd
 
 import (
 	"context"
@@ -52,7 +52,7 @@ func k8sErrorHandler(e error) {
 	}
 }
 
-func watchTracePolicy(ctx context.Context, s *sensors.Manager) {
+func WatchTracePolicy(ctx context.Context, s *sensors.Manager) {
 	log := logger.GetLogger()
 	conf, err := rest.InClusterConfig()
 	if err != nil {

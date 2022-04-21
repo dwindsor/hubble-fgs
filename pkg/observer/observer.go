@@ -33,6 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
 	"github.com/sirupsen/logrus"
 )
@@ -533,7 +534,7 @@ func (k *Observer) Start(ctx context.Context) error {
 
 	// start CRD watcher
 	if k.enableCRD {
-		go watchTracePolicy(ctx, k.SensorManager)
+		go crd.WatchTracePolicy(ctx, k.SensorManager)
 	}
 
 	k.perfConfig = bpf.DefaultPerfEventConfig()
