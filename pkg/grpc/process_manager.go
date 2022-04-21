@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/kfree"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/test"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -119,7 +120,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgGenericTracepointUnix:
 		processedEvent = pm.handleGenericTracepointMessage(msg)
 	case *api.MsgTestEventUnix:
-		processedEvent = pm.handleTestMessage(msg)
+		processedEvent = test.HandleTestMessage(msg)
 
 	default:
 		logger.GetLogger().WithField("event", event).Warnf("unhandled event of type %T", msg)

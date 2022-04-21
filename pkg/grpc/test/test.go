@@ -1,13 +1,18 @@
-package grpc
+package test
 
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
-func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetEventsResponse {
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
+
+func HandleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_TEST:
@@ -18,7 +23,7 @@ func (pm *ProcessManager) handleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetE
 				Arg2: msg.Arg2,
 				Arg3: msg.Arg3,
 			}},
-			NodeName: pm.nodeName,
+			NodeName: nodeName,
 			Time:     ktime.ToProto(msg.Common.Ktime),
 		}
 	default:
