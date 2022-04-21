@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/kfree"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -112,7 +113,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgCredEventUnix:
 		processedEvent = pm.handleCredMessage(msg)
 	case *api.MsgKfreeSkbUnix:
-		processedEvent = pm.handleKfreeSkbMessage(msg)
+		processedEvent = kfree.HandleKfreeSkbMessage(msg)
 	case *api.MsgGenericKprobeUnix:
 		processedEvent = pm.handleGenericKprobeMessage(msg)
 	case *api.MsgGenericTracepointUnix:
