@@ -1,13 +1,18 @@
-package grpc
+package iface
 
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
-func (pm *ProcessManager) GetInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs.InterfaceStats {
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
+
+func getInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs.InterfaceStats {
 	fgsEvent := &fgs.InterfaceStats{
 		InterfaceName:    msg.Iface.Name,
 		InterfaceIfindex: uint32(msg.Iface.Index),
@@ -25,15 +30,15 @@ func (pm *ProcessManager) GetInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs
 	return fgsEvent
 }
 
-func (pm *ProcessManager) handleInterfaceMessage(msg *api.MsgInterfaceEventUnix) *fgs.GetEventsResponse {
+func HandleInterfaceMessage(msg *api.MsgInterfaceEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_INTERFACE_STATS:
-		stats := pm.GetInterfaceStats(msg)
+		stats := getInterfaceStats(msg)
 		if stats != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_InterfaceStats{InterfaceStats: stats},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
