@@ -31,7 +31,7 @@ jobs:
         with:
           version: v1.44.0
           args: --config=.golangci.yml --verbose
-          only-new-issues: true
+          only-new-issues: false
           skip-go-installation: true
           skip-pkg-cache: true
           skip-build-cache: true
