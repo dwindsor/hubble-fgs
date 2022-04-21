@@ -13,12 +13,12 @@ package filters
 
 import (
 	"context"
-	"fmt"
 	"reflect"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	codegen "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/filters"
 )
 
 func filterByEventType(types []reflect.Type) hubbleFilters.FilterFunc {
@@ -44,41 +44,9 @@ func (f *EventTypeFilter) OnBuildFilter(_ context.Context, ff *fgs.Filter) ([]hu
 		var types []reflect.Type
 
 		for _, s := range ff.EventSet {
-			var opCode reflect.Type
-
-			switch s {
-			case fgs.EventType_PROCESS_CONNECT:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessConnect{})
-			case fgs.EventType_PROCESS_LISTEN:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessListen{})
-			case fgs.EventType_PROCESS_EXEC:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessExec{})
-			case fgs.EventType_PROCESS_TLS:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_Tls{})
-			case fgs.EventType_PROCESS_EXIT:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessExit{})
-			case fgs.EventType_PROCESS_CLOSE:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessClose{})
-			case fgs.EventType_PROCESS_ACCEPT:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessAccept{})
-			case fgs.EventType_PROCESS_CRED:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessCred{})
-			case fgs.EventType_PROCESS_KPROBE:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessKprobe{})
-			case fgs.EventType_PROCESS_TRACEPOINT:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessTracepoint{})
-			case fgs.EventType_PROCESS_HTTP:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessHttp{})
-			case fgs.EventType_PROCESS_SOCKSTATS:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessSockStats{})
-			case fgs.EventType_INTERFACE_STATS:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_InterfaceStats{})
-			case fgs.EventType_PROCESS_DNS:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessDns{})
-			case fgs.EventType_PROCESS_NETWORK_BURST:
-				opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessNetworkBurst{})
-			default:
-				return nil, fmt.Errorf("Unknown EventType %s", s)
+			opCode, err := codegen.OpCodeForEventType(s)
+			if err != nil {
+				return nil, err
 			}
 			types = append(types, opCode)
 		}

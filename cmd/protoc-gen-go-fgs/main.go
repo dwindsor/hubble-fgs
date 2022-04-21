@@ -15,8 +15,8 @@ import (
 	"fmt"
 
 	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/eventcache"
+	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/filters"
 	"google.golang.org/protobuf/compiler/protogen"
-	//"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func main() {
@@ -38,6 +38,9 @@ func main() {
 // here.
 func generate(gen *protogen.Plugin, f *protogen.File) error {
 	if err := eventcache.Generate(gen, f); err != nil {
+		return err
+	}
+	if err := filters.Generate(gen, f); err != nil {
 		return err
 	}
 	return nil

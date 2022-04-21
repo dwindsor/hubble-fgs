@@ -15,6 +15,7 @@ require (
 	github.com/google/go-cmp v0.5.6
 	github.com/google/gops v0.3.14
 	github.com/hashicorp/golang-lru v0.5.4
+	github.com/iancoleman/strcase v0.2.0
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/prometheus/client_golang v1.11.0
 	github.com/prometheus/client_model v0.2.0

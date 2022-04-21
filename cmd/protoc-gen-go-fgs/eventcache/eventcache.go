@@ -47,8 +47,6 @@ func doDestinationNames(g *protogen.GeneratedFile, msg *protogen.Message) string
 }
 
 func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
-	errorf := common.GoIdent(g, "fmt", "Errorf")
-
 	fgsProcessInternal := common.GoIdent(g, "github.com/isovalent/hubble-fgs/pkg/process", "ProcessInternal")
 	fgsGER := common.FgsApiIdent(g, "GetEventsResponse")
 	timestamp := common.GoIdent(g, "google.golang.org/protobuf/types/known/timestamppb", "Timestamp")
@@ -69,7 +67,7 @@ func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
             return &` + doGetEventsResponse(g, msg.GoIdent.GoName) + `, nil`)
 	}
 	g.P(`}
-            return nil, ` + errorf + `("DoHandleEvent: Unhandled event type %T", event)
+            return nil, ` + common.FmtErrorf(g, "DoHandleEvent: Unhandled event type %T", "event") + `
         }`)
 
 	return nil
