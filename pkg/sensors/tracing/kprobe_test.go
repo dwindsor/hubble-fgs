@@ -1905,3 +1905,59 @@ spec:
 
 	runKprobe_char_iovec(t, configHook, &checker, fdw, fdr, buffer)
 }
+
+func TestKprobe_char_iovec_returnCopy(t *testing.T) {
+	fdw, fdr, _ := createTestFile(t)
+	pidStr := strconv.Itoa(int(observer.GetMyPid()))
+
+	configHook := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "sys_write_read"
+spec:
+  kprobes:
+  - call: "__x64_sys_readv"
+    syscall: true
+    args:
+    - index: 0
+      type: "int"
+    - index: 1
+      type: "char_iovec"
+      returnCopy: true
+      sizeArgIndex: 3
+    - index: 2
+      type: "size_t"
+    selectors:
+    - matchPIDs:
+      - operator: In
+        followForks: true
+        values:
+        - ` + pidStr + `
+      matchArgs:
+      - index: 0
+        operator: "Equal"
+        values:
+        - ` + fmt.Sprint(fdr)
+
+	size := 4000
+	buffer := make([]byte, size)
+
+	for i := 0; i < size; i++ {
+		buffer[i] = 'A' + byte(i%26)
+	}
+
+	kpChecker := ec.NewKprobeChecker().
+		WithFunctionName("__x64_sys_readv").
+		WithArgs([]ec.GenericArgChecker{
+			ec.GenericArgIntCheck(int32(fdr)),
+			ec.GenericArgBytesCheck(buffer),
+			ec.GenericArgSizeCheck(8),
+		})
+	checker := ec.NewOrderedMultiResponseChecker(
+		ec.NewKprobeEventChecker().
+			HasKprobe(kpChecker).
+			End(),
+	)
+
+	runKprobe_char_iovec(t, configHook, &checker, fdw, fdr, buffer)
+}
