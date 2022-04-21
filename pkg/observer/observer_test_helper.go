@@ -43,6 +43,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
+	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
 	hubblev1 "github.com/cilium/hubble/pkg/api/v1"
 	corev1 "k8s.io/api/core/v1"
@@ -236,7 +237,7 @@ func newDefaultObserver(t *testing.T, oo *testObserverOptions) *Observer {
 	return NewObserver(observerTestDir,
 		observerTestDir,
 		"", "",
-		oo.config, oo.pretty, oo.crd,
+		oo.config, oo.pretty,
 		0)
 }
 
@@ -257,7 +258,7 @@ func getDefaultObserver(t *testing.T, opts ...TestOption) (*Observer, error) {
 		option.Config.Verbosity = dfltVerbosity
 	}
 
-	loadExporter(t, obs, &o.exporter)
+	loadExporter(t, obs, &o.exporter, &o.observer)
 	if err := loadObserver(t, obs, o.observer.notestfail); err != nil {
 		return nil, err
 	}
@@ -308,13 +309,17 @@ func GetDefaultObserverWithFileNoTest(t *testing.T, file, lib string, fail bool)
 	return GetDefaultObserverWithWatchers(t, WithConfig(file), withPretty(), WithLib(lib), withNotestfail(fail))
 }
 
-func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error {
+func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions, oo *testObserverOptions) error {
 	watcher := opts.watcher
 	ciliumState := opts.ciliumState
 	processCacheSize := 32768
 
 	if err := obs.InitSensorManager(); err != nil {
 		return err
+	}
+
+	if oo.crd {
+		crd.WatchTracePolicy(context.Background(), obs.SensorManager)
 	}
 
 	if err := btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, ""); err != nil {

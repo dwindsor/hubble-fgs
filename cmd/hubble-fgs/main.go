@@ -29,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
+	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
@@ -96,7 +97,6 @@ func hubbleFGSExecute() error {
 		networkInterfaces,
 		configFile,
 		debug,
-		enableK8sAPI,
 		exportTCPStatsSampleSeg,
 	)
 	if err := obs.InitSensorManager(); err != nil {
@@ -170,6 +170,9 @@ func hubbleFGSExecute() error {
 	logger.GetLogger().WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
 	obs.AddListener(pm)
 	saveInitInfo()
+	if enableK8sAPI {
+		go crd.WatchTracePolicy(ctx, obs.SensorManager)
+	}
 	return obs.Start(ctx)
 }
 

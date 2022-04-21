@@ -33,7 +33,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
 	"github.com/sirupsen/logrus"
 )
@@ -496,9 +495,6 @@ type Observer struct {
 	/* YAML Configuration File */
 	configFile string
 
-	/* enable CRD */
-	enableCRD bool
-
 	/* Sock Statistic */
 	tcpStatSegRate uint32
 
@@ -532,11 +528,6 @@ func (k *Observer) Start(ctx context.Context) error {
 		}
 	}
 
-	// start CRD watcher
-	if k.enableCRD {
-		go crd.WatchTracePolicy(ctx, k.SensorManager)
-	}
-
 	k.perfConfig = bpf.DefaultPerfEventConfig()
 	if useCiliumEbpfReader {
 		err = k.runEventsNew(ctx, func() {})
@@ -557,7 +548,7 @@ func (k *Observer) InitSensorManager() error {
 }
 
 func NewObserver(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
-	pretty, crd bool, tcpStatRate uint32) *Observer {
+	pretty bool, tcpStatRate uint32) *Observer {
 	o := &Observer{
 		bpfDir:         bpfDir,
 		mapDir:         mapDir,
@@ -567,7 +558,6 @@ func NewObserver(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 		listeners:      make(map[Listener]struct{}),
 		log:            logger.GetLogger(),
 		configFile:     configFile,
-		enableCRD:      crd,
 		tcpStatSegRate: tcpStatRate,
 	}
 	observerList = append(observerList, o)
