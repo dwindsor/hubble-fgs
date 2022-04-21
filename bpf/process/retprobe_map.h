@@ -1,5 +1,6 @@
 struct retprobe_info {
 	unsigned long ptr;
+	unsigned long cnt;
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) retprobe_map = {
@@ -10,7 +11,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) retprobe_map = {
 };
 
 static inline __attribute__((always_inline)) unsigned long
-retprobe_map_get(__u64 tid)
+retprobe_map_get(__u64 tid, unsigned long *cntp)
 {
 	struct retprobe_info *info;
 	unsigned long ptr;
@@ -20,6 +21,8 @@ retprobe_map_get(__u64 tid)
 		return 0;
 
 	ptr = info->ptr;
+	if (cntp)
+		*cntp = info->cnt;
 	map_delete_elem(&retprobe_map, &tid);
 	return ptr;
 }
@@ -37,6 +40,17 @@ retprobe_map_set(__u64 tid, unsigned long ptr)
 {
 	struct retprobe_info info = {
 		.ptr = ptr,
+	};
+
+	map_update_elem(&retprobe_map, &tid, &info, BPF_ANY);
+}
+
+static inline __attribute__((always_inline)) void
+retprobe_map_set_iovec(__u64 tid, unsigned long ptr, unsigned long cnt)
+{
+	struct retprobe_info info = {
+		.ptr = ptr,
+		.cnt = cnt,
 	};
 
 	map_update_elem(&retprobe_map, &tid, &info, BPF_ANY);

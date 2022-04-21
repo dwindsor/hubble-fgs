@@ -38,7 +38,7 @@ generic_kprobe_event(struct pt_regs *ctx)
 	__u32 ppid;
 	long total = 0;
 	long size = 0;
-	unsigned long retprobe_buffer;
+	unsigned long retprobe_buffer, cnt = 0;
 	long ty_arg, do_copy;
 
 	e = map_lookup_elem(&process_call_heap, &zero);
@@ -47,7 +47,7 @@ generic_kprobe_event(struct pt_regs *ctx)
 
 	e->thread_id = retprobe_map_get_key(ctx);
 
-	retprobe_buffer = retprobe_map_get(e->thread_id);
+	retprobe_buffer = retprobe_map_get(e->thread_id, &cnt);
 	if (!retprobe_buffer)
 		return 0;
 
@@ -60,6 +60,10 @@ generic_kprobe_event(struct pt_regs *ctx)
 	case char_buf:
 		size += __copy_char_buf(&e->args[size], retprobe_buffer,
 					ctx->ax);
+		break;
+	case char_iovec:
+		size += __copy_char_iovec(&e->args[size], retprobe_buffer, cnt,
+					  ctx->ax);
 	default:
 		break;
 	}

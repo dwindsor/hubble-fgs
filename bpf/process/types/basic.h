@@ -539,25 +539,17 @@ filter_file_buf(struct selector_arg_filter *filter, char *args)
 }
 
 static inline __attribute__((always_inline)) long
-copy_char_iovec(void *ctx, char *args, unsigned long arg, int argm,
-		struct msg_generic_kprobe *e)
+__copy_char_iovec(char *args, unsigned long arg, unsigned long meta,
+		  unsigned long max)
 {
 	long size, off = 0;
-	unsigned long meta, max;
 	int err, i = 0, cnt, *s = (int *)&args[off];
 
-	if (hasReturnCopy(argm)) {
-		u64 tid = retprobe_map_get_key(ctx);
-		retprobe_map_set(tid, arg);
-		return return_error(s, char_buf_saved_for_retprobe);
-	}
-	meta = get_arg_meta(argm, e);
 	err = probe_read(&cnt, sizeof(cnt), &meta);
 	if (err < 0) {
 		return return_stack_error(args, 0, char_buf_pagefault);
 	}
 
-	max = 0;
 	size = 0;
 	off += 8;
 	PARSE_IOVEC_ENTRIES // may return an error directly
@@ -566,6 +558,23 @@ copy_char_iovec(void *ctx, char *args, unsigned long arg, int argm,
 	s[0] = size;
 	s[1] = size;
 	return size + 8;
+}
+
+static inline __attribute__((always_inline)) long
+copy_char_iovec(void *ctx, char *args, unsigned long arg, int argm,
+		struct msg_generic_kprobe *e)
+{
+	int *s = (int *)&args[0];
+	unsigned long meta;
+
+	meta = get_arg_meta(argm, e);
+
+	if (hasReturnCopy(argm)) {
+		u64 tid = retprobe_map_get_key(ctx);
+		retprobe_map_set_iovec(tid, arg, meta);
+		return return_error(s, char_buf_saved_for_retprobe);
+	}
+	return __copy_char_iovec(args, arg, meta, 0);
 }
 
 static inline __attribute__((always_inline)) long
