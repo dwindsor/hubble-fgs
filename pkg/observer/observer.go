@@ -577,6 +577,15 @@ func NewObserver(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
 	return o
 }
 
+func (k *Observer) Remove() {
+	for i, obs := range observerList {
+		if obs == k {
+			observerList = append(observerList[:i], observerList[i+1:]...)
+			break
+		}
+	}
+}
+
 func (k *Observer) PrintStats() {
 	k.log.Infof("Observer Stats: errors %d lost %d recvd %d filterPass %d filterDrop %d",
 		k.errorCntr, k.lostCntr, k.recvCntr, k.filterPass, k.filterDrop)

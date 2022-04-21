@@ -130,6 +130,7 @@ func testDone(t *testing.T, obs *Observer) {
 
 	obs.RemovePrograms()
 	obs.PrintStats()
+	obs.Remove()
 }
 
 // saveInitInfo saves initial info for subsequent use in bugtool
