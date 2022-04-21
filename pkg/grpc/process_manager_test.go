@@ -27,7 +27,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
-	"github.com/sirupsen/logrus"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -145,7 +144,6 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 	assert.NoError(t, err)
 	defer process.FreeCache()
 	pm, err := NewProcessManager(
-		logrus.New(),
 		cilium.GetFakeCiliumState(),
 		nil,
 		false, false, false, false, true)

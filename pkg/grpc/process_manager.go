@@ -30,7 +30,6 @@ import (
 
 // ProcessManager maintains a cache of processes from fgs exec events.
 type ProcessManager struct {
-	log        logrus.FieldLogger
 	eventCache *eventcache.Cache
 	execCache  *execcache.Cache
 	nodeName   string
@@ -49,7 +48,6 @@ type ProcessManager struct {
 
 // NewProcessManager returns a pointer to an initialized ProcessManager struct.
 func NewProcessManager(
-	log logrus.FieldLogger,
 	ciliumState *cilium.State,
 	manager *sensors.Manager,
 	enableProcessCred bool,
@@ -64,7 +62,6 @@ func NewProcessManager(
 	}
 
 	pm := &ProcessManager{
-		log:                    log,
 		nodeName:               reader.GetNodeNameForExport(),
 		ciliumState:            ciliumState,
 		listeners:              make(map[server.Listener]struct{}),
@@ -80,7 +77,7 @@ func NewProcessManager(
 	pm.eventCache = eventcache.New(pm.Server, pm.dns)
 	pm.execCache = execcache.New(pm.Server, pm.dns)
 
-	pm.log.WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
+	logger.GetLogger().WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
 		"enableProcessCred": enableProcessCred,
 		"enableProcessNs":   enableProcessNs,
@@ -122,7 +119,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = pm.handleTestMessage(msg)
 
 	default:
-		pm.log.WithField("event", event).Warnf("unhandled event of type %T", msg)
+		logger.GetLogger().WithField("event", event).Warnf("unhandled event of type %T", msg)
 		metrics.ErrorCount.WithLabelValues(string(metrics.UnhandledEvent)).Inc()
 		return nil
 	}

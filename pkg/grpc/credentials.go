@@ -5,6 +5,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -58,7 +59,7 @@ func (pm *ProcessManager) handleCredMessage(msg *api.MsgCredEventUnix) *fgs.GetE
 			}
 		}
 	default:
-		pm.log.WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
 }

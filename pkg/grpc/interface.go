@@ -4,6 +4,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 func (pm *ProcessManager) GetInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs.InterfaceStats {
@@ -37,7 +38,7 @@ func (pm *ProcessManager) handleInterfaceMessage(msg *api.MsgInterfaceEventUnix)
 			}
 		}
 	default:
-		pm.log.WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
 }

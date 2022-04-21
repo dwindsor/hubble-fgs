@@ -5,6 +5,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -52,7 +53,7 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	var proc *fgs.Process
 	processInt, err := process.Get(processID)
 	if err != nil {
-		pm.log.WithField("id in TLS event", processID).Debug("process not found in cache")
+		logger.GetLogger().WithField("id in TLS event", processID).Debug("process not found in cache")
 		proc = nil
 	} else {
 		proc = processInt.UnsafeGetProcess()
@@ -104,7 +105,7 @@ func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEve
 			}
 		}
 	default:
-		pm.log.WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
 }

@@ -7,6 +7,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -25,7 +26,7 @@ func (pm *ProcessManager) handleProcessNetworkBurstMessage(msg *api.MsgProcessNe
 		}
 
 	default:
-		pm.log.WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
 }

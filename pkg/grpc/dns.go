@@ -5,6 +5,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -17,7 +18,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	processInt, err := process.Get(processID)
 	if err != nil {
-		pm.log.WithField("id in DNS event", processID).Debug("process not found in cache")
+		logger.GetLogger().WithField("id in DNS event", processID).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()
 
@@ -73,7 +74,7 @@ func (pm *ProcessManager) handleDnsMessage(msg *api.MsgIPv4DnsUnix) *fgs.GetEven
 			}
 		}
 	default:
-		pm.log.WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
 }

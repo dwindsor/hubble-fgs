@@ -147,7 +147,6 @@ func hubbleFGSExecute() error {
 	}
 
 	pm, err := fgsGrpc.NewProcessManager(
-		logger.GetLogger(),
 		ciliumState,
 		observer.SensorManager,
 		enableProcessCred,

@@ -8,6 +8,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -26,7 +27,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	processInt, err := process.Get(processID)
 	if err != nil {
-		pm.log.WithField("id in HTTP event", processID).Debug("process not found in cache")
+		logger.GetLogger().WithField("id in HTTP event", processID).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()
 
@@ -36,12 +37,12 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	if len(event.Request.Code) != 0 {
 		code, err = reader.GetHttpCode(event.Request.Code)
 		if err != nil {
-			pm.log.WithField("Unknown Response Code", event.Request.Code).Info("unknown code")
+			logger.GetLogger().WithField("Unknown Response Code", event.Request.Code).Info("unknown code")
 		}
 
 		length, err := reader.GetHttpContentLength(event.Request.RespContentLength)
 		if err != nil {
-			pm.log.WithError(err).WithField("RespContentLength", event.Request.RespContentLength).Info("Response Content-Length strconv error")
+			logger.GetLogger().WithError(err).WithField("RespContentLength", event.Request.RespContentLength).Info("Response Content-Length strconv error")
 		}
 
 		fgsHttpResponse = &fgs.HttpResponse{
@@ -57,7 +58,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 
 	length, err := reader.GetHttpContentLength(event.Request.ContentLength)
 	if err != nil {
-		pm.log.WithError(err).WithField("ContentLength", event.Request.ContentLength).Info("Request Content-Length strconv error")
+		logger.GetLogger().WithError(err).WithField("ContentLength", event.Request.ContentLength).Info("Request Content-Length strconv error")
 	}
 
 	if len(event.Request.Method) != 0 {
@@ -129,7 +130,7 @@ func (pm *ProcessManager) handleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetE
 			}
 		}
 	default:
-		pm.log.WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
 }

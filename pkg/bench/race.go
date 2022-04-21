@@ -128,7 +128,6 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	}
 
 	processManager, err := fgsGrpc.NewProcessManager(
-		logger.GetLogger(),
 		cilium.GetFakeCiliumState(),
 		observer.SensorManager,
 		enableProcessCred,
