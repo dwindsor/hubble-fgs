@@ -1,33 +1,45 @@
+struct retprobe_info {
+	unsigned long ptr;
+};
+
 struct bpf_map_def __attribute__((section("maps"), used)) retprobe_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u64),
-	.value_size = sizeof(unsigned long),
+	.value_size = sizeof(struct retprobe_info),
 	.max_entries = 1024,
 };
 
 static inline __attribute__((always_inline)) unsigned long
 retprobe_map_get(__u64 tid)
 {
-	unsigned long *ptr;
-	ptr = map_lookup_elem(&retprobe_map, &tid);
-	if (!ptr)
+	struct retprobe_info *info;
+	unsigned long ptr;
+
+	info = map_lookup_elem(&retprobe_map, &tid);
+	if (!info)
 		return 0;
+
+	ptr = info->ptr;
 	map_delete_elem(&retprobe_map, &tid);
-	return *ptr;
+	return ptr;
 }
 
 static inline __attribute__((always_inline)) void retprobe_map_clear(__u64 tid)
 {
-	unsigned long *ptr = map_lookup_elem(&retprobe_map, &tid);
+	struct retprobe_info *info = map_lookup_elem(&retprobe_map, &tid);
 
-	if (ptr)
+	if (info)
 		map_delete_elem(&retprobe_map, &tid);
 }
 
 static inline __attribute__((always_inline)) void
-retprobe_map_set(__u64 tid, unsigned long val)
+retprobe_map_set(__u64 tid, unsigned long ptr)
 {
-	map_update_elem(&retprobe_map, &tid, &val, BPF_ANY);
+	struct retprobe_info info = {
+		.ptr = ptr,
+	};
+
+	map_update_elem(&retprobe_map, &tid, &info, BPF_ANY);
 }
 
 /**
