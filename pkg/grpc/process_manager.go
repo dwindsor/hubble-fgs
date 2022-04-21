@@ -20,6 +20,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -100,7 +101,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgIPv4EventUnix:
 		processedEvent = pm.HandleIpMessage(msg)
 	case *api.MsgProcessNetworkBurstEventUnix:
-		processedEvent = pm.handleProcessNetworkBurstMessage(msg)
+		processedEvent = burst.HandleProcessNetworkBurstMessage(msg)
 	case *api.MsgInterfaceEventUnix:
 		processedEvent = pm.handleInterfaceMessage(msg)
 	case *api.MsgIPv4DnsUnix:

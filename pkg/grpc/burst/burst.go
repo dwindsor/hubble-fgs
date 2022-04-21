@@ -1,4 +1,4 @@
-package grpc
+package burst
 
 import (
 	"syscall"
@@ -9,18 +9,23 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func (pm *ProcessManager) handleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) *fgs.GetEventsResponse {
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
+
+func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_IPV4_PROCESS_BURST:
-		b := pm.GetProcessNetworkBurst(msg)
+		b := getProcessNetworkBurst(msg)
 		if b != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: b},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
@@ -31,8 +36,8 @@ func (pm *ProcessManager) handleProcessNetworkBurstMessage(msg *api.MsgProcessNe
 	return res
 }
 
-// GetProcessNetworkBurst returns ProcessNetworkBurst protobuf message for a given process.
-func (pm *ProcessManager) GetProcessNetworkBurst(
+// getProcessNetworkBurst returns ProcessNetworkBurst protobuf message for a given process.
+func getProcessNetworkBurst(
 	event *fgsAPI.MsgProcessNetworkBurstEventUnix,
 ) *fgs.ProcessNetworkBurst {
 	var fgsProcess, fgsParent *fgs.Process
