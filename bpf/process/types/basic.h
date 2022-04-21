@@ -144,7 +144,7 @@ parse_iovec_array(char *args, unsigned long arg, int i, __u64 off,
 	err = probe_read(&args[off], size, (char *)iov.iov_base);
 	if (err < 0)
 		return char_buf_pagefault;
-	return iov.iov_len;
+	return size;
 }
 
 // for loop can not be unrolled which is needed for 4.19 kernels :(
