@@ -346,8 +346,12 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions) error 
 	denyList, _ := filters.ParseFilterList("")
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
 	exporter := exporter.NewExporter(context.Background(), &req, processManager.Server, encoder, nil)
+	logger.GetLogger().Info("Starting JSON exporter")
 	exporter.Start()
 	obs.AddListener(processManager)
+	t.Cleanup(func() {
+		obs.RemoveListener(processManager)
+	})
 	return nil
 }
 
