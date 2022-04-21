@@ -24,12 +24,17 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/kfree"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/test"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/sirupsen/logrus"
+)
+
+var (
+	tlsGrpc *tls.Grpc
 )
 
 // ProcessManager maintains a cache of processes from fgs exec events.
@@ -81,6 +86,8 @@ func NewProcessManager(
 	pm.eventCache = eventcache.New(pm.Server, pm.dns)
 	pm.execCache = execcache.New(pm.Server, pm.dns)
 
+	tlsGrpc = tls.New(pm.eventCache)
+
 	logger.GetLogger().WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
 		"enableProcessCred": enableProcessCred,
@@ -96,7 +103,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgFGSReady:
 		// pass
 	case *api.MsgTLSEventUnix:
-		processedEvent = pm.handleTLSMessage(msg)
+		processedEvent = tlsGrpc.HandleMessage(msg)
 	case *api.MsgHttpEventUnix:
 		processedEvent = pm.handleHttpMessage(msg)
 	case *api.MsgExecveEventUnix:

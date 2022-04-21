@@ -33,7 +33,7 @@ func (pm *ProcessManager) GetProcessCred(event *fgsAPI.MsgCredEventUnix) *fgs.Pr
 		Parent:  parent,
 		Cap:     reader.GetMsgCapabilities(event.Capabilities),
 	}
-	if pm.processCacheNeeded(process) {
+	if pm.eventCache.Needed(process) {
 		pm.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}

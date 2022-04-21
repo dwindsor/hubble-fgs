@@ -141,7 +141,7 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if pm.processCacheNeeded(fgsProcess) {
+	if pm.eventCache.Needed(fgsProcess) {
 		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -228,7 +228,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if pm.processCacheNeeded(fgsProcess) {
+	if pm.eventCache.Needed(fgsProcess) {
 		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -276,7 +276,7 @@ func (pm *ProcessManager) GetProcessListen(
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	if pm.processCacheNeeded(fgsProcess) {
+	if pm.eventCache.Needed(fgsProcess) {
 		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -351,7 +351,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if pm.processCacheNeeded(fgsProcess) {
+	if pm.eventCache.Needed(fgsProcess) {
 		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
@@ -401,7 +401,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 		fgsEvent.Socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if pm.processCacheNeeded(fgsProcess) {
+	if pm.eventCache.Needed(fgsProcess) {
 		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}

@@ -1,15 +1,24 @@
-package grpc
+package tls
 
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
+
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
+
+type Grpc struct {
+	eventCache *eventcache.Cache
+}
 
 // Translate internal uint32 error codes into gRPC visible error codes
 func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
@@ -36,7 +45,7 @@ func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
 }
 
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
+func (tls *Grpc) getTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -82,8 +91,8 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 		CertificateError:    getTLSCertificateErrorCode(event.ServerCert.Error),
 		ParserInternalState: event.ServerCert.ParserState.String(),
 	}
-	if pm.processCacheNeeded(proc) {
-		pm.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if tls.eventCache.Needed(proc) {
+		tls.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {
@@ -92,15 +101,15 @@ func (pm *ProcessManager) GetTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	return fgsEvent
 }
 
-func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEventsResponse {
+func (tls *Grpc) HandleMessage(msg *api.MsgTLSEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_TLS:
-		t := pm.GetTLS(msg)
+		t := tls.getTLS(msg)
 		if t != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_Tls{Tls: t},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
@@ -108,4 +117,10 @@ func (pm *ProcessManager) handleTLSMessage(msg *api.MsgTLSEventUnix) *fgs.GetEve
 		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
+}
+
+func New(ec *eventcache.Cache) *Grpc {
+	return &Grpc{
+		eventCache: ec,
+	}
 }

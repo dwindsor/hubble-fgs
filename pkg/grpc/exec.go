@@ -82,7 +82,7 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 	case api.MSG_OP_EXECVE:
 		proc := process.Add(msg)
 		procEvent := pm.GetProcessExec(proc)
-		if pm.processCacheNeeded(procEvent.Process) {
+		if pm.eventCache.Needed(procEvent.Process) {
 			pm.execCache.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
@@ -134,7 +134,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		Signal:  signal,
 		Status:  code,
 	}
-	if pm.processCacheNeeded(fgsProcess) {
+	if pm.eventCache.Needed(fgsProcess) {
 		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
