@@ -1,8 +1,11 @@
-package grpc
+package tracing
 
 import (
+	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
@@ -10,7 +13,20 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKprobe {
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
+
+type Grpc struct {
+	dnsCache          *dns.Cache
+	ciliumState       *cilium.State
+	eventCache        *eventcache.Cache
+	enableCilium      bool
+	enableProcessCred bool
+	enableProcessNs   bool
+}
+
+func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKprobe {
 	var fgsParent, fgsProcess *fgs.Process
 	var fgsArgs []*fgs.KprobeArgument
 	var fgsReturnArg *fgs.KprobeArgument
@@ -24,7 +40,7 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
 	}
-	process.AnnotateProcess(pm.enableProcessCred, pm.enableProcessNs)
+	process.AnnotateProcess(t.enableProcessCred, t.enableProcessNs)
 
 	if parent == nil {
 		fgsParent = &fgs.Process{}
@@ -107,8 +123,8 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 		Action:       reader.KprobeAction(event.Action),
 	}
 
-	if pm.eventCache.Needed(fgsProcess) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if t.eventCache.Needed(fgsProcess) {
+		t.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -118,19 +134,19 @@ func (pm *ProcessManager) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs
 	return fgsEvent
 }
 
-func (pm *ProcessManager) handleGenericKprobeMessage(msg *api.MsgGenericKprobeUnix) *fgs.GetEventsResponse {
-	k := pm.GetProcessKprobe(msg)
+func (t *Grpc) HandleGenericKprobeMessage(msg *api.MsgGenericKprobeUnix) *fgs.GetEventsResponse {
+	k := t.GetProcessKprobe(msg)
 	if k == nil {
 		return nil
 	}
 	return &fgs.GetEventsResponse{
 		Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: k},
-		NodeName: pm.nodeName,
+		NodeName: nodeName,
 		Time:     ktime.ToProto(msg.Common.Ktime),
 	}
 }
 
-func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix) *fgs.GetEventsResponse {
+func (t *Grpc) HandleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix) *fgs.GetEventsResponse {
 	var fgsParent, fgsProcess *fgs.Process
 
 	process, parent := process.GetParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
@@ -178,8 +194,8 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 		Args:    fgsArgs,
 	}
 
-	if pm.eventCache.Needed(fgsProcess) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(msg.Common.Ktime), msg)
+	if t.eventCache.Needed(fgsProcess) {
+		t.eventCache.Add(process, fgsEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		return nil
 	}
 	if process != nil {
@@ -188,7 +204,21 @@ func (pm *ProcessManager) handleGenericTracepointMessage(msg *api.MsgGenericTrac
 
 	return &fgs.GetEventsResponse{
 		Event:    &fgs.GetEventsResponse_ProcessTracepoint{ProcessTracepoint: fgsEvent},
-		NodeName: pm.nodeName,
+		NodeName: nodeName,
 		Time:     ktime.ToProto(msg.Common.Ktime),
+	}
+}
+
+func New(cilium *cilium.State,
+	dnsCache *dns.Cache, cache *eventcache.Cache,
+	ciliumEnable bool,
+	enableProcessCred bool,
+	enableProcessNs bool,
+) *Grpc {
+	return &Grpc{
+		ciliumState:  cilium,
+		dnsCache:     dnsCache,
+		eventCache:   cache,
+		enableCilium: ciliumEnable,
 	}
 }

@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/test"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/tracing"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -37,10 +38,11 @@ import (
 )
 
 var (
-	tlsGrpc    *tls.Grpc
-	layer3Grpc *layer3.Grpc
-	dnsGrpc    *dnsproto.Grpc
-	httpGrpc   *httpproto.Grpc
+	tlsGrpc     *tls.Grpc
+	layer3Grpc  *layer3.Grpc
+	dnsGrpc     *dnsproto.Grpc
+	httpGrpc    *httpproto.Grpc
+	tracingGrpc *tracing.Grpc
 )
 
 // ProcessManager maintains a cache of processes from fgs exec events.
@@ -96,6 +98,7 @@ func NewProcessManager(
 	layer3Grpc = layer3.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
 	dnsGrpc = dnsproto.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
 	httpGrpc = httpproto.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
+	tracingGrpc = tracing.New(ciliumState, pm.dns, pm.eventCache, enableCilium, enableProcessCred, enableProcessNs)
 
 	logger.GetLogger().WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
@@ -132,9 +135,9 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgKfreeSkbUnix:
 		processedEvent = kfree.HandleKfreeSkbMessage(msg)
 	case *api.MsgGenericKprobeUnix:
-		processedEvent = pm.handleGenericKprobeMessage(msg)
+		processedEvent = tracingGrpc.HandleGenericKprobeMessage(msg)
 	case *api.MsgGenericTracepointUnix:
-		processedEvent = pm.handleGenericTracepointMessage(msg)
+		processedEvent = tracingGrpc.HandleGenericTracepointMessage(msg)
 	case *api.MsgTestEventUnix:
 		processedEvent = test.HandleTestMessage(msg)
 
