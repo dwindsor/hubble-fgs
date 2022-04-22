@@ -132,10 +132,6 @@ func msgToExecveUnix(m *api.MsgExecveEvent, offset int) *api.MsgExecveEventUnix 
 	return unix
 }
 
-func msgToCredUnix(m *api.MsgCredEvent) *api.MsgCredEventUnix {
-	return m
-}
-
 func msgToExitUnix(m *api.MsgExitEvent) *api.MsgExitEventUnix {
 	return m
 }
@@ -258,15 +254,6 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 		if err != nil && empty {
 			msgUnix.Process = nopMsgProcess()
 		}
-		k.observerListeners(msgUnix)
-	case api.MSG_OP_CRED:
-		m := api.MsgCredEvent{}
-		err := binary.Read(r, binary.LittleEndian, &m)
-		if err != nil {
-			fmt.Printf("api.MSG_OP_CRED binary read failure: %s\n", err)
-			break
-		}
-		msgUnix := msgToCredUnix(&m)
 		k.observerListeners(msgUnix)
 	case api.MSG_OP_EXIT:
 		m := api.MsgExitEvent{}

@@ -29,7 +29,6 @@ var (
 
 func GetDefaultPrograms() []*Program {
 	progs := []*Program{
-		Cred,
 		Exit,
 		Fork,
 		Listen,

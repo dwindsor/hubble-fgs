@@ -45,14 +45,6 @@ var (
 		"kprobe",
 	)
 
-	Cred = ProgramBuilder(
-		"bpf_cred.o",
-		"commit_creds",
-		"kprobe/commit_creds",
-		"kprobe_commit_creds",
-		"kprobe",
-	)
-
 	TCPConnect = ProgramBuilder(
 		"bpf_tcpmon.o",
 		"tcp_connect",

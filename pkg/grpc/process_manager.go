@@ -139,8 +139,6 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = dnsGrpc.HandleDnsMessage(msg)
 	case *api.MsgExitEventUnix:
 		processedEvent = execGrpc.HandleExitMessage(msg)
-	case *api.MsgCredEventUnix:
-		processedEvent = pm.handleCredMessage(msg)
 	case *api.MsgKfreeSkbUnix:
 		processedEvent = kfree.HandleKfreeSkbMessage(msg)
 	case *api.MsgGenericKprobeUnix:
