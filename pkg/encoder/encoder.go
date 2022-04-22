@@ -175,6 +175,17 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 				bytes = p.colorer.cyan.Sprint(kprobe.Args[2].GetSizeArg(), " bytes")
 			}
 			return fmt.Sprintf("%s %s %s %v", event, processInfo, file, bytes), nil
+		case "__x64_sys_read":
+			event := p.colorer.blue.Sprintf("📚 %-7s", "read")
+			file := ""
+			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil && kprobe.Args[0].GetFileArg() != nil {
+				file = p.colorer.cyan.Sprint(kprobe.Args[0].GetFileArg().Path)
+			}
+			bytes := ""
+			if len(kprobe.Args) > 2 && kprobe.Args[2] != nil {
+				bytes = p.colorer.cyan.Sprint(kprobe.Args[2].GetSizeArg(), " bytes")
+			}
+			return fmt.Sprintf("%s %s %s %v", event, processInfo, file, bytes), nil
 		case "fd_install":
 			event := p.colorer.blue.Sprintf("📬 %-7s", "open")
 			file := ""
