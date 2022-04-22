@@ -152,6 +152,7 @@ jobs:
           cat <<-EOF | ssh ${{ env.vmHost }}
             if [ -f "$BTF_FILE" ]; then
               echo "Copying over $BTF_FILE"
+              ssh -p 3000 root@localhost "mkdir -p /fgs/bpf/objs"
               scp -P 3000 "$BTF_FILE" root@localhost:/fgs/bpf/objs/btf
             fi
           EOF
