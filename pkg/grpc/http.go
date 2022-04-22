@@ -7,6 +7,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
@@ -32,7 +33,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		proc = processInt.UnsafeGetProcess()
 
 	}
-	fgsTuple := pm.__getProcessTuple(&event.Tuple, 0, event.Common.Op)
+	fgsTuple := sockinfo.GetTuple(&event.Tuple, 0, event.Common.Op)
 
 	if len(event.Request.Code) != 0 {
 		code, err = reader.GetHttpCode(event.Request.Code)
@@ -98,7 +99,7 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ = pm.getProcessIp(proc, fgsEvent.Socket.DestinationIp)
+	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(proc, fgsEvent.Socket.DestinationIp, pm.dns, pm.ciliumState)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the

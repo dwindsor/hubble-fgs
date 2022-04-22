@@ -23,6 +23,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/kfree"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/test"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -34,7 +35,8 @@ import (
 )
 
 var (
-	tlsGrpc *tls.Grpc
+	tlsGrpc    *tls.Grpc
+	layer3Grpc *layer3.Grpc
 )
 
 // ProcessManager maintains a cache of processes from fgs exec events.
@@ -65,10 +67,7 @@ func NewProcessManager(
 	enableCilium bool,
 	enableProcessAncestors bool,
 ) (*ProcessManager, error) {
-	dnsCache, err := dns.NewCache()
-	if err != nil {
-		return nil, fmt.Errorf("failed to create DNS cache %w", err)
-	}
+	var err error
 
 	pm := &ProcessManager{
 		nodeName:               reader.GetNodeNameForExport(),
@@ -79,14 +78,18 @@ func NewProcessManager(
 		enableEventCache:       enableEventCache,
 		enableCilium:           enableCilium,
 		enableProcessAncestors: enableProcessAncestors,
-		dns:                    dnsCache,
 	}
 
+	pm.dns, err = dns.NewCache()
+	if err != nil {
+		return nil, fmt.Errorf("failed to create DNS cache %w", err)
+	}
 	pm.Server = server.NewServer(pm, manager)
 	pm.eventCache = eventcache.New(pm.Server, pm.dns)
 	pm.execCache = execcache.New(pm.Server, pm.dns)
 
 	tlsGrpc = tls.New(pm.eventCache)
+	layer3Grpc = layer3.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
 
 	logger.GetLogger().WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
@@ -109,7 +112,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgExecveEventUnix:
 		processedEvent = pm.handleExecveMessage(msg)
 	case *api.MsgIPv4EventUnix:
-		processedEvent = pm.HandleIpMessage(msg)
+		processedEvent = layer3Grpc.HandleIpMessage(msg)
 	case *api.MsgProcessNetworkBurstEventUnix:
 		processedEvent = burst.HandleProcessNetworkBurstMessage(msg)
 	case *api.MsgInterfaceEventUnix:

@@ -8,16 +8,16 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package grpc
+package layer3
 
 import (
-	"fmt"
-	"net"
-
+	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/eventcache"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
@@ -26,52 +26,16 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func (pm *ProcessManager) __getProcessTuple(tuple *fgsAPI.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo {
-	var sourcePort, destinationPort *wrapperspb.UInt32Value
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
 
-	if tuple.SPort != 0 {
-		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.GetSport(tuple.SPort)),
-		}
-	}
-	if tuple.DPort != 0 {
-		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(fgsAPI.SwapByte(tuple.DPort)),
-		}
-	}
-
-	destinationIP := reader.GetIP(tuple.DAddr, op)
-
-	return &fgs.SockInfo{
-		SourcePort:      sourcePort,
-		SourceIp:        reader.GetIP(tuple.SAddr, op).String(),
-		DestinationIp:   destinationIP.String(),
-		DestinationPort: destinationPort,
-		SockCookie:      cookie,
-
-		Protocol: reader.MsgOpToProtocol(op),
-	}
-}
-
-func (pm *ProcessManager) getProcessTuple(event *fgsAPI.MsgIPv4EventUnix) *fgs.SockInfo {
-	return pm.__getProcessTuple(&event.Tuple, event.SockCookie, event.Common.Op)
-}
-
-func (pm *ProcessManager) getProcessIp(proc *fgs.Process, ip string) ([]string, error) {
-	var entry []string
-
-	if dns.CiliumDnsEnabled() {
-		endpoint := process.GetProcessEndpoint(proc)
-		if endpoint == nil {
-			return nil, fmt.Errorf("no endpoint found for GetIp")
-		}
-		entry = pm.ciliumState.GetFQDNCache().GetNamesOf(endpoint.ID, net.ParseIP(ip))
-		if len(entry) == 0 {
-			return nil, fmt.Errorf("no dns entry found through FQDN Cache")
-		}
-		return entry, nil
-	}
-	return pm.dns.GetIp(ip)
+type Grpc struct {
+	ciliumState      *cilium.State
+	dns              *dns.Cache
+	enableCilium     bool
+	enableEventCache bool
+	eventCache       *eventcache.Cache
 }
 
 func SocketFlagsDnsEnabled(t uint32) bool {
@@ -79,7 +43,7 @@ func SocketFlagsDnsEnabled(t uint32) bool {
 }
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessConnect {
+func (l3 *Grpc) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessConnect {
 	var fgsProcess, fgsParent *fgs.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var err error
@@ -128,21 +92,21 @@ func (pm *ProcessManager) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
-	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), l3.dns, l3.ciliumState)
+	if err != nil && l3.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if pm.enableCilium && fgsProcess != nil {
+	if l3.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if pm.eventCache.Needed(fgsProcess) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if l3.eventCache.Needed(fgsProcess) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -163,7 +127,7 @@ func SocketFlagsToType(t uint32) string {
 }
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClose {
+func (l3 *Grpc) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 	var err error
@@ -215,21 +179,21 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
-	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), l3.dns, l3.ciliumState)
+	if err != nil && l3.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if pm.enableCilium && fgsProcess != nil {
+	if l3.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if pm.eventCache.Needed(fgsProcess) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if l3.eventCache.Needed(fgsProcess) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -239,7 +203,7 @@ func (pm *ProcessManager) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.P
 }
 
 // GetProcessListen returns Listen protobuf message for a given process, including the ancestor list.
-func (pm *ProcessManager) GetProcessListen(
+func (l3 *Grpc) GetProcessListen(
 	event *fgsAPI.MsgIPv4EventUnix,
 ) *fgs.ProcessListen {
 	var fgsProcess, fgsParent *fgs.Process
@@ -276,8 +240,8 @@ func (pm *ProcessManager) GetProcessListen(
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	if pm.eventCache.Needed(fgsProcess) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if l3.eventCache.Needed(fgsProcess) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -288,7 +252,7 @@ func (pm *ProcessManager) GetProcessListen(
 }
 
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessAccept {
+func (l3 *Grpc) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessAccept {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 	var err error
@@ -337,22 +301,22 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = pm.getProcessIp(fgsProcess, destinationIP.String())
-	if err != nil && pm.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), l3.dns, l3.ciliumState)
+	if err != nil && l3.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if pm.enableCilium && fgsProcess != nil {
+	if l3.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if pm.eventCache.Needed(fgsProcess) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if l3.eventCache.Needed(fgsProcess) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -363,7 +327,7 @@ func (pm *ProcessManager) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.
 }
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
-func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessSockStats {
+func (l3 *Grpc) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessSockStats {
 	var fgsParent, fgsProcess *fgs.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -381,7 +345,7 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 		fgsParent = parent.GetProcessCopy()
 	}
 
-	fgsTuple := pm.getProcessTuple(event)
+	fgsTuple := sockinfo.GetProcessTuple(event)
 	fgsSocketStats := reader.GetSocketStats(&event.SocketStats)
 
 	fgsEvent := &fgs.ProcessSockStats{
@@ -394,15 +358,15 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 	// Stats are pushed on the timer e.g. every 60 seconds by default and at
 	// end of flow so it seems unliklye that DNS entry should be missing. For
 	// now I'll skip bouncing these through DNS entries when missing DNS.
-	fgsEvent.Socket.DestinationNames, _ = pm.getProcessIp(fgsProcess, fgsTuple.DestinationIp)
+	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, fgsTuple.DestinationIp, l3.dns, l3.ciliumState)
 
-	if pm.enableCilium && fgsProcess != nil {
+	if l3.enableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op)
 		fgsEvent.Socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if pm.eventCache.Needed(fgsProcess) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if l3.eventCache.Needed(fgsProcess) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -411,54 +375,54 @@ func (pm *ProcessManager) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *f
 	return fgsEvent
 }
 
-func (pm *ProcessManager) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsResponse {
+func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_IPV4_TCPCONNECTRET,
 		api.MSG_OP_IPV4_UDPCONNECT:
-		cnct := pm.GetProcessConnect(msg)
+		cnct := l3.GetProcessConnect(msg)
 		if cnct != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: cnct},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	case api.MSG_OP_IPV4_TCPCLOSE,
 		api.MSG_OP_IPV4_UDPCLOSE:
-		c := pm.GetProcessClose(msg)
+		c := l3.GetProcessClose(msg)
 		if c != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: c},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	case api.MSG_OP_IPV4_LISTEN:
-		l := pm.GetProcessListen(msg)
+		l := l3.GetProcessListen(msg)
 		if l != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: l},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 	case api.MSG_OP_IPV4_ACCEPT:
-		a := pm.GetProcessAccept(msg)
+		a := l3.GetProcessAccept(msg)
 		if a != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: a},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
 
 	case api.MSG_OP_IPV4_TCPSTATS, api.MSG_OP_IPV4_UDPSTATS:
-		s := pm.GetProcessSockStats(msg)
+		s := l3.GetProcessSockStats(msg)
 		if s != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessSockStats{ProcessSockStats: s},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
@@ -467,4 +431,13 @@ func (pm *ProcessManager) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEve
 		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
+}
+
+func New(ciliumState *cilium.State, dnsCache *dns.Cache, eventC *eventcache.Cache, ciliumEnabled bool) *Grpc {
+	return &Grpc{
+		ciliumState:  ciliumState,
+		dns:          dnsCache,
+		enableCilium: ciliumEnabled,
+		eventCache:   eventC,
+	}
 }
