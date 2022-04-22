@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/burst"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/kfree"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
@@ -37,6 +38,7 @@ import (
 var (
 	tlsGrpc    *tls.Grpc
 	layer3Grpc *layer3.Grpc
+	dnsGrpc    *dnsproto.Grpc
 )
 
 // ProcessManager maintains a cache of processes from fgs exec events.
@@ -90,6 +92,7 @@ func NewProcessManager(
 
 	tlsGrpc = tls.New(pm.eventCache)
 	layer3Grpc = layer3.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
+	dnsGrpc = dnsproto.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
 
 	logger.GetLogger().WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
@@ -118,7 +121,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgInterfaceEventUnix:
 		processedEvent = iface.HandleInterfaceMessage(msg)
 	case *api.MsgIPv4DnsUnix:
-		processedEvent = pm.handleDnsMessage(msg)
+		processedEvent = dnsGrpc.HandleDnsMessage(msg)
 	case *api.MsgExitEventUnix:
 		processedEvent = pm.handleExitMessage(msg)
 	case *api.MsgCredEventUnix:

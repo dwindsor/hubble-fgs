@@ -1,9 +1,12 @@
-package grpc
+package dnsproto
 
 import (
+	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -12,7 +15,18 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 )
 
-func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
+
+type Grpc struct {
+	dnsCache     *dns.Cache
+	ciliumState  *cilium.State
+	eventCache   *eventcache.Cache
+	enableCilium bool
+}
+
+func (dns *Grpc) get(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	var proc *fgs.Process
 	var err error
 
@@ -35,7 +49,7 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		AnswerTypes:   event.Dns.AnswerTypes,
 	}
 
-	pm.dns.AddIp(fgsDns)
+	dns.dnsCache.AddIp(fgsDns)
 
 	fgsEvent := &fgs.ProcessDns{
 		Process: proc,
@@ -43,17 +57,17 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 		Dns:     fgsDns,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(proc, fgsEvent.Socket.DestinationIp, pm.dns, pm.ciliumState)
+	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(proc, fgsEvent.Socket.DestinationIp, dns.dnsCache, dns.ciliumState)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if pm.enableCilium && proc != nil {
+	if dns.enableCilium && proc != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_IPV4_DNS)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if pm.eventCache.Needed(proc) {
-		pm.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if dns.eventCache.Needed(proc) {
+		dns.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {
@@ -62,15 +76,15 @@ func (pm *ProcessManager) GetDns(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	return fgsEvent
 }
 
-func (pm *ProcessManager) handleDnsMessage(msg *api.MsgIPv4DnsUnix) *fgs.GetEventsResponse {
+func (dns *Grpc) HandleDnsMessage(msg *api.MsgIPv4DnsUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_IPV4_DNS:
-		t := pm.GetDns(msg)
+		t := dns.get(msg)
 		if t != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: t},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
@@ -78,4 +92,13 @@ func (pm *ProcessManager) handleDnsMessage(msg *api.MsgIPv4DnsUnix) *fgs.GetEven
 		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
+}
+
+func New(cilium *cilium.State, dnsCache *dns.Cache, cache *eventcache.Cache, ciliumEnable bool) *Grpc {
+	return &Grpc{
+		ciliumState:  cilium,
+		dnsCache:     dnsCache,
+		eventCache:   cache,
+		enableCilium: ciliumEnable,
+	}
 }
