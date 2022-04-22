@@ -1,12 +1,15 @@
-package grpc
+package httpproto
 
 import (
 	"strings"
 	"time"
 
+	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -17,7 +20,18 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHttp {
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
+
+type Grpc struct {
+	dnsCache     *dns.Cache
+	ciliumState  *cilium.State
+	eventCache   *eventcache.Cache
+	enableCilium bool
+}
+
+func (http *Grpc) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHttp {
 	var proc *fgs.Process
 	var code uint32
 	var err error
@@ -99,17 +113,17 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 		Http:    fgsHttp,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(proc, fgsEvent.Socket.DestinationIp, pm.dns, pm.ciliumState)
+	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(proc, fgsEvent.Socket.DestinationIp, http.dnsCache, http.ciliumState)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if pm.enableCilium && proc != nil {
+	if http.enableCilium && proc != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if pm.eventCache.Needed(proc) {
-		pm.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if http.eventCache.Needed(proc) {
+		http.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {
@@ -118,15 +132,15 @@ func (pm *ProcessManager) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHt
 	return fgsEvent
 }
 
-func (pm *ProcessManager) handleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetEventsResponse {
+func (http *Grpc) HandleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_HTTP:
-		t := pm.GetHttp(msg)
+		t := http.GetHttp(msg)
 		if t != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: t},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
@@ -134,4 +148,13 @@ func (pm *ProcessManager) handleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetE
 		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
+}
+
+func New(cilium *cilium.State, dnsCache *dns.Cache, cache *eventcache.Cache, ciliumEnable bool) *Grpc {
+	return &Grpc{
+		ciliumState:  cilium,
+		dnsCache:     dnsCache,
+		eventCache:   cache,
+		enableCilium: ciliumEnable,
+	}
 }
