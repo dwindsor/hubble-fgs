@@ -149,7 +149,7 @@ func hubbleFGSExecute() error {
 	pm, err := fgsGrpc.NewProcessManager(
 		logger.GetLogger(),
 		ciliumState,
-		obs.SensorManager,
+		observer.SensorManager,
 		enableProcessCred,
 		enableProcessNs,
 		enableK8sAPI,
@@ -171,7 +171,7 @@ func hubbleFGSExecute() error {
 	obs.AddListener(pm)
 	saveInitInfo()
 	if enableK8sAPI {
-		go crd.WatchTracePolicy(ctx, obs.SensorManager)
+		go crd.WatchTracePolicy(ctx, observer.SensorManager)
 	}
 	return obs.Start(ctx)
 }

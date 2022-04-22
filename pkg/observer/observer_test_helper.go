@@ -319,7 +319,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions, oo *te
 	}
 
 	if oo.crd {
-		crd.WatchTracePolicy(context.Background(), obs.SensorManager)
+		crd.WatchTracePolicy(context.Background(), SensorManager)
 	}
 
 	if err := btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, ""); err != nil {
@@ -335,7 +335,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions, oo *te
 	// to bounce events through the cache waiting for Cilium to reply with endpoints
 	// and K8s cache data to be completed. We currently only stub them enough to
 	// report nil or a pre-defined value. So no cache needed.
-	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), ciliumState, obs.SensorManager, true, true, true, false, true)
+	processManager, err := fgsGrpc.NewProcessManager(logger.GetLogger(), ciliumState, SensorManager, true, true, true, false, true)
 	if err != nil {
 		return err
 	}

@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package observer
+package kfree
 
 import (
 	"encoding/binary"
@@ -17,10 +17,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/ksyms"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	stt "github.com/isovalent/hubble-fgs/pkg/stacktracetree"
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 	"github.com/isovalent/hubble-fgs/pkg/vtuplefilter"
 )
@@ -134,7 +131,7 @@ func msgTuple4ToVTuple(mt *api.MsgIPv4Tuple) (vtuple.Impl, error) {
 	return vtuple.CreateVTupleV4(proto, srcAddr, srcPort, dstAddr, dstPort)
 }
 
-func msgToKfreeSkbUnix(m *api.MsgKfreeSkb, ksyms *ksyms.Ksyms) *api.MsgKfreeSkbUnix {
+func msgToKfreeSkbUnix(m *api.MsgKfreeSkb) *api.MsgKfreeSkbUnix {
 	ret := api.MsgKfreeSkbUnix{}
 
 	ret.Common = m.Common
@@ -145,8 +142,8 @@ func msgToKfreeSkbUnix(m *api.MsgKfreeSkb, ksyms *ksyms.Ksyms) *api.MsgKfreeSkbU
 		if addr == 0 {
 			break
 		}
-		if ksyms != nil {
-			fnOff, err := ksyms.GetFnOffset(addr)
+		if ksym != nil {
+			fnOff, err := ksym.GetFnOffset(addr)
 			if err == nil {
 				symbol = fnOff.ToString()
 			}
@@ -157,40 +154,4 @@ func msgToKfreeSkbUnix(m *api.MsgKfreeSkb, ksyms *ksyms.Ksyms) *api.MsgKfreeSkbU
 	ret.Tuple, _ = msgTuple4ToVTuple(&m.Tuple)
 
 	return &ret
-}
-
-func (k *Observer) handleKfreeSkb(m *api.MsgKfreeSkb) {
-
-	msgUnix := msgToKfreeSkbUnix(m, k.ksyms)
-
-	if false {
-		log := logger.GetLogger()
-		log.Info("%s", vtuple.StringRep(&msgUnix.Tuple))
-		for _, x := range msgUnix.Calltrace {
-			log.Info("\t%s (0x%x)\n", x.Symbol, x.Addr)
-		}
-	}
-
-	if packetdropCfg != nil && packetdropCfg.FilterStr != "" {
-		if !packetdropCfg.Filter.FilterFn(&msgUnix.Tuple) {
-			return
-		}
-		// log := logger.GetLogger()
-		// log.Info("tuple %s passed the filter %s\n", vtuple.StringRep(&msgUnix.Tuple), packetdropCfg.FilterStr)
-	}
-
-	stt_lbl := []string{vtuple.StringRep(&msgUnix.Tuple)}
-	stt := stt.SttFromCalltrace(msgUnix.Calltrace, stt_lbl)
-	k.SensorManager.STTManager.Insert("packet-drop", stt)
-
-	// NB: Currently, we don't push these events to listens, but we might
-	// want to change that at some point.
-	if false {
-		for listener := range k.listeners {
-			if err := listener.Notify(msgUnix); err != nil {
-				k.log.WithError(err).Debug("Write failure, removing Listener")
-				k.RemoveListener(listener)
-			}
-		}
-	}
 }

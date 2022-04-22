@@ -27,7 +27,6 @@ import (
 	"github.com/cilium/ebpf/perf"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
@@ -63,6 +62,9 @@ var (
 	eventHandler = make(map[uint8]func(r *bytes.Reader) ([]Event, error))
 
 	observerList []*Observer
+
+	/* SensorManager handles dynamic sensors loading / unloading. */
+	SensorManager *sensors.Manager
 )
 
 type Event interface{}
@@ -276,15 +278,6 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 		msgUnix := msgToExitUnix(&m)
 		k.observerListeners(msgUnix)
 
-	case api.MSG_OP_KFREE_SKB:
-		m := api.MsgKfreeSkb{}
-		err := binary.Read(r, binary.LittleEndian, &m)
-		if err != nil {
-			k.log.WithError(err).Warnf("Failed to read kfree_skb msg")
-			break
-		}
-		k.handleKfreeSkb(&m)
-
 	default:
 		// These ops handlers are registered by RegisterEventHandlerAtInit().
 		if h, ok := eventHandler[op]; ok {
@@ -486,9 +479,6 @@ type Observer struct {
 	msgFilter []*MsgFilter
 	log       logrus.FieldLogger
 
-	/* Kernel symbols */
-	ksyms *ksyms.Ksyms
-
 	/* Runtime docker Id info */
 	dockerIdOffsetWriter int
 
@@ -497,20 +487,9 @@ type Observer struct {
 
 	/* Sock Statistic */
 	tcpStatSegRate uint32
-
-	/* SensorManager handles dynamic sensors loading / unloading. */
-	SensorManager *sensors.Manager
 }
 
 func (k *Observer) Start(ctx context.Context) error {
-	// initialize kernel symbol lookup
-	ksyms, err := ksyms.NewKsyms(option.Config.ProcFS)
-	if err == nil {
-		k.ksyms = ksyms
-	} else {
-		k.log.Warningf("failed to initialize ksyms: %s", err)
-	}
-
 	if err := sensors.LoadDefault(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
 		return err
 	}
@@ -522,13 +501,15 @@ func (k *Observer) Start(ctx context.Context) error {
 		return err
 	}
 
-	if k.SensorManager == nil {
+	if SensorManager == nil {
 		if err := k.InitSensorManager(); err != nil {
 			return err
 		}
 	}
 
 	k.perfConfig = bpf.DefaultPerfEventConfig()
+
+	var err error
 	if useCiliumEbpfReader {
 		err = k.runEventsNew(ctx, func() {})
 	} else {
@@ -543,7 +524,7 @@ func (k *Observer) Start(ctx context.Context) error {
 // InitSensorManager starts the sensor controller and stt manager.
 func (k *Observer) InitSensorManager() error {
 	var err error
-	k.SensorManager, err = sensors.StartSensorManager(k.bpfDir, k.mapDir, k.ciliumDir)
+	SensorManager, err = sensors.StartSensorManager(k.bpfDir, k.mapDir, k.ciliumDir)
 	return err
 }
 

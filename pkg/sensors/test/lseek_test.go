@@ -135,7 +135,7 @@ func TestSensorLseekEnable(t *testing.T) {
 	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
-	obs.SensorManager = smanager
+	observer.SensorManager = smanager
 	defer func() {
 		err := smanager.StopSensorManager(ctx)
 		if err != nil {

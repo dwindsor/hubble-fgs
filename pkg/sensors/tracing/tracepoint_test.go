@@ -82,12 +82,12 @@ func TestGenericTracepointSimple(t *testing.T) {
 	}
 
 	// We do not call observer.Start(), so we need to start the sensor controller
-	obs.SensorManager, err = sensors.StartSensorManager(tracepointTestDir, tracepointTestDir, "")
+	sm, err := sensors.StartSensorManager(tracepointTestDir, tracepointTestDir, "")
 	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
 	defer func() {
-		err := obs.SensorManager.StopSensorManager(ctx)
+		err := sm.StopSensorManager(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
@@ -99,17 +99,17 @@ func TestGenericTracepointSimple(t *testing.T) {
 		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
 	}
 	sensorName := "GtpLseekTest"
-	if err := obs.SensorManager.AddSensor(ctx, sensorName, sensor); err != nil {
+	if err := sm.AddSensor(ctx, sensorName, sensor); err != nil {
 		t.Fatalf("failed to add generic tracepoint sensor: %s", err)
 	}
 	defer func() {
-		obs.SensorManager.RemoveSensor(ctx, sensorName)
+		sm.RemoveSensor(ctx, sensorName)
 	}()
-	if err := obs.SensorManager.EnableSensor(ctx, sensorName); err != nil {
+	if err := sm.EnableSensor(ctx, sensorName); err != nil {
 		t.Fatalf("EnableSensor error: %s", err)
 	}
 	defer func() {
-		obs.SensorManager.DisableSensor(ctx, sensorName)
+		sm.DisableSensor(ctx, sensorName)
 	}()
 
 	tpChecker := ec.NewTracepointChecker().
@@ -169,12 +169,12 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
 	// We do not call observer.Start(), so we need to start the sensor controller
-	obs.SensorManager, err = sensors.StartSensorManager(tracepointTestDir, tracepointTestDir, "")
+	sm, err := sensors.StartSensorManager(tracepointTestDir, tracepointTestDir, "")
 	if err != nil {
 		t.Fatalf("startSensorController failed: %s", err)
 	}
 	defer func() {
-		err := obs.SensorManager.StopSensorManager(ctx)
+		err := sm.StopSensorManager(ctx)
 		if err != nil {
 			fmt.Printf("stopSensorController failed: %s\n", err)
 		}
@@ -186,17 +186,17 @@ func doTestGenericTracepointPidFilter(t *testing.T, conf GenericTracepointConf, 
 		t.Fatalf("failed to create generic tracepoint sensor: %s", err)
 	}
 	sensorName := "GtpLseekTest"
-	if err := obs.SensorManager.AddSensor(ctx, sensorName, sensor); err != nil {
+	if err := sm.AddSensor(ctx, sensorName, sensor); err != nil {
 		t.Fatalf("failed to add generic tracepoint sensor: %s", err)
 	}
 	defer func() {
-		obs.SensorManager.RemoveSensor(ctx, sensorName)
+		sm.RemoveSensor(ctx, sensorName)
 	}()
-	if err := obs.SensorManager.EnableSensor(ctx, sensorName); err != nil {
+	if err := sm.EnableSensor(ctx, sensorName); err != nil {
 		t.Fatalf("EnableSensor error: %s", err)
 	}
 	defer func() {
-		obs.SensorManager.DisableSensor(ctx, sensorName)
+		sm.DisableSensor(ctx, sensorName)
 	}()
 
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
