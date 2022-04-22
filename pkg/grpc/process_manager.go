@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/execAncestors"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
@@ -107,7 +108,11 @@ func NewProcessManager(
 	httpGrpc = httpproto.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
 	tracingGrpc = tracing.New(ciliumState, pm.dns, pm.eventCache, enableCilium, enableProcessCred, enableProcessNs)
 
-	execGrpc = execAncestors.New(pm.execCache, pm.eventCache, enableProcessCred, enableProcessNs)
+	if enableProcessAncestors {
+		execGrpc = execAncestors.New(pm.execCache, pm.eventCache, enableProcessCred, enableProcessNs)
+	} else {
+		execGrpc = exec.New(pm.execCache, pm.eventCache, enableProcessCred, enableProcessNs)
+	}
 
 	logger.GetLogger().WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,

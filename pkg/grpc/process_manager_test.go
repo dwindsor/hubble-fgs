@@ -168,6 +168,7 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 
 	// cap field should be set with enable-process-cred flag.
 	pm.enableProcessCred = true
+	execGrpc = execAncestors.New(pm.execCache, pm.eventCache, pm.enableProcessCred, pm.enableProcessNs)
 	assert.Equal(t,
 		&fgs.Capabilities{
 			Permitted:   []fgs.CapabilitiesType{fgs.CapabilitiesType_CAP_CHOWN},
