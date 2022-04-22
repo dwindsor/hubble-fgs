@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/execAncestors"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/kfree"
@@ -37,12 +38,18 @@ import (
 	"github.com/sirupsen/logrus"
 )
 
+type execProcess interface {
+	HandleExecveMessage(*api.MsgExecveEventUnix) *fgs.GetEventsResponse
+	HandleExitMessage(*api.MsgExitEventUnix) *fgs.GetEventsResponse
+}
+
 var (
 	tlsGrpc     *tls.Grpc
 	layer3Grpc  *layer3.Grpc
 	dnsGrpc     *dnsproto.Grpc
 	httpGrpc    *httpproto.Grpc
 	tracingGrpc *tracing.Grpc
+	execGrpc    execProcess
 )
 
 // ProcessManager maintains a cache of processes from fgs exec events.
@@ -100,6 +107,8 @@ func NewProcessManager(
 	httpGrpc = httpproto.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
 	tracingGrpc = tracing.New(ciliumState, pm.dns, pm.eventCache, enableCilium, enableProcessCred, enableProcessNs)
 
+	execGrpc = execAncestors.New(pm.execCache, pm.eventCache, enableProcessCred, enableProcessNs)
+
 	logger.GetLogger().WithField("enableCilium", enableCilium).WithFields(logrus.Fields{
 		"enableEventCache":  enableEventCache,
 		"enableProcessCred": enableProcessCred,
@@ -119,7 +128,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgHttpEventUnix:
 		processedEvent = httpGrpc.HandleHttpMessage(msg)
 	case *api.MsgExecveEventUnix:
-		processedEvent = pm.handleExecveMessage(msg)
+		processedEvent = execGrpc.HandleExecveMessage(msg)
 	case *api.MsgIPv4EventUnix:
 		processedEvent = layer3Grpc.HandleIpMessage(msg)
 	case *api.MsgProcessNetworkBurstEventUnix:
@@ -129,7 +138,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	case *api.MsgIPv4DnsUnix:
 		processedEvent = dnsGrpc.HandleDnsMessage(msg)
 	case *api.MsgExitEventUnix:
-		processedEvent = pm.handleExitMessage(msg)
+		processedEvent = execGrpc.HandleExitMessage(msg)
 	case *api.MsgCredEventUnix:
 		processedEvent = pm.handleCredMessage(msg)
 	case *api.MsgKfreeSkbUnix:

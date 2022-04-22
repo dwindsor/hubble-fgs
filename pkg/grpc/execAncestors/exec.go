@@ -1,4 +1,4 @@
-package grpc
+package execAncestors
 
 import (
 	"strings"
@@ -6,6 +6,8 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/eventcache"
+	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
@@ -14,14 +16,40 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
+var (
+	nodeName = reader.GetNodeNameForExport()
+)
+
+type Grpc struct {
+	execCache  *execcache.Cache
+	eventCache *eventcache.Cache
+	enableCred bool
+	enableNs   bool
+}
+
+// getAncestors builds an ancestor list by traversing the parent exec IDs.
+func getAncestors(proc *fgs.Process) []*process.ProcessInternal {
+	var ancestors []*process.ProcessInternal
+	for parentExecID := proc.ParentExecId; parentExecID != ""; {
+		entry, err := process.Get(parentExecID)
+		if err != nil {
+			logger.GetLogger().WithField("id in event", parentExecID).Debug("parent not found in cache")
+			break
+		}
+		ancestors = append(ancestors, entry)
+		parentExecID = entry.UnsafeGetProcess().ParentExecId
+	}
+	return ancestors
+}
+
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.
-func (pm *ProcessManager) GetProcessExec(
+func (e *Grpc) GetProcessExec(
 	proc *process.ProcessInternal,
 ) *fgs.ProcessExec {
 	var parent *process.ProcessInternal
 	var fgsAncestors []*fgs.Process
 
-	ancestors := pm.getAncestors(proc.UnsafeGetProcess())
+	ancestors := getAncestors(proc.UnsafeGetProcess())
 	if len(ancestors) >= 1 {
 		parent = ancestors[0]
 		ancestors = ancestors[1:]
@@ -33,7 +61,7 @@ func (pm *ProcessManager) GetProcessExec(
 	var fgsParent, fgsProcess *fgs.Process
 
 	// Set the cap field only if --enable-process-cred flag is set.
-	proc.AnnotateProcess(pm.enableProcessCred, pm.enableProcessNs)
+	proc.AnnotateProcess(e.enableCred, e.enableNs)
 	fgsProcess = proc.UnsafeGetProcess()
 	if parent != nil {
 		fgsParent = parent.GetProcessCopy()
@@ -58,16 +86,13 @@ func (pm *ProcessManager) GetProcessExec(
 		strings.Contains(fgsProcess.Flags, "procFS") == false &&
 		parent != nil {
 		parent.RefDec()
-		ancestors := pm.getAncestors(fgsParent)
+		ancestors := getAncestors(fgsParent)
 		if len(ancestors) >= 1 {
 			ancestors = ancestors[0:]
 			for _, a := range ancestors {
 				a.RefDec()
 			}
 		}
-	}
-	if !pm.enableProcessAncestors {
-		fgsAncestors = nil
 	}
 	return &fgs.ProcessExec{
 		Process:   fgsProcess,
@@ -76,19 +101,19 @@ func (pm *ProcessManager) GetProcessExec(
 	}
 }
 
-func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.GetEventsResponse {
+func (e *Grpc) HandleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_EXECVE:
 		proc := process.Add(msg)
-		procEvent := pm.GetProcessExec(proc)
-		if pm.eventCache.Needed(procEvent.Process) {
-			pm.execCache.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
+		procEvent := e.GetProcessExec(proc)
+		if e.eventCache.Needed(procEvent.Process) {
+			e.execCache.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: procEvent},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
@@ -99,7 +124,7 @@ func (pm *ProcessManager) handleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.
 }
 
 // GetProcessExit returns Exit protobuf message for a given process.
-func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
+func (e *Grpc) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
 	var fgsProcess, fgsParent *fgs.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -117,7 +142,7 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		fgsParent = parent.GetProcessCopy()
 	}
 
-	ancestors := pm.getAncestors(fgsProcess)
+	ancestors := getAncestors(fgsProcess)
 	if len(ancestors) >= 2 {
 		ancestors = ancestors[1:]
 		for _, a := range ancestors {
@@ -134,8 +159,8 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 		Signal:  signal,
 		Status:  code,
 	}
-	if pm.eventCache.Needed(fgsProcess) {
-		pm.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if e.eventCache.Needed(fgsProcess) {
+		e.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -144,15 +169,15 @@ func (pm *ProcessManager) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.Pr
 	return fgsEvent
 }
 
-func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetEventsResponse {
+func (e *Grpc) HandleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case api.MSG_OP_EXIT:
-		e := pm.GetProcessExit(msg)
+		e := e.GetProcessExit(msg)
 		if e != nil {
 			res = &fgs.GetEventsResponse{
 				Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: e},
-				NodeName: pm.nodeName,
+				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
@@ -160,4 +185,13 @@ func (pm *ProcessManager) handleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetE
 		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
 	}
 	return res
+}
+
+func New(exec *execcache.Cache, event *eventcache.Cache, cred, ns bool) *Grpc {
+	return &Grpc{
+		execCache:  exec,
+		eventCache: event,
+		enableCred: cred,
+		enableNs:   ns,
+	}
 }

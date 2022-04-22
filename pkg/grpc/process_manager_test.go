@@ -24,6 +24,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/execAncestors"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
@@ -161,7 +162,9 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 			PID: 5678,
 		},
 	})
-	assert.Nil(t, pm.GetProcessExec(procInternal).Process.Cap)
+
+	execGrpc := execAncestors.New(pm.execCache, pm.eventCache, pm.enableProcessCred, pm.enableProcessNs)
+	assert.Nil(t, execGrpc.GetProcessExec(procInternal).Process.Cap)
 
 	// cap field should be set with enable-process-cred flag.
 	pm.enableProcessCred = true
@@ -171,7 +174,7 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 			Effective:   []fgs.CapabilitiesType{fgs.CapabilitiesType_CAP_CHOWN},
 			Inheritable: []fgs.CapabilitiesType{fgs.CapabilitiesType_CAP_CHOWN},
 		},
-		pm.GetProcessExec(procInternal).Process.Cap)
+		execGrpc.GetProcessExec(procInternal).Process.Cap)
 }
 
 func Test_getNodeNameForExport(t *testing.T) {
