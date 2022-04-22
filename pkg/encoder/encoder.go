@@ -200,6 +200,14 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 				dst = p.colorer.cyan.Sprint(kprobe.Args[1].GetStringArg())
 			}
 			return fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), nil
+		case "__x64_sys_setuid":
+			event := p.colorer.blue.Sprintf("🔑 %-7s", "setuid")
+			uid := ""
+			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
+				uidInt := p.colorer.cyan.Sprint(kprobe.Args[0].GetIntArg())
+				uid = string(uidInt)
+			}
+			return fmt.Sprintf("%s %s %s", event, processInfo, uid), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
 			return fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), nil
