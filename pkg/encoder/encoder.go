@@ -208,6 +208,9 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 				uid = string(uidInt)
 			}
 			return fmt.Sprintf("%s %s %s", event, processInfo, uid), nil
+		case "__x64_sys_clock_settime":
+			event := p.colorer.blue.Sprintf("⏰ %-7s", "clock_settime")
+			return fmt.Sprintf("%s %s", event, processInfo), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
 			return fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), nil
