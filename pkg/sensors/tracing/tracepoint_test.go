@@ -30,6 +30,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
+
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 )
 
 var (

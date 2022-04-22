@@ -8,22 +8,35 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package observer
+package procevents
 
 import (
+	"fmt"
 	"io/ioutil"
 	"os"
 	"path/filepath"
 	"sort"
 	"strconv"
+	"time"
 	"unicode/utf8"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
+)
+
+const (
+	maxMapRetries = 4
+	mapRetryDelay = 1
+
+	kernelPid = uint32(0)
 )
 
 func stringToUTF8(s []byte) []byte {
@@ -68,16 +81,174 @@ type Procs struct {
 	user_ns              uint32
 }
 
-func (k *Observer) pushEvents(procs []Procs, pushExecve, writeMaps bool) {
+func procKernel() Procs {
+	kernelArgs := []byte("<kernel>\u0000")
+	return Procs{
+		psize:       uint32(api.MSG_SIZEOF_EXECVE + len(kernelArgs) + api.MSG_SIZEOF_CWD),
+		ppid:        kernelPid,
+		pnspid:      0,
+		pflags:      api.EventProcFS,
+		pktime:      1,
+		pargs:       kernelArgs,
+		size:        uint32(api.MSG_SIZEOF_EXECVE + len(kernelArgs) + api.MSG_SIZEOF_CWD),
+		uid:         0,
+		pid:         kernelPid,
+		nspid:       0,
+		auid:        0,
+		flags:       api.EventProcFS,
+		ktime:       1,
+		args:        kernelArgs,
+		effective:   0,
+		inheritable: 0,
+		permitted:   0,
+	}
+}
+
+func getCWD(pid uint32) (string, uint32) {
+	flags := uint32(0)
+	pidstr := fmt.Sprint(pid)
+
+	if pid == 0 {
+		return "", flags
+	}
+
+	cwd, err := os.Readlink(filepath.Join(option.Config.ProcFS, pidstr, "cwd"))
+	if err != nil {
+		flags |= api.EventRootCWD | api.EventErrorCWD
+		return " ", flags
+	}
+
+	if cwd == "/" {
+		cwd = " "
+		flags |= api.EventRootCWD
+	}
+	return cwd, flags
+}
+
+func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
+	var err error
+	var i int
+
+	args, filename := procsFilename(p.args)
+	cwd, flags := getCWD(p.pid)
+	if (flags & api.EventRootCWD) == 0 {
+		args = args + " " + cwd
+	}
+
+	m := api.MsgExecveEventUnix{}
+	m.Common.Op = api.MSG_OP_EXECVE
+	m.Common.Size = api.MsgUnixSize + p.psize + p.size
+
+	m.Kube.NetNS = 0
+	m.Kube.Cid = 0
+	m.Kube.Cgrpid = 0
+	m.Kube.Docker, i, err = procsDockerId(p.pid)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Procfs execve event pods/ identifier error")
+	} else if i > 0 {
+		err := procDockerIdOffsetWriter(i, btf.GetCachedBTF())
+		if err != nil {
+			logger.GetLogger().WithError(err).Warn("Write to Docker ID BTF error")
+		}
+	}
+
+	m.Parent.Pid = p.ppid
+	m.Parent.Ktime = p.pktime
+
+	m.Capabilities.Permitted = p.permitted
+	m.Capabilities.Effective = p.effective
+	m.Capabilities.Inheritable = p.inheritable
+
+	m.Namespaces.UtsInum = p.uts_ns
+	m.Namespaces.IpcInum = p.ipc_ns
+	m.Namespaces.MntInum = p.mnt_ns
+	m.Namespaces.PidInum = p.pid_ns
+	m.Namespaces.PidChildInum = p.pid_for_children_ns
+	m.Namespaces.NetInum = p.net_ns
+	m.Namespaces.TimeInum = p.time_ns
+	m.Namespaces.TimeChildInum = p.time_for_children_ns
+	m.Namespaces.CgroupInum = p.cgroup_ns
+	m.Namespaces.UserInum = p.user_ns
+
+	m.Process.Size = p.size
+	m.Process.PID = p.pid
+	m.Process.NSPID = p.nspid
+	m.Process.UID = p.uid
+	m.Process.AUID = p.auid
+	m.Process.Flags = p.flags | flags
+	m.Process.Ktime = p.ktime
+	m.Common.Ktime = p.ktime
+	m.Process.Filename = filename
+	m.Process.Args = args
+
+	if pushExecve {
+		observer.AllListeners(&m)
+	}
+}
+
+func writeExecveMap(procs []Procs) {
+	mapDir := bpf.MapPrefixPath()
+
+	execveMap := sensors.GetExecveMap()
+
+	if execveMap.PinState.IsDisabled() {
+		logger.GetLogger().Infof("hubble-fgs, map %s is disabled, skipping.", execveMap.Name)
+		return
+	}
+
+	m, err := bpf.OpenMap(filepath.Join(mapDir, execveMap.Name))
+	for i := 0; err != nil; i++ {
+		m, err = bpf.OpenMap(filepath.Join(mapDir, execveMap.Name))
+		if err != nil {
+			time.Sleep(mapRetryDelay * time.Second)
+		}
+		if i > maxMapRetries {
+			panic(err)
+		}
+	}
+	for _, p := range procs {
+		k := &execvemap.ExecveKey{Pid: p.pid}
+		v := &execvemap.ExecveValue{}
+
+		v.Parent.Pid = p.ppid
+		v.Parent.Ktime = p.pktime
+		v.Process.Pid = p.pid
+		v.Process.Ktime = p.ktime
+		v.Flags = 0
+		v.Nspid = p.nspid
+		v.Buffer = 0
+
+		m.Update(k, v)
+	}
+	// In order for kprobe events from kernel ctx to not abort we need the
+	// execve lookup to map to a valid entry. So to simplify the kernel side
+	// and avoid having to add another branch of logic there to handle pid==0
+	// case we simply add it here.
+	m.Update(&execvemap.ExecveKey{Pid: kernelPid}, &execvemap.ExecveValue{
+		Parent: api.MsgExecveKey{
+			Pid:   kernelPid,
+			Ktime: 1},
+		Process: api.MsgExecveKey{
+			Pid:   kernelPid,
+			Ktime: 1,
+		},
+		Flags:  0,
+		Nspid:  0,
+		Buffer: 0,
+	})
+	m.Close()
+}
+
+func pushEvents(procs []Procs, pushExecve, writeMaps bool) {
 	if writeMaps {
-		k.writeExecveMap(procs)
+		writeExecveMap(procs)
 	}
 	sort.Slice(procs, func(i, j int) bool {
 		return procs[i].ppid < procs[j].ppid
 	})
 	procs = append(procs, procKernel())
 	for _, p := range procs {
-		k.pushExecveEvents(p, pushExecve, writeMaps)
+		pushExecveEvents(p, pushExecve, writeMaps)
 	}
 	// Ensure we have at least a default dockerId offset if we failed
 	// to discover one while walking proc
@@ -87,7 +258,7 @@ func (k *Observer) pushEvents(procs []Procs, pushExecve, writeMaps bool) {
 	}
 }
 
-func (k *Observer) getRunningProcs(write, push bool) []Procs {
+func GetRunningProcs(write, push bool) []Procs {
 	var procs []Procs
 
 	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
@@ -200,13 +371,13 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 
 		execPath, err := os.Readlink(filepath.Join(option.Config.ProcFS, d.Name(), "exe"))
 		if err == nil {
-			cmdline = prependPath(execPath, cmdline)
+			cmdline = reader.PrependPath(execPath, cmdline)
 		}
 
 		if _ppid != 0 {
 			pexecPath, err = os.Readlink(filepath.Join(option.Config.ProcFS, ppid, "exe"))
 			if err == nil {
-				pcmdline = prependPath(pexecPath, pcmdline)
+				pcmdline = reader.PrependPath(pexecPath, pcmdline)
 			}
 		} else {
 			pexecPath = ""
@@ -280,6 +451,6 @@ func (k *Observer) getRunningProcs(write, push bool) []Procs {
 	}
 	logger.GetLogger().Infof("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
 
-	k.pushEvents(procs, push, write)
+	pushEvents(procs, push, write)
 	return procs
 }

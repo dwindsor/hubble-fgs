@@ -16,10 +16,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
@@ -203,8 +204,8 @@ func addSelfToEvecveMap(t *testing.T) {
 	ppid := uint32(os.Getppid())
 
 	err = m.Update(
-		&observer.ExecveKey{Pid: pid},
-		&observer.ExecveValue{
+		&execvemap.ExecveKey{Pid: pid},
+		&execvemap.ExecveValue{
 			Parent:  api.MsgExecveKey{Pid: ppid, Pad: 0, Ktime: 0xcacababa},
 			Process: api.MsgExecveKey{Pid: pid, Pad: 0, Ktime: 0x01020304deadbeef},
 		},

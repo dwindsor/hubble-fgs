@@ -13,12 +13,8 @@ package observer
 import (
 	"bytes"
 	"context"
-	"encoding/binary"
 	"errors"
 	"fmt"
-	"os"
-	"path/filepath"
-	"strings"
 	"sync"
 	"syscall"
 	"time"
@@ -29,8 +25,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
-	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	"github.com/sirupsen/logrus"
@@ -38,9 +32,6 @@ import (
 
 const (
 	TCP_PROC_STATE_LISTEN = 10
-
-	maxMapRetries = 4
-	mapRetryDelay = 1
 
 	// Max events to read from each ring in one go. This is used to
 	// reduce the likelihood of events being out of order and the
@@ -91,7 +82,6 @@ func AllListeners(msg interface{}) {
 func (k *Observer) AddListener(listener Listener) {
 	k.log.WithField("listener", listener).Debug("Add listener")
 	k.listeners[listener] = struct{}{}
-	k.getRunningProcs(false, true)
 }
 
 func (k *Observer) RemoveListener(listener Listener) {
@@ -100,40 +90,6 @@ func (k *Observer) RemoveListener(listener Listener) {
 	if err := listener.Close(); err != nil {
 		k.log.WithError(err).Warn("failed to close listener")
 	}
-}
-
-func msgToExecveUnix(m *api.MsgExecveEvent, offset int) *api.MsgExecveEventUnix {
-	unix := &api.MsgExecveEventUnix{}
-
-	unix.Common = m.Common
-	unix.Kube.NetNS = m.Kube.NetNS
-	unix.Kube.Cid = m.Kube.Cid
-	unix.Kube.Cgrpid = m.Kube.Cgrpid
-	// The first byte is set to zero if there is no docker ID for this event.
-	if m.Kube.Docker[0] != 0x00 {
-		// We always get a null terminated buffer from bpf
-		cgroup := reader.FromCString(m.Kube.Docker[:api.DOCKER_ID_LENGTH])
-		unix.Kube.Docker, _ = lookupContainerId(cgroup, true, false)
-	}
-	unix.Parent = m.Parent
-	unix.Capabilities = m.Capabilities
-
-	unix.Namespaces.UtsInum = m.Namespaces.UtsInum
-	unix.Namespaces.IpcInum = m.Namespaces.IpcInum
-	unix.Namespaces.MntInum = m.Namespaces.MntInum
-	unix.Namespaces.PidInum = m.Namespaces.PidInum
-	unix.Namespaces.PidChildInum = m.Namespaces.PidChildInum
-	unix.Namespaces.NetInum = m.Namespaces.NetInum
-	unix.Namespaces.TimeInum = m.Namespaces.TimeInum
-	unix.Namespaces.TimeChildInum = m.Namespaces.TimeChildInum
-	unix.Namespaces.CgroupInum = m.Namespaces.CgroupInum
-	unix.Namespaces.UserInum = m.Namespaces.UserInum
-
-	return unix
-}
-
-func msgToExitUnix(m *api.MsgExitEvent) *api.MsgExitEventUnix {
-	return m
 }
 
 func MsgToSocketStatsUnix(m *api.MsgSocketStats) api.MsgSocketStatsUnix {
@@ -171,54 +127,6 @@ func MsgToIPv4Unix(m *api.MsgIPv4Event) *api.MsgIPv4EventUnix {
 	return unix
 }
 
-func nopMsgProcess() api.MsgProcess {
-	return api.MsgProcess{
-		Filename: "<enomem>",
-		Args:     "<enomem>",
-	}
-}
-
-func execParse(reader *bytes.Reader) (api.MsgProcess, bool, error) {
-	proc := api.MsgProcess{}
-	exec := api.MsgExec{}
-
-	if err := binary.Read(reader, binary.LittleEndian, &exec); err != nil {
-		fmt.Printf("read error!\n")
-		return proc, true, err
-	}
-
-	proc.Size = exec.Size
-	proc.PID = exec.PID
-	proc.NSPID = exec.NSPID
-	proc.UID = exec.UID
-	proc.Flags = exec.Flags
-	proc.Ktime = exec.Ktime
-	proc.AUID = exec.AUID
-
-	size := exec.Size - api.MSG_SIZEOF_EXECVE
-	if size > api.MSG_SIZEOF_BUFFER-api.MSG_SIZEOF_EXECVE {
-		err := fmt.Errorf("msg exec size larger than argsbuffer")
-		exec.Size = api.MSG_SIZEOF_EXECVE
-		proc.Args = "enomem enomem"
-		proc.Filename = "enomem"
-		return proc, false, err
-	}
-
-	args := make([]byte, size) //+2)
-	if err := binary.Read(reader, binary.LittleEndian, &args); err != nil {
-		proc.Size = api.MSG_SIZEOF_EXECVE
-		proc.Args = "enomem enomem"
-		proc.Filename = "enomem"
-		return proc, false, err
-	}
-
-	cmdArgs := bytes.Split(args, []byte{0x00})
-	proc.Filename = string(cmdArgs[0])
-	proc.Args = string(bytes.Join(cmdArgs[1:], []byte{0x00}))
-
-	return proc, false, nil
-}
-
 var (
 	enableDns = false
 )
@@ -229,7 +137,6 @@ func EnableDns() {
 
 func (k *Observer) receiveEvent(data []byte, cpu int) {
 	var op = data[0]
-	var empty bool
 
 	k.recvCntr++
 	r := bytes.NewReader(data)
@@ -237,67 +144,24 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 	// Increment the counter for the msg opcode
 	metrics.MsgOpsCount.WithLabelValues(api.OpCode(op).String()).Add(1)
 
-	// TODO: Most of these ops can be converted into sensors. Ideally, this
-	// switch case shouldn't even exist; it should just do what's already
-	// happening inside the default case.
-
-	switch op {
-	case api.MSG_OP_EXECVE:
-		m := api.MsgExecveEvent{}
-		err := binary.Read(r, binary.LittleEndian, &m)
-		if err != nil {
-			fmt.Printf("api.MSG_OP_EXECVE binary read failure: %s\n", err)
-			break
-		}
-		msgUnix := msgToExecveUnix(&m, k.dockerIdOffsetWriter)
-		msgUnix.Process, empty, err = execParse(r)
-		if err != nil && empty {
-			msgUnix.Process = nopMsgProcess()
-		}
-		k.observerListeners(msgUnix)
-	case api.MSG_OP_EXIT:
-		m := api.MsgExitEvent{}
-		err := binary.Read(r, binary.LittleEndian, &m)
-		if err != nil {
-			fmt.Printf("api.MSG_OP_EXIT binary read failure: %s\n", err)
-			break
-		}
-		msgUnix := msgToExitUnix(&m)
-		k.observerListeners(msgUnix)
-
-	default:
-		// These ops handlers are registered by RegisterEventHandlerAtInit().
-		if h, ok := eventHandler[op]; ok {
-			if events, err := h(r); err == nil {
-				for _, event := range events {
-					k.observerListeners(event)
-				}
+	// These ops handlers are registered by RegisterEventHandlerAtInit().
+	if h, ok := eventHandler[op]; ok {
+		if events, err := h(r); err == nil {
+			for _, event := range events {
+				k.observerListeners(event)
 			}
-		} else {
-			k.log.Infof("unknown op ignored: %v", op)
 		}
+	} else {
+		k.log.Infof("unknown op ignored: %v", op)
 	}
 }
 
-func getCWD(pid uint32) (string, uint32) {
-	flags := uint32(0)
-	pidstr := fmt.Sprint(pid)
-
-	if pid == 0 {
-		return "", flags
-	}
-
-	cwd, err := os.Readlink(filepath.Join(option.Config.ProcFS, pidstr, "cwd"))
+func (k *Observer) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, error) {
+	e, err := bpf.NewPerCpuEvents(k.perfConfig, k.log)
 	if err != nil {
-		flags |= api.EventRootCWD | api.EventErrorCWD
-		return " ", flags
+		return nil, fmt.Errorf("failed kprobe events NewPerCpuEvents: %w", err)
 	}
-
-	if cwd == "/" {
-		cwd = " "
-		flags |= api.EventRootCWD
-	}
-	return cwd, flags
+	return e, nil
 }
 
 func (k *Observer) observerLost(msg *bpf.PerfEventLost, cpu int) {
@@ -315,14 +179,6 @@ func isCtxDone(ctx context.Context) bool {
 	default:
 		return false
 	}
-}
-
-func (k *Observer) __runEvents(stopCtx context.Context) (*bpf.PerCpuEvents, error) {
-	e, err := bpf.NewPerCpuEvents(k.perfConfig, k.log)
-	if err != nil {
-		return nil, fmt.Errorf("failed kprobe events NewPerCpuEvents: %w", err)
-	}
-	return e, nil
 }
 
 func (k *Observer) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) error {
@@ -426,17 +282,6 @@ func (k *Observer) runEventsNew(stopCtx context.Context, ready func()) error {
 	return perfReader.Close()
 }
 
-func prependPath(s string, b []byte) []byte {
-	split := strings.Split(string(b), "\u0000")
-	split[0] = s
-	fullCmd := strings.Join(split[0:], "\u0000")
-	return []byte(fullCmd)
-}
-
-func (k *Observer) populateExecve(ctx context.Context) {
-	k.getRunningProcs(true, false)
-}
-
 type MsgFilterRun func(*api.MsgIPv4EventUnix, *Observer) bool
 
 type MsgFilter struct {
@@ -466,9 +311,6 @@ type Observer struct {
 	msgFilter []*MsgFilter
 	log       logrus.FieldLogger
 
-	/* Runtime docker Id info */
-	dockerIdOffsetWriter int
-
 	/* YAML Configuration File */
 	configFile string
 
@@ -482,7 +324,6 @@ func (k *Observer) Start(ctx context.Context) error {
 	}
 
 	k.startUpdateMapMetrics()
-	k.populateExecve(ctx)
 
 	if err := sensors.LoadConfig(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
 		return err

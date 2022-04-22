@@ -22,9 +22,12 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	"github.com/stretchr/testify/assert"
+
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 )
 
 var (
@@ -860,4 +863,32 @@ func TestTcpBurst(t *testing.T) {
 		fmt.Printf("ERROR Server process in burst map after exit\n")
 		os.Exit(-1)
 	}
+}
+
+func TestNamespaces(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	rootNs := reader.GetCurrentNamespace()
+	selfChecker := ec.NewProcessChecker().WithBinary(ec.SuffixStringMatch(selfBinary)).WithNs(rootNs)
+
+	checker := ec.NewUnorderedMultiResponseChecker(
+		ec.NewExecEventChecker().
+			HasProcess(selfChecker).
+			HasParent().
+			End(),
+	)
+
+	obs, err := observer.GetDefaultObserver(t, fgsLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+	err = observer.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 }

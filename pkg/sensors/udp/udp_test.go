@@ -33,6 +33,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	"github.com/stretchr/testify/assert"
@@ -55,6 +57,8 @@ func init() {
 	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 	flag.BoolVar(&client, "client", false, "internal")
 	flag.BoolVar(&server, "server", false, "internal")
+
+	bpf.SetMapPrefix("testObserver")
 }
 
 func TestMain(m *testing.M) {

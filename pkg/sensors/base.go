@@ -18,7 +18,7 @@ var (
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
-		"tracepoint",
+		"execve",
 	)
 
 	ExecveV53 = ProgramBuilder(
@@ -26,7 +26,7 @@ var (
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
 		"event_execve",
-		"tracepoint",
+		"execve",
 	)
 
 	Exit = ProgramBuilder(

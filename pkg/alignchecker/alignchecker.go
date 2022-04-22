@@ -4,7 +4,7 @@ import (
 	"reflect"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 
 	check "github.com/cilium/cilium/pkg/alignchecker"
@@ -39,7 +39,7 @@ func CheckStructAlignments(path string) error {
 		// from maps
 		"socketmap_value":  {reflect.TypeOf(tcp.SocketMapValue{})},
 		"msg_tls_ipv4":     {reflect.TypeOf(api.MsgTLSIPv4{})},
-		"execve_map_value": {reflect.TypeOf(observer.ExecveValue{})},
+		"execve_map_value": {reflect.TypeOf(execvemap.ExecveValue{})},
 	}
 	return check.CheckStructAlignments(path, toCheck)
 }

@@ -25,6 +25,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/stretchr/testify/assert"
+
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 )
 
 func TestKprobeNSChanges(t *testing.T) {

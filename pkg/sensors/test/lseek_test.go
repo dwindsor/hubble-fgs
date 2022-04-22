@@ -24,6 +24,7 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
 )

@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package observer
+package procevents
 
 import (
 	"os"
@@ -25,19 +25,19 @@ func TestProcsContainerIdOffset(t *testing.T) {
 	test3 := "cri-containerd-123456789abcdef"
 	offsetValue3 := 15
 
-	s, i := procsContainerIdOffset(test1)
+	s, i := ProcsContainerIdOffset(test1)
 	assert.Equal(t, s, test1, "Expect input == output")
 	assert.Equal(t, i, 0, "Expect zero offset")
 
-	s, i = procsContainerIdOffset(test2)
+	s, i = ProcsContainerIdOffset(test2)
 	assert.Equal(t, test1, s, "Expect output is test1")
 	assert.Equal(t, offsetValue, i, "Expect docker- offset")
 
-	s, i = procsContainerIdOffset(test3)
+	s, i = ProcsContainerIdOffset(test3)
 	assert.Equal(t, test1, s, "Expect output is test3")
 	assert.Equal(t, offsetValue3, i, "Expect docker- offset")
 
-	s, i = procsContainerIdOffset("")
+	s, i = ProcsContainerIdOffset("")
 	assert.Equal(t, s, "", "Expect output '' empty string")
 	assert.Equal(t, i, 0, "Expect ContainerId offset should be zero")
 }

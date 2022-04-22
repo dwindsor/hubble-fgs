@@ -375,8 +375,6 @@ func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
 		t.Fatalf("LoadDefaultSensor error: %s\n", err)
 	}
 
-	obs.populateExecve(context.TODO())
-
 	if err := sensors.LoadConfig(
 		context.TODO(),
 		obs.bpfDir,
