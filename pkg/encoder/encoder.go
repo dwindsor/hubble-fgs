@@ -211,6 +211,17 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 		case "__x64_sys_clock_settime":
 			event := p.colorer.blue.Sprintf("⏰ %-7s", "clock_settime")
 			return fmt.Sprintf("%s %s", event, processInfo), nil
+		case "__x64_sys_pivot_root":
+			event := p.colorer.blue.Sprintf("💾 %-7s", "pivot_root")
+			src := ""
+			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
+				src = p.colorer.cyan.Sprint(kprobe.Args[0].GetStringArg())
+			}
+			dst := ""
+			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
+				dst = p.colorer.cyan.Sprint(kprobe.Args[1].GetStringArg())
+			}
+			return fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
 			return fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), nil
