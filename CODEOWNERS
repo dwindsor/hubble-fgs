@@ -1,2 +1,4 @@
 # request a review from timescape team members when API changes
 api/ @isovalent/timescape
+# codegen changes are irrelevant for timescape folks
+api/v1/fgs/codegen
