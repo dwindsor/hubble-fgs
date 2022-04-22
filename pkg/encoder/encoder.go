@@ -189,6 +189,17 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 				file = p.colorer.cyan.Sprint(kprobe.Args[0].GetFileArg().Path)
 			}
 			return fmt.Sprintf("%s %s %s", event, processInfo, file), nil
+		case "__x64_sys_mount":
+			event := p.colorer.blue.Sprintf("💾 %-7s", "mount")
+			src := ""
+			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
+				src = p.colorer.cyan.Sprint(kprobe.Args[0].GetStringArg())
+			}
+			dst := ""
+			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
+				dst = p.colorer.cyan.Sprint(kprobe.Args[1].GetStringArg())
+			}
+			return fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
 			return fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), nil
