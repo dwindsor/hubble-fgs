@@ -13,7 +13,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
-	sttManager "github.com/isovalent/hubble-fgs/pkg/observer/stt"
+	sttManager "github.com/isovalent/hubble-fgs/pkg/stt"
 )
 
 // StartSensorManager initializes the sensorCtlHandle by spawning a sensor
