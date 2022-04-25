@@ -16,6 +16,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/eventcache"
 	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/filters"
+	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/helpers"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
@@ -41,6 +42,9 @@ func generate(gen *protogen.Plugin, f *protogen.File) error {
 		return err
 	}
 	if err := filters.Generate(gen, f); err != nil {
+		return err
+	}
+	if err := helpers.Generate(gen, f); err != nil {
 		return err
 	}
 	return nil

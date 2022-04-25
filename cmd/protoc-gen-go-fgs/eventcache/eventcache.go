@@ -54,7 +54,7 @@ func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
 	g.P(`func DoHandleEvent(event eventObj, internal *` + fgsProcessInternal + `, labels []string, nodeName string, timestamp *` + timestamp + `) (*` + fgsGER + `, error) {
         switch e := event.(type) {`)
 	for _, msg := range f.Messages {
-		if !isProcessEvent(msg) {
+		if !common.IsProcessEvent(msg) {
 			continue
 		}
 		g.P(`
@@ -82,7 +82,7 @@ func generateEventLabels(g *protogen.GeneratedFile, f *protogen.File) error {
 
         switch e := event.(type) {`)
 	for _, msg := range f.Messages {
-		if !isProcessEvent(msg) || !hasDestinationFields(msg) {
+		if !common.IsProcessEvent(msg) || !hasDestinationFields(msg) {
 			continue
 		}
 		g.P(`
@@ -123,15 +123,6 @@ func Generate(gen *protogen.Plugin, f *protogen.File) error {
 	}
 
 	return nil
-}
-
-// isProcessEvent returns true if the message is an FGS event that has a process field
-func isProcessEvent(msg *protogen.Message) bool {
-	if msg.Desc.Fields().ByName("process") != nil {
-		return true
-	}
-
-	return false
 }
 
 func hasDestinationFields(msg *protogen.Message) bool {

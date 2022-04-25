@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 // NewGeneratedFile creates a new codegen pakage and file in the project
@@ -68,4 +69,63 @@ func Logger(g *protogen.GeneratedFile) string {
 func FmtErrorf(g *protogen.GeneratedFile, fmt_ string, args ...string) string {
 	args = append([]string{fmt.Sprintf("\"%s\"", fmt_)}, args...)
 	return fmt.Sprintf("%s(%s)", GoIdent(g, "fmt", "Errorf"), strings.Join(args, ", "))
+}
+
+// GetEvents returns a list of all messages that are events
+func GetEvents(file *protogen.File) ([]*protogen.Message, error) {
+	var getEventsResponse *protogen.Message
+	for _, msg := range file.Messages {
+		if msg.GoIdent.GoName == "GetEventsResponse" {
+			getEventsResponse = msg
+			break
+		}
+	}
+	if getEventsResponse == nil {
+		return nil, fmt.Errorf("Unable to find GetEventsResponse message")
+	}
+
+	var eventOneof *protogen.Oneof
+	for _, oneof := range getEventsResponse.Oneofs {
+		if oneof.Desc.Name() == "event" {
+			eventOneof = oneof
+			break
+		}
+	}
+	if eventOneof == nil {
+		return nil, fmt.Errorf("Unable to find GetEventsResponse.event")
+	}
+
+	validNames := make(map[string]struct{})
+	for _, type_ := range eventOneof.Fields {
+		name := strings.TrimPrefix(type_.GoIdent.GoName, "GetEventsResponse_")
+		validNames[name] = struct{}{}
+	}
+
+	var events []*protogen.Message
+	for _, msg := range file.Messages {
+		if _, ok := validNames[string(msg.Desc.Name())]; ok {
+			events = append(events, msg)
+		}
+	}
+
+	return events, nil
+}
+
+// EventFieldCheck returns true if the event has the field
+func EventFieldCheck(msg *protogen.Message, field string) bool {
+	if msg.Desc.Fields().ByName(protoreflect.Name(field)) != nil {
+		return true
+	}
+
+	return false
+}
+
+// IsProcessEvent returns true if the message is an FGS event that has a process field
+func IsProcessEvent(msg *protogen.Message) bool {
+	return EventFieldCheck(msg, "process")
+}
+
+// IsParentEvent returns true if the message is an FGS event that has a parent field
+func IsParentEvent(msg *protogen.Message) bool {
+	return EventFieldCheck(msg, "parent")
 }

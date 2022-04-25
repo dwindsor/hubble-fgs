@@ -23,6 +23,7 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/helpers"
 )
 
 // ParseFilterList parses a list of process filters in JSON format into protobuf messages.
@@ -99,70 +100,14 @@ var Filters = []OnBuildFilter{
 
 func GetProcess(event *v1.Event) *fgs.Process {
 	if event == nil {
-		return (*fgs.Process)(nil)
+		return nil
 	}
-	switch ev := event.Event.(type) {
-	case *fgs.GetEventsResponse:
-		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessConnect:
-			return res.ProcessConnect.Process
-		case *fgs.GetEventsResponse_ProcessExec:
-			return res.ProcessExec.Process
-		case *fgs.GetEventsResponse_ProcessListen:
-			return res.ProcessListen.Process
-		case *fgs.GetEventsResponse_Tls:
-			return res.Tls.Process
-		case *fgs.GetEventsResponse_ProcessExit:
-			return res.ProcessExit.Process
-		case *fgs.GetEventsResponse_ProcessCred:
-			return res.ProcessCred.Process
-		case *fgs.GetEventsResponse_ProcessClose:
-			return res.ProcessClose.Process
-		case *fgs.GetEventsResponse_ProcessAccept:
-			return res.ProcessAccept.Process
-		case *fgs.GetEventsResponse_ProcessKprobe:
-			return res.ProcessKprobe.Process
-		case *fgs.GetEventsResponse_ProcessHttp:
-			return res.ProcessHttp.Process
-		case *fgs.GetEventsResponse_ProcessSockStats:
-			return res.ProcessSockStats.Process
-		case *fgs.GetEventsResponse_ProcessTracepoint:
-			return res.ProcessTracepoint.Process
-		case *fgs.GetEventsResponse_ProcessDns:
-			return res.ProcessDns.Process
-		case *fgs.GetEventsResponse_ProcessNetworkBurst:
-			return res.ProcessNetworkBurst.Process
-		default:
-			return (*fgs.Process)(nil)
-		}
-	default:
-		return (*fgs.Process)(nil)
-	}
+	return helpers.ResponseGetProcess(event.Event)
 }
 
 func GetParent(event *v1.Event) *fgs.Process {
 	if event == nil {
-		return (*fgs.Process)(nil)
+		return nil
 	}
-	switch ev := event.Event.(type) {
-	case *fgs.GetEventsResponse:
-		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessConnect:
-			return res.ProcessConnect.Parent
-		case *fgs.GetEventsResponse_ProcessExec:
-			return res.ProcessExec.Parent
-		case *fgs.GetEventsResponse_ProcessListen:
-			return res.ProcessListen.Parent
-		case *fgs.GetEventsResponse_ProcessExit:
-			return res.ProcessExit.Parent
-		case *fgs.GetEventsResponse_ProcessCred:
-			return res.ProcessCred.Process
-		case *fgs.GetEventsResponse_ProcessKprobe:
-			return res.ProcessKprobe.Process
-		default:
-			return (*fgs.Process)(nil)
-		}
-	default:
-		return (*fgs.Process)(nil)
-	}
+	return helpers.ResponseGetParent(event.Event)
 }
