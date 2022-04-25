@@ -15,6 +15,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
 	"github.com/sirupsen/logrus"
 
 	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -139,7 +140,7 @@ func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp, err := correctedStatsEvent(observer.MsgToIPv4Unix(&m))
+	tcp, err := correctedStatsEvent(ipv4.MsgToIPv4Unix(&m))
 	if err != nil {
 		return nil, nil
 	}
@@ -152,7 +153,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp := observer.MsgToIPv4Unix(&m)
+	tcp := ipv4.MsgToIPv4Unix(&m)
 	if tcpInterval > 0 {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)
@@ -173,7 +174,7 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp := observer.MsgToIPv4Unix(&m)
+	tcp := ipv4.MsgToIPv4Unix(&m)
 	return []observer.Event{tcp}, nil
 }
 

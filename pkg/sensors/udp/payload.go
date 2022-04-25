@@ -12,6 +12,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
 	"github.com/yalue/native_endian"
 
 	"golang.org/x/net/dns/dnsmessage"
@@ -152,7 +153,7 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 
 		// Enable DNS cache in core, abstraction breaking but
 		// fix is to do in kernel BPF parser.
-		observer.EnableDns()
+		ipv4.EnableDns()
 		logger.GetLogger().Info("Enable DNS")
 	}
 }

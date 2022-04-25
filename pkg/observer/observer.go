@@ -92,49 +92,6 @@ func (k *Observer) RemoveListener(listener Listener) {
 	}
 }
 
-func MsgToSocketStatsUnix(m *api.MsgSocketStats) api.MsgSocketStatsUnix {
-	return api.MsgSocketStatsUnix{
-		BytesSubmitted:  0,
-		BytesSent:       m.BytesSent,
-		BytesConsumed:   0,
-		BytesReceived:   m.BytesReceived,
-		ConsumedSegs:    0,
-		SegsIn:          m.SegsIn,
-		SubmittedSegs:   0,
-		SegsOut:         m.SegsOut,
-		SRtt:            m.SRtt,
-		RetransmitSegs:  m.RetransmitSegs,
-		RetransmitBytes: m.RetransmitBytes,
-		ToZeroWindow:    m.ToZeroWindow,
-		SkDrop:          m.SkDrop,
-	}
-}
-
-func MsgToIPv4Unix(m *api.MsgIPv4Event) *api.MsgIPv4EventUnix {
-	unix := &api.MsgIPv4EventUnix{}
-
-	unix.Common = m.Common
-	unix.Tuple = m.Tuple
-	unix.Return = m.Return
-	unix.ProcessKey = m.ProcessKey
-	unix.SockCookie = m.SockCookie
-	unix.SocketStats = MsgToSocketStatsUnix(&m.SocketStats)
-	unix.SocketFlags = m.SocketFlags
-	// no need to copy the pad here
-	if enableDns {
-		unix.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
-	}
-	return unix
-}
-
-var (
-	enableDns = false
-)
-
-func EnableDns() {
-	enableDns = true
-}
-
 func (k *Observer) receiveEvent(data []byte, cpu int) {
 	var op = data[0]
 

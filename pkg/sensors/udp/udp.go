@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
 	"github.com/yalue/native_endian"
 
 	"github.com/sirupsen/logrus"
@@ -609,7 +610,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	msgUnix := observer.MsgToIPv4Unix(&m)
+	msgUnix := ipv4.MsgToIPv4Unix(&m)
 	return []observer.Event{msgUnix}, nil
 }
 
