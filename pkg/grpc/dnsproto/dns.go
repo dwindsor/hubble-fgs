@@ -90,7 +90,7 @@ func (dns *Grpc) HandleDnsMessage(msg *dnsapi.MsgIPv4DnsUnix) *fgs.GetEventsResp
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleDnsMessage: Unhandled event")
 	}
 	return res
 }

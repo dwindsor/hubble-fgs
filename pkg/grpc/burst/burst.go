@@ -31,7 +31,7 @@ func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) 
 		}
 
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleProcessNetworkBurstMessage: Unhandled event")
 	}
 	return res
 }

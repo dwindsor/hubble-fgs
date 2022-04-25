@@ -117,7 +117,7 @@ func (tls *Grpc) HandleMessage(msg *tlsapi.MsgTLSEventUnix) *fgs.GetEventsRespon
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleTlsMessage: Unhandled event")
 	}
 	return res
 }

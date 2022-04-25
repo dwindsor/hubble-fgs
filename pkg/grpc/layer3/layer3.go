@@ -429,7 +429,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 		}
 
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleIpMessage: Unhandled event")
 	}
 	return res
 }

@@ -13,7 +13,7 @@ func HandleKfreeSkbMessage(msg *api.MsgKfreeSkbUnix) *fgs.GetEventsResponse {
 	case ops.MSG_OP_KFREE_SKB:
 		logger.GetLogger().Warn("TODO: handle kfree_skb message")
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleKfreeSkbMessage: Unhandled event")
 	}
 	return res
 }

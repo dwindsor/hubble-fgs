@@ -28,7 +28,7 @@ func HandleTestMessage(msg *testapi.MsgTestEventUnix) *fgs.GetEventsResponse {
 			Time:     ktime.ToProto(msg.Common.Ktime),
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleTestMessage: Unhandled event")
 	}
 	return res
 }

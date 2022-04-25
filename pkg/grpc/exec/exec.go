@@ -81,7 +81,7 @@ func (e *Grpc) HandleExecveMessage(msg *fgsAPI.MsgExecveEventUnix) *fgs.GetEvent
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleExecveMessage: Unhandled event")
 	}
 	return res
 }
@@ -137,7 +137,7 @@ func (e *Grpc) HandleExitMessage(msg *fgsAPI.MsgExitEventUnix) *fgs.GetEventsRes
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleExitMessage: Unhandled event")
 	}
 	return res
 }

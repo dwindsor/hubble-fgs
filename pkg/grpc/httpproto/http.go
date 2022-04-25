@@ -146,7 +146,7 @@ func (http *Grpc) HandleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetEventsRes
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleHttpMessage: Unhandled event")
 	}
 	return res
 }

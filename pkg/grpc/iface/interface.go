@@ -44,7 +44,7 @@ func HandleInterfaceMessage(msg *api.MsgInterfaceEventUnix) *fgs.GetEventsRespon
 			}
 		}
 	default:
-		logger.GetLogger().WithField("message", msg).Warn("Unhandled event")
+		logger.GetLogger().WithField("message", msg).Warn("HandleInterfaceMessage: Unhandled event")
 	}
 	return res
 }
