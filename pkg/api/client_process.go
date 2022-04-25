@@ -4,7 +4,26 @@ const (
 	// DOCKER_ID_LENGTH to match BPF side buffer size where we read the
 	// cgroup of the task
 	DOCKER_ID_LENGTH = 128
+
+	MSG_SIZEOF_MAXARG = 100
+	MSG_SIZEOF_EXECVE = 32
+	MSG_SIZEOF_CWD    = 256
+	MSG_SIZEOF_ARGS   = 1024
+	MSG_SIZEOF_BUFFER = MSG_SIZEOF_ARGS +
+		MSG_SIZEOF_CWD +
+		MSG_SIZEOF_EXECVE + MSG_SIZEOF_EXECVE +
+		MSG_SIZEOF_MAXARG
 )
+
+type MsgExec struct {
+	Size  uint32
+	PID   uint32
+	NSPID uint32
+	UID   uint32
+	AUID  uint32
+	Flags uint32
+	Ktime uint64
+}
 
 type MsgExecveKey struct {
 	Pid   uint32
@@ -86,4 +105,15 @@ type MsgProcess struct {
 	Ktime    uint64
 	Filename string
 	Args     string
+}
+
+type MsgExitInfo struct {
+	Code uint32 `align:"code"`
+	Pad1 uint32 `align:"pad"`
+}
+
+type MsgExitEvent struct {
+	Common     MsgCommon    `align:"common"`
+	ProcessKey MsgExecveKey `align:"current"`
+	Info       MsgExitInfo  `align:"info"`
 }

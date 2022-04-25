@@ -16,6 +16,24 @@ const (
 	ReturnArgIndex   = MaxArgsSupported - 1
 )
 
+const (
+	ActionPost       = 0
+	ActionFollowFd   = 1
+	ActionSigKill    = 2
+	ActionUnfollowFd = 3
+	ActionOverride   = 4
+)
+
+type MsgGenericKprobe struct {
+	Common       MsgCommon
+	ProcessKey   MsgExecveKey
+	Namespaces   MsgNamespaces
+	Capabilities MsgCapabilities
+	Id           uint64
+	ThreadId     uint64
+	ActionId     uint64
+}
+
 type MsgGenericKprobeArgPath struct {
 	Index uint64
 	Value string
@@ -174,4 +192,12 @@ type MsgGenericKprobeUnix struct {
 	Action       uint64
 	FuncName     string
 	Args         []MsgGenericKprobeArg
+}
+
+type KprobeArgs struct {
+	Args0 []byte
+	Args1 []byte
+	Args2 []byte
+	Args3 []byte
+	Args4 []byte
 }

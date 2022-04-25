@@ -98,15 +98,6 @@ const (
 )
 
 const (
-	MSG_SIZEOF_MAXARG = 100
-	MSG_SIZEOF_EXECVE = 32
-	MSG_SIZEOF_CWD    = 256
-	MSG_SIZEOF_ARGS   = 1024
-	MSG_SIZEOF_BUFFER = MSG_SIZEOF_ARGS +
-		MSG_SIZEOF_CWD +
-		MSG_SIZEOF_EXECVE + MSG_SIZEOF_EXECVE +
-		MSG_SIZEOF_MAXARG
-
 	SNI_BUFFER_SIZE = 64
 )
 
@@ -315,16 +306,6 @@ func (op OpCode) String() string {
 }
 
 type MsgFGSReady struct{}
-
-type MsgExec struct {
-	Size  uint32
-	PID   uint32
-	NSPID uint32
-	UID   uint32
-	AUID  uint32
-	Flags uint32
-	Ktime uint64
-}
 
 type MsgIPv4Tuple struct {
 	SAddr uint32
@@ -600,17 +581,6 @@ type MsgHttpEvent struct {
 	Request    MsgHttp
 }
 
-type MsgExitInfo struct {
-	Code uint32 `align:"code"`
-	Pad1 uint32 `align:"pad"`
-}
-
-type MsgExitEvent struct {
-	Common     MsgCommon    `align:"common"`
-	ProcessKey MsgExecveKey `align:"current"`
-	Info       MsgExitInfo  `align:"info"`
-}
-
 type MsgExitEventUnix = MsgExitEvent
 
 type MsgCredEvent struct {
@@ -633,34 +603,6 @@ type MsgProcessNetworkBurstEvent struct {
 }
 
 type MsgProcessNetworkBurstEventUnix = MsgProcessNetworkBurstEvent
-
-const (
-	ActionPost       = 0
-	ActionFollowFd   = 1
-	ActionSigKill    = 2
-	ActionUnfollowFd = 3
-	ActionOverride   = 4
-)
-
-type MsgGenericKprobe struct {
-	Common       MsgCommon
-	ProcessKey   MsgExecveKey
-	Namespaces   MsgNamespaces
-	Capabilities MsgCapabilities
-	Id           uint64
-	ThreadId     uint64
-	ActionId     uint64
-}
-
-type MsgGenericTracepoint struct {
-	Common       MsgCommon
-	ProcessKey   MsgExecveKey
-	Namespaces   MsgNamespaces
-	Capabilities MsgCapabilities
-	Id           int64
-	ThreadId     uint64
-	ActionId     uint64
-}
 
 type MsgTestEvent struct {
 	Common MsgCommon `align:"common"`
@@ -696,12 +638,4 @@ type MsgKfreeSkbUnix struct {
 	Common    MsgCommon
 	Calltrace []StackAddr
 	Tuple     vtuple.Impl
-}
-
-type KprobeArgs struct {
-	Args0 []byte
-	Args1 []byte
-	Args2 []byte
-	Args3 []byte
-	Args4 []byte
 }
