@@ -1,9 +1,6 @@
 # Connection has been established and we should see
 # listen, accept and connect sockets.
 
-# We're not expecting anything in http_map yet.
-ASSERT MAP http_map HAS COUNT 0
-
 EGRESS
 	"GET /foo HTTP/1.1\r\n"
 	"Host: foobar.baz\r\n"
@@ -215,6 +212,5 @@ EVENT http
   ? 932
 END
 
-# Close both sockets and verify that maps are cleaned up.
+# Close both sockets.
 CLOSE
-ASSERT MAP http_map HAS COUNT 0
