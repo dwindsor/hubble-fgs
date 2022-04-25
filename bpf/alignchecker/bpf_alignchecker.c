@@ -30,7 +30,6 @@ int main(void)
 
 	// from perf_event_output
 	DECLARE(struct, msg_generic_kprobe, iter);
-	DECLARE(struct, msg_creds, iter);
 	DECLARE(struct, msg_execve_event, iter);
 	DECLARE(struct, msg_exit, iter);
 	DECLARE(struct, msg_http_event, iter);

@@ -11,12 +11,6 @@ struct msg_calltrace {
 	int32_t ret;
 } __attribute__((packed));
 
-struct msg_creds {
-	struct msg_common common;
-	struct msg_execve_key current;
-	struct msg_capabilities caps;
-};
-
 struct event {
 	int event;
 };
