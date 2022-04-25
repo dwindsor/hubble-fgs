@@ -1,22 +1,5 @@
 #include "vmlinux.h"
 
-#ifndef bpf_map_def
-struct bpf_map_def {
-	unsigned int type;
-	unsigned int key_size;
-	unsigned int value_size;
-	unsigned int max_entries;
-	unsigned int map_flags;
-};
-#endif
-
-struct bpf_map_def __attribute__((section("maps"), used)) https_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 128,
-	.max_entries = 1,
-};
-
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
@@ -42,6 +25,13 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 #define TLS_HTTPS (1 << 16)
+
+struct bpf_map_def __attribute__((section("maps"), used)) https_filter_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = 128,
+	.max_entries = 1,
+};
 
 static inline __attribute__((always_inline)) void
 sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key)

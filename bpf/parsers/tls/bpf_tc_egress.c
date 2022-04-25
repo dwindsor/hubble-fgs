@@ -1,16 +1,6 @@
 #include "vmlinux.h"
 #include "api.h"
 
-#ifndef bpf_map_def
-struct bpf_map_def {
-	unsigned int type;
-	unsigned int key_size;
-	unsigned int value_size;
-	unsigned int max_entries;
-	unsigned int map_flags;
-};
-#endif
-
 #include "egress.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";

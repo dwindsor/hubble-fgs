@@ -2,6 +2,7 @@
 #define __BPF_BURST_PROCESS_H__
 
 #include "../lib/bpf_helpers.h"
+#include "../lib/networkmsg.h"
 
 #define MAX_UDP_PROCESSES 32768
 

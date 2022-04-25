@@ -2,6 +2,8 @@
 #define __TLS_MAP_H
 
 #include "../bpf_sockops.h"
+#include "../../lib/tlsmsg.h"
+#include "../../lib/tlsmsg.h"
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_calls = {
 	.type = BPF_MAP_TYPE_PROG_ARRAY,

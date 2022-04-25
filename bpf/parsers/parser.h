@@ -3,6 +3,8 @@
 
 #include "api.h"
 #include "../networking/netns.h"
+#include "../lib/tlsmsg.h"
+#include "../lib/httpmsg.h"
 
 #ifdef SK_MSG
 typedef struct sk_msg_md ctx_md;

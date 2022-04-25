@@ -1,0 +1,142 @@
+#ifndef _TLSMSG__
+#define _TLSMSG__
+
+#include "networkmsg.h"
+
+/* TLS Flags */
+#define TLS_COPY_ERROR		  0x001
+#define TLS_MAX_TLVS		  0x002
+#define TLS_FRAME_TOO_LARGE	  0x004
+#define TLS_HELLO_MSG_MISS	  0x008
+#define TLS_CIPHER_ERROR	  0x010
+#define TLS_CIPHER_TOO_LARGE	  0x020
+#define TLS_COMPRESSION_ERROR	  0x040
+#define TLS_COMPRESSION_TOO_LARGE 0x080
+#define TLS_EXT_ERROR		  0x100
+#define TLS_EXT_TOO_LARGE	  0x200
+#define TLS_VERSION		  0x400
+#define TLS_CERT		  0x800
+#define TLS_HANDSHAKE_MSG_MISS	  0x1000
+
+#define TLS_HTTP_VERSION 0xFFFF
+
+#define EXT_SERVER_NAME_LENGTH 64
+#define EXT_VERSION_LENGTH     16
+
+/* A length-value, with a fixed max length. */
+#define FLV(max_len)                                                           \
+	struct {                                                               \
+		__u8 length;                                                   \
+		__u8 value[(max_len)];                                         \
+	}
+
+#define FLV_COPY(_tlv, _from, _len)                                            \
+	do {                                                                   \
+		(_tlv).length = (_len);                                        \
+		memcpy((_tlv).value, (_from), sizeof((_tlv).value));           \
+	} while (0)
+
+struct msg_tls {
+	__u16 version;
+	__u16 length;
+	__u8 type;
+	__u8 subtype;
+	__u16 negotiated_version;
+	__u32 flags;
+	__u32 bytes;
+	__u8 alert_level;
+	__u8 alert_description;
+
+	FLV(64) flv_session_id;
+	FLV(64) flv_cipher;
+	FLV(EXT_SERVER_NAME_LENGTH) flv_sni;
+	FLV(EXT_VERSION_LENGTH) flv_supported_versions;
+} __attribute__((packed));
+
+#define SOCKET_TLS_DONE 0x0001
+
+struct msg_tls_ipv4 {
+	__u32 saddr;
+	__u32 daddr;
+	/* Both ports are in host byte-order */
+	__u16 dport;
+	__u16 sport;
+	__u32 remaining;
+	__u64 uid;
+} __attribute__((packed));
+
+struct msg_tls_event {
+	struct msg_common common;
+	struct msg_tls_ipv4 tuple;
+	struct msg_tls clienthello;
+	struct msg_tls serverhello;
+	struct msg_execve_key execve;
+} __attribute__((packed));
+
+struct msg_tls_cont_event {
+	__u8 op;
+	struct msg_tls_ipv4 tuple;
+	__u32 payload_size; /* Payload size, or if zero an error follows */
+	__u8 payload[0];
+} __attribute__((packed));
+
+struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__s32),
+	.value_size = sizeof(__s64),
+	.max_entries = 1,
+};
+
+#ifdef BTF
+struct {
+	unsigned int (*type)[BPF_MAP_TYPE_HASH];
+	unsigned int (*key_size)[sizeof(struct msg_tls_ipv4)];
+	unsigned int (*value_size)[sizeof(struct socketmap_value)];
+	unsigned int (*max_entries)[32768];
+} socket_map __attribute__((section((".maps")), used));
+#else
+struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(struct msg_tls_ipv4),
+	.value_size = sizeof(struct socketmap_value),
+	.max_entries = 32768,
+};
+#endif // BTF
+
+static inline __attribute__((always_inline)) int
+is_tuple_local(struct msg_tls_ipv4 *tuple)
+{
+	return (tuple->daddr & 0xff) == 127 || // daddr lo addr
+	       (tuple->saddr & 0xff) == 127 || // saddr lo addr
+	       tuple->daddr == 0; // listening socket no addr always local
+}
+
+static inline __attribute__((always_inline)) void
+add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
+{
+	int err = map_update_elem(&socket_map, tuple, v, 0);
+	int zero = 0;
+	__s64 *cntr;
+
+	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
+		*cntr = *cntr + 1;
+}
+
+static inline __attribute__((always_inline)) void
+del_socketmap(struct msg_tls_ipv4 *tuple)
+{
+	int err = map_delete_elem(&socket_map, tuple);
+	int zero = 0;
+	__s64 *cntr;
+
+	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
+		*cntr = *cntr - 1;
+}
+
+static inline __attribute__((always_inline)) struct socketmap_value *
+lookup_socketmap(struct msg_tls_ipv4 *tuple)
+{
+	return map_lookup_elem(&socket_map, tuple);
+}
+
+#endif

@@ -1,6 +1,8 @@
 #ifndef __BPF_HELPERS_
 #define __BPF_HELPERS_
 
+#include "api.h"
+
 #ifndef __READ_ONCE
 #define __READ_ONCE(x) (*(volatile typeof(x) *)&x)
 #endif
@@ -27,6 +29,40 @@
 	})
 #endif
 
+#define XSTR(s) STR(s)
+#define STR(s)	#s
+
+#define _(P) (__builtin_preserve_access_index(P))
+
+/*
+ * Convenience macro to check that field actually exists in target kernel's.
+ * Returns:
+ *    1, if matching field is present in target kernel;
+ *    0, if no matching field found.
+ */
+#define bpf_core_field_exists(field)                                           \
+	__builtin_preserve_field_info(field, BPF_FIELD_EXISTS)
+
+/* second argument to __builtin_preserve_enum_value() built-in */
+enum bpf_enum_value_kind {
+	BPF_ENUMVAL_EXISTS = 0, /* enum value existence in kernel */
+	BPF_ENUMVAL_VALUE = 1, /* enum value value relocation */
+};
+
+/*
+ * Convenience macro to get the integer value of an enumerator value in
+ * a target kernel.
+ * Returns:
+ *    64-bit value, if specified enum type and its enumerator value are
+ *    present in target kernel's BTF;
+ *    0, if no matching enum and/or enum value within that enum is found.
+ */
+#define bpf_core_enum_value(enum_type, enum_value)                             \
+	__builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value,        \
+				      BPF_ENUMVAL_VALUE)
+
+#include "bpf_core_read.h"
+
 /* relax_verifier is a dummy helper call to introduce a pruning checkpoint
  * to help relax the verifier to avoid reaching complexity limits.
  */
@@ -34,4 +70,9 @@ static inline __attribute__((always_inline)) void relax_verifier(void)
 {
 	volatile int __attribute__((__unused__)) id = get_smp_processor_id();
 }
-#endif
+
+static inline void compiler_barrier(void)
+{
+	asm volatile("" ::: "memory");
+}
+#endif //__BPF_HELPERS_

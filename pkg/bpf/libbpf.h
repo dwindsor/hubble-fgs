@@ -400,20 +400,6 @@ LIBBPF_API bool bpf_program__is_extension(const struct bpf_program *prog);
 LIBBPF_API bool bpf_program__is_sk_lookup(const struct bpf_program *prog);
 
 /*
- * No need for __attribute__((packed)), all members of 'bpf_map_def'
- * are all aligned.  In addition, using __attribute__((packed))
- * would trigger a -Wpacked warning message, and lead to an error
- * if -Werror is set.
- */
-struct bpf_map_def {
-	unsigned int type;
-	unsigned int key_size;
-	unsigned int value_size;
-	unsigned int max_entries;
-	unsigned int map_flags;
-};
-
-/*
  * The 'struct bpf_map' in include/linux/bpf.h is internal to the kernel,
  * so no need to worry about a name clash.
  */

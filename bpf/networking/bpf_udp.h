@@ -2,6 +2,7 @@
 #define __BPF_UDP_H__
 
 #include "../lib/bpf_helpers.h"
+#include "../lib/networkmsg.h"
 
 /* Maximum number of simultaniously existing UDP sockets that we track
  * statistics for.

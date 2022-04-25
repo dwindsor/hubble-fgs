@@ -1,15 +1,5 @@
 #include "vmlinux.h"
 
-#ifndef bpf_map_def
-struct bpf_map_def {
-	unsigned int type;
-	unsigned int key_size;
-	unsigned int value_size;
-	unsigned int max_entries;
-	unsigned int map_flags;
-};
-#endif
-
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
@@ -17,6 +7,7 @@ struct bpf_map_def {
 #include "bpf_network_helpers.h"
 #include "bpf_burst_process.h"
 #include "netns.h"
+#include "tlsmsg.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION

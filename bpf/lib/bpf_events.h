@@ -1,36 +1,13 @@
 #ifndef _BPF_EVENTS_H
 #define _BPF_EVENTS_H
 
-#define _(P) (__builtin_preserve_access_index(P))
+#include "hubble_msg.h"
+#include "bpf_helpers.h"
+#include "generic.h"
 
-/*
- * Convenience macro to check that field actually exists in target kernel's.
- * Returns:
- *    1, if matching field is present in target kernel;
- *    0, if no matching field found.
- */
-#define bpf_core_field_exists(field)                                           \
-	__builtin_preserve_field_info(field, BPF_FIELD_EXISTS)
-
-/* second argument to __builtin_preserve_enum_value() built-in */
-enum bpf_enum_value_kind {
-	BPF_ENUMVAL_EXISTS = 0, /* enum value existence in kernel */
-	BPF_ENUMVAL_VALUE = 1, /* enum value value relocation */
-};
-
-/*
- * Convenience macro to get the integer value of an enumerator value in
- * a target kernel.
- * Returns:
- *    64-bit value, if specified enum type and its enumerator value are
- *    present in target kernel's BTF;
- *    0, if no matching enum and/or enum value within that enum is found.
- */
-#define bpf_core_enum_value(enum_type, enum_value)                             \
-	__builtin_preserve_enum_value(*(typeof(enum_type) *)enum_value,        \
-				      BPF_ENUMVAL_VALUE)
-
-#include "bpf_core_read.h"
+/* get_full_path flags */
+#define UNRESOLVED_MOUNT_POINTS	   0x01
+#define UNRESOLVED_PATH_COMPONENTS 0x02
 
 #ifdef __LARGE_BPF_PROG
 #define PROBE_CWD_READ_ITERATIONS 32
@@ -67,69 +44,6 @@ enum bpf_enum_value_kind {
 #define M_REPEAT__(N, X) M_EXPAND(M_REPEAT_##N)(X)
 #define M_REPEAT_(N, X)	 M_REPEAT__(N, X)
 #define M_REPEAT(N, X)	 M_REPEAT_(M_EXPAND(N), X)
-
-/* Global variables that are rewritten at program load time.
- *
- * These are special in that they're represented initially as
- * map value loads from the .rodata map, e.g. pointers to a map,
- * but we rewrite them into constant loads. This means they have
- * to be accessed using the address-of (&) operator and cannot be
- * dereferenced. Hence the wrapping into union to stop direct use.
- *
- * Example usage:
- *
- * GLOBAL_U32 g_foo;
- * ..
- * void func()
- * {
- *       ...
- *      uint32 foo = READ_GLOBAL(g_foo);
- * }
- */
-
-#define GLOBAL_U16                                                             \
-	volatile const union {                                                 \
-		uint16_t __typ;                                                \
-		uint64_t __val;                                                \
-	}
-#define GLOBAL_I16                                                             \
-	volatile const union {                                                 \
-		int16_t __typ;                                                 \
-		uint64_t __val;                                                \
-	}
-#define GLOBAL_U32                                                             \
-	volatile const union {                                                 \
-		uint32_t __typ;                                                \
-		uint64_t __val;                                                \
-	}
-#define GLOBAL_I32                                                             \
-	volatile const union {                                                 \
-		int32_t __typ;                                                 \
-		uint64_t __val;                                                \
-	}
-#define GLOBAL_U64                                                             \
-	volatile const union {                                                 \
-		uint64_t __typ;                                                \
-		uint64_t __val;                                                \
-	}
-#define GLOBAL_I64                                                             \
-	volatile const union {                                                 \
-		int64_t __typ;                                                 \
-		uint64_t __val;                                                \
-	}
-
-/* Macro to read the value of a global variable declared using GLOBAL_XXX above. */
-#define READ_GLOBAL(g)                                                         \
-	({                                                                     \
-		typeof((g).__typ) x =                                          \
-			(typeof((g).__typ))(uint64_t)(&((g).__val));           \
-		x;                                                             \
-	})
-
-static inline void compiler_barrier(void)
-{
-	asm volatile("" ::: "memory");
-}
 
 static inline __attribute__((always_inline)) int64_t
 validate_arg_size(int64_t size)
@@ -1066,41 +980,5 @@ __event_get_task_info(struct msg_execve_event *msg, __u8 op, bool walker,
 #endif
 	get_caps(&(msg->caps), task);
 	get_namespaces(&(msg->ns), task);
-}
-
-static inline __attribute__((always_inline)) void
-add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
-{
-	int err = map_update_elem(&socket_map, tuple, v, 0);
-	int zero = 0;
-	__s64 *cntr;
-
-	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
-		*cntr = *cntr + 1;
-}
-
-static inline __attribute__((always_inline)) void
-del_socketmap(struct msg_tls_ipv4 *tuple)
-{
-	int err = map_delete_elem(&socket_map, tuple);
-	int zero = 0;
-	__s64 *cntr;
-
-	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
-		*cntr = *cntr - 1;
-}
-
-static inline __attribute__((always_inline)) struct socketmap_value *
-lookup_socketmap(struct msg_tls_ipv4 *tuple)
-{
-	return map_lookup_elem(&socket_map, tuple);
-}
-
-static inline __attribute__((always_inline)) int
-is_tuple_local(struct msg_tls_ipv4 *tuple)
-{
-	return (tuple->daddr & 0xff) == 127 || // daddr lo addr
-	       (tuple->saddr & 0xff) == 127 || // saddr lo addr
-	       tuple->daddr == 0; // listening socket no addr always local
 }
 #endif // _BPF_EVENTS_H

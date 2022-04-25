@@ -1,0 +1,86 @@
+#ifndef _NETWORKMSG__
+#define _NETWORKMSG__
+
+/* Socket Flags */
+#define SOCKFLAGS_TYPE_UNKNOWN 0x0
+#define SOCKFLAGS_TYPE_CONNECT 0x1
+#define SOCKFLAGS_TYPE_ACCEPT  0x2
+#define SOCKFLAGS_TYPE_LISTEN  0x4
+
+#define SOCKFLAGS_TYPE_MASK 0x7
+
+struct msg_ipv4_tuple {
+	__u32 saddr;
+	__u32 daddr;
+	__u16 dport;
+	__u16 sport;
+	__u8 proto;
+	__u32 post_daddr;
+	__u16 post_dport;
+	__u8 pad[5];
+} __attribute__((packed));
+
+struct msg_socket_stats {
+	__u64 bytes_sent;
+	__u64 bytes_received;
+	__u32 segs_in;
+	__u32 segs_out;
+	__u32 srtt;
+	__u32 retranssegs;
+	__u64 retransbytes;
+	__u32 tozerowin;
+	__u32 sk_drops;
+} __attribute__((packed));
+
+// separate data structs for ipv4 and ipv6
+struct msg_ipv4_event {
+	struct msg_common common;
+	struct msg_ipv4_tuple tuple;
+	unsigned long int ret;
+	struct msg_execve_key key;
+	__u64 socket_cookie;
+	struct msg_socket_stats stats;
+	__u32 socket_flags;
+	__u32 pad;
+} __attribute__((packed));
+
+struct msg_ipv4_key {
+	__u32 pid;
+	__u32 saddr;
+	__u16 sport;
+	__u16 pad;
+} __attribute__((packed));
+
+struct msg_process_network_burst_event {
+	struct msg_common common;
+	struct msg_execve_key key;
+	__u32 protocol;
+	__u32 burst_start_dir;
+	__u64 window_size;
+	__u64 hist_avg;
+	__u64 hist_trigger;
+	__u64 window_avg;
+};
+
+struct socketmap_value {
+	struct msg_execve_key key;
+	__u32 zero_window;
+	__u32 socket_flags;
+	__u64 last_time;
+	__u64 sent;
+	__u64 received;
+};
+
+struct msg_kfree_skb {
+	struct msg_common common;
+	struct msg_calltrace calltrace;
+	struct msg_ipv4_tuple tuple;
+} __attribute__((packed));
+
+struct bpf_map_def __attribute__((section("maps"), used)) socket_map_stats = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__s32),
+	.value_size = sizeof(__s64),
+	.max_entries = 1,
+};
+#endif // _NETWORKMSG__
