@@ -251,14 +251,6 @@ struct execve_map_value {
 _Static_assert(sizeof(struct execve_map_value) % 8 == 0,
 	       "struct execve_map_value should have size multiple of 8 bytes");
 
-#ifdef BTF
-struct {
-	unsigned int (*type)[BPF_MAP_TYPE_PERCPU_ARRAY];
-	unsigned int (*key_size)[sizeof(__u32)];
-	unsigned int (*value_size)[sizeof(struct msg_execve_event)];
-	unsigned int (*max_entries)[1];
-} execve_msg_heap_map __attribute__((section((".maps")), used));
-#else
 struct bpf_map_def __attribute__((section("maps"), used))
 execve_msg_heap_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
@@ -266,23 +258,13 @@ execve_msg_heap_map = {
 	.value_size = sizeof(struct msg_execve_event),
 	.max_entries = 1,
 };
-#endif // BTF
 
-#ifdef BTF
-struct {
-	unsigned int (*type)[BPF_MAP_TYPE_HASH];
-	unsigned int (*key_size)[sizeof(__u32)];
-	unsigned int (*value_size)[sizeof(struct execve_map_value)];
-	unsigned int (*max_entries)[32768];
-} execve_map __attribute__((section((".maps")), used));
-#else
 struct bpf_map_def __attribute__((section("maps"), used)) execve_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(__u32),
 	.value_size = sizeof(struct execve_map_value),
 	.max_entries = 32768,
 };
-#endif // BTF
 
 struct bpf_map_def __attribute__((section("maps"), used)) execve_map_stats = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,

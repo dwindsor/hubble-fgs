@@ -87,21 +87,12 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
 	.max_entries = 1,
 };
 
-#ifdef BTF
-struct {
-	unsigned int (*type)[BPF_MAP_TYPE_HASH];
-	unsigned int (*key_size)[sizeof(struct msg_tls_ipv4)];
-	unsigned int (*value_size)[sizeof(struct socketmap_value)];
-	unsigned int (*max_entries)[32768];
-} socket_map __attribute__((section((".maps")), used));
-#else
 struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
 	.type = BPF_MAP_TYPE_HASH,
 	.key_size = sizeof(struct msg_tls_ipv4),
 	.value_size = sizeof(struct socketmap_value),
 	.max_entries = 32768,
 };
-#endif // BTF
 
 static inline __attribute__((always_inline)) int
 is_tuple_local(struct msg_tls_ipv4 *tuple)

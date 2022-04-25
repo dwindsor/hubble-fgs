@@ -15,18 +15,9 @@ struct event {
 	int event;
 };
 
-#ifdef BTF
-struct {
-	unsigned int (*type)[BPF_MAP_TYPE_PERF_EVENT_ARRAY];
-	unsigned int (*key_size)[sizeof(int)];
-	unsigned int (*value_size)[sizeof(struct event)];
-} tcpmon_map __attribute__((section((".maps")), used));
-#else
 struct bpf_map_def __attribute__((section("maps"), used)) tcpmon_map = {
 	.type = BPF_MAP_TYPE_PERF_EVENT_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct event),
 };
-#endif // BTF
-
 #endif // __HUBBLE_MSG_
