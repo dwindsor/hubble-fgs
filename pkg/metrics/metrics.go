@@ -21,6 +21,7 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/helpers"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -487,39 +488,10 @@ func handleProcessedEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
 	case *fgs.GetEventsResponse:
 		binary, pod, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
-		switch ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessConnect:
-			eventType = fgs.EventType_PROCESS_CONNECT.String()
-		case *fgs.GetEventsResponse_ProcessClose:
-			eventType = fgs.EventType_PROCESS_CLOSE.String()
-		case *fgs.GetEventsResponse_ProcessExec:
-			eventType = fgs.EventType_PROCESS_EXEC.String()
-		case *fgs.GetEventsResponse_ProcessListen:
-			eventType = fgs.EventType_PROCESS_LISTEN.String()
-		case *fgs.GetEventsResponse_ProcessHttp:
-			eventType = fgs.EventType_PROCESS_HTTP.String()
-		case *fgs.GetEventsResponse_Tls:
-			eventType = fgs.EventType_PROCESS_TLS.String()
-		case *fgs.GetEventsResponse_ProcessExit:
-			eventType = fgs.EventType_PROCESS_EXIT.String()
-		case *fgs.GetEventsResponse_ProcessCred:
-			eventType = fgs.EventType_PROCESS_CRED.String()
-		case *fgs.GetEventsResponse_ProcessAccept:
-			eventType = fgs.EventType_PROCESS_ACCEPT.String()
-		case *fgs.GetEventsResponse_ProcessKprobe:
-			eventType = fgs.EventType_PROCESS_KPROBE.String()
-		case *fgs.GetEventsResponse_ProcessTracepoint:
-			eventType = fgs.EventType_PROCESS_TRACEPOINT.String()
-		case *fgs.GetEventsResponse_ProcessSockStats:
-			eventType = fgs.EventType_PROCESS_SOCKSTATS.String()
-		case *fgs.GetEventsResponse_InterfaceStats:
-			eventType = fgs.EventType_INTERFACE_STATS.String()
-		case *fgs.GetEventsResponse_ProcessDns:
-			eventType = fgs.EventType_PROCESS_DNS.String()
-		case *fgs.GetEventsResponse_ProcessNetworkBurst:
-			eventType = fgs.EventType_PROCESS_NETWORK_BURST.String()
-		default:
-			logger.GetLogger().WithField("event", processedEvent).Warn("metrics: handleProcessedEvent: unhandled event")
+		var err error
+		eventType, err = helpers.EventTypeString(ev.Event)
+		if err != nil {
+			logger.GetLogger().WithField("event", processedEvent).WithError(err).Warn("metrics: handleProcessedEvent: unhandled event")
 			eventType = "unhandled"
 		}
 	default:

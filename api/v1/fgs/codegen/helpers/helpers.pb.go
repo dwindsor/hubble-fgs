@@ -14,6 +14,7 @@
 package helpers
 
 import (
+	fmt "fmt"
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
 )
 
@@ -22,6 +23,45 @@ type event interface {
 }
 type response interface {
 	// Represents a generic Tetragon gRPC response
+}
+
+// EventTypeString returns an event's type as a string
+func EventTypeString(event event) (string, error) {
+	if event == nil {
+		return "", fmt.Errorf("Event is nil")
+	}
+	switch event.(type) {
+	case *fgs.GetEventsResponse_ProcessConnect:
+		return fgs.EventType_PROCESS_CONNECT.String(), nil
+	case *fgs.GetEventsResponse_ProcessClose:
+		return fgs.EventType_PROCESS_CLOSE.String(), nil
+	case *fgs.GetEventsResponse_ProcessListen:
+		return fgs.EventType_PROCESS_LISTEN.String(), nil
+	case *fgs.GetEventsResponse_ProcessAccept:
+		return fgs.EventType_PROCESS_ACCEPT.String(), nil
+	case *fgs.GetEventsResponse_ProcessExec:
+		return fgs.EventType_PROCESS_EXEC.String(), nil
+	case *fgs.GetEventsResponse_ProcessExit:
+		return fgs.EventType_PROCESS_EXIT.String(), nil
+	case *fgs.GetEventsResponse_ProcessCred:
+		return fgs.EventType_PROCESS_CRED.String(), nil
+	case *fgs.GetEventsResponse_ProcessKprobe:
+		return fgs.EventType_PROCESS_KPROBE.String(), nil
+	case *fgs.GetEventsResponse_ProcessTracepoint:
+		return fgs.EventType_PROCESS_TRACEPOINT.String(), nil
+	case *fgs.GetEventsResponse_ProcessSockStats:
+		return fgs.EventType_PROCESS_SOCKSTATS.String(), nil
+	case *fgs.GetEventsResponse_Tls:
+		return fgs.EventType_PROCESS_TLS.String(), nil
+	case *fgs.GetEventsResponse_ProcessHttp:
+		return fgs.EventType_PROCESS_HTTP.String(), nil
+	case *fgs.GetEventsResponse_ProcessDns:
+		return fgs.EventType_PROCESS_DNS.String(), nil
+	case *fgs.GetEventsResponse_ProcessNetworkBurst:
+		return fgs.EventType_PROCESS_NETWORK_BURST.String(), nil
+
+	}
+	return "", fmt.Errorf("Unhandled event type %T", event)
 }
 
 // EventGetProcess gets the process field for an event if it exists

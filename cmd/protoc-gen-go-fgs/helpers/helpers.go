@@ -14,9 +14,54 @@ package helpers
 import (
 	"fmt"
 
+	"github.com/iancoleman/strcase"
 	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/common"
 	"google.golang.org/protobuf/compiler/protogen"
 )
+
+func generateEventTypeString(g *protogen.GeneratedFile, f *protogen.File) error {
+	events, err := common.GetEvents(f)
+	if err != nil {
+		return err
+	}
+
+	doCases := func() string {
+		var ret string
+		for _, msg := range events {
+			if !common.IsProcessEvent(msg) {
+				continue
+			}
+
+			resGoIdent := common.FgsApiIdent(g, fmt.Sprintf("GetEventsResponse_%s", msg.GoIdent.GoName))
+			typeName := strcase.ToScreamingSnake(msg.GoIdent.GoName)
+			if typeName == "TLS" {
+				typeName = "PROCESS_TLS"
+			}
+			if typeName == "PROCESS_SOCK_STATS" {
+				typeName = "PROCESS_SOCKSTATS"
+			}
+			typeGoIdent := common.FgsApiIdent(g, fmt.Sprintf("EventType_%s", typeName))
+
+			ret += `case *` + resGoIdent + `:
+                return ` + typeGoIdent + `.String(), nil
+            `
+		}
+		return ret
+	}
+
+	g.P(`// EventTypeString returns an event's type as a string
+    func EventTypeString(event event) (string, error) {
+        if event == nil {
+            return "", ` + common.FmtErrorf(g, "Event is nil") + `
+        }
+        switch event.(type) {
+            ` + doCases() + `
+        }
+        return "", ` + common.FmtErrorf(g, "Unhandled event type %T", "event") + `
+	 }`)
+
+	return nil
+}
 
 func generateResponseGetProcess(g *protogen.GeneratedFile, f *protogen.File) error {
 	fgsProcess := common.FgsApiIdent(g, "Process")
@@ -143,6 +188,10 @@ func Generate(gen *protogen.Plugin, f *protogen.File) error {
 	g.P(`type response interface {
         // Represents a generic Tetragon gRPC response
     }`)
+
+	if err := generateEventTypeString(g, f); err != nil {
+		return err
+	}
 
 	if err := generateEventGetProcess(g, f); err != nil {
 		return err
