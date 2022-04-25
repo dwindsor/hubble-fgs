@@ -2,6 +2,7 @@
 #define _PROCESS__
 
 #include "hubble_msg.h"
+#include "bpf_helpers.h"
 
 /* These are your sizing variables. Because we are running in BPF and must
  * be bounded in terms of loop iterations and memory usage we have to set
@@ -248,9 +249,6 @@ struct execve_map_value {
 	struct msg_capabilities caps;
 } __attribute__((packed)) __attribute__((aligned(8)));
 
-_Static_assert(sizeof(struct execve_map_value) % 8 == 0,
-	       "struct execve_map_value should have size multiple of 8 bytes");
-
 struct bpf_map_def __attribute__((section("maps"), used))
 execve_msg_heap_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
@@ -272,4 +270,77 @@ struct bpf_map_def __attribute__((section("maps"), used)) execve_map_stats = {
 	.value_size = sizeof(__s64),
 	.max_entries = 1,
 };
+
+struct bpf_map_def __attribute__((section("maps"), used)) execve_val = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__s32),
+	.value_size = sizeof(struct execve_map_value),
+	.max_entries = 1,
+};
+
+static inline __attribute__((always_inline)) int64_t
+validate_msg_execve_size(int64_t size)
+{
+	size_t max = sizeof(struct msg_execve_event);
+
+	/* validate_msg_size() calls need to happen near caller using the
+	 * size. Otherwise, depending on kernel version, the verifier may
+	 * lose track of the size bounds. Place a compiler barrier here
+	 * otherwise clang will likely place this check near other msg
+	 * population calls which can be significant distance away resulting
+	 * in losing bounds on older kernels where bounds are not tracked
+	 * as rigorously.
+	 */
+	compiler_barrier();
+	if (size > max)
+		size = max;
+	if (size < 1)
+		size = offsetof(struct msg_execve_event, buffer);
+	compiler_barrier();
+	return size;
+}
+
+// execve_map_get will look up if pid exists and return it if it does. If it
+// does not, it will create a new one and return it.
+static inline __attribute__((always_inline)) struct execve_map_value *
+execve_map_get(__u32 pid)
+{
+	struct execve_map_value *event;
+
+	event = map_lookup_elem(&execve_map, &pid);
+	if (!event) {
+		struct execve_map_value *value;
+		int err, zero = 0;
+		__s64 *cntr;
+
+		value = map_lookup_elem(&execve_val, &zero);
+		if (!value)
+			return 0;
+
+		memset(value, 0, sizeof(struct execve_map_value));
+		err = map_update_elem(&execve_map, &pid, value, 0);
+		if (!err && (cntr = map_lookup_elem(&execve_map_stats, &zero)))
+			*cntr = *cntr + 1;
+		event = map_lookup_elem(&execve_map, &pid);
+	}
+	return event;
+}
+
+static inline __attribute__((always_inline)) struct execve_map_value *
+execve_map_get_noinit(__u32 pid)
+{
+	return map_lookup_elem(&execve_map, &pid);
+}
+
+static inline __attribute__((always_inline)) void execve_map_delete(__u32 pid)
+{
+	int err = map_delete_elem(&execve_map, &pid);
+	int zero = 0;
+	__s64 *cntr;
+	if (!err && (cntr = map_lookup_elem(&execve_map_stats, &zero)))
+		*cntr = *cntr - 1;
+}
+
+_Static_assert(sizeof(struct execve_map_value) % 8 == 0,
+	       "struct execve_map_value should have size multiple of 8 bytes");
 #endif //_PROCESS__

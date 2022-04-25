@@ -2,6 +2,7 @@
 #include "bpf_events.h"
 #include "skb.h"
 #include "sock.h"
+#include "../bpf_process_event.h"
 
 /* Type IDs form API with user space generickprobe.go */
 enum { filter = -2,
