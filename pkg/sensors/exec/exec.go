@@ -7,6 +7,7 @@ import (
 	"path/filepath"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -161,6 +162,6 @@ func AddExec() {
 	}
 	sensors.RegisterProbeType("execve", execveProbe)
 
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_EXECVE, handleExecve)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_EXIT, handleExit)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_EXECVE, handleExecve)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_EXIT, handleExit)
 }

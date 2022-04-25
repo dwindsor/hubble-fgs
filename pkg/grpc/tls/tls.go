@@ -4,6 +4,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -104,7 +105,7 @@ func (tls *Grpc) getTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 func (tls *Grpc) HandleMessage(msg *api.MsgTLSEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case api.MSG_OP_TLS:
+	case ops.MSG_OP_TLS:
 		t := tls.getTLS(msg)
 		if t != nil {
 			res = &fgs.GetEventsResponse{

@@ -8,6 +8,7 @@ import (
 	"unsafe"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -37,7 +38,7 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.Event, error
 	var p dnsmessage.Parser
 
 	// Annotate msg with user space parser op type
-	m.Common.Op = api.MSG_OP_IPV4_DNS
+	m.Common.Op = ops.MSG_OP_IPV4_DNS
 
 	buf := make([]byte, int(m.Common.Size)-int(unsafe.Sizeof(m)))
 

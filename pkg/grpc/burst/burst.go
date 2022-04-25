@@ -6,6 +6,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
@@ -20,7 +21,7 @@ var (
 func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case api.MSG_OP_IPV4_PROCESS_BURST:
+	case ops.MSG_OP_IPV4_PROCESS_BURST:
 		b := getProcessNetworkBurst(msg)
 		if b != nil {
 			res = &fgs.GetEventsResponse{

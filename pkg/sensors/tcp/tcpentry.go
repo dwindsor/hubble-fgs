@@ -22,6 +22,7 @@ import (
 	"unsafe"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -159,9 +160,9 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 				}
 
 				if entry.state == TCP_PROC_STATE_LISTEN {
-					tcp.Common.Op = api.MsgOpIPv4Listen
+					tcp.Common.Op = ops.MsgOpIPv4Listen
 				} else {
-					tcp.Common.Op = api.MsgOpIPv4TCPConnectReturn
+					tcp.Common.Op = ops.MsgOpIPv4TCPConnectReturn
 				}
 
 				if pushEvents {

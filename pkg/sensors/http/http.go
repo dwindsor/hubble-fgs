@@ -19,6 +19,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -190,7 +191,7 @@ func init() {
 	sensors.RegisterProbeType("http_skmsg", http)
 
 	sensors.RegisterTracingSensorsAtInit(http.name, http)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_HTTP, handleHTTP)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_HTTP, handleHTTP)
 }
 
 /* Add sensor from CRD */

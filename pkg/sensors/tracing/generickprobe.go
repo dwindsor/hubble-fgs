@@ -22,6 +22,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/idtable"
@@ -47,7 +48,7 @@ func init() {
 	}
 	sensors.RegisterProbeType("generic_kprobe", kprobe)
 	sensors.RegisterTracingSensorsAtInit(kprobe.name, kprobe)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_GENERIC_KPROBE, handleGenericKprobe)
 }
 
 const (

@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
@@ -99,7 +100,7 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 	r := bytes.NewReader(data)
 
 	// Increment the counter for the msg opcode
-	metrics.MsgOpsCount.WithLabelValues(api.OpCode(op).String()).Add(1)
+	metrics.MsgOpsCount.WithLabelValues(ops.OpCode(op).String()).Add(1)
 
 	// These ops handlers are registered by RegisterEventHandlerAtInit().
 	if h, ok := eventHandler[op]; ok {

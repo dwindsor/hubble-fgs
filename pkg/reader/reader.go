@@ -25,6 +25,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/sys/unix"
@@ -59,17 +60,17 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *fgs.SocketStats {
 
 func MsgOpToProtocol(op uint8) fgs.SocketProtocol {
 	switch op {
-	case api.MSG_OP_IPV4_TCPCONNECT,
-		api.MSG_OP_IPV4_TCPCONNECTRET,
-		api.MSG_OP_IPV4_TCPCLOSE,
-		api.MSG_OP_IPV4_BIND,
-		api.MSG_OP_IPV4_LISTEN,
-		api.MSG_OP_IPV4_ACCEPT,
-		api.MSG_OP_IPV4_TCPSTATS:
+	case ops.MSG_OP_IPV4_TCPCONNECT,
+		ops.MSG_OP_IPV4_TCPCONNECTRET,
+		ops.MSG_OP_IPV4_TCPCLOSE,
+		ops.MSG_OP_IPV4_BIND,
+		ops.MSG_OP_IPV4_LISTEN,
+		ops.MSG_OP_IPV4_ACCEPT,
+		ops.MSG_OP_IPV4_TCPSTATS:
 		return fgs.SocketProtocol_TCP
-	case api.MSG_OP_IPV4_UDPCONNECT,
-		api.MSG_OP_IPV4_UDPCLOSE,
-		api.MSG_OP_IPV4_UDPSTATS:
+	case ops.MSG_OP_IPV4_UDPCONNECT,
+		ops.MSG_OP_IPV4_UDPCLOSE,
+		ops.MSG_OP_IPV4_UDPSTATS:
 		return fgs.SocketProtocol_UDP
 	default:
 		return fgs.SocketProtocol_UNKNOWN
@@ -81,7 +82,7 @@ func MsgToProtocol(event *api.MsgIPv4EventUnix) fgs.SocketProtocol {
 }
 
 func GetIP(i uint32, op uint8) net.IP {
-	if op == api.MSG_OP_IPV4_BIND {
+	if op == ops.MSG_OP_IPV4_BIND {
 		return net.IPv4zero
 	}
 	ip := make(net.IP, 4)
@@ -300,7 +301,7 @@ func GetSport(sport uint16) uint16 {
 	return sport
 }
 func GetDport(dport uint16, op uint8) uint16 {
-	if op == api.MSG_OP_IPV4_BIND || op == api.MSG_OP_IPV4_LISTEN {
+	if op == ops.MSG_OP_IPV4_BIND || op == ops.MSG_OP_IPV4_LISTEN {
 		return 0
 	}
 	return api.SwapByte(dport)
@@ -316,7 +317,7 @@ func ObserverIPV4TCPPrinter(msg *api.MsgIPv4EventUnix, log logrus.FieldLogger) {
 	op := msg.Common.Op
 
 	log.WithFields(logrus.Fields{
-		"op":               api.OpCode(op).String(),
+		"op":               ops.OpCode(op).String(),
 		"connect-ktime":    msg.Common.Ktime,
 		"connect-walltime": eventTime,
 		"proto":            msg.Tuple.Proto,
@@ -556,7 +557,7 @@ func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
 	typeSNI, nameSNI := GetTLSSNI(msg.ClientHello.SNI.Value)
 
 	log.WithFields(logrus.Fields{
-		"op":                           api.OpCode(op).String(),
+		"op":                           ops.OpCode(op).String(),
 		"saddr":                        GetIP(msg.Tuple.SAddr, op).String(),
 		"sport":                        GetSport(msg.Tuple.SPort),
 		"dport":                        msg.Tuple.DPort,
@@ -574,7 +575,7 @@ func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
 func ObserverKfreeSkbPrinter(msg *api.MsgKfreeSkb, log logrus.FieldLogger) {
 	op := msg.Common.Op
 	log.WithFields(logrus.Fields{
-		"op":        api.OpCode(op).String(),
+		"op":        ops.OpCode(op).String(),
 		"ret":       msg.Calltrace.Ret,
 		"calltrace": msg.Calltrace.Stack,
 	}).Debug()

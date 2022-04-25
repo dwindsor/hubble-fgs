@@ -5,6 +5,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
@@ -63,7 +64,7 @@ func (dns *Grpc) get(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if dns.enableCilium && proc != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_IPV4_DNS)
+		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_IPV4_DNS)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if dns.eventCache.Needed(proc) {
@@ -79,7 +80,7 @@ func (dns *Grpc) get(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 func (dns *Grpc) HandleDnsMessage(msg *api.MsgIPv4DnsUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case api.MSG_OP_IPV4_DNS:
+	case ops.MSG_OP_IPV4_DNS:
 		t := dns.get(msg)
 		if t != nil {
 			res = &fgs.GetEventsResponse{

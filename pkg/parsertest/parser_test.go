@@ -16,7 +16,7 @@ import (
 	"os"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
 
 var expectedPacketPayload = []byte{
@@ -101,8 +101,8 @@ func TestParse(t *testing.T) {
 				expectedLine, eventStep.Position.Line)
 		}
 
-		if eventStep.Op != api.MSG_OP_TLS {
-			t.Errorf("expected op %d, got %d", api.MSG_OP_TLS, eventStep.Op)
+		if eventStep.Op != ops.MSG_OP_TLS {
+			t.Errorf("expected op %d, got %d", ops.MSG_OP_TLS, eventStep.Op)
 		}
 
 		r := bytes.NewReader(expectedPacketPayload)
@@ -125,8 +125,8 @@ func TestParse(t *testing.T) {
 				expectedLine, eventDumpStep.Position.Line)
 		}
 
-		if eventDumpStep.Op != api.MSG_OP_HTTP {
-			t.Errorf("expected op %d, got %d", api.MSG_OP_TLS, eventDumpStep.Op)
+		if eventDumpStep.Op != ops.MSG_OP_HTTP {
+			t.Errorf("expected op %d, got %d", ops.MSG_OP_TLS, eventDumpStep.Op)
 		}
 	}
 

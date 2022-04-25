@@ -22,7 +22,7 @@ import (
 	"strings"
 	"text/scanner"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/yalue/native_endian"
 )
 
@@ -205,21 +205,21 @@ func (p *Parser) parseOp() (int, string, error) {
 
 	switch name {
 	case "TLS":
-		return api.MSG_OP_TLS, name, nil
+		return ops.MSG_OP_TLS, name, nil
 	case "TLSCONT":
-		return api.MSG_OP_TLS_CONT, name, nil
+		return ops.MSG_OP_TLS_CONT, name, nil
 	case "HTTP":
-		return api.MSG_OP_HTTP, name, nil
+		return ops.MSG_OP_HTTP, name, nil
 	case "TCPCONNECT":
-		return api.MSG_OP_IPV4_TCPCONNECT, name, nil
+		return ops.MSG_OP_IPV4_TCPCONNECT, name, nil
 	case "TCPCONNECTRET":
-		return api.MSG_OP_IPV4_TCPCONNECTRET, name, nil
+		return ops.MSG_OP_IPV4_TCPCONNECTRET, name, nil
 	case "TCPACCEPT":
-		return api.MSG_OP_IPV4_ACCEPT, name, nil
+		return ops.MSG_OP_IPV4_ACCEPT, name, nil
 	case "TCPCLOSE":
-		return api.MSG_OP_IPV4_TCPCLOSE, name, nil
+		return ops.MSG_OP_IPV4_TCPCLOSE, name, nil
 	case "TCPSTATS":
-		return api.MSG_OP_IPV4_TCPSTATS, name, nil
+		return ops.MSG_OP_IPV4_TCPSTATS, name, nil
 	default:
 		return 0, name, fmt.Errorf("unrecognized event op '%s", p.scanner.TokenText())
 	}

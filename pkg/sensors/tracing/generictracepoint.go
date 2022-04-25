@@ -20,6 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -62,7 +63,7 @@ func init() {
 	}
 	sensors.RegisterProbeType("generic_tracepoint", tp)
 	sensors.RegisterTracingSensorsAtInit(tp.name, tp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_GENERIC_TRACEPOINT, handleGenericTracepoint)
 }
 
 // genericTracepoint is the internal representation of a tracepoint

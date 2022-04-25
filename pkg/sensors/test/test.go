@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 )
 
@@ -12,7 +13,7 @@ func init() {
 	AddTest()
 }
 func AddTest() {
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_TEST, handleTest)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TEST, handleTest)
 }
 
 func msgToTestUnix(m *api.MsgTestEvent) *api.MsgTestEventUnix {

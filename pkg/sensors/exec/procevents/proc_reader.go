@@ -21,6 +21,7 @@ import (
 	"unicode/utf8"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
@@ -136,7 +137,7 @@ func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 	}
 
 	m := api.MsgExecveEventUnix{}
-	m.Common.Op = api.MSG_OP_EXECVE
+	m.Common.Op = ops.MSG_OP_EXECVE
 	m.Common.Size = api.MsgUnixSize + p.psize + p.size
 
 	m.Kube.NetNS = 0

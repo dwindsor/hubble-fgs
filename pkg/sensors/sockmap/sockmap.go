@@ -11,7 +11,7 @@
 package sockmap
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -226,8 +226,8 @@ func init() {
 	sensors.RegisterProbeType("cgrp_socketopt", socketopt)
 
 	sensors.RegisterTracingSensorsAtInit(tls.name, tls)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_TLS, HandleTLS)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_TLS_CONT, HandleTLSCont)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS, HandleTLS)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS_CONT, HandleTLSCont)
 }
 
 func enableTLSParser(tls, tc bool) *sensors.Sensor {

@@ -15,6 +15,7 @@ import (
 	"encoding/binary"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/ksyms"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -56,6 +57,6 @@ func init() {
 }
 
 func AddKfree() {
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_KFREE_SKB, handleKfreeSkb)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_KFREE_SKB, handleKfreeSkb)
 	ksym, _ = ksyms.NewKsyms(option.Config.ProcFS)
 }

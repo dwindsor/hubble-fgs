@@ -20,6 +20,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -219,8 +220,8 @@ func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 }
 
 func (v *udpInfoValue) String() string {
-	ipDst := reader.GetIP(v.DAddr, api.MSG_OP_IPV4_UDPCONNECT)
-	ipSrc := reader.GetIP(v.SAddr, api.MSG_OP_IPV4_UDPCONNECT)
+	ipDst := reader.GetIP(v.DAddr, ops.MSG_OP_IPV4_UDPCONNECT)
+	ipSrc := reader.GetIP(v.SAddr, ops.MSG_OP_IPV4_UDPCONNECT)
 	return fmt.Sprintf(
 		"SAddr=%s:%d DAddr=%s:%d\n"+
 			"Pid: %d Ktime %d\n"+
@@ -314,14 +315,14 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
 
 func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
 	unix := emitUdpEvent(k, v)
-	unix.Common.Op = api.MSG_OP_IPV4_UDPCLOSE
+	unix.Common.Op = ops.MSG_OP_IPV4_UDPCLOSE
 
 	observer.AllListeners(unix)
 }
 
 func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	unix := emitUdpEvent(k, v)
-	unix.Common.Op = api.MSG_OP_IPV4_UDPSTATS
+	unix.Common.Op = ops.MSG_OP_IPV4_UDPSTATS
 
 	observer.AllListeners(unix)
 }
@@ -632,10 +633,10 @@ func AddUDP() {
 	}
 	sensors.RegisterProbeType("udp_sensor", udp)
 	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPCONNECT, handleUdp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPSTATS, handleUdp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_UDPPAYLOAD, handleUdpPayload)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_UDPCONNECT, handleUdp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_UDPSTATS, handleUdp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_UDPPAYLOAD, handleUdpPayload)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)

@@ -15,6 +15,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
@@ -102,7 +103,7 @@ func (l3 *Grpc) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessCo
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if l3.enableCilium && fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
+		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if l3.eventCache.Needed(fgsProcess) {
@@ -189,7 +190,7 @@ func (l3 *Grpc) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClos
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if l3.enableCilium && fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
+		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if l3.eventCache.Needed(fgsProcess) {
@@ -311,7 +312,7 @@ func (l3 *Grpc) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessAcc
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if l3.enableCilium && fgsProcess != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, api.MSG_OP_HTTP)
+		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
@@ -378,8 +379,8 @@ func (l3 *Grpc) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *fgs.Process
 func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case api.MSG_OP_IPV4_TCPCONNECTRET,
-		api.MSG_OP_IPV4_UDPCONNECT:
+	case ops.MSG_OP_IPV4_TCPCONNECTRET,
+		ops.MSG_OP_IPV4_UDPCONNECT:
 		cnct := l3.GetProcessConnect(msg)
 		if cnct != nil {
 			res = &fgs.GetEventsResponse{
@@ -388,8 +389,8 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
-	case api.MSG_OP_IPV4_TCPCLOSE,
-		api.MSG_OP_IPV4_UDPCLOSE:
+	case ops.MSG_OP_IPV4_TCPCLOSE,
+		ops.MSG_OP_IPV4_UDPCLOSE:
 		c := l3.GetProcessClose(msg)
 		if c != nil {
 			res = &fgs.GetEventsResponse{
@@ -398,7 +399,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
-	case api.MSG_OP_IPV4_LISTEN:
+	case ops.MSG_OP_IPV4_LISTEN:
 		l := l3.GetProcessListen(msg)
 		if l != nil {
 			res = &fgs.GetEventsResponse{
@@ -407,7 +408,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
-	case api.MSG_OP_IPV4_ACCEPT:
+	case ops.MSG_OP_IPV4_ACCEPT:
 		a := l3.GetProcessAccept(msg)
 		if a != nil {
 			res = &fgs.GetEventsResponse{
@@ -417,7 +418,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 			}
 		}
 
-	case api.MSG_OP_IPV4_TCPSTATS, api.MSG_OP_IPV4_UDPSTATS:
+	case ops.MSG_OP_IPV4_TCPSTATS, ops.MSG_OP_IPV4_UDPSTATS:
 		s := l3.GetProcessSockStats(msg)
 		if s != nil {
 			res = &fgs.GetEventsResponse{

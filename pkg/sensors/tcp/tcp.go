@@ -9,6 +9,7 @@ import (
 
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -158,7 +159,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)
 		// Convert to a TCPStats event by simply setting op code
-		c.Common.Op = api.MsgOpIPv4TCPStats
+		c.Common.Op = ops.MsgOpIPv4TCPStats
 		stats.Remove(c.Tuple)
 		if err != nil {
 			return []observer.Event{tcp}, nil
@@ -219,14 +220,14 @@ func AddTCP() {
 
 	sensors.RegisterProbeType("tcp_sensor", tcp)
 	sensors.RegisterTracingSensorsAtInit(tcp.name, tcp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPSTATS, handleTcpStats)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_TCPSTATS, handleTcpStats)
 
 	/* Core set of TCP events */
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCONNECT, handleTcp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCONNECTRET, handleTcp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_TCPCLOSE, handleTcpClose)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_BIND, handleTcp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_LISTEN, handleTcp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_ACCEPT, handleTcp)
-	observer.RegisterEventHandlerAtInit(api.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_TCPCONNECT, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_TCPCONNECTRET, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_TCPCLOSE, handleTcpClose)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_BIND, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_LISTEN, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_ACCEPT, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
 }

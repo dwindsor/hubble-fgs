@@ -6,6 +6,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
@@ -66,7 +67,7 @@ func (e *Grpc) GetProcessExec(
 func (e *Grpc) HandleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case api.MSG_OP_EXECVE:
+	case ops.MSG_OP_EXECVE:
 		proc := process.Add(msg)
 		procEvent := e.GetProcessExec(proc)
 		if e.eventCache.Needed(procEvent.Process) {
@@ -126,7 +127,7 @@ func (e *Grpc) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
 func (e *Grpc) HandleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case api.MSG_OP_EXIT:
+	case ops.MSG_OP_EXIT:
 		e := e.GetProcessExit(msg)
 		if e != nil {
 			res = &fgs.GetEventsResponse{
