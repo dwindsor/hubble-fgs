@@ -146,6 +146,8 @@ func TestHttp11Curl(t *testing.T) {
 	assert.NoError(t, err)
 }
 
+// nolint This is only used in a disabled test for now. Since we will re-enable that test
+// soon, let's leave this and ignore dead code warnings.
 func spawnHttp2Server(ctx context.Context, t *testing.T) string {
 	handler := http.HandlerFunc(
 		func(w http.ResponseWriter, r *http.Request) {
@@ -171,6 +173,8 @@ func spawnHttp2Server(ctx context.Context, t *testing.T) string {
 }
 
 func TestHttp20CurlPriorKnowledge(t *testing.T) {
+	t.Skipf("This test is currrently very flaky due to a kernel bug. TODO: Re-enable after this gets fixed upstream")
+
 	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
