@@ -19,10 +19,6 @@ import (
 )
 
 const (
-	// DOCKER_ID_LENGTH to match BPF side buffer size where we read the
-	// cgroup of the task
-	DOCKER_ID_LENGTH = 128
-
 	MSG_OP_UNDEF = 0
 	// The following events generate MsgIPv4TcpConnectUnix type events.
 
@@ -254,17 +250,6 @@ const (
 	SOCKFLAGS_TYPE_DNSREADY = 0x10
 )
 
-// API between Kernel BPF and Userspace hubble-fgs Golang agent
-type MsgCommon struct {
-	Op uint8
-	// Flags is used to:
-	//  - distinguish between an entry and a return kprobe event
-	Flags  uint8
-	Pad_v2 [2]uint8
-	Size   uint32
-	Ktime  uint64
-}
-
 type OpCode int
 
 const (
@@ -360,13 +345,6 @@ func (m *MsgIPv4Tuple) GetPostDPort() uint16 {
 	return binary.LittleEndian.Uint16(m.PostData[4:6])
 }
 
-type MsgK8s struct {
-	NetNS  uint32
-	Cid    uint32
-	Cgrpid uint64
-	Docker [DOCKER_ID_LENGTH]byte
-}
-
 type MsgIPv4Event struct {
 	Common      MsgCommon      `align:"common"`
 	Tuple       MsgIPv4Tuple   `align:"tuple"`
@@ -399,26 +377,6 @@ type MsgIPv4DnsUnix struct {
 type MsgCalltrace struct {
 	Stack [16]uint64
 	Ret   int32
-}
-
-// API between Userspace hubble-fgs Golang agent and Unix domain socket listener
-type MsgProcess struct {
-	Size     uint32
-	PID      uint32
-	NSPID    uint32
-	UID      uint32
-	AUID     uint32
-	Flags    uint32
-	Ktime    uint64
-	Filename string
-	Args     string
-}
-
-type MsgK8sUnix struct {
-	NetNS  uint32
-	Cid    uint32
-	Cgrpid uint64
-	Docker string
 }
 
 type MsgSocketStatsUnix struct {
@@ -486,44 +444,6 @@ type MsgInterfaceEventUnix struct {
 }
 
 var MsgUnixSize uint32 = 640
-
-type MsgCapabilities struct {
-	Permitted   uint64
-	Effective   uint64
-	Inheritable uint64
-}
-
-type MsgNamespaces struct {
-	UtsInum       uint32
-	IpcInum       uint32
-	MntInum       uint32
-	PidInum       uint32
-	PidChildInum  uint32
-	NetInum       uint32
-	TimeInum      uint32
-	TimeChildInum uint32
-	CgroupInum    uint32
-	UserInum      uint32
-}
-
-type MsgExecveEvent struct {
-	Common       MsgCommon
-	Kube         MsgK8s
-	Parent       MsgExecveKey
-	ParentFlags  uint64
-	Capabilities MsgCapabilities
-	Namespaces   MsgNamespaces
-}
-
-type MsgExecveEventUnix struct {
-	Common       MsgCommon
-	Kube         MsgK8sUnix
-	Parent       MsgExecveKey
-	ParentFlags  uint64
-	Capabilities MsgCapabilities
-	Namespaces   MsgNamespaces
-	Process      MsgProcess
-}
 
 type MsgTLSIPv4 struct {
 	SAddr     uint32
@@ -601,12 +521,6 @@ type MsgTLSCertificates struct {
 	Error        uint32
 	// Error Info useful for bug reports
 	ParserState MsgTLSParserState
-}
-
-type MsgExecveKey struct {
-	Pid   uint32
-	Pad   uint32
-	Ktime uint64
 }
 
 type MsgTLSAlert struct {
