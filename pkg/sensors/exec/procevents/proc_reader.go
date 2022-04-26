@@ -29,9 +29,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
+	"github.com/isovalent/hubble-fgs/pkg/reader/proc"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
 )
@@ -296,13 +296,13 @@ func GetRunningProcs(write, push bool) []Procs {
 			continue
 		}
 
-		pid, err := reader.GetProcPid(d.Name())
+		pid, err := proc.GetProcPid(d.Name())
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("pid read error")
 			continue
 		}
 
-		stats, err := reader.GetProcStatStrings(pathName)
+		stats, err := proc.GetProcStatStrings(pathName)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("stats read error")
 			continue
@@ -314,7 +314,7 @@ func GetRunningProcs(write, push bool) []Procs {
 			_ppid = 0 // 0 pid indicates no known parent
 		}
 
-		ktime, err := reader.GetStatsKtime(stats)
+		ktime, err := proc.GetStatsKtime(stats)
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("ktime read error")
 		}
@@ -352,13 +352,13 @@ func GetRunningProcs(write, push bool) []Procs {
 				continue
 			}
 
-			pstats, err = reader.GetProcStatStrings(string(parentPath))
+			pstats, err = proc.GetProcStatStrings(string(parentPath))
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("parent stats read error")
 				continue
 			}
 
-			pktime, err = reader.GetStatsKtime(pstats)
+			pktime, err = proc.GetStatsKtime(pstats)
 			if err != nil {
 				logger.GetLogger().WithError(err).Warnf("parent ktime read error")
 			}
@@ -375,13 +375,13 @@ func GetRunningProcs(write, push bool) []Procs {
 
 		execPath, err := os.Readlink(filepath.Join(option.Config.ProcFS, d.Name(), "exe"))
 		if err == nil {
-			cmdline = reader.PrependPath(execPath, cmdline)
+			cmdline = proc.PrependPath(execPath, cmdline)
 		}
 
 		if _ppid != 0 {
 			pexecPath, err = os.Readlink(filepath.Join(option.Config.ProcFS, ppid, "exe"))
 			if err == nil {
-				pcmdline = reader.PrependPath(pexecPath, pcmdline)
+				pcmdline = proc.PrependPath(pexecPath, pcmdline)
 			}
 		} else {
 			pexecPath = ""

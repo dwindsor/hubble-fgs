@@ -20,7 +20,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/proc"
 )
 
 func stringToTCPEntry(s string) (*procTCPEntry, error) {
@@ -129,17 +129,17 @@ func getRunningSockets(writeMaps, pushEvents bool) {
 	for _, d := range procFS {
 		pathName := filepath.Join(option.Config.ProcFS, d.Name())
 
-		pid, err := reader.GetProcPid(d.Name())
+		pid, err := proc.GetProcPid(d.Name())
 		if err != nil {
 			continue
 		}
 
-		stats, err := reader.GetProcStatStrings(pathName)
+		stats, err := proc.GetProcStatStrings(pathName)
 		if err != nil {
 			continue
 		}
 
-		ktime, err := reader.GetStatsKtime(stats)
+		ktime, err := proc.GetStatsKtime(stats)
 		if err != nil {
 			continue
 		}
