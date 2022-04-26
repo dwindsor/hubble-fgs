@@ -12,10 +12,7 @@
 package api
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/api/calltraceapi"
-	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
-	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 )
 
 type MsgFGSReady struct{}
@@ -35,21 +32,4 @@ type MsgTestEventUnix = MsgTestEvent
 type SensorStatus struct {
 	Name    string
 	Enabled bool
-}
-
-type MsgKfreeSkb struct {
-	Common    processapi.MsgCommon      `align:"common"`
-	Calltrace calltraceapi.MsgCalltrace `align:"calltrace"`
-	Tuple     networkapi.MsgIPv4Tuple   `align:"tuple"`
-}
-
-type StackAddr struct {
-	Addr   uint64
-	Symbol string
-}
-
-type MsgKfreeSkbUnix struct {
-	Common    processapi.MsgCommon
-	Calltrace []StackAddr
-	Tuple     vtuple.Impl
 }

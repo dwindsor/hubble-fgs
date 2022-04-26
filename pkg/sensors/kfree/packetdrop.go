@@ -16,7 +16,8 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/calltraceapi"
+	api "github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"
@@ -150,7 +151,7 @@ func msgToKfreeSkbUnix(m *api.MsgKfreeSkb) *api.MsgKfreeSkbUnix {
 			}
 		}
 
-		ret.Calltrace = append(ret.Calltrace, api.StackAddr{Addr: addr, Symbol: symbol})
+		ret.Calltrace = append(ret.Calltrace, calltraceapi.StackAddr{Addr: addr, Symbol: symbol})
 	}
 	ret.Tuple, _ = msgTuple4ToVTuple(&m.Tuple)
 

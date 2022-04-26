@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
@@ -150,7 +151,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = dnsGrpc.HandleDnsMessage(msg)
 	case *processapi.MsgExitEventUnix:
 		processedEvent = execGrpc.HandleExitMessage(msg)
-	case *api.MsgKfreeSkbUnix:
+	case *kfreeapi.MsgKfreeSkbUnix:
 		processedEvent = kfree.HandleKfreeSkbMessage(msg)
 	case *tracingapi.MsgGenericKprobeUnix:
 		processedEvent = tracingGrpc.HandleGenericKprobeMessage(msg)

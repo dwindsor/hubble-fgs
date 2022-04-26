@@ -17,7 +17,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/calltraceapi"
 )
 
 // Addr is an Address on the stacktrace tree
@@ -90,7 +90,7 @@ func (p *Stt) Append(addr Addr, sym string, labels []string) {
 	p.nodes = append(p.nodes, node)
 }
 
-func SttFromCalltrace(calltrace []api.StackAddr, labels []string) *Stt {
+func SttFromCalltrace(calltrace []calltraceapi.StackAddr, labels []string) *Stt {
 	stt := Stt{}
 	for _, ct := range calltrace {
 		stt.Append(ct.Addr, ct.Symbol, labels)

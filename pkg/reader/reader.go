@@ -19,6 +19,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
@@ -242,7 +243,7 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	return args, cwd
 }
 
-func ObserverKfreeSkbPrinter(msg *api.MsgKfreeSkb, log logrus.FieldLogger) {
+func ObserverKfreeSkbPrinter(msg *kfreeapi.MsgKfreeSkb, log logrus.FieldLogger) {
 	op := msg.Common.Op
 	log.WithFields(logrus.Fields{
 		"op":        ops.OpCode(op).String(),
