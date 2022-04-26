@@ -11,6 +11,4 @@
 
 package api
 
-type MsgFGSReady struct{}
-
 var MsgUnixSize uint32 = 640

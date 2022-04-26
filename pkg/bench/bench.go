@@ -25,10 +25,10 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/readyapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
@@ -143,7 +143,7 @@ type benchmarkListener struct {
 
 func (bl *benchmarkListener) Notify(msg interface{}) error {
 	switch msg.(type) {
-	case *api.MsgFGSReady:
+	case *readyapi.MsgFGSReady:
 		bl.ready <- true
 
 	case *tlsapi.MsgTLSEventUnix:

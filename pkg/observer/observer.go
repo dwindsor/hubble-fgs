@@ -21,8 +21,8 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/readyapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
@@ -146,7 +146,7 @@ func (k *Observer) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) er
 	pollTimeoutMsec := int(pollTimeout / time.Millisecond)
 
 	k.log.Info("Listening for events...")
-	k.observerListeners(&api.MsgFGSReady{})
+	k.observerListeners(&readyapi.MsgFGSReady{})
 
 	for !isCtxDone(stopCtx) {
 		_, err := e.Poll(pollTimeoutMsec)
@@ -199,7 +199,7 @@ func (k *Observer) runEventsNew(stopCtx context.Context, ready func()) error {
 	}
 
 	// Inform caller that we're about to start processing events.
-	k.observerListeners(&api.MsgFGSReady{})
+	k.observerListeners(&readyapi.MsgFGSReady{})
 	ready()
 
 	// Listeners are ready and about to start reading from perf reader, tell

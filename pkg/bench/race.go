@@ -23,7 +23,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/readyapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
@@ -59,7 +59,7 @@ type raceListener struct {
 
 func (l *raceListener) Notify(msg interface{}) error {
 	switch msg.(type) {
-	case *api.MsgFGSReady:
+	case *readyapi.MsgFGSReady:
 		l.ready <- true
 	}
 	return nil
