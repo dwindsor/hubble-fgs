@@ -19,12 +19,12 @@ import (
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/aggregator"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/isovalent/hubble-fgs/pkg/health"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 )
 
@@ -43,7 +43,7 @@ type observer interface {
 	DelTracingPolicy(ctx context.Context, sensorName string) error
 	EnableSensor(ctx context.Context, name string) error
 	DisableSensor(ctx context.Context, name string) error
-	ListSensors(ctx context.Context) (*[]api.SensorStatus, error)
+	ListSensors(ctx context.Context) (*[]sensors.SensorStatus, error)
 	GetSensorConfig(ctx context.Context, name string, cfgkey string) (string, error)
 	SetSensorConfig(ctx context.Context, name string, cfgkey string, cfgval string) error
 	RemoveSensor(ctx context.Context, sensorName string) error

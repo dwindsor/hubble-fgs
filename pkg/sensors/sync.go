@@ -10,11 +10,15 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	sttManager "github.com/isovalent/hubble-fgs/pkg/stt"
 )
+
+type SensorStatus struct {
+	Name    string
+	Enabled bool
+}
 
 // StartSensorManager initializes the sensorCtlHandle by spawning a sensor
 // controller goroutine.
@@ -152,10 +156,10 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 				}
 
 			case *sensorList:
-				ret := make([]api.SensorStatus, 0, len(availableSensors))
+				ret := make([]SensorStatus, 0, len(availableSensors))
 				for n, sl := range availableSensors {
 					for _, s := range sl {
-						ret = append(ret, api.SensorStatus{Name: n, Enabled: s.Loaded})
+						ret = append(ret, SensorStatus{Name: n, Enabled: s.Loaded})
 					}
 				}
 				op.result = &ret
@@ -345,7 +349,7 @@ func (h *Manager) DisableSensor(ctx context.Context, name string) error {
 	return <-retc
 }
 
-func (h *Manager) ListSensors(ctx context.Context) (*[]api.SensorStatus, error) {
+func (h *Manager) ListSensors(ctx context.Context) (*[]SensorStatus, error) {
 	retc := make(chan error)
 	op := &sensorList{
 		ctx:     ctx,
@@ -539,7 +543,7 @@ type sensorDisable struct {
 // sensorList returns a list of the active sensors
 type sensorList struct {
 	ctx     context.Context
-	result  *[]api.SensorStatus
+	result  *[]SensorStatus
 	retChan chan error
 }
 

@@ -28,8 +28,3 @@ type MsgTestEvent struct {
 }
 
 type MsgTestEventUnix = MsgTestEvent
-
-type SensorStatus struct {
-	Name    string
-	Enabled bool
-}

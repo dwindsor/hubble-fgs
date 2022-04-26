@@ -21,9 +21,9 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/stretchr/testify/assert"
 )
@@ -84,7 +84,7 @@ func (f *fakeNotifier) NotifyListener(original interface{}, processed *fgs.GetEv
 
 type fakeObserver struct{}
 
-func (f *fakeObserver) ListSensors(ctx context.Context) (*[]api.SensorStatus, error) {
+func (f *fakeObserver) ListSensors(ctx context.Context) (*[]sensors.SensorStatus, error) {
 	return nil, nil
 }
 
