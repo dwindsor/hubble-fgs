@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package api
+package tracingapi
 
 import "github.com/isovalent/hubble-fgs/pkg/api/processapi"
 

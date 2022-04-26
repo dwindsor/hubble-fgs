@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/sys/unix"
@@ -584,15 +585,15 @@ func ObserverKfreeSkbPrinter(msg *api.MsgKfreeSkb, log logrus.FieldLogger) {
 
 func KprobeAction(act uint64) fgs.KprobeAction {
 	switch act {
-	case api.ActionPost:
+	case tracingapi.ActionPost:
 		return fgs.KprobeAction_KPROBE_ACTION_POST
-	case api.ActionFollowFd:
+	case tracingapi.ActionFollowFd:
 		return fgs.KprobeAction_KPROBE_ACTION_FOLLOWFD
-	case api.ActionSigKill:
+	case tracingapi.ActionSigKill:
 		return fgs.KprobeAction_KPROBE_ACTION_SIGKILL
-	case api.ActionUnfollowFd:
+	case tracingapi.ActionUnfollowFd:
 		return fgs.KprobeAction_KPROBE_ACTION_UNFOLLOWFD
-	case api.ActionOverride:
+	case tracingapi.ActionOverride:
 		return fgs.KprobeAction_KPROBE_ACTION_OVERRIDE
 	default:
 		return fgs.KprobeAction_KPROBE_ACTION_UNKNOWN
