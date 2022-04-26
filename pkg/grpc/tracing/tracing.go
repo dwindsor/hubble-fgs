@@ -10,6 +10,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -60,9 +61,9 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 			a.Arg = &fgs.KprobeArgument_StringArg{StringArg: e.Value}
 		case api.MsgGenericKprobeArgSock:
 			sockArg := &fgs.KprobeSock{
-				Family:   reader.InetFamily(e.Family),
-				Type:     reader.InetType(e.Type),
-				Protocol: reader.InetProtocol(e.Protocol),
+				Family:   network.InetFamily(e.Family),
+				Type:     network.InetType(e.Type),
+				Protocol: network.InetProtocol(e.Protocol),
 				Mark:     e.Mark,
 				Priority: e.Priority,
 			}
