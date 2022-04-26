@@ -239,25 +239,6 @@ func KprobeAction(act uint64) fgs.KprobeAction {
 	}
 }
 
-var (
-	HttpMultiMessage = uint32(0x1)
-)
-
-func HttpErrorFlags(flags uint32) []string {
-	var s []string
-
-	if (flags & IterErrorCodeRead) != 0 {
-		s = append(s, "ChunkReadFailed")
-	}
-	if (flags & IterErrorCodeOverrun) != 0 {
-		s = append(s, "ChunkTooLarge")
-	}
-	if (flags & HttpMultiMessage) != 0 {
-		s = append(s, "MultiMessageEvent")
-	}
-	return s
-}
-
 func Signal(s uint32) string {
 	if s == 0 {
 		return ""

@@ -19,11 +19,13 @@ import (
 	"strings"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
+	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/chunks"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
@@ -328,7 +330,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 		unix.Request.RequestId = m.Request.ReqId
 	}
 
-	unix.Request.Method = reader.GetHttpMethod(m.Request.Method)
+	unix.Request.Method = readerhttp.GetHttpMethod(m.Request.Method)
 	unix.Request.Flags = m.Request.Flags
 
 	// Clear the direction bit for HTTP/1.1. It's needed for HTTP/2 to have per-direction
@@ -345,11 +347,11 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 		if ok {
 			unix = entry.(*api.MsgHttpEventUnix)
 			moreBytes.Remove(key)
-			usedMoreBytes |= reader.HttpMultiMessage
+			usedMoreBytes |= readerhttp.HttpMultiMessage
 		}
 	}
 
-	iter := reader.NewTypedChunkIterator(m.Request.Url[:])
+	iter := chunks.NewTypedChunkIterator(m.Request.Url[:])
 
 	for {
 		chunk, typ, ok := iter.NextString()
@@ -481,7 +483,7 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 		if m == nil {
 			break
 		}
-		iter := reader.NewTypedChunkIterator(m.Request.Url[:])
+		iter := chunks.NewTypedChunkIterator(m.Request.Url[:])
 
 		for {
 			chunk, typ, ok := iter.Next()

@@ -15,7 +15,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -52,12 +51,12 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 	fgsTuple := sockinfo.GetTuple(&event.Tuple, 0, event.Common.Op)
 
 	if len(event.Request.Code) != 0 {
-		code, err = reader.GetHttpCode(event.Request.Code)
+		code, err = GetHttpCode(event.Request.Code)
 		if err != nil {
 			logger.GetLogger().WithField("Unknown Response Code", event.Request.Code).Info("unknown code")
 		}
 
-		length, err := reader.GetHttpContentLength(event.Request.RespContentLength)
+		length, err := GetHttpContentLength(event.Request.RespContentLength)
 		if err != nil {
 			logger.GetLogger().WithError(err).WithField("RespContentLength", event.Request.RespContentLength).Info("Response Content-Length strconv error")
 		}
@@ -68,12 +67,12 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 			Code:             code,
 			Reason:           event.Request.Reason,
 			ContentLength:    &wrapperspb.UInt32Value{Value: uint32(length)},
-			Flags:            strings.Join(reader.HttpErrorFlags(event.Request.FlagsResponse), " "),
+			Flags:            strings.Join(HttpErrorFlags(event.Request.FlagsResponse), " "),
 			TransferEncoding: event.Request.RespTransferEncoding,
 		}
 	}
 
-	length, err := reader.GetHttpContentLength(event.Request.ContentLength)
+	length, err := GetHttpContentLength(event.Request.ContentLength)
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("ContentLength", event.Request.ContentLength).Info("Request Content-Length strconv error")
 	}
@@ -87,7 +86,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 			Host:             event.Request.Host,
 			Agent:            event.Request.UserAgent,
 			ContentLength:    &wrapperspb.UInt32Value{Value: uint32(length)},
-			Flags:            strings.Join(reader.HttpErrorFlags(event.Request.Flags), " "),
+			Flags:            strings.Join(HttpErrorFlags(event.Request.Flags), " "),
 			TransferEncoding: event.Request.TransferEncoding,
 		}
 	}

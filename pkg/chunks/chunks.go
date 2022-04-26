@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package reader
+package chunks
 
 import (
 	"bytes"

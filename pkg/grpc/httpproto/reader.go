@@ -9,11 +9,17 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package reader
+package httpproto
 
 import (
 	"strconv"
 	"strings"
+
+	"github.com/isovalent/hubble-fgs/pkg/chunks"
+)
+
+var (
+	HttpMultiMessage = uint32(0x1)
 )
 
 var httpMethod = map[uint32]string{
@@ -53,4 +59,19 @@ func GetHttpContentLength(code string) (uint32, error) {
 	}
 	v, err := strconv.ParseUint(strings.TrimSpace(code), 10, 32)
 	return uint32(v), err
+}
+
+func HttpErrorFlags(flags uint32) []string {
+	var s []string
+
+	if (flags & chunks.IterErrorCodeRead) != 0 {
+		s = append(s, "ChunkReadFailed")
+	}
+	if (flags & chunks.IterErrorCodeOverrun) != 0 {
+		s = append(s, "ChunkTooLarge")
+	}
+	if (flags & HttpMultiMessage) != 0 {
+		s = append(s, "MultiMessageEvent")
+	}
+	return s
 }
