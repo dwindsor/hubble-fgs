@@ -240,11 +240,6 @@ func (k *Observer) runEventsNew(stopCtx context.Context, ready func()) error {
 	return perfReader.Close()
 }
 
-type MsgFilterRun func(*api.MsgIPv4EventUnix, *Observer) bool
-
-type MsgFilter struct {
-}
-
 // Observer represents the link between the BPF perf ring and the listeners. It
 // manages the perf ring and receive events from it. It ensures that the BPF
 // event we are receiving from the kernel is complete. The listeners are
@@ -266,8 +261,7 @@ type Observer struct {
 	filterPass int
 	filterDrop int
 	/* Filters */
-	msgFilter []*MsgFilter
-	log       logrus.FieldLogger
+	log logrus.FieldLogger
 
 	/* YAML Configuration File */
 	configFile string
@@ -343,10 +337,6 @@ func (k *Observer) Remove() {
 func (k *Observer) PrintStats() {
 	k.log.Infof("Observer Stats: errors %d lost %d recvd %d filterPass %d filterDrop %d",
 		k.errorCntr, k.lostCntr, k.recvCntr, k.filterPass, k.filterDrop)
-}
-
-func (k *Observer) AttachFilter(f *MsgFilter) {
-	k.msgFilter = append(k.msgFilter, f)
 }
 
 func (k *Observer) RemovePrograms() {
