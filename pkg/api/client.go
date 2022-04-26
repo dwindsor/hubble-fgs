@@ -12,17 +12,13 @@
 package api
 
 import (
+	"github.com/isovalent/hubble-fgs/pkg/api/calltraceapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 )
 
 type MsgFGSReady struct{}
-
-type MsgCalltrace struct {
-	Stack [16]uint64
-	Ret   int32
-}
 
 var MsgUnixSize uint32 = 640
 
@@ -42,9 +38,9 @@ type SensorStatus struct {
 }
 
 type MsgKfreeSkb struct {
-	Common    processapi.MsgCommon    `align:"common"`
-	Calltrace MsgCalltrace            `align:"calltrace"`
-	Tuple     networkapi.MsgIPv4Tuple `align:"tuple"`
+	Common    processapi.MsgCommon      `align:"common"`
+	Calltrace calltraceapi.MsgCalltrace `align:"calltrace"`
+	Tuple     networkapi.MsgIPv4Tuple   `align:"tuple"`
 }
 
 type StackAddr struct {
