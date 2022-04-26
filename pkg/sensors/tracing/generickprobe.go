@@ -31,7 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
@@ -767,10 +767,10 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Len = skb.Len
 			arg.Priority = skb.Priority
 			arg.Mark = skb.Mark
-			arg.Saddr = reader.GetIP(skb.Saddr, 0).String()
-			arg.Daddr = reader.GetIP(skb.Daddr, 0).String()
-			arg.Sport = uint32(reader.SwapByte(uint16(skb.Sport)))
-			arg.Dport = uint32(reader.SwapByte(uint16(skb.Dport)))
+			arg.Saddr = network.GetIP(skb.Saddr, 0).String()
+			arg.Daddr = network.GetIP(skb.Daddr, 0).String()
+			arg.Sport = uint32(network.SwapByte(uint16(skb.Sport)))
+			arg.Dport = uint32(network.SwapByte(uint16(skb.Dport)))
 			arg.Proto = skb.Proto
 			arg.SecPathLen = skb.SecPathLen
 			arg.SecPathOLen = skb.SecPathOLen

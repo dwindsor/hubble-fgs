@@ -21,9 +21,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/timer"
 	"github.com/yalue/native_endian"
 )
@@ -118,7 +118,7 @@ func checkBurstLog(burstLogKey *ProcessNetworkBurstKey, burstLogValue *ProcessNe
 	if burstLogValue.Burst == 0 {
 		return false
 	}
-	timeSinceLastPacket, err := reader.NanoTimeSince(int64(burstLogValue.LastPacketTime))
+	timeSinceLastPacket, err := ktime.NanoTimeSince(int64(burstLogValue.LastPacketTime))
 	if err != nil {
 		return false
 	}

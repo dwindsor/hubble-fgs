@@ -29,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -68,7 +69,7 @@ func InitCache(ctx context.Context, w watcher.K8sResourceWatcher, enableCilium b
 		return nil
 	}
 
-	nodeName = reader.GetNodeNameForExport()
+	nodeName = node.GetNodeNameForExport()
 	ciliumState = cilium.GetCiliumState()
 	if ciliumState == nil {
 		return fmt.Errorf("ciliumState must be initialized before process cache")

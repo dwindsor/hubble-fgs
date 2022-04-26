@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"golang.org/x/time/rate"
 )
 
@@ -70,7 +70,7 @@ func (r *RateLimiter) reportRateLimitInfo(encoder *json.Encoder) {
 			if dropped > 0 {
 				err := encoder.Encode(&InfoEvent{
 					RateLimitInfo: &Info{NumberOfDroppedProcessEvents: dropped},
-					NodeName:      reader.GetNodeNameForExport(),
+					NodeName:      node.GetNodeNameForExport(),
 					Time:          time.Now(),
 				})
 				if err != nil {

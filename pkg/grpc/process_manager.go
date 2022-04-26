@@ -41,7 +41,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tracing"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/sirupsen/logrus"
@@ -92,7 +92,7 @@ func NewProcessManager(
 	var err error
 
 	pm := &ProcessManager{
-		nodeName:               reader.GetNodeNameForExport(),
+		nodeName:               node.GetNodeNameForExport(),
 		ciliumState:            ciliumState,
 		listeners:              make(map[server.Listener]struct{}),
 		enableProcessCred:      enableProcessCred,

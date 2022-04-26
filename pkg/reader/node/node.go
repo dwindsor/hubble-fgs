@@ -1,4 +1,4 @@
-package reader
+package node
 
 import "os"
 

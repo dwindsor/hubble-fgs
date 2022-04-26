@@ -27,10 +27,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
@@ -221,8 +222,8 @@ func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 }
 
 func (v *udpInfoValue) String() string {
-	ipDst := reader.GetIP(v.DAddr, ops.MSG_OP_IPV4_UDPCONNECT)
-	ipSrc := reader.GetIP(v.SAddr, ops.MSG_OP_IPV4_UDPCONNECT)
+	ipDst := network.GetIP(v.DAddr, ops.MSG_OP_IPV4_UDPCONNECT)
+	ipSrc := network.GetIP(v.SAddr, ops.MSG_OP_IPV4_UDPCONNECT)
 	return fmt.Sprintf(
 		"SAddr=%s:%d DAddr=%s:%d\n"+
 			"Pid: %d Ktime %d\n"+
@@ -231,7 +232,7 @@ func (v *udpInfoValue) String() string {
 			"SubmittedSegs: %d ConsumedSegs: %d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n",
-		ipSrc, v.SPort, ipDst, reader.SwapByte(v.DPort),
+		ipSrc, v.SPort, ipDst, network.SwapByte(v.DPort),
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,
@@ -420,7 +421,7 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 		return
 	}
 
-	t, err := reader.NanoTimeSince(int64(udpValue.Ktime))
+	t, err := ktime.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("time", udpValue.Ktime).Warn("UDP NanoTimeSince failed.")
 		return

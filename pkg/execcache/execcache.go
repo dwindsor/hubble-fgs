@@ -18,7 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -122,7 +122,7 @@ func New(s *server.Server, dns *dns.Cache) *Cache {
 		dns:      dns,
 		server:   s,
 	}
-	nodeName = reader.GetNodeNameForExport()
+	nodeName = node.GetNodeNameForExport()
 	go ec.loop()
 	return ec
 }

@@ -9,11 +9,13 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
-	nodeName = reader.GetNodeNameForExport()
+	nodeName = node.GetNodeNameForExport()
 )
 
 type Grpc struct {
@@ -54,7 +56,7 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
+			Value: uint32(network.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -70,9 +72,9 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI.Value)
 	fgsEvent := &fgs.Tls{
 		Process:             proc,
-		SourceIp:            reader.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourceIp:            network.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:          sourcePort,
-		DestinationIp:       reader.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
+		DestinationIp:       network.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
 		DestinationPort:     destinationPort,
 		NegotiatedVersion:   reader.GetTLSSupportedVersions(&event.ServerHello.SupportedVersions, false),
 		SupportedVersions:   reader.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),

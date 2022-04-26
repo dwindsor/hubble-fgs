@@ -26,7 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/execAncestors"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -179,11 +179,11 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 }
 
 func Test_getNodeNameForExport(t *testing.T) {
-	assert.Equal(t, "", reader.GetNodeNameForExport())
+	assert.Equal(t, "", node.GetNodeNameForExport())
 	assert.NoError(t, os.Setenv("NODE_NAME", "from-node-name"))
-	assert.Equal(t, "from-node-name", reader.GetNodeNameForExport())
+	assert.Equal(t, "from-node-name", node.GetNodeNameForExport())
 	assert.NoError(t, os.Setenv("HUBBLE_NODE_NAME", "from-hubble-node-name"))
-	assert.Equal(t, "from-hubble-node-name", reader.GetNodeNameForExport())
+	assert.Equal(t, "from-hubble-node-name", node.GetNodeNameForExport())
 	assert.NoError(t, os.Unsetenv("NODE_NAME"))
 	assert.NoError(t, os.Unsetenv("HUBBLE_NODE_NAME"))
 }

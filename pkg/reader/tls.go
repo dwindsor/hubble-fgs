@@ -10,6 +10,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 )
@@ -241,10 +242,10 @@ func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
 
 	log.WithFields(logrus.Fields{
 		"op":                           ops.OpCode(op).String(),
-		"saddr":                        GetIP(msg.Tuple.SAddr, op).String(),
-		"sport":                        GetSport(msg.Tuple.SPort),
+		"saddr":                        network.GetIP(msg.Tuple.SAddr, op).String(),
+		"sport":                        network.GetSport(msg.Tuple.SPort),
 		"dport":                        msg.Tuple.DPort,
-		"daddr":                        GetIP(msg.Tuple.DAddr, op).String(),
+		"daddr":                        network.GetIP(msg.Tuple.DAddr, op).String(),
 		"Client-TLS-Version":           GetTLSVersion(msg.ClientHello.Version),
 		"Server-TLS-Version":           GetTLSVersion(msg.ServerHello.Version),
 		"SNI-Type":                     typeSNI,

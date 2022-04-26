@@ -12,11 +12,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 )
 
 var (
-	nodeName = reader.GetNodeNameForExport()
+	nodeName = node.GetNodeNameForExport()
 )
 
 type Grpc struct {
@@ -63,7 +64,7 @@ func (dns *Grpc) get(event *dnsapi.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if dns.enableCilium && proc != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_IPV4_DNS)
+		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_IPV4_DNS)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if dns.eventCache.Needed(proc) {

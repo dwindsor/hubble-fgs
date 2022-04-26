@@ -27,8 +27,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
@@ -152,7 +152,7 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 				}
 				tcp.Tuple.SAddr = entry.localIP
 				tcp.Tuple.DAddr = entry.remoteIP
-				tcp.Tuple.DPort = reader.SwapByte(entry.remotePort)
+				tcp.Tuple.DPort = network.SwapByte(entry.remotePort)
 				tcp.Tuple.SPort = entry.localPort
 				tcp.Tuple.Proto = 2
 

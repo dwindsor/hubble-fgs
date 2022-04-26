@@ -6,11 +6,11 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/testapi"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 )
 
 var (
-	nodeName = reader.GetNodeNameForExport()
+	nodeName = node.GetNodeNameForExport()
 )
 
 func HandleTestMessage(msg *testapi.MsgTestEventUnix) *fgs.GetEventsResponse {

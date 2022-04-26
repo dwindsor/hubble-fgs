@@ -6,11 +6,11 @@ import (
 
 	"github.com/cilium/hubble/pkg/cilium"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -19,25 +19,25 @@ func GetTuple(tuple *api.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo {
 
 	if tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.GetSport(tuple.SPort)),
+			Value: uint32(network.GetSport(tuple.SPort)),
 		}
 	}
 	if tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(reader.SwapByte(tuple.DPort)),
+			Value: uint32(network.SwapByte(tuple.DPort)),
 		}
 	}
 
-	destinationIP := reader.GetIP(tuple.DAddr, op)
+	destinationIP := network.GetIP(tuple.DAddr, op)
 
 	return &fgs.SockInfo{
 		SourcePort:      sourcePort,
-		SourceIp:        reader.GetIP(tuple.SAddr, op).String(),
+		SourceIp:        network.GetIP(tuple.SAddr, op).String(),
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      cookie,
 
-		Protocol: reader.MsgOpToProtocol(op),
+		Protocol: network.MsgOpToProtocol(op),
 	}
 }
 

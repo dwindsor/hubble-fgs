@@ -16,12 +16,14 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
+	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"google.golang.org/protobuf/types/known/durationpb"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
-	nodeName = reader.GetNodeNameForExport()
+	nodeName = node.GetNodeNameForExport()
 )
 
 type Grpc struct {
@@ -97,7 +99,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 
 	if len(event.Request.Code) != 0 &&
 		len(event.Request.Method) != 0 {
-		l := reader.DiffKtime(event.Request.Ktime, event.Common.Ktime)
+		l := ktime.DiffKtime(event.Request.Ktime, event.Common.Ktime)
 		nano := l.Nanoseconds()
 		sec := nano / int64(time.Second)
 		remainder := nano % int64(time.Second)
@@ -119,7 +121,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if http.enableCilium && proc != nil {
-		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP)
+		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if http.eventCache.Needed(proc) {

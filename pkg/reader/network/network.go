@@ -1,4 +1,4 @@
-package reader
+package network
 
 import (
 	"encoding/binary"
@@ -8,6 +8,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/reader/ktime"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
@@ -77,7 +78,7 @@ func ObserverIPV4TCPPrinter(msg *api.MsgIPv4EventUnix, log logrus.FieldLogger) {
 	/* In the event of an error time is {0} so will be obvious at printer time
 	 * and its not clear what to do with this error so ignore it for now.
 	 */
-	eventTime, _ := DecodeKtime(int64(msg.Common.Ktime), true)
+	eventTime, _ := ktime.DecodeKtime(int64(msg.Common.Ktime), true)
 
 	op := msg.Common.Op
 
