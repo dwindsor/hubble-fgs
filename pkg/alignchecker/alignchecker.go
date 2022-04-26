@@ -5,6 +5,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 
@@ -39,7 +40,7 @@ func CheckStructAlignments(path string) error {
 		// "msg_ipv4_udp_event"
 		// from maps
 		"socketmap_value":  {reflect.TypeOf(tcp.SocketMapValue{})},
-		"msg_tls_ipv4":     {reflect.TypeOf(api.MsgTLSIPv4{})},
+		"msg_tls_ipv4":     {reflect.TypeOf(tlsapi.MsgTLSIPv4{})},
 		"execve_map_value": {reflect.TypeOf(execvemap.ExecveValue{})},
 	}
 	return check.CheckStructAlignments(path, toCheck)

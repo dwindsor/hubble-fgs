@@ -17,7 +17,7 @@ import (
 	"errors"
 	"io"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/yalue/native_endian"

@@ -19,8 +19,8 @@ import (
 	"path"
 	"path/filepath"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -476,13 +476,13 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *sensors.Program, v
 }
 
 func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgGenericTracepoint{}
+	m := tracingapi.MsgGenericTracepoint{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, fmt.Errorf("Failed to read tracepoint: %w", err)
 	}
 
-	unix := &api.MsgGenericTracepointUnix{
+	unix := &tracingapi.MsgGenericTracepointUnix{
 		Common:     m.Common,
 		ProcessKey: m.ProcessKey,
 		Id:         m.Id,

@@ -27,6 +27,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
@@ -143,7 +144,7 @@ func (bl *benchmarkListener) Notify(msg interface{}) error {
 	case *api.MsgFGSReady:
 		bl.ready <- true
 
-	case *api.MsgTLSEventUnix:
+	case *tlsapi.MsgTLSEventUnix:
 		bl.summary.TLSEvents++
 
 	case *processapi.MsgExitEventUnix:

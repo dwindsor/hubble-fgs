@@ -11,8 +11,8 @@
 package utils
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 )
 
@@ -35,7 +35,7 @@ func ParseMatchPorts(k *selectors.KernelSelectorState, matchPorts []uint32, anno
 		 * throughout BPF side. But we swap here to avoid doing the swap on data
 		 * read from sock/packet.
 		 */
-		selectors.WriteSelectorUint32(k, uint32(api.SwapByte(uint16(port)))|annotation)
+		selectors.WriteSelectorUint32(k, uint32(reader.SwapByte(uint16(port)))|annotation)
 	}
 	return nil
 }

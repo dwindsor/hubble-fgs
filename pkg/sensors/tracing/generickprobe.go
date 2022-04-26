@@ -21,8 +21,8 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	api "github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/idtable"
@@ -769,8 +769,8 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Mark = skb.Mark
 			arg.Saddr = reader.GetIP(skb.Saddr, 0).String()
 			arg.Daddr = reader.GetIP(skb.Daddr, 0).String()
-			arg.Sport = uint32(api.SwapByte(uint16(skb.Sport)))
-			arg.Dport = uint32(api.SwapByte(uint16(skb.Dport)))
+			arg.Sport = uint32(reader.SwapByte(uint16(skb.Sport)))
+			arg.Dport = uint32(reader.SwapByte(uint16(skb.Dport)))
 			arg.Proto = skb.Proto
 			arg.SecPathLen = skb.SecPathLen
 			arg.SecPathOLen = skb.SecPathOLen

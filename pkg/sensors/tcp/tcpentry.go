@@ -151,7 +151,7 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 				}
 				tcp.Tuple.SAddr = entry.localIP
 				tcp.Tuple.DAddr = entry.remoteIP
-				tcp.Tuple.DPort = api.SwapByte(entry.remotePort)
+				tcp.Tuple.DPort = reader.SwapByte(entry.remotePort)
 				tcp.Tuple.SPort = entry.localPort
 				tcp.Tuple.Proto = 2
 

@@ -24,7 +24,7 @@ func GetTuple(tuple *fgsAPI.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo
 	}
 	if tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(fgsAPI.SwapByte(tuple.DPort)),
+			Value: uint32(reader.SwapByte(tuple.DPort)),
 		}
 	}
 

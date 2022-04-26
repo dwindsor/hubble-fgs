@@ -15,7 +15,7 @@ import (
 	"fmt"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 )
 
 func GetTLSCiphers(flv *api.FLV64) (cipher string) {

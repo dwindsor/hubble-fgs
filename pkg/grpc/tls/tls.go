@@ -2,9 +2,8 @@ package tls
 
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -24,29 +23,29 @@ type Grpc struct {
 // Translate internal uint32 error codes into gRPC visible error codes
 func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
 	switch err {
-	case api.TlsCertificateErrorNone:
+	case tlsapi.TlsCertificateErrorNone:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_UNDEF
-	case api.TlsCertificateErrorBadHeader:
+	case tlsapi.TlsCertificateErrorBadHeader:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_BAD_HEADER
 
-	case api.TlsCertificateErrorLengthRead:
+	case tlsapi.TlsCertificateErrorLengthRead:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_LENGTH_READ
-	case api.TlsCertificateErrorMissingError:
+	case tlsapi.TlsCertificateErrorMissingError:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_MISSING_ERROR
-	case api.TlsCertificateErrorCertRead:
+	case tlsapi.TlsCertificateErrorCertRead:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_READ
-	case api.TlsCertificateErrorCertPartial:
+	case tlsapi.TlsCertificateErrorCertPartial:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_PARTIAL
-	case api.TlsCertificateErrorParseX509:
+	case tlsapi.TlsCertificateErrorParseX509:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_PARSE_X509
-	case api.TlsCertificateErrorSpuriousCerts:
+	case tlsapi.TlsCertificateErrorSpuriousCerts:
 		return fgs.TlsCertificateError_TLS_CERT_ERROR_SPURIOUS_CERTS
 	}
 	return fgs.TlsCertificateError_TLS_CERT_ERROR_UNKNOWN
 }
 
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
-func (tls *Grpc) getTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
+func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -55,7 +54,7 @@ func (tls *Grpc) getTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
+			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -102,7 +101,7 @@ func (tls *Grpc) getTLS(event *fgsAPI.MsgTLSEventUnix) *fgs.Tls {
 	return fgsEvent
 }
 
-func (tls *Grpc) HandleMessage(msg *api.MsgTLSEventUnix) *fgs.GetEventsResponse {
+func (tls *Grpc) HandleMessage(msg *tlsapi.MsgTLSEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_TLS:

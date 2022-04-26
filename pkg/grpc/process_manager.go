@@ -18,6 +18,8 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
@@ -129,7 +131,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 	switch msg := event.(type) {
 	case *api.MsgFGSReady:
 		// pass
-	case *api.MsgTLSEventUnix:
+	case *tlsapi.MsgTLSEventUnix:
 		processedEvent = tlsGrpc.HandleMessage(msg)
 	case *api.MsgHttpEventUnix:
 		processedEvent = httpGrpc.HandleHttpMessage(msg)
@@ -147,9 +149,9 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = execGrpc.HandleExitMessage(msg)
 	case *api.MsgKfreeSkbUnix:
 		processedEvent = kfree.HandleKfreeSkbMessage(msg)
-	case *api.MsgGenericKprobeUnix:
+	case *tracingapi.MsgGenericKprobeUnix:
 		processedEvent = tracingGrpc.HandleGenericKprobeMessage(msg)
-	case *api.MsgGenericTracepointUnix:
+	case *tracingapi.MsgGenericTracepointUnix:
 		processedEvent = tracingGrpc.HandleGenericTracepointMessage(msg)
 	case *api.MsgTestEventUnix:
 		processedEvent = test.HandleTestMessage(msg)

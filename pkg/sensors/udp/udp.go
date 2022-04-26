@@ -231,7 +231,7 @@ func (v *udpInfoValue) String() string {
 			"SubmittedSegs: %d ConsumedSegs: %d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n",
-		ipSrc, v.SPort, ipDst, api.SwapByte(v.DPort),
+		ipSrc, v.SPort, ipDst, reader.SwapByte(v.DPort),
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,

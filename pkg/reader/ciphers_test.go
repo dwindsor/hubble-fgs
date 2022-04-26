@@ -14,7 +14,7 @@ package reader
 import (
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/stretchr/testify/assert"
 )
 

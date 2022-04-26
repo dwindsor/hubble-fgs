@@ -56,7 +56,7 @@ func (l3 *Grpc) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessCo
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
+			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -140,7 +140,7 @@ func (l3 *Grpc) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClos
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
+			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
@@ -265,7 +265,7 @@ func (l3 *Grpc) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessAcc
 	}
 	if event.Tuple.DPort != 0 {
 		destinationPort = &wrapperspb.UInt32Value{
-			Value: uint32(fgsAPI.SwapByte(event.Tuple.DPort)),
+			Value: uint32(reader.SwapByte(event.Tuple.DPort)),
 		}
 	}
 
