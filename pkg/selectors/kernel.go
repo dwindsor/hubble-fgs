@@ -21,6 +21,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 )
 
 const (
@@ -362,7 +363,7 @@ func namespaceSelectorValue(ns *v1alpha1.NamespaceSelector, nstype string) ([]by
 			// the only case that we can accept and is not a uint32 is "<host_ns>"
 			// in this case we should replace that with the approproate value
 			if v == "host_ns" {
-				val = uint64(reader.GetHostNsInode(nstype))
+				val = uint64(namespace.GetHostNsInode(nstype))
 			} else {
 				return b, 0, fmt.Errorf("Values for matchNamespace can only be numeric or \"host_ns\". (%w)", err)
 			}
@@ -493,7 +494,7 @@ func parseMatchCaps(k *KernelSelectorState, action *v1alpha1.CapabilitiesSelecto
 		//     ignoring the user_namespace value.
 		// To implement this we pass the "/proc/1/ns/user" value as the host
 		// user namespace to compare with that inside the kernel.
-		isns = reader.GetPidNsInode(1, "user")
+		isns = namespace.GetPidNsInode(1, "user")
 	}
 	WriteSelectorUint32(k, isns)
 

@@ -39,7 +39,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
@@ -510,5 +510,5 @@ func GetDefaultObserverWithLib(t *testing.T, config, lib string) (*Observer, err
 }
 
 func GetMyPid() uint32 {
-	return reader.GetMyPidG()
+	return namespace.GetMyPidG()
 }

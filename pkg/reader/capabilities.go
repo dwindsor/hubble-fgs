@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 )
 
 func GetCapabilities(capInt uint64) string {
@@ -413,7 +414,7 @@ func GetMsgCapabilities(caps processapi.MsgCapabilities) *fgs.Capabilities {
 }
 
 func GetCurrentCapabilities() *fgs.Capabilities {
-	pidStr := strconv.Itoa(int(GetMyPidG()))
+	pidStr := strconv.Itoa(int(namespace.GetMyPidG()))
 	procCaps := filepath.Join(option.Config.ProcFS, pidStr, "status")
 	_, permitted, effective, inheritable := GetPIDCaps(procCaps)
 

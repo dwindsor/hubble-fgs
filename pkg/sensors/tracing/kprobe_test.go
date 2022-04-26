@@ -28,7 +28,7 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -134,8 +134,8 @@ spec:
 }
 
 func getTestKprobeObjectWRChecker() ec.MultiResponseChecker {
-	myNs := reader.GetCurrentNamespace()
-	myCaps := reader.GetCurrentCapabilities()
+	myNs := namespace.GetCurrentNamespace()
+	myCaps := namespace.GetCurrentCapabilities()
 	kpChecker := ec.NewKprobeChecker().
 		WithFunctionName("__x64_sys_write").
 		WithArgs([]ec.GenericArgChecker{
@@ -235,7 +235,7 @@ spec:
 func TestKprobeObjectWriteRead(t *testing.T) {
 	myPid := observer.GetMyPid()
 	pidStr := strconv.Itoa(int(myPid))
-	mntNsStr := strconv.FormatUint(uint64(reader.GetPidNsInode(myPid, "mnt")), 10)
+	mntNsStr := strconv.FormatUint(uint64(namespace.GetPidNsInode(myPid, "mnt")), 10)
 	writeReadHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:
@@ -282,7 +282,7 @@ spec:
 
 func TestKprobeObjectWriteReadNsOnly(t *testing.T) {
 	myPid := observer.GetMyPid()
-	mntNsStr := strconv.FormatUint(uint64(reader.GetPidNsInode(myPid, "mnt")), 10)
+	mntNsStr := strconv.FormatUint(uint64(namespace.GetPidNsInode(myPid, "mnt")), 10)
 	writeReadHook := `
 apiVersion: hubble-enterprise.io/v1
 metadata:

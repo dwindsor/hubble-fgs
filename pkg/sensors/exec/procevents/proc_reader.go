@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
 )
@@ -319,20 +320,20 @@ func GetRunningProcs(write, push bool) []Procs {
 
 		nspid, permitted, effective, inheritable := reader.GetPIDCaps(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
 
-		uts_ns := reader.GetPidNsInode(uint32(pid), "uts")
-		ipc_ns := reader.GetPidNsInode(uint32(pid), "ipc")
-		mnt_ns := reader.GetPidNsInode(uint32(pid), "mnt")
-		pid_ns := reader.GetPidNsInode(uint32(pid), "pid")
-		pid_for_children_ns := reader.GetPidNsInode(uint32(pid), "pid_for_children")
-		net_ns := reader.GetPidNsInode(uint32(pid), "net")
+		uts_ns := namespace.GetPidNsInode(uint32(pid), "uts")
+		ipc_ns := namespace.GetPidNsInode(uint32(pid), "ipc")
+		mnt_ns := namespace.GetPidNsInode(uint32(pid), "mnt")
+		pid_ns := namespace.GetPidNsInode(uint32(pid), "pid")
+		pid_for_children_ns := namespace.GetPidNsInode(uint32(pid), "pid_for_children")
+		net_ns := namespace.GetPidNsInode(uint32(pid), "net")
 		time_ns := uint32(0)
 		time_for_children_ns := uint32(0)
 		if hasTimeNs {
-			time_ns = reader.GetPidNsInode(uint32(pid), "time")
-			time_for_children_ns = reader.GetPidNsInode(uint32(pid), "time_for_children")
+			time_ns = namespace.GetPidNsInode(uint32(pid), "time")
+			time_for_children_ns = namespace.GetPidNsInode(uint32(pid), "time_for_children")
 		}
-		cgroup_ns := reader.GetPidNsInode(uint32(pid), "cgroup")
-		user_ns := reader.GetPidNsInode(uint32(pid), "user")
+		cgroup_ns := namespace.GetPidNsInode(uint32(pid), "cgroup")
+		user_ns := namespace.GetPidNsInode(uint32(pid), "user")
 
 		// On error procsDockerId zeros dockerId so we can ignore any errors.
 		dockerId, _, _ := procsDockerId(uint32(pid))

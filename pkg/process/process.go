@@ -28,6 +28,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -165,7 +166,7 @@ func GetProcess(
 	execID := GetExecID(&process)
 	protoPod, endpoint := k8s.GetPodInfo(containerID, process.Filename, args, process.NSPID)
 	caps := reader.GetMsgCapabilities(capabilities)
-	ns := reader.GetMsgNamespaces(namespaces)
+	ns := namespace.GetMsgNamespaces(namespaces)
 	return &ProcessInternal{
 		process: &fgs.Process{
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
