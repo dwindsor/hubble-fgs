@@ -10,6 +10,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	"github.com/isovalent/hubble-fgs/pkg/reader/ciphers"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
@@ -252,6 +253,6 @@ func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
 		"SNI-Name":                     nameSNI,
 		"Client-TLS-SupportedVersions": GetTLSSupportedVersions(&msg.ClientHello.SupportedVersions, true),
 		"Server-TLS-SupportedVersions": GetTLSSupportedVersions(&msg.ServerHello.SupportedVersions, false),
-		"cipher":                       GetTLSCiphers(&msg.ServerHello.Cipher),
+		"cipher":                       ciphers.GetTLSCiphers(&msg.ServerHello.Cipher),
 	}).Warn()
 }

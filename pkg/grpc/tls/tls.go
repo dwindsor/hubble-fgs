@@ -9,6 +9,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/ciphers"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -80,7 +81,7 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 		SupportedVersions:   reader.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),
 		SniName:             nameSNI,
 		SniType:             typeSNI,
-		Cipher:              reader.GetTLSCiphers(&event.ServerHello.Cipher),
+		Cipher:              ciphers.GetTLSCiphers(&event.ServerHello.Cipher),
 		ClientFlags:         reader.GetTLSFlags(event.ClientHello.Flags),
 		ServerFlags:         reader.GetTLSFlags(event.ServerHello.Flags),
 		ClientVersion:       reader.GetTLSVersion(event.ClientHello.Version),
