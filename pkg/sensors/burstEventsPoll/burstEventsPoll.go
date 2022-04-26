@@ -17,7 +17,6 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -134,7 +133,7 @@ func checkBurstLog(burstLogKey *ProcessNetworkBurstKey, burstLogValue *ProcessNe
 func createBurstEndEvent(key *ProcessNetworkBurstKey, value *ProcessNetworkBurstValue, timeSinceLastPacket time.Duration) {
 	m := api.MsgProcessNetworkBurstEvent{}
 	m.Common.Op = ops.MSG_OP_IPV4_PROCESS_BURST
-	m.Common.Size = fgsAPI.MsgUnixSize
+	m.Common.Size = api.MsgUnixSize
 	m.Common.Ktime = value.LastPacketTime + uint64(timeSinceLastPacket)
 	m.ProcessKey.Pid = uint32(key.Key & PROCESS_NETWORK_BURST_PROCESS_MASK)
 	m.ProcessKey.Ktime = value.ProcessStartTime

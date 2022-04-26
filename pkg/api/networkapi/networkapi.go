@@ -16,6 +16,11 @@ const (
 	SOCKFLAGS_TYPE_DNSREADY = 0x10
 )
 
+const (
+	// MsgUnixSize of burst msg
+	MsgUnixSize uint32 = 640
+)
+
 type MsgIPv4Tuple struct {
 	SAddr uint32
 	DAddr uint32

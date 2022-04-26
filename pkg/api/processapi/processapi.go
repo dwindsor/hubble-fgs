@@ -18,6 +18,9 @@ const (
 		MSG_SIZEOF_CWD +
 		MSG_SIZEOF_EXECVE + MSG_SIZEOF_EXECVE +
 		MSG_SIZEOF_MAXARG
+
+	// MsgUnixSize of msg
+	MsgUnixSize uint32 = 640
 )
 
 type MsgExec struct {

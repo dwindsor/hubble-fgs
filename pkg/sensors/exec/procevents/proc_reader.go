@@ -139,7 +139,7 @@ func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 
 	m := processapi.MsgExecveEventUnix{}
 	m.Common.Op = ops.MSG_OP_EXECVE
-	m.Common.Size = api.MsgUnixSize + p.psize + p.size
+	m.Common.Size = processapi.MsgUnixSize + p.psize + p.size
 
 	m.Kube.NetNS = 0
 	m.Kube.Cid = 0
