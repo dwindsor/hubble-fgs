@@ -1,4 +1,4 @@
-package reader
+package tls
 
 import (
 	"testing"

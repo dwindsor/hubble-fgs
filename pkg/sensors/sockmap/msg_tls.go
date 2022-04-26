@@ -19,7 +19,7 @@ import (
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/tls"
 	"github.com/yalue/native_endian"
 )
 
@@ -141,7 +141,7 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 			} else if n != int(bytes) {
 				errCode = api.TlsCertificateErrorCertRead
 			} else {
-				certStrings, errCode = reader.GetTLSCertificateString(m.cert)
+				certStrings, errCode = tls.GetTLSCertificateString(m.cert)
 			}
 		}
 	}

@@ -8,10 +8,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/ciphers"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
+	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -70,26 +70,26 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 	} else {
 		proc = processInt.UnsafeGetProcess()
 	}
-	typeSNI, nameSNI := reader.GetTLSSNI(event.ClientHello.SNI.Value)
+	typeSNI, nameSNI := readertls.GetTLSSNI(event.ClientHello.SNI.Value)
 	fgsEvent := &fgs.Tls{
 		Process:             proc,
 		SourceIp:            network.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:          sourcePort,
 		DestinationIp:       network.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
 		DestinationPort:     destinationPort,
-		NegotiatedVersion:   reader.GetTLSSupportedVersions(&event.ServerHello.SupportedVersions, false),
-		SupportedVersions:   reader.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),
+		NegotiatedVersion:   readertls.GetTLSSupportedVersions(&event.ServerHello.SupportedVersions, false),
+		SupportedVersions:   readertls.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),
 		SniName:             nameSNI,
 		SniType:             typeSNI,
 		Cipher:              ciphers.GetTLSCiphers(&event.ServerHello.Cipher),
-		ClientFlags:         reader.GetTLSFlags(event.ClientHello.Flags),
-		ServerFlags:         reader.GetTLSFlags(event.ServerHello.Flags),
-		ClientVersion:       reader.GetTLSVersion(event.ClientHello.Version),
-		ServerVersion:       reader.GetTLSVersion(event.ServerHello.Version),
-		ClientAlert:         reader.GetTLSAlert(event.ClientHello.AlertLevel, event.ClientHello.AlertDescription),
-		ServerAlert:         reader.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
-		ClientSession:       reader.GetTLSSession(&event.ClientHello.Session),
-		ServerSession:       reader.GetTLSSession(&event.ServerHello.Session),
+		ClientFlags:         readertls.GetTLSFlags(event.ClientHello.Flags),
+		ServerFlags:         readertls.GetTLSFlags(event.ServerHello.Flags),
+		ClientVersion:       readertls.GetTLSVersion(event.ClientHello.Version),
+		ServerVersion:       readertls.GetTLSVersion(event.ServerHello.Version),
+		ClientAlert:         readertls.GetTLSAlert(event.ClientHello.AlertLevel, event.ClientHello.AlertDescription),
+		ServerAlert:         readertls.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
+		ClientSession:       readertls.GetTLSSession(&event.ClientHello.Session),
+		ServerSession:       readertls.GetTLSSession(&event.ServerHello.Session),
 		Certificates:        event.ServerCert.Certificates,
 		CertificateError:    getTLSCertificateErrorCode(event.ServerCert.Error),
 		ParserInternalState: event.ServerCert.ParserState.String(),
