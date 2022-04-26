@@ -108,11 +108,6 @@ const (
 	EventErrorPathComponents = 0x400000
 )
 
-const (
-	UnresolvedMountPoints    = 0x1
-	UnresolvedPathComponents = 0x2
-)
-
 // TLS supported version 8bit codes
 const (
 	TLSVersion13 = 0x0403

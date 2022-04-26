@@ -1,6 +1,11 @@
 package api
 
 const (
+	UnresolvedMountPoints    = 0x1
+	UnresolvedPathComponents = 0x2
+)
+
+const (
 	// DOCKER_ID_LENGTH to match BPF side buffer size where we read the
 	// cgroup of the task
 	DOCKER_ID_LENGTH = 128
