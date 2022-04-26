@@ -26,6 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	readerdns "github.com/isovalent/hubble-fgs/pkg/reader/dns"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -350,7 +351,7 @@ func postDnsMetric(ev *fgs.GetEventsResponse, res *fgs.ProcessDns) {
 
 	dns := res.Dns
 	names := strings.Join(dns.GetNames(), ",")
-	codes := reader.GetRCodeString(uint16(dns.GetRcode()))
+	codes := readerdns.GetRCodeString(uint16(dns.GetRcode()))
 
 	if dns.Response {
 		rr = "Response"

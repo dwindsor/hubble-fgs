@@ -28,6 +28,7 @@ import (
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
@@ -135,7 +136,7 @@ spec:
 
 func getTestKprobeObjectWRChecker() ec.MultiResponseChecker {
 	myNs := namespace.GetCurrentNamespace()
-	myCaps := namespace.GetCurrentCapabilities()
+	myCaps := caps.GetCurrentCapabilities()
 	kpChecker := ec.NewKprobeChecker().
 		WithFunctionName("__x64_sys_write").
 		WithArgs([]ec.GenericArgChecker{

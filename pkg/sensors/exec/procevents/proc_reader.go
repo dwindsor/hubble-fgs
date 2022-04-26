@@ -30,6 +30,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
+	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
@@ -318,7 +319,7 @@ func GetRunningProcs(write, push bool) []Procs {
 			logger.GetLogger().WithError(err).Warnf("ktime read error")
 		}
 
-		nspid, permitted, effective, inheritable := reader.GetPIDCaps(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
+		nspid, permitted, effective, inheritable := caps.GetPIDCaps(filepath.Join(option.Config.ProcFS, d.Name(), "status"))
 
 		uts_ns := namespace.GetPidNsInode(uint32(pid), "uts")
 		ipc_ns := namespace.GetPidNsInode(uint32(pid), "ipc")
@@ -363,7 +364,7 @@ func GetRunningProcs(write, push bool) []Procs {
 			}
 
 			if dockerId != "" {
-				pnspid, _, _, _ = reader.GetPIDCaps(filepath.Join(option.Config.ProcFS, ppid, "status"))
+				pnspid, _, _, _ = caps.GetPIDCaps(filepath.Join(option.Config.ProcFS, ppid, "status"))
 			}
 		} else {
 			pcmdline = nil

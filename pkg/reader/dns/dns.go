@@ -1,4 +1,4 @@
-package reader
+package dns
 
 // An RCode is a DNS response status code.
 const (
