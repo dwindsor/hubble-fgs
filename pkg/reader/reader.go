@@ -18,11 +18,8 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
-	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
-	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
@@ -211,15 +208,6 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 		}
 	}
 	return args, cwd
-}
-
-func ObserverKfreeSkbPrinter(msg *kfreeapi.MsgKfreeSkb, log logrus.FieldLogger) {
-	op := msg.Common.Op
-	log.WithFields(logrus.Fields{
-		"op":        ops.OpCode(op).String(),
-		"ret":       msg.Calltrace.Ret,
-		"calltrace": msg.Calltrace.Stack,
-	}).Debug()
 }
 
 func KprobeAction(act uint64) fgs.KprobeAction {
