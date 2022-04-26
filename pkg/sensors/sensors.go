@@ -49,6 +49,7 @@ func GetDefaultMaps() []*Map {
 		PNBurstMapStats,
 		ProcessNetworkBurstMap,
 		SocketMap,
+		SocketCookieMap,
 		SocketStats,
 		TLSContext,
 		TLSMapStats,

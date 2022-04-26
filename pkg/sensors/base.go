@@ -78,6 +78,7 @@ var (
 	ExecveMapV53           = MapBuilder("execve_map", ExecveV53)
 	SocketMap              = MapBuilder("socket_map", TCPConnect)
 	ProcessNetworkBurstMap = MapBuilder("pn_burst_map", Exit)
+	SocketCookieMap        = MapBuilder("socket_cookie_to_proc_map", TCPConnect)
 
 	/* Policy maps populated from base programs */
 	NamesMap    = MapBuilder("names_map", Execve)

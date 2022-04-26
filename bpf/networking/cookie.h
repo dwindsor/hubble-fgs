@@ -33,10 +33,33 @@ socket_cookie_to_proc_map = {
  * to do simple write with asm.
  */
 static inline __attribute__((always_inline)) void
-write_cookie(struct udp_info_key *key, u64 value)
+write_cookie(struct udp_info *info, u64 value)
 {
 	asm volatile("*(u64 *)%[cookie] = %[value];\n"
-		     : [cookie] "+m"(key->cookie)
+		     : [cookie] "+m"(info->cookie)
 		     : [value] "r"(value)
 		     :);
+}
+
+/* Check if the cookie->process(pid) already exists, and if not,
+ * or if the cookie maps to a different process, add/update a
+ * mapping from cookie to process(pid).
+ */
+static inline __attribute__((always_inline)) void
+update_cookie_proc_map(u64 cookie, u32 pid)
+{
+	struct execve_map_value *value;
+	struct execve_map_value *process;
+
+	if (!pid || !cookie)
+		return;
+
+	process = map_lookup_elem(&socket_cookie_to_proc_map, &cookie);
+	if (!process || process->key.pid != pid) {
+		value = execve_map_get(pid);
+		if (value) {
+			map_update_elem(&socket_cookie_to_proc_map, &cookie,
+					value, 0);
+		}
+	}
 }

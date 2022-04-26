@@ -287,6 +287,8 @@ func TestExistingListenEvent(t *testing.T) {
 	cmdServer := exec.Command(server, "-nvlp", "8081")
 	assert.NoError(t, cmdServer.Start())
 
+	time.Sleep(1000 * time.Millisecond)
+
 	/* Create obs */
 	getBasicTcpObserver(t)
 	killAndWaitCommand(t, cmdServer)

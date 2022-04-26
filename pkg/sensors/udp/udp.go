@@ -21,6 +21,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
@@ -83,6 +84,14 @@ var (
 		"cgrp_ingress",
 	)
 
+	SkAllocRetLazy = sensors.ProgramBuilder(
+		"bpf_sock_create.o",
+		"sk_alloc",
+		"kretprobe/sk_alloc",
+		"kretprobe_sk_alloc",
+		"kprobe",
+	).SetRetProbe(true)
+
 	InetSendLazy = sensors.ProgramBuilder(
 		"bpf_inet_send_lazy.o",
 		"inet_lazy_send",
@@ -99,8 +108,16 @@ var (
 		"cgrp_ingress",
 	)
 
+	InetSendRecvLazy = sensors.ProgramBuilder(
+		"bpf_inet_send_lazy_kp.o",
+		"__cgroup_bpf_run_filter_skb",
+		"kprobe/__cgroup_bpf_run_filter_skb",
+		"kprobe___cgroup_bpf_run_filter_skb",
+		"kprobe_udp",
+	)
+
 	UdpSend = sensors.ProgramBuilder(
-		"bpf_udp_sendmsg.o",
+		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
 		"kprobe_udp_sendmsg",
@@ -108,7 +125,7 @@ var (
 	)
 
 	UdpRetSend = sensors.ProgramBuilder(
-		"bpf_udp_sendmsg.o",
+		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
 		"kretprobe_udp_sendmsg",
@@ -116,29 +133,55 @@ var (
 	).SetRetProbe(true)
 
 	UdpRecv = sensors.ProgramBuilder(
-		"bpf_udp_sendmsg.o",
+		"bpf_udp_send_recv.o",
 		"skb_consume_udp",
 		"kprobe/skb_consume_udp",
 		"kprobe_skb_consume_udp",
 		"kprobe",
 	)
 
-	SocketCookieMap        = sensors.MapBuilder("socket_cookie_to_proc_map", sensors.TCPConnect)
-	UdpMap                 = sensors.MapBuilder(UdpMapName, InetSend)
-	UdpMapKprobe           = sensors.MapBuilder(UdpMapName, UdpSend)
-	UdpRetprobeMap         = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
-	UdpConfigMap           = sensors.MapBuilder("udp_config_map", InetSend)
-	UdpConfigLazyMap       = sensors.MapBuilder("udp_config_map", InetSendLazy)
-	ProcessNetworkBurstMap = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
+	UdpSendLazy = sensors.ProgramBuilder(
+		"bpf_udp_send_recv_lazy.o",
+		"udp_sendmsg",
+		"kprobe/udp_sendmsg",
+		"kprobe_udp_sendmsg",
+		"kprobe",
+	)
+
+	UdpRetSendLazy = sensors.ProgramBuilder(
+		"bpf_udp_send_recv_lazy.o",
+		"udp_sendmsg",
+		"kretprobe/udp_sendmsg",
+		"kretprobe_udp_sendmsg",
+		"kprobe",
+	).SetRetProbe(true)
+
+	UdpRecvLazy = sensors.ProgramBuilder(
+		"bpf_udp_send_recv_lazy.o",
+		"skb_consume_udp",
+		"kprobe/skb_consume_udp",
+		"kprobe_skb_consume_udp",
+		"kprobe",
+	)
+
+	SocketCookieMap                  = sensors.MapBuilder("socket_cookie_to_proc_map", sensors.TCPConnect)
+	UdpMap                           = sensors.MapBuilder(UdpMapName, InetSend)
+	UdpMapLazy                       = sensors.MapBuilder(UdpMapName, InetSendLazy)
+	UdpMapLazyKprobe                 = sensors.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpMapKprobe                     = sensors.MapBuilder(UdpMapName, UdpSend)
+	UdpMapKprobeLazy                 = sensors.MapBuilder(UdpMapName, UdpSendLazy)
+	UdpRetprobeMap                   = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
+	UdpRetprobeMapLazy               = sensors.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
+	UdpConfigMap                     = sensors.MapBuilder("udp_config_map", InetSend)
+	UdpConfigLazyMap                 = sensors.MapBuilder("udp_config_map", InetSendLazy)
+	UdpConfigLazyMapKprobe           = sensors.MapBuilder("udp_config_map", InetSendRecvLazy)
+	ProcessNetworkBurstMap           = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
+	ProcessNetworkBurstMapLazy       = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendLazy)
+	ProcessNetworkBurstMapLazyKprobe = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendRecvLazy)
 )
 
 type udpInfoKey struct {
-	Cookie  uint64
-	SAddr   uint32
-	DAddr   uint32
-	SPort   uint16
-	DPort   uint16
-	Padding uint32
+	Cookie uint64
 }
 
 type udpInfoValue struct {
@@ -154,13 +197,15 @@ type udpInfoValue struct {
 	PidKtime       uint64
 	Pid            uint32
 	SkDrops        uint32
+	SAddr          uint32
+	DAddr          uint32
+	SPort          uint16
+	DPort          uint16
+	New            uint32
 }
 
 func (k *udpInfoKey) String() string {
-	ipDst := reader.GetIP(k.DAddr, api.MSG_OP_IPV4_UDPCONNECT)
-	ipSrc := reader.GetIP(k.SAddr, api.MSG_OP_IPV4_UDPCONNECT)
-	return fmt.Sprintf("SAddr=%s:%d DAddr=%s:%d Cookie=%d",
-		ipSrc, k.SPort, ipDst, api.SwapByte(k.DPort), k.Cookie)
+	return fmt.Sprintf("Cookie=%d", k.Cookie)
 }
 func (k *udpInfoKey) GetKeyPtr() unsafe.Pointer { return unsafe.Pointer(k) }
 func (k *udpInfoKey) NewValue() bpf.MapValue {
@@ -168,23 +213,22 @@ func (k *udpInfoKey) NewValue() bpf.MapValue {
 }
 func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 	return &udpInfoKey{
-		SAddr:   k.SAddr,
-		DAddr:   k.DAddr,
-		DPort:   k.DPort,
-		SPort:   k.SPort,
-		Cookie:  k.Cookie,
-		Padding: 0,
+		Cookie: k.Cookie,
 	}
 }
 
 func (v *udpInfoValue) String() string {
+	ipDst := reader.GetIP(v.DAddr, api.MSG_OP_IPV4_UDPCONNECT)
+	ipSrc := reader.GetIP(v.SAddr, api.MSG_OP_IPV4_UDPCONNECT)
 	return fmt.Sprintf(
-		"Pid: %d Ktime %d\n"+
+		"SAddr=%s:%d DAddr=%s:%d\n"+
+			"Pid: %d Ktime %d\n"+
 			"SubmittedBytes: %d ConsumedBytes %d\n"+
 			"TXBytes: %d RXBytes%d\n"+
 			"SubmittedSegs: %d ConsumedSegs: %d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n",
+		ipSrc, v.SPort, ipDst, api.SwapByte(v.DPort),
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,
@@ -241,10 +285,10 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
 		Ktime: v.Ktime,
 	}
 	unix.Tuple = api.MsgIPv4Tuple{
-		SAddr: k.SAddr,
-		DAddr: k.DAddr,
-		SPort: k.SPort,
-		DPort: k.DPort,
+		SAddr: v.SAddr,
+		DAddr: v.DAddr,
+		SPort: v.SPort,
+		DPort: v.DPort,
 		Proto: 0,
 	}
 	unix.SockCookie = k.Cookie
@@ -355,6 +399,10 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 		Ktime:          curr.Ktime,
 		PidKtime:       curr.PidKtime,
 		Pid:            curr.Pid,
+		SAddr:          curr.SAddr,
+		DAddr:          curr.DAddr,
+		SPort:          curr.SPort,
+		DPort:          curr.DPort,
 	}, nil
 }
 
@@ -431,9 +479,24 @@ type udpSensor struct {
 }
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	err := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
-	if err != nil {
-		return -1, err
+	if args.Load.Type == "cgrp_ingress" || args.Load.Type == "cgrp_egress" {
+		err := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
+		if err != nil {
+			return -1, err
+		}
+	} else if args.Load.Type == "kprobe_udp" {
+		_, err := bpf.LoadKprobeProgram(
+			args.Version, args.Verbose,
+			uintptr(btf.GetCachedBTF()),
+			args.Load.Name,
+			args.Load.Attach,
+			args.Load.Label,
+			filepath.Join(args.BPFDir, args.Load.PinPath),
+			args.MapDir,
+			args.Load.RetProbe)
+		if err != nil {
+			return -1, err
+		}
 	}
 	if !configured {
 		if err := configureUdpSensor(args.MapDir, "udp_config_map", Config); err != nil {
@@ -464,18 +527,36 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	var maps []*sensors.Map
 	var versionStr string
 
-	if !kernels.MinKernelVersion("5.10.0") || !cgroup {
+	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
 		progs = []*sensors.Program{
-			InetSendLazy,
-			InetRecvLazy,
-			UdpSend,
-			UdpRetSend,
-			UdpRecv,
+			SkAllocRetLazy,
+			InetSendRecvLazy,
+			UdpSendLazy,
+			UdpRetSendLazy,
+			UdpRecvLazy,
 		}
 		maps = []*sensors.Map{
-			UdpMapKprobe,
-			UdpRetprobeMap,
+			UdpMapKprobeLazy,
+			UdpRetprobeMapLazy,
+			UdpConfigLazyMapKprobe,
+			UdpMapLazyKprobe,
+		}
+		dns.LazyDns = true
+		versionStr = "__udp_sensor_probe__"
+	} else if !kernels.MinKernelVersion("5.10.0") || !cgroup {
+		progs = []*sensors.Program{
+			SkAllocRetLazy,
+			InetSendLazy,
+			InetRecvLazy,
+			UdpSendLazy,
+			UdpRetSendLazy,
+			UdpRecvLazy,
+		}
+		maps = []*sensors.Map{
+			UdpMapKprobeLazy,
+			UdpRetprobeMapLazy,
 			UdpConfigLazyMap,
+			UdpMapLazy,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
@@ -490,7 +571,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRecv,
 		}
 		maps = []*sensors.Map{
-			SocketCookieMap,
 			UdpMapKprobe,
 			UdpRetprobeMap,
 			UdpConfigMap,
@@ -558,4 +638,5 @@ func AddUDP() {
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)
+	sensors.RegisterProbeType("kprobe_udp", udp)
 }
