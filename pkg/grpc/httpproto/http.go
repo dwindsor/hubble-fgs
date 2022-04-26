@@ -6,8 +6,7 @@ import (
 
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
@@ -32,7 +31,7 @@ type Grpc struct {
 	enableCilium bool
 }
 
-func (http *Grpc) GetHttp(event *fgsAPI.MsgHttpEventUnix) *fgs.ProcessHttp {
+func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 	var proc *fgs.Process
 	var code uint32
 	var err error

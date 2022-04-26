@@ -149,5 +149,3 @@ type MsgTLSEventUnix struct {
 	ServerCert  MsgTLSCertificates
 	ProcessKey  processapi.MsgExecveKey
 }
-
-

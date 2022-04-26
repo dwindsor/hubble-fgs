@@ -14,7 +14,7 @@ package http
 import (
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 )
 
 func makeEvent(reqId uint64) *api.MsgHttpEvent {

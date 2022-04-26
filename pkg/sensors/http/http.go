@@ -18,7 +18,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"

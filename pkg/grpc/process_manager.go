@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
@@ -133,7 +134,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		// pass
 	case *tlsapi.MsgTLSEventUnix:
 		processedEvent = tlsGrpc.HandleMessage(msg)
-	case *api.MsgHttpEventUnix:
+	case *httpapi.MsgHttpEventUnix:
 		processedEvent = httpGrpc.HandleHttpMessage(msg)
 	case *processapi.MsgExecveEventUnix:
 		processedEvent = execGrpc.HandleExecveMessage(msg)

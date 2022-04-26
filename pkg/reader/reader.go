@@ -383,5 +383,3 @@ func Signal(s uint32) string {
 func SwapByte(b uint16) uint16 {
 	return (b << 8) | (b >> 8)
 }
-
-

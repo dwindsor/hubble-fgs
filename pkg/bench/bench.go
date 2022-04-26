@@ -26,6 +26,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
@@ -156,7 +157,7 @@ func (bl *benchmarkListener) Notify(msg interface{}) error {
 	case *api.MsgIPv4EventUnix:
 		bl.summary.TCPEvents++
 
-	case *api.MsgHttpEventUnix:
+	case *httpapi.MsgHttpEventUnix:
 		bl.summary.HTTPEvents++
 	}
 

@@ -12,7 +12,7 @@
 package http
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
