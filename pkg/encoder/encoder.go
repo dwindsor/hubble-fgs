@@ -233,6 +233,9 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 				dst = p.colorer.cyan.Sprint(kprobe.Args[1].GetStringArg())
 			}
 			return fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), nil
+		case "proc_exec_connector":
+			event := p.colorer.blue.Sprintf("🔧 %-7s", "proc_exec_connector")
+			return fmt.Sprintf("%s %s", event, processInfo), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
 			return fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), nil
