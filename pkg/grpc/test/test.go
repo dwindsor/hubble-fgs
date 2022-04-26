@@ -2,8 +2,8 @@ package test
 
 import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/testapi"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -13,7 +13,7 @@ var (
 	nodeName = reader.GetNodeNameForExport()
 )
 
-func HandleTestMessage(msg *api.MsgTestEventUnix) *fgs.GetEventsResponse {
+func HandleTestMessage(msg *testapi.MsgTestEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_TEST:

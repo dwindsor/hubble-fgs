@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	api "github.com/isovalent/hubble-fgs/pkg/api/testapi"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 )
 

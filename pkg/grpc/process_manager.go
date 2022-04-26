@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/testapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -157,7 +158,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = tracingGrpc.HandleGenericKprobeMessage(msg)
 	case *tracingapi.MsgGenericTracepointUnix:
 		processedEvent = tracingGrpc.HandleGenericTracepointMessage(msg)
-	case *api.MsgTestEventUnix:
+	case *testapi.MsgTestEventUnix:
 		processedEvent = test.HandleTestMessage(msg)
 
 	default:
