@@ -31,6 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
+	"github.com/isovalent/hubble-fgs/pkg/reader/path"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/proto"
@@ -174,7 +175,7 @@ func GetProcess(
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
 			Uid:          &wrapperspb.UInt32Value{Value: process.UID},
 			Cwd:          reader.MarkUnresolvedPathComponentsCwd(cwd, process.Flags),
-			Binary:       reader.GetBinaryAbsolutePath(process.Filename, cwd),
+			Binary:       path.GetBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
 			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
 			StartTime:    ktime.ToProtoOpt(process.Ktime, (process.Flags&api.EventProcFS) == 0),
