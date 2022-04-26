@@ -29,7 +29,6 @@ func CheckStructAlignments(path string) error {
 		// from perf_event_output
 		"msg_ipv4_event": {reflect.TypeOf(networkapi.MsgIPv4Event{})},
 		"msg_exit":       {reflect.TypeOf(processapi.MsgExitEvent{})},
-		"msg_creds":      {reflect.TypeOf(api.MsgCredEvent{})},
 		"msg_test":       {reflect.TypeOf(api.MsgTestEvent{})},
 		// "msg_kfree_skb":   {reflect.TypeOf(api.MsgKfreeSkb{})}, // api.MsgKfreeSkb(176) size does not match msg_kfree_skb(172)
 		// "msg_tls_event":   {reflect.TypeOf(api.MsgTLSEvent{})}, // api.MsgTLSEvent(520) size does not match msg_tls_event(516)

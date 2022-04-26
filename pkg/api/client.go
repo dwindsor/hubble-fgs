@@ -26,14 +26,6 @@ type MsgCalltrace struct {
 
 var MsgUnixSize uint32 = 640
 
-type MsgCredEvent struct {
-	Common       processapi.MsgCommon       `align:"common"`
-	ProcessKey   processapi.MsgExecveKey    `align:"current"`
-	Capabilities processapi.MsgCapabilities `align:"caps"`
-}
-
-type MsgCredEventUnix = MsgCredEvent
-
 type MsgTestEvent struct {
 	Common processapi.MsgCommon `align:"common"`
 	Arg0   uint64               `align:"arg0"`
