@@ -1,4 +1,4 @@
-package api
+package processapi
 
 const (
 	UnresolvedMountPoints    = 0x1
@@ -122,3 +122,5 @@ type MsgExitEvent struct {
 	ProcessKey MsgExecveKey `align:"current"`
 	Info       MsgExitInfo  `align:"info"`
 }
+
+type MsgExitEventUnix = MsgExitEvent

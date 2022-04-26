@@ -22,7 +22,7 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/helpers"
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/reader"
@@ -306,7 +306,7 @@ func getProcessInfo(process *fgs.Process) (binary, pod, namespace string) {
 func handleOriginalEvent(originalEvent interface{}) {
 	var flags uint32
 	switch msg := originalEvent.(type) {
-	case *api.MsgExecveEventUnix:
+	case *processapi.MsgExecveEventUnix:
 		flags = msg.Process.Flags
 	}
 	for _, flag := range reader.DecodeCommonFlags(flags) {

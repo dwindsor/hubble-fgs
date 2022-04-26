@@ -22,6 +22,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
@@ -85,13 +86,13 @@ type Procs struct {
 func procKernel() Procs {
 	kernelArgs := []byte("<kernel>\u0000")
 	return Procs{
-		psize:       uint32(api.MSG_SIZEOF_EXECVE + len(kernelArgs) + api.MSG_SIZEOF_CWD),
+		psize:       uint32(processapi.MSG_SIZEOF_EXECVE + len(kernelArgs) + processapi.MSG_SIZEOF_CWD),
 		ppid:        kernelPid,
 		pnspid:      0,
 		pflags:      api.EventProcFS,
 		pktime:      1,
 		pargs:       kernelArgs,
-		size:        uint32(api.MSG_SIZEOF_EXECVE + len(kernelArgs) + api.MSG_SIZEOF_CWD),
+		size:        uint32(processapi.MSG_SIZEOF_EXECVE + len(kernelArgs) + processapi.MSG_SIZEOF_CWD),
 		uid:         0,
 		pid:         kernelPid,
 		nspid:       0,
@@ -136,7 +137,7 @@ func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 		args = args + " " + cwd
 	}
 
-	m := api.MsgExecveEventUnix{}
+	m := processapi.MsgExecveEventUnix{}
 	m.Common.Op = ops.MSG_OP_EXECVE
 	m.Common.Size = api.MsgUnixSize + p.psize + p.size
 
@@ -226,10 +227,10 @@ func writeExecveMap(procs []Procs) {
 	// and avoid having to add another branch of logic there to handle pid==0
 	// case we simply add it here.
 	m.Update(&execvemap.ExecveKey{Pid: kernelPid}, &execvemap.ExecveValue{
-		Parent: api.MsgExecveKey{
+		Parent: processapi.MsgExecveKey{
 			Pid:   kernelPid,
 			Ktime: 1},
-		Process: api.MsgExecveKey{
+		Process: processapi.MsgExecveKey{
 			Pid:   kernelPid,
 			Ktime: 1,
 		},
@@ -409,26 +410,26 @@ func GetRunningProcs(write, push bool) []Procs {
 			user_ns:              user_ns,
 		}
 
-		p.size = uint32(api.MSG_SIZEOF_EXECVE + len(p.args) + api.MSG_SIZEOF_CWD)
-		p.psize = uint32(api.MSG_SIZEOF_EXECVE + len(p.pargs) + api.MSG_SIZEOF_CWD)
+		p.size = uint32(processapi.MSG_SIZEOF_EXECVE + len(p.args) + processapi.MSG_SIZEOF_CWD)
+		p.psize = uint32(processapi.MSG_SIZEOF_EXECVE + len(p.pargs) + processapi.MSG_SIZEOF_CWD)
 		/* If we can't fit this in the buffer lets trim some parts and
 		 * make it fit.
 		 */
-		if p.size+p.psize > api.MSG_SIZEOF_BUFFER {
+		if p.size+p.psize > processapi.MSG_SIZEOF_BUFFER {
 			var deduct uint32
 			var need int32
 
-			need = int32((p.size + p.psize) - api.MSG_SIZEOF_BUFFER)
+			need = int32((p.size + p.psize) - processapi.MSG_SIZEOF_BUFFER)
 			// First consume CWD space from parent because this speculative extra space
 			// next try to consume CWD space from child and finally start truncating args
 			// if necessary.
-			deduct = api.MSG_SIZEOF_CWD
+			deduct = processapi.MSG_SIZEOF_CWD
 			p.pflags = p.pflags & ^uint32(api.EventNeedsCWD)
 			p.pflags = p.pflags | api.EventNoCWDSupport
 			p.psize -= deduct
 			need -= int32(deduct)
 			if need > 0 {
-				deduct = api.MSG_SIZEOF_CWD
+				deduct = processapi.MSG_SIZEOF_CWD
 				p.size -= deduct
 				p.flags = p.flags & ^uint32(api.EventNeedsCWD)
 				p.flags = p.flags | api.EventNoCWDSupport

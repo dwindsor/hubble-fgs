@@ -22,7 +22,7 @@ import (
 	"text/scanner"
 	"unsafe"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/yalue/native_endian"
 )
@@ -222,7 +222,7 @@ func (e *TestStepEventDump) Exec(ctx *TestContext) *TestStepError {
 
 	fmt.Printf("EVENT %s\n", e.OpName)
 
-	var common api.MsgCommon
+	var common processapi.MsgCommon
 	err := binary.Read(bytes.NewReader(event), native_endian.NativeEndian(), &common)
 	if err != nil {
 		return &TestStepError{e.Position, "Read MsgCommon", err}

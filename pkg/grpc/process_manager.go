@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
@@ -40,8 +41,8 @@ import (
 )
 
 type execProcess interface {
-	HandleExecveMessage(*api.MsgExecveEventUnix) *fgs.GetEventsResponse
-	HandleExitMessage(*api.MsgExitEventUnix) *fgs.GetEventsResponse
+	HandleExecveMessage(*processapi.MsgExecveEventUnix) *fgs.GetEventsResponse
+	HandleExitMessage(*processapi.MsgExitEventUnix) *fgs.GetEventsResponse
 }
 
 var (
@@ -132,7 +133,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = tlsGrpc.HandleMessage(msg)
 	case *api.MsgHttpEventUnix:
 		processedEvent = httpGrpc.HandleHttpMessage(msg)
-	case *api.MsgExecveEventUnix:
+	case *processapi.MsgExecveEventUnix:
 		processedEvent = execGrpc.HandleExecveMessage(msg)
 	case *api.MsgIPv4EventUnix:
 		processedEvent = layer3Grpc.HandleIpMessage(msg)
@@ -142,7 +143,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = iface.HandleInterfaceMessage(msg)
 	case *api.MsgIPv4DnsUnix:
 		processedEvent = dnsGrpc.HandleDnsMessage(msg)
-	case *api.MsgExitEventUnix:
+	case *processapi.MsgExitEventUnix:
 		processedEvent = execGrpc.HandleExitMessage(msg)
 	case *api.MsgKfreeSkbUnix:
 		processedEvent = kfree.HandleKfreeSkbMessage(msg)

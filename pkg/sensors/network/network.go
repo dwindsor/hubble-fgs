@@ -22,6 +22,7 @@ import (
 	"github.com/docker/docker/client"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/defaults"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -39,7 +40,7 @@ var (
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath string) {
 	unix := api.MsgInterfaceEventUnix{
-		Common: api.MsgCommon{
+		Common: processapi.MsgCommon{
 			Op:    ops.MSG_OP_INTERFACE_STATS,
 			Size:  1,
 			Ktime: 0,

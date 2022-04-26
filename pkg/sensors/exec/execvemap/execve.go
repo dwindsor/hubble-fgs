@@ -14,7 +14,7 @@ import (
 	"fmt"
 	"unsafe"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 )
 
@@ -23,16 +23,16 @@ type ExecveKey struct {
 }
 
 type ExecveValueL struct {
-	Common       api.MsgCommon
-	Kube         api.MsgK8s
-	Parent       api.MsgExecveKey
+	Common       processapi.MsgCommon
+	Kube         processapi.MsgK8s
+	Parent       processapi.MsgExecveKey
 	ParentFlags  uint64
-	Capabilities api.MsgCapabilities
+	Capabilities processapi.MsgCapabilities
 }
 
 type ExecveValue struct {
-	Process api.MsgExecveKey
-	Parent  api.MsgExecveKey
+	Process processapi.MsgExecveKey
+	Parent  processapi.MsgExecveKey
 	Flags   uint32
 	Nspid   uint32
 	Buffer  uint64

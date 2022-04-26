@@ -22,7 +22,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/execAncestors"
 	"github.com/isovalent/hubble-fgs/pkg/process"
@@ -149,16 +149,16 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 		nil,
 		false, false, false, false, true)
 	assert.NoError(t, err)
-	procInternal := process.Add(&fgsAPI.MsgExecveEventUnix{
-		Common: fgsAPI.MsgCommon{
+	procInternal := process.Add(&processapi.MsgExecveEventUnix{
+		Common: processapi.MsgCommon{
 			Ktime: 1234,
 		},
-		Capabilities: fgsAPI.MsgCapabilities{
+		Capabilities: processapi.MsgCapabilities{
 			Permitted:   1,
 			Effective:   1,
 			Inheritable: 1,
 		},
-		Process: fgsAPI.MsgProcess{
+		Process: processapi.MsgProcess{
 			PID: 5678,
 		},
 	})

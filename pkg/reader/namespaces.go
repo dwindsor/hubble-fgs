@@ -18,9 +18,8 @@ import (
 	"strconv"
 	"strings"
 
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
-
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
@@ -131,7 +130,7 @@ func GetCurrentNamespace() *fgs.Namespaces {
 		},
 	}
 }
-func GetMsgNamespaces(ns fgsAPI.MsgNamespaces) *fgs.Namespaces {
+func GetMsgNamespaces(ns processapi.MsgNamespaces) *fgs.Namespaces {
 	hostNs := GetHostNamespace()
 	retVal := &fgs.Namespaces{
 		Uts: &fgs.Namespace{

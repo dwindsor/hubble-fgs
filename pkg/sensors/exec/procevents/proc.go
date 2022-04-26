@@ -17,7 +17,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
@@ -102,7 +102,7 @@ func LookupContainerId(cgroup string, bpfSource bool, walkParent bool) (string, 
 	// We trust BPF part that it will always return null terminated
 	// DOCKER_ID_LENGTH. For other cases where we read through /proc/
 	// strings are not truncated.
-	if bpfSource == true && len(subdir) >= api.DOCKER_ID_LENGTH-1 {
+	if bpfSource == true && len(subdir) >= processapi.DOCKER_ID_LENGTH-1 {
 		idTruncated = true
 	}
 

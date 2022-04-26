@@ -11,7 +11,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -206,8 +206,8 @@ func addSelfToEvecveMap(t *testing.T) {
 	err = m.Update(
 		&execvemap.ExecveKey{Pid: pid},
 		&execvemap.ExecveValue{
-			Parent:  api.MsgExecveKey{Pid: ppid, Pad: 0, Ktime: 0xcacababa},
-			Process: api.MsgExecveKey{Pid: pid, Pad: 0, Ktime: 0x01020304deadbeef},
+			Parent:  processapi.MsgExecveKey{Pid: ppid, Pad: 0, Ktime: 0xcacababa},
+			Process: processapi.MsgExecveKey{Pid: pid, Pad: 0, Ktime: 0x01020304deadbeef},
 		},
 	)
 	if err != nil {

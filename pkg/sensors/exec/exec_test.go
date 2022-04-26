@@ -8,7 +8,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/stretchr/testify/assert"

@@ -21,6 +21,7 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -281,7 +282,7 @@ func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {
 func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
 	unix := api.MsgIPv4EventUnix{}
 
-	unix.Common = api.MsgCommon{
+	unix.Common = processapi.MsgCommon{
 		Op:    0,
 		Size:  1,
 		Ktime: v.Ktime,
@@ -295,7 +296,7 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
 	}
 	unix.SockCookie = k.Cookie
 	unix.Return = 0
-	unix.ProcessKey = api.MsgExecveKey{
+	unix.ProcessKey = processapi.MsgExecveKey{
 		Pid:   v.Pid,
 		Ktime: v.PidKtime,
 	}

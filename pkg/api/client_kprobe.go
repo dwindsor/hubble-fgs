@@ -10,6 +10,8 @@
 
 package api
 
+import "github.com/isovalent/hubble-fgs/pkg/api/processapi"
+
 const (
 	// 5 arguments + 1 return argument
 	MaxArgsSupported = 6
@@ -25,10 +27,10 @@ const (
 )
 
 type MsgGenericKprobe struct {
-	Common       MsgCommon
-	ProcessKey   MsgExecveKey
-	Namespaces   MsgNamespaces
-	Capabilities MsgCapabilities
+	Common       processapi.MsgCommon
+	ProcessKey   processapi.MsgExecveKey
+	Namespaces   processapi.MsgNamespaces
+	Capabilities processapi.MsgCapabilities
 	Id           uint64
 	ThreadId     uint64
 	ActionId     uint64
@@ -184,10 +186,10 @@ type MsgGenericKprobeArg interface {
 }
 
 type MsgGenericKprobeUnix struct {
-	Common       MsgCommon
-	ProcessKey   MsgExecveKey
-	Namespaces   MsgNamespaces
-	Capabilities MsgCapabilities
+	Common       processapi.MsgCommon
+	ProcessKey   processapi.MsgExecveKey
+	Namespaces   processapi.MsgNamespaces
+	Capabilities processapi.MsgCapabilities
 	Id           uint64
 	Action       uint64
 	FuncName     string

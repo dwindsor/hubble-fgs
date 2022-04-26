@@ -4,9 +4,8 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
@@ -102,7 +101,7 @@ func (e *Grpc) GetProcessExec(
 	}
 }
 
-func (e *Grpc) HandleExecveMessage(msg *api.MsgExecveEventUnix) *fgs.GetEventsResponse {
+func (e *Grpc) HandleExecveMessage(msg *fgsAPI.MsgExecveEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_EXECVE:
@@ -170,7 +169,7 @@ func (e *Grpc) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
 	return fgsEvent
 }
 
-func (e *Grpc) HandleExitMessage(msg *api.MsgExitEventUnix) *fgs.GetEventsResponse {
+func (e *Grpc) HandleExitMessage(msg *fgsAPI.MsgExitEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_EXIT:

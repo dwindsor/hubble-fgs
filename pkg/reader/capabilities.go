@@ -19,7 +19,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
@@ -404,7 +404,7 @@ func GetCapabilitiesTypes(capInt uint64) []fgs.CapabilitiesType {
 	return caps
 }
 
-func GetMsgCapabilities(caps fgsAPI.MsgCapabilities) *fgs.Capabilities {
+func GetMsgCapabilities(caps processapi.MsgCapabilities) *fgs.Capabilities {
 	return &fgs.Capabilities{
 		Permitted:   GetCapabilitiesTypes(caps.Permitted),
 		Effective:   GetCapabilitiesTypes(caps.Effective),

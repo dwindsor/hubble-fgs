@@ -85,5 +85,3 @@ const (
 	EventErrorMountPoints    = 0x200000
 	EventErrorPathComponents = 0x400000
 )
-
-

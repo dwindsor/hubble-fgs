@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/process"
@@ -42,7 +42,7 @@ type cacheObj struct {
 	process   *fgs.ProcessExec
 	timestamp *timestamppb.Timestamp
 	color     int
-	msg       *api.MsgExecveEventUnix
+	msg       *processapi.MsgExecveEventUnix
 }
 
 type Cache struct {
@@ -111,7 +111,7 @@ func (ec *Cache) loop() {
 func (ec *Cache) Add(internal *process.ProcessInternal,
 	e *fgs.ProcessExec,
 	t *timestamppb.Timestamp,
-	msg *api.MsgExecveEventUnix) {
+	msg *processapi.MsgExecveEventUnix) {
 	ec.objsChan <- cacheObj{internal: internal, process: e, timestamp: t, msg: msg}
 }
 

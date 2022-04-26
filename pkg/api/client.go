@@ -15,6 +15,7 @@ import (
 	"encoding/binary"
 	"fmt"
 
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 )
 
@@ -93,14 +94,14 @@ func (m *MsgIPv4Tuple) GetPostDPort() uint16 {
 }
 
 type MsgIPv4Event struct {
-	Common      MsgCommon      `align:"common"`
-	Tuple       MsgIPv4Tuple   `align:"tuple"`
-	Return      int64          `align:"ret"`
-	ProcessKey  MsgExecveKey   `align:"key"`
-	SockCookie  uint64         `align:"socket_cookie"`
-	SocketStats MsgSocketStats `align:"stats"`
-	SocketFlags uint32         `align:"socket_flags"`
-	Pad         uint32         `align:"pad"`
+	Common      processapi.MsgCommon    `align:"common"`
+	Tuple       MsgIPv4Tuple            `align:"tuple"`
+	Return      int64                   `align:"ret"`
+	ProcessKey  processapi.MsgExecveKey `align:"key"`
+	SockCookie  uint64                  `align:"socket_cookie"`
+	SocketStats MsgSocketStats          `align:"stats"`
+	SocketFlags uint32                  `align:"socket_flags"`
+	Pad         uint32                  `align:"pad"`
 }
 
 type MsgDns struct {
@@ -113,10 +114,10 @@ type MsgDns struct {
 }
 
 type MsgIPv4DnsUnix struct {
-	Common     MsgCommon
+	Common     processapi.MsgCommon
 	Tuple      MsgIPv4Tuple
 	Return     int64
-	ProcessKey MsgExecveKey
+	ProcessKey processapi.MsgExecveKey
 	SockCookie uint64
 	Dns        MsgDns
 }
@@ -155,11 +156,11 @@ type MsgSocketStats struct {
 }
 
 type MsgIPv4EventUnix struct {
-	Common      MsgCommon
+	Common      processapi.MsgCommon
 	Tuple       MsgIPv4Tuple
-	Kube        MsgK8sUnix
+	Kube        processapi.MsgK8sUnix
 	Return      int64
-	ProcessKey  MsgExecveKey
+	ProcessKey  processapi.MsgExecveKey
 	SockCookie  uint64
 	SocketStats MsgSocketStatsUnix
 	SocketFlags uint32
@@ -184,8 +185,8 @@ type MsgInterface struct {
 }
 
 type MsgInterfaceEventUnix struct {
-	Common MsgCommon
-	Kube   MsgK8sUnix
+	Common processapi.MsgCommon
+	Kube   processapi.MsgK8sUnix
 	Iface  MsgInterface
 	Stats  MsgInterfaceStats
 }
@@ -277,20 +278,20 @@ type MsgTLSAlert struct {
 }
 
 type MsgTLSEvent struct {
-	Common      MsgCommon    `align:"common"`
-	Tuple       MsgTLSIPv4   `align:"tuple"`
-	ClientHello MsgTLS       `align:"clienthello"`
-	ServerHello MsgTLS       `align:"serverhello"`
-	ProcessKey  MsgExecveKey `align:"execve"`
+	Common      processapi.MsgCommon    `align:"common"`
+	Tuple       MsgTLSIPv4              `align:"tuple"`
+	ClientHello MsgTLS                  `align:"clienthello"`
+	ServerHello MsgTLS                  `align:"serverhello"`
+	ProcessKey  processapi.MsgExecveKey `align:"execve"`
 }
 
 type MsgTLSEventUnix struct {
-	Common      MsgCommon
+	Common      processapi.MsgCommon
 	Tuple       MsgTLSIPv4
 	ClientHello MsgTLS
 	ServerHello MsgTLS
 	ServerCert  MsgTLSCertificates
-	ProcessKey  MsgExecveKey
+	ProcessKey  processapi.MsgExecveKey
 }
 
 const (
@@ -334,32 +335,30 @@ type MsgHttp struct {
 }
 
 type MsgHttpEventUnix struct {
-	Common     MsgCommon
+	Common     processapi.MsgCommon
 	Tuple      MsgIPv4Tuple
-	ProcessKey MsgExecveKey
+	ProcessKey processapi.MsgExecveKey
 	Request    MsgHttpUnix
 }
 
 type MsgHttpEvent struct {
-	Common     MsgCommon
+	Common     processapi.MsgCommon
 	Tuple      MsgIPv4Tuple
-	ProcessKey MsgExecveKey
+	ProcessKey processapi.MsgExecveKey
 	Request    MsgHttp
 }
 
-type MsgExitEventUnix = MsgExitEvent
-
 type MsgCredEvent struct {
-	Common       MsgCommon       `align:"common"`
-	ProcessKey   MsgExecveKey    `align:"current"`
-	Capabilities MsgCapabilities `align:"caps"`
+	Common       processapi.MsgCommon       `align:"common"`
+	ProcessKey   processapi.MsgExecveKey    `align:"current"`
+	Capabilities processapi.MsgCapabilities `align:"caps"`
 }
 
 type MsgCredEventUnix = MsgCredEvent
 
 type MsgProcessNetworkBurstEvent struct {
-	Common        MsgCommon
-	ProcessKey    MsgExecveKey
+	Common        processapi.MsgCommon
+	ProcessKey    processapi.MsgExecveKey
 	Protocol      uint32 // IP protocol
 	BurstStartDir uint32 // b0=start of burst, otherwise end of burst, b16=egress, otherwise ingress
 	WindowSize    uint64 // Nanoseconds
@@ -371,11 +370,11 @@ type MsgProcessNetworkBurstEvent struct {
 type MsgProcessNetworkBurstEventUnix = MsgProcessNetworkBurstEvent
 
 type MsgTestEvent struct {
-	Common MsgCommon `align:"common"`
-	Arg0   uint64    `align:"arg0"`
-	Arg1   uint64    `align:"arg1"`
-	Arg2   uint64    `align:"arg2"`
-	Arg3   uint64    `align:"arg3"`
+	Common processapi.MsgCommon `align:"common"`
+	Arg0   uint64               `align:"arg0"`
+	Arg1   uint64               `align:"arg1"`
+	Arg2   uint64               `align:"arg2"`
+	Arg3   uint64               `align:"arg3"`
 }
 
 type MsgTestEventUnix = MsgTestEvent
@@ -390,9 +389,9 @@ func SwapByte(b uint16) uint16 {
 }
 
 type MsgKfreeSkb struct {
-	Common    MsgCommon    `align:"common"`
-	Calltrace MsgCalltrace `align:"calltrace"`
-	Tuple     MsgIPv4Tuple `align:"tuple"`
+	Common    processapi.MsgCommon `align:"common"`
+	Calltrace MsgCalltrace         `align:"calltrace"`
+	Tuple     MsgIPv4Tuple         `align:"tuple"`
 }
 
 type StackAddr struct {
@@ -401,7 +400,7 @@ type StackAddr struct {
 }
 
 type MsgKfreeSkbUnix struct {
-	Common    MsgCommon
+	Common    processapi.MsgCommon
 	Calltrace []StackAddr
 	Tuple     vtuple.Impl
 }

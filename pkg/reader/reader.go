@@ -26,6 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/sys/unix"
@@ -162,10 +163,10 @@ func DecodeCommonFlags(flags uint32) []string {
 func FilePathFlagsToStr(flags uint32) string {
 	var retval string
 
-	if (flags & api.UnresolvedMountPoints) != 0 {
+	if (flags & processapi.UnresolvedMountPoints) != 0 {
 		retval += "unresolvedMountPoints"
 	}
-	if (flags & api.UnresolvedPathComponents) != 0 {
+	if (flags & processapi.UnresolvedPathComponents) != 0 {
 		if len(retval) > 0 {
 			retval += " "
 		}
@@ -176,10 +177,10 @@ func FilePathFlagsToStr(flags uint32) string {
 
 func MarkUnresolvedPathComponents(path string, flags uint32) string {
 	retval := path
-	if (flags & api.UnresolvedMountPoints) != 0 {
+	if (flags & processapi.UnresolvedMountPoints) != 0 {
 		retval = "/[M]" + retval
 	}
-	if (flags & api.UnresolvedPathComponents) != 0 {
+	if (flags & processapi.UnresolvedPathComponents) != 0 {
 		retval = strings.ReplaceAll(retval, "&", "[P]")
 	}
 	return retval

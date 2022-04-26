@@ -19,6 +19,7 @@ import (
 	"testing"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/prometheus/client_golang/prometheus/testutil"
@@ -108,10 +109,10 @@ isovalent_events_total{binary="binary_e",namespace="namespace_e",pod="pod_e",typ
 
 func Test_handleOriginalEvent(t *testing.T) {
 	handleOriginalEvent(nil)
-	handleOriginalEvent(&api.MsgExecveEventUnix{})
+	handleOriginalEvent(&processapi.MsgExecveEventUnix{})
 	assert.NoError(t, testutil.CollectAndCompare(FlagCount, strings.NewReader("")))
-	handleOriginalEvent(&api.MsgExecveEventUnix{
-		Process: api.MsgProcess{
+	handleOriginalEvent(&processapi.MsgExecveEventUnix{
+		Process: processapi.MsgProcess{
 			Flags: api.EventClone | api.EventExecve,
 		},
 	})

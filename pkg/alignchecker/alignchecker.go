@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 
@@ -25,7 +26,7 @@ func CheckStructAlignments(path string) error {
 	toCheck := map[string][]reflect.Type{
 		// from perf_event_output
 		"msg_ipv4_event": {reflect.TypeOf(api.MsgIPv4Event{})},
-		"msg_exit":       {reflect.TypeOf(api.MsgExitEvent{})},
+		"msg_exit":       {reflect.TypeOf(processapi.MsgExitEvent{})},
 		"msg_creds":      {reflect.TypeOf(api.MsgCredEvent{})},
 		"msg_test":       {reflect.TypeOf(api.MsgTestEvent{})},
 		// "msg_kfree_skb":   {reflect.TypeOf(api.MsgKfreeSkb{})}, // api.MsgKfreeSkb(176) size does not match msg_kfree_skb(172)
