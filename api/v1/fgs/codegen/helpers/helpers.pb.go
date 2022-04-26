@@ -31,6 +31,8 @@ func EventTypeString(event event) (string, error) {
 		return "", fmt.Errorf("Event is nil")
 	}
 	switch event.(type) {
+	case *fgs.GetEventsResponse_InterfaceStats:
+		return fgs.EventType_INTERFACE_STATS.String(), nil
 	case *fgs.GetEventsResponse_ProcessConnect:
 		return fgs.EventType_PROCESS_CONNECT.String(), nil
 	case *fgs.GetEventsResponse_ProcessClose:
@@ -51,6 +53,8 @@ func EventTypeString(event event) (string, error) {
 		return fgs.EventType_PROCESS_TRACEPOINT.String(), nil
 	case *fgs.GetEventsResponse_ProcessSockStats:
 		return fgs.EventType_PROCESS_SOCKSTATS.String(), nil
+	case *fgs.GetEventsResponse_Test:
+		return fgs.EventType_TEST.String(), nil
 	case *fgs.GetEventsResponse_Tls:
 		return fgs.EventType_PROCESS_TLS.String(), nil
 	case *fgs.GetEventsResponse_ProcessHttp:

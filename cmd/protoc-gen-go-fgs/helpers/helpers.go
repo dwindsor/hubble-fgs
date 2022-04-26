@@ -28,10 +28,6 @@ func generateEventTypeString(g *protogen.GeneratedFile, f *protogen.File) error 
 	doCases := func() string {
 		var ret string
 		for _, msg := range events {
-			if !common.IsProcessEvent(msg) {
-				continue
-			}
-
 			resGoIdent := common.FgsApiIdent(g, fmt.Sprintf("GetEventsResponse_%s", msg.GoIdent.GoName))
 			typeName := strcase.ToScreamingSnake(msg.GoIdent.GoName)
 			if typeName == "TLS" {
