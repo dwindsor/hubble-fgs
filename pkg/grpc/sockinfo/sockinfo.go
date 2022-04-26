@@ -5,7 +5,7 @@ import (
 	"net"
 
 	"github.com/cilium/hubble/pkg/cilium"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func GetTuple(tuple *fgsAPI.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo {
+func GetTuple(tuple *api.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple.SPort != 0 {
@@ -41,7 +41,7 @@ func GetTuple(tuple *fgsAPI.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo
 	}
 }
 
-func GetProcessTuple(event *fgsAPI.MsgIPv4EventUnix) *fgs.SockInfo {
+func GetProcessTuple(event *api.MsgIPv4EventUnix) *fgs.SockInfo {
 	return GetTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 }
 

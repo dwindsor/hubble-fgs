@@ -1,6 +1,6 @@
 package stats
 
-import "github.com/isovalent/hubble-fgs/pkg/api"
+import api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 
 func MsgToSocketStatsUnix(m *api.MsgSocketStats) api.MsgSocketStatsUnix {
 	return api.MsgSocketStatsUnix{

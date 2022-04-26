@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
@@ -138,11 +139,11 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = httpGrpc.HandleHttpMessage(msg)
 	case *processapi.MsgExecveEventUnix:
 		processedEvent = execGrpc.HandleExecveMessage(msg)
-	case *api.MsgIPv4EventUnix:
+	case *networkapi.MsgIPv4EventUnix:
 		processedEvent = layer3Grpc.HandleIpMessage(msg)
-	case *api.MsgProcessNetworkBurstEventUnix:
+	case *networkapi.MsgProcessNetworkBurstEventUnix:
 		processedEvent = burst.HandleProcessNetworkBurstMessage(msg)
-	case *api.MsgInterfaceEventUnix:
+	case *networkapi.MsgInterfaceEventUnix:
 		processedEvent = iface.HandleInterfaceMessage(msg)
 	case *api.MsgIPv4DnsUnix:
 		processedEvent = dnsGrpc.HandleDnsMessage(msg)

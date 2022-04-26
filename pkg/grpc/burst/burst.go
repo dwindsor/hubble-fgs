@@ -4,8 +4,7 @@ import (
 	"syscall"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
@@ -39,7 +38,7 @@ func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) 
 
 // getProcessNetworkBurst returns ProcessNetworkBurst protobuf message for a given process.
 func getProcessNetworkBurst(
-	event *fgsAPI.MsgProcessNetworkBurstEventUnix,
+	event *api.MsgProcessNetworkBurstEventUnix,
 ) *fgs.ProcessNetworkBurst {
 	var fgsProcess, fgsParent *fgs.Process
 

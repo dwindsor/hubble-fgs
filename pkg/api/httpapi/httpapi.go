@@ -1,7 +1,7 @@
 package httpapi
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 )
 
@@ -11,7 +11,7 @@ const (
 )
 
 type HttpKey struct {
-	Tuple api.MsgIPv4Tuple
+	Tuple networkapi.MsgIPv4Tuple
 	Id    uint64
 }
 
@@ -47,14 +47,14 @@ type MsgHttp struct {
 
 type MsgHttpEventUnix struct {
 	Common     processapi.MsgCommon
-	Tuple      api.MsgIPv4Tuple
+	Tuple      networkapi.MsgIPv4Tuple
 	ProcessKey processapi.MsgExecveKey
 	Request    MsgHttpUnix
 }
 
 type MsgHttpEvent struct {
 	Common     processapi.MsgCommon
-	Tuple      api.MsgIPv4Tuple
+	Tuple      networkapi.MsgIPv4Tuple
 	ProcessKey processapi.MsgExecveKey
 	Request    MsgHttp
 }

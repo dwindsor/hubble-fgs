@@ -17,6 +17,7 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"
 	"github.com/isovalent/hubble-fgs/pkg/vtuplefilter"
@@ -107,7 +108,7 @@ func (pd *PacketdropSensorImpl) SetConfig(key_ string, param string) error {
 	return nil
 }
 
-func msgTuple4ToVTuple(mt *api.MsgIPv4Tuple) (vtuple.Impl, error) {
+func msgTuple4ToVTuple(mt *networkapi.MsgIPv4Tuple) (vtuple.Impl, error) {
 
 	getNetPort := func(np uint16) uint16 {
 		b16 := make([]byte, 2)

@@ -1,7 +1,7 @@
 package ipv4
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/stats"
 )
 

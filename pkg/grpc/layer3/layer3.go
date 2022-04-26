@@ -13,8 +13,7 @@ package layer3
 import (
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
@@ -44,7 +43,7 @@ func SocketFlagsDnsEnabled(t uint32) bool {
 }
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessConnect(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessConnect {
+func (l3 *Grpc) GetProcessConnect(event *api.MsgIPv4EventUnix) *fgs.ProcessConnect {
 	var fgsProcess, fgsParent *fgs.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var err error
@@ -128,7 +127,7 @@ func SocketFlagsToType(t uint32) string {
 }
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClose {
+func (l3 *Grpc) GetProcessClose(event *api.MsgIPv4EventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 	var err error
@@ -205,7 +204,7 @@ func (l3 *Grpc) GetProcessClose(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessClos
 
 // GetProcessListen returns Listen protobuf message for a given process, including the ancestor list.
 func (l3 *Grpc) GetProcessListen(
-	event *fgsAPI.MsgIPv4EventUnix,
+	event *api.MsgIPv4EventUnix,
 ) *fgs.ProcessListen {
 	var fgsProcess, fgsParent *fgs.Process
 	var port *wrapperspb.UInt32Value
@@ -253,7 +252,7 @@ func (l3 *Grpc) GetProcessListen(
 }
 
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessAccept {
+func (l3 *Grpc) GetProcessAccept(event *api.MsgIPv4EventUnix) *fgs.ProcessAccept {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 	var err error
@@ -328,7 +327,7 @@ func (l3 *Grpc) GetProcessAccept(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessAcc
 }
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessSockStats(event *fgsAPI.MsgIPv4EventUnix) *fgs.ProcessSockStats {
+func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPv4EventUnix) *fgs.ProcessSockStats {
 	var fgsParent, fgsProcess *fgs.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)

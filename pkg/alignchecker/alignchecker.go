@@ -4,6 +4,7 @@ import (
 	"reflect"
 
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
@@ -26,7 +27,7 @@ func CheckStructAlignments(path string) error {
 	// Validate alignments of C and Go equivalent structs
 	toCheck := map[string][]reflect.Type{
 		// from perf_event_output
-		"msg_ipv4_event": {reflect.TypeOf(api.MsgIPv4Event{})},
+		"msg_ipv4_event": {reflect.TypeOf(networkapi.MsgIPv4Event{})},
 		"msg_exit":       {reflect.TypeOf(processapi.MsgExitEvent{})},
 		"msg_creds":      {reflect.TypeOf(api.MsgCredEvent{})},
 		"msg_test":       {reflect.TypeOf(api.MsgTestEvent{})},
