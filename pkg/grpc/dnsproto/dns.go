@@ -3,8 +3,7 @@ package dnsproto
 import (
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
@@ -27,7 +26,7 @@ type Grpc struct {
 	enableCilium bool
 }
 
-func (dns *Grpc) get(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
+func (dns *Grpc) get(event *dnsapi.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	var proc *fgs.Process
 	var err error
 
@@ -77,7 +76,7 @@ func (dns *Grpc) get(event *fgsAPI.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	return fgsEvent
 }
 
-func (dns *Grpc) HandleDnsMessage(msg *api.MsgIPv4DnsUnix) *fgs.GetEventsResponse {
+func (dns *Grpc) HandleDnsMessage(msg *dnsapi.MsgIPv4DnsUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_IPV4_DNS:

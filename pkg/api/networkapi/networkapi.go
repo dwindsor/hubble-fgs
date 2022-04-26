@@ -15,6 +15,7 @@ const (
 	// User space flag space 0x00F0
 	SOCKFLAGS_TYPE_DNSREADY = 0x10
 )
+
 type MsgIPv4Tuple struct {
 	SAddr uint32
 	DAddr uint32

@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
@@ -145,7 +146,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = burst.HandleProcessNetworkBurstMessage(msg)
 	case *networkapi.MsgInterfaceEventUnix:
 		processedEvent = iface.HandleInterfaceMessage(msg)
-	case *api.MsgIPv4DnsUnix:
+	case *dnsapi.MsgIPv4DnsUnix:
 		processedEvent = dnsGrpc.HandleDnsMessage(msg)
 	case *processapi.MsgExitEventUnix:
 		processedEvent = execGrpc.HandleExitMessage(msg)

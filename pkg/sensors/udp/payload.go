@@ -7,7 +7,7 @@ import (
 	"net"
 	"unsafe"
 
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -106,7 +106,7 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.Event, error
 		ipStrings = append(ipStrings, ip.String())
 	}
 
-	msgDns := fgsAPI.MsgDns{
+	msgDns := dnsapi.MsgDns{
 		Response:      hdr.Response,
 		RCode:         uint16(hdr.RCode),
 		AnswerTypes:   aTypes,
@@ -115,7 +115,7 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.Event, error
 		IPs:           ipStrings,
 	}
 
-	msgUnix := &fgsAPI.MsgIPv4DnsUnix{
+	msgUnix := &dnsapi.MsgIPv4DnsUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
 		Return:     m.Return,
