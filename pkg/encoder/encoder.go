@@ -77,6 +77,33 @@ func capTrailorPrinter(str string, caps string) string {
 	return fmt.Sprintf("%s %*s", str, padding, caps)
 }
 
+var (
+	CLONE_NEWCGROUP = 0x2000000
+	CLONE_NEWIPC    = 0x8000000
+	CLONE_NEWNET    = 0x40000000
+	CLONE_NEWNS     = 0x20000
+	CLONE_NEWPID    = 0x20000000
+	CLONE_NEWTIME   = 0x80
+	CLONE_NEWUSER   = 0x10000000
+	CLONE_NEWUTS    = 0x4000000
+)
+
+var nsId = map[int32]string{
+	int32(0):               "any",
+	int32(CLONE_NEWCGROUP): "cgroup",
+	int32(CLONE_NEWIPC):    "ipc",
+	int32(CLONE_NEWNET):    "net",
+	int32(CLONE_NEWNS):     "mnt",
+	int32(CLONE_NEWPID):    "pid",
+	int32(CLONE_NEWTIME):   "time",
+	int32(CLONE_NEWUSER):   "user",
+	int32(CLONE_NEWUTS):    "uts",
+}
+
+func printNS(ns int32) string {
+	return nsId[ns]
+}
+
 func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string, error) {
 	switch response.Event.(type) {
 	case *fgs.GetEventsResponse_ProcessExec:
@@ -251,6 +278,13 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 		case "proc_exec_connector":
 			event := p.colorer.blue.Sprintf("🔧 %-7s", "proc_exec_connector")
 			return capTrailorPrinter(fmt.Sprintf("%s %s", event, processInfo), caps), nil
+		case "__x64_sys_setns":
+			netns := ""
+			event := p.colorer.blue.Sprintf("🔧 %-7s", "setns")
+			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
+				netns = printNS(kprobe.Args[1].GetIntArg())
+			}
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, netns), caps), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
 			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), caps), nil
