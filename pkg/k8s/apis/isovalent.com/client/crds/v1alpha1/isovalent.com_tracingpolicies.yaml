@@ -175,7 +175,6 @@ spec:
                                   type: integer
                               required:
                               - action
-                              - argError
                               type: object
                             type: array
                           matchArgs:
@@ -727,7 +726,6 @@ spec:
                                   type: integer
                               required:
                               - action
-                              - argError
                               type: object
                             type: array
                           matchArgs:
