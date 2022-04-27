@@ -15,7 +15,7 @@
 package bpf
 
 /*
-#cgo CFLAGS: -I ../../bpf/include -I ../../bpf/libbpf/ -I ../../bpf/lib/
+#cgo CFLAGS: -I ../../bpf/include -I ../../bpf/libbpf/
 #cgo LDFLAGS: -L../../lib -L/usr/local/lib -lbpf -lelf -lz
 
 #define _GNU_SOURCE
@@ -34,7 +34,6 @@ package bpf
 
 #include "libbpf.h"
 #include "libbpf__bpf.h"
-#include "hubble_msg.h"
 
 static int __print(enum libbpf_print_level level __attribute__((unused)),
 		   const char *format, va_list args)
