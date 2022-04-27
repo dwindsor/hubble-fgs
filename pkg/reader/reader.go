@@ -18,15 +18,6 @@ import (
 	"golang.org/x/sys/unix"
 )
 
-func FromCString(cstr []byte) string {
-	for i, c := range cstr {
-		if c == 0 {
-			return string(cstr[:i])
-		}
-	}
-	return string(cstr)
-}
-
 func DecodeCommonFlags(flags uint32) []string {
 	var s []string
 	if (flags & api.EventExecve) != 0 {
@@ -95,7 +86,6 @@ func DecodeCommonFlags(flags uint32) []string {
 	}
 	return s
 }
-
 
 func Signal(s uint32) string {
 	if s == 0 {

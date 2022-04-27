@@ -12,10 +12,18 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 )
+
+func fromCString(cstr []byte) string {
+	for i, c := range cstr {
+		if c == 0 {
+			return string(cstr[:i])
+		}
+	}
+	return string(cstr)
+}
 
 func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
 	unix := &api.MsgExecveEventUnix{}
@@ -27,7 +35,7 @@ func msgToExecveUnix(m *api.MsgExecveEvent) *api.MsgExecveEventUnix {
 	// The first byte is set to zero if there is no docker ID for this event.
 	if m.Kube.Docker[0] != 0x00 {
 		// We always get a null terminated buffer from bpf
-		cgroup := reader.FromCString(m.Kube.Docker[:api.DOCKER_ID_LENGTH])
+		cgroup := fromCString(m.Kube.Docker[:api.DOCKER_ID_LENGTH])
 		unix.Kube.Docker, _ = procevents.LookupContainerId(cgroup, true, false)
 	}
 	unix.Parent = m.Parent
