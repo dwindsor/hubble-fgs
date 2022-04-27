@@ -101,6 +101,13 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 				SecPathOlen: e.SecPathOLen,
 			}
 			a.Arg = &fgs.KprobeArgument_SkbArg{SkbArg: skbArg}
+		case api.MsgGenericKprobeArgCred:
+			capsArg := &fgs.KprobeCred{
+				Permitted:   reader.GetCapabilitiesTypes(e.Permitted),
+				Effective:   reader.GetCapabilitiesTypes(e.Effective),
+				Inheritable: reader.GetCapabilitiesTypes(e.Inheritable),
+			}
+			a.Arg = &fgs.KprobeArgument_CredArg{CredArg: capsArg}
 		case api.MsgGenericKprobeArgBytes:
 			if e.OrigSize > uint64(len(e.Value)) {
 				a.Arg = &fgs.KprobeArgument_TruncatedBytesArg{

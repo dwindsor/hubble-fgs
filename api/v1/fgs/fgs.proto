@@ -248,6 +248,12 @@ message KprobeTruncatedBytes {
 	uint64 orig_size = 2;
 }
 
+message KprobeCred {
+    repeated CapabilitiesType permitted = 1;
+    repeated CapabilitiesType effective = 2;
+    repeated CapabilitiesType inheritable = 3;
+}
+
 message KprobeArgument {
     oneof arg {
 	string    string_arg = 1;
@@ -259,6 +265,7 @@ message KprobeArgument {
 	KprobeFile file_arg = 7;
 	KprobeTruncatedBytes truncated_bytes_arg = 8;
 	KprobeSock sock_arg = 9;
+	KprobeCred cred_arg = 10;
     }
 }
 

@@ -2587,6 +2587,69 @@ func (x *KprobeTruncatedBytes) GetOrigSize() uint64 {
 	return 0
 }
 
+type KprobeCred struct {
+	state         protoimpl.MessageState
+	sizeCache     protoimpl.SizeCache
+	unknownFields protoimpl.UnknownFields
+
+	Permitted   []CapabilitiesType `protobuf:"varint,1,rep,packed,name=permitted,proto3,enum=fgs.CapabilitiesType" json:"permitted,omitempty"`
+	Effective   []CapabilitiesType `protobuf:"varint,2,rep,packed,name=effective,proto3,enum=fgs.CapabilitiesType" json:"effective,omitempty"`
+	Inheritable []CapabilitiesType `protobuf:"varint,3,rep,packed,name=inheritable,proto3,enum=fgs.CapabilitiesType" json:"inheritable,omitempty"`
+}
+
+func (x *KprobeCred) Reset() {
+	*x = KprobeCred{}
+	if protoimpl.UnsafeEnabled {
+		mi := &file_fgs_fgs_proto_msgTypes[21]
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		ms.StoreMessageInfo(mi)
+	}
+}
+
+func (x *KprobeCred) String() string {
+	return protoimpl.X.MessageStringOf(x)
+}
+
+func (*KprobeCred) ProtoMessage() {}
+
+func (x *KprobeCred) ProtoReflect() protoreflect.Message {
+	mi := &file_fgs_fgs_proto_msgTypes[21]
+	if protoimpl.UnsafeEnabled && x != nil {
+		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
+		if ms.LoadMessageInfo() == nil {
+			ms.StoreMessageInfo(mi)
+		}
+		return ms
+	}
+	return mi.MessageOf(x)
+}
+
+// Deprecated: Use KprobeCred.ProtoReflect.Descriptor instead.
+func (*KprobeCred) Descriptor() ([]byte, []int) {
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{21}
+}
+
+func (x *KprobeCred) GetPermitted() []CapabilitiesType {
+	if x != nil {
+		return x.Permitted
+	}
+	return nil
+}
+
+func (x *KprobeCred) GetEffective() []CapabilitiesType {
+	if x != nil {
+		return x.Effective
+	}
+	return nil
+}
+
+func (x *KprobeCred) GetInheritable() []CapabilitiesType {
+	if x != nil {
+		return x.Inheritable
+	}
+	return nil
+}
+
 type KprobeArgument struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2602,13 +2665,14 @@ type KprobeArgument struct {
 	//	*KprobeArgument_FileArg
 	//	*KprobeArgument_TruncatedBytesArg
 	//	*KprobeArgument_SockArg
+	//	*KprobeArgument_CredArg
 	Arg isKprobeArgument_Arg `protobuf_oneof:"arg"`
 }
 
 func (x *KprobeArgument) Reset() {
 	*x = KprobeArgument{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[21]
+		mi := &file_fgs_fgs_proto_msgTypes[22]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2621,7 +2685,7 @@ func (x *KprobeArgument) String() string {
 func (*KprobeArgument) ProtoMessage() {}
 
 func (x *KprobeArgument) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[21]
+	mi := &file_fgs_fgs_proto_msgTypes[22]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2634,7 +2698,7 @@ func (x *KprobeArgument) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use KprobeArgument.ProtoReflect.Descriptor instead.
 func (*KprobeArgument) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{21}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{22}
 }
 
 func (m *KprobeArgument) GetArg() isKprobeArgument_Arg {
@@ -2707,6 +2771,13 @@ func (x *KprobeArgument) GetSockArg() *KprobeSock {
 	return nil
 }
 
+func (x *KprobeArgument) GetCredArg() *KprobeCred {
+	if x, ok := x.GetArg().(*KprobeArgument_CredArg); ok {
+		return x.CredArg
+	}
+	return nil
+}
+
 type isKprobeArgument_Arg interface {
 	isKprobeArgument_Arg()
 }
@@ -2747,6 +2818,10 @@ type KprobeArgument_SockArg struct {
 	SockArg *KprobeSock `protobuf:"bytes,9,opt,name=sock_arg,json=sockArg,proto3,oneof"`
 }
 
+type KprobeArgument_CredArg struct {
+	CredArg *KprobeCred `protobuf:"bytes,10,opt,name=cred_arg,json=credArg,proto3,oneof"`
+}
+
 func (*KprobeArgument_StringArg) isKprobeArgument_Arg() {}
 
 func (*KprobeArgument_IntArg) isKprobeArgument_Arg() {}
@@ -2765,6 +2840,8 @@ func (*KprobeArgument_TruncatedBytesArg) isKprobeArgument_Arg() {}
 
 func (*KprobeArgument_SockArg) isKprobeArgument_Arg() {}
 
+func (*KprobeArgument_CredArg) isKprobeArgument_Arg() {}
+
 type ProcessKprobe struct {
 	state         protoimpl.MessageState
 	sizeCache     protoimpl.SizeCache
@@ -2781,7 +2858,7 @@ type ProcessKprobe struct {
 func (x *ProcessKprobe) Reset() {
 	*x = ProcessKprobe{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[22]
+		mi := &file_fgs_fgs_proto_msgTypes[23]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2794,7 +2871,7 @@ func (x *ProcessKprobe) String() string {
 func (*ProcessKprobe) ProtoMessage() {}
 
 func (x *ProcessKprobe) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[22]
+	mi := &file_fgs_fgs_proto_msgTypes[23]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2807,7 +2884,7 @@ func (x *ProcessKprobe) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessKprobe.ProtoReflect.Descriptor instead.
 func (*ProcessKprobe) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{22}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{23}
 }
 
 func (x *ProcessKprobe) GetProcess() *Process {
@@ -2868,7 +2945,7 @@ type ProcessTracepoint struct {
 func (x *ProcessTracepoint) Reset() {
 	*x = ProcessTracepoint{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[23]
+		mi := &file_fgs_fgs_proto_msgTypes[24]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2881,7 +2958,7 @@ func (x *ProcessTracepoint) String() string {
 func (*ProcessTracepoint) ProtoMessage() {}
 
 func (x *ProcessTracepoint) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[23]
+	mi := &file_fgs_fgs_proto_msgTypes[24]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2894,7 +2971,7 @@ func (x *ProcessTracepoint) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessTracepoint.ProtoReflect.Descriptor instead.
 func (*ProcessTracepoint) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{23}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{24}
 }
 
 func (x *ProcessTracepoint) GetProcess() *Process {
@@ -2950,7 +3027,7 @@ type SockInfo struct {
 func (x *SockInfo) Reset() {
 	*x = SockInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[24]
+		mi := &file_fgs_fgs_proto_msgTypes[25]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -2963,7 +3040,7 @@ func (x *SockInfo) String() string {
 func (*SockInfo) ProtoMessage() {}
 
 func (x *SockInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[24]
+	mi := &file_fgs_fgs_proto_msgTypes[25]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -2976,7 +3053,7 @@ func (x *SockInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SockInfo.ProtoReflect.Descriptor instead.
 func (*SockInfo) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{24}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{25}
 }
 
 func (x *SockInfo) GetSourceIp() string {
@@ -3049,7 +3126,7 @@ type ProcessSockStats struct {
 func (x *ProcessSockStats) Reset() {
 	*x = ProcessSockStats{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[25]
+		mi := &file_fgs_fgs_proto_msgTypes[26]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3062,7 +3139,7 @@ func (x *ProcessSockStats) String() string {
 func (*ProcessSockStats) ProtoMessage() {}
 
 func (x *ProcessSockStats) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[25]
+	mi := &file_fgs_fgs_proto_msgTypes[26]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3075,7 +3152,7 @@ func (x *ProcessSockStats) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessSockStats.ProtoReflect.Descriptor instead.
 func (*ProcessSockStats) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{25}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{26}
 }
 
 func (x *ProcessSockStats) GetProcess() *Process {
@@ -3120,7 +3197,7 @@ type Test struct {
 func (x *Test) Reset() {
 	*x = Test{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[26]
+		mi := &file_fgs_fgs_proto_msgTypes[27]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3133,7 +3210,7 @@ func (x *Test) String() string {
 func (*Test) ProtoMessage() {}
 
 func (x *Test) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[26]
+	mi := &file_fgs_fgs_proto_msgTypes[27]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3146,7 +3223,7 @@ func (x *Test) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Test.ProtoReflect.Descriptor instead.
 func (*Test) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{26}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{27}
 }
 
 func (x *Test) GetArg0() uint64 {
@@ -3216,7 +3293,7 @@ type Tls struct {
 func (x *Tls) Reset() {
 	*x = Tls{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[27]
+		mi := &file_fgs_fgs_proto_msgTypes[28]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3229,7 +3306,7 @@ func (x *Tls) String() string {
 func (*Tls) ProtoMessage() {}
 
 func (x *Tls) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[27]
+	mi := &file_fgs_fgs_proto_msgTypes[28]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3242,7 +3319,7 @@ func (x *Tls) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Tls.ProtoReflect.Descriptor instead.
 func (*Tls) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{27}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{28}
 }
 
 func (x *Tls) GetProcess() *Process {
@@ -3438,7 +3515,7 @@ type HttpHeader struct {
 func (x *HttpHeader) Reset() {
 	*x = HttpHeader{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[28]
+		mi := &file_fgs_fgs_proto_msgTypes[29]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3451,7 +3528,7 @@ func (x *HttpHeader) String() string {
 func (*HttpHeader) ProtoMessage() {}
 
 func (x *HttpHeader) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[28]
+	mi := &file_fgs_fgs_proto_msgTypes[29]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3464,7 +3541,7 @@ func (x *HttpHeader) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HttpHeader.ProtoReflect.Descriptor instead.
 func (*HttpHeader) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{28}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{29}
 }
 
 func (x *HttpHeader) GetName() string {
@@ -3501,7 +3578,7 @@ type HttpRequest struct {
 func (x *HttpRequest) Reset() {
 	*x = HttpRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[29]
+		mi := &file_fgs_fgs_proto_msgTypes[30]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3514,7 +3591,7 @@ func (x *HttpRequest) String() string {
 func (*HttpRequest) ProtoMessage() {}
 
 func (x *HttpRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[29]
+	mi := &file_fgs_fgs_proto_msgTypes[30]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3527,7 +3604,7 @@ func (x *HttpRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HttpRequest.ProtoReflect.Descriptor instead.
 func (*HttpRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{29}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{30}
 }
 
 func (x *HttpRequest) GetTimestamp() *timestamppb.Timestamp {
@@ -3618,7 +3695,7 @@ type HttpResponse struct {
 func (x *HttpResponse) Reset() {
 	*x = HttpResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[30]
+		mi := &file_fgs_fgs_proto_msgTypes[31]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3631,7 +3708,7 @@ func (x *HttpResponse) String() string {
 func (*HttpResponse) ProtoMessage() {}
 
 func (x *HttpResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[30]
+	mi := &file_fgs_fgs_proto_msgTypes[31]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3644,7 +3721,7 @@ func (x *HttpResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HttpResponse.ProtoReflect.Descriptor instead.
 func (*HttpResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{30}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{31}
 }
 
 func (x *HttpResponse) GetTimestamp() *timestamppb.Timestamp {
@@ -3716,7 +3793,7 @@ type HttpInfo struct {
 func (x *HttpInfo) Reset() {
 	*x = HttpInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[31]
+		mi := &file_fgs_fgs_proto_msgTypes[32]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3729,7 +3806,7 @@ func (x *HttpInfo) String() string {
 func (*HttpInfo) ProtoMessage() {}
 
 func (x *HttpInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[31]
+	mi := &file_fgs_fgs_proto_msgTypes[32]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3742,7 +3819,7 @@ func (x *HttpInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HttpInfo.ProtoReflect.Descriptor instead.
 func (*HttpInfo) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{31}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{32}
 }
 
 func (x *HttpInfo) GetRequest() *HttpRequest {
@@ -3782,7 +3859,7 @@ type ProcessHttp struct {
 func (x *ProcessHttp) Reset() {
 	*x = ProcessHttp{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[32]
+		mi := &file_fgs_fgs_proto_msgTypes[33]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3795,7 +3872,7 @@ func (x *ProcessHttp) String() string {
 func (*ProcessHttp) ProtoMessage() {}
 
 func (x *ProcessHttp) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[32]
+	mi := &file_fgs_fgs_proto_msgTypes[33]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3808,7 +3885,7 @@ func (x *ProcessHttp) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessHttp.ProtoReflect.Descriptor instead.
 func (*ProcessHttp) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{32}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{33}
 }
 
 func (x *ProcessHttp) GetProcess() *Process {
@@ -3864,7 +3941,7 @@ type DnsInfo struct {
 func (x *DnsInfo) Reset() {
 	*x = DnsInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[33]
+		mi := &file_fgs_fgs_proto_msgTypes[34]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3877,7 +3954,7 @@ func (x *DnsInfo) String() string {
 func (*DnsInfo) ProtoMessage() {}
 
 func (x *DnsInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[33]
+	mi := &file_fgs_fgs_proto_msgTypes[34]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3890,7 +3967,7 @@ func (x *DnsInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DnsInfo.ProtoReflect.Descriptor instead.
 func (*DnsInfo) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{33}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{34}
 }
 
 func (x *DnsInfo) GetQuestionTypes() []uint32 {
@@ -3958,7 +4035,7 @@ type ProcessDns struct {
 func (x *ProcessDns) Reset() {
 	*x = ProcessDns{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[34]
+		mi := &file_fgs_fgs_proto_msgTypes[35]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -3971,7 +4048,7 @@ func (x *ProcessDns) String() string {
 func (*ProcessDns) ProtoMessage() {}
 
 func (x *ProcessDns) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[34]
+	mi := &file_fgs_fgs_proto_msgTypes[35]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -3984,7 +4061,7 @@ func (x *ProcessDns) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessDns.ProtoReflect.Descriptor instead.
 func (*ProcessDns) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{34}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{35}
 }
 
 func (x *ProcessDns) GetProcess() *Process {
@@ -4035,7 +4112,7 @@ type StackAddress struct {
 func (x *StackAddress) Reset() {
 	*x = StackAddress{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[35]
+		mi := &file_fgs_fgs_proto_msgTypes[36]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4048,7 +4125,7 @@ func (x *StackAddress) String() string {
 func (*StackAddress) ProtoMessage() {}
 
 func (x *StackAddress) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[35]
+	mi := &file_fgs_fgs_proto_msgTypes[36]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4061,7 +4138,7 @@ func (x *StackAddress) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StackAddress.ProtoReflect.Descriptor instead.
 func (*StackAddress) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{35}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{36}
 }
 
 func (x *StackAddress) GetAddress() uint64 {
@@ -4089,7 +4166,7 @@ type StackTrace struct {
 func (x *StackTrace) Reset() {
 	*x = StackTrace{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[36]
+		mi := &file_fgs_fgs_proto_msgTypes[37]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4102,7 +4179,7 @@ func (x *StackTrace) String() string {
 func (*StackTrace) ProtoMessage() {}
 
 func (x *StackTrace) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[36]
+	mi := &file_fgs_fgs_proto_msgTypes[37]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4115,7 +4192,7 @@ func (x *StackTrace) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StackTrace.ProtoReflect.Descriptor instead.
 func (*StackTrace) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{36}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{37}
 }
 
 func (x *StackTrace) GetAddresses() []*StackAddress {
@@ -4137,7 +4214,7 @@ type StackTraceLabel struct {
 func (x *StackTraceLabel) Reset() {
 	*x = StackTraceLabel{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[37]
+		mi := &file_fgs_fgs_proto_msgTypes[38]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4150,7 +4227,7 @@ func (x *StackTraceLabel) String() string {
 func (*StackTraceLabel) ProtoMessage() {}
 
 func (x *StackTraceLabel) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[37]
+	mi := &file_fgs_fgs_proto_msgTypes[38]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4163,7 +4240,7 @@ func (x *StackTraceLabel) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StackTraceLabel.ProtoReflect.Descriptor instead.
 func (*StackTraceLabel) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{37}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{38}
 }
 
 func (x *StackTraceLabel) GetKey() string {
@@ -4194,7 +4271,7 @@ type StackTraceNode struct {
 func (x *StackTraceNode) Reset() {
 	*x = StackTraceNode{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[38]
+		mi := &file_fgs_fgs_proto_msgTypes[39]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4207,7 +4284,7 @@ func (x *StackTraceNode) String() string {
 func (*StackTraceNode) ProtoMessage() {}
 
 func (x *StackTraceNode) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[38]
+	mi := &file_fgs_fgs_proto_msgTypes[39]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4220,7 +4297,7 @@ func (x *StackTraceNode) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use StackTraceNode.ProtoReflect.Descriptor instead.
 func (*StackTraceNode) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{38}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{39}
 }
 
 func (x *StackTraceNode) GetAddress() *StackAddress {
@@ -4260,7 +4337,7 @@ type ListSensorsRequest struct {
 func (x *ListSensorsRequest) Reset() {
 	*x = ListSensorsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[39]
+		mi := &file_fgs_fgs_proto_msgTypes[40]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4273,7 +4350,7 @@ func (x *ListSensorsRequest) String() string {
 func (*ListSensorsRequest) ProtoMessage() {}
 
 func (x *ListSensorsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[39]
+	mi := &file_fgs_fgs_proto_msgTypes[40]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4286,7 +4363,7 @@ func (x *ListSensorsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSensorsRequest.ProtoReflect.Descriptor instead.
 func (*ListSensorsRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{39}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{40}
 }
 
 type SensorStatus struct {
@@ -4301,7 +4378,7 @@ type SensorStatus struct {
 func (x *SensorStatus) Reset() {
 	*x = SensorStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[40]
+		mi := &file_fgs_fgs_proto_msgTypes[41]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4314,7 +4391,7 @@ func (x *SensorStatus) String() string {
 func (*SensorStatus) ProtoMessage() {}
 
 func (x *SensorStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[40]
+	mi := &file_fgs_fgs_proto_msgTypes[41]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4327,7 +4404,7 @@ func (x *SensorStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SensorStatus.ProtoReflect.Descriptor instead.
 func (*SensorStatus) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{40}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{41}
 }
 
 func (x *SensorStatus) GetName() string {
@@ -4355,7 +4432,7 @@ type ListSensorsResponse struct {
 func (x *ListSensorsResponse) Reset() {
 	*x = ListSensorsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[41]
+		mi := &file_fgs_fgs_proto_msgTypes[42]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4368,7 +4445,7 @@ func (x *ListSensorsResponse) String() string {
 func (*ListSensorsResponse) ProtoMessage() {}
 
 func (x *ListSensorsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[41]
+	mi := &file_fgs_fgs_proto_msgTypes[42]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4381,7 +4458,7 @@ func (x *ListSensorsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ListSensorsResponse.ProtoReflect.Descriptor instead.
 func (*ListSensorsResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{41}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{42}
 }
 
 func (x *ListSensorsResponse) GetSensors() []*SensorStatus {
@@ -4402,7 +4479,7 @@ type AddTracingPolicyRequest struct {
 func (x *AddTracingPolicyRequest) Reset() {
 	*x = AddTracingPolicyRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[42]
+		mi := &file_fgs_fgs_proto_msgTypes[43]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4415,7 +4492,7 @@ func (x *AddTracingPolicyRequest) String() string {
 func (*AddTracingPolicyRequest) ProtoMessage() {}
 
 func (x *AddTracingPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[42]
+	mi := &file_fgs_fgs_proto_msgTypes[43]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4428,7 +4505,7 @@ func (x *AddTracingPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddTracingPolicyRequest.ProtoReflect.Descriptor instead.
 func (*AddTracingPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{42}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{43}
 }
 
 func (x *AddTracingPolicyRequest) GetYaml() string {
@@ -4447,7 +4524,7 @@ type AddTracingPolicyResponse struct {
 func (x *AddTracingPolicyResponse) Reset() {
 	*x = AddTracingPolicyResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[43]
+		mi := &file_fgs_fgs_proto_msgTypes[44]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4460,7 +4537,7 @@ func (x *AddTracingPolicyResponse) String() string {
 func (*AddTracingPolicyResponse) ProtoMessage() {}
 
 func (x *AddTracingPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[43]
+	mi := &file_fgs_fgs_proto_msgTypes[44]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4473,7 +4550,7 @@ func (x *AddTracingPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AddTracingPolicyResponse.ProtoReflect.Descriptor instead.
 func (*AddTracingPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{43}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{44}
 }
 
 type DeleteTracingPolicyRequest struct {
@@ -4487,7 +4564,7 @@ type DeleteTracingPolicyRequest struct {
 func (x *DeleteTracingPolicyRequest) Reset() {
 	*x = DeleteTracingPolicyRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[44]
+		mi := &file_fgs_fgs_proto_msgTypes[45]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4500,7 +4577,7 @@ func (x *DeleteTracingPolicyRequest) String() string {
 func (*DeleteTracingPolicyRequest) ProtoMessage() {}
 
 func (x *DeleteTracingPolicyRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[44]
+	mi := &file_fgs_fgs_proto_msgTypes[45]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4513,7 +4590,7 @@ func (x *DeleteTracingPolicyRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTracingPolicyRequest.ProtoReflect.Descriptor instead.
 func (*DeleteTracingPolicyRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{44}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{45}
 }
 
 func (x *DeleteTracingPolicyRequest) GetYaml() string {
@@ -4532,7 +4609,7 @@ type DeleteTracingPolicyResponse struct {
 func (x *DeleteTracingPolicyResponse) Reset() {
 	*x = DeleteTracingPolicyResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[45]
+		mi := &file_fgs_fgs_proto_msgTypes[46]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4545,7 +4622,7 @@ func (x *DeleteTracingPolicyResponse) String() string {
 func (*DeleteTracingPolicyResponse) ProtoMessage() {}
 
 func (x *DeleteTracingPolicyResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[45]
+	mi := &file_fgs_fgs_proto_msgTypes[46]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4558,7 +4635,7 @@ func (x *DeleteTracingPolicyResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DeleteTracingPolicyResponse.ProtoReflect.Descriptor instead.
 func (*DeleteTracingPolicyResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{45}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{46}
 }
 
 type RemoveSensorRequest struct {
@@ -4572,7 +4649,7 @@ type RemoveSensorRequest struct {
 func (x *RemoveSensorRequest) Reset() {
 	*x = RemoveSensorRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[46]
+		mi := &file_fgs_fgs_proto_msgTypes[47]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4585,7 +4662,7 @@ func (x *RemoveSensorRequest) String() string {
 func (*RemoveSensorRequest) ProtoMessage() {}
 
 func (x *RemoveSensorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[46]
+	mi := &file_fgs_fgs_proto_msgTypes[47]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4598,7 +4675,7 @@ func (x *RemoveSensorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveSensorRequest.ProtoReflect.Descriptor instead.
 func (*RemoveSensorRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{46}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{47}
 }
 
 func (x *RemoveSensorRequest) GetName() string {
@@ -4617,7 +4694,7 @@ type RemoveSensorResponse struct {
 func (x *RemoveSensorResponse) Reset() {
 	*x = RemoveSensorResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[47]
+		mi := &file_fgs_fgs_proto_msgTypes[48]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4630,7 +4707,7 @@ func (x *RemoveSensorResponse) String() string {
 func (*RemoveSensorResponse) ProtoMessage() {}
 
 func (x *RemoveSensorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[47]
+	mi := &file_fgs_fgs_proto_msgTypes[48]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4643,7 +4720,7 @@ func (x *RemoveSensorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use RemoveSensorResponse.ProtoReflect.Descriptor instead.
 func (*RemoveSensorResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{47}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{48}
 }
 
 type EnableSensorRequest struct {
@@ -4657,7 +4734,7 @@ type EnableSensorRequest struct {
 func (x *EnableSensorRequest) Reset() {
 	*x = EnableSensorRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[48]
+		mi := &file_fgs_fgs_proto_msgTypes[49]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4670,7 +4747,7 @@ func (x *EnableSensorRequest) String() string {
 func (*EnableSensorRequest) ProtoMessage() {}
 
 func (x *EnableSensorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[48]
+	mi := &file_fgs_fgs_proto_msgTypes[49]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4683,7 +4760,7 @@ func (x *EnableSensorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnableSensorRequest.ProtoReflect.Descriptor instead.
 func (*EnableSensorRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{48}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{49}
 }
 
 func (x *EnableSensorRequest) GetName() string {
@@ -4702,7 +4779,7 @@ type EnableSensorResponse struct {
 func (x *EnableSensorResponse) Reset() {
 	*x = EnableSensorResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[49]
+		mi := &file_fgs_fgs_proto_msgTypes[50]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4715,7 +4792,7 @@ func (x *EnableSensorResponse) String() string {
 func (*EnableSensorResponse) ProtoMessage() {}
 
 func (x *EnableSensorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[49]
+	mi := &file_fgs_fgs_proto_msgTypes[50]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4728,7 +4805,7 @@ func (x *EnableSensorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use EnableSensorResponse.ProtoReflect.Descriptor instead.
 func (*EnableSensorResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{49}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{50}
 }
 
 type DisableSensorRequest struct {
@@ -4742,7 +4819,7 @@ type DisableSensorRequest struct {
 func (x *DisableSensorRequest) Reset() {
 	*x = DisableSensorRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[50]
+		mi := &file_fgs_fgs_proto_msgTypes[51]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4755,7 +4832,7 @@ func (x *DisableSensorRequest) String() string {
 func (*DisableSensorRequest) ProtoMessage() {}
 
 func (x *DisableSensorRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[50]
+	mi := &file_fgs_fgs_proto_msgTypes[51]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4768,7 +4845,7 @@ func (x *DisableSensorRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableSensorRequest.ProtoReflect.Descriptor instead.
 func (*DisableSensorRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{50}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{51}
 }
 
 func (x *DisableSensorRequest) GetName() string {
@@ -4791,7 +4868,7 @@ type SetSensorConfigRequest struct {
 func (x *SetSensorConfigRequest) Reset() {
 	*x = SetSensorConfigRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[51]
+		mi := &file_fgs_fgs_proto_msgTypes[52]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4804,7 +4881,7 @@ func (x *SetSensorConfigRequest) String() string {
 func (*SetSensorConfigRequest) ProtoMessage() {}
 
 func (x *SetSensorConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[51]
+	mi := &file_fgs_fgs_proto_msgTypes[52]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4817,7 +4894,7 @@ func (x *SetSensorConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSensorConfigRequest.ProtoReflect.Descriptor instead.
 func (*SetSensorConfigRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{51}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{52}
 }
 
 func (x *SetSensorConfigRequest) GetName() string {
@@ -4850,7 +4927,7 @@ type SetSensorConfigResponse struct {
 func (x *SetSensorConfigResponse) Reset() {
 	*x = SetSensorConfigResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[52]
+		mi := &file_fgs_fgs_proto_msgTypes[53]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4863,7 +4940,7 @@ func (x *SetSensorConfigResponse) String() string {
 func (*SetSensorConfigResponse) ProtoMessage() {}
 
 func (x *SetSensorConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[52]
+	mi := &file_fgs_fgs_proto_msgTypes[53]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4876,7 +4953,7 @@ func (x *SetSensorConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use SetSensorConfigResponse.ProtoReflect.Descriptor instead.
 func (*SetSensorConfigResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{52}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{53}
 }
 
 type GetSensorConfigRequest struct {
@@ -4891,7 +4968,7 @@ type GetSensorConfigRequest struct {
 func (x *GetSensorConfigRequest) Reset() {
 	*x = GetSensorConfigRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[53]
+		mi := &file_fgs_fgs_proto_msgTypes[54]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4904,7 +4981,7 @@ func (x *GetSensorConfigRequest) String() string {
 func (*GetSensorConfigRequest) ProtoMessage() {}
 
 func (x *GetSensorConfigRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[53]
+	mi := &file_fgs_fgs_proto_msgTypes[54]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4917,7 +4994,7 @@ func (x *GetSensorConfigRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSensorConfigRequest.ProtoReflect.Descriptor instead.
 func (*GetSensorConfigRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{53}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{54}
 }
 
 func (x *GetSensorConfigRequest) GetName() string {
@@ -4945,7 +5022,7 @@ type GetSensorConfigResponse struct {
 func (x *GetSensorConfigResponse) Reset() {
 	*x = GetSensorConfigResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[54]
+		mi := &file_fgs_fgs_proto_msgTypes[55]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -4958,7 +5035,7 @@ func (x *GetSensorConfigResponse) String() string {
 func (*GetSensorConfigResponse) ProtoMessage() {}
 
 func (x *GetSensorConfigResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[54]
+	mi := &file_fgs_fgs_proto_msgTypes[55]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -4971,7 +5048,7 @@ func (x *GetSensorConfigResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetSensorConfigResponse.ProtoReflect.Descriptor instead.
 func (*GetSensorConfigResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{54}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{55}
 }
 
 func (x *GetSensorConfigResponse) GetCfgval() string {
@@ -4990,7 +5067,7 @@ type DisableSensorResponse struct {
 func (x *DisableSensorResponse) Reset() {
 	*x = DisableSensorResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[55]
+		mi := &file_fgs_fgs_proto_msgTypes[56]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5003,7 +5080,7 @@ func (x *DisableSensorResponse) String() string {
 func (*DisableSensorResponse) ProtoMessage() {}
 
 func (x *DisableSensorResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[55]
+	mi := &file_fgs_fgs_proto_msgTypes[56]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5016,7 +5093,7 @@ func (x *DisableSensorResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use DisableSensorResponse.ProtoReflect.Descriptor instead.
 func (*DisableSensorResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{55}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{56}
 }
 
 type GetStackTraceTreeRequest struct {
@@ -5030,7 +5107,7 @@ type GetStackTraceTreeRequest struct {
 func (x *GetStackTraceTreeRequest) Reset() {
 	*x = GetStackTraceTreeRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[56]
+		mi := &file_fgs_fgs_proto_msgTypes[57]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5043,7 +5120,7 @@ func (x *GetStackTraceTreeRequest) String() string {
 func (*GetStackTraceTreeRequest) ProtoMessage() {}
 
 func (x *GetStackTraceTreeRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[56]
+	mi := &file_fgs_fgs_proto_msgTypes[57]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5056,7 +5133,7 @@ func (x *GetStackTraceTreeRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStackTraceTreeRequest.ProtoReflect.Descriptor instead.
 func (*GetStackTraceTreeRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{56}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{57}
 }
 
 func (x *GetStackTraceTreeRequest) GetName() string {
@@ -5077,7 +5154,7 @@ type GetStackTraceTreeResponse struct {
 func (x *GetStackTraceTreeResponse) Reset() {
 	*x = GetStackTraceTreeResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[57]
+		mi := &file_fgs_fgs_proto_msgTypes[58]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5090,7 +5167,7 @@ func (x *GetStackTraceTreeResponse) String() string {
 func (*GetStackTraceTreeResponse) ProtoMessage() {}
 
 func (x *GetStackTraceTreeResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[57]
+	mi := &file_fgs_fgs_proto_msgTypes[58]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5103,7 +5180,7 @@ func (x *GetStackTraceTreeResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetStackTraceTreeResponse.ProtoReflect.Descriptor instead.
 func (*GetStackTraceTreeResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{57}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{58}
 }
 
 func (x *GetStackTraceTreeResponse) GetRoot() *StackTraceNode {
@@ -5122,7 +5199,7 @@ type GetVersionRequest struct {
 func (x *GetVersionRequest) Reset() {
 	*x = GetVersionRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[58]
+		mi := &file_fgs_fgs_proto_msgTypes[59]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5135,7 +5212,7 @@ func (x *GetVersionRequest) String() string {
 func (*GetVersionRequest) ProtoMessage() {}
 
 func (x *GetVersionRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[58]
+	mi := &file_fgs_fgs_proto_msgTypes[59]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5148,7 +5225,7 @@ func (x *GetVersionRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVersionRequest.ProtoReflect.Descriptor instead.
 func (*GetVersionRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{58}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{59}
 }
 
 type GetVersionResponse struct {
@@ -5162,7 +5239,7 @@ type GetVersionResponse struct {
 func (x *GetVersionResponse) Reset() {
 	*x = GetVersionResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[59]
+		mi := &file_fgs_fgs_proto_msgTypes[60]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5175,7 +5252,7 @@ func (x *GetVersionResponse) String() string {
 func (*GetVersionResponse) ProtoMessage() {}
 
 func (x *GetVersionResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[59]
+	mi := &file_fgs_fgs_proto_msgTypes[60]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5188,7 +5265,7 @@ func (x *GetVersionResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetVersionResponse.ProtoReflect.Descriptor instead.
 func (*GetVersionResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{59}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{60}
 }
 
 func (x *GetVersionResponse) GetVersion() string {
@@ -5209,7 +5286,7 @@ type GetHealthStatusRequest struct {
 func (x *GetHealthStatusRequest) Reset() {
 	*x = GetHealthStatusRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[60]
+		mi := &file_fgs_fgs_proto_msgTypes[61]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5222,7 +5299,7 @@ func (x *GetHealthStatusRequest) String() string {
 func (*GetHealthStatusRequest) ProtoMessage() {}
 
 func (x *GetHealthStatusRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[60]
+	mi := &file_fgs_fgs_proto_msgTypes[61]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5235,7 +5312,7 @@ func (x *GetHealthStatusRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHealthStatusRequest.ProtoReflect.Descriptor instead.
 func (*GetHealthStatusRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{60}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{61}
 }
 
 func (x *GetHealthStatusRequest) GetEventSet() []HealthStatusType {
@@ -5258,7 +5335,7 @@ type HealthStatus struct {
 func (x *HealthStatus) Reset() {
 	*x = HealthStatus{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[61]
+		mi := &file_fgs_fgs_proto_msgTypes[62]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5271,7 +5348,7 @@ func (x *HealthStatus) String() string {
 func (*HealthStatus) ProtoMessage() {}
 
 func (x *HealthStatus) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[61]
+	mi := &file_fgs_fgs_proto_msgTypes[62]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5284,7 +5361,7 @@ func (x *HealthStatus) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use HealthStatus.ProtoReflect.Descriptor instead.
 func (*HealthStatus) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{61}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{62}
 }
 
 func (x *HealthStatus) GetEvent() HealthStatusType {
@@ -5319,7 +5396,7 @@ type GetHealthStatusResponse struct {
 func (x *GetHealthStatusResponse) Reset() {
 	*x = GetHealthStatusResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[62]
+		mi := &file_fgs_fgs_proto_msgTypes[63]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5332,7 +5409,7 @@ func (x *GetHealthStatusResponse) String() string {
 func (*GetHealthStatusResponse) ProtoMessage() {}
 
 func (x *GetHealthStatusResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[62]
+	mi := &file_fgs_fgs_proto_msgTypes[63]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5345,7 +5422,7 @@ func (x *GetHealthStatusResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetHealthStatusResponse.ProtoReflect.Descriptor instead.
 func (*GetHealthStatusResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{62}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{63}
 }
 
 func (x *GetHealthStatusResponse) GetHealthStatus() []*HealthStatus {
@@ -5372,7 +5449,7 @@ type AggregationOptions struct {
 func (x *AggregationOptions) Reset() {
 	*x = AggregationOptions{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[63]
+		mi := &file_fgs_fgs_proto_msgTypes[64]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5385,7 +5462,7 @@ func (x *AggregationOptions) String() string {
 func (*AggregationOptions) ProtoMessage() {}
 
 func (x *AggregationOptions) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[63]
+	mi := &file_fgs_fgs_proto_msgTypes[64]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5398,7 +5475,7 @@ func (x *AggregationOptions) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AggregationOptions.ProtoReflect.Descriptor instead.
 func (*AggregationOptions) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{63}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{64}
 }
 
 func (x *AggregationOptions) GetWindowSize() *durationpb.Duration {
@@ -5442,7 +5519,7 @@ type GetEventsRequest struct {
 func (x *GetEventsRequest) Reset() {
 	*x = GetEventsRequest{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[64]
+		mi := &file_fgs_fgs_proto_msgTypes[65]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5455,7 +5532,7 @@ func (x *GetEventsRequest) String() string {
 func (*GetEventsRequest) ProtoMessage() {}
 
 func (x *GetEventsRequest) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[64]
+	mi := &file_fgs_fgs_proto_msgTypes[65]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5468,7 +5545,7 @@ func (x *GetEventsRequest) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEventsRequest.ProtoReflect.Descriptor instead.
 func (*GetEventsRequest) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{64}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{65}
 }
 
 func (x *GetEventsRequest) GetAllowList() []*Filter {
@@ -5505,7 +5582,7 @@ type AggregationInfo struct {
 func (x *AggregationInfo) Reset() {
 	*x = AggregationInfo{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[65]
+		mi := &file_fgs_fgs_proto_msgTypes[66]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5518,7 +5595,7 @@ func (x *AggregationInfo) String() string {
 func (*AggregationInfo) ProtoMessage() {}
 
 func (x *AggregationInfo) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[65]
+	mi := &file_fgs_fgs_proto_msgTypes[66]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5531,7 +5608,7 @@ func (x *AggregationInfo) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use AggregationInfo.ProtoReflect.Descriptor instead.
 func (*AggregationInfo) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{65}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{66}
 }
 
 func (x *AggregationInfo) GetCount() uint64 {
@@ -5560,7 +5637,7 @@ type ProcessNetworkBurst struct {
 func (x *ProcessNetworkBurst) Reset() {
 	*x = ProcessNetworkBurst{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[66]
+		mi := &file_fgs_fgs_proto_msgTypes[67]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5573,7 +5650,7 @@ func (x *ProcessNetworkBurst) String() string {
 func (*ProcessNetworkBurst) ProtoMessage() {}
 
 func (x *ProcessNetworkBurst) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[66]
+	mi := &file_fgs_fgs_proto_msgTypes[67]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5586,7 +5663,7 @@ func (x *ProcessNetworkBurst) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use ProcessNetworkBurst.ProtoReflect.Descriptor instead.
 func (*ProcessNetworkBurst) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{66}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{67}
 }
 
 func (x *ProcessNetworkBurst) GetProcess() *Process {
@@ -5690,7 +5767,7 @@ type GetEventsResponse struct {
 func (x *GetEventsResponse) Reset() {
 	*x = GetEventsResponse{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[67]
+		mi := &file_fgs_fgs_proto_msgTypes[68]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5703,7 +5780,7 @@ func (x *GetEventsResponse) String() string {
 func (*GetEventsResponse) ProtoMessage() {}
 
 func (x *GetEventsResponse) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[67]
+	mi := &file_fgs_fgs_proto_msgTypes[68]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -5716,7 +5793,7 @@ func (x *GetEventsResponse) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use GetEventsResponse.ProtoReflect.Descriptor instead.
 func (*GetEventsResponse) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{67}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{68}
 }
 
 func (m *GetEventsResponse) GetEvent() isGetEventsResponse_Event {
@@ -5975,7 +6052,7 @@ type Filter struct {
 func (x *Filter) Reset() {
 	*x = Filter{}
 	if protoimpl.UnsafeEnabled {
-		mi := &file_fgs_fgs_proto_msgTypes[68]
+		mi := &file_fgs_fgs_proto_msgTypes[69]
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		ms.StoreMessageInfo(mi)
 	}
@@ -5988,7 +6065,7 @@ func (x *Filter) String() string {
 func (*Filter) ProtoMessage() {}
 
 func (x *Filter) ProtoReflect() protoreflect.Message {
-	mi := &file_fgs_fgs_proto_msgTypes[68]
+	mi := &file_fgs_fgs_proto_msgTypes[69]
 	if protoimpl.UnsafeEnabled && x != nil {
 		ms := protoimpl.X.MessageStateOf(protoimpl.Pointer(x))
 		if ms.LoadMessageInfo() == nil {
@@ -6001,7 +6078,7 @@ func (x *Filter) ProtoReflect() protoreflect.Message {
 
 // Deprecated: Use Filter.ProtoReflect.Descriptor instead.
 func (*Filter) Descriptor() ([]byte, []int) {
-	return file_fgs_fgs_proto_rawDescGZIP(), []int{68}
+	return file_fgs_fgs_proto_rawDescGZIP(), []int{69}
 }
 
 func (x *Filter) GetBinaryRegex() []string {
@@ -6388,31 +6465,45 @@ var file_fgs_fgs_proto_rawDesc = []byte{
 	0x65, 0x73, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0c, 0x52, 0x08, 0x62, 0x79,
 	0x74, 0x65, 0x73, 0x41, 0x72, 0x67, 0x12, 0x1b, 0x0a, 0x09, 0x6f, 0x72, 0x69, 0x67, 0x5f, 0x73,
 	0x69, 0x7a, 0x65, 0x18, 0x02, 0x20, 0x01, 0x28, 0x04, 0x52, 0x08, 0x6f, 0x72, 0x69, 0x67, 0x53,
-	0x69, 0x7a, 0x65, 0x22, 0x91, 0x03, 0x0a, 0x0e, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x41, 0x72,
-	0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x1f, 0x0a, 0x0a, 0x73, 0x74, 0x72, 0x69, 0x6e, 0x67,
-	0x5f, 0x61, 0x72, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x09, 0x73, 0x74,
-	0x72, 0x69, 0x6e, 0x67, 0x41, 0x72, 0x67, 0x12, 0x19, 0x0a, 0x07, 0x69, 0x6e, 0x74, 0x5f, 0x61,
-	0x72, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x48, 0x00, 0x52, 0x06, 0x69, 0x6e, 0x74, 0x41,
-	0x72, 0x67, 0x12, 0x29, 0x0a, 0x07, 0x73, 0x6b, 0x62, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x03, 0x20,
-	0x01, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65,
-	0x53, 0x6b, 0x62, 0x48, 0x00, 0x52, 0x06, 0x73, 0x6b, 0x62, 0x41, 0x72, 0x67, 0x12, 0x1b, 0x0a,
-	0x08, 0x73, 0x69, 0x7a, 0x65, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x04, 0x20, 0x01, 0x28, 0x04, 0x48,
-	0x00, 0x52, 0x07, 0x73, 0x69, 0x7a, 0x65, 0x41, 0x72, 0x67, 0x12, 0x1d, 0x0a, 0x09, 0x62, 0x79,
-	0x74, 0x65, 0x73, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x48, 0x00, 0x52,
-	0x08, 0x62, 0x79, 0x74, 0x65, 0x73, 0x41, 0x72, 0x67, 0x12, 0x2c, 0x0a, 0x08, 0x70, 0x61, 0x74,
-	0x68, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x66, 0x67,
-	0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x50, 0x61, 0x74, 0x68, 0x48, 0x00, 0x52, 0x07,
-	0x70, 0x61, 0x74, 0x68, 0x41, 0x72, 0x67, 0x12, 0x2c, 0x0a, 0x08, 0x66, 0x69, 0x6c, 0x65, 0x5f,
-	0x61, 0x72, 0x67, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x66, 0x67, 0x73, 0x2e,
-	0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x46, 0x69, 0x6c, 0x65, 0x48, 0x00, 0x52, 0x07, 0x66, 0x69,
-	0x6c, 0x65, 0x41, 0x72, 0x67, 0x12, 0x4b, 0x0a, 0x13, 0x74, 0x72, 0x75, 0x6e, 0x63, 0x61, 0x74,
-	0x65, 0x64, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x08, 0x20, 0x01,
-	0x28, 0x0b, 0x32, 0x19, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x54,
-	0x72, 0x75, 0x6e, 0x63, 0x61, 0x74, 0x65, 0x64, 0x42, 0x79, 0x74, 0x65, 0x73, 0x48, 0x00, 0x52,
-	0x11, 0x74, 0x72, 0x75, 0x6e, 0x63, 0x61, 0x74, 0x65, 0x64, 0x42, 0x79, 0x74, 0x65, 0x73, 0x41,
-	0x72, 0x67, 0x12, 0x2c, 0x0a, 0x08, 0x73, 0x6f, 0x63, 0x6b, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x09,
+	0x69, 0x7a, 0x65, 0x22, 0xaf, 0x01, 0x0a, 0x0a, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x43, 0x72,
+	0x65, 0x64, 0x12, 0x33, 0x0a, 0x09, 0x70, 0x65, 0x72, 0x6d, 0x69, 0x74, 0x74, 0x65, 0x64, 0x18,
+	0x01, 0x20, 0x03, 0x28, 0x0e, 0x32, 0x15, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x43, 0x61, 0x70, 0x61,
+	0x62, 0x69, 0x6c, 0x69, 0x74, 0x69, 0x65, 0x73, 0x54, 0x79, 0x70, 0x65, 0x52, 0x09, 0x70, 0x65,
+	0x72, 0x6d, 0x69, 0x74, 0x74, 0x65, 0x64, 0x12, 0x33, 0x0a, 0x09, 0x65, 0x66, 0x66, 0x65, 0x63,
+	0x74, 0x69, 0x76, 0x65, 0x18, 0x02, 0x20, 0x03, 0x28, 0x0e, 0x32, 0x15, 0x2e, 0x66, 0x67, 0x73,
+	0x2e, 0x43, 0x61, 0x70, 0x61, 0x62, 0x69, 0x6c, 0x69, 0x74, 0x69, 0x65, 0x73, 0x54, 0x79, 0x70,
+	0x65, 0x52, 0x09, 0x65, 0x66, 0x66, 0x65, 0x63, 0x74, 0x69, 0x76, 0x65, 0x12, 0x37, 0x0a, 0x0b,
+	0x69, 0x6e, 0x68, 0x65, 0x72, 0x69, 0x74, 0x61, 0x62, 0x6c, 0x65, 0x18, 0x03, 0x20, 0x03, 0x28,
+	0x0e, 0x32, 0x15, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x43, 0x61, 0x70, 0x61, 0x62, 0x69, 0x6c, 0x69,
+	0x74, 0x69, 0x65, 0x73, 0x54, 0x79, 0x70, 0x65, 0x52, 0x0b, 0x69, 0x6e, 0x68, 0x65, 0x72, 0x69,
+	0x74, 0x61, 0x62, 0x6c, 0x65, 0x22, 0xbf, 0x03, 0x0a, 0x0e, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65,
+	0x41, 0x72, 0x67, 0x75, 0x6d, 0x65, 0x6e, 0x74, 0x12, 0x1f, 0x0a, 0x0a, 0x73, 0x74, 0x72, 0x69,
+	0x6e, 0x67, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x01, 0x20, 0x01, 0x28, 0x09, 0x48, 0x00, 0x52, 0x09,
+	0x73, 0x74, 0x72, 0x69, 0x6e, 0x67, 0x41, 0x72, 0x67, 0x12, 0x19, 0x0a, 0x07, 0x69, 0x6e, 0x74,
+	0x5f, 0x61, 0x72, 0x67, 0x18, 0x02, 0x20, 0x01, 0x28, 0x05, 0x48, 0x00, 0x52, 0x06, 0x69, 0x6e,
+	0x74, 0x41, 0x72, 0x67, 0x12, 0x29, 0x0a, 0x07, 0x73, 0x6b, 0x62, 0x5f, 0x61, 0x72, 0x67, 0x18,
+	0x03, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0e, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f,
+	0x62, 0x65, 0x53, 0x6b, 0x62, 0x48, 0x00, 0x52, 0x06, 0x73, 0x6b, 0x62, 0x41, 0x72, 0x67, 0x12,
+	0x1b, 0x0a, 0x08, 0x73, 0x69, 0x7a, 0x65, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x04, 0x20, 0x01, 0x28,
+	0x04, 0x48, 0x00, 0x52, 0x07, 0x73, 0x69, 0x7a, 0x65, 0x41, 0x72, 0x67, 0x12, 0x1d, 0x0a, 0x09,
+	0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x05, 0x20, 0x01, 0x28, 0x0c, 0x48,
+	0x00, 0x52, 0x08, 0x62, 0x79, 0x74, 0x65, 0x73, 0x41, 0x72, 0x67, 0x12, 0x2c, 0x0a, 0x08, 0x70,
+	0x61, 0x74, 0x68, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x06, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e,
+	0x66, 0x67, 0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x50, 0x61, 0x74, 0x68, 0x48, 0x00,
+	0x52, 0x07, 0x70, 0x61, 0x74, 0x68, 0x41, 0x72, 0x67, 0x12, 0x2c, 0x0a, 0x08, 0x66, 0x69, 0x6c,
+	0x65, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x07, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x66, 0x67,
+	0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x46, 0x69, 0x6c, 0x65, 0x48, 0x00, 0x52, 0x07,
+	0x66, 0x69, 0x6c, 0x65, 0x41, 0x72, 0x67, 0x12, 0x4b, 0x0a, 0x13, 0x74, 0x72, 0x75, 0x6e, 0x63,
+	0x61, 0x74, 0x65, 0x64, 0x5f, 0x62, 0x79, 0x74, 0x65, 0x73, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x08,
+	0x20, 0x01, 0x28, 0x0b, 0x32, 0x19, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f, 0x62,
+	0x65, 0x54, 0x72, 0x75, 0x6e, 0x63, 0x61, 0x74, 0x65, 0x64, 0x42, 0x79, 0x74, 0x65, 0x73, 0x48,
+	0x00, 0x52, 0x11, 0x74, 0x72, 0x75, 0x6e, 0x63, 0x61, 0x74, 0x65, 0x64, 0x42, 0x79, 0x74, 0x65,
+	0x73, 0x41, 0x72, 0x67, 0x12, 0x2c, 0x0a, 0x08, 0x73, 0x6f, 0x63, 0x6b, 0x5f, 0x61, 0x72, 0x67,
+	0x18, 0x09, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x4b, 0x70, 0x72,
+	0x6f, 0x62, 0x65, 0x53, 0x6f, 0x63, 0x6b, 0x48, 0x00, 0x52, 0x07, 0x73, 0x6f, 0x63, 0x6b, 0x41,
+	0x72, 0x67, 0x12, 0x2c, 0x0a, 0x08, 0x63, 0x72, 0x65, 0x64, 0x5f, 0x61, 0x72, 0x67, 0x18, 0x0a,
 	0x20, 0x01, 0x28, 0x0b, 0x32, 0x0f, 0x2e, 0x66, 0x67, 0x73, 0x2e, 0x4b, 0x70, 0x72, 0x6f, 0x62,
-	0x65, 0x53, 0x6f, 0x63, 0x6b, 0x48, 0x00, 0x52, 0x07, 0x73, 0x6f, 0x63, 0x6b, 0x41, 0x72, 0x67,
+	0x65, 0x43, 0x72, 0x65, 0x64, 0x48, 0x00, 0x52, 0x07, 0x63, 0x72, 0x65, 0x64, 0x41, 0x72, 0x67,
 	0x42, 0x05, 0x0a, 0x03, 0x61, 0x72, 0x67, 0x22, 0x83, 0x02, 0x0a, 0x0d, 0x50, 0x72, 0x6f, 0x63,
 	0x65, 0x73, 0x73, 0x4b, 0x70, 0x72, 0x6f, 0x62, 0x65, 0x12, 0x26, 0x0a, 0x07, 0x70, 0x72, 0x6f,
 	0x63, 0x65, 0x73, 0x73, 0x18, 0x01, 0x20, 0x01, 0x28, 0x0b, 0x32, 0x0c, 0x2e, 0x66, 0x67, 0x73,
@@ -7083,7 +7174,7 @@ func file_fgs_fgs_proto_rawDescGZIP() []byte {
 }
 
 var file_fgs_fgs_proto_enumTypes = make([]protoimpl.EnumInfo, 7)
-var file_fgs_fgs_proto_msgTypes = make([]protoimpl.MessageInfo, 69)
+var file_fgs_fgs_proto_msgTypes = make([]protoimpl.MessageInfo, 70)
 var file_fgs_fgs_proto_goTypes = []interface{}{
 	(SocketProtocol)(0),                 // 0: fgs.SocketProtocol
 	(KprobeAction)(0),                   // 1: fgs.KprobeAction
@@ -7113,63 +7204,64 @@ var file_fgs_fgs_proto_goTypes = []interface{}{
 	(*KprobePath)(nil),                  // 25: fgs.KprobePath
 	(*KprobeFile)(nil),                  // 26: fgs.KprobeFile
 	(*KprobeTruncatedBytes)(nil),        // 27: fgs.KprobeTruncatedBytes
-	(*KprobeArgument)(nil),              // 28: fgs.KprobeArgument
-	(*ProcessKprobe)(nil),               // 29: fgs.ProcessKprobe
-	(*ProcessTracepoint)(nil),           // 30: fgs.ProcessTracepoint
-	(*SockInfo)(nil),                    // 31: fgs.SockInfo
-	(*ProcessSockStats)(nil),            // 32: fgs.ProcessSockStats
-	(*Test)(nil),                        // 33: fgs.Test
-	(*Tls)(nil),                         // 34: fgs.Tls
-	(*HttpHeader)(nil),                  // 35: fgs.HttpHeader
-	(*HttpRequest)(nil),                 // 36: fgs.HttpRequest
-	(*HttpResponse)(nil),                // 37: fgs.HttpResponse
-	(*HttpInfo)(nil),                    // 38: fgs.HttpInfo
-	(*ProcessHttp)(nil),                 // 39: fgs.ProcessHttp
-	(*DnsInfo)(nil),                     // 40: fgs.DnsInfo
-	(*ProcessDns)(nil),                  // 41: fgs.ProcessDns
-	(*StackAddress)(nil),                // 42: fgs.StackAddress
-	(*StackTrace)(nil),                  // 43: fgs.StackTrace
-	(*StackTraceLabel)(nil),             // 44: fgs.StackTraceLabel
-	(*StackTraceNode)(nil),              // 45: fgs.StackTraceNode
-	(*ListSensorsRequest)(nil),          // 46: fgs.ListSensorsRequest
-	(*SensorStatus)(nil),                // 47: fgs.SensorStatus
-	(*ListSensorsResponse)(nil),         // 48: fgs.ListSensorsResponse
-	(*AddTracingPolicyRequest)(nil),     // 49: fgs.AddTracingPolicyRequest
-	(*AddTracingPolicyResponse)(nil),    // 50: fgs.AddTracingPolicyResponse
-	(*DeleteTracingPolicyRequest)(nil),  // 51: fgs.DeleteTracingPolicyRequest
-	(*DeleteTracingPolicyResponse)(nil), // 52: fgs.DeleteTracingPolicyResponse
-	(*RemoveSensorRequest)(nil),         // 53: fgs.RemoveSensorRequest
-	(*RemoveSensorResponse)(nil),        // 54: fgs.RemoveSensorResponse
-	(*EnableSensorRequest)(nil),         // 55: fgs.EnableSensorRequest
-	(*EnableSensorResponse)(nil),        // 56: fgs.EnableSensorResponse
-	(*DisableSensorRequest)(nil),        // 57: fgs.DisableSensorRequest
-	(*SetSensorConfigRequest)(nil),      // 58: fgs.SetSensorConfigRequest
-	(*SetSensorConfigResponse)(nil),     // 59: fgs.SetSensorConfigResponse
-	(*GetSensorConfigRequest)(nil),      // 60: fgs.GetSensorConfigRequest
-	(*GetSensorConfigResponse)(nil),     // 61: fgs.GetSensorConfigResponse
-	(*DisableSensorResponse)(nil),       // 62: fgs.DisableSensorResponse
-	(*GetStackTraceTreeRequest)(nil),    // 63: fgs.GetStackTraceTreeRequest
-	(*GetStackTraceTreeResponse)(nil),   // 64: fgs.GetStackTraceTreeResponse
-	(*GetVersionRequest)(nil),           // 65: fgs.GetVersionRequest
-	(*GetVersionResponse)(nil),          // 66: fgs.GetVersionResponse
-	(*GetHealthStatusRequest)(nil),      // 67: fgs.GetHealthStatusRequest
-	(*HealthStatus)(nil),                // 68: fgs.HealthStatus
-	(*GetHealthStatusResponse)(nil),     // 69: fgs.GetHealthStatusResponse
-	(*AggregationOptions)(nil),          // 70: fgs.AggregationOptions
-	(*GetEventsRequest)(nil),            // 71: fgs.GetEventsRequest
-	(*AggregationInfo)(nil),             // 72: fgs.AggregationInfo
-	(*ProcessNetworkBurst)(nil),         // 73: fgs.ProcessNetworkBurst
-	(*GetEventsResponse)(nil),           // 74: fgs.GetEventsResponse
-	(*Filter)(nil),                      // 75: fgs.Filter
-	(*timestamppb.Timestamp)(nil),       // 76: google.protobuf.Timestamp
-	(*wrapperspb.UInt32Value)(nil),      // 77: google.protobuf.UInt32Value
-	(*durationpb.Duration)(nil),         // 78: google.protobuf.Duration
-	(*wrapperspb.BoolValue)(nil),        // 79: google.protobuf.BoolValue
+	(*KprobeCred)(nil),                  // 28: fgs.KprobeCred
+	(*KprobeArgument)(nil),              // 29: fgs.KprobeArgument
+	(*ProcessKprobe)(nil),               // 30: fgs.ProcessKprobe
+	(*ProcessTracepoint)(nil),           // 31: fgs.ProcessTracepoint
+	(*SockInfo)(nil),                    // 32: fgs.SockInfo
+	(*ProcessSockStats)(nil),            // 33: fgs.ProcessSockStats
+	(*Test)(nil),                        // 34: fgs.Test
+	(*Tls)(nil),                         // 35: fgs.Tls
+	(*HttpHeader)(nil),                  // 36: fgs.HttpHeader
+	(*HttpRequest)(nil),                 // 37: fgs.HttpRequest
+	(*HttpResponse)(nil),                // 38: fgs.HttpResponse
+	(*HttpInfo)(nil),                    // 39: fgs.HttpInfo
+	(*ProcessHttp)(nil),                 // 40: fgs.ProcessHttp
+	(*DnsInfo)(nil),                     // 41: fgs.DnsInfo
+	(*ProcessDns)(nil),                  // 42: fgs.ProcessDns
+	(*StackAddress)(nil),                // 43: fgs.StackAddress
+	(*StackTrace)(nil),                  // 44: fgs.StackTrace
+	(*StackTraceLabel)(nil),             // 45: fgs.StackTraceLabel
+	(*StackTraceNode)(nil),              // 46: fgs.StackTraceNode
+	(*ListSensorsRequest)(nil),          // 47: fgs.ListSensorsRequest
+	(*SensorStatus)(nil),                // 48: fgs.SensorStatus
+	(*ListSensorsResponse)(nil),         // 49: fgs.ListSensorsResponse
+	(*AddTracingPolicyRequest)(nil),     // 50: fgs.AddTracingPolicyRequest
+	(*AddTracingPolicyResponse)(nil),    // 51: fgs.AddTracingPolicyResponse
+	(*DeleteTracingPolicyRequest)(nil),  // 52: fgs.DeleteTracingPolicyRequest
+	(*DeleteTracingPolicyResponse)(nil), // 53: fgs.DeleteTracingPolicyResponse
+	(*RemoveSensorRequest)(nil),         // 54: fgs.RemoveSensorRequest
+	(*RemoveSensorResponse)(nil),        // 55: fgs.RemoveSensorResponse
+	(*EnableSensorRequest)(nil),         // 56: fgs.EnableSensorRequest
+	(*EnableSensorResponse)(nil),        // 57: fgs.EnableSensorResponse
+	(*DisableSensorRequest)(nil),        // 58: fgs.DisableSensorRequest
+	(*SetSensorConfigRequest)(nil),      // 59: fgs.SetSensorConfigRequest
+	(*SetSensorConfigResponse)(nil),     // 60: fgs.SetSensorConfigResponse
+	(*GetSensorConfigRequest)(nil),      // 61: fgs.GetSensorConfigRequest
+	(*GetSensorConfigResponse)(nil),     // 62: fgs.GetSensorConfigResponse
+	(*DisableSensorResponse)(nil),       // 63: fgs.DisableSensorResponse
+	(*GetStackTraceTreeRequest)(nil),    // 64: fgs.GetStackTraceTreeRequest
+	(*GetStackTraceTreeResponse)(nil),   // 65: fgs.GetStackTraceTreeResponse
+	(*GetVersionRequest)(nil),           // 66: fgs.GetVersionRequest
+	(*GetVersionResponse)(nil),          // 67: fgs.GetVersionResponse
+	(*GetHealthStatusRequest)(nil),      // 68: fgs.GetHealthStatusRequest
+	(*HealthStatus)(nil),                // 69: fgs.HealthStatus
+	(*GetHealthStatusResponse)(nil),     // 70: fgs.GetHealthStatusResponse
+	(*AggregationOptions)(nil),          // 71: fgs.AggregationOptions
+	(*GetEventsRequest)(nil),            // 72: fgs.GetEventsRequest
+	(*AggregationInfo)(nil),             // 73: fgs.AggregationInfo
+	(*ProcessNetworkBurst)(nil),         // 74: fgs.ProcessNetworkBurst
+	(*GetEventsResponse)(nil),           // 75: fgs.GetEventsResponse
+	(*Filter)(nil),                      // 76: fgs.Filter
+	(*timestamppb.Timestamp)(nil),       // 77: google.protobuf.Timestamp
+	(*wrapperspb.UInt32Value)(nil),      // 78: google.protobuf.UInt32Value
+	(*durationpb.Duration)(nil),         // 79: google.protobuf.Duration
+	(*wrapperspb.BoolValue)(nil),        // 80: google.protobuf.BoolValue
 }
 var file_fgs_fgs_proto_depIdxs = []int32{
 	7,   // 0: fgs.Container.image:type_name -> fgs.Image
-	76,  // 1: fgs.Container.start_time:type_name -> google.protobuf.Timestamp
-	77,  // 2: fgs.Container.pid:type_name -> google.protobuf.UInt32Value
+	77,  // 1: fgs.Container.start_time:type_name -> google.protobuf.Timestamp
+	78,  // 2: fgs.Container.pid:type_name -> google.protobuf.UInt32Value
 	8,   // 3: fgs.Pod.container:type_name -> fgs.Container
 	6,   // 4: fgs.Capabilities.permitted:type_name -> fgs.CapabilitiesType
 	6,   // 5: fgs.Capabilities.effective:type_name -> fgs.CapabilitiesType
@@ -7184,35 +7276,35 @@ var file_fgs_fgs_proto_depIdxs = []int32{
 	11,  // 14: fgs.Namespaces.time_for_children:type_name -> fgs.Namespace
 	11,  // 15: fgs.Namespaces.cgroup:type_name -> fgs.Namespace
 	11,  // 16: fgs.Namespaces.user:type_name -> fgs.Namespace
-	77,  // 17: fgs.Process.pid:type_name -> google.protobuf.UInt32Value
-	77,  // 18: fgs.Process.uid:type_name -> google.protobuf.UInt32Value
-	76,  // 19: fgs.Process.start_time:type_name -> google.protobuf.Timestamp
-	77,  // 20: fgs.Process.auid:type_name -> google.protobuf.UInt32Value
+	78,  // 17: fgs.Process.pid:type_name -> google.protobuf.UInt32Value
+	78,  // 18: fgs.Process.uid:type_name -> google.protobuf.UInt32Value
+	77,  // 19: fgs.Process.start_time:type_name -> google.protobuf.Timestamp
+	78,  // 20: fgs.Process.auid:type_name -> google.protobuf.UInt32Value
 	9,   // 21: fgs.Process.pod:type_name -> fgs.Pod
 	10,  // 22: fgs.Process.cap:type_name -> fgs.Capabilities
 	12,  // 23: fgs.Process.ns:type_name -> fgs.Namespaces
 	9,   // 24: fgs.InterfaceStats.pod:type_name -> fgs.Pod
 	13,  // 25: fgs.ProcessConnect.process:type_name -> fgs.Process
 	13,  // 26: fgs.ProcessConnect.parent:type_name -> fgs.Process
-	77,  // 27: fgs.ProcessConnect.source_port:type_name -> google.protobuf.UInt32Value
-	77,  // 28: fgs.ProcessConnect.destination_port:type_name -> google.protobuf.UInt32Value
+	78,  // 27: fgs.ProcessConnect.source_port:type_name -> google.protobuf.UInt32Value
+	78,  // 28: fgs.ProcessConnect.destination_port:type_name -> google.protobuf.UInt32Value
 	9,   // 29: fgs.ProcessConnect.destination_pod:type_name -> fgs.Pod
 	0,   // 30: fgs.ProcessConnect.protocol:type_name -> fgs.SocketProtocol
 	13,  // 31: fgs.ProcessClose.process:type_name -> fgs.Process
 	13,  // 32: fgs.ProcessClose.parent:type_name -> fgs.Process
-	77,  // 33: fgs.ProcessClose.source_port:type_name -> google.protobuf.UInt32Value
-	77,  // 34: fgs.ProcessClose.destination_port:type_name -> google.protobuf.UInt32Value
+	78,  // 33: fgs.ProcessClose.source_port:type_name -> google.protobuf.UInt32Value
+	78,  // 34: fgs.ProcessClose.destination_port:type_name -> google.protobuf.UInt32Value
 	15,  // 35: fgs.ProcessClose.stats:type_name -> fgs.SocketStats
 	9,   // 36: fgs.ProcessClose.destination_pod:type_name -> fgs.Pod
 	0,   // 37: fgs.ProcessClose.protocol:type_name -> fgs.SocketProtocol
 	13,  // 38: fgs.ProcessListen.process:type_name -> fgs.Process
 	13,  // 39: fgs.ProcessListen.parent:type_name -> fgs.Process
-	77,  // 40: fgs.ProcessListen.port:type_name -> google.protobuf.UInt32Value
+	78,  // 40: fgs.ProcessListen.port:type_name -> google.protobuf.UInt32Value
 	0,   // 41: fgs.ProcessListen.protocol:type_name -> fgs.SocketProtocol
 	13,  // 42: fgs.ProcessAccept.process:type_name -> fgs.Process
 	13,  // 43: fgs.ProcessAccept.parent:type_name -> fgs.Process
-	77,  // 44: fgs.ProcessAccept.source_port:type_name -> google.protobuf.UInt32Value
-	77,  // 45: fgs.ProcessAccept.destination_port:type_name -> google.protobuf.UInt32Value
+	78,  // 44: fgs.ProcessAccept.source_port:type_name -> google.protobuf.UInt32Value
+	78,  // 45: fgs.ProcessAccept.destination_port:type_name -> google.protobuf.UInt32Value
 	9,   // 46: fgs.ProcessAccept.destination_pod:type_name -> fgs.Pod
 	0,   // 47: fgs.ProcessAccept.protocol:type_name -> fgs.SocketProtocol
 	13,  // 48: fgs.ProcessExec.process:type_name -> fgs.Process
@@ -7223,111 +7315,115 @@ var file_fgs_fgs_proto_depIdxs = []int32{
 	13,  // 53: fgs.ProcessCred.process:type_name -> fgs.Process
 	13,  // 54: fgs.ProcessCred.parent:type_name -> fgs.Process
 	10,  // 55: fgs.ProcessCred.cap:type_name -> fgs.Capabilities
-	24,  // 56: fgs.KprobeArgument.skb_arg:type_name -> fgs.KprobeSkb
-	25,  // 57: fgs.KprobeArgument.path_arg:type_name -> fgs.KprobePath
-	26,  // 58: fgs.KprobeArgument.file_arg:type_name -> fgs.KprobeFile
-	27,  // 59: fgs.KprobeArgument.truncated_bytes_arg:type_name -> fgs.KprobeTruncatedBytes
-	23,  // 60: fgs.KprobeArgument.sock_arg:type_name -> fgs.KprobeSock
-	13,  // 61: fgs.ProcessKprobe.process:type_name -> fgs.Process
-	13,  // 62: fgs.ProcessKprobe.parent:type_name -> fgs.Process
-	28,  // 63: fgs.ProcessKprobe.args:type_name -> fgs.KprobeArgument
-	28,  // 64: fgs.ProcessKprobe.return:type_name -> fgs.KprobeArgument
-	1,   // 65: fgs.ProcessKprobe.action:type_name -> fgs.KprobeAction
-	13,  // 66: fgs.ProcessTracepoint.process:type_name -> fgs.Process
-	13,  // 67: fgs.ProcessTracepoint.parent:type_name -> fgs.Process
-	28,  // 68: fgs.ProcessTracepoint.args:type_name -> fgs.KprobeArgument
-	77,  // 69: fgs.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
-	77,  // 70: fgs.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
-	0,   // 71: fgs.SockInfo.protocol:type_name -> fgs.SocketProtocol
-	9,   // 72: fgs.SockInfo.destination_pod:type_name -> fgs.Pod
-	13,  // 73: fgs.ProcessSockStats.process:type_name -> fgs.Process
-	13,  // 74: fgs.ProcessSockStats.parent:type_name -> fgs.Process
-	31,  // 75: fgs.ProcessSockStats.socket:type_name -> fgs.SockInfo
-	15,  // 76: fgs.ProcessSockStats.stats:type_name -> fgs.SocketStats
-	13,  // 77: fgs.Tls.process:type_name -> fgs.Process
-	77,  // 78: fgs.Tls.source_port:type_name -> google.protobuf.UInt32Value
-	77,  // 79: fgs.Tls.destination_port:type_name -> google.protobuf.UInt32Value
-	2,   // 80: fgs.Tls.certificate_error:type_name -> fgs.TlsCertificateError
-	76,  // 81: fgs.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
-	77,  // 82: fgs.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
-	35,  // 83: fgs.HttpRequest.headers:type_name -> fgs.HttpHeader
-	76,  // 84: fgs.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
-	77,  // 85: fgs.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
-	35,  // 86: fgs.HttpResponse.headers:type_name -> fgs.HttpHeader
-	36,  // 87: fgs.HttpInfo.request:type_name -> fgs.HttpRequest
-	37,  // 88: fgs.HttpInfo.response:type_name -> fgs.HttpResponse
-	78,  // 89: fgs.HttpInfo.latency:type_name -> google.protobuf.Duration
-	13,  // 90: fgs.ProcessHttp.process:type_name -> fgs.Process
-	31,  // 91: fgs.ProcessHttp.socket:type_name -> fgs.SockInfo
-	38,  // 92: fgs.ProcessHttp.http:type_name -> fgs.HttpInfo
-	9,   // 93: fgs.ProcessHttp.destination_pod:type_name -> fgs.Pod
-	13,  // 94: fgs.ProcessDns.process:type_name -> fgs.Process
-	31,  // 95: fgs.ProcessDns.socket:type_name -> fgs.SockInfo
-	40,  // 96: fgs.ProcessDns.dns:type_name -> fgs.DnsInfo
-	9,   // 97: fgs.ProcessDns.destination_pod:type_name -> fgs.Pod
-	42,  // 98: fgs.StackTrace.addresses:type_name -> fgs.StackAddress
-	42,  // 99: fgs.StackTraceNode.address:type_name -> fgs.StackAddress
-	44,  // 100: fgs.StackTraceNode.labels:type_name -> fgs.StackTraceLabel
-	45,  // 101: fgs.StackTraceNode.children:type_name -> fgs.StackTraceNode
-	47,  // 102: fgs.ListSensorsResponse.sensors:type_name -> fgs.SensorStatus
-	45,  // 103: fgs.GetStackTraceTreeResponse.root:type_name -> fgs.StackTraceNode
-	3,   // 104: fgs.GetHealthStatusRequest.event_set:type_name -> fgs.HealthStatusType
-	3,   // 105: fgs.HealthStatus.event:type_name -> fgs.HealthStatusType
-	4,   // 106: fgs.HealthStatus.status:type_name -> fgs.HealthStatusResult
-	68,  // 107: fgs.GetHealthStatusResponse.health_status:type_name -> fgs.HealthStatus
-	78,  // 108: fgs.AggregationOptions.window_size:type_name -> google.protobuf.Duration
-	75,  // 109: fgs.GetEventsRequest.allow_list:type_name -> fgs.Filter
-	75,  // 110: fgs.GetEventsRequest.deny_list:type_name -> fgs.Filter
-	70,  // 111: fgs.GetEventsRequest.aggregation_options:type_name -> fgs.AggregationOptions
-	13,  // 112: fgs.ProcessNetworkBurst.process:type_name -> fgs.Process
-	13,  // 113: fgs.ProcessNetworkBurst.parent:type_name -> fgs.Process
-	20,  // 114: fgs.GetEventsResponse.process_exec:type_name -> fgs.ProcessExec
-	16,  // 115: fgs.GetEventsResponse.process_connect:type_name -> fgs.ProcessConnect
-	18,  // 116: fgs.GetEventsResponse.process_listen:type_name -> fgs.ProcessListen
-	34,  // 117: fgs.GetEventsResponse.tls:type_name -> fgs.Tls
-	21,  // 118: fgs.GetEventsResponse.process_exit:type_name -> fgs.ProcessExit
-	17,  // 119: fgs.GetEventsResponse.process_close:type_name -> fgs.ProcessClose
-	19,  // 120: fgs.GetEventsResponse.process_accept:type_name -> fgs.ProcessAccept
-	22,  // 121: fgs.GetEventsResponse.process_cred:type_name -> fgs.ProcessCred
-	29,  // 122: fgs.GetEventsResponse.process_kprobe:type_name -> fgs.ProcessKprobe
-	30,  // 123: fgs.GetEventsResponse.process_tracepoint:type_name -> fgs.ProcessTracepoint
-	32,  // 124: fgs.GetEventsResponse.process_sock_stats:type_name -> fgs.ProcessSockStats
-	39,  // 125: fgs.GetEventsResponse.process_http:type_name -> fgs.ProcessHttp
-	14,  // 126: fgs.GetEventsResponse.interface_stats:type_name -> fgs.InterfaceStats
-	41,  // 127: fgs.GetEventsResponse.process_dns:type_name -> fgs.ProcessDns
-	73,  // 128: fgs.GetEventsResponse.process_network_burst:type_name -> fgs.ProcessNetworkBurst
-	33,  // 129: fgs.GetEventsResponse.test:type_name -> fgs.Test
-	76,  // 130: fgs.GetEventsResponse.time:type_name -> google.protobuf.Timestamp
-	72,  // 131: fgs.GetEventsResponse.aggregation_info:type_name -> fgs.AggregationInfo
-	79,  // 132: fgs.Filter.health_check:type_name -> google.protobuf.BoolValue
-	5,   // 133: fgs.Filter.event_set:type_name -> fgs.EventType
-	71,  // 134: fgs.FineGuidanceSensors.GetEvents:input_type -> fgs.GetEventsRequest
-	67,  // 135: fgs.FineGuidanceSensors.GetHealth:input_type -> fgs.GetHealthStatusRequest
-	49,  // 136: fgs.FineGuidanceSensors.AddTracingPolicy:input_type -> fgs.AddTracingPolicyRequest
-	53,  // 137: fgs.FineGuidanceSensors.RemoveSensor:input_type -> fgs.RemoveSensorRequest
-	46,  // 138: fgs.FineGuidanceSensors.ListSensors:input_type -> fgs.ListSensorsRequest
-	55,  // 139: fgs.FineGuidanceSensors.EnableSensor:input_type -> fgs.EnableSensorRequest
-	57,  // 140: fgs.FineGuidanceSensors.DisableSensor:input_type -> fgs.DisableSensorRequest
-	58,  // 141: fgs.FineGuidanceSensors.SetSensorConfig:input_type -> fgs.SetSensorConfigRequest
-	60,  // 142: fgs.FineGuidanceSensors.GetSensorConfig:input_type -> fgs.GetSensorConfigRequest
-	63,  // 143: fgs.FineGuidanceSensors.GetStackTraceTree:input_type -> fgs.GetStackTraceTreeRequest
-	65,  // 144: fgs.FineGuidanceSensors.GetVersion:input_type -> fgs.GetVersionRequest
-	74,  // 145: fgs.FineGuidanceSensors.GetEvents:output_type -> fgs.GetEventsResponse
-	69,  // 146: fgs.FineGuidanceSensors.GetHealth:output_type -> fgs.GetHealthStatusResponse
-	50,  // 147: fgs.FineGuidanceSensors.AddTracingPolicy:output_type -> fgs.AddTracingPolicyResponse
-	54,  // 148: fgs.FineGuidanceSensors.RemoveSensor:output_type -> fgs.RemoveSensorResponse
-	48,  // 149: fgs.FineGuidanceSensors.ListSensors:output_type -> fgs.ListSensorsResponse
-	56,  // 150: fgs.FineGuidanceSensors.EnableSensor:output_type -> fgs.EnableSensorResponse
-	62,  // 151: fgs.FineGuidanceSensors.DisableSensor:output_type -> fgs.DisableSensorResponse
-	59,  // 152: fgs.FineGuidanceSensors.SetSensorConfig:output_type -> fgs.SetSensorConfigResponse
-	61,  // 153: fgs.FineGuidanceSensors.GetSensorConfig:output_type -> fgs.GetSensorConfigResponse
-	64,  // 154: fgs.FineGuidanceSensors.GetStackTraceTree:output_type -> fgs.GetStackTraceTreeResponse
-	66,  // 155: fgs.FineGuidanceSensors.GetVersion:output_type -> fgs.GetVersionResponse
-	145, // [145:156] is the sub-list for method output_type
-	134, // [134:145] is the sub-list for method input_type
-	134, // [134:134] is the sub-list for extension type_name
-	134, // [134:134] is the sub-list for extension extendee
-	0,   // [0:134] is the sub-list for field type_name
+	6,   // 56: fgs.KprobeCred.permitted:type_name -> fgs.CapabilitiesType
+	6,   // 57: fgs.KprobeCred.effective:type_name -> fgs.CapabilitiesType
+	6,   // 58: fgs.KprobeCred.inheritable:type_name -> fgs.CapabilitiesType
+	24,  // 59: fgs.KprobeArgument.skb_arg:type_name -> fgs.KprobeSkb
+	25,  // 60: fgs.KprobeArgument.path_arg:type_name -> fgs.KprobePath
+	26,  // 61: fgs.KprobeArgument.file_arg:type_name -> fgs.KprobeFile
+	27,  // 62: fgs.KprobeArgument.truncated_bytes_arg:type_name -> fgs.KprobeTruncatedBytes
+	23,  // 63: fgs.KprobeArgument.sock_arg:type_name -> fgs.KprobeSock
+	28,  // 64: fgs.KprobeArgument.cred_arg:type_name -> fgs.KprobeCred
+	13,  // 65: fgs.ProcessKprobe.process:type_name -> fgs.Process
+	13,  // 66: fgs.ProcessKprobe.parent:type_name -> fgs.Process
+	29,  // 67: fgs.ProcessKprobe.args:type_name -> fgs.KprobeArgument
+	29,  // 68: fgs.ProcessKprobe.return:type_name -> fgs.KprobeArgument
+	1,   // 69: fgs.ProcessKprobe.action:type_name -> fgs.KprobeAction
+	13,  // 70: fgs.ProcessTracepoint.process:type_name -> fgs.Process
+	13,  // 71: fgs.ProcessTracepoint.parent:type_name -> fgs.Process
+	29,  // 72: fgs.ProcessTracepoint.args:type_name -> fgs.KprobeArgument
+	78,  // 73: fgs.SockInfo.source_port:type_name -> google.protobuf.UInt32Value
+	78,  // 74: fgs.SockInfo.destination_port:type_name -> google.protobuf.UInt32Value
+	0,   // 75: fgs.SockInfo.protocol:type_name -> fgs.SocketProtocol
+	9,   // 76: fgs.SockInfo.destination_pod:type_name -> fgs.Pod
+	13,  // 77: fgs.ProcessSockStats.process:type_name -> fgs.Process
+	13,  // 78: fgs.ProcessSockStats.parent:type_name -> fgs.Process
+	32,  // 79: fgs.ProcessSockStats.socket:type_name -> fgs.SockInfo
+	15,  // 80: fgs.ProcessSockStats.stats:type_name -> fgs.SocketStats
+	13,  // 81: fgs.Tls.process:type_name -> fgs.Process
+	78,  // 82: fgs.Tls.source_port:type_name -> google.protobuf.UInt32Value
+	78,  // 83: fgs.Tls.destination_port:type_name -> google.protobuf.UInt32Value
+	2,   // 84: fgs.Tls.certificate_error:type_name -> fgs.TlsCertificateError
+	77,  // 85: fgs.HttpRequest.timestamp:type_name -> google.protobuf.Timestamp
+	78,  // 86: fgs.HttpRequest.content_length:type_name -> google.protobuf.UInt32Value
+	36,  // 87: fgs.HttpRequest.headers:type_name -> fgs.HttpHeader
+	77,  // 88: fgs.HttpResponse.timestamp:type_name -> google.protobuf.Timestamp
+	78,  // 89: fgs.HttpResponse.content_length:type_name -> google.protobuf.UInt32Value
+	36,  // 90: fgs.HttpResponse.headers:type_name -> fgs.HttpHeader
+	37,  // 91: fgs.HttpInfo.request:type_name -> fgs.HttpRequest
+	38,  // 92: fgs.HttpInfo.response:type_name -> fgs.HttpResponse
+	79,  // 93: fgs.HttpInfo.latency:type_name -> google.protobuf.Duration
+	13,  // 94: fgs.ProcessHttp.process:type_name -> fgs.Process
+	32,  // 95: fgs.ProcessHttp.socket:type_name -> fgs.SockInfo
+	39,  // 96: fgs.ProcessHttp.http:type_name -> fgs.HttpInfo
+	9,   // 97: fgs.ProcessHttp.destination_pod:type_name -> fgs.Pod
+	13,  // 98: fgs.ProcessDns.process:type_name -> fgs.Process
+	32,  // 99: fgs.ProcessDns.socket:type_name -> fgs.SockInfo
+	41,  // 100: fgs.ProcessDns.dns:type_name -> fgs.DnsInfo
+	9,   // 101: fgs.ProcessDns.destination_pod:type_name -> fgs.Pod
+	43,  // 102: fgs.StackTrace.addresses:type_name -> fgs.StackAddress
+	43,  // 103: fgs.StackTraceNode.address:type_name -> fgs.StackAddress
+	45,  // 104: fgs.StackTraceNode.labels:type_name -> fgs.StackTraceLabel
+	46,  // 105: fgs.StackTraceNode.children:type_name -> fgs.StackTraceNode
+	48,  // 106: fgs.ListSensorsResponse.sensors:type_name -> fgs.SensorStatus
+	46,  // 107: fgs.GetStackTraceTreeResponse.root:type_name -> fgs.StackTraceNode
+	3,   // 108: fgs.GetHealthStatusRequest.event_set:type_name -> fgs.HealthStatusType
+	3,   // 109: fgs.HealthStatus.event:type_name -> fgs.HealthStatusType
+	4,   // 110: fgs.HealthStatus.status:type_name -> fgs.HealthStatusResult
+	69,  // 111: fgs.GetHealthStatusResponse.health_status:type_name -> fgs.HealthStatus
+	79,  // 112: fgs.AggregationOptions.window_size:type_name -> google.protobuf.Duration
+	76,  // 113: fgs.GetEventsRequest.allow_list:type_name -> fgs.Filter
+	76,  // 114: fgs.GetEventsRequest.deny_list:type_name -> fgs.Filter
+	71,  // 115: fgs.GetEventsRequest.aggregation_options:type_name -> fgs.AggregationOptions
+	13,  // 116: fgs.ProcessNetworkBurst.process:type_name -> fgs.Process
+	13,  // 117: fgs.ProcessNetworkBurst.parent:type_name -> fgs.Process
+	20,  // 118: fgs.GetEventsResponse.process_exec:type_name -> fgs.ProcessExec
+	16,  // 119: fgs.GetEventsResponse.process_connect:type_name -> fgs.ProcessConnect
+	18,  // 120: fgs.GetEventsResponse.process_listen:type_name -> fgs.ProcessListen
+	35,  // 121: fgs.GetEventsResponse.tls:type_name -> fgs.Tls
+	21,  // 122: fgs.GetEventsResponse.process_exit:type_name -> fgs.ProcessExit
+	17,  // 123: fgs.GetEventsResponse.process_close:type_name -> fgs.ProcessClose
+	19,  // 124: fgs.GetEventsResponse.process_accept:type_name -> fgs.ProcessAccept
+	22,  // 125: fgs.GetEventsResponse.process_cred:type_name -> fgs.ProcessCred
+	30,  // 126: fgs.GetEventsResponse.process_kprobe:type_name -> fgs.ProcessKprobe
+	31,  // 127: fgs.GetEventsResponse.process_tracepoint:type_name -> fgs.ProcessTracepoint
+	33,  // 128: fgs.GetEventsResponse.process_sock_stats:type_name -> fgs.ProcessSockStats
+	40,  // 129: fgs.GetEventsResponse.process_http:type_name -> fgs.ProcessHttp
+	14,  // 130: fgs.GetEventsResponse.interface_stats:type_name -> fgs.InterfaceStats
+	42,  // 131: fgs.GetEventsResponse.process_dns:type_name -> fgs.ProcessDns
+	74,  // 132: fgs.GetEventsResponse.process_network_burst:type_name -> fgs.ProcessNetworkBurst
+	34,  // 133: fgs.GetEventsResponse.test:type_name -> fgs.Test
+	77,  // 134: fgs.GetEventsResponse.time:type_name -> google.protobuf.Timestamp
+	73,  // 135: fgs.GetEventsResponse.aggregation_info:type_name -> fgs.AggregationInfo
+	80,  // 136: fgs.Filter.health_check:type_name -> google.protobuf.BoolValue
+	5,   // 137: fgs.Filter.event_set:type_name -> fgs.EventType
+	72,  // 138: fgs.FineGuidanceSensors.GetEvents:input_type -> fgs.GetEventsRequest
+	68,  // 139: fgs.FineGuidanceSensors.GetHealth:input_type -> fgs.GetHealthStatusRequest
+	50,  // 140: fgs.FineGuidanceSensors.AddTracingPolicy:input_type -> fgs.AddTracingPolicyRequest
+	54,  // 141: fgs.FineGuidanceSensors.RemoveSensor:input_type -> fgs.RemoveSensorRequest
+	47,  // 142: fgs.FineGuidanceSensors.ListSensors:input_type -> fgs.ListSensorsRequest
+	56,  // 143: fgs.FineGuidanceSensors.EnableSensor:input_type -> fgs.EnableSensorRequest
+	58,  // 144: fgs.FineGuidanceSensors.DisableSensor:input_type -> fgs.DisableSensorRequest
+	59,  // 145: fgs.FineGuidanceSensors.SetSensorConfig:input_type -> fgs.SetSensorConfigRequest
+	61,  // 146: fgs.FineGuidanceSensors.GetSensorConfig:input_type -> fgs.GetSensorConfigRequest
+	64,  // 147: fgs.FineGuidanceSensors.GetStackTraceTree:input_type -> fgs.GetStackTraceTreeRequest
+	66,  // 148: fgs.FineGuidanceSensors.GetVersion:input_type -> fgs.GetVersionRequest
+	75,  // 149: fgs.FineGuidanceSensors.GetEvents:output_type -> fgs.GetEventsResponse
+	70,  // 150: fgs.FineGuidanceSensors.GetHealth:output_type -> fgs.GetHealthStatusResponse
+	51,  // 151: fgs.FineGuidanceSensors.AddTracingPolicy:output_type -> fgs.AddTracingPolicyResponse
+	55,  // 152: fgs.FineGuidanceSensors.RemoveSensor:output_type -> fgs.RemoveSensorResponse
+	49,  // 153: fgs.FineGuidanceSensors.ListSensors:output_type -> fgs.ListSensorsResponse
+	57,  // 154: fgs.FineGuidanceSensors.EnableSensor:output_type -> fgs.EnableSensorResponse
+	63,  // 155: fgs.FineGuidanceSensors.DisableSensor:output_type -> fgs.DisableSensorResponse
+	60,  // 156: fgs.FineGuidanceSensors.SetSensorConfig:output_type -> fgs.SetSensorConfigResponse
+	62,  // 157: fgs.FineGuidanceSensors.GetSensorConfig:output_type -> fgs.GetSensorConfigResponse
+	65,  // 158: fgs.FineGuidanceSensors.GetStackTraceTree:output_type -> fgs.GetStackTraceTreeResponse
+	67,  // 159: fgs.FineGuidanceSensors.GetVersion:output_type -> fgs.GetVersionResponse
+	149, // [149:160] is the sub-list for method output_type
+	138, // [138:149] is the sub-list for method input_type
+	138, // [138:138] is the sub-list for extension type_name
+	138, // [138:138] is the sub-list for extension extendee
+	0,   // [0:138] is the sub-list for field type_name
 }
 
 func init() { file_fgs_fgs_proto_init() }
@@ -7589,7 +7685,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[21].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*KprobeArgument); i {
+			switch v := v.(*KprobeCred); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7601,7 +7697,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[22].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessKprobe); i {
+			switch v := v.(*KprobeArgument); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7613,7 +7709,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[23].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessTracepoint); i {
+			switch v := v.(*ProcessKprobe); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7625,7 +7721,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[24].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SockInfo); i {
+			switch v := v.(*ProcessTracepoint); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7637,7 +7733,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[25].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessSockStats); i {
+			switch v := v.(*SockInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7649,7 +7745,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[26].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Test); i {
+			switch v := v.(*ProcessSockStats); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7661,7 +7757,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[27].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*Tls); i {
+			switch v := v.(*Test); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7673,7 +7769,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[28].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpHeader); i {
+			switch v := v.(*Tls); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7685,7 +7781,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[29].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpRequest); i {
+			switch v := v.(*HttpHeader); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7697,7 +7793,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[30].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpResponse); i {
+			switch v := v.(*HttpRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7709,7 +7805,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[31].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HttpInfo); i {
+			switch v := v.(*HttpResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7721,7 +7817,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[32].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessHttp); i {
+			switch v := v.(*HttpInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7733,7 +7829,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[33].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DnsInfo); i {
+			switch v := v.(*ProcessHttp); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7745,7 +7841,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[34].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessDns); i {
+			switch v := v.(*DnsInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7757,7 +7853,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[35].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StackAddress); i {
+			switch v := v.(*ProcessDns); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7769,7 +7865,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[36].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StackTrace); i {
+			switch v := v.(*StackAddress); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7781,7 +7877,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[37].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StackTraceLabel); i {
+			switch v := v.(*StackTrace); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7793,7 +7889,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[38].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*StackTraceNode); i {
+			switch v := v.(*StackTraceLabel); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7805,7 +7901,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[39].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListSensorsRequest); i {
+			switch v := v.(*StackTraceNode); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7817,7 +7913,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[40].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SensorStatus); i {
+			switch v := v.(*ListSensorsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7829,7 +7925,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[41].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ListSensorsResponse); i {
+			switch v := v.(*SensorStatus); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7841,7 +7937,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[42].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddTracingPolicyRequest); i {
+			switch v := v.(*ListSensorsResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7853,7 +7949,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[43].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AddTracingPolicyResponse); i {
+			switch v := v.(*AddTracingPolicyRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7865,7 +7961,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[44].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteTracingPolicyRequest); i {
+			switch v := v.(*AddTracingPolicyResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7877,7 +7973,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[45].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DeleteTracingPolicyResponse); i {
+			switch v := v.(*DeleteTracingPolicyRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7889,7 +7985,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[46].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoveSensorRequest); i {
+			switch v := v.(*DeleteTracingPolicyResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7901,7 +7997,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[47].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*RemoveSensorResponse); i {
+			switch v := v.(*RemoveSensorRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7913,7 +8009,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[48].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EnableSensorRequest); i {
+			switch v := v.(*RemoveSensorResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7925,7 +8021,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[49].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*EnableSensorResponse); i {
+			switch v := v.(*EnableSensorRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7937,7 +8033,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[50].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DisableSensorRequest); i {
+			switch v := v.(*EnableSensorResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7949,7 +8045,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[51].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetSensorConfigRequest); i {
+			switch v := v.(*DisableSensorRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7961,7 +8057,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[52].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*SetSensorConfigResponse); i {
+			switch v := v.(*SetSensorConfigRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7973,7 +8069,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[53].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetSensorConfigRequest); i {
+			switch v := v.(*SetSensorConfigResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7985,7 +8081,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[54].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetSensorConfigResponse); i {
+			switch v := v.(*GetSensorConfigRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -7997,7 +8093,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[55].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*DisableSensorResponse); i {
+			switch v := v.(*GetSensorConfigResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8009,7 +8105,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[56].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetStackTraceTreeRequest); i {
+			switch v := v.(*DisableSensorResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8021,7 +8117,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[57].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetStackTraceTreeResponse); i {
+			switch v := v.(*GetStackTraceTreeRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8033,7 +8129,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[58].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetVersionRequest); i {
+			switch v := v.(*GetStackTraceTreeResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8045,7 +8141,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[59].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetVersionResponse); i {
+			switch v := v.(*GetVersionRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8057,7 +8153,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[60].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetHealthStatusRequest); i {
+			switch v := v.(*GetVersionResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8069,7 +8165,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[61].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*HealthStatus); i {
+			switch v := v.(*GetHealthStatusRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8081,7 +8177,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[62].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetHealthStatusResponse); i {
+			switch v := v.(*HealthStatus); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8093,7 +8189,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[63].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AggregationOptions); i {
+			switch v := v.(*GetHealthStatusResponse); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8105,7 +8201,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[64].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetEventsRequest); i {
+			switch v := v.(*AggregationOptions); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8117,7 +8213,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[65].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*AggregationInfo); i {
+			switch v := v.(*GetEventsRequest); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8129,7 +8225,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[66].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*ProcessNetworkBurst); i {
+			switch v := v.(*AggregationInfo); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8141,7 +8237,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[67].Exporter = func(v interface{}, i int) interface{} {
-			switch v := v.(*GetEventsResponse); i {
+			switch v := v.(*ProcessNetworkBurst); i {
 			case 0:
 				return &v.state
 			case 1:
@@ -8153,6 +8249,18 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 		file_fgs_fgs_proto_msgTypes[68].Exporter = func(v interface{}, i int) interface{} {
+			switch v := v.(*GetEventsResponse); i {
+			case 0:
+				return &v.state
+			case 1:
+				return &v.sizeCache
+			case 2:
+				return &v.unknownFields
+			default:
+				return nil
+			}
+		}
+		file_fgs_fgs_proto_msgTypes[69].Exporter = func(v interface{}, i int) interface{} {
 			switch v := v.(*Filter); i {
 			case 0:
 				return &v.state
@@ -8165,7 +8273,7 @@ func file_fgs_fgs_proto_init() {
 			}
 		}
 	}
-	file_fgs_fgs_proto_msgTypes[21].OneofWrappers = []interface{}{
+	file_fgs_fgs_proto_msgTypes[22].OneofWrappers = []interface{}{
 		(*KprobeArgument_StringArg)(nil),
 		(*KprobeArgument_IntArg)(nil),
 		(*KprobeArgument_SkbArg)(nil),
@@ -8175,8 +8283,9 @@ func file_fgs_fgs_proto_init() {
 		(*KprobeArgument_FileArg)(nil),
 		(*KprobeArgument_TruncatedBytesArg)(nil),
 		(*KprobeArgument_SockArg)(nil),
+		(*KprobeArgument_CredArg)(nil),
 	}
-	file_fgs_fgs_proto_msgTypes[67].OneofWrappers = []interface{}{
+	file_fgs_fgs_proto_msgTypes[68].OneofWrappers = []interface{}{
 		(*GetEventsResponse_ProcessExec)(nil),
 		(*GetEventsResponse_ProcessConnect)(nil),
 		(*GetEventsResponse_ProcessListen)(nil),
@@ -8200,7 +8309,7 @@ func file_fgs_fgs_proto_init() {
 			GoPackagePath: reflect.TypeOf(x{}).PkgPath(),
 			RawDescriptor: file_fgs_fgs_proto_rawDesc,
 			NumEnums:      7,
-			NumMessages:   69,
+			NumMessages:   70,
 			NumExtensions: 0,
 			NumServices:   1,
 		},

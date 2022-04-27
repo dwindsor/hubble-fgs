@@ -747,6 +747,20 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			}
 			arg.Value = strVal
 			unix.Args = append(unix.Args, arg)
+		case gt.GenericCredType:
+			var cred api.MsgGenericKprobeCred
+			var arg api.MsgGenericKprobeArgCred
+
+			err := binary.Read(r, binary.LittleEndian, &cred)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("cred type err")
+			}
+
+			arg.Index = uint64(a.index)
+			arg.Permitted = cred.Permitted
+			arg.Effective = cred.Effective
+			arg.Inheritable = cred.Inheritable
+			unix.Args = append(unix.Args, arg)
 		case gt.GenericCharBuffer, gt.GenericCharIovec:
 			if arg, err := ReadArgBytes(r, a.index); err == nil {
 				unix.Args = append(unix.Args, *arg)

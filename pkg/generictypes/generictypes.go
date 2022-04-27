@@ -18,6 +18,7 @@ const (
 	GenericSkbType    = 5
 	GenericStringType = 6
 	GenericSockType   = 7
+	GenericCredType   = 8
 
 	GenericS64Type = 10
 	GenericU64Type = 11
@@ -65,6 +66,8 @@ func GenericTypeFromString(arg string) int {
 		return GenericPathType
 	case "fd":
 		return GenericFdType
+	case "cred":
+		return GenericCredType
 	case "nop":
 		return GenericNopType
 	default:

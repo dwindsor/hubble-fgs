@@ -36,6 +36,7 @@
     - [Image](#fgs.Image)
     - [InterfaceStats](#fgs.InterfaceStats)
     - [KprobeArgument](#fgs.KprobeArgument)
+    - [KprobeCred](#fgs.KprobeCred)
     - [KprobeFile](#fgs.KprobeFile)
     - [KprobePath](#fgs.KprobePath)
     - [KprobeSkb](#fgs.KprobeSkb)
@@ -634,6 +635,24 @@ HTTP PARSER
 | file_arg | [KprobeFile](#fgs.KprobeFile) |  |  |
 | truncated_bytes_arg | [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes) |  |  |
 | sock_arg | [KprobeSock](#fgs.KprobeSock) |  |  |
+| cred_arg | [KprobeCred](#fgs.KprobeCred) |  |  |
+
+
+
+
+
+
+<a name="fgs.KprobeCred"></a>
+
+### KprobeCred
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| permitted | [CapabilitiesType](#fgs.CapabilitiesType) | repeated |  |
+| effective | [CapabilitiesType](#fgs.CapabilitiesType) | repeated |  |
+| inheritable | [CapabilitiesType](#fgs.CapabilitiesType) | repeated |  |
 
 
 

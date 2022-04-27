@@ -14,6 +14,7 @@ enum { filter = -2,
        skb_type = 5,
        string_type = 6,
        sock_type = 7,
+       cred_type = 8,
 
        s64_ty = 10,
        u64_ty = 11,
@@ -372,6 +373,20 @@ static inline __attribute__((always_inline)) long copy_sock(char *args,
 	return sizeof(struct sk_type);
 }
 
+static inline __attribute__((always_inline)) long copy_cred(char *args,
+							    unsigned long arg)
+{
+	struct cred *cred = (struct cred *)arg;
+	struct msg_capabilities *caps = (struct msg_capabilities *)args;
+
+	probe_read(&caps->effective, sizeof(__u64), _(&cred->cap_effective));
+	probe_read(&caps->inheritable, sizeof(__u64),
+		   _(&cred->cap_inheritable));
+	probe_read(&caps->permitted, sizeof(__u64), _(&cred->cap_permitted));
+
+	return sizeof(struct msg_capabilities);
+}
+
 #define ARGM_INDEX_MASK	 ((1 << 4) - 1)
 #define ARGM_RETURN_COPY (1 << 4)
 
@@ -638,6 +653,8 @@ static inline __attribute__((always_inline)) size_t type_to_min_size(int type)
 		return sizeof(struct skb_type);
 	case sock_type:
 		return sizeof(struct sk_type);
+	case cred_type:
+		return sizeof(struct msg_capabilities);
 	case size_type:
 	case s64_ty:
 	case u64_ty:
@@ -1131,6 +1148,9 @@ read_call_arg(void *ctx, struct msg_generic_kprobe *e, int index, int type,
 		break;
 	case sock_type:
 		size = copy_sock(args, arg);
+		break;
+	case cred_type:
+		size = copy_cred(args, arg);
 		break;
 	case char_buf:
 		size = copy_char_buf(ctx, args, arg, argm, e);
