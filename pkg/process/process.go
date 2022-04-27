@@ -161,7 +161,7 @@ func GetProcess(
 	capabilities fgsAPI.MsgCapabilities,
 	namespaces fgsAPI.MsgNamespaces,
 ) (*ProcessInternal, *hubblev1.Endpoint) {
-	args, cwd := reader.ArgsDecoder(process.Args, process.Flags)
+	args, cwd := ArgsDecoder(process.Args, process.Flags)
 	var parentExecID string
 	if parent.Pid != 0 {
 		parentExecID = GetExecIDFromKey(&parent)

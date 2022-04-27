@@ -12,14 +12,9 @@
 package reader
 
 import (
-	"bytes"
-	"strings"
 	"syscall"
 
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
-	"github.com/isovalent/hubble-fgs/pkg/reader/path"
 	"golang.org/x/sys/unix"
 )
 
@@ -101,77 +96,6 @@ func DecodeCommonFlags(flags uint32) []string {
 	return s
 }
 
-func argsDecoderTrim(r rune) bool {
-	if r == 0x00 {
-		return true
-	}
-	return false
-}
-
-func ArgsDecoder(s string, flags uint32) (string, string) {
-	var b []byte
-	var cwd string
-	var hasCWD int
-	args := ""
-
-	b = append(b, 0x00)
-	argTokens := bytes.Split(bytes.TrimRightFunc([]byte(s), argsDecoderTrim), b)
-	flagsOR := ((flags & api.EventNoCWDSupport) |
-		(flags & api.EventErrorCWD) |
-		(flags & api.EventRootCWD))
-	if flagsOR == 0 {
-		hasCWD = 1
-	} else {
-		hasCWD = 0
-	}
-
-	if (flags & api.EventNoCWDSupport) != 0 {
-		cwd = ""
-	} else if (flags & api.EventErrorCWD) != 0 {
-		cwd = ""
-	} else if (flags & api.EventRootCWD) != 0 {
-		cwd = "/"
-	} else if (flags & api.EventProcFS) != 0 {
-		cwd = strings.TrimSpace(string(argTokens[len(argTokens)-1]))
-	} else {
-		cwd = "/" + path.SwapPath(string(argTokens[len(argTokens)-1]))
-	}
-
-	if len(argTokens) > hasCWD {
-		for i, a := range argTokens {
-			if i == len(argTokens)-hasCWD {
-				continue
-			}
-			if strings.Contains(string(a), " ") {
-				args = args + " \"" + string(a) + "\""
-			} else {
-				if args == "" {
-					args = string(a)
-				} else {
-					args = args + " " + string(a)
-				}
-			}
-		}
-	}
-	return args, cwd
-}
-
-func KprobeAction(act uint64) fgs.KprobeAction {
-	switch act {
-	case tracingapi.ActionPost:
-		return fgs.KprobeAction_KPROBE_ACTION_POST
-	case tracingapi.ActionFollowFd:
-		return fgs.KprobeAction_KPROBE_ACTION_FOLLOWFD
-	case tracingapi.ActionSigKill:
-		return fgs.KprobeAction_KPROBE_ACTION_SIGKILL
-	case tracingapi.ActionUnfollowFd:
-		return fgs.KprobeAction_KPROBE_ACTION_UNFOLLOWFD
-	case tracingapi.ActionOverride:
-		return fgs.KprobeAction_KPROBE_ACTION_OVERRIDE
-	default:
-		return fgs.KprobeAction_KPROBE_ACTION_UNKNOWN
-	}
-}
 
 func Signal(s uint32) string {
 	if s == 0 {

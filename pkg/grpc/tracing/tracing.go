@@ -3,13 +3,13 @@ package tracing
 import (
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/reader/path"
@@ -27,6 +27,23 @@ type Grpc struct {
 	enableCilium      bool
 	enableProcessCred bool
 	enableProcessNs   bool
+}
+
+func kprobeAction(act uint64) fgs.KprobeAction {
+	switch act {
+	case tracingapi.ActionPost:
+		return fgs.KprobeAction_KPROBE_ACTION_POST
+	case tracingapi.ActionFollowFd:
+		return fgs.KprobeAction_KPROBE_ACTION_FOLLOWFD
+	case tracingapi.ActionSigKill:
+		return fgs.KprobeAction_KPROBE_ACTION_SIGKILL
+	case tracingapi.ActionUnfollowFd:
+		return fgs.KprobeAction_KPROBE_ACTION_UNFOLLOWFD
+	case tracingapi.ActionOverride:
+		return fgs.KprobeAction_KPROBE_ACTION_OVERRIDE
+	default:
+		return fgs.KprobeAction_KPROBE_ACTION_UNKNOWN
+	}
 }
 
 func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKprobe {
@@ -123,7 +140,7 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 		FunctionName: event.FuncName,
 		Args:         fgsArgs,
 		Return:       fgsReturnArg,
-		Action:       reader.KprobeAction(event.Action),
+		Action:       kprobeAction(event.Action),
 	}
 
 	if t.eventCache.Needed(fgsProcess) {
