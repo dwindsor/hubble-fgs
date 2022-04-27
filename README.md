@@ -24,21 +24,21 @@ Some of the features of FGS are:
 
   * Supports generic kprobe and tracepoint events. These events are called
     "generic events" because they allow users, via a proper configuration, to
-    to insert functionality on arbitrary points in the kernel (mainly on
+    insert functionality on arbitrary points in the kernel (mainly on
     functions/tracepoints).
 
     Users can define where the hooks are added (e.g., in what system calls) and
-    what they do. Typically they will generate events exported by FGS, but they
+    what they do. Typically, they will generate events exported by FGS, but they
     can also take other actions (e.g., send the KILL signal). Users can also
     define what information is added into generated events (e.g., function
     arguments/return value), filters that define certain conditions of when the
     action hooks are triggerd (e.g., generate events only for specific PIDs or
     when arguments have specific values). There is also support for extracting
-    information that is not avaialble via normal means: such as the buffers of
+    information that is not available via normal means: such as the buffers of
     system calls, filenames based on fd arguments, and others.
 
     The configuration specification for above events can be found in the CRD
-    [spec](k8s/apis/isovalent.com/client/crds/v1alpha1/isovalent.com_tracingpolicies.yaml).
+    [spec](pkg/k8s/apis/isovalent.com/client/crds/v1alpha1/isovalent.com_tracingpolicies.yaml).
     There are also [examples](/crds/examples/) of how the CRD can be used to configure FGS, not
     only for the generic events, but also for other parsers (e.g., TLS).
 
@@ -48,7 +48,7 @@ Some of the features of FGS are:
 
 FGS distributes its bpf programs as object files. As a result, it depends on
 proper relocations (e.g., for struct offsets) that depend on internal kernel
-information. This enformation is encoded using
+information. This information is encoded using
 [BTF](https://facebookmicrosites.github.io/bpf/blog/2020/02/19/bpf-portability-and-co-re.html).
 Have a look at [the
 README](https://github.com/isovalent/hubble-builder/tree/master/fgs-btf/README.md)
@@ -66,7 +66,7 @@ To build the image with metadata use
 
     make image-btf
 
-To build without metadata this will require users to include metadtata manually.
+To build without metadata this will require users to include metadata manually.
 
     make image
 
@@ -245,7 +245,7 @@ a goal. The following basic steps are needed to add a new event feature.
 
    Review existing event handlers in receiveEvent(). Then extend receiveEvent() with
    your event logic. The userspace event definitions are in ./pkg/client/api.go and the
-   kernel side defintions are in ./bpf/lib/hubble_msg.h
+   kernel side definitions are in ./bpf/lib/hubble_msg.h
 
    Create a pretty printer in reader pkg.
 
@@ -260,8 +260,8 @@ pretty printers and message generators to an interface and include in the observ
 object. This way folks creating events can completely avoid editing core code.
 
 At the moment hubble-fgs_main.go needs a link to the program name. Reasonable defaults
-should be added so we can skip this step. It is a bit useful to replace a program
-on a system with a new test program, but its also a bit annoying on the code side.
+should be added, so we can skip this step. It is a bit useful to replace a program
+on a system with a new test program, but it's also a bit annoying on the code side.
 
 ## Running FGS
 
@@ -300,7 +300,7 @@ $ PATH=$(pwd)/bin:$PATH  make
 $ sudo sh -c 'LD_LIBRARY_PATH=./lib ./hubble-fgs --hubble-lib ./bpf/objs'
 ```
 
-Once the agent (`./hubble-fgs`) is running, events can be observerd using the
+Once the agent (`./hubble-fgs`) is running, events can be observed using the
 `./hubble-enterprise` cli:
 
 ```
@@ -460,7 +460,7 @@ This will return the repository to a clean slate, compile the BPF programs with
 a known working compiler, and compile FGS itself.
 
 ## More Info
- * Natalia's blog about  [cntainer escape](https://www.isovalent.com/blog/post/2021-11-container-escape)
+ * Natalia's blog about  [container escape](https://www.isovalent.com/blog/post/2021-11-container-escape)
  * [https://docs.isovalent.com/quick-start/security_visibility.html](https://docs.isovalent.com/quick-start/security_visibility.html)
  * Talk: Join the FGS ci force side, by the Jedi master John. [Recording](https://drive.google.com/file/d/1fEtpjQoKURTHp5me78egs01cxTTVhi0Z/view?usp=sharing) and [Slides](https://docs.google.com/presentation/d/1Kw2EqHSuvPwDO5Fv6PbhlSUdTdYBWflBXVqzjqg9T6w/edit?usp=sharing).
  * Video recordings by Kornilios:
