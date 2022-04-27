@@ -11,7 +11,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
+	readerexec "github.com/isovalent/hubble-fgs/pkg/reader/exec"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -152,7 +152,7 @@ func (e *Grpc) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
 	}
 
 	code := event.Info.Code >> 8
-	signal := reader.Signal(event.Info.Code & 0xFF)
+	signal := readerexec.Signal(event.Info.Code & 0xFF)
 
 	fgsEvent := &fgs.ProcessExit{
 		Process: fgsProcess,

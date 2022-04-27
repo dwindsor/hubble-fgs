@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package reader
+package exec
 
 import (
 	"strings"
@@ -42,7 +42,7 @@ func TestDecodeCommonFlags(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			if got := strings.Join(DecodeCommonFlags(tt.args.flags), " "); got != tt.want {
-				t.Errorf("DecodeCommonFlags() = %v, want %v", got, tt.want)
+				t.Errorf("DecodCommonFlags() = %v, want %v", got, tt.want)
 			}
 		})
 	}

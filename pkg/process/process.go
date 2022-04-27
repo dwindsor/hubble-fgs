@@ -27,8 +27,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
+	"github.com/isovalent/hubble-fgs/pkg/reader/exec"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/reader/path"
@@ -177,7 +177,7 @@ func GetProcess(
 			Cwd:          path.MarkUnresolvedPathComponentsCwd(cwd, process.Flags),
 			Binary:       path.GetBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
-			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),
+			Flags:        strings.Join(exec.DecodeCommonFlags(process.Flags), " "),
 			StartTime:    ktime.ToProtoOpt(process.Ktime, (process.Flags&api.EventProcFS) == 0),
 			Auid:         &wrapperspb.UInt32Value{Value: process.AUID},
 			Pod:          protoPod,

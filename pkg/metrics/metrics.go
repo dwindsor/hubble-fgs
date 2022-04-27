@@ -25,8 +25,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	readerdns "github.com/isovalent/hubble-fgs/pkg/reader/dns"
+	"github.com/isovalent/hubble-fgs/pkg/reader/exec"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -310,7 +310,7 @@ func handleOriginalEvent(originalEvent interface{}) {
 	case *processapi.MsgExecveEventUnix:
 		flags = msg.Process.Flags
 	}
-	for _, flag := range reader.DecodeCommonFlags(flags) {
+	for _, flag := range exec.DecodeCommonFlags(flags) {
 		FlagCount.WithLabelValues(flag).Inc()
 	}
 }
