@@ -12,6 +12,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
+	"github.com/isovalent/hubble-fgs/pkg/reader/path"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -96,14 +97,14 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 			}
 		case api.MsgGenericKprobeArgFile:
 			fileArg := &fgs.KprobeFile{
-				Path:  reader.MarkUnresolvedPathComponents(reader.GenPath(e.Value), e.Flags),
-				Flags: reader.FilePathFlagsToStr(e.Flags),
+				Path:  path.MarkUnresolvedPathComponents(path.GenPath(e.Value), e.Flags),
+				Flags: path.FilePathFlagsToStr(e.Flags),
 			}
 			a.Arg = &fgs.KprobeArgument_FileArg{FileArg: fileArg}
 		case api.MsgGenericKprobeArgPath:
 			pathArg := &fgs.KprobePath{
-				Path:  reader.MarkUnresolvedPathComponents(reader.GenPath(e.Value), e.Flags),
-				Flags: reader.FilePathFlagsToStr(e.Flags),
+				Path:  path.MarkUnresolvedPathComponents(path.GenPath(e.Value), e.Flags),
+				Flags: path.FilePathFlagsToStr(e.Flags),
 			}
 			a.Arg = &fgs.KprobeArgument_PathArg{PathArg: pathArg}
 		default:

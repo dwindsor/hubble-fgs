@@ -174,7 +174,7 @@ func GetProcess(
 		process: &fgs.Process{
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
 			Uid:          &wrapperspb.UInt32Value{Value: process.UID},
-			Cwd:          reader.MarkUnresolvedPathComponentsCwd(cwd, process.Flags),
+			Cwd:          path.MarkUnresolvedPathComponentsCwd(cwd, process.Flags),
 			Binary:       path.GetBinaryAbsolutePath(process.Filename, cwd),
 			Arguments:    args,
 			Flags:        strings.Join(reader.DecodeCommonFlags(process.Flags), " "),

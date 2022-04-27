@@ -18,8 +18,8 @@ import (
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
+	"github.com/isovalent/hubble-fgs/pkg/reader/path"
 	"golang.org/x/sys/unix"
 )
 
@@ -101,65 +101,11 @@ func DecodeCommonFlags(flags uint32) []string {
 	return s
 }
 
-func FilePathFlagsToStr(flags uint32) string {
-	var retval string
-
-	if (flags & processapi.UnresolvedMountPoints) != 0 {
-		retval += "unresolvedMountPoints"
-	}
-	if (flags & processapi.UnresolvedPathComponents) != 0 {
-		if len(retval) > 0 {
-			retval += " "
-		}
-		retval += "unresolvedPathComponents"
-	}
-	return retval
-}
-
-func MarkUnresolvedPathComponents(path string, flags uint32) string {
-	retval := path
-	if (flags & processapi.UnresolvedMountPoints) != 0 {
-		retval = "/[M]" + retval
-	}
-	if (flags & processapi.UnresolvedPathComponents) != 0 {
-		retval = strings.ReplaceAll(retval, "&", "[P]")
-	}
-	return retval
-}
-
-func MarkUnresolvedPathComponentsCwd(path string, flags uint32) string {
-	retval := path
-	if (flags & api.EventErrorMountPoints) != 0 {
-		retval = "/[M]" + retval
-	}
-	if (flags & api.EventErrorPathComponents) != 0 {
-		retval = strings.ReplaceAll(retval, "&", "[P]")
-	}
-	return retval
-}
-
 func argsDecoderTrim(r rune) bool {
 	if r == 0x00 {
 		return true
 	}
 	return false
-}
-
-func SwapPath(path string) string {
-	dirs := strings.Split(path, "/")
-	for i := len(dirs)/2 - 1; i >= 0; i-- {
-		opp := len(dirs) - 1 - i
-		dirs[i], dirs[opp] = dirs[opp], dirs[i]
-	}
-	return strings.Join(dirs, "/")
-}
-
-func GenPath(path string) string {
-	filePath := strings.TrimSuffix(SwapPath(path), "/")
-	if len(filePath) > 0 && filePath[0] != '/' {
-		filePath = "/" + filePath
-	}
-	return filePath
 }
 
 func ArgsDecoder(s string, flags uint32) (string, string) {
@@ -188,7 +134,7 @@ func ArgsDecoder(s string, flags uint32) (string, string) {
 	} else if (flags & api.EventProcFS) != 0 {
 		cwd = strings.TrimSpace(string(argTokens[len(argTokens)-1]))
 	} else {
-		cwd = "/" + SwapPath(string(argTokens[len(argTokens)-1]))
+		cwd = "/" + path.SwapPath(string(argTokens[len(argTokens)-1]))
 	}
 
 	if len(argTokens) > hasCWD {

@@ -20,8 +20,8 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
-	"github.com/isovalent/hubble-fgs/pkg/reader"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
+	"github.com/isovalent/hubble-fgs/pkg/reader/path"
 )
 
 const (
@@ -265,7 +265,7 @@ func parseMatchValues(k *KernelSelectorState, values []string, ty uint32) error 
 			if strings.HasPrefix(v, "/") {
 				v = v[1:]
 			}
-			swapV := mnt + reader.SwapPath(v)
+			swapV := mnt + path.SwapPath(v)
 			value, size := ArgSelectorValue(swapV)
 			WriteSelectorUint32(k, size)
 			WriteSelectorByteArray(k, value, size)
