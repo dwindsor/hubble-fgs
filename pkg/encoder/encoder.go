@@ -62,6 +62,21 @@ func (p *CompactEncoder) Encode(v interface{}) error {
 	return nil
 }
 
+const (
+	capsPad = 120
+)
+
+func capTrailorPrinter(str string, caps string) string {
+	if len(caps) == 0 {
+		return fmt.Sprintf("%s", str)
+	}
+	padding := 0
+	if len(str) < capsPad {
+		padding = capsPad - len(str)
+	}
+	return fmt.Sprintf("%s %*s", str, padding, caps)
+}
+
 func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string, error) {
 	switch response.Event.(type) {
 	case *fgs.GetEventsResponse_ProcessExec:
@@ -70,16 +85,16 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			return "", fmt.Errorf("process field is not set")
 		}
 		event := p.colorer.blue.Sprintf("🚀 %-7s", "process")
-		processInfo := p.colorer.processInfo(response.NodeName, exec.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, exec.Process)
 		args := p.colorer.cyan.Sprint(exec.Process.Arguments)
-		return fmt.Sprintf("%s %s %s", event, processInfo, args), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, args), caps), nil
 	case *fgs.GetEventsResponse_ProcessConnect:
 		connect := response.GetProcessConnect()
 		if connect.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}
 		event := p.colorer.blue.Sprintf("🔌 %-7s", "connect")
-		processInfo := p.colorer.processInfo(response.NodeName, connect.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, connect.Process)
 		destination := p.colorer.fiveTuple(
 			connect.Protocol,
 			connect.SourceIp,
@@ -87,23 +102,23 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			connect.DestinationIp,
 			connect.DestinationPort,
 			connect.DestinationNames)
-		return fmt.Sprintf("%s %s %s", event, processInfo, destination), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, destination), caps), nil
 	case *fgs.GetEventsResponse_ProcessListen:
 		listen := response.GetProcessListen()
 		if listen.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}
 		event := p.colorer.blue.Sprintf("🎧 %-7s", "listen")
-		processInfo := p.colorer.processInfo(response.NodeName, listen.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, listen.Process)
 		hostPort := p.colorer.hostPort(listen.Protocol, listen.Ip, listen.Port)
-		return fmt.Sprintf("%s %s %s", event, processInfo, hostPort), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, hostPort), caps), nil
 	case *fgs.GetEventsResponse_ProcessAccept:
 		accept := response.GetProcessAccept()
 		if accept.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}
 		event := p.colorer.blue.Sprintf("💡 %-7s", "accept")
-		processInfo := p.colorer.processInfo(response.NodeName, accept.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, accept.Process)
 		fiveTuple := p.colorer.fiveTuple(
 			accept.Protocol,
 			accept.DestinationIp,
@@ -111,7 +126,7 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			accept.SourceIp,
 			accept.SourcePort,
 			accept.DestinationNames)
-		return fmt.Sprintf("%s %s %s", event, processInfo, fiveTuple), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, fiveTuple), caps), nil
 	case *fgs.GetEventsResponse_ProcessHttp:
 		http := response.GetProcessHttp()
 		if http.Process == nil {
@@ -121,34 +136,34 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			return "", fmt.Errorf("http field is not set")
 		}
 		event := p.colorer.blue.Sprintf("🌐 %-7s", "http")
-		processInfo := p.colorer.processInfo(response.NodeName, http.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, http.Process)
 		httpInfo := p.colorer.http(http.Http)
-		return fmt.Sprintf("%s %s %s", event, processInfo, httpInfo), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, httpInfo), caps), nil
 	case *fgs.GetEventsResponse_Tls:
 		tls := response.GetTls()
 		if tls.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}
 		event := p.colorer.blue.Sprintf("🔐 %-7s", "tls")
-		processInfo := p.colorer.processInfo(response.NodeName, tls.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, tls.Process)
 		tlsInfo := p.colorer.tls(tls)
-		return fmt.Sprintf("%s %s %s", event, processInfo, tlsInfo), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, tlsInfo), caps), nil
 	case *fgs.GetEventsResponse_ProcessClose:
 		processClose := response.GetProcessClose()
 		if processClose.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}
 		event := p.colorer.blue.Sprintf("\U0001F9F9 %-7s", "close")
-		processInfo := p.colorer.processInfo(response.NodeName, processClose.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, processClose.Process)
 		closeInfo := p.colorer.close(processClose)
-		return fmt.Sprintf("%s %s %s", event, processInfo, closeInfo), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, closeInfo), caps), nil
 	case *fgs.GetEventsResponse_ProcessExit:
 		exit := response.GetProcessExit()
 		if exit.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}
 		event := p.colorer.blue.Sprintf("💥 %-7s", "exit")
-		processInfo := p.colorer.processInfo(response.NodeName, exit.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, exit.Process)
 		args := p.colorer.cyan.Sprint(exit.Process.Arguments)
 		var status string
 		if exit.Signal != "" {
@@ -156,13 +171,13 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 		} else {
 			status = p.colorer.red.Sprint(exit.Status)
 		}
-		return fmt.Sprintf("%s %s %s %s", event, processInfo, args, status), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, args, status), caps), nil
 	case *fgs.GetEventsResponse_ProcessKprobe:
 		kprobe := response.GetProcessKprobe()
 		if kprobe.Process == nil {
 			return "", fmt.Errorf("process field is not set")
 		}
-		processInfo := p.colorer.processInfo(response.NodeName, kprobe.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, kprobe.Process)
 		switch kprobe.FunctionName {
 		case "__x64_sys_write":
 			event := p.colorer.blue.Sprintf("📝 %-7s", "write")
@@ -174,7 +189,7 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			if len(kprobe.Args) > 2 && kprobe.Args[2] != nil {
 				bytes = p.colorer.cyan.Sprint(kprobe.Args[2].GetSizeArg(), " bytes")
 			}
-			return fmt.Sprintf("%s %s %s %v", event, processInfo, file, bytes), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s %v", event, processInfo, file, bytes), caps), nil
 		case "__x64_sys_read":
 			event := p.colorer.blue.Sprintf("📚 %-7s", "read")
 			file := ""
@@ -185,21 +200,21 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			if len(kprobe.Args) > 2 && kprobe.Args[2] != nil {
 				bytes = p.colorer.cyan.Sprint(kprobe.Args[2].GetSizeArg(), " bytes")
 			}
-			return fmt.Sprintf("%s %s %s %v", event, processInfo, file, bytes), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s %v", event, processInfo, file, bytes), caps), nil
 		case "fd_install":
 			event := p.colorer.blue.Sprintf("📬 %-7s", "open")
 			file := ""
 			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil && kprobe.Args[1].GetFileArg() != nil {
 				file = p.colorer.cyan.Sprint(kprobe.Args[1].GetFileArg().Path)
 			}
-			return fmt.Sprintf("%s %s %s", event, processInfo, file), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, file), caps), nil
 		case "__x64_sys_close":
 			event := p.colorer.blue.Sprintf("📪 %-7s", "close")
 			file := ""
 			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil && kprobe.Args[0].GetFileArg() != nil {
 				file = p.colorer.cyan.Sprint(kprobe.Args[0].GetFileArg().Path)
 			}
-			return fmt.Sprintf("%s %s %s", event, processInfo, file), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, file), caps), nil
 		case "__x64_sys_mount":
 			event := p.colorer.blue.Sprintf("💾 %-7s", "mount")
 			src := ""
@@ -210,7 +225,7 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
 				dst = p.colorer.cyan.Sprint(kprobe.Args[1].GetStringArg())
 			}
-			return fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), caps), nil
 		case "__x64_sys_setuid":
 			event := p.colorer.blue.Sprintf("🔑 %-7s", "setuid")
 			uid := ""
@@ -218,10 +233,10 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 				uidInt := p.colorer.cyan.Sprint(kprobe.Args[0].GetIntArg())
 				uid = string(uidInt)
 			}
-			return fmt.Sprintf("%s %s %s", event, processInfo, uid), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, uid), caps), nil
 		case "__x64_sys_clock_settime":
 			event := p.colorer.blue.Sprintf("⏰ %-7s", "clock_settime")
-			return fmt.Sprintf("%s %s", event, processInfo), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s", event, processInfo), caps), nil
 		case "__x64_sys_pivot_root":
 			event := p.colorer.blue.Sprintf("💾 %-7s", "pivot_root")
 			src := ""
@@ -232,13 +247,13 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			if len(kprobe.Args) > 1 && kprobe.Args[1] != nil {
 				dst = p.colorer.cyan.Sprint(kprobe.Args[1].GetStringArg())
 			}
-			return fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s %s", event, processInfo, src, dst), caps), nil
 		case "proc_exec_connector":
 			event := p.colorer.blue.Sprintf("🔧 %-7s", "proc_exec_connector")
-			return fmt.Sprintf("%s %s", event, processInfo), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s", event, processInfo), caps), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
-			return fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), nil
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), caps), nil
 		}
 	case *fgs.GetEventsResponse_ProcessDns:
 		dns := response.GetProcessDns()
@@ -249,9 +264,9 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			return "", fmt.Errorf("dns field is not set")
 		}
 		event := p.colorer.blue.Sprintf("📖 %-7s", "dns")
-		processInfo := p.colorer.processInfo(response.NodeName, dns.Process)
+		processInfo, caps := p.colorer.processInfo(response.NodeName, dns.Process)
 		args := p.colorer.cyan.Sprint(dns.GetDns().Names, " => ", dns.GetDns().Ips)
-		return fmt.Sprintf("%s %s %s", event, processInfo, args), nil
+		return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, args), caps), nil
 	case *fgs.GetEventsResponse_ProcessSockStats:
 		stats := response.GetProcessSockStats()
 		if stats.Process == nil {
@@ -264,7 +279,7 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 			return "", fmt.Errorf("stats field is not set")
 		}
 		event := p.colorer.blue.Sprintf("🧮 %-7s", "socket")
-		processInfo := p.colorer.processInfo(response.NodeName, stats.Process)
+		processInfo, _ := p.colorer.processInfo(response.NodeName, stats.Process)
 		destination := p.colorer.fiveTuple(
 			stats.Socket.Protocol,
 			stats.Socket.SourceIp,

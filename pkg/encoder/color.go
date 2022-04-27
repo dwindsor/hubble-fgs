@@ -12,6 +12,7 @@ package encoder
 
 import (
 	"fmt"
+	"strings"
 	"time"
 
 	"github.com/dustin/go-humanize"
@@ -84,13 +85,42 @@ func (c *colorer) disable() {
 	}
 }
 
-func (c colorer) processInfo(host string, process *fgs.Process) string {
+func printCap(c int) bool {
+	switch c {
+	case int(fgs.CapabilitiesType_CAP_SYS_ADMIN):
+		return true
+	}
+	return false
+}
+
+func processCaps(c *fgs.Capabilities) string {
+	var caps []string
+
+	if c == nil {
+		return ""
+	}
+
+	for e := range c.Effective {
+		if printCap(e) {
+			caps = append(caps, fgs.CapabilitiesType_name[int32(e)])
+		}
+	}
+
+	capsString := strings.Join(caps, ",")
+	if len(caps) > 0 {
+		capsString = "🛑 " + capsString
+	}
+	return capsString
+}
+
+func (c colorer) processInfo(host string, process *fgs.Process) (string, string) {
 	source := c.green.Sprint(host)
 	if process.Pod != nil {
 		source = c.green.Sprint(process.Pod.Namespace, "/", process.Pod.Name)
 	}
 	proc := c.magenta.Sprint(process.Binary)
-	return fmt.Sprintf("%s %s", source, proc)
+	caps := c.magenta.Sprint(processCaps(process.Cap))
+	return fmt.Sprintf("%s %s", source, proc), caps
 }
 
 func (c colorer) interfaceInfo(host string, stats *fgs.InterfaceStats) string {
