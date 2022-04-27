@@ -23,3 +23,5 @@ spec:
       cgroup: true
     dns:
       enable: true
+    tcp:
+      enable: true
