@@ -101,7 +101,6 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		"/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
 		"", /* network interfaces */
 		configFile,
-		args.FgsDebug, /* debug */
 		0 /* tcp statistics */)
 
 	if err := obs.InitSensorManager(); err != nil {

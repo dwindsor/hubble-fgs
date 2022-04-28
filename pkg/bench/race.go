@@ -205,7 +205,6 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		"/sys/fs/bpf/fgs-race/", "/sys/fs/bpf/fgs-race/", "",
 		"",       /* network interfaces */
 		f.Name(), /* config */
-		false,    /* debug */
 		10 /* tcp statistics */)
 
 	if err := obs.InitSensorManager(); err != nil {

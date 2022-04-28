@@ -237,8 +237,7 @@ func newDefaultObserver(t *testing.T, oo *testObserverOptions) *Observer {
 	return NewObserver(observerTestDir,
 		observerTestDir,
 		"", "",
-		oo.config, oo.pretty,
-		0)
+		oo.config, 0)
 }
 
 func getDefaultObserver(t *testing.T, opts ...TestOption) (*Observer, error) {

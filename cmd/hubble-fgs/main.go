@@ -106,7 +106,6 @@ func hubbleFGSExecute() error {
 		ciliumBPF,
 		networkInterfaces,
 		configFile,
-		option.Config.Debug,
 		exportTCPStatsSampleSeg,
 	)
 	if err := obs.InitSensorManager(); err != nil {

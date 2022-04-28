@@ -252,8 +252,6 @@ type Observer struct {
 	interfaces string
 	listeners  map[Listener]struct{}
 	perfConfig *bpf.PerfEventConfig
-	/* Features */
-	prettyPrinter bool
 	/* Statistics */
 	lostCntr   int
 	errorCntr  int
@@ -309,13 +307,12 @@ func (k *Observer) InitSensorManager() error {
 }
 
 func NewObserver(bpfDir, mapDir, ciliumDir, interfaces, configFile string,
-	pretty bool, tcpStatRate uint32) *Observer {
+	tcpStatRate uint32) *Observer {
 	o := &Observer{
 		bpfDir:         bpfDir,
 		mapDir:         mapDir,
 		ciliumDir:      ciliumDir,
 		interfaces:     interfaces,
-		prettyPrinter:  pretty,
 		listeners:      make(map[Listener]struct{}),
 		log:            logger.GetLogger(),
 		configFile:     configFile,
