@@ -26,8 +26,21 @@ import (
 	"google.golang.org/grpc/status"
 )
 
+func getRequest(namespaces []string, host bool) *fgs.GetEventsRequest {
+	if host {
+		// Host events can be matched by an empty namespace string.
+		namespaces = append(namespaces, "")
+	}
+	return &fgs.GetEventsRequest{
+		AllowList: []*fgs.Filter{{Namespace: namespaces}},
+	}
+}
+
 func getEvents(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
-	stream, err := client.GetEvents(ctx, &fgs.GetEventsRequest{})
+	host := viper.GetBool("host")
+	namespaces := viper.GetStringSlice("namespace")
+	request := getRequest(namespaces, host)
+	stream, err := client.GetEvents(ctx, request)
 	if err != nil {
 		logger.GetLogger().WithError(err).Fatal("Failed to call GetEvents")
 	}
@@ -64,6 +77,8 @@ func New() *cobra.Command {
 	flags := cmd.Flags()
 	flags.StringP("output", "o", "json", "Output format. json or compact")
 	flags.String("color", "auto", "Colorize compact output. auto, always, or never")
+	flags.StringSliceP("namespace", "n", nil, "Get events by Kubernetes namespaces")
+	flags.Bool("host", false, "Get host events")
 	viper.BindPFlags(flags)
 	return &cmd
 }
