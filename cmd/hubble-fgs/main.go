@@ -96,7 +96,7 @@ func hubbleFGSExecute() error {
 		ciliumBPF,
 		networkInterfaces,
 		configFile,
-		debug,
+		option.Config.Debug,
 		exportTCPStatsSampleSeg,
 	)
 	if err := obs.InitSensorManager(); err != nil {
@@ -306,7 +306,7 @@ func execute() error {
 	flags := rootCmd.PersistentFlags()
 
 	flags.String(keyConfigDir, "", "Configuration directory that contains a file for each option")
-	flags.BoolP(keyDebug, "d", false, "Enable debug messages")
+	flags.BoolP(keyDebug, "d", false, "Enable debug messages. Equivalent to '--log-level=debug'")
 	flags.String(keyHubbleLib, "/var/lib/hubble-fgs/", "Location of hubble libs (btf and bpf files)")
 	flags.String(keyBTF, "", "Location of btf")
 

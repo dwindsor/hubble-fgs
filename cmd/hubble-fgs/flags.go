@@ -67,7 +67,6 @@ const (
 )
 
 var (
-	debug            bool
 	processCacheSize int
 
 	enableK8sAPI           bool
@@ -108,8 +107,8 @@ func readAndSetFlags() {
 	option.Config.Verbosity = viper.GetInt(keyVerbosity)
 	option.Config.IgnoreMissingProgs = viper.GetBool(keyIgnoreMissingProgs)
 	option.Config.ForceSmallProgs = viper.GetBool(keyForceSmallProgs)
+	option.Config.Debug = viper.GetBool(keyDebug)
 
-	debug = viper.GetBool(keyDebug)
 	processCacheSize = viper.GetInt(keyProcessCacheSize)
 
 	enableK8sAPI = viper.GetBool(keyEnableK8sAPI)

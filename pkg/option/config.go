@@ -19,6 +19,7 @@ var Config = config{
 }
 
 type config struct {
+	Debug              bool
 	ProcFS             string
 	KernelVersion      string
 	HubbleLib          string
