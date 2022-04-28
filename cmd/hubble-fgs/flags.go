@@ -13,6 +13,7 @@ package main
 import (
 	"time"
 
+	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/spf13/viper"
@@ -108,6 +109,10 @@ func readAndSetFlags() {
 	option.Config.IgnoreMissingProgs = viper.GetBool(keyIgnoreMissingProgs)
 	option.Config.ForceSmallProgs = viper.GetBool(keyForceSmallProgs)
 	option.Config.Debug = viper.GetBool(keyDebug)
+
+	logLevel := viper.GetString(keyLogLevel)
+	logFormat := viper.GetString(keyLogFormat)
+	logger.PopulateLogOpts(option.Config.LogOpts, logLevel, logFormat)
 
 	processCacheSize = viper.GetInt(keyProcessCacheSize)
 

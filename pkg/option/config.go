@@ -16,6 +16,9 @@ var Config = config{
 
 	// ProcFS defaults to /proc.
 	ProcFS: "/proc",
+
+	// LogOpts contains logger parameters
+	LogOpts: make(map[string]string),
 }
 
 type config struct {
@@ -27,4 +30,6 @@ type config struct {
 	Verbosity          int
 	IgnoreMissingProgs bool
 	ForceSmallProgs    bool
+
+	LogOpts map[string]string
 }

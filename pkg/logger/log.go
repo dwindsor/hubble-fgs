@@ -23,6 +23,19 @@ import (
 	"github.com/spf13/viper"
 )
 
+type LogFormat string
+
+const (
+	levelOpt  = "level"
+	formatOpt = "format"
+
+	logFormatText LogFormat = "text"
+	logFormatJSON LogFormat = "json"
+
+	defaultLogFormat LogFormat    = logFormatText
+	defaultLogLevel  logrus.Level = logrus.InfoLevel
+)
+
 var (
 	log  *logrus.Logger
 	once sync.Once
@@ -51,6 +64,9 @@ var LogFormatOpts = [2]string{
 type LogFormatInvalidOpt struct {
 	invalidOpt string
 }
+
+// LogOptions maps configuration key-value pairs related to logging.
+type LogOptions map[string]string
 
 func (e *LogFormatInvalidOpt) Error() string {
 	validOpts := strings.Join(LogFormatOpts[:], ",")
@@ -82,6 +98,28 @@ func getLogFormat() (logrus.Formatter, error) {
 		return &logrus.JSONFormatter{}, nil
 	default:
 		return &logrus.TextFormatter{}, &LogFormatInvalidOpt{invalidOpt: logFormatOpt}
+	}
+}
+
+// PopulateLogOpts populates the logger options making sure that passed values are valid.
+func PopulateLogOpts(o LogOptions, level string, format string) {
+	if level != "" {
+		_, err := logrus.ParseLevel(level)
+		if err != nil {
+			logrus.WithError(fmt.Errorf("incorrect --log-level '%s'", level)).Warning("Ignoring user-configured log level")
+		} else {
+			o[levelOpt] = level
+		}
+	}
+
+	if format != "" {
+		format = strings.ToLower(format)
+		switch LogFormat(format) {
+		case logFormatText, logFormatJSON:
+			o[formatOpt] = format
+		default:
+			logrus.WithError(fmt.Errorf("incorrect --log-format '%s', expected 'text' or 'json'", format)).Warning("Ignoring user-configured log format")
+		}
 	}
 }
 
