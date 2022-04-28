@@ -372,6 +372,8 @@ spec:
       - matchPorts:
         - 443
         {{.MatchPortTLS}}
+    tcp:
+      enable: true
 `
 
 	f, err := os.CreateTemp("/tmp", "fgs-bench-crd-*.yaml")
