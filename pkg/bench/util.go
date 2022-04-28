@@ -168,7 +168,7 @@ func (cw *CountingDiscardWriter) Write(p []byte) (n int, err error) {
 }
 
 func ProbeTCPPort(port int) bool {
-	probeTimeout := 10 * time.Second
+	probeTimeout := 30 * time.Second
 	attempts := 20
 	delay := probeTimeout / time.Duration(attempts)
 
