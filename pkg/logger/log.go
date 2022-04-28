@@ -20,7 +20,6 @@ import (
 	"strings"
 
 	"github.com/sirupsen/logrus"
-	"github.com/spf13/viper"
 )
 
 type LogFormat string
@@ -37,44 +36,13 @@ const (
 )
 
 var (
-	log *logrus.Logger
-
 	// DefaultLogger is the base logrus logger. It is different from the logrus
 	// default to avoid external dependencies from writing out unexpectedly
 	DefaultLogger = InitializeDefaultLogger()
-
-	strToLogrusLevel = map[string]logrus.Level{
-		"panic": logrus.PanicLevel,
-		"fatal": logrus.FatalLevel,
-		"error": logrus.ErrorLevel,
-		"warn":  logrus.WarnLevel,
-		"info":  logrus.InfoLevel,
-		"debug": logrus.DebugLevel,
-		"trace": logrus.TraceLevel,
-	}
 )
-
-const (
-	LogFormatTextId = iota
-	LogFormatJsonId
-)
-
-var LogFormatOpts = [2]string{
-	LogFormatTextId: "text",
-	LogFormatJsonId: "json",
-}
-
-type LogFormatInvalidOpt struct {
-	invalidOpt string
-}
 
 // LogOptions maps configuration key-value pairs related to logging.
 type LogOptions map[string]string
-
-func (e *LogFormatInvalidOpt) Error() string {
-	validOpts := strings.Join(LogFormatOpts[:], ",")
-	return fmt.Sprintf("invalid format option: '%s', using text (valid options: %s)", e.invalidOpt, validOpts)
-}
 
 // InitializeDefaultLogger returns a logrus Logger with a custom text formatter.
 func InitializeDefaultLogger() (logger *logrus.Logger) {
@@ -142,34 +110,6 @@ func setLogFormat(logFormat LogFormat) {
 		logrus.WithError(err).Warning("Ignoring user-configured log format")
 	}
 	DefaultLogger.SetFormatter(fmt)
-}
-
-func getLogLevel() logrus.Level {
-	if level, ok := strToLogrusLevel[viper.GetString("log-level")]; ok {
-		return level
-	} else if viper.GetBool("debug") {
-		return logrus.DebugLevel
-	}
-	return logrus.InfoLevel
-}
-
-// getLogFormat returns the logrus.Formatter based on user-specified options.
-//
-// If the user options where invalid, it returns the default formatter and
-// an appropriate error.
-func getLogFormat() (logrus.Formatter, error) {
-	logFormatOpt := viper.GetString("log-format")
-	switch logFormatOpt {
-	// Use the text formatter if --log-format flag is not specified.
-	case LogFormatOpts[LogFormatTextId], "":
-		return &logrus.TextFormatter{
-			DisableColors: true,
-		}, nil
-	case LogFormatOpts[LogFormatJsonId]:
-		return &logrus.JSONFormatter{}, nil
-	default:
-		return &logrus.TextFormatter{}, &LogFormatInvalidOpt{invalidOpt: logFormatOpt}
-	}
 }
 
 // PopulateLogOpts populates the logger options making sure that passed values are valid.
