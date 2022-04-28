@@ -47,6 +47,10 @@ import (
 	"k8s.io/client-go/rest"
 )
 
+var (
+	log = logger.GetLogger()
+)
+
 func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
 	allowList, err := filters.ParseFilterList(viper.GetString(keyExportAllowlist))
 	if err != nil {
@@ -75,8 +79,14 @@ func hubbleFGSExecute() error {
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
 	readAndSetFlags()
-	logger.GetLogger().WithField("version", version.Version).Info("Starting hubble-fgs")
-	logger.GetLogger().WithField("config", viper.AllSettings()).Info("config settings")
+
+	// Logging should always be bootstrapped first. Do not add any code above this!
+	if err := logger.SetupLogging(option.Config.LogOpts, option.Config.Debug); err != nil {
+		log.Fatal(err)
+	}
+
+	log.WithField("version", version.Version).Info("Starting hubble-fgs")
+	log.WithField("config", viper.AllSettings()).Info("config settings")
 
 	if viper.IsSet(keyNetnsDir) {
 		defaults.NetnsDir = viper.GetString(keyNetnsDir)
@@ -166,7 +176,7 @@ func hubbleFGSExecute() error {
 		}
 	}
 
-	logger.GetLogger().WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
+	log.WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
 	obs.AddListener(pm)
 	saveInitInfo()
 	if enableK8sAPI {
@@ -195,7 +205,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 		Compress:   exportFileCompress,
 	}
 	if exportFileRotationInterval != 0 {
-		logger.GetLogger().WithField("duration", exportFileRotationInterval).Info("Periodically rotating JSON export files")
+		log.WithField("duration", exportFileRotationInterval).Info("Periodically rotating JSON export files")
 		go func() {
 			ticker := time.NewTicker(exportFileRotationInterval)
 			for {
@@ -204,8 +214,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 					return
 				case <-ticker.C:
 					if rotationErr := writer.Rotate(); rotationErr != nil {
-						logger.GetLogger().
-							WithError(rotationErr).
+						log.WithError(rotationErr).
 							WithField("filename", exportFilename).
 							Warn("Failed to rotate JSON export file")
 					}
@@ -226,7 +235,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 		}
 	}
 	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions}
-	logger.GetLogger().WithFields(logrus.Fields{"logger": &writer, "request": &req}).Info("Starting JSON exporter")
+	log.WithFields(logrus.Fields{"logger": &writer, "request": &req}).Info("Starting JSON exporter")
 	exporter := exporter.NewExporter(ctx, &req, server, encoder, rateLimiter)
 	exporter.Start()
 	return nil
@@ -238,11 +247,11 @@ func Serve(ctx context.Context, address string, server *server.Server) error {
 	go func(address string) {
 		listener, err := net.Listen("tcp", address)
 		if err != nil {
-			logger.GetLogger().WithError(err).WithField("address", address).Fatal("Failed to start gRPC server")
+			log.WithError(err).WithField("address", address).Fatal("Failed to start gRPC server")
 		}
-		logger.GetLogger().WithField("address", address).Info("Starting gRPC server")
+		log.WithField("address", address).Info("Starting gRPC server")
 		if err = grpcServer.Serve(listener); err != nil {
-			logger.GetLogger().WithError(err).Error("Failed to close gRPC server")
+			log.WithError(err).Error("Failed to close gRPC server")
 		}
 	}(address)
 	go func() {
@@ -254,7 +263,7 @@ func Serve(ctx context.Context, address string, server *server.Server) error {
 
 func getWatcher(enableK8sAPI bool) (watcher.K8sResourceWatcher, error) {
 	if enableK8sAPI {
-		logger.GetLogger().Info("Enabling Kubernetes API")
+		log.Info("Enabling Kubernetes API")
 		config, err := rest.InClusterConfig()
 		if err != nil {
 			return nil, err
@@ -263,7 +272,7 @@ func getWatcher(enableK8sAPI bool) (watcher.K8sResourceWatcher, error) {
 		return watcher.NewK8sWatcher(k8sClient, 60*time.Second), nil
 
 	}
-	logger.GetLogger().Info("Disabling Kubernetes API")
+	log.Info("Disabling Kubernetes API")
 	return watcher.NewFakeK8sWatcher(nil), nil
 }
 
@@ -273,10 +282,10 @@ func execute() error {
 		Short: "Hubble FGS",
 		Run: func(cmd *cobra.Command, args []string) {
 			if err := gops.Listen(gops.Options{}); err != nil {
-				logger.GetLogger().WithError(err).Fatal("Failed to start gops")
+				log.WithError(err).Fatal("Failed to start gops")
 			}
 			if err := hubbleFGSExecute(); err != nil {
-				logger.GetLogger().WithError(err).Fatal("Failed to start hubble-fgs")
+				log.WithError(err).Fatal("Failed to start hubble-fgs")
 			}
 		},
 	}
@@ -287,18 +296,18 @@ func execute() error {
 		viper.SetConfigType("yaml")
 		viper.AddConfigPath(".") // look for a config file in cwd first, useful during development
 		if err := viper.ReadInConfig(); err == nil {
-			logger.GetLogger().Info("Loaded config from file")
+			log.Info("Loaded config from file")
 		}
 		if viper.IsSet(keyConfigDir) {
 			configDir := viper.GetString(keyConfigDir)
 			cm, err := ciliumopt.ReadDirConfig(configDir)
 			if err != nil {
-				logger.GetLogger().WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to read config from directory")
+				log.WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to read config from directory")
 			}
 			if err := viper.MergeConfigMap(cm); err != nil {
-				logger.GetLogger().WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to merge config from directory")
+				log.WithField(keyConfigDir, configDir).WithError(err).Fatal("Failed to merge config from directory")
 			}
-			logger.GetLogger().WithField(keyConfigDir, configDir).Info("Loaded config from directory")
+			log.WithField(keyConfigDir, configDir).Info("Loaded config from directory")
 		}
 		viper.AutomaticEnv()
 	})
