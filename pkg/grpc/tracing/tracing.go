@@ -10,6 +10,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/process"
+	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/reader/path"
@@ -103,9 +104,9 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 			a.Arg = &fgs.KprobeArgument_SkbArg{SkbArg: skbArg}
 		case api.MsgGenericKprobeArgCred:
 			capsArg := &fgs.KprobeCred{
-				Permitted:   reader.GetCapabilitiesTypes(e.Permitted),
-				Effective:   reader.GetCapabilitiesTypes(e.Effective),
-				Inheritable: reader.GetCapabilitiesTypes(e.Inheritable),
+				Permitted:   caps.GetCapabilitiesTypes(e.Permitted),
+				Effective:   caps.GetCapabilitiesTypes(e.Effective),
+				Inheritable: caps.GetCapabilitiesTypes(e.Inheritable),
 			}
 			a.Arg = &fgs.KprobeArgument_CredArg{CredArg: capsArg}
 		case api.MsgGenericKprobeArgBytes:
