@@ -140,6 +140,11 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 					{MatchPorts: []uint32{8888}},
 				},
 			},
+			Tcp: v1alpha1.TcpPolicySpec{
+				Enable:        true,
+				StatsInterval: 0,
+				Burst:         v1alpha1.TcpBurstPolicySpec{},
+			},
 		}
 	case SENS_HTTP:
 		spec = v1alpha1.ParserPolicySpec{
