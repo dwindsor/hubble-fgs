@@ -171,7 +171,7 @@ func getContainerName(sandboxKey string) string {
 	if containerName == "" {
 		err := populateSandboxToContainer()
 		if err != nil {
-			logger.GetLogger().WithError(err).Warn("get container name failed")
+			logger.GetLogger().WithError(err).Debug("get container name failed")
 			return ""
 		}
 		return sandboxToContainer[sandboxKey]
