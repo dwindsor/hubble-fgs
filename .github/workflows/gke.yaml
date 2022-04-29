@@ -133,6 +133,8 @@ jobs:
             name: "dns"
           spec:
             parser:
+              tcp:
+                enable: true
               udp:
                 enable: true
                 cgroup: true
