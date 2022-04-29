@@ -24,7 +24,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -131,7 +130,6 @@ func getCWD(pid uint32) (string, uint32) {
 
 func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 	var err error
-	var i int
 
 	args, filename := procsFilename(p.args)
 	cwd, flags := getCWD(p.pid)
@@ -146,14 +144,9 @@ func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 	m.Kube.NetNS = 0
 	m.Kube.Cid = 0
 	m.Kube.Cgrpid = 0
-	m.Kube.Docker, i, err = procsDockerId(p.pid)
+	m.Kube.Docker, err = procsDockerId(p.pid)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Procfs execve event pods/ identifier error")
-	} else if i > 0 {
-		err := procDockerIdOffsetWriter(i, btf.GetCachedBTF())
-		if err != nil {
-			logger.GetLogger().WithError(err).Warn("Write to Docker ID BTF error")
-		}
 	}
 
 	m.Parent.Pid = p.ppid
@@ -254,12 +247,6 @@ func pushEvents(procs []Procs, pushExecve, writeMaps bool) {
 	for _, p := range procs {
 		pushExecveEvents(p, pushExecve, writeMaps)
 	}
-	// Ensure we have at least a default dockerId offset if we failed
-	// to discover one while walking proc
-	err := procDockerIdOffsetDefault(btf.GetCachedBTF())
-	if err != nil {
-		logger.GetLogger().Warn("prodDockerIdOffsetDefault error: %s", err)
-	}
 }
 
 func GetRunningProcs(write, push bool) []Procs {
@@ -337,7 +324,7 @@ func GetRunningProcs(write, push bool) []Procs {
 		user_ns := namespace.GetPidNsInode(uint32(pid), "user")
 
 		// On error procsDockerId zeros dockerId so we can ignore any errors.
-		dockerId, _, _ := procsDockerId(uint32(pid))
+		dockerId, _ := procsDockerId(uint32(pid))
 		if dockerId == "" {
 			nspid = 0
 		}

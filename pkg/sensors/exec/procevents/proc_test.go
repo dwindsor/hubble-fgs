@@ -45,10 +45,9 @@ func TestProcsContainerIdOffset(t *testing.T) {
 func TestProcsContainerId(t *testing.T) {
 	myPid := uint32(os.Getpid())
 
-	s, i, e := procsDockerId(myPid)
+	s, e := procsDockerId(myPid)
 	// This is not in a docker-cgroup so we have no info
 	assert.Equal(t, "", s, "No cgroup info here")
-	assert.Equal(t, 0, i, "Incorrect offset value")
 	assert.NoError(t, e)
 
 	// To further test we need a k8s environment unforunately. TBD

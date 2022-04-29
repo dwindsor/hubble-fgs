@@ -18,7 +18,6 @@ import (
 	"strings"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
@@ -30,30 +29,6 @@ const (
 	// in case it was truncated
 	BpfContainerIdLength = 31
 )
-
-var (
-	dockerIdSet = 0
-)
-
-func procDockerIdOffsetWriter(off int, btf bpf.BTF) error {
-	if dockerIdSet != 0 {
-		return nil
-	}
-	dockerIdSet = 1
-	errInt := btf.AddEnum("fgs_args_proc", 1)
-	if errInt < 0 {
-		return fmt.Errorf("AddenumBtf failed %d", errInt)
-	}
-	errInt = btf.AddEnumValue("fgs_args_docker_off", off)
-	if errInt < 0 {
-		return fmt.Errorf("AddenumBtf enumValue failed value=%d error %d", off, errInt)
-	}
-	return nil
-}
-
-func procDockerIdOffsetDefault(btf bpf.BTF) error {
-	return procDockerIdOffsetWriter(0, btf)
-}
 
 // ProcsContainerIdOffset Returns the container ID and its offset
 // This can fail, better use LookupContainerId to handle different container runtimes.
@@ -170,12 +145,17 @@ func procsFindDockerId(cgroups string) (string, int) {
 	return "", 0
 }
 
-func procsDockerId(pid uint32) (string, int, error) {
+// procDockerId reads the pid cgroup from proc and returns the container ID.
+// pid argument is the pid of the target process
+// Returns the container ID and nil on success, or an empty string if it fails to identify
+// the container ID or if an error happens. If the pid is unavailable, an error will be
+// returned.
+func procsDockerId(pid uint32) (string, error) {
 	pidstr := fmt.Sprint(pid)
 	cgroups, err := ioutil.ReadFile(filepath.Join(option.Config.ProcFS, pidstr, "cgroup"))
 	if err != nil {
-		return "", 0, err
+		return "", err
 	}
-	off, id := procsFindDockerId(string(cgroups))
-	return off, id, nil
+	off, _ := procsFindDockerId(string(cgroups))
+	return off, nil
 }
