@@ -658,11 +658,14 @@ message GetEventsResponse {
 
 // EventType constants are based on the ones from pkg/api/client
 enum EventType {
+    option allow_alias = true;
 	UNDEF = 0;
 	PROCESS_CONNECT = 1;
 	PROCESS_LISTEN = 4;
 	PROCESS_EXEC = 5;
 	PROCESS_TLS = 6;
+    // TLS is an alias for PROCESS_TLS
+	TLS = 6;
 	PROCESS_EXIT = 7;
 	PROCESS_CLOSE = 8;
 	PROCESS_ACCEPT = 9;
@@ -670,6 +673,8 @@ enum EventType {
 	PROCESS_KPROBE = 13;
 	PROCESS_TRACEPOINT = 14;
 	PROCESS_SOCKSTATS = 15;
+    // TLS is an alias for PROCESS_SOCKSTATS
+	PROCESS_SOCK_STATS = 15;
 	PROCESS_HTTP = 16;
 	INTERFACE_STATS = 17;
 	PROCESS_DNS = 18;

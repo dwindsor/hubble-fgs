@@ -1443,6 +1443,7 @@ EventType constants are based on the ones from pkg/api/client
 | PROCESS_LISTEN | 4 |  |
 | PROCESS_EXEC | 5 |  |
 | PROCESS_TLS | 6 |  |
+| TLS | 6 | TLS is an alias for PROCESS_TLS |
 | PROCESS_EXIT | 7 |  |
 | PROCESS_CLOSE | 8 |  |
 | PROCESS_ACCEPT | 9 |  |
@@ -1450,6 +1451,7 @@ EventType constants are based on the ones from pkg/api/client
 | PROCESS_KPROBE | 13 |  |
 | PROCESS_TRACEPOINT | 14 |  |
 | PROCESS_SOCKSTATS | 15 |  |
+| PROCESS_SOCK_STATS | 15 | TLS is an alias for PROCESS_SOCKSTATS |
 | PROCESS_HTTP | 16 |  |
 | INTERFACE_STATS | 17 |  |
 | PROCESS_DNS | 18 |  |

@@ -30,12 +30,6 @@ func generateEventTypeString(g *protogen.GeneratedFile, f *protogen.File) error 
 		for _, msg := range events {
 			resGoIdent := common.FgsApiIdent(g, fmt.Sprintf("GetEventsResponse_%s", msg.GoIdent.GoName))
 			typeName := strcase.ToScreamingSnake(msg.GoIdent.GoName)
-			if typeName == "TLS" {
-				typeName = "PROCESS_TLS"
-			}
-			if typeName == "PROCESS_SOCK_STATS" {
-				typeName = "PROCESS_SOCKSTATS"
-			}
 			typeGoIdent := common.FgsApiIdent(g, fmt.Sprintf("EventType_%s", typeName))
 
 			ret += `case *` + resGoIdent + `:

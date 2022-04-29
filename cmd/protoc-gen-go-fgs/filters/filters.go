@@ -13,11 +13,13 @@ package filters
 
 import (
 	"fmt"
+	"log"
 	"strings"
 
 	"github.com/iancoleman/strcase"
 	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/common"
 	"google.golang.org/protobuf/compiler/protogen"
+	"google.golang.org/protobuf/reflect/protoreflect"
 )
 
 func generateOpCodeForEventType(g *protogen.GeneratedFile, f *protogen.File) error {
@@ -46,8 +48,16 @@ func generateOpCodeForEventType(g *protogen.GeneratedFile, f *protogen.File) err
 		if valueIdent == "fgs.EventType_UNDEF" {
 			continue
 		}
+
+		response, err := eventTypeToResponse(g, f, value)
+		if err != nil {
+			return err
+		}
+		if response == "" {
+			continue
+		}
 		g.P(`case ` + valueIdent + `:
-                opCode = ` + reflectTypeOf + `(&` + eventTypeToResponse(g, value) + `{})`)
+                opCode = ` + reflectTypeOf + `(&` + response + `{})`)
 	}
 
 	g.P(` default:
@@ -59,18 +69,27 @@ func generateOpCodeForEventType(g *protogen.GeneratedFile, f *protogen.File) err
 	return nil
 }
 
-func eventTypeToResponse(g *protogen.GeneratedFile, eventType *protogen.EnumValue) string {
-	suffix := strings.TrimPrefix(eventType.GoIdent.GoName, "EventType_")
-	suffix = strcase.ToCamel(strings.ToLower(suffix))
-	// Tls is a special case since it has no Process prefix
-	if suffix == "ProcessTls" {
-		suffix = "Tls"
+func eventTypeToResponse(g *protogen.GeneratedFile, f *protogen.File, eventType *protogen.EnumValue) (string, error) {
+	snakeSuffix := strings.ToLower(strings.TrimPrefix(eventType.GoIdent.GoName, "EventType_"))
+	suffix := strcase.ToCamel(snakeSuffix)
+	name := fmt.Sprintf("GetEventsResponse_%s", suffix)
+
+	ger := f.Desc.Messages().ByName("GetEventsResponse")
+	if ger == nil {
+		return "", fmt.Errorf("Unable to find GetEventsResponse message")
 	}
-	// SockStats is a special case since it differs from PROCESS_SOCKSTATS
-	if suffix == "ProcessSockstats" {
-		suffix = "ProcessSockStats"
+
+	oneof := ger.Oneofs().ByName("event")
+	if oneof == nil {
+		return "", fmt.Errorf("Unable to find GetEventsResponse.event oneof")
 	}
-	return common.FgsApiIdent(g, fmt.Sprintf("GetEventsResponse_%s", suffix))
+
+	if oneof.Fields().ByName(protoreflect.Name(snakeSuffix)) == nil {
+		log.Printf("%s does not exist", name)
+		return "", nil
+	}
+
+	return common.FgsApiIdent(g, name), nil
 }
 
 // Generate generates boilerplate code for the filters

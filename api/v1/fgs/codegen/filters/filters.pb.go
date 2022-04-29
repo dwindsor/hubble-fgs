@@ -28,7 +28,7 @@ func OpCodeForEventType(eventType fgs.EventType) (reflect.Type, error) {
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessListen{})
 	case fgs.EventType_PROCESS_EXEC:
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessExec{})
-	case fgs.EventType_PROCESS_TLS:
+	case fgs.EventType_TLS:
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_Tls{})
 	case fgs.EventType_PROCESS_EXIT:
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessExit{})
@@ -42,7 +42,7 @@ func OpCodeForEventType(eventType fgs.EventType) (reflect.Type, error) {
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessKprobe{})
 	case fgs.EventType_PROCESS_TRACEPOINT:
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessTracepoint{})
-	case fgs.EventType_PROCESS_SOCKSTATS:
+	case fgs.EventType_PROCESS_SOCK_STATS:
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessSockStats{})
 	case fgs.EventType_PROCESS_HTTP:
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessHttp{})
