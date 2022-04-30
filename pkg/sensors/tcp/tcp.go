@@ -158,12 +158,12 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	if tcpInterval > 0 {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)
-		// Convert to a TCPStats event by simply setting op code
-		c.Common.Op = ops.MsgOpIPv4TCPStats
-		stats.Remove(c.Tuple)
 		if err != nil {
 			return []observer.Event{tcp}, nil
 		}
+		// Convert to a TCPStats event by simply setting op code
+		c.Common.Op = ops.MsgOpIPv4TCPStats
+		stats.Remove(c.Tuple)
 		return []observer.Event{tcp, c}, nil
 	}
 	return []observer.Event{tcp}, nil
