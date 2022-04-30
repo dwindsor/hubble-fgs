@@ -196,11 +196,6 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, int payload_off,
 		if (!value)
 			return 0;
 
-		if (send)
-			udp_info_tx_reset(value, payload_sz);
-		else
-			udp_info_rx_reset(value, payload_sz);
-
 		/* Store the info in the entry for later use,
 		 * and potentially for searching from userland
 		 * in case we ever need to locate a socket */
@@ -209,6 +204,11 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, int payload_off,
 		value->sport = info->sport;
 		value->dport = info->dport;
 		value->padding = 0;
+
+		if (send)
+			udp_info_tx_reset(value, payload_sz);
+		else
+			udp_info_rx_reset(value, payload_sz);
 
 		/* If process was found, fill in the PID */
 		if (process) {
@@ -221,12 +221,6 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, int payload_off,
 			emit_udp_connect_event(skb, value);
 		map_update_elem(&udp_map, &info->cookie, value, 0);
 	} else if (process && value->pid != process->key.pid) {
-		/* PID doesn't match, so this must be a new socket */
-		if (send)
-			udp_info_tx_reset(value, payload_sz);
-		else
-			udp_info_rx_reset(value, payload_sz);
-
 		value->saddr = info->saddr;
 		value->daddr = info->daddr;
 		value->sport = info->sport;
@@ -234,6 +228,12 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, int payload_off,
 		value->padding = 0;
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
+
+		/* PID doesn't match, so this must be a new socket */
+		if (send)
+			udp_info_tx_reset(value, payload_sz);
+		else
+			udp_info_rx_reset(value, payload_sz);
 
 		emit_udp_connect_event(skb, value);
 	} else {
