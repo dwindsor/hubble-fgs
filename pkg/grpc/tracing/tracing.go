@@ -60,8 +60,8 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 		}
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
+		process.AnnotateProcess(t.enableProcessCred, t.enableProcessNs)
 	}
-	process.AnnotateProcess(t.enableProcessCred, t.enableProcessNs)
 
 	if parent == nil {
 		fgsParent = &fgs.Process{}
