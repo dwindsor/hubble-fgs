@@ -335,6 +335,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *Program, version, verb
 		return -1, err
 	} else {
 		if s, ok := registeredProbeLoad[load.Type]; ok {
+			logger.GetLogger().WithField("Program", load.Name).WithField("Type", load.Type).Infof("Load probe")
 			return s.LoadProbe(LoadProbeArgs{
 				BPFDir:    bpfDir,
 				MapDir:    mapDir,
