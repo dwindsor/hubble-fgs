@@ -516,6 +516,9 @@ spec:
                       enable:
                         description: Interface enable parser
                         type: boolean
+                      packet:
+                        description: Interface packet level BPF
+                        type: boolean
                       statsInterval:
                         description: Interface interval in seconds
                         format: int32

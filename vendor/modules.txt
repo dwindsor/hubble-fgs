@@ -176,6 +176,7 @@ github.com/cilium/tetragon/pkg/reader/network
 github.com/cilium/tetragon/pkg/reader/node
 github.com/cilium/tetragon/pkg/reader/notify
 github.com/cilium/tetragon/pkg/reader/path
+github.com/cilium/tetragon/pkg/reader/perfevent
 github.com/cilium/tetragon/pkg/reader/proc
 github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors

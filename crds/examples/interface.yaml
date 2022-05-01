@@ -7,3 +7,4 @@ spec:
     interface:
       enable: true
       statsInterval: 10
+      packet: true

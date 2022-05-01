@@ -122,13 +122,6 @@ type MsgInterface struct {
 	ContainerName string
 }
 
-type MsgInterfaceEventUnix struct {
-	Common processapi.MsgCommon
-	Kube   processapi.MsgK8sUnix
-	Iface  MsgInterface
-	Stats  MsgInterfaceStats
-}
-
 type MsgProcessNetworkBurstEvent struct {
 	Common        processapi.MsgCommon
 	ProcessKey    processapi.MsgExecveKey

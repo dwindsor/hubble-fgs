@@ -17,13 +17,17 @@ import (
 	"os"
 	"path/filepath"
 	"time"
+	"unsafe"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/docker/docker/api/types"
@@ -36,10 +40,55 @@ import (
 )
 
 var (
-	NetworkStatInterval = time.Duration(60 * time.Second)
+	NetworkStatInterval = time.Duration(10 * time.Second)
 	sandboxToContainer  = make(map[string]string)
 	eventTimer          = timer.NewPeriodicTimer("Network Interface Timer", runNetworkCB, true)
+	pollTimer           = timer.NewPeriodicTimer("Network Event Poll", runNetworkBPFGC, true)
+
+	NetworkMapName = "network_map"
 )
+
+type networkInfoKey struct {
+	Index uint64
+	Netns uint64
+}
+
+type networkInfoValue struct {
+	Name       [16]byte
+	TxBytes    uint64
+	RxBytes    uint64
+	PacketsOut uint64
+	PacketsIn  uint64
+}
+
+func (k *networkInfoKey) String() string {
+	return fmt.Sprintf("Index=%d NetNS: %d", k.Index, k.Netns)
+}
+func (k *networkInfoKey) GetKeyPtr() unsafe.Pointer { return unsafe.Pointer(k) }
+func (k *networkInfoKey) NewValue() bpf.MapValue {
+	return &networkInfoValue{}
+}
+func (k *networkInfoKey) DeepCopyMapKey() bpf.MapKey {
+	return &networkInfoKey{
+		Index: k.Index,
+		Netns: k.Netns,
+	}
+}
+
+func (v *networkInfoValue) String() string {
+	return fmt.Sprintf(
+		"Name=%s: TX=%d:%d RX:%d:%d",
+		v.Name, v.TxBytes, v.PacketsOut, v.RxBytes, v.PacketsIn)
+}
+
+func (v *networkInfoValue) GetValuePtr() unsafe.Pointer {
+	return unsafe.Pointer(&v)
+}
+func (v *networkInfoValue) DeepCopyMapValue() bpf.MapValue {
+	var newV networkInfoValue
+	newV = *v
+	return &newV
+}
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath string) {
 	unix := iface.MsgInterfaceEventUnix{
@@ -66,6 +115,91 @@ func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath st
 		},
 	}
 	observer.AllListeners(&unix)
+}
+
+func nameParse(b [16]byte) (string, int) {
+	s := ""
+	for i, hex := range b {
+		if hex == 0 {
+			return s, i
+		}
+		c := fmt.Sprintf("%c", hex)
+		s += c
+	}
+	return s, 16
+}
+
+func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
+	foundName := false
+
+	netns := fmt.Sprintf("%d", netKey.Netns)
+	name := ""
+	txBytes := uint64(0)
+	rxBytes := uint64(0)
+	pktsOut := uint64(0)
+	pktsIn := uint64(0)
+
+	for _, percpu_val := range netValue {
+		txBytes += percpu_val.TxBytes
+		rxBytes += percpu_val.RxBytes
+		pktsOut += percpu_val.PacketsOut
+		pktsIn += percpu_val.PacketsIn
+
+		// These are duplicated in each value at the moment
+		if !foundName {
+			n, l := nameParse(percpu_val.Name)
+			if l > 0 {
+				foundName = true
+				name = n
+			}
+		}
+	}
+
+	unix := iface.MsgInterfaceEventUnix{
+		Common: processapi.MsgCommon{
+			Op:    ops.MSG_OP_INTERFACE_STATS,
+			Size:  1,
+			Ktime: 0,
+		},
+		Iface: api.MsgInterface{
+			Index: int(netKey.Index),
+			Name:  string(name),
+			Netns: netns,
+		},
+		Stats: api.MsgInterfaceStats{
+			BytesSent:       txBytes,
+			BytesReceived:   rxBytes,
+			PacketsSent:     pktsOut,
+			PacketsReceived: pktsIn,
+		},
+	}
+	observer.AllListeners(&unix)
+}
+
+func runNetworkBPFGC() {
+	path := filepath.Join(bpf.MapPrefixPath(), NetworkMapName)
+	fd, err := bpf.ObjGet(path)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Network GC failed to open file")
+		return
+	}
+
+	networkMap, err := ebpf.NewMapFromFD(fd)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Network map open failed")
+		return
+	}
+
+	var (
+		key networkInfoKey
+		val []networkInfoValue
+	)
+	iter := networkMap.Iterate()
+	for iter.Next(&key, &val) {
+		networkGcCb(&key, val)
+	}
+
+	networkMap.Close()
 }
 
 func runNetworkCB() {
@@ -121,7 +255,25 @@ func unloadNetworkSensor() error {
 	return nil
 }
 
-func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
+var (
+	DevQueueXmit = program.Builder(
+		"bpf_dev_queue_xmit.o",
+		"dev_queue_xmit",
+		"kprobe/dev_queue_xmit",
+		"kprobe_dev_queue_xmit",
+		"kprobe")
+	IngressSkb = program.Builder(
+		"bpf_dev_queue_xmit.o",
+		"netif_receive_skb",
+		"kprobe/netif_receive_skb",
+		"kprobe_netif_receive_skb",
+		"kprobe",
+	)
+
+	NetworkMap = program.MapBuilder(NetworkMapName, DevQueueXmit)
+)
+
+func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 	var defaultCBInterval time.Duration
 
 	if statInterval == 0 {
@@ -131,10 +283,23 @@ func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
 	}
 
 	logger.GetLogger().Infof("Enable Interface Statistics")
+	if bpf {
+		versionStr := "__networkPacket_probe__"
+		progs := []*program.Program{
+			DevQueueXmit,
+			IngressSkb,
+		}
+		maps := []*program.Map{
+			NetworkMap,
+		}
+		pollTimer.Start(time.Duration(defaultCBInterval))
+		return sensors.SensorBuilder(versionStr, progs, maps)
+	}
 	err := populateSandboxToContainer()
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Interface statistics running without containerID info")
 	}
+
 	eventTimer.Start(defaultCBInterval)
 	return &sensors.Sensor{
 		Name:       "interface-sensor",
@@ -147,7 +312,7 @@ func (net *networkSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) 
 	if !spec.Parser.Interface.Enable {
 		return nil, nil
 	}
-	return EnableNetworkParser(spec.Parser.Interface.StatsInterval), nil
+	return EnableNetworkParser(spec.Parser.Interface.Packet, spec.Parser.Interface.StatsInterval), nil
 }
 
 func init() {

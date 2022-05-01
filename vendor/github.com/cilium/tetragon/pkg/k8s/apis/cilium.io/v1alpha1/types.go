@@ -127,6 +127,9 @@ type InterfacePolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Interface interval in seconds
 	StatsInterval uint32 `json:"statsInterval"`
+	// +kubebuilder:validation:Optional
+	// Interface packet level BPF
+	Packet bool `json:"packet"`
 }
 
 type DnsPolicySpec struct {
