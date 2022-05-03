@@ -91,7 +91,7 @@ install:
 clean:
 	$(MAKE) -C ./bpf clean
 	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench ./checkerpc ./bin/protoc-gen-go-fgs
-	rm -f contrib/sigkill-tester/sigkill-tester contrib/namespace-tester/test_ns contrib/capabilities-tester/test_caps
+	rm -f contrib/sigkill-tester/sigkill-tester contrib/namespace-tester/test_ns contrib/capabilities-tester/test_caps contrib/dup_tester/test_dup
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:
@@ -126,6 +126,7 @@ test-compile:
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/bpf             -o go-tests/bpf.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/btf             -o go-tests/btf.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/udp     -o go-tests/udp.test
+	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/tracing -o go-tests/tracing.test
 
 test-kernels:
 	#kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
@@ -255,4 +256,5 @@ contrib-progs:
 	$(MAKE) -C contrib/sigkill-tester
 	$(MAKE) -C contrib/namespace-tester
 	$(MAKE) -C contrib/capabilities-tester
+	$(MAKE) -C contrib/dup_tester
 .PHONY: contrib-progs
