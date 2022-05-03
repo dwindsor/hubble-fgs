@@ -622,13 +622,19 @@ const hostname = "127.0.0.1"
 const portno = 31337
 const protocol = "tcp4"
 
+var burstQuit = false
+
 func handleSes(ses net.Conn) {
 	buf := make([]byte, 2*BUFSIZE)
 	quit := false
-	for !quit {
+	ses.SetDeadline(time.Now().Add(200 * time.Millisecond))
+	for !quit && !burstQuit {
 		_, err := ses.Read(buf)
 		if err != nil {
-			quit = true
+			opErr, ok := err.(*net.OpError)
+			if !ok || !opErr.Timeout() {
+				quit = true
+			}
 		}
 	}
 }
@@ -637,17 +643,21 @@ func tcpServer() {
 
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
-	go func() {
-		sig := <-sigs
-		if sig == syscall.SIGTERM {
-			os.Exit(0)
-		}
-	}()
-
 	conn, err := net.Listen(protocol, fmt.Sprintf("%s:%d", hostname, portno))
 	if err != nil {
 		panic(err)
 	}
+	go func() {
+		sig := <-sigs
+		if sig == syscall.SIGTERM {
+			conn.Close()
+			burstQuit = true
+			// Give chance for sockets to gracefully close
+			time.Sleep(500 * time.Millisecond)
+			os.Exit(0)
+		}
+	}()
+
 	fmt.Printf("Ready\n")
 
 	for {
@@ -709,6 +719,8 @@ func tcpClient() {
 			time.Sleep(burstWait * time.Microsecond)
 		}
 	}
+
+	socket.Close()
 }
 
 func TestTcpBurst(t *testing.T) {
