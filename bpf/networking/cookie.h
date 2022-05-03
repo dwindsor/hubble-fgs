@@ -3,15 +3,13 @@
 
 #include "bpf_udp.h"
 
-#ifndef SOCK_CTX
 // get socket cookie helper
-__u64 get_cookie(struct sock *skp)
+__u64 get_cookie(struct sock *sk)
 {
 	__u64 cookie = 0;
-	probe_read(&cookie, sizeof(cookie), _(&(skp->__sk_common.skc_cookie)));
+	probe_read(&cookie, sizeof(cookie), _(&(sk->__sk_common.skc_cookie)));
 	return cookie;
 }
-#endif
 
 struct bpf_map_def __attribute__((section("maps"), used))
 socket_cookie_to_proc_map = {
@@ -32,13 +30,23 @@ socket_cookie_to_proc_map = {
  * with the verifier as is and can fix upstream. So force clang
  * to do simple write with asm.
  */
-static inline __attribute__((always_inline)) void
-write_cookie(struct udp_info *info, u64 value)
+static inline __attribute__((always_inline)) void write_cookie(u64 *cookie,
+							       u64 value)
 {
 	asm volatile("*(u64 *)%[cookie] = %[value];\n"
-		     : [cookie] "+m"(info->cookie)
+		     : [cookie] "+m"(*cookie)
 		     : [value] "r"(value)
 		     :);
+}
+
+static inline __attribute__((always_inline)) void
+write_cookie_from_sk(u64 *cookie, struct sock *sk, bool lazy)
+{
+	if (lazy) {
+		write_cookie(cookie, (u64)sk);
+	} else {
+		*cookie = get_cookie(sk);
+	}
 }
 
 /* Check if the cookie->process(pid) already exists, and if not,
@@ -46,19 +54,19 @@ write_cookie(struct udp_info *info, u64 value)
  * mapping from cookie to process(pid).
  */
 static inline __attribute__((always_inline)) void
-update_cookie_proc_map(u64 cookie, u32 pid)
+update_cookie_proc_map(u64 *cookie, u32 pid)
 {
 	struct execve_map_value *value;
 	struct execve_map_value *process;
 
-	if (!pid || !cookie)
+	if (!pid || !cookie || !*cookie)
 		return;
 
-	process = map_lookup_elem(&socket_cookie_to_proc_map, &cookie);
+	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
 	if (!process || process->key.pid != pid) {
 		value = execve_map_get(pid);
 		if (value) {
-			map_update_elem(&socket_cookie_to_proc_map, &cookie,
+			map_update_elem(&socket_cookie_to_proc_map, cookie,
 					value, 0);
 		}
 	}

@@ -30,11 +30,6 @@ struct udp_info_value {
 } __attribute__((packed));
 
 struct udp_info {
-	/* socket cookie is necessary because multiple sockets may be
-	 * sending to the same tuple and we want to be sure we attribute
-	 * the traffic to the correct socket and process.
-	 */
-	u64 cookie;
 	u32 saddr;
 	u32 daddr;
 	u16 sport;
@@ -72,6 +67,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_info_heap = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct udp_info),
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) udp_cookie_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(u64),
 	.max_entries = 1,
 };
 
