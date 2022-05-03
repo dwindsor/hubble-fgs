@@ -42,6 +42,8 @@ func kprobeAction(act uint64) fgs.KprobeAction {
 		return fgs.KprobeAction_KPROBE_ACTION_UNFOLLOWFD
 	case tracingapi.ActionOverride:
 		return fgs.KprobeAction_KPROBE_ACTION_OVERRIDE
+	case tracingapi.ActionCopyFd:
+		return fgs.KprobeAction_KPROBE_ACTION_COPYFD
 	default:
 		return fgs.KprobeAction_KPROBE_ACTION_UNKNOWN
 	}
