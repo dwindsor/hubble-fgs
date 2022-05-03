@@ -18,13 +18,13 @@ int _version __attribute__((section(("version")), used)) =
 __attribute__((section(("kretprobe/sk_alloc")), used)) int
 sk_allocret(struct pt_regs *ctx)
 {
-	u64 pid = get_current_pid_tgid();
+	u64 pid = get_current_pid_tgid() >> 32;
 	u64 cookie = ctx->ax;
 	struct sock *sk = (void *)cookie;
 	struct execve_map_value *value;
 	u16 family;
 
-	if (cookie == 0 || (pid >> 32) <= 1) {
+	if (cookie == 0 || pid <= 1) {
 		return 0;
 	}
 
