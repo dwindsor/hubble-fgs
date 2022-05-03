@@ -137,12 +137,6 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 	if (!sock_info)
 		return 0;
 
-	info = udp4_get_info(sock_info);
-	if (!info) {
-		map_delete_elem(&udp_retprobe_map, &pid);
-		return 0;
-	}
-
 	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie) {
 		map_delete_elem(&udp_retprobe_map, &pid);
@@ -169,6 +163,13 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 			map_delete_elem(&udp_retprobe_map, &pid);
 			return 0;
 		}
+
+		info = udp4_get_info(sock_info);
+		if (!info) {
+			map_delete_elem(&udp_retprobe_map, &pid);
+			return 0;
+		}
+
 		udp_info_tx_reset(value, 0);
 		value->saddr = info->saddr;
 		value->daddr = info->daddr;
