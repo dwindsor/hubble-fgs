@@ -124,6 +124,16 @@ func (e *Grpc) HandleExecveMessage(msg *fgsAPI.MsgExecveEventUnix) *fgs.GetEvent
 	return res
 }
 
+// HandleCloneMessage -- don't generate any events. Just add the process to the cache.
+func (e *Grpc) HandleCloneMessage(msg *fgsAPI.MsgCloneEventUnix) {
+	switch msg.Common.Op {
+	case ops.MSG_OP_CLONE:
+		process.AddCloneEvent(msg)
+	default:
+		logger.GetLogger().WithField("message", msg).Warn("HandleCloneMessage: Unhandled event")
+	}
+}
+
 // GetProcessExit returns Exit protobuf message for a given process.
 func (e *Grpc) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
 	var fgsProcess, fgsParent *fgs.Process

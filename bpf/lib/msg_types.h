@@ -26,6 +26,8 @@ enum msg_ops {
 
 	MSG_OP_IPV4_PROCESS_BURST = 22,
 
+	MSG_OP_CLONE = 23,
+
 	MSG_OP_MAX,
 
 	// testing

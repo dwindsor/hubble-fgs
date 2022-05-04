@@ -50,6 +50,7 @@ import (
 type execProcess interface {
 	HandleExecveMessage(*processapi.MsgExecveEventUnix) *fgs.GetEventsResponse
 	HandleExitMessage(*processapi.MsgExitEventUnix) *fgs.GetEventsResponse
+	HandleCloneMessage(*processapi.MsgCloneEventUnix)
 }
 
 var (
@@ -142,6 +143,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = httpGrpc.HandleHttpMessage(msg)
 	case *processapi.MsgExecveEventUnix:
 		processedEvent = execGrpc.HandleExecveMessage(msg)
+	case *processapi.MsgCloneEventUnix:
+		execGrpc.HandleCloneMessage(msg)
 	case *networkapi.MsgIPv4EventUnix:
 		processedEvent = layer3Grpc.HandleIpMessage(msg)
 	case *networkapi.MsgProcessNetworkBurstEventUnix:

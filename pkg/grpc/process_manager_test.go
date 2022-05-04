@@ -149,7 +149,7 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 		nil,
 		false, false, false, false, true)
 	assert.NoError(t, err)
-	procInternal := process.Add(&processapi.MsgExecveEventUnix{
+	procInternal := process.AddExecEvent(&processapi.MsgExecveEventUnix{
 		Common: processapi.MsgCommon{
 			Ktime: 1234,
 		},

@@ -72,6 +72,9 @@ const (
 
 	MSG_OP_IPV4_PROCESS_BURST = 22
 
+	// MSG_OP_CLONE notifies user-space that a clone() event has occurred.
+	MSG_OP_CLONE = 23
+
 	// just for testing
 	MSG_OP_TEST = 254
 
@@ -140,5 +143,6 @@ func (op OpCode) String() string {
 		"InterfaceStats",
 		"UDPPayload",
 		"ProcessNetworkBurst",
+		"Clone",
 	}[op]
 }
