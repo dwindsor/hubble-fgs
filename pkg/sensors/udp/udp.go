@@ -138,11 +138,19 @@ var (
 
 	UdpRecv = sensors.ProgramBuilder(
 		"bpf_udp_send_recv.o",
-		"skb_consume_udp",
-		"kprobe/skb_consume_udp",
-		"kprobe_skb_consume_udp",
+		"__skb_recv_udp",
+		"kprobe/__skb_recv_udp",
+		"kprobe___skb_recv_udp",
 		"kprobe",
 	)
+
+	UdpRetRecv = sensors.ProgramBuilder(
+		"bpf_udp_send_recv.o",
+		"__skb_recv_udp",
+		"kretprobe/__skb_recv_udp",
+		"kretprobe___skb_recv_udp",
+		"kprobe",
+	).SetRetProbe(true)
 
 	UdpSendLazy = sensors.ProgramBuilder(
 		"bpf_udp_send_recv_lazy.o",
@@ -162,11 +170,19 @@ var (
 
 	UdpRecvLazy = sensors.ProgramBuilder(
 		"bpf_udp_send_recv_lazy.o",
-		"skb_consume_udp",
-		"kprobe/skb_consume_udp",
-		"kprobe_skb_consume_udp",
+		"__skb_recv_udp",
+		"kprobe/__skb_recv_udp",
+		"kprobe___skb_recv_udp",
 		"kprobe",
 	)
+
+	UdpRetRecvLazy = sensors.ProgramBuilder(
+		"bpf_udp_send_recv_lazy.o",
+		"__skb_recv_udp",
+		"kretprobe/__skb_recv_udp",
+		"kretprobe___skb_recv_udp",
+		"kprobe",
+	).SetRetProbe(true)
 
 	// Shared socket cookie infrastructure
 	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", UdpSendLazy)
@@ -177,8 +193,12 @@ var (
 	UdpMapLazyKprobe       = sensors.MapBuilder(UdpMapName, InetSendRecvLazy)
 	UdpMapKprobe           = sensors.MapBuilder(UdpMapName, UdpSend)
 	UdpMapKprobeLazy       = sensors.MapBuilder(UdpMapName, UdpSendLazy)
+	UdpMapKprobeRecv       = sensors.MapBuilder(UdpMapName, UdpRecv)
+	UdpMapKprobeRecvLazy   = sensors.MapBuilder(UdpMapName, UdpRecvLazy)
 	UdpRetprobeMap         = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
 	UdpRetprobeMapLazy     = sensors.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
+	UdpRetprobeRecvMap     = sensors.MapBuilder(UdpRetprobeMapName, UdpRecv)
+	UdpRetprobeRecvMapLazy = sensors.MapBuilder(UdpRetprobeMapName, UdpRecvLazy)
 	UdpConfigMap           = sensors.MapBuilder("udp_config_map", InetSend)
 	UdpConfigLazyMap       = sensors.MapBuilder("udp_config_map", InetSendLazy)
 	UdpConfigLazyMapKprobe = sensors.MapBuilder("udp_config_map", InetSendRecvLazy)
@@ -547,11 +567,14 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpSendLazy,
 			UdpRetSendLazy,
 			UdpRecvLazy,
+			UdpRetRecvLazy,
 		}
 		maps = []*sensors.Map{
 			SocketCookieMap,
 			UdpMapKprobeLazy,
+			UdpMapKprobeRecvLazy,
 			UdpRetprobeMapLazy,
+			UdpRetprobeRecvMapLazy,
 			UdpConfigLazyMapKprobe,
 			UdpMapLazyKprobe,
 		}
@@ -565,11 +588,14 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpSendLazy,
 			UdpRetSendLazy,
 			UdpRecvLazy,
+			UdpRetRecvLazy,
 		}
 		maps = []*sensors.Map{
 			SocketCookieMap,
 			UdpMapKprobeLazy,
+			UdpMapKprobeRecvLazy,
 			UdpRetprobeMapLazy,
+			UdpRetprobeRecvMapLazy,
 			UdpConfigLazyMap,
 			UdpMapLazy,
 		}
@@ -584,11 +610,14 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpSend,
 			UdpRetSend,
 			UdpRecv,
+			UdpRetRecv,
 		}
 		maps = []*sensors.Map{
 			SocketCookieMap,
 			UdpMapKprobe,
+			UdpMapKprobeRecv,
 			UdpRetprobeMap,
+			UdpRetprobeRecvMap,
 			UdpConfigMap,
 			UdpMap,
 		}

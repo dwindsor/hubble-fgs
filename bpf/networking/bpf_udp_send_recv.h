@@ -13,6 +13,8 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
+#define MSG_PEEK 2
+
 struct udp_sock_info {
 	struct sock *sk;
 	struct msghdr *msg;
@@ -209,9 +211,8 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 }
 
 static inline __attribute__((always_inline)) struct udp_info *
-udp4_get_skb_info(struct pt_regs *ctx, int *len)
+udp4_get_skb_info(struct sk_buff *skb, int *len)
 {
-	struct sk_buff *skb = (void *)ctx->si;
 	struct udp_info *info;
 	int zero = 0;
 
@@ -244,27 +245,70 @@ udp4_get_skb_info(struct pt_regs *ctx, int *len)
 	return info;
 }
 
-static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
-							   bool lazy)
+/* On entry to __skb_recv_udp(), check if it's a genuine read (not just a
+ * peek), and store the sk for the return.
+ */
+static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx)
 {
+	u64 pid_tgid = get_current_pid_tgid();
+	struct udp_sock_info *value;
+	int zero = 0;
+	int flags = ctx->si;
+
+	/* Avoid any calls where the packet isn't actually consumed */
+	if (flags & MSG_PEEK)
+		return 0;
+
+	value = map_lookup_elem(&udp_sock_info_heap, &zero);
+	if (!value)
+		return 0;
+
+	value->sk = (void *)ctx->di;
+
+	map_update_elem(&udp_retprobe_map, &pid_tgid, value, 0);
+	return 0;
+}
+
+/* On return of __skb_recv_udp(), check the returned skb is a valid
+ * pointer, and retrieve the stored sk.
+ */
+static inline __attribute__((always_inline)) int
+udp4_recvret(struct pt_regs *ctx, bool lazy)
+{
+	u64 pid_tgid = get_current_pid_tgid();
+	struct udp_sock_info *sock_info;
 	struct udp_info_value *value;
 	struct udp_info *info;
 	int hasctx, zero = 0;
 	struct execve_map_value *execve_value;
 	int len = 0;
-	int givenlen = ctx->dx;
-	struct sock *sk = (void *)ctx->di;
+	struct sock *sk;
+	struct sk_buff *skb = (void *)ctx->ax;
 	u64 *cookie;
 
-	info = udp4_get_skb_info(ctx, &len);
+	if (!skb) {
+		map_delete_elem(&udp_retprobe_map, &pid_tgid);
+		return 0;
+	}
+
+	sock_info = map_lookup_elem(&udp_retprobe_map, &pid_tgid);
+	if (!sock_info)
+		return 0;
+
+	sk = sock_info->sk;
 
 	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
-	if (!cookie)
+	if (!cookie) {
+		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
+	}
 	write_cookie_from_sk(cookie, sk, lazy);
-	if (!*cookie)
+	if (!*cookie) {
+		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
+	}
 
+	info = udp4_get_skb_info(skb, &len);
 	value = map_lookup_elem(&udp_map, cookie);
 	if (!value) {
 		/* Entry was not created by the stack programs.
@@ -274,18 +318,12 @@ static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
 		 * entry and update the socket map.
 		 */
 		value = map_lookup_elem(&udp_value_heap, &zero);
-		if (!value)
+		if (!value) {
+			map_delete_elem(&udp_retprobe_map, &pid_tgid);
 			return 0;
-
-		/* We only consume the packet when givenlen > 0. Values
-		 * < 0 represent calls to select() or similar that don't
-		 * actually process the packet.
-		 */
-		if (givenlen > 0) {
-			udp_info_consumed_reset(value, len);
-		} else {
-			udp_info_consumed_reset(value, 0);
 		}
+
+		udp_info_consumed_reset(value, len);
 
 		if (info) {
 			value->saddr = info->saddr;
@@ -310,16 +348,10 @@ static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
 		}
 		map_update_elem(&udp_map, cookie, value, 0);
 	} else {
-		/* We only consume the packet when givenlen > 0. Values
-		 * < 0 represent calls to select() or similar that don't
-		 * actually process the packet.
-		 */
-		if (givenlen > 0) {
-			if (info) {
-				update_consumed_value(value, len);
-			} else {
-				update_consume_misses(value);
-			}
+		if (info) {
+			update_consumed_value(value, len);
+		} else {
+			update_consume_misses(value);
 		}
 		if (!value->pid) {
 			/* This can happen when sock_create does not
@@ -349,5 +381,6 @@ static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
 	 */
 	update_cookie_proc_map(cookie, value->pid);
 
+	map_delete_elem(&udp_retprobe_map, &pid_tgid);
 	return 0;
 }

@@ -12,8 +12,14 @@ udp4_sendret_kprobe(struct pt_regs *ctx)
 	return udp4_sendret(ctx, false);
 }
 
-__attribute__((section(("kprobe/skb_consume_udp")), used)) int
+__attribute__((section(("kprobe/__skb_recv_udp")), used)) int
 udp4_recv_kprobe(struct pt_regs *ctx)
 {
-	return udp4_recv(ctx, false);
+	return udp4_recv(ctx);
+}
+
+__attribute__((section(("kretprobe/__skb_recv_udp")), used)) int
+udp4_recvret_kprobe(struct pt_regs *ctx)
+{
+	return udp4_recvret(ctx, false);
 }
