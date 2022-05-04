@@ -87,14 +87,6 @@ add_process_ctx(struct udp_info_value *value)
 	return 0;
 }
 
-static inline __attribute__((always_inline)) void
-update_tx_counters(struct udp_info_value *value, int bytes)
-{
-	__sync_fetch_and_add(&value->submitted_bytes, bytes);
-	__sync_fetch_and_add(&value->submitted_segs, 1);
-	WRITE_ONCE(value->ktime, ktime_get_ns());
-}
-
 /* On the first entry to udp_sendmsg() for a new socket, the
  * socket cookie is empty, so instead of trying to do socket
  * gymnastics here, store the sk and msg and look them up on
@@ -178,7 +170,7 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 		value->dport = info->dport;
 		value->skb_consume_misses = 0;
 		hasctx = add_process_ctx(value);
-		update_tx_counters(value, ret);
+		update_submitted_value(value, ret);
 		if (hasctx) {
 			emit_udp_connect_event(ctx, value);
 			execve_value = execve_map_get(value->pid);
@@ -190,7 +182,7 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 
 		map_update_elem(&udp_map, cookie, value, 0);
 	} else {
-		update_tx_counters(value, ret);
+		update_submitted_value(value, ret);
 		if (!value->pid) {
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
