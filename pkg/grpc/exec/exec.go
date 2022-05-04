@@ -68,7 +68,7 @@ func (e *Grpc) HandleExecveMessage(msg *fgsAPI.MsgExecveEventUnix) *fgs.GetEvent
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_EXECVE:
-		proc := process.Add(msg)
+		proc := process.AddExecEvent(msg)
 		procEvent := e.GetProcessExec(proc)
 		if e.eventCache.Needed(procEvent.Process) {
 			e.execCache.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
