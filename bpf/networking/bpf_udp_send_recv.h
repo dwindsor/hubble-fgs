@@ -118,7 +118,6 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 	struct udp_info *info;
 	struct udp_info_value *value;
 	int hasctx;
-	struct execve_map_value *execve_value;
 	int ret = ctx->ax;
 	u64 *cookie;
 	int zero = 0;
@@ -146,10 +145,7 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 	value = map_lookup_elem(&udp_map, cookie);
 	if (!value) {
 		/* Entry was not created by the stack programs.
-		 * This happens on older kernels where sock_create doesn't
-		 * allocate a sk. In lieu of finding a better place to hook
-		 * socket creation that does allocate a sk, create a new
-		 * entry and update the socket map.
+		 * Create a new entry and update the socket map.
 		 */
 		int zero = 0;
 
@@ -175,11 +171,6 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 		update_submitted_value(value, ret);
 		if (hasctx) {
 			emit_udp_connect_event(ctx, value);
-			execve_value = execve_map_get(value->pid);
-			if (execve_value && execve_value->key.ktime != 0) {
-				map_update_elem(&socket_cookie_to_proc_map,
-						cookie, execve_value, 0);
-			}
 		}
 
 		map_update_elem(&udp_map, cookie, value, 0);
@@ -189,21 +180,11 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
 				emit_udp_connect_event(ctx, value);
-				execve_value = execve_map_get(value->pid);
-				if (execve_value &&
-				    execve_value->key.ktime != 0) {
-					map_update_elem(
-						&socket_cookie_to_proc_map,
-						cookie, execve_value, 0);
-				}
 			}
 		}
 	}
 
-	/* Ensure we have an up-to-date cookie->process mapping as
-	* watermarks relies on it, and if we don't have cgroup/sock_create
-	* then this won't be automatically populated.
-	*/
+	/* Ensure we have an up-to-date cookie->process mapping. */
 	update_cookie_proc_map(cookie, value->pid);
 
 	map_delete_elem(&udp_retprobe_map, &pid_tgid);
@@ -280,7 +261,6 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 	struct udp_info_value *value;
 	struct udp_info *info;
 	int hasctx, zero = 0;
-	struct execve_map_value *execve_value;
 	int len = 0;
 	struct sock *sk;
 	struct sk_buff *skb = (void *)ctx->ax;
@@ -312,10 +292,7 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 	value = map_lookup_elem(&udp_map, cookie);
 	if (!value) {
 		/* Entry was not created by the stack programs.
-		 * This happens on older kernels where sock_create doesn't
-		 * allocate a sk. In lieu of finding a better place to hook
-		 * socket creation that does allocate a sk, create a new
-		 * entry and update the socket map.
+		 * Create a new entry and update the socket map.
 		 */
 		value = map_lookup_elem(&udp_value_heap, &zero);
 		if (!value) {
@@ -332,16 +309,8 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 			value->dport = info->dport;
 			value->skb_consume_misses = 0;
 			hasctx = add_process_ctx(value);
-			map_update_elem(&udp_map, cookie, value, 0);
 			if (hasctx) {
 				emit_udp_connect_event(ctx, value);
-				execve_value = execve_map_get(value->pid);
-				if (execve_value &&
-				    execve_value->key.ktime != 0) {
-					map_update_elem(
-						&socket_cookie_to_proc_map,
-						cookie, execve_value, 0);
-				}
 			}
 		} else {
 			value->skb_consume_misses = 1;
@@ -365,19 +334,10 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
 				emit_udp_connect_event(ctx, value);
-				execve_value = execve_map_get(value->pid);
-				if (execve_value &&
-				    execve_value->key.ktime != 0) {
-					map_update_elem(
-						&socket_cookie_to_proc_map,
-						cookie, execve_value, 0);
-				}
 			}
 		}
 	}
-	/* Ensure we have an up-to-date cookie->process mapping as
-	 * watermarks relies on it, and if we don't have cgroup/sock_create
-	 * then this won't be automatically populated.
+	/* Ensure we have an up-to-date cookie->process mapping.
 	 */
 	update_cookie_proc_map(cookie, value->pid);
 

@@ -35,100 +35,28 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 }
 
 static inline __attribute__((always_inline)) struct udp_info *
-udp4_info_lazy(struct __sk_buff *skb, struct iphdr *ip, int *payload_off,
-	       int *payload_sz)
-{
-	struct udp_info *info;
-	struct udphdr udp;
-	int err, zero = 0;
-	__u8 udp_off;
-
-	info = map_lookup_elem(&udp_info_heap, &zero);
-	if (!info)
-		return 0;
-
-	udp_off = ip_payload_off(ip);
-
-	err = skb_load_bytes(skb, udp_off, &udp, sizeof(struct udphdr));
-	if (err)
-		return 0;
-
-	info->saddr = ip->saddr;
-	info->daddr = ip->daddr;
-	info->sport = udp.source;
-	info->dport = udp.dest;
-	info->padding = 0;
-
-	*payload_off = udp_off + sizeof(struct udphdr);
-	*payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
-	return info;
-}
-
-static inline __attribute__((always_inline)) struct udp_info *
-udp4_info_lazy_kp(struct iphdr *ip, struct udphdr *udp, int *payload_off,
-		  int *payload_sz)
+udp4_info(struct iphdr *ip, struct udphdr *udp, bool send)
 {
 	struct udp_info *info;
 	int zero = 0;
-	__u8 udp_off;
 
 	info = map_lookup_elem(&udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
-	udp_off = ip_payload_off(ip);
-
-	info->saddr = ip->saddr;
-	info->daddr = ip->daddr;
-	info->sport = udp->source;
-	info->dport = udp->dest;
+	if (send) {
+		info->saddr = ip->saddr;
+		info->daddr = ip->daddr;
+		info->sport = bpf_ntohs(udp->source);
+		info->dport = udp->dest;
+	} else {
+		info->saddr = ip->daddr;
+		info->daddr = ip->saddr;
+		info->sport = bpf_ntohs(udp->dest);
+		info->dport = udp->source;
+	}
 	info->padding = 0;
-
-	*payload_off = udp_off + sizeof(struct udphdr);
-	*payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	return info;
-}
-
-static inline __attribute__((always_inline)) struct udp_info *
-udp4_info(struct __sk_buff *skb, struct iphdr *ip, void *data, void *data_end,
-	  int *payload_off, int *payload_sz)
-{
-	struct udp_info *info;
-	struct udphdr *udp;
-	int zero = 0;
-	__u8 udp_off;
-
-	info = map_lookup_elem(&udp_info_heap, &zero);
-	if (!info)
-		return 0;
-
-	udp_off = ip_payload_off(ip);
-
-	udp = (struct udphdr *)(data + udp_off);
-	if (data + udp_off + sizeof(*udp) > data_end)
-		return 0;
-
-	info->saddr = ip->saddr;
-	info->daddr = ip->daddr;
-	info->sport = udp->source;
-	info->dport = udp->dest;
-	info->padding = 0;
-
-	*payload_off = udp_off + sizeof(struct udphdr);
-	*payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
-	return info;
-}
-
-static inline __attribute__((always_inline)) void
-swap_info(struct udp_info *info)
-{
-	u32 addr = info->saddr;
-	u16 port = info->sport;
-
-	info->saddr = info->daddr;
-	info->sport = info->dport;
-	info->daddr = addr;
-	info->dport = port;
 }
 
 /* This logic is a bit racy, but we can handle it. Thinking through the
@@ -152,22 +80,15 @@ swap_info(struct udp_info *info)
  * To accomodate older kernels that do not have cookie set we use the
  * address of the sock as the cookie. This should be unique and consistent
  * for the life of the socket, but we run into problems if a sock is
- * reused. We can handle this by removing the entry on socket close()
- * and on process exit.
- * The process is then populated from the skb_consume_udp path where
- * we are in user context and can get the process info through normal
- * event_find_curr() hooks. We can't do that here because the current
- * pointer is set to kernel context at IP stack. This is not ideal
- * because it can mean if no process calls recv() on the data it may
- * never be accounted for. It will however, be in the udp_map and
- * user space can decide how to handle these cases. In the worse
- * case its expected user space can use the tuple key and timestamp
- * plus socket events to track back the process in a time series
- * database.
+ * reused. We handle this by monitoring sock creation and updating our
+ * maps.
+ * 
+ * The process is populated by looking up the cookie/sock in the
+ * socket_cookie_to_proc_map.
  */
 static inline __attribute__((always_inline)) struct udp_info_value *
-__udp4_send(struct __sk_buff *skb, struct udp_info *info, u64 *cookie,
-	    int payload_off, int payload_sz, bool send)
+__udp4_send(void *ctx, struct udp_info **info, u64 *cookie, struct iphdr *ip,
+	    struct udphdr *udp, int payload_sz, bool send)
 {
 	struct udp_info_value *value;
 	struct execve_map_value *process;
@@ -181,19 +102,22 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, u64 *cookie,
 		if (!value)
 			return 0;
 
-		/* Store the info in the entry for later use,
-		 * and potentially for searching from userland
-		 * in case we ever need to locate a socket */
-		value->saddr = info->saddr;
-		value->daddr = info->daddr;
-		value->sport = info->sport;
-		value->dport = info->dport;
-		value->skb_consume_misses = 0;
-
 		if (send)
 			udp_info_tx_reset(value, payload_sz);
 		else
 			udp_info_rx_reset(value, payload_sz);
+
+		/* Store the info in the entry for later use,
+		 * and potentially for searching from userland
+		 * in case we ever need to locate a socket */
+		*info = udp4_info(ip, udp, send);
+		if (!*info)
+			return 0;
+		value->saddr = (*info)->saddr;
+		value->daddr = (*info)->daddr;
+		value->sport = (*info)->sport;
+		value->dport = (*info)->dport;
+		value->skb_consume_misses = 0;
 
 		/* If process was found, fill in the PID */
 		if (process) {
@@ -202,25 +126,28 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, u64 *cookie,
 		} else {
 			value->pid = 0;
 		}
+
 		if (value->pid)
-			emit_udp_connect_event(skb, value);
+			emit_udp_connect_event(ctx, value);
 		map_update_elem(&udp_map, cookie, value, 0);
 	} else if (process && value->pid != process->key.pid) {
-		value->saddr = info->saddr;
-		value->daddr = info->daddr;
-		value->sport = info->sport;
-		value->dport = info->dport;
-		value->skb_consume_misses = 0;
-		value->pid = process->key.pid;
-		value->pid_ktime = process->key.ktime;
-
 		/* PID doesn't match, so this must be a new socket */
 		if (send)
 			udp_info_tx_reset(value, payload_sz);
 		else
 			udp_info_rx_reset(value, payload_sz);
+		*info = udp4_info(ip, udp, send);
+		if (!*info)
+			return 0;
+		value->saddr = (*info)->saddr;
+		value->daddr = (*info)->daddr;
+		value->sport = (*info)->sport;
+		value->dport = (*info)->dport;
+		value->skb_consume_misses = 0;
+		value->pid = process->key.pid;
+		value->pid_ktime = process->key.ktime;
 
-		emit_udp_connect_event(skb, value);
+		emit_udp_connect_event(ctx, value);
 	} else {
 		if (send)
 			update_tx_value(value, payload_sz);
@@ -228,48 +155,6 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, u64 *cookie,
 			update_rx_value(value, payload_sz);
 	}
 	return value;
-}
-
-/* Lazy versions of udp4 send have a deficiency that make them
- * sub-optimal. The payload copy to user land is not supported
- * this is to support loading on older kernels without the necessary
- * bpf helpers.
- */
-static inline __attribute__((always_inline)) int
-udp4_send_lazy(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, bool send)
-{
-	int payload_off, payload_sz;
-	struct udp_info *info;
-
-	info = udp4_info_lazy(skb, ip, &payload_off, &payload_sz);
-	if (!info)
-		return 1;
-
-	if (!send) {
-		swap_info(info);
-	}
-	info->sport = bpf_ntohs(info->sport);
-	__udp4_send(skb, info, cookie, payload_off, payload_sz, send);
-	return 1;
-}
-
-static inline __attribute__((always_inline)) int
-udp4_send_lazy_kp(void *ctx, struct iphdr *ip, struct udphdr *udp, u64 *cookie,
-		  bool send)
-{
-	int payload_off, payload_sz;
-	struct udp_info *info;
-
-	info = udp4_info_lazy_kp(ip, udp, &payload_off, &payload_sz);
-	if (!info)
-		return 1;
-
-	if (!send) {
-		swap_info(info);
-	}
-	info->sport = bpf_ntohs(info->sport);
-	__udp4_send(ctx, info, cookie, payload_off, payload_sz, send);
-	return 1;
 }
 
 static inline __attribute__((always_inline)) int
@@ -283,56 +168,57 @@ dns_port_match(u16 *ports, u16 port1, u16 port2)
 	return 0;
 }
 
+/* Lazy versions of udp4 send do not support copying the payload to
+ * user land, as this isn't provided by older kernels.
+ * We take a boolean, dns, to specify if we are sending DNS payloads
+ * to userland. The reason we need this rather than a simple lookup
+ * on config->dnsPorts[0] is to force clang to exclude the DNS code
+ * because it contains a call to skb_load_bytes() which we can't have
+ * on the kprobe solution for older kernels.
+ */
 static inline __attribute__((always_inline)) int
-udp4_send(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, void *data,
-	  void *data_end, bool send)
+udp4_send(void *ctx, struct iphdr *ip, struct udphdr *udp, u64 *cookie,
+	  int payload_off, int payload_sz, bool send, bool dns)
 {
-	int zero, payload_off, payload_sz;
 	struct udp_info_value *value;
-	struct udp_info *info;
+	struct udp_info *info = 0;
 	struct udp_sensor_config *config;
+	int zero = 0;
 
-	info = udp4_info(skb, ip, data, data_end, &payload_off, &payload_sz);
-	if (!info)
+	value = __udp4_send(ctx, &info, cookie, ip, udp, payload_sz, send);
+	if (!value || !dns)
 		return 1;
 
-	if (!send) {
-		swap_info(info);
-	}
-	info->sport = bpf_ntohs(info->sport);
-
-	value = __udp4_send(skb, info, cookie, payload_off, payload_sz, send);
-	if (!value)
-		return 1;
-
-	zero = 0;
 	config = map_lookup_elem(&udp_config_map, &zero);
 	if (!config)
 		return 1;
 
-	if (config->dnsPorts[0] != 0 &&
-	    dns_port_match(config->dnsPorts, info->sport,
-			   bpf_ntohs(info->dport))) {
-		/* We subtract 1 from payload_sz because we need to +1 it
-		 * later to sat verifier constraint that skb_load_bytes
-		 * must be nonzero.
-		 */
-		emit_udp_payload_event(skb, value, payload_off, payload_sz - 1);
+	if (config->dnsPorts[0] != 0) {
+		/* info may have been filled in for us by __udp4_send() */
+		if (!info) {
+			info = udp4_info(ip, udp, send);
+			if (!info)
+				return 1;
+		}
+		if (dns_port_match(config->dnsPorts, info->sport,
+				   bpf_ntohs(info->dport))) {
+			/* We subtract 1 from payload_sz because we need to +1 it
+			* later to sat verifier constraint that skb_load_bytes
+			* must be nonzero.
+			*/
+			emit_udp_payload_event(ctx, value, payload_off,
+					       payload_sz - 1);
+		}
 	}
 	return 1;
 }
 
 static inline __attribute__((always_inline)) void
-udp_burst(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, u64 send,
-	  bool lazy)
+udp_burst(struct __sk_buff *skb, u64 *cookie, int vol, u64 send)
 {
 	struct udp_sensor_config *config;
 	struct process_network_burst_config c;
 	struct execve_map_value *process;
-	u8 udp_off;
-	struct udphdr udp;
-	int vol;
-
 	int zero = 0;
 
 	config = map_lookup_elem(&udp_config_map, &zero);
@@ -351,53 +237,18 @@ udp_burst(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, u64 send,
 	if (!process)
 		return;
 
-	udp_off = ip_payload_off(ip);
-	int err = skb_load_bytes(skb, udp_off, &udp, sizeof(struct udphdr));
-	if (err)
-		return;
-	vol = bpf_ntohs(udp.len) - sizeof(struct udphdr);
-
 	process_network_burst(process, IPPROTO_UDP, send, vol, &c);
 }
 
 static inline __attribute__((always_inline)) void
-udp_burst_kp(void *ctx, struct udphdr *udp, u64 *cookie, u64 send)
-{
-	struct udp_sensor_config *config;
-	struct process_network_burst_config c;
-	struct execve_map_value *process;
-	int vol;
-	int zero = 0;
-
-	config = map_lookup_elem(&udp_config_map, &zero);
-	if (!config || !config->watermark_enable)
-		return;
-
-	c.avg_window_size_ms = config->watermark_avg_window_size_ms;
-	c.window_size = config->watermark_window_size;
-	c.trigger_mult = config->watermark_trigger_percent;
-	c.ctx = ctx;
-
-	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
-	/* If we don't have a process then we can't assign the burst information
-	 * to it, and there is little else we can do.
-	 */
-	if (!process)
-		return;
-
-	vol = bpf_ntohs(udp->len) - sizeof(struct udphdr);
-
-	process_network_burst(process, IPPROTO_UDP, send, vol, &c);
-}
-
-static inline __attribute__((always_inline)) void
-inet_handler_lazy(struct __sk_buff *skb, int send)
+inet_handler_lazy(struct __sk_buff *skb, bool send)
 {
 	struct iphdr ip;
-	u8 v4_prot;
-	int err;
+	struct udphdr udp;
+	u8 udp_off;
 	u64 *cookie;
 	int zero = 0;
+	int payload_sz;
 
 	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
@@ -406,25 +257,29 @@ inet_handler_lazy(struct __sk_buff *skb, int send)
 	if (!*cookie)
 		return;
 
-	err = skb_load_bytes(skb, 0, &ip, sizeof(struct iphdr));
-	if (err < 0) {
+	if (skb_load_bytes(skb, 0, &ip, sizeof(struct iphdr)) < 0)
 		return;
-	}
-	v4_prot = ip.protocol;
-	if (v4_prot == IPPROTO_UDP) {
-		udp4_send_lazy(skb, &ip, cookie, send);
-		udp_burst(skb, &ip, cookie, send, true);
+
+	if (ip.protocol == IPPROTO_UDP) {
+		udp_off = ip_payload_off(&ip);
+		if (skb_load_bytes(skb, udp_off, &udp, sizeof(struct udphdr)) <
+		    0)
+			return;
+		payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
+		udp4_send(skb, &ip, &udp, cookie, 0, payload_sz, send, false);
+		udp_burst(skb, cookie, payload_sz, send);
 	}
 	return;
 }
 
 static inline __attribute__((always_inline)) void
-inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, int send)
+inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 {
 	struct iphdr ip;
 	struct udphdr udp;
 	u64 *cookie;
 	int zero = 0;
+	int payload_sz;
 
 	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
@@ -437,21 +292,25 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, int send)
 		return;
 
 	if (ip.protocol == IPPROTO_UDP) {
-		udp4_send_lazy_kp(ctx, &ip, &udp, cookie, send);
-		udp_burst_kp(ctx, &udp, cookie, send);
+		payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
+		udp4_send(ctx, &ip, &udp, cookie, 0, payload_sz, send, false);
+		udp_burst(ctx, cookie, payload_sz, send);
 	}
 	return;
 }
 
 static inline __attribute__((always_inline)) void
-inet_handler(struct __sk_buff *skb, int send)
+inet_handler(struct __sk_buff *skb, bool send)
 {
 	void *data_end = (void *)(long)skb->data_end;
 	void *data = (long *)(long)skb->data;
 	struct iphdr *ip;
-	u8 v4_prot;
+	struct udphdr *udp;
+	u8 udp_off;
 	u64 *cookie;
 	int zero = 0;
+	int payload_sz;
+	int payload_off;
 
 	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
@@ -463,13 +322,17 @@ inet_handler(struct __sk_buff *skb, int send)
 	if (data + sizeof(struct iphdr) > data_end)
 		return;
 	ip = (struct iphdr *)data;
-	v4_prot = ip->protocol;
 
-	if (v4_prot == IPPROTO_TCP) { // TCP
-		return;
-	} else if (v4_prot == IPPROTO_UDP) { // UDP
-		udp4_send(skb, ip, cookie, data, data_end, send);
-		udp_burst(skb, ip, cookie, send, false);
+	if (ip->protocol == IPPROTO_UDP) {
+		udp_off = ip_payload_off(ip);
+		udp = (struct udphdr *)(data + udp_off);
+		if (data + udp_off + sizeof(*udp) > data_end)
+			return;
+		payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
+		payload_off = udp_off + sizeof(struct udphdr);
+		udp4_send(skb, ip, udp, cookie, payload_off, payload_sz, send,
+			  true);
+		udp_burst(skb, cookie, payload_sz, send);
 	}
 	return;
 }
