@@ -142,19 +142,20 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, 
 		return *last, fmt.Errorf("TCP BytesSent stats invalid diff operation")
 	}
 	return api.MsgSocketStatsUnix{
-		BytesSubmitted:  0,
-		BytesSent:       curr.BytesSent - last.BytesSent,
-		BytesConsumed:   0,
-		BytesReceived:   curr.BytesReceived - last.BytesReceived,
-		ConsumedSegs:    0,
-		SegsIn:          curr.SegsIn - last.SegsIn,
-		SubmittedSegs:   0,
-		SegsOut:         curr.SegsOut - last.SegsOut,
-		SRtt:            curr.SRtt,
-		RetransmitSegs:  curr.RetransmitSegs - last.RetransmitSegs,
-		RetransmitBytes: curr.RetransmitBytes - last.RetransmitBytes,
-		ToZeroWindow:    curr.ToZeroWindow - last.ToZeroWindow,
-		SkDrop:          curr.SkDrop - last.SkDrop,
+		BytesSubmitted:   0,
+		BytesSent:        curr.BytesSent - last.BytesSent,
+		BytesConsumed:    0,
+		BytesReceived:    curr.BytesReceived - last.BytesReceived,
+		ConsumedSegs:     0,
+		SegsIn:           curr.SegsIn - last.SegsIn,
+		SubmittedSegs:    0,
+		SegsOut:          curr.SegsOut - last.SegsOut,
+		SRtt:             curr.SRtt,
+		RetransmitSegs:   curr.RetransmitSegs - last.RetransmitSegs,
+		RetransmitBytes:  curr.RetransmitBytes - last.RetransmitBytes,
+		ToZeroWindow:     curr.ToZeroWindow - last.ToZeroWindow,
+		SkDrop:           curr.SkDrop - last.SkDrop,
+		SkbConsumeMisses: 0,
 	}, nil
 }
 

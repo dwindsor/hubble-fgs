@@ -28,6 +28,7 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *fgs.SocketStats {
 		RetransmitsSegs:  stats.RetransmitSegs,
 		ToZeroWindow:     stats.ToZeroWindow,
 		SkDrop:           stats.SkDrop,
+		SkbConsumeMisses: stats.SkbConsumeMisses,
 	}
 }
 

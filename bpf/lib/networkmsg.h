@@ -30,6 +30,7 @@ struct msg_socket_stats {
 	__u64 retransbytes;
 	__u32 tozerowin;
 	__u32 sk_drops;
+	__u32 skb_consume_misses;
 } __attribute__((packed));
 
 // separate data structs for ipv4 and ipv6

@@ -131,6 +131,7 @@ message SocketStats {
     uint64 bytes_submitted = 11;
     uint32 segs_consumed = 12;
     uint32 segs_submitted = 13;
+    uint32 skb_consume_misses = 14;
 }
 
 enum SocketProtocol {

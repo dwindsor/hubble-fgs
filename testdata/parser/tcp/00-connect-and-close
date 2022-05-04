@@ -11,7 +11,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 128        # size
+  h4 132        # size
   ? 8           # ktime
 
   ## tuple
@@ -45,7 +45,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 128        # size
+  h4 132        # size
   ? 8           # ktime
 
   ## tuple
@@ -90,7 +90,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 128        # size
+  h4 132        # size
   ? 8           # ktime
 
   ## tuple
@@ -120,14 +120,12 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+  h4 0 # skbconsumemisses
 
   ## socket flags
   h4 0x02 # accept
 
   h4 0x00 # pad
-
-  $ 00 00 00 00
-  # ^ Where is the padding coming from?
 END
 
 # Close the client socket and verify the sockets have been removed.
@@ -135,7 +133,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 128        # size
+  h4 132        # size
   ? 8           # ktime
 
   ## tuple
@@ -165,21 +163,19 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+  h4 0 # skbconsumemisses
 
   ## socket flags
   h4 0x01 # connect
 
   h4 0x00 # pad
-
-  $ 00 00 00 00
-  # ^ Where is the padding coming from?
 END
 
 CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 128        # size
+  h4 132        # size
   ? 8           # ktime
 
   ## tuple
@@ -210,13 +206,11 @@ EVENT TCPCLOSE
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+  h4 0 # skbconsumemisses
 
   ## socket flags
   h4 0x04 # listen
 
   h4 0x00 # pad
-
-  $ 00 00 00 00
-  # ^ Where is the padding coming from?
 END
 

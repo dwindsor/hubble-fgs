@@ -26,7 +26,7 @@ struct udp_info_value {
 	u32 daddr;
 	u16 sport;
 	u16 dport;
-	u32 padding;
+	u32 skb_consume_misses;
 } __attribute__((packed));
 
 struct udp_info {
@@ -104,6 +104,7 @@ emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 		.stats.bytes_sent = v->tx_bytes,
 		.stats.bytes_received = v->rx_bytes,
 		.stats.sk_drops = v->sk_drops,
+		.stats.skb_consume_misses = v->skb_consume_misses,
 		.socket_flags = 0,
 		.pad = 0,
 	};
@@ -143,6 +144,7 @@ emit_udp_payload_event(void *ctx, struct udp_info_value *v, int off,
 		.stats.bytes_sent = v->tx_bytes,
 		.stats.bytes_received = v->rx_bytes,
 		.stats.sk_drops = v->sk_drops,
+		.stats.skb_consume_misses = v->skb_consume_misses,
 	};
 
 	// +1 to ensure payload_size is non-zero; And keeps verifier happy that
@@ -253,6 +255,13 @@ update_consumed_value(struct udp_info_value *v, u32 len)
 {
 	__sync_fetch_and_add(&v->consumed_bytes, len);
 	__sync_fetch_and_add(&v->consumed_segs, 1);
+	WRITE_ONCE(v->ktime, ktime_get_ns());
+}
+
+static inline __attribute__((always_inline)) void
+update_consume_misses(struct udp_info_value *v)
+{
+	__sync_fetch_and_add(&v->skb_consume_misses, 1);
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
 #endif // __BPF_UDP_H__

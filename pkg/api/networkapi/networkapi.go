@@ -52,31 +52,33 @@ type MsgIPv4Event struct {
 }
 
 type MsgSocketStatsUnix struct {
-	BytesSubmitted  uint64
-	BytesSent       uint64
-	BytesConsumed   uint64
-	BytesReceived   uint64
-	ConsumedSegs    uint32
-	SegsIn          uint32
-	SubmittedSegs   uint32
-	SegsOut         uint32
-	SRtt            uint32
-	RetransmitSegs  uint32
-	RetransmitBytes uint64
-	ToZeroWindow    uint32
-	SkDrop          uint32
+	BytesSubmitted   uint64
+	BytesSent        uint64
+	BytesConsumed    uint64
+	BytesReceived    uint64
+	ConsumedSegs     uint32
+	SegsIn           uint32
+	SubmittedSegs    uint32
+	SegsOut          uint32
+	SRtt             uint32
+	RetransmitSegs   uint32
+	RetransmitBytes  uint64
+	ToZeroWindow     uint32
+	SkDrop           uint32
+	SkbConsumeMisses uint32
 }
 
 type MsgSocketStats struct {
-	BytesSent       uint64
-	BytesReceived   uint64
-	SegsIn          uint32
-	SegsOut         uint32
-	SRtt            uint32
-	RetransmitSegs  uint32
-	RetransmitBytes uint64
-	ToZeroWindow    uint32
-	SkDrop          uint32
+	BytesSent        uint64
+	BytesReceived    uint64
+	SegsIn           uint32
+	SegsOut          uint32
+	SRtt             uint32
+	RetransmitSegs   uint32
+	RetransmitBytes  uint64
+	ToZeroWindow     uint32
+	SkDrop           uint32
+	SkbConsumeMisses uint32
 }
 
 type MsgIPv4EventUnix struct {

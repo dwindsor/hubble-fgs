@@ -188,7 +188,7 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, u64 *cookie,
 		value->daddr = info->daddr;
 		value->sport = info->sport;
 		value->dport = info->dport;
-		value->padding = 0;
+		value->skb_consume_misses = 0;
 
 		if (send)
 			udp_info_tx_reset(value, payload_sz);
@@ -210,7 +210,7 @@ __udp4_send(struct __sk_buff *skb, struct udp_info *info, u64 *cookie,
 		value->daddr = info->daddr;
 		value->sport = info->sport;
 		value->dport = info->dport;
-		value->padding = 0;
+		value->skb_consume_misses = 0;
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
 

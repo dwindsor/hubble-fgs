@@ -195,23 +195,23 @@ type udpInfoKey struct {
 }
 
 type udpInfoValue struct {
-	SubmittedBytes uint64
-	TXBytes        uint64
-	ConsumedBytes  uint64
-	RXBytes        uint64
-	ConsumedSegs   uint64
-	SegsIn         uint64
-	SubmittedSegs  uint64
-	SegsOut        uint64
-	Ktime          uint64
-	PidKtime       uint64
-	Pid            uint32
-	SkDrops        uint32
-	SAddr          uint32
-	DAddr          uint32
-	SPort          uint16
-	DPort          uint16
-	New            uint32
+	SubmittedBytes   uint64
+	TXBytes          uint64
+	ConsumedBytes    uint64
+	RXBytes          uint64
+	ConsumedSegs     uint64
+	SegsIn           uint64
+	SubmittedSegs    uint64
+	SegsOut          uint64
+	Ktime            uint64
+	PidKtime         uint64
+	Pid              uint32
+	SkDrops          uint32
+	SAddr            uint32
+	DAddr            uint32
+	SPort            uint16
+	DPort            uint16
+	SkbConsumeMisses uint32
 }
 
 func (k *udpInfoKey) String() string {
@@ -237,14 +237,15 @@ func (v *udpInfoValue) String() string {
 			"TXBytes: %d RXBytes%d\n"+
 			"SubmittedSegs: %d ConsumedSegs: %d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
-			"SkDrops: %d\n",
+			"SkDrops: %d\n"+
+			"SkbConsumeMisses: %d\n",
 		ipSrc, v.SPort, ipDst, network.SwapByte(v.DPort),
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,
 		v.SubmittedSegs, v.ConsumedSegs,
 		v.SegsOut, v.SegsIn,
-		v.SkDrops)
+		v.SkDrops, v.SkbConsumeMisses)
 }
 func (v *udpInfoValue) GetValuePtr() unsafe.Pointer {
 	return unsafe.Pointer(&v)
@@ -308,15 +309,16 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
 		Ktime: v.PidKtime,
 	}
 	unix.SocketStats = api.MsgSocketStatsUnix{
-		BytesSubmitted: v.SubmittedBytes,
-		BytesConsumed:  v.ConsumedBytes,
-		BytesSent:      v.TXBytes,
-		BytesReceived:  v.RXBytes,
-		ConsumedSegs:   uint32(v.ConsumedSegs),
-		SegsIn:         uint32(v.SegsIn),
-		SubmittedSegs:  uint32(v.SubmittedSegs),
-		SegsOut:        uint32(v.SegsOut),
-		SkDrop:         v.SkDrops,
+		BytesSubmitted:   v.SubmittedBytes,
+		BytesConsumed:    v.ConsumedBytes,
+		BytesSent:        v.TXBytes,
+		BytesReceived:    v.RXBytes,
+		ConsumedSegs:     uint32(v.ConsumedSegs),
+		SegsIn:           uint32(v.SegsIn),
+		SubmittedSegs:    uint32(v.SubmittedSegs),
+		SegsOut:          uint32(v.SegsOut),
+		SkDrop:           v.SkDrops,
+		SkbConsumeMisses: v.SkbConsumeMisses,
 	}
 	return &unix
 }
@@ -397,22 +399,23 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 	}
 
 	return udpInfoValue{
-		SubmittedBytes: curr.SubmittedBytes - last.SubmittedBytes,
-		ConsumedBytes:  curr.ConsumedBytes - last.ConsumedBytes,
-		TXBytes:        curr.TXBytes - last.TXBytes,
-		RXBytes:        curr.RXBytes - last.RXBytes,
-		ConsumedSegs:   curr.ConsumedSegs - last.ConsumedSegs,
-		SubmittedSegs:  curr.SubmittedSegs - last.SubmittedSegs,
-		SegsIn:         curr.SegsIn - last.SegsIn,
-		SegsOut:        curr.SegsOut - last.SegsOut,
-		SkDrops:        curr.SkDrops - last.SkDrops,
-		Ktime:          curr.Ktime,
-		PidKtime:       curr.PidKtime,
-		Pid:            curr.Pid,
-		SAddr:          curr.SAddr,
-		DAddr:          curr.DAddr,
-		SPort:          curr.SPort,
-		DPort:          curr.DPort,
+		SubmittedBytes:   curr.SubmittedBytes - last.SubmittedBytes,
+		ConsumedBytes:    curr.ConsumedBytes - last.ConsumedBytes,
+		TXBytes:          curr.TXBytes - last.TXBytes,
+		RXBytes:          curr.RXBytes - last.RXBytes,
+		ConsumedSegs:     curr.ConsumedSegs - last.ConsumedSegs,
+		SubmittedSegs:    curr.SubmittedSegs - last.SubmittedSegs,
+		SegsIn:           curr.SegsIn - last.SegsIn,
+		SegsOut:          curr.SegsOut - last.SegsOut,
+		SkDrops:          curr.SkDrops - last.SkDrops,
+		SkbConsumeMisses: curr.SkbConsumeMisses - last.SkbConsumeMisses,
+		Ktime:            curr.Ktime,
+		PidKtime:         curr.PidKtime,
+		Pid:              curr.Pid,
+		SAddr:            curr.SAddr,
+		DAddr:            curr.DAddr,
+		SPort:            curr.SPort,
+		DPort:            curr.DPort,
 	}, nil
 }
 
@@ -470,7 +473,7 @@ func runUdpGC() {
 	}
 	defer m.Close()
 	m.MapKey = &udpInfoKey{}
-	m.KeySize = 24
+	m.KeySize = 8
 	m.MapValue = &udpInfoValue{}
 	m.DumpWithCallback(udpGcCb)
 }

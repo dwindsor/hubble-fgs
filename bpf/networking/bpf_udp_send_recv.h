@@ -176,7 +176,7 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 		value->daddr = info->daddr;
 		value->sport = info->sport;
 		value->dport = info->dport;
-		value->padding = 0;
+		value->skb_consume_misses = 0;
 		hasctx = add_process_ctx(value);
 		update_tx_counters(value, ret);
 		if (hasctx) {
@@ -244,6 +244,9 @@ udp4_get_skb_info(struct pt_regs *ctx, int *len)
 	info->dport = udph.source;
 	info->padding = 0;
 
+	if (udph.len < sizeof(udph))
+		return 0;
+
 	*len = bpf_ntohs(udph.len) - sizeof(udph);
 
 	return info;
@@ -256,14 +259,12 @@ static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
 	struct udp_info *info;
 	int hasctx, zero = 0;
 	struct execve_map_value *execve_value;
-	int len;
+	int len = 0;
 	int givenlen = ctx->dx;
 	struct sock *sk = (void *)ctx->di;
 	u64 *cookie;
 
 	info = udp4_get_skb_info(ctx, &len);
-	if (!info)
-		return 0;
 
 	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
@@ -293,28 +294,40 @@ static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
 		} else {
 			udp_info_consumed_reset(value, 0);
 		}
-		value->saddr = info->saddr;
-		value->daddr = info->daddr;
-		value->sport = info->sport;
-		value->dport = info->dport;
-		value->padding = 0;
-		hasctx = add_process_ctx(value);
-		map_update_elem(&udp_map, cookie, value, 0);
-		if (hasctx) {
-			emit_udp_connect_event(ctx, value);
-			execve_value = execve_map_get(value->pid);
-			if (execve_value && execve_value->key.ktime != 0) {
-				map_update_elem(&socket_cookie_to_proc_map,
+
+		if (info) {
+			value->saddr = info->saddr;
+			value->daddr = info->daddr;
+			value->sport = info->sport;
+			value->dport = info->dport;
+			value->skb_consume_misses = 0;
+			hasctx = add_process_ctx(value);
+			map_update_elem(&udp_map, cookie, value, 0);
+			if (hasctx) {
+				emit_udp_connect_event(ctx, value);
+				execve_value = execve_map_get(value->pid);
+				if (execve_value &&
+				    execve_value->key.ktime != 0) {
+					map_update_elem(
+						&socket_cookie_to_proc_map,
 						cookie, execve_value, 0);
+				}
 			}
+		} else {
+			value->skb_consume_misses = 1;
 		}
+		map_update_elem(&udp_map, cookie, value, 0);
 	} else {
 		/* We only consume the packet when givenlen > 0. Values
 		 * < 0 represent calls to select() or similar that don't
 		 * actually process the packet.
 		 */
 		if (givenlen > 0) {
-			update_consumed_value(value, len);
+			if (info) {
+				update_consumed_value(value, len);
+			} else {
+				update_consume_misses(value);
+			}
 		}
 		if (!value->pid) {
 			/* This can happen when sock_create does not

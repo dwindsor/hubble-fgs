@@ -1245,6 +1245,7 @@ HTTP PARSER
 | bytes_submitted | [uint64](#uint64) |  |  |
 | segs_consumed | [uint32](#uint32) |  |  |
 | segs_submitted | [uint32](#uint32) |  |  |
+| skb_consume_misses | [uint32](#uint32) |  |  |
 
 
 

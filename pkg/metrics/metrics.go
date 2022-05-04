@@ -146,6 +146,10 @@ var (
 		Name: MetricNamePrefix + "socket_stats_udp_drops",
 		Help: "UDP socket drops statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsUDPConsumeMisses = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: MetricNamePrefix + "socket_stats_udp_consume_misses",
+		Help: "UDP socket consume packet misses",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 	SocketStatsUDPStackTxBytes = promauto.NewCounterVec(prometheus.CounterOpts{
 		Name: MetricNamePrefix + "socket_stats_udp_stack_txbytes",
 		Help: "UDP stack TX bytes statistics",
@@ -395,6 +399,9 @@ func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs
 
 	c = float64(s.SkDrop)
 	SocketStatsUDPDrops.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+
+	c = float64(s.SkbConsumeMisses)
+	SocketStatsUDPConsumeMisses.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 }
 
 func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
