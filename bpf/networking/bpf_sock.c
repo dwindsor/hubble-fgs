@@ -1,7 +1,5 @@
 #include "vmlinux.h"
 
-#define SOCK_CTX
-
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"

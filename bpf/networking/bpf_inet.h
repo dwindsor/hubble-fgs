@@ -1,8 +1,6 @@
 #ifndef __BPF_INET_H_
 #define __BPF_INET_H_
 
-#define SOCK_CTX
-
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
