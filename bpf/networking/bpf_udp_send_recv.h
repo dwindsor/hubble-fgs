@@ -5,6 +5,7 @@
 #include "bpf_events.h"
 #include "bpf_udp.h"
 #include "cookie.h"
+#include "bpf_network_helpers.h"
 
 char _license[] __attribute__((section(("license")), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -218,25 +219,19 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 static inline __attribute__((always_inline)) struct udp_info *
 udp4_get_skb_info(struct pt_regs *ctx, int *len)
 {
-	u16 transport_header, network_header;
 	struct sk_buff *skb = (void *)ctx->si;
 	struct udp_info *info;
 	int zero = 0;
 
 	struct udphdr udph;
 	struct iphdr iph;
-	void *skb_head;
 
 	info = map_lookup_elem(&udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
-	probe_read(&transport_header, sizeof(u16), _(&skb->transport_header));
-	probe_read(&network_header, sizeof(u16), _(&skb->network_header));
-
-	probe_read(&skb_head, sizeof(void *), _(&skb->head));
-	probe_read(&iph, sizeof(iph), skb_head + network_header);
-	probe_read(&udph, sizeof(udph), skb_head + transport_header);
+	if (!get_udp4_headers(&iph, &udph, skb))
+		return 0;
 
 	/* skb values are in network byte order and to be consistent across
 	 * sock generated keys and packet generated values we byte swap the

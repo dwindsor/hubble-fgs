@@ -9,6 +9,7 @@
 #include "bpf_udp.h"
 #include "bpf_burst_process.h"
 #include "cookie.h"
+#include "bpf_network_helpers.h"
 
 struct udp_sensor_config {
 	u16 dnsPorts[4];
@@ -66,11 +67,10 @@ udp4_info_lazy(struct __sk_buff *skb, struct iphdr *ip, int *payload_off,
 }
 
 static inline __attribute__((always_inline)) struct udp_info *
-udp4_info_lazy_kp(struct sock *sk, struct iphdr *ip, void *data,
-		  int *payload_off, int *payload_sz)
+udp4_info_lazy_kp(struct iphdr *ip, struct udphdr *udp, int *payload_off,
+		  int *payload_sz)
 {
 	struct udp_info *info;
-	struct udphdr udp;
 	int zero = 0;
 	__u8 udp_off;
 
@@ -80,17 +80,14 @@ udp4_info_lazy_kp(struct sock *sk, struct iphdr *ip, void *data,
 
 	udp_off = ip_payload_off(ip);
 
-	if (probe_read(&udp, sizeof(struct udphdr), data + udp_off) < 0)
-		return 0;
-
 	info->saddr = ip->saddr;
 	info->daddr = ip->daddr;
-	info->sport = udp.source;
-	info->dport = udp.dest;
+	info->sport = udp->source;
+	info->dport = udp->dest;
 	info->padding = 0;
 
 	*payload_off = udp_off + sizeof(struct udphdr);
-	*payload_sz = bpf_ntohs(udp.len) - sizeof(struct udphdr);
+	*payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 	return info;
 }
 
@@ -259,13 +256,13 @@ udp4_send_lazy(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, bool send)
 }
 
 static inline __attribute__((always_inline)) int
-udp4_send_lazy_kp(void *ctx, struct sock *sk, struct iphdr *ip, u64 *cookie,
-		  void *data, bool send)
+udp4_send_lazy_kp(void *ctx, struct iphdr *ip, struct udphdr *udp, u64 *cookie,
+		  bool send)
 {
 	int payload_off, payload_sz;
 	struct udp_info *info;
 
-	info = udp4_info_lazy_kp(sk, ip, data, &payload_off, &payload_sz);
+	info = udp4_info_lazy_kp(ip, udp, &payload_off, &payload_sz);
 	if (!info)
 		return 1;
 
@@ -366,14 +363,11 @@ udp_burst(struct __sk_buff *skb, struct iphdr *ip, u64 *cookie, u64 send,
 }
 
 static inline __attribute__((always_inline)) void
-udp_burst_kp(void *ctx, struct sock *sk, struct iphdr *ip, u64 *cookie,
-	     void *data, u64 send)
+udp_burst_kp(void *ctx, struct udphdr *udp, u64 *cookie, u64 send)
 {
 	struct udp_sensor_config *config;
 	struct process_network_burst_config c;
 	struct execve_map_value *process;
-	u8 udp_off;
-	struct udphdr udp;
 	int vol;
 	int zero = 0;
 
@@ -393,12 +387,7 @@ udp_burst_kp(void *ctx, struct sock *sk, struct iphdr *ip, u64 *cookie,
 	if (!process)
 		return;
 
-	udp_off = ip_payload_off(ip);
-
-	if (probe_read(&udp, sizeof(struct udphdr), data + udp_off) < 0)
-		return;
-
-	vol = bpf_ntohs(udp.len) - sizeof(struct udphdr);
+	vol = bpf_ntohs(udp->len) - sizeof(struct udphdr);
 
 	process_network_burst(process, IPPROTO_UDP, send, vol, &c);
 }
@@ -434,11 +423,8 @@ inet_handler_lazy(struct __sk_buff *skb, int send)
 static inline __attribute__((always_inline)) void
 inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, int send)
 {
-	void *data;
-	void *skb_head;
 	struct iphdr ip;
-	u8 v4_prot;
-	u16 network_header;
+	struct udphdr udp;
 	u64 *cookie;
 	int zero = 0;
 
@@ -449,22 +435,12 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, int send)
 	if (!*cookie)
 		return;
 
-	probe_read(&network_header, sizeof(u16), _(&skb->network_header));
-	probe_read(&skb_head, sizeof(void *), _(&skb->head));
-
-	data = skb_head + network_header;
-
-	if (probe_read(&ip, sizeof(struct iphdr), data) < 0) {
+	if (!get_udp4_headers(&ip, &udp, skb))
 		return;
-	}
 
-	v4_prot = ip.protocol;
-
-	if (v4_prot == IPPROTO_TCP) { // TCP
-		return;
-	} else if (v4_prot == IPPROTO_UDP) { // UDP
-		udp4_send_lazy_kp(ctx, sk, &ip, cookie, data, send);
-		udp_burst_kp(ctx, sk, &ip, cookie, data, send);
+	if (ip.protocol == IPPROTO_UDP) {
+		udp4_send_lazy_kp(ctx, &ip, &udp, cookie, send);
+		udp_burst_kp(ctx, &udp, cookie, send);
 	}
 	return;
 }

@@ -40,3 +40,45 @@ zero_socket_stats(struct msg_socket_stats *stats)
 	stats->segs_in = 0;
 	stats->segs_out = 0;
 }
+
+static inline __attribute__((always_inline)) bool
+get_ip_headers(void *network_header, void *transport_header,
+	       u32 network_header_size, u32 transport_header_size,
+	       struct sk_buff *skb)
+{
+	u16 transport_header_off, network_header_off;
+	void *skb_head;
+
+	if (probe_read(&transport_header_off, sizeof(u16),
+		       _(&skb->transport_header)) < 0)
+		return false;
+	if (probe_read(&network_header_off, sizeof(u16),
+		       _(&skb->network_header)) < 0)
+		return false;
+
+	if (probe_read(&skb_head, sizeof(void *), _(&skb->head)) < 0)
+		return false;
+	if (probe_read(network_header, network_header_size,
+		       skb_head + network_header_off) < 0)
+		return false;
+	if (probe_read(transport_header, transport_header_size,
+		       skb_head + transport_header_off) < 0)
+		return false;
+	return true;
+}
+
+static inline __attribute__((always_inline)) bool
+get_ip4_headers(struct iphdr *ip4_header, void *transport_header,
+		u32 transport_header_size, struct sk_buff *skb)
+{
+	return get_ip_headers((void *)ip4_header, transport_header,
+			      sizeof(struct iphdr), transport_header_size, skb);
+}
+
+static inline __attribute__((always_inline)) bool
+get_udp4_headers(struct iphdr *ip4_header, struct udphdr *udp_header,
+		 struct sk_buff *skb)
+{
+	return get_ip4_headers((void *)ip4_header, (void *)udp_header,
+			       sizeof(struct udphdr), skb);
+}
