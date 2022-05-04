@@ -102,7 +102,7 @@ update_tx_counters(struct udp_info_value *value, int bytes)
  */
 static inline __attribute__((always_inline)) int udp4_send(struct pt_regs *ctx)
 {
-	u64 pid = get_current_pid_tgid();
+	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_sock_info *value;
 	int zero = 0;
 
@@ -112,14 +112,14 @@ static inline __attribute__((always_inline)) int udp4_send(struct pt_regs *ctx)
 
 	value->sk = (void *)ctx->di;
 	value->msg = (void *)ctx->si;
-	map_update_elem(&udp_retprobe_map, &pid, value, 0);
+	map_update_elem(&udp_retprobe_map, &pid_tgid, value, 0);
 	return 0;
 }
 
 static inline __attribute__((always_inline)) int
 udp4_sendret(struct pt_regs *ctx, bool lazy)
 {
-	u64 pid = get_current_pid_tgid();
+	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_sock_info *sock_info;
 	struct udp_info *info;
 	struct udp_info_value *value;
@@ -130,22 +130,22 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 	int zero = 0;
 
 	if (ret < 0) {
-		map_delete_elem(&udp_retprobe_map, &pid);
+		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
 	}
 
-	sock_info = map_lookup_elem(&udp_retprobe_map, &pid);
+	sock_info = map_lookup_elem(&udp_retprobe_map, &pid_tgid);
 	if (!sock_info)
 		return 0;
 
 	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie) {
-		map_delete_elem(&udp_retprobe_map, &pid);
+		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
 	}
 	write_cookie_from_sk(cookie, sock_info->sk, lazy);
 	if (!*cookie) {
-		map_delete_elem(&udp_retprobe_map, &pid);
+		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
 	}
 
@@ -161,13 +161,13 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 
 		value = map_lookup_elem(&udp_value_heap, &zero);
 		if (!value) {
-			map_delete_elem(&udp_retprobe_map, &pid);
+			map_delete_elem(&udp_retprobe_map, &pid_tgid);
 			return 0;
 		}
 
 		info = udp4_get_info(sock_info);
 		if (!info) {
-			map_delete_elem(&udp_retprobe_map, &pid);
+			map_delete_elem(&udp_retprobe_map, &pid_tgid);
 			return 0;
 		}
 
@@ -212,7 +212,7 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 	*/
 	update_cookie_proc_map(cookie, value->pid);
 
-	map_delete_elem(&udp_retprobe_map, &pid);
+	map_delete_elem(&udp_retprobe_map, &pid_tgid);
 	return 0;
 }
 

@@ -100,14 +100,14 @@ process_burst_check_and_delete(struct msg_process_network_burst_event *e,
 }
 
 static inline __attribute__((always_inline)) void
-process_burst_map_delete(void *ctx, __u32 tgid)
+process_burst_map_delete(void *ctx, __u32 pid)
 {
 	int zero = 0;
 	__u64 *cntr;
 	struct msg_process_network_burst_event *val;
 	struct execve_map_value *process;
 
-	process = execve_map_get(tgid);
+	process = execve_map_get(pid);
 	val = map_lookup_elem(&pn_burst_event_heap, &zero);
 	cntr = map_lookup_elem(&pn_burst_map_stats, &zero);
 
@@ -118,7 +118,7 @@ process_burst_map_delete(void *ctx, __u32 tgid)
 			.common.size =
 				sizeof(struct msg_process_network_burst_event),
 			.common.ktime = ktime_get_ns(),
-			.key.pid = tgid,
+			.key.pid = pid,
 			.key.ktime = process->key.ktime,
 			.protocol = 0,
 			.burst_start_dir = 0,
