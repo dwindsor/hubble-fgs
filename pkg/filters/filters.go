@@ -96,6 +96,7 @@ var Filters = []OnBuildFilter{
 	&PidFilter{},
 	&PidSetFilter{},
 	&EventTypeFilter{},
+	&PodRegexFilter{},
 }
 
 func GetProcess(event *v1.Event) *fgs.Process {
