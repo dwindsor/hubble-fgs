@@ -301,6 +301,7 @@ AggregationOptions defines configuration options for aggregating events.
 | pid | [uint32](#uint32) | repeated |  |
 | pid_set | [uint32](#uint32) | repeated |  |
 | event_set | [EventType](#fgs.EventType) | repeated |  |
+| pod_regex | [string](#string) | repeated | A series of regexes for filtering over pod name |
 
 
 

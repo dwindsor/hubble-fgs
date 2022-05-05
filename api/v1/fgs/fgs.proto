@@ -691,6 +691,8 @@ message Filter {
     repeated uint32 pid = 4;
     repeated uint32 pid_set = 5;
     repeated EventType event_set = 6;
+    // A series of regexes for filtering over pod name
+    repeated string pod_regex = 7;
 }
 
 enum CapabilitiesType {
