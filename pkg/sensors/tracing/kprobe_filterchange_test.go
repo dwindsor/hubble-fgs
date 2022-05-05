@@ -46,7 +46,7 @@ func TestKprobeNSChanges(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	testBin := testContribPath("tester-progs/namespace-tester")
+	testBin := testutils.ContribPath("tester-progs/namespace-tester")
 	testCmd := exec.CommandContext(ctx, testBin)
 	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
 	if err != nil {
@@ -129,7 +129,7 @@ func TestKprobeCapChanges(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	testBin := testContribPath("tester-progs/capabilities-tester")
+	testBin := testutils.ContribPath("tester-progs/capabilities-tester")
 	testCmd := exec.CommandContext(ctx, testBin)
 	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
 	if err != nil {

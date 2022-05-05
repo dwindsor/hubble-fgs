@@ -18,8 +18,6 @@ import (
 	"io"
 	"os"
 	"os/exec"
-	"path/filepath"
-	"runtime"
 	"strings"
 	"sync"
 	"testing"
@@ -33,11 +31,6 @@ import (
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 )
-
-func testContribPath(fname string) string {
-	_, testFname, _, _ := runtime.Caller(0)
-	return filepath.Join(filepath.Dir(testFname), "..", "..", "..", "contrib", fname)
-}
 
 func logOut(t *testing.T, prefix string, rd *bufio.Reader) {
 	for {
@@ -63,7 +56,7 @@ func TestKprobeSigkill(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	testBin := testContribPath("tester-progs/sigkill-tester")
+	testBin := testutils.ContribPath("tester-progs/sigkill-tester")
 	testCmd := exec.CommandContext(ctx, testBin)
 	testPipes, err := testutils.NewCmdBufferedPipes(testCmd)
 	if err != nil {
