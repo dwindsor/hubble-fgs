@@ -26,7 +26,7 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func getRequest(namespaces []string, host bool, processes []string) *fgs.GetEventsRequest {
+func getRequest(namespaces []string, host bool, processes []string, pods []string) *fgs.GetEventsRequest {
 	if host {
 		// Host events can be matched by an empty namespace string.
 		namespaces = append(namespaces, "")
@@ -35,6 +35,7 @@ func getRequest(namespaces []string, host bool, processes []string) *fgs.GetEven
 		AllowList: []*fgs.Filter{{
 			BinaryRegex: processes,
 			Namespace:   namespaces,
+			PodRegex:    pods,
 		}},
 	}
 }
@@ -43,7 +44,8 @@ func getEvents(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
 	host := viper.GetBool("host")
 	namespaces := viper.GetStringSlice("namespace")
 	processes := viper.GetStringSlice("process")
-	request := getRequest(namespaces, host, processes)
+	pods := viper.GetStringSlice("pod")
+	request := getRequest(namespaces, host, processes, pods)
 	stream, err := client.GetEvents(ctx, request)
 	if err != nil {
 		logger.GetLogger().WithError(err).Fatal("Failed to call GetEvents")
@@ -83,6 +85,7 @@ func New() *cobra.Command {
 	flags.String("color", "auto", "Colorize compact output. auto, always, or never")
 	flags.StringSliceP("namespace", "n", nil, "Get events by Kubernetes namespaces")
 	flags.StringSlice("process", nil, "Get events by process name regex")
+	flags.StringSlice("pod", nil, "Get events by pod name regex")
 	flags.Bool("host", false, "Get host events")
 	viper.BindPFlags(flags)
 	return &cmd
