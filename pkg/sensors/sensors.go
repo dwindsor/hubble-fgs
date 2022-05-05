@@ -31,9 +31,6 @@ func GetDefaultPrograms() []*Program {
 	progs := []*Program{
 		Exit,
 		Fork,
-		Listen,
-		TCPClose,
-		TCPConnect,
 	}
 	if kernels.EnableLargeProgs() {
 		progs = append(progs, ExecveV53)
@@ -45,14 +42,8 @@ func GetDefaultPrograms() []*Program {
 
 func GetDefaultMaps() []*Map {
 	maps := []*Map{
-		HTTPContext,
 		PNBurstMapStats,
 		ProcessNetworkBurstMap,
-		SocketMap,
-		SocketCookieMap,
-		SocketStats,
-		TLSContext,
-		TLSMapStats,
 	}
 
 	if kernels.EnableLargeProgs() {

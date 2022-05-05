@@ -29,7 +29,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
 const (
@@ -116,9 +115,9 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 		var err error
 		mapDir := bpf.MapPrefixPath()
 
-		m, err = bpf.OpenMap(filepath.Join(mapDir, sensors.SocketMap.Name))
+		m, err = bpf.OpenMap(filepath.Join(mapDir, SocketMap.Name))
 		for i := 0; err != nil; i++ {
-			m, err = bpf.OpenMap(filepath.Join(mapDir, sensors.SocketMap.Name))
+			m, err = bpf.OpenMap(filepath.Join(mapDir, SocketMap.Name))
 			if err != nil {
 				time.Sleep(mapRetryDelay * time.Second)
 			}

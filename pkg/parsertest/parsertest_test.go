@@ -24,6 +24,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 )
 
 const (

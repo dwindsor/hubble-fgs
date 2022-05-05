@@ -45,30 +45,6 @@ var (
 		"kprobe",
 	)
 
-	TCPConnect = ProgramBuilder(
-		"bpf_tcpmon.o",
-		"tcp_connect",
-		"kprobe/tcp_connect",
-		"kprobe_tcp_connect",
-		"kprobe",
-	)
-
-	TCPClose = ProgramBuilder(
-		"bpf_tcpclose.o",
-		"tcp_set_state",
-		"kprobe/tcp_set_state",
-		"kprobe_tcp_set_state",
-		"kprobe",
-	)
-
-	Listen = ProgramBuilder(
-		"bpf_listen.o",
-		"__inet_hash",
-		"kprobe/inet_hash",
-		"kprobe_inet_hash",
-		"kprobe",
-	)
-
 	/* Event Ring map */
 	TCPMonMap    = MapBuilder("tcpmon_map", Execve)
 	TCPMonMapV53 = MapBuilder("tcpmon_map", ExecveV53)
@@ -76,9 +52,7 @@ var (
 	/* Networking and Process Monitoring maps */
 	ExecveMap              = MapBuilder("execve_map", Execve)
 	ExecveMapV53           = MapBuilder("execve_map", ExecveV53)
-	SocketMap              = MapBuilder("socket_map", TCPConnect)
 	ProcessNetworkBurstMap = MapBuilder("pn_burst_map", Exit)
-	SocketCookieMap        = MapBuilder("socket_cookie_to_proc_map", TCPConnect)
 
 	/* Policy maps populated from base programs */
 	NamesMap    = MapBuilder("names_map", Execve)
@@ -87,13 +61,7 @@ var (
 	/* Internal statistics for debugging */
 	ExecveStats     = MapBuilder("execve_map_stats", Execve)
 	ExecveStatsV53  = MapBuilder("execve_map_stats", ExecveV53)
-	SocketStats     = MapBuilder("socket_map_stats", TCPConnect)
-	TLSMapStats     = MapBuilder("tls_map_stats", TCPConnect)
 	PNBurstMapStats = MapBuilder("pn_burst_map_stats", Exit)
-
-	/* Parser maps */
-	HTTPContext = MapBuilder("http_map", TCPClose)
-	TLSContext  = MapBuilder("tls_map", TCPClose)
 )
 
 func GetExecveMap() *Map {

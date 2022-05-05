@@ -34,23 +34,68 @@ var (
 )
 
 var (
-	TCPSendCheck = sensors.ProgramBuilder(
+	Connect = sensors.ProgramBuilder(
+		"bpf_tcpmon.o",
+		"tcp_connect",
+		"kprobe/tcp_connect",
+		"kprobe_tcp_connect",
+		"kprobe",
+	)
+
+	Close = sensors.ProgramBuilder(
+		"bpf_tcpclose.o",
+		"tcp_set_state",
+		"kprobe/tcp_set_state",
+		"kprobe_tcp_set_state",
+		"kprobe",
+	)
+
+	Listen = sensors.ProgramBuilder(
+		"bpf_listen.o",
+		"__inet_hash",
+		"kprobe/inet_hash",
+		"kprobe_inet_hash",
+		"kprobe",
+	)
+
+	SendCheck = sensors.ProgramBuilder(
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",
 		"kprobe_tcp_v4_send_check",
 		"tcp_sensor")
 
-	TCPSendCheckSampler    = sensors.MapBuilder("tcp_send_check_sampler", TCPSendCheck)
-	ProcessNetworkBurstMap = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, TCPSendCheck)
+	// Maps for TCP Sockets
+	SocketMap       = sensors.MapBuilder("socket_map", Connect)
+	SocketStats     = sensors.MapBuilder("socket_map_stats", Connect)
+	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", Connect)
+
+	// Parser maps
+	HTTPContext = sensors.MapBuilder("http_map", Close)
+	TLSContext  = sensors.MapBuilder("tls_map", Close)
+	TLSMapStats = sensors.MapBuilder("tls_map_stats", Connect)
+
+	// Maps for burst detection
+	SendCheckSampler       = sensors.MapBuilder("tcp_send_check_sampler", SendCheck)
+	ProcessNetworkBurstMap = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, SendCheck)
 )
 
 func EnableTcp() *sensors.Sensor {
 	progs := []*sensors.Program{
-		TCPSendCheck,
+		Connect,
+		Close,
+		Listen,
+		SendCheck,
 	}
 	maps := []*sensors.Map{
-		TCPSendCheckSampler,
+		SocketStats,
+		SocketCookieMap,
+		SocketMap,
+		HTTPContext,
+		TLSContext,
+		TLSMapStats,
+		SendCheckSampler,
+		ProcessNetworkBurstMap,
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
 		"statsInterval":    tcpInterval,

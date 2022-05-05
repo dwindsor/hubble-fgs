@@ -26,6 +26,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/stretchr/testify/assert"
 
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 )

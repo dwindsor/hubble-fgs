@@ -169,8 +169,6 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketStats     = sensors.MapBuilder("socket_map_stats", UdpSendLazy)
-	SocketMap       = sensors.MapBuilder("socket_map", UdpSendLazy)
 	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", UdpSendLazy)
 
 	// UDP maps
@@ -548,9 +546,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRecvLazy,
 		}
 		maps = []*sensors.Map{
-			SocketMap,
 			SocketCookieMap,
-			SocketStats,
 			UdpMapKprobeLazy,
 			UdpRetprobeMapLazy,
 			UdpConfigLazyMapKprobe,
@@ -568,9 +564,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRecvLazy,
 		}
 		maps = []*sensors.Map{
-			SocketMap,
 			SocketCookieMap,
-			SocketStats,
 			UdpMapKprobeLazy,
 			UdpRetprobeMapLazy,
 			UdpConfigLazyMap,
@@ -589,6 +583,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRecv,
 		}
 		maps = []*sensors.Map{
+			SocketCookieMap,
 			UdpMapKprobe,
 			UdpRetprobeMap,
 			UdpConfigMap,

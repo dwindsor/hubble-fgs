@@ -25,21 +25,21 @@ var (
 	// Socket mode
 	// Supports 5.4 kernels or newer.
 
-	TLSSkmsg = sensors.ProgramBuilder(
+	Skmsg = sensors.ProgramBuilder(
 		"bpf_tls_skmsg.o",
 		"sk_msg",
 		"sk_msg/fgs_tls",
 		"bpf_tls_sk_msg_fgs",
 		"skmsg")
 
-	TLSSkSkbVerdict = sensors.ProgramBuilder(
+	SkSkbVerdict = sensors.ProgramBuilder(
 		"bpf_tls_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgs_tls",
 		"bpf_tls_skskb_verdict_fgs",
 		"sk_skb_verdict")
 
-	TLSSkSkbParser = sensors.ProgramBuilder(
+	SkSkbParser = sensors.ProgramBuilder(
 		"bpf_tls_skskb_parser.o",
 		"sk_skb",
 		"sk_skb/stream_parser/fgs_tls",
@@ -58,28 +58,47 @@ var (
 	// 4.19 kernels and below.
 	// Susceptible to out-of-order packets.
 
-	TLSTCIngress = sensors.ProgramBuilder(
+	TCIngress = sensors.ProgramBuilder(
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
 		"classifier/ingress_tcp",
 		"classifier_ingress_tcp",
 		"tc_ingress")
 
-	TLSTCEgress = sensors.ProgramBuilder(
+	TCEgress = sensors.ProgramBuilder(
 		"bpf_tc_egress.o",
 		"egress_tcp",
 		"classifier/egress_tcp",
 		"tc_egress_tcp",
 		"tc_egress")
 
-	/* TLS maps */
-	TCTLSParserStats = sensors.MapBuilder("tls_parser_stats", TLSTCEgress)
-	TLSParserStats   = sensors.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
-	TLSTailCalls     = sensors.MapBuilder("tls_calls", TLSTCIngress)
-	TlsFilterMap     = sockops.TlsFilterMap
-	HTTPTailCalls    = http.TailCalls
-	HTTPFilterMap    = http.HTTPFilterMap
-	HTTPSockMap      = sockops.HttpSockMap
+	// TLS maps
+	Map         = sensors.MapBuilder("tls_map", Skmsg)
+	MapStats    = sensors.MapBuilder("tls_map_stats", Skmsg)
+	Bottle      = sensors.MapBuilder("bottles", Skmsg)
+	BottleStats = sensors.MapBuilder("bottle_map_stats", Skmsg)
+	TailCalls   = sensors.MapBuilder("tls_calls", Skmsg)
+	// TC TLS maps
+	TCMap         = sensors.MapBuilder("tls_map", TCEgress)
+	TCMapStats    = sensors.MapBuilder("tls_map_stats", TCEgress)
+	TCBottle      = sensors.MapBuilder("bottles", TCIngress)
+	TCBottleStats = sensors.MapBuilder("bottle_map_stats", TCIngress)
+	TCParserStats = sensors.MapBuilder("tls_parser_stats", TCEgress)
+	TCTailCalls   = sensors.MapBuilder("tls_calls", TCIngress)
+	// Sockops Filter
+	FilterMap   = sockops.TlsFilterMap
+	ParserStats = sensors.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
+	// Socket links
+	SocketMap   = sensors.MapBuilder("socket_map", Skmsg)
+	SocketStats = sensors.MapBuilder("socket_map_stats", Skmsg)
+	// TC Socket Links
+	TCSocketMap   = sensors.MapBuilder("socket_map", TCIngress)
+	TCSocketStats = sensors.MapBuilder("socket_map_stats", TCIngress)
+
+	// HTTP maps
+	HTTPMap       = http.HTTPContext
+	HTTPTailCalls = http.TailCalls
+	HTTPFilterMap = http.HTTPFilterMap
 )
 
 func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
@@ -139,12 +158,12 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) 
 		return -1, err
 	}
 	if utils.SkSkbParserRequired() {
-		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbParser, sockops.TlsSockMap)
+		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.TlsSockMap)
 		if err != nil {
 			return -1, err
 		}
 	}
-	err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, TLSSkSkbVerdict, sockops.TlsSockMap)
+	err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.TlsSockMap)
 	if err != nil {
 		return -1, err
 	}
@@ -238,40 +257,40 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 		logger.GetLogger().Infof("Enable TLS")
 		progs = append(progs,
 			sockops.SockopsEstablished,
-			TLSSkmsg,
-			TLSSkSkbVerdict,
+			Skmsg,
+			SkSkbVerdict,
 			SockoptSet,
 		)
 		if utils.SkSkbParserRequired() {
-			progs = append(progs, TLSSkSkbParser)
+			progs = append(progs, SkSkbParser)
 		}
 
 		maps = append(maps,
-			sockops.TlsSockMap,
-			sensors.TLSContext,
-			TLSParserStats,
-			TlsFilterMap,
-			sensors.HTTPContext,
+			TailCalls,
+			Map, MapStats,
+			Bottle, BottleStats,
+			FilterMap, ParserStats,
+			SocketMap, SocketStats,
+			HTTPMap,
 			HTTPTailCalls,
 			HTTPFilterMap,
-			HTTPSockMap,
 		)
 	}
 
 	if tc {
 		logger.GetLogger().Infof("Enable TLS TC")
 		progs = append(progs,
-			TLSTCEgress,
-			TLSTCIngress,
+			TCEgress,
+			TCIngress,
 		)
 
 		maps = append(maps,
-			sensors.TLSContext,
-			TLSTailCalls,
-			TCTLSParserStats,
-			HTTPTailCalls,
-			HTTPFilterMap,
-			HTTPSockMap,
+			TCMap, TCMapStats,
+			TCBottle, TCBottleStats,
+			TCParserStats,
+			TCTailCalls,
+			FilterMap, ParserStats,
+			TCSocketMap, TCSocketStats,
 		)
 	}
 
