@@ -200,7 +200,10 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 			continue
 		}
 		if m.PinState.IsLoaded() {
-			l.WithField("map", m.Name).Info("map is already loaded, incrementing reference count")
+			l.WithFields(logrus.Fields{
+				"sensor": s.Name,
+				"map":    m.Name,
+			}).Info("map is already loaded, incrementing reference count")
 			m.PinState.RefInc()
 			continue
 		}
@@ -237,8 +240,9 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 		m.PinState.RefInc()
 
 		l.WithFields(logrus.Fields{
-			"map":  m.Name,
-			"path": pinPath,
+			"sensor": s.Name,
+			"map":    m.Name,
+			"path":   pinPath,
 		}).Info("hubble-fgs, map loaded.")
 	}
 
