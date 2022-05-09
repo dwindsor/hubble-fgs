@@ -66,7 +66,7 @@ func getEvents(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
 			return
 		}
 		if err = eventEncoder.Encode(res); err != nil {
-			logger.GetLogger().WithError(err).WithField("event", res).Warning("Failed to encode event")
+			logger.GetLogger().WithError(err).WithField("event", res).Debug("Failed to encode event")
 		}
 	}
 }

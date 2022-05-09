@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/bugtool"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/getevents"
@@ -12,6 +13,7 @@ import (
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/status"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/tracingpolicy"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/version"
+	"github.com/sirupsen/logrus"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )
@@ -33,6 +35,11 @@ func new() *cobra.Command {
 		Short: "Hubble Enterprise CLI",
 		Run: func(cmd *cobra.Command, args []string) {
 			cmd.Help()
+		},
+		PersistentPreRun: func(cmd *cobra.Command, args []string) {
+			if viper.GetBool(common.KeyDebug) {
+				logger.DefaultLogger.SetLevel(logrus.DebugLevel)
+			}
 		},
 	}
 
