@@ -18,6 +18,7 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	logger "github.com/cilium/tetragon/pkg/logger"
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
+	metrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	podinfo "github.com/isovalent/hubble-fgs/pkg/podinfo"
 	process "github.com/isovalent/hubble-fgs/pkg/process"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
@@ -35,7 +36,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessConnect").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		e.DestinationNames = labels
 		if e.DestinationPod == nil {
@@ -51,7 +54,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessClose").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		e.DestinationNames = labels
 		if e.DestinationPod == nil {
@@ -67,7 +72,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessListen").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: e},
@@ -79,7 +86,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessAccept").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		e.DestinationNames = labels
 		if e.DestinationPod == nil {
@@ -95,7 +104,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessExec").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: e},
@@ -107,7 +118,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessExit").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: e},
@@ -119,7 +132,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessCred").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: e},
@@ -131,7 +146,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessKprobe").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: e},
@@ -143,7 +160,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessTracepoint").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessTracepoint{ProcessTracepoint: e},
@@ -155,7 +174,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessSockStats").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessSockStats{ProcessSockStats: e},
@@ -167,7 +188,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("Tls").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_Tls{Tls: e},
@@ -179,7 +202,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessHttp").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: e},
@@ -191,7 +216,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessDns").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: e},
@@ -203,7 +230,9 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			logger.GetLogger().WithField("event", e).Warn("Unable to set process information for event")
+			metrics.ProcessInfoErrors.WithLabelValues("ProcessNetworkBurst").Inc()
+			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			logger.GetLogger().WithField("event", e).Debug("Unable to set process information for event")
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: e},

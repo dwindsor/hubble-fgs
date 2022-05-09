@@ -51,6 +51,10 @@ func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
 	fgsGER := common.FgsApiIdent(g, "GetEventsResponse")
 	timestamp := common.GoIdent(g, "google.golang.org/protobuf/types/known/timestamppb", "Timestamp")
 
+	mErrorCount := common.GoIdent(g, "github.com/isovalent/hubble-fgs/pkg/metrics", "ErrorCount")
+	mInfoFailed := common.GoIdent(g, "github.com/isovalent/hubble-fgs/pkg/metrics", "EventCacheProcessInfoFailed")
+	mProcessInfoErrors := common.GoIdent(g, "github.com/isovalent/hubble-fgs/pkg/metrics", "ProcessInfoErrors")
+
 	g.P(`func DoHandleEvent(event eventObj, internal *` + fgsProcessInternal + `, labels []string, nodeName string, timestamp *` + timestamp + `) (*` + fgsGER + `, error) {
         switch e := event.(type) {`)
 	for _, msg := range f.Messages {
@@ -62,7 +66,9 @@ func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
             if internal != nil {
                 e.Process = internal.GetProcessCopy()
             } else {
-                ` + common.Logger(g) + `.WithField("event", e).Warn("Unable to set process information for event")
+                ` + mProcessInfoErrors + `.WithLabelValues("` + msg.GoIdent.GoName + `").Inc()
+                ` + mErrorCount + `.WithLabelValues(string(` + mInfoFailed + `)).Inc()
+                ` + common.Logger(g) + `.WithField("event", e).Debug("Unable to set process information for event")
             }` + doDestinationNames(g, msg) + `
             return &` + doGetEventsResponse(g, msg.GoIdent.GoName) + `, nil`)
 	}

@@ -53,6 +53,8 @@ const (
 	EventCachePodInfoRetryFailed ErrorType = "event_cache_podinfo_retry_failed"
 	// Event cache endpoint retries failed.
 	EventCacheEndpointRetryFailed ErrorType = "event_cache_endpoint_retry_failed"
+	// Event cache failed to set process information for an event.
+	EventCacheProcessInfoFailed ErrorType = "event_cache_process_info_failed"
 	// There was an invalid entry in the pid map.
 	PidMapInvalidEntry ErrorType = "pid_map_invalid_entry"
 	// An entry was evicted from the pid map because the map was full.
@@ -241,6 +243,11 @@ var (
 		Help:        "The total number of FGS ringbuf perf event error count.",
 		ConstLabels: nil,
 	}, nil)
+	ProcessInfoErrors = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:        MetricNamePrefix + "process_info_errors",
+		Help:        "The total of times we failed to fetch cached process info for a given event type.",
+		ConstLabels: nil,
+	}, []string{"event_type"})
 )
 
 // TLS metrics
