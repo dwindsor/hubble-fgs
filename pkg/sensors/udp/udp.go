@@ -191,22 +191,26 @@ var (
 	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", UdpSendLazy)
 
 	// UDP maps
-	UdpMap                 = sensors.MapBuilder(UdpMapName, InetSend)
-	UdpMapLazy             = sensors.MapBuilder(UdpMapName, InetSendLazy)
-	UdpMapLazyKprobe       = sensors.MapBuilder(UdpMapName, InetSendRecvLazy)
-	UdpMapKprobe           = sensors.MapBuilder(UdpMapName, UdpSend)
-	UdpMapKprobeLazy       = sensors.MapBuilder(UdpMapName, UdpSendLazy)
-	UdpMapKprobeRecv       = sensors.MapBuilder(UdpMapName, UdpRecv)
-	UdpMapKprobeRecvLazy   = sensors.MapBuilder(UdpMapName, UdpRecvLazy)
-	UdpRetprobeMap         = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
-	UdpRetprobeMapLazy     = sensors.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
-	UdpRetprobeRecvMap     = sensors.MapBuilder(UdpRetprobeMapName, UdpRecv)
-	UdpRetprobeRecvMapLazy = sensors.MapBuilder(UdpRetprobeMapName, UdpRecvLazy)
-	UdpConfigMap           = sensors.MapBuilder(UdpConfigMapName, InetSend)
-	UdpConfigLazyMap       = sensors.MapBuilder(UdpConfigMapName, InetSendLazy)
-	UdpConfigLazyMapKprobe = sensors.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
-	UdpPayloadMap          = sensors.MapBuilder(UdpPayloadMapName, InetSend)
-	UdpPayloadMapStats     = sensors.MapBuilder(UdpPayloadMapStatsName, InetSend)
+	UdpMap                       = sensors.MapBuilder(UdpMapName, InetSend)
+	UdpMapLazy                   = sensors.MapBuilder(UdpMapName, InetSendLazy)
+	UdpMapLazyKprobe             = sensors.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpMapKprobe                 = sensors.MapBuilder(UdpMapName, UdpSend)
+	UdpMapKprobeLazy             = sensors.MapBuilder(UdpMapName, UdpSendLazy)
+	UdpMapKprobeRecv             = sensors.MapBuilder(UdpMapName, UdpRecv)
+	UdpMapKprobeRecvLazy         = sensors.MapBuilder(UdpMapName, UdpRecvLazy)
+	UdpRetprobeMap               = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
+	UdpRetprobeMapLazy           = sensors.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
+	UdpRetprobeRecvMap           = sensors.MapBuilder(UdpRetprobeMapName, UdpRecv)
+	UdpRetprobeRecvMapLazy       = sensors.MapBuilder(UdpRetprobeMapName, UdpRecvLazy)
+	UdpConfigMap                 = sensors.MapBuilder(UdpConfigMapName, InetSend)
+	UdpConfigLazyMap             = sensors.MapBuilder(UdpConfigMapName, InetSendLazy)
+	UdpConfigLazyMapKprobe       = sensors.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
+	UdpPayloadMap                = sensors.MapBuilder(UdpPayloadMapName, InetSend)
+	UdpPayloadMapStats           = sensors.MapBuilder(UdpPayloadMapStatsName, InetSend)
+	UdpPayloadLazyMap            = sensors.MapBuilder(UdpPayloadMapName, InetSendLazy)
+	UdpPayloadLazyMapStats       = sensors.MapBuilder(UdpPayloadMapStatsName, InetSendLazy)
+	UdpPayloadLazyMapKprobe      = sensors.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
+	UdpPayloadLazyMapStatsKprobe = sensors.MapBuilder(UdpPayloadMapStatsName, InetSendRecvLazy)
 
 	// Burst and watermark maps
 	ProcessNetworkBurstMap           = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
@@ -582,6 +586,8 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetprobeRecvMapLazy,
 			UdpConfigLazyMapKprobe,
 			UdpMapLazyKprobe,
+			UdpPayloadLazyMapKprobe,
+			UdpPayloadLazyMapStatsKprobe,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
@@ -603,6 +609,8 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetprobeRecvMapLazy,
 			UdpConfigLazyMap,
 			UdpMapLazy,
+			UdpPayloadLazyMap,
+			UdpPayloadLazyMapStats,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"

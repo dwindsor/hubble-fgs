@@ -132,7 +132,6 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 						cfg->burstAvgWindowSize,
 					.window_size = cfg->burstWindowSizeNs,
 					.trigger_mult = cfg->burstTriggerMult,
-					.ctx = ctx,
 				};
 				u64 tcp_bytes_sent, tcp_bytes_received;
 				probe_read(&tcp_bytes_sent, sizeof(__u64),
@@ -141,7 +140,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 					   _(&(tcp->bytes_received)));
 				if (tcp_bytes_sent > process->sent) {
 					process_network_burst(
-						exec_process, IPPROTO_TCP,
+						ctx, exec_process, IPPROTO_TCP,
 						BURST_KEY_SEND_EGRESS,
 						tcp_bytes_sent - process->sent,
 						&c);
@@ -149,7 +148,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 				}
 				if (tcp_bytes_received > process->received) {
 					process_network_burst(
-						exec_process, IPPROTO_TCP,
+						ctx, exec_process, IPPROTO_TCP,
 						BURST_KEY_SEND_INGRESS,
 						tcp_bytes_received -
 							process->received,

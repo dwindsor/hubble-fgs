@@ -47,6 +47,29 @@ struct msg_ipv4_udp_event {
 	char payload[2048];
 };
 
+struct udp_packet_details {
+	struct iphdr ip;
+	struct udphdr udp;
+	int payload_sz;
+	int payload_off;
+	void *skb_head;
+};
+
+struct udp_sensor_config {
+	u16 dnsPorts[4];
+	u64 watermark_enable;
+	u64 watermark_avg_window_size_ms;
+	u64 watermark_window_size;
+	u64 watermark_trigger_percent;
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) udp_config_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct udp_sensor_config),
+	.max_entries = 1,
+};
+
 struct bpf_map_def __attribute__((section("maps"), used)) udp_event_heap = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
@@ -97,6 +120,13 @@ udp_payload_map_stats = {
 	.max_entries = 1,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) udp_header_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct udp_packet_details),
+	.max_entries = 1,
+};
+
 static inline __attribute__((always_inline)) void
 emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 {
@@ -133,8 +163,8 @@ emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 }
 
 static inline __attribute__((always_inline)) struct msg_ipv4_udp_event *
-create_udp_payload_event(void *ctx, struct udp_info_value *v, int off,
-			 int payload_size, size_t *size)
+create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
+			 int off, int payload_size, size_t *size, bool kp)
 {
 	struct __sk_buff *skb = (struct __sk_buff *)ctx;
 	struct msg_ipv4_udp_event *val;
@@ -171,7 +201,12 @@ create_udp_payload_event(void *ctx, struct udp_info_value *v, int off,
 	asm volatile(
 		"%[payload_size] += 1;\n" ::[payload_size] "+r"(payload_size)
 		:);
-	skb_load_bytes(skb, off, &val->payload, payload_size);
+	if (!kp) {
+		skb_load_bytes(skb, off, &val->payload, payload_size);
+	} else {
+		if (probe_read(&val->payload, payload_size, skb_head + off) < 0)
+			return 0;
+	}
 	return val;
 }
 
@@ -182,7 +217,8 @@ emit_udp_payload_event(void *ctx, struct udp_info_value *v, int off,
 	struct msg_ipv4_udp_event *val;
 	size_t size;
 
-	val = create_udp_payload_event(ctx, v, off, payload_size, &size);
+	val = create_udp_payload_event(ctx, 0, v, off, payload_size, &size,
+				       false);
 	if (!val)
 		return;
 
@@ -212,13 +248,15 @@ static inline __attribute__((always_inline)) void dec_udp_payload_map()
 }
 
 static inline __attribute__((always_inline)) void
-store_udp_payload_event(void *ctx, u64 *cookie, struct udp_info_value *v,
-			int off, int payload_size)
+store_udp_payload_event(void *ctx, void *skb_head, u64 *cookie,
+			struct udp_info_value *v, int off, int payload_size,
+			bool kp)
 {
 	struct msg_ipv4_udp_event *val;
 	size_t size;
 
-	val = create_udp_payload_event(ctx, v, off, payload_size, &size);
+	val = create_udp_payload_event(ctx, skb_head, v, off, payload_size,
+				       &size, kp);
 	if (!val)
 		return;
 
@@ -335,4 +373,16 @@ update_consume_misses(struct udp_info_value *v)
 	__sync_fetch_and_add(&v->skb_consume_misses, 1);
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 }
+
+static inline __attribute__((always_inline)) int
+dns_port_match(u16 *ports, u16 port1, u16 port2)
+{
+	if (ports[0] == port1 || ports[0] == port2 || ports[1] == port1 ||
+	    ports[1] == port2 || ports[2] == port1 || ports[2] == port2 ||
+	    ports[3] == port1 || ports[3] == port2) {
+		return 1;
+	}
+	return 0;
+}
+
 #endif // __BPF_UDP_H__

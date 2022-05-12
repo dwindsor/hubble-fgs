@@ -39,6 +39,17 @@ check_and_send_payload(void *ctx, u64 *cookie, struct udp_info_value *value)
 {
 	struct msg_ipv4_udp_event *ev;
 	size_t size;
+	struct udp_sensor_config *config;
+	int zero = 0;
+
+	config = map_lookup_elem(&udp_config_map, &zero);
+	if (!config)
+		return;
+
+	if (config->dnsPorts[0] == 0 ||
+	    !dns_port_match(config->dnsPorts, value->sport,
+			    bpf_ntohs(value->dport)))
+		return;
 
 	ev = map_lookup_elem(&udp_payload_map, cookie);
 	if (!ev)
@@ -209,11 +220,9 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 				 * generated before the cookie->process mapping existed.
 				 * Complete the process info and send it.
 				 */
-				if (!lazy)
-					check_and_send_payload(ctx, cookie,
-							       value);
 			}
 		}
+		check_and_send_payload(ctx, cookie, value);
 	}
 
 	/* Ensure we have an up-to-date cookie->process mapping. */
@@ -231,12 +240,15 @@ udp4_get_skb_info(struct sk_buff *skb, int *len)
 
 	struct udphdr udph;
 	struct iphdr iph;
+	void *skb_head;
 
 	info = map_lookup_elem(&udp_info_heap, &zero);
 	if (!info)
 		return 0;
 
-	if (!get_udp4_headers(&iph, &udph, skb))
+	if (!get_ip4_header(&iph, &skb_head, skb))
+		return 0;
+	if (!get_udp4_header(&udph, 0, skb_head, skb))
 		return 0;
 
 	/* skb values are in network byte order and to be consistent across
@@ -371,11 +383,9 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 				 * generated before the cookie->process mapping existed.
 				 * Complete the process info and send it.
 				 */
-				if (!lazy)
-					check_and_send_payload(ctx, cookie,
-							       value);
 			}
 		}
+		check_and_send_payload(ctx, cookie, value);
 	}
 	/* Ensure we have an up-to-date cookie->process mapping.
 	 */

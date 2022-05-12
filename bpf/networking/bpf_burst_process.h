@@ -17,7 +17,6 @@ struct process_network_burst_log {
 };
 
 struct process_network_burst_config {
-	void *ctx;
 	__u64 avg_window_size_ms;
 	__u64 window_size;
 	__u64 trigger_mult;
@@ -50,6 +49,14 @@ pn_burst_value_heap = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct process_network_burst_log),
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used))
+pn_burst_config_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct process_network_burst_config),
 	.max_entries = 1,
 };
 
@@ -190,8 +197,8 @@ init_burst_log(u64 burst_key, u64 process_start_time, u64 vol,
 // this approach would fail.
 
 static inline __attribute__((always_inline)) void
-process_network_burst(struct execve_map_value *process, u64 protocol, u64 send,
-		      u64 vol, struct process_network_burst_config *c)
+process_network_burst(void *ctx, struct execve_map_value *process, u64 protocol,
+		      u64 send, u64 vol, struct process_network_burst_config *c)
 {
 	u64 burst_key;
 	struct process_network_burst_log *burst_log;
@@ -309,7 +316,7 @@ process_network_burst(struct execve_map_value *process, u64 protocol, u64 send,
 			.window_avg = new_win_rate,
 		};
 		perf_event_output(
-			c->ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+			ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 			sizeof(struct msg_process_network_burst_event));
 		WRITE_ONCE(burst_log->burst, (old_burst == 0));
 	}

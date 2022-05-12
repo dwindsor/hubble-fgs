@@ -40,45 +40,59 @@ zero_socket_stats(struct msg_socket_stats *stats)
 	stats->segs_in = 0;
 	stats->segs_out = 0;
 }
-
+/* get_ip_header returns the skb_head if the pointer is not NULL */
 static inline __attribute__((always_inline)) bool
-get_ip_headers(void *network_header, void *transport_header,
-	       u32 network_header_size, u32 transport_header_size,
-	       struct sk_buff *skb)
+get_ip_header(void *network_header, u32 network_header_size, void **skbh,
+	      struct sk_buff *skb)
 {
-	u16 transport_header_off, network_header_off;
+	u16 network_header_off;
 	void *skb_head;
 
-	if (probe_read(&transport_header_off, sizeof(u16),
-		       _(&skb->transport_header)) < 0)
-		return false;
 	if (probe_read(&network_header_off, sizeof(u16),
 		       _(&skb->network_header)) < 0)
 		return false;
-
 	if (probe_read(&skb_head, sizeof(void *), _(&skb->head)) < 0)
 		return false;
 	if (probe_read(network_header, network_header_size,
 		       skb_head + network_header_off) < 0)
 		return false;
-	if (probe_read(transport_header, transport_header_size,
-		       skb_head + transport_header_off) < 0)
-		return false;
+	if (skbh)
+		*skbh = skb_head;
 	return true;
 }
 
+/* get_transport_header returns the payload_off is the pointer is not NULL */
 static inline __attribute__((always_inline)) bool
-get_ip4_headers(struct iphdr *ip4_header, void *transport_header,
-		u32 transport_header_size, struct sk_buff *skb)
+get_transport_header(void *transport_header, u32 transport_header_size,
+		     int *payload_off, void *skb_head, struct sk_buff *skb)
 {
-	return get_ip_headers((void *)ip4_header, transport_header,
-			      sizeof(struct iphdr), transport_header_size, skb);
+	u16 transport_header_off;
+
+	if (probe_read(&transport_header_off, sizeof(u16),
+		       _(&skb->transport_header)) < 0)
+		return false;
+	if (probe_read(transport_header, transport_header_size,
+		       skb_head + transport_header_off) < 0)
+		return false;
+	if (payload_off != 0) {
+		*payload_off = transport_header_off + transport_header_size;
+	}
+	return true;
 }
 
+/* get_ip4_header returns the skb_head if the pointer is not NULL */
 static inline __attribute__((always_inline)) bool
-get_udp4_headers(struct iphdr *ip4_header, struct udphdr *udp_header,
-		 struct sk_buff *skb)
+get_ip4_header(struct iphdr *ip4_header, void **skb_head, struct sk_buff *skb)
 {
-	return get_ip4_headers((void *)ip4_header, (void *)udp_header,
-			       sizeof(struct udphdr), skb);
+	return get_ip_header((void *)ip4_header, sizeof(struct iphdr), skb_head,
+			     skb);
+}
+
+/* get_udp4_header returns the payload_off is the pointer is not NULL */
+static inline __attribute__((always_inline)) bool
+get_udp4_header(struct udphdr *udp_header, int *payload_off, void *skb_head,
+		struct sk_buff *skb)
+{
+	return get_transport_header((void *)udp_header, sizeof(struct udphdr),
+				    payload_off, skb_head, skb);
 }
