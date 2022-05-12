@@ -41,9 +41,12 @@ import (
 )
 
 const (
-	UdpGCIntervalDefault = time.Duration(60 * time.Second)
-	UdpMapName           = "udp_map"
-	UdpRetprobeMapName   = "udp_retprobe_map"
+	UdpGCIntervalDefault   = time.Duration(60 * time.Second)
+	UdpMapName             = "udp_map"
+	UdpRetprobeMapName     = "udp_retprobe_map"
+	UdpConfigMapName       = "udp_config_map"
+	UdpPayloadMapName      = "udp_payload_map"
+	UdpPayloadMapStatsName = "udp_payload_map_stats"
 
 	stataCacheSize = 32000
 )
@@ -199,15 +202,17 @@ var (
 	UdpRetprobeMapLazy     = sensors.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
 	UdpRetprobeRecvMap     = sensors.MapBuilder(UdpRetprobeMapName, UdpRecv)
 	UdpRetprobeRecvMapLazy = sensors.MapBuilder(UdpRetprobeMapName, UdpRecvLazy)
-	UdpConfigMap           = sensors.MapBuilder("udp_config_map", InetSend)
-	UdpConfigLazyMap       = sensors.MapBuilder("udp_config_map", InetSendLazy)
-	UdpConfigLazyMapKprobe = sensors.MapBuilder("udp_config_map", InetSendRecvLazy)
+	UdpConfigMap           = sensors.MapBuilder(UdpConfigMapName, InetSend)
+	UdpConfigLazyMap       = sensors.MapBuilder(UdpConfigMapName, InetSendLazy)
+	UdpConfigLazyMapKprobe = sensors.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
+	UdpPayloadMap          = sensors.MapBuilder(UdpPayloadMapName, InetSend)
+	UdpPayloadMapStats     = sensors.MapBuilder(UdpPayloadMapStatsName, InetSend)
 
 	// Burst and watermark maps
 	ProcessNetworkBurstMap           = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
 	ProcessNetworkBurstMapLazy       = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendLazy)
 	ProcessNetworkBurstMapLazyKprobe = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendRecvLazy)
-	PNBurstMapStats                  = sensors.MapBuilder("pn_burst_map_stats", sensors.Exit)
+	PNBurstMapStats                  = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstStatsMapName, sensors.Exit)
 )
 
 type udpInfoKey struct {
@@ -620,6 +625,8 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetprobeRecvMap,
 			UdpConfigMap,
 			UdpMap,
+			UdpPayloadMap,
+			UdpPayloadMapStats,
 		}
 		versionStr = "__udp_sensor_cgroup__"
 	}

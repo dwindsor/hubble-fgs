@@ -29,7 +29,8 @@ import (
 )
 
 const (
-	ProcessNetworkBurstMapName = "pn_burst_map"
+	ProcessNetworkBurstMapName      = "pn_burst_map"
+	ProcessNetworkBurstStatsMapName = "pn_burst_map_stats"
 
 	PROCESS_NETWORK_BURST_PROTO_SHIFT   = 48
 	PROCESS_NETWORK_BURST_PROCESS_MASK  = 0xffffffff

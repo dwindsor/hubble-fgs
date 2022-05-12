@@ -206,8 +206,20 @@ udp4_send(void *ctx, struct iphdr *ip, struct udphdr *udp, u64 *cookie,
 			* later to sat verifier constraint that skb_load_bytes
 			* must be nonzero.
 			*/
-			emit_udp_payload_event(ctx, value, payload_off,
-					       payload_sz - 1);
+			if (value->pid) {
+				emit_udp_payload_event(ctx, value, payload_off,
+						       payload_sz - 1);
+			} else {
+				/* The PID is empty because we couldn't look up
+				 * the process in the cookie->process map. We
+				 * therefore store it for the API-level function
+				 * (either udp4_sendret or udp4_recvret) to add
+				 * process information and then transmit it.
+				 */
+				store_udp_payload_event(ctx, cookie, value,
+							payload_off,
+							payload_sz - 1);
+			}
 		}
 	}
 	return 1;

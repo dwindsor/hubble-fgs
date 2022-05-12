@@ -34,6 +34,30 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_sock_info_heap = {
 	.max_entries = 1,
 };
 
+static inline __attribute__((always_inline)) void
+check_and_send_payload(void *ctx, u64 *cookie, struct udp_info_value *value)
+{
+	struct msg_ipv4_udp_event *ev;
+	size_t size;
+
+	ev = map_lookup_elem(&udp_payload_map, cookie);
+	if (!ev)
+		return;
+
+	ev->event.key.pid = value->pid;
+	ev->event.key.ktime = value->pid_ktime;
+
+	size = ev->event.common.size;
+	if (size <= sizeof(*ev)) {
+		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, ev,
+				  size);
+	}
+
+	if (map_delete_elem(&udp_payload_map, cookie) == 0) {
+		dec_udp_payload_map();
+	}
+}
+
 static inline __attribute__((always_inline)) struct udp_info *
 udp4_get_info(struct udp_sock_info *sock_info)
 {
@@ -180,6 +204,14 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
 				emit_udp_connect_event(ctx, value);
+				/* DNS payloads are only available in non-lazy kernels.
+				 * If there is a payload waiting, that means it was
+				 * generated before the cookie->process mapping existed.
+				 * Complete the process info and send it.
+				 */
+				if (!lazy)
+					check_and_send_payload(ctx, cookie,
+							       value);
 			}
 		}
 	}
@@ -334,6 +366,14 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
 				emit_udp_connect_event(ctx, value);
+				/* DNS payloads are only available in non-lazy kernels.
+				 * If there is a payload waiting, that means it was
+				 * generated before the cookie->process mapping existed.
+				 * Complete the process info and send it.
+				 */
+				if (!lazy)
+					check_and_send_payload(ctx, cookie,
+							       value);
 			}
 		}
 	}
