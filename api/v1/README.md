@@ -732,6 +732,10 @@ HTTP PARSER
 | protocol | [string](#string) |  |  |
 | mark | [uint32](#uint32) |  |  |
 | priority | [uint32](#uint32) |  |  |
+| saddr | [string](#string) |  |  |
+| daddr | [string](#string) |  |  |
+| sport | [uint32](#uint32) |  |  |
+| dport | [uint32](#uint32) |  |  |
 
 
 

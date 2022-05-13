@@ -215,6 +215,10 @@ message KprobeSock {
     string protocol = 3;
     uint32 mark = 4;
     uint32 priority = 5;
+    string saddr = 6;
+    string daddr = 7;
+    uint32 sport = 8;
+    uint32 dport = 9;
 }
 
 message KprobeSkb {
