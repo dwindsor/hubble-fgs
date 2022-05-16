@@ -31,11 +31,17 @@ COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
 
 TESTER_PROGS_DIR = "contrib/tester-progs"
 
-all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs checkerpc protoc-gen-go-fgs
+all: submodule-prepare hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs checkerpc protoc-gen-go-fgs
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
 -include Makefile.docker
+
+.PHONY: submodule-prepare
+submodule-prepare:
+	git submodule init
+	git submodule update
+
 
 ifeq (1,$(LOCAL_CLANG))
 hubble-bpf: hubble-bpf-local
