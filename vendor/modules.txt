@@ -1047,6 +1047,7 @@ sigs.k8s.io/structured-merge-diff/v4/value
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 # github.com/cilium/ebpf => github.com/joamaki/ebpf v0.8.1-0.20220207152208-4d3a175d59f8
+# github.com/cilium/tetragon => ./modules/tetragon-oss
 # github.com/miekg/dns => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3
 # github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
 # github.com/vishvananda/netlink => github.com/jrfastab/netlink v1.1.1
