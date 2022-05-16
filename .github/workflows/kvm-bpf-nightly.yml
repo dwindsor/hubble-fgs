@@ -20,6 +20,7 @@ jobs:
       - uses: actions/checkout@master
         with:
           path: hubble-fgs
+          submodules: true
 
       - name: Authenticate with gcloud
         uses: 'google-github-actions/auth@v0'

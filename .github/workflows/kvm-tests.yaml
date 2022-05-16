@@ -35,6 +35,7 @@ jobs:
       - uses: actions/checkout@master
         with:
           path: hubble-fgs
+          submodules: true
 
       - name: Set up ssh client
         run: |

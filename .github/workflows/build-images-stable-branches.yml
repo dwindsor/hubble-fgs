@@ -23,6 +23,7 @@ jobs:
         with:
           persist-credentials: false
           fetch-depth: 0
+          submodules: true
 
       - name: Login to quay.io
         uses: docker/login-action@f054a8b539a109f9f41c372932f1ae047eff08c9
