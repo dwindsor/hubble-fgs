@@ -183,9 +183,9 @@ image-test:
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
 
 image-codegen:
-	$(CONTAINER_ENGINE) build -f Dockerfile.codegen -t "isovalent/hubble-fgs-codegen:${DOCKER_IMAGE_TAG}" .
+	$(CONTAINER_ENGINE) build -f Dockerfile.codegen -t "isovalent/tetragon-codegen:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
-	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-codegen:$(DOCKER_IMAGE_TAG)"
+	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/tetragon-codegen:$(DOCKER_IMAGE_TAG)"
 
 .PHONY: tools-install tools-clean libbpf-install clang-install
 tools-install: libbpf-install clang-install

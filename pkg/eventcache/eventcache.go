@@ -17,6 +17,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	codegen "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventcache"
+	codegenEnt "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventcacheenterprise"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/process"
@@ -59,7 +60,7 @@ type Cache struct {
 }
 
 func (ec *Cache) eventLabels(endpoint *v1.Endpoint, event *cacheObj) ([]string, error) {
-	labels, destinationIp := codegen.DoEventLabels(endpoint, event.event)
+	labels, destinationIp := codegenEnt.DoEventLabels(endpoint, event.event)
 	if destinationIp != nil {
 		return ec.dns.GetIp(*destinationIp)
 	}

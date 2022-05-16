@@ -1,13 +1,5 @@
-//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
-//
-//  NOTICE: All information contained herein is, and remains the property of
-//  Isovalent Inc and its suppliers, if any. The intellectual and technical
-//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
-//  and may be covered by U.S. and Foreign Patents, patents in process, and are
-//  protected by trade secret or copyright law.  Dissemination of this information
-//  or reproduction of this material is strictly forbidden unless prior written
-//  permission is obtained from Isovalent Inc.
-//
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Tetragon
 
 package filters
 
@@ -16,8 +8,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/common"
 	"github.com/iancoleman/strcase"
-	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-fgs/common"
 	"google.golang.org/protobuf/compiler/protogen"
 	"google.golang.org/protobuf/reflect/protoreflect"
 )
@@ -25,7 +17,7 @@ import (
 func generateOpCodeForEventType(g *protogen.GeneratedFile, f *protogen.File) error {
 	reflectType := common.GoIdent(g, "reflect", "Type")
 	reflectTypeOf := common.GoIdent(g, "reflect", "TypeOf")
-	fgsEventType := common.FgsApiIdent(g, "EventType")
+	tetragonEventType := common.TetragonApiIdent(g, "EventType")
 
 	enumIndex := -1
 	for i, enum := range f.Enums {
@@ -38,14 +30,14 @@ func generateOpCodeForEventType(g *protogen.GeneratedFile, f *protogen.File) err
 	}
 	enum := f.Enums[enumIndex]
 
-	g.P(`func OpCodeForEventType(eventType ` + fgsEventType + `) (` + reflectType + `, error) {
+	g.P(`func OpCodeForEventType(eventType ` + tetragonEventType + `) (` + reflectType + `, error) {
         var opCode ` + reflectType + `
         switch eventType {`)
 
 	for _, value := range enum.Values {
 		valueIdent := g.QualifiedGoIdent(value.GoIdent)
 		// skip over the UNDEF variant
-		if valueIdent == "fgs.EventType_UNDEF" {
+		if value.GoIdent.GoName == "EventType_UNDEF" {
 			continue
 		}
 
@@ -89,7 +81,7 @@ func eventTypeToResponse(g *protogen.GeneratedFile, f *protogen.File, eventType 
 		return "", nil
 	}
 
-	return common.FgsApiIdent(g, name), nil
+	return common.TetragonApiIdent(g, name), nil
 }
 
 // Generate generates boilerplate code for the filters

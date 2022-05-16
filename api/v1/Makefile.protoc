@@ -13,7 +13,7 @@ FGS_PROTOC_PLUGINS := \
 	--plugin=$(GOPATH)/bin/protoc-gen-go \
 	--plugin=$(GOPATH)/bin/protoc-gen-go-grpc \
 	--plugin=$(GOPATH)/bin/protoc-gen-go-json \
-	--plugin=$(GOPATH)/bin/protoc-gen-go-fgs \
+	--plugin=$(GOPATH)/bin/protoc-gen-go-tetragon \
 
 .PHONY: all
 all:
@@ -24,6 +24,6 @@ all:
 		--go_out=paths=source_relative:. \
 		--go-grpc_out=require_unimplemented_servers=false,paths=source_relative:. \
 		--go-json_out=orig_name=true,paths=source_relative:. \
-		--go-fgs_out=orig_name=true,paths=source_relative:. \
+		--go-tetragon_out=orig_name=true,paths=source_relative:. \
 		$${proto}; \
 	done

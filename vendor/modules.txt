@@ -103,6 +103,11 @@ github.com/cilium/hubble/pkg/servicecache
 github.com/cilium/lumberjack/v2
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
 ## explicit; go 1.17
+github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/common
+github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventcache
+github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/filters
+github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/generate
+github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/helpers
 github.com/cilium/tetragon/pkg/cilium
 github.com/cilium/tetragon/pkg/idtable
 github.com/cilium/tetragon/pkg/ksyms

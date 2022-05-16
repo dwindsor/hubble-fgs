@@ -1,7 +1,7 @@
 # Copyright 2017-2020 Authors of Cilium
 # SPDX-License-Identifier: Apache-2.0
 
-BUILDER_IMAGE=isovalent/hubble-fgs-codegen:latest
+BUILDER_IMAGE=isovalent/tetragon-codegen:latest
 
 .PHONY: all
 all: proto doc
