@@ -16,10 +16,10 @@ import (
 	"strings"
 	"sync"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/sirupsen/logrus"
 	"k8s.io/apimachinery/pkg/util/runtime"

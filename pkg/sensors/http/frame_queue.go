@@ -12,8 +12,8 @@
 package http
 
 import (
+	"github.com/cilium/tetragon/pkg/logger"
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 // http2FrameQueue implements in-order consumption of the HTTP/2

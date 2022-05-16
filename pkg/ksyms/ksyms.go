@@ -20,7 +20,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger"
 
 	lru "github.com/hashicorp/golang-lru"
 )

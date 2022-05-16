@@ -25,7 +25,7 @@ import (
 	"github.com/cilium/hubble/pkg/fqdncache"
 	"github.com/cilium/hubble/pkg/ipcache"
 	"github.com/cilium/hubble/pkg/servicecache"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger"
 )
 
 var (

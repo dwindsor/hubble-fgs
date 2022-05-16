@@ -25,8 +25,8 @@ import (
 	"syscall"
 
 	"github.com/cilium/ebpf/rlimit"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/defaults"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
 )
 

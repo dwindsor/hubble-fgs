@@ -14,9 +14,9 @@ import (
 	"fmt"
 	"io"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/dustin/go-humanize"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 )
 
 // EventEncoder is an interface for encoding fgs.GetEventsResponse.

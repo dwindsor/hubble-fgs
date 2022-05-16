@@ -15,6 +15,7 @@ import (
 	"sync"
 
 	"github.com/cilium/hubble/pkg/cilium"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
@@ -39,7 +40,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/test"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tracing"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"

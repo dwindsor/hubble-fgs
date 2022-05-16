@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -25,7 +26,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/defaults"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/vishvananda/netlink"

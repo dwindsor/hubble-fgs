@@ -19,10 +19,10 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/cmd/checkerpc/cli/flags"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/tests"
 	"github.com/sirupsen/logrus"
 	"github.com/spf13/viper"

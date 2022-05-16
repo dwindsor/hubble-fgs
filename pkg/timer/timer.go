@@ -14,7 +14,7 @@ import (
 	"sync"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger"
 )
 
 type PeriodicTimer struct {

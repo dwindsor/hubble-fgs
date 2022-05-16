@@ -18,8 +18,8 @@ import (
 	"context"
 	"sync"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/grpc/metadata"

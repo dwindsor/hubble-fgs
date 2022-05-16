@@ -16,7 +16,7 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"golang.org/x/time/rate"
 )

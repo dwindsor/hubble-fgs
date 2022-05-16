@@ -14,7 +14,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/ebpf"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger"
 )
 
 func ProgramBuilder(

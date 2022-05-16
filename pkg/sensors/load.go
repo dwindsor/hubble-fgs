@@ -19,11 +19,11 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/logger"
 	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/sirupsen/logrus"

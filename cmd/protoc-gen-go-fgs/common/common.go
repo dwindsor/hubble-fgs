@@ -62,7 +62,7 @@ func FgsApiIdent(g *protogen.GeneratedFile, name string) string {
 
 // Logger is a convenience helper that generates a call to logger.GetLogger()
 func Logger(g *protogen.GeneratedFile) string {
-	return fmt.Sprintf("%s()", GoIdent(g, "github.com/isovalent/hubble-fgs/pkg/logger", "GetLogger"))
+	return fmt.Sprintf("%s()", GoIdent(g, "github.com/cilium/tetragon/pkg/logger", "GetLogger"))
 }
 
 // FmtErrorf is a convenience helper that generates a call to fmt.Errorf

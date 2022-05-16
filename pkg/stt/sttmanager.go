@@ -13,8 +13,8 @@ package sttManager
 import (
 	"fmt"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	stt "github.com/isovalent/hubble-fgs/pkg/stacktracetree"
 )
 

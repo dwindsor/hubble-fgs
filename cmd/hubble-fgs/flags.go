@@ -13,7 +13,7 @@ package main
 import (
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/option"
 
 	"github.com/spf13/viper"

@@ -16,8 +16,8 @@ package eventcache
 import (
 	fmt "fmt"
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	logger "github.com/cilium/tetragon/pkg/logger"
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
-	logger "github.com/isovalent/hubble-fgs/pkg/logger"
 	podinfo "github.com/isovalent/hubble-fgs/pkg/podinfo"
 	process "github.com/isovalent/hubble-fgs/pkg/process"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"

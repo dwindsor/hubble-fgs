@@ -20,11 +20,11 @@ import (
 	"strings"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/helpers"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
-	"github.com/isovalent/hubble-fgs/pkg/logger"
 	readerdns "github.com/isovalent/hubble-fgs/pkg/reader/dns"
 	"github.com/isovalent/hubble-fgs/pkg/reader/exec"
 	"github.com/prometheus/client_golang/prometheus"

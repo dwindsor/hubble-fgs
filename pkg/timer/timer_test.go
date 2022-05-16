@@ -14,7 +14,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/logger"
+	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/stretchr/testify/assert"
 )
 
