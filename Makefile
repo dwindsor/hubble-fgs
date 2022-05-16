@@ -189,9 +189,13 @@ image-codegen:
 
 .PHONY: tools-install tools-clean libbpf-install clang-install
 tools-install: libbpf-install clang-install
+	make -C $(OSS_DIR) tools-install
+
 tools-clean:
 	rm -rf $(LIBBPF_INSTALL_DIR)
 	rm -rf $(CLANG_INSTALL_DIR)
+	make -C $(OSS_DIR) tools-clean
+
 libbpf-install:
 	$(eval id=$(shell docker create $(LIBBPF_IMAGE)))
 	mkdir -p $(LIBBPF_INSTALL_DIR)
