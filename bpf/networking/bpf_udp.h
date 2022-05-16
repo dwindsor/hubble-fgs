@@ -13,6 +13,9 @@
  * process info (should be much smaller that MAX_UDP_ENDPOINTS).
  */
 #define MAX_UDP_PAYLOADS 512
+/* The number of buckets in the related bloom map */
+#define UDP_BLOOM_BUCKETS  4096
+#define UDP_BLOOM_KEY_MASK 0xFFF
 
 struct udp_info_value {
 	u64 submitted_bytes;
@@ -127,6 +130,14 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_header_heap = {
 	.max_entries = 1,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used))
+udp_payload_bloom_map = {
+	.type = BPF_MAP_TYPE_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(u16) * UDP_BLOOM_BUCKETS,
+	.max_entries = 1,
+};
+
 static inline __attribute__((always_inline)) void
 emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 {
@@ -160,6 +171,63 @@ emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 	};
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	return;
+}
+
+static inline __attribute__((always_inline)) int
+lookup_udp_payload_bloom(u64 cookie)
+{
+	u16 *bloom;
+	int zero = 0;
+	u64 index;
+
+	bloom = map_lookup_elem(&udp_payload_bloom_map, &zero);
+	if (!bloom) {
+		/* If the bloom map can't be loaded, report that
+		 * the entry IS in it, to force the lookup
+		 */
+		return true;
+	}
+	index = cookie & UDP_BLOOM_KEY_MASK;
+
+	return bloom[index] != 0;
+}
+
+static inline __attribute__((always_inline)) void
+modify_udp_payload_bloom(u64 cookie, bool add)
+{
+	u16 *bloom;
+	int zero = 0;
+	u64 index;
+
+	bloom = map_lookup_elem(&udp_payload_bloom_map, &zero);
+	if (!bloom)
+		return;
+	index = cookie & UDP_BLOOM_KEY_MASK;
+
+	/* We technically shouldn't need these checks, but it
+	 * makes sense to ensure the bloom counts can't overflow.
+	 * Using __sync_fetch_and_add() here caused a SEGV in
+	 * clang, so this is a simple increment and decrement.
+	 * It is possible for a race to happen, but it should be
+	 * rare.
+	 */
+	if (add && bloom[index] < 0xFFFF) {
+		bloom[index] = bloom[index] + 1;
+	} else if (!add && bloom[index] > 0) {
+		bloom[index] = bloom[index] - 1;
+	}
+}
+
+static inline __attribute__((always_inline)) void
+add_to_udp_payload_bloom(u64 cookie)
+{
+	modify_udp_payload_bloom(cookie, true);
+}
+
+static inline __attribute__((always_inline)) void
+remove_from_udp_payload_bloom(u64 cookie)
+{
+	modify_udp_payload_bloom(cookie, false);
 }
 
 static inline __attribute__((always_inline)) struct msg_ipv4_udp_event *
@@ -262,6 +330,7 @@ store_udp_payload_event(void *ctx, void *skb_head, u64 *cookie,
 
 	if (map_update_elem(&udp_payload_map, cookie, val, 0) == 0) {
 		inc_udp_payload_map();
+		add_to_udp_payload_bloom(*cookie);
 	}
 }
 

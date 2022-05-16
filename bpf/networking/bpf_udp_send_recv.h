@@ -51,6 +51,20 @@ check_and_send_payload(void *ctx, u64 *cookie, struct udp_info_value *value)
 			    bpf_ntohs(value->dport)))
 		return;
 
+	/* Cheap lookup to see if the cookie is likely in the payload_map.
+	 * This returns true if a cookie with the same LSBs has been added
+	 * to the map, and false otherwise. False positives are possible
+	 * (and expected), but false negatives will never happen. Therefore,
+	 * sometimes we will look up in the real map when the cookie isn't
+	 * in there, but will save ourselves many look ups when the cookie
+	 * definitely isn't in there.
+	 * The only times the cookie shouldn't be in the map, after passing
+	 * the DNS ports check, is in kernels >=5.10 where the DNS payload
+	 * has already been transmitted by the stack programs.
+	 */
+	if (!lookup_udp_payload_bloom(*cookie))
+		return;
+
 	ev = map_lookup_elem(&udp_payload_map, cookie);
 	if (!ev)
 		return;
@@ -66,6 +80,7 @@ check_and_send_payload(void *ctx, u64 *cookie, struct udp_info_value *value)
 
 	if (map_delete_elem(&udp_payload_map, cookie) == 0) {
 		dec_udp_payload_map();
+		remove_from_udp_payload_bloom(*cookie);
 	}
 }
 

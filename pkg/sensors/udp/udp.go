@@ -47,6 +47,7 @@ const (
 	UdpConfigMapName       = "udp_config_map"
 	UdpPayloadMapName      = "udp_payload_map"
 	UdpPayloadMapStatsName = "udp_payload_map_stats"
+	UdpPayloadBloomMapName = "udp_payload_bloom_map"
 
 	stataCacheSize = 32000
 )
@@ -211,6 +212,9 @@ var (
 	UdpPayloadLazyMapStats       = sensors.MapBuilder(UdpPayloadMapStatsName, InetSendLazy)
 	UdpPayloadLazyMapKprobe      = sensors.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
 	UdpPayloadLazyMapStatsKprobe = sensors.MapBuilder(UdpPayloadMapStatsName, InetSendRecvLazy)
+	UdpPayloadBloomMap           = sensors.MapBuilder(UdpPayloadBloomMapName, InetSend)
+	UdpPayloadBloomMapLazy       = sensors.MapBuilder(UdpPayloadBloomMapName, InetSendLazy)
+	UdpPayloadBloomMapKprobe     = sensors.MapBuilder(UdpPayloadBloomMapName, InetSendRecvLazy)
 
 	// Burst and watermark maps
 	ProcessNetworkBurstMap           = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
@@ -588,6 +592,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpMapLazyKprobe,
 			UdpPayloadLazyMapKprobe,
 			UdpPayloadLazyMapStatsKprobe,
+			UdpPayloadBloomMapKprobe,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
@@ -611,6 +616,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpMapLazy,
 			UdpPayloadLazyMap,
 			UdpPayloadLazyMapStats,
+			UdpPayloadBloomMapLazy,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
@@ -635,6 +641,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpMap,
 			UdpPayloadMap,
 			UdpPayloadMapStats,
+			UdpPayloadBloomMap,
 		}
 		versionStr = "__udp_sensor_cgroup__"
 	}
