@@ -16,7 +16,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/cilium/tetragon/pkg/option"
 
 	"golang.org/x/sys/unix"
 )

@@ -14,7 +14,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/option"
+	"github.com/cilium/tetragon/pkg/option"
 
 	"github.com/spf13/viper"
 )

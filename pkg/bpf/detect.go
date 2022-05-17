@@ -65,8 +65,8 @@ bool detect_override_return_helper(bool verbose, int version)
 import "C"
 
 import (
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/kernels"
-	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 type Feature struct {
