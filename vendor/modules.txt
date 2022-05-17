@@ -104,6 +104,7 @@ github.com/cilium/lumberjack/v2
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
 ## explicit; go 1.17
 github.com/cilium/tetragon/pkg/cilium
+github.com/cilium/tetragon/pkg/idtable
 github.com/cilium/tetragon/pkg/ksyms
 github.com/cilium/tetragon/pkg/logger
 github.com/cilium/tetragon/pkg/option
