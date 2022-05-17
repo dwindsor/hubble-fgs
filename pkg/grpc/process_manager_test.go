@@ -21,9 +21,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/execAncestors"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"

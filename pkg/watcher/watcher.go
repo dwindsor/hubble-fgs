@@ -17,9 +17,9 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"google.golang.org/protobuf/types/known/timestamppb"
 	"google.golang.org/protobuf/types/known/wrapperspb"

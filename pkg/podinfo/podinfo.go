@@ -3,8 +3,8 @@ package podinfo
 import (
 	"net"
 
+	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 
 	coreV1 "k8s.io/api/core/v1"
 )

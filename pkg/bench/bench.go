@@ -24,6 +24,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -34,7 +35,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
-	"github.com/isovalent/hubble-fgs/pkg/cilium"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
