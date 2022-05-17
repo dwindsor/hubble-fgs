@@ -85,7 +85,8 @@ protoc-gen-go-fgs:
 
 .PHONY: ksyms
 ksyms:
-	$(GO) build ./cmd/ksyms/
+	make -C $(OSS_DIR) ksyms
+	cp $(OSS_DIR)/ksyms ksyms
 
 hubble-fgs-image:
 	GOOS=linux GOARCH=amd64 $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-fgs/
