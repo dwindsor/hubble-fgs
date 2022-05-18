@@ -169,7 +169,7 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 	struct udp_info_value *value;
 	int hasctx;
 	int ret = ctx->ax;
-	u64 *cookie;
+	u64 cookie;
 	int zero = 0;
 
 	if (ret < 0) {
@@ -181,24 +181,17 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 	if (!sock_info)
 		return 0;
 
-	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
+	cookie = (u64)sock_info->sk;
 	if (!cookie) {
 		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
 	}
-	write_cookie_from_sk(cookie, sock_info->sk, lazy);
-	if (!*cookie) {
-		map_delete_elem(&udp_retprobe_map, &pid_tgid);
-		return 0;
-	}
 
-	value = map_lookup_elem(&udp_map, cookie);
+	value = map_lookup_elem(&udp_map, &cookie);
 	if (!value) {
 		/* Entry was not created by the stack programs.
 		 * Create a new entry and update the socket map.
 		 */
-		int zero = 0;
-
 		value = map_lookup_elem(&udp_value_heap, &zero);
 		if (!value) {
 			map_delete_elem(&udp_retprobe_map, &pid_tgid);
@@ -223,25 +216,20 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 			emit_udp_connect_event(ctx, value);
 		}
 
-		map_update_elem(&udp_map, cookie, value, 0);
+		map_update_elem(&udp_map, &cookie, value, 0);
 	} else {
 		update_submitted_value(value, ret);
 		if (!value->pid) {
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
 				emit_udp_connect_event(ctx, value);
-				/* DNS payloads are only available in non-lazy kernels.
-				 * If there is a payload waiting, that means it was
-				 * generated before the cookie->process mapping existed.
-				 * Complete the process info and send it.
-				 */
 			}
 		}
-		check_and_send_payload(ctx, cookie, value);
+		check_and_send_payload(ctx, &cookie, value);
 	}
 
 	/* Ensure we have an up-to-date cookie->process mapping. */
-	update_cookie_proc_map(cookie, value->pid);
+	update_cookie_proc_map(&cookie, value->pid);
 
 	map_delete_elem(&udp_retprobe_map, &pid_tgid);
 	return 0;
@@ -321,9 +309,8 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 	struct udp_info *info;
 	int hasctx, zero = 0;
 	int len = 0;
-	struct sock *sk;
 	struct sk_buff *skb = (void *)ctx->ax;
-	u64 *cookie;
+	u64 cookie;
 
 	if (!skb) {
 		map_delete_elem(&udp_retprobe_map, &pid_tgid);
@@ -334,21 +321,14 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 	if (!sock_info)
 		return 0;
 
-	sk = sock_info->sk;
-
-	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
+	cookie = (u64)sock_info->sk;
 	if (!cookie) {
-		map_delete_elem(&udp_retprobe_map, &pid_tgid);
-		return 0;
-	}
-	write_cookie_from_sk(cookie, sk, lazy);
-	if (!*cookie) {
 		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
 	}
 
 	info = udp4_get_skb_info(skb, &len);
-	value = map_lookup_elem(&udp_map, cookie);
+	value = map_lookup_elem(&udp_map, &cookie);
 	if (!value) {
 		/* Entry was not created by the stack programs.
 		 * Create a new entry and update the socket map.
@@ -374,7 +354,7 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 		} else {
 			value->skb_consume_misses = 1;
 		}
-		map_update_elem(&udp_map, cookie, value, 0);
+		map_update_elem(&udp_map, &cookie, value, 0);
 	} else {
 		if (info) {
 			update_consumed_value(value, len);
@@ -393,18 +373,13 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 			hasctx = add_process_ctx(value);
 			if (hasctx) {
 				emit_udp_connect_event(ctx, value);
-				/* DNS payloads are only available in non-lazy kernels.
-				 * If there is a payload waiting, that means it was
-				 * generated before the cookie->process mapping existed.
-				 * Complete the process info and send it.
-				 */
 			}
 		}
-		check_and_send_payload(ctx, cookie, value);
+		check_and_send_payload(ctx, &cookie, value);
 	}
 	/* Ensure we have an up-to-date cookie->process mapping.
 	 */
-	update_cookie_proc_map(cookie, value->pid);
+	update_cookie_proc_map(&cookie, value->pid);
 
 	map_delete_elem(&udp_retprobe_map, &pid_tgid);
 	return 0;

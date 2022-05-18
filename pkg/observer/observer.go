@@ -268,6 +268,35 @@ type Observer struct {
 	tcpStatSegRate uint32
 }
 
+// Expose configuration settings of first observer with valid parameters
+// (they should be the same for all observers).
+func GetBpfDir() string {
+	for _, o := range observerList {
+		if o.bpfDir != "" {
+			return o.bpfDir
+		}
+	}
+	return ""
+}
+
+func GetMapDir() string {
+	for _, o := range observerList {
+		if o.mapDir != "" {
+			return o.mapDir
+		}
+	}
+	return ""
+}
+
+func GetCiliumDir() string {
+	for _, o := range observerList {
+		if o.ciliumDir != "" {
+			return o.ciliumDir
+		}
+	}
+	return ""
+}
+
 func (k *Observer) Start(ctx context.Context) error {
 	if err := sensors.LoadDefault(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
 		return err

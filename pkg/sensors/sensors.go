@@ -62,7 +62,6 @@ func GetDefaultMaps() []*Map {
 		)
 	}
 	return maps
-
 }
 
 // GetInitialSensor returns the collection of Sensor that is loaded at

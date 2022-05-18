@@ -48,6 +48,8 @@ const (
 	UdpPayloadMapName      = "udp_payload_map"
 	UdpPayloadMapStatsName = "udp_payload_map_stats"
 	UdpPayloadBloomMapName = "udp_payload_bloom_map"
+	SocketToProcMapName    = "socket_cookie_to_proc_map"
+	FdLookupConfigMapName  = "fd_lookup_config_map"
 
 	stataCacheSize = 32000
 )
@@ -188,8 +190,17 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
+	// Socket lookup program
+	FdLookup = sensors.ProgramBuilder(
+		"bpf_fd_lookup.o",
+		"check_kill_permission",
+		"kprobe/check_kill_permission",
+		"kprobe_check_kill_permission",
+		"kprobe",
+	)
+
 	// Shared socket cookie infrastructure
-	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", UdpSendLazy)
+	SocketCookieMap = sensors.MapBuilder(SocketToProcMapName, UdpSendLazy)
 
 	// UDP maps
 	UdpMap                       = sensors.MapBuilder(UdpMapName, InetSend)
@@ -221,6 +232,9 @@ var (
 	ProcessNetworkBurstMapLazy       = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendLazy)
 	ProcessNetworkBurstMapLazyKprobe = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendRecvLazy)
 	PNBurstMapStats                  = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstStatsMapName, sensors.Exit)
+
+	// Socket lookup config map
+	FdLookupConfigMap = sensors.MapBuilder(FdLookupConfigMapName, FdLookup)
 )
 
 type udpInfoKey struct {
@@ -573,6 +587,8 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	var maps []*sensors.Map
 	var versionStr string
 
+	loadSockets()
+
 	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
 		progs = []*sensors.Program{
 			SkAllocRetLazy,
@@ -583,7 +599,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetRecvLazy,
 		}
 		maps = []*sensors.Map{
-			SocketCookieMap,
 			UdpMapKprobeLazy,
 			UdpMapKprobeRecvLazy,
 			UdpRetprobeMapLazy,
@@ -607,7 +622,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetRecvLazy,
 		}
 		maps = []*sensors.Map{
-			SocketCookieMap,
 			UdpMapKprobeLazy,
 			UdpMapKprobeRecvLazy,
 			UdpRetprobeMapLazy,
@@ -632,7 +646,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRetRecv,
 		}
 		maps = []*sensors.Map{
-			SocketCookieMap,
 			UdpMapKprobe,
 			UdpMapKprobeRecv,
 			UdpRetprobeMap,
