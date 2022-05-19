@@ -3,6 +3,9 @@
 
 SHELL=/bin/bash # needed for the *.{o,ll,i,s} pattern in the clean target
 
+OSSDIR := ../modules/tetragon-oss
+OSSBPFDIR := $(OSSDIR)/bpf
+
 TLSDIR := parsers/tls/
 HTTPDIR := parsers/http/
 NOPDIR := parsers/nop/
@@ -10,7 +13,7 @@ PARSERDIR = parsers/
 ALIGNCHECKERDIR = alignchecker/
 NETWORKINGDIR := networking/
 PROCESSDIR := process/
-BPFTESTDIR := test/
+BPFTESTDIR := $(OSSBPFDIR)/test/
 
 ALIGNCHECKER = bpf_alignchecker.o
 PARSERS = bpf_sockops.o bpf_http.o bpf_http_verdict.o bpf_http_parser.o
