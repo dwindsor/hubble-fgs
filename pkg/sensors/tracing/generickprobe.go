@@ -804,6 +804,10 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Protocol = sock.Protocol
 			arg.Mark = sock.Mark
 			arg.Priority = sock.Priority
+			arg.Saddr = network.GetIP(sock.Daddr, 0).String()
+			arg.Daddr = network.GetIP(sock.Saddr, 0).String()
+			arg.Sport = uint32(network.SwapByte(sock.Sport))
+			arg.Dport = uint32(network.SwapByte(sock.Dport))
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericSizeType:
 			var output uint64

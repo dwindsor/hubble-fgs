@@ -87,6 +87,10 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 				Protocol: network.InetProtocol(e.Protocol),
 				Mark:     e.Mark,
 				Priority: e.Priority,
+				Saddr:    e.Saddr,
+				Daddr:    e.Daddr,
+				Sport:    e.Sport,
+				Dport:    e.Dport,
 			}
 			a.Arg = &fgs.KprobeArgument_SockArg{SockArg: sockArg}
 		case api.MsgGenericKprobeArgSkb:

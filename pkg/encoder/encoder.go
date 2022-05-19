@@ -285,6 +285,14 @@ func (p *CompactEncoder) eventToString(response *fgs.GetEventsResponse) (string,
 				netns = printNS(kprobe.Args[1].GetIntArg())
 			}
 			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, netns), caps), nil
+		case "tcp_connect":
+			event := p.colorer.blue.Sprintf("🔧 %-7s", "tcp_connect")
+			sock := ""
+			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
+				sa := kprobe.Args[0].GetSockArg()
+				sock = p.colorer.cyan.Sprintf("%s:%d -> %s:%d", sa.Saddr, sa.Sport, sa.Daddr, sa.Dport)
+			}
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, sock), caps), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
 			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), caps), nil

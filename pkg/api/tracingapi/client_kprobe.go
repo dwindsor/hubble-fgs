@@ -125,6 +125,10 @@ type MsgGenericKprobeSock struct {
 	Pad      uint16
 	Mark     uint32
 	Priority uint32
+	Saddr    uint32
+	Daddr    uint32
+	Sport    uint16
+	Dport    uint16
 }
 
 type MsgGenericKprobeArgSock struct {
@@ -134,6 +138,10 @@ type MsgGenericKprobeArgSock struct {
 	Protocol uint16
 	Mark     uint32
 	Priority uint32
+	Saddr    string
+	Daddr    string
+	Sport    uint32
+	Dport    uint32
 }
 
 func (m MsgGenericKprobeArgSock) GetIndex() uint64 {
