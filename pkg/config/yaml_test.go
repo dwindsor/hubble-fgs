@@ -23,8 +23,11 @@ import (
 	"testing"
 	"text/template"
 
-	"github.com/cilium/tetragon/pkg/logger"
+	oss "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+
+	"github.com/cilium/tetragon/pkg/logger"
+
 	"github.com/stretchr/testify/assert"
 )
 
@@ -99,12 +102,12 @@ var expectedWrite = GenericTracingConf{
 	ApiVersion: "hubble-enterprise.io/v1",
 	Metadata:   Metadata{Name: "sys_write"},
 	Spec: v1alpha1.TracingPolicySpec{
-		KProbes: []v1alpha1.KProbeSpec{
+		TracingPolicySpec: oss.TracingPolicySpec{KProbes: []oss.KProbeSpec{
 			{
 				Call:    "__x64_sys_write",
 				Return:  false,
 				Syscall: true,
-				Args: []v1alpha1.KProbeArg{
+				Args: []oss.KProbeArg{
 					{
 						Index: 0,
 						Type:  "int",
@@ -119,9 +122,9 @@ var expectedWrite = GenericTracingConf{
 						Type:  "size_t",
 					},
 				},
-				Selectors: []v1alpha1.KProbeSelector{
+				Selectors: []oss.KProbeSelector{
 					{
-						MatchPIDs: []v1alpha1.PIDSelector{
+						MatchPIDs: []oss.PIDSelector{
 							{
 								Operator:       "In",
 								Values:         []uint32{1},
@@ -129,14 +132,14 @@ var expectedWrite = GenericTracingConf{
 								IsNamespacePID: false,
 							},
 						},
-						MatchArgs: []v1alpha1.ArgSelector{
+						MatchArgs: []oss.ArgSelector{
 							{
 								Index:    0,
 								Operator: "equal",
 								Values:   []string{"1"},
 							},
 						},
-						MatchNamespaces: []v1alpha1.NamespaceSelector{
+						MatchNamespaces: []oss.NamespaceSelector{
 							{
 								Namespace: "Net",
 								Operator:  "In",
@@ -148,13 +151,13 @@ var expectedWrite = GenericTracingConf{
 								Values:    []string{"4026532099"},
 							},
 						},
-						MatchNamespaceChanges: []v1alpha1.NamespaceChangesSelector{
+						MatchNamespaceChanges: []oss.NamespaceChangesSelector{
 							{
 								Operator: "In",
 								Values:   []string{"Mnt", "Pid", "User", "Uts"},
 							},
 						},
-						MatchCapabilities: []v1alpha1.CapabilitiesSelector{
+						MatchCapabilities: []oss.CapabilitiesSelector{
 							{
 								Type:                  "Effective",
 								Operator:              "In",
@@ -168,7 +171,7 @@ var expectedWrite = GenericTracingConf{
 								Values:                []string{"CAP_SETPCAP", "CAP_SYS_ADMIN"},
 							},
 						},
-						MatchCapabilityChanges: []v1alpha1.CapabilitiesSelector{
+						MatchCapabilityChanges: []oss.CapabilitiesSelector{
 							{
 								Type:                  "Effective",
 								Operator:              "In",
@@ -178,7 +181,7 @@ var expectedWrite = GenericTracingConf{
 						},
 					},
 				},
-			},
+			}},
 		},
 	},
 }
@@ -261,12 +264,12 @@ var expectedData = GenericTracingConf{
 	ApiVersion: "hubble-enterprise.io/v1",
 	Metadata:   Metadata{Name: "sys_write"},
 	Spec: v1alpha1.TracingPolicySpec{
-		KProbes: []v1alpha1.KProbeSpec{
+		TracingPolicySpec: oss.TracingPolicySpec{KProbes: []oss.KProbeSpec{
 			{
 				Call:    "example_func",
 				Return:  true,
 				Syscall: true,
-				Args: []v1alpha1.KProbeArg{
+				Args: []oss.KProbeArg{
 					{
 						Index: 0,
 						Type:  "int",
@@ -293,7 +296,7 @@ var expectedData = GenericTracingConf{
 				Call:    "another_func",
 				Return:  false,
 				Syscall: false,
-				Args: []v1alpha1.KProbeArg{
+				Args: []oss.KProbeArg{
 					{
 						Index: 0,
 						Type:  "string",
@@ -311,9 +314,9 @@ var expectedData = GenericTracingConf{
 						Type:  "string",
 					},
 				},
-				Selectors: []v1alpha1.KProbeSelector{
+				Selectors: []oss.KProbeSelector{
 					{
-						MatchPIDs: []v1alpha1.PIDSelector{
+						MatchPIDs: []oss.PIDSelector{
 							{
 								Operator:       "In",
 								Values:         []uint32{1, 2},
@@ -321,7 +324,7 @@ var expectedData = GenericTracingConf{
 								IsNamespacePID: false,
 							},
 						},
-						MatchArgs: []v1alpha1.ArgSelector{
+						MatchArgs: []oss.ArgSelector{
 							{
 								Index:    0,
 								Operator: "equal",
@@ -333,20 +336,20 @@ var expectedData = GenericTracingConf{
 								Values:   []string{"world"},
 							},
 						},
-						MatchNamespaces: []v1alpha1.NamespaceSelector{
+						MatchNamespaces: []oss.NamespaceSelector{
 							{
 								Namespace: "Pid",
 								Operator:  "In",
 								Values:    []string{"4026532024"},
 							},
 						},
-						MatchNamespaceChanges: []v1alpha1.NamespaceChangesSelector{
+						MatchNamespaceChanges: []oss.NamespaceChangesSelector{
 							{
 								Operator: "In",
 								Values:   []string{"Mnt", "Pid", "Net"},
 							},
 						},
-						MatchCapabilities: []v1alpha1.CapabilitiesSelector{
+						MatchCapabilities: []oss.CapabilitiesSelector{
 							{
 								Type:                  "Effective",
 								Operator:              "In",
@@ -354,7 +357,7 @@ var expectedData = GenericTracingConf{
 								Values:                []string{"CAP_SYS_ADMIN"},
 							},
 						},
-						MatchCapabilityChanges: []v1alpha1.CapabilitiesSelector{
+						MatchCapabilityChanges: []oss.CapabilitiesSelector{
 							{
 								Type:                  "Effective",
 								Operator:              "In",
@@ -364,7 +367,7 @@ var expectedData = GenericTracingConf{
 						},
 					},
 				},
-			},
+			}},
 		},
 	},
 }
@@ -398,15 +401,15 @@ func TestYamlLseek(t *testing.T) {
 		ApiVersion: "hubble-enterprise.io/v1",
 		Metadata:   Metadata{Name: "tracepoint-lseek"},
 		Spec: v1alpha1.TracingPolicySpec{
-			Tracepoints: []v1alpha1.TracepointSpec{{
+			TracingPolicySpec: oss.TracingPolicySpec{Tracepoints: []oss.TracepointSpec{{
 				Subsystem: "syscalls",
 				Event:     "sys_enter_lseek",
-				Args: []v1alpha1.KProbeArg{
+				Args: []oss.KProbeArg{
 					{Index: 7},
 					{Index: 5},
 				},
-				Selectors: []v1alpha1.KProbeSelector{{
-					MatchPIDs: []v1alpha1.PIDSelector{
+				Selectors: []oss.KProbeSelector{{
+					MatchPIDs: []oss.PIDSelector{
 						{
 							Operator:       "eq",
 							FollowForks:    true,
@@ -414,7 +417,7 @@ func TestYamlLseek(t *testing.T) {
 							Values:         []uint32{1111},
 						},
 					},
-					MatchArgs: []v1alpha1.ArgSelector{
+					MatchArgs: []oss.ArgSelector{
 						{
 							Index:    7,
 							Operator: "eq",
@@ -422,46 +425,11 @@ func TestYamlLseek(t *testing.T) {
 						},
 					},
 				}},
-			}},
+			}}},
 		},
 	}
 
 	k, err := ReadConfigYaml(lseekExample)
-	if err != nil {
-		t.Errorf("ReadConfigYaml failed: %s", err)
-	}
-
-	if reflect.DeepEqual(expected, *k) != true {
-		t.Errorf("\ngot:\n%+v\nexpected:\n%+v", *k, expected)
-	}
-}
-
-var (
-	tlsExample = `
-apiVersion: hubble-enterprise.io/v1
-metadata:
-  name: "tls-example"
-spec:
-  parser:
-    tls:
-      mode: "tc"
-`
-)
-
-func TestYamlTls(t *testing.T) {
-	expected := GenericTracingConf{
-		ApiVersion: "hubble-enterprise.io/v1",
-		Metadata:   Metadata{Name: "tls-example"},
-		Spec: v1alpha1.TracingPolicySpec{
-			Parser: v1alpha1.ParserPolicySpec{
-				Tls: v1alpha1.TlsSpec{
-					Mode: "tc",
-				},
-			},
-		},
-	}
-
-	k, err := ReadConfigYaml(tlsExample)
 	if err != nil {
 		t.Errorf("ReadConfigYaml failed: %s", err)
 	}

@@ -124,6 +124,8 @@ github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/filters
 github.com/cilium/tetragon/pkg/generictypes
 github.com/cilium/tetragon/pkg/idtable
+github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
+github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/version
 github.com/cilium/tetragon/pkg/kernels
 github.com/cilium/tetragon/pkg/ksyms

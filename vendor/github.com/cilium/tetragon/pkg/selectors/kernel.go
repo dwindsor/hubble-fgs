@@ -1,13 +1,5 @@
-//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
-//
-//  NOTICE: All information contained herein is, and remains the property of
-//  Isovalent Inc and its suppliers, if any. The intellectual and technical
-//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
-//  and may be covered by U.S. and Foreign Patents, patents in process, and are
-//  protected by trade secret or copyright law.  Dissemination of this information
-//  or reproduction of this material is strictly forbidden unless prior written
-//  permission is obtained from Isovalent Inc.
-//
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Tetragon
 
 package selectors
 
@@ -17,12 +9,11 @@ import (
 	"strconv"
 	"strings"
 
-	v1alpha1 "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/path"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 )
 
 const (
@@ -277,14 +268,26 @@ func parseMatchValues(k *KernelSelectorState, values []string, ty uint32) error 
 			value, size := ArgSelectorValue(v)
 			WriteSelectorUint32(k, size)
 			WriteSelectorByteArray(k, value, size)
-		case argTypeU32, argTypeS32, argTypeInt, argTypeSizet:
-			i, err := strconv.ParseInt(v, 10, 64)
+		case argTypeS32, argTypeInt, argTypeSizet:
+			i, err := strconv.ParseInt(v, 10, 32)
+			if err != nil {
+				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+			}
+			WriteSelectorInt32(k, int32(i))
+		case argTypeU32:
+			i, err := strconv.ParseUint(v, 10, 32)
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
 			}
 			WriteSelectorUint32(k, uint32(i))
-		case argTypeU64, argTypeS64:
+		case argTypeS64:
 			i, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+			}
+			WriteSelectorInt64(k, int64(i))
+		case argTypeU64:
+			i, err := strconv.ParseUint(v, 10, 64)
 			if err != nil {
 				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
 			}
@@ -506,7 +509,7 @@ func parseMatchCaps(k *KernelSelectorState, action *v1alpha1.CapabilitiesSelecto
 	caps := uint64(0)
 	for _, v := range action.Values {
 		valstr := strings.ToUpper(v)
-		c, ok := fgs.CapabilitiesType_value[valstr]
+		c, ok := tetragon.CapabilitiesType_value[valstr]
 		if !ok {
 			return fmt.Errorf("parseMatchCapability: value %s unknown", valstr)
 		}
