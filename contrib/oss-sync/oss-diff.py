@@ -71,6 +71,8 @@ def check_go_code(conf):
 def check_bpf_code(conf):
     def print_common_files(dcmp):
         for name in dcmp.common_files:
+            if not (name.endswith('.c') or name.endswith('.h')):
+                continue
             oss_f = os.path.join(dcmp.left, name)
             ent_f = os.path.join(dcmp.right, name)
             args = ("diff", "-rNu", ent_f,  oss_f)
@@ -85,8 +87,9 @@ def check_bpf_code(conf):
             p.wait()
         for sub_dcmp in dcmp.subdirs.values():
             print_common_files(sub_dcmp)
-    oss_dir = os.path.join(oss_path, "bpf")
-    ent_dir = os.path.join(ent_path, "bpf")
+    xdir = conf.bpfdir
+    oss_dir = os.path.join(oss_path, xdir)
+    ent_dir = os.path.join(ent_path, xdir)
     dcmp = fc.dircmp(oss_dir, ent_dir, ignore=['Makefile',])
     print_common_files(dcmp)
     #diff.report_full_closure()
@@ -94,6 +97,7 @@ def check_bpf_code(conf):
 if __name__ == "__main__":
     parser = ap.ArgumentParser()
     parser.add_argument('--bpfcode', help='check bpf code', action='store_true')
+    parser.add_argument('--bpfdir', help='bpf directory', nargs='?', default="./bpf")
     parser.add_argument('--gocode', help='check go code', action='store_true')
     parser.add_argument('--gopkg', default=None, nargs='?', help='specify go package')
     parser.add_argument('--no-diff', action='store_true')
