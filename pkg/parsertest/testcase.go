@@ -17,6 +17,7 @@ import (
 	"fmt"
 	"io"
 	"path"
+	"reflect"
 	"sort"
 	"strings"
 	"text/scanner"
@@ -25,6 +26,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/yalue/native_endian"
+)
+
+const (
+	maxEventsToSearch = 25
 )
 
 //
@@ -114,25 +119,36 @@ type TestStepEvent struct {
 }
 
 func (e *TestStepEvent) Exec(ctx *TestContext) *TestStepError {
-	event, ok := ctx.waitForEvent(e.Op)
-	if !ok {
-		return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on op %d event channel", e.Op)}
-	}
-	r := bytes.NewReader(event)
-	ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
-	for _, m := range e.Matchers {
-		_, err := m.Match(ctx, r)
-		if err != nil {
-			return &TestStepError{m.Position, "match", err}
+	failedEvents := 0
+NEXTEVENT:
+	for {
+		event, ok := ctx.waitForEvent(e.Op)
+		if !ok {
+			return &TestStepError{e.Position, "waitForEvent", fmt.Errorf("EOF on op %d event channel", e.Op)}
 		}
-	}
+		r := bytes.NewReader(event)
+		ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
+		for _, m := range e.Matchers {
+			_, err := m.Match(ctx, r)
+			//ctx.t.Logf("m.Matcher is of type: '%s'", reflect.TypeOf(m.Matcher).String())
+			if err != nil {
+				if reflect.TypeOf(m.Matcher).String() == "parsertest.ConnAddrMatcher" {
+					ctx.t.Logf("ConnAddrMatcher failed!")
+					failedEvents++
+					if failedEvents == maxEventsToSearch {
+						return &TestStepError{m.Position, "match", err}
+					}
+					continue NEXTEVENT
+				}
+			}
+		}
 
-	n, _ := io.Copy(io.Discard, r)
-	if n != 0 {
-		return &TestStepError{e.Position, "match", fmt.Errorf("%d unmatched bytes remain", n)}
+		n, _ := io.Copy(io.Discard, r)
+		if n != 0 {
+			return &TestStepError{e.Position, "match", fmt.Errorf("%d unmatched bytes remain", n)}
+		}
+		return nil
 	}
-
-	return nil
 }
 
 //
