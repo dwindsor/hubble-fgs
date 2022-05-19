@@ -2,7 +2,7 @@
 
 #include "include/vmlinux.h"
 #include "include/api.h"
-#include "lib/hubble_msg.h"
+#include "hubble_msg.h"
 #include "parsers/http/http.h"
 
 /* DECLARE declares a unique usage of the union or struct 'x' on the stack.
