@@ -1,6 +1,7 @@
 #include "vmlinux.h"
 
 #include "api.h"
+#include "iso_msg_types.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "cookie.h"
@@ -52,7 +53,7 @@ event_tcp4_connect(struct pt_regs *ctx)
 	probe_read(&dport, sizeof(dport), _(&(skp->__sk_common.skc_dport)));
 
 	*val = (struct msg_ipv4_event){
-		.common.op = MSG_OP_IPV4_TCPCONNECTRET,
+		.common.op = ISO_MSG_OP_IPV4_TCPCONNECTRET,
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ipv4_event),
 		.tuple.saddr = saddr,

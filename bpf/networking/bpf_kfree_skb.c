@@ -1,7 +1,7 @@
 #include "vmlinux.h"
 
 #include "api.h"
-#include "hubble_msg.h"
+#include "iso_msg_types.h"
 #include "bpf_events.h"
 #include "networkmsg.h"
 
@@ -78,7 +78,7 @@ event_kfree_skb(struct pt_regs *ctx)
 		return 1;
 
 	// TODO: fill the common part with process info/timestamp/etc.
-	msg.common.op = MSG_OP_KFREE_SKB;
+	msg.common.op = ISO_MSG_OP_KFREE_SKB;
 	msg.calltrace.ret = get_stack(ctx, &msg.calltrace.stack,
 				      sizeof(msg.calltrace.stack), 0);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, &msg,

@@ -78,7 +78,7 @@ event_tcp4_close(struct pt_regs *ctx)
 	if (state == TCP_CLOSE) {
 		process = lookup_socketmap(&tuple);
 		if (process) {
-			val->common.op = MSG_OP_IPV4_TCPCLOSE;
+			val->common.op = ISO_MSG_OP_IPV4_TCPCLOSE;
 			val->key.pid = process->key.pid;
 			val->key.ktime = process->key.ktime;
 			val->socket_flags = process->socket_flags;
@@ -113,7 +113,7 @@ event_tcp4_close(struct pt_regs *ctx)
 		if (process) {
 			struct socketmap_value copy = *process;
 
-			val->common.op = MSG_OP_IPV4_TCPACCEPT;
+			val->common.op = ISO_MSG_OP_IPV4_TCPACCEPT;
 			val->key.pid = copy.key.pid;
 			val->key.ktime = copy.key.ktime;
 			size = sizeof(struct msg_ipv4_event);

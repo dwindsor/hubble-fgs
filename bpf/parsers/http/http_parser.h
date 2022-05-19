@@ -11,6 +11,7 @@
 #ifndef _HTTP_PARSER_
 #define _HTTP_PARSER_
 
+#include "iso_msg_types.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "../bpf_sockops.h"
@@ -682,7 +683,7 @@ post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key,
 	}
 
 	http->common.ktime = ktime_get_ns();
-	http->common.op = MSG_OP_HTTP;
+	http->common.op = ISO_MSG_OP_HTTP;
 	http->common.size = sizeof(struct __msg_http_event);
 	http->tuple = *key;
 	http->tuple.remaining = remaining;

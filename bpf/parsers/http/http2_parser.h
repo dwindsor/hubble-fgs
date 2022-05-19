@@ -249,7 +249,7 @@ post_http2_event(ctx_md *msg, struct msg_tls_ipv4 *key,
 	}
 
 	event->common.ktime = ktime_get_ns();
-	event->common.op = MSG_OP_HTTP;
+	event->common.op = ISO_MSG_OP_HTTP;
 	event->common.size = sizeof(struct __msg_http_event);
 	event->tuple = *key;
 	/* NOTE(JM): This workarounds a weird llc bug related to struct packing.

@@ -1,7 +1,7 @@
 #ifndef __BPF_UDP_H__
 #define __BPF_UDP_H__
 
-#include "../lib/bpf_helpers.h"
+#include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 
 /* Maximum number of simultaniously existing UDP sockets that we track
@@ -246,7 +246,7 @@ create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 	*size = payload_size + sizeof(struct msg_ipv4_event) + 1;
 
 	val->event = (struct msg_ipv4_event){
-		.common.op = MSG_OP_IPV4_UDPPAYLOAD,
+		.common.op = ISO_MSG_OP_IPV4_UDPPAYLOAD,
 		.common.size = *size,
 		.common.ktime = ktime_get_ns(),
 		.key.pid = v->pid,
@@ -337,7 +337,7 @@ store_udp_payload_event(void *ctx, void *skb_head, u64 *cookie,
 static inline __attribute__((always_inline)) void
 emit_udp_connect_event(void *ctx, struct udp_info_value *v)
 {
-	emit_udp_event(ctx, MSG_OP_IPV4_UDPCONNECT, v);
+	emit_udp_event(ctx, ISO_MSG_OP_IPV4_UDPCONNECT, v);
 }
 
 static inline __attribute__((always_inline)) void

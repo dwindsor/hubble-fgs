@@ -15,7 +15,7 @@ egress_post_event(ctx_md *ctx, struct msg_tls_ipv4 *key,
 		  struct msg_tls_event *post)
 {
 	post->tuple = *key;
-	post->common.op = MSG_OP_TLS;
+	post->common.op = ISO_MSG_OP_TLS;
 	post->common.size = sizeof(struct msg_tls_event);
 	post->common.ktime = ktime_get_ns();
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, post,

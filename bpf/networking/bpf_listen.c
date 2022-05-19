@@ -1,7 +1,7 @@
 #include "vmlinux.h"
 
 #include "api.h"
-#include "hubble_msg.h"
+#include "iso_msg_types.h"
 #include "bpf_events.h"
 #include "cookie.h"
 #include "netns.h"
@@ -49,7 +49,7 @@ event_sys_listen(struct pt_regs *ctx)
 	*val = (struct msg_ipv4_event){
 		.tuple.saddr = saddr,
 		.tuple.sport = sport,
-		.common.op = MSG_OP_IPV4_LISTEN,
+		.common.op = ISO_MSG_OP_IPV4_LISTEN,
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ipv4_event),
 		.key.pid = pid,

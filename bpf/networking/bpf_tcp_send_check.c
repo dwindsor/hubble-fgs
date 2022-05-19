@@ -103,7 +103,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 			goto out;
 
 		*val = (struct msg_ipv4_event){
-			.common.op = MSG_OP_IPV4_TCPSTATS,
+			.common.op = ISO_MSG_OP_IPV4_TCPSTATS,
 			.common.size = sizeof(struct msg_ipv4_event),
 			.common.ktime = current_time_ns,
 

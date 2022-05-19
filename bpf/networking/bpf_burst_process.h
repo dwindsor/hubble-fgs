@@ -3,6 +3,7 @@
 
 #include "../lib/bpf_helpers.h"
 #include "../lib/networkmsg.h"
+#include "../lib/iso_msg_types.h"
 
 #define MAX_UDP_PROCESSES 32768
 
@@ -121,7 +122,7 @@ process_burst_map_delete(void *ctx, __u32 pid)
 	if (val && process) {
 		// Complete common event details.
 		*val = (struct msg_process_network_burst_event){
-			.common.op = MSG_OP_IPV4_PROCESS_BURST,
+			.common.op = ISO_MSG_OP_IPV4_PROCESS_BURST,
 			.common.size =
 				sizeof(struct msg_process_network_burst_event),
 			.common.ktime = ktime_get_ns(),
@@ -301,7 +302,7 @@ process_network_burst(void *ctx, struct execve_map_value *process, u64 protocol,
 			return;
 
 		*val = (struct msg_process_network_burst_event){
-			.common.op = MSG_OP_IPV4_PROCESS_BURST,
+			.common.op = ISO_MSG_OP_IPV4_PROCESS_BURST,
 			.common.size =
 				sizeof(struct msg_process_network_burst_event),
 			.common.ktime = current_time_ns,

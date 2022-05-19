@@ -1,7 +1,7 @@
 #ifndef __HUBBLE_MSG_
 #define __HUBBLE_MSG_
 
-#include "msg_types.h"
+#include "../modules/tetragon-oss/bpf/lib/msg_types.h"
 #include "common.h"
 #include "process.h"
 #include "bpf_helpers.h"

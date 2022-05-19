@@ -126,7 +126,7 @@ bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
 		goto fail;
 	}
 
-	event->op = MSG_OP_TLS_CONT;
+	event->op = ISO_MSG_OP_TLS_CONT;
 	event->tuple = *key;
 	event->payload_size = end_offset - offset;
 
@@ -139,7 +139,7 @@ fail:
 	if (!event)
 		return TLS_PARSE_ERROR;
 
-	event->op = MSG_OP_TLS_CONT;
+	event->op = ISO_MSG_OP_TLS_CONT;
 	event->tuple = *key;
 	event->payload_size = 0;
 
@@ -204,7 +204,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key,
 			post->serverhello.flags |= TLS_CERT;
 
 		post->tuple = *key;
-		post->common.op = MSG_OP_TLS;
+		post->common.op = ISO_MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
 
