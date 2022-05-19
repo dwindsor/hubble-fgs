@@ -12,7 +12,8 @@ NOPDIR := parsers/nop/
 PARSERDIR = parsers/
 ALIGNCHECKERDIR = alignchecker/
 NETWORKINGDIR := networking/
-PROCESSDIR := process/
+ISOPROCESS := process/
+PROCESSDIR := $(OSSBPFDIR)/process/
 BPFTESTDIR := $(OSSBPFDIR)/test/
 
 ALIGNCHECKER = bpf_alignchecker.o
@@ -121,10 +122,14 @@ $(DEPSDIR)%.d: $(NETWORKINGDIR)%.c
 objs/%.ll: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
-objs/bpf_execve_event_v53.ll: process/bpf_execve_event.c
-objs/bpf_generic_kprobe_v53.ll: process/bpf_generic_kprobe.c
-objs/bpf_generic_retkprobe_v53.ll: process/bpf_generic_retkprobe.c
-objs/bpf_generic_tracepoint_v53.ll: process/bpf_generic_tracepoint.c
+# bpf_exit: special case because the enterprise version is different than OSS
+objs/bpf_exit.ll: $(ISOPROCESS)bpf_exit.c
+	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+objs/bpf_execve_event_v53.ll: $(PROCESSDIR)/bpf_execve_event.c
+objs/bpf_generic_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
+objs/bpf_generic_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
+objs/bpf_generic_tracepoint_v53.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
 
 objs/%_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
@@ -132,10 +137,10 @@ objs/%_v53.ll:
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
 
-deps/bpf_execve_event_v53.d: process/bpf_execve_event.c
-deps/bpf_generic_kprobe_v53.d: process/bpf_generic_kprobe.c
-deps/bpf_generic_retkprobe_v53.d: process/bpf_generic_retkprobe.c
-deps/bpf_generic_tracepoint_v53.d: process/bpf_generic_tracepoint.c
+deps/bpf_execve_event_v53.d: $(PROCESSDIR)/bpf_execve_event.c
+deps/bpf_generic_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
+deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
+deps/bpf_generic_tracepoint_v53.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
 
 $(DEPSDIR)%_v53.d:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
