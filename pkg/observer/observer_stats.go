@@ -18,7 +18,7 @@ import (
 	"time"
 	"unsafe"
 
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )

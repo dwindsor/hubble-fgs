@@ -9,7 +9,7 @@ import (
 	"time"
 
 	api "github.com/cilium/tetragon/pkg/api/processapi"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/stretchr/testify/assert"
 )

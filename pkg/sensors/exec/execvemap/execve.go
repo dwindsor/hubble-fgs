@@ -15,7 +15,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/bpf"
 )
 
 type ExecveKey struct {

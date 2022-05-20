@@ -19,7 +19,7 @@ import (
 	"testing"
 	"time"
 
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/stretchr/testify/assert"

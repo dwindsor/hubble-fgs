@@ -15,8 +15,8 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"golang.org/x/sys/unix"
 
@@ -27,7 +27,7 @@ import (
 )
 
 const (
-	fgsCgroupPath = "/run/hubble-fgs/cgroup2"
+	fgsCgroupPath = "/run/tetragon/cgroup2"
 
 	verifierLogBufferSize = 10 * 1024 * 1024 // 10MB
 )

@@ -6,8 +6,8 @@ import (
 	"time"
 	"unsafe"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/sirupsen/logrus"
 )
 

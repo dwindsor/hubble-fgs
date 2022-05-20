@@ -17,8 +17,8 @@ import (
 	"os"
 	"path"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/bpf"
 
 	"golang.org/x/sys/unix"
 )

@@ -19,7 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
 	"github.com/sirupsen/logrus"
 
-	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
+	loader "github.com/cilium/tetragon/pkg/bpf"
 )
 
 var (

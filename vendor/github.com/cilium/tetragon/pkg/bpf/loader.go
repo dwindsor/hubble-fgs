@@ -1,13 +1,5 @@
-//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
-//
-//  NOTICE: All information contained herein is, and remains the property of
-//  Isovalent Inc and its suppliers, if any. The intellectual and technical
-//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
-//  and may be covered by U.S. and Foreign Patents, patents in process, and are
-//  protected by trade secret or copyright law.  Dissemination of this information
-//  or reproduction of this material is strictly forbidden unless prior written
-//  permission is obtained from Isovalent Inc.
-//
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Tetragon
 
 //go:build linux
 // +build linux
@@ -423,7 +415,7 @@ void *generic_loader_args(
 	}
 
 	map_fd = bpf_map__fd(map_bpf);
-	printf("bpf fgs_kprobe_calls map and progs %s mapfd %d\n", __prog, map_fd);
+	printf("bpf tetragon_kprobe_calls map and progs %s mapfd %d\n", __prog, map_fd);
 	if (map_fd >= 0) {
 		for (i = 0; i < 11; i++) {
 			struct bpf_program *prog;
@@ -725,10 +717,10 @@ func AttachTCIngress(progFd int, linkName string, ingress bool) error {
 
 	if ingress {
 		parent = netlink.HANDLE_MIN_INGRESS
-		name = "fgs-ingress"
+		name = "tetragon-ingress"
 	} else {
 		parent = netlink.HANDLE_MIN_EGRESS
-		name = "fgs-egress"
+		name = "tetragon-egress"
 	}
 
 	filterAttrs := netlink.FilterAttrs{
