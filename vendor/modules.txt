@@ -147,9 +147,11 @@ github.com/cilium/tetragon/pkg/ratelimit
 github.com/cilium/tetragon/pkg/reader/dns
 github.com/cilium/tetragon/pkg/reader/exec
 github.com/cilium/tetragon/pkg/reader/ktime
+github.com/cilium/tetragon/pkg/reader/namespace
 github.com/cilium/tetragon/pkg/reader/node
 github.com/cilium/tetragon/pkg/reader/path
 github.com/cilium/tetragon/pkg/reader/proc
+github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint
 github.com/cilium/tetragon/pkg/vtuple

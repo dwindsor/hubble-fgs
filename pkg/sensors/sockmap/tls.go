@@ -11,8 +11,8 @@
 package sockmap
 
 import (
+	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 

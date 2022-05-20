@@ -12,8 +12,8 @@ package utils
 
 import (
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"github.com/isovalent/hubble-fgs/pkg/selectors"
 )
 
 // SkSkbParserRequired returns whether the underlying kernel requires skskb

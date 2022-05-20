@@ -22,11 +22,11 @@ import (
 	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/chunks"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
