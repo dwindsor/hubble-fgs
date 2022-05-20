@@ -108,6 +108,7 @@ github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventcache
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/filters
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/generate
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/helpers
+github.com/cilium/tetragon/pkg/api
 github.com/cilium/tetragon/pkg/api/calltraceapi
 github.com/cilium/tetragon/pkg/api/processapi
 github.com/cilium/tetragon/pkg/api/readyapi

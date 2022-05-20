@@ -4,8 +4,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/api/processapi"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 )
 
 func GetBinaryAbsolutePath(binary string, cwd string) string {

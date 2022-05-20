@@ -15,7 +15,7 @@ import (
 	"strings"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/cilium/tetragon/pkg/api"
 )
 
 func TestDecodeCommonFlags(t *testing.T) {

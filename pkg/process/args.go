@@ -4,7 +4,7 @@ import (
 	"bytes"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/cilium/tetragon/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/reader/path"
 )
 

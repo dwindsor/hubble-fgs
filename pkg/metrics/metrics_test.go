@@ -18,8 +18,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/api/processapi"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/prometheus/client_golang/prometheus/testutil"

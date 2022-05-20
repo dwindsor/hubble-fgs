@@ -3,7 +3,7 @@ package exec
 import (
 	"syscall"
 
-	"github.com/isovalent/hubble-fgs/pkg/api"
+	"github.com/cilium/tetragon/pkg/api"
 	"golang.org/x/sys/unix"
 )
 

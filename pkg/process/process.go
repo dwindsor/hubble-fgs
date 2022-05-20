@@ -20,13 +20,13 @@ import (
 
 	hubble "github.com/cilium/hubble/pkg/cilium"
 
+	"github.com/cilium/tetragon/pkg/api"
 	fgsAPI "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/exec"
