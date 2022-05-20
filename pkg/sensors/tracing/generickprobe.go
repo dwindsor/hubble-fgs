@@ -21,11 +21,11 @@ import (
 	"strconv"
 	"strings"
 
+	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/idtable"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	api "github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
