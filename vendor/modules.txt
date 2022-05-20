@@ -120,6 +120,7 @@ github.com/cilium/tetragon/pkg/ksyms
 github.com/cilium/tetragon/pkg/lock
 github.com/cilium/tetragon/pkg/logger
 github.com/cilium/tetragon/pkg/option
+github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint
 github.com/cilium/tetragon/pkg/vtuple
 github.com/cilium/tetragon/pkg/vtuplefilter
