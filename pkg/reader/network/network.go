@@ -5,10 +5,10 @@ import (
 	"net"
 	"syscall"
 
+	"github.com/cilium/tetragon/pkg/reader/ktime"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/reader/ktime"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
