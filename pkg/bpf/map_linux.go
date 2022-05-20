@@ -28,7 +28,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/cilium/pkg/byteorder"
-	"github.com/isovalent/hubble-fgs/pkg/lock"
+	"github.com/cilium/tetragon/pkg/lock"
 
 	"golang.org/x/sys/unix"
 )
