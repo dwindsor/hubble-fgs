@@ -3,11 +3,11 @@ package burst
 import (
 	"syscall"
 
+	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/ktime"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader/node"
 	"google.golang.org/protobuf/types/known/wrapperspb"
