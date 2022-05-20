@@ -120,6 +120,7 @@ github.com/cilium/tetragon/pkg/ksyms
 github.com/cilium/tetragon/pkg/ktime
 github.com/cilium/tetragon/pkg/lock
 github.com/cilium/tetragon/pkg/logger
+github.com/cilium/tetragon/pkg/mountinfo
 github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint

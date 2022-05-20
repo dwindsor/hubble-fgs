@@ -26,8 +26,8 @@ import (
 
 	"github.com/cilium/ebpf/rlimit"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/mountinfo"
 	"github.com/isovalent/hubble-fgs/pkg/defaults"
-	"github.com/isovalent/hubble-fgs/pkg/mountinfo"
 )
 
 var (
