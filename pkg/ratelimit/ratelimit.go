@@ -17,7 +17,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/node"
 	"golang.org/x/time/rate"
 )
 
