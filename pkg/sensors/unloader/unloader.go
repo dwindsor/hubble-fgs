@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package sensors
+package unloader
 
 import (
 	"fmt"
@@ -28,7 +28,7 @@ type Unloader interface {
 
 // chainUnloader is an unloader for multiple resources.
 // Useful when a loading operation needs to be unwinded due to an error.
-type chainUnloader []Unloader
+type ChainUnloader []Unloader
 
 type chainUnloaderErrors struct {
 	errors []error
@@ -42,7 +42,7 @@ func (cue chainUnloaderErrors) Error() string {
 	return strings.Join(strs, "; ")
 }
 
-func (cu chainUnloader) Unload() error {
+func (cu ChainUnloader) Unload() error {
 	var cue chainUnloaderErrors
 	for i := len(cu) - 1; i >= 0; i-- {
 		if err := (cu)[i].Unload(); err != nil {
@@ -55,50 +55,50 @@ func (cu chainUnloader) Unload() error {
 	return nil
 }
 
-// pinUnloader unpins and closes a BPF program.
-type pinUnloader struct {
-	prog *ebpf.Program
+// PinUnloader unpins and closes a BPF program.
+type PinUnloader struct {
+	Prog *ebpf.Program
 }
 
-func (pu pinUnloader) Unload() error {
-	defer pu.prog.Close()
-	return pu.prog.Unpin()
+func (pu PinUnloader) Unload() error {
+	defer pu.Prog.Close()
+	return pu.Prog.Unpin()
 }
 
 // rawDetachUnloader can be used to unload cgroup and sockmap programs.
-type rawDetachUnloader struct {
-	targetFD   int
-	name       string
-	prog       *ebpf.Program
-	attachType ebpf.AttachType
+type RawDetachUnloader struct {
+	TargetFD   int
+	Name       string
+	Prog       *ebpf.Program
+	AttachType ebpf.AttachType
 }
 
-func (rdu *rawDetachUnloader) Unload() error {
-	defer rdu.prog.Close()
+func (rdu *RawDetachUnloader) Unload() error {
+	defer rdu.Prog.Close()
 	err := link.RawDetachProgram(link.RawDetachProgramOptions{
-		Target:  rdu.targetFD,
-		Program: rdu.prog,
-		Attach:  rdu.attachType,
+		Target:  rdu.TargetFD,
+		Program: rdu.Prog,
+		Attach:  rdu.AttachType,
 	})
 	if err != nil {
-		return fmt.Errorf("failed to detach %s: %w", rdu.name, err)
+		return fmt.Errorf("failed to detach %s: %w", rdu.Name, err)
 	}
 	return nil
 }
 
-// tcUnloader unloads programs attached to TC filters
-type tcUnloader struct {
-	attachments []tcAttachment
+// TcUnloader unloads programs attached to TC filters
+type TcUnloader struct {
+	Attachments []TcAttachment
 }
 
-type tcAttachment struct {
-	linkName  string
-	isIngress bool
+type TcAttachment struct {
+	LinkName  string
+	IsIngress bool
 }
 
-func (tu tcUnloader) Unload() error {
-	for _, att := range tu.attachments {
-		if err := detachTC(att.linkName, att.isIngress); err != nil {
+func (tu TcUnloader) Unload() error {
+	for _, att := range tu.Attachments {
+		if err := detachTC(att.LinkName, att.IsIngress); err != nil {
 			return err
 		}
 	}

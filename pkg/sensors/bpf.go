@@ -15,6 +15,7 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/unloader"
 )
 
 func ProgramBuilder(
@@ -69,7 +70,7 @@ type Program struct {
 	LoaderData interface{}
 
 	// unloader for the program. nil if not loaded.
-	unloader Unloader
+	unloader unloader.Unloader
 }
 
 func (p *Program) SetRetProbe(ret bool) *Program {
