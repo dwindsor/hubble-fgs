@@ -129,12 +129,9 @@ test-compile:
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/grpc            -o go-tests/grpc.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/metrics         -o go-tests/metrics.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/stacktracetree  -o go-tests/stacktracetree.test
-	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/vtuplefilter    -o go-tests/vtuplefilter.test
-	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/tracepoint      -o go-tests/tracepoint.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/config          -o go-tests/config.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/sockmap -o go-tests/sockmap.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/parsertest      -o go-tests/parsertest.test
-	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/bpf             -o go-tests/bpf.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/btf             -o go-tests/btf.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/udp     -o go-tests/udp.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/tracing -o go-tests/tracing.test
