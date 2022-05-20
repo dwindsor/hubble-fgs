@@ -5,7 +5,7 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/api"
-	"github.com/isovalent/hubble-fgs/pkg/reader/path"
+	"github.com/cilium/tetragon/pkg/reader/path"
 )
 
 func argsDecoderTrim(r rune) bool {

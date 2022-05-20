@@ -18,10 +18,10 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/reader/path"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
-	"github.com/isovalent/hubble-fgs/pkg/reader/path"
 )
 
 const (
