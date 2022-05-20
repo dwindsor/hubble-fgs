@@ -20,7 +20,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/reader/proc"
+	"github.com/cilium/tetragon/pkg/reader/proc"
 )
 
 func stringToTCPEntry(s string) (*procTCPEntry, error) {
