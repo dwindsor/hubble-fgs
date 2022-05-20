@@ -1,7 +1,7 @@
 package kfreeapi
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/api/calltraceapi"
+	"github.com/cilium/tetragon/pkg/api/calltraceapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/vtuple"

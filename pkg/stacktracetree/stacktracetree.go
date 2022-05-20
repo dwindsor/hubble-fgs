@@ -16,8 +16,8 @@ import (
 	"log"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/api/calltraceapi"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api/calltraceapi"
 )
 
 // Addr is an Address on the stacktrace tree
