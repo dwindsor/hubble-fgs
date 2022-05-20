@@ -18,10 +18,10 @@ import (
 
 	"github.com/cilium/tetragon/pkg/api/calltraceapi"
 	"github.com/cilium/tetragon/pkg/vtuple"
+	"github.com/cilium/tetragon/pkg/vtuplefilter"
 	api "github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/vtuplefilter"
 )
 
 var (
