@@ -17,7 +17,7 @@ echo "diff between the two:" >> commit.msg
 ./contrib/oss-sync/oss-diff.py --gocode --gopkg ./$pkg >> commit.msg
 
 # replace imports
-git ls-files -- '*.go' ':!:vendor/*' | xargs sed -i "s:github.com/isovalent/hubble-fgs/$pkg\b:github.com/cilium/tetragon/$pkg:g"
+git ls-files -- '*.go' ':!:vendor/*' | xargs sed -i "s:github.com/isovalent/hubble-fgs/$pkg\":github.com/cilium/tetragon/$pkg\":g"
 
 # make linters happy (mostly to fix the proper import order)
 git ls-files -m -- '*.go' | xargs goimports -w
