@@ -265,7 +265,7 @@ spec:
       - namespace: Mnt
         operator: In
         values:
-        - ` + mntNsStr + `
+        - "` + mntNsStr + `"
       matchCapabilities:
       - type: Permitted
         operator: In
@@ -306,7 +306,7 @@ spec:
       - namespace: Mnt
         operator: In
         values:
-        - ` + mntNsStr + `
+        - "` + mntNsStr + `"
       matchCapabilities:
       - type: Permitted
         operator: In
@@ -441,7 +441,7 @@ spec:
       - index: 0
         operator: "Equal"
         values:
-        - ` + fdString
+        - "` + fdString + `"`
 
 	kpChecker := ec.NewKprobeChecker().
 		WithFunctionName("__x64_sys_read").
@@ -491,7 +491,7 @@ spec:
       - index: 0
         operator: "Equal"
         values:
-        - ` + fdString
+        - "` + fdString + `"`
 
 	kpChecker := ec.NewKprobeChecker().
 		WithFunctionName("__x64_sys_read").
@@ -1019,7 +1019,7 @@ spec:
       - index: 0
         operator: Equal
         values:
-        - 1
+        - "1"
 `
 	writeConfigHook := []byte(writeReadHook)
 	err := ioutil.WriteFile(testConfigFile, writeConfigHook, 0644)
@@ -1829,7 +1829,7 @@ spec:
       - index: 0
         operator: "Equal"
         values:
-        - ` + fmt.Sprint(fdw)
+        - "` + fmt.Sprint(fdw) + `"`
 
 	size := 4094
 	buffer := make([]byte, size)
@@ -1884,7 +1884,7 @@ spec:
       - index: 0
         operator: "Equal"
         values:
-        - ` + fmt.Sprint(fdw)
+        - "` + fmt.Sprint(fdw) + `"`
 
 	size := 5000
 	buffer := make([]byte, size)
@@ -1940,7 +1940,7 @@ spec:
       - index: 0
         operator: "Equal"
         values:
-        - ` + fmt.Sprint(fdr)
+        - "` + fmt.Sprint(fdr) + `"`
 
 	size := 4000
 	buffer := make([]byte, size)

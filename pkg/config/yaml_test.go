@@ -236,7 +236,7 @@ spec:
         - namespace: Pid
           operator: In
           values:
-          - 4026532024
+          - "4026532024"
         matchNamespaceChanges:
         - operator: In
           values:
