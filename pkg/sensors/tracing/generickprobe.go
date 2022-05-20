@@ -35,7 +35,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
-	gt "github.com/isovalent/hubble-fgs/pkg/generictypes"
+	gt "github.com/cilium/tetragon/pkg/generictypes"
 )
 
 type observerKprobeSensor struct {

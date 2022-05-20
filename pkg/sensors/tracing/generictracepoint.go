@@ -33,7 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/sirupsen/logrus"
 
-	gt "github.com/isovalent/hubble-fgs/pkg/generictypes"
+	gt "github.com/cilium/tetragon/pkg/generictypes"
 )
 
 const (
