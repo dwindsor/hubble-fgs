@@ -17,8 +17,8 @@ import (
 	"path/filepath"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 )
 
 const (

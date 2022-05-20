@@ -3,10 +3,10 @@ package execAncestors
 import (
 	"strings"
 
+	fgsAPI "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	fgsAPI "github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"github.com/isovalent/hubble-fgs/pkg/ktime"

@@ -3,7 +3,7 @@ package networkapi
 import (
 	"encoding/binary"
 
-	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/api/processapi"
 )
 
 // Socket Flags

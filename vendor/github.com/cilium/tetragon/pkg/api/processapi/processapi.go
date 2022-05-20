@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Tetragon
 package processapi
 
 const (
@@ -39,7 +41,7 @@ type MsgExecveKey struct {
 	Ktime uint64
 }
 
-// API between Kernel BPF and Userspace hubble-fgs Golang agent
+// API between Kernel BPF and Userspace tetragon Golang agent
 type MsgCommon struct {
 	Op uint8
 	// Flags is used to:
@@ -113,7 +115,7 @@ type MsgNamespaces struct {
 	UserInum      uint32
 }
 
-// API between Userspace hubble-fgs Golang agent and Unix domain socket listener
+// API between Userspace tetragon Golang agent and Unix domain socket listener
 type MsgProcess struct {
 	Size     uint32
 	PID      uint32

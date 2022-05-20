@@ -3,7 +3,7 @@ package tlsapi
 import (
 	"fmt"
 
-	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/api/processapi"
 )
 
 const (

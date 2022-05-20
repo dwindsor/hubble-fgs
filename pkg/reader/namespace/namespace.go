@@ -18,10 +18,10 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 )
 
 var hostNamespace *fgs.Namespaces

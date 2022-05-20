@@ -13,8 +13,8 @@ package execcache
 import (
 	"time"
 
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api/processapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/process"

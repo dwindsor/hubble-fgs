@@ -10,7 +10,7 @@
 
 package tracingapi
 
-import "github.com/isovalent/hubble-fgs/pkg/api/processapi"
+import "github.com/cilium/tetragon/pkg/api/processapi"
 
 const (
 	// 5 arguments + 1 return argument

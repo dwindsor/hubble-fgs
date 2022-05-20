@@ -1,6 +1,6 @@
 package testapi
 
-import "github.com/isovalent/hubble-fgs/pkg/api/processapi"
+import "github.com/cilium/tetragon/pkg/api/processapi"
 
 type MsgTestEvent struct {
 	Common processapi.MsgCommon `align:"common"`
