@@ -22,11 +22,11 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/api/readyapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
@@ -59,7 +59,7 @@ type raceListener struct {
 
 func (l *raceListener) Notify(msg interface{}) error {
 	switch msg.(type) {
-	case *readyapi.MsgFGSReady:
+	case *readyapi.MsgTETRAGONReady:
 		l.ready <- true
 	}
 	return nil

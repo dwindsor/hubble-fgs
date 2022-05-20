@@ -25,13 +25,13 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	"github.com/isovalent/hubble-fgs/pkg/api/readyapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
@@ -142,7 +142,7 @@ type benchmarkListener struct {
 
 func (bl *benchmarkListener) Notify(msg interface{}) error {
 	switch msg.(type) {
-	case *readyapi.MsgFGSReady:
+	case *readyapi.MsgTETRAGONReady:
 		bl.ready <- true
 
 	case *tlsapi.MsgTLSEventUnix:

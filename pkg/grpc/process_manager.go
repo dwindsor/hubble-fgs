@@ -16,13 +16,13 @@ import (
 
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	"github.com/isovalent/hubble-fgs/pkg/api/readyapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/testapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tracingapi"
@@ -135,7 +135,7 @@ func NewProcessManager(
 func (pm *ProcessManager) Notify(event interface{}) error {
 	var processedEvent *fgs.GetEventsResponse
 	switch msg := event.(type) {
-	case *readyapi.MsgFGSReady:
+	case *readyapi.MsgTETRAGONReady:
 		// pass
 	case *tlsapi.MsgTLSEventUnix:
 		processedEvent = tlsGrpc.HandleMessage(msg)
