@@ -4,8 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	api "github.com/cilium/tetragon/pkg/api/testapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	api "github.com/isovalent/hubble-fgs/pkg/api/testapi"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 )
 
