@@ -13,7 +13,7 @@ package vtuplefilter
 import (
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/vtuple"
+	"github.com/cilium/tetragon/pkg/vtuple"
 )
 
 type VTRes struct {

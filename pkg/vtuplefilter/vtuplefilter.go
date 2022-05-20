@@ -17,7 +17,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/vtuple"
+	"github.com/cilium/tetragon/pkg/vtuple"
 )
 
 type Port = uint16

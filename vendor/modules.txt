@@ -120,6 +120,7 @@ github.com/cilium/tetragon/pkg/ksyms
 github.com/cilium/tetragon/pkg/lock
 github.com/cilium/tetragon/pkg/logger
 github.com/cilium/tetragon/pkg/option
+github.com/cilium/tetragon/pkg/vtuple
 # github.com/containerd/containerd v1.6.2
 ## explicit; go 1.17
 github.com/containerd/containerd/errdefs
