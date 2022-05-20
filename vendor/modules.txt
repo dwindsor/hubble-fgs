@@ -127,6 +127,7 @@ github.com/cilium/tetragon/pkg/lock
 github.com/cilium/tetragon/pkg/logger
 github.com/cilium/tetragon/pkg/mountinfo
 github.com/cilium/tetragon/pkg/option
+github.com/cilium/tetragon/pkg/ratelimit
 github.com/cilium/tetragon/pkg/reader/dns
 github.com/cilium/tetragon/pkg/reader/ktime
 github.com/cilium/tetragon/pkg/reader/node

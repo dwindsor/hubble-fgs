@@ -20,9 +20,9 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/ratelimit"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/stretchr/testify/assert"
