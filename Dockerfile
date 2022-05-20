@@ -43,7 +43,7 @@ FROM docker.io/library/alpine:3.15.4@sha256:a777c9c66ba177ccfea23f2a216ff6721e78
 RUN apk add iproute2
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
-    mkdir /var/run/hubble-fgs/ && \
+    mkdir /var/run/tetragon/ && \
     mkdir libs		       && \
     apk add --no-cache --update bash
 COPY --from=bpftool-builder /src/linux/tools/bpf/bpftool/bpftool /usr/bin/bpftool

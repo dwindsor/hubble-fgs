@@ -22,7 +22,7 @@ RUN make fgs-bench-image parsertest-image
 FROM docker.io/library/alpine:3.12
 RUN addgroup hubble	       && \
     mkdir /var/lib/hubble-fgs/ && \
-    mkdir /var/run/hubble-fgs/ && \
+    mkdir /var/run/tetragon/   && \
     mkdir libs		       && \
     apk add --no-cache --update bash curl jq strace
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/fgs-bench /usr/bin/

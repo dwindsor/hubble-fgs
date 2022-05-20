@@ -114,6 +114,7 @@ github.com/cilium/tetragon/pkg/api/readyapi
 github.com/cilium/tetragon/pkg/api/testapi
 github.com/cilium/tetragon/pkg/api/tracingapi
 github.com/cilium/tetragon/pkg/cilium
+github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/generictypes
 github.com/cilium/tetragon/pkg/idtable
 github.com/cilium/tetragon/pkg/k8s/version

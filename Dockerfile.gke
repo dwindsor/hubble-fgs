@@ -10,7 +10,7 @@ COPY . ./
 RUN make hubble-fgs-image
 
 FROM docker.io/library/alpine:3.12
-RUN addgroup hubble && mkdir /var/lib/hubble-fgs/ && mkdir /var/run/hubble-fgs/ \
+RUN addgroup hubble && mkdir /var/lib/hubble-fgs/ && mkdir /var/run/tetragon/ \
  && apk add --no-cache bash curl jq
 COPY --from=builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
