@@ -42,18 +42,18 @@ def check_go_code(conf):
             #print(" - [ ] %s" % (package,))
             oss_dir = os.path.join(oss_path, package)
             ent_dir = os.path.join(ent_path, package)
-            args = ["diff", "-rNu"]
+            args = ["diff", "-Nu"]
             if conf.diff_ignore_comments:
                 args += ["-I", "^//"]
             args.extend((ent_dir,  oss_dir))
             p = sp.Popen(args, stdout=sp.PIPE)
             out = p.stdout.read().decode('utf-8')
             if len(out) > 0:
-                print("#### %s is in BOTH OSS/ENT" % (package,))
+                #print("#### %s is in BOTH OSS/ENT" % (package,))
                 for l in out.split('\n'):
                     print(l,)
             else:
-                print("#### %s is in BOTH OSS/ENT" % (package,))
+                #print("#### %s is in BOTH OSS/ENT" % (package,))
                 print("no differences.")
             p.wait()
             #diff = fc.dircmp(ent_dir, oss_dir)
