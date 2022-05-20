@@ -15,7 +15,7 @@ import (
 	"reflect"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/kernels"
 )
 
 func TestTracepointLoadFormat(t *testing.T) {

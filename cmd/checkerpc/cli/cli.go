@@ -17,9 +17,9 @@ import (
 	"reflect"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/cmd/checkerpc/cli/flags"
 	"github.com/isovalent/hubble-fgs/cmd/checkerpc/rpccheck"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 )

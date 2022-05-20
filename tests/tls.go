@@ -3,9 +3,9 @@ package tests
 import (
 	"fmt"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
 )
 
 func TlsChecker(kernelVersion string) ec.MultiResponseChecker {

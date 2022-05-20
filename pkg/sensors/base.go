@@ -10,7 +10,7 @@
 
 package sensors
 
-import "github.com/isovalent/hubble-fgs/pkg/kernels"
+import "github.com/cilium/tetragon/pkg/kernels"
 
 var (
 	Execve = ProgramBuilder(

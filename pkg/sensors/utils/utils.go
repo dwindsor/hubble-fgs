@@ -11,7 +11,7 @@
 package utils
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/selectors"
 )

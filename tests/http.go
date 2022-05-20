@@ -3,8 +3,8 @@ package tests
 import (
 	"fmt"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
 )
 
 func HttpChecker(kernelVersion string) ec.MultiResponseChecker {

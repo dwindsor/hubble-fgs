@@ -19,12 +19,12 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	loader "github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
 
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"

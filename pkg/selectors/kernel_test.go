@@ -15,8 +15,8 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
 )
 
 func TestWriteSelectorUint32(t *testing.T) {

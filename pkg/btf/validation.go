@@ -16,10 +16,10 @@ import (
 	"fmt"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/bpf"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/kernels"
 )
 
 // ValidationWarn is used to mark that validation was not successful but it's not
