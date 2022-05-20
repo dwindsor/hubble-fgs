@@ -13,7 +13,7 @@ package observer
 import (
 	"os"
 
-	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 

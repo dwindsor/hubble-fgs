@@ -5,7 +5,7 @@ import (
 	"log"
 
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/btf"
+	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 )
 

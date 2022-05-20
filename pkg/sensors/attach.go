@@ -16,8 +16,8 @@ import (
 	"path/filepath"
 
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/btf"
 	"golang.org/x/sys/unix"
 
 	"github.com/vishvananda/netlink"

@@ -132,7 +132,6 @@ test-compile:
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/config          -o go-tests/config.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/sockmap -o go-tests/sockmap.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/parsertest      -o go-tests/parsertest.test
-	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/btf             -o go-tests/btf.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/udp     -o go-tests/udp.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/tracing -o go-tests/tracing.test
 
