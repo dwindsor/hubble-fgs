@@ -1,3 +1,5 @@
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Tetragon
 package dns
 
 // An RCode is a DNS response status code.
