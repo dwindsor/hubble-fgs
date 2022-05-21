@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 )
 
@@ -70,8 +71,8 @@ func GetDefaultMaps() []*program.Map {
 func GetInitialSensor() *Sensor {
 	return &Sensor{
 		Name:  "__main__",
-		Progs: GetDefaultPrograms(),
-		Maps:  GetDefaultMaps(),
+		Progs: base.GetDefaultPrograms(),
+		Maps:  base.GetDefaultMaps(),
 	}
 }
 

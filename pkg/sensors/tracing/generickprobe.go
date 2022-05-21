@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 
 	gt "github.com/cilium/tetragon/pkg/generictypes"
@@ -539,7 +540,7 @@ func loadGenericKprobe(bpfDir, mapDir string, version int, p *program.Program, b
 		return err
 	}
 
-	m, err := bpf.OpenMap(filepath.Join(mapDir, sensors.NamesMap.Name))
+	m, err := bpf.OpenMap(filepath.Join(mapDir, base.NamesMap.Name))
 	if err != nil {
 		return err
 	}

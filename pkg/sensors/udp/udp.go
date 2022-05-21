@@ -33,6 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
@@ -233,7 +234,7 @@ var (
 	ProcessNetworkBurstMap           = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
 	ProcessNetworkBurstMapLazy       = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendLazy)
 	ProcessNetworkBurstMapLazyKprobe = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendRecvLazy)
-	PNBurstMapStats                  = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstStatsMapName, sensors.Exit)
+	PNBurstMapStats                  = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstStatsMapName, base.Exit)
 
 	// Socket lookup config map
 	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)

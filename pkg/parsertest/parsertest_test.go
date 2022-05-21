@@ -19,6 +19,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
@@ -200,7 +201,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 }
 
 func addSelfToEvecveMap(t *testing.T) {
-	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), sensors.GetExecveMap().Name))
+	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), base.GetExecveMap().Name))
 	if err != nil {
 		t.Fatalf("OpenMap: %s\n", err)
 	}

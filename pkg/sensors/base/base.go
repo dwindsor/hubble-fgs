@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package sensors
+package base
 
 import (
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -72,4 +72,42 @@ func GetExecveMap() *program.Map {
 		return ExecveMapV53
 	}
 	return ExecveMap
+}
+
+func GetDefaultPrograms() []*program.Program {
+	progs := []*program.Program{
+		Exit,
+		Fork,
+	}
+	if kernels.EnableLargeProgs() {
+		progs = append(progs, ExecveV53)
+	} else {
+		progs = append(progs, Execve)
+	}
+	return progs
+}
+
+func GetDefaultMaps() []*program.Map {
+	maps := []*program.Map{
+		PNBurstMapStats,
+		ProcessNetworkBurstMap,
+	}
+
+	if kernels.EnableLargeProgs() {
+		maps = append(maps,
+			ExecveMapV53,
+			ExecveStatsV53,
+			NamesMapV53,
+			TCPMonMapV53,
+		)
+	} else {
+		maps = append(maps,
+			ExecveMap,
+			ExecveStats,
+			NamesMap,
+			TCPMonMap,
+		)
+	}
+	return maps
+
 }

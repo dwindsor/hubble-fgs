@@ -31,7 +31,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/execvemap"
 )
 
@@ -186,7 +186,7 @@ func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 func writeExecveMap(procs []Procs) {
 	mapDir := bpf.MapPrefixPath()
 
-	execveMap := sensors.GetExecveMap()
+	execveMap := base.GetExecveMap()
 
 	if execveMap.PinState.IsDisabled() {
 		logger.GetLogger().Infof("hubble-fgs, map %s is disabled, skipping.", execveMap.Name)
