@@ -172,7 +172,7 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) 
 		return -1, err
 	}
 
-	if err := sensors.SetFilter(args.MapDir, "tls_filter_map", tlsSelectors); err != nil {
+	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsSelectors); err != nil {
 		return -1, err
 	}
 	return -1, nil

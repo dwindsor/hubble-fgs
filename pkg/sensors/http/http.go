@@ -123,7 +123,7 @@ func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	if err != nil {
 		return -1, err
 	}
-	if err := sensors.SetFilter(args.MapDir, "http_filter_map", filters); err != nil {
+	if err := sockops.SetFilter(args.MapDir, "http_filter_map", filters); err != nil {
 		return -1, err
 	}
 	return -1, nil

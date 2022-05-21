@@ -11,6 +11,10 @@
 package sockops
 
 import (
+	"fmt"
+	"path/filepath"
+
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
@@ -83,4 +87,14 @@ func AddSockopsSensors(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error
 }
 func (*sockopsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
 	return AddSockopsSensors(spec.Parser)
+}
+
+func SetFilter(mapDir string, mapName string, selectors [128]byte) error {
+	selectorMap, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, mapName), nil)
+	if err != nil {
+		return fmt.Errorf("failed to open selector map '%s': %w", mapName, err)
+	}
+	defer selectorMap.Close()
+
+	return selectorMap.Update(uint32(0), selectors, ebpf.UpdateAny)
 }
