@@ -36,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 
 	gt "github.com/cilium/tetragon/pkg/generictypes"
 )
@@ -193,7 +194,7 @@ func genericKprobeTableGet(id idtable.EntryID) (*genericKprobe, error) {
 	}
 }
 
-func genericKprobeFromBpfLoad(l *sensors.Program) (*genericKprobe, error) {
+func genericKprobeFromBpfLoad(l *program.Program) (*genericKprobe, error) {
 	id, ok := l.LoaderData.(idtable.EntryID)
 	if !ok {
 		return nil, fmt.Errorf("invalid loadData type: expecting idtable.EntryID and got: %T (%v)", l.LoaderData, l.LoaderData)
@@ -244,7 +245,7 @@ func initBinaryNames(spec *v1alpha1.KProbeSpec) error {
 }
 
 func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*sensors.Sensor, error) {
-	var progs []*sensors.Program
+	var progs []*program.Program
 
 	btfobj := bpf.BTFNil
 	defer func() {
@@ -487,7 +488,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// tracepoints case) and release it there, which seems like a simpler option.
 		btfobj = bpf.BTFNil
 
-		load := sensors.ProgramBuilder(
+		load := program.ProgramBuilder(
 			path.Join(option.Config.HubbleLib, loadProgName),
 			funcName,
 			"kprobe/generic_kprobe",
@@ -498,7 +499,7 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		progs = append(progs, load)
 
 		if setRetprobe {
-			loadret := sensors.ProgramBuilder(
+			loadret := program.ProgramBuilder(
 				path.Join(option.Config.HubbleLib, loadProgRetName),
 				funcName,
 				"kprobe/generic_retkprobe",
@@ -515,11 +516,11 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 	return &sensors.Sensor{
 		Name:  "__generic_kprobe_sensors__",
 		Progs: progs,
-		Maps:  []*sensors.Map{},
+		Maps:  []*program.Map{},
 	}, nil
 }
 
-func loadGenericKprobe(bpfDir, mapDir string, version int, p *sensors.Program, btf uintptr, genmapDir string, filters [4096]byte) error {
+func loadGenericKprobe(bpfDir, mapDir string, version int, p *program.Program, btf uintptr, genmapDir string, filters [4096]byte) error {
 	progpath := filepath.Join(bpfDir, p.PinPath)
 	err, _ := bpf.LoadGenericKprobeProgram(
 		version, option.Config.Verbosity,
@@ -551,7 +552,7 @@ func loadGenericKprobe(bpfDir, mapDir string, version int, p *sensors.Program, b
 	return err
 }
 
-func loadGenericKprobeRet(bpfDir, mapDir string, version int, p *sensors.Program, btf uintptr, genmapDir string) error {
+func loadGenericKprobeRet(bpfDir, mapDir string, version int, p *program.Program, btf uintptr, genmapDir string) error {
 	err, _ := bpf.LoadGenericKprobeRetProgram(
 		version, option.Config.Verbosity, btf,
 		p.Name,
@@ -564,7 +565,7 @@ func loadGenericKprobeRet(bpfDir, mapDir string, version int, p *sensors.Program
 	return err
 }
 
-func loadGenericKprobeSensor(bpfDir, mapDir string, load *sensors.Program, version, verbose int) (int, error) {
+func loadGenericKprobeSensor(bpfDir, mapDir string, load *program.Program, version, verbose int) (int, error) {
 	gk, err := genericKprobeFromBpfLoad(load)
 	if err != nil {
 		return 0, err

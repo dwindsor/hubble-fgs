@@ -17,6 +17,10 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/tc"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
@@ -25,28 +29,28 @@ var (
 	// Socket mode
 	// Supports 5.4 kernels or newer.
 
-	Skmsg = sensors.ProgramBuilder(
+	Skmsg = program.ProgramBuilder(
 		"bpf_tls_skmsg.o",
 		"sk_msg",
 		"sk_msg/fgs_tls",
 		"bpf_tls_sk_msg_fgs",
 		"skmsg")
 
-	SkSkbVerdict = sensors.ProgramBuilder(
+	SkSkbVerdict = program.ProgramBuilder(
 		"bpf_tls_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgs_tls",
 		"bpf_tls_skskb_verdict_fgs",
 		"sk_skb_verdict")
 
-	SkSkbParser = sensors.ProgramBuilder(
+	SkSkbParser = program.ProgramBuilder(
 		"bpf_tls_skskb_parser.o",
 		"sk_skb",
 		"sk_skb/stream_parser/fgs_tls",
 		"bpf_tls_skskb_parser_fgs",
 		"sk_skb_parser")
 
-	SockoptSet = sensors.ProgramBuilder(
+	SockoptSet = program.ProgramBuilder(
 		"bpf_setsockopt.o",
 		"cgroup",
 		"cgroup/setsockopt",
@@ -58,14 +62,14 @@ var (
 	// 4.19 kernels and below.
 	// Susceptible to out-of-order packets.
 
-	TCIngress = sensors.ProgramBuilder(
+	TCIngress = program.ProgramBuilder(
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
 		"classifier/ingress_tcp",
 		"classifier_ingress_tcp",
 		"tc_ingress")
 
-	TCEgress = sensors.ProgramBuilder(
+	TCEgress = program.ProgramBuilder(
 		"bpf_tc_egress.o",
 		"egress_tcp",
 		"classifier/egress_tcp",
@@ -73,27 +77,27 @@ var (
 		"tc_egress")
 
 	// TLS maps
-	Map         = sensors.MapBuilder("tls_map", Skmsg)
-	MapStats    = sensors.MapBuilder("tls_map_stats", Skmsg)
-	Bottle      = sensors.MapBuilder("bottles", Skmsg)
-	BottleStats = sensors.MapBuilder("bottle_map_stats", Skmsg)
-	TailCalls   = sensors.MapBuilder("tls_calls", Skmsg)
+	Map         = program.MapBuilder("tls_map", Skmsg)
+	MapStats    = program.MapBuilder("tls_map_stats", Skmsg)
+	Bottle      = program.MapBuilder("bottles", Skmsg)
+	BottleStats = program.MapBuilder("bottle_map_stats", Skmsg)
+	TailCalls   = program.MapBuilder("tls_calls", Skmsg)
 	// TC TLS maps
-	TCMap         = sensors.MapBuilder("tls_map", TCEgress)
-	TCMapStats    = sensors.MapBuilder("tls_map_stats", TCEgress)
-	TCBottle      = sensors.MapBuilder("bottles", TCIngress)
-	TCBottleStats = sensors.MapBuilder("bottle_map_stats", TCIngress)
-	TCParserStats = sensors.MapBuilder("tls_parser_stats", TCEgress)
-	TCTailCalls   = sensors.MapBuilder("tls_calls", TCIngress)
+	TCMap         = program.MapBuilder("tls_map", TCEgress)
+	TCMapStats    = program.MapBuilder("tls_map_stats", TCEgress)
+	TCBottle      = program.MapBuilder("bottles", TCIngress)
+	TCBottleStats = program.MapBuilder("bottle_map_stats", TCIngress)
+	TCParserStats = program.MapBuilder("tls_parser_stats", TCEgress)
+	TCTailCalls   = program.MapBuilder("tls_calls", TCIngress)
 	// Sockops Filter
 	FilterMap   = sockops.TlsFilterMap
-	ParserStats = sensors.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
+	ParserStats = program.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
 	// Socket links
-	SocketMap   = sensors.MapBuilder("socket_map", Skmsg)
-	SocketStats = sensors.MapBuilder("socket_map_stats", Skmsg)
+	SocketMap   = program.MapBuilder("socket_map", Skmsg)
+	SocketStats = program.MapBuilder("socket_map_stats", Skmsg)
 	// TC Socket Links
-	TCSocketMap   = sensors.MapBuilder("socket_map", TCIngress)
-	TCSocketStats = sensors.MapBuilder("socket_map_stats", TCIngress)
+	TCSocketMap   = program.MapBuilder("socket_map", TCIngress)
+	TCSocketStats = program.MapBuilder("socket_map_stats", TCIngress)
 
 	// HTTP maps
 	HTTPMap       = http.HTTPContext
@@ -148,22 +152,22 @@ type skmsgTLSSensor struct {
 }
 
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	err := sensors.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet)
+	err := cgroup.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet)
 	if err != nil {
 		return -1, err
 	}
 
-	err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.TlsSockMap)
+	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.TlsSockMap)
 	if err != nil {
 		return -1, err
 	}
 	if utils.SkSkbParserRequired() {
-		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.TlsSockMap)
+		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.TlsSockMap)
 		if err != nil {
 			return -1, err
 		}
 	}
-	err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.TlsSockMap)
+	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.TlsSockMap)
 	if err != nil {
 		return -1, err
 	}
@@ -250,8 +254,8 @@ func init() {
 }
 
 func enableTLSParser(tls, tc bool) *sensors.Sensor {
-	var progs []*sensors.Program
-	var maps []*sensors.Map
+	var progs []*program.Program
+	var maps []*program.Map
 
 	if tls {
 		logger.GetLogger().Infof("Enable TLS")
@@ -302,6 +306,6 @@ func (tls *tlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Se
 }
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	err := sensors.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
+	err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
 	return -1, err
 }

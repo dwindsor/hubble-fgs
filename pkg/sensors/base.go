@@ -10,10 +10,13 @@
 
 package sensors
 
-import "github.com/cilium/tetragon/pkg/kernels"
+import (
+	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+)
 
 var (
-	Execve = ProgramBuilder(
+	Execve = program.ProgramBuilder(
 		"bpf_execve_event.o",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
@@ -21,7 +24,7 @@ var (
 		"execve",
 	)
 
-	ExecveV53 = ProgramBuilder(
+	ExecveV53 = program.ProgramBuilder(
 		"bpf_execve_event_v53.o",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
@@ -29,7 +32,7 @@ var (
 		"execve",
 	)
 
-	Exit = ProgramBuilder(
+	Exit = program.ProgramBuilder(
 		"bpf_exit.o",
 		"sched/sched_process_exit",
 		"tracepoint/sys_exit",
@@ -37,7 +40,7 @@ var (
 		"tracepoint",
 	)
 
-	Fork = ProgramBuilder(
+	Fork = program.ProgramBuilder(
 		"bpf_fork.o",
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
@@ -46,25 +49,25 @@ var (
 	)
 
 	/* Event Ring map */
-	TCPMonMap    = MapBuilder("tcpmon_map", Execve)
-	TCPMonMapV53 = MapBuilder("tcpmon_map", ExecveV53)
+	TCPMonMap    = program.MapBuilder("tcpmon_map", Execve)
+	TCPMonMapV53 = program.MapBuilder("tcpmon_map", ExecveV53)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap              = MapBuilder("execve_map", Execve)
-	ExecveMapV53           = MapBuilder("execve_map", ExecveV53)
-	ProcessNetworkBurstMap = MapBuilder("pn_burst_map", Exit)
+	ExecveMap              = program.MapBuilder("execve_map", Execve)
+	ExecveMapV53           = program.MapBuilder("execve_map", ExecveV53)
+	ProcessNetworkBurstMap = program.MapBuilder("pn_burst_map", Exit)
 
 	/* Policy maps populated from base programs */
-	NamesMap    = MapBuilder("names_map", Execve)
-	NamesMapV53 = MapBuilder("names_map", ExecveV53)
+	NamesMap    = program.MapBuilder("names_map", Execve)
+	NamesMapV53 = program.MapBuilder("names_map", ExecveV53)
 
 	/* Internal statistics for debugging */
-	ExecveStats     = MapBuilder("execve_map_stats", Execve)
-	ExecveStatsV53  = MapBuilder("execve_map_stats", ExecveV53)
-	PNBurstMapStats = MapBuilder("pn_burst_map_stats", Exit)
+	ExecveStats     = program.MapBuilder("execve_map_stats", Execve)
+	ExecveStatsV53  = program.MapBuilder("execve_map_stats", ExecveV53)
+	PNBurstMapStats = program.MapBuilder("pn_burst_map_stats", Exit)
 )
 
-func GetExecveMap() *Map {
+func GetExecveMap() *program.Map {
 	if kernels.EnableLargeProgs() {
 		return ExecveMapV53
 	}

@@ -35,6 +35,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/yalue/native_endian"
 
 	"github.com/sirupsen/logrus"
@@ -64,21 +66,21 @@ var (
 )
 
 var (
-	SockCreate = sensors.ProgramBuilder(
+	SockCreate = program.ProgramBuilder(
 		"bpf_sock.o",
 		"sock_create",
 		"cgroup/sock_create",
 		"cgroup_sock_create",
 		"cgrp_socket")
 
-	SockRelease = sensors.ProgramBuilder(
+	SockRelease = program.ProgramBuilder(
 		"bpf_sock_release.o",
 		"inet_release",
 		"kprobe/inet_release",
 		"kprobe_sock_release",
 		"kprobe")
 
-	InetSend = sensors.ProgramBuilder(
+	InetSend = program.ProgramBuilder(
 		"bpf_inet_send.o",
 		"inet_send",
 		"cgroup_skb/egress",
@@ -86,7 +88,7 @@ var (
 		"cgrp_egress",
 	)
 
-	InetRecv = sensors.ProgramBuilder(
+	InetRecv = program.ProgramBuilder(
 		"bpf_inet_send.o",
 		"inet_recv",
 		"cgroup_skb/ingress",
@@ -94,7 +96,7 @@ var (
 		"cgrp_ingress",
 	)
 
-	SkAllocRetLazy = sensors.ProgramBuilder(
+	SkAllocRetLazy = program.ProgramBuilder(
 		"bpf_sock_create.o",
 		"sk_alloc",
 		"kretprobe/sk_alloc",
@@ -102,7 +104,7 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
-	InetSendLazy = sensors.ProgramBuilder(
+	InetSendLazy = program.ProgramBuilder(
 		"bpf_inet_send_lazy.o",
 		"inet_lazy_send",
 		"cgroup_skb/egress",
@@ -110,7 +112,7 @@ var (
 		"cgrp_egress",
 	)
 
-	InetRecvLazy = sensors.ProgramBuilder(
+	InetRecvLazy = program.ProgramBuilder(
 		"bpf_inet_send_lazy.o",
 		"inet_lazy_recv",
 		"cgroup_skb/ingress",
@@ -118,7 +120,7 @@ var (
 		"cgrp_ingress",
 	)
 
-	InetSendRecvLazy = sensors.ProgramBuilder(
+	InetSendRecvLazy = program.ProgramBuilder(
 		"bpf_inet_send_lazy_kp.o",
 		"__cgroup_bpf_run_filter_skb",
 		"kprobe/__cgroup_bpf_run_filter_skb",
@@ -126,7 +128,7 @@ var (
 		"kprobe_udp",
 	)
 
-	UdpSend = sensors.ProgramBuilder(
+	UdpSend = program.ProgramBuilder(
 		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
@@ -134,7 +136,7 @@ var (
 		"kprobe",
 	)
 
-	UdpRetSend = sensors.ProgramBuilder(
+	UdpRetSend = program.ProgramBuilder(
 		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
@@ -142,7 +144,7 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
-	UdpRecv = sensors.ProgramBuilder(
+	UdpRecv = program.ProgramBuilder(
 		"bpf_udp_send_recv.o",
 		"__skb_recv_udp",
 		"kprobe/__skb_recv_udp",
@@ -150,7 +152,7 @@ var (
 		"kprobe",
 	)
 
-	UdpRetRecv = sensors.ProgramBuilder(
+	UdpRetRecv = program.ProgramBuilder(
 		"bpf_udp_send_recv.o",
 		"__skb_recv_udp",
 		"kretprobe/__skb_recv_udp",
@@ -158,7 +160,7 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
-	UdpSendLazy = sensors.ProgramBuilder(
+	UdpSendLazy = program.ProgramBuilder(
 		"bpf_udp_send_recv_lazy.o",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
@@ -166,7 +168,7 @@ var (
 		"kprobe",
 	)
 
-	UdpRetSendLazy = sensors.ProgramBuilder(
+	UdpRetSendLazy = program.ProgramBuilder(
 		"bpf_udp_send_recv_lazy.o",
 		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
@@ -174,7 +176,7 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
-	UdpRecvLazy = sensors.ProgramBuilder(
+	UdpRecvLazy = program.ProgramBuilder(
 		"bpf_udp_send_recv_lazy.o",
 		"__skb_recv_udp",
 		"kprobe/__skb_recv_udp",
@@ -182,7 +184,7 @@ var (
 		"kprobe",
 	)
 
-	UdpRetRecvLazy = sensors.ProgramBuilder(
+	UdpRetRecvLazy = program.ProgramBuilder(
 		"bpf_udp_send_recv_lazy.o",
 		"__skb_recv_udp",
 		"kretprobe/__skb_recv_udp",
@@ -191,7 +193,7 @@ var (
 	).SetRetProbe(true)
 
 	// Socket lookup program
-	FdLookup = sensors.ProgramBuilder(
+	FdLookup = program.ProgramBuilder(
 		"bpf_fd_lookup.o",
 		"check_kill_permission",
 		"kprobe/check_kill_permission",
@@ -200,41 +202,41 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap = sensors.MapBuilder(SocketToProcMapName, UdpSendLazy)
+	SocketCookieMap = program.MapBuilder(SocketToProcMapName, UdpSendLazy)
 
 	// UDP maps
-	UdpMap                       = sensors.MapBuilder(UdpMapName, InetSend)
-	UdpMapLazy                   = sensors.MapBuilder(UdpMapName, InetSendLazy)
-	UdpMapLazyKprobe             = sensors.MapBuilder(UdpMapName, InetSendRecvLazy)
-	UdpMapKprobe                 = sensors.MapBuilder(UdpMapName, UdpSend)
-	UdpMapKprobeLazy             = sensors.MapBuilder(UdpMapName, UdpSendLazy)
-	UdpMapKprobeRecv             = sensors.MapBuilder(UdpMapName, UdpRecv)
-	UdpMapKprobeRecvLazy         = sensors.MapBuilder(UdpMapName, UdpRecvLazy)
-	UdpRetprobeMap               = sensors.MapBuilder(UdpRetprobeMapName, UdpSend)
-	UdpRetprobeMapLazy           = sensors.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
-	UdpRetprobeRecvMap           = sensors.MapBuilder(UdpRetprobeMapName, UdpRecv)
-	UdpRetprobeRecvMapLazy       = sensors.MapBuilder(UdpRetprobeMapName, UdpRecvLazy)
-	UdpConfigMap                 = sensors.MapBuilder(UdpConfigMapName, InetSend)
-	UdpConfigLazyMap             = sensors.MapBuilder(UdpConfigMapName, InetSendLazy)
-	UdpConfigLazyMapKprobe       = sensors.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
-	UdpPayloadMap                = sensors.MapBuilder(UdpPayloadMapName, InetSend)
-	UdpPayloadMapStats           = sensors.MapBuilder(UdpPayloadMapStatsName, InetSend)
-	UdpPayloadLazyMap            = sensors.MapBuilder(UdpPayloadMapName, InetSendLazy)
-	UdpPayloadLazyMapStats       = sensors.MapBuilder(UdpPayloadMapStatsName, InetSendLazy)
-	UdpPayloadLazyMapKprobe      = sensors.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
-	UdpPayloadLazyMapStatsKprobe = sensors.MapBuilder(UdpPayloadMapStatsName, InetSendRecvLazy)
-	UdpPayloadBloomMap           = sensors.MapBuilder(UdpPayloadBloomMapName, InetSend)
-	UdpPayloadBloomMapLazy       = sensors.MapBuilder(UdpPayloadBloomMapName, InetSendLazy)
-	UdpPayloadBloomMapKprobe     = sensors.MapBuilder(UdpPayloadBloomMapName, InetSendRecvLazy)
+	UdpMap                       = program.MapBuilder(UdpMapName, InetSend)
+	UdpMapLazy                   = program.MapBuilder(UdpMapName, InetSendLazy)
+	UdpMapLazyKprobe             = program.MapBuilder(UdpMapName, InetSendRecvLazy)
+	UdpMapKprobe                 = program.MapBuilder(UdpMapName, UdpSend)
+	UdpMapKprobeLazy             = program.MapBuilder(UdpMapName, UdpSendLazy)
+	UdpMapKprobeRecv             = program.MapBuilder(UdpMapName, UdpRecv)
+	UdpMapKprobeRecvLazy         = program.MapBuilder(UdpMapName, UdpRecvLazy)
+	UdpRetprobeMap               = program.MapBuilder(UdpRetprobeMapName, UdpSend)
+	UdpRetprobeMapLazy           = program.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
+	UdpRetprobeRecvMap           = program.MapBuilder(UdpRetprobeMapName, UdpRecv)
+	UdpRetprobeRecvMapLazy       = program.MapBuilder(UdpRetprobeMapName, UdpRecvLazy)
+	UdpConfigMap                 = program.MapBuilder(UdpConfigMapName, InetSend)
+	UdpConfigLazyMap             = program.MapBuilder(UdpConfigMapName, InetSendLazy)
+	UdpConfigLazyMapKprobe       = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
+	UdpPayloadMap                = program.MapBuilder(UdpPayloadMapName, InetSend)
+	UdpPayloadMapStats           = program.MapBuilder(UdpPayloadMapStatsName, InetSend)
+	UdpPayloadLazyMap            = program.MapBuilder(UdpPayloadMapName, InetSendLazy)
+	UdpPayloadLazyMapStats       = program.MapBuilder(UdpPayloadMapStatsName, InetSendLazy)
+	UdpPayloadLazyMapKprobe      = program.MapBuilder(UdpPayloadMapName, InetSendRecvLazy)
+	UdpPayloadLazyMapStatsKprobe = program.MapBuilder(UdpPayloadMapStatsName, InetSendRecvLazy)
+	UdpPayloadBloomMap           = program.MapBuilder(UdpPayloadBloomMapName, InetSend)
+	UdpPayloadBloomMapLazy       = program.MapBuilder(UdpPayloadBloomMapName, InetSendLazy)
+	UdpPayloadBloomMapKprobe     = program.MapBuilder(UdpPayloadBloomMapName, InetSendRecvLazy)
 
 	// Burst and watermark maps
-	ProcessNetworkBurstMap           = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
-	ProcessNetworkBurstMapLazy       = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendLazy)
-	ProcessNetworkBurstMapLazyKprobe = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendRecvLazy)
-	PNBurstMapStats                  = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstStatsMapName, sensors.Exit)
+	ProcessNetworkBurstMap           = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
+	ProcessNetworkBurstMapLazy       = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendLazy)
+	ProcessNetworkBurstMapLazyKprobe = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendRecvLazy)
+	PNBurstMapStats                  = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstStatsMapName, sensors.Exit)
 
 	// Socket lookup config map
-	FdLookupConfigMap = sensors.MapBuilder(FdLookupConfigMapName, FdLookup)
+	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
 )
 
 type udpInfoKey struct {
@@ -540,7 +542,7 @@ type udpSensor struct {
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	if args.Load.Type == "cgrp_ingress" || args.Load.Type == "cgrp_egress" {
-		err := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
 		if err != nil {
 			return -1, err
 		}
@@ -583,14 +585,14 @@ func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) erro
 }
 
 func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
-	var progs []*sensors.Program
-	var maps []*sensors.Map
+	var progs []*program.Program
+	var maps []*program.Map
 	var versionStr string
 
 	loadSockets()
 
 	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
-		progs = []*sensors.Program{
+		progs = []*program.Program{
 			SkAllocRetLazy,
 			InetSendRecvLazy,
 			UdpSendLazy,
@@ -598,7 +600,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRecvLazy,
 			UdpRetRecvLazy,
 		}
-		maps = []*sensors.Map{
+		maps = []*program.Map{
 			UdpMapKprobeLazy,
 			UdpMapKprobeRecvLazy,
 			UdpRetprobeMapLazy,
@@ -612,7 +614,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
 	} else if !kernels.MinKernelVersion("5.10.0") || !cgroup {
-		progs = []*sensors.Program{
+		progs = []*program.Program{
 			SkAllocRetLazy,
 			InetSendLazy,
 			InetRecvLazy,
@@ -621,7 +623,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRecvLazy,
 			UdpRetRecvLazy,
 		}
-		maps = []*sensors.Map{
+		maps = []*program.Map{
 			UdpMapKprobeLazy,
 			UdpMapKprobeRecvLazy,
 			UdpRetprobeMapLazy,
@@ -635,7 +637,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
 	} else {
-		progs = []*sensors.Program{
+		progs = []*program.Program{
 			SockCreate,
 			SockRelease,
 			InetSend,
@@ -645,7 +647,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpRecv,
 			UdpRetRecv,
 		}
-		maps = []*sensors.Map{
+		maps = []*program.Map{
 			UdpMapKprobe,
 			UdpMapKprobeRecv,
 			UdpRetprobeMap,

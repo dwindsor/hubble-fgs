@@ -17,6 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 
 	loader "github.com/cilium/tetragon/pkg/bpf"
@@ -34,7 +35,7 @@ var (
 )
 
 var (
-	Connect = sensors.ProgramBuilder(
+	Connect = program.ProgramBuilder(
 		"bpf_tcpmon.o",
 		"tcp_connect",
 		"kprobe/tcp_connect",
@@ -42,7 +43,7 @@ var (
 		"kprobe",
 	)
 
-	Close = sensors.ProgramBuilder(
+	Close = program.ProgramBuilder(
 		"bpf_tcpclose.o",
 		"tcp_set_state",
 		"kprobe/tcp_set_state",
@@ -50,7 +51,7 @@ var (
 		"kprobe",
 	)
 
-	Listen = sensors.ProgramBuilder(
+	Listen = program.ProgramBuilder(
 		"bpf_listen.o",
 		"__inet_hash",
 		"kprobe/inet_hash",
@@ -58,7 +59,7 @@ var (
 		"kprobe",
 	)
 
-	SendCheck = sensors.ProgramBuilder(
+	SendCheck = program.ProgramBuilder(
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",
@@ -66,28 +67,28 @@ var (
 		"tcp_sensor")
 
 	// Maps for TCP Sockets
-	SocketMap       = sensors.MapBuilder("socket_map", Connect)
-	SocketStats     = sensors.MapBuilder("socket_map_stats", Connect)
-	SocketCookieMap = sensors.MapBuilder("socket_cookie_to_proc_map", Connect)
+	SocketMap       = program.MapBuilder("socket_map", Connect)
+	SocketStats     = program.MapBuilder("socket_map_stats", Connect)
+	SocketCookieMap = program.MapBuilder("socket_cookie_to_proc_map", Connect)
 
 	// Parser maps
-	HTTPContext = sensors.MapBuilder("http_map", Close)
-	TLSContext  = sensors.MapBuilder("tls_map", Close)
-	TLSMapStats = sensors.MapBuilder("tls_map_stats", Connect)
+	HTTPContext = program.MapBuilder("http_map", Close)
+	TLSContext  = program.MapBuilder("tls_map", Close)
+	TLSMapStats = program.MapBuilder("tls_map_stats", Connect)
 
 	// Maps for burst detection
-	SendCheckSampler       = sensors.MapBuilder("tcp_send_check_sampler", SendCheck)
-	ProcessNetworkBurstMap = sensors.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, SendCheck)
+	SendCheckSampler       = program.MapBuilder("tcp_send_check_sampler", SendCheck)
+	ProcessNetworkBurstMap = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, SendCheck)
 )
 
 func EnableTcp() *sensors.Sensor {
-	progs := []*sensors.Program{
+	progs := []*program.Program{
 		Connect,
 		Close,
 		Listen,
 		SendCheck,
 	}
-	maps := []*sensors.Map{
+	maps := []*program.Map{
 		SocketStats,
 		SocketCookieMap,
 		SocketMap,

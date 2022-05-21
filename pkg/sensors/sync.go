@@ -12,6 +12,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 	sttManager "github.com/isovalent/hubble-fgs/pkg/stt"
 )
 
@@ -219,7 +220,7 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 	return &m, nil
 }
 
-func RemoveProgram(bpfDir string, prog *Program) {
+func RemoveProgram(bpfDir string, prog *program.Program) {
 	log := logger.GetLogger().WithField("label", prog.Label)
 
 	if !prog.LoadState.IsLoaded() || prog.LoadState.IsDisabled() {
@@ -261,20 +262,15 @@ func RemoveProgram(bpfDir string, prog *Program) {
 		if err := os.Remove(path); err != nil {
 			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
 		}
-	} else if prog.traceFD >= 0 {
-		removeTracepoint(prog.traceFD)
-		prog.traceFD = -1
+	} else if prog.TraceFD >= 0 {
+		removeTracepoint(prog.TraceFD)
+		prog.TraceFD = -1
 		if err := os.Remove(path); err != nil {
 			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
 		}
 	} else {
-		if prog.unloader == nil {
-			logger.GetLogger().Debugf("Not unloading '%s', no unloader.", prog.Name)
-		} else {
-			if err := prog.unloader.Unload(); err != nil {
-				logger.GetLogger().Warnf("Failed to unload '%s': %s", prog.Name, err)
-			}
-			prog.unloader = nil
+		if err := prog.Unload(); err != nil {
+			logger.GetLogger().WithField("name", prog.Name).WithError(err).Warn("Failed to unload program");
 		}
 	}
 

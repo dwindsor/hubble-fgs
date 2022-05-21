@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 )
 
 const (
@@ -124,21 +125,21 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 	return procSocketFds, nil
 }
 
-func getFdLookupPrograms() []*sensors.Program {
-	progs := []*sensors.Program{FdLookup}
+func getFdLookupPrograms() []*program.Program {
+	progs := []*program.Program{FdLookup}
 	return progs
 }
 
-func getFdLookupMaps() []*sensors.Map {
-	var maps []*sensors.Map
+func getFdLookupMaps() []*program.Map {
+	var maps []*program.Map
 
 	maps = append(maps, FdLookupConfigMap, SocketCookieMap)
 
 	return maps
 }
 
-func getOnlyFdLookupMaps() []*sensors.Map {
-	var maps []*sensors.Map
+func getOnlyFdLookupMaps() []*program.Map {
+	var maps []*program.Map
 
 	maps = append(maps, FdLookupConfigMap)
 

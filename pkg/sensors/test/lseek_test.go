@@ -32,7 +32,7 @@ import (
 // This bpf_lseek is a simple BPF program used for tests
 
 var (
-	ObserverLseekTest = sensors.ProgramBuilder(
+	ObserverLseekTest = program.ProgramBuilder(
 		"bpf_lseek.o",
 		"syscalls/sys_enter_lseek",
 		"tracepoint/sys_enter_lseek",

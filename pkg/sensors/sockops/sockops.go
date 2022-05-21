@@ -15,11 +15,13 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
 
 var (
 	// Needed on both the HTTP and TLS programs.
-	SockopsEstablished = sensors.ProgramBuilder(
+	SockopsEstablished = program.ProgramBuilder(
 		"bpf_sockops.o",
 		"sockops",
 		"sockops/fgs_sockops",
@@ -30,12 +32,12 @@ var (
 	httpSockMapName = "http_sock_map"
 	NopSockMapName  = "nop_sock_map"
 
-	HttpSockMap   = sensors.MapBuilder(httpSockMapName, SockopsEstablished)
-	TlsSockMap    = sensors.MapBuilder(TlsSockMapName, SockopsEstablished)
-	NopSockMap    = sensors.MapBuilder(NopSockMapName, SockopsEstablished)
-	TlsFilterMap  = sensors.MapBuilder("tls_filter_map", SockopsEstablished)
-	HttpFilterMap = sensors.MapBuilder("http_filter_map", SockopsEstablished)
-	NopFilterMap  = sensors.MapBuilder("nop_filter_map", SockopsEstablished)
+	HttpSockMap   = program.MapBuilder(httpSockMapName, SockopsEstablished)
+	TlsSockMap    = program.MapBuilder(TlsSockMapName, SockopsEstablished)
+	NopSockMap    = program.MapBuilder(NopSockMapName, SockopsEstablished)
+	TlsFilterMap  = program.MapBuilder("tls_filter_map", SockopsEstablished)
+	HttpFilterMap = program.MapBuilder("http_filter_map", SockopsEstablished)
+	NopFilterMap  = program.MapBuilder("nop_filter_map", SockopsEstablished)
 )
 
 func init() {
@@ -47,8 +49,8 @@ func init() {
 }
 
 func builder(name string) (*sensors.Sensor, error) {
-	var progs []*sensors.Program
-	var maps []*sensors.Map
+	var progs []*program.Program
+	var maps []*program.Map
 
 	if kernels.MinKernelVersion("5.8.0") {
 		logger.GetLogger().Infof("Enable Sockops")
@@ -67,7 +69,7 @@ type sockopsSensor struct {
 }
 
 func (*sockopsSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	err := sensors.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
+	err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
 	return -1, err
 }
 

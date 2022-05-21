@@ -22,10 +22,11 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 )
 
 var (
-	ObserverKfreeSkb = sensors.ProgramBuilder(
+	ObserverKfreeSkb = program.ProgramBuilder(
 		"bpf_kfree_skb.o",
 		"kfree_skb",
 		"kprobe/kfree_skb",
@@ -50,8 +51,8 @@ type PacketdropSensorImpl struct {
 }
 
 func createPacketDropSensor() *sensors.Sensor {
-	progs := []*sensors.Program{ObserverKfreeSkb}
-	maps := []*sensors.Map{}
+	progs := []*program.Program{ObserverKfreeSkb}
+	maps := []*program.Map{}
 	impl := PacketdropSensorImpl{}
 	packetdropCfg = &impl.config
 	return &sensors.Sensor{
