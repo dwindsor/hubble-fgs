@@ -4,7 +4,7 @@ go 1.17
 
 require (
 	github.com/cilium/cilium v1.9.15
-	github.com/cilium/ebpf v0.8.1-0.20220125132352-732bf912e846
+	github.com/cilium/ebpf v0.8.1
 	github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567
 	github.com/cilium/lumberjack/v2 v2.2.2
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
@@ -143,6 +143,7 @@ replace (
 
 	// use local submodule for OSS
 	github.com/cilium/tetragon => ./modules/tetragon-oss
+
 	github.com/miekg/dns => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3
 	github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
 	github.com/vishvananda/netlink => github.com/jrfastab/netlink v1.1.1

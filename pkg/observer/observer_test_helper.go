@@ -27,9 +27,13 @@ import (
 	hubbleV1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleCilium "github.com/cilium/hubble/pkg/cilium"
 
+	// This needs to be first to be first in order to force oss consts to be fixed up
+	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
+
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/btf"
@@ -37,7 +41,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"

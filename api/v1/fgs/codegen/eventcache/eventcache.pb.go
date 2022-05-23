@@ -15,8 +15,10 @@ package eventcache
 
 import (
 	fmt "fmt"
+	v1 "github.com/cilium/hubble/pkg/api/v1"
+	errormetrics "github.com/cilium/tetragon/pkg/metrics/errormetrics"
+	eventcachemetrics "github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
-	metrics "github.com/isovalent/hubble-fgs/pkg/metrics"
 	process "github.com/isovalent/hubble-fgs/pkg/process"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
@@ -32,8 +34,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessConnect").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessConnect")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: e},
@@ -45,8 +47,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessClose").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessClose")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessClose{ProcessClose: e},
@@ -58,8 +60,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessListen").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessListen")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessListen{ProcessListen: e},
@@ -71,8 +73,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessAccept").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessAccept")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessAccept{ProcessAccept: e},
@@ -84,8 +86,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessExec").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessExec")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: e},
@@ -97,8 +99,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessExit").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessExit")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessExit{ProcessExit: e},
@@ -110,8 +112,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessCred").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessCred")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessCred{ProcessCred: e},
@@ -123,8 +125,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessKprobe").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessKprobe")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessKprobe{ProcessKprobe: e},
@@ -136,8 +138,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessTracepoint").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessTracepoint")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessTracepoint{ProcessTracepoint: e},
@@ -149,8 +151,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessSockStats").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessSockStats")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessSockStats{ProcessSockStats: e},
@@ -162,8 +164,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("Tls").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("Tls")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_Tls{Tls: e},
@@ -175,8 +177,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessHttp").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessHttp")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: e},
@@ -188,8 +190,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessDns").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessDns")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: e},
@@ -201,8 +203,8 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()
 		} else {
-			metrics.ProcessInfoErrors.WithLabelValues("ProcessNetworkBurst").Inc()
-			metrics.ErrorCount.WithLabelValues(string(metrics.EventCacheProcessInfoFailed)).Inc()
+			eventcachemetrics.ProcessInfoErrorInc("ProcessNetworkBurst")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		}
 		return &fgs.GetEventsResponse{
 			Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: e},
@@ -211,4 +213,33 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 		}, nil
 	}
 	return nil, fmt.Errorf("DoHandleEvent: Unhandled event type %T", event)
+}
+func DoEventLabels(endpoint *v1.Endpoint, event eventObj) ([]string, *string) {
+	var destinationIp string
+	var labels []string
+
+	switch e := event.(type) {
+
+	case *fgs.ProcessConnect:
+		destinationIp = e.GetDestinationIp()
+		if len(e.DestinationNames) > 0 {
+			return e.DestinationNames, nil
+		}
+
+	case *fgs.ProcessClose:
+		destinationIp = e.GetDestinationIp()
+		if len(e.DestinationNames) > 0 {
+			return e.DestinationNames, nil
+		}
+
+	case *fgs.ProcessAccept:
+		destinationIp = e.GetDestinationIp()
+		if len(e.DestinationNames) > 0 {
+			return e.DestinationNames, nil
+		}
+
+	default:
+		return labels, nil
+	}
+	return []string{}, &destinationIp
 }

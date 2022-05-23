@@ -12,7 +12,7 @@
 // See the License for the specific language governing permissions and
 // limitations under the License.
 
-package metrics
+package eventmetrics_test
 
 import (
 	"strings"
@@ -20,72 +20,75 @@ import (
 
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/api/processapi"
+	ossEventMetrics "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )
 
-func Test_handleProcessedEvent(t *testing.T) {
-	assert.NoError(t, testutil.CollectAndCompare(EventsProcessed, strings.NewReader("")))
-	handleProcessedEvent(nil)
+func Test_eventHandleProcessedEvent(t *testing.T) {
+	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed, strings.NewReader("")))
+	eventmetrics.HandleProcessedEvent(nil)
 	// empty process
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{}}})
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{}}})
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{}}})
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{}}})
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{}}})
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{}}})
 
 	// empty pod
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
 		Process: &fgs.Process{Binary: "binary_a"},
 	}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
 		Process: &fgs.Process{Binary: "binary_b"},
 	}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
 		Process: &fgs.Process{Binary: "binary_c"},
 	}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
 		Process: &fgs.Process{Binary: "binary_d"},
 	}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
 		Process: &fgs.Process{Binary: "binary_e"},
 	}}})
 
 	// with pod
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
 		Process: &fgs.Process{
 			Binary: "binary_a",
 			Pod:    &fgs.Pod{Namespace: "namespace_a", Name: "pod_a"},
 		},
 	}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
 		Process: &fgs.Process{
 			Binary: "binary_b",
 			Pod:    &fgs.Pod{Namespace: "namespace_b", Name: "pod_b"},
 		},
 	}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
 		Process: &fgs.Process{
 			Binary: "binary_c",
 			Pod:    &fgs.Pod{Namespace: "namespace_c", Name: "pod_c"},
 		},
 	}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
 		Process: &fgs.Process{
 			Binary: "binary_d",
 			Pod:    &fgs.Pod{Namespace: "namespace_d", Name: "pod_d"},
 		},
 	}}})
-	handleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
+	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
 		Process: &fgs.Process{
 			Binary: "binary_e",
 			Pod:    &fgs.Pod{Namespace: "namespace_e", Name: "pod_e"},
 		},
 	}}})
 
-	expected := strings.NewReader(`# HELP isovalent_events_total The total number of FGS events
+	expected := strings.NewReader(`# HELP isovalent_events_total The total number of Tetragon events
 # TYPE isovalent_events_total counter
 isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_CONNECT"} 1
 isovalent_events_total{binary="",namespace="",pod="",type="PROCESS_EXEC"} 1
@@ -104,54 +107,28 @@ isovalent_events_total{binary="binary_d",namespace="namespace_d",pod="pod_d",typ
 isovalent_events_total{binary="binary_e",namespace="",pod="",type="PROCESS_EXIT"} 1
 isovalent_events_total{binary="binary_e",namespace="namespace_e",pod="pod_e",type="PROCESS_EXIT"} 1
 `)
-	assert.NoError(t, testutil.CollectAndCompare(EventsProcessed, expected))
+	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed, expected))
 }
 
 func Test_handleOriginalEvent(t *testing.T) {
-	handleOriginalEvent(nil)
-	handleOriginalEvent(&processapi.MsgExecveEventUnix{})
-	assert.NoError(t, testutil.CollectAndCompare(FlagCount, strings.NewReader("")))
-	handleOriginalEvent(&processapi.MsgExecveEventUnix{
+	eventmetrics.HandleOriginalEvent(nil)
+	eventmetrics.HandleOriginalEvent(&processapi.MsgExecveEventUnix{})
+	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.FlagCount, strings.NewReader("")))
+	eventmetrics.HandleOriginalEvent(&processapi.MsgExecveEventUnix{
 		Process: processapi.MsgProcess{
 			Flags: api.EventClone | api.EventExecve,
 		},
 	})
-	expected := strings.NewReader(`# HELP isovalent_flags_total The total number of FGS flags. For internal use only.
+	expected := strings.NewReader(`# HELP isovalent_flags_total The total number of Tetragon flags. For internal use only.
 # TYPE isovalent_flags_total counter
 isovalent_flags_total{type="clone"} 1
 isovalent_flags_total{type="execve"} 1
 `)
-	assert.NoError(t, testutil.CollectAndCompare(FlagCount, expected))
-}
-
-func Test_getNegotiatedVersion(t *testing.T) {
-	version := getNegotiatedVersion(&fgs.Tls{NegotiatedVersion: "hello"})
-	assert.Equal(t, "hello", version)
-	// Test TLS 1.2 negotiated version
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_2})
-	assert.Equal(t, tlsVersion1_2, version)
-	// Test TLS 1.1 negotiated versions
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_1})
-	assert.Equal(t, tlsVersion1_1, version)
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_2})
-	assert.Equal(t, tlsVersion1_1, version)
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_1})
-	assert.Equal(t, tlsVersion1_1, version)
-	// Test TLS 1.0 negotiated versions
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_2})
-	assert.Equal(t, tlsVersion1_0, version)
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_0})
-	assert.Equal(t, tlsVersion1_0, version)
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_0})
-	assert.Equal(t, tlsVersion1_0, version)
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_1})
-	assert.Equal(t, tlsVersion1_0, version)
-	version = getNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_0})
-	assert.Equal(t, tlsVersion1_0, version)
+	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.FlagCount, expected))
 }
 
 func Test_handleInterfaceStatsEvent(t *testing.T) {
-	handleInterfaceStatsEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_InterfaceStats{InterfaceStats: &fgs.InterfaceStats{
+	eventmetrics.HandleInterfaceStatsEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_InterfaceStats{InterfaceStats: &fgs.InterfaceStats{
 		InterfaceName:   "eth0",
 		Netns:           "foobar",
 		BytesSent:       1,
@@ -168,47 +145,47 @@ func Test_handleInterfaceStatsEvent(t *testing.T) {
 # TYPE isovalent_interface_txbytes gauge
 isovalent_interface_txbytes{name="eth0", netns="foobar"} 1
 `)
-	assert.NoError(t, testutil.CollectAndCompare(InterfaceBytesSent, expected))
+	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceBytesSent, expected))
 
 	expected = strings.NewReader(`# HELP isovalent_interface_rxbytes Bytes received per network interface
 # TYPE isovalent_interface_rxbytes gauge
 isovalent_interface_rxbytes{name="eth0", netns="foobar"} 2
 `)
-	assert.NoError(t, testutil.CollectAndCompare(InterfaceBytesReceived, expected))
+	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceBytesReceived, expected))
 
 	expected = strings.NewReader(`# HELP isovalent_interface_txsegs Segments sent per network interface
 # TYPE isovalent_interface_txsegs gauge
 isovalent_interface_txsegs{name="eth0", netns="foobar"} 3
 `)
-	assert.NoError(t, testutil.CollectAndCompare(InterfaceSegmentsSent, expected))
+	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceSegmentsSent, expected))
 
 	expected = strings.NewReader(`# HELP isovalent_interface_rxsegs Segments received per network interface
 # TYPE isovalent_interface_rxsegs gauge
 isovalent_interface_rxsegs{name="eth0", netns="foobar"} 4
 `)
-	assert.NoError(t, testutil.CollectAndCompare(InterfaceSegmentsReceived, expected))
+	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceSegmentsReceived, expected))
 
 	expected = strings.NewReader(`# HELP isovalent_interface_txerrors TX errors per network interface
 # TYPE isovalent_interface_txerrors gauge
 isovalent_interface_txerrors{name="eth0", netns="foobar"} 5
 `)
-	assert.NoError(t, testutil.CollectAndCompare(InterfaceTxErrors, expected))
+	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceTxErrors, expected))
 
 	expected = strings.NewReader(`# HELP isovalent_interface_rxerrors RX errors per network interface
 # TYPE isovalent_interface_rxerrors gauge
 isovalent_interface_rxerrors{name="eth0", netns="foobar"} 6
 `)
-	assert.NoError(t, testutil.CollectAndCompare(InterfaceRxErrors, expected))
+	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceRxErrors, expected))
 
 	expected = strings.NewReader(`# HELP isovalent_interface_txdrops TX drops per network interface
 # TYPE isovalent_interface_txdrops gauge
 isovalent_interface_txdrops{name="eth0", netns="foobar"} 7
 `)
-	assert.NoError(t, testutil.CollectAndCompare(InterfaceTxDrops, expected))
+	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceTxDrops, expected))
 
 	expected = strings.NewReader(`# HELP isovalent_interface_rxdrops RX drops per network interface
 # TYPE isovalent_interface_rxdrops gauge
 isovalent_interface_rxdrops{name="eth0", netns="foobar"} 8
 `)
-	assert.NoError(t, testutil.CollectAndCompare(InterfaceRxDrops, expected))
+	assert.NoError(t, testutil.CollectAndCompare(interfacemetrics.InterfaceRxDrops, expected))
 }

@@ -12,7 +12,11 @@
 package main
 
 import (
+	"fmt"
+	"reflect"
+
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/common"
+	ossEventcache "github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventcache"
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/generate"
 	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-tetragon/eventcache"
 )
@@ -31,7 +35,20 @@ func main() {
 	common.TetragonPackageName = `github.com/isovalent/hubble-fgs`
 	common.TetragonApiPackageName = `api/v1/fgs`
 
+	removeGenerator(ossEventcache.Generate)
 	generate.Generators = append(generate.Generators, eventcache.Generate)
 
 	generate.Generate()
+}
+
+// Removes a registered generator, useful for replacing oss generators with enterprise ones
+func removeGenerator(gen generate.GeneratorFunc) error {
+	for i, elem := range generate.Generators {
+		if reflect.ValueOf(elem) == reflect.ValueOf(gen) {
+			generate.Generators = append(generate.Generators[:i], generate.Generators[i+1:]...)
+			return nil
+		}
+	}
+
+	return fmt.Errorf("Failed to find registered generator function %v", gen)
 }

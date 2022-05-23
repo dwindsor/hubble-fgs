@@ -15,12 +15,12 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
+	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	codegen "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventcache"
-	codegenEnt "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventcacheenterprise"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -60,7 +60,7 @@ type Cache struct {
 }
 
 func (ec *Cache) eventLabels(endpoint *v1.Endpoint, event *cacheObj) ([]string, error) {
-	labels, destinationIp := codegenEnt.DoEventLabels(endpoint, event.event)
+	labels, destinationIp := codegen.DoEventLabels(endpoint, event.event)
 	if destinationIp != nil {
 		return ec.dns.GetIp(*destinationIp)
 	}
@@ -85,7 +85,7 @@ func (ec *Cache) handleNetEvents() {
 					tmp = append(tmp, e)
 					continue
 				}
-				metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheEndpointRetryFailed)).Inc()
+				errormetrics.EventCacheInc(errormetrics.EventCacheEndpointRetryFailed)
 			}
 		}
 
@@ -96,7 +96,7 @@ func (ec *Cache) handleNetEvents() {
 				tmp = append(tmp, e)
 				continue
 			}
-			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheEndpointRetryFailed)).Inc()
+			errormetrics.EventCacheInc(errormetrics.EventCacheEndpointRetryFailed)
 		}
 
 		processedEvent, err := codegen.DoHandleEvent(e.event, e.internal, labels, nodeName, e.timestamp)
@@ -121,10 +121,10 @@ func (ec *Cache) loop() {
 			 * event anyways.
 			 */
 			ec.handleNetEvents()
-			metrics.ExecveMapSize.WithLabelValues("netCache", "0").Set(float64(len(ec.cache)))
+			mapmetrics.MapSizeSet("netCache", 0, float64(len(ec.cache)))
 
 		case event := <-ec.objsChan:
-			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheNetworkCount)).Inc()
+			errormetrics.EventCacheInc(errormetrics.EventCacheNetworkCount)
 			ec.cache = append(ec.cache, event)
 		}
 	}

@@ -9,12 +9,60 @@
 //  permission is obtained from Isovalent Inc.
 //
 
+// Note that this is duplicated from OSS with some enterprise-specific additions and
+// changes.
 package eventcache
 
 import (
+	"fmt"
+
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/common"
 	"google.golang.org/protobuf/compiler/protogen"
 )
+
+// getEventsResponse generates a new GetEventsResponse_<EVENT_TYPE>
+func doGetEventsResponse(g *protogen.GeneratedFile, eventType string) string {
+	tetragonGER := common.TetragonApiIdent(g, "GetEventsResponse")
+	subtype := common.TetragonApiIdent(g, fmt.Sprintf("GetEventsResponse_%s", eventType))
+
+	return tetragonGER + `{
+        Event: &` + subtype + `{` + eventType + `: e},
+        NodeName: nodeName,
+        Time: timestamp,
+    }`
+}
+
+func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
+	tetragonProcessInternal := common.TetragonIdent(g, "pkg/process", "ProcessInternal")
+	tetragonGER := common.TetragonApiIdent(g, "GetEventsResponse")
+	timestamp := common.GoIdent(g, "google.golang.org/protobuf/types/known/timestamppb", "Timestamp")
+
+	incErrorCount := common.GoIdent(g, "github.com/cilium/tetragon/pkg/metrics/errormetrics", "ErrorTotalInc")
+	mInfoFailed := common.GoIdent(g, "github.com/cilium/tetragon/pkg/metrics/errormetrics", "EventCacheProcessInfoFailed")
+	incProcessInfoErrors := common.GoIdent(g, "github.com/cilium/tetragon/pkg/metrics/eventcachemetrics", "ProcessInfoErrorInc")
+
+	g.P(`func DoHandleEvent(event eventObj, internal *` + tetragonProcessInternal + `, labels []string, nodeName string, timestamp *` + timestamp + `) (*` + tetragonGER + `, error) {
+        switch e := event.(type) {`)
+	for _, msg := range f.Messages {
+		if !common.IsProcessEvent(msg) {
+			continue
+		}
+		g.P(`
+        case *` + g.QualifiedGoIdent(msg.GoIdent) + `:
+            if internal != nil {
+                e.Process = internal.GetProcessCopy()
+            } else {
+                ` + incProcessInfoErrors + `("` + msg.GoIdent.GoName + `")
+                ` + incErrorCount + `(` + mInfoFailed + `)
+            }
+            return &` + doGetEventsResponse(g, msg.GoIdent.GoName) + `, nil`)
+	}
+	g.P(`}
+            return nil, ` + common.FmtErrorf(g, "DoHandleEvent: Unhandled event type %T", "event") + `
+        }`)
+
+	return nil
+}
 
 func hasDestinationFields(msg *protogen.Message) bool {
 	fields := make(map[string]struct{})
@@ -65,15 +113,19 @@ func generateEventLabels(g *protogen.GeneratedFile, f *protogen.File) error {
 
 // Generate generates boilerplate code for the event cache
 func Generate(gen *protogen.Plugin, f *protogen.File) error {
-	g := common.NewGeneratedFile(gen, f, "eventcacheenterprise")
+	g := common.NewGeneratedFile(gen, f, "eventcache")
 
-	fgsProcess := common.TetragonApiIdent(g, "Process")
+	tetragonProcess := common.TetragonApiIdent(g, "Process")
 
 	g.P(`
         type eventObj interface {
-            GetProcess() *` + fgsProcess + `
+            GetProcess() *` + tetragonProcess + `
         }
     `)
+
+	if err := generateDoHandleEvents(g, f); err != nil {
+		return err
+	}
 
 	if err := generateEventLabels(g, f); err != nil {
 		return err

@@ -24,8 +24,9 @@ import (
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/ringbufmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/opcodemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
 	"github.com/sirupsen/logrus"
@@ -100,7 +101,8 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 	r := bytes.NewReader(data)
 
 	// Increment the counter for the msg opcode
-	metrics.MsgOpsCount.WithLabelValues(ops.OpCode(op).String()).Add(1)
+	// FIXME(WPF): This needs to be changed so we can use enterprise opcode
+	opcodemetrics.OpTotalInc(ops.OpCode(op))
 
 	// These ops handlers are registered by RegisterEventHandlerAtInit().
 	if h, ok := eventHandler[op]; ok {
@@ -167,9 +169,9 @@ func (k *Observer) __loopEvents(stopCtx context.Context, e *bpf.PerCpuEvents) er
 			k.log.WithError(err).Warn("kprobe events read failed")
 		}
 
-		metrics.RingBufPerfEventReceived.WithLabelValues().Set(float64(k.recvCntr))
-		metrics.RingBufPerfEventLost.WithLabelValues().Set(float64(k.lostCntr))
-		metrics.RingBufPerfEventErrors.WithLabelValues().Set(float64(k.errorCntr))
+		ringbufmetrics.ReceivedSet(float64(k.recvCntr))
+		ringbufmetrics.LostSet(float64(k.lostCntr))
+		ringbufmetrics.ErrorsSet(float64(k.errorCntr))
 	}
 	return nil
 }
@@ -218,18 +220,18 @@ func (k *Observer) runEventsNew(stopCtx context.Context, ready func()) error {
 				// NOTE(JM): Keeping the old behaviour for now and just counting the errors without stopping
 				if stopCtx.Err() == nil {
 					k.errorCntr++
-					metrics.RingBufPerfEventErrors.WithLabelValues().Set(float64(k.errorCntr))
+					ringbufmetrics.ErrorsSet(float64(k.errorCntr))
 					k.log.WithError(err).Warn("kprobe events read failed")
 				}
 			} else {
 				if len(record.RawSample) > 0 {
 					k.receiveEvent(record.RawSample, record.CPU)
-					metrics.RingBufPerfEventReceived.WithLabelValues().Set(float64(k.recvCntr))
+					ringbufmetrics.ReceivedSet(float64(k.recvCntr))
 				}
 
 				if record.LostSamples > 0 {
 					k.lostCntr += int(record.LostSamples)
-					metrics.RingBufPerfEventLost.WithLabelValues().Set(float64(k.lostCntr))
+					ringbufmetrics.LostSet(float64(k.lostCntr))
 				}
 			}
 		}

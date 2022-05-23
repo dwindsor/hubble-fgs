@@ -20,6 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/api/testapi"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
@@ -41,7 +42,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/test"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tracing"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/sirupsen/logrus"
@@ -166,7 +167,7 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 
 	default:
 		logger.GetLogger().WithField("event", event).Warnf("unhandled event of type %T", msg)
-		metrics.ErrorCount.WithLabelValues(string(metrics.UnhandledEvent)).Inc()
+		errormetrics.ErrorTotalInc(errormetrics.UnhandledEvent)
 		return nil
 	}
 	if processedEvent != nil {
@@ -200,5 +201,5 @@ func (pm *ProcessManager) NotifyListener(original interface{}, processed *fgs.Ge
 	for l := range pm.listeners {
 		l.Notify(processed)
 	}
-	metrics.ProcessEvent(original, processed)
+	eventmetrics.ProcessEvent(original, processed)
 }

@@ -17,8 +17,8 @@ import (
 	"os"
 	"time"
 
+	"github.com/cilium/tetragon/pkg/metrics/ringbufmetrics"
 	"github.com/fatih/color"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/prometheus/client_golang/prometheus"
 	dto "github.com/prometheus/client_model/go"
 )
@@ -89,9 +89,9 @@ func (s *Summary) PrettyPrint() {
 			s.TLSEvents, s.HTTPEvents, s.TCPEvents,
 			s.ExitEvents, s.ExecEvents)
 		fmt.Printf("Ring buffer:       received=%d, lost=%d, errors=%d\n",
-			getGaugeValue(metrics.RingBufPerfEventReceived.WithLabelValues()),
-			getGaugeValue(metrics.RingBufPerfEventLost.WithLabelValues()),
-			getGaugeValue(metrics.RingBufPerfEventErrors.WithLabelValues()))
+			getGaugeValue(ringbufmetrics.PerfEventReceived.WithLabelValues()),
+			getGaugeValue(ringbufmetrics.PerfEventLost.WithLabelValues()),
+			getGaugeValue(ringbufmetrics.PerfEventErrors.WithLabelValues()))
 	}
 
 	if s.SourceStats.Errors > 0 {

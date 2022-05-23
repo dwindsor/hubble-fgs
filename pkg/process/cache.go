@@ -12,14 +12,14 @@ package process
 
 import (
 	"fmt"
-	"strconv"
 	"sync/atomic"
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
+	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/sirupsen/logrus"
 )
 
@@ -153,8 +153,8 @@ func NewCache(
 		pidMap: pidMap,
 	}
 	update := func() {
-		metrics.ExecveMapSize.WithLabelValues("processLru", strconv.Itoa(processCacheSize)).Set(float64(pm.cache.Len()))
-		metrics.ExecveMapSize.WithLabelValues("pidMap", strconv.Itoa(processCacheSize)).Set(float64(pm.pidMap.Len()))
+		mapmetrics.MapSizeSet("processLru", processCacheSize, float64(pm.cache.Len()))
+		mapmetrics.MapSizeSet("pidMap", processCacheSize, float64(pm.pidMap.Len()))
 	}
 	ticker := time.NewTicker(60 * time.Second)
 	go func() {
@@ -173,13 +173,13 @@ func (pc *Cache) get(processID string) (*ProcessInternal, error) {
 	entry, ok := pc.cache.Get(processID)
 	if !ok {
 		logger.GetLogger().WithField("id in event", processID).Debug("process not found in cache")
-		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnGet)).Inc()
+		errormetrics.ErrorTotalInc(errormetrics.ProcessCacheMissOnGet)
 		return nil, fmt.Errorf("invalid entry for process ID: %s", processID)
 	}
 	process, _ := entry.(*ProcessInternal)
 	if !ok {
 		logger.GetLogger().WithField("process entry", entry).Debug("invalid entry in process cache")
-		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnGet)).Inc()
+		errormetrics.ErrorTotalInc(errormetrics.ProcessCacheMissOnGet)
 		return nil, fmt.Errorf("process with ID %s not found in cache", processID)
 	}
 	return process, nil
@@ -188,7 +188,7 @@ func (pc *Cache) get(processID string) (*ProcessInternal, error) {
 func (pc *Cache) Add(process *ProcessInternal) bool {
 	evicted := pc.cache.Add(process.process.ExecId, process)
 	if evicted {
-		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheEvicted)).Inc()
+		errormetrics.ErrorTotalInc(errormetrics.ProcessCacheEvicted)
 	}
 	return evicted
 }
@@ -196,12 +196,12 @@ func (pc *Cache) Add(process *ProcessInternal) bool {
 func (pc *Cache) remove(process *fgs.Process) bool {
 	present := pc.cache.Remove(process.ExecId)
 	if !present {
-		metrics.ErrorCount.WithLabelValues(string(metrics.ProcessCacheMissOnRemove)).Inc()
+		errormetrics.ErrorTotalInc(errormetrics.ProcessCacheMissOnRemove)
 	}
 	if process.Pid != nil {
 		pidFound := pc.pidMap.Remove(process.Pid.Value)
 		if !pidFound {
-			metrics.ErrorCount.WithLabelValues(string(metrics.PidMapMissOnRemove)).Inc()
+			errormetrics.ErrorTotalInc(errormetrics.PidMapMissOnRemove)
 		}
 	}
 	return present
@@ -220,7 +220,7 @@ func (pc *Cache) getFromPidMap(pid uint32) string {
 	execID, ok := entry.(string)
 	if !ok {
 		pc.log.WithFields(logrus.Fields{"pid": pid, "execID": execID}).Warn("Invalid entry in pidMap")
-		metrics.ErrorCount.WithLabelValues(string(metrics.PidMapInvalidEntry)).Inc()
+		errormetrics.ErrorTotalInc(errormetrics.PidMapInvalidEntry)
 		return ""
 	}
 	return execID
@@ -230,7 +230,7 @@ func (pc *Cache) AddToPidMap(pid uint32, execID string) bool {
 	evicted := pc.pidMap.Add(pid, execID)
 	if evicted {
 		pc.log.Warn("Entry evicted from pidMap")
-		metrics.ErrorCount.WithLabelValues(string(metrics.PidMapEvicted)).Inc()
+		errormetrics.ErrorTotalInc(errormetrics.PidMapEvicted)
 	}
 	return evicted
 }

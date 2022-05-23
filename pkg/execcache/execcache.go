@@ -14,10 +14,11 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
+	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -67,7 +68,7 @@ func (ec *Cache) handleExecEvents() {
 				tmp = append(tmp, e)
 				continue
 			}
-			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCachePodInfoRetryFailed)).Inc()
+			errormetrics.EventCacheInc(errormetrics.EventCachePodInfoRetryFailed)
 		}
 
 		if e.internal != nil {
@@ -99,10 +100,10 @@ func (ec *Cache) loop() {
 			 * event anyways.
 			 */
 			ec.handleExecEvents()
-			metrics.ExecveMapSize.WithLabelValues("cache", "0").Set(float64(len(ec.cache)))
+			mapmetrics.MapSizeSet("cache", 0, float64(len(ec.cache)))
 
 		case event := <-ec.objsChan:
-			metrics.EventCacheCount.WithLabelValues(string(metrics.EventCacheProcessCount)).Inc()
+			errormetrics.EventCacheInc(errormetrics.EventCacheProcessCount)
 			ec.cache = append(ec.cache, event)
 		}
 	}

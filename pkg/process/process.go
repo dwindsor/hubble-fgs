@@ -25,11 +25,11 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/reader/exec"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/path"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/metrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
@@ -246,7 +246,7 @@ func AddExecEvent(event *fgsAPI.MsgExecveEventUnix) *ProcessInternal {
 	// and use that as the parent.
 	parent, err := procCache.get(parentExecID)
 	if err != nil {
-		metrics.ErrorCount.WithLabelValues(string(metrics.NoParentNoClone)).Inc()
+		errormetrics.ErrorTotalInc(errormetrics.NoParentNoClone)
 		logger.GetLogger().WithFields(logrus.Fields{
 			"parent exec id": parentExecID,
 			"process":        proc,

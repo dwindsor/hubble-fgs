@@ -27,9 +27,9 @@ func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
 	tetragonGER := common.TetragonApiIdent(g, "GetEventsResponse")
 	timestamp := common.GoIdent(g, "google.golang.org/protobuf/types/known/timestamppb", "Timestamp")
 
-	mErrorCount := common.TetragonIdent(g, "pkg/metrics", "ErrorCount")
-	mInfoFailed := common.TetragonIdent(g, "pkg/metrics", "EventCacheProcessInfoFailed")
-	mProcessInfoErrors := common.TetragonIdent(g, "pkg/metrics", "ProcessInfoErrors")
+	incErrorCount := common.TetragonIdent(g, "pkg/metrics/errormetrics", "ErrorTotalInc")
+	mInfoFailed := common.TetragonIdent(g, "pkg/metrics/errormetrics", "EventCacheProcessInfoFailed")
+	incProcessInfoErrors := common.TetragonIdent(g, "pkg/metrics/eventcachemetrics", "ProcessInfoErrorInc")
 
 	g.P(`func DoHandleEvent(event eventObj, internal *` + tetragonProcessInternal + `, labels []string, nodeName string, timestamp *` + timestamp + `) (*` + tetragonGER + `, error) {
         switch e := event.(type) {`)
@@ -42,8 +42,8 @@ func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
             if internal != nil {
                 e.Process = internal.GetProcessCopy()
             } else {
-                ` + mProcessInfoErrors + `.WithLabelValues("` + msg.GoIdent.GoName + `").Inc()
-                ` + mErrorCount + `.WithLabelValues(string(` + mInfoFailed + `)).Inc()
+                ` + incProcessInfoErrors + `("` + msg.GoIdent.GoName + `")
+                ` + incErrorCount + `(` + mInfoFailed + `)
             }
             return &` + doGetEventsResponse(g, msg.GoIdent.GoName) + `, nil`)
 	}
