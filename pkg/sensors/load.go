@@ -24,7 +24,6 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 
@@ -64,34 +63,6 @@ const (
 	BPF_PROG_TYPE_EXT                     = 28
 	BPF_PROG_TYPE_LSM                     = 29
 )
-
-// LoadConfig loads the default sensor, including any from the configuration file.
-func LoadConfig(ctx context.Context, bpfDir, mapDir, ciliumDir, configFile string) error {
-	configSensors, err := createConfigSensors(configFile)
-	if err != nil {
-		return err
-	}
-	load := mergeSensors(configSensors)
-
-	if err := load.Load(ctx, bpfDir, mapDir, ciliumDir); err != nil {
-		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
-	}
-
-	return nil
-}
-
-// LoadDefault loads the default sensor, including any from the configuration
-// file.
-func LoadDefault(ctx context.Context, bpfDir, mapDir, ciliumDir, configFile string) error {
-	// This is technically not a sensor since we are loading this
-	// statically when we start, but it allows us to have a single path for
-	// loading bpf programs.
-	load := GetInitialSensor()
-	if err := load.Load(ctx, bpfDir, mapDir, ciliumDir); err != nil {
-		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
-	}
-	return nil
-}
 
 // Load loads the sensor, by loading all the BPF programs and maps.
 func (s *Sensor) Load(stopCtx context.Context, bpfDir, mapDir, ciliumDir string) error {
@@ -247,38 +218,6 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 	}
 
 	return nil
-}
-
-func createConfigSensors(configFile string) ([]*Sensor, error) {
-	if configFile == "" {
-		return nil, nil
-	}
-
-	yamlData, err := os.ReadFile(configFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read yaml file %s: %w", configFile, err)
-	}
-	cnf, err := config.ReadConfigYaml(string(yamlData))
-	if err != nil {
-		return nil, err
-	}
-
-	return GetSensorsFromParserPolicy(&cnf.Spec)
-}
-
-func mergeSensors(sensors []*Sensor) *Sensor {
-	var progs []*program.Program
-	var maps []*program.Map
-
-	for _, s := range sensors {
-		progs = append(progs, s.Progs...)
-		maps = append(maps, s.Maps...)
-	}
-	return &Sensor{
-		Name:  "__main__",
-		Progs: progs,
-		Maps:  maps,
-	}
 }
 
 func observerLoadInstance(stopCtx context.Context, bpfDir, mapDir, ciliumDir string, load *program.Program) error {

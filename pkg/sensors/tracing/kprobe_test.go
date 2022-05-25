@@ -30,8 +30,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 
 	"github.com/stretchr/testify/assert"
@@ -82,7 +82,7 @@ spec:
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithFile error: %s", err)
 	}
-	initialSensor := sensors.GetInitialSensor()
+	initialSensor := base.GetInitialSensor()
 	initialSensor.Load(context.TODO(), kprobeTestDir, kprobeTestDir, "")
 }
 

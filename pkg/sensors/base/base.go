@@ -11,7 +11,11 @@
 package base
 
 import (
+	"context"
+	"fmt"
+
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 )
 
@@ -110,4 +114,27 @@ func GetDefaultMaps() []*program.Map {
 	}
 	return maps
 
+}
+
+// GetInitialSensor returns the collection of Sensor that is loaded at
+// initialization time.
+func GetInitialSensor() *sensors.Sensor {
+	return &sensors.Sensor{
+		Name:  "__main__",
+		Progs: GetDefaultPrograms(),
+		Maps:  GetDefaultMaps(),
+	}
+}
+
+// LoadDefault loads the default sensor, including any from the configuration
+// file.
+func LoadDefault(ctx context.Context, bpfDir, mapDir, ciliumDir, configFile string) error {
+	// This is technically not a sensor since we are loading this
+	// statically when we start, but it allows us to have a single path for
+	// loading bpf programs.
+	load := GetInitialSensor()
+	if err := load.Load(ctx, bpfDir, mapDir, ciliumDir); err != nil {
+		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)
+	}
+	return nil
 }

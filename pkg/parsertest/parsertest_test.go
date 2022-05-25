@@ -124,7 +124,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 	ctx, cancel := context.WithCancel(context.Background())
 
 	// Load the initial sensor.
-	initSensor := sensors.GetInitialSensor()
+	initSensor := base.GetInitialSensor()
 
 	err := initSensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
 	if err != nil {

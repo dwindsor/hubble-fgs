@@ -28,6 +28,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/opcodemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/config"
 
 	"github.com/sirupsen/logrus"
 )
@@ -300,13 +302,13 @@ func GetCiliumDir() string {
 }
 
 func (k *Observer) Start(ctx context.Context) error {
-	if err := sensors.LoadDefault(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
+	if err := base.LoadDefault(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
 		return err
 	}
 
 	k.startUpdateMapMetrics()
 
-	if err := sensors.LoadConfig(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
+	if err := config.LoadConfig(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
 		return err
 	}
 

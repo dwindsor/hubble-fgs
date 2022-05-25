@@ -43,7 +43,8 @@ import (
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/config"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
@@ -364,7 +365,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions, oo *te
 }
 
 func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
-	if err := sensors.LoadDefault(
+	if err := base.LoadDefault(
 		context.TODO(),
 		obs.bpfDir,
 		obs.mapDir,
@@ -377,7 +378,7 @@ func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
 		t.Fatalf("LoadDefaultSensor error: %s\n", err)
 	}
 
-	if err := sensors.LoadConfig(
+	if err := config.LoadConfig(
 		context.TODO(),
 		obs.bpfDir,
 		obs.mapDir,
