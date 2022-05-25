@@ -90,6 +90,7 @@ func TestKprobeNSChanges(t *testing.T) {
 	if err := testCmd.Start(); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { os.Remove("strange.txt") })
 
 	if err := testCmd.Wait(); err != nil {
 		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
@@ -173,6 +174,7 @@ func TestKprobeCapChanges(t *testing.T) {
 	if err := testCmd.Start(); err != nil {
 		t.Fatal(err)
 	}
+	t.Cleanup(func() { os.Remove("strange.txt") })
 
 	if err := testCmd.Wait(); err != nil {
 		t.Fatalf("command failed with %s. Context error: %s", err, ctx.Err())
