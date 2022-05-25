@@ -127,7 +127,6 @@ test-compile:
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/bugtool         -o go-tests/bugtool.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/filters         -o go-tests/filters.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/grpc            -o go-tests/grpc.test
-	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/metrics         -o go-tests/metrics.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/stacktracetree  -o go-tests/stacktracetree.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/config          -o go-tests/config.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/sockmap -o go-tests/sockmap.test
