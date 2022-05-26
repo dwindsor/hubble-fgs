@@ -36,5 +36,5 @@ func (k *Observer) StartStandalone(ctx context.Context) error {
 	}
 	logger.GetLogger().Info("starting observer in standalone mode")
 	k.AddListener(&standaloneListener{})
-	return k.Start(ctx)
+	return k.Start(ctx, nil)
 }

@@ -3,29 +3,10 @@ package config
 import (
 	"context"
 	"fmt"
-	"os"
 
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
-
-func createConfigSensors(configFile string) ([]*sensors.Sensor, error) {
-	if configFile == "" {
-		return nil, nil
-	}
-
-	yamlData, err := os.ReadFile(configFile)
-	if err != nil {
-		return nil, fmt.Errorf("failed to read yaml file %s: %w", configFile, err)
-	}
-	cnf, err := config.ReadConfigYaml(string(yamlData))
-	if err != nil {
-		return nil, err
-	}
-
-	return sensors.GetSensorsFromParserPolicy(&cnf.Spec)
-}
 
 func mergeSensors(sens []*sensors.Sensor) *sensors.Sensor {
 	var progs []*program.Program
@@ -43,12 +24,8 @@ func mergeSensors(sens []*sensors.Sensor) *sensors.Sensor {
 }
 
 // LoadConfig loads the default sensor, including any from the configuration file.
-func LoadConfig(ctx context.Context, bpfDir, mapDir, ciliumDir, configFile string) error {
-	configSensors, err := createConfigSensors(configFile)
-	if err != nil {
-		return err
-	}
-	load := mergeSensors(configSensors)
+func LoadConfig(ctx context.Context, bpfDir, mapDir, ciliumDir string, s []*sensors.Sensor) error {
+	load := mergeSensors(s)
 
 	if err := load.Load(ctx, bpfDir, mapDir, ciliumDir); err != nil {
 		return fmt.Errorf("hubble-fgs, aborting could not load BPF programs: %w", err)

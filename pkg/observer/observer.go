@@ -25,11 +25,13 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/ringbufmetrics"
+	"github.com/cilium/tetragon/pkg/sensors/base"
+	"github.com/cilium/tetragon/pkg/sensors/config"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/opcodemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/cilium/tetragon/pkg/sensors/config"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/config"
 
 	"github.com/sirupsen/logrus"
 )
@@ -301,15 +303,17 @@ func GetCiliumDir() string {
 	return ""
 }
 
-func (k *Observer) Start(ctx context.Context) error {
-	if err := base.LoadDefault(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
+func (k *Observer) Start(ctx context.Context, sens []*sensors.Sensor) error {
+	if err := base.LoadDefault(ctx, k.bpfDir, k.mapDir, k.ciliumDir); err != nil {
 		return err
 	}
 
 	k.startUpdateMapMetrics()
 
-	if err := config.LoadConfig(ctx, k.bpfDir, k.mapDir, k.ciliumDir, k.configFile); err != nil {
-		return err
+	if sens != nil {
+		if err := config.LoadConfig(ctx, k.bpfDir, k.mapDir, k.ciliumDir, sens); err != nil {
+			return err
+		}
 	}
 
 	if SensorManager == nil {

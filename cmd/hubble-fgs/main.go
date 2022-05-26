@@ -3,6 +3,7 @@ package main
 import (
 	"context"
 	"encoding/json"
+	"fmt"
 	"net"
 	"os"
 	"os/signal"
@@ -11,6 +12,7 @@ import (
 	"time"
 
 	// This needs to be first to be first in order to force oss consts to be fixed up
+	"github.com/isovalent/hubble-fgs/pkg/config"
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -75,6 +77,23 @@ func saveInitInfo() error {
 		ServerAddr:  serverAddress,
 	}
 	return bugtool.SaveInitInfo(&info)
+}
+
+func readConfig(file string) (*config.GenericTracingConf, error) {
+	if file == "" {
+		return nil, nil
+	}
+
+	yamlData, err := os.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read yaml file %s: %w", configFile, err)
+	}
+	cnf, err := config.ReadConfigYaml(string(yamlData))
+	if err != nil {
+		return nil, err
+	}
+
+	return cnf, nil
 }
 
 func hubbleFGSExecute() error {
@@ -184,7 +203,15 @@ func hubbleFGSExecute() error {
 	if enableK8sAPI {
 		go crd.WatchTracePolicy(ctx, observer.SensorManager)
 	}
-	return obs.Start(ctx)
+	cnf, err := readConfig(configFile)
+	if err != nil {
+		return err
+	}
+	startSensors, err := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+	if err != nil {
+		return err
+	}
+	return obs.Start(ctx, startSensors)
 }
 
 // getObserverDir returns the path to the observer directory based on the BPF

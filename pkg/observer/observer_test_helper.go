@@ -36,15 +36,18 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/base"
+	"github.com/cilium/tetragon/pkg/sensors/config"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
+	yaml "github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/process"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/cilium/tetragon/pkg/sensors/config"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
@@ -244,6 +247,23 @@ func newDefaultObserver(t *testing.T, oo *testObserverOptions) *Observer {
 		oo.config, 0)
 }
 
+func readConfig(file string) (*yaml.GenericTracingConf, error) {
+	if file == "" {
+		return nil, nil
+	}
+
+	yamlData, err := os.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read yaml file %s: %w", file, err)
+	}
+	cnf, err := yaml.ReadConfigYaml(string(yamlData))
+	if err != nil {
+		return nil, err
+	}
+
+	return cnf, nil
+}
+
 func getDefaultObserver(t *testing.T, opts ...TestOption) (*Observer, error) {
 	o := newDefaultTestOptions(t, opts...)
 
@@ -261,8 +281,11 @@ func getDefaultObserver(t *testing.T, opts ...TestOption) (*Observer, error) {
 		option.Config.Verbosity = dfltVerbosity
 	}
 
+	cnf, _ := readConfig(o.observer.config)
+	sens, _ := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+
 	loadExporter(t, obs, &o.exporter, &o.observer)
-	if err := loadObserver(t, obs, o.observer.notestfail); err != nil {
+	if err := loadObserver(t, obs, sens, o.observer.notestfail); err != nil {
 		return nil, err
 	}
 
@@ -364,13 +387,12 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions, oo *te
 	return nil
 }
 
-func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
+func loadObserver(t *testing.T, obs *Observer, sens []*sensors.Sensor, notestfail bool) error {
 	if err := base.LoadDefault(
 		context.TODO(),
 		obs.bpfDir,
 		obs.mapDir,
 		obs.ciliumDir,
-		obs.configFile,
 	); err != nil {
 		if notestfail {
 			return err
@@ -383,7 +405,7 @@ func loadObserver(t *testing.T, obs *Observer, notestfail bool) error {
 		obs.bpfDir,
 		obs.mapDir,
 		obs.ciliumDir,
-		obs.configFile,
+		sens,
 	); err != nil {
 		if notestfail {
 			return err
