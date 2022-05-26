@@ -11,7 +11,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	sttManager "github.com/isovalent/hubble-fgs/pkg/stt"
 )
@@ -447,26 +446,6 @@ func (h *Manager) StopSensorManager(ctx context.Context) error {
 
 	h.sensorCtl <- op
 	return <-retc
-}
-
-func (h *Manager) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error) {
-	m := h.STTManager
-	if m == nil {
-		return nil, fmt.Errorf("GetTreeProto failed, sttManagerHandle is nil")
-	}
-
-	retc := make(chan error)
-	op := &sttManager.SttMgTreeToProto{
-		TreeName: tname,
-		RetChan:  retc,
-	}
-	m <- op
-	err := <-retc
-	if err != nil {
-		return nil, err
-	}
-
-	return op.RootNode, nil
 }
 
 // Manager handles dynamic sensor management, such as adding / removing sensors
