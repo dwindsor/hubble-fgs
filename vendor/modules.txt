@@ -164,6 +164,7 @@ github.com/cilium/tetragon/pkg/reader/path
 github.com/cilium/tetragon/pkg/reader/proc
 github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors
+github.com/cilium/tetragon/pkg/sensors/config
 github.com/cilium/tetragon/pkg/sensors/program
 github.com/cilium/tetragon/pkg/sensors/program/cgroup
 github.com/cilium/tetragon/pkg/sensors/unloader

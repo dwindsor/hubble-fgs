@@ -29,7 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/opcodemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/config"
+	"github.com/cilium/tetragon/pkg/sensors/config"
 
 	"github.com/sirupsen/logrus"
 )
