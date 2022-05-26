@@ -19,13 +19,12 @@ import (
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/aggregator"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/isovalent/hubble-fgs/pkg/health"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 )
 
@@ -40,7 +39,7 @@ type notifier interface {
 }
 
 type observer interface {
-	AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error
+	AddTracingPolicy(ctx context.Context, sensorName string, spec interface{}) error
 	DelTracingPolicy(ctx context.Context, sensorName string) error
 	EnableSensor(ctx context.Context, name string) error
 	DisableSensor(ctx context.Context, name string) error

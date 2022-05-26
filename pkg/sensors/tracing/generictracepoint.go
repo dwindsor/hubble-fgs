@@ -29,11 +29,11 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/selectors"
+	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/tracepoint"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 
 	gt "github.com/cilium/tetragon/pkg/generictypes"
@@ -540,7 +540,8 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{unix}, nil
 }
 
-func (t *observerTracepointSensor) SpecHandler(spec *enterprise.TracingPolicySpec) (*sensors.Sensor, error) {
+func (t *observerTracepointSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
+	spec := raw.(*enterprise.TracingPolicySpec)
 	if len(spec.KProbes) > 0 && len(spec.Tracepoints) > 0 {
 		return nil, errors.New("tracing policies with both kprobes and tracepoints are not currently supported")
 	}

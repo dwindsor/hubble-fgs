@@ -23,12 +23,12 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/selectors"
+	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/chunks"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -129,7 +129,8 @@ func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	return -1, nil
 }
 
-func (http *httpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (http *httpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
+	spec := raw.(*v1alpha1.TracingPolicySpec)
 	return AddHTTPSensor(spec.Parser)
 }
 
@@ -141,7 +142,7 @@ func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (i
 	return 0, nil
 }
 
-func (skSkbVerdict *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbVerdict *skSkbVerdictSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -153,7 +154,7 @@ func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (int
 	return 0, nil
 }
 
-func (skSkbParser *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbParser *skSkbParserSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 

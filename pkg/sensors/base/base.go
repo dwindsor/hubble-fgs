@@ -16,7 +16,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors"
 )
 
 var (

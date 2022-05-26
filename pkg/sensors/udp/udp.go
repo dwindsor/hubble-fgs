@@ -24,6 +24,8 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	lru "github.com/hashicorp/golang-lru"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -32,11 +34,9 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
-	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/yalue/native_endian"
 
@@ -670,7 +670,8 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	return sensors.SensorBuilder(versionStr, progs, maps)
 }
 
-func (udp *udpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (udp *udpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
+	spec := raw.(*v1alpha1.TracingPolicySpec)
 	var interval = time.Duration(UdpGCIntervalDefault)
 
 	if !spec.Parser.Udp.Enable {

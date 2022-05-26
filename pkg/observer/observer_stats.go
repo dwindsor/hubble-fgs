@@ -19,7 +19,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors"
 )
 
 type statKey struct {

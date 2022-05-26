@@ -12,11 +12,11 @@ package sockmap
 
 import (
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
@@ -178,7 +178,7 @@ func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) 
 	return -1, nil
 }
 
-func (skmsg *skmsgTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skmsg *skmsgTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -190,7 +190,7 @@ func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs)
 	return 0, nil
 }
 
-func (skSkbVerdict *skSkbVerdictTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbVerdict *skSkbVerdictTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -202,7 +202,7 @@ func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (
 	return 0, nil
 }
 
-func (skSkbParser *skSkbParserTLSSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbParser *skSkbParserTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -214,7 +214,7 @@ func (s *socketOptSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	return 0, nil
 }
 
-func (s *socketOptSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (s *socketOptSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -301,7 +301,8 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
 }
 
-func (tls *tlsSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (tls *tlsSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
+	spec := raw.(*v1alpha1.TracingPolicySpec)
 	return AddParserSensors(spec.Parser)
 }
 

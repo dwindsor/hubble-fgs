@@ -14,7 +14,7 @@ import (
 	"os"
 
 	"github.com/cilium/tetragon/pkg/btf"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors"
 )
 
 func RemovePrograms(bpfDir, mapDir string) {

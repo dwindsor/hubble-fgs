@@ -22,7 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
-	stt "github.com/isovalent/hubble-fgs/pkg/stacktracetree"
+	stt "github.com/cilium/tetragon/pkg/stacktracetree"
 )
 
 var (

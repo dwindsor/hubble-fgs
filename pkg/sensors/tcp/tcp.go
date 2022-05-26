@@ -9,15 +9,15 @@ import (
 
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	lru "github.com/hashicorp/golang-lru"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
-	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 
 	loader "github.com/cilium/tetragon/pkg/bpf"
@@ -111,7 +111,8 @@ type tcpSensor struct {
 	name string
 }
 
-func (tcp *tcpSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
+	spec := raw.(*v1alpha1.TracingPolicySpec)
 	tcpInterval = time.Duration(TcpIntervalDefault)
 
 	if !spec.Parser.Tcp.Enable {

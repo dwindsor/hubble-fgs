@@ -43,7 +43,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tracing"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/sirupsen/logrus"
 )

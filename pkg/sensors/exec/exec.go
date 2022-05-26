@@ -9,10 +9,9 @@ import (
 	api "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 )
 
@@ -166,7 +165,7 @@ func (e *execSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
 	return i, err
 }
 
-func (e *execSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (e *execSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 

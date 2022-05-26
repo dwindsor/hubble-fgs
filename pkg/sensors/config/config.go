@@ -4,8 +4,8 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/isovalent/hubble-fgs/pkg/sensors"
 )
 
 func mergeSensors(sens []*sensors.Sensor) *sensors.Sensor {
