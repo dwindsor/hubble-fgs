@@ -104,6 +104,7 @@ github.com/cilium/lumberjack/v2
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
 ## explicit; go 1.17
 github.com/cilium/tetragon/api/v1/tetragon
+github.com/cilium/tetragon/api/v1/tetragon/codegen/eventcache
 github.com/cilium/tetragon/api/v1/tetragon/codegen/filters
 github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/common
@@ -120,6 +121,7 @@ github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/filters
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/generate
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/helpers
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/imports
+github.com/cilium/tetragon/pkg/aggregator
 github.com/cilium/tetragon/pkg/api
 github.com/cilium/tetragon/pkg/api/calltraceapi
 github.com/cilium/tetragon/pkg/api/ops
@@ -129,14 +131,34 @@ github.com/cilium/tetragon/pkg/api/testapi
 github.com/cilium/tetragon/pkg/api/tracingapi
 github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
+github.com/cilium/tetragon/pkg/bugtool
 github.com/cilium/tetragon/pkg/cilium
+github.com/cilium/tetragon/pkg/config
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers
+github.com/cilium/tetragon/pkg/dns
+github.com/cilium/tetragon/pkg/eventcache
+github.com/cilium/tetragon/pkg/eventchecker
+github.com/cilium/tetragon/pkg/execcache
+github.com/cilium/tetragon/pkg/exporter
 github.com/cilium/tetragon/pkg/filters
 github.com/cilium/tetragon/pkg/generictypes
+github.com/cilium/tetragon/pkg/grpc
+github.com/cilium/tetragon/pkg/grpc/exec
+github.com/cilium/tetragon/pkg/grpc/test
+github.com/cilium/tetragon/pkg/grpc/tracing
+github.com/cilium/tetragon/pkg/health
 github.com/cilium/tetragon/pkg/idtable
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/scheme
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/typed/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/cilium.io
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/internalinterfaces
+github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/version
 github.com/cilium/tetragon/pkg/kernels
 github.com/cilium/tetragon/pkg/ksyms
@@ -148,16 +170,22 @@ github.com/cilium/tetragon/pkg/metrics/consts
 github.com/cilium/tetragon/pkg/metrics/errormetrics
 github.com/cilium/tetragon/pkg/metrics/eventcachemetrics
 github.com/cilium/tetragon/pkg/metrics/eventmetrics
+github.com/cilium/tetragon/pkg/metrics/kprobemetrics
 github.com/cilium/tetragon/pkg/metrics/mapmetrics
 github.com/cilium/tetragon/pkg/metrics/opcodemetrics
+github.com/cilium/tetragon/pkg/metrics/processexecmetrics
 github.com/cilium/tetragon/pkg/metrics/ringbufmetrics
 github.com/cilium/tetragon/pkg/mountinfo
+github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/option
+github.com/cilium/tetragon/pkg/process
 github.com/cilium/tetragon/pkg/ratelimit
+github.com/cilium/tetragon/pkg/reader/caps
 github.com/cilium/tetragon/pkg/reader/dns
 github.com/cilium/tetragon/pkg/reader/exec
 github.com/cilium/tetragon/pkg/reader/ktime
 github.com/cilium/tetragon/pkg/reader/namespace
+github.com/cilium/tetragon/pkg/reader/network
 github.com/cilium/tetragon/pkg/reader/node
 github.com/cilium/tetragon/pkg/reader/path
 github.com/cilium/tetragon/pkg/reader/proc
@@ -166,13 +194,19 @@ github.com/cilium/tetragon/pkg/sensors
 github.com/cilium/tetragon/pkg/sensors/config
 github.com/cilium/tetragon/pkg/sensors/program
 github.com/cilium/tetragon/pkg/sensors/program/cgroup
+github.com/cilium/tetragon/pkg/sensors/tracing
 github.com/cilium/tetragon/pkg/sensors/unloader
+github.com/cilium/tetragon/pkg/server
 github.com/cilium/tetragon/pkg/stacktracetree
 github.com/cilium/tetragon/pkg/stt
+github.com/cilium/tetragon/pkg/testutils
 github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint
+github.com/cilium/tetragon/pkg/version
 github.com/cilium/tetragon/pkg/vtuple
 github.com/cilium/tetragon/pkg/vtuplefilter
+github.com/cilium/tetragon/pkg/watcher
+github.com/cilium/tetragon/pkg/watcher/crd
 # github.com/containerd/containerd v1.6.2
 ## explicit; go 1.17
 github.com/containerd/containerd/errdefs
