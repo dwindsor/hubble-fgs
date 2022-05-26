@@ -36,7 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/yalue/native_endian"
 

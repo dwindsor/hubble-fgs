@@ -17,7 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 
 	loader "github.com/cilium/tetragon/pkg/bpf"

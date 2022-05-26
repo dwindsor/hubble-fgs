@@ -10,9 +10,9 @@ import (
 	"strings"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 	sttManager "github.com/isovalent/hubble-fgs/pkg/stt"
 )
 

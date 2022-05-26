@@ -24,7 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 
 	"github.com/sirupsen/logrus"

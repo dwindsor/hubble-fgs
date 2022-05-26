@@ -3,7 +3,7 @@ package cgroup
 import (
 	"fmt"
 
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"golang.org/x/sys/unix"
 )
 

@@ -28,7 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 )
 
 const (

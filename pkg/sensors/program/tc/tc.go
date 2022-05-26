@@ -4,8 +4,8 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/unloader"
+	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/unloader"
 	"github.com/vishvananda/netlink"
 )
 

@@ -16,8 +16,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 )
 
 var (

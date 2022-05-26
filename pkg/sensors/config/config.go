@@ -5,9 +5,9 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
 )
 
 func createConfigSensors(configFile string) ([]*sensors.Sensor, error) {

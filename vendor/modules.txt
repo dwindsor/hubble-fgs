@@ -130,6 +130,7 @@ github.com/cilium/tetragon/pkg/api/tracingapi
 github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/cilium
+github.com/cilium/tetragon/pkg/config
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers
 github.com/cilium/tetragon/pkg/filters
@@ -162,6 +163,12 @@ github.com/cilium/tetragon/pkg/reader/node
 github.com/cilium/tetragon/pkg/reader/path
 github.com/cilium/tetragon/pkg/reader/proc
 github.com/cilium/tetragon/pkg/selectors
+github.com/cilium/tetragon/pkg/sensors
+github.com/cilium/tetragon/pkg/sensors/program
+github.com/cilium/tetragon/pkg/sensors/program/cgroup
+github.com/cilium/tetragon/pkg/sensors/unloader
+github.com/cilium/tetragon/pkg/stacktracetree
+github.com/cilium/tetragon/pkg/stt
 github.com/cilium/tetragon/pkg/timer
 github.com/cilium/tetragon/pkg/tracepoint
 github.com/cilium/tetragon/pkg/vtuple

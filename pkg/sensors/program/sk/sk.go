@@ -1,7 +1,7 @@
 package sk
 
 import (
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 )
 
 func LoadSkProgram(

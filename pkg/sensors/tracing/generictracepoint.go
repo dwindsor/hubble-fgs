@@ -33,7 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/sirupsen/logrus"
 
 	gt "github.com/cilium/tetragon/pkg/generictypes"

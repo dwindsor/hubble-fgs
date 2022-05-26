@@ -22,7 +22,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 )
 
 var (

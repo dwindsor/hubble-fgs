@@ -9,7 +9,7 @@ import (
 	"github.com/cilium/ebpf/link"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/unloader"
+	"github.com/cilium/tetragon/pkg/sensors/unloader"
 )
 
 var (
