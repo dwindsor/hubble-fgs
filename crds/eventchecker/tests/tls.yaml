@@ -1,0 +1,222 @@
+apiVersion: isovalent.com/v1alpha1
+metadata:
+  description: TLS checker
+  name: tls
+spec:
+  ordered: false
+  {{if .isMin510}}
+  checks:
+  - exec:
+      parent:
+        binary:
+          operator: contains
+          value: runc
+      process:
+        arguments:
+          operator: full
+          value: -4 https://google.com -m 30
+        binary:
+          operator: suffix
+          value: /curl
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: docker.io/curlimages/curl:latest
+            name:
+              operator: full
+              value: curl
+          labels:
+            k8s:app:
+              operator: full
+              value: curl
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: curl
+          name:
+            operator: prefix
+            value: curl
+          namespace:
+            operator: full
+            value: curl
+  - dns:
+      dns:
+        answerTypes:
+          operator: subset
+          values:
+          - 1
+        names:
+          operator: subset
+          values:
+          - operator: contains
+            value: google.com
+        response: true
+      process:
+        arguments:
+          operator: full
+          value: -4 https://google.com -m 30
+        binary:
+          operator: suffix
+          value: /curl
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: docker.io/curlimages/curl:latest
+            name:
+              operator: full
+              value: curl
+          labels:
+            k8s:app:
+              operator: full
+              value: curl
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: curl
+          name:
+            operator: prefix
+            value: curl
+          namespace:
+            operator: full
+            value: curl
+  - connect:
+      destinationPort: 443
+      process:
+        arguments:
+          operator: full
+          value: -4 https://google.com -m 30
+        binary:
+          operator: suffix
+          value: /curl
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: docker.io/curlimages/curl:latest
+            name:
+              operator: full
+              value: curl
+          labels:
+            k8s:app:
+              operator: full
+              value: curl
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: curl
+          name:
+            operator: prefix
+            value: curl
+          namespace:
+            operator: full
+            value: curl
+      protocol: TCP
+  - tls:
+      destinationPort: 443
+      negotiatedVersion:
+        operator: full
+        value: TLS1.3
+      process:
+        arguments:
+          operator: full
+          value: -4 https://google.com -m 30
+        binary:
+          operator: suffix
+          value: /curl
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: docker.io/curlimages/curl:latest
+            name:
+              operator: full
+              value: curl
+          labels:
+            k8s:app:
+              operator: full
+              value: curl
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: curl
+          name:
+            operator: prefix
+            value: curl
+          namespace:
+            operator: full
+            value: curl
+      sniName:
+        operator: contains
+        value: google.com
+      sniType:
+        operator: full
+        value: host_name
+      supportedVersions:
+        operator: full
+        value: TLS1.3 TLS1.2 TLS1.1 TLS1.0
+  - close:
+      destinationPort: 443
+      process:
+        arguments:
+          operator: full
+          value: -4 https://google.com -m 30
+        binary:
+          operator: suffix
+          value: /curl
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: docker.io/curlimages/curl:latest
+            name:
+              operator: full
+              value: curl
+          labels:
+            k8s:app:
+              operator: full
+              value: curl
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: curl
+          name:
+            operator: prefix
+            value: curl
+          namespace:
+            operator: full
+            value: curl
+  {{else}}
+  checks: []
+  {{end}}

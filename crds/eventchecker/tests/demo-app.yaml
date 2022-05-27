@@ -1,0 +1,246 @@
+apiVersion: isovalent.com/v1alpha1
+metadata:
+  description: Demo app checker
+  name: demo-app
+spec:
+  ordered: false
+  checks:
+  - exec:
+      parent:
+        arguments:
+          operator: full
+          value: -c "PORT=9080 node server.js"
+        binary:
+          operator: suffix
+          value: /sh
+      process:
+        arguments:
+          operator: contains
+          value: server.js
+        binary:
+          operator: suffix
+          value: /node
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: quay.io/isovalent/jobs-app-jobposting:latest
+            name:
+              operator: full
+              value: jobposting
+          labels:
+            k8s:app:
+              operator: full
+              value: jobposting
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: tenant-jobs
+          name:
+            operator: prefix
+            value: jobposting
+          namespace:
+            operator: full
+            value: tenant-jobs
+  - connect:
+      destinationPort: 9080
+      process:
+        arguments:
+          operator: contains
+          value: server.js
+        binary:
+          operator: suffix
+          value: /node
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: quay.io/isovalent/jobs-app-jobposting:latest
+            name:
+              operator: full
+              value: jobposting
+          labels:
+            k8s:app:
+              operator: full
+              value: jobposting
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: tenant-jobs
+          name:
+            operator: prefix
+            value: jobposting
+          namespace:
+            operator: full
+            value: tenant-jobs
+  - listen:
+      port: 9080
+      process:
+        arguments:
+          operator: contains
+          value: server.js
+        binary:
+          operator: suffix
+          value: /node
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: quay.io/isovalent/jobs-app-jobposting:latest
+            name:
+              operator: full
+              value: jobposting
+          labels:
+            k8s:app:
+              operator: full
+              value: jobposting
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: tenant-jobs
+          name:
+            operator: prefix
+            value: jobposting
+          namespace:
+            operator: full
+            value: tenant-jobs
+  - accept:
+      process:
+        arguments:
+          operator: contains
+          value: server.js
+        binary:
+          operator: suffix
+          value: /node
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: quay.io/isovalent/jobs-app-jobposting:latest
+            name:
+              operator: full
+              value: jobposting
+          labels:
+            k8s:app:
+              operator: full
+              value: jobposting
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: tenant-jobs
+          name:
+            operator: prefix
+            value: jobposting
+          namespace:
+            operator: full
+            value: tenant-jobs
+      sourcePort: 9080
+  - close:
+      destinationPort: 9080
+      process:
+        arguments:
+          operator: contains
+          value: server.js
+        binary:
+          operator: suffix
+          value: /node
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: quay.io/isovalent/jobs-app-jobposting:latest
+            name:
+              operator: full
+              value: jobposting
+          labels:
+            k8s:app:
+              operator: full
+              value: jobposting
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: tenant-jobs
+          name:
+            operator: prefix
+            value: jobposting
+          namespace:
+            operator: full
+            value: tenant-jobs
+  {{if .isMin510}}
+  - dns:
+      dns:
+        answerTypes:
+          operator: subset
+          values:
+          - 1
+        names:
+          operator: subset
+          values:
+          - "coreapi.tenant-jobs.svc.cluster.local."
+        response: true
+      process:
+        arguments:
+          operator: contains
+          value: server.js
+        binary:
+          operator: suffix
+          value: /node
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: quay.io/isovalent/jobs-app-jobposting:latest
+            name:
+              operator: full
+              value: jobposting
+          labels:
+            k8s:app:
+              operator: full
+              value: jobposting
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: tenant-jobs
+          name:
+            operator: prefix
+            value: jobposting
+          namespace:
+            operator: full
+            value: tenant-jobs
+  {{end}}

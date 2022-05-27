@@ -1,0 +1,112 @@
+apiVersion: isovalent.com/v1alpha1
+metadata:
+  description: HTTP checker
+  name: http
+spec:
+  ordered: false
+  {{if .isMin510}}
+  checks:
+  - exec:
+      parent:
+        binary:
+          operator: contains
+          value: runc
+      process:
+        arguments:
+          operator: full
+          value: -4 http://google.com -m 30
+        binary:
+          operator: suffix
+          value: /curl
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: docker.io/curlimages/curl:latest
+            name:
+              operator: full
+              value: curl
+          labels:
+            k8s:app:
+              operator: full
+              value: curl
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: curl
+          name:
+            operator: prefix
+            value: curl
+          namespace:
+            operator: full
+            value: curl
+  - http:
+      http:
+        request:
+          agent:
+            operator: contains
+            value: curl
+          host:
+            operator: contains
+            value: google.com
+          method:
+            operator: full
+            value: GET
+          uri:
+            operator: full
+            value: /
+          version:
+            operator: full
+            value: HTTP/1.1
+        response:
+          code: 301
+          reason:
+            operator: full
+            value: Moved Permanently
+          version:
+            operator: full
+            value: HTTP/1.1
+      process:
+        arguments:
+          operator: full
+          value: -4 http://google.com -m 30
+        binary:
+          operator: suffix
+          value: /curl
+        pod:
+          container:
+            image:
+              name:
+                operator: full
+                value: docker.io/curlimages/curl:latest
+            name:
+              operator: full
+              value: curl
+          labels:
+            k8s:app:
+              operator: full
+              value: curl
+            k8s:io.cilium.k8s.policy.cluster:
+              operator: prefix
+              value: fgs-cli-ci
+            k8s:io.cilium.k8s.policy.serviceaccount:
+              operator: full
+              value: default
+            k8s:io.kubernetes.pod.namespace:
+              operator: full
+              value: curl
+          name:
+            operator: prefix
+            value: curl
+          namespace:
+            operator: full
+            value: curl
+  {{else}}
+  checks: []
+  {{end}}
