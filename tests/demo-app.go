@@ -4,75 +4,67 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/kernels"
-	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 )
 
-func DemoAppChecker(kernelVersion string) ec.MultiResponseChecker {
-	pod_checker := ec.NewPodChecker().
-		WithNamespace("tenant-jobs").
-		WithNamePrefix("jobposting").
-		WithLabels(
-			ec.LabelMatchVal("k8s:app", "jobposting"),
-			ec.LabelMatchValPrefix("k8s:io.cilium.k8s.policy.cluster", "fgs-cli-ci"),
-			ec.LabelMatchVal("k8s:io.cilium.k8s.policy.serviceaccount", "default"),
-			ec.LabelMatchVal("k8s:io.kubernetes.pod.namespace", "tenant-jobs"),
-		).
-		WithContainer(ec.NewContainerChecker().
-			WithName("jobposting").
-			WithImageName("quay.io/isovalent/jobs-app-jobposting:latest"),
-		)
+func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
+	containerChecker := ec.NewContainerChecker().
+		WithName(sm.Full("jobposting")).
+		WithImage(ec.NewImageChecker().WithName(sm.Full("quay.io/isovalent/jobs-app-jobposting:latest")))
 
-	nodejs_checker := ec.NewProcessChecker().
-		WithBinary("/usr/local/bin/node").
-		WithArguments("server.js").
-		WithPod(pod_checker)
+	podChecker := ec.NewPodChecker().
+		WithNamespace(sm.Full("tenant-jobs")).
+		WithName(sm.Prefix("jobposting")).
+		WithLabels(map[string]sm.StringMatcher{
+			"k8s:app":                                 *sm.Full("jobposting"),
+			"k8s:io.cilium.k8s.policy.cluster":        *sm.Prefix("fgs-cli-ci"),
+			"k8s:io.cilium.k8s.policy.serviceaccount": *sm.Full("default"),
+			"k8s:io.kubernetes.pod.namespace":         *sm.Full("tenant-jobs"),
+		}).
+		WithContainer(containerChecker)
 
-	demo_app_checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(nodejs_checker).
-			HasParent(ec.NewProcessChecker().
-				WithBinary("/bin/sh").
-				WithArguments("-c \"PORT=9080 node server.js\"")).
-			HasAncestor(0, ec.NewProcessChecker().
-				WithBinary("/usr/local/bin/docker-entrypoint.sh").
-				WithArguments("/usr/local/bin/docker-entrypoint.sh /bin/sh -c \"PORT=9080 node server.js\"")).
-			HasAncestor(1, ec.NewProcessCheckerOr().
-				With(ec.NewProcessChecker().
-					WithBinary("/usr/bin/containerd-shim-runc-v2")).
-				With(ec.NewProcessChecker().
-					WithBinary("/usr/local/bin/containerd-shim-runc-v2")),
-			).
-			End(),
-		ec.NewConnectEventChecker().
-			HasProcess(nodejs_checker).
-			HasDstPort(9080).
-			End(),
-		ec.NewListenEventChecker().
-			HasProcess(nodejs_checker).
-			HasPort(9080).
-			End(),
-		ec.NewAcceptEventChecker().
-			HasProcess(nodejs_checker).
-			HasSrcPort(9080).
-			End(),
-		ec.NewCloseEventChecker().
-			HasProcess(nodejs_checker).
-			HasDstPort(9080).
-			End(),
+	nodeJsChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("/node")).
+		WithArguments(sm.Contains("server.js")).
+		WithPod(podChecker)
+
+	shellChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("/sh")).
+		WithArguments(sm.Full("-c \"PORT=9080 node server.js\""))
+
+	demoAppChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(nodeJsChecker).
+			WithParent(shellChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(nodeJsChecker).
+			WithDestinationPort(9080),
+		ec.NewProcessListenChecker().
+			WithProcess(nodeJsChecker).
+			WithPort(9080),
+		ec.NewProcessAcceptChecker().
+			WithProcess(nodeJsChecker).
+			WithSourcePort(9080),
+		ec.NewProcessCloseChecker().
+			WithProcess(nodeJsChecker).
+			WithDestinationPort(9080),
 	)
 
 	if kernels.KernelStringToNumeric(kernelVersion) >= kernels.KernelStringToNumeric("5.10.0") {
-		demo_app_checker.Append(ec.NewDNSEventChecker().
-			HasProcess(nodejs_checker).
-			HasDNS(ec.NewDNSChecker().
-				WithAnswerTypes([]uint32{1}).
-				WithNames([]ec.StringArg{"coreapi.tenant-jobs.svc.cluster.local."}).
-				IsResponse(true),
-			).
-			End())
+		dnsChecker := ec.NewDnsInfoChecker().
+			WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(1)).
+			WithNames(ec.NewStringListMatcher().WithValues(sm.Full("coreapi.tenant-jobs.svc.cluster.local."))).
+			WithResponse(true)
+
+		dnsEventChecker := ec.NewProcessDnsChecker().
+			WithProcess(nodeJsChecker).
+			WithDns(dnsChecker)
+
+		demoAppChecker.AddChecks(dnsEventChecker)
 	} else {
 		fmt.Printf("Skipping DNS checks due to insufficienct kernel version (needs 5.10.0+, got %s)\n", kernelVersion)
 	}
 
-	return demo_app_checker
+	return demoAppChecker
 }

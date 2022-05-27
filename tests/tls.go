@@ -5,67 +5,65 @@ import (
 
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 )
 
-func TlsChecker(kernelVersion string) ec.MultiResponseChecker {
+func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 	if kernels.KernelStringToNumeric(kernelVersion) < kernels.KernelStringToNumeric("5.10.0") {
 		fmt.Printf("Skipping all checks due to insufficienct kernel version (needs 5.10.0+, got %s)\n", kernelVersion)
-		return ec.NewUnorderedMultiResponseChecker()
+		return ec.NewUnorderedEventChecker()
 	}
 
-	pod_checker := ec.NewPodChecker().
-		WithNamespace("curl").
-		WithNamePrefix("curl").
-		WithLabels(
-			ec.LabelMatchVal("k8s:app", "curl"),
-			ec.LabelMatchValPrefix("k8s:io.cilium.k8s.policy.cluster", "fgs-cli-ci"),
-			ec.LabelMatchVal("k8s:io.cilium.k8s.policy.serviceaccount", "default"),
-			ec.LabelMatchVal("k8s:io.kubernetes.pod.namespace", "curl"),
-		).
-		WithContainer(ec.NewContainerChecker().
-			WithName("curl").
-			WithImageName("docker.io/curlimages/curl:latest"),
-		)
+	containerChecker := ec.NewContainerChecker().
+		WithName(sm.Full("curl")).
+		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/curlimages/curl:latest")))
 
-	curl_checker := ec.NewProcessChecker().
-		WithBinary(ec.SuffixStringMatch("curl")).
-		WithArguments("-4 https://google.com -m 30").
-		WithPod(pod_checker)
+	podChecker := ec.NewPodChecker().
+		WithNamespace(sm.Full("curl")).
+		WithName(sm.Prefix("curl")).
+		WithLabels(map[string]sm.StringMatcher{
+			"k8s:app":                                 *sm.Full("curl"),
+			"k8s:io.cilium.k8s.policy.cluster":        *sm.Prefix("fgs-cli-ci"),
+			"k8s:io.cilium.k8s.policy.serviceaccount": *sm.Full("default"),
+			"k8s:io.kubernetes.pod.namespace":         *sm.Full("curl"),
+		}).
+		WithContainer(containerChecker)
 
-	tls_checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(curl_checker).
-			HasParent(ec.NewProcessChecker().
-				WithBinary(ec.ContainsStringMatch("runc")),
-			).
-			End(),
-		ec.NewDNSEventChecker().
-			HasProcess(curl_checker).
-			HasDNS(ec.NewDNSChecker().
-				WithAnswerTypes([]uint32{1}).
-				WithNames([]ec.StringArg{"google.com."}).
-				IsResponse(true),
-			).
-			End(),
-		ec.NewConnectEventChecker().
-			HasProcess(curl_checker).
-			HasDstPort(443).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
-		ec.NewTLSEventChecker().
-			HasProcess(curl_checker).
-			HasDstPort(443).
-			HasNegotiatedVersion("TLS1.3").
-			HasSupportedVersions([]string{"TLS1.3", "TLS1.2", "TLS1.1", "TLS1.0"}).
-			HasSniName("google.com").
-			HasSniType("host_name").
-			End(),
-		ec.NewCloseEventChecker().
-			HasProcess(curl_checker).
-			HasDstPort(443).
-			End(),
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("/curl")).
+		WithArguments(sm.Full("-4 https://google.com -m 30")).
+		WithPod(podChecker)
+
+	shellChecker := ec.NewProcessChecker().
+		WithBinary(sm.Contains("runc"))
+
+	tlsChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(shellChecker),
+		ec.NewProcessDnsChecker().
+			WithProcess(curlChecker).
+			WithDns(ec.NewDnsInfoChecker().
+				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(1)).
+				WithNames(ec.NewStringListMatcher().WithValues(sm.Contains("google.com"))).
+				WithResponse(true),
+			),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithDestinationPort(443).
+			WithProtocol(fgs.SocketProtocol_TCP),
+		ec.NewTlsChecker().
+			WithProcess(curlChecker).
+			WithDestinationPort(443).
+			WithNegotiatedVersion(sm.Full("TLS1.3")).
+			WithSupportedVersions(sm.Full("TLS1.3 TLS1.2 TLS1.1 TLS1.0")).
+			WithSniName(sm.Contains("google.com")).
+			WithSniType(sm.Full("host_name")),
+		ec.NewProcessCloseChecker().
+			WithProcess(curlChecker).
+			WithDestinationPort(443),
 	)
 
-	return tls_checker
+	return tlsChecker
 }

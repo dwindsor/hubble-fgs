@@ -4,55 +4,61 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/kernels"
-	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 )
 
-func HttpChecker(kernelVersion string) ec.MultiResponseChecker {
+func HttpChecker(kernelVersion string) ec.MultiEventChecker {
 	if kernels.KernelStringToNumeric(kernelVersion) < kernels.KernelStringToNumeric("5.10.0") {
 		fmt.Printf("Skipping all checks due to insufficienct kernel version (needs 5.10.0+, got %s)\n", kernelVersion)
-		return ec.NewUnorderedMultiResponseChecker()
+		return ec.NewUnorderedEventChecker()
 	}
 
-	pod_checker := ec.NewPodChecker().
-		WithNamespace("curl").
-		WithNamePrefix("curl").
-		WithLabels(
-			ec.LabelMatchVal("k8s:app", "curl"),
-			ec.LabelMatchValPrefix("k8s:io.cilium.k8s.policy.cluster", "fgs-cli-ci"),
-			ec.LabelMatchVal("k8s:io.cilium.k8s.policy.serviceaccount", "default"),
-			ec.LabelMatchVal("k8s:io.kubernetes.pod.namespace", "curl"),
+	containerChecker := ec.NewContainerChecker().
+		WithName(sm.Full("curl")).
+		WithImage(ec.NewImageChecker().WithName(sm.Full("docker.io/curlimages/curl:latest")))
+
+	podChecker := ec.NewPodChecker().
+		WithNamespace(sm.Full("curl")).
+		WithName(sm.Prefix("curl")).
+		WithLabels(map[string]sm.StringMatcher{
+			"k8s:app":                                 *sm.Full("curl"),
+			"k8s:io.cilium.k8s.policy.cluster":        *sm.Prefix("fgs-cli-ci"),
+			"k8s:io.cilium.k8s.policy.serviceaccount": *sm.Full("default"),
+			"k8s:io.kubernetes.pod.namespace":         *sm.Full("curl"),
+		}).
+		WithContainer(containerChecker)
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("/curl")).
+		WithArguments(sm.Full("-4 http://google.com -m 30")).
+		WithPod(podChecker)
+
+	shellChecker := ec.NewProcessChecker().
+		WithBinary(sm.Contains("runc"))
+
+	httpEventChecker := ec.NewHttpInfoChecker().
+		WithRequest(ec.NewHttpRequestChecker().
+			WithAgent(sm.Contains("curl")).
+			WithHost(sm.Contains("google.com")).
+			WithVersion(sm.Full("HTTP/1.1")).
+			WithMethod(sm.Full("GET")).
+			WithUri(sm.Full("/")),
 		).
-		WithContainer(ec.NewContainerChecker().
-			WithName("curl").
-			WithImageName("docker.io/curlimages/curl:latest"),
+		WithResponse(ec.NewHttpResponseChecker().
+			WithVersion(sm.Full("HTTP/1.1")).
+			WithReason(sm.Full("Moved Permanently")).
+			WithCode(301),
 		)
 
-	curl_checker := ec.NewProcessChecker().
-		WithBinary(ec.SuffixStringMatch("curl")).
-		WithArguments("-4 http://google.com -m 30").
-		WithPod(pod_checker)
-
-	http_checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(curl_checker).
-			HasParent(ec.NewProcessChecker().
-				WithBinary(ec.ContainsStringMatch("runc")),
-			).
-			End(),
-		ec.NewHTTPEventChecker().
-			HasProcess(curl_checker).
-			HasHTTP(ec.NewHTTPChecker().
-				WithRequestAgent(ec.ContainsStringMatch("curl")).
-				WithRequestHost("google.com").
-				WithRequestVersion("HTTP/1.1").
-				WithRequestMethod("GET").
-				WithRequestURI("/").
-				WithResponseVersion("HTTP/1.1").
-				WithResponseReason("Moved Permanently").
-				WithResponseCode(301),
-			).
-			End(),
+	httpChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(shellChecker),
+		ec.NewProcessHttpChecker().
+			WithProcess(curlChecker).
+			WithHttp(httpEventChecker),
 	)
 
-	return http_checker
+	return httpChecker
 }

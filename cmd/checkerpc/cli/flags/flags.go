@@ -12,7 +12,6 @@ package flags
 
 const (
 	KeyServerAddresses = "server-address"
-	KeyCheck           = "check"
 	KeyKernelVersion   = "kernel"
 	KeyEventsTimeout   = "timeout"
 	KeyEventsLimit     = "events"
