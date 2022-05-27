@@ -37,7 +37,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
 	// Imported to allow sensors to be initialized inside init().
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	ciliumopt "github.com/cilium/cilium/pkg/option"
@@ -203,14 +202,19 @@ func hubbleFGSExecute() error {
 	if enableK8sAPI {
 		go crd.WatchTracePolicy(ctx, observer.SensorManager)
 	}
-	cnf, err := readConfig(configFile)
-	if err != nil {
-		return err
+
+	var startSensors []*sensors.Sensor
+	if configFile != "" {
+		cnf, err := readConfig(configFile)
+		if err != nil {
+			return err
+		}
+		startSensors, err = sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+		if err != nil {
+			return err
+		}
 	}
-	startSensors, err := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
-	if err != nil {
-		return err
-	}
+
 	return obs.Start(ctx, startSensors)
 }
 

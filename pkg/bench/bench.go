@@ -29,8 +29,10 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
+	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -62,6 +64,23 @@ type Arguments struct {
 	Proxy      ProxyName
 
 	Baseline bool
+}
+
+func readConfig(file string) (*config.GenericTracingConf, error) {
+	if file == "" {
+		return nil, nil
+	}
+
+	yamlData, err := os.ReadFile(file)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read yaml file %s: %w", file, err)
+	}
+	cnf, err := config.ReadConfigYaml(string(yamlData))
+	if err != nil {
+		return nil, err
+	}
+
+	return cnf, nil
 }
 
 func (args *Arguments) String() string {
@@ -125,7 +144,15 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		}
 	}
 
-	if err := obs.Start(ctx); err != nil {
+	cnf, err := readConfig(configFile)
+	if err != nil {
+		return
+	}
+	startSensors, err := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+	if err != nil {
+		return
+	}
+	if err := obs.Start(ctx, startSensors); err != nil {
 		log.Fatalf("Starting FGS failed: %v", err)
 	}
 

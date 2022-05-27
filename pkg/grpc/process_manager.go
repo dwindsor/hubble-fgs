@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
@@ -43,7 +44,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tracing"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
-	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/sirupsen/logrus"
 )

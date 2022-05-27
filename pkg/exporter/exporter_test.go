@@ -21,9 +21,8 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/ratelimit"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/stretchr/testify/assert"
 )
@@ -108,7 +107,7 @@ func (f *fakeObserver) GetTreeProto(ctx context.Context, tname string) (*fgs.Sta
 	return nil, nil
 }
 
-func (f *fakeObserver) AddTracingPolicy(ctx context.Context, sensorName string, spec *v1alpha1.TracingPolicySpec) error {
+func (f *fakeObserver) AddTracingPolicy(ctx context.Context, sensorName string, spec interface{}) error {
 	return nil
 }
 

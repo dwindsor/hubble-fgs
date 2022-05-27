@@ -21,9 +21,10 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/sys/unix"
@@ -85,8 +86,8 @@ func TestSensorLseekLoad(t *testing.T) {
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
-	progs := []*sensors.Program{ObserverLseekTest}
-	maps := []*sensors.Map{}
+	progs := []*program.Program{ObserverLseekTest}
+	maps := []*program.Map{}
 	sensor := &sensors.Sensor{Name: "lseekTest", Progs: progs, Maps: maps}
 	if err := sensor.FindPrograms(ctx); err != nil {
 		t.Fatalf("ObserverFindProgs error: %s", err)
@@ -126,8 +127,8 @@ func TestSensorLseekEnable(t *testing.T) {
 	}
 
 	sensorName := "lseekTest"
-	progs := []*sensors.Program{ObserverLseekTest}
-	maps := []*sensors.Map{}
+	progs := []*program.Program{ObserverLseekTest}
+	maps := []*program.Map{}
 	sensor := &sensors.Sensor{Name: sensorName, Progs: progs, Maps: maps}
 	sensors.RegisterSensorAtInit(sensor)
 

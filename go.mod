@@ -21,7 +21,7 @@ require (
 	github.com/sirupsen/logrus v1.8.1
 	github.com/spf13/cobra v1.1.3
 	github.com/spf13/viper v1.7.0
-	github.com/stretchr/testify v1.7.0
+	github.com/stretchr/testify v1.7.1
 	github.com/vishvananda/netlink v1.1.1-0.20210330154013-f5de75959ad5
 	github.com/yalue/native_endian v1.0.1
 	golang.org/x/net v0.0.0-20211216030914-fe4d6282115f
@@ -29,7 +29,7 @@ require (
 	golang.org/x/sys v0.0.0-20220114195835-da31bd327af9
 	golang.org/x/time v0.0.0-20210723032227-1f47c861a9ac
 	google.golang.org/api v0.65.0
-	google.golang.org/grpc v1.44.0
+	google.golang.org/grpc v1.46.2
 	google.golang.org/protobuf v1.28.0
 	k8s.io/api v0.22.5
 	k8s.io/apiextensions-apiserver v0.22.5

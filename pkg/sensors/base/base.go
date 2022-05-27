@@ -15,8 +15,8 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
 )
 
 var (

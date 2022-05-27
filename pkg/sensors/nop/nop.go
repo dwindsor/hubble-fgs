@@ -11,11 +11,14 @@
 package nop
 
 import (
+	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/selectors"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
@@ -59,21 +62,22 @@ type sensor struct {
 }
 
 func (nop *sensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	err := sensors.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.NopSockMap)
+	err := sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.NopSockMap)
 	if err != nil {
 		return -1, err
 	}
 
 	if utils.SkSkbParserRequired() {
-		err = sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.NopSockMap)
+		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.NopSockMap)
 		if err != nil {
 			return -1, err
 		}
 	}
-	return -1, sensors.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.NopSockMap)
+	return -1, sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.NopSockMap)
 }
 
-func (nop *sensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (nop *sensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
+	spec := raw.(*v1alpha1.TracingPolicySpec)
 	return AddNopSensor(spec.Parser)
 }
 
@@ -85,7 +89,7 @@ func (skSkbVerdict *skSkbVerdictSensor) LoadProbe(args sensors.LoadProbeArgs) (i
 	return 0, nil
 }
 
-func (skSkbVerdict *skSkbVerdictSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbVerdict *skSkbVerdictSensor) SpecHandler(spec interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -97,7 +101,7 @@ func (skSkbParser *skSkbParserSensor) LoadProbe(args sensors.LoadProbeArgs) (int
 	return 0, nil
 }
 
-func (skSkbParser *skSkbParserSensor) SpecHandler(spec *v1alpha1.TracingPolicySpec) (*sensors.Sensor, error) {
+func (skSkbParser *skSkbParserSensor) SpecHandler(spec interface{}) (*sensors.Sensor, error) {
 	return nil, nil
 }
 
@@ -131,7 +135,7 @@ func AddNop() {
 func EnableNopParser() *sensors.Sensor {
 	logger.GetLogger().Infof("Enable NOP")
 
-	progs := []*sensors.Program{
+	progs := []*program.Program{
 		Skmsg,
 		SkSkbVerdict,
 	}
@@ -140,7 +144,7 @@ func EnableNopParser() *sensors.Sensor {
 		progs = append(progs, SkSkbParser)
 	}
 
-	maps := []*sensors.Map{
+	maps := []*program.Map{
 		sockops.NopSockMap,
 	}
 

@@ -55,7 +55,11 @@ func LoadTC(
 			if err = bpf.AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
 				break
 			}
-			un.Attachments = append(un.Attachments, unloader.TcAttachment{link.Attrs().Name, isIngress})
+			un.Attachments = append(un.Attachments,
+				unloader.TcAttachment{
+					LinkName:  link.Attrs().Name,
+					IsIngress: isIngress,
+				})
 		}
 		if err != nil {
 			if unloadErr := un.Unload(); unloadErr != nil {

@@ -11,7 +11,7 @@ func LoadSkProgram(
 ) error {
 
 	fd, err := sockmap.GetFD()
-	if err == nil {
+	if err != nil {
 		return err
 	}
 

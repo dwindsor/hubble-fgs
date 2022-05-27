@@ -28,6 +28,7 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
@@ -151,7 +152,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	return nil
 }
 
-var config = `
+var benchConfig = `
 apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "race"
@@ -198,7 +199,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		logger.GetLogger().Fatal(err)
 	}
 	defer os.Remove(f.Name())
-	f.Write([]byte(config))
+	f.Write([]byte(benchConfig))
 	f.Close()
 
 	obs := observer.NewObserver(
@@ -222,7 +223,16 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 		logger.GetLogger().Fatal(err)
 	}
 
-	if err := obs.Start(ctx); err != nil {
+	cnf, err := readConfig(f.Name())
+	if err != nil {
+		logger.GetLogger().Fatalf("ReadConfig failed: %v", err)
+	}
+	startSensors, err := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+	if err != nil {
+		logger.GetLogger().Fatalf("GetSensorsFromParserPolicy failed: %v", err)
+	}
+
+	if err := obs.Start(ctx, startSensors); err != nil {
 		logger.GetLogger().Fatalf("Starting FGS failed: %v", err)
 	}
 

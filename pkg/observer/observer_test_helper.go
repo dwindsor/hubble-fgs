@@ -37,7 +37,6 @@ import (
 	"github.com/cilium/tetragon/pkg/metrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/config"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
@@ -265,6 +264,8 @@ func readConfig(file string) (*yaml.GenericTracingConf, error) {
 }
 
 func getDefaultObserver(t *testing.T, opts ...TestOption) (*Observer, error) {
+	var sens []*sensors.Sensor
+
 	o := newDefaultTestOptions(t, opts...)
 
 	option.Config.HubbleLib = os.Getenv("FGS_LIB")
@@ -281,8 +282,17 @@ func getDefaultObserver(t *testing.T, opts ...TestOption) (*Observer, error) {
 		option.Config.Verbosity = dfltVerbosity
 	}
 
-	cnf, _ := readConfig(o.observer.config)
-	sens, _ := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+	fmt.Printf("o.observer.config %s", o.observer.config)
+	if o.observer.config != "" {
+		cnf, err := readConfig(o.observer.config)
+		if err != nil {
+			return nil, err
+		}
+		sens, err = sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+		if err != nil {
+			return nil, err
+		}
+	}
 
 	loadExporter(t, obs, &o.exporter, &o.observer)
 	if err := loadObserver(t, obs, sens, o.observer.notestfail); err != nil {
