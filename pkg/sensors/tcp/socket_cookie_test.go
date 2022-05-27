@@ -17,13 +17,14 @@ import (
 	"syscall"
 	"testing"
 
-	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
 	"golang.org/x/sys/unix"
 )
 
-func socketCookieTest(t *testing.T) (ec.MultiResponseChecker, error) {
+func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
+	checker := ec.NewUnorderedEventChecker()
 
 	// initialize listen, connect, and accept file descriptors, and ensure that they
 	// are closed once we return
@@ -39,11 +40,6 @@ func socketCookieTest(t *testing.T) (ec.MultiResponseChecker, error) {
 			syscall.Close(aFD)
 		}
 	}()
-
-	checks := []ec.ResponseChecker{}
-	addCheck := func(c ec.ResponseChecker) {
-		checks = append(checks, c)
-	}
 
 	getFDAndCookie := func() (int, uint64, error) {
 		fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_STREAM, 0)
@@ -66,7 +62,7 @@ func socketCookieTest(t *testing.T) (ec.MultiResponseChecker, error) {
 	if err := unix.Listen(lFD, 1); err != nil {
 		return nil, fmt.Errorf("listen failed: %w", err)
 	}
-	addCheck(ec.NewListenEventChecker().HasCookie(lCookie).End())
+	checker.AddChecks(ec.NewProcessListenChecker().WithSockCookie(lCookie))
 
 	laddr, err := unix.Getsockname(lFD)
 	if err != nil {
@@ -82,28 +78,27 @@ func socketCookieTest(t *testing.T) (ec.MultiResponseChecker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("connect failed: %w", err)
 	}
-	addCheck(ec.NewConnectEventChecker().HasCookie(cCookie).End())
+	checker.AddChecks(ec.NewProcessConnectChecker().WithSockCookie(cCookie))
 
 	aFD, _, err = unix.Accept(lFD)
 	if err != nil {
 		return nil, fmt.Errorf("accept failed: %w", err)
 	}
 	// cannot set cookie for accept from user-space
-	addCheck(ec.NewAcceptEventChecker().End())
+	checker.AddChecks(ec.NewProcessAcceptChecker())
 
 	unix.Close(aFD)
 	aFD = -1
-	addCheck(ec.NewCloseEventChecker().End())
+	checker.AddChecks(ec.NewProcessCloseChecker())
 
 	unix.Close(cFD)
 	cFD = -1
-	addCheck(ec.NewCloseEventChecker().HasCookie(cCookie).End())
+	checker.AddChecks(ec.NewProcessCloseChecker().WithSockCookie(cCookie))
 
 	unix.Close(lFD)
 	lFD = -1
-	addCheck(ec.NewCloseEventChecker().HasCookie(lCookie).End())
+	checker.AddChecks(ec.NewProcessCloseChecker().WithSockCookie(lCookie))
 
-	checker := ec.NewUnorderedMultiResponseChecker(checks...)
 	return checker, nil
 }
 
@@ -128,7 +123,7 @@ func TestSocketCookie(t *testing.T) {
 		t.Fatalf("socketCookieTest failed: %s", err)
 	}
 
-	if err := observer.JsonTestCheck(t, checker); err != nil {
+	if err := observer.JsonTestCheckNew(t, checker); err != nil {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}

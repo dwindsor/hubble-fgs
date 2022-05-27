@@ -20,7 +20,8 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
@@ -120,40 +121,39 @@ func TestConnectEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	curlChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("curl"), ec.FullStringMatch("127.0.0.1"),
-	)
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewConnectEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			HasDstIP("127.0.0.1").
-			HasDstPort(80).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
-		ec.NewCloseEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			HasDstIP("127.0.0.1").
-			HasDstPort(80).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			HasType("connect").
-			End(),
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("127.0.0.1"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(80).
+			WithProtocol(fgs.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(80).
+			WithProtocol(fgs.SocketProtocol_TCP).
+			WithSocketType(sm.Full("connect")),
 	)
 
 	obs := getBasicTcpObserver(t)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
-	err := observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -191,41 +191,39 @@ func TestExecEventClone(t *testing.T) {
 			server, client, orig, orig)
 	}
 
-	selfChecker := ec.NewProcessChecker().WithBinary(ec.SuffixStringMatch(selfBinary))
-	ncSrvChecker := ec.NewProcessChecker().
-		WithBinary(ec.SuffixStringMatch(server)).
-		WithArguments(ec.FullStringMatch("-nvlp 8081"))
-	ncCliChecker := ec.NewProcessChecker().
-		WithBinary(ec.SuffixStringMatch(client)).
-		WithArguments(ec.FullStringMatch("127.0.0.1 8081"))
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncSrvChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewListenEventChecker().
-			HasProcess(ncSrvChecker).
-			HasParent(selfChecker).
-			HasIP("0.0.0.0").
-			HasPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncCliChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewConnectEventChecker().
-			HasProcess(ncCliChecker).
-			HasParent(selfChecker).
-			HasDstIP("127.0.0.1").
-			HasDstPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8081"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("127.0.0.1 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
+		ec.NewProcessExecChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
 	)
 
 	obs := getBasicTcpObserver(t)
@@ -238,7 +236,7 @@ func TestExecEventClone(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -261,27 +259,27 @@ func getNCCommand(t *testing.T, orig string) string {
 
 func TestExistingListenEvent(t *testing.T) {
 	server := getNCCommand(t, "nc.traditional")
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	ncChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
-	)
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewListenEventChecker().
-			HasProcess(ncChecker).
-			HasParent(selfChecker).
-			HasIP("0.0.0.0").
-			HasPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
 	)
 
 	/* Start server before creating obs */
@@ -294,7 +292,7 @@ func TestExistingListenEvent(t *testing.T) {
 	getBasicTcpObserver(t)
 	killAndWaitCommand(t, cmdServer)
 
-	err := observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -308,34 +306,32 @@ func TestExistingAcceptEvent(t *testing.T) {
 	server := getNCCommand(t, "nc.traditional")
 	client := server
 
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	ncChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
-	)
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewListenEventChecker().
-			HasProcess(ncChecker).
-			HasParent(selfChecker).
-			HasIP("0.0.0.0").
-			HasPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
-		ec.NewAcceptEventChecker().
-			HasProcess(ncChecker).
-			HasParent(selfChecker).
-			HasSrcIP("127.0.0.1").
-			HasSrcPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
+		ec.NewProcessAcceptChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
 	)
 
 	/* Start server before creating obs */
@@ -352,7 +348,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -361,27 +357,28 @@ func TestExistingAcceptEvent(t *testing.T) {
 
 func TestExistingRootCWDListenEvent(t *testing.T) {
 	server := getNCCommand(t, "nc.traditional")
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	ncChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
-	)
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewListenEventChecker().
-			HasProcess(ncChecker).
-			HasParent(selfChecker).
-			HasIP("0.0.0.0").
-			HasPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8081")).
+		WithCwd(sm.Full("/"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
 	)
 
 	path, err := os.Getwd()
@@ -399,7 +396,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	getBasicTcpObserver(t)
 	killAndWaitCommand(t, cmdServer)
 
-	err = observer.JsonTestCheck(t, checker)
+	err = observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -413,54 +410,50 @@ func TestListenAcceptClose(t *testing.T) {
 	server := getNCCommand(t, "nc.traditional")
 	client := server
 
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	ncSrvChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch(server), ec.FullStringMatch("-nvlp 8081"),
-	)
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncSrvChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewListenEventChecker().
-			HasProcess(ncSrvChecker).
-			HasParent(selfChecker).
-			HasIP("0.0.0.0").
-			HasPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
-		ec.NewAcceptEventChecker().
-			HasProcess(ncSrvChecker).
-			HasParent(selfChecker).
-			HasSrcIP("127.0.0.1").
-			HasSrcPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
-		ec.NewCloseEventChecker().
-			HasProcess(ncSrvChecker).
-			HasParent(selfChecker).
-			HasSrcIP("0.0.0.0").
-			HasSrcPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			HasType("listen").
-			End(),
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-nvlp 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
+		ec.NewProcessAcceptChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("0.0.0.0")).
+			WithSourcePort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP).
+			WithSocketType(sm.Full("listen")),
 		// TODO: it would be good if we could also check the close event on
 		// the accept socket, but it goes into TIME_WAIT and then
 		// eventually close and I don't want to wait for it. So we need
 		// some go way to close the sockets.
 	)
 
-	exitChecker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExitEventChecker().
-			HasProcess(ncSrvChecker).
-			HasParent(selfChecker).
-			HasSignal(syscall.SIGKILL).
-			End(),
+	exitChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExitChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSignal(sm.Full("SIGKILL")),
 	)
 
 	obs := getBasicTcpObserver(t)
@@ -473,13 +466,13 @@ func TestListenAcceptClose(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err = observer.JsonTestCheck(t, exitChecker)
+	err = observer.JsonTestCheckNew(t, exitChecker)
 	assert.NoError(t, err)
 }
 
@@ -512,30 +505,29 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	// Current code reports binary behind symlink in proc case (binaries running
 	// before fgs starts), but in runtime event we report the name of the symlink.
 	// In this test the difference is busybox vs nc.
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	ncSrvChecker := ec.NewProcessChecker().
-		WithBinary("/bin/busybox").
-		WithArguments("-nvlp 8081").
-		WithCWD("/").
-		WithUID(0)
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncSrvChecker).
-			End(),
-		ec.NewListenEventChecker().
-			HasProcess(ncSrvChecker).
-			HasIP("0.0.0.0").
-			HasPort(8081).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("busybox")).
+		WithArguments(sm.Full("-nvlp 8081")).
+		WithCwd(sm.Full("/")).
+		WithUid(0)
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
 	)
 
-	err := observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -560,61 +552,59 @@ func TestDockerListenConnect(t *testing.T) {
 
 	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
 	// match only on the first 24 bytes.
-	fgsServerID := ec.PrefixStringMatch(serverDockerID[:24])
-	fgsClientID := ec.PrefixStringMatch(clientDockerID[:24])
+	fgsServerID := sm.Prefix(serverDockerID[:24])
+	fgsClientID := sm.Prefix(clientDockerID[:24])
 
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
+
 	ncSrvChecker := ec.NewProcessChecker().
-		WithBinary("/usr/bin/nc").
-		WithArguments("-nvlp 8081").
-		WithCWD("/").
-		WithUID(0).
+		WithBinary(sm.Suffix("/nc")).
+		WithArguments(sm.Full("-nvlp 8081")).
+		WithCwd(sm.Full("/")).
+		WithUid(0).
 		WithDocker(fgsServerID)
+
 	ncCliChecker := ec.NewProcessChecker().
-		WithBinary("/usr/bin/nc").
-		WithArguments("-p 9876 fgs-test-server 8081").
-		WithCWD("/").
-		WithUID(0).
+		WithBinary(sm.Suffix("/nc")).
+		WithArguments(sm.Full("-p 9876 fgs-test-server 8081")).
+		WithCwd(sm.Full("/")).
+		WithUid(0).
 		WithDocker(fgsClientID)
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncSrvChecker).
-			End(),
-		ec.NewListenEventChecker().
-			HasProcess(ncSrvChecker).
-			HasIP("0.0.0.0").
-			HasPort(8081).
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(ncCliChecker).
-			End(),
-		ec.NewConnectEventChecker().
-			HasProcess(ncCliChecker).
-			HasDstPort(8081).
-			HasSrcPort(9876).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			End(),
-		ec.NewCloseEventChecker().
-			HasProcess(ncSrvChecker).
-			HasSrcIP("0.0.0.0").
-			HasSrcPort(8081).
-			HasType("listen").
-			End(),
-		ec.NewCloseEventChecker().
-			HasProcess(ncCliChecker).
-			HasDstPort(8081).
-			HasSrcPort(9876).
-			HasProtocol(fgs.SocketProtocol_TCP).
-			HasType("connect").
-			End(),
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncSrvChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncSrvChecker).
+			WithIp(sm.Full("0.0.0.0")).
+			WithPort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP),
+		ec.NewProcessExecChecker().
+			WithProcess(ncCliChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(ncCliChecker).
+			WithDestinationPort(8081).
+			WithSourcePort(9876).
+			WithProtocol(fgs.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker().
+			WithProcess(ncSrvChecker).
+			WithSourceIp(sm.Full("0.0.0.0")).
+			WithSourcePort(8081).
+			WithProtocol(fgs.SocketProtocol_TCP).
+			WithSocketType(sm.Full("listen")),
+		ec.NewProcessCloseChecker().
+			WithProcess(ncCliChecker).
+			WithDestinationPort(8081).
+			WithSourcePort(9876).
+			WithProtocol(fgs.SocketProtocol_TCP).
+			WithSocketType(sm.Full("connect")),
 	)
 
-	err := observer.JsonTestCheck(t, checker)
+	err := observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -732,49 +722,51 @@ func TestTcpBurst(t *testing.T) {
 
 	bpf.CheckOrMountCgroup2()
 
-	clientProcess := ec.ProcessWithCommand(ec.SuffixStringMatch(selfBinary), ec.FullStringMatch("-client"))
-	serverProcess := ec.ProcessWithCommand(ec.SuffixStringMatch(selfBinary), ec.FullStringMatch("-server"))
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
+	clientProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary)).
+		WithArguments(sm.Full("-client"))
+	serverProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary)).
+		WithArguments(sm.Full("-server"))
 
-	ProcessNetworkBurstEgressStart := ec.NewProcessNetworkBurstChecker().
-		WithBurstProtocol("TCP").
-		WithBurstDirection("egress").
-		WithBurstState("start")
-	ProcessNetworkBurstEgressEnd := ec.NewProcessNetworkBurstChecker().
-		WithBurstProtocol("TCP").
-		WithBurstDirection("egress").
-		WithBurstState("end")
-	ProcessNetworkBurstIngressStart := ec.NewProcessNetworkBurstChecker().
-		WithBurstProtocol("TCP").
-		WithBurstDirection("ingress").
-		WithBurstState("start")
-	ProcessNetworkBurstIngressEnd := ec.NewProcessNetworkBurstChecker().
-		WithBurstProtocol("TCP").
-		WithBurstDirection("ingress").
-		WithBurstState("end")
+	burstEgressStart := ec.NewProcessNetworkBurstChecker().
+		WithProcess(clientProcess).
+		WithParent(selfChecker).
+		WithProtocol(sm.Full("TCP")).
+		WithDirection(sm.Full("egress")).
+		WithBurstState(sm.Full("start"))
+	burstEgressEnd := ec.NewProcessNetworkBurstChecker().
+		WithProcess(clientProcess).
+		WithParent(selfChecker).
+		WithProtocol(sm.Full("TCP")).
+		WithDirection(sm.Full("egress")).
+		WithBurstState(sm.Full("end"))
+	burstIngressStart := ec.NewProcessNetworkBurstChecker().
+		WithProcess(serverProcess).
+		WithParent(selfChecker).
+		WithProtocol(sm.Full("TCP")).
+		WithDirection(sm.Full("ingress")).
+		WithBurstState(sm.Full("start"))
+	burstIngressEnd := ec.NewProcessNetworkBurstChecker().
+		WithProcess(serverProcess).
+		WithParent(selfChecker).
+		WithProtocol(sm.Full("TCP")).
+		WithDirection(sm.Full("ingress")).
+		WithBurstState(sm.Full("end"))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(clientProcess).
-			End(),
-		ec.NewProcessNetworkBurstEventChecker().
-			HasProcess(clientProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstEgressStart).
-			End(),
-		ec.NewProcessNetworkBurstEventChecker().
-			HasProcess(clientProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstEgressEnd).
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(serverProcess).
-			End(),
-		ec.NewProcessNetworkBurstEventChecker().
-			HasProcess(serverProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstIngressStart).
-			End(),
-		ec.NewProcessNetworkBurstEventChecker().
-			HasProcess(serverProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstIngressEnd).
-			End(),
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(clientProcess).
+			WithParent(selfChecker),
+		burstEgressStart,
+		burstEgressEnd,
+		ec.NewProcessExecChecker().
+			WithProcess(serverProcess).
+			WithParent(selfChecker),
+		burstIngressStart,
+		burstIngressEnd,
 	)
 
 	var doneWG, readyWG sync.WaitGroup
@@ -841,7 +833,7 @@ func TestTcpBurst(t *testing.T) {
 		panic(err)
 	}
 
-	err = observer.JsonTestCheck(t, checker)
+	err = observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
@@ -888,13 +880,16 @@ func TestNamespaces(t *testing.T) {
 	defer cancel()
 
 	rootNs := namespace.GetCurrentNamespace()
-	selfChecker := ec.NewProcessChecker().WithBinary(ec.SuffixStringMatch(selfBinary)).WithNs(rootNs)
+	nsChecker := ec.NewNamespacesChecker().FromNamespaces(rootNs)
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(selfChecker).
-			HasParent().
-			End(),
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary)).
+		WithNs(nsChecker)
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
 	)
 
 	obs, err := observer.GetDefaultObserver(t, fgsLib)
@@ -904,6 +899,6 @@ func TestNamespaces(t *testing.T) {
 
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
-	err = observer.JsonTestCheck(t, checker)
+	err = observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }

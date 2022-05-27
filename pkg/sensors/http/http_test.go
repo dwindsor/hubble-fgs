@@ -27,7 +27,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
-	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
@@ -95,34 +96,35 @@ func TestHttp11Curl(t *testing.T) {
 
 	bpf.CheckOrMountCgroup2()
 
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	curlChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("curl"), ec.FullStringMatch("-4 http://www.google.com"),
-	)
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
 
-	httpCh := ec.NewHTTPChecker().
-		WithRequestMethod("GET").
-		WithRequestURI("/").
-		WithRequestVersion("HTTP/1.1").
-		WithRequestAgent(ec.ContainsStringMatch("curl")).
-		WithRequestHost(ec.ContainsStringMatch("www.google.com")).
-		WithResponseVersion("HTTP/1.1").
-		WithResponseReason("OK")
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("-4 http://www.google.com"))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewConnectEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			HasDstPort(80).
-			End(),
-		ec.NewHTTPEventChecker().
-			HasProcess(curlChecker).
-			HasHTTP(httpCh).
-			End(),
+	httpChecker := ec.NewHttpInfoChecker().
+		WithRequest(ec.NewHttpRequestChecker().
+			WithMethod(sm.Full("GET")).
+			WithUri(sm.Full("/")).
+			WithVersion(sm.Full("HTTP/1.1")).
+			WithAgent(sm.Contains("curl")).
+			WithHost(sm.Contains("www.google.com"))).
+		WithResponse(ec.NewHttpResponseChecker().
+			WithVersion(sm.Full("HTTP/1.1")).
+			WithReason(sm.Full("OK")))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(80),
+		ec.NewProcessHttpChecker().
+			WithProcess(curlChecker).
+			WithHttp(httpChecker),
 	)
 
 	var doneWG, readyWG sync.WaitGroup
@@ -142,7 +144,7 @@ func TestHttp11Curl(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
 
-	err = observer.JsonTestCheck(t, checker)
+	err = observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -188,32 +190,36 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	http2Port, _ := strconv.ParseUint(strings.Split(http2Addr, ":")[1], 10, 32)
 
 	bpf.CheckOrMountCgroup2()
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	curlChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("curl"),
-		ec.FullStringMatch("-v4 --http2-prior-knowledge http://"+http2Addr),
-	)
 
-	httpCh := ec.NewHTTPChecker().
-		WithRequestMethod("GET").
-		WithRequestURI("/").
-		WithRequestVersion("HTTP/2").
-		WithRequestAgent(ec.ContainsStringMatch("curl")).
-		WithRequestHost(ec.ContainsStringMatch(http2Addr)).
-		WithResponseVersion("HTTP/2").
-		WithResponseReason("OK")
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewConnectEventChecker().
-			HasDstPort(uint32(http2Port)).
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			End(),
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("-v4 --http2-prior-knowledge http://" + http2Addr))
 
-		ec.NewHTTPEventChecker().
-			HasProcess(curlChecker).
-			HasHTTP(httpCh).
-			End(),
+	httpChecker := ec.NewHttpInfoChecker().
+		WithRequest(ec.NewHttpRequestChecker().
+			WithMethod(sm.Full("GET")).
+			WithUri(sm.Full("/")).
+			WithVersion(sm.Full("HTTP/2")).
+			WithAgent(sm.Contains("curl")).
+			WithHost(sm.Contains(http2Addr))).
+		WithResponse(ec.NewHttpResponseChecker().
+			WithVersion(sm.Full("HTTP/2")).
+			WithReason(sm.Full("OK")))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(uint32(http2Port)),
+		ec.NewProcessHttpChecker().
+			WithProcess(curlChecker).
+			WithHttp(httpChecker),
 	)
 
 	if err := observer.WriteConfigFile(testConfigFile, httpConfig(int(http2Port))); err != nil {
@@ -227,6 +233,6 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
-	err = observer.JsonTestCheck(t, checker)
+	err = observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }

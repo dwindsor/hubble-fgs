@@ -22,7 +22,9 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
-	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	lm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/listmatcher"
+	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -82,34 +84,32 @@ func TestTCTLS13(t *testing.T) {
 
 	bpf.CheckOrMountCgroup2()
 
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	curlChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("curl"), ec.FullStringMatch("--tlsv1.3 -4 https://www.google.com"),
-	)
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
 
-	tlsCh := ec.NewTLSChecker().
-		WithNegotiatedVersion("TLS1.3").
-		WithClientVersion("TLS1.2").
-		WithServerVersion("TLS1.2").
-		WithSniType("host_name").
-		WithSniName("www.google.com").
-		WithClientFlags("ExtVersion").
-		WithServerFlags("ExtVersion")
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("--tlsv1.3 -4 https://www.google.com"))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewConnectEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			HasDstPort(443).
-			End(),
-		ec.NewTLSEventChecker().
-			HasProcess(curlChecker).
-			HasTLS(tlsCh).
-			End(),
+	tlsChecker := ec.NewTlsChecker().
+		WithProcess(curlChecker).
+		WithNegotiatedVersion(sm.Full("TLS1.3")).
+		WithClientVersion(sm.Full("TLS1.2")).
+		WithServerVersion(sm.Full("TLS1.2")).
+		WithSniType(sm.Full("host_name")).
+		WithSniName(sm.Contains("www.google.com")).
+		WithClientFlags(sm.Contains("ExtVersion")).
+		WithServerFlags(sm.Contains("ExtVersion"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(443),
+		tlsChecker,
 	)
 
 	var doneWG, readyWG sync.WaitGroup
@@ -129,7 +129,7 @@ func TestTCTLS13(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
 
-	err = observer.JsonTestCheck(t, checker)
+	err = observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -146,37 +146,38 @@ func TestTCTLS12(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	selfChecker := ec.ProcessWithBinary(ec.SuffixStringMatch(selfBinary))
-	curlChecker := ec.ProcessWithCommand(
-		ec.SuffixStringMatch("curl"), ec.FullStringMatch("--tlsv1.2 --tls-max 1.2 -4 https://www.google.com/"),
-	)
-	tlsCh := ec.NewTLSChecker().
-		WithClientVersion("TLS1.2").
-		WithServerVersion("TLS1.2").
-		WithSniType("host_name").
-		WithSniName("www.google.com").
-		WithClientFlags("").
-		WithServerFlags("").
-		WithCertificates([]ec.StringArg{
-			"CN=www.google.com",
-			"CN=GTS CA 1C3,O=Google Trust Services LLC,C=US",
-			"CN=GTS Root R1,O=Google Trust Services LLC,C=US",
-		})
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			End(),
-		ec.NewConnectEventChecker().
-			HasProcess(curlChecker).
-			HasParent(selfChecker).
-			HasDstPort(443).
-			End(),
-		ec.NewTLSEventChecker().
-			HasProcess(curlChecker).
-			HasTLS(tlsCh).
-			End(),
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("--tlsv1.2 --tls-max 1.2 -4 https://www.google.com/"))
+
+	tlsChecker := ec.NewTlsChecker().
+		WithProcess(curlChecker).
+		WithClientVersion(sm.Full("TLS1.2")).
+		WithServerVersion(sm.Full("TLS1.2")).
+		WithSniType(sm.Full("host_name")).
+		WithSniName(sm.Contains("www.google.com")).
+		WithClientFlags(sm.Full("")).
+		WithServerFlags(sm.Full("")).
+		WithCertificates(ec.NewStringListMatcher().
+			WithOperator(lm.Unordered).
+			WithValues(
+				sm.Full("CN=www.google.com"),
+				sm.Full("CN=GTS CA 1C3,O=Google Trust Services LLC,C=US"),
+				sm.Full("CN=GTS Root R1,O=Google Trust Services LLC,C=US"),
+			))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(443),
+		tlsChecker,
 	)
 
 	if err := observer.WriteConfigFile(testConfigFile, tlstc); err != nil {
@@ -189,6 +190,6 @@ func TestTCTLS12(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
-	err = observer.JsonTestCheck(t, checker)
+	err = observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 }

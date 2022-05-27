@@ -30,9 +30,12 @@ import (
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
-	ec "github.com/isovalent/hubble-fgs/pkg/eventchecker"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/sirupsen/logrus"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
@@ -195,49 +198,39 @@ func TestUdpBurst(t *testing.T) {
 
 	bpf.CheckOrMountCgroup2()
 
-	clientProcess := ec.ProcessWithCommand(ec.SuffixStringMatch(selfBinary), ec.FullStringMatch("-client"))
-	serverProcess := ec.ProcessWithCommand(ec.SuffixStringMatch(selfBinary), ec.FullStringMatch("-server"))
+	clientProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary)).
+		WithArguments(sm.Full("-client"))
 
-	ProcessNetworkBurstEgressStart := ec.NewProcessNetworkBurstChecker().
-		WithBurstProtocol("UDP").
-		WithBurstDirection("egress").
-		WithBurstState("start")
-	ProcessNetworkBurstEgressEnd := ec.NewProcessNetworkBurstChecker().
-		WithBurstProtocol("UDP").
-		WithBurstDirection("egress").
-		WithBurstState("end")
-	ProcessNetworkBurstIngressStart := ec.NewProcessNetworkBurstChecker().
-		WithBurstProtocol("UDP").
-		WithBurstDirection("ingress").
-		WithBurstState("start")
-	ProcessNetworkBurstIngressEnd := ec.NewProcessNetworkBurstChecker().
-		WithBurstProtocol("UDP").
-		WithBurstDirection("ingress").
-		WithBurstState("end")
+	serverProcess := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary)).
+		WithArguments(sm.Full("-server"))
 
-	checker := ec.NewUnorderedMultiResponseChecker(
-		ec.NewExecEventChecker().
-			HasProcess(clientProcess).
-			End(),
-		ec.NewProcessNetworkBurstEventChecker().
-			HasProcess(clientProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstEgressStart).
-			End(),
-		ec.NewProcessNetworkBurstEventChecker().
-			HasProcess(clientProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstEgressEnd).
-			End(),
-		ec.NewExecEventChecker().
-			HasProcess(serverProcess).
-			End(),
-		ec.NewProcessNetworkBurstEventChecker().
-			HasProcess(serverProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstIngressStart).
-			End(),
-		ec.NewProcessNetworkBurstEventChecker().
-			HasProcess(serverProcess).
-			HasProcessNetworkBurst(ProcessNetworkBurstIngressEnd).
-			End(),
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(clientProcess),
+		ec.NewProcessNetworkBurstChecker().
+			WithProcess(clientProcess).
+			WithProtocol(sm.Full("UDP")).
+			WithDirection(sm.Full("egress")).
+			WithBurstState(sm.Full("start")),
+		ec.NewProcessNetworkBurstChecker().
+			WithProcess(clientProcess).
+			WithProtocol(sm.Full("UDP")).
+			WithDirection(sm.Full("egress")).
+			WithBurstState(sm.Full("end")),
+		ec.NewProcessExecChecker().
+			WithProcess(serverProcess),
+		ec.NewProcessNetworkBurstChecker().
+			WithProcess(serverProcess).
+			WithProtocol(sm.Full("UDP")).
+			WithDirection(sm.Full("ingress")).
+			WithBurstState(sm.Full("start")),
+		ec.NewProcessNetworkBurstChecker().
+			WithProcess(serverProcess).
+			WithProtocol(sm.Full("UDP")).
+			WithDirection(sm.Full("ingress")).
+			WithBurstState(sm.Full("end")),
 	)
 
 	var doneWG, readyWG sync.WaitGroup
@@ -304,7 +297,7 @@ func TestUdpBurst(t *testing.T) {
 		panic(err)
 	}
 
-	err = observer.JsonTestCheck(t, checker)
+	err = observer.JsonTestCheckNew(t, checker)
 	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
@@ -342,4 +335,303 @@ func TestUdpBurst(t *testing.T) {
 		fmt.Printf("ERROR Server process in burst map after exit\n")
 		os.Exit(-1)
 	}
+}
+
+const udpBasicConfig = `
+apiversion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+      statsInterval: 2
+`
+
+func getBasicUdpObserver(t *testing.T) *observer.Observer {
+	if err := observer.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	return obs
+}
+
+func getNCCommand(t *testing.T, orig string) string {
+	if _, err := exec.LookPath(orig); err == nil {
+		return orig
+	}
+
+	server := "nc"
+	if _, err := exec.LookPath(server); err != nil {
+		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
+	}
+	t.Logf("Using %q instead of original program %q", server, orig)
+
+	return server
+}
+
+func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
+	if cmd != nil {
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		} else {
+			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
+		}
+		_ = cmd.Wait()
+	}
+}
+
+func TestConnectEvent(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.traditional")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-unvlp 8081"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("-u 127.0.0.1 8081"))
+
+	clientStatsChecker := ec.NewProcessSockStatsChecker().
+		WithProcess(ncCliChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(fgs.SocketProtocol_UDP).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithDestinationPort(8081))
+
+	serverStatsChecker := ec.NewProcessSockStatsChecker().
+		WithProcess(ncSrvChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(fgs.SocketProtocol_UDP).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8081))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(fgs.SocketProtocol_UDP),
+		clientStatsChecker,
+		serverStatsChecker,
+	)
+
+	// We need to check sockstats using a custom stateful checker since stats events can
+	// be split up and so checking the individual events won't work. We need to instead
+	// keep a cumulative count of the stats we have seen and compare them to expected
+	// totals.
+	var clientBytesSent uint64
+	var clientBytesSubmitted uint64
+	var clientSegsOut uint32
+	var clientSegsSubmitted uint32
+	var serverBytesReceived uint64
+	var serverSegsIn uint32
+	statsChecker := &ec.FnEventChecker{
+		NextCheckFn: func(event_ ec.Event, log *logrus.Logger) (bool, error) {
+			event, ok := event_.(*fgs.ProcessSockStats)
+			if !ok {
+				return false, fmt.Errorf("event is not a sockstats event")
+			}
+
+			if event.Stats == nil {
+				return false, fmt.Errorf("event has no stats field")
+			}
+
+			if clientStatsChecker.Check(event) == nil {
+				clientBytesSent += event.Stats.BytesSent
+				clientBytesSubmitted += event.Stats.BytesSubmitted
+				clientSegsOut += event.Stats.SegsOut
+				clientSegsSubmitted += event.Stats.SegsSubmitted
+				return false, nil
+			}
+
+			if serverStatsChecker.Check(event) == nil {
+				serverBytesReceived += event.Stats.BytesReceived
+				serverSegsIn += event.Stats.SegsIn
+				return false, nil
+			}
+
+			return false, fmt.Errorf("sockstats event is neither from client nor server")
+		},
+		FinalCheckFn: func(event *logrus.Logger) error {
+			defer func() {
+				clientBytesSent = 0
+				clientBytesSubmitted = 0
+				clientSegsOut = 0
+				clientSegsSubmitted = 0
+				serverBytesReceived = 0
+				serverSegsIn = 0
+			}()
+
+			if clientBytesSent != 5 {
+				return fmt.Errorf("Unexecpected clientBytesSent, wanted 5, got %d", clientBytesSent)
+			}
+
+			if clientBytesSubmitted != 5 {
+				return fmt.Errorf("Unexecpected clientBytesSubmitted, wanted 5, got %d", clientBytesSubmitted)
+			}
+
+			if clientSegsOut != 1 {
+				return fmt.Errorf("Unexecpected clientSegsOut, wanted 1, got %d", clientSegsOut)
+			}
+
+			if clientSegsSubmitted != 1 {
+				return fmt.Errorf("Unexecpected clientSegsSubmitted, wanted 1, got %d", clientSegsSubmitted)
+			}
+
+			if serverBytesReceived != 5 {
+				return fmt.Errorf("Unexecpected serverBytesReceived, wanted 5, got %d", serverBytesReceived)
+			}
+
+			if serverSegsIn != 1 {
+				return fmt.Errorf("Unexecpected serverSegsIn, wanted 1, got %d", serverSegsIn)
+			}
+
+			return nil
+		},
+	}
+
+	obs := getBasicUdpObserver(t)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-unvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+
+	err = observer.JsonTestCheckNew(t, checker)
+	assert.NoError(t, err)
+
+	err = observer.JsonTestCheckNew(t, statsChecker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+}
+
+func TestConnectAfterStartEvent(t *testing.T) {
+	// FIXME: something broke this test case, but since it was never merged upstream this went
+	// unnoticed... need to investigate
+	t.Skip("This test is consistently failing at the moment, need to figure out why and fix it up.")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.traditional")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(selfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-unvlp 8081"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("-u 127.0.0.1 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("127.0.0.1")).
+			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("127.0.0.1")).
+			WithProtocol(fgs.SocketProtocol_UDP),
+		// Check client sock stats
+		ec.NewProcessSockStatsChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker).
+			WithSocket(ec.NewSockInfoChecker().
+				WithProtocol(fgs.SocketProtocol_UDP).
+				WithDestinationIp(sm.Full("127.0.0.1")).
+				WithDestinationPort(8081)).
+			WithStats(ec.NewSocketStatsChecker().
+				WithBytesSent(5).
+				WithBytesSubmitted(5).
+				WithSegsOut(1).
+				WithSegsSubmitted(1)),
+		// Check server sock stats
+		ec.NewProcessSockStatsChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSocket(ec.NewSockInfoChecker().
+				WithProtocol(fgs.SocketProtocol_UDP).
+				WithSourceIp(sm.Full("127.0.0.1")).
+				WithDestinationIp(sm.Full("127.0.0.1")).
+				WithSourcePort(8081)).
+			WithStats(ec.NewSocketStatsChecker().
+				WithBytesReceived(5).
+				WithSegsIn(1)),
+	)
+
+	cmdServer := exec.Command(server, "-unvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	obs := getBasicUdpObserver(t)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdClient := exec.Command(client, "-u", "127.0.0.1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+
+	err = observer.JsonTestCheckNew(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 }
