@@ -31,17 +31,31 @@ COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
 
 TESTER_PROGS_DIR = "contrib/tester-progs"
 
-all: submodule-prepare hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs checkerpc protoc-gen-go-tetragon
+all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs checkerpc protoc-gen-go-tetragon
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
 -include Makefile.docker
 
-.PHONY: submodule-prepare
-submodule-prepare:
+.PHONY: init
+init:
+	@echo Initializing and updating submodules...
 	git submodule init
 	git submodule update
 
+.PHONY: update
+update:
+	# Update the submodule and vendor any changes.
+	@echo Updating submodule...
+	git submodule update && go mod tidy && go mod vendor
+	# Codegen is vendored, so we need to run make generate && make codegen here to
+	# pick up changes.
+	@echo Generating code...
+	make generate && make codegen
+	# NB, we need to vendor for a second time here since codegen may have introduced
+	# new dependencies.
+	@echo Vendoring and verifiying modules...
+	go mod tidy && go mod vendor && go mod verify
 
 ifeq (1,$(LOCAL_CLANG))
 hubble-bpf: hubble-bpf-local
