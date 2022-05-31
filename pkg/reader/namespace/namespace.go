@@ -87,7 +87,7 @@ func GetCurrentNamespace() *fgs.Namespaces {
 		is_root_ns[nses[i]] = (self_ns[nses[i]] == GetHostNsInode(nses[i]))
 	}
 
-	return &fgs.Namespaces{
+	retVal := &fgs.Namespaces{
 		Uts: &fgs.Namespace{
 			Inum:   self_ns["uts"],
 			IsHost: is_root_ns["uts"],
@@ -129,6 +129,14 @@ func GetCurrentNamespace() *fgs.Namespaces {
 			IsHost: is_root_ns["user"],
 		},
 	}
+
+	// this kernel does not support time namespace
+	if retVal.Time.Inum == 0 {
+		retVal.Time = nil
+		retVal.TimeForChildren = nil
+	}
+
+	return retVal
 }
 func GetMsgNamespaces(ns processapi.MsgNamespaces) *fgs.Namespaces {
 	hostNs := GetHostNamespace()
