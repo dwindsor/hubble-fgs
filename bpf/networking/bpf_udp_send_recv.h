@@ -181,7 +181,7 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 	if (!sock_info)
 		return 0;
 
-	cookie = (u64)sock_info->sk;
+	write_cookie_from_sk(&cookie, sock_info->sk, lazy);
 	if (!cookie) {
 		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
@@ -321,7 +321,7 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 	if (!sock_info)
 		return 0;
 
-	cookie = (u64)sock_info->sk;
+	write_cookie_from_sk(&cookie, sock_info->sk, lazy);
 	if (!cookie) {
 		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
