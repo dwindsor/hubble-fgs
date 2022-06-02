@@ -117,7 +117,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	defer os.Remove(configFile)
 
 	obs := observer.NewObserver(
-		"/sys/fs/bpf/tcpmon/", "/sys/fs/bpf/tcpmon/", "",
+		bpf.MapPrefixPath(), bpf.MapPrefixPath(), "",
 		"", /* network interfaces */
 		configFile,
 		0 /* tcp statistics */)
