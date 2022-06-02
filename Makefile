@@ -47,7 +47,7 @@ init:
 update:
 	# Update the submodule and vendor any changes.
 	@echo Updating submodule...
-	git submodule update && go mod tidy && go mod vendor
+	git submodule update --remote && go mod tidy && go mod vendor
 	# Codegen is vendored, so we need to run make generate && make codegen here to
 	# pick up changes.
 	@echo Generating code...
