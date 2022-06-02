@@ -29,28 +29,28 @@ var (
 	// Socket mode
 	// Supports 5.4 kernels or newer.
 
-	Skmsg = program.ProgramBuilder(
+	Skmsg = program.Builder(
 		"bpf_tls_skmsg.o",
 		"sk_msg",
 		"sk_msg/fgs_tls",
 		"bpf_tls_sk_msg_fgs",
 		"skmsg")
 
-	SkSkbVerdict = program.ProgramBuilder(
+	SkSkbVerdict = program.Builder(
 		"bpf_tls_skskb_verdict.o",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgs_tls",
 		"bpf_tls_skskb_verdict_fgs",
 		"sk_skb_verdict")
 
-	SkSkbParser = program.ProgramBuilder(
+	SkSkbParser = program.Builder(
 		"bpf_tls_skskb_parser.o",
 		"sk_skb",
 		"sk_skb/stream_parser/fgs_tls",
 		"bpf_tls_skskb_parser_fgs",
 		"sk_skb_parser")
 
-	SockoptSet = program.ProgramBuilder(
+	SockoptSet = program.Builder(
 		"bpf_setsockopt.o",
 		"cgroup",
 		"cgroup/setsockopt",
@@ -62,14 +62,14 @@ var (
 	// 4.19 kernels and below.
 	// Susceptible to out-of-order packets.
 
-	TCIngress = program.ProgramBuilder(
+	TCIngress = program.Builder(
 		"bpf_tc_ingress.o",
 		"ingress_tcp",
 		"classifier/ingress_tcp",
 		"classifier_ingress_tcp",
 		"tc_ingress")
 
-	TCEgress = program.ProgramBuilder(
+	TCEgress = program.Builder(
 		"bpf_tc_egress.o",
 		"egress_tcp",
 		"classifier/egress_tcp",

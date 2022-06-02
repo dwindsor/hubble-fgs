@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	ObserverKfreeSkb = program.ProgramBuilder(
+	ObserverKfreeSkb = program.Builder(
 		"bpf_kfree_skb.o",
 		"kfree_skb",
 		"kprobe/kfree_skb",

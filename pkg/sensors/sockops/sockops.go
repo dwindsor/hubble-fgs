@@ -25,7 +25,7 @@ import (
 
 var (
 	// Needed on both the HTTP and TLS programs.
-	SockopsEstablished = program.ProgramBuilder(
+	SockopsEstablished = program.Builder(
 		"bpf_sockops.o",
 		"sockops",
 		"sockops/fgs_sockops",

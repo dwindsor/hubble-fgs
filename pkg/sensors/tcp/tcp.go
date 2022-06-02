@@ -35,7 +35,7 @@ var (
 )
 
 var (
-	Connect = program.ProgramBuilder(
+	Connect = program.Builder(
 		"bpf_tcpmon.o",
 		"tcp_connect",
 		"kprobe/tcp_connect",
@@ -43,7 +43,7 @@ var (
 		"kprobe",
 	)
 
-	Close = program.ProgramBuilder(
+	Close = program.Builder(
 		"bpf_tcpclose.o",
 		"tcp_set_state",
 		"kprobe/tcp_set_state",
@@ -51,7 +51,7 @@ var (
 		"kprobe",
 	)
 
-	Listen = program.ProgramBuilder(
+	Listen = program.Builder(
 		"bpf_listen.o",
 		"__inet_hash",
 		"kprobe/inet_hash",
@@ -59,7 +59,7 @@ var (
 		"kprobe",
 	)
 
-	SendCheck = program.ProgramBuilder(
+	SendCheck = program.Builder(
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",

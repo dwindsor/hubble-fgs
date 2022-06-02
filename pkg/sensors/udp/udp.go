@@ -67,21 +67,21 @@ var (
 )
 
 var (
-	SockCreate = program.ProgramBuilder(
+	SockCreate = program.Builder(
 		"bpf_sock.o",
 		"sock_create",
 		"cgroup/sock_create",
 		"cgroup_sock_create",
 		"cgrp_socket")
 
-	SockRelease = program.ProgramBuilder(
+	SockRelease = program.Builder(
 		"bpf_sock_release.o",
 		"inet_release",
 		"kprobe/inet_release",
 		"kprobe_sock_release",
 		"kprobe")
 
-	InetSend = program.ProgramBuilder(
+	InetSend = program.Builder(
 		"bpf_inet_send.o",
 		"inet_send",
 		"cgroup_skb/egress",
@@ -89,7 +89,7 @@ var (
 		"cgrp_egress",
 	)
 
-	InetRecv = program.ProgramBuilder(
+	InetRecv = program.Builder(
 		"bpf_inet_send.o",
 		"inet_recv",
 		"cgroup_skb/ingress",
@@ -97,7 +97,7 @@ var (
 		"cgrp_ingress",
 	)
 
-	SkAllocRetLazy = program.ProgramBuilder(
+	SkAllocRetLazy = program.Builder(
 		"bpf_sock_create.o",
 		"sk_alloc",
 		"kretprobe/sk_alloc",
@@ -105,7 +105,7 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
-	InetSendLazy = program.ProgramBuilder(
+	InetSendLazy = program.Builder(
 		"bpf_inet_send_lazy.o",
 		"inet_lazy_send",
 		"cgroup_skb/egress",
@@ -113,7 +113,7 @@ var (
 		"cgrp_egress",
 	)
 
-	InetRecvLazy = program.ProgramBuilder(
+	InetRecvLazy = program.Builder(
 		"bpf_inet_send_lazy.o",
 		"inet_lazy_recv",
 		"cgroup_skb/ingress",
@@ -121,7 +121,7 @@ var (
 		"cgrp_ingress",
 	)
 
-	InetSendRecvLazy = program.ProgramBuilder(
+	InetSendRecvLazy = program.Builder(
 		"bpf_inet_send_lazy_kp.o",
 		"__cgroup_bpf_run_filter_skb",
 		"kprobe/__cgroup_bpf_run_filter_skb",
@@ -129,7 +129,7 @@ var (
 		"kprobe_udp",
 	)
 
-	UdpSend = program.ProgramBuilder(
+	UdpSend = program.Builder(
 		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
@@ -137,7 +137,7 @@ var (
 		"kprobe",
 	)
 
-	UdpRetSend = program.ProgramBuilder(
+	UdpRetSend = program.Builder(
 		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
@@ -145,7 +145,7 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
-	UdpRecv = program.ProgramBuilder(
+	UdpRecv = program.Builder(
 		"bpf_udp_send_recv.o",
 		"__skb_recv_udp",
 		"kprobe/__skb_recv_udp",
@@ -153,7 +153,7 @@ var (
 		"kprobe",
 	)
 
-	UdpRetRecv = program.ProgramBuilder(
+	UdpRetRecv = program.Builder(
 		"bpf_udp_send_recv.o",
 		"__skb_recv_udp",
 		"kretprobe/__skb_recv_udp",
@@ -161,7 +161,7 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
-	UdpSendLazy = program.ProgramBuilder(
+	UdpSendLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
@@ -169,7 +169,7 @@ var (
 		"kprobe",
 	)
 
-	UdpRetSendLazy = program.ProgramBuilder(
+	UdpRetSendLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
 		"udp_sendmsg",
 		"kretprobe/udp_sendmsg",
@@ -177,7 +177,7 @@ var (
 		"kprobe",
 	).SetRetProbe(true)
 
-	UdpRecvLazy = program.ProgramBuilder(
+	UdpRecvLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
 		"__skb_recv_udp",
 		"kprobe/__skb_recv_udp",
@@ -185,7 +185,7 @@ var (
 		"kprobe",
 	)
 
-	UdpRetRecvLazy = program.ProgramBuilder(
+	UdpRetRecvLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
 		"__skb_recv_udp",
 		"kretprobe/__skb_recv_udp",
@@ -194,7 +194,7 @@ var (
 	).SetRetProbe(true)
 
 	// Socket lookup program
-	FdLookup = program.ProgramBuilder(
+	FdLookup = program.Builder(
 		"bpf_fd_lookup.o",
 		"check_kill_permission",
 		"kprobe/check_kill_permission",

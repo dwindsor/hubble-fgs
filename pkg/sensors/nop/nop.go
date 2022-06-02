@@ -32,21 +32,21 @@ var (
 )
 
 var (
-	Skmsg = program.ProgramBuilder(
+	Skmsg = program.Builder(
 		"bpf_nop.o",
 		"sk_msg",
 		"sk_msg/fgsnop",
 		"sk_msg_fgs_nop",
 		"nop_skmsg")
 
-	SkSkbParser = program.ProgramBuilder(
+	SkSkbParser = program.Builder(
 		"bpf_nop_parser.o",
 		"sk_skb",
 		"sk_skb/stream_parser/fgsnop",
 		"sk_skb_parser_nop",
 		"nop_skskb_parser")
 
-	SkSkbVerdict = program.ProgramBuilder(
+	SkSkbVerdict = program.Builder(
 		"bpf_nop_verdict.o",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgsnop",

@@ -71,21 +71,21 @@ func httpNeedsMoreBytes(flags uint32) bool {
 }
 
 var (
-	Skmsg = program.ProgramBuilder(
+	Skmsg = program.Builder(
 		"bpf_http.o",
 		"sk_msg",
 		"sk_msg/fgs",
 		"sk_msg_fgs",
 		"http_skmsg")
 
-	SkSkbParser = program.ProgramBuilder(
+	SkSkbParser = program.Builder(
 		"bpf_http_parser.o",
 		"sk_skb",
 		"sk_skb_http_parser/fgshttp",
 		"sk_skb_parser",
 		"sk_skb_parser")
 
-	SkSkbVerdict = program.ProgramBuilder(
+	SkSkbVerdict = program.Builder(
 		"bpf_http_verdict.o",
 		"sk_skb",
 		"sk_skb/stream_verdict/fgshttp",

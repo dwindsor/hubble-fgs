@@ -16,7 +16,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/unloader"
 )
 
-func ProgramBuilder(
+func Builder(
 	objFile, attach, label, pinFile string,
 	ty string,
 ) *Program {

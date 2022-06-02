@@ -20,7 +20,7 @@ import (
 )
 
 var (
-	Execve = program.ProgramBuilder(
+	Execve = program.Builder(
 		"bpf_execve_event.o",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
@@ -28,7 +28,7 @@ var (
 		"execve",
 	)
 
-	ExecveV53 = program.ProgramBuilder(
+	ExecveV53 = program.Builder(
 		"bpf_execve_event_v53.o",
 		"sched/sched_process_exec",
 		"tracepoint/sys_execve",
@@ -36,7 +36,7 @@ var (
 		"execve",
 	)
 
-	Exit = program.ProgramBuilder(
+	Exit = program.Builder(
 		"bpf_exit.o",
 		"sched/sched_process_exit",
 		"tracepoint/sys_exit",
@@ -44,7 +44,7 @@ var (
 		"tracepoint",
 	)
 
-	Fork = program.ProgramBuilder(
+	Fork = program.Builder(
 		"bpf_fork.o",
 		"wake_up_new_task",
 		"kprobe/wake_up_new_task",
