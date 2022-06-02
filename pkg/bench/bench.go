@@ -29,7 +29,6 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
-	"github.com/cilium/tetragon/pkg/config"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -37,6 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -146,11 +146,11 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 
 	cnf, err := readConfig(configFile)
 	if err != nil {
-		return
+		log.Fatalf("readConfig error: %v", err)
 	}
 	startSensors, err := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
 	if err != nil {
-		return
+		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
 	if err := obs.Start(ctx, startSensors); err != nil {
 		log.Fatalf("Starting FGS failed: %v", err)
