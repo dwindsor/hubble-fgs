@@ -18,6 +18,7 @@ import (
 	"testing"
 
 	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
 	"golang.org/x/sys/unix"
@@ -123,7 +124,7 @@ func TestSocketCookie(t *testing.T) {
 		t.Fatalf("socketCookieTest failed: %s", err)
 	}
 
-	if err := observer.JsonTestCheckNew(t, checker); err != nil {
+	if err := jsonchecker.JsonTestCheck(t, checker); err != nil {
 		t.Logf("error: %s", err)
 		t.Fail()
 	}

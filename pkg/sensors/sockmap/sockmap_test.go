@@ -25,6 +25,7 @@ import (
 	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	lm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/listmatcher"
 	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -129,7 +130,7 @@ func TestTCTLS13(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -190,6 +191,6 @@ func TestTCTLS12(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }

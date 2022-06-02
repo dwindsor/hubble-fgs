@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
@@ -144,7 +145,7 @@ func TestHttp11Curl(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "-4", "http://www.google.com")
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -233,6 +234,6 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "-v4", "--http2-prior-knowledge", "http://"+http2Addr)
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }

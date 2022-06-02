@@ -33,6 +33,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/sirupsen/logrus"
@@ -297,7 +298,7 @@ func TestUdpBurst(t *testing.T) {
 		panic(err)
 	}
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
@@ -535,10 +536,10 @@ func TestConnectEvent(t *testing.T) {
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
-	err = observer.JsonTestCheckNew(t, statsChecker)
+	err = jsonchecker.JsonTestCheck(t, statsChecker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -629,7 +630,7 @@ func TestConnectAfterStartEvent(t *testing.T) {
 	_, err = stdin.Write([]byte("hello"))
 	assert.NoError(t, err)
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)

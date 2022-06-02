@@ -5,7 +5,7 @@ import (
 	"os"
 
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/tests"
 
 	"github.com/sirupsen/logrus"
@@ -27,19 +27,19 @@ func main() {
 	kernelVersion := os.Args[2]
 
 	jsonFile.Seek(0, 0)
-	if err := observer.JsonCheckNew(jsonFile, tests.DemoAppChecker(kernelVersion), log); err != nil {
+	if err := jsonchecker.JsonCheck(jsonFile, tests.DemoAppChecker(kernelVersion), log); err != nil {
 		fmt.Printf("🔥 Demo app check failed: no dice: %s\n", err)
 		os.Exit(1)
 	}
 
 	jsonFile.Seek(0, 0)
-	if err := observer.JsonCheckNew(jsonFile, tests.TlsChecker(kernelVersion), log); err != nil {
+	if err := jsonchecker.JsonCheck(jsonFile, tests.TlsChecker(kernelVersion), log); err != nil {
 		fmt.Printf("🔥 TLS check failed: no dice: %s\n", err)
 		os.Exit(1)
 	}
 
 	jsonFile.Seek(0, 0)
-	if err := observer.JsonCheckNew(jsonFile, tests.HttpChecker(kernelVersion), log); err != nil {
+	if err := jsonchecker.JsonCheck(jsonFile, tests.HttpChecker(kernelVersion), log); err != nil {
 		fmt.Printf("🔥 HTTP check failed: no dice: %s\n", err)
 		os.Exit(1)
 	}

@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
@@ -153,7 +154,7 @@ func TestConnectEvent(t *testing.T) {
 	obs := getBasicTcpObserver(t)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	observer.ExecWGCurl(&readyWG, 10, "127.0.0.1")
-	err := observer.JsonTestCheckNew(t, checker)
+	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -236,7 +237,7 @@ func TestExecEventClone(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := observer.JsonTestCheckNew(t, checker)
+	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -292,7 +293,7 @@ func TestExistingListenEvent(t *testing.T) {
 	getBasicTcpObserver(t)
 	killAndWaitCommand(t, cmdServer)
 
-	err := observer.JsonTestCheckNew(t, checker)
+	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -348,7 +349,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := observer.JsonTestCheckNew(t, checker)
+	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
@@ -396,7 +397,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	getBasicTcpObserver(t)
 	killAndWaitCommand(t, cmdServer)
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -466,13 +467,13 @@ func TestListenAcceptClose(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := observer.JsonTestCheckNew(t, checker)
+	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
 
-	err = observer.JsonTestCheckNew(t, exitChecker)
+	err = jsonchecker.JsonTestCheck(t, exitChecker)
 	assert.NoError(t, err)
 }
 
@@ -527,7 +528,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 			WithProtocol(fgs.SocketProtocol_TCP),
 	)
 
-	err := observer.JsonTestCheckNew(t, checker)
+	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -604,7 +605,7 @@ func TestDockerListenConnect(t *testing.T) {
 			WithSocketType(sm.Full("connect")),
 	)
 
-	err := observer.JsonTestCheckNew(t, checker)
+	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
 
@@ -833,7 +834,7 @@ func TestTcpBurst(t *testing.T) {
 		panic(err)
 	}
 
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
@@ -899,6 +900,6 @@ func TestNamespaces(t *testing.T) {
 
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
-	err = observer.JsonTestCheckNew(t, checker)
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }
