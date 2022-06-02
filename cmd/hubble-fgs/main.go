@@ -222,7 +222,7 @@ func hubbleFGSExecute() error {
 // map root. This function relies on the map root to be set properly via
 // github.com/cilium/tetragon/pkg/bpf.CheckOrMountFS().
 func getObserverDir() string {
-	const observerDir = "tcpmon"
+	const observerDir = "tetragon"
 	return filepath.Join(bpf.GetMapRoot(), observerDir)
 }
 
