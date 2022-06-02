@@ -147,7 +147,6 @@ test-compile:
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/parsertest      -o go-tests/parsertest.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/udp     -o go-tests/udp.test
 	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/nop -o go-tests/nop.test
-	$(GO) test -gcflags=$(GO_GCFLAGS) -c ./pkg/sensors/test -o go-tests/test.test
 
 test-kernels:
 	#kata-img  vmlinuz-kata-linux-4.14.184-79_hubble
