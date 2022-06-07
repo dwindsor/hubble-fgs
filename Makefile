@@ -262,7 +262,7 @@ endif
 
 .PHONY: go-format
 go-format:
-	find . -name '*.go' -not -path './vendor/*' | xargs gofmt -w
+	find . -name '*.go' -not -path './vendor/*' -not -path './modules/*' | xargs gofmt -w
 
 .PHONY: format
 format: go-format clang-format
