@@ -14,6 +14,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/api/ops"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
+	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -341,11 +342,9 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 }
 
 func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, version, verbose int) (int, error) {
-	tracepointLog = logger.GetLogger()
+	config := &api.EventConfig{}
 
-	btfCtxOffsetFn := func(i int) string {
-		return fmt.Sprintf("t_arg%d_ctx_off", i)
-	}
+	tracepointLog = logger.GetLogger()
 
 	tpIdx, ok := load.LoaderData.(int)
 	if !ok {
@@ -363,63 +362,29 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 	}
 	defer btfObj.Close()
 
-	btfAddEnumValue := func(s string, val int) error {
-		if ret := btfObj.AddEnumValue(s, val); ret < 0 {
-			return fmt.Errorf("failed to add %s=%d BTF value (error=%d)", s, val, ret)
-		}
-		return nil
-	}
-
-	ret := btfObj.AddEnum(genericFuncArgsEnum, 4)
-	if ret < 0 {
-		return 0, fmt.Errorf("failed to add %s=%d BTF enum (ret=%d)", genericFuncArgsEnum, 4, ret)
-	}
-
-	if err := btfAddEnumValue(kprobeGenericId, tp.tableIdx); err != nil {
-		return 0, err
-	}
+	config.FuncId = uint32(tp.tableIdx)
 
 	// iterate over output arguments
 	for i := range tp.args {
 		tpArg := &tp.args[i]
-		if err := btfAddEnumValue(btfCtxOffsetFn(i), tpArg.CtxOffset); err != nil {
-			return 0, err
-		}
 
+		config.ArgTpCtxOff[i] = uint32(tpArg.CtxOffset)
 		_, err := tpArg.setGenericTypeId()
 		if err != nil {
 			return 0, fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
 		}
 
-		if err := btfAddEnumValue(kprobeArgToString(i), tpArg.genericTypeId); err != nil {
-			return 0, err
-		}
-
-		if err := btfAddEnumValue(kprobeArgMToString(i), tpArg.MetaArg); err != nil {
-			return 0, err
-		}
+		config.Arg[i] = int32(tpArg.genericTypeId)
+		config.ArgM[i] = uint32(tpArg.MetaArg)
 
 		tracepointLog.Infof("configured argument #%d: %+v (type:%d)", i, tpArg, tpArg.genericTypeId)
 	}
 
 	// nop args
 	for i := len(tp.args); i < genericTP_MaxArgs; i++ {
-		if err := btfAddEnumValue(btfCtxOffsetFn(i), 0); err != nil {
-			return 0, err
-		}
-
-		if err := btfAddEnumValue(kprobeArgToString(i), gt.GenericNopType); err != nil {
-			return 0, err
-		}
-
-		if err := btfAddEnumValue(kprobeArgMToString(i), 0); err != nil {
-			return 0, err
-		}
-	}
-
-	// actions nop
-	if err := btfAddEnumValue("sigkill", 0); err != nil {
-		return 0, err
+		config.ArgTpCtxOff[i] = uint32(0)
+		config.Arg[i] = int32(gt.GenericNopType)
+		config.ArgM[i] = uint32(0)
 	}
 
 	// rewrite arg index
@@ -466,6 +431,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 		mapDir,
 		load.RetProbe,
 		kernelSelectors,
+		config,
 	)
 }
 
