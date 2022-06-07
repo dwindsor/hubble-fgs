@@ -1,6 +1,30 @@
-fgs-bench-rootfs*
-mnt
-bin
-ksrc
-kbuild
+# Ignore VCS
+.git/
+
+# Ignore contrib/kvm and all subdirs
 contrib/kvm
+
+# Ignore rootfs for contrib/vmtests
+fgs-bench-rootfs*
+
+# Ignore compiled binaries and libraries
+go-tests/
+lib/
+bin/
+bpf/objs
+hubble-enterprise
+hubble-fgs
+fgs-alignchecker
+fgs-bench
+checkerpc
+contrib/tester-progs/capabilities-tester
+contrib/tester-progs/dup-tester
+contrib/tester-progs/fork-tester
+contrib/tester-progs/namespace-tester
+contrib/tester-progs/sigkill-tester
+
+# Ignore submodules...
+modules/
+# ...but not bpf files
+!modules/tetragon-oss/bpf
+modules/tetragon-oss/bpf/objs
