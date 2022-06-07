@@ -128,13 +128,13 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 			}
 		case api.MsgGenericKprobeArgFile:
 			fileArg := &fgs.KprobeFile{
-				Path:  path.MarkUnresolvedPathComponents(path.GenPath(e.Value), e.Flags),
+				Path:  e.Value,
 				Flags: path.FilePathFlagsToStr(e.Flags),
 			}
 			a.Arg = &fgs.KprobeArgument_FileArg{FileArg: fileArg}
 		case api.MsgGenericKprobeArgPath:
 			pathArg := &fgs.KprobePath{
-				Path:  path.MarkUnresolvedPathComponents(path.GenPath(e.Value), e.Flags),
+				Path:  e.Value,
 				Flags: path.FilePathFlagsToStr(e.Flags),
 			}
 			a.Arg = &fgs.KprobeArgument_PathArg{PathArg: pathArg}
