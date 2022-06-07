@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
-	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	"github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/helpers"
 	"github.com/sirupsen/logrus"
 )
 
@@ -66,7 +66,7 @@ func JsonCheck(jsonFile *os.File, checker ec.MultiEventChecker, log *logrus.Logg
 		}
 		count++
 		prefix := fmt.Sprintf("jsonTestCheck/line:%04d ", count)
-		eType, err := helpers.EventTypeString(ev.Event)
+		eType, err := helpers.ResponseTypeString(&ev)
 		if err != nil {
 			eType = "<UNKNOWN>"
 		}

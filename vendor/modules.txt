@@ -126,6 +126,7 @@ github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/filters
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/generate
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/helpers
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/imports
+github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/types
 github.com/cilium/tetragon/pkg/aggregator
 github.com/cilium/tetragon/pkg/api
 github.com/cilium/tetragon/pkg/api/calltraceapi
@@ -221,8 +222,8 @@ github.com/containerd/containerd/platforms
 # github.com/containernetworking/plugins v1.0.1
 ## explicit; go 1.16
 github.com/containernetworking/plugins/pkg/ns
-# github.com/cpuguy83/go-md2man/v2 v2.0.0
-## explicit; go 1.12
+# github.com/cpuguy83/go-md2man/v2 v2.0.1
+## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
@@ -481,7 +482,7 @@ github.com/prometheus/common/model
 github.com/prometheus/procfs
 github.com/prometheus/procfs/internal/fs
 github.com/prometheus/procfs/internal/util
-# github.com/russross/blackfriday/v2 v2.0.1
+# github.com/russross/blackfriday/v2 v2.1.0
 ## explicit
 github.com/russross/blackfriday/v2
 # github.com/sasha-s/go-deadlock v0.2.1-0.20190427202633-1595213edefa
@@ -491,9 +492,6 @@ github.com/sasha-s/go-deadlock
 ## explicit
 github.com/shirou/gopsutil/internal/common
 github.com/shirou/gopsutil/mem
-# github.com/shurcooL/sanitized_anchor_name v1.0.0
-## explicit
-github.com/shurcooL/sanitized_anchor_name
 # github.com/sirupsen/logrus v1.8.1
 ## explicit; go 1.13
 github.com/sirupsen/logrus
@@ -505,8 +503,8 @@ github.com/spf13/afero/mem
 # github.com/spf13/cast v1.3.0
 ## explicit
 github.com/spf13/cast
-# github.com/spf13/cobra v1.1.3
-## explicit; go 1.12
+# github.com/spf13/cobra v1.4.0
+## explicit; go 1.15
 github.com/spf13/cobra
 github.com/spf13/cobra/doc
 # github.com/spf13/jwalterweatherman v1.0.0
@@ -518,7 +516,7 @@ github.com/spf13/pflag
 # github.com/spf13/viper v1.7.0
 ## explicit; go 1.12
 github.com/spf13/viper
-# github.com/stretchr/testify v1.7.1
+# github.com/stretchr/testify v1.7.2
 ## explicit; go 1.13
 github.com/stretchr/testify/assert
 github.com/stretchr/testify/require
@@ -677,7 +675,7 @@ google.golang.org/appengine/urlfetch
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.46.2
+# google.golang.org/grpc v1.47.0
 ## explicit; go 1.14
 google.golang.org/grpc
 google.golang.org/grpc/attributes

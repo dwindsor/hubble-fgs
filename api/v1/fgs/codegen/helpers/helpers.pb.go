@@ -18,33 +18,75 @@ import (
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
 )
 
-type event interface {
-	// Represents a generic Tetragon event
-}
-type response interface {
-	// Represents a generic Tetragon gRPC response
-}
-
 // EventTypeString returns an event's type as a string
-func EventTypeString(event event) (string, error) {
+func EventTypeString(event fgs.Event) (string, error) {
 	if event == nil {
 		return "", fmt.Errorf("Event is nil")
 	}
 	switch event.(type) {
-	case *fgs.GetEventsResponse_InterfaceStats:
-		return fgs.EventType_INTERFACE_STATS.String(), nil
-	case *fgs.GetEventsResponse_ProcessConnect:
+	case *fgs.ProcessExec:
+		return fgs.EventType_PROCESS_EXEC.String(), nil
+	case *fgs.ProcessConnect:
 		return fgs.EventType_PROCESS_CONNECT.String(), nil
-	case *fgs.GetEventsResponse_ProcessClose:
-		return fgs.EventType_PROCESS_CLOSE.String(), nil
-	case *fgs.GetEventsResponse_ProcessListen:
+	case *fgs.ProcessListen:
 		return fgs.EventType_PROCESS_LISTEN.String(), nil
-	case *fgs.GetEventsResponse_ProcessAccept:
+	case *fgs.Tls:
+		return fgs.EventType_TLS.String(), nil
+	case *fgs.ProcessExit:
+		return fgs.EventType_PROCESS_EXIT.String(), nil
+	case *fgs.ProcessClose:
+		return fgs.EventType_PROCESS_CLOSE.String(), nil
+	case *fgs.ProcessAccept:
 		return fgs.EventType_PROCESS_ACCEPT.String(), nil
+	case *fgs.ProcessCred:
+		return fgs.EventType_PROCESS_CRED.String(), nil
+	case *fgs.ProcessKprobe:
+		return fgs.EventType_PROCESS_KPROBE.String(), nil
+	case *fgs.ProcessTracepoint:
+		return fgs.EventType_PROCESS_TRACEPOINT.String(), nil
+	case *fgs.ProcessSockStats:
+		return fgs.EventType_PROCESS_SOCK_STATS.String(), nil
+	case *fgs.ProcessHttp:
+		return fgs.EventType_PROCESS_HTTP.String(), nil
+	case *fgs.InterfaceStats:
+		return fgs.EventType_INTERFACE_STATS.String(), nil
+	case *fgs.ProcessDns:
+		return fgs.EventType_PROCESS_DNS.String(), nil
+	case *fgs.ProcessNetworkBurst:
+		return fgs.EventType_PROCESS_NETWORK_BURST.String(), nil
+	case *fgs.Test:
+		return fgs.EventType_TEST.String(), nil
+
+	}
+	return "", fmt.Errorf("Unhandled event type %T", event)
+}
+
+// ResponseTypeString returns an event's type as a string
+func ResponseTypeString(response *fgs.GetEventsResponse) (string, error) {
+	if response == nil {
+		return "", fmt.Errorf("Response is nil")
+	}
+
+	event := response.Event
+	if event == nil {
+		return "", fmt.Errorf("Event is nil")
+	}
+
+	switch event.(type) {
 	case *fgs.GetEventsResponse_ProcessExec:
 		return fgs.EventType_PROCESS_EXEC.String(), nil
+	case *fgs.GetEventsResponse_ProcessConnect:
+		return fgs.EventType_PROCESS_CONNECT.String(), nil
+	case *fgs.GetEventsResponse_ProcessListen:
+		return fgs.EventType_PROCESS_LISTEN.String(), nil
+	case *fgs.GetEventsResponse_Tls:
+		return fgs.EventType_TLS.String(), nil
 	case *fgs.GetEventsResponse_ProcessExit:
 		return fgs.EventType_PROCESS_EXIT.String(), nil
+	case *fgs.GetEventsResponse_ProcessClose:
+		return fgs.EventType_PROCESS_CLOSE.String(), nil
+	case *fgs.GetEventsResponse_ProcessAccept:
+		return fgs.EventType_PROCESS_ACCEPT.String(), nil
 	case *fgs.GetEventsResponse_ProcessCred:
 		return fgs.EventType_PROCESS_CRED.String(), nil
 	case *fgs.GetEventsResponse_ProcessKprobe:
@@ -53,26 +95,37 @@ func EventTypeString(event event) (string, error) {
 		return fgs.EventType_PROCESS_TRACEPOINT.String(), nil
 	case *fgs.GetEventsResponse_ProcessSockStats:
 		return fgs.EventType_PROCESS_SOCK_STATS.String(), nil
-	case *fgs.GetEventsResponse_Test:
-		return fgs.EventType_TEST.String(), nil
-	case *fgs.GetEventsResponse_Tls:
-		return fgs.EventType_TLS.String(), nil
 	case *fgs.GetEventsResponse_ProcessHttp:
 		return fgs.EventType_PROCESS_HTTP.String(), nil
+	case *fgs.GetEventsResponse_InterfaceStats:
+		return fgs.EventType_INTERFACE_STATS.String(), nil
 	case *fgs.GetEventsResponse_ProcessDns:
 		return fgs.EventType_PROCESS_DNS.String(), nil
 	case *fgs.GetEventsResponse_ProcessNetworkBurst:
 		return fgs.EventType_PROCESS_NETWORK_BURST.String(), nil
+	case *fgs.GetEventsResponse_Test:
+		return fgs.EventType_TEST.String(), nil
 
 	}
-	return "", fmt.Errorf("Unhandled event type %T", event)
+	return "", fmt.Errorf("Unhandled response type %T", event)
 }
 
-// EventGetProcess gets the process field for an event if it exists
-func EventGetProcess(event event) *fgs.Process {
+// ResponseGetProcess returns a GetEventsResponse's process if it exists
+func ResponseGetProcess(response *fgs.GetEventsResponse) *fgs.Process {
+	if response == nil {
+		return nil
+	}
+
+	event := response.Event
 	if event == nil {
 		return nil
 	}
+
+	return ResponseInnerGetProcess(event)
+}
+
+// ResponseInnerGetProcess returns a GetEventsResponse inner event's process if it exists
+func ResponseInnerGetProcess(event fgs.ResponseEvent) *fgs.Process {
 	switch ev := event.(type) {
 	case *fgs.GetEventsResponse_ProcessConnect:
 		return ev.ProcessConnect.Process
@@ -107,23 +160,22 @@ func EventGetProcess(event event) *fgs.Process {
 	return nil
 }
 
-// ResponseGetProcess gets the process field for a response if it exists
-func ResponseGetProcess(response response) *fgs.Process {
+// ResponseGetParent returns a GetEventsResponse's parent process if it exists
+func ResponseGetParent(response *fgs.GetEventsResponse) *fgs.Process {
 	if response == nil {
 		return nil
 	}
-	switch res := response.(type) {
-	case *fgs.GetEventsResponse:
-		return EventGetProcess(res.Event)
-	}
-	return nil
-}
 
-// EventGetParent gets the parent field for an event if it exists
-func EventGetParent(event event) *fgs.Process {
+	event := response.Event
 	if event == nil {
 		return nil
 	}
+
+	return ResponseInnerGetParent(event)
+}
+
+// ResponseInnerGetParent returns a GetEventsResponse inner event's parent process if it exists
+func ResponseInnerGetParent(event fgs.ResponseEvent) *fgs.Process {
 	switch ev := event.(type) {
 	case *fgs.GetEventsResponse_ProcessConnect:
 		return ev.ProcessConnect.Parent
@@ -148,18 +200,6 @@ func EventGetParent(event event) *fgs.Process {
 	case *fgs.GetEventsResponse_ProcessNetworkBurst:
 		return ev.ProcessNetworkBurst.Parent
 
-	}
-	return nil
-}
-
-// ResponseGetParent gets the parent field for a response if it exists
-func ResponseGetParent(response response) *fgs.Process {
-	if response == nil {
-		return nil
-	}
-	switch res := response.(type) {
-	case *fgs.GetEventsResponse:
-		return EventGetParent(res.Event)
 	}
 	return nil
 }

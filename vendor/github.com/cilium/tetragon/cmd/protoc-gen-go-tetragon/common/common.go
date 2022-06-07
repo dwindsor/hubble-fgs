@@ -23,12 +23,11 @@ var TetragonApiPackageName = "api/v1/tetragon"
 var TetragonCopyrightHeader = `// SPDX-License-Identifier: Apache-2.0
 // Copyright Authors of Tetragon`
 
-// NewGeneratedFile creates a new codegen pakage and file in the project
-func NewGeneratedFile(gen *protogen.Plugin, file *protogen.File, pkg string) *protogen.GeneratedFile {
-	pkgName := filepath.Base(pkg)
-	importPath := filepath.Join(string(file.GoImportPath), "codegen", pkg)
+// NewFile creates a new pakage and file in the project
+func NewFile(gen *protogen.Plugin, file *protogen.File, pkg string, pkgName string, fileName string) *protogen.GeneratedFile {
+	importPath := filepath.Join(string(file.GoImportPath), pkg)
 	pathSuffix := filepath.Base(file.GeneratedFilenamePrefix)
-	fileName := filepath.Join(strings.TrimSuffix(file.GeneratedFilenamePrefix, pathSuffix), "codegen", pkg, fmt.Sprintf("%s.pb.go", pkgName))
+	fileName = filepath.Join(strings.TrimSuffix(file.GeneratedFilenamePrefix, pathSuffix), pkg, fmt.Sprintf("%s.pb.go", fileName))
 	logger.GetLogger().Infof("%s", fileName)
 
 	g := gen.NewGeneratedFile(fileName, protogen.GoImportPath(importPath))
@@ -42,6 +41,14 @@ func NewGeneratedFile(gen *protogen.Plugin, file *protogen.File, pkg string) *pr
 	g.P()
 
 	return g
+}
+
+// NewCodegenFile creates a new codegen pakage and file in the project
+func NewCodegenFile(gen *protogen.Plugin, file *protogen.File, pkg string) *protogen.GeneratedFile {
+	pkgName := filepath.Base(pkg)
+	pkg = filepath.Join("codegen", pkg)
+
+	return NewFile(gen, file, pkg, pkgName, pkgName)
 }
 
 // GoIdent is a convenience helper that returns a qualified go ident as a string for
@@ -109,6 +116,46 @@ func StructTag(tag string) string {
 }
 
 var eventsCache []*protogen.Message
+
+type GetEventsResponseOneofInfo struct {
+	TypeName  string
+	FieldName string
+}
+
+func GetEventsResponseOneofs(f *protogen.File) ([]GetEventsResponseOneofInfo, error) {
+	// find the GetEventsResponse type
+	var getEventsResponse *protogen.Message
+	for _, msg := range f.Messages {
+		if msg.GoIdent.GoName == "GetEventsResponse" {
+			getEventsResponse = msg
+			break
+		}
+	}
+	if getEventsResponse == nil {
+		return nil, fmt.Errorf("Unable to find GetEventsResponse message")
+	}
+
+	var eventOneof *protogen.Oneof
+	for _, oneof := range getEventsResponse.Oneofs {
+		if oneof.Desc.Name() == "event" {
+			eventOneof = oneof
+			break
+		}
+	}
+	if eventOneof == nil {
+		return nil, fmt.Errorf("Unable to find GetEventsResponse.event")
+	}
+
+	var info []GetEventsResponseOneofInfo
+	for _, oneof := range eventOneof.Fields {
+		info = append(info, GetEventsResponseOneofInfo{
+			TypeName:  strings.TrimPrefix(oneof.GoIdent.GoName, "GetEventsResponse_"),
+			FieldName: oneof.Desc.TextName(),
+		})
+	}
+
+	return info, nil
+}
 
 // GetEvents returns a list of all messages that are events
 func GetEvents(f *protogen.File) ([]*protogen.Message, error) {

@@ -89,7 +89,7 @@ func HandleProcessedEvent(processedEvent interface{}) {
 	case *fgs.GetEventsResponse:
 		binary, pod, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 		var err error
-		eventType, err = helpers.EventTypeString(ev.Event)
+		eventType, err = helpers.ResponseTypeString(ev)
 		if err != nil {
 			logger.GetLogger().WithField("event", processedEvent).WithError(err).Warn("metrics: handleProcessedEvent: unhandled event")
 			eventType = "unhandled"

@@ -86,4 +86,9 @@ const (
 	// Errors in path resolution because we have limits due to program size
 	// EventErrorMountPoints    = 0x200000 // (deprecated)
 	EventErrorPathComponents = 0x400000
+
+	// EventDataFilename indicates filename is received with data event
+	EventDataFilename = 0x800000
+	// EventDataArgs indicates args are received with data event
+	EventDataArgs = 0x1000000
 )

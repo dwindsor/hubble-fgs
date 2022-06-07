@@ -92,7 +92,7 @@ func rpcCheck(ctx context.Context, clients *grpc.ClientMultiplexer, checker ec.M
 			}
 
 			eventCount++
-			eventType, err := helpers.EventTypeString(ev.GetEvent())
+			eventType, err := helpers.ResponseTypeString(event)
 			if err != nil {
 				log.Warnf("Failed to get event type: %v", err)
 				eventType = "UNKNOWN"
