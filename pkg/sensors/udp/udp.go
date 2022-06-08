@@ -147,19 +147,11 @@ var (
 
 	UdpRecv = program.Builder(
 		"bpf_udp_send_recv.o",
-		"__skb_recv_udp",
-		"kprobe/__skb_recv_udp",
-		"kprobe___skb_recv_udp",
+		"skb_consume_udp",
+		"kprobe/skb_consume_udp",
+		"kprobe_skb_consume_udp",
 		"kprobe",
 	)
-
-	UdpRetRecv = program.Builder(
-		"bpf_udp_send_recv.o",
-		"__skb_recv_udp",
-		"kretprobe/__skb_recv_udp",
-		"kretprobe___skb_recv_udp",
-		"kprobe",
-	).SetRetProbe(true)
 
 	UdpSendLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
@@ -179,19 +171,11 @@ var (
 
 	UdpRecvLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
-		"__skb_recv_udp",
-		"kprobe/__skb_recv_udp",
-		"kprobe___skb_recv_udp",
+		"skb_consume_udp",
+		"kprobe/skb_consume_udp",
+		"kprobe_skb_consume_udp",
 		"kprobe",
 	)
-
-	UdpRetRecvLazy = program.Builder(
-		"bpf_udp_send_recv_lazy.o",
-		"__skb_recv_udp",
-		"kretprobe/__skb_recv_udp",
-		"kretprobe___skb_recv_udp",
-		"kprobe",
-	).SetRetProbe(true)
 
 	// Socket lookup program
 	FdLookup = program.Builder(
@@ -215,8 +199,6 @@ var (
 	UdpMapKprobeRecvLazy         = program.MapBuilder(UdpMapName, UdpRecvLazy)
 	UdpRetprobeMap               = program.MapBuilder(UdpRetprobeMapName, UdpSend)
 	UdpRetprobeMapLazy           = program.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
-	UdpRetprobeRecvMap           = program.MapBuilder(UdpRetprobeMapName, UdpRecv)
-	UdpRetprobeRecvMapLazy       = program.MapBuilder(UdpRetprobeMapName, UdpRecvLazy)
 	UdpConfigMap                 = program.MapBuilder(UdpConfigMapName, InetSend)
 	UdpConfigLazyMap             = program.MapBuilder(UdpConfigMapName, InetSendLazy)
 	UdpConfigLazyMapKprobe       = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
@@ -599,13 +581,11 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpSendLazy,
 			UdpRetSendLazy,
 			UdpRecvLazy,
-			UdpRetRecvLazy,
 		}
 		maps = []*program.Map{
 			UdpMapKprobeLazy,
 			UdpMapKprobeRecvLazy,
 			UdpRetprobeMapLazy,
-			UdpRetprobeRecvMapLazy,
 			UdpConfigLazyMapKprobe,
 			UdpMapLazyKprobe,
 			UdpPayloadLazyMapKprobe,
@@ -622,13 +602,11 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpSendLazy,
 			UdpRetSendLazy,
 			UdpRecvLazy,
-			UdpRetRecvLazy,
 		}
 		maps = []*program.Map{
 			UdpMapKprobeLazy,
 			UdpMapKprobeRecvLazy,
 			UdpRetprobeMapLazy,
-			UdpRetprobeRecvMapLazy,
 			UdpConfigLazyMap,
 			UdpMapLazy,
 			UdpPayloadLazyMap,
@@ -646,13 +624,11 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpSend,
 			UdpRetSend,
 			UdpRecv,
-			UdpRetRecv,
 		}
 		maps = []*program.Map{
 			UdpMapKprobe,
 			UdpMapKprobeRecv,
 			UdpRetprobeMap,
-			UdpRetprobeRecvMap,
 			UdpConfigMap,
 			UdpMap,
 			UdpPayloadMap,

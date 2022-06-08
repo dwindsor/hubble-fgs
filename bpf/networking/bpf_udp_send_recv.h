@@ -236,7 +236,7 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 }
 
 static inline __attribute__((always_inline)) struct udp_info *
-udp4_get_skb_info(struct sk_buff *skb, int *len)
+udp4_get_skb_info(struct sk_buff *skb)
 {
 	struct udp_info *info;
 	int zero = 0;
@@ -265,73 +265,98 @@ udp4_get_skb_info(struct sk_buff *skb, int *len)
 	info->dport = udph.source;
 	info->padding = 0;
 
-	if (udph.len < sizeof(udph))
-		return 0;
-
-	*len = bpf_ntohs(udph.len) - sizeof(udph);
-
 	return info;
 }
 
-/* On entry to __skb_recv_udp(), check if it's a genuine read (not just a
- * peek), and store the sk for the return.
+/* Call this function if the record lacks the tuple or the PID.
+ * Returns true if a connect event should now be sent.
  */
-static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx)
+static inline __attribute__((always_inline)) bool
+udp4_set_info(struct udp_info_value *value, struct sk_buff *skb)
 {
-	u64 pid_tgid = get_current_pid_tgid();
-	struct udp_sock_info *value;
-	int zero = 0;
-	int flags = ctx->si;
+	struct udp_info *info;
+	int hasctx = 1;
 
-	/* Avoid any calls where the packet isn't actually consumed */
-	if (flags & MSG_PEEK)
-		return 0;
+	if (value->pid == 0) {
+		hasctx = add_process_ctx(value);
+	}
 
-	value = map_lookup_elem(&udp_sock_info_heap, &zero);
-	if (!value)
-		return 0;
+	if (value->saddr == 0) {
+		info = udp4_get_skb_info(skb);
+		if (info) {
+			value->saddr = info->daddr;
+			value->daddr = info->saddr;
+			value->sport = info->dport;
+			value->dport = info->sport;
+		} else {
+			update_consume_misses(value);
+			value->saddr = 0;
+			value->daddr = 0;
+			value->sport = 0;
+			value->dport = 0;
+		}
+	}
 
-	value->sk = (void *)ctx->di;
+	if (hasctx && value->saddr != 0)
+		return true;
 
-	map_update_elem(&udp_retprobe_map, &pid_tgid, value, 0);
-	return 0;
+	return false;
 }
 
-/* On return of __skb_recv_udp(), check the returned skb is a valid
- * pointer, and retrieve the stored sk.
+/* UDP data is consumed on a datagram-by-datagram basis; every recv(),
+ * recvfrom() and read() on a UDP file descriptor results in the
+ * consumption of a single datagram. If the requested volume of data
+ * is >= the datagram payload size, then the whole datagram is provided
+ * and the payload size is returned.
+ * If the requested volume is < the datagram payload size, then the
+ * requested volume is provided. In the usual case, the size requested
+ * is returned; if the MSG_TRUNC flag is specified, the payload size is
+ * returned instead.
+ * This function is attached to skb_consume_udp() which occurs late in
+ * udp_recvmsg() and udp6_recvmsg(). The length parameter provided to
+ * it is the size requested (capped at payload size) if MSG_TRUNC wasn't
+ * specified, or the payload size if MSG_TRUNC was specified.
+ * This value is the closest approximation to the volume of data consumed,
+ * as the length parameter to udp[v6]_recvmsg() is a buffer size, not a
+ * payload length (as are all the length parameters that led to this
+ * function being called, e.g. recv() syscall); and the length parameter
+ * to skb_consume_udp() either specifies the amount of data to consume
+ * (MSG_TRUNC not set, capped at payload size) or the payload size
+ * (MSG_TRUNC is set) because the application wants to know how much
+ * data it could have consumed. In both cases, remaining data in the
+ * datagram is discarded, so we can treat it as consumed in the second
+ * case, as the application is at least aware of it.
+ * Aside from this impassioned argument, there is no more accurate place
+ * to hook!
  */
-static inline __attribute__((always_inline)) int
-udp4_recvret(struct pt_regs *ctx, bool lazy)
+static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
+							   bool lazy)
 {
 	u64 pid_tgid = get_current_pid_tgid();
-	struct udp_sock_info *sock_info;
 	struct udp_info_value *value;
-	struct udp_info *info;
-	int hasctx, zero = 0;
-	int len = 0;
-	struct sk_buff *skb = (void *)ctx->ax;
+	int zero = 0;
+	struct sock *sk = (void *)ctx->di;
+	struct sk_buff *skb = (void *)ctx->si;
+	int len = (int)ctx->dx;
 	u64 cookie;
 
-	if (!skb) {
+	/* Disregard peeks */
+	if (len <= 0) {
 		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
 	}
 
-	sock_info = map_lookup_elem(&udp_retprobe_map, &pid_tgid);
-	if (!sock_info)
-		return 0;
-
-	write_cookie_from_sk(&cookie, sock_info->sk, lazy);
+	/* We need a cookie to attach this datagram to */
+	write_cookie_from_sk(&cookie, sk, lazy);
 	if (!cookie) {
-		map_delete_elem(&udp_retprobe_map, &pid_tgid);
 		return 0;
 	}
 
-	info = udp4_get_skb_info(skb, &len);
 	value = map_lookup_elem(&udp_map, &cookie);
 	if (!value) {
 		/* Entry was not created by the stack programs.
 		 * Create a new entry and update the socket map.
+		 * Should be a rare occurrence.
 		 */
 		value = map_lookup_elem(&udp_value_heap, &zero);
 		if (!value) {
@@ -340,38 +365,16 @@ udp4_recvret(struct pt_regs *ctx, bool lazy)
 		}
 
 		udp_info_consumed_reset(value, len);
+		value->skb_consume_misses = 0;
 
-		if (info) {
-			value->saddr = info->saddr;
-			value->daddr = info->daddr;
-			value->sport = info->sport;
-			value->dport = info->dport;
-			value->skb_consume_misses = 0;
-			hasctx = add_process_ctx(value);
-			if (hasctx) {
-				emit_udp_connect_event(ctx, value);
-			}
-		} else {
-			value->skb_consume_misses = 1;
+		if (udp4_set_info(value, skb)) {
+			emit_udp_connect_event(ctx, value);
 		}
 		map_update_elem(&udp_map, &cookie, value, 0);
 	} else {
-		if (info) {
-			update_consumed_value(value, len);
-		} else {
-			update_consume_misses(value);
-		}
-		if (!value->pid) {
-			/* This can happen when sock_create does not
-			 * find a pid because the socket is attached
-			 * to a pid that is not a thread group id
-			 * leader. In this case we update to proper
-			 * pid when we get called from a context that
-			 * has probe_read() available. Namely, the
-			 * recv side with user context.
-			 */
-			hasctx = add_process_ctx(value);
-			if (hasctx) {
+		update_consumed_value(value, len);
+		if (value->saddr == 0 || value->pid == 0) {
+			if (udp4_set_info(value, skb)) {
 				emit_udp_connect_event(ctx, value);
 			}
 		}

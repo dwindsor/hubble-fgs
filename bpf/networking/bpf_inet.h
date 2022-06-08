@@ -104,16 +104,6 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		else
 			udp_info_rx_reset(value, payload_sz);
 
-		/* Store the info in the entry for later use,
-		 * and potentially for searching from userland
-		 * in case we ever need to locate a socket */
-		*info = udp4_info(ip, udp, send);
-		if (!*info)
-			return 0;
-		value->saddr = (*info)->saddr;
-		value->daddr = (*info)->daddr;
-		value->sport = (*info)->sport;
-		value->dport = (*info)->dport;
 		value->skb_consume_misses = 0;
 
 		/* If process was found, fill in the PID */
@@ -124,8 +114,18 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 			value->pid = 0;
 		}
 
-		if (value->pid)
-			emit_udp_connect_event(skb, value);
+		/* Fill in the tuple */
+		*info = udp4_info(ip, udp, send);
+		if (*info) {
+			value->saddr = (*info)->saddr;
+			value->daddr = (*info)->daddr;
+			value->sport = (*info)->sport;
+			value->dport = (*info)->dport;
+			if (value->pid != 0) {
+				emit_udp_connect_event(skb, value);
+			}
+		}
+
 		map_update_elem(&udp_map, cookie, value, 0);
 	} else if (process && value->pid != process->key.pid) {
 		/* PID doesn't match, so this must be a new socket */
@@ -133,23 +133,38 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 			udp_info_tx_reset(value, payload_sz);
 		else
 			udp_info_rx_reset(value, payload_sz);
-		*info = udp4_info(ip, udp, send);
-		if (!*info)
-			return 0;
-		value->saddr = (*info)->saddr;
-		value->daddr = (*info)->daddr;
-		value->sport = (*info)->sport;
-		value->dport = (*info)->dport;
+
 		value->skb_consume_misses = 0;
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
 
-		emit_udp_connect_event(skb, value);
+		/* Fill in the tuple */
+		*info = udp4_info(ip, udp, send);
+		if (*info) {
+			value->saddr = (*info)->saddr;
+			value->daddr = (*info)->daddr;
+			value->sport = (*info)->sport;
+			value->dport = (*info)->dport;
+			emit_udp_connect_event(skb, value);
+		}
 	} else {
+		/* Existing entry */
 		if (send)
 			update_tx_value(value, payload_sz);
 		else
 			update_rx_value(value, payload_sz);
+
+		if (value->saddr == 0) {
+			/* Fill in the tuple */
+			*info = udp4_info(ip, udp, send);
+			if (*info) {
+				value->saddr = (*info)->saddr;
+				value->daddr = (*info)->daddr;
+				value->sport = (*info)->sport;
+				value->dport = (*info)->dport;
+				emit_udp_connect_event(skb, value);
+			}
+		}
 	}
 	return value;
 }
