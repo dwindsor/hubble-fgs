@@ -9,7 +9,7 @@
 
 #define SOCKFLAGS_TYPE_MASK 0x7
 
-struct msg_ipv4_tuple {
+struct msg_ip_tuple {
 	__u32 saddr;
 	__u32 daddr;
 	__u16 dport;
@@ -33,10 +33,10 @@ struct msg_socket_stats {
 	__u32 skb_consume_misses;
 } __attribute__((packed));
 
-// separate data structs for ipv4 and ipv6
-struct msg_ipv4_event {
+// harmonise data structs for ipv4 and ipv6
+struct msg_ip_event {
 	struct msg_common common;
-	struct msg_ipv4_tuple tuple;
+	struct msg_ip_tuple tuple;
 	unsigned long int ret;
 	struct msg_execve_key key;
 	__u64 socket_cookie;
@@ -75,7 +75,7 @@ struct socketmap_value {
 struct msg_kfree_skb {
 	struct msg_common common;
 	struct msg_calltrace calltrace;
-	struct msg_ipv4_tuple tuple;
+	struct msg_ip_tuple tuple;
 } __attribute__((packed));
 
 struct bpf_map_def __attribute__((section("maps"), used)) socket_map_stats = {

@@ -18,7 +18,7 @@ struct bpf_map_def __attribute__((section("maps"), used))
 tcp_connect_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_event),
+	.value_size = sizeof(struct msg_ip_event),
 	.max_entries = 1,
 };
 
@@ -26,7 +26,7 @@ __attribute__((section("kprobe/tcp_connect"), used)) int
 event_tcp4_connect(struct pt_regs *ctx)
 {
 	struct execve_map_value *process = 0;
-	struct msg_ipv4_event *val;
+	struct msg_ip_event *val;
 	__u32 saddr;
 	__u16 sport;
 	__u32 ppid = 0, pid = 0, zero = 0;
@@ -52,10 +52,10 @@ event_tcp4_connect(struct pt_regs *ctx)
 	probe_read(&daddr, sizeof(daddr), _(&(skp->__sk_common.skc_daddr)));
 	probe_read(&dport, sizeof(dport), _(&(skp->__sk_common.skc_dport)));
 
-	*val = (struct msg_ipv4_event){
-		.common.op = ISO_MSG_OP_IPV4_TCPCONNECTRET,
+	*val = (struct msg_ip_event){
+		.common.op = ISO_MSG_OP_TCPCONNECTRET,
 		.common.ktime = ktime_get_ns(),
-		.common.size = sizeof(struct msg_ipv4_event),
+		.common.size = sizeof(struct msg_ip_event),
 		.tuple.saddr = saddr,
 		.tuple.daddr = daddr,
 		.tuple.dport = dport,
@@ -67,7 +67,7 @@ event_tcp4_connect(struct pt_regs *ctx)
 		.pad = 0,
 	};
 
-	size = sizeof(struct msg_ipv4_event);
+	size = sizeof(struct msg_ip_event);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 
 	/* tuple is on the stack and verifier wont use stack in call happily

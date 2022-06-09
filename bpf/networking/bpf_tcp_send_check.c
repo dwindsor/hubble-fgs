@@ -35,7 +35,7 @@ struct bpf_map_def __attribute__((section("maps"), used))
 tcp_send_check_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_event),
+	.value_size = sizeof(struct msg_ip_event),
 	.max_entries = 1,
 };
 
@@ -76,7 +76,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 	if (process) {
 		struct tcp_send_check_sample_cfg *cfg;
 		u64 current_time_ns = ktime_get_ns();
-		struct msg_ipv4_event *val;
+		struct msg_ip_event *val;
 		__u32 rcv_wnd;
 		size_t size;
 
@@ -102,9 +102,9 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 		if (!val)
 			goto out;
 
-		*val = (struct msg_ipv4_event){
-			.common.op = ISO_MSG_OP_IPV4_TCPSTATS,
-			.common.size = sizeof(struct msg_ipv4_event),
+		*val = (struct msg_ip_event){
+			.common.op = ISO_MSG_OP_TCPSTATS,
+			.common.size = sizeof(struct msg_ip_event),
 			.common.ktime = current_time_ns,
 
 			.key.pid = process->key.pid,
@@ -120,7 +120,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 		};
 		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
 		get_socket_stats(skp, netns, process->zero_window, &val->stats);
-		size = sizeof(struct msg_ipv4_event);
+		size = sizeof(struct msg_ip_event);
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 				  size);
 	out:

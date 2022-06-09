@@ -37,7 +37,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_sock_info_heap = {
 static inline __attribute__((always_inline)) void
 check_and_send_payload(void *ctx, u64 *cookie, struct udp_info_value *value)
 {
-	struct msg_ipv4_udp_event *ev;
+	struct msg_udp_event *ev;
 	size_t size;
 	struct udp_sensor_config *config;
 	int zero = 0;

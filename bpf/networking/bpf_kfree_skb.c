@@ -7,14 +7,14 @@
 
 /* set_tuple_from_skb(skb)
  *
- *  Fill in the msg_ipv4_tuple and return whether we should output this (true)
+ *  Fill in the msg_ip_tuple and return whether we should output this (true)
  *  or not (false).
  *
  * NB: this is a best-effort function to retrieve a 5-tuple from an sk_buff
  * structure. Result is _not_ guaranteed to be valid.
  */
 static inline bool __attribute__((unused))
-set_tuple_from_skb(struct msg_ipv4_tuple *tuple, struct sk_buff *skb)
+set_tuple_from_skb(struct msg_ip_tuple *tuple, struct sk_buff *skb)
 {
 	unsigned char *skb_head = 0;
 	u16 l3_off;

@@ -37,9 +37,9 @@ int main(void)
 	DECLARE(struct, msg_tls_event, iter);
 	DECLARE(struct, msg_test, iter);
 	DECLARE(struct, msg_ipv4_tcp_connect, iter);
-	DECLARE(struct, msg_ipv4_event, iter);
+	DECLARE(struct, msg_ip_event, iter);
 	DECLARE(struct, msg_kfree_skb, iter);
-	DECLARE(struct, msg_ipv4_udp_event, iter);
+	DECLARE(struct, msg_udp_event, iter);
 
 	// from maps
 	DECLARE(struct, event, iter);

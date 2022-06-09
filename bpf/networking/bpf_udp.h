@@ -45,8 +45,8 @@ struct udp_info {
 	u32 padding;
 } __attribute__((packed));
 
-struct msg_ipv4_udp_event {
-	struct msg_ipv4_event event;
+struct msg_udp_event {
+	struct msg_ip_event event;
 	char payload[2048];
 };
 
@@ -76,7 +76,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_config_map = {
 struct bpf_map_def __attribute__((section("maps"), used)) udp_event_heap = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_ipv4_udp_event),
+	.value_size = sizeof(struct msg_udp_event),
 	.max_entries = 1,
 };
 
@@ -111,7 +111,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) udp_cookie_heap = {
 struct bpf_map_def __attribute__((section("maps"), used)) udp_payload_map = {
 	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(u64),
-	.value_size = sizeof(struct msg_ipv4_udp_event),
+	.value_size = sizeof(struct msg_udp_event),
 	.max_entries = MAX_UDP_PAYLOADS,
 };
 
@@ -141,17 +141,17 @@ udp_payload_bloom_map = {
 static inline __attribute__((always_inline)) void
 emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 {
-	size_t size = sizeof(struct msg_ipv4_event);
-	struct msg_ipv4_event *val;
+	size_t size = sizeof(struct msg_ip_event);
+	struct msg_ip_event *val;
 	int zero = 0;
 
 	val = map_lookup_elem(&udp_event_heap, &zero);
 	if (!val)
 		return;
 
-	*val = (struct msg_ipv4_event){
+	*val = (struct msg_ip_event){
 		.common.op = op,
-		.common.size = sizeof(struct msg_ipv4_event),
+		.common.size = sizeof(struct msg_ip_event),
 		.common.ktime = ktime_get_ns(),
 		.key.pid = v->pid,
 		.key.ktime = v->pid_ktime,
@@ -230,12 +230,12 @@ remove_from_udp_payload_bloom(u64 cookie)
 	modify_udp_payload_bloom(cookie, false);
 }
 
-static inline __attribute__((always_inline)) struct msg_ipv4_udp_event *
+static inline __attribute__((always_inline)) struct msg_udp_event *
 create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 			 int off, int payload_size, size_t *size, bool kp)
 {
 	struct __sk_buff *skb = (struct __sk_buff *)ctx;
-	struct msg_ipv4_udp_event *val;
+	struct msg_udp_event *val;
 	int zero = 0;
 
 	val = map_lookup_elem(&udp_event_heap, &zero);
@@ -243,10 +243,10 @@ create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 		return 0;
 
 	payload_size &= 0x7ff;
-	*size = payload_size + sizeof(struct msg_ipv4_event) + 1;
+	*size = payload_size + sizeof(struct msg_ip_event) + 1;
 
-	val->event = (struct msg_ipv4_event){
-		.common.op = ISO_MSG_OP_IPV4_UDPPAYLOAD,
+	val->event = (struct msg_ip_event){
+		.common.op = ISO_MSG_OP_UDPPAYLOAD,
 		.common.size = *size,
 		.common.ktime = ktime_get_ns(),
 		.key.pid = v->pid,
@@ -282,7 +282,7 @@ static inline __attribute__((always_inline)) void
 emit_udp_payload_event(void *ctx, struct udp_info_value *v, int off,
 		       int payload_size)
 {
-	struct msg_ipv4_udp_event *val;
+	struct msg_udp_event *val;
 	size_t size;
 
 	val = create_udp_payload_event(ctx, 0, v, off, payload_size, &size,
@@ -320,7 +320,7 @@ store_udp_payload_event(void *ctx, void *skb_head, u64 *cookie,
 			struct udp_info_value *v, int off, int payload_size,
 			bool kp)
 {
-	struct msg_ipv4_udp_event *val;
+	struct msg_udp_event *val;
 	size_t size;
 
 	val = create_udp_payload_event(ctx, skb_head, v, off, payload_size,
@@ -337,7 +337,7 @@ store_udp_payload_event(void *ctx, void *skb_head, u64 *cookie,
 static inline __attribute__((always_inline)) void
 emit_udp_connect_event(void *ctx, struct udp_info_value *v)
 {
-	emit_udp_event(ctx, ISO_MSG_OP_IPV4_UDPCONNECT, v);
+	emit_udp_event(ctx, ISO_MSG_OP_UDPCONNECT, v);
 }
 
 static inline __attribute__((always_inline)) void

@@ -17,14 +17,14 @@ struct bpf_map_def __attribute__((section("maps"), used))
 tcp_listen_event_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ipv4_event),
+	.value_size = sizeof(struct msg_ip_event),
 	.max_entries = 1,
 };
 
 __attribute__((section("kprobe/inet_hash"), used)) int
 event_sys_listen(struct pt_regs *ctx)
 {
-	struct msg_ipv4_event *val;
+	struct msg_ip_event *val;
 	struct execve_map_value *process = 0;
 	__u32 saddr;
 	__u16 sport;
@@ -46,12 +46,12 @@ event_sys_listen(struct pt_regs *ctx)
 	probe_read(&saddr, sizeof(saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
 	probe_read(&sport, sizeof(sport), _(&(skp->__sk_common.skc_num)));
 
-	*val = (struct msg_ipv4_event){
+	*val = (struct msg_ip_event){
 		.tuple.saddr = saddr,
 		.tuple.sport = sport,
-		.common.op = ISO_MSG_OP_IPV4_LISTEN,
+		.common.op = ISO_MSG_OP_LISTEN,
 		.common.ktime = ktime_get_ns(),
-		.common.size = sizeof(struct msg_ipv4_event),
+		.common.size = sizeof(struct msg_ip_event),
 		.key.pid = pid,
 		.key.ktime = process->key.ktime,
 		.socket_cookie = get_cookie(skp),
@@ -60,7 +60,7 @@ event_sys_listen(struct pt_regs *ctx)
 	};
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
-			  sizeof(struct msg_ipv4_event));
+			  sizeof(struct msg_ip_event));
 
 	{
 		struct socketmap_value v = { 0 };
