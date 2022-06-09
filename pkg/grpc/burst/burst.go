@@ -20,7 +20,7 @@ var (
 func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case ops.MSG_OP_IPV4_PROCESS_BURST:
+	case ops.MSG_OP_PROCESS_NETWORK_BURST:
 		b := getProcessNetworkBurst(msg)
 		if b != nil {
 			res = &fgs.GetEventsResponse{

@@ -1,4 +1,4 @@
-package ipv4
+package ip
 
 import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -13,8 +13,8 @@ func EnableDns() {
 	enableDns = true
 }
 
-func MsgToIPv4Unix(m *api.MsgIPv4Event) *api.MsgIPv4EventUnix {
-	unix := &api.MsgIPv4EventUnix{}
+func MsgToIPUnix(m *api.MsgIPEvent) *api.MsgIPEventUnix {
+	unix := &api.MsgIPEventUnix{}
 
 	unix.Common = m.Common
 	unix.Tuple = m.Tuple

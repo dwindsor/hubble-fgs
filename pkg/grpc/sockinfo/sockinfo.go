@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func GetTuple(tuple *api.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo {
+func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *fgs.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple.SPort != 0 {
@@ -41,7 +41,7 @@ func GetTuple(tuple *api.MsgIPv4Tuple, cookie uint64, op uint8) *fgs.SockInfo {
 	}
 }
 
-func GetProcessTuple(event *api.MsgIPv4EventUnix) *fgs.SockInfo {
+func GetProcessTuple(event *api.MsgIPEventUnix) *fgs.SockInfo {
 	return GetTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 }
 

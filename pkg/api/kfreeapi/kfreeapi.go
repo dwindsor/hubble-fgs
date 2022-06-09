@@ -15,7 +15,7 @@ type StackAddr struct {
 type MsgKfreeSkb struct {
 	Common    processapi.MsgCommon      `align:"common"`
 	Calltrace calltraceapi.MsgCalltrace `align:"calltrace"`
-	Tuple     networkapi.MsgIPv4Tuple   `align:"tuple"`
+	Tuple     networkapi.MsgIPTuple     `align:"tuple"`
 }
 
 type MsgKfreeSkbUnix struct {

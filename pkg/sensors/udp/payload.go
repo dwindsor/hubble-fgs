@@ -14,7 +14,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/yalue/native_endian"
 
 	"golang.org/x/net/dns/dnsmessage"
@@ -26,7 +26,7 @@ const (
 )
 
 func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPv4Event{}
+	m := api.MsgIPEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warnf("Udp Payload Read error")
@@ -35,11 +35,11 @@ func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
 	return handleUdpDns(&m, r)
 }
 
-func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.Event, error) {
+func handleUdpDns(m *api.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) {
 	var p dnsmessage.Parser
 
 	// Annotate msg with user space parser op type
-	m.Common.Op = ops.MSG_OP_IPV4_DNS
+	m.Common.Op = ops.MSG_OP_DNS
 
 	buf := make([]byte, int(m.Common.Size)-int(unsafe.Sizeof(m)))
 
@@ -115,7 +115,7 @@ func handleUdpDns(m *api.MsgIPv4Event, r *bytes.Reader) ([]observer.Event, error
 		IPs:           ipStrings,
 	}
 
-	msgUnix := &dnsapi.MsgIPv4DnsUnix{
+	msgUnix := &dnsapi.MsgDnsUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
 		Return:     m.Return,
@@ -155,7 +155,7 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 
 		// Enable DNS cache in core, abstraction breaking but
 		// fix is to do in kernel BPF parser.
-		ipv4.EnableDns()
+		ip.EnableDns()
 		logger.GetLogger().Info("Enable DNS")
 	}
 }

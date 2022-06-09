@@ -21,7 +21,7 @@ const (
 	MsgUnixSize uint32 = 640
 )
 
-type MsgIPv4Tuple struct {
+type MsgIPTuple struct {
 	SAddr uint32
 	DAddr uint32
 	DPort uint16
@@ -32,17 +32,17 @@ type MsgIPv4Tuple struct {
 	Pad      [5]uint8
 }
 
-func (m *MsgIPv4Tuple) GetPostDAddr() uint32 {
+func (m *MsgIPTuple) GetPostDAddr() uint32 {
 	return binary.LittleEndian.Uint32(m.PostData[0:4])
 }
 
-func (m *MsgIPv4Tuple) GetPostDPort() uint16 {
+func (m *MsgIPTuple) GetPostDPort() uint16 {
 	return binary.LittleEndian.Uint16(m.PostData[4:6])
 }
 
-type MsgIPv4Event struct {
+type MsgIPEvent struct {
 	Common      processapi.MsgCommon    `align:"common"`
-	Tuple       MsgIPv4Tuple            `align:"tuple"`
+	Tuple       MsgIPTuple              `align:"tuple"`
 	Return      int64                   `align:"ret"`
 	ProcessKey  processapi.MsgExecveKey `align:"key"`
 	SockCookie  uint64                  `align:"socket_cookie"`
@@ -81,9 +81,9 @@ type MsgSocketStats struct {
 	SkbConsumeMisses uint32
 }
 
-type MsgIPv4EventUnix struct {
+type MsgIPEventUnix struct {
 	Common      processapi.MsgCommon
-	Tuple       MsgIPv4Tuple
+	Tuple       MsgIPTuple
 	Kube        processapi.MsgK8sUnix
 	Return      int64
 	ProcessKey  processapi.MsgExecveKey

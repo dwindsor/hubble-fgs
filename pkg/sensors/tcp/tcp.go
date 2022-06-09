@@ -17,7 +17,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/sirupsen/logrus"
 
 	loader "github.com/cilium/tetragon/pkg/bpf"
@@ -166,7 +166,7 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, 
 // events out of order. Specifically it means when we diff the events the 'last'
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
-func correctedStatsEvent(tcp *api.MsgIPv4EventUnix) (*api.MsgIPv4EventUnix, error) {
+func correctedStatsEvent(tcp *api.MsgIPEventUnix) (*api.MsgIPEventUnix, error) {
 	entry, ok := stats.Get(tcp.Tuple)
 	if ok {
 		last := entry.(api.MsgSocketStatsUnix)
@@ -184,12 +184,12 @@ func correctedStatsEvent(tcp *api.MsgIPv4EventUnix) (*api.MsgIPv4EventUnix, erro
 }
 
 func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPv4Event{}
+	m := api.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
 	}
-	tcp, err := correctedStatsEvent(ipv4.MsgToIPv4Unix(&m))
+	tcp, err := correctedStatsEvent(ip.MsgToIPUnix(&m))
 	if err != nil {
 		return nil, nil
 	}
@@ -197,12 +197,12 @@ func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPv4Event{}
+	m := api.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
 	}
-	tcp := ipv4.MsgToIPv4Unix(&m)
+	tcp := ip.MsgToIPUnix(&m)
 	if tcpInterval > 0 {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)
@@ -210,7 +210,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 			return []observer.Event{tcp}, nil
 		}
 		// Convert to a TCPStats event by simply setting op code
-		c.Common.Op = ops.MsgOpIPv4TCPStats
+		c.Common.Op = ops.MsgOpTCPStats
 		stats.Remove(c.Tuple)
 		return []observer.Event{tcp, c}, nil
 	}
@@ -218,12 +218,12 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPv4Event{}
+	m := api.MsgIPEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
 		return nil, err
 	}
-	tcp := ipv4.MsgToIPv4Unix(&m)
+	tcp := ip.MsgToIPUnix(&m)
 	return []observer.Event{tcp}, nil
 }
 
@@ -268,14 +268,14 @@ func AddTCP() {
 
 	sensors.RegisterProbeType("tcp_sensor", tcp)
 	sensors.RegisterTracingSensorsAtInit(tcp.name, tcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_TCPSTATS, handleTcpStats)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPSTATS, handleTcpStats)
 
 	/* Core set of TCP events */
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_TCPCONNECT, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_TCPCONNECTRET, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_TCPCLOSE, handleTcpClose)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_BIND, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_LISTEN, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_ACCEPT, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECT, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCONNECTRET, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TCPCLOSE, handleTcpClose)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_BIND, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_LISTEN, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEventsPoll.HandleProcessNetworkBurst)
 }

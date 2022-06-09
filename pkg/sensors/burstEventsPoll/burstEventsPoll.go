@@ -133,7 +133,7 @@ func checkBurstLog(burstLogKey *ProcessNetworkBurstKey, burstLogValue *ProcessNe
 
 func createBurstEndEvent(key *ProcessNetworkBurstKey, value *ProcessNetworkBurstValue, timeSinceLastPacket time.Duration) {
 	m := api.MsgProcessNetworkBurstEvent{}
-	m.Common.Op = ops.MSG_OP_IPV4_PROCESS_BURST
+	m.Common.Op = ops.MSG_OP_PROCESS_NETWORK_BURST
 	m.Common.Size = api.MsgUnixSize
 	m.Common.Ktime = value.LastPacketTime + uint64(timeSinceLastPacket)
 	m.ProcessKey.Pid = uint32(key.Key & PROCESS_NETWORK_BURST_PROCESS_MASK)

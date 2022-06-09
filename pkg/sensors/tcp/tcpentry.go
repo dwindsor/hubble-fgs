@@ -97,7 +97,7 @@ type procTCPEntry struct {
 func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
 	var m *bpf.Map
 
-	tcp := api.MsgIPv4EventUnix{}
+	tcp := api.MsgIPEventUnix{}
 
 	tcp.ProcessKey.Pid = pid
 	tcp.ProcessKey.Ktime = ktime
@@ -160,9 +160,9 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 				}
 
 				if entry.state == TCP_PROC_STATE_LISTEN {
-					tcp.Common.Op = ops.MsgOpIPv4Listen
+					tcp.Common.Op = ops.MsgOpListen
 				} else {
-					tcp.Common.Op = ops.MsgOpIPv4TCPConnectReturn
+					tcp.Common.Op = ops.MsgOpTCPConnectReturn
 				}
 
 				if pushEvents {
@@ -176,7 +176,7 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 	}
 }
 
-func writeSockMap(tcp *api.MsgIPv4EventUnix, m *bpf.Map, uid uint64) {
+func writeSockMap(tcp *api.MsgIPEventUnix, m *bpf.Map, uid uint64) {
 	key := &SocketMapKey{
 		Saddr:     tcp.Tuple.SAddr,
 		Daddr:     tcp.Tuple.DAddr,

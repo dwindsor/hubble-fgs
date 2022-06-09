@@ -211,15 +211,15 @@ func (p *Parser) parseOp() (int, string, error) {
 	case "HTTP":
 		return ops.MSG_OP_HTTP, name, nil
 	case "TCPCONNECT":
-		return ops.MSG_OP_IPV4_TCPCONNECT, name, nil
+		return ops.MSG_OP_TCPCONNECT, name, nil
 	case "TCPCONNECTRET":
-		return ops.MSG_OP_IPV4_TCPCONNECTRET, name, nil
+		return ops.MSG_OP_TCPCONNECTRET, name, nil
 	case "TCPACCEPT":
-		return ops.MSG_OP_IPV4_ACCEPT, name, nil
+		return ops.MSG_OP_ACCEPT, name, nil
 	case "TCPCLOSE":
-		return ops.MSG_OP_IPV4_TCPCLOSE, name, nil
+		return ops.MSG_OP_TCPCLOSE, name, nil
 	case "TCPSTATS":
-		return ops.MSG_OP_IPV4_TCPSTATS, name, nil
+		return ops.MSG_OP_TCPSTATS, name, nil
 	default:
 		return 0, name, fmt.Errorf("unrecognized event op '%s", p.scanner.TokenText())
 	}

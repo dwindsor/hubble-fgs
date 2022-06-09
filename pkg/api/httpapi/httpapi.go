@@ -11,7 +11,7 @@ const (
 )
 
 type HttpKey struct {
-	Tuple networkapi.MsgIPv4Tuple
+	Tuple networkapi.MsgIPTuple
 	Id    uint64
 }
 
@@ -47,14 +47,14 @@ type MsgHttp struct {
 
 type MsgHttpEventUnix struct {
 	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPv4Tuple
+	Tuple      networkapi.MsgIPTuple
 	ProcessKey processapi.MsgExecveKey
 	Request    MsgHttpUnix
 }
 
 type MsgHttpEvent struct {
 	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPv4Tuple
+	Tuple      networkapi.MsgIPTuple
 	ProcessKey processapi.MsgExecveKey
 	Request    MsgHttp
 }

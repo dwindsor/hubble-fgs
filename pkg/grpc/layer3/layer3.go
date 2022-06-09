@@ -44,7 +44,7 @@ func SocketFlagsDnsEnabled(t uint32) bool {
 }
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessConnect(event *api.MsgIPv4EventUnix) *fgs.ProcessConnect {
+func (l3 *Grpc) GetProcessConnect(event *api.MsgIPEventUnix) *fgs.ProcessConnect {
 	var fgsProcess, fgsParent *fgs.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var err error
@@ -128,7 +128,7 @@ func SocketFlagsToType(t uint32) string {
 }
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessClose(event *api.MsgIPv4EventUnix) *fgs.ProcessClose {
+func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 	var err error
@@ -205,7 +205,7 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPv4EventUnix) *fgs.ProcessClose {
 
 // GetProcessListen returns Listen protobuf message for a given process, including the ancestor list.
 func (l3 *Grpc) GetProcessListen(
-	event *api.MsgIPv4EventUnix,
+	event *api.MsgIPEventUnix,
 ) *fgs.ProcessListen {
 	var fgsProcess, fgsParent *fgs.Process
 	var port *wrapperspb.UInt32Value
@@ -253,7 +253,7 @@ func (l3 *Grpc) GetProcessListen(
 }
 
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessAccept(event *api.MsgIPv4EventUnix) *fgs.ProcessAccept {
+func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *fgs.ProcessAccept {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *fgs.Process
 	var err error
@@ -328,7 +328,7 @@ func (l3 *Grpc) GetProcessAccept(event *api.MsgIPv4EventUnix) *fgs.ProcessAccept
 }
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPv4EventUnix) *fgs.ProcessSockStats {
+func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPEventUnix) *fgs.ProcessSockStats {
 	var fgsParent, fgsProcess *fgs.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -376,11 +376,11 @@ func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPv4EventUnix) *fgs.ProcessSoc
 	return fgsEvent
 }
 
-func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsResponse {
+func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case ops.MSG_OP_IPV4_TCPCONNECTRET,
-		ops.MSG_OP_IPV4_UDPCONNECT:
+	case ops.MSG_OP_TCPCONNECTRET,
+		ops.MSG_OP_UDPCONNECT:
 		cnct := l3.GetProcessConnect(msg)
 		if cnct != nil {
 			res = &fgs.GetEventsResponse{
@@ -389,8 +389,8 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
-	case ops.MSG_OP_IPV4_TCPCLOSE,
-		ops.MSG_OP_IPV4_UDPCLOSE:
+	case ops.MSG_OP_TCPCLOSE,
+		ops.MSG_OP_UDPCLOSE:
 		c := l3.GetProcessClose(msg)
 		if c != nil {
 			res = &fgs.GetEventsResponse{
@@ -399,7 +399,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
-	case ops.MSG_OP_IPV4_LISTEN:
+	case ops.MSG_OP_LISTEN:
 		l := l3.GetProcessListen(msg)
 		if l != nil {
 			res = &fgs.GetEventsResponse{
@@ -408,7 +408,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
 		}
-	case ops.MSG_OP_IPV4_ACCEPT:
+	case ops.MSG_OP_ACCEPT:
 		a := l3.GetProcessAccept(msg)
 		if a != nil {
 			res = &fgs.GetEventsResponse{
@@ -418,7 +418,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPv4EventUnix) *fgs.GetEventsRespons
 			}
 		}
 
-	case ops.MSG_OP_IPV4_TCPSTATS, ops.MSG_OP_IPV4_UDPSTATS:
+	case ops.MSG_OP_TCPSTATS, ops.MSG_OP_UDPSTATS:
 		s := l3.GetProcessSockStats(msg)
 		if s != nil {
 			res = &fgs.GetEventsResponse{

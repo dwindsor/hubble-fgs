@@ -150,13 +150,13 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = execGrpc.HandleExecveMessage(msg)
 	case *processapi.MsgCloneEventUnix:
 		execGrpc.HandleCloneMessage(msg)
-	case *networkapi.MsgIPv4EventUnix:
+	case *networkapi.MsgIPEventUnix:
 		processedEvent = layer3Grpc.HandleIpMessage(msg)
 	case *networkapi.MsgProcessNetworkBurstEventUnix:
 		processedEvent = burst.HandleProcessNetworkBurstMessage(msg)
 	case *networkapi.MsgInterfaceEventUnix:
 		processedEvent = iface.HandleInterfaceMessage(msg)
-	case *dnsapi.MsgIPv4DnsUnix:
+	case *dnsapi.MsgDnsUnix:
 		processedEvent = dnsGrpc.HandleDnsMessage(msg)
 	case *processapi.MsgExitEventUnix:
 		processedEvent = execGrpc.HandleExitMessage(msg)

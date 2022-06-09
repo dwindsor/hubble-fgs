@@ -14,9 +14,9 @@ type MsgDns struct {
 	IPs           []string
 }
 
-type MsgIPv4DnsUnix struct {
+type MsgDnsUnix struct {
 	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPv4Tuple
+	Tuple      networkapi.MsgIPTuple
 	Return     int64
 	ProcessKey processapi.MsgExecveKey
 	SockCookie uint64

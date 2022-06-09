@@ -27,7 +27,7 @@ type Grpc struct {
 	enableCilium bool
 }
 
-func (dns *Grpc) get(event *dnsapi.MsgIPv4DnsUnix) *fgs.ProcessDns {
+func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *fgs.ProcessDns {
 	var proc *fgs.Process
 	var err error
 
@@ -64,7 +64,7 @@ func (dns *Grpc) get(event *dnsapi.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if dns.enableCilium && proc != nil {
-		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_IPV4_DNS)
+		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_DNS)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if dns.eventCache.Needed(proc) {
@@ -77,10 +77,10 @@ func (dns *Grpc) get(event *dnsapi.MsgIPv4DnsUnix) *fgs.ProcessDns {
 	return fgsEvent
 }
 
-func (dns *Grpc) HandleDnsMessage(msg *dnsapi.MsgIPv4DnsUnix) *fgs.GetEventsResponse {
+func (dns *Grpc) HandleDnsMessage(msg *dnsapi.MsgDnsUnix) *fgs.GetEventsResponse {
 	var res *fgs.GetEventsResponse
 	switch msg.Common.Op {
-	case ops.MSG_OP_IPV4_DNS:
+	case ops.MSG_OP_DNS:
 		t := dns.get(msg)
 		if t != nil {
 			res = &fgs.GetEventsResponse{

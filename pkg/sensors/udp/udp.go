@@ -36,7 +36,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/ipv4"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/yalue/native_endian"
 
@@ -260,8 +260,8 @@ func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 }
 
 func (v *udpInfoValue) String() string {
-	ipDst := network.GetIP(v.DAddr, ops.MSG_OP_IPV4_UDPCONNECT)
-	ipSrc := network.GetIP(v.SAddr, ops.MSG_OP_IPV4_UDPCONNECT)
+	ipDst := network.GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT)
+	ipSrc := network.GetIP(v.SAddr, ops.MSG_OP_UDPCONNECT)
 	return fmt.Sprintf(
 		"SAddr=%s:%d DAddr=%s:%d\n"+
 			"Pid: %d Ktime %d\n"+
@@ -319,15 +319,15 @@ func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {
 }
 
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
-func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
-	unix := api.MsgIPv4EventUnix{}
+func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPEventUnix {
+	unix := api.MsgIPEventUnix{}
 
 	unix.Common = processapi.MsgCommon{
 		Op:    0,
 		Size:  1,
 		Ktime: v.Ktime,
 	}
-	unix.Tuple = api.MsgIPv4Tuple{
+	unix.Tuple = api.MsgIPTuple{
 		SAddr: v.SAddr,
 		DAddr: v.DAddr,
 		SPort: v.SPort,
@@ -357,14 +357,14 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPv4EventUnix {
 
 func emitCloseEvent(k *udpInfoKey, v *udpInfoValue) {
 	unix := emitUdpEvent(k, v)
-	unix.Common.Op = ops.MSG_OP_IPV4_UDPCLOSE
+	unix.Common.Op = ops.MSG_OP_UDPCLOSE
 
 	observer.AllListeners(unix)
 }
 
 func emitStatEvent(k *udpInfoKey, v *udpInfoValue) {
 	unix := emitUdpEvent(k, v)
-	unix.Common.Op = ops.MSG_OP_IPV4_UDPSTATS
+	unix.Common.Op = ops.MSG_OP_UDPSTATS
 
 	observer.AllListeners(unix)
 }
@@ -664,12 +664,12 @@ func (udp *udpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 }
 
 func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
-	m := api.MsgIPv4Event{}
+	m := api.MsgIPEvent{}
 	err := binary.Read(r, native_endian.NativeEndian(), &m)
 	if err != nil {
 		return nil, err
 	}
-	msgUnix := ipv4.MsgToIPv4Unix(&m)
+	msgUnix := ip.MsgToIPUnix(&m)
 	return []observer.Event{msgUnix}, nil
 }
 
@@ -691,10 +691,10 @@ func AddUDP() {
 	}
 	sensors.RegisterProbeType("udp_sensor", udp)
 	sensors.RegisterTracingSensorsAtInit(udp.name, udp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_UDPCONNECT, handleUdp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_UDPSTATS, handleUdp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_UDPPAYLOAD, handleUdpPayload)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IPV4_PROCESS_BURST, burstEventsPoll.HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleUdp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPSTATS, handleUdp)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEventsPoll.HandleProcessNetworkBurst)
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)

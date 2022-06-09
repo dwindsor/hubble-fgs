@@ -34,29 +34,29 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *fgs.SocketStats {
 
 func MsgOpToProtocol(op uint8) fgs.SocketProtocol {
 	switch op {
-	case ops.MSG_OP_IPV4_TCPCONNECT,
-		ops.MSG_OP_IPV4_TCPCONNECTRET,
-		ops.MSG_OP_IPV4_TCPCLOSE,
-		ops.MSG_OP_IPV4_BIND,
-		ops.MSG_OP_IPV4_LISTEN,
-		ops.MSG_OP_IPV4_ACCEPT,
-		ops.MSG_OP_IPV4_TCPSTATS:
+	case ops.MSG_OP_TCPCONNECT,
+		ops.MSG_OP_TCPCONNECTRET,
+		ops.MSG_OP_TCPCLOSE,
+		ops.MSG_OP_BIND,
+		ops.MSG_OP_LISTEN,
+		ops.MSG_OP_ACCEPT,
+		ops.MSG_OP_TCPSTATS:
 		return fgs.SocketProtocol_TCP
-	case ops.MSG_OP_IPV4_UDPCONNECT,
-		ops.MSG_OP_IPV4_UDPCLOSE,
-		ops.MSG_OP_IPV4_UDPSTATS:
+	case ops.MSG_OP_UDPCONNECT,
+		ops.MSG_OP_UDPCLOSE,
+		ops.MSG_OP_UDPSTATS:
 		return fgs.SocketProtocol_UDP
 	default:
 		return fgs.SocketProtocol_UNKNOWN
 	}
 }
 
-func MsgToProtocol(event *api.MsgIPv4EventUnix) fgs.SocketProtocol {
+func MsgToProtocol(event *api.MsgIPEventUnix) fgs.SocketProtocol {
 	return MsgOpToProtocol(event.Common.Op)
 }
 
 func GetIP(i uint32, op uint8) net.IP {
-	if op == ops.MSG_OP_IPV4_BIND {
+	if op == ops.MSG_OP_BIND {
 		return net.IPv4zero
 	}
 	ip := make(net.IP, 4)
@@ -68,13 +68,13 @@ func GetSport(sport uint16) uint16 {
 	return sport
 }
 func GetDport(dport uint16, op uint8) uint16 {
-	if op == ops.MSG_OP_IPV4_BIND || op == ops.MSG_OP_IPV4_LISTEN {
+	if op == ops.MSG_OP_BIND || op == ops.MSG_OP_LISTEN {
 		return 0
 	}
 	return SwapByte(dport)
 }
 
-func ObserverIPV4TCPPrinter(msg *api.MsgIPv4EventUnix, log logrus.FieldLogger) {
+func ObserverTCPPrinter(msg *api.MsgIPEventUnix, log logrus.FieldLogger) {
 	e := syscall.Errno(uintptr(-msg.Return))
 	/* In the event of an error time is {0} so will be obvious at printer time
 	 * and its not clear what to do with this error so ignore it for now.
