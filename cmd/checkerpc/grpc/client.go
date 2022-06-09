@@ -10,6 +10,7 @@ import (
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"google.golang.org/grpc"
 	"google.golang.org/grpc/credentials/insecure"
+	"google.golang.org/grpc/keepalive"
 )
 
 type ClientMultiplexer struct {
@@ -58,7 +59,11 @@ func Connect(ctx context.Context, connectTimeout time.Duration, addrs ...string)
 		logger.GetLogger().WithField("addr", serverAddress).Info("Connecting to gRPC server...")
 		go func(serverAddress string) {
 			defer wg.Done()
-			conn, err := grpc.DialContext(connCtx, serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock())
+			conn, err := grpc.DialContext(connCtx, serverAddress, grpc.WithTransportCredentials(insecure.NewCredentials()), grpc.WithBlock(), grpc.WithKeepaliveParams(keepalive.ClientParameters{
+				Time:                20 * time.Second,
+				Timeout:             connectTimeout,
+				PermitWithoutStream: true,
+			}))
 			if err != nil {
 				queue <- connResult{nil, fmt.Errorf("%s: %w", serverAddress, err)}
 				return
