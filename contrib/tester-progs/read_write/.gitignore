@@ -1,0 +1,12 @@
+write
+pwrite64
+writev
+pwritev
+pwritev2
+read
+pread64
+readv
+preadv
+preadv2
+sendfile
+copy_file_range
