@@ -93,6 +93,8 @@ func ResponseTypeString(response *fgs.GetEventsResponse) (string, error) {
 		return fgs.EventType_PROCESS_KPROBE.String(), nil
 	case *fgs.GetEventsResponse_ProcessTracepoint:
 		return fgs.EventType_PROCESS_TRACEPOINT.String(), nil
+	case *fgs.GetEventsResponse_ProcessFile:
+		return fgs.EventType_PROCESS_FILE.String(), nil
 	case *fgs.GetEventsResponse_ProcessSockStats:
 		return fgs.EventType_PROCESS_SOCK_STATS.String(), nil
 	case *fgs.GetEventsResponse_ProcessHttp:
@@ -145,6 +147,8 @@ func ResponseInnerGetProcess(event fgs.ResponseEvent) *fgs.Process {
 		return ev.ProcessKprobe.Process
 	case *fgs.GetEventsResponse_ProcessTracepoint:
 		return ev.ProcessTracepoint.Process
+	case *fgs.GetEventsResponse_ProcessFile:
+		return ev.ProcessFile.Process
 	case *fgs.GetEventsResponse_ProcessSockStats:
 		return ev.ProcessSockStats.Process
 	case *fgs.GetEventsResponse_Tls:
@@ -195,6 +199,8 @@ func ResponseInnerGetParent(event fgs.ResponseEvent) *fgs.Process {
 		return ev.ProcessKprobe.Parent
 	case *fgs.GetEventsResponse_ProcessTracepoint:
 		return ev.ProcessTracepoint.Parent
+	case *fgs.GetEventsResponse_ProcessFile:
+		return ev.ProcessFile.Parent
 	case *fgs.GetEventsResponse_ProcessSockStats:
 		return ev.ProcessSockStats.Parent
 	case *fgs.GetEventsResponse_ProcessNetworkBurst:

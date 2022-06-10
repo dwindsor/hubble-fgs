@@ -302,6 +302,22 @@ message ProcessTracepoint {
     repeated KprobeArgument args = 6;
 }
 
+enum FileAction {
+    FILE_INVALID = 0;
+    FILE_WRITE = 1;
+    FILE_READ = 2;
+}
+
+message ProcessFile {
+    Process process = 1;
+    Process parent = 2;
+    FileAction action = 3;
+    string filename = 4;
+    uint64 inode_number = 5;
+    google.protobuf.Timestamp time = 6;
+    string hook = 7;
+}
+
 message SockInfo {
     string source_ip = 1;
     google.protobuf.UInt32Value source_port = 2;
@@ -646,6 +662,7 @@ message GetEventsResponse {
         InterfaceStats interface_stats = 13;
         ProcessDns process_dns = 14;
         ProcessNetworkBurst process_network_burst = 15;
+        ProcessFile process_file = 16;
 
         Test test = 40000;
     }
@@ -685,6 +702,7 @@ enum EventType {
 	INTERFACE_STATS = 17;
 	PROCESS_DNS = 18;
 	PROCESS_NETWORK_BURST = 19;
+	PROCESS_FILE = 20;
 
 	TEST = 254;
 }

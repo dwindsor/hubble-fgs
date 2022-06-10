@@ -270,6 +270,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessKprobeChecker().FromProcessKprobe(ev), nil
 	case *fgs.ProcessTracepoint:
 		return NewProcessTracepointChecker().FromProcessTracepoint(ev), nil
+	case *fgs.ProcessFile:
+		return NewProcessFileChecker().FromProcessFile(ev), nil
 	case *fgs.ProcessSockStats:
 		return NewProcessSockStatsChecker().FromProcessSockStats(ev), nil
 	case *fgs.Test:
@@ -331,6 +333,8 @@ func EventFromResponse(response *fgs.GetEventsResponse) (Event, error) {
 		return ev.ProcessKprobe, nil
 	case *fgs.GetEventsResponse_ProcessTracepoint:
 		return ev.ProcessTracepoint, nil
+	case *fgs.GetEventsResponse_ProcessFile:
+		return ev.ProcessFile, nil
 	case *fgs.GetEventsResponse_ProcessSockStats:
 		return ev.ProcessSockStats, nil
 	case *fgs.GetEventsResponse_Test:
@@ -2217,6 +2221,149 @@ func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *fgs.Proces
 			WithValues(checks...)
 		checker.Args = lm
 	}
+	return checker
+}
+
+// ProcessFileChecker checks a ProcessFile event
+type ProcessFileChecker struct {
+	Process     *ProcessChecker                    `json:"process,omitempty"`
+	Parent      *ProcessChecker                    `json:"parent,omitempty"`
+	Action      *FileActionChecker                 `json:"action,omitempty"`
+	Filename    *stringmatcher.StringMatcher       `json:"filename,omitempty"`
+	InodeNumber *uint64                            `json:"inodeNumber,omitempty"`
+	Time        *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
+	Hook        *stringmatcher.StringMatcher       `json:"hook,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessFileChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*fgs.ProcessFile); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%T is not a ProcessFile event", event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessFileChecker) CheckResponse(response *fgs.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessFileChecker creates a new ProcessFileChecker
+func NewProcessFileChecker() *ProcessFileChecker {
+	return &ProcessFileChecker{}
+}
+
+// Check checks a ProcessFile event
+func (checker *ProcessFileChecker) Check(event *fgs.ProcessFile) error {
+	if event == nil {
+		return fmt.Errorf("ProcessFileChecker: ProcessFile event is nil")
+	}
+
+	if checker.Process != nil {
+		if err := checker.Process.Check(event.Process); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Process check failed: %w", err)
+		}
+	}
+	if checker.Parent != nil {
+		if err := checker.Parent.Check(event.Parent); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Parent check failed: %w", err)
+		}
+	}
+	if checker.Action != nil {
+		if err := checker.Action.Check(&event.Action); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Action check failed: %w", err)
+		}
+	}
+	if checker.Filename != nil {
+		if err := checker.Filename.Match(event.Filename); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Filename check failed: %w", err)
+		}
+	}
+	if checker.InodeNumber != nil {
+		if *checker.InodeNumber != event.InodeNumber {
+			return fmt.Errorf("ProcessFileChecker: InodeNumber has value %d which does not match expected value %d", event.InodeNumber, *checker.InodeNumber)
+		}
+	}
+	if checker.Time != nil {
+		if err := checker.Time.Match(event.Time); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Time check failed: %w", err)
+		}
+	}
+	if checker.Hook != nil {
+		if err := checker.Hook.Match(event.Hook); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Hook check failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithProcess(check *ProcessChecker) *ProcessFileChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithParent(check *ProcessChecker) *ProcessFileChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithAction adds a Action check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithAction(check fgs.FileAction) *ProcessFileChecker {
+	wrappedCheck := FileActionChecker(check)
+	checker.Action = &wrappedCheck
+	return checker
+}
+
+// WithFilename adds a Filename check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithFilename(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.Filename = check
+	return checker
+}
+
+// WithInodeNumber adds a InodeNumber check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithInodeNumber(check uint64) *ProcessFileChecker {
+	checker.InodeNumber = &check
+	return checker
+}
+
+// WithTime adds a Time check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithTime(check *timestampmatcher.TimestampMatcher) *ProcessFileChecker {
+	checker.Time = check
+	return checker
+}
+
+// WithHook adds a Hook check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithHook(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.Hook = check
+	return checker
+}
+
+//FromProcessFile populates the ProcessFileChecker using data from a ProcessFile event
+func (checker *ProcessFileChecker) FromProcessFile(event *fgs.ProcessFile) *ProcessFileChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.Action = NewFileActionChecker(event.Action)
+	checker.Filename = stringmatcher.Full(event.Filename)
+	{
+		val := event.InodeNumber
+		checker.InodeNumber = &val
+	}
+	// NB: We don't want to match timestamps for now
+	checker.Time = nil
+	checker.Hook = stringmatcher.Full(event.Hook)
 	return checker
 }
 
@@ -6404,6 +6551,58 @@ func (enum *KprobeActionChecker) Check(val *fgs.KprobeAction) error {
 	}
 	if *enum != KprobeActionChecker(*val) {
 		return fmt.Errorf("KprobeActionChecker: KprobeAction has value %s which does not match expected value %s", (*val), fgs.KprobeAction(*enum))
+	}
+	return nil
+}
+
+// FileActionChecker checks a fgs.FileAction
+type FileActionChecker fgs.FileAction
+
+// MarshalJSON implements json.Marshaler interface
+func (enum FileActionChecker) MarshalJSON() ([]byte, error) {
+	if name, ok := fgs.FileAction_name[int32(enum)]; ok {
+		name = strings.TrimPrefix(name, "FILE_")
+		return json.Marshal(name)
+	}
+
+	return nil, fmt.Errorf("Unknown FileAction %d", enum)
+}
+
+// UnmarshalJSON implements json.Unmarshaler interface
+func (enum *FileActionChecker) UnmarshalJSON(b []byte) error {
+	var str string
+	if err := yaml.UnmarshalStrict(b, &str); err != nil {
+		return err
+	}
+
+	// Convert to uppercase if not already
+	str = strings.ToUpper(str)
+
+	// Look up the value from the enum values map
+	if n, ok := fgs.FileAction_value[str]; ok {
+		*enum = FileActionChecker(n)
+	} else if n, ok := fgs.FileAction_value["FILE_"+str]; ok {
+		*enum = FileActionChecker(n)
+	} else {
+		return fmt.Errorf("Unknown FileAction %s", str)
+	}
+
+	return nil
+}
+
+// NewFileActionChecker creates a new FileActionChecker
+func NewFileActionChecker(val fgs.FileAction) *FileActionChecker {
+	enum := FileActionChecker(val)
+	return &enum
+}
+
+// Check checks a FileAction against the checker
+func (enum *FileActionChecker) Check(val *fgs.FileAction) error {
+	if val == nil {
+		return fmt.Errorf("FileActionChecker: FileAction is nil and does not match expected value %s", fgs.FileAction(*enum))
+	}
+	if *enum != FileActionChecker(*val) {
+		return fmt.Errorf("FileActionChecker: FileAction has value %s which does not match expected value %s", (*val), fgs.FileAction(*enum))
 	}
 	return nil
 }

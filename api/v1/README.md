@@ -55,6 +55,7 @@
     - [ProcessDns](#fgs.ProcessDns)
     - [ProcessExec](#fgs.ProcessExec)
     - [ProcessExit](#fgs.ProcessExit)
+    - [ProcessFile](#fgs.ProcessFile)
     - [ProcessHttp](#fgs.ProcessHttp)
     - [ProcessKprobe](#fgs.ProcessKprobe)
     - [ProcessListen](#fgs.ProcessListen)
@@ -77,6 +78,7 @@
   
     - [CapabilitiesType](#fgs.CapabilitiesType)
     - [EventType](#fgs.EventType)
+    - [FileAction](#fgs.FileAction)
     - [HealthStatusResult](#fgs.HealthStatusResult)
     - [HealthStatusType](#fgs.HealthStatusType)
     - [KprobeAction](#fgs.KprobeAction)
@@ -352,6 +354,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | interface_stats | [InterfaceStats](#fgs.InterfaceStats) |  |  |
 | process_dns | [ProcessDns](#fgs.ProcessDns) |  |  |
 | process_network_burst | [ProcessNetworkBurst](#fgs.ProcessNetworkBurst) |  |  |
+| process_file | [ProcessFile](#fgs.ProcessFile) |  |  |
 | test | [Test](#fgs.Test) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
 | time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed.
@@ -1015,6 +1018,27 @@ HTTP PARSER
 
 
 
+<a name="fgs.ProcessFile"></a>
+
+### ProcessFile
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| parent | [Process](#fgs.Process) |  |  |
+| action | [FileAction](#fgs.FileAction) |  |  |
+| filename | [string](#string) |  |  |
+| inode_number | [uint64](#uint64) |  |  |
+| time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  |  |
+| hook | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="fgs.ProcessHttp"></a>
 
 ### ProcessHttp
@@ -1462,7 +1486,21 @@ EventType constants are based on the ones from pkg/api/client
 | INTERFACE_STATS | 17 |  |
 | PROCESS_DNS | 18 |  |
 | PROCESS_NETWORK_BURST | 19 |  |
+| PROCESS_FILE | 20 |  |
 | TEST | 254 |  |
+
+
+
+<a name="fgs.FileAction"></a>
+
+### FileAction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| FILE_INVALID | 0 |  |
+| FILE_WRITE | 1 |  |
+| FILE_READ | 2 |  |
 
 
 
