@@ -1,0 +1,8 @@
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring"
+spec:
+  file:
+    file_paths:
+    - {{.MatchedPath}}
