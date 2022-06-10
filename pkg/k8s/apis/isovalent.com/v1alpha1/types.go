@@ -53,6 +53,18 @@ type TracingPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Parser policy specification.
 	Parser ParserPolicySpec `json:"parser"`
+	// +kubebuilder:validation:Optional
+	// File monitoring policy specification.
+	FileMonitoring FileSpec `json:"file"`
+}
+
+type FileSpec struct {
+	// +kubebuilder:validation:Optional
+	// What paths to monitor
+	Paths []string `json:"file_paths"`
+	// +kubebuilder:validation:Optional
+	// What paths to exclude from monitored paths
+	PathsExclude []string `json:"file_paths_exclude"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

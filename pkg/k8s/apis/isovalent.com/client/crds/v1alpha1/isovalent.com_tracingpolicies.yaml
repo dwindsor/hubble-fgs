@@ -35,6 +35,20 @@ spec:
           spec:
             description: Tracing policy specification.
             properties:
+              file:
+                description: File monitoring policy specification.
+                properties:
+                  file_paths:
+                    description: What paths to monitor
+                    items:
+                      type: string
+                    type: array
+                  file_paths_exclude:
+                    description: What paths to exclude from monitored paths
+                    items:
+                      type: string
+                    type: array
+                type: object
               kprobes:
                 description: A list of kprobe specs.
                 items:

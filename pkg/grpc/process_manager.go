@@ -25,6 +25,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -36,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/execAncestors"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/kfree"
@@ -60,6 +62,7 @@ var (
 	dnsGrpc     *dnsproto.Grpc
 	httpGrpc    *httpproto.Grpc
 	tracingGrpc *tracing.Grpc
+	fileGrpc    *file.Grpc
 	execGrpc    execProcess
 )
 
@@ -117,6 +120,7 @@ func NewProcessManager(
 	dnsGrpc = dnsproto.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
 	httpGrpc = httpproto.New(ciliumState, pm.dns, pm.eventCache, enableCilium)
 	tracingGrpc = tracing.New(ciliumState, pm.dns, pm.eventCache, enableCilium, enableProcessCred, enableProcessNs)
+	fileGrpc = file.New(ciliumState, pm.dns, pm.eventCache, enableCilium, enableProcessCred, enableProcessNs)
 
 	if enableProcessAncestors {
 		execGrpc = execAncestors.New(pm.execCache, pm.eventCache, enableProcessCred, enableProcessNs)
@@ -162,6 +166,8 @@ func (pm *ProcessManager) Notify(event interface{}) error {
 		processedEvent = tracingGrpc.HandleGenericKprobeMessage(msg)
 	case *tracingapi.MsgGenericTracepointUnix:
 		processedEvent = tracingGrpc.HandleGenericTracepointMessage(msg)
+	case *fileapi.MsgFileEventUnix:
+		processedEvent = fileGrpc.HandleFileMonitoringMessage(msg)
 	case *testapi.MsgTestEventUnix:
 		processedEvent = test.HandleTestMessage(msg)
 

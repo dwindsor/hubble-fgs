@@ -5,6 +5,7 @@ package main
 
 import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/kfree"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/network"

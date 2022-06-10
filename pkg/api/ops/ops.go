@@ -75,6 +75,8 @@ const (
 	// MSG_OP_CLONE notifies user-space that a clone() event has occurred.
 	MSG_OP_CLONE = 23
 
+	MSG_OP_FILE = 24
+
 	// just for testing
 	MSG_OP_TEST = 254
 
@@ -108,6 +110,8 @@ const (
 	MsgOpInterfaceStats
 	MsgOpIPv4UDPPayload
 	MsgOpIPv4ProcessBurst
+	MsgOpClone
+	MsgOpFile
 	MsgOpTest    = 254
 	MsgOpIPv4DNS = 128
 )
@@ -144,5 +148,6 @@ func (op OpCode) String() string {
 		"UDPPayload",
 		"ProcessNetworkBurst",
 		"Clone",
+		"File",
 	}[op]
 }
