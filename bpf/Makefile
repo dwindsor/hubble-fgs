@@ -26,13 +26,14 @@ NETWORKING = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcp_send_check.o \
 	     bpf_fd_lookup.o
 PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_generic_kprobe.o \
 	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
-	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o
+	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o bpf_file.o
 BPFTEST = bpf_lseek.o bpf_globals.o
 
 IDIR = ./include/
 LIBBPF = ./libbpf/
 LDIR = ./lib
 OSSLDIR = $(OSSBPFDIR)/lib
+OSSPDIR = $(OSSBPFDIR)/process
 DEPS = $(patsubst %,$(IDIR)/%,$(_DEPS))
 
 FLAGS := -I. -I/usr/include/x86_64-linux-gnu/ \
@@ -40,7 +41,7 @@ FLAGS := -I. -I/usr/include/x86_64-linux-gnu/ \
 	 -Wno-address-of-packed-member -Wno-compare-distinct-pointer-types -Wno-unknown-warning-option \
 	 -O2
 
-CLANG_FLAGS += $(FLAGS) -I $(LIBBPF) -I $(IDIR) -I $(LDIR) -I $(OSSLDIR) -target bpf -emit-llvm -g
+CLANG_FLAGS += $(FLAGS) -I $(LIBBPF) -I $(IDIR) -I $(LDIR) -I $(OSSLDIR) -I $(OSSPDIR) -target bpf -emit-llvm -g
 LLC_FLAGS   := -march=bpf -mcpu=v2 -mattr=dwarfris
 LLC_FLAGS_ALU32 := -march=bpf -mcpu=v3 -mattr=dwarfris
 
@@ -126,6 +127,9 @@ objs/%.ll: $(PROCESSDIR)%.c
 # bpf_exit: special case because the enterprise version is different than OSS
 objs/bpf_exit.ll: $(ISOPROCESS)bpf_exit.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
+
+objs/bpf_file.ll: $(ISOPROCESS)bpf_file.c
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
 
 objs/bpf_execve_event_v53.ll: $(PROCESSDIR)/bpf_execve_event.c
 objs/bpf_generic_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
