@@ -37,17 +37,36 @@ all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-com
 
 -include Makefile.docker
 
-.PHONY: init
-init:
-	@echo Initializing and updating submodules...
-	git submodule init
-	git submodule update
+.PHONY: help
+help:
+	@echo 'OSS submodule helpers: '
+	@echo '    oss-init     - initialize the OSS submodule'
+	@echo '    oss-checkout - pull in OSS code that matches the current registered version and update everything (codegen, go modules)'
+	@echo '    oss-update   - pull in latest OSS code and update everything (codegen, go modules)'
 
-.PHONY: update
-update:
+.PHONY: oss-init
+oss-init:
+	@echo Initializing and updating submodules...
+	git submodule update --init $(OSS_DIR)
+
+.PHONY: oss-update
+oss-update:
 	# Update the submodule and vendor any changes.
 	@echo Updating submodule...
-	git submodule update --remote && go mod tidy && go mod vendor
+	git submodule update --remote $(OSS_DIR) && go mod tidy && go mod vendor
+	# Codegen is vendored, so we need to run make generate && make codegen here to
+	# pick up changes.
+	@echo Generating code...
+	make generate && make codegen
+	# NB, we need to vendor for a second time here since codegen may have introduced
+	# new dependencies.
+	@echo Vendoring and verifiying modules...
+	go mod tidy && go mod vendor && go mod verify
+
+.PHONY: oss-checkout
+oss-checkout:
+	@echo Updating submodule to match the registered version...
+	git submodule update $(OSS_DIR)
 	# Codegen is vendored, so we need to run make generate && make codegen here to
 	# pick up changes.
 	@echo Generating code...
