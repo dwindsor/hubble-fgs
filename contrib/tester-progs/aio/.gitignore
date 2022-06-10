@@ -1,0 +1,4 @@
+aio_pread
+aio_preadv
+aio_pwrite
+aio_pwritev
