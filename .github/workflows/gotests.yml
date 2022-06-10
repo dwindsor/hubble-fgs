@@ -23,12 +23,20 @@ jobs:
         submodules: true
     - name: Increase open file descriptors limit
       run: echo fs.file-max=1048576 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
+    - name: Install liburing
+      run: |
+        git clone https://github.com/axboe/liburing.git
+        cd liburing
+        ./configure
+        make
+        sudo make install
+        cd ..
     - name: Run go tests
       env:
         GOPATH: /home/runner/work/hubble-fgs/hubble-fgs/go
       run: |
         docker login quay.io -u ${{ secrets.QUAY_USER }} -p ${{ secrets.QUAY_TOKEN }}
-        sudo apt install libelf-dev netcat-traditional libcap-dev
+        sudo apt install libelf-dev netcat-traditional libcap-dev libaio-dev
         export PATH=${GOPATH}/bin:${PATH}
         sudo -E echo "copy build tools from images"
         cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs

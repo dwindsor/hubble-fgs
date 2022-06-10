@@ -158,6 +158,21 @@ jobs:
             fi
           EOF
 
+      - name: Install liburing and libaio
+        run: |
+          cat <<-EOF | ssh -p 3000 root@localhost
+            set -e
+
+            apt install libaio-dev -y
+
+            rm -rf liburing
+            git clone https://github.com/axboe/liburing.git
+            cd liburing
+            ./configure
+            make
+            sudo make install
+          EOF
+
       - name: Run unit tests
         timeout-minutes: 30
         run: |
