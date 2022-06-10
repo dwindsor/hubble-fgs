@@ -10,7 +10,7 @@ MNTDIR=/mnt
 KOUT=/kout
 
 mkimage() {
-	sudo debootstrap --include=$(IFS=, ; echo "${PACKAGES[*]}") focal $MNTDIR
+	sudo debootstrap --include=$(IFS=, ; echo "${PACKAGES[*]}") jammy $MNTDIR
 	sudo cp fgs-bin/* $MNTDIR/bin
 	sudo cp fgs-lib/* $MNTDIR/usr/local/lib
 	if [ -f "$KOUT/bpftool" ]; then
@@ -23,20 +23,20 @@ mkimage() {
 
 chrootconfig() {
 	sudo chroot $MNTDIR bash <<- ENDCHROOT
+		set -xeu
 		# Update system packages
-		apt-get update
-		apt-get upgrade
+		apt-get -y update
+		apt-get -y dist-upgrade
 
+		# Install required base packages
+		apt-get -y install openssh-server python3 curl iptables build-essential libelf-dev software-properties-common
 		# Use iptables-legacy
 		update-alternatives --set iptables /usr/sbin/iptables-legacy
 
-		# Use netcat.traditional
+ 		# Add universe
 		cat <<-EOF | tee /etc/apt/sources.list.d/universe.list
-			deb http://archive.ubuntu.com/ubuntu focal main universe
+			deb http://archive.ubuntu.com/ubuntu jammy universe
 		EOF
-		apt-get update
-		apt-get install netcat-traditional
-		update-alternatives --set nc /bin/nc.traditional
 
 		# Allow passwordless root login
 		passwd -d root
@@ -51,7 +51,7 @@ chrootconfig() {
 		sysctl --system
 
 		# Add k8s to apt sources
-		apt-get install -y apt-transport-https curl gnupg wget
+		apt-get -y install apt-transport-https curl gnupg wget
 		curl -s https://packages.cloud.google.com/apt/doc/apt-key.gpg | apt-key add -
 		cat <<-EOF | tee /etc/apt/sources.list.d/kubernetes.list
 			deb https://apt.kubernetes.io/ kubernetes-xenial main
@@ -60,15 +60,17 @@ chrootconfig() {
 		# Add Docker to apt sources
 		curl -fsSL https://download.docker.com/linux/ubuntu/gpg | apt-key add -
 		cat <<-EOF | tee /etc/apt/sources.list.d/docker.list
-			deb https://download.docker.com/linux/ubuntu focal stable
+			deb https://download.docker.com/linux/ubuntu jammy stable
 		EOF
-		apt-get update
+		apt-get -y update
 
-		apt-get install software-properties-common
-		add-apt-repository universe
+		# Install netcat-traditional
+		apt-get -y install netcat-traditional
+		update-alternatives --set nc /bin/nc.traditional
 
 		# Install docker and k8s
-		apt-get install -y docker-ce docker-ce-cli containerd.io kubectl
+		apt-mark unhold libseccomp2
+		apt-get -y install -f docker-ce docker-ce-cli containerd.io kubectl
 		apt-mark hold kubectl
 		systemctl enable docker.service
 
@@ -83,9 +85,9 @@ chrootconfig() {
 		mv ./kind /bin/kind
 
 		# Install cilium cli
-		curl -sSL --remote-name-all https://github.com/cilium/cilium-cli/releases/download/v0.10.4/cilium-linux-amd64.tar.gz{,.sha256sum}
+		curl -sSL --remote-name-all https://github.com/cilium/cilium-cli/releases/download/v0.10.7/cilium-linux-amd64.tar.gz{,.sha256sum}
 		sha256sum --check cilium-linux-amd64.tar.gz.sha256sum
-		sudo tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
+		tar xzvfC cilium-linux-amd64.tar.gz /usr/bin
 		rm cilium-linux-amd64.tar.gz{,.sha256sum}
 
 		# Install helm

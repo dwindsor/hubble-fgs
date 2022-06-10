@@ -2,7 +2,7 @@ FROM quay.io/isovalent/hubble-libbpf:v0.2.3 as libbpf-builder
 
 FROM quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2 as clang-builder
 
-FROM docker.io/library/ubuntu:20.04 AS kvm-builder
+FROM docker.io/library/ubuntu:22.04 AS kvm-builder
 
 # Install build dependencies
 RUN apt-get -y update
