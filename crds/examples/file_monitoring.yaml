@@ -1,0 +1,13 @@
+apiVersion: isovalent.com/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "file-monitoring"
+spec:
+  file:
+    file_paths:
+    - "/etc/"
+    - "/var/testfile"
+    file_paths_exclude:
+    - "/etc/demo1"
+    - "/etc/demo2"
+    - "/etc/locale.alias"
