@@ -16,7 +16,9 @@ EVENT TCPACCEPT
 
   ## tuple
   A SRV_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A CLI_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A CLI_PORT
   A SRV_PORT_HOST
   $ 00                      # proto
@@ -50,7 +52,9 @@ EVENT TCPCONNECTRET
 
   ## tuple
   A CLI_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A SRV_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A SRV_PORT
   A CLI_PORT_HOST
   $ 00                      # proto
@@ -95,7 +99,9 @@ EVENT TCPCLOSE
 
   ## tuple
   A SRV_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A CLI_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A CLI_PORT
   A SRV_PORT_HOST
   $ 00                      # proto
@@ -138,7 +144,9 @@ EVENT TCPCLOSE
 
   ## tuple
   A CLI_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A SRV_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A SRV_PORT
   A CLI_PORT_HOST
   $ 00                      # proto
@@ -180,7 +188,9 @@ EVENT TCPCLOSE
 
   ## tuple
   A SRV_ADDR
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   I 0.0.0.0
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   $ 00 00
   A SRV_PORT_HOST
 

@@ -48,7 +48,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 		proc = processInt.UnsafeGetProcess()
 
 	}
-	fgsTuple := sockinfo.GetTuple(&event.Tuple, 0, event.Common.Op)
+	fgsTuple := sockinfo.GetTupleV4(&event.Tuple, 0, event.Common.Op)
 
 	if len(event.Request.Code) != 0 {
 		code, err = GetHttpCode(event.Request.Code)

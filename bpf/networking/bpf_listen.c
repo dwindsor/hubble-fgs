@@ -47,7 +47,9 @@ event_sys_listen(struct pt_regs *ctx)
 	probe_read(&sport, sizeof(sport), _(&(skp->__sk_common.skc_num)));
 
 	*val = (struct msg_ip_event){
-		.tuple.saddr = saddr,
+		.tuple.ipv6 = false,
+		.tuple.saddr[0] = saddr,
+		.tuple.saddr[1] = 0,
 		.tuple.sport = sport,
 		.common.op = ISO_MSG_OP_LISTEN,
 		.common.ktime = ktime_get_ns(),

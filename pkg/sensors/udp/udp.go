@@ -239,11 +239,13 @@ type udpInfoValue struct {
 	PidKtime         uint64
 	Pid              uint32
 	SkDrops          uint32
-	SAddr            uint32
-	DAddr            uint32
+	SAddr            [2]uint64
+	DAddr            [2]uint64
 	SPort            uint16
 	DPort            uint16
 	SkbConsumeMisses uint32
+	IPv6             uint8
+	Padding          [7]uint8
 }
 
 func (k *udpInfoKey) String() string {
@@ -260,8 +262,8 @@ func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 }
 
 func (v *udpInfoValue) String() string {
-	ipDst := network.GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT)
-	ipSrc := network.GetIP(v.SAddr, ops.MSG_OP_UDPCONNECT)
+	ipDst := network.GetIP(uint32(v.DAddr[0]), ops.MSG_OP_UDPCONNECT)
+	ipSrc := network.GetIP(uint32(v.SAddr[0]), ops.MSG_OP_UDPCONNECT)
 	return fmt.Sprintf(
 		"SAddr=%s:%d DAddr=%s:%d\n"+
 			"Pid: %d Ktime %d\n"+
@@ -270,14 +272,15 @@ func (v *udpInfoValue) String() string {
 			"SubmittedSegs: %d ConsumedSegs: %d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n"+
-			"SkbConsumeMisses: %d\n",
+			"SkbConsumeMisses: %d\n"+
+			"IPv6: %d\n",
 		ipSrc, v.SPort, ipDst, network.SwapByte(v.DPort),
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,
 		v.SubmittedSegs, v.ConsumedSegs,
 		v.SegsOut, v.SegsIn,
-		v.SkDrops, v.SkbConsumeMisses)
+		v.SkDrops, v.SkbConsumeMisses, v.IPv6)
 }
 func (v *udpInfoValue) GetValuePtr() unsafe.Pointer {
 	return unsafe.Pointer(&v)
@@ -328,6 +331,7 @@ func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPEventUnix {
 		Ktime: v.Ktime,
 	}
 	unix.Tuple = api.MsgIPTuple{
+		IPv6:  v.IPv6,
 		SAddr: v.SAddr,
 		DAddr: v.DAddr,
 		SPort: v.SPort,
@@ -444,6 +448,7 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 		Ktime:            curr.Ktime,
 		PidKtime:         curr.PidKtime,
 		Pid:              curr.Pid,
+		IPv6:             curr.IPv6,
 		SAddr:            curr.SAddr,
 		DAddr:            curr.DAddr,
 		SPort:            curr.SPort,

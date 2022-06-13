@@ -149,8 +149,11 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 				if !ok {
 					continue
 				}
-				tcp.Tuple.SAddr = entry.localIP
-				tcp.Tuple.DAddr = entry.remoteIP
+				tcp.Tuple.IPv6 = 0
+				tcp.Tuple.SAddr[0] = uint64(entry.localIP)
+				tcp.Tuple.SAddr[1] = 0
+				tcp.Tuple.DAddr[0] = uint64(entry.remoteIP)
+				tcp.Tuple.DAddr[1] = 0
 				tcp.Tuple.DPort = network.SwapByte(entry.remotePort)
 				tcp.Tuple.SPort = entry.localPort
 				tcp.Tuple.Proto = 2
@@ -178,8 +181,8 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 
 func writeSockMap(tcp *api.MsgIPEventUnix, m *bpf.Map, uid uint64) {
 	key := &SocketMapKey{
-		Saddr:     tcp.Tuple.SAddr,
-		Daddr:     tcp.Tuple.DAddr,
+		Saddr:     uint32(tcp.Tuple.SAddr[0]),
+		Daddr:     uint32(tcp.Tuple.DAddr[0]),
 		Dport:     tcp.Tuple.DPort,
 		Sport:     tcp.Tuple.SPort,
 		Remaining: 0,

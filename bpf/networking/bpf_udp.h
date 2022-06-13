@@ -30,19 +30,28 @@ struct udp_info_value {
 	u64 pid_ktime;
 	u32 pid;
 	u32 sk_drops;
-	u32 saddr;
-	u32 daddr;
+	u64 saddr[2];
+	u64 daddr[2];
 	u16 sport;
 	u16 dport;
 	u32 skb_consume_misses;
+	u8 ipv6;
+	u8 padding[7];
 } __attribute__((packed));
 
 struct udp_info {
-	u32 saddr;
-	u32 daddr;
+	union {
+		u32 ipv4;
+		u64 ipv6[2];
+	} saddr;
+	union {
+		u32 ipv4;
+		u64 ipv6[2];
+	} daddr;
 	u16 sport;
 	u16 dport;
-	u32 padding;
+	u8 ipv6;
+	u8 padding[3];
 } __attribute__((packed));
 
 struct msg_udp_event {
@@ -51,11 +60,15 @@ struct msg_udp_event {
 };
 
 struct udp_packet_details {
-	struct iphdr ip;
+	union {
+		struct iphdr ip4;
+		struct ipv6hdr ip6;
+	} ip;
 	struct udphdr udp;
 	int payload_sz;
 	int payload_off;
 	void *skb_head;
+	bool ipv6;
 };
 
 struct udp_sensor_config {
@@ -149,26 +162,28 @@ emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 	if (!val)
 		return;
 
-	*val = (struct msg_ip_event){
-		.common.op = op,
-		.common.size = sizeof(struct msg_ip_event),
-		.common.ktime = ktime_get_ns(),
-		.key.pid = v->pid,
-		.key.ktime = v->pid_ktime,
-		.tuple.saddr = v->saddr,
-		/* FGS expects host byte-order */
-		.tuple.sport = v->sport,
-		.tuple.daddr = v->daddr,
-		.tuple.dport = v->dport,
-		.stats.segs_in = v->segs_in,
-		.stats.segs_out = v->segs_out,
-		.stats.bytes_sent = v->tx_bytes,
-		.stats.bytes_received = v->rx_bytes,
-		.stats.sk_drops = v->sk_drops,
-		.stats.skb_consume_misses = v->skb_consume_misses,
-		.socket_flags = 0,
-		.pad = 0,
-	};
+	val->common.op = op;
+	val->common.size = sizeof(struct msg_ip_event);
+	val->common.ktime = ktime_get_ns();
+	val->key.pid = v->pid;
+	val->key.ktime = v->pid_ktime;
+	val->tuple.ipv6 = false;
+	val->tuple.saddr[0] = v->saddr[0];
+	val->tuple.saddr[1] = v->saddr[1];
+	/* FGS expects host byte-order */
+	val->tuple.sport = v->sport;
+	val->tuple.daddr[0] = v->daddr[0];
+	val->tuple.daddr[1] = v->daddr[1];
+	val->tuple.dport = v->dport;
+	val->stats.segs_in = v->segs_in;
+	val->stats.segs_out = v->segs_out;
+	val->stats.bytes_sent = v->tx_bytes;
+	val->stats.bytes_received = v->rx_bytes;
+	val->stats.sk_drops = v->sk_drops;
+	val->stats.skb_consume_misses = v->skb_consume_misses;
+	val->socket_flags = 0;
+	val->pad = 0;
+
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 	return;
 }
@@ -245,24 +260,25 @@ create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 	payload_size &= 0x7ff;
 	*size = payload_size + sizeof(struct msg_ip_event) + 1;
 
-	val->event = (struct msg_ip_event){
-		.common.op = ISO_MSG_OP_UDPPAYLOAD,
-		.common.size = *size,
-		.common.ktime = ktime_get_ns(),
-		.key.pid = v->pid,
-		.key.ktime = v->pid_ktime,
-		.tuple.saddr = v->saddr,
-		/* FGS expects host byte-order */
-		.tuple.sport = v->sport,
-		.tuple.daddr = v->daddr,
-		.tuple.dport = v->dport,
-		.stats.segs_in = v->segs_in,
-		.stats.segs_out = v->segs_out,
-		.stats.bytes_sent = v->tx_bytes,
-		.stats.bytes_received = v->rx_bytes,
-		.stats.sk_drops = v->sk_drops,
-		.stats.skb_consume_misses = v->skb_consume_misses,
-	};
+	val->event.common.op = ISO_MSG_OP_UDPPAYLOAD;
+	val->event.common.size = *size;
+	val->event.common.ktime = ktime_get_ns();
+	val->event.key.pid = v->pid;
+	val->event.key.ktime = v->pid_ktime;
+	val->event.tuple.ipv6 = false;
+	val->event.tuple.saddr[0] = v->saddr[0];
+	val->event.tuple.saddr[1] = v->saddr[1];
+	/* FGS expects host byte-order */
+	val->event.tuple.sport = v->sport;
+	val->event.tuple.daddr[0] = v->daddr[0];
+	val->event.tuple.daddr[1] = v->daddr[1];
+	val->event.tuple.dport = v->dport;
+	val->event.stats.segs_in = v->segs_in;
+	val->event.stats.segs_out = v->segs_out;
+	val->event.stats.bytes_sent = v->tx_bytes;
+	val->event.stats.bytes_received = v->rx_bytes;
+	val->event.stats.sk_drops = v->sk_drops;
+	val->event.stats.skb_consume_misses = v->skb_consume_misses;
 
 	// +1 to ensure payload_size is non-zero; And keeps verifier happy that
 	// we wont do a load_bytes with size == 0.

@@ -66,8 +66,11 @@ event_tcp4_close(struct pt_regs *ctx)
 		.common.size = sizeof(struct msg_ip_event),
 		.common.ktime = ktime_get_ns(),
 
-		.tuple.saddr = tuple.saddr,
-		.tuple.daddr = tuple.daddr,
+		.tuple.ipv6 = false,
+		.tuple.saddr[0] = tuple.saddr,
+		.tuple.saddr[1] = 0,
+		.tuple.daddr[0] = tuple.daddr,
+		.tuple.daddr[1] = 0,
 		.tuple.dport = tuple.dport,
 		.tuple.sport = tuple.sport,
 		.socket_cookie = get_cookie(skp),

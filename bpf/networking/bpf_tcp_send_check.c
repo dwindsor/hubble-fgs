@@ -110,8 +110,11 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 			.key.pid = process->key.pid,
 			.key.ktime = process->key.ktime,
 
-			.tuple.saddr = tuple.saddr,
-			.tuple.daddr = tuple.daddr,
+			.tuple.ipv6 = false,
+			.tuple.saddr[0] = tuple.saddr,
+			.tuple.saddr[1] = 0,
+			.tuple.daddr[0] = tuple.daddr,
+			.tuple.daddr[1] = 0,
 			.tuple.dport = tuple.dport,
 			.tuple.sport = tuple.sport,
 			.socket_cookie = get_cookie(skp),

@@ -10,14 +10,15 @@
 #define SOCKFLAGS_TYPE_MASK 0x7
 
 struct msg_ip_tuple {
-	__u32 saddr;
-	__u32 daddr;
+	__u64 saddr[2];
+	__u64 daddr[2];
 	__u16 dport;
 	__u16 sport;
 	__u8 proto;
 	__u32 post_daddr;
 	__u16 post_dport;
-	__u8 pad[5];
+	__u8 ipv6;
+	__u8 pad[4];
 } __attribute__((packed));
 
 struct msg_socket_stats {

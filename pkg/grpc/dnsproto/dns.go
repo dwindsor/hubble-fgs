@@ -64,7 +64,7 @@ func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *fgs.ProcessDns {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if dns.enableCilium && proc != nil {
-		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_DNS)
+		destinationIP := network.GetIP(uint32(event.Tuple.DAddr[0]), ops.MSG_OP_DNS)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if dns.eventCache.Needed(proc) {

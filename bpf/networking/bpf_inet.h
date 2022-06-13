@@ -30,17 +30,20 @@ udp4_info(struct iphdr *ip, struct udphdr *udp, bool send)
 		return 0;
 
 	if (send) {
-		info->saddr = ip->saddr;
-		info->daddr = ip->daddr;
+		info->saddr.ipv4 = ip->saddr;
+		info->daddr.ipv4 = ip->daddr;
 		info->sport = bpf_ntohs(udp->source);
 		info->dport = udp->dest;
 	} else {
-		info->saddr = ip->daddr;
-		info->daddr = ip->saddr;
+		info->saddr.ipv4 = ip->daddr;
+		info->daddr.ipv4 = ip->saddr;
 		info->sport = bpf_ntohs(udp->dest);
 		info->dport = udp->source;
 	}
-	info->padding = 0;
+	info->ipv6 = false;
+	info->padding[0] = 0;
+	info->padding[1] = 0;
+	info->padding[2] = 0;
 	return info;
 }
 
@@ -117,8 +120,11 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		/* Fill in the tuple */
 		*info = udp4_info(ip, udp, send);
 		if (*info) {
-			value->saddr = (*info)->saddr;
-			value->daddr = (*info)->daddr;
+			value->ipv6 = false;
+			value->saddr[0] = (*info)->saddr.ipv4;
+			value->saddr[1] = 0;
+			value->daddr[0] = (*info)->daddr.ipv4;
+			value->daddr[1] = 0;
 			value->sport = (*info)->sport;
 			value->dport = (*info)->dport;
 			if (value->pid != 0) {
@@ -141,8 +147,11 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		/* Fill in the tuple */
 		*info = udp4_info(ip, udp, send);
 		if (*info) {
-			value->saddr = (*info)->saddr;
-			value->daddr = (*info)->daddr;
+			value->ipv6 = false;
+			value->saddr[0] = (*info)->saddr.ipv4;
+			value->saddr[1] = 0;
+			value->daddr[0] = (*info)->daddr.ipv4;
+			value->daddr[1] = 0;
 			value->sport = (*info)->sport;
 			value->dport = (*info)->dport;
 			emit_udp_connect_event(skb, value);
@@ -154,12 +163,15 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		else
 			update_rx_value(value, payload_sz);
 
-		if (value->saddr == 0) {
+		if (value->saddr[0] == 0) {
 			/* Fill in the tuple */
 			*info = udp4_info(ip, udp, send);
 			if (*info) {
-				value->saddr = (*info)->saddr;
-				value->daddr = (*info)->daddr;
+				value->ipv6 = false;
+				value->saddr[0] = (*info)->saddr.ipv4;
+				value->saddr[1] = 0;
+				value->daddr[0] = (*info)->daddr.ipv4;
+				value->daddr[1] = 0;
 				value->sport = (*info)->sport;
 				value->dport = (*info)->dport;
 				emit_udp_connect_event(skb, value);
@@ -284,15 +296,15 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	if (skb_load_bytes(skb, 0, &packet->ip, sizeof(struct iphdr)) < 0)
 		return;
 
-	if (packet->ip.protocol == IPPROTO_UDP) {
-		udp_off = ip_payload_off(&packet->ip);
+	if (packet->ip.ip4.protocol == IPPROTO_UDP) {
+		udp_off = ip_payload_off(&packet->ip.ip4);
 		if (skb_load_bytes(skb, udp_off, &packet->udp,
 				   sizeof(struct udphdr)) < 0)
 			return;
 		packet->payload_sz =
 			bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
 		packet->payload_off = udp_off + sizeof(struct udphdr);
-		udp4_send(skb, 0, &packet->ip, &packet->udp, cookie,
+		udp4_send(skb, 0, &packet->ip.ip4, &packet->udp, cookie,
 			  packet->payload_off, packet->payload_sz, send, true,
 			  false);
 		udp_burst(skb, cookie, packet->payload_sz, send);
@@ -314,16 +326,16 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	if (!packet)
 		return;
 
-	if (!get_ip4_header(&packet->ip, &packet->skb_head, skb))
+	if (!get_ip4_header(&packet->ip.ip4, &packet->skb_head, skb))
 		return;
 
-	if (packet->ip.protocol == IPPROTO_UDP) {
+	if (packet->ip.ip4.protocol == IPPROTO_UDP) {
 		if (!get_udp4_header(&packet->udp, &packet->payload_off,
 				     packet->skb_head, skb))
 			return;
 		packet->payload_sz =
 			bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
-		udp4_send(ctx, packet->skb_head, &packet->ip, &packet->udp,
+		udp4_send(ctx, packet->skb_head, &packet->ip.ip4, &packet->udp,
 			  &cookie, packet->payload_off, packet->payload_sz,
 			  send, true, true);
 		udp_burst(ctx, &cookie, packet->payload_sz, send);

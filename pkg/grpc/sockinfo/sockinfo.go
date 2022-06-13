@@ -14,7 +14,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *fgs.SockInfo {
+func GetTupleV4(tuple *api.MsgIPv4HTTPTuple, cookie uint64, op uint8) *fgs.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple.SPort != 0 {
@@ -33,6 +33,33 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *fgs.SockInfo {
 	return &fgs.SockInfo{
 		SourcePort:      sourcePort,
 		SourceIp:        network.GetIP(tuple.SAddr, op).String(),
+		DestinationIp:   destinationIP.String(),
+		DestinationPort: destinationPort,
+		SockCookie:      cookie,
+
+		Protocol: network.MsgOpToProtocol(op),
+	}
+}
+
+func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *fgs.SockInfo {
+	var sourcePort, destinationPort *wrapperspb.UInt32Value
+
+	if tuple.SPort != 0 {
+		sourcePort = &wrapperspb.UInt32Value{
+			Value: uint32(network.GetSport(tuple.SPort)),
+		}
+	}
+	if tuple.DPort != 0 {
+		destinationPort = &wrapperspb.UInt32Value{
+			Value: uint32(network.SwapByte(tuple.DPort)),
+		}
+	}
+
+	destinationIP := network.GetIP(uint32(tuple.DAddr[0]), op)
+
+	return &fgs.SockInfo{
+		SourcePort:      sourcePort,
+		SourceIp:        network.GetIP(uint32(tuple.SAddr[0]), op).String(),
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      cookie,

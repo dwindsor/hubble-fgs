@@ -102,19 +102,22 @@ udp4_get_info(struct udp_sock_info *sock_info)
 
 	probe_read(&in, sizeof(void *), _(&(msg->msg_name)));
 	probe_read(&namelen, sizeof(int), _(&(msg->msg_namelen)));
+	info->ipv6 = false;
 	if (in && namelen >= sizeof(*in)) {
-		probe_read(&info->daddr, sizeof(u32),
+		probe_read(&info->daddr.ipv4, sizeof(u32),
 			   _(&(in->sin_addr.s_addr)));
 		probe_read(&info->dport, sizeof(u16), _(&(in->sin_port)));
 	} else {
-		probe_read(&info->daddr, sizeof(u32),
+		probe_read(&info->daddr.ipv4, sizeof(u32),
 			   _(&(sk->__sk_common.skc_daddr)));
 		probe_read(&info->dport, sizeof(u16),
 			   _(&(sk->__sk_common.skc_dport)));
 	}
-	probe_read(&info->saddr, sizeof(u32), _(&(inet->inet_saddr)));
+	probe_read(&info->saddr.ipv4, sizeof(u32), _(&(inet->inet_saddr)));
 	probe_read(&info->sport, sizeof(u16), _(&(inet->inet_sport)));
-	info->padding = 0;
+	info->padding[0] = 0;
+	info->padding[1] = 0;
+	info->padding[2] = 0;
 	/* Values are expected to be in network byte order with source port
 	 * in host byte order.
 	 */
@@ -205,8 +208,11 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 		}
 
 		udp_info_tx_reset(value, 0);
-		value->saddr = info->saddr;
-		value->daddr = info->daddr;
+		value->ipv6 = false;
+		value->saddr[0] = info->saddr.ipv4;
+		value->saddr[1] = 0;
+		value->daddr[0] = info->daddr.ipv4;
+		value->daddr[1] = 0;
 		value->sport = info->sport;
 		value->dport = info->dport;
 		value->skb_consume_misses = 0;
@@ -259,11 +265,14 @@ udp4_get_skb_info(struct sk_buff *skb)
 	 * source port to be in host byte order, aligning with socket
 	 * struct.
 	 */
-	info->saddr = iph.daddr;
-	info->daddr = iph.saddr;
+	info->ipv6 = false;
+	info->saddr.ipv4 = iph.daddr;
+	info->daddr.ipv4 = iph.saddr;
 	info->sport = bpf_ntohs(udph.dest);
 	info->dport = udph.source;
-	info->padding = 0;
+	info->padding[0] = 0;
+	info->padding[1] = 0;
+	info->padding[2] = 0;
 
 	return info;
 }
@@ -281,23 +290,29 @@ udp4_set_info(struct udp_info_value *value, struct sk_buff *skb)
 		hasctx = add_process_ctx(value);
 	}
 
-	if (value->saddr == 0) {
+	if (value->saddr[0] == 0) {
 		info = udp4_get_skb_info(skb);
 		if (info) {
-			value->saddr = info->daddr;
-			value->daddr = info->saddr;
+			value->ipv6 = false;
+			value->saddr[0] = info->daddr.ipv4;
+			value->saddr[1] = 0;
+			value->daddr[0] = info->saddr.ipv4;
+			value->daddr[1] = 0;
 			value->sport = info->dport;
 			value->dport = info->sport;
 		} else {
 			update_consume_misses(value);
-			value->saddr = 0;
-			value->daddr = 0;
+			value->ipv6 = false;
+			value->saddr[0] = 0;
+			value->saddr[1] = 0;
+			value->daddr[0] = 0;
+			value->daddr[1] = 0;
 			value->sport = 0;
 			value->dport = 0;
 		}
 	}
 
-	if (hasctx && value->saddr != 0)
+	if (hasctx && value->saddr[0] != 0)
 		return true;
 
 	return false;
@@ -373,7 +388,7 @@ static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
 		map_update_elem(&udp_map, &cookie, value, 0);
 	} else {
 		update_consumed_value(value, len);
-		if (value->saddr == 0 || value->pid == 0) {
+		if (value->saddr[0] == 0 || value->pid == 0) {
 			if (udp4_set_info(value, skb)) {
 				emit_udp_connect_event(ctx, value);
 			}

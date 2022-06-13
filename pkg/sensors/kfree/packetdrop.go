@@ -125,8 +125,8 @@ func msgTuple4ToVTuple(mt *networkapi.MsgIPTuple) (vtuple.Impl, error) {
 		return [4]byte{b32[3], b32[2], b32[1], b32[0]}
 	}
 
-	srcAddr := getNetIp(mt.SAddr)
-	dstAddr := getNetIp(mt.DAddr)
+	srcAddr := getNetIp(uint32(mt.SAddr[0]))
+	dstAddr := getNetIp(uint32(mt.DAddr[0]))
 	srcPort := getNetPort(mt.SPort)
 	dstPort := getNetPort(mt.DPort)
 	proto := mt.Proto
