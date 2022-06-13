@@ -1,3 +1,17 @@
+#ifndef __BPF_NETWORK_HELPERS_H__
+#define __BPF_NETWORK_HELPERS_H__
+
+#include "../lib/iso_msg_types.h"
+#include "../lib/networkmsg.h"
+
+struct bpf_map_def __attribute__((section("maps"), used))
+ipv6_error_event_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct msg_ip_event),
+	.max_entries = 1,
+};
+
 static inline __attribute__((always_inline)) void
 get_socket_stats(struct sock *sk, struct net *net, __u32 zerowin,
 		 struct msg_socket_stats *stats)
@@ -40,28 +54,47 @@ zero_socket_stats(struct msg_socket_stats *stats)
 	stats->segs_in = 0;
 	stats->segs_out = 0;
 }
-/* get_ip_header returns the skb_head if the pointer is not NULL */
-static inline __attribute__((always_inline)) bool
-get_ip_header(void *network_header, u32 network_header_size, void **skbh,
-	      struct sk_buff *skb)
+
+struct ip_ver {
+	u8 ihl : 4;
+	u8 version : 4;
+};
+
+/* get_ip_version returns the skb_head and network_header_offset if the
+ * pointers are not NULL.
+ */
+static inline __attribute__((always_inline)) __u8
+get_ip_version(u16 *network_header_offset, void **skbh, struct sk_buff *skb)
 {
 	u16 network_header_off;
 	void *skb_head;
+	struct ip_ver ver;
 
 	if (probe_read(&network_header_off, sizeof(u16),
 		       _(&skb->network_header)) < 0)
-		return false;
+		return 0;
 	if (probe_read(&skb_head, sizeof(void *), _(&skb->head)) < 0)
-		return false;
+		return 0;
+	if (probe_read(&ver, sizeof(ver), skb_head + network_header_off) < 0)
+		return 0;
+	if (skbh)
+		*skbh = skb_head;
+	if (network_header_offset)
+		*network_header_offset = network_header_off;
+	return ver.version;
+}
+
+static inline __attribute__((always_inline)) bool
+get_ip_header(void *network_header, u32 network_header_size,
+	      u16 network_header_off, void *skb_head)
+{
 	if (probe_read(network_header, network_header_size,
 		       skb_head + network_header_off) < 0)
 		return false;
-	if (skbh)
-		*skbh = skb_head;
 	return true;
 }
 
-/* get_transport_header returns the payload_off is the pointer is not NULL */
+/* get_transport_header returns the payload_off is the pointer is not NULL. */
 static inline __attribute__((always_inline)) bool
 get_transport_header(void *transport_header, u32 transport_header_size,
 		     int *payload_off, void *skb_head, struct sk_buff *skb)
@@ -80,19 +113,191 @@ get_transport_header(void *transport_header, u32 transport_header_size,
 	return true;
 }
 
-/* get_ip4_header returns the skb_head if the pointer is not NULL */
 static inline __attribute__((always_inline)) bool
-get_ip4_header(struct iphdr *ip4_header, void **skb_head, struct sk_buff *skb)
+get_ip4_header(struct iphdr *ip4_header, u16 network_header_off, void *skb_head)
 {
-	return get_ip_header((void *)ip4_header, sizeof(struct iphdr), skb_head,
-			     skb);
+	return get_ip_header((void *)ip4_header, sizeof(struct iphdr),
+			     network_header_off, skb_head);
+}
+
+static inline __attribute__((always_inline)) bool
+get_ip6_header(struct ipv6hdr *ip6_header, u16 network_header_off,
+	       void *skb_head)
+{
+	return get_ip_header((void *)ip6_header, sizeof(struct ipv6hdr),
+			     network_header_off, skb_head);
+}
+
+/* The IPv6 specification states that the following headers are valid
+ * after the fixed header (up to 1 of each, except Destination Options,
+ * which is up to 2):
+ * Hop-by-Hop Options (0)
+ * Routing (43)
+ * Fragment (44)
+ * Authentication Header (51)
+ * Destination Options (60)
+ * Encapsulation Security Payload Header (50)
+ * Mobilty Header (135)
+ * UDP Header (IPPROTO_UDP)
+ * TCP Header (IPPROTO_TCP)
+ * ICMP6 (IPPROTO_ICMP6)
+ * 
+ * We choose to ignore Encapsulating Security Payload (ESP) because
+ * of complexity (future requirement), Mobility (n/a), Host Identity
+ * Protocol (replaces IP addresses), Shim6 Protocol (n/a), and the
+ * Reserved header types. If we come across one of these headers, we
+ * will return 0 to indicate failure (and no UDP header). Otherwise,
+ * we will skip other headers and return the offset of the UDP
+ * payload.
+ */
+
+#define IPV6_HEADER_ERROR	   0
+#define IPV6_ERROR_NO_HEAP	   1
+#define IPV6_ERROR_UNKNOWN_EXT	   2
+#define IPV6_ERROR_READ_PROBE	   3
+#define IPV6_ERROR_READ_SKB_LOAD   4
+#define IPV6_ERROR_READ_SKB_DIRECT 5
+#define IPV6_ERROR_TOO_MANY_EXT	   6
+
+#define IPPROTO_ICMP6 58
+
+struct ipv6ext {
+	u16 ip_off;
+	u16 byte_len;
+	u8 header_count;
+	u8 curr;
+	u8 next;
+	u8 len;
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) ipv6ext_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct ipv6ext),
+	.max_entries = 1,
+};
+
+static inline __attribute__((always_inline)) u8
+get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
+	      void *skb_head, void *data_end, bool lazy, bool kp,
+	      unsigned long int *err)
+{
+	struct ipv6ext *e;
+	int zero = 0;
+	u8 header_count;
+
+	e = map_lookup_elem(&ipv6ext_heap, &zero);
+	if (!e) {
+		if (err) {
+			*err = IPV6_ERROR_NO_HEAP;
+		}
+		return IPV6_HEADER_ERROR;
+	}
+
+	e->ip_off = network_header_off;
+	e->curr = 255;
+	e->len = 0;
+	e->next = ip->nexthdr;
+
+// Maximum 7 valid extensions.
+#pragma unroll
+	for (header_count = 0; header_count < 7; header_count++) {
+		// Correct the length parameter, depending on current extension.
+		switch (e->curr) {
+		case 255:
+			// Fixed header.
+			e->byte_len = sizeof(struct ipv6hdr);
+			break;
+		case 0:
+		case 43:
+		case 60:
+			e->byte_len = (e->len * 8) + 8;
+			break;
+		case 44:
+			e->byte_len = 8;
+			break;
+		case 51:
+			e->byte_len = (e->len * 4) + 8;
+			break;
+		default:
+			// Unrecognised header, return error.
+			if (err) {
+				*err = ((unsigned long int)(e->curr) << 32) |
+				       IPV6_ERROR_UNKNOWN_EXT;
+			}
+			return IPV6_HEADER_ERROR;
+		}
+
+		// Move to next extension.
+		e->ip_off += e->byte_len;
+		// If next is transport (or an unhandled header, e.g. ESP or Mobility), return it and the optional offset.
+		if (e->next == IPPROTO_UDP || e->next == IPPROTO_TCP ||
+		    e->next == IPPROTO_ICMP6 || e->next == 50 ||
+		    e->next == 135) {
+			if (payload_off)
+				*payload_off = e->ip_off;
+			return e->next;
+		}
+		e->curr = e->next;
+		// Read next header and current length.
+		if (lazy) {
+			if (kp) {
+				// Kprobe: we have a void *skb_head
+				if (probe_read(&e->next, 2,
+					       skb_head + e->ip_off) < 0) {
+					if (err) {
+						*err = IPV6_ERROR_READ_PROBE;
+					}
+					return IPV6_HEADER_ERROR;
+				}
+			} else {
+				// SKB: we have a struct __sk_buff
+				if (skb_load_bytes(skb_head, e->ip_off,
+						   &e->next, 2) < 0) {
+					if (err) {
+						*err = IPV6_ERROR_READ_SKB_LOAD;
+					}
+					return IPV6_HEADER_ERROR;
+				}
+			}
+		} else {
+			if (skb_head + e->ip_off + 2 >= data_end) {
+				if (err) {
+					*err = IPV6_ERROR_READ_SKB_DIRECT;
+				}
+				return IPV6_HEADER_ERROR;
+			}
+			*(u16 *)&e->next = *(u16 *)(skb_head + e->ip_off);
+		}
+	}
+	// Not found transport header.
+	if (err) {
+		*err = IPV6_ERROR_TOO_MANY_EXT;
+	}
+	return IPV6_HEADER_ERROR;
 }
 
 /* get_udp4_header returns the payload_off is the pointer is not NULL */
 static inline __attribute__((always_inline)) bool
-get_udp4_header(struct udphdr *udp_header, int *payload_off, void *skb_head,
-		struct sk_buff *skb)
+get_udp_header(struct udphdr *udp_header, int *payload_off, void *skb_head,
+	       struct sk_buff *skb)
 {
 	return get_transport_header((void *)udp_header, sizeof(struct udphdr),
 				    payload_off, skb_head, skb);
 }
+
+static inline __attribute__((always_inline)) void
+set_ipv6_addr_from_ipv4(u64 *dest, u32 src)
+{
+	dest[0] = src;
+	dest[1] = 0;
+}
+
+static inline __attribute__((always_inline)) void copy_ipv6_addr(u64 *dest,
+								 u64 *src)
+{
+	dest[0] = src[0];
+	dest[1] = src[1];
+}
+
+#endif

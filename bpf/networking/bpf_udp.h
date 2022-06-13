@@ -65,9 +65,13 @@ struct udp_packet_details {
 		struct ipv6hdr ip6;
 	} ip;
 	struct udphdr udp;
+	u16 udp_off;
 	int payload_sz;
 	int payload_off;
 	void *skb_head;
+	u8 version;
+	u8 protocol;
+	u16 network_header_off;
 	bool ipv6;
 };
 
@@ -152,6 +156,19 @@ udp_payload_bloom_map = {
 };
 
 static inline __attribute__((always_inline)) void
+copy_ipv6_addrs_to_info(struct udp_info *info, struct in6_addr *saddr,
+			struct in6_addr *daddr)
+{
+	u64 *addr;
+	addr = (u64 *)saddr;
+	info->saddr.ipv6[0] = addr[0];
+	info->saddr.ipv6[1] = addr[1];
+	addr = (u64 *)daddr;
+	info->daddr.ipv6[0] = addr[0];
+	info->daddr.ipv6[1] = addr[1];
+}
+
+static inline __attribute__((always_inline)) void
 emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 {
 	size_t size = sizeof(struct msg_ip_event);
@@ -167,7 +184,7 @@ emit_udp_event(void *ctx, int op, struct udp_info_value *v)
 	val->common.ktime = ktime_get_ns();
 	val->key.pid = v->pid;
 	val->key.ktime = v->pid_ktime;
-	val->tuple.ipv6 = false;
+	val->tuple.ipv6 = v->ipv6;
 	val->tuple.saddr[0] = v->saddr[0];
 	val->tuple.saddr[1] = v->saddr[1];
 	/* FGS expects host byte-order */
@@ -257,7 +274,6 @@ create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 	if (!val)
 		return 0;
 
-	payload_size &= 0x7ff;
 	*size = payload_size + sizeof(struct msg_ip_event) + 1;
 
 	val->event.common.op = ISO_MSG_OP_UDPPAYLOAD;
@@ -265,7 +281,7 @@ create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 	val->event.common.ktime = ktime_get_ns();
 	val->event.key.pid = v->pid;
 	val->event.key.ktime = v->pid_ktime;
-	val->event.tuple.ipv6 = false;
+	val->event.tuple.ipv6 = v->ipv6;
 	val->event.tuple.saddr[0] = v->saddr[0];
 	val->event.tuple.saddr[1] = v->saddr[1];
 	/* FGS expects host byte-order */
@@ -280,6 +296,9 @@ create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 	val->event.stats.sk_drops = v->sk_drops;
 	val->event.stats.skb_consume_misses = v->skb_consume_misses;
 
+	// Move constraint on payload_size to closer to use to stop register
+	// spilling condusing the verifier.
+	payload_size &= 0x7ff;
 	// +1 to ensure payload_size is non-zero; And keeps verifier happy that
 	// we wont do a load_bytes with size == 0.
 	asm volatile(
@@ -306,6 +325,9 @@ emit_udp_payload_event(void *ctx, struct udp_info_value *v, int off,
 	if (!val)
 		return;
 
+	// Having moved the constraint on payload_size in create_udp_payload_event()
+	// above, we now need to do it here as well.
+	size &= 0x7ff;
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 }
 

@@ -129,7 +129,7 @@ var (
 		"kprobe_udp",
 	)
 
-	UdpSend = program.Builder(
+	Udp4Send = program.Builder(
 		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
@@ -137,9 +137,25 @@ var (
 		"kprobe",
 	)
 
-	UdpRetSend = program.Builder(
+	Udp4RetSend = program.Builder(
 		"bpf_udp_send_recv.o",
 		"udp_sendmsg",
+		"kretprobe/udp_sendmsg",
+		"kretprobe_udp_sendmsg",
+		"kprobe",
+	).SetRetProbe(true)
+
+	Udp6Send = program.Builder(
+		"bpf_udp_send_recv.o",
+		"udpv6_sendmsg",
+		"kprobe/udp_sendmsg",
+		"kprobe_udp_sendmsg",
+		"kprobe",
+	)
+
+	Udp6RetSend = program.Builder(
+		"bpf_udp_send_recv.o",
+		"udpv6_sendmsg",
 		"kretprobe/udp_sendmsg",
 		"kretprobe_udp_sendmsg",
 		"kprobe",
@@ -153,7 +169,7 @@ var (
 		"kprobe",
 	)
 
-	UdpSendLazy = program.Builder(
+	Udp4SendLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
 		"udp_sendmsg",
 		"kprobe/udp_sendmsg",
@@ -161,9 +177,25 @@ var (
 		"kprobe",
 	)
 
-	UdpRetSendLazy = program.Builder(
+	Udp4RetSendLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
 		"udp_sendmsg",
+		"kretprobe/udp_sendmsg",
+		"kretprobe_udp_sendmsg",
+		"kprobe",
+	).SetRetProbe(true)
+
+	Udp6SendLazy = program.Builder(
+		"bpf_udp_send_recv_lazy.o",
+		"udpv6_sendmsg",
+		"kprobe/udp_sendmsg",
+		"kprobe_udp_sendmsg",
+		"kprobe",
+	)
+
+	Udp6RetSendLazy = program.Builder(
+		"bpf_udp_send_recv_lazy.o",
+		"udpv6_sendmsg",
 		"kretprobe/udp_sendmsg",
 		"kretprobe_udp_sendmsg",
 		"kprobe",
@@ -187,18 +219,22 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap = program.MapBuilder(SocketToProcMapName, UdpSendLazy)
+	SocketCookieMap = program.MapBuilder(SocketToProcMapName, Udp4SendLazy)
 
 	// UDP maps
 	UdpMap                       = program.MapBuilder(UdpMapName, InetSend)
 	UdpMapLazy                   = program.MapBuilder(UdpMapName, InetSendLazy)
 	UdpMapLazyKprobe             = program.MapBuilder(UdpMapName, InetSendRecvLazy)
-	UdpMapKprobe                 = program.MapBuilder(UdpMapName, UdpSend)
-	UdpMapKprobeLazy             = program.MapBuilder(UdpMapName, UdpSendLazy)
+	Udp4MapKprobe                = program.MapBuilder(UdpMapName, Udp4Send)
+	Udp4MapKprobeLazy            = program.MapBuilder(UdpMapName, Udp4SendLazy)
+	Udp6MapKprobe                = program.MapBuilder(UdpMapName, Udp6Send)
+	Udp6MapKprobeLazy            = program.MapBuilder(UdpMapName, Udp6SendLazy)
 	UdpMapKprobeRecv             = program.MapBuilder(UdpMapName, UdpRecv)
 	UdpMapKprobeRecvLazy         = program.MapBuilder(UdpMapName, UdpRecvLazy)
-	UdpRetprobeMap               = program.MapBuilder(UdpRetprobeMapName, UdpSend)
-	UdpRetprobeMapLazy           = program.MapBuilder(UdpRetprobeMapName, UdpSendLazy)
+	Udp4RetprobeMap              = program.MapBuilder(UdpRetprobeMapName, Udp4Send)
+	Udp4RetprobeMapLazy          = program.MapBuilder(UdpRetprobeMapName, Udp4SendLazy)
+	Udp6RetprobeMap              = program.MapBuilder(UdpRetprobeMapName, Udp6Send)
+	Udp6RetprobeMapLazy          = program.MapBuilder(UdpRetprobeMapName, Udp6SendLazy)
 	UdpConfigMap                 = program.MapBuilder(UdpConfigMapName, InetSend)
 	UdpConfigLazyMap             = program.MapBuilder(UdpConfigMapName, InetSendLazy)
 	UdpConfigLazyMapKprobe       = program.MapBuilder(UdpConfigMapName, InetSendRecvLazy)
@@ -262,8 +298,8 @@ func (k *udpInfoKey) DeepCopyMapKey() bpf.MapKey {
 }
 
 func (v *udpInfoValue) String() string {
-	ipDst := network.GetIP(uint32(v.DAddr[0]), ops.MSG_OP_UDPCONNECT)
-	ipSrc := network.GetIP(uint32(v.SAddr[0]), ops.MSG_OP_UDPCONNECT)
+	ipDst := network.GetIP(v.DAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
+	ipSrc := network.GetIP(v.SAddr, ops.MSG_OP_UDPCONNECT, v.IPv6 != 0)
 	return fmt.Sprintf(
 		"SAddr=%s:%d DAddr=%s:%d\n"+
 			"Pid: %d Ktime %d\n"+
@@ -272,15 +308,14 @@ func (v *udpInfoValue) String() string {
 			"SubmittedSegs: %d ConsumedSegs: %d\n"+
 			"SegsOut: %d SegsIn: %d\n"+
 			"SkDrops: %d\n"+
-			"SkbConsumeMisses: %d\n"+
-			"IPv6: %d\n",
+			"SkbConsumeMisses: %d\n",
 		ipSrc, v.SPort, ipDst, network.SwapByte(v.DPort),
 		v.Pid, v.Ktime,
 		v.SubmittedBytes, v.ConsumedBytes,
 		v.TXBytes, v.RXBytes,
 		v.SubmittedSegs, v.ConsumedSegs,
 		v.SegsOut, v.SegsIn,
-		v.SkDrops, v.SkbConsumeMisses, v.IPv6)
+		v.SkDrops, v.SkbConsumeMisses)
 }
 func (v *udpInfoValue) GetValuePtr() unsafe.Pointer {
 	return unsafe.Pointer(&v)
@@ -583,14 +618,18 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		progs = []*program.Program{
 			SkAllocRetLazy,
 			InetSendRecvLazy,
-			UdpSendLazy,
-			UdpRetSendLazy,
+			Udp4SendLazy,
+			Udp4RetSendLazy,
+			Udp6SendLazy,
+			Udp6RetSendLazy,
 			UdpRecvLazy,
 		}
 		maps = []*program.Map{
-			UdpMapKprobeLazy,
+			Udp4MapKprobeLazy,
+			Udp6MapKprobeLazy,
 			UdpMapKprobeRecvLazy,
-			UdpRetprobeMapLazy,
+			Udp4RetprobeMapLazy,
+			Udp6RetprobeMapLazy,
 			UdpConfigLazyMapKprobe,
 			UdpMapLazyKprobe,
 			UdpPayloadLazyMapKprobe,
@@ -604,14 +643,18 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			SkAllocRetLazy,
 			InetSendLazy,
 			InetRecvLazy,
-			UdpSendLazy,
-			UdpRetSendLazy,
+			Udp4SendLazy,
+			Udp4RetSendLazy,
+			Udp6SendLazy,
+			Udp6RetSendLazy,
 			UdpRecvLazy,
 		}
 		maps = []*program.Map{
-			UdpMapKprobeLazy,
+			Udp4MapKprobeLazy,
+			Udp6MapKprobeLazy,
 			UdpMapKprobeRecvLazy,
-			UdpRetprobeMapLazy,
+			Udp4RetprobeMapLazy,
+			Udp6RetprobeMapLazy,
 			UdpConfigLazyMap,
 			UdpMapLazy,
 			UdpPayloadLazyMap,
@@ -626,14 +669,18 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			SockRelease,
 			InetSend,
 			InetRecv,
-			UdpSend,
-			UdpRetSend,
+			Udp4Send,
+			Udp4RetSend,
+			Udp6Send,
+			Udp6RetSend,
 			UdpRecv,
 		}
 		maps = []*program.Map{
-			UdpMapKprobe,
+			Udp4MapKprobe,
+			Udp6MapKprobe,
 			UdpMapKprobeRecv,
-			UdpRetprobeMap,
+			Udp4RetprobeMap,
+			Udp6RetprobeMap,
 			UdpConfigMap,
 			UdpMap,
 			UdpPayloadMap,

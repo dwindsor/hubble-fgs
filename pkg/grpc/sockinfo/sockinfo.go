@@ -28,11 +28,11 @@ func GetTupleV4(tuple *api.MsgIPv4HTTPTuple, cookie uint64, op uint8) *fgs.SockI
 		}
 	}
 
-	destinationIP := network.GetIP(tuple.DAddr, op)
+	destinationIP := network.GetIPv4(tuple.DAddr, op)
 
 	return &fgs.SockInfo{
 		SourcePort:      sourcePort,
-		SourceIp:        network.GetIP(tuple.SAddr, op).String(),
+		SourceIp:        network.GetIPv4(tuple.SAddr, op).String(),
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      cookie,
@@ -55,11 +55,11 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *fgs.SockInfo {
 		}
 	}
 
-	destinationIP := network.GetIP(uint32(tuple.DAddr[0]), op)
+	destinationIP := network.GetIP(tuple.DAddr, op, tuple.IPv6 != 0)
 
 	return &fgs.SockInfo{
 		SourcePort:      sourcePort,
-		SourceIp:        network.GetIP(uint32(tuple.SAddr[0]), op).String(),
+		SourceIp:        network.GetIP(tuple.SAddr, op, tuple.IPv6 != 0).String(),
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      cookie,

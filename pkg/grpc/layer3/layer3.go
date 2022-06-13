@@ -77,11 +77,11 @@ func (l3 *Grpc) GetProcessConnect(event *api.MsgIPEventUnix) *fgs.ProcessConnect
 		fgsParent = parent.GetProcessCopy()
 	}
 
-	destinationIP := reader.GetIP(uint32(event.Tuple.DAddr[0]), event.Common.Op)
+	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 	fgsEvent := &fgs.ProcessConnect{
 		Process:         fgsProcess,
 		Parent:          fgsParent,
-		SourceIp:        reader.GetIP(uint32(event.Tuple.SAddr[0]), event.Common.Op).String(),
+		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
@@ -103,7 +103,7 @@ func (l3 *Grpc) GetProcessConnect(event *api.MsgIPEventUnix) *fgs.ProcessConnect
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if l3.enableCilium && fgsProcess != nil {
-		destinationIP := reader.GetIP(uint32(event.Tuple.DAddr[0]), ops.MSG_OP_HTTP)
+		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if l3.eventCache.Needed(fgsProcess) {
@@ -161,13 +161,13 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *fgs.ProcessClose {
 		parent.RefDec()
 	}
 
-	destinationIP := reader.GetIP(uint32(event.Tuple.DAddr[0]), event.Common.Op)
+	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 	socketStats := reader.GetSocketStats(&event.SocketStats)
 
 	fgsEvent := &fgs.ProcessClose{
 		Process:         fgsProcess,
 		Parent:          fgsParent,
-		SourceIp:        reader.GetIP(uint32(event.Tuple.SAddr[0]), event.Common.Op).String(),
+		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
@@ -190,7 +190,7 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *fgs.ProcessClose {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if l3.enableCilium && fgsProcess != nil {
-		destinationIP := reader.GetIP(uint32(event.Tuple.DAddr[0]), ops.MSG_OP_HTTP)
+		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if l3.eventCache.Needed(fgsProcess) {
@@ -232,7 +232,7 @@ func (l3 *Grpc) GetProcessListen(
 	fgsEvent := &fgs.ProcessListen{
 		Process:  fgsProcess,
 		Parent:   fgsParent,
-		Ip:       reader.GetIP(uint32(event.Tuple.SAddr[0]), 0).String(),
+		Ip:       reader.GetIP(event.Tuple.SAddr, 0, event.Tuple.IPv6 != 0).String(),
 		Port:     port,
 		Protocol: reader.MsgToProtocol(event),
 	}
@@ -286,11 +286,11 @@ func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *fgs.ProcessAccept {
 		fgsParent = parent.GetProcessCopy()
 	}
 
-	destinationIP := reader.GetIP(uint32(event.Tuple.DAddr[0]), event.Common.Op)
+	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 	fgsEvent := &fgs.ProcessAccept{
 		Process:         fgsProcess,
 		Parent:          fgsParent,
-		SourceIp:        reader.GetIP(uint32(event.Tuple.SAddr[0]), event.Common.Op).String(),
+		SourceIp:        reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0).String(),
 		SourcePort:      sourcePort,
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
@@ -312,7 +312,7 @@ func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *fgs.ProcessAccept {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if l3.enableCilium && fgsProcess != nil {
-		destinationIP := reader.GetIP(uint32(event.Tuple.DAddr[0]), ops.MSG_OP_HTTP)
+		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
@@ -362,7 +362,7 @@ func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPEventUnix) *fgs.ProcessSockS
 	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, fgsTuple.DestinationIp, l3.dns, l3.ciliumState)
 
 	if l3.enableCilium && fgsProcess != nil {
-		destinationIP := reader.GetIP(uint32(event.Tuple.DAddr[0]), event.Common.Op)
+		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 		fgsEvent.Socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 

@@ -3,17 +3,29 @@
 __attribute__((section("kprobe/udp_sendmsg"), used)) int
 udp4_send_kprobe(struct pt_regs *ctx)
 {
-	return udp4_send(ctx);
+	return udp_send(ctx);
 }
 
 __attribute__((section("kretprobe/udp_sendmsg"), used)) int
 udp4_sendret_kprobe(struct pt_regs *ctx)
 {
-	return udp4_sendret(ctx, true);
+	return udp_sendret(ctx, true, false);
+}
+
+__attribute__((section(("kprobe/udpv6_sendmsg")), used)) int
+udp6_send_kprobe(struct pt_regs *ctx)
+{
+	return udp_send(ctx);
+}
+
+__attribute__((section(("kretprobe/udpv6_sendmsg")), used)) int
+udp6_sendret_kprobe(struct pt_regs *ctx)
+{
+	return udp_sendret(ctx, true, true);
 }
 
 __attribute__((section("kprobe/skb_consume_udp"), used)) int
-udp4_recv_kprobe(struct pt_regs *ctx)
+udp_recv_kprobe(struct pt_regs *ctx)
 {
-	return udp4_recv(ctx, true);
+	return udp_recv(ctx, true);
 }

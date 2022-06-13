@@ -126,6 +126,49 @@ udp4_get_info(struct udp_sock_info *sock_info)
 	return info;
 }
 
+static inline __attribute__((always_inline)) struct udp_info *
+udp6_get_info(struct udp_sock_info *sock_info)
+{
+	struct sock *sk = sock_info->sk;
+	struct inet_sock *inet = (void *)sk;
+	struct ipv6_pinfo *pinet6;
+	struct msghdr *msg = sock_info->msg;
+	struct sockaddr_in6 *in;
+	int namelen;
+	struct udp_info *info;
+	int zero = 0;
+
+	info = map_lookup_elem(&udp_info_heap, &zero);
+	if (!info)
+		return 0;
+
+	probe_read(&in, sizeof(void *), _(&(msg->msg_name)));
+	probe_read(&namelen, sizeof(int), _(&(msg->msg_namelen)));
+	if (in && namelen >= sizeof(*in)) {
+		probe_read(&info->daddr, sizeof(struct in6_addr),
+			   _(&(in->sin6_addr)));
+		probe_read(&info->dport, sizeof(u16), _(&(in->sin6_port)));
+	} else {
+		probe_read(&info->daddr, sizeof(struct in6_addr),
+			   _(&(sk->__sk_common.skc_v6_daddr)));
+		probe_read(&info->dport, sizeof(u16),
+			   _(&(sk->__sk_common.skc_dport)));
+	}
+	probe_read(&pinet6, sizeof(struct ipv6_pinfo *), _(&(inet->pinet6)));
+	probe_read(&info->saddr, sizeof(struct in6_addr), _(&(pinet6->saddr)));
+	probe_read(&info->sport, sizeof(u16), _(&(inet->inet_sport)));
+	info->ipv6 = true;
+	info->padding[0] = 0;
+	info->padding[1] = 0;
+	info->padding[2] = 0;
+	/* Values are expected to be in network byte order with source port
+	 * in host byte order.
+	 */
+	info->sport = bpf_ntohs(info->sport);
+
+	return info;
+}
+
 static inline __attribute__((always_inline)) int
 add_process_ctx(struct udp_info_value *value)
 {
@@ -147,7 +190,7 @@ add_process_ctx(struct udp_info_value *value)
  * gymnastics here, store the sk and msg and look them up on
  * the return.
  */
-static inline __attribute__((always_inline)) int udp4_send(struct pt_regs *ctx)
+static inline __attribute__((always_inline)) int udp_send(struct pt_regs *ctx)
 {
 	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_sock_info *value;
@@ -164,7 +207,7 @@ static inline __attribute__((always_inline)) int udp4_send(struct pt_regs *ctx)
 }
 
 static inline __attribute__((always_inline)) int
-udp4_sendret(struct pt_regs *ctx, bool lazy)
+udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 {
 	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_sock_info *sock_info;
@@ -201,18 +244,25 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 			return 0;
 		}
 
-		info = udp4_get_info(sock_info);
+		if (!ipv6) {
+			info = udp4_get_info(sock_info);
+		} else {
+			info = udp6_get_info(sock_info);
+		}
 		if (!info) {
 			map_delete_elem(&udp_retprobe_map, &pid_tgid);
 			return 0;
 		}
 
 		udp_info_tx_reset(value, 0);
-		value->ipv6 = false;
-		value->saddr[0] = info->saddr.ipv4;
-		value->saddr[1] = 0;
-		value->daddr[0] = info->daddr.ipv4;
-		value->daddr[1] = 0;
+		if (!ipv6) {
+			set_ipv6_addr_from_ipv4(value->saddr, info->saddr.ipv4);
+			set_ipv6_addr_from_ipv4(value->daddr, info->daddr.ipv4);
+		} else {
+			copy_ipv6_addr(value->saddr, info->saddr.ipv6);
+			copy_ipv6_addr(value->daddr, info->daddr.ipv6);
+		}
+		value->ipv6 = ipv6;
 		value->sport = info->sport;
 		value->dport = info->dport;
 		value->skb_consume_misses = 0;
@@ -242,22 +292,44 @@ udp4_sendret(struct pt_regs *ctx, bool lazy)
 }
 
 static inline __attribute__((always_inline)) struct udp_info *
-udp4_get_skb_info(struct sk_buff *skb)
+udp_get_skb_info(struct sk_buff *skb)
 {
 	struct udp_info *info;
 	int zero = 0;
+	u16 network_header_off;
 
-	struct udphdr udph;
-	struct iphdr iph;
+	struct udp_packet_details *packet;
 	void *skb_head;
+	u8 ipver;
 
 	info = map_lookup_elem(&udp_info_heap, &zero);
 	if (!info)
 		return 0;
-
-	if (!get_ip4_header(&iph, &skb_head, skb))
+	packet = map_lookup_elem(&udp_header_heap, &zero);
+	if (!packet)
 		return 0;
-	if (!get_udp4_header(&udph, 0, skb_head, skb))
+
+	ipver = get_ip_version(&network_header_off, &skb_head, skb);
+	switch (ipver) {
+	case 4:
+		if (!get_ip4_header(&packet->ip.ip4, network_header_off,
+				    skb_head)) {
+			return 0;
+		}
+		info->ipv6 = false;
+		break;
+	case 6:
+		if (!get_ip6_header(&packet->ip.ip6, network_header_off,
+				    skb_head)) {
+			return 0;
+		}
+		info->ipv6 = true;
+		break;
+	default:
+		return 0;
+	}
+
+	if (!get_udp_header(&packet->udp, 0, skb_head, skb))
 		return 0;
 
 	/* skb values are in network byte order and to be consistent across
@@ -265,11 +337,15 @@ udp4_get_skb_info(struct sk_buff *skb)
 	 * source port to be in host byte order, aligning with socket
 	 * struct.
 	 */
-	info->ipv6 = false;
-	info->saddr.ipv4 = iph.daddr;
-	info->daddr.ipv4 = iph.saddr;
-	info->sport = bpf_ntohs(udph.dest);
-	info->dport = udph.source;
+	if (!info->ipv6) {
+		info->saddr.ipv4 = packet->ip.ip4.daddr;
+		info->daddr.ipv4 = packet->ip.ip4.saddr;
+	} else {
+		copy_ipv6_addrs_to_info(info, &packet->ip.ip6.daddr,
+					&packet->ip.ip6.saddr);
+	}
+	info->sport = bpf_ntohs(packet->udp.dest);
+	info->dport = packet->udp.source;
 	info->padding[0] = 0;
 	info->padding[1] = 0;
 	info->padding[2] = 0;
@@ -281,7 +357,7 @@ udp4_get_skb_info(struct sk_buff *skb)
  * Returns true if a connect event should now be sent.
  */
 static inline __attribute__((always_inline)) bool
-udp4_set_info(struct udp_info_value *value, struct sk_buff *skb)
+udp_set_info(struct udp_info_value *value, struct sk_buff *skb)
 {
 	struct udp_info *info;
 	int hasctx = 1;
@@ -290,14 +366,19 @@ udp4_set_info(struct udp_info_value *value, struct sk_buff *skb)
 		hasctx = add_process_ctx(value);
 	}
 
-	if (value->saddr[0] == 0) {
-		info = udp4_get_skb_info(skb);
+	if (value->saddr[0] == 0 && value->saddr[1] == 0) {
+		info = udp_get_skb_info(skb);
 		if (info) {
-			value->ipv6 = false;
-			value->saddr[0] = info->daddr.ipv4;
-			value->saddr[1] = 0;
-			value->daddr[0] = info->saddr.ipv4;
-			value->daddr[1] = 0;
+			value->ipv6 = info->ipv6;
+			if (!info->ipv6) {
+				set_ipv6_addr_from_ipv4(value->saddr,
+							info->daddr.ipv4);
+				set_ipv6_addr_from_ipv4(value->daddr,
+							info->saddr.ipv4);
+			} else {
+				copy_ipv6_addr(value->saddr, info->daddr.ipv6);
+				copy_ipv6_addr(value->daddr, info->saddr.ipv6);
+			}
 			value->sport = info->dport;
 			value->dport = info->sport;
 		} else {
@@ -344,8 +425,8 @@ udp4_set_info(struct udp_info_value *value, struct sk_buff *skb)
  * Aside from this impassioned argument, there is no more accurate place
  * to hook!
  */
-static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
-							   bool lazy)
+static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
+							  bool lazy)
 {
 	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_info_value *value;
@@ -382,14 +463,15 @@ static inline __attribute__((always_inline)) int udp4_recv(struct pt_regs *ctx,
 		udp_info_consumed_reset(value, len);
 		value->skb_consume_misses = 0;
 
-		if (udp4_set_info(value, skb)) {
+		if (udp_set_info(value, skb)) {
 			emit_udp_connect_event(ctx, value);
 		}
 		map_update_elem(&udp_map, &cookie, value, 0);
 	} else {
 		update_consumed_value(value, len);
-		if (value->saddr[0] == 0 || value->pid == 0) {
-			if (udp4_set_info(value, skb)) {
+		if ((value->saddr[0] == 0 && value->saddr[1] == 0) ||
+		    value->pid == 0) {
+			if (udp_set_info(value, skb)) {
 				emit_udp_connect_event(ctx, value);
 			}
 		}

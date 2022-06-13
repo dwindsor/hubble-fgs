@@ -55,12 +55,28 @@ func MsgToProtocol(event *api.MsgIPEventUnix) fgs.SocketProtocol {
 	return MsgOpToProtocol(event.Common.Op)
 }
 
-func GetIP(i uint32, op uint8) net.IP {
+func GetIPv4(i uint32, op uint8) net.IP {
 	if op == ops.MSG_OP_BIND {
 		return net.IPv4zero
 	}
 	ip := make(net.IP, 4)
 	binary.LittleEndian.PutUint32(ip, i)
+	return ip
+}
+
+func GetIP(i [2]uint64, op uint8, ipv6 bool) net.IP {
+	if !ipv6 {
+		return GetIPv4(uint32(i[0]), op)
+	}
+	if op == ops.MSG_OP_BIND {
+		return net.IPv6zero
+	}
+	a := make([]byte, 8)
+	b := make([]byte, 8)
+
+	binary.LittleEndian.PutUint64(a, i[0])
+	binary.LittleEndian.PutUint64(b, i[1])
+	ip := append(a, b...)
 	return ip
 }
 
@@ -88,10 +104,10 @@ func ObserverTCPPrinter(msg *api.MsgIPEventUnix, log logrus.FieldLogger) {
 		"connect-ktime":    msg.Common.Ktime,
 		"connect-walltime": eventTime,
 		"proto":            msg.Tuple.Proto,
-		"saddr":            GetIP(uint32(msg.Tuple.SAddr[0]), op).String(),
+		"saddr":            GetIP(msg.Tuple.SAddr, op, msg.Tuple.IPv6 != 0).String(),
 		"sport":            GetSport(msg.Tuple.SPort),
-		"daddr":            GetIP(uint32(msg.Tuple.DAddr[0]), op).String(),
-		"odaddr":           GetIP(msg.Tuple.GetPostDAddr(), op).String(),
+		"daddr":            GetIP(msg.Tuple.DAddr, op, msg.Tuple.IPv6 != 0).String(),
+		"odaddr":           GetIPv4(msg.Tuple.GetPostDAddr(), op).String(),
 		"dport":            GetDport(msg.Tuple.DPort, op),
 		"odport":           GetDport(msg.Tuple.GetPostDPort(), op),
 		"return":           unix.ErrnoName(e),

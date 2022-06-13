@@ -73,9 +73,9 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 	typeSNI, nameSNI := readertls.GetTLSSNI(event.ClientHello.SNI.Value)
 	fgsEvent := &fgs.Tls{
 		Process:             proc,
-		SourceIp:            network.GetIP(event.Tuple.SAddr, event.Common.Op).String(),
+		SourceIp:            network.GetIPv4(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:          sourcePort,
-		DestinationIp:       network.GetIP(event.Tuple.DAddr, event.Common.Op).String(),
+		DestinationIp:       network.GetIPv4(event.Tuple.DAddr, event.Common.Op).String(),
 		DestinationPort:     destinationPort,
 		NegotiatedVersion:   readertls.GetTLSSupportedVersions(&event.ServerHello.SupportedVersions, false),
 		SupportedVersions:   readertls.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),

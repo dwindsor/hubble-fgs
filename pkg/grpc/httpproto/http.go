@@ -120,7 +120,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if http.enableCilium && proc != nil {
-		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP)
+		destinationIP := network.GetIPv4(event.Tuple.DAddr, ops.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if http.eventCache.Needed(proc) {

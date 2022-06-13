@@ -20,7 +20,50 @@ static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 }
 
 static inline __attribute__((always_inline)) struct udp_info *
-udp4_info(struct iphdr *ip, struct udphdr *udp, bool send)
+udp_info(struct iphdr *ip, bool ipv6, struct udphdr *udp, bool send)
+{
+	struct udp_info *info;
+	int zero = 0;
+
+	info = map_lookup_elem(&udp_info_heap, &zero);
+	if (!info || !ip)
+		return 0;
+
+	if (send) {
+		if (!ipv6) {
+			info->saddr.ipv4 = ip->saddr;
+			info->daddr.ipv4 = ip->daddr;
+			info->ipv6 = false;
+		} else {
+			copy_ipv6_addrs_to_info(info,
+						&((struct ipv6hdr *)ip)->saddr,
+						&((struct ipv6hdr *)ip)->daddr);
+			info->ipv6 = true;
+		}
+		info->sport = bpf_ntohs(udp->source);
+		info->dport = udp->dest;
+	} else {
+		if (!ipv6) {
+			info->saddr.ipv4 = ip->daddr;
+			info->daddr.ipv4 = ip->saddr;
+			info->ipv6 = false;
+		} else {
+			copy_ipv6_addrs_to_info(info,
+						&((struct ipv6hdr *)ip)->daddr,
+						&((struct ipv6hdr *)ip)->saddr);
+			info->ipv6 = true;
+		}
+		info->sport = bpf_ntohs(udp->dest);
+		info->dport = udp->source;
+	}
+	info->padding[0] = 0;
+	info->padding[1] = 0;
+	info->padding[2] = 0;
+	return info;
+}
+
+static inline __attribute__((always_inline)) struct udp_info *
+udp_port_info(struct udphdr *udp, bool send)
 {
 	struct udp_info *info;
 	int zero = 0;
@@ -30,17 +73,12 @@ udp4_info(struct iphdr *ip, struct udphdr *udp, bool send)
 		return 0;
 
 	if (send) {
-		info->saddr.ipv4 = ip->saddr;
-		info->daddr.ipv4 = ip->daddr;
 		info->sport = bpf_ntohs(udp->source);
 		info->dport = udp->dest;
 	} else {
-		info->saddr.ipv4 = ip->daddr;
-		info->daddr.ipv4 = ip->saddr;
 		info->sport = bpf_ntohs(udp->dest);
 		info->dport = udp->source;
 	}
-	info->ipv6 = false;
 	info->padding[0] = 0;
 	info->padding[1] = 0;
 	info->padding[2] = 0;
@@ -75,9 +113,9 @@ udp4_info(struct iphdr *ip, struct udphdr *udp, bool send)
  * socket_cookie_to_proc_map.
  */
 static inline __attribute__((always_inline)) struct udp_info_value *
-__udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
-	    struct iphdr *ip, struct udphdr *udp, int payload_sz, bool send,
-	    bool lazy)
+__udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
+	   struct iphdr *ip, bool ipv6, struct udphdr *udp, int payload_sz,
+	   bool send, bool lazy)
 {
 	struct udp_info_value *value;
 	struct execve_map_value *process;
@@ -107,6 +145,25 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		else
 			udp_info_rx_reset(value, payload_sz);
 
+		/* Store the info in the entry for later use,
+		 * and potentially for searching from userland
+		 * in case we ever need to locate a socket */
+		*info = udp_info(ip, ipv6, udp, send);
+		if (!*info)
+			return 0;
+		if (!ipv6) {
+			set_ipv6_addr_from_ipv4(value->saddr,
+						(*info)->saddr.ipv4);
+			set_ipv6_addr_from_ipv4(value->daddr,
+						(*info)->daddr.ipv4);
+			value->ipv6 = false;
+		} else {
+			copy_ipv6_addr(value->saddr, (*info)->saddr.ipv6);
+			copy_ipv6_addr(value->daddr, (*info)->daddr.ipv6);
+			value->ipv6 = true;
+		}
+		value->sport = (*info)->sport;
+		value->dport = (*info)->dport;
 		value->skb_consume_misses = 0;
 
 		/* If process was found, fill in the PID */
@@ -117,21 +174,8 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 			value->pid = 0;
 		}
 
-		/* Fill in the tuple */
-		*info = udp4_info(ip, udp, send);
-		if (*info) {
-			value->ipv6 = false;
-			value->saddr[0] = (*info)->saddr.ipv4;
-			value->saddr[1] = 0;
-			value->daddr[0] = (*info)->daddr.ipv4;
-			value->daddr[1] = 0;
-			value->sport = (*info)->sport;
-			value->dport = (*info)->dport;
-			if (value->pid != 0) {
-				emit_udp_connect_event(skb, value);
-			}
-		}
-
+		if (value->pid)
+			emit_udp_connect_event(skb, value);
 		map_update_elem(&udp_map, cookie, value, 0);
 	} else if (process && value->pid != process->key.pid) {
 		/* PID doesn't match, so this must be a new socket */
@@ -139,49 +183,37 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 			udp_info_tx_reset(value, payload_sz);
 		else
 			udp_info_rx_reset(value, payload_sz);
-
+		*info = udp_info(ip, ipv6, udp, send);
+		if (!*info)
+			return 0;
+		if (!ipv6) {
+			set_ipv6_addr_from_ipv4(value->saddr,
+						(*info)->saddr.ipv4);
+			set_ipv6_addr_from_ipv4(value->daddr,
+						(*info)->daddr.ipv4);
+			value->ipv6 = false;
+		} else {
+			copy_ipv6_addr(value->saddr, (*info)->saddr.ipv6);
+			copy_ipv6_addr(value->daddr, (*info)->daddr.ipv6);
+			value->ipv6 = true;
+		}
+		value->sport = (*info)->sport;
+		value->dport = (*info)->dport;
 		value->skb_consume_misses = 0;
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
 
-		/* Fill in the tuple */
-		*info = udp4_info(ip, udp, send);
-		if (*info) {
-			value->ipv6 = false;
-			value->saddr[0] = (*info)->saddr.ipv4;
-			value->saddr[1] = 0;
-			value->daddr[0] = (*info)->daddr.ipv4;
-			value->daddr[1] = 0;
-			value->sport = (*info)->sport;
-			value->dport = (*info)->dport;
-			emit_udp_connect_event(skb, value);
-		}
+		emit_udp_connect_event(skb, value);
 	} else {
-		/* Existing entry */
 		if (send)
 			update_tx_value(value, payload_sz);
 		else
 			update_rx_value(value, payload_sz);
-
-		if (value->saddr[0] == 0) {
-			/* Fill in the tuple */
-			*info = udp4_info(ip, udp, send);
-			if (*info) {
-				value->ipv6 = false;
-				value->saddr[0] = (*info)->saddr.ipv4;
-				value->saddr[1] = 0;
-				value->daddr[0] = (*info)->daddr.ipv4;
-				value->daddr[1] = 0;
-				value->sport = (*info)->sport;
-				value->dport = (*info)->dport;
-				emit_udp_connect_event(skb, value);
-			}
-		}
 	}
 	return value;
 }
 
-/* Lazy versions of udp4 send do not support copying the payload to
+/* Lazy versions of udp send do not support copying the payload to
  * user land, as this isn't provided by older kernels.
  * We take a boolean, dns, to specify if we are sending DNS payloads
  * to userland. The reason we need this rather than a simple lookup
@@ -190,17 +222,17 @@ __udp4_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
  * on the kprobe solution for older kernels.
  */
 static inline __attribute__((always_inline)) int
-udp4_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip,
-	  struct udphdr *udp, u64 *cookie, int payload_off, int payload_sz,
-	  bool send, bool lazy, bool kp)
+udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
+	 struct udphdr *udp, u64 *cookie, int payload_off, int payload_sz,
+	 bool send, bool lazy, bool kp)
 {
 	struct udp_info_value *value;
 	struct udp_info *info = 0;
 	struct udp_sensor_config *config;
 	int zero = 0;
 
-	value = __udp4_send(skb, &info, cookie, ip, udp, payload_sz, send,
-			    lazy);
+	value = __udp_send(skb, &info, cookie, ip, ipv6, udp, payload_sz, send,
+			   lazy);
 	if (!value)
 		return 1;
 
@@ -209,9 +241,9 @@ udp4_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip,
 		return 1;
 
 	if (config->dnsPorts[0] != 0) {
-		/* info may have been filled in for us by __udp4_send() */
+		/* info may have been filled in for us by __udp_send() */
 		if (!info) {
-			info = udp4_info(ip, udp, send);
+			info = udp_port_info(udp, send);
 			if (!info)
 				return 1;
 		}
@@ -228,7 +260,7 @@ udp4_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip,
 				/* The PID is empty because we couldn't look up
 				 * the process in the cookie->process map. We
 				 * therefore store it for the API-level function
-				 * (either udp4_sendret or udp4_recvret) to add
+				 * (either udp_sendret or udp_recv) to add
 				 * process information and then transmit it.
 				 * We also use this store-and-act-later approach
 				 * for kernels <5.10.
@@ -266,7 +298,7 @@ udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
 	 * to it, and there is little else we can do.
 	 * Additionally, if the sk address had previously been mapped to the
 	 * process and kernel >=5.10, then it would have been remapped from
-	 * the socket cookie by __udp4_send() already.
+	 * the socket cookie by __udp_send() already.
 	 */
 	if (!process)
 		return;
@@ -278,9 +310,10 @@ static inline __attribute__((always_inline)) void
 inet_handler_lazy(struct __sk_buff *skb, bool send)
 {
 	struct udp_packet_details *packet;
-	u8 udp_off;
 	u64 *cookie;
 	int zero = 0;
+	u8 proto;
+	unsigned long int err = 0;
 
 	cookie = map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
@@ -296,20 +329,37 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	if (skb_load_bytes(skb, 0, &packet->ip, sizeof(struct iphdr)) < 0)
 		return;
 
-	if (packet->ip.ip4.protocol == IPPROTO_UDP) {
-		udp_off = ip_payload_off(&packet->ip.ip4);
-		if (skb_load_bytes(skb, udp_off, &packet->udp,
-				   sizeof(struct udphdr)) < 0)
+	switch (packet->ip.ip4.version) {
+	case 4:
+		if (packet->ip.ip4.protocol != IPPROTO_UDP)
 			return;
-		packet->payload_sz =
-			bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
-		packet->payload_off = udp_off + sizeof(struct udphdr);
-		udp4_send(skb, 0, &packet->ip.ip4, &packet->udp, cookie,
-			  packet->payload_off, packet->payload_sz, send, true,
-			  false);
-		udp_burst(skb, cookie, packet->payload_sz, send);
+		packet->ipv6 = false;
+		packet->udp_off = ip_payload_off(&packet->ip.ip4);
+		break;
+	case 6:
+		if (skb_load_bytes(skb, 0, &packet->ip,
+				   sizeof(struct ipv6hdr)) < 0)
+			return;
+		packet->ipv6 = true;
+		proto = get_ip6_proto(&packet->udp_off, &packet->ip.ip6, 0, skb,
+				      0, true, false, &err);
+		if (proto != IPPROTO_UDP) {
+			return;
+		}
+		if (!packet->udp_off)
+			return;
+		break;
+	default:
+		return;
 	}
-	return;
+	if (skb_load_bytes(skb, packet->udp_off, &packet->udp,
+			   sizeof(struct udphdr)) < 0)
+		return;
+	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
+	packet->payload_off = packet->udp_off + sizeof(struct udphdr);
+	udp_send(skb, 0, &packet->ip.ip4, packet->ipv6, &packet->udp, cookie,
+		 packet->payload_off, packet->payload_sz, send, true, false);
+	udp_burst(skb, cookie, packet->payload_sz, send);
 }
 
 static inline __attribute__((always_inline)) void
@@ -318,6 +368,8 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	struct udp_packet_details *packet;
 	int zero = 0;
 	u64 cookie;
+	u8 proto;
+	unsigned long int err = 0;
 
 	cookie = (u64)sk;
 	if (!cookie)
@@ -326,21 +378,44 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	if (!packet)
 		return;
 
-	if (!get_ip4_header(&packet->ip.ip4, &packet->skb_head, skb))
-		return;
-
-	if (packet->ip.ip4.protocol == IPPROTO_UDP) {
-		if (!get_udp4_header(&packet->udp, &packet->payload_off,
-				     packet->skb_head, skb))
+	packet->version = get_ip_version(&packet->network_header_off,
+					 &packet->skb_head, skb);
+	switch (packet->version) {
+	case 4:
+		if (!get_ip4_header(&packet->ip.ip4, packet->network_header_off,
+				    packet->skb_head))
 			return;
-		packet->payload_sz =
-			bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
-		udp4_send(ctx, packet->skb_head, &packet->ip.ip4, &packet->udp,
-			  &cookie, packet->payload_off, packet->payload_sz,
-			  send, true, true);
-		udp_burst(ctx, &cookie, packet->payload_sz, send);
+		packet->ipv6 = false;
+		if (packet->ip.ip4.protocol != IPPROTO_UDP)
+			return;
+		if (!get_udp_header(&packet->udp, &packet->payload_off,
+				    packet->skb_head, skb))
+			return;
+		break;
+	case 6:
+		if (!get_ip6_header(&packet->ip.ip6, packet->network_header_off,
+				    packet->skb_head))
+			return;
+		packet->ipv6 = true;
+		proto = get_ip6_proto(0, &packet->ip.ip6,
+				      packet->network_header_off,
+				      packet->skb_head, 0, true, true, &err);
+		if (proto != IPPROTO_UDP) {
+			return;
+		}
+		if (!get_udp_header(&packet->udp, &packet->payload_off,
+				    packet->skb_head, skb))
+			return;
+		break;
+	default:
+		return;
 	}
-	return;
+
+	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
+	udp_send(ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6,
+		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz,
+		 send, true, true);
+	udp_burst(ctx, &cookie, packet->payload_sz, send);
 }
 
 static inline __attribute__((always_inline)) void
@@ -350,28 +425,62 @@ inet_handler(struct __sk_buff *skb, bool send)
 	void *data = (long *)(long)skb->data;
 	struct iphdr *ip;
 	struct udphdr *udp;
-	u8 udp_off;
+	struct udp_packet_details *packet;
+	int zero = 0;
 	u64 cookie;
-	int payload_sz;
-	int payload_off;
+	u8 proto;
+	unsigned long int err = 0;
 
 	cookie = get_socket_cookie(skb);
-	if (data + sizeof(struct iphdr) > data_end)
+	packet = map_lookup_elem(&udp_header_heap, &zero);
+	if (!packet)
 		return;
+
+	if (data + 1 > data_end)
+		return;
+
 	ip = (struct iphdr *)data;
 
-	if (ip->protocol == IPPROTO_UDP) {
-		udp_off = ip_payload_off(ip);
-		udp = (struct udphdr *)(data + udp_off);
-		if (data + udp_off + sizeof(*udp) > data_end)
+	switch (ip->version) {
+	case 4:
+		if (data + sizeof(struct iphdr) > data_end)
 			return;
-		payload_sz = bpf_ntohs(udp->len) - sizeof(struct udphdr);
-		payload_off = udp_off + sizeof(struct udphdr);
-		udp4_send(skb, 0, ip, udp, &cookie, payload_off, payload_sz,
-			  send, false, false);
-		udp_burst(skb, &cookie, payload_sz, send);
+		if (ip->protocol != IPPROTO_UDP)
+			return;
+		packet->udp_off = ip_payload_off(ip);
+		udp = (struct udphdr *)(data + packet->udp_off);
+		if (data + packet->udp_off + sizeof(struct udphdr) > data_end)
+			return;
+		packet->payload_sz =
+			bpf_ntohs(udp->len) - sizeof(struct udphdr);
+		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
+		udp_send(skb, 0, ip, false, udp, &cookie, packet->payload_off,
+			 packet->payload_sz, send, false, false);
+		break;
+	case 6:
+		if (data + sizeof(struct ipv6hdr) > data_end)
+			return;
+		proto = get_ip6_proto(&packet->udp_off, (struct ipv6hdr *)ip, 0,
+				      data, data_end, false, false, &err);
+		if (proto != IPPROTO_UDP) {
+			return;
+		}
+		if (!packet->udp_off)
+			return;
+		udp = (struct udphdr *)(data + packet->udp_off);
+		if (data + packet->udp_off + sizeof(struct udphdr) > data_end)
+			return;
+		packet->payload_sz =
+			bpf_ntohs(udp->len) - sizeof(struct udphdr);
+		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
+		udp_send(skb, 0, ip, true, udp, &cookie, packet->payload_off,
+			 packet->payload_sz, send, false, false);
+		break;
+	default:
+		return;
 	}
-	return;
+
+	udp_burst(skb, &cookie, packet->payload_sz, send);
 }
 
 #endif //__BPF_INET_H_
