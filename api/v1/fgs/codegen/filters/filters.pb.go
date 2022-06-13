@@ -54,6 +54,8 @@ func OpCodeForEventType(eventType fgs.EventType) (reflect.Type, error) {
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessNetworkBurst{})
 	case fgs.EventType_PROCESS_FILE:
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessFile{})
+	case fgs.EventType_PROCESS_IP_ERROR:
+		opCode = reflect.TypeOf(&fgs.GetEventsResponse_ProcessIpError{})
 	case fgs.EventType_TEST:
 		opCode = reflect.TypeOf(&fgs.GetEventsResponse_Test{})
 	default:

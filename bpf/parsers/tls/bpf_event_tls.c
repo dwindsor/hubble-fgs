@@ -1,5 +1,6 @@
 #include "vmlinux.h"
 #include "api.h"
+#include "../lib/tlsmsg.h"
 
 #ifndef bpf_map_def
 struct bpf_map_def {
@@ -13,7 +14,7 @@ struct bpf_map_def {
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
-#include "bpf_sockops.h"
+#include "../bpf_sockops.h"
 #include "tlsmsg.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";

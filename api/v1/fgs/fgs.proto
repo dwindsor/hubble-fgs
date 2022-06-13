@@ -190,6 +190,17 @@ message ProcessAccept {
     SocketProtocol protocol = 10;
 }
 
+message ProcessIpError {
+    Process process = 1;
+    Process parent = 2;
+    string source_ip = 3;
+    string destination_ip = 4;
+    string version = 5;
+    uint64 sock_cookie = 6;
+    Pod destination_pod = 7;
+    string details = 8;
+}
+
 message ProcessExec {
     Process process = 1;
     Process parent = 2;
@@ -663,6 +674,7 @@ message GetEventsResponse {
         ProcessDns process_dns = 14;
         ProcessNetworkBurst process_network_burst = 15;
         ProcessFile process_file = 16;
+         ProcessIpError process_ip_error = 17;
 
         Test test = 40000;
     }
@@ -703,6 +715,7 @@ enum EventType {
 	PROCESS_DNS = 18;
 	PROCESS_NETWORK_BURST = 19;
 	PROCESS_FILE = 20;
+    PROCESS_IP_ERROR = 21;
 
 	TEST = 254;
 }

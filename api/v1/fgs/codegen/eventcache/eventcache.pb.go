@@ -82,6 +82,19 @@ func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []s
 			Time:     timestamp,
 		}, nil
 
+	case *fgs.ProcessIpError:
+		if internal != nil {
+			e.Process = internal.GetProcessCopy()
+		} else {
+			eventcachemetrics.ProcessInfoErrorInc("ProcessIpError")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+		}
+		return &fgs.GetEventsResponse{
+			Event:    &fgs.GetEventsResponse_ProcessIpError{ProcessIpError: e},
+			NodeName: nodeName,
+			Time:     timestamp,
+		}, nil
+
 	case *fgs.ProcessExec:
 		if internal != nil {
 			e.Process = internal.GetProcessCopy()

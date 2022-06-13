@@ -56,6 +56,8 @@ func EventTypeString(event fgs.Event) (string, error) {
 		return fgs.EventType_PROCESS_NETWORK_BURST.String(), nil
 	case *fgs.ProcessFile:
 		return fgs.EventType_PROCESS_FILE.String(), nil
+	case *fgs.ProcessIpError:
+		return fgs.EventType_PROCESS_IP_ERROR.String(), nil
 	case *fgs.Test:
 		return fgs.EventType_TEST.String(), nil
 
@@ -107,6 +109,8 @@ func ResponseTypeString(response *fgs.GetEventsResponse) (string, error) {
 		return fgs.EventType_PROCESS_NETWORK_BURST.String(), nil
 	case *fgs.GetEventsResponse_ProcessFile:
 		return fgs.EventType_PROCESS_FILE.String(), nil
+	case *fgs.GetEventsResponse_ProcessIpError:
+		return fgs.EventType_PROCESS_IP_ERROR.String(), nil
 	case *fgs.GetEventsResponse_Test:
 		return fgs.EventType_TEST.String(), nil
 
@@ -139,6 +143,8 @@ func ResponseInnerGetProcess(event fgs.ResponseEvent) *fgs.Process {
 		return ev.ProcessListen.Process
 	case *fgs.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept.Process
+	case *fgs.GetEventsResponse_ProcessIpError:
+		return ev.ProcessIpError.Process
 	case *fgs.GetEventsResponse_ProcessExec:
 		return ev.ProcessExec.Process
 	case *fgs.GetEventsResponse_ProcessExit:
@@ -191,6 +197,8 @@ func ResponseInnerGetParent(event fgs.ResponseEvent) *fgs.Process {
 		return ev.ProcessListen.Parent
 	case *fgs.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept.Parent
+	case *fgs.GetEventsResponse_ProcessIpError:
+		return ev.ProcessIpError.Parent
 	case *fgs.GetEventsResponse_ProcessExec:
 		return ev.ProcessExec.Parent
 	case *fgs.GetEventsResponse_ProcessExit:

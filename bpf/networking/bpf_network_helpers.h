@@ -5,7 +5,7 @@
 #include "../lib/networkmsg.h"
 
 struct bpf_map_def __attribute__((section("maps"), used))
-ipv6_error_event_heap = {
+ip_error_event_heap = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct msg_ip_event),
@@ -151,13 +151,13 @@ get_ip6_header(struct ipv6hdr *ip6_header, u16 network_header_off,
  * payload.
  */
 
-#define IPV6_HEADER_ERROR	   0
-#define IPV6_ERROR_NO_HEAP	   1
-#define IPV6_ERROR_UNKNOWN_EXT	   2
-#define IPV6_ERROR_READ_PROBE	   3
-#define IPV6_ERROR_READ_SKB_LOAD   4
-#define IPV6_ERROR_READ_SKB_DIRECT 5
-#define IPV6_ERROR_TOO_MANY_EXT	   6
+#define IP_HEADER_ERROR		   0
+#define IP_ERROR_NO_HEAP	   1
+#define IP_ERROR_READ_PROBE	   2
+#define IP_ERROR_READ_SKB_LOAD	   3
+#define IP_ERROR_READ_SKB_DIRECT   4
+#define IP_ERROR_IPV6_UNKNOWN_EXT  5
+#define IP_ERROR_IPV6_TOO_MANY_EXT 6
 
 #define IPPROTO_ICMP6 58
 
@@ -189,9 +189,9 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 	e = map_lookup_elem(&ipv6ext_heap, &zero);
 	if (!e) {
 		if (err) {
-			*err = IPV6_ERROR_NO_HEAP;
+			*err = IP_ERROR_NO_HEAP;
 		}
-		return IPV6_HEADER_ERROR;
+		return IP_HEADER_ERROR;
 	}
 
 	e->ip_off = network_header_off;
@@ -223,9 +223,9 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 			// Unrecognised header, return error.
 			if (err) {
 				*err = ((unsigned long int)(e->curr) << 32) |
-				       IPV6_ERROR_UNKNOWN_EXT;
+				       IP_ERROR_IPV6_UNKNOWN_EXT;
 			}
-			return IPV6_HEADER_ERROR;
+			return IP_HEADER_ERROR;
 		}
 
 		// Move to next extension.
@@ -246,35 +246,35 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 				if (probe_read(&e->next, 2,
 					       skb_head + e->ip_off) < 0) {
 					if (err) {
-						*err = IPV6_ERROR_READ_PROBE;
+						*err = IP_ERROR_READ_PROBE;
 					}
-					return IPV6_HEADER_ERROR;
+					return IP_HEADER_ERROR;
 				}
 			} else {
 				// SKB: we have a struct __sk_buff
 				if (skb_load_bytes(skb_head, e->ip_off,
 						   &e->next, 2) < 0) {
 					if (err) {
-						*err = IPV6_ERROR_READ_SKB_LOAD;
+						*err = IP_ERROR_READ_SKB_LOAD;
 					}
-					return IPV6_HEADER_ERROR;
+					return IP_HEADER_ERROR;
 				}
 			}
 		} else {
 			if (skb_head + e->ip_off + 2 >= data_end) {
 				if (err) {
-					*err = IPV6_ERROR_READ_SKB_DIRECT;
+					*err = IP_ERROR_READ_SKB_DIRECT;
 				}
-				return IPV6_HEADER_ERROR;
+				return IP_HEADER_ERROR;
 			}
 			*(u16 *)&e->next = *(u16 *)(skb_head + e->ip_off);
 		}
 	}
 	// Not found transport header.
 	if (err) {
-		*err = IPV6_ERROR_TOO_MANY_EXT;
+		*err = IP_ERROR_IPV6_TOO_MANY_EXT;
 	}
-	return IPV6_HEADER_ERROR;
+	return IP_HEADER_ERROR;
 }
 
 /* get_udp4_header returns the payload_off is the pointer is not NULL */
@@ -298,6 +298,55 @@ static inline __attribute__((always_inline)) void copy_ipv6_addr(u64 *dest,
 {
 	dest[0] = src[0];
 	dest[1] = src[1];
+}
+
+static inline __attribute__((always_inline)) void
+emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
+		    unsigned long int err)
+{
+	struct msg_ip_event *val;
+	struct execve_map_value *process;
+	int zero = 0;
+
+	val = map_lookup_elem(&ip_error_event_heap, &zero);
+	if (!val)
+		return;
+
+	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
+
+	val->common.op = ISO_MSG_OP_IP_ERROR;
+	val->common.size = sizeof(struct msg_ip_event);
+	val->common.ktime = ktime_get_ns();
+	if (process) {
+		val->key.pid = process->key.pid;
+		val->key.ktime = process->key.ktime;
+	} else {
+		val->key.pid = 0;
+		val->key.ktime = 0;
+	}
+	val->tuple.ipv6 = ipv6;
+	if (!ipv6) {
+		struct iphdr *ip4 = ip;
+		set_ipv6_addr_from_ipv4(val->tuple.saddr, ip4->saddr);
+		set_ipv6_addr_from_ipv4(val->tuple.daddr, ip4->daddr);
+	} else {
+		struct ipv6hdr *ip6 = ip;
+		copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6->saddr);
+		copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6->daddr);
+	}
+	val->tuple.sport = 0;
+	val->tuple.dport = 0;
+	val->stats.segs_in = 0;
+	val->stats.segs_out = 0;
+	val->stats.bytes_sent = 0;
+	val->stats.bytes_received = 0;
+	val->stats.sk_drops = 0;
+	val->stats.skb_consume_misses = 0;
+	val->socket_cookie = *cookie;
+	val->ret = err;
+
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+			  sizeof(struct msg_ip_event));
 }
 
 #endif

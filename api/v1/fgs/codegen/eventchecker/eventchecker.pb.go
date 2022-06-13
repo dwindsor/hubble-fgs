@@ -260,6 +260,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessListenChecker().FromProcessListen(ev), nil
 	case *fgs.ProcessAccept:
 		return NewProcessAcceptChecker().FromProcessAccept(ev), nil
+	case *fgs.ProcessIpError:
+		return NewProcessIpErrorChecker().FromProcessIpError(ev), nil
 	case *fgs.ProcessExec:
 		return NewProcessExecChecker().FromProcessExec(ev), nil
 	case *fgs.ProcessExit:
@@ -323,6 +325,8 @@ func EventFromResponse(response *fgs.GetEventsResponse) (Event, error) {
 		return ev.ProcessListen, nil
 	case *fgs.GetEventsResponse_ProcessAccept:
 		return ev.ProcessAccept, nil
+	case *fgs.GetEventsResponse_ProcessIpError:
+		return ev.ProcessIpError, nil
 	case *fgs.GetEventsResponse_ProcessExec:
 		return ev.ProcessExec, nil
 	case *fgs.GetEventsResponse_ProcessExit:
@@ -1469,6 +1473,162 @@ func (checker *ProcessAcceptChecker) FromProcessAccept(event *fgs.ProcessAccept)
 		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
+	return checker
+}
+
+// ProcessIpErrorChecker checks a ProcessIpError event
+type ProcessIpErrorChecker struct {
+	Process        *ProcessChecker              `json:"process,omitempty"`
+	Parent         *ProcessChecker              `json:"parent,omitempty"`
+	SourceIp       *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
+	DestinationIp  *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
+	Version        *stringmatcher.StringMatcher `json:"version,omitempty"`
+	SockCookie     *uint64                      `json:"sockCookie,omitempty"`
+	DestinationPod *PodChecker                  `json:"destinationPod,omitempty"`
+	Details        *stringmatcher.StringMatcher `json:"details,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessIpErrorChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*fgs.ProcessIpError); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%T is not a ProcessIpError event", event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessIpErrorChecker) CheckResponse(response *fgs.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessIpErrorChecker creates a new ProcessIpErrorChecker
+func NewProcessIpErrorChecker() *ProcessIpErrorChecker {
+	return &ProcessIpErrorChecker{}
+}
+
+// Check checks a ProcessIpError event
+func (checker *ProcessIpErrorChecker) Check(event *fgs.ProcessIpError) error {
+	if event == nil {
+		return fmt.Errorf("ProcessIpErrorChecker: ProcessIpError event is nil")
+	}
+
+	if checker.Process != nil {
+		if err := checker.Process.Check(event.Process); err != nil {
+			return fmt.Errorf("ProcessIpErrorChecker: Process check failed: %w", err)
+		}
+	}
+	if checker.Parent != nil {
+		if err := checker.Parent.Check(event.Parent); err != nil {
+			return fmt.Errorf("ProcessIpErrorChecker: Parent check failed: %w", err)
+		}
+	}
+	if checker.SourceIp != nil {
+		if err := checker.SourceIp.Match(event.SourceIp); err != nil {
+			return fmt.Errorf("ProcessIpErrorChecker: SourceIp check failed: %w", err)
+		}
+	}
+	if checker.DestinationIp != nil {
+		if err := checker.DestinationIp.Match(event.DestinationIp); err != nil {
+			return fmt.Errorf("ProcessIpErrorChecker: DestinationIp check failed: %w", err)
+		}
+	}
+	if checker.Version != nil {
+		if err := checker.Version.Match(event.Version); err != nil {
+			return fmt.Errorf("ProcessIpErrorChecker: Version check failed: %w", err)
+		}
+	}
+	if checker.SockCookie != nil {
+		if *checker.SockCookie != event.SockCookie {
+			return fmt.Errorf("ProcessIpErrorChecker: SockCookie has value %d which does not match expected value %d", event.SockCookie, *checker.SockCookie)
+		}
+	}
+	if checker.DestinationPod != nil {
+		if err := checker.DestinationPod.Check(event.DestinationPod); err != nil {
+			return fmt.Errorf("ProcessIpErrorChecker: DestinationPod check failed: %w", err)
+		}
+	}
+	if checker.Details != nil {
+		if err := checker.Details.Match(event.Details); err != nil {
+			return fmt.Errorf("ProcessIpErrorChecker: Details check failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithProcess(check *ProcessChecker) *ProcessIpErrorChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithParent(check *ProcessChecker) *ProcessIpErrorChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithSourceIp adds a SourceIp check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithSourceIp(check *stringmatcher.StringMatcher) *ProcessIpErrorChecker {
+	checker.SourceIp = check
+	return checker
+}
+
+// WithDestinationIp adds a DestinationIp check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithDestinationIp(check *stringmatcher.StringMatcher) *ProcessIpErrorChecker {
+	checker.DestinationIp = check
+	return checker
+}
+
+// WithVersion adds a Version check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithVersion(check *stringmatcher.StringMatcher) *ProcessIpErrorChecker {
+	checker.Version = check
+	return checker
+}
+
+// WithSockCookie adds a SockCookie check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithSockCookie(check uint64) *ProcessIpErrorChecker {
+	checker.SockCookie = &check
+	return checker
+}
+
+// WithDestinationPod adds a DestinationPod check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithDestinationPod(check *PodChecker) *ProcessIpErrorChecker {
+	checker.DestinationPod = check
+	return checker
+}
+
+// WithDetails adds a Details check to the ProcessIpErrorChecker
+func (checker *ProcessIpErrorChecker) WithDetails(check *stringmatcher.StringMatcher) *ProcessIpErrorChecker {
+	checker.Details = check
+	return checker
+}
+
+//FromProcessIpError populates the ProcessIpErrorChecker using data from a ProcessIpError event
+func (checker *ProcessIpErrorChecker) FromProcessIpError(event *fgs.ProcessIpError) *ProcessIpErrorChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.SourceIp = stringmatcher.Full(event.SourceIp)
+	checker.DestinationIp = stringmatcher.Full(event.DestinationIp)
+	checker.Version = stringmatcher.Full(event.Version)
+	{
+		val := event.SockCookie
+		checker.SockCookie = &val
+	}
+	if event.DestinationPod != nil {
+		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+	}
+	checker.Details = stringmatcher.Full(event.Details)
 	return checker
 }
 

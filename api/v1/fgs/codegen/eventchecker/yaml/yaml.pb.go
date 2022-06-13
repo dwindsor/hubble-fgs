@@ -153,6 +153,7 @@ type eventCheckerHelper struct {
 	ProcessClose        *eventchecker.ProcessCloseChecker        `json:"close,omitempty"`
 	ProcessListen       *eventchecker.ProcessListenChecker       `json:"listen,omitempty"`
 	ProcessAccept       *eventchecker.ProcessAcceptChecker       `json:"accept,omitempty"`
+	ProcessIpError      *eventchecker.ProcessIpErrorChecker      `json:"ipError,omitempty"`
 	ProcessExec         *eventchecker.ProcessExecChecker         `json:"exec,omitempty"`
 	ProcessExit         *eventchecker.ProcessExitChecker         `json:"exit,omitempty"`
 	ProcessCred         *eventchecker.ProcessCredChecker         `json:"cred,omitempty"`
@@ -208,6 +209,12 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessAccept, eventChecker)
 		}
 		eventChecker = helper.ProcessAccept
+	}
+	if helper.ProcessIpError != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessIpError, eventChecker)
+		}
+		eventChecker = helper.ProcessIpError
 	}
 	if helper.ProcessExec != nil {
 		if eventChecker != nil {
@@ -299,6 +306,8 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessListen = c
 	case *eventchecker.ProcessAcceptChecker:
 		helper.ProcessAccept = c
+	case *eventchecker.ProcessIpErrorChecker:
+		helper.ProcessIpError = c
 	case *eventchecker.ProcessExecChecker:
 		helper.ProcessExec = c
 	case *eventchecker.ProcessExitChecker:

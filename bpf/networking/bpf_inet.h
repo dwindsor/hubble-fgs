@@ -343,7 +343,11 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 		packet->ipv6 = true;
 		proto = get_ip6_proto(&packet->udp_off, &packet->ip.ip6, 0, skb,
 				      0, true, false, &err);
-		if (proto != IPPROTO_UDP) {
+		if (proto == IP_HEADER_ERROR) {
+			emit_ip_error_event(skb, &packet->ip.ip6, cookie, true,
+					    err);
+			return;
+		} else if (proto != IPPROTO_UDP) {
 			return;
 		}
 		if (!packet->udp_off)
@@ -400,7 +404,11 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 		proto = get_ip6_proto(0, &packet->ip.ip6,
 				      packet->network_header_off,
 				      packet->skb_head, 0, true, true, &err);
-		if (proto != IPPROTO_UDP) {
+		if (proto == IP_HEADER_ERROR) {
+			emit_ip_error_event(ctx, &packet->ip.ip6, &cookie, true,
+					    err);
+			return;
+		} else if (proto != IPPROTO_UDP) {
 			return;
 		}
 		if (!get_udp_header(&packet->udp, &packet->payload_off,
@@ -462,7 +470,11 @@ inet_handler(struct __sk_buff *skb, bool send)
 			return;
 		proto = get_ip6_proto(&packet->udp_off, (struct ipv6hdr *)ip, 0,
 				      data, data_end, false, false, &err);
-		if (proto != IPPROTO_UDP) {
+		if (proto == IP_HEADER_ERROR) {
+			emit_ip_error_event(skb, (struct ipv6hdr *)ip, &cookie,
+					    true, err);
+			return;
+		} else if (proto != IPPROTO_UDP) {
 			return;
 		}
 		if (!packet->udp_off)

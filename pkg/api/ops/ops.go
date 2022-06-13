@@ -84,6 +84,8 @@ const (
 	MSG_OP_DNS = 128
 
 	MSG_OP_FILE = 129
+
+	MSG_OP_IP_ERROR = 130
 )
 
 type OpCode int
@@ -117,6 +119,7 @@ const (
 	MsgOpTest                = 254
 	MsgOpDNS                 = 128
 	MsgOpFile                = 129
+	MsgOpIpError             = 130
 )
 
 func (op OpCode) String() string {
@@ -149,6 +152,7 @@ func (op OpCode) String() string {
 		MsgOpTest:                "Test",
 		MsgOpDNS:                 "DNS",
 		MsgOpFile:                "File",
+		MsgOpIpError:             "IPError",
 	}
 	if val, ok := opCodeMap[op]; ok {
 		return val

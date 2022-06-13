@@ -223,6 +223,21 @@ func HandleProcessBurstEvent(processedEvent interface{}) {
 	}
 }
 
+func postIpErrorStats(ns, pod, binary, version, details string, s *fgs.ProcessIpError) {
+	socketmetrics.IpErrors.WithLabelValues(ns, pod, binary, version, details).Inc()
+}
+
+func HandleIpErrorEvent(processedEvent interface{}) {
+	switch ev := processedEvent.(type) {
+	case *fgs.GetEventsResponse:
+		switch res := ev.Event.(type) {
+		case *fgs.GetEventsResponse_ProcessIpError:
+			binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+			postIpErrorStats(ns, pod, binary, res.ProcessIpError.Version, res.ProcessIpError.Details, res.ProcessIpError)
+		}
+	}
+}
+
 func postHttpStats(ev *fgs.GetEventsResponse, res *fgs.ProcessHttp) {
 	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 	dstPod := res.GetDestinationPod()
@@ -292,4 +307,5 @@ func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
 	HandleDnsEvent(processedEvent)
 	HandleTlsEvent(processedEvent)
 	HandleInterfaceStatsEvent(processedEvent)
+	HandleIpErrorEvent(processedEvent)
 }

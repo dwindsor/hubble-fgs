@@ -23,6 +23,7 @@ func (event *ProcessConnect) __isEvent()      {}
 func (event *ProcessClose) __isEvent()        {}
 func (event *ProcessListen) __isEvent()       {}
 func (event *ProcessAccept) __isEvent()       {}
+func (event *ProcessIpError) __isEvent()      {}
 func (event *ProcessExec) __isEvent()         {}
 func (event *ProcessExit) __isEvent()         {}
 func (event *ProcessCred) __isEvent()         {}

@@ -1,8 +1,13 @@
 package ip
 
 import (
+	"bytes"
+	"encoding/binary"
+
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
+	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/stats"
+	"github.com/yalue/native_endian"
 )
 
 var (
@@ -28,4 +33,14 @@ func MsgToIPUnix(m *api.MsgIPEvent) *api.MsgIPEventUnix {
 		unix.SocketFlags |= api.SOCKFLAGS_TYPE_DNSREADY
 	}
 	return unix
+}
+
+func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
+	m := api.MsgIPEvent{}
+	err := binary.Read(r, native_endian.NativeEndian(), &m)
+	if err != nil {
+		return nil, err
+	}
+	msgUnix := MsgToIPUnix(&m)
+	return []observer.Event{msgUnix}, nil
 }

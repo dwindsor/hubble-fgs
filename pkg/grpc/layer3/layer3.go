@@ -11,6 +11,8 @@
 package layer3
 
 import (
+	"fmt"
+
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -428,10 +430,96 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *fgs.GetEventsResponse 
 			}
 		}
 
+	case ops.MSG_OP_IP_ERROR:
+		s := l3.GetProcessIPError(msg)
+		if s != nil {
+			res = &fgs.GetEventsResponse{
+				Event:    &fgs.GetEventsResponse_ProcessIpError{ProcessIpError: s},
+				NodeName: nodeName,
+				Time:     ktime.ToProto(msg.Common.Ktime),
+			}
+		}
+
 	default:
 		logger.GetLogger().WithField("message", msg).Warn("HandleIpMessage: Unhandled event")
 	}
 	return res
+}
+
+func (l3 *Grpc) GetProcessIPError(event *api.MsgIPEventUnix) *fgs.ProcessIpError {
+	var fgsParent, fgsProcess *fgs.Process
+
+	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if process == nil {
+		fgsProcess = &fgs.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+		}
+	} else {
+		fgsProcess = process.UnsafeGetProcess()
+	}
+	if parent == nil {
+		fgsParent = &fgs.Process{}
+	} else {
+		fgsParent = parent.GetProcessCopy()
+	}
+
+	sourceIP := reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+
+	var version string
+	if event.Tuple.IPv6 == 0 {
+		version = "IPv4"
+	} else {
+		version = "IPv6"
+	}
+
+	var details string
+
+	// Lower 32 bits is error code, upper 32 bits is data if required.
+	switch event.Return & 0xffffffff {
+	case 1:
+		details = "No heap available"
+	case 2:
+		details = "Read next failed (probe)"
+	case 3:
+		details = "Read next failed (skb_load)"
+	case 4:
+		details = "Read next failed (skb)"
+	case 5:
+		details = "Unknown IPv6 extension: " + fmt.Sprintf("%d", event.Return>>32)
+	case 6:
+		details = "Too many IPv6 extensions"
+	default:
+		details = "Unknown error"
+	}
+
+	fgsEvent := &fgs.ProcessIpError{
+		Process:       fgsProcess,
+		Parent:        fgsParent,
+		SourceIp:      sourceIP.String(),
+		DestinationIp: destinationIP.String(),
+		Version:       version,
+		SockCookie:    event.SockCookie,
+		Details:       details,
+	}
+
+	// When CiliumAPI is enable annotate data with Cilium info. If the data
+	// is missing and enableEventCache is enabled we push event into the
+	// cache where a retry will happen.
+	if l3.enableCilium && fgsProcess != nil {
+		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
+		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
+	}
+
+	if l3.eventCache.Needed(fgsProcess) {
+		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		return nil
+	}
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
+	}
+	return fgsEvent
 }
 
 func New(ciliumState *cilium.State, dnsCache *dns.Cache, eventC *eventcache.Cache, ciliumEnabled bool) *Grpc {

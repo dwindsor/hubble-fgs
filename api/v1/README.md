@@ -57,6 +57,7 @@
     - [ProcessExit](#fgs.ProcessExit)
     - [ProcessFile](#fgs.ProcessFile)
     - [ProcessHttp](#fgs.ProcessHttp)
+    - [ProcessIpError](#fgs.ProcessIpError)
     - [ProcessKprobe](#fgs.ProcessKprobe)
     - [ProcessListen](#fgs.ProcessListen)
     - [ProcessNetworkBurst](#fgs.ProcessNetworkBurst)
@@ -355,6 +356,7 @@ Note that currently only process_accept and process_connect events are aggregate
 | process_dns | [ProcessDns](#fgs.ProcessDns) |  |  |
 | process_network_burst | [ProcessNetworkBurst](#fgs.ProcessNetworkBurst) |  |  |
 | process_file | [ProcessFile](#fgs.ProcessFile) |  |  |
+| process_ip_error | [ProcessIpError](#fgs.ProcessIpError) |  |  |
 | test | [Test](#fgs.Test) |  |  |
 | node_name | [string](#string) |  | Name of the node where this event was observed. |
 | time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed.
@@ -1058,6 +1060,28 @@ HTTP PARSER
 
 
 
+<a name="fgs.ProcessIpError"></a>
+
+### ProcessIpError
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#fgs.Process) |  |  |
+| parent | [Process](#fgs.Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| destination_ip | [string](#string) |  |  |
+| version | [string](#string) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| destination_pod | [Pod](#fgs.Pod) |  |  |
+| details | [string](#string) |  |  |
+
+
+
+
+
+
 <a name="fgs.ProcessKprobe"></a>
 
 ### ProcessKprobe
@@ -1487,6 +1511,7 @@ EventType constants are based on the ones from pkg/api/client
 | PROCESS_DNS | 18 |  |
 | PROCESS_NETWORK_BURST | 19 |  |
 | PROCESS_FILE | 20 |  |
+| PROCESS_IP_ERROR | 21 |  |
 | TEST | 254 |  |
 
 
