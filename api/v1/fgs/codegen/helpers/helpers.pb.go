@@ -54,6 +54,8 @@ func EventTypeString(event fgs.Event) (string, error) {
 		return fgs.EventType_PROCESS_DNS.String(), nil
 	case *fgs.ProcessNetworkBurst:
 		return fgs.EventType_PROCESS_NETWORK_BURST.String(), nil
+	case *fgs.ProcessFile:
+		return fgs.EventType_PROCESS_FILE.String(), nil
 	case *fgs.Test:
 		return fgs.EventType_TEST.String(), nil
 
@@ -93,8 +95,6 @@ func ResponseTypeString(response *fgs.GetEventsResponse) (string, error) {
 		return fgs.EventType_PROCESS_KPROBE.String(), nil
 	case *fgs.GetEventsResponse_ProcessTracepoint:
 		return fgs.EventType_PROCESS_TRACEPOINT.String(), nil
-	case *fgs.GetEventsResponse_ProcessFile:
-		return fgs.EventType_PROCESS_FILE.String(), nil
 	case *fgs.GetEventsResponse_ProcessSockStats:
 		return fgs.EventType_PROCESS_SOCK_STATS.String(), nil
 	case *fgs.GetEventsResponse_ProcessHttp:
@@ -105,6 +105,8 @@ func ResponseTypeString(response *fgs.GetEventsResponse) (string, error) {
 		return fgs.EventType_PROCESS_DNS.String(), nil
 	case *fgs.GetEventsResponse_ProcessNetworkBurst:
 		return fgs.EventType_PROCESS_NETWORK_BURST.String(), nil
+	case *fgs.GetEventsResponse_ProcessFile:
+		return fgs.EventType_PROCESS_FILE.String(), nil
 	case *fgs.GetEventsResponse_Test:
 		return fgs.EventType_TEST.String(), nil
 

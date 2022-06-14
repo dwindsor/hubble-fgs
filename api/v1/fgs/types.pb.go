@@ -28,6 +28,7 @@ func (event *ProcessExit) __isEvent()         {}
 func (event *ProcessCred) __isEvent()         {}
 func (event *ProcessKprobe) __isEvent()       {}
 func (event *ProcessTracepoint) __isEvent()   {}
+func (event *ProcessFile) __isEvent()         {}
 func (event *ProcessSockStats) __isEvent()    {}
 func (event *Test) __isEvent()                {}
 func (event *Tls) __isEvent()                 {}
