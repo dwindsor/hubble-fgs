@@ -425,3 +425,43 @@ func TestFileMmapWrite(t *testing.T) {
 func TestFileMmapWriteRead(t *testing.T) {
 	runMmapTest(t, "tester-progs/mmap/mmap_write_read", fgs.FileAction_FILE_WRITE)
 }
+
+func TestFileDelete(t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	test_path := filepath.Join(workingDir, "fim_test_dir")
+	createTestDir(t, test_path)
+
+	in_file := filepath.Join(test_path, "test1")
+	createFileInDir(t, in_file)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60000*time.Millisecond)
+	defer cancel()
+
+	specFname := createSpecFile(t, test_path)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, specFname, fgsLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	errOp := os.Remove(in_file)
+	if errOp != nil {
+		t.Errorf("os.Remove failed (%s)", errOp)
+	}
+
+	inFileChecker := ec.NewProcessFileChecker().
+		WithAction(fgs.FileAction_FILE_DELETE).
+		WithFilename(sm.Full(in_file))
+	checker := ec.NewUnorderedEventChecker(inFileChecker)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
