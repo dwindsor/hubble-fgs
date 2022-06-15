@@ -29,7 +29,7 @@ chrootconfig() {
 		apt-get -y dist-upgrade
 
 		# Install required base packages
-		apt-get -y install openssh-server python3 curl iptables build-essential libelf-dev software-properties-common
+		apt-get -y install openssh-server python3 curl iptables build-essential libelf-dev software-properties-common liburing-dev libcap-dev libaio-dev
 		# Use iptables-legacy
 		update-alternatives --set iptables /usr/sbin/iptables-legacy
 
