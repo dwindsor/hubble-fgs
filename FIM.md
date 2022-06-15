@@ -72,8 +72,7 @@ A FIM generated event looks like:
 ```
 
 We defined a new event type ```process_file```. Except from the known ```process```, ```parent```, and ```time``` fields it also includes some new fields. These include:
-
-1. ```action``` is the type of the operations (i.e. ```FILE_READ```/```FILE_WRITE```).
+1. ```action``` is the type of the operations (i.e. ```FILE_READ```/```FILE_WRITE```/```FILE_DELETE```).
 2. ```filename``` is the full path of the file.
 3. ```inode_number``` is the inode number of the file.
 4. ```time``` is the time of the event.
@@ -81,15 +80,21 @@ We defined a new event type ```process_file```. Except from the known ```process
 
 ## What does FIM supports?
 
-This version of FIM includes ```FILE_READ``` and ```FILE_WRITE``` actions where the user can get events for accessing or modifying files. FIM transparently handles almost all(?) different ways to do I/O to files.
+1. ### ```FILE_READ```/```FILE_WRITE```
+    With these events the user can get events for accessing or modifying files. FIM transparently handles almost all(?) different ways to do I/O to files.
 
-There are CI jobs that ensure that we generate events for the following ways to do I/O:
+    There are CI jobs that ensure that we generate events for the following ways to do I/O:
 
-1. Using ```read```/```write``` family system calls. These include: ```read```, ```readv```, ```pread64```, ```preadv```, ```preadv2```, ```write```, ```writev```, ```pwrite64```, ```pwritev```, and ```pwritev2``` system calls.
-2. Optmized ways to copy files inside kernel. These include: ```copy_file_range```, ```sendfile```, and ```splice``` system calls.
-3. Asynchronous ways to do I/O. These include [```io_uring```](https://man.archlinux.org/man/io_uring.7.en) and [```aio```](https://man7.org/linux/man-pages/man7/aio.7.html)
-4. File access through memory-mapped files (i.e. ```mmap```). Also check [here](#mmap-events) for details and limitation on generated events.
-5. ```fallocate*``` system calls.
+    1. Using ```read```/```write``` family system calls. These include: ```read```, ```readv```, ```pread64```, ```preadv```, ```preadv2```, ```write```, ```writev```, ```pwrite64```, ```pwritev```, and ```pwritev2``` system calls.
+    2. Optmized ways to copy files inside kernel. These include: ```copy_file_range```, ```sendfile```, and ```splice``` system calls.
+    3. Asynchronous ways to do I/O. These include [```io_uring```](https://man.archlinux.org/man/io_uring.7.en) and [```aio```](https://man7.org/linux/man-pages/man7/aio.7.html)
+    4. File access through memory-mapped files (i.e. ```mmap```). Also check [here](#mmap-events) for details and limitation on generated events.
+    5. ```fallocate*``` system calls.
+
+2. ### ```FILE_DELETE```
+    With these event the user can get events for deleting files.
+
+    There are CI jobs that ensure that we generate events with ```unlink``` system call.
 
 All of these are continuously tested on 5.4, 5.10, and 5.15 kernels (longterm releases). All ```>= 5.4``` kernels should be supported but not continuously tested.
 
