@@ -75,6 +75,8 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	buffer = __d_path_local(_(&file->f_path), buffer, &size, &flags);
 	if (size > 0)
 		size = 256 - size;
+	if (size < 0)
+		size = 0;
 
 	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
 	if (!key)
