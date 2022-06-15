@@ -72,7 +72,7 @@ A FIM generated event looks like:
 ```
 
 We defined a new event type ```process_file```. Except from the known ```process```, ```parent```, and ```time``` fields it also includes some new fields. These include:
-1. ```action``` is the type of the operations (i.e. ```FILE_READ```/```FILE_WRITE```/```FILE_DELETE```).
+1. ```action``` is the type of the operations (i.e. ```FILE_READ```/```FILE_WRITE```/```FILE_DELETE```/```FILE_CREATE```).
 2. ```filename``` is the full path of the file.
 3. ```inode_number``` is the inode number of the file.
 4. ```time``` is the time of the event.
@@ -95,6 +95,11 @@ We defined a new event type ```process_file```. Except from the known ```process
     With these event the user can get events for deleting files.
 
     There are CI jobs that ensure that we generate events with ```unlink``` system call.
+
+3. ### ```FILE_CREATE```
+    With these event the user can get events for creating files.
+
+    There are CI jobs that ensure that we generate events with ```open*``` system calls.
 
 All of these are continuously tested on 5.4, 5.10, and 5.15 kernels (longterm releases). All ```>= 5.4``` kernels should be supported but not continuously tested.
 
