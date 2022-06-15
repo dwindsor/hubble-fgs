@@ -43,6 +43,9 @@ help:
 	@echo '    oss-init     - initialize the OSS submodule'
 	@echo '    oss-checkout - pull in OSS code that matches the current registered version and update everything (codegen, go modules)'
 	@echo '    oss-update   - pull in latest OSS code and update everything (codegen, go modules)'
+	@echo 'Generated files: '
+	@echo '    codegen      - genereate code based on .proto files'
+	@echo '    generate     - genereate kubebuilder files'
 
 .PHONY: oss-init
 oss-init:
