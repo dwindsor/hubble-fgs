@@ -56,7 +56,10 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, fmt.Errorf("Failed to read file operation: %w", err)
 	}
 
-	str := string(m.Path.Str[:m.Path.Size])
+	str := string(m.Path.Str[:])
+	if uint32(len(str)) > m.Path.Size {
+		str = str[:m.Path.Size]
+	}
 	unix := &fileapi.MsgFileEventUnix{
 		Common:     m.Common,
 		ProcessKey: m.ProcessKey,
