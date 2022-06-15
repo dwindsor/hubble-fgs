@@ -1379,6 +1379,7 @@ EventType constants are based on the ones from pkg/api/client
 | FILE_INVALID | 0 |  |
 | FILE_WRITE | 1 |  |
 | FILE_READ | 2 |  |
+| FILE_DELETE | 3 |  |
 
 
 

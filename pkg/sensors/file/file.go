@@ -150,6 +150,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 		"filemap_map_pages",
 		"filemap_page_mkwrite",
 		"rw_verify_area",
+		"security_path_unlink",
 	}
 	progName := "bpf_file.o"
 

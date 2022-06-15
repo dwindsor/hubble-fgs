@@ -245,6 +245,7 @@ enum FileAction {
     FILE_INVALID = 0;
     FILE_WRITE = 1;
     FILE_READ = 2;
+    FILE_DELETE = 3;
 }
 
 message ProcessFile {

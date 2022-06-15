@@ -6,6 +6,7 @@
 enum { action_invalid = 0,
        action_write = 1,
        action_read = 2,
+       action_delete = 3,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -15,6 +16,7 @@ enum { hook_undef = 0,
        hook_filemap_fault = 3,
        hook_filemap_map_pages = 4,
        hook_filemap_page_mkwrite = 5,
+       hook_security_path_unlink = 6,
 };
 
 struct msg_file_path {

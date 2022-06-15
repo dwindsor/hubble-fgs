@@ -283,3 +283,76 @@ event_filemap_page_mkwrite(struct pt_regs *ctx)
 
 	return handle_generic_file_write(ctx, file, hook_filemap_page_mkwrite);
 }
+
+// int security_path_unlink(const struct path *dir, struct dentry *dentry)
+__attribute__((section(("kprobe/security_path_unlink")), used)) int
+event_security_path_unlink(struct pt_regs *ctx)
+{
+	struct path *dir;
+	struct dentry *dentry;
+	struct inode *inode;
+	struct qstr d_name;
+	struct msg_file_ops *msg;
+	int zero = 0, size, flags = 0, d_len;
+	char *buffer, *obuffer;
+	struct bpf_lpm_trie_key *key;
+
+	probe_read(&dir, sizeof(dir), ARG0(ctx));
+	if (!dir)
+		return 0;
+
+	probe_read(&dentry, sizeof(dentry), ARG1(ctx));
+	if (!dentry)
+		return 0;
+
+	buffer = map_lookup_elem(&buffer_heap_map, &zero);
+	if (!buffer)
+		return 0;
+
+	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
+	d_len = d_name.len + 1;
+	size = 256 + d_len;
+	obuffer = buffer + size;
+	prepend_name(buffer, &obuffer, &size, (const char *)d_name.name,
+		     d_name.len);
+
+	size = 256;
+	buffer = __d_path_local(dir, buffer, &size, &flags);
+	if (size > 0)
+		size = 256 - size;
+	if (size < 0)
+		size = 0;
+
+	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
+	if (!key)
+		return 0;
+
+	key->prefixlen = (size + d_len) * 8;
+	memcpy(key->data, buffer, 256); // need the rest to be zero-ed
+
+	if (!filter_match(key))
+		return 0;
+
+	msg = get_msg_init();
+	if (!msg)
+		return 0;
+
+	memcpy(msg->path.str, buffer, 256);
+	msg->path.size = size + d_len;
+	msg->path.flags = flags;
+
+	probe_read(&inode, sizeof(inode), _(&dentry->d_inode));
+	if (!inode)
+		return 0;
+
+	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
+
+	msg->action = action_delete;
+	msg->hook = hook_security_path_unlink;
+	msg->ktime = ktime_get_ns();
+
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
+			  sizeof(struct msg_file_ops));
+
+	return 0;
+}
