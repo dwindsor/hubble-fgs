@@ -15,6 +15,7 @@ package file
 
 import (
 	"context"
+	"errors"
 	"flag"
 	"os"
 	"os/exec"
@@ -461,6 +462,106 @@ func TestFileDelete(t *testing.T) {
 		WithAction(fgs.FileAction_FILE_DELETE).
 		WithFilename(sm.Full(in_file))
 	checker := ec.NewUnorderedEventChecker(inFileChecker)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func fileExists(t *testing.T, filePath string) bool {
+	_, err := os.Stat(filePath)
+	if err == nil {
+		return true
+	}
+	if errors.Is(err, os.ErrNotExist) {
+		return false
+	}
+	t.Fatalf("%s", err)
+	return false
+}
+
+func fileCreate(t *testing.T, dirName string) {
+	filePath := [2]string{
+		filepath.Join(dirName, "newfile1.txt"),
+		filepath.Join(dirName, "newfile2.txt"),
+	}
+
+	// check if the files already exist
+	for _, path := range filePath {
+		if ex := fileExists(t, path); ex == true {
+			t.Fatalf("%s already exists. Exiting...", path)
+		}
+	}
+
+	// create newfile1.txt
+	file1, err := os.Create(filePath[0])
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+	defer file1.Close()
+
+	// create newfile2.txt
+	data := []byte("hello\n")
+	err = os.WriteFile(filePath[1], data, 0644)
+	if err != nil {
+		t.Fatalf("%s", err)
+	}
+
+	// remove files
+	for _, path := range filePath {
+		err := os.Remove(path)
+		if err != nil {
+			t.Fatalf("%s", err)
+		}
+	}
+}
+
+func TestFileCreate(t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	test_path := filepath.Join(workingDir, "fim_test_dir")
+	createTestDir(t, test_path)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), 60000*time.Millisecond)
+	defer cancel()
+
+	specFname := createSpecFile(t, test_path)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, specFname, fgsLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	fileCreate(t, test_path)
+
+	file1CreateChecker := ec.NewProcessFileChecker().
+		WithAction(fgs.FileAction_FILE_CREATE).
+		WithFilename(sm.Full(filepath.Join(test_path, "newfile1.txt")))
+	file2CreateChecker := ec.NewProcessFileChecker().
+		WithAction(fgs.FileAction_FILE_CREATE).
+		WithFilename(sm.Full(filepath.Join(test_path, "newfile2.txt")))
+	file2WriteChecker := ec.NewProcessFileChecker().
+		WithAction(fgs.FileAction_FILE_WRITE).
+		WithFilename(sm.Full(filepath.Join(test_path, "newfile2.txt")))
+	file1DeleteChecker := ec.NewProcessFileChecker().
+		WithAction(fgs.FileAction_FILE_DELETE).
+		WithFilename(sm.Full(filepath.Join(test_path, "newfile1.txt")))
+	file2DeleteChecker := ec.NewProcessFileChecker().
+		WithAction(fgs.FileAction_FILE_DELETE).
+		WithFilename(sm.Full(filepath.Join(test_path, "newfile2.txt")))
+	checker := ec.NewUnorderedEventChecker(
+		file1CreateChecker,
+		file2CreateChecker,
+		file2WriteChecker,
+		file1DeleteChecker,
+		file2DeleteChecker,
+	)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
