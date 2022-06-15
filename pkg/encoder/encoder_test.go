@@ -15,6 +15,8 @@ import (
 	"os"
 	"testing"
 
+	"google.golang.org/protobuf/types/known/timestamppb"
+
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -23,7 +25,7 @@ import (
 )
 
 func TestCompactEncoder_InvalidEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the event field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{})
@@ -31,7 +33,7 @@ func TestCompactEncoder_InvalidEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_ExecEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -76,7 +78,7 @@ func TestCompactEncoder_ExecEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_ConnectEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -125,7 +127,7 @@ func TestCompactEncoder_ConnectEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_AcceptEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -174,7 +176,7 @@ func TestCompactEncoder_AcceptEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_ListenEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -219,7 +221,7 @@ func TestCompactEncoder_ListenEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_CloseEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -272,7 +274,7 @@ func TestCompactEncoder_CloseEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -336,7 +338,7 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_DnsEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -379,7 +381,7 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_TlsEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -428,7 +430,7 @@ func TestCompactEncoder_TlsEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_HttpEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -528,7 +530,7 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_ExitEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -578,7 +580,7 @@ func TestCompactEncoder_ExitEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_KprobeEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail without process field
 	_, err := p.eventToString(&fgs.GetEventsResponse{
@@ -610,7 +612,7 @@ func TestCompactEncoder_KprobeEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// open without args
 	result, err := p.eventToString(&fgs.GetEventsResponse{
@@ -654,7 +656,7 @@ func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// write without args
 	result, err := p.eventToString(&fgs.GetEventsResponse{
@@ -699,7 +701,7 @@ func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// open without args
 	result, err := p.eventToString(&fgs.GetEventsResponse{
@@ -743,7 +745,7 @@ func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
 
 func TestCompactEncoder_Encode(t *testing.T) {
 	var b bytes.Buffer
-	p := NewCompactEncoder(&b, Never)
+	p := NewCompactEncoder(&b, Never, false)
 
 	// invalid event
 	err := p.Encode(nil)
@@ -773,7 +775,7 @@ func TestCompactEncoder_Encode(t *testing.T) {
 }
 
 func TestCompactEncoder_InterfaceStatsEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never)
+	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// open without args
 	result, err := p.eventToString(&fgs.GetEventsResponse{
@@ -789,4 +791,36 @@ func TestCompactEncoder_InterfaceStatsEventToString(t *testing.T) {
 	})
 	assert.NoError(t, err)
 	assert.Equal(t, "📒 netstat my-node lo@1 tx 12 kB rx 68 kB", result)
+}
+
+func TestCompactEncoder_EncodeWithTimestamp(t *testing.T) {
+	var b bytes.Buffer
+	p := NewCompactEncoder(&b, Never, true)
+
+	// invalid event
+	err := p.Encode(nil)
+	assert.Error(t, err)
+
+	// more invalid event
+	err = p.Encode(&fgs.GetEventsResponse{})
+	assert.Error(t, err)
+
+	// valid event
+	err = p.Encode(&fgs.GetEventsResponse{
+		Event: &fgs.GetEventsResponse_ProcessExec{
+			ProcessExec: &fgs.ProcessExec{
+				Process: &fgs.Process{
+					Binary:    "/usr/bin/curl",
+					Arguments: "isovalent.com",
+					Pod: &fgs.Pod{
+						Namespace: "kube-system",
+						Name:      "hubble-enterprise",
+					},
+				},
+			},
+		},
+		Time: &timestamppb.Timestamp{},
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "1970-01-01T00:00:00.000000000Z 🚀 process kube-system/hubble-enterprise /usr/bin/curl isovalent.com\n", b.String())
 }

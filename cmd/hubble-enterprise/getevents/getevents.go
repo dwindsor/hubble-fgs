@@ -45,6 +45,7 @@ func getEvents(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
 	namespaces := viper.GetStringSlice("namespace")
 	processes := viper.GetStringSlice("process")
 	pods := viper.GetStringSlice("pod")
+	timestamps := viper.GetBool("timestamps")
 	request := getRequest(namespaces, host, processes, pods)
 	stream, err := client.GetEvents(ctx, request)
 	if err != nil {
@@ -53,7 +54,7 @@ func getEvents(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
 	var eventEncoder encoder.EventEncoder
 	if viper.GetString(common.KeyOutput) == "compact" {
 		colorMode := encoder.ColorMode(viper.GetString(common.KeyColor))
-		eventEncoder = encoder.NewCompactEncoder(os.Stdout, colorMode)
+		eventEncoder = encoder.NewCompactEncoder(os.Stdout, colorMode, timestamps)
 	} else {
 		eventEncoder = json.NewEncoder(os.Stdout)
 	}
@@ -87,6 +88,7 @@ func New() *cobra.Command {
 	flags.StringSlice("process", nil, "Get events by process name regex")
 	flags.StringSlice("pod", nil, "Get events by pod name regex")
 	flags.Bool("host", false, "Get host events")
+	flags.Bool("timestamps", false, "Include timestamps in compact output")
 	viper.BindPFlags(flags)
 	return &cmd
 }
