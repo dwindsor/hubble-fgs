@@ -50,19 +50,60 @@ struct bpf_map_def __attribute__((section("maps"), used)) lpm_trie_heap_key = {
 	.max_entries = 1,
 };
 
+static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
+{
+	struct msg_file_ops *msg;
+	bool walker = 0;
+	int zero = 0;
+	struct execve_map_value *enter;
+	__u32 ppid;
+
+	msg = map_lookup_elem(&file_heap_map, &zero);
+	if (!msg)
+		return 0;
+
+	msg->common.op = ISO_MSG_OP_FILE;
+	msg->common.flags = 0;
+	msg->common.pad[0] = 0;
+	msg->common.pad[1] = 0;
+	msg->common.size = sizeof(struct msg_file_ops);
+	msg->common.ktime = ktime_get_ns();
+
+	enter = event_find_curr(&ppid, 0, &walker);
+	if (enter) {
+		msg->current.pid = enter->key.pid;
+		msg->current.ktime = enter->key.ktime;
+	}
+	msg->current.pad[0] = 0;
+	msg->current.pad[1] = 0;
+	msg->current.pad[2] = 0;
+	msg->current.pad[3] = 0;
+
+	return msg;
+}
+
+static inline __attribute__((always_inline)) int
+filter_match(struct bpf_lpm_trie_key *key)
+{
+	uint32_t *retval = map_lookup_elem(&lpm_trie_map_alloc, key);
+	if (retval) {
+		if (*retval == FILTER_IGNORE)
+			return 0;
+	} else {
+		return 0; // cannot find -> not a match
+	}
+	return 1;
+}
+
 static inline __attribute__((always_inline)) int
 handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 			   int hook_type)
 {
 	struct inode *inode;
 	struct msg_file_ops *msg;
-	struct execve_map_value *enter;
 	struct bpf_lpm_trie_key *key;
 	int zero = 0, size, flags = 0;
-	uint32_t *retval = 0;
-	bool walker = 0;
 	char *buffer;
-	__u32 ppid;
 
 	if (!file)
 		return 0;
@@ -85,15 +126,10 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	key->prefixlen = size * 8;
 	memcpy(key->data, buffer, 256); // need the rest to be zero-ed
 
-	retval = map_lookup_elem(&lpm_trie_map_alloc, key);
-	if (retval) {
-		if (*retval == FILTER_IGNORE)
-			return 0;
-	} else {
-		return 0; // cannot find -> not a match
-	}
+	if (!filter_match(key))
+		return 0;
 
-	msg = map_lookup_elem(&file_heap_map, &zero);
+	msg = get_msg_init();
 	if (!msg)
 		return 0;
 
@@ -106,23 +142,6 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 		return 0;
 
 	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
-
-	msg->common.op = ISO_MSG_OP_FILE;
-	msg->common.flags = 0;
-	msg->common.pad[0] = 0;
-	msg->common.pad[1] = 0;
-	msg->common.size = sizeof(struct msg_file_ops);
-	msg->common.ktime = ktime_get_ns();
-
-	enter = event_find_curr(&ppid, 0, &walker);
-	if (enter) {
-		msg->current.pid = enter->key.pid;
-		msg->current.ktime = enter->key.ktime;
-	}
-	msg->current.pad[0] = 0;
-	msg->current.pad[1] = 0;
-	msg->current.pad[2] = 0;
-	msg->current.pad[3] = 0;
 
 	msg->action = action;
 	msg->hook = hook_type;
