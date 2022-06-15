@@ -246,6 +246,7 @@ enum FileAction {
     FILE_WRITE = 1;
     FILE_READ = 2;
     FILE_DELETE = 3;
+    FILE_CREATE = 4;
 }
 
 message ProcessFile {

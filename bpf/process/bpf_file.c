@@ -23,6 +23,8 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 #define VM_READ	 0x00000001
 #define VM_WRITE 0x00000002
 
+#define FMODE_CREATED 0x100000
+
 #define ARG0(ctx) (&(ctx->di))
 #define ARG1(ctx) (&(ctx->si))
 #define ARG2(ctx) (&(ctx->dx))
@@ -349,6 +351,71 @@ event_security_path_unlink(struct pt_regs *ctx)
 
 	msg->action = action_delete;
 	msg->hook = hook_security_path_unlink;
+	msg->ktime = ktime_get_ns();
+
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
+			  sizeof(struct msg_file_ops));
+
+	return 0;
+}
+
+// int do_dentry_open(struct file *f, struct inode *inode, int (*open)(struct inode *, struct file *))
+__attribute__((section(("kprobe/do_dentry_open")), used)) int
+event_do_dentry_open(struct pt_regs *ctx)
+{
+	struct file *file;
+	struct inode *inode;
+	struct msg_file_ops *msg;
+	struct bpf_lpm_trie_key *key;
+	int zero = 0, size, flags = 0;
+	char *buffer;
+	__u32 f_mode;
+
+	probe_read(&file, sizeof(file), ARG0(ctx));
+	if (!file)
+		return 0;
+
+	probe_read(&inode, sizeof(inode), ARG1(ctx));
+	if (!inode)
+		return 0;
+
+	probe_read(&f_mode, sizeof(f_mode), _(&file->f_mode));
+	if ((f_mode & FMODE_CREATED) == 0)
+		return 0; // no file created
+
+	buffer = map_lookup_elem(&buffer_heap_map, &zero);
+	if (!buffer)
+		return 0;
+
+	size = 256;
+	buffer = __d_path_local(_(&file->f_path), buffer, &size, &flags);
+	if (size > 0)
+		size = 256 - size;
+	if (size < 0)
+		size = 0;
+
+	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
+	if (!key)
+		return 0;
+
+	key->prefixlen = size * 8;
+	memcpy(key->data, buffer, 256); // need the rest to be zero-ed
+
+	if (!filter_match(key))
+		return 0;
+
+	msg = get_msg_init();
+	if (!msg)
+		return 0;
+
+	memcpy(msg->path.str, buffer, 256);
+	msg->path.size = size;
+	msg->path.flags = flags;
+
+	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
+
+	msg->action = action_create;
+	msg->hook = hook_do_dentry_open;
 	msg->ktime = ktime_get_ns();
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,

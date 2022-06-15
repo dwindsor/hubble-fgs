@@ -35,6 +35,7 @@ var (
 		4: "filemap_map_pages",
 		5: "filemap_page_mkwrite",
 		6: "security_path_unlink",
+		7: "do_dentry_open",
 	}
 )
 
