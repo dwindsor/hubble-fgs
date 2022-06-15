@@ -70,8 +70,8 @@ export PATH="\$PATH:/usr/local/go/bin"
 cd /fgs
 
 # Run unit tests
-./go-tests/observer.test -test.v -hubble-lib bpf/objs
-./go-tests/sockmap.test -test.v -hubble-lib bpf/objs
+make tester-progs
+make test
 
 # Run end-to-end-tests
 contrib/end-to-end/bootstrap-cluster.sh

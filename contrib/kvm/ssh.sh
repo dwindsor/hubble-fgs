@@ -11,14 +11,18 @@ usage() {
     echo "    --port   [NUMBER]  port to forward on the host for ssh access" 1>&2
 }
 
+args=( )
 while [ $# -ge 1 ]; do
-	if [ "$1" == "--port" ] ; then
+	if [ "$1" == "--help" ] ; then
+        usage
+        exit 1
+	elif [ "$1" == "--port" ] ; then
 		SSHPORT="$2"
 		shift 2
     else
-        usage
-        exit 1
+        args+=( $1 )
+        shift 1
 	fi
 done
 
-ssh  -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no -p "$SSHPORT" root@localhost $@
+ssh  -oUserKnownHostsFile=/dev/null -oStrictHostKeyChecking=no -p "$SSHPORT" root@localhost "${args[@]}"
