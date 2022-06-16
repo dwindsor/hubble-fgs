@@ -75,79 +75,83 @@ const (
 	// MSG_OP_CLONE notifies user-space that a clone() event has occurred.
 	MSG_OP_CLONE = 23
 
-	MSG_OP_FILE = 24
+	// MSG_OP_DATA = 24 // defined in OSS
 
 	// just for testing
 	MSG_OP_TEST = 254
 
 	// for user space payload parsers
 	MSG_OP_IPV4_DNS = 128
+
+	MSG_OP_FILE = 129
 )
 
 type OpCode int
 
 const (
-	MsgOpUndef = iota
-	MsgOpIPv4TCPConnect
-	MsgOpIPv4TCPConnectReturn
-	MsgOpIPv4Bind
-	MsgOpIPv4Listen
-	MsgOpExecve
-	MsgOpTLS
-	MsgOpExit
-	MsgOpIPv4TCPClose
-	MsgOpIPv4Accept
-	MsgOpCred
-	MsgOpKfreeSkb
-	MsgOpTLSCont
-	MsgOpGenericKprobe
-	MsgOpGeneric_Tracepoint
-	MsgOpIPv4TCPStats
-	MsgOpHTTP
-	MsgOpIPv4UDPClose
-	MsgOpIPv4UDPConnect
-	MsgOpIPv4UDPStats
-	MsgOpInterfaceStats
-	MsgOpIPv4UDPPayload
-	MsgOpIPv4ProcessBurst
-	MsgOpClone
-	MsgOpFile
-	MsgOpTest    = 254
-	MsgOpIPv4DNS = 128
+	MsgOpUndef                = iota
+	MsgOpIPv4TCPConnect       = 1
+	MsgOpIPv4TCPConnectReturn = 2
+	MsgOpIPv4Bind             = 3
+	MsgOpIPv4Listen           = 4
+	MsgOpExecve               = 5
+	MsgOpTLS                  = 6
+	MsgOpExit                 = 7
+	MsgOpIPv4TCPClose         = 8
+	MsgOpIPv4Accept           = 9
+	MsgOpCred                 = 10
+	MsgOpKfreeSkb             = 11
+	MsgOpTLSCont              = 12
+	MsgOpGenericKprobe        = 13
+	MsgOpGeneric_Tracepoint   = 14
+	MsgOpIPv4TCPStats         = 15
+	MsgOpHTTP                 = 16
+	MsgOpIPv4UDPClose         = 17
+	MsgOpIPv4UDPConnect       = 18
+	MsgOpIPv4UDPStats         = 19
+	MsgOpInterfaceStats       = 20
+	MsgOpIPv4UDPPayload       = 21
+	MsgOpIPv4ProcessBurst     = 22
+	MsgOpClone                = 23
+	MsgOpData                 = 24
+	MsgOpTest                 = 254
+	MsgOpIPv4DNS              = 128
+	MsgOpFile                 = 129
 )
 
 func (op OpCode) String() string {
-	if op == MSG_OP_TEST {
-		return "Test"
+	opCodeMap := map[OpCode]string{
+		MsgOpUndef:                "Undef",
+		MsgOpIPv4TCPConnect:       "TCPConnect",
+		MsgOpIPv4TCPConnectReturn: "TCPConnectReturn",
+		MsgOpIPv4Bind:             "TCPBind",
+		MsgOpIPv4Listen:           "TCPListen",
+		MsgOpExecve:               "Execve",
+		MsgOpTLS:                  "TLS",
+		MsgOpExit:                 "Exit",
+		MsgOpIPv4TCPClose:         "TCPClose",
+		MsgOpIPv4Accept:           "TCPAccept",
+		MsgOpCred:                 "Cred",
+		MsgOpKfreeSkb:             "KfreeSkb",
+		MsgOpTLSCont:              "TLSCont",
+		MsgOpGenericKprobe:        "GenericKprobe",
+		MsgOpGeneric_Tracepoint:   "GenericTracepoint",
+		MsgOpIPv4TCPStats:         "TCPStats",
+		MsgOpHTTP:                 "HTTP",
+		MsgOpIPv4UDPClose:         "UDPClose",
+		MsgOpIPv4UDPConnect:       "UDPConnect",
+		MsgOpIPv4UDPStats:         "UDPStats",
+		MsgOpInterfaceStats:       "InterfaceStats",
+		MsgOpIPv4UDPPayload:       "UDPPayload",
+		MsgOpIPv4ProcessBurst:     "ProcessNetworkBurst",
+		MsgOpClone:                "Clone",
+		MsgOpData:                 "Data",
+		MsgOpTest:                 "Test",
+		MsgOpIPv4DNS:              "DNS",
+		MsgOpFile:                 "File",
 	}
-	if op == MSG_OP_IPV4_DNS {
-		return "DNS"
+	if val, ok := opCodeMap[op]; ok {
+		return val
 	}
-	return [...]string{
-		"Undef",
-		"TCPConnect",
-		"TCPConnectReturn",
-		"TCPBind",
-		"TCPListen",
-		"Execve",
-		"TLS",
-		"Exit",
-		"TCPClose",
-		"TCPAccept",
-		"Cred",
-		"KfreeSkb",
-		"TLSCont",
-		"GenericKprobe",
-		"GenericTracepoint",
-		"TCPStats",
-		"HTTP",
-		"UDPClose",
-		"UDPConnect",
-		"UDPStats",
-		"InterfaceStats",
-		"UDPPayload",
-		"ProcessNetworkBurst",
-		"Clone",
-		"File",
-	}[op]
+	return "undefOpCode"
 }

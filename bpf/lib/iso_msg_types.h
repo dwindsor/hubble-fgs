@@ -29,9 +29,11 @@ enum iso_msg_ops {
 
 	ISO_MSG_OP_IPV4_PROCESS_BURST = 22,
 
-	ISO_MSG_OP_CLONE = MSG_OP_CLONE,
+	ISO_MSG_OP_CLONE = MSG_OP_CLONE, // 23
 
-	ISO_MSG_OP_FILE = 24,
+	// MSG_OP_DATA = 24 // defined in OSS
+
+	ISO_MSG_OP_FILE = 129,
 
 	ISO_MSG_OP_MAX,
 
