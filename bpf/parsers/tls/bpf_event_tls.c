@@ -14,8 +14,9 @@ struct bpf_map_def {
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "bpf_sockops.h"
+#include "tlsmsg.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 
 struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.type = BPF_MAP_TYPE_HASH,
@@ -33,7 +34,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) heap = {
 
 #define TLS_TYPE_HELLO 22
 
-__attribute__((section(("kprobe/tcp_v4_fill_cb")), used)) int
+__attribute__((section("kprobe/tcp_v4_fill_cb"), used)) int
 event_ingress_tcp(struct pt_regs *ctx)
 {
 	struct msg_tls_ipv4 key = { 0 };

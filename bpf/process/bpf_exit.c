@@ -5,7 +5,7 @@
 #include "bpf_events.h"
 #include "../networking/bpf_burst_process.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 
 struct bpf_map_def __attribute__((section("maps"), used)) exit_heap_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
@@ -14,7 +14,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) exit_heap_map = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("tracepoint/sys_exit")), used)) int
+__attribute__((section("tracepoint/sys_exit"), used)) int
 event_exit(struct sched_execve_args *ctx)
 {
 	struct execve_map_value *enter;

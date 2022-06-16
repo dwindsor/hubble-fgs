@@ -21,7 +21,7 @@ struct bpf_map_def {
 };
 #endif
 
-__attribute__((section(("sk_skb_http_parser/fgshttp")), used)) int
+__attribute__((section("sk_skb_http_parser/fgshttp"), used)) int
 bpf_skskb_http_parser(struct __sk_buff *skb)
 {
 	return skb->len;

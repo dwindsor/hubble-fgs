@@ -1,18 +1,18 @@
 #include "bpf_udp_send_recv.h"
 
-__attribute__((section(("kprobe/udp_sendmsg")), used)) int
+__attribute__((section("kprobe/udp_sendmsg"), used)) int
 udp4_send_kprobe(struct pt_regs *ctx)
 {
 	return udp4_send(ctx);
 }
 
-__attribute__((section(("kretprobe/udp_sendmsg")), used)) int
+__attribute__((section("kretprobe/udp_sendmsg"), used)) int
 udp4_sendret_kprobe(struct pt_regs *ctx)
 {
 	return udp4_sendret(ctx, true);
 }
 
-__attribute__((section(("kprobe/skb_consume_udp")), used)) int
+__attribute__((section("kprobe/skb_consume_udp"), used)) int
 udp4_recv_kprobe(struct pt_regs *ctx)
 {
 	return udp4_recv(ctx, true);

@@ -7,7 +7,7 @@
 #include "tls_parser.h"
 #include "ingress.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 
 struct nat_entry {
 	__u64 created;
@@ -87,7 +87,7 @@ skb_tls_key_ct_xchg(struct msg_tls_ipv4 *key)
 	key->dport = port;
 }
 
-__attribute__((section(("classifier/ingress_tcp")), used)) int
+__attribute__((section("classifier/ingress_tcp"), used)) int
 event_tc_ingress_tcp(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = { 0 };

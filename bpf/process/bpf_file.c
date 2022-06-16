@@ -8,7 +8,7 @@
 #include "iso_msg_types.h"
 #include "bpf_process_event.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 
 #define FILTER_IGNORE 0
 #define FILTER_MATCH  1
@@ -145,7 +145,7 @@ handle_generic_file_read(struct pt_regs *ctx, struct file *file, int hook_type)
 }
 
 // int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len) // (W)
-__attribute__((section(("kprobe/vfs_fallocate")), used)) int
+__attribute__((section("kprobe/vfs_fallocate"), used)) int
 event_vfs_fallocate(struct pt_regs *ctx)
 {
 	struct file *file;
@@ -156,7 +156,7 @@ event_vfs_fallocate(struct pt_regs *ctx)
 }
 
 // int rw_verify_area(int read_write, struct file *file, const loff_t *ppos, size_t count) // (R|w)
-__attribute__((section(("kprobe/rw_verify_area")), used)) int
+__attribute__((section("kprobe/rw_verify_area"), used)) int
 event_rw_verify_area(struct pt_regs *ctx)
 {
 	int read_write;
@@ -176,7 +176,7 @@ event_rw_verify_area(struct pt_regs *ctx)
 }
 
 // vm_fault_t filemap_fault(struct vm_fault *vmf) // (R)
-__attribute__((section(("kprobe/filemap_fault")), used)) int
+__attribute__((section("kprobe/filemap_fault"), used)) int
 event_filemap_fault(struct pt_regs *ctx)
 {
 	struct vm_fault *vmf;
@@ -209,7 +209,7 @@ event_filemap_fault(struct pt_regs *ctx)
 }
 
 // void filemap_map_pages(struct vm_fault *vmf, pgoff_t start_pgoff, pgoff_t end_pgoff) // (R)
-__attribute__((section(("kprobe/filemap_map_pages")), used)) int
+__attribute__((section("kprobe/filemap_map_pages"), used)) int
 event_filemap_map_pages(struct pt_regs *ctx)
 {
 	struct vm_fault *vmf;
@@ -241,7 +241,7 @@ event_filemap_map_pages(struct pt_regs *ctx)
 }
 
 // vm_fault_t filemap_page_mkwrite(struct vm_fault *vmf) // (W)
-__attribute__((section(("kprobe/filemap_page_mkwrite")), used)) int
+__attribute__((section("kprobe/filemap_page_mkwrite"), used)) int
 event_filemap_page_mkwrite(struct pt_regs *ctx)
 {
 	struct vm_fault *vmf;

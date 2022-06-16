@@ -9,7 +9,7 @@
 #include "netns.h"
 #include "tlsmsg.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
@@ -39,7 +39,7 @@ tcp_send_check_event_map = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/tcp_v4_send_check")), used)) int
+__attribute__((section("kprobe/tcp_v4_send_check"), used)) int
 event_tcp_v4_send_check(struct pt_regs *ctx)
 {
 	struct socketmap_value *process;

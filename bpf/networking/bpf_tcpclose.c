@@ -10,7 +10,7 @@
 #include "bpf_network_helpers.h"
 #include "netns.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
@@ -24,7 +24,7 @@ tcp_close_event_map = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/tcp_set_state")), used)) int
+__attribute__((section("kprobe/tcp_set_state"), used)) int
 event_tcp4_close(struct pt_regs *ctx)
 {
 	struct msg_ipv4_event *val;

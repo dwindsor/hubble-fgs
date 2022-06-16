@@ -65,7 +65,7 @@ set_tuple_from_skb(struct msg_ipv4_tuple *tuple, struct sk_buff *skb)
 	return false;
 }
 
-__attribute__((section(("kprobe/kfree_skb")), used)) int
+__attribute__((section("kprobe/kfree_skb"), used)) int
 event_kfree_skb(struct pt_regs *ctx)
 {
 	struct msg_kfree_skb msg = { 0 };
@@ -86,7 +86,7 @@ event_kfree_skb(struct pt_regs *ctx)
 	return 1;
 }
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;

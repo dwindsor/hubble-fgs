@@ -2,7 +2,7 @@
 #include "hubble_msg.h"
 #include "cookie.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
@@ -25,7 +25,7 @@ fd_lookup_config_map = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/check_kill_permission")), used)) int
+__attribute__((section("kprobe/check_kill_permission"), used)) int
 kprobe_check_kill_permission(struct pt_regs *ctx)
 {
 	struct task_struct *p = (void *)ctx->dx;

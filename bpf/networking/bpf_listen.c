@@ -7,7 +7,7 @@
 #include "netns.h"
 #include "tlsmsg.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
@@ -21,7 +21,7 @@ tcp_listen_event_map = {
 	.max_entries = 1,
 };
 
-__attribute__((section(("kprobe/inet_hash")), used)) int
+__attribute__((section("kprobe/inet_hash"), used)) int
 event_sys_listen(struct pt_regs *ctx)
 {
 	struct msg_ipv4_event *val;

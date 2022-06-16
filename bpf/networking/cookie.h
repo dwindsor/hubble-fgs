@@ -4,7 +4,7 @@
 #include "bpf_udp.h"
 
 // get socket cookie helper
-__u64 get_cookie(struct sock *sk)
+static inline __attribute__((always_inline)) __u64 get_cookie(struct sock *sk)
 {
 	__u64 cookie = 0;
 	probe_read(&cookie, sizeof(cookie), _(&(sk->__sk_common.skc_cookie)));

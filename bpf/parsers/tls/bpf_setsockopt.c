@@ -6,7 +6,7 @@
 
 #include "tls_map.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
@@ -46,7 +46,7 @@ sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key)
 	key->uid = 0;
 }
 
-__attribute__((section(("cgroup/setsockopt")), used)) int
+__attribute__((section("cgroup/setsockopt"), used)) int
 setsockopt(struct bpf_sockopt *ctx)
 {
 	struct msg_tls_ipv4 key;

@@ -16,7 +16,7 @@
 #include "http_parser.h"
 #include "http2_parser.h"
 
-__attribute__((section(("sk_msg/fgs")), used)) int
+__attribute__((section("sk_msg/fgs"), used)) int
 bpf_http_sk_msg_fgs(struct sk_msg_md *msg)
 {
 	struct msg_tls_ipv4 tuple = { 0 };
@@ -29,7 +29,7 @@ bpf_http_sk_msg_fgs(struct sk_msg_md *msg)
 	return http_do_parser(msg, &tuple);
 }
 
-__attribute__((section(("sk_msg/0")), used)) int
+__attribute__((section("sk_msg/0"), used)) int
 bpf_http_sk_msg_fgs_response(struct sk_msg_md *msg)
 {
 	struct msg_tls_ipv4 tuple = { 0 };
@@ -49,7 +49,7 @@ bpf_http_sk_msg_fgs_response(struct sk_msg_md *msg)
 	return SK_PASS;
 }
 
-__attribute__((section(("sk_msg/1")), used)) int
+__attribute__((section("sk_msg/1"), used)) int
 bpf_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 {
 	struct msg_tls_ipv4 tuple = { 0 };
@@ -69,7 +69,7 @@ bpf_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 	return SK_PASS;
 }
 
-__attribute__((section(("sk_msg/2")), used)) int
+__attribute__((section("sk_msg/2"), used)) int
 bpf_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 {
 	struct msg_tls_ipv4 tuple = { 0 };
@@ -89,7 +89,7 @@ bpf_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 	return SK_PASS;
 }
 
-__attribute__((section(("sk_msg/3")), used)) int
+__attribute__((section("sk_msg/3"), used)) int
 bpf_skmsg_http2(struct sk_msg_md *msg)
 {
 	struct msg_tls_ipv4 tuple = { 0 };
@@ -98,4 +98,4 @@ bpf_skmsg_http2(struct sk_msg_md *msg)
 	return http2_do_parser(msg, &tuple);
 }
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";

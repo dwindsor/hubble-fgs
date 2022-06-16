@@ -27,7 +27,7 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 };
 
 // hook: ./net/ipv4/tcp_ipv4.c tcp_filter()
-__attribute__((section(("cgroup_skb/ingress")), used)) int
+__attribute__((section("cgroup_skb/ingress"), used)) int
 bpf_cgroup_skb_ingress_tls(struct __sk_buff *skb)
 {
 	struct msg_tls_ipv4 key = { 0 };

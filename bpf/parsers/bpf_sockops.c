@@ -75,4 +75,4 @@ __section("sockops/fgs_sockops") int bpf_sockmap(struct bpf_sock_ops *skops)
 	return 0;
 }
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";

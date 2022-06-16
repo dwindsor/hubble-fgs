@@ -6,7 +6,7 @@
 #include "bpf_udp.h"
 #include "cookie.h"
 
-char _license[] __attribute__((section(("license")), used)) = "GPL";
+char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
 int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
@@ -15,7 +15,7 @@ int _version __attribute__((section(("version")), used)) =
 #define AF_INET	 2
 #define AF_INET6 10
 
-__attribute__((section(("kretprobe/sk_alloc")), used)) int
+__attribute__((section("kretprobe/sk_alloc"), used)) int
 sk_allocret(struct pt_regs *ctx)
 {
 	u64 pid = get_current_pid_tgid() >> 32;
