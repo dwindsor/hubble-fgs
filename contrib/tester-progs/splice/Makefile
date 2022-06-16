@@ -6,7 +6,7 @@ PROGS = splice
 all: $(PROGS)
 
 splice: splice.c
-	$(GCC) -Wall -o splice splice.c -static
+	$(GCC) -Wall -o splice splice.c
 
 .PHONY: clean
 clean:

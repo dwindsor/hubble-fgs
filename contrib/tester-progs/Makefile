@@ -15,13 +15,13 @@ sigkill-tester: sigkill-tester.c
 	$(GCC) -Wall -o sigkill-tester sigkill-tester.c
 
 capabilities-tester: capabilities-tester.c
-	$(GCC) -Wall $< -o $@ -static -lcap
+	$(GCC) -Wall $< -o $@ -lcap
 
 namespace-tester: namespace-tester.c
-	$(GCC) -Wall $< -o $@ -static
+	$(GCC) -Wall $< -o $@
 
 dup-tester: dup-tester.c
-	$(GCC) -Wall $< -o $@ -static
+	$(GCC) -Wall $< -o $@
 
 fork-tester: fork-tester.c
 	$(GCC) -Wall $< -o $@

@@ -6,7 +6,7 @@ PROGS = fallocate
 all: $(PROGS)
 
 fallocate: fallocate.c
-	$(GCC) -Wall -o fallocate fallocate.c -static
+	$(GCC) -Wall -o fallocate fallocate.c
 
 .PHONY: clean
 clean:
