@@ -9,9 +9,9 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 
+	"github.com/cilium/tetragon/pkg/process"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/process"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 

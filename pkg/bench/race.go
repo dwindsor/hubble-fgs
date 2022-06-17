@@ -29,12 +29,12 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/process"
 	"google.golang.org/protobuf/proto"
 
 	hubblev1 "github.com/cilium/hubble/pkg/api/v1"

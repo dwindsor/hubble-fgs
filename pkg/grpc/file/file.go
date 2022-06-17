@@ -14,12 +14,12 @@ import (
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
+	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
-	"github.com/isovalent/hubble-fgs/pkg/process"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 

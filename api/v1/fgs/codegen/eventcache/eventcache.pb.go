@@ -19,8 +19,8 @@ import (
 	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
 	errormetrics "github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	eventcachemetrics "github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
+	process "github.com/cilium/tetragon/pkg/process"
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
-	process "github.com/isovalent/hubble-fgs/pkg/process"
 	timestamppb "google.golang.org/protobuf/types/known/timestamppb"
 )
 
