@@ -153,14 +153,14 @@ func (conf *GenericTracepointConfArg) configureTracepointArg(tp *genericTracepoi
 	}
 	field := tp.Info.Format.Fields[conf.Index]
 
-	metaTpIndex := getTracepointMetaValue(conf)
+	metaTp := getTracepointMetaValue(conf)
 
 	argIdx := uint32(len(tp.args))
 	tp.args = append(tp.args, genericTracepointArg{
 		CtxOffset:     int(field.Offset),
 		ArgIdx:        argIdx,
 		TpIdx:         int(conf.Index),
-		MetaTp:        metaTpIndex,
+		MetaTp:        metaTp,
 		nopTy:         false,
 		format:        &field,
 		genericTypeId: gt.GenericInvalidType,
@@ -220,6 +220,19 @@ func (out *genericTracepointArg) getGenericTypeId() (int, error) {
 			}
 			return gt.GenericCharBuffer, nil
 		}
+
+	// NB: we handle array types as constant buffers for now. We copy the
+	// data to user-space, and decode them there.
+	case tracepoint.ArrayTy:
+		nbytes, err := ty.NBytes()
+		if err != nil {
+			return gt.GenericInvalidType, fmt.Errorf("failed to get size of array type %w", err)
+		}
+		if out.MetaArg == 0 {
+			// set MetaArg equal to the number of bytes we need to copy
+			out.MetaArg = nbytes
+		}
+		return gt.GenericConstBuffer, nil
 
 	case tracepoint.SizeTy:
 		return gt.GenericSizeType, nil
@@ -377,7 +390,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 		config.Arg[i] = int32(tpArg.genericTypeId)
 		config.ArgM[i] = uint32(tpArg.MetaArg)
 
-		tracepointLog.Infof("configured argument #%d: %+v (type:%d)", i, tpArg, tpArg.genericTypeId)
+		tracepointLog.Debugf("configured argument #%d: %+v (type:%d)", i, tpArg, tpArg.genericTypeId)
 	}
 
 	// nop args
@@ -400,8 +413,6 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 			tp.Selectors.Args[i].Type = selectors.ArgTypeToString(uint32(ty))
 		}
 
-		// could we rewrite and then catch it again :/
-		fmt.Printf("tpArg: TpIdx %d, ArgIdx %d\n", tpArg.TpIdx, tpArg.ArgIdx)
 		for j, arg := range tp.Selectors.Args {
 			if arg.Index == uint32(tpArg.TpIdx) {
 				tp.Selectors.Args[j].Index = tpArg.ArgIdx
@@ -474,6 +485,14 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 			}
 			unix.Args = append(unix.Args, val)
 
+		case gt.GenericS64Type:
+			var val int64
+			err := binary.Read(r, binary.LittleEndian, &val)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("Size type error sizeof %d", m.Common.Size)
+			}
+			unix.Args = append(unix.Args, val)
+
 		case gt.GenericSizeType:
 			var val uint64
 
@@ -488,6 +507,30 @@ func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
 				unix.Args = append(unix.Args, arg.Value)
 			} else {
 				logger.GetLogger().WithError(err).Warnf("failed to read bytes argument")
+			}
+
+		case gt.GenericConstBuffer:
+			if arrTy, ok := out.format.Field.Type.(tracepoint.ArrayTy); ok {
+				intTy, ok := arrTy.Ty.(tracepoint.IntTy)
+				if !ok {
+					logger.GetLogger().Warn("failed to read array argument: expecting array of integers")
+					break
+				}
+
+				switch intTy.Base {
+				case tracepoint.IntTyLong:
+					var val uint64
+					for i := 0; i < int(arrTy.Size); i++ {
+						err := binary.Read(r, binary.LittleEndian, &val)
+						if err != nil {
+							logger.GetLogger().WithError(err).Warnf("failed to read element %d from array", i)
+							return nil, err
+						}
+						unix.Args = append(unix.Args, val)
+					}
+				default:
+					logger.GetLogger().Warnf("failed to read array argument: unexpected base type: %w", intTy.Base)
+				}
 			}
 
 		default:
