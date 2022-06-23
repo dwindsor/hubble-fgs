@@ -20,7 +20,6 @@ import (
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -563,33 +562,25 @@ type udpSensor struct {
 	name string
 }
 
-func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if args.Load.Type == "cgrp_ingress" || args.Load.Type == "cgrp_egress" {
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
 		if err != nil {
-			return -1, err
+			return err
 		}
 	} else if args.Load.Type == "kprobe_udp" {
-		_, err := bpf.LoadKprobeProgram(
-			args.Version, args.Verbose,
-			uintptr(btf.GetCachedBTF()),
-			args.Load.Name,
-			args.Load.Attach,
-			args.Load.Label,
-			filepath.Join(args.BPFDir, args.Load.PinPath),
-			args.MapDir,
-			args.Load.RetProbe)
+		err := program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 		if err != nil {
-			return -1, err
+			return err
 		}
 	}
 	if !configured {
 		if err := configureUdpSensor(args.MapDir, "udp_config_map", Config); err != nil {
-			return -1, err
+			return err
 		}
 		configured = true
 	}
-	return -1, nil
+	return nil
 }
 
 func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) error {

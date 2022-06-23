@@ -4,10 +4,8 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
-	"path/filepath"
 	"time"
 
-	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
@@ -19,8 +17,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/sirupsen/logrus"
-
-	loader "github.com/cilium/tetragon/pkg/bpf"
 )
 
 var (
@@ -227,26 +223,17 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{tcp}, nil
 }
 
-func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	var err error
-	var ret = 0
 
 	err = nil
 
 	if tcpInterval > 0 {
 		configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult)
-		ret, err = loader.LoadKprobeProgram(args.Version,
-			args.Verbose,
-			uintptr(btf.GetCachedBTF()),
-			args.Load.Name,
-			args.Load.Attach,
-			args.Load.Label,
-			filepath.Join(args.BPFDir, args.Load.PinPath),
-			args.MapDir,
-			args.Load.RetProbe)
+		err = program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	}
 	getRunningSockets(true, true)
-	return ret, err
+	return err
 }
 
 func init() {

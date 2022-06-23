@@ -195,7 +195,7 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 	return nil, nil
 }
 
-func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	// all is done in SpecHandler
-	return 0, nil
+	return nil
 }

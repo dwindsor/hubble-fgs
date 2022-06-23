@@ -151,31 +151,31 @@ type skmsgTLSSensor struct {
 	name string
 }
 
-func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	err := cgroup.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet)
 	if err != nil {
-		return -1, err
+		return err
 	}
 
 	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.TlsSockMap)
 	if err != nil {
-		return -1, err
+		return err
 	}
 	if utils.SkSkbParserRequired() {
 		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.TlsSockMap)
 		if err != nil {
-			return -1, err
+			return err
 		}
 	}
 	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.TlsSockMap)
 	if err != nil {
-		return -1, err
+		return err
 	}
 
 	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsSelectors); err != nil {
-		return -1, err
+		return err
 	}
-	return -1, nil
+	return nil
 }
 
 func (skmsg *skmsgTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
@@ -186,8 +186,8 @@ type skSkbVerdictTLSSensor struct {
 	name string
 }
 
-func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	return 0, nil
+func (skSkbVerdict *skSkbVerdictTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	return nil
 }
 
 func (skSkbVerdict *skSkbVerdictTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
@@ -198,8 +198,8 @@ type skSkbParserTLSSensor struct {
 	name string
 }
 
-func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	return 0, nil
+func (skSkbParser *skSkbParserTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	return nil
 }
 
 func (skSkbParser *skSkbParserTLSSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
@@ -210,8 +210,8 @@ type socketOptSensor struct {
 	name string
 }
 
-func (s *socketOptSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	return 0, nil
+func (s *socketOptSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	return nil
 }
 
 func (s *socketOptSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
@@ -306,7 +306,7 @@ func (tls *tlsSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return AddParserSensors(spec.Parser)
 }
 
-func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
-	return -1, err
+	return err
 }

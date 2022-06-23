@@ -122,8 +122,8 @@ type networkSensor struct {
 	name string
 }
 
-func (net *networkSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
-	return 0, nil
+func (net *networkSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	return nil
 }
 
 func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
