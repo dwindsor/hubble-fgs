@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,8 +29,8 @@ func TestPodRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "client",
 						},
 					},
@@ -42,8 +43,8 @@ func TestPodRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "client-deadb33f",
 						},
 					},
@@ -56,8 +57,8 @@ func TestPodRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "server",
 						},
 					},
@@ -70,8 +71,8 @@ func TestPodRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "server-deadb33f",
 						},
 					},
@@ -84,8 +85,8 @@ func TestPodRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessListen{
 				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "kube-proxy",
 						},
 					},
@@ -104,8 +105,8 @@ func TestPodRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "client",
 						},
 					},
@@ -118,8 +119,8 @@ func TestPodRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "client-deadb33f",
 						},
 					},
@@ -132,8 +133,8 @@ func TestPodRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "server",
 						},
 					},
@@ -146,8 +147,8 @@ func TestPodRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "server-ab41ed2",
 						},
 					},
@@ -160,8 +161,8 @@ func TestPodRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessListen{
 				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
-						Pod: &fgs.Pod{
+					Process: &tetragon.Process{
+						Pod: &tetragon.Pod{
 							Name: "kube-proxy",
 						},
 					},

@@ -15,6 +15,7 @@ package helpers
 
 import (
 	fmt "fmt"
+	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
 )
 
@@ -119,7 +120,7 @@ func ResponseTypeString(response *fgs.GetEventsResponse) (string, error) {
 }
 
 // ResponseGetProcess returns a GetEventsResponse's process if it exists
-func ResponseGetProcess(response *fgs.GetEventsResponse) *fgs.Process {
+func ResponseGetProcess(response *fgs.GetEventsResponse) *tetragon.Process {
 	if response == nil {
 		return nil
 	}
@@ -133,7 +134,7 @@ func ResponseGetProcess(response *fgs.GetEventsResponse) *fgs.Process {
 }
 
 // ResponseInnerGetProcess returns a GetEventsResponse inner event's process if it exists
-func ResponseInnerGetProcess(event fgs.ResponseEvent) *fgs.Process {
+func ResponseInnerGetProcess(event fgs.ResponseEvent) *tetragon.Process {
 	switch ev := event.(type) {
 	case *fgs.GetEventsResponse_ProcessConnect:
 		return ev.ProcessConnect.Process
@@ -173,7 +174,7 @@ func ResponseInnerGetProcess(event fgs.ResponseEvent) *fgs.Process {
 }
 
 // ResponseGetParent returns a GetEventsResponse's parent process if it exists
-func ResponseGetParent(response *fgs.GetEventsResponse) *fgs.Process {
+func ResponseGetParent(response *fgs.GetEventsResponse) *tetragon.Process {
 	if response == nil {
 		return nil
 	}
@@ -187,7 +188,7 @@ func ResponseGetParent(response *fgs.GetEventsResponse) *fgs.Process {
 }
 
 // ResponseInnerGetParent returns a GetEventsResponse inner event's parent process if it exists
-func ResponseInnerGetParent(event fgs.ResponseEvent) *fgs.Process {
+func ResponseInnerGetParent(event fgs.ResponseEvent) *tetragon.Process {
 	switch ev := event.(type) {
 	case *fgs.GetEventsResponse_ProcessConnect:
 		return ev.ProcessConnect.Parent

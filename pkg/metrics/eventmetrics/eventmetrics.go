@@ -19,6 +19,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/logger"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
@@ -33,7 +34,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 )
 
-func getProcessInfo(process *fgs.Process) (binary, pod, namespace string) {
+func getProcessInfo(process *tetragon.Process) (binary, pod, namespace string) {
 	if process != nil {
 		binary = process.Binary
 		if process.Pod != nil {
@@ -154,7 +155,7 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs
 	socketmetrics.SocketStatsDrops.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 }
 
-func getDstPodInfo(dstPod *fgs.Pod) (pod, ns string) {
+func getDstPodInfo(dstPod *tetragon.Pod) (pod, ns string) {
 	if dstPod != nil {
 		ns = dstPod.Namespace
 		pod = dstPod.Name

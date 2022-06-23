@@ -4,9 +4,9 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/pkg/kernels"
+	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
-	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 )
 
 func TlsChecker(kernelVersion string) ec.MultiEventChecker {

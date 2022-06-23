@@ -1,6 +1,7 @@
 package tls
 
 import (
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -62,7 +63,7 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 	}
 
 	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	var proc *fgs.Process
+	var proc *tetragon.Process
 	processInt, err := process.Get(processID)
 	if err != nil {
 		logger.GetLogger().WithField("id in TLS event", processID).Debug("process not found in cache")

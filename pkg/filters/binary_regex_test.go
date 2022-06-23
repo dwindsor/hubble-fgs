@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 )
@@ -28,7 +29,7 @@ func TestBinaryRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{Binary: "/sbin/iptables"},
+					Process: &tetragon.Process{Binary: "/sbin/iptables"},
 				},
 			},
 		},
@@ -38,7 +39,7 @@ func TestBinaryRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{Binary: "/sbin/iptables-restore"},
+					Process: &tetragon.Process{Binary: "/sbin/iptables-restore"},
 				},
 			},
 		},
@@ -48,7 +49,7 @@ func TestBinaryRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
+					Process: &tetragon.Process{
 						Binary: "/usr/lib/systemd/systemd",
 					},
 				},
@@ -60,7 +61,7 @@ func TestBinaryRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
+					Process: &tetragon.Process{
 						Binary: "/usr/lib/systemd/systemd-journald",
 					},
 				},
@@ -72,7 +73,7 @@ func TestBinaryRegexFilterBasic(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessListen{
 				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
+					Process: &tetragon.Process{
 						Binary: "kube-proxy",
 					},
 				},
@@ -90,7 +91,7 @@ func TestBinaryRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &fgs.ProcessConnect{
-					Process: &fgs.Process{
+					Process: &tetragon.Process{
 						Binary: "/usr/sbin/dnsmasq",
 					},
 				},
@@ -102,7 +103,7 @@ func TestBinaryRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessExec{
 				ProcessExec: &fgs.ProcessExec{
-					Process: &fgs.Process{
+					Process: &tetragon.Process{
 						Binary: "/usr/sbin/logrotate",
 					},
 				},
@@ -114,7 +115,7 @@ func TestBinaryRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessListen{
 				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
+					Process: &tetragon.Process{
 						Binary: "/usr/lib/systemd/systemd",
 					},
 				},
@@ -126,7 +127,7 @@ func TestBinaryRegexFilterAdvanced(t *testing.T) {
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessListen{
 				ProcessListen: &fgs.ProcessListen{
-					Process: &fgs.Process{
+					Process: &tetragon.Process{
 						Binary: "/usr/lib/systemd/systemd-logind",
 					},
 				},

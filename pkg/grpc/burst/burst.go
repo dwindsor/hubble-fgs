@@ -3,6 +3,7 @@ package burst
 import (
 	"syscall"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -40,13 +41,13 @@ func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) 
 func getProcessNetworkBurst(
 	event *api.MsgProcessNetworkBurstEventUnix,
 ) *fgs.ProcessNetworkBurst {
-	var fgsProcess, fgsParent *fgs.Process
+	var fgsProcess, fgsParent *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		fgsProcess = process.GetProcessCopy()
 	} else {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}

@@ -23,7 +23,7 @@ func doGetEventsResponse(g *protogen.GeneratedFile, eventType string) string {
 }
 
 func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
-	tetragonProcessInternal := common.TetragonIdent(g, "pkg/process", "ProcessInternal")
+	tetragonProcessInternal := common.PkgProcessIdent(g, "ProcessInternal")
 	tetragonGER := common.TetragonApiIdent(g, "GetEventsResponse")
 	timestamp := common.GoIdent(g, "google.golang.org/protobuf/types/known/timestamppb", "Timestamp")
 
@@ -58,7 +58,7 @@ func generateDoHandleEvents(g *protogen.GeneratedFile, f *protogen.File) error {
 func Generate(gen *protogen.Plugin, f *protogen.File) error {
 	g := common.NewCodegenFile(gen, f, "eventcache")
 
-	tetragonProcess := common.TetragonApiIdent(g, "Process")
+	tetragonProcess := common.ProcessIdent(g)
 
 	g.P(`
         type eventObj interface {

@@ -14,6 +14,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/hubble/pkg/cilium"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -47,7 +48,7 @@ func SocketFlagsDnsEnabled(t uint32) bool {
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
 func (l3 *Grpc) GetProcessConnect(event *api.MsgIPEventUnix) *fgs.ProcessConnect {
-	var fgsProcess, fgsParent *fgs.Process
+	var fgsProcess, fgsParent *tetragon.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var err error
 
@@ -64,7 +65,7 @@ func (l3 *Grpc) GetProcessConnect(event *api.MsgIPEventUnix) *fgs.ProcessConnect
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
@@ -73,7 +74,7 @@ func (l3 *Grpc) GetProcessConnect(event *api.MsgIPEventUnix) *fgs.ProcessConnect
 		process.RefInc()
 	}
 	if parent == nil {
-		fgsParent = &fgs.Process{}
+		fgsParent = &tetragon.Process{}
 	} else {
 		parent.RefInc()
 		fgsParent = parent.GetProcessCopy()
@@ -132,7 +133,7 @@ func SocketFlagsToType(t uint32) string {
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
 func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *fgs.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
-	var fgsParent, fgsProcess *fgs.Process
+	var fgsParent, fgsProcess *tetragon.Process
 	var err error
 
 	if event.Tuple.SPort != 0 {
@@ -148,7 +149,7 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *fgs.ProcessClose {
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
@@ -157,7 +158,7 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *fgs.ProcessClose {
 		process.RefDec()
 	}
 	if parent == nil {
-		fgsParent = &fgs.Process{}
+		fgsParent = &tetragon.Process{}
 	} else {
 		fgsParent = parent.GetProcessCopy()
 		parent.RefDec()
@@ -209,7 +210,7 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *fgs.ProcessClose {
 func (l3 *Grpc) GetProcessListen(
 	event *api.MsgIPEventUnix,
 ) *fgs.ProcessListen {
-	var fgsProcess, fgsParent *fgs.Process
+	var fgsProcess, fgsParent *tetragon.Process
 	var port *wrapperspb.UInt32Value
 
 	if event.Tuple.SPort != 0 {
@@ -222,7 +223,7 @@ func (l3 *Grpc) GetProcessListen(
 		process.RefInc()
 		fgsProcess = process.UnsafeGetProcess()
 	} else {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
@@ -257,7 +258,7 @@ func (l3 *Grpc) GetProcessListen(
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
 func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *fgs.ProcessAccept {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
-	var fgsParent, fgsProcess *fgs.Process
+	var fgsParent, fgsProcess *tetragon.Process
 	var err error
 
 	if event.Tuple.SPort != 0 {
@@ -273,7 +274,7 @@ func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *fgs.ProcessAccept {
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
@@ -282,7 +283,7 @@ func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *fgs.ProcessAccept {
 		process.RefInc()
 	}
 	if parent == nil {
-		fgsParent = &fgs.Process{}
+		fgsParent = &tetragon.Process{}
 	} else {
 		parent.RefInc()
 		fgsParent = parent.GetProcessCopy()
@@ -331,11 +332,11 @@ func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *fgs.ProcessAccept {
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
 func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPEventUnix) *fgs.ProcessSockStats {
-	var fgsParent, fgsProcess *fgs.Process
+	var fgsParent, fgsProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
@@ -343,7 +344,7 @@ func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPEventUnix) *fgs.ProcessSockS
 		fgsProcess = process.UnsafeGetProcess()
 	}
 	if parent == nil {
-		fgsParent = &fgs.Process{}
+		fgsParent = &tetragon.Process{}
 	} else {
 		fgsParent = parent.GetProcessCopy()
 	}
@@ -447,11 +448,11 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *fgs.GetEventsResponse 
 }
 
 func (l3 *Grpc) GetProcessIPError(event *api.MsgIPEventUnix) *fgs.ProcessIpError {
-	var fgsParent, fgsProcess *fgs.Process
+	var fgsParent, fgsProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
@@ -459,7 +460,7 @@ func (l3 *Grpc) GetProcessIPError(event *api.MsgIPEventUnix) *fgs.ProcessIpError
 		fgsProcess = process.UnsafeGetProcess()
 	}
 	if parent == nil {
-		fgsParent = &fgs.Process{}
+		fgsParent = &tetragon.Process{}
 	} else {
 		fgsParent = parent.GetProcessCopy()
 	}

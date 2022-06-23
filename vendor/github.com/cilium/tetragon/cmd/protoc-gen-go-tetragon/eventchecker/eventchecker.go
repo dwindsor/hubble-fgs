@@ -7,7 +7,6 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/common"
-	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventchecker/matchers"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
@@ -56,10 +55,6 @@ func Generate(gen *protogen.Plugin, f *protogen.File) error {
 		return err
 	}
 
-	if err := matchers.Generate(gen, f); err != nil {
-		return err
-	}
-
 	return nil
 }
 
@@ -74,7 +69,7 @@ func generateEventToChecker(g *protogen.GeneratedFile, f *protogen.File) error {
 		for _, msg := range events {
 			msgIdent := common.TetragonApiIdent(g, msg.GoIdent.GoName)
 			ret += `case *` + msgIdent + `:
-            return New` + msg.checkerName() + `().From` + msg.GoIdent.GoName + `(ev), nil
+            return New` + msg.checkerName(g) + `().From` + msg.GoIdent.GoName + `(ev), nil
             `
 		}
 		return ret

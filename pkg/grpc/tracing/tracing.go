@@ -2,6 +2,7 @@ package tracing
 
 import (
 	"github.com/cilium/hubble/pkg/cilium"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
 	"github.com/cilium/tetragon/pkg/ktime"
@@ -50,13 +51,13 @@ func kprobeAction(act uint64) fgs.KprobeAction {
 }
 
 func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKprobe {
-	var fgsParent, fgsProcess *fgs.Process
+	var fgsParent, fgsProcess *tetragon.Process
 	var fgsArgs []*fgs.KprobeArgument
 	var fgsReturnArg *fgs.KprobeArgument
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
@@ -66,7 +67,7 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *fgs.ProcessKpr
 	}
 
 	if parent == nil {
-		fgsParent = &fgs.Process{}
+		fgsParent = &tetragon.Process{}
 	} else {
 		fgsParent = parent.GetProcessCopy()
 	}
@@ -181,11 +182,11 @@ func (t *Grpc) HandleGenericKprobeMessage(msg *api.MsgGenericKprobeUnix) *fgs.Ge
 }
 
 func (t *Grpc) HandleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix) *fgs.GetEventsResponse {
-	var fgsParent, fgsProcess *fgs.Process
+	var fgsParent, fgsProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
 	if process == nil {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
 			StartTime: ktime.ToProto(msg.ProcessKey.Ktime),
 		}
@@ -193,7 +194,7 @@ func (t *Grpc) HandleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix)
 		fgsProcess = process.UnsafeGetProcess()
 	}
 	if parent == nil {
-		fgsParent = &fgs.Process{}
+		fgsParent = &tetragon.Process{}
 	} else {
 		fgsParent = parent.GetProcessCopy()
 	}

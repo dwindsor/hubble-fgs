@@ -5,6 +5,7 @@ import (
 	"net"
 
 	"github.com/cilium/hubble/pkg/cilium"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 
@@ -72,7 +73,7 @@ func GetProcessTuple(event *api.MsgIPEventUnix) *fgs.SockInfo {
 	return GetTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 }
 
-func GetProcessIp(proc *fgs.Process, ip string, cache *dns.Cache, cs *cilium.State) ([]string, error) {
+func GetProcessIp(proc *tetragon.Process, ip string, cache *dns.Cache, cs *cilium.State) ([]string, error) {
 	var entry []string
 
 	if dns.CiliumDnsEnabled() {

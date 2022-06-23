@@ -22,9 +22,9 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
+	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
-	lm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/listmatcher"
-	sm "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 

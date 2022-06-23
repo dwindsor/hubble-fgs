@@ -12,6 +12,7 @@ package file
 
 import (
 	"github.com/cilium/hubble/pkg/cilium"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -46,11 +47,11 @@ type Grpc struct {
 }
 
 func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *fgs.ProcessFile {
-	var tetragonParent, tetragonProcess *fgs.Process
+	var tetragonParent, tetragonProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process == nil {
-		tetragonProcess = &fgs.Process{
+		tetragonProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
@@ -58,7 +59,7 @@ func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *fgs.ProcessFile {
 		tetragonProcess = process.UnsafeGetProcess()
 	}
 	if parent == nil {
-		tetragonParent = &fgs.Process{}
+		tetragonParent = &tetragon.Process{}
 	} else {
 		tetragonParent = parent.GetProcessCopy()
 	}

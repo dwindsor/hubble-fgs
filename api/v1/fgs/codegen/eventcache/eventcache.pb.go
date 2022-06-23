@@ -16,6 +16,7 @@ package eventcache
 import (
 	fmt "fmt"
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	tetragon "github.com/cilium/tetragon/api/v1/tetragon"
 	errormetrics "github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	eventcachemetrics "github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -24,7 +25,7 @@ import (
 )
 
 type eventObj interface {
-	GetProcess() *fgs.Process
+	GetProcess() *tetragon.Process
 }
 
 func DoHandleEvent(event eventObj, internal *process.ProcessInternal, labels []string, nodeName string, timestamp *timestamppb.Timestamp) (*fgs.GetEventsResponse, error) {

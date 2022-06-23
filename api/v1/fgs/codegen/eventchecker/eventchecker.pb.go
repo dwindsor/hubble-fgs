@@ -17,12 +17,13 @@ import (
 	list "container/list"
 	json "encoding/json"
 	fmt "fmt"
+	eventchecker "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+	bytesmatcher "github.com/cilium/tetragon/pkg/matchers/bytesmatcher"
+	durationmatcher "github.com/cilium/tetragon/pkg/matchers/durationmatcher"
+	listmatcher "github.com/cilium/tetragon/pkg/matchers/listmatcher"
+	stringmatcher "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
+	timestampmatcher "github.com/cilium/tetragon/pkg/matchers/timestampmatcher"
 	fgs "github.com/isovalent/hubble-fgs/api/v1/fgs"
-	bytesmatcher "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/bytesmatcher"
-	durationmatcher "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/durationmatcher"
-	listmatcher "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/listmatcher"
-	stringmatcher "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/stringmatcher"
-	timestampmatcher "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker/matchers/timestampmatcher"
 	logrus "github.com/sirupsen/logrus"
 	yaml "sigs.k8s.io/yaml"
 	strings "strings"
@@ -357,7 +358,7 @@ func EventFromResponse(response *fgs.GetEventsResponse) (Event, error) {
 	}
 }
 
-// InterfaceStatsChecker checks a InterfaceStats event
+// InterfaceStatsChecker implements a checker struct to check a InterfaceStats event
 type InterfaceStatsChecker struct {
 	InterfaceName    *stringmatcher.StringMatcher `json:"interfaceName,omitempty"`
 	InterfaceIfindex *uint32                      `json:"interfaceIfindex,omitempty"`
@@ -369,7 +370,7 @@ type InterfaceStatsChecker struct {
 	RxErrors         *uint64                      `json:"rxErrors,omitempty"`
 	TxDrops          *uint64                      `json:"txDrops,omitempty"`
 	RxDrops          *uint64                      `json:"rxDrops,omitempty"`
-	Pod              *PodChecker                  `json:"pod,omitempty"`
+	Pod              *eventchecker.PodChecker     `json:"pod,omitempty"`
 	Netns            *stringmatcher.StringMatcher `json:"netns,omitempty"`
 	ContainerName    *stringmatcher.StringMatcher `json:"containerName,omitempty"`
 }
@@ -531,7 +532,7 @@ func (checker *InterfaceStatsChecker) WithRxDrops(check uint64) *InterfaceStatsC
 }
 
 // WithPod adds a Pod check to the InterfaceStatsChecker
-func (checker *InterfaceStatsChecker) WithPod(check *PodChecker) *InterfaceStatsChecker {
+func (checker *InterfaceStatsChecker) WithPod(check *eventchecker.PodChecker) *InterfaceStatsChecker {
 	checker.Pod = check
 	return checker
 }
@@ -591,24 +592,24 @@ func (checker *InterfaceStatsChecker) FromInterfaceStats(event *fgs.InterfaceSta
 		checker.RxDrops = &val
 	}
 	if event.Pod != nil {
-		checker.Pod = NewPodChecker().FromPod(event.Pod)
+		checker.Pod = eventchecker.NewPodChecker().FromPod(event.Pod)
 	}
 	checker.Netns = stringmatcher.Full(event.Netns)
 	checker.ContainerName = stringmatcher.Full(event.ContainerName)
 	return checker
 }
 
-// ProcessConnectChecker checks a ProcessConnect event
+// ProcessConnectChecker implements a checker struct to check a ProcessConnect event
 type ProcessConnectChecker struct {
-	Process          *ProcessChecker              `json:"process,omitempty"`
-	Parent           *ProcessChecker              `json:"parent,omitempty"`
+	Process          *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent           *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
 	SourcePort       *uint32                      `json:"sourcePort,omitempty"`
 	DestinationIp    *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
 	DestinationPort  *uint32                      `json:"destinationPort,omitempty"`
 	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
 	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
-	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
+	DestinationPod   *eventchecker.PodChecker     `json:"destinationPod,omitempty"`
 	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
 }
 
@@ -700,13 +701,13 @@ func (checker *ProcessConnectChecker) Check(event *fgs.ProcessConnect) error {
 }
 
 // WithProcess adds a Process check to the ProcessConnectChecker
-func (checker *ProcessConnectChecker) WithProcess(check *ProcessChecker) *ProcessConnectChecker {
+func (checker *ProcessConnectChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessConnectChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessConnectChecker
-func (checker *ProcessConnectChecker) WithParent(check *ProcessChecker) *ProcessConnectChecker {
+func (checker *ProcessConnectChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessConnectChecker {
 	checker.Parent = check
 	return checker
 }
@@ -748,7 +749,7 @@ func (checker *ProcessConnectChecker) WithSockCookie(check uint64) *ProcessConne
 }
 
 // WithDestinationPod adds a DestinationPod check to the ProcessConnectChecker
-func (checker *ProcessConnectChecker) WithDestinationPod(check *PodChecker) *ProcessConnectChecker {
+func (checker *ProcessConnectChecker) WithDestinationPod(check *eventchecker.PodChecker) *ProcessConnectChecker {
 	checker.DestinationPod = check
 	return checker
 }
@@ -766,10 +767,10 @@ func (checker *ProcessConnectChecker) FromProcessConnect(event *fgs.ProcessConne
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.SourceIp = stringmatcher.Full(event.SourceIp)
 	if event.SourcePort != nil {
@@ -797,7 +798,7 @@ func (checker *ProcessConnectChecker) FromProcessConnect(event *fgs.ProcessConne
 		checker.SockCookie = &val
 	}
 	if event.DestinationPod != nil {
-		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+		checker.DestinationPod = eventchecker.NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
 	return checker
@@ -903,10 +904,10 @@ nextCheck:
 	return nil
 }
 
-// ProcessCloseChecker checks a ProcessClose event
+// ProcessCloseChecker implements a checker struct to check a ProcessClose event
 type ProcessCloseChecker struct {
-	Process          *ProcessChecker              `json:"process,omitempty"`
-	Parent           *ProcessChecker              `json:"parent,omitempty"`
+	Process          *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent           *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
 	SourcePort       *uint32                      `json:"sourcePort,omitempty"`
 	DestinationIp    *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
@@ -914,7 +915,7 @@ type ProcessCloseChecker struct {
 	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
 	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
 	Stats            *SocketStatsChecker          `json:"stats,omitempty"`
-	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
+	DestinationPod   *eventchecker.PodChecker     `json:"destinationPod,omitempty"`
 	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
 	SocketType       *stringmatcher.StringMatcher `json:"socketType,omitempty"`
 }
@@ -1017,13 +1018,13 @@ func (checker *ProcessCloseChecker) Check(event *fgs.ProcessClose) error {
 }
 
 // WithProcess adds a Process check to the ProcessCloseChecker
-func (checker *ProcessCloseChecker) WithProcess(check *ProcessChecker) *ProcessCloseChecker {
+func (checker *ProcessCloseChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessCloseChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessCloseChecker
-func (checker *ProcessCloseChecker) WithParent(check *ProcessChecker) *ProcessCloseChecker {
+func (checker *ProcessCloseChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessCloseChecker {
 	checker.Parent = check
 	return checker
 }
@@ -1071,7 +1072,7 @@ func (checker *ProcessCloseChecker) WithStats(check *SocketStatsChecker) *Proces
 }
 
 // WithDestinationPod adds a DestinationPod check to the ProcessCloseChecker
-func (checker *ProcessCloseChecker) WithDestinationPod(check *PodChecker) *ProcessCloseChecker {
+func (checker *ProcessCloseChecker) WithDestinationPod(check *eventchecker.PodChecker) *ProcessCloseChecker {
 	checker.DestinationPod = check
 	return checker
 }
@@ -1095,10 +1096,10 @@ func (checker *ProcessCloseChecker) FromProcessClose(event *fgs.ProcessClose) *P
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.SourceIp = stringmatcher.Full(event.SourceIp)
 	if event.SourcePort != nil {
@@ -1129,17 +1130,17 @@ func (checker *ProcessCloseChecker) FromProcessClose(event *fgs.ProcessClose) *P
 		checker.Stats = NewSocketStatsChecker().FromSocketStats(event.Stats)
 	}
 	if event.DestinationPod != nil {
-		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+		checker.DestinationPod = eventchecker.NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
 	checker.SocketType = stringmatcher.Full(event.SocketType)
 	return checker
 }
 
-// ProcessListenChecker checks a ProcessListen event
+// ProcessListenChecker implements a checker struct to check a ProcessListen event
 type ProcessListenChecker struct {
-	Process    *ProcessChecker              `json:"process,omitempty"`
-	Parent     *ProcessChecker              `json:"parent,omitempty"`
+	Process    *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent     *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	Ip         *stringmatcher.StringMatcher `json:"ip,omitempty"`
 	Port       *uint32                      `json:"port,omitempty"`
 	SockCookie *uint64                      `json:"sockCookie,omitempty"`
@@ -1211,13 +1212,13 @@ func (checker *ProcessListenChecker) Check(event *fgs.ProcessListen) error {
 }
 
 // WithProcess adds a Process check to the ProcessListenChecker
-func (checker *ProcessListenChecker) WithProcess(check *ProcessChecker) *ProcessListenChecker {
+func (checker *ProcessListenChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessListenChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessListenChecker
-func (checker *ProcessListenChecker) WithParent(check *ProcessChecker) *ProcessListenChecker {
+func (checker *ProcessListenChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessListenChecker {
 	checker.Parent = check
 	return checker
 }
@@ -1253,10 +1254,10 @@ func (checker *ProcessListenChecker) FromProcessListen(event *fgs.ProcessListen)
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.Ip = stringmatcher.Full(event.Ip)
 	if event.Port != nil {
@@ -1271,17 +1272,17 @@ func (checker *ProcessListenChecker) FromProcessListen(event *fgs.ProcessListen)
 	return checker
 }
 
-// ProcessAcceptChecker checks a ProcessAccept event
+// ProcessAcceptChecker implements a checker struct to check a ProcessAccept event
 type ProcessAcceptChecker struct {
-	Process          *ProcessChecker              `json:"process,omitempty"`
-	Parent           *ProcessChecker              `json:"parent,omitempty"`
+	Process          *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent           *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
 	SourcePort       *uint32                      `json:"sourcePort,omitempty"`
 	DestinationIp    *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
 	DestinationPort  *uint32                      `json:"destinationPort,omitempty"`
 	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
 	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
-	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
+	DestinationPod   *eventchecker.PodChecker     `json:"destinationPod,omitempty"`
 	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
 }
 
@@ -1373,13 +1374,13 @@ func (checker *ProcessAcceptChecker) Check(event *fgs.ProcessAccept) error {
 }
 
 // WithProcess adds a Process check to the ProcessAcceptChecker
-func (checker *ProcessAcceptChecker) WithProcess(check *ProcessChecker) *ProcessAcceptChecker {
+func (checker *ProcessAcceptChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessAcceptChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessAcceptChecker
-func (checker *ProcessAcceptChecker) WithParent(check *ProcessChecker) *ProcessAcceptChecker {
+func (checker *ProcessAcceptChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessAcceptChecker {
 	checker.Parent = check
 	return checker
 }
@@ -1421,7 +1422,7 @@ func (checker *ProcessAcceptChecker) WithSockCookie(check uint64) *ProcessAccept
 }
 
 // WithDestinationPod adds a DestinationPod check to the ProcessAcceptChecker
-func (checker *ProcessAcceptChecker) WithDestinationPod(check *PodChecker) *ProcessAcceptChecker {
+func (checker *ProcessAcceptChecker) WithDestinationPod(check *eventchecker.PodChecker) *ProcessAcceptChecker {
 	checker.DestinationPod = check
 	return checker
 }
@@ -1439,10 +1440,10 @@ func (checker *ProcessAcceptChecker) FromProcessAccept(event *fgs.ProcessAccept)
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.SourceIp = stringmatcher.Full(event.SourceIp)
 	if event.SourcePort != nil {
@@ -1470,21 +1471,21 @@ func (checker *ProcessAcceptChecker) FromProcessAccept(event *fgs.ProcessAccept)
 		checker.SockCookie = &val
 	}
 	if event.DestinationPod != nil {
-		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+		checker.DestinationPod = eventchecker.NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Protocol = NewSocketProtocolChecker(event.Protocol)
 	return checker
 }
 
-// ProcessIpErrorChecker checks a ProcessIpError event
+// ProcessIpErrorChecker implements a checker struct to check a ProcessIpError event
 type ProcessIpErrorChecker struct {
-	Process        *ProcessChecker              `json:"process,omitempty"`
-	Parent         *ProcessChecker              `json:"parent,omitempty"`
+	Process        *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent         *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	SourceIp       *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
 	DestinationIp  *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
 	Version        *stringmatcher.StringMatcher `json:"version,omitempty"`
 	SockCookie     *uint64                      `json:"sockCookie,omitempty"`
-	DestinationPod *PodChecker                  `json:"destinationPod,omitempty"`
+	DestinationPod *eventchecker.PodChecker     `json:"destinationPod,omitempty"`
 	Details        *stringmatcher.StringMatcher `json:"details,omitempty"`
 }
 
@@ -1560,13 +1561,13 @@ func (checker *ProcessIpErrorChecker) Check(event *fgs.ProcessIpError) error {
 }
 
 // WithProcess adds a Process check to the ProcessIpErrorChecker
-func (checker *ProcessIpErrorChecker) WithProcess(check *ProcessChecker) *ProcessIpErrorChecker {
+func (checker *ProcessIpErrorChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessIpErrorChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessIpErrorChecker
-func (checker *ProcessIpErrorChecker) WithParent(check *ProcessChecker) *ProcessIpErrorChecker {
+func (checker *ProcessIpErrorChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessIpErrorChecker {
 	checker.Parent = check
 	return checker
 }
@@ -1596,7 +1597,7 @@ func (checker *ProcessIpErrorChecker) WithSockCookie(check uint64) *ProcessIpErr
 }
 
 // WithDestinationPod adds a DestinationPod check to the ProcessIpErrorChecker
-func (checker *ProcessIpErrorChecker) WithDestinationPod(check *PodChecker) *ProcessIpErrorChecker {
+func (checker *ProcessIpErrorChecker) WithDestinationPod(check *eventchecker.PodChecker) *ProcessIpErrorChecker {
 	checker.DestinationPod = check
 	return checker
 }
@@ -1613,10 +1614,10 @@ func (checker *ProcessIpErrorChecker) FromProcessIpError(event *fgs.ProcessIpErr
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.SourceIp = stringmatcher.Full(event.SourceIp)
 	checker.DestinationIp = stringmatcher.Full(event.DestinationIp)
@@ -1626,17 +1627,17 @@ func (checker *ProcessIpErrorChecker) FromProcessIpError(event *fgs.ProcessIpErr
 		checker.SockCookie = &val
 	}
 	if event.DestinationPod != nil {
-		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+		checker.DestinationPod = eventchecker.NewPodChecker().FromPod(event.DestinationPod)
 	}
 	checker.Details = stringmatcher.Full(event.Details)
 	return checker
 }
 
-// ProcessExecChecker checks a ProcessExec event
+// ProcessExecChecker implements a checker struct to check a ProcessExec event
 type ProcessExecChecker struct {
-	Process   *ProcessChecker     `json:"process,omitempty"`
-	Parent    *ProcessChecker     `json:"parent,omitempty"`
-	Ancestors *ProcessListMatcher `json:"ancestors,omitempty"`
+	Process   *eventchecker.ProcessChecker     `json:"process,omitempty"`
+	Parent    *eventchecker.ProcessChecker     `json:"parent,omitempty"`
+	Ancestors *eventchecker.ProcessListMatcher `json:"ancestors,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1686,19 +1687,19 @@ func (checker *ProcessExecChecker) Check(event *fgs.ProcessExec) error {
 }
 
 // WithProcess adds a Process check to the ProcessExecChecker
-func (checker *ProcessExecChecker) WithProcess(check *ProcessChecker) *ProcessExecChecker {
+func (checker *ProcessExecChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessExecChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessExecChecker
-func (checker *ProcessExecChecker) WithParent(check *ProcessChecker) *ProcessExecChecker {
+func (checker *ProcessExecChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessExecChecker {
 	checker.Parent = check
 	return checker
 }
 
 // WithAncestors adds a Ancestors check to the ProcessExecChecker
-func (checker *ProcessExecChecker) WithAncestors(check *ProcessListMatcher) *ProcessExecChecker {
+func (checker *ProcessExecChecker) WithAncestors(check *eventchecker.ProcessListMatcher) *ProcessExecChecker {
 	checker.Ancestors = check
 	return checker
 }
@@ -1709,131 +1710,31 @@ func (checker *ProcessExecChecker) FromProcessExec(event *fgs.ProcessExec) *Proc
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	{
-		var checks []*ProcessChecker
+		var checks []*eventchecker.ProcessChecker
 		for _, check := range event.Ancestors {
-			var convertedCheck *ProcessChecker
+			var convertedCheck *eventchecker.ProcessChecker
 			if check != nil {
-				convertedCheck = NewProcessChecker().FromProcess(check)
+				convertedCheck = eventchecker.NewProcessChecker().FromProcess(check)
 			}
 			checks = append(checks, convertedCheck)
 		}
-		lm := NewProcessListMatcher().WithOperator(listmatcher.Ordered).
+		lm := eventchecker.NewProcessListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Ancestors = lm
 	}
 	return checker
 }
 
-// ProcessListMatcher checks a list of *fgs.Process fields
-type ProcessListMatcher struct {
-	Operator listmatcher.Operator `json:"operator"`
-	Values   []*ProcessChecker    `json:"values"`
-}
-
-// NewProcessListMatcher creates a new ProcessListMatcher. The checker defaults to a subset checker unless otherwise specified using WithOperator()
-func NewProcessListMatcher() *ProcessListMatcher {
-	return &ProcessListMatcher{
-		Operator: listmatcher.Subset,
-	}
-}
-
-// WithOperator sets the match kind for the ProcessListMatcher
-func (checker *ProcessListMatcher) WithOperator(operator listmatcher.Operator) *ProcessListMatcher {
-	checker.Operator = operator
-	return checker
-}
-
-// WithValues sets the checkers that the ProcessListMatcher should use
-func (checker *ProcessListMatcher) WithValues(values ...*ProcessChecker) *ProcessListMatcher {
-	checker.Values = values
-	return checker
-}
-
-// Check checks a list of *fgs.Process fields
-func (checker *ProcessListMatcher) Check(values []*fgs.Process) error {
-	switch checker.Operator {
-	case listmatcher.Ordered:
-		return checker.orderedCheck(values)
-	case listmatcher.Unordered:
-		return checker.unorderedCheck(values)
-	case listmatcher.Subset:
-		return checker.subsetCheck(values)
-	default:
-		return fmt.Errorf("Unhandled ListMatcher operator %s", checker.Operator)
-	}
-}
-
-// orderedCheck checks a list of ordered *fgs.Process fields
-func (checker *ProcessListMatcher) orderedCheck(values []*fgs.Process) error {
-	innerCheck := func(check *ProcessChecker, value *fgs.Process) error {
-		if err := check.Check(value); err != nil {
-			return fmt.Errorf("ProcessListMatcher: Ancestors check failed: %w", err)
-		}
-		return nil
-	}
-
-	if len(checker.Values) != len(values) {
-		return fmt.Errorf("ProcessListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
-	}
-
-	for i, check := range checker.Values {
-		value := values[i]
-		if err := innerCheck(check, value); err != nil {
-			return fmt.Errorf("ProcessListMatcher: Check failed on element %d: %w", i, err)
-		}
-	}
-
-	return nil
-}
-
-// unorderedCheck checks a list of unordered *fgs.Process fields
-func (checker *ProcessListMatcher) unorderedCheck(values []*fgs.Process) error {
-	if len(checker.Values) != len(values) {
-		return fmt.Errorf("ProcessListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
-	}
-
-	return checker.subsetCheck(values)
-}
-
-// subsetCheck checks a subset of *fgs.Process fields
-func (checker *ProcessListMatcher) subsetCheck(values []*fgs.Process) error {
-	innerCheck := func(check *ProcessChecker, value *fgs.Process) error {
-		if err := check.Check(value); err != nil {
-			return fmt.Errorf("ProcessListMatcher: Ancestors check failed: %w", err)
-		}
-		return nil
-	}
-
-	numDesired := len(checker.Values)
-	numMatched := 0
-
-nextCheck:
-	for _, check := range checker.Values {
-		for _, value := range values {
-			if err := innerCheck(check, value); err == nil {
-				numMatched += 1
-				continue nextCheck
-			}
-		}
-	}
-
-	if numMatched < numDesired {
-		return fmt.Errorf("ProcessListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
-	}
-
-	return nil
-}
-
-// ProcessExitChecker checks a ProcessExit event
+// ProcessExitChecker implements a checker struct to check a ProcessExit event
 type ProcessExitChecker struct {
-	Process *ProcessChecker              `json:"process,omitempty"`
-	Parent  *ProcessChecker              `json:"parent,omitempty"`
+	Process *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent  *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	Signal  *stringmatcher.StringMatcher `json:"signal,omitempty"`
 	Status  *uint32                      `json:"status,omitempty"`
 }
@@ -1890,13 +1791,13 @@ func (checker *ProcessExitChecker) Check(event *fgs.ProcessExit) error {
 }
 
 // WithProcess adds a Process check to the ProcessExitChecker
-func (checker *ProcessExitChecker) WithProcess(check *ProcessChecker) *ProcessExitChecker {
+func (checker *ProcessExitChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessExitChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessExitChecker
-func (checker *ProcessExitChecker) WithParent(check *ProcessChecker) *ProcessExitChecker {
+func (checker *ProcessExitChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessExitChecker {
 	checker.Parent = check
 	return checker
 }
@@ -1919,10 +1820,10 @@ func (checker *ProcessExitChecker) FromProcessExit(event *fgs.ProcessExit) *Proc
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.Signal = stringmatcher.Full(event.Signal)
 	{
@@ -1932,11 +1833,11 @@ func (checker *ProcessExitChecker) FromProcessExit(event *fgs.ProcessExit) *Proc
 	return checker
 }
 
-// ProcessCredChecker checks a ProcessCred event
+// ProcessCredChecker implements a checker struct to check a ProcessCred event
 type ProcessCredChecker struct {
-	Process *ProcessChecker      `json:"process,omitempty"`
-	Parent  *ProcessChecker      `json:"parent,omitempty"`
-	Cap     *CapabilitiesChecker `json:"cap,omitempty"`
+	Process *eventchecker.ProcessChecker      `json:"process,omitempty"`
+	Parent  *eventchecker.ProcessChecker      `json:"parent,omitempty"`
+	Cap     *eventchecker.CapabilitiesChecker `json:"cap,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1986,19 +1887,19 @@ func (checker *ProcessCredChecker) Check(event *fgs.ProcessCred) error {
 }
 
 // WithProcess adds a Process check to the ProcessCredChecker
-func (checker *ProcessCredChecker) WithProcess(check *ProcessChecker) *ProcessCredChecker {
+func (checker *ProcessCredChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessCredChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessCredChecker
-func (checker *ProcessCredChecker) WithParent(check *ProcessChecker) *ProcessCredChecker {
+func (checker *ProcessCredChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessCredChecker {
 	checker.Parent = check
 	return checker
 }
 
 // WithCap adds a Cap check to the ProcessCredChecker
-func (checker *ProcessCredChecker) WithCap(check *CapabilitiesChecker) *ProcessCredChecker {
+func (checker *ProcessCredChecker) WithCap(check *eventchecker.CapabilitiesChecker) *ProcessCredChecker {
 	checker.Cap = check
 	return checker
 }
@@ -2009,21 +1910,21 @@ func (checker *ProcessCredChecker) FromProcessCred(event *fgs.ProcessCred) *Proc
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	if event.Cap != nil {
-		checker.Cap = NewCapabilitiesChecker().FromCapabilities(event.Cap)
+		checker.Cap = eventchecker.NewCapabilitiesChecker().FromCapabilities(event.Cap)
 	}
 	return checker
 }
 
-// ProcessKprobeChecker checks a ProcessKprobe event
+// ProcessKprobeChecker implements a checker struct to check a ProcessKprobe event
 type ProcessKprobeChecker struct {
-	Process      *ProcessChecker              `json:"process,omitempty"`
-	Parent       *ProcessChecker              `json:"parent,omitempty"`
+	Process      *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent       *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	FunctionName *stringmatcher.StringMatcher `json:"functionName,omitempty"`
 	Args         *KprobeArgumentListMatcher   `json:"args,omitempty"`
 	Return       *KprobeArgumentChecker       `json:"return,omitempty"`
@@ -2092,13 +1993,13 @@ func (checker *ProcessKprobeChecker) Check(event *fgs.ProcessKprobe) error {
 }
 
 // WithProcess adds a Process check to the ProcessKprobeChecker
-func (checker *ProcessKprobeChecker) WithProcess(check *ProcessChecker) *ProcessKprobeChecker {
+func (checker *ProcessKprobeChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessKprobeChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessKprobeChecker
-func (checker *ProcessKprobeChecker) WithParent(check *ProcessChecker) *ProcessKprobeChecker {
+func (checker *ProcessKprobeChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessKprobeChecker {
 	checker.Parent = check
 	return checker
 }
@@ -2134,10 +2035,10 @@ func (checker *ProcessKprobeChecker) FromProcessKprobe(event *fgs.ProcessKprobe)
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.FunctionName = stringmatcher.Full(event.FunctionName)
 	{
@@ -2260,10 +2161,10 @@ nextCheck:
 	return nil
 }
 
-// ProcessTracepointChecker checks a ProcessTracepoint event
+// ProcessTracepointChecker implements a checker struct to check a ProcessTracepoint event
 type ProcessTracepointChecker struct {
-	Process *ProcessChecker              `json:"process,omitempty"`
-	Parent  *ProcessChecker              `json:"parent,omitempty"`
+	Process *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent  *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	Subsys  *stringmatcher.StringMatcher `json:"subsys,omitempty"`
 	Event   *stringmatcher.StringMatcher `json:"event,omitempty"`
 	Args    *KprobeArgumentListMatcher   `json:"args,omitempty"`
@@ -2326,13 +2227,13 @@ func (checker *ProcessTracepointChecker) Check(event *fgs.ProcessTracepoint) err
 }
 
 // WithProcess adds a Process check to the ProcessTracepointChecker
-func (checker *ProcessTracepointChecker) WithProcess(check *ProcessChecker) *ProcessTracepointChecker {
+func (checker *ProcessTracepointChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessTracepointChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessTracepointChecker
-func (checker *ProcessTracepointChecker) WithParent(check *ProcessChecker) *ProcessTracepointChecker {
+func (checker *ProcessTracepointChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessTracepointChecker {
 	checker.Parent = check
 	return checker
 }
@@ -2361,10 +2262,10 @@ func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *fgs.Proces
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.Subsys = stringmatcher.Full(event.Subsys)
 	checker.Event = stringmatcher.Full(event.Event)
@@ -2384,10 +2285,10 @@ func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *fgs.Proces
 	return checker
 }
 
-// ProcessFileChecker checks a ProcessFile event
+// ProcessFileChecker implements a checker struct to check a ProcessFile event
 type ProcessFileChecker struct {
-	Process     *ProcessChecker                    `json:"process,omitempty"`
-	Parent      *ProcessChecker                    `json:"parent,omitempty"`
+	Process     *eventchecker.ProcessChecker       `json:"process,omitempty"`
+	Parent      *eventchecker.ProcessChecker       `json:"parent,omitempty"`
 	Action      *FileActionChecker                 `json:"action,omitempty"`
 	Filename    *stringmatcher.StringMatcher       `json:"filename,omitempty"`
 	InodeNumber *uint64                            `json:"inodeNumber,omitempty"`
@@ -2462,13 +2363,13 @@ func (checker *ProcessFileChecker) Check(event *fgs.ProcessFile) error {
 }
 
 // WithProcess adds a Process check to the ProcessFileChecker
-func (checker *ProcessFileChecker) WithProcess(check *ProcessChecker) *ProcessFileChecker {
+func (checker *ProcessFileChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessFileChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessFileChecker
-func (checker *ProcessFileChecker) WithParent(check *ProcessChecker) *ProcessFileChecker {
+func (checker *ProcessFileChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessFileChecker {
 	checker.Parent = check
 	return checker
 }
@@ -2510,10 +2411,10 @@ func (checker *ProcessFileChecker) FromProcessFile(event *fgs.ProcessFile) *Proc
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.Action = NewFileActionChecker(event.Action)
 	checker.Filename = stringmatcher.Full(event.Filename)
@@ -2527,12 +2428,12 @@ func (checker *ProcessFileChecker) FromProcessFile(event *fgs.ProcessFile) *Proc
 	return checker
 }
 
-// ProcessSockStatsChecker checks a ProcessSockStats event
+// ProcessSockStatsChecker implements a checker struct to check a ProcessSockStats event
 type ProcessSockStatsChecker struct {
-	Process *ProcessChecker     `json:"process,omitempty"`
-	Parent  *ProcessChecker     `json:"parent,omitempty"`
-	Socket  *SockInfoChecker    `json:"socket,omitempty"`
-	Stats   *SocketStatsChecker `json:"stats,omitempty"`
+	Process *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent  *eventchecker.ProcessChecker `json:"parent,omitempty"`
+	Socket  *SockInfoChecker             `json:"socket,omitempty"`
+	Stats   *SocketStatsChecker          `json:"stats,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2587,13 +2488,13 @@ func (checker *ProcessSockStatsChecker) Check(event *fgs.ProcessSockStats) error
 }
 
 // WithProcess adds a Process check to the ProcessSockStatsChecker
-func (checker *ProcessSockStatsChecker) WithProcess(check *ProcessChecker) *ProcessSockStatsChecker {
+func (checker *ProcessSockStatsChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessSockStatsChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessSockStatsChecker
-func (checker *ProcessSockStatsChecker) WithParent(check *ProcessChecker) *ProcessSockStatsChecker {
+func (checker *ProcessSockStatsChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessSockStatsChecker {
 	checker.Parent = check
 	return checker
 }
@@ -2616,10 +2517,10 @@ func (checker *ProcessSockStatsChecker) FromProcessSockStats(event *fgs.ProcessS
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	if event.Socket != nil {
 		checker.Socket = NewSockInfoChecker().FromSockInfo(event.Socket)
@@ -2630,7 +2531,7 @@ func (checker *ProcessSockStatsChecker) FromProcessSockStats(event *fgs.ProcessS
 	return checker
 }
 
-// TestChecker checks a Test event
+// TestChecker implements a checker struct to check a Test event
 type TestChecker struct {
 	Arg0 *uint64 `json:"arg0,omitempty"`
 	Arg1 *uint64 `json:"arg1,omitempty"`
@@ -2737,9 +2638,9 @@ func (checker *TestChecker) FromTest(event *fgs.Test) *TestChecker {
 	return checker
 }
 
-// TlsChecker checks a Tls event
+// TlsChecker implements a checker struct to check a Tls event
 type TlsChecker struct {
-	Process             *ProcessChecker              `json:"process,omitempty"`
+	Process             *eventchecker.ProcessChecker `json:"process,omitempty"`
 	SourceIp            *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
 	SourcePort          *uint32                      `json:"sourcePort,omitempty"`
 	DestinationIp       *stringmatcher.StringMatcher `json:"destinationIp,omitempty"`
@@ -2929,7 +2830,7 @@ func (checker *TlsChecker) Check(event *fgs.Tls) error {
 }
 
 // WithProcess adds a Process check to the TlsChecker
-func (checker *TlsChecker) WithProcess(check *ProcessChecker) *TlsChecker {
+func (checker *TlsChecker) WithProcess(check *eventchecker.ProcessChecker) *TlsChecker {
 	checker.Process = check
 	return checker
 }
@@ -3085,7 +2986,7 @@ func (checker *TlsChecker) FromTls(event *fgs.Tls) *TlsChecker {
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	checker.SourceIp = stringmatcher.Full(event.SourceIp)
 	if event.SourcePort != nil {
@@ -3142,13 +3043,13 @@ func (checker *TlsChecker) FromTls(event *fgs.Tls) *TlsChecker {
 	return checker
 }
 
-// ProcessHttpChecker checks a ProcessHttp event
+// ProcessHttpChecker implements a checker struct to check a ProcessHttp event
 type ProcessHttpChecker struct {
-	Process          *ProcessChecker    `json:"process,omitempty"`
-	Socket           *SockInfoChecker   `json:"socket,omitempty"`
-	Http             *HttpInfoChecker   `json:"http,omitempty"`
-	DestinationNames *StringListMatcher `json:"destinationNames,omitempty"`
-	DestinationPod   *PodChecker        `json:"destinationPod,omitempty"`
+	Process          *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Socket           *SockInfoChecker             `json:"socket,omitempty"`
+	Http             *HttpInfoChecker             `json:"http,omitempty"`
+	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
+	DestinationPod   *eventchecker.PodChecker     `json:"destinationPod,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3208,7 +3109,7 @@ func (checker *ProcessHttpChecker) Check(event *fgs.ProcessHttp) error {
 }
 
 // WithProcess adds a Process check to the ProcessHttpChecker
-func (checker *ProcessHttpChecker) WithProcess(check *ProcessChecker) *ProcessHttpChecker {
+func (checker *ProcessHttpChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessHttpChecker {
 	checker.Process = check
 	return checker
 }
@@ -3232,7 +3133,7 @@ func (checker *ProcessHttpChecker) WithDestinationNames(check *StringListMatcher
 }
 
 // WithDestinationPod adds a DestinationPod check to the ProcessHttpChecker
-func (checker *ProcessHttpChecker) WithDestinationPod(check *PodChecker) *ProcessHttpChecker {
+func (checker *ProcessHttpChecker) WithDestinationPod(check *eventchecker.PodChecker) *ProcessHttpChecker {
 	checker.DestinationPod = check
 	return checker
 }
@@ -3243,7 +3144,7 @@ func (checker *ProcessHttpChecker) FromProcessHttp(event *fgs.ProcessHttp) *Proc
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Socket != nil {
 		checker.Socket = NewSockInfoChecker().FromSockInfo(event.Socket)
@@ -3263,18 +3164,18 @@ func (checker *ProcessHttpChecker) FromProcessHttp(event *fgs.ProcessHttp) *Proc
 		checker.DestinationNames = lm
 	}
 	if event.DestinationPod != nil {
-		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+		checker.DestinationPod = eventchecker.NewPodChecker().FromPod(event.DestinationPod)
 	}
 	return checker
 }
 
-// ProcessDnsChecker checks a ProcessDns event
+// ProcessDnsChecker implements a checker struct to check a ProcessDns event
 type ProcessDnsChecker struct {
-	Process          *ProcessChecker    `json:"process,omitempty"`
-	Socket           *SockInfoChecker   `json:"socket,omitempty"`
-	Dns              *DnsInfoChecker    `json:"dns,omitempty"`
-	DestinationNames *StringListMatcher `json:"destinationNames,omitempty"`
-	DestinationPod   *PodChecker        `json:"destinationPod,omitempty"`
+	Process          *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Socket           *SockInfoChecker             `json:"socket,omitempty"`
+	Dns              *DnsInfoChecker              `json:"dns,omitempty"`
+	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
+	DestinationPod   *eventchecker.PodChecker     `json:"destinationPod,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3334,7 +3235,7 @@ func (checker *ProcessDnsChecker) Check(event *fgs.ProcessDns) error {
 }
 
 // WithProcess adds a Process check to the ProcessDnsChecker
-func (checker *ProcessDnsChecker) WithProcess(check *ProcessChecker) *ProcessDnsChecker {
+func (checker *ProcessDnsChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessDnsChecker {
 	checker.Process = check
 	return checker
 }
@@ -3358,7 +3259,7 @@ func (checker *ProcessDnsChecker) WithDestinationNames(check *StringListMatcher)
 }
 
 // WithDestinationPod adds a DestinationPod check to the ProcessDnsChecker
-func (checker *ProcessDnsChecker) WithDestinationPod(check *PodChecker) *ProcessDnsChecker {
+func (checker *ProcessDnsChecker) WithDestinationPod(check *eventchecker.PodChecker) *ProcessDnsChecker {
 	checker.DestinationPod = check
 	return checker
 }
@@ -3369,7 +3270,7 @@ func (checker *ProcessDnsChecker) FromProcessDns(event *fgs.ProcessDns) *Process
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Socket != nil {
 		checker.Socket = NewSockInfoChecker().FromSockInfo(event.Socket)
@@ -3389,15 +3290,15 @@ func (checker *ProcessDnsChecker) FromProcessDns(event *fgs.ProcessDns) *Process
 		checker.DestinationNames = lm
 	}
 	if event.DestinationPod != nil {
-		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+		checker.DestinationPod = eventchecker.NewPodChecker().FromPod(event.DestinationPod)
 	}
 	return checker
 }
 
-// ProcessNetworkBurstChecker checks a ProcessNetworkBurst event
+// ProcessNetworkBurstChecker implements a checker struct to check a ProcessNetworkBurst event
 type ProcessNetworkBurstChecker struct {
-	Process     *ProcessChecker              `json:"process,omitempty"`
-	Parent      *ProcessChecker              `json:"parent,omitempty"`
+	Process     *eventchecker.ProcessChecker `json:"process,omitempty"`
+	Parent      *eventchecker.ProcessChecker `json:"parent,omitempty"`
 	Protocol    *stringmatcher.StringMatcher `json:"protocol,omitempty"`
 	Direction   *stringmatcher.StringMatcher `json:"direction,omitempty"`
 	BurstState  *stringmatcher.StringMatcher `json:"burstState,omitempty"`
@@ -3484,13 +3385,13 @@ func (checker *ProcessNetworkBurstChecker) Check(event *fgs.ProcessNetworkBurst)
 }
 
 // WithProcess adds a Process check to the ProcessNetworkBurstChecker
-func (checker *ProcessNetworkBurstChecker) WithProcess(check *ProcessChecker) *ProcessNetworkBurstChecker {
+func (checker *ProcessNetworkBurstChecker) WithProcess(check *eventchecker.ProcessChecker) *ProcessNetworkBurstChecker {
 	checker.Process = check
 	return checker
 }
 
 // WithParent adds a Parent check to the ProcessNetworkBurstChecker
-func (checker *ProcessNetworkBurstChecker) WithParent(check *ProcessChecker) *ProcessNetworkBurstChecker {
+func (checker *ProcessNetworkBurstChecker) WithParent(check *eventchecker.ProcessChecker) *ProcessNetworkBurstChecker {
 	checker.Parent = check
 	return checker
 }
@@ -3543,10 +3444,10 @@ func (checker *ProcessNetworkBurstChecker) FromProcessNetworkBurst(event *fgs.Pr
 		return checker
 	}
 	if event.Process != nil {
-		checker.Process = NewProcessChecker().FromProcess(event.Process)
+		checker.Process = eventchecker.NewProcessChecker().FromProcess(event.Process)
 	}
 	if event.Parent != nil {
-		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.Protocol = stringmatcher.Full(event.Protocol)
 	checker.Direction = stringmatcher.Full(event.Direction)
@@ -3570,963 +3471,7 @@ func (checker *ProcessNetworkBurstChecker) FromProcessNetworkBurst(event *fgs.Pr
 	return checker
 }
 
-// ImageChecker checks a Image field
-type ImageChecker struct {
-	Id   *stringmatcher.StringMatcher `json:"id,omitempty"`
-	Name *stringmatcher.StringMatcher `json:"name,omitempty"`
-}
-
-// NewImageChecker creates a new ImageChecker
-func NewImageChecker() *ImageChecker {
-	return &ImageChecker{}
-}
-
-// Check checks a Image field
-func (checker *ImageChecker) Check(event *fgs.Image) error {
-	if event == nil {
-		return fmt.Errorf("ImageChecker: Image field is nil")
-	}
-
-	if checker.Id != nil {
-		if err := checker.Id.Match(event.Id); err != nil {
-			return fmt.Errorf("ImageChecker: Id check failed: %w", err)
-		}
-	}
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("ImageChecker: Name check failed: %w", err)
-		}
-	}
-	return nil
-}
-
-// WithId adds a Id check to the ImageChecker
-func (checker *ImageChecker) WithId(check *stringmatcher.StringMatcher) *ImageChecker {
-	checker.Id = check
-	return checker
-}
-
-// WithName adds a Name check to the ImageChecker
-func (checker *ImageChecker) WithName(check *stringmatcher.StringMatcher) *ImageChecker {
-	checker.Name = check
-	return checker
-}
-
-//FromImage populates the ImageChecker using data from a Image field
-func (checker *ImageChecker) FromImage(event *fgs.Image) *ImageChecker {
-	if event == nil {
-		return checker
-	}
-	checker.Id = stringmatcher.Full(event.Id)
-	checker.Name = stringmatcher.Full(event.Name)
-	return checker
-}
-
-// ContainerChecker checks a Container field
-type ContainerChecker struct {
-	Id             *stringmatcher.StringMatcher       `json:"id,omitempty"`
-	Name           *stringmatcher.StringMatcher       `json:"name,omitempty"`
-	Image          *ImageChecker                      `json:"image,omitempty"`
-	StartTime      *timestampmatcher.TimestampMatcher `json:"startTime,omitempty"`
-	Pid            *uint32                            `json:"pid,omitempty"`
-	MaybeExecProbe *bool                              `json:"maybeExecProbe,omitempty"`
-}
-
-// NewContainerChecker creates a new ContainerChecker
-func NewContainerChecker() *ContainerChecker {
-	return &ContainerChecker{}
-}
-
-// Check checks a Container field
-func (checker *ContainerChecker) Check(event *fgs.Container) error {
-	if event == nil {
-		return fmt.Errorf("ContainerChecker: Container field is nil")
-	}
-
-	if checker.Id != nil {
-		if err := checker.Id.Match(event.Id); err != nil {
-			return fmt.Errorf("ContainerChecker: Id check failed: %w", err)
-		}
-	}
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("ContainerChecker: Name check failed: %w", err)
-		}
-	}
-	if checker.Image != nil {
-		if err := checker.Image.Check(event.Image); err != nil {
-			return fmt.Errorf("ContainerChecker: Image check failed: %w", err)
-		}
-	}
-	if checker.StartTime != nil {
-		if err := checker.StartTime.Match(event.StartTime); err != nil {
-			return fmt.Errorf("ContainerChecker: StartTime check failed: %w", err)
-		}
-	}
-	if checker.Pid != nil {
-		if event.Pid == nil {
-			return fmt.Errorf("ContainerChecker: Pid is nil and does not match expected value %v", *checker.Pid)
-		}
-		if *checker.Pid != event.Pid.Value {
-			return fmt.Errorf("ContainerChecker: Pid has value %v which does not match expected value %v", event.Pid.Value, *checker.Pid)
-		}
-	}
-	if checker.MaybeExecProbe != nil {
-		if *checker.MaybeExecProbe != event.MaybeExecProbe {
-			return fmt.Errorf("ContainerChecker: MaybeExecProbe has value %t which does not match expected value %t", event.MaybeExecProbe, *checker.MaybeExecProbe)
-		}
-	}
-	return nil
-}
-
-// WithId adds a Id check to the ContainerChecker
-func (checker *ContainerChecker) WithId(check *stringmatcher.StringMatcher) *ContainerChecker {
-	checker.Id = check
-	return checker
-}
-
-// WithName adds a Name check to the ContainerChecker
-func (checker *ContainerChecker) WithName(check *stringmatcher.StringMatcher) *ContainerChecker {
-	checker.Name = check
-	return checker
-}
-
-// WithImage adds a Image check to the ContainerChecker
-func (checker *ContainerChecker) WithImage(check *ImageChecker) *ContainerChecker {
-	checker.Image = check
-	return checker
-}
-
-// WithStartTime adds a StartTime check to the ContainerChecker
-func (checker *ContainerChecker) WithStartTime(check *timestampmatcher.TimestampMatcher) *ContainerChecker {
-	checker.StartTime = check
-	return checker
-}
-
-// WithPid adds a Pid check to the ContainerChecker
-func (checker *ContainerChecker) WithPid(check uint32) *ContainerChecker {
-	checker.Pid = &check
-	return checker
-}
-
-// WithMaybeExecProbe adds a MaybeExecProbe check to the ContainerChecker
-func (checker *ContainerChecker) WithMaybeExecProbe(check bool) *ContainerChecker {
-	checker.MaybeExecProbe = &check
-	return checker
-}
-
-//FromContainer populates the ContainerChecker using data from a Container field
-func (checker *ContainerChecker) FromContainer(event *fgs.Container) *ContainerChecker {
-	if event == nil {
-		return checker
-	}
-	checker.Id = stringmatcher.Full(event.Id)
-	checker.Name = stringmatcher.Full(event.Name)
-	if event.Image != nil {
-		checker.Image = NewImageChecker().FromImage(event.Image)
-	}
-	// NB: We don't want to match timestamps for now
-	checker.StartTime = nil
-	if event.Pid != nil {
-		val := event.Pid.Value
-		checker.Pid = &val
-	}
-	{
-		val := event.MaybeExecProbe
-		checker.MaybeExecProbe = &val
-	}
-	return checker
-}
-
-// PodChecker checks a Pod field
-type PodChecker struct {
-	Namespace *stringmatcher.StringMatcher           `json:"namespace,omitempty"`
-	Name      *stringmatcher.StringMatcher           `json:"name,omitempty"`
-	Labels    map[string]stringmatcher.StringMatcher `json:"labels,omitempty"`
-	Container *ContainerChecker                      `json:"container,omitempty"`
-}
-
-// NewPodChecker creates a new PodChecker
-func NewPodChecker() *PodChecker {
-	return &PodChecker{}
-}
-
-// Check checks a Pod field
-func (checker *PodChecker) Check(event *fgs.Pod) error {
-	if event == nil {
-		return fmt.Errorf("PodChecker: Pod field is nil")
-	}
-
-	if checker.Namespace != nil {
-		if err := checker.Namespace.Match(event.Namespace); err != nil {
-			return fmt.Errorf("PodChecker: Namespace check failed: %w", err)
-		}
-	}
-	if checker.Name != nil {
-		if err := checker.Name.Match(event.Name); err != nil {
-			return fmt.Errorf("PodChecker: Name check failed: %w", err)
-		}
-	}
-	if len(checker.Labels) > 0 {
-		var unmatched []string
-		matched := make(map[string]struct{})
-		for _, s := range event.Labels {
-			// Split out key,value pair
-			kv := strings.SplitN(s, "=", 2)
-			if len(kv) != 2 {
-				// If we wanted to match an invalid label, error out
-				if _, ok := checker.Labels[s]; ok {
-					return fmt.Errorf("PodChecker: Label %s is in an invalid format (want key=value)", s)
-				}
-				continue
-			}
-			key := kv[0]
-			value := kv[1]
-
-			// Attempt to grab the matcher for this key
-			if matcher, ok := checker.Labels[key]; ok {
-				if err := matcher.Match(value); err != nil {
-					return fmt.Errorf("PodChecker: Label[%s] (%s=%s) check failed: %w", key, key, value, err)
-				}
-				matched[key] = struct{}{}
-			}
-		}
-
-		// See if we have any unmatched labels that we wanted to match
-		if len(matched) != len(checker.Labels) {
-			for k := range checker.Labels {
-				if _, ok := matched[k]; !ok {
-					unmatched = append(unmatched, k)
-				}
-			}
-			return fmt.Errorf("PodChecker: Labels unmatched: %v", unmatched)
-		}
-	}
-	if checker.Container != nil {
-		if err := checker.Container.Check(event.Container); err != nil {
-			return fmt.Errorf("PodChecker: Container check failed: %w", err)
-		}
-	}
-	return nil
-}
-
-// WithNamespace adds a Namespace check to the PodChecker
-func (checker *PodChecker) WithNamespace(check *stringmatcher.StringMatcher) *PodChecker {
-	checker.Namespace = check
-	return checker
-}
-
-// WithName adds a Name check to the PodChecker
-func (checker *PodChecker) WithName(check *stringmatcher.StringMatcher) *PodChecker {
-	checker.Name = check
-	return checker
-}
-
-// WithLabels adds a Labels check to the PodChecker
-func (checker *PodChecker) WithLabels(check map[string]stringmatcher.StringMatcher) *PodChecker {
-	checker.Labels = check
-	return checker
-}
-
-// WithContainer adds a Container check to the PodChecker
-func (checker *PodChecker) WithContainer(check *ContainerChecker) *PodChecker {
-	checker.Container = check
-	return checker
-}
-
-//FromPod populates the PodChecker using data from a Pod field
-func (checker *PodChecker) FromPod(event *fgs.Pod) *PodChecker {
-	if event == nil {
-		return checker
-	}
-	checker.Namespace = stringmatcher.Full(event.Namespace)
-	checker.Name = stringmatcher.Full(event.Name)
-	// TODO from labels
-	if event.Container != nil {
-		checker.Container = NewContainerChecker().FromContainer(event.Container)
-	}
-	return checker
-}
-
-// CapabilitiesChecker checks a Capabilities field
-type CapabilitiesChecker struct {
-	Permitted   *CapabilitiesTypeListMatcher `json:"permitted,omitempty"`
-	Effective   *CapabilitiesTypeListMatcher `json:"effective,omitempty"`
-	Inheritable *CapabilitiesTypeListMatcher `json:"inheritable,omitempty"`
-}
-
-// NewCapabilitiesChecker creates a new CapabilitiesChecker
-func NewCapabilitiesChecker() *CapabilitiesChecker {
-	return &CapabilitiesChecker{}
-}
-
-// Check checks a Capabilities field
-func (checker *CapabilitiesChecker) Check(event *fgs.Capabilities) error {
-	if event == nil {
-		return fmt.Errorf("CapabilitiesChecker: Capabilities field is nil")
-	}
-
-	if checker.Permitted != nil {
-		if err := checker.Permitted.Check(event.Permitted); err != nil {
-			return fmt.Errorf("CapabilitiesChecker: Permitted check failed: %w", err)
-		}
-	}
-	if checker.Effective != nil {
-		if err := checker.Effective.Check(event.Effective); err != nil {
-			return fmt.Errorf("CapabilitiesChecker: Effective check failed: %w", err)
-		}
-	}
-	if checker.Inheritable != nil {
-		if err := checker.Inheritable.Check(event.Inheritable); err != nil {
-			return fmt.Errorf("CapabilitiesChecker: Inheritable check failed: %w", err)
-		}
-	}
-	return nil
-}
-
-// WithPermitted adds a Permitted check to the CapabilitiesChecker
-func (checker *CapabilitiesChecker) WithPermitted(check *CapabilitiesTypeListMatcher) *CapabilitiesChecker {
-	checker.Permitted = check
-	return checker
-}
-
-// WithEffective adds a Effective check to the CapabilitiesChecker
-func (checker *CapabilitiesChecker) WithEffective(check *CapabilitiesTypeListMatcher) *CapabilitiesChecker {
-	checker.Effective = check
-	return checker
-}
-
-// WithInheritable adds a Inheritable check to the CapabilitiesChecker
-func (checker *CapabilitiesChecker) WithInheritable(check *CapabilitiesTypeListMatcher) *CapabilitiesChecker {
-	checker.Inheritable = check
-	return checker
-}
-
-//FromCapabilities populates the CapabilitiesChecker using data from a Capabilities field
-func (checker *CapabilitiesChecker) FromCapabilities(event *fgs.Capabilities) *CapabilitiesChecker {
-	if event == nil {
-		return checker
-	}
-	{
-		var checks []*CapabilitiesTypeChecker
-		for _, check := range event.Permitted {
-			var convertedCheck *CapabilitiesTypeChecker
-			convertedCheck = NewCapabilitiesTypeChecker(check)
-			checks = append(checks, convertedCheck)
-		}
-		lm := NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
-			WithValues(checks...)
-		checker.Permitted = lm
-	}
-	{
-		var checks []*CapabilitiesTypeChecker
-		for _, check := range event.Effective {
-			var convertedCheck *CapabilitiesTypeChecker
-			convertedCheck = NewCapabilitiesTypeChecker(check)
-			checks = append(checks, convertedCheck)
-		}
-		lm := NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
-			WithValues(checks...)
-		checker.Effective = lm
-	}
-	{
-		var checks []*CapabilitiesTypeChecker
-		for _, check := range event.Inheritable {
-			var convertedCheck *CapabilitiesTypeChecker
-			convertedCheck = NewCapabilitiesTypeChecker(check)
-			checks = append(checks, convertedCheck)
-		}
-		lm := NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
-			WithValues(checks...)
-		checker.Inheritable = lm
-	}
-	return checker
-}
-
-// CapabilitiesTypeListMatcher checks a list of fgs.CapabilitiesType fields
-type CapabilitiesTypeListMatcher struct {
-	Operator listmatcher.Operator       `json:"operator"`
-	Values   []*CapabilitiesTypeChecker `json:"values"`
-}
-
-// NewCapabilitiesTypeListMatcher creates a new CapabilitiesTypeListMatcher. The checker defaults to a subset checker unless otherwise specified using WithOperator()
-func NewCapabilitiesTypeListMatcher() *CapabilitiesTypeListMatcher {
-	return &CapabilitiesTypeListMatcher{
-		Operator: listmatcher.Subset,
-	}
-}
-
-// WithOperator sets the match kind for the CapabilitiesTypeListMatcher
-func (checker *CapabilitiesTypeListMatcher) WithOperator(operator listmatcher.Operator) *CapabilitiesTypeListMatcher {
-	checker.Operator = operator
-	return checker
-}
-
-// WithValues sets the checkers that the CapabilitiesTypeListMatcher should use
-func (checker *CapabilitiesTypeListMatcher) WithValues(values ...*CapabilitiesTypeChecker) *CapabilitiesTypeListMatcher {
-	checker.Values = values
-	return checker
-}
-
-// Check checks a list of fgs.CapabilitiesType fields
-func (checker *CapabilitiesTypeListMatcher) Check(values []fgs.CapabilitiesType) error {
-	switch checker.Operator {
-	case listmatcher.Ordered:
-		return checker.orderedCheck(values)
-	case listmatcher.Unordered:
-		return checker.unorderedCheck(values)
-	case listmatcher.Subset:
-		return checker.subsetCheck(values)
-	default:
-		return fmt.Errorf("Unhandled ListMatcher operator %s", checker.Operator)
-	}
-}
-
-// orderedCheck checks a list of ordered fgs.CapabilitiesType fields
-func (checker *CapabilitiesTypeListMatcher) orderedCheck(values []fgs.CapabilitiesType) error {
-	innerCheck := func(check *CapabilitiesTypeChecker, value fgs.CapabilitiesType) error {
-		if err := check.Check(&value); err != nil {
-			return fmt.Errorf("CapabilitiesTypeListMatcher: Permitted check failed: %w", err)
-		}
-		return nil
-	}
-
-	if len(checker.Values) != len(values) {
-		return fmt.Errorf("CapabilitiesTypeListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
-	}
-
-	for i, check := range checker.Values {
-		value := values[i]
-		if err := innerCheck(check, value); err != nil {
-			return fmt.Errorf("CapabilitiesTypeListMatcher: Check failed on element %d: %w", i, err)
-		}
-	}
-
-	return nil
-}
-
-// unorderedCheck checks a list of unordered fgs.CapabilitiesType fields
-func (checker *CapabilitiesTypeListMatcher) unorderedCheck(values []fgs.CapabilitiesType) error {
-	if len(checker.Values) != len(values) {
-		return fmt.Errorf("CapabilitiesTypeListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
-	}
-
-	return checker.subsetCheck(values)
-}
-
-// subsetCheck checks a subset of fgs.CapabilitiesType fields
-func (checker *CapabilitiesTypeListMatcher) subsetCheck(values []fgs.CapabilitiesType) error {
-	innerCheck := func(check *CapabilitiesTypeChecker, value fgs.CapabilitiesType) error {
-		if err := check.Check(&value); err != nil {
-			return fmt.Errorf("CapabilitiesTypeListMatcher: Permitted check failed: %w", err)
-		}
-		return nil
-	}
-
-	numDesired := len(checker.Values)
-	numMatched := 0
-
-nextCheck:
-	for _, check := range checker.Values {
-		for _, value := range values {
-			if err := innerCheck(check, value); err == nil {
-				numMatched += 1
-				continue nextCheck
-			}
-		}
-	}
-
-	if numMatched < numDesired {
-		return fmt.Errorf("CapabilitiesTypeListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
-	}
-
-	return nil
-}
-
-// NamespaceChecker checks a Namespace field
-type NamespaceChecker struct {
-	Inum   *uint32 `json:"inum,omitempty"`
-	IsHost *bool   `json:"isHost,omitempty"`
-}
-
-// NewNamespaceChecker creates a new NamespaceChecker
-func NewNamespaceChecker() *NamespaceChecker {
-	return &NamespaceChecker{}
-}
-
-// Check checks a Namespace field
-func (checker *NamespaceChecker) Check(event *fgs.Namespace) error {
-	if event == nil {
-		return fmt.Errorf("NamespaceChecker: Namespace field is nil")
-	}
-
-	if checker.Inum != nil {
-		if *checker.Inum != event.Inum {
-			return fmt.Errorf("NamespaceChecker: Inum has value %d which does not match expected value %d", event.Inum, *checker.Inum)
-		}
-	}
-	if checker.IsHost != nil {
-		if *checker.IsHost != event.IsHost {
-			return fmt.Errorf("NamespaceChecker: IsHost has value %t which does not match expected value %t", event.IsHost, *checker.IsHost)
-		}
-	}
-	return nil
-}
-
-// WithInum adds a Inum check to the NamespaceChecker
-func (checker *NamespaceChecker) WithInum(check uint32) *NamespaceChecker {
-	checker.Inum = &check
-	return checker
-}
-
-// WithIsHost adds a IsHost check to the NamespaceChecker
-func (checker *NamespaceChecker) WithIsHost(check bool) *NamespaceChecker {
-	checker.IsHost = &check
-	return checker
-}
-
-//FromNamespace populates the NamespaceChecker using data from a Namespace field
-func (checker *NamespaceChecker) FromNamespace(event *fgs.Namespace) *NamespaceChecker {
-	if event == nil {
-		return checker
-	}
-	{
-		val := event.Inum
-		checker.Inum = &val
-	}
-	{
-		val := event.IsHost
-		checker.IsHost = &val
-	}
-	return checker
-}
-
-// NamespacesChecker checks a Namespaces field
-type NamespacesChecker struct {
-	Uts             *NamespaceChecker `json:"uts,omitempty"`
-	Ipc             *NamespaceChecker `json:"ipc,omitempty"`
-	Mnt             *NamespaceChecker `json:"mnt,omitempty"`
-	Pid             *NamespaceChecker `json:"pid,omitempty"`
-	PidForChildren  *NamespaceChecker `json:"pidForChildren,omitempty"`
-	Net             *NamespaceChecker `json:"net,omitempty"`
-	Time            *NamespaceChecker `json:"time,omitempty"`
-	TimeForChildren *NamespaceChecker `json:"timeForChildren,omitempty"`
-	Cgroup          *NamespaceChecker `json:"cgroup,omitempty"`
-	User            *NamespaceChecker `json:"user,omitempty"`
-}
-
-// NewNamespacesChecker creates a new NamespacesChecker
-func NewNamespacesChecker() *NamespacesChecker {
-	return &NamespacesChecker{}
-}
-
-// Check checks a Namespaces field
-func (checker *NamespacesChecker) Check(event *fgs.Namespaces) error {
-	if event == nil {
-		return fmt.Errorf("NamespacesChecker: Namespaces field is nil")
-	}
-
-	if checker.Uts != nil {
-		if err := checker.Uts.Check(event.Uts); err != nil {
-			return fmt.Errorf("NamespacesChecker: Uts check failed: %w", err)
-		}
-	}
-	if checker.Ipc != nil {
-		if err := checker.Ipc.Check(event.Ipc); err != nil {
-			return fmt.Errorf("NamespacesChecker: Ipc check failed: %w", err)
-		}
-	}
-	if checker.Mnt != nil {
-		if err := checker.Mnt.Check(event.Mnt); err != nil {
-			return fmt.Errorf("NamespacesChecker: Mnt check failed: %w", err)
-		}
-	}
-	if checker.Pid != nil {
-		if err := checker.Pid.Check(event.Pid); err != nil {
-			return fmt.Errorf("NamespacesChecker: Pid check failed: %w", err)
-		}
-	}
-	if checker.PidForChildren != nil {
-		if err := checker.PidForChildren.Check(event.PidForChildren); err != nil {
-			return fmt.Errorf("NamespacesChecker: PidForChildren check failed: %w", err)
-		}
-	}
-	if checker.Net != nil {
-		if err := checker.Net.Check(event.Net); err != nil {
-			return fmt.Errorf("NamespacesChecker: Net check failed: %w", err)
-		}
-	}
-	if checker.Time != nil {
-		if err := checker.Time.Check(event.Time); err != nil {
-			return fmt.Errorf("NamespacesChecker: Time check failed: %w", err)
-		}
-	}
-	if checker.TimeForChildren != nil {
-		if err := checker.TimeForChildren.Check(event.TimeForChildren); err != nil {
-			return fmt.Errorf("NamespacesChecker: TimeForChildren check failed: %w", err)
-		}
-	}
-	if checker.Cgroup != nil {
-		if err := checker.Cgroup.Check(event.Cgroup); err != nil {
-			return fmt.Errorf("NamespacesChecker: Cgroup check failed: %w", err)
-		}
-	}
-	if checker.User != nil {
-		if err := checker.User.Check(event.User); err != nil {
-			return fmt.Errorf("NamespacesChecker: User check failed: %w", err)
-		}
-	}
-	return nil
-}
-
-// WithUts adds a Uts check to the NamespacesChecker
-func (checker *NamespacesChecker) WithUts(check *NamespaceChecker) *NamespacesChecker {
-	checker.Uts = check
-	return checker
-}
-
-// WithIpc adds a Ipc check to the NamespacesChecker
-func (checker *NamespacesChecker) WithIpc(check *NamespaceChecker) *NamespacesChecker {
-	checker.Ipc = check
-	return checker
-}
-
-// WithMnt adds a Mnt check to the NamespacesChecker
-func (checker *NamespacesChecker) WithMnt(check *NamespaceChecker) *NamespacesChecker {
-	checker.Mnt = check
-	return checker
-}
-
-// WithPid adds a Pid check to the NamespacesChecker
-func (checker *NamespacesChecker) WithPid(check *NamespaceChecker) *NamespacesChecker {
-	checker.Pid = check
-	return checker
-}
-
-// WithPidForChildren adds a PidForChildren check to the NamespacesChecker
-func (checker *NamespacesChecker) WithPidForChildren(check *NamespaceChecker) *NamespacesChecker {
-	checker.PidForChildren = check
-	return checker
-}
-
-// WithNet adds a Net check to the NamespacesChecker
-func (checker *NamespacesChecker) WithNet(check *NamespaceChecker) *NamespacesChecker {
-	checker.Net = check
-	return checker
-}
-
-// WithTime adds a Time check to the NamespacesChecker
-func (checker *NamespacesChecker) WithTime(check *NamespaceChecker) *NamespacesChecker {
-	checker.Time = check
-	return checker
-}
-
-// WithTimeForChildren adds a TimeForChildren check to the NamespacesChecker
-func (checker *NamespacesChecker) WithTimeForChildren(check *NamespaceChecker) *NamespacesChecker {
-	checker.TimeForChildren = check
-	return checker
-}
-
-// WithCgroup adds a Cgroup check to the NamespacesChecker
-func (checker *NamespacesChecker) WithCgroup(check *NamespaceChecker) *NamespacesChecker {
-	checker.Cgroup = check
-	return checker
-}
-
-// WithUser adds a User check to the NamespacesChecker
-func (checker *NamespacesChecker) WithUser(check *NamespaceChecker) *NamespacesChecker {
-	checker.User = check
-	return checker
-}
-
-//FromNamespaces populates the NamespacesChecker using data from a Namespaces field
-func (checker *NamespacesChecker) FromNamespaces(event *fgs.Namespaces) *NamespacesChecker {
-	if event == nil {
-		return checker
-	}
-	if event.Uts != nil {
-		checker.Uts = NewNamespaceChecker().FromNamespace(event.Uts)
-	}
-	if event.Ipc != nil {
-		checker.Ipc = NewNamespaceChecker().FromNamespace(event.Ipc)
-	}
-	if event.Mnt != nil {
-		checker.Mnt = NewNamespaceChecker().FromNamespace(event.Mnt)
-	}
-	if event.Pid != nil {
-		checker.Pid = NewNamespaceChecker().FromNamespace(event.Pid)
-	}
-	if event.PidForChildren != nil {
-		checker.PidForChildren = NewNamespaceChecker().FromNamespace(event.PidForChildren)
-	}
-	if event.Net != nil {
-		checker.Net = NewNamespaceChecker().FromNamespace(event.Net)
-	}
-	if event.Time != nil {
-		checker.Time = NewNamespaceChecker().FromNamespace(event.Time)
-	}
-	if event.TimeForChildren != nil {
-		checker.TimeForChildren = NewNamespaceChecker().FromNamespace(event.TimeForChildren)
-	}
-	if event.Cgroup != nil {
-		checker.Cgroup = NewNamespaceChecker().FromNamespace(event.Cgroup)
-	}
-	if event.User != nil {
-		checker.User = NewNamespaceChecker().FromNamespace(event.User)
-	}
-	return checker
-}
-
-// ProcessChecker checks a Process field
-type ProcessChecker struct {
-	ExecId       *stringmatcher.StringMatcher       `json:"execId,omitempty"`
-	Pid          *uint32                            `json:"pid,omitempty"`
-	Uid          *uint32                            `json:"uid,omitempty"`
-	Cwd          *stringmatcher.StringMatcher       `json:"cwd,omitempty"`
-	Binary       *stringmatcher.StringMatcher       `json:"binary,omitempty"`
-	Arguments    *stringmatcher.StringMatcher       `json:"arguments,omitempty"`
-	Flags        *stringmatcher.StringMatcher       `json:"flags,omitempty"`
-	StartTime    *timestampmatcher.TimestampMatcher `json:"startTime,omitempty"`
-	Auid         *uint32                            `json:"auid,omitempty"`
-	Pod          *PodChecker                        `json:"pod,omitempty"`
-	Docker       *stringmatcher.StringMatcher       `json:"docker,omitempty"`
-	ParentExecId *stringmatcher.StringMatcher       `json:"parentExecId,omitempty"`
-	Refcnt       *uint32                            `json:"refcnt,omitempty"`
-	Cap          *CapabilitiesChecker               `json:"cap,omitempty"`
-	Ns           *NamespacesChecker                 `json:"ns,omitempty"`
-}
-
-// NewProcessChecker creates a new ProcessChecker
-func NewProcessChecker() *ProcessChecker {
-	return &ProcessChecker{}
-}
-
-// Check checks a Process field
-func (checker *ProcessChecker) Check(event *fgs.Process) error {
-	if event == nil {
-		return fmt.Errorf("ProcessChecker: Process field is nil")
-	}
-
-	if checker.ExecId != nil {
-		if err := checker.ExecId.Match(event.ExecId); err != nil {
-			return fmt.Errorf("ProcessChecker: ExecId check failed: %w", err)
-		}
-	}
-	if checker.Pid != nil {
-		if event.Pid == nil {
-			return fmt.Errorf("ProcessChecker: Pid is nil and does not match expected value %v", *checker.Pid)
-		}
-		if *checker.Pid != event.Pid.Value {
-			return fmt.Errorf("ProcessChecker: Pid has value %v which does not match expected value %v", event.Pid.Value, *checker.Pid)
-		}
-	}
-	if checker.Uid != nil {
-		if event.Uid == nil {
-			return fmt.Errorf("ProcessChecker: Uid is nil and does not match expected value %v", *checker.Uid)
-		}
-		if *checker.Uid != event.Uid.Value {
-			return fmt.Errorf("ProcessChecker: Uid has value %v which does not match expected value %v", event.Uid.Value, *checker.Uid)
-		}
-	}
-	if checker.Cwd != nil {
-		if err := checker.Cwd.Match(event.Cwd); err != nil {
-			return fmt.Errorf("ProcessChecker: Cwd check failed: %w", err)
-		}
-	}
-	if checker.Binary != nil {
-		if err := checker.Binary.Match(event.Binary); err != nil {
-			return fmt.Errorf("ProcessChecker: Binary check failed: %w", err)
-		}
-	}
-	if checker.Arguments != nil {
-		if err := checker.Arguments.Match(event.Arguments); err != nil {
-			return fmt.Errorf("ProcessChecker: Arguments check failed: %w", err)
-		}
-	}
-	if checker.Flags != nil {
-		if err := checker.Flags.Match(event.Flags); err != nil {
-			return fmt.Errorf("ProcessChecker: Flags check failed: %w", err)
-		}
-	}
-	if checker.StartTime != nil {
-		if err := checker.StartTime.Match(event.StartTime); err != nil {
-			return fmt.Errorf("ProcessChecker: StartTime check failed: %w", err)
-		}
-	}
-	if checker.Auid != nil {
-		if event.Auid == nil {
-			return fmt.Errorf("ProcessChecker: Auid is nil and does not match expected value %v", *checker.Auid)
-		}
-		if *checker.Auid != event.Auid.Value {
-			return fmt.Errorf("ProcessChecker: Auid has value %v which does not match expected value %v", event.Auid.Value, *checker.Auid)
-		}
-	}
-	if checker.Pod != nil {
-		if err := checker.Pod.Check(event.Pod); err != nil {
-			return fmt.Errorf("ProcessChecker: Pod check failed: %w", err)
-		}
-	}
-	if checker.Docker != nil {
-		if err := checker.Docker.Match(event.Docker); err != nil {
-			return fmt.Errorf("ProcessChecker: Docker check failed: %w", err)
-		}
-	}
-	if checker.ParentExecId != nil {
-		if err := checker.ParentExecId.Match(event.ParentExecId); err != nil {
-			return fmt.Errorf("ProcessChecker: ParentExecId check failed: %w", err)
-		}
-	}
-	if checker.Refcnt != nil {
-		if *checker.Refcnt != event.Refcnt {
-			return fmt.Errorf("ProcessChecker: Refcnt has value %d which does not match expected value %d", event.Refcnt, *checker.Refcnt)
-		}
-	}
-	if checker.Cap != nil {
-		if err := checker.Cap.Check(event.Cap); err != nil {
-			return fmt.Errorf("ProcessChecker: Cap check failed: %w", err)
-		}
-	}
-	if checker.Ns != nil {
-		if err := checker.Ns.Check(event.Ns); err != nil {
-			return fmt.Errorf("ProcessChecker: Ns check failed: %w", err)
-		}
-	}
-	return nil
-}
-
-// WithExecId adds a ExecId check to the ProcessChecker
-func (checker *ProcessChecker) WithExecId(check *stringmatcher.StringMatcher) *ProcessChecker {
-	checker.ExecId = check
-	return checker
-}
-
-// WithPid adds a Pid check to the ProcessChecker
-func (checker *ProcessChecker) WithPid(check uint32) *ProcessChecker {
-	checker.Pid = &check
-	return checker
-}
-
-// WithUid adds a Uid check to the ProcessChecker
-func (checker *ProcessChecker) WithUid(check uint32) *ProcessChecker {
-	checker.Uid = &check
-	return checker
-}
-
-// WithCwd adds a Cwd check to the ProcessChecker
-func (checker *ProcessChecker) WithCwd(check *stringmatcher.StringMatcher) *ProcessChecker {
-	checker.Cwd = check
-	return checker
-}
-
-// WithBinary adds a Binary check to the ProcessChecker
-func (checker *ProcessChecker) WithBinary(check *stringmatcher.StringMatcher) *ProcessChecker {
-	checker.Binary = check
-	return checker
-}
-
-// WithArguments adds a Arguments check to the ProcessChecker
-func (checker *ProcessChecker) WithArguments(check *stringmatcher.StringMatcher) *ProcessChecker {
-	checker.Arguments = check
-	return checker
-}
-
-// WithFlags adds a Flags check to the ProcessChecker
-func (checker *ProcessChecker) WithFlags(check *stringmatcher.StringMatcher) *ProcessChecker {
-	checker.Flags = check
-	return checker
-}
-
-// WithStartTime adds a StartTime check to the ProcessChecker
-func (checker *ProcessChecker) WithStartTime(check *timestampmatcher.TimestampMatcher) *ProcessChecker {
-	checker.StartTime = check
-	return checker
-}
-
-// WithAuid adds a Auid check to the ProcessChecker
-func (checker *ProcessChecker) WithAuid(check uint32) *ProcessChecker {
-	checker.Auid = &check
-	return checker
-}
-
-// WithPod adds a Pod check to the ProcessChecker
-func (checker *ProcessChecker) WithPod(check *PodChecker) *ProcessChecker {
-	checker.Pod = check
-	return checker
-}
-
-// WithDocker adds a Docker check to the ProcessChecker
-func (checker *ProcessChecker) WithDocker(check *stringmatcher.StringMatcher) *ProcessChecker {
-	checker.Docker = check
-	return checker
-}
-
-// WithParentExecId adds a ParentExecId check to the ProcessChecker
-func (checker *ProcessChecker) WithParentExecId(check *stringmatcher.StringMatcher) *ProcessChecker {
-	checker.ParentExecId = check
-	return checker
-}
-
-// WithRefcnt adds a Refcnt check to the ProcessChecker
-func (checker *ProcessChecker) WithRefcnt(check uint32) *ProcessChecker {
-	checker.Refcnt = &check
-	return checker
-}
-
-// WithCap adds a Cap check to the ProcessChecker
-func (checker *ProcessChecker) WithCap(check *CapabilitiesChecker) *ProcessChecker {
-	checker.Cap = check
-	return checker
-}
-
-// WithNs adds a Ns check to the ProcessChecker
-func (checker *ProcessChecker) WithNs(check *NamespacesChecker) *ProcessChecker {
-	checker.Ns = check
-	return checker
-}
-
-//FromProcess populates the ProcessChecker using data from a Process field
-func (checker *ProcessChecker) FromProcess(event *fgs.Process) *ProcessChecker {
-	if event == nil {
-		return checker
-	}
-	checker.ExecId = stringmatcher.Full(event.ExecId)
-	if event.Pid != nil {
-		val := event.Pid.Value
-		checker.Pid = &val
-	}
-	if event.Uid != nil {
-		val := event.Uid.Value
-		checker.Uid = &val
-	}
-	checker.Cwd = stringmatcher.Full(event.Cwd)
-	checker.Binary = stringmatcher.Full(event.Binary)
-	checker.Arguments = stringmatcher.Full(event.Arguments)
-	checker.Flags = stringmatcher.Full(event.Flags)
-	// NB: We don't want to match timestamps for now
-	checker.StartTime = nil
-	if event.Auid != nil {
-		val := event.Auid.Value
-		checker.Auid = &val
-	}
-	if event.Pod != nil {
-		checker.Pod = NewPodChecker().FromPod(event.Pod)
-	}
-	checker.Docker = stringmatcher.Full(event.Docker)
-	checker.ParentExecId = stringmatcher.Full(event.ParentExecId)
-	{
-		val := event.Refcnt
-		checker.Refcnt = &val
-	}
-	if event.Cap != nil {
-		checker.Cap = NewCapabilitiesChecker().FromCapabilities(event.Cap)
-	}
-	if event.Ns != nil {
-		checker.Ns = NewNamespacesChecker().FromNamespaces(event.Ns)
-	}
-	return checker
-}
-
-// SocketStatsChecker checks a SocketStats field
+// SocketStatsChecker implements a checker struct to check a SocketStats field
 type SocketStatsChecker struct {
 	BytesSent        *uint64 `json:"bytesSent,omitempty"`
 	BytesReceived    *uint64 `json:"bytesReceived,omitempty"`
@@ -4776,7 +3721,7 @@ func (checker *SocketStatsChecker) FromSocketStats(event *fgs.SocketStats) *Sock
 	return checker
 }
 
-// KprobeSockChecker checks a KprobeSock field
+// KprobeSockChecker implements a checker struct to check a KprobeSock field
 type KprobeSockChecker struct {
 	Family   *stringmatcher.StringMatcher `json:"family,omitempty"`
 	Type     *stringmatcher.StringMatcher `json:"type,omitempty"`
@@ -4931,7 +3876,7 @@ func (checker *KprobeSockChecker) FromKprobeSock(event *fgs.KprobeSock) *KprobeS
 	return checker
 }
 
-// KprobeSkbChecker checks a KprobeSkb field
+// KprobeSkbChecker implements a checker struct to check a KprobeSkb field
 type KprobeSkbChecker struct {
 	Hash        *uint32                      `json:"hash,omitempty"`
 	Len         *uint32                      `json:"len,omitempty"`
@@ -5127,7 +4072,7 @@ func (checker *KprobeSkbChecker) FromKprobeSkb(event *fgs.KprobeSkb) *KprobeSkbC
 	return checker
 }
 
-// KprobePathChecker checks a KprobePath field
+// KprobePathChecker implements a checker struct to check a KprobePath field
 type KprobePathChecker struct {
 	Mount *stringmatcher.StringMatcher `json:"mount,omitempty"`
 	Path  *stringmatcher.StringMatcher `json:"path,omitempty"`
@@ -5192,7 +4137,7 @@ func (checker *KprobePathChecker) FromKprobePath(event *fgs.KprobePath) *KprobeP
 	return checker
 }
 
-// KprobeFileChecker checks a KprobeFile field
+// KprobeFileChecker implements a checker struct to check a KprobeFile field
 type KprobeFileChecker struct {
 	Mount *stringmatcher.StringMatcher `json:"mount,omitempty"`
 	Path  *stringmatcher.StringMatcher `json:"path,omitempty"`
@@ -5257,7 +4202,7 @@ func (checker *KprobeFileChecker) FromKprobeFile(event *fgs.KprobeFile) *KprobeF
 	return checker
 }
 
-// KprobeTruncatedBytesChecker checks a KprobeTruncatedBytes field
+// KprobeTruncatedBytesChecker implements a checker struct to check a KprobeTruncatedBytes field
 type KprobeTruncatedBytesChecker struct {
 	BytesArg *bytesmatcher.BytesMatcher `json:"bytesArg,omitempty"`
 	OrigSize *uint64                    `json:"origSize,omitempty"`
@@ -5312,11 +4257,11 @@ func (checker *KprobeTruncatedBytesChecker) FromKprobeTruncatedBytes(event *fgs.
 	return checker
 }
 
-// KprobeCredChecker checks a KprobeCred field
+// KprobeCredChecker implements a checker struct to check a KprobeCred field
 type KprobeCredChecker struct {
-	Permitted   *CapabilitiesTypeListMatcher `json:"permitted,omitempty"`
-	Effective   *CapabilitiesTypeListMatcher `json:"effective,omitempty"`
-	Inheritable *CapabilitiesTypeListMatcher `json:"inheritable,omitempty"`
+	Permitted   *eventchecker.CapabilitiesTypeListMatcher `json:"permitted,omitempty"`
+	Effective   *eventchecker.CapabilitiesTypeListMatcher `json:"effective,omitempty"`
+	Inheritable *eventchecker.CapabilitiesTypeListMatcher `json:"inheritable,omitempty"`
 }
 
 // NewKprobeCredChecker creates a new KprobeCredChecker
@@ -5349,19 +4294,19 @@ func (checker *KprobeCredChecker) Check(event *fgs.KprobeCred) error {
 }
 
 // WithPermitted adds a Permitted check to the KprobeCredChecker
-func (checker *KprobeCredChecker) WithPermitted(check *CapabilitiesTypeListMatcher) *KprobeCredChecker {
+func (checker *KprobeCredChecker) WithPermitted(check *eventchecker.CapabilitiesTypeListMatcher) *KprobeCredChecker {
 	checker.Permitted = check
 	return checker
 }
 
 // WithEffective adds a Effective check to the KprobeCredChecker
-func (checker *KprobeCredChecker) WithEffective(check *CapabilitiesTypeListMatcher) *KprobeCredChecker {
+func (checker *KprobeCredChecker) WithEffective(check *eventchecker.CapabilitiesTypeListMatcher) *KprobeCredChecker {
 	checker.Effective = check
 	return checker
 }
 
 // WithInheritable adds a Inheritable check to the KprobeCredChecker
-func (checker *KprobeCredChecker) WithInheritable(check *CapabilitiesTypeListMatcher) *KprobeCredChecker {
+func (checker *KprobeCredChecker) WithInheritable(check *eventchecker.CapabilitiesTypeListMatcher) *KprobeCredChecker {
 	checker.Inheritable = check
 	return checker
 }
@@ -5372,42 +4317,42 @@ func (checker *KprobeCredChecker) FromKprobeCred(event *fgs.KprobeCred) *KprobeC
 		return checker
 	}
 	{
-		var checks []*CapabilitiesTypeChecker
+		var checks []*eventchecker.CapabilitiesTypeChecker
 		for _, check := range event.Permitted {
-			var convertedCheck *CapabilitiesTypeChecker
-			convertedCheck = NewCapabilitiesTypeChecker(check)
+			var convertedCheck *eventchecker.CapabilitiesTypeChecker
+			convertedCheck = eventchecker.NewCapabilitiesTypeChecker(check)
 			checks = append(checks, convertedCheck)
 		}
-		lm := NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
+		lm := eventchecker.NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Permitted = lm
 	}
 	{
-		var checks []*CapabilitiesTypeChecker
+		var checks []*eventchecker.CapabilitiesTypeChecker
 		for _, check := range event.Effective {
-			var convertedCheck *CapabilitiesTypeChecker
-			convertedCheck = NewCapabilitiesTypeChecker(check)
+			var convertedCheck *eventchecker.CapabilitiesTypeChecker
+			convertedCheck = eventchecker.NewCapabilitiesTypeChecker(check)
 			checks = append(checks, convertedCheck)
 		}
-		lm := NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
+		lm := eventchecker.NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Effective = lm
 	}
 	{
-		var checks []*CapabilitiesTypeChecker
+		var checks []*eventchecker.CapabilitiesTypeChecker
 		for _, check := range event.Inheritable {
-			var convertedCheck *CapabilitiesTypeChecker
-			convertedCheck = NewCapabilitiesTypeChecker(check)
+			var convertedCheck *eventchecker.CapabilitiesTypeChecker
+			convertedCheck = eventchecker.NewCapabilitiesTypeChecker(check)
 			checks = append(checks, convertedCheck)
 		}
-		lm := NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
+		lm := eventchecker.NewCapabilitiesTypeListMatcher().WithOperator(listmatcher.Ordered).
 			WithValues(checks...)
 		checker.Inheritable = lm
 	}
 	return checker
 }
 
-// KprobeArgumentChecker checks a KprobeArgument field
+// KprobeArgumentChecker implements a checker struct to check a KprobeArgument field
 type KprobeArgumentChecker struct {
 	StringArg         *stringmatcher.StringMatcher `json:"stringArg,omitempty"`
 	IntArg            *int32                       `json:"intArg,omitempty"`
@@ -5641,7 +4586,7 @@ func (checker *KprobeArgumentChecker) FromKprobeArgument(event *fgs.KprobeArgume
 	return checker
 }
 
-// SockInfoChecker checks a SockInfo field
+// SockInfoChecker implements a checker struct to check a SockInfo field
 type SockInfoChecker struct {
 	SourceIp         *stringmatcher.StringMatcher `json:"sourceIp,omitempty"`
 	SourcePort       *uint32                      `json:"sourcePort,omitempty"`
@@ -5650,7 +4595,7 @@ type SockInfoChecker struct {
 	SockCookie       *uint64                      `json:"sockCookie,omitempty"`
 	Protocol         *SocketProtocolChecker       `json:"protocol,omitempty"`
 	DestinationNames *StringListMatcher           `json:"destinationNames,omitempty"`
-	DestinationPod   *PodChecker                  `json:"destinationPod,omitempty"`
+	DestinationPod   *eventchecker.PodChecker     `json:"destinationPod,omitempty"`
 }
 
 // NewSockInfoChecker creates a new SockInfoChecker
@@ -5757,7 +4702,7 @@ func (checker *SockInfoChecker) WithDestinationNames(check *StringListMatcher) *
 }
 
 // WithDestinationPod adds a DestinationPod check to the SockInfoChecker
-func (checker *SockInfoChecker) WithDestinationPod(check *PodChecker) *SockInfoChecker {
+func (checker *SockInfoChecker) WithDestinationPod(check *eventchecker.PodChecker) *SockInfoChecker {
 	checker.DestinationPod = check
 	return checker
 }
@@ -5794,12 +4739,12 @@ func (checker *SockInfoChecker) FromSockInfo(event *fgs.SockInfo) *SockInfoCheck
 		checker.DestinationNames = lm
 	}
 	if event.DestinationPod != nil {
-		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+		checker.DestinationPod = eventchecker.NewPodChecker().FromPod(event.DestinationPod)
 	}
 	return checker
 }
 
-// HttpHeaderChecker checks a HttpHeader field
+// HttpHeaderChecker implements a checker struct to check a HttpHeader field
 type HttpHeaderChecker struct {
 	Name  *stringmatcher.StringMatcher `json:"name,omitempty"`
 	Value *stringmatcher.StringMatcher `json:"value,omitempty"`
@@ -5851,7 +4796,7 @@ func (checker *HttpHeaderChecker) FromHttpHeader(event *fgs.HttpHeader) *HttpHea
 	return checker
 }
 
-// HttpRequestChecker checks a HttpRequest field
+// HttpRequestChecker implements a checker struct to check a HttpRequest field
 type HttpRequestChecker struct {
 	Timestamp        *timestampmatcher.TimestampMatcher `json:"timestamp,omitempty"`
 	Method           *stringmatcher.StringMatcher       `json:"method,omitempty"`
@@ -6126,7 +5071,7 @@ nextCheck:
 	return nil
 }
 
-// HttpResponseChecker checks a HttpResponse field
+// HttpResponseChecker implements a checker struct to check a HttpResponse field
 type HttpResponseChecker struct {
 	Timestamp        *timestampmatcher.TimestampMatcher `json:"timestamp,omitempty"`
 	Version          *stringmatcher.StringMatcher       `json:"version,omitempty"`
@@ -6278,7 +5223,7 @@ func (checker *HttpResponseChecker) FromHttpResponse(event *fgs.HttpResponse) *H
 	return checker
 }
 
-// HttpInfoChecker checks a HttpInfo field
+// HttpInfoChecker implements a checker struct to check a HttpInfo field
 type HttpInfoChecker struct {
 	Request  *HttpRequestChecker              `json:"request,omitempty"`
 	Response *HttpResponseChecker             `json:"response,omitempty"`
@@ -6348,7 +5293,7 @@ func (checker *HttpInfoChecker) FromHttpInfo(event *fgs.HttpInfo) *HttpInfoCheck
 	return checker
 }
 
-// DnsInfoChecker checks a DnsInfo field
+// DnsInfoChecker implements a checker struct to check a DnsInfo field
 type DnsInfoChecker struct {
 	QuestionTypes *Uint32ListMatcher           `json:"questionTypes,omitempty"`
 	AnswerTypes   *Uint32ListMatcher           `json:"answerTypes,omitempty"`
@@ -6815,58 +5760,6 @@ func (enum *TlsCertificateErrorChecker) Check(val *fgs.TlsCertificateError) erro
 	}
 	if *enum != TlsCertificateErrorChecker(*val) {
 		return fmt.Errorf("TlsCertificateErrorChecker: TlsCertificateError has value %s which does not match expected value %s", (*val), fgs.TlsCertificateError(*enum))
-	}
-	return nil
-}
-
-// CapabilitiesTypeChecker checks a fgs.CapabilitiesType
-type CapabilitiesTypeChecker fgs.CapabilitiesType
-
-// MarshalJSON implements json.Marshaler interface
-func (enum CapabilitiesTypeChecker) MarshalJSON() ([]byte, error) {
-	if name, ok := fgs.CapabilitiesType_name[int32(enum)]; ok {
-		name = strings.TrimPrefix(name, "CAP_")
-		return json.Marshal(name)
-	}
-
-	return nil, fmt.Errorf("Unknown CapabilitiesType %d", enum)
-}
-
-// UnmarshalJSON implements json.Unmarshaler interface
-func (enum *CapabilitiesTypeChecker) UnmarshalJSON(b []byte) error {
-	var str string
-	if err := yaml.UnmarshalStrict(b, &str); err != nil {
-		return err
-	}
-
-	// Convert to uppercase if not already
-	str = strings.ToUpper(str)
-
-	// Look up the value from the enum values map
-	if n, ok := fgs.CapabilitiesType_value[str]; ok {
-		*enum = CapabilitiesTypeChecker(n)
-	} else if n, ok := fgs.CapabilitiesType_value["CAP_"+str]; ok {
-		*enum = CapabilitiesTypeChecker(n)
-	} else {
-		return fmt.Errorf("Unknown CapabilitiesType %s", str)
-	}
-
-	return nil
-}
-
-// NewCapabilitiesTypeChecker creates a new CapabilitiesTypeChecker
-func NewCapabilitiesTypeChecker(val fgs.CapabilitiesType) *CapabilitiesTypeChecker {
-	enum := CapabilitiesTypeChecker(val)
-	return &enum
-}
-
-// Check checks a CapabilitiesType against the checker
-func (enum *CapabilitiesTypeChecker) Check(val *fgs.CapabilitiesType) error {
-	if val == nil {
-		return fmt.Errorf("CapabilitiesTypeChecker: CapabilitiesType is nil and does not match expected value %s", fgs.CapabilitiesType(*enum))
-	}
-	if *enum != CapabilitiesTypeChecker(*val) {
-		return fmt.Errorf("CapabilitiesTypeChecker: CapabilitiesType has value %s which does not match expected value %s", (*val), fgs.CapabilitiesType(*enum))
 	}
 	return nil
 }

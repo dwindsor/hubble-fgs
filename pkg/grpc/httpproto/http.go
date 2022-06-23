@@ -5,6 +5,7 @@ import (
 	"time"
 
 	"github.com/cilium/hubble/pkg/cilium"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -33,7 +34,7 @@ type Grpc struct {
 }
 
 func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
-	var proc *fgs.Process
+	var proc *tetragon.Process
 	var code uint32
 	var err error
 

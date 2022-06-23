@@ -3,6 +3,7 @@ package execAncestors
 import (
 	"strings"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	fgsAPI "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -29,7 +30,7 @@ type Grpc struct {
 }
 
 // getAncestors builds an ancestor list by traversing the parent exec IDs.
-func getAncestors(proc *fgs.Process) []*process.ProcessInternal {
+func getAncestors(proc *tetragon.Process) []*process.ProcessInternal {
 	var ancestors []*process.ProcessInternal
 	for parentExecID := proc.ParentExecId; parentExecID != ""; {
 		entry, err := process.Get(parentExecID)
@@ -48,7 +49,7 @@ func (e *Grpc) GetProcessExec(
 	proc *process.ProcessInternal,
 ) *fgs.ProcessExec {
 	var parent *process.ProcessInternal
-	var fgsAncestors []*fgs.Process
+	var fgsAncestors []*tetragon.Process
 
 	ancestors := getAncestors(proc.UnsafeGetProcess())
 	if len(ancestors) >= 1 {
@@ -59,7 +60,7 @@ func (e *Grpc) GetProcessExec(
 			a.RefInc()
 		}
 	}
-	var fgsParent, fgsProcess *fgs.Process
+	var fgsParent, fgsProcess *tetragon.Process
 
 	// Set the cap field only if --enable-process-cred flag is set.
 	proc.AnnotateProcess(e.enableCred, e.enableNs)
@@ -75,7 +76,7 @@ func (e *Grpc) GetProcessExec(
 		if fgsProcess.Docker != "" &&
 			fgsProcess.Pod == nil &&
 			a.UnsafeGetProcess().Pod != nil {
-			pod := proto.Clone(a.UnsafeGetProcess().Pod).(*fgs.Pod)
+			pod := proto.Clone(a.UnsafeGetProcess().Pod).(*tetragon.Pod)
 			proc.AddPodInfo(pod)
 		}
 		fgsAncestors = append(fgsAncestors, a.UnsafeGetProcess())
@@ -136,14 +137,14 @@ func (e *Grpc) HandleCloneMessage(msg *fgsAPI.MsgCloneEventUnix) {
 
 // GetProcessExit returns Exit protobuf message for a given process.
 func (e *Grpc) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
-	var fgsProcess, fgsParent *fgs.Process
+	var fgsProcess, fgsParent *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		process.RefDec()
 		fgsProcess = process.UnsafeGetProcess()
 	} else {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}

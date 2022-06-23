@@ -20,6 +20,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
@@ -131,15 +132,15 @@ func TestExporter_Send(t *testing.T) {
 	exporter.Start()
 	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessConnect{
-			ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Binary: "a"}},
+			ProcessConnect: &fgs.ProcessConnect{Process: &tetragon.Process{Binary: "a"}},
 		}})
 	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessExec{
-			ProcessExec: &fgs.ProcessExec{Process: &fgs.Process{Binary: "b"}},
+			ProcessExec: &fgs.ProcessExec{Process: &tetragon.Process{Binary: "b"}},
 		}})
 	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessListen{
-			ProcessListen: &fgs.ProcessListen{Process: &fgs.Process{Binary: "c"}},
+			ProcessListen: &fgs.ProcessListen{Process: &tetragon.Process{Binary: "c"}},
 		}})
 	<-results.done
 	assert.Equal(t, []string{`{"process_connect":{"process":{"binary":"a"}}}`, `{"process_listen":{"process":{"binary":"c"}}}`}, results.items)
@@ -239,7 +240,7 @@ func Test_rateLimitExport(t *testing.T) {
 			for i := 0; i < tt.totalEvents; i++ {
 				eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 					Event: &fgs.GetEventsResponse_ProcessConnect{
-						ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Binary: fmt.Sprintf("a%d", i)}},
+						ProcessConnect: &fgs.ProcessConnect{Process: &tetragon.Process{Binary: fmt.Sprintf("a%d", i)}},
 					}})
 			}
 

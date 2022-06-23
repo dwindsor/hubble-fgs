@@ -85,6 +85,41 @@ func Logger(g *protogen.GeneratedFile) string {
 	return fmt.Sprintf("%s()", GoIdent(g, "github.com/cilium/tetragon/pkg/logger", "GetLogger"))
 }
 
+func ProcessIdent(g *protogen.GeneratedFile) string {
+	importPath := filepath.Join("github.com/cilium/tetragon/api/v1/tetragon")
+	return GoIdent(g, importPath, "Process")
+}
+
+func ListMatcherIdent(g *protogen.GeneratedFile, name string) string {
+	importPath := filepath.Join("github.com/cilium/tetragon/pkg/matchers/listmatcher")
+	return GoIdent(g, importPath, name)
+}
+
+func StringMatcherIdent(g *protogen.GeneratedFile, name string) string {
+	importPath := filepath.Join("github.com/cilium/tetragon/pkg/matchers/stringmatcher")
+	return GoIdent(g, importPath, name)
+}
+
+func BytesMatcherIdent(g *protogen.GeneratedFile, name string) string {
+	importPath := filepath.Join("github.com/cilium/tetragon/pkg/matchers/bytesmatcher")
+	return GoIdent(g, importPath, name)
+}
+
+func DurationMatcherIdent(g *protogen.GeneratedFile, name string) string {
+	importPath := filepath.Join("github.com/cilium/tetragon/pkg/matchers/durationmatcher")
+	return GoIdent(g, importPath, name)
+}
+
+func TimestampMatcherIdent(g *protogen.GeneratedFile, name string) string {
+	importPath := filepath.Join("github.com/cilium/tetragon/pkg/matchers/timestampmatcher")
+	return GoIdent(g, importPath, name)
+}
+
+func PkgProcessIdent(g *protogen.GeneratedFile, name string) string {
+	importPath := filepath.Join("github.com/cilium/tetragon/pkg/process")
+	return GoIdent(g, importPath, name)
+}
+
 // FmtErrorf is a convenience helper that generates a call to fmt.Errorf
 func FmtErrorf(g *protogen.GeneratedFile, fmt_ string, args ...string) string {
 	args = append([]string{fmt.Sprintf("\"%s\"", fmt_)}, args...)

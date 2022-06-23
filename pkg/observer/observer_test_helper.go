@@ -30,6 +30,7 @@ import (
 	// This needs to be first to be first in order to force oss consts to be fixed up
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
@@ -209,7 +210,7 @@ func createFakeWatcher(testPod, testNamespace string) *fakeK8sWatcher {
 
 			return &pod, &container, true
 		},
-		OnGetPodInfo: func(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint) {
+		OnGetPodInfo: func(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
 			return nil, nil
 		},
 	}
@@ -478,7 +479,7 @@ func DockerRun(t *testing.T, args ...string) (containerId string) {
 
 type fakeK8sWatcher struct {
 	OnFindPod    func(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool)
-	OnGetPodInfo func(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint)
+	OnGetPodInfo func(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint)
 }
 
 func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
@@ -488,7 +489,7 @@ func (f *fakeK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 	return f.OnFindPod(containerID)
 }
 
-func (f *fakeK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint) {
+func (f *fakeK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
 	if f.OnGetPodInfo == nil {
 		panic("GetPodInfo not implemented")
 	}

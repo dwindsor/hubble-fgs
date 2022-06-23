@@ -16,6 +16,7 @@ import (
 	"testing"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -23,27 +24,27 @@ import (
 
 func Test_canBeHealthCheck(t *testing.T) {
 	assert.False(t, canBeHealthCheck(nil))
-	assert.False(t, canBeHealthCheck(&fgs.Process{
+	assert.False(t, canBeHealthCheck(&tetragon.Process{
 		Binary:    "myprogram",
 		Arguments: "arg-a arg-b argc",
 	}))
-	assert.False(t, canBeHealthCheck(&fgs.Process{
+	assert.False(t, canBeHealthCheck(&tetragon.Process{
 		Binary:    "myprogram",
 		Arguments: "arg-a arg-b argc",
-		Pod:       &fgs.Pod{},
+		Pod:       &tetragon.Pod{},
 	}))
-	assert.False(t, canBeHealthCheck(&fgs.Process{
+	assert.False(t, canBeHealthCheck(&tetragon.Process{
 		Binary:    "myprogram",
 		Arguments: "arg-a arg-b argc",
-		Pod: &fgs.Pod{
-			Container: &fgs.Container{},
+		Pod: &tetragon.Pod{
+			Container: &tetragon.Container{},
 		},
 	}))
-	assert.True(t, canBeHealthCheck(&fgs.Process{
+	assert.True(t, canBeHealthCheck(&tetragon.Process{
 		Binary:    "myprogram",
 		Arguments: "arg-a arg-b argc",
-		Pod: &fgs.Pod{
-			Container: &fgs.Container{
+		Pod: &tetragon.Pod{
+			Container: &tetragon.Container{
 				MaybeExecProbe: true,
 			},
 		},
@@ -77,7 +78,7 @@ func Test_healthCheckFilter(t *testing.T) {
 	process := v1.Event{
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Pod: &fgs.Pod{Container: &fgs.Container{
+				ProcessConnect: &fgs.ProcessConnect{Process: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{
 					MaybeExecProbe: true,
 				}}}},
 			},
@@ -86,7 +87,7 @@ func Test_healthCheckFilter(t *testing.T) {
 	parent := v1.Event{
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{Parent: &fgs.Process{Pod: &fgs.Pod{Container: &fgs.Container{
+				ProcessConnect: &fgs.ProcessConnect{Parent: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{
 					MaybeExecProbe: true,
 				}}}},
 			},
@@ -95,7 +96,7 @@ func Test_healthCheckFilter(t *testing.T) {
 	neither := v1.Event{
 		Event: &fgs.GetEventsResponse{
 			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{Process: &fgs.Process{Pod: &fgs.Pod{Container: &fgs.Container{}}}},
+				ProcessConnect: &fgs.ProcessConnect{Process: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{}}}},
 			},
 		},
 	}

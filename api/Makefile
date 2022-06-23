@@ -13,6 +13,7 @@ proto: v1
 v1:
 	docker container run --rm \
 		--volume $(CURDIR)/v1:/src \
+		--volume $(CURDIR)/../modules/tetragon-oss/api/v1/tetragon:/tetragon \
 		--user "$(shell id -u):$(shell id -g)" \
 		$(BUILDER_IMAGE) \
 		make -C /src -f Makefile.protoc
@@ -21,6 +22,7 @@ v1:
 doc:
 	docker container run --rm \
 		--volume $(CURDIR)/v1:/out \
-		--volume $(CURDIR)/v1/fgs:/protos \
+		--volume $(CURDIR)/v1/fgs/fgs.proto:/protos/fgs.proto \
+		--volume $(CURDIR)/../modules/tetragon-oss/api/v1/tetragon/tetragon.proto:/protos/tetragon.proto \
 		pseudomuto/protoc-gen-doc:1.5.0 \
 		--doc_opt=markdown,README.md

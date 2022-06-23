@@ -22,6 +22,7 @@ import (
 	"sync"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
@@ -84,7 +85,7 @@ func (r *raceK8sWatcher) FindPod(containerID string) (*corev1.Pod, *corev1.Conta
 	return nil, nil, false
 }
 
-func (r *raceK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint) {
+func (r *raceK8sWatcher) GetPodInfo(containerID, binary, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
 	return nil, nil
 }
 

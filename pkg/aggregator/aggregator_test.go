@@ -18,6 +18,7 @@ import (
 	"context"
 	"testing"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
@@ -34,7 +35,7 @@ func Test_connectEventBasic(t *testing.T) {
 	agg, err := NewAggregator(&mock, &options)
 	assert.NoError(t, err)
 	connectA := fgs.ProcessConnect{
-		Process: &fgs.Process{
+		Process: &tetragon.Process{
 			ExecId: "abcd",
 		},
 		Parent:           nil,
@@ -66,7 +67,7 @@ func Test_acceptEventBasic(t *testing.T) {
 	agg, err := NewAggregator(&mock, &options)
 	assert.NoError(t, err)
 	acceptA := fgs.ProcessAccept{
-		Process: &fgs.Process{
+		Process: &tetragon.Process{
 			ExecId: "abcd",
 		},
 		Parent:           nil,

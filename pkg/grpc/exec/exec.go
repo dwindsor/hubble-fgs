@@ -3,6 +3,7 @@ package exec
 import (
 	"strings"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	fgsAPI "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -31,7 +32,7 @@ type Grpc struct {
 func (e *Grpc) GetProcessExec(
 	proc *process.ProcessInternal,
 ) *fgs.ProcessExec {
-	var fgsParent *fgs.Process
+	var fgsParent *tetragon.Process
 
 	fgsProcess := proc.UnsafeGetProcess()
 
@@ -98,14 +99,14 @@ func (e *Grpc) HandleCloneMessage(msg *fgsAPI.MsgCloneEventUnix) {
 
 // GetProcessExit returns Exit protobuf message for a given process.
 func (e *Grpc) GetProcessExit(event *fgsAPI.MsgExitEventUnix) *fgs.ProcessExit {
-	var fgsProcess, fgsParent *fgs.Process
+	var fgsProcess, fgsParent *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
 		process.RefDec()
 		fgsProcess = process.UnsafeGetProcess()
 	} else {
-		fgsProcess = &fgs.Process{
+		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}

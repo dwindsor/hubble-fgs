@@ -19,6 +19,7 @@ import (
 
 	"google.golang.org/protobuf/types/known/durationpb"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -47,7 +48,7 @@ func TestCompactEncoder_ExecEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessExec{
 			ProcessExec: &fgs.ProcessExec{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
 				},
@@ -62,10 +63,10 @@ func TestCompactEncoder_ExecEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessExec{
 			ProcessExec: &fgs.ProcessExec{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -92,7 +93,7 @@ func TestCompactEncoder_ConnectEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessConnect{
 			ProcessConnect: &fgs.ProcessConnect{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				SourceIp:      "1.2.3.4",
@@ -109,9 +110,9 @@ func TestCompactEncoder_ConnectEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessConnect{
 			ProcessConnect: &fgs.ProcessConnect{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
-					Pod:    &fgs.Pod{Namespace: "my-ns", Name: "my-pod"},
+					Pod:    &tetragon.Pod{Namespace: "my-ns", Name: "my-pod"},
 				},
 				SourceIp:         "1.2.3.4",
 				SourcePort:       &wrapperspb.UInt32Value{Value: 56789},
@@ -141,7 +142,7 @@ func TestCompactEncoder_AcceptEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessAccept{
 			ProcessAccept: &fgs.ProcessAccept{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
 				SourceIp:      "1.2.3.4",
@@ -158,9 +159,9 @@ func TestCompactEncoder_AcceptEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessAccept{
 			ProcessAccept: &fgs.ProcessAccept{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
-					Pod:    &fgs.Pod{Namespace: "my-ns", Name: "my-pod"},
+					Pod:    &tetragon.Pod{Namespace: "my-ns", Name: "my-pod"},
 				},
 				SourceIp:         "1.2.3.4",
 				SourcePort:       &wrapperspb.UInt32Value{Value: 80},
@@ -190,7 +191,7 @@ func TestCompactEncoder_ListenEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessListen{
 			ProcessListen: &fgs.ProcessListen{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
 				Ip:       "0.0.0.0",
@@ -206,9 +207,9 @@ func TestCompactEncoder_ListenEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessListen{
 			ProcessListen: &fgs.ProcessListen{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
-					Pod:    &fgs.Pod{Namespace: "my-ns", Name: "my-pod"},
+					Pod:    &tetragon.Pod{Namespace: "my-ns", Name: "my-pod"},
 				},
 				Ip:       "0.0.0.0",
 				Port:     &wrapperspb.UInt32Value{Value: 80},
@@ -235,7 +236,7 @@ func TestCompactEncoder_CloseEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessClose{
 			ProcessClose: &fgs.ProcessClose{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
 				SourceIp:      "1.2.3.4",
@@ -253,9 +254,9 @@ func TestCompactEncoder_CloseEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessClose{
 			ProcessClose: &fgs.ProcessClose{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
-					Pod:    &fgs.Pod{Namespace: "my-ns", Name: "my-pod"},
+					Pod:    &tetragon.Pod{Namespace: "my-ns", Name: "my-pod"},
 				},
 				SourceIp:        "1.2.3.4",
 				SourcePort:      &wrapperspb.UInt32Value{Value: 56789},
@@ -288,7 +289,7 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 	_, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessSockStats{
 			ProcessSockStats: &fgs.ProcessSockStats{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
 			},
@@ -301,7 +302,7 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 	_, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessSockStats{
 			ProcessSockStats: &fgs.ProcessSockStats{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
 				Socket: &fgs.SockInfo{},
@@ -315,7 +316,7 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessSockStats{
 			ProcessSockStats: &fgs.ProcessSockStats{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				Socket: &fgs.SockInfo{
@@ -352,7 +353,7 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 	_, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessDns{
 			ProcessDns: &fgs.ProcessDns{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 			},
@@ -365,7 +366,7 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessDns{
 			ProcessDns: &fgs.ProcessDns{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				Dns: &fgs.DnsInfo{
@@ -395,7 +396,7 @@ func TestCompactEncoder_TlsEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_Tls{
 			Tls: &fgs.Tls{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				DestinationIp:     "1.2.3.4",
@@ -413,7 +414,7 @@ func TestCompactEncoder_TlsEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_Tls{
 			Tls: &fgs.Tls{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				DestinationIp:     "1.2.3.4",
@@ -444,7 +445,7 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 	_, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessHttp{
 			ProcessHttp: &fgs.ProcessHttp{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 			},
@@ -457,7 +458,7 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessHttp{
 			ProcessHttp: &fgs.ProcessHttp{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				Http: &fgs.HttpInfo{
@@ -479,7 +480,7 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessHttp{
 			ProcessHttp: &fgs.ProcessHttp{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				Http: &fgs.HttpInfo{
@@ -505,7 +506,7 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessHttp{
 			ProcessHttp: &fgs.ProcessHttp{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				Http: &fgs.HttpInfo{
@@ -544,10 +545,10 @@ func TestCompactEncoder_ExitEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessExit{
 			ProcessExit: &fgs.ProcessExit{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -563,10 +564,10 @@ func TestCompactEncoder_ExitEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessExit{
 			ProcessExit: &fgs.ProcessExit{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -596,9 +597,9 @@ func TestCompactEncoder_KprobeEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessKprobe{
 			ProcessKprobe: &fgs.ProcessKprobe{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -618,9 +619,9 @@ func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessKprobe{
 			ProcessKprobe: &fgs.ProcessKprobe{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -636,9 +637,9 @@ func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessKprobe{
 			ProcessKprobe: &fgs.ProcessKprobe{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -662,9 +663,9 @@ func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessKprobe{
 			ProcessKprobe: &fgs.ProcessKprobe{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -680,9 +681,9 @@ func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessKprobe{
 			ProcessKprobe: &fgs.ProcessKprobe{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -707,9 +708,9 @@ func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
 	result, err := p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessKprobe{
 			ProcessKprobe: &fgs.ProcessKprobe{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -725,9 +726,9 @@ func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
 	result, err = p.eventToString(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessKprobe{
 			ProcessKprobe: &fgs.ProcessKprobe{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -759,10 +760,10 @@ func TestCompactEncoder_Encode(t *testing.T) {
 	err = p.Encode(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessExec{
 			ProcessExec: &fgs.ProcessExec{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},
@@ -809,10 +810,10 @@ func TestCompactEncoder_EncodeWithTimestamp(t *testing.T) {
 	err = p.Encode(&fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessExec{
 			ProcessExec: &fgs.ProcessExec{
-				Process: &fgs.Process{
+				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
-					Pod: &fgs.Pod{
+					Pod: &tetragon.Pod{
 						Namespace: "kube-system",
 						Name:      "hubble-enterprise",
 					},

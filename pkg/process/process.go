@@ -20,6 +20,7 @@ import (
 
 	hubble "github.com/cilium/hubble/pkg/cilium"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api"
 	fgsAPI "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/cilium"
@@ -29,7 +30,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/exec"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/path"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
@@ -48,10 +48,10 @@ type ProcessInternal struct {
 	// mu protects the modifications to process.
 	mu sync.Mutex
 	// externally visible process struct.
-	process *fgs.Process
+	process *tetragon.Process
 	// additional internal fields below
-	capabilities *fgs.Capabilities
-	namespaces   *fgs.Namespaces
+	capabilities *tetragon.Capabilities
+	namespaces   *tetragon.Namespaces
 	// garbage collector metadata
 	color  int
 	refcnt uint32
@@ -89,12 +89,12 @@ func FreeCache() {
 	procCache = nil
 }
 
-func (pi *ProcessInternal) GetProcessCopy() *fgs.Process {
+func (pi *ProcessInternal) GetProcessCopy() *tetragon.Process {
 	if pi.process == nil {
 		return nil
 	}
 	pi.mu.Lock()
-	proc := proto.Clone(pi.process).(*fgs.Process)
+	proc := proto.Clone(pi.process).(*tetragon.Process)
 	pi.mu.Unlock()
 	proc.Refcnt = atomic.LoadUint32(&pi.refcnt)
 	return proc
@@ -104,20 +104,20 @@ func (pi *ProcessInternal) GetProcessInternalCopy() *ProcessInternal {
 	pi.mu.Lock()
 	defer pi.mu.Unlock()
 	return &ProcessInternal{
-		process:      proto.Clone(pi.process).(*fgs.Process),
+		process:      proto.Clone(pi.process).(*tetragon.Process),
 		capabilities: pi.capabilities,
 		namespaces:   pi.namespaces,
 		refcnt:       1,
 	}
 }
 
-func (pi *ProcessInternal) AddPodInfo(pod *fgs.Pod) {
+func (pi *ProcessInternal) AddPodInfo(pod *tetragon.Pod) {
 	pi.mu.Lock()
 	pi.process.Pod = pod
 	pi.mu.Unlock()
 }
 
-func (pi *ProcessInternal) GetProcess() *fgs.Process {
+func (pi *ProcessInternal) GetProcess() *tetragon.Process {
 	pi.mu.Lock()
 	return pi.process
 }
@@ -126,7 +126,7 @@ func (pi *ProcessInternal) PutProcess() {
 	pi.mu.Unlock()
 }
 
-func (pi *ProcessInternal) UnsafeGetProcess() *fgs.Process {
+func (pi *ProcessInternal) UnsafeGetProcess() *tetragon.Process {
 	return pi.process
 }
 
@@ -141,7 +141,7 @@ func (pi *ProcessInternal) AnnotateProcess(cred, ns bool) {
 	}
 }
 
-func (pi *ProcessInternal) UnsafeGetProcessCap() *fgs.Capabilities {
+func (pi *ProcessInternal) UnsafeGetProcessCap() *tetragon.Capabilities {
 	return pi.capabilities
 }
 
@@ -182,7 +182,7 @@ func GetProcess(
 	caps := caps.GetMsgCapabilities(capabilities)
 	ns := namespace.GetMsgNamespaces(namespaces)
 	return &ProcessInternal{
-		process: &fgs.Process{
+		process: &tetragon.Process{
 			Pid:          &wrapperspb.UInt32Value{Value: process.PID},
 			Uid:          &wrapperspb.UInt32Value{Value: process.UID},
 			Cwd:          cwd,
@@ -207,7 +207,7 @@ func FindPod(containerId string) (*corev1.Pod, *corev1.ContainerStatus, bool) {
 	return k8s.FindPod(containerId)
 }
 
-func GetPodInfo(cid, bin, args string, nspid uint32) (*fgs.Pod, *hubblev1.Endpoint) {
+func GetPodInfo(cid, bin, args string, nspid uint32) (*tetragon.Pod, *hubblev1.Endpoint) {
 	return k8s.GetPodInfo(cid, bin, args, nspid)
 }
 
@@ -291,7 +291,7 @@ func Get(execId string) (*ProcessInternal, error) {
 	return procCache.get(execId)
 }
 
-func GetProcessEndpoint(p *fgs.Process) *hubblev1.Endpoint {
+func GetProcessEndpoint(p *tetragon.Process) *hubblev1.Endpoint {
 	if p == nil {
 		return nil
 	}

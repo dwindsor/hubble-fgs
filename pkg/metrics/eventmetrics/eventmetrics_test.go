@@ -18,6 +18,7 @@ import (
 	"strings"
 	"testing"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	ossEventMetrics "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
@@ -41,50 +42,50 @@ func Test_eventHandleProcessedEvent(t *testing.T) {
 
 	// empty pod
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
-		Process: &fgs.Process{Binary: "binary_a"},
+		Process: &tetragon.Process{Binary: "binary_a"},
 	}}})
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
-		Process: &fgs.Process{Binary: "binary_b"},
+		Process: &tetragon.Process{Binary: "binary_b"},
 	}}})
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
-		Process: &fgs.Process{Binary: "binary_c"},
+		Process: &tetragon.Process{Binary: "binary_c"},
 	}}})
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
-		Process: &fgs.Process{Binary: "binary_d"},
+		Process: &tetragon.Process{Binary: "binary_d"},
 	}}})
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
-		Process: &fgs.Process{Binary: "binary_e"},
+		Process: &tetragon.Process{Binary: "binary_e"},
 	}}})
 
 	// with pod
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
-		Process: &fgs.Process{
+		Process: &tetragon.Process{
 			Binary: "binary_a",
-			Pod:    &fgs.Pod{Namespace: "namespace_a", Name: "pod_a"},
+			Pod:    &tetragon.Pod{Namespace: "namespace_a", Name: "pod_a"},
 		},
 	}}})
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
-		Process: &fgs.Process{
+		Process: &tetragon.Process{
 			Binary: "binary_b",
-			Pod:    &fgs.Pod{Namespace: "namespace_b", Name: "pod_b"},
+			Pod:    &tetragon.Pod{Namespace: "namespace_b", Name: "pod_b"},
 		},
 	}}})
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
-		Process: &fgs.Process{
+		Process: &tetragon.Process{
 			Binary: "binary_c",
-			Pod:    &fgs.Pod{Namespace: "namespace_c", Name: "pod_c"},
+			Pod:    &tetragon.Pod{Namespace: "namespace_c", Name: "pod_c"},
 		},
 	}}})
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
-		Process: &fgs.Process{
+		Process: &tetragon.Process{
 			Binary: "binary_d",
-			Pod:    &fgs.Pod{Namespace: "namespace_d", Name: "pod_d"},
+			Pod:    &tetragon.Pod{Namespace: "namespace_d", Name: "pod_d"},
 		},
 	}}})
 	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
-		Process: &fgs.Process{
+		Process: &tetragon.Process{
 			Binary: "binary_e",
-			Pod:    &fgs.Pod{Namespace: "namespace_e", Name: "pod_e"},
+			Pod:    &tetragon.Pod{Namespace: "namespace_e", Name: "pod_e"},
 		},
 	}}})
 

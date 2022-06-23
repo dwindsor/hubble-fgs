@@ -14,11 +14,11 @@ import (
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	codegen "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/process"
@@ -37,7 +37,7 @@ const (
 )
 
 type eventObj interface {
-	GetProcess() *fgs.Process
+	GetProcess() *tetragon.Process
 }
 
 var (
@@ -142,7 +142,7 @@ func (ec *Cache) loop() {
 //  podInfo event and populates the local cache. If we expect podInfo,
 //  indicated by having a nonZero dockerID we cache the event until the
 //  podInfo arrives.
-func (ec *Cache) Needed(proc *fgs.Process) bool {
+func (ec *Cache) Needed(proc *tetragon.Process) bool {
 	if proc == nil {
 		return true
 	}

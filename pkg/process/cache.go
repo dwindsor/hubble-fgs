@@ -15,11 +15,11 @@ import (
 	"sync/atomic"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	lru "github.com/hashicorp/golang-lru"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/sirupsen/logrus"
 )
 
@@ -193,7 +193,7 @@ func (pc *Cache) Add(process *ProcessInternal) bool {
 	return evicted
 }
 
-func (pc *Cache) remove(process *fgs.Process) bool {
+func (pc *Cache) remove(process *tetragon.Process) bool {
 	present := pc.cache.Remove(process.ExecId)
 	if !present {
 		errormetrics.ErrorTotalInc(errormetrics.ProcessCacheMissOnRemove)

@@ -2,6 +2,7 @@ package dnsproto
 
 import (
 	"github.com/cilium/hubble/pkg/cilium"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -28,7 +29,7 @@ type Grpc struct {
 }
 
 func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *fgs.ProcessDns {
-	var proc *fgs.Process
+	var proc *tetragon.Process
 	var err error
 
 	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)

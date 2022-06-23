@@ -22,6 +22,7 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/helpers"
 )
@@ -99,7 +100,7 @@ var Filters = []OnBuildFilter{
 	&PodRegexFilter{},
 }
 
-func GetProcess(event *v1.Event) *fgs.Process {
+func GetProcess(event *v1.Event) *tetragon.Process {
 	if event == nil {
 		return nil
 	}
@@ -110,7 +111,7 @@ func GetProcess(event *v1.Event) *fgs.Process {
 	return helpers.ResponseGetProcess(response)
 }
 
-func GetParent(event *v1.Event) *fgs.Process {
+func GetParent(event *v1.Event) *tetragon.Process {
 	if event == nil {
 		return nil
 	}

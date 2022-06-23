@@ -17,6 +17,7 @@ import (
 	"strings"
 	"syscall"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -281,7 +282,7 @@ type EventChainChecker struct {
 	eventCheck    func(fgsEvent, Logger) error
 }
 
-func eventGetProcess(ev fgsEvent) *fgs.Process {
+func eventGetProcess(ev fgsEvent) *tetragon.Process {
 	switch v := ev.(type) {
 	case *fgs.ProcessExec:
 		return v.Process
@@ -312,7 +313,7 @@ func eventGetProcess(ev fgsEvent) *fgs.Process {
 	}
 }
 
-func eventGetParent(ev fgsEvent) *fgs.Process {
+func eventGetParent(ev fgsEvent) *tetragon.Process {
 	switch v := ev.(type) {
 	case *fgs.ProcessExec:
 		return v.Parent
@@ -1028,56 +1029,56 @@ func (e *EventChainChecker) HasSniName(name string) *EventChainChecker {
 // ProcessChecker checks a process
 type ProcessChecker interface {
 	// Check checks a process.
-	Check(*fgs.Process, Logger) error
+	Check(*tetragon.Process, Logger) error
 }
 
 // ProcessCheckerFn wraps a function that checks a process
-type ProcessCheckerFn func(*fgs.Process, Logger) error
+type ProcessCheckerFn func(*tetragon.Process, Logger) error
 
 // Check implements ResponseChecker interface
-func (f ProcessCheckerFn) Check(p *fgs.Process, log Logger) error {
+func (f ProcessCheckerFn) Check(p *tetragon.Process, log Logger) error {
 	return f(p, log)
 }
 
 // PodChecker checks a Pod
 type PodChecker interface {
 	// Check checks a Pod
-	Check(*fgs.Pod, Logger) error
+	Check(*tetragon.Pod, Logger) error
 }
 
 // PodCheckerFn wraps a function that checks a pod
-type PodCheckerFn func(*fgs.Pod, Logger) error
+type PodCheckerFn func(*tetragon.Pod, Logger) error
 
 // Check implements ResponseChecker interface
-func (f PodCheckerFn) Check(p *fgs.Pod, log Logger) error {
+func (f PodCheckerFn) Check(p *tetragon.Pod, log Logger) error {
 	return f(p, log)
 }
 
 // ContainerChecker checks a container
 type ContainerChecker interface {
 	// Check checks a Container
-	Check(*fgs.Container, Logger) error
+	Check(*tetragon.Container, Logger) error
 }
 
 // ContainerCheckerFn wraps a function that checks a container
-type ContainerCheckerFn func(*fgs.Container, Logger) error
+type ContainerCheckerFn func(*tetragon.Container, Logger) error
 
 // Check implements ResponseChecker interface
-func (f ContainerCheckerFn) Check(c *fgs.Container, log Logger) error {
+func (f ContainerCheckerFn) Check(c *tetragon.Container, log Logger) error {
 	return f(c, log)
 }
 
 // ImageChecker checks a container image
 type ImageChecker interface {
 	// Check checks a container image
-	Check(*fgs.Image, Logger) error
+	Check(*tetragon.Image, Logger) error
 }
 
 // ImageCheckerFn wraps a function that checks a container image
-type ImageCheckerFn func(*fgs.Image, Logger) error
+type ImageCheckerFn func(*tetragon.Image, Logger) error
 
 // Check implements ResponseChecker interface
-func (f ImageCheckerFn) Check(i *fgs.Image, log Logger) error {
+func (f ImageCheckerFn) Check(i *tetragon.Image, log Logger) error {
 	return f(i, log)
 }
 
@@ -1139,19 +1140,19 @@ func (o *ProcessCheckerAND) WithUID(uid uint32) *ProcessCheckerAND {
 }
 
 // WithNS adds a check that the process' Ns matches the Ns
-func (o *ProcessCheckerAND) WithNs(ns *fgs.Namespaces) *ProcessCheckerAND {
+func (o *ProcessCheckerAND) WithNs(ns *tetragon.Namespaces) *ProcessCheckerAND {
 	o.checks = append(o.checks, ProcessWithNs(ns))
 	return o
 }
 
 // WithCaps adds a check that the process' Caps matches the Caps
-func (o *ProcessCheckerAND) WithCaps(ns *fgs.Capabilities, ctype int) *ProcessCheckerAND {
+func (o *ProcessCheckerAND) WithCaps(ns *tetragon.Capabilities, ctype int) *ProcessCheckerAND {
 	o.checks = append(o.checks, ProcessWithCaps(ns, ctype))
 	return o
 }
 
 // Check implements ResponseChecker interface
-func (o *ProcessCheckerAND) Check(p *fgs.Process, l Logger) error {
+func (o *ProcessCheckerAND) Check(p *tetragon.Process, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(p, l); err != nil {
 			return err
@@ -1218,19 +1219,19 @@ func (o *ProcessCheckerOR) WithUID(uid uint32) *ProcessCheckerOR {
 }
 
 // WithNS adds a check that the process' Ns matches the Ns
-func (o *ProcessCheckerOR) WithNs(ns *fgs.Namespaces) *ProcessCheckerOR {
+func (o *ProcessCheckerOR) WithNs(ns *tetragon.Namespaces) *ProcessCheckerOR {
 	o.checks = append(o.checks, ProcessWithNs(ns))
 	return o
 }
 
 // WithCaps adds a check that the process' Caps matches the Caps
-func (o *ProcessCheckerOR) WithCaps(ns *fgs.Capabilities, ctype int) *ProcessCheckerOR {
+func (o *ProcessCheckerOR) WithCaps(ns *tetragon.Capabilities, ctype int) *ProcessCheckerOR {
 	o.checks = append(o.checks, ProcessWithCaps(ns, ctype))
 	return o
 }
 
 // Check implements ResponseChecker interface
-func (o *ProcessCheckerOR) Check(p *fgs.Process, l Logger) error {
+func (o *ProcessCheckerOR) Check(p *tetragon.Process, l Logger) error {
 	var failures []error
 	for i := range o.checks {
 		err := o.checks[i].Check(p, l)
@@ -1244,11 +1245,11 @@ func (o *ProcessCheckerOR) Check(p *fgs.Process, l Logger) error {
 
 func processWithString(
 	sm StringMatcher,
-	getter func(p *fgs.Process) string,
+	getter func(p *tetragon.Process) string,
 	desc string, // desc is used for helpful error messages
 ) ProcessChecker {
 	matcher := sm.GetMatcher()
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
 		if p == nil {
 			return fmt.Errorf("process is nil and cannot match %s using %v", desc, sm)
 		}
@@ -1264,7 +1265,7 @@ func processWithString(
 // ProcessWithCWD matches the cwd field
 func ProcessWithCWD(sm StringMatcher) ProcessChecker {
 	matcher := sm.GetMatcher()
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
 		if p == nil {
 			return fmt.Errorf("process is nil and cannot match cwd using %v", sm)
 		}
@@ -1289,7 +1290,7 @@ func ProcessWithCWD(sm StringMatcher) ProcessChecker {
 func ProcessWithBinary(sm StringMatcher) ProcessChecker {
 	return processWithString(
 		sm,
-		func(p *fgs.Process) string {
+		func(p *tetragon.Process) string {
 			return p.Binary
 		},
 		"binary",
@@ -1300,7 +1301,7 @@ func ProcessWithBinary(sm StringMatcher) ProcessChecker {
 func ProcessWithArguments(sm StringMatcher) ProcessChecker {
 	return processWithString(
 		sm,
-		func(p *fgs.Process) string {
+		func(p *tetragon.Process) string {
 			return p.Arguments
 		},
 		"arguments",
@@ -1319,7 +1320,7 @@ func ProcessWithCommand(binary StringMatcher, args StringMatcher) ProcessChecker
 
 // ProcessWithPod matches the Pod field
 func ProcessWithPod(pc PodChecker) ProcessChecker {
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
 		if p == nil {
 			return fmt.Errorf("process is nil and cannot match pod")
 		}
@@ -1334,7 +1335,7 @@ func ProcessWithPod(pc PodChecker) ProcessChecker {
 func ProcessWithDocker(sm StringMatcher) ProcessChecker {
 	return processWithString(
 		sm,
-		func(p *fgs.Process) string {
+		func(p *tetragon.Process) string {
 			return p.Docker
 		},
 		"docker",
@@ -1343,7 +1344,7 @@ func ProcessWithDocker(sm StringMatcher) ProcessChecker {
 
 // ProcessWithUID matches the Uid field
 func ProcessWithUID(uid uint32) ProcessChecker {
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
 		if p.Uid == nil {
 			return fmt.Errorf("uid %d does not match nil value", uid)
 		}
@@ -1356,7 +1357,7 @@ func ProcessWithUID(uid uint32) ProcessChecker {
 
 // ProcessWithPID matches the PID field
 func ProcessWithPID(pid uint32) ProcessChecker {
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
 		if p.Pid == nil {
 			return fmt.Errorf("expected pid %d does not match nil value", pid)
 		}
@@ -1367,7 +1368,7 @@ func ProcessWithPID(pid uint32) ProcessChecker {
 	})
 }
 
-func compareNamespace(p *fgs.Process, ns *fgs.Namespaces) error {
+func compareNamespace(p *tetragon.Process, ns *tetragon.Namespaces) error {
 	if p.Ns == nil {
 		return fmt.Errorf("ns %v does not match nil value", ns)
 	}
@@ -1425,13 +1426,13 @@ func compareNamespace(p *fgs.Process, ns *fgs.Namespaces) error {
 }
 
 // ProcessWithNs matches the Namespace field
-func ProcessWithNs(ns *fgs.Namespaces) ProcessChecker {
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+func ProcessWithNs(ns *tetragon.Namespaces) ProcessChecker {
+	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
 		return compareNamespace(p, ns)
 	})
 }
 
-func compareCaps(a []fgs.CapabilitiesType, b []fgs.CapabilitiesType, ctype int) error {
+func compareCaps(a []tetragon.CapabilitiesType, b []tetragon.CapabilitiesType, ctype int) error {
 	anum := uint64(0)
 	for _, idx := range a {
 		anum |= (1 << idx)
@@ -1441,21 +1442,21 @@ func compareCaps(a []fgs.CapabilitiesType, b []fgs.CapabilitiesType, ctype int) 
 		bnum |= (1 << idx)
 	}
 	if anum != bnum {
-		for i := range fgs.CapabilitiesType_name {
+		for i := range tetragon.CapabilitiesType_name {
 			if (anum & (1 << i)) != (bnum & (1 << i)) {
-				return fmt.Errorf("caps %s does not match %x - %x type: %d", fgs.CapabilitiesType_name[i], anum, bnum, ctype)
+				return fmt.Errorf("caps %s does not match %x - %x type: %d", tetragon.CapabilitiesType_name[i], anum, bnum, ctype)
 			}
 		}
 	}
 	return nil
 }
 
-func compareCapabilities(p *fgs.Process, caps *fgs.Capabilities, ctype int) error {
+func compareCapabilities(p *tetragon.Process, caps *tetragon.Capabilities, ctype int) error {
 	if p.Cap == nil {
 		return fmt.Errorf("caps %v does not match nil value", caps)
 	}
-	var lCaps []fgs.CapabilitiesType
-	var rCaps []fgs.CapabilitiesType
+	var lCaps []tetragon.CapabilitiesType
+	var rCaps []tetragon.CapabilitiesType
 	if ctype == CapsPermitted {
 		lCaps = caps.GetPermitted()
 		rCaps = p.Cap.GetPermitted()
@@ -1475,8 +1476,8 @@ func compareCapabilities(p *fgs.Process, caps *fgs.Capabilities, ctype int) erro
 }
 
 // ProcessWithCaps matches the Capabilities field
-func ProcessWithCaps(caps *fgs.Capabilities, ctype int) ProcessChecker {
-	return ProcessCheckerFn(func(p *fgs.Process, log Logger) error {
+func ProcessWithCaps(caps *tetragon.Capabilities, ctype int) ProcessChecker {
+	return ProcessCheckerFn(func(p *tetragon.Process, log Logger) error {
 		return compareCapabilities(p, caps, ctype)
 	})
 }
@@ -1533,7 +1534,7 @@ func (e *EventChainChecker) HasAncestor(idx int, cs ...ProcessChecker) *EventCha
 			return err
 		}
 
-		ev, ok := e.(interface{ GetAncestors() []*fgs.Process })
+		ev, ok := e.(interface{ GetAncestors() []*tetragon.Process })
 		if !ok {
 			return fmt.Errorf("type %T does not have ancestors", e)
 		}
@@ -1568,7 +1569,7 @@ func NewPodChecker() *PodCheckerAND {
 }
 
 // Check implements ResponseChecker interface
-func (o *PodCheckerAND) Check(p *fgs.Pod, l Logger) error {
+func (o *PodCheckerAND) Check(p *tetragon.Pod, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(p, l); err != nil {
 			return err
@@ -1579,11 +1580,11 @@ func (o *PodCheckerAND) Check(p *fgs.Pod, l Logger) error {
 
 func podWithString(
 	sm StringMatcher,
-	getter func(p *fgs.Pod) string,
+	getter func(p *tetragon.Pod) string,
 	desc string, // desc is used for helpful error messages
 ) PodChecker {
 	matcher := sm.GetMatcher()
-	return PodCheckerFn(func(p *fgs.Pod, log Logger) error {
+	return PodCheckerFn(func(p *tetragon.Pod, log Logger) error {
 		if p == nil {
 			return fmt.Errorf("pod is nil and cannot match %s using %v", desc, sm)
 		}
@@ -1600,7 +1601,7 @@ func podWithString(
 func PodWithName(sm StringMatcher) PodChecker {
 	return podWithString(
 		sm,
-		func(p *fgs.Pod) string {
+		func(p *tetragon.Pod) string {
 			return p.Name
 		},
 		"pod-name",
@@ -1611,7 +1612,7 @@ func PodWithName(sm StringMatcher) PodChecker {
 func PodWithNamespace(sm StringMatcher) PodChecker {
 	return podWithString(
 		sm,
-		func(p *fgs.Pod) string {
+		func(p *tetragon.Pod) string {
 			return p.Namespace
 		},
 		"pod-namespace",
@@ -1654,7 +1655,7 @@ func PodWithLabels(labels ...LabelMatch) PodChecker {
 		warn = fmt.Sprintf("Warning: WithLabels() argument %+v has colliding keys", labels)
 	}
 
-	return PodCheckerFn(func(p *fgs.Pod, l Logger) error {
+	return PodCheckerFn(func(p *tetragon.Pod, l Logger) error {
 		if warn != "" {
 			l.Logf(warn)
 		}
@@ -1711,7 +1712,7 @@ func NewContainerChecker() *ContainerCheckerAND {
 }
 
 // Check implements ResponseChecker interface
-func (o *ContainerCheckerAND) Check(p *fgs.Container, l Logger) error {
+func (o *ContainerCheckerAND) Check(p *tetragon.Container, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(p, l); err != nil {
 			return err
@@ -1722,7 +1723,7 @@ func (o *ContainerCheckerAND) Check(p *fgs.Container, l Logger) error {
 
 // PodWithContainer verifies that a pod's container matches a series of container checks
 func PodWithContainer(cc ContainerChecker) PodChecker {
-	return PodCheckerFn(func(p *fgs.Pod, log Logger) error {
+	return PodCheckerFn(func(p *tetragon.Pod, log Logger) error {
 		if p == nil {
 			return fmt.Errorf("pod is nil and cannot match container")
 		}
@@ -1741,11 +1742,11 @@ func (o *PodCheckerAND) WithContainer(arg ContainerChecker) *PodCheckerAND {
 
 func containerWithString(
 	sm StringMatcher,
-	getter func(p *fgs.Container) string,
+	getter func(p *tetragon.Container) string,
 	desc string, // desc is used for helpful error messages
 ) ContainerChecker {
 	matcher := sm.GetMatcher()
-	return ContainerCheckerFn(func(c *fgs.Container, log Logger) error {
+	return ContainerCheckerFn(func(c *tetragon.Container, log Logger) error {
 		if c == nil {
 			return fmt.Errorf("container is nil and cannot match %s using %v", desc, sm)
 		}
@@ -1762,7 +1763,7 @@ func containerWithString(
 func ContainerWithName(sm StringMatcher) ContainerChecker {
 	return containerWithString(
 		sm,
-		func(c *fgs.Container) string {
+		func(c *tetragon.Container) string {
 			return c.Name
 		},
 		"container-name",
@@ -1787,7 +1788,7 @@ func (o *ContainerCheckerAND) WithNamePrefix(prefix string) *ContainerCheckerAND
 func ContainerWithID(sm StringMatcher) ContainerChecker {
 	return containerWithString(
 		sm,
-		func(c *fgs.Container) string {
+		func(c *tetragon.Container) string {
 			return c.Id
 		},
 		"container-id",
@@ -1797,7 +1798,7 @@ func ContainerWithID(sm StringMatcher) ContainerChecker {
 // ContainerWithImageName verifies the ImageName field
 func ContainerWithImageName(sm StringMatcher) ContainerChecker {
 	matcher := sm.GetMatcher()
-	return ContainerCheckerFn(func(c *fgs.Container, log Logger) error {
+	return ContainerCheckerFn(func(c *tetragon.Container, log Logger) error {
 		desc := "container-image-name"
 		if c == nil {
 			return fmt.Errorf("container is nil and cannot match %s using %v", desc, sm)
@@ -2826,7 +2827,7 @@ func (o *KprobeCheckerAND) WithAction(act fgs.KprobeAction) *KprobeCheckerAND {
 }
 
 // withNs add namespaces check
-func (o *KprobeCheckerAND) WithNs(ns *fgs.Namespaces) *KprobeCheckerAND {
+func (o *KprobeCheckerAND) WithNs(ns *tetragon.Namespaces) *KprobeCheckerAND {
 	check := KprobeCheckerFn(func(t *fgs.ProcessKprobe, log Logger) error {
 		ret := compareNamespace(t.Process, ns)
 		if ret == nil {
@@ -2839,7 +2840,7 @@ func (o *KprobeCheckerAND) WithNs(ns *fgs.Namespaces) *KprobeCheckerAND {
 }
 
 // withCaps add capabilities check
-func (o *KprobeCheckerAND) WithCaps(caps *fgs.Capabilities, ctype int) *KprobeCheckerAND {
+func (o *KprobeCheckerAND) WithCaps(caps *tetragon.Capabilities, ctype int) *KprobeCheckerAND {
 	check := KprobeCheckerFn(func(t *fgs.ProcessKprobe, log Logger) error {
 		ret := compareCapabilities(t.Process, caps, ctype)
 		if ret == nil {
