@@ -16,6 +16,7 @@ package exporter
 
 import (
 	"context"
+	"io"
 	"sync"
 
 	"github.com/cilium/tetragon/pkg/logger"
@@ -34,6 +35,7 @@ type Exporter struct {
 	request     *fgs.GetEventsRequest
 	server      *server.Server
 	encoder     ExportEncoder
+	closer      io.Closer
 	rateLimiter *ratelimit.RateLimiter
 	done        chan bool
 }
@@ -43,16 +45,17 @@ func NewExporter(
 	request *fgs.GetEventsRequest,
 	server *server.Server,
 	encoder ExportEncoder,
+	closer io.Closer,
 	rateLimiter *ratelimit.RateLimiter,
 ) *Exporter {
-	return &Exporter{ctx, request, server, encoder, rateLimiter, make(chan bool)}
+	return &Exporter{ctx, request, server, encoder, closer, rateLimiter, make(chan bool)}
 }
 
 func (e *Exporter) Start() {
 	var readyWG sync.WaitGroup
 	readyWG.Add(1)
 	go func() {
-		if err := e.server.GetEventsWG(e.request, e, &readyWG); err != nil {
+		if err := e.server.GetEventsWG(e.request, e, e.closer, &readyWG); err != nil {
 			if e.ctx.Err() == nil {
 				logger.GetLogger().WithError(err).Error("Failed to start JSON exporter")
 			}

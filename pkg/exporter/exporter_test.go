@@ -40,6 +40,10 @@ func newArrayWriter(size int) *arrayWriter {
 	}
 }
 
+func (a *arrayWriter) Close() error {
+	return nil
+}
+
 func (a *arrayWriter) Write(p []byte) (n int, err error) {
 	a.items = append(a.items, strings.TrimSpace(string(p)))
 	if len(a.items) == cap(a.items) {
@@ -121,14 +125,16 @@ func (f *fakeObserver) RemoveSensor(ctx context.Context, sensorName string) erro
 }
 
 func TestExporter_Send(t *testing.T) {
+	var wg sync.WaitGroup
+
 	ctx, cancel := context.WithCancel(context.Background())
 	eventNotifier := newFakeNotifier()
-	grpcServer := server.NewServer(ctx, eventNotifier, &fakeObserver{})
+	grpcServer := server.NewServer(ctx, &wg, eventNotifier, &fakeObserver{})
 	numRecords := 2
 	results := newArrayWriter(numRecords)
 	encoder := json.NewEncoder(results)
 	request := fgs.GetEventsRequest{DenyList: []*fgs.Filter{{BinaryRegex: []string{"b"}}}}
-	exporter := NewExporter(ctx, &request, grpcServer, encoder, nil)
+	exporter := NewExporter(ctx, &request, grpcServer, encoder, results, nil)
 	exporter.Start()
 	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
 		Event: &fgs.GetEventsResponse_ProcessConnect{
@@ -198,6 +204,8 @@ func checkEvents(t *testing.T, eventsJSON []string, wantEvents, wantRateLimitInf
 }
 
 func Test_rateLimitExport(t *testing.T) {
+	var wg sync.WaitGroup
+
 	// set node name to be reported in RateLimitInfo events
 	hubbleNodeNameEnv := "HUBBLE_NODE_NAME"
 	value, ok := os.LookupEnv(hubbleNodeNameEnv)
@@ -225,7 +233,7 @@ func Test_rateLimitExport(t *testing.T) {
 		t.Run(fmt.Sprintf("%s (%d events, %d rate limit)", tt.name, tt.totalEvents, tt.rateLimit), func(t *testing.T) {
 			ctx, cancel := context.WithCancel(context.Background())
 			eventNotifier := newFakeNotifier()
-			grpcServer := server.NewServer(ctx, eventNotifier, &fakeObserver{})
+			grpcServer := server.NewServer(ctx, &wg, eventNotifier, &fakeObserver{})
 			results := newArrayWriter(tt.totalEvents)
 			encoder := json.NewEncoder(results)
 			request := &fgs.GetEventsRequest{}
@@ -234,6 +242,7 @@ func Test_rateLimitExport(t *testing.T) {
 				request,
 				grpcServer,
 				encoder,
+				results,
 				ratelimit.NewRateLimiter(ctx, 50*time.Millisecond, tt.rateLimit, encoder),
 			)
 			exporter.Start()

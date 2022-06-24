@@ -116,6 +116,8 @@ func (re *raceEncoder) Encode(v interface{}) error {
 }
 
 func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
+	var wg sync.WaitGroup
+
 	processCacheSize := 32768
 	enableProcessCred := false
 	enableProcessNs := false
@@ -132,6 +134,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 
 	processManager, err := fgsGrpc.NewProcessManager(
 		ctx,
+		&wg,
 		cilium.GetFakeCiliumState(),
 		observer.SensorManager,
 		enableProcessCred,
@@ -148,7 +151,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	//encoder := &raceEncoder{0, json.NewEncoder(os.Stdout)}
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
-	exporter := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil)
+	exporter := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil

@@ -19,6 +19,7 @@ import (
 	"os/signal"
 	"path"
 	"strings"
+	"sync"
 	"sync/atomic"
 	"syscall"
 	"text/template"
@@ -208,6 +209,8 @@ func (te *timingEncoder) Encode(v interface{}) error {
 }
 
 func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary *Summary) error {
+	var wg sync.WaitGroup
+
 	processCacheSize := 32768
 	enableProcessCred := false
 	enableProcessNs := false
@@ -224,6 +227,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 
 	processManager, err := fgsGrpc.NewProcessManager(
 		ctx,
+		&wg,
 		cilium.GetFakeCiliumState(),
 		observer.SensorManager,
 		enableProcessCred,
@@ -252,7 +256,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	}()
 
 	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
-	exporter := exporter.NewExporter(ctx, &req, processManager.Server, &timingEncoder, nil)
+	exporter := exporter.NewExporter(ctx, &req, processManager.Server, &timingEncoder, nil, nil)
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil
