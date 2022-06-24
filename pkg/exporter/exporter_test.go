@@ -121,12 +121,12 @@ func (f *fakeObserver) RemoveSensor(ctx context.Context, sensorName string) erro
 }
 
 func TestExporter_Send(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
 	eventNotifier := newFakeNotifier()
-	grpcServer := server.NewServer(eventNotifier, &fakeObserver{})
+	grpcServer := server.NewServer(ctx, eventNotifier, &fakeObserver{})
 	numRecords := 2
 	results := newArrayWriter(numRecords)
 	encoder := json.NewEncoder(results)
-	ctx, cancel := context.WithCancel(context.Background())
 	request := fgs.GetEventsRequest{DenyList: []*fgs.Filter{{BinaryRegex: []string{"b"}}}}
 	exporter := NewExporter(ctx, &request, grpcServer, encoder, nil)
 	exporter.Start()
@@ -223,11 +223,11 @@ func Test_rateLimitExport(t *testing.T) {
 	}
 	for _, tt := range tests {
 		t.Run(fmt.Sprintf("%s (%d events, %d rate limit)", tt.name, tt.totalEvents, tt.rateLimit), func(t *testing.T) {
+			ctx, cancel := context.WithCancel(context.Background())
 			eventNotifier := newFakeNotifier()
-			grpcServer := server.NewServer(eventNotifier, &fakeObserver{})
+			grpcServer := server.NewServer(ctx, eventNotifier, &fakeObserver{})
 			results := newArrayWriter(tt.totalEvents)
 			encoder := json.NewEncoder(results)
-			ctx, cancel := context.WithCancel(context.Background())
 			request := &fgs.GetEventsRequest{}
 			exporter := NewExporter(
 				ctx,

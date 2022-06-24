@@ -141,13 +141,6 @@ func hubbleFGSExecute() error {
 	 */
 	obs.RemovePrograms()
 	os.Mkdir(defaults.DefaultRunDir, os.ModeDir)
-	go func() {
-		<-sigs
-		obs.PrintStats()
-		obs.RemovePrograms()
-		cancel()
-		os.Exit(1)
-	}()
 
 	err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, option.Config.BTF)
 	if err != nil {
@@ -176,6 +169,7 @@ func hubbleFGSExecute() error {
 	}
 
 	pm, err := fgsGrpc.NewProcessManager(
+		ctx,
 		ciliumState,
 		observer.SensorManager,
 		enableProcessCred,
@@ -194,6 +188,14 @@ func hubbleFGSExecute() error {
 			return err
 		}
 	}
+
+	go func() {
+		<-sigs
+		obs.PrintStats()
+		obs.RemovePrograms()
+		cancel()
+		os.Exit(1)
+	}()
 
 	log.WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
 	obs.AddListener(pm)

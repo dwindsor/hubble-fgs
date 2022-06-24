@@ -50,6 +50,7 @@ type observer interface {
 }
 
 type Server struct {
+	ctx      context.Context
 	notifier notifier
 	observer observer
 }
@@ -58,8 +59,9 @@ type getEventsListener struct {
 	events chan *fgs.GetEventsResponse
 }
 
-func NewServer(notifier notifier, observer observer) *Server {
+func NewServer(ctx context.Context, notifier notifier, observer observer) *Server {
 	return &Server{
+		ctx:      ctx,
 		notifier: notifier,
 		observer: observer,
 	}
@@ -103,11 +105,11 @@ func (s *Server) GetEvents(request *fgs.GetEventsRequest, server fgs.FineGuidanc
 
 func (s *Server) GetEventsWG(request *fgs.GetEventsRequest, server fgs.FineGuidanceSensors_GetEventsServer, readyWG *sync.WaitGroup) error {
 	logger.GetLogger().WithField("request", request).Debug("Received a GetEvents request")
-	allowList, err := filters.BuildFilterList(context.Background(), request.AllowList, filters.Filters)
+	allowList, err := filters.BuildFilterList(s.ctx, request.AllowList, filters.Filters)
 	if err != nil {
 		return err
 	}
-	denyList, err := filters.BuildFilterList(context.Background(), request.DenyList, filters.Filters)
+	denyList, err := filters.BuildFilterList(s.ctx, request.DenyList, filters.Filters)
 	if err != nil {
 		return err
 	}
@@ -150,6 +152,8 @@ func (s *Server) GetEventsWG(request *fgs.GetEventsRequest, server fgs.FineGuida
 			}
 		case <-server.Context().Done():
 			return server.Context().Err()
+		case <-s.ctx.Done():
+			return s.ctx.Err()
 		}
 	}
 }

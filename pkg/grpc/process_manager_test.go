@@ -145,6 +145,7 @@ func TestProcessManager_GetProcessExec(t *testing.T) {
 	assert.NoError(t, err)
 	defer process.FreeCache()
 	pm, err := NewProcessManager(
+		context.Background(),
 		cilium.GetFakeCiliumState(),
 		nil,
 		false, false, false, false, true)
