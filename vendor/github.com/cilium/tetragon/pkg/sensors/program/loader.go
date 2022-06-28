@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"os"
 	"path/filepath"
+	"strings"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/btf"
@@ -20,6 +21,11 @@ var (
 // AttachFunc is the type for the various attachment functions. The function is
 // given the program and it's up to it to close it.
 type AttachFunc func(*ebpf.Program, *ebpf.ProgramSpec) (unloader.Unloader, error)
+
+type customInstall struct {
+	mapName   string
+	secPrefix string
+}
 
 func RawAttach(targetFD int) AttachFunc {
 	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
@@ -44,6 +50,62 @@ func RawAttach(targetFD int) AttachFunc {
 			},
 		}, nil
 	}
+}
+
+func TracepointAttach(load *Program) AttachFunc {
+	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+
+		parts := strings.Split(load.Attach, "/")
+		if len(parts) != 2 {
+			return nil, fmt.Errorf("tracepoint attach argument must be in the form category/tracepoint, got: %s", load.Attach)
+		}
+		link, err := link.Tracepoint(parts[0], parts[1], prog, nil)
+		if err != nil {
+			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
+		}
+		return unloader.ChainUnloader{
+			unloader.PinUnloader{
+				Prog: prog,
+			},
+			unloader.LinkUnloader{
+				Link: link,
+			},
+		}, nil
+	}
+}
+
+func KprobeAttach(load *Program) AttachFunc {
+	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+		var lnk link.Link
+		var err error
+
+		if load.RetProbe {
+			lnk, err = link.Kretprobe(load.Attach, prog, nil)
+		} else {
+			lnk, err = link.Kprobe(load.Attach, prog, nil)
+		}
+		if err != nil {
+			return nil, fmt.Errorf("attaching '%s' failed: %w", spec.Name, err)
+		}
+		return unloader.ChainUnloader{
+			unloader.PinUnloader{
+				Prog: prog,
+			},
+			unloader.LinkUnloader{
+				Link: lnk,
+			},
+		}, nil
+	}
+}
+
+func LoadTracepointProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+	ci := &customInstall{fmt.Sprintf("%s-tp-calls", load.PinPath), "tracepoint"}
+	return loadProgram(bpfDir, []string{mapDir}, load, TracepointAttach(load), ci, verbose)
+}
+
+func LoadKprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+	ci := &customInstall{fmt.Sprintf("%s-kp-calls", load.PinPath), "kprobe"}
+	return loadProgram(bpfDir, []string{mapDir}, load, KprobeAttach(load), ci, verbose)
 }
 
 func slimVerifierError(errStr string) string {
@@ -81,7 +143,7 @@ func slimVerifierError(errStr string) string {
 	return errStr[:headEnd] + "\n...\n" + errStr[tailStart:]
 }
 
-func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection) error {
+func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Collection, ci *customInstall) error {
 	// FIXME(JM): This should be replaced by using the cilium/ebpf prog array initialization.
 
 	secToProgName := make(map[string]string)
@@ -96,7 +158,7 @@ func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 		}
 		defer tailCallsMap.Close()
 
-		for i := 0; i < 6; i++ {
+		for i := 0; i < 11; i++ {
 			secName := fmt.Sprintf("%s/%d", secPrefix, i)
 			if progName, ok := secToProgName[secName]; ok {
 				if prog, ok := coll.Programs[progName]; ok {
@@ -119,15 +181,22 @@ func installTailCalls(mapDir string, spec *ebpf.CollectionSpec, coll *ebpf.Colle
 	if err := install("tls_calls", "classifier"); err != nil {
 		return err
 	}
+	if ci != nil {
+		if err := install(ci.mapName, ci.secPrefix); err != nil {
+			return err
+		}
+	}
 
 	return nil
 }
 
-func LoadProgram(
+func loadProgram(
 	bpfDir string,
 	mapDirs []string,
 	load *Program,
 	withProgram AttachFunc,
+	ci *customInstall,
+	verbose int,
 ) error {
 	var btfSpec *btf.Spec
 	if btfFilePath := cachedbtf.GetCachedBTFFile(); btfFilePath != "/sys/kernel/btf/vmlinux" {
@@ -144,13 +213,19 @@ func LoadProgram(
 		return fmt.Errorf("loading collection spec failed: %w", err)
 	}
 
+	// Find all the maps referenced by the program, so we'll rewrite only
+	// the ones used.
 	var progSpec *ebpf.ProgramSpec
 
-	// Find the program spec for the target program
+	refMaps := make(map[string]bool)
 	for _, prog := range spec.Programs {
 		if prog.SectionName == load.Label {
 			progSpec = prog
-			break
+		}
+		for _, inst := range prog.Instructions {
+			if inst.Reference() != "" {
+				refMaps[inst.Reference()] = true
+			}
 		}
 	}
 
@@ -158,21 +233,17 @@ func LoadProgram(
 		return fmt.Errorf("program for section '%s' not found", load.Label)
 	}
 
-	// Find all the maps referenced by the program, so we'll rewrite only
-	// the ones used.
-	refMaps := make(map[string]bool)
-	for _, inst := range progSpec.Instructions {
-		if inst.Reference() != "" {
-			refMaps[inst.Reference()] = true
-		}
-	}
-
 	pinnedMaps := make(map[string]*ebpf.Map)
 	for name := range refMaps {
 		var m *ebpf.Map
 		var err error
 		for _, mapDir := range mapDirs {
-			mapPath := filepath.Join(mapDir, name)
+			var mapPath string
+			if pinName, ok := load.PinMap[name]; ok {
+				mapPath = filepath.Join(mapDir, pinName)
+			} else {
+				mapPath = filepath.Join(mapDir, name)
+			}
 			m, err = ebpf.LoadPinnedMap(mapPath, nil)
 			if err == nil {
 				break
@@ -193,6 +264,14 @@ func LoadProgram(
 
 	opts.MapReplacements = pinnedMaps
 
+	// Disable loading of override program if it's not needed
+	if !load.Override {
+		progOverrideSpec, ok := spec.Programs["generic_kprobe_override"]
+		if ok {
+			progOverrideSpec.Type = ebpf.UnspecifiedProgram
+		}
+	}
+
 	coll, err := ebpf.NewCollectionWithOptions(spec, opts)
 	if err != nil {
 		// Retry again with logging to capture the verifier log. We don't log by default
@@ -204,16 +283,56 @@ func LoadProgram(
 			// Log the error directly using the logger so that the verifier log
 			// gets properly pretty-printed.
 			logger.GetLogger().Infof("Opening collection failed, dumping verifier log.")
-			fmt.Println(slimVerifierError(err.Error()))
+			if verbose != 0 {
+				fmt.Println(slimVerifierError(err.Error()))
+			}
 
 			return fmt.Errorf("opening collection '%s' failed", load.Name)
 		}
 	}
 	defer coll.Close()
 
-	err = installTailCalls(mapDirs[0], spec, coll)
+	err = installTailCalls(mapDirs[0], spec, coll, ci)
 	if err != nil {
 		return fmt.Errorf("installing tail calls failed: %s", err)
+	}
+
+	for _, mapLoad := range load.MapLoad {
+		if m, ok := coll.Maps[mapLoad.Name]; ok {
+			if err := m.Update(uint32(0), mapLoad.Data, ebpf.UpdateAny); err != nil {
+				return err
+			}
+		} else {
+			return fmt.Errorf("populating map failed as map '%s' was not found from collection", mapLoad.Name)
+		}
+	}
+
+	if load.Override {
+		progOverrideSpec, ok := spec.Programs["generic_kprobe_override"]
+		if ok {
+			progOverrideSpec.Type = ebpf.UnspecifiedProgram
+		}
+
+		progOverride, ok := coll.Programs["generic_kprobe_override"]
+		if !ok {
+			return fmt.Errorf("program for section '%s' not found", load.Label)
+		}
+
+		progOverride, err = progOverride.Clone()
+		if err != nil {
+			return fmt.Errorf("failed to clone program '%s': %w", load.Label, err)
+		}
+
+		pinPath := filepath.Join(bpfDir, fmt.Sprint(load.PinPath, "-override"))
+
+		if err := progOverride.Pin(pinPath); err != nil {
+			return fmt.Errorf("pinning '%s' to '%s' failed: %w", load.Label, pinPath, err)
+		}
+
+		load.unloaderOverride, err = withProgram(progOverride, progOverrideSpec)
+		if err != nil {
+			logger.GetLogger().Warnf("Failed to attach override program: %w", err)
+		}
 	}
 
 	prog, ok := coll.Programs[progSpec.Name]
@@ -250,4 +369,13 @@ func LoadProgram(
 	}
 
 	return nil
+}
+
+func LoadProgram(
+	bpfDir string,
+	mapDirs []string,
+	load *Program,
+	withProgram AttachFunc,
+) error {
+	return loadProgram(bpfDir, mapDirs, load, withProgram, nil, 0)
 }

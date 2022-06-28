@@ -12,8 +12,6 @@ import (
 	"strings"
 
 	"github.com/cilium/ebpf"
-	loader "github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
@@ -21,7 +19,6 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors/program/cgroup"
 
 	"github.com/sirupsen/logrus"
-	"golang.org/x/sys/unix"
 )
 
 const (
@@ -166,6 +163,10 @@ func (s *Sensor) FindPrograms(ctx context.Context) error {
 	return nil
 }
 
+func isValidSubdir(dir string) bool {
+	return dir != "." && dir != ".."
+}
+
 // LoadMaps loads all the BPF maps in the sensor.
 func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 	l := logger.GetLogger()
@@ -183,7 +184,16 @@ func (s *Sensor) LoadMaps(stopCtx context.Context, mapDir string) error {
 			continue
 		}
 
-		pinPath := filepath.Join(mapDir, m.Name)
+		pinPath := filepath.Join(mapDir, m.PinName)
+
+		// check if PinName has directory portion and create it,
+		// filepath.Dir returns '.' for filename without dir portion
+		if dir := filepath.Dir(m.PinName); isValidSubdir(dir) {
+			dirPath := filepath.Join(mapDir, dir)
+			if err := os.MkdirAll(dirPath, 0755); err != nil {
+				return fmt.Errorf("failed to create subbir for '%s': %w", m.Name, err)
+			}
+		}
 
 		// Try to open the pinPath and if it exist use the previously
 		// pinned map otherwise pin the map and next user will find
@@ -238,8 +248,6 @@ func mergeSensors(sensors []*Sensor) *Sensor {
 }
 
 func observerLoadInstance(stopCtx context.Context, bpfDir, mapDir, ciliumDir string, load *program.Program) error {
-	var fd int
-
 	version, _, err := kernels.GetKernelVersion(option.Config.KernelVersion, option.Config.ProcFS)
 	if err != nil {
 		return err
@@ -251,48 +259,39 @@ func observerLoadInstance(stopCtx context.Context, bpfDir, mapDir, ciliumDir str
 		"kern_version": version,
 	}).Debug("observerLoadInstance", load.Name, version)
 	if load.Type == "tracepoint" {
-		fd, err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
-		if err != nil && fd == -17 { // tracepoint exists be unfriendly and delete it
+		err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
+		if err != nil {
 			l.WithField(
 				"tracepoint", load.Name,
-			).Info("Tracepoint exists: removing and retrying")
-			removeTracepoint(load.TraceFD)
-			fd, err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
+			).Info("Failed to load, trying to remove and retrying")
+			load.Unload()
+			err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
 		}
 		if err != nil {
-			return fmt.Errorf("failed prog %s kern_version %d err %d LoadTracingProgram: %w",
-				load.Name, version, fd, err)
+			return fmt.Errorf("failed prog %s kern_version %d LoadTracingProgram: %w",
+				load.Name, version, err)
 		}
 	} else {
-		fd, err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
+		err = loadInstance(bpfDir, mapDir, ciliumDir, load, version, option.Config.Verbosity)
 		if err != nil && load.ErrorFatal {
 			return fmt.Errorf("failed prog %s kern_version %d LoadKprobeProgram: %w",
 				load.Name, version, err)
 		}
 	}
-	load.TraceFD = fd
 	return nil
 }
 
-func loadInstance(bpfDir, mapDir, ciliumDir string, load *program.Program, version, verbose int) (int, error) {
+func loadInstance(bpfDir, mapDir, ciliumDir string, load *program.Program, version, verbose int) error {
 	version = kernels.FixKernelVersion(version)
-	btfObj := uintptr(btf.GetCachedBTF())
 	if load.Type == "tracepoint" {
-		return loader.LoadTracingProgram(
-			version, verbose,
-			btfObj,
-			load.Name,
-			load.Attach,
-			load.Label,
-			filepath.Join(bpfDir, load.PinPath),
-			mapDir)
+		return program.LoadTracepointProgram(bpfDir, mapDir, load, verbose)
 	} else if load.Type == "cgrp_socket" {
 		err := cgroup.LoadCgroupProgram(
 			bpfDir,
 			mapDir,
 			ciliumDir,
 			load)
-		return -1, err
+		return err
 	} else {
 		if s, ok := registeredProbeLoad[load.Type]; ok {
 			logger.GetLogger().WithField("Program", load.Name).WithField("Type", load.Type).Infof("Load probe")
@@ -305,15 +304,7 @@ func loadInstance(bpfDir, mapDir, ciliumDir string, load *program.Program, versi
 				Verbose:   verbose,
 			})
 		}
-		return loader.LoadKprobeProgram(
-			version, verbose,
-			btfObj,
-			load.Name,
-			load.Attach,
-			load.Label,
-			filepath.Join(bpfDir, load.PinPath),
-			mapDir,
-			load.RetProbe)
+		return program.LoadKprobeProgram(bpfDir, mapDir, load, verbose)
 	}
 }
 
@@ -337,17 +328,6 @@ func disableBpfLoad(prog *program.Program) {
 			logger.GetLogger().WithField("map", om.Name).Infof("Disabling map")
 			om.PinState.SetDisabled()
 		}
-	}
-}
-
-func removeTracepoint(fd int) {
-	if fd > 0 {
-		PERF_EVENT_IOC_DISABLE := uint(0x2401)
-		err := unix.IoctlSetInt(fd, PERF_EVENT_IOC_DISABLE, 0)
-		if err != nil && option.Config.Verbosity > 1 {
-			logger.GetLogger().WithError(err).Warnf("Warning failed tracepoint removal")
-		}
-		unix.Close(fd)
 	}
 }
 

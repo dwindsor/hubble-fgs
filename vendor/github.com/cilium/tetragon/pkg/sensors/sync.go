@@ -220,7 +220,7 @@ func StartSensorManager(bpfDir, mapDir, ciliumDir string) (*Manager, error) {
 }
 
 func RemoveProgram(bpfDir string, prog *program.Program) {
-	log := logger.GetLogger().WithField("label", prog.Label)
+	log := logger.GetLogger().WithField("label", prog.Label).WithField("pin", prog.PinPath)
 
 	if !prog.LoadState.IsLoaded() || prog.LoadState.IsDisabled() {
 		log.Debugf("Refusing to remove %s, program not loaded or is disabled", prog.Label)
@@ -258,12 +258,6 @@ func RemoveProgram(bpfDir string, prog *program.Program) {
 			}
 		}
 		os.Remove(path + "-kp-calls")
-		if err := os.Remove(path); err != nil {
-			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
-		}
-	} else if prog.TraceFD >= 0 {
-		removeTracepoint(prog.TraceFD)
-		prog.TraceFD = -1
 		if err := os.Remove(path); err != nil {
 			logger.GetLogger().Debugf("Failed to remove program '%s': %w", path, err)
 		}

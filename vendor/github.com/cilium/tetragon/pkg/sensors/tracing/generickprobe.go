@@ -8,12 +8,10 @@ import (
 	"encoding/binary"
 	"errors"
 	"fmt"
-	"os"
 	"path"
 	"path/filepath"
 	"reflect"
 	"strconv"
-	"strings"
 
 	"github.com/cilium/tetragon/pkg/api/ops"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
@@ -111,8 +109,8 @@ type pendingEvent struct {
 	returnEvent bool
 }
 
-func (g *genericKprobe) getMapDir(mapDir string) string {
-	return path.Join(mapDir, fmt.Sprintf("generickprobe_id:%d_fn:%s", g.tableId.ID, g.funcName)) + "/"
+func (g *genericKprobe) getMapDir() string {
+	return fmt.Sprintf("generickprobe_id:%d_fn:%s", g.tableId.ID, g.funcName)
 }
 
 func (g *genericKprobe) SetID(id idtable.EntryID) {
@@ -186,6 +184,7 @@ func initBinaryNames(spec *v1alpha1.KProbeSpec) error {
 
 func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) (*sensors.Sensor, error) {
 	var progs []*program.Program
+	var maps []*program.Map
 
 	btfobj := bpf.BTFNil
 	defer func() {
@@ -390,15 +389,26 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 		// tracepoints case) and release it there, which seems like a simpler option.
 		btfobj = bpf.BTFNil
 
+		pinFile := fmt.Sprintf("kprobe_%s", funcName)
+
 		load := program.Builder(
 			path.Join(option.Config.HubbleLib, loadProgName),
 			funcName,
 			"kprobe/generic_kprobe",
-			"kprobe"+"_"+funcName,
+			pinFile,
 			"generic_kprobe").
 			SetLoaderData(kprobeEntry.tableId)
 		load.Override = hasOverride
 		progs = append(progs, load)
+
+		fdinstall := program.MapBuilder("fdinstall_map", load)
+		maps = append(maps, fdinstall)
+
+		tailCalls := program.MapBuilderPin("kprobe_calls", fmt.Sprintf("%s-kp-calls", pinFile), load)
+		maps = append(maps, tailCalls)
+
+		retProbe := program.MapBuilderPin("retprobe_map", fmt.Sprintf("%s/retprobe_map", kprobeEntry.getMapDir()), load)
+		maps = append(maps, retProbe)
 
 		if setRetprobe {
 			loadret := program.Builder(
@@ -410,6 +420,9 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 				SetRetProbe(true).
 				SetLoaderData(kprobeEntry.tableId)
 			progs = append(progs, loadret)
+
+			retProbe := program.MapBuilderPin("retprobe_map", fmt.Sprintf("%s/retprobe_map", kprobeEntry.getMapDir()), loadret)
+			maps = append(maps, retProbe)
 		}
 
 		logger.GetLogger().Infof("Added generic kprobe sensor: %s -> %s", load.Name, load.Attach)
@@ -418,26 +431,31 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec, btfBaseFile string) 
 	return &sensors.Sensor{
 		Name:  "__generic_kprobe_sensors__",
 		Progs: progs,
-		Maps:  []*program.Map{},
+		Maps:  maps,
 	}, nil
 }
 
-func loadGenericKprobe(bpfDir, mapDir string, version int, p *program.Program, btf uintptr, genmapDir string, filters [4096]byte, config *api.EventConfig) error {
-	progpath := filepath.Join(bpfDir, p.PinPath)
-	err, _ := bpf.LoadGenericKprobeProgram(
-		version, option.Config.Verbosity,
-		p.Override, btf,
-		p.Name,
-		p.Attach,
-		p.Label,
-		progpath,
-		mapDir,
-		genmapDir,
-		filters,
-		config,
-	)
-	if err == nil {
-		logger.GetLogger().Infof("Loaded generic kprobe sensor: %s -> %s", p.Name, p.Attach)
+func loadGenericKprobeSensor(bpfDir, mapDir string, load *program.Program, version, verbose int) error {
+	gk, err := genericKprobeFromBpfLoad(load)
+	if err != nil {
+		return err
+	}
+
+	var bin_buf bytes.Buffer
+
+	if !load.RetProbe {
+		filter := &program.MapLoad{Name: "filter_map", Data: gk.loadArgs.filters[:]}
+		load.MapLoad = append(load.MapLoad, filter)
+	}
+
+	binary.Write(&bin_buf, binary.LittleEndian, gk.loadArgs.config)
+	config := &program.MapLoad{Name: "config_map", Data: bin_buf.Bytes()[:]}
+	load.MapLoad = append(load.MapLoad, config)
+
+	sensors.AllPrograms = append(sensors.AllPrograms, load)
+
+	if err := program.LoadKprobeProgram(bpfDir, mapDir, load, verbose); err == nil {
+		logger.GetLogger().Infof("Loaded generic kprobe sensor: %s -> %s", load.Name, load.Attach)
 	} else {
 		return err
 	}
@@ -453,38 +471,6 @@ func loadGenericKprobe(bpfDir, mapDir string, version int, p *program.Program, b
 	}
 
 	return err
-}
-
-func loadGenericKprobeRet(bpfDir, mapDir string, version int, p *program.Program, btf uintptr, genmapDir string, config *api.EventConfig) error {
-	err, _ := bpf.LoadGenericKprobeRetProgram(
-		version, option.Config.Verbosity, btf,
-		p.Name,
-		p.Attach,
-		p.Label,
-		path.Join(bpfDir, p.PinPath),
-		mapDir,
-		genmapDir,
-		config,
-	)
-	return err
-}
-
-func loadGenericKprobeSensor(bpfDir, mapDir string, load *program.Program, version, verbose int) (int, error) {
-	gk, err := genericKprobeFromBpfLoad(load)
-	if err != nil {
-		return 0, err
-	}
-
-	genmapDir := gk.getMapDir(mapDir)
-	os.Mkdir(genmapDir, os.ModeDir)
-
-	sensors.AllPrograms = append(sensors.AllPrograms, load)
-	retprobe := strings.Contains(load.Name, "ret")
-	if retprobe {
-		return 0, loadGenericKprobeRet(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir, gk.loadArgs.config)
-	}
-
-	return 0, loadGenericKprobe(bpfDir, mapDir, version, load, gk.loadArgs.btf, genmapDir, gk.loadArgs.filters, gk.loadArgs.config)
 }
 
 func handleGenericKprobeString(r *bytes.Reader) string {
@@ -900,6 +886,6 @@ func (k *observerKprobeSensor) SpecHandler(raw interface{}) (*sensors.Sensor, er
 	return nil, nil
 }
 
-func (k *observerKprobeSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+func (k *observerKprobeSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return loadGenericKprobeSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose)
 }

@@ -6,6 +6,7 @@ package server
 import (
 	"context"
 	"fmt"
+	"io"
 	"sync"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
@@ -42,18 +43,22 @@ type observer interface {
 }
 
 type Server struct {
-	notifier notifier
-	observer observer
+	ctx          context.Context
+	ctxCleanupWG *sync.WaitGroup
+	notifier     notifier
+	observer     observer
 }
 
 type getEventsListener struct {
 	events chan *tetragon.GetEventsResponse
 }
 
-func NewServer(notifier notifier, observer observer) *Server {
+func NewServer(ctx context.Context, wg *sync.WaitGroup, notifier notifier, observer observer) *Server {
 	return &Server{
-		notifier: notifier,
-		observer: observer,
+		ctx:          ctx,
+		ctxCleanupWG: wg,
+		notifier:     notifier,
+		observer:     observer,
 	}
 }
 
@@ -90,16 +95,16 @@ func (s *Server) removeNotifierAndDrain(l *getEventsListener) {
 	}
 }
 func (s *Server) GetEvents(request *tetragon.GetEventsRequest, server tetragon.FineGuidanceSensors_GetEventsServer) error {
-	return s.GetEventsWG(request, server, nil)
+	return s.GetEventsWG(request, server, nil, nil)
 }
 
-func (s *Server) GetEventsWG(request *tetragon.GetEventsRequest, server tetragon.FineGuidanceSensors_GetEventsServer, readyWG *sync.WaitGroup) error {
+func (s *Server) GetEventsWG(request *tetragon.GetEventsRequest, server tetragon.FineGuidanceSensors_GetEventsServer, closer io.Closer, readyWG *sync.WaitGroup) error {
 	logger.GetLogger().WithField("request", request).Debug("Received a GetEvents request")
-	allowList, err := filters.BuildFilterList(context.Background(), request.AllowList, filters.Filters)
+	allowList, err := filters.BuildFilterList(s.ctx, request.AllowList, filters.Filters)
 	if err != nil {
 		return err
 	}
-	denyList, err := filters.BuildFilterList(context.Background(), request.DenyList, filters.Filters)
+	denyList, err := filters.BuildFilterList(s.ctx, request.DenyList, filters.Filters)
 	if err != nil {
 		return err
 	}
@@ -117,6 +122,7 @@ func (s *Server) GetEventsWG(request *tetragon.GetEventsRequest, server tetragon
 	if readyWG != nil {
 		readyWG.Done()
 	}
+	s.ctxCleanupWG.Add(1)
 	for {
 		select {
 		case event := <-l.events:
@@ -137,11 +143,22 @@ func (s *Server) GetEventsWG(request *tetragon.GetEventsRequest, server tetragon
 			} else {
 				// No need to aggregate. Directly send out the response.
 				if err = server.Send(event); err != nil {
+					s.ctxCleanupWG.Done()
 					return err
 				}
 			}
 		case <-server.Context().Done():
+			if closer != nil {
+				closer.Close()
+			}
+			s.ctxCleanupWG.Done()
 			return server.Context().Err()
+		case <-s.ctx.Done():
+			if closer != nil {
+				closer.Close()
+			}
+			s.ctxCleanupWG.Done()
+			return s.ctx.Err()
 		}
 	}
 }

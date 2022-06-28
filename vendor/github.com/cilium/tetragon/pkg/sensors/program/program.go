@@ -13,13 +13,29 @@ func Builder(
 	ty string,
 ) *Program {
 	return &Program{
-		objFile, attach, label, pinFile, false, true, false, ty,
-		Idle(), -1, struct{}{}, nil,
+		Name:       objFile,
+		Attach:     attach,
+		Label:      label,
+		PinPath:    pinFile,
+		RetProbe:   false,
+		ErrorFatal: true,
+		Override:   false,
+		Type:       ty,
+		LoadState:  Idle(),
+		LoaderData: struct{}{},
+		MapLoad:    nil,
+		unloader:   nil,
+		PinMap:     make(map[string]string),
 	}
 }
 
 func GetProgramInfo(l *Program) (program, label, prog string) {
 	return l.Name, l.Label, l.PinPath
+}
+
+type MapLoad struct {
+	Name string
+	Data []byte
 }
 
 // Program reprents a BPF program.
@@ -50,17 +66,16 @@ type Program struct {
 	Type      string
 	LoadState State
 
-	// TraceFD is needed because tracepoints are added different than kprobes
-	// for example. The FD is to keep a reference to the tracepoint program in
-	// order to delete it. TODO: This can be moved into loaderData for
-	// tracepoints.
-	TraceFD int
-
 	// LoaderData represents per-type specific fields.
 	LoaderData interface{}
 
+	MapLoad []*MapLoad
+
 	// unloader for the program. nil if not loaded.
-	unloader unloader.Unloader
+	unloader         unloader.Unloader
+	unloaderOverride unloader.Unloader
+
+	PinMap map[string]string
 }
 
 func (p *Program) SetRetProbe(ret bool) *Program {
@@ -80,6 +95,12 @@ func (p *Program) Unload() error {
 	if err := p.unloader.Unload(); err != nil {
 		return fmt.Errorf("Failed to unload: %s", err)
 	}
+	if p.unloaderOverride != nil {
+		if err := p.unloaderOverride.Unload(); err != nil {
+			return fmt.Errorf("Failed to unload override: %s", err)
+		}
+	}
 	p.unloader = nil
+	p.unloaderOverride = nil
 	return nil
 }

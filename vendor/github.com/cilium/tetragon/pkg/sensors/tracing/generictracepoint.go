@@ -9,13 +9,11 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"path/filepath"
 	"reflect"
 
 	"github.com/cilium/tetragon/pkg/api/ops"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -334,17 +332,24 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 	maps := []*program.Map{}
 	progs := make([]*program.Program, 0, len(tracepoints))
 	for _, tp := range tracepoints {
+		pinFile := fmt.Sprintf("tracepoint-%s-%s", tp.Info.Subsys, tp.Info.Event)
 		attach := fmt.Sprintf("%s/%s", tp.Info.Subsys, tp.Info.Event)
 		prog0 := program.Builder(
 			path.Join(option.Config.HubbleLib, progName),
 			attach,
 			"tracepoint/generic_tracepoint",
-			fmt.Sprintf("tracepoint-%s-%s", tp.Info.Subsys, tp.Info.Event),
+			pinFile,
 			"generic_tracepoint",
 		)
 
 		prog0.LoaderData = tp.tableIdx
 		progs = append(progs, prog0)
+
+		fdinstall := program.MapBuilder("fdinstall_map", prog0)
+		maps = append(maps, fdinstall)
+
+		tailCalls := program.MapBuilderPin("tp_calls", fmt.Sprintf("%s-tp-calls", pinFile), prog0)
+		maps = append(maps, tailCalls)
 	}
 
 	return &sensors.Sensor{
@@ -354,24 +359,24 @@ func createGenericTracepointSensor(confs []GenericTracepointConf) (*sensors.Sens
 	}, nil
 }
 
-func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, version, verbose int) (int, error) {
-	config := &api.EventConfig{}
+func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, version, verbose int) error {
+	config := api.EventConfig{}
 
 	tracepointLog = logger.GetLogger()
 
 	tpIdx, ok := load.LoaderData.(int)
 	if !ok {
-		return 0, fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int)", load.Name, load.LoaderData, load.LoaderData)
+		return fmt.Errorf("loaderData for genericTracepoint %s is %T (%v) (not an int)", load.Name, load.LoaderData, load.LoaderData)
 	}
 
 	tp, err := genericTracepointTable.getTracepoint(tpIdx)
 	if err != nil {
-		return 0, fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.Attach, err)
+		return fmt.Errorf("Could not find generic tracepoint information for %s: %w", load.Attach, err)
 	}
 
 	btfObj, err := btf.NewBTF()
 	if err != nil {
-		return 0, err
+		return err
 	}
 	defer btfObj.Close()
 
@@ -384,7 +389,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 		config.ArgTpCtxOff[i] = uint32(tpArg.CtxOffset)
 		_, err := tpArg.setGenericTypeId()
 		if err != nil {
-			return 0, fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
+			return fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
 		}
 
 		config.Arg[i] = int32(tpArg.genericTypeId)
@@ -406,7 +411,7 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 
 		ty, err := tpArg.setGenericTypeId()
 		if err != nil {
-			return 0, fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
+			return fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
 		}
 
 		if len(tp.Selectors.Args) > i && tp.Selectors.Args[i].Type == "" {
@@ -429,21 +434,19 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 
 	kernelSelectors, err := selectors.InitTracepointSelectors(tp.Selectors)
 	if err != nil {
-		return 0, err
+		return err
 	}
 
-	return bpf.LoadTracepointArgsProgram(
-		version, option.Config.Verbosity,
-		uintptr(btfObj),
-		load.Name,
-		load.Attach,
-		load.Label,
-		filepath.Join(bpfDir, load.PinPath),
-		mapDir,
-		load.RetProbe,
-		kernelSelectors,
-		config,
-	)
+	filter := &program.MapLoad{Name: "filter_map", Data: kernelSelectors[:]}
+	load.MapLoad = append(load.MapLoad, filter)
+
+	var bin_buf bytes.Buffer
+
+	binary.Write(&bin_buf, binary.LittleEndian, config)
+	cfg := &program.MapLoad{Name: "config_map", Data: bin_buf.Bytes()[:]}
+	load.MapLoad = append(load.MapLoad, cfg)
+
+	return program.LoadTracepointProgram(bpfDir, mapDir, load, verbose)
 }
 
 func handleGenericTracepoint(r *bytes.Reader) ([]observer.Event, error) {
@@ -559,6 +562,6 @@ func (t *observerTracepointSensor) SpecHandler(raw interface{}) (*sensors.Sensor
 	return nil, nil
 }
 
-func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) (int, error) {
+func (t *observerTracepointSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	return LoadGenericTracepointSensor(args.BPFDir, args.MapDir, args.Load, args.Version, args.Verbose)
 }
