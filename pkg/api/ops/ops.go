@@ -75,7 +75,7 @@ const (
 	// MSG_OP_CLONE notifies user-space that a clone() event has occurred.
 	MSG_OP_CLONE = 23
 
-	// MSG_OP_DATA = 24 // defined in OSS
+	MSG_OP_DATA = 24
 
 	// just for testing
 	MSG_OP_TEST = 254

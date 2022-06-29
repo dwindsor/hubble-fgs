@@ -119,6 +119,7 @@ github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/types
 github.com/cilium/tetragon/pkg/aggregator
 github.com/cilium/tetragon/pkg/api
 github.com/cilium/tetragon/pkg/api/calltraceapi
+github.com/cilium/tetragon/pkg/api/dataapi
 github.com/cilium/tetragon/pkg/api/ops
 github.com/cilium/tetragon/pkg/api/processapi
 github.com/cilium/tetragon/pkg/api/readyapi
@@ -129,6 +130,7 @@ github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/bugtool
 github.com/cilium/tetragon/pkg/cilium
 github.com/cilium/tetragon/pkg/config
+github.com/cilium/tetragon/pkg/data
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/dns
 github.com/cilium/tetragon/pkg/eventcache

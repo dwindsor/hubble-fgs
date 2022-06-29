@@ -31,7 +31,7 @@ enum iso_msg_ops {
 
 	ISO_MSG_OP_CLONE = MSG_OP_CLONE, // 23
 
-	// MSG_OP_DATA = 24 // defined in OSS
+	ISO_MSG_OP_DATA = MSG_OP_DATA, // 24
 
 	ISO_MSG_OP_FILE = 129,
 
