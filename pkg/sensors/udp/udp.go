@@ -51,9 +51,9 @@ const (
 	UdpPayloadMapStatsName = "udp_payload_map_stats"
 	UdpPayloadBloomMapName = "udp_payload_bloom_map"
 	SocketToProcMapName    = "socket_cookie_to_proc_map"
-	FdLookupConfigMapName  = "fd_lookup_config_map"
 
 	stataCacheSize = 32000
+	IPPROTO_UDP    = 17
 )
 
 var (
@@ -208,15 +208,6 @@ var (
 		"kprobe",
 	)
 
-	// Socket lookup program
-	FdLookup = program.Builder(
-		"bpf_fd_lookup.o",
-		"check_kill_permission",
-		"kprobe/check_kill_permission",
-		"kprobe_check_kill_permission",
-		"kprobe",
-	)
-
 	// Shared socket cookie infrastructure
 	SocketCookieMap = program.MapBuilder(SocketToProcMapName, Udp4SendLazy)
 
@@ -252,9 +243,6 @@ var (
 	ProcessNetworkBurstMapLazy       = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendLazy)
 	ProcessNetworkBurstMapLazyKprobe = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendRecvLazy)
 	PNBurstMapStats                  = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstStatsMapName, base.Exit)
-
-	// Socket lookup config map
-	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
 )
 
 type udpInfoKey struct {
@@ -563,6 +551,10 @@ type udpSensor struct {
 }
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	if !configured {
+		ip.LoadSockets(nil, IPPROTO_UDP)
+	}
+
 	if args.Load.Type == "cgrp_ingress" || args.Load.Type == "cgrp_egress" {
 		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
 		if err != nil {
@@ -602,8 +594,6 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	var progs []*program.Program
 	var maps []*program.Map
 	var versionStr string
-
-	loadSockets()
 
 	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
 		progs = []*program.Program{

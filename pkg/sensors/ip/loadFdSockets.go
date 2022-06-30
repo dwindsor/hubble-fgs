@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package udp
+package ip
 
 import (
 	"context"
@@ -18,6 +18,7 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
 	"syscall"
 	"time"
 	"unsafe"
@@ -32,32 +33,63 @@ import (
 )
 
 const (
-	maxMapRetries  = 4
-	mapRetryDelay  = 1
-	fdLookupSignal = 1024
+	maxMapRetries         = 4
+	mapRetryDelay         = 1
+	fdLookupSignal        = 1024
+	FdLookupConfigMapName = "fd_lookup_config_map"
+	SocketToProcMapName   = "socket_cookie_to_proc_map"
 )
 
-type fdLookupKey struct {
+type FdLookupKey struct {
 	Zero uint32
 }
 
-type fdLookupValue struct {
-	Pid uint32
-	Fd  uint32
+type FdLookupValue struct {
+	Pid      uint32
+	Fd       uint32
+	Saddr    [2]uint64
+	Daddr    [2]uint64
+	Sport    uint16
+	Dport    uint16
+	Protocol uint16
+	State    uint8
+	IPv6     uint8
 }
 
-func (k *fdLookupKey) String() string             { return fmt.Sprintf("key=%d", k.Zero) }
-func (k *fdLookupKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
-func (k *fdLookupKey) DeepCopyMapKey() bpf.MapKey { return &fdLookupKey{k.Zero} }
+type FdCallback func(*FdLookupValue)
 
-func (k *fdLookupKey) NewValue() bpf.MapValue { return &fdLookupValue{} }
+var (
+	// Mutex to prevent concurrent loading
+	loading sync.Mutex
 
-func (v *fdLookupValue) String() string {
+	// Socket lookup program
+	FdLookup = program.Builder(
+		"bpf_fd_lookup.o",
+		"check_kill_permission",
+		"kprobe/check_kill_permission",
+		"kprobe_check_kill_permission",
+		"kprobe",
+	)
+
+	// Socket lookup config map
+	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
+
+	// Shared socket cookie infrastructure
+	SocketCookieMap = program.MapBuilder(SocketToProcMapName, FdLookup)
+)
+
+func (k *FdLookupKey) String() string             { return fmt.Sprintf("key=%d", k.Zero) }
+func (k *FdLookupKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
+func (k *FdLookupKey) DeepCopyMapKey() bpf.MapKey { return &FdLookupKey{k.Zero} }
+
+func (k *FdLookupKey) NewValue() bpf.MapValue { return &FdLookupValue{} }
+
+func (v *FdLookupValue) String() string {
 	return fmt.Sprintf("value=%d %d", v.Pid, v.Fd)
 }
-func (v *fdLookupValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
-func (v *fdLookupValue) DeepCopyMapValue() bpf.MapValue {
-	return &fdLookupValue{}
+func (v *FdLookupValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
+func (v *FdLookupValue) DeepCopyMapValue() bpf.MapValue {
+	return &FdLookupValue{}
 }
 
 func getSocketFdsFromProcDir(dirname string) ([]uint32, error) {
@@ -176,13 +208,17 @@ func unloadFdLookup(fdLoadSensor *sensors.Sensor, bpfDir, mapDir, ciliumDir stri
 	return nil
 }
 
-func loadSockets() error {
+func LoadSockets(callback FdCallback, protocol uint16) error {
 	/* Load existing network sockets. This consists of: loading a BPF program to respond to kill
 	 * syscalls; exercising it once per socket that was previously discovered in order to load it
 	 * into the socket cookie map; and then unloading the BPF program.
 	 * This needs to happen before the sensors are loaded, as those sensors depend upon this map
 	 * being already populated.
 	 */
+
+	loading.Lock()
+	defer loading.Unlock()
+
 	procSocketFds, err := getExistingSockets()
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to get existing sockets")
@@ -193,7 +229,7 @@ func loadSockets() error {
 		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
 		return err
 	}
-	writeSocketCookies(procSocketFds)
+	writeSocketCookies(procSocketFds, callback, protocol)
 	if err := unloadFdLookup(fdLoadSensor, observer.GetBpfDir(), observer.GetMapDir(), observer.GetCiliumDir()); err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to unload FD Lookup program")
 		return err
@@ -202,7 +238,7 @@ func loadSockets() error {
 	return nil
 }
 
-func writeSocketCookies(procSocketFds map[uint32][]uint32) {
+func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, protocol uint16) {
 	mapDir := bpf.MapPrefixPath()
 
 	fdLookupMap := FdLookupConfigMap
@@ -225,13 +261,21 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32) {
 	}
 	for pid, fds := range procSocketFds {
 		for _, fd := range fds {
-			k := &fdLookupKey{Zero: 0}
-			v := &fdLookupValue{
-				Pid: pid,
-				Fd:  fd,
+			k := &FdLookupKey{Zero: 0}
+			v := &FdLookupValue{
+				Pid:      pid,
+				Fd:       fd,
+				Protocol: protocol,
 			}
 			m.Update(k, v)
 			syscall.Syscall(syscall.SYS_KILL, uintptr(pid), fdLookupSignal, 0)
+			ret, err := m.Lookup(k)
+			if err == nil {
+				v = ret.(*FdLookupValue)
+				if v.Protocol == protocol && callback != nil {
+					callback(v)
+				}
+			}
 		}
 	}
 	m.Close()
