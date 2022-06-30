@@ -192,6 +192,7 @@ github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors
 github.com/cilium/tetragon/pkg/sensors/base
 github.com/cilium/tetragon/pkg/sensors/config
+github.com/cilium/tetragon/pkg/sensors/exec/execvemap
 github.com/cilium/tetragon/pkg/sensors/program
 github.com/cilium/tetragon/pkg/sensors/program/cgroup
 github.com/cilium/tetragon/pkg/sensors/test
