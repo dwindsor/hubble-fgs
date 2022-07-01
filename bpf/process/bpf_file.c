@@ -145,6 +145,10 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 
 	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
 
+	msg->imode = 0;
+	msg->pad1 = msg->pad2 = 0;
+	msg->uid = msg->gid = 0;
+
 	msg->action = action;
 	msg->hook = hook_type;
 	msg->ktime = ktime_get_ns();
@@ -349,6 +353,10 @@ event_security_path_unlink(struct pt_regs *ctx)
 
 	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
 
+	msg->imode = 0;
+	msg->pad1 = msg->pad2 = 0;
+	msg->uid = msg->gid = 0;
+
 	msg->action = action_delete;
 	msg->hook = hook_security_path_unlink;
 	msg->ktime = ktime_get_ns();
@@ -413,6 +421,11 @@ event_do_dentry_open(struct pt_regs *ctx)
 	msg->path.flags = flags;
 
 	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
+
+	probe_read(&(msg->imode), sizeof(msg->imode), _(&inode->i_mode));
+	msg->pad1 = msg->pad2 = 0;
+	probe_read(&(msg->uid), sizeof(msg->uid), _(&inode->i_uid));
+	probe_read(&(msg->gid), sizeof(msg->gid), _(&inode->i_gid));
 
 	msg->action = action_create;
 	msg->hook = hook_do_dentry_open;

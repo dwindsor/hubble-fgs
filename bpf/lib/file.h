@@ -35,6 +35,11 @@ struct msg_file_ops {
 	__u32 hook;
 	__u64 ktime;
 	__u64 ino;
+	__u16 imode; // unsigned short
+	__u16 pad1;
+	__u32 pad2;
+	__u32 uid;
+	__u32 gid;
 } __attribute__((packed));
 
 #endif

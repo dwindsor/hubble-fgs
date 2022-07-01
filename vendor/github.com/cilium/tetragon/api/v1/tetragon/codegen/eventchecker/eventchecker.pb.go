@@ -2393,12 +2393,15 @@ func (checker *ProcessIpErrorChecker) FromProcessIpError(event *tetragon.Process
 
 // ProcessFileChecker implements a checker struct to check a ProcessFile event
 type ProcessFileChecker struct {
-	Process *ProcessChecker                    `json:"process,omitempty"`
-	Parent  *ProcessChecker                    `json:"parent,omitempty"`
-	Action  *FileActionChecker                 `json:"action,omitempty"`
-	Args    *FileArgumentChecker               `json:"args,omitempty"`
-	Time    *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
-	Hook    *stringmatcher.StringMatcher       `json:"hook,omitempty"`
+	Process     *ProcessChecker                    `json:"process,omitempty"`
+	Parent      *ProcessChecker                    `json:"parent,omitempty"`
+	Action      *FileActionChecker                 `json:"action,omitempty"`
+	Args        *FileArgumentChecker               `json:"args,omitempty"`
+	Permissions *stringmatcher.StringMatcher       `json:"permissions,omitempty"`
+	Uid         *stringmatcher.StringMatcher       `json:"uid,omitempty"`
+	Gid         *stringmatcher.StringMatcher       `json:"gid,omitempty"`
+	Time        *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
+	Hook        *stringmatcher.StringMatcher       `json:"hook,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2449,6 +2452,21 @@ func (checker *ProcessFileChecker) Check(event *tetragon.ProcessFile) error {
 			return fmt.Errorf("ProcessFileChecker: Args check failed: %w", err)
 		}
 	}
+	if checker.Permissions != nil {
+		if err := checker.Permissions.Match(event.Permissions); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Permissions check failed: %w", err)
+		}
+	}
+	if checker.Uid != nil {
+		if err := checker.Uid.Match(event.Uid); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Uid check failed: %w", err)
+		}
+	}
+	if checker.Gid != nil {
+		if err := checker.Gid.Match(event.Gid); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Gid check failed: %w", err)
+		}
+	}
 	if checker.Time != nil {
 		if err := checker.Time.Match(event.Time); err != nil {
 			return fmt.Errorf("ProcessFileChecker: Time check failed: %w", err)
@@ -2487,6 +2505,24 @@ func (checker *ProcessFileChecker) WithArgs(check *FileArgumentChecker) *Process
 	return checker
 }
 
+// WithPermissions adds a Permissions check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithPermissions(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.Permissions = check
+	return checker
+}
+
+// WithUid adds a Uid check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithUid(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.Uid = check
+	return checker
+}
+
+// WithGid adds a Gid check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithGid(check *stringmatcher.StringMatcher) *ProcessFileChecker {
+	checker.Gid = check
+	return checker
+}
+
 // WithTime adds a Time check to the ProcessFileChecker
 func (checker *ProcessFileChecker) WithTime(check *timestampmatcher.TimestampMatcher) *ProcessFileChecker {
 	checker.Time = check
@@ -2514,6 +2550,9 @@ func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) 
 	if event.Args != nil {
 		checker.Args = NewFileArgumentChecker().FromFileArgument(event.Args)
 	}
+	checker.Permissions = stringmatcher.Full(event.Permissions)
+	checker.Uid = stringmatcher.Full(event.Uid)
+	checker.Gid = stringmatcher.Full(event.Gid)
 	// NB: We don't want to match timestamps for now
 	checker.Time = nil
 	checker.Hook = stringmatcher.Full(event.Hook)

@@ -11,6 +11,11 @@
 package file
 
 import (
+	"fmt"
+	"io/fs"
+	"os/user"
+	"strconv"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
@@ -67,6 +72,25 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		Hook:    fileHookMap[event.Hook],
 	}
 
+	if tetragonEvent.Action == tetragon.FileAction_FILE_CREATE {
+		userStr := "<unknown>"
+		uname, err1 := user.LookupId(strconv.FormatUint(uint64(event.Uid), 10))
+		if err1 == nil {
+			userStr = uname.Username
+		}
+
+		groupStr := "<unknown>"
+		gname, err2 := user.LookupGroupId(strconv.FormatUint(uint64(event.Gid), 10))
+		if err2 == nil {
+			groupStr = gname.Name
+		}
+
+		perms := fs.FileMode(event.Imode) & fs.ModePerm
+		tetragonEvent.Permissions = fmt.Sprintf("%v (%#o)", perms, perms)
+		tetragonEvent.Uid = fmt.Sprintf("%d (%s)", event.Uid, userStr)
+		tetragonEvent.Gid = fmt.Sprintf("%d (%s)", event.Gid, groupStr)
+	}
+
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(tetragonProcess) {
 		ec.Add(process, tetragonEvent, ktime.ToProto(event.Common.Ktime), event)
@@ -87,6 +111,9 @@ type MsgFileEventUnix struct {
 	Hook       uint32
 	Timestamp  uint64
 	Ino        uint64
+	Imode      uint32
+	Uid        uint32
+	Gid        uint32
 }
 
 func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {

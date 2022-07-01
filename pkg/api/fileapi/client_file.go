@@ -26,14 +26,9 @@ type MsgFileEvent struct {
 	Hook       uint32
 	Timestamp  uint64
 	Ino        uint64
-}
-
-type MsgFileEventUnix struct {
-	Common     processapi.MsgCommon
-	ProcessKey processapi.MsgExecveKey
-	Path       string
-	Action     uint32
-	Hook       uint32
-	Timestamp  uint64
-	Ino        uint64
+	Imode      uint16
+	Pad1       uint16
+	Pad2       uint32
+	Uid        uint32
+	Gid        uint32
 }

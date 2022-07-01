@@ -158,8 +158,11 @@ message ProcessFile {
     tetragon.Process parent = 2;
     FileAction action = 3;
     FileArgument args = 4;
-    google.protobuf.Timestamp time = 5;
-    string hook = 6;
+    string permissions = 5;
+    string uid = 6;
+    string gid = 7;
+    google.protobuf.Timestamp time = 8;
+    string hook = 9;
 }
 
 message SockInfo {

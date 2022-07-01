@@ -69,6 +69,9 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		Hook:       m.Hook,
 		Timestamp:  m.Timestamp,
 		Ino:        m.Ino,
+		Imode:      uint32(m.Imode),
+		Uid:        m.Uid,
+		Gid:        m.Gid,
 	}
 
 	return []observer.Event{unix}, nil
