@@ -16,10 +16,14 @@ package file
 import (
 	"context"
 	"errors"
+	"fmt"
 	"os"
 	"os/exec"
+	"os/user"
 	"path/filepath"
+	"strconv"
 	"sync"
+	"syscall"
 	"testing"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -487,6 +491,13 @@ func fileCreate(t *testing.T, dirName string) {
 	if err != nil {
 		t.Fatalf("%s", err)
 	}
+}
+
+func fileCleanup(t *testing.T, dirName string) {
+	filePath := [2]string{
+		filepath.Join(dirName, "newfile1.txt"),
+		filepath.Join(dirName, "newfile2.txt"),
+	}
 
 	// remove files
 	for _, path := range filePath {
@@ -495,6 +506,32 @@ func fileCreate(t *testing.T, dirName string) {
 			t.Fatalf("%s", err)
 		}
 	}
+}
+
+func getFilePermsUidGui(t *testing.T, fileName string) (string, string, string) {
+	fileStats, err := os.Stat(fileName)
+	if err != nil {
+		t.Fatalf("file does not exist: %v", err)
+	}
+
+	perms := fileStats.Mode().Perm()
+	permStr := fmt.Sprintf("%v (%#o)", perms, perms)
+
+	userStr := "<unknown>"
+	uID := fileStats.Sys().(*syscall.Stat_t).Uid
+	uname, err1 := user.LookupId(strconv.FormatUint(uint64(uID), 10))
+	if err1 == nil {
+		userStr = fmt.Sprintf("%d (%s)", uID, uname.Username)
+	}
+
+	groupStr := "<unknown>"
+	gID := fileStats.Sys().(*syscall.Stat_t).Gid
+	gname, err2 := user.LookupGroupId(strconv.FormatUint(uint64(gID), 10))
+	if err2 == nil {
+		groupStr = fmt.Sprintf("%d (%s)", gID, gname.Name)
+	}
+
+	return permStr, userStr, groupStr
 }
 
 func TestFileCreate(t *testing.T) {
@@ -520,16 +557,28 @@ func TestFileCreate(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
-	fileCreate(t, test_path)
-
 	fp1 := filepath.Join(test_path, "newfile1.txt")
 	fp2 := filepath.Join(test_path, "newfile2.txt")
+
+	fileCreate(t, test_path)
+
+	perm1, uid1, gid1 := getFilePermsUidGui(t, fp1)
+	perm2, uid2, gid2 := getFilePermsUidGui(t, fp2)
+
+	fileCleanup(t, test_path)
+
 	file1CreateChecker := ec.NewProcessFileChecker().
 		WithAction(tetragon.FileAction_FILE_CREATE).
-		WithArgs(genericArgFilenameChecker(fp1))
+		WithArgs(genericArgFilenameChecker(fp1)).
+		WithPermissions(sm.Full(perm1)).
+		WithUid(sm.Full(uid1)).
+		WithGid(sm.Full(gid1))
 	file2CreateChecker := ec.NewProcessFileChecker().
 		WithAction(tetragon.FileAction_FILE_CREATE).
-		WithArgs(genericArgFilenameChecker(fp2))
+		WithArgs(genericArgFilenameChecker(fp2)).
+		WithPermissions(sm.Full(perm2)).
+		WithUid(sm.Full(uid2)).
+		WithGid(sm.Full(gid2))
 	file2WriteChecker := ec.NewProcessFileChecker().
 		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(fp2))
