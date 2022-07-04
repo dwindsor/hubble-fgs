@@ -249,14 +249,24 @@ enum FileAction {
     FILE_CREATE = 4;
 }
 
+message GenericFileArg {
+    string filename = 1;
+    uint64 inode_number = 2;
+}
+
+message FileArgument {
+    oneof arg {
+        GenericFileArg generic_arg = 1;
+    }
+}
+
 message ProcessFile {
     tetragon.Process process = 1;
     tetragon.Process parent = 2;
     FileAction action = 3;
-    string filename = 4;
-    uint64 inode_number = 5;
-    google.protobuf.Timestamp time = 6;
-    string hook = 7;
+    FileArgument args = 4;
+    google.protobuf.Timestamp time = 5;
+    string hook = 6;
 }
 
 message SockInfo {

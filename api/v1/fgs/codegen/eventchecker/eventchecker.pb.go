@@ -2287,13 +2287,12 @@ func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *fgs.Proces
 
 // ProcessFileChecker implements a checker struct to check a ProcessFile event
 type ProcessFileChecker struct {
-	Process     *eventchecker.ProcessChecker       `json:"process,omitempty"`
-	Parent      *eventchecker.ProcessChecker       `json:"parent,omitempty"`
-	Action      *FileActionChecker                 `json:"action,omitempty"`
-	Filename    *stringmatcher.StringMatcher       `json:"filename,omitempty"`
-	InodeNumber *uint64                            `json:"inodeNumber,omitempty"`
-	Time        *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
-	Hook        *stringmatcher.StringMatcher       `json:"hook,omitempty"`
+	Process *eventchecker.ProcessChecker       `json:"process,omitempty"`
+	Parent  *eventchecker.ProcessChecker       `json:"parent,omitempty"`
+	Action  *FileActionChecker                 `json:"action,omitempty"`
+	Args    *FileArgumentChecker               `json:"args,omitempty"`
+	Time    *timestampmatcher.TimestampMatcher `json:"time,omitempty"`
+	Hook    *stringmatcher.StringMatcher       `json:"hook,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2339,14 +2338,9 @@ func (checker *ProcessFileChecker) Check(event *fgs.ProcessFile) error {
 			return fmt.Errorf("ProcessFileChecker: Action check failed: %w", err)
 		}
 	}
-	if checker.Filename != nil {
-		if err := checker.Filename.Match(event.Filename); err != nil {
-			return fmt.Errorf("ProcessFileChecker: Filename check failed: %w", err)
-		}
-	}
-	if checker.InodeNumber != nil {
-		if *checker.InodeNumber != event.InodeNumber {
-			return fmt.Errorf("ProcessFileChecker: InodeNumber has value %d which does not match expected value %d", event.InodeNumber, *checker.InodeNumber)
+	if checker.Args != nil {
+		if err := checker.Args.Check(event.Args); err != nil {
+			return fmt.Errorf("ProcessFileChecker: Args check failed: %w", err)
 		}
 	}
 	if checker.Time != nil {
@@ -2381,15 +2375,9 @@ func (checker *ProcessFileChecker) WithAction(check fgs.FileAction) *ProcessFile
 	return checker
 }
 
-// WithFilename adds a Filename check to the ProcessFileChecker
-func (checker *ProcessFileChecker) WithFilename(check *stringmatcher.StringMatcher) *ProcessFileChecker {
-	checker.Filename = check
-	return checker
-}
-
-// WithInodeNumber adds a InodeNumber check to the ProcessFileChecker
-func (checker *ProcessFileChecker) WithInodeNumber(check uint64) *ProcessFileChecker {
-	checker.InodeNumber = &check
+// WithArgs adds a Args check to the ProcessFileChecker
+func (checker *ProcessFileChecker) WithArgs(check *FileArgumentChecker) *ProcessFileChecker {
+	checker.Args = check
 	return checker
 }
 
@@ -2417,10 +2405,8 @@ func (checker *ProcessFileChecker) FromProcessFile(event *fgs.ProcessFile) *Proc
 		checker.Parent = eventchecker.NewProcessChecker().FromProcess(event.Parent)
 	}
 	checker.Action = NewFileActionChecker(event.Action)
-	checker.Filename = stringmatcher.Full(event.Filename)
-	{
-		val := event.InodeNumber
-		checker.InodeNumber = &val
+	if event.Args != nil {
+		checker.Args = NewFileArgumentChecker().FromFileArgument(event.Args)
 	}
 	// NB: We don't want to match timestamps for now
 	checker.Time = nil
@@ -4581,6 +4567,108 @@ func (checker *KprobeArgumentChecker) FromKprobeArgument(event *fgs.KprobeArgume
 	case *fgs.KprobeArgument_CredArg:
 		if event.CredArg != nil {
 			checker.CredArg = NewKprobeCredChecker().FromKprobeCred(event.CredArg)
+		}
+	}
+	return checker
+}
+
+// GenericFileArgChecker implements a checker struct to check a GenericFileArg field
+type GenericFileArgChecker struct {
+	Filename    *stringmatcher.StringMatcher `json:"filename,omitempty"`
+	InodeNumber *uint64                      `json:"inodeNumber,omitempty"`
+}
+
+// NewGenericFileArgChecker creates a new GenericFileArgChecker
+func NewGenericFileArgChecker() *GenericFileArgChecker {
+	return &GenericFileArgChecker{}
+}
+
+// Check checks a GenericFileArg field
+func (checker *GenericFileArgChecker) Check(event *fgs.GenericFileArg) error {
+	if event == nil {
+		return fmt.Errorf("GenericFileArgChecker: GenericFileArg field is nil")
+	}
+
+	if checker.Filename != nil {
+		if err := checker.Filename.Match(event.Filename); err != nil {
+			return fmt.Errorf("GenericFileArgChecker: Filename check failed: %w", err)
+		}
+	}
+	if checker.InodeNumber != nil {
+		if *checker.InodeNumber != event.InodeNumber {
+			return fmt.Errorf("GenericFileArgChecker: InodeNumber has value %d which does not match expected value %d", event.InodeNumber, *checker.InodeNumber)
+		}
+	}
+	return nil
+}
+
+// WithFilename adds a Filename check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithFilename(check *stringmatcher.StringMatcher) *GenericFileArgChecker {
+	checker.Filename = check
+	return checker
+}
+
+// WithInodeNumber adds a InodeNumber check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithInodeNumber(check uint64) *GenericFileArgChecker {
+	checker.InodeNumber = &check
+	return checker
+}
+
+//FromGenericFileArg populates the GenericFileArgChecker using data from a GenericFileArg field
+func (checker *GenericFileArgChecker) FromGenericFileArg(event *fgs.GenericFileArg) *GenericFileArgChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Filename = stringmatcher.Full(event.Filename)
+	{
+		val := event.InodeNumber
+		checker.InodeNumber = &val
+	}
+	return checker
+}
+
+// FileArgumentChecker implements a checker struct to check a FileArgument field
+type FileArgumentChecker struct {
+	GenericArg *GenericFileArgChecker `json:"genericArg,omitempty"`
+}
+
+// NewFileArgumentChecker creates a new FileArgumentChecker
+func NewFileArgumentChecker() *FileArgumentChecker {
+	return &FileArgumentChecker{}
+}
+
+// Check checks a FileArgument field
+func (checker *FileArgumentChecker) Check(event *fgs.FileArgument) error {
+	if event == nil {
+		return fmt.Errorf("FileArgumentChecker: FileArgument field is nil")
+	}
+
+	if checker.GenericArg != nil {
+		switch event := event.Arg.(type) {
+		case *fgs.FileArgument_GenericArg:
+			if err := checker.GenericArg.Check(event.GenericArg); err != nil {
+				return fmt.Errorf("FileArgumentChecker: GenericArg check failed: %w", err)
+			}
+		}
+	}
+	return nil
+}
+
+// WithGenericArg adds a GenericArg check to the FileArgumentChecker
+func (checker *FileArgumentChecker) WithGenericArg(check *GenericFileArgChecker) *FileArgumentChecker {
+	checker.GenericArg = check
+	return checker
+}
+
+//FromFileArgument populates the FileArgumentChecker using data from a FileArgument field
+func (checker *FileArgumentChecker) FromFileArgument(event *fgs.FileArgument) *FileArgumentChecker {
+	if event == nil {
+		return checker
+	}
+	switch event := event.Arg.(type) {
+	case *fgs.FileArgument_GenericArg:
+		if event.GenericArg != nil {
+			checker.GenericArg = NewGenericFileArgChecker().FromGenericFileArg(event.GenericArg)
 		}
 	}
 	return checker

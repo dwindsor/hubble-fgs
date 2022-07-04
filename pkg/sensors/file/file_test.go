@@ -126,6 +126,11 @@ func createSpecFile(t *testing.T, test_path string) string {
 	return specFname
 }
 
+func genericArgFilenameChecker(fileName string) *ec.FileArgumentChecker {
+	c := ec.NewGenericFileArgChecker().WithFilename(sm.Full(fileName))
+	return ec.NewFileArgumentChecker().WithGenericArg(c)
+}
+
 func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act fgs.FileAction) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		t.Skip("File monitoring requires at least 5.4.0 version")
@@ -175,7 +180,7 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act fgs.
 
 	fileChecker := ec.NewProcessFileChecker().
 		WithAction(act).
-		WithFilename(sm.Full(test_file))
+		WithArgs(genericArgFilenameChecker(test_file))
 	checker := ec.NewUnorderedEventChecker(fileChecker)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
@@ -231,10 +236,10 @@ func runCopyTest(t *testing.T, exec_path string) {
 
 	inFileChecker := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_READ).
-		WithFilename(sm.Full(in_file))
+		WithArgs(genericArgFilenameChecker(in_file))
 	outFileChecker := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_WRITE).
-		WithFilename(sm.Full(out_file))
+		WithArgs(genericArgFilenameChecker(out_file))
 	checker := ec.NewUnorderedEventChecker(
 		inFileChecker,
 		outFileChecker,
@@ -291,10 +296,10 @@ func runMmapTest(t *testing.T, exec_path string, act fgs.FileAction) {
 
 	fileCheckerRead := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_READ).
-		WithFilename(sm.Full(test_file))
+		WithArgs(genericArgFilenameChecker(test_file))
 	fileCheckerWrite := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_WRITE).
-		WithFilename(sm.Full(test_file))
+		WithArgs(genericArgFilenameChecker(test_file))
 	checker := ec.NewUnorderedEventChecker(
 		fileCheckerRead,
 		fileCheckerWrite,
@@ -460,7 +465,7 @@ func TestFileDelete(t *testing.T) {
 
 	inFileChecker := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_DELETE).
-		WithFilename(sm.Full(in_file))
+		WithArgs(genericArgFilenameChecker(in_file))
 	checker := ec.NewUnorderedEventChecker(inFileChecker)
 
 	err = jsonchecker.JsonTestCheck(t, checker)
@@ -540,21 +545,23 @@ func TestFileCreate(t *testing.T) {
 
 	fileCreate(t, test_path)
 
+	fp1 := filepath.Join(test_path, "newfile1.txt")
+	fp2 := filepath.Join(test_path, "newfile2.txt")
 	file1CreateChecker := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_CREATE).
-		WithFilename(sm.Full(filepath.Join(test_path, "newfile1.txt")))
+		WithArgs(genericArgFilenameChecker(fp1))
 	file2CreateChecker := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_CREATE).
-		WithFilename(sm.Full(filepath.Join(test_path, "newfile2.txt")))
+		WithArgs(genericArgFilenameChecker(fp2))
 	file2WriteChecker := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_WRITE).
-		WithFilename(sm.Full(filepath.Join(test_path, "newfile2.txt")))
+		WithArgs(genericArgFilenameChecker(fp2))
 	file1DeleteChecker := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_DELETE).
-		WithFilename(sm.Full(filepath.Join(test_path, "newfile1.txt")))
+		WithArgs(genericArgFilenameChecker(fp1))
 	file2DeleteChecker := ec.NewProcessFileChecker().
 		WithAction(fgs.FileAction_FILE_DELETE).
-		WithFilename(sm.Full(filepath.Join(test_path, "newfile2.txt")))
+		WithArgs(genericArgFilenameChecker(fp2))
 	checker := ec.NewUnorderedEventChecker(
 		file1CreateChecker,
 		file2CreateChecker,

@@ -66,14 +66,17 @@ func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *fgs.ProcessFile {
 		tetragonParent = parent.GetProcessCopy()
 	}
 
-	tetragonEvent := &fgs.ProcessFile{
-		Process:     tetragonProcess,
-		Parent:      tetragonParent,
-		Action:      fgs.FileAction(event.Action),
+	args := &fgs.GenericFileArg{
 		Filename:    event.Path,
 		InodeNumber: event.Ino,
-		Time:        ktime.ToProto(event.Timestamp),
-		Hook:        fileHookMap[event.Hook],
+	}
+	tetragonEvent := &fgs.ProcessFile{
+		Process: tetragonProcess,
+		Parent:  tetragonParent,
+		Action:  fgs.FileAction(event.Action),
+		Args:    &fgs.FileArgument{Arg: &fgs.FileArgument_GenericArg{GenericArg: args}},
+		Time:    ktime.ToProto(event.Timestamp),
+		Hook:    fileHookMap[event.Hook],
 	}
 
 	if t.eventCache.Needed(tetragonProcess) {

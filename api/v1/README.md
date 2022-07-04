@@ -15,7 +15,9 @@
     - [DnsInfo](#fgs.DnsInfo)
     - [EnableSensorRequest](#fgs.EnableSensorRequest)
     - [EnableSensorResponse](#fgs.EnableSensorResponse)
+    - [FileArgument](#fgs.FileArgument)
     - [Filter](#fgs.Filter)
+    - [GenericFileArg](#fgs.GenericFileArg)
     - [GetEventsRequest](#fgs.GetEventsRequest)
     - [GetEventsResponse](#fgs.GetEventsResponse)
     - [GetHealthStatusRequest](#fgs.GetHealthStatusRequest)
@@ -307,6 +309,21 @@ AggregationOptions defines configuration options for aggregating events.
 
 
 
+<a name="fgs.FileArgument"></a>
+
+### FileArgument
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| generic_arg | [GenericFileArg](#fgs.GenericFileArg) |  |  |
+
+
+
+
+
+
 <a name="fgs.Filter"></a>
 
 ### Filter
@@ -322,6 +339,22 @@ AggregationOptions defines configuration options for aggregating events.
 | pid_set | [uint32](#uint32) | repeated |  |
 | event_set | [EventType](#fgs.EventType) | repeated |  |
 | pod_regex | [string](#string) | repeated | A series of regexes for filtering over pod name |
+
+
+
+
+
+
+<a name="fgs.GenericFileArg"></a>
+
+### GenericFileArg
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filename | [string](#string) |  |  |
+| inode_number | [uint64](#uint64) |  |  |
 
 
 
@@ -945,8 +978,7 @@ HTTP PARSER
 | process | [tetragon.Process](#tetragon.Process) |  |  |
 | parent | [tetragon.Process](#tetragon.Process) |  |  |
 | action | [FileAction](#fgs.FileAction) |  |  |
-| filename | [string](#string) |  |  |
-| inode_number | [uint64](#uint64) |  |  |
+| args | [FileArgument](#fgs.FileArgument) |  |  |
 | time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  |  |
 | hook | [string](#string) |  |  |
 
