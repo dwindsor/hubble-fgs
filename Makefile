@@ -9,6 +9,8 @@ FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h' -not -path 'bpf/include/vmlinux.
 NOOPT ?= 0
 CLANG_IMAGE = quay.io/cilium/clang:7ea8dd5b610a8864ce7b56e10ffeb61030a0c50e@sha256:02ad7cc1d08d85c027557099b88856945be5124b5c31aeabce326e7983e3913b
 METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
+# Extra flags to pass to test binary
+EXTRA_TESTFLAGS ?=
 
 LIBBPF_INSTALL_DIR ?= ./lib
 VERSION=$(shell git describe --tags --always)
@@ -162,8 +164,13 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
 	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench
 
+.PHONY: test
 test:
-	ulimit -n 1048576 && $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./...
+	ulimit -n 1048576 && $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./pkg/... ${EXTRA_TESTFLAGS}
+
+.PHONY: e2e-test
+e2e-test: image image-operator
+	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./tests/e2e/tests/... ${EXTRA_TESTFLAGS} -fail-fast -tetragon.helm.set enterprise.image.override="isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" -tetragon.helm.set hubbleEnterpriseOperator.image.override="isovalent/hubble-enterprise-operator:${DOCKER_IMAGE_TAG}"
 
 TEST_COMPILE ?= ./...
 .PHONY: test-compile

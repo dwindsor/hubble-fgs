@@ -26,7 +26,7 @@ git ls-files -m -- '*.go' | xargs goimports -w
 git rm -r $pkg
 
 # do the vendoring dance
-go mod tidy
+go mod tidy -compat=1.17
 go mod vendor
 go mod verify
 git add vendor

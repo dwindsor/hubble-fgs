@@ -39,7 +39,8 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo ::set-output name=sha::${SHA}
-          echo ::set-output name=fgsImage::quay.io/isovalent/hubble-enterprise-ci:${SHA}
+          echo ::set-output name=agentImage::quay.io/isovalent/hubble-enterprise-ci:${SHA}
+          echo ::set-output name=operatorImage::quay.io/isovalent/hubble-enterprise-operator-ci:${SHA}
 
       - name: Install Cilium CLI
         run: |
@@ -81,23 +82,6 @@ jobs:
         run: |
           gcloud container clusters get-credentials ${{ env.clusterName }} --zone ${{ env.zone }}
 
-      - name: Install cilium
-        run: |
-          cilium install \
-            --cluster-name=${{ env.clusterName }} \
-            --restart-unmanaged-pods=false \
-            --config monitor-aggregation=none \
-            --ipv4-native-routing-cidr=${{ steps.cluster.outputs.cluster_cidr }}
-
-      - name: Enable Relay
-        run: |
-          cilium hubble enable
-
-      - name: Relay Port Forward
-        run: |
-          kubectl port-forward -n kube-system deployment/hubble-relay 4245:4245&
-          sleep 5s
-
       - name: Attempt to pull the FGS image
         uses: nick-invision/retry@v2
         with:
@@ -105,75 +89,18 @@ jobs:
           max_attempts: 30
           retry_wait_seconds: 30
           command: |
-            docker pull ${{ steps.vars.outputs.fgsImage }}
+            docker pull ${{ steps.vars.outputs.agentImage }}
+            docker pull ${{ steps.vars.outputs.operatorImage }}
 
-      - name: Install FGS
+      - name: Run end-to-end tests
         run: |
-          helm repo add isovalent https://helm.isovalent.com
-          helm repo update
-          helm install hubble-enterprise isovalent/hubble-enterprise \
-                 --version 9999.9999.9999-dev \
-                 --set enterprise.image.repository=quay.io/isovalent/hubble-enterprise-ci \
-                 --set enterprise.image.tag=${{ steps.vars.outputs.sha }} \
-                 --set hubbleEnterpriseOperator.image.repository=quay.io/isovalent/hubble-enterprise-operator-ci \
-                 --set hubbleEnterpriseOperator.image.tag=${{ steps.vars.outputs.sha }} \
-                 --set enterprise.exportAllowList="" \
-                 --set enterprise.exportFileMaxSizeMB=50 \
-                 --set enterprise.btf=/sys/kernel/btf/vmlinux \
-                 --namespace kube-system
-
-      - name: Wait for FGS pods to become ready
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 5
-          command: |
-            kubectl wait -n kube-system --for=condition=Ready --all pod -l app.kubernetes.io/name=hubble-enterprise --timeout=30s
-
-      - name: Enable DNS policy
-        run: |
-          cat <<-EOF | kubectl apply -f -
-          apiVersion: cilium.io/v1alpha1
-          kind: TracingPolicy
-          metadata:
-            name: "dns"
-          spec:
-            parser:
-              tcp:
-                enable: true
-              udp:
-                enable: true
-                cgroup: true
-              dns:
-                enable: true
-          EOF
-          sleep 10
-
-      - name: Run demo app checker
-        run: |
-          hubble-fgs/contrib/end-to-end/tests/demo-app.sh --no-tracingpolicy
-
-      - name: Copy out logs
-        if: ${{ always() }}
-        timeout-minutes: 10
-        run: |
-          cilium status
-          kubectl get pods --all-namespaces -o wide
-          cilium sysdump --output-filename cilium-sysdump-out
-          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
-              -n kube-system -o custom-columns=name:metadata.name --no-headers \
-              | xargs -I{} sh -c 'kubectl logs -c enterprise -n kube-system {} > ./hubble-enterprise-pod-{}.log'
-          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
-              -n kube-system -o custom-columns=name:metadata.name --no-headers \
-              | xargs -I{} kubectl cp -c enterprise -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
-          cat ./hubble-fgs*.log >> fgs.log
-          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
-            -n kube-system -o custom-columns=name:metadata.name --no-headers \
-            | xargs -I{} kubectl exec -c enterprise -n kube-system {} -- hubble-enterprise bugtool -o fgs-bugtool-{}.tar.gz
-          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
-            -n kube-system -o custom-columns=name:metadata.name --no-headers \
-            | xargs -I{} kubectl cp -c enterprise -n kube-system {}:fgs-bugtool-{}.tar.gz ./fgs-bugtool-{}.tar.gz
-        shell: bash {0}
+          cd hubble-fgs
+          go test -p 1 -parallel 1 -timeout 20m -failfast -cover ./tests/e2e/tests/... \
+            -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
+            -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
+            -tetragon.keep-export=true \
+            -cluster-name ${{ env.clusterName }} \
+            -kubeconfig ~/.kube/config
 
       - name: Cleanup
         id: cleanup
@@ -183,42 +110,10 @@ jobs:
           gcloud container clusters delete --quiet ${{ env.clusterName }} --zone ${{ env.zone }}
         shell: bash {0}
 
-      - name: Verify FGS
-        if: ${{ always() }}
-        run: |
-          sudo apt install libelf-dev
-          cd hubble-fgs
-          go mod verify
-          go run tests/cmd/jobs.trace.go ../fgs.log =${{ steps.cleanup.outputs.kernel_version }}
-
-      - name: Upload Cilium Artifacts
+      - name: Upload Tetragon test artifacts
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-          name: cilium-sysdump-out.zip
-          path: cilium-sysdump-out.zip
-          retention-days: 5
-
-      - name: Upload FGS pod logs
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: hubble-enterprise-logs
-          path: ./hubble-enterprise-pod*.log
-          retention-days: 5
-
-      - name: Upload FGS Artifacts
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: fgs.log
-          path: fgs.log
-          retention-days: 5
-
-      - name: Upload bugtool dumps
-        if: ${{ failure() }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: fgs-bugtool
-          path: ./fgs-bugtool*.tar.gz
+          name: tetragon-artifacts
+          path: /tmp/tetragon.e2e.*
           retention-days: 5

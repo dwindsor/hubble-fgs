@@ -1,0 +1,27 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "http-tls"
+spec:
+  parser:
+    tls:
+      enable: true
+      mode: "socket"
+      selectors:
+      - matchPorts:
+        - 443
+        - 993
+        - 1012
+    http:
+      enable: true
+      selectors:
+      - matchPorts:
+        - 8080
+        - 80
+    udp:
+      enable: true
+      cgroup: true
+    dns:
+      enable: true
+    tcp:
+      enable: true
