@@ -16,7 +16,6 @@ import (
 	"fmt"
 	"os"
 	"path"
-	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -71,13 +70,6 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	return []observer.Event{unix}, nil
-}
-
-type LocalMap struct {
-	Name      string
-	Prog      *program.Program
-	PinState  program.State
-	MapHandle *ebpf.Map
 }
 
 type LPMMapKey struct {
@@ -165,11 +157,11 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 			SetLoaderData(idx)
 		load.Override = false
 		progs = append(progs, load)
+
 		mp := program.MapBuilder(
 			"lpm_trie_map_alloc",
 			load,
 		)
-		(*LocalMap)(unsafe.Pointer(&mp)).MapHandle = handle // FIXME: mp.SetMapHandle(handle)
 		maps = append(maps, mp)
 	}
 
