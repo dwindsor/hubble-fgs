@@ -24,6 +24,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
@@ -55,7 +56,7 @@ type FdLookupValue struct {
 	IPv6     uint8
 }
 
-type FdCallback func(*FdLookupValue)
+type FdCallback func(*FdLookupValue, uint32)
 
 var (
 	// Mutex to prevent concurrent loading
@@ -70,11 +71,21 @@ var (
 		"kprobe",
 	)
 
+	FdLookupV56 = program.Builder(
+		"bpf_fd_lookup_v56.o",
+		"check_kill_permission",
+		"kprobe/check_kill_permission",
+		"kprobe_check_kill_permission",
+		"kprobe",
+	)
+
 	// Socket lookup config map
-	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
+	FdLookupConfigMap    = program.MapBuilder(FdLookupConfigMapName, FdLookup)
+	FdLookupConfigMapV56 = program.MapBuilder(FdLookupConfigMapName, FdLookupV56)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap = program.MapBuilder(SocketToProcMapName, FdLookup)
+	SocketCookieMap    = program.MapBuilder(SocketToProcMapName, FdLookup)
+	SocketCookieMapV56 = program.MapBuilder(SocketToProcMapName, FdLookupV56)
 )
 
 func (k *FdLookupKey) String() string             { return fmt.Sprintf("key=%d", k.Zero) }
@@ -157,14 +168,23 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 }
 
 func getFdLookupPrograms() []*program.Program {
-	progs := []*program.Program{FdLookup}
+	var progs []*program.Program
+	if !kernels.MinKernelVersion("5.6.0") {
+		progs = append(progs, FdLookup)
+	} else {
+		progs = append(progs, FdLookupV56)
+	}
 	return progs
 }
 
 func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
-	maps = append(maps, FdLookupConfigMap, SocketCookieMap)
+	if !kernels.MinKernelVersion("5.6.0") {
+		maps = append(maps, FdLookupConfigMap, SocketCookieMap)
+	} else {
+		maps = append(maps, FdLookupConfigMapV56, SocketCookieMapV56)
+	}
 
 	return maps
 }
@@ -272,7 +292,7 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 			if err == nil {
 				v = ret.(*FdLookupValue)
 				if v.Protocol == protocol && callback != nil {
-					callback(v)
+					callback(v, pid)
 				}
 			}
 		}

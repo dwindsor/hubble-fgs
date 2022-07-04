@@ -11,143 +11,112 @@
 package tcp
 
 import (
-	"bufio"
-	"io/ioutil"
-	"os"
+	"fmt"
 	"path/filepath"
-	"strconv"
-	"strings"
+	"sync"
+	"time"
 
+	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/sirupsen/logrus"
 )
 
-func stringToTCPEntry(s string) (*procTCPEntry, error) {
-	var entry procTCPEntry
+const (
+	IPPROTO_TCP = 6
+)
 
-	fields := strings.Fields(s)
+var (
+	// Mutex to prevent concurrent loading
+	loading sync.Mutex
 
-	id, _ := strconv.ParseUint(strings.TrimRight(fields[0], ":"), 10, 32)
-	local := strings.Split(fields[1], ":")
-	remote := strings.Split(fields[2], ":")
-	localIP, err := strconv.ParseUint(local[0], 16, 32)
-	if err != nil {
-		return nil, err
-	}
-	localPort, err := strconv.ParseUint(local[1], 16, 16)
-	if err != nil {
-		return nil, err
-	}
-	remoteIP, err := strconv.ParseUint(remote[0], 16, 32)
-	if err != nil {
-		return nil, err
-	}
-	remotePort, err := strconv.ParseUint(remote[1], 16, 16)
-	if err != nil {
-		return nil, err
-	}
-	state, err := strconv.ParseUint(fields[3], 16, 32)
-	if err != nil {
-		return nil, err
-	}
-	inode, err := strconv.ParseUint(fields[9], 10, 32)
-	if err != nil {
-		return nil, err
-	}
+	_writeMaps  = false
+	_pushEvents = false
+	m           *bpf.Map
+)
 
-	entry.id = int(id)
-	entry.inode = uint32(inode)
-	entry.localIP = uint32(localIP)
-	entry.localPort = uint16(localPort)
-	entry.remoteIP = uint32(remoteIP)
-	entry.remotePort = uint16(remotePort)
-	entry.state = uint32(state)
+func FdCallback(socket *ip.FdLookupValue, pid uint32) {
+	saddr := network.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
+	daddr := network.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
+	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered TCP Socket")
 
-	return &entry, nil
-}
-
-func _getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, file string) error {
-	pidStr := strconv.Itoa(int(pid))
-	tcp, err := os.Open(filepath.Join(option.Config.ProcFS, pidStr, file))
-	if err != nil {
-		return err
-	}
-	defer tcp.Close()
-	scanner := bufio.NewScanner(tcp)
-	scanner.Scan()
-	for scanner.Scan() {
-		entry, err := stringToTCPEntry(scanner.Text())
-		// We do not handle IPv6 yet so we may get expected errors
-		// in these cases. When this happens just continue otherwise
-		// lets ensure we log it.
-		if err != nil {
-			if file != "/net/tcp6" {
-				logger.GetLogger().Warn("ProcFS: /%s/%d/%s TCPConnections error: %s", option.Config.ProcFS, pidStr, file, err)
-			}
-			continue
-		}
-		entryMap[entry.inode] = *entry
-	}
-	if err := scanner.Err(); err != nil {
-		return err
-	}
-	return nil
-}
-
-func getTCPConnections(entryMap map[uint32]procTCPEntry, pid uint64, supportTCP6 bool) error {
-	if err := _getTCPConnections(entryMap, pid, "/net/tcp"); err != nil {
-		return err
-	}
-	if err := _getTCPConnections(entryMap, pid, "/net/tcp6"); err != nil {
-		return err
-	}
-	return nil
-}
-
-// supportTCP6 returns whether or not the kernel has support for /proc/<pid>/net/tcp6
-// entries. We do this by testing for the existence of /proc/net/tcp6.
-func supportTCP6() bool {
-	if _, err := os.Stat("/proc/net/tcp6"); err == nil {
-		logger.GetLogger().Infof("ProcFS: Detected TCP6 support")
-		return true
-	}
-	logger.GetLogger().Infof("ProcFS: Detected no TCP6 support")
-	return false
-}
-
-func getRunningSockets(writeMaps, pushEvents bool) {
-	var entryMap = make(map[uint32]procTCPEntry)
-	hasSupportTCP6 := supportTCP6()
-
-	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
-	if err != nil {
-		logger.GetLogger().WithError(err).Error("GetRunningSockets ProcFS readdir error.")
+	if socket.State == 0 {
 		return
 	}
 
-	for _, d := range procFS {
-		pathName := filepath.Join(option.Config.ProcFS, d.Name())
-
-		pid, err := proc.GetProcPid(d.Name())
-		if err != nil {
-			continue
-		}
-
-		stats, err := proc.GetProcStatStrings(pathName)
-		if err != nil {
-			continue
-		}
-
-		ktime, err := proc.GetStatsKtime(stats)
-		if err != nil {
-			continue
-		}
-
-		if err := getTCPConnections(entryMap, pid, hasSupportTCP6); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-tetragon.")
-		}
-		pushTCPEvents(uint32(pid), ktime, entryMap, writeMaps, pushEvents)
+	pathName := filepath.Join(option.Config.ProcFS, fmt.Sprintf("%d", pid))
+	stats, err := proc.GetProcStatStrings(pathName)
+	if err != nil {
+		return
+	}
+	ktime, err := proc.GetStatsKtime(stats)
+	if err != nil {
+		return
 	}
 
+	tcp := layer3.MsgIPEventUnix{}
+
+	tcp.ProcessKey.Pid = pid
+	tcp.ProcessKey.Ktime = ktime
+	tcp.Common.Ktime = ktime
+
+	tcp.Tuple.IPv6 = socket.IPv6
+	tcp.Tuple.SAddr[0] = socket.Saddr[0]
+	tcp.Tuple.SAddr[1] = socket.Saddr[1]
+	tcp.Tuple.DAddr[0] = socket.Daddr[0]
+	tcp.Tuple.DAddr[1] = socket.Daddr[1]
+	tcp.Tuple.DPort = network.SwapByte(socket.Dport)
+	tcp.Tuple.SPort = socket.Sport
+	tcp.Tuple.Proto = 2
+
+	if socket.State == TCP_PROC_STATE_LISTEN {
+		tcp.Common.Op = ops.MsgOpListen
+	} else {
+		tcp.Common.Op = ops.MsgOpTCPConnectReturn
+	}
+
+	if _pushEvents {
+		observer.AllListeners(&tcp)
+	}
+	if _writeMaps {
+		netns := uint64(namespace.GetPidNsInode(pid, "net"))
+		writeSockMap(&tcp, m, netns)
+	}
+}
+
+func getRunningSockets(writeMaps, pushEvents bool) {
+	/* Lock is required to prevent concurrent access to object vars,
+	 * just in case this gets called twice at once.
+	 */
+	loading.Lock()
+	defer loading.Unlock()
+
+	_writeMaps = writeMaps
+	_pushEvents = pushEvents
+
+	if writeMaps {
+		var err error
+		mapDir := bpf.MapPrefixPath()
+
+		m, err = bpf.OpenMap(filepath.Join(mapDir, SocketMap.Name))
+		for i := 0; err != nil; i++ {
+			m, err = bpf.OpenMap(filepath.Join(mapDir, SocketMap.Name))
+			if err != nil {
+				time.Sleep(mapRetryDelay * time.Second)
+			}
+			if i > maxMapRetries {
+				panic(err)
+			}
+		}
+		defer m.Close()
+	}
+
+	ip.LoadSockets(FdCallback, IPPROTO_TCP)
 }

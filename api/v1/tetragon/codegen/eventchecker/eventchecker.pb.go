@@ -439,7 +439,7 @@ func (checker *ProcessExecChecker) WithAncestors(check *ProcessListMatcher) *Pro
 	return checker
 }
 
-//FromProcessExec populates the ProcessExecChecker using data from a ProcessExec event
+// FromProcessExec populates the ProcessExecChecker using data from a ProcessExec event
 func (checker *ProcessExecChecker) FromProcessExec(event *tetragon.ProcessExec) *ProcessExecChecker {
 	if event == nil {
 		return checker
@@ -649,7 +649,7 @@ func (checker *ProcessExitChecker) WithStatus(check uint32) *ProcessExitChecker 
 	return checker
 }
 
-//FromProcessExit populates the ProcessExitChecker using data from a ProcessExit event
+// FromProcessExit populates the ProcessExitChecker using data from a ProcessExit event
 func (checker *ProcessExitChecker) FromProcessExit(event *tetragon.ProcessExit) *ProcessExitChecker {
 	if event == nil {
 		return checker
@@ -776,7 +776,7 @@ func (checker *ProcessKprobeChecker) WithAction(check tetragon.KprobeAction) *Pr
 	return checker
 }
 
-//FromProcessKprobe populates the ProcessKprobeChecker using data from a ProcessKprobe event
+// FromProcessKprobe populates the ProcessKprobeChecker using data from a ProcessKprobe event
 func (checker *ProcessKprobeChecker) FromProcessKprobe(event *tetragon.ProcessKprobe) *ProcessKprobeChecker {
 	if event == nil {
 		return checker
@@ -1003,7 +1003,7 @@ func (checker *ProcessTracepointChecker) WithArgs(check *KprobeArgumentListMatch
 	return checker
 }
 
-//FromProcessTracepoint populates the ProcessTracepointChecker using data from a ProcessTracepoint event
+// FromProcessTracepoint populates the ProcessTracepointChecker using data from a ProcessTracepoint event
 func (checker *ProcessTracepointChecker) FromProcessTracepoint(event *tetragon.ProcessTracepoint) *ProcessTracepointChecker {
 	if event == nil {
 		return checker
@@ -1115,7 +1115,7 @@ func (checker *TestChecker) WithArg3(check uint64) *TestChecker {
 	return checker
 }
 
-//FromTest populates the TestChecker using data from a Test event
+// FromTest populates the TestChecker using data from a Test event
 func (checker *TestChecker) FromTest(event *tetragon.Test) *TestChecker {
 	if event == nil {
 		return checker
@@ -1330,7 +1330,7 @@ func (checker *InterfaceStatsChecker) WithContainerName(check *stringmatcher.Str
 	return checker
 }
 
-//FromInterfaceStats populates the InterfaceStatsChecker using data from a InterfaceStats event
+// FromInterfaceStats populates the InterfaceStatsChecker using data from a InterfaceStats event
 func (checker *InterfaceStatsChecker) FromInterfaceStats(event *tetragon.InterfaceStats) *InterfaceStatsChecker {
 	if event == nil {
 		return checker
@@ -1542,7 +1542,7 @@ func (checker *ProcessConnectChecker) WithProtocol(check tetragon.SocketProtocol
 	return checker
 }
 
-//FromProcessConnect populates the ProcessConnectChecker using data from a ProcessConnect event
+// FromProcessConnect populates the ProcessConnectChecker using data from a ProcessConnect event
 func (checker *ProcessConnectChecker) FromProcessConnect(event *tetragon.ProcessConnect) *ProcessConnectChecker {
 	if event == nil {
 		return checker
@@ -1871,7 +1871,7 @@ func (checker *ProcessCloseChecker) WithSocketType(check *stringmatcher.StringMa
 	return checker
 }
 
-//FromProcessClose populates the ProcessCloseChecker using data from a ProcessClose event
+// FromProcessClose populates the ProcessCloseChecker using data from a ProcessClose event
 func (checker *ProcessCloseChecker) FromProcessClose(event *tetragon.ProcessClose) *ProcessCloseChecker {
 	if event == nil {
 		return checker
@@ -2029,7 +2029,7 @@ func (checker *ProcessListenChecker) WithProtocol(check tetragon.SocketProtocol)
 	return checker
 }
 
-//FromProcessListen populates the ProcessListenChecker using data from a ProcessListen event
+// FromProcessListen populates the ProcessListenChecker using data from a ProcessListen event
 func (checker *ProcessListenChecker) FromProcessListen(event *tetragon.ProcessListen) *ProcessListenChecker {
 	if event == nil {
 		return checker
@@ -2215,7 +2215,7 @@ func (checker *ProcessAcceptChecker) WithProtocol(check tetragon.SocketProtocol)
 	return checker
 }
 
-//FromProcessAccept populates the ProcessAcceptChecker using data from a ProcessAccept event
+// FromProcessAccept populates the ProcessAcceptChecker using data from a ProcessAccept event
 func (checker *ProcessAcceptChecker) FromProcessAccept(event *tetragon.ProcessAccept) *ProcessAcceptChecker {
 	if event == nil {
 		return checker
@@ -2389,7 +2389,7 @@ func (checker *ProcessIpErrorChecker) WithDetails(check *stringmatcher.StringMat
 	return checker
 }
 
-//FromProcessIpError populates the ProcessIpErrorChecker using data from a ProcessIpError event
+// FromProcessIpError populates the ProcessIpErrorChecker using data from a ProcessIpError event
 func (checker *ProcessIpErrorChecker) FromProcessIpError(event *tetragon.ProcessIpError) *ProcessIpErrorChecker {
 	if event == nil {
 		return checker
@@ -2558,7 +2558,7 @@ func (checker *ProcessFileChecker) WithHook(check *stringmatcher.StringMatcher) 
 	return checker
 }
 
-//FromProcessFile populates the ProcessFileChecker using data from a ProcessFile event
+// FromProcessFile populates the ProcessFileChecker using data from a ProcessFile event
 func (checker *ProcessFileChecker) FromProcessFile(event *tetragon.ProcessFile) *ProcessFileChecker {
 	if event == nil {
 		return checker
@@ -2665,7 +2665,7 @@ func (checker *ProcessSockStatsChecker) WithStats(check *SocketStatsChecker) *Pr
 	return checker
 }
 
-//FromProcessSockStats populates the ProcessSockStatsChecker using data from a ProcessSockStats event
+// FromProcessSockStats populates the ProcessSockStatsChecker using data from a ProcessSockStats event
 func (checker *ProcessSockStatsChecker) FromProcessSockStats(event *tetragon.ProcessSockStats) *ProcessSockStatsChecker {
 	if event == nil {
 		return checker
@@ -3039,7 +3039,7 @@ func (checker *TlsChecker) WithParent(check *ProcessChecker) *TlsChecker {
 	return checker
 }
 
-//FromTls populates the TlsChecker using data from a Tls event
+// FromTls populates the TlsChecker using data from a Tls event
 func (checker *TlsChecker) FromTls(event *tetragon.Tls) *TlsChecker {
 	if event == nil {
 		return checker
@@ -3212,7 +3212,7 @@ func (checker *ProcessHttpChecker) WithParent(check *ProcessChecker) *ProcessHtt
 	return checker
 }
 
-//FromProcessHttp populates the ProcessHttpChecker using data from a ProcessHttp event
+// FromProcessHttp populates the ProcessHttpChecker using data from a ProcessHttp event
 func (checker *ProcessHttpChecker) FromProcessHttp(event *tetragon.ProcessHttp) *ProcessHttpChecker {
 	if event == nil {
 		return checker
@@ -3389,7 +3389,7 @@ func (checker *ProcessNetworkBurstChecker) WithWindowAvg(check uint64) *ProcessN
 	return checker
 }
 
-//FromProcessNetworkBurst populates the ProcessNetworkBurstChecker using data from a ProcessNetworkBurst event
+// FromProcessNetworkBurst populates the ProcessNetworkBurstChecker using data from a ProcessNetworkBurst event
 func (checker *ProcessNetworkBurstChecker) FromProcessNetworkBurst(event *tetragon.ProcessNetworkBurst) *ProcessNetworkBurstChecker {
 	if event == nil {
 		return checker
@@ -3529,7 +3529,7 @@ func (checker *ProcessDnsChecker) WithParent(check *ProcessChecker) *ProcessDnsC
 	return checker
 }
 
-//FromProcessDns populates the ProcessDnsChecker using data from a ProcessDns event
+// FromProcessDns populates the ProcessDnsChecker using data from a ProcessDns event
 func (checker *ProcessDnsChecker) FromProcessDns(event *tetragon.ProcessDns) *ProcessDnsChecker {
 	if event == nil {
 		return checker
@@ -3605,7 +3605,7 @@ func (checker *ImageChecker) WithName(check *stringmatcher.StringMatcher) *Image
 	return checker
 }
 
-//FromImage populates the ImageChecker using data from a Image field
+// FromImage populates the ImageChecker using data from a Image field
 func (checker *ImageChecker) FromImage(event *tetragon.Image) *ImageChecker {
 	if event == nil {
 		return checker
@@ -3708,7 +3708,7 @@ func (checker *ContainerChecker) WithMaybeExecProbe(check bool) *ContainerChecke
 	return checker
 }
 
-//FromContainer populates the ContainerChecker using data from a Container field
+// FromContainer populates the ContainerChecker using data from a Container field
 func (checker *ContainerChecker) FromContainer(event *tetragon.Container) *ContainerChecker {
 	if event == nil {
 		return checker
@@ -3862,7 +3862,7 @@ func (checker *PodChecker) WithPodLabels(check map[string]stringmatcher.StringMa
 	return checker
 }
 
-//FromPod populates the PodChecker using data from a Pod field
+// FromPod populates the PodChecker using data from a Pod field
 func (checker *PodChecker) FromPod(event *tetragon.Pod) *PodChecker {
 	if event == nil {
 		return checker
@@ -3931,7 +3931,7 @@ func (checker *CapabilitiesChecker) WithInheritable(check *CapabilitiesTypeListM
 	return checker
 }
 
-//FromCapabilities populates the CapabilitiesChecker using data from a Capabilities field
+// FromCapabilities populates the CapabilitiesChecker using data from a Capabilities field
 func (checker *CapabilitiesChecker) FromCapabilities(event *tetragon.Capabilities) *CapabilitiesChecker {
 	if event == nil {
 		return checker
@@ -4114,7 +4114,7 @@ func (checker *NamespaceChecker) WithIsHost(check bool) *NamespaceChecker {
 	return checker
 }
 
-//FromNamespace populates the NamespaceChecker using data from a Namespace field
+// FromNamespace populates the NamespaceChecker using data from a Namespace field
 func (checker *NamespaceChecker) FromNamespace(event *tetragon.Namespace) *NamespaceChecker {
 	if event == nil {
 		return checker
@@ -4268,7 +4268,7 @@ func (checker *NamespacesChecker) WithUser(check *NamespaceChecker) *NamespacesC
 	return checker
 }
 
-//FromNamespaces populates the NamespacesChecker using data from a Namespaces field
+// FromNamespaces populates the NamespacesChecker using data from a Namespaces field
 func (checker *NamespacesChecker) FromNamespaces(event *tetragon.Namespaces) *NamespacesChecker {
 	if event == nil {
 		return checker
@@ -4513,7 +4513,7 @@ func (checker *ProcessChecker) WithNs(check *NamespacesChecker) *ProcessChecker 
 	return checker
 }
 
-//FromProcess populates the ProcessChecker using data from a Process field
+// FromProcess populates the ProcessChecker using data from a Process field
 func (checker *ProcessChecker) FromProcess(event *tetragon.Process) *ProcessChecker {
 	if event == nil {
 		return checker
@@ -4681,7 +4681,7 @@ func (checker *KprobeSockChecker) WithDport(check uint32) *KprobeSockChecker {
 	return checker
 }
 
-//FromKprobeSock populates the KprobeSockChecker using data from a KprobeSock field
+// FromKprobeSock populates the KprobeSockChecker using data from a KprobeSock field
 func (checker *KprobeSockChecker) FromKprobeSock(event *tetragon.KprobeSock) *KprobeSockChecker {
 	if event == nil {
 		return checker
@@ -4860,7 +4860,7 @@ func (checker *KprobeSkbChecker) WithSecPathOlen(check uint32) *KprobeSkbChecker
 	return checker
 }
 
-//FromKprobeSkb populates the KprobeSkbChecker using data from a KprobeSkb field
+// FromKprobeSkb populates the KprobeSkbChecker using data from a KprobeSkb field
 func (checker *KprobeSkbChecker) FromKprobeSkb(event *tetragon.KprobeSkb) *KprobeSkbChecker {
 	if event == nil {
 		return checker
@@ -4960,7 +4960,7 @@ func (checker *KprobePathChecker) WithFlags(check *stringmatcher.StringMatcher) 
 	return checker
 }
 
-//FromKprobePath populates the KprobePathChecker using data from a KprobePath field
+// FromKprobePath populates the KprobePathChecker using data from a KprobePath field
 func (checker *KprobePathChecker) FromKprobePath(event *tetragon.KprobePath) *KprobePathChecker {
 	if event == nil {
 		return checker
@@ -5025,7 +5025,7 @@ func (checker *KprobeFileChecker) WithFlags(check *stringmatcher.StringMatcher) 
 	return checker
 }
 
-//FromKprobeFile populates the KprobeFileChecker using data from a KprobeFile field
+// FromKprobeFile populates the KprobeFileChecker using data from a KprobeFile field
 func (checker *KprobeFileChecker) FromKprobeFile(event *tetragon.KprobeFile) *KprobeFileChecker {
 	if event == nil {
 		return checker
@@ -5078,7 +5078,7 @@ func (checker *KprobeTruncatedBytesChecker) WithOrigSize(check uint64) *KprobeTr
 	return checker
 }
 
-//FromKprobeTruncatedBytes populates the KprobeTruncatedBytesChecker using data from a KprobeTruncatedBytes field
+// FromKprobeTruncatedBytes populates the KprobeTruncatedBytesChecker using data from a KprobeTruncatedBytes field
 func (checker *KprobeTruncatedBytesChecker) FromKprobeTruncatedBytes(event *tetragon.KprobeTruncatedBytes) *KprobeTruncatedBytesChecker {
 	if event == nil {
 		return checker
@@ -5145,7 +5145,7 @@ func (checker *KprobeCredChecker) WithInheritable(check *CapabilitiesTypeListMat
 	return checker
 }
 
-//FromKprobeCred populates the KprobeCredChecker using data from a KprobeCred field
+// FromKprobeCred populates the KprobeCredChecker using data from a KprobeCred field
 func (checker *KprobeCredChecker) FromKprobeCred(event *tetragon.KprobeCred) *KprobeCredChecker {
 	if event == nil {
 		return checker
@@ -5240,7 +5240,7 @@ func (checker *KprobeBpfAttrChecker) WithProgName(check *stringmatcher.StringMat
 	return checker
 }
 
-//FromKprobeBpfAttr populates the KprobeBpfAttrChecker using data from a KprobeBpfAttr field
+// FromKprobeBpfAttr populates the KprobeBpfAttrChecker using data from a KprobeBpfAttr field
 func (checker *KprobeBpfAttrChecker) FromKprobeBpfAttr(event *tetragon.KprobeBpfAttr) *KprobeBpfAttrChecker {
 	if event == nil {
 		return checker
@@ -5320,7 +5320,7 @@ func (checker *KprobePerfEventChecker) WithProbeOffset(check uint64) *KprobePerf
 	return checker
 }
 
-//FromKprobePerfEvent populates the KprobePerfEventChecker using data from a KprobePerfEvent field
+// FromKprobePerfEvent populates the KprobePerfEventChecker using data from a KprobePerfEvent field
 func (checker *KprobePerfEventChecker) FromKprobePerfEvent(event *tetragon.KprobePerfEvent) *KprobePerfEventChecker {
 	if event == nil {
 		return checker
@@ -5577,7 +5577,7 @@ func (checker *KprobeArgumentChecker) WithPerfEventArg(check *KprobePerfEventChe
 	return checker
 }
 
-//FromKprobeArgument populates the KprobeArgumentChecker using data from a KprobeArgument field
+// FromKprobeArgument populates the KprobeArgumentChecker using data from a KprobeArgument field
 func (checker *KprobeArgumentChecker) FromKprobeArgument(event *tetragon.KprobeArgument) *KprobeArgumentChecker {
 	if event == nil {
 		return checker
@@ -5848,7 +5848,7 @@ func (checker *SocketStatsChecker) WithSkbConsumeMisses(check uint32) *SocketSta
 	return checker
 }
 
-//FromSocketStats populates the SocketStatsChecker using data from a SocketStats field
+// FromSocketStats populates the SocketStatsChecker using data from a SocketStats field
 func (checker *SocketStatsChecker) FromSocketStats(event *tetragon.SocketStats) *SocketStatsChecker {
 	if event == nil {
 		return checker
@@ -5954,7 +5954,7 @@ func (checker *GenericFileArgChecker) WithInodeNumber(check uint64) *GenericFile
 	return checker
 }
 
-//FromGenericFileArg populates the GenericFileArgChecker using data from a GenericFileArg field
+// FromGenericFileArg populates the GenericFileArgChecker using data from a GenericFileArg field
 func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.GenericFileArg) *GenericFileArgChecker {
 	if event == nil {
 		return checker
@@ -6002,7 +6002,7 @@ func (checker *FileArgumentChecker) WithGenericArg(check *GenericFileArgChecker)
 	return checker
 }
 
-//FromFileArgument populates the FileArgumentChecker using data from a FileArgument field
+// FromFileArgument populates the FileArgumentChecker using data from a FileArgument field
 func (checker *FileArgumentChecker) FromFileArgument(event *tetragon.FileArgument) *FileArgumentChecker {
 	if event == nil {
 		return checker
@@ -6137,7 +6137,7 @@ func (checker *SockInfoChecker) WithDestinationPod(check *PodChecker) *SockInfoC
 	return checker
 }
 
-//FromSockInfo populates the SockInfoChecker using data from a SockInfo field
+// FromSockInfo populates the SockInfoChecker using data from a SockInfo field
 func (checker *SockInfoChecker) FromSockInfo(event *tetragon.SockInfo) *SockInfoChecker {
 	if event == nil {
 		return checker
@@ -6216,7 +6216,7 @@ func (checker *HttpHeaderChecker) WithValue(check *stringmatcher.StringMatcher) 
 	return checker
 }
 
-//FromHttpHeader populates the HttpHeaderChecker using data from a HttpHeader field
+// FromHttpHeader populates the HttpHeaderChecker using data from a HttpHeader field
 func (checker *HttpHeaderChecker) FromHttpHeader(event *tetragon.HttpHeader) *HttpHeaderChecker {
 	if event == nil {
 		return checker
@@ -6367,7 +6367,7 @@ func (checker *HttpRequestChecker) WithTransferEncoding(check *stringmatcher.Str
 	return checker
 }
 
-//FromHttpRequest populates the HttpRequestChecker using data from a HttpRequest field
+// FromHttpRequest populates the HttpRequestChecker using data from a HttpRequest field
 func (checker *HttpRequestChecker) FromHttpRequest(event *tetragon.HttpRequest) *HttpRequestChecker {
 	if event == nil {
 		return checker
@@ -6618,7 +6618,7 @@ func (checker *HttpResponseChecker) WithTransferEncoding(check *stringmatcher.St
 	return checker
 }
 
-//FromHttpResponse populates the HttpResponseChecker using data from a HttpResponse field
+// FromHttpResponse populates the HttpResponseChecker using data from a HttpResponse field
 func (checker *HttpResponseChecker) FromHttpResponse(event *tetragon.HttpResponse) *HttpResponseChecker {
 	if event == nil {
 		return checker
@@ -6707,7 +6707,7 @@ func (checker *HttpInfoChecker) WithLatency(check *durationmatcher.DurationMatch
 	return checker
 }
 
-//FromHttpInfo populates the HttpInfoChecker using data from a HttpInfo field
+// FromHttpInfo populates the HttpInfoChecker using data from a HttpInfo field
 func (checker *HttpInfoChecker) FromHttpInfo(event *tetragon.HttpInfo) *HttpInfoChecker {
 	if event == nil {
 		return checker
@@ -6825,7 +6825,7 @@ func (checker *DnsInfoChecker) WithResponse(check bool) *DnsInfoChecker {
 	return checker
 }
 
-//FromDnsInfo populates the DnsInfoChecker using data from a DnsInfo field
+// FromDnsInfo populates the DnsInfoChecker using data from a DnsInfo field
 func (checker *DnsInfoChecker) FromDnsInfo(event *tetragon.DnsInfo) *DnsInfoChecker {
 	if event == nil {
 		return checker

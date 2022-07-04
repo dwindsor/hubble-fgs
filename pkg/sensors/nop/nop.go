@@ -159,10 +159,11 @@ func parseNopSelector(k *selectors.KernelSelectorState, s v1alpha1.NopSelector) 
 // needed for BPF to run match logic.
 //
 // Nop selector layout is the following.
-//    #OfSelectors         uint32
-//    OffsetOfEachSelector uint32
-//    #OfMatchPorts        uint32
-//    Port1 .... PortN     uint32, uint32, ...
+//
+//	#OfSelectors         uint32
+//	OffsetOfEachSelector uint32
+//	#OfMatchPorts        uint32
+//	Port1 .... PortN     uint32, uint32, ...
 func ParseNopSpec(spec *v1alpha1.NopSpec) ([128]byte, error) {
 	var match [128]byte
 	var e [4096]byte

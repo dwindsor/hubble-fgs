@@ -244,11 +244,12 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 	err = nil
 
+	getRunningSockets(true, true)
+
 	if tcpInterval > 0 {
 		configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult)
 		err = program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	}
-	getRunningSockets(true, true)
 	return err
 }
 

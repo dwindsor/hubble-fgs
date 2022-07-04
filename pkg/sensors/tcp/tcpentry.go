@@ -12,24 +12,11 @@ package tcp
 
 import (
 	"fmt"
-	"io/ioutil"
 	"net"
-	"os"
-	"path/filepath"
-	"strconv"
-	"strings"
-	"time"
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/reader/namespace"
-
-	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 )
 
 const (
@@ -83,101 +70,6 @@ func (v *SocketMapValue) String() string {
 func (v *SocketMapValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *SocketMapValue) DeepCopyMapValue() bpf.MapValue {
 	return &SocketMapValue{}
-}
-
-type procTCPEntry struct {
-	id         int
-	localIP    uint32
-	localPort  uint16
-	remoteIP   uint32
-	remotePort uint16
-	state      uint32
-	inode      uint32
-}
-
-func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
-	var m *bpf.Map
-
-	tcp := layer3.MsgIPEventUnix{}
-
-	tcp.ProcessKey.Pid = pid
-	tcp.ProcessKey.Ktime = ktime
-	tcp.Common.Ktime = ktime
-
-	netns := uint64(namespace.GetPidNsInode(pid, "net"))
-
-	fdDir := fmt.Sprintf("%s/%d/fd", option.Config.ProcFS, pid)
-	procFD, err := ioutil.ReadDir(fdDir)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warnf("ReadDir %d/fd/ failed", pid)
-	}
-
-	if writeMaps {
-		var err error
-		mapDir := bpf.MapPrefixPath()
-
-		m, err = bpf.OpenMap(filepath.Join(mapDir, SocketMap.Name))
-		for i := 0; err != nil; i++ {
-			m, err = bpf.OpenMap(filepath.Join(mapDir, SocketMap.Name))
-			if err != nil {
-				time.Sleep(mapRetryDelay * time.Second)
-			}
-			if i > maxMapRetries {
-				panic(err)
-			}
-		}
-		defer m.Close()
-	}
-
-	for _, d := range procFD {
-		socket, err := os.Readlink(filepath.Join(fdDir, d.Name()))
-		if err != nil && option.Config.Verbosity > 0 {
-			logger.GetLogger().WithError(err).Warnf("Readlink error %s", d.Name())
-		}
-		if strings.Contains(socket, "socket") == true {
-			fields := strings.Split(socket, ":")
-			if len(fields) < 2 {
-				continue
-			}
-			inode := fields[1]
-			inode = strings.TrimRight(inode, "]")
-			inode = strings.TrimLeft(inode, "[")
-			inodeEntry, err := strconv.ParseUint(inode, 10, 32)
-			if err != nil {
-				logger.GetLogger().WithError(err).Warnf("tcpEntry inode not parsable: %s", inode)
-			} else {
-				entry, ok := tcpEntries[uint32(inodeEntry)]
-				if !ok {
-					continue
-				}
-				tcp.Tuple.IPv6 = 0
-				tcp.Tuple.SAddr[0] = uint64(entry.localIP)
-				tcp.Tuple.SAddr[1] = 0
-				tcp.Tuple.DAddr[0] = uint64(entry.remoteIP)
-				tcp.Tuple.DAddr[1] = 0
-				tcp.Tuple.DPort = network.SwapByte(entry.remotePort)
-				tcp.Tuple.SPort = entry.localPort
-				tcp.Tuple.Proto = 2
-
-				if entry.state == 0 {
-					continue
-				}
-
-				if entry.state == TCP_PROC_STATE_LISTEN {
-					tcp.Common.Op = ops.MsgOpListen
-				} else {
-					tcp.Common.Op = ops.MsgOpTCPConnectReturn
-				}
-
-				if pushEvents {
-					observer.AllListeners(&tcp)
-				}
-				if writeMaps {
-					writeSockMap(&tcp, m, netns)
-				}
-			}
-		}
-	}
 }
 
 func writeSockMap(tcp *layer3.MsgIPEventUnix, m *bpf.Map, uid uint64) {

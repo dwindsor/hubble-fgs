@@ -351,6 +351,7 @@ spec:
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
+//
 //revive:disable:context-as-argument
 func getBasicUdpObserver(t *testing.T, ctx context.Context) *observer.Observer {
 	if err := observer.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {

@@ -129,7 +129,6 @@ func handleUdpDns(m *api.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) 
 
 // ParseUdpSpec parses the input yaml/crd and outputs the kernel selectors
 // needed for BPF to identify UDP options.
-//
 func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*ConfigValue, error) {
 	config := ConfigValue{}
 	ParseDnsSpec(&config, spec)

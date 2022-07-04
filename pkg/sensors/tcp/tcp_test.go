@@ -86,6 +86,7 @@ func init() {
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
 // thing to do here even if revive complains.
+//
 //revive:disable:context-as-argument
 func getBasicTcpObserver(t *testing.T, ctx context.Context) *observer.Observer {
 	if err := observer.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
@@ -263,7 +264,7 @@ func TestExistingListenEvent(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081"))
+		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker().
@@ -281,7 +282,7 @@ func TestExistingListenEvent(t *testing.T) {
 	)
 
 	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-nvlp", "8081")
+	cmdServer := exec.Command(server, "-nvlp", "8081", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServer.Start())
 
 	time.Sleep(1000 * time.Millisecond)
@@ -309,7 +310,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081"))
+		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0"))
 
 	checker := ec.NewUnorderedEventChecker(
 		ec.NewProcessExecChecker().
@@ -333,7 +334,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	)
 
 	/* Start server before creating obs */
-	cmdServer := exec.Command(server, "-nvlp", "8081")
+	cmdServer := exec.Command(server, "-nvlp", "8081", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
@@ -361,7 +362,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
-		WithArguments(sm.Full("-nvlp 8081")).
+		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0")).
 		WithCwd(sm.Full("/"))
 
 	checker := ec.NewUnorderedEventChecker(
@@ -386,7 +387,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 
 	/* Start server in '/' before creating observer */
 	os.Chdir("/")
-	cmdServer := exec.Command(server, "-nvlp", "8081")
+	cmdServer := exec.Command(server, "-nvlp", "8081", "-s", "0.0.0.0")
 	assert.NoError(t, cmdServer.Start())
 	os.Chdir(path)
 
@@ -486,8 +487,8 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	defer cancel()
 
 	/* Start server before creating obs */
-	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
-	observer.WaitForProcess("nc -nvlp 8081")
+	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "0.0.0.0")
+	observer.WaitForProcess("nc -nvlp 8081 0.0.0.0")
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
@@ -508,7 +509,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("busybox")).
-		WithArguments(sm.Full("-nvlp 8081")).
+		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0")).
 		WithCwd(sm.Full("/")).
 		WithUid(0)
 
@@ -544,7 +545,7 @@ func TestDockerListenConnect(t *testing.T) {
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
-	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081")
+	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "0.0.0.0")
 	time.Sleep(1 * time.Second)
 	clientDockerID := observer.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-p", "9876", "fgs-test-server", "8081")
 
@@ -558,7 +559,7 @@ func TestDockerListenConnect(t *testing.T) {
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("/nc")).
-		WithArguments(sm.Full("-nvlp 8081")).
+		WithArguments(sm.Full("-nvlp 8081 -s 0.0.0.0")).
 		WithCwd(sm.Full("/")).
 		WithUid(0).
 		WithDocker(fgsServerID)
@@ -601,6 +602,8 @@ func TestDockerListenConnect(t *testing.T) {
 			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("connect")),
 	)
+
+	time.Sleep(1 * time.Second)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)

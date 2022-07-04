@@ -1764,7 +1764,6 @@ func (x *Tls) GetParent() *Process {
 	return nil
 }
 
-//
 // HTTP PARSER
 type HttpHeader struct {
 	state         protoimpl.MessageState
