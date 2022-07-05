@@ -223,6 +223,8 @@ func EnableHTTPParser() *sensors.Sensor {
 		HTTPContext,
 		HTTPFilterMap,
 		sockops.HttpSockMap,
+		sockops.TlsSockMap,
+		sockops.NopSockMap,
 		SocketMap, SocketStats,
 	}
 
