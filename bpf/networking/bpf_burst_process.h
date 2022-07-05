@@ -198,7 +198,7 @@ init_burst_log(u64 burst_key, u64 process_start_time, u64 vol,
 // this approach would fail.
 
 static inline __attribute__((always_inline)) void
-process_network_burst(void *ctx, struct execve_map_value *process, u64 protocol,
+process_network_burst(void *ctx, struct socketmap_value *process, u64 protocol,
 		      u64 send, u64 vol, struct process_network_burst_config *c)
 {
 	u64 burst_key;

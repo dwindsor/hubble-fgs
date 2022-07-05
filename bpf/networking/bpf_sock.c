@@ -17,6 +17,7 @@ sock_create(struct bpf_sock *ctx)
 	u32 pid = get_current_pid_tgid(ctx) >> 32;
 	u64 sock = get_socket_cookie(ctx);
 	struct execve_map_value *value;
+	struct socketmap_value process = { 0 };
 
 	if (ctx->type != SOCK_DGRAM && ctx->type != SOCK_STREAM)
 		return 1;
@@ -31,11 +32,12 @@ sock_create(struct bpf_sock *ctx)
 	 */
 	value = execve_map_get_noinit(pid);
 	if (!value || value->key.ktime == 0) {
-		struct execve_map_value v = { 0 };
 		/* Error case, should not happen */
-		map_update_elem(&socket_cookie_to_proc_map, &sock, &v, 0);
+		map_update_elem(&socket_cookie_to_proc_map, &sock, &process, 0);
 	} else {
-		map_update_elem(&socket_cookie_to_proc_map, &sock, value, 0);
+		process.key.pid = value->key.pid;
+		process.key.ktime = value->key.ktime;
+		map_update_elem(&socket_cookie_to_proc_map, &sock, &process, 0);
 	}
 	return 1;
 }

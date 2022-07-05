@@ -1,7 +1,8 @@
 #ifndef __COOKIE_H_
 #define __COOKIE_H_
 
-#include "bpf_udp.h"
+#include "../lib/iso_msg_types.h"
+#include "../lib/networkmsg.h"
 
 // get socket cookie helper
 static inline __attribute__((always_inline)) __u64 get_cookie(struct sock *sk)
@@ -15,7 +16,7 @@ struct bpf_map_def __attribute__((section("maps"), used))
 socket_cookie_to_proc_map = {
 	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(u64),
-	.value_size = sizeof(struct execve_map_value),
+	.value_size = sizeof(struct socketmap_value),
 	.max_entries = 32768,
 };
 #endif
@@ -57,7 +58,7 @@ static inline __attribute__((always_inline)) void
 update_cookie_proc_map(u64 *cookie, u32 pid)
 {
 	struct execve_map_value *value;
-	struct execve_map_value *process;
+	struct socketmap_value *process;
 
 	if (!pid || !cookie || !*cookie)
 		return;
@@ -65,9 +66,22 @@ update_cookie_proc_map(u64 *cookie, u32 pid)
 	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
 	if (!process || process->key.pid != pid) {
 		value = execve_map_get_noinit(pid);
-		if (value) {
-			map_update_elem(&socket_cookie_to_proc_map, cookie,
-					value, 0);
+		if (!value)
+			return;
+		if (!process) {
+			struct socketmap_value s = { 0 };
+			s.key.pid = value->key.pid;
+			s.key.ktime = value->key.ktime;
+			map_update_elem(&socket_cookie_to_proc_map, cookie, &s,
+					0);
+		} else {
+			process->key.pid = value->key.pid;
+			process->key.ktime = value->key.ktime;
+			process->last_time = 0;
+			process->received = 0;
+			process->sent = 0;
+			process->socket_flags = 0;
+			process->zero_window = 0;
 		}
 	}
 }

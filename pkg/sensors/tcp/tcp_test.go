@@ -32,7 +32,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
-	_ "github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
@@ -937,10 +936,8 @@ func TestLoadTcpSensor(t *testing.T) {
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
 
 		// all but event_tcp4_close
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 3, 4, 5, 6}},
-
-		// base only
-		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{4, 5, 6}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 4, 5, 6}},
+		// tus.SensorMap{Name: "execve_map_stats", Progs: []uint{4, 5, 6}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)

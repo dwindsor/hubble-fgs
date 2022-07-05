@@ -118,7 +118,7 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 	   bool send, bool lazy)
 {
 	struct udp_info_value *value;
-	struct execve_map_value *process;
+	struct socketmap_value *process;
 	int zero = 0;
 	u64 sk_cookie;
 
@@ -279,7 +279,7 @@ udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
 {
 	struct udp_sensor_config *config;
 	struct process_network_burst_config *c;
-	struct execve_map_value *process;
+	struct socketmap_value *process;
 	int zero = 0;
 
 	config = map_lookup_elem(&udp_config_map, &zero);
@@ -300,7 +300,7 @@ udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
 	 * process and kernel >=5.10, then it would have been remapped from
 	 * the socket cookie by __udp_send() already.
 	 */
-	if (!process)
+	if (!process || !process->key.pid)
 		return;
 
 	process_network_burst(ctx, process, IPPROTO_UDP, send, vol, c);

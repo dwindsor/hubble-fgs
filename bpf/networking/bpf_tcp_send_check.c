@@ -48,7 +48,6 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 	struct net *netns;
 	struct sock *skp;
 	int zero = 0;
-	struct execve_map_value *exec_process;
 
 	skp = (void *)((ctx)->di);
 	tcp = (struct tcp_sock *)skp;
@@ -128,8 +127,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 				  size);
 	out:
 		if (cfg->burstEnable) {
-			exec_process = execve_map_get_noinit(process->key.pid);
-			if (exec_process && exec_process->key.pid != 0) {
+			if (process->key.pid != 0) {
 				struct process_network_burst_config c = {
 					.avg_window_size_ms =
 						cfg->burstAvgWindowSize,
@@ -143,7 +141,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 					   _(&(tcp->bytes_received)));
 				if (tcp_bytes_sent > process->sent) {
 					process_network_burst(
-						ctx, exec_process, IPPROTO_TCP,
+						ctx, process, IPPROTO_TCP,
 						BURST_KEY_SEND_EGRESS,
 						tcp_bytes_sent - process->sent,
 						&c);
@@ -151,7 +149,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 				}
 				if (tcp_bytes_received > process->received) {
 					process_network_burst(
-						ctx, exec_process, IPPROTO_TCP,
+						ctx, process, IPPROTO_TCP,
 						BURST_KEY_SEND_INGRESS,
 						tcp_bytes_received -
 							process->received,

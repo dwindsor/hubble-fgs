@@ -23,6 +23,7 @@ sk_allocret(struct pt_regs *ctx)
 	struct sock *sk = (void *)cookie;
 	struct execve_map_value *value;
 	u16 family;
+	struct socketmap_value process = { 0 };
 
 	if (cookie == 0 || pid <= 1) {
 		return 0;
@@ -42,11 +43,14 @@ sk_allocret(struct pt_regs *ctx)
 	 */
 	value = execve_map_get_noinit(pid);
 	if (!value || value->key.ktime == 0) {
-		struct execve_map_value v = { 0 };
 		/* Error case, should not happen */
-		map_update_elem(&socket_cookie_to_proc_map, &cookie, &v, 0);
+		map_update_elem(&socket_cookie_to_proc_map, &cookie, &process,
+				0);
 	} else {
-		map_update_elem(&socket_cookie_to_proc_map, &cookie, value, 0);
+		process.key.pid = value->key.pid;
+		process.key.ktime = value->key.ktime;
+		map_update_elem(&socket_cookie_to_proc_map, &cookie, &process,
+				0);
 	}
 
 	return 0;

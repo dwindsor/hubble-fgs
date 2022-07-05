@@ -38,6 +38,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
+	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
@@ -545,9 +546,15 @@ type udpSensor struct {
 	name string
 }
 
+func FdCallback(socket *ip.FdLookupValue, pid uint32) {
+	saddr := reader.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
+	daddr := reader.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
+	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered UDP Socket")
+}
+
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if !configured {
-		ip.LoadSockets(nil, IPPROTO_UDP)
+		ip.LoadSockets(FdCallback, IPPROTO_UDP)
 	}
 
 	if args.Load.Type == "cgrp_ingress" || args.Load.Type == "cgrp_egress" {

@@ -305,7 +305,7 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 		    unsigned long int err)
 {
 	struct msg_ip_event *val;
-	struct execve_map_value *process;
+	struct socketmap_value *process;
 	int zero = 0;
 
 	val = map_lookup_elem(&ip_error_event_heap, &zero);

@@ -44,7 +44,8 @@ __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
 	struct socket *sock;
 	struct sock *sk;
 	u64 cookie;
-	struct execve_map_value *process;
+	struct execve_map_value *value;
+	struct socketmap_value sockmap_process = { 0 };
 	u16 family;
 	long family_ret;
 	u16 required_protocol;
@@ -128,11 +129,15 @@ __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
 	 */
 	cookie = (u64)sk;
 
-	process = execve_map_get_noinit(pid);
-	if (!process)
+	value = execve_map_get_noinit(pid);
+	if (!value)
 		return 0;
 
-	map_update_elem(&socket_cookie_to_proc_map, &cookie, process, 0);
+	sockmap_process.key.pid = value->key.pid;
+	sockmap_process.key.ktime = value->key.ktime;
+
+	map_update_elem(&socket_cookie_to_proc_map, &cookie, &sockmap_process,
+			0);
 
 	if (family_ret != 0 || proto_ret != 0)
 		return 0;
