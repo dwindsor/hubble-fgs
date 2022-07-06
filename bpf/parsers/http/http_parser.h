@@ -18,6 +18,7 @@
 #include "../parser.h"
 #include "http.h"
 #include "bpf_helpers.h"
+#include "../../networking/cookie.h"
 
 #ifdef SK_MSG
 struct bpf_map_def __attribute__((section("maps"), used)) http1_calls = {

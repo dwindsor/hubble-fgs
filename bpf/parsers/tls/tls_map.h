@@ -19,6 +19,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
 	.max_entries = 32000,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(__s32),
+	.value_size = sizeof(__s64),
+	.max_entries = 1,
+};
+
 /* Mark a TLS entry as completed to stop further parsing. */
 static inline __attribute__((always_inline)) void
 tls_mark_complete(struct msg_tls *tls)

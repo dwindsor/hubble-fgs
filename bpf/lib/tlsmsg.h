@@ -80,54 +80,12 @@ struct msg_tls_cont_event {
 	__u8 payload[0];
 } __attribute__((packed));
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__s32),
-	.value_size = sizeof(__s64),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct socketmap_value),
-	.max_entries = 32768,
-};
-
 static inline __attribute__((always_inline)) int
 is_tuple_local(struct msg_tls_ipv4 *tuple)
 {
 	return (tuple->daddr & 0xff) == 127 || // daddr lo addr
 	       (tuple->saddr & 0xff) == 127 || // saddr lo addr
 	       tuple->daddr == 0; // listening socket no addr always local
-}
-
-static inline __attribute__((always_inline)) void
-add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
-{
-	int err = map_update_elem(&socket_map, tuple, v, 0);
-	int zero = 0;
-	__s64 *cntr;
-
-	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
-		*cntr = *cntr + 1;
-}
-
-static inline __attribute__((always_inline)) void
-del_socketmap(struct msg_tls_ipv4 *tuple)
-{
-	int err = map_delete_elem(&socket_map, tuple);
-	int zero = 0;
-	__s64 *cntr;
-
-	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
-		*cntr = *cntr - 1;
-}
-
-static inline __attribute__((always_inline)) struct socketmap_value *
-lookup_socketmap(struct msg_tls_ipv4 *tuple)
-{
-	return map_lookup_elem(&socket_map, tuple);
 }
 
 #endif

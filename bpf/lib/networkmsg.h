@@ -64,25 +64,10 @@ struct msg_process_network_burst_event {
 	__u64 window_avg;
 };
 
-struct socketmap_value {
-	struct msg_execve_key key;
-	__u32 zero_window;
-	__u32 socket_flags;
-	__u64 last_time;
-	__u64 sent;
-	__u64 received;
-};
-
 struct msg_kfree_skb {
 	struct msg_common common;
 	struct msg_calltrace calltrace;
 	struct msg_ip_tuple tuple;
 } __attribute__((packed));
 
-struct bpf_map_def __attribute__((section("maps"), used)) socket_map_stats = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__s32),
-	.value_size = sizeof(__s64),
-	.max_entries = 1,
-};
 #endif // _NETWORKMSG__

@@ -4,6 +4,7 @@
 #include "../lib/bpf_helpers.h"
 #include "../lib/networkmsg.h"
 #include "../lib/iso_msg_types.h"
+#include "cookie.h"
 
 #define MAX_UDP_PROCESSES 32768
 

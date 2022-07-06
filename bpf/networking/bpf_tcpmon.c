@@ -7,6 +7,7 @@
 #include "cookie.h"
 #include "netns.h"
 #include "tlsmsg.h"
+#include "../parsers/tls/tls_map.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
