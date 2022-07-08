@@ -127,7 +127,7 @@ func hubbleFGSExecute() error {
 	option.Config.MapDir = observerDir
 	obs := observer.NewObserver(configFile)
 	if err := obs.InitSensorManager(); err != nil {
-		return err
+		return fmt.Errorf("failed to start sensor manager: %w", err)
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -144,7 +144,7 @@ func hubbleFGSExecute() error {
 
 	err := btf.InitCachedBTF(ctx, option.Config.HubbleLib, option.Config.BTF)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to init cached BTF: %w", err)
 	}
 
 	if runStandalone {
@@ -157,15 +157,15 @@ func hubbleFGSExecute() error {
 
 	watcher, err := getWatcher(option.Config.EnableK8s)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to get k8s API watcher: %w", err)
 	}
 	ciliumState, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to init cilium state: %w", err)
 	}
 
 	if err := process.InitCache(ctx, watcher, option.Config.EnableCilium, processCacheSize); err != nil {
-		return err
+		return fmt.Errorf("failed to init process cache: %w", err)
 	}
 
 	pm, err := fgsGrpc.NewProcessManager(
@@ -174,14 +174,14 @@ func hubbleFGSExecute() error {
 		ciliumState,
 		observer.SensorManager)
 	if err != nil {
-		return err
+		return fmt.Errorf("failed to create process manager: %w", err)
 	}
 	if err = Serve(ctx, serverAddress, pm.Server); err != nil {
-		return err
+		return fmt.Errorf("failed to start gRPC server: %w", err)
 	}
 	if exportFilename != "" {
 		if err = startExporter(ctx, pm.Server); err != nil {
-			return err
+			return fmt.Errorf("failed to start json exporter: %w", err)
 		}
 	}
 
@@ -205,11 +205,11 @@ func hubbleFGSExecute() error {
 	if configFile != "" {
 		cnf, err := readConfig(configFile)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to read config: %w", err)
 		}
 		startSensors, err = sensors.GetSensorsFromParserPolicy(&cnf.Spec)
 		if err != nil {
-			return err
+			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
 		}
 	}
 
