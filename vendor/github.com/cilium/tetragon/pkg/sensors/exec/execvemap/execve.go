@@ -15,20 +15,15 @@ type ExecveKey struct {
 	Pid uint32
 }
 
-type ExecveValueL struct {
-	Common       processapi.MsgCommon
-	Kube         processapi.MsgK8s
-	Parent       processapi.MsgExecveKey
-	ParentFlags  uint64
-	Capabilities processapi.MsgCapabilities
-}
-
 type ExecveValue struct {
-	Process processapi.MsgExecveKey
-	Parent  processapi.MsgExecveKey
-	Flags   uint32
-	Nspid   uint32
-	Buffer  uint64
+	Process      processapi.MsgExecveKey    `align:"key"`
+	Parent       processapi.MsgExecveKey    `align:"pkey"`
+	Flags        uint32                     `align:"flags"`
+	Nspid        uint32                     `align:"nspid"`
+	Binary       uint32                     `align:"binary"`
+	Pad          uint32                     `align:"pad"`
+	Namespaces   processapi.MsgNamespaces   `align:"ns"`
+	Capabilities processapi.MsgCapabilities `align:"caps"`
 }
 
 func (k *ExecveKey) String() string             { return fmt.Sprintf("key=%d", k.Pid) }
