@@ -43,6 +43,7 @@ int main(void)
 
 	// from maps
 	DECLARE(struct, event, iter);
+	DECLARE(struct, msg_execve_key, iter);
 	DECLARE(struct, execve_map_value, iter);
 	DECLARE(struct, msg_tls_ipv4, iter);
 	DECLARE(struct, socketmap_value, iter);
