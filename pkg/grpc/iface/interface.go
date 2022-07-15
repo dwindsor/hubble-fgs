@@ -1,10 +1,10 @@
 package iface
 
 import (
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 )
@@ -13,8 +13,8 @@ var (
 	nodeName = node.GetNodeNameForExport()
 )
 
-func getInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs.InterfaceStats {
-	fgsEvent := &fgs.InterfaceStats{
+func getInterfaceStats(msg *api.MsgInterfaceEventUnix) *tetragon.InterfaceStats {
+	fgsEvent := &tetragon.InterfaceStats{
 		InterfaceName:    msg.Iface.Name,
 		InterfaceIfindex: uint32(msg.Iface.Index),
 		Netns:            msg.Iface.Netns,
@@ -31,14 +31,14 @@ func getInterfaceStats(msg *api.MsgInterfaceEventUnix) *fgs.InterfaceStats {
 	return fgsEvent
 }
 
-func HandleInterfaceMessage(msg *api.MsgInterfaceEventUnix) *fgs.GetEventsResponse {
-	var res *fgs.GetEventsResponse
+func HandleInterfaceMessage(msg *api.MsgInterfaceEventUnix) *tetragon.GetEventsResponse {
+	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_INTERFACE_STATS:
 		stats := getInterfaceStats(msg)
 		if stats != nil {
-			res = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_InterfaceStats{InterfaceStats: stats},
+			res = &tetragon.GetEventsResponse{
+				Event:    &tetragon.GetEventsResponse_InterfaceStats{InterfaceStats: stats},
 				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}

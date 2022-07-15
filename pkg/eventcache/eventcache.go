@@ -11,16 +11,17 @@
 package eventcache
 
 import (
+	"fmt"
 	"time"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
+	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	codegen "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -38,6 +39,8 @@ const (
 
 type eventObj interface {
 	GetProcess() *tetragon.Process
+	SetProcess(*tetragon.Process)
+	Encapsulate() tetragon.IsGetEventsResponse_Event
 }
 
 var (
@@ -59,12 +62,40 @@ type Cache struct {
 	server   *server.Server
 }
 
+// does this really work? But it allows us to have a single codegen
 func (ec *Cache) eventLabels(endpoint *v1.Endpoint, event *cacheObj) ([]string, error) {
-	labels, destinationIp := codegen.DoEventLabels(endpoint, event.event)
-	if destinationIp != nil {
-		return ec.dns.GetIp(*destinationIp)
+	// If Cilium has some useful information for us we can let Cilium
+	// give us the info.
+	e := event.event
+	if obj, ok := e.(interface{ GetDestinationNames() []string }); ok {
+		names := obj.GetDestinationNames()
+		if len(names) > 0 {
+			return names, nil
+		}
 	}
-	return labels, nil
+	return []string{}, nil
+}
+
+func doHandleEvent(event eventObj, internal *process.ProcessInternal, labels []string, nodeName string, timestamp *timestamppb.Timestamp) (*tetragon.GetEventsResponse, error) {
+	if internal == nil {
+		typeName := fmt.Sprintf("%T", event)
+		fmt.Printf("debug... typeName %s\n", typeName)
+		eventcachemetrics.ProcessInfoErrorInc(typeName)
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+	} else {
+		event.SetProcess(internal.GetProcessCopy())
+	}
+
+	if obj, ok := event.(interface {
+		Encapsulate() tetragon.IsGetEventsResponse_Event
+	}); ok {
+		return &tetragon.GetEventsResponse{
+			Event:    obj.Encapsulate(),
+			NodeName: nodeName,
+			Time:     timestamp,
+		}, nil
+	}
+	return nil, fmt.Errorf("DoHandleEvent: Unhandled event type %T", event)
 }
 
 func (ec *Cache) handleNetEvents() {
@@ -99,7 +130,7 @@ func (ec *Cache) handleNetEvents() {
 			errormetrics.EventCacheInc(errormetrics.EventCacheEndpointRetryFailed)
 		}
 
-		processedEvent, err := codegen.DoHandleEvent(e.event, e.internal, labels, nodeName, e.timestamp)
+		processedEvent, err := doHandleEvent(e.event, e.internal, labels, nodeName, e.timestamp)
 		if err == nil {
 			ec.server.NotifyListeners(e.msg, processedEvent)
 		} else {

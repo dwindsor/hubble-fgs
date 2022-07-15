@@ -6,19 +6,15 @@ package generate
 import (
 	"fmt"
 
-	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventcache"
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventchecker"
-	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/filters"
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/helpers"
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/types"
 	"google.golang.org/protobuf/compiler/protogen"
 )
 
-type GeneratorFunc func(gen *protogen.Plugin, f *protogen.File) error
+type GeneratorFunc func(gen *protogen.Plugin, files []*protogen.File) error
 
 var Generators = []GeneratorFunc{
-	eventcache.Generate,
-	filters.Generate,
 	helpers.Generate,
 	eventchecker.Generate,
 	types.Generate,
@@ -26,15 +22,9 @@ var Generators = []GeneratorFunc{
 
 func Generate() {
 	protogen.Options{}.Run(func(gen *protogen.Plugin) error {
-		for _, f := range gen.Files {
-			if !f.Generate {
-				continue
-			}
-
-			for _, generator := range Generators {
-				if err := generator(gen, f); err != nil {
-					return fmt.Errorf("Failed to generate file %s: %v", f.Desc.Name(), err)
-				}
+		for _, generator := range Generators {
+			if err := generator(gen, gen.Files); err != nil {
+				return fmt.Errorf("Failed to generate file: %v", err)
 			}
 		}
 		return nil

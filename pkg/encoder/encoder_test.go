@@ -20,7 +20,6 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -29,7 +28,7 @@ func TestCompactEncoder_InvalidEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the event field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{})
+	_, err := p.eventToString(&tetragon.GetEventsResponse{})
 	assert.Error(t, err)
 }
 
@@ -37,17 +36,17 @@ func TestCompactEncoder_ExecEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExec{
-			ProcessExec: &fgs.ProcessExec{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExec{
+			ProcessExec: &tetragon.ProcessExec{},
 		},
 	})
 	assert.Error(t, err)
 
 	// without pod info
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExec{
-			ProcessExec: &fgs.ProcessExec{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExec{
+			ProcessExec: &tetragon.ProcessExec{
 				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
@@ -60,9 +59,9 @@ func TestCompactEncoder_ExecEventToString(t *testing.T) {
 	assert.Equal(t, "🚀 process my-node /usr/bin/curl isovalent.com", result)
 
 	// with pod info
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExec{
-			ProcessExec: &fgs.ProcessExec{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExec{
+			ProcessExec: &tetragon.ProcessExec{
 				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
@@ -82,23 +81,23 @@ func TestCompactEncoder_ConnectEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessConnect{
-			ProcessConnect: &fgs.ProcessConnect{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessConnect{
+			ProcessConnect: &tetragon.ProcessConnect{},
 		},
 	})
 	assert.Error(t, err)
 
 	// shouldn't crash if port fields are nil
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessConnect{
-			ProcessConnect: &fgs.ProcessConnect{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessConnect{
+			ProcessConnect: &tetragon.ProcessConnect{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
 				SourceIp:      "1.2.3.4",
 				DestinationIp: "5.6.7.8",
-				Protocol:      fgs.SocketProtocol_TCP,
+				Protocol:      tetragon.SocketProtocol_TCP,
 			},
 		},
 		NodeName: "my-node",
@@ -107,9 +106,9 @@ func TestCompactEncoder_ConnectEventToString(t *testing.T) {
 	assert.Equal(t, "🔌 connect my-node /usr/bin/curl TCP 1.2.3.4:0 => 5.6.7.8:0", result)
 
 	// with pod info and dns name
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessConnect{
-			ProcessConnect: &fgs.ProcessConnect{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessConnect{
+			ProcessConnect: &tetragon.ProcessConnect{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 					Pod:    &tetragon.Pod{Namespace: "my-ns", Name: "my-pod"},
@@ -119,7 +118,7 @@ func TestCompactEncoder_ConnectEventToString(t *testing.T) {
 				DestinationIp:    "5.6.7.8",
 				DestinationPort:  &wrapperspb.UInt32Value{Value: 80},
 				DestinationNames: []string{"isovalent.com"},
-				Protocol:         fgs.SocketProtocol_TCP,
+				Protocol:         tetragon.SocketProtocol_TCP,
 			},
 		},
 	})
@@ -131,23 +130,23 @@ func TestCompactEncoder_AcceptEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessAccept{
-			ProcessAccept: &fgs.ProcessAccept{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessAccept{
+			ProcessAccept: &tetragon.ProcessAccept{},
 		},
 	})
 	assert.Error(t, err)
 
 	// shouldn't crash if port fields are nil
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessAccept{
-			ProcessAccept: &fgs.ProcessAccept{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessAccept{
+			ProcessAccept: &tetragon.ProcessAccept{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
 				SourceIp:      "1.2.3.4",
 				DestinationIp: "5.6.7.8",
-				Protocol:      fgs.SocketProtocol_TCP,
+				Protocol:      tetragon.SocketProtocol_TCP,
 			},
 		},
 		NodeName: "my-node",
@@ -156,9 +155,9 @@ func TestCompactEncoder_AcceptEventToString(t *testing.T) {
 	assert.Equal(t, "💡 accept  my-node /usr/bin/nginx TCP 5.6.7.8:0 => 1.2.3.4:0", result)
 
 	// with pod info and dns name
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessAccept{
-			ProcessAccept: &fgs.ProcessAccept{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessAccept{
+			ProcessAccept: &tetragon.ProcessAccept{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 					Pod:    &tetragon.Pod{Namespace: "my-ns", Name: "my-pod"},
@@ -168,7 +167,7 @@ func TestCompactEncoder_AcceptEventToString(t *testing.T) {
 				DestinationIp:    "5.6.7.8",
 				DestinationPort:  &wrapperspb.UInt32Value{Value: 56789},
 				DestinationNames: []string{"isovalent.com"},
-				Protocol:         fgs.SocketProtocol_TCP,
+				Protocol:         tetragon.SocketProtocol_TCP,
 			},
 		},
 	})
@@ -180,22 +179,22 @@ func TestCompactEncoder_ListenEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessListen{
-			ProcessListen: &fgs.ProcessListen{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessListen{
+			ProcessListen: &tetragon.ProcessListen{},
 		},
 	})
 	assert.Error(t, err)
 
 	// shouldn't crash if port field is nil
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessListen{
-			ProcessListen: &fgs.ProcessListen{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessListen{
+			ProcessListen: &tetragon.ProcessListen{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
 				Ip:       "0.0.0.0",
-				Protocol: fgs.SocketProtocol_TCP,
+				Protocol: tetragon.SocketProtocol_TCP,
 			},
 		},
 		NodeName: "my-node",
@@ -204,16 +203,16 @@ func TestCompactEncoder_ListenEventToString(t *testing.T) {
 	assert.Equal(t, "🎧 listen  my-node /usr/bin/nginx TCP 0.0.0.0:0", result)
 
 	// with pod info
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessListen{
-			ProcessListen: &fgs.ProcessListen{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessListen{
+			ProcessListen: &tetragon.ProcessListen{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 					Pod:    &tetragon.Pod{Namespace: "my-ns", Name: "my-pod"},
 				},
 				Ip:       "0.0.0.0",
 				Port:     &wrapperspb.UInt32Value{Value: 80},
-				Protocol: fgs.SocketProtocol_TCP,
+				Protocol: tetragon.SocketProtocol_TCP,
 			},
 		},
 	})
@@ -225,24 +224,24 @@ func TestCompactEncoder_CloseEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessClose{
-			ProcessClose: &fgs.ProcessClose{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessClose{
+			ProcessClose: &tetragon.ProcessClose{},
 		},
 	})
 	assert.Error(t, err)
 
 	// shouldn't crash if port field is nil
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessClose{
-			ProcessClose: &fgs.ProcessClose{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessClose{
+			ProcessClose: &tetragon.ProcessClose{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
 				SourceIp:      "1.2.3.4",
 				DestinationIp: "5.6.7.8",
 				Stats:         nil,
-				Protocol:      fgs.SocketProtocol_TCP,
+				Protocol:      tetragon.SocketProtocol_TCP,
 			},
 		},
 		NodeName: "my-node",
@@ -251,9 +250,9 @@ func TestCompactEncoder_CloseEventToString(t *testing.T) {
 	assert.Equal(t, "\U0001F9F9 close   my-node /usr/bin/nginx TCP 1.2.3.4:0 => 5.6.7.8:0 tx  rx ", result)
 
 	// with pod info
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessClose{
-			ProcessClose: &fgs.ProcessClose{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessClose{
+			ProcessClose: &tetragon.ProcessClose{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 					Pod:    &tetragon.Pod{Namespace: "my-ns", Name: "my-pod"},
@@ -262,8 +261,8 @@ func TestCompactEncoder_CloseEventToString(t *testing.T) {
 				SourcePort:      &wrapperspb.UInt32Value{Value: 56789},
 				DestinationIp:   "5.6.7.8",
 				DestinationPort: &wrapperspb.UInt32Value{Value: 80},
-				Protocol:        fgs.SocketProtocol_TCP,
-				Stats: &fgs.SocketStats{
+				Protocol:        tetragon.SocketProtocol_TCP,
+				Stats: &tetragon.SocketStats{
 					BytesSent:     1111,
 					BytesReceived: 2222,
 				},
@@ -278,17 +277,17 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessSockStats{
-			ProcessSockStats: &fgs.ProcessSockStats{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessSockStats{
+			ProcessSockStats: &tetragon.ProcessSockStats{},
 		},
 	})
 	assert.Error(t, err)
 
 	// should fail if socket field is nil
-	_, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessSockStats{
-			ProcessSockStats: &fgs.ProcessSockStats{
+	_, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessSockStats{
+			ProcessSockStats: &tetragon.ProcessSockStats{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
@@ -299,13 +298,13 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 	assert.Error(t, err)
 
 	// should fail if stats field is nil
-	_, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessSockStats{
-			ProcessSockStats: &fgs.ProcessSockStats{
+	_, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessSockStats{
+			ProcessSockStats: &tetragon.ProcessSockStats{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/nginx",
 				},
-				Socket: &fgs.SockInfo{},
+				Socket: &tetragon.SockInfo{},
 			},
 		},
 		NodeName: "my-node",
@@ -313,20 +312,20 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 	assert.Error(t, err)
 
 	// with socket and stats fields
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessSockStats{
-			ProcessSockStats: &fgs.ProcessSockStats{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessSockStats{
+			ProcessSockStats: &tetragon.ProcessSockStats{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
-				Socket: &fgs.SockInfo{
+				Socket: &tetragon.SockInfo{
 					SourceIp:        "1.2.3.4",
 					SourcePort:      &wrapperspb.UInt32Value{Value: 56789},
 					DestinationIp:   "5.6.7.8",
 					DestinationPort: &wrapperspb.UInt32Value{Value: 80},
-					Protocol:        fgs.SocketProtocol_TCP,
+					Protocol:        tetragon.SocketProtocol_TCP,
 				},
-				Stats: &fgs.SocketStats{
+				Stats: &tetragon.SocketStats{
 					BytesSent:     1111,
 					BytesReceived: 2222,
 				},
@@ -342,17 +341,17 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessDns{
-			ProcessDns: &fgs.ProcessDns{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessDns{
+			ProcessDns: &tetragon.ProcessDns{},
 		},
 	})
 	assert.Error(t, err)
 
 	// should fail if dns field is nil
-	_, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessDns{
-			ProcessDns: &fgs.ProcessDns{
+	_, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessDns{
+			ProcessDns: &tetragon.ProcessDns{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
@@ -363,13 +362,13 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 	assert.Error(t, err)
 
 	// with dns info.
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessDns{
-			ProcessDns: &fgs.ProcessDns{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessDns{
+			ProcessDns: &tetragon.ProcessDns{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
-				Dns: &fgs.DnsInfo{
+				Dns: &tetragon.DnsInfo{
 					Names: []string{"isovalent.com"},
 					Ips:   []string{"1.2.3.4"},
 				},
@@ -385,17 +384,17 @@ func TestCompactEncoder_TlsEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_Tls{
-			Tls: &fgs.Tls{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_Tls{
+			Tls: &tetragon.Tls{},
 		},
 	})
 	assert.Error(t, err)
 
 	// shouldn't crash if destination port is nil
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_Tls{
-			Tls: &fgs.Tls{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_Tls{
+			Tls: &tetragon.Tls{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
@@ -411,9 +410,9 @@ func TestCompactEncoder_TlsEventToString(t *testing.T) {
 	assert.Equal(t, "🔐 tls     my-node /usr/bin/curl 1.2.3.4:0 isovalent.com tls-version some-cipher", result)
 
 	// with tls info.
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_Tls{
-			Tls: &fgs.Tls{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_Tls{
+			Tls: &tetragon.Tls{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
@@ -434,17 +433,17 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessHttp{
-			ProcessHttp: &fgs.ProcessHttp{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessHttp{
+			ProcessHttp: &tetragon.ProcessHttp{},
 		},
 	})
 	assert.Error(t, err)
 
 	// should fail if http is nil
-	_, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessHttp{
-			ProcessHttp: &fgs.ProcessHttp{
+	_, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessHttp{
+			ProcessHttp: &tetragon.ProcessHttp{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
@@ -455,14 +454,14 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 	assert.Error(t, err)
 
 	// http request
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessHttp{
-			ProcessHttp: &fgs.ProcessHttp{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessHttp{
+			ProcessHttp: &tetragon.ProcessHttp{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
-				Http: &fgs.HttpInfo{
-					Request: &fgs.HttpRequest{
+				Http: &tetragon.HttpInfo{
+					Request: &tetragon.HttpRequest{
 						Method:  "GET",
 						Uri:     "/index.html",
 						Version: "1.1",
@@ -477,20 +476,20 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 	assert.Equal(t, "🌐 http    my-node /usr/bin/curl isovalent.com GET /index.html ", result)
 
 	// http response
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessHttp{
-			ProcessHttp: &fgs.ProcessHttp{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessHttp{
+			ProcessHttp: &tetragon.ProcessHttp{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
-				Http: &fgs.HttpInfo{
-					Request: &fgs.HttpRequest{
+				Http: &tetragon.HttpInfo{
+					Request: &tetragon.HttpRequest{
 						Method:  "GET",
 						Uri:     "/index.html",
 						Version: "1.1",
 						Host:    "isovalent.com",
 					},
-					Response: &fgs.HttpResponse{
+					Response: &tetragon.HttpResponse{
 						Code:   200,
 						Reason: "ok",
 					},
@@ -503,20 +502,20 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 	assert.Equal(t, "🌐 http    my-node /usr/bin/curl isovalent.com GET /index.html 200 ok 0s", result)
 
 	// http response with duration
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessHttp{
-			ProcessHttp: &fgs.ProcessHttp{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessHttp{
+			ProcessHttp: &tetragon.ProcessHttp{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 				},
-				Http: &fgs.HttpInfo{
-					Request: &fgs.HttpRequest{
+				Http: &tetragon.HttpInfo{
+					Request: &tetragon.HttpRequest{
 						Method:  "GET",
 						Uri:     "/index.html",
 						Version: "1.1",
 						Host:    "isovalent.com",
 					},
-					Response: &fgs.HttpResponse{
+					Response: &tetragon.HttpResponse{
 						Code:   200,
 						Reason: "ok",
 					},
@@ -534,17 +533,17 @@ func TestCompactEncoder_ExitEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail if the process field is nil.
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExit{
-			ProcessExit: &fgs.ProcessExit{},
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExit{
+			ProcessExit: &tetragon.ProcessExit{},
 		},
 	})
 	assert.Error(t, err)
 
 	// with status
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExit{
-			ProcessExit: &fgs.ProcessExit{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExit{
+			ProcessExit: &tetragon.ProcessExit{
 				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
@@ -561,9 +560,9 @@ func TestCompactEncoder_ExitEventToString(t *testing.T) {
 	assert.Equal(t, "💥 exit    kube-system/hubble-enterprise /usr/bin/curl isovalent.com 1", result)
 
 	// with signal
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExit{
-			ProcessExit: &fgs.ProcessExit{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExit{
+			ProcessExit: &tetragon.ProcessExit{
 				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
@@ -584,9 +583,9 @@ func TestCompactEncoder_KprobeEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// should fail without process field
-	_, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessKprobe{
-			ProcessKprobe: &fgs.ProcessKprobe{
+	_, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessKprobe{
+			ProcessKprobe: &tetragon.ProcessKprobe{
 				FunctionName: "unhandled_function",
 			},
 		},
@@ -594,9 +593,9 @@ func TestCompactEncoder_KprobeEventToString(t *testing.T) {
 	assert.Error(t, err)
 
 	// unknown function
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessKprobe{
-			ProcessKprobe: &fgs.ProcessKprobe{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessKprobe{
+			ProcessKprobe: &tetragon.ProcessKprobe{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 					Pod: &tetragon.Pod{
@@ -616,9 +615,9 @@ func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// open without args
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessKprobe{
-			ProcessKprobe: &fgs.ProcessKprobe{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessKprobe{
+			ProcessKprobe: &tetragon.ProcessKprobe{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 					Pod: &tetragon.Pod{
@@ -634,9 +633,9 @@ func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
 	assert.Equal(t, "📬 open    kube-system/hubble-enterprise /usr/bin/curl ", result)
 
 	// open with args
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessKprobe{
-			ProcessKprobe: &fgs.ProcessKprobe{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessKprobe{
+			ProcessKprobe: &tetragon.ProcessKprobe{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 					Pod: &tetragon.Pod{
@@ -645,9 +644,9 @@ func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
 					},
 				},
 				FunctionName: "fd_install",
-				Args: []*fgs.KprobeArgument{
+				Args: []*tetragon.KprobeArgument{
 					nil,
-					{Arg: &fgs.KprobeArgument_FileArg{FileArg: &fgs.KprobeFile{Path: "/etc/password"}}},
+					{Arg: &tetragon.KprobeArgument_FileArg{FileArg: &tetragon.KprobeFile{Path: "/etc/password"}}},
 				},
 			},
 		},
@@ -660,9 +659,9 @@ func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// write without args
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessKprobe{
-			ProcessKprobe: &fgs.ProcessKprobe{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessKprobe{
+			ProcessKprobe: &tetragon.ProcessKprobe{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 					Pod: &tetragon.Pod{
@@ -678,9 +677,9 @@ func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
 	assert.Equal(t, "📝 write   kube-system/hubble-enterprise /usr/bin/curl  ", result)
 
 	// write with args
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessKprobe{
-			ProcessKprobe: &fgs.ProcessKprobe{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessKprobe{
+			ProcessKprobe: &tetragon.ProcessKprobe{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 					Pod: &tetragon.Pod{
@@ -689,10 +688,10 @@ func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
 					},
 				},
 				FunctionName: "__x64_sys_write",
-				Args: []*fgs.KprobeArgument{
-					{Arg: &fgs.KprobeArgument_FileArg{FileArg: &fgs.KprobeFile{Path: "/etc/password"}}},
+				Args: []*tetragon.KprobeArgument{
+					{Arg: &tetragon.KprobeArgument_FileArg{FileArg: &tetragon.KprobeFile{Path: "/etc/password"}}},
 					nil,
-					{Arg: &fgs.KprobeArgument_SizeArg{SizeArg: 1234}},
+					{Arg: &tetragon.KprobeArgument_SizeArg{SizeArg: 1234}},
 				},
 			},
 		},
@@ -705,9 +704,9 @@ func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// open without args
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessKprobe{
-			ProcessKprobe: &fgs.ProcessKprobe{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessKprobe{
+			ProcessKprobe: &tetragon.ProcessKprobe{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 					Pod: &tetragon.Pod{
@@ -723,9 +722,9 @@ func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
 	assert.Equal(t, "📪 close   kube-system/hubble-enterprise /usr/bin/curl ", result)
 
 	// open with args
-	result, err = p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessKprobe{
-			ProcessKprobe: &fgs.ProcessKprobe{
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessKprobe{
+			ProcessKprobe: &tetragon.ProcessKprobe{
 				Process: &tetragon.Process{
 					Binary: "/usr/bin/curl",
 					Pod: &tetragon.Pod{
@@ -734,8 +733,8 @@ func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
 					},
 				},
 				FunctionName: "__x64_sys_close",
-				Args: []*fgs.KprobeArgument{
-					{Arg: &fgs.KprobeArgument_FileArg{FileArg: &fgs.KprobeFile{Path: "/etc/password"}}},
+				Args: []*tetragon.KprobeArgument{
+					{Arg: &tetragon.KprobeArgument_FileArg{FileArg: &tetragon.KprobeFile{Path: "/etc/password"}}},
 				},
 			},
 		},
@@ -753,13 +752,13 @@ func TestCompactEncoder_Encode(t *testing.T) {
 	assert.Error(t, err)
 
 	// more invalid event
-	err = p.Encode(&fgs.GetEventsResponse{})
+	err = p.Encode(&tetragon.GetEventsResponse{})
 	assert.Error(t, err)
 
 	// valid event
-	err = p.Encode(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExec{
-			ProcessExec: &fgs.ProcessExec{
+	err = p.Encode(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExec{
+			ProcessExec: &tetragon.ProcessExec{
 				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",
@@ -779,9 +778,9 @@ func TestCompactEncoder_InterfaceStatsEventToString(t *testing.T) {
 	p := NewCompactEncoder(os.Stdout, Never, false)
 
 	// open without args
-	result, err := p.eventToString(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_InterfaceStats{
-			InterfaceStats: &fgs.InterfaceStats{
+	result, err := p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_InterfaceStats{
+			InterfaceStats: &tetragon.InterfaceStats{
 				InterfaceName:    "lo",
 				InterfaceIfindex: 1,
 				BytesSent:        12345,
@@ -803,13 +802,13 @@ func TestCompactEncoder_EncodeWithTimestamp(t *testing.T) {
 	assert.Error(t, err)
 
 	// more invalid event
-	err = p.Encode(&fgs.GetEventsResponse{})
+	err = p.Encode(&tetragon.GetEventsResponse{})
 	assert.Error(t, err)
 
 	// valid event
-	err = p.Encode(&fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExec{
-			ProcessExec: &fgs.ProcessExec{
+	err = p.Encode(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExec{
+			ProcessExec: &tetragon.ProcessExec{
 				Process: &tetragon.Process{
 					Binary:    "/usr/bin/curl",
 					Arguments: "isovalent.com",

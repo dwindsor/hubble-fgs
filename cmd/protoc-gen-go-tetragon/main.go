@@ -16,7 +16,6 @@ import (
 	"reflect"
 
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/common"
-	ossEventcache "github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventcache"
 	"github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/generate"
 	"github.com/isovalent/hubble-fgs/cmd/protoc-gen-go-tetragon/eventcache"
 )
@@ -35,7 +34,6 @@ func main() {
 	common.TetragonPackageName = `github.com/isovalent/hubble-fgs`
 	common.TetragonApiPackageName = `api/v1/fgs`
 
-	removeGenerator(ossEventcache.Generate)
 	generate.Generators = append(generate.Generators, eventcache.Generate)
 
 	generate.Generate()

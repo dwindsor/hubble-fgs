@@ -23,7 +23,6 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/stretchr/testify/assert"
 )
@@ -78,7 +77,7 @@ func (f *fakeNotifier) RemoveListener(listener server.Listener) {
 	f.mux.Unlock()
 }
 
-func (f *fakeNotifier) NotifyListener(original interface{}, processed *fgs.GetEventsResponse) {
+func (f *fakeNotifier) NotifyListener(original interface{}, processed *tetragon.GetEventsResponse) {
 	f.mux.Lock()
 	defer f.mux.Unlock()
 	for l := range f.listeners {
@@ -108,7 +107,7 @@ func (f *fakeObserver) SetSensorConfig(ctx context.Context, name string, cfgkey 
 	return nil
 }
 
-func (f *fakeObserver) GetTreeProto(ctx context.Context, tname string) (*fgs.StackTraceNode, error) {
+func (f *fakeObserver) GetTreeProto(ctx context.Context, tname string) (*tetragon.StackTraceNode, error) {
 	return nil, nil
 }
 
@@ -133,20 +132,20 @@ func TestExporter_Send(t *testing.T) {
 	numRecords := 2
 	results := newArrayWriter(numRecords)
 	encoder := json.NewEncoder(results)
-	request := fgs.GetEventsRequest{DenyList: []*fgs.Filter{{BinaryRegex: []string{"b"}}}}
+	request := tetragon.GetEventsRequest{DenyList: []*tetragon.Filter{{BinaryRegex: []string{"b"}}}}
 	exporter := NewExporter(ctx, &request, grpcServer, encoder, results, nil)
 	exporter.Start()
-	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessConnect{
-			ProcessConnect: &fgs.ProcessConnect{Process: &tetragon.Process{Binary: "a"}},
+	eventNotifier.NotifyListener(nil, &tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessConnect{
+			ProcessConnect: &tetragon.ProcessConnect{Process: &tetragon.Process{Binary: "a"}},
 		}})
-	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessExec{
-			ProcessExec: &fgs.ProcessExec{Process: &tetragon.Process{Binary: "b"}},
+	eventNotifier.NotifyListener(nil, &tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessExec{
+			ProcessExec: &tetragon.ProcessExec{Process: &tetragon.Process{Binary: "b"}},
 		}})
-	eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
-		Event: &fgs.GetEventsResponse_ProcessListen{
-			ProcessListen: &fgs.ProcessListen{Process: &tetragon.Process{Binary: "c"}},
+	eventNotifier.NotifyListener(nil, &tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessListen{
+			ProcessListen: &tetragon.ProcessListen{Process: &tetragon.Process{Binary: "c"}},
 		}})
 	<-results.done
 	assert.Equal(t, []string{`{"process_connect":{"process":{"binary":"a"}}}`, `{"process_listen":{"process":{"binary":"c"}}}`}, results.items)
@@ -236,7 +235,7 @@ func Test_rateLimitExport(t *testing.T) {
 			grpcServer := server.NewServer(ctx, &wg, eventNotifier, &fakeObserver{})
 			results := newArrayWriter(tt.totalEvents)
 			encoder := json.NewEncoder(results)
-			request := &fgs.GetEventsRequest{}
+			request := &tetragon.GetEventsRequest{}
 			exporter := NewExporter(
 				ctx,
 				request,
@@ -247,9 +246,9 @@ func Test_rateLimitExport(t *testing.T) {
 			)
 			exporter.Start()
 			for i := 0; i < tt.totalEvents; i++ {
-				eventNotifier.NotifyListener(nil, &fgs.GetEventsResponse{
-					Event: &fgs.GetEventsResponse_ProcessConnect{
-						ProcessConnect: &fgs.ProcessConnect{Process: &tetragon.Process{Binary: fmt.Sprintf("a%d", i)}},
+				eventNotifier.NotifyListener(nil, &tetragon.GetEventsResponse{
+					Event: &tetragon.GetEventsResponse_ProcessConnect{
+						ProcessConnect: &tetragon.ProcessConnect{Process: &tetragon.Process{Binary: fmt.Sprintf("a%d", i)}},
 					}})
 			}
 

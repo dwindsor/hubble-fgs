@@ -25,10 +25,10 @@ import (
 	"testing"
 	"time"
 
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -48,7 +48,7 @@ var (
 )
 
 const (
-	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
+	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
 func init() {

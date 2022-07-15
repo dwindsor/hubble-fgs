@@ -32,7 +32,7 @@ var (
 )
 
 const (
-	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
+	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
 func init() {

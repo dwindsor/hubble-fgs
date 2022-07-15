@@ -17,22 +17,47 @@ import (
 	// This is needed to get tests passing since gotest seems to implicitly import this
 	// package before running inits
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
+	"github.com/prometheus/client_golang/prometheus"
+	"github.com/prometheus/client_golang/prometheus/promauto"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/consts"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
-	readerdns "github.com/cilium/tetragon/pkg/reader/dns"
 	"github.com/cilium/tetragon/pkg/reader/exec"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/helpers"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/tlsmetrics"
 )
+
+// An RCode is a DNS response status code.
+const (
+	// Message.Rcode
+	RCodeSuccess        uint16 = 0
+	RCodeFormatError    uint16 = 1
+	RCodeServerFailure  uint16 = 2
+	RCodeNameError      uint16 = 3
+	RCodeNotImplemented uint16 = 4
+	RCodeRefused        uint16 = 5
+)
+
+var rCodeNames = map[uint16]string{
+	RCodeSuccess:        "Success",
+	RCodeFormatError:    "FormatError",
+	RCodeServerFailure:  "ServerFailure",
+	RCodeNameError:      "NameError",
+	RCodeNotImplemented: "NotImplemented",
+	RCodeRefused:        "Refused",
+}
+
+func getRCodeString(r uint16) string {
+	return rCodeNames[r]
+}
 
 func getProcessInfo(process *tetragon.Process) (binary, pod, namespace string) {
 	if process != nil {
@@ -56,14 +81,21 @@ func HandleOriginalEvent(originalEvent interface{}) {
 	}
 }
 
-func postDnsMetric(ev *fgs.GetEventsResponse, res *fgs.ProcessDns) {
+var (
+	dnsRequestTotal = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "dns_total",
+		Help: "Dns request/response statistics",
+	}, []string{"namespace", "pod", "binary", "names", "rcodes", "response"})
+)
+
+func postDnsMetric(ev *tetragon.GetEventsResponse, res *tetragon.ProcessDns) {
 	var rr string
 
 	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 
 	dns := res.Dns
 	names := strings.Join(dns.GetNames(), ",")
-	codes := readerdns.GetRCodeString(uint16(dns.GetRcode()))
+	codes := getRCodeString(uint16(dns.GetRcode()))
 
 	if dns.Response {
 		rr = "Response"
@@ -71,14 +103,14 @@ func postDnsMetric(ev *fgs.GetEventsResponse, res *fgs.ProcessDns) {
 		rr = "Request"
 	}
 
-	oss.DnsRequestTotal.WithLabelValues(ns, pod, binary, names, codes, rr).Inc()
+	dnsRequestTotal.WithLabelValues(ns, pod, binary, names, codes, rr).Inc()
 }
 
 func HandleDnsEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
-	case *fgs.GetEventsResponse:
+	case *tetragon.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessDns:
+		case *tetragon.GetEventsResponse_ProcessDns:
 			postDnsMetric(ev, res.ProcessDns)
 		}
 	}
@@ -87,7 +119,7 @@ func HandleDnsEvent(processedEvent interface{}) {
 func HandleProcessedEvent(processedEvent interface{}) {
 	var eventType, namespace, pod, binary string
 	switch ev := processedEvent.(type) {
-	case *fgs.GetEventsResponse:
+	case *tetragon.GetEventsResponse:
 		binary, pod, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 		var err error
 		eventType, err = helpers.ResponseTypeString(ev)
@@ -101,7 +133,7 @@ func HandleProcessedEvent(processedEvent interface{}) {
 	oss.EventsProcessed.WithLabelValues(eventType, namespace, pod, binary).Inc()
 }
 
-func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
+func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tetragon.SocketStats) {
 	c := float64(s.BytesSubmitted)
 	socketmetrics.SocketStatsUDPTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsSubmitted)
@@ -129,7 +161,7 @@ func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs
 	socketmetrics.SocketStatsUDPConsumeMisses.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 }
 
-func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *fgs.SocketStats) {
+func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tetragon.SocketStats) {
 	c := float64(s.BytesSent)
 	socketmetrics.SocketStatsTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 	c = float64(s.SegsOut)
@@ -163,30 +195,30 @@ func getDstPodInfo(dstPod *tetragon.Pod) (pod, ns string) {
 	return pod, ns
 }
 
-func postStatsEventSocketStats(ev *fgs.GetEventsResponse, res *fgs.ProcessSockStats) {
+func postStatsEventSocketStats(ev *tetragon.GetEventsResponse, res *tetragon.ProcessSockStats) {
 	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 	dstPod := res.Socket.GetDestinationPod()
 	dstpod, dstns := getDstPodInfo(dstPod)
 	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
 
-	if res.Socket.Protocol == fgs.SocketProtocol_TCP {
+	if res.Socket.Protocol == tetragon.SocketProtocol_TCP {
 		postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
-	} else if res.Socket.Protocol == fgs.SocketProtocol_UDP {
+	} else if res.Socket.Protocol == tetragon.SocketProtocol_UDP {
 		postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
 	}
 }
 
 func HandleSocketEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
-	case *fgs.GetEventsResponse:
+	case *tetragon.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessSockStats:
+		case *tetragon.GetEventsResponse_ProcessSockStats:
 			postStatsEventSocketStats(ev, res.ProcessSockStats)
 		}
 	}
 }
 
-func postUDPBurstStats(ns, pod, binary string, s *fgs.ProcessNetworkBurst) {
+func postUDPBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {
 		socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, pod, binary).Inc()
 	} else {
@@ -194,7 +226,7 @@ func postUDPBurstStats(ns, pod, binary string, s *fgs.ProcessNetworkBurst) {
 	}
 }
 
-func postTCPBurstStats(ns, pod, binary string, s *fgs.ProcessNetworkBurst) {
+func postTCPBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkBurst) {
 	if s.Direction == "egress" {
 		socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, pod, binary).Inc()
 	} else {
@@ -202,13 +234,13 @@ func postTCPBurstStats(ns, pod, binary string, s *fgs.ProcessNetworkBurst) {
 	}
 }
 
-func postProcessNetworkBurstEventStats(ev *fgs.GetEventsResponse, res *fgs.ProcessNetworkBurst) {
+func postProcessNetworkBurstEventStats(ev *tetragon.GetEventsResponse, res *tetragon.ProcessNetworkBurst) {
 	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 	if res.BurstState == "start" {
 		switch res.Protocol {
-		case fgs.SocketProtocol_UDP.String():
+		case tetragon.SocketProtocol_UDP.String():
 			postUDPBurstStats(ns, pod, binary, res)
-		case fgs.SocketProtocol_TCP.String():
+		case tetragon.SocketProtocol_TCP.String():
 			postTCPBurstStats(ns, pod, binary, res)
 		}
 	}
@@ -216,30 +248,30 @@ func postProcessNetworkBurstEventStats(ev *fgs.GetEventsResponse, res *fgs.Proce
 
 func HandleProcessBurstEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
-	case *fgs.GetEventsResponse:
+	case *tetragon.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessNetworkBurst:
+		case *tetragon.GetEventsResponse_ProcessNetworkBurst:
 			postProcessNetworkBurstEventStats(ev, res.ProcessNetworkBurst)
 		}
 	}
 }
 
-func postIpErrorStats(ns, pod, binary, version, details string, s *fgs.ProcessIpError) {
+func postIpErrorStats(ns, pod, binary, version, details string, s *tetragon.ProcessIpError) {
 	socketmetrics.IpErrors.WithLabelValues(ns, pod, binary, version, details).Inc()
 }
 
 func HandleIpErrorEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
-	case *fgs.GetEventsResponse:
+	case *tetragon.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessIpError:
+		case *tetragon.GetEventsResponse_ProcessIpError:
 			binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 			postIpErrorStats(ns, pod, binary, res.ProcessIpError.Version, res.ProcessIpError.Details, res.ProcessIpError)
 		}
 	}
 }
 
-func postHttpStats(ev *fgs.GetEventsResponse, res *fgs.ProcessHttp) {
+func postHttpStats(ev *tetragon.GetEventsResponse, res *tetragon.ProcessHttp) {
 	binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 	dstPod := res.GetDestinationPod()
 	dstpod, dstns := getDstPodInfo(dstPod)
@@ -260,9 +292,9 @@ func postHttpStats(ev *fgs.GetEventsResponse, res *fgs.ProcessHttp) {
 
 func HandleHttpEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
-	case *fgs.GetEventsResponse:
+	case *tetragon.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_ProcessHttp:
+		case *tetragon.GetEventsResponse_ProcessHttp:
 			postHttpStats(ev, res.ProcessHttp)
 		}
 	}
@@ -270,9 +302,9 @@ func HandleHttpEvent(processedEvent interface{}) {
 
 func HandleTlsEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
-	case *fgs.GetEventsResponse:
+	case *tetragon.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_Tls:
+		case *tetragon.GetEventsResponse_Tls:
 			binary, pod, ns := getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 			version := tlsmetrics.GetNegotiatedVersion(res.Tls)
 			tlsmetrics.TlsHandshakeTotal.WithLabelValues(ns, pod, binary, version, res.Tls.Cipher, res.Tls.SniName).Inc()
@@ -282,9 +314,9 @@ func HandleTlsEvent(processedEvent interface{}) {
 
 func HandleInterfaceStatsEvent(processedEvent interface{}) {
 	switch ev := processedEvent.(type) {
-	case *fgs.GetEventsResponse:
+	case *tetragon.GetEventsResponse:
 		switch res := ev.Event.(type) {
-		case *fgs.GetEventsResponse_InterfaceStats:
+		case *tetragon.GetEventsResponse_InterfaceStats:
 			name := res.InterfaceStats.InterfaceName
 			ns := res.InterfaceStats.Netns
 			interfacemetrics.InterfaceBytesSent.WithLabelValues(name, ns).Set(float64(res.InterfaceStats.BytesSent))

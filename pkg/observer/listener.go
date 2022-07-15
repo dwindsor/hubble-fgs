@@ -15,14 +15,15 @@ import (
 	"encoding/gob"
 	"io"
 	"net"
+
+	"github.com/cilium/tetragon/api/v1/tetragon"
 )
 
 // Listener defines the interface to receive events from Observer. Listeners
 // will merge and complete out-of-order events before they're passed to
 // human-readable sinks such as the printer or GRPC encoder.
 type Listener interface {
-	// Notify gets called for each events from ObserverKprobe.
-	Notify(msg interface{}) error
+	Notify(res *tetragon.GetEventsResponse)
 
 	// Close the listener.
 	io.Closer

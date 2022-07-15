@@ -28,11 +28,11 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
@@ -53,7 +53,7 @@ var (
 )
 
 const (
-	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
+	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
 func init() {
@@ -412,7 +412,7 @@ func TestConnectEvent(t *testing.T) {
 		WithProcess(ncCliChecker).
 		WithParent(selfChecker).
 		WithSocket(ec.NewSockInfoChecker().
-			WithProtocol(fgs.SocketProtocol_UDP).
+			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithDestinationPort(8081))
 
@@ -420,7 +420,7 @@ func TestConnectEvent(t *testing.T) {
 		WithProcess(ncSrvChecker).
 		WithParent(selfChecker).
 		WithSocket(ec.NewSockInfoChecker().
-			WithProtocol(fgs.SocketProtocol_UDP).
+			WithProtocol(tetragon.SocketProtocol_UDP).
 			WithSourceIp(sm.Full("127.0.0.1")).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8081))
@@ -441,7 +441,7 @@ func TestConnectEvent(t *testing.T) {
 			WithSourceIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8081).
 			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithProtocol(fgs.SocketProtocol_UDP),
+			WithProtocol(tetragon.SocketProtocol_UDP),
 		clientStatsChecker,
 		serverStatsChecker,
 	)
@@ -458,7 +458,7 @@ func TestConnectEvent(t *testing.T) {
 	var serverSegsIn uint32
 	statsChecker := &ec.FnEventChecker{
 		NextCheckFn: func(event_ ec.Event, log *logrus.Logger) (bool, error) {
-			event, ok := event_.(*fgs.ProcessSockStats)
+			event, ok := event_.(*tetragon.ProcessSockStats)
 			if !ok {
 				return false, fmt.Errorf("event is not a sockstats event")
 			}
@@ -587,13 +587,13 @@ func TestConnectAfterStartEvent(t *testing.T) {
 			WithSourceIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8081).
 			WithDestinationIp(sm.Full("127.0.0.1")).
-			WithProtocol(fgs.SocketProtocol_UDP),
+			WithProtocol(tetragon.SocketProtocol_UDP),
 		// Check client sock stats
 		ec.NewProcessSockStatsChecker().
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker).
 			WithSocket(ec.NewSockInfoChecker().
-				WithProtocol(fgs.SocketProtocol_UDP).
+				WithProtocol(tetragon.SocketProtocol_UDP).
 				WithDestinationIp(sm.Full("127.0.0.1")).
 				WithDestinationPort(8081)).
 			WithStats(ec.NewSocketStatsChecker().
@@ -606,7 +606,7 @@ func TestConnectAfterStartEvent(t *testing.T) {
 			WithProcess(ncSrvChecker).
 			WithParent(selfChecker).
 			WithSocket(ec.NewSockInfoChecker().
-				WithProtocol(fgs.SocketProtocol_UDP).
+				WithProtocol(tetragon.SocketProtocol_UDP).
 				WithSourceIp(sm.Full("127.0.0.1")).
 				WithDestinationIp(sm.Full("127.0.0.1")).
 				WithSourcePort(8081)).

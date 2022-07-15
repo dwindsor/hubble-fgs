@@ -25,6 +25,7 @@ import (
 	"text/template"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -34,7 +35,6 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
@@ -255,7 +255,7 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 		summary.JSONEncodingDurationNanos = time.Duration(timingEncoder.totalDuration)
 	}()
 
-	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
+	req := tetragon.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
 	exporter := exporter.NewExporter(ctx, &req, processManager.Server, &timingEncoder, nil, nil)
 	exporter.Start()
 	obs.AddListener(processManager)

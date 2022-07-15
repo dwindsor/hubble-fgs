@@ -17,7 +17,6 @@ import (
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -67,36 +66,36 @@ func Test_maybeExecProbe(t *testing.T) {
 
 func Test_healthCheckFilter(t *testing.T) {
 	maybeHealthCheck, err := BuildFilterList(context.Background(),
-		[]*fgs.Filter{{HealthCheck: &wrapperspb.BoolValue{Value: true}}},
+		[]*tetragon.Filter{{HealthCheck: &wrapperspb.BoolValue{Value: true}}},
 		[]OnBuildFilter{&HealthCheckFilter{}})
 	assert.NoError(t, err)
 	notHealthCheck, err := BuildFilterList(context.Background(),
-		[]*fgs.Filter{{HealthCheck: &wrapperspb.BoolValue{Value: false}}},
+		[]*tetragon.Filter{{HealthCheck: &wrapperspb.BoolValue{Value: false}}},
 		[]OnBuildFilter{&HealthCheckFilter{}})
 	assert.NoError(t, err)
 
 	process := v1.Event{
-		Event: &fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{Process: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{
+		Event: &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &tetragon.ProcessConnect{Process: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{
 					MaybeExecProbe: true,
 				}}}},
 			},
 		},
 	}
 	parent := v1.Event{
-		Event: &fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{Parent: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{
+		Event: &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &tetragon.ProcessConnect{Parent: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{
 					MaybeExecProbe: true,
 				}}}},
 			},
 		},
 	}
 	neither := v1.Event{
-		Event: &fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
-				ProcessConnect: &fgs.ProcessConnect{Process: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{}}}},
+		Event: &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessConnect{
+				ProcessConnect: &tetragon.ProcessConnect{Process: &tetragon.Process{Pod: &tetragon.Pod{Container: &tetragon.Container{}}}},
 			},
 		},
 	}

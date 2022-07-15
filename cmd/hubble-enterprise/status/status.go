@@ -14,7 +14,7 @@ import (
 	"context"
 	"fmt"
 
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
 	"github.com/spf13/cobra"
 )

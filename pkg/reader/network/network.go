@@ -5,16 +5,16 @@ import (
 	"net"
 	"syscall"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/reader/ktime"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/sirupsen/logrus"
 	"golang.org/x/sys/unix"
 )
 
-func GetSocketStats(stats *api.MsgSocketStatsUnix) *fgs.SocketStats {
-	return &fgs.SocketStats{
+func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
+	return &tetragon.SocketStats{
 		BytesSubmitted:   stats.BytesSubmitted,
 		BytesConsumed:    stats.BytesConsumed,
 		BytesSent:        stats.BytesSent,
@@ -32,7 +32,7 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *fgs.SocketStats {
 	}
 }
 
-func MsgOpToProtocol(op uint8) fgs.SocketProtocol {
+func MsgOpToProtocol(op uint8) tetragon.SocketProtocol {
 	switch op {
 	case ops.MSG_OP_TCPCONNECT,
 		ops.MSG_OP_TCPCONNECTRET,
@@ -41,17 +41,17 @@ func MsgOpToProtocol(op uint8) fgs.SocketProtocol {
 		ops.MSG_OP_LISTEN,
 		ops.MSG_OP_ACCEPT,
 		ops.MSG_OP_TCPSTATS:
-		return fgs.SocketProtocol_TCP
+		return tetragon.SocketProtocol_TCP
 	case ops.MSG_OP_UDPCONNECT,
 		ops.MSG_OP_UDPCLOSE,
 		ops.MSG_OP_UDPSTATS:
-		return fgs.SocketProtocol_UDP
+		return tetragon.SocketProtocol_UDP
 	default:
-		return fgs.SocketProtocol_UNKNOWN
+		return tetragon.SocketProtocol_UNKNOWN
 	}
 }
 
-func MsgToProtocol(event *api.MsgIPEventUnix) fgs.SocketProtocol {
+func MsgToProtocol(event *api.MsgIPEventUnix) tetragon.SocketProtocol {
 	return MsgOpToProtocol(event.Common.Op)
 }
 

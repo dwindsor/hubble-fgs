@@ -3,14 +3,14 @@
 package tracing
 
 import (
-	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
-	"github.com/cilium/tetragon/pkg/dns"
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/caps"
 	"github.com/cilium/tetragon/pkg/reader/network"
@@ -22,15 +22,6 @@ import (
 var (
 	nodeName = node.GetNodeNameForExport()
 )
-
-type Grpc struct {
-	dnsCache          *dns.Cache
-	ciliumState       *cilium.State
-	eventCache        *eventcache.Cache
-	enableCilium      bool
-	enableProcessCred bool
-	enableProcessNs   bool
-}
 
 func kprobeAction(act uint64) tetragon.KprobeAction {
 	switch act {
@@ -51,7 +42,7 @@ func kprobeAction(act uint64) tetragon.KprobeAction {
 	}
 }
 
-func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
+func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 	var tetragonParent, tetragonProcess *tetragon.Process
 	var tetragonArgs []*tetragon.KprobeArgument
 	var tetragonReturnArg *tetragon.KprobeArgument
@@ -64,7 +55,7 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *tetragon.Proce
 		}
 	} else {
 		tetragonProcess = process.UnsafeGetProcess()
-		if err := process.AnnotateProcess(t.enableProcessCred, t.enableProcessNs); err != nil {
+		if err := process.AnnotateProcess(option.Config.EnableProcessCred, option.Config.EnableProcessNs); err != nil {
 			logger.GetLogger().WithError(err).WithField("processId", tetragonProcess.Pid).Debugf("Failed to annotate process with capabilities and namespaces info")
 		}
 	}
@@ -161,8 +152,9 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *tetragon.Proce
 		Action:       kprobeAction(event.Action),
 	}
 
-	if t.eventCache.Needed(tetragonProcess) {
-		t.eventCache.Add(process, tetragonEvent, ktime.ToProto(event.Common.Ktime), event)
+	ec := eventcache.Get()
+	if ec != nil && ec.Needed(tetragonProcess) {
+		ec.Add(process, tetragonEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -172,19 +164,16 @@ func (t *Grpc) GetProcessKprobe(event *api.MsgGenericKprobeUnix) *tetragon.Proce
 	return tetragonEvent
 }
 
-func (t *Grpc) HandleGenericKprobeMessage(msg *api.MsgGenericKprobeUnix) *tetragon.GetEventsResponse {
-	k := t.GetProcessKprobe(msg)
-	if k == nil {
-		return nil
-	}
-	return &tetragon.GetEventsResponse{
-		Event:    &tetragon.GetEventsResponse_ProcessKprobe{ProcessKprobe: k},
-		NodeName: nodeName,
-		Time:     ktime.ToProto(msg.Common.Ktime),
-	}
+type MsgGenericTracepointUnix struct {
+	Common     processapi.MsgCommon
+	ProcessKey processapi.MsgExecveKey
+	Id         int64
+	Subsys     string
+	Event      string
+	Args       []tracingapi.MsgGenericTracepointArg
 }
 
-func (t *Grpc) HandleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix) *tetragon.GetEventsResponse {
+func (msg *MsgGenericTracepointUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
@@ -236,8 +225,9 @@ func (t *Grpc) HandleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix)
 		Args:    tetragonArgs,
 	}
 
-	if t.eventCache.Needed(tetragonProcess) {
-		t.eventCache.Add(process, tetragonEvent, ktime.ToProto(msg.Common.Ktime), msg)
+	ec := eventcache.Get()
+	if ec != nil && ec.Needed(tetragonProcess) {
+		ec.Add(process, tetragonEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		return nil
 	}
 	if process != nil {
@@ -251,16 +241,25 @@ func (t *Grpc) HandleGenericTracepointMessage(msg *api.MsgGenericTracepointUnix)
 	}
 }
 
-func New(cilium *cilium.State,
-	dnsCache *dns.Cache, cache *eventcache.Cache,
-	ciliumEnable bool,
-	enableProcessCred bool,
-	enableProcessNs bool,
-) *Grpc {
-	return &Grpc{
-		ciliumState:  cilium,
-		dnsCache:     dnsCache,
-		eventCache:   cache,
-		enableCilium: ciliumEnable,
+type MsgGenericKprobeUnix struct {
+	Common       processapi.MsgCommon
+	ProcessKey   processapi.MsgExecveKey
+	Namespaces   processapi.MsgNamespaces
+	Capabilities processapi.MsgCapabilities
+	Id           uint64
+	Action       uint64
+	FuncName     string
+	Args         []tracingapi.MsgGenericKprobeArg
+}
+
+func (msg *MsgGenericKprobeUnix) HandleMessage() *tetragon.GetEventsResponse {
+	k := GetProcessKprobe(msg)
+	if k == nil {
+		return nil
+	}
+	return &tetragon.GetEventsResponse{
+		Event:    &tetragon.GetEventsResponse_ProcessKprobe{ProcessKprobe: k},
+		NodeName: nodeName,
+		Time:     ktime.ToProto(msg.Common.Ktime),
 	}
 }

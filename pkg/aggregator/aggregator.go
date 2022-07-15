@@ -20,20 +20,20 @@ import (
 	"strings"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 )
 
 type Aggregator struct {
-	server fgs.FineGuidanceSensors_GetEventsServer
+	server tetragon.FineGuidanceSensors_GetEventsServer
 	window time.Duration
-	events chan *fgs.GetEventsResponse
-	cache  map[string]*fgs.GetEventsResponse
+	events chan *tetragon.GetEventsResponse
+	cache  map[string]*tetragon.GetEventsResponse
 }
 
 func NewAggregator(
-	server fgs.FineGuidanceSensors_GetEventsServer,
-	options *fgs.AggregationOptions,
+	server tetragon.FineGuidanceSensors_GetEventsServer,
+	options *tetragon.AggregationOptions,
 ) (*Aggregator, error) {
 	if options == nil {
 		return nil, nil
@@ -45,8 +45,8 @@ func NewAggregator(
 	return &Aggregator{
 		server,
 		window,
-		make(chan *fgs.GetEventsResponse, options.ChannelBufferSize),
-		make(map[string]*fgs.GetEventsResponse),
+		make(chan *tetragon.GetEventsResponse, options.ChannelBufferSize),
+		make(map[string]*tetragon.GetEventsResponse),
 	}, nil
 }
 
@@ -71,14 +71,14 @@ func (a *Aggregator) flush() {
 		}
 	}
 	// clear the cache.
-	a.cache = make(map[string]*fgs.GetEventsResponse)
+	a.cache = make(map[string]*tetragon.GetEventsResponse)
 }
 
-func (a *Aggregator) handleEvent(event *fgs.GetEventsResponse) {
+func (a *Aggregator) handleEvent(event *tetragon.GetEventsResponse) {
 	switch event.Event.(type) {
-	case *fgs.GetEventsResponse_ProcessAccept:
+	case *tetragon.GetEventsResponse_ProcessAccept:
 		a.handleProcessAccept(event)
-	case *fgs.GetEventsResponse_ProcessConnect:
+	case *tetragon.GetEventsResponse_ProcessConnect:
 		a.handleProcessConnect(event)
 	default:
 		if err := a.server.Send(event); err != nil {
@@ -95,10 +95,10 @@ func getNameOrIp(ip string, names []string) string {
 	return ip
 }
 
-func (a *Aggregator) handleProcessAccept(event *fgs.GetEventsResponse) {
+func (a *Aggregator) handleProcessAccept(event *tetragon.GetEventsResponse) {
 	acceptEvent := event.GetProcessAccept()
 	key := fmt.Sprintf("%d:%s:%s:%d:%s",
-		fgs.EventType_PROCESS_ACCEPT,
+		tetragon.EventType_PROCESS_ACCEPT,
 		acceptEvent.Process.ExecId,
 		acceptEvent.SourceIp,
 		acceptEvent.SourcePort.Value,
@@ -107,17 +107,17 @@ func (a *Aggregator) handleProcessAccept(event *fgs.GetEventsResponse) {
 	current := a.cache[key]
 	if current == nil {
 		acceptEvent.DestinationPort = nil
-		event.AggregationInfo = &fgs.AggregationInfo{Count: 1}
+		event.AggregationInfo = &tetragon.AggregationInfo{Count: 1}
 		a.cache[key] = event
 	} else {
 		current.AggregationInfo.Count++
 	}
 }
 
-func (a *Aggregator) handleProcessConnect(event *fgs.GetEventsResponse) {
+func (a *Aggregator) handleProcessConnect(event *tetragon.GetEventsResponse) {
 	connectEvent := event.GetProcessConnect()
 	key := fmt.Sprintf("%d:%s:%s:%s:%d",
-		fgs.EventType_PROCESS_CONNECT,
+		tetragon.EventType_PROCESS_CONNECT,
 		connectEvent.Process.ExecId,
 		connectEvent.SourceIp,
 		getNameOrIp(connectEvent.DestinationIp, connectEvent.DestinationNames),
@@ -126,13 +126,13 @@ func (a *Aggregator) handleProcessConnect(event *fgs.GetEventsResponse) {
 	current := a.cache[key]
 	if current == nil {
 		connectEvent.SourcePort = nil
-		event.AggregationInfo = &fgs.AggregationInfo{Count: 1}
+		event.AggregationInfo = &tetragon.AggregationInfo{Count: 1}
 		a.cache[key] = event
 	} else {
 		current.AggregationInfo.Count++
 	}
 }
 
-func (a *Aggregator) GetEventChannel() chan *fgs.GetEventsResponse {
+func (a *Aggregator) GetEventChannel() chan *tetragon.GetEventsResponse {
 	return a.events
 }

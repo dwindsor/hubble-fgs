@@ -17,7 +17,7 @@ import (
 	"syscall"
 	"testing"
 
-	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 

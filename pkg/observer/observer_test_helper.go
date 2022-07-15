@@ -40,7 +40,6 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/config"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	yaml "github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
@@ -392,7 +391,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions, oo *te
 		t.Fatalf("observerLoadExporter: %s\n", err)
 	}
 	denyList, _ := filters.ParseFilterList("")
-	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList}
+	req := tetragon.GetEventsRequest{AllowList: allowList, DenyList: denyList}
 	exporter := exporter.NewExporter(context.Background(), &req, processManager.Server, encoder, outF, nil)
 	logger.GetLogger().Info("Starting JSON exporter")
 	exporter.Start()

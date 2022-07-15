@@ -13,32 +13,32 @@ package tlsmetrics
 import (
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/stretchr/testify/assert"
 )
 
 func Test_GetNegotiatedVersion(t *testing.T) {
-	version := GetNegotiatedVersion(&fgs.Tls{NegotiatedVersion: "hello"})
+	version := GetNegotiatedVersion(&tetragon.Tls{NegotiatedVersion: "hello"})
 	assert.Equal(t, "hello", version)
 	// Test TLS 1.2 negotiated version
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_2})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_2})
 	assert.Equal(t, tlsVersion1_2, version)
 	// Test TLS 1.1 negotiated versions
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_1})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_1})
 	assert.Equal(t, tlsVersion1_1, version)
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_2})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_2})
 	assert.Equal(t, tlsVersion1_1, version)
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_1})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_1})
 	assert.Equal(t, tlsVersion1_1, version)
 	// Test TLS 1.0 negotiated versions
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_2})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_2})
 	assert.Equal(t, tlsVersion1_0, version)
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_0})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_2, ServerVersion: tlsVersion1_0})
 	assert.Equal(t, tlsVersion1_0, version)
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_0})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_1, ServerVersion: tlsVersion1_0})
 	assert.Equal(t, tlsVersion1_0, version)
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_1})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_1})
 	assert.Equal(t, tlsVersion1_0, version)
-	version = GetNegotiatedVersion(&fgs.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_0})
+	version = GetNegotiatedVersion(&tetragon.Tls{ClientVersion: tlsVersion1_0, ServerVersion: tlsVersion1_0})
 	assert.Equal(t, tlsVersion1_0, version)
 }

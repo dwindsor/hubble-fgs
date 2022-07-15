@@ -17,11 +17,11 @@ import (
 	"time"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
@@ -42,7 +42,7 @@ var (
 )
 
 const (
-	testConfigFile = "/tmp/hubble-fgs.gotest.yaml"
+	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
 const tcpConfig = `
@@ -141,13 +141,13 @@ func TestConnectEvent(t *testing.T) {
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithDestinationPort(80).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessCloseChecker().
 			WithProcess(curlChecker).
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithDestinationPort(80).
-			WithProtocol(fgs.SocketProtocol_TCP).
+			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("connect")),
 	)
 
@@ -215,7 +215,7 @@ func TestExecEventClone(t *testing.T) {
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessExecChecker().
 			WithProcess(ncCliChecker).
 			WithParent(selfChecker),
@@ -224,7 +224,7 @@ func TestExecEventClone(t *testing.T) {
 			WithParent(selfChecker).
 			WithDestinationIp(sm.Full("127.0.0.1")).
 			WithDestinationPort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	obs := getBasicTcpObserver(t)
@@ -280,7 +280,7 @@ func TestExistingListenEvent(t *testing.T) {
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	/* Start server before creating obs */
@@ -326,13 +326,13 @@ func TestExistingAcceptEvent(t *testing.T) {
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessAcceptChecker().
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	/* Start server before creating obs */
@@ -379,7 +379,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	path, err := os.Getwd()
@@ -430,19 +430,19 @@ func TestListenAcceptClose(t *testing.T) {
 			WithParent(selfChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessAcceptChecker().
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("127.0.0.1")).
 			WithSourcePort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessCloseChecker().
 			WithProcess(ncChecker).
 			WithParent(selfChecker).
 			WithSourceIp(sm.Full("0.0.0.0")).
 			WithSourcePort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP).
+			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
 		// TODO: it would be good if we could also check the close event on
 		// the accept socket, but it goes into TIME_WAIT and then
@@ -525,7 +525,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 			WithProcess(ncChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 	)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
@@ -583,25 +583,25 @@ func TestDockerListenConnect(t *testing.T) {
 			WithProcess(ncSrvChecker).
 			WithIp(sm.Full("0.0.0.0")).
 			WithPort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessExecChecker().
 			WithProcess(ncCliChecker),
 		ec.NewProcessConnectChecker().
 			WithProcess(ncCliChecker).
 			WithDestinationPort(8081).
 			WithSourcePort(9876).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewProcessCloseChecker().
 			WithProcess(ncSrvChecker).
 			WithSourceIp(sm.Full("0.0.0.0")).
 			WithSourcePort(8081).
-			WithProtocol(fgs.SocketProtocol_TCP).
+			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("listen")),
 		ec.NewProcessCloseChecker().
 			WithProcess(ncCliChecker).
 			WithDestinationPort(8081).
 			WithSourcePort(9876).
-			WithProtocol(fgs.SocketProtocol_TCP).
+			WithProtocol(tetragon.SocketProtocol_TCP).
 			WithSocketType(sm.Full("connect")),
 	)
 

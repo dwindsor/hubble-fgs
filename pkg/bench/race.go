@@ -31,7 +31,6 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
@@ -49,7 +48,7 @@ import (
 )
 
 //
-// Race detection for hubble-fgs. This is similar to the fgs-bench in that we're
+// Race detection for hubble-tetragon. This is similar to the fgs-bench in that we're
 // running hubble-fgs along with some load, but here the goal is to generate lots
 // of different types of events to exercise many different parts of hubble-fgs to
 // catch race conditions using the Go race detector ("-race").
@@ -101,12 +100,12 @@ func (re *raceEncoder) Encode(v interface{}) error {
 	}
 
 	// Also do protobuf marshalling to catch races
-	event := v.(*fgs.GetEventsResponse)
+	event := v.(*tetragon.GetEventsResponse)
 	buf, err := proto.Marshal(event)
 	if err != nil {
 		panic(err)
 	}
-	var event2 fgs.GetEventsResponse
+	var event2 tetragon.GetEventsResponse
 	err = proto.Unmarshal(buf, &event2)
 	if err != nil {
 		panic(err)
@@ -150,7 +149,7 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	encoder := &raceEncoder{0, json.NewEncoder(io.Discard)}
 	//encoder := &raceEncoder{0, json.NewEncoder(os.Stdout)}
 
-	req := fgs.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
+	req := tetragon.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
 	exporter := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil, nil)
 	exporter.Start()
 	obs.AddListener(processManager)

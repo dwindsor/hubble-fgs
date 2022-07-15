@@ -20,11 +20,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/testutils"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/helpers"
 	"github.com/sirupsen/logrus"
 )
 
@@ -60,7 +60,7 @@ func JsonCheck(jsonFile *os.File, checker ec.MultiEventChecker, log *logrus.Logg
 	count := 0
 	dec := json.NewDecoder(jsonFile)
 	for dec.More() {
-		var ev fgs.GetEventsResponse
+		var ev tetragon.GetEventsResponse
 		if err := dec.Decode(&ev); err != nil {
 			return fmt.Errorf("unmarshal failed: %w", err)
 		}

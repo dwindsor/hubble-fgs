@@ -16,7 +16,6 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
@@ -48,7 +47,7 @@ type Grpc struct {
 	enableProcessNs   bool
 }
 
-func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *fgs.ProcessFile {
+func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -66,15 +65,15 @@ func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *fgs.ProcessFile {
 		tetragonParent = parent.GetProcessCopy()
 	}
 
-	args := &fgs.GenericFileArg{
+	args := &tetragon.GenericFileArg{
 		Filename:    event.Path,
 		InodeNumber: event.Ino,
 	}
-	tetragonEvent := &fgs.ProcessFile{
+	tetragonEvent := &tetragon.ProcessFile{
 		Process: tetragonProcess,
 		Parent:  tetragonParent,
-		Action:  fgs.FileAction(event.Action),
-		Args:    &fgs.FileArgument{Arg: &fgs.FileArgument_GenericArg{GenericArg: args}},
+		Action:  tetragon.FileAction(event.Action),
+		Args:    &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}},
 		Time:    ktime.ToProto(event.Timestamp),
 		Hook:    fileHookMap[event.Hook],
 	}
@@ -90,13 +89,13 @@ func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *fgs.ProcessFile {
 	return tetragonEvent
 }
 
-func (t *Grpc) HandleFileMonitoringMessage(msg *api.MsgFileEventUnix) *fgs.GetEventsResponse {
+func (t *Grpc) HandleFileMonitoringMessage(msg *api.MsgFileEventUnix) *tetragon.GetEventsResponse {
 	f := t.GetProcessFile(msg)
 	if f == nil {
 		return nil
 	}
-	return &fgs.GetEventsResponse{
-		Event:    &fgs.GetEventsResponse_ProcessFile{ProcessFile: f},
+	return &tetragon.GetEventsResponse{
+		Event:    &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
 		NodeName: nodeName,
 		Time:     ktime.ToProto(msg.Common.Ktime),
 	}

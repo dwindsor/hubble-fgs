@@ -18,7 +18,6 @@ import (
 	"syscall"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"golang.org/x/sys/unix"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -37,14 +36,14 @@ const (
 // ResponseChecker checks a single response
 type ResponseChecker interface {
 	// Check checks a single response.
-	Check(*fgs.GetEventsResponse, Logger) error
+	Check(*tetragon.GetEventsResponse, Logger) error
 }
 
 // ResponseCheckerFn is a wrapper that allows a function to be used as an eventChecker
-type ResponseCheckerFn func(*fgs.GetEventsResponse, Logger) error
+type ResponseCheckerFn func(*tetragon.GetEventsResponse, Logger) error
 
 // Check implements ResponseChecker interface
-func (f ResponseCheckerFn) Check(e *fgs.GetEventsResponse, log Logger) error {
+func (f ResponseCheckerFn) Check(e *tetragon.GetEventsResponse, log Logger) error {
 	return f(e, log)
 }
 
@@ -59,7 +58,7 @@ type MultiResponseChecker interface {
 	// (false, !nil): this response check not was successful, but need to check more events
 	// (true,   nil): checker was successful, no need to check more responses
 	// (true,  !nil): checker failed, no need to check more responses
-	NextCheck(*fgs.GetEventsResponse, Logger) (bool, error)
+	NextCheck(*tetragon.GetEventsResponse, Logger) (bool, error)
 
 	// FinalCheck indicates that the sequence of events has ended, and asks
 	// the checker to make a final decision.
@@ -72,13 +71,13 @@ type MultiResponseChecker interface {
 // MultiResponseCheckerFns is a wrapper that enables functions to be used as a stateful
 // checker for checking a series of responses
 type MultiResponseCheckerFns struct {
-	NextCheckFn  func(*fgs.GetEventsResponse, Logger) (bool, error)
+	NextCheckFn  func(*tetragon.GetEventsResponse, Logger) (bool, error)
 	FinalCheckFn func(Logger) error
 	ResetFn      func()
 }
 
 // NextCheck calls NextCheckFn
-func (fns *MultiResponseCheckerFns) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
+func (fns *MultiResponseCheckerFns) NextCheck(r *tetragon.GetEventsResponse, l Logger) (bool, error) {
 	return fns.NextCheckFn(r, l)
 }
 
@@ -107,7 +106,7 @@ func NewOrderedMultiResponseChecker(checkers ...ResponseChecker) OrderedMultiRes
 }
 
 // NextCheck verifies that the next check succeeds in the chain
-func (c *OrderedMultiResponseChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
+func (c *OrderedMultiResponseChecker) NextCheck(r *tetragon.GetEventsResponse, l Logger) (bool, error) {
 	// all checkers have been verified
 	if c.idx >= len(c.checkers) {
 		return true, nil
@@ -169,7 +168,7 @@ func NewAllMultiResponseChecker(checkers ...ResponseChecker) AllMultiResponseChe
 
 // NextCheck verifies that all checks in the AllMultiResponseChecker succeeded. Otherwise,
 // we bail out
-func (c *AllMultiResponseChecker) NextCheck(r *fgs.GetEventsResponse, l Logger) (bool, error) {
+func (c *AllMultiResponseChecker) NextCheck(r *tetragon.GetEventsResponse, l Logger) (bool, error) {
 	for i := range c.checkers {
 		if err := c.checkers[i].Check(r, l); err != nil {
 			return true, err
@@ -223,7 +222,7 @@ func (c *UnorderedMultiResponseChecker) Reset() {
 }
 
 // NextCheck calls the next pending checker in the pending queue until we run out of events
-func (c *UnorderedMultiResponseChecker) NextCheck(ev *fgs.GetEventsResponse, log Logger) (bool, error) {
+func (c *UnorderedMultiResponseChecker) NextCheck(ev *tetragon.GetEventsResponse, log Logger) (bool, error) {
 	clen := c.pendingCheckers.Len()
 	if clen == 0 {
 		return true, nil
@@ -271,42 +270,42 @@ func (c *UnorderedMultiResponseChecker) Append(checkers ...ResponseChecker) {
 
 type fgsEvent interface {
 	// used for FGS events such as:
-	// fgs.ProcessExec
-	// fgs.ProcessClose
+	// tetragon.ProcessExec
+	// tetragon.ProcessClose
 	// etc.
 }
 
 // EventChainChecker is a checker that verifies a chain of events
 type EventChainChecker struct {
-	responseCheck func(*fgs.GetEventsResponse, Logger) (fgsEvent, error)
+	responseCheck func(*tetragon.GetEventsResponse, Logger) (fgsEvent, error)
 	eventCheck    func(fgsEvent, Logger) error
 }
 
 func eventGetProcess(ev fgsEvent) *tetragon.Process {
 	switch v := ev.(type) {
-	case *fgs.ProcessExec:
+	case *tetragon.ProcessExec:
 		return v.Process
-	case *fgs.ProcessConnect:
+	case *tetragon.ProcessConnect:
 		return v.Process
-	case *fgs.ProcessListen:
+	case *tetragon.ProcessListen:
 		return v.Process
-	case *fgs.Tls:
+	case *tetragon.Tls:
 		return v.Process
-	case *fgs.ProcessDns:
+	case *tetragon.ProcessDns:
 		return v.Process
-	case *fgs.ProcessHttp:
+	case *tetragon.ProcessHttp:
 		return v.Process
-	case *fgs.ProcessNetworkBurst:
+	case *tetragon.ProcessNetworkBurst:
 		return v.Process
-	case *fgs.ProcessExit:
+	case *tetragon.ProcessExit:
 		return v.Process
-	case *fgs.ProcessClose:
+	case *tetragon.ProcessClose:
 		return v.Process
-	case *fgs.ProcessAccept:
+	case *tetragon.ProcessAccept:
 		return v.Process
-	case *fgs.ProcessKprobe:
+	case *tetragon.ProcessKprobe:
 		return v.Process
-	case *fgs.ProcessTracepoint:
+	case *tetragon.ProcessTracepoint:
 		return v.Process
 	default:
 		panic(fmt.Sprintf("Unhandled type %T", v))
@@ -315,25 +314,25 @@ func eventGetProcess(ev fgsEvent) *tetragon.Process {
 
 func eventGetParent(ev fgsEvent) *tetragon.Process {
 	switch v := ev.(type) {
-	case *fgs.ProcessExec:
+	case *tetragon.ProcessExec:
 		return v.Parent
-	case *fgs.ProcessConnect:
+	case *tetragon.ProcessConnect:
 		return v.Parent
-	case *fgs.ProcessListen:
+	case *tetragon.ProcessListen:
 		return v.Parent
-	case *fgs.Tls:
+	case *tetragon.Tls:
 		return nil
-	case *fgs.ProcessHttp:
+	case *tetragon.ProcessHttp:
 		return nil
-	case *fgs.ProcessNetworkBurst:
+	case *tetragon.ProcessNetworkBurst:
 		return v.Parent
-	case *fgs.ProcessDns:
+	case *tetragon.ProcessDns:
 		return nil
-	case *fgs.ProcessExit:
+	case *tetragon.ProcessExit:
 		return v.Parent
-	case *fgs.ProcessClose:
+	case *tetragon.ProcessClose:
 		return v.Parent
-	case *fgs.ProcessAccept:
+	case *tetragon.ProcessAccept:
 		return v.Parent
 	}
 	return nil
@@ -341,40 +340,40 @@ func eventGetParent(ev fgsEvent) *tetragon.Process {
 
 func EventTypeString(ev interface{}) string {
 	switch xev := ev.(type) {
-	case *fgs.GetEventsResponse_ProcessConnect:
+	case *tetragon.GetEventsResponse_ProcessConnect:
 		return fmt.Sprintf("ProcessConnect(%s:%s->%s:%s)",
 			xev.ProcessConnect.SourceIp, xev.ProcessConnect.SourcePort,
 			xev.ProcessConnect.DestinationIp, xev.ProcessConnect.DestinationPort,
 		)
-	case *fgs.GetEventsResponse_ProcessListen:
+	case *tetragon.GetEventsResponse_ProcessListen:
 		return fmt.Sprintf("ProcessListen(%s:%s)",
 			xev.ProcessListen.Ip,
 			xev.ProcessListen.Port)
-	case *fgs.GetEventsResponse_ProcessAccept:
+	case *tetragon.GetEventsResponse_ProcessAccept:
 		return "ProcessAccept"
-	case *fgs.GetEventsResponse_Tls:
+	case *tetragon.GetEventsResponse_Tls:
 		return "Tls"
-	case *fgs.GetEventsResponse_ProcessDns:
+	case *tetragon.GetEventsResponse_ProcessDns:
 		return "ProcessDns"
-	case *fgs.GetEventsResponse_ProcessHttp:
+	case *tetragon.GetEventsResponse_ProcessHttp:
 		return "ProcessHttp"
-	case *fgs.GetEventsResponse_ProcessSockStats:
+	case *tetragon.GetEventsResponse_ProcessSockStats:
 		return "ProcessSockStats"
-	case *fgs.GetEventsResponse_ProcessExec:
+	case *tetragon.GetEventsResponse_ProcessExec:
 		return fmt.Sprintf("ProcessExec(proc.cmd=%s)", xev.ProcessExec.Process.Binary)
-	case *fgs.GetEventsResponse_ProcessExit:
+	case *tetragon.GetEventsResponse_ProcessExit:
 		return "ProcessExit"
-	case *fgs.GetEventsResponse_ProcessClose:
+	case *tetragon.GetEventsResponse_ProcessClose:
 		return "ProcessClose"
-	case *fgs.GetEventsResponse_ProcessCred:
+	case *tetragon.GetEventsResponse_ProcessCred:
 		return "ProcessCred"
-	case *fgs.GetEventsResponse_InterfaceStats:
+	case *tetragon.GetEventsResponse_InterfaceStats:
 		return "InterfaceStats"
-	case *fgs.GetEventsResponse_Test:
+	case *tetragon.GetEventsResponse_Test:
 		return "Test"
-	case *fgs.GetEventsResponse_ProcessKprobe:
+	case *tetragon.GetEventsResponse_ProcessKprobe:
 		return fmt.Sprintf("Kprobe(proc.cmd=%s)", xev.ProcessKprobe.Process.Binary)
-	case *fgs.GetEventsResponse_ProcessTracepoint:
+	case *tetragon.GetEventsResponse_ProcessTracepoint:
 		return fmt.Sprintf("Tracepoint(event=%s)", xev.ProcessTracepoint.Event)
 	default:
 		return fmt.Sprintf("<UNKNOWN:%T>", ev)
@@ -390,112 +389,112 @@ func (e EventTypeError) Error() string {
 	return e.Err.Error()
 }
 
-func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (fgsEvent, error) {
+func checkEvent(r *tetragon.GetEventsResponse, l Logger, types ...tetragon.EventType) (fgsEvent, error) {
 
-	checkTypes := func(ty fgs.EventType) error {
+	checkTypes := func(ty tetragon.EventType) error {
 		for i := range types {
 			if types[i] == ty {
 				return nil
 			}
 		}
 		return EventTypeError{
-			Err: fmt.Errorf("type %s not in %+v", fgs.EventType_name[int32(ty)], types),
+			Err: fmt.Errorf("type %s not in %+v", tetragon.EventType_name[int32(ty)], types),
 		}
 	}
 
 	switch ev := r.Event.(type) {
-	case *fgs.GetEventsResponse_ProcessExec:
-		if err := checkTypes(fgs.EventType_PROCESS_EXEC); err != nil {
+	case *tetragon.GetEventsResponse_ProcessExec:
+		if err := checkTypes(tetragon.EventType_PROCESS_EXEC); err != nil {
 			return nil, err
 		}
 		return ev.ProcessExec, nil
 
-	case *fgs.GetEventsResponse_ProcessExit:
-		if err := checkTypes(fgs.EventType_PROCESS_EXIT); err != nil {
+	case *tetragon.GetEventsResponse_ProcessExit:
+		if err := checkTypes(tetragon.EventType_PROCESS_EXIT); err != nil {
 			return nil, err
 		}
 		return ev.ProcessExit, nil
 
-	case *fgs.GetEventsResponse_ProcessConnect:
-		if err := checkTypes(fgs.EventType_PROCESS_CONNECT); err != nil {
+	case *tetragon.GetEventsResponse_ProcessConnect:
+		if err := checkTypes(tetragon.EventType_PROCESS_CONNECT); err != nil {
 			return nil, err
 		}
 		return ev.ProcessConnect, nil
 
-	case *fgs.GetEventsResponse_ProcessListen:
-		if err := checkTypes(fgs.EventType_PROCESS_LISTEN); err != nil {
+	case *tetragon.GetEventsResponse_ProcessListen:
+		if err := checkTypes(tetragon.EventType_PROCESS_LISTEN); err != nil {
 			return nil, err
 		}
 		return ev.ProcessListen, nil
 
-	case *fgs.GetEventsResponse_Tls:
-		if err := checkTypes(fgs.EventType_PROCESS_TLS); err != nil {
+	case *tetragon.GetEventsResponse_Tls:
+		if err := checkTypes(tetragon.EventType_PROCESS_TLS); err != nil {
 			return nil, err
 		}
 		return ev.Tls, nil
 
-	case *fgs.GetEventsResponse_ProcessDns:
-		if err := checkTypes(fgs.EventType_PROCESS_DNS); err != nil {
+	case *tetragon.GetEventsResponse_ProcessDns:
+		if err := checkTypes(tetragon.EventType_PROCESS_DNS); err != nil {
 			return nil, err
 		}
 		return ev.ProcessDns, nil
 
-	case *fgs.GetEventsResponse_ProcessSockStats:
-		if err := checkTypes(fgs.EventType_PROCESS_SOCKSTATS); err != nil {
+	case *tetragon.GetEventsResponse_ProcessSockStats:
+		if err := checkTypes(tetragon.EventType_PROCESS_SOCKSTATS); err != nil {
 			return nil, err
 		}
 		return ev.ProcessSockStats, nil
 
-	case *fgs.GetEventsResponse_ProcessClose:
-		if err := checkTypes(fgs.EventType_PROCESS_CLOSE); err != nil {
+	case *tetragon.GetEventsResponse_ProcessClose:
+		if err := checkTypes(tetragon.EventType_PROCESS_CLOSE); err != nil {
 			return nil, err
 		}
 		return ev.ProcessClose, nil
 
-	case *fgs.GetEventsResponse_ProcessCred:
-		if err := checkTypes(fgs.EventType_PROCESS_CRED); err != nil {
+	case *tetragon.GetEventsResponse_ProcessCred:
+		if err := checkTypes(tetragon.EventType_PROCESS_CRED); err != nil {
 			return nil, err
 		}
 		return ev.ProcessCred, nil
 
-	case *fgs.GetEventsResponse_ProcessAccept:
-		if err := checkTypes(fgs.EventType_PROCESS_ACCEPT); err != nil {
+	case *tetragon.GetEventsResponse_ProcessAccept:
+		if err := checkTypes(tetragon.EventType_PROCESS_ACCEPT); err != nil {
 			return nil, err
 		}
 		return ev.ProcessAccept, nil
 
-	case *fgs.GetEventsResponse_ProcessTracepoint:
-		if err := checkTypes(fgs.EventType_PROCESS_TRACEPOINT); err != nil {
+	case *tetragon.GetEventsResponse_ProcessTracepoint:
+		if err := checkTypes(tetragon.EventType_PROCESS_TRACEPOINT); err != nil {
 			return nil, err
 		}
 		return ev.ProcessTracepoint, nil
 
-	case *fgs.GetEventsResponse_ProcessKprobe:
-		if err := checkTypes(fgs.EventType_PROCESS_KPROBE); err != nil {
+	case *tetragon.GetEventsResponse_ProcessKprobe:
+		if err := checkTypes(tetragon.EventType_PROCESS_KPROBE); err != nil {
 			return nil, err
 		}
 		return ev.ProcessKprobe, nil
 
-	case *fgs.GetEventsResponse_ProcessHttp:
-		if err := checkTypes(fgs.EventType_PROCESS_HTTP); err != nil {
+	case *tetragon.GetEventsResponse_ProcessHttp:
+		if err := checkTypes(tetragon.EventType_PROCESS_HTTP); err != nil {
 			return nil, err
 		}
 		return ev.ProcessHttp, nil
 
-	case *fgs.GetEventsResponse_InterfaceStats:
-		if err := checkTypes(fgs.EventType_INTERFACE_STATS); err != nil {
+	case *tetragon.GetEventsResponse_InterfaceStats:
+		if err := checkTypes(tetragon.EventType_INTERFACE_STATS); err != nil {
 			return nil, err
 		}
 		return ev.InterfaceStats, nil
 
-	case *fgs.GetEventsResponse_ProcessNetworkBurst:
-		if err := checkTypes(fgs.EventType_PROCESS_NETWORK_BURST); err != nil {
+	case *tetragon.GetEventsResponse_ProcessNetworkBurst:
+		if err := checkTypes(tetragon.EventType_PROCESS_NETWORK_BURST); err != nil {
 			return nil, err
 		}
 		return ev.ProcessNetworkBurst, nil
 
-	case *fgs.GetEventsResponse_Test:
-		if err := checkTypes(fgs.EventType_TEST); err != nil {
+	case *tetragon.GetEventsResponse_Test:
+		if err := checkTypes(tetragon.EventType_TEST); err != nil {
 			return nil, err
 		}
 		return ev.Test, nil
@@ -507,8 +506,8 @@ func checkEvent(r *fgs.GetEventsResponse, l Logger, types ...fgs.EventType) (fgs
 // NewListenEventChecker creates a new EventChainChecker for Listen events
 func NewListenEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_LISTEN)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_LISTEN)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -519,8 +518,8 @@ func NewListenEventChecker() *EventChainChecker {
 // NewConnectEventChecker creates a new EventChainChecker for Connect events
 func NewConnectEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_CONNECT)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_CONNECT)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -531,8 +530,8 @@ func NewConnectEventChecker() *EventChainChecker {
 // NewExecEventChecker creates a new EventChainChecker for Exec events
 func NewExecEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_EXEC)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_EXEC)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -543,8 +542,8 @@ func NewExecEventChecker() *EventChainChecker {
 // NewExitEventChecker creates a new EventChainChecker for Exit Events
 func NewExitEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_EXIT)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_EXIT)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -555,8 +554,8 @@ func NewExitEventChecker() *EventChainChecker {
 // NewTestEventChecker creates a new EventChainChecker for Test events
 func NewTestEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_TEST)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_TEST)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -567,8 +566,8 @@ func NewTestEventChecker() *EventChainChecker {
 // NewAcceptEventChecker creates a new EventChainChecker for Accept events
 func NewAcceptEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_ACCEPT)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_ACCEPT)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -579,8 +578,8 @@ func NewAcceptEventChecker() *EventChainChecker {
 // NewCloseEventChecker creates a new EventChainChecker for Close events
 func NewCloseEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_CLOSE)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_CLOSE)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -591,8 +590,8 @@ func NewCloseEventChecker() *EventChainChecker {
 // NewTLSEventChecker creates a new EventChainChecker for TLS events
 func NewTLSEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_TLS)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_TLS)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -603,8 +602,8 @@ func NewTLSEventChecker() *EventChainChecker {
 // NewDNSEventChecker creates a new EventChainChecker for DNS events
 func NewDNSEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_DNS)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_DNS)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -615,8 +614,8 @@ func NewDNSEventChecker() *EventChainChecker {
 // NewHTTPEventChecker creates a new EventChainChecker for Http events
 func NewHTTPEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_HTTP)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_HTTP)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -627,8 +626,8 @@ func NewHTTPEventChecker() *EventChainChecker {
 // NewProcessNetworkBurstEventChecker creates a new EventChainChecker for Process Network Burst events
 func NewProcessNetworkBurstEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_NETWORK_BURST)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_NETWORK_BURST)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -638,7 +637,7 @@ func NewProcessNetworkBurstEventChecker() *EventChainChecker {
 
 // End ends the chain
 func (e *EventChainChecker) End() ResponseChecker {
-	fn := func(r *fgs.GetEventsResponse, l Logger) error {
+	fn := func(r *tetragon.GetEventsResponse, l Logger) error {
 		ev, err := e.responseCheck(r, l)
 		if err != nil {
 			return err
@@ -717,9 +716,9 @@ func (e *EventChainChecker) HasSignal(s syscall.Signal) *EventChainChecker {
 	return e
 }
 
-func eventHasProtocol(e fgsEvent, proto fgs.SocketProtocol) error {
+func eventHasProtocol(e fgsEvent, proto tetragon.SocketProtocol) error {
 	if ev, ok := e.(interface {
-		GetProtocol() fgs.SocketProtocol
+		GetProtocol() tetragon.SocketProtocol
 	}); ok {
 		evProto := ev.GetProtocol()
 		if evProto == proto {
@@ -731,7 +730,7 @@ func eventHasProtocol(e fgsEvent, proto fgs.SocketProtocol) error {
 }
 
 // HasProtocol adds a check that the event has the expected socket protocol
-func (e *EventChainChecker) HasProtocol(proto fgs.SocketProtocol) *EventChainChecker {
+func (e *EventChainChecker) HasProtocol(proto tetragon.SocketProtocol) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
@@ -831,25 +830,25 @@ func (e *EventChainChecker) HasSrcPort(port uint32) *EventChainChecker {
 
 func eventHasCookie(e fgsEvent, cookie uint64) error {
 	switch v := e.(type) {
-	case *fgs.ProcessListen:
+	case *tetragon.ProcessListen:
 		if v.SockCookie == cookie {
 			return nil
 		}
 		return fmt.Errorf("Expecting cookie %d but ProcessListen has %d", cookie, v.SockCookie)
 
-	case *fgs.ProcessAccept:
+	case *tetragon.ProcessAccept:
 		if v.SockCookie == cookie {
 			return nil
 		}
 		return fmt.Errorf("Expecting cookie %d but ProcessAccept has %d", cookie, v.SockCookie)
 
-	case *fgs.ProcessConnect:
+	case *tetragon.ProcessConnect:
 		if v.SockCookie == cookie {
 			return nil
 		}
 		return fmt.Errorf("Expecting cookie %d but ProcessConnect has %d", cookie, v.SockCookie)
 
-	case *fgs.ProcessClose:
+	case *tetragon.ProcessClose:
 		if v.SockCookie == cookie {
 			return nil
 		}
@@ -1825,14 +1824,14 @@ func (o *ContainerCheckerAND) WithImageName(arg StringArg) *ContainerCheckerAND 
 // ProcessNetworkBurstChecker checks the fields of a ProcessNetworkBurst event
 type ProcessNetworkBurstChecker interface {
 	// Check checks a ProcessNetworkBurst event
-	Check(*fgs.ProcessNetworkBurst, Logger) error
+	Check(*tetragon.ProcessNetworkBurst, Logger) error
 }
 
 // ProcessNetworkBurstCheckerFn wraps a function that checks the fields of a ProcessNetworkBurst event
-type ProcessNetworkBurstCheckerFn func(*fgs.ProcessNetworkBurst, Logger) error
+type ProcessNetworkBurstCheckerFn func(*tetragon.ProcessNetworkBurst, Logger) error
 
 // Check implements ResponseChecker interface
-func (f ProcessNetworkBurstCheckerFn) Check(c *fgs.ProcessNetworkBurst, log Logger) error {
+func (f ProcessNetworkBurstCheckerFn) Check(c *tetragon.ProcessNetworkBurst, log Logger) error {
 	return f(c, log)
 }
 
@@ -1840,7 +1839,7 @@ func (f ProcessNetworkBurstCheckerFn) Check(c *fgs.ProcessNetworkBurst, log Logg
 func ProcessNetworkBurstWithBurstDirection(sm StringMatcher) ProcessNetworkBurstChecker {
 	return ProcessNetworkBurstWithString(
 		sm,
-		func(t *fgs.ProcessNetworkBurst) string {
+		func(t *tetragon.ProcessNetworkBurst) string {
 			return t.Direction
 		},
 		"Direction",
@@ -1851,7 +1850,7 @@ func ProcessNetworkBurstWithBurstDirection(sm StringMatcher) ProcessNetworkBurst
 func ProcessNetworkBurstWithBurstState(sm StringMatcher) ProcessNetworkBurstChecker {
 	return ProcessNetworkBurstWithString(
 		sm,
-		func(t *fgs.ProcessNetworkBurst) string {
+		func(t *tetragon.ProcessNetworkBurst) string {
 			return t.BurstState
 		},
 		"BurstState",
@@ -1862,7 +1861,7 @@ func ProcessNetworkBurstWithBurstState(sm StringMatcher) ProcessNetworkBurstChec
 func ProcessNetworkBurstWithProtocol(sm StringMatcher) ProcessNetworkBurstChecker {
 	return ProcessNetworkBurstWithString(
 		sm,
-		func(t *fgs.ProcessNetworkBurst) string {
+		func(t *tetragon.ProcessNetworkBurst) string {
 			return t.Protocol
 		},
 		"Protocol",
@@ -1871,11 +1870,11 @@ func ProcessNetworkBurstWithProtocol(sm StringMatcher) ProcessNetworkBurstChecke
 
 func ProcessNetworkBurstWithString(
 	sm StringMatcher,
-	getter func(*fgs.ProcessNetworkBurst) string,
+	getter func(*tetragon.ProcessNetworkBurst) string,
 	desc string, // desc is used for helpful error messages
 ) ProcessNetworkBurstChecker {
 	matcher := sm.GetMatcher()
-	return ProcessNetworkBurstCheckerFn(func(t *fgs.ProcessNetworkBurst, log Logger) error {
+	return ProcessNetworkBurstCheckerFn(func(t *tetragon.ProcessNetworkBurst, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("ProcessNetworkBurst is nil and cannot match %s using %v", desc, sm)
 		}
@@ -1891,24 +1890,24 @@ func ProcessNetworkBurstWithString(
 // HTTPChecker checks the HTTP field of an HTTP event
 type HTTPChecker interface {
 	// Check checks a HTTP event
-	Check(*fgs.ProcessHttp, Logger) error
+	Check(*tetragon.ProcessHttp, Logger) error
 }
 
 // HTTPCheckerFn wraps a function that checks the HTTP field of an HTTP event
-type HTTPCheckerFn func(*fgs.ProcessHttp, Logger) error
+type HTTPCheckerFn func(*tetragon.ProcessHttp, Logger) error
 
 // Check implements ResponseChecker interface
-func (f HTTPCheckerFn) Check(c *fgs.ProcessHttp, log Logger) error {
+func (f HTTPCheckerFn) Check(c *tetragon.ProcessHttp, log Logger) error {
 	return f(c, log)
 }
 
 func httpWithString(
 	sm StringMatcher,
-	getter func(*fgs.ProcessHttp) string,
+	getter func(*tetragon.ProcessHttp) string,
 	desc string, // desc is used for helpful error messages
 ) HTTPChecker {
 	matcher := sm.GetMatcher()
-	return HTTPCheckerFn(func(t *fgs.ProcessHttp, log Logger) error {
+	return HTTPCheckerFn(func(t *tetragon.ProcessHttp, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("Http is nil and cannot match %s using %v", desc, sm)
 		}
@@ -1925,7 +1924,7 @@ func httpWithString(
 func HTTPWithRequestMethod(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
-		func(t *fgs.ProcessHttp) string {
+		func(t *tetragon.ProcessHttp) string {
 			return t.Http.Request.Method
 		},
 		"Method",
@@ -1936,7 +1935,7 @@ func HTTPWithRequestMethod(sm StringMatcher) HTTPChecker {
 func HTTPWithRequestURI(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
-		func(t *fgs.ProcessHttp) string {
+		func(t *tetragon.ProcessHttp) string {
 			return t.Http.Request.Uri
 		},
 		"Uri",
@@ -1947,7 +1946,7 @@ func HTTPWithRequestURI(sm StringMatcher) HTTPChecker {
 func HTTPWithRequestVersion(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
-		func(t *fgs.ProcessHttp) string {
+		func(t *tetragon.ProcessHttp) string {
 			return t.Http.Request.Version
 		},
 		"Version",
@@ -1958,7 +1957,7 @@ func HTTPWithRequestVersion(sm StringMatcher) HTTPChecker {
 func HTTPWithRequestHost(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
-		func(t *fgs.ProcessHttp) string {
+		func(t *tetragon.ProcessHttp) string {
 			return t.Http.Request.Host
 		},
 		"Host",
@@ -1969,7 +1968,7 @@ func HTTPWithRequestHost(sm StringMatcher) HTTPChecker {
 func HTTPWithRequestAgent(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
-		func(t *fgs.ProcessHttp) string {
+		func(t *tetragon.ProcessHttp) string {
 			return t.Http.Request.Agent
 		},
 		"Agent",
@@ -1980,7 +1979,7 @@ func HTTPWithRequestAgent(sm StringMatcher) HTTPChecker {
 func HTTPWithResponseVersion(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
-		func(t *fgs.ProcessHttp) string {
+		func(t *tetragon.ProcessHttp) string {
 			return t.Http.Response.Version
 		},
 		"ResponseVersion",
@@ -1991,7 +1990,7 @@ func HTTPWithResponseVersion(sm StringMatcher) HTTPChecker {
 func HTTPWithResponseReason(sm StringMatcher) HTTPChecker {
 	return httpWithString(
 		sm,
-		func(t *fgs.ProcessHttp) string {
+		func(t *tetragon.ProcessHttp) string {
 			return t.Http.Response.Reason
 		},
 		"ResponseReason",
@@ -2000,7 +1999,7 @@ func HTTPWithResponseReason(sm StringMatcher) HTTPChecker {
 
 // HTTPWithResponseCode verifies that the response code matches the StringMatcher
 func HTTPWithResponseCode(code uint32) HTTPChecker {
-	return HTTPCheckerFn(func(t *fgs.ProcessHttp, log Logger) error {
+	return HTTPCheckerFn(func(t *tetragon.ProcessHttp, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("Http is nil and cannot match Response.Code using %d", code)
 		}
@@ -2024,7 +2023,7 @@ func NewHTTPChecker() *HTTPCheckerAND {
 }
 
 // Check implements ResponseChecker interface
-func (o *HTTPCheckerAND) Check(t *fgs.ProcessHttp, l Logger) error {
+func (o *HTTPCheckerAND) Check(t *tetragon.ProcessHttp, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -2094,7 +2093,7 @@ func (e *EventChainChecker) HasHTTP(httpcheck HTTPChecker) *EventChainChecker {
 			return err
 		}
 
-		if httpEv, ok := e.(*fgs.ProcessHttp); ok {
+		if httpEv, ok := e.(*tetragon.ProcessHttp); ok {
 			return httpcheck.Check(httpEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a http event", e)
@@ -2115,7 +2114,7 @@ func NewProcessNetworkBurstChecker() *ProcessNetworkBurstCheckerAND {
 }
 
 // Check implements ResponseChecker interface
-func (o *ProcessNetworkBurstCheckerAND) Check(t *fgs.ProcessNetworkBurst, l Logger) error {
+func (o *ProcessNetworkBurstCheckerAND) Check(t *tetragon.ProcessNetworkBurst, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -2153,7 +2152,7 @@ func (e *EventChainChecker) HasProcessNetworkBurst(ProcessNetworkBurstcheck Proc
 			return err
 		}
 
-		if ProcessNetworkBurstEv, ok := e.(*fgs.ProcessNetworkBurst); ok {
+		if ProcessNetworkBurstEv, ok := e.(*tetragon.ProcessNetworkBurst); ok {
 			return ProcessNetworkBurstcheck.Check(ProcessNetworkBurstEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a http event", e)
@@ -2165,24 +2164,24 @@ func (e *EventChainChecker) HasProcessNetworkBurst(ProcessNetworkBurstcheck Proc
 // TLSChecker checks the TLS field of an TLS event
 type TLSChecker interface {
 	// Check checks a TLS event
-	Check(*fgs.Tls, Logger) error
+	Check(*tetragon.Tls, Logger) error
 }
 
 // TLSCheckerFn wraps a function that checks the TLS field of an TLS event
-type TLSCheckerFn func(*fgs.Tls, Logger) error
+type TLSCheckerFn func(*tetragon.Tls, Logger) error
 
 // Check implements ResponseChecker interface
-func (f TLSCheckerFn) Check(c *fgs.Tls, log Logger) error {
+func (f TLSCheckerFn) Check(c *tetragon.Tls, log Logger) error {
 	return f(c, log)
 }
 
 func tlsWithString(
 	sm StringMatcher,
-	getter func(*fgs.Tls) string,
+	getter func(*tetragon.Tls) string,
 	desc string, // desc is used for helpful error messages
 ) TLSChecker {
 	matcher := sm.GetMatcher()
-	return TLSCheckerFn(func(t *fgs.Tls, log Logger) error {
+	return TLSCheckerFn(func(t *tetragon.Tls, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("tls is nil and cannot match %s using %v", desc, sm)
 		}
@@ -2199,7 +2198,7 @@ func tlsWithString(
 func TLSWithNegotiatedVersion(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
-		func(t *fgs.Tls) string {
+		func(t *tetragon.Tls) string {
 			return t.NegotiatedVersion
 		},
 		"NegotiatedVersion",
@@ -2210,7 +2209,7 @@ func TLSWithNegotiatedVersion(sm StringMatcher) TLSChecker {
 func TLSWithClientVersion(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
-		func(t *fgs.Tls) string {
+		func(t *tetragon.Tls) string {
 			return t.ClientVersion
 		},
 		"ClientVersion",
@@ -2221,7 +2220,7 @@ func TLSWithClientVersion(sm StringMatcher) TLSChecker {
 func TLSWithServerVersion(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
-		func(t *fgs.Tls) string {
+		func(t *tetragon.Tls) string {
 			return t.ServerVersion
 		},
 		"ServerVersion",
@@ -2232,7 +2231,7 @@ func TLSWithServerVersion(sm StringMatcher) TLSChecker {
 func TLSWithSniType(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
-		func(t *fgs.Tls) string {
+		func(t *tetragon.Tls) string {
 			return t.SniType
 		},
 		"SniType",
@@ -2243,7 +2242,7 @@ func TLSWithSniType(sm StringMatcher) TLSChecker {
 func TLSWithSniName(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
-		func(t *fgs.Tls) string {
+		func(t *tetragon.Tls) string {
 			return t.SniName
 		},
 		"SniName",
@@ -2254,7 +2253,7 @@ func TLSWithSniName(sm StringMatcher) TLSChecker {
 func TLSWithClientFlags(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
-		func(t *fgs.Tls) string {
+		func(t *tetragon.Tls) string {
 			return t.ClientFlags
 		},
 		"ClientFlags",
@@ -2265,7 +2264,7 @@ func TLSWithClientFlags(sm StringMatcher) TLSChecker {
 func TLSWithServerFlags(sm StringMatcher) TLSChecker {
 	return tlsWithString(
 		sm,
-		func(t *fgs.Tls) string {
+		func(t *tetragon.Tls) string {
 			return t.ServerFlags
 		},
 		"ServerFlags",
@@ -2277,7 +2276,7 @@ func TLSWithServerFlags(sm StringMatcher) TLSChecker {
 // as subset checks, but for now we check that the elemnts of the lists match
 // one-by-one.
 func TLSWithCertificates(matchers []StringMatcher) TLSChecker {
-	return TLSCheckerFn(func(t *fgs.Tls, log Logger) error {
+	return TLSCheckerFn(func(t *tetragon.Tls, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("tls is nil and cannot match matchers: %+v", matchers)
 		}
@@ -2311,7 +2310,7 @@ func NewTLSChecker() *TLSCheckerAND {
 }
 
 // Check implements ResponseChecker interface
-func (o *TLSCheckerAND) Check(t *fgs.Tls, l Logger) error {
+func (o *TLSCheckerAND) Check(t *tetragon.Tls, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -2388,7 +2387,7 @@ func (e *EventChainChecker) HasTLS(tlscheck TLSChecker) *EventChainChecker {
 			return err
 		}
 
-		if tlsEv, ok := e.(*fgs.Tls); ok {
+		if tlsEv, ok := e.(*tetragon.Tls); ok {
 			return tlscheck.Check(tlsEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a tls event", e)
@@ -2400,24 +2399,24 @@ func (e *EventChainChecker) HasTLS(tlscheck TLSChecker) *EventChainChecker {
 // DNSChecker checks the DNS field of an DNS event
 type DNSChecker interface {
 	// Check checks a DNS event
-	Check(*fgs.ProcessDns, Logger) error
+	Check(*tetragon.ProcessDns, Logger) error
 }
 
 // DNSCheckerFn wraps a function that checks the DNS field of an DNS event
-type DNSCheckerFn func(*fgs.ProcessDns, Logger) error
+type DNSCheckerFn func(*tetragon.ProcessDns, Logger) error
 
 // Check implements ResponseChecker interface
-func (f DNSCheckerFn) Check(c *fgs.ProcessDns, log Logger) error {
+func (f DNSCheckerFn) Check(c *tetragon.ProcessDns, log Logger) error {
 	return f(c, log)
 }
 
 func dnsWithString(
 	sm StringMatcher,
-	getter func(*fgs.ProcessDns) string,
+	getter func(*tetragon.ProcessDns) string,
 	desc string, // desc is used for helpful error messages
 ) DNSChecker {
 	matcher := sm.GetMatcher()
-	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match %s using %v", desc, sm)
 		}
@@ -2432,7 +2431,7 @@ func dnsWithString(
 
 // DNSIsResponse checks whether a Dns event is a response
 func DNSIsResponse(isResponse bool) DNSChecker {
-	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match Response: %t", isResponse)
 		}
@@ -2446,7 +2445,7 @@ func DNSIsResponse(isResponse bool) DNSChecker {
 
 // DNSHasRcode checks the Rcode field
 func DNSHasRcode(rcode int32) DNSChecker {
-	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match Rcode: %d", rcode)
 		}
@@ -2462,7 +2461,7 @@ func DNSHasRcode(rcode int32) DNSChecker {
 func DNSHasQuery(sm StringMatcher) DNSChecker {
 	return dnsWithString(
 		sm,
-		func(t *fgs.ProcessDns) string {
+		func(t *tetragon.ProcessDns) string {
 			return t.Dns.Query
 		},
 		"Query",
@@ -2472,7 +2471,7 @@ func DNSHasQuery(sm StringMatcher) DNSChecker {
 // DNSHasAnswerTypes checks a specific set of answer types.
 // N.B. This check is order-preserving and expects a full match.
 func DNSHasAnswerTypes(answerTypes []uint32) DNSChecker {
-	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match AnswerTypes: %+v", answerTypes)
 		}
@@ -2487,7 +2486,7 @@ func DNSHasAnswerTypes(answerTypes []uint32) DNSChecker {
 // DNSHasQuestionTypes checks a specific set of question types.
 // N.B. This check is order-preserving and expects a full match.
 func DNSHasQuestionTypes(questionTypes []uint32) DNSChecker {
-	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match QuestionTypes: %+v", questionTypes)
 		}
@@ -2502,7 +2501,7 @@ func DNSHasQuestionTypes(questionTypes []uint32) DNSChecker {
 // DNSHasNames checks a specific set of names.
 // N.B. This check is order-preserving and expects a full match.
 func DNSHasNames(matchers []StringMatcher) DNSChecker {
-	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match Names: %+v", matchers)
 		}
@@ -2521,7 +2520,7 @@ func DNSHasNames(matchers []StringMatcher) DNSChecker {
 // DNSHasIPs checks a specific set of names.
 // N.B. This check is order-preserving and expects a full match.
 func DNSHasIPs(matchers []StringMatcher) DNSChecker {
-	return DNSCheckerFn(func(t *fgs.ProcessDns, log Logger) error {
+	return DNSCheckerFn(func(t *tetragon.ProcessDns, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match IPs: %+v", matchers)
 		}
@@ -2549,7 +2548,7 @@ func NewDNSChecker() *DNSCheckerAND {
 }
 
 // Check implements ResponseChecker interface
-func (o *DNSCheckerAND) Check(t *fgs.ProcessDns, l Logger) error {
+func (o *DNSCheckerAND) Check(t *tetragon.ProcessDns, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -2617,7 +2616,7 @@ func (e *EventChainChecker) HasDNS(dnscheck DNSChecker) *EventChainChecker {
 			return err
 		}
 
-		if dnsEv, ok := e.(*fgs.ProcessDns); ok {
+		if dnsEv, ok := e.(*tetragon.ProcessDns); ok {
 			return dnscheck.Check(dnsEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a dns event", e)
@@ -2629,14 +2628,14 @@ func (e *EventChainChecker) HasDNS(dnscheck DNSChecker) *EventChainChecker {
 // TracepointChecker checks a the tracepoint field of a tracepoint event
 type TracepointChecker interface {
 	// Check checks a Tracepoint event
-	Check(*fgs.ProcessTracepoint, Logger) error
+	Check(*tetragon.ProcessTracepoint, Logger) error
 }
 
 // TracepointCheckerFn wraps a function that checks the tracepoint field of an tracepoint event
-type TracepointCheckerFn func(*fgs.ProcessTracepoint, Logger) error
+type TracepointCheckerFn func(*tetragon.ProcessTracepoint, Logger) error
 
 // Check implements ResponseChecker interface
-func (f TracepointCheckerFn) Check(c *fgs.ProcessTracepoint, log Logger) error {
+func (f TracepointCheckerFn) Check(c *tetragon.ProcessTracepoint, log Logger) error {
 	return f(c, log)
 }
 
@@ -2646,7 +2645,7 @@ type TracepointCheckerAND struct {
 }
 
 // Check implements ResponseChecker interface
-func (o *TracepointCheckerAND) Check(t *fgs.ProcessTracepoint, l Logger) error {
+func (o *TracepointCheckerAND) Check(t *tetragon.ProcessTracepoint, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -2665,7 +2664,7 @@ func NewTracepointChecker() *TracepointCheckerAND {
 func (o *TracepointCheckerAND) WithSubsys(arg StringArg) *TracepointCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	matcher := sm.GetMatcher()
-	check := TracepointCheckerFn(func(t *fgs.ProcessTracepoint, log Logger) error {
+	check := TracepointCheckerFn(func(t *tetragon.ProcessTracepoint, log Logger) error {
 		if err := matcher(t.Subsys); err != nil {
 			return fmt.Errorf("failed check on subsys: %w", err)
 		}
@@ -2680,7 +2679,7 @@ func (o *TracepointCheckerAND) WithSubsys(arg StringArg) *TracepointCheckerAND {
 func (o *TracepointCheckerAND) WithEvent(arg StringArg) *TracepointCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	matcher := sm.GetMatcher()
-	check := TracepointCheckerFn(func(t *fgs.ProcessTracepoint, log Logger) error {
+	check := TracepointCheckerFn(func(t *tetragon.ProcessTracepoint, log Logger) error {
 		if err := matcher(t.Event); err != nil {
 			return fmt.Errorf("failed check on event: %w", err)
 		}
@@ -2696,7 +2695,7 @@ func (o *TracepointCheckerAND) WithEvent(arg StringArg) *TracepointCheckerAND {
 // as subset checks, but for now we check that the elemnts of the lists match
 // one-by-one.
 func TracepointWithArgs(checkers []GenericArgChecker) TracepointChecker {
-	return TracepointCheckerFn(func(t *fgs.ProcessTracepoint, log Logger) error {
+	return TracepointCheckerFn(func(t *tetragon.ProcessTracepoint, log Logger) error {
 		if t == nil {
 			return fmt.Errorf("tracepoint is nil and cannot match checkers: %+v", checkers)
 		}
@@ -2727,8 +2726,8 @@ func (o *TracepointCheckerAND) WithArgs(argCheckers []GenericArgChecker) *Tracep
 // NewTracepointEventChecker creates a new EventChainChecker for tracepoint events
 func NewTracepointEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_TRACEPOINT)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_TRACEPOINT)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -2744,7 +2743,7 @@ func (e *EventChainChecker) HasTracepoint(tpCheck TracepointChecker) *EventChain
 			return err
 		}
 
-		if tpEv, ok := e.(*fgs.ProcessTracepoint); ok {
+		if tpEv, ok := e.(*tetragon.ProcessTracepoint); ok {
 			return tpCheck.Check(tpEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a tracepoint event", e)
@@ -2756,14 +2755,14 @@ func (e *EventChainChecker) HasTracepoint(tpCheck TracepointChecker) *EventChain
 // KprobeChecker checks a the tracepoint field of a kprobe event
 type KprobeChecker interface {
 	// Check checks a generic kprobe event
-	Check(*fgs.ProcessKprobe, Logger) error
+	Check(*tetragon.ProcessKprobe, Logger) error
 }
 
 // KprobeCheckerFn wraps a function that checks the kprobe field of an kprobe event
-type KprobeCheckerFn func(*fgs.ProcessKprobe, Logger) error
+type KprobeCheckerFn func(*tetragon.ProcessKprobe, Logger) error
 
 // Check implements ResponseChecker interface
-func (f KprobeCheckerFn) Check(c *fgs.ProcessKprobe, log Logger) error {
+func (f KprobeCheckerFn) Check(c *tetragon.ProcessKprobe, log Logger) error {
 	return f(c, log)
 }
 
@@ -2773,7 +2772,7 @@ type KprobeCheckerAND struct {
 }
 
 // Check implements ResponseChecker interface
-func (o *KprobeCheckerAND) Check(t *fgs.ProcessKprobe, l Logger) error {
+func (o *KprobeCheckerAND) Check(t *tetragon.ProcessKprobe, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -2792,7 +2791,7 @@ func NewKprobeChecker() *KprobeCheckerAND {
 func (o *KprobeCheckerAND) WithFunctionName(arg StringArg) *KprobeCheckerAND {
 	sm := stringMatcherFromArg(arg)
 	matcher := sm.GetMatcher()
-	check := KprobeCheckerFn(func(t *fgs.ProcessKprobe, log Logger) error {
+	check := KprobeCheckerFn(func(t *tetragon.ProcessKprobe, log Logger) error {
 		if err := matcher(t.FunctionName); err != nil {
 			return fmt.Errorf("failed check on function name: %w", err)
 		}
@@ -2803,14 +2802,14 @@ func (o *KprobeCheckerAND) WithFunctionName(arg StringArg) *KprobeCheckerAND {
 	return o
 }
 
-func KprobeWithAction(act fgs.KprobeAction) KprobeChecker {
-	actString := fgs.KprobeAction_name[int32(act)]
-	return KprobeCheckerFn(func(k *fgs.ProcessKprobe, log Logger) error {
+func KprobeWithAction(act tetragon.KprobeAction) KprobeChecker {
+	actString := tetragon.KprobeAction_name[int32(act)]
+	return KprobeCheckerFn(func(k *tetragon.ProcessKprobe, log Logger) error {
 		if k == nil {
 			return fmt.Errorf("kprobe is nil and cannot match action: %+v", act)
 		}
 		kact := k.GetAction()
-		kactString := fgs.KprobeAction_name[int32(kact)]
+		kactString := tetragon.KprobeAction_name[int32(kact)]
 		if kact != act {
 			return fmt.Errorf("failed to match kprobe action %d (%s) to %d (%s)",
 				kact, kactString, act, actString)
@@ -2821,14 +2820,14 @@ func KprobeWithAction(act fgs.KprobeAction) KprobeChecker {
 }
 
 // WithArgs adds a checker on the kprobe args
-func (o *KprobeCheckerAND) WithAction(act fgs.KprobeAction) *KprobeCheckerAND {
+func (o *KprobeCheckerAND) WithAction(act tetragon.KprobeAction) *KprobeCheckerAND {
 	o.checks = append(o.checks, KprobeWithAction(act))
 	return o
 }
 
 // withNs add namespaces check
 func (o *KprobeCheckerAND) WithNs(ns *tetragon.Namespaces) *KprobeCheckerAND {
-	check := KprobeCheckerFn(func(t *fgs.ProcessKprobe, log Logger) error {
+	check := KprobeCheckerFn(func(t *tetragon.ProcessKprobe, log Logger) error {
 		ret := compareNamespace(t.Process, ns)
 		if ret == nil {
 			log.Logf("**** MATCH kprobe namespace")
@@ -2841,7 +2840,7 @@ func (o *KprobeCheckerAND) WithNs(ns *tetragon.Namespaces) *KprobeCheckerAND {
 
 // withCaps add capabilities check
 func (o *KprobeCheckerAND) WithCaps(caps *tetragon.Capabilities, ctype int) *KprobeCheckerAND {
-	check := KprobeCheckerFn(func(t *fgs.ProcessKprobe, log Logger) error {
+	check := KprobeCheckerFn(func(t *tetragon.ProcessKprobe, log Logger) error {
 		ret := compareCapabilities(t.Process, caps, ctype)
 		if ret == nil {
 			log.Logf("**** MATCH kprobe capabilities")
@@ -2852,7 +2851,7 @@ func (o *KprobeCheckerAND) WithCaps(caps *tetragon.Capabilities, ctype int) *Kpr
 	return o
 }
 
-func compareKprobeArgs(checkers []GenericArgChecker, k *fgs.ProcessKprobe, log Logger) error {
+func compareKprobeArgs(checkers []GenericArgChecker, k *tetragon.ProcessKprobe, log Logger) error {
 	if len(k.Args) != len(checkers) {
 		return fmt.Errorf("failed to match kprobe args of length %d to checkers: %+v", len(k.Args), checkers)
 	}
@@ -2872,7 +2871,7 @@ func compareKprobeArgs(checkers []GenericArgChecker, k *fgs.ProcessKprobe, log L
 // as subset checks, but for now we check that the elemnts of the lists match
 // one-by-one.
 func KprobeWithArgs(checkers []GenericArgChecker) KprobeChecker {
-	return KprobeCheckerFn(func(k *fgs.ProcessKprobe, log Logger) error {
+	return KprobeCheckerFn(func(k *tetragon.ProcessKprobe, log Logger) error {
 		if k == nil {
 			return fmt.Errorf("kprobe is nil and cannot match checkers: %+v", checkers)
 		}
@@ -2894,7 +2893,7 @@ func (o *KprobeCheckerAND) WithArgs(argCheckers []GenericArgChecker) *KprobeChec
 
 // KprobeWithArgsReturn matches the Args field together with return value
 func KprobeWithArgsReturn(checkers []GenericArgChecker, retChecker GenericArgChecker) KprobeChecker {
-	return KprobeCheckerFn(func(k *fgs.ProcessKprobe, log Logger) error {
+	return KprobeCheckerFn(func(k *tetragon.ProcessKprobe, log Logger) error {
 		if k == nil {
 			return fmt.Errorf("kprobe is nil and cannot match checkers: %+v", checkers)
 		}
@@ -2921,8 +2920,8 @@ func (o *KprobeCheckerAND) WithArgsReturn(argCheckers []GenericArgChecker, retCh
 // NewKprobeEventChecker creates a new EventChainChecker for tracepoint events
 func NewKprobeEventChecker() *EventChainChecker {
 	return &EventChainChecker{
-		responseCheck: func(r *fgs.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, fgs.EventType_PROCESS_KPROBE)
+		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
+			return checkEvent(r, l, tetragon.EventType_PROCESS_KPROBE)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -2938,7 +2937,7 @@ func (e *EventChainChecker) HasKprobe(kpCheck KprobeChecker) *EventChainChecker 
 			return err
 		}
 
-		if kpEv, ok := e.(*fgs.ProcessKprobe); ok {
+		if kpEv, ok := e.(*tetragon.ProcessKprobe); ok {
 			return kpCheck.Check(kpEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a kprobe event", e)
@@ -2950,21 +2949,21 @@ func (e *EventChainChecker) HasKprobe(kpCheck KprobeChecker) *EventChainChecker 
 // GenericArgChecker checks a generic argument
 type GenericArgChecker interface {
 	// Check checks a generic argument
-	Check(*fgs.KprobeArgument, Logger) error
+	Check(*tetragon.KprobeArgument, Logger) error
 }
 
 // GenericArgCheckerFn wraps a function that checks a generic argument
-type GenericArgCheckerFn func(*fgs.KprobeArgument, Logger) error
+type GenericArgCheckerFn func(*tetragon.KprobeArgument, Logger) error
 
 // Check implements ResponseChecker interface
-func (f GenericArgCheckerFn) Check(c *fgs.KprobeArgument, log Logger) error {
+func (f GenericArgCheckerFn) Check(c *tetragon.KprobeArgument, log Logger) error {
 	return f(c, log)
 }
 
 // GenericArgSizeCheck checks the size of a generic arg
 func GenericArgSizeCheck(val uint64) GenericArgChecker {
-	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
-		if sa, ok := arg.Arg.(*fgs.KprobeArgument_SizeArg); ok {
+	return GenericArgCheckerFn(func(arg *tetragon.KprobeArgument, log Logger) error {
+		if sa, ok := arg.Arg.(*tetragon.KprobeArgument_SizeArg); ok {
 			if sa.SizeArg != val {
 				return fmt.Errorf("failed size arg check: %d does not match %d", sa.SizeArg, val)
 			}
@@ -2977,8 +2976,8 @@ func GenericArgSizeCheck(val uint64) GenericArgChecker {
 
 // GenericArgIsInt checks that a generic arg is an integer
 func GenericArgIsInt() GenericArgChecker {
-	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
-		if _, ok := arg.Arg.(*fgs.KprobeArgument_IntArg); ok {
+	return GenericArgCheckerFn(func(arg *tetragon.KprobeArgument, log Logger) error {
+		if _, ok := arg.Arg.(*tetragon.KprobeArgument_IntArg); ok {
 			log.Logf("**** MATCH generic int arg")
 			return nil
 		}
@@ -2988,8 +2987,8 @@ func GenericArgIsInt() GenericArgChecker {
 
 // GenericArgIntCheck checks the value of an integer arg
 func GenericArgIntCheck(val int32) GenericArgChecker {
-	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
-		if ia, ok := arg.Arg.(*fgs.KprobeArgument_IntArg); ok {
+	return GenericArgCheckerFn(func(arg *tetragon.KprobeArgument, log Logger) error {
+		if ia, ok := arg.Arg.(*tetragon.KprobeArgument_IntArg); ok {
 			if ia.IntArg != val {
 				return fmt.Errorf("failed int arg check: %d does not match %d", ia.IntArg, val)
 			}
@@ -3002,8 +3001,8 @@ func GenericArgIntCheck(val int32) GenericArgChecker {
 
 // GenericArgBytesCheck checks the value of a bytes arg
 func GenericArgBytesCheck(val []byte) GenericArgChecker {
-	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
-		if ba, ok := arg.Arg.(*fgs.KprobeArgument_BytesArg); ok {
+	return GenericArgCheckerFn(func(arg *tetragon.KprobeArgument, log Logger) error {
+		if ba, ok := arg.Arg.(*tetragon.KprobeArgument_BytesArg); ok {
 			if len(ba.BytesArg) != len(val) {
 				return fmt.Errorf("failed bytes arg check: length %d does not match length %d", len(ba.BytesArg), len(val))
 			}
@@ -3023,8 +3022,8 @@ func GenericArgBytesCheck(val []byte) GenericArgChecker {
 func GenericArgStringCheck(val StringArg) GenericArgChecker {
 	sm := stringMatcherFromArg(val)
 	matcher := sm.GetMatcher()
-	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
-		if sa, ok := arg.Arg.(*fgs.KprobeArgument_StringArg); ok {
+	return GenericArgCheckerFn(func(arg *tetragon.KprobeArgument, log Logger) error {
+		if sa, ok := arg.Arg.(*tetragon.KprobeArgument_StringArg); ok {
 			if err := matcher(sa.StringArg); err != nil {
 				return fmt.Errorf("failed string arg check: %w", err)
 			}
@@ -3043,8 +3042,8 @@ func GenericArgFileChecker(mount, path, flags StringArg) GenericArgChecker {
 	matcherMount := smMount.GetMatcher()
 	matcherPath := smPath.GetMatcher()
 	matcherFlags := smFlags.GetMatcher()
-	return GenericArgCheckerFn(func(arg *fgs.KprobeArgument, log Logger) error {
-		if fa, ok := arg.Arg.(*fgs.KprobeArgument_FileArg); ok {
+	return GenericArgCheckerFn(func(arg *tetragon.KprobeArgument, log Logger) error {
+		if fa, ok := arg.Arg.(*tetragon.KprobeArgument_FileArg); ok {
 			if fa.FileArg == nil {
 				return fmt.Errorf("failed file arg check because FileArg is nil")
 			}

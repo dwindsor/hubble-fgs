@@ -3,2433 +3,120 @@
 
 ## Table of Contents
 
-- [fgs.proto](#fgs.proto)
-    - [AddTracingPolicyRequest](#fgs.AddTracingPolicyRequest)
-    - [AddTracingPolicyResponse](#fgs.AddTracingPolicyResponse)
-    - [AggregationInfo](#fgs.AggregationInfo)
-    - [AggregationOptions](#fgs.AggregationOptions)
-    - [DeleteTracingPolicyRequest](#fgs.DeleteTracingPolicyRequest)
-    - [DeleteTracingPolicyResponse](#fgs.DeleteTracingPolicyResponse)
-    - [DisableSensorRequest](#fgs.DisableSensorRequest)
-    - [DisableSensorResponse](#fgs.DisableSensorResponse)
-    - [DnsInfo](#fgs.DnsInfo)
-    - [EnableSensorRequest](#fgs.EnableSensorRequest)
-    - [EnableSensorResponse](#fgs.EnableSensorResponse)
-    - [FileArgument](#fgs.FileArgument)
-    - [Filter](#fgs.Filter)
-    - [GenericFileArg](#fgs.GenericFileArg)
-    - [GetEventsRequest](#fgs.GetEventsRequest)
-    - [GetEventsResponse](#fgs.GetEventsResponse)
-    - [GetHealthStatusRequest](#fgs.GetHealthStatusRequest)
-    - [GetHealthStatusResponse](#fgs.GetHealthStatusResponse)
-    - [GetSensorConfigRequest](#fgs.GetSensorConfigRequest)
-    - [GetSensorConfigResponse](#fgs.GetSensorConfigResponse)
-    - [GetStackTraceTreeRequest](#fgs.GetStackTraceTreeRequest)
-    - [GetStackTraceTreeResponse](#fgs.GetStackTraceTreeResponse)
-    - [GetVersionRequest](#fgs.GetVersionRequest)
-    - [GetVersionResponse](#fgs.GetVersionResponse)
-    - [HealthStatus](#fgs.HealthStatus)
-    - [HttpHeader](#fgs.HttpHeader)
-    - [HttpInfo](#fgs.HttpInfo)
-    - [HttpRequest](#fgs.HttpRequest)
-    - [HttpResponse](#fgs.HttpResponse)
-    - [InterfaceStats](#fgs.InterfaceStats)
-    - [KprobeArgument](#fgs.KprobeArgument)
-    - [KprobeCred](#fgs.KprobeCred)
-    - [KprobeFile](#fgs.KprobeFile)
-    - [KprobePath](#fgs.KprobePath)
-    - [KprobeSkb](#fgs.KprobeSkb)
-    - [KprobeSock](#fgs.KprobeSock)
-    - [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes)
-    - [ListSensorsRequest](#fgs.ListSensorsRequest)
-    - [ListSensorsResponse](#fgs.ListSensorsResponse)
-    - [ProcessAccept](#fgs.ProcessAccept)
-    - [ProcessClose](#fgs.ProcessClose)
-    - [ProcessConnect](#fgs.ProcessConnect)
-    - [ProcessCred](#fgs.ProcessCred)
-    - [ProcessDns](#fgs.ProcessDns)
-    - [ProcessExec](#fgs.ProcessExec)
-    - [ProcessExit](#fgs.ProcessExit)
-    - [ProcessFile](#fgs.ProcessFile)
-    - [ProcessHttp](#fgs.ProcessHttp)
-    - [ProcessIpError](#fgs.ProcessIpError)
-    - [ProcessKprobe](#fgs.ProcessKprobe)
-    - [ProcessListen](#fgs.ProcessListen)
-    - [ProcessNetworkBurst](#fgs.ProcessNetworkBurst)
-    - [ProcessSockStats](#fgs.ProcessSockStats)
-    - [ProcessTracepoint](#fgs.ProcessTracepoint)
-    - [RemoveSensorRequest](#fgs.RemoveSensorRequest)
-    - [RemoveSensorResponse](#fgs.RemoveSensorResponse)
-    - [SensorStatus](#fgs.SensorStatus)
-    - [SetSensorConfigRequest](#fgs.SetSensorConfigRequest)
-    - [SetSensorConfigResponse](#fgs.SetSensorConfigResponse)
-    - [SockInfo](#fgs.SockInfo)
-    - [SocketStats](#fgs.SocketStats)
-    - [StackAddress](#fgs.StackAddress)
-    - [StackTrace](#fgs.StackTrace)
-    - [StackTraceLabel](#fgs.StackTraceLabel)
-    - [StackTraceNode](#fgs.StackTraceNode)
-    - [Test](#fgs.Test)
-    - [Tls](#fgs.Tls)
+- [tetragon/capabilities.proto](#tetragon_capabilities-proto)
+    - [CapabilitiesType](#tetragon-CapabilitiesType)
   
-    - [EventType](#fgs.EventType)
-    - [FileAction](#fgs.FileAction)
-    - [HealthStatusResult](#fgs.HealthStatusResult)
-    - [HealthStatusType](#fgs.HealthStatusType)
-    - [KprobeAction](#fgs.KprobeAction)
-    - [SocketProtocol](#fgs.SocketProtocol)
-    - [TlsCertificateError](#fgs.TlsCertificateError)
+- [tetragon/tetragon.proto](#tetragon_tetragon-proto)
+    - [Capabilities](#tetragon-Capabilities)
+    - [Container](#tetragon-Container)
+    - [GetHealthStatusRequest](#tetragon-GetHealthStatusRequest)
+    - [GetHealthStatusResponse](#tetragon-GetHealthStatusResponse)
+    - [HealthStatus](#tetragon-HealthStatus)
+    - [Image](#tetragon-Image)
+    - [KprobeArgument](#tetragon-KprobeArgument)
+    - [KprobeCred](#tetragon-KprobeCred)
+    - [KprobeFile](#tetragon-KprobeFile)
+    - [KprobePath](#tetragon-KprobePath)
+    - [KprobeSkb](#tetragon-KprobeSkb)
+    - [KprobeSock](#tetragon-KprobeSock)
+    - [KprobeTruncatedBytes](#tetragon-KprobeTruncatedBytes)
+    - [Namespace](#tetragon-Namespace)
+    - [Namespaces](#tetragon-Namespaces)
+    - [Pod](#tetragon-Pod)
+    - [Process](#tetragon-Process)
+    - [ProcessExec](#tetragon-ProcessExec)
+    - [ProcessExit](#tetragon-ProcessExit)
+    - [ProcessKprobe](#tetragon-ProcessKprobe)
+    - [ProcessTracepoint](#tetragon-ProcessTracepoint)
+    - [Test](#tetragon-Test)
   
-    - [FineGuidanceSensors](#fgs.FineGuidanceSensors)
+    - [HealthStatusResult](#tetragon-HealthStatusResult)
+    - [HealthStatusType](#tetragon-HealthStatusType)
+    - [KprobeAction](#tetragon-KprobeAction)
   
-- [tetragon.proto](#tetragon.proto)
-    - [AddTracingPolicyRequest](#tetragon.AddTracingPolicyRequest)
-    - [AddTracingPolicyResponse](#tetragon.AddTracingPolicyResponse)
-    - [AggregationInfo](#tetragon.AggregationInfo)
-    - [AggregationOptions](#tetragon.AggregationOptions)
-    - [Capabilities](#tetragon.Capabilities)
-    - [Container](#tetragon.Container)
-    - [DeleteTracingPolicyRequest](#tetragon.DeleteTracingPolicyRequest)
-    - [DeleteTracingPolicyResponse](#tetragon.DeleteTracingPolicyResponse)
-    - [DisableSensorRequest](#tetragon.DisableSensorRequest)
-    - [DisableSensorResponse](#tetragon.DisableSensorResponse)
-    - [DnsInfo](#tetragon.DnsInfo)
-    - [EnableSensorRequest](#tetragon.EnableSensorRequest)
-    - [EnableSensorResponse](#tetragon.EnableSensorResponse)
-    - [Filter](#tetragon.Filter)
-    - [GetEventsRequest](#tetragon.GetEventsRequest)
-    - [GetEventsResponse](#tetragon.GetEventsResponse)
-    - [GetHealthStatusRequest](#tetragon.GetHealthStatusRequest)
-    - [GetHealthStatusResponse](#tetragon.GetHealthStatusResponse)
-    - [GetSensorConfigRequest](#tetragon.GetSensorConfigRequest)
-    - [GetSensorConfigResponse](#tetragon.GetSensorConfigResponse)
-    - [GetStackTraceTreeRequest](#tetragon.GetStackTraceTreeRequest)
-    - [GetStackTraceTreeResponse](#tetragon.GetStackTraceTreeResponse)
-    - [GetVersionRequest](#tetragon.GetVersionRequest)
-    - [GetVersionResponse](#tetragon.GetVersionResponse)
-    - [HealthStatus](#tetragon.HealthStatus)
-    - [Image](#tetragon.Image)
-    - [KprobeArgument](#tetragon.KprobeArgument)
-    - [KprobeCred](#tetragon.KprobeCred)
-    - [KprobeFile](#tetragon.KprobeFile)
-    - [KprobePath](#tetragon.KprobePath)
-    - [KprobeSkb](#tetragon.KprobeSkb)
-    - [KprobeSock](#tetragon.KprobeSock)
-    - [KprobeTruncatedBytes](#tetragon.KprobeTruncatedBytes)
-    - [ListSensorsRequest](#tetragon.ListSensorsRequest)
-    - [ListSensorsResponse](#tetragon.ListSensorsResponse)
-    - [Namespace](#tetragon.Namespace)
-    - [Namespaces](#tetragon.Namespaces)
-    - [Pod](#tetragon.Pod)
-    - [Process](#tetragon.Process)
-    - [ProcessDns](#tetragon.ProcessDns)
-    - [ProcessExec](#tetragon.ProcessExec)
-    - [ProcessExit](#tetragon.ProcessExit)
-    - [ProcessKprobe](#tetragon.ProcessKprobe)
-    - [ProcessTracepoint](#tetragon.ProcessTracepoint)
-    - [RemoveSensorRequest](#tetragon.RemoveSensorRequest)
-    - [RemoveSensorResponse](#tetragon.RemoveSensorResponse)
-    - [SensorStatus](#tetragon.SensorStatus)
-    - [SetSensorConfigRequest](#tetragon.SetSensorConfigRequest)
-    - [SetSensorConfigResponse](#tetragon.SetSensorConfigResponse)
-    - [StackAddress](#tetragon.StackAddress)
-    - [StackTrace](#tetragon.StackTrace)
-    - [StackTraceLabel](#tetragon.StackTraceLabel)
-    - [StackTraceNode](#tetragon.StackTraceNode)
-    - [Test](#tetragon.Test)
+- [tetragon/stack.proto](#tetragon_stack-proto)
+    - [StackAddress](#tetragon-StackAddress)
+    - [StackTrace](#tetragon-StackTrace)
+    - [StackTraceLabel](#tetragon-StackTraceLabel)
+    - [StackTraceNode](#tetragon-StackTraceNode)
   
-    - [CapabilitiesType](#tetragon.CapabilitiesType)
-    - [EventType](#tetragon.EventType)
-    - [HealthStatusResult](#tetragon.HealthStatusResult)
-    - [HealthStatusType](#tetragon.HealthStatusType)
-    - [KprobeAction](#tetragon.KprobeAction)
+- [tetragon/sensors.proto](#tetragon_sensors-proto)
+    - [AddTracingPolicyRequest](#tetragon-AddTracingPolicyRequest)
+    - [AddTracingPolicyResponse](#tetragon-AddTracingPolicyResponse)
+    - [DeleteTracingPolicyRequest](#tetragon-DeleteTracingPolicyRequest)
+    - [DeleteTracingPolicyResponse](#tetragon-DeleteTracingPolicyResponse)
+    - [DisableSensorRequest](#tetragon-DisableSensorRequest)
+    - [DisableSensorResponse](#tetragon-DisableSensorResponse)
+    - [EnableSensorRequest](#tetragon-EnableSensorRequest)
+    - [EnableSensorResponse](#tetragon-EnableSensorResponse)
+    - [GetSensorConfigRequest](#tetragon-GetSensorConfigRequest)
+    - [GetSensorConfigResponse](#tetragon-GetSensorConfigResponse)
+    - [GetStackTraceTreeRequest](#tetragon-GetStackTraceTreeRequest)
+    - [GetStackTraceTreeResponse](#tetragon-GetStackTraceTreeResponse)
+    - [GetVersionRequest](#tetragon-GetVersionRequest)
+    - [GetVersionResponse](#tetragon-GetVersionResponse)
+    - [ListSensorsRequest](#tetragon-ListSensorsRequest)
+    - [ListSensorsResponse](#tetragon-ListSensorsResponse)
+    - [RemoveSensorRequest](#tetragon-RemoveSensorRequest)
+    - [RemoveSensorResponse](#tetragon-RemoveSensorResponse)
+    - [SensorStatus](#tetragon-SensorStatus)
+    - [SetSensorConfigRequest](#tetragon-SetSensorConfigRequest)
+    - [SetSensorConfigResponse](#tetragon-SetSensorConfigResponse)
   
-    - [FineGuidanceSensors](#tetragon.FineGuidanceSensors)
+    - [FineGuidanceSensors](#tetragon-FineGuidanceSensors)
+  
+- [tetragon/events.proto](#tetragon_events-proto)
+    - [AggregationInfo](#tetragon-AggregationInfo)
+    - [AggregationOptions](#tetragon-AggregationOptions)
+    - [Filter](#tetragon-Filter)
+    - [GetEventsRequest](#tetragon-GetEventsRequest)
+    - [GetEventsResponse](#tetragon-GetEventsResponse)
+  
+    - [EventType](#tetragon-EventType)
+  
+- [tetragon/fgs.proto](#tetragon_fgs-proto)
+    - [FileArgument](#tetragon-FileArgument)
+    - [GenericFileArg](#tetragon-GenericFileArg)
+    - [HttpHeader](#tetragon-HttpHeader)
+    - [HttpInfo](#tetragon-HttpInfo)
+    - [HttpRequest](#tetragon-HttpRequest)
+    - [HttpResponse](#tetragon-HttpResponse)
+    - [InterfaceStats](#tetragon-InterfaceStats)
+    - [ProcessAccept](#tetragon-ProcessAccept)
+    - [ProcessClose](#tetragon-ProcessClose)
+    - [ProcessConnect](#tetragon-ProcessConnect)
+    - [ProcessFile](#tetragon-ProcessFile)
+    - [ProcessHttp](#tetragon-ProcessHttp)
+    - [ProcessIpError](#tetragon-ProcessIpError)
+    - [ProcessListen](#tetragon-ProcessListen)
+    - [ProcessNetworkBurst](#tetragon-ProcessNetworkBurst)
+    - [ProcessSockStats](#tetragon-ProcessSockStats)
+    - [SockInfo](#tetragon-SockInfo)
+    - [SocketStats](#tetragon-SocketStats)
+    - [Tls](#tetragon-Tls)
+  
+    - [FileAction](#tetragon-FileAction)
+    - [SocketProtocol](#tetragon-SocketProtocol)
+    - [TlsCertificateError](#tetragon-TlsCertificateError)
+  
+- [tetragon/dns.proto](#tetragon_dns-proto)
+    - [DnsInfo](#tetragon-DnsInfo)
+    - [ProcessDns](#tetragon-ProcessDns)
   
 - [Scalar Value Types](#scalar-value-types)
 
 
 
-<a name="fgs.proto"></a>
+<a name="tetragon_capabilities-proto"></a>
 <p align="right"><a href="#top">Top</a></p>
 
-## fgs.proto
-
-
-
-<a name="fgs.AddTracingPolicyRequest"></a>
-
-### AddTracingPolicyRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| yaml | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.AddTracingPolicyResponse"></a>
-
-### AddTracingPolicyResponse
-
-
-
-
-
-
-
-<a name="fgs.AggregationInfo"></a>
-
-### AggregationInfo
-AggregationInfo contains information about aggregation results.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| count | [uint64](#uint64) |  | Total count of events in this aggregation time window. |
-
-
-
-
-
-
-<a name="fgs.AggregationOptions"></a>
-
-### AggregationOptions
-AggregationOptions defines configuration options for aggregating events.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| window_size | [google.protobuf.Duration](#google.protobuf.Duration) |  | Aggregation window size. Defaults to 15 seconds if this field is not set. |
-| channel_buffer_size | [uint64](#uint64) |  | Size of the buffer for the aggregator to receive incoming events. If the buffer becomes full, the aggregator will log a warning and start dropping incoming events. |
-
-
-
-
-
-
-<a name="fgs.DeleteTracingPolicyRequest"></a>
-
-### DeleteTracingPolicyRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| yaml | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.DeleteTracingPolicyResponse"></a>
-
-### DeleteTracingPolicyResponse
-
-
-
-
-
-
-
-<a name="fgs.DisableSensorRequest"></a>
-
-### DisableSensorRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.DisableSensorResponse"></a>
-
-### DisableSensorResponse
-
-
-
-
-
-
-
-<a name="fgs.DnsInfo"></a>
-
-### DnsInfo
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| question_types | [uint32](#uint32) | repeated |  |
-| answer_types | [uint32](#uint32) | repeated |  |
-| rcode | [int32](#int32) |  |  |
-| names | [string](#string) | repeated |  |
-| ips | [string](#string) | repeated |  |
-| query | [string](#string) |  |  |
-| response | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="fgs.EnableSensorRequest"></a>
-
-### EnableSensorRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.EnableSensorResponse"></a>
-
-### EnableSensorResponse
-
-
-
-
-
-
-
-<a name="fgs.FileArgument"></a>
-
-### FileArgument
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| generic_arg | [GenericFileArg](#fgs.GenericFileArg) |  |  |
-
-
-
-
-
-
-<a name="fgs.Filter"></a>
-
-### Filter
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| binary_regex | [string](#string) | repeated |  |
-| namespace | [string](#string) | repeated |  |
-| health_check | [google.protobuf.BoolValue](#google.protobuf.BoolValue) |  |  |
-| pid | [uint32](#uint32) | repeated |  |
-| pid_set | [uint32](#uint32) | repeated |  |
-| event_set | [EventType](#fgs.EventType) | repeated |  |
-| pod_regex | [string](#string) | repeated | A series of regexes for filtering over pod name |
-
-
-
-
-
-
-<a name="fgs.GenericFileArg"></a>
-
-### GenericFileArg
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| filename | [string](#string) |  |  |
-| inode_number | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="fgs.GetEventsRequest"></a>
-
-### GetEventsRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| allow_list | [Filter](#fgs.Filter) | repeated | allow_list specifies a list of filters to apply to only return certain events. If multiple filters are specified, at least one of them has to match for an event to be included in the results. |
-| deny_list | [Filter](#fgs.Filter) | repeated | deny_list specifies a list of filters to apply to exclude certain events from the results. If multiple filters are specified, at least one of them has to match for an event to be excluded.
-
-If both allow_list and deny_list are specified, the results contain the set difference allow_list - deny_list. |
-| aggregation_options | [AggregationOptions](#fgs.AggregationOptions) |  | aggregation_options configures aggregation options for this request. If this field is not set, responses will not be aggregated.
-
-Note that currently only process_accept and process_connect events are aggregated. Other events remain unaggregated. |
-
-
-
-
-
-
-<a name="fgs.GetEventsResponse"></a>
-
-### GetEventsResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process_exec | [ProcessExec](#fgs.ProcessExec) |  |  |
-| process_connect | [ProcessConnect](#fgs.ProcessConnect) |  |  |
-| process_listen | [ProcessListen](#fgs.ProcessListen) |  |  |
-| tls | [Tls](#fgs.Tls) |  |  |
-| process_exit | [ProcessExit](#fgs.ProcessExit) |  |  |
-| process_close | [ProcessClose](#fgs.ProcessClose) |  |  |
-| process_accept | [ProcessAccept](#fgs.ProcessAccept) |  |  |
-| process_cred | [ProcessCred](#fgs.ProcessCred) |  |  |
-| process_kprobe | [ProcessKprobe](#fgs.ProcessKprobe) |  |  |
-| process_tracepoint | [ProcessTracepoint](#fgs.ProcessTracepoint) |  |  |
-| process_sock_stats | [ProcessSockStats](#fgs.ProcessSockStats) |  |  |
-| process_http | [ProcessHttp](#fgs.ProcessHttp) |  |  |
-| interface_stats | [InterfaceStats](#fgs.InterfaceStats) |  |  |
-| process_dns | [ProcessDns](#fgs.ProcessDns) |  |  |
-| process_network_burst | [ProcessNetworkBurst](#fgs.ProcessNetworkBurst) |  |  |
-| process_file | [ProcessFile](#fgs.ProcessFile) |  |  |
-| process_ip_error | [ProcessIpError](#fgs.ProcessIpError) |  |  |
-| test | [Test](#fgs.Test) |  |  |
-| node_name | [string](#string) |  | Name of the node where this event was observed. |
-| time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed.
-
-For an aggregated response, this field to set to the timestamp at which the event was observed for the first time in a given aggregation time window. |
-| aggregation_info | [AggregationInfo](#fgs.AggregationInfo) |  | aggregation_info contains information about aggregation results. This field is set only for aggregated responses. |
-
-
-
-
-
-
-<a name="fgs.GetHealthStatusRequest"></a>
-
-### GetHealthStatusRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| event_set | [HealthStatusType](#fgs.HealthStatusType) | repeated |  |
-
-
-
-
-
-
-<a name="fgs.GetHealthStatusResponse"></a>
-
-### GetHealthStatusResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| health_status | [HealthStatus](#fgs.HealthStatus) | repeated |  |
-
-
-
-
-
-
-<a name="fgs.GetSensorConfigRequest"></a>
-
-### GetSensorConfigRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| cfgkey | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.GetSensorConfigResponse"></a>
-
-### GetSensorConfigResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| cfgval | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.GetStackTraceTreeRequest"></a>
-
-### GetStackTraceTreeRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.GetStackTraceTreeResponse"></a>
-
-### GetStackTraceTreeResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| root | [StackTraceNode](#fgs.StackTraceNode) |  |  |
-
-
-
-
-
-
-<a name="fgs.GetVersionRequest"></a>
-
-### GetVersionRequest
-
-
-
-
-
-
-
-<a name="fgs.GetVersionResponse"></a>
-
-### GetVersionResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| version | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.HealthStatus"></a>
-
-### HealthStatus
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| event | [HealthStatusType](#fgs.HealthStatusType) |  |  |
-| status | [HealthStatusResult](#fgs.HealthStatusResult) |  |  |
-| details | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.HttpHeader"></a>
-
-### HttpHeader
-HTTP PARSER
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| value | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.HttpInfo"></a>
-
-### HttpInfo
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| request | [HttpRequest](#fgs.HttpRequest) |  |  |
-| response | [HttpResponse](#fgs.HttpResponse) |  |  |
-| latency | [google.protobuf.Duration](#google.protobuf.Duration) |  |  |
-
-
-
-
-
-
-<a name="fgs.HttpRequest"></a>
-
-### HttpRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| timestamp | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  |  |
-| method | [string](#string) |  |  |
-| uri | [string](#string) |  |  |
-| version | [string](#string) |  |  |
-| host | [string](#string) |  |  |
-| agent | [string](#string) |  |  |
-| content_length | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| headers | [HttpHeader](#fgs.HttpHeader) | repeated |  |
-| flags | [string](#string) |  |  |
-| transfer_encoding | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.HttpResponse"></a>
-
-### HttpResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| timestamp | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  |  |
-| version | [string](#string) |  |  |
-| code | [uint32](#uint32) |  |  |
-| reason | [string](#string) |  |  |
-| content_length | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| headers | [HttpHeader](#fgs.HttpHeader) | repeated |  |
-| flags | [string](#string) |  |  |
-| transfer_encoding | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.InterfaceStats"></a>
-
-### InterfaceStats
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| interface_name | [string](#string) |  |  |
-| interface_ifindex | [uint32](#uint32) |  |  |
-| bytes_sent | [uint64](#uint64) |  |  |
-| bytes_received | [uint64](#uint64) |  |  |
-| packets_sent | [uint64](#uint64) |  |  |
-| packets_received | [uint64](#uint64) |  |  |
-| tx_errors | [uint64](#uint64) |  |  |
-| rx_errors | [uint64](#uint64) |  |  |
-| tx_drops | [uint64](#uint64) |  |  |
-| rx_drops | [uint64](#uint64) |  |  |
-| pod | [tetragon.Pod](#tetragon.Pod) |  |  |
-| netns | [string](#string) |  |  |
-| container_name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.KprobeArgument"></a>
-
-### KprobeArgument
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| string_arg | [string](#string) |  |  |
-| int_arg | [int32](#int32) |  |  |
-| skb_arg | [KprobeSkb](#fgs.KprobeSkb) |  |  |
-| size_arg | [uint64](#uint64) |  |  |
-| bytes_arg | [bytes](#bytes) |  |  |
-| path_arg | [KprobePath](#fgs.KprobePath) |  |  |
-| file_arg | [KprobeFile](#fgs.KprobeFile) |  |  |
-| truncated_bytes_arg | [KprobeTruncatedBytes](#fgs.KprobeTruncatedBytes) |  |  |
-| sock_arg | [KprobeSock](#fgs.KprobeSock) |  |  |
-| cred_arg | [KprobeCred](#fgs.KprobeCred) |  |  |
-
-
-
-
-
-
-<a name="fgs.KprobeCred"></a>
-
-### KprobeCred
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| permitted | [tetragon.CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-| effective | [tetragon.CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-| inheritable | [tetragon.CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-
-
-
-
-
-
-<a name="fgs.KprobeFile"></a>
-
-### KprobeFile
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| mount | [string](#string) |  |  |
-| path | [string](#string) |  |  |
-| flags | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.KprobePath"></a>
-
-### KprobePath
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| mount | [string](#string) |  |  |
-| path | [string](#string) |  |  |
-| flags | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.KprobeSkb"></a>
-
-### KprobeSkb
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| hash | [uint32](#uint32) |  |  |
-| len | [uint32](#uint32) |  |  |
-| priority | [uint32](#uint32) |  |  |
-| mark | [uint32](#uint32) |  |  |
-| saddr | [string](#string) |  |  |
-| daddr | [string](#string) |  |  |
-| sport | [uint32](#uint32) |  |  |
-| dport | [uint32](#uint32) |  |  |
-| proto | [uint32](#uint32) |  |  |
-| sec_path_len | [uint32](#uint32) |  |  |
-| sec_path_olen | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="fgs.KprobeSock"></a>
-
-### KprobeSock
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| family | [string](#string) |  |  |
-| type | [string](#string) |  |  |
-| protocol | [string](#string) |  |  |
-| mark | [uint32](#uint32) |  |  |
-| priority | [uint32](#uint32) |  |  |
-| saddr | [string](#string) |  |  |
-| daddr | [string](#string) |  |  |
-| sport | [uint32](#uint32) |  |  |
-| dport | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="fgs.KprobeTruncatedBytes"></a>
-
-### KprobeTruncatedBytes
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| bytes_arg | [bytes](#bytes) |  |  |
-| orig_size | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="fgs.ListSensorsRequest"></a>
-
-### ListSensorsRequest
-
-
-
-
-
-
-
-<a name="fgs.ListSensorsResponse"></a>
-
-### ListSensorsResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| sensors | [SensorStatus](#fgs.SensorStatus) | repeated |  |
-
-
-
-
-
-
-<a name="fgs.ProcessAccept"></a>
-
-### ProcessAccept
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| source_ip | [string](#string) |  |  |
-| source_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| destination_ip | [string](#string) |  |  |
-| destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| destination_names | [string](#string) | repeated |  |
-| sock_cookie | [uint64](#uint64) |  |  |
-| destination_pod | [tetragon.Pod](#tetragon.Pod) |  |  |
-| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessClose"></a>
-
-### ProcessClose
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| source_ip | [string](#string) |  |  |
-| source_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| destination_ip | [string](#string) |  |  |
-| destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| destination_names | [string](#string) | repeated |  |
-| sock_cookie | [uint64](#uint64) |  |  |
-| stats | [SocketStats](#fgs.SocketStats) |  |  |
-| destination_pod | [tetragon.Pod](#tetragon.Pod) |  |  |
-| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
-| socket_type | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessConnect"></a>
-
-### ProcessConnect
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| source_ip | [string](#string) |  |  |
-| source_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| destination_ip | [string](#string) |  |  |
-| destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| destination_names | [string](#string) | repeated |  |
-| sock_cookie | [uint64](#uint64) |  |  |
-| destination_pod | [tetragon.Pod](#tetragon.Pod) |  |  |
-| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessCred"></a>
-
-### ProcessCred
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| cap | [tetragon.Capabilities](#tetragon.Capabilities) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessDns"></a>
-
-### ProcessDns
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| socket | [SockInfo](#fgs.SockInfo) |  |  |
-| dns | [DnsInfo](#fgs.DnsInfo) |  |  |
-| destination_names | [string](#string) | repeated | **Deprecated.** deprecated in favor of socket.destination_names. |
-| destination_pod | [tetragon.Pod](#tetragon.Pod) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessExec"></a>
-
-### ProcessExec
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| ancestors | [tetragon.Process](#tetragon.Process) | repeated | Ancestors of the process beyond the immediate parent. |
-
-
-
-
-
-
-<a name="fgs.ProcessExit"></a>
-
-### ProcessExit
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| signal | [string](#string) |  |  |
-| status | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessFile"></a>
-
-### ProcessFile
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| action | [FileAction](#fgs.FileAction) |  |  |
-| args | [FileArgument](#fgs.FileArgument) |  |  |
-| time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  |  |
-| hook | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessHttp"></a>
-
-### ProcessHttp
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| socket | [SockInfo](#fgs.SockInfo) |  |  |
-| http | [HttpInfo](#fgs.HttpInfo) |  |  |
-| destination_names | [string](#string) | repeated | **Deprecated.** deprecated in favor of socket.destination_names. |
-| destination_pod | [tetragon.Pod](#tetragon.Pod) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessIpError"></a>
-
-### ProcessIpError
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| source_ip | [string](#string) |  |  |
-| destination_ip | [string](#string) |  |  |
-| version | [string](#string) |  |  |
-| sock_cookie | [uint64](#uint64) |  |  |
-| destination_pod | [tetragon.Pod](#tetragon.Pod) |  |  |
-| details | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessKprobe"></a>
-
-### ProcessKprobe
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| function_name | [string](#string) |  |  |
-| args | [KprobeArgument](#fgs.KprobeArgument) | repeated |  |
-| return | [KprobeArgument](#fgs.KprobeArgument) |  |  |
-| action | [KprobeAction](#fgs.KprobeAction) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessListen"></a>
-
-### ProcessListen
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| ip | [string](#string) |  |  |
-| port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| sock_cookie | [uint64](#uint64) |  |  |
-| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessNetworkBurst"></a>
-
-### ProcessNetworkBurst
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| protocol | [string](#string) |  |  |
-| direction | [string](#string) |  |  |
-| burst_state | [string](#string) |  |  |
-| window_size | [uint64](#uint64) |  |  |
-| hist_avg | [uint64](#uint64) |  |  |
-| hist_trigger | [uint64](#uint64) |  |  |
-| window_avg | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessSockStats"></a>
-
-### ProcessSockStats
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| socket | [SockInfo](#fgs.SockInfo) |  |  |
-| stats | [SocketStats](#fgs.SocketStats) |  |  |
-
-
-
-
-
-
-<a name="fgs.ProcessTracepoint"></a>
-
-### ProcessTracepoint
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| parent | [tetragon.Process](#tetragon.Process) |  |  |
-| subsys | [string](#string) |  |  |
-| event | [string](#string) |  |  |
-| args | [KprobeArgument](#fgs.KprobeArgument) | repeated | TODO: once we implement all we want, rename KprobeArgument to GenericArgument |
-
-
-
-
-
-
-<a name="fgs.RemoveSensorRequest"></a>
-
-### RemoveSensorRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.RemoveSensorResponse"></a>
-
-### RemoveSensorResponse
-
-
-
-
-
-
-
-<a name="fgs.SensorStatus"></a>
-
-### SensorStatus
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| enabled | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="fgs.SetSensorConfigRequest"></a>
-
-### SetSensorConfigRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| cfgkey | [string](#string) |  |  |
-| cfgval | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.SetSensorConfigResponse"></a>
-
-### SetSensorConfigResponse
-
-
-
-
-
-
-
-<a name="fgs.SockInfo"></a>
-
-### SockInfo
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| source_ip | [string](#string) |  |  |
-| source_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| destination_ip | [string](#string) |  |  |
-| destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| sock_cookie | [uint64](#uint64) |  |  |
-| protocol | [SocketProtocol](#fgs.SocketProtocol) |  |  |
-| destination_names | [string](#string) | repeated |  |
-| destination_pod | [tetragon.Pod](#tetragon.Pod) |  |  |
-
-
-
-
-
-
-<a name="fgs.SocketStats"></a>
-
-### SocketStats
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| bytes_sent | [uint64](#uint64) |  |  |
-| bytes_received | [uint64](#uint64) |  |  |
-| segs_in | [uint32](#uint32) |  |  |
-| segs_out | [uint32](#uint32) |  |  |
-| srtt | [uint32](#uint32) |  | TCP specific: |
-| retransmits_bytes | [uint64](#uint64) |  |  |
-| retransmits_segs | [uint32](#uint32) |  |  |
-| to_zero_window | [uint32](#uint32) |  |  |
-| sk_drop | [uint32](#uint32) |  |  |
-| bytes_consumed | [uint64](#uint64) |  | UDP specific: |
-| bytes_submitted | [uint64](#uint64) |  |  |
-| segs_consumed | [uint32](#uint32) |  |  |
-| segs_submitted | [uint32](#uint32) |  |  |
-| skb_consume_misses | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="fgs.StackAddress"></a>
-
-### StackAddress
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [uint64](#uint64) |  |  |
-| symbol | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="fgs.StackTrace"></a>
-
-### StackTrace
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| addresses | [StackAddress](#fgs.StackAddress) | repeated |  |
-
-
-
-
-
-
-<a name="fgs.StackTraceLabel"></a>
-
-### StackTraceLabel
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| count | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="fgs.StackTraceNode"></a>
-
-### StackTraceNode
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [StackAddress](#fgs.StackAddress) |  |  |
-| count | [uint64](#uint64) |  |  |
-| labels | [StackTraceLabel](#fgs.StackTraceLabel) | repeated |  |
-| children | [StackTraceNode](#fgs.StackTraceNode) | repeated |  |
-
-
-
-
-
-
-<a name="fgs.Test"></a>
-
-### Test
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| arg0 | [uint64](#uint64) |  |  |
-| arg1 | [uint64](#uint64) |  |  |
-| arg2 | [uint64](#uint64) |  |  |
-| arg3 | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="fgs.Tls"></a>
-
-### Tls
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [tetragon.Process](#tetragon.Process) |  |  |
-| source_ip | [string](#string) |  |  |
-| source_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| destination_ip | [string](#string) |  |  |
-| destination_port | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| negotiated_version | [string](#string) |  |  |
-| supported_versions | [string](#string) |  |  |
-| sni_type | [string](#string) |  |  |
-| sni_name | [string](#string) |  |  |
-| cipher | [string](#string) |  |  |
-| client_flags | [string](#string) |  |  |
-| server_flags | [string](#string) |  |  |
-| client_version | [string](#string) |  |  |
-| server_version | [string](#string) |  |  |
-| client_alert | [string](#string) |  |  |
-| server_alert | [string](#string) |  |  |
-| client_session | [string](#string) |  |  |
-| server_session | [string](#string) |  |  |
-| certificates | [string](#string) | repeated |  |
-| certificate_error | [TlsCertificateError](#fgs.TlsCertificateError) |  |  |
-| parser_state_next | [uint32](#uint32) |  | **Deprecated.**  |
-| parser_state_needed | [uint32](#uint32) |  | **Deprecated.**  |
-| parser_state_csize | [uint32](#uint32) |  | **Deprecated.**  |
-| parser_state_skblen | [uint32](#uint32) |  | **Deprecated.**  |
-| parser_internal_state | [string](#string) |  |  |
-
-
-
+## tetragon/capabilities.proto
 
 
  
 
 
-<a name="fgs.EventType"></a>
-
-### EventType
-EventType constants are based on the ones from pkg/api/client
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| UNDEF | 0 |  |
-| PROCESS_CONNECT | 1 |  |
-| PROCESS_LISTEN | 4 |  |
-| PROCESS_EXEC | 5 |  |
-| PROCESS_TLS | 6 |  |
-| TLS | 6 | TLS is an alias for PROCESS_TLS |
-| PROCESS_EXIT | 7 |  |
-| PROCESS_CLOSE | 8 |  |
-| PROCESS_ACCEPT | 9 |  |
-| PROCESS_CRED | 10 |  |
-| PROCESS_KPROBE | 13 |  |
-| PROCESS_TRACEPOINT | 14 |  |
-| PROCESS_SOCKSTATS | 15 |  |
-| PROCESS_SOCK_STATS | 15 | TLS is an alias for PROCESS_SOCKSTATS |
-| PROCESS_HTTP | 16 |  |
-| INTERFACE_STATS | 17 |  |
-| PROCESS_DNS | 18 |  |
-| PROCESS_NETWORK_BURST | 19 |  |
-| PROCESS_FILE | 20 |  |
-| PROCESS_IP_ERROR | 21 |  |
-| TEST | 254 |  |
-
-
-
-<a name="fgs.FileAction"></a>
-
-### FileAction
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| FILE_INVALID | 0 |  |
-| FILE_WRITE | 1 |  |
-| FILE_READ | 2 |  |
-| FILE_DELETE | 3 |  |
-| FILE_CREATE | 4 |  |
-
-
-
-<a name="fgs.HealthStatusResult"></a>
-
-### HealthStatusResult
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| HEALTH_STATUS_UNDEF | 0 |  |
-| HEALTH_STATUS_RUNNING | 1 |  |
-| HEALTH_STATUS_STOPPED | 2 |  |
-| HEALTH_STATUS_ERROR | 3 |  |
-
-
-
-<a name="fgs.HealthStatusType"></a>
-
-### HealthStatusType
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| HEALTH_STATUS_TYPE_UNDEF | 0 |  |
-| HEALTH_STATUS_TYPE_STATUS | 1 |  |
-
-
-
-<a name="fgs.KprobeAction"></a>
-
-### KprobeAction
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| KPROBE_ACTION_UNKNOWN | 0 |  |
-| KPROBE_ACTION_POST | 1 |  |
-| KPROBE_ACTION_FOLLOWFD | 2 |  |
-| KPROBE_ACTION_SIGKILL | 3 |  |
-| KPROBE_ACTION_UNFOLLOWFD | 4 |  |
-| KPROBE_ACTION_OVERRIDE | 5 |  |
-| KPROBE_ACTION_COPYFD | 6 |  |
-
-
-
-<a name="fgs.SocketProtocol"></a>
-
-### SocketProtocol
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| UNKNOWN | 0 |  |
-| TCP | 6 |  |
-| UDP | 17 |  |
-
-
-
-<a name="fgs.TlsCertificateError"></a>
-
-### TlsCertificateError
-
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| TLS_CERT_ERROR_UNDEF | 0 |  |
-| TLS_CERT_ERROR_UNKNOWN | 1 |  |
-| TLS_CERT_ERROR_TOO_LARGE | 2 |  |
-| TLS_CERT_ERROR_GET_DATA_HDR | 3 |  |
-| TLS_CERT_ERROR_NO_BUFFER | 4 |  |
-| TLS_CERT_ERROR_COPY | 5 |  |
-| TLS_CERT_ERROR_LENGTH_READ | 6 |  |
-| TLS_CERT_ERROR_CERT_READ | 7 |  |
-| TLS_CERT_ERROR_CERT_PARTIAL | 8 |  |
-| TLS_CERT_ERROR_PARSE_X509 | 9 |  |
-| TLS_CERT_ERROR_MISSING_CODE | 10 |  |
-| TLS_CERT_ERROR_GET_DATA_CERT | 11 |  |
-| TLS_CERT_ERROR_GET_DATA_MORECERT | 12 |  |
-| TLS_CERT_ERROR_COPY_CERT | 13 |  |
-| TLS_CERT_ERROR_COPY_MORE_CERT | 14 |  |
-| TLS_CERT_ERROR_BAD_HEADER | 15 |  |
-| TLS_CERT_ERROR_MISSING_ERROR | 16 |  |
-| TLS_CERT_ERROR_SPURIOUS_CERTS | 17 |  |
-
-
- 
-
- 
-
-
-<a name="fgs.FineGuidanceSensors"></a>
-
-### FineGuidanceSensors
-
-
-| Method Name | Request Type | Response Type | Description |
-| ----------- | ------------ | ------------- | ------------|
-| GetEvents | [GetEventsRequest](#fgs.GetEventsRequest) | [GetEventsResponse](#fgs.GetEventsResponse) stream |  |
-| GetHealth | [GetHealthStatusRequest](#fgs.GetHealthStatusRequest) | [GetHealthStatusResponse](#fgs.GetHealthStatusResponse) |  |
-| AddTracingPolicy | [AddTracingPolicyRequest](#fgs.AddTracingPolicyRequest) | [AddTracingPolicyResponse](#fgs.AddTracingPolicyResponse) |  |
-| RemoveSensor | [RemoveSensorRequest](#fgs.RemoveSensorRequest) | [RemoveSensorResponse](#fgs.RemoveSensorResponse) |  |
-| ListSensors | [ListSensorsRequest](#fgs.ListSensorsRequest) | [ListSensorsResponse](#fgs.ListSensorsResponse) |  |
-| EnableSensor | [EnableSensorRequest](#fgs.EnableSensorRequest) | [EnableSensorResponse](#fgs.EnableSensorResponse) |  |
-| DisableSensor | [DisableSensorRequest](#fgs.DisableSensorRequest) | [DisableSensorResponse](#fgs.DisableSensorResponse) |  |
-| SetSensorConfig | [SetSensorConfigRequest](#fgs.SetSensorConfigRequest) | [SetSensorConfigResponse](#fgs.SetSensorConfigResponse) |  |
-| GetSensorConfig | [GetSensorConfigRequest](#fgs.GetSensorConfigRequest) | [GetSensorConfigResponse](#fgs.GetSensorConfigResponse) |  |
-| GetStackTraceTree | [GetStackTraceTreeRequest](#fgs.GetStackTraceTreeRequest) | [GetStackTraceTreeResponse](#fgs.GetStackTraceTreeResponse) |  |
-| GetVersion | [GetVersionRequest](#fgs.GetVersionRequest) | [GetVersionResponse](#fgs.GetVersionResponse) |  |
-
- 
-
-
-
-<a name="tetragon.proto"></a>
-<p align="right"><a href="#top">Top</a></p>
-
-## tetragon.proto
-
-
-
-<a name="tetragon.AddTracingPolicyRequest"></a>
-
-### AddTracingPolicyRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| yaml | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.AddTracingPolicyResponse"></a>
-
-### AddTracingPolicyResponse
-
-
-
-
-
-
-
-<a name="tetragon.AggregationInfo"></a>
-
-### AggregationInfo
-AggregationInfo contains information about aggregation results.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| count | [uint64](#uint64) |  | Total count of events in this aggregation time window. |
-
-
-
-
-
-
-<a name="tetragon.AggregationOptions"></a>
-
-### AggregationOptions
-AggregationOptions defines configuration options for aggregating events.
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| window_size | [google.protobuf.Duration](#google.protobuf.Duration) |  | Aggregation window size. Defaults to 15 seconds if this field is not set. |
-| channel_buffer_size | [uint64](#uint64) |  | Size of the buffer for the aggregator to receive incoming events. If the buffer becomes full, the aggregator will log a warning and start dropping incoming events. |
-
-
-
-
-
-
-<a name="tetragon.Capabilities"></a>
-
-### Capabilities
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| permitted | [CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-| effective | [CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-| inheritable | [CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon.Container"></a>
-
-### Container
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| image | [Image](#tetragon.Image) |  |  |
-| start_time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Start time of the container. |
-| pid | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  | PID in the container namespace. |
-| maybe_exec_probe | [bool](#bool) |  | If this is set true, it means that the process might have been originated from a Kubernetes exec probe. For this field to be true, the following must be true: 1. The binary field matches the first element of the exec command list for either liveness or readiness probe excluding the basename. For example, &#34;/bin/ls&#34; and &#34;ls&#34; are considered a match. 2. The arguments field exactly matches the rest of the exec command list. |
-
-
-
-
-
-
-<a name="tetragon.DeleteTracingPolicyRequest"></a>
-
-### DeleteTracingPolicyRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| yaml | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.DeleteTracingPolicyResponse"></a>
-
-### DeleteTracingPolicyResponse
-
-
-
-
-
-
-
-<a name="tetragon.DisableSensorRequest"></a>
-
-### DisableSensorRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.DisableSensorResponse"></a>
-
-### DisableSensorResponse
-
-
-
-
-
-
-
-<a name="tetragon.DnsInfo"></a>
-
-### DnsInfo
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| question_types | [uint32](#uint32) | repeated |  |
-| answer_types | [uint32](#uint32) | repeated |  |
-| rcode | [int32](#int32) |  |  |
-| names | [string](#string) | repeated |  |
-| ips | [string](#string) | repeated |  |
-| query | [string](#string) |  |  |
-| response | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="tetragon.EnableSensorRequest"></a>
-
-### EnableSensorRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.EnableSensorResponse"></a>
-
-### EnableSensorResponse
-
-
-
-
-
-
-
-<a name="tetragon.Filter"></a>
-
-### Filter
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| binary_regex | [string](#string) | repeated |  |
-| namespace | [string](#string) | repeated |  |
-| health_check | [google.protobuf.BoolValue](#google.protobuf.BoolValue) |  |  |
-| pid | [uint32](#uint32) | repeated |  |
-| pid_set | [uint32](#uint32) | repeated |  |
-| event_set | [EventType](#tetragon.EventType) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon.GetEventsRequest"></a>
-
-### GetEventsRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| allow_list | [Filter](#tetragon.Filter) | repeated | allow_list specifies a list of filters to apply to only return certain events. If multiple filters are specified, at least one of them has to match for an event to be included in the results. |
-| deny_list | [Filter](#tetragon.Filter) | repeated | deny_list specifies a list of filters to apply to exclude certain events from the results. If multiple filters are specified, at least one of them has to match for an event to be excluded. If both allow_list and deny_list are specified, the results contain the set difference allow_list - deny_list. |
-| aggregation_options | [AggregationOptions](#tetragon.AggregationOptions) |  | aggregation_options configures aggregation options for this request. If this field is not set, responses will not be aggregated. Note that currently only process_accept and process_connect events are aggregated. Other events remain unaggregated. |
-
-
-
-
-
-
-<a name="tetragon.GetEventsResponse"></a>
-
-### GetEventsResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process_exec | [ProcessExec](#tetragon.ProcessExec) |  |  |
-| process_exit | [ProcessExit](#tetragon.ProcessExit) |  |  |
-| process_kprobe | [ProcessKprobe](#tetragon.ProcessKprobe) |  |  |
-| process_tracepoint | [ProcessTracepoint](#tetragon.ProcessTracepoint) |  |  |
-| process_dns | [ProcessDns](#tetragon.ProcessDns) |  |  |
-| test | [Test](#tetragon.Test) |  |  |
-| node_name | [string](#string) |  | Name of the node where this event was observed. |
-| time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  | Timestamp at which this event was observed. For an aggregated response, this field to set to the timestamp at which the event was observed for the first time in a given aggregation time window. |
-| aggregation_info | [AggregationInfo](#tetragon.AggregationInfo) |  | aggregation_info contains information about aggregation results. This field is set only for aggregated responses. |
-
-
-
-
-
-
-<a name="tetragon.GetHealthStatusRequest"></a>
-
-### GetHealthStatusRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| event_set | [HealthStatusType](#tetragon.HealthStatusType) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon.GetHealthStatusResponse"></a>
-
-### GetHealthStatusResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| health_status | [HealthStatus](#tetragon.HealthStatus) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon.GetSensorConfigRequest"></a>
-
-### GetSensorConfigRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| cfgkey | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.GetSensorConfigResponse"></a>
-
-### GetSensorConfigResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| cfgval | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.GetStackTraceTreeRequest"></a>
-
-### GetStackTraceTreeRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.GetStackTraceTreeResponse"></a>
-
-### GetStackTraceTreeResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| root | [StackTraceNode](#tetragon.StackTraceNode) |  |  |
-
-
-
-
-
-
-<a name="tetragon.GetVersionRequest"></a>
-
-### GetVersionRequest
-
-
-
-
-
-
-
-<a name="tetragon.GetVersionResponse"></a>
-
-### GetVersionResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| version | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.HealthStatus"></a>
-
-### HealthStatus
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| event | [HealthStatusType](#tetragon.HealthStatusType) |  |  |
-| status | [HealthStatusResult](#tetragon.HealthStatusResult) |  |  |
-| details | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.Image"></a>
-
-### Image
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| id | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.KprobeArgument"></a>
-
-### KprobeArgument
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| string_arg | [string](#string) |  |  |
-| int_arg | [int32](#int32) |  |  |
-| skb_arg | [KprobeSkb](#tetragon.KprobeSkb) |  |  |
-| size_arg | [uint64](#uint64) |  |  |
-| bytes_arg | [bytes](#bytes) |  |  |
-| path_arg | [KprobePath](#tetragon.KprobePath) |  |  |
-| file_arg | [KprobeFile](#tetragon.KprobeFile) |  |  |
-| truncated_bytes_arg | [KprobeTruncatedBytes](#tetragon.KprobeTruncatedBytes) |  |  |
-| sock_arg | [KprobeSock](#tetragon.KprobeSock) |  |  |
-| cred_arg | [KprobeCred](#tetragon.KprobeCred) |  |  |
-| long_arg | [int64](#int64) |  |  |
-
-
-
-
-
-
-<a name="tetragon.KprobeCred"></a>
-
-### KprobeCred
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| permitted | [CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-| effective | [CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-| inheritable | [CapabilitiesType](#tetragon.CapabilitiesType) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon.KprobeFile"></a>
-
-### KprobeFile
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| mount | [string](#string) |  |  |
-| path | [string](#string) |  |  |
-| flags | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.KprobePath"></a>
-
-### KprobePath
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| mount | [string](#string) |  |  |
-| path | [string](#string) |  |  |
-| flags | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.KprobeSkb"></a>
-
-### KprobeSkb
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| hash | [uint32](#uint32) |  |  |
-| len | [uint32](#uint32) |  |  |
-| priority | [uint32](#uint32) |  |  |
-| mark | [uint32](#uint32) |  |  |
-| saddr | [string](#string) |  |  |
-| daddr | [string](#string) |  |  |
-| sport | [uint32](#uint32) |  |  |
-| dport | [uint32](#uint32) |  |  |
-| proto | [uint32](#uint32) |  |  |
-| sec_path_len | [uint32](#uint32) |  |  |
-| sec_path_olen | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="tetragon.KprobeSock"></a>
-
-### KprobeSock
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| family | [string](#string) |  |  |
-| type | [string](#string) |  |  |
-| protocol | [string](#string) |  |  |
-| mark | [uint32](#uint32) |  |  |
-| priority | [uint32](#uint32) |  |  |
-| saddr | [string](#string) |  |  |
-| daddr | [string](#string) |  |  |
-| sport | [uint32](#uint32) |  |  |
-| dport | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="tetragon.KprobeTruncatedBytes"></a>
-
-### KprobeTruncatedBytes
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| bytes_arg | [bytes](#bytes) |  |  |
-| orig_size | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="tetragon.ListSensorsRequest"></a>
-
-### ListSensorsRequest
-
-
-
-
-
-
-
-<a name="tetragon.ListSensorsResponse"></a>
-
-### ListSensorsResponse
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| sensors | [SensorStatus](#tetragon.SensorStatus) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon.Namespace"></a>
-
-### Namespace
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| inum | [uint32](#uint32) |  |  |
-| is_host | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="tetragon.Namespaces"></a>
-
-### Namespaces
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| uts | [Namespace](#tetragon.Namespace) |  |  |
-| ipc | [Namespace](#tetragon.Namespace) |  |  |
-| mnt | [Namespace](#tetragon.Namespace) |  |  |
-| pid | [Namespace](#tetragon.Namespace) |  |  |
-| pid_for_children | [Namespace](#tetragon.Namespace) |  |  |
-| net | [Namespace](#tetragon.Namespace) |  |  |
-| time | [Namespace](#tetragon.Namespace) |  |  |
-| time_for_children | [Namespace](#tetragon.Namespace) |  |  |
-| cgroup | [Namespace](#tetragon.Namespace) |  |  |
-| user | [Namespace](#tetragon.Namespace) |  |  |
-
-
-
-
-
-
-<a name="tetragon.Pod"></a>
-
-### Pod
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| namespace | [string](#string) |  |  |
-| name | [string](#string) |  |  |
-| labels | [string](#string) | repeated |  |
-| container | [Container](#tetragon.Container) |  |  |
-
-
-
-
-
-
-<a name="tetragon.Process"></a>
-
-### Process
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| exec_id | [string](#string) |  | Exec ID uniquely identifies the process over time across all the nodes in the cluster. |
-| pid | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| uid | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| cwd | [string](#string) |  |  |
-| binary | [string](#string) |  |  |
-| arguments | [string](#string) |  |  |
-| flags | [string](#string) |  |  |
-| start_time | [google.protobuf.Timestamp](#google.protobuf.Timestamp) |  |  |
-| auid | [google.protobuf.UInt32Value](#google.protobuf.UInt32Value) |  |  |
-| pod | [Pod](#tetragon.Pod) |  |  |
-| docker | [string](#string) |  |  |
-| parent_exec_id | [string](#string) |  |  |
-| refcnt | [uint32](#uint32) |  |  |
-| cap | [Capabilities](#tetragon.Capabilities) |  |  |
-| ns | [Namespaces](#tetragon.Namespaces) |  |  |
-
-
-
-
-
-
-<a name="tetragon.ProcessDns"></a>
-
-### ProcessDns
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [Process](#tetragon.Process) |  |  |
-| dns | [DnsInfo](#tetragon.DnsInfo) |  |  |
-| destination_names | [string](#string) | repeated | **Deprecated.** deprecated in favor of socket.destination_names. |
-| destination_pod | [Pod](#tetragon.Pod) |  |  |
-
-
-
-
-
-
-<a name="tetragon.ProcessExec"></a>
-
-### ProcessExec
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [Process](#tetragon.Process) |  |  |
-| parent | [Process](#tetragon.Process) |  |  |
-| ancestors | [Process](#tetragon.Process) | repeated | Ancestors of the process beyond the immediate parent. |
-
-
-
-
-
-
-<a name="tetragon.ProcessExit"></a>
-
-### ProcessExit
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [Process](#tetragon.Process) |  |  |
-| parent | [Process](#tetragon.Process) |  |  |
-| signal | [string](#string) |  |  |
-| status | [uint32](#uint32) |  |  |
-
-
-
-
-
-
-<a name="tetragon.ProcessKprobe"></a>
-
-### ProcessKprobe
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [Process](#tetragon.Process) |  |  |
-| parent | [Process](#tetragon.Process) |  |  |
-| function_name | [string](#string) |  |  |
-| args | [KprobeArgument](#tetragon.KprobeArgument) | repeated |  |
-| return | [KprobeArgument](#tetragon.KprobeArgument) |  |  |
-| action | [KprobeAction](#tetragon.KprobeAction) |  |  |
-
-
-
-
-
-
-<a name="tetragon.ProcessTracepoint"></a>
-
-### ProcessTracepoint
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| process | [Process](#tetragon.Process) |  |  |
-| parent | [Process](#tetragon.Process) |  |  |
-| subsys | [string](#string) |  |  |
-| event | [string](#string) |  |  |
-| args | [KprobeArgument](#tetragon.KprobeArgument) | repeated | TODO: once we implement all we want, rename KprobeArgument to GenericArgument |
-
-
-
-
-
-
-<a name="tetragon.RemoveSensorRequest"></a>
-
-### RemoveSensorRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.RemoveSensorResponse"></a>
-
-### RemoveSensorResponse
-
-
-
-
-
-
-
-<a name="tetragon.SensorStatus"></a>
-
-### SensorStatus
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| enabled | [bool](#bool) |  |  |
-
-
-
-
-
-
-<a name="tetragon.SetSensorConfigRequest"></a>
-
-### SetSensorConfigRequest
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| name | [string](#string) |  |  |
-| cfgkey | [string](#string) |  |  |
-| cfgval | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.SetSensorConfigResponse"></a>
-
-### SetSensorConfigResponse
-
-
-
-
-
-
-
-<a name="tetragon.StackAddress"></a>
-
-### StackAddress
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [uint64](#uint64) |  |  |
-| symbol | [string](#string) |  |  |
-
-
-
-
-
-
-<a name="tetragon.StackTrace"></a>
-
-### StackTrace
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| addresses | [StackAddress](#tetragon.StackAddress) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon.StackTraceLabel"></a>
-
-### StackTraceLabel
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| key | [string](#string) |  |  |
-| count | [uint64](#uint64) |  |  |
-
-
-
-
-
-
-<a name="tetragon.StackTraceNode"></a>
-
-### StackTraceNode
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| address | [StackAddress](#tetragon.StackAddress) |  |  |
-| count | [uint64](#uint64) |  |  |
-| labels | [StackTraceLabel](#tetragon.StackTraceLabel) | repeated |  |
-| children | [StackTraceNode](#tetragon.StackTraceNode) | repeated |  |
-
-
-
-
-
-
-<a name="tetragon.Test"></a>
-
-### Test
-
-
-
-| Field | Type | Label | Description |
-| ----- | ---- | ----- | ----------- |
-| arg0 | [uint64](#uint64) |  |  |
-| arg1 | [uint64](#uint64) |  |  |
-| arg2 | [uint64](#uint64) |  |  |
-| arg3 | [uint64](#uint64) |  |  |
-
-
-
-
-
- 
-
-
-<a name="tetragon.CapabilitiesType"></a>
+<a name="tetragon-CapabilitiesType"></a>
 
 ### CapabilitiesType
 
@@ -2479,25 +166,443 @@ AggregationOptions defines configuration options for aggregating events.
 | CAP_CHECKPOINT_RESTORE | 40 | Allow writing to ns_last_pid |
 
 
+ 
 
-<a name="tetragon.EventType"></a>
+ 
 
-### EventType
-EventType constants are based on the ones from pkg/api/client
-
-| Name | Number | Description |
-| ---- | ------ | ----------- |
-| UNDEF | 0 |  |
-| PROCESS_EXEC | 5 |  |
-| PROCESS_EXIT | 7 |  |
-| PROCESS_KPROBE | 13 |  |
-| PROCESS_TRACEPOINT | 14 |  |
-| PROCESS_DNS | 18 |  |
-| TEST | 254 |  |
+ 
 
 
 
-<a name="tetragon.HealthStatusResult"></a>
+<a name="tetragon_tetragon-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/tetragon.proto
+
+
+
+<a name="tetragon-Capabilities"></a>
+
+### Capabilities
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| permitted | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
+| effective | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
+| inheritable | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-Container"></a>
+
+### Container
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| image | [Image](#tetragon-Image) |  |  |
+| start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Start time of the container. |
+| pid | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  | PID in the container namespace. |
+| maybe_exec_probe | [bool](#bool) |  | If this is set true, it means that the process might have been originated from a Kubernetes exec probe. For this field to be true, the following must be true: 1. The binary field matches the first element of the exec command list for either liveness or readiness probe excluding the basename. For example, &#34;/bin/ls&#34; and &#34;ls&#34; are considered a match. 2. The arguments field exactly matches the rest of the exec command list. |
+
+
+
+
+
+
+<a name="tetragon-GetHealthStatusRequest"></a>
+
+### GetHealthStatusRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| event_set | [HealthStatusType](#tetragon-HealthStatusType) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-GetHealthStatusResponse"></a>
+
+### GetHealthStatusResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| health_status | [HealthStatus](#tetragon-HealthStatus) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-HealthStatus"></a>
+
+### HealthStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| event | [HealthStatusType](#tetragon-HealthStatusType) |  |  |
+| status | [HealthStatusResult](#tetragon-HealthStatusResult) |  |  |
+| details | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-Image"></a>
+
+### Image
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| id | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-KprobeArgument"></a>
+
+### KprobeArgument
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| string_arg | [string](#string) |  |  |
+| int_arg | [int32](#int32) |  |  |
+| skb_arg | [KprobeSkb](#tetragon-KprobeSkb) |  |  |
+| size_arg | [uint64](#uint64) |  |  |
+| bytes_arg | [bytes](#bytes) |  |  |
+| path_arg | [KprobePath](#tetragon-KprobePath) |  |  |
+| file_arg | [KprobeFile](#tetragon-KprobeFile) |  |  |
+| truncated_bytes_arg | [KprobeTruncatedBytes](#tetragon-KprobeTruncatedBytes) |  |  |
+| sock_arg | [KprobeSock](#tetragon-KprobeSock) |  |  |
+| cred_arg | [KprobeCred](#tetragon-KprobeCred) |  |  |
+| long_arg | [int64](#int64) |  |  |
+
+
+
+
+
+
+<a name="tetragon-KprobeCred"></a>
+
+### KprobeCred
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| permitted | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
+| effective | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
+| inheritable | [CapabilitiesType](#tetragon-CapabilitiesType) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-KprobeFile"></a>
+
+### KprobeFile
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mount | [string](#string) |  |  |
+| path | [string](#string) |  |  |
+| flags | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-KprobePath"></a>
+
+### KprobePath
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| mount | [string](#string) |  |  |
+| path | [string](#string) |  |  |
+| flags | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-KprobeSkb"></a>
+
+### KprobeSkb
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| hash | [uint32](#uint32) |  |  |
+| len | [uint32](#uint32) |  |  |
+| priority | [uint32](#uint32) |  |  |
+| mark | [uint32](#uint32) |  |  |
+| saddr | [string](#string) |  |  |
+| daddr | [string](#string) |  |  |
+| sport | [uint32](#uint32) |  |  |
+| dport | [uint32](#uint32) |  |  |
+| proto | [uint32](#uint32) |  |  |
+| sec_path_len | [uint32](#uint32) |  |  |
+| sec_path_olen | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="tetragon-KprobeSock"></a>
+
+### KprobeSock
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| family | [string](#string) |  |  |
+| type | [string](#string) |  |  |
+| protocol | [string](#string) |  |  |
+| mark | [uint32](#uint32) |  |  |
+| priority | [uint32](#uint32) |  |  |
+| saddr | [string](#string) |  |  |
+| daddr | [string](#string) |  |  |
+| sport | [uint32](#uint32) |  |  |
+| dport | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="tetragon-KprobeTruncatedBytes"></a>
+
+### KprobeTruncatedBytes
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bytes_arg | [bytes](#bytes) |  |  |
+| orig_size | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="tetragon-Namespace"></a>
+
+### Namespace
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| inum | [uint32](#uint32) |  |  |
+| is_host | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="tetragon-Namespaces"></a>
+
+### Namespaces
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| uts | [Namespace](#tetragon-Namespace) |  |  |
+| ipc | [Namespace](#tetragon-Namespace) |  |  |
+| mnt | [Namespace](#tetragon-Namespace) |  |  |
+| pid | [Namespace](#tetragon-Namespace) |  |  |
+| pid_for_children | [Namespace](#tetragon-Namespace) |  |  |
+| net | [Namespace](#tetragon-Namespace) |  |  |
+| time | [Namespace](#tetragon-Namespace) |  |  |
+| time_for_children | [Namespace](#tetragon-Namespace) |  |  |
+| cgroup | [Namespace](#tetragon-Namespace) |  |  |
+| user | [Namespace](#tetragon-Namespace) |  |  |
+
+
+
+
+
+
+<a name="tetragon-Pod"></a>
+
+### Pod
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| namespace | [string](#string) |  |  |
+| name | [string](#string) |  |  |
+| labels | [string](#string) | repeated |  |
+| container | [Container](#tetragon-Container) |  |  |
+
+
+
+
+
+
+<a name="tetragon-Process"></a>
+
+### Process
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| exec_id | [string](#string) |  | Exec ID uniquely identifies the process over time across all the nodes in the cluster. |
+| pid | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| uid | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| cwd | [string](#string) |  |  |
+| binary | [string](#string) |  |  |
+| arguments | [string](#string) |  |  |
+| flags | [string](#string) |  |  |
+| start_time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| auid | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| pod | [Pod](#tetragon-Pod) |  |  |
+| docker | [string](#string) |  |  |
+| parent_exec_id | [string](#string) |  |  |
+| refcnt | [uint32](#uint32) |  |  |
+| cap | [Capabilities](#tetragon-Capabilities) |  |  |
+| ns | [Namespaces](#tetragon-Namespaces) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessExec"></a>
+
+### ProcessExec
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| ancestors | [Process](#tetragon-Process) | repeated | Ancestors of the process beyond the immediate parent. |
+
+
+
+
+
+
+<a name="tetragon-ProcessExit"></a>
+
+### ProcessExit
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| signal | [string](#string) |  |  |
+| status | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessKprobe"></a>
+
+### ProcessKprobe
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| function_name | [string](#string) |  |  |
+| args | [KprobeArgument](#tetragon-KprobeArgument) | repeated |  |
+| return | [KprobeArgument](#tetragon-KprobeArgument) |  |  |
+| action | [KprobeAction](#tetragon-KprobeAction) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessTracepoint"></a>
+
+### ProcessTracepoint
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| subsys | [string](#string) |  |  |
+| event | [string](#string) |  |  |
+| args | [KprobeArgument](#tetragon-KprobeArgument) | repeated | TODO: once we implement all we want, rename KprobeArgument to GenericArgument |
+
+
+
+
+
+
+<a name="tetragon-Test"></a>
+
+### Test
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| arg0 | [uint64](#uint64) |  |  |
+| arg1 | [uint64](#uint64) |  |  |
+| arg2 | [uint64](#uint64) |  |  |
+| arg3 | [uint64](#uint64) |  |  |
+
+
+
+
+
+ 
+
+
+<a name="tetragon-HealthStatusResult"></a>
 
 ### HealthStatusResult
 
@@ -2511,7 +616,7 @@ EventType constants are based on the ones from pkg/api/client
 
 
 
-<a name="tetragon.HealthStatusType"></a>
+<a name="tetragon-HealthStatusType"></a>
 
 ### HealthStatusType
 
@@ -2523,7 +628,7 @@ EventType constants are based on the ones from pkg/api/client
 
 
 
-<a name="tetragon.KprobeAction"></a>
+<a name="tetragon-KprobeAction"></a>
 
 ### KprobeAction
 
@@ -2543,25 +648,1106 @@ EventType constants are based on the ones from pkg/api/client
 
  
 
+ 
 
-<a name="tetragon.FineGuidanceSensors"></a>
+
+
+<a name="tetragon_stack-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/stack.proto
+
+
+
+<a name="tetragon-StackAddress"></a>
+
+### StackAddress
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [uint64](#uint64) |  |  |
+| symbol | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-StackTrace"></a>
+
+### StackTrace
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| addresses | [StackAddress](#tetragon-StackAddress) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-StackTraceLabel"></a>
+
+### StackTraceLabel
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| key | [string](#string) |  |  |
+| count | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="tetragon-StackTraceNode"></a>
+
+### StackTraceNode
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| address | [StackAddress](#tetragon-StackAddress) |  |  |
+| count | [uint64](#uint64) |  |  |
+| labels | [StackTraceLabel](#tetragon-StackTraceLabel) | repeated |  |
+| children | [StackTraceNode](#tetragon-StackTraceNode) | repeated |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="tetragon_sensors-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/sensors.proto
+
+
+
+<a name="tetragon-AddTracingPolicyRequest"></a>
+
+### AddTracingPolicyRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| yaml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-AddTracingPolicyResponse"></a>
+
+### AddTracingPolicyResponse
+
+
+
+
+
+
+
+<a name="tetragon-DeleteTracingPolicyRequest"></a>
+
+### DeleteTracingPolicyRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| yaml | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-DeleteTracingPolicyResponse"></a>
+
+### DeleteTracingPolicyResponse
+
+
+
+
+
+
+
+<a name="tetragon-DisableSensorRequest"></a>
+
+### DisableSensorRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-DisableSensorResponse"></a>
+
+### DisableSensorResponse
+
+
+
+
+
+
+
+<a name="tetragon-EnableSensorRequest"></a>
+
+### EnableSensorRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-EnableSensorResponse"></a>
+
+### EnableSensorResponse
+
+
+
+
+
+
+
+<a name="tetragon-GetSensorConfigRequest"></a>
+
+### GetSensorConfigRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| cfgkey | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-GetSensorConfigResponse"></a>
+
+### GetSensorConfigResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| cfgval | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-GetStackTraceTreeRequest"></a>
+
+### GetStackTraceTreeRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-GetStackTraceTreeResponse"></a>
+
+### GetStackTraceTreeResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| root | [StackTraceNode](#tetragon-StackTraceNode) |  |  |
+
+
+
+
+
+
+<a name="tetragon-GetVersionRequest"></a>
+
+### GetVersionRequest
+
+
+
+
+
+
+
+<a name="tetragon-GetVersionResponse"></a>
+
+### GetVersionResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| version | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ListSensorsRequest"></a>
+
+### ListSensorsRequest
+
+
+
+
+
+
+
+<a name="tetragon-ListSensorsResponse"></a>
+
+### ListSensorsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| sensors | [SensorStatus](#tetragon-SensorStatus) | repeated |  |
+
+
+
+
+
+
+<a name="tetragon-RemoveSensorRequest"></a>
+
+### RemoveSensorRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-RemoveSensorResponse"></a>
+
+### RemoveSensorResponse
+
+
+
+
+
+
+
+<a name="tetragon-SensorStatus"></a>
+
+### SensorStatus
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| enabled | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="tetragon-SetSensorConfigRequest"></a>
+
+### SetSensorConfigRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| cfgkey | [string](#string) |  |  |
+| cfgval | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-SetSensorConfigResponse"></a>
+
+### SetSensorConfigResponse
+
+
+
+
+
+
+ 
+
+ 
+
+ 
+
+
+<a name="tetragon-FineGuidanceSensors"></a>
 
 ### FineGuidanceSensors
 
 
 | Method Name | Request Type | Response Type | Description |
 | ----------- | ------------ | ------------- | ------------|
-| GetEvents | [GetEventsRequest](#tetragon.GetEventsRequest) | [GetEventsResponse](#tetragon.GetEventsResponse) stream |  |
-| GetHealth | [GetHealthStatusRequest](#tetragon.GetHealthStatusRequest) | [GetHealthStatusResponse](#tetragon.GetHealthStatusResponse) |  |
-| AddTracingPolicy | [AddTracingPolicyRequest](#tetragon.AddTracingPolicyRequest) | [AddTracingPolicyResponse](#tetragon.AddTracingPolicyResponse) |  |
-| RemoveSensor | [RemoveSensorRequest](#tetragon.RemoveSensorRequest) | [RemoveSensorResponse](#tetragon.RemoveSensorResponse) |  |
-| ListSensors | [ListSensorsRequest](#tetragon.ListSensorsRequest) | [ListSensorsResponse](#tetragon.ListSensorsResponse) |  |
-| EnableSensor | [EnableSensorRequest](#tetragon.EnableSensorRequest) | [EnableSensorResponse](#tetragon.EnableSensorResponse) |  |
-| DisableSensor | [DisableSensorRequest](#tetragon.DisableSensorRequest) | [DisableSensorResponse](#tetragon.DisableSensorResponse) |  |
-| SetSensorConfig | [SetSensorConfigRequest](#tetragon.SetSensorConfigRequest) | [SetSensorConfigResponse](#tetragon.SetSensorConfigResponse) |  |
-| GetSensorConfig | [GetSensorConfigRequest](#tetragon.GetSensorConfigRequest) | [GetSensorConfigResponse](#tetragon.GetSensorConfigResponse) |  |
-| GetStackTraceTree | [GetStackTraceTreeRequest](#tetragon.GetStackTraceTreeRequest) | [GetStackTraceTreeResponse](#tetragon.GetStackTraceTreeResponse) |  |
-| GetVersion | [GetVersionRequest](#tetragon.GetVersionRequest) | [GetVersionResponse](#tetragon.GetVersionResponse) |  |
+| GetEvents | [GetEventsRequest](#tetragon-GetEventsRequest) | [GetEventsResponse](#tetragon-GetEventsResponse) stream |  |
+| GetHealth | [GetHealthStatusRequest](#tetragon-GetHealthStatusRequest) | [GetHealthStatusResponse](#tetragon-GetHealthStatusResponse) |  |
+| AddTracingPolicy | [AddTracingPolicyRequest](#tetragon-AddTracingPolicyRequest) | [AddTracingPolicyResponse](#tetragon-AddTracingPolicyResponse) |  |
+| RemoveSensor | [RemoveSensorRequest](#tetragon-RemoveSensorRequest) | [RemoveSensorResponse](#tetragon-RemoveSensorResponse) |  |
+| ListSensors | [ListSensorsRequest](#tetragon-ListSensorsRequest) | [ListSensorsResponse](#tetragon-ListSensorsResponse) |  |
+| EnableSensor | [EnableSensorRequest](#tetragon-EnableSensorRequest) | [EnableSensorResponse](#tetragon-EnableSensorResponse) |  |
+| DisableSensor | [DisableSensorRequest](#tetragon-DisableSensorRequest) | [DisableSensorResponse](#tetragon-DisableSensorResponse) |  |
+| SetSensorConfig | [SetSensorConfigRequest](#tetragon-SetSensorConfigRequest) | [SetSensorConfigResponse](#tetragon-SetSensorConfigResponse) |  |
+| GetSensorConfig | [GetSensorConfigRequest](#tetragon-GetSensorConfigRequest) | [GetSensorConfigResponse](#tetragon-GetSensorConfigResponse) |  |
+| GetStackTraceTree | [GetStackTraceTreeRequest](#tetragon-GetStackTraceTreeRequest) | [GetStackTraceTreeResponse](#tetragon-GetStackTraceTreeResponse) |  |
+| GetVersion | [GetVersionRequest](#tetragon-GetVersionRequest) | [GetVersionResponse](#tetragon-GetVersionResponse) |  |
+
+ 
+
+
+
+<a name="tetragon_events-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/events.proto
+
+
+
+<a name="tetragon-AggregationInfo"></a>
+
+### AggregationInfo
+AggregationInfo contains information about aggregation results.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| count | [uint64](#uint64) |  | Total count of events in this aggregation time window. |
+
+
+
+
+
+
+<a name="tetragon-AggregationOptions"></a>
+
+### AggregationOptions
+AggregationOptions defines configuration options for aggregating events.
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| window_size | [google.protobuf.Duration](#google-protobuf-Duration) |  | Aggregation window size. Defaults to 15 seconds if this field is not set. |
+| channel_buffer_size | [uint64](#uint64) |  | Size of the buffer for the aggregator to receive incoming events. If the buffer becomes full, the aggregator will log a warning and start dropping incoming events. |
+
+
+
+
+
+
+<a name="tetragon-Filter"></a>
+
+### Filter
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| binary_regex | [string](#string) | repeated |  |
+| namespace | [string](#string) | repeated |  |
+| health_check | [google.protobuf.BoolValue](#google-protobuf-BoolValue) |  |  |
+| pid | [uint32](#uint32) | repeated |  |
+| pid_set | [uint32](#uint32) | repeated |  |
+| event_set | [EventType](#tetragon-EventType) | repeated |  |
+| pod_regex | [string](#string) | repeated | A series of regexes for filtering over pod name |
+
+
+
+
+
+
+<a name="tetragon-GetEventsRequest"></a>
+
+### GetEventsRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| allow_list | [Filter](#tetragon-Filter) | repeated | allow_list specifies a list of filters to apply to only return certain events. If multiple filters are specified, at least one of them has to match for an event to be included in the results. |
+| deny_list | [Filter](#tetragon-Filter) | repeated | deny_list specifies a list of filters to apply to exclude certain events from the results. If multiple filters are specified, at least one of them has to match for an event to be excluded.
+
+If both allow_list and deny_list are specified, the results contain the set difference allow_list - deny_list. |
+| aggregation_options | [AggregationOptions](#tetragon-AggregationOptions) |  | aggregation_options configures aggregation options for this request. If this field is not set, responses will not be aggregated.
+
+Note that currently only process_accept and process_connect events are aggregated. Other events remain unaggregated. |
+
+
+
+
+
+
+<a name="tetragon-GetEventsResponse"></a>
+
+### GetEventsResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process_exec | [ProcessExec](#tetragon-ProcessExec) |  |  |
+| process_connect | [ProcessConnect](#tetragon-ProcessConnect) |  |  |
+| process_listen | [ProcessListen](#tetragon-ProcessListen) |  |  |
+| tls | [Tls](#tetragon-Tls) |  |  |
+| process_exit | [ProcessExit](#tetragon-ProcessExit) |  |  |
+| process_close | [ProcessClose](#tetragon-ProcessClose) |  |  |
+| process_accept | [ProcessAccept](#tetragon-ProcessAccept) |  |  |
+| process_kprobe | [ProcessKprobe](#tetragon-ProcessKprobe) |  |  |
+| process_tracepoint | [ProcessTracepoint](#tetragon-ProcessTracepoint) |  |  |
+| process_sock_stats | [ProcessSockStats](#tetragon-ProcessSockStats) |  |  |
+| process_http | [ProcessHttp](#tetragon-ProcessHttp) |  |  |
+| interface_stats | [InterfaceStats](#tetragon-InterfaceStats) |  |  |
+| process_dns | [ProcessDns](#tetragon-ProcessDns) |  |  |
+| process_network_burst | [ProcessNetworkBurst](#tetragon-ProcessNetworkBurst) |  |  |
+| process_file | [ProcessFile](#tetragon-ProcessFile) |  |  |
+| process_ip_error | [ProcessIpError](#tetragon-ProcessIpError) |  |  |
+| test | [Test](#tetragon-Test) |  |  |
+| node_name | [string](#string) |  | Name of the node where this event was observed. |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  | Timestamp at which this event was observed.
+
+For an aggregated response, this field to set to the timestamp at which the event was observed for the first time in a given aggregation time window. |
+| aggregation_info | [AggregationInfo](#tetragon-AggregationInfo) |  | aggregation_info contains information about aggregation results. This field is set only for aggregated responses. |
+
+
+
+
+
+ 
+
+
+<a name="tetragon-EventType"></a>
+
+### EventType
+EventType constants are based on the ones from pkg/api/client
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNDEF | 0 |  |
+| PROCESS_CONNECT | 1 |  |
+| PROCESS_LISTEN | 4 |  |
+| PROCESS_EXEC | 5 |  |
+| PROCESS_TLS | 6 |  |
+| TLS | 6 | TLS is an alias for PROCESS_TLS |
+| PROCESS_EXIT | 7 |  |
+| PROCESS_CLOSE | 8 |  |
+| PROCESS_ACCEPT | 9 |  |
+| PROCESS_KPROBE | 13 |  |
+| PROCESS_TRACEPOINT | 14 |  |
+| PROCESS_SOCKSTATS | 15 |  |
+| PROCESS_SOCK_STATS | 15 | TLS is an alias for PROCESS_SOCKSTATS |
+| PROCESS_HTTP | 16 |  |
+| INTERFACE_STATS | 17 |  |
+| PROCESS_DNS | 18 |  |
+| PROCESS_NETWORK_BURST | 19 |  |
+| PROCESS_FILE | 20 |  |
+| PROCESS_IP_ERROR | 21 |  |
+| TEST | 254 |  |
+
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="tetragon_fgs-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/fgs.proto
+
+
+
+<a name="tetragon-FileArgument"></a>
+
+### FileArgument
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| generic_arg | [GenericFileArg](#tetragon-GenericFileArg) |  |  |
+
+
+
+
+
+
+<a name="tetragon-GenericFileArg"></a>
+
+### GenericFileArg
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| filename | [string](#string) |  |  |
+| inode_number | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="tetragon-HttpHeader"></a>
+
+### HttpHeader
+HTTP PARSER
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| name | [string](#string) |  |  |
+| value | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-HttpInfo"></a>
+
+### HttpInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| request | [HttpRequest](#tetragon-HttpRequest) |  |  |
+| response | [HttpResponse](#tetragon-HttpResponse) |  |  |
+| latency | [google.protobuf.Duration](#google-protobuf-Duration) |  |  |
+
+
+
+
+
+
+<a name="tetragon-HttpRequest"></a>
+
+### HttpRequest
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| timestamp | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| method | [string](#string) |  |  |
+| uri | [string](#string) |  |  |
+| version | [string](#string) |  |  |
+| host | [string](#string) |  |  |
+| agent | [string](#string) |  |  |
+| content_length | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| headers | [HttpHeader](#tetragon-HttpHeader) | repeated |  |
+| flags | [string](#string) |  |  |
+| transfer_encoding | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-HttpResponse"></a>
+
+### HttpResponse
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| timestamp | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| version | [string](#string) |  |  |
+| code | [uint32](#uint32) |  |  |
+| reason | [string](#string) |  |  |
+| content_length | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| headers | [HttpHeader](#tetragon-HttpHeader) | repeated |  |
+| flags | [string](#string) |  |  |
+| transfer_encoding | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-InterfaceStats"></a>
+
+### InterfaceStats
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| interface_name | [string](#string) |  |  |
+| interface_ifindex | [uint32](#uint32) |  |  |
+| bytes_sent | [uint64](#uint64) |  |  |
+| bytes_received | [uint64](#uint64) |  |  |
+| packets_sent | [uint64](#uint64) |  |  |
+| packets_received | [uint64](#uint64) |  |  |
+| tx_errors | [uint64](#uint64) |  |  |
+| rx_errors | [uint64](#uint64) |  |  |
+| tx_drops | [uint64](#uint64) |  |  |
+| rx_drops | [uint64](#uint64) |  |  |
+| pod | [Pod](#tetragon-Pod) |  |  |
+| netns | [string](#string) |  |  |
+| container_name | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessAccept"></a>
+
+### ProcessAccept
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| source_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_ip | [string](#string) |  |  |
+| destination_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| destination_pod | [Pod](#tetragon-Pod) |  |  |
+| protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessClose"></a>
+
+### ProcessClose
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| source_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_ip | [string](#string) |  |  |
+| destination_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| stats | [SocketStats](#tetragon-SocketStats) |  |  |
+| destination_pod | [Pod](#tetragon-Pod) |  |  |
+| protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
+| socket_type | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessConnect"></a>
+
+### ProcessConnect
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| source_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_ip | [string](#string) |  |  |
+| destination_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| destination_pod | [Pod](#tetragon-Pod) |  |  |
+| protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessFile"></a>
+
+### ProcessFile
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| action | [FileAction](#tetragon-FileAction) |  |  |
+| args | [FileArgument](#tetragon-FileArgument) |  |  |
+| time | [google.protobuf.Timestamp](#google-protobuf-Timestamp) |  |  |
+| hook | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessHttp"></a>
+
+### ProcessHttp
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| socket | [SockInfo](#tetragon-SockInfo) |  |  |
+| http | [HttpInfo](#tetragon-HttpInfo) |  |  |
+| destination_names | [string](#string) | repeated | **Deprecated.** deprecated in favor of socket.destination_names. |
+| destination_pod | [Pod](#tetragon-Pod) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessIpError"></a>
+
+### ProcessIpError
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| destination_ip | [string](#string) |  |  |
+| version | [string](#string) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| destination_pod | [Pod](#tetragon-Pod) |  |  |
+| details | [string](#string) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessListen"></a>
+
+### ProcessListen
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| ip | [string](#string) |  |  |
+| port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessNetworkBurst"></a>
+
+### ProcessNetworkBurst
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| protocol | [string](#string) |  |  |
+| direction | [string](#string) |  |  |
+| burst_state | [string](#string) |  |  |
+| window_size | [uint64](#uint64) |  |  |
+| hist_avg | [uint64](#uint64) |  |  |
+| hist_trigger | [uint64](#uint64) |  |  |
+| window_avg | [uint64](#uint64) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessSockStats"></a>
+
+### ProcessSockStats
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| parent | [Process](#tetragon-Process) |  |  |
+| socket | [SockInfo](#tetragon-SockInfo) |  |  |
+| stats | [SocketStats](#tetragon-SocketStats) |  |  |
+
+
+
+
+
+
+<a name="tetragon-SockInfo"></a>
+
+### SockInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| source_ip | [string](#string) |  |  |
+| source_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_ip | [string](#string) |  |  |
+| destination_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| sock_cookie | [uint64](#uint64) |  |  |
+| protocol | [SocketProtocol](#tetragon-SocketProtocol) |  |  |
+| destination_names | [string](#string) | repeated |  |
+| destination_pod | [Pod](#tetragon-Pod) |  |  |
+
+
+
+
+
+
+<a name="tetragon-SocketStats"></a>
+
+### SocketStats
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| bytes_sent | [uint64](#uint64) |  |  |
+| bytes_received | [uint64](#uint64) |  |  |
+| segs_in | [uint32](#uint32) |  |  |
+| segs_out | [uint32](#uint32) |  |  |
+| srtt | [uint32](#uint32) |  | TCP specific: |
+| retransmits_bytes | [uint64](#uint64) |  |  |
+| retransmits_segs | [uint32](#uint32) |  |  |
+| to_zero_window | [uint32](#uint32) |  |  |
+| sk_drop | [uint32](#uint32) |  |  |
+| bytes_consumed | [uint64](#uint64) |  | UDP specific: |
+| bytes_submitted | [uint64](#uint64) |  |  |
+| segs_consumed | [uint32](#uint32) |  |  |
+| segs_submitted | [uint32](#uint32) |  |  |
+| skb_consume_misses | [uint32](#uint32) |  |  |
+
+
+
+
+
+
+<a name="tetragon-Tls"></a>
+
+### Tls
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| source_ip | [string](#string) |  |  |
+| source_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| destination_ip | [string](#string) |  |  |
+| destination_port | [google.protobuf.UInt32Value](#google-protobuf-UInt32Value) |  |  |
+| negotiated_version | [string](#string) |  |  |
+| supported_versions | [string](#string) |  |  |
+| sni_type | [string](#string) |  |  |
+| sni_name | [string](#string) |  |  |
+| cipher | [string](#string) |  |  |
+| client_flags | [string](#string) |  |  |
+| server_flags | [string](#string) |  |  |
+| client_version | [string](#string) |  |  |
+| server_version | [string](#string) |  |  |
+| client_alert | [string](#string) |  |  |
+| server_alert | [string](#string) |  |  |
+| client_session | [string](#string) |  |  |
+| server_session | [string](#string) |  |  |
+| certificates | [string](#string) | repeated |  |
+| certificate_error | [TlsCertificateError](#tetragon-TlsCertificateError) |  |  |
+| parser_state_next | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_needed | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_csize | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_state_skblen | [uint32](#uint32) |  | **Deprecated.**  |
+| parser_internal_state | [string](#string) |  |  |
+
+
+
+
+
+ 
+
+
+<a name="tetragon-FileAction"></a>
+
+### FileAction
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| FILE_INVALID | 0 |  |
+| FILE_WRITE | 1 |  |
+| FILE_READ | 2 |  |
+| FILE_DELETE | 3 |  |
+| FILE_CREATE | 4 |  |
+
+
+
+<a name="tetragon-SocketProtocol"></a>
+
+### SocketProtocol
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| UNKNOWN | 0 |  |
+| TCP | 6 |  |
+| UDP | 17 |  |
+
+
+
+<a name="tetragon-TlsCertificateError"></a>
+
+### TlsCertificateError
+
+
+| Name | Number | Description |
+| ---- | ------ | ----------- |
+| TLS_CERT_ERROR_UNDEF | 0 |  |
+| TLS_CERT_ERROR_UNKNOWN | 1 |  |
+| TLS_CERT_ERROR_TOO_LARGE | 2 |  |
+| TLS_CERT_ERROR_GET_DATA_HDR | 3 |  |
+| TLS_CERT_ERROR_NO_BUFFER | 4 |  |
+| TLS_CERT_ERROR_COPY | 5 |  |
+| TLS_CERT_ERROR_LENGTH_READ | 6 |  |
+| TLS_CERT_ERROR_CERT_READ | 7 |  |
+| TLS_CERT_ERROR_CERT_PARTIAL | 8 |  |
+| TLS_CERT_ERROR_PARSE_X509 | 9 |  |
+| TLS_CERT_ERROR_MISSING_CODE | 10 |  |
+| TLS_CERT_ERROR_GET_DATA_CERT | 11 |  |
+| TLS_CERT_ERROR_GET_DATA_MORECERT | 12 |  |
+| TLS_CERT_ERROR_COPY_CERT | 13 |  |
+| TLS_CERT_ERROR_COPY_MORE_CERT | 14 |  |
+| TLS_CERT_ERROR_BAD_HEADER | 15 |  |
+| TLS_CERT_ERROR_MISSING_ERROR | 16 |  |
+| TLS_CERT_ERROR_SPURIOUS_CERTS | 17 |  |
+
+
+ 
+
+ 
+
+ 
+
+
+
+<a name="tetragon_dns-proto"></a>
+<p align="right"><a href="#top">Top</a></p>
+
+## tetragon/dns.proto
+
+
+
+<a name="tetragon-DnsInfo"></a>
+
+### DnsInfo
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| question_types | [uint32](#uint32) | repeated |  |
+| answer_types | [uint32](#uint32) | repeated |  |
+| rcode | [int32](#int32) |  |  |
+| names | [string](#string) | repeated |  |
+| ips | [string](#string) | repeated |  |
+| query | [string](#string) |  |  |
+| response | [bool](#bool) |  |  |
+
+
+
+
+
+
+<a name="tetragon-ProcessDns"></a>
+
+### ProcessDns
+
+
+
+| Field | Type | Label | Description |
+| ----- | ---- | ----- | ----------- |
+| process | [Process](#tetragon-Process) |  |  |
+| socket | [SockInfo](#tetragon-SockInfo) |  |  |
+| dns | [DnsInfo](#tetragon-DnsInfo) |  |  |
+| destination_names | [string](#string) | repeated | **Deprecated.** deprecated in favor of socket.destination_names. |
+| destination_pod | [Pod](#tetragon-Pod) |  |  |
+
+
+
+
+
+ 
+
+ 
+
+ 
 
  
 

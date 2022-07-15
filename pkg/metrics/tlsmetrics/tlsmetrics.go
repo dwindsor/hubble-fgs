@@ -13,8 +13,8 @@ package tlsmetrics
 import (
 	"strings"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
@@ -26,7 +26,7 @@ var (
 	}, []string{"namespace", "pod", "binaray", "version", "cipher", "sni_name"})
 )
 
-func GetNegotiatedVersion(tls *fgs.Tls) string {
+func GetNegotiatedVersion(tls *tetragon.Tls) string {
 	if tls.NegotiatedVersion != "" {
 		// For TLS 1.3 the negotiated version field is set. Use it.
 		return tls.NegotiatedVersion
@@ -41,7 +41,7 @@ var (
 	tlsVersion1_2 = "TLS1.2"
 )
 
-func getNegotiatedVersion12(tls *fgs.Tls) string {
+func getNegotiatedVersion12(tls *tetragon.Tls) string {
 	c := tls.ClientVersion
 	s := tls.ServerVersion
 

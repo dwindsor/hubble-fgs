@@ -24,11 +24,11 @@ import (
 	"testing"
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
@@ -131,7 +131,7 @@ func genericArgFilenameChecker(fileName string) *ec.FileArgumentChecker {
 	return ec.NewFileArgumentChecker().WithGenericArg(c)
 }
 
-func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act fgs.FileAction) {
+func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetragon.FileAction) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		t.Skip("File monitoring requires at least 5.4.0 version")
 	}
@@ -235,10 +235,10 @@ func runCopyTest(t *testing.T, exec_path string) {
 	}
 
 	inFileChecker := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_READ).
+		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(genericArgFilenameChecker(in_file))
 	outFileChecker := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_WRITE).
+		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(out_file))
 	checker := ec.NewUnorderedEventChecker(
 		inFileChecker,
@@ -249,7 +249,7 @@ func runCopyTest(t *testing.T, exec_path string) {
 	assert.NoError(t, err)
 }
 
-func runMmapTest(t *testing.T, exec_path string, act fgs.FileAction) {
+func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 	if !kernels.MinKernelVersion("5.4.0") {
 		t.Skip("File monitoring requires at least 5.4.0 version")
 	}
@@ -295,16 +295,16 @@ func runMmapTest(t *testing.T, exec_path string, act fgs.FileAction) {
 	}
 
 	fileCheckerRead := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_READ).
+		WithAction(tetragon.FileAction_FILE_READ).
 		WithArgs(genericArgFilenameChecker(test_file))
 	fileCheckerWrite := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_WRITE).
+		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(test_file))
 	checker := ec.NewUnorderedEventChecker(
 		fileCheckerRead,
 		fileCheckerWrite,
 	)
-	if act == fgs.FileAction_FILE_READ {
+	if act == tetragon.FileAction_FILE_READ {
 		checker = ec.NewUnorderedEventChecker(fileCheckerRead)
 	}
 
@@ -315,43 +315,43 @@ func runMmapTest(t *testing.T, exec_path string, act fgs.FileAction) {
 // tests in "hubble-fgs/contrib/tester-progs/read_write"
 
 func TestFileRead(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/read", true, fgs.FileAction_FILE_READ)
+	runReadWriteTest(t, "tester-progs/read_write/read", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFileReadV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/readv", true, fgs.FileAction_FILE_READ)
+	runReadWriteTest(t, "tester-progs/read_write/readv", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFilePReadV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/preadv", true, fgs.FileAction_FILE_READ)
+	runReadWriteTest(t, "tester-progs/read_write/preadv", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFilePReadV2(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/preadv2", true, fgs.FileAction_FILE_READ)
+	runReadWriteTest(t, "tester-progs/read_write/preadv2", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFilePRead64(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/pread64", true, fgs.FileAction_FILE_READ)
+	runReadWriteTest(t, "tester-progs/read_write/pread64", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFileWrite(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/write", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/read_write/write", false, tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFileWriteV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/writev", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/read_write/writev", false, tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFilePWriteV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/pwritev", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/read_write/pwritev", false, tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFilePWriteV2(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/pwritev2", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/read_write/pwritev2", false, tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFilePWrite64(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/read_write/pwrite64", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/read_write/pwrite64", false, tetragon.FileAction_FILE_WRITE)
 }
 
 func TestSendfile(t *testing.T) {
@@ -365,25 +365,25 @@ func TestCopyFileRange(t *testing.T) {
 // tests in hubble-fgs/contrib/tester-progs/aio
 
 func TestFileAioPRead(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/aio/aio_pread", true, fgs.FileAction_FILE_READ)
+	runReadWriteTest(t, "tester-progs/aio/aio_pread", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFileAioPReadV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/aio/aio_preadv", true, fgs.FileAction_FILE_READ)
+	runReadWriteTest(t, "tester-progs/aio/aio_preadv", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFileAioPWrite(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/aio/aio_pwrite", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/aio/aio_pwrite", false, tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFileAioPWriteV(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/aio/aio_pwritev", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/aio/aio_pwritev", false, tetragon.FileAction_FILE_WRITE)
 }
 
 // tests in hubble-fgs/contrib/tester-progs/open
 
 func TestFileFallocate(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/open/fallocate", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/open/fallocate", false, tetragon.FileAction_FILE_WRITE)
 }
 
 // tests in hubble-fgs/contrib/tester-progs/splice
@@ -395,11 +395,11 @@ func TestFileSplice(t *testing.T) {
 // tests in hubble-fgs/contrib/tester-progs/io_uring
 
 func TestFileCatIouring(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/io_uring/cat_liburing", true, fgs.FileAction_FILE_READ)
+	runReadWriteTest(t, "tester-progs/io_uring/cat_liburing", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFileWriteIouring(t *testing.T) {
-	runReadWriteTest(t, "tester-progs/io_uring/write_liburing", false, fgs.FileAction_FILE_WRITE)
+	runReadWriteTest(t, "tester-progs/io_uring/write_liburing", false, tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFileCpIouring(t *testing.T) {
@@ -409,27 +409,27 @@ func TestFileCpIouring(t *testing.T) {
 // tests in hubble-fgs/contrib/tester-progs/mmap
 
 func TestFileMmapReadPopulate(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_populate_read", fgs.FileAction_FILE_READ)
+	runMmapTest(t, "tester-progs/mmap/mmap_populate_read", tetragon.FileAction_FILE_READ)
 }
 
 func TestFileMmapWritePopulate(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_populate_write", fgs.FileAction_FILE_WRITE)
+	runMmapTest(t, "tester-progs/mmap/mmap_populate_write", tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFileMmapRead(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_read", fgs.FileAction_FILE_READ)
+	runMmapTest(t, "tester-progs/mmap/mmap_read", tetragon.FileAction_FILE_READ)
 }
 
 func TestFileMmapReadWrite(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_read_write", fgs.FileAction_FILE_WRITE)
+	runMmapTest(t, "tester-progs/mmap/mmap_read_write", tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFileMmapWrite(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_write", fgs.FileAction_FILE_WRITE)
+	runMmapTest(t, "tester-progs/mmap/mmap_write", tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFileMmapWriteRead(t *testing.T) {
-	runMmapTest(t, "tester-progs/mmap/mmap_write_read", fgs.FileAction_FILE_WRITE)
+	runMmapTest(t, "tester-progs/mmap/mmap_write_read", tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFileDelete(t *testing.T) {
@@ -464,7 +464,7 @@ func TestFileDelete(t *testing.T) {
 	}
 
 	inFileChecker := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_DELETE).
+		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(in_file))
 	checker := ec.NewUnorderedEventChecker(inFileChecker)
 
@@ -548,19 +548,19 @@ func TestFileCreate(t *testing.T) {
 	fp1 := filepath.Join(test_path, "newfile1.txt")
 	fp2 := filepath.Join(test_path, "newfile2.txt")
 	file1CreateChecker := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_CREATE).
+		WithAction(tetragon.FileAction_FILE_CREATE).
 		WithArgs(genericArgFilenameChecker(fp1))
 	file2CreateChecker := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_CREATE).
+		WithAction(tetragon.FileAction_FILE_CREATE).
 		WithArgs(genericArgFilenameChecker(fp2))
 	file2WriteChecker := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_WRITE).
+		WithAction(tetragon.FileAction_FILE_WRITE).
 		WithArgs(genericArgFilenameChecker(fp2))
 	file1DeleteChecker := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_DELETE).
+		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(fp1))
 	file2DeleteChecker := ec.NewProcessFileChecker().
-		WithAction(fgs.FileAction_FILE_DELETE).
+		WithAction(tetragon.FileAction_FILE_DELETE).
 		WithArgs(genericArgFilenameChecker(fp2))
 	checker := ec.NewUnorderedEventChecker(
 		file1CreateChecker,

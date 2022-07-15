@@ -18,7 +18,6 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -124,13 +123,13 @@ func (c colorer) processInfo(host string, process *tetragon.Process) (string, st
 	return fmt.Sprintf("%s %s", source, proc), caps
 }
 
-func (c colorer) interfaceInfo(host string, stats *fgs.InterfaceStats) string {
+func (c colorer) interfaceInfo(host string, stats *tetragon.InterfaceStats) string {
 	source := c.green.Sprint(host)
 	interfaceInfo := c.magenta.Sprint(stats.InterfaceName, "@", stats.InterfaceIfindex)
 	return fmt.Sprintf("%s %s", source, interfaceInfo)
 }
 
-func (c colorer) http(http *fgs.HttpInfo) string {
+func (c colorer) http(http *tetragon.HttpInfo) string {
 	if http.Response == nil || http.Response.Code == 0 {
 		return c.cyan.Sprint(
 			http.Request.Host, " ",
@@ -150,7 +149,7 @@ func (c colorer) http(http *fgs.HttpInfo) string {
 		latency)
 }
 
-func (c colorer) tls(tls *fgs.Tls) string {
+func (c colorer) tls(tls *tetragon.Tls) string {
 	var dstPort uint32
 	if tls.DestinationPort != nil {
 		dstPort = tls.DestinationPort.Value
@@ -162,7 +161,7 @@ func (c colorer) tls(tls *fgs.Tls) string {
 		tls.Cipher)
 }
 
-func (c colorer) close(close *fgs.ProcessClose) string {
+func (c colorer) close(close *tetragon.ProcessClose) string {
 	if close.SocketType == "listen" {
 		return c.hostPort(close.Protocol, close.SourceIp, close.SourcePort) + " (listen)"
 	}
@@ -185,7 +184,7 @@ func (c colorer) close(close *fgs.ProcessClose) string {
 	)
 }
 
-func (c colorer) hostPort(protocol fgs.SocketProtocol, host string, portPtr *wrapperspb.UInt32Value) string {
+func (c colorer) hostPort(protocol tetragon.SocketProtocol, host string, portPtr *wrapperspb.UInt32Value) string {
 	var port uint32
 	if portPtr != nil {
 		port = portPtr.Value
@@ -194,7 +193,7 @@ func (c colorer) hostPort(protocol fgs.SocketProtocol, host string, portPtr *wra
 }
 
 func (c colorer) fiveTuple(
-	protocol fgs.SocketProtocol,
+	protocol tetragon.SocketProtocol,
 	srcHost string,
 	srcPortPtr *wrapperspb.UInt32Value,
 	dstHost string,

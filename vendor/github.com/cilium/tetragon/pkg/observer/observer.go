@@ -14,12 +14,12 @@ import (
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/ebpf/perf"
-	"github.com/cilium/tetragon/pkg/api/ops"
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/cilium/tetragon/pkg/metrics/opcodemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/ringbufmetrics"
+	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/config"
 
@@ -54,13 +54,13 @@ var (
 	SensorManager *sensors.Manager
 )
 
-type Event interface{}
+type Event notify.Interface
 
 func RegisterEventHandlerAtInit(ev uint8, handler func(r *bytes.Reader) ([]Event, error)) {
 	eventHandler[ev] = handler
 }
 
-func (k *Observer) observerListeners(msg interface{}) {
+func (k *Observer) observerListeners(msg notify.Interface) {
 	for listener := range k.listeners {
 		if err := listener.Notify(msg); err != nil {
 			k.log.Debug("Write failure removing Listener")
@@ -69,7 +69,7 @@ func (k *Observer) observerListeners(msg interface{}) {
 	}
 }
 
-func AllListeners(msg interface{}) {
+func AllListeners(msg notify.Interface) {
 	for _, o := range observerList {
 		o.observerListeners(msg)
 	}
@@ -93,9 +93,6 @@ func (k *Observer) receiveEvent(data []byte, cpu int) {
 
 	k.recvCntr++
 	r := bytes.NewReader(data)
-
-	// Increment the counter for the msg opcode
-	opcodemetrics.OpTotalInc(ops.OpCode(op))
 
 	// These ops handlers are registered by RegisterEventHandlerAtInit().
 	if h, ok := eventHandler[op]; ok {
@@ -241,9 +238,6 @@ func (k *Observer) runEventsNew(stopCtx context.Context, ready func()) error {
 // notified of their corresponding events.
 type Observer struct {
 	/* Configuration */
-	bpfDir     string
-	mapDir     string
-	ciliumDir  string
 	listeners  map[Listener]struct{}
 	perfConfig *bpf.PerfEventConfig
 	/* Statistics */
@@ -263,7 +257,7 @@ func (k *Observer) Start(ctx context.Context, sens []*sensors.Sensor) error {
 	k.startUpdateMapMetrics()
 
 	if sens != nil {
-		if err := config.LoadConfig(ctx, k.bpfDir, k.mapDir, k.ciliumDir, sens); err != nil {
+		if err := config.LoadConfig(ctx, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir, sens); err != nil {
 			return err
 		}
 	}
@@ -291,15 +285,12 @@ func (k *Observer) Start(ctx context.Context, sens []*sensors.Sensor) error {
 // InitSensorManager starts the sensor controller and stt manager.
 func (k *Observer) InitSensorManager() error {
 	var err error
-	SensorManager, err = sensors.StartSensorManager(k.bpfDir, k.mapDir, k.ciliumDir)
+	SensorManager, err = sensors.StartSensorManager(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
 	return err
 }
 
-func NewObserver(bpfDir, mapDir, ciliumDir, configFile string) *Observer {
+func NewObserver(configFile string) *Observer {
 	o := &Observer{
-		bpfDir:     bpfDir,
-		mapDir:     mapDir,
-		ciliumDir:  ciliumDir,
 		listeners:  make(map[Listener]struct{}),
 		log:        logger.GetLogger(),
 		configFile: configFile,
@@ -323,5 +314,5 @@ func (k *Observer) PrintStats() {
 }
 
 func (k *Observer) RemovePrograms() {
-	RemovePrograms(k.bpfDir, k.mapDir)
+	RemovePrograms(option.Config.BpfDir, option.Config.MapDir)
 }

@@ -6,7 +6,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/eventcache"
@@ -25,31 +24,31 @@ type Grpc struct {
 }
 
 // Translate internal uint32 error codes into gRPC visible error codes
-func getTLSCertificateErrorCode(err uint32) fgs.TlsCertificateError {
+func getTLSCertificateErrorCode(err uint32) tetragon.TlsCertificateError {
 	switch err {
 	case tlsapi.TlsCertificateErrorNone:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_UNDEF
+		return tetragon.TlsCertificateError_TLS_CERT_ERROR_UNDEF
 	case tlsapi.TlsCertificateErrorBadHeader:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_BAD_HEADER
+		return tetragon.TlsCertificateError_TLS_CERT_ERROR_BAD_HEADER
 
 	case tlsapi.TlsCertificateErrorLengthRead:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_LENGTH_READ
+		return tetragon.TlsCertificateError_TLS_CERT_ERROR_LENGTH_READ
 	case tlsapi.TlsCertificateErrorMissingError:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_MISSING_ERROR
+		return tetragon.TlsCertificateError_TLS_CERT_ERROR_MISSING_ERROR
 	case tlsapi.TlsCertificateErrorCertRead:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_READ
+		return tetragon.TlsCertificateError_TLS_CERT_ERROR_CERT_READ
 	case tlsapi.TlsCertificateErrorCertPartial:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_CERT_PARTIAL
+		return tetragon.TlsCertificateError_TLS_CERT_ERROR_CERT_PARTIAL
 	case tlsapi.TlsCertificateErrorParseX509:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_PARSE_X509
+		return tetragon.TlsCertificateError_TLS_CERT_ERROR_PARSE_X509
 	case tlsapi.TlsCertificateErrorSpuriousCerts:
-		return fgs.TlsCertificateError_TLS_CERT_ERROR_SPURIOUS_CERTS
+		return tetragon.TlsCertificateError_TLS_CERT_ERROR_SPURIOUS_CERTS
 	}
-	return fgs.TlsCertificateError_TLS_CERT_ERROR_UNKNOWN
+	return tetragon.TlsCertificateError_TLS_CERT_ERROR_UNKNOWN
 }
 
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
-func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
+func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *tetragon.Tls {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -72,7 +71,7 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 		proc = processInt.UnsafeGetProcess()
 	}
 	typeSNI, nameSNI := readertls.GetTLSSNI(event.ClientHello.SNI.Value)
-	fgsEvent := &fgs.Tls{
+	fgsEvent := &tetragon.Tls{
 		Process:             proc,
 		SourceIp:            network.GetIPv4(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:          sourcePort,
@@ -105,14 +104,14 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *fgs.Tls {
 	return fgsEvent
 }
 
-func (tls *Grpc) HandleMessage(msg *tlsapi.MsgTLSEventUnix) *fgs.GetEventsResponse {
-	var res *fgs.GetEventsResponse
+func (tls *Grpc) HandleMessage(msg *tlsapi.MsgTLSEventUnix) *tetragon.GetEventsResponse {
+	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_TLS:
 		t := tls.getTLS(msg)
 		if t != nil {
-			res = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_Tls{Tls: t},
+			res = &tetragon.GetEventsResponse{
+				Event:    &tetragon.GetEventsResponse_Tls{Tls: t},
 				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}

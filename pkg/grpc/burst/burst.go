@@ -8,7 +8,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -18,14 +17,14 @@ var (
 	nodeName = node.GetNodeNameForExport()
 )
 
-func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) *fgs.GetEventsResponse {
-	var res *fgs.GetEventsResponse
+func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) *tetragon.GetEventsResponse {
+	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_PROCESS_NETWORK_BURST:
 		b := getProcessNetworkBurst(msg)
 		if b != nil {
-			res = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: b},
+			res = &tetragon.GetEventsResponse{
+				Event:    &tetragon.GetEventsResponse_ProcessNetworkBurst{ProcessNetworkBurst: b},
 				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
@@ -40,7 +39,7 @@ func HandleProcessNetworkBurstMessage(msg *api.MsgProcessNetworkBurstEventUnix) 
 // getProcessNetworkBurst returns ProcessNetworkBurst protobuf message for a given process.
 func getProcessNetworkBurst(
 	event *api.MsgProcessNetworkBurstEventUnix,
-) *fgs.ProcessNetworkBurst {
+) *tetragon.ProcessNetworkBurst {
 	var fgsProcess, fgsParent *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -55,7 +54,7 @@ func getProcessNetworkBurst(
 	if parent != nil {
 		fgsParent = parent.GetProcessCopy()
 	}
-	fgsEvent := &fgs.ProcessNetworkBurst{
+	fgsEvent := &tetragon.ProcessNetworkBurst{
 		Process: fgsProcess,
 		Parent:  fgsParent,
 	}

@@ -15,6 +15,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
@@ -25,7 +26,6 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	"github.com/isovalent/hubble-fgs/pkg/filters"

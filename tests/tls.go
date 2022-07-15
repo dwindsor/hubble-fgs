@@ -3,10 +3,10 @@ package tests
 import (
 	"fmt"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
-	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 )
 
 func TlsChecker(kernelVersion string) ec.MultiEventChecker {

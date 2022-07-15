@@ -103,15 +103,8 @@ github.com/cilium/hubble/pkg/servicecache
 github.com/cilium/lumberjack/v2
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
 ## explicit; go 1.17
-github.com/cilium/tetragon/api/v1/tetragon
-github.com/cilium/tetragon/api/v1/tetragon/codegen/eventcache
-github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
-github.com/cilium/tetragon/api/v1/tetragon/codegen/filters
-github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/common
-github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventcache
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/eventchecker
-github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/filters
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/generate
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/helpers
 github.com/cilium/tetragon/cmd/protoc-gen-go-tetragon/imports
@@ -132,7 +125,6 @@ github.com/cilium/tetragon/pkg/cilium
 github.com/cilium/tetragon/pkg/config
 github.com/cilium/tetragon/pkg/data
 github.com/cilium/tetragon/pkg/defaults
-github.com/cilium/tetragon/pkg/dns
 github.com/cilium/tetragon/pkg/eventcache
 github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers
 github.com/cilium/tetragon/pkg/execcache
@@ -140,7 +132,6 @@ github.com/cilium/tetragon/pkg/exporter
 github.com/cilium/tetragon/pkg/filters
 github.com/cilium/tetragon/pkg/generictypes
 github.com/cilium/tetragon/pkg/grpc
-github.com/cilium/tetragon/pkg/grpc/exec
 github.com/cilium/tetragon/pkg/grpc/test
 github.com/cilium/tetragon/pkg/grpc/tracing
 github.com/cilium/tetragon/pkg/health
@@ -182,12 +173,12 @@ github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/process
 github.com/cilium/tetragon/pkg/ratelimit
 github.com/cilium/tetragon/pkg/reader/caps
-github.com/cilium/tetragon/pkg/reader/dns
 github.com/cilium/tetragon/pkg/reader/exec
 github.com/cilium/tetragon/pkg/reader/ktime
 github.com/cilium/tetragon/pkg/reader/namespace
 github.com/cilium/tetragon/pkg/reader/network
 github.com/cilium/tetragon/pkg/reader/node
+github.com/cilium/tetragon/pkg/reader/notify
 github.com/cilium/tetragon/pkg/reader/path
 github.com/cilium/tetragon/pkg/reader/proc
 github.com/cilium/tetragon/pkg/selectors
@@ -212,6 +203,12 @@ github.com/cilium/tetragon/pkg/vtuple
 github.com/cilium/tetragon/pkg/vtuplefilter
 github.com/cilium/tetragon/pkg/watcher
 github.com/cilium/tetragon/pkg/watcher/crd
+# github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000 => ./api
+## explicit; go 1.17
+github.com/cilium/tetragon/api/v1/tetragon
+github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker
+github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml
+github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
 # github.com/containerd/containerd v1.6.2
 ## explicit; go 1.17
 github.com/containerd/containerd/errdefs
@@ -572,11 +569,12 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
-# golang.org/x/crypto v0.0.0-20220411220226-7b82a4e95df4
+# golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 ## explicit; go 1.17
 golang.org/x/crypto/ed25519
-# golang.org/x/mod v0.4.2
-## explicit; go 1.12
+# golang.org/x/mod v0.5.0
+## explicit; go 1.17
+golang.org/x/mod/internal/lazyregexp
 golang.org/x/mod/module
 golang.org/x/mod/semver
 # golang.org/x/net v0.0.0-20220520000938-2e3eb7b945c2
@@ -681,12 +679,12 @@ google.golang.org/appengine/internal/modules
 google.golang.org/appengine/internal/remote_api
 google.golang.org/appengine/internal/urlfetch
 google.golang.org/appengine/urlfetch
-# google.golang.org/genproto v0.0.0-20220519153652-3a47de7e79bd
+# google.golang.org/genproto v0.0.0-20220628213854-d9e0b6570c03
 ## explicit; go 1.15
 google.golang.org/genproto/googleapis/rpc/code
 google.golang.org/genproto/googleapis/rpc/errdetails
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.47.0
+# google.golang.org/grpc v1.48.0
 ## explicit; go 1.14
 google.golang.org/grpc
 google.golang.org/grpc/attributes
@@ -1181,11 +1179,12 @@ sigs.k8s.io/structured-merge-diff/v4/fieldpath
 sigs.k8s.io/structured-merge-diff/v4/schema
 sigs.k8s.io/structured-merge-diff/v4/typed
 sigs.k8s.io/structured-merge-diff/v4/value
-# sigs.k8s.io/yaml v1.2.0
+# sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
 # github.com/cilium/ebpf => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
 # github.com/cilium/tetragon => ./modules/tetragon-oss
+# github.com/cilium/tetragon/api => ./api
 # github.com/miekg/dns => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3
 # github.com/optiopay/kafka => github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b
 # github.com/vishvananda/netlink => github.com/jrfastab/netlink v1.1.1

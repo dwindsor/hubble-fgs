@@ -25,7 +25,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )
@@ -34,55 +34,55 @@ func Test_eventHandleProcessedEvent(t *testing.T) {
 	assert.NoError(t, testutil.CollectAndCompare(ossEventMetrics.EventsProcessed, strings.NewReader("")))
 	eventmetrics.HandleProcessedEvent(nil)
 	// empty process
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{}}})
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessConnect{ProcessConnect: &tetragon.ProcessConnect{}}})
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessExec{ProcessExec: &tetragon.ProcessExec{}}})
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessListen{ProcessListen: &tetragon.ProcessListen{}}})
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_Tls{Tls: &tetragon.Tls{}}})
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessExit{ProcessExit: &tetragon.ProcessExit{}}})
 
 	// empty pod
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessConnect{ProcessConnect: &tetragon.ProcessConnect{
 		Process: &tetragon.Process{Binary: "binary_a"},
 	}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessExec{ProcessExec: &tetragon.ProcessExec{
 		Process: &tetragon.Process{Binary: "binary_b"},
 	}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessListen{ProcessListen: &tetragon.ProcessListen{
 		Process: &tetragon.Process{Binary: "binary_c"},
 	}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_Tls{Tls: &tetragon.Tls{
 		Process: &tetragon.Process{Binary: "binary_d"},
 	}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessExit{ProcessExit: &tetragon.ProcessExit{
 		Process: &tetragon.Process{Binary: "binary_e"},
 	}}})
 
 	// with pod
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessConnect{ProcessConnect: &fgs.ProcessConnect{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessConnect{ProcessConnect: &tetragon.ProcessConnect{
 		Process: &tetragon.Process{
 			Binary: "binary_a",
 			Pod:    &tetragon.Pod{Namespace: "namespace_a", Name: "pod_a"},
 		},
 	}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExec{ProcessExec: &fgs.ProcessExec{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessExec{ProcessExec: &tetragon.ProcessExec{
 		Process: &tetragon.Process{
 			Binary: "binary_b",
 			Pod:    &tetragon.Pod{Namespace: "namespace_b", Name: "pod_b"},
 		},
 	}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessListen{ProcessListen: &fgs.ProcessListen{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessListen{ProcessListen: &tetragon.ProcessListen{
 		Process: &tetragon.Process{
 			Binary: "binary_c",
 			Pod:    &tetragon.Pod{Namespace: "namespace_c", Name: "pod_c"},
 		},
 	}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_Tls{Tls: &fgs.Tls{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_Tls{Tls: &tetragon.Tls{
 		Process: &tetragon.Process{
 			Binary: "binary_d",
 			Pod:    &tetragon.Pod{Namespace: "namespace_d", Name: "pod_d"},
 		},
 	}}})
-	eventmetrics.HandleProcessedEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_ProcessExit{ProcessExit: &fgs.ProcessExit{
+	eventmetrics.HandleProcessedEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_ProcessExit{ProcessExit: &tetragon.ProcessExit{
 		Process: &tetragon.Process{
 			Binary: "binary_e",
 			Pod:    &tetragon.Pod{Namespace: "namespace_e", Name: "pod_e"},
@@ -129,7 +129,7 @@ isovalent_flags_total{type="execve"} 1
 }
 
 func Test_handleInterfaceStatsEvent(t *testing.T) {
-	eventmetrics.HandleInterfaceStatsEvent(&fgs.GetEventsResponse{Event: &fgs.GetEventsResponse_InterfaceStats{InterfaceStats: &fgs.InterfaceStats{
+	eventmetrics.HandleInterfaceStatsEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_InterfaceStats{InterfaceStats: &tetragon.InterfaceStats{
 		InterfaceName:   "eth0",
 		Netns:           "foobar",
 		BytesSent:       1,

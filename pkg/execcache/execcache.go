@@ -13,12 +13,12 @@ package execcache
 import (
 	"time"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/protobuf/types/known/timestamppb"
@@ -40,7 +40,7 @@ var (
 
 type cacheObj struct {
 	internal  *process.ProcessInternal
-	process   *fgs.ProcessExec
+	process   *tetragon.ProcessExec
 	timestamp *timestamppb.Timestamp
 	color     int
 	msg       *processapi.MsgExecveEventUnix
@@ -78,8 +78,8 @@ func (ec *Cache) handleExecEvents() {
 			e.process.Process.Pod = podInfo
 		}
 
-		processedEvent := &fgs.GetEventsResponse{
-			Event:    &fgs.GetEventsResponse_ProcessExec{ProcessExec: e.process},
+		processedEvent := &tetragon.GetEventsResponse{
+			Event:    &tetragon.GetEventsResponse_ProcessExec{ProcessExec: e.process},
 			NodeName: nodeName,
 			Time:     e.timestamp,
 		}
@@ -110,7 +110,7 @@ func (ec *Cache) loop() {
 }
 
 func (ec *Cache) Add(internal *process.ProcessInternal,
-	e *fgs.ProcessExec,
+	e *tetragon.ProcessExec,
 	t *timestamppb.Timestamp,
 	msg *processapi.MsgExecveEventUnix) {
 	ec.objsChan <- cacheObj{internal: internal, process: e, timestamp: t, msg: msg}

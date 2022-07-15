@@ -6,16 +6,14 @@ import (
 
 	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
-
 	"github.com/cilium/tetragon/pkg/process"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
+	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func GetTupleV4(tuple *api.MsgIPv4HTTPTuple, cookie uint64, op uint8) *fgs.SockInfo {
+func GetTupleV4(tuple *api.MsgIPv4HTTPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple.SPort != 0 {
@@ -31,7 +29,7 @@ func GetTupleV4(tuple *api.MsgIPv4HTTPTuple, cookie uint64, op uint8) *fgs.SockI
 
 	destinationIP := network.GetIPv4(tuple.DAddr, op)
 
-	return &fgs.SockInfo{
+	return &tetragon.SockInfo{
 		SourcePort:      sourcePort,
 		SourceIp:        network.GetIPv4(tuple.SAddr, op).String(),
 		DestinationIp:   destinationIP.String(),
@@ -42,7 +40,7 @@ func GetTupleV4(tuple *api.MsgIPv4HTTPTuple, cookie uint64, op uint8) *fgs.SockI
 	}
 }
 
-func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *fgs.SockInfo {
+func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple.SPort != 0 {
@@ -58,7 +56,7 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *fgs.SockInfo {
 
 	destinationIP := network.GetIP(tuple.DAddr, op, tuple.IPv6 != 0)
 
-	return &fgs.SockInfo{
+	return &tetragon.SockInfo{
 		SourcePort:      sourcePort,
 		SourceIp:        network.GetIP(tuple.SAddr, op, tuple.IPv6 != 0).String(),
 		DestinationIp:   destinationIP.String(),
@@ -69,7 +67,7 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *fgs.SockInfo {
 	}
 }
 
-func GetProcessTuple(event *api.MsgIPEventUnix) *fgs.SockInfo {
+func GetProcessTuple(event *api.MsgIPEventUnix) *tetragon.SockInfo {
 	return GetTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 }
 

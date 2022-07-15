@@ -145,7 +145,7 @@ func getRunningSockets(writeMaps, pushEvents bool) {
 		}
 
 		if err := getTCPConnections(entryMap, pid, hasSupportTCP6); err != nil {
-			logger.GetLogger().WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-fgs.")
+			logger.GetLogger().WithError(err).Warn("Failed to parse and build proc net map. Will not post connections started before hubble-tetragon.")
 		}
 		pushTCPEvents(uint32(pid), ktime, entryMap, writeMaps, pushEvents)
 	}

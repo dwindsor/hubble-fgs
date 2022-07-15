@@ -10,7 +10,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -33,13 +32,13 @@ type Grpc struct {
 	enableCilium bool
 }
 
-func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
+func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *tetragon.ProcessHttp {
 	var proc *tetragon.Process
 	var code uint32
 	var err error
 
-	fgsHttpResponse := &fgs.HttpResponse{}
-	fgsHttpRequest := &fgs.HttpRequest{}
+	fgsHttpResponse := &tetragon.HttpResponse{}
+	fgsHttpRequest := &tetragon.HttpRequest{}
 
 	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	processInt, err := process.Get(processID)
@@ -62,7 +61,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 			logger.GetLogger().WithError(err).WithField("RespContentLength", event.Request.RespContentLength).Info("Response Content-Length strconv error")
 		}
 
-		fgsHttpResponse = &fgs.HttpResponse{
+		fgsHttpResponse = &tetragon.HttpResponse{
 			Timestamp:        ktime.ToProto(event.Common.Ktime),
 			Version:          event.Request.RespVersion,
 			Code:             code,
@@ -79,7 +78,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 	}
 
 	if len(event.Request.Method) != 0 {
-		fgsHttpRequest = &fgs.HttpRequest{
+		fgsHttpRequest = &tetragon.HttpRequest{
 			Timestamp:        ktime.ToProto(event.Request.Ktime),
 			Method:           event.Request.Method,
 			Uri:              event.Request.Uri,
@@ -92,7 +91,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 		}
 	}
 
-	fgsHttp := &fgs.HttpInfo{
+	fgsHttp := &tetragon.HttpInfo{
 		Request:  fgsHttpRequest,
 		Response: fgsHttpResponse,
 	}
@@ -109,7 +108,7 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 		}
 	}
 
-	fgsEvent := &fgs.ProcessHttp{
+	fgsEvent := &tetragon.ProcessHttp{
 		Process: proc,
 		Socket:  fgsTuple,
 		Http:    fgsHttp,
@@ -134,14 +133,14 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *fgs.ProcessHttp {
 	return fgsEvent
 }
 
-func (http *Grpc) HandleHttpMessage(msg *api.MsgHttpEventUnix) *fgs.GetEventsResponse {
-	var res *fgs.GetEventsResponse
+func (http *Grpc) HandleHttpMessage(msg *api.MsgHttpEventUnix) *tetragon.GetEventsResponse {
+	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_HTTP:
 		t := http.GetHttp(msg)
 		if t != nil {
-			res = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessHttp{ProcessHttp: t},
+			res = &tetragon.GetEventsResponse{
+				Event:    &tetragon.GetEventsResponse_ProcessHttp{ProcessHttp: t},
 				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}

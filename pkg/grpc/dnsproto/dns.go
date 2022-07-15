@@ -7,7 +7,6 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
@@ -28,7 +27,7 @@ type Grpc struct {
 	enableCilium bool
 }
 
-func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *fgs.ProcessDns {
+func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *tetragon.ProcessDns {
 	var proc *tetragon.Process
 	var err error
 
@@ -42,7 +41,7 @@ func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *fgs.ProcessDns {
 	}
 	fgsTuple := sockinfo.GetTuple(&event.Tuple, 0, event.Common.Op)
 
-	fgsDns := &fgs.DnsInfo{
+	fgsDns := &tetragon.DnsInfo{
 		Response:      event.Dns.Response,
 		Rcode:         int32(event.Dns.RCode),
 		Ips:           event.Dns.IPs,
@@ -53,7 +52,7 @@ func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *fgs.ProcessDns {
 
 	dns.dnsCache.AddIp(fgsDns)
 
-	fgsEvent := &fgs.ProcessDns{
+	fgsEvent := &tetragon.ProcessDns{
 		Process: proc,
 		Socket:  fgsTuple,
 		Dns:     fgsDns,
@@ -78,14 +77,14 @@ func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *fgs.ProcessDns {
 	return fgsEvent
 }
 
-func (dns *Grpc) HandleDnsMessage(msg *dnsapi.MsgDnsUnix) *fgs.GetEventsResponse {
-	var res *fgs.GetEventsResponse
+func (dns *Grpc) HandleDnsMessage(msg *dnsapi.MsgDnsUnix) *tetragon.GetEventsResponse {
+	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_DNS:
 		t := dns.get(msg)
 		if t != nil {
-			res = &fgs.GetEventsResponse{
-				Event:    &fgs.GetEventsResponse_ProcessDns{ProcessDns: t},
+			res = &tetragon.GetEventsResponse{
+				Event:    &tetragon.GetEventsResponse_ProcessDns{ProcessDns: t},
 				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}

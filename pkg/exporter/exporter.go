@@ -19,9 +19,9 @@ import (
 	"io"
 	"sync"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/ratelimit"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/isovalent/hubble-fgs/pkg/server"
 	"google.golang.org/grpc/metadata"
 )
@@ -32,7 +32,7 @@ type ExportEncoder interface {
 
 type Exporter struct {
 	ctx         context.Context
-	request     *fgs.GetEventsRequest
+	request     *tetragon.GetEventsRequest
 	server      *server.Server
 	encoder     ExportEncoder
 	closer      io.Closer
@@ -42,7 +42,7 @@ type Exporter struct {
 
 func NewExporter(
 	ctx context.Context,
-	request *fgs.GetEventsRequest,
+	request *tetragon.GetEventsRequest,
 	server *server.Server,
 	encoder ExportEncoder,
 	closer io.Closer,
@@ -65,7 +65,7 @@ func (e *Exporter) Start() {
 	readyWG.Wait()
 }
 
-func (e *Exporter) Send(event *fgs.GetEventsResponse) error {
+func (e *Exporter) Send(event *tetragon.GetEventsResponse) error {
 	if e.rateLimiter != nil && !e.rateLimiter.Allow() {
 		e.rateLimiter.Drop()
 		return nil

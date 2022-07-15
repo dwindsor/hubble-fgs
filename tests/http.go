@@ -3,9 +3,9 @@ package tests
 import (
 	"fmt"
 
+	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	ec "github.com/isovalent/hubble-fgs/api/v1/fgs/codegen/eventchecker"
 )
 
 func HttpChecker(kernelVersion string) ec.MultiEventChecker {

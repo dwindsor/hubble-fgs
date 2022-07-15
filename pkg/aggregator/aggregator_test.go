@@ -19,7 +19,6 @@ import (
 	"testing"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/grpc/metadata"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -27,14 +26,14 @@ import (
 )
 
 func Test_connectEventBasic(t *testing.T) {
-	mock := mockServer{make(chan *fgs.GetEventsResponse, 10)}
-	options := fgs.AggregationOptions{
+	mock := mockServer{make(chan *tetragon.GetEventsResponse, 10)}
+	options := tetragon.AggregationOptions{
 		WindowSize:        &durationpb.Duration{Seconds: 1},
 		ChannelBufferSize: 100,
 	}
 	agg, err := NewAggregator(&mock, &options)
 	assert.NoError(t, err)
-	connectA := fgs.ProcessConnect{
+	connectA := tetragon.ProcessConnect{
 		Process: &tetragon.Process{
 			ExecId: "abcd",
 		},
@@ -46,8 +45,8 @@ func Test_connectEventBasic(t *testing.T) {
 		DestinationNames: nil,
 	}
 	for i := 0; i < 10; i++ {
-		agg.GetEventChannel() <- &fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessConnect{
+		agg.GetEventChannel() <- &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessConnect{
 				ProcessConnect: &connectA,
 			},
 		}
@@ -59,14 +58,14 @@ func Test_connectEventBasic(t *testing.T) {
 }
 
 func Test_acceptEventBasic(t *testing.T) {
-	mock := mockServer{make(chan *fgs.GetEventsResponse, 10)}
-	options := fgs.AggregationOptions{
+	mock := mockServer{make(chan *tetragon.GetEventsResponse, 10)}
+	options := tetragon.AggregationOptions{
 		WindowSize:        &durationpb.Duration{Seconds: 1},
 		ChannelBufferSize: 100,
 	}
 	agg, err := NewAggregator(&mock, &options)
 	assert.NoError(t, err)
-	acceptA := fgs.ProcessAccept{
+	acceptA := tetragon.ProcessAccept{
 		Process: &tetragon.Process{
 			ExecId: "abcd",
 		},
@@ -78,8 +77,8 @@ func Test_acceptEventBasic(t *testing.T) {
 		DestinationNames: nil,
 	}
 	for i := 0; i < 10; i++ {
-		agg.GetEventChannel() <- &fgs.GetEventsResponse{
-			Event: &fgs.GetEventsResponse_ProcessAccept{
+		agg.GetEventChannel() <- &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessAccept{
 				ProcessAccept: &acceptA,
 			},
 		}
@@ -91,10 +90,10 @@ func Test_acceptEventBasic(t *testing.T) {
 }
 
 type mockServer struct {
-	aggregatedEvents chan *fgs.GetEventsResponse
+	aggregatedEvents chan *tetragon.GetEventsResponse
 }
 
-func (m *mockServer) Send(response *fgs.GetEventsResponse) error {
+func (m *mockServer) Send(response *tetragon.GetEventsResponse) error {
 	m.aggregatedEvents <- response
 	return nil
 }

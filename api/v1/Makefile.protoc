@@ -1,30 +1,73 @@
 PROTOC ?= protoc
 
-FGS_PROTO_SOURCES := \
-	./fgs/fgs.proto \
+TETRAGON_PROTO_SOURCES := \
+	tetragon/capabilities.proto \
+	tetragon/tetragon.proto \
+	tetragon/stack.proto \
+	tetragon/sensors.proto \
+	tetragon/events.proto \
+	tetragon/fgs.proto \
+	tetragon/dns.proto \
 
-FGS_GO_TARGETS := \
-	$(FGS_PROTO_SOURCES:.proto=.pb.go) \
-	$(FGS_PROTO_SOURCES:.proto=.pb.json.go) \
+TETRAGON_GO_TARGETS := \
+	$(TETRAGON_PROTO_SOURCES:.proto=.pb.go) \
+	$(TETRAGON_PROTO_SOURCES:.proto=.pb.json.go) \
 
-FGS_PROTO_PATH := .
-TETRAGON_PROTO_PATH := /tetragon
+TETRAGON_PROTO_PATH := .
+TETRAGON_OSS_PROTO_PATH := ../../modules/tetragon-oss/api/v1/
 
-FGS_PROTOC_PLUGINS := \
+TETRAGON_PROTOC_PLUGINS := \
+	--plugin=$(GOPATH)/bin/protoc-gen-doc \
 	--plugin=$(GOPATH)/bin/protoc-gen-go \
 	--plugin=$(GOPATH)/bin/protoc-gen-go-grpc \
 	--plugin=$(GOPATH)/bin/protoc-gen-go-json \
-	--plugin=$(GOPATH)/bin/protoc-gen-go-tetragon \
+        --plugin=$(GOPATH)/bin/protoc-gen-go-tetragon \
 
 .PHONY: all
-all:
+all: protobuf codegen
+
+protobuf:
 	$(QUIET)set -e; \
-	for proto in $(FGS_PROTO_SOURCES) ; do \
-		echo Generating $${proto} && \
-		$(PROTOC) $(FGS_PROTOC_PLUGINS) -I $(FGS_PROTO_PATH) -I $(TETRAGON_PROTO_PATH) \
-		--go_out=paths=source_relative:. \
-		--go-grpc_out=require_unimplemented_servers=false,paths=source_relative:. \
-		--go-json_out=orig_name=true,paths=source_relative:. \
-		--go-tetragon_out=orig_name=true,paths=source_relative:. \
-		$${proto}; \
-	done
+	echo Generating $${proto} && \
+	$(PROTOC) $(TETRAGON_PROTOC_PLUGINS) -I $(TETRAGON_PROTO_PATH) -I $(TETRAGON_OSS_PROTO_PATH) \
+	--doc_out=./ \
+	--doc_opt=markdown,README.md \
+	--go_out=paths=source_relative:. \
+	--go_opt=Mtetragon/capabilities.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go_opt=Mtetragon/tetragon.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go_opt=Mtetragon/fgs.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go_opt=Mtetragon/events.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go_opt=Mtetragon/stack.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go_opt=Mtetragon/sensors.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go_opt=Mtetragon/dns.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-grpc_out=require_unimplemented_servers=false,paths=source_relative:. \
+	--go-grpc_opt=Mtetragon/capabilities.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-grpc_opt=Mtetragon/tetragon.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-grpc_opt=Mtetragon/fgs.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-grpc_opt=Mtetragon/events.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-grpc_opt=Mtetragon/stack.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-grpc_opt=Mtetragon/sensors.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-grpc_opt=Mtetragon/dns.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-json_out=orig_name=true,paths=source_relative:. \
+	--go-json_opt=Mtetragon/capabilities.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-json_opt=Mtetragon/tetragon.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-json_opt=Mtetragon/fgs.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-json_opt=Mtetragon/events.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-json_opt=Mtetragon/stack.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-json_opt=Mtetragon/sensors.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-json_opt=Mtetragon/dns.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	${TETRAGON_PROTO_SOURCES}
+
+codegen:
+	$(QUIET)set -e; \
+	echo Tetragon Generating $${proto} && \
+	$(PROTOC) $(TETRAGON_PROTOC_PLUGINS) -I $(TETRAGON_PROTO_PATH) -I $(TETRAGON_OSS_PROTO_PATH) \
+	--go-tetragon_out=orig_name=true,paths=source_relative:. \
+	--go-tetragon_opt=Mtetragon/capabilities.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-tetragon_opt=Mtetragon/tetragon.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-tetragon_opt=Mtetragon/stack.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-tetragon_opt=Mtetragon/fgs.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-tetragon_opt=Mtetragon/events.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-tetragon_opt=Mtetragon/sensors.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	--go-tetragon_opt=Mtetragon/dns.proto="github.com/cilium/tetragon/api/v1/tetragon" \
+	${TETRAGON_PROTO_SOURCES}

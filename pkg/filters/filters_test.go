@@ -17,9 +17,9 @@ package filters
 import (
 	"testing"
 
+	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/google/go-cmp/cmp"
 	"github.com/google/go-cmp/cmp/cmpopts"
-	"github.com/isovalent/hubble-fgs/api/v1/fgs"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -34,16 +34,16 @@ func TestParseFilterList(t *testing.T) {
 	filterProto, err := ParseFilterList(f)
 	assert.NoError(t, err)
 	if diff := cmp.Diff(
-		[]*fgs.Filter{
+		[]*tetragon.Filter{
 			{Namespace: []string{"kube-system", ""}},
 			{HealthCheck: &wrapperspb.BoolValue{Value: true}},
 			{BinaryRegex: []string{"kube.*", "iptables"}},
 			{BinaryRegex: []string{"/usr/sbin/.*"}, Namespace: []string{"default"}},
 			{PidSet: []uint32{1}},
-			{EventSet: []fgs.EventType{fgs.EventType_PROCESS_CONNECT, fgs.EventType_PROCESS_LISTEN, fgs.EventType_PROCESS_SOCKSTATS, fgs.EventType_INTERFACE_STATS}},
+			{EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT, tetragon.EventType_PROCESS_LISTEN, tetragon.EventType_PROCESS_SOCKSTATS, tetragon.EventType_INTERFACE_STATS}},
 		},
 		filterProto,
-		cmpopts.IgnoreUnexported(fgs.Filter{}),
+		cmpopts.IgnoreUnexported(tetragon.Filter{}),
 		cmpopts.IgnoreUnexported(wrapperspb.BoolValue{}),
 	); diff != "" {
 		t.Errorf("filter mismatch (-want +got):\n%s", diff)
