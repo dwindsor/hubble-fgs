@@ -26,22 +26,23 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/api/readyapi"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
+	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
-	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/config"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
-	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 
 	// Imported to allow sensors to be initialized inside init().
@@ -117,11 +118,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	configFile := generateCrd(args, sinkPort)
 	defer os.Remove(configFile)
 
-	obs := observer.NewObserver(
-		bpf.MapPrefixPath(), bpf.MapPrefixPath(), "",
-		"", /* network interfaces */
-		configFile,
-		0 /* tcp statistics */)
+	obs := observer.NewObserver(configFile)
 
 	if err := obs.InitSensorManager(); err != nil {
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)
@@ -168,24 +165,24 @@ type benchmarkListener struct {
 	observer *observer.Observer
 }
 
-func (bl *benchmarkListener) Notify(msg interface{}) error {
+func (bl *benchmarkListener) Notify(msg notify.Interface) error {
 	switch msg.(type) {
 	case *readyapi.MsgTETRAGONReady:
 		bl.ready <- true
 
-	case *tlsapi.MsgTLSEventUnix:
+	case *tls.MsgTLSEventUnix:
 		bl.summary.TLSEvents++
 
-	case *processapi.MsgExitEventUnix:
+	case *exec.MsgExitEventUnix:
 		bl.summary.ExitEvents++
 
-	case *processapi.MsgExecveEventUnix:
+	case *exec.MsgExecveEventUnix:
 		bl.summary.ExecEvents++
 
-	case *networkapi.MsgIPEventUnix:
+	case *layer3.MsgIPEventUnix:
 		bl.summary.TCPEvents++
 
-	case *httpapi.MsgHttpEventUnix:
+	case *httpproto.MsgHttpEventUnix:
 		bl.summary.HTTPEvents++
 	}
 
@@ -212,16 +209,16 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 	var wg sync.WaitGroup
 
 	processCacheSize := 32768
-	enableProcessCred := false
-	enableProcessNs := false
-	enableCiliumAPI := false
-	enableEventCache := false
-	enableProcessAncestors := true
+	option.Config.EnableProcessCred = false
+	option.Config.EnableProcessNs = false
+	option.Config.EnableCilium = false
+	option.Config.EnableK8s = false
+	//todo; enableProcessAncestors := true
 
-	if _, err := cilium.InitCiliumState(ctx, enableCiliumAPI); err != nil {
+	if _, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium); err != nil {
 		return err
 	}
-	if err := process.InitCache(ctx, watcher.NewFakeK8sWatcher(nil), enableCiliumAPI, processCacheSize); err != nil {
+	if err := process.InitCache(ctx, watcher.NewFakeK8sWatcher(nil), option.Config.EnableCilium, processCacheSize); err != nil {
 		return err
 	}
 
@@ -230,11 +227,6 @@ func startBenchmarkExporter(ctx context.Context, obs *observer.Observer, summary
 		&wg,
 		cilium.GetFakeCiliumState(),
 		observer.SensorManager,
-		enableProcessCred,
-		enableProcessNs,
-		enableEventCache,
-		enableCiliumAPI,
-		enableProcessAncestors,
 	)
 	if err != nil {
 		return err

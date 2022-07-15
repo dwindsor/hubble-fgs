@@ -1,16 +1,19 @@
 package dnsproto
 
 import (
-	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/cilium"
+	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
@@ -20,18 +23,20 @@ var (
 	nodeName = node.GetNodeNameForExport()
 )
 
-type Grpc struct {
-	dnsCache     *dns.Cache
-	ciliumState  *cilium.State
-	eventCache   *eventcache.Cache
-	enableCilium bool
+type MsgDnsUnix struct {
+	Common     processapi.MsgCommon
+	Tuple      networkapi.MsgIPTuple
+	Return     int64
+	ProcessKey processapi.MsgExecveKey
+	SockCookie uint64
+	Dns        dnsapi.MsgDns
 }
 
-func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *tetragon.ProcessDns {
+func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	var proc *tetragon.Process
 	var err error
 
-	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	processID := process.GetProcessID(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
 	processInt, err := process.Get(processID)
 	if err != nil {
 		logger.GetLogger().WithField("id in DNS event", processID).Debug("process not found in cache")
@@ -39,18 +44,21 @@ func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *tetragon.ProcessDns {
 		proc = processInt.UnsafeGetProcess()
 
 	}
-	fgsTuple := sockinfo.GetTuple(&event.Tuple, 0, event.Common.Op)
+	fgsTuple := sockinfo.GetTuple(&msg.Tuple, 0, msg.Common.Op)
 
 	fgsDns := &tetragon.DnsInfo{
-		Response:      event.Dns.Response,
-		Rcode:         int32(event.Dns.RCode),
-		Ips:           event.Dns.IPs,
-		Names:         event.Dns.Names,
-		QuestionTypes: event.Dns.QuestionTypes,
-		AnswerTypes:   event.Dns.AnswerTypes,
+		Response:      msg.Dns.Response,
+		Rcode:         int32(msg.Dns.RCode),
+		Ips:           msg.Dns.IPs,
+		Names:         msg.Dns.Names,
+		QuestionTypes: msg.Dns.QuestionTypes,
+		AnswerTypes:   msg.Dns.AnswerTypes,
 	}
 
-	dns.dnsCache.AddIp(fgsDns)
+	c := dns.Get()
+	if c != nil {
+		c.AddIp(fgsDns)
+	}
 
 	fgsEvent := &tetragon.ProcessDns{
 		Process: proc,
@@ -58,17 +66,18 @@ func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *tetragon.ProcessDns {
 		Dns:     fgsDns,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(proc, fgsEvent.Socket.DestinationIp, dns.dnsCache, dns.ciliumState)
+	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(proc, fgsEvent.Socket.DestinationIp, c, cilium.GetCiliumState())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if dns.enableCilium && proc != nil {
-		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_DNS, event.Tuple.IPv6 != 0)
+	if option.Config.EnableCilium && proc != nil {
+		destinationIP := network.GetIP(msg.Tuple.DAddr, ops.MSG_OP_DNS, msg.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if dns.eventCache.Needed(proc) {
-		dns.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	ec := eventcache.Get()
+	if ec != nil && ec.Needed(proc) {
+		ec.Add(processInt, fgsEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		return nil
 	}
 	if processInt != nil {
@@ -77,11 +86,11 @@ func (dns *Grpc) get(event *dnsapi.MsgDnsUnix) *tetragon.ProcessDns {
 	return fgsEvent
 }
 
-func (dns *Grpc) HandleDnsMessage(msg *dnsapi.MsgDnsUnix) *tetragon.GetEventsResponse {
+func (msg *MsgDnsUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_DNS:
-		t := dns.get(msg)
+		t := get(msg)
 		if t != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessDns{ProcessDns: t},
@@ -93,13 +102,4 @@ func (dns *Grpc) HandleDnsMessage(msg *dnsapi.MsgDnsUnix) *tetragon.GetEventsRes
 		logger.GetLogger().WithField("message", msg).Warn("HandleDnsMessage: Unhandled event")
 	}
 	return res
-}
-
-func New(cilium *cilium.State, dnsCache *dns.Cache, cache *eventcache.Cache, ciliumEnable bool) *Grpc {
-	return &Grpc{
-		ciliumState:  cilium,
-		dnsCache:     dnsCache,
-		eventCache:   cache,
-		enableCilium: ciliumEnable,
-	}
 }

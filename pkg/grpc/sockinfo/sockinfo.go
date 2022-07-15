@@ -67,10 +67,6 @@ func GetTuple(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo
 	}
 }
 
-func GetProcessTuple(event *api.MsgIPEventUnix) *tetragon.SockInfo {
-	return GetTuple(&event.Tuple, event.SockCookie, event.Common.Op)
-}
-
 func GetProcessIp(proc *tetragon.Process, ip string, cache *dns.Cache, cs *cilium.State) ([]string, error) {
 	var entry []string
 

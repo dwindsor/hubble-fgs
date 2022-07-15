@@ -20,7 +20,7 @@ import (
 	"github.com/cilium/tetragon/pkg/vtuple"
 	api "github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer"
 
 	stt "github.com/cilium/tetragon/pkg/stacktracetree"
 )

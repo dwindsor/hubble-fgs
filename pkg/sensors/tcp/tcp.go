@@ -7,13 +7,14 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	lru "github.com/hashicorp/golang-lru"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/sirupsen/logrus"
@@ -162,7 +163,7 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, 
 // events out of order. Specifically it means when we diff the events the 'last'
 // event in cache will have a newer time than the 'new' event from BPF side. If
 // this happens discard the older event.
-func correctedStatsEvent(tcp *api.MsgIPEventUnix) (*api.MsgIPEventUnix, error) {
+func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, error) {
 	entry, ok := stats.Get(tcp.Tuple)
 	if ok {
 		last := entry.(api.MsgSocketStatsUnix)

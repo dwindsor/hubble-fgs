@@ -23,7 +23,7 @@ import (
 	"google.golang.org/grpc/credentials/insecure"
 )
 
-func CliRunErr(fn func(ctx context.Context, cli fgs.FineGuidanceSensorsClient), fnErr func(err error)) {
+func CliRunErr(fn func(ctx context.Context, cli tetragon.FineGuidanceSensorsClient), fnErr func(err error)) {
 	ctx, cancel := signal.NotifyContext(context.Background(), unix.SIGINT, unix.SIGTERM)
 	defer cancel()
 
@@ -35,10 +35,10 @@ func CliRunErr(fn func(ctx context.Context, cli fgs.FineGuidanceSensorsClient), 
 		logger.GetLogger().WithError(err).Fatal("Failed to connect")
 	}
 	defer conn.Close()
-	client := fgs.NewFineGuidanceSensorsClient(conn)
+	client := tetragon.NewFineGuidanceSensorsClient(conn)
 	fn(ctx, client)
 }
 
-func CliRun(fn func(ctx context.Context, cli fgs.FineGuidanceSensorsClient)) {
+func CliRun(fn func(ctx context.Context, cli tetragon.FineGuidanceSensorsClient)) {
 	CliRunErr(fn, func(_ error) {})
 }

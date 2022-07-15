@@ -20,7 +20,7 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
 	"github.com/stretchr/testify/assert"
 )

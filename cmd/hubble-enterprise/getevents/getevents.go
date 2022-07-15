@@ -26,13 +26,13 @@ import (
 	"google.golang.org/grpc/status"
 )
 
-func getRequest(namespaces []string, host bool, processes []string, pods []string) *fgs.GetEventsRequest {
+func getRequest(namespaces []string, host bool, processes []string, pods []string) *tetragon.GetEventsRequest {
 	if host {
 		// Host events can be matched by an empty namespace string.
 		namespaces = append(namespaces, "")
 	}
-	return &fgs.GetEventsRequest{
-		AllowList: []*fgs.Filter{{
+	return &tetragon.GetEventsRequest{
+		AllowList: []*tetragon.Filter{{
 			BinaryRegex: processes,
 			Namespace:   namespaces,
 			PodRegex:    pods,
@@ -40,7 +40,7 @@ func getRequest(namespaces []string, host bool, processes []string, pods []strin
 	}
 }
 
-func getEvents(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
+func getEvents(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
 	host := viper.GetBool("host")
 	namespaces := viper.GetStringSlice("namespace")
 	processes := viper.GetStringSlice("process")

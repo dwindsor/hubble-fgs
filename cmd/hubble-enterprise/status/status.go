@@ -19,8 +19,8 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func getStatus(ctx context.Context, client fgs.FineGuidanceSensorsClient) {
-	response, err := client.GetHealth(ctx, &fgs.GetHealthStatusRequest{})
+func getStatus(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
+	response, err := client.GetHealth(ctx, &tetragon.GetHealthStatusRequest{})
 	if err != nil {
 		fmt.Printf("status error: %s\n", err)
 		return

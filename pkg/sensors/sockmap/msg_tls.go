@@ -17,9 +17,10 @@ import (
 	"errors"
 	"io"
 
+	"github.com/cilium/tetragon/pkg/observer"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/reader/tls"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
+	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
 	"github.com/yalue/native_endian"
 )
 
@@ -38,8 +39,8 @@ type MsgTLSEventCert struct {
 	cert []byte
 }
 
-func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errState api.MsgTLSParserState) *api.MsgTLSEventUnix {
-	unix := &api.MsgTLSEventUnix{}
+func msgToTLSEventUnix(m *api.MsgTLSEvent, certs []string, errCode uint32, errState api.MsgTLSParserState) *tls.MsgTLSEventUnix {
+	unix := &tls.MsgTLSEventUnix{}
 
 	unix.Common = m.Common
 	unix.Tuple = m.Tuple
@@ -141,7 +142,7 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 			} else if n != int(bytes) {
 				errCode = api.TlsCertificateErrorCertRead
 			} else {
-				certStrings, errCode = tls.GetTLSCertificateString(m.cert)
+				certStrings, errCode = readertls.GetTLSCertificateString(m.cert)
 			}
 		}
 	}

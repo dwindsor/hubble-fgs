@@ -23,10 +23,10 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
-	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 )
@@ -97,7 +97,7 @@ type procTCPEntry struct {
 func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry, writeMaps, pushEvents bool) {
 	var m *bpf.Map
 
-	tcp := api.MsgIPEventUnix{}
+	tcp := layer3.MsgIPEventUnix{}
 
 	tcp.ProcessKey.Pid = pid
 	tcp.ProcessKey.Ktime = ktime
@@ -179,7 +179,7 @@ func pushTCPEvents(pid uint32, ktime uint64, tcpEntries map[uint32]procTCPEntry,
 	}
 }
 
-func writeSockMap(tcp *api.MsgIPEventUnix, m *bpf.Map, uid uint64) {
+func writeSockMap(tcp *layer3.MsgIPEventUnix, m *bpf.Map, uid uint64) {
 	key := &SocketMapKey{
 		Saddr:     uint32(tcp.Tuple.SAddr[0]),
 		Daddr:     uint32(tcp.Tuple.DAddr[0]),

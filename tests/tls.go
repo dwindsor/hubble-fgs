@@ -52,7 +52,7 @@ func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 		ec.NewProcessConnectChecker().
 			WithProcess(curlChecker).
 			WithDestinationPort(443).
-			WithProtocol(fgs.SocketProtocol_TCP),
+			WithProtocol(tetragon.SocketProtocol_TCP),
 		ec.NewTlsChecker().
 			WithProcess(curlChecker).
 			WithDestinationPort(443).

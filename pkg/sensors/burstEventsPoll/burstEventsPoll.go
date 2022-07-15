@@ -20,11 +20,12 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/timer"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/yalue/native_endian"
 )
 
@@ -61,8 +62,8 @@ func PidToBurstKey(pid uint32, protocol uint64, send uint64) uint64 {
 	return uint64(pid) | (protocol << PROCESS_NETWORK_BURST_PROTO_SHIFT) | ((send & 1) << PROCESS_NETWORK_BURST_KEY_DIR_SHIFT)
 }
 
-func msgToProcessNetworkBurstUnix(m *api.MsgProcessNetworkBurstEvent) *api.MsgProcessNetworkBurstEventUnix {
-	return m
+func msgToProcessNetworkBurstUnix(m *api.MsgProcessNetworkBurstEvent) *burst.MsgProcessNetworkBurstEventUnix {
+	return &burst.MsgProcessNetworkBurstEventUnix{MsgProcessNetworkBurstEvent: *m}
 }
 
 func HandleProcessNetworkBurst(r *bytes.Reader) ([]observer.Event, error) {

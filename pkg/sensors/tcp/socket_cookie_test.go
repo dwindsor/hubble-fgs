@@ -19,7 +19,7 @@ import (
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer"
 
 	"golang.org/x/sys/unix"
 )

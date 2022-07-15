@@ -112,24 +112,7 @@ func generateEventLabels(g *protogen.GeneratedFile, f *protogen.File) error {
 }
 
 // Generate generates boilerplate code for the event cache
-func Generate(gen *protogen.Plugin, f *protogen.File) error {
-	g := common.NewCodegenFile(gen, f, "eventcache")
-
-	tetragonProcess := common.ProcessIdent(g)
-
-	g.P(`
-        type eventObj interface {
-            GetProcess() *` + tetragonProcess + `
-        }
-    `)
-
-	if err := generateDoHandleEvents(g, f); err != nil {
-		return err
-	}
-
-	if err := generateEventLabels(g, f); err != nil {
-		return err
-	}
-
+func Generate(gen *protogen.Plugin, f []*protogen.File) error {
+	// tbd remove enterprise protoc-gen
 	return nil
 }

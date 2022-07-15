@@ -13,18 +13,22 @@ package layer3
 import (
 	"fmt"
 
-	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/cilium"
+	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
+	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -33,20 +37,27 @@ var (
 	nodeName = node.GetNodeNameForExport()
 )
 
-type Grpc struct {
-	ciliumState      *cilium.State
-	dns              *dns.Cache
-	enableCilium     bool
-	enableEventCache bool
-	eventCache       *eventcache.Cache
-}
-
 func SocketFlagsDnsEnabled(t uint32) bool {
 	return (t & api.SOCKFLAGS_TYPE_DNSREADY) != 0
 }
 
+type MsgIPEventUnix struct {
+	Common      processapi.MsgCommon
+	Tuple       networkapi.MsgIPTuple
+	Kube        processapi.MsgK8sUnix
+	Return      int64
+	ProcessKey  processapi.MsgExecveKey
+	SockCookie  uint64
+	SocketStats networkapi.MsgSocketStatsUnix
+	SocketFlags uint32
+}
+
+func msgToProtocol(event *MsgIPEventUnix) tetragon.SocketProtocol {
+	return network.MsgOpToProtocol(event.Common.Op)
+}
+
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessConnect(event *api.MsgIPEventUnix) *tetragon.ProcessConnect {
+func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	var fgsProcess, fgsParent *tetragon.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var err error
@@ -88,28 +99,29 @@ func (l3 *Grpc) GetProcessConnect(event *api.MsgIPEventUnix) *tetragon.ProcessCo
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      event.SockCookie,
-		Protocol:        reader.MsgToProtocol(event),
+		Protocol:        msgToProtocol(event),
 	}
 
 	if event.SockCookie != 0 {
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), l3.dns, l3.ciliumState)
-	if err != nil && l3.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	ec := eventcache.Get()
+	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dns.Get(), cilium.GetCiliumState())
+	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if l3.enableCilium && fgsProcess != nil {
+	if option.Config.EnableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if l3.eventCache.Needed(fgsProcess) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if ec != nil && ec.Needed(fgsProcess) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -130,7 +142,7 @@ func SocketFlagsToType(t uint32) string {
 }
 
 // GetProcessClose converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *tetragon.ProcessClose {
+func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *tetragon.Process
 	var err error
@@ -174,7 +186,7 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *tetragon.ProcessClos
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		Stats:           socketStats,
-		Protocol:        reader.MsgToProtocol(event),
+		Protocol:        msgToProtocol(event),
 		SocketType:      SocketFlagsToType(event.SocketFlags),
 	}
 
@@ -182,21 +194,24 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *tetragon.ProcessClos
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), l3.dns, l3.ciliumState)
-	if err != nil && l3.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	dnsCache := dns.Get()
+	ec := eventcache.Get()
+	state := cilium.GetCiliumState()
+	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
+	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if l3.enableCilium && fgsProcess != nil {
+	if option.Config.EnableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if l3.eventCache.Needed(fgsProcess) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if ec != nil && ec.Needed(fgsProcess) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -206,8 +221,8 @@ func (l3 *Grpc) GetProcessClose(event *api.MsgIPEventUnix) *tetragon.ProcessClos
 }
 
 // GetProcessListen returns Listen protobuf message for a given process, including the ancestor list.
-func (l3 *Grpc) GetProcessListen(
-	event *api.MsgIPEventUnix,
+func GetProcessListen(
+	event *MsgIPEventUnix,
 ) *tetragon.ProcessListen {
 	var fgsProcess, fgsParent *tetragon.Process
 	var port *wrapperspb.UInt32Value
@@ -236,15 +251,16 @@ func (l3 *Grpc) GetProcessListen(
 		Parent:   fgsParent,
 		Ip:       reader.GetIP(event.Tuple.SAddr, 0, event.Tuple.IPv6 != 0).String(),
 		Port:     port,
-		Protocol: reader.MsgToProtocol(event),
+		Protocol: msgToProtocol(event),
 	}
 
 	if event.SockCookie != 0 {
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	if l3.eventCache.Needed(fgsProcess) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	ec := eventcache.Get()
+	if ec!= nil && ec.Needed(fgsProcess) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -255,7 +271,7 @@ func (l3 *Grpc) GetProcessListen(
 }
 
 // GetProcessAccept converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *tetragon.ProcessAccept {
+func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *tetragon.Process
 	var err error
@@ -297,29 +313,32 @@ func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *tetragon.ProcessAcc
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 
-		Protocol: reader.MsgToProtocol(event),
+		Protocol: msgToProtocol(event),
 	}
 
 	if event.SockCookie != 0 {
 		fgsEvent.SockCookie = event.SockCookie
 	}
 
-	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), l3.dns, l3.ciliumState)
-	if err != nil && l3.enableEventCache && SocketFlagsDnsEnabled(event.SocketFlags) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	dnsCache := dns.Get()
+	ec := eventcache.Get()
+	state := cilium.GetCiliumState()
+	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
+	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if l3.enableCilium && fgsProcess != nil {
+	if option.Config.EnableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if l3.eventCache.Needed(fgsProcess) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if ec != nil  && ec.Needed(fgsProcess) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -330,7 +349,7 @@ func (l3 *Grpc) GetProcessAccept(event *api.MsgIPEventUnix) *tetragon.ProcessAcc
 }
 
 // GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
-func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPEventUnix) *tetragon.ProcessSockStats {
+func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 	var fgsParent, fgsProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -348,7 +367,7 @@ func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPEventUnix) *tetragon.Process
 		fgsParent = parent.GetProcessCopy()
 	}
 
-	fgsTuple := sockinfo.GetProcessTuple(event)
+	fgsTuple := sockinfo.GetTuple(&event.Tuple, event.SockCookie, event.Common.Op)
 	fgsSocketStats := reader.GetSocketStats(&event.SocketStats)
 
 	fgsEvent := &tetragon.ProcessSockStats{
@@ -360,16 +379,19 @@ func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPEventUnix) *tetragon.Process
 
 	// Stats are pushed on the timer e.g. every 60 seconds by default and at
 	// end of flow so it seems unliklye that DNS entry should be missing. For
-	// now I'll skip bouncing these through DNS entries when missing DNS.
-	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, fgsTuple.DestinationIp, l3.dns, l3.ciliumState)
+	// now I'll skip bouncing these through DNS entries when missing DNS
+	dnsCache := dns.Get()
+	ec := eventcache.Get()
+	state := cilium.GetCiliumState()
+	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, fgsTuple.DestinationIp, dnsCache, state)
 
-	if l3.enableCilium && fgsProcess != nil {
+	if option.Config.EnableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 		fgsEvent.Socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if l3.eventCache.Needed(fgsProcess) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	if ec != nil && ec.Needed(fgsProcess) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
@@ -378,12 +400,12 @@ func (l3 *Grpc) GetProcessSockStats(event *api.MsgIPEventUnix) *tetragon.Process
 	return fgsEvent
 }
 
-func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *tetragon.GetEventsResponse {
+func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_TCPCONNECTRET,
 		ops.MSG_OP_UDPCONNECT:
-		cnct := l3.GetProcessConnect(msg)
+		cnct := GetProcessConnect(msg)
 		if cnct != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessConnect{ProcessConnect: cnct},
@@ -393,7 +415,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *tetragon.GetEventsResp
 		}
 	case ops.MSG_OP_TCPCLOSE,
 		ops.MSG_OP_UDPCLOSE:
-		c := l3.GetProcessClose(msg)
+		c := GetProcessClose(msg)
 		if c != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessClose{ProcessClose: c},
@@ -402,7 +424,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *tetragon.GetEventsResp
 			}
 		}
 	case ops.MSG_OP_LISTEN:
-		l := l3.GetProcessListen(msg)
+		l := GetProcessListen(msg)
 		if l != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessListen{ProcessListen: l},
@@ -411,7 +433,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *tetragon.GetEventsResp
 			}
 		}
 	case ops.MSG_OP_ACCEPT:
-		a := l3.GetProcessAccept(msg)
+		a := GetProcessAccept(msg)
 		if a != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessAccept{ProcessAccept: a},
@@ -421,7 +443,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *tetragon.GetEventsResp
 		}
 
 	case ops.MSG_OP_TCPSTATS, ops.MSG_OP_UDPSTATS:
-		s := l3.GetProcessSockStats(msg)
+		s := GetProcessSockStats(msg)
 		if s != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessSockStats{ProcessSockStats: s},
@@ -431,7 +453,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *tetragon.GetEventsResp
 		}
 
 	case ops.MSG_OP_IP_ERROR:
-		s := l3.GetProcessIPError(msg)
+		s := GetProcessIPError(msg)
 		if s != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessIpError{ProcessIpError: s},
@@ -446,7 +468,7 @@ func (l3 *Grpc) HandleIpMessage(msg *api.MsgIPEventUnix) *tetragon.GetEventsResp
 	return res
 }
 
-func (l3 *Grpc) GetProcessIPError(event *api.MsgIPEventUnix) *tetragon.ProcessIpError {
+func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	var fgsParent, fgsProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -507,26 +529,18 @@ func (l3 *Grpc) GetProcessIPError(event *api.MsgIPEventUnix) *tetragon.ProcessIp
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if l3.enableCilium && fgsProcess != nil {
+	if option.Config.EnableCilium && fgsProcess != nil {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if l3.eventCache.Needed(fgsProcess) {
-		l3.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	ec := eventcache.Get()
+	if ec != nil && ec.Needed(fgsProcess) {
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {
 		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
-}
-
-func New(ciliumState *cilium.State, dnsCache *dns.Cache, eventC *eventcache.Cache, ciliumEnabled bool) *Grpc {
-	return &Grpc{
-		ciliumState:  ciliumState,
-		dns:          dnsCache,
-		enableCilium: ciliumEnabled,
-		eventCache:   eventC,
-	}
 }

@@ -21,13 +21,14 @@ import (
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/vishvananda/netlink"
 
 	"github.com/containernetworking/plugins/pkg/ns"
@@ -39,7 +40,7 @@ var (
 )
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath string) {
-	unix := api.MsgInterfaceEventUnix{
+	unix := iface.MsgInterfaceEventUnix{
 		Common: processapi.MsgCommon{
 			Op:    ops.MSG_OP_INTERFACE_STATS,
 			Size:  1,

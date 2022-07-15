@@ -30,7 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"

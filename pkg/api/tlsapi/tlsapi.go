@@ -140,12 +140,3 @@ type MsgTLSEvent struct {
 	ServerHello MsgTLS                  `align:"serverhello"`
 	ProcessKey  processapi.MsgExecveKey `align:"execve"`
 }
-
-type MsgTLSEventUnix struct {
-	Common      processapi.MsgCommon
-	Tuple       MsgTLSIPv4
-	ClientHello MsgTLS
-	ServerHello MsgTLS
-	ServerCert  MsgTLSCertificates
-	ProcessKey  processapi.MsgExecveKey
-}

@@ -8,11 +8,12 @@ import (
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/yalue/native_endian"
@@ -115,7 +116,7 @@ func handleUdpDns(m *api.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) 
 		IPs:           ipStrings,
 	}
 
-	msgUnix := &dnsapi.MsgDnsUnix{
+	msgUnix := &dnsproto.MsgDnsUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
 		Return:     m.Return,

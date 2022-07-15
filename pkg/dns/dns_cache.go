@@ -7,16 +7,22 @@ import (
 	lru "github.com/hashicorp/golang-lru"
 )
 
-var (
-	LazyDns             = false
-	dnsDefaultCacheSize = 1024
-)
-
 type Cache struct {
 	cache *lru.Cache
 }
 
+var (
+	LazyDns             = false
+	dnsDefaultCacheSize = 1024
+
+	cache *Cache
+)
+
 func NewCache() (*Cache, error) {
+	if cache != nil {
+		return cache, nil 
+	}
+
 	lru, err := lru.New(dnsDefaultCacheSize)
 	if err != nil {
 		return nil, err
@@ -46,4 +52,8 @@ func (c *Cache) AddIp(dns *tetragon.DnsInfo) {
 
 func CiliumDnsEnabled() bool {
 	return LazyDns
+}
+
+func Get() *Cache {
+	return cache
 }

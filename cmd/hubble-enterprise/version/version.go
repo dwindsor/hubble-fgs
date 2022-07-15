@@ -25,7 +25,7 @@ import (
 	"github.com/spf13/cobra"
 )
 
-func printVersion(res *fgs.GetVersionResponse, err error) {
+func printVersion(res *tetragon.GetVersionResponse, err error) {
 	if err == nil {
 		fmt.Printf("server version: %s cli version: %s\n", res.Version, version.Version)
 	} else {
@@ -41,8 +41,8 @@ func New() *cobra.Command {
 		Args:  cobra.NoArgs,
 		Run: func(cmd *cobra.Command, args []string) {
 			common.CliRunErr(
-				func(ctx context.Context, cli fgs.FineGuidanceSensorsClient) {
-					res, err := cli.GetVersion(ctx, &fgs.GetVersionRequest{})
+				func(ctx context.Context, cli tetragon.FineGuidanceSensorsClient) {
+					res, err := cli.GetVersion(ctx, &tetragon.GetVersionRequest{})
 					printVersion(res, err)
 				},
 				func(err error) {

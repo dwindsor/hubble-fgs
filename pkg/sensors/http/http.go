@@ -22,13 +22,14 @@ import (
 	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
 
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/chunks"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -326,7 +327,7 @@ func handleHTTP(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
-	unix := &api.MsgHttpEventUnix{
+	unix := &httpproto.MsgHttpEventUnix{
 		Common:     m.Common,
 		Tuple:      m.Tuple,
 		ProcessKey: m.ProcessKey,
@@ -356,7 +357,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 	if moreBytesEnable {
 		entry, ok := moreBytes.Get(key)
 		if ok {
-			unix = entry.(*api.MsgHttpEventUnix)
+			unix = entry.(*httpproto.MsgHttpEventUnix)
 			moreBytes.Remove(key)
 			usedMoreBytes |= readerhttp.HttpMultiMessage
 		}
@@ -506,7 +507,7 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 				return nil, fmt.Errorf("unexpected chunk type in event: %d, expected %d", typ, HTTP2HeaderFrame)
 			}
 
-			unix := &api.MsgHttpEventUnix{
+			unix := &httpproto.MsgHttpEventUnix{
 				Common:     m.Common,
 				Tuple:      m.Tuple,
 				ProcessKey: m.ProcessKey,
@@ -521,7 +522,7 @@ func http2ToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 	return events, nil
 }
 
-func (s *http2State) handleHttp2HeaderFrame(unix *api.MsgHttpEventUnix, frameBytes []byte) bool {
+func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, frameBytes []byte) bool {
 	s.reader.Reset(frameBytes)
 
 	frame, err := s.framer.ReadFrame()

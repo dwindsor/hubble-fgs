@@ -20,18 +20,18 @@ import (
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/defaults"
+	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
-	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/server"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
@@ -55,7 +55,7 @@ var (
 	log = logger.GetLogger()
 )
 
-func getExportFilters() ([]*fgs.Filter, []*fgs.Filter, error) {
+func getExportFilters() ([]*tetragon.Filter, []*tetragon.Filter, error) {
 	allowList, err := filters.ParseFilterList(viper.GetString(keyExportAllowlist))
 	if err != nil {
 		return nil, nil, err
@@ -121,14 +121,9 @@ func hubbleFGSExecute() error {
 
 	bpf.ConfigureResourceLimits()
 	observerDir := getObserverDir()
-	obs := observer.NewObserver(
-		observerDir,
-		observerDir,
-		ciliumBPF,
-		networkInterfaces,
-		configFile,
-		exportTCPStatsSampleSeg,
-	)
+	option.Config.BpfDir = observerDir
+	option.Config.MapDir = observerDir
+	obs := observer.NewObserver(configFile)
 	if err := obs.InitSensorManager(); err != nil {
 		return err
 	}
@@ -175,12 +170,7 @@ func hubbleFGSExecute() error {
 		ctx,
 		&cancelWg,
 		ciliumState,
-		observer.SensorManager,
-		enableProcessCred,
-		enableProcessNs,
-		enableK8sAPI,
-		enableCiliumAPI,
-		enableProcessAncestors)
+		observer.SensorManager)
 	if err != nil {
 		return err
 	}
@@ -265,14 +255,14 @@ func startExporter(ctx context.Context, server *server.Server) error {
 	if exportRateLimit >= 0 {
 		rateLimiter = ratelimit.NewRateLimiter(ctx, 1*time.Minute, exportRateLimit, encoder)
 	}
-	var aggregationOptions *fgs.AggregationOptions
+	var aggregationOptions *tetragon.AggregationOptions
 	if enableExportAggregation {
-		aggregationOptions = &fgs.AggregationOptions{
+		aggregationOptions = &tetragon.AggregationOptions{
 			WindowSize:        durationpb.New(exportAggregationWindowSize),
 			ChannelBufferSize: exportAggregationBufferSize,
 		}
 	}
-	req := fgs.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions}
+	req := tetragon.GetEventsRequest{AllowList: allowList, DenyList: denyList, AggregationOptions: aggregationOptions}
 	log.WithFields(logrus.Fields{"logger": writer, "request": &req}).Info("Starting JSON exporter")
 	exporter := exporter.NewExporter(ctx, &req, server, encoder, writer, rateLimiter)
 	exporter.Start()
@@ -281,7 +271,7 @@ func startExporter(ctx context.Context, server *server.Server) error {
 
 func Serve(ctx context.Context, address string, server *server.Server) error {
 	grpcServer := grpc.NewServer()
-	fgs.RegisterFineGuidanceSensorsServer(grpcServer, server)
+	tetragon.RegisterFineGuidanceSensorsServer(grpcServer, server)
 	go func(address string) {
 		listener, err := net.Listen("tcp", address)
 		if err != nil {

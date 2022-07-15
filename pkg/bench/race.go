@@ -27,13 +27,14 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/cilium"
+	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/exporter"
-	fgsGrpc "github.com/isovalent/hubble-fgs/pkg/grpc"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"google.golang.org/protobuf/proto"
 
 	hubblev1 "github.com/cilium/hubble/pkg/api/v1"
@@ -58,7 +59,7 @@ type raceListener struct {
 	ready chan bool
 }
 
-func (l *raceListener) Notify(msg interface{}) error {
+func (l *raceListener) Notify(msg notify.Interface) error {
 	switch msg.(type) {
 	case *readyapi.MsgTETRAGONReady:
 		l.ready <- true
@@ -118,16 +119,15 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 	var wg sync.WaitGroup
 
 	processCacheSize := 32768
-	enableProcessCred := false
-	enableProcessNs := false
-	enableCiliumAPI := false
-	enableEventCache := true
-	enableProcessAncestors := false
+	option.Config.EnableProcessCred = false
+	option.Config.EnableProcessNs = false
+	option.Config.EnableCilium = false
+	// todo enableProcessAncestors := false
 
-	if _, err := cilium.InitCiliumState(ctx, enableCiliumAPI); err != nil {
+	if _, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium); err != nil {
 		return err
 	}
-	if err := process.InitCache(ctx, &raceK8sWatcher{}, enableCiliumAPI, processCacheSize); err != nil {
+	if err := process.InitCache(ctx, &raceK8sWatcher{}, option.Config.EnableCilium, processCacheSize); err != nil {
 		return err
 	}
 
@@ -136,11 +136,6 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 		&wg,
 		cilium.GetFakeCiliumState(),
 		observer.SensorManager,
-		enableProcessCred,
-		enableProcessNs,
-		enableEventCache,
-		enableCiliumAPI,
-		enableProcessAncestors,
 	)
 	if err != nil {
 		return err
@@ -176,12 +171,19 @@ spec:
       enable: false
 `
 
+const (
+	fgsRaceDir = "/sys/fs/bpf/fgs-race"
+)
+
 func runRaceFGS(ctx context.Context, ready chan bool) {
 	bpf.ConfigureResourceLimits()
 	bpf.CheckOrMountFS("")
 	bpf.CheckOrMountDebugFS()
 	bpf.CheckOrMountCgroup2()
 	bpf.SetMapPrefix("fgs-race")
+
+	option.Config.BpfDir = fgsRaceDir
+	option.Config.MapDir = fgsRaceDir
 
 	if _, err := os.Stat("../../bpf/objs"); err == nil {
 		option.Config.HubbleLib = "../../bpf/objs"
@@ -206,11 +208,7 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	f.Write([]byte(benchConfig))
 	f.Close()
 
-	obs := observer.NewObserver(
-		"/sys/fs/bpf/fgs-race/", "/sys/fs/bpf/fgs-race/", "",
-		"",       /* network interfaces */
-		f.Name(), /* config */
-		10 /* tcp statistics */)
+	obs := observer.NewObserver(f.Name(), /* config */)
 
 	if err := obs.InitSensorManager(); err != nil {
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)

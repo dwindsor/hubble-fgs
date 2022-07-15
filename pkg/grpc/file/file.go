@@ -11,14 +11,12 @@
 package file
 
 import (
-	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	api "github.com/isovalent/hubble-fgs/pkg/api/fileapi"
-	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -38,16 +36,7 @@ var (
 	}
 )
 
-type Grpc struct {
-	dnsCache          *dns.Cache
-	ciliumState       *cilium.State
-	eventCache        *eventcache.Cache
-	enableCilium      bool
-	enableProcessCred bool
-	enableProcessNs   bool
-}
-
-func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *tetragon.ProcessFile {
+func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -78,8 +67,9 @@ func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *tetragon.ProcessFile
 		Hook:    fileHookMap[event.Hook],
 	}
 
-	if t.eventCache.Needed(tetragonProcess) {
-		t.eventCache.Add(process, tetragonEvent, ktime.ToProto(event.Common.Ktime), event)
+	ec := eventcache.Get()
+	if ec.Needed(tetragonProcess) {
+		ec.Add(process, tetragonEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 
@@ -89,8 +79,18 @@ func (t *Grpc) GetProcessFile(event *api.MsgFileEventUnix) *tetragon.ProcessFile
 	return tetragonEvent
 }
 
-func (t *Grpc) HandleFileMonitoringMessage(msg *api.MsgFileEventUnix) *tetragon.GetEventsResponse {
-	f := t.GetProcessFile(msg)
+type MsgFileEventUnix struct {
+	Common     processapi.MsgCommon
+	ProcessKey processapi.MsgExecveKey
+	Path       string
+	Action     uint32
+	Hook       uint32
+	Timestamp  uint64
+	Ino        uint64
+}
+
+func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
+	f := GetProcessFile(msg)
 	if f == nil {
 		return nil
 	}
@@ -98,21 +98,5 @@ func (t *Grpc) HandleFileMonitoringMessage(msg *api.MsgFileEventUnix) *tetragon.
 		Event:    &tetragon.GetEventsResponse_ProcessFile{ProcessFile: f},
 		NodeName: nodeName,
 		Time:     ktime.ToProto(msg.Common.Ktime),
-	}
-}
-
-func New(cilium *cilium.State,
-	dnsCache *dns.Cache, cache *eventcache.Cache,
-	ciliumEnable bool,
-	enableProcessCred bool,
-	enableProcessNs bool,
-) *Grpc {
-	return &Grpc{
-		ciliumState:       cilium,
-		dnsCache:          dnsCache,
-		eventCache:        cache,
-		enableCilium:      ciliumEnable,
-		enableProcessCred: enableProcessCred,
-		enableProcessNs:   enableProcessNs,
 	}
 }

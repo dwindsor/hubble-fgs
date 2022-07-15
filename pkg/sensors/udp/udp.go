@@ -23,15 +23,16 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	lru "github.com/hashicorp/golang-lru"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
@@ -344,8 +345,8 @@ func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {
 }
 
 // emitUdpEvent builds a udpEvent and expects caller to set the correct Op value.
-func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *api.MsgIPEventUnix {
-	unix := api.MsgIPEventUnix{}
+func emitUdpEvent(k *udpInfoKey, v *udpInfoValue) *layer3.MsgIPEventUnix {
+	unix := layer3.MsgIPEventUnix{}
 
 	unix.Common = processapi.MsgCommon{
 		Op:    0,

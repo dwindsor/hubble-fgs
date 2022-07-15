@@ -4,16 +4,19 @@ import (
 	"strings"
 	"time"
 
-	"github.com/cilium/hubble/pkg/cilium"
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/cilium"
+	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
+	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
@@ -23,16 +26,10 @@ import (
 
 var (
 	nodeName = node.GetNodeNameForExport()
+
 )
 
-type Grpc struct {
-	dnsCache     *dns.Cache
-	ciliumState  *cilium.State
-	eventCache   *eventcache.Cache
-	enableCilium bool
-}
-
-func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *tetragon.ProcessHttp {
+func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	var proc *tetragon.Process
 	var code uint32
 	var err error
@@ -114,17 +111,22 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *tetragon.ProcessHttp {
 		Http:    fgsHttp,
 	}
 
-	fgsEvent.Socket.DestinationNames, _ = sockinfo.GetProcessIp(proc, fgsEvent.Socket.DestinationIp, http.dnsCache, http.ciliumState)
+	fgsEvent.Socket.DestinationNames, _ =
+		sockinfo.GetProcessIp(proc,
+			fgsEvent.Socket.DestinationIp,
+			dns.Get(),
+			cilium.GetCiliumState())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
-	if http.enableCilium && proc != nil {
+	if option.Config.EnableCilium && proc != nil {
 		destinationIP := network.GetIPv4(event.Tuple.DAddr, ops.MSG_OP_HTTP)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if http.eventCache.Needed(proc) {
-		http.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	ec := eventcache.Get()
+	if ec.Needed(proc) {
+		ec.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {
@@ -133,11 +135,18 @@ func (http *Grpc) GetHttp(event *api.MsgHttpEventUnix) *tetragon.ProcessHttp {
 	return fgsEvent
 }
 
-func (http *Grpc) HandleHttpMessage(msg *api.MsgHttpEventUnix) *tetragon.GetEventsResponse {
+type MsgHttpEventUnix struct {
+	Common     processapi.MsgCommon
+	Tuple      networkapi.MsgIPv4HTTPTuple
+	ProcessKey processapi.MsgExecveKey
+	Request    httpapi.MsgHttpUnix
+}
+
+func (msg *MsgHttpEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_HTTP:
-		t := http.GetHttp(msg)
+		t := GetHttp(msg)
 		if t != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessHttp{ProcessHttp: t},
@@ -149,13 +158,4 @@ func (http *Grpc) HandleHttpMessage(msg *api.MsgHttpEventUnix) *tetragon.GetEven
 		logger.GetLogger().WithField("message", msg).Warn("HandleHttpMessage: Unhandled event")
 	}
 	return res
-}
-
-func New(cilium *cilium.State, dnsCache *dns.Cache, cache *eventcache.Cache, ciliumEnable bool) *Grpc {
-	return &Grpc{
-		ciliumState:  cilium,
-		dnsCache:     dnsCache,
-		eventCache:   cache,
-		enableCilium: ciliumEnable,
-	}
 }

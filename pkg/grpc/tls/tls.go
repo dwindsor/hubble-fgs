@@ -2,26 +2,24 @@ package tls
 
 import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/api/processapi"
+	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
-	"github.com/isovalent/hubble-fgs/pkg/eventcache"
 	"github.com/isovalent/hubble-fgs/pkg/reader/ciphers"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
+	"github.com/sirupsen/logrus"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
 	nodeName = node.GetNodeNameForExport()
 )
-
-type Grpc struct {
-	eventCache *eventcache.Cache
-}
 
 // Translate internal uint32 error codes into gRPC visible error codes
 func getTLSCertificateErrorCode(err uint32) tetragon.TlsCertificateError {
@@ -47,8 +45,37 @@ func getTLSCertificateErrorCode(err uint32) tetragon.TlsCertificateError {
 	return tetragon.TlsCertificateError_TLS_CERT_ERROR_UNKNOWN
 }
 
+type MsgTLSEventUnix struct {
+	Common      processapi.MsgCommon
+	Tuple       tlsapi.MsgTLSIPv4
+	ClientHello tlsapi.MsgTLS
+	ServerHello tlsapi.MsgTLS
+	ServerCert  tlsapi.MsgTLSCertificates
+	ProcessKey  processapi.MsgExecveKey
+}
+
+func ObserverTLSPrinter(msg *MsgTLSEventUnix, log logrus.FieldLogger) {
+	op := msg.Common.Op
+	typeSNI, nameSNI := readertls.GetTLSSNI(msg.ClientHello.SNI.Value)
+
+	log.WithFields(logrus.Fields{
+		"op":                           ops.OpCode(op).String(),
+		"saddr":                        network.GetIPv4(msg.Tuple.SAddr, op).String(),
+		"sport":                        network.GetSport(msg.Tuple.SPort),
+		"dport":                        msg.Tuple.DPort,
+		"daddr":                        network.GetIPv4(msg.Tuple.DAddr, op).String(),
+		"Client-TLS-Version":           readertls.GetTLSVersion(msg.ClientHello.Version),
+		"Server-TLS-Version":           readertls.GetTLSVersion(msg.ServerHello.Version),
+		"SNI-Type":                     typeSNI,
+		"SNI-Name":                     nameSNI,
+		"Client-TLS-SupportedVersions": readertls.GetTLSSupportedVersions(&msg.ClientHello.SupportedVersions, true),
+		"Server-TLS-SupportedVersions": readertls.GetTLSSupportedVersions(&msg.ServerHello.SupportedVersions, false),
+		"cipher":                       ciphers.GetTLSCiphers(&msg.ServerHello.Cipher),
+	}).Warn()
+}
+
 // GetTLS converts TLSEvent from hubble-fgs to protobuf message.
-func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *tetragon.Tls {
+func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -94,8 +121,9 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *tetragon.Tls {
 		CertificateError:    getTLSCertificateErrorCode(event.ServerCert.Error),
 		ParserInternalState: event.ServerCert.ParserState.String(),
 	}
-	if tls.eventCache.Needed(proc) {
-		tls.eventCache.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+	ec := eventcache.Get()
+	if ec != nil && ec.Needed(proc) {
+		ec.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if processInt != nil {
@@ -104,11 +132,11 @@ func (tls *Grpc) getTLS(event *tlsapi.MsgTLSEventUnix) *tetragon.Tls {
 	return fgsEvent
 }
 
-func (tls *Grpc) HandleMessage(msg *tlsapi.MsgTLSEventUnix) *tetragon.GetEventsResponse {
+func (msg *MsgTLSEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_TLS:
-		t := tls.getTLS(msg)
+		t := getTLS(msg)
 		if t != nil {
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_Tls{Tls: t},
@@ -120,10 +148,4 @@ func (tls *Grpc) HandleMessage(msg *tlsapi.MsgTLSEventUnix) *tetragon.GetEventsR
 		logger.GetLogger().WithField("message", msg).Warn("HandleTlsMessage: Unhandled event")
 	}
 	return res
-}
-
-func New(ec *eventcache.Cache) *Grpc {
-	return &Grpc{
-		eventCache: ec,
-	}
 }

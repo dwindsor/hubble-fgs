@@ -365,8 +365,6 @@ func EventTypeString(ev interface{}) string {
 		return "ProcessExit"
 	case *tetragon.GetEventsResponse_ProcessClose:
 		return "ProcessClose"
-	case *tetragon.GetEventsResponse_ProcessCred:
-		return "ProcessCred"
 	case *tetragon.GetEventsResponse_InterfaceStats:
 		return "InterfaceStats"
 	case *tetragon.GetEventsResponse_Test:
@@ -450,12 +448,6 @@ func checkEvent(r *tetragon.GetEventsResponse, l Logger, types ...tetragon.Event
 			return nil, err
 		}
 		return ev.ProcessClose, nil
-
-	case *tetragon.GetEventsResponse_ProcessCred:
-		if err := checkTypes(tetragon.EventType_PROCESS_CRED); err != nil {
-			return nil, err
-		}
-		return ev.ProcessCred, nil
 
 	case *tetragon.GetEventsResponse_ProcessAccept:
 		if err := checkTypes(tetragon.EventType_PROCESS_ACCEPT); err != nil {

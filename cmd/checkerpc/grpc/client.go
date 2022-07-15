@@ -14,7 +14,7 @@ import (
 )
 
 type ClientMultiplexer struct {
-	clients []fgs.FineGuidanceSensorsClient
+	clients []tetragon.FineGuidanceSensorsClient
 }
 
 type connResult struct {
@@ -23,7 +23,7 @@ type connResult struct {
 }
 
 type GetEventsResult struct {
-	*fgs.GetEventsResponse
+	*tetragon.GetEventsResponse
 	Error error
 }
 
@@ -31,11 +31,11 @@ func (clients *ClientMultiplexer) GetEvents(ctx context.Context) chan GetEventsR
 	c := make(chan GetEventsResult)
 
 	for _, client := range clients.clients {
-		stream, err := client.GetEvents(ctx, &fgs.GetEventsRequest{})
+		stream, err := client.GetEvents(ctx, &tetragon.GetEventsRequest{})
 		if err != nil {
 			logger.GetLogger().WithError(err).Fatal("Failed to call GetEvents")
 		}
-		go func(stream fgs.FineGuidanceSensors_GetEventsClient) {
+		go func(stream tetragon.FineGuidanceSensors_GetEventsClient) {
 			for {
 				res, err := stream.Recv()
 				c <- GetEventsResult{res, err}
@@ -102,7 +102,7 @@ func Connect(ctx context.Context, connectTimeout time.Duration, addrs ...string)
 	// depend on closing the channel (otherwise golint complains)
 	var clients ClientMultiplexer
 	for _, conn := range conns {
-		client := fgs.NewFineGuidanceSensorsClient(conn)
+		client := tetragon.NewFineGuidanceSensorsClient(conn)
 		clients.clients = append(clients.clients, client)
 	}
 

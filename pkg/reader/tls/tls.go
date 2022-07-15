@@ -8,11 +8,7 @@ import (
 	"strconv"
 	"strings"
 
-	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
-	"github.com/isovalent/hubble-fgs/pkg/reader/ciphers"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 )
 
@@ -235,24 +231,4 @@ func GetTLSCertificateString(fragments []byte) ([]string, uint32) {
 		certSubjects = append(certSubjects, subjectRsdn.String())
 	}
 	return certSubjects, 0
-}
-
-func ObserverTLSPrinter(msg *api.MsgTLSEventUnix, log logrus.FieldLogger) {
-	op := msg.Common.Op
-	typeSNI, nameSNI := GetTLSSNI(msg.ClientHello.SNI.Value)
-
-	log.WithFields(logrus.Fields{
-		"op":                           ops.OpCode(op).String(),
-		"saddr":                        network.GetIPv4(msg.Tuple.SAddr, op).String(),
-		"sport":                        network.GetSport(msg.Tuple.SPort),
-		"dport":                        msg.Tuple.DPort,
-		"daddr":                        network.GetIPv4(msg.Tuple.DAddr, op).String(),
-		"Client-TLS-Version":           GetTLSVersion(msg.ClientHello.Version),
-		"Server-TLS-Version":           GetTLSVersion(msg.ServerHello.Version),
-		"SNI-Type":                     typeSNI,
-		"SNI-Name":                     nameSNI,
-		"Client-TLS-SupportedVersions": GetTLSSupportedVersions(&msg.ClientHello.SupportedVersions, true),
-		"Server-TLS-SupportedVersions": GetTLSSupportedVersions(&msg.ServerHello.SupportedVersions, false),
-		"cipher":                       ciphers.GetTLSCiphers(&msg.ServerHello.Cipher),
-	}).Warn()
 }

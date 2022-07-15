@@ -26,7 +26,7 @@ import (
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/cilium/tetragon/pkg/observer"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"

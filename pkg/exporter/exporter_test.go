@@ -23,7 +23,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/server"
+	"github.com/cilium/tetragon/pkg/server"
 	"github.com/stretchr/testify/assert"
 )
 

@@ -4,8 +4,9 @@ import (
 	"bytes"
 	"encoding/binary"
 
+	"github.com/cilium/tetragon/pkg/observer"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/stats"
 	"github.com/yalue/native_endian"
 )
@@ -18,8 +19,8 @@ func EnableDns() {
 	enableDns = true
 }
 
-func MsgToIPUnix(m *api.MsgIPEvent) *api.MsgIPEventUnix {
-	unix := &api.MsgIPEventUnix{}
+func MsgToIPUnix(m *api.MsgIPEvent) *layer3.MsgIPEventUnix {
+	unix := &layer3.MsgIPEventUnix{}
 
 	unix.Common = m.Common
 	unix.Tuple = m.Tuple

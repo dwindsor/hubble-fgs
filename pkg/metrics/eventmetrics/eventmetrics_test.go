@@ -25,7 +25,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/interfacemetrics"
 
-	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/prometheus/client_golang/prometheus/testutil"
 	"github.com/stretchr/testify/assert"
 )

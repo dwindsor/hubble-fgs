@@ -25,11 +25,12 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -137,7 +138,7 @@ func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 		args = args + " " + cwd
 	}
 
-	m := processapi.MsgExecveEventUnix{}
+	m := exec.MsgExecveEventUnix{}
 	m.Common.Op = ops.MSG_OP_EXECVE
 	m.Common.Size = processapi.MsgUnixSize + p.psize + p.size
 

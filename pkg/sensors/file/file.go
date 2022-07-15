@@ -21,13 +21,14 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 )
 
 const (
@@ -59,7 +60,7 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	if uint32(len(str)) > m.Path.Size {
 		str = str[:m.Path.Size]
 	}
-	unix := &fileapi.MsgFileEventUnix{
+	unix := &file.MsgFileEventUnix{
 		Common:     m.Common,
 		ProcessKey: m.ProcessKey,
 		Path:       str,

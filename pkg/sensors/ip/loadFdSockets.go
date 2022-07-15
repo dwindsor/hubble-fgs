@@ -29,7 +29,6 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
-	"github.com/isovalent/hubble-fgs/pkg/observer"
 )
 
 const (
@@ -224,13 +223,13 @@ func LoadSockets(callback FdCallback, protocol uint16) error {
 		logger.GetLogger().WithError(err).Warn("Unable to get existing sockets")
 		return err
 	}
-	fdLoadSensor, err := loadFdLookup(observer.GetBpfDir(), observer.GetMapDir(), observer.GetCiliumDir())
+	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
 		return err
 	}
 	writeSocketCookies(procSocketFds, callback, protocol)
-	if err := unloadFdLookup(fdLoadSensor, observer.GetBpfDir(), observer.GetMapDir(), observer.GetCiliumDir()); err != nil {
+	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir); err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to unload FD Lookup program")
 		return err
 	}
