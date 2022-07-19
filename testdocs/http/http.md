@@ -53,3 +53,4 @@
 
 - [x] curl pod making a single http request
 - [ ] simple web server with realistic workload
+- [ ] verify http error metrics over some period of time
