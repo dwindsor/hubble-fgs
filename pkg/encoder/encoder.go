@@ -301,6 +301,14 @@ func (p *CompactEncoder) eventToString(response *tetragon.GetEventsResponse) (st
 				sock = p.colorer.cyan.Sprintf("%s:%d -> %s:%d", sa.Saddr, sa.Sport, sa.Daddr, sa.Dport)
 			}
 			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, sock), caps), nil
+		case "bpf_check":
+			event := p.colorer.blue.Sprintf("🐝 %-7s", "bpf_check")
+			attr := ""
+			if len(kprobe.Args) > 0 && kprobe.Args[0] != nil {
+				ba := kprobe.Args[0].GetBpfAttrArg()
+				attr = p.colorer.cyan.Sprintf("%s %s insn_cnt %d", ba.ProgType, ba.ProgName, ba.InsnCnt)
+			}
+			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, attr), caps), nil
 		default:
 			event := p.colorer.blue.Sprintf("⁉️ %-7s", "syscall")
 			return capTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, kprobe.FunctionName), caps), nil
