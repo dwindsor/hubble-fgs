@@ -37,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
 	// Imported to allow sensors to be initialized inside init().
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	ciliumopt "github.com/cilium/cilium/pkg/option"
@@ -209,6 +210,10 @@ func hubbleFGSExecute() error {
 		if err != nil {
 			return err
 		}
+	}
+
+	if err := base.LoadDefault(ctx, observerDir, observerDir, option.Config.CiliumDir); err != nil {
+		return err
 	}
 
 	return obs.Start(ctx, startSensors)
