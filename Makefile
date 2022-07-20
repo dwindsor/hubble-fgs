@@ -246,13 +246,7 @@ fetch-testdata:
 	docker stop fgs-md-temp || true
 
 generate:
-	./tools/controller-gen crd paths=./pkg/k8s/apis/... output:dir=pkg/k8s/apis/isovalent.com/client/crds/v1alpha1
-	export GOPATH=$$(go env GOPATH); \
-	  bash vendor/k8s.io/code-generator/generate-groups.sh all \
-	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
-	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
-	  isovalent.com:v1alpha1 \
-	  --go-header-file hack/custom-boilerplate.go.txt
+	$(MAKE) -C pkg/k8s
 
 codegen: image-codegen
 	$(MAKE) -C api
@@ -279,7 +273,7 @@ endif
 
 .PHONY: go-format
 go-format:
-	find . -name '*.go' -not -path './vendor/*' -not -path './modules/*' | xargs gofmt -w
+	find . -name '*.go' -not -path './vendor/*' -not -path './api/vendor/*' -not -path './pkg/k8s/vendor/*' -not -path './modules/*' | xargs gofmt -w
 
 .PHONY: format
 format: go-format clang-format
