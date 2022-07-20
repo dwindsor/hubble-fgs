@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"io"
 	"path"
-	"reflect"
 	"sort"
 	"strings"
 	"text/scanner"
@@ -130,16 +129,18 @@ NEXTEVENT:
 		ctx.t.Logf("EVENT op=%d bytes=%d\n", e.Op, len(event))
 		for _, m := range e.Matchers {
 			_, err := m.Match(ctx, r)
-			//ctx.t.Logf("m.Matcher is of type: '%s'", reflect.TypeOf(m.Matcher).String())
 			if err != nil {
-				if reflect.TypeOf(m.Matcher).String() == "parsertest.ConnAddrMatcher" {
-					ctx.t.Logf("ConnAddrMatcher failed!")
+				// Handle the case where connAddr does not match in the event stream. This
+				// can happen for example because we are seeing other
+				if matcher, ok := m.Matcher.(ConnAddrMatcher); ok {
 					failedEvents++
 					if failedEvents == maxEventsToSearch {
 						return &TestStepError{m.Position, "match", err}
 					}
+					ctx.t.Logf("Retrying ConnAddrMatcher attempt=%d/%d kind=%d isClient=%t", failedEvents, maxEventsToSearch, matcher.kind, matcher.isClient)
 					continue NEXTEVENT
 				}
+				return &TestStepError{m.Position, "match", err}
 			}
 		}
 
