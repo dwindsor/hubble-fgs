@@ -44,7 +44,6 @@ jobs:
         sudo -E ldconfig /usr/local/
         sudo sed -i '/secure_path/d' /etc/sudoers
         sudo sed -i '/env_reset/d' /etc/sudoers
-        sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
         echo `which clang`
         echo `which llc`
         echo `clang --version`

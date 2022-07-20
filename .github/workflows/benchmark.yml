@@ -35,7 +35,6 @@ jobs:
           sudo -E ldconfig /usr/local/
           sudo sed -i '/secure_path/d' /etc/sudoers
           sudo sed -i '/env_reset/d' /etc/sudoers
-          sudo -E ./contrib/vmlinux-builder/apt-get-btf.sh
           sudo make hubble-bpf
           if [ "${{ github.event_name }}" == "pull_request" ]; then
             GIT_REV="$(git rev-parse --short ${{ github.event.pull_request.head.sha }})"
