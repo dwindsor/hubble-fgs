@@ -97,6 +97,7 @@ look like.  The following match clauses are supported:
 - `h4 131072 1 38`  : Match 32-bit host byte-order unsigned integers
 - `I 127.0.0.1`     : Match an IP address
 - `? 13`            : Match any N bytes (only EVENT)
+- `NZ 13`           : Match N non-zero bytes (only EVENT)
 - `$ 1b ?? 3f ??`   : Match hexadecimal bytes, unless `??`, which matches any byte (only EVENT).
 - `A SRV_ADDR`      : Match IP of the server
 - `A CLI_ADDR`      : Match IP of the client
