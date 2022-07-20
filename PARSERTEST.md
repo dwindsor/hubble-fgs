@@ -15,7 +15,7 @@ a setup of a single lightweight connection.
 
 ## Layout
 
-A Go "test" is defined by `pkg/parsertest/parsertest_test.go` that executes
+A Go "test" is defined by `pkg/parsertest/parser_test.go` that executes
 the test-cases by
   1. starting FGS with the correct set of sensors
   2. creating a client and server for sending and receiving packets

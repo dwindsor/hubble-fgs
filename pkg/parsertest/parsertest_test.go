@@ -1,26 +1,23 @@
+//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
+//
+//  NOTICE: All information contained herein is, and remains the property of
+//  Isovalent Inc and its suppliers, if any. The intellectual and technical
+//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
+//  and may be covered by U.S. and Foreign Patents, patents in process, and are
+//  protected by trade secret or copyright law.  Dissemination of this information
+//  or reproduction of this material is strictly forbidden unless prior written
+//  permission is obtained from Isovalent Inc.
+//
+
 package parsertest
 
 import (
-	"context"
-	"flag"
-	"fmt"
-	"io/fs"
+	"bytes"
 	"os"
-	"path"
-	"path/filepath"
 	"testing"
-	"time"
 
-	"github.com/cilium/tetragon/pkg/api/processapi"
-	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/btf"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
-	"github.com/cilium/tetragon/pkg/option"
-	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
@@ -28,267 +25,115 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 )
 
-const (
-	testTimeout = 10 * time.Second
-)
+var expectedPacketPayload = []byte{
+	22, 22, 63, 170, 139, 122, 23, 211, 11, 59, 222, 127, 105, 188, 168, 80, 55,
+	98, 60, 170, 139, 122, 23, 211, 11, 59, 222, 127, 105, 188, 168, 80, 55, 98,
+	60, 170, 139, 122, 23, 211, 11, 59, 222, 127, 105, 188, 168, 80, 55, 98, 60,
+	185, 127, 63, 22, 199, 255, 255, 255, 255, 255, 255, 199, 127, 0, 0, 1, 0, 0,
+	0, 0, 255, 255, 255, 255, 102, 111, 111, 98, 97, 114, 102, 111, 111, 98, 97,
+	114, 98, 97, 122, 13, 10, 10, 97, 32, 114, 97, 119, 32, 115, 116, 114, 105,
+	110, 103, 10, 1, 63, 18, 31, 104, 101, 108, 108, 111, 119, 111, 114, 108, 100,
+}
 
-// Testdata directory. We'll probe for it's location
-// by changing working directory upwards towards /.
-var testsRoot = "testdata/parser"
+func TestParse(t *testing.T) {
 
-// Number of times to execute each test case. Useful to execute each test multiple
-// times to make sure no events are left unhandled and that parser's work over multiple
-// runs.
-var numRunsPerTestcase = 3
-
-const (
-	SENS_INITIAL = iota
-	SENS_TLS
-	SENS_HTTP
-)
-
-func init() {
-	if os.Geteuid() != 0 {
-		panic("This test needs to be run as root")
+	if _, err := os.Stat("testdata/parser-testfile"); err != nil {
+		t.Logf("skipping as testdata/parser-testfile not found")
+		return
 	}
 
-	bpf.ConfigureResourceLimits()
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.CheckOrMountCgroup2()
-	bpf.SetMapPrefix("fgs-parsertest")
-	os.Mkdir(bpf.MapPrefixPath(), os.ModeDir)
+	tc, err := ParseTestCase("testdata/parser-testfile")
+	if err != nil {
+		t.Errorf("parse of parser-testfile failed: %s", err)
+	}
+	if tc == nil {
+		t.Fatalf("nil *TestCase")
+	}
 
-	// Try to probe for FGS bpf object location
-	wd, _ := os.Getwd()
-	if _, err := os.Stat("../../bpf/objs"); err == nil {
-		option.Config.HubbleLib = path.Clean(path.Join(wd, "../../bpf/objs"))
-	} else if _, err := os.Stat("bpf/objs"); err == nil {
-		option.Config.HubbleLib = path.Clean(path.Join(wd, "bpf/objs"))
+	if tc.Name != "parser-testfile" {
+		t.Fatalf("expected parser-testfile as name, but got %s", tc.Name)
+	}
+
+	if len(tc.Tags) != 2 || tc.Tags[0] != "foo" || tc.Tags[1] != "bar" {
+		t.Fatalf("expected tags 'foo', 'bar', got tags %s", tc.Tags)
+	}
+
+	if len(tc.Steps) != 4 {
+		t.Errorf("expected 4 steps, got %d steps", len(tc.Steps))
+	}
+
+	if egressStep, ok := tc.Steps[0].(*TestStepEgress); !ok {
+		t.Errorf("first step was not EGRESS step: %T", tc.Steps[0])
 	} else {
-		option.Config.HubbleLib = "/var/lib/hubble-fgs"
-	}
-
-	// Setup BTF cache
-	btf.InitCachedBTF(context.Background(), option.Config.HubbleLib, "")
-
-	// Probe for the testdata. Changing the working directory
-	// to keep the test-case filenames short.
-	for {
-		if _, err := os.Stat(testsRoot); err == nil {
-			break
+		expectedLine := 4
+		if egressStep.Position.Line != expectedLine {
+			t.Errorf("expected EGRESS step to be defined at line %d, but it was %d",
+				expectedLine, egressStep.Position.Line)
 		}
-		wd, _ := os.Getwd()
-		if wd == "/" {
-			panic("could not find testdata/parser")
+
+		if egressStep.Description != "test egress" {
+			t.Errorf("expected \"test egress\" as step description, got %s", egressStep.Description)
 		}
-		os.Chdir("..")
-	}
-}
 
-func TestMain(m *testing.M) {
-	flag.IntVar(&numRunsPerTestcase, "parsertest-runs", numRunsPerTestcase,
-		"Number of times to repeat each testcase")
-	flag.Parse()
-	os.Exit(m.Run())
-}
-
-type SensorsHandle struct {
-	initSensor   *sensors.Sensor
-	parserSensor *sensors.Sensor
-	ctx          context.Context
-	cancel       context.CancelFunc
-}
-
-func (h *SensorsHandle) Close(t *testing.T) {
-	h.cancel()
-
-	bpfDir := bpf.MapPrefixPath()
-	sensors.UnloadSensor(context.Background(), bpfDir, bpfDir, h.parserSensor)
-	sensors.UnloadSensor(context.Background(), bpfDir, bpfDir, h.initSensor)
-
-	// Verify that all pins have been cleared.
-	filepath.Walk(bpfDir, func(path string, info fs.FileInfo, err error) error {
-		if !info.IsDir() {
-			// TODO: Switch this to t.Fatalf once issues with map unloading are fixed.
-			t.Logf("FIXME: File '%s' still exists after sensor unload", path)
+		if !bytes.Equal(egressStep.Payload, expectedPacketPayload) {
+			t.Errorf("unexpected payload: %v", egressStep.Payload)
 		}
-		return nil
-	})
-	os.Remove(bpfDir)
-
-	// TODO verify that no fds are leaked
-}
-
-func startSensors(cfg int, t *testing.T) SensorsHandle {
-	ctx, cancel := context.WithCancel(context.Background())
-
-	// Load the initial sensor.
-	initSensor := base.GetInitialSensor()
-
-	err := initSensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
-	if err != nil {
-		t.Fatalf("s.Load: %s\n", err)
 	}
 
-	var spec v1alpha1.ParserPolicySpec
-	switch cfg {
-	case SENS_TLS:
-		spec = v1alpha1.ParserPolicySpec{
-			Tls: v1alpha1.TlsSpec{
-				Enable: true,
-				Mode:   "socket",
-				Selectors: []v1alpha1.TlsSelector{
-					{MatchPorts: []uint32{8888}},
-				},
-			},
-			Tcp: v1alpha1.TcpPolicySpec{
-				Enable:        true,
-				StatsInterval: 0,
-				Burst:         v1alpha1.TcpBurstPolicySpec{},
-			},
+	if ingressStep, ok := tc.Steps[1].(*TestStepIngress); !ok {
+		t.Errorf("second step was not EGRESS step: %T", tc.Steps[1])
+	} else {
+		expectedLine := 35
+		if ingressStep.Position.Line != expectedLine {
+			t.Errorf("expected INGRESS step to be defined at line %d, but it was %d",
+				expectedLine, ingressStep.Position.Line)
 		}
-	case SENS_HTTP:
-		spec = v1alpha1.ParserPolicySpec{
-			Tls: v1alpha1.TlsSpec{
-				Enable: true,
-				Mode:   "socket",
-				Selectors: []v1alpha1.TlsSelector{
-					{MatchPorts: []uint32{9999}},
-				},
-			},
-			Http: v1alpha1.HttpSpec{
-				Enable: true,
-				Selectors: []v1alpha1.HttpSelector{
-					{MatchPorts: []uint32{8888}},
-				},
-			},
-			Udp: v1alpha1.UdpPolicySpec{
-				Enable:                   true,
-				Cgroup:                   true,
-				StatsInterval:            0,
-				DeleteIdleSocketInterval: 0,
-				Burst:                    v1alpha1.UdpBurstPolicySpec{},
-			},
-			Tcp: v1alpha1.TcpPolicySpec{
-				Enable:        true,
-				StatsInterval: 0,
-				Burst:         v1alpha1.TcpBurstPolicySpec{},
-			},
+
+		if ingressStep.Description != "test ingress" {
+			t.Errorf("expected \"test ingress\" as step description, got %s", ingressStep.Description)
 		}
-	case SENS_INITIAL:
-		spec = v1alpha1.ParserPolicySpec{
-			Tcp: v1alpha1.TcpPolicySpec{
-				Enable:        true,
-				StatsInterval: 0,
-			},
+
+		if !bytes.Equal(ingressStep.Payload, expectedPacketPayload) {
+			t.Errorf("unexpected payload: %v", ingressStep.Payload)
 		}
-	default:
-		panic(fmt.Sprintf("unimplemented %d", cfg))
 	}
 
-	parserSensors, err := sensors.GetSensorsFromParserPolicy(&v1alpha1.TracingPolicySpec{Parser: spec})
-	if err != nil {
-		t.Fatalf("GetSensorsFromParserPolicy: %s", err)
-	}
-	parserSensor := sensors.SensorCombine("parser", parserSensors...)
+	if eventStep, ok := tc.Steps[2].(*TestStepEvent); !ok {
+		t.Errorf("third step was not EVENT step: %T", tc.Steps[2])
+	} else {
+		expectedLine := 67
+		if eventStep.Position.Line != expectedLine {
+			t.Errorf("expected EVENT step to be defined at line %d, but it was %d",
+				expectedLine, eventStep.Position.Line)
+		}
 
-	err = parserSensor.Load(ctx, bpf.MapPrefixPath(), bpf.MapPrefixPath(), "")
-	if err != nil {
-		t.Fatalf("s.Load: %s\n", err)
-	}
-	return SensorsHandle{initSensor, parserSensor, ctx, cancel}
-}
+		if eventStep.Op != ops.MSG_OP_TLS {
+			t.Errorf("expected op %d, got %d", ops.MSG_OP_TLS, eventStep.Op)
+		}
 
-func addSelfToEvecveMap(t *testing.T) {
-	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), base.GetExecveMap().Name))
-	if err != nil {
-		t.Fatalf("OpenMap: %s\n", err)
-	}
-	defer m.Close()
-
-	pid := uint32(os.Getpid())
-	ppid := uint32(os.Getppid())
-
-	err = m.Update(
-		&execvemap.ExecveKey{Pid: pid},
-		&execvemap.ExecveValue{
-			Parent:  processapi.MsgExecveKey{Pid: ppid, Pad: 0, Ktime: 0xcacababa},
-			Process: processapi.MsgExecveKey{Pid: pid, Pad: 0, Ktime: 0x01020304deadbeef},
-		},
-	)
-	if err != nil {
-		t.Fatalf("Map.Update: %s\n", err)
-	}
-}
-
-func runTests(t *testing.T, sensor int, dir string) {
-	handle := startSensors(sensor, t)
-	defer handle.Close(t)
-
-	addSelfToEvecveMap(t)
-
-	fs.WalkDir(
-		os.DirFS(testsRoot), dir,
-		func(relpath string, d fs.DirEntry, err error) error {
+		r := bytes.NewReader(expectedPacketPayload)
+		var ctx TestContext
+		for _, m := range eventStep.Matchers {
+			_, err := m.Match(&ctx, r)
 			if err != nil {
-				t.Fatal(err)
+				t.Errorf("matcher at %s failed: %s",
+					m.Position, err)
 			}
-
-			if d.IsDir() {
-				return nil
-			}
-
-			ok := true
-			for i := 0; i < numRunsPerTestcase && ok; i++ {
-				tc, err := ParseTestCase(path.Join(testsRoot, relpath))
-				if err != nil {
-					t.Fatal(err)
-				}
-
-				ok = t.Run(fmt.Sprintf("%s/%d", path.Base(relpath), i+1), func(t *testing.T) {
-					err = tc.Run(t, testTimeout)
-					if err != nil {
-						if tc.IsBroken() {
-							t.Skipf("Broken test failed as expected:\n%s", err)
-						} else {
-							t.Fatal(err)
-						}
-					} else if tc.IsBroken() {
-						t.Skip("Broken test succeeded, consider dropping 'broken' tag?")
-					}
-				})
-				ok = ok && !tc.IsBroken()
-			}
-			return nil
-		})
-
-}
-
-func Test_tls(t *testing.T) {
-	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+		}
 	}
-	runTests(t, SENS_TLS, "tls")
-}
 
-func Test_http(t *testing.T) {
-	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
-	runTests(t, SENS_HTTP, "http")
-}
+	if eventDumpStep, ok := tc.Steps[3].(*TestStepEventDump); !ok {
+		t.Errorf("fourth step was not EVENTDUMP step: %T", tc.Steps[3])
+	} else {
+		expectedLine := 98
+		if eventDumpStep.Position.Line != expectedLine {
+			t.Errorf("expected EVENTDUMP step to be defined at line %d, but it was %d",
+				expectedLine, eventDumpStep.Position.Line)
+		}
 
-func Test_http2(t *testing.T) {
-	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+		if eventDumpStep.Op != ops.MSG_OP_HTTP {
+			t.Errorf("expected op %d, got %d", ops.MSG_OP_TLS, eventDumpStep.Op)
+		}
 	}
-	runTests(t, SENS_HTTP, "http2")
-}
 
-func Test_tcp(t *testing.T) {
-	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
-		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
-	}
-	runTests(t, SENS_INITIAL, "tcp")
 }
