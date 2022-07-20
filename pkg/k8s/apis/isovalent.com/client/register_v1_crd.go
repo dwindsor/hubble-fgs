@@ -18,7 +18,7 @@ import (
 	"fmt"
 	"time"
 
-	k8sversion "github.com/cilium/tetragon/pkg/k8s/version"
+	k8sversion "github.com/isovalent/hubble-fgs/pkg/k8s/version"
 
 	"github.com/cilium/cilium/pkg/logging"
 	"github.com/cilium/cilium/pkg/logging/logfields"

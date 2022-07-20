@@ -3,6 +3,7 @@ module github.com/isovalent/hubble-fgs/pkg/k8s
 go 1.18
 
 require (
+	github.com/blang/semver v3.5.1+incompatible
 	github.com/cilium/cilium v1.9.16
 	github.com/cilium/tetragon/pkg/k8s v0.0.0-20220720183749-391dc9777bb8
 	github.com/sirupsen/logrus v1.9.0
@@ -16,7 +17,6 @@ require (
 )
 
 require (
-	github.com/blang/semver v3.5.1+incompatible // indirect
 	github.com/davecgh/go-spew v1.1.1 // indirect
 	github.com/emicklei/go-restful v2.9.5+incompatible // indirect
 	github.com/evanphx/json-patch v5.6.0+incompatible // indirect

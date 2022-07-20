@@ -11,7 +11,6 @@ github.com/cilium/cilium/pkg/versioncheck
 ## explicit; go 1.18
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
-github.com/cilium/tetragon/pkg/k8s/version
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
