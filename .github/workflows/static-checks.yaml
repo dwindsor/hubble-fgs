@@ -5,6 +5,8 @@ on:
       - master
       - v*
   pull_request:
+    paths-ignore:
+    - "**.md"
 
 jobs:
   static-checks:
