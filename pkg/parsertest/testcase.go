@@ -83,7 +83,7 @@ func (e *TestStepEgress) Exec(ctx *TestContext) *TestStepError {
 	if err := ctx.emitEgress(e.Payload); err != nil {
 		return &TestStepError{
 			Position:    e.Position,
-			Description: "INGRESS",
+			Description: "EGRESS",
 			Inner:       err,
 		}
 	}
