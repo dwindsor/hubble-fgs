@@ -97,7 +97,7 @@ hubble-bpf-local:
 	$(MAKE) -C ./bpf
 
 hubble-bpf-verify: hubble-bpf
-	sudo contrib/vmtest/fgs-verify-programs bpf/objs
+	sudo contrib/fgs-verify-programs bpf/objs
 
 hubble-bpf-container:
 	$(CONTAINER_ENGINE) rm hubble-clang || true

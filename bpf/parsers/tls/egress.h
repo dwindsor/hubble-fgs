@@ -22,29 +22,39 @@ egress_post_event(ctx_md *ctx, struct msg_tls_ipv4 *key,
 			  sizeof(struct msg_tls_event));
 }
 
+#if defined(SK_MSG) || defined(SK_SKB)
 static inline __attribute__((always_inline)) void
 bpf_parse_tls_egress(ctx_md *ctx)
+#else
+static inline __attribute__((always_inline)) void
+bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
+		     struct tcphdr *tcp, u64 *cookie, int payload_off)
+#endif
 {
 	struct msg_tls_ipv4 tuple = { 0 };
 	struct msg_tls_event *event;
 	struct msg_tls *clienthello;
 	struct msg_tls *state;
 	struct bottle *bottle;
-	int off = 0;
 	int zero = 0;
+#if defined(SK_MSG) || defined(SK_SKB)
+	int payload_off = 0;
+#else
+	/* Not currently supporting IPv6 - this will come in a future commit.
+	 */
+	if (ipv6)
+		return;
+#endif
 
 #ifdef SK_MSG
 	msg_tls_key(ctx, &tuple);
 #else
-	struct tcphdr *tcp;
-	tcp = skb_tls_key(ctx, &off, &tuple);
-	if (!tcp)
-		return;
+	tuple.daddr = ip->daddr;
+	tuple.saddr = ip->saddr;
+	tuple.dport = tcp->dest;
+	tuple.sport = tcp->source;
 
-	if (!skb_tcp_payload(ctx, tcp, &off)) {
-		return;
-	}
-	/* TC hooks read sport in network order, but rest of stack
+	/* Hooks read sport in network order, but rest of stack
 	 * expects host order for sport so we do conversion here.
 	 */
 	tuple.sport = bpf_ntohs(tuple.sport);
@@ -68,7 +78,7 @@ bpf_parse_tls_egress(ctx_md *ctx)
 		return;
 	}
 
-	bottle = bottle_fill(ctx, &tuple, off);
+	bottle = bottle_fill(ctx, &tuple, payload_off);
 	if (!bottle) {
 		tls_inc_bottle_fill_failed();
 		return;

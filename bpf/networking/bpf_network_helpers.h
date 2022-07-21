@@ -97,7 +97,8 @@ get_ip_header(void *network_header, u32 network_header_size,
 /* get_transport_header returns the payload_off is the pointer is not NULL. */
 static inline __attribute__((always_inline)) bool
 get_transport_header(void *transport_header, u32 transport_header_size,
-		     int *payload_off, void *skb_head, struct sk_buff *skb)
+		     int *payload_off, void *skb_head, struct sk_buff *skb,
+		     bool tcp)
 {
 	u16 transport_header_off;
 
@@ -108,7 +109,13 @@ get_transport_header(void *transport_header, u32 transport_header_size,
 		       skb_head + transport_header_off) < 0)
 		return false;
 	if (payload_off != 0) {
-		*payload_off = transport_header_off + transport_header_size;
+		if (tcp) {
+			struct tcphdr *tcph = (struct tcphdr *)transport_header;
+			*payload_off = transport_header_off + (tcph->doff * 4);
+		} else {
+			*payload_off =
+				transport_header_off + transport_header_size;
+		}
 	}
 	return true;
 }
@@ -277,13 +284,22 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 	return IP_HEADER_ERROR;
 }
 
-/* get_udp4_header returns the payload_off is the pointer is not NULL */
+/* get_udp_header returns the payload_off if the pointer is not NULL */
 static inline __attribute__((always_inline)) bool
 get_udp_header(struct udphdr *udp_header, int *payload_off, void *skb_head,
 	       struct sk_buff *skb)
 {
 	return get_transport_header((void *)udp_header, sizeof(struct udphdr),
-				    payload_off, skb_head, skb);
+				    payload_off, skb_head, skb, false);
+}
+
+/* get_tcp_header returns the payload_off is the pointer is not NULL */
+static inline __attribute__((always_inline)) bool
+get_tcp_header(struct tcphdr *tcp_header, int *payload_off, void *skb_head,
+	       struct sk_buff *skb)
+{
+	return get_transport_header((void *)tcp_header, sizeof(struct tcphdr),
+				    payload_off, skb_head, skb, true);
 }
 
 static inline __attribute__((always_inline)) void

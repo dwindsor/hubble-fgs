@@ -12,6 +12,7 @@ package sockmap
 
 import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -20,7 +21,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/program/tc"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -59,23 +59,22 @@ var (
 		"cgrp_socketopt",
 	)
 
-	// TC mode
-	// 4.19 kernels and below.
-	// Susceptible to out-of-order packets.
+	// Cgroup mode
+	// Supports 5.4 kernels or newer.
 
-	TCIngress = program.Builder(
-		"bpf_tc_ingress.o",
-		"ingress_tcp",
-		"classifier/ingress_tcp",
-		"classifier_ingress_tcp",
-		"tc_ingress")
+	CGIngress = program.Builder(
+		"bpf_tls_inet_send.o",
+		"tls_inet_send",
+		"cgroup_skb/ingress",
+		"cgroup_skb_ingress",
+		"tls_cgrp_ingress")
 
-	TCEgress = program.Builder(
-		"bpf_tc_egress.o",
-		"egress_tcp",
-		"classifier/egress_tcp",
-		"tc_egress_tcp",
-		"tc_egress")
+	CGEgress = program.Builder(
+		"bpf_tls_inet_send.o",
+		"tls_inet_recv",
+		"cgroup_skb/egress",
+		"cgroup_skb_egress",
+		"tls_cgrp_egress")
 
 	// TLS maps
 	Map         = tcp.TLSContext
@@ -83,9 +82,9 @@ var (
 	Bottle      = tcp.TLSBottles
 	BottleStats = tcp.TLSBottleStats
 	TailCalls   = program.MapBuilder("tls_calls", Skmsg)
-	// TC TLS maps
-	TCParserStats = program.MapBuilder("tls_parser_stats", TCEgress)
-	TCTailCalls   = program.MapBuilder("tls_calls", TCIngress)
+	// CGroup TLS maps
+	CGParserStats = program.MapBuilder("tls_parser_stats", CGEgress)
+	CGTailCalls   = program.MapBuilder("tls_calls", CGIngress)
 	// Sockops Filter
 	FilterMap   = sockops.TlsFilterMap
 	ParserStats = program.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
@@ -103,7 +102,7 @@ func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 	var err error
 
 	enableTLS := false
-	enableTLSTC := false
+	enableTLSCG := false
 
 	if !parser.Tls.Enable {
 		return nil, nil
@@ -118,7 +117,9 @@ func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 	case "socket":
 		enableTLS = true
 	case "tc":
-		enableTLSTC = true
+		enableTLSCG = true
+	case "cgroup":
+		enableTLSCG = true
 	default:
 		return nil, nil
 	}
@@ -128,7 +129,7 @@ func AddTLSSensor(parser v1alpha1.ParserPolicySpec) (*sensors.Sensor, error) {
 		return nil, err
 	}
 
-	return enableTLSParser(enableTLS, enableTLSTC), nil
+	return enableTLSParser(enableTLS, enableTLSCG), nil
 }
 
 type tlsSensor struct {
@@ -238,8 +239,8 @@ func init() {
 		name: "socket option sensor",
 	}
 
-	sensors.RegisterProbeType("tc_ingress", tls)
-	sensors.RegisterProbeType("tc_egress", tls)
+	sensors.RegisterProbeType("tls_cgrp_ingress", tls)
+	sensors.RegisterProbeType("tls_cgrp_egress", tls)
 	sensors.RegisterProbeType("cgrp_socketopt", socketopt)
 
 	sensors.RegisterTracingSensorsAtInit(tls.name, tls)
@@ -247,7 +248,7 @@ func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_TLS_CONT, HandleTLSCont)
 }
 
-func enableTLSParser(tls, tc bool) *sensors.Sensor {
+func enableTLSParser(tls, cg bool) *sensors.Sensor {
 	var progs []*program.Program
 	var maps []*program.Map
 
@@ -277,21 +278,26 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 		)
 	}
 
-	if tc {
-		logger.GetLogger().Infof("Enable TLS TC")
-		progs = append(progs,
-			TCEgress,
-			TCIngress,
-		)
+	if cg {
+		// CGroups only work on 5.4 onwards
+		if kernels.MinKernelVersion("5.4.0") {
+			logger.GetLogger().Infof("Enable TLS CGroup")
+			progs = append(progs,
+				CGEgress,
+				CGIngress,
+			)
 
-		maps = append(maps,
-			Map, MapStats,
-			Bottle, BottleStats,
-			TCParserStats,
-			TCTailCalls,
-			FilterMap, ParserStats,
-			SocketMap, SocketStats,
-		)
+			maps = append(maps,
+				Map, MapStats,
+				Bottle, BottleStats,
+				CGParserStats,
+				CGTailCalls,
+				FilterMap, ParserStats,
+				SocketMap, SocketStats,
+			)
+		} else {
+			logger.GetLogger().Warnf("Cannot Enable TLS CGroup on kernel <5.4")
+		}
 	}
 
 	return sensors.SensorBuilder("__parser_sensors__", progs, maps)
@@ -303,6 +309,15 @@ func (tls *tlsSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 }
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, tlsSelectors)
-	return err
+	if args.Load.Type == "tls_cgrp_ingress" || args.Load.Type == "tls_cgrp_egress" {
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
+		if err != nil {
+			return err
+		}
+	}
+	if err := sockops.SetFilter(args.MapDir, "tls_filter_map", tlsSelectors); err != nil {
+		return err
+	}
+
+	return nil
 }

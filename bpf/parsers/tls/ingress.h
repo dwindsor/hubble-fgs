@@ -19,6 +19,84 @@
 
 #define ERROUT_LEN (5 * 24)
 
+struct nat_entry {
+	__u64 created;
+	__u64 host_local; /* Only single bit used. */
+	__u64 pad1; /* Future use. */
+	__u64 pad2; /* Future use. */
+};
+
+struct ipv4_ct_tuple {
+	/* Address fields are reversed, i.e.,
+	 * these field names are correct for reply direction traffic. */
+	__be32 daddr;
+	__be32 saddr;
+	/* The order of dport+sport must not be changed!
+	 * These field names are correct for original direction traffic. */
+	__be16 dport;
+	__be16 sport;
+	__u8 nexthdr;
+	__u8 flags;
+} __attribute__((packed));
+
+struct ipv4_nat_entry {
+	struct nat_entry common;
+	union {
+		struct {
+			__be32 to_saddr;
+			__be16 to_sport;
+		};
+		struct {
+			__be32 to_daddr;
+			__be16 to_dport;
+		};
+	};
+};
+
+struct bpf_map_def __attribute__((section("maps"), used))
+cilium_snat_v4_external = {
+	.type = BPF_MAP_TYPE_LRU_HASH,
+	.key_size = sizeof(struct ipv4_ct_tuple),
+	.value_size = sizeof(struct ipv4_nat_entry),
+	.max_entries = 1,
+};
+
+static inline __attribute__((always_inline)) void
+skb_tls_key_ct_xchg(struct msg_tls_ipv4 *key)
+{
+	struct ipv4_ct_tuple ct = { 0 };
+	struct ipv4_nat_entry *nat;
+	__u32 addr;
+	__u16 port;
+
+	/* Egress hook runs in-front of Cilium SNAT, so it used same IP addr pairs
+	 * as seen by socket. But, ingress hook is also running in front Cilium
+	 * SNAT so the TCP key is before NAT and needs to be translated using
+	 * the BPF map.
+	 */
+	ct.daddr = key->daddr;
+	ct.saddr = key->saddr;
+	ct.dport = bpf_htons(key->dport);
+	ct.sport = bpf_htons(key->sport);
+	ct.nexthdr = IPPROTO_TCP;
+	ct.flags = 1;
+
+	nat = map_lookup_elem(&cilium_snat_v4_external, &ct);
+	if (nat) {
+		key->daddr = nat->to_daddr;
+		key->dport = bpf_ntohs(nat->to_dport);
+	}
+
+	/* Swap key to match egress side */
+	addr = key->saddr;
+	key->saddr = key->daddr;
+	key->daddr = addr;
+
+	port = key->sport;
+	key->sport = key->dport;
+	key->dport = port;
+}
+
 static inline __attribute__((always_inline)) void
 errout_pack(int *errout, int code, int a, int b, int c, int d)
 {
@@ -261,6 +339,36 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key,
 			bottle_drop(key);
 		}
 	}
+}
+
+static inline __attribute__((always_inline)) void
+event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
+		     struct tcphdr *tcp, u64 *cookie, int payload_off)
+{
+	struct msg_tls_ipv4 key = { 0 };
+
+	/* IPv6 not currently supported. Coming in later commit.
+	 */
+	if (ipv6)
+		return;
+
+	key.daddr = ip->daddr;
+	key.saddr = ip->saddr;
+	key.dport = tcp->dest;
+	key.sport = tcp->source;
+
+	skb_tls_key_ct_xchg(&key);
+	/* Hooks read sport in network order, but rest of stack
+	 * expects host order for sport so we do conversion here after
+	 * xchg to get correct sport/dports. We do not need to do
+	 * anything with dport because the original pre-xchged sport
+	 * was in network byte order being read directly from packet
+	 * data.
+	 */
+	key.sport = bpf_ntohs(key.sport);
+	bpf_parse_ingress_skb(skb, &key, payload_off);
+
+	return;
 }
 
 #endif // ingress_h_INCLUDED

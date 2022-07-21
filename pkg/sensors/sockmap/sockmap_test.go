@@ -64,6 +64,24 @@ spec:
 `
 )
 
+var (
+	tlsConfigCG = `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "tls"
+spec:
+  parser:
+    tls:
+      enable: true
+      mode: "cgroup"
+      selectors:
+      - matchports:
+        - 443
+    tcp:
+      enable: true
+`
+)
+
 func TestTLS13(t *testing.T) {
 	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
@@ -249,5 +267,125 @@ spec:
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensors.UnloadAll(tus.Conf().TetragonLib)
+	assert.NoError(t, err)
+}
+
+func TestCGTLS13(t *testing.T) {
+	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("--tlsv1.3 -4 https://www.google.com"))
+
+	tlsChecker := ec.NewTlsChecker().
+		WithProcess(curlChecker).
+		WithNegotiatedVersion(sm.Full("TLS1.3")).
+		WithClientVersion(sm.Full("TLS1.2")).
+		WithServerVersion(sm.Full("TLS1.2")).
+		WithSniType(sm.Full("host_name")).
+		WithSniName(sm.Contains("www.google.com")).
+		WithClientFlags(sm.Contains("ExtVersion")).
+		WithServerFlags(sm.Contains("ExtVersion"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(443),
+		tlsChecker,
+	)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	if err := observer.WriteConfigFile(testConfigFile, tlsConfigCG); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	base := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.3", "-4", "https://www.google.com")
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestCGTLS12(t *testing.T) {
+	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("--tlsv1.2 --tls-max 1.2 -4 https://www.google.com/"))
+
+	tlsChecker := ec.NewTlsChecker().
+		WithProcess(curlChecker).
+		WithClientVersion(sm.Full("TLS1.2")).
+		WithServerVersion(sm.Full("TLS1.2")).
+		WithSniType(sm.Full("host_name")).
+		WithSniName(sm.Contains("www.google.com")).
+		WithClientFlags(sm.Full("")).
+		WithServerFlags(sm.Full("")).
+		WithCertificates(ec.NewStringListMatcher().
+			WithOperator(lm.Unordered).
+			WithValues(
+				sm.Full("CN=www.google.com"),
+				sm.Full("CN=GTS CA 1C3,O=Google Trust Services LLC,C=US"),
+				sm.Full("CN=GTS Root R1,O=Google Trust Services LLC,C=US"),
+			))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationPort(443),
+		tlsChecker,
+	)
+
+	if err := observer.WriteConfigFile(testConfigFile, tlsConfigCG); err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	base := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
+
+	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 }

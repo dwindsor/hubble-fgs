@@ -1,0 +1,111 @@
+#ifndef __BPF_TLS_INET_SEND_H_
+#define __BPF_TLS_INET_SEND_H_
+
+#include "vmlinux.h"
+#include "api.h"
+#include "hubble_msg.h"
+#include "bpf_events.h"
+#include "../networking/cookie.h"
+#include "../networking/bpf_network_helpers.h"
+#include "tls_map.h"
+#include "tls_parser.h"
+#include "egress.h"
+#include "ingress.h"
+
+struct tls_packet_details {
+	union {
+		struct iphdr ip4;
+		struct ipv6hdr ip6;
+	} ip;
+	struct tcphdr tcp;
+	u16 tcp_off;
+	int payload_off;
+	void *skb_head;
+	u8 version;
+	u8 protocol;
+	u16 network_header_off;
+	bool ipv6;
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) tls_header_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct tls_packet_details),
+	.max_entries = 1,
+};
+
+static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
+{
+	u8 ip_off;
+
+	ip_off = ip->ihl;
+	ip_off &= 0x0f;
+	ip_off *= 4;
+	return ip_off;
+}
+
+static inline __attribute__((always_inline)) void
+tls_inet_send_handler(struct __sk_buff *skb, bool send)
+{
+	struct tls_packet_details *packet;
+	u64 *cookie;
+	int zero = 0;
+	u8 proto;
+	unsigned long int err = 0;
+
+	cookie = map_lookup_elem(&tls_cookie_heap, &zero);
+	if (!cookie)
+		return;
+	write_cookie_from_sk(cookie, (struct sock *)skb->sk, true);
+	if (!*cookie)
+		return;
+
+	packet = map_lookup_elem(&tls_header_heap, &zero);
+	if (!packet)
+		return;
+
+	if (skb_load_bytes(skb, 0, &packet->ip, sizeof(struct iphdr)) < 0)
+		return;
+
+	switch (packet->ip.ip4.version) {
+	case 4:
+		if (packet->ip.ip4.protocol != IPPROTO_TCP)
+			return;
+		packet->ipv6 = false;
+		packet->tcp_off = ip_payload_off(&packet->ip.ip4);
+		break;
+	case 6:
+		if (skb_load_bytes(skb, 0, &packet->ip,
+				   sizeof(struct ipv6hdr)) < 0)
+			return;
+		packet->ipv6 = true;
+		proto = get_ip6_proto(&packet->tcp_off, &packet->ip.ip6, 0, skb,
+				      0, true, false, &err);
+		if (proto == IP_HEADER_ERROR) {
+			emit_ip_error_event(skb, &packet->ip.ip6, cookie, true,
+					    err);
+			return;
+		} else if (proto != IPPROTO_TCP) {
+			return;
+		}
+		if (!packet->tcp_off)
+			return;
+		break;
+	default:
+		return;
+	}
+	if (skb_load_bytes(skb, packet->tcp_off, &packet->tcp,
+			   sizeof(struct tcphdr)) < 0)
+		return;
+	packet->payload_off = (packet->tcp.doff * 4) + packet->tcp_off;
+
+	if (send) {
+		bpf_parse_tls_egress(skb, &packet->ip.ip4, packet->ipv6,
+				     &packet->tcp, cookie, packet->payload_off);
+	} else {
+		event_tc_ingress_tcp(skb, &packet->ip.ip4, packet->ipv6,
+				     &packet->tcp, cookie, packet->payload_off);
+	}
+}
+
+#endif //__BPF_TLS_INET_SEND_H_

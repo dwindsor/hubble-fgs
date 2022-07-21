@@ -76,6 +76,13 @@ struct bpf_map_def __attribute__((section("maps"), used)) nop_filter_map = {
 	.max_entries = 1,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) tls_cookie_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(u64),
+	.max_entries = 1,
+};
+
 #define PROTO_SKIP  0
 #define PROTO_TRACK 1
 
