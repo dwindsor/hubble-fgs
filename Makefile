@@ -79,7 +79,7 @@ oss-checkout:
 	# NB, we need to vendor for a second time here since codegen may have introduced
 	# new dependencies.
 	@echo Vendoring and verifiying modules...
-	go mod tidy && go mod vendor && go mod verify
+	go mod tidy -compat=1.17 && go mod vendor && go mod verify
 
 ifeq (1,$(LOCAL_CLANG))
 hubble-bpf: hubble-bpf-local

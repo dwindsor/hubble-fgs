@@ -22,9 +22,9 @@ contrib/tester-progs/dup-tester
 contrib/tester-progs/fork-tester
 contrib/tester-progs/namespace-tester
 contrib/tester-progs/sigkill-tester
+contrib/tester-progs/trigger-test-events
 
-# Ignore submodules...
-modules/
-# ...but not bpf files
-!modules/tetragon-oss/bpf
-modules/tetragon-oss/bpf/objs
+# Ignore OSS artifacts
+tetra
+tetragon
+tetragon-alignchecker
