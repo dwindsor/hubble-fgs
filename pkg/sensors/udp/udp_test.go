@@ -85,7 +85,7 @@ func TestMain(m *testing.M) {
 }
 
 const udpConfig = `
-apiversion: isovalent.com/v1alpha1
+apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"
@@ -339,7 +339,7 @@ func TestUdpBurst(t *testing.T) {
 }
 
 const udpBasicConfig = `
-apiversion: isovalent.com/v1alpha1
+apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "udp"

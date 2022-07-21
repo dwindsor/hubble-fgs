@@ -10,9 +10,9 @@ import (
 	sync "sync"
 	time "time"
 
-	versioned "github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned"
-	ciliumio "github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/cilium.io"
-	internalinterfaces "github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/internalinterfaces"
+	versioned "github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
+	ciliumio "github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/cilium.io"
+	internalinterfaces "github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/internalinterfaces"
 	v1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 	runtime "k8s.io/apimachinery/pkg/runtime"
 	schema "k8s.io/apimachinery/pkg/runtime/schema"

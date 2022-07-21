@@ -19,9 +19,10 @@ import (
 	"os"
 	"path/filepath"
 
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	k8sversion "github.com/cilium/tetragon/pkg/k8s/version"
+
 	operatorOption "github.com/isovalent/hubble-fgs/operator/option"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/client"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 	"k8s.io/client-go/kubernetes"
 

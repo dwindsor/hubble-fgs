@@ -18,6 +18,10 @@ var (
 	cache *Cache
 )
 
+func init() {
+	NewCache()
+}
+
 func NewCache() (*Cache, error) {
 	if cache != nil {
 		return cache, nil 
@@ -27,9 +31,9 @@ func NewCache() (*Cache, error) {
 	if err != nil {
 		return nil, err
 	}
-	return &Cache{
-		cache: lru,
-	}, nil
+
+	cache = &Cache{cache: lru}
+	return cache, nil
 }
 
 func (c *Cache) GetIp(ip string) ([]string, error) {

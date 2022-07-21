@@ -25,7 +25,7 @@ generate:
 	./tools/controller-gen crd paths=./apis/... output:dir=apis/cilium.io/client/crds/v1alpha1
 	export GOPATH=$$(go env GOPATH); \
 	  bash vendor/k8s.io/code-generator/generate-groups.sh all \
-	  github.com/cilium/tetragon/pkg/k8s/client \
-	  github.com/cilium/tetragon/pkg/k8s/apis \
+	  github.com/isovalent/hubble-fgs/pkg/k8s/client \
+	  github.com/isovalent/hubble-fgs/pkg/k8s/apis \
 	  cilium.io:v1alpha1 \
 	  --go-header-file hack/custom-boilerplate.go.txt

@@ -46,7 +46,7 @@ const (
 )
 
 const tcpConfig = `
-apiversion: isovalent.com/v1alpha1
+apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "tcp"
@@ -67,7 +67,7 @@ spec:
 `
 
 const tcpBasicConfig = `
-apiversion: isovalent.com/v1alpha1
+apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
   name: "tcp"

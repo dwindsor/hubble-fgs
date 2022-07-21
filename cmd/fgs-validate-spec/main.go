@@ -6,7 +6,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/btf"
-	"github.com/isovalent/hubble-fgs/pkg/config"
+	"github.com/cilium/tetragon/pkg/config"
 )
 
 var (

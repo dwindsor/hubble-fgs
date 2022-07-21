@@ -18,7 +18,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned"
 	"github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions"
 	"github.com/sirupsen/logrus"
@@ -60,7 +60,7 @@ func WatchTracePolicy(ctx context.Context, s *sensors.Manager) {
 	}
 	client := versioned.NewForConfigOrDie(conf)
 	factory := externalversions.NewSharedInformerFactory(client, 0)
-	informer := factory.Isovalent().V1alpha1().TracingPolicies()
+	informer := factory.Cilium().V1alpha1().TracingPolicies()
 	informer.Informer().AddEventHandler(cache.ResourceEventHandlerFuncs{
 		AddFunc: func(obj interface{}) {
 			policy, ok := obj.(*v1alpha1.TracingPolicy)

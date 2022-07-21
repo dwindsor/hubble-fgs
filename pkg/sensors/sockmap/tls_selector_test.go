@@ -14,7 +14,7 @@ import (
 	"bytes"
 	"testing"
 
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 )
 
 func TestInitKernelSelectors(t *testing.T) {

@@ -23,8 +23,8 @@ import (
 	"testing"
 	"text/template"
 
-	oss "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/isovalent.com/v1alpha1"
+	"github.com/isovalent/hubble-fgs/pkg/k8s/apis/cilium.io/v1alpha1"
+	oss "github.com/isovalent/hubble-fgs/pkg/k8s/apis/cilium.io/v1alpha1"
 
 	"github.com/cilium/tetragon/pkg/logger"
 
@@ -101,88 +101,86 @@ spec:
 var expectedWrite = GenericTracingConf{
 	ApiVersion: "hubble-enterprise.io/v1",
 	Metadata:   Metadata{Name: "sys_write"},
-	Spec: v1alpha1.TracingPolicySpec{
-		TracingPolicySpec: oss.TracingPolicySpec{KProbes: []oss.KProbeSpec{
-			{
-				Call:    "__x64_sys_write",
-				Return:  false,
-				Syscall: true,
-				Args: []oss.KProbeArg{
-					{
-						Index: 0,
-						Type:  "int",
-					},
-					{
-						Index:        1,
-						Type:         "char_buf",
-						SizeArgIndex: 3,
-					},
-					{
-						Index: 2,
-						Type:  "size_t",
-					},
+	Spec: v1alpha1.TracingPolicySpec{KProbes: []oss.KProbeSpec{
+		{
+			Call:    "__x64_sys_write",
+			Return:  false,
+			Syscall: true,
+			Args: []oss.KProbeArg{
+				{
+					Index: 0,
+					Type:  "int",
 				},
-				Selectors: []oss.KProbeSelector{
-					{
-						MatchPIDs: []oss.PIDSelector{
-							{
-								Operator:       "In",
-								Values:         []uint32{1},
-								FollowForks:    true,
-								IsNamespacePID: false,
-							},
+				{
+					Index:        1,
+					Type:         "char_buf",
+					SizeArgIndex: 3,
+				},
+				{
+					Index: 2,
+					Type:  "size_t",
+				},
+			},
+			Selectors: []oss.KProbeSelector{
+				{
+					MatchPIDs: []oss.PIDSelector{
+						{
+							Operator:       "In",
+							Values:         []uint32{1},
+							FollowForks:    true,
+							IsNamespacePID: false,
 						},
-						MatchArgs: []oss.ArgSelector{
-							{
-								Index:    0,
-								Operator: "equal",
-								Values:   []string{"1"},
-							},
+					},
+					MatchArgs: []oss.ArgSelector{
+						{
+							Index:    0,
+							Operator: "equal",
+							Values:   []string{"1"},
 						},
-						MatchNamespaces: []oss.NamespaceSelector{
-							{
-								Namespace: "Net",
-								Operator:  "In",
-								Values:    []string{"4026532024", "4026532025"},
-							},
-							{
-								Namespace: "Mnt",
-								Operator:  "NotIn",
-								Values:    []string{"4026532099"},
-							},
+					},
+					MatchNamespaces: []oss.NamespaceSelector{
+						{
+							Namespace: "Net",
+							Operator:  "In",
+							Values:    []string{"4026532024", "4026532025"},
 						},
-						MatchNamespaceChanges: []oss.NamespaceChangesSelector{
-							{
-								Operator: "In",
-								Values:   []string{"Mnt", "Pid", "User", "Uts"},
-							},
+						{
+							Namespace: "Mnt",
+							Operator:  "NotIn",
+							Values:    []string{"4026532099"},
 						},
-						MatchCapabilities: []oss.CapabilitiesSelector{
-							{
-								Type:                  "Effective",
-								Operator:              "In",
-								IsNamespaceCapability: true,
-								Values:                []string{"CAP_CHOWN", "CAP_NET_RAW"},
-							},
-							{
-								Type:                  "Inheritable",
-								Operator:              "NotIn",
-								IsNamespaceCapability: false,
-								Values:                []string{"CAP_SETPCAP", "CAP_SYS_ADMIN"},
-							},
+					},
+					MatchNamespaceChanges: []oss.NamespaceChangesSelector{
+						{
+							Operator: "In",
+							Values:   []string{"Mnt", "Pid", "User", "Uts"},
 						},
-						MatchCapabilityChanges: []oss.CapabilitiesSelector{
-							{
-								Type:                  "Effective",
-								Operator:              "In",
-								IsNamespaceCapability: true,
-								Values:                []string{"CAP_SYS_ADMIN", "CAP_NET_RAW"},
-							},
+					},
+					MatchCapabilities: []oss.CapabilitiesSelector{
+						{
+							Type:                  "Effective",
+							Operator:              "In",
+							IsNamespaceCapability: true,
+							Values:                []string{"CAP_CHOWN", "CAP_NET_RAW"},
+						},
+						{
+							Type:                  "Inheritable",
+							Operator:              "NotIn",
+							IsNamespaceCapability: false,
+							Values:                []string{"CAP_SETPCAP", "CAP_SYS_ADMIN"},
+						},
+					},
+					MatchCapabilityChanges: []oss.CapabilitiesSelector{
+						{
+							Type:                  "Effective",
+							Operator:              "In",
+							IsNamespaceCapability: true,
+							Values:                []string{"CAP_SYS_ADMIN", "CAP_NET_RAW"},
 						},
 					},
 				},
-			}},
-		},
+			},
+		}},
 	},
 }
 
@@ -263,112 +261,110 @@ spec:
 var expectedData = GenericTracingConf{
 	ApiVersion: "hubble-enterprise.io/v1",
 	Metadata:   Metadata{Name: "sys_write"},
-	Spec: v1alpha1.TracingPolicySpec{
-		TracingPolicySpec: oss.TracingPolicySpec{KProbes: []oss.KProbeSpec{
-			{
-				Call:    "example_func",
-				Return:  true,
-				Syscall: true,
-				Args: []oss.KProbeArg{
-					{
-						Index: 0,
-						Type:  "int",
+	Spec: v1alpha1.TracingPolicySpec{KProbes: []oss.KProbeSpec{
+		{
+			Call:    "example_func",
+			Return:  true,
+			Syscall: true,
+			Args: []oss.KProbeArg{
+				{
+					Index: 0,
+					Type:  "int",
+				},
+				{
+					Index: 1,
+					Type:  "int",
+				},
+				{
+					Index: 2,
+					Type:  "int",
+				},
+				{
+					Index: 3,
+					Type:  "string",
+				},
+				{
+					Index: 4,
+					Type:  "skb",
+				},
+			},
+		},
+		{
+			Call:    "another_func",
+			Return:  false,
+			Syscall: false,
+			Args: []oss.KProbeArg{
+				{
+					Index: 0,
+					Type:  "string",
+				},
+				{
+					Index: 1,
+					Type:  "string",
+				},
+				{
+					Index: 2,
+					Type:  "string",
+				},
+				{
+					Index: 3,
+					Type:  "string",
+				},
+			},
+			Selectors: []oss.KProbeSelector{
+				{
+					MatchPIDs: []oss.PIDSelector{
+						{
+							Operator:       "In",
+							Values:         []uint32{1, 2},
+							FollowForks:    true,
+							IsNamespacePID: false,
+						},
 					},
-					{
-						Index: 1,
-						Type:  "int",
+					MatchArgs: []oss.ArgSelector{
+						{
+							Index:    0,
+							Operator: "equal",
+							Values:   []string{"1"},
+						},
+						{
+							Index:    1,
+							Operator: "notequal",
+							Values:   []string{"world"},
+						},
 					},
-					{
-						Index: 2,
-						Type:  "int",
+					MatchNamespaces: []oss.NamespaceSelector{
+						{
+							Namespace: "Pid",
+							Operator:  "In",
+							Values:    []string{"4026532024"},
+						},
 					},
-					{
-						Index: 3,
-						Type:  "string",
+					MatchNamespaceChanges: []oss.NamespaceChangesSelector{
+						{
+							Operator: "In",
+							Values:   []string{"Mnt", "Pid", "Net"},
+						},
 					},
-					{
-						Index: 4,
-						Type:  "skb",
+					MatchCapabilities: []oss.CapabilitiesSelector{
+						{
+							Type:                  "Effective",
+							Operator:              "In",
+							IsNamespaceCapability: true,
+							Values:                []string{"CAP_SYS_ADMIN"},
+						},
+					},
+					MatchCapabilityChanges: []oss.CapabilitiesSelector{
+						{
+							Type:                  "Effective",
+							Operator:              "In",
+							IsNamespaceCapability: true,
+							Values:                []string{"CAP_SYS_ADMIN"},
+						},
 					},
 				},
 			},
-			{
-				Call:    "another_func",
-				Return:  false,
-				Syscall: false,
-				Args: []oss.KProbeArg{
-					{
-						Index: 0,
-						Type:  "string",
-					},
-					{
-						Index: 1,
-						Type:  "string",
-					},
-					{
-						Index: 2,
-						Type:  "string",
-					},
-					{
-						Index: 3,
-						Type:  "string",
-					},
-				},
-				Selectors: []oss.KProbeSelector{
-					{
-						MatchPIDs: []oss.PIDSelector{
-							{
-								Operator:       "In",
-								Values:         []uint32{1, 2},
-								FollowForks:    true,
-								IsNamespacePID: false,
-							},
-						},
-						MatchArgs: []oss.ArgSelector{
-							{
-								Index:    0,
-								Operator: "equal",
-								Values:   []string{"1"},
-							},
-							{
-								Index:    1,
-								Operator: "notequal",
-								Values:   []string{"world"},
-							},
-						},
-						MatchNamespaces: []oss.NamespaceSelector{
-							{
-								Namespace: "Pid",
-								Operator:  "In",
-								Values:    []string{"4026532024"},
-							},
-						},
-						MatchNamespaceChanges: []oss.NamespaceChangesSelector{
-							{
-								Operator: "In",
-								Values:   []string{"Mnt", "Pid", "Net"},
-							},
-						},
-						MatchCapabilities: []oss.CapabilitiesSelector{
-							{
-								Type:                  "Effective",
-								Operator:              "In",
-								IsNamespaceCapability: true,
-								Values:                []string{"CAP_SYS_ADMIN"},
-							},
-						},
-						MatchCapabilityChanges: []oss.CapabilitiesSelector{
-							{
-								Type:                  "Effective",
-								Operator:              "In",
-								IsNamespaceCapability: true,
-								Values:                []string{"CAP_SYS_ADMIN"},
-							},
-						},
-					},
-				},
-			}},
-		},
+		}},
 	},
 }
 
@@ -400,32 +396,31 @@ func TestYamlLseek(t *testing.T) {
 	expected := GenericTracingConf{
 		ApiVersion: "hubble-enterprise.io/v1",
 		Metadata:   Metadata{Name: "tracepoint-lseek"},
-		Spec: v1alpha1.TracingPolicySpec{
-			TracingPolicySpec: oss.TracingPolicySpec{Tracepoints: []oss.TracepointSpec{{
-				Subsystem: "syscalls",
-				Event:     "sys_enter_lseek",
-				Args: []oss.KProbeArg{
-					{Index: 7},
-					{Index: 5},
+		Spec: v1alpha1.TracingPolicySpec{Tracepoints: []oss.TracepointSpec{{
+			Subsystem: "syscalls",
+			Event:     "sys_enter_lseek",
+			Args: []oss.KProbeArg{
+				{Index: 7},
+				{Index: 5},
+			},
+			Selectors: []oss.KProbeSelector{{
+				MatchPIDs: []oss.PIDSelector{
+					{
+						Operator:       "eq",
+						FollowForks:    true,
+						IsNamespacePID: false,
+						Values:         []uint32{1111},
+					},
 				},
-				Selectors: []oss.KProbeSelector{{
-					MatchPIDs: []oss.PIDSelector{
-						{
-							Operator:       "eq",
-							FollowForks:    true,
-							IsNamespacePID: false,
-							Values:         []uint32{1111},
-						},
+				MatchArgs: []oss.ArgSelector{
+					{
+						Index:    7,
+						Operator: "eq",
+						Values:   []string{"4444"},
 					},
-					MatchArgs: []oss.ArgSelector{
-						{
-							Index:    7,
-							Operator: "eq",
-							Values:   []string{"4444"},
-						},
-					},
-				}},
-			}}},
+				},
+			}},
+		}},
 		},
 	}
 

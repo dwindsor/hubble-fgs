@@ -7,10 +7,6 @@ github.com/cilium/cilium/pkg/lock
 github.com/cilium/cilium/pkg/logging
 github.com/cilium/cilium/pkg/logging/logfields
 github.com/cilium/cilium/pkg/versioncheck
-# github.com/cilium/tetragon/pkg/k8s v0.0.0-20220720183749-391dc9777bb8
-## explicit; go 1.18
-github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
-github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
