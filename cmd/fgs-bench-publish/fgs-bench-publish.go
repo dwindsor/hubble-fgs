@@ -356,7 +356,8 @@ func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries ma
 	}
 
 	tcpCrrPercent := getRatePercent("TestFGSTLS/netperf-crr", "TestBenchBaseline/netperf-crr", summaries)
-	tlsCrrPercent := getRatePercent("TestFGSTLS/tls-crr", "TestBenchBaseline/tls-crr", summaries)
+	// FIXME: temporarily disabled
+	// tlsCrrPercent := getRatePercent("TestFGSTLS/tls-crr", "TestBenchBaseline/tls-crr", summaries)
 	tcpRrPercent := getRatePercent("TestFGSNoTLS/netperf-rr", "TestBenchBaseline/netperf-rr", summaries)
 	tcpTLSRrPercent := getRatePercent("TestFGSTLS/netperf-rr", "TestBenchBaseline/netperf-rr", summaries)
 	masterTCPCrrPercent := getDerivedDataColumn(sheetsService, "C")
@@ -372,8 +373,9 @@ func prettyPrintForPR(sheetsService *sheets.Service, gitRev string, summaries ma
 
 	err := template.Must(template.New("comment").Parse(tmpl)).Execute(os.Stdout,
 		PRCommentData{
-			GitRev:            gitRev,
-			TLSCrrPercent:     fmtFloat(tlsCrrPercent),
+			GitRev: gitRev,
+			// TLSCrrPercent:     fmtFloat(tlsCrrPercent),
+			TLSCrrPercent:     "temporarily disabled",
 			TCPCrrPercent:     fmtFloat(tcpCrrPercent),
 			TCPCrrPercentDiff: tcpCrrPercentDiff,
 			TCPRrPercent:      fmtFloat(tcpRrPercent),
