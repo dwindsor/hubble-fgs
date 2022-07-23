@@ -259,7 +259,7 @@ func GetProcessListen(
 	}
 
 	ec := eventcache.Get()
-	if ec!= nil && ec.Needed(fgsProcess) {
+	if ec != nil && ec.Needed(fgsProcess) {
 		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
