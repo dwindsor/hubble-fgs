@@ -12,7 +12,7 @@ import (
 	"time"
 
 	// This needs to be first to be first in order to force oss consts to be fixed up
-	"github.com/isovalent/hubble-fgs/pkg/config"
+	"github.com/cilium/tetragon/pkg/config"
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
