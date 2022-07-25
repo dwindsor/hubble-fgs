@@ -120,6 +120,7 @@ github.com/cilium/tetragon/pkg/exporter
 github.com/cilium/tetragon/pkg/filters
 github.com/cilium/tetragon/pkg/generictypes
 github.com/cilium/tetragon/pkg/grpc
+github.com/cilium/tetragon/pkg/grpc/exec
 github.com/cilium/tetragon/pkg/grpc/test
 github.com/cilium/tetragon/pkg/grpc/tracing
 github.com/cilium/tetragon/pkg/health
@@ -162,7 +163,9 @@ github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors
 github.com/cilium/tetragon/pkg/sensors/base
 github.com/cilium/tetragon/pkg/sensors/config
+github.com/cilium/tetragon/pkg/sensors/exec
 github.com/cilium/tetragon/pkg/sensors/exec/execvemap
+github.com/cilium/tetragon/pkg/sensors/exec/procevents
 github.com/cilium/tetragon/pkg/sensors/program
 github.com/cilium/tetragon/pkg/sensors/program/cgroup
 github.com/cilium/tetragon/pkg/sensors/test

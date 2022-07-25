@@ -27,12 +27,13 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/caps"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors/exec/execvemap"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
-	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
-	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 )
 
@@ -450,7 +451,7 @@ func GetRunningProcs(write, push bool) []Procs {
 
 		procs = append(procs, p)
 	}
-	logger.GetLogger().Infof("Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
+	logger.GetLogger().Infof("Enterprise Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
 
 	pushEvents(procs, push, write)
 	return procs

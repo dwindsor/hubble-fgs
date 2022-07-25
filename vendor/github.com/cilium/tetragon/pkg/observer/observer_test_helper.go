@@ -389,7 +389,7 @@ func loadExporter(t *testing.T, obs *Observer, opts *testExporterOptions, oo *te
 	denyList, _ := filters.ParseFilterList("")
 	req := tetragon.GetEventsRequest{AllowList: allowList, DenyList: denyList}
 	exporter := exporter.NewExporter(context.Background(), &req, processManager.Server, encoder, outF, nil)
-	logger.GetLogger().Info("Starting JSON exporter")
+	logger.GetLogger().Info("Starting OSS JSON exporter")
 	exporter.Start()
 	obs.AddListener(processManager)
 	t.Cleanup(func() {

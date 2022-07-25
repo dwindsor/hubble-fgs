@@ -10,8 +10,9 @@ import (
 
 	api "github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 )
 
 var (

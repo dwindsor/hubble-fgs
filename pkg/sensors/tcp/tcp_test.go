@@ -22,14 +22,14 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/stretchr/testify/assert"
 
 	_ "github.com/cilium/tetragon/pkg/sensors"
-	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	_ "github.com/cilium/tetragon/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 )
 

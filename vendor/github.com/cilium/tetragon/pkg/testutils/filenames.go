@@ -8,6 +8,8 @@ import (
 	"os"
 	"sync"
 	"testing"
+
+	"github.com/cilium/tetragon/pkg/logger"
 )
 
 type exportFile struct {
@@ -43,6 +45,7 @@ func CreateExportFile(t *testing.T) *os.File {
 		fname: f.Name(),
 		keep:  false,
 	}
+	logger.GetLogger().Infof("Created export logfile: %s", f.Name())
 
 	t.Cleanup(func() {
 		tname := testName
