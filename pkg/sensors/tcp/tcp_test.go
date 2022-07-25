@@ -23,10 +23,11 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
-	"github.com/isovalent/hubble-fgs/pkg/reader/namespace"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/stretchr/testify/assert"
+
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 
 	_ "github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/cilium/tetragon/pkg/sensors/exec"

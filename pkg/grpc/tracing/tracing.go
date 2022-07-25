@@ -10,10 +10,10 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/reader/caps"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/path"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
-	"github.com/isovalent/hubble-fgs/pkg/reader/caps"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
