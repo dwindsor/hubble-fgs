@@ -29,8 +29,9 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/observer"
+
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"

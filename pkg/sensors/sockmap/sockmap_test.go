@@ -25,13 +25,12 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/stretchr/testify/assert"
 
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
-
-	"github.com/stretchr/testify/assert"
 )
 
 var (

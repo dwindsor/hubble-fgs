@@ -5,10 +5,11 @@ import (
 	"encoding/binary"
 
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/yalue/native_endian"
+
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/stats"
-	"github.com/yalue/native_endian"
 )
 
 var (

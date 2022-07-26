@@ -20,6 +20,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/bpf"
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -27,20 +28,19 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	lru "github.com/hashicorp/golang-lru"
+	"github.com/sirupsen/logrus"
+	"github.com/yalue/native_endian"
+
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
-	"github.com/yalue/native_endian"
-
-	"github.com/sirupsen/logrus"
 )
 
 const (

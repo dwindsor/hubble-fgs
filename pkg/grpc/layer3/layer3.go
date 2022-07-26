@@ -22,15 +22,15 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"google.golang.org/protobuf/types/known/wrapperspb"
+
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
-	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -53,7 +53,7 @@ type MsgIPEventUnix struct {
 }
 
 func msgToProtocol(event *MsgIPEventUnix) tetragon.SocketProtocol {
-	return network.MsgOpToProtocol(event.Common.Op)
+	return reader.MsgOpToProtocol(event.Common.Op)
 }
 
 // GetProcessConnect converts KprobeEvent from hubble-fgs to protobuf message.

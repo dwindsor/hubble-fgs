@@ -18,10 +18,11 @@ import (
 	"io"
 
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/yalue/native_endian"
+
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
-	"github.com/yalue/native_endian"
 )
 
 var (
