@@ -30,9 +30,9 @@ import (
 	"github.com/cilium/tetragon/pkg/ratelimit"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/server"
+	"github.com/cilium/tetragon/pkg/version"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
-	"github.com/isovalent/hubble-fgs/pkg/version"
 	"github.com/isovalent/hubble-fgs/pkg/watcher"
 	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
@@ -369,7 +369,6 @@ func execute() error {
 	flags.Bool(keyEnableCiliumAPI, false, "Access Cilium API to associate FGS events with Cilium endpoints and DNS cache")
 	flags.Bool(keyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.String(keyMetricsServer, "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
-	flags.String(keyNetworkInterfaces, "", "Comma separated list of regex expressions to use to apply protocol parsers")
 	flags.String(keyServerAddress, "localhost:54321", "gRPC server address")
 	flags.String(keyCiliumBPF, "", "Cilium BPF directory")
 	flags.Bool(keyEnableProcessCred, false, "Enable process_cred events")
@@ -393,9 +392,6 @@ func execute() error {
 	// JSON export filter options
 	flags.String(keyExportAllowlist, "", "JSON export allowlist")
 	flags.String(keyExportDenylist, "", "JSON export denylist")
-
-	// TCP Statisticss options
-	flags.Uint32(keyTCPStatsSampleSeg, 0, "TCP statistics sample seg rate")
 
 	// Network namespace options
 	flags.String(keyNetnsDir, "/var/run/docker/netns/", "Network namespace dir")

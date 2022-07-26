@@ -22,8 +22,9 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	k8sversion "github.com/cilium/tetragon/pkg/k8s/version"
 
-	operatorOption "github.com/isovalent/hubble-fgs/operator/option"
 	"github.com/isovalent/hubble-fgs/pkg/version"
+
+	operatorOption "github.com/isovalent/hubble-fgs/operator/option"
 	"k8s.io/client-go/kubernetes"
 
 	"github.com/cilium/cilium/pkg/logging"
@@ -88,6 +89,7 @@ func runOperator() {
 		log.WithError(err).Fatal("Unable to check k8s version")
 	}
 
+	log.Info(k8sversion.Version(), k8sversion.Capabilities())
 	log.Infof("Hubble Operator: %s", version.Version)
 	capabilities := k8sversion.Capabilities()
 	if !capabilities.MinimalVersionMet {
