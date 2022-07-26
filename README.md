@@ -38,7 +38,7 @@ Some of the features of FGS are:
     system calls, filenames based on fd arguments, and others.
 
     The configuration specification for above events can be found in the CRD
-    [spec](pkg/k8s/apis/isovalent.com/client/crds/v1alpha1/isovalent.com_tracingpolicies.yaml).
+    [spec](pkg/k8s/apis/isovalent.com/client/crds/v1alpha1/cilium.io_tracingpolicies.yaml).
     There are also [examples](/crds/examples/) of how the CRD can be used to configure FGS, not
     only for the generic events, but also for other parsers (e.g., TLS).
 

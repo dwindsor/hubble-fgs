@@ -46,7 +46,7 @@ done
 
 if [ $TRACINGPOLICY == 1 ]; then
     echo "Applying tracing policies..." 1>&2
-    kubectl apply -f crds/isovalent.com_tracingpolicies.yaml
+    kubectl apply -f crds/cilium.io_tracingpolicies.yaml
     sleep 5 # Wait so that we can give a chance for the new CRD to be applied
     kubectl apply -f crds/examples/tcp.yaml
     echo "Waiting to make sure sensors have been loaded..." 1>&2
