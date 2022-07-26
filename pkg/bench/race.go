@@ -14,6 +14,7 @@ import (
 	"context"
 	"encoding/json"
 	"io"
+	"log"
 	"math/rand"
 	"net"
 	"os"
@@ -42,6 +43,7 @@ import (
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/cilium/tetragon/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
@@ -146,6 +148,14 @@ func startRaceExporter(ctx context.Context, obs *observer.Observer) error {
 
 	req := tetragon.GetEventsRequest{AllowList: nil, DenyList: nil, AggregationOptions: nil}
 	exporter := exporter.NewExporter(ctx, &req, processManager.Server, encoder, nil, nil)
+
+	if err := base.LoadDefault(ctx,
+		option.Config.BpfDir,
+		option.Config.MapDir,
+		option.Config.CiliumDir); err != nil {
+		log.Fatalf("Load Defaults failed: %v", err)
+	}
+
 	exporter.Start()
 	obs.AddListener(processManager)
 	return nil
@@ -208,7 +218,10 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	f.Write([]byte(benchConfig))
 	f.Close()
 
-	obs := observer.NewObserver(f.Name(), /* config */)
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	option.Config.MapDir = bpf.MapPrefixPath()
+	option.Config.CiliumDir = ""
+	obs := observer.NewObserver(f.Name())
 
 	if err := obs.InitSensorManager(); err != nil {
 		logger.GetLogger().Fatalf("InitSensorManager failed: %v", err)

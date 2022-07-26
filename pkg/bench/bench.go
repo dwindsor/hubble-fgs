@@ -39,6 +39,7 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/sensors"
+
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
@@ -47,6 +48,7 @@ import (
 
 	// Imported to allow sensors to be initialized inside init().
 	_ "github.com/cilium/tetragon/pkg/sensors"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 )
@@ -118,6 +120,9 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	configFile := generateCrd(args, sinkPort)
 	defer os.Remove(configFile)
 
+	option.Config.BpfDir = bpf.MapPrefixPath()
+	option.Config.MapDir = bpf.MapPrefixPath()
+	option.Config.CiliumDir = ""
 	obs := observer.NewObserver(configFile)
 
 	if err := obs.InitSensorManager(); err != nil {
@@ -150,6 +155,14 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	if err != nil {
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
+
+	if err := base.LoadDefault(ctx,
+		option.Config.BpfDir,
+		option.Config.MapDir,
+		option.Config.CiliumDir); err != nil {
+			log.Fatalf("Load Defaults failed: %v", err)
+	}
+
 	if err := obs.Start(ctx, startSensors); err != nil {
 		log.Fatalf("Starting FGS failed: %v", err)
 	}
