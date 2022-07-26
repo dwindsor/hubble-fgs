@@ -27,10 +27,11 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 
 	_ "github.com/cilium/tetragon/pkg/sensors"
-	_ "github.com/cilium/tetragon/pkg/sensors/exec"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 )
 
@@ -780,8 +781,8 @@ func TestTcpBurst(t *testing.T) {
 	if err := observer.WriteConfigFile(testConfigFile, tcpConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	dfltBase := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, dfltBase, testConfigFile, fgsLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
