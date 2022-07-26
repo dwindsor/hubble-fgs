@@ -1,4 +1,4 @@
-apiVersion: isovalent.com/v1alpha1
+apiVersion: cilium.io/v1alpha1
 metadata:
   name: process-exec
   description: |

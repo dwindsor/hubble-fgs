@@ -131,7 +131,7 @@ jobs:
       - name: Enable DNS policy
         run: |
           cat <<-EOF | kubectl apply -f -
-          apiVersion: isovalent.com/v1alpha1
+          apiVersion: cilium.io/v1alpha1
           kind: TracingPolicy
           metadata:
             name: "dns"
