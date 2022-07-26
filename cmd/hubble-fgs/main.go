@@ -31,10 +31,10 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/server"
 	"github.com/cilium/tetragon/pkg/version"
+	"github.com/cilium/tetragon/pkg/watcher"
+	"github.com/cilium/tetragon/pkg/watcher/crd"
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 	"github.com/isovalent/hubble-fgs/pkg/filters"
-	"github.com/isovalent/hubble-fgs/pkg/watcher"
-	"github.com/isovalent/hubble-fgs/pkg/watcher/crd"
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
