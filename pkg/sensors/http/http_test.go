@@ -35,6 +35,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 
 	"github.com/stretchr/testify/assert"

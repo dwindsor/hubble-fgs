@@ -50,9 +50,11 @@ func LoadTC(
 			logger.GetLogger().Infof("Attaching %s to device %s", load.Type, link.Attrs().Name)
 			isIngress := "tc_ingress" == load.Type
 			if err = bpf.QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
+				logger.GetLogger().WithError(err).Warn("QdiscTCInsert Failed")
 				break
 			}
 			if err = bpf.AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
+				logger.GetLogger().WithError(err).Warn("AttachTC Failed")
 				break
 			}
 			un.Attachments = append(un.Attachments,

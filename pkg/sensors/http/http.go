@@ -18,18 +18,18 @@ import (
 	"strconv"
 	"strings"
 
-	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
-	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
-
+	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/selectors"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+
+	api "github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/chunks"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
-	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
+	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
@@ -431,7 +431,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 			aggregate.Add(key, unix)
 			return nil, nil
 		}
-		r := entry.(*api.MsgHttpEventUnix)
+		r := entry.(*httpproto.MsgHttpEventUnix)
 		unix.Request.Code = r.Request.Code
 		unix.Request.Reason = r.Request.Reason
 		unix.Request.RespContentLength = r.Request.RespContentLength
@@ -440,7 +440,7 @@ func msgToHTTPEventUnix(m *api.MsgHttpEvent) ([]observer.Event, error) {
 	} else {
 		entry, ok := aggregate.Get(key)
 		if ok {
-			r := entry.(*api.MsgHttpEventUnix)
+			r := entry.(*httpproto.MsgHttpEventUnix)
 			unix.Request.Method = r.Request.Method
 			unix.Request.Uri = r.Request.Uri
 			unix.Request.Host = r.Request.Host
@@ -591,7 +591,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 			aggregate.Add(key, unix)
 			return false
 		}
-		r := entry.(*api.MsgHttpEventUnix)
+		r := entry.(*httpproto.MsgHttpEventUnix)
 		unix.Request.Code = r.Request.Code
 		unix.Request.Reason = r.Request.Reason
 		unix.Request.RespContentLength = r.Request.RespContentLength
@@ -599,7 +599,7 @@ func (s *http2State) handleHttp2HeaderFrame(unix *httpproto.MsgHttpEventUnix, fr
 	} else {
 		entry, ok := aggregate.Get(key)
 		if ok {
-			r := entry.(*api.MsgHttpEventUnix)
+			r := entry.(*httpproto.MsgHttpEventUnix)
 			unix.Request.Method = r.Request.Method
 			unix.Request.Uri = r.Request.Uri
 			unix.Request.Host = r.Request.Host

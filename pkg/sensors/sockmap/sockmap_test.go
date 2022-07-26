@@ -29,7 +29,9 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 )
 
@@ -63,7 +65,7 @@ func TestMain(m *testing.M) {
 }
 
 var (
-	tlstc = `
+	tlsConfig = `
 apiVersion: hubble-enterprise.io/v1
 metadata:
   name: "tls"
@@ -71,14 +73,17 @@ spec:
   parser:
     tls:
       enable: true
-      mode: "tc"
+      mode: "socket"
+      selectors:
+      - matchports:
+        - 443
     tcp:
       enable: true
 `
 )
 
-func TestTCTLS13(t *testing.T) {
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+func TestTLS13(t *testing.T) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
@@ -118,11 +123,12 @@ func TestTCTLS13(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, tlstc); err != nil {
+	if err := observer.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	base := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, fgsLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -133,8 +139,8 @@ func TestTCTLS13(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestTCTLS12(t *testing.T) {
-	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
+func TestTLS12(t *testing.T) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
@@ -180,10 +186,12 @@ func TestTCTLS12(t *testing.T) {
 		tlsChecker,
 	)
 
-	if err := observer.WriteConfigFile(testConfigFile, tlstc); err != nil {
+	if err := observer.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
 		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
 	}
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+
+	base := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, fgsLib)
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}

@@ -45,13 +45,6 @@ type MsgHttp struct {
 	Pad3   uint32
 }
 
-type MsgHttpEventUnix struct {
-	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPv4HTTPTuple
-	ProcessKey processapi.MsgExecveKey
-	Request    MsgHttpUnix
-}
-
 type MsgHttpEvent struct {
 	Common     processapi.MsgCommon
 	Tuple      networkapi.MsgIPv4HTTPTuple
