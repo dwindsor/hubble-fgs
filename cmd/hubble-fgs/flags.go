@@ -38,7 +38,6 @@ const (
 	keyEnableProcessAncestors = "enable-process-ancestors"
 
 	keyMetricsServer     = "metrics-server"
-	keyNetworkInterfaces = "network-interfaces"
 	keyServerAddress     = "server-address"
 	keyCiliumBPF         = "cilium-bpf"
 	keyEnableProcessCred = "enable-process-cred"
@@ -62,8 +61,6 @@ const (
 	keyExportAllowlist = "export-allowlist"
 	keyExportDenylist  = "export-denylist"
 
-	keyTCPStatsSampleSeg = "tcp-stats-sample-segs"
-
 	keyNetnsDir = "netns-dir"
 )
 
@@ -75,7 +72,6 @@ var (
 	enableProcessAncestors bool
 
 	metricsServer     string
-	networkInterfaces string
 	serverAddress     string
 	ciliumBPF         string
 	enableProcessCred bool
@@ -95,9 +91,6 @@ var (
 	enableExportAggregation     bool
 	exportAggregationWindowSize time.Duration
 	exportAggregationBufferSize uint64
-
-	// Sample confiugration options
-	exportTCPStatsSampleSeg uint32
 )
 
 func readAndSetFlags() {
@@ -121,7 +114,6 @@ func readAndSetFlags() {
 	enableProcessAncestors = viper.GetBool(keyEnableProcessAncestors)
 
 	metricsServer = viper.GetString(keyMetricsServer)
-	networkInterfaces = viper.GetString(keyNetworkInterfaces)
 	serverAddress = viper.GetString(keyServerAddress)
 	ciliumBPF = viper.GetString(keyCiliumBPF)
 	enableProcessCred = viper.GetBool(keyEnableProcessCred)
@@ -140,6 +132,4 @@ func readAndSetFlags() {
 	enableExportAggregation = viper.GetBool(keyEnableExportAggregation)
 	exportAggregationWindowSize = viper.GetDuration(keyExportAggregationWindowSize)
 	exportAggregationBufferSize = viper.GetUint64(keyExportAggregationBufferSize)
-
-	exportTCPStatsSampleSeg = viper.GetUint32(keyTCPStatsSampleSeg)
 }
