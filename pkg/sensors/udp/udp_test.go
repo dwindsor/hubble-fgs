@@ -33,11 +33,14 @@ import (
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
-	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/observer"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/sirupsen/logrus"
 
+	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+
+	_ "github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
@@ -244,7 +247,8 @@ func TestUdpBurst(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	base := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, fgsLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -355,7 +359,9 @@ func getBasicUdpObserver(t *testing.T) *observer.Observer {
 	if err := observer.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+
+	base := base.GetInitialSensor()
+	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, fgsLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
