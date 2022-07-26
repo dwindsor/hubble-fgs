@@ -24,7 +24,7 @@ func init() {
 
 func NewCache() (*Cache, error) {
 	if cache != nil {
-		return cache, nil 
+		return cache, nil
 	}
 
 	lru, err := lru.New(dnsDefaultCacheSize)

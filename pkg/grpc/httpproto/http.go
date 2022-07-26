@@ -26,7 +26,6 @@ import (
 
 var (
 	nodeName = node.GetNodeNameForExport()
-
 )
 
 func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {

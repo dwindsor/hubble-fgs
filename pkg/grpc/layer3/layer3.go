@@ -337,7 +337,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if ec != nil  && ec.Needed(fgsProcess) {
+	if ec != nil && ec.Needed(fgsProcess) {
 		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}

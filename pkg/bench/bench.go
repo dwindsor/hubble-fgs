@@ -160,7 +160,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		option.Config.BpfDir,
 		option.Config.MapDir,
 		option.Config.CiliumDir); err != nil {
-			log.Fatalf("Load Defaults failed: %v", err)
+		log.Fatalf("Load Defaults failed: %v", err)
 	}
 
 	if err := obs.Start(ctx, startSensors); err != nil {

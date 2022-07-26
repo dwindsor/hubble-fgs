@@ -16,11 +16,11 @@ import (
 
 	"github.com/cilium/tetragon/pkg/ksyms"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/vtuple"
 	api "github.com/isovalent/hubble-fgs/pkg/api/kfreeapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/cilium/tetragon/pkg/observer"
 
 	stt "github.com/cilium/tetragon/pkg/stacktracetree"
 )
