@@ -113,8 +113,11 @@ jobs:
                  --version 9999.9999.9999-dev \
                  --set enterprise.image.repository=quay.io/isovalent/hubble-enterprise-ci \
                  --set enterprise.image.tag=${{ steps.vars.outputs.sha }} \
+                 --set hubbleEnterpriseOperator.image.repository=quay.io/isovalent/hubble-enterprise-operator-ci \
+                 --set hubbleEnterpriseOperator.image.tag=${{ steps.vars.outputs.sha }} \
                  --set enterprise.exportAllowList="" \
                  --set enterprise.exportFileMaxSizeMB=50 \
+                 --set enterprise.btf=/sys/kernel/btf/vmlinux \
                  --namespace kube-system
 
       - name: Wait for FGS pods to become ready
