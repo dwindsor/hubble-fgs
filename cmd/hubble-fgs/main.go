@@ -155,16 +155,16 @@ func hubbleFGSExecute() error {
 		go metrics.EnableMetrics(metricsServer)
 	}
 
-	watcher, err := getWatcher(enableK8sAPI)
+	watcher, err := getWatcher(option.Config.EnableK8s)
 	if err != nil {
 		return err
 	}
-	ciliumState, err := cilium.InitCiliumState(ctx, enableCiliumAPI)
+	ciliumState, err := cilium.InitCiliumState(ctx, option.Config.EnableCilium)
 	if err != nil {
 		return err
 	}
 
-	if err := process.InitCache(ctx, watcher, enableCiliumAPI, processCacheSize); err != nil {
+	if err := process.InitCache(ctx, watcher, option.Config.EnableCilium, processCacheSize); err != nil {
 		return err
 	}
 
@@ -197,7 +197,7 @@ func hubbleFGSExecute() error {
 	log.WithField("enabled", exportFilename != "").WithField("fileName", exportFilename).Info("Exporter configuration")
 	obs.AddListener(pm)
 	saveInitInfo()
-	if enableK8sAPI {
+	if option.Config.EnableK8s {
 		go crd.WatchTracePolicy(ctx, observer.SensorManager)
 	}
 

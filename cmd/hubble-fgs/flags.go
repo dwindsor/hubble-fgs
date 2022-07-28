@@ -69,9 +69,6 @@ const (
 var (
 	processCacheSize int
 
-	enableK8sAPI    bool
-	enableCiliumAPI bool
-
 	metricsServer string
 	serverAddress string
 	configFile    string
@@ -104,6 +101,8 @@ func readAndSetFlags() {
 	option.Config.EnableProcessCred = viper.GetBool(keyEnableProcessCred)
 	option.Config.EnableProcessNs = viper.GetBool(keyEnableProcessNs)
 	option.Config.CiliumDir = viper.GetString(keyCiliumBPF)
+	option.Config.EnableK8s = viper.GetBool(keyEnableK8sAPI)
+	option.Config.EnableCilium = viper.GetBool(keyEnableCiliumAPI)
 
 	enterpriseOption.Config.EnableProcessAncestors = viper.GetBool(keyEnableProcessAncestors)
 
@@ -112,9 +111,6 @@ func readAndSetFlags() {
 	logger.PopulateLogOpts(option.Config.LogOpts, logLevel, logFormat)
 
 	processCacheSize = viper.GetInt(keyProcessCacheSize)
-
-	enableK8sAPI = viper.GetBool(keyEnableK8sAPI)
-	enableCiliumAPI = viper.GetBool(keyEnableCiliumAPI)
 
 	metricsServer = viper.GetString(keyMetricsServer)
 	serverAddress = viper.GetString(keyServerAddress)
