@@ -61,7 +61,8 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo ::set-output name=sha::${SHA}
-          echo ::set-output name=fgsImage::quay.io/isovalent/hubble-enterprise-ci:${SHA}
+          echo ::set-output name=agentImage::quay.io/isovalent/hubble-enterprise-ci:${SHA}
+          echo ::set-output name=operatorImage::quay.io/isovalent/hubble-enterprise-operator-ci:${SHA}
 
       - name: Authenticate with gcloud
         uses: 'google-github-actions/auth@v0'
@@ -200,25 +201,28 @@ jobs:
           max_attempts: 30
           retry_wait_seconds: 30
           command: |
-            docker pull ${{ steps.vars.outputs.fgsImage }}
+            set -e
+            docker pull ${{ steps.vars.outputs.agentImage }}
+            docker pull ${{ steps.vars.outputs.operatorImage }}
 
       - name: Preload FGS image
         run: |
           # Check if the image is already loaded and, if so, break out early
-          if [[ "$(ssh -p 3000 root@localhost 'docker images -q ${{ steps.vars.outputs.fgsImage }}')" != "" ]]; then
+          if [[ "$(ssh -p 3000 root@localhost 'docker images -q ${{ steps.vars.outputs.agentImage }}')" != "" ]]; then
             exit 0
           fi
-          docker save ${{ steps.vars.outputs.fgsImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
+          docker save ${{ steps.vars.outputs.agentImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
+          docker save ${{ steps.vars.outputs.operatorImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
 
       - name: Install FGS
         run: |
           cat <<-EOF | ssh -p 3000 root@localhost
             if [ -f "/fgs/bpf/objs/btf" ]; then
               echo "Installing FGS with BTF info..."
-              /fgs/contrib/end-to-end/install-fgs.sh --image ${{ steps.vars.outputs.fgsImage }} --btf /fgs/bpf/objs/btf
+              /fgs/contrib/end-to-end/install-fgs.sh --image ${{ steps.vars.outputs.agentImage }} --operator ${{ steps.vars.outputs.operatorImage }} --btf /fgs/bpf/objs/btf
             else
               echo "Installing FGS without BTF info..."
-              /fgs/contrib/end-to-end/install-fgs.sh --image ${{ steps.vars.outputs.fgsImage }}
+              /fgs/contrib/end-to-end/install-fgs.sh --image ${{ steps.vars.outputs.agentImage }} --operator ${{ steps.vars.outputs.operatorImage }}
             fi
           EOF
 
