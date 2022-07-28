@@ -20,7 +20,7 @@ import (
 	// Import GRPC layer sensor handlers
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
-	_ "github.com/isovalent/hubble-fgs/pkg/grpc/execAncestors"
+	_ "github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/file"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/httpproto"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/iface"
