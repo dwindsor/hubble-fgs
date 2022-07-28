@@ -29,9 +29,9 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/test"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/tls"
-	_ "github.com/isovalent/hubble-fgs/pkg/grpc/tracing"
 
 	// Import OSS sensors here
+	_ "github.com/cilium/tetragon/pkg/grpc/tracing"
 
 	// Initialize cache (tbd) remove this and actually use them
 	_ "github.com/isovalent/hubble-fgs/pkg/dns"
