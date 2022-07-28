@@ -6,6 +6,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
+	"github.com/cilium/tetragon/pkg/execcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
@@ -69,7 +70,8 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		// tbd broken execCache here.
 		ec := eventcache.Get()
 		if ec != nil && ec.Needed(procEvent.Process) {
-			ec.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), &msg.MsgExecveEventUnix)
+			c := execcache.Get()
+			c.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), &msg.MsgExecveEventUnix)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
 			res = &tetragon.GetEventsResponse{
@@ -133,7 +135,6 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	}
 
 	ec := eventcache.Get()
-
 	if ec != nil && ec.Needed(fgsProcess) {
 		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), &event.MsgExitEvent)
 		return nil

@@ -21,10 +21,10 @@ import (
 	hubbleFilters "github.com/cilium/hubble/pkg/filters"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/config"
+	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/isovalent/hubble-fgs/pkg/aggregator"
-	"github.com/isovalent/hubble-fgs/pkg/filters"
 	"github.com/isovalent/hubble-fgs/pkg/health"
 	"github.com/isovalent/hubble-fgs/pkg/version"
 )

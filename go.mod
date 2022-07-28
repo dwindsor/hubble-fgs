@@ -14,10 +14,8 @@ require (
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/dustin/go-humanize v1.0.0
 	github.com/fatih/color v1.13.0
-	github.com/google/go-cmp v0.5.8
 	github.com/google/gops v0.3.25
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a
 	github.com/sirupsen/logrus v1.9.0
@@ -73,6 +71,7 @@ require (
 	github.com/golang/groupcache v0.0.0-20210331224755-41bb18bfe9da // indirect
 	github.com/golang/protobuf v1.5.2 // indirect
 	github.com/google/gnostic v0.5.7-v3refs // indirect
+	github.com/google/go-cmp v0.5.8 // indirect
 	github.com/google/gofuzz v1.2.0 // indirect
 	github.com/google/gopacket v1.1.19 // indirect
 	github.com/googleapis/gax-go/v2 v2.4.0 // indirect
@@ -80,6 +79,7 @@ require (
 	github.com/inconshreveable/mousetrap v1.0.0 // indirect
 	github.com/josharian/intern v1.0.0 // indirect
 	github.com/json-iterator/go v1.1.12 // indirect
+	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51 // indirect
 	github.com/magiconair/properties v1.8.6 // indirect
 	github.com/mailru/easyjson v0.7.7 // indirect
 	github.com/mattn/go-colorable v0.1.12 // indirect

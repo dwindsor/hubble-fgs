@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/cilium"
 	"github.com/cilium/tetragon/pkg/defaults"
 	"github.com/cilium/tetragon/pkg/exporter"
+	"github.com/cilium/tetragon/pkg/filters"
 	fgsGrpc "github.com/cilium/tetragon/pkg/grpc"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics"
@@ -33,8 +34,8 @@ import (
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/cilium/tetragon/pkg/watcher/crd"
+
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
-	"github.com/isovalent/hubble-fgs/pkg/filters"
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
