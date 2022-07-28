@@ -67,6 +67,8 @@ install_fgs() {
     helm_opts+=("--set" "enterprise.exportAllowList=")
     helm_opts+=("--set" "enterprise.enableTLSEvents=true")
     helm_opts+=("--set" "enterprise.exportFileMaxSizeMB=50")
+    helm_opts+=("--set" "hubbleEnterpriseOperator.image.repository=quay.io/isovalent/hubble-enterprise-operator-ci")
+    helm_opts+=("--set" "hubbleEnterpriseOperator.image.tag=$FGS_TAG")
     if [ -f "$BTF_FILE" ]; then
         KIND_ID="$(docker ps -aqf "name=$CLUSTER_NAME-control-plane")"
         echo "Transferring $BTF_FILE to container $KIND_ID..." 1>&2
