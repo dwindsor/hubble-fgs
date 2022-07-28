@@ -11,10 +11,12 @@ import (
 	"github.com/cilium/tetragon/pkg/process"
 	readerexec "github.com/cilium/tetragon/pkg/reader/exec"
 	"github.com/cilium/tetragon/pkg/reader/node"
-	"github.com/isovalent/hubble-fgs/pkg/api/ops"
-	"github.com/isovalent/hubble-fgs/pkg/execcache"
 	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
+
+	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/execcache"
+	"github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 var (
@@ -78,7 +80,9 @@ func (e *Grpc) GetProcessExec(
 			pod := proto.Clone(a.UnsafeGetProcess().Pod).(*tetragon.Pod)
 			proc.AddPodInfo(pod)
 		}
-		fgsAncestors = append(fgsAncestors, a.UnsafeGetProcess())
+		if option.Config.EnableProcessAncestors {
+			fgsAncestors = append(fgsAncestors, a.UnsafeGetProcess())
+		}
 	}
 	// If this is not a clone we need to decrement parent refcnt because
 	// the parent has been replaced and will not get its own exit event.
