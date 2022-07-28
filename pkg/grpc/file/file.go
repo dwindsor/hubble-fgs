@@ -68,7 +68,7 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	}
 
 	ec := eventcache.Get()
-	if ec.Needed(tetragonProcess) {
+	if ec != nil && ec.Needed(tetragonProcess) {
 		ec.Add(process, tetragonEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}

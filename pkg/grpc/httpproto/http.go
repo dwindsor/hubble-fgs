@@ -124,7 +124,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	ec := eventcache.Get()
-	if ec.Needed(proc) {
+	if ec != nil && ec.Needed(proc) {
 		ec.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
