@@ -12,7 +12,7 @@
 package v1alpha1
 
 import (
-	ciliumio "github.com/isovalent/hubble-fgs/pkg/k8s/apis/cilium.io"
+	ciliumio "github.com/cilium/tetragon/pkg/k8s/apis/cilium.io"
 	metav1 "k8s.io/apimachinery/pkg/apis/meta/v1"
 )
 

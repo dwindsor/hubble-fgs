@@ -20,7 +20,7 @@ import (
 	"path/filepath"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
-	k8sversion "github.com/isovalent/hubble-fgs/pkg/k8s/version"
+	k8sversion "github.com/cilium/tetragon/pkg/k8s/version"
 
 	"github.com/isovalent/hubble-fgs/pkg/version"
 

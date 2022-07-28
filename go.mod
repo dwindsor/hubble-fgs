@@ -17,7 +17,6 @@ require (
 	github.com/google/go-cmp v0.5.8
 	github.com/google/gops v0.3.25
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000
 	github.com/kballard/go-shellquote v0.0.0-20180428030007-95032a82bc51
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a
@@ -35,7 +34,6 @@ require (
 	google.golang.org/protobuf v1.28.0
 	k8s.io/api v0.24.3
 	k8s.io/apiextensions-apiserver v0.24.3
-	k8s.io/apimachinery v0.24.3
 	k8s.io/client-go v0.24.3
 	k8s.io/code-generator v0.24.3
 	sigs.k8s.io/controller-tools v0.6.2
@@ -127,6 +125,7 @@ require (
 	gopkg.in/ini.v1 v1.66.6 // indirect
 	gopkg.in/yaml.v2 v2.4.0 // indirect
 	gopkg.in/yaml.v3 v3.0.1 // indirect
+	k8s.io/apimachinery v0.24.3 // indirect
 	k8s.io/gengo v0.0.0-20211129171323-c02415ce4185 // indirect
 	k8s.io/klog/v2 v2.60.1 // indirect
 	k8s.io/kube-openapi v0.0.0-20220328201542-3ee0da9b0b42 // indirect

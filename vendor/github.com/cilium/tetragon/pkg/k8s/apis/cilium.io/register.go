@@ -9,6 +9,8 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-// +k8s:deepcopy-gen=package,register
-// +groupName=cilium.io
-package v1alpha1
+package ciliumio
+
+const (
+	GroupName = "cilium.io"
+)

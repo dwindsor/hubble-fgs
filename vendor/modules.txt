@@ -188,10 +188,18 @@ github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml
 github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers
 # github.com/cilium/tetragon/pkg/k8s v0.0.0-20220720183749-391dc9777bb8 => ./pkg/k8s
 ## explicit; go 1.18
+github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client
 github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/scheme
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/typed/cilium.io/v1alpha1
 github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/cilium.io
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/internalinterfaces
+github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/version
 # github.com/containerd/containerd v1.6.2
 ## explicit; go 1.17
 github.com/containerd/containerd/errdefs
@@ -379,19 +387,6 @@ github.com/hashicorp/hcl/json/token
 # github.com/inconshreveable/mousetrap v1.0.0
 ## explicit
 github.com/inconshreveable/mousetrap
-# github.com/isovalent/hubble-fgs/pkg/k8s v0.0.0-00010101000000-000000000000 => ./pkg/k8s-enterprise
-## explicit; go 1.18
-github.com/isovalent/hubble-fgs/pkg/k8s/apis/cilium.io
-github.com/isovalent/hubble-fgs/pkg/k8s/apis/cilium.io/v1alpha1
-github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned
-github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned/scheme
-github.com/isovalent/hubble-fgs/pkg/k8s/client/clientset/versioned/typed/cilium.io/v1alpha1
-github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions
-github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/cilium.io
-github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/cilium.io/v1alpha1
-github.com/isovalent/hubble-fgs/pkg/k8s/client/informers/externalversions/internalinterfaces
-github.com/isovalent/hubble-fgs/pkg/k8s/client/listers/cilium.io/v1alpha1
-github.com/isovalent/hubble-fgs/pkg/k8s/version
 # github.com/josharian/intern v1.0.0
 ## explicit; go 1.5
 github.com/josharian/intern

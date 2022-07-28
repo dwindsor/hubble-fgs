@@ -9,7 +9,7 @@
 //  permission is obtained from Isovalent Inc.
 //
 
-package isovalentcom
+package ciliumio
 
 const (
 	GroupName = "cilium.io"
