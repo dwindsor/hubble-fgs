@@ -1,5 +1,5 @@
-#ifndef __VMLINUX_
-#define __VMLINUX_
+#ifndef __VMLINUX_H__
+#define __VMLINUX_H__
 
 /* User configurable BTF */
 enum generic_func_args_enum {
