@@ -9,7 +9,7 @@ require (
 	github.com/cilium/lumberjack/v2 v2.2.2
 	github.com/cilium/tetragon v0.0.0-00010101000000-000000000000
 	github.com/cilium/tetragon/api v0.0.0-00010101000000-000000000000
-	github.com/cilium/tetragon/pkg/k8s v0.0.0-20220720183749-391dc9777bb8
+	github.com/cilium/tetragon/pkg/k8s v0.0.0-20220728233612-7cadc51fbafb
 	github.com/containernetworking/plugins v1.0.1
 	github.com/docker/docker v20.10.12+incompatible
 	github.com/dustin/go-humanize v1.0.0

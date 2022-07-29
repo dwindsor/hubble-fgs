@@ -137,6 +137,8 @@ github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3/go.mod h1:cXN7jgo+gsG
 github.com/cilium/ipam v0.0.0-20201020084809-76717fcdb3a2/go.mod h1:Ascfar4FtgB+K+mwqbZpSb3WVZ5sPFIarg+iAOXNZqI=
 github.com/cilium/kafka v0.0.0-20180809090225-01ce283b732b/go.mod h1:ktgizta3CPZBKz5uW272SJyjiro0vn4nOVP7Pk4RopA=
 github.com/cilium/proxy v0.0.0-20210511221533-82a70d56bf32/go.mod h1:mvauc94lqkyJunRsU9Ef5FIsixi8vBeDoxuMYoGBemk=
+github.com/cilium/tetragon/pkg/k8s v0.0.0-20220728233612-7cadc51fbafb h1:GAgs35h6+DDKznZl0gx7Jvzz6+6eQGluBkwM87wksWg=
+github.com/cilium/tetragon/pkg/k8s v0.0.0-20220728233612-7cadc51fbafb/go.mod h1:NIxDp7h6lZmXGG6D1hrzlZ+H8J6/BV6I40YlweSBuiQ=
 github.com/cilium/workerpool v1.1.0/go.mod h1:GOYJhwlnIjR+jWSDNBb5kw47G1H/XA9X4WOBpgr4pQU=
 github.com/client9/misspell v0.3.4/go.mod h1:qj6jICC3Q7zFZvVWo7KLAzC3yx5G7kyvSDkc90ppPyw=
 github.com/cncf/udpa/go v0.0.0-20191209042840-269d4d468f6f/go.mod h1:M8M6+tZqaGXZJjfX53e64911xZQV5JYwmTeXPW+k8Sc=

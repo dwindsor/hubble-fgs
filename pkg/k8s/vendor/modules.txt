@@ -7,6 +7,19 @@ github.com/cilium/cilium/pkg/lock
 github.com/cilium/cilium/pkg/logging
 github.com/cilium/cilium/pkg/logging/logfields
 github.com/cilium/cilium/pkg/versioncheck
+# github.com/cilium/tetragon/pkg/k8s v0.0.0-20220728233612-7cadc51fbafb
+## explicit; go 1.18
+github.com/cilium/tetragon/pkg/k8s/apis/cilium.io
+github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/scheme
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/typed/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/client/clientset/versioned/typed/cilium.io/v1alpha1/fake
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/cilium.io
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/client/informers/externalversions/internalinterfaces
+github.com/cilium/tetragon/pkg/k8s/client/listers/cilium.io/v1alpha1
+github.com/cilium/tetragon/pkg/k8s/version
 # github.com/davecgh/go-spew v1.1.1
 ## explicit
 github.com/davecgh/go-spew/spew
