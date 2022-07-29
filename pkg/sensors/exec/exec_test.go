@@ -1,43 +1,20 @@
 package exec
 
 import (
-	"flag"
 	"os"
-	"path/filepath"
 	"strings"
 	"testing"
-	"time"
 
 	api "github.com/cilium/tetragon/pkg/api/processapi"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
-
-var (
-	selfBinary   string
-	fgsLib       string
-	cmdWaitTime  time.Duration
-	verboseLevel int
-)
-
-func init() {
-	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
-	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
-	flag.IntVar(&verboseLevel, "verbosity-level", 0, "verbosity level of verbose mode. (Requires verbose mode to be enabled.)")
-
-	bpf.SetMapPrefix("testObserver")
-}
 
 func TestMain(m *testing.M) {
-	flag.Parse()
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.ConfigureResourceLimits()
-	selfBinary = filepath.Base(os.Args[0])
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	ec := runner.TestSensorsRun(m, "SensorExec")
+	os.Exit(ec)
 }
 
 func Test_msgToExecveUnix(t *testing.T) {

@@ -29,6 +29,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -36,11 +37,8 @@ import (
 )
 
 var (
-	selfBinary  string
-	fgsLib      string
-	cmdWaitTime time.Duration
-	client      bool
-	server      bool
+	client bool
+	server bool
 )
 
 const (
@@ -80,19 +78,15 @@ spec:
 `
 
 func init() {
-	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
-	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 	flag.BoolVar(&client, "client", false, "internal")
 	flag.BoolVar(&server, "server", false, "internal")
-
-	bpf.SetMapPrefix("testObserver")
 }
 
 func getBasicTcpObserver(t *testing.T) *observer.Observer {
 	if err := observer.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -109,23 +103,19 @@ func TestMain(m *testing.M) {
 		tcpClient()
 		os.Exit(0)
 	}
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.ConfigureResourceLimits()
-	selfBinary = filepath.Base(os.Args[0])
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	ec := runner.TestSensorsRun(m, "SensorTcp")
+	os.Exit(ec)
 }
 
 func TestConnectEvent(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	curlChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("curl")).
@@ -175,7 +165,7 @@ func TestExecEventClone(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	orig := "nc.traditional"
@@ -195,7 +185,7 @@ func TestExecEventClone(t *testing.T) {
 	}
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -264,7 +254,7 @@ func TestExistingListenEvent(t *testing.T) {
 	server := getNCCommand(t, "nc.traditional")
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -303,14 +293,14 @@ func TestExistingAcceptEvent(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	server := getNCCommand(t, "nc.traditional")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -362,7 +352,7 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	server := getNCCommand(t, "nc.traditional")
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -407,14 +397,14 @@ func TestListenAcceptClose(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	server := getNCCommand(t, "nc.traditional")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -487,7 +477,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	/* Start server before creating obs */
@@ -509,7 +499,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	// before fgs starts), but in runtime event we report the name of the symlink.
 	// In this test the difference is busybox vs nc.
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("busybox")).
@@ -542,7 +532,7 @@ func TestDockerListenConnect(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	obs := getBasicTcpObserver(t)
@@ -559,7 +549,7 @@ func TestDockerListenConnect(t *testing.T) {
 	fgsClientID := sm.Prefix(clientDockerID[:24])
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("/nc")).
@@ -726,12 +716,12 @@ func TestTcpBurst(t *testing.T) {
 	bpf.CheckOrMountCgroup2()
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 	clientProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary)).
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-client"))
 	serverProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary)).
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-server"))
 
 	burstEgressStart := ec.NewProcessNetworkBurstChecker().
@@ -775,14 +765,14 @@ func TestTcpBurst(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	if err := observer.WriteConfigFile(testConfigFile, tcpConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 	dfltBase := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, dfltBase, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithBase(t, dfltBase, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -879,14 +869,14 @@ func TestNamespaces(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	rootNs := namespace.GetCurrentNamespace()
 	nsChecker := ec.NewNamespacesChecker().FromNamespaces(rootNs)
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary)).
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithNs(nsChecker)
 
 	checker := ec.NewUnorderedEventChecker(
@@ -895,7 +885,7 @@ func TestNamespaces(t *testing.T) {
 			WithParent(ec.NewProcessChecker()),
 	)
 
-	obs, err := observer.GetDefaultObserver(t, fgsLib)
+	obs, err := observer.GetDefaultObserver(t, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}

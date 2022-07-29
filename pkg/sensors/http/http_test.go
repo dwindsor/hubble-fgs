@@ -13,17 +13,14 @@ package http_test
 
 import (
 	"context"
-	"flag"
 	"fmt"
 	"net"
 	"net/http"
 	"os"
-	"path/filepath"
 	"strconv"
 	"strings"
 	"sync"
 	"testing"
-	"time"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -37,37 +34,20 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
 )
 
-var (
-	selfBinary  string
-	fgsLib      string
-	cmdWaitTime time.Duration
-)
-
 const (
 	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
-func init() {
-	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
-	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
-
-	bpf.SetMapPrefix("testObserver")
-}
-
 func TestMain(m *testing.M) {
-	flag.Parse()
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.ConfigureResourceLimits()
-	selfBinary = filepath.Base(os.Args[0])
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	ec := runner.TestSensorsRun(m, "SensorHttp")
+	os.Exit(ec)
 }
 
 func httpConfig(port int) string {
@@ -100,7 +80,7 @@ func TestHttp11Curl(t *testing.T) {
 	bpf.CheckOrMountCgroup2()
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	curlChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("curl")).
@@ -133,14 +113,14 @@ func TestHttp11Curl(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	if err := observer.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -186,7 +166,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	http2Addr := spawnHttp2Server(ctx, t)
@@ -195,7 +175,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 	bpf.CheckOrMountCgroup2()
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	curlChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("curl")).
@@ -229,7 +209,7 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}

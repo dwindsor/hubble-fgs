@@ -13,12 +13,9 @@ package sockmap
 
 import (
 	"context"
-	"flag"
 	"os"
-	"path/filepath"
 	"sync"
 	"testing"
-	"time"
 
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -33,35 +30,16 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
-)
-
-var (
-	selfBinary   string
-	fgsLib       string
-	cmdWaitTime  time.Duration
-	verboseLevel int
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
 const (
 	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
-func init() {
-	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
-	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
-	flag.IntVar(&verboseLevel, "verbosity-level", 0, "verbosity level of verbose mode. (Requires verbose mode to be enabled.)")
-
-	bpf.SetMapPrefix("testObserver")
-}
-
 func TestMain(m *testing.M) {
-	flag.Parse()
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.ConfigureResourceLimits()
-	selfBinary = filepath.Base(os.Args[0])
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	ec := runner.TestSensorsRun(m, "SensorSockmap")
+	os.Exit(ec)
 }
 
 var (
@@ -90,7 +68,7 @@ func TestTLS13(t *testing.T) {
 	bpf.CheckOrMountCgroup2()
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	curlChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("curl")).
@@ -120,7 +98,7 @@ func TestTLS13(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	if err := observer.WriteConfigFile(testConfigFile, tlsConfig); err != nil {
@@ -128,7 +106,7 @@ func TestTLS13(t *testing.T) {
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -149,11 +127,11 @@ func TestTLS12(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	curlChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix("curl")).
@@ -191,7 +169,7 @@ func TestTLS12(t *testing.T) {
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}

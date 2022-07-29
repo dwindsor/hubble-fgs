@@ -16,17 +16,14 @@ package file
 import (
 	"context"
 	"errors"
-	"flag"
 	"os"
 	"os/exec"
 	"path/filepath"
 	"sync"
 	"testing"
-	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
@@ -35,36 +32,16 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 )
 
 var (
-	selfBinary   string
-	fgsLib       string
-	cmdWaitTime  time.Duration
-	verboseLevel int
-
-	testMapPrefix = "testObserver"
-	workingDir    = "/tmp"
+	workingDir = "/tmp"
 )
 
-func init() {
-	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
-	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for tetragon to gather logs from commands")
-	flag.IntVar(&verboseLevel, "verbosity-level", 0, "verbosity level of verbose mode. (Requires verbose mode to be enabled.)")
-}
-
 func TestMain(m *testing.M) {
-	flag.Parse()
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.ConfigureResourceLimits()
-	bpf.SetMapPrefix(testMapPrefix)
-	selfBinary = filepath.Base(os.Args[0])
-	exitCode := m.Run()
-	// NB: we currently seem to fail to remove the /sys/fs/bpf/testObserver
-	// dir. Do so here, until we figure out a way to do it properly.
-	os.RemoveAll(bpf.MapPrefixPath())
-	os.Exit(exitCode)
+	ec := runner.TestSensorsRun(m, "SensorFile")
+	os.Exit(ec)
 }
 
 func createTestDir(t *testing.T, path string) {
@@ -147,7 +124,7 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	testBin := testutils.ContribPath(exec_path)
@@ -160,7 +137,7 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -203,7 +180,7 @@ func runCopyTest(t *testing.T, exec_path string) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	testBin := testutils.ContribPath(exec_path)
@@ -216,7 +193,7 @@ func runCopyTest(t *testing.T, exec_path string) {
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -263,7 +240,7 @@ func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	testBin := testutils.ContribPath(exec_path)
@@ -276,7 +253,7 @@ func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -446,12 +423,12 @@ func TestFileDelete(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -531,12 +508,12 @@ func TestFileCreate(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), 60000*time.Millisecond)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}

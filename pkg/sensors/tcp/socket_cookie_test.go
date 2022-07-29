@@ -20,6 +20,7 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	"golang.org/x/sys/unix"
 )
@@ -107,13 +108,13 @@ func TestSocketCookie(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	if err := observer.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
-	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("getDefaultObserverWithWatchers error: %s", err)
 	}

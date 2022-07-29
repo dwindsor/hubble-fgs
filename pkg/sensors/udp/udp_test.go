@@ -39,6 +39,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -48,11 +49,8 @@ import (
 )
 
 var (
-	selfBinary  string
-	fgsLib      string
-	cmdWaitTime time.Duration
-	client      bool
-	server      bool
+	client bool
+	server bool
 )
 
 const (
@@ -60,12 +58,8 @@ const (
 )
 
 func init() {
-	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
-	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
 	flag.BoolVar(&client, "client", false, "internal")
 	flag.BoolVar(&server, "server", false, "internal")
-
-	bpf.SetMapPrefix("testObserver")
 }
 
 func TestMain(m *testing.M) {
@@ -78,13 +72,8 @@ func TestMain(m *testing.M) {
 		udpClient()
 		os.Exit(0)
 	}
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.ConfigureResourceLimits()
-	bpf.SetMapPrefix("testObserver")
-	selfBinary = filepath.Base(os.Args[0])
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	ec := runner.TestSensorsRun(m, "SensorUdp")
+	os.Exit(ec)
 }
 
 const udpConfig = `
@@ -117,7 +106,6 @@ const portno = 31337
 const protocol = "udp4"
 
 func udpServer() {
-
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGTERM)
 	go func() {
@@ -203,11 +191,11 @@ func TestUdpBurst(t *testing.T) {
 	bpf.CheckOrMountCgroup2()
 
 	clientProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary)).
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-client"))
 
 	serverProcess := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary)).
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-server"))
 
 	checker := ec.NewUnorderedEventChecker(
@@ -240,7 +228,7 @@ func TestUdpBurst(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	if err := observer.WriteConfigFile(testConfigFile, udpConfig); err != nil {
@@ -248,7 +236,7 @@ func TestUdpBurst(t *testing.T) {
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -361,7 +349,7 @@ func getBasicUdpObserver(t *testing.T) *observer.Observer {
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, fgsLib)
+	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -397,14 +385,14 @@ func TestConnectEvent(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	server := getNCCommand(t, "nc.traditional")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).
@@ -560,14 +548,14 @@ func TestConnectAfterStartEvent(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
-	ctx, cancel := context.WithTimeout(context.Background(), cmdWaitTime)
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
 	server := getNCCommand(t, "nc.traditional")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
-		WithBinary(sm.Suffix(selfBinary))
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
 
 	ncSrvChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(server)).

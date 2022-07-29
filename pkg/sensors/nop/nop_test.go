@@ -12,42 +12,23 @@
 package nop_test
 
 import (
-	"flag"
 	"fmt"
 	"os"
-	"path/filepath"
 	"testing"
-	"time"
 
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/observer"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/nop"
+	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 	"github.com/stretchr/testify/assert"
-)
-
-var (
-	selfBinary  string
-	fgsLib      string
-	cmdWaitTime time.Duration
 )
 
 const (
 	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
-func init() {
-	flag.StringVar(&fgsLib, "hubble-lib", "../../../bpf/objs/", "hubble lib directory (location of btf file and bpf objs). Will be overridden by an FGS_LIB env variable.")
-	flag.DurationVar(&cmdWaitTime, "command-wait", 20000*time.Millisecond, "duration to wait for fgs to gather logs from commands")
-}
-
 func TestMain(m *testing.M) {
-	flag.Parse()
-	bpf.CheckOrMountFS("")
-	bpf.CheckOrMountDebugFS()
-	bpf.ConfigureResourceLimits()
-	selfBinary = filepath.Base(os.Args[0])
-	exitCode := m.Run()
-	os.Exit(exitCode)
+	ec := runner.TestSensorsRun(m, "SensorNop")
+	os.Exit(ec)
 }
 
 func nopConfig(port int) string {
@@ -70,6 +51,6 @@ func TestNopSensorSmoke(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	_, err := observer.GetDefaultObserverWithLib(t, testConfigFile, fgsLib)
+	_, err := observer.GetDefaultObserverWithLib(t, testConfigFile, runner.Conf().TetragonLib)
 	assert.NoError(t, err, "nop sensor should load")
 }
