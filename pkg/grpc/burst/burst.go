@@ -10,6 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -86,5 +87,6 @@ func getProcessNetworkBurst(
 	fgsEvent.HistTrigger = event.HistTrigger
 	fgsEvent.WindowAvg = event.WindowAvg
 
+	eventmetrics.HandleProcessBurstEvent(fgsEvent)
 	return fgsEvent
 }

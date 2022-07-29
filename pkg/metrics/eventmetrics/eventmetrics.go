@@ -330,15 +330,3 @@ func HandleInterfaceStatsEvent(processedEvent interface{}) {
 		}
 	}
 }
-
-func ProcessEvent(originalEvent interface{}, processedEvent interface{}) {
-	HandleOriginalEvent(originalEvent)
-	HandleProcessedEvent(processedEvent)
-	HandleSocketEvent(processedEvent)
-	HandleProcessBurstEvent(processedEvent)
-	HandleHttpEvent(processedEvent)
-	HandleDnsEvent(processedEvent)
-	HandleTlsEvent(processedEvent)
-	HandleInterfaceStatsEvent(processedEvent)
-	HandleIpErrorEvent(processedEvent)
-}

@@ -10,6 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/ciphers"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	readertls "github.com/isovalent/hubble-fgs/pkg/reader/tls"
@@ -129,6 +130,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	if processInt != nil {
 		fgsEvent.Process = processInt.GetProcessCopy()
 	}
+	eventmetrics.HandleTlsEvent(fgsEvent)
 	return fgsEvent
 }
 

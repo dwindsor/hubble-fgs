@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"google.golang.org/protobuf/types/known/durationpb"
@@ -131,6 +132,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	if processInt != nil {
 		fgsEvent.Process = processInt.GetProcessCopy()
 	}
+	eventmetrics.HandleHttpEvent(fgsEvent)
 	return fgsEvent
 }
 

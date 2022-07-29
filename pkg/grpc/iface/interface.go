@@ -8,6 +8,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 )
 
 var (
@@ -29,6 +30,7 @@ func (msg *MsgInterfaceEventUnix) getInterfaceStats() *tetragon.InterfaceStats {
 		TxDrops:          msg.Stats.TxDrops,
 		RxDrops:          msg.Stats.RxDrops,
 	}
+	eventmetrics.HandleInterfaceStatsEvent(fgsEvent)
 	return fgsEvent
 }
 
