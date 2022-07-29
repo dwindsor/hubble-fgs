@@ -1,6 +1,7 @@
 # Copyright 2017-2020 Authors of Cilium
 # SPDX-License-Identifier: Apache-2.0
 
+GO ?= go
 BUILDER_IMAGE=isovalent/tetragon-codegen:latest
 
 .PHONY: all
@@ -31,3 +32,9 @@ doc:
 		--volume $(CURDIR)/../modules/tetragon-oss/api/v1/tetragon/stack.proto:/protos/stack.proto \
 		pseudomuto/protoc-gen-doc:1.5.0 \
 		--doc_opt=markdown,README.md
+
+.PHONY: vendor
+vendor:
+	$(GO) mod tidy -compat=1.17
+	$(GO) mod vendor
+	$(GO) mod verify

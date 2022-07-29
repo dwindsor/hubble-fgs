@@ -50,3 +50,9 @@ generate:
 	  cilium.io:v1alpha1 \
 	  --go-header-file hack/custom-boilerplate.go.txt
 	find . -type f -name "*.go" -exec sed -i 's/isovalent\/hubble-fgs\/pkg\/k8s/cilium\/tetragon\/pkg\/k8s/g' {} +
+
+.PHONY: vendor
+vendor:
+	$(GO) mod tidy -compat=1.17
+	$(GO) mod vendor
+	$(GO) mod verify

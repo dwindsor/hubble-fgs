@@ -135,6 +135,14 @@ install:
 	$(INSTALL) -m 0755 -d $(DESTDIR)$(BINDIR)
 	$(INSTALL) -m 0755 ./hubble-fgs $(DESTDIR)$(BINDIR)
 
+.PHONY: vendor
+vendor:
+	$(MAKE) -C ./api vendor
+	$(MAKE) -C ./pkg/k8s vendor
+	$(GO) mod tidy -compat=1.17
+	$(GO) mod vendor
+	$(GO) mod verify
+
 clean:
 	$(MAKE) -C ./bpf clean
 	$(MAKE) -C $(TESTER_PROGS_DIR) clean
@@ -246,10 +254,18 @@ fetch-testdata:
 	docker stop fgs-md-temp || true
 
 generate:
+	# Need to call vendor twice here, once before and once after generate, the reason
+	# being we need to grab changes first plus pull in whatever gets generated here.
+	$(MAKE) vendor
 	$(MAKE) -C pkg/k8s
+	$(MAKE) vendor
 
 codegen: image-codegen
+	# Need to call vendor twice here, once before and once after codegen the reason
+	# being we need to grab changes first plus pull in whatever gets generated here.
+	$(MAKE) vendor
 	$(MAKE) -C api
+	$(MAKE) vendor
 
 ifneq (,$(findstring $(GOLANGCILINT_WANT_VERSION),$(GOLANGCILINT_VERSION)))
 check:
