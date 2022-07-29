@@ -14,6 +14,8 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/udp"
 
+	// Import OSS sensor handlers
+	_ "github.com/cilium/tetragon/pkg/data"
 	_ "github.com/cilium/tetragon/pkg/sensors/test"
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
 
@@ -30,7 +32,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/test"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/tls"
 
-	// Import OSS sensors here
+	// Import OSS GRPC sensor handlers here
 	_ "github.com/cilium/tetragon/pkg/grpc/tracing"
 
 	// Initialize cache (tbd) remove this and actually use them
