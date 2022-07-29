@@ -271,20 +271,13 @@ FGS has two components to build:
   * the bpf programs under `./bpf` (written in C)
   * the agent code (written in go)
 
-The bpf programs require to be compiled with a custom version of `clang`. The
-agent uses cgo and a custom version of libbpf to load the programs. There are
-docker containers that include binary versions the custom `clang` and `libbpf`.
+The bpf programs require to be compiled with a custom version of `clang`.
+There is docker container that include binary versions the custom `clang`.
 
 On a Linux machine, they can be installed using `make  tools-install`:
 
 ```
 $ make tools-install
-mkdir -p ./lib
-docker cp 7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so ./lib
-docker cp 7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 ./lib
-docker cp 7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 ./lib
-docker stop 7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5
-7272cfda8fa8de1617de55b5d5fef5ff95f2d73bf57842734a362a7d1480c2a5
 mkdir -p ./bin
 docker cp f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510:/usr/local/bin/clang-11 ./bin/clang
 docker cp f596be2033cba6afbb96a282efad79834967f52fd4ec85ae35b122623c575510:/usr/local/bin/llc ./bin/llc
@@ -297,7 +290,7 @@ And then used to build and run FGS locally:
 ```
 $ PATH=$(pwd)/bin:$PATH  make
 ...
-$ sudo sh -c 'LD_LIBRARY_PATH=./lib ./hubble-fgs --hubble-lib ./bpf/objs'
+$ sudo sh -c './hubble-fgs --hubble-lib ./bpf/objs'
 ```
 
 Once the agent (`./hubble-fgs`) is running, events can be observed using the
@@ -426,7 +419,6 @@ and dumps some useful stats:
 
 You can compile the BPF objects and invoke the tool with `make hubble-bpf-verify`.
 It assumes you have the right `clang` in PATH (`make clang-install` to get it to `bin/`).
-Also required is to have libbpf.so in `lib/` (`make libbpf-install`).
 
 ### fgs vmtest
 

@@ -7,7 +7,6 @@ LOCAL_CLANG ?= 1
 LOCAL_CLANG_FORMAT ?= 0
 FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h' -not -path 'bpf/include/vmlinux.h' -not -path 'bpf/include/api.h' -not -path 'bpf/libbpf/*'
 NOOPT ?= 0
-LIBBPF_IMAGE = quay.io/isovalent/hubble-libbpf:v0.2.3
 CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
 METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 
@@ -160,7 +159,7 @@ parsertest-image:
 
 package-fgs-bench: hubble-bpf-local fgs-bench
 	tar --transform="s|^|fgs-bench/|" \
-	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench lib/libbpf.so.0
+	    -czhf fgs-bench.tar.gz bpf/objs/*.o fgs-bench
 
 test:
 	ulimit -n 1048576 && $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./...
@@ -221,22 +220,14 @@ image-codegen:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/tetragon-codegen:$(DOCKER_IMAGE_TAG)"
 
-.PHONY: tools-install tools-clean libbpf-install clang-install
-tools-install: libbpf-install clang-install
+.PHONY: tools-install tools-clean clang-install
+tools-install: clang-install
 	make -C $(OSS_DIR) tools-install
 
 tools-clean:
 	rm -rf $(LIBBPF_INSTALL_DIR)
 	rm -rf $(CLANG_INSTALL_DIR)
 	make -C $(OSS_DIR) tools-clean
-
-libbpf-install:
-	$(eval id=$(shell docker create $(LIBBPF_IMAGE)))
-	mkdir -p $(LIBBPF_INSTALL_DIR)
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so $(LIBBPF_INSTALL_DIR)
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0 $(LIBBPF_INSTALL_DIR)
-	docker cp ${id}:/go/src/github.com/covalentio/hubble-fgs/src/libbpf.so.0.2.0 $(LIBBPF_INSTALL_DIR)
-	docker stop ${id}
 
 clang-install:
 	$(eval id=$(shell docker create $(CLANG_IMAGE)))
