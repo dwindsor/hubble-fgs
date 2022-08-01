@@ -8,16 +8,15 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/metrics/eventcachemetrics"
 	"github.com/cilium/tetragon/pkg/metrics/mapmetrics"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/cilium/tetragon/pkg/server"
-	"google.golang.org/protobuf/types/known/timestamppb"
-
-	hubblev1 "github.com/cilium/hubble/pkg/api/v1"
 )
 
 // garbage collection states
@@ -30,12 +29,6 @@ const (
 	eventRetryTimer = time.Second * 10
 )
 
-type eventObj interface {
-	GetProcess() *tetragon.Process
-	SetProcess(*tetragon.Process)
-	Encapsulate() tetragon.IsGetEventsResponse_Event
-}
-
 var (
 	cache    *Cache
 	nodeName string
@@ -43,96 +36,97 @@ var (
 
 type cacheObj struct {
 	internal  *process.ProcessInternal
-	event     eventObj
-	timestamp *timestamppb.Timestamp
+	event     notify.Event
+	timestamp uint64
 	color     int
-	msg       interface{}
+	msg       notify.Message
 }
 
 type Cache struct {
 	objsChan chan cacheObj
+	done     chan bool
 	cache    []cacheObj
 	server   *server.Server
+	dur      time.Duration
 }
 
-func (ec *Cache) eventLabels(endpoint *hubblev1.Endpoint, event *cacheObj) ([]string, error) {
-	// If Cilium has some useful information for us we can let Cilium
-	// give us the info.
-	e := event.event
-	if obj, ok := e.(interface{ GetDestinationNames() []string }); ok {
-		names := obj.GetDestinationNames()
-		if len(names) > 0 {
-			return names, nil
+func handleExecEvent(event *cacheObj, nspid uint32) error {
+	var podInfo *tetragon.Pod
+
+	p := event.event.GetProcess()
+	containerId := p.Docker
+	filename := p.Binary
+	args := p.Arguments
+
+	if option.Config.EnableK8s {
+		podInfo, _ = process.GetPodInfo(containerId, filename, args, nspid)
+		if podInfo == nil {
+			errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
+			return fmt.Errorf("failed to get pod info")
 		}
 	}
-	return []string{}, nil
+
+	event.internal.AddPodInfo(podInfo)
+	event.event.SetProcess(event.internal.GetProcessCopy())
+
+	return nil
 }
 
-func doHandleEvent(event eventObj, internal *process.ProcessInternal, labels []string, nodeName string, timestamp *timestamppb.Timestamp) (*tetragon.GetEventsResponse, error) {
-	if internal == nil {
-		typeName := fmt.Sprintf("%T", event)
-		fmt.Printf("debug... typeName %s\n", typeName)
-		eventcachemetrics.ProcessInfoErrorInc(typeName)
-		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
-	} else {
-		event.SetProcess(internal.GetProcessCopy())
+func handleEvent(event *cacheObj) error {
+	p := event.event.GetProcess()
+
+	// If the process wasn't found before the Add(), likely because
+	// the execve event was processed after this event, lets look it up
+	// now because it should be available. Otherwise we have a valid
+	// process and lets copy it across.
+	if event.internal == nil {
+		event.internal, _ = process.GetParentProcessInternal(p.Pid.Value, event.timestamp)
+		if event.internal == nil {
+			return fmt.Errorf("Process lookup failed")
+		}
 	}
 
-	if obj, ok := event.(interface {
-		Encapsulate() tetragon.IsGetEventsResponse_Event
-	}); ok {
-		return &tetragon.GetEventsResponse{
-			Event:    obj.Encapsulate(),
-			NodeName: nodeName,
-			Time:     timestamp,
-		}, nil
+	p = event.internal.UnsafeGetProcess()
+	if option.Config.EnableK8s && p.Pod == nil {
+		return fmt.Errorf("Process missing PodInfo")
 	}
-	return nil, fmt.Errorf("DoHandleEvent: Unhandled event type %T", event)
+
+	event.event.SetProcess(event.internal.GetProcessCopy())
+	return nil
 }
 
-func (ec *Cache) handleNetEvents() {
+func (ec *Cache) handleEvents() {
 	tmp := ec.cache[:0]
-	for _, e := range ec.cache {
-		/* Ensure we actually have a dockerID, we use this for testing reasons
-		 * mostly. It is nice though if we ever hit this case to just post it.
-		 */
-		endpoint := process.GetProcessEndpoint(e.event.GetProcess())
-		if e.event.GetProcess().GetDocker() != "" {
-			/* If the Pod is nil because process event is incomplete lets
-			 * wait and hopefully it is eventually updated from handleProcEvents.
-			 */
-			if endpoint == nil || e.event.GetProcess().Pod == nil {
-				e.color++
-				if e.color < threeStrikes {
-					tmp = append(tmp, e)
-					continue
-				}
-				errormetrics.EventCacheInc(errormetrics.EventCacheEndpointRetryFailed)
-			}
+	for _, event := range ec.cache {
+		var err error
+		if getNsPid, ok := event.msg.(interface{ GetNsPid() uint32 }); ok {
+			nspid := getNsPid.GetNsPid()
+			err = handleExecEvent(&event, nspid)
+		} else {
+			err = handleEvent(&event)
 		}
 
-		labels, err := ec.eventLabels(endpoint, &e)
 		if err != nil {
-			e.color++
-			if e.color < threeStrikes {
-				tmp = append(tmp, e)
+			event.color++
+			if event.color < threeStrikes {
+				tmp = append(tmp, event)
 				continue
 			}
-			errormetrics.EventCacheInc(errormetrics.EventCacheEndpointRetryFailed)
 		}
 
-		processedEvent, err := doHandleEvent(e.event, e.internal, labels, nodeName, e.timestamp)
-		if err == nil {
-			ec.server.NotifyListeners(e.msg, processedEvent)
-		} else {
-			logger.GetLogger().WithField("event", e.event).WithError(err).Warn("Error while handling event")
+		processedEvent := &tetragon.GetEventsResponse{
+			Event:    event.event.Encapsulate(),
+			NodeName: nodeName,
+			Time:     ktime.ToProto(event.timestamp),
 		}
+
+		ec.server.NotifyListeners(event.msg, processedEvent)
 	}
 	ec.cache = tmp
 }
 
 func (ec *Cache) loop() {
-	ticker := time.NewTicker(eventRetryTimer)
+	ticker := time.NewTicker(ec.dur)
 	defer ticker.Stop()
 
 	for {
@@ -142,22 +136,25 @@ func (ec *Cache) loop() {
 			 * an event hasn't completed its podInfo after two iterations send the
 			 * event anyways.
 			 */
-			ec.handleNetEvents()
-			mapmetrics.MapSizeSet("netCache", 0, float64(len(ec.cache)))
+			ec.handleEvents()
+			mapmetrics.MapSizeSet("eventcache", 0, float64(len(ec.cache)))
 
 		case event := <-ec.objsChan:
-			errormetrics.EventCacheInc(errormetrics.EventCacheNetworkCount)
+			eventcachemetrics.EventCacheCount.Inc()
 			ec.cache = append(ec.cache, event)
+
+		case <-ec.done:
+			return
 		}
 	}
 }
 
 // We handle two race conditions here one where the event races with
-// an TETRAGON execve event and the other -- much more common -- where we
+// a Tetragon execve event and the other -- much more common -- where we
 // race with K8s watcher
 // case 1 (execve race):
-//  Its possible to receive this TETRAGON event before the process event cache
-//  has been populated with a TETRAGON execve event. In this case we need to
+//  Its possible to receive this Tetragon event before the process event cache
+//  has been populated with a Tetragon execve event. In this case we need to
 //  cache the event until the process cache is populated.
 // case 2 (k8s watcher race):
 //  Its possible to receive an event before the k8s watcher receives the
@@ -168,32 +165,43 @@ func (ec *Cache) Needed(proc *tetragon.Process) bool {
 	if proc == nil {
 		return true
 	}
-	if proc.Docker != "" && proc.Pod == nil {
+	if option.Config.EnableK8s {
+		if proc.Docker != "" && proc.Pod == nil {
+			return true
+		}
+	}
+	if proc.Binary == "" {
 		return true
 	}
 	return false
 }
 
 func (ec *Cache) Add(internal *process.ProcessInternal,
-	e eventObj,
-	t *timestamppb.Timestamp,
-	msg interface{}) {
+	e notify.Event,
+	t uint64,
+	msg notify.Message) {
 	ec.objsChan <- cacheObj{internal: internal, event: e, timestamp: t, msg: msg}
 }
 
-func New(s *server.Server) *Cache {
+func NewWithTimer(s *server.Server, dur time.Duration) *Cache {
 	if cache != nil {
-		return cache
+		cache.done <- true
 	}
 
 	cache = &Cache{
 		objsChan: make(chan cacheObj),
+		done:     make(chan bool),
 		cache:    make([]cacheObj, 0),
 		server:   s,
+		dur:      dur,
 	}
 	nodeName = node.GetNodeNameForExport()
 	go cache.loop()
 	return cache
+}
+
+func New(s *server.Server) *Cache {
+	return NewWithTimer(s, eventRetryTimer)
 }
 
 func Get() *Cache {

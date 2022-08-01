@@ -6,7 +6,6 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
-	"github.com/cilium/tetragon/pkg/execcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
@@ -24,7 +23,6 @@ var (
 )
 
 type Grpc struct {
-	execCache  *execcache.Cache
 	eventCache *eventcache.Cache
 	enableCred bool
 	enableNs   bool
@@ -212,13 +210,4 @@ func (e *Grpc) HandleExitMessage(msg *MsgExitEventUnix) *tetragon.GetEventsRespo
 		logger.GetLogger().WithField("message", msg).Warn("HandleExitMessage: Unhandled event")
 	}
 	return res
-}
-
-func New(exec *execcache.Cache, event *eventcache.Cache, cred, ns bool) *Grpc {
-	return &Grpc{
-		execCache:  exec,
-		eventCache: event,
-		enableCred: cred,
-		enableNs:   ns,
-	}
 }

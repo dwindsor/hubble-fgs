@@ -117,7 +117,6 @@ github.com/cilium/tetragon/pkg/data
 github.com/cilium/tetragon/pkg/defaults
 github.com/cilium/tetragon/pkg/eventcache
 github.com/cilium/tetragon/pkg/eventcheckertests/yamlhelpers
-github.com/cilium/tetragon/pkg/execcache
 github.com/cilium/tetragon/pkg/exporter
 github.com/cilium/tetragon/pkg/filters
 github.com/cilium/tetragon/pkg/generictypes
@@ -151,6 +150,7 @@ github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/process
 github.com/cilium/tetragon/pkg/ratelimit
+github.com/cilium/tetragon/pkg/reader/bpfattr
 github.com/cilium/tetragon/pkg/reader/caps
 github.com/cilium/tetragon/pkg/reader/exec
 github.com/cilium/tetragon/pkg/reader/ktime
