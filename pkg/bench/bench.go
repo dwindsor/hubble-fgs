@@ -180,7 +180,7 @@ type benchmarkListener struct {
 	observer *observer.Observer
 }
 
-func (bl *benchmarkListener) Notify(msg notify.Interface) error {
+func (bl *benchmarkListener) Notify(msg notify.Message) error {
 	switch msg.(type) {
 	case *readyapi.MsgTETRAGONReady:
 		bl.ready <- true

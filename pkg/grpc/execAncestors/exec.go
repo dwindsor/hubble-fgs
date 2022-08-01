@@ -115,7 +115,7 @@ func (e *Grpc) HandleExecveMessage(msg *MsgExecveEventUnix) *tetragon.GetEventsR
 		proc := process.AddExecEvent(&msg.MsgExecveEventUnix)
 		procEvent := e.GetProcessExec(proc)
 		if e.eventCache.Needed(procEvent.Process) {
-			e.execCache.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), &msg.MsgExecveEventUnix)
+			//			e.execCache.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), &msg.MsgExecveEventUnix)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
 			res = &tetragon.GetEventsResponse{
@@ -185,7 +185,7 @@ func (e *Grpc) GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		Status:  code,
 	}
 	if e.eventCache.Needed(fgsProcess) {
-		e.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), &event.MsgExitEvent)
+		//e.eventCache.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), &event.MsgExitEvent)
 		return nil
 	}
 	if process != nil {

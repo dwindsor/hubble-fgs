@@ -66,10 +66,9 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		proc := process.AddExecEvent(&msg.MsgExecveEventUnix)
 		procEvent := GetProcessExec(proc)
 
-		// tbd broken execCache here.
 		ec := eventcache.Get()
 		if ec != nil && ec.Needed(procEvent.Process) {
-			ec.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), &msg.MsgExecveEventUnix)
+			ec.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
 			res = &tetragon.GetEventsResponse{
@@ -82,6 +81,10 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		logger.GetLogger().WithField("message", msg).Warn("HandleExecveMessage: Unhandled event")
 	}
 	return res
+}
+
+func (msg *MsgExecveEventUnix) GetNsPid() uint32 {
+	return msg.Process.NSPID
 }
 
 type MsgCloneEventUnix struct {
@@ -97,6 +100,10 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		logger.GetLogger().WithField("message", msg).Warn("HandleCloneMessage: Unhandled event")
 	}
 	return nil
+}
+
+func (msg *MsgCloneEventUnix) GetNsPid() uint32 {
+	return msg.NSPID
 }
 
 type MsgExitEventUnix struct {
@@ -134,7 +141,7 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(fgsProcess) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), &event.MsgExitEvent)
+		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
 		return nil
 	}
 	if process != nil {

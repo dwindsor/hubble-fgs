@@ -63,7 +63,7 @@ type raceListener struct {
 	ready chan bool
 }
 
-func (l *raceListener) Notify(msg notify.Interface) error {
+func (l *raceListener) Notify(msg notify.Message) error {
 	switch msg.(type) {
 	case *readyapi.MsgTETRAGONReady:
 		l.ready <- true
