@@ -17,12 +17,14 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/cilium/ebpf"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
@@ -31,6 +33,8 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+
+	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
 const (
@@ -177,5 +181,73 @@ func TestTLS12(t *testing.T) {
 	observer.ExecWGCurl(&readyWG, 10, "--tlsv1.2", "--tls-max", "1.2", "-4", "https://www.google.com/")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestLoadTlsSensor(t *testing.T) {
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	config := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "tls"
+spec:
+  parser:
+    tls:
+      enable: true
+      mode: "socket"
+      selectors:
+      - matchports:
+        - 443
+`
+
+	if err := observer.WriteConfigFile(testConfigFile, config); err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+	}
+
+	var sensorProgs = []tus.SensorProg{
+		0: tus.SensorProg{Name: "bpf_sockmap", Type: ebpf.SockOps},
+		1: tus.SensorProg{Name: "setsockopt", Type: ebpf.CGroupSockopt},
+		2: tus.SensorProg{Name: "bpf_tls_sk_msg_fgs", Type: ebpf.SkMsg},
+		3: tus.SensorProg{Name: "bpf_tls_skskb_verdict", Type: ebpf.SkSKB},
+
+		// base sensor
+		4: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+		5: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+		6: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+	}
+
+	var sensorMaps = []tus.SensorMap{
+		// all but base and bpf_sockmap
+		tus.SensorMap{Name: "tls_map", Progs: []uint{1, 2, 3}},
+
+		// all but base and bpf_tls_skskb_verdict
+		tus.SensorMap{Name: "tls_filter_map", Progs: []uint{0, 1, 2}},
+
+		// bpf_sockmap
+		tus.SensorMap{Name: "tls_sock_map", Progs: []uint{0}},
+
+		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict
+		tus.SensorMap{Name: "bottles", Progs: []uint{2, 3}},
+		tus.SensorMap{Name: "bottle_map_stats", Progs: []uint{2, 3}},
+		tus.SensorMap{Name: "tls_parser_stats", Progs: []uint{2, 3}},
+		tus.SensorMap{Name: "socket_map", Progs: []uint{2, 3}},
+
+		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 4, 5, 6}},
+	}
+
+	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+
+	sensors.UnloadAll(tus.Conf().TetragonLib)
 	assert.NoError(t, err)
 }
