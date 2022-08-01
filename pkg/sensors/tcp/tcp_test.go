@@ -24,6 +24,7 @@ import (
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
@@ -33,6 +34,8 @@ import (
 
 	_ "github.com/cilium/tetragon/pkg/sensors"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+
+	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
 var (
@@ -896,4 +899,46 @@ func TestNamespaces(t *testing.T) {
 	readyWG.Wait()
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+}
+
+func TestLoadTcpSensor(t *testing.T) {
+	if err := observer.WriteConfigFile(testConfigFile, tcpBasicConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+	}
+
+	var sensorProgs = []tus.SensorProg{
+		0: tus.SensorProg{Name: "event_tcp4_connect", Type: ebpf.Kprobe},
+		1: tus.SensorProg{Name: "event_tcp4_close", Type: ebpf.Kprobe},
+		2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
+		3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
+
+		// base sensor
+		4: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+		5: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+		6: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+	}
+
+	var sensorMaps = []tus.SensorMap{
+		// all but base
+		tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3}},
+
+		// all but base, event_tcp_v4_send_check
+		tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 2}},
+
+		// all programs
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
+
+		// all but event_tcp4_close
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 3, 4, 5, 6}},
+		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{0, 2, 3, 4, 5, 6}},
+	}
+
+	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+
+	sensors.UnloadAll(tus.Conf().TetragonLib)
 }
