@@ -200,11 +200,6 @@ image:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
 
-image-btf:
-	$(CONTAINER_ENGINE) build -f Dockerfile.btf -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" .
-	$(QUIET)echo "Push like this when ready:"
-	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
-
 image-operator:
 	$(CONTAINER_ENGINE) build -f operator.Dockerfile -t "isovalent/hubble-enterprise-operator:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
