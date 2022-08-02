@@ -4,6 +4,13 @@
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 
+/* Applying 'packed' attribute to structs causes clang to write to the
+ * members byte-by-byte, as offsets may not be aligned. This is bad for
+ * performance, instruction count and complexity, so don't apply this
+ * attribute to structs where members are correctly aligned already
+ * (e.g. by padding, layout).
+ */
+
 /* Maximum number of simultaniously existing UDP sockets that we track
  * statistics for.
  */
@@ -37,7 +44,7 @@ struct udp_info_value {
 	u32 skb_consume_misses;
 	u8 ipv6;
 	u8 padding[7];
-} __attribute__((packed));
+}; // All fields aligned so no 'packed' attribute.
 
 struct udp_info {
 	union {
@@ -52,7 +59,7 @@ struct udp_info {
 	u16 dport;
 	u8 ipv6;
 	u8 padding[3];
-} __attribute__((packed));
+}; // All fields aligned so no 'packed' attribute.
 
 struct msg_udp_event {
 	struct msg_ip_event event;

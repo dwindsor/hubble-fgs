@@ -3,6 +3,13 @@
 
 #include "networkmsg.h"
 
+/* Applying 'packed' attribute to structs causes clang to write to the
+ * members byte-by-byte, as offsets may not be aligned. This is bad for
+ * performance, instruction count and complexity, so don't apply this
+ * attribute to structs where members are correctly aligned already
+ * (e.g. by padding, layout).
+ */
+
 /* TLS Flags */
 #define TLS_COPY_ERROR		  0x001
 #define TLS_MAX_TLVS		  0x002
@@ -63,7 +70,7 @@ struct msg_tls_ipv4 {
 	__u16 sport;
 	__u32 remaining;
 	__u64 uid;
-} __attribute__((packed));
+}; // All fields aligned so no 'packed' attribute.
 
 struct msg_tls_event {
 	struct msg_common common;
