@@ -328,6 +328,9 @@ func TestUdpBurst(t *testing.T) {
 		fmt.Printf("ERROR Server process in burst map after exit\n")
 		os.Exit(-1)
 	}
+
+	killAndWaitCommand(t, serverCmd)
+	killAndWaitCommand(t, clientCmd)
 }
 
 const udpBasicConfig = `

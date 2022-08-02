@@ -158,6 +158,10 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 		// fix is to do in kernel BPF parser.
 		ip.EnableDns()
 		logger.GetLogger().Info("Enable DNS")
+	} else {
+		// If DNS is disabled and udp enabled then we can disable
+		// dns caching.
+		ip.DisableDns()
 	}
 }
 

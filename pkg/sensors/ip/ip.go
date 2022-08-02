@@ -20,6 +20,10 @@ func EnableDns() {
 	enableDns = true
 }
 
+func DisableDns() {
+	enableDns = false
+}
+
 func MsgToIPUnix(m *api.MsgIPEvent) *layer3.MsgIPEventUnix {
 	unix := &layer3.MsgIPEventUnix{}
 
