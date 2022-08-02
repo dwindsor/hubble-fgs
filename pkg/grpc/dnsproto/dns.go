@@ -78,7 +78,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) {
-		ec.Add(processInt, fgsEvent, ktime.ToProto(msg.Common.Ktime), msg)
+		ec.Add(processInt, fgsEvent, msg.ProcessKey.Ktime, msg)
 		return nil
 	}
 	if processInt != nil {

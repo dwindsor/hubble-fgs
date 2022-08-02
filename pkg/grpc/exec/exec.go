@@ -68,7 +68,7 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 
 		ec := eventcache.Get()
 		if ec != nil && ec.Needed(procEvent.Process) {
-			ec.Add(proc, procEvent, ktime.ToProto(msg.Common.Ktime), msg)
+			ec.Add(proc, procEvent, msg.MsgExecveEventUnix.Process.Ktime, msg)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
 			res = &tetragon.GetEventsResponse{
@@ -141,7 +141,7 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(fgsProcess) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {

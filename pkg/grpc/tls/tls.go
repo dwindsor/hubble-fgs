@@ -124,7 +124,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) {
-		ec.Add(processInt, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(processInt, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if processInt != nil {

@@ -110,7 +110,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	ec := eventcache.Get()
 	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dns.Get(), cilium.GetCiliumState())
 	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -122,7 +122,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if ec != nil && ec.Needed(fgsProcess) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -201,7 +201,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	state := cilium.GetCiliumState()
 	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
 	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -213,7 +213,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if ec != nil && ec.Needed(fgsProcess) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -263,7 +263,7 @@ func GetProcessListen(
 
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(fgsProcess) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -329,7 +329,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	state := cilium.GetCiliumState()
 	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
 	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -342,7 +342,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	}
 
 	if ec != nil && ec.Needed(fgsProcess) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -396,7 +396,7 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 	}
 
 	if ec != nil && ec.Needed(fgsProcess) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -542,7 +542,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(fgsProcess) {
-		ec.Add(process, fgsEvent, ktime.ToProto(event.Common.Ktime), event)
+		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
