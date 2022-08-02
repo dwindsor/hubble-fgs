@@ -47,7 +47,7 @@ jobs:
             BENCH_DURATION=1m
             CMD="publish"
           fi
-          sudo contrib/vmtest/fgs-verify-programs bpf/objs
+          sudo contrib/fgs-verify-programs bpf/objs
           sudo go test github.com/isovalent/hubble-fgs/pkg/bench -fgs-bench-duration $BENCH_DURATION -timeout 30m -tags bench_tests -test.v
           go run cmd/fgs-bench-publish/fgs-bench-publish.go $CMD "$GIT_REV" "$GCP_SA_KEY" results/*.json
 
