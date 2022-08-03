@@ -40,6 +40,10 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	processInt, err := process.Get(processID)
 	if err != nil {
+		proc = &tetragon.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+		}
 		logger.GetLogger().WithField("id in HTTP event", processID).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()

@@ -93,8 +93,11 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	var proc *tetragon.Process
 	processInt, err := process.Get(processID)
 	if err != nil {
+		proc = &tetragon.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
+			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
+		}
 		logger.GetLogger().WithField("id in TLS event", processID).Debug("process not found in cache")
-		proc = nil
 	} else {
 		proc = processInt.UnsafeGetProcess()
 	}

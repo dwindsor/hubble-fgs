@@ -18,6 +18,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 var (
@@ -40,6 +41,10 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	processID := process.GetProcessID(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
 	processInt, err := process.Get(processID)
 	if err != nil {
+		proc = &tetragon.Process{
+			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
+			StartTime: ktime.ToProto(msg.ProcessKey.Ktime),
+		}
 		logger.GetLogger().WithField("id in DNS event", processID).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()
