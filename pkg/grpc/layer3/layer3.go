@@ -61,7 +61,6 @@ func msgToProtocol(event *MsgIPEventUnix) tetragon.SocketProtocol {
 func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	var fgsProcess, fgsParent *tetragon.Process
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
-	var err error
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -108,11 +107,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	}
 
 	ec := eventcache.Get()
-	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dns.Get(), cilium.GetCiliumState())
-	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
-		return nil
-	}
+	fgsEvent.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dns.Get(), cilium.GetCiliumState())
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -147,7 +142,6 @@ func SocketFlagsToType(t uint32) string {
 func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *tetragon.Process
-	var err error
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -199,11 +193,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	dnsCache := dns.Get()
 	ec := eventcache.Get()
 	state := cilium.GetCiliumState()
-	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
-	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
-		return nil
-	}
+	fgsEvent.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
@@ -278,7 +268,6 @@ func GetProcessListen(
 func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 	var fgsParent, fgsProcess *tetragon.Process
-	var err error
 
 	if event.Tuple.SPort != 0 {
 		sourcePort = &wrapperspb.UInt32Value{
@@ -327,11 +316,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	dnsCache := dns.Get()
 	ec := eventcache.Get()
 	state := cilium.GetCiliumState()
-	fgsEvent.DestinationNames, err = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
-	if err != nil && ec != nil && SocketFlagsDnsEnabled(event.SocketFlags) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
-		return nil
-	}
+	fgsEvent.DestinationNames, _ = sockinfo.GetProcessIp(fgsProcess, destinationIP.String(), dnsCache, state)
 
 	// When CiliumAPI is enable annotate data with Cilium info. If the data
 	// is missing and enableEventCache is enabled we push event into the
