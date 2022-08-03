@@ -314,6 +314,7 @@ func RunBenchmark(args *Arguments) (summary *Summary) {
 	if err != nil {
 		summary.Error = fmt.Sprintf("Proxy %s failed: %s", args.Proxy, err)
 		cancel()
+		return
 	}
 
 	// Run the source and wait for it to terminate
