@@ -110,7 +110,7 @@ udp_port_info(struct udphdr *udp, bool send)
  * maps.
  * 
  * The process is populated by looking up the cookie/sock in the
- * socket_cookie_to_proc_map.
+ * socket_map.
  */
 static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
@@ -120,20 +120,9 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 	struct udp_info_value *value;
 	struct socketmap_value *process;
 	int zero = 0;
-	u64 sk_cookie;
 
 	value = map_lookup_elem(&udp_map, cookie);
-	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
-	if (!process && !lazy) {
-		sk_cookie = (u64)skb->sk;
-		process =
-			map_lookup_elem(&socket_cookie_to_proc_map, &sk_cookie);
-		if (process) {
-			map_update_elem(&socket_cookie_to_proc_map, cookie,
-					process, 0);
-			map_delete_elem(&socket_cookie_to_proc_map, &sk_cookie);
-		}
-	}
+	process = locate_socketmap(cookie, (struct sock *)skb->sk, lazy);
 
 	if (!value) {
 		value = map_lookup_elem(&udp_value_heap, &zero);
@@ -293,7 +282,7 @@ udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
 	c->window_size = config->watermark_window_size;
 	c->trigger_mult = config->watermark_trigger_percent;
 
-	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
+	process = lookup_socketmap(cookie);
 	/* If we don't have a process then we can't assign the burst information
 	 * to it, and there is little else we can do.
 	 * Additionally, if the sk address had previously been mapped to the

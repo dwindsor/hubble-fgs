@@ -3,27 +3,41 @@
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "bpf_udp.h"
 #include "cookie.h"
 
-char _license[] __attribute__((section("license"), used)) = "GPL";
-#ifdef VMLINUX_KERNEL_VERSION
-int _version __attribute__((section(("version")), used)) =
-	VMLINUX_KERNEL_VERSION;
-#endif
+#define AF_INET	 2
+#define AF_INET6 10
 
-__attribute__((section("cgroup/sock_create"), used)) int
-sock_create(struct bpf_sock *ctx)
+static inline __attribute__((always_inline)) int
+__sk_allocret(struct pt_regs *ctx, bool pre56)
 {
-	u32 pid = get_current_pid_tgid(ctx) >> 32;
-	u64 sock = get_socket_cookie(ctx);
+	u64 pid = get_current_pid_tgid() >> 32;
+	u64 cookie = ctx->ax;
+	struct sock *sk = (struct sock *)cookie;
 	struct execve_map_value *value;
+	u16 family;
 	struct socketmap_value process = { 0 };
+	u16 protocol;
 
-	/* We only want to create UDP sockets here as TCP sockets are
-	 * created by calls to listen and accept.
+	if (cookie == 0 || pid <= 1) {
+		return 0;
+	}
+
+	probe_read(&family, sizeof(u16), _(&(sk->__sk_common.skc_family)));
+	if (family != AF_INET && family != AF_INET6)
+		return 0;
+
+	/* We only want to create sockets for UDP as TCP is handled via
+	 * calls to listen and accept.
 	 */
-	if (ctx->type != SOCK_DGRAM)
-		return 1;
+	probe_read(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
+	if (pre56) {
+		protocol >>= 8;
+	}
+	if (protocol != IPPROTO_UDP) {
+		return 0;
+	}
 
 	/* Ideally we would be able to bind the socket to create early,
 	 * but its possible that we don't have an entry for the thread
@@ -38,6 +52,6 @@ sock_create(struct bpf_sock *ctx)
 		process.key.pid = value->key.pid;
 		process.key.ktime = value->key.ktime;
 	}
-	add_socketmap(&sock, 0, &process);
+	add_socketmap(&cookie, 0, &process);
 	return 1;
 }

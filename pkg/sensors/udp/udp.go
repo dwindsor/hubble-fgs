@@ -53,7 +53,7 @@ const (
 	UdpPayloadMapName      = "udp_payload_map"
 	UdpPayloadMapStatsName = "udp_payload_map_stats"
 	UdpPayloadBloomMapName = "udp_payload_bloom_map"
-	SocketToProcMapName    = "socket_cookie_to_proc_map"
+	SocketMapName          = "socket_map"
 
 	stataCacheSize = 32000
 	IPPROTO_UDP    = 17
@@ -85,6 +85,20 @@ var (
 		"kprobe_sock_release",
 		"kprobe")
 
+	SockReleaseLazy = program.Builder(
+		"bpf_sock_release_lazy.o",
+		"inet_release",
+		"kprobe/inet_release",
+		"kprobe_sock_release",
+		"kprobe")
+
+	SockReleaseLazyV56 = program.Builder(
+		"bpf_sock_release_lazy_v56.o",
+		"inet_release",
+		"kprobe/inet_release",
+		"kprobe_sock_release",
+		"kprobe")
+
 	InetSend = program.Builder(
 		"bpf_inet_send.o",
 		"inet_send",
@@ -103,6 +117,14 @@ var (
 
 	SkAllocRetLazy = program.Builder(
 		"bpf_sock_create.o",
+		"sk_alloc",
+		"kretprobe/sk_alloc",
+		"kretprobe_sk_alloc",
+		"kprobe",
+	).SetRetProbe(true)
+
+	SkAllocRetLazyV56 = program.Builder(
+		"bpf_sock_create_v56.o",
 		"sk_alloc",
 		"kretprobe/sk_alloc",
 		"kretprobe_sk_alloc",
@@ -214,7 +236,10 @@ var (
 	)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap = program.MapBuilder(SocketToProcMapName, Udp4SendLazy)
+	SocketCookieMap       = program.MapBuilder(SocketMapName, Udp4Send)
+	SocketCookieStats     = program.MapBuilder("socket_map_stats", Udp4Send)
+	SocketCookieMapLazy   = program.MapBuilder(SocketMapName, Udp4SendLazy)
+	SocketCookieStatsLazy = program.MapBuilder("socket_map_stats", Udp4SendLazy)
 
 	// UDP maps
 	UdpMap                       = program.MapBuilder(UdpMapName, InetSend)
@@ -608,6 +633,32 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
 		progs = []*program.Program{
 			SkAllocRetLazy,
+			SockReleaseLazy,
+			InetSendRecvLazy,
+			Udp4SendLazy,
+			Udp4RetSendLazy,
+			Udp6SendLazy,
+			Udp6RetSendLazy,
+			UdpRecvLazy,
+		}
+		maps = []*program.Map{
+			Udp4MapKprobeLazy,
+			Udp6MapKprobeLazy,
+			UdpMapKprobeRecvLazy,
+			Udp4RetprobeMapLazy,
+			Udp6RetprobeMapLazy,
+			UdpConfigLazyMapKprobe,
+			UdpMapLazyKprobe,
+			UdpPayloadLazyMapKprobe,
+			UdpPayloadLazyMapStatsKprobe,
+			UdpPayloadBloomMapKprobe,
+		}
+		dns.LazyDns = true
+		versionStr = "__udp_sensor_probe__"
+	} else if !kernels.MinKernelVersion("5.6.0") || !cgroup {
+		progs = []*program.Program{
+			SkAllocRetLazy,
+			SockReleaseLazy,
 			InetSendRecvLazy,
 			Udp4SendLazy,
 			Udp4RetSendLazy,
@@ -631,7 +682,8 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		versionStr = "__udp_sensor_probe__"
 	} else if !kernels.MinKernelVersion("5.10.0") || !cgroup {
 		progs = []*program.Program{
-			SkAllocRetLazy,
+			SkAllocRetLazyV56,
+			SockReleaseLazyV56,
 			InetSendLazy,
 			InetRecvLazy,
 			Udp4SendLazy,

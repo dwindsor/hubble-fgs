@@ -661,7 +661,7 @@ post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key,
 	size_t size;
 
 	key->remaining = 0;
-	process = lookup_socketmap(key);
+	process = lookup_tls_socketmap(key);
 	if (process) {
 		http->execve.pid = process->key.pid;
 		http->execve.pad[0] = 0;

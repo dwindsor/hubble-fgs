@@ -285,7 +285,7 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 	}
 
 	/* Ensure we have an up-to-date cookie->process mapping. */
-	update_cookie_proc_map(&cookie, value->pid);
+	update_socketmap(&cookie, 0, value->pid);
 
 	map_delete_elem(&udp_retprobe_map, &pid_tgid);
 	return 0;
@@ -479,7 +479,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 	}
 	/* Ensure we have an up-to-date cookie->process mapping.
 	 */
-	update_cookie_proc_map(&cookie, value->pid);
+	update_socketmap(&cookie, 0, value->pid);
 
 	map_delete_elem(&udp_retprobe_map, &pid_tgid);
 	return 0;

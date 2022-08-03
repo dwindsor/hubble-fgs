@@ -31,6 +31,7 @@ event_sys_listen(struct pt_regs *ctx)
 	__u32 pid, ppid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
+	u64 cookie;
 
 	pid = (get_current_pid_tgid() >> 32);
 	process = event_find_curr(&ppid, &walker);
@@ -43,6 +44,10 @@ event_sys_listen(struct pt_regs *ctx)
 	}
 
 	skp = (void *)((ctx)->di);
+	/* In TCP we use the struct sock address as the socket cookie.
+	 */
+	cookie = (u64)skp;
+
 	probe_read(&saddr, sizeof(saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
 	probe_read(&sport, sizeof(sport), _(&(skp->__sk_common.skc_num)));
 
@@ -56,7 +61,7 @@ event_sys_listen(struct pt_regs *ctx)
 		.common.size = sizeof(struct msg_ip_event),
 		.key.pid = pid,
 		.key.ktime = process->key.ktime,
-		.socket_cookie = get_cookie(skp),
+		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.pad = 0,
 	};
@@ -66,7 +71,6 @@ event_sys_listen(struct pt_regs *ctx)
 
 	{
 		struct socketmap_value v = { 0 };
-		struct msg_execve_key ev = { 0 };
 		struct msg_tls_ipv4 tuple;
 
 		tuple.saddr = saddr;
@@ -79,15 +83,14 @@ event_sys_listen(struct pt_regs *ctx)
 		if (is_tuple_local(&tuple))
 			tuple.uid = sock_netns(skp);
 
-		ev.pid = process->key.pid;
-		ev.ktime = process->key.ktime;
-		v.key = ev;
+		v.key.pid = process->key.pid;
+		v.key.ktime = process->key.ktime;
 		v.zero_window = 0;
 		v.socket_flags |= SOCKFLAGS_TYPE_LISTEN;
 		v.sent = 0;
 		v.received = 0;
 
-		add_socketmap(&tuple, &v);
+		add_socketmap(&cookie, &tuple, &v);
 	}
 
 	return 0;

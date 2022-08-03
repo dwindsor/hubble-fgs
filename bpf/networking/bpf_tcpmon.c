@@ -36,6 +36,7 @@ event_tcp4_connect(struct pt_regs *ctx)
 	uint64_t size;
 	__u32 daddr;
 	__u16 dport;
+	u64 cookie;
 
 	process = event_find_curr(&ppid, &walker);
 	if (!process)
@@ -47,6 +48,9 @@ event_tcp4_connect(struct pt_regs *ctx)
 	}
 
 	skp = (void *)((ctx)->di);
+	/* In TCP we use the struct sock address as the socket cookie.
+	 */
+	cookie = (u64)skp;
 	probe_read(&saddr, sizeof(saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
 	probe_read(&sport, sizeof(sport), _(&(skp->__sk_common.skc_num)));
 	probe_read(&daddr, sizeof(daddr), _(&(skp->__sk_common.skc_daddr)));
@@ -65,7 +69,7 @@ event_tcp4_connect(struct pt_regs *ctx)
 		.tuple.sport = sport,
 		.key.pid = process->key.pid,
 		.key.ktime = process->key.ktime,
-		.socket_cookie = get_cookie(skp),
+		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.pad = 0,
 	};
@@ -97,7 +101,7 @@ event_tcp4_connect(struct pt_regs *ctx)
 		if (is_tuple_local(&tuple))
 			tuple.uid = sock_netns(skp);
 
-		add_socketmap(&tuple, &v);
+		add_socketmap(&cookie, &tuple, &v);
 	}
 	return 1;
 }

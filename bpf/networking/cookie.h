@@ -14,16 +14,15 @@ struct socketmap_value {
 	__u64 received;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used))
-socket_cookie_to_proc_map = {
+struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
 	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(u64),
 	.value_size = sizeof(struct socketmap_value),
 	.max_entries = 32768,
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
-	.type = BPF_MAP_TYPE_HASH,
+struct bpf_map_def __attribute__((section("maps"), used)) tls_socket_map = {
+	.type = BPF_MAP_TYPE_LRU_HASH,
 	.key_size = sizeof(struct msg_tls_ipv4),
 	.value_size = sizeof(struct socketmap_value),
 	.max_entries = 32768,
@@ -36,13 +35,56 @@ struct bpf_map_def __attribute__((section("maps"), used)) socket_map_stats = {
 	.max_entries = 1,
 };
 
+struct bpf_map_def __attribute__((section("maps"), used)) socket_map_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct socketmap_value),
+	.max_entries = 1,
+};
+
 // get socket cookie helper
-static inline __attribute__((always_inline)) __u64 get_cookie(struct sock *sk)
+static inline __attribute__((always_inline)) u64 get_cookie(struct sock *sk)
 {
-	__u64 cookie = 0;
+	u64 cookie = 0;
 	probe_read(&cookie, sizeof(cookie), _(&(sk->__sk_common.skc_cookie)));
 	return cookie;
 }
+
+static inline __attribute__((always_inline)) u64
+get_cookie_or_sk(struct sock *sk)
+{
+	u64 cookie = get_cookie(sk);
+	if (cookie) {
+		return cookie;
+	} else {
+		return (u64)sk;
+	}
+}
+
+#ifdef SK_MSG
+static inline __attribute__((always_inline)) u64
+get_cookie_or_sk_from_msg(ctx_md *msg)
+{
+	struct sock *sk = (struct sock *)msg->sk;
+	u64 cookie = get_socket_cookie(msg);
+	if (cookie) {
+		return cookie;
+	} else {
+		return (u64)sk;
+	}
+}
+#else
+static inline __attribute__((always_inline)) u64
+get_cookie_or_sk_from_msg(struct __sk_buff *skb)
+{
+	u64 cookie = get_socket_cookie(skb);
+	if (cookie) {
+		return cookie;
+	} else {
+		return (u64)skb->sk;
+	}
+}
+#endif
 
 /* Unfortunately, clang will try to do the obvious direct write
  * written as 'key->cookie = (u64)skb->sk' using 8 1B writes
@@ -74,31 +116,47 @@ write_cookie_from_sk(u64 *cookie, struct sock *sk, bool lazy)
 }
 
 static inline __attribute__((always_inline)) void
-add_socketmap(struct msg_tls_ipv4 *tuple, struct socketmap_value *v)
+add_socketmap(u64 *cookie, struct msg_tls_ipv4 *t, struct socketmap_value *v)
 {
-	int err = map_update_elem(&socket_map, tuple, v, 0);
+	int err = map_update_elem(&socket_map, cookie, v, 0);
 	int zero = 0;
 	__s64 *cntr;
 
-	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
+	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero))) {
 		*cntr = *cntr + 1;
+		if (t)
+			map_update_elem(&tls_socket_map, t, v, 0);
+	}
 }
 
 static inline __attribute__((always_inline)) void
-del_socketmap(struct msg_tls_ipv4 *tuple)
+del_socketmap(u64 *cookie, struct sock *sk, struct msg_tls_ipv4 *t, bool lazy)
 {
-	int err = map_delete_elem(&socket_map, tuple);
+	int err = map_delete_elem(&socket_map, cookie);
 	int zero = 0;
 	__s64 *cntr;
 
-	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero)))
+	if (err && !lazy) {
+		err = map_delete_elem(&socket_map, (u64 *)&sk);
+	}
+
+	if (!err && (cntr = map_lookup_elem(&socket_map_stats, &zero))) {
 		*cntr = *cntr - 1;
+		if (t)
+			map_delete_elem(&tls_socket_map, t);
+	}
 }
 
 static inline __attribute__((always_inline)) struct socketmap_value *
-lookup_socketmap(struct msg_tls_ipv4 *tuple)
+lookup_socketmap(u64 *cookie)
 {
-	return map_lookup_elem(&socket_map, tuple);
+	return map_lookup_elem(&socket_map, cookie);
+}
+
+static inline __attribute__((always_inline)) struct socketmap_value *
+lookup_tls_socketmap(struct msg_tls_ipv4 *t)
+{
+	return map_lookup_elem(&tls_socket_map, t);
 }
 
 /* Check if the cookie->process(pid) already exists, and if not,
@@ -106,25 +164,32 @@ lookup_socketmap(struct msg_tls_ipv4 *tuple)
  * mapping from cookie to process(pid).
  */
 static inline __attribute__((always_inline)) void
-update_cookie_proc_map(u64 *cookie, u32 pid)
+update_socketmap(u64 *cookie, struct msg_tls_ipv4 *t, u32 pid)
 {
 	struct execve_map_value *value;
 	struct socketmap_value *process;
+	int zero = 0;
 
 	if (!pid || !cookie || !*cookie)
 		return;
 
-	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
+	process = lookup_socketmap(cookie);
 	if (!process || process->key.pid != pid) {
 		value = execve_map_get_noinit(pid);
 		if (!value)
 			return;
 		if (!process) {
-			struct socketmap_value s = { 0 };
-			s.key.pid = value->key.pid;
-			s.key.ktime = value->key.ktime;
-			map_update_elem(&socket_cookie_to_proc_map, cookie, &s,
-					0);
+			process = map_lookup_elem(&socket_map_heap, &zero);
+			if (!process)
+				return;
+			process->key.pid = value->key.pid;
+			process->key.ktime = value->key.ktime;
+			process->last_time = 0;
+			process->received = 0;
+			process->sent = 0;
+			process->socket_flags = 0;
+			process->zero_window = 0;
+			add_socketmap(cookie, t, process);
 		} else {
 			process->key.pid = value->key.pid;
 			process->key.ktime = value->key.ktime;
@@ -135,6 +200,22 @@ update_cookie_proc_map(u64 *cookie, u32 pid)
 			process->zero_window = 0;
 		}
 	}
+}
+
+static inline __attribute__((always_inline)) struct socketmap_value *
+locate_socketmap(u64 *cookie, struct sock *sk, bool lazy)
+{
+	u64 sk_cookie;
+	struct socketmap_value *process = lookup_socketmap(cookie);
+	if (!process && !lazy) {
+		sk_cookie = (u64)sk;
+		process = lookup_socketmap(&sk_cookie);
+		if (process) {
+			add_socketmap(cookie, 0, process);
+			del_socketmap(&sk_cookie, 0, 0, true);
+		}
+	}
+	return process;
 }
 
 #endif

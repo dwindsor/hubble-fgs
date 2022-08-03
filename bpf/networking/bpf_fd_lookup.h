@@ -12,6 +12,7 @@
 struct fd_lookup_config {
 	uint32_t pid;
 	uint32_t fd;
+	uint64_t sockaddr;
 	uint64_t saddr[2];
 	uint64_t daddr[2];
 	uint16_t sport;
@@ -81,8 +82,7 @@ __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
 
 	/* Store the socket even if family or protocol couldn't be read.
 	 */
-	map_update_elem(&socket_cookie_to_proc_map, &cookie, &sockmap_process,
-			0);
+	add_socketmap(&cookie, 0, &sockmap_process);
 
 	if (!read_ok)
 		return 0;
@@ -99,6 +99,7 @@ __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
 	probe_read(&config->state, sizeof(config->state),
 		   (const void *)_(&(sk->__sk_common.skc_state)));
 	config->protocol = required_protocol;
+	config->sockaddr = cookie;
 	if (family == AF_INET) {
 		config->ipv6 = 0;
 		config->saddr[0] = 0;

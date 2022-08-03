@@ -37,7 +37,9 @@ const (
 	mapRetryDelay         = 1
 	fdLookupSignal        = 1024
 	FdLookupConfigMapName = "fd_lookup_config_map"
-	SocketToProcMapName   = "socket_cookie_to_proc_map"
+	SocketMapName         = "socket_map"
+	TlsSocketMapName      = "tls_socket_map"
+	SocketMapStatsName    = "socket_map_stats"
 )
 
 type FdLookupKey struct {
@@ -47,6 +49,7 @@ type FdLookupKey struct {
 type FdLookupValue struct {
 	Pid      uint32
 	Fd       uint32
+	Sockaddr uint64
 	Saddr    [2]uint64
 	Daddr    [2]uint64
 	Sport    uint16
@@ -84,8 +87,12 @@ var (
 	FdLookupConfigMapV56 = program.MapBuilder(FdLookupConfigMapName, FdLookupV56)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap    = program.MapBuilder(SocketToProcMapName, FdLookup)
-	SocketCookieMapV56 = program.MapBuilder(SocketToProcMapName, FdLookupV56)
+	SocketCookieMap       = program.MapBuilder(SocketMapName, FdLookup)
+	SocketCookieMapV56    = program.MapBuilder(SocketMapName, FdLookupV56)
+	SocketCookieStats     = program.MapBuilder(SocketMapStatsName, FdLookup)
+	SocketCookieStatsV56  = program.MapBuilder(SocketMapStatsName, FdLookupV56)
+	TlsSocketCookieMap    = program.MapBuilder(TlsSocketMapName, FdLookup)
+	TlsSocketCookieMapV56 = program.MapBuilder(TlsSocketMapName, FdLookupV56)
 )
 
 func (k *FdLookupKey) String() string             { return fmt.Sprintf("key=%d", k.Zero) }
@@ -181,9 +188,9 @@ func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
 	if !kernels.MinKernelVersion("5.6.0") {
-		maps = append(maps, FdLookupConfigMap, SocketCookieMap)
+		maps = append(maps, FdLookupConfigMap, SocketCookieMap, TlsSocketCookieMap, SocketCookieStats)
 	} else {
-		maps = append(maps, FdLookupConfigMapV56, SocketCookieMapV56)
+		maps = append(maps, FdLookupConfigMapV56, SocketCookieMapV56, TlsSocketCookieMapV56, SocketCookieStatsV56)
 	}
 
 	return maps
@@ -192,7 +199,11 @@ func getFdLookupMaps() []*program.Map {
 func getOnlyFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
-	maps = append(maps, FdLookupConfigMap)
+	if !kernels.MinKernelVersion("5.6.0") {
+		maps = append(maps, FdLookupConfigMap)
+	} else {
+		maps = append(maps, FdLookupConfigMapV56)
+	}
 
 	return maps
 }
@@ -257,14 +268,14 @@ func LoadSockets(callback FdCallback, protocol uint16) error {
 	return nil
 }
 
-func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, protocol uint16) {
+func openConfigMap() *bpf.Map {
 	mapDir := bpf.MapPrefixPath()
 
 	fdLookupMap := FdLookupConfigMap
 
 	if fdLookupMap.PinState.IsDisabled() {
 		logger.GetLogger().Infof("hubble-fgs, map %s is disabled, skipping.", fdLookupMap.Name)
-		return
+		return nil
 	}
 
 	m, err := bpf.OpenMap(filepath.Join(mapDir, fdLookupMap.Name))
@@ -275,8 +286,16 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 		}
 		if i > maxMapRetries {
 			logger.GetLogger().WithError(err).Warn("Unable to access FD Lookup Config map.")
-			return
+			return nil
 		}
+	}
+	return m
+}
+
+func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, protocol uint16) {
+	m := openConfigMap()
+	if m == nil {
+		return
 	}
 	for pid, fds := range procSocketFds {
 		for _, fd := range fds {
@@ -298,4 +317,43 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 		}
 	}
 	m.Close()
+}
+
+func GetSocketForFD(protocol uint16, pid int, fd int) uint64 {
+	loading.Lock()
+	defer loading.Unlock()
+
+	socket := uint64(0)
+
+	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
+		return 0
+	}
+
+	m := openConfigMap()
+	if m == nil {
+		return 0
+	}
+
+	k := &FdLookupKey{Zero: 0}
+	v := &FdLookupValue{
+		Pid:      uint32(pid),
+		Fd:       uint32(fd),
+		Protocol: protocol,
+	}
+	m.Update(k, v)
+	syscall.Syscall(syscall.SYS_KILL, uintptr(pid), fdLookupSignal, 0)
+	ret, err := m.Lookup(k)
+	if err == nil {
+		v = ret.(*FdLookupValue)
+		if v.Protocol == protocol {
+			socket = v.Sockaddr
+		}
+	}
+	if err := unloadFdLookup(fdLoadSensor, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir); err != nil {
+		logger.GetLogger().WithError(err).Warn("Unable to unload FD Lookup program")
+	}
+
+	return socket
 }

@@ -9,6 +9,6 @@ int _version __attribute__((section(("version")), used)) =
 __attribute__((section("kretprobe/sk_alloc"), used)) int
 sk_allocret(struct pt_regs *ctx)
 {
-	__sk_allocret(ctx, true);
+	__sk_allocret(ctx, false);
 	return 0;
 }

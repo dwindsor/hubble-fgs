@@ -13,6 +13,7 @@ package tcp
 import (
 	"context"
 	"fmt"
+	"os"
 	"sync"
 	"syscall"
 	"testing"
@@ -20,6 +21,7 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	"golang.org/x/sys/unix"
@@ -48,11 +50,7 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 		if err != nil {
 			return -1, 0, fmt.Errorf("socket failed: %w", err)
 		}
-		cookie, err := unix.GetsockoptUint64(fd, syscall.SOL_SOCKET, unix.SO_COOKIE)
-		if err != nil {
-			return -1, 0, fmt.Errorf("getsockopt failed: %w", err)
-		}
-
+		cookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), fd)
 		return fd, cookie, nil
 	}
 
@@ -86,12 +84,13 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 	if err != nil {
 		return nil, fmt.Errorf("accept failed: %w", err)
 	}
+	aCookie := ip.GetSocketForFD(IPPROTO_TCP, os.Getpid(), aFD)
 	// cannot set cookie for accept from user-space
 	checker.AddChecks(ec.NewProcessAcceptChecker())
 
 	unix.Close(aFD)
 	aFD = -1
-	checker.AddChecks(ec.NewProcessCloseChecker())
+	checker.AddChecks(ec.NewProcessCloseChecker().WithSockCookie(aCookie))
 
 	unix.Close(cFD)
 	cFD = -1
@@ -100,7 +99,6 @@ func socketCookieTest(t *testing.T) (ec.MultiEventChecker, error) {
 	unix.Close(lFD)
 	lFD = -1
 	checker.AddChecks(ec.NewProcessCloseChecker().WithSockCookie(lCookie))
-
 	return checker, nil
 }
 

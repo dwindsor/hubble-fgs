@@ -265,21 +265,25 @@ func TestLoadHttpSensor(t *testing.T) {
 		15: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
 		16: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
 		17: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+
+		// new accept sensor
+		18: tus.SensorProg{Name: "event_tcp4_acceptret56", Type: ebpf.TracePoint},
+		19: tus.SensorProg{Name: "event_tcp4_accept4ret56", Type: ebpf.TracePoint},
 	}
 
 	sensorMaps := []tus.SensorMap{
 		// base, event_tcp4_connect, event_sys_listen, event_tcp_v4_send_check
-		tus.SensorMap{Name: "execve_map", Progs: []uint{1, 3, 15, 16, 17}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{1, 3, 15, 16, 17, 18, 19}},
 		// tus.SensorMap{Name: "execve_map_stats", Progs: []uint{15, 16, 17}},
 
 		// all but base and bpf_sockmap
-		tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}},
+		tus.SensorMap{Name: "socket_map", Progs: []uint{1, 2, 3, 4, 18, 19}},
 
 		// event_tcp4_connect, event_tcp4_close, event_sys_listen
-		tus.SensorMap{Name: "socket_map_stats", Progs: []uint{1, 2, 3}},
+		tus.SensorMap{Name: "socket_map_stats", Progs: []uint{1, 2, 3, 18, 19}},
 
 		// all but bpf_sockmap
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17, 18, 19}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)

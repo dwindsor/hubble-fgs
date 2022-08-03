@@ -345,6 +345,7 @@ func TestExistingAcceptEvent(t *testing.T) {
 	time.Sleep(1000 * time.Millisecond)
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
+	time.Sleep(1000 * time.Millisecond)
 
 	err := jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
@@ -913,30 +914,53 @@ func TestLoadTcpSensor(t *testing.T) {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
 
-	var sensorProgs = []tus.SensorProg{
-		0: tus.SensorProg{Name: "event_tcp4_connect", Type: ebpf.Kprobe},
-		1: tus.SensorProg{Name: "event_tcp4_close", Type: ebpf.Kprobe},
-		2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
-		3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
+	var sensorProgs []tus.SensorProg
 
-		// base sensor
-		4: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-		5: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-		6: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+	if !kernels.MinKernelVersion("5.6.0") {
+		sensorProgs = []tus.SensorProg{
+			0: tus.SensorProg{Name: "event_tcp4_connect", Type: ebpf.Kprobe},
+			1: tus.SensorProg{Name: "event_tcp4_close", Type: ebpf.Kprobe},
+			2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
+			3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
+
+			// base sensor
+			4: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+			5: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+			6: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+
+			// new accept sensor
+			7: tus.SensorProg{Name: "event_tcp4_acceptret", Type: ebpf.TracePoint},
+			8: tus.SensorProg{Name: "event_tcp4_accept4ret", Type: ebpf.TracePoint},
+		}
+	} else {
+		sensorProgs = []tus.SensorProg{
+			0: tus.SensorProg{Name: "event_tcp4_connect", Type: ebpf.Kprobe},
+			1: tus.SensorProg{Name: "event_tcp4_close", Type: ebpf.Kprobe},
+			2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
+			3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
+
+			// base sensor
+			4: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+			5: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+			6: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+
+			// new accept sensor
+			7: tus.SensorProg{Name: "event_tcp4_acceptret56", Type: ebpf.TracePoint},
+			8: tus.SensorProg{Name: "event_tcp4_accept4ret56", Type: ebpf.TracePoint},
+		}
 	}
-
 	var sensorMaps = []tus.SensorMap{
 		// all but base
-		tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3}},
+		tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 7, 8}},
 
 		// all but base, event_tcp_v4_send_check
-		tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 2}},
+		tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 2, 7, 8}},
 
 		// all programs
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8}},
 
 		// all but event_tcp4_close
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 4, 5, 6}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 4, 5, 6, 7, 8}},
 		// tus.SensorMap{Name: "execve_map_stats", Progs: []uint{4, 5, 6}},
 	}
 

@@ -48,9 +48,13 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 	struct net *netns;
 	struct sock *skp;
 	int zero = 0;
+	u64 cookie;
 
 	skp = (void *)((ctx)->di);
 	tcp = (struct tcp_sock *)skp;
+	/* In TCP we use the struct sock address as the socket cookie.
+	 */
+	cookie = (u64)skp;
 
 	/* Collect socket tuple and process info, updating state so close
 	 * event will read zero window stats. If sampling we push event
@@ -71,7 +75,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 	if (is_tuple_local(&tuple))
 		tuple.uid = sock_netns(skp);
 
-	process = lookup_socketmap(&tuple);
+	process = lookup_socketmap(&cookie);
 	if (process) {
 		struct tcp_send_check_sample_cfg *cfg;
 		u64 current_time_ns = ktime_get_ns();
@@ -116,7 +120,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 			.tuple.daddr[1] = 0,
 			.tuple.dport = tuple.dport,
 			.tuple.sport = tuple.sport,
-			.socket_cookie = get_cookie(skp),
+			.socket_cookie = cookie,
 			.socket_flags = 0,
 			.pad = 0,
 		};

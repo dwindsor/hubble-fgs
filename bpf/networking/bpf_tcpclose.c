@@ -34,13 +34,20 @@ event_tcp4_close(struct pt_regs *ctx)
 	struct sock *skp;
 	size_t size;
 	int state;
+	unsigned char old_state;
 	u32 zero = 0;
+	u64 cookie;
 
 	state = ctx->si;
-	if (state != TCP_CLOSE && state != TCP_ESTABLISHED)
+	if (state != TCP_CLOSE)
 		return 0;
 
-	skp = (void *)((ctx)->di);
+	skp = (struct sock *)((ctx)->di);
+	/* In TCP we use the struct sock address as the socket cookie.
+	 */
+	cookie = (u64)skp;
+	probe_read(&old_state, sizeof(old_state),
+		   (const void *)_(&(skp->__sk_common.skc_state)));
 
 	probe_read(&tuple.saddr, sizeof(tuple.saddr),
 		   _(&(skp->__sk_common.skc_rcv_saddr)));
@@ -57,7 +64,8 @@ event_tcp4_close(struct pt_regs *ctx)
 	if (is_tuple_local(&tuple))
 		tuple.uid = sock_netns(skp);
 
-	val = map_lookup_elem(&tcp_close_event_map, &zero);
+	val = (struct msg_ip_event *)map_lookup_elem(&tcp_close_event_map,
+						     &zero);
 	if (!val) {
 		return 0;
 	}
@@ -73,13 +81,13 @@ event_tcp4_close(struct pt_regs *ctx)
 		.tuple.daddr[1] = 0,
 		.tuple.dport = tuple.dport,
 		.tuple.sport = tuple.sport,
-		.socket_cookie = get_cookie(skp),
+		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.pad = 0,
 	};
 
 	if (state == TCP_CLOSE) {
-		process = lookup_socketmap(&tuple);
+		process = lookup_socketmap(&cookie);
 		if (process) {
 			val->common.op = ISO_MSG_OP_TCPCLOSE;
 			val->key.pid = process->key.pid;
@@ -95,49 +103,10 @@ event_tcp4_close(struct pt_regs *ctx)
 			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
 					  val, size);
 		}
-	} else { // state == TCP_ESTABLISHED
-		__u32 daddr = tuple.daddr;
-		__u32 saddr = tuple.saddr;
-		__u16 dport = tuple.dport;
-
-		tuple.daddr = 0;
-		tuple.dport = 0;
-
-		/* First we search the tuple with saddr set then check for
-		 * any listening sockets with saddr 0.0.0.0. Listen sockets
-		 * always have a uid so only search key space with non-zero
-		 * uid.
-		 */
-		process = lookup_socketmap(&tuple);
-		if (!process) {
-			tuple.saddr = 0;
-			process = lookup_socketmap(&tuple);
-		}
-		if (process) {
-			struct socketmap_value copy = *process;
-
-			val->common.op = ISO_MSG_OP_TCPACCEPT;
-			val->key.pid = copy.key.pid;
-			val->key.ktime = copy.key.ktime;
-			size = sizeof(struct msg_ip_event);
-			perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU,
-					  val, size);
-			tuple.daddr = daddr;
-			tuple.dport = dport;
-			tuple.saddr = saddr;
-			copy.socket_flags &=
-				~SOCKFLAGS_TYPE_MASK; // clear all types but keep the rest
-			copy.socket_flags |= SOCKFLAGS_TYPE_ACCEPT;
-			if (!is_tuple_local(&tuple))
-				tuple.uid = 0;
-			add_socketmap(&tuple, &copy);
-		}
 	}
 
 	if (state == TCP_CLOSE) {
-		if (!is_tuple_local(&tuple))
-			tuple.uid = 0;
-		del_socketmap(&tuple);
+		del_socketmap(&cookie, skp, &tuple, false);
 
 		map_delete_elem(&tls_map, &tuple);
 		map_delete_elem(&http_map, &tuple);

@@ -328,7 +328,7 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	if (!val)
 		return;
 
-	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
+	process = lookup_socketmap(cookie);
 
 	val->common.op = ISO_MSG_OP_IP_ERROR;
 	val->common.size = sizeof(struct msg_ip_event);

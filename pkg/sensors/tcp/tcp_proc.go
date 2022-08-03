@@ -45,7 +45,7 @@ var (
 func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	saddr := network.GetIP(socket.Saddr, 0, socket.IPv6 != 0)
 	daddr := network.GetIP(socket.Daddr, 0, socket.IPv6 != 0)
-	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State}).Debug("Discovered TCP Socket")
+	logger.GetLogger().WithFields(logrus.Fields{"Pid": pid, "Saddr": saddr, "Daddr": daddr, "Sport": socket.Sport, "Dport": socket.Dport, "Protocol": socket.Protocol, "State": socket.State, "Cookie": socket.Sockaddr}).Debug("Discovered TCP Socket")
 
 	if socket.State == 0 {
 		return
@@ -75,6 +75,7 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 	tcp.Tuple.DPort = network.SwapByte(socket.Dport)
 	tcp.Tuple.SPort = socket.Sport
 	tcp.Tuple.Proto = 2
+	tcp.SockCookie = socket.Sockaddr
 
 	if socket.State == TCP_PROC_STATE_LISTEN {
 		tcp.Common.Op = ops.MsgOpListen

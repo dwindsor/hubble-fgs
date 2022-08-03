@@ -258,7 +258,6 @@ spec:
 		tus.SensorMap{Name: "bottles", Progs: []uint{2, 3}},
 		tus.SensorMap{Name: "bottle_map_stats", Progs: []uint{2, 3}},
 		tus.SensorMap{Name: "tls_parser_stats", Progs: []uint{2, 3}},
-		tus.SensorMap{Name: "socket_map", Progs: []uint{2, 3}},
 
 		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 4, 5, 6}},

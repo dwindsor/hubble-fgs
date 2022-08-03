@@ -286,7 +286,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key,
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
 
-		execve = lookup_socketmap(key);
+		execve = lookup_tls_socketmap(key);
 		if (execve)
 			post->execve = execve->key;
 

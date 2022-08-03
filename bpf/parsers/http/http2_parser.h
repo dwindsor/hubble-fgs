@@ -227,7 +227,7 @@ post_http2_event(ctx_md *msg, struct msg_tls_ipv4 *key,
 	u32 remaining = key->remaining;
 
 	key->remaining = 0;
-	process = lookup_socketmap(key);
+	process = lookup_tls_socketmap(key);
 	key->remaining = remaining;
 	if (process) {
 		event->execve.pid = process->key.pid;
