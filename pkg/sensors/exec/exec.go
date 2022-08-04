@@ -12,11 +12,11 @@ import (
 	"github.com/cilium/tetragon/pkg/data"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/sensors/exec/procevents"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/exec/procevents"
 )
 
 func fromCString(cstr []byte) string {
@@ -204,7 +204,7 @@ type execSensor struct {
 func (e *execSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	err := program.LoadTracepointProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	if err == nil {
-		procevents.GetRunningProcs(true, true)
+		procevents.GetRunningProcs()
 	}
 	return err
 }
