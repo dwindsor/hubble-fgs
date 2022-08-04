@@ -23,7 +23,7 @@ struct accept_args {
 };
 
 static inline __attribute__((always_inline)) int
-__event_tcp4_acceptret(struct accept_args *ctx, bool pre56)
+__event_tcp_acceptret(struct accept_args *ctx, bool pre56)
 {
 	struct msg_ip_event *val;
 	struct execve_map_value *process;
@@ -53,20 +53,6 @@ __event_tcp4_acceptret(struct accept_args *ctx, bool pre56)
 	 */
 	cookie = (u64)skp;
 
-	probe_read(&tuple.saddr, sizeof(tuple.saddr),
-		   _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&tuple.sport, sizeof(tuple.sport),
-		   _(&(skp->__sk_common.skc_num)));
-	probe_read(&tuple.daddr, sizeof(tuple.daddr),
-		   _(&(skp->__sk_common.skc_daddr)));
-	probe_read(&tuple.dport, sizeof(tuple.dport),
-		   _(&(skp->__sk_common.skc_dport)));
-	tuple.remaining = 0;
-	tuple.uid = 0;
-
-	if (is_tuple_local(&tuple))
-		tuple.uid = sock_netns(skp);
-
 	val = (struct msg_ip_event *)map_lookup_elem(&tcp_accept_event_map,
 						     &zero);
 	if (!val) {
@@ -77,18 +63,31 @@ __event_tcp4_acceptret(struct accept_args *ctx, bool pre56)
 		.common.size = sizeof(struct msg_ip_event),
 		.common.ktime = ktime_get_ns(),
 		.common.op = ISO_MSG_OP_TCPACCEPT,
-		.tuple.ipv6 = false,
-		.tuple.saddr[0] = tuple.saddr,
-		.tuple.saddr[1] = 0,
-		.tuple.daddr[0] = tuple.daddr,
-		.tuple.daddr[1] = 0,
-		.tuple.dport = tuple.dport,
-		.tuple.sport = tuple.sport,
 		.socket_cookie = cookie,
 		.socket_flags = 0,
 		.pad = 0,
 	};
 
+	probe_read(&val->tuple.sport, sizeof(val->tuple.sport),
+		   _(&(skp->__sk_common.skc_num)));
+	probe_read(&val->tuple.dport, sizeof(val->tuple.dport),
+		   _(&(skp->__sk_common.skc_dport)));
+
+	if (family != AF_INET6) {
+		val->tuple.ipv6 = false;
+		probe_read(&val->tuple.saddr[0], sizeof(u32),
+			   _(&(skp->__sk_common.skc_rcv_saddr)));
+		val->tuple.saddr[1] = 0;
+		probe_read(&val->tuple.daddr[0], sizeof(u32),
+			   _(&(skp->__sk_common.skc_daddr)));
+		val->tuple.daddr[1] = 0;
+	} else {
+		val->tuple.ipv6 = true;
+		probe_read(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
+			   _(&(skp->__sk_common.skc_v6_rcv_saddr)));
+		probe_read(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
+			   _(&(skp->__sk_common.skc_v6_daddr)));
+	}
 	process = event_find_curr(&ppid, &walker);
 
 	if (process) {
@@ -117,7 +116,20 @@ __event_tcp4_acceptret(struct accept_args *ctx, bool pre56)
 	acc_process->sent = 0;
 	acc_process->zero_window = 0;
 
-	add_socketmap(&cookie, &tuple, acc_process);
+	if (family != AF_INET6) {
+		tuple.saddr = val->tuple.saddr[0];
+		tuple.daddr = val->tuple.daddr[0];
+		tuple.sport = val->tuple.sport;
+		tuple.dport = val->tuple.dport;
+		tuple.remaining = 0;
+		tuple.uid = 0;
+
+		if (is_tuple_local(&tuple))
+			tuple.uid = sock_netns(skp);
+		add_socketmap(&cookie, &tuple, acc_process);
+	} else {
+		add_socketmap(&cookie, 0, acc_process);
+	}
 
 	return 1;
 }

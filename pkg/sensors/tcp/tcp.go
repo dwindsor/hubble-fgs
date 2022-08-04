@@ -53,8 +53,8 @@ var (
 	Listen = program.Builder(
 		"bpf_listen.o",
 		"__inet_hash",
-		"kprobe/inet_hash",
-		"kprobe_inet_hash",
+		"kprobe/__inet_hash",
+		"kprobe___inet_hash",
 		"kprobe",
 	)
 
@@ -90,11 +90,18 @@ var (
 		"tracepoint",
 	)
 
-	SendCheck = program.Builder(
+	SendCheck4 = program.Builder(
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
 		"kprobe/tcp_v4_send_check",
 		"kprobe_tcp_v4_send_check",
+		"tcp_sensor")
+
+	SendCheck6 = program.Builder(
+		"bpf_tcp_send_check.o",
+		"inet6_csk_xmit",
+		"kprobe/inet6_csk_xmit",
+		"kprobe_inet6_csk_xmit",
 		"tcp_sensor")
 
 	// Maps for TCP Sockets
@@ -110,8 +117,8 @@ var (
 	TLSBottleStats = program.MapBuilder("bottle_map_stats", Close)
 
 	// Maps for burst detection
-	SendCheckSampler       = program.MapBuilder("tcp_send_check_sampler", SendCheck)
-	ProcessNetworkBurstMap = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, SendCheck)
+	SendCheckSampler       = program.MapBuilder("tcp_send_check_sampler", SendCheck4)
+	ProcessNetworkBurstMap = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, SendCheck4)
 )
 
 func unloadTcpSensor() error {
@@ -131,7 +138,8 @@ func EnableTcp() *sensors.Sensor {
 			Listen,
 			Accept,
 			Accept4,
-			SendCheck,
+			SendCheck4,
+			SendCheck6,
 		}
 	} else {
 		progs = []*program.Program{
@@ -140,7 +148,8 @@ func EnableTcp() *sensors.Sensor {
 			Listen,
 			AcceptV56,
 			Accept4V56,
-			SendCheck,
+			SendCheck4,
+			SendCheck6,
 		}
 
 	}

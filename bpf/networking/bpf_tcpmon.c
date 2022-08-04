@@ -8,6 +8,7 @@
 #include "netns.h"
 #include "tlsmsg.h"
 #include "../parsers/tls/tls_map.h"
+#include "bpf_fd_to_sk.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -24,49 +25,36 @@ tcp_connect_event_map = {
 };
 
 __attribute__((section("kprobe/tcp_connect"), used)) int
-event_tcp4_connect(struct pt_regs *ctx)
+event_tcp_connect(struct pt_regs *ctx)
 {
 	struct execve_map_value *process = 0;
 	struct msg_ip_event *val;
-	__u32 saddr;
-	__u16 sport;
 	__u32 ppid = 0, zero = 0;
 	struct sock *skp;
 	bool walker = 0;
+	u16 family;
 	uint64_t size;
-	__u32 daddr;
-	__u16 dport;
 	u64 cookie;
 
 	process = event_find_curr(&ppid, &walker);
 	if (!process)
 		return 0;
 
-	val = map_lookup_elem(&tcp_connect_event_map, &zero);
+	val = (struct msg_ip_event *)map_lookup_elem(&tcp_connect_event_map,
+						     &zero);
 	if (!val) {
 		return 0;
 	}
 
-	skp = (void *)((ctx)->di);
+	skp = (struct sock *)((ctx)->di);
 	/* In TCP we use the struct sock address as the socket cookie.
 	 */
 	cookie = (u64)skp;
-	probe_read(&saddr, sizeof(saddr), _(&(skp->__sk_common.skc_rcv_saddr)));
-	probe_read(&sport, sizeof(sport), _(&(skp->__sk_common.skc_num)));
-	probe_read(&daddr, sizeof(daddr), _(&(skp->__sk_common.skc_daddr)));
-	probe_read(&dport, sizeof(dport), _(&(skp->__sk_common.skc_dport)));
 
 	*val = (struct msg_ip_event){
 		.common.op = ISO_MSG_OP_TCPCONNECTRET,
 		.common.ktime = ktime_get_ns(),
 		.common.size = sizeof(struct msg_ip_event),
-		.tuple.ipv6 = false,
-		.tuple.saddr[0] = saddr,
-		.tuple.saddr[1] = 0,
-		.tuple.daddr[0] = daddr,
-		.tuple.daddr[1] = 0,
-		.tuple.dport = dport,
-		.tuple.sport = sport,
 		.key.pid = process->key.pid,
 		.key.ktime = process->key.ktime,
 		.socket_cookie = cookie,
@@ -74,34 +62,59 @@ event_tcp4_connect(struct pt_regs *ctx)
 		.pad = 0,
 	};
 
+	probe_read(&val->tuple.sport, sizeof(val->tuple.sport),
+		   _(&(skp->__sk_common.skc_num)));
+	probe_read(&val->tuple.dport, sizeof(val->tuple.dport),
+		   _(&(skp->__sk_common.skc_dport)));
+
+	probe_read(&family, sizeof(family), _(&(skp->__sk_common.skc_family)));
+
+	if (family != AF_INET6) {
+		val->tuple.ipv6 = false;
+		probe_read(&val->tuple.saddr[0], sizeof(__u32),
+			   _(&(skp->__sk_common.skc_rcv_saddr)));
+		val->tuple.saddr[1] = 0;
+		probe_read(&val->tuple.daddr[0], sizeof(__u32),
+			   _(&(skp->__sk_common.skc_daddr)));
+		val->tuple.daddr[1] = 0;
+	} else {
+		val->tuple.ipv6 = true;
+		probe_read(&val->tuple.saddr[0], sizeof(val->tuple.saddr),
+			   _(&(skp->__sk_common.skc_v6_rcv_saddr)));
+		probe_read(&val->tuple.daddr[0], sizeof(val->tuple.daddr),
+			   _(&(skp->__sk_common.skc_v6_daddr)));
+	}
+
 	size = sizeof(struct msg_ip_event);
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, size);
 
-	/* tuple is on the stack and verifier wont use stack in call happily
-	 * if its not initialized. Alternatively, without padding we are not
-	 * 32-bit aligned so we really do want it there.
-	 */
-	{
-		struct socketmap_value v = { 0 };
+	struct socketmap_value v = { 0 };
+	v.key.pid = process->key.pid;
+	v.key.ktime = process->key.ktime;
+	v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
+	v.sent = 0;
+	v.received = 0;
+
+	if (family != AF_INET6) {
+		/* tuple is on the stack and verifier wont use stack in call happily
+		* if its not initialized. Alternatively, without padding we are not
+		* 32-bit aligned so we really do want it there.
+		*/
 		struct msg_tls_ipv4 tuple;
 
-		tuple.saddr = saddr;
-		tuple.daddr = daddr;
-		tuple.dport = dport;
-		tuple.sport = sport;
+		tuple.saddr = val->tuple.saddr[0];
+		tuple.daddr = val->tuple.daddr[0];
+		tuple.dport = val->tuple.dport;
+		tuple.sport = val->tuple.sport;
 		tuple.uid = 0;
 		tuple.remaining = 0;
-
-		v.key.pid = process->key.pid;
-		v.key.ktime = process->key.ktime;
-		v.socket_flags |= SOCKFLAGS_TYPE_CONNECT;
-		v.sent = 0;
-		v.received = 0;
 
 		if (is_tuple_local(&tuple))
 			tuple.uid = sock_netns(skp);
 
 		add_socketmap(&cookie, &tuple, &v);
+	} else {
+		add_socketmap(&cookie, 0, &v);
 	}
 	return 1;
 }
