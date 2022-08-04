@@ -128,7 +128,7 @@ isovalent_flags_total{type="execve"} 1
 }
 
 func Test_handleInterfaceStatsEvent(t *testing.T) {
-	eventmetrics.HandleInterfaceStatsEvent(&tetragon.GetEventsResponse{Event: &tetragon.GetEventsResponse_InterfaceStats{InterfaceStats: &tetragon.InterfaceStats{
+	eventmetrics.HandleInterfaceStatsEvent(&tetragon.InterfaceStats{
 		InterfaceName:   "eth0",
 		Netns:           "foobar",
 		BytesSent:       1,
@@ -139,7 +139,7 @@ func Test_handleInterfaceStatsEvent(t *testing.T) {
 		RxErrors:        6,
 		TxDrops:         7,
 		RxDrops:         8,
-	}}})
+	})
 
 	expected := strings.NewReader(`# HELP isovalent_interface_txbytes Bytes sent per network interface
 # TYPE isovalent_interface_txbytes gauge

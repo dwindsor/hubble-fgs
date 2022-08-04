@@ -123,7 +123,6 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	if process != nil {
 		fgsEvent.Process = process.GetProcessCopy()
 	}
-	eventmetrics.HandleSocketEvent(fgsEvent)
 	return fgsEvent
 }
 
@@ -209,7 +208,6 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	if process != nil {
 		fgsEvent.Process = process.GetProcessCopy()
 	}
-	eventmetrics.HandleSocketEvent(fgsEvent)
 	return fgsEvent
 }
 
@@ -260,7 +258,6 @@ func GetProcessListen(
 	if process != nil {
 		fgsEvent.Process = process.GetProcessCopy()
 	}
-	eventmetrics.HandleSocketEvent(fgsEvent)
 	return fgsEvent
 }
 
@@ -334,7 +331,6 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 		fgsEvent.Process = process.GetProcessCopy()
 	}
 
-	eventmetrics.HandleSocketEvent(fgsEvent)
 	return fgsEvent
 }
 
