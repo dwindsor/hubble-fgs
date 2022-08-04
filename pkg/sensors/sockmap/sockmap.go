@@ -22,6 +22,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/tc"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 )
 
@@ -77,14 +78,12 @@ var (
 		"tc_egress")
 
 	// TLS maps
-	Map         = program.MapBuilder("tls_map", Skmsg)
-	MapStats    = program.MapBuilder("tls_map_stats", Skmsg)
+	Map         = tcp.TLSContext
+	MapStats    = tcp.TLSMapStats
 	Bottle      = program.MapBuilder("bottles", Skmsg)
 	BottleStats = program.MapBuilder("bottle_map_stats", Skmsg)
 	TailCalls   = program.MapBuilder("tls_calls", Skmsg)
 	// TC TLS maps
-	TCMap         = program.MapBuilder("tls_map", TCEgress)
-	TCMapStats    = program.MapBuilder("tls_map_stats", TCEgress)
 	TCBottle      = program.MapBuilder("bottles", TCIngress)
 	TCBottleStats = program.MapBuilder("bottle_map_stats", TCIngress)
 	TCParserStats = program.MapBuilder("tls_parser_stats", TCEgress)
@@ -93,11 +92,8 @@ var (
 	FilterMap   = sockops.TlsFilterMap
 	ParserStats = program.MapBuilder("tls_parser_stats", sockops.SockopsEstablished)
 	// Socket links
-	SocketMap   = program.MapBuilder("socket_map", Skmsg)
-	SocketStats = program.MapBuilder("socket_map_stats", Skmsg)
-	// TC Socket Links
-	TCSocketMap   = program.MapBuilder("socket_map", TCIngress)
-	TCSocketStats = program.MapBuilder("socket_map_stats", TCIngress)
+	SocketMap   = tcp.SocketMap
+	SocketStats = tcp.SocketStats
 
 	// HTTP maps
 	HTTPMap       = http.HTTPContext
@@ -292,12 +288,12 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 		)
 
 		maps = append(maps,
-			TCMap, TCMapStats,
+			Map, MapStats,
 			TCBottle, TCBottleStats,
 			TCParserStats,
 			TCTailCalls,
 			FilterMap, ParserStats,
-			TCSocketMap, TCSocketStats,
+			SocketMap, SocketStats,
 		)
 	}
 

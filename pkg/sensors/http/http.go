@@ -32,6 +32,7 @@ import (
 	readerhttp "github.com/isovalent/hubble-fgs/pkg/reader/http"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/sk"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/sockops"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/tcp"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/utils"
 
 	lru "github.com/hashicorp/golang-lru"
@@ -94,14 +95,14 @@ var (
 		"sk_skb_verdict")
 
 	// Http maps
-	HTTPContext  = program.MapBuilder("http_map", SkSkbVerdict)
+	HTTPContext  = tcp.HTTPContext
 	TailCalls    = program.MapBuilder("http1_calls", Skmsg)
 	SkbTailCalls = program.MapBuilder("http1_calls_skb", SkSkbVerdict)
 	// Sockops filters
 	HTTPFilterMap = sockops.HttpFilterMap
 	// Socket links
-	SocketMap   = program.MapBuilder("socket_map", Skmsg)
-	SocketStats = program.MapBuilder("socket_map_stats", Skmsg)
+	SocketMap   = tcp.SocketMap
+	SocketStats = tcp.SocketStats
 )
 
 type httpSensor struct {
