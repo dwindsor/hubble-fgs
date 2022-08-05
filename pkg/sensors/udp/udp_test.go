@@ -34,6 +34,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/sirupsen/logrus"
 
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
@@ -46,6 +47,8 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	"github.com/stretchr/testify/assert"
+
+	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
 var (
@@ -635,4 +638,74 @@ func TestConnectAfterStartEvent(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
+}
+
+func TestLoadUdpSensor(t *testing.T) {
+	var sensorProgs []tus.SensorProg
+	var sensorMaps []tus.SensorMap
+
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skipf("Skipping test for 5.4.0")
+	} else if !kernels.MinKernelVersion("5.10.0") {
+		t.Skipf("Skipping test for 5.10.0")
+	} else {
+		sensorProgs = []tus.SensorProg{
+			0: tus.SensorProg{Name: "sock_create", Type: ebpf.CGroupSock},
+			1: tus.SensorProg{Name: "sock_release", Type: ebpf.Kprobe},
+			2: tus.SensorProg{Name: "inet_send", Type: ebpf.CGroupSKB},
+			3: tus.SensorProg{Name: "inet_recv", Type: ebpf.CGroupSKB},
+			4: tus.SensorProg{Name: "udp_recv_kprobe", Type: ebpf.Kprobe},
+			5: tus.SensorProg{Name: "udp4_send_kprobe", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "udp4_sendret_kprobe", Type: ebpf.Kprobe},
+			7: tus.SensorProg{Name: "udp6_send_kprobe", Type: ebpf.Kprobe},
+			8: tus.SensorProg{Name: "udp6_sendret_kprobe", Type: ebpf.Kprobe},
+
+			// base sensor
+			9:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+			10: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+			11: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+		}
+		sensorMaps = []tus.SensorMap{
+			// inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
+			// TODO this map is broken at the moment, disabling
+			// tus.SensorMap{Name: "socket_cookie_to_proc_map", Progs: []uint{ /* 0, 1, */ 2, 3, 4, 6, 8}},
+
+			// base, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 8, 9, 10, 11}},
+			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{0, 4, 6, 8, 9, 10, 11}},
+
+			// udp4_send_kprobe, udp4_sendret_kprobe, udp6_send_kprobe,
+			// udp6_sendret_kprobe, udp_recv_kprobe
+			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7, 8}},
+
+			// inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe,
+			// udp_recv_kprobe
+			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 4, 6, 8}},
+			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3, 4, 6, 8}},
+			tus.SensorMap{Name: "udp_payload_map", Progs: []uint{2, 3, 4, 6, 8}},
+			tus.SensorMap{Name: "udp_payload_map_stats", Progs: []uint{2, 3, 4, 6, 8}},
+			tus.SensorMap{Name: "udp_payload_bloom_map", Progs: []uint{2, 3, 4, 6, 8}},
+
+			// base, inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe
+			// udp_recv_kprobe
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 4, 6, 8, 9, 10, 11}},
+
+			// base, sock_create, udp4_sendret_kprobe, udp6_sendret_kprobe,
+			// udp_recv_kprobe
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 8, 9, 10, 11}},
+		}
+	}
+
+	if err := observer.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+	}
+
+	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+
+	sensors.UnloadAll(tus.Conf().TetragonLib)
 }
