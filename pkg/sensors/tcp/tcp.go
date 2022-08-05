@@ -69,9 +69,11 @@ var (
 	SocketCookieMap = program.MapBuilder("socket_cookie_to_proc_map", Connect)
 
 	// Parser maps
-	HTTPContext = program.MapBuilder("http_map", Close)
-	TLSContext  = program.MapBuilder("tls_map", Close)
-	TLSMapStats = program.MapBuilder("tls_map_stats", Connect)
+	HTTPContext    = program.MapBuilder("http_map", Close)
+	TLSContext     = program.MapBuilder("tls_map", Close)
+	TLSMapStats    = program.MapBuilder("tls_map_stats", Connect)
+	TLSBottles     = program.MapBuilder("bottles", Close)
+	TLSBottleStats = program.MapBuilder("bottle_map_stats", Close)
 
 	// Maps for burst detection
 	SendCheckSampler       = program.MapBuilder("tcp_send_check_sampler", SendCheck)
@@ -92,6 +94,8 @@ func EnableTcp() *sensors.Sensor {
 		HTTPContext,
 		TLSContext,
 		TLSMapStats,
+		TLSBottles,
+		TLSBottleStats,
 		SendCheckSampler,
 		ProcessNetworkBurstMap,
 	}

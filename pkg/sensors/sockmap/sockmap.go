@@ -80,12 +80,10 @@ var (
 	// TLS maps
 	Map         = tcp.TLSContext
 	MapStats    = tcp.TLSMapStats
-	Bottle      = program.MapBuilder("bottles", Skmsg)
-	BottleStats = program.MapBuilder("bottle_map_stats", Skmsg)
+	Bottle      = tcp.TLSBottles
+	BottleStats = tcp.TLSBottleStats
 	TailCalls   = program.MapBuilder("tls_calls", Skmsg)
 	// TC TLS maps
-	TCBottle      = program.MapBuilder("bottles", TCIngress)
-	TCBottleStats = program.MapBuilder("bottle_map_stats", TCIngress)
 	TCParserStats = program.MapBuilder("tls_parser_stats", TCEgress)
 	TCTailCalls   = program.MapBuilder("tls_calls", TCIngress)
 	// Sockops Filter
@@ -289,7 +287,7 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 
 		maps = append(maps,
 			Map, MapStats,
-			TCBottle, TCBottleStats,
+			Bottle, BottleStats,
 			TCParserStats,
 			TCTailCalls,
 			FilterMap, ParserStats,
