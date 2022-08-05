@@ -254,7 +254,6 @@ func enableTLSParser(tls, tc bool) *sensors.Sensor {
 	if tls {
 		logger.GetLogger().Infof("Enable TLS")
 		progs = append(progs,
-			sockops.SockopsEstablished,
 			Skmsg,
 			SkSkbVerdict,
 			SockoptSet,
