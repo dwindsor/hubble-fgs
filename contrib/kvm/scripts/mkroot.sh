@@ -12,7 +12,6 @@ KOUT=/kout
 mkimage() {
 	sudo debootstrap --include=$(IFS=, ; echo "${PACKAGES[*]}") jammy $MNTDIR
 	sudo cp fgs-bin/* $MNTDIR/bin
-	sudo cp fgs-lib/* $MNTDIR/usr/local/lib
 	if [ -f "$KOUT/bpftool" ]; then
 		sudo cp "$KOUT/bpftool" "$MNTDIR/bin/bpftool"
 	fi
