@@ -1,4 +1,4 @@
-name: KVM Tests
+name: KVM e2e Tests
 
 on:
   pull_request:
@@ -9,14 +9,14 @@ on:
       - master
 
 concurrency:
-  group: ${{ github.ref }}
+  group: ${{ github.ref }}-kvm-e2e
   cancel-in-progress: true
 
 env:
   clusterName: fgs-cli-ci
   zone: us-west2-a
-  vmName: fgs-ci-${{ github.run_id }}
-  vmHost: fgs@fgs-ci-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
+  vmName: fgs-ci-e2e-tests-${{ github.run_id }}
+  vmHost: fgs@fgs-ci-e2e-tests-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
   machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci
 
 jobs:
@@ -161,33 +161,6 @@ jobs:
             fi
           EOF
 
-      - name: Install liburing and libaio
-        run: |
-          cat <<-EOF | ssh -p 3000 root@localhost
-            set -e
-
-            apt install libaio-dev -y
-
-            rm -rf liburing
-            git clone https://github.com/axboe/liburing.git
-            cd liburing
-            ./configure
-            make
-            sudo make install
-          EOF
-
-      - name: Run unit tests
-        timeout-minutes: 30
-        run: |
-          cat <<-EOF | ssh -p 3000 root@localhost
-            set -e
-
-            cd /fgs
-            export PATH="$PATH:/usr/local/go/bin"
-
-            make hubble-bpf tester-progs test
-          EOF
-
       - name: Wait for kube-system pods to be ready
         uses: nick-invision/retry@v2
         with:
@@ -256,14 +229,10 @@ jobs:
           ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/dump-fgs-logs.sh" || true
 
           # Make output dirs for logs
-          mkdir -p logs/unit-tests
           mkdir -p logs/end-to-end
 
           # Copy logs over
           scp -P 3000 'root@localhost:/fgs/contrib/end-to-end/logs/*' logs/end-to-end || true
-          scp -P 3000 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
-          scp -P 3000 'root@localhost:/tmp/*.json' logs/unit-tests || true
-          scp -P 3000 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
 
       # This step is necessary since kube-system pods won't ever become ready on 4.19 if
       # BTF info isn't available, meaning we would get stuck on the "Wait for kube-system
@@ -288,14 +257,6 @@ jobs:
           path: logs/end-to-end
           retention-days: 5
 
-      - name: Upload unit test logs
-        if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@v2
-        with:
-          name: fgs-unit-tests-${{ matrix.kernel }}
-          path: logs/unit-tests
-          retention-days: 5
-
   cleanup:
     runs-on: ubuntu-latest
     timeout-minutes: 10
@@ -318,9 +279,3 @@ jobs:
         if: ${{ always() }}
         run: |
           gcloud compute instances delete ${{ env.vmName }} --quiet --zone ${{ env.zone }}
-
-      - name: Force job to fail if run-tests failed
-        if: "needs.run-tests.outputs.job_status!='success'"
-        run: |
-          echo "Some tests failed, forcing cleanup job to fail to that it will be re-run when running failed jobs"
-          exit 1
