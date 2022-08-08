@@ -7,7 +7,7 @@ int _version __attribute__((section(("version")), used)) =
 #endif
 
 __attribute__((section("kprobe/inet_release"), used)) int
-sock_release(struct pt_regs *ctx)
+sock_release_lazy(struct pt_regs *ctx)
 {
 	__sock_release(ctx, true, true);
 	return 0;

@@ -371,7 +371,7 @@ func getNCCommand(t *testing.T, orig string) string {
 		return orig
 	}
 
-	server := "nc"
+	server := "nc.openbsd"
 	if _, err := exec.LookPath(server); err != nil {
 		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
 	}
@@ -391,14 +391,14 @@ func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
 	}
 }
 
-func TestConnectEvent(t *testing.T) {
+func TestConnectEvent4(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	server := getNCCommand(t, "nc.traditional")
+	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -550,7 +550,7 @@ func TestConnectEvent(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestConnectAfterStartEvent(t *testing.T) {
+func TestConnectAfterStartEvent4(t *testing.T) {
 	// FIXME: something broke this test case, but since it was never merged upstream this went
 	// unnoticed... need to investigate
 	t.Skip("This test is consistently failing at the moment, need to figure out why and fix it up.")
@@ -561,7 +561,7 @@ func TestConnectAfterStartEvent(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	server := getNCCommand(t, "nc.traditional")
+	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -645,21 +645,151 @@ func TestLoadUdpSensor(t *testing.T) {
 	var sensorProgs []tus.SensorProg
 	var sensorMaps []tus.SensorMap
 
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skipf("Skipping test for 5.4.0")
-	} else if !kernels.MinKernelVersion("5.10.0") {
-		t.Skipf("Skipping test for 5.10.0")
-	} else {
+	if !kernels.MinKernelVersion("5.4.0") { // 4.19 - <5.4
+		sensorProgs = []tus.SensorProg{
+			0: tus.SensorProg{Name: "sk_allocret", Type: ebpf.Kprobe},
+			1: tus.SensorProg{Name: "sock_release_lazy", Type: ebpf.Kprobe},
+			2: tus.SensorProg{Name: "inet_lazy_send_kp", Type: ebpf.Kprobe},
+			3: tus.SensorProg{Name: "udp4_send_lazy_kprobe", Type: ebpf.Kprobe},
+			4: tus.SensorProg{Name: "udp4_sendret_lazy_kprobe", Type: ebpf.Kprobe},
+			5: tus.SensorProg{Name: "udp6_send_lazy_kprobe", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "udp6_sendret_lazy_kprobe", Type: ebpf.Kprobe},
+			7: tus.SensorProg{Name: "udp_recv_lazy_kprobe", Type: ebpf.Kprobe},
+
+			// base sensor
+			8:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+			9:  tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+			10: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+		}
+		sensorMaps = []tus.SensorMap{
+			// base, sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 7, 8, 9, 10}},
+
+			// base only
+			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{8, 9, 10}},
+
+			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
+			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{3, 4, 5, 6, 7}},
+
+			// inet_lazy_send_kp, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
+			// udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 4, 6, 7}},
+			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 4, 6, 7}},
+			tus.SensorMap{Name: "udp_payload_map", Progs: []uint{2, 4, 6, 7}},
+			tus.SensorMap{Name: "udp_payload_map_stats", Progs: []uint{2, 4, 6, 7}},
+			tus.SensorMap{Name: "udp_payload_bloom_map", Progs: []uint{2, 4, 6, 7}},
+
+			// sk_allocret, sock_release_lazy, inet_lazy_send_kp (not stats), udp4_sendret_lazy_kprobe,
+			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 4, 6, 7}},
+			tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 4, 6, 7}},
+
+			// base, inet_lazy_send_kp, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe
+			// udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 4, 6, 7, 8, 9, 10}},
+		}
+	} else if !kernels.MinKernelVersion("5.6.0") { // 5.4 - <5.6
+		sensorProgs = []tus.SensorProg{
+			0: tus.SensorProg{Name: "sk_allocret", Type: ebpf.Kprobe},
+			1: tus.SensorProg{Name: "sock_release_lazy", Type: ebpf.Kprobe},
+			2: tus.SensorProg{Name: "inet_lazy_send", Type: ebpf.CGroupSKB},
+			3: tus.SensorProg{Name: "inet_lazy_recv", Type: ebpf.CGroupSKB},
+			4: tus.SensorProg{Name: "udp4_send_lazy_kprobe", Type: ebpf.Kprobe},
+			5: tus.SensorProg{Name: "udp4_sendret_lazy_kprobe", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "udp6_send_lazy_kprobe", Type: ebpf.Kprobe},
+			7: tus.SensorProg{Name: "udp6_sendret_lazy_kprobe", Type: ebpf.Kprobe},
+			8: tus.SensorProg{Name: "udp_recv_lazy_kprobe", Type: ebpf.Kprobe},
+
+			// base sensor
+			9:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+			10: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+			11: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+		}
+		sensorMaps = []tus.SensorMap{
+			// base, sk_allocret, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8, 9, 10, 11}},
+
+			// base only
+			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{9, 10, 11}},
+
+			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
+			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7, 8}},
+
+			// inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
+			// udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_map_stats", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_bloom_map", Progs: []uint{2, 3, 5, 7, 8}},
+
+			// sk_allocret, sock_release_lazy, inet_lazy_send (not stats), inet_lazy_recv (not stats),
+			// udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 5, 7, 8}},
+
+			// base, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe
+			// udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8, 9, 10, 11}},
+		}
+	} else if !kernels.MinKernelVersion("5.10.0") { // 5.6 - <5.10
+		sensorProgs = []tus.SensorProg{
+			0: tus.SensorProg{Name: "sk_allocret_v56", Type: ebpf.Kprobe},
+			1: tus.SensorProg{Name: "sock_release_lazy_v56", Type: ebpf.Kprobe},
+			2: tus.SensorProg{Name: "inet_lazy_send", Type: ebpf.CGroupSKB},
+			3: tus.SensorProg{Name: "inet_lazy_recv", Type: ebpf.CGroupSKB},
+			4: tus.SensorProg{Name: "udp4_send_lazy_kprobe", Type: ebpf.Kprobe},
+			5: tus.SensorProg{Name: "udp4_sendret_lazy_kprobe", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "udp6_send_lazy_kprobe", Type: ebpf.Kprobe},
+			7: tus.SensorProg{Name: "udp6_sendret_lazy_kprobe", Type: ebpf.Kprobe},
+			8: tus.SensorProg{Name: "udp_recv_lazy_kprobe", Type: ebpf.Kprobe},
+
+			// base sensor
+			9:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+			10: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+			11: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+		}
+		sensorMaps = []tus.SensorMap{
+			// base, sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8, 9, 10, 11}},
+
+			// base only
+			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{9, 10, 11}},
+
+			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
+			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7, 8}},
+
+			// inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
+			// udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_map_stats", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_bloom_map", Progs: []uint{2, 3, 5, 7, 8}},
+
+			// sk_allocret, sock_release_lazy, inet_lazy_send (not stats), inet_lazy_recv (not stats),
+			// udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 5, 7, 8}},
+
+			// base, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe
+			// udp_recv_lazy_kprobe
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8, 9, 10, 11}},
+		}
+	} else { // 5.10+
 		sensorProgs = []tus.SensorProg{
 			0: tus.SensorProg{Name: "sock_create", Type: ebpf.CGroupSock},
 			1: tus.SensorProg{Name: "sock_release", Type: ebpf.Kprobe},
 			2: tus.SensorProg{Name: "inet_send", Type: ebpf.CGroupSKB},
 			3: tus.SensorProg{Name: "inet_recv", Type: ebpf.CGroupSKB},
-			4: tus.SensorProg{Name: "udp_recv_kprobe", Type: ebpf.Kprobe},
-			5: tus.SensorProg{Name: "udp4_send_kprobe", Type: ebpf.Kprobe},
-			6: tus.SensorProg{Name: "udp4_sendret_kprobe", Type: ebpf.Kprobe},
-			7: tus.SensorProg{Name: "udp6_send_kprobe", Type: ebpf.Kprobe},
-			8: tus.SensorProg{Name: "udp6_sendret_kprobe", Type: ebpf.Kprobe},
+			4: tus.SensorProg{Name: "udp4_send_kprobe", Type: ebpf.Kprobe},
+			5: tus.SensorProg{Name: "udp4_sendret_kprobe", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "udp6_send_kprobe", Type: ebpf.Kprobe},
+			7: tus.SensorProg{Name: "udp6_sendret_kprobe", Type: ebpf.Kprobe},
+			8: tus.SensorProg{Name: "udp_recv_kprobe", Type: ebpf.Kprobe},
 
 			// base sensor
 			9:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
@@ -672,7 +802,7 @@ func TestLoadUdpSensor(t *testing.T) {
 			// tus.SensorMap{Name: "socket_cookie_to_proc_map", Progs: []uint{ /* 0, 1, */ 2, 3, 4, 6, 8}},
 
 			// base, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 8, 9, 10, 11}},
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8, 9, 10, 11}},
 
 			// base only
 			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{9, 10, 11}},
@@ -683,19 +813,20 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe,
 			// udp_recv_kprobe
-			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 4, 6, 8}},
-			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3, 4, 6, 8}},
-			tus.SensorMap{Name: "udp_payload_map", Progs: []uint{2, 3, 4, 6, 8}},
-			tus.SensorMap{Name: "udp_payload_map_stats", Progs: []uint{2, 3, 4, 6, 8}},
-			tus.SensorMap{Name: "udp_payload_bloom_map", Progs: []uint{2, 3, 4, 6, 8}},
+			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_map", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_map_stats", Progs: []uint{2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "udp_payload_bloom_map", Progs: []uint{2, 3, 5, 7, 8}},
+
+			// sock_create, sock_release, inet_send, inet_recv, udp4_sendret_kprobe,
+			// udp6_sendret_kprobe, udp_recv_kprobe
+			tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
+			tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 2, 3, 5, 7, 8}},
 
 			// base, inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe
 			// udp_recv_kprobe
-			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 4, 6, 8, 9, 10, 11}},
-
-			// base, sock_create, udp4_sendret_kprobe, udp6_sendret_kprobe,
-			// udp_recv_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 8, 9, 10, 11}},
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8, 9, 10, 11}},
 		}
 	}
 
@@ -711,4 +842,254 @@ func TestLoadUdpSensor(t *testing.T) {
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensors.UnloadAll(tus.Conf().TetragonLib)
+}
+
+func TestConnectEvent6(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6unvlp 8081"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("-6u ::1 8081"))
+
+	clientStatsChecker := ec.NewProcessSockStatsChecker().
+		WithProcess(ncCliChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithDestinationIp(sm.Full("::1")).
+			WithDestinationPort(8081))
+
+	serverStatsChecker := ec.NewProcessSockStatsChecker().
+		WithProcess(ncSrvChecker).
+		WithParent(selfChecker).
+		WithSocket(ec.NewSockInfoChecker().
+			WithProtocol(tetragon.SocketProtocol_UDP).
+			WithSourceIp(sm.Full("::1")).
+			WithDestinationIp(sm.Full("::1")).
+			WithSourcePort(8081))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("::1")).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		clientStatsChecker,
+		serverStatsChecker,
+	)
+
+	// We need to check sockstats using a custom stateful checker since stats events can
+	// be split up and so checking the individual events won't work. We need to instead
+	// keep a cumulative count of the stats we have seen and compare them to expected
+	// totals.
+	var clientBytesSent uint64
+	var clientBytesSubmitted uint64
+	var clientSegsOut uint32
+	var clientSegsSubmitted uint32
+	var serverBytesReceived uint64
+	var serverSegsIn uint32
+	statsChecker := &ec.FnEventChecker{
+		NextCheckFn: func(event_ ec.Event, log *logrus.Logger) (bool, error) {
+			event, ok := event_.(*tetragon.ProcessSockStats)
+			if !ok {
+				return false, fmt.Errorf("event is not a sockstats event")
+			}
+
+			if event.Stats == nil {
+				return false, fmt.Errorf("event has no stats field")
+			}
+
+			if clientStatsChecker.Check(event) == nil {
+				clientBytesSent += event.Stats.BytesSent
+				clientBytesSubmitted += event.Stats.BytesSubmitted
+				clientSegsOut += event.Stats.SegsOut
+				clientSegsSubmitted += event.Stats.SegsSubmitted
+				return false, nil
+			}
+
+			if serverStatsChecker.Check(event) == nil {
+				serverBytesReceived += event.Stats.BytesReceived
+				serverSegsIn += event.Stats.SegsIn
+				return false, nil
+			}
+
+			return false, fmt.Errorf("sockstats event is neither from client nor server")
+		},
+		FinalCheckFn: func(event *logrus.Logger) error {
+			defer func() {
+				clientBytesSent = 0
+				clientBytesSubmitted = 0
+				clientSegsOut = 0
+				clientSegsSubmitted = 0
+				serverBytesReceived = 0
+				serverSegsIn = 0
+			}()
+
+			if clientBytesSent != 5 {
+				return fmt.Errorf("Unexecpected clientBytesSent, wanted 5, got %d", clientBytesSent)
+			}
+
+			if clientBytesSubmitted != 5 {
+				return fmt.Errorf("Unexecpected clientBytesSubmitted, wanted 5, got %d", clientBytesSubmitted)
+			}
+
+			if clientSegsOut != 1 {
+				return fmt.Errorf("Unexecpected clientSegsOut, wanted 1, got %d", clientSegsOut)
+			}
+
+			if clientSegsSubmitted != 1 {
+				return fmt.Errorf("Unexecpected clientSegsSubmitted, wanted 1, got %d", clientSegsSubmitted)
+			}
+
+			if serverBytesReceived != 5 {
+				return fmt.Errorf("Unexecpected serverBytesReceived, wanted 5, got %d", serverBytesReceived)
+			}
+
+			if serverSegsIn != 1 {
+				return fmt.Errorf("Unexecpected serverSegsIn, wanted 1, got %d", serverSegsIn)
+			}
+
+			return nil
+		},
+	}
+
+	obs := getBasicUdpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-6unvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	cmdClient := exec.Command(client, "-6u", "::1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, statsChecker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+}
+
+func TestConnectAfterStartEvent6(t *testing.T) {
+	// FIXME: something broke this test case, but since it was never merged upstream this went
+	// unnoticed... need to investigate
+	t.Skip("This test is consistently failing at the moment, need to figure out why and fix it up.")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6unvlp 8081"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("-6u ::1 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessExecChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8081).
+			WithDestinationIp(sm.Full("::1")).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		// Check client sock stats
+		ec.NewProcessSockStatsChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker).
+			WithSocket(ec.NewSockInfoChecker().
+				WithProtocol(tetragon.SocketProtocol_UDP).
+				WithDestinationIp(sm.Full("::1")).
+				WithDestinationPort(8081)).
+			WithStats(ec.NewSocketStatsChecker().
+				WithBytesSent(5).
+				WithBytesSubmitted(5).
+				WithSegsOut(1).
+				WithSegsSubmitted(1)),
+		// Check server sock stats
+		ec.NewProcessSockStatsChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithSocket(ec.NewSockInfoChecker().
+				WithProtocol(tetragon.SocketProtocol_UDP).
+				WithSourceIp(sm.Full("::1")).
+				WithDestinationIp(sm.Full("::1")).
+				WithSourcePort(8081)).
+			WithStats(ec.NewSocketStatsChecker().
+				WithBytesReceived(5).
+				WithSegsIn(1)),
+	)
+
+	cmdServer := exec.Command(server, "-6unvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	obs := getBasicUdpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdClient := exec.Command(client, "-6u", "::1", "8081")
+	stdin, err := cmdClient.StdinPipe()
+	assert.NoError(t, err)
+	assert.NoError(t, cmdClient.Start())
+	_, err = stdin.Write([]byte("hello"))
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
 }

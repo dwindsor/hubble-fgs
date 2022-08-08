@@ -112,7 +112,32 @@ func TestMain(m *testing.M) {
 	os.Exit(ec)
 }
 
-func TestConnectEvent(t *testing.T) {
+func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
+	if cmd != nil {
+		if cmd.Process != nil {
+			cmd.Process.Kill()
+		} else {
+			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
+		}
+		_ = cmd.Wait()
+	}
+}
+
+func getNCCommand(t *testing.T, orig string) string {
+	if _, err := exec.LookPath(orig); err == nil {
+		return orig
+	}
+
+	server := "nc.openbsd"
+	if _, err := exec.LookPath(server); err != nil {
+		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
+	}
+	t.Logf("Using %q instead of original program %q", server, orig)
+
+	return server
+}
+
+func TestConnectEvent4(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
@@ -155,29 +180,18 @@ func TestConnectEvent(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
-	if cmd != nil {
-		if cmd.Process != nil {
-			cmd.Process.Kill()
-		} else {
-			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
-		}
-		_ = cmd.Wait()
-	}
-}
-
-func TestExecEventClone(t *testing.T) {
+func TestExecEventClone4(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	orig := "nc.traditional"
+	orig := "nc.openbsd"
 	server := orig
 	client := server
 	if _, err := exec.LookPath(server); err != nil {
-		server = "nc"
+		server = "nc.openbsd"
 		client = server
 
 		if _, err := exec.LookPath(server); err != nil {
@@ -241,22 +255,8 @@ func TestExecEventClone(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 }
 
-func getNCCommand(t *testing.T, orig string) string {
-	if _, err := exec.LookPath(orig); err == nil {
-		return orig
-	}
-
-	server := "nc"
-	if _, err := exec.LookPath(server); err != nil {
-		t.Fatalf("Binary %q doesn't exist on host machine, cannot continue", server)
-	}
-	t.Logf("Using %q instead of original program %q", server, orig)
-
-	return server
-}
-
-func TestExistingListenEvent(t *testing.T) {
-	server := getNCCommand(t, "nc.traditional")
+func TestExistingListenEvent4(t *testing.T) {
+	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -294,14 +294,14 @@ func TestExistingListenEvent(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestExistingAcceptEvent(t *testing.T) {
+func TestExistingAcceptEvent4(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	server := getNCCommand(t, "nc.traditional")
+	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -354,8 +354,8 @@ func TestExistingAcceptEvent(t *testing.T) {
 	killAndWaitCommand(t, cmdClient)
 }
 
-func TestExistingRootCWDListenEvent(t *testing.T) {
-	server := getNCCommand(t, "nc.traditional")
+func TestExistingRootCWDListenEvent4(t *testing.T) {
+	server := getNCCommand(t, "nc.openbsd")
 
 	selfChecker := ec.NewProcessChecker().
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
@@ -399,14 +399,14 @@ func TestExistingRootCWDListenEvent(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestListenAcceptClose(t *testing.T) {
+func TestListenAcceptClose4(t *testing.T) {
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
 
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	server := getNCCommand(t, "nc.traditional")
+	server := getNCCommand(t, "nc.openbsd")
 	client := server
 
 	selfChecker := ec.NewProcessChecker().
@@ -465,17 +465,19 @@ func TestListenAcceptClose(t *testing.T) {
 	cmdClient := exec.Command(client, "127.0.0.1", "8081")
 	assert.NoError(t, cmdClient.Start())
 
-	err := jsonchecker.JsonTestCheck(t, checker)
-	assert.NoError(t, err)
+	time.Sleep(1000 * time.Millisecond)
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 
 	err = jsonchecker.JsonTestCheck(t, exitChecker)
 	assert.NoError(t, err)
 }
 
-func TestDockerExistingListenEvent(t *testing.T) {
+func TestDockerExistingListenEvent4(t *testing.T) {
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
@@ -488,7 +490,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 
 	/* Start server before creating obs */
 	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "0.0.0.0")
-	observer.WaitForProcess("nc -nvlp 8081 0.0.0.0")
+	observer.WaitForProcess("nc -nvlp 8081 -s 0.0.0.0")
 	time.Sleep(2 * time.Second)
 
 	/* Create obs */
@@ -530,7 +532,7 @@ func TestDockerExistingListenEvent(t *testing.T) {
 	assert.NoError(t, err)
 }
 
-func TestDockerListenConnect(t *testing.T) {
+func TestDockerListenConnect4(t *testing.T) {
 	if err := exec.Command("docker", "version").Run(); err != nil {
 		t.Skipf("docker not available. skipping test: %s", err)
 	}
@@ -973,4 +975,478 @@ func TestLoadTcpSensor(t *testing.T) {
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
 
 	sensors.UnloadAll(tus.Conf().TetragonLib)
+}
+
+func TestConnectEvent6(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	curlChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("[::1]"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full("::1")).
+			WithDestinationPort(80).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker().
+			WithProcess(curlChecker).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full("::1")).
+			WithDestinationPort(80).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("connect")),
+	)
+
+	obs := getBasicTcpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	observer.ExecWGCurl(&readyWG, 10, "[::1]")
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestExecEventClone6(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	orig := "nc.openbsd"
+	server := orig
+	client := server
+	if _, err := exec.LookPath(server); err != nil {
+		server = "nc.openbsd"
+		client = server
+
+		if _, err := exec.LookPath(server); err != nil {
+			t.Fatalf("Binary server=%q,client=%q doesn't exist on host machine, cannot continue",
+				server, client)
+		}
+
+		t.Logf("Using server=%v,client=%v instead of original programs (server=%v,client=%v)",
+			server, client, orig, orig)
+	}
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6nvlp 8081"))
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(client)).
+		WithArguments(sm.Full("-6 ::1 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncSrvChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessExecChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(ncCliChecker).
+			WithParent(selfChecker).
+			WithDestinationIp(sm.Full("::1")).
+			WithDestinationPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+	)
+
+	obs := getBasicTcpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-6nvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+	cmdClient := exec.Command(client, "-6", "::1", "8081")
+	assert.NoError(t, cmdClient.Start())
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+}
+
+func TestExistingListenEvent6(t *testing.T) {
+	server := getNCCommand(t, "nc.openbsd")
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6nvlp 8081 -s ::"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+	)
+
+	/* Start server before creating obs */
+	cmdServer := exec.Command(server, "-6nvlp", "8081", "-s", "::")
+	assert.NoError(t, cmdServer.Start())
+
+	time.Sleep(1000 * time.Millisecond)
+
+	/* Create obs */
+	getBasicTcpObserver(t, context.TODO())
+	killAndWaitCommand(t, cmdServer)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestExistingAcceptEvent6(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6nvlp 8081 -s ::"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessAcceptChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+	)
+
+	/* Start server before creating obs */
+	cmdServer := exec.Command(server, "-6nvlp", "8081", "-s", "::")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	/* Create obs */
+	obs := getBasicTcpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	time.Sleep(1000 * time.Millisecond)
+	cmdClient := exec.Command(client, "-6", "::1", "8081")
+	assert.NoError(t, cmdClient.Start())
+	time.Sleep(1000 * time.Millisecond)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+}
+
+func TestExistingRootCWDListenEvent6(t *testing.T) {
+	server := getNCCommand(t, "nc.openbsd")
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6nvlp 8081 -s ::")).
+		WithCwd(sm.Full("/"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+	)
+
+	path, err := os.Getwd()
+	if err != nil {
+		t.Fail()
+	}
+
+	/* Start server in '/' before creating observer */
+	os.Chdir("/")
+	cmdServer := exec.Command(server, "-6nvlp", "8081", "-s", "::")
+	assert.NoError(t, cmdServer.Start())
+	os.Chdir(path)
+
+	/* Create obs */
+	getBasicTcpObserver(t, context.TODO())
+	killAndWaitCommand(t, cmdServer)
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestListenAcceptClose6(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	server := getNCCommand(t, "nc.openbsd")
+	client := server
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(server)).
+		WithArguments(sm.Full("-6nvlp 8081"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessAcceptChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::1")).
+			WithSourcePort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSourceIp(sm.Full("::")).
+			WithSourcePort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("listen")),
+		// TODO: it would be good if we could also check the close event on
+		// the accept socket, but it goes into TIME_WAIT and then
+		// eventually close and I don't want to wait for it. So we need
+		// some go way to close the sockets.
+	)
+
+	exitChecker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExitChecker().
+			WithProcess(ncChecker).
+			WithParent(selfChecker).
+			WithSignal(sm.Full("SIGKILL")),
+	)
+
+	obs := getBasicTcpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	cmdServer := exec.Command(server, "-6nvlp", "8081")
+	assert.NoError(t, cmdServer.Start())
+	time.Sleep(1000 * time.Millisecond)
+	cmdClient := exec.Command(client, "-6", "::1", "8081")
+	assert.NoError(t, cmdClient.Start())
+
+	time.Sleep(1000 * time.Millisecond)
+
+	killAndWaitCommand(t, cmdServer)
+	killAndWaitCommand(t, cmdClient)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	err = jsonchecker.JsonTestCheck(t, exitChecker)
+	assert.NoError(t, err)
+}
+
+func TestDockerExistingListenEvent6(t *testing.T) {
+	if err := exec.Command("docker", "version").Run(); err != nil {
+		t.Skipf("docker not available. skipping test: %s", err)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	/* Start server before creating obs */
+	observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "[::]")
+	observer.WaitForProcess("nc -nvlp 8081 -s [::]")
+	time.Sleep(2 * time.Second)
+
+	/* Create obs */
+	obs := getBasicTcpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	// Ideally we would also verify the dockerID, but our current dockerID
+	// scanner from procFS does not match github actions docker env that
+	// does not prepend a 'docker' string to the cgroup name. For now
+	// drop the comparison and just ensure we get the events.
+	//fgsServerID := serverDockerID[:31]
+
+	// Current code reports binary behind symlink in proc case (binaries running
+	// before fgs starts), but in runtime event we report the name of the symlink.
+	// In this test the difference is busybox vs nc.
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("busybox")).
+		WithArguments(sm.Full("-nvlp 8081 -s [::]")).
+		WithCwd(sm.Full("/")).
+		WithUid(0)
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+	)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestDockerListenConnect6(t *testing.T) {
+	if err := exec.Command("docker", "version").Run(); err != nil {
+		t.Skipf("docker not available. skipping test: %s", err)
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	obs := getBasicTcpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+	serverDockerID := observer.DockerRun(t, "--name", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-nvlp", "8081", "-s", "[::]")
+	time.Sleep(1 * time.Second)
+	clientDockerID := observer.DockerRun(t, "--link", "fgs-test-server", "--entrypoint", "nc", "quay.io/cilium/alpine-curl:1.0", "-p", "9876", "fgs-test-server", "8081")
+
+	// FGS sends 31 bytes + \0 to user-space. Since it might have an arbitrary prefix,
+	// match only on the first 24 bytes.
+	fgsServerID := sm.Prefix(serverDockerID[:24])
+	fgsClientID := sm.Prefix(clientDockerID[:24])
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	ncSrvChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("/nc")).
+		WithArguments(sm.Full("-nvlp 8081 -s [::]")).
+		WithCwd(sm.Full("/")).
+		WithUid(0).
+		WithDocker(fgsServerID)
+
+	ncCliChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("/nc")).
+		WithArguments(sm.Full("-p 9876 fgs-test-server 8081")).
+		WithCwd(sm.Full("/")).
+		WithUid(0).
+		WithDocker(fgsClientID)
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(selfChecker).
+			WithParent(ec.NewProcessChecker()),
+		ec.NewProcessExecChecker().
+			WithProcess(ncSrvChecker),
+		ec.NewProcessListenChecker().
+			WithProcess(ncSrvChecker).
+			WithIp(sm.Full("::")).
+			WithPort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessExecChecker().
+			WithProcess(ncCliChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(ncCliChecker).
+			WithDestinationPort(8081).
+			WithSourcePort(9876).
+			WithProtocol(tetragon.SocketProtocol_TCP),
+		ec.NewProcessCloseChecker().
+			WithProcess(ncSrvChecker).
+			WithSourceIp(sm.Full("::")).
+			WithSourcePort(8081).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("listen")),
+		ec.NewProcessCloseChecker().
+			WithProcess(ncCliChecker).
+			WithDestinationPort(8081).
+			WithSourcePort(9876).
+			WithProtocol(tetragon.SocketProtocol_TCP).
+			WithSocketType(sm.Full("connect")),
+	)
+
+	time.Sleep(1 * time.Second)
+
+	err := jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 }
