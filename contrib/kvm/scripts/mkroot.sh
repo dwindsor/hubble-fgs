@@ -64,6 +64,9 @@ chrootconfig() {
 		EOF
 		apt-get -y update
 
+		# Install netcat-openbsd for IPv6 tests
+		apt-get -y install netcat-openbsd
+
 		# Install netcat-traditional
 		apt-get -y install netcat-traditional
 		update-alternatives --set nc /bin/nc.traditional
