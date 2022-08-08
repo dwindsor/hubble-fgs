@@ -393,7 +393,7 @@ udp_set_info(struct udp_info_value *value, struct sk_buff *skb)
 		}
 	}
 
-	if (hasctx && value->saddr[0] != 0)
+	if (hasctx && (value->saddr[0] != 0 || value->saddr[1] != 0))
 		return true;
 
 	return false;
