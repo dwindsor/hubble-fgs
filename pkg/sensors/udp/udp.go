@@ -148,16 +148,16 @@ var (
 	Udp6Send = program.Builder(
 		"bpf_udp_send_recv.o",
 		"udpv6_sendmsg",
-		"kprobe/udp_sendmsg",
-		"kprobe_udp_sendmsg",
+		"kprobe/udpv6_sendmsg",
+		"kprobe_udpv6_sendmsg",
 		"kprobe",
 	)
 
 	Udp6RetSend = program.Builder(
 		"bpf_udp_send_recv.o",
 		"udpv6_sendmsg",
-		"kretprobe/udp_sendmsg",
-		"kretprobe_udp_sendmsg",
+		"kretprobe/udpv6_sendmsg",
+		"kretprobe_udpv6_sendmsg",
 		"kprobe",
 	).SetRetProbe(true)
 
@@ -188,16 +188,16 @@ var (
 	Udp6SendLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
 		"udpv6_sendmsg",
-		"kprobe/udp_sendmsg",
-		"kprobe_udp_sendmsg",
+		"kprobe/udpv6_sendmsg",
+		"kprobe_udpv6_sendmsg",
 		"kprobe",
 	)
 
 	Udp6RetSendLazy = program.Builder(
 		"bpf_udp_send_recv_lazy.o",
 		"udpv6_sendmsg",
-		"kretprobe/udp_sendmsg",
-		"kretprobe_udp_sendmsg",
+		"kretprobe/udpv6_sendmsg",
+		"kretprobe_udpv6_sendmsg",
 		"kprobe",
 	).SetRetProbe(true)
 
