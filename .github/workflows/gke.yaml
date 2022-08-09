@@ -188,8 +188,6 @@ jobs:
         run: |
           sudo apt install libelf-dev
           cd hubble-fgs
-          sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
-          sudo -E ldconfig /usr/local/
           go mod verify
           go run tests/cmd/jobs.trace.go ../fgs.log =${{ steps.cleanup.outputs.kernel_version }}
 

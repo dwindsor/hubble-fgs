@@ -33,8 +33,6 @@ jobs:
           export PATH=${GOPATH}/bin:${PATH}
           sudo -E echo "copy build tools from images"
           cd /home/runner/work/hubble-fgs/hubble-fgs/go/src/github.com/isovalent/hubble-fgs
-          sudo -E make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
-          sudo -E ldconfig /usr/local/
           sudo sed -i '/secure_path/d' /etc/sudoers
           sudo sed -i '/env_reset/d' /etc/sudoers
           sudo make hubble-bpf
