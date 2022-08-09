@@ -4,7 +4,7 @@
 package eventcache
 
 import (
-	"fmt"
+	"errors"
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -19,14 +19,11 @@ import (
 	"github.com/cilium/tetragon/pkg/server"
 )
 
-// garbage collection states
 const (
-	threeStrikes = 3
-)
-
-// garbage collection run interval
-const (
-	eventRetryTimer = time.Second * 10
+	// garbage collection retries
+	CacheStrikes = 15
+	// garbage collection run interval
+	EventRetryTimer = time.Second * 2
 )
 
 var (
@@ -50,6 +47,11 @@ type Cache struct {
 	dur      time.Duration
 }
 
+var (
+	ErrFailedToGetPodInfo     = errors.New("failed to get pod info")
+	ErrFailedToGetProcessInfo = errors.New("failed to get process info")
+)
+
 func handleExecEvent(event *cacheObj, nspid uint32) error {
 	var podInfo *tetragon.Pod
 
@@ -62,9 +64,14 @@ func handleExecEvent(event *cacheObj, nspid uint32) error {
 		podInfo, _ = process.GetPodInfo(containerId, filename, args, nspid)
 		if podInfo == nil {
 			errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
-			return fmt.Errorf("failed to get pod info")
+			return ErrFailedToGetPodInfo
 		}
 	}
+
+	// We can assume that event.internal != nil here since it's being set by AddExecEvent
+	// earlier in the code path. If this invariant ever changes in the future, we probably
+	// want to panic anyway to help us catch the bug faster. So no need to do a nil check
+	// here.
 
 	event.internal.AddPodInfo(podInfo)
 	event.event.SetProcess(event.internal.GetProcessCopy())
@@ -82,16 +89,19 @@ func handleEvent(event *cacheObj) error {
 	if event.internal == nil {
 		event.internal, _ = process.GetParentProcessInternal(p.Pid.Value, event.timestamp)
 		if event.internal == nil {
-			return fmt.Errorf("Process lookup failed")
+			errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+			return ErrFailedToGetProcessInfo
 		}
 	}
 
+	event.event.SetProcess(event.internal.GetProcessCopy())
+
 	p = event.internal.UnsafeGetProcess()
 	if option.Config.EnableK8s && p.Pod == nil {
-		return fmt.Errorf("Process missing PodInfo")
+		errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
+		return ErrFailedToGetPodInfo
 	}
 
-	event.event.SetProcess(event.internal.GetProcessCopy())
 	return nil
 }
 
@@ -108,9 +118,14 @@ func (ec *Cache) handleEvents() {
 
 		if err != nil {
 			event.color++
-			if event.color < threeStrikes {
+			if event.color < CacheStrikes {
 				tmp = append(tmp, event)
 				continue
+			}
+			if errors.Is(err, ErrFailedToGetProcessInfo) {
+				eventcachemetrics.ProcessInfoError(notify.EventTypeString(event.event)).Inc()
+			} else if errors.Is(err, ErrFailedToGetPodInfo) {
+				eventcachemetrics.ProcessInfoError(notify.EventTypeString(event.event)).Inc()
 			}
 		}
 
@@ -132,7 +147,7 @@ func (ec *Cache) loop() {
 	for {
 		select {
 		case <-ticker.C:
-			/* Every 'eventRetryTimer' walk the slice of events pending pod info. If
+			/* Every 'EventRetryTimer' walk the slice of events pending pod info. If
 			 * an event hasn't completed its podInfo after two iterations send the
 			 * event anyways.
 			 */
@@ -201,7 +216,7 @@ func NewWithTimer(s *server.Server, dur time.Duration) *Cache {
 }
 
 func New(s *server.Server) *Cache {
-	return NewWithTimer(s, eventRetryTimer)
+	return NewWithTimer(s, EventRetryTimer)
 }
 
 func Get() *Cache {

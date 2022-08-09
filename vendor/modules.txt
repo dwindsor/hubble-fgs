@@ -146,6 +146,7 @@ github.com/cilium/tetragon/pkg/metrics/mapmetrics
 github.com/cilium/tetragon/pkg/metrics/opcodemetrics
 github.com/cilium/tetragon/pkg/metrics/processexecmetrics
 github.com/cilium/tetragon/pkg/metrics/ringbufmetrics
+github.com/cilium/tetragon/pkg/metrics/watchermetrics
 github.com/cilium/tetragon/pkg/mountinfo
 github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/option
