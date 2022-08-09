@@ -16,7 +16,7 @@ env:
   zone: us-west2-a
   vmName: fgs-ci-gotests-${{ github.run_id }}
   vmHost: fgs@fgs-ci-gotests-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci
+  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v5
 
 jobs:
   run-tests:
@@ -26,10 +26,10 @@ jobs:
       max-parallel: 1
       matrix:
         kernel:
-          - '5.15-lts'
-          - '5.10-lts'
-          - '5.4-lts'
-          - '4.19-lts'
+          - '5.15.47'
+          - '5.10.122'
+          - '5.4.198'
+          - '4.19.179'
     outputs:
       job_status: ${{ job.status }}
     steps:
@@ -151,7 +151,7 @@ jobs:
       - name: Copy over BTF info
         run: |
           # Copy over BTF file if one exists
-          BTF_FILE="/home/fgs/btf/${{ matrix.kernel }}"
+          BTF_FILE="/home/fgs/btf/vmlinux-${{ matrix.kernel }}"
           cat <<-EOF | ssh ${{ env.vmHost }}
             if [ -f "$BTF_FILE" ]; then
               echo "Copying over $BTF_FILE"

@@ -98,6 +98,10 @@ func getCurlPod(ctx context.Context, client klient.Client) (*corev1.Pod, error) 
 func TestHttp(t *testing.T) {
 	kversion := helpers.GetMinKernelVersion(t, testenv)
 
+	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
+		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
+	}
+
 	httpChecker := checker.NewRPCChecker(HttpChecker(kversion), "httpChecker").WithEventLimit(1000).WithTimeLimit(2 * time.Minute)
 	checkHttp := features.New("Check Http Events").
 		Assess("Run Event Checks", httpChecker.CheckInNamespace(30*time.Second, "curl")).

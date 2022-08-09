@@ -17,7 +17,7 @@ env:
   zone: us-west2-a
   vmName: fgs-ci-e2e-tests-${{ github.run_id }}
   vmHost: fgs@fgs-ci-e2e-tests-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci
+  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v5
 
 jobs:
   run-tests:
@@ -27,10 +27,10 @@ jobs:
       max-parallel: 1
       matrix:
         kernel:
-          - '5.15-lts'
-          - '5.10-lts'
-          - '5.4-lts'
-          - '4.19-lts'
+          - '5.15.47'
+          - '5.10.122'
+          - '5.4.198'
+          - '4.19.179'
     outputs:
       job_status: ${{ job.status }}
     steps:
@@ -149,26 +149,6 @@ jobs:
             # Verify we can login via the tunnel
             ssh -p 3000 root@localhost "uname -a"
 
-      - name: Copy over BTF info
-        run: |
-          # Copy over BTF file if one exists
-          BTF_FILE="/home/fgs/btf/${{ matrix.kernel }}"
-          cat <<-EOF | ssh ${{ env.vmHost }}
-            if [ -f "$BTF_FILE" ]; then
-              echo "Copying over $BTF_FILE"
-              ssh -p 3000 root@localhost "mkdir -p /fgs/bpf/objs"
-              scp -P 3000 "$BTF_FILE" root@localhost:/fgs/bpf/objs/btf
-            fi
-          EOF
-
-      - name: Wait for kube-system pods to be ready
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready pods --all --timeout=45s"
-
       - name: Attempt to pull the FGS image
         uses: nick-invision/retry@v2
         with:
@@ -180,70 +160,96 @@ jobs:
             docker pull ${{ steps.vars.outputs.agentImage }}
             docker pull ${{ steps.vars.outputs.operatorImage }}
 
-      - name: Preload FGS image
+      - name: Set up kind cluster
         run: |
           # Check if the image is already loaded and, if so, break out early
           if [[ "$(ssh -p 3000 root@localhost 'docker images -q ${{ steps.vars.outputs.agentImage }}')" != "" ]]; then
             exit 0
           fi
+
           docker save ${{ steps.vars.outputs.agentImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
           docker save ${{ steps.vars.outputs.operatorImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
 
-      - name: Install FGS
-        run: |
+          # Create kind cluster
           cat <<-EOF | ssh -p 3000 root@localhost
-            if [ -f "/fgs/bpf/objs/btf" ]; then
-              echo "Installing FGS with BTF info..."
-              /fgs/contrib/end-to-end/install-fgs.sh --image ${{ steps.vars.outputs.agentImage }} --operator ${{ steps.vars.outputs.operatorImage }} --btf /fgs/bpf/objs/btf
-            else
-              echo "Installing FGS without BTF info..."
-              /fgs/contrib/end-to-end/install-fgs.sh --image ${{ steps.vars.outputs.agentImage }} --operator ${{ steps.vars.outputs.operatorImage }}
-            fi
+            kind create cluster --name ${{ env.clusterName }}
+            kind --name ${{ env.clusterName }} load docker-image ${{ steps.vars.outputs.agentImage }}
+            kind --name ${{ env.clusterName }} load docker-image ${{ steps.vars.outputs.operatorImage }}
+            cilium install
           EOF
 
-      - name: Wait for FGS pods to become ready
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            cilium status --wait
-            ssh -p 3000 root@localhost "kubectl rollout status -n kube-system ds/hubble-enterprise --timeout=30s"
-
-      - name: Run HTTP and TLS tests
-        timeout-minutes: 15
+      - name: Build BTF image
+        if: ${{ matrix.kernel == '4.19.179' }}
         run: |
-          sleep 1m
-          ssh -p 3000 root@localhost "kubectl get pods -A"
-          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/http-tls.sh"
+          cat <<-EOF | ssh ${{ env.vmHost }}
+            set -x
+            cd /home/fgs/btf
+            docker build -t btf:latest -f - . <<-EOF2
+              FROM docker.io/library/busybox:1.34.1
 
-      - name: Run demo app tests
-        timeout-minutes: 15
+              WORKDIR /var/run/hubble-fgs/
+              COPY vmlinux-${{ matrix.kernel }} .
+          EOF2
+            docker save btf:latest | bzip2 | ssh -p 3000 root@localhost "docker load"
+          EOF
+
+          cat <<-EOF | ssh -p 3000 root@localhost
+            kind --name ${{ env.clusterName }} load docker-image btf:latest
+          EOF
+
+      - name: Run e2e tests
+        if: ${{ matrix.kernel == '4.19.179' }}
         run: |
-          ssh -p 3000 root@localhost "kubectl get pods -A"
-          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/demo-app.sh"
+          cat <<-EOF | ssh -p 3000 root@localhost
+            export PATH="$PATH:/usr/local/go/bin"
+            cd /fgs
+            go test -p 1 -parallel 1 -timeout 20m -failfast ./tests/e2e/tests/... \
+              -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
+              -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
+              -tetragon.helm.set enterprise.metadataImage.override="btf:latest" \
+              -tetragon.helm.set enterprise.metadataImage.imagePullPolicy="Never" \
+              -cluster-name ${{ env.clusterName }} \
+              -kubeconfig ~/.kube/config
+          EOF
 
-      - name: Copy out FGS logs
+      - name: Run e2e tests
+        if: ${{ matrix.kernel != '4.19.179' }}
+        run: |
+          cat <<-EOF | ssh -p 3000 root@localhost
+            export PATH="$PATH:/usr/local/go/bin"
+            cd /fgs
+            go test -p 1 -parallel 1 -timeout 20m -failfast ./tests/e2e/tests/... \
+              -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
+              -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
+              -tetragon.helm.set enterprise.btf="/sys/kernel/btf/vmlinux" \
+              -cluster-name ${{ env.clusterName }} \
+              -kubeconfig ~/.kube/config
+          EOF
+
+      - name: Dump cluster info
         if: ${{ failure() || cancelled() }}
-        timeout-minutes: 15
         run: |
-          # Dump the end-to-end logs
-          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/dump-fgs-logs.sh" || true
+          cat <<-EOF | ssh -p 3000 root@localhost
+            echo "pods in the cluster -------------------------------------------------"
+            kubectl get pods -A || true
 
-          # Make output dirs for logs
-          mkdir -p logs/end-to-end
+            echo "enterprise-init -----------------------------------------------------"
+            kubectl logs ds/hubble-enterprise -n kube-system -c enterprise-init || true
+            echo "enterprise-init (previous) ------------------------------------------"
+            kubectl logs ds/hubble-enterprise -n kube-system -c enterprise-init -p || true
 
-          # Copy logs over
-          scp -P 3000 'root@localhost:/fgs/contrib/end-to-end/logs/*' logs/end-to-end || true
+            echo "enterprise-operator -------------------------------------------------"
+            kubectl logs ds/hubble-enterprise -n kube-system -c enterprise-operator || true
+            echo "enterprise-operator (previous) --------------------------------------"
+            kubectl logs ds/hubble-enterprise -n kube-system -c enterprise-operator -p || true
+          EOF
 
-      # This step is necessary since kube-system pods won't ever become ready on 4.19 if
-      # BTF info isn't available, meaning we would get stuck on the "Wait for kube-system
-      # pods to be ready" step otherwise.
-      - name: Remove FGS
-        timeout-minutes: 5
+      - name: Copy out e2e test logs
+        if: ${{ failure() || cancelled() }}
         run: |
-          ssh -p 3000 root@localhost "helm uninstall hubble-enterprise --namespace kube-system"
-          ssh -p 3000 root@localhost "rm -f /fgs/bpf/objs/btf"
+          rm -rf logs/e2e
+          mkdir -p logs/e2e
+          scp -r -P 3000 'root@localhost:/tmp/tetragon.e2e.*' logs/e2e/
 
       - name: Shut off KVM
         timeout-minutes: 5
@@ -256,7 +262,7 @@ jobs:
         uses: actions/upload-artifact@v2
         with:
           name: fgs-end-to-end-tests-${{ matrix.kernel }}
-          path: logs/end-to-end
+          path: logs/e2e
           retention-days: 5
 
   cleanup:
