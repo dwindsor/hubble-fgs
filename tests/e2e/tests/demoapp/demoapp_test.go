@@ -87,12 +87,7 @@ func TestMain(m *testing.M) {
 	testenv = runners.NewRunner().Setup()
 
 	testenv.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, _ = helpers.UnloadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		ctx, err := helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
-		if err != nil {
-			return ctx, fmt.Errorf("failed to load tracing policy: %w", err)
-		}
-
+		ctx, _ = helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
 		return ctx, nil
 	})
 
@@ -103,11 +98,6 @@ func TestMain(m *testing.M) {
 			return ctx, fmt.Errorf("failed to create demo app namespace: %w", err)
 		}
 
-		return ctx, nil
-	})
-
-	testenv.Finish(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
-		ctx, _ = helpers.UnloadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
 		return ctx, nil
 	})
 
