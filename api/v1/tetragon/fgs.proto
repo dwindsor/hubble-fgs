@@ -145,13 +145,6 @@ message ProcessIpError {
     string details = 8;
 }
 
-//message ProcessExec {
- //   tetragon.Process process = 1;
-  //  tetragon.Process parent = 2;
-    // Ancestors of the process beyond the immediate parent.
-   // repeated tetragon.Process ancestors = 3;
-//}
-
 enum FileAction {
     FILE_INVALID = 0;
     FILE_WRITE = 1;

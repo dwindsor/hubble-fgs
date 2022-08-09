@@ -16,6 +16,8 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/nscache"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
+	"google.golang.org/protobuf/proto"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -38,9 +40,30 @@ func (msg *MsgExecveEventUnix) getCleanupEvent() *MsgProcessCleanupEventUnix {
 	}
 }
 
+// getAncestors builds an ancestor list by traversing the parent exec IDs.
+func getAncestors(proc *tetragon.Process) []*process.ProcessInternal {
+	var ancestors []*process.ProcessInternal
+	parentExecID := proc.ParentExecId
+	for {
+		entry, err := process.Get(parentExecID)
+		if err != nil {
+			logger.GetLogger().WithField("id in event", parentExecID).Debug("parent not found in cache")
+			break
+		}
+		p := entry.UnsafeGetProcess()
+		if p.Pid.Value == 0 {
+			break
+		}
+		ancestors = append(ancestors, entry)
+		parentExecID = p.ParentExecId
+	}
+	return ancestors
+}
+
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.
 func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 	var fgsParent *tetragon.Process
+	var fgsAncestors []*tetragon.Process
 
 	proc := process.AddExecEvent(&event.MsgExecveEventUnix)
 	fgsProcess := proc.UnsafeGetProcess()
@@ -57,9 +80,29 @@ func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 		logger.GetLogger().WithError(err).WithField("processId", fgsProcess.ExecId).WithField("parentId", parentId).Debugf("Failed to annotate process with capabilities and namespaces info")
 	}
 
+	// Populate fgsAncestors by walking backwards through the parentId links. Some small
+	// optimization to push Pod info up if its missing.
+	if enterpriseOption.Config.EnableProcessAncestors && fgsParent != nil {
+		for _, a := range getAncestors(fgsParent) {
+			// If we have a docker link, but the pod info lookup
+			// failed then this is a nested docker environment. In
+			// this case inherit the pod-info from our ancestors.
+			if option.Config.EnableK8s &&
+				fgsProcess.Docker != "" &&
+				fgsProcess.Pod == nil &&
+				a.UnsafeGetProcess().Pod != nil {
+				pod := proto.Clone(a.UnsafeGetProcess().Pod).(*tetragon.Pod)
+				proc.AddPodInfo(pod)
+				fgsProcess = proc.UnsafeGetProcess()
+			}
+			fgsAncestors = append(fgsAncestors, a.UnsafeGetProcess())
+		}
+	}
+
 	fgsEvent := &tetragon.ProcessExec{
-		Process: fgsProcess,
-		Parent:  fgsParent,
+		Process:   fgsProcess,
+		Parent:    fgsParent,
+		Ancestors: fgsAncestors,
 	}
 
 	if ec := eventcache.Get(); ec != nil &&
@@ -131,6 +174,17 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 		}
 		parent.RefInc()
 		ev.SetParent(parent.GetProcessCopy())
+
+		// setup ancestors, we missed parent in the original event so now we can do that
+		if e, ok := ev.(*tetragon.ProcessExec); ok {
+			var fgsAncestors []*tetragon.Process
+			if enterpriseOption.Config.EnableProcessAncestors && parent != nil {
+				for _, a := range getAncestors(parent.UnsafeGetProcess()) {
+					fgsAncestors = append(fgsAncestors, a.UnsafeGetProcess())
+				}
+			}
+			e.Ancestors = fgsAncestors
+		}
 	}
 
 	// do we need to cleanup anything?
