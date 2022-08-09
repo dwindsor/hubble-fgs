@@ -26,17 +26,21 @@ import (
 	"syscall"
 	"testing"
 
+	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
+
+	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
 var (
@@ -598,4 +602,73 @@ func TestFileCreate(t *testing.T) {
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+}
+
+func TestLoadFileSensor(t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	test_path := filepath.Join(workingDir, "fim_test_dir")
+	specFname := createSpecFile(t, test_path)
+
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+	}
+
+	sensorProgs := []tus.SensorProg{
+		0: tus.SensorProg{Name: "event_vfs_fallocate", Type: ebpf.Kprobe},
+		1: tus.SensorProg{Name: "event_filemap_fault", Type: ebpf.Kprobe},
+		2: tus.SensorProg{Name: "event_filemap_map_pages", Type: ebpf.Kprobe},
+		3: tus.SensorProg{Name: "event_filemap_page_mkwrite", Type: ebpf.Kprobe},
+		4: tus.SensorProg{Name: "event_rw_verify_area", Type: ebpf.Kprobe},
+		5: tus.SensorProg{Name: "event_security_path_unlink", Type: ebpf.Kprobe},
+		6: tus.SensorProg{Name: "event_do_dentry_open", Type: ebpf.Kprobe},
+
+		// base sensor
+		7: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+		8: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+		9: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+	}
+
+	sensorMaps := []tus.SensorMap{
+		// all programs
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+
+		// all but base
+		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
+
+		// separate maps
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{0}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{1}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{2}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{3}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{4}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{5}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
+
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{0}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{1}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{2}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{3}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{4}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{5}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{6}},
+
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{0}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{1}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{2}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{3}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{4}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{5}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{6}},
+	}
+
+	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+
+	sensors.UnloadAll(tus.Conf().TetragonLib)
+
 }
