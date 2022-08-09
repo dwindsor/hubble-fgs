@@ -32,6 +32,8 @@ func GetProcessExec(proc *process.ProcessInternal) *tetragon.ProcessExec {
 	parent, err := process.Get(parentId)
 	if err != nil {
 		logger.GetLogger().WithField("processId", processId).WithField("parentId", parentId).Infof("Process missing parent")
+	} else {
+		parent.RefInc()
 	}
 
 	// Set the cap field only if --enable-process-cred flag is set.
