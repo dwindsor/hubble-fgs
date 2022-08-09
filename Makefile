@@ -3,15 +3,14 @@ INSTALL = $(QUIET)install
 BINDIR ?= /usr/local/bin
 CONTAINER_ENGINE ?= docker
 DOCKER_IMAGE_TAG ?= latest
-LOCAL_CLANG ?= 1
+LOCAL_CLANG ?= 0
 LOCAL_CLANG_FORMAT ?= 0
 FORMAT_FIND_FLAGS ?= -name '*.c' -o -name '*.h' -not -path 'bpf/include/vmlinux.h' -not -path 'bpf/include/api.h' -not -path 'bpf/libbpf/*'
 NOOPT ?= 0
-CLANG_IMAGE  = quay.io/isovalent/hubble-llvm:2020-12-29-45f6aa2
+CLANG_IMAGE = quay.io/cilium/clang:7ea8dd5b610a8864ce7b56e10ffeb61030a0c50e@sha256:02ad7cc1d08d85c027557099b88856945be5124b5c31aeabce326e7983e3913b
 METADATA_IMAGE = quay.io/isovalent/hubble-enterprise-metadata
 
 LIBBPF_INSTALL_DIR ?= ./lib
-CLANG_INSTALL_DIR  ?= ./bin
 VERSION=$(shell git describe --tags --always)
 GO_GCFLAGS ?= ""
 GO_LDFLAGS="-X 'github.com/isovalent/hubble-fgs/pkg/version.Version=$(VERSION)'"
@@ -97,9 +96,9 @@ hubble-bpf-verify: hubble-bpf
 	sudo contrib/vmtest/fgs-verify-programs bpf/objs
 
 hubble-bpf-container:
-	docker rm hubble-llvm || true
-	docker run -v $(CURDIR):/hubble-fgs -u $$(id -u)  --name hubble-llvm $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf
-	docker rm hubble-llvm
+	$(CONTAINER_ENGINE) rm hubble-clang || true
+	$(CONTAINER_ENGINE) run -v $(CURDIR):/hubble-fgs -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf
+	$(CONTAINER_ENGINE) rm hubble-clang
 
 hubble-fgs:
 	$(GO) build -tags enterprise -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
@@ -195,7 +194,7 @@ update-copyright:
 lint:
 	golint -set_exit_status $$(go list ./...)
 
-image:
+image: image-clang
 	$(CONTAINER_ENGINE) build -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
@@ -205,7 +204,7 @@ image-operator:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-enterprise-operator:$(DOCKER_IMAGE_TAG)"
 
-image-test:
+image-test: image-clang
 	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
@@ -215,21 +214,11 @@ image-codegen:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/tetragon-codegen:$(DOCKER_IMAGE_TAG)"
 
-.PHONY: tools-install tools-clean clang-install
-tools-install: clang-install
-	make -C $(OSS_DIR) tools-install
-
-tools-clean:
-	rm -rf $(LIBBPF_INSTALL_DIR)
-	rm -rf $(CLANG_INSTALL_DIR)
-	make -C $(OSS_DIR) tools-clean
-
-clang-install:
-	$(eval id=$(shell docker create $(CLANG_IMAGE)))
-	mkdir -p $(CLANG_INSTALL_DIR)
-	docker cp ${id}:/usr/local/bin/clang-11 $(CLANG_INSTALL_DIR)/clang
-	docker cp ${id}:/usr/local/bin/llc $(CLANG_INSTALL_DIR)/llc
-	docker stop ${id}
+.PHONY: image-clang
+image-clang:
+	$(CONTAINER_ENGINE) build -f Dockerfile.clang -t "cilium/clang:${DOCKER_IMAGE_TAG}" .
+	$(QUIET)echo "Push like this when ready:"
+	$(QUIET)echo "${CONTAINER_ENGINE} push cilium/clang:$(DOCKER_IMAGE_TAG)"
 
 fetch-testdata:
 	docker stop fgs-md-temp || true

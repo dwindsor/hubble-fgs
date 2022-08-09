@@ -1,9 +1,9 @@
-FROM quay.io/isovalent/hubble-llvm:2022-01-03-a6dfdaf as bpf-builder
+FROM quay.io/cilium/clang:7ea8dd5b610a8864ce7b56e10ffeb61030a0c50e@sha256:02ad7cc1d08d85c027557099b88856945be5124b5c31aeabce326e7983e3913b as bpf-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 RUN apt-get update
 RUN apt-get install -y linux-libc-dev
 COPY . ./
-RUN make hubble-bpf
+RUN make hubble-bpf LOCAL_CLANG=1
 
 FROM quay.io/cilium/cilium-builder:b7a9dcdcadd77d38db87bbd06b9bc238e9dab5a0@sha256:eecc017a6ccf0c7884f1ffcf10e58462a272f5e41c0ece09adb351e8839e3157 as hubble-builder
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
