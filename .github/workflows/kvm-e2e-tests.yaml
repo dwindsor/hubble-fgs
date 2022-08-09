@@ -207,11 +207,13 @@ jobs:
           timeout_minutes: 1
           max_attempts: 10
           command: |
+            cilium status --wait
             ssh -p 3000 root@localhost "kubectl rollout status -n kube-system ds/hubble-enterprise --timeout=30s"
 
       - name: Run HTTP and TLS tests
         timeout-minutes: 15
         run: |
+          sleep 1m
           ssh -p 3000 root@localhost "kubectl get pods -A"
           ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/http-tls.sh"
 
