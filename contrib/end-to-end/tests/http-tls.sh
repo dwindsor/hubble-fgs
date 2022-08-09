@@ -47,13 +47,13 @@ fi
 echo "Checking HTTP events..." 1>&2
 go run ./cmd/checkerpc check crds/eventchecker/tests/http.yaml --events 20000 ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-http.log &
 HTTP_CHECKER_PID=$!
-sleep 30
+sleep 1m
 kubectl exec -n curl deployment/curl -- curl -4 http://google.com -m 30
 wait $HTTP_CHECKER_PID
 
 echo "Checking TLS events..." 1>&2
 go run ./cmd/checkerpc check crds/eventchecker/tests/tls.yaml --events 20000 ${SERVER_ARGS[@]} --kernel "$KERNEL_VERSION" 2>&1 | tee $SCRIPTDIR/logs/checker-tls.log &
 TLS_CHECKER_PID=$!
-sleep 30
+sleep 1m
 kubectl exec -n curl deployment/curl -- curl -4 https://google.com -m 30
 wait $TLS_CHECKER_PID
