@@ -22,11 +22,13 @@ import (
 	"sync"
 	"testing"
 
+	"github.com/cilium/ebpf"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/cilium/tetragon/pkg/sensors"
 
 	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -39,6 +41,8 @@ import (
 	"github.com/stretchr/testify/assert"
 	"golang.org/x/net/http2"
 	"golang.org/x/net/http2/h2c"
+
+	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
 
 const (
@@ -218,4 +222,67 @@ func TestHttp20CurlPriorKnowledge(t *testing.T) {
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
+}
+
+func TestLoadHttpSensor(t *testing.T) {
+	if v := "5.8.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	if err := observer.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	if err := observer.WriteConfigFile(testConfigFile, httpConfig(80)); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+
+	sensorProgs := []tus.SensorProg{
+		0:  tus.SensorProg{Name: "bpf_http_sk_msg_fgs", Type: ebpf.SkMsg},
+		1:  tus.SensorProg{Name: "event_tcp4_connect", Type: ebpf.Kprobe},
+		2:  tus.SensorProg{Name: "event_tcp4_close", Type: ebpf.Kprobe},
+		3:  tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
+		4:  tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
+		5:  tus.SensorProg{Name: "bpf_http_sk_msg_fgs_response", Type: ebpf.SkMsg},
+		6:  tus.SensorProg{Name: "bpf_http_sk_msg_fgs_request", Type: ebpf.SkMsg},
+		7:  tus.SensorProg{Name: "bpf_http_sk_msg_get_more_headers", Type: ebpf.SkMsg},
+		8:  tus.SensorProg{Name: "bpf_skmsg_http2", Type: ebpf.SkMsg},
+		9:  tus.SensorProg{Name: "bpf_skskb_http_response", Type: ebpf.SkSKB},
+		10: tus.SensorProg{Name: "bpf_skskb_http_request", Type: ebpf.SkSKB},
+		11: tus.SensorProg{Name: "bpf_skskb_get_more_headers", Type: ebpf.SkSKB},
+		12: tus.SensorProg{Name: "bpf_skskb_http2", Type: ebpf.SkSKB},
+		13: tus.SensorProg{Name: "bpf_skskb_http_verdict", Type: ebpf.SkSKB},
+		14: tus.SensorProg{Name: "bpf_sockmap", Type: ebpf.SockOps},
+
+		// base sensor
+		15: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+		16: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+		17: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+	}
+
+	sensorMaps := []tus.SensorMap{
+		// base, event_tcp4_connect, event_sys_listen, event_tcp_v4_send_check
+		tus.SensorMap{Name: "execve_map", Progs: []uint{1, 3, 4, 15, 16, 17}},
+		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{1, 3, 4, 15, 16, 17}},
+
+		// all but base and bpf_sockmap
+		tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13}},
+
+		// event_tcp4_connect, event_tcp4_close, event_sys_listen
+		tus.SensorMap{Name: "socket_map_stats", Progs: []uint{1, 2, 3}},
+
+		// all but bpf_sockmap
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17}},
+	}
+
+	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+
+	sensors.UnloadAll(tus.Conf().TetragonLib)
 }
