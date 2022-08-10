@@ -114,25 +114,54 @@ The VM image comes with all the tools required to build FGS, run FGS locally, ru
 tests, install FGS into a KinD-based k8s cluster, and run end-to-end tests. You can consult
 [contrib/kvm/README.md](contrib/kvm/README.md) for more information.
 
-### Running and Testing FGS Locally Using KinD
+### Running FGS Locally in KinD
 
-The scripts in `contrib/end-to-end` can be used to run and test FGS locally in a KinD
+The scripts in `contrib/kind` can be used to run and test FGS locally in a KinD
 cluster.
 
 First, ensure that you have an up-to-date version of [Docker][docker] and [KinD][kind].
 
 Once you have installed the necessary tooling, you can bootstrap a cluster for testing
-with `contrib/end-to-end/bootstrap-cluster.sh`.
+with `contrib/kind/bootstrap-cluster.sh`.
 
 After bootstrapping the cluster, you can install the latest FGS from source by running
-`contrib/end-to-end/install-fgs.sh`.
+`contrib/kind/install-fgs.sh`.
 
-Finally, run the respective test case script located in `contrib/end-to-end/tests` (for
-example, `contrib/end-to-end/tests/demo-app.sh`).
+Finally, run the respective test case script located in `contrib/kind/tests` (for
+example, `contrib/kind/tests/demo-app.sh`).
 
 In case you need to test under a different kernel, you can use the `contrib/kvm` scripts
 to bootstrap a minimal environment for running FGS in a KinD cluster (see the [previous
 section](#running-fgs-in-kvm) for details).
+
+### Testing FGS Locally Using the e2e Framework
+
+We run FGS end-to-end tests using our e2e framework package, which is defined in
+[`tests/e2e`](./tests/e2e/). The easiest way to run end-to-end tests is using a local KinD
+cluster. First, ensure that you have an up-to-date version of [Docker][docker] and
+[KinD][kind]. With the necessary tooling installed, you can simply run `make e2e-test` to
+compile and run the e2e tests. The e2e framework will automatically bootstrap a KinD
+cluster for each test, installing a local development version of FGS alongside the latest
+Cilium.
+
+Should you wish to use an alternative cluster instead of bootstrapping a local KinD
+cluster, you can pass a kubeconfig like so: `make e2e-test
+EXTRA_TESTFLAGS="-kubeconfig=~/.kube/config"`.
+
+More complex test commands can be run manually by targeting the appropriate test(s) in
+`tests/e2e/tests`. You can generate a skeleton command for running tests by running `make
+-n e2e-test` and copying the output. An example command might look something like the
+following:
+
+```
+go test -p 1 -parallel 1  -gcflags="" -timeout 20m -failfast ./tests/e2e/tests/... -fail-fast \
+  -tetragon.helm.set enterprise.image.override="isovalent/hubble-fgs:latest" \
+  -tetragon.helm.set hubbleEnterpriseOperator.image.override="isovalent/hubble-enterprise-operator:latest"
+```
+
+In case you want to write a new e2e test using the framework, we have provided a skeleton
+file you can use as the basis for your new test, which contains some in-line documentation
+in the comments. See [`tests/e2e/tests/skeleton`](./tests/e2e/tests/skeleton).
 
 [docker]: https://docs.docker.com/engine/install/
 [kind]: https://kind.sigs.k8s.io/docs/user/quick-start/
