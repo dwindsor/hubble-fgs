@@ -5,12 +5,13 @@ on:
     - cron:  '0 3 * * *'
 
 env:
-  fgsImage: quay.io/${{ github.repository_owner }}/hubble-enterprise:latest
-  clusterName: fgs-cli-ci
+  agentImage: quay.io/${{ github.repository_owner }}/hubble-enterprise:latest
+  operatorImage: quay.io/${{ github.repository_owner }}/hubble-enterprise-operator:latest
+  clusterName: tetragon-ci
   zone: us-west2-a
   vmName: fgs-ci-nightly-${{ github.run_id }}
   vmHost: fgs@fgs-ci-nightly-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci
+  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v5
 
 jobs:
   nightly-tests:
@@ -120,6 +121,21 @@ jobs:
             # Verify we can login via the tunnel
             ssh -p 3000 root@localhost "uname -a"
 
+      - name: Install liburing and libaio
+        run: |
+          cat <<-EOF | ssh -p 3000 root@localhost
+            set -e
+
+            apt install libaio-dev -y
+
+            rm -rf liburing
+            git clone https://github.com/axboe/liburing.git
+            cd liburing
+            ./configure
+            make
+            sudo make install
+          EOF
+
       - name: Run unit tests
         timeout-minutes: 30
         run: |
@@ -132,65 +148,66 @@ jobs:
             make  hubble-bpf tester-progs test
           EOF
 
-      - name: Wait for kube-system pods to be ready
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            ssh -p 3000 root@localhost "kubectl wait -n kube-system --for=condition=Ready pods --all --timeout=45s"
-
-      - name: Install FGS
-        run: |
-          docker pull ${{ env.fgsImage }}
-          docker save ${{ env.fgsImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
-          cat <<-EOF | ssh -p 3000 root@localhost
-            set -xeu
-            kind load docker-image ${{ env.fgsImage }} --name ${{ env.clusterName }}
-            helm repo add isovalent https://helm.isovalent.com
-            helm repo update
-            helm install hubble-enterprise isovalent/hubble-enterprise \
-                   --version 9999.9999.9999-dev \
-                   --set enterprise.image.repository=quay.io/isovalent/hubble-enterprise \
-                   --set enterprise.image.tag=latest \
-                   --set enterprise.exportAllowList="" \
-                   --namespace kube-system
-          EOF
-
-      - name: Wait for FGS pods to become ready
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            ssh -p 3000 root@localhost "kubectl rollout status -n kube-system ds/hubble-enterprise --timeout=30s"
-
-      - name: Run HTTP and TLS tests
-        timeout-minutes: 15
-        run: |
-           ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/http-tls.sh"
-
-      - name: Run demo app tests
-        timeout-minutes: 15
-        run: |
-          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/tests/demo-app.sh"
-
       - name: Copy out FGS logs
         if: ${{ failure() }}
         timeout-minutes: 15
         run: |
-          # Dump the end-to-end logs
-          ssh -p 3000 root@localhost "/fgs/contrib/end-to-end/dump-fgs-logs.sh" || true
-
           # Make output dirs for logs
           mkdir -p logs/unit-tests
-          mkdir -p logs/end-to-end
 
           # Copy logs over
-          scp -P 3000 'root@localhost:/fgs/contrib/end-to-end/logs/*' logs/end-to-end || true
           scp -P 3000 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
           scp -P 3000 'root@localhost:/tmp/*.json' logs/unit-tests || true
           scp -P 3000 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
+
+      - name: Attempt to pull the FGS image
+        uses: nick-invision/retry@v2
+        with:
+          timeout_minutes: 2
+          max_attempts: 30
+          retry_wait_seconds: 30
+          command: |
+            set -e
+            docker pull ${{ env.agentImage }}
+            docker pull ${{ env.operatorImage }}
+
+      - name: Set up kind cluster
+        run: |
+          # Check if the image is already loaded and, if so, break out early
+          if [[ "$(ssh -p 3000 root@localhost 'docker images -q ${{ env.agentImage }}')" != "" ]]; then
+            exit 0
+          fi
+
+          docker save ${{ env.agentImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
+          docker save ${{ env.operatorImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
+
+          # Create kind cluster
+          cat <<-EOF | ssh -p 3000 root@localhost
+            kind create cluster --name ${{ env.clusterName }}
+            kind --name ${{ env.clusterName }} load docker-image ${{ env.agentImage }}
+            kind --name ${{ env.clusterName }} load docker-image ${{ env.operatorImage }}
+            cilium install
+          EOF
+
+      - name: Run e2e tests
+        run: |
+          cat <<-EOF | ssh -p 3000 root@localhost
+            export PATH="$PATH:/usr/local/go/bin"
+            cd /fgs
+            go test -p 1 -parallel 1 -timeout 20m -failfast ./tests/e2e/tests/... \
+              -tetragon.helm.set enterprise.image.override=${{ env.agentImage }} \
+              -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ env.operatorImage }} \
+              -tetragon.helm.set enterprise.btf="/sys/kernel/btf/vmlinux" \
+              -cluster-name ${{ env.clusterName }} \
+              -kubeconfig ~/.kube/config
+          EOF
+
+      - name: Copy out e2e test logs
+        if: ${{ failure() }}
+        run: |
+          rm -rf logs/e2e
+          mkdir -p logs/e2e
+          scp -r -P 3000 'root@localhost:/tmp/tetragon.e2e.*' logs/e2e/
 
       - name: Shut off KVM
         timeout-minutes: 5
@@ -198,20 +215,20 @@ jobs:
           ssh ${{ env.vmHost }} "hubble-fgs/contrib/kvm/stop.sh"
           sleep 10
 
-      - name: Upload bugtool dumps
+      - name: Upload unit test artifacts
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-          name: bugtool-dumps-${{ matrix.kernel }}
-          path: logs/fgs-bugtool*.tar.gz
+          name: unit-test-artifacts
+          path: logs/unit-tests
           retention-days: 5
 
-      - name: Upload FGS artifacts
+      - name: Upload e2e artifacts
         if: ${{ failure() }}
         uses: actions/upload-artifact@v2
         with:
-          name: fgs-logs-${{ matrix.kernel }}
-          path: logs/*.json
+          name: e2e-artifacts
+          path: logs/e2e
           retention-days: 5
 
       - name: Destroy VM
