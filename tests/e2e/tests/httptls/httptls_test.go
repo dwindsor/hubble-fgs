@@ -140,6 +140,10 @@ func TestHttp(t *testing.T) {
 func TestTls(t *testing.T) {
 	kversion := helpers.GetMinKernelVersion(t, testenv)
 
+	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
+		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
+	}
+
 	tlsChecker := checker.NewRPCChecker(TlsChecker(kversion), "tlsChecker").WithEventLimit(1000).WithTimeLimit(2 * time.Minute)
 	checkTls := features.New("Check Tls Events").
 		Assess("Run Event Checks", tlsChecker.CheckInNamespace(30*time.Second, "curl")).
@@ -278,18 +282,10 @@ func HttpChecker(kernelVersion string) ec.MultiEventChecker {
 		ec.NewProcessExecChecker().
 			WithProcess(curlChecker).
 			WithParent(shellChecker),
+		ec.NewProcessHttpChecker().
+			WithProcess(curlChecker).
+			WithHttp(httpEventChecker),
 	)
-
-	// It's still worth running the other checks here even if HTTP is not supported
-	if kernels.KernelStringToNumeric(kernelVersion) < kernels.KernelStringToNumeric("5.10.0") {
-		klog.Info("HTTP events need kernel >= 5.10, skipping HTTP checks")
-	} else {
-		httpChecker.AddChecks(
-			ec.NewProcessHttpChecker().
-				WithProcess(curlChecker).
-				WithHttp(httpEventChecker),
-		)
-	}
 
 	return httpChecker
 }
