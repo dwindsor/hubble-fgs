@@ -167,3 +167,7 @@ func (msg *MsgTLSEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 	return res
 }
+
+func (msg *MsgTLSEventUnix) Cast(o interface{}) notify.Message {
+	return &MsgTLSEventUnix{}
+}

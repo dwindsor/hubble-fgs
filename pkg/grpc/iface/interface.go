@@ -137,3 +137,7 @@ func (msg *MsgInterfaceEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 	return res
 }
+
+func (msg *MsgInterfaceEventUnix) Cast(o interface{}) notify.Message {
+	return &MsgInterfaceEventUnix{}
+}

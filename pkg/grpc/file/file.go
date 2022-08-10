@@ -239,6 +239,10 @@ func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	}
 }
 
+func (msg *MsgFileEventUnix) Cast(o interface{}) notify.Message {
+	return &MsgFileEventUnix{}
+}
+
 func GetRenameFlags(flags uint32) []string {
 	var f []string
 	for i := uint32(0); i < 32; i++ {
@@ -371,4 +375,8 @@ func (msg *MsgFileRenameEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		NodeName: nodeName,
 		Time:     ktime.ToProto(msg.Common.Ktime),
 	}
+}
+
+func (msg *MsgFileRenameEventUnix) Cast(o interface{}) notify.Message {
+	return &MsgFileRenameEventUnix{}
 }

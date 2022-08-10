@@ -55,6 +55,10 @@ func (msg *MsgProcessNetworkBurstEventUnix) HandleMessage() *tetragon.GetEventsR
 	return res
 }
 
+func (msg *MsgProcessNetworkBurstEventUnix) Cast(o interface{}) notify.Message {
+	return &MsgProcessNetworkBurstEventUnix{}
+}
+
 // getProcessNetworkBurst returns ProcessNetworkBurst protobuf message for a given process.
 func getProcessNetworkBurst(
 	event *MsgProcessNetworkBurstEventUnix,

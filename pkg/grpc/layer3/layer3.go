@@ -526,6 +526,10 @@ func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
+func (msg *MsgIPEventUnix) Cast(o interface{}) notify.Message {
+	return &MsgIPEventUnix{}
+}
+
 func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	var fgsParent, fgsProcess *tetragon.Process
 

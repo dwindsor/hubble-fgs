@@ -149,6 +149,11 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
+func (msg *MsgExecveEventUnix) Cast(o interface{}) notify.Message {
+	t := o.(processapi.MsgExecveEventUnix)
+	return &MsgExecveEventUnix{MsgExecveEventUnix: t}
+}
+
 type MsgCloneEventUnix struct {
 	processapi.MsgCloneEvent
 }
@@ -179,6 +184,11 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		logger.GetLogger().WithField("message", msg).Warn("HandleCloneMessage: Unhandled event")
 	}
 	return nil
+}
+
+func (msg *MsgCloneEventUnix) Cast(o interface{}) notify.Message {
+	t := o.(processapi.MsgCloneEvent)
+	return &MsgCloneEventUnix{MsgCloneEvent: t}
 }
 
 // GetProcessExit returns Exit protobuf message for a given process.
@@ -278,4 +288,9 @@ func (msg *MsgExitEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		logger.GetLogger().WithField("message", msg).Warn("HandleExitMessage: Unhandled event")
 	}
 	return res
+}
+
+func (msg *MsgExitEventUnix) Cast(o interface{}) notify.Message {
+	t := o.(processapi.MsgExitEvent)
+	return &MsgExitEventUnix{MsgExitEvent: t}
 }
