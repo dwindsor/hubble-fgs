@@ -141,7 +141,7 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -197,7 +197,7 @@ func runCopyTest(t *testing.T, exec_path string) {
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -257,7 +257,7 @@ func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -432,7 +432,7 @@ func TestFileDelete(t *testing.T) {
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
@@ -550,7 +550,7 @@ func TestFileCreate(t *testing.T) {
 
 	specFname := createSpecFile(t, test_path)
 
-	obs, err := observer.GetDefaultObserverWithLib(t, specFname, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}

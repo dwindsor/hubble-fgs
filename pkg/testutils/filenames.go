@@ -11,7 +11,6 @@
 package testutils
 
 import (
-	"os"
 	"testing"
 
 	"github.com/cilium/tetragon/pkg/testutils"
@@ -19,16 +18,16 @@ import (
 
 // CreateExportFile creates an export file for a test.
 // a callback will be registered at t.Cleanup() for closing the file, and removing the file
-func CreateExportFile(t *testing.T) *os.File {
+func CreateExportFile(t *testing.T) (*testutils.ExportFile, error) {
 	return testutils.CreateExportFile(t)
 }
 
 // GetExportFilename return export filename for test
-func GetExportFilename(t *testing.T) string {
+func GetExportFilename(t *testing.T) (string, error) {
 	return testutils.GetExportFilename(t)
 }
 
 // KeepExportFile marks export file to be kept
-func KeepExportFile(t *testing.T) {
-	testutils.KeepExportFile(t)
+func KeepExportFile(t *testing.T) error {
+	return testutils.KeepExportFile(t)
 }

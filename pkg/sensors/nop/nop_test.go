@@ -12,6 +12,7 @@
 package nop_test
 
 import (
+	"context"
 	"fmt"
 	"os"
 	"testing"
@@ -51,6 +52,6 @@ func TestNopSensorSmoke(t *testing.T) {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
-	_, err := observer.GetDefaultObserverWithLib(t, testConfigFile, runner.Conf().TetragonLib)
+	_, err := observer.GetDefaultObserverWithLib(t, context.Background(), testConfigFile, runner.Conf().TetragonLib)
 	assert.NoError(t, err, "nop sensor should load")
 }

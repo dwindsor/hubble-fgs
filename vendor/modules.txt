@@ -98,7 +98,7 @@ github.com/cilium/hubble/pkg/servicecache
 ## explicit; go 1.13
 github.com/cilium/lumberjack/v2
 # github.com/cilium/tetragon v0.0.0-00010101000000-000000000000 => ./modules/tetragon-oss
-## explicit; go 1.17
+## explicit; go 1.18
 github.com/cilium/tetragon/pkg/aggregator
 github.com/cilium/tetragon/pkg/api
 github.com/cilium/tetragon/pkg/api/calltraceapi
@@ -214,7 +214,7 @@ github.com/containerd/containerd/platforms
 # github.com/containernetworking/plugins v1.0.1
 ## explicit; go 1.16
 github.com/containernetworking/plugins/pkg/ns
-# github.com/cpuguy83/go-md2man/v2 v2.0.1
+# github.com/cpuguy83/go-md2man/v2 v2.0.2
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
 # github.com/davecgh/go-spew v1.1.1
@@ -509,7 +509,7 @@ github.com/spf13/afero/mem
 # github.com/spf13/cast v1.5.0
 ## explicit; go 1.18
 github.com/spf13/cast
-# github.com/spf13/cobra v1.4.0
+# github.com/spf13/cobra v1.5.0
 ## explicit; go 1.15
 github.com/spf13/cobra
 github.com/spf13/cobra/doc

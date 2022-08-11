@@ -236,7 +236,7 @@ func TestUdpBurst(t *testing.T) {
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -346,13 +346,16 @@ spec:
       statsInterval: 2
 `
 
-func getBasicUdpObserver(t *testing.T) *observer.Observer {
+// NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable
+// thing to do here even if revive complains.
+//revive:disable:context-as-argument
+func getBasicUdpObserver(t *testing.T, ctx context.Context) *observer.Observer {
 	if err := observer.WriteConfigFile(testConfigFile, udpBasicConfig); err != nil {
 		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
 	}
 
 	base := base.GetInitialSensor()
-	obs, err := observer.GetDefaultObserverWithBase(t, base, testConfigFile, runner.Conf().TetragonLib)
+	obs, err := observer.GetDefaultObserverWithBase(t, ctx, base, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserver error: %s", err)
 	}
@@ -518,7 +521,7 @@ func TestConnectEvent(t *testing.T) {
 		},
 	}
 
-	obs := getBasicUdpObserver(t)
+	obs := getBasicUdpObserver(t, ctx)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
@@ -616,7 +619,7 @@ func TestConnectAfterStartEvent(t *testing.T) {
 	assert.NoError(t, cmdServer.Start())
 	time.Sleep(1000 * time.Millisecond)
 
-	obs := getBasicUdpObserver(t)
+	obs := getBasicUdpObserver(t, ctx)
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 
 	readyWG.Wait()
