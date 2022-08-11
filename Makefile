@@ -56,7 +56,9 @@ oss-init:
 oss-update:
 	# Update the submodule and vendor any changes.
 	@echo Updating submodule...
-	git submodule update --remote $(OSS_DIR) && go mod tidy && go mod vendor
+	git submodule update --remote $(OSS_DIR)
+	@echo Vendoring and verifiying modules...
+	make vendor
 	# Codegen is vendored, so we need to run make generate && make codegen here to
 	# pick up changes.
 	@echo Generating code...
@@ -64,7 +66,7 @@ oss-update:
 	# NB, we need to vendor for a second time here since codegen may have introduced
 	# new dependencies.
 	@echo Vendoring and verifiying modules...
-	go mod tidy && go mod vendor && go mod verify
+	make vendor
 
 .PHONY: oss-checkout
 oss-checkout:
@@ -77,7 +79,7 @@ oss-checkout:
 	# NB, we need to vendor for a second time here since codegen may have introduced
 	# new dependencies.
 	@echo Vendoring and verifiying modules...
-	go mod tidy -compat=1.17 && go mod vendor && go mod verify
+	make vendor
 
 ifeq (1,$(LOCAL_CLANG))
 hubble-bpf: hubble-bpf-local
