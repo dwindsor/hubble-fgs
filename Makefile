@@ -165,9 +165,11 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 test:
 	ulimit -n 1048576 && $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./...
 
+TEST_COMPILE ?= ./...
+.PHONY: test-compile
 test-compile:
 	mkdir -p go-tests
-	for pkg in $$($(GO) list ./...); do \
+	for pkg in $$($(GO) list "$(TEST_COMPILE)"); do \
 		localpkg=$$(echo $$pkg | sed -e 's:github.com/isovalent/hubble-fgs/::'); \
 		localtestfile=$$(echo $$localpkg | sed -e 's:/:.:g'); \
 		echo -c ./$$localpkg -o go-tests/$$localtestfile; \
