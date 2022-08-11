@@ -19,6 +19,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -389,7 +390,27 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 }
 
 func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, timestamp)
+	p := ev.GetProcess()
+	process, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
+	if process == nil {
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+		return nil, eventcache.ErrFailedToGetProcessInfo
+	}
+	if parent == nil {
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+		return nil, eventcache.ErrFailedToGetProcessInfo
+	}
+
+	switch msg.Common.Op {
+	case ops.MSG_OP_TCPCONNECTRET,
+		ops.MSG_OP_UDPCONNECT,
+		ops.MSG_OP_LISTEN,
+		ops.MSG_OP_ACCEPT:
+		process.RefInc()
+		parent.RefInc()
+	}
+
+	return process, nil
 }
 
 func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
