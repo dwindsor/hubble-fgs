@@ -4,10 +4,12 @@ import (
 	"syscall"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
@@ -20,6 +22,14 @@ var (
 
 type MsgProcessNetworkBurstEventUnix struct {
 	networkapi.MsgProcessNetworkBurstEvent
+}
+
+func (msg *MsgProcessNetworkBurstEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return eventcache.HandleGenericInternal(ev, timestamp)
+}
+
+func (msg *MsgProcessNetworkBurstEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 func (msg *MsgProcessNetworkBurstEventUnix) HandleMessage() *tetragon.GetEventsResponse {

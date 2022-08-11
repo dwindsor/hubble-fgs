@@ -10,6 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -91,6 +92,14 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	}
 	eventmetrics.HandleDnsEvent(fgsEvent)
 	return fgsEvent
+}
+
+func (msg *MsgDnsUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return eventcache.HandleGenericInternal(ev, timestamp)
+}
+
+func (msg *MsgDnsUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 func (msg *MsgDnsUnix) HandleMessage() *tetragon.GetEventsResponse {

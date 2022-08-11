@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -385,6 +386,14 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 	}
 	eventmetrics.HandleSocketEvent(fgsEvent)
 	return fgsEvent
+}
+
+func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return eventcache.HandleGenericInternal(ev, timestamp)
+}
+
+func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {

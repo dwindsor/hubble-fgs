@@ -13,6 +13,7 @@ import (
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/httpapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
@@ -145,6 +146,14 @@ type MsgHttpEventUnix struct {
 	Tuple      networkapi.MsgIPv4HTTPTuple
 	ProcessKey processapi.MsgExecveKey
 	Request    httpapi.MsgHttpUnix
+}
+
+func (msg *MsgHttpEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return eventcache.HandleGenericInternal(ev, timestamp)
+}
+
+func (msg *MsgHttpEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 func (msg *MsgHttpEventUnix) HandleMessage() *tetragon.GetEventsResponse {

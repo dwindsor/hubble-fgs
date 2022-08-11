@@ -22,6 +22,7 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -114,6 +115,14 @@ type MsgFileEventUnix struct {
 	Imode      uint32
 	Uid        uint32
 	Gid        uint32
+}
+
+func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return eventcache.HandleGenericInternal(ev, timestamp)
+}
+
+func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {

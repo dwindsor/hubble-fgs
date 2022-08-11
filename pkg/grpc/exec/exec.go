@@ -1,6 +1,7 @@
 package exec
 
 import (
+	"fmt"
 	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -8,10 +9,12 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	readerexec "github.com/cilium/tetragon/pkg/reader/exec"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
@@ -61,6 +64,36 @@ type MsgExecveEventUnix struct {
 	processapi.MsgExecveEventUnix
 }
 
+func (msg *MsgExecveEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return nil, fmt.Errorf("Unreachable state: MsgExecveEventUnix with missing internal")
+}
+
+func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	var podInfo *tetragon.Pod
+
+	p := ev.GetProcess()
+	containerId := p.Docker
+	filename := p.Binary
+	args := p.Arguments
+	nspid := msg.Process.NSPID
+
+	if option.Config.EnableK8s && containerId != "" {
+		podInfo, _ = process.GetPodInfo(containerId, filename, args, nspid)
+		if podInfo == nil {
+			errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
+			return eventcache.ErrFailedToGetPodInfo
+		}
+	}
+
+	// We can assume that event.internal != nil here since it's being set by AddExecEvent
+	// earlier in the code path. If this invariant ever changes in the future, we probably
+	// want to panic anyway to help us catch the bug faster. So no need to do a nil check
+	// here.
+	internal.AddPodInfo(podInfo)
+	ev.SetProcess(internal.GetProcessCopy())
+	return nil
+}
+
 func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
@@ -85,12 +118,16 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return res
 }
 
-func (msg *MsgExecveEventUnix) GetNsPid() uint32 {
-	return msg.Process.NSPID
-}
-
 type MsgCloneEventUnix struct {
 	processapi.MsgCloneEvent
+}
+
+func (msg *MsgCloneEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return nil, fmt.Errorf("Unreachable state: MsgCloneEventUnix with missing internal")
+}
+
+func (msg *MsgCloneEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 // HandleCloneMessage -- don't generate any events. Just add the process to the cache.
@@ -110,6 +147,14 @@ func (msg *MsgCloneEventUnix) GetNsPid() uint32 {
 
 type MsgExitEventUnix struct {
 	processapi.MsgExitEvent
+}
+
+func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return eventcache.HandleGenericInternal(ev, timestamp)
+}
+
+func (msg *MsgExitEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 // GetProcessExit returns Exit protobuf message for a given process.

@@ -8,6 +8,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
+	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
@@ -135,6 +136,14 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 	}
 	eventmetrics.HandleTlsEvent(fgsEvent)
 	return fgsEvent
+}
+
+func (msg *MsgTLSEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	return eventcache.HandleGenericInternal(ev, timestamp)
+}
+
+func (msg *MsgTLSEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 func (msg *MsgTLSEventUnix) HandleMessage() *tetragon.GetEventsResponse {
