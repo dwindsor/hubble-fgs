@@ -14,7 +14,6 @@ import (
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
-	"github.com/cilium/tetragon/pkg/metrics/processexecmetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	readerexec "github.com/cilium/tetragon/pkg/reader/exec"
@@ -37,11 +36,7 @@ func GetProcessExec(proc *process.ProcessInternal) *tetragon.ProcessExec {
 	processId := tetragonProcess.ExecId
 
 	parent, err := process.Get(parentId)
-	if err != nil {
-		errormetrics.ErrorTotalInc(errormetrics.ExecMissingParent)
-		processexecmetrics.MissingParentInc(parentId)
-		logger.GetLogger().WithField("processId", processId).WithField("parentId", parentId).Debug("Process missing parent")
-	} else {
+	if err == nil {
 		parent.RefInc()
 	}
 
@@ -79,10 +74,12 @@ func (msg *MsgExecveEventUnix) RetryInternal(ev notify.Event, timestamp uint64) 
 func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
 	var podInfo *tetragon.Pod
 
-	p := ev.GetProcess()
-	containerId := p.Docker
-	filename := p.Binary
-	args := p.Arguments
+	proc := ev.GetProcess()
+	parent := ev.GetParent()
+
+	containerId := proc.Docker
+	filename := proc.Binary
+	args := proc.Arguments
 	nspid := msg.Process.NSPID
 
 	if option.Config.EnableK8s && containerId != "" {
@@ -99,6 +96,20 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 	// here.
 	internal.AddPodInfo(podInfo)
 	ev.SetProcess(internal.GetProcessCopy())
+
+	// Check we have a parent with exception for pid 1, note we do this last because we want
+	// to ensure the podInfo and process are set before returning any errors.
+	if proc.Pid.Value > 1 && parent == nil {
+		parentId := proc.ParentExecId
+		parent, err := process.Get(parentId)
+		if parent == nil {
+			return err
+		}
+		if strings.Contains(proc.Flags, "clone") == true {
+			parent.RefInc()
+		}
+	}
+
 	return nil
 }
 
@@ -109,7 +120,9 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		proc := process.AddExecEvent(&msg.MsgExecveEventUnix)
 		procEvent := GetProcessExec(proc)
 		ec := eventcache.Get()
-		if ec != nil && ec.Needed(procEvent.Process) {
+		if ec != nil &&
+			(ec.Needed(procEvent.Process) ||
+				(procEvent.Process.Pid.Value > 1 && ec.Needed(procEvent.Parent))) {
 			ec.Add(proc, procEvent, msg.MsgExecveEventUnix.Process.Ktime, msg)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
@@ -153,7 +166,6 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
-		process.RefDec()
 		tetragonProcess = process.UnsafeGetProcess()
 	} else {
 		tetragonProcess = &tetragon.Process{
@@ -162,7 +174,6 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		}
 	}
 	if parent != nil {
-		parent.RefDec()
 		tetragonParent = parent.GetProcessCopy()
 	}
 
@@ -176,11 +187,17 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		Status:  code,
 	}
 	ec := eventcache.Get()
-	if ec != nil && ec.Needed(tetragonProcess) {
+	if ec != nil &&
+		(ec.Needed(tetragonProcess) ||
+			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
 		ec.Add(process, tetragonEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
+	if parent != nil {
+		parent.RefDec()
+	}
 	if process != nil {
+		process.RefDec()
 		tetragonEvent.Process = process.GetProcessCopy()
 	}
 	return tetragonEvent
@@ -191,7 +208,26 @@ type MsgExitEventUnix struct {
 }
 
 func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, timestamp)
+	p := ev.GetProcess()
+	internal, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
+	var err error
+
+	if parent != nil {
+		ev.SetParent(parent.GetProcessCopy())
+		parent.RefDec()
+	} else {
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheParentInfoFailed)
+		err = eventcache.ErrFailedToGetParentInfo
+	}
+
+	if internal != nil {
+		internal.RefDec()
+	} else {
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+		err = eventcache.ErrFailedToGetProcessInfo
+	}
+
+	return internal, err
 }
 
 func (msg *MsgExitEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
