@@ -275,6 +275,12 @@ func (event *Tls) SetProcess(p *Process) {
 	event.Process = p
 }
 
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *Tls) SetParent(p *Process) {
+	event.Parent = p
+}
+
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
 func (event *ProcessHttp) Encapsulate() IsGetEventsResponse_Event {

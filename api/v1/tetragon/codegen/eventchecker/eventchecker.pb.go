@@ -2694,6 +2694,7 @@ type TlsChecker struct {
 	ParserStateCsize    *uint32                      `json:"parserStateCsize,omitempty"`
 	ParserStateSkblen   *uint32                      `json:"parserStateSkblen,omitempty"`
 	ParserInternalState *stringmatcher.StringMatcher `json:"parserInternalState,omitempty"`
+	Parent              *ProcessChecker              `json:"parent,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -2855,6 +2856,11 @@ func (checker *TlsChecker) Check(event *tetragon.Tls) error {
 			return fmt.Errorf("TlsChecker: ParserInternalState check failed: %w", err)
 		}
 	}
+	if checker.Parent != nil {
+		if err := checker.Parent.Check(event.Parent); err != nil {
+			return fmt.Errorf("TlsChecker: Parent check failed: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -3009,6 +3015,12 @@ func (checker *TlsChecker) WithParserInternalState(check *stringmatcher.StringMa
 	return checker
 }
 
+// WithParent adds a Parent check to the TlsChecker
+func (checker *TlsChecker) WithParent(check *ProcessChecker) *TlsChecker {
+	checker.Parent = check
+	return checker
+}
+
 //FromTls populates the TlsChecker using data from a Tls event
 func (checker *TlsChecker) FromTls(event *tetragon.Tls) *TlsChecker {
 	if event == nil {
@@ -3069,6 +3081,9 @@ func (checker *TlsChecker) FromTls(event *tetragon.Tls) *TlsChecker {
 		checker.ParserStateSkblen = &val
 	}
 	checker.ParserInternalState = stringmatcher.Full(event.ParserInternalState)
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
 	return checker
 }
 

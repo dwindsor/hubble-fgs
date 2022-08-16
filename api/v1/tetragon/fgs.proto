@@ -230,6 +230,7 @@ message Tls {
     uint32 parser_state_csize = 23 [deprecated=true];
     uint32 parser_state_skblen = 24 [deprecated=true];
     string parser_internal_state = 25;
+    tetragon.Process parent = 26;
 }
 
 /*

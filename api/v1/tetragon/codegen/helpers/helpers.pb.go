@@ -152,6 +152,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessFile.Parent
 	case *tetragon.GetEventsResponse_ProcessSockStats:
 		return ev.ProcessSockStats.Parent
+	case *tetragon.GetEventsResponse_Tls:
+		return ev.Tls.Parent
 	case *tetragon.GetEventsResponse_ProcessNetworkBurst:
 		return ev.ProcessNetworkBurst.Parent
 
