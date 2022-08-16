@@ -182,7 +182,7 @@ type benchmarkListener struct {
 
 func (bl *benchmarkListener) Notify(msg notify.Message) error {
 	switch msg.(type) {
-	case *readyapi.MsgTETRAGONReady:
+	case *readyapi.MsgTetragonReady:
 		bl.ready <- true
 
 	case *tls.MsgTLSEventUnix:

@@ -65,7 +65,7 @@ type raceListener struct {
 
 func (l *raceListener) Notify(msg notify.Message) error {
 	switch msg.(type) {
-	case *readyapi.MsgTETRAGONReady:
+	case *readyapi.MsgTetragonReady:
 		l.ready <- true
 	}
 	return nil
