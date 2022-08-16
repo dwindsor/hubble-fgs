@@ -334,3 +334,9 @@ func (event *ProcessDns) Encapsulate() IsGetEventsResponse_Event {
 func (event *ProcessDns) SetProcess(p *Process) {
 	event.Process = p
 }
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessDns) SetParent(p *Process) {
+	event.Parent = p
+}

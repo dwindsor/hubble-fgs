@@ -158,6 +158,8 @@ func ResponseInnerGetParent(event tetragon.IsGetEventsResponse_Event) *tetragon.
 		return ev.ProcessHttp.Parent
 	case *tetragon.GetEventsResponse_ProcessNetworkBurst:
 		return ev.ProcessNetworkBurst.Parent
+	case *tetragon.GetEventsResponse_ProcessDns:
+		return ev.ProcessDns.Parent
 
 	}
 	return nil

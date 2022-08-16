@@ -35,5 +35,6 @@ message ProcessDns {
     DnsInfo dns   = 3;
     repeated string destination_names = 4 [deprecated=true]; // deprecated in favor of socket.destination_names.
     Pod destination_pod = 5;
+    Process parent = 6;
 }
 

@@ -3411,6 +3411,7 @@ type ProcessDnsChecker struct {
 	Dns              *DnsInfoChecker    `json:"dns,omitempty"`
 	DestinationNames *StringListMatcher `json:"destinationNames,omitempty"`
 	DestinationPod   *PodChecker        `json:"destinationPod,omitempty"`
+	Parent           *ProcessChecker    `json:"parent,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3466,6 +3467,11 @@ func (checker *ProcessDnsChecker) Check(event *tetragon.ProcessDns) error {
 			return fmt.Errorf("ProcessDnsChecker: DestinationPod check failed: %w", err)
 		}
 	}
+	if checker.Parent != nil {
+		if err := checker.Parent.Check(event.Parent); err != nil {
+			return fmt.Errorf("ProcessDnsChecker: Parent check failed: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -3499,6 +3505,12 @@ func (checker *ProcessDnsChecker) WithDestinationPod(check *PodChecker) *Process
 	return checker
 }
 
+// WithParent adds a Parent check to the ProcessDnsChecker
+func (checker *ProcessDnsChecker) WithParent(check *ProcessChecker) *ProcessDnsChecker {
+	checker.Parent = check
+	return checker
+}
+
 //FromProcessDns populates the ProcessDnsChecker using data from a ProcessDns event
 func (checker *ProcessDnsChecker) FromProcessDns(event *tetragon.ProcessDns) *ProcessDnsChecker {
 	if event == nil {
@@ -3526,6 +3538,9 @@ func (checker *ProcessDnsChecker) FromProcessDns(event *tetragon.ProcessDns) *Pr
 	}
 	if event.DestinationPod != nil {
 		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
 	}
 	return checker
 }
