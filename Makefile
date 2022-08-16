@@ -205,7 +205,7 @@ update-copyright:
 lint:
 	golint -set_exit_status $$(go list ./...)
 
-image: image-clang
+image:
 	$(CONTAINER_ENGINE) build -t "isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
@@ -215,7 +215,7 @@ image-operator:
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-enterprise-operator:$(DOCKER_IMAGE_TAG)"
 
-image-test: image-clang
+image-test:
 	$(CONTAINER_ENGINE) build -f Dockerfile.test -t "isovalent/hubble-fgs-test:${DOCKER_IMAGE_TAG}" .
 	$(QUIET)echo "Push like this when ready:"
 	$(QUIET)echo "${CONTAINER_ENGINE} push isovalent/hubble-fgs-test:$(DOCKER_IMAGE_TAG)"
