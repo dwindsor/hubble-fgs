@@ -3094,6 +3094,7 @@ type ProcessHttpChecker struct {
 	Http             *HttpInfoChecker   `json:"http,omitempty"`
 	DestinationNames *StringListMatcher `json:"destinationNames,omitempty"`
 	DestinationPod   *PodChecker        `json:"destinationPod,omitempty"`
+	Parent           *ProcessChecker    `json:"parent,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -3149,6 +3150,11 @@ func (checker *ProcessHttpChecker) Check(event *tetragon.ProcessHttp) error {
 			return fmt.Errorf("ProcessHttpChecker: DestinationPod check failed: %w", err)
 		}
 	}
+	if checker.Parent != nil {
+		if err := checker.Parent.Check(event.Parent); err != nil {
+			return fmt.Errorf("ProcessHttpChecker: Parent check failed: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -3182,6 +3188,12 @@ func (checker *ProcessHttpChecker) WithDestinationPod(check *PodChecker) *Proces
 	return checker
 }
 
+// WithParent adds a Parent check to the ProcessHttpChecker
+func (checker *ProcessHttpChecker) WithParent(check *ProcessChecker) *ProcessHttpChecker {
+	checker.Parent = check
+	return checker
+}
+
 //FromProcessHttp populates the ProcessHttpChecker using data from a ProcessHttp event
 func (checker *ProcessHttpChecker) FromProcessHttp(event *tetragon.ProcessHttp) *ProcessHttpChecker {
 	if event == nil {
@@ -3209,6 +3221,9 @@ func (checker *ProcessHttpChecker) FromProcessHttp(event *tetragon.ProcessHttp) 
 	}
 	if event.DestinationPod != nil {
 		checker.DestinationPod = NewPodChecker().FromPod(event.DestinationPod)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
 	}
 	return checker
 }

@@ -295,6 +295,12 @@ func (event *ProcessHttp) SetProcess(p *Process) {
 	event.Process = p
 }
 
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessHttp) SetParent(p *Process) {
+	event.Parent = p
+}
+
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
 func (event *ProcessNetworkBurst) Encapsulate() IsGetEventsResponse_Event {

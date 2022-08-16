@@ -277,6 +277,7 @@ message ProcessHttp {
     HttpInfo http   = 3;
     repeated string destination_names = 4 [deprecated=true]; // deprecated in favor of socket.destination_names.
     tetragon.Pod destination_pod = 5;
+    tetragon.Process parent = 6;
 }
 
 message ProcessNetworkBurst {
