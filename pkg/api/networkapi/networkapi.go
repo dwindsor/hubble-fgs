@@ -118,7 +118,7 @@ type MsgInterfaceStats struct {
 type MsgInterface struct {
 	Name          string
 	Index         int
-	Netns         string
+	Netns         uint64
 	ContainerName string
 }
 

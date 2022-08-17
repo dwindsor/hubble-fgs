@@ -1,6 +1,8 @@
 package iface
 
 import (
+	"fmt"
+
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
 	"github.com/cilium/tetragon/pkg/eventcache"
@@ -12,6 +14,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
+	"github.com/isovalent/hubble-fgs/pkg/nscache"
 )
 
 var (
@@ -19,10 +22,12 @@ var (
 )
 
 func (msg *MsgInterfaceEventUnix) getInterfaceStats() *tetragon.InterfaceStats {
+	pod, _ := nscache.GetPod(msg.Iface.Netns)
+	netns := fmt.Sprintf("%d", msg.Iface.Netns)
 	fgsEvent := &tetragon.InterfaceStats{
 		InterfaceName:    msg.Iface.Name,
 		InterfaceIfindex: uint32(msg.Iface.Index),
-		Netns:            msg.Iface.Netns,
+		Netns:            netns,
 		ContainerName:    msg.Iface.ContainerName,
 		BytesSent:        msg.Stats.BytesSent,
 		BytesReceived:    msg.Stats.BytesReceived,
@@ -32,6 +37,7 @@ func (msg *MsgInterfaceEventUnix) getInterfaceStats() *tetragon.InterfaceStats {
 		RxErrors:         msg.Stats.RxErrors,
 		TxDrops:          msg.Stats.TxDrops,
 		RxDrops:          msg.Stats.RxDrops,
+		Pod:              pod,
 	}
 	eventmetrics.HandleInterfaceStatsEvent(fgsEvent)
 	return fgsEvent

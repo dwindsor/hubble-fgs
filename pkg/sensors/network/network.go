@@ -16,6 +16,7 @@ import (
 	"io/ioutil"
 	"os"
 	"path/filepath"
+	"strconv"
 	"time"
 	"unsafe"
 
@@ -91,6 +92,7 @@ func (v *networkInfoValue) DeepCopyMapValue() bpf.MapValue {
 }
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath string) {
+	n, _ := strconv.ParseUint(netns, 10, 64)
 	unix := iface.MsgInterfaceEventUnix{
 		Common: processapi.MsgCommon{
 			Op:    ops.MSG_OP_INTERFACE_STATS,
@@ -100,7 +102,7 @@ func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath st
 		Iface: api.MsgInterface{
 			Index:         attrs.Index,
 			Name:          attrs.Name,
-			Netns:         netns,
+			Netns:         n,
 			ContainerName: getContainerName(netnsFilePath),
 		},
 		Stats: api.MsgInterfaceStats{
@@ -131,8 +133,6 @@ func nameParse(b [16]byte) (string, int) {
 
 func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 	foundName := false
-
-	netns := fmt.Sprintf("%d", netKey.Netns)
 	name := ""
 	txBytes := uint64(0)
 	rxBytes := uint64(0)
@@ -164,7 +164,7 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 		Iface: api.MsgInterface{
 			Index: int(netKey.Index),
 			Name:  string(name),
-			Netns: netns,
+			Netns: netKey.Netns,
 		},
 		Stats: api.MsgInterfaceStats{
 			BytesSent:       txBytes,
@@ -252,6 +252,7 @@ func (net *networkSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 
 func unloadNetworkSensor() error {
 	eventTimer.Stop()
+	pollTimer.Stop()
 	return nil
 }
 

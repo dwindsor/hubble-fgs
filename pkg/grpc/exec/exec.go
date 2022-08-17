@@ -16,6 +16,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	"github.com/isovalent/hubble-fgs/pkg/nscache"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
@@ -85,6 +86,10 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 			errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
 			return eventcache.ErrFailedToGetPodInfo
 		}
+		netinum := msg.Namespaces.NetInum
+		if netinum != 0 && podInfo != nil {
+			nscache.AddNetNs(uint64(netinum), podInfo)
+		}
 	}
 
 	// We can assume that event.internal != nil here since it's being set by AddExecEvent
@@ -123,6 +128,10 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 				(procEvent.Process.Pid.Value > 1 && ec.Needed(procEvent.Parent))) {
 			ec.Add(proc, procEvent, msg.MsgExecveEventUnix.Process.Ktime, msg)
 		} else {
+			netinum := msg.Namespaces.NetInum
+			if netinum != 0 && procEvent.Process.Pod != nil {
+				nscache.AddNetNs(uint64(netinum), procEvent.Process.Pod)
+			}
 			procEvent.Process = proc.GetProcessCopy()
 			res = &tetragon.GetEventsResponse{
 				Event:    &tetragon.GetEventsResponse_ProcessExec{ProcessExec: procEvent},
