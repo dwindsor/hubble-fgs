@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	"github.com/cilium/tetragon/pkg/timer"
 	lru "github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
@@ -62,8 +63,10 @@ var (
 
 	stats *lru.Cache
 
-	Config     *ConfigValue
-	configured = false
+	Config           *ConfigValue
+	configured       = false
+	gcTimer          = timer.NewPeriodicTimer("UDP GC Timer", runUdpGC, true)
+	watermarkEnabled = false
 )
 
 var (
@@ -538,15 +541,6 @@ func runUdpGC() {
 	m.DumpWithCallback(udpGcCb)
 }
 
-func udpGC(gcInterval time.Duration) {
-	ticker := time.NewTicker(gcInterval)
-	go func() {
-		for range ticker.C {
-			runUdpGC()
-		}
-	}()
-}
-
 type udpSensor struct {
 	name string
 }
@@ -588,6 +582,14 @@ func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) erro
 	}
 	m.Update(key, config)
 	logger.GetLogger().WithField("config", config.String()).Info("Configured UDP sock statistic sampler: ")
+	return nil
+}
+
+func unloadUdpSensor() error {
+	gcTimer.Stop()
+	if watermarkEnabled {
+		burstEventsPoll.Stop()
+	}
 	return nil
 }
 
@@ -671,13 +673,15 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 		}
 		versionStr = "__udp_sensor_cgroup__"
 	}
-	udpGC(interval)
+	gcTimer.Start(interval)
 	logger.GetLogger().WithFields(logrus.Fields{
 		"sensorName":     versionStr,
 		"statsInterval":  interval,
 		"deleteInterval": UdpDeleteInterval,
 	}).Infof("Enable UDP")
-	return sensors.SensorBuilder(versionStr, progs, maps)
+	udpSensor := sensors.SensorBuilder(versionStr, progs, maps)
+	udpSensor.UnloadHook = unloadUdpSensor
+	return udpSensor
 }
 
 func (udp *udpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {

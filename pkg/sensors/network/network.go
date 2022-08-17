@@ -24,6 +24,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
+	"github.com/cilium/tetragon/pkg/timer"
 	"github.com/containernetworking/plugins/pkg/ns"
 	"github.com/docker/docker/api/types"
 	"github.com/docker/docker/client"
@@ -37,6 +38,7 @@ import (
 var (
 	NetworkStatInterval = time.Duration(60 * time.Second)
 	sandboxToContainer  = make(map[string]string)
+	eventTimer          = timer.NewPeriodicTimer("Network Interface Timer", runNetworkCB, true)
 )
 
 func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath string) {
@@ -64,7 +66,6 @@ func emitInterfaceEvent(attrs *netlink.LinkAttrs, netns string, netnsFilePath st
 		},
 	}
 	observer.AllListeners(&unix)
-	return
 }
 
 func runNetworkCB() {
@@ -107,23 +108,16 @@ func runNetworkCB() {
 	}
 }
 
-func networkCB(gcInterval time.Duration) {
-	ticker := time.NewTicker(gcInterval)
-	go func() {
-		for {
-			select {
-			case <-ticker.C:
-				runNetworkCB()
-			}
-		}
-	}()
-}
-
 type networkSensor struct {
 	name string
 }
 
 func (net *networkSensor) LoadProbe(args sensors.LoadProbeArgs) error {
+	return nil
+}
+
+func unloadNetworkSensor() error {
+	eventTimer.Stop()
 	return nil
 }
 
@@ -141,8 +135,11 @@ func EnableNetworkParser(statInterval uint32) *sensors.Sensor {
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Interface statistics running without containerID info")
 	}
-	networkCB(defaultCBInterval)
-	return nil
+	eventTimer.Start(defaultCBInterval)
+	return &sensors.Sensor{
+		Name:       "interface-sensor",
+		UnloadHook: unloadNetworkSensor,
+	}
 }
 
 func (net *networkSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {

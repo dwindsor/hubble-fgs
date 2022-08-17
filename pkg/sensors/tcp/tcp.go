@@ -26,6 +26,7 @@ var (
 	tcpBurstEnable      bool
 	tcpBurstWindowSize  uint64
 	tcpBurstTriggerMult uint64
+	watermarkEnabled    = false
 
 	stats          *lru.Cache
 	stataCacheSize = 32000
@@ -80,6 +81,13 @@ var (
 	ProcessNetworkBurstMap = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, SendCheck)
 )
 
+func unloadTcpSensor() error {
+	if watermarkEnabled {
+		burstEventsPoll.Stop()
+	}
+	return nil
+}
+
 func EnableTcp() *sensors.Sensor {
 	progs := []*program.Program{
 		Connect,
@@ -105,7 +113,9 @@ func EnableTcp() *sensors.Sensor {
 		"burstWindowSize":  tcpBurstWindowSize,
 		"burstTriggerMult": tcpBurstTriggerMult,
 	}).Infof("Enable TCP")
-	return sensors.SensorBuilder("tcp_sensors", progs, maps)
+	tcpSensor := sensors.SensorBuilder("tcp_sensors", progs, maps)
+	tcpSensor.UnloadHook = unloadTcpSensor
+	return tcpSensor
 }
 
 type tcpSensor struct {
@@ -123,6 +133,7 @@ func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 		tcpInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
 	}
 	if spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
+		watermarkEnabled = true
 		tcpBurstEnable = true
 		tcpBurstWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
 		tcpBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)

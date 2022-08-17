@@ -169,6 +169,7 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 // needed for BPF to identify UDP bursts and run the monitor on it.
 func ParseUdpBurstSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
+		watermarkEnabled = true
 		config.watermarkEnable = 1
 		// WindowSize is in milliseconds
 		config.watermarkAvgWindowSizeMs = uint64(spec.Parser.Udp.Burst.WindowSize)

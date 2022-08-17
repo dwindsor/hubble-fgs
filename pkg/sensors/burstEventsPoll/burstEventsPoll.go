@@ -14,6 +14,7 @@ import (
 	"bytes"
 	"encoding/binary"
 	"path/filepath"
+	"sync"
 	"time"
 
 	"github.com/cilium/ebpf"
@@ -42,8 +43,10 @@ const (
 )
 
 var (
-	pollTimer = timer.NewPeriodicTimer("Burst event poll", checkAndAddBurstEndEvents, true)
-	burstMap  *ebpf.Map
+	pollTimer  = timer.NewPeriodicTimer("Burst event poll", checkAndAddBurstEndEvents, true)
+	burstMap   *ebpf.Map
+	refCount   = 0
+	refCountMu sync.Mutex
 )
 
 type ProcessNetworkBurstKey struct {
@@ -83,6 +86,8 @@ func Start(spec *v1alpha1.TracingPolicySpec) {
 		return
 	}
 	var err error
+	refCountMu.Lock()
+	defer refCountMu.Unlock()
 	// open map, allowing for it to be not immediately ready
 	burstMapFile := filepath.Join(bpf.MapPrefixPath(), ProcessNetworkBurstMapName)
 	burstMap, err = ebpf.LoadPinnedMap(burstMapFile, nil)
@@ -91,11 +96,22 @@ func Start(spec *v1alpha1.TracingPolicySpec) {
 		burstMap, err = ebpf.LoadPinnedMap(burstMapFile, nil)
 	}
 
+	// Attempting to start an already running timer is a NOP.
 	pollTimer.Start(time.Duration(spec.Parser.BurstPoll.Interval) * time.Millisecond)
+	refCount++
 }
 
 func Stop() {
-	pollTimer.Stop()
+	// We reference count the number of sensors that start and stop the burstEventPoll
+	// and only stop it if the count reaches 0.
+	refCountMu.Lock()
+	defer refCountMu.Unlock()
+	if refCount > 0 {
+		refCount--
+	}
+	if refCount == 0 {
+		pollTimer.Stop()
+	}
 }
 
 func checkAndAddBurstEndEvents() {
