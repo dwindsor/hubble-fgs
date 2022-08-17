@@ -4,12 +4,16 @@
 package checker
 
 import (
+	"bufio"
 	"bytes"
 	"context"
+	"encoding/json"
 	"errors"
 	"fmt"
 	"io"
 	"os"
+	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 	"time"
@@ -17,7 +21,8 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	ecYaml "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker/yaml"
-	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
+	eventHelpers "github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
+	"github.com/cilium/tetragon/pkg/exporter"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/tests/e2e/state"
 	"github.com/sirupsen/logrus"
@@ -40,6 +45,8 @@ type RPCChecker struct {
 	logs             *bytes.Buffer
 	checkerStartedWG *sync.WaitGroup
 	lock             *sync.Mutex
+	encoder          exporter.ExportEncoder
+	eventWriter      *bufio.Writer
 }
 
 // NewRPCChecker constructs a new RPCChecker from a MultiEventChecker.
@@ -53,6 +60,8 @@ func NewRPCChecker(checker ec.MultiEventChecker, name string) *RPCChecker {
 		logs:             new(bytes.Buffer),
 		checkerStartedWG: new(sync.WaitGroup),
 		lock:             new(sync.Mutex),
+		encoder:          nil,
+		eventWriter:      nil,
 	}
 	// Mark that the checker has not yet started.
 	rc.checkerStartedWG.Add(1)
@@ -125,6 +134,18 @@ func (rc *RPCChecker) CheckWithFilters(connTimeout time.Duration, allowList, den
 		rc.logs.Reset()
 		ctx = rc.updateContextEventCheckers(ctx)
 
+		if dir, err := getExportDir(ctx); err != nil {
+			klog.ErrorS(err, "failed to get export dir, refusing to export events from checker")
+		} else {
+			f, err := os.Create(filepath.Join(dir, rc.Name()+".eventchecker.events.json"))
+			if err != nil {
+				klog.ErrorS(err, "failed to create json export file, refusing to export events from checker")
+			} else {
+				rc.eventWriter = bufio.NewWriter(f)
+				rc.encoder = json.NewEncoder(rc.eventWriter)
+			}
+		}
+
 		ports, ok := ctx.Value(state.GrpcForwardedPorts).(map[string]int)
 		if !ok {
 			assert.Fail(t, "failed to find forwarded gRPC ports")
@@ -184,6 +205,22 @@ func (rc *RPCChecker) check(ctx context.Context, allowList, denyList []*tetragon
 	// When the checks are finished, call FinalCheck() to reset the internal checker's
 	// state.
 	defer rc.checker.FinalCheck(nil)
+	// Flush the event writer at the end
+	defer func() {
+		if rc.eventWriter != nil {
+			rc.eventWriter.Flush()
+		}
+	}()
+	// Dump unmatched checks at the end
+	defer func() {
+		checker, ok := rc.checker.(interface{ GetRemainingChecks() []ec.EventChecker })
+		if !ok {
+			klog.ErrorS(fmt.Errorf("checker has no method GetRemainingChecks()"), "unable to dump remaining checks")
+		}
+		if err := dumpChecks(ctx, rc.Name(), checker.GetRemainingChecks()); err != nil {
+			klog.ErrorS(err, "failed to dump unmatched checks")
+		}
+	}()
 
 	for {
 		select {
@@ -199,8 +236,12 @@ func (rc *RPCChecker) check(ctx context.Context, allowList, denyList []*tetragon
 				return fmt.Errorf("event checker %s failed to receive event: %w", rc.name, err)
 			}
 
+			if rc.encoder != nil && rc.eventWriter != nil {
+				rc.encoder.Encode(event)
+			}
+
 			eventCount++
-			eventType, err := helpers.ResponseTypeString(event)
+			eventType, err := eventHelpers.ResponseTypeString(event)
 			if err != nil {
 				klog.ErrorS(err, "failed to get event type")
 				eventType = "UNKNOWN"
@@ -218,16 +259,16 @@ func (rc *RPCChecker) check(ctx context.Context, allowList, denyList []*tetragon
 
 			done, err := ec.NextResponseCheck(rc.checker, event, log)
 			if done && err == nil {
-				klog.Infof("%s => FINAL MATCH ", prefix)
-				klog.Infof("DONE!")
+				log.Infof("%s => FINAL MATCH ", prefix)
+				log.Infof("DONE!")
 				return nil
 			} else if err == nil {
-				klog.Infof("%s => MATCH, continuing", prefix)
+				log.Infof("%s => MATCH, continuing", prefix)
 			} else if done {
-				klog.Errorf("%s => terminating error: %s", prefix, err)
+				log.Errorf("%s => terminating error: %s", prefix, err)
 				return err
 			} else {
-				klog.Infof("%s => no match: %s, continuing", prefix, err)
+				log.Infof("%s => no match: %s, continuing", prefix, err)
 			}
 		}
 	}
@@ -263,4 +304,49 @@ func (rc *RPCChecker) updateContextEventCheckers(ctx context.Context) context.Co
 	checkers := make(map[string]*RPCChecker)
 	checkers[rc.name] = rc
 	return context.WithValue(ctx, state.EventCheckers, checkers)
+}
+
+func getExportDir(ctx context.Context) (string, error) {
+	exportDir, ok := ctx.Value(state.ExportDir).(string)
+	if !ok {
+		return "", fmt.Errorf("export dir has not been created. Call helpers.CreateExportDir() first")
+	}
+	return exportDir, nil
+}
+
+func checkertypeString(checker ec.EventChecker) string {
+	// Get the concrete type of the event
+	ty := fmt.Sprintf("%T", checker)
+	// Take only what comes after the last "."
+	tys := strings.Split(ty, ".")
+	ty = tys[len(tys)-1]
+	return ty
+}
+
+func dumpChecks(ctx context.Context, checkerName string, checks []ec.EventChecker) error {
+	var unmatchedChecks []map[string]interface{}
+
+	for _, check := range checks {
+		unmatchedChecks = append(unmatchedChecks, map[string]interface{}{checkertypeString(check): check})
+	}
+
+	exportDir, err := getExportDir(ctx)
+	if err != nil {
+		return err
+	}
+
+	fname := checkerName + ".eventchecker.unmatched.json"
+	f, err := os.Create(filepath.Join(exportDir, fname))
+	if err != nil {
+		return fmt.Errorf("failed to open %s: %w", fname, err)
+	}
+
+	encoder := json.NewEncoder(f)
+	err = encoder.Encode(unmatchedChecks)
+	if err != nil {
+		return fmt.Errorf("failed encode unmatched checks: %w", err)
+
+	}
+
+	return nil
 }
