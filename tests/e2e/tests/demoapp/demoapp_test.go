@@ -242,7 +242,7 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 		ec.NewProcessListenChecker().
 			WithProcess(jobpostingChecker).
 			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithIp(sm.Full("0.0.0.0")).
+			WithIp(sm.Regex(`^(0\.0\.0\.0|::)$`)).
 			WithPort(9080),
 
 		// recruiter pod
@@ -254,7 +254,7 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 		ec.NewProcessListenChecker().
 			WithProcess(recruiterChecker).
 			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithIp(sm.Full("0.0.0.0")).
+			WithIp(sm.Regex(`^(0\.0\.0\.0|::)$`)).
 			WithPort(9080),
 
 		// loader pod
@@ -266,7 +266,7 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 		ec.NewProcessListenChecker().
 			WithProcess(loaderChecker).
 			WithProtocol(tetragon.SocketProtocol_TCP).
-			WithIp(sm.Full("0.0.0.0")).
+			WithIp(sm.Regex(`^(0\.0\.0\.0|::)$`)).
 			WithPort(50051),
 		ec.NewProcessConnectChecker().
 			WithProcess(loaderChecker).
