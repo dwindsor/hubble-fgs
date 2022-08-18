@@ -83,12 +83,10 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		}
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
-		process.RefInc()
 	}
 	if parent == nil {
 		fgsParent = &tetragon.Process{}
 	} else {
-		parent.RefInc()
 		fgsParent = parent.GetProcessCopy()
 	}
 
@@ -123,7 +121,11 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		return nil
 	}
 	if process != nil {
+		process.RefInc()
 		fgsEvent.Process = process.GetProcessCopy()
+	}
+	if parent != nil {
+		parent.RefInc()
 	}
 	return fgsEvent
 }
@@ -163,13 +165,11 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		}
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
-		process.RefDec()
 	}
 	if parent == nil {
 		fgsParent = &tetragon.Process{}
 	} else {
 		fgsParent = parent.GetProcessCopy()
-		parent.RefDec()
 	}
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
@@ -208,7 +208,11 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		return nil
 	}
 	if process != nil {
+		process.RefDec()
 		fgsEvent.Process = process.GetProcessCopy()
+	}
+	if parent != nil {
+		parent.RefDec()
 	}
 	return fgsEvent
 }
@@ -227,7 +231,6 @@ func GetProcessListen(
 	}
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
-		process.RefInc()
 		fgsProcess = process.UnsafeGetProcess()
 	} else {
 		fgsProcess = &tetragon.Process{
@@ -236,7 +239,6 @@ func GetProcessListen(
 		}
 	}
 	if parent != nil {
-		parent.RefInc()
 		fgsParent = parent.GetProcessCopy()
 	}
 	fgsEvent := &tetragon.ProcessListen{
@@ -258,8 +260,13 @@ func GetProcessListen(
 	}
 
 	if process != nil {
+		process.RefInc()
 		fgsEvent.Process = process.GetProcessCopy()
 	}
+	if parent != nil {
+		parent.RefInc()
+	}
+
 	return fgsEvent
 }
 
@@ -287,12 +294,10 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 		}
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
-		process.RefInc()
 	}
 	if parent == nil {
 		fgsParent = &tetragon.Process{}
 	} else {
-		parent.RefInc()
 		fgsParent = parent.GetProcessCopy()
 	}
 
@@ -330,7 +335,11 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 		return nil
 	}
 	if process != nil {
+		process.RefInc()
 		fgsEvent.Process = process.GetProcessCopy()
+	}
+	if parent != nil {
+		parent.RefInc()
 	}
 
 	return fgsEvent
