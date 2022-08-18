@@ -408,6 +408,10 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 		ops.MSG_OP_ACCEPT:
 		process.RefInc()
 		parent.RefInc()
+	case ops.MSG_OP_TCPCLOSE,
+		ops.MSG_OP_UDPCLOSE:
+		process.RefDec()
+		parent.RefDec()
 	}
 
 	return process, nil
