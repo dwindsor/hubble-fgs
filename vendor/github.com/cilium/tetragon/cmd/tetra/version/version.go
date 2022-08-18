@@ -19,8 +19,8 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
-	"github.com/isovalent/hubble-fgs/pkg/version"
+	"github.com/cilium/tetragon/cmd/tetra/common"
+	"github.com/cilium/tetragon/pkg/version"
 
 	"github.com/spf13/cobra"
 )

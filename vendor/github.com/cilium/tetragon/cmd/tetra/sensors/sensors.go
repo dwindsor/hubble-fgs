@@ -19,7 +19,7 @@ import (
 	"fmt"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
-	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
+	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/spf13/cobra"
 )
 

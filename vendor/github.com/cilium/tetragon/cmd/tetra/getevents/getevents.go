@@ -1,12 +1,5 @@
-// Copyright (C) Isovalent, Inc. - All Rights Reserved.
-//
-// NOTICE: All information contained herein is, and remains the property of
-// Isovalent Inc and its suppliers, if any. The intellectual and technical
-// concepts contained herein are proprietary to Isovalent Inc and its suppliers
-// and may be covered by U.S. and Foreign Patents, patents in process, and are
-// protected by trade secret or copyright law.  Dissemination of this information
-// or reproduction of this material is strictly forbidden unless prior written
-// permission is obtained from Isovalent Inc.
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Tetragon
 
 package getevents
 
@@ -14,17 +7,26 @@ import (
 	"context"
 	"encoding/json"
 	"errors"
+	"io"
 	"os"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/cmd/tetra/common"
+	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/common"
-	"github.com/isovalent/hubble-fgs/pkg/encoder"
 	"github.com/spf13/cobra"
 	"github.com/spf13/viper"
 	"google.golang.org/grpc/codes"
 	"google.golang.org/grpc/status"
 )
+
+// GetEncoder returns an encoder for an event stream based on configuration options.
+var GetEncoder = func(w io.Writer, colorMode encoder.ColorMode, timestamps bool, compact bool) encoder.EventEncoder {
+	if compact {
+		return encoder.NewCompactEncoder(w, colorMode, timestamps)
+	}
+	return json.NewEncoder(w)
+}
 
 func getRequest(namespaces []string, host bool, processes []string, pods []string) *tetragon.GetEventsRequest {
 	if host {
@@ -46,18 +48,15 @@ func getEvents(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
 	processes := viper.GetStringSlice("process")
 	pods := viper.GetStringSlice("pod")
 	timestamps := viper.GetBool("timestamps")
+	compact := viper.GetString(common.KeyOutput) == "compact"
+	colorMode := encoder.ColorMode(viper.GetString(common.KeyColor))
+
 	request := getRequest(namespaces, host, processes, pods)
 	stream, err := client.GetEvents(ctx, request)
 	if err != nil {
 		logger.GetLogger().WithError(err).Fatal("Failed to call GetEvents")
 	}
-	var eventEncoder encoder.EventEncoder
-	if viper.GetString(common.KeyOutput) == "compact" {
-		colorMode := encoder.ColorMode(viper.GetString(common.KeyColor))
-		eventEncoder = encoder.NewCompactEncoder(os.Stdout, colorMode, timestamps)
-	} else {
-		eventEncoder = json.NewEncoder(os.Stdout)
-	}
+	eventEncoder := GetEncoder(os.Stdout, colorMode, timestamps, compact)
 	for {
 		res, err := stream.Recv()
 		if err != nil {

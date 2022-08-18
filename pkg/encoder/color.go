@@ -16,22 +16,15 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/dustin/go-humanize"
 	"github.com/fatih/color"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-type colorer struct {
-	colors  []*color.Color
-	red     *color.Color
-	green   *color.Color
-	blue    *color.Color
-	cyan    *color.Color
-	magenta *color.Color
-	yellow  *color.Color
-}
+type colorer encoder.Colorer
 
-func newColorer(when ColorMode) *colorer {
+func newColorer(when encoder.ColorMode) *colorer {
 	red := color.New(color.FgRed)
 	green := color.New(color.FgGreen)
 	blue := color.New(color.FgBlue)
@@ -40,31 +33,31 @@ func newColorer(when ColorMode) *colorer {
 	yellow := color.New(color.FgYellow)
 
 	c := &colorer{
-		red:     red,
-		green:   green,
-		blue:    blue,
-		cyan:    cyan,
-		magenta: magenta,
-		yellow:  yellow,
+		Red:     red,
+		Green:   green,
+		Blue:    blue,
+		Cyan:    cyan,
+		Magenta: magenta,
+		Yellow:  yellow,
 	}
 
-	c.colors = []*color.Color{
+	c.Colors = []*color.Color{
 		red, green, blue,
 		cyan, magenta, yellow,
 	}
 	switch when {
-	case Always:
+	case encoder.Always:
 		c.enable()
-	case Never:
+	case encoder.Never:
 		c.disable()
-	case Auto:
+	case encoder.Auto:
 		c.auto()
 	}
 	return c
 }
 
 func (c *colorer) auto() {
-	for _, v := range c.colors {
+	for _, v := range c.Colors {
 		if color.NoColor { // NoColor is global and set dynamically
 			v.DisableColor()
 		} else {
@@ -74,13 +67,13 @@ func (c *colorer) auto() {
 }
 
 func (c *colorer) enable() {
-	for _, v := range c.colors {
+	for _, v := range c.Colors {
 		v.EnableColor()
 	}
 }
 
 func (c *colorer) disable() {
-	for _, v := range c.colors {
+	for _, v := range c.Colors {
 		v.DisableColor()
 	}
 }
@@ -114,24 +107,24 @@ func processCaps(c *tetragon.Capabilities) string {
 }
 
 func (c colorer) processInfo(host string, process *tetragon.Process) (string, string) {
-	source := c.green.Sprint(host)
+	source := c.Green.Sprint(host)
 	if process.Pod != nil {
-		source = c.green.Sprint(process.Pod.Namespace, "/", process.Pod.Name)
+		source = c.Green.Sprint(process.Pod.Namespace, "/", process.Pod.Name)
 	}
-	proc := c.magenta.Sprint(process.Binary)
-	caps := c.magenta.Sprint(processCaps(process.Cap))
+	proc := c.Magenta.Sprint(process.Binary)
+	caps := c.Magenta.Sprint(processCaps(process.Cap))
 	return fmt.Sprintf("%s %s", source, proc), caps
 }
 
 func (c colorer) interfaceInfo(host string, stats *tetragon.InterfaceStats) string {
-	source := c.green.Sprint(host)
-	interfaceInfo := c.magenta.Sprint(stats.InterfaceName, "@", stats.InterfaceIfindex)
+	source := c.Green.Sprint(host)
+	interfaceInfo := c.Magenta.Sprint(stats.InterfaceName, "@", stats.InterfaceIfindex)
 	return fmt.Sprintf("%s %s", source, interfaceInfo)
 }
 
 func (c colorer) http(http *tetragon.HttpInfo) string {
 	if http.Response == nil || http.Response.Code == 0 {
-		return c.cyan.Sprint(
+		return c.Cyan.Sprint(
 			http.Request.Host, " ",
 			http.Request.Method, " ",
 			http.Request.Uri, " ")
@@ -140,7 +133,7 @@ func (c colorer) http(http *tetragon.HttpInfo) string {
 	if http.Latency != nil {
 		latency = http.Latency.AsDuration()
 	}
-	return c.cyan.Sprint(
+	return c.Cyan.Sprint(
 		http.Request.Host, " ",
 		http.Request.Method, " ",
 		http.Request.Uri, " ",
@@ -154,7 +147,7 @@ func (c colorer) tls(tls *tetragon.Tls) string {
 	if tls.DestinationPort != nil {
 		dstPort = tls.DestinationPort.Value
 	}
-	return c.cyan.Sprint(
+	return c.Cyan.Sprint(
 		tls.DestinationIp, ":", dstPort, " ",
 		tls.SniName, " ",
 		tls.NegotiatedVersion, " ",
@@ -177,7 +170,7 @@ func (c colorer) close(close *tetragon.ProcessClose) string {
 		txBytes = humanize.Bytes(close.Stats.BytesSent)
 		rxBytes = humanize.Bytes(close.Stats.BytesReceived)
 	}
-	return c.cyan.Sprint(
+	return c.Cyan.Sprint(
 		destination,
 		" tx ", txBytes,
 		" rx ", rxBytes,
@@ -189,7 +182,7 @@ func (c colorer) hostPort(protocol tetragon.SocketProtocol, host string, portPtr
 	if portPtr != nil {
 		port = portPtr.Value
 	}
-	return c.cyan.Sprint(protocol, " ", host, ":", port)
+	return c.Cyan.Sprint(protocol, " ", host, ":", port)
 }
 
 func (c colorer) fiveTuple(
@@ -207,7 +200,7 @@ func (c colorer) fiveTuple(
 		dstPort = dstPortPtr.GetValue()
 	}
 	if len(dns) == 0 {
-		return c.cyan.Sprint(protocol, " ", srcHost, ":", srcPort, " => ", dstHost, ":", dstPort)
+		return c.Cyan.Sprint(protocol, " ", srcHost, ":", srcPort, " => ", dstHost, ":", dstPort)
 	}
-	return c.cyan.Sprint(protocol, " ", srcHost, ":", srcPort, " => ", dstHost, ":", dstPort, " ", dns)
+	return c.Cyan.Sprint(protocol, " ", srcHost, ":", srcPort, " => ", dstHost, ":", dstPort, " ", dns)
 }

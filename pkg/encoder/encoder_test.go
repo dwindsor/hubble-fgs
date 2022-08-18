@@ -20,12 +20,13 @@ import (
 	"google.golang.org/protobuf/types/known/durationpb"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
+	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/stretchr/testify/assert"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
 func TestCompactEncoder_InvalidEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the event field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{})
@@ -33,7 +34,7 @@ func TestCompactEncoder_InvalidEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_ExecEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -78,7 +79,7 @@ func TestCompactEncoder_ExecEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_ConnectEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -127,7 +128,7 @@ func TestCompactEncoder_ConnectEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_AcceptEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -176,7 +177,7 @@ func TestCompactEncoder_AcceptEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_ListenEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -221,7 +222,7 @@ func TestCompactEncoder_ListenEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_CloseEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -274,7 +275,7 @@ func TestCompactEncoder_CloseEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -338,7 +339,7 @@ func TestCompactEncoder_SockstatsEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_DnsEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -381,7 +382,7 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_TlsEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -430,7 +431,7 @@ func TestCompactEncoder_TlsEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_HttpEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -530,7 +531,7 @@ func TestCompactEncoder_HttpEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_ExitEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail if the process field is nil.
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -580,7 +581,7 @@ func TestCompactEncoder_ExitEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_KprobeEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// should fail without process field
 	_, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -612,7 +613,7 @@ func TestCompactEncoder_KprobeEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// open without args
 	result, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -656,7 +657,7 @@ func TestCompactEncoder_KprobeOpenEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// write without args
 	result, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -701,7 +702,7 @@ func TestCompactEncoder_KprobeWriteEventToString(t *testing.T) {
 }
 
 func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// open without args
 	result, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -745,7 +746,7 @@ func TestCompactEncoder_KprobeCloseEventToString(t *testing.T) {
 
 func TestCompactEncoder_Encode(t *testing.T) {
 	var b bytes.Buffer
-	p := NewCompactEncoder(&b, Never, false)
+	p := NewEnterpriseEncoder(&b, encoder.Never, false)
 
 	// invalid event
 	err := p.Encode(nil)
@@ -775,7 +776,7 @@ func TestCompactEncoder_Encode(t *testing.T) {
 }
 
 func TestCompactEncoder_InterfaceStatsEventToString(t *testing.T) {
-	p := NewCompactEncoder(os.Stdout, Never, false)
+	p := NewEnterpriseEncoder(os.Stdout, encoder.Never, false)
 
 	// open without args
 	result, err := p.eventToString(&tetragon.GetEventsResponse{
@@ -795,7 +796,7 @@ func TestCompactEncoder_InterfaceStatsEventToString(t *testing.T) {
 
 func TestCompactEncoder_EncodeWithTimestamp(t *testing.T) {
 	var b bytes.Buffer
-	p := NewCompactEncoder(&b, Never, true)
+	p := NewEnterpriseEncoder(&b, encoder.Never, true)
 
 	// invalid event
 	err := p.Encode(nil)
