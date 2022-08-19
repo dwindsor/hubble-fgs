@@ -1,13 +1,5 @@
-//  Copyright (C) Isovalent, Inc. - All Rights Reserved.
-//
-//  NOTICE: All information contained herein is, and remains the property of
-//  Isovalent Inc and its suppliers, if any. The intellectual and technical
-//  concepts contained herein are proprietary to Isovalent Inc and its suppliers
-//  and may be covered by U.S. and Foreign Patents, patents in process, and are
-//  protected by trade secret or copyright law.  Dissemination of this information
-//  or reproduction of this material is strictly forbidden unless prior written
-//  permission is obtained from Isovalent Inc.
-//
+// SPDX-License-Identifier: Apache-2.0
+// Copyright Authors of Tetragon
 
 package jsonchecker
 
@@ -23,15 +15,40 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/api/v1/tetragon/codegen/helpers"
+	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/testutils"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	Retries    = 20
-	RetryDelay = 2 * time.Second
+	Retries    = 13
+	RetryDelay = eventcache.EventRetryTimer + (1 * time.Second)
 )
+
+// DebugError is an error that will create a debug output message
+type DebugError struct {
+	err error
+}
+
+func NewDebugError(err error) *DebugError {
+	if err == nil {
+		return nil
+	}
+	return &DebugError{
+		err: err,
+	}
+}
+
+// Error returns the error message
+func (e *DebugError) Error() string {
+	return fmt.Sprintf("DebugError: %v", e.err)
+}
+
+// Unwrap returns the original error
+func (e *DebugError) Unwrap() error {
+	return e.err
+}
 
 // JsonEOF is a type of error where we went over all the events and there was no match.
 //
@@ -60,6 +77,7 @@ func JsonCheck(jsonFile *os.File, checker ec.MultiEventChecker, log *logrus.Logg
 	count := 0
 	dec := json.NewDecoder(jsonFile)
 	for dec.More() {
+		var dbgErr *DebugError
 		var ev tetragon.GetEventsResponse
 		if err := dec.Decode(&ev); err != nil {
 			return fmt.Errorf("unmarshal failed: %w", err)
@@ -81,6 +99,8 @@ func JsonCheck(jsonFile *os.File, checker ec.MultiEventChecker, log *logrus.Logg
 		} else if done && err != nil {
 			log.Errorf("%s => terminating error: %s", matchPrefix, err)
 			return err
+		} else if errors.As(err, &dbgErr) {
+			log.Debugf("%s => no match: %s, continuing", matchPrefix, err)
 		} else {
 			log.Infof("%s => no match: %s, continuing", matchPrefix, err)
 		}
@@ -107,7 +127,6 @@ func JsonTestCheck(t *testing.T, checker ec.MultiEventChecker) error {
 	// cleanup function: if test fails, mark export file to be kept
 	defer func() {
 		if err != nil {
-			t.Log("test failed, marking export file to be kept")
 			err := testutils.KeepExportFile(t)
 			if err == nil {
 				t.Log("test failed, marked export file to be kept")
@@ -130,9 +149,9 @@ func JsonTestCheck(t *testing.T, checker ec.MultiEventChecker) error {
 	if !ok {
 		return fmt.Errorf("failed to convert logger")
 	}
-	defer captureLog(t).Release()
 
 	cnt := 0
+	prevEvents := 0
 	for {
 		err = JsonCheck(jsonFile, checker, log)
 		if err == nil {
@@ -145,6 +164,13 @@ func JsonTestCheck(t *testing.T, checker ec.MultiEventChecker) error {
 		if !errors.As(err, &errEOF) {
 			break
 		}
+
+		// bail out if there are no new events in two consecutive runs
+		if cnt > 0 && prevEvents == errEOF.count {
+			err = fmt.Errorf("JsonTestCheck failed in retry cnt=%d and there were no new events from previous try: %w", cnt, err)
+			break
+		}
+		prevEvents = errEOF.count
 
 		cnt++
 		if cnt > Retries {

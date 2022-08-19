@@ -37,7 +37,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/sirupsen/logrus"
 
-	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
+	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"

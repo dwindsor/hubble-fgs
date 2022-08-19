@@ -35,7 +35,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/stretchr/testify/assert"
 
-	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
+	"github.com/cilium/tetragon/pkg/jsonchecker"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"

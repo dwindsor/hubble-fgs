@@ -4,8 +4,8 @@ import (
 	"fmt"
 	"os"
 
+	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/tests"
 
 	"github.com/sirupsen/logrus"
