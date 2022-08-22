@@ -12,108 +12,22 @@ package encoder
 
 import (
 	"fmt"
-	"strings"
 	"time"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/dustin/go-humanize"
-	"github.com/fatih/color"
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-type colorer encoder.Colorer
+type colorer struct {
+	*encoder.Colorer
+}
 
 func newColorer(when encoder.ColorMode) *colorer {
-	red := color.New(color.FgRed)
-	green := color.New(color.FgGreen)
-	blue := color.New(color.FgBlue)
-	cyan := color.New(color.FgCyan)
-	magenta := color.New(color.FgMagenta)
-	yellow := color.New(color.FgYellow)
-
-	c := &colorer{
-		Red:     red,
-		Green:   green,
-		Blue:    blue,
-		Cyan:    cyan,
-		Magenta: magenta,
-		Yellow:  yellow,
+	return &colorer{
+		Colorer: encoder.NewColorer(when),
 	}
-
-	c.Colors = []*color.Color{
-		red, green, blue,
-		cyan, magenta, yellow,
-	}
-	switch when {
-	case encoder.Always:
-		c.enable()
-	case encoder.Never:
-		c.disable()
-	case encoder.Auto:
-		c.auto()
-	}
-	return c
-}
-
-func (c *colorer) auto() {
-	for _, v := range c.Colors {
-		if color.NoColor { // NoColor is global and set dynamically
-			v.DisableColor()
-		} else {
-			v.EnableColor()
-		}
-	}
-}
-
-func (c *colorer) enable() {
-	for _, v := range c.Colors {
-		v.EnableColor()
-	}
-}
-
-func (c *colorer) disable() {
-	for _, v := range c.Colors {
-		v.DisableColor()
-	}
-}
-
-func printCap(c int) bool {
-	switch c {
-	case int(tetragon.CapabilitiesType_CAP_SYS_ADMIN):
-		return true
-	}
-	return false
-}
-
-func processCaps(c *tetragon.Capabilities) string {
-	var caps []string
-
-	if c == nil {
-		return ""
-	}
-
-	for e := range c.Effective {
-		if printCap(e) {
-			caps = append(caps, tetragon.CapabilitiesType_name[int32(e)])
-		}
-	}
-
-	capsString := strings.Join(caps, ",")
-	if len(caps) > 0 {
-		capsString = "🛑 " + capsString
-	}
-	return capsString
-}
-
-func (c colorer) processInfo(host string, process *tetragon.Process) (string, string) {
-	source := c.Green.Sprint(host)
-	if process.Pod != nil {
-		source = c.Green.Sprint(process.Pod.Namespace, "/", process.Pod.Name)
-	}
-	proc := c.Magenta.Sprint(process.Binary)
-	caps := c.Magenta.Sprint(processCaps(process.Cap))
-	return fmt.Sprintf("%s %s", source, proc), caps
 }
 
 func (c colorer) interfaceInfo(host string, stats *tetragon.InterfaceStats) string {

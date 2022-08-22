@@ -78,7 +78,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			return "", ErrMissingProcessInfo
 		}
 		event := p.colorer.Blue.Sprintf("🔌 %-7s", "connect")
-		processInfo, caps := p.colorer.processInfo(response.NodeName, connect.Process)
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, connect.Process)
 		destination := p.colorer.fiveTuple(
 			connect.Protocol,
 			connect.SourceIp,
@@ -93,7 +93,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			return "", ErrMissingProcessInfo
 		}
 		event := p.colorer.Blue.Sprintf("🎧 %-7s", "listen")
-		processInfo, caps := p.colorer.processInfo(response.NodeName, listen.Process)
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, listen.Process)
 		hostPort := p.colorer.hostPort(listen.Protocol, listen.Ip, listen.Port)
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, hostPort), caps), nil
 	case *tetragon.GetEventsResponse_ProcessAccept:
@@ -102,7 +102,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			return "", ErrMissingProcessInfo
 		}
 		event := p.colorer.Blue.Sprintf("💡 %-7s", "accept")
-		processInfo, caps := p.colorer.processInfo(response.NodeName, accept.Process)
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, accept.Process)
 		fiveTuple := p.colorer.fiveTuple(
 			accept.Protocol,
 			accept.DestinationIp,
@@ -120,7 +120,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			return "", ErrMissingHTTPInfo
 		}
 		event := p.colorer.Blue.Sprintf("🌐 %-7s", "http")
-		processInfo, caps := p.colorer.processInfo(response.NodeName, http.Process)
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, http.Process)
 		httpInfo := p.colorer.http(http.Http)
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, httpInfo), caps), nil
 	case *tetragon.GetEventsResponse_Tls:
@@ -129,7 +129,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			return "", ErrMissingProcessInfo
 		}
 		event := p.colorer.Blue.Sprintf("🔐 %-7s", "tls")
-		processInfo, caps := p.colorer.processInfo(response.NodeName, tls.Process)
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, tls.Process)
 		tlsInfo := p.colorer.tls(tls)
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, tlsInfo), caps), nil
 	case *tetragon.GetEventsResponse_ProcessClose:
@@ -138,7 +138,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			return "", ErrMissingProcessInfo
 		}
 		event := p.colorer.Blue.Sprintf("\U0001F9F9 %-7s", "close")
-		processInfo, caps := p.colorer.processInfo(response.NodeName, processClose.Process)
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, processClose.Process)
 		closeInfo := p.colorer.close(processClose)
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, closeInfo), caps), nil
 	case *tetragon.GetEventsResponse_ProcessDns:
@@ -150,7 +150,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			return "", ErrMissingDNSInfo
 		}
 		event := p.colorer.Blue.Sprintf("📖 %-7s", "dns")
-		processInfo, caps := p.colorer.processInfo(response.NodeName, dns.Process)
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, dns.Process)
 		args := p.colorer.Cyan.Sprint(dns.GetDns().Names, " => ", dns.GetDns().Ips)
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, args), caps), nil
 	case *tetragon.GetEventsResponse_ProcessSockStats:
@@ -165,7 +165,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			return "", ErrMissingStatsInfo
 		}
 		event := p.colorer.Blue.Sprintf("🧮 %-7s", "socket")
-		processInfo, _ := p.colorer.processInfo(response.NodeName, stats.Process)
+		processInfo, _ := p.colorer.ProcessInfo(response.NodeName, stats.Process)
 		destination := p.colorer.fiveTuple(
 			stats.Socket.Protocol,
 			stats.Socket.SourceIp,
