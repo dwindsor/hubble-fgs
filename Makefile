@@ -31,7 +31,7 @@ COPYRIGHT_DIRS = pkg/bench cmd/fgs-bench bpf/parsers/http
 
 TESTER_PROGS_DIR = "contrib/tester-progs"
 
-all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs checkerpc
+all: hubble-bpf hubble-fgs hubble-enterprise fgs-bench fgs-alignchecker test-compile tester-progs
 
 .PHONY: hubble-bpf hubble-bpf-local hubble-bpf-container
 
@@ -117,9 +117,6 @@ fgs-alignchecker:
 	make -C $(OSS_DIR) tetragon-alignchecker
 	cp $(OSS_DIR)/tetragon-alignchecker fgs-alignchecker
 
-checkerpc:
-	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./cmd/checkerpc/
-
 .PHONY: ksyms
 ksyms:
 	make -C $(OSS_DIR) ksyms
@@ -148,7 +145,7 @@ vendor:
 clean:
 	$(MAKE) -C ./bpf clean
 	$(MAKE) -C $(TESTER_PROGS_DIR) clean
-	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench ./checkerpc
+	rm -f go-tests/*.test ./ksyms ./hubble-enterprise ./hubble-enterprise-operator ./hubble-fgs ./fgs-alignchecker ./fgs-bench
 
 .PHONY: fgs-bench fgs-bench-image
 fgs-bench:
@@ -280,7 +277,7 @@ go-format:
 .PHONY: format
 format: go-format clang-format
 
-.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check checkerpc
+.PHONY: headers all clean image install lint hubble-fgs hubble-enterprise generate check
 
 
 # generate cscope for bpf files
