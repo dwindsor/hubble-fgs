@@ -159,10 +159,6 @@ func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	return nil
 }
 
-func (msg *MsgCloneEventUnix) GetNsPid() uint32 {
-	return msg.NSPID
-}
-
 // GetProcessExit returns Exit protobuf message for a given process.
 func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	var fgsProcess, fgsParent *tetragon.Process
