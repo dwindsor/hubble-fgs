@@ -18,11 +18,9 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"os"
 	"testing"
 	"time"
 
-	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 	"sigs.k8s.io/e2e-framework/third_party/helm"
@@ -36,7 +34,7 @@ import (
 	"github.com/cilium/tetragon/tests/e2e/runners"
 )
 
-var testenv env.Environment
+var runner *runners.Runner
 
 const (
 	namespace = "demo-app"
@@ -84,14 +82,14 @@ func uninstallDemoApp() features.Func {
 }
 
 func TestMain(m *testing.M) {
-	testenv = runners.NewRunner().Setup()
+	runner = runners.NewRunner().Init()
 
-	testenv.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		ctx, _ = helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
 		return ctx, nil
 	})
 
-	testenv.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		ctx, _ = helpers.DeleteNamespace(namespace, true)(ctx, cfg)
 		ctx, err := helpers.CreateNamespace(namespace, true)(ctx, cfg)
 		if err != nil {
@@ -101,11 +99,11 @@ func TestMain(m *testing.M) {
 		return ctx, nil
 	})
 
-	os.Exit(testenv.Run(m))
+	runner.Run(m)
 }
 
 func TestDemoApp(t *testing.T) {
-	kversion := helpers.GetMinKernelVersion(t, testenv)
+	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	demoChecker := checker.NewRPCChecker(DemoAppChecker(kversion), "demoChecker").WithTimeLimit(5 * time.Minute)
 	testDemoApp := features.New("Test Demo App").
@@ -121,8 +119,8 @@ func TestDemoApp(t *testing.T) {
 		Assess("Uninstall Demo App", uninstallDemoApp()).
 		Feature()
 
-	testenv.TestInParallel(t, testDemoApp, run)
-	testenv.Test(t, cleanup)
+	runner.TestInParallel(t, testDemoApp, run)
+	runner.Test(t, cleanup)
 }
 
 func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {

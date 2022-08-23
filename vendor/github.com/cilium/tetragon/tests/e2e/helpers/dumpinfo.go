@@ -14,8 +14,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+	"time"
 
-	"github.com/cilium/cilium-e2e/pkg/e2ecluster/e2ehelpers"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/flags"
 	"github.com/cilium/tetragon/tests/e2e/state"
@@ -48,12 +48,6 @@ func DumpInfo() TestEnvFunc {
 		klog.InfoS("Dumping test data", "dir", exportDir)
 		dumpCheckers(ctx, exportDir)
 
-		if ports, ok := ctx.Value(state.PromForwardedPorts).(map[string]int); ok {
-			for podName, port := range ports {
-				dumpMetrics(fmt.Sprint(port), podName, exportDir)
-			}
-		}
-
 		client, err := cfg.NewClient()
 		if err != nil {
 			return ctx, err
@@ -78,6 +72,12 @@ func DumpInfo() TestEnvFunc {
 			}
 			if err := extractLogs(&pod, exportDir, false); err != nil {
 				klog.ErrorS(err, "Failed to extract tetragon logs")
+			}
+			if err := describeTetragonPod(&pod, exportDir); err != nil {
+				klog.ErrorS(err, "Failed to describe tetragon pods")
+			}
+			if err := dumpPodSummary("pods.txt", exportDir); err != nil {
+				klog.ErrorS(err, "Failed to dump pod summary")
 			}
 			dumpBpftool(ctx, client, exportDir, pod.Namespace, pod.Name, TetragonContainerName)
 		}
@@ -134,6 +134,30 @@ func extractLogs(pod *corev1.Pod, exportDir string, prev bool) error {
 		prev)
 }
 
+func describeTetragonPod(pod *corev1.Pod, exportDir string) error {
+	fname := fmt.Sprintf("tetragon.%s.describe", pod.Name)
+	return kubectlDescribe(filepath.Join(exportDir, fname),
+		pod.Namespace,
+		pod.Name)
+}
+
+func dumpPodSummary(fname, exportDir string) error {
+	cmd := exec.Command("kubectl", strings.Fields("get pods -A")...)
+	stdout := &bytes.Buffer{}
+	cmd.Stdout = stdout
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run kubectl get pods -A: %w", err)
+	}
+
+	fname = filepath.Join(exportDir, fname)
+	if err := os.WriteFile(fname, stdout.Bytes(), os.FileMode(0o644)); err != nil {
+		return fmt.Errorf("failed to write pod summary to file %s: %w", fname, err)
+	}
+
+	return nil
+}
+
 func kubectlCp(podNamespace, podName, containerName, src, dst string) error {
 	args := fmt.Sprintf("cp -c %s %s/%s:%s %s", containerName, podNamespace, podName, src, dst)
 	cmd := exec.Command("kubectl", strings.Fields(args)...)
@@ -160,6 +184,23 @@ func kubectlLogs(fname, podNamespace, podName, containerName string, prev bool) 
 
 	if err := os.WriteFile(fname, stdout.Bytes(), os.FileMode(0o644)); err != nil {
 		return fmt.Errorf("failed to write logs to file %s: %w", fname, err)
+	}
+
+	return nil
+}
+
+func kubectlDescribe(fname, podNamespace, podName string) error {
+	args := fmt.Sprintf("describe -n %s pods/%s", podNamespace, podName)
+	cmd := exec.Command("kubectl", strings.Fields(args)...)
+	stdout := &bytes.Buffer{}
+	cmd.Stdout = stdout
+
+	if err := cmd.Run(); err != nil {
+		return fmt.Errorf("failed to run kubectl %s: %w", args, err)
+	}
+
+	if err := os.WriteFile(fname, stdout.Bytes(), os.FileMode(0o644)); err != nil {
+		return fmt.Errorf("failed to write describe output to file %s: %w", fname, err)
 	}
 
 	return nil
@@ -218,6 +259,37 @@ func dumpMetrics(port string, podName string, exportDir string) {
 	}
 }
 
+// StartMetricsDumper starts a goroutine that dumps metrics at a regular interval until
+// the context is done. We want to do this in case the pod crashes or gets restarted
+// during a failing test. This way we can at least have a snapshot of the metrics to look
+// back on.
+func StartMetricsDumper(ctx context.Context, exportDir string, interval time.Duration) {
+	go func() {
+		ticker := time.NewTicker(interval)
+		for {
+			select {
+			case <-ticker.C:
+				if ports, ok := ctx.Value(state.PromForwardedPorts).(map[string]int); ok {
+					for podName, port := range ports {
+						dumpMetrics(fmt.Sprint(port), podName, exportDir)
+					}
+				} else {
+					klog.V(4).Info("failed to retrieve metrics portforward, refusing to dump metrics")
+				}
+			case <-ctx.Done():
+				if ports, ok := ctx.Value(state.PromForwardedPorts).(map[string]int); ok {
+					for podName, port := range ports {
+						dumpMetrics(fmt.Sprint(port), podName, exportDir)
+					}
+				} else {
+					klog.V(4).Info("failed to retrieve metrics portforward, refusing to dump metrics")
+				}
+				return
+			}
+		}
+	}()
+}
+
 // dumpBpftool dumps bpftool progs and maps for a pod
 func dumpBpftool(ctx context.Context, client klient.Client, exportDir, podNamespace, podName, containerName string) {
 	if err := runBpftool(ctx, client, exportDir, fmt.Sprintf("tetragon.%s.progs", podName), podNamespace, podName, containerName, "prog", "show"); err != nil {
@@ -231,36 +303,16 @@ func dumpBpftool(ctx context.Context, client klient.Client, exportDir, podNamesp
 	}
 }
 
+// runBpftool runs bpftool with a specific set of arguments, dumping its output into
+// a file inside exportDir.
 func runBpftool(ctx context.Context, client klient.Client, exportDir, fname, podNamespace, podName, containerName string, args ...string) error {
-	cmd := append([]string{"bpftool"}, args...)
-
-	stdout := new(bytes.Buffer)
-	stderr := new(bytes.Buffer)
-	if err := e2ehelpers.ExecInPod(ctx,
-		client,
-		podNamespace,
-		podName,
-		containerName,
-		stdout,
-		stderr,
-		cmd); err != nil {
-		return fmt.Errorf("failed to run %s: %w", cmd, err)
+	out, err := RunCommand(ctx, client, podNamespace, podName, containerName, "bpftool", args...)
+	if err != nil {
+		klog.ErrorS(err, "failed to run bpftool")
 	}
-
-	var err error
-	buff := new(bytes.Buffer)
-	buff.WriteString("-------------------- stdout starts here --------------------\n")
-	if _, err = buff.ReadFrom(stdout); err != nil {
-		klog.ErrorS(err, "error reading stdout", "cmd", cmd)
-	}
-	buff.WriteString("-------------------- stderr starts here --------------------\n")
-	if _, err = buff.ReadFrom(stderr); err != nil {
-		klog.ErrorS(err, "error reading stdout", "cmd", cmd)
-	}
-	buff.WriteString("------------------------------------------------------------\n")
 
 	fname = filepath.Join(exportDir, fname)
-	if err := os.WriteFile(fname, buff.Bytes(), os.FileMode(0o644)); err != nil {
+	if err := os.WriteFile(fname, out, os.FileMode(0o644)); err != nil {
 		klog.ErrorS(err, "failed to write to bpftool output file", "file", fname)
 	}
 

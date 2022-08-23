@@ -18,7 +18,6 @@ import (
 	"context"
 	_ "embed"
 	"fmt"
-	"os"
 	"strings"
 	"testing"
 	"time"
@@ -27,7 +26,6 @@ import (
 	corev1 "k8s.io/api/core/v1"
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/e2e-framework/klient"
-	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 
@@ -42,7 +40,7 @@ import (
 	"github.com/cilium/tetragon/tests/e2e/runners"
 )
 
-var testenv env.Environment
+var runner *runners.Runner
 
 const (
 	namespace = "curl"
@@ -55,12 +53,12 @@ var curlYaml string
 var tracingPolicyYaml string
 
 func TestMain(m *testing.M) {
-	testenv = runners.NewRunner().WithInstallTetragon(install.WithHelmOptions(map[string]string{
+	runner = runners.NewRunner().WithInstallTetragon(install.WithHelmOptions(map[string]string{
 		"enterprise.exportAllowList": "",
 		"enterprise.enableTLSEvents": "true",
-	})).Setup()
+	})).Init()
 
-	testenv.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		var err error
 		ctx, _ = helpers.DeleteNamespace(namespace, true)(ctx, cfg)
 		ctx, err = helpers.CreateNamespace(namespace, true)(ctx, cfg)
@@ -74,12 +72,12 @@ func TestMain(m *testing.M) {
 		return ctx, nil
 	})
 
-	testenv.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
+	runner.Setup(func(ctx context.Context, cfg *envconf.Config) (context.Context, error) {
 		ctx, _ = helpers.LoadCRDString(namespace, tracingPolicyYaml, true)(ctx, cfg)
 		return ctx, nil
 	})
 
-	os.Exit(testenv.Run(m))
+	runner.Run(m)
 }
 
 func getCurlPod(ctx context.Context, client klient.Client) (*corev1.Pod, error) {
@@ -96,7 +94,7 @@ func getCurlPod(ctx context.Context, client klient.Client) (*corev1.Pod, error) 
 }
 
 func TestHttp(t *testing.T) {
-	kversion := helpers.GetMinKernelVersion(t, testenv)
+	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
 		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
@@ -134,11 +132,11 @@ func TestHttp(t *testing.T) {
 		}).
 		Feature()
 
-	testenv.TestInParallel(t, checkHttp, testHttp)
+	runner.TestInParallel(t, checkHttp, testHttp)
 }
 
 func TestTls(t *testing.T) {
-	kversion := helpers.GetMinKernelVersion(t, testenv)
+	kversion := helpers.GetMinKernelVersion(t, runner.Environment)
 
 	if kernels.KernelStringToNumeric(kversion) < kernels.KernelStringToNumeric("5.10.0") {
 		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
@@ -176,7 +174,7 @@ func TestTls(t *testing.T) {
 		}).
 		Feature()
 
-	testenv.TestInParallel(t, checkTls, testTls)
+	runner.TestInParallel(t, checkTls, testTls)
 }
 
 func TlsChecker(kernelVersion string) ec.MultiEventChecker {
