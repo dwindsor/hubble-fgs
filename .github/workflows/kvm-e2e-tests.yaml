@@ -129,6 +129,7 @@ jobs:
               ROOTIMG="/home/fgs/img/kvm.img"
               BZIMAGE="/home/fgs/kernels/${{ matrix.kernel }}"
               FGSDIR="/home/fgs/hubble-fgs"
+              VMRAM=8G
             EOF
 
             # Spin up KVM
