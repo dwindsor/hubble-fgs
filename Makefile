@@ -163,7 +163,7 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 
 .PHONY: test
 test:
-	ulimit -n 1048576 && $(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./pkg/... ${EXTRA_TESTFLAGS}
+	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./pkg/... ${EXTRA_TESTFLAGS}
 
 .PHONY: e2e-test
 e2e-test: image image-operator

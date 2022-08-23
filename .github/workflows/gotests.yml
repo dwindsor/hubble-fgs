@@ -23,8 +23,6 @@ jobs:
       with:
         path: go/src/github.com/isovalent/hubble-fgs/
         submodules: true
-    - name: Increase open file descriptors limit
-      run: echo fs.file-max=1048576 | sudo tee -a /etc/sysctl.conf && sudo sysctl -p
     - name: Install liburing
       run: |
         git clone https://github.com/axboe/liburing.git
