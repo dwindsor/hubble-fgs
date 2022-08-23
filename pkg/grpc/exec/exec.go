@@ -169,7 +169,6 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
 	if process != nil {
-		process.RefDec()
 		fgsProcess = process.UnsafeGetProcess()
 	} else {
 		fgsProcess = &tetragon.Process{
@@ -178,7 +177,6 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		}
 	}
 	if parent != nil {
-		parent.RefDec()
 		fgsParent = parent.GetProcessCopy()
 	}
 
@@ -199,7 +197,11 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
+	if parent != nil {
+		parent.RefDec()
+	}
 	if process != nil {
+		process.RefDec()
 		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
