@@ -71,10 +71,12 @@ func (msg *MsgExecveEventUnix) RetryInternal(ev notify.Event, timestamp uint64) 
 func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
 	var podInfo *tetragon.Pod
 
-	p := ev.GetProcess()
-	containerId := p.Docker
-	filename := p.Binary
-	args := p.Arguments
+	proc := ev.GetProcess()
+	parent := ev.GetParent()
+
+	containerId := proc.Docker
+	filename := proc.Binary
+	args := proc.Arguments
 	nspid := msg.Process.NSPID
 
 	if option.Config.EnableK8s && containerId != "" {
@@ -91,6 +93,20 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 	// here.
 	internal.AddPodInfo(podInfo)
 	ev.SetProcess(internal.GetProcessCopy())
+
+	// Check we have a parent with exception for pid 1, note we do this last because we want
+	// to ensure the podInfo and process are set before returning any errors.
+	if proc.Pid.Value > 1 && parent == nil {
+		parentId := proc.ParentExecId
+		parent, err := process.Get(parentId)
+		if parent == nil {
+			return err
+		}
+		if strings.Contains(proc.Flags, "clone") == true {
+			parent.RefInc()
+		}
+	}
+
 	return nil
 }
 
@@ -102,7 +118,9 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 		procEvent := GetProcessExec(proc)
 
 		ec := eventcache.Get()
-		if ec != nil && ec.Needed(procEvent.Process) {
+		if ec != nil &&
+			(ec.Needed(procEvent.Process) ||
+				(procEvent.Process.Pid.Value > 1 && ec.Needed(procEvent.Parent))) {
 			ec.Add(proc, procEvent, msg.MsgExecveEventUnix.Process.Ktime, msg)
 		} else {
 			procEvent.Process = proc.GetProcessCopy()
@@ -145,18 +163,6 @@ func (msg *MsgCloneEventUnix) GetNsPid() uint32 {
 	return msg.NSPID
 }
 
-type MsgExitEventUnix struct {
-	processapi.MsgExitEvent
-}
-
-func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, timestamp)
-}
-
-func (msg *MsgExitEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev)
-}
-
 // GetProcessExit returns Exit protobuf message for a given process.
 func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	var fgsProcess, fgsParent *tetragon.Process
@@ -187,7 +193,9 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	}
 
 	ec := eventcache.Get()
-	if ec != nil && ec.Needed(fgsProcess) {
+	if ec != nil &&
+		(ec.Needed(fgsProcess) ||
+			(fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -195,6 +203,37 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		fgsEvent.Process = process.GetProcessCopy()
 	}
 	return fgsEvent
+}
+
+type MsgExitEventUnix struct {
+	processapi.MsgExitEvent
+}
+
+func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	p := ev.GetProcess()
+	internal, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
+	var err error
+
+	if parent != nil {
+		ev.SetParent(parent.GetProcessCopy())
+		parent.RefDec()
+	} else {
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheParentInfoFailed)
+		err = eventcache.ErrFailedToGetParentInfo
+	}
+
+	if internal != nil {
+		internal.RefDec()
+	} else {
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+		err = eventcache.ErrFailedToGetProcessInfo
+	}
+
+	return internal, err
+}
+
+func (msg *MsgExitEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return eventcache.HandleGenericEvent(internal, ev)
 }
 
 func (msg *MsgExitEventUnix) HandleMessage() *tetragon.GetEventsResponse {
