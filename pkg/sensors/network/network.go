@@ -270,6 +270,13 @@ var (
 		"kprobe_netif_receive_skb",
 		"kprobe",
 	)
+	UnregisterNetdev = program.Builder(
+		"bpf_dev_queue_xmit.o",
+		"call_netdevice_notifiers_info",
+		"kprobe/call_netdevice_notifiers_info",
+		"kprobe_call_netdevice_notifiers_info",
+		"kprobe",
+	)
 
 	NetworkMap = program.MapBuilder(NetworkMapName, DevQueueXmit)
 )
@@ -289,6 +296,7 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 		progs := []*program.Program{
 			DevQueueXmit,
 			IngressSkb,
+			UnregisterNetdev,
 		}
 		maps := []*program.Map{
 			NetworkMap,

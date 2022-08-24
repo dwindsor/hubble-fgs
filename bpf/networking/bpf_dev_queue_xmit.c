@@ -115,4 +115,30 @@ __netif_receive_skb_core(struct pt_regs *ctx)
 	return interface_stats(skb, false);
 }
 
+#define NETDEV_UNREGISTER 6
+
+__attribute__((section("kprobe/call_netdevice_notifiers_info"), used)) int
+unregister_netdevice(struct pt_regs *ctx)
+{
+	struct netdev_notifier_info *info = (struct netdev_notifier_info *)ctx->si;
+	unsigned long type = (unsigned long)ctx->di;
+	struct network_key *key;
+	struct net_device *dev;
+	int zero = 0;
+
+	if (type != NETDEV_UNREGISTER)
+		return 1;
+
+	key = map_lookup_elem(&key_heap, &zero);
+	if (!key)
+		return 1;
+
+	probe_read(&dev, sizeof(dev), _(&(info->dev)));
+	probe_read(&key->index, sizeof(int), _(&(dev->ifindex)));
+	key->netns = get_netns(dev);
+
+	map_delete_elem(&network_map, key);
+	return 0;
+}
+
 char _license[] __attribute__((section(("license")), used)) = "GPL";
