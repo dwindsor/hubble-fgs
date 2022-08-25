@@ -1,0 +1,26 @@
+apiVersion: cilium.io/v1alpha1
+kind: EventRecording
+metadata:
+  name: example-recording
+spec:
+  checkerKind: unordered
+  fieldFilters:
+    exec:
+      include:
+      - process
+    "*":
+      exclude:
+      - process.pid
+      - process.auid
+      - process.execId
+      - process.parentExecId
+      - process.parent.pid
+      - process.parent.audit
+      - process.parent.execId
+      - process.parent.parentExecId
+      - process.docker
+      - pod.container.id
+  eventFilters:
+    include:
+    - exec: {}
+    - exit: {}

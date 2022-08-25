@@ -18,6 +18,7 @@ require (
 	github.com/google/gops v0.3.25
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
+	github.com/mennanov/fieldmask-utils v0.6.0
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a
 	github.com/sirupsen/logrus v1.9.0
@@ -39,6 +40,7 @@ require (
 	k8s.io/klog/v2 v2.60.1
 	sigs.k8s.io/controller-tools v0.6.2
 	sigs.k8s.io/e2e-framework v0.0.7
+	sigs.k8s.io/yaml v1.3.0
 )
 
 require (
@@ -141,7 +143,6 @@ require (
 	sigs.k8s.io/controller-runtime v0.11.1 // indirect
 	sigs.k8s.io/json v0.0.0-20220525155127-227cbc7cc124 // indirect
 	sigs.k8s.io/structured-merge-diff/v4 v4.2.1 // indirect
-	sigs.k8s.io/yaml v1.3.0 // indirect
 )
 
 // has to be in sync with both cilium and hubble overrides (mostly cilium).
