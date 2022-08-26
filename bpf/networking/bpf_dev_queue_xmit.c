@@ -84,6 +84,7 @@ interface_stats(struct sk_buff *skb, bool xmit)
 		if (!value)
 			return 1;
 		probe_read(&value->name, NAME_STRING, _(&(dev->name)));
+		value->txbytes = value->rxbytes = value->txpackets = value->rxpackets = 0;
 		map_update_elem(&network_map, key, value, BPF_NOEXIST);
 	}
 
@@ -109,6 +110,22 @@ dev_queue_xmit(struct pt_regs *ctx)
 
 __attribute__((section("kprobe/netif_receive_skb"), used)) int
 __netif_receive_skb_core(struct pt_regs *ctx)
+{
+	struct sk_buff *skb = (struct sk_buff *)ctx->di;
+
+	return interface_stats(skb, false);
+}
+
+__attribute__((section("kprobe/napi_gro_receive"), used)) int
+napi_gro_receive(struct pt_regs *ctx)
+{
+	struct sk_buff *skb = (struct sk_buff *)ctx->si;
+
+	return interface_stats(skb, false);
+}
+
+__attribute__((section("kprobe/__netif_rx"), used)) int
+__netif_rx(struct pt_regs *ctx)
 {
 	struct sk_buff *skb = (struct sk_buff *)ctx->di;
 

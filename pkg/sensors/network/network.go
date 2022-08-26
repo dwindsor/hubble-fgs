@@ -270,6 +270,20 @@ var (
 		"kprobe_netif_receive_skb",
 		"kprobe",
 	)
+	IngressGro = program.Builder(
+		"bpf_dev_queue_xmit.o",
+		"napi_gro_receive",
+		"kprobe/napi_gro_receive",
+		"kprobe_napi_gro_receive",
+		"kprobe",
+	)
+	NetifRxInternal = program.Builder(
+		"bpf_dev_queue_xmit.o",
+		"netif_rx",
+		"kprobe/__netif_rx",
+		"kprobe_netif_rx",
+		"kprobe",
+	)
 	UnregisterNetdev = program.Builder(
 		"bpf_dev_queue_xmit.o",
 		"call_netdevice_notifiers_info",
@@ -295,7 +309,9 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 		versionStr := "__networkPacket_probe__"
 		progs := []*program.Program{
 			DevQueueXmit,
-			IngressSkb,
+			//	IngressSkb,
+			IngressGro,
+			NetifRxInternal,
 			UnregisterNetdev,
 		}
 		maps := []*program.Map{
