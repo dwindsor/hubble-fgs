@@ -115,6 +115,10 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 	return nil
 }
 
+func (msg *MsgExecveEventUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
@@ -147,6 +151,10 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 
 type MsgCloneEventUnix struct {
 	processapi.MsgCloneEvent
+}
+
+func (msg *MsgCloneEventUnix) Notify() bool {
+	return false
 }
 
 func (msg *MsgCloneEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -214,6 +222,10 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 
 type MsgExitEventUnix struct {
 	processapi.MsgExitEvent
+}
+
+func (msg *MsgExitEventUnix) Notify() bool {
+	return true
 }
 
 func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {

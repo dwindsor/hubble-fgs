@@ -58,6 +58,10 @@ func (msg *MsgInterfaceEventUnix) Retry(internal *process.ProcessInternal, ev no
 	return eventcache.HandleGenericEvent(internal, ev)
 }
 
+func (msg *MsgInterfaceEventUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgInterfaceEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {

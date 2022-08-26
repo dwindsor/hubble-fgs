@@ -156,6 +156,10 @@ func (msg *MsgHttpEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 	return eventcache.HandleGenericEvent(internal, ev)
 }
 
+func (msg *MsgHttpEventUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgHttpEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {

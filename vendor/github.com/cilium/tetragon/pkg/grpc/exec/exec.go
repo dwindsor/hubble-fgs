@@ -67,6 +67,10 @@ type MsgExecveEventUnix struct {
 	processapi.MsgExecveEventUnix
 }
 
+func (msg *MsgExecveEventUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgExecveEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	return nil, fmt.Errorf("Unreachable state: MsgExecveEventUnix with missing internal")
 }
@@ -142,18 +146,27 @@ type MsgCloneEventUnix struct {
 	processapi.MsgCloneEvent
 }
 
+func (msg *MsgCloneEventUnix) Notify() bool {
+	return false
+}
+
 func (msg *MsgCloneEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return nil, fmt.Errorf("Unreachable state: MsgCloneEventUnix with missing internal")
+	return nil, process.AddCloneEvent(&msg.MsgCloneEvent)
 }
 
 func (msg *MsgCloneEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev)
+	return nil
 }
 
 func (msg *MsgCloneEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	switch msg.Common.Op {
 	case ops.MSG_OP_CLONE:
-		process.AddCloneEvent(&msg.MsgCloneEvent)
+		if err := process.AddCloneEvent(&msg.MsgCloneEvent); err != nil {
+			ec := eventcache.Get()
+			if ec != nil {
+				ec.Add(nil, nil, msg.MsgCloneEvent.Ktime, msg)
+			}
+		}
 	default:
 		logger.GetLogger().WithField("message", msg).Warn("HandleCloneMessage: Unhandled event")
 	}
@@ -205,6 +218,10 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 
 type MsgExitEventUnix struct {
 	tetragonAPI.MsgExitEvent
+}
+
+func (msg *MsgExitEventUnix) Notify() bool {
+	return true
 }
 
 func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {

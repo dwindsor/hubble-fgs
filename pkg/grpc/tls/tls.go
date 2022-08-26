@@ -146,6 +146,10 @@ func (msg *MsgTLSEventUnix) Retry(internal *process.ProcessInternal, ev notify.E
 	return eventcache.HandleGenericEvent(internal, ev)
 }
 
+func (msg *MsgTLSEventUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgTLSEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {

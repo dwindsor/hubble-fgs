@@ -32,6 +32,10 @@ func (msg *MsgProcessNetworkBurstEventUnix) Retry(internal *process.ProcessInter
 	return eventcache.HandleGenericEvent(internal, ev)
 }
 
+func (msg *MsgProcessNetworkBurstEventUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgProcessNetworkBurstEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {

@@ -102,6 +102,10 @@ func (msg *MsgDnsUnix) Retry(internal *process.ProcessInternal, ev notify.Event)
 	return eventcache.HandleGenericEvent(internal, ev)
 }
 
+func (msg *MsgDnsUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgDnsUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {

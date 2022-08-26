@@ -125,6 +125,10 @@ func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.
 	return eventcache.HandleGenericEvent(internal, ev)
 }
 
+func (msg *MsgFileEventUnix) Notify() bool {
+	return true
+}
+
 func (msg *MsgFileEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	f := GetProcessFile(msg)
 	if f == nil {
