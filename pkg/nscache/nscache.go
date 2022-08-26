@@ -44,3 +44,7 @@ func AddNetNs(netns uint64, pod *tetragon.Pod) {
 	}
 	cache.Add(netns, pod)
 }
+
+func DelNetNs(netns uint64) {
+	cache.Remove(netns)
+}

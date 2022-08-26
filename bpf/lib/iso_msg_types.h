@@ -33,6 +33,8 @@ enum iso_msg_ops {
 
 	ISO_MSG_OP_DATA = MSG_OP_DATA, // 24
 
+	ISO_MSG_OP_NETNS_EXIT = 25,
+
 	ISO_MSG_OP_FILE = 129,
 
 	ISO_MSG_OP_IP_ERROR = 130,

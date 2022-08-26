@@ -3,6 +3,7 @@
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "iso_msg_types.h"
 
 struct network_key {
 	u64 index;
@@ -155,6 +156,39 @@ unregister_netdevice(struct pt_regs *ctx)
 	key->netns = get_netns(dev);
 
 	map_delete_elem(&network_map, key);
+	return 0;
+}
+
+struct msg_netns_exit {
+	struct msg_common common;
+	__u64 inum;
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) netns_exit_heap = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct msg_netns_exit),
+	.max_entries = 1,
+};
+
+__attribute__((section("kprobe/net_ns_net_exit"), used)) int
+net_ns_net_exit(struct pt_regs *ctx)
+{
+	struct net *net = (struct net *)ctx->di;
+	struct msg_netns_exit *val;
+	struct ns_common nscommon;
+	int zero = 0;
+
+	probe_read(&nscommon, sizeof(nscommon), _(&(net->ns)));
+
+	val = map_lookup_elem(&netns_exit_heap, &zero);
+	if (!val)
+		return 1;
+	val->common.op = ISO_MSG_OP_NETNS_EXIT;
+	val->common.size = sizeof(struct msg_netns_exit);
+	val->inum = nscommon.inum;
+
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_netns_exit));
 	return 0;
 }
 

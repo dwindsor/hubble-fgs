@@ -77,6 +77,9 @@ const (
 
 	MSG_OP_DATA = 24
 
+	// MSG_OP_EXIT event indicates a network namespace is being destroyed.
+	MSG_OP_NETNS_EXIT = 25
+
 	// just for testing
 	MSG_OP_TEST = 254
 
@@ -116,6 +119,7 @@ const (
 	MsgOpProcessNetworkBurst = 22
 	MsgOpClone               = 23
 	MsgOpData                = 24
+	MsgOpNetnsExit           = 25
 	MsgOpTest                = 254
 	MsgOpDNS                 = 128
 	MsgOpFile                = 129
@@ -149,6 +153,7 @@ func (op OpCode) String() string {
 		MsgOpProcessNetworkBurst: "ProcessNetworkBurst",
 		MsgOpClone:               "Clone",
 		MsgOpData:                "Data",
+		MsgOpNetnsExit:           "NetNsExit",
 		MsgOpTest:                "Test",
 		MsgOpDNS:                 "DNS",
 		MsgOpFile:                "File",

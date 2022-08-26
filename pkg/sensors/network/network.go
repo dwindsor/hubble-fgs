@@ -11,7 +11,9 @@
 package network
 
 import (
+	"bytes"
 	"context"
+	"encoding/binary"
 	"fmt"
 	"io/ioutil"
 	"os"
@@ -38,6 +40,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/iface"
+	"github.com/isovalent/hubble-fgs/pkg/nscache"
 )
 
 var (
@@ -291,6 +294,13 @@ var (
 		"kprobe_call_netdevice_notifiers_info",
 		"kprobe",
 	)
+	ExitNs = program.Builder(
+		"bpf_dev_queue_xmit.o",
+		"net_ns_net_exit",
+		"kprobe/net_ns_net_exit",
+		"kprobe_net_ns_net_exit",
+		"kprobe",
+	)
 
 	NetworkMap = program.MapBuilder(NetworkMapName, DevQueueXmit)
 )
@@ -304,15 +314,16 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 		defaultCBInterval = time.Duration(time.Duration(statInterval) * time.Second)
 	}
 
+	versionStr := "__networkPacket_probe__"
 	logger.GetLogger().Infof("Enable Interface Statistics")
 	if bpf {
-		versionStr := "__networkPacket_probe__"
 		progs := []*program.Program{
 			DevQueueXmit,
 			//	IngressSkb,
 			IngressGro,
 			NetifRxInternal,
 			UnregisterNetdev,
+			ExitNs,
 		}
 		maps := []*program.Map{
 			NetworkMap,
@@ -320,16 +331,21 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 		pollTimer.Start(time.Duration(defaultCBInterval))
 		return sensors.SensorBuilder(versionStr, progs, maps)
 	}
+
+	progs := []*program.Program{
+		ExitNs,
+	}
+	maps := []*program.Map{}
+	sens := sensors.SensorBuilder(versionStr, progs, maps)
+	sens.UnloadHook = unloadNetworkSensor
+
 	err := populateSandboxToContainer()
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Interface statistics running without containerID info")
 	}
 
 	eventTimer.Start(defaultCBInterval)
-	return &sensors.Sensor{
-		Name:       "interface-sensor",
-		UnloadHook: unloadNetworkSensor,
-	}
+	return sens
 }
 
 func (net *networkSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
@@ -338,6 +354,21 @@ func (net *networkSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) 
 		return nil, nil
 	}
 	return EnableNetworkParser(spec.Parser.Interface.Packet, spec.Parser.Interface.StatsInterval), nil
+}
+
+type MsgNetNsExitEvent struct {
+	Common processapi.MsgCommon
+	NsInum uint64
+}
+
+func handleNetNsExit(r *bytes.Reader) ([]observer.Event, error) {
+	m := MsgNetNsExitEvent{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, fmt.Errorf("Failed to read netns exit operation: %w", err)
+	}
+	nscache.DelNetNs(m.NsInum)
+	return nil, nil
 }
 
 func init() {
@@ -350,6 +381,7 @@ func AddNetwork() {
 	}
 	sensors.RegisterProbeType("interface_sensor", net)
 	sensors.RegisterTracingSensorsAtInit(net.name, net)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_NETNS_EXIT, handleNetNsExit)
 }
 
 func getContainerName(sandboxKey string) string {
