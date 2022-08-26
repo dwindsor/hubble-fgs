@@ -8,9 +8,6 @@ on:
       - opened
       - synchronize
       - reopened
-  push:
-    branches:
-      - master
 
 jobs:
   build-and-push-prs:
@@ -49,31 +46,8 @@ jobs:
           ref: ${{ steps.tag.outputs.tag }}
           fetch-depth: 0
 
-      # master branch pushes
-      - name: CI Build (master)
-        if: ${{ github.event_name != 'pull_request_target' }}
-        uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
-        id: docker_build_ci_master
-        with:
-          context: .
-          file: ${{ matrix.dockerfile }}
-          push: true
-          platforms: linux/amd64
-          tags: |
-            quay.io/${{ github.repository_owner }}-dev/${{ matrix.name }}-ci:latest
-            quay.io/${{ github.repository_owner }}-dev/${{ matrix.name }}-ci:${{ steps.tag.outputs.tag }}
-
-      - name: CI Image digests (master)
-        if: ${{ github.event_name != 'pull_request_target' }}
-        shell: bash
-        run: |
-          mkdir -p image-digest/
-          echo "quay.io/${{ github.repository_owner }}-dev/${{ matrix.name }}-ci:latest@${{ steps.docker_build_ci_master.outputs.digest }}" > image-digest/${{ matrix.name }}.txt
-          echo "quay.io/${{ github.repository_owner }}-dev/${{ matrix.name }}-ci:${{ steps.tag.outputs.tag }}@${{ steps.docker_build_ci_master.outputs.digest }}" >> image-digest/${{ matrix.name }}.txt
-
       # PR updates
       - name: CI Build (PR)
-        if: ${{ github.event_name == 'pull_request_target' }}
         uses: docker/build-push-action@ad44023a93711e3deb337508980b4b5e9bcdc5dc
         id: docker_build_ci_pr
         with:
@@ -85,7 +59,6 @@ jobs:
             quay.io/${{ github.repository_owner }}-dev/${{ matrix.name }}-ci:${{ steps.tag.outputs.tag }}
 
       - name: CI Image digests (PR)
-        if: ${{ github.event_name == 'pull_request_target' }}
         shell: bash
         run: |
           mkdir -p image-digest/
