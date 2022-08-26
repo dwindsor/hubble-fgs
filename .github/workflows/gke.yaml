@@ -39,8 +39,8 @@ jobs:
             SHA=${{ github.sha }}
           fi
           echo ::set-output name=sha::${SHA}
-          echo ::set-output name=agentImage::quay.io/isovalent/hubble-enterprise-ci:${SHA}
-          echo ::set-output name=operatorImage::quay.io/isovalent/hubble-enterprise-operator-ci:${SHA}
+          echo ::set-output name=agentImage::quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}
+          echo ::set-output name=operatorImage::quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}
 
       - name: Install Cilium CLI
         run: |
