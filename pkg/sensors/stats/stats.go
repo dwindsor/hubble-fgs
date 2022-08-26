@@ -12,7 +12,7 @@ func MsgToSocketStatsUnix(m *api.MsgSocketStats) api.MsgSocketStatsUnix {
 		SegsIn:           m.SegsIn,
 		SubmittedSegs:    0,
 		SegsOut:          m.SegsOut,
-		SRtt:             m.SRtt,
+		SRtt:             m.SRtt / 8, // TCP srtt_us is reported <<3 in usecs
 		RetransmitSegs:   m.RetransmitSegs,
 		RetransmitBytes:  m.RetransmitBytes,
 		ToZeroWindow:     m.ToZeroWindow,
