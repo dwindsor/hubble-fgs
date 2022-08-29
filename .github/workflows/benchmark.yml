@@ -55,7 +55,7 @@ jobs:
           go run cmd/fgs-bench-publish/fgs-bench-publish.go $CMD "$GIT_REV" "$GCP_SA_KEY" results/*.json
 
       - name: Find Comment
-        uses: peter-evans/find-comment@v1
+        uses: peter-evans/find-comment@v2
         if: github.event_name == 'pull_request'
         id: fc
         with:
