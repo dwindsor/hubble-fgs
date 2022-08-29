@@ -126,7 +126,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 	}
 
 	for _, str := range kprobes.Paths {
-		l.Warnf("WatchPath = %s", str)
+		l.Infof("WatchPath = %s", str)
 		err := addFilter(handle, str, filterMatch)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
@@ -134,7 +134,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 	}
 
 	for _, str := range kprobes.PathsExclude {
-		l.Warnf("ExcludePaths = %s", str)
+		l.Infof("ExcludePaths = %s", str)
 		err := addFilter(handle, str, filterIgnore)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
@@ -186,7 +186,7 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 		if !kernels.MinKernelVersion("5.4.0") {
 			return nil, fmt.Errorf("FileMonitoring requires at least 5.4.0 version")
 		}
-		logger.GetLogger().Warnf("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
+		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 		return addFileMonitoringSensor(spec.FileMonitoring, option.Config.BTF)
 	}
 	return nil, nil
