@@ -85,7 +85,8 @@ interface_stats(struct sk_buff *skb, bool xmit)
 		if (!value)
 			return 1;
 		probe_read(&value->name, NAME_STRING, _(&(dev->name)));
-		value->txbytes = value->rxbytes = value->txpackets = value->rxpackets = 0;
+		value->txbytes = value->rxbytes = value->txpackets =
+			value->rxpackets = 0;
 		map_update_elem(&network_map, key, value, BPF_NOEXIST);
 	}
 
@@ -138,7 +139,8 @@ __netif_rx(struct pt_regs *ctx)
 __attribute__((section("kprobe/call_netdevice_notifiers_info"), used)) int
 unregister_netdevice(struct pt_regs *ctx)
 {
-	struct netdev_notifier_info *info = (struct netdev_notifier_info *)ctx->si;
+	struct netdev_notifier_info *info =
+		(struct netdev_notifier_info *)ctx->si;
 	unsigned long type = (unsigned long)ctx->di;
 	struct network_key *key;
 	struct net_device *dev;
@@ -188,7 +190,8 @@ net_ns_net_exit(struct pt_regs *ctx)
 	val->common.size = sizeof(struct msg_netns_exit);
 	val->inum = nscommon.inum;
 
-	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val, sizeof(struct msg_netns_exit));
+	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
+			  sizeof(struct msg_netns_exit));
 	return 0;
 }
 
