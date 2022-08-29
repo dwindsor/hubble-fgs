@@ -260,7 +260,7 @@ jobs:
 
       - name: Upload end-to-end test logs
         if: ${{ failure() || cancelled() }}
-        uses: actions/upload-artifact@v2
+        uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
         with:
           name: fgs-end-to-end-tests-${{ matrix.kernel }}
           path: logs/e2e
