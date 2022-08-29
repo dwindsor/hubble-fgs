@@ -23,7 +23,7 @@ OSS_DIR=./modules/tetragon-oss
 
 KATA_RUNNER = docker run --runtime=kata-runtime --cap-add all --ulimit memlock=-1:-1 -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf -v $(CURDIR):/go/src/github.com/isovalent/hubble-fgs -v /proc:/procRoot isovalent/hubble-fgs-test
 
-GOLANGCILINT_WANT_VERSION = 1.48.0
+GOLANGCILINT_WANT_VERSION = $(shell grep docker.io/golangci/golangci-lint Dockerfile.golangci-lint | cut -f 2 -d ":" | cut -c2-)
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
 
 # Directories to enforce copyright headers on
