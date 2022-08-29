@@ -34,14 +34,14 @@ func GetProcessExec(proc *process.ProcessInternal) *tetragon.ProcessExec {
 	processId := fgsProcess.ExecId
 
 	parent, err := process.Get(parentId)
-	if err != nil {
-		logger.GetLogger().WithField("processId", processId).WithField("parentId", parentId).Infof("Process missing parent")
-	} else {
+	if err == nil {
 		parent.RefInc()
 	}
 
 	// Set the cap field only if --enable-process-cred flag is set.
-	proc.AnnotateProcess(option.Config.EnableProcessCred, option.Config.EnableProcessNs)
+	if err := proc.AnnotateProcess(option.Config.EnableProcessCred, option.Config.EnableProcessNs); err != nil {
+		logger.GetLogger().WithError(err).WithField("processId", processId).WithField("parentId", parentId).Debugf("Failed to annotate process with capabilities and namespaces info")
+	}
 	if parent != nil {
 		fgsParent = parent.GetProcessCopy()
 	}
