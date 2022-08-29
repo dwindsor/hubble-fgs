@@ -4,7 +4,7 @@ RUN apt-get -y install
 FROM quay.io/isovalent/hubble-libbpf:v0.2.3 as hubble-libbpf
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
 
-FROM docker.io/golangci/golangci-lint:v1.48.0
+FROM docker.io/golangci/golangci-lint:v1.49.0
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/*.h /usr/include/
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/*.a /usr/local/lib
 COPY --from=hubble-libbpf /go/src/github.com/covalentio/hubble-fgs/src/*.so /usr/local/lib
