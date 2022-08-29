@@ -277,14 +277,21 @@ func HandleTlsEvent(res *tetragon.Tls) {
 }
 
 func HandleInterfaceStatsEvent(res *tetragon.InterfaceStats) {
-	ns := res.Netns
 	name := res.InterfaceName
-	interfacemetrics.InterfaceBytesSent.WithLabelValues(name, ns).Set(float64(res.BytesSent))
-	interfacemetrics.InterfaceBytesReceived.WithLabelValues(name, ns).Set(float64(res.BytesReceived))
-	interfacemetrics.InterfaceSegmentsSent.WithLabelValues(name, ns).Set(float64(res.PacketsSent))
-	interfacemetrics.InterfaceSegmentsReceived.WithLabelValues(name, ns).Set(float64(res.PacketsReceived))
-	interfacemetrics.InterfaceTxErrors.WithLabelValues(name, ns).Set(float64(res.TxErrors))
-	interfacemetrics.InterfaceRxErrors.WithLabelValues(name, ns).Set(float64(res.RxErrors))
-	interfacemetrics.InterfaceTxDrops.WithLabelValues(name, ns).Set(float64(res.TxDrops))
-	interfacemetrics.InterfaceRxDrops.WithLabelValues(name, ns).Set(float64(res.RxDrops))
+	ns := ""
+	pod := ""
+
+	if res.Pod != nil {
+		ns = res.Pod.Namespace
+		pod = res.Pod.Name
+	}
+
+	interfacemetrics.InterfaceBytesSent.WithLabelValues(name, ns, pod).Set(float64(res.BytesSent))
+	interfacemetrics.InterfaceBytesReceived.WithLabelValues(name, ns, pod).Set(float64(res.BytesReceived))
+	interfacemetrics.InterfaceSegmentsSent.WithLabelValues(name, ns, pod).Set(float64(res.PacketsSent))
+	interfacemetrics.InterfaceSegmentsReceived.WithLabelValues(name, ns, pod).Set(float64(res.PacketsReceived))
+	interfacemetrics.InterfaceTxErrors.WithLabelValues(name, ns, pod).Set(float64(res.TxErrors))
+	interfacemetrics.InterfaceRxErrors.WithLabelValues(name, ns, pod).Set(float64(res.RxErrors))
+	interfacemetrics.InterfaceTxDrops.WithLabelValues(name, ns, pod).Set(float64(res.TxDrops))
+	interfacemetrics.InterfaceRxDrops.WithLabelValues(name, ns, pod).Set(float64(res.RxDrops))
 }
