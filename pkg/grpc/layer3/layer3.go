@@ -116,7 +116,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if ec != nil && ec.Needed(fgsProcess) {
+	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -203,7 +203,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		destinationIP := reader.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
-	if ec != nil && ec.Needed(fgsProcess) {
+	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -254,7 +254,7 @@ func GetProcessListen(
 	}
 
 	ec := eventcache.Get()
-	if ec != nil && ec.Needed(fgsProcess) {
+	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -330,7 +330,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if ec != nil && ec.Needed(fgsProcess) {
+	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -387,7 +387,7 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 		fgsEvent.Socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if ec != nil && ec.Needed(fgsProcess) {
+	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -569,7 +569,7 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	}
 
 	ec := eventcache.Get()
-	if ec != nil && ec.Needed(fgsProcess) {
+	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
