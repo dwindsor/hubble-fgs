@@ -1,5 +1,6 @@
 #include "vmlinux.h"
 #include "api.h"
+#include "bpf_tracing.h"
 
 #include "hubble_msg.h"
 #include "bpf_events.h"
@@ -24,12 +25,6 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 #define VM_WRITE 0x00000002
 
 #define FMODE_CREATED 0x100000
-
-#define ARG0(ctx) (&(ctx->di))
-#define ARG1(ctx) (&(ctx->si))
-#define ARG2(ctx) (&(ctx->dx))
-#define ARG3(ctx) (&(ctx->cx))
-#define ARG4(ctx) (&(ctx->r8))
 
 struct bpf_map_def __attribute__((section("maps"), used)) file_heap_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
@@ -237,30 +232,17 @@ handle_generic_file_read(struct pt_regs *ctx, struct file *file, int hook_type)
 	return handle_generic_file_access(ctx, file, action_read, hook_type);
 }
 
-// int vfs_fallocate(struct file *file, int mode, loff_t offset, loff_t len) // (W)
 __attribute__((section("kprobe/vfs_fallocate"), used)) int
-event_vfs_fallocate(struct pt_regs *ctx)
+BPF_KPROBE(vfs_fallocate, struct file *file, int mode, loff_t offset,
+	   loff_t len)
 {
-	struct file *file;
-	probe_read(&file, sizeof(file), ARG0(ctx));
-	if (!file)
-		return 0;
 	return handle_generic_file_write(ctx, file, hook_vfs_fallocate);
 }
 
-// int rw_verify_area(int read_write, struct file *file, const loff_t *ppos, size_t count) // (R|w)
 __attribute__((section("kprobe/rw_verify_area"), used)) int
-event_rw_verify_area(struct pt_regs *ctx)
+BPF_KPROBE(rw_verify_area, int read_write, struct file *file,
+	   const loff_t *ppos, size_t count)
 {
-	int read_write;
-	struct file *file;
-
-	probe_read(&read_write, sizeof(read_write), ARG0(ctx));
-
-	probe_read(&file, sizeof(file), ARG1(ctx));
-	if (!file)
-		return 0;
-
 	if (read_write == READ)
 		return handle_generic_file_read(ctx, file, hook_rw_verify_area);
 	else // (type == WRITE)
@@ -268,18 +250,12 @@ event_rw_verify_area(struct pt_regs *ctx)
 						 hook_rw_verify_area);
 }
 
-// vm_fault_t filemap_fault(struct vm_fault *vmf) // (R)
 __attribute__((section("kprobe/filemap_fault"), used)) int
-event_filemap_fault(struct pt_regs *ctx)
+BPF_KPROBE(filemap_fault, struct vm_fault *vmf)
 {
-	struct vm_fault *vmf;
 	struct vm_area_struct *vma;
 	struct file *file;
 	unsigned long flags;
-
-	probe_read(&vmf, sizeof(vmf), ARG0(ctx));
-	if (!vmf)
-		return 0;
 
 	probe_read(&vma, sizeof(vma), _(&vmf->vma));
 	if (!vma)
@@ -301,18 +277,13 @@ event_filemap_fault(struct pt_regs *ctx)
 	return 0;
 }
 
-// void filemap_map_pages(struct vm_fault *vmf, pgoff_t start_pgoff, pgoff_t end_pgoff) // (R)
 __attribute__((section("kprobe/filemap_map_pages"), used)) int
-event_filemap_map_pages(struct pt_regs *ctx)
+BPF_KPROBE(filemap_map_pages, struct vm_fault *vmf, __u32 start_pgoff,
+	   __u32 end_pgoff)
 {
-	struct vm_fault *vmf;
 	struct vm_area_struct *vma;
 	unsigned long flags;
 	struct file *file;
-
-	probe_read(&vmf, sizeof(vmf), ARG0(ctx));
-	if (!vmf)
-		return 0;
 
 	probe_read(&vma, sizeof(vma), _(&vmf->vma));
 	if (!vma)
@@ -333,17 +304,11 @@ event_filemap_map_pages(struct pt_regs *ctx)
 	return 0;
 }
 
-// vm_fault_t filemap_page_mkwrite(struct vm_fault *vmf) // (W)
 __attribute__((section("kprobe/filemap_page_mkwrite"), used)) int
-event_filemap_page_mkwrite(struct pt_regs *ctx)
+BPF_KPROBE(filemap_page_mkwrite, struct vm_fault *vmf)
 {
-	struct vm_fault *vmf;
 	struct vm_area_struct *vma;
 	struct file *file;
-
-	probe_read(&vmf, sizeof(vmf), ARG0(ctx));
-	if (!vmf)
-		return 0;
 
 	probe_read(&vma, sizeof(vma), _(&vmf->vma));
 	if (!vma)
@@ -356,26 +321,16 @@ event_filemap_page_mkwrite(struct pt_regs *ctx)
 	return handle_generic_file_write(ctx, file, hook_filemap_page_mkwrite);
 }
 
-// int security_path_unlink(const struct path *dir, struct dentry *dentry)
 __attribute__((section(("kprobe/security_path_unlink")), used)) int
-event_security_path_unlink(struct pt_regs *ctx)
+BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 {
-	struct path *dir;
-	struct dentry *dentry, *parent_dentry;
+	struct dentry *parent_dentry;
 	struct inode *inode;
 	struct qstr d_name;
 	struct msg_file_ops *msg;
 	int zero = 0, size, flags = 0, d_len;
 	char *buffer, *obuffer;
 	struct bpf_lpm_trie_key *key;
-
-	probe_read(&dir, sizeof(dir), ARG0(ctx));
-	if (!dir)
-		return 0;
-
-	probe_read(&dentry, sizeof(dentry), ARG1(ctx));
-	if (!dentry)
-		return 0;
 
 	buffer = map_lookup_elem(&buffer_heap_map, &zero);
 	if (!buffer)
@@ -441,12 +396,10 @@ event_security_path_unlink(struct pt_regs *ctx)
 	return 0;
 }
 
-// int do_dentry_open(struct file *f, struct inode *inode, int (*open)(struct inode *, struct file *))
 __attribute__((section(("kprobe/do_dentry_open")), used)) int
-event_do_dentry_open(struct pt_regs *ctx)
+BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
+	   int (*open)(struct inode *, struct file *))
 {
-	struct file *file;
-	struct inode *inode;
 	struct msg_file_ops *msg;
 	struct bpf_lpm_trie_key *key;
 	int zero = 0, size, flags = 0;
@@ -455,15 +408,7 @@ event_do_dentry_open(struct pt_regs *ctx)
 	struct dentry *dentry, *parent_dentry;
 	struct path path;
 
-	probe_read(&file, sizeof(file), ARG0(ctx));
-	if (!file)
-		return 0;
-
-	probe_read(&inode, sizeof(inode), ARG1(ctx));
-	if (!inode)
-		return 0;
-
-	probe_read(&f_mode, sizeof(f_mode), _(&file->f_mode));
+	probe_read(&f_mode, sizeof(f_mode), _(&f->f_mode));
 	if ((f_mode & FMODE_CREATED) == 0)
 		return 0; // no file created
 
@@ -472,7 +417,7 @@ event_do_dentry_open(struct pt_regs *ctx)
 		return 0;
 
 	size = 256;
-	buffer = __d_path_local(_(&file->f_path), buffer, &size, &flags);
+	buffer = __d_path_local(_(&f->f_path), buffer, &size, &flags);
 	if (size > 0)
 		size = 256 - size;
 	if (size < 0)
@@ -500,7 +445,7 @@ event_do_dentry_open(struct pt_regs *ctx)
 	get_ino_fs(msg, inode);
 
 	// get parent inode and fs info
-	probe_read(&path, sizeof(path), _(&file->f_path));
+	probe_read(&path, sizeof(path), _(&f->f_path));
 	if (!path.dentry)
 		return 0;
 
