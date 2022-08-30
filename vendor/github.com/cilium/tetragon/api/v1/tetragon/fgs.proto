@@ -142,9 +142,26 @@ enum FileAction {
     FILE_CREATE = 4;
 }
 
-message GenericFileArg {
+message FileSystem {
+    string name = 1;
+    string dev = 2;
+    string id = 3;
+    string uuid = 4;
+}
+
+message Inode {
+    uint64 number = 1;
+    FileSystem fs = 2;
+}
+
+message FileDetails {
     string filename = 1;
-    uint64 inode_number = 2;
+    Inode inode = 2;
+    Inode parent_inode = 3;
+}
+
+message GenericFileArg {
+    FileDetails file = 1;
 }
 
 message FileArgument {

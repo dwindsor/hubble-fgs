@@ -18,6 +18,14 @@ type MsgFilePath struct {
 	Flags uint32
 }
 
+type MsgFsInfo struct {
+	SDev  uint32
+	Pad   uint32
+	SName [8]byte
+	SId   [8]byte
+	SUuid [16]byte
+}
+
 type MsgFileEvent struct {
 	Common     processapi.MsgCommon
 	ProcessKey processapi.MsgExecveKey
@@ -25,10 +33,13 @@ type MsgFileEvent struct {
 	Action     uint32
 	Hook       uint32
 	Timestamp  uint64
-	Ino        uint64
 	Imode      uint16
 	Pad1       uint16
 	Pad2       uint32
 	Uid        uint32
 	Gid        uint32
+	Ino        uint64
+	Fs         MsgFsInfo
+	ParentIno  uint64
+	ParentFs   MsgFsInfo
 }

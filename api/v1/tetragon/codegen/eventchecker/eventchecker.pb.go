@@ -5912,10 +5912,213 @@ func (checker *SocketStatsChecker) FromSocketStats(event *tetragon.SocketStats) 
 	return checker
 }
 
+// FileSystemChecker implements a checker struct to check a FileSystem field
+type FileSystemChecker struct {
+	Name *stringmatcher.StringMatcher `json:"name,omitempty"`
+	Dev  *stringmatcher.StringMatcher `json:"dev,omitempty"`
+	Id   *stringmatcher.StringMatcher `json:"id,omitempty"`
+	Uuid *stringmatcher.StringMatcher `json:"uuid,omitempty"`
+}
+
+// NewFileSystemChecker creates a new FileSystemChecker
+func NewFileSystemChecker() *FileSystemChecker {
+	return &FileSystemChecker{}
+}
+
+// Check checks a FileSystem field
+func (checker *FileSystemChecker) Check(event *tetragon.FileSystem) error {
+	if event == nil {
+		return fmt.Errorf("FileSystemChecker: FileSystem field is nil")
+	}
+
+	if checker.Name != nil {
+		if err := checker.Name.Match(event.Name); err != nil {
+			return fmt.Errorf("FileSystemChecker: Name check failed: %w", err)
+		}
+	}
+	if checker.Dev != nil {
+		if err := checker.Dev.Match(event.Dev); err != nil {
+			return fmt.Errorf("FileSystemChecker: Dev check failed: %w", err)
+		}
+	}
+	if checker.Id != nil {
+		if err := checker.Id.Match(event.Id); err != nil {
+			return fmt.Errorf("FileSystemChecker: Id check failed: %w", err)
+		}
+	}
+	if checker.Uuid != nil {
+		if err := checker.Uuid.Match(event.Uuid); err != nil {
+			return fmt.Errorf("FileSystemChecker: Uuid check failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// WithName adds a Name check to the FileSystemChecker
+func (checker *FileSystemChecker) WithName(check *stringmatcher.StringMatcher) *FileSystemChecker {
+	checker.Name = check
+	return checker
+}
+
+// WithDev adds a Dev check to the FileSystemChecker
+func (checker *FileSystemChecker) WithDev(check *stringmatcher.StringMatcher) *FileSystemChecker {
+	checker.Dev = check
+	return checker
+}
+
+// WithId adds a Id check to the FileSystemChecker
+func (checker *FileSystemChecker) WithId(check *stringmatcher.StringMatcher) *FileSystemChecker {
+	checker.Id = check
+	return checker
+}
+
+// WithUuid adds a Uuid check to the FileSystemChecker
+func (checker *FileSystemChecker) WithUuid(check *stringmatcher.StringMatcher) *FileSystemChecker {
+	checker.Uuid = check
+	return checker
+}
+
+//FromFileSystem populates the FileSystemChecker using data from a FileSystem field
+func (checker *FileSystemChecker) FromFileSystem(event *tetragon.FileSystem) *FileSystemChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Name = stringmatcher.Full(event.Name)
+	checker.Dev = stringmatcher.Full(event.Dev)
+	checker.Id = stringmatcher.Full(event.Id)
+	checker.Uuid = stringmatcher.Full(event.Uuid)
+	return checker
+}
+
+// InodeChecker implements a checker struct to check a Inode field
+type InodeChecker struct {
+	Number *uint64            `json:"number,omitempty"`
+	Fs     *FileSystemChecker `json:"fs,omitempty"`
+}
+
+// NewInodeChecker creates a new InodeChecker
+func NewInodeChecker() *InodeChecker {
+	return &InodeChecker{}
+}
+
+// Check checks a Inode field
+func (checker *InodeChecker) Check(event *tetragon.Inode) error {
+	if event == nil {
+		return fmt.Errorf("InodeChecker: Inode field is nil")
+	}
+
+	if checker.Number != nil {
+		if *checker.Number != event.Number {
+			return fmt.Errorf("InodeChecker: Number has value %d which does not match expected value %d", event.Number, *checker.Number)
+		}
+	}
+	if checker.Fs != nil {
+		if err := checker.Fs.Check(event.Fs); err != nil {
+			return fmt.Errorf("InodeChecker: Fs check failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// WithNumber adds a Number check to the InodeChecker
+func (checker *InodeChecker) WithNumber(check uint64) *InodeChecker {
+	checker.Number = &check
+	return checker
+}
+
+// WithFs adds a Fs check to the InodeChecker
+func (checker *InodeChecker) WithFs(check *FileSystemChecker) *InodeChecker {
+	checker.Fs = check
+	return checker
+}
+
+//FromInode populates the InodeChecker using data from a Inode field
+func (checker *InodeChecker) FromInode(event *tetragon.Inode) *InodeChecker {
+	if event == nil {
+		return checker
+	}
+	{
+		val := event.Number
+		checker.Number = &val
+	}
+	if event.Fs != nil {
+		checker.Fs = NewFileSystemChecker().FromFileSystem(event.Fs)
+	}
+	return checker
+}
+
+// FileDetailsChecker implements a checker struct to check a FileDetails field
+type FileDetailsChecker struct {
+	Filename    *stringmatcher.StringMatcher `json:"filename,omitempty"`
+	Inode       *InodeChecker                `json:"inode,omitempty"`
+	ParentInode *InodeChecker                `json:"parentInode,omitempty"`
+}
+
+// NewFileDetailsChecker creates a new FileDetailsChecker
+func NewFileDetailsChecker() *FileDetailsChecker {
+	return &FileDetailsChecker{}
+}
+
+// Check checks a FileDetails field
+func (checker *FileDetailsChecker) Check(event *tetragon.FileDetails) error {
+	if event == nil {
+		return fmt.Errorf("FileDetailsChecker: FileDetails field is nil")
+	}
+
+	if checker.Filename != nil {
+		if err := checker.Filename.Match(event.Filename); err != nil {
+			return fmt.Errorf("FileDetailsChecker: Filename check failed: %w", err)
+		}
+	}
+	if checker.Inode != nil {
+		if err := checker.Inode.Check(event.Inode); err != nil {
+			return fmt.Errorf("FileDetailsChecker: Inode check failed: %w", err)
+		}
+	}
+	if checker.ParentInode != nil {
+		if err := checker.ParentInode.Check(event.ParentInode); err != nil {
+			return fmt.Errorf("FileDetailsChecker: ParentInode check failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// WithFilename adds a Filename check to the FileDetailsChecker
+func (checker *FileDetailsChecker) WithFilename(check *stringmatcher.StringMatcher) *FileDetailsChecker {
+	checker.Filename = check
+	return checker
+}
+
+// WithInode adds a Inode check to the FileDetailsChecker
+func (checker *FileDetailsChecker) WithInode(check *InodeChecker) *FileDetailsChecker {
+	checker.Inode = check
+	return checker
+}
+
+// WithParentInode adds a ParentInode check to the FileDetailsChecker
+func (checker *FileDetailsChecker) WithParentInode(check *InodeChecker) *FileDetailsChecker {
+	checker.ParentInode = check
+	return checker
+}
+
+//FromFileDetails populates the FileDetailsChecker using data from a FileDetails field
+func (checker *FileDetailsChecker) FromFileDetails(event *tetragon.FileDetails) *FileDetailsChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Filename = stringmatcher.Full(event.Filename)
+	if event.Inode != nil {
+		checker.Inode = NewInodeChecker().FromInode(event.Inode)
+	}
+	if event.ParentInode != nil {
+		checker.ParentInode = NewInodeChecker().FromInode(event.ParentInode)
+	}
+	return checker
+}
+
 // GenericFileArgChecker implements a checker struct to check a GenericFileArg field
 type GenericFileArgChecker struct {
-	Filename    *stringmatcher.StringMatcher `json:"filename,omitempty"`
-	InodeNumber *uint64                      `json:"inodeNumber,omitempty"`
+	File *FileDetailsChecker `json:"file,omitempty"`
 }
 
 // NewGenericFileArgChecker creates a new GenericFileArgChecker
@@ -5929,28 +6132,17 @@ func (checker *GenericFileArgChecker) Check(event *tetragon.GenericFileArg) erro
 		return fmt.Errorf("GenericFileArgChecker: GenericFileArg field is nil")
 	}
 
-	if checker.Filename != nil {
-		if err := checker.Filename.Match(event.Filename); err != nil {
-			return fmt.Errorf("GenericFileArgChecker: Filename check failed: %w", err)
-		}
-	}
-	if checker.InodeNumber != nil {
-		if *checker.InodeNumber != event.InodeNumber {
-			return fmt.Errorf("GenericFileArgChecker: InodeNumber has value %d which does not match expected value %d", event.InodeNumber, *checker.InodeNumber)
+	if checker.File != nil {
+		if err := checker.File.Check(event.File); err != nil {
+			return fmt.Errorf("GenericFileArgChecker: File check failed: %w", err)
 		}
 	}
 	return nil
 }
 
-// WithFilename adds a Filename check to the GenericFileArgChecker
-func (checker *GenericFileArgChecker) WithFilename(check *stringmatcher.StringMatcher) *GenericFileArgChecker {
-	checker.Filename = check
-	return checker
-}
-
-// WithInodeNumber adds a InodeNumber check to the GenericFileArgChecker
-func (checker *GenericFileArgChecker) WithInodeNumber(check uint64) *GenericFileArgChecker {
-	checker.InodeNumber = &check
+// WithFile adds a File check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithFile(check *FileDetailsChecker) *GenericFileArgChecker {
+	checker.File = check
 	return checker
 }
 
@@ -5959,10 +6151,8 @@ func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.Generic
 	if event == nil {
 		return checker
 	}
-	checker.Filename = stringmatcher.Full(event.Filename)
-	{
-		val := event.InodeNumber
-		checker.InodeNumber = &val
+	if event.File != nil {
+		checker.File = NewFileDetailsChecker().FromFileDetails(event.File)
 	}
 	return checker
 }

@@ -42,6 +42,43 @@ var (
 	}
 )
 
+func getDevMajor(dev uint32) uint32 {
+	return dev >> 20
+}
+
+func getDevMinor(dev uint32) uint32 {
+	one := uint32(1)
+	mask := ((one << 20) - 1)
+	return dev & mask
+}
+
+func createFileSystem(fs MsgFsInfoUnix) *tetragon.FileSystem {
+	return &tetragon.FileSystem{
+		Dev:  fmt.Sprintf("%d:%d", getDevMajor(fs.SDev), getDevMinor(fs.SDev)),
+		Name: fs.SName,
+		Id:   fs.SId,
+		Uuid: fs.SUuid,
+	}
+}
+
+func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
+	fileDetails := &tetragon.FileDetails{
+		Filename: event.Path,
+		Inode: &tetragon.Inode{
+			Number: event.Ino,
+			Fs:     createFileSystem(event.Fs),
+		},
+		ParentInode: &tetragon.Inode{
+			Number: event.ParentIno,
+			Fs:     createFileSystem(event.ParentFs),
+		},
+	}
+	args := &tetragon.GenericFileArg{
+		File: fileDetails,
+	}
+	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}}
+}
+
 func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	var tetragonParent, tetragonProcess *tetragon.Process
 
@@ -60,15 +97,14 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 		tetragonParent = parent.GetProcessCopy()
 	}
 
-	args := &tetragon.GenericFileArg{
-		Filename:    event.Path,
-		InodeNumber: event.Ino,
-	}
+	action := tetragon.FileAction(event.Action)
+	args := createGenericArgs(event)
+
 	tetragonEvent := &tetragon.ProcessFile{
 		Process: tetragonProcess,
 		Parent:  tetragonParent,
-		Action:  tetragon.FileAction(event.Action),
-		Args:    &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}},
+		Action:  action,
+		Args:    args,
 		Time:    ktime.ToProto(event.Timestamp),
 		Hook:    fileHookMap[event.Hook],
 	}
@@ -105,6 +141,13 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	return tetragonEvent
 }
 
+type MsgFsInfoUnix struct {
+	SDev  uint32
+	SName string
+	SId   string
+	SUuid string
+}
+
 type MsgFileEventUnix struct {
 	Common     processapi.MsgCommon
 	ProcessKey processapi.MsgExecveKey
@@ -112,10 +155,13 @@ type MsgFileEventUnix struct {
 	Action     uint32
 	Hook       uint32
 	Timestamp  uint64
-	Ino        uint64
 	Imode      uint32
 	Uid        uint32
 	Gid        uint32
+	Ino        uint64
+	Fs         MsgFsInfoUnix
+	ParentIno  uint64
+	ParentFs   MsgFsInfoUnix
 }
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {

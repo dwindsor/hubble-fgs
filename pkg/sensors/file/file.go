@@ -30,6 +30,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
+
+	"github.com/google/uuid"
 )
 
 const (
@@ -50,6 +52,21 @@ func init() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE, handleFileOps)
 }
 
+func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
+	uuid_str := "<failed to parse uuid>"
+	u, err := uuid.FromBytes(fs.SUuid[:])
+	if err == nil {
+		uuid_str = u.String()
+	}
+
+	return file.MsgFsInfoUnix{
+		SDev:  fs.SDev,
+		SName: string(fs.SName[:bytes.IndexByte(fs.SName[:], 0)]),
+		SId:   string(fs.SId[:bytes.IndexByte(fs.SId[:], 0)]),
+		SUuid: uuid_str,
+	}
+}
+
 func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	m := fileapi.MsgFileEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
@@ -68,10 +85,13 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		Action:     m.Action,
 		Hook:       m.Hook,
 		Timestamp:  m.Timestamp,
-		Ino:        m.Ino,
 		Imode:      uint32(m.Imode),
 		Uid:        m.Uid,
 		Gid:        m.Gid,
+		Ino:        m.Ino,
+		Fs:         createFsInfoUnix(m.Fs),
+		ParentIno:  m.ParentIno,
+		ParentFs:   createFsInfoUnix(m.ParentFs),
 	}
 
 	return []observer.Event{unix}, nil

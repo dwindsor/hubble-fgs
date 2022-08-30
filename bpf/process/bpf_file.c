@@ -97,6 +97,57 @@ filter_match(struct bpf_lpm_trie_key *key)
 	return 1;
 }
 
+static inline __attribute__((always_inline)) void
+get_fs_info(struct msg_fs_info *msg, struct inode *inode)
+{
+	struct super_block *sb;
+	struct file_system_type *sb_type;
+	char *sb_name;
+
+	probe_read(&sb, sizeof(sb), _(&inode->i_sb));
+	if (!sb)
+		return;
+
+	probe_read(&(msg->dev), sizeof(msg->dev), _(&sb->s_dev));
+	msg->pad = 0;
+	probe_read(msg->id, 8 * sizeof(char), _(&(sb->s_id[0])));
+
+	probe_read(&sb_type, sizeof(sb_type), _(&sb->s_type));
+	if (!sb_type)
+		return;
+
+	probe_read(&sb_name, sizeof(sb_name), _(&sb_type->name));
+	if (!sb_name)
+		return;
+
+	probe_read_str(msg->name, 8 * sizeof(char), sb_name);
+	probe_read(msg->uuid, 16 * sizeof(char), _(&sb->s_uuid));
+}
+
+static inline __attribute__((always_inline)) void
+get_ino_fs(struct msg_file_ops *msg, struct inode *inode)
+{
+	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
+
+	get_fs_info(&(msg->fs), inode);
+}
+
+static inline __attribute__((always_inline)) void
+get_parent_ino_fs(struct msg_file_ops *msg, struct dentry *parent_dentry)
+{
+	struct inode *parent_inode;
+
+	probe_read(&parent_inode, sizeof(parent_inode),
+		   _(&parent_dentry->d_inode));
+	if (!parent_inode)
+		return;
+
+	probe_read(&(msg->parent_ino), sizeof(msg->parent_ino),
+		   _(&parent_inode->i_ino));
+
+	get_fs_info(&(msg->parent_fs), parent_inode);
+}
+
 static inline __attribute__((always_inline)) int
 handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 			   int hook_type)
@@ -106,6 +157,8 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	struct bpf_lpm_trie_key *key;
 	int zero = 0, size, flags = 0;
 	char *buffer;
+	struct dentry *dentry, *parent_dentry;
+	struct path path;
 
 	if (!file)
 		return 0;
@@ -139,11 +192,24 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	msg->path.size = size;
 	msg->path.flags = flags;
 
+	// get current inode and fs info
 	probe_read(&inode, sizeof(inode), _(&file->f_inode));
 	if (!inode)
 		return 0;
 
-	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
+	get_ino_fs(msg, inode);
+
+	// get parent inode and fs info
+	probe_read(&path, sizeof(path), _(&file->f_path));
+	if (!path.dentry)
+		return 0;
+
+	dentry = path.dentry;
+	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
+	if (!parent_dentry)
+		return 0;
+
+	get_parent_ino_fs(msg, parent_dentry);
 
 	msg->imode = 0;
 	msg->pad1 = msg->pad2 = 0;
@@ -295,7 +361,7 @@ __attribute__((section(("kprobe/security_path_unlink")), used)) int
 event_security_path_unlink(struct pt_regs *ctx)
 {
 	struct path *dir;
-	struct dentry *dentry;
+	struct dentry *dentry, *parent_dentry;
 	struct inode *inode;
 	struct qstr d_name;
 	struct msg_file_ops *msg;
@@ -347,11 +413,19 @@ event_security_path_unlink(struct pt_regs *ctx)
 	msg->path.size = size + d_len;
 	msg->path.flags = flags;
 
+	// get current inode and fs info
 	probe_read(&inode, sizeof(inode), _(&dentry->d_inode));
 	if (!inode)
 		return 0;
 
-	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
+	get_ino_fs(msg, inode);
+
+	// get parent inode and fs info
+	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dir->dentry));
+	if (!parent_dentry)
+		return 0;
+
+	get_parent_ino_fs(msg, parent_dentry);
 
 	msg->imode = 0;
 	msg->pad1 = msg->pad2 = 0;
@@ -378,6 +452,8 @@ event_do_dentry_open(struct pt_regs *ctx)
 	int zero = 0, size, flags = 0;
 	char *buffer;
 	__u32 f_mode;
+	struct dentry *dentry, *parent_dentry;
+	struct path path;
 
 	probe_read(&file, sizeof(file), ARG0(ctx));
 	if (!file)
@@ -420,7 +496,20 @@ event_do_dentry_open(struct pt_regs *ctx)
 	msg->path.size = size;
 	msg->path.flags = flags;
 
-	probe_read(&(msg->ino), sizeof(msg->ino), _(&inode->i_ino));
+	// get current inode and fs info
+	get_ino_fs(msg, inode);
+
+	// get parent inode and fs info
+	probe_read(&path, sizeof(path), _(&file->f_path));
+	if (!path.dentry)
+		return 0;
+
+	dentry = path.dentry;
+	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
+	if (!parent_dentry)
+		return 0;
+
+	get_parent_ino_fs(msg, parent_dentry);
 
 	probe_read(&(msg->imode), sizeof(msg->imode), _(&inode->i_mode));
 	msg->pad1 = msg->pad2 = 0;

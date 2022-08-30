@@ -27,6 +27,14 @@ struct msg_file_path {
 	__u32 flags;
 } __attribute__((packed));
 
+struct msg_fs_info {
+	__u32 dev;
+	__u32 pad;
+	char name[8]; // should be enough for all file system names
+	char id[8];
+	__u8 uuid[16];
+} __attribute__((packed));
+
 struct msg_file_ops {
 	struct msg_common common;
 	struct msg_execve_key current;
@@ -34,12 +42,15 @@ struct msg_file_ops {
 	__u32 action;
 	__u32 hook;
 	__u64 ktime;
-	__u64 ino;
 	__u16 imode; // unsigned short
 	__u16 pad1;
 	__u32 pad2;
 	__u32 uid;
 	__u32 gid;
+	__u64 ino;
+	struct msg_fs_info fs;
+	__u64 parent_ino;
+	struct msg_fs_info parent_fs;
 } __attribute__((packed));
 
 #endif
