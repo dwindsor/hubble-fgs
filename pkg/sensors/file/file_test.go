@@ -619,13 +619,13 @@ func TestLoadFileSensor(t *testing.T) {
 	}
 
 	sensorProgs := []tus.SensorProg{
-		0: tus.SensorProg{Name: "event_vfs_fallocate", Type: ebpf.Kprobe},
-		1: tus.SensorProg{Name: "event_filemap_fault", Type: ebpf.Kprobe},
-		2: tus.SensorProg{Name: "event_filemap_map_pages", Type: ebpf.Kprobe},
-		3: tus.SensorProg{Name: "event_filemap_page_mkwrite", Type: ebpf.Kprobe},
-		4: tus.SensorProg{Name: "event_rw_verify_area", Type: ebpf.Kprobe},
-		5: tus.SensorProg{Name: "event_security_path_unlink", Type: ebpf.Kprobe},
-		6: tus.SensorProg{Name: "event_do_dentry_open", Type: ebpf.Kprobe},
+		0: tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
+		1: tus.SensorProg{Name: "filemap_fault", Type: ebpf.Kprobe},
+		2: tus.SensorProg{Name: "filemap_map_pages", Type: ebpf.Kprobe},
+		3: tus.SensorProg{Name: "filemap_page_mkwrite", Type: ebpf.Kprobe},
+		4: tus.SensorProg{Name: "rw_verify_area", Type: ebpf.Kprobe},
+		5: tus.SensorProg{Name: "security_path_unlink", Type: ebpf.Kprobe},
+		6: tus.SensorProg{Name: "do_dentry_open", Type: ebpf.Kprobe},
 
 		// base sensor
 		7: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
