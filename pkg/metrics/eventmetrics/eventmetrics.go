@@ -27,6 +27,7 @@ import (
 	"github.com/cilium/tetragon/pkg/filters"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/metrics/consts"
+	"github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	oss "github.com/cilium/tetragon/pkg/metrics/eventmetrics"
 	"github.com/cilium/tetragon/pkg/reader/exec"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/httpmetrics"
@@ -59,17 +60,6 @@ func getRCodeString(r uint16) string {
 	return rCodeNames[r]
 }
 
-func getProcessInfo(process *tetragon.Process) (binary, pod, namespace string) {
-	if process != nil {
-		binary = process.Binary
-		if process.Pod != nil {
-			namespace = process.Pod.Namespace
-			pod = process.Pod.Name
-		}
-	}
-	return binary, pod, namespace
-}
-
 func HandleOriginalEvent(originalEvent interface{}) {
 	var flags uint32
 	switch msg := originalEvent.(type) {
@@ -91,7 +81,7 @@ var (
 func postDnsMetric(res *tetragon.ProcessDns) {
 	var rr string
 
-	binary, pod, ns := getProcessInfo(res.Process)
+	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 
 	dns := res.Dns
 	names := strings.Join(dns.GetNames(), ",")
@@ -114,7 +104,7 @@ func HandleProcessedEvent(processedEvent interface{}) {
 	var eventType, namespace, pod, binary string
 	switch ev := processedEvent.(type) {
 	case *tetragon.GetEventsResponse:
-		binary, pod, namespace = getProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
+		binary, pod, namespace = eventmetrics.GetProcessInfo(filters.GetProcess(&v1.Event{Event: ev}))
 		var err error
 		eventType, err = helpers.ResponseTypeString(ev)
 		if err != nil {
@@ -190,7 +180,7 @@ func getDstPodInfo(dstPod *tetragon.Pod) (pod, ns string) {
 }
 
 func postStatsEventSocketStats(res *tetragon.ProcessSockStats) {
-	binary, pod, ns := getProcessInfo(res.Process)
+	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 	dstPod := res.Socket.GetDestinationPod()
 	dstpod, dstns := getDstPodInfo(dstPod)
 	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
@@ -223,7 +213,7 @@ func postTCPBurstStats(ns, pod, binary string, s *tetragon.ProcessNetworkBurst) 
 }
 
 func postProcessNetworkBurstEventStats(res *tetragon.ProcessNetworkBurst) {
-	binary, pod, ns := getProcessInfo(res.Process)
+	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 	if res.BurstState == "start" {
 		switch res.Protocol {
 		case tetragon.SocketProtocol_UDP.String():
@@ -243,12 +233,12 @@ func postIpErrorStats(ns, pod, binary, version, details string, s *tetragon.Proc
 }
 
 func HandleIpErrorEvent(res *tetragon.ProcessIpError) {
-	binary, pod, ns := getProcessInfo(res.Process)
+	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 	postIpErrorStats(ns, pod, binary, res.Version, res.Details, res)
 }
 
 func postHttpStats(res *tetragon.ProcessHttp) {
-	binary, pod, ns := getProcessInfo(res.Process)
+	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 	dstPod := res.GetDestinationPod()
 	dstpod, dstns := getDstPodInfo(dstPod)
 	dstLabels := strings.Join(res.Socket.DestinationNames, ",")
@@ -271,7 +261,7 @@ func HandleHttpEvent(res *tetragon.ProcessHttp) {
 }
 
 func HandleTlsEvent(res *tetragon.Tls) {
-	binary, pod, ns := getProcessInfo(res.Process)
+	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 	version := tlsmetrics.GetNegotiatedVersion(res)
 	tlsmetrics.TlsHandshakeTotal.WithLabelValues(ns, pod, binary, version, res.Cipher, res.SniName).Inc()
 }
