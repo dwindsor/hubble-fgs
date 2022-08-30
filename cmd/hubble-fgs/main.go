@@ -101,8 +101,6 @@ func hubbleFGSExecute() error {
 	sigs := make(chan os.Signal, 1)
 	signal.Notify(sigs, syscall.SIGINT, syscall.SIGTERM)
 
-	readAndSetFlags()
-
 	// Logging should always be bootstrapped first. Do not add any code above this!
 	if err := logger.SetupLogging(option.Config.LogOpts, option.Config.Debug); err != nil {
 		log.Fatal(err)
@@ -315,7 +313,13 @@ func execute() error {
 		Use:   "hubble-fgs SOURCE_DIR BUCKET",
 		Short: "Hubble FGS",
 		Run: func(cmd *cobra.Command, args []string) {
-			if err := gops.Listen(gops.Options{}); err != nil {
+			readAndSetFlags()
+
+			log.WithField("addr", option.Config.GopsAddr).Info("Starting gops server")
+			if err := gops.Listen(gops.Options{
+				Addr:                   option.Config.GopsAddr,
+				ReuseSocketAddrAndPort: true,
+			}); err != nil {
 				log.WithError(err).Fatal("Failed to start gops")
 			}
 			if err := hubbleFGSExecute(); err != nil {
@@ -371,6 +375,7 @@ func execute() error {
 	flags.Bool(keyEnableProcessAncestors, true, "Include ancestors in process exec events")
 	flags.String(keyMetricsServer, "", "Metrics server address (e.g. ':2112'). Set it to an empty string to disable.")
 	flags.String(keyServerAddress, "localhost:54321", "gRPC server address")
+	flags.String(keyGopsAddr, "", "gops server address (e.g. 'localhost:8118'). Defaults to a random port on localhost.")
 	flags.String(keyCiliumBPF, "", "Cilium BPF directory")
 	flags.Bool(keyEnableProcessCred, false, "Enable process_cred events")
 	flags.Bool(keyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
