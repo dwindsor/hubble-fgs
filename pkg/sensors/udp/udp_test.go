@@ -672,7 +672,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// base, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
 			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 8, 9, 10, 11}},
-			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{0, 4, 6, 8, 9, 10, 11}},
+			//tus.SensorMap{Name: "execve_map_stats", Progs: []uint{0, 4, 6, 8, 9, 10, 11}},
 
 			// udp4_send_kprobe, udp4_sendret_kprobe, udp6_send_kprobe,
 			// udp6_sendret_kprobe, udp_recv_kprobe
