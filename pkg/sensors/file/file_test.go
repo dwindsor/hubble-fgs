@@ -8,8 +8,8 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-// CGO_LDFLAGS=-L$(realpath ./lib) go test -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
-// sudo LD_LIBRARY_PATH=/home/apapag/hubble-fgs/lib ./go-tests/file.test --hubble-lib ./bpf/objs/ [ -test.run TestCopyFileRange ]
+// go test -gcflags="" -c ./pkg/sensors/file -o go-tests/file.test
+// sudo ./go-tests/file.test --bpf-lib ./bpf/objs/ [ -test.run TestCopyFileRange ]
 
 package file
 
@@ -112,7 +112,8 @@ func createSpecFile(t *testing.T, test_path string) string {
 }
 
 func genericArgFilenameChecker(fileName string) *ec.FileArgumentChecker {
-	c := ec.NewGenericFileArgChecker().WithFilename(sm.Full(fileName))
+	f := ec.NewFileDetailsChecker().WithFilename(sm.Full(fileName))
+	c := ec.NewGenericFileArgChecker().WithFile(f)
 	return ec.NewFileArgumentChecker().WithGenericArg(c)
 }
 
