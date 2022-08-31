@@ -125,7 +125,7 @@ kprobe_check_kill_permission(struct pt_regs *ctx)
 	 */
 	cookie = (u64)sk;
 
-	process = execve_map_get(pid);
+	process = execve_map_get_noinit(pid);
 	if (!process)
 		return 0;
 

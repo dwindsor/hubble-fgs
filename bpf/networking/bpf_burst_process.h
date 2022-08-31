@@ -115,7 +115,7 @@ process_burst_map_delete(void *ctx, __u32 pid)
 	struct msg_process_network_burst_event *val;
 	struct execve_map_value *process;
 
-	process = execve_map_get(pid);
+	process = execve_map_get_noinit(pid);
 	val = map_lookup_elem(&pn_burst_event_heap, &zero);
 	cntr = map_lookup_elem(&pn_burst_map_stats, &zero);
 

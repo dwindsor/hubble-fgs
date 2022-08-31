@@ -64,7 +64,7 @@ update_cookie_proc_map(u64 *cookie, u32 pid)
 
 	process = map_lookup_elem(&socket_cookie_to_proc_map, cookie);
 	if (!process || process->key.pid != pid) {
-		value = execve_map_get(pid);
+		value = execve_map_get_noinit(pid);
 		if (value) {
 			map_update_elem(&socket_cookie_to_proc_map, cookie,
 					value, 0);

@@ -29,7 +29,7 @@ sock_create(struct bpf_sock *ctx)
 	 * check if the entry exists but also that ktime!=0 which would
 	 * indicate its a stale entry that we are preparing to GC.
 	 */
-	value = execve_map_get(pid);
+	value = execve_map_get_noinit(pid);
 	if (!value || value->key.ktime == 0) {
 		struct execve_map_value v = { 0 };
 		/* Error case, should not happen */

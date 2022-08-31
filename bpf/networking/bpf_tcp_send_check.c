@@ -128,7 +128,7 @@ event_tcp_v4_send_check(struct pt_regs *ctx)
 				  size);
 	out:
 		if (cfg->burstEnable) {
-			exec_process = execve_map_get(process->key.pid);
+			exec_process = execve_map_get_noinit(process->key.pid);
 			if (exec_process && exec_process->key.pid != 0) {
 				struct process_network_burst_config c = {
 					.avg_window_size_ms =
