@@ -176,7 +176,7 @@ add_process_ctx(struct udp_info_value *value)
 	bool walker;
 	u32 ppid;
 
-	process = event_find_curr(&ppid, 0, &walker);
+	process = event_find_curr(&ppid, &walker);
 	if (process) {
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;

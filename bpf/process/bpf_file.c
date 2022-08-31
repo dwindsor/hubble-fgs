@@ -71,7 +71,7 @@ static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 	msg->common.size = sizeof(struct msg_file_ops);
 	msg->common.ktime = ktime_get_ns();
 
-	enter = event_find_curr(&ppid, 0, &walker);
+	enter = event_find_curr(&ppid, &walker);
 	if (enter) {
 		msg->current.pid = enter->key.pid;
 		msg->current.ktime = enter->key.ktime;

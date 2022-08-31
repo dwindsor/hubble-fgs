@@ -33,7 +33,7 @@ event_sys_listen(struct pt_regs *ctx)
 	bool walker = 0;
 
 	pid = (get_current_pid_tgid() >> 32);
-	process = event_find_curr(&ppid, 0, &walker);
+	process = event_find_curr(&ppid, &walker);
 	if (!process)
 		return 0;
 

@@ -36,7 +36,7 @@ event_tcp4_connect(struct pt_regs *ctx)
 	__u32 daddr;
 	__u16 dport;
 
-	process = event_find_curr(&ppid, 0, &walker);
+	process = event_find_curr(&ppid, &walker);
 	if (!process)
 		return 0;
 
