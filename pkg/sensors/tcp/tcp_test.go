@@ -935,7 +935,9 @@ func TestLoadTcpSensor(t *testing.T) {
 
 		// all but event_tcp4_close
 		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 3, 4, 5, 6}},
-		//tus.SensorMap{Name: "execve_map_stats", Progs: []uint{0, 2, 3, 4, 5, 6}},
+
+		// base only
+		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{4, 5, 6}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)

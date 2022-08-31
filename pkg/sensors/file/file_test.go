@@ -636,7 +636,9 @@ func TestLoadFileSensor(t *testing.T) {
 		// all programs
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
 		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-		//tus.SensorMap{Name: "execve_map_stats", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+
+		// base only
+		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{7, 8, 9}},
 
 		// all but base
 		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
