@@ -94,6 +94,18 @@ filter_match(struct bpf_lpm_trie_key *key)
 	return 1;
 }
 
+static inline __attribute__((always_inline)) void get_mnt_ns(__u32 *mnt_ns)
+{
+	struct task_struct *task;
+	struct nsproxy *nsproxy;
+	struct nsproxy nsp;
+
+	task = (struct task_struct *)get_current_task();
+	probe_read(&nsproxy, sizeof(nsproxy), _(&task->nsproxy));
+	probe_read(&nsp, sizeof(nsp), _(nsproxy));
+	probe_read(mnt_ns, sizeof(*mnt_ns), _(&nsp.mnt_ns->ns.inum));
+}
+
 static inline __attribute__((always_inline)) void
 get_fs_info(struct msg_fs_info *msg, struct inode *inode)
 {
@@ -217,6 +229,7 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	msg->ktime = ktime_get_ns();
 	msg->offset = offset;
 	msg->size = iosize;
+	get_mnt_ns(&msg->mnt_ns);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
@@ -417,6 +430,7 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 	msg->action = action_delete;
 	msg->hook = hook_security_path_unlink;
 	msg->ktime = ktime_get_ns();
+	get_mnt_ns(&msg->mnt_ns);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
@@ -492,6 +506,7 @@ BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
 	msg->action = action_create;
 	msg->hook = hook_do_dentry_open;
 	msg->ktime = ktime_get_ns();
+	get_mnt_ns(&msg->mnt_ns);
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));

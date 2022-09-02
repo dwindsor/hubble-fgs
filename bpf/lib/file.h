@@ -53,7 +53,7 @@ struct msg_file_ops {
 	struct msg_fs_info parent_fs;
 	__s64 offset;
 	__u32 size;
-	__u32 pad3;
+	__u32 mnt_ns;
 } __attribute__((packed));
 
 #endif

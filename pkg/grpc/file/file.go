@@ -21,6 +21,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/process"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
 	"google.golang.org/protobuf/types/known/wrapperspb"
@@ -61,6 +62,14 @@ func createFileSystem(fs MsgFsInfoUnix) *tetragon.FileSystem {
 	}
 }
 
+func createMntNs(inum uint32) *tetragon.Namespace {
+	hostNs := namespace.GetHostNamespace()
+	return &tetragon.Namespace{
+		Inum:   inum,
+		IsHost: hostNs.Mnt.Inum == inum,
+	}
+}
+
 func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	var ioDetails *tetragon.FileIO
 
@@ -84,8 +93,9 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 		},
 	}
 	args := &tetragon.GenericFileArg{
-		File: fileDetails,
-		Io:   ioDetails,
+		File:  fileDetails,
+		Io:    ioDetails,
+		MntNs: createMntNs(event.MntNs),
 	}
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}}
 }
@@ -175,6 +185,7 @@ type MsgFileEventUnix struct {
 	ParentFs   MsgFsInfoUnix
 	Offset     int64
 	Size       uint32
+	MntNs      uint32
 }
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {

@@ -6170,8 +6170,9 @@ func (checker *FileIOChecker) FromFileIO(event *tetragon.FileIO) *FileIOChecker 
 
 // GenericFileArgChecker implements a checker struct to check a GenericFileArg field
 type GenericFileArgChecker struct {
-	File *FileDetailsChecker `json:"file,omitempty"`
-	Io   *FileIOChecker      `json:"io,omitempty"`
+	File  *FileDetailsChecker `json:"file,omitempty"`
+	Io    *FileIOChecker      `json:"io,omitempty"`
+	MntNs *NamespaceChecker   `json:"mntNs,omitempty"`
 }
 
 // NewGenericFileArgChecker creates a new GenericFileArgChecker
@@ -6195,6 +6196,11 @@ func (checker *GenericFileArgChecker) Check(event *tetragon.GenericFileArg) erro
 			return fmt.Errorf("GenericFileArgChecker: Io check failed: %w", err)
 		}
 	}
+	if checker.MntNs != nil {
+		if err := checker.MntNs.Check(event.MntNs); err != nil {
+			return fmt.Errorf("GenericFileArgChecker: MntNs check failed: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -6210,6 +6216,12 @@ func (checker *GenericFileArgChecker) WithIo(check *FileIOChecker) *GenericFileA
 	return checker
 }
 
+// WithMntNs adds a MntNs check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithMntNs(check *NamespaceChecker) *GenericFileArgChecker {
+	checker.MntNs = check
+	return checker
+}
+
 //FromGenericFileArg populates the GenericFileArgChecker using data from a GenericFileArg field
 func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.GenericFileArg) *GenericFileArgChecker {
 	if event == nil {
@@ -6220,6 +6232,9 @@ func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.Generic
 	}
 	if event.Io != nil {
 		checker.Io = NewFileIOChecker().FromFileIO(event.Io)
+	}
+	if event.MntNs != nil {
+		checker.MntNs = NewNamespaceChecker().FromNamespace(event.MntNs)
 	}
 	return checker
 }

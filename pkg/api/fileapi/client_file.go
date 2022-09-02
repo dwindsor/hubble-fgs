@@ -44,5 +44,5 @@ type MsgFileEvent struct {
 	ParentFs   MsgFsInfo
 	Offset     int64
 	Size       uint32
-	Pad3       uint32
+	MntNs      uint32
 }
