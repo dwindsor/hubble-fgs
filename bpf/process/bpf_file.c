@@ -174,6 +174,7 @@ get_ino_fs(struct msg_file_ops *msg, struct inode *inode)
 	get_fs_info(&(msg->fs), inode);
 }
 
+#ifndef VFS_PROGS_V512
 static inline __attribute__((always_inline)) void
 get_parent_ino_fs(struct msg_file_ops *msg, struct dentry *parent_dentry)
 {
@@ -189,6 +190,7 @@ get_parent_ino_fs(struct msg_file_ops *msg, struct dentry *parent_dentry)
 
 	get_fs_info(&(msg->parent_fs), parent_inode);
 }
+#endif
 
 static inline __attribute__((always_inline)) struct hash_map_file_val *
 find_inode_in_map(struct bpf_map_def *inode_map, __u64 ino, __u32 dev)
@@ -202,6 +204,7 @@ find_inode_in_map(struct bpf_map_def *inode_map, __u64 ino, __u32 dev)
 	return map_lookup_elem(inode_map, &file_key);
 }
 
+#ifndef VFS_PROGS_V512
 static inline __attribute__((always_inline)) int
 handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 			   int hook_type, __s64 offset, __u32 iosize)
@@ -268,7 +271,9 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 
 	return 0;
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 static inline __attribute__((always_inline)) int
 handle_generic_file_write(struct pt_regs *ctx, struct file *file, int hook_type,
 			  __s64 offset, __u32 size)
@@ -276,7 +281,9 @@ handle_generic_file_write(struct pt_regs *ctx, struct file *file, int hook_type,
 	return handle_generic_file_access(ctx, file, action_write, hook_type,
 					  offset, size);
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 static inline __attribute__((always_inline)) int
 handle_generic_file_read(struct pt_regs *ctx, struct file *file, int hook_type,
 			 __s64 offset, __u32 size)
@@ -284,7 +291,9 @@ handle_generic_file_read(struct pt_regs *ctx, struct file *file, int hook_type,
 	return handle_generic_file_access(ctx, file, action_read, hook_type,
 					  offset, size);
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 __attribute__((section("kprobe/vfs_fallocate"), used)) int
 BPF_KPROBE(vfs_fallocate, struct file *file, int mode, loff_t offset,
 	   loff_t len)
@@ -292,7 +301,9 @@ BPF_KPROBE(vfs_fallocate, struct file *file, int mode, loff_t offset,
 	return handle_generic_file_write(ctx, file, hook_vfs_fallocate, offset,
 					 len);
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 __attribute__((section("kprobe/rw_verify_area"), used)) int
 BPF_KPROBE(rw_verify_area, int read_write, struct file *file,
 	   const loff_t *ppos, size_t count)
@@ -307,7 +318,9 @@ BPF_KPROBE(rw_verify_area, int read_write, struct file *file,
 		return handle_generic_file_write(ctx, file, hook_rw_verify_area,
 						 offset, count);
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 __attribute__((section("kprobe/filemap_fault"), used)) int
 BPF_KPROBE(filemap_fault, struct vm_fault *vmf)
 {
@@ -340,7 +353,9 @@ BPF_KPROBE(filemap_fault, struct vm_fault *vmf)
 
 	return 0;
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 __attribute__((section("kprobe/filemap_map_pages"), used)) int
 BPF_KPROBE(filemap_map_pages, struct vm_fault *vmf, __u32 start_pgoff,
 	   __u32 end_pgoff)
@@ -371,7 +386,9 @@ BPF_KPROBE(filemap_map_pages, struct vm_fault *vmf, __u32 start_pgoff,
 
 	return 0;
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 __attribute__((section("kprobe/filemap_page_mkwrite"), used)) int
 BPF_KPROBE(filemap_page_mkwrite, struct vm_fault *vmf)
 {
@@ -393,7 +410,9 @@ BPF_KPROBE(filemap_page_mkwrite, struct vm_fault *vmf)
 					 pgoff * PAGE_SIZE,
 					 (pgoff + 1) * PAGE_SIZE);
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 __attribute__((section(("kprobe/security_path_unlink")), used)) int
 BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 {
@@ -466,7 +485,9 @@ ignore_unlink:
 
 	return 0;
 }
+#endif
 
+#ifndef VFS_PROGS_V512
 __attribute__((section(("kprobe/do_dentry_open")), used)) int
 BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
 	   int (*open)(struct inode *, struct file *))
@@ -592,9 +613,10 @@ BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
 
 	return 0;
 }
+#endif
 
-__attribute__((section(("kprobe/vfs_rmdir")), used)) int
-BPF_KPROBE(vfs_rmdir, struct inode *dir, struct dentry *dentry)
+static inline __attribute__((always_inline)) int
+kprobe_vfs_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 {
 	struct inode *d_inode;
 	struct hash_map_file_key file_key;
@@ -649,8 +671,23 @@ ignore_rmdir:
 	return 0;
 }
 
-__attribute__((section(("kprobe/vfs_mkdir")), used)) int
-BPF_KPROBE(vfs_mkdir, struct inode *dir, struct dentry *dentry, umode_t mode)
+#ifdef VFS_PROGS_V512
+__attribute__((section(("kprobe/vfs_rmdir")), used)) int
+BPF_KPROBE(vfs_rmdir, struct user_namespace *mnt_userns, struct inode *dir,
+	   struct dentry *dentry)
+{
+	return kprobe_vfs_rmdir(ctx, dir, dentry);
+}
+#else
+__attribute__((section(("kprobe/vfs_rmdir")), used)) int
+BPF_KPROBE(vfs_rmdir, struct inode *dir, struct dentry *dentry)
+{
+	return kprobe_vfs_rmdir(ctx, dir, dentry);
+}
+#endif
+
+static inline __attribute__((always_inline)) int
+kprobe_vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
 {
 	u64 pid_tgid = get_current_pid_tgid();
 	struct vfs_mkdir_info value;
@@ -663,6 +700,22 @@ BPF_KPROBE(vfs_mkdir, struct inode *dir, struct dentry *dentry, umode_t mode)
 	return 0;
 }
 
+#ifdef VFS_PROGS_V512
+__attribute__((section(("kprobe/vfs_mkdir")), used)) int
+BPF_KPROBE(vfs_mkdir, struct user_namespace *mnt_userns, struct inode *dir,
+	   struct dentry *dentry, umode_t mode)
+{
+	return kprobe_vfs_mkdir(dir, dentry, mode);
+}
+#else
+__attribute__((section(("kprobe/vfs_mkdir")), used)) int
+BPF_KPROBE(vfs_mkdir, struct inode *dir, struct dentry *dentry, umode_t mode)
+{
+	return kprobe_vfs_mkdir(dir, dentry, mode);
+}
+#endif
+
+#ifndef VFS_PROGS_V512
 __attribute__((section(("kretprobe/vfs_mkdir")), used)) int
 BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 {
@@ -791,3 +844,4 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 
 	return 0;
 }
+#endif

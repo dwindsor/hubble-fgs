@@ -22,6 +22,7 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
+	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -33,6 +34,7 @@ import (
 
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
+	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
 
 	"github.com/google/uuid"
@@ -53,7 +55,42 @@ var (
 	lpmMap  *ebpf.Map
 )
 
+type FimFunc struct {
+	proto, progName string
+}
+
+type FimHook struct {
+	tp, name string
+	prog     []FimFunc
+}
+
+type FimProg struct {
+	tp, name, progName string
+}
+
 var (
+	FimHooks = [...]FimHook{
+		{"kprobe", "vfs_fallocate", []FimFunc{{"vfs_fallocate(struct file*, int, loff_t, loff_t)", "bpf_file.o"}}},
+		{"kprobe", "filemap_fault", []FimFunc{{"filemap_fault(struct vm_fault*)", "bpf_file.o"}}},
+		{"kprobe", "filemap_map_pages", []FimFunc{{"filemap_map_pages(struct vm_fault*, int, int)", "bpf_file.o"}}},
+		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_file.o"}}},
+		{"kprobe", "rw_verify_area", []FimFunc{{"rw_verify_area(int, struct file*, const loff_t*, size_t)", "bpf_file.o"}}},
+		{"kprobe", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "bpf_file.o"}}},
+		{"kprobe", "do_dentry_open", []FimFunc{{"do_dentry_open(struct file*, struct inode*, int (*p)(struct inode*, struct file*))", "bpf_file.o"}}},
+		{"kprobe", "vfs_rmdir", []FimFunc{
+			{"vfs_rmdir(struct inode*, struct dentry*)", "bpf_file.o"},
+			{"vfs_rmdir(struct user_namespace*, struct inode*, struct dentry*)", "bpf_file_v512.o"},
+		}},
+		{"kprobe", "vfs_mkdir", []FimFunc{
+			{"vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_file.o"},
+			{"vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_file_v512.o"},
+		}},
+		{"kretprobe", "vfs_mkdir", []FimFunc{
+			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_file.o"},
+			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_file.o"},
+		}},
+	}
+
 	SharedMaps = [...]string{
 		"mkdir_retprobe_map",
 		"lpm_trie_map_alloc",
@@ -296,7 +333,7 @@ func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle 
 	l.Infof("Added %d file(s) and %d directorie(s)\n", totalFiles, totalDirectories)
 }
 
-func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var err error
@@ -373,28 +410,16 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 		WalkPath(str, fileMap, dirMap, lpmMap, filterIgnore)
 	}
 
-	hooks := [...]string{
-		"vfs_fallocate",
-		"filemap_fault",
-		"filemap_map_pages",
-		"filemap_page_mkwrite",
-		"rw_verify_area",
-		"security_path_unlink",
-		"do_dentry_open",
-		"vfs_rmdir",
-		"vfs_mkdir",
-	}
-	progName := "bpf_file.o"
-
-	for idx, h := range hooks {
+	for _, h := range fimProgs {
 		load := program.Builder(
-			path.Join(option.Config.HubbleLib, progName),
-			h,
-			"kprobe/"+h,
-			fmt.Sprintf("file_ops_%s", h),
-			"kprobe").
-			SetLoaderData(idx)
-		load.Override = false
+			path.Join(option.Config.HubbleLib, h.progName),
+			h.name,
+			fmt.Sprintf("%s/%s", h.tp, h.name),
+			fmt.Sprintf("%s_%s", h.tp, h.name),
+			"kprobe")
+		if h.tp == "kretprobe" {
+			load = load.SetRetProbe(true)
+		}
 		progs = append(progs, load)
 
 		for _, m := range SharedMaps {
@@ -412,6 +437,33 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 	}, nil
 }
 
+func findHooks() ([]FimProg, error) {
+	spec, err := btf.LoadKernelSpec()
+	if err != nil {
+		return nil, fmt.Errorf("LoadKernelSpec %w", err)
+	}
+
+	fimProgs := make([]FimProg, 0)
+	for _, h := range FimHooks {
+		kretprobe := (h.tp == "kretprobe")
+		p := fgsBTF.GetFuncProto(spec, h.name, kretprobe)
+
+		progFound := false
+		for _, f := range h.prog {
+			if f.proto == p {
+				progFound = true
+				fimProgs = append(fimProgs, FimProg{h.tp, h.name, f.progName})
+				break
+			}
+		}
+		if !progFound {
+			return nil, fmt.Errorf("function %s has different prototype in BTF (BTF: %s) compared to FIM", h.name, p)
+		}
+	}
+
+	return fimProgs, nil
+}
+
 // SpecHandler() (called on init)
 func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	spec := raw.(*v1alpha1.TracingPolicySpec)
@@ -423,7 +475,11 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 			return nil, fmt.Errorf("FileMonitoring requires at least 5.4.0 version")
 		}
 		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
-		return addFileMonitoringSensor(spec.FileMonitoring, option.Config.BTF)
+		progs, err := findHooks()
+		if err != nil {
+			return nil, err
+		}
+		return addFileMonitoringSensor(spec.FileMonitoring, option.Config.BTF, progs)
 	}
 	return nil, nil
 }

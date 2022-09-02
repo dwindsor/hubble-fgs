@@ -27,7 +27,7 @@ NETWORKING = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcpaccept.o bpf_tcpacc
 	     bpf_fd_lookup.o bpf_fd_lookup_v56.o bpf_dev_queue_xmit.o bpf_sock_create_v56.o 
 PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_generic_kprobe.o \
 	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
-	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o bpf_file.o
+	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o bpf_file.o bpf_file_v512.o
 BPFTEST = bpf_lseek.o bpf_globals.o
 
 IDIR = ./include/
@@ -138,9 +138,13 @@ objs/bpf_execve_event_v53.ll: $(PROCESSDIR)/bpf_execve_event.c
 objs/bpf_generic_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v53.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
+objs/bpf_file_v512.ll: $(ISOPROCESS)/bpf_file.c
 
 objs/%_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
+
+objs/%_v512.ll:
+	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -DVFS_PROGS_V512 -c $< -o $@
 
 $(DEPSDIR)%.d: $(PROCESSDIR)%.c
 	$(CLANG) $(CLANG_FLAGS) -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
@@ -149,6 +153,7 @@ deps/bpf_execve_event_v53.d: $(PROCESSDIR)/bpf_execve_event.c
 deps/bpf_generic_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v53.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
+deps/bpf_file_v512.d: $(ISOPROCESS)/bpf_file.c
 
 $(DEPSDIR)%_v53.d:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
