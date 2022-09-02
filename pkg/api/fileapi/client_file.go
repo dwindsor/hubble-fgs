@@ -12,6 +12,13 @@ package fileapi
 
 import "github.com/cilium/tetragon/pkg/api/processapi"
 
+type LPMMapKey struct {
+	Prefixlen uint32
+	Data      [256]byte
+}
+
+type LPMMapValue uint32
+
 type HashMapFileKey struct {
 	Ino      uint64 `align:"ino"`
 	DevMajor uint32 `align:"dev_major"`

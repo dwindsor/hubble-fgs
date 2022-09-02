@@ -144,15 +144,8 @@ func getDevMinor(dev uint64) uint32 {
 	return uint32((sDev & 0xff) | ((sDev >> 12) & ^0xff))
 }
 
-type LPMMapKey struct {
-	Prefixlen uint32
-	Data      [256]byte
-}
-
-type LPMMapValue uint32
-
-func addFilter(handle *ebpf.Map, filter string, val LPMMapValue) error {
-	var k LPMMapKey
+func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
+	var k fileapi.LPMMapKey
 
 	k.Prefixlen = uint32(len(filter)) * 8
 	copy(k.Data[:], filter)
@@ -314,9 +307,9 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 	ms := &ebpf.MapSpec{
 		Name:       "lpm_trie_map_alloc",
 		Type:       bpf.BPF_MAP_TYPE_LPM_TRIE,
-		KeySize:    4 + 256,
-		ValueSize:  4,
-		MaxEntries: 4096,
+		KeySize:    uint32(unsafe.Sizeof(fileapi.LPMMapKey{})),
+		ValueSize:  uint32(unsafe.Sizeof(fileapi.LPMMapValue(0))),
+		MaxEntries: maxLPMpaths,
 		Flags:      bpf.BPF_F_NO_PREALLOC,
 		Pinning:    ebpf.PinByName,
 	}
