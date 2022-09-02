@@ -140,6 +140,7 @@ enum FileAction {
     FILE_READ = 2;
     FILE_DELETE = 3;
     FILE_CREATE = 4;
+    FILE_RMDIR = 5;
 }
 
 message FileSystem {

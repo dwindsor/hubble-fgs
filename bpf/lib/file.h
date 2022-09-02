@@ -8,6 +8,7 @@ enum { action_invalid = 0,
        action_read = 2,
        action_delete = 3,
        action_create = 4,
+       action_rmdir = 5,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -19,6 +20,7 @@ enum { hook_undef = 0,
        hook_filemap_page_mkwrite = 5,
        hook_security_path_unlink = 6,
        hook_do_dentry_open = 7,
+       hook_vfs_rmdir = 8,
 };
 
 struct hash_map_file_key {

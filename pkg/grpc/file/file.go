@@ -40,6 +40,7 @@ var (
 		5: "filemap_page_mkwrite",
 		6: "security_path_unlink",
 		7: "do_dentry_open",
+		8: "vfs_rmdir",
 	}
 )
 

@@ -380,6 +380,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 		"rw_verify_area",
 		"security_path_unlink",
 		"do_dentry_open",
+		"vfs_rmdir",
 	}
 	progName := "bpf_file.o"
 
