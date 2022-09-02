@@ -55,6 +55,7 @@ var (
 
 var (
 	SharedMaps = [...]string{
+		"mkdir_retprobe_map",
 		"lpm_trie_map_alloc",
 		"hash_map_file_alloc",
 		"hash_map_dir_alloc",
@@ -381,6 +382,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 		"security_path_unlink",
 		"do_dentry_open",
 		"vfs_rmdir",
+		"vfs_mkdir",
 	}
 	progName := "bpf_file.o"
 

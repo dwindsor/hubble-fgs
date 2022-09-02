@@ -41,6 +41,7 @@ var (
 		6: "security_path_unlink",
 		7: "do_dentry_open",
 		8: "vfs_rmdir",
+		9: "vfs_mkdir",
 	}
 )
 

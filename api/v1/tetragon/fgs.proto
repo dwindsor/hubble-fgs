@@ -141,6 +141,7 @@ enum FileAction {
     FILE_DELETE = 3;
     FILE_CREATE = 4;
     FILE_RMDIR = 5;
+    FILE_MKDIR = 6;
 }
 
 message FileSystem {
