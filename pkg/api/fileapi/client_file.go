@@ -13,36 +13,36 @@ package fileapi
 import "github.com/cilium/tetragon/pkg/api/processapi"
 
 type MsgFilePath struct {
-	Str   [256]byte // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
-	Size  uint32
-	Flags uint32
+	Str   [256]byte `align:"str"` // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
+	Size  uint32    `align:"size"`
+	Flags uint32    `align:"flags"`
 }
 
 type MsgFsInfo struct {
-	SDev  uint32
-	Pad   uint32
-	SName [8]byte
-	SId   [8]byte
-	SUuid [16]byte
+	SDev  uint32   `align:"dev"`
+	Pad   uint32   `align:"pad"`
+	SName [8]byte  `align:"name"`
+	SId   [8]byte  `align:"id"`
+	SUuid [16]byte `align:"uuid"`
 }
 
 type MsgFileEvent struct {
-	Common     processapi.MsgCommon
-	ProcessKey processapi.MsgExecveKey
-	Path       MsgFilePath
-	Action     uint32
-	Hook       uint32
-	Timestamp  uint64
-	Imode      uint16
-	Pad1       uint16
-	Pad2       uint32
-	Uid        uint32
-	Gid        uint32
-	Ino        uint64
-	Fs         MsgFsInfo
-	ParentIno  uint64
-	ParentFs   MsgFsInfo
-	Offset     int64
-	Size       uint32
-	MntNs      uint32
+	Common     processapi.MsgCommon    `align:"common"`
+	ProcessKey processapi.MsgExecveKey `align:"current"`
+	Path       MsgFilePath             `align:"path"`
+	Action     uint32                  `align:"action"`
+	Hook       uint32                  `align:"hook"`
+	Timestamp  uint64                  `align:"ktime"`
+	Imode      uint16                  `align:"imode"`
+	Pad1       uint16                  `align:"pad1"`
+	Pad2       uint32                  `align:"pad2"`
+	Uid        uint32                  `align:"uid"`
+	Gid        uint32                  `align:"gid"`
+	Ino        uint64                  `align:"ino"`
+	Fs         MsgFsInfo               `align:"fs"`
+	ParentIno  uint64                  `align:"parent_ino"`
+	ParentFs   MsgFsInfo               `align:"parent_fs"`
+	Offset     int64                   `align:"offset"`
+	Size       uint32                  `align:"size"`
+	MntNs      uint32                  `align:"mnt_ns"`
 }

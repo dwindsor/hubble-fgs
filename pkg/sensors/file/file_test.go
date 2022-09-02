@@ -21,11 +21,13 @@ import (
 	"os/exec"
 	"os/user"
 	"path/filepath"
+	"reflect"
 	"strconv"
 	"sync"
 	"syscall"
 	"testing"
 
+	check "github.com/cilium/cilium/pkg/alignchecker"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
@@ -36,6 +38,7 @@ import (
 	"github.com/stretchr/testify/assert"
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
+	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
@@ -50,6 +53,30 @@ var (
 func TestMain(m *testing.M) {
 	ec := runner.TestSensorsRun(m, "SensorFile")
 	os.Exit(ec)
+}
+
+// CheckStructAlignments checks whether size and offsets of the C and Go
+// structs match.
+//
+// C struct size info is extracted from the given ELF object file debug section
+// encoded in DWARF.
+//
+// To find a matching C struct field, a Go field has to be tagged with
+// `align:"field_name_in_c_struct". In the case of unnamed union field, such
+// union fields can be referred with special tags - `align:"$union0"`,
+// `align:"$union1"`, etc.
+func TestStructAlignments(t *testing.T) {
+	path := filepath.Join(runner.Conf().TetragonLib, "bpf_alignchecker.o")
+	// Validate alignments of C and Go equivalent structs
+	toCheck := map[string][]reflect.Type{
+		"msg_file_path": {reflect.TypeOf(fileapi.MsgFilePath{})},
+		"msg_fs_info":   {reflect.TypeOf(fileapi.MsgFsInfo{})},
+		"msg_file_ops":  {reflect.TypeOf(fileapi.MsgFileEvent{})},
+	}
+	err := check.CheckStructAlignments(path, toCheck, true)
+	if err != nil {
+		t.Errorf("TestStructAlignments failed: %s\n", err)
+	}
 }
 
 func createTestDir(t *testing.T, path string) {

@@ -4,6 +4,7 @@
 #include "include/api.h"
 #include "hubble_msg.h"
 #include "parsers/http/http.h"
+#include "lib/file.h"
 
 /* DECLARE declares a unique usage of the union or struct 'x' on the stack.
  *
@@ -47,6 +48,11 @@ int main(void)
 	DECLARE(struct, execve_map_value, iter);
 	DECLARE(struct, msg_tls_ipv4, iter);
 	DECLARE(struct, socketmap_value, iter);
+
+	// from FIM
+	DECLARE(struct, msg_file_path, iter);
+	DECLARE(struct, msg_fs_info, iter);
+	DECLARE(struct, msg_file_ops, iter);
 
 	return 0;
 }

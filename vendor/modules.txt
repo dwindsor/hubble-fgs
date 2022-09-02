@@ -35,6 +35,7 @@ github.com/cilium/cilium/api/v1/health/client/connectivity
 github.com/cilium/cilium/api/v1/health/client/restapi
 github.com/cilium/cilium/api/v1/health/models
 github.com/cilium/cilium/api/v1/models
+github.com/cilium/cilium/pkg/alignchecker
 github.com/cilium/cilium/pkg/api
 github.com/cilium/cilium/pkg/byteorder
 github.com/cilium/cilium/pkg/cidr
