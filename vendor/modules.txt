@@ -205,6 +205,7 @@ github.com/cilium/tetragon/pkg/watcher/crd
 github.com/cilium/tetragon/tests/e2e/checker
 github.com/cilium/tetragon/tests/e2e/flags
 github.com/cilium/tetragon/tests/e2e/helpers
+github.com/cilium/tetragon/tests/e2e/helpers/gops
 github.com/cilium/tetragon/tests/e2e/install
 github.com/cilium/tetragon/tests/e2e/runners
 github.com/cilium/tetragon/tests/e2e/state
