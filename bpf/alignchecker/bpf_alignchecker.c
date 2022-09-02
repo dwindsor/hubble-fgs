@@ -50,6 +50,8 @@ int main(void)
 	DECLARE(struct, socketmap_value, iter);
 
 	// from FIM
+	DECLARE(struct, hash_map_file_key, iter);
+	DECLARE(struct, hash_map_file_val, iter);
 	DECLARE(struct, msg_file_path, iter);
 	DECLARE(struct, msg_fs_info, iter);
 	DECLARE(struct, msg_file_ops, iter);

@@ -12,6 +12,18 @@ package fileapi
 
 import "github.com/cilium/tetragon/pkg/api/processapi"
 
+type HashMapFileKey struct {
+	Ino      uint64 `align:"ino"`
+	DevMajor uint32 `align:"dev_major"`
+	DevMinor uint32 `align:"dev_minor"`
+}
+
+type HashMapFileVal struct {
+	Action   uint32    `align:"action"`
+	PathSize uint32    `align:"size"`
+	FullPath [256]byte `align:"path"`
+}
+
 type MsgFilePath struct {
 	Str   [256]byte `align:"str"` // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
 	Size  uint32    `align:"size"`

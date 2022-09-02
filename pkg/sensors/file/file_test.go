@@ -69,9 +69,11 @@ func TestStructAlignments(t *testing.T) {
 	path := filepath.Join(runner.Conf().TetragonLib, "bpf_alignchecker.o")
 	// Validate alignments of C and Go equivalent structs
 	toCheck := map[string][]reflect.Type{
-		"msg_file_path": {reflect.TypeOf(fileapi.MsgFilePath{})},
-		"msg_fs_info":   {reflect.TypeOf(fileapi.MsgFsInfo{})},
-		"msg_file_ops":  {reflect.TypeOf(fileapi.MsgFileEvent{})},
+		"hash_map_file_key": {reflect.TypeOf(fileapi.HashMapFileKey{})},
+		"hash_map_file_val": {reflect.TypeOf(fileapi.HashMapFileVal{})},
+		"msg_file_path":     {reflect.TypeOf(fileapi.MsgFilePath{})},
+		"msg_fs_info":       {reflect.TypeOf(fileapi.MsgFsInfo{})},
+		"msg_file_ops":      {reflect.TypeOf(fileapi.MsgFileEvent{})},
 	}
 	err := check.CheckStructAlignments(path, toCheck, true)
 	if err != nil {

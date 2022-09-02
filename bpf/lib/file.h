@@ -21,6 +21,18 @@ enum { hook_undef = 0,
        hook_do_dentry_open = 7,
 };
 
+struct hash_map_file_key {
+	__u64 ino;
+	__u32 dev_major;
+	__u32 dev_minor;
+};
+
+struct hash_map_file_val {
+	__u32 action;
+	__u32 size;
+	char path[256];
+};
+
 struct msg_file_path {
 	char str[MAX_FILEPATH_SIZE];
 	__u32 size;

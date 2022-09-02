@@ -11,8 +11,9 @@
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-#define FILTER_IGNORE 0
-#define FILTER_MATCH  1
+#define FILTER_NOTFOUND -1
+#define FILTER_IGNORE	0
+#define FILTER_MATCH	1
 
 /* generic data direction definitions */
 #define READ  0
@@ -27,6 +28,13 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 #define FMODE_CREATED 0x100000
 
 #define PAGE_SIZE 4096
+
+#define MINORBITS 20
+#define MINORMASK ((1U << MINORBITS) - 1)
+
+#define MAJOR(dev)    ((unsigned int)((dev) >> MINORBITS))
+#define MINOR(dev)    ((unsigned int)((dev)&MINORMASK))
+#define MKDEV(ma, mi) (((ma) << MINORBITS) | (mi))
 
 struct bpf_map_def __attribute__((section("maps"), used)) file_heap_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
@@ -46,6 +54,28 @@ struct bpf_map_def __attribute__((section("maps"), used)) lpm_trie_heap_key = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
 	.value_size = sizeof(struct bpf_lpm_trie_key) + 256,
+	.max_entries = 1,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used))
+hash_map_file_alloc = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(struct hash_map_file_key),
+	.value_size = sizeof(struct hash_map_file_val),
+	.max_entries = 128 * 1024,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) hash_map_dir_alloc = {
+	.type = BPF_MAP_TYPE_HASH,
+	.key_size = sizeof(struct hash_map_file_key),
+	.value_size = sizeof(struct hash_map_file_val),
+	.max_entries = 128 * 1024,
+};
+
+struct bpf_map_def __attribute__((section("maps"), used)) file_val_map = {
+	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
+	.key_size = sizeof(int),
+	.value_size = sizeof(struct hash_map_file_val),
 	.max_entries = 1,
 };
 
@@ -85,13 +115,9 @@ static inline __attribute__((always_inline)) int
 filter_match(struct bpf_lpm_trie_key *key)
 {
 	uint32_t *retval = map_lookup_elem(&lpm_trie_map_alloc, key);
-	if (retval) {
-		if (*retval == FILTER_IGNORE)
-			return 0;
-	} else {
-		return 0; // cannot find -> not a match
-	}
-	return 1;
+	if (retval)
+		return *retval;
+	return FILTER_NOTFOUND;
 }
 
 static inline __attribute__((always_inline)) void get_mnt_ns(__u32 *mnt_ns)
@@ -157,49 +183,34 @@ get_parent_ino_fs(struct msg_file_ops *msg, struct dentry *parent_dentry)
 	get_fs_info(&(msg->parent_fs), parent_inode);
 }
 
+static inline __attribute__((always_inline)) struct hash_map_file_val *
+find_inode_in_map(struct bpf_map_def *inode_map, __u64 ino, __u32 dev)
+{
+	struct hash_map_file_key file_key;
+
+	file_key.ino = ino;
+	file_key.dev_major = MAJOR(dev);
+	file_key.dev_minor = MINOR(dev);
+
+	return map_lookup_elem(inode_map, &file_key);
+}
+
 static inline __attribute__((always_inline)) int
 handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 			   int hook_type, __s64 offset, __u32 iosize)
 {
 	struct inode *inode;
-	struct msg_file_ops *msg;
-	struct bpf_lpm_trie_key *key;
-	int zero = 0, size, flags = 0;
-	char *buffer;
 	struct dentry *dentry, *parent_dentry;
 	struct path path;
+	struct msg_file_ops *msg;
+	struct hash_map_file_val *file_val = 0;
 
 	if (!file)
-		return 0;
-
-	buffer = map_lookup_elem(&buffer_heap_map, &zero);
-	if (!buffer)
-		return 0;
-
-	size = 256;
-	buffer = __d_path_local(_(&file->f_path), buffer, &size, &flags);
-	if (size > 0)
-		size = 256 - size;
-	if (size < 0)
-		size = 0;
-
-	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
-	if (!key)
-		return 0;
-
-	key->prefixlen = size * 8;
-	memcpy(key->data, buffer, 256); // need the rest to be zero-ed
-
-	if (!filter_match(key))
 		return 0;
 
 	msg = get_msg_init();
 	if (!msg)
 		return 0;
-
-	memcpy(msg->path.str, buffer, 256);
-	msg->path.size = size;
-	msg->path.flags = flags;
 
 	// get current inode and fs info
 	probe_read(&inode, sizeof(inode), _(&file->f_inode));
@@ -219,6 +230,20 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 		return 0;
 
 	get_parent_ino_fs(msg, parent_dentry);
+
+	// find this file inside the file inode map
+	// we don't care if we cannot find this in the map
+	// or the action is FILTER_IGNORE
+	file_val =
+		find_inode_in_map(&hash_map_file_alloc, msg->ino, msg->fs.dev);
+	if (!file_val)
+		return 0;
+	if (file_val->action == FILTER_IGNORE)
+		return 0;
+
+	memcpy(msg->path.str, file_val->path, 256);
+	msg->path.size = file_val->size;
+	msg->path.flags = 0;
 
 	msg->imode = 0;
 	msg->pad1 = msg->pad2 = 0;
@@ -367,47 +392,15 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 {
 	struct dentry *parent_dentry;
 	struct inode *inode;
-	struct qstr d_name;
 	struct msg_file_ops *msg;
-	int zero = 0, size, flags = 0, d_len;
-	char *buffer, *obuffer;
-	struct bpf_lpm_trie_key *key;
-
-	buffer = map_lookup_elem(&buffer_heap_map, &zero);
-	if (!buffer)
-		return 0;
-
-	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
-	d_len = d_name.len + 1;
-	size = 256 + d_len;
-	obuffer = buffer + size;
-	prepend_name(buffer, &obuffer, &size, (const char *)d_name.name,
-		     d_name.len);
-
-	size = 256;
-	buffer = __d_path_local(dir, buffer, &size, &flags);
-	if (size > 0)
-		size = 256 - size;
-	if (size < 0)
-		size = 0;
-
-	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
-	if (!key)
-		return 0;
-
-	key->prefixlen = (size + d_len) * 8;
-	memcpy(key->data, buffer, 256); // need the rest to be zero-ed
-
-	if (!filter_match(key))
-		return 0;
+	struct hash_map_file_key file_key;
+	struct hash_map_file_val *file_val = 0;
+	unsigned int i_nlink = 0;
+	bool remove_entry = false;
 
 	msg = get_msg_init();
 	if (!msg)
 		return 0;
-
-	memcpy(msg->path.str, buffer, 256);
-	msg->path.size = size + d_len;
-	msg->path.flags = flags;
 
 	// get current inode and fs info
 	probe_read(&inode, sizeof(inode), _(&dentry->d_inode));
@@ -423,6 +416,26 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 
 	get_parent_ino_fs(msg, parent_dentry);
 
+	// If inode->i_nlink == 1 (i.e. last link) we should also remove that
+	// from hash_map_file_alloc.
+	probe_read(&i_nlink, sizeof(i_nlink), _(&inode->i_nlink));
+	remove_entry = (i_nlink == 1);
+
+	// find this file inside the file inode map
+	// if we cannot find that in map we don't have anything to remove from the map
+	file_val =
+		find_inode_in_map(&hash_map_file_alloc, msg->ino, msg->fs.dev);
+	if (!file_val)
+		return 0;
+
+	// we don't care about that so after the map cleanup we can return
+	if (file_val->action == FILTER_IGNORE)
+		goto ignore_unlink;
+
+	memcpy(msg->path.str, file_val->path, 256);
+	msg->path.size = file_val->size;
+	msg->path.flags = 0;
+
 	msg->imode = 0;
 	msg->pad1 = msg->pad2 = 0;
 	msg->uid = msg->gid = 0;
@@ -435,6 +448,15 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
 
+ignore_unlink:
+	if (remove_entry) {
+		file_key.ino = msg->ino;
+		file_key.dev_major = MAJOR(msg->fs.dev);
+		file_key.dev_minor = MINOR(msg->fs.dev);
+
+		map_delete_elem(&hash_map_file_alloc, &file_key);
+	}
+
 	return 0;
 }
 
@@ -442,46 +464,26 @@ __attribute__((section(("kprobe/do_dentry_open")), used)) int
 BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
 	   int (*open)(struct inode *, struct file *))
 {
-	struct msg_file_ops *msg;
-	struct bpf_lpm_trie_key *key;
-	int zero = 0, size, flags = 0;
-	char *buffer;
-	__u32 f_mode;
 	struct dentry *dentry, *parent_dentry;
 	struct path path;
+	struct msg_file_ops *msg;
+	struct hash_map_file_key file_key;
+	struct hash_map_file_val *file_val = 0;
+	struct bpf_lpm_trie_key *key = 0;
+	__u32 dlen_size = 0, dlen_offset = 0;
+	__u32 dir_size = 0, dir_offset = 0;
+	__u32 f_mode, path_size = 0;
+	int zero = 0, action = 0;
+	struct qstr d_name;
+	char *buffer;
 
 	probe_read(&f_mode, sizeof(f_mode), _(&f->f_mode));
 	if ((f_mode & FMODE_CREATED) == 0)
 		return 0; // no file created
 
-	buffer = map_lookup_elem(&buffer_heap_map, &zero);
-	if (!buffer)
-		return 0;
-
-	size = 256;
-	buffer = __d_path_local(_(&f->f_path), buffer, &size, &flags);
-	if (size > 0)
-		size = 256 - size;
-	if (size < 0)
-		size = 0;
-
-	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
-	if (!key)
-		return 0;
-
-	key->prefixlen = size * 8;
-	memcpy(key->data, buffer, 256); // need the rest to be zero-ed
-
-	if (!filter_match(key))
-		return 0;
-
 	msg = get_msg_init();
 	if (!msg)
 		return 0;
-
-	memcpy(msg->path.str, buffer, 256);
-	msg->path.size = size;
-	msg->path.flags = flags;
 
 	// get current inode and fs info
 	get_ino_fs(msg, inode);
@@ -497,6 +499,76 @@ BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
 		return 0;
 
 	get_parent_ino_fs(msg, parent_dentry);
+
+	// find the parent directory entry
+	file_val = find_inode_in_map(&hash_map_dir_alloc, msg->parent_ino,
+				     msg->parent_fs.dev);
+	if (!file_val)
+		return 0;
+	// we don't care for anything inside this directory
+	if (file_val->action == FILTER_IGNORE)
+		return 0;
+
+	// we care about files inside this directory
+	// get a buffer to generate its path
+	buffer = map_lookup_elem(&buffer_heap_map, &zero);
+	if (!buffer)
+		return 0;
+
+	// first write the dentry name
+	probe_read(&d_name, sizeof(d_name), _(&dentry->d_name));
+	dlen_size = d_name.len;
+	asm volatile("%[dlen_size] &= 0xff;\n" ::[dlen_size] "+r"(dlen_size) :);
+	dlen_offset = MAX_FILEPATH_SIZE;
+	probe_read(buffer + dlen_offset, dlen_size, (const char *)d_name.name);
+	path_size += dlen_size;
+
+	// then write the directory name
+	// this is what we have in the map already (we don't traverse anything)
+	dir_size = file_val->size;
+	asm volatile("%[dir_size] &= 0xff;\n" ::[dir_size] "+r"(dir_size) :);
+	dir_offset = MAX_FILEPATH_SIZE - dir_size;
+	asm volatile("%[dir_offset] &= 0xff;\n" ::[dir_offset] "+r"(dir_offset)
+		     :);
+	probe_read(buffer + dir_offset, dir_size, file_val->path);
+	path_size += dir_size;
+
+	// set the filepath inside msg
+	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size) :);
+	probe_read(msg->path.str, path_size, buffer + dir_offset);
+	msg->path.size = path_size;
+	msg->path.flags = 0;
+
+	// although we care about files inside this directory
+	// we may have this specific file path in the exclude
+	// list now we check the trie with the initial paths
+	key = map_lookup_elem(&lpm_trie_heap_key, &zero);
+	if (!key)
+		return 0;
+
+	key->prefixlen = msg->path.size * 8;
+	memcpy(key->data, msg->path.str, 256);
+
+	action = filter_match(key);
+	if (action == FILTER_NOTFOUND || action == FILTER_IGNORE)
+		return 0; // we don't care
+
+	// and insert that inode to the hash_map_file_alloc
+	file_key.ino = msg->ino;
+	file_key.dev_major = MAJOR(msg->fs.dev);
+	file_key.dev_minor = MINOR(msg->fs.dev);
+
+	file_val = map_lookup_elem(&file_val_map, &zero);
+	if (!file_val)
+		return 0;
+
+	file_val->action = action;
+	file_val->size = msg->path.size;
+	asm volatile("%[path_size] &= 0xff;\n" ::[path_size] "+r"(path_size) :);
+	probe_read(file_val->path, path_size, msg->path.str);
+
+	// add this new file to the map of files
+	map_update_elem(&hash_map_file_alloc, &file_key, file_val, 0);
 
 	probe_read(&(msg->imode), sizeof(msg->imode), _(&inode->i_mode));
 	msg->pad1 = msg->pad2 = 0;

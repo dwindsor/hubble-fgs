@@ -14,8 +14,12 @@ import (
 	"bytes"
 	"encoding/binary"
 	"fmt"
+	"io/fs"
 	"os"
 	"path"
+	"path/filepath"
+	"syscall"
+	"unsafe"
 
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/pkg/bpf"
@@ -37,6 +41,24 @@ import (
 const (
 	filterIgnore = 0
 	filterMatch  = 1
+
+	maxLPMpaths     = 4096
+	maxWatchedDirs  = 128 * 1024 // 128K
+	maxWatchedFiles = 128 * 1024 // 128K
+)
+
+var (
+	dirMap  *ebpf.Map
+	fileMap *ebpf.Map
+	lpmMap  *ebpf.Map
+)
+
+var (
+	SharedMaps = [...]string{
+		"lpm_trie_map_alloc",
+		"hash_map_file_alloc",
+		"hash_map_dir_alloc",
+	}
 )
 
 type observerFileSensor struct {
@@ -142,9 +164,148 @@ func addFilter(handle *ebpf.Map, filter string, val LPMMapValue) error {
 	return nil
 }
 
+func addFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey, val fileapi.HashMapFileVal) error {
+	err := handle.Update(key, val, ebpf.UpdateAny)
+	if err != nil {
+		return fmt.Errorf("failed handle.Update: %w", err)
+	}
+	return nil
+}
+
+func IsSymlink(m fs.FileMode) bool {
+	return m&fs.ModeSymlink != 0
+}
+
+func IsBlockDevice(m fs.FileMode) bool {
+	return m&fs.ModeDevice != 0
+}
+
+func IsNamedPipe(m fs.FileMode) bool {
+	return m&fs.ModeNamedPipe != 0
+}
+
+func IsSocket(m fs.FileMode) bool {
+	return m&fs.ModeSocket != 0
+}
+
+func IsCharDevice(m fs.FileMode) bool {
+	return m&fs.ModeCharDevice != 0
+}
+
+func CheckFileMode(mode fs.FileMode, path string) {
+	l := logger.GetLogger()
+	if IsBlockDevice(mode) {
+		l.Infof("Ignoring block device %s", path)
+	} else if IsNamedPipe(mode) {
+		l.Infof("Ignoring named pipe %s", path)
+	} else if IsSocket(mode) {
+		l.Infof("Ignoring socket %s", path)
+	} else if IsCharDevice(mode) {
+		l.Infof("Ignoring character device %s", path)
+	} else if IsSymlink(mode) {
+		l.Infof("Ignoring symbolic link %s", path)
+	} else {
+		l.Warnf("Unknown file type %s -> %d", path, mode)
+	}
+}
+
+func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle *ebpf.Map, action uint32) {
+	l := logger.GetLogger()
+	totalFiles := 0
+	totalDirectories := 0
+
+	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+		if err != nil {
+			l.Infof("%s", err.Error())
+			return nil
+		}
+
+		mode := info.Mode()
+		if !mode.IsRegular() && !mode.IsDir() && !IsSymlink(mode) {
+			CheckFileMode(mode, path)
+			return nil
+		}
+
+		if IsSymlink(mode) {
+			link, err := filepath.EvalSymlinks(path)
+			if err != nil {
+				l.Infof("Cannot resolve symlink %s", path)
+				return nil
+			}
+			path = link
+		}
+
+		fileinfo, err := os.Stat(path)
+		if err != nil {
+			return err
+		}
+
+		stat, ok := fileinfo.Sys().(*syscall.Stat_t)
+		if !ok {
+			return fmt.Errorf("stat is not a syscall.Stat_t")
+		}
+
+		switch mode := fileinfo.Mode(); {
+		case mode.IsRegular():
+			key := fileapi.HashMapFileKey{
+				Ino:      stat.Ino,
+				DevMajor: getDevMajor(stat.Dev),
+				DevMinor: getDevMinor(stat.Dev),
+			}
+
+			var val fileapi.HashMapFileVal
+
+			val.Action = action
+			val.PathSize = uint32(len(path))
+			copy(val.FullPath[:], path)
+
+			err := addFilePath(fileHandle, key, val)
+			if err != nil {
+				return fmt.Errorf("failed to call addFilePath: %w", err)
+			}
+
+			totalFiles++
+		case mode.IsDir():
+			key := fileapi.HashMapFileKey{
+				Ino:      stat.Ino,
+				DevMajor: getDevMajor(stat.Dev),
+				DevMinor: getDevMinor(stat.Dev),
+			}
+
+			var val fileapi.HashMapFileVal
+
+			// We should have all directory names to end with "/"
+			// Check if this is the case, otherwise add it.
+			if path[len(path)-1:] != "/" {
+				path += "/"
+			}
+
+			val.Action = action
+			val.PathSize = uint32(len(path))
+			copy(val.FullPath[:], path)
+
+			err := addFilePath(dirHandle, key, val)
+			if err != nil {
+				return fmt.Errorf("failed to call addDirPath: %w", err)
+			}
+
+			totalDirectories++
+		case IsSymlink(mode):
+			l.Warnf("%s is still a symlink\n", path)
+		default:
+			CheckFileMode(mode, path)
+		}
+
+		return nil
+	})
+
+	l.Infof("Added %d file(s) and %d directorie(s)\n", totalFiles, totalDirectories)
+}
+
 func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
+	var err error
 
 	l := logger.GetLogger()
 	mapDir := bpf.MapPrefixPath()
@@ -165,25 +326,57 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 		LoadPinOptions: ebpf.LoadPinOptions{},
 	}
 
-	handle, err := ebpf.NewMapWithOptions(ms, mo)
+	lpmMap, err = ebpf.NewMapWithOptions(ms, mo)
+	if err != nil {
+		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
+	}
+
+	hs := &ebpf.MapSpec{
+		Name:       "hash_map_file_alloc",
+		Type:       bpf.BPF_MAP_TYPE_HASH,
+		KeySize:    uint32(unsafe.Sizeof(fileapi.HashMapFileKey{})),
+		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
+		MaxEntries: maxWatchedFiles,
+		Flags:      0,
+		Pinning:    ebpf.PinByName,
+	}
+
+	fileMap, err = ebpf.NewMapWithOptions(hs, mo)
+	if err != nil {
+		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
+	}
+
+	ds := &ebpf.MapSpec{
+		Name:       "hash_map_dir_alloc",
+		Type:       bpf.BPF_MAP_TYPE_HASH,
+		KeySize:    uint32(unsafe.Sizeof(fileapi.HashMapFileKey{})),
+		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
+		MaxEntries: maxWatchedDirs,
+		Flags:      0,
+		Pinning:    ebpf.PinByName,
+	}
+
+	dirMap, err = ebpf.NewMapWithOptions(ds, mo)
 	if err != nil {
 		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
 	}
 
 	for _, str := range kprobes.Paths {
 		l.Infof("WatchPath = %s", str)
-		err := addFilter(handle, str, filterMatch)
+		err := addFilter(lpmMap, str, filterMatch)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
 		}
+		WalkPath(str, fileMap, dirMap, lpmMap, filterMatch)
 	}
 
 	for _, str := range kprobes.PathsExclude {
 		l.Infof("ExcludePaths = %s", str)
-		err := addFilter(handle, str, filterIgnore)
+		err := addFilter(lpmMap, str, filterIgnore)
 		if err != nil {
 			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
 		}
+		WalkPath(str, fileMap, dirMap, lpmMap, filterIgnore)
 	}
 
 	hooks := [...]string{
@@ -208,11 +401,12 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 		load.Override = false
 		progs = append(progs, load)
 
-		mp := program.MapBuilder(
-			"lpm_trie_map_alloc",
-			load,
-		)
-		maps = append(maps, mp)
+		for _, m := range SharedMaps {
+			maps = append(
+				maps,
+				program.MapBuilder(m, load),
+			)
+		}
 	}
 
 	return &sensors.Sensor{
@@ -222,6 +416,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string) (*se
 	}, nil
 }
 
+// SpecHandler() (called on init)
 func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	spec := raw.(*v1alpha1.TracingPolicySpec)
 	if len(spec.FileMonitoring.Paths) == 0 && len(spec.FileMonitoring.PathsExclude) > 0 {
@@ -237,6 +432,7 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 	return nil, nil
 }
 
+// LoadProbe() (called when the eBPF programs are actually loaded)
 func (k *observerFileSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	// all is done in SpecHandler
 	return nil
