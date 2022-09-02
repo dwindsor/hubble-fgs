@@ -8,13 +8,18 @@ on:
     branches:
       - master
 env:
-  clusterName: fgs-cli-ci-${{ github.run_id }}
   zone: us-west2-a
 
 jobs:
   installation-and-connectivity:
     runs-on: ubuntu-latest
     timeout-minutes: 30
+    strategy:
+      matrix:
+        release-channel:
+          - 'stable'
+          - 'regular'
+          - 'rapid'
     steps:
       - name: Checkout
         uses: actions/checkout@v2
@@ -41,6 +46,7 @@ jobs:
           echo ::set-output name=sha::${SHA}
           echo ::set-output name=agentImage::quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}
           echo ::set-output name=operatorImage::quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}
+          echo ::set-output name=clusterName::fgs-cli-ci-${{ github.run_id }}-${{ matrix.release-channel }}
 
       - name: Install Cilium CLI
         run: |
@@ -67,20 +73,21 @@ jobs:
       - name: Create GKE cluster
         id: cluster
         run: |
-          gcloud container clusters create ${{ env.clusterName }} \
+          gcloud container clusters create ${{ steps.vars.outputs.clusterName }} \
             --preemptible \
             --labels "usage=pr,owner=${{ github.event.pull_request.number }}" \
             --image-type COS_CONTAINERD \
             --num-nodes 2 \
             --machine-type n1-standard-4 \
+            --release-channel ${{ matrix.release-channel }} \
             --node-taints node.cilium.io/agent-not-ready=true:NoExecute \
             --zone ${{ env.zone }}
-          CLUSTER_CIDR=$(gcloud container clusters describe ${{ env.clusterName }} --zone ${{ env.zone }} --format="value(clusterIpv4Cidr)")
+          CLUSTER_CIDR=$(gcloud container clusters describe ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }} --format="value(clusterIpv4Cidr)")
           echo ::set-output name=cluster_cidr::${CLUSTER_CIDR}
 
       - name: Get Credentials
         run: |
-          gcloud container clusters get-credentials ${{ env.clusterName }} --zone ${{ env.zone }}
+          gcloud container clusters get-credentials ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }}
 
       - name: Attempt to pull the FGS image
         uses: nick-invision/retry@v2
@@ -99,7 +106,7 @@ jobs:
             -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
             -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
             -tetragon.keep-export=true \
-            -cluster-name ${{ env.clusterName }} \
+            -cluster-name ${{ steps.vars.outputs.clusterName }} \
             -kubeconfig ~/.kube/config
 
       - name: Cleanup
@@ -107,7 +114,7 @@ jobs:
         if: ${{ always() }}
         run: |
           echo ::set-output name=kernel_version::$(kubectl get node -o go-template='{{(index .items 0).status.nodeInfo.kernelVersion}}')
-          gcloud container clusters delete --quiet ${{ env.clusterName }} --zone ${{ env.zone }}
+          gcloud container clusters delete --quiet ${{ steps.vars.outputs.clusterName }} --zone ${{ env.zone }}
         shell: bash {0}
 
       - name: Upload Tetragon test artifacts
