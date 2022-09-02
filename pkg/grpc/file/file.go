@@ -62,6 +62,16 @@ func createFileSystem(fs MsgFsInfoUnix) *tetragon.FileSystem {
 }
 
 func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
+	var ioDetails *tetragon.FileIO
+
+	action := tetragon.FileAction(event.Action)
+	ioDetails = nil
+	if action == tetragon.FileAction_FILE_WRITE || action == tetragon.FileAction_FILE_READ {
+		ioDetails = &tetragon.FileIO{
+			Offset: strconv.FormatInt(event.Offset, 10),
+			Size:   strconv.FormatUint(uint64(event.Size), 10),
+		}
+	}
 	fileDetails := &tetragon.FileDetails{
 		Filename: event.Path,
 		Inode: &tetragon.Inode{
@@ -75,6 +85,7 @@ func createGenericArgs(event *MsgFileEventUnix) *tetragon.FileArgument {
 	}
 	args := &tetragon.GenericFileArg{
 		File: fileDetails,
+		Io:   ioDetails,
 	}
 	return &tetragon.FileArgument{Arg: &tetragon.FileArgument_GenericArg{GenericArg: args}}
 }
@@ -162,6 +173,8 @@ type MsgFileEventUnix struct {
 	Fs         MsgFsInfoUnix
 	ParentIno  uint64
 	ParentFs   MsgFsInfoUnix
+	Offset     int64
+	Size       uint32
 }
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {

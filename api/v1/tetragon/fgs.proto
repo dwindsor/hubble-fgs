@@ -160,8 +160,14 @@ message FileDetails {
     Inode parent_inode = 3;
 }
 
+message FileIO {
+    string offset = 1;
+    string size = 2;
+}
+
 message GenericFileArg {
     FileDetails file = 1;
+    FileIO io = 2;
 }
 
 message FileArgument {

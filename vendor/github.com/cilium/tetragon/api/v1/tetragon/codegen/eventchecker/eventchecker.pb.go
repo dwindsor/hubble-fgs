@@ -6116,9 +6116,62 @@ func (checker *FileDetailsChecker) FromFileDetails(event *tetragon.FileDetails) 
 	return checker
 }
 
+// FileIOChecker implements a checker struct to check a FileIO field
+type FileIOChecker struct {
+	Offset *stringmatcher.StringMatcher `json:"offset,omitempty"`
+	Size   *stringmatcher.StringMatcher `json:"size,omitempty"`
+}
+
+// NewFileIOChecker creates a new FileIOChecker
+func NewFileIOChecker() *FileIOChecker {
+	return &FileIOChecker{}
+}
+
+// Check checks a FileIO field
+func (checker *FileIOChecker) Check(event *tetragon.FileIO) error {
+	if event == nil {
+		return fmt.Errorf("FileIOChecker: FileIO field is nil")
+	}
+
+	if checker.Offset != nil {
+		if err := checker.Offset.Match(event.Offset); err != nil {
+			return fmt.Errorf("FileIOChecker: Offset check failed: %w", err)
+		}
+	}
+	if checker.Size != nil {
+		if err := checker.Size.Match(event.Size); err != nil {
+			return fmt.Errorf("FileIOChecker: Size check failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// WithOffset adds a Offset check to the FileIOChecker
+func (checker *FileIOChecker) WithOffset(check *stringmatcher.StringMatcher) *FileIOChecker {
+	checker.Offset = check
+	return checker
+}
+
+// WithSize adds a Size check to the FileIOChecker
+func (checker *FileIOChecker) WithSize(check *stringmatcher.StringMatcher) *FileIOChecker {
+	checker.Size = check
+	return checker
+}
+
+//FromFileIO populates the FileIOChecker using data from a FileIO field
+func (checker *FileIOChecker) FromFileIO(event *tetragon.FileIO) *FileIOChecker {
+	if event == nil {
+		return checker
+	}
+	checker.Offset = stringmatcher.Full(event.Offset)
+	checker.Size = stringmatcher.Full(event.Size)
+	return checker
+}
+
 // GenericFileArgChecker implements a checker struct to check a GenericFileArg field
 type GenericFileArgChecker struct {
 	File *FileDetailsChecker `json:"file,omitempty"`
+	Io   *FileIOChecker      `json:"io,omitempty"`
 }
 
 // NewGenericFileArgChecker creates a new GenericFileArgChecker
@@ -6137,12 +6190,23 @@ func (checker *GenericFileArgChecker) Check(event *tetragon.GenericFileArg) erro
 			return fmt.Errorf("GenericFileArgChecker: File check failed: %w", err)
 		}
 	}
+	if checker.Io != nil {
+		if err := checker.Io.Check(event.Io); err != nil {
+			return fmt.Errorf("GenericFileArgChecker: Io check failed: %w", err)
+		}
+	}
 	return nil
 }
 
 // WithFile adds a File check to the GenericFileArgChecker
 func (checker *GenericFileArgChecker) WithFile(check *FileDetailsChecker) *GenericFileArgChecker {
 	checker.File = check
+	return checker
+}
+
+// WithIo adds a Io check to the GenericFileArgChecker
+func (checker *GenericFileArgChecker) WithIo(check *FileIOChecker) *GenericFileArgChecker {
+	checker.Io = check
 	return checker
 }
 
@@ -6153,6 +6217,9 @@ func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.Generic
 	}
 	if event.File != nil {
 		checker.File = NewFileDetailsChecker().FromFileDetails(event.File)
+	}
+	if event.Io != nil {
+		checker.Io = NewFileIOChecker().FromFileIO(event.Io)
 	}
 	return checker
 }

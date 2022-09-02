@@ -92,6 +92,8 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 		Fs:         createFsInfoUnix(m.Fs),
 		ParentIno:  m.ParentIno,
 		ParentFs:   createFsInfoUnix(m.ParentFs),
+		Offset:     m.Offset,
+		Size:       m.Size,
 	}
 
 	return []observer.Event{unix}, nil

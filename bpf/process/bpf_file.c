@@ -26,6 +26,8 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 #define FMODE_CREATED 0x100000
 
+#define PAGE_SIZE 4096
+
 struct bpf_map_def __attribute__((section("maps"), used)) file_heap_map = {
 	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
 	.key_size = sizeof(int),
@@ -145,7 +147,7 @@ get_parent_ino_fs(struct msg_file_ops *msg, struct dentry *parent_dentry)
 
 static inline __attribute__((always_inline)) int
 handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
-			   int hook_type)
+			   int hook_type, __s64 offset, __u32 iosize)
 {
 	struct inode *inode;
 	struct msg_file_ops *msg;
@@ -213,6 +215,8 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	msg->action = action;
 	msg->hook = hook_type;
 	msg->ktime = ktime_get_ns();
+	msg->offset = offset;
+	msg->size = iosize;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_ops));
@@ -221,45 +225,57 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 }
 
 static inline __attribute__((always_inline)) int
-handle_generic_file_write(struct pt_regs *ctx, struct file *file, int hook_type)
+handle_generic_file_write(struct pt_regs *ctx, struct file *file, int hook_type,
+			  __s64 offset, __u32 size)
 {
-	return handle_generic_file_access(ctx, file, action_write, hook_type);
+	return handle_generic_file_access(ctx, file, action_write, hook_type,
+					  offset, size);
 }
 
 static inline __attribute__((always_inline)) int
-handle_generic_file_read(struct pt_regs *ctx, struct file *file, int hook_type)
+handle_generic_file_read(struct pt_regs *ctx, struct file *file, int hook_type,
+			 __s64 offset, __u32 size)
 {
-	return handle_generic_file_access(ctx, file, action_read, hook_type);
+	return handle_generic_file_access(ctx, file, action_read, hook_type,
+					  offset, size);
 }
 
 __attribute__((section("kprobe/vfs_fallocate"), used)) int
 BPF_KPROBE(vfs_fallocate, struct file *file, int mode, loff_t offset,
 	   loff_t len)
 {
-	return handle_generic_file_write(ctx, file, hook_vfs_fallocate);
+	return handle_generic_file_write(ctx, file, hook_vfs_fallocate, offset,
+					 len);
 }
 
 __attribute__((section("kprobe/rw_verify_area"), used)) int
 BPF_KPROBE(rw_verify_area, int read_write, struct file *file,
 	   const loff_t *ppos, size_t count)
 {
+	__s64 offset;
+	probe_read(&offset, sizeof(offset), ppos);
+
 	if (read_write == READ)
-		return handle_generic_file_read(ctx, file, hook_rw_verify_area);
+		return handle_generic_file_read(ctx, file, hook_rw_verify_area,
+						offset, count);
 	else // (type == WRITE)
-		return handle_generic_file_write(ctx, file,
-						 hook_rw_verify_area);
+		return handle_generic_file_write(ctx, file, hook_rw_verify_area,
+						 offset, count);
 }
 
 __attribute__((section("kprobe/filemap_fault"), used)) int
 BPF_KPROBE(filemap_fault, struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma;
+	__u32 pgoff;
 	struct file *file;
 	unsigned long flags;
 
 	probe_read(&vma, sizeof(vma), _(&vmf->vma));
 	if (!vma)
 		return 0;
+
+	probe_read(&pgoff, sizeof(pgoff), _(&vmf->pgoff));
 
 	probe_read(&file, sizeof(file), _(&vma->vm_file));
 	if (!file)
@@ -270,9 +286,12 @@ BPF_KPROBE(filemap_fault, struct vm_fault *vmf)
 	// if we have a write page-fault we also issue a read event
 	// as it may happen without any page faults or other actions
 	if (flags & VM_WRITE) {
-		handle_generic_file_write(ctx, file, hook_filemap_fault);
+		handle_generic_file_write(ctx, file, hook_filemap_fault,
+					  pgoff * PAGE_SIZE,
+					  (pgoff + 1) * PAGE_SIZE);
 	}
-	handle_generic_file_read(ctx, file, hook_filemap_fault);
+	handle_generic_file_read(ctx, file, hook_filemap_fault,
+				 pgoff * PAGE_SIZE, (pgoff + 1) * PAGE_SIZE);
 
 	return 0;
 }
@@ -297,9 +316,13 @@ BPF_KPROBE(filemap_map_pages, struct vm_fault *vmf, __u32 start_pgoff,
 
 	// generate both events as after a write pgfault we can read
 	if (flags & VM_WRITE) {
-		handle_generic_file_write(ctx, file, hook_filemap_map_pages);
+		handle_generic_file_write(ctx, file, hook_filemap_map_pages,
+					  start_pgoff * PAGE_SIZE,
+					  (end_pgoff * PAGE_SIZE) + PAGE_SIZE);
 	}
-	handle_generic_file_read(ctx, file, hook_filemap_map_pages);
+	handle_generic_file_read(ctx, file, hook_filemap_map_pages,
+				 start_pgoff * PAGE_SIZE,
+				 (end_pgoff * PAGE_SIZE) + PAGE_SIZE);
 
 	return 0;
 }
@@ -308,7 +331,10 @@ __attribute__((section("kprobe/filemap_page_mkwrite"), used)) int
 BPF_KPROBE(filemap_page_mkwrite, struct vm_fault *vmf)
 {
 	struct vm_area_struct *vma;
+	__u32 pgoff;
 	struct file *file;
+
+	probe_read(&pgoff, sizeof(pgoff), _(&vmf->pgoff));
 
 	probe_read(&vma, sizeof(vma), _(&vmf->vma));
 	if (!vma)
@@ -318,7 +344,9 @@ BPF_KPROBE(filemap_page_mkwrite, struct vm_fault *vmf)
 	if (!file)
 		return 0;
 
-	return handle_generic_file_write(ctx, file, hook_filemap_page_mkwrite);
+	return handle_generic_file_write(ctx, file, hook_filemap_page_mkwrite,
+					 pgoff * PAGE_SIZE,
+					 (pgoff + 1) * PAGE_SIZE);
 }
 
 __attribute__((section(("kprobe/security_path_unlink")), used)) int
