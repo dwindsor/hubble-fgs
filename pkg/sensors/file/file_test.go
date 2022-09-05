@@ -681,47 +681,48 @@ func TestLoadFileSensor(t *testing.T) {
 	}
 
 	sensorProgs := []tus.SensorProg{
-		0: tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
-		1: tus.SensorProg{Name: "filemap_fault", Type: ebpf.Kprobe},
-		2: tus.SensorProg{Name: "filemap_map_pages", Type: ebpf.Kprobe},
-		3: tus.SensorProg{Name: "filemap_page_mkwrite", Type: ebpf.Kprobe},
-		4: tus.SensorProg{Name: "rw_verify_area", Type: ebpf.Kprobe},
-		5: tus.SensorProg{Name: "security_path_unlink", Type: ebpf.Kprobe},
-		6: tus.SensorProg{Name: "do_dentry_open", Type: ebpf.Kprobe},
-
+		0:  tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
+		1:  tus.SensorProg{Name: "filemap_fault", Type: ebpf.Kprobe},
+		2:  tus.SensorProg{Name: "filemap_map_pages", Type: ebpf.Kprobe},
+		3:  tus.SensorProg{Name: "filemap_page_mkwrite", Type: ebpf.Kprobe},
+		4:  tus.SensorProg{Name: "rw_verify_area", Type: ebpf.Kprobe},
+		5:  tus.SensorProg{Name: "security_path_unlink", Type: ebpf.Kprobe},
+		6:  tus.SensorProg{Name: "do_dentry_open", Type: ebpf.Kprobe},
+		7:  tus.SensorProg{Name: "vfs_rmdir", Type: ebpf.Kprobe},
+		8:  tus.SensorProg{Name: "vfs_mkdir", Type: ebpf.Kprobe},
+		9:  tus.SensorProg{Name: "vfs_mkdir_exit", Type: ebpf.Kprobe},
+		10: tus.SensorProg{Name: "security_path_rename", Type: ebpf.Kprobe},
+		11: tus.SensorProg{Name: "security_path_rename_exit", Type: ebpf.Kprobe},
+		12: tus.SensorProg{Name: "vfs_rename", Type: ebpf.Kprobe},
+		13: tus.SensorProg{Name: "vfs_rename_exit", Type: ebpf.Kprobe},
 		// base sensor
-		7: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-		8: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-		9: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
+		14: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
+		15: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
+		16: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 	}
 
 	sensorMaps := []tus.SensorMap{
-		// all programs
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+		// all programs that generate events
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 13, 14, 15, 16}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 9, 12, 14, 15, 16}},
 
 		// base only
-		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{7, 8, 9}},
+		tus.SensorMap{Name: "execve_map_stats", Progs: []uint{14, 15, 16}},
 
-		// all but base
-		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
+		// shared maps
+		tus.SensorMap{Name: "lpm_trie_map_alloc", Progs: []uint{6, 9, 13}},
+		tus.SensorMap{Name: "hash_map_file_alloc", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 13}},
+		tus.SensorMap{Name: "hash_map_dir_alloc", Progs: []uint{6, 7, 9, 12, 13}},
+		tus.SensorMap{Name: "mkdir_retprobe_map", Progs: []uint{8, 9}},
+		tus.SensorMap{Name: "rename_retprobe_map", Progs: []uint{10, 11, 12, 13}},
 
 		// separate maps
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{0}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{1}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{2}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{3}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{4}},
-		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{5}},
 		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{6}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{9}},
+		tus.SensorMap{Name: "lpm_trie_heap_key", Progs: []uint{13}},
 
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{0}},
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{1}},
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{2}},
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{3}},
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{4}},
-		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{5}},
 		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{6}},
+		tus.SensorMap{Name: "buffer_heap_map", Progs: []uint{9}},
 
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{0}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{1}},
@@ -730,6 +731,16 @@ func TestLoadFileSensor(t *testing.T) {
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{4}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{5}},
 		tus.SensorMap{Name: "file_heap_map", Progs: []uint{6}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{7}},
+		tus.SensorMap{Name: "file_heap_map", Progs: []uint{9}},
+
+		tus.SensorMap{Name: "vfs_rename_info_heap", Progs: []uint{10}},
+
+		tus.SensorMap{Name: "file_rename_heap_map", Progs: []uint{13}},
+
+		tus.SensorMap{Name: "file_val_map", Progs: []uint{6}},
+		tus.SensorMap{Name: "file_val_map", Progs: []uint{9}},
+		tus.SensorMap{Name: "file_val_map", Progs: []uint{13}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
