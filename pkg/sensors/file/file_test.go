@@ -26,12 +26,14 @@ import (
 	"sync"
 	"syscall"
 	"testing"
+	"time"
 
 	check "github.com/cilium/cilium/pkg/alignchecker"
 	"github.com/cilium/ebpf"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
+	lm "github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -734,4 +736,740 @@ func TestLoadFileSensor(t *testing.T) {
 
 	sensors.UnloadAll(tus.Conf().TetragonLib)
 
+}
+
+func fileRead(t *testing.T, f string) {
+	file, err := os.Open(f)
+	if err != nil {
+		t.Errorf("os.Open failed (%s)", err)
+	}
+	defer file.Close()
+
+	data := make([]byte, 8)
+	_, err = file.Read(data)
+	if err != nil {
+		t.Errorf("os.Read failed (%s)", err)
+	}
+}
+
+func fileRemove(t *testing.T, f string) {
+	if err := os.Remove(f); err != nil {
+		t.Errorf("os.Remove failed (%s)", err)
+	}
+}
+
+func renameDeleteChecker(f string) *ec.ProcessFileChecker {
+	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f))
+	g := ec.NewGenericFileArgChecker().WithFile(d)
+	a := ec.NewFileArgumentChecker().WithGenericArg(g)
+
+	return ec.NewProcessFileChecker().
+		WithAction(tetragon.FileAction_FILE_DELETE).
+		WithArgs(a)
+}
+
+func renameReadChecker(f string) *ec.ProcessFileChecker {
+	d := ec.NewFileDetailsChecker().WithFilename(sm.Full(f))
+	i := ec.NewFileIOChecker().WithOffset(sm.Full("0")).WithSize(sm.Full("8"))
+	g := ec.NewGenericFileArgChecker().WithFile(d).WithIo(i)
+	a := ec.NewFileArgumentChecker().WithGenericArg(g)
+
+	return ec.NewProcessFileChecker().
+		WithAction(tetragon.FileAction_FILE_READ).
+		WithArgs(a)
+}
+
+func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChecker {
+	d1 := ec.NewFileDetailsChecker().WithFilename(sm.Full(file_a))
+	d2 := ec.NewFileDetailsChecker().WithFilename(sm.Full(file_b))
+	fl := ec.NewStringListMatcher().
+		WithOperator(lm.Ordered).
+		WithValues(
+			sm.Full(mv),
+			sm.Full(src),
+			sm.Full(dst),
+		)
+	c := ec.NewRenameFileArgChecker().WithSrc(d1).WithDst(d2).WithFlags(fl)
+	a := ec.NewFileArgumentChecker().WithRenameArg(c)
+
+	return ec.NewProcessFileChecker().
+		WithAction(tetragon.FileAction_FILE_RENAME).
+		WithArgs(a)
+}
+
+// Rename operations that handled in kernel-space (eBPF)
+
+func TestFileRename1(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	test_path := filepath.Join(workingDir, "fim_test_dir")
+	createTestDir(t, test_path)
+
+	in_file := filepath.Join(test_path, "test1")
+	createFileInDir(t, in_file)
+
+	out_file := filepath.Join(test_path, "test2")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, test_path)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(in_file, out_file); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+
+	fileRead(t, out_file)
+	fileRemove(t, out_file)
+
+	fileCheckers := make([]ec.EventChecker, 3)
+	fileCheckers[0] = renameRenameChecker(in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameReadChecker(out_file)
+	fileCheckers[2] = renameDeleteChecker(out_file)
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileRename2(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_REG_FILE]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	test_path := filepath.Join(workingDir, "fim_test_dir")
+	createTestDir(t, test_path)
+
+	in_file := filepath.Join(test_path, "test1")
+	createFileInDir(t, in_file)
+
+	out_file := filepath.Join(test_path, "test2")
+	createFileInDir(t, out_file)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, test_path)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(in_file, out_file); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+
+	fileRead(t, out_file)
+	fileRemove(t, out_file)
+
+	fileCheckers := make([]ec.EventChecker, 3)
+	fileCheckers[0] = renameRenameChecker(in_file, out_file, "MOVE_INTERNALLY", "SRC_REG_FILE", "DST_REG_FILE")
+	fileCheckers[1] = renameReadChecker(out_file)
+	fileCheckers[2] = renameDeleteChecker(out_file)
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileRename3(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EXISTS]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	inside_path := filepath.Join(workingDir, "fim_test_indir")
+	createTestDir(t, inside_path)
+
+	outside_path := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, outside_path)
+
+	in_file := filepath.Join(inside_path, "test1")
+
+	out_file := filepath.Join(outside_path, "test1")
+	createFileInDir(t, out_file)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, inside_path)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(out_file, in_file); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+
+	fileRead(t, in_file)
+	fileRemove(t, in_file)
+
+	fileCheckers := make([]ec.EventChecker, 3)
+	fileCheckers[0] = renameRenameChecker(out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameReadChecker(in_file)
+	fileCheckers[2] = renameDeleteChecker(in_file)
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileRename4(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_REG_FILE]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	inside_path := filepath.Join(workingDir, "fim_test_indir")
+	createTestDir(t, inside_path)
+
+	outside_path := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, outside_path)
+
+	in_file := filepath.Join(inside_path, "test1")
+	createFileInDir(t, in_file)
+
+	out_file := filepath.Join(outside_path, "test1")
+	createFileInDir(t, out_file)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, inside_path)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(out_file, in_file); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+
+	fileRead(t, in_file)
+	fileRemove(t, in_file)
+
+	fileCheckers := make([]ec.EventChecker, 3)
+	fileCheckers[0] = renameRenameChecker(out_file, in_file, "MOVE_INSIDE", "SRC_REG_FILE", "DST_REG_FILE")
+	fileCheckers[1] = renameReadChecker(in_file)
+	fileCheckers[2] = renameDeleteChecker(in_file)
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileRename5(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_EXISTS]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	inside_path := filepath.Join(workingDir, "fim_test_indir")
+	createTestDir(t, inside_path)
+
+	outside_path := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, outside_path)
+
+	in_file := filepath.Join(inside_path, "test1")
+	createFileInDir(t, in_file)
+
+	out_file := filepath.Join(outside_path, "test1")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, inside_path)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(in_file, out_file); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+
+	fileRead(t, out_file)
+	fileRemove(t, out_file)
+
+	noErrorFileCheckers := renameRenameChecker(in_file, out_file, "MOVE_OUTSIDE", "SRC_REG_FILE", "DST_NOT_EXISTS")
+	errorFileCheckers := renameReadChecker(in_file)
+
+	checker := ec.NewUnorderedEventChecker(noErrorFileCheckers)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	errorChecker := ec.NewUnorderedEventChecker(errorFileCheckers)
+	err = jsonchecker.JsonTestCheck(t, errorChecker)
+	assert.Error(t, err)
+}
+
+func TestFileRename6(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_FILE]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	inside_path := filepath.Join(workingDir, "fim_test_indir")
+	createTestDir(t, inside_path)
+
+	outside_path := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, outside_path)
+
+	in_file := filepath.Join(inside_path, "test1")
+	createFileInDir(t, in_file)
+
+	out_file := filepath.Join(outside_path, "test1")
+	createFileInDir(t, out_file)
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, inside_path)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(in_file, out_file); err != nil {
+		t.Errorf("os.Rename failed (%s)", err)
+	}
+
+	fileRead(t, out_file)
+	fileRemove(t, out_file)
+
+	noErrorFileCheckers := renameRenameChecker(in_file, out_file, "MOVE_OUTSIDE", "SRC_REG_FILE", "DST_REG_FILE")
+	errorFileCheckers := renameReadChecker(in_file)
+
+	checker := ec.NewUnorderedEventChecker(noErrorFileCheckers)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+
+	errorChecker := ec.NewUnorderedEventChecker(errorFileCheckers)
+	err = jsonchecker.JsonTestCheck(t, errorChecker)
+	assert.Error(t, err)
+}
+
+// Rename operations that handled in user-space
+
+func TestFileRename7(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_EXISTS]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	out1 := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out1)
+
+	out_a := filepath.Join(out1, "a")
+	createTestDir(t, out_a)
+
+	oFile1 := filepath.Join(out_a, "test1")
+	createFileInDir(t, oFile1)
+
+	oFile2 := filepath.Join(out_a, "test2")
+	createFileInDir(t, oFile2)
+
+	in1 := filepath.Join(workingDir, "fim_test_indir")
+	createTestDir(t, in1)
+
+	in_a := filepath.Join(in1, "a")
+	iFile1 := filepath.Join(in_a, "test1")
+	iFile2 := filepath.Join(in_a, "test2")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, in1)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(out_a, in_a); err != nil {
+		t.Fatalf("os.Rename failed (%s)", err)
+	}
+
+	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+
+	fileRead(t, iFile1)
+	fileRead(t, iFile2)
+	fileRemove(t, iFile1)
+	fileRemove(t, iFile2)
+
+	fileCheckers := make([]ec.EventChecker, 5)
+	fileCheckers[0] = renameRenameChecker(out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameReadChecker(iFile1)
+	fileCheckers[2] = renameReadChecker(iFile2)
+	fileCheckers[3] = renameDeleteChecker(iFile1)
+	fileCheckers[4] = renameDeleteChecker(iFile2)
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileRename8(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIRECTORY]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	out1 := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out1)
+
+	out_a := filepath.Join(out1, "a")
+	createTestDir(t, out_a)
+
+	oFile1 := filepath.Join(out_a, "test1")
+	createFileInDir(t, oFile1)
+
+	oFile2 := filepath.Join(out_a, "test2")
+	createFileInDir(t, oFile2)
+
+	in1 := filepath.Join(workingDir, "fim_test_indir")
+	createTestDir(t, in1)
+
+	in_a := filepath.Join(in1, "a")
+	createTestDir(t, in_a)
+
+	iFile1 := filepath.Join(in_a, "test1")
+	iFile2 := filepath.Join(in_a, "test2")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, in1)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := syscall.Rename(out_a, in_a); err != nil {
+		t.Fatalf("syscall.Rename failed (%s)", err)
+	}
+
+	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+
+	fileRead(t, iFile1)
+	fileRead(t, iFile2)
+	fileRemove(t, iFile1)
+	fileRemove(t, iFile2)
+
+	fileCheckers := make([]ec.EventChecker, 5)
+	fileCheckers[0] = renameRenameChecker(out_a, in_a, "MOVE_INSIDE", "SRC_DIRECTORY", "DST_DIRECTORY")
+	fileCheckers[1] = renameReadChecker(iFile1)
+	fileCheckers[2] = renameReadChecker(iFile2)
+	fileCheckers[3] = renameDeleteChecker(iFile1)
+	fileCheckers[4] = renameDeleteChecker(iFile2)
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileRename9(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_EXISTS]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	out1 := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out1)
+
+	out_a := filepath.Join(out1, "a")
+	createTestDir(t, out_a)
+
+	oFile1 := filepath.Join(out_a, "test1")
+	createFileInDir(t, oFile1)
+
+	oFile2 := filepath.Join(out_a, "test2")
+	createFileInDir(t, oFile2)
+
+	in1 := filepath.Join(workingDir, "fim_test_indir")
+	createTestDir(t, in1)
+
+	in_a := filepath.Join(in1, "a")
+
+	iFile1 := filepath.Join(in_a, "test1")
+	iFile2 := filepath.Join(in_a, "test2")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, out1)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(out_a, in_a); err != nil {
+		t.Fatalf("os.Rename failed (%s)", err)
+	}
+
+	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+
+	fileRead(t, iFile1)
+	fileRead(t, iFile2)
+	fileRemove(t, iFile1)
+	fileRemove(t, iFile2)
+
+	noErrorFileCheckers := renameRenameChecker(out_a, in_a, "MOVE_OUTSIDE", "SRC_DIRECTORY", "DST_NOT_EXISTS")
+
+	errorFileCheckers := make([]ec.EventChecker, 4)
+	errorFileCheckers[0] = renameReadChecker(iFile1)
+	errorFileCheckers[1] = renameReadChecker(iFile2)
+	errorFileCheckers[2] = renameDeleteChecker(iFile1)
+	errorFileCheckers[3] = renameDeleteChecker(iFile2)
+
+	checker1 := ec.NewUnorderedEventChecker(noErrorFileCheckers)
+	err = jsonchecker.JsonTestCheck(t, checker1)
+	assert.NoError(t, err)
+
+	checker2 := ec.NewUnorderedEventChecker(errorFileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker2)
+	assert.Error(t, err)
+}
+
+func TestFileRename10(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIRECTORY]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	out1 := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out1)
+
+	out_a := filepath.Join(out1, "a")
+	createTestDir(t, out_a)
+
+	oFile1 := filepath.Join(out_a, "test1")
+	createFileInDir(t, oFile1)
+
+	oFile2 := filepath.Join(out_a, "test2")
+	createFileInDir(t, oFile2)
+
+	in1 := filepath.Join(workingDir, "fim_test_indir")
+	createTestDir(t, in1)
+
+	in_a := filepath.Join(in1, "a")
+	createTestDir(t, in_a)
+
+	iFile1 := filepath.Join(in_a, "test1")
+	iFile2 := filepath.Join(in_a, "test2")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, out1)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := syscall.Rename(out_a, in_a); err != nil {
+		t.Fatalf("syscall.Rename failed (%s)", err)
+	}
+
+	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+
+	fileRead(t, iFile1)
+	fileRead(t, iFile2)
+	fileRemove(t, iFile1)
+	fileRemove(t, iFile2)
+
+	noErrorFileCheckers := renameRenameChecker(out_a, in_a, "MOVE_OUTSIDE", "SRC_DIRECTORY", "DST_DIRECTORY")
+
+	errorFileCheckers := make([]ec.EventChecker, 4)
+	errorFileCheckers[0] = renameReadChecker(iFile1)
+	errorFileCheckers[1] = renameReadChecker(iFile2)
+	errorFileCheckers[2] = renameDeleteChecker(iFile1)
+	errorFileCheckers[3] = renameDeleteChecker(iFile2)
+
+	checker1 := ec.NewUnorderedEventChecker(noErrorFileCheckers)
+	err = jsonchecker.JsonTestCheck(t, checker1)
+	assert.NoError(t, err)
+
+	checker2 := ec.NewUnorderedEventChecker(errorFileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker2)
+	assert.Error(t, err)
+}
+
+func TestFileRename11(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_NOT_EXISTS]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	out1 := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out1)
+
+	out_a := filepath.Join(out1, "a")
+	createTestDir(t, out_a)
+
+	oFile1 := filepath.Join(out_a, "test1")
+	createFileInDir(t, oFile1)
+
+	oFile2 := filepath.Join(out_a, "test2")
+	createFileInDir(t, oFile2)
+
+	in_b := filepath.Join(out1, "b")
+
+	iFile1 := filepath.Join(in_b, "test1")
+	iFile2 := filepath.Join(in_b, "test2")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, out1)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := os.Rename(out_a, in_b); err != nil {
+		t.Fatalf("os.Rename failed (%s)", err)
+	}
+
+	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+
+	fileRead(t, iFile1)
+	fileRead(t, iFile2)
+	fileRemove(t, iFile1)
+	fileRemove(t, iFile2)
+
+	fileCheckers := make([]ec.EventChecker, 5)
+	fileCheckers[0] = renameRenameChecker(out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_NOT_EXISTS")
+	fileCheckers[1] = renameReadChecker(iFile1)
+	fileCheckers[2] = renameReadChecker(iFile2)
+	fileCheckers[3] = renameDeleteChecker(iFile1)
+	fileCheckers[4] = renameDeleteChecker(iFile2)
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
+}
+
+func TestFileRename12(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_DIRECTORY]
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skip("File monitoring requires at least 5.4.0 version")
+	}
+
+	out1 := filepath.Join(workingDir, "fim_test_outdir")
+	createTestDir(t, out1)
+
+	out_a := filepath.Join(out1, "a")
+	createTestDir(t, out_a)
+
+	oFile1 := filepath.Join(out_a, "test1")
+	createFileInDir(t, oFile1)
+
+	oFile2 := filepath.Join(out_a, "test2")
+	createFileInDir(t, oFile2)
+
+	in_b := filepath.Join(out1, "b")
+	createTestDir(t, in_b)
+
+	iFile1 := filepath.Join(in_b, "test1")
+	iFile2 := filepath.Join(in_b, "test2")
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	specFname := createSpecFile(t, out1)
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
+	}
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	if err := syscall.Rename(out_a, in_b); err != nil {
+		t.Fatalf("syscall.Rename failed (%s)", err)
+	}
+
+	time.Sleep(500 * time.Millisecond) // should be enough to handle rename in user-space
+
+	fileRead(t, iFile1)
+	fileRead(t, iFile2)
+	fileRemove(t, iFile1)
+	fileRemove(t, iFile2)
+
+	fileCheckers := make([]ec.EventChecker, 5)
+	fileCheckers[0] = renameRenameChecker(out_a, in_b, "MOVE_INTERNALLY", "SRC_DIRECTORY", "DST_DIRECTORY")
+	fileCheckers[1] = renameReadChecker(iFile1)
+	fileCheckers[2] = renameReadChecker(iFile2)
+	fileCheckers[3] = renameDeleteChecker(iFile1)
+	fileCheckers[4] = renameDeleteChecker(iFile2)
+
+	checker := ec.NewUnorderedEventChecker(fileCheckers...)
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 }
