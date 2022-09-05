@@ -97,6 +97,16 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{unix}, nil
 }
 
+func getDevMajor(dev uint64) uint32 {
+	sDev := int64(dev)
+	return uint32(((sDev >> 8) & 0xfff) | ((sDev >> 32) & ^0xfff))
+}
+
+func getDevMinor(dev uint64) uint32 {
+	sDev := int64(dev)
+	return uint32((sDev & 0xff) | ((sDev >> 12) & ^0xff))
+}
+
 type LPMMapKey struct {
 	Prefixlen uint32
 	Data      [256]byte
