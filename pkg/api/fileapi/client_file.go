@@ -65,3 +65,33 @@ type MsgFileEvent struct {
 	Size       uint32                  `align:"size"`
 	MntNs      uint32                  `align:"mnt_ns"`
 }
+
+type MsgFileSplitPath struct {
+	Dir      [256]byte `align:"dir"`  // should match MAX_FILEPATH_SIZE in bpf/lib/generic.h
+	Name     [128]byte `align:"name"` // should match MAX_NAME_SIZE in bpf/lib/generic.h
+	DirSize  uint32    `align:"dir_size"`
+	NameSize uint32    `align:"name_size"`
+	Flags    uint32    `align:"flags"`
+	Pad      uint32    `align:"pad"`
+}
+
+type MsgRenameElem struct {
+	Path      MsgFileSplitPath `align:"path"`
+	Pad       uint64           `align:"pad"`
+	Ino       uint64           `align:"ino"`
+	Fs        MsgFsInfo        `align:"fs"`
+	ParentIno uint64           `align:"parent_ino"`
+	ParentFs  MsgFsInfo        `align:"parent_fs"`
+}
+
+type MsgFileRenameEvent struct {
+	Common     processapi.MsgCommon    `align:"common"`
+	ProcessKey processapi.MsgExecveKey `align:"current"`
+	Action     uint32                  `align:"action"`
+	Hook       uint32                  `align:"hook"`
+	Timestamp  uint64                  `align:"ktime"`
+	Src        MsgRenameElem           `align:"src"`
+	Dst        MsgRenameElem           `align:"dst"`
+	MntNs      uint32                  `align:"mnt_ns"`
+	Flags      uint32                  `align:"flags"`
+}

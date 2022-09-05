@@ -2,6 +2,7 @@
 #define _FILE__
 
 #define MAX_FILEPATH_SIZE 256
+#define MAX_NAME_SIZE	  128
 
 enum { action_invalid = 0,
        action_write = 1,
@@ -10,6 +11,7 @@ enum { action_invalid = 0,
        action_create = 4,
        action_rmdir = 5,
        action_mkdir = 6,
+       action_rename = 7,
 };
 
 // this should match the map in pkg/grpc/file/file.go
@@ -23,6 +25,7 @@ enum { hook_undef = 0,
        hook_do_dentry_open = 7,
        hook_vfs_rmdir = 8,
        hook_vfs_mkdir = 9,
+       hook_vfs_rename = 10,
 };
 
 struct vfs_mkdir_info {
@@ -76,5 +79,42 @@ struct msg_file_ops {
 	__u32 size;
 	__u32 mnt_ns;
 } __attribute__((packed));
+
+struct msg_file_split_path {
+	char dir[MAX_FILEPATH_SIZE];
+	char name[MAX_NAME_SIZE];
+	__u32 dir_size;
+	__u32 name_size;
+	__u32 flags;
+	__u32 pad;
+};
+
+struct msg_rename_elem {
+	struct msg_file_split_path path;
+	__u64 pad;
+	__u64 ino;
+	struct msg_fs_info fs;
+	__u64 parent_ino;
+	struct msg_fs_info parent_fs;
+};
+
+struct msg_file_rename_ops {
+	struct msg_common common;
+	struct msg_execve_key current;
+	__u32 action;
+	__u32 hook;
+	__u64 ktime;
+	struct msg_rename_elem src;
+	struct msg_rename_elem dst;
+	__u32 mnt_ns;
+	__u32 flags;
+};
+
+struct vfs_rename_info {
+	const struct path *old_dir;
+	const struct path *new_dir;
+	__u32 need_old, need_new;
+	struct msg_file_rename_ops msg;
+};
 
 #endif

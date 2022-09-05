@@ -49,6 +49,29 @@ const (
 	maxWatchedFiles = 128 * 1024 // 128K
 )
 
+const (
+	MOVE_INSIDE     = (1 << 0)
+	MOVE_OUTSIDE    = (1 << 1)
+	MOVE_INTERNALLY = (1 << 2)
+	SRC_REG_FILE    = (1 << 3)
+	SRC_DIRECTORY   = (1 << 4)
+	SRC_CHAR_DEV    = (1 << 5)
+	SRC_BLOCK_DEV   = (1 << 6)
+	SRC_NAMED_PIPE  = (1 << 7)
+	SRC_SYMLINK     = (1 << 8)
+	SRC_SOCKET      = (1 << 9)
+	SRC_INVALID     = (1 << 10)
+	DST_NOT_EXISTS  = (1 << 11)
+	DST_REG_FILE    = (1 << 12)
+	DST_DIRECTORY   = (1 << 13)
+	DST_CHAR_DEV    = (1 << 14)
+	DST_BLOCK_DEV   = (1 << 15)
+	DST_NAMED_PIPE  = (1 << 16)
+	DST_SYMLINK     = (1 << 17)
+	DST_SOCKET      = (1 << 18)
+	DST_INVALID     = (1 << 19)
+)
+
 var (
 	dirMap  *ebpf.Map
 	fileMap *ebpf.Map
@@ -89,14 +112,32 @@ var (
 			{"int vfs_mkdir(struct inode*, struct dentry*, umode_t)", "bpf_file.o"},
 			{"int vfs_mkdir(struct user_namespace*, struct inode*, struct dentry*, umode_t)", "bpf_file.o"},
 		}},
+		{"kprobe", "security_path_rename", []FimFunc{{"security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_file.o"}}},
+		{"kretprobe", "security_path_rename", []FimFunc{{"int security_path_rename(const struct path*, struct dentry*, const struct path*, struct dentry*, int)", "bpf_file.o"}}},
+		{"kprobe", "vfs_rename", []FimFunc{
+			{"vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_file.o"},
+			{"vfs_rename(struct renamedata*)", "bpf_file_v512.o"},
+		}},
+		{"kretprobe", "vfs_rename", []FimFunc{
+			{"int vfs_rename(struct inode*, struct dentry*, struct inode*, struct dentry*, struct inode**, int)", "bpf_file.o"},
+			{"int vfs_rename(struct renamedata*)", "bpf_file.o"},
+		}},
 	}
 
 	SharedMaps = [...]string{
 		"mkdir_retprobe_map",
+		"rename_retprobe_map",
 		"lpm_trie_map_alloc",
 		"hash_map_file_alloc",
 		"hash_map_dir_alloc",
 	}
+)
+
+type WalkOp uint32
+
+const (
+	AddToMap WalkOp = iota
+	RemoveFromMap
 )
 
 type observerFileSensor struct {
@@ -110,6 +151,7 @@ func init() {
 	sensors.RegisterProbeType("file_monitoring", file)
 	sensors.RegisterTracingSensorsAtInit(file.name, file)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE, handleFileOps)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_FILE_RENAME, handleFileRenameOps)
 }
 
 func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
@@ -172,6 +214,104 @@ func handleFileOps(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{unix}, nil
 }
 
+func hasFlag(flags, flag uint32) bool {
+	return (flags & flag) != 0
+}
+
+func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
+	m := fileapi.MsgFileRenameEvent{}
+	err := binary.Read(r, binary.LittleEndian, &m)
+	if err != nil {
+		return nil, fmt.Errorf("failed to read file operation: %w", err)
+	}
+
+	srcDir := string(m.Src.Path.Dir[:])
+	if uint32(len(srcDir)) > m.Src.Path.DirSize {
+		srcDir = srcDir[:m.Src.Path.DirSize]
+	}
+
+	srcName := string(m.Src.Path.Name[:])
+	if uint32(len(srcName)) > m.Src.Path.NameSize {
+		srcName = srcName[:m.Src.Path.NameSize]
+	}
+
+	dstDir := string(m.Dst.Path.Dir[:])
+	if uint32(len(dstDir)) > m.Dst.Path.DirSize {
+		dstDir = dstDir[:m.Dst.Path.DirSize]
+	}
+
+	dstName := string(m.Dst.Path.Name[:])
+	if uint32(len(dstName)) > m.Dst.Path.NameSize {
+		dstName = dstName[:m.Dst.Path.NameSize]
+	}
+
+	if hasFlag(m.Flags, SRC_DIRECTORY) {
+		var op WalkOp
+		var action uint32
+
+		path := filepath.Join(dstDir, dstName)
+		if hasFlag(m.Flags, MOVE_INSIDE) || hasFlag(m.Flags, MOVE_INTERNALLY) {
+			op = AddToMap
+			action = filterMatch
+		} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
+			op = RemoveFromMap
+			action = 0
+		}
+		WalkPath(path, fileMap, dirMap, lpmMap, op, action, true)
+	}
+
+	// The following should not be possible to happen. If we catch any of these we should handle them
+	// (not difficult to implement)
+	l := logger.GetLogger()
+	if hasFlag(m.Flags, SRC_DIRECTORY) {
+		if hasFlag(m.Flags, DST_REG_FILE) {
+			if hasFlag(m.Flags, MOVE_INSIDE) {
+				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_INSIDE - DST_REG_FILE]")
+			} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
+				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_OUTSIDE - DST_REG_FILE]")
+			} else if hasFlag(m.Flags, MOVE_INTERNALLY) {
+				l.Warnf("[NOOP][SRC_DIRECTORY - MOVE_INTERNALLY - DST_REG_FILE]")
+			}
+		}
+	} else if hasFlag(m.Flags, SRC_REG_FILE) {
+		if hasFlag(m.Flags, DST_DIRECTORY) {
+			if hasFlag(m.Flags, MOVE_INSIDE) {
+				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INSIDE - DST_DIRECTORY]\n")
+			} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
+				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_OUTSIDE - DST_DIRECTORY]\n")
+			} else if hasFlag(m.Flags, MOVE_INTERNALLY) {
+				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INTERNALLY - DST_DIRECTORY]\n")
+			}
+		}
+	}
+
+	unix := &file.MsgFileRenameEventUnix{
+		Common:     m.Common,
+		ProcessKey: m.ProcessKey,
+		Action:     m.Action,
+		Hook:       m.Hook,
+		Timestamp:  m.Timestamp,
+		Src: file.MsgRenameElemUnix{
+			Path:      filepath.Join(srcDir, srcName),
+			Ino:       m.Src.Ino,
+			Fs:        createFsInfoUnix(m.Src.Fs),
+			ParentIno: m.Src.ParentIno,
+			ParentFs:  createFsInfoUnix(m.Src.ParentFs),
+		},
+		Dst: file.MsgRenameElemUnix{
+			Path:      filepath.Join(dstDir, dstName),
+			Ino:       m.Dst.Ino,
+			Fs:        createFsInfoUnix(m.Dst.Fs),
+			ParentIno: m.Dst.ParentIno,
+			ParentFs:  createFsInfoUnix(m.Dst.ParentFs),
+		},
+		MntNs: m.MntNs,
+		Flags: m.Flags,
+	}
+
+	return []observer.Event{unix}, nil
+}
+
 func getDevMajor(dev uint64) uint32 {
 	sDev := int64(dev)
 	return uint32(((sDev >> 8) & 0xfff) | ((sDev >> 32) & ^0xfff))
@@ -195,8 +335,30 @@ func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
 	return nil
 }
 
+func lookupFilter(handle *ebpf.Map, filter string) fileapi.LPMMapValue {
+	var k fileapi.LPMMapKey
+	var v fileapi.LPMMapValue
+
+	k.Prefixlen = uint32(len(filter)) * 8
+	copy(k.Data[:], filter)
+
+	err := handle.Lookup(k, &v)
+	if err != nil { // key does not exist so ignore
+		return filterIgnore
+	}
+	return v
+}
+
 func addFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey, val fileapi.HashMapFileVal) error {
 	err := handle.Update(key, val, ebpf.UpdateAny)
+	if err != nil {
+		return fmt.Errorf("failed handle.Update: %w", err)
+	}
+	return nil
+}
+
+func removeFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey) error {
+	err := handle.Delete(key)
 	if err != nil {
 		return fmt.Errorf("failed handle.Update: %w", err)
 	}
@@ -240,7 +402,7 @@ func CheckFileMode(mode fs.FileMode, path string) {
 	}
 }
 
-func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle *ebpf.Map, action uint32) {
+func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle *ebpf.Map, op WalkOp, action uint32, checkPrefix bool) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
@@ -284,15 +446,30 @@ func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle 
 				DevMinor: getDevMinor(stat.Dev),
 			}
 
-			var val fileapi.HashMapFileVal
+			if op == AddToMap {
+				var val fileapi.HashMapFileVal
 
-			val.Action = action
-			val.PathSize = uint32(len(path))
-			copy(val.FullPath[:], path)
+				val.Action = action
+				val.PathSize = uint32(len(path))
+				copy(val.FullPath[:], path)
 
-			err := addFilePath(fileHandle, key, val)
-			if err != nil {
-				return fmt.Errorf("failed to call addFilePath: %w", err)
+				addToMap := true
+				if checkPrefix {
+					if lookupFilter(lpmHandle, path) == filterIgnore {
+						addToMap = false
+					}
+				}
+				if addToMap {
+					err := addFilePath(fileHandle, key, val)
+					if err != nil {
+						return fmt.Errorf("failed to call addFilePath: %w", err)
+					}
+				}
+			} else if op == RemoveFromMap {
+				err := removeFilePath(fileHandle, key)
+				if err != nil {
+					return fmt.Errorf("failed to call removeFilePath: %w", err)
+				}
 			}
 
 			totalFiles++
@@ -303,21 +480,36 @@ func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle 
 				DevMinor: getDevMinor(stat.Dev),
 			}
 
-			var val fileapi.HashMapFileVal
+			if op == AddToMap {
+				var val fileapi.HashMapFileVal
 
-			// We should have all directory names to end with "/"
-			// Check if this is the case, otherwise add it.
-			if path[len(path)-1:] != "/" {
-				path += "/"
-			}
+				// We should habe all directory names to end with "/"
+				// Check if this is the case, otherwise add it.
+				if path[len(path)-1:] != "/" {
+					path += "/"
+				}
 
-			val.Action = action
-			val.PathSize = uint32(len(path))
-			copy(val.FullPath[:], path)
+				val.Action = action
+				val.PathSize = uint32(len(path))
+				copy(val.FullPath[:], path)
 
-			err := addFilePath(dirHandle, key, val)
-			if err != nil {
-				return fmt.Errorf("failed to call addDirPath: %w", err)
+				addToMap := true
+				if checkPrefix {
+					if lookupFilter(lpmHandle, path) == filterIgnore {
+						addToMap = false
+					}
+				}
+				if addToMap {
+					err := addFilePath(dirHandle, key, val)
+					if err != nil {
+						return fmt.Errorf("failed to call addDirPath: %w", err)
+					}
+				}
+			} else if op == RemoveFromMap {
+				err := removeFilePath(fileHandle, key)
+				if err != nil {
+					return fmt.Errorf("failed to call removeFilePath: %w", err)
+				}
 			}
 
 			totalDirectories++
@@ -398,7 +590,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		if err != nil {
 			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
 		}
-		WalkPath(str, fileMap, dirMap, lpmMap, filterMatch)
+		WalkPath(str, fileMap, dirMap, lpmMap, AddToMap, filterMatch, false)
 	}
 
 	for _, str := range kprobes.PathsExclude {
@@ -407,7 +599,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		if err != nil {
 			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
 		}
-		WalkPath(str, fileMap, dirMap, lpmMap, filterIgnore)
+		WalkPath(str, fileMap, dirMap, lpmMap, AddToMap, filterIgnore, false)
 	}
 
 	for _, h := range fimProgs {

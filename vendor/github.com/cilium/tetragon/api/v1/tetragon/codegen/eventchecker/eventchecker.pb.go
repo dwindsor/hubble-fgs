@@ -6239,9 +6239,104 @@ func (checker *GenericFileArgChecker) FromGenericFileArg(event *tetragon.Generic
 	return checker
 }
 
+// RenameFileArgChecker implements a checker struct to check a RenameFileArg field
+type RenameFileArgChecker struct {
+	Src   *FileDetailsChecker `json:"src,omitempty"`
+	Dst   *FileDetailsChecker `json:"dst,omitempty"`
+	MntNs *NamespaceChecker   `json:"mntNs,omitempty"`
+	Flags *StringListMatcher  `json:"flags,omitempty"`
+}
+
+// NewRenameFileArgChecker creates a new RenameFileArgChecker
+func NewRenameFileArgChecker() *RenameFileArgChecker {
+	return &RenameFileArgChecker{}
+}
+
+// Check checks a RenameFileArg field
+func (checker *RenameFileArgChecker) Check(event *tetragon.RenameFileArg) error {
+	if event == nil {
+		return fmt.Errorf("RenameFileArgChecker: RenameFileArg field is nil")
+	}
+
+	if checker.Src != nil {
+		if err := checker.Src.Check(event.Src); err != nil {
+			return fmt.Errorf("RenameFileArgChecker: Src check failed: %w", err)
+		}
+	}
+	if checker.Dst != nil {
+		if err := checker.Dst.Check(event.Dst); err != nil {
+			return fmt.Errorf("RenameFileArgChecker: Dst check failed: %w", err)
+		}
+	}
+	if checker.MntNs != nil {
+		if err := checker.MntNs.Check(event.MntNs); err != nil {
+			return fmt.Errorf("RenameFileArgChecker: MntNs check failed: %w", err)
+		}
+	}
+	if checker.Flags != nil {
+		if err := checker.Flags.Check(event.Flags); err != nil {
+			return fmt.Errorf("RenameFileArgChecker: Flags check failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// WithSrc adds a Src check to the RenameFileArgChecker
+func (checker *RenameFileArgChecker) WithSrc(check *FileDetailsChecker) *RenameFileArgChecker {
+	checker.Src = check
+	return checker
+}
+
+// WithDst adds a Dst check to the RenameFileArgChecker
+func (checker *RenameFileArgChecker) WithDst(check *FileDetailsChecker) *RenameFileArgChecker {
+	checker.Dst = check
+	return checker
+}
+
+// WithMntNs adds a MntNs check to the RenameFileArgChecker
+func (checker *RenameFileArgChecker) WithMntNs(check *NamespaceChecker) *RenameFileArgChecker {
+	checker.MntNs = check
+	return checker
+}
+
+// WithFlags adds a Flags check to the RenameFileArgChecker
+func (checker *RenameFileArgChecker) WithFlags(check *StringListMatcher) *RenameFileArgChecker {
+	checker.Flags = check
+	return checker
+}
+
+//FromRenameFileArg populates the RenameFileArgChecker using data from a RenameFileArg field
+func (checker *RenameFileArgChecker) FromRenameFileArg(event *tetragon.RenameFileArg) *RenameFileArgChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Src != nil {
+		checker.Src = NewFileDetailsChecker().FromFileDetails(event.Src)
+	}
+	if event.Dst != nil {
+		checker.Dst = NewFileDetailsChecker().FromFileDetails(event.Dst)
+	}
+	if event.MntNs != nil {
+		checker.MntNs = NewNamespaceChecker().FromNamespace(event.MntNs)
+	}
+	{
+		var checks []*stringmatcher.StringMatcher
+		for _, check := range event.Flags {
+			var convertedCheck *stringmatcher.StringMatcher
+			convertedCheck = stringmatcher.Full(check)
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewStringListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Flags = lm
+	}
+	return checker
+}
+
 // FileArgumentChecker implements a checker struct to check a FileArgument field
 type FileArgumentChecker struct {
 	GenericArg *GenericFileArgChecker `json:"genericArg,omitempty"`
+	RenameArg  *RenameFileArgChecker  `json:"renameArg,omitempty"`
 }
 
 // NewFileArgumentChecker creates a new FileArgumentChecker
@@ -6265,12 +6360,28 @@ func (checker *FileArgumentChecker) Check(event *tetragon.FileArgument) error {
 			return fmt.Errorf("FileArgumentChecker: GenericArg check failed: %T is not a GenericArg", event)
 		}
 	}
+	if checker.RenameArg != nil {
+		switch event := event.Arg.(type) {
+		case *tetragon.FileArgument_RenameArg:
+			if err := checker.RenameArg.Check(event.RenameArg); err != nil {
+				return fmt.Errorf("FileArgumentChecker: RenameArg check failed: %w", err)
+			}
+		default:
+			return fmt.Errorf("FileArgumentChecker: RenameArg check failed: %T is not a RenameArg", event)
+		}
+	}
 	return nil
 }
 
 // WithGenericArg adds a GenericArg check to the FileArgumentChecker
 func (checker *FileArgumentChecker) WithGenericArg(check *GenericFileArgChecker) *FileArgumentChecker {
 	checker.GenericArg = check
+	return checker
+}
+
+// WithRenameArg adds a RenameArg check to the FileArgumentChecker
+func (checker *FileArgumentChecker) WithRenameArg(check *RenameFileArgChecker) *FileArgumentChecker {
+	checker.RenameArg = check
 	return checker
 }
 
@@ -6283,6 +6394,12 @@ func (checker *FileArgumentChecker) FromFileArgument(event *tetragon.FileArgumen
 	case *tetragon.FileArgument_GenericArg:
 		if event.GenericArg != nil {
 			checker.GenericArg = NewGenericFileArgChecker().FromGenericFileArg(event.GenericArg)
+		}
+	}
+	switch event := event.Arg.(type) {
+	case *tetragon.FileArgument_RenameArg:
+		if event.RenameArg != nil {
+			checker.RenameArg = NewRenameFileArgChecker().FromRenameFileArg(event.RenameArg)
 		}
 	}
 	return checker

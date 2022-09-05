@@ -55,6 +55,9 @@ int main(void)
 	DECLARE(struct, msg_file_path, iter);
 	DECLARE(struct, msg_fs_info, iter);
 	DECLARE(struct, msg_file_ops, iter);
+	DECLARE(struct, msg_file_split_path, iter);
+	DECLARE(struct, msg_rename_elem, iter);
+	DECLARE(struct, msg_file_rename_ops, iter);
 
 	return 0;
 }

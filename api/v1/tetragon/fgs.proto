@@ -142,6 +142,7 @@ enum FileAction {
     FILE_CREATE = 4;
     FILE_RMDIR = 5;
     FILE_MKDIR = 6;
+    FILE_RENAME = 7;
 }
 
 message FileSystem {
@@ -173,9 +174,17 @@ message GenericFileArg {
     tetragon.Namespace mnt_ns = 3;
 }
 
+message RenameFileArg {
+    FileDetails src = 1;
+    FileDetails dst = 2;
+    tetragon.Namespace mnt_ns = 3;
+    repeated string flags = 4;
+}
+
 message FileArgument {
     oneof arg {
         GenericFileArg generic_arg = 1;
+        RenameFileArg rename_arg = 2;
     }
 }
 

@@ -39,6 +39,8 @@ enum iso_msg_ops {
 
 	ISO_MSG_OP_IP_ERROR = 130,
 
+	ISO_MSG_OP_FILE_RENAME = 131,
+
 	ISO_MSG_OP_MAX,
 
 	ISO_MSG_OP_TEST = 254,
