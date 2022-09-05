@@ -53,13 +53,12 @@ struct ipv4_nat_entry {
 	};
 };
 
-struct bpf_map_def __attribute__((section("maps"), used))
-cilium_snat_v4_external = {
-	.type = BPF_MAP_TYPE_LRU_HASH,
-	.key_size = sizeof(struct ipv4_ct_tuple),
-	.value_size = sizeof(struct ipv4_nat_entry),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, struct ipv4_ct_tuple);
+	__type(value, struct ipv4_nat_entry);
+	__uint(max_entries, 1);
+} cilium_snat_v4_external SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 skb_tls_key_ct_xchg(struct msg_tls_ipv4 *key)

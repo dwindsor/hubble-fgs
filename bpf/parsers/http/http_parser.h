@@ -21,19 +21,19 @@
 #include "../../networking/cookie.h"
 
 #ifdef SK_MSG
-struct bpf_map_def __attribute__((section("maps"), used)) http1_calls = {
-	.type = BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(__u32),
-	.max_entries = 4,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	__type(key, __u32);
+	__type(value, __u32);
+	__uint(max_entries, 4);
+} http1_calls SEC(".maps");
 #else
-struct bpf_map_def __attribute__((section("maps"), used)) http1_calls_skb = {
-	.type = BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(__u32),
-	.max_entries = 4,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	__type(key, __u32);
+	__type(value, __u32);
+	__uint(max_entries, 4);
+} http1_calls_skb SEC(".maps");
 #endif
 
 #define MAX_HTTP_HDR   512

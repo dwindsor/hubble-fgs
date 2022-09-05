@@ -20,19 +20,19 @@ struct udp_sock_info {
 	struct msghdr *msg;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) udp_retprobe_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(__u64),
-	.value_size = sizeof(struct udp_sock_info),
-	.max_entries = 1024,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u64);
+	__type(value, struct udp_sock_info);
+	__uint(max_entries, 1024);
+} udp_retprobe_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) udp_sock_info_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct udp_sock_info),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct udp_sock_info);
+	__uint(max_entries, 1);
+} udp_sock_info_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 check_and_send_payload(void *ctx, u64 *cookie, struct udp_info_value *value)

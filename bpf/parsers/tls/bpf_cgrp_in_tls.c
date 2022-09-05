@@ -19,12 +19,12 @@ struct bpf_map_def {
 #define TLS_TYPE_HELLO 22
 #define TLS_TYPE_DONE  0xff
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct msg_tls),
-	.max_entries = 32000,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct msg_tls_ipv4);
+	__type(value, struct msg_tls);
+	__uint(max_entries, 32000);
+} tls_map SEC(".maps");
 
 // hook: ./net/ipv4/tcp_ipv4.c tcp_filter()
 __attribute__((section("cgroup_skb/ingress"), used)) int

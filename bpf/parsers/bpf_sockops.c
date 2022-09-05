@@ -9,26 +9,26 @@
 #define TLS_PORT 443
 #define SK_MSG
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_sock_map = {
-	.type = BPF_MAP_TYPE_SOCKHASH,
-	.key_size = sizeof(struct sock_key),
-	.value_size = sizeof(int),
-	.max_entries = SOCKOPS_TLS_MAP_SIZE,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_SOCKHASH);
+	__type(key, struct sock_key);
+	__type(value, int);
+	__uint(max_entries, SOCKOPS_TLS_MAP_SIZE);
+} tls_sock_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) http_sock_map = {
-	.type = BPF_MAP_TYPE_SOCKHASH,
-	.key_size = sizeof(struct sock_key),
-	.value_size = sizeof(int),
-	.max_entries = SOCKOPS_HTTP_MAP_SIZE,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_SOCKHASH);
+	__type(key, struct sock_key);
+	__type(value, int);
+	__uint(max_entries, SOCKOPS_HTTP_MAP_SIZE);
+} http_sock_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) nop_sock_map = {
-	.type = BPF_MAP_TYPE_SOCKHASH,
-	.key_size = sizeof(struct sock_key),
-	.value_size = sizeof(int),
-	.max_entries = SOCKOPS_NOP_MAP_SIZE,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_SOCKHASH);
+	__type(key, struct sock_key);
+	__type(value, int);
+	__uint(max_entries, SOCKOPS_NOP_MAP_SIZE);
+} nop_sock_map SEC(".maps");
 
 static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
 {

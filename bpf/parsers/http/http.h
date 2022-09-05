@@ -162,17 +162,17 @@ struct __msg_http_event {
 } __attribute__((packed));
 
 #ifndef ALIGNCHECKER
-struct bpf_map_def __attribute__((section("maps"), used)) http_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct msg_http_event),
-	.max_entries = 1000,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct msg_tls_ipv4);
+	__type(value, struct msg_http_event);
+	__uint(max_entries, 1000);
+} http_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) http_map_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_http_event),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_http_event);
+	__uint(max_entries, 1);
+} http_map_heap SEC(".maps");
 #endif // ALIGNCHECKER

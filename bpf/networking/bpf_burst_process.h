@@ -24,43 +24,40 @@ struct process_network_burst_config {
 	__u64 trigger_mult;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) pn_burst_map = {
-	.type = BPF_MAP_TYPE_LRU_HASH,
-	.key_size = sizeof(__u64),
-	.value_size = sizeof(struct process_network_burst_log),
-	.max_entries = MAX_UDP_PROCESSES,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, __u64);
+	__type(value, struct process_network_burst_log);
+	__uint(max_entries, MAX_UDP_PROCESSES);
+} pn_burst_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) pn_burst_map_stats = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(__u64),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, __u64);
+	__uint(max_entries, 1);
+} pn_burst_map_stats SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used))
-pn_burst_event_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_process_network_burst_event),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_process_network_burst_event);
+	__uint(max_entries, 1);
+} pn_burst_event_heap SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used))
-pn_burst_value_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct process_network_burst_log),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct process_network_burst_log);
+	__uint(max_entries, 1);
+} pn_burst_value_heap SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used))
-pn_burst_config_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct process_network_burst_config),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct process_network_burst_config);
+	__uint(max_entries, 1);
+} pn_burst_config_heap SEC(".maps");
 
 #define BURST_KEY_PROTO_SHIFT  48
 #define BURST_KEY_DIR_SHIFT    32

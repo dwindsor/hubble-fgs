@@ -14,33 +14,33 @@ struct socketmap_value {
 	__u64 received;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) socket_map = {
-	.type = BPF_MAP_TYPE_LRU_HASH,
-	.key_size = sizeof(u64),
-	.value_size = sizeof(struct socketmap_value),
-	.max_entries = 32768,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, u64);
+	__type(value, struct socketmap_value);
+	__uint(max_entries, 32768);
+} socket_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_socket_map = {
-	.type = BPF_MAP_TYPE_LRU_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct socketmap_value),
-	.max_entries = 32768,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, struct msg_tls_ipv4);
+	__type(value, struct socketmap_value);
+	__uint(max_entries, 32768);
+} tls_socket_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) socket_map_stats = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__s32),
-	.value_size = sizeof(__s64),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __s32);
+	__type(value, __s64);
+	__uint(max_entries, 1);
+} socket_map_stats SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) socket_map_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct socketmap_value),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct socketmap_value);
+	__uint(max_entries, 1);
+} socket_map_heap SEC(".maps");
 
 // get socket cookie helper
 static inline __attribute__((always_inline)) u64 get_cookie(struct sock *sk)
@@ -84,6 +84,7 @@ get_cookie_or_sk_from_msg(struct __sk_buff *skb)
 		return (u64)skb->sk;
 	}
 }
+
 #endif
 
 /* Unfortunately, clang will try to do the obvious direct write

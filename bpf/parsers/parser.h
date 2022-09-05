@@ -283,12 +283,16 @@ pkt_copy(__u8 *to, __u8 *end, __u8 *from, __u64 copy)
 	return copy - len;
 }
 
-struct bpf_map_def __attribute__((section("maps"), used)) pkt_heap = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 16384,
-	.max_entries = 1,
+struct pkt_data {
+	char data[16384];
 };
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct pkt_data);
+	__uint(max_entries, 1);
+} pkt_heap SEC(".maps");
 
 /* Large context copy to copy packet payload when we need a prune point to
  * avoid complexity and insn count overrun even with 1mil insns.

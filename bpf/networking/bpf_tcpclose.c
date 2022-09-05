@@ -17,13 +17,12 @@ int _version __attribute__((section(("version")), used)) =
 	VMLINUX_KERNEL_VERSION;
 #endif
 
-struct bpf_map_def __attribute__((section("maps"), used))
-tcp_close_event_map = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct msg_ip_event),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __u32);
+	__type(value, struct msg_ip_event);
+	__uint(max_entries, 1);
+} tcp_close_event_map SEC(".maps");
 
 __attribute__((section("kprobe/tcp_set_state"), used)) int
 event_tcp_close(struct pt_regs *ctx)

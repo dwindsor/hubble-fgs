@@ -75,79 +75,81 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 #define DST_SOCKET	(1 << 18)
 #define DST_INVALID	(1 << 19)
 
-struct bpf_map_def __attribute__((section("maps"), used)) mkdir_retprobe_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(__u64),
-	.value_size = sizeof(struct vfs_mkdir_info),
-	.max_entries = 1024,
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u64);
+	__type(value, struct vfs_mkdir_info);
+	__uint(max_entries, 1024);
+} mkdir_retprobe_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, __u64);
+	__type(value, struct vfs_rename_info);
+	__uint(max_entries, 1024);
+} rename_retprobe_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct vfs_rename_info);
+	__uint(max_entries, 1);
+} vfs_rename_info_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_file_rename_ops);
+	__uint(max_entries, 1);
+} file_rename_heap_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_file_ops);
+	__uint(max_entries, 1);
+} file_heap_map SEC(".maps");
+
+struct lpm_data {
+	struct bpf_lpm_trie_key key;
+	char data[256];
 };
 
-struct bpf_map_def __attribute__((section("maps"), used))
-rename_retprobe_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(__u64),
-	.value_size = sizeof(struct vfs_rename_info),
-	.max_entries = 1024,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_LPM_TRIE);
+	__type(key, struct lpm_data);
+	__type(value, uint32_t);
+	__uint(max_entries, 4096);
+	__uint(map_flags, BPF_F_NO_PREALLOC);
+} lpm_trie_map_alloc SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used))
-vfs_rename_info_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct vfs_rename_info),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct lpm_data);
+	__uint(max_entries, 1);
+} lpm_trie_heap_key SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used))
-file_rename_heap_map = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_file_rename_ops),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct hash_map_file_key);
+	__type(value, struct hash_map_file_val);
+	__uint(max_entries, 128 * 1024);
+} hash_map_file_alloc SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) file_heap_map = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_file_ops),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct hash_map_file_key);
+	__type(value, struct hash_map_file_val);
+	__uint(max_entries, 128 * 1024);
+} hash_map_dir_alloc SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used))
-lpm_trie_map_alloc = { .type = BPF_MAP_TYPE_LPM_TRIE,
-		       .key_size = sizeof(struct bpf_lpm_trie_key) + 256,
-		       .value_size = sizeof(uint32_t),
-		       .max_entries = 4096,
-		       .map_flags = BPF_F_NO_PREALLOC };
-
-struct bpf_map_def __attribute__((section("maps"), used)) lpm_trie_heap_key = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct bpf_lpm_trie_key) + 256,
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used))
-hash_map_file_alloc = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct hash_map_file_key),
-	.value_size = sizeof(struct hash_map_file_val),
-	.max_entries = 128 * 1024,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) hash_map_dir_alloc = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct hash_map_file_key),
-	.value_size = sizeof(struct hash_map_file_val),
-	.max_entries = 128 * 1024,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) file_val_map = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct hash_map_file_val),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct hash_map_file_val);
+	__uint(max_entries, 1);
+} file_val_map SEC(".maps");
 
 static inline __attribute__((always_inline)) struct msg_file_ops *get_msg_init()
 {
@@ -307,8 +309,8 @@ handle_generic_file_access(struct pt_regs *ctx, struct file *file, int action,
 	// find this file inside the file inode map
 	// we don't care if we cannot find this in the map
 	// or the action is FILTER_IGNORE
-	file_val =
-		find_inode_in_map(&hash_map_file_alloc, msg->ino, msg->fs.dev);
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_file_alloc,
+				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
 	if (file_val->action == FILTER_IGNORE)
@@ -512,8 +514,8 @@ BPF_KPROBE(security_path_unlink, const struct path *dir, struct dentry *dentry)
 
 	// find this file inside the file inode map
 	// if we cannot find that in map we don't have anything to remove from the map
-	file_val =
-		find_inode_in_map(&hash_map_file_alloc, msg->ino, msg->fs.dev);
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_file_alloc,
+				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
 
@@ -587,8 +589,8 @@ check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
 	get_parent_ino_fs(msg, parent_dentry);
 
 	// find the parent directory entry
-	file_val = find_inode_in_map(&hash_map_dir_alloc, msg->parent_ino,
-				     msg->parent_fs.dev);
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+				     msg->parent_ino, msg->parent_fs.dev);
 	if (!file_val)
 		return 0;
 	// we don't care for anything inside this directory
@@ -729,8 +731,8 @@ kprobe_vfs_rmdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry)
 	get_fs_info(&(msg->parent_fs), dir);
 
 	// check if we care about this directory
-	file_val =
-		find_inode_in_map(&hash_map_dir_alloc, msg->ino, msg->fs.dev);
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+				     msg->ino, msg->fs.dev);
 	if (!file_val)
 		return 0;
 
@@ -852,8 +854,8 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 		   _(&inode->i_ino));
 	get_fs_info(&(msg->parent_fs), inode);
 
-	file_val = find_inode_in_map(&hash_map_dir_alloc, msg->parent_ino,
-				     msg->parent_fs.dev);
+	file_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+				     msg->parent_ino, msg->parent_fs.dev);
 	if (!file_val)
 		return 0;
 	// we don't care for anything inside this directory
@@ -1116,9 +1118,10 @@ kprobe_vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 		if ((v->msg.flags & SRC_REG_FILE) ||
 		    (v->msg.flags & SRC_DIRECTORY)) {
-			fv = find_inode_in_map(&hash_map_dir_alloc,
-					       v->msg.src.parent_ino,
-					       v->msg.src.parent_fs.dev);
+			fv = find_inode_in_map(
+				(struct bpf_map_def *)&hash_map_dir_alloc,
+				v->msg.src.parent_ino,
+				v->msg.src.parent_fs.dev);
 			if (fv && fv->action == FILTER_MATCH)
 				src_watched = 1;
 		}
@@ -1126,9 +1129,10 @@ kprobe_vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		if ((v->msg.flags & DST_REG_FILE) ||
 		    (v->msg.flags & DST_DIRECTORY) ||
 		    (v->msg.flags & DST_NOT_EXISTS)) {
-			fv = find_inode_in_map(&hash_map_dir_alloc,
-					       v->msg.dst.parent_ino,
-					       v->msg.dst.parent_fs.dev);
+			fv = find_inode_in_map(
+				(struct bpf_map_def *)&hash_map_dir_alloc,
+				v->msg.dst.parent_ino,
+				v->msg.dst.parent_fs.dev);
 			if (fv && fv->action == FILTER_MATCH)
 				dst_watched = 1;
 		}
@@ -1145,9 +1149,10 @@ kprobe_vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 		if ((v->msg.flags & SRC_REG_FILE) ||
 		    (v->msg.flags & SRC_DIRECTORY)) {
-			fval = find_inode_in_map(&hash_map_dir_alloc,
-						 v->msg.src.parent_ino,
-						 v->msg.src.parent_fs.dev);
+			fval = find_inode_in_map(
+				(struct bpf_map_def *)&hash_map_dir_alloc,
+				v->msg.src.parent_ino,
+				v->msg.src.parent_fs.dev);
 		} // otherwise we don't care
 
 		if (fval == 0) { // we care for the path not for the action
@@ -1169,9 +1174,10 @@ kprobe_vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		if ((v->msg.flags & DST_REG_FILE) ||
 		    (v->msg.flags & DST_DIRECTORY) ||
 		    (v->msg.flags & DST_NOT_EXISTS)) {
-			fval = find_inode_in_map(&hash_map_dir_alloc,
-						 v->msg.dst.parent_ino,
-						 v->msg.dst.parent_fs.dev);
+			fval = find_inode_in_map(
+				(struct bpf_map_def *)&hash_map_dir_alloc,
+				v->msg.dst.parent_ino,
+				v->msg.dst.parent_fs.dev);
 		} // otherwise we don't care
 
 		if (fval == 0) { // we care for the path not for the action
@@ -1305,8 +1311,8 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 
 	// we can also get this from val->msg.src.path.dir but we have also to append a '/'
 	// which makes that a bit more complex in ebpf
-	dir_val = find_inode_in_map(&hash_map_dir_alloc, dir->parent_ino,
-				    dir->parent_fs.dev);
+	dir_val = find_inode_in_map((struct bpf_map_def *)&hash_map_dir_alloc,
+				    dir->parent_ino, dir->parent_fs.dev);
 	if (!dir_val)
 		return 0;
 	// we need that in order to generate the path so don't return if

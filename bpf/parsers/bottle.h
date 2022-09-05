@@ -19,27 +19,26 @@ struct bottle {
 	u8 data[BOTTLE_DATA_SIZE * 2];
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) bottle_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct bottle),
-	.max_entries = 1,
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct bottle);
+	__uint(max_entries, 1);
+} bottle_heap SEC(".maps");
 
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, struct msg_tls_ipv4);
+	__type(value, struct bottle);
+	__uint(max_entries, 1024);
+} bottles SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) bottles = {
-	.type = BPF_MAP_TYPE_LRU_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct bottle),
-	.max_entries = 1024,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) bottle_map_stats = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__s32),
-	.value_size = sizeof(__s64),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __s32);
+	__type(value, __s64);
+	__uint(max_entries, 1);
+} bottle_map_stats SEC(".maps");
 
 static inline __attribute__((always_inline)) void *
 bottle_get_data(struct bottle *bottle, u32 off, u32 len)

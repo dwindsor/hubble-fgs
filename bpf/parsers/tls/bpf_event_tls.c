@@ -19,19 +19,19 @@ struct bpf_map_def {
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct msg_tls),
-	.max_entries = 32000,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct msg_tls_ipv4);
+	__type(value, struct msg_tls);
+	__uint(max_entries, 32000);
+} tls_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) heap = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_tls_event),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, int);
+	__type(value, struct msg_tls_event);
+	__uint(max_entries, 1);
+} heap SEC(".maps");
 
 #define TLS_TYPE_HELLO 22
 

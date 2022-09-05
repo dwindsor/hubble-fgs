@@ -7,12 +7,12 @@
 #include "tls_map.h"
 #include "bpf_helpers.h"
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_heap = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_tls_event),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_tls_event);
+	__uint(max_entries, 1);
+} tls_heap SEC(".maps");
 
 struct tls_hdr {
 	__u8 type;

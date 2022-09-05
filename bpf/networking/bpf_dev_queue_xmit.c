@@ -35,26 +35,26 @@ struct network_value {
 	struct qdisc_qlen_hist qlen;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) network_map = {
-	.type = BPF_MAP_TYPE_PERCPU_HASH,
-	.key_size = sizeof(struct network_key),
-	.value_size = sizeof(struct network_value),
-	.max_entries = 256,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_HASH);
+	__type(key, struct network_key);
+	__type(value, struct network_value);
+	__uint(max_entries, 256);
+} network_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) key_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct network_key),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct network_key);
+	__uint(max_entries, 1);
+} key_heap SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) value_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct network_value),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct network_value);
+	__uint(max_entries, 1);
+} value_heap SEC(".maps");
 
 #define P99 990
 #define P90 900
@@ -230,12 +230,12 @@ struct msg_netns_exit {
 	__u64 inum;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) netns_exit_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_netns_exit),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_netns_exit);
+	__uint(max_entries, 1);
+} netns_exit_heap SEC(".maps");
 
 __attribute__((section("kprobe/net_ns_net_exit"), used)) int
 net_ns_net_exit(struct pt_regs *ctx)

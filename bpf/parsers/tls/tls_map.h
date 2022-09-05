@@ -5,26 +5,26 @@
 #include "../../lib/tlsmsg.h"
 #include "../../lib/tlsmsg.h"
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_calls = {
-	.type = BPF_MAP_TYPE_PROG_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(__u32),
-	.max_entries = 2,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
+	__type(key, __u32);
+	__type(value, __u32);
+	__uint(max_entries, 2);
+} tls_calls SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_map = {
-	.type = BPF_MAP_TYPE_HASH,
-	.key_size = sizeof(struct msg_tls_ipv4),
-	.value_size = sizeof(struct msg_tls),
-	.max_entries = 32000,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_HASH);
+	__type(key, struct msg_tls_ipv4);
+	__type(value, struct msg_tls);
+	__uint(max_entries, 32000);
+} tls_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_map_stats = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__s32),
-	.value_size = sizeof(__s64),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __s32);
+	__type(value, __s64);
+	__uint(max_entries, 1);
+} tls_map_stats SEC(".maps");
 
 /* Mark a TLS entry as completed to stop further parsing. */
 static inline __attribute__((always_inline)) void
@@ -55,33 +55,37 @@ del_tlsmap(struct msg_tls_ipv4 *tuple)
 		*cntr = *cntr - 1;
 }
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 128,
-	.max_entries = 1,
+struct filter_map {
+	char data[128];
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) http_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 128,
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct filter_map);
+	__uint(max_entries, 1);
+} tls_filter_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) nop_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 128,
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct filter_map);
+	__uint(max_entries, 1);
+} http_filter_map SEC(".maps");
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_cookie_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(u64),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct filter_map);
+	__uint(max_entries, 1);
+} nop_filter_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, u64);
+	__uint(max_entries, 1);
+} tls_cookie_heap SEC(".maps");
 
 #define PROTO_SKIP  0
 #define PROTO_TRACK 1
@@ -223,12 +227,12 @@ struct __tls_parser_stats {
 	__u64 cnt_bottle_fill_failed;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) tls_parser_stats = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(__s32),
-	.value_size = sizeof(struct __tls_parser_stats),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, __s32);
+	__type(value, struct __tls_parser_stats);
+	__uint(max_entries, 1);
+} tls_parser_stats SEC(".maps");
 
 #define INC_TLS_PARSER_STATS_FUNC(field)                                       \
 	static inline __attribute__((always_inline)) void tls_inc_##field()    \

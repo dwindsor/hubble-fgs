@@ -90,77 +90,79 @@ struct udp_sensor_config {
 	u64 watermark_trigger_percent;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) udp_config_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct udp_sensor_config),
-	.max_entries = 1,
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct udp_sensor_config);
+	__uint(max_entries, 1);
+} udp_config_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_udp_event);
+	__uint(max_entries, 1);
+} udp_event_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, u64);
+	__type(value, struct udp_info_value);
+	__uint(max_entries, MAX_UDP_ENDPOINTS);
+} udp_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct udp_info_value);
+	__uint(max_entries, 1);
+} udp_value_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct udp_info);
+	__uint(max_entries, 1);
+} udp_info_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, u64);
+	__uint(max_entries, 1);
+} udp_cookie_heap SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_LRU_HASH);
+	__type(key, u64);
+	__type(value, struct msg_udp_event);
+	__uint(max_entries, MAX_UDP_PAYLOADS);
+} udp_payload_map SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, __u64);
+	__uint(max_entries, 1);
+} udp_payload_map_stats SEC(".maps");
+
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct udp_packet_details);
+	__uint(max_entries, 1);
+} udp_header_heap SEC(".maps");
+
+struct payload_bloom_value {
+	u16 data[UDP_BLOOM_BUCKETS];
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) udp_event_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_udp_event),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) udp_map = {
-	.type = BPF_MAP_TYPE_LRU_HASH,
-	.key_size = sizeof(u64),
-	.value_size = sizeof(struct udp_info_value),
-	.max_entries = MAX_UDP_ENDPOINTS,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) udp_value_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct udp_info_value),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) udp_info_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct udp_info),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) udp_cookie_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(u64),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) udp_payload_map = {
-	.type = BPF_MAP_TYPE_LRU_HASH,
-	.key_size = sizeof(u64),
-	.value_size = sizeof(struct msg_udp_event),
-	.max_entries = MAX_UDP_PAYLOADS,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used))
-udp_payload_map_stats = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(__u64),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used)) udp_header_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct udp_packet_details),
-	.max_entries = 1,
-};
-
-struct bpf_map_def __attribute__((section("maps"), used))
-udp_payload_bloom_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(u16) * UDP_BLOOM_BUCKETS,
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct payload_bloom_value);
+	__uint(max_entries, 1);
+} udp_payload_bloom_map SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 copy_ipv6_addrs_to_info(struct udp_info *info, struct in6_addr *saddr,

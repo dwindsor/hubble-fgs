@@ -1,16 +1,16 @@
 #ifndef __BPF_NETWORK_HELPERS_H__
 #define __BPF_NETWORK_HELPERS_H__
 
+#include "../lib/bpf_helpers.h"
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
 
-struct bpf_map_def __attribute__((section("maps"), used))
-ip_error_event_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct msg_ip_event),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct msg_ip_event);
+	__uint(max_entries, 1);
+} ip_error_event_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 get_socket_stats(struct sock *sk, struct net *net, __u32 zerowin,
@@ -182,12 +182,12 @@ struct ipv6ext {
 	u8 len;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used)) ipv6ext_heap = {
-	.type = BPF_MAP_TYPE_PERCPU_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = sizeof(struct ipv6ext),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
+	__type(key, int);
+	__type(value, struct ipv6ext);
+	__uint(max_entries, 1);
+} ipv6ext_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) u8
 get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,

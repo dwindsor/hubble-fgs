@@ -26,12 +26,16 @@ int _version __attribute__((section(("version")), used)) =
 
 #define TLS_HTTPS (1 << 16)
 
-struct bpf_map_def __attribute__((section("maps"), used)) https_filter_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(int),
-	.value_size = 128,
-	.max_entries = 1,
+struct https_filter_map_data {
+	char data[128];
 };
+
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, int);
+	__type(value, struct https_filter_map_data);
+	__uint(max_entries, 1);
+} https_filter_map SEC(".maps");
 
 static inline __attribute__((always_inline)) void
 sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key)

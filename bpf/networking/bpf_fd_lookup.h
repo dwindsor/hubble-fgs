@@ -22,13 +22,12 @@ struct fd_lookup_config {
 	uint8_t ipv6;
 };
 
-struct bpf_map_def __attribute__((section("maps"), used))
-fd_lookup_config_map = {
-	.type = BPF_MAP_TYPE_ARRAY,
-	.key_size = sizeof(__u32),
-	.value_size = sizeof(struct fd_lookup_config),
-	.max_entries = 1,
-};
+struct {
+	__uint(type, BPF_MAP_TYPE_ARRAY);
+	__type(key, __u32);
+	__type(value, struct fd_lookup_config);
+	__uint(max_entries, 1);
+} fd_lookup_config_map SEC(".maps");
 
 static inline __attribute__((always_inline)) int
 __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
