@@ -165,9 +165,29 @@ package-fgs-bench: hubble-bpf-local fgs-bench
 test:
 	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./pkg/... ${EXTRA_TESTFLAGS}
 
+# Agent image to use for end-to-end tests
+E2E_AGENT ?= "isovalent/hubble-fgs:$(DOCKER_IMAGE_TAG)"
+# Operator image to use for end-to-end tests
+E2E_OPERATOR ?= "isovalent/hubble-enterprise-operator:$(DOCKER_IMAGE_TAG)"
+# BTF file to use in the E2E test. Set to nothing to use system BTF.
+E2E_BTF ?= ""
+# Actual flags to use for BTF file in e2e test. Use E2E_BTF instead.
+ifneq ($(E2E_BTF), "")
+	E2E_BTF_FLAGS ?= "-tetragon.btf=$(shell readlink -f $(E2E_BTF))"
+else
+	E2E_BTF_FLAGS = ""
+endif
+# Build image and operator images locally before running test. Set to 0 to disable.
+E2E_BUILD_IMAGES ?= 1
+
+# Run an e2e-test
 .PHONY: e2e-test
+ifneq ($(E2E_BUILD_IMAGES), 0)
 e2e-test: image image-operator
-	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./tests/e2e/tests/... ${EXTRA_TESTFLAGS} -fail-fast -tetragon.helm.set enterprise.image.override="isovalent/hubble-fgs:${DOCKER_IMAGE_TAG}" -tetragon.helm.set hubbleEnterpriseOperator.image.override="isovalent/hubble-enterprise-operator:${DOCKER_IMAGE_TAG}"
+else
+e2e-test:
+endif
+	$(GO) test -p 1 -parallel 1 $(GOFLAGS) -gcflags=$(GO_GCFLAGS) -timeout 20m -failfast -cover ./tests/e2e/tests/... ${EXTRA_TESTFLAGS} -fail-fast -tetragon.helm.set enterprise.image.override="$(E2E_AGENT)" -tetragon.helm.set hubbleEnterpriseOperator.image.override="$(E2E_OPERATOR)" $(E2E_BTF_FLAGS)
 
 TEST_COMPILE ?= ./...
 .PHONY: test-compile
