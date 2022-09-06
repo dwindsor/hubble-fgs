@@ -65,6 +65,10 @@ var (
 	NamesMap    = program.MapBuilder("names_map", Execve)
 	NamesMapV53 = program.MapBuilder("names_map", ExecveV53)
 
+	/* Tetragon runtime configuration */
+	TetragonConfMap    = program.MapBuilder("tg_conf_map", Execve)
+	TetragonConfMapV53 = program.MapBuilder("tg_conf_map", ExecveV53)
+
 	/* Internal statistics for debugging */
 	ExecveStats     = program.MapBuilder("execve_map_stats", Execve)
 	ExecveStatsV53  = program.MapBuilder("execve_map_stats", ExecveV53)
@@ -76,6 +80,13 @@ func GetExecveMap() *program.Map {
 		return ExecveMapV53
 	}
 	return ExecveMap
+}
+
+func GetTetragonConfMap() *program.Map {
+	if kernels.EnableLargeProgs() {
+		return TetragonConfMapV53
+	}
+	return TetragonConfMap
 }
 
 func GetDefaultPrograms() []*program.Program {
@@ -103,6 +114,7 @@ func GetDefaultMaps() []*program.Map {
 			ExecveStatsV53,
 			NamesMapV53,
 			TCPMonMapV53,
+			TetragonConfMapV53,
 		)
 	} else {
 		maps = append(maps,
@@ -110,6 +122,7 @@ func GetDefaultMaps() []*program.Map {
 			ExecveStats,
 			NamesMap,
 			TCPMonMap,
+			TetragonConfMap,
 		)
 	}
 	return maps
