@@ -1,39 +1,11 @@
+/* SPDX-License-Identifier: (LGPL-2.1 OR BSD-2-Clause) */
 #ifndef __VMLINUX_H__
 #define __VMLINUX_H__
 
 /* User configurable BTF */
 enum generic_func_args_enum {
-	func_id = 0x1,
-	/* arg{0..4}: types of arguments */
-	arg0    = 0x2,
-	arg1    = 0x3,
-	arg2    = 0x4,
-	arg3    = 0x5,
-	arg4    = 0x6,
-	syscall = 0x7,
-	/* arg{0..4}m: metadata of arguments */
-	arg0m   = 0x8,
-	arg1m   = 0x9,
-	arg2m   = 0x10,
-	arg3m   = 0x11,
-	arg4m   = 0x12,
-	/* return arguments */
-	argreturn = 0x31,
-	/* use return argument for buffer copy */
-	argreturncopy = 0x32,
-	/* actions enabled */
-	sigkill = 0x40,
 	/* tcp sock stat sample info */
 	send_check_pkt_sample = 0x50,
-	/*
-	 * Tracepoints are using the same enum as kprobes
-	 */
-	/* offset of argument fields from ctx pointer */
-	t_arg0_ctx_off = 0x100,
-	t_arg1_ctx_off = 0x101,
-	t_arg2_ctx_off = 0x102,
-	t_arg3_ctx_off = 0x103,
-	t_arg4_ctx_off = 0x104,
 };
 
 /* Kernel BTF */
@@ -6460,6 +6432,21 @@ struct kernfs_node {
 	short unsigned int flags;
 	umode_t mode;
 	struct kernfs_iattrs *iattr;
+};
+
+/* Represent old kernfs node present in 5.4 kernels and older */
+union kernfs_node_id {
+	struct {
+		/*
+		 * blktrace will export this struct as a simplified 'struct
+		 * fid' (which is a big data struction), so userspace can use
+		 * it to find kernfs node. The layout must match the first two
+		 * fields of 'struct fid' exactly.
+		 */
+		u32 ino;
+		u32 generation;
+	};
+	u64 id;
 };
 
 struct kernfs_open_file;
@@ -17231,8 +17218,12 @@ enum cgroup_subsys_id {
 	net_cls_cgrp_id = 7,
 	perf_event_cgrp_id = 8,
 	net_prio_cgrp_id = 9,
-	pids_cgrp_id = 10,
-	CGROUP_SUBSYS_COUNT = 11,
+	hugetlb_cgrp_id = 10,
+	pids_cgrp_id = 11,
+	rdma_cgrp_id = 12,
+	misc_cgrp_id = 13,
+	debug_cgrp_id = 14,
+	CGROUP_SUBSYS_COUNT = 15,
 };
 
 typedef u8 kprobe_opcode_t;
