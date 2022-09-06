@@ -9,11 +9,22 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+    - enhancement
+    - release-blocker
+
   - package-ecosystem: "docker"
     directory: "/" # Location of package manifests
     schedule:
       interval: "weekly"
+    labels:
+    - enhancement
+    - release-blocker
+
   - package-ecosystem: "github-actions"
     directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+    - enhancement
+    - release-blocker
