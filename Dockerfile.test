@@ -6,7 +6,7 @@ RUN apt-get install -y linux-libc-dev
 COPY . ./
 RUN make hubble-bpf LOCAL_CLANG=1 && pwd
 
-FROM docker.io/library/golang:1.19.0-alpine3.15@sha256:9933178d3405af3a70fd89eafb62df68d7f862384f28dbf9f15717c3136ac5e0
+FROM docker.io/library/golang:1.19.1-alpine3.15@sha256:45e2989b7c408120fc0fd2ae9de9f48cdd8e17fae327e7f21d472b0f9744f8d4
 RUN apt-get update
 RUN apt-get install -y linux-libc-dev rpm2cpio cpio git flex bison autoconf libelf-dev bc netcat-traditional
 WORKDIR /go/src/github.com/isovalent/hubble-fgs
