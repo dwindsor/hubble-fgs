@@ -187,7 +187,7 @@ func udpClient() {
 
 func TestUdpBurst(t *testing.T) {
 
-	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
 
