@@ -123,6 +123,7 @@ github.com/cilium/tetragon/pkg/api/tracingapi
 github.com/cilium/tetragon/pkg/bpf
 github.com/cilium/tetragon/pkg/btf
 github.com/cilium/tetragon/pkg/bugtool
+github.com/cilium/tetragon/pkg/cgroups
 github.com/cilium/tetragon/pkg/cilium
 github.com/cilium/tetragon/pkg/config
 github.com/cilium/tetragon/pkg/data
@@ -182,6 +183,7 @@ github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors
 github.com/cilium/tetragon/pkg/sensors/base
 github.com/cilium/tetragon/pkg/sensors/config
+github.com/cilium/tetragon/pkg/sensors/config/confmap
 github.com/cilium/tetragon/pkg/sensors/exec/execvemap
 github.com/cilium/tetragon/pkg/sensors/exec/procevents
 github.com/cilium/tetragon/pkg/sensors/program
