@@ -153,7 +153,7 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 	if err != nil {
 		log.Fatalf("readConfig error: %v", err)
 	}
-	startSensors, err := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+	startSensors, err := sensors.GetMergedSensorFromParserPolicy(cnf.Name(), &cnf.Spec)
 	if err != nil {
 		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
@@ -165,7 +165,14 @@ func runFgs(ctx context.Context, sinkPort int, args *Arguments, summary *Summary
 		log.Fatalf("Load Defaults failed: %v", err)
 	}
 
-	if err := obs.Start(ctx, startSensors); err != nil {
+	if err := startSensors.Load(ctx,
+		option.Config.BpfDir,
+		option.Config.MapDir,
+		option.Config.CiliumDir); err != nil {
+		log.Fatalf("Load Start Sensors failed: %v", err)
+	}
+
+	if err := obs.Start(ctx); err != nil {
 		log.Fatalf("Starting FGS failed: %v", err)
 	}
 

@@ -73,7 +73,7 @@ github.com/cilium/cilium/pkg/versioncheck
 ## explicit; go 1.18
 github.com/cilium/cilium-e2e/pkg/e2ecluster/ciliuminstall
 github.com/cilium/cilium-e2e/pkg/e2ecluster/e2ehelpers
-# github.com/cilium/ebpf v0.9.0 => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
+# github.com/cilium/ebpf v0.9.1 => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
 ## explicit; go 1.17
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
@@ -182,7 +182,6 @@ github.com/cilium/tetragon/pkg/reader/proc
 github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors
 github.com/cilium/tetragon/pkg/sensors/base
-github.com/cilium/tetragon/pkg/sensors/config
 github.com/cilium/tetragon/pkg/sensors/config/confmap
 github.com/cilium/tetragon/pkg/sensors/exec/execvemap
 github.com/cilium/tetragon/pkg/sensors/exec/procevents

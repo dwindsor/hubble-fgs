@@ -273,11 +273,6 @@ func openConfigMap() *bpf.Map {
 
 	fdLookupMap := FdLookupConfigMap
 
-	if fdLookupMap.PinState.IsDisabled() {
-		logger.GetLogger().Infof("hubble-fgs, map %s is disabled, skipping.", fdLookupMap.Name)
-		return nil
-	}
-
 	m, err := bpf.OpenMap(filepath.Join(mapDir, fdLookupMap.Name))
 	for i := 0; err != nil; i++ {
 		m, err = bpf.OpenMap(filepath.Join(mapDir, fdLookupMap.Name))

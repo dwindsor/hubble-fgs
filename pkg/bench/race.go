@@ -244,12 +244,20 @@ func runRaceFGS(ctx context.Context, ready chan bool) {
 	if err != nil {
 		logger.GetLogger().Fatalf("ReadConfig failed: %v", err)
 	}
-	startSensors, err := sensors.GetSensorsFromParserPolicy(&cnf.Spec)
+
+	startSensors, err := sensors.GetMergedSensorFromParserPolicy(cnf.Name(), &cnf.Spec)
 	if err != nil {
-		logger.GetLogger().Fatalf("GetSensorsFromParserPolicy failed: %v", err)
+		log.Fatalf("GetSensorsFromParserPolicy error: %v", err)
 	}
 
-	if err := obs.Start(ctx, startSensors); err != nil {
+	if err := startSensors.Load(ctx,
+		option.Config.BpfDir,
+		option.Config.MapDir,
+		option.Config.CiliumDir); err != nil {
+		log.Fatalf("Load Start Sensors failed: %v", err)
+	}
+
+	if err := obs.Start(ctx); err != nil {
 		logger.GetLogger().Fatalf("Starting FGS failed: %v", err)
 	}
 

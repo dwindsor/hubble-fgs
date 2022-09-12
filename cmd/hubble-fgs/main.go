@@ -145,10 +145,6 @@ func hubbleFGSExecute() error {
 		return fmt.Errorf("failed to init cached BTF: %w", err)
 	}
 
-	if runStandalone {
-		return obs.StartStandalone(ctx)
-	}
-
 	if metricsServer != "" {
 		go metrics.EnableMetrics(metricsServer)
 	}
@@ -199,23 +195,28 @@ func hubbleFGSExecute() error {
 		go crd.WatchTracePolicy(ctx, observer.SensorManager)
 	}
 
-	var startSensors []*sensors.Sensor
-	if configFile != "" {
-		cnf, err := readConfig(configFile)
-		if err != nil {
-			return fmt.Errorf("failed to read config: %w", err)
-		}
-		startSensors, err = sensors.GetSensorsFromParserPolicy(&cnf.Spec)
-		if err != nil {
-			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
-		}
-	}
-
 	if err := base.LoadDefault(ctx, observerDir, observerDir, option.Config.CiliumDir); err != nil {
 		return err
 	}
 
-	return obs.Start(ctx, startSensors)
+	if len(configFile) > 0 {
+		var sens *sensors.Sensor
+		cnf, err := readConfig(configFile)
+		if err != nil {
+			return fmt.Errorf("failed to read config: %w", err)
+		}
+		sens, err = sensors.GetMergedSensorFromParserPolicy(cnf.Name(), &cnf.Spec)
+		if err != nil {
+			return fmt.Errorf("failed to get sensors from parser policy: %w", err)
+		}
+
+		if err := sens.Load(ctx, observerDir, observerDir, option.Config.CiliumDir); err != nil {
+			return err
+		}
+
+	}
+
+	return obs.Start(ctx)
 }
 
 // getObserverDir returns the path to the observer directory based on the BPF
@@ -382,13 +383,6 @@ func execute() error {
 
 	// Config files
 	flags.String(keyConfigFile, "", "Configuration file to load from")
-
-	// Options for debugging/development, not visible to users
-	flags.Bool(keyRunStandalone, false, "Just start the observer and dump events to stdout")
-	flags.MarkHidden(keyRunStandalone)
-
-	flags.Bool(keyIgnoreMissingProgs, false, "Ignore missing BPF programs")
-	flags.MarkHidden(keyIgnoreMissingProgs)
 
 	// JSON export aggregation options.
 	flags.Bool(keyEnableExportAggregation, false, "Enable JSON export aggregation")

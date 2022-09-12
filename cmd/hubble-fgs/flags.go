@@ -47,9 +47,6 @@ const (
 	keyEnableProcessNs   = "enable-process-ns"
 	keyConfigFile        = "config-file"
 
-	keyRunStandalone      = "run-standalone"
-	keyIgnoreMissingProgs = "ignore-missing-progs"
-
 	keyExportFilename             = "export-filename"
 	keyExportFileMaxSizeMB        = "export-file-max-size-mb"
 	keyExportFileRotationInterval = "export-file-rotation-interval"
@@ -74,8 +71,6 @@ var (
 	serverAddress string
 	configFile    string
 
-	runStandalone bool
-
 	exportFilename             string
 	exportFileMaxSizeMB        int
 	exportFileRotationInterval time.Duration
@@ -95,7 +90,6 @@ func readAndSetFlags() {
 	option.Config.ProcFS = viper.GetString(keyProcFS)
 	option.Config.KernelVersion = viper.GetString(keyKernelVersion)
 	option.Config.Verbosity = viper.GetInt(keyVerbosity)
-	option.Config.IgnoreMissingProgs = viper.GetBool(keyIgnoreMissingProgs)
 	option.Config.ForceSmallProgs = viper.GetBool(keyForceSmallProgs)
 	option.Config.Debug = viper.GetBool(keyDebug)
 
@@ -118,8 +112,6 @@ func readAndSetFlags() {
 	metricsServer = viper.GetString(keyMetricsServer)
 	serverAddress = viper.GetString(keyServerAddress)
 	configFile = viper.GetString(keyConfigFile)
-
-	runStandalone = viper.GetBool(keyRunStandalone)
 
 	exportFilename = viper.GetString(keyExportFilename)
 	exportFileMaxSizeMB = viper.GetInt(keyExportFileMaxSizeMB)
