@@ -14,6 +14,7 @@ package enterprise
 import "github.com/cilium/tetragon/tests/e2e/install"
 
 func init() {
+	install.AgentBTFKey = "enterprise.btf"
 	install.AgentImageKey = "enterprise.image.override"
 	install.OperatorImageKey = "hubbleEnterpriseOperator.image.override"
 }
