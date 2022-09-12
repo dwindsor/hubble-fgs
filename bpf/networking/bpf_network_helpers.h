@@ -110,9 +110,14 @@ get_transport_header(void *transport_header, u32 transport_header_size,
 		return false;
 	if (payload_off != 0) {
 		if (tcp) {
+			// get_tcp_header() is not currently used, so this code
+			// is unused/untested.
 			struct tcphdr *tcph = (struct tcphdr *)transport_header;
 			*payload_off = transport_header_off + (tcph->doff * 4);
 		} else {
+			// This only works for linear skbs (where data_len == 0).
+			// For non-linear skbs, need to access first two fragment
+			// pages from struct skb_shared_info.
 			*payload_off =
 				transport_header_off + transport_header_size;
 		}

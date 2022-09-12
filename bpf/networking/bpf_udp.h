@@ -312,7 +312,8 @@ create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 		"%[payload_size] += 1;\n" ::[payload_size] "+r"(payload_size)
 		:);
 	if (!kp) {
-		skb_load_bytes(skb, off, &val->payload, payload_size);
+		if (skb_load_bytes(skb, off, &val->payload, payload_size) < 0)
+			return 0;
 	} else {
 		if (probe_read(&val->payload, payload_size, skb_head + off) < 0)
 			return 0;

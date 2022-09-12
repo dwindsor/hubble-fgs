@@ -254,9 +254,14 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 				 * We also use this store-and-act-later approach
 				 * for kernels <5.10.
 				 */
-				store_udp_payload_event(skb, skb_head, cookie,
-							value, payload_off,
-							payload_sz - 1, kp);
+
+				// Check payload offset is valid.
+				if (payload_off != -1)
+					store_udp_payload_event(skb, skb_head,
+								cookie, value,
+								payload_off,
+								payload_sz - 1,
+								kp);
 			}
 		}
 	}
@@ -363,6 +368,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	u64 cookie;
 	u8 proto;
 	unsigned long int err = 0;
+	u32 data_len;
 
 	cookie = (u64)sk;
 	if (!cookie)
@@ -406,6 +412,22 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 		break;
 	default:
 		return;
+	}
+
+	// skb might be non-linear (skb->data_len > 0). If so, we need to do more
+	// work to access and process the payload. In the mean time, we will just
+	// set the payload offset to -1 to indicate that we don't have a valid
+	// payload.
+
+	if (probe_read(&data_len, sizeof(data_len), _(&(skb->data_len))) < 0) {
+		// Cannot read data_len so we cannot be sure that the skb is
+		// linear, so we don't process the payload, just in case.
+		packet->payload_off = -1;
+	} else {
+		// Check if skb is non-linear.
+		if (data_len != 0) {
+			packet->payload_off = -1;
+		}
 	}
 
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
