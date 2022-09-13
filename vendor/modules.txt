@@ -449,6 +449,9 @@ github.com/matttproud/golang_protobuf_extensions/pbutil
 # github.com/mennanov/fieldmask-utils v0.6.0
 ## explicit; go 1.16
 github.com/mennanov/fieldmask-utils
+# github.com/mennanov/fmutils v0.2.0
+## explicit; go 1.15
+github.com/mennanov/fmutils
 # github.com/miekg/dns v1.1.43 => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3
 ## explicit
 github.com/miekg/dns
