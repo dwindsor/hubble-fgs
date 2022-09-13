@@ -12,6 +12,7 @@ package eventmetrics
 
 import (
 	"fmt"
+	"net"
 	"strings"
 
 	// This is needed to get tests passing since gotest seems to implicitly import this
@@ -145,6 +146,45 @@ func postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 	socketmetrics.SocketStatsUDPConsumeMisses.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
 }
 
+func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, res *tetragon.ProcessSockStats) {
+	source := res.Socket.SourceIp
+	sip := net.ParseIP(source)
+	dest := res.Socket.DestinationIp
+	dip := net.ParseIP(dest)
+
+	s := res.Stats
+
+	if !sip.IsMulticast() && !dip.IsMulticast() {
+		return
+	}
+
+	if !sip.IsMulticast() {
+		source = ""
+	}
+
+	if !dip.IsMulticast() {
+		dest = ""
+	}
+
+	c := float64(s.BytesSubmitted)
+	socketmetrics.SocketStatsUDPMulticastTxBytes.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+
+	c = float64(s.SegsSubmitted)
+	socketmetrics.SocketStatsUDPMulticastTxSegs.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+
+	c = float64(s.BytesConsumed)
+	socketmetrics.SocketStatsUDPMulticastRxBytes.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+
+	c = float64(s.SegsConsumed)
+	socketmetrics.SocketStatsUDPMulticastRxSegs.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+
+	c = float64(s.SkDrop)
+	socketmetrics.SocketStatsUDPMulticastDrops.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+
+	c = float64(s.SkbConsumeMisses)
+	socketmetrics.SocketStatsUDPMulticastConsumeMisses.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
+}
+
 func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tetragon.SocketStats) {
 	c := float64(s.BytesSent)
 	socketmetrics.SocketStatsTxBytes.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
@@ -189,6 +229,7 @@ func postStatsEventSocketStats(res *tetragon.ProcessSockStats) {
 		postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
 	} else if res.Socket.Protocol == tetragon.SocketProtocol_UDP {
 		postUDPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res.Stats)
+		postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, dstLabels, res)
 	}
 }
 
