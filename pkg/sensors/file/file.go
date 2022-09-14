@@ -58,11 +58,23 @@ func createFsInfoUnix(fs fileapi.MsgFsInfo) file.MsgFsInfoUnix {
 	if err == nil {
 		uuid_str = u.String()
 	}
+	sidIndex := bytes.IndexByte(fs.SId[:], 0)
+	snameIndex := bytes.IndexByte(fs.SName[:], 0)
+
+	sid := "error"
+	if sidIndex > -1 {
+		sid = string(fs.SId[:sidIndex])
+	}
+
+	sname := "error"
+	if snameIndex > -1 {
+		sname = string(fs.SName[:snameIndex])
+	}
 
 	return file.MsgFsInfoUnix{
 		SDev:  fs.SDev,
-		SName: string(fs.SName[:bytes.IndexByte(fs.SName[:], 0)]),
-		SId:   string(fs.SId[:bytes.IndexByte(fs.SId[:], 0)]),
+		SName: sname,
+		SId:   sid,
 		SUuid: uuid_str,
 	}
 }
