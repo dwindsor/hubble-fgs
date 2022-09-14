@@ -18,7 +18,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 80
     steps:
-      - uses: actions/checkout@master
+      - uses: actions/checkout@v3
         with:
           path: hubble-fgs
           submodules: true
