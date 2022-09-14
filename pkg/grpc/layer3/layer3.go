@@ -40,6 +40,12 @@ var (
 	nodeName = node.GetNodeNameForExport()
 )
 
+const (
+	refNothing = iota
+	refInc
+	refDec
+)
+
 func SocketFlagsDnsEnabled(t uint32) bool {
 	return (t & api.SOCKFLAGS_TYPE_DNSREADY) != 0
 }
@@ -401,29 +407,44 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
 	p := ev.GetProcess()
 	process, parent := process.GetParentProcessInternal(p.Pid.Value, timestamp)
-	if process == nil {
-		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
-		return nil, eventcache.ErrFailedToGetProcessInfo
-	}
-	if parent == nil {
-		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
-		return nil, eventcache.ErrFailedToGetProcessInfo
-	}
+	var err error
 
+	refAction := refNothing
 	switch msg.Common.Op {
 	case ops.MSG_OP_TCPCONNECTRET,
 		ops.MSG_OP_UDPCONNECT,
 		ops.MSG_OP_LISTEN,
 		ops.MSG_OP_ACCEPT:
-		process.RefInc()
-		parent.RefInc()
+		refAction = refInc
 	case ops.MSG_OP_TCPCLOSE,
 		ops.MSG_OP_UDPCLOSE:
-		process.RefDec()
-		parent.RefDec()
+		refAction = refDec
 	}
 
-	return process, nil
+	if parent != nil {
+		ev.SetParent(parent.GetProcessCopy())
+		if refAction == refInc {
+			parent.RefInc()
+		} else if refAction == refDec {
+			parent.RefDec()
+		}
+	} else {
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheParentInfoFailed)
+		err = eventcache.ErrFailedToGetParentInfo
+	}
+
+	if process != nil {
+		if refAction == refInc {
+			process.RefInc()
+		} else if refAction == refDec {
+			process.RefDec()
+		}
+	} else {
+		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+		err = eventcache.ErrFailedToGetProcessInfo
+	}
+
+	return process, err
 }
 
 func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
