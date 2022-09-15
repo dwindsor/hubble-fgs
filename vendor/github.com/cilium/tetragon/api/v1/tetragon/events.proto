@@ -22,6 +22,7 @@ import "tetragon/dns.proto";
 import "google/protobuf/duration.proto";
 import "google/protobuf/wrappers.proto";
 import "google/protobuf/timestamp.proto";
+import "google/protobuf/field_mask.proto";
 
 // Represents the type of a Tetragon event.
 //
@@ -42,7 +43,7 @@ enum EventType {
 	PROCESS_KPROBE = 9;
 	PROCESS_TRACEPOINT = 10;
 	PROCESS_SOCKSTATS = 11;
-    // TLS is an alias for PROCESS_SOCKSTATS
+    // PROCESS_SOCK_STATS is an alias for PROCESS_SOCKSTATS
 	PROCESS_SOCK_STATS = 11;
 	PROCESS_HTTP = 12;
 	INTERFACE_STATS = 13;
@@ -73,6 +74,21 @@ message Filter {
     repeated string labels = 9;
 }
 
+// Determins the behaviour of a field filter
+enum FieldFilterAction {
+    INCLUDE = 0;
+    EXCLUDE = 1;
+}
+
+message FieldFilter {
+    // Event types to filter or undefined to filter over all event types.
+    repeated EventType event_set = 1;
+    // Fields to include or exclude.
+    google.protobuf.FieldMask fields = 2;
+    // Whether to include or exclude fields.
+    FieldFilterAction action = 3;
+}
+
 // AggregationOptions defines configuration options for aggregating events.
 message AggregationOptions {
     // Aggregation window size. Defaults to 15 seconds if this field is not set.
@@ -101,6 +117,10 @@ message GetEventsRequest {
     // Note that currently only process_accept and process_connect events are
     // aggregated. Other events remain unaggregated.
     AggregationOptions aggregation_options = 3;
+    // Fields to include or exclude for events in the GetEventsResponse. Omitting this
+    // field implies that all fields will be included. Exclusion always takes precedence
+    // over inclusion in the case of conflicts.
+    repeated FieldFilter field_filters = 4;
 }
 
 // AggregationInfo contains information about aggregation results.
