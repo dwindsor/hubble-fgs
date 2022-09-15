@@ -104,6 +104,17 @@ type MsgIPEventUnix struct {
 	SocketFlags uint32
 }
 
+type Histogram struct {
+	B99 uint32
+	B90 uint32
+	B75 uint32
+	B50 uint32
+	B25 uint32
+	B10 uint32
+	B01 uint32
+	B00 uint32
+}
+
 type MsgInterfaceStats struct {
 	BytesSent       uint64
 	BytesReceived   uint64
@@ -113,6 +124,7 @@ type MsgInterfaceStats struct {
 	RxErrors        uint64
 	RxDrops         uint64
 	TxDrops         uint64
+	Qlen            Histogram
 }
 
 type MsgInterface struct {

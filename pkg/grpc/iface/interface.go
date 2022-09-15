@@ -21,6 +21,63 @@ var (
 	nodeName = node.GetNodeNameForExport()
 )
 
+func statsToHistogram(h api.Histogram) *tetragon.Histogram {
+	bucket99 := &tetragon.HistogramBucket{
+		Percentile: 99,
+		Size:       1,
+		Count:      h.B99,
+	}
+	bucket90 := &tetragon.HistogramBucket{
+		Percentile: 90,
+		Size:       9,
+		Count:      h.B90,
+	}
+	bucket75 := &tetragon.HistogramBucket{
+		Percentile: 75,
+		Size:       15,
+		Count:      h.B75,
+	}
+	bucket50 := &tetragon.HistogramBucket{
+		Percentile: 50,
+		Size:       25,
+		Count:      h.B50,
+	}
+	bucket25 := &tetragon.HistogramBucket{
+		Percentile: 25,
+		Size:       25,
+		Count:      h.B25,
+	}
+	bucket10 := &tetragon.HistogramBucket{
+		Percentile: 10,
+		Size:       15,
+		Count:      h.B10,
+	}
+	bucket01 := &tetragon.HistogramBucket{
+		Percentile: 1,
+		Size:       9,
+		Count:      h.B01,
+	}
+	bucket00 := &tetragon.HistogramBucket{
+		Percentile: 0,
+		Size:       1,
+		Count:      h.B00,
+	}
+
+	buckets := []*tetragon.HistogramBucket{
+		bucket00,
+		bucket01,
+		bucket10,
+		bucket25,
+		bucket50,
+		bucket75,
+		bucket90,
+		bucket99,
+	}
+	return &tetragon.Histogram{
+		Buckets: buckets,
+	}
+}
+
 func (msg *MsgInterfaceEventUnix) getInterfaceStats() *tetragon.InterfaceStats {
 	pod, _ := nscache.GetPod(msg.Iface.Netns)
 	netns := fmt.Sprintf("%d", msg.Iface.Netns)
@@ -38,6 +95,7 @@ func (msg *MsgInterfaceEventUnix) getInterfaceStats() *tetragon.InterfaceStats {
 		TxDrops:          msg.Stats.TxDrops,
 		RxDrops:          msg.Stats.RxDrops,
 		Pod:              pod,
+		Qlen:             statsToHistogram(msg.Stats.Qlen),
 	}
 	eventmetrics.HandleInterfaceStatsEvent(fgsEvent)
 	return fgsEvent

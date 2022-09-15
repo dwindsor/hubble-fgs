@@ -12,12 +12,25 @@ struct network_key {
 
 #define NAME_STRING 16
 
+/* Qdisc qlen historgram with 8 buckets */
+struct qdisc_qlen_hist {
+	u32 b99;
+	u32 b90;
+	u32 b75;
+	u32 b50;
+	u32 b25;
+	u32 b10;
+	u32 b01;
+	u32 b00;
+};
+
 struct network_value {
 	char name[NAME_STRING];
 	u64 txbytes;
 	u64 rxbytes;
 	u64 txpackets;
 	u64 rxpackets;
+	struct qdisc_qlen_hist qlen;
 };
 
 struct bpf_map_def __attribute__((section("maps"), used)) network_map = {
@@ -40,6 +53,36 @@ struct bpf_map_def __attribute__((section("maps"), used)) value_heap = {
 	.value_size = sizeof(struct network_value),
 	.max_entries = 1,
 };
+
+#define P99 990
+#define P90 900
+#define P75 750
+#define P50 500
+#define P25 250
+#define P10 100
+#define P01 10
+#define P00 0
+
+static inline __attribute__((always_inline)) void
+qlen_hist(struct network_value *value, __u32 qlen)
+{
+	if (qlen >= P99)
+		value->qlen.b99++;
+	else if (qlen >= P90)
+		value->qlen.b90++;
+	else if (qlen >= P75)
+		value->qlen.b75++;
+	else if (qlen >= P50)
+		value->qlen.b50++;
+	else if (qlen >= P25)
+		value->qlen.b25++;
+	else if (qlen >= P10)
+		value->qlen.b10++;
+	else if (qlen >= P01)
+		value->qlen.b01++;
+	else if (qlen >= P00)
+		value->qlen.b00++;
+}
 
 static inline __attribute__((always_inline)) u64
 get_netns(struct net_device *dev)
@@ -92,8 +135,24 @@ interface_stats(struct sk_buff *skb, bool xmit)
 
 	probe_read(&len, sizeof(len), _(&(skb->len)));
 	if (xmit) {
+		struct Qdisc *qdisc;
+		struct qdisc_skb_head q;
+
 		__sync_fetch_and_add(&value->txbytes, (u64)len);
 		__sync_fetch_and_add(&value->txpackets, 1);
+
+		/* Look up Qdisc, the safty of this is not obvious. The trick
+		 * is we are inside a rcu critical section and rcu dereference
+		 * is just a load in most cases. Then inc/dec on the qlen stats
+		 * are done with local atomics. Finally we don't really care if
+		 * we get the answer +-num_cores we are bucktizing the values
+		 * anyways. :wave :wave :wave
+		 */
+		probe_read(&qdisc, sizeof(qdisc), _(&(dev->qdisc)));
+		if (!qdisc)
+			return 0;
+		probe_read(&q, sizeof(q), _(&(qdisc->q)));
+		qlen_hist(value, q.qlen);
 	} else {
 		__sync_fetch_and_add(&value->rxbytes, (u64)len);
 		__sync_fetch_and_add(&value->rxpackets, 1);

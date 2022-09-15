@@ -1154,6 +1154,7 @@ type InterfaceStatsChecker struct {
 	Pod              *PodChecker                  `json:"pod,omitempty"`
 	Netns            *stringmatcher.StringMatcher `json:"netns,omitempty"`
 	ContainerName    *stringmatcher.StringMatcher `json:"containerName,omitempty"`
+	Qlen             *HistogramChecker            `json:"qlen,omitempty"`
 }
 
 // CheckEvent checks a single event and implements the EventChecker interface
@@ -1249,6 +1250,11 @@ func (checker *InterfaceStatsChecker) Check(event *tetragon.InterfaceStats) erro
 			return fmt.Errorf("InterfaceStatsChecker: ContainerName check failed: %w", err)
 		}
 	}
+	if checker.Qlen != nil {
+		if err := checker.Qlen.Check(event.Qlen); err != nil {
+			return fmt.Errorf("InterfaceStatsChecker: Qlen check failed: %w", err)
+		}
+	}
 	return nil
 }
 
@@ -1330,6 +1336,12 @@ func (checker *InterfaceStatsChecker) WithContainerName(check *stringmatcher.Str
 	return checker
 }
 
+// WithQlen adds a Qlen check to the InterfaceStatsChecker
+func (checker *InterfaceStatsChecker) WithQlen(check *HistogramChecker) *InterfaceStatsChecker {
+	checker.Qlen = check
+	return checker
+}
+
 //FromInterfaceStats populates the InterfaceStatsChecker using data from a InterfaceStats event
 func (checker *InterfaceStatsChecker) FromInterfaceStats(event *tetragon.InterfaceStats) *InterfaceStatsChecker {
 	if event == nil {
@@ -1377,6 +1389,9 @@ func (checker *InterfaceStatsChecker) FromInterfaceStats(event *tetragon.Interfa
 	}
 	checker.Netns = stringmatcher.Full(event.Netns)
 	checker.ContainerName = stringmatcher.Full(event.ContainerName)
+	if event.Qlen != nil {
+		checker.Qlen = NewHistogramChecker().FromHistogram(event.Qlen)
+	}
 	return checker
 }
 
@@ -5660,6 +5675,231 @@ func (checker *KprobeArgumentChecker) FromKprobeArgument(event *tetragon.KprobeA
 		}
 	}
 	return checker
+}
+
+// HistogramBucketChecker implements a checker struct to check a HistogramBucket field
+type HistogramBucketChecker struct {
+	Percentile *uint32 `json:"percentile,omitempty"`
+	Size       *uint32 `json:"size,omitempty"`
+	Count      *uint32 `json:"count,omitempty"`
+}
+
+// NewHistogramBucketChecker creates a new HistogramBucketChecker
+func NewHistogramBucketChecker() *HistogramBucketChecker {
+	return &HistogramBucketChecker{}
+}
+
+// Check checks a HistogramBucket field
+func (checker *HistogramBucketChecker) Check(event *tetragon.HistogramBucket) error {
+	if event == nil {
+		return fmt.Errorf("HistogramBucketChecker: HistogramBucket field is nil")
+	}
+
+	if checker.Percentile != nil {
+		if *checker.Percentile != event.Percentile {
+			return fmt.Errorf("HistogramBucketChecker: Percentile has value %d which does not match expected value %d", event.Percentile, *checker.Percentile)
+		}
+	}
+	if checker.Size != nil {
+		if *checker.Size != event.Size {
+			return fmt.Errorf("HistogramBucketChecker: Size has value %d which does not match expected value %d", event.Size, *checker.Size)
+		}
+	}
+	if checker.Count != nil {
+		if *checker.Count != event.Count {
+			return fmt.Errorf("HistogramBucketChecker: Count has value %d which does not match expected value %d", event.Count, *checker.Count)
+		}
+	}
+	return nil
+}
+
+// WithPercentile adds a Percentile check to the HistogramBucketChecker
+func (checker *HistogramBucketChecker) WithPercentile(check uint32) *HistogramBucketChecker {
+	checker.Percentile = &check
+	return checker
+}
+
+// WithSize adds a Size check to the HistogramBucketChecker
+func (checker *HistogramBucketChecker) WithSize(check uint32) *HistogramBucketChecker {
+	checker.Size = &check
+	return checker
+}
+
+// WithCount adds a Count check to the HistogramBucketChecker
+func (checker *HistogramBucketChecker) WithCount(check uint32) *HistogramBucketChecker {
+	checker.Count = &check
+	return checker
+}
+
+//FromHistogramBucket populates the HistogramBucketChecker using data from a HistogramBucket field
+func (checker *HistogramBucketChecker) FromHistogramBucket(event *tetragon.HistogramBucket) *HistogramBucketChecker {
+	if event == nil {
+		return checker
+	}
+	{
+		val := event.Percentile
+		checker.Percentile = &val
+	}
+	{
+		val := event.Size
+		checker.Size = &val
+	}
+	{
+		val := event.Count
+		checker.Count = &val
+	}
+	return checker
+}
+
+// HistogramChecker implements a checker struct to check a Histogram field
+type HistogramChecker struct {
+	Buckets *HistogramBucketListMatcher `json:"buckets,omitempty"`
+}
+
+// NewHistogramChecker creates a new HistogramChecker
+func NewHistogramChecker() *HistogramChecker {
+	return &HistogramChecker{}
+}
+
+// Check checks a Histogram field
+func (checker *HistogramChecker) Check(event *tetragon.Histogram) error {
+	if event == nil {
+		return fmt.Errorf("HistogramChecker: Histogram field is nil")
+	}
+
+	if checker.Buckets != nil {
+		if err := checker.Buckets.Check(event.Buckets); err != nil {
+			return fmt.Errorf("HistogramChecker: Buckets check failed: %w", err)
+		}
+	}
+	return nil
+}
+
+// WithBuckets adds a Buckets check to the HistogramChecker
+func (checker *HistogramChecker) WithBuckets(check *HistogramBucketListMatcher) *HistogramChecker {
+	checker.Buckets = check
+	return checker
+}
+
+//FromHistogram populates the HistogramChecker using data from a Histogram field
+func (checker *HistogramChecker) FromHistogram(event *tetragon.Histogram) *HistogramChecker {
+	if event == nil {
+		return checker
+	}
+	{
+		var checks []*HistogramBucketChecker
+		for _, check := range event.Buckets {
+			var convertedCheck *HistogramBucketChecker
+			if check != nil {
+				convertedCheck = NewHistogramBucketChecker().FromHistogramBucket(check)
+			}
+			checks = append(checks, convertedCheck)
+		}
+		lm := NewHistogramBucketListMatcher().WithOperator(listmatcher.Ordered).
+			WithValues(checks...)
+		checker.Buckets = lm
+	}
+	return checker
+}
+
+// HistogramBucketListMatcher checks a list of *tetragon.HistogramBucket fields
+type HistogramBucketListMatcher struct {
+	Operator listmatcher.Operator      `json:"operator"`
+	Values   []*HistogramBucketChecker `json:"values"`
+}
+
+// NewHistogramBucketListMatcher creates a new HistogramBucketListMatcher. The checker defaults to a subset checker unless otherwise specified using WithOperator()
+func NewHistogramBucketListMatcher() *HistogramBucketListMatcher {
+	return &HistogramBucketListMatcher{
+		Operator: listmatcher.Subset,
+	}
+}
+
+// WithOperator sets the match kind for the HistogramBucketListMatcher
+func (checker *HistogramBucketListMatcher) WithOperator(operator listmatcher.Operator) *HistogramBucketListMatcher {
+	checker.Operator = operator
+	return checker
+}
+
+// WithValues sets the checkers that the HistogramBucketListMatcher should use
+func (checker *HistogramBucketListMatcher) WithValues(values ...*HistogramBucketChecker) *HistogramBucketListMatcher {
+	checker.Values = values
+	return checker
+}
+
+// Check checks a list of *tetragon.HistogramBucket fields
+func (checker *HistogramBucketListMatcher) Check(values []*tetragon.HistogramBucket) error {
+	switch checker.Operator {
+	case listmatcher.Ordered:
+		return checker.orderedCheck(values)
+	case listmatcher.Unordered:
+		return checker.unorderedCheck(values)
+	case listmatcher.Subset:
+		return checker.subsetCheck(values)
+	default:
+		return fmt.Errorf("Unhandled ListMatcher operator %s", checker.Operator)
+	}
+}
+
+// orderedCheck checks a list of ordered *tetragon.HistogramBucket fields
+func (checker *HistogramBucketListMatcher) orderedCheck(values []*tetragon.HistogramBucket) error {
+	innerCheck := func(check *HistogramBucketChecker, value *tetragon.HistogramBucket) error {
+		if err := check.Check(value); err != nil {
+			return fmt.Errorf("HistogramBucketListMatcher: Buckets check failed: %w", err)
+		}
+		return nil
+	}
+
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("HistogramBucketListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	for i, check := range checker.Values {
+		value := values[i]
+		if err := innerCheck(check, value); err != nil {
+			return fmt.Errorf("HistogramBucketListMatcher: Check failed on element %d: %w", i, err)
+		}
+	}
+
+	return nil
+}
+
+// unorderedCheck checks a list of unordered *tetragon.HistogramBucket fields
+func (checker *HistogramBucketListMatcher) unorderedCheck(values []*tetragon.HistogramBucket) error {
+	if len(checker.Values) != len(values) {
+		return fmt.Errorf("HistogramBucketListMatcher: Wanted %d elements, got %d", len(checker.Values), len(values))
+	}
+
+	return checker.subsetCheck(values)
+}
+
+// subsetCheck checks a subset of *tetragon.HistogramBucket fields
+func (checker *HistogramBucketListMatcher) subsetCheck(values []*tetragon.HistogramBucket) error {
+	innerCheck := func(check *HistogramBucketChecker, value *tetragon.HistogramBucket) error {
+		if err := check.Check(value); err != nil {
+			return fmt.Errorf("HistogramBucketListMatcher: Buckets check failed: %w", err)
+		}
+		return nil
+	}
+
+	numDesired := len(checker.Values)
+	numMatched := 0
+
+nextCheck:
+	for _, check := range checker.Values {
+		for _, value := range values {
+			if err := innerCheck(check, value); err == nil {
+				numMatched += 1
+				continue nextCheck
+			}
+		}
+	}
+
+	if numMatched < numDesired {
+		return fmt.Errorf("HistogramBucketListMatcher: Check failed, only matched %d elements but wanted %d", numMatched, numDesired)
+	}
+
+	return nil
 }
 
 // SocketStatsChecker implements a checker struct to check a SocketStats field

@@ -63,6 +63,16 @@ type networkInfoValue struct {
 	RxBytes    uint64
 	PacketsOut uint64
 	PacketsIn  uint64
+
+	// Embedded Qdisc histogram
+	P99 uint32
+	P90 uint32
+	P75 uint32
+	P50 uint32
+	P25 uint32
+	P10 uint32
+	P01 uint32
+	P00 uint32
 }
 
 func (k *networkInfoKey) String() string {
@@ -142,11 +152,32 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 	pktsOut := uint64(0)
 	pktsIn := uint64(0)
 
+	qlen := api.Histogram{
+		B99: 0,
+		B90: 0,
+		B75: 0,
+		B50: 0,
+		B25: 0,
+		B10: 0,
+		B01: 0,
+		B00: 0,
+	}
+
 	for _, percpu_val := range netValue {
 		txBytes += percpu_val.TxBytes
 		rxBytes += percpu_val.RxBytes
 		pktsOut += percpu_val.PacketsOut
 		pktsIn += percpu_val.PacketsIn
+
+		qlen.B99 += percpu_val.P99
+		qlen.B90 += percpu_val.P90
+		qlen.B75 += percpu_val.P75
+		qlen.B50 += percpu_val.P50
+		qlen.B50 += percpu_val.P50
+		qlen.B25 += percpu_val.P25
+		qlen.B10 += percpu_val.P10
+		qlen.B01 += percpu_val.P01
+		qlen.B00 += percpu_val.P00
 
 		// These are duplicated in each value at the moment
 		if !foundName {
@@ -174,6 +205,7 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 			BytesReceived:   rxBytes,
 			PacketsSent:     pktsOut,
 			PacketsReceived: pktsIn,
+			Qlen:            qlen,
 		},
 	}
 	observer.AllListeners(&unix)
@@ -315,8 +347,8 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 	}
 
 	versionStr := "__networkPacket_probe__"
-	logger.GetLogger().Infof("Enable Interface Statistics")
 	if bpf {
+		logger.GetLogger().Infof("Enable Packet Interface Statistics")
 		progs := []*program.Program{
 			DevQueueXmit,
 			//	IngressSkb,
@@ -332,6 +364,7 @@ func EnableNetworkParser(bpf bool, statInterval uint32) *sensors.Sensor {
 		return sensors.SensorBuilder(versionStr, progs, maps)
 	}
 
+	logger.GetLogger().Infof("Enable Polling Interface Statistics")
 	progs := []*program.Program{
 		ExitNs,
 	}

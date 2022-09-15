@@ -22,6 +22,16 @@ import "google/protobuf/wrappers.proto";
 
 package tetragon;
 
+message HistogramBucket {
+	uint32 percentile = 1;
+	uint32 size = 2;
+	uint32 count = 3;
+}
+
+message Histogram {
+    repeated HistogramBucket buckets = 1;
+}
+
 message InterfaceStats {
     string interface_name = 1;
     uint32 interface_ifindex = 2;
@@ -36,6 +46,7 @@ message InterfaceStats {
     tetragon.Pod    pod = 11;
     string netns = 12;
     string container_name = 13;
+    Histogram qlen = 14;
 }
 
 message SocketStats {
