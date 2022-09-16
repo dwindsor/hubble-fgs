@@ -422,12 +422,15 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 	}
 
 	if parent != nil {
-		ev.SetParent(parent.GetProcessCopy())
-		if refAction == refInc {
-			parent.RefInc()
-		} else if refAction == refDec {
-			parent.RefDec()
+		if ev.GetParent() == nil {
+			ev.SetParent(parent.GetProcessCopy())
+			if refAction == refInc {
+				parent.RefInc()
+			} else if refAction == refDec {
+				parent.RefDec()
+			}
 		}
+
 	} else {
 		errormetrics.ErrorTotalInc(errormetrics.EventCacheParentInfoFailed)
 		err = eventcache.ErrFailedToGetParentInfo
