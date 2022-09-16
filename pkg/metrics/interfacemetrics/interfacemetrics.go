@@ -16,7 +16,7 @@ import (
 	"github.com/prometheus/client_golang/prometheus/promauto"
 )
 
-// TCP socket metrics
+// Interface metrics
 var (
 	InterfaceBytesSent = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: consts.MetricNamePrefix + "interface_txbytes",
@@ -49,5 +49,40 @@ var (
 	InterfaceRxDrops = promauto.NewGaugeVec(prometheus.GaugeOpts{
 		Name: consts.MetricNamePrefix + "interface_rxdrops",
 		Help: "RX drops per network interface",
+	}, []string{"name", "namespace", "pod"})
+)
+
+var (
+	InterfaceQlen99 = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen99",
+		Help: "The number of packets enqueued at 99th percentile queue length",
+	}, []string{"name", "namespace", "pod"})
+	InterfaceQlen90 = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen90",
+		Help: "The number of packets enqueued at 90th percentile queue length",
+	}, []string{"name", "namespace", "pod"})
+	InterfaceQlen75 = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen75",
+		Help: "The number of packets enqueued at 75th percentile queue length",
+	}, []string{"name", "namespace", "pod"})
+	InterfaceQlen50 = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen50",
+		Help: "The number of packets enqueued at 50th percentile queue length",
+	}, []string{"name", "namespace", "pod"})
+	InterfaceQlen25 = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen25",
+		Help: "The number of packets enqueued at 25th percentile queue length",
+	}, []string{"name", "namespace", "pod"})
+	InterfaceQlen10 = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen10",
+		Help: "The number of packets enqueued at 10th percentile queue length",
+	}, []string{"name", "namespace", "pod"})
+	InterfaceQlen01 = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen01",
+		Help: "The number of packets enqueued at 1st percentile queue length",
+	}, []string{"name", "namespace", "pod"})
+	InterfaceQlen00 = promauto.NewGaugeVec(prometheus.GaugeOpts{
+		Name: consts.MetricNamePrefix + "interface_qlen00",
+		Help: "The number of packets enqueued at 1st percentile queue length",
 	}, []string{"name", "namespace", "pod"})
 )

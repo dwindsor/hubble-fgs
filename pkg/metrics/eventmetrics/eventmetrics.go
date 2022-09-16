@@ -325,4 +325,32 @@ func HandleInterfaceStatsEvent(res *tetragon.InterfaceStats) {
 	interfacemetrics.InterfaceRxErrors.WithLabelValues(name, ns, pod).Set(float64(res.RxErrors))
 	interfacemetrics.InterfaceTxDrops.WithLabelValues(name, ns, pod).Set(float64(res.TxDrops))
 	interfacemetrics.InterfaceRxDrops.WithLabelValues(name, ns, pod).Set(float64(res.RxDrops))
+
+	if res.Qlen == nil {
+		return
+	}
+	if res.Qlen.Buckets[7].Count > 0 {
+		interfacemetrics.InterfaceQlen99.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[7].Count))
+	}
+	if res.Qlen.Buckets[6].Count > 0 {
+		interfacemetrics.InterfaceQlen90.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[6].Count))
+	}
+	if res.Qlen.Buckets[5].Count > 0 {
+		interfacemetrics.InterfaceQlen75.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[5].Count))
+	}
+	if res.Qlen.Buckets[4].Count > 0 {
+		interfacemetrics.InterfaceQlen50.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[4].Count))
+	}
+	if res.Qlen.Buckets[3].Count > 0 {
+		interfacemetrics.InterfaceQlen25.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[3].Count))
+	}
+	if res.Qlen.Buckets[2].Count > 0 {
+		interfacemetrics.InterfaceQlen10.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[2].Count))
+	}
+	if res.Qlen.Buckets[1].Count > 0 {
+		interfacemetrics.InterfaceQlen01.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[1].Count))
+	}
+	if res.Qlen.Buckets[0].Count > 0 {
+		interfacemetrics.InterfaceQlen00.WithLabelValues(name, ns, pod).Set(float64(res.Qlen.Buckets[0].Count))
+	}
 }
