@@ -64,6 +64,9 @@ type networkInfoValue struct {
 	PacketsOut uint64
 	PacketsIn  uint64
 
+	TxDrops uint32
+	Pad     uint32
+
 	// Embedded Qdisc histogram
 	P99 uint32
 	P90 uint32
@@ -151,6 +154,7 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 	rxBytes := uint64(0)
 	pktsOut := uint64(0)
 	pktsIn := uint64(0)
+	txDrops := uint32(0)
 
 	qlen := api.Histogram{
 		B99: 0,
@@ -168,6 +172,7 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 		rxBytes += percpu_val.RxBytes
 		pktsOut += percpu_val.PacketsOut
 		pktsIn += percpu_val.PacketsIn
+		txDrops += percpu_val.TxDrops
 
 		qlen.B99 += percpu_val.P99
 		qlen.B90 += percpu_val.P90
@@ -206,6 +211,7 @@ func networkGcCb(netKey *networkInfoKey, netValue []networkInfoValue) {
 			PacketsSent:     pktsOut,
 			PacketsReceived: pktsIn,
 			Qlen:            qlen,
+			TxDrops:         uint64(txDrops),
 		},
 	}
 	observer.AllListeners(&unix)

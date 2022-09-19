@@ -30,6 +30,8 @@ struct network_value {
 	u64 rxbytes;
 	u64 txpackets;
 	u64 rxpackets;
+	u32 txdrops;
+	u32 pad;
 	struct qdisc_qlen_hist qlen;
 };
 
@@ -137,6 +139,7 @@ interface_stats(struct sk_buff *skb, bool xmit)
 	if (xmit) {
 		struct Qdisc *qdisc;
 		struct qdisc_skb_head q;
+		struct gnet_stats_queue qstats;
 
 		__sync_fetch_and_add(&value->txbytes, (u64)len);
 		__sync_fetch_and_add(&value->txpackets, 1);
@@ -153,6 +156,8 @@ interface_stats(struct sk_buff *skb, bool xmit)
 			return 0;
 		probe_read(&q, sizeof(q), _(&(qdisc->q)));
 		qlen_hist(value, q.qlen);
+		probe_read(&qstats, sizeof(qstats), _(&(qdisc->qstats)));
+		value->txdrops += qstats.drops;
 	} else {
 		__sync_fetch_and_add(&value->rxbytes, (u64)len);
 		__sync_fetch_and_add(&value->rxpackets, 1);
