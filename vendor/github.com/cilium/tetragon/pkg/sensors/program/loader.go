@@ -125,8 +125,24 @@ func KprobeAttach(load *Program) AttachFunc {
 	}
 }
 
+func NoAttach(load *Program) AttachFunc {
+	return func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
+		return unloader.ChainUnloader{
+			unloader.PinUnloader{
+				Prog: prog,
+			},
+		}, nil
+	}
+}
+
 func LoadTracepointProgram(bpfDir, mapDir string, load *Program, verbose int) error {
-	ci := &customInstall{fmt.Sprintf("%s-tp-calls", load.PinPath), "tracepoint"}
+	var ci *customInstall
+	for mName, mPath := range load.PinMap {
+		if mName == "tp_calls" {
+			ci = &customInstall{mPath, "tracepoint"}
+			break
+		}
+	}
 	return loadProgram(bpfDir, []string{mapDir}, load, TracepointAttach(load), ci, verbose)
 }
 
@@ -137,6 +153,10 @@ func LoadRawTracepointProgram(bpfDir, mapDir string, load *Program, verbose int)
 func LoadKprobeProgram(bpfDir, mapDir string, load *Program, verbose int) error {
 	ci := &customInstall{fmt.Sprintf("%s-kp-calls", load.PinPath), "kprobe"}
 	return loadProgram(bpfDir, []string{mapDir}, load, KprobeAttach(load), ci, verbose)
+}
+
+func LoadTailCallProgram(bpfDir, mapDir string, load *Program, verbose int) error {
+	return loadProgram(bpfDir, []string{mapDir}, load, NoAttach(load), nil, verbose)
 }
 
 func slimVerifierError(errStr string) string {
@@ -313,8 +333,8 @@ func doLoadProgram(
 		if err != nil {
 			// Log the error directly using the logger so that the verifier log
 			// gets properly pretty-printed.
-			logger.GetLogger().Infof("Opening collection failed, dumping verifier log.")
 			if verbose != 0 {
+				logger.GetLogger().Infof("Opening collection failed, dumping verifier log.")
 				fmt.Println(slimVerifierError(err.Error()))
 			}
 

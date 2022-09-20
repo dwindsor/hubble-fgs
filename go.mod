@@ -4,7 +4,6 @@ go 1.18
 
 require (
 	github.com/cilium/cilium v1.9.16
-	github.com/cilium/cilium-e2e v0.0.0-00010101000000-000000000000
 	github.com/cilium/ebpf v0.9.1
 	github.com/cilium/hubble v0.5.3-0.20220311154618-3e44df066567
 	github.com/cilium/lumberjack/v2 v2.2.2
@@ -122,8 +121,6 @@ require (
 	github.com/vladimirvivien/gexe v0.1.1 // indirect
 	go.mongodb.org/mongo-driver v1.8.3 // indirect
 	go.opencensus.io v0.23.0 // indirect
-	go.uber.org/atomic v1.9.0 // indirect
-	go.uber.org/multierr v1.8.0 // indirect
 	golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d // indirect
 	golang.org/x/mod v0.6.0-dev.0.20220419223038-86c51ed26bb4 // indirect
 	golang.org/x/oauth2 v0.0.0-20220608161450-d0670ef3b1eb // indirect
@@ -148,11 +145,6 @@ require (
 
 // has to be in sync with both cilium and hubble overrides (mostly cilium).
 replace (
-	// Use cilium e2ehelpers from github. TODO: remove this in the future once we:
-	// 1. tag a new cilium release with these helpers
-	// 2. fix tetragon so that it compiles with newer cilium version
-	github.com/cilium/cilium-e2e => github.com/cilium/cilium v1.12.0-rc2.0.20220630043907-91114a9e2d09
-
 	// Use a private fork of cilium/ebpf until the features we depend on have
 	// been upstreamed.
 	github.com/cilium/ebpf => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
@@ -163,6 +155,7 @@ replace (
 	// use local API
 	github.com/cilium/tetragon/api => ./api
 	github.com/cilium/tetragon/pkg/k8s => ./pkg/k8s
+	github.com/cilium/tetragon/tests => ./modules/tetragon-oss/tests
 	github.com/isovalent/hubble-fgs/pkg/k8s => ./pkg/k8s-enterprise
 
 	github.com/miekg/dns => github.com/cilium/dns v1.1.4-0.20190417235132-8e25ec9a0ff3

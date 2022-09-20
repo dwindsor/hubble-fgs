@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright Authors of Cilium
+// Copyright Authors of Tetragon
 
-package e2ehelpers
+package helpers
 
 import (
 	"bytes"
@@ -14,6 +14,7 @@ import (
 	"k8s.io/apimachinery/pkg/runtime"
 	"k8s.io/client-go/kubernetes"
 	"k8s.io/client-go/tools/remotecommand"
+	"k8s.io/klog/v2"
 	"sigs.k8s.io/e2e-framework/klient"
 )
 
@@ -61,4 +62,37 @@ func ExecInPodOutput(ctx context.Context, client klient.Client, namespace, pod, 
 	output := &bytes.Buffer{}
 	err := ExecInPod(ctx, client, namespace, pod, container, output, io.Discard, command)
 	return output.Bytes(), err
+}
+
+// RunCommand runs a command in a pod and returns the combined stdout and stderr delimited
+// by markers as a byte slice. For lower level control use the ExecInPod* helpers instead.
+func RunCommand(ctx context.Context, client klient.Client, podNamespace, podName, containerName string, cmd string, args ...string) ([]byte, error) {
+	argv := append([]string{cmd}, args...)
+
+	stdout := new(bytes.Buffer)
+	stderr := new(bytes.Buffer)
+	if err := ExecInPod(ctx,
+		client,
+		podNamespace,
+		podName,
+		containerName,
+		stdout,
+		stderr,
+		argv); err != nil {
+		return nil, fmt.Errorf("failed to run %s: %w", cmd, err)
+	}
+
+	var err error
+	buff := new(bytes.Buffer)
+	buff.WriteString("-------------------- stdout starts here --------------------\n")
+	if _, err = buff.ReadFrom(stdout); err != nil {
+		klog.ErrorS(err, "error reading stdout", "cmd", cmd)
+	}
+	buff.WriteString("-------------------- stderr starts here --------------------\n")
+	if _, err = buff.ReadFrom(stderr); err != nil {
+		klog.ErrorS(err, "error reading stderr", "cmd", cmd)
+	}
+	buff.WriteString("------------------------------------------------------------\n")
+
+	return buff.Bytes(), nil
 }

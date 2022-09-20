@@ -11,7 +11,7 @@
 
 package enterprise
 
-import "github.com/cilium/tetragon/tests/e2e/install"
+import install "github.com/cilium/tetragon/tests/e2e/install/tetragon"
 
 func init() {
 	install.AgentBTFKey = "enterprise.btf"

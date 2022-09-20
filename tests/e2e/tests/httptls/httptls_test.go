@@ -29,14 +29,14 @@ import (
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
 	"sigs.k8s.io/e2e-framework/pkg/features"
 
-	"github.com/cilium/cilium-e2e/pkg/e2ecluster/e2ehelpers"
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/kernels"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/tests/e2e/checker"
 	"github.com/cilium/tetragon/tests/e2e/helpers"
-	"github.com/cilium/tetragon/tests/e2e/install"
+	e2ehelpers "github.com/cilium/tetragon/tests/e2e/helpers"
+	install "github.com/cilium/tetragon/tests/e2e/install/tetragon"
 	"github.com/cilium/tetragon/tests/e2e/runners"
 )
 

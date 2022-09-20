@@ -1,7 +1,7 @@
 // SPDX-License-Identifier: Apache-2.0
-// Copyright Authors of Cilium
+// Copyright Authors of Tetragon
 
-package ciliuminstall
+package cilium
 
 import (
 	"bytes"
@@ -14,24 +14,6 @@ import (
 	"k8s.io/klog/v2"
 	"sigs.k8s.io/e2e-framework/pkg/env"
 	"sigs.k8s.io/e2e-framework/pkg/envconf"
-)
-
-var (
-	defaultHelmOptions = map[string]string{
-		/*
-			"image.repository":              "quay.io/cilium/cilium-ci",
-			"image.tag":                     "latest",
-			"image.useDigest":               "false",
-			"operator.image.repository":     "quay.io/cilium/operator",
-			"operator.image.suffix":         "-ci",
-			"operator.image.tag":            "latest",
-			"operator.image.useDigest":      "false",
-			"hubble.relay.image.repository": "quay.io/cilium/hubble-relay-ci",
-			"hubble.relay.image.tag":        "latest",
-			"hubble.relay.image.useDigest":  "false",
-		*/
-		"debug.enabled": "true",
-	}
 )
 
 type Opts struct {
