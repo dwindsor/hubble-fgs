@@ -27,6 +27,7 @@ import (
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
+	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/tests/e2e/checker"
@@ -293,27 +294,29 @@ func DemoAppChecker(kernelVersion string) ec.MultiEventChecker {
 		ec.NewProcessExecChecker().WithProcess(strimziChecker),
 	)
 
-	// loader pod
-	demoAppChecker.AddChecks(
-		ec.NewProcessDnsChecker().
-			WithProcess(loaderChecker).
-			WithDns(ec.NewDnsInfoChecker().
-				WithNames(ec.NewStringListMatcher().
-					WithOperator(listmatcher.Ordered).
-					WithValues(
-						sm.Full("jobs-app-kafka-brokers.tenant-jobs.svc."),
-					))),
-		ec.NewProcessDnsChecker().
-			WithProcess(loaderChecker).
-			WithDns(ec.NewDnsInfoChecker().
-				WithNames(ec.NewStringListMatcher().
-					WithOperator(listmatcher.Ordered).
-					WithValues(
-						sm.Full("jobs-app-kafka-brokers.tenant-jobs.svc."),
-					)).
-				WithResponse(true).
-				WithRcode(3)),
-	)
+	if kernels.MinKernelVersion("5.4.0") { // No DNS support for kernels <v5.4
+		// loader pod
+		demoAppChecker.AddChecks(
+			ec.NewProcessDnsChecker().
+				WithProcess(loaderChecker).
+				WithDns(ec.NewDnsInfoChecker().
+					WithNames(ec.NewStringListMatcher().
+						WithOperator(listmatcher.Ordered).
+						WithValues(
+							sm.Full("jobs-app-kafka-brokers.tenant-jobs.svc."),
+						))),
+			ec.NewProcessDnsChecker().
+				WithProcess(loaderChecker).
+				WithDns(ec.NewDnsInfoChecker().
+					WithNames(ec.NewStringListMatcher().
+						WithOperator(listmatcher.Ordered).
+						WithValues(
+							sm.Full("jobs-app-kafka-brokers.tenant-jobs.svc."),
+						)).
+					WithResponse(true).
+					WithRcode(3)),
+		)
+	}
 
 	return demoAppChecker
 }

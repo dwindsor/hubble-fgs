@@ -368,7 +368,6 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	u64 cookie;
 	u8 proto;
 	unsigned long int err = 0;
-	u32 data_len;
 
 	cookie = (u64)sk;
 	if (!cookie)
@@ -415,20 +414,13 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	}
 
 	// skb might be non-linear (skb->data_len > 0). If so, we need to do more
-	// work to access and process the payload. In the mean time, we will just
-	// set the payload offset to -1 to indicate that we don't have a valid
-	// payload.
-
-	if (probe_read(&data_len, sizeof(data_len), _(&(skb->data_len))) < 0) {
-		// Cannot read data_len so we cannot be sure that the skb is
-		// linear, so we don't process the payload, just in case.
-		packet->payload_off = -1;
-	} else {
-		// Check if skb is non-linear.
-		if (data_len != 0) {
-			packet->payload_off = -1;
-		}
-	}
+	// work to access and process the payload. Because it is very difficult to
+	// access payload data in non-linear skbs, disable DNS parsing for this
+	// program entirely, affecting kernels 4.19 < 5.4.
+	// Rationale is that we shouldn't ship a half-working solution. If we need
+	// to support this in the future, then potential solutions will be logged
+	// in a suitable issue.
+	packet->payload_off = -1;
 
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
 	udp_send(ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6,

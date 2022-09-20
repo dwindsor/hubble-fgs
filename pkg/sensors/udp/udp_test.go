@@ -676,9 +676,6 @@ func TestLoadUdpSensor(t *testing.T) {
 			// udp_recv_lazy_kprobe
 			tus.SensorMap{Name: "udp_map", Progs: []uint{2, 4, 6, 7}},
 			tus.SensorMap{Name: "udp_config_map", Progs: []uint{2, 4, 6, 7}},
-			tus.SensorMap{Name: "udp_payload_map", Progs: []uint{2, 4, 6, 7}},
-			tus.SensorMap{Name: "udp_payload_map_stats", Progs: []uint{2, 4, 6, 7}},
-			tus.SensorMap{Name: "udp_payload_bloom_map", Progs: []uint{2, 4, 6, 7}},
 
 			// sk_allocret, sock_release_lazy, inet_lazy_send_kp (not stats), udp4_sendret_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
