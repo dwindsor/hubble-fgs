@@ -147,22 +147,22 @@ type skmsgTLSSensor struct {
 }
 
 func (skmsg *skmsgTLSSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := cgroup.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet)
+	err := cgroup.LoadSockOpt(args.BPFDir, args.MapDir, args.CiliumDir, SockoptSet, args.Verbose)
 	if err != nil {
 		return err
 	}
 
-	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.TlsSockMap)
+	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.TlsSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 	if utils.SkSkbParserRequired() {
-		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.TlsSockMap)
+		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.TlsSockMap, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.TlsSockMap)
+	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.TlsSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
@@ -310,7 +310,7 @@ func (tls *tlsSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 
 func (tls *tlsSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if args.Load.Type == "tls_cgrp_ingress" || args.Load.Type == "tls_cgrp_egress" {
-		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load)
+		err := cgroup.LoadCgroupProgram(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Verbose)
 		if err != nil {
 			return err
 		}

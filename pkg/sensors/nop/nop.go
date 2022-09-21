@@ -62,18 +62,18 @@ type sensor struct {
 }
 
 func (nop *sensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.NopSockMap)
+	err := sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.NopSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 
 	if utils.SkSkbParserRequired() {
-		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.NopSockMap)
+		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.NopSockMap, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	return sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.NopSockMap)
+	return sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.NopSockMap, args.Verbose)
 }
 
 func (nop *sensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {

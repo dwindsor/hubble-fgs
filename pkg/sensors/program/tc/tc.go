@@ -71,5 +71,5 @@ func LoadTC(
 		}
 		return un, nil
 	}
-	return program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach)
+	return program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach, verbose)
 }

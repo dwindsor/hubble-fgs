@@ -110,18 +110,18 @@ type httpSensor struct {
 }
 
 func (http *httpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
-	err := sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.HttpSockMap)
+	err := sk.LoadSkProgram(args.BPFDir, args.MapDir, args.Load, sockops.HttpSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}
 
 	if utils.SkSkbParserRequired() {
-		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.HttpSockMap)
+		err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbParser, sockops.HttpSockMap, args.Verbose)
 		if err != nil {
 			return err
 		}
 	}
-	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.HttpSockMap)
+	err = sk.LoadSkProgram(args.BPFDir, args.MapDir, SkSkbVerdict, sockops.HttpSockMap, args.Verbose)
 	if err != nil {
 		return err
 	}

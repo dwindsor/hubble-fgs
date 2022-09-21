@@ -8,6 +8,7 @@ func LoadSkProgram(
 	bpfDir, mapDir string,
 	load *program.Program,
 	sockmap *program.Map,
+	verbose int,
 ) error {
 
 	fd, err := sockmap.GetFD()
@@ -15,5 +16,5 @@ func LoadSkProgram(
 		return err
 	}
 
-	return program.LoadProgram(bpfDir, []string{mapDir}, load, program.RawAttach(fd))
+	return program.LoadProgram(bpfDir, []string{mapDir}, load, program.RawAttach(fd), verbose)
 }
