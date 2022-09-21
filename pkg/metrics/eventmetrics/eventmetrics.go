@@ -158,14 +158,6 @@ func postUDPMulticastSocketStats(ns, pod, binary, dstns, dstpod, dstLabels strin
 		return
 	}
 
-	if !sip.IsMulticast() {
-		source = ""
-	}
-
-	if !dip.IsMulticast() {
-		dest = ""
-	}
-
 	c := float64(s.BytesSubmitted)
 	socketmetrics.SocketStatsUDPMulticastTxBytes.WithLabelValues(ns, pod, binary, source, dstns, dstpod, dest).Add(c)
 
