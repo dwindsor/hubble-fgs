@@ -10,6 +10,7 @@ FGS_TAG=""
 OPERATOR_IMAGE=""
 OPERATOR_TAG=""
 BTF_FILE=""
+MOUNT_ROOT=0
 
 usage() {
 	echo "usage: install-fgs.sh [OPTIONS]" 1>&2
@@ -17,6 +18,7 @@ usage() {
     echo "    --image [IMAGE:TAG] use existing docker image instead of compiling a new one" 1>&2
     echo "    --operator [IMAGE:TAG] use existing docker operator image instead of compiling a new one" 1>&2
     echo "    --btf   [FILE]      use btf file" 1>&2
+    echo "    --mount-root        mount host root in hubble-enterprise pod (needed for file monitoring)" 1>&2
 }
 
 while [ $# -ge 1 ]; do
@@ -35,6 +37,9 @@ while [ $# -ge 1 ]; do
 	elif [ "$1" == "--btf" ]; then
         BTF_FILE="$(readlink -f "$2")"
 		shift 2
+	elif [ "$1" == "--mount-root" ]; then
+        MOUNT_ROOT=1
+		shift 1
     else
         usage
         exit 1
@@ -88,6 +93,13 @@ install_fgs() {
     helm_opts+=("--set" "enterprise.exportFileMaxSizeMB=50")
     helm_opts+=("--set" "hubbleEnterpriseOperator.image.repository=$OPERATOR_IMAGE")
     helm_opts+=("--set" "hubbleEnterpriseOperator.image.tag=$OPERATOR_TAG")
+    if [[ "$MOUNT_ROOT" -eq 1 ]]; then
+        helm_opts+=("--set" "extraVolumes[0].name=host-root")
+        helm_opts+=("--set" "extraVolumes[0].hostPath.path=/")
+        helm_opts+=("--set" "extraVolumes[0].hostPath.type=Directory")
+        helm_opts+=("--set" "enterprise.extraVolumeMounts[0].name=host-root")
+        helm_opts+=("--set" "enterprise.extraVolumeMounts[0].mountPath=/hostRoot")
+    fi
     if [ -f "$BTF_FILE" ]; then
         KIND_ID="$(docker ps -aqf "name=$CLUSTER_NAME-control-plane")"
         echo "Transferring $BTF_FILE to container $KIND_ID..." 1>&2
