@@ -18,6 +18,7 @@ import (
 	"os"
 	"path"
 	"path/filepath"
+	"strings"
 	"syscall"
 	"unsafe"
 
@@ -47,6 +48,8 @@ const (
 	maxLPMpaths     = 4096
 	maxWatchedDirs  = 128 * 1024 // 128K
 	maxWatchedFiles = 128 * 1024 // 128K
+
+	hostRoot = "/hostRoot"
 )
 
 const (
@@ -403,10 +406,22 @@ func CheckFileMode(mode fs.FileMode, path string) {
 	}
 }
 
+func normalizePath(path string) string {
+	p := path
+	if option.Config.EnableK8s {
+		p = strings.TrimPrefix(p, hostRoot)
+	}
+	return p
+}
+
 func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle *ebpf.Map, op WalkOp, action uint32, checkPrefix bool) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
+
+	if option.Config.EnableK8s {
+		path = filepath.Join(hostRoot, path)
+	}
 
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -450,13 +465,14 @@ func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle 
 			if op == AddToMap {
 				var val fileapi.HashMapFileVal
 
+				filePath := normalizePath(path)
 				val.Action = action
-				val.PathSize = uint32(len(path))
-				copy(val.FullPath[:], path)
+				val.PathSize = uint32(len(filePath))
+				copy(val.FullPath[:], filePath)
 
 				addToMap := true
 				if checkPrefix {
-					if lookupFilter(lpmHandle, path) == filterIgnore {
+					if lookupFilter(lpmHandle, filePath) == filterIgnore {
 						addToMap = false
 					}
 				}
@@ -481,22 +497,23 @@ func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle 
 				DevMinor: getDevMinor(stat.Dev),
 			}
 
+			dirPath := normalizePath(path)
 			if op == AddToMap {
 				var val fileapi.HashMapFileVal
 
 				// We should habe all directory names to end with "/"
 				// Check if this is the case, otherwise add it.
-				if path[len(path)-1:] != "/" {
-					path += "/"
+				if dirPath[len(dirPath)-1:] != "/" {
+					dirPath += "/"
 				}
 
 				val.Action = action
-				val.PathSize = uint32(len(path))
-				copy(val.FullPath[:], path)
+				val.PathSize = uint32(len(dirPath))
+				copy(val.FullPath[:], dirPath)
 
 				addToMap := true
 				if checkPrefix {
-					if lookupFilter(lpmHandle, path) == filterIgnore {
+					if lookupFilter(lpmHandle, dirPath) == filterIgnore {
 						addToMap = false
 					}
 				}
@@ -671,6 +688,12 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 		if !kernels.MinKernelVersion("5.4.0") {
 			logger.GetLogger().Warnf("FileMonitoring requires at least 5.4.0 version")
 			return nil, nil
+		}
+		if option.Config.EnableK8s {
+			if _, err := os.Stat(hostRoot); os.IsNotExist(err) {
+				logger.GetLogger().Warnf("FileMonitoring in k8s requires %s to be mounted and point to the host file system", hostRoot)
+				return nil, nil
+			}
 		}
 		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 		progs, err := findHooks()
