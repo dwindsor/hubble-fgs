@@ -2,7 +2,7 @@
 
 set -eu
 
-CLUSTER_NAME="kind"
+CLUSTER_NAME="fgs-cli-ci"
 PROJECT_ROOT="$(realpath $(dirname "${BASH_SOURCE[0]}")/../..)"
 
 FGS_IMAGE=""
