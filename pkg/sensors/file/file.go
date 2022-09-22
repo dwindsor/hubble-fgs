@@ -638,7 +638,10 @@ func findHooks() ([]FimProg, error) {
 	fimProgs := make([]FimProg, 0)
 	for _, h := range FimHooks {
 		kretprobe := (h.tp == "kretprobe")
-		p := fgsBTF.GetFuncProto(spec, h.name, kretprobe)
+		p, err := fgsBTF.GetFuncProto(spec, h.name, kretprobe)
+		if err != nil {
+			return nil, fmt.Errorf("GetFuncProto failed: %w", err)
+		}
 
 		progFound := false
 		for _, f := range h.prog {

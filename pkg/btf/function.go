@@ -76,11 +76,12 @@ func getType(myType interface{}, fnName string, kretprobe bool) string {
 // it returns "vfs_mkdir(struct inode*, struct dentry*, umode_t)".
 // In the case where kretprobe is true, it also includes the return
 // type (i.e. "int vfs_mkdir(struct inode*, struct dentry*, umode_t)").
-func GetFuncProto(spec *btf.Spec, fnName string, kretprobe bool) string {
+func GetFuncProto(spec *btf.Spec, fnName string, kretprobe bool) (string, error) {
 	var fnType *btf.Func
 	if err := spec.TypeByName(fnName, &fnType); err != nil {
 		logger.GetLogger().Errorf("LoadKernelSpec %w", err)
+		return "", err
 	}
 	fnProto := fnType.Type.(*btf.FuncProto)
-	return getType(fnProto, fnName, kretprobe)
+	return getType(fnProto, fnName, kretprobe), nil
 }
