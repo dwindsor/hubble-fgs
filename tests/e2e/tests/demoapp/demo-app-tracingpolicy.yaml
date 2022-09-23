@@ -3,6 +3,9 @@ kind: TracingPolicy
 metadata:
   name: "demo-app"
 spec:
+  file:
+    file_paths:
+    - "/etc/passwd"
   parser:
     udp:
       enable: true
