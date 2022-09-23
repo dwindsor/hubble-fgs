@@ -70,7 +70,7 @@ github.com/cilium/cilium/pkg/spanstat
 github.com/cilium/cilium/pkg/types
 github.com/cilium/cilium/pkg/version
 github.com/cilium/cilium/pkg/versioncheck
-# github.com/cilium/ebpf v0.9.1 => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
+# github.com/cilium/ebpf v0.9.2 => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
 ## explicit; go 1.17
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
@@ -165,7 +165,7 @@ github.com/cilium/tetragon/pkg/observer
 github.com/cilium/tetragon/pkg/option
 github.com/cilium/tetragon/pkg/process
 github.com/cilium/tetragon/pkg/ratelimit
-github.com/cilium/tetragon/pkg/reader/bpfattr
+github.com/cilium/tetragon/pkg/reader/bpf
 github.com/cilium/tetragon/pkg/reader/caps
 github.com/cilium/tetragon/pkg/reader/exec
 github.com/cilium/tetragon/pkg/reader/ktime
@@ -174,7 +174,6 @@ github.com/cilium/tetragon/pkg/reader/network
 github.com/cilium/tetragon/pkg/reader/node
 github.com/cilium/tetragon/pkg/reader/notify
 github.com/cilium/tetragon/pkg/reader/path
-github.com/cilium/tetragon/pkg/reader/perfevent
 github.com/cilium/tetragon/pkg/reader/proc
 github.com/cilium/tetragon/pkg/selectors
 github.com/cilium/tetragon/pkg/sensors
@@ -615,6 +614,12 @@ go.opencensus.io/trace
 go.opencensus.io/trace/internal
 go.opencensus.io/trace/propagation
 go.opencensus.io/trace/tracestate
+# go.uber.org/atomic v1.9.0
+## explicit; go 1.13
+go.uber.org/atomic
+# go.uber.org/multierr v1.8.0
+## explicit; go 1.14
+go.uber.org/multierr
 # golang.org/x/crypto v0.0.0-20220622213112-05595931fe9d
 ## explicit; go 1.17
 golang.org/x/crypto/ed25519
@@ -655,7 +660,7 @@ golang.org/x/oauth2/jwt
 ## explicit
 golang.org/x/sync/errgroup
 golang.org/x/sync/semaphore
-# golang.org/x/sys v0.0.0-20220715151400-c0bba94af5f8
+# golang.org/x/sys v0.0.0-20220829200755-d48e67d00261
 ## explicit; go 1.17
 golang.org/x/sys/execabs
 golang.org/x/sys/internal/unsafeheader

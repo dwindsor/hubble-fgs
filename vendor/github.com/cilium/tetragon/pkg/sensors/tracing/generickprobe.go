@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/base"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	lru "github.com/hashicorp/golang-lru"
 	"github.com/sirupsen/logrus"
 
 	gt "github.com/cilium/tetragon/pkg/generictypes"
@@ -79,6 +80,11 @@ type argPrinters struct {
 	index int
 }
 
+type pendingEventKey struct {
+	threadId   uint64
+	ktimeEnter uint64
+}
+
 // internal genericKprobe info
 type genericKprobe struct {
 	loadArgs          kprobeLoadArgs
@@ -94,8 +100,8 @@ type genericKprobe struct {
 	// for kprobes that have a retprobe, we maintain the enter events in
 	// the map, so that we can merge them when the return event is
 	// generated. The events are maintained in the map below, using
-	// ThreadId as the key.
-	pendingEvents map[uint64]pendingEvent
+	// the thread_id and the enter ktime as the key.
+	pendingEvents *lru.Cache
 
 	tableId idtable.EntryID
 }
@@ -154,8 +160,9 @@ func argReturnCopy(meta int) bool {
 
 // meta value format:
 // bits
-//  0-3 : SizeArgIndex
-//    4 : ReturnCopy
+//
+//	0-3 : SizeArgIndex
+//	  4 : ReturnCopy
 func getMetaValue(arg *v1alpha1.KProbeArg) (int, error) {
 	var meta int
 
@@ -349,9 +356,15 @@ func addGenericKprobeSensors(kprobes []v1alpha1.KProbeSpec) (*sensors.Sensor, er
 			argReturnPrinters: argReturnPrinters,
 			userReturnFilters: userReturnFilters,
 			funcName:          funcName,
-			pendingEvents:     map[uint64]pendingEvent{},
+			pendingEvents:     nil,
 			tableId:           idtable.UninitializedEntryID,
 		}
+
+		kprobeEntry.pendingEvents, err = lru.New(4096)
+		if err != nil {
+			return nil, err
+		}
+
 		genericKprobeTable.AddEntry(&kprobeEntry)
 
 		config.FuncId = uint32(kprobeEntry.tableId.ID)
@@ -536,12 +549,20 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 
 	returnEvent := m.Common.Flags > 0
 
+	var ktimeEnter uint64
 	var printers []argPrinters
 	if returnEvent {
+		// if this a return event, also read the ktime of the enter event
+		err := binary.Read(r, binary.LittleEndian, &ktimeEnter)
+		if err != nil {
+			return nil, fmt.Errorf("failed to read ktimeEnter")
+		}
 		printers = gk.argReturnPrinters
 	} else {
+		ktimeEnter = m.Common.Ktime
 		printers = gk.argSigPrinters
 	}
+
 	for _, a := range printers {
 		switch a.ty {
 		case gt.GenericIntType:
@@ -700,7 +721,8 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			}
 			arg.ProgType = output.ProgType
 			arg.InsnCnt = output.InsnCnt
-			arg.ProgName = string(output.ProgName[:15]) // don't include last null byte
+			length := bytes.IndexByte(output.ProgName[:], 0) // trim tailing null bytes
+			arg.ProgName = string(output.ProgName[:length])
 			unix.Args = append(unix.Args, arg)
 		case gt.GenericPerfEvent:
 			var output api.MsgGenericKprobePerfEvent
@@ -716,6 +738,22 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 			arg.Config = output.Config
 			arg.ProbeOffset = output.ProbeOffset
 			unix.Args = append(unix.Args, arg)
+		case gt.GenericBpfMap:
+			var output api.MsgGenericKprobeBpfMap
+			var arg api.MsgGenericKprobeArgBpfMap
+
+			err := binary.Read(r, binary.LittleEndian, &output)
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("bpf_map type error")
+			}
+
+			arg.MapType = output.MapType
+			arg.KeySize = output.KeySize
+			arg.ValueSize = output.ValueSize
+			arg.MaxEntries = output.MaxEntries
+			length := bytes.IndexByte(output.MapName[:], 0) // trim tailing null bytes
+			arg.MapName = string(output.MapName[:length])
+			unix.Args = append(unix.Args, arg)
 		default:
 			logger.GetLogger().WithError(err).WithField("event", a).Warnf("Unknown type event")
 		}
@@ -730,11 +768,18 @@ func handleGenericKprobe(r *bytes.Reader) ([]observer.Event, error) {
 		// if an event exist already, try to merge them. Otherwise, add
 		// the one we have in the map.
 		curr := pendingEvent{ev: unix, returnEvent: returnEvent}
-		if prev, exists := gk.pendingEvents[m.ThreadId]; exists {
-			delete(gk.pendingEvents, m.ThreadId)
+		key := pendingEventKey{threadId: m.ThreadId, ktimeEnter: ktimeEnter}
+
+		if data, exists := gk.pendingEvents.Get(key); exists {
+			prev, ok := data.(pendingEvent)
+			if !ok {
+				return nil, fmt.Errorf("Internal error: wrong type in pendingEvents")
+			}
+			gk.pendingEvents.Remove(key)
 			unix, retArg = retprobeMerge(prev, curr)
 		} else {
-			gk.pendingEvents[m.ThreadId] = curr
+			gk.pendingEvents.Add(key, curr)
+			kprobemetrics.MergePushedInc()
 			unix = nil
 		}
 	}
@@ -853,6 +898,8 @@ func retprobeMerge(prev pendingEvent, curr pendingEvent) (*tracing.MsgGenericKpr
 		reportMergeError(curr, prev)
 		return nil, nil
 	}
+
+	kprobemetrics.MergeOkTotalInc()
 
 	for _, retArg := range retEv.Args {
 		index := retArg.GetIndex()

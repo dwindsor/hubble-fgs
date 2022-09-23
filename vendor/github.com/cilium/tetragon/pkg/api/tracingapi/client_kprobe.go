@@ -20,6 +20,11 @@ const (
 	ActionCopyFd     = 5
 )
 
+const (
+	BPF_OBJ_NAME_LEN = 16
+	KSYM_NAME_LEN    = 128
+)
+
 type MsgGenericKprobe struct {
 	Common       processapi.MsgCommon
 	ProcessKey   processapi.MsgExecveKey
@@ -206,7 +211,7 @@ func (m MsgGenericKprobeArgCred) IsReturnArg() bool {
 type MsgGenericKprobeBpfAttr struct {
 	ProgType uint32
 	InsnCnt  uint32
-	ProgName [16]byte
+	ProgName [BPF_OBJ_NAME_LEN]byte
 }
 
 type MsgGenericKprobeArgBpfAttr struct {
@@ -225,7 +230,7 @@ func (m MsgGenericKprobeArgBpfAttr) IsReturnArg() bool {
 }
 
 type MsgGenericKprobePerfEvent struct {
-	KprobeFunc  [128]byte
+	KprobeFunc  [KSYM_NAME_LEN]byte
 	Type        uint32
 	Config      uint64
 	ProbeOffset uint64
@@ -244,6 +249,31 @@ func (m MsgGenericKprobeArgPerfEvent) GetIndex() uint64 {
 }
 
 func (m MsgGenericKprobeArgPerfEvent) IsReturnArg() bool {
+	return m.Index == ReturnArgIndex
+}
+
+type MsgGenericKprobeBpfMap struct {
+	MapType    uint32
+	KeySize    uint32
+	ValueSize  uint32
+	MaxEntries uint32
+	MapName    [BPF_OBJ_NAME_LEN]byte
+}
+
+type MsgGenericKprobeArgBpfMap struct {
+	MapType    uint32
+	Index      uint64
+	KeySize    uint32
+	ValueSize  uint32
+	MaxEntries uint32
+	MapName    string
+}
+
+func (m MsgGenericKprobeArgBpfMap) GetIndex() uint64 {
+	return m.Index
+}
+
+func (m MsgGenericKprobeArgBpfMap) IsReturnArg() bool {
 	return m.Index == ReturnArgIndex
 }
 
@@ -271,13 +301,15 @@ type KprobeArgs struct {
 	Args4 []byte
 }
 
+const EventConfigMaxArgs = 5
+
 type EventConfig struct {
-	FuncId        uint32    `align:"func_id"`
-	Arg           [5]int32  `align:"arg0"`
-	ArgM          [5]uint32 `align:"arg0m"`
-	ArgTpCtxOff   [5]uint32 `align:"t_arg0_ctx_off"`
-	Sigkill       uint32    `align:"sigkill"`
-	Syscall       uint32    `align:"syscall"`
-	ArgReturnCopy int32     `align:"argreturncopy"`
-	ArgReturn     int32     `align:"argreturn"`
+	FuncId        uint32                     `align:"func_id"`
+	Arg           [EventConfigMaxArgs]int32  `align:"arg0"`
+	ArgM          [EventConfigMaxArgs]uint32 `align:"arg0m"`
+	ArgTpCtxOff   [EventConfigMaxArgs]uint32 `align:"t_arg0_ctx_off"`
+	Sigkill       uint32                     `align:"sigkill"`
+	Syscall       uint32                     `align:"syscall"`
+	ArgReturnCopy int32                      `align:"argreturncopy"`
+	ArgReturn     int32                      `align:"argreturn"`
 }
