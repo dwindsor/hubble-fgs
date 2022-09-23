@@ -39,10 +39,11 @@ var (
 		4:  "filemap_map_pages",
 		5:  "filemap_page_mkwrite",
 		6:  "security_path_unlink",
-		7:  "do_dentry_open",
-		8:  "vfs_rmdir",
-		9:  "vfs_mkdir",
-		10: "vfs_rename",
+		7:  "vfs_rmdir",
+		8:  "vfs_mkdir",
+		9:  "vfs_rename",
+		10: "finish_open",
+		11: "vfs_open",
 	}
 
 	renameFlagsString = map[uint32]string{

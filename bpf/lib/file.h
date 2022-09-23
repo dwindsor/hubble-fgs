@@ -22,10 +22,11 @@ enum { hook_undef = 0,
        hook_filemap_map_pages = 4,
        hook_filemap_page_mkwrite = 5,
        hook_security_path_unlink = 6,
-       hook_do_dentry_open = 7,
-       hook_vfs_rmdir = 8,
-       hook_vfs_mkdir = 9,
-       hook_vfs_rename = 10,
+       hook_vfs_rmdir = 7,
+       hook_vfs_mkdir = 8,
+       hook_vfs_rename = 9,
+       hook_finish_open = 10,
+       hook_vfs_open = 11,
 };
 
 struct vfs_mkdir_info {

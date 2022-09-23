@@ -551,12 +551,11 @@ ignore_unlink:
 #endif
 
 #ifndef VFS_PROGS_V512
-__attribute__((section(("kprobe/do_dentry_open")), used)) int
-BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
-	   int (*open)(struct inode *, struct file *))
+static inline __attribute__((always_inline)) int
+check_file_create(struct pt_regs *ctx, struct file *f, struct inode *inode,
+		  struct path *path, __u32 hook)
 {
 	struct dentry *dentry, *parent_dentry;
-	struct path path;
 	struct msg_file_ops *msg;
 	struct hash_map_file_key file_key;
 	struct hash_map_file_val *file_val = 0;
@@ -580,11 +579,7 @@ BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
 	get_ino_fs(msg, inode);
 
 	// get parent inode and fs info
-	probe_read(&path, sizeof(path), _(&f->f_path));
-	if (!path.dentry)
-		return 0;
-
-	dentry = path.dentry;
+	probe_read(&dentry, sizeof(struct dentry *), _(&path->dentry));
 	probe_read(&parent_dentry, sizeof(parent_dentry), _(&dentry->d_parent));
 	if (!parent_dentry)
 		return 0;
@@ -667,7 +662,7 @@ BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
 	probe_read(&(msg->gid), sizeof(msg->gid), _(&inode->i_gid));
 
 	msg->action = action_create;
-	msg->hook = hook_do_dentry_open;
+	msg->hook = hook;
 	msg->ktime = ktime_get_ns();
 	get_mnt_ns(&msg->mnt_ns);
 
@@ -675,6 +670,38 @@ BPF_KPROBE(do_dentry_open, struct file *f, struct inode *inode,
 			  sizeof(struct msg_file_ops));
 
 	return 0;
+}
+
+__attribute__((section(("kprobe/finish_open")), used)) int
+BPF_KPROBE(finish_open, struct file *file, struct dentry *dentry,
+	   int (*open)(struct inode *, struct file *))
+{
+	struct inode *inode;
+
+	probe_read(&inode, sizeof(struct inode *), _(&dentry->d_inode));
+	if (!inode)
+		return 0;
+
+	return check_file_create(ctx, file, inode, _(&file->f_path),
+				 hook_finish_open);
+}
+
+__attribute__((section(("kprobe/vfs_open")), used)) int
+BPF_KPROBE(vfs_open, const struct path *path, struct file *file)
+{
+	struct dentry *dentry;
+	struct inode *inode;
+
+	probe_read(&dentry, sizeof(struct dentry *), _(&path->dentry));
+	if (!dentry)
+		return 0;
+
+	probe_read(&inode, sizeof(struct inode *), _(&dentry->d_inode));
+	if (!inode)
+		return 0;
+
+	return check_file_create(ctx, file, inode, (struct path *)path,
+				 hook_vfs_open);
 }
 #endif
 

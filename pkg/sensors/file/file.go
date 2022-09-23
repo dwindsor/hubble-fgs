@@ -99,7 +99,8 @@ var (
 		{"kprobe", "filemap_page_mkwrite", []FimFunc{{"filemap_page_mkwrite(struct vm_fault*)", "bpf_file.o"}}},
 		{"kprobe", "rw_verify_area", []FimFunc{{"rw_verify_area(int, struct file*, const loff_t*, size_t)", "bpf_file.o"}}},
 		{"kprobe", "security_path_unlink", []FimFunc{{"security_path_unlink(const struct path*, struct dentry*)", "bpf_file.o"}}},
-		{"kprobe", "do_dentry_open", []FimFunc{{"do_dentry_open(struct file*, struct inode*, int (*p)(struct inode*, struct file*))", "bpf_file.o"}}},
+		{"kprobe", "finish_open", []FimFunc{{"finish_open(struct file*, struct dentry*, int (*p)(struct inode*, struct file*))", "bpf_file.o"}}},
+		{"kprobe", "vfs_open", []FimFunc{{"vfs_open(const struct path*, struct file*)", "bpf_file.o"}}},
 		{"kprobe", "vfs_rmdir", []FimFunc{
 			{"vfs_rmdir(struct inode*, struct dentry*)", "bpf_file.o"},
 			{"vfs_rmdir(struct user_namespace*, struct inode*, struct dentry*)", "bpf_file_v512.o"},
@@ -663,16 +664,19 @@ func findHooks() ([]FimProg, error) {
 func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	spec := raw.(*v1alpha1.TracingPolicySpec)
 	if len(spec.FileMonitoring.Paths) == 0 && len(spec.FileMonitoring.PathsExclude) > 0 {
-		return nil, fmt.Errorf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
+		logger.GetLogger().Warnf("FileMonitoring requires more that one file_paths when file_paths_exclude is defined")
+		return nil, nil
 	}
 	if len(spec.FileMonitoring.Paths) > 0 {
 		if !kernels.MinKernelVersion("5.4.0") {
-			return nil, fmt.Errorf("FileMonitoring requires at least 5.4.0 version")
+			logger.GetLogger().Warnf("FileMonitoring requires at least 5.4.0 version")
+			return nil, nil
 		}
 		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 		progs, err := findHooks()
 		if err != nil {
-			return nil, err
+			logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
+			return nil, nil
 		}
 		return addFileMonitoringSensor(spec.FileMonitoring, option.Config.BTF, progs)
 	}
