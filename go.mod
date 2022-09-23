@@ -147,10 +147,6 @@ require (
 
 // has to be in sync with both cilium and hubble overrides (mostly cilium).
 replace (
-	// Use a private fork of cilium/ebpf until the features we depend on have
-	// been upstreamed.
-	github.com/cilium/ebpf => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
-
 	// use local submodule for OSS
 	github.com/cilium/tetragon => ./modules/tetragon-oss
 

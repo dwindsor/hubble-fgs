@@ -70,8 +70,8 @@ github.com/cilium/cilium/pkg/spanstat
 github.com/cilium/cilium/pkg/types
 github.com/cilium/cilium/pkg/version
 github.com/cilium/cilium/pkg/versioncheck
-# github.com/cilium/ebpf v0.9.2 => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
-## explicit; go 1.17
+# github.com/cilium/ebpf v0.9.2
+## explicit; go 1.18
 github.com/cilium/ebpf
 github.com/cilium/ebpf/asm
 github.com/cilium/ebpf/btf
@@ -1299,7 +1299,6 @@ sigs.k8s.io/structured-merge-diff/v4/value
 # sigs.k8s.io/yaml v1.3.0
 ## explicit; go 1.12
 sigs.k8s.io/yaml
-# github.com/cilium/ebpf => github.com/olsajiri/ebpf v0.9.1-0.20220620135537-093202506da0
 # github.com/cilium/tetragon => ./modules/tetragon-oss
 # github.com/cilium/tetragon/api => ./api
 # github.com/cilium/tetragon/pkg/k8s => ./pkg/k8s
