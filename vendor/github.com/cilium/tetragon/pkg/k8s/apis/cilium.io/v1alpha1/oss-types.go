@@ -147,7 +147,7 @@ type ArgSelector struct {
 }
 
 type ActionSelector struct {
-	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD
+	// +kubebuilder:validation:Enum=Post;FollowFD;UnfollowFD;Sigkill;CopyFD;Override
 	// Action to execute.
 	Action string `json:"action"`
 	// +kubebuilder:validation:Optional
@@ -156,6 +156,12 @@ type ActionSelector struct {
 	// +kubebuilder:validation:Optional
 	// An arg index for the filename for fdInstall action
 	ArgName uint32 `json:"argName"`
+	// +kubebuilder:validation:Optional
+	// A URL for the getUrl action
+	ArgUrl string `json:"argUrl"`
+	// +kubebuilder:validation:Optional
+	// A FQDN to lookup for the dnsLookup action
+	ArgFqdn string `json:"argFqdn"`
 	// +kubebuilder:validation:Optional
 	// error value for override action
 	ArgError int32 `json:"argError"`
