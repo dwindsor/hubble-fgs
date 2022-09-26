@@ -11,7 +11,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 220        # size
+  h4 228        # size
   ? 8           # ktime
 
   ## tuple
@@ -34,6 +34,7 @@ EVENT TCPACCEPT
   ? 8                   # socket cookie
 
   ## socket stats, zeroes for ACCEPT
+  $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
@@ -55,7 +56,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 220        # size
+  h4 228        # size
   ? 8           # ktime
 
   ## tuple
@@ -78,6 +79,7 @@ EVENT TCPCONNECTRET
   ? 8 # socket cookie
 
   ## socket stats
+  $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
   h8 0 # bytes sent
   h8 0 # bytes received
   h4 0 # segs in
@@ -110,7 +112,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 220        # size
+  h4 228       # size
   ? 8           # ktime
 
   ## tuple
@@ -133,6 +135,7 @@ EVENT TCPCLOSE
   ? 8                   # socket cookie
 
   ## socket stats
+  $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
   h8 3 # bytes sent
   h8 5 # bytes received
   NZ 4 # segs in
@@ -163,7 +166,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 220        # size
+  h4 228        # size
   ? 8           # ktime
 
   ## tuple
@@ -186,6 +189,7 @@ EVENT TCPCLOSE
   ? 8                   # socket cookie
 
   ## socket stats
+  $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
   h8 5 # bytes sent
   NZ 8 # bytes received (fluctuates between 3 and 4 (if FIN was counted))
   NZ 4 # segs in
@@ -215,7 +219,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 220        # size
+  h4 228        # size
   ? 8           # ktime
 
   ## tuple
@@ -239,6 +243,7 @@ EVENT TCPCLOSE
   ? 8                   # socket cookie
 
   ## socket stats
+  $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
   h8 0 # bytes sent
   h8 0 # bytes received
   h4 0 # segs in

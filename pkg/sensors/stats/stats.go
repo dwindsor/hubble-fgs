@@ -36,5 +36,6 @@ func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool) api.MsgSocketStatsUni
 		SkDrop:           m.SkDrop,
 		SkbConsumeMisses: m.SkbConsumeMisses,
 		Rtt:              rttHistogram,
+		Ktime:            m.Ktime,
 	}
 }

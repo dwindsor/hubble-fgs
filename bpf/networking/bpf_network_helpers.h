@@ -20,6 +20,9 @@ get_socket_stats(struct sock *sk, struct net *net,
 	struct tcp_sock *tcp = (struct tcp_sock *)sk;
 	int i;
 
+	/* Set the time the stats were obtained to allow checking of event ordering */
+	stats->ktime = ktime_get_ns();
+
 	/* Older kernels will not have these statistics. To get a full set of
 	 * stats run 4.19 or higher.
 	 */

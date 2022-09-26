@@ -22,6 +22,7 @@ struct msg_ip_tuple {
 } __attribute__((packed));
 
 struct msg_socket_stats {
+	__u64 ktime;
 	__u64 bytes_sent;
 	__u64 bytes_received;
 	__u32 segs_in;

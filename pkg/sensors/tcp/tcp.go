@@ -291,6 +291,12 @@ func correctedStatsEvent(tcp *layer3.MsgIPEventUnix) (*layer3.MsgIPEventUnix, er
 	if ok {
 		last := entry.(api.MsgSocketStatsUnix)
 
+		if tcp.SocketStats.Ktime < last.Ktime {
+			// Current stats message is older than last stats message.
+			// This indicates the race has occurred, so we discard.
+			return nil, fmt.Errorf("TCP stats message is older than previous")
+		}
+
 		tmpSocketStats, err := tcpDiffValues(&last, &tcp.SocketStats)
 		if err != nil {
 			return nil, err
