@@ -655,18 +655,10 @@ func TestLoadUdpSensor(t *testing.T) {
 			5: tus.SensorProg{Name: "udp6_send_lazy_kprobe", Type: ebpf.Kprobe},
 			6: tus.SensorProg{Name: "udp6_sendret_lazy_kprobe", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "udp_recv_lazy_kprobe", Type: ebpf.Kprobe},
-
-			// base sensor
-			8:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-			9:  tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-			10: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 		}
 		sensorMaps = []tus.SensorMap{
 			// base, sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 7, 8, 9, 10}},
-
-			// base only
-			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{8, 9, 10}},
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 4, 6, 7}},
 
 			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -684,7 +676,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// base, inet_lazy_send_kp, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe
 			// udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 4, 6, 7, 8, 9, 10}},
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 4, 6, 7}},
 		}
 	} else if !kernels.MinKernelVersion("5.6.0") { // 5.4 - <5.6
 		sensorProgs = []tus.SensorProg{
@@ -697,18 +689,10 @@ func TestLoadUdpSensor(t *testing.T) {
 			6: tus.SensorProg{Name: "udp6_send_lazy_kprobe", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "udp6_sendret_lazy_kprobe", Type: ebpf.Kprobe},
 			8: tus.SensorProg{Name: "udp_recv_lazy_kprobe", Type: ebpf.Kprobe},
-
-			// base sensor
-			9:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-			10: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-			11: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 		}
 		sensorMaps = []tus.SensorMap{
 			// base, sk_allocret, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8, 9, 10, 11}},
-
-			// base only
-			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{9, 10, 11}},
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8}},
 
 			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -729,7 +713,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// base, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe
 			// udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8, 9, 10, 11}},
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8}},
 		}
 	} else if !kernels.MinKernelVersion("5.10.0") { // 5.6 - <5.10
 		sensorProgs = []tus.SensorProg{
@@ -742,18 +726,10 @@ func TestLoadUdpSensor(t *testing.T) {
 			6: tus.SensorProg{Name: "udp6_send_lazy_kprobe", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "udp6_sendret_lazy_kprobe", Type: ebpf.Kprobe},
 			8: tus.SensorProg{Name: "udp_recv_lazy_kprobe", Type: ebpf.Kprobe},
-
-			// base sensor
-			9:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-			10: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-			11: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 		}
 		sensorMaps = []tus.SensorMap{
 			// base, sk_allocret, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8, 9, 10, 11}},
-
-			// base only
-			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{9, 10, 11}},
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8}},
 
 			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
@@ -774,7 +750,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// base, inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe
 			// udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8, 9, 10, 11}},
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8}},
 		}
 	} else { // 5.10+
 		sensorProgs = []tus.SensorProg{
@@ -787,11 +763,6 @@ func TestLoadUdpSensor(t *testing.T) {
 			6: tus.SensorProg{Name: "udp6_send_kprobe", Type: ebpf.Kprobe},
 			7: tus.SensorProg{Name: "udp6_sendret_kprobe", Type: ebpf.Kprobe},
 			8: tus.SensorProg{Name: "udp_recv_kprobe", Type: ebpf.Kprobe},
-
-			// base sensor
-			9:  tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-			10: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-			11: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 		}
 		sensorMaps = []tus.SensorMap{
 			// inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
@@ -799,10 +770,7 @@ func TestLoadUdpSensor(t *testing.T) {
 			// tus.SensorMap{Name: "socket_cookie_to_proc_map", Progs: []uint{ /* 0, 1, */ 2, 3, 4, 6, 8}},
 
 			// base, udp4_sendret_kprobe, udp6_sendret_kprobe, udp_recv_kprobe
-			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8, 9, 10, 11}},
-
-			// base only
-			tus.SensorMap{Name: "execve_map_stats", Progs: []uint{9, 10, 11}},
+			tus.SensorMap{Name: "execve_map", Progs: []uint{0, 5, 7, 8}},
 
 			// udp4_send_kprobe, udp4_sendret_kprobe, udp6_send_kprobe,
 			// udp6_sendret_kprobe, udp_recv_kprobe
@@ -823,7 +791,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// base, inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe
 			// udp_recv_kprobe
-			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8, 9, 10, 11}},
+			tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 5, 7, 8}},
 		}
 	}
 
