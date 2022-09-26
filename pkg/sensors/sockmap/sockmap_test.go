@@ -237,11 +237,6 @@ spec:
 		1: tus.SensorProg{Name: "setsockopt", Type: ebpf.CGroupSockopt},
 		2: tus.SensorProg{Name: "bpf_tls_sk_msg_fgs", Type: ebpf.SkMsg},
 		3: tus.SensorProg{Name: "bpf_tls_skskb_verdict", Type: ebpf.SkSKB},
-
-		// base sensor
-		4: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-		5: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-		6: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 	}
 
 	var sensorMaps = []tus.SensorMap{
@@ -260,7 +255,7 @@ spec:
 		tus.SensorMap{Name: "tls_parser_stats", Progs: []uint{2, 3}},
 
 		// bpf_tls_sk_msg_fgs, bpf_tls_skskb_verdict, base
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3, 4, 5, 6}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{2, 3}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
