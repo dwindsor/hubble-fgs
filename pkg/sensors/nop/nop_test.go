@@ -79,11 +79,6 @@ func TestLoadNopSensor(t *testing.T) {
 			0: tus.SensorProg{Name: "bpf_sockmap", Type: ebpf.SockOps},
 			1: tus.SensorProg{Name: "bpf_nop_sk_msg_fgs", Type: ebpf.SkMsg},
 			2: tus.SensorProg{Name: "bpf_skskb_http_verdict", Type: ebpf.SkSKB},
-
-			// base sensor
-			3: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-			4: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-			5: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 		}
 
 		sensorMaps = []tus.SensorMap{
@@ -99,11 +94,6 @@ func TestLoadNopSensor(t *testing.T) {
 		sensorProgs = []tus.SensorProg{
 			0: tus.SensorProg{Name: "bpf_nop_sk_msg_fgs", Type: ebpf.SkMsg},
 			1: tus.SensorProg{Name: "bpf_skskb_http_verdict", Type: ebpf.SkSKB},
-
-			// base sensor
-			2: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-			3: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-			4: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
 		}
 	}
 
