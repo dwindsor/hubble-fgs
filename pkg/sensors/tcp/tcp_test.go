@@ -925,17 +925,12 @@ func TestLoadTcpSensor(t *testing.T) {
 			2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
 			3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
 
-			// base sensor
-			4: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-			5: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-			6: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
-
 			// new accept sensor
-			7: tus.SensorProg{Name: "event_tcp_acceptret", Type: ebpf.TracePoint},
-			8: tus.SensorProg{Name: "event_tcp_accept4ret", Type: ebpf.TracePoint},
+			4: tus.SensorProg{Name: "event_tcp_acceptret", Type: ebpf.TracePoint},
+			5: tus.SensorProg{Name: "event_tcp_accept4ret", Type: ebpf.TracePoint},
 
 			// IPv6 sensor
-			9: tus.SensorProg{Name: "event_tcp_v6_send_check", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "event_tcp_v6_send_check", Type: ebpf.Kprobe},
 		}
 	} else {
 		sensorProgs = []tus.SensorProg{
@@ -944,32 +939,26 @@ func TestLoadTcpSensor(t *testing.T) {
 			2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
 			3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
 
-			// base sensor
-			4: tus.SensorProg{Name: "event_execve", Type: ebpf.TracePoint},
-			5: tus.SensorProg{Name: "event_exit", Type: ebpf.TracePoint},
-			6: tus.SensorProg{Name: "event_wake_up_new_task", Type: ebpf.Kprobe},
-
 			// new accept sensor
-			7: tus.SensorProg{Name: "event_tcp_acceptret56", Type: ebpf.TracePoint},
-			8: tus.SensorProg{Name: "event_tcp_accept4ret56", Type: ebpf.TracePoint},
+			4: tus.SensorProg{Name: "event_tcp_acceptret56", Type: ebpf.TracePoint},
+			5: tus.SensorProg{Name: "event_tcp_accept4ret56", Type: ebpf.TracePoint},
 
 			// IPv6 sensor
-			9: tus.SensorProg{Name: "event_tcp_v6_send_check", Type: ebpf.Kprobe},
+			6: tus.SensorProg{Name: "event_tcp_v6_send_check", Type: ebpf.Kprobe},
 		}
 	}
 	var sensorMaps = []tus.SensorMap{
 		// all but base
-		tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 7, 8, 9}},
+		tus.SensorMap{Name: "socket_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
 
 		// all but base, event_tcp_v4_send_check and event_tcp_v6_send_check
-		tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 2, 7, 8}},
+		tus.SensorMap{Name: "socket_map_stats", Progs: []uint{0, 1, 2, 4, 5}},
 
 		// all programs
-		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9}},
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6}},
 
 		// all but event_tcp4_close, event_tcp_v4_send_check and event_tcp_v6_send_check
-		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 4, 5, 6, 7, 8}},
-		// tus.SensorMap{Name: "execve_map_stats", Progs: []uint{4, 5, 6}},
+		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 4, 5}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
