@@ -13,6 +13,7 @@ PARSERDIR = parsers/
 ALIGNCHECKERDIR = alignchecker/
 NETWORKINGDIR := networking/
 ISOPROCESS := process/
+FILEDIR := file/
 PROCESSDIR := $(OSSBPFDIR)/process/
 BPFTESTDIR := $(OSSBPFDIR)/test/
 
@@ -131,14 +132,14 @@ objs/%.ll: $(PROCESSDIR)%.c
 objs/bpf_exit.ll: $(ISOPROCESS)bpf_exit.c
 	$(CLANG) $(CLANG_FLAGS) -c $< -o $@
 
-objs/bpf_file.ll: $(ISOPROCESS)bpf_file.c
+objs/bpf_file.ll: $(FILEDIR)bpf_file.c
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
 
 objs/bpf_execve_event_v53.ll: $(PROCESSDIR)/bpf_execve_event.c
 objs/bpf_generic_kprobe_v53.ll: $(PROCESSDIR)/bpf_generic_kprobe.c
 objs/bpf_generic_retkprobe_v53.ll: $(PROCESSDIR)/bpf_generic_retkprobe.c
 objs/bpf_generic_tracepoint_v53.ll: $(PROCESSDIR)/bpf_generic_tracepoint.c
-objs/bpf_file_v512.ll: $(ISOPROCESS)/bpf_file.c
+objs/bpf_file_v512.ll: $(FILEDIR)/bpf_file.c
 
 objs/%_v53.ll:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -c $< -o $@
@@ -153,7 +154,7 @@ deps/bpf_execve_event_v53.d: $(PROCESSDIR)/bpf_execve_event.c
 deps/bpf_generic_kprobe_v53.d: $(PROCESSDIR)/bpf_generic_kprobe.c
 deps/bpf_generic_retkprobe_v53.d: $(PROCESSDIR)/bpf_generic_retkprobe.c
 deps/bpf_generic_tracepoint_v53.d: $(PROCESSDIR)/bpf_generic_tracepoint.c
-deps/bpf_file_v512.d: $(ISOPROCESS)/bpf_file.c
+deps/bpf_file_v512.d: $(FILEDIR)/bpf_file.c
 
 $(DEPSDIR)%_v53.d:
 	$(CLANG) $(CLANG_FLAGS) -D__LARGE_BPF_PROG -MM -MP -MT $(patsubst $(DEPSDIR)%.d, $(OBJSDIR)%.ll, $@)   $< > $@
