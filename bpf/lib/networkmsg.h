@@ -32,6 +32,7 @@ struct msg_socket_stats {
 	__u32 tozerowin;
 	__u32 sk_drops;
 	__u32 skb_consume_misses;
+	__u64 buckets[8];
 } __attribute__((packed));
 
 // harmonise data structs for ipv4 and ipv6

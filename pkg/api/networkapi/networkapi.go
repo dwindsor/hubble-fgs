@@ -78,6 +78,7 @@ type MsgSocketStatsUnix struct {
 	ToZeroWindow     uint32
 	SkDrop           uint32
 	SkbConsumeMisses uint32
+	Rtt              Histogram
 }
 
 type MsgSocketStats struct {
@@ -91,6 +92,7 @@ type MsgSocketStats struct {
 	ToZeroWindow     uint32
 	SkDrop           uint32
 	SkbConsumeMisses uint32
+	Buckets          [8]uint64
 }
 
 type MsgIPEventUnix struct {
@@ -105,14 +107,14 @@ type MsgIPEventUnix struct {
 }
 
 type Histogram struct {
-	B99 uint32
-	B90 uint32
-	B75 uint32
-	B50 uint32
-	B25 uint32
-	B10 uint32
-	B01 uint32
-	B00 uint32
+	B99 uint64
+	B90 uint64
+	B75 uint64
+	B50 uint64
+	B25 uint64
+	B10 uint64
+	B01 uint64
+	B00 uint64
 }
 
 type MsgInterfaceStats struct {

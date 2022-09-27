@@ -29,6 +29,9 @@ var (
 	tcpBurstTriggerMult uint64
 	watermarkEnabled    = false
 
+	tcpRttHistogramMax uint32
+	tcpRttHistogramMin uint32
+
 	stats          *lru.Cache
 	stataCacheSize = 32000
 )
@@ -104,6 +107,23 @@ var (
 		"kprobe_inet6_csk_xmit",
 		"tcp_sensor")
 
+	// RTT Tracer uses kprobe because its most general solution for optimization
+	// reassons on kernels 5.4+ we might consider using OPS_RTT hook. This is
+	// going to collect the timestamp from the received skb. A couple thinigs are
+	// worth mentioning. (i) we only collect these on established TCP state where
+	// segs_in includes the syn,ack and other friends so expecting counts to add
+	// up to segs_in is not valid. Also segs_in accounts for gro segs where here
+	// we only do single inc on the bucket for entire skb even if it has many segs.
+	// I think this makes some sense but open to discuss it. Anyways, segs_in != sum(count)
+	// (ii) TCP will toss out some RTTs when calculating the relevant function is
+	// tcp_rcv_rtt_measture_ts, typically this is to deal with underflow.
+	RttTracer = program.Builder(
+		"bpf_tcp_rtt.o",
+		"__tcp_ack_snd_check",
+		"kprobe/__tcp_ack_snd_check",
+		"kprobe_tcp_ack_snd_check",
+		"kprobe")
+
 	// Maps for TCP Sockets
 	SocketMap    = program.MapBuilder("socket_map", Connect)
 	TlsSocketMap = program.MapBuilder("tls_socket_map", Connect)
@@ -151,8 +171,12 @@ func EnableTcp() *sensors.Sensor {
 			SendCheck4,
 			SendCheck6,
 		}
-
 	}
+
+	if tcpRttHistogramMax != 0 {
+		progs = append(progs, RttTracer)
+	}
+
 	maps := []*program.Map{
 		SocketStats,
 		SocketMap,
@@ -170,6 +194,8 @@ func EnableTcp() *sensors.Sensor {
 		"burstEnable":      tcpBurstEnable,
 		"burstWindowSize":  tcpBurstWindowSize,
 		"burstTriggerMult": tcpBurstTriggerMult,
+		"maxRttHistogram":  tcpRttHistogramMax,
+		"minRttHistogram":  tcpRttHistogramMin,
 	}).Infof("Enable TCP")
 	tcpSensor := sensors.SensorBuilder("tcp_sensors", progs, maps)
 	tcpSensor.UnloadHook = unloadTcpSensor
@@ -201,6 +227,16 @@ func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 		tcpBurstWindowSize = 0
 		tcpBurstTriggerMult = 0
 	}
+	if spec.Parser.Tcp.RttHistogram.Enable {
+		tcpRttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
+		tcpRttHistogramMin = spec.Parser.Tcp.RttHistogram.Min
+
+		if tcpRttHistogramMax < tcpRttHistogramMin {
+			return nil, fmt.Errorf("Misconfigured Rtt Histogram: Min value must be less than Max")
+		}
+	} else {
+		tcpRttHistogramMax = 0
+	}
 	return EnableTcp(), nil
 }
 
@@ -228,6 +264,7 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, 
 		ToZeroWindow:     curr.ToZeroWindow - last.ToZeroWindow,
 		SkDrop:           curr.SkDrop - last.SkDrop,
 		SkbConsumeMisses: 0,
+		Rtt:              curr.Rtt,
 	}, nil
 }
 
@@ -259,7 +296,7 @@ func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp, err := correctedStatsEvent(ip.MsgToIPUnix(&m))
+	tcp, err := correctedStatsEvent(ip.MsgToIPUnix(&m, true))
 	if err != nil {
 		return nil, nil
 	}
@@ -272,7 +309,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp := ip.MsgToIPUnix(&m)
+	tcp := ip.MsgToIPUnix(&m, true)
 	if tcpInterval > 0 {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)
@@ -293,7 +330,8 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp := ip.MsgToIPUnix(&m)
+	// Do not include RTT in open, listen, binds
+	tcp := ip.MsgToIPUnix(&m, false)
 	return []observer.Event{tcp}, nil
 }
 
@@ -305,7 +343,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	getRunningSockets(true, true)
 
 	if tcpInterval > 0 {
-		configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult)
+		configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
 		err = program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	}
 	return err

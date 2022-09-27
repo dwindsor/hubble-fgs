@@ -12,6 +12,7 @@ struct socketmap_value {
 	__u64 last_time;
 	__u64 sent;
 	__u64 received;
+	__u64 buckets[8];
 };
 
 struct {
@@ -180,6 +181,8 @@ update_socketmap(u64 *cookie, struct msg_tls_ipv4 *t, u32 pid)
 		if (!value)
 			return;
 		if (!process) {
+			int i;
+
 			process = map_lookup_elem(&socket_map_heap, &zero);
 			if (!process)
 				return;
@@ -190,6 +193,10 @@ update_socketmap(u64 *cookie, struct msg_tls_ipv4 *t, u32 pid)
 			process->sent = 0;
 			process->socket_flags = 0;
 			process->zero_window = 0;
+#pragma unroll
+			for (i = 0; i < 8; i++) {
+				process->buckets[i] = 0;
+			}
 			add_socketmap(cookie, t, process);
 		} else {
 			process->key.pid = value->key.pid;

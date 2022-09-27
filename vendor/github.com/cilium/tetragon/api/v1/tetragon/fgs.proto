@@ -25,7 +25,7 @@ package tetragon;
 message HistogramBucket {
 	uint32 percentile = 1;
 	uint32 size = 2;
-	uint32 count = 3;
+	uint64 count = 3;
 }
 
 message Histogram {
@@ -69,6 +69,9 @@ message SocketStats {
     uint32 segs_consumed = 12;
     uint32 segs_submitted = 13;
     uint32 skb_consume_misses = 14;
+
+    // TCP RTT Histogram:
+    Histogram rtt = 15;
 }
 
 enum SocketProtocol {

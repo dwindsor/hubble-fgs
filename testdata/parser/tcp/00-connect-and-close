@@ -11,7 +11,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 156        # size
+  h4 220        # size
   ? 8           # ktime
 
   ## tuple
@@ -38,6 +38,14 @@ EVENT TCPACCEPT
   $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00
 
   ## socket flags
   h4 0x00
@@ -47,7 +55,7 @@ END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 156        # size
+  h4 220        # size
   ? 8           # ktime
 
   ## tuple
@@ -79,6 +87,14 @@ EVENT TCPCONNECTRET
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+  h8 0 # bucket0
+  h8 0 # bucket1
+  h8 0 # bucket2
+  h8 0 # bucket3
+  h8 0 # bucket4
+  h8 0 # bucket5
+  h8 0 # bucket6
+  h8 0 # bucket7
 
   ## socket flags
   h4 0x00
@@ -94,7 +110,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 156        # size
+  h4 220        # size
   ? 8           # ktime
 
   ## tuple
@@ -127,6 +143,14 @@ EVENT TCPCLOSE
   h4 0 # to zero window
   h4 0 # skdrop
   h4 0 # skbconsumemisses
+  h8 0 # bucket0
+  h8 0 # bucket1
+  h8 0 # bucket2
+  h8 0 # bucket3
+  h8 0 # bucket4
+  h8 0 # bucket5
+  h8 0 # bucket6
+  h8 0 # bucket7
 
   ## socket flags
   h4 0x02 # accept
@@ -139,7 +163,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 156        # size
+  h4 220        # size
   ? 8           # ktime
 
   ## tuple
@@ -172,6 +196,14 @@ EVENT TCPCLOSE
   h4 0 # to zero window
   h4 0 # skdrop
   h4 0 # skbconsumemisses
+  h8 0 # bucket0
+  h8 0 # bucket1
+  h8 0 # bucket2
+  h8 0 # bucket3
+  h8 0 # bucket4
+  h8 0 # bucket5
+  h8 0 # bucket6
+  h8 0 # bucket7
 
   ## socket flags
   h4 0x01 # connect
@@ -183,7 +215,7 @@ CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 156        # size
+  h4 220        # size
   ? 8           # ktime
 
   ## tuple
@@ -217,6 +249,14 @@ EVENT TCPCLOSE
   h4 0 # to zero window
   h4 0 # skdrop
   h4 0 # skbconsumemisses
+  h8 0 # bucket0
+  h8 0 # bucket1
+  h8 0 # bucket2
+  h8 0 # bucket3
+  h8 0 # bucket4
+  h8 0 # bucket5
+  h8 0 # bucket6
+  h8 0 # bucket7
 
   ## socket flags
   h4 0x04 # listen

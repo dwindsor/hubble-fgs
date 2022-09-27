@@ -751,7 +751,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	msgUnix := ip.MsgToIPUnix(&m)
+	msgUnix := ip.MsgToIPUnix(&m, false)
 	return []observer.Event{msgUnix}, nil
 }
 

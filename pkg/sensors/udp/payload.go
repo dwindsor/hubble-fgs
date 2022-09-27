@@ -45,7 +45,7 @@ func handleUdpDns(m *api.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) 
 	buf := make([]byte, int(m.Common.Size)-int(unsafe.Sizeof(m)))
 
 	if _, err := r.Read(buf); err != nil {
-		logger.GetLogger().WithError(err).Warnf("Read error")
+		logger.GetLogger().WithError(err).Warnf("Udp Dns Read error")
 		return nil, err
 	}
 

@@ -15,6 +15,14 @@ struct tcp_send_check_sample_cfg {
 	__u64 burstAvgWindowSize;
 	__u64 burstWindowSizeNs;
 	__u64 burstTriggerMult;
+	__u32 bucket00;
+	__u32 bucket01;
+	__u32 bucket10;
+	__u32 bucket25;
+	__u32 bucket50;
+	__u32 bucket75;
+	__u32 bucket90;
+	__u32 bucket99;
 };
 
 struct {
@@ -119,7 +127,7 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 		}
 
 		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-		get_socket_stats(skp, netns, process->zero_window, &val->stats);
+		get_socket_stats(skp, netns, process, &val->stats);
 		size = sizeof(struct msg_ip_event);
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 				  size);

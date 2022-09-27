@@ -26,6 +26,14 @@ type SockStatValue struct {
 	BurstAvgWindowSize uint64
 	BurstWindowSizeNs  uint64
 	BurstTriggerMult   uint64
+	RttBucket0         uint32
+	RttBucket1         uint32
+	RttBucket2         uint32
+	RttBucket3         uint32
+	RttBucket4         uint32
+	RttBucket5         uint32
+	RttBucket6         uint32
+	RttBucket7         uint32
 }
 
 func (v *SockStatValue) String() string {
@@ -42,7 +50,7 @@ func (v *SockStatValue) DeepCopyMapValue() bpf.MapValue {
 }
 
 func configureSockStatSampler(sampleRate time.Duration, burstEnable bool, burstAvgWindowSize uint64,
-	burstTriggerMult uint64) error {
+	burstTriggerMult uint64, rttMax, rttMin uint32) error {
 	m, err := bpf.OpenMap(filepath.Join(bpf.MapPrefixPath(), SendCheckSampler.Name))
 	if err != nil {
 		return err
@@ -57,6 +65,10 @@ func configureSockStatSampler(sampleRate time.Duration, burstEnable bool, burstA
 	if burstEnable {
 		burstEnableVar = 1
 	}
+
+	rttRange := float64(rttMax - rttMin)
+	fRttMin := float64(rttMin)
+
 	/* Convert sample rate from seconds into ns */
 	value := &SockStatValue{
 		KTime:              interval,
@@ -64,11 +76,28 @@ func configureSockStatSampler(sampleRate time.Duration, burstEnable bool, burstA
 		BurstAvgWindowSize: burstAvgWindowSize,
 		BurstWindowSizeNs:  (burstAvgWindowSize * 2 * 1000000) / 3,
 		BurstTriggerMult:   burstTriggerMult + 100,
+		RttBucket0:         rttMin,
+		RttBucket1:         uint32((rttRange * .01) + fRttMin),
+		RttBucket2:         uint32((rttRange * .10) + fRttMin),
+		RttBucket3:         uint32((rttRange * .25) + fRttMin),
+		RttBucket4:         uint32((rttRange * .50) + fRttMin),
+		RttBucket5:         uint32((rttRange * .75) + fRttMin),
+		RttBucket6:         uint32((rttRange * .90) + fRttMin),
+		RttBucket7:         uint32((rttRange * .99) + fRttMin),
 	}
 	m.Update(key, value)
 	logger.GetLogger().WithField("time", sampleRate).Info("Configured TCP sock statistic sampler: ")
 	logger.GetLogger().WithFields(logrus.Fields{"enable": burstEnable,
 		"windowSize":  burstAvgWindowSize,
 		"triggerMult": burstTriggerMult}).Info("Configured TCP watermarks: ")
+	logger.GetLogger().WithFields(logrus.Fields{"rttMin": rttMin, "rttRange": rttRange,
+		"bucket0": value.RttBucket0,
+		"bucket1": value.RttBucket1,
+		"bucket2": value.RttBucket2,
+		"bucket3": value.RttBucket3,
+		"bucket4": value.RttBucket4,
+		"bucket5": value.RttBucket5,
+		"bucket6": value.RttBucket6,
+		"bucket7": value.RttBucket7}).Info("Configured RTT buckets: ")
 	return nil
 }

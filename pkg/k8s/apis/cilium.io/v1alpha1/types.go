@@ -184,6 +184,17 @@ type ParserPolicySpec struct {
 	BurstPoll BurstPollPolicySpec `json:"burstPoll"`
 }
 
+type TcpRttHistogram struct {
+	// Enable TCP RTT Histogram
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Configures the expected RTT Max value
+	Max uint32 `json:"max"`
+	// +kubebuilder:validation:Optional
+	// Configures the expected RTT Min value
+	Min uint32 `json:"min"`
+}
+
 type TcpPolicySpec struct {
 	// Enable TCP statistics
 	Enable bool `json:"enable"`
@@ -193,6 +204,9 @@ type TcpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Network policy specification
 	Burst TcpBurstPolicySpec `json:"burst"`
+	// +kubebuilder:validation:Optional
+	// Rtt Histogram
+	RttHistogram TcpRttHistogram `json:"histogram"`
 }
 
 type TcpBurstPolicySpec struct {

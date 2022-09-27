@@ -61,6 +61,7 @@ type MsgIPEventUnix struct {
 	SocketStats networkapi.MsgSocketStatsUnix
 	SocketFlags uint32
 	RefCntDone  [2]bool
+	Rtt         networkapi.Histogram
 }
 
 func msgToProtocol(event *MsgIPEventUnix) tetragon.SocketProtocol {

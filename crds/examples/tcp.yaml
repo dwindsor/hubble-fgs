@@ -20,6 +20,10 @@ spec:
         enable: true
         windowSize: 1000
         triggerPercent: 50
+      histogram:
+        enable: true
+        min: 0
+        max: 4000
     burstPoll:
       enable: true
       interval: 1000

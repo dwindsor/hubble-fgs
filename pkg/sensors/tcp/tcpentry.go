@@ -30,11 +30,15 @@ type SocketMapKey struct {
 }
 
 type SocketMapValue struct {
-	Pid     uint32 `align:"key"`
-	Pad1    uint32
-	Ktime   uint64
-	ZeroWin uint32 `align:"zero_window"`
-	SFlags  uint32 `align:"socket_flags"`
+	Pid      uint32 `align:"key"`
+	Pad1     uint32
+	Ktime    uint64
+	ZeroWin  uint32 `align:"zero_window"`
+	SFlags   uint32 `align:"socket_flags"`
+	LastTime uint64
+	Sent     uint64
+	Received uint64
+	Buckets  [8]uint64
 }
 
 func (k *SocketMapKey) String() string {

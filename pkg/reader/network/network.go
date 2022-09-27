@@ -14,6 +14,68 @@ import (
 )
 
 func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
+	hist := &tetragon.Histogram{}
+
+	if stats.Rtt.B99 > 0 ||
+		stats.Rtt.B90 > 0 ||
+		stats.Rtt.B75 > 0 ||
+		stats.Rtt.B50 > 0 ||
+		stats.Rtt.B25 > 0 ||
+		stats.Rtt.B10 > 0 ||
+		stats.Rtt.B01 > 0 ||
+		stats.Rtt.B00 > 0 {
+		bucket99 := &tetragon.HistogramBucket{
+			Percentile: 99,
+			Size:       1,
+			Count:      stats.Rtt.B99,
+		}
+		bucket90 := &tetragon.HistogramBucket{
+			Percentile: 90,
+			Size:       9,
+			Count:      stats.Rtt.B90,
+		}
+		bucket75 := &tetragon.HistogramBucket{
+			Percentile: 75,
+			Size:       15,
+			Count:      stats.Rtt.B75,
+		}
+		bucket50 := &tetragon.HistogramBucket{
+			Percentile: 50,
+			Size:       25,
+			Count:      stats.Rtt.B50,
+		}
+		bucket25 := &tetragon.HistogramBucket{
+			Percentile: 25,
+			Size:       25,
+			Count:      stats.Rtt.B25,
+		}
+		bucket10 := &tetragon.HistogramBucket{
+			Percentile: 10,
+			Size:       15,
+			Count:      stats.Rtt.B10,
+		}
+		bucket01 := &tetragon.HistogramBucket{
+			Percentile: 1,
+			Size:       9,
+			Count:      stats.Rtt.B01,
+		}
+		bucket00 := &tetragon.HistogramBucket{
+			Percentile: 0,
+			Size:       1,
+			Count:      stats.Rtt.B00,
+		}
+
+		hist.Buckets = []*tetragon.HistogramBucket{
+			bucket00,
+			bucket01,
+			bucket10,
+			bucket25,
+			bucket50,
+			bucket75,
+			bucket90,
+			bucket99,
+		}
+	}
 	return &tetragon.SocketStats{
 		BytesSubmitted:   stats.BytesSubmitted,
 		BytesConsumed:    stats.BytesConsumed,
@@ -29,6 +91,7 @@ func GetSocketStats(stats *api.MsgSocketStatsUnix) *tetragon.SocketStats {
 		ToZeroWindow:     stats.ToZeroWindow,
 		SkDrop:           stats.SkDrop,
 		SkbConsumeMisses: stats.SkbConsumeMisses,
+		Rtt:              hist,
 	}
 }
 

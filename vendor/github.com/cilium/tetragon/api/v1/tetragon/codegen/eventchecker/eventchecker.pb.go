@@ -5804,7 +5804,7 @@ func (checker *KprobeArgumentChecker) FromKprobeArgument(event *tetragon.KprobeA
 type HistogramBucketChecker struct {
 	Percentile *uint32 `json:"percentile,omitempty"`
 	Size       *uint32 `json:"size,omitempty"`
-	Count      *uint32 `json:"count,omitempty"`
+	Count      *uint64 `json:"count,omitempty"`
 }
 
 // NewHistogramBucketChecker creates a new HistogramBucketChecker
@@ -5849,7 +5849,7 @@ func (checker *HistogramBucketChecker) WithSize(check uint32) *HistogramBucketCh
 }
 
 // WithCount adds a Count check to the HistogramBucketChecker
-func (checker *HistogramBucketChecker) WithCount(check uint32) *HistogramBucketChecker {
+func (checker *HistogramBucketChecker) WithCount(check uint64) *HistogramBucketChecker {
 	checker.Count = &check
 	return checker
 }
@@ -6027,20 +6027,21 @@ nextCheck:
 
 // SocketStatsChecker implements a checker struct to check a SocketStats field
 type SocketStatsChecker struct {
-	BytesSent        *uint64 `json:"bytesSent,omitempty"`
-	BytesReceived    *uint64 `json:"bytesReceived,omitempty"`
-	SegsIn           *uint32 `json:"segsIn,omitempty"`
-	SegsOut          *uint32 `json:"segsOut,omitempty"`
-	Srtt             *uint32 `json:"srtt,omitempty"`
-	RetransmitsBytes *uint64 `json:"retransmitsBytes,omitempty"`
-	RetransmitsSegs  *uint32 `json:"retransmitsSegs,omitempty"`
-	ToZeroWindow     *uint32 `json:"toZeroWindow,omitempty"`
-	SkDrop           *uint32 `json:"skDrop,omitempty"`
-	BytesConsumed    *uint64 `json:"bytesConsumed,omitempty"`
-	BytesSubmitted   *uint64 `json:"bytesSubmitted,omitempty"`
-	SegsConsumed     *uint32 `json:"segsConsumed,omitempty"`
-	SegsSubmitted    *uint32 `json:"segsSubmitted,omitempty"`
-	SkbConsumeMisses *uint32 `json:"skbConsumeMisses,omitempty"`
+	BytesSent        *uint64           `json:"bytesSent,omitempty"`
+	BytesReceived    *uint64           `json:"bytesReceived,omitempty"`
+	SegsIn           *uint32           `json:"segsIn,omitempty"`
+	SegsOut          *uint32           `json:"segsOut,omitempty"`
+	Srtt             *uint32           `json:"srtt,omitempty"`
+	RetransmitsBytes *uint64           `json:"retransmitsBytes,omitempty"`
+	RetransmitsSegs  *uint32           `json:"retransmitsSegs,omitempty"`
+	ToZeroWindow     *uint32           `json:"toZeroWindow,omitempty"`
+	SkDrop           *uint32           `json:"skDrop,omitempty"`
+	BytesConsumed    *uint64           `json:"bytesConsumed,omitempty"`
+	BytesSubmitted   *uint64           `json:"bytesSubmitted,omitempty"`
+	SegsConsumed     *uint32           `json:"segsConsumed,omitempty"`
+	SegsSubmitted    *uint32           `json:"segsSubmitted,omitempty"`
+	SkbConsumeMisses *uint32           `json:"skbConsumeMisses,omitempty"`
+	Rtt              *HistogramChecker `json:"rtt,omitempty"`
 }
 
 // NewSocketStatsChecker creates a new SocketStatsChecker
@@ -6122,6 +6123,11 @@ func (checker *SocketStatsChecker) Check(event *tetragon.SocketStats) error {
 	if checker.SkbConsumeMisses != nil {
 		if *checker.SkbConsumeMisses != event.SkbConsumeMisses {
 			return fmt.Errorf("SocketStatsChecker: SkbConsumeMisses has value %d which does not match expected value %d", event.SkbConsumeMisses, *checker.SkbConsumeMisses)
+		}
+	}
+	if checker.Rtt != nil {
+		if err := checker.Rtt.Check(event.Rtt); err != nil {
+			return fmt.Errorf("SocketStatsChecker: Rtt check failed: %w", err)
 		}
 	}
 	return nil
@@ -6211,6 +6217,12 @@ func (checker *SocketStatsChecker) WithSkbConsumeMisses(check uint32) *SocketSta
 	return checker
 }
 
+// WithRtt adds a Rtt check to the SocketStatsChecker
+func (checker *SocketStatsChecker) WithRtt(check *HistogramChecker) *SocketStatsChecker {
+	checker.Rtt = check
+	return checker
+}
+
 //FromSocketStats populates the SocketStatsChecker using data from a SocketStats field
 func (checker *SocketStatsChecker) FromSocketStats(event *tetragon.SocketStats) *SocketStatsChecker {
 	if event == nil {
@@ -6271,6 +6283,9 @@ func (checker *SocketStatsChecker) FromSocketStats(event *tetragon.SocketStats) 
 	{
 		val := event.SkbConsumeMisses
 		checker.SkbConsumeMisses = &val
+	}
+	if event.Rtt != nil {
+		checker.Rtt = NewHistogramChecker().FromHistogram(event.Rtt)
 	}
 	return checker
 }

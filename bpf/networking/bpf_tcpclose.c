@@ -10,6 +10,7 @@
 #include "bpf_network_helpers.h"
 #include "netns.h"
 #include "bpf_fd_to_sk.h"
+#include "bpf_tcp_send_check.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 #ifdef VMLINUX_KERNEL_VERSION
@@ -108,7 +109,7 @@ event_tcp_close(struct pt_regs *ctx)
 		val->socket_flags = process->socket_flags;
 
 		probe_read(&netns, sizeof(netns), _(&skp->__sk_common.skc_net));
-		get_socket_stats(skp, netns, process->zero_window, &val->stats);
+		get_socket_stats(skp, netns, process, &val->stats);
 
 		size = sizeof(struct msg_ip_event);
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,

@@ -581,6 +581,23 @@ spec:
                       enable:
                         description: Enable TCP statistics
                         type: boolean
+                      histogram:
+                        description: Rtt Histogram
+                        properties:
+                          enable:
+                            description: Enable TCP RTT Histogram
+                            type: boolean
+                          max:
+                            description: Configures the expected RTT Max value
+                            format: int32
+                            type: integer
+                          min:
+                            description: Configures the expected RTT Min value
+                            format: int32
+                            type: integer
+                        required:
+                        - enable
+                        type: object
                       statsInterval:
                         description: Configures the Stat collection interval in seconds
                         format: int32

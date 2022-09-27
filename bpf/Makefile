@@ -25,7 +25,8 @@ NETWORKING = bpf_tcpmon.o bpf_listen.o bpf_tcpclose.o bpf_tcpaccept.o bpf_tcpacc
 	     bpf_kfree_skb.o bpf_sock.o bpf_sock_release.o bpf_sock_release_lazy.o bpf_sock_release_lazy_v56.o \
 	     bpf_inet_send.o bpf_inet_send_lazy.o \
 	     bpf_inet_send_lazy_kp.o bpf_udp_send_recv.o bpf_udp_send_recv_lazy.o bpf_sock_create.o \
-	     bpf_fd_lookup.o bpf_fd_lookup_v56.o bpf_dev_queue_xmit.o bpf_sock_create_v56.o
+	     bpf_fd_lookup.o bpf_fd_lookup_v56.o bpf_dev_queue_xmit.o bpf_sock_create_v56.o \
+	     bpf_tcp_rtt.o
 PROCESS = bpf_execve_event.o bpf_execve_event_v53.o bpf_fork.o bpf_exit.o bpf_generic_kprobe.o \
 	  bpf_generic_kprobe_v53.o bpf_generic_retkprobe.o bpf_generic_retkprobe_v53.o \
 	  bpf_generic_tracepoint.o bpf_generic_tracepoint_v53.o

@@ -13,10 +13,11 @@ struct {
 } ip_error_event_heap SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-get_socket_stats(struct sock *sk, struct net *net, __u32 zerowin,
+get_socket_stats(struct sock *sk, struct net *net, struct socketmap_value *process,
 		 struct msg_socket_stats *stats)
 {
 	struct tcp_sock *tcp = (struct tcp_sock *)sk;
+	int i;
 
 	/* Older kernels will not have these statistics. To get a full set of
 	 * stats run 4.19 or higher.
@@ -43,7 +44,10 @@ get_socket_stats(struct sock *sk, struct net *net, __u32 zerowin,
 		   _(&(tcp->total_retrans)));
 
 	//stats->tozerowin populated in-band TCP hook watching for zero window
-	stats->tozerowin = zerowin;
+	stats->tozerowin = process->zero_window;
+#pragma unroll
+	for (i = 0; i < 8; i++)
+		stats->buckets[i] = process->buckets[i];
 }
 
 static inline __attribute__((always_inline)) void
