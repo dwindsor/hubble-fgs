@@ -35,12 +35,14 @@ import (
 	"github.com/cilium/tetragon/pkg/version"
 	"github.com/cilium/tetragon/pkg/watcher"
 	"github.com/cilium/tetragon/pkg/watcher/crd"
-
 	"github.com/isovalent/hubble-fgs/pkg/bugtool"
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
+
+	// Add enterprise-specific filters to the global registry
+	_ "github.com/isovalent/hubble-fgs/pkg/filters"
 
 	ciliumopt "github.com/cilium/cilium/pkg/option"
 	"github.com/cilium/lumberjack/v2"
