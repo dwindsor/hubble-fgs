@@ -48,8 +48,17 @@ var actionTypeStringTable = map[uint32]string{
 	ActionTypeDnsLookup:  "dnslookup",
 }
 
-func MatchActionSigKill(spec *v1alpha1.KProbeSpec) bool {
-	sels := spec.Selectors
+func MatchActionSigKill(spec interface{}) bool {
+	var sels []v1alpha1.KProbeSelector
+	switch s := spec.(type) {
+	case *v1alpha1.KProbeSpec:
+		sels = s.Selectors
+	case *v1alpha1.TracepointSpec:
+		sels = s.Selectors
+	default:
+		return false
+	}
+
 	for _, s := range sels {
 		for _, act := range s.MatchActions {
 			if strings.ToLower(act.Action) == actionTypeStringTable[ActionTypeSigKill] {
@@ -196,6 +205,9 @@ const (
 	// String ops
 	selectorOpPrefix  = 8
 	selectorOpPostfix = 9
+	// Map ops
+	selectorInMap    = 10
+	selectorNotInMap = 11
 )
 
 func selectorOp(op string) (uint32, error) {
@@ -216,6 +228,10 @@ func selectorOp(op string) (uint32, error) {
 		return selectorOpPrefix, nil
 	case "postfix", "Postfix":
 		return selectorOpPostfix, nil
+	case "InMap":
+		return selectorInMap, nil
+	case "NotInMap":
+		return selectorNotInMap, nil
 	}
 
 	return 0, fmt.Errorf("Unknown op '%s'", op)
@@ -294,7 +310,35 @@ func argSelectorType(arg *v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) (uint3
 	return 0, fmt.Errorf("argFilter for unknown index")
 }
 
-func parseMatchValues(k *KernelSelectorState, values []string, ty uint32) error {
+func writeMatchValuesInMap(k *KernelSelectorState, values []string, ty uint32) error {
+	mid, m := k.newValueMap()
+	for _, v := range values {
+		var val [8]byte
+		switch ty {
+		case argTypeS64, argTypeInt:
+			i, err := strconv.ParseInt(v, 10, 64)
+			if err != nil {
+				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+			}
+			binary.LittleEndian.PutUint64(val[:], uint64(i))
+		case argTypeU64:
+			i, err := strconv.ParseUint(v, 10, 64)
+			if err != nil {
+				return fmt.Errorf("MatchArgs value %s invalid: %x", v, err)
+			}
+			binary.LittleEndian.PutUint64(val[:], uint64(i))
+		default:
+			return fmt.Errorf("Unknown type: %d", ty)
+		}
+		m[val] = struct{}{}
+
+	}
+	// write the map id into the selector
+	WriteSelectorUint32(k, mid)
+	return nil
+}
+
+func writeMatchValues(k *KernelSelectorState, values []string, ty uint32) error {
 	for _, v := range values {
 		switch ty {
 		case argTypeFd, argTypeFile:
@@ -350,12 +394,21 @@ func parseMatchArg(k *KernelSelectorState, arg *v1alpha1.ArgSelector, sig []v1al
 		return fmt.Errorf("argSelector error: %w", err)
 	}
 	WriteSelectorUint32(k, ty)
-	err = parseMatchValues(k, arg.Values, ty)
-	if err != nil {
-		return fmt.Errorf("parseMatchValues error: %w", err)
+	switch op {
+	case selectorInMap, selectorNotInMap:
+		err := writeMatchValuesInMap(k, arg.Values, ty)
+		if err != nil {
+			return fmt.Errorf("writeMatchValuesInMap error: %w", err)
+		}
+	default:
+		err = writeMatchValues(k, arg.Values, ty)
+		if err != nil {
+			return fmt.Errorf("writeMatchValues error: %w", err)
+		}
 	}
+
 	WriteSelectorLength(k, moff)
-	return err
+	return nil
 }
 func parseMatchArgs(k *KernelSelectorState, args []v1alpha1.ArgSelector, sig []v1alpha1.KProbeArg) error {
 	loff := AdvanceSelectorLength(k)
@@ -676,6 +729,14 @@ func parseSelector(
 // valueGen := [type][len][v]
 // valueInt := [len][v]
 func InitKernelSelectors(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KProbeArg) ([4096]byte, error) {
+	kernelSelectors, err := InitKernelSelectorState(selectors, args)
+	if err != nil {
+		return [4096]byte{}, err
+	}
+	return kernelSelectors.e, nil
+}
+
+func InitKernelSelectorState(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KProbeArg) (*KernelSelectorState, error) {
 	kernelSelectors := &KernelSelectorState{}
 
 	WriteSelectorUint32(kernelSelectors, uint32(len(selectors)))
@@ -687,11 +748,11 @@ func InitKernelSelectors(selectors []v1alpha1.KProbeSelector, args []v1alpha1.KP
 		WriteSelectorLength(kernelSelectors, soff[i])
 		loff := AdvanceSelectorLength(kernelSelectors)
 		if err := parseSelector(kernelSelectors, &s, args); err != nil {
-			return kernelSelectors.e, err
+			return nil, err
 		}
 		WriteSelectorLength(kernelSelectors, loff)
 	}
-	return kernelSelectors.e, nil
+	return kernelSelectors, nil
 }
 
 func HasOverride(spec *v1alpha1.KProbeSpec) bool {

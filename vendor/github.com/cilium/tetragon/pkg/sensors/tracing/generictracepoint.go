@@ -9,7 +9,6 @@ import (
 	"errors"
 	"fmt"
 	"path"
-	"path/filepath"
 	"reflect"
 	"sync"
 	"sync/atomic"
@@ -18,7 +17,6 @@ import (
 	"github.com/cilium/tetragon/pkg/api/ops"
 	"github.com/cilium/tetragon/pkg/api/tracingapi"
 	api "github.com/cilium/tetragon/pkg/api/tracingapi"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/grpc/tracing"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
@@ -73,6 +71,8 @@ type genericTracepoint struct {
 
 	// index to access this on genericTracepointTable
 	tableIdx int
+
+	pinPathPrefix string
 }
 
 // genericTracepointArg is the internal representation of an output value of a
@@ -288,7 +288,7 @@ func buildGenericTracepointArgs(info *tracepoint.Tracepoint, specArgs []v1alpha1
 
 // createGenericTracepoint creates the genericTracepoint information based on
 // the user-provided configuration
-func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, error) {
+func createGenericTracepoint(sensorName string, conf *GenericTracepointConf) (*genericTracepoint, error) {
 	tp := tracepoint.Tracepoint{
 		Subsys: conf.Subsystem,
 		Event:  conf.Event,
@@ -310,6 +310,7 @@ func createGenericTracepoint(conf *GenericTracepointConf) (*genericTracepoint, e
 	}
 
 	genericTracepointTable.addTracepoint(ret)
+	ret.pinPathPrefix = sensors.PathJoin(sensorName, fmt.Sprintf("gtp-%d", ret.tableIdx))
 	return ret, nil
 }
 
@@ -318,7 +319,7 @@ func createGenericTracepointSensor(name string, confs []GenericTracepointConf) (
 
 	tracepoints := make([]*genericTracepoint, 0, len(confs))
 	for _, conf := range confs {
-		tp, err := createGenericTracepoint(&conf)
+		tp, err := createGenericTracepoint(name, &conf)
 		if err != nil {
 			return nil, err
 		}
@@ -330,11 +331,10 @@ func createGenericTracepointSensor(name string, confs []GenericTracepointConf) (
 		progName = "bpf_generic_tracepoint_v53.o"
 	}
 
-	sensorDir := name
 	maps := []*program.Map{}
 	progs := make([]*program.Program, 0, len(tracepoints))
 	for _, tp := range tracepoints {
-		pinPath := sensors.PathJoin(sensorDir, fmt.Sprintf("gtp-%d", tp.tableIdx))
+		pinPath := tp.pinPathPrefix
 		pinProg := sensors.PathJoin(pinPath, fmt.Sprintf("%s:%s_prog", tp.Info.Subsys, tp.Info.Event))
 		attach := fmt.Sprintf("%s/%s", tp.Info.Subsys, tp.Info.Event)
 		prog0 := program.Builder(
@@ -356,6 +356,9 @@ func createGenericTracepointSensor(name string, confs []GenericTracepointConf) (
 
 		filterMap := program.MapBuilderPin("filter_map", sensors.PathJoin(pinPath, "filter_map"), prog0)
 		maps = append(maps, filterMap)
+
+		argFilterMaps := program.MapBuilderPin("argfilter_maps", sensors.PathJoin(pinPath, "argfilter_maps"), prog0)
+		maps = append(maps, argFilterMaps)
 	}
 
 	return &sensors.Sensor{
@@ -365,7 +368,7 @@ func createGenericTracepointSensor(name string, confs []GenericTracepointConf) (
 	}, nil
 }
 
-func (tp *genericTracepoint) KernelSelectors() ([4096]byte, error) {
+func (tp *genericTracepoint) KernelSelectors() (*selectors.KernelSelectorState, error) {
 	// rewrite arg index
 	selArgs := make([]v1alpha1.KProbeArg, 0, len(tp.args))
 	selSelectors := make([]v1alpha1.KProbeSelector, 0, len(tp.Spec.Selectors))
@@ -378,7 +381,7 @@ func (tp *genericTracepoint) KernelSelectors() ([4096]byte, error) {
 		tpArg := &tp.args[i]
 		ty, err := tpArg.setGenericTypeId()
 		if err != nil {
-			return [4096]byte{}, fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
+			return nil, fmt.Errorf("output argument %v unsupported: %w", tpArg, err)
 		}
 		selType := selectors.ArgTypeToString(uint32(ty))
 
@@ -400,7 +403,7 @@ func (tp *genericTracepoint) KernelSelectors() ([4096]byte, error) {
 		}
 	}
 
-	return selectors.InitKernelSelectors(selSelectors, selArgs)
+	return selectors.InitKernelSelectorState(selSelectors, selArgs)
 }
 
 func (tp *genericTracepoint) EventConfig() (api.EventConfig, error) {
@@ -433,14 +436,19 @@ func (tp *genericTracepoint) EventConfig() (api.EventConfig, error) {
 		config.ArgM[i] = uint32(0)
 	}
 
+	if selectors.MatchActionSigKill(tp.Spec) {
+		config.Sigkill = 1
+	}
+
 	return config, nil
 }
 
 // ReloadGenericTracepointSelectors will reload a tracepoint by unlinking it, generating new
 // selector data and updating filter_map, and then relinking the tracepoint.
 //
-// This is intentended for speeding up testing, so DO NOT USE elswhere without checking its
-// implementation first because limitations may exist (e.g,. the config map is not updated).
+// This is intended for speeding up testing, so DO NOT USE elsewhere without checking its
+// implementation first because limitations may exist (e.g., the config map is not updated).
+// TODO: pass the sensor here
 func ReloadGenericTracepointSelectors(p *program.Program, conf *v1alpha1.TracepointSpec) error {
 	tpIdx, ok := p.LoaderData.(int)
 	if !ok {
@@ -468,25 +476,13 @@ func ReloadGenericTracepointSelectors(p *program.Program, conf *v1alpha1.Tracepo
 		return err
 	}
 
-	filterName, ok := p.PinMap["filter_map"]
-	if !ok {
-		return fmt.Errorf("cannot find pinned filter_map")
-	}
-
 	kernelSelectors, err := tp.KernelSelectors()
 	if err != nil {
 		return err
 	}
 
-	filterMapPath := filepath.Join(bpf.MapPrefixPath(), filterName)
-	filterMap, err := ebpf.LoadPinnedMap(filterMapPath, nil)
-	if err != nil {
-		return fmt.Errorf("failed to open filter map: %w", err)
-	}
-	defer filterMap.Close()
-
-	if err := filterMap.Update(uint32(0), kernelSelectors, ebpf.UpdateAny); err != nil {
-		return fmt.Errorf("failed to update filter data: %w", err)
+	if err := updateSelectors(kernelSelectors, p.PinMap, tp.pinPathPrefix); err != nil {
+		return err
 	}
 
 	if err := p.Relink(); err != nil {
@@ -514,16 +510,20 @@ func LoadGenericTracepointSensor(bpfDir, mapDir string, load *program.Program, v
 	if err != nil {
 		return err
 	}
-	filter := &program.MapLoad{Name: "filter_map", Data: kernelSelectors[:]}
-	load.MapLoad = append(load.MapLoad, filter)
+	load.MapLoad = append(load.MapLoad, selectorsMaploads(kernelSelectors, tp.pinPathPrefix)...)
 
-	var bin_buf bytes.Buffer
 	config, err := tp.EventConfig()
 	if err != nil {
 		return fmt.Errorf("failed to generate config data for generic tracepoint: %w", err)
 	}
-	binary.Write(&bin_buf, binary.LittleEndian, config)
-	cfg := &program.MapLoad{Name: "config_map", Data: bin_buf.Bytes()[:]}
+	var binBuf bytes.Buffer
+	binary.Write(&binBuf, binary.LittleEndian, config)
+	cfg := &program.MapLoad{
+		Name: "config_map",
+		Load: func(m *ebpf.Map) error {
+			return m.Update(uint32(0), binBuf.Bytes()[:], ebpf.UpdateAny)
+		},
+	}
 	load.MapLoad = append(load.MapLoad, cfg)
 
 	return program.LoadTracepointProgram(bpfDir, mapDir, load, verbose)

@@ -188,7 +188,7 @@ func ParseNopSpec(spec *v1alpha1.NopSpec) ([128]byte, error) {
 		}
 	}
 
-	e = selectors.GetSelectorBuffer(k)
+	e = k.Buffer()
 	copy(match[:], e[:128])
 	return match, nil
 }

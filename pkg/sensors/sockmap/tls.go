@@ -86,7 +86,7 @@ func ParseTLSSpec(spec *v1alpha1.TlsSpec, https *v1alpha1.HttpsSpec) ([128]byte,
 		}
 	}
 
-	e = selectors.GetSelectorBuffer(k)
+	e = k.Buffer()
 	copy(match[:], e[:128])
 	return match, nil
 }

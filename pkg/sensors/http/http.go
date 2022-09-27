@@ -270,7 +270,7 @@ func ParseHTTPSpec(spec *v1alpha1.HttpSpec) ([128]byte, error) {
 		}
 	}
 
-	e = selectors.GetSelectorBuffer(k)
+	e = k.Buffer()
 	copy(match[:], e[:128])
 	return match, nil
 }
