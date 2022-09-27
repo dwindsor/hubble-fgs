@@ -72,6 +72,32 @@ message Filter {
     // Note that this filter never matches events without the pod field (i.e.
     // host process events).
     repeated string labels = 9;
+    // Filter by source_ip field using an address range specified using CIDR notation.
+    repeated IPFilter source_ip_cidr = 1000;
+    // Filter by destination_ip field using an address range specified using CIDR notation.
+    repeated IPFilter destination_ip_cidr = 1001;
+    // Filter by _ip field using an address range specified using CIDR notation.
+    repeated IPFilter ip_cidr = 1002;
+    // Filter by http.request.uri field using RE2 regular expression syntax:
+    // https://github.com/google/re2/wiki/Syntax
+    repeated string uri_regex = 1003;
+    // Filter by tls.sni_name field using RE2 regular expression syntax:
+    // https://github.com/google/re2/wiki/Syntax
+    repeated string sni_regex = 1004;
+    // Filter by destination_names field using RE2 regular expression syntax:
+    // https://github.com/google/re2/wiki/Syntax
+    repeated string desintation_names_regex = 1005;
+    // Filter by destination_pod.name field using RE2 regular expression syntax:
+    // https://github.com/google/re2/wiki/Syntax
+    repeated string destination_pod_regex = 1006;
+}
+
+message IPFilter {
+    // Events to enforce the filter on. Empty implies all events with the field set.
+    repeated EventType event_set = 1;
+    // CIDR(s) describing a network range to filter. Can be a plain IP address in which case
+    // we match exactly one IP.
+    repeated string cidr = 2;
 }
 
 // Determins the behaviour of a field filter
