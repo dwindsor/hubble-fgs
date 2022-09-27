@@ -8,22 +8,6 @@
 // or reproduction of this material is strictly forbidden unless prior written
 // permission is obtained from Isovalent Inc.
 
-package enterprise
-
-import (
-	"encoding/json"
-	"io"
-
-	"github.com/cilium/tetragon/cmd/tetra/getevents"
-	ossEncoder "github.com/cilium/tetragon/pkg/encoder"
-	"github.com/isovalent/hubble-fgs/pkg/encoder"
-)
-
-func init() {
-	getevents.GetEncoder = func(w io.Writer, colorMode ossEncoder.ColorMode, timestamps, compact bool) ossEncoder.EventEncoder {
-		if compact {
-			return encoder.NewEnterpriseEncoder(w, colorMode, timestamps)
-		}
-		return json.NewEncoder(w)
-	}
-}
+// This is a duplicated version of the getevents package from OSS that adds some
+// enterprise-specific flags.
+package getevents
