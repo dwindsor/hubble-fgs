@@ -424,9 +424,7 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 	}
 
 	if parent != nil {
-		if ev.GetParent() == nil {
-			ev.SetParent(parent.GetProcessCopy())
-		}
+		ev.SetParent(parent.GetProcessCopy())
 		if !msg.RefCntDone[exec.ParentRefCnt] {
 			if refAction == refInc {
 				parent.RefInc()
