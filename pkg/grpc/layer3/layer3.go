@@ -30,6 +30,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/dns"
+	"github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/eventmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/podinfo"
@@ -59,6 +60,7 @@ type MsgIPEventUnix struct {
 	SockCookie  uint64
 	SocketStats networkapi.MsgSocketStatsUnix
 	SocketFlags uint32
+	RefCntDone  [2]bool
 }
 
 func msgToProtocol(event *MsgIPEventUnix) tetragon.SocketProtocol {
@@ -424,23 +426,28 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 	if parent != nil {
 		if ev.GetParent() == nil {
 			ev.SetParent(parent.GetProcessCopy())
+		}
+		if !msg.RefCntDone[exec.ParentRefCnt] {
 			if refAction == refInc {
 				parent.RefInc()
 			} else if refAction == refDec {
 				parent.RefDec()
 			}
+			msg.RefCntDone[exec.ParentRefCnt] = true
 		}
-
 	} else {
 		errormetrics.ErrorTotalInc(errormetrics.EventCacheParentInfoFailed)
 		err = eventcache.ErrFailedToGetParentInfo
 	}
 
 	if process != nil {
-		if refAction == refInc {
-			process.RefInc()
-		} else if refAction == refDec {
-			process.RefDec()
+		if !msg.RefCntDone[exec.ProcessRefCnt] {
+			if refAction == refInc {
+				process.RefInc()
+			} else if refAction == refDec {
+				process.RefDec()
+			}
+			msg.RefCntDone[exec.ProcessRefCnt] = true
 		}
 	} else {
 		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
@@ -460,6 +467,7 @@ func (msg *MsgIPEventUnix) Notify() bool {
 
 func (msg *MsgIPEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
+	msg.RefCntDone = [2]bool{false, false}
 	switch msg.Common.Op {
 	case ops.MSG_OP_TCPCONNECTRET,
 		ops.MSG_OP_UDPCONNECT:

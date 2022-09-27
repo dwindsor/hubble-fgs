@@ -24,6 +24,11 @@ var (
 	nodeName = node.GetNodeNameForExport()
 )
 
+const (
+	ParentRefCnt  = 0
+	ProcessRefCnt = 1
+)
+
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.
 func GetProcessExec(proc *process.ProcessInternal) *tetragon.ProcessExec {
 	var fgsParent *tetragon.Process
@@ -237,6 +242,7 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 
 type MsgExitEventUnix struct {
 	processapi.MsgExitEvent
+	RefCntDone [2]bool
 }
 
 func (msg *MsgExitEventUnix) Notify() bool {
@@ -251,7 +257,10 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 	if parent != nil {
 		if ev.GetParent() == nil {
 			ev.SetParent(parent.GetProcessCopy())
-			parent.RefDec()
+			if !msg.RefCntDone[ParentRefCnt] {
+				parent.RefDec()
+				msg.RefCntDone[ParentRefCnt] = true
+			}
 		}
 	} else {
 		errormetrics.ErrorTotalInc(errormetrics.EventCacheParentInfoFailed)
@@ -259,7 +268,10 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 	}
 
 	if internal != nil {
-		internal.RefDec()
+		if !msg.RefCntDone[ProcessRefCnt] {
+			internal.RefDec()
+			msg.RefCntDone[ProcessRefCnt] = true
+		}
 	} else {
 		errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
 		err = eventcache.ErrFailedToGetProcessInfo
@@ -276,6 +288,7 @@ func (msg *MsgExitEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_EXIT:
+		msg.RefCntDone = [2]bool{false, false}
 		e := GetProcessExit(msg)
 		if e != nil {
 			res = &tetragon.GetEventsResponse{
