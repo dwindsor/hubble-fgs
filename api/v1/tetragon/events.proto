@@ -73,10 +73,18 @@ message Filter {
     // host process events).
     repeated string labels = 9;
     // Filter by source_ip field using an address range specified using CIDR notation.
+    //
+    // Example: {"source_ip_cidr": [{"event_set": ["PROCESS_ACCEPT"], "cidr": ["127.0.0.0/16"]}]}
     repeated IPFilter source_ip_cidr = 1000;
     // Filter by destination_ip field using an address range specified using CIDR notation.
+    //
+    // Example: {"destination_ip_cidr": [{"event_set": ["PROCESS_CONNECT"], "cidr": ["8.8.0.0/16"]}]}
     repeated IPFilter destination_ip_cidr = 1001;
-    // Filter by _ip field using an address range specified using CIDR notation.
+    // Filter by IP field using an address range specified using CIDR notation.
+    // This includes source_ip, destination_ip, and ProcessListen's ip field.
+    //
+    // Example 1: {"ip_cidr": [{"cidr": ["127.0.0.1", "8.8.0.0/16"]}]}
+    // Example 2: {"ip_cidr": [{"event_set": ["PROCESS_LISTEN"], "cidr": ["127.0.0.0/16"]}]}
     repeated IPFilter ip_cidr = 1002;
     // Filter by http.request.uri field using RE2 regular expression syntax:
     // https://github.com/google/re2/wiki/Syntax

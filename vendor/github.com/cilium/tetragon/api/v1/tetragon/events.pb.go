@@ -213,10 +213,18 @@ type Filter struct {
 	// host process events).
 	Labels []string `protobuf:"bytes,9,rep,name=labels,proto3" json:"labels,omitempty"`
 	// Filter by source_ip field using an address range specified using CIDR notation.
+	//
+	// Example: {"source_ip_cidr": [{"event_set": ["PROCESS_ACCEPT"], "cidr": ["127.0.0.0/16"]}]}
 	SourceIpCidr []*IPFilter `protobuf:"bytes,1000,rep,name=source_ip_cidr,json=sourceIpCidr,proto3" json:"source_ip_cidr,omitempty"`
 	// Filter by destination_ip field using an address range specified using CIDR notation.
+	//
+	// Example: {"destination_ip_cidr": [{"event_set": ["PROCESS_CONNECT"], "cidr": ["8.8.0.0/16"]}]}
 	DestinationIpCidr []*IPFilter `protobuf:"bytes,1001,rep,name=destination_ip_cidr,json=destinationIpCidr,proto3" json:"destination_ip_cidr,omitempty"`
-	// Filter by _ip field using an address range specified using CIDR notation.
+	// Filter by IP field using an address range specified using CIDR notation.
+	// This includes source_ip, destination_ip, and ProcessListen's ip field.
+	//
+	// Example 1: {"ip_cidr": [{"cidr": ["127.0.0.1", "8.8.0.0/16"]}]}
+	// Example 2: {"ip_cidr": [{"event_set": ["PROCESS_LISTEN"], "cidr": ["127.0.0.0/16"]}]}
 	IpCidr []*IPFilter `protobuf:"bytes,1002,rep,name=ip_cidr,json=ipCidr,proto3" json:"ip_cidr,omitempty"`
 	// Filter by http.request.uri field using RE2 regular expression syntax:
 	// https://github.com/google/re2/wiki/Syntax
