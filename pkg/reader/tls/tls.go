@@ -8,6 +8,7 @@ import (
 	"strconv"
 	"strings"
 
+	"github.com/cilium/tetragon/pkg/logger"
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
 	"github.com/yalue/native_endian"
 )
@@ -130,8 +131,10 @@ func GetTLSSNI(sni [api.SNI_BUFFER_SIZE]byte) (string, string) {
 
 func GetTLSSupportedVersions(flv *api.FLV16, hasLength bool) string {
 	var s []string
-	vers, _ := flv.Bytes()
-	//    ^ TODO handle truncated versions?
+	vers, err := flv.Bytes()
+	if err != nil {
+		logger.GetLogger().WithError(err).Debug("TLS versions vector truncated")
+	}
 
 	if len(vers) < 2 {
 		return ""
