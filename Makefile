@@ -83,6 +83,12 @@ oss-checkout:
 	@echo Vendoring and verifiying modules...
 	make vendor
 
+# Generate compile-commands.json using bear
+.PHONY: compile-commands
+compile-commands:
+	$(MAKE) -C ./bpf clean
+	bear -- $(MAKE) -C ./bpf
+
 ifeq (1,$(LOCAL_CLANG))
 hubble-bpf: hubble-bpf-local
 else
