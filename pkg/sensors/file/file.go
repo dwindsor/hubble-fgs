@@ -13,12 +13,13 @@ package file
 import (
 	"bytes"
 	"encoding/binary"
-	"errors"
 	"fmt"
 	"io/fs"
 	"os"
+	"os/exec"
 	"path"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"syscall"
 	"unsafe"
@@ -31,6 +32,7 @@ import (
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/option"
+	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 
@@ -46,11 +48,12 @@ const (
 	filterIgnore = 0
 	filterMatch  = 1
 
+	AddToMap      = 0
+	RemoveFromMap = 1
+
 	maxLPMpaths     = 4096
 	maxWatchedDirs  = 128 * 1024 // 128K
 	maxWatchedFiles = 128 * 1024 // 128K
-
-	hostRoot = "/hostRoot"
 )
 
 const (
@@ -76,10 +79,10 @@ const (
 	DST_INVALID     = (1 << 19)
 )
 
-var (
-	dirMap  *ebpf.Map
-	fileMap *ebpf.Map
-	lpmMap  *ebpf.Map
+const (
+	dirMapName  = "hash_map_dir_alloc"
+	fileMapName = "hash_map_file_alloc"
+	lpmMapName  = "lpm_trie_map_alloc"
 )
 
 type FimFunc struct {
@@ -136,13 +139,6 @@ var (
 		"hash_map_file_alloc",
 		"hash_map_dir_alloc",
 	}
-)
-
-type WalkOp uint32
-
-const (
-	AddToMap WalkOp = iota
-	RemoveFromMap
 )
 
 type observerFileSensor struct {
@@ -251,7 +247,7 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	}
 
 	if hasFlag(m.Flags, SRC_DIRECTORY) {
-		var op WalkOp
+		var op uint32
 		var action uint32
 
 		path := filepath.Join(dstDir, dstName)
@@ -260,9 +256,14 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			action = filterMatch
 		} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
 			op = RemoveFromMap
-			action = 0
+			action = filterIgnore
 		}
-		WalkPath(path, fileMap, dirMap, lpmMap, op, action, true)
+
+		if option.Config.EnableK8s {
+			ExecWalkPath(path, option.Config.MapDir, op, action, true)
+		} else {
+			WalkPath(path, option.Config.MapDir, op, action, true)
+		}
 	}
 
 	// The following should not be possible to happen. If we catch any of these we should handle them
@@ -407,140 +408,48 @@ func CheckFileMode(mode fs.FileMode, path string) {
 	}
 }
 
-func normalizePath(path string) string {
-	p := path
-	if option.Config.EnableK8s {
-		p = strings.TrimPrefix(p, hostRoot)
-	}
-	return p
-}
-
-// based on https://cs.opensource.google/go/go/+/refs/tags/go1.19.1:src/path/filepath/symlink.go;l=15
-// Main changes:
-// 1. Adds the hostRoot prefix in the path if this is missing. Otherwise it fails to evaluate symlink.
-// 2. Removed all Windows-specifc cases.
-func walkSymlinks(path string) (string, error) {
-	volLen := 0
-	pathSeparator := string(os.PathSeparator)
-
-	if volLen < len(path) && os.IsPathSeparator(path[volLen]) {
-		volLen++
-	}
-	vol := path[:volLen]
-	dest := vol
-	linksWalked := 0
-	for start, end := volLen, volLen; start < len(path); start = end { // nolint
-		for start < len(path) && os.IsPathSeparator(path[start]) {
-			start++
-		}
-		end = start
-		for end < len(path) && !os.IsPathSeparator(path[end]) {
-			end++
-		}
-
-		// The next path component is in path[start:end].
-		if end == start {
-			// No more path components.
-			break
-		} else if path[start:end] == "." {
-			// Ignore path component ".".
-			continue
-		} else if path[start:end] == ".." {
-			// Back up to previous component if possible.
-			// Note that volLen includes any leading slash.
-
-			// Set r to the index of the last slash in dest,
-			// after the volume.
-			var r int
-			for r = len(dest) - 1; r >= volLen; r-- {
-				if os.IsPathSeparator(dest[r]) {
-					break
-				}
-			}
-			if r < volLen || dest[r+1:] == ".." {
-				// Either path has no slashes
-				// (it's empty or just "C:")
-				// or it ends in a ".." we had to keep.
-				// Either way, keep this "..".
-				if len(dest) > volLen {
-					dest += pathSeparator
-				}
-				dest += ".."
-			} else {
-				// Discard everything since the last slash.
-				dest = dest[:r]
-			}
-			continue
-		}
-
-		// Ordinary path component. Add it to result.
-		if len(dest) > 0 && !os.IsPathSeparator(dest[len(dest)-1]) {
-			dest += pathSeparator
-		}
-
-		dest += path[start:end]
-
-		// Resolve symlink.
-		if option.Config.EnableK8s && !strings.HasPrefix(dest, hostRoot) {
-			dest = filepath.Join(hostRoot, dest)
-		}
-		fi, err := os.Lstat(dest)
-		if err != nil {
-			return filepath.Clean(dest), err
-		}
-
-		if fi.Mode()&fs.ModeSymlink == 0 {
-			if !fi.Mode().IsDir() && end < len(path) {
-				return "", syscall.ENOTDIR
-			}
-			continue
-		}
-
-		// Found symlink.
-		linksWalked++
-		if linksWalked > 255 {
-			return "", errors.New("EvalSymlinks: too many links")
-		}
-
-		link, err := os.Readlink(dest)
-		if err != nil {
-			return "", err
-		}
-
-		path = link + path[end:]
-
-		if len(link) > 0 && os.IsPathSeparator(link[0]) {
-			// Symlink to absolute path.
-			dest = link[:1]
-			end = 1
+func ExecWalkPath(paths string, mapDir string, op uint32, action uint32, checkPrefix bool) {
+	cmd := exec.Command("fs-scanner",
+		"-paths", paths,
+		"-mapDir", mapDir,
+		"-walkOp", strconv.FormatUint(uint64(op), 10),
+		"-filterAction", strconv.FormatUint(uint64(action), 10),
+		"-checkPrefix", strconv.FormatBool(checkPrefix),
+		"-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10),
+	)
+	cmd.Stdout = os.Stdout
+	cmd.Stderr = os.Stderr
+	if err := cmd.Run(); err != nil {
+		if exitError, ok := err.(*exec.ExitError); ok {
+			logger.GetLogger().Warnf("fs-scanner exit code is %d", exitError.ExitCode())
 		} else {
-			// Symlink to relative path; replace last
-			// path component in dest.
-			var r int
-			for r = len(dest) - 1; r >= volLen; r-- {
-				if os.IsPathSeparator(dest[r]) {
-					break
-				}
-			}
-			if r < volLen {
-				dest = vol
-			} else {
-				dest = dest[:r]
-			}
-			end = 0
+			logger.GetLogger().Warnf("cmd.run: %v", err)
 		}
 	}
-	return filepath.Clean(dest), nil
 }
 
-func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle *ebpf.Map, op WalkOp, action uint32, checkPrefix bool) {
+func WalkPath(path string, mapDir string, op uint32, action uint32, checkPrefix bool) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
 
-	if option.Config.EnableK8s {
-		path = filepath.Join(hostRoot, path)
+	fileHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, fileMapName), nil)
+	if err != nil {
+		return
 	}
+	defer fileHandle.Close()
+
+	dirHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, dirMapName), nil)
+	if err != nil {
+		return
+	}
+	defer dirHandle.Close()
+
+	lpmHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, lpmMapName), nil)
+	if err != nil {
+		return
+	}
+	defer fileHandle.Close()
 
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
@@ -555,9 +464,9 @@ func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle 
 		}
 
 		if IsSymlink(mode) {
-			link, err := walkSymlinks(path)
+			link, err := filepath.EvalSymlinks(path)
 			if err != nil {
-				l.WithError(err).Infof("Cannot resolve symlink %s -> %s", path, link)
+				l.WithError(err).Infof("Cannot resolve symlink %s", link)
 				return nil
 			}
 			path = link
@@ -584,14 +493,13 @@ func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle 
 			if op == AddToMap {
 				var val fileapi.HashMapFileVal
 
-				filePath := normalizePath(path)
 				val.Action = action
-				val.PathSize = uint32(len(filePath))
-				copy(val.FullPath[:], filePath)
+				val.PathSize = uint32(len(path))
+				copy(val.FullPath[:], path)
 
 				addToMap := true
 				if checkPrefix {
-					if lookupFilter(lpmHandle, filePath) == filterIgnore {
+					if lookupFilter(lpmHandle, path) == filterIgnore {
 						addToMap = false
 					}
 				}
@@ -616,23 +524,22 @@ func WalkPath(path string, fileHandle *ebpf.Map, dirHandle *ebpf.Map, lpmHandle 
 				DevMinor: getDevMinor(stat.Dev),
 			}
 
-			dirPath := normalizePath(path)
 			if op == AddToMap {
 				var val fileapi.HashMapFileVal
 
 				// We should habe all directory names to end with "/"
 				// Check if this is the case, otherwise add it.
-				if dirPath[len(dirPath)-1:] != "/" {
-					dirPath += "/"
+				if path[len(path)-1:] != "/" {
+					path += "/"
 				}
 
 				val.Action = action
-				val.PathSize = uint32(len(dirPath))
-				copy(val.FullPath[:], dirPath)
+				val.PathSize = uint32(len(path))
+				copy(val.FullPath[:], path)
 
 				addToMap := true
 				if checkPrefix {
-					if lookupFilter(lpmHandle, dirPath) == filterIgnore {
+					if lookupFilter(lpmHandle, path) == filterIgnore {
 						addToMap = false
 					}
 				}
@@ -686,9 +593,21 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		LoadPinOptions: ebpf.LoadPinOptions{},
 	}
 
-	lpmMap, err = ebpf.NewMapWithOptions(ms, mo)
+	lpmMap, err := ebpf.NewMapWithOptions(ms, mo)
 	if err != nil {
 		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
+	}
+
+	for _, str := range kprobes.Paths {
+		if err := addFilter(lpmMap, str, filterMatch); err != nil {
+			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
+		}
+	}
+
+	for _, str := range kprobes.PathsExclude {
+		if err := addFilter(lpmMap, str, filterIgnore); err != nil {
+			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
+		}
 	}
 
 	hs := &ebpf.MapSpec{
@@ -701,7 +620,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		Pinning:    ebpf.PinByName,
 	}
 
-	fileMap, err = ebpf.NewMapWithOptions(hs, mo)
+	_, err = ebpf.NewMapWithOptions(hs, mo)
 	if err != nil {
 		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
 	}
@@ -716,27 +635,40 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		Pinning:    ebpf.PinByName,
 	}
 
-	dirMap, err = ebpf.NewMapWithOptions(ds, mo)
+	_, err = ebpf.NewMapWithOptions(ds, mo)
 	if err != nil {
 		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
 	}
 
-	for _, str := range kprobes.Paths {
-		l.Infof("WatchPath = %s", str)
-		err := addFilter(lpmMap, str, filterMatch)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
+	if option.Config.EnableK8s {
+		if len(kprobes.Paths) > 0 {
+			l.Infof("WatchPaths:")
+			for _, p := range kprobes.Paths {
+				if strings.Contains(p, ":") {
+					return nil, fmt.Errorf("watchPath %s cannot contain a ':'", p)
+				}
+			}
+			ExecWalkPath(strings.Join(kprobes.Paths[:], ":"), option.Config.MapDir, AddToMap, filterMatch, false)
 		}
-		WalkPath(str, fileMap, dirMap, lpmMap, AddToMap, filterMatch, false)
-	}
+		if len(kprobes.PathsExclude) > 0 {
+			l.Infof("ExcludePaths:")
+			for _, p := range kprobes.PathsExclude {
+				if strings.Contains(p, ":") {
+					return nil, fmt.Errorf("excludePath %s cannot include a ':'", p)
+				}
+			}
+			ExecWalkPath(strings.Join(kprobes.PathsExclude[:], ":"), option.Config.MapDir, AddToMap, filterIgnore, false)
+		}
+	} else {
+		for _, str := range kprobes.Paths {
+			l.Infof("WatchPath = %s", str)
+			WalkPath(str, option.Config.MapDir, AddToMap, filterMatch, false)
+		}
 
-	for _, str := range kprobes.PathsExclude {
-		l.Infof("ExcludePaths = %s", str)
-		err := addFilter(lpmMap, str, filterIgnore)
-		if err != nil {
-			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
+		for _, str := range kprobes.PathsExclude {
+			l.Infof("ExcludePaths = %s", str)
+			WalkPath(str, option.Config.MapDir, AddToMap, filterIgnore, false)
 		}
-		WalkPath(str, fileMap, dirMap, lpmMap, AddToMap, filterIgnore, false)
 	}
 
 	for _, h := range fimProgs {
@@ -807,12 +739,6 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 		if !kernels.MinKernelVersion("5.4.0") {
 			logger.GetLogger().Warnf("FileMonitoring requires at least 5.4.0 version")
 			return nil, nil
-		}
-		if option.Config.EnableK8s {
-			if _, err := os.Stat(hostRoot); os.IsNotExist(err) {
-				logger.GetLogger().Warnf("FileMonitoring in k8s requires %s to be mounted and point to the host file system", hostRoot)
-				return nil, nil
-			}
 		}
 		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
 		progs, err := findHooks()

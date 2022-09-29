@@ -17,6 +17,7 @@ hubble-fgs
 fgs-alignchecker
 fgs-bench
 checkerpc
+fs-scanner
 contrib/tester-progs/capabilities-tester
 contrib/tester-progs/dup-tester
 contrib/tester-progs/fork-tester

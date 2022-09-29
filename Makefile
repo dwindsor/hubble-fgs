@@ -123,6 +123,9 @@ fgs-alignchecker:
 	make -C $(OSS_DIR) tetragon-alignchecker
 	cp $(OSS_DIR)/tetragon-alignchecker fgs-alignchecker
 
+fs-scanner: cmd/fs-scanner/fs-scanner.go
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/fs-scanner/
+
 .PHONY: ksyms
 ksyms:
 	make -C $(OSS_DIR) ksyms
@@ -131,6 +134,7 @@ ksyms:
 hubble-fgs-image:
 	GOOS=linux GOARCH=amd64 $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-fgs/
 	GOOS=linux GOARCH=amd64 $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-enterprise/
+	GOOS=linux GOARCH=amd64 $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fs-scanner/
 
 hubble-enterprise-operator-image:
 	CGO_ENABLED=0 $(GO) build -ldflags=$(GO_OPERATOR_IMAGE_LDFLAGS) -mod=vendor -o hubble-enterprise-operator ./operator

@@ -41,6 +41,7 @@ RUN addgroup hubble	       && \
 COPY --from=bpftool-builder /src/linux/tools/bpf/bpftool/bpftool /usr/bin/bpftool
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-fgs /usr/bin/
 COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/hubble-enterprise /usr/bin/
+COPY --from=hubble-builder /go/src/github.com/isovalent/hubble-fgs/fs-scanner /usr/bin/
 COPY --from=gops /go/bin/gops /bin /usr/bin/
 COPY --from=bpf-builder /go/src/github.com/isovalent/hubble-fgs/bpf/objs/*.o /var/lib/hubble-fgs/
 RUN ln -s /usr/bin/hubble-enterprise /usr/bin/hubble-fgs-printer
