@@ -29,6 +29,11 @@ enum { hook_undef = 0,
        hook_vfs_open = 11,
 };
 
+struct retprobe_key {
+	__u64 pid_tgid;
+	__u64 reg;
+};
+
 struct vfs_mkdir_info {
 	struct inode *inode;
 	struct dentry *dentry;

@@ -77,14 +77,14 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, __u64);
+	__type(key, struct retprobe_key);
 	__type(value, struct vfs_mkdir_info);
 	__uint(max_entries, 1024);
 } mkdir_retprobe_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, __u64);
+	__type(key, struct retprobe_key);
 	__type(value, struct vfs_rename_info);
 	__uint(max_entries, 1024);
 } rename_retprobe_map SEC(".maps");
@@ -779,15 +779,19 @@ BPF_KPROBE(vfs_rmdir, struct inode *dir, struct dentry *dentry)
 #endif
 
 static inline __attribute__((always_inline)) int
-kprobe_vfs_mkdir(struct inode *dir, struct dentry *dentry, umode_t mode)
+kprobe_vfs_mkdir(struct pt_regs *ctx, struct inode *dir, struct dentry *dentry,
+		 umode_t mode)
 {
-	u64 pid_tgid = get_current_pid_tgid();
-	struct vfs_mkdir_info value;
+	struct retprobe_key key = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+	};
+	struct vfs_mkdir_info value = {
+		.inode = dir,
+		.dentry = dentry,
+	};
 
-	value.inode = dir;
-	value.dentry = dentry;
-
-	map_update_elem(&mkdir_retprobe_map, &pid_tgid, &value, 0);
+	map_update_elem(&mkdir_retprobe_map, &key, &value, 0);
 
 	return 0;
 }
@@ -797,13 +801,13 @@ __attribute__((section(("kprobe/vfs_mkdir")), used)) int
 BPF_KPROBE(vfs_mkdir, struct user_namespace *mnt_userns, struct inode *dir,
 	   struct dentry *dentry, umode_t mode)
 {
-	return kprobe_vfs_mkdir(dir, dentry, mode);
+	return kprobe_vfs_mkdir(ctx, dir, dentry, mode);
 }
 #else
 __attribute__((section(("kprobe/vfs_mkdir")), used)) int
 BPF_KPROBE(vfs_mkdir, struct inode *dir, struct dentry *dentry, umode_t mode)
 {
-	return kprobe_vfs_mkdir(dir, dentry, mode);
+	return kprobe_vfs_mkdir(ctx, dir, dentry, mode);
 }
 #endif
 
@@ -811,7 +815,10 @@ BPF_KPROBE(vfs_mkdir, struct inode *dir, struct dentry *dentry, umode_t mode)
 __attribute__((section(("kretprobe/vfs_mkdir")), used)) int
 BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 {
-	u64 pid_tgid = get_current_pid_tgid();
+	struct retprobe_key rkey = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+	};
 	struct vfs_mkdir_info *val;
 	struct inode *inode, *d_inode;
 	struct dentry *dentry;
@@ -827,11 +834,11 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	struct qstr d_name;
 
 	if (ret) {
-		map_delete_elem(&mkdir_retprobe_map, &pid_tgid);
+		map_delete_elem(&mkdir_retprobe_map, &rkey);
 		return 0;
 	}
 
-	val = map_lookup_elem(&mkdir_retprobe_map, &pid_tgid);
+	val = map_lookup_elem(&mkdir_retprobe_map, &rkey);
 	if (!val)
 		return 0;
 
@@ -971,7 +978,10 @@ BPF_KPROBE(security_path_rename, const struct path *old_dir,
 	   struct dentry *old_dentry, const struct path *new_dir,
 	   struct dentry *new_dentry, unsigned int flags)
 {
-	u64 pid_tgid = get_current_pid_tgid();
+	struct retprobe_key k = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+	};
 	struct vfs_rename_info *v;
 	int zero = 0;
 
@@ -984,7 +994,7 @@ BPF_KPROBE(security_path_rename, const struct path *old_dir,
 	v->need_old = 0;
 	v->need_new = 0;
 
-	map_update_elem(&rename_retprobe_map, &pid_tgid, v, 0);
+	map_update_elem(&rename_retprobe_map, &k, v, 0);
 	return 0;
 }
 
@@ -992,8 +1002,11 @@ __attribute__((section(("kretprobe/security_path_rename")), used)) int
 BPF_KRETPROBE(security_path_rename_exit, long ret)
 {
 	if (ret) {
-		u64 pid_tgid = get_current_pid_tgid();
-		map_delete_elem(&rename_retprobe_map, &pid_tgid);
+		struct retprobe_key k = {
+			.pid_tgid = get_current_pid_tgid(),
+			.reg = PT_REGS_FP_CORE(ctx),
+		};
+		map_delete_elem(&rename_retprobe_map, &k);
 	}
 	return 0;
 }
@@ -1012,11 +1025,15 @@ rename_copy_dname(struct dentry *dentry, struct msg_rename_elem *pth)
 }
 
 static inline __attribute__((always_inline)) int
-kprobe_vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
-		  struct inode *new_dir, struct dentry *new_dentry,
+kprobe_vfs_rename(struct pt_regs *ctx, struct inode *old_dir,
+		  struct dentry *old_dentry, struct inode *new_dir,
+		  struct dentry *new_dentry,
 		  struct inode **delegated_inode /*, unsigned int flags */)
 {
-	u64 pid_tgid = get_current_pid_tgid();
+	struct retprobe_key k = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+	};
 	struct vfs_rename_info *v;
 	struct inode *d_inode;
 	bool walker = 0;
@@ -1024,7 +1041,7 @@ kprobe_vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 	__u32 ppid;
 	umode_t i_mode;
 
-	v = map_lookup_elem(&rename_retprobe_map, &pid_tgid);
+	v = map_lookup_elem(&rename_retprobe_map, &k);
 	if (!v) // If not found just return. This is a call to vfs_rename without a previous call to security_path_rename so something kernel internal.
 		return 0;
 
@@ -1138,7 +1155,7 @@ kprobe_vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 		}
 
 		if (!src_watched && !dst_watched) {
-			map_delete_elem(&rename_retprobe_map, &pid_tgid);
+			map_delete_elem(&rename_retprobe_map, &k);
 			return 0;
 		}
 	}
@@ -1194,7 +1211,7 @@ kprobe_vfs_rename(struct inode *old_dir, struct dentry *old_dentry,
 
 	if (v->need_old) {
 		if (v->need_new) {
-			map_delete_elem(&rename_retprobe_map, &pid_tgid);
+			map_delete_elem(&rename_retprobe_map, &k);
 			return 0;
 		}
 		v->msg.flags |= MOVE_INSIDE;
@@ -1229,7 +1246,7 @@ BPF_KPROBE(vfs_rename, struct renamedata *rd)
 {
 	struct renamedata d;
 	probe_read(&d, sizeof(struct renamedata), rd);
-	return kprobe_vfs_rename(d.old_dir, d.old_dentry, d.new_dir,
+	return kprobe_vfs_rename(ctx, d.old_dir, d.old_dentry, d.new_dir,
 				 d.new_dentry, d.delegated_inode);
 }
 #else
@@ -1238,7 +1255,7 @@ BPF_KPROBE(vfs_rename, struct inode *old_dir, struct dentry *old_dentry,
 	   struct inode *new_dir, struct dentry *new_dentry,
 	   struct inode **delegated_inode /*, unsigned int flags */)
 {
-	return kprobe_vfs_rename(old_dir, old_dentry, new_dir, new_dentry,
+	return kprobe_vfs_rename(ctx, old_dir, old_dentry, new_dir, new_dentry,
 				 delegated_inode);
 }
 #endif
@@ -1366,7 +1383,10 @@ generate_file_val(struct msg_rename_elem *dir, struct msg_rename_elem *name)
 __attribute__((section(("kretprobe/vfs_rename")), used)) int
 BPF_KRETPROBE(vfs_rename_exit, long ret)
 {
-	u64 pid_tgid = get_current_pid_tgid();
+	struct retprobe_key k = {
+		.pid_tgid = get_current_pid_tgid(),
+		.reg = PT_REGS_FP_CORE(ctx),
+	};
 	struct vfs_rename_info *val;
 	struct msg_file_rename_ops *msg;
 	struct hash_map_file_val *file_val = 0;
@@ -1375,12 +1395,12 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 
 	// rename failed
 	if (ret) {
-		map_delete_elem(&rename_retprobe_map, &pid_tgid);
+		map_delete_elem(&rename_retprobe_map, &k);
 		return 0;
 	}
 
 	// check for the metadata from the kprobe
-	val = map_lookup_elem(&rename_retprobe_map, &pid_tgid);
+	val = map_lookup_elem(&rename_retprobe_map, &k);
 	if (!val)
 		return 0;
 
