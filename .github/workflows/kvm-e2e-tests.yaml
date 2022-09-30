@@ -14,41 +14,39 @@ concurrency:
 
 env:
   clusterName: fgs-cli-ci
-  zone: us-west2-a
-  vmName: fgs-ci-e2e-tests-${{ github.run_id }}
-  vmHost: fgs@fgs-ci-e2e-tests-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v5
 
 jobs:
   run-tests:
-    runs-on: ubuntu-latest
+    runs-on:
+    - majestic-ketchup
     timeout-minutes: 90
     strategy:
-      max-parallel: 1
+      fail-fast: false
       matrix:
         kernel:
-          - '5.15.47'
-          - '5.10.122'
-          - '5.4.198'
-          - '4.19.179'
-    outputs:
-      job_status: ${{ job.status }}
+          - '5.15'
+          - '5.10'
+          - '5.4'
+          - '4.19'
     steps:
-      - uses: actions/checkout@v3
+      - name: Install Dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y cpu-checker qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager
+
+      - name: Dump KVM Info
+        run: |
+          cat /sys/module/kvm_intel/parameters/nested
+          egrep -c '(vmx|svm)' /proc/cpuinfo
+          echo "${{ matrix.kernel }}"
+          kvm-ok
+          sudo systemctl is-active libvirtd
+
+      - name: Checkout Git Repo
+        uses: actions/checkout@v3
         with:
           path: hubble-fgs
           submodules: true
-
-      - name: Set up ssh client
-        run: |
-            sudo apt-get -y install openssh-client
-            mkdir -p ~/.ssh && chmod 700 ~/.ssh
-            echo "${{ secrets.KVM_SSH_FINGERPRINT }}" >> ~/.ssh/known_hosts
-            chmod 600 ~/.ssh/known_hosts
-
-      - uses: webfactory/ssh-agent@v0.5.4
-        with:
-            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
 
       - name: Set up job variables
         id: vars
@@ -66,91 +64,41 @@ jobs:
           echo ::set-output name=agentImage::quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}
           echo ::set-output name=operatorImage::quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}
 
-      - name: Authenticate with gcloud
-        uses: 'google-github-actions/auth@v0'
-        with:
-          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-          credentials_json: '${{ secrets.CILIUM_PR_GCP_SA_KEY }}'
-          create_credentials_file: true
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v0
-        with:
-          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-
-      - name: Install beta component
-        run: gcloud components install beta && gcloud info
-
-      - name: Create VM if needed
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            # Probe to see if VM already exists and, if so, exit early
-            # Otherwise let's keep going
-            gcloud compute ssh --quiet fgs@${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a" && exit 0 || true
-
-            # Create the vm
-            gcloud beta compute instances create ${{ env.vmName }} --quiet --zone ${{ env.zone }} \
-              --machine-type n1-standard-4 --min-cpu-platform "Intel Haswell" \
-              --enable-nested-virtualization \
-              --source-machine-image ${{ env.machineImage }} \
-              --preemptible --no-restart-on-failure --maintenance-policy=terminate \
-              --service-account isovalent-hubble-fgs-sa@cilium-pr.iam.gserviceaccount.com
-
-      - name: Set up ssh into VM
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            gcloud compute ssh --quiet fgs@${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a"
-            gcloud compute config-ssh --quiet
-            ssh ${{ env.vmHost }} 'whoami && uname -a'
-
-      - name: Copy over FGS
+      - name: Install Cilium CLI
         run: |
-          # Break out early if hubble-fgs directory already exists
-          ssh ${{ env.vmHost }} "ls hubble-fgs" && exit 0 || true
+          CILIUM_CLI_VERSION=$(curl -s https://raw.githubusercontent.com/cilium/cilium-cli/master/stable.txt)
+          GOOS=$(go env GOOS)
+          GOARCH=$(go env GOARCH)
+          curl -L --remote-name-all https://github.com/cilium/cilium-cli/releases/download/${CILIUM_CLI_VERSION}/cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
+          sha256sum --check cilium-${GOOS}-${GOARCH}.tar.gz.sha256sum
+          sudo tar -xzvf cilium-${GOOS}-${GOARCH}.tar.gz
+          rm cilium-${GOOS}-${GOARCH}.tar.gz{,.sha256sum}
 
-          # Copy over FGS
-          tar cz hubble-fgs | ssh ${{ env.vmHost }} 'tar xz'
-
-      - name: Spin up KVM
-        uses: nick-invision/retry@v2
+      - name: Provision LVH VM
+        uses: willfindlay/little-vm-helper-action@10a59636e89103bbec4f986d1965374876464aae
         with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            # Setup custom config file for contrib/kvm so that it points to the right disk
-            # image and kernel
-            cat <<-EOF | ssh ${{ env.vmHost }} 'cat >> hubble-fgs/contrib/kvm/conf'
-              ROOTIMG="/home/fgs/img/kvm.img"
-              BZIMAGE="/home/fgs/kernels/${{ matrix.kernel }}"
-              FGSDIR="/home/fgs/hubble-fgs"
-              VMRAM=8G
-            EOF
+          test-name: tetragon-e2e
+          image: kind
+          image-version: '${{ matrix.kernel }}'
+          lvh-version: 'v0.0.1'
+          host-mount: ./
+          ssh-port: 2222
+          cmd: |
+            set -eux
 
-            # Spin up KVM
-            cat <<-EOF | ssh ${{ env.vmHost }}
-              hubble-fgs/contrib/kvm/run.sh
-            EOF
+            systemd-detect-virt
+            (systemd-detect-virt | grep -q -i kvm) || { echo 'No KVM support detected! Bailing out...'; exit 1; }
 
-            # Ensure VM is running. If not, back off for 10 seconds and exit with a bad
-            # status code so we can try again.
-            if ! ssh ${{ env.vmHost }} 'ps ax | grep "qemu-system"'; then
-              sleep 10
-              exit 1
-            fi
+            cd /host/hubble-fgs
 
-            # Set up an ssh tunnel into the VM
-            ssh ${{ env.vmHost }} -NL 3000:localhost:3000 & sleep 10
+            mv /host/cilium /bin/cilium
+            echo 'nameserver 1.1.1.1' > /etc/resolv.conf
 
-            # Verify we can login via the tunnel
-            ssh -p 3000 root@localhost "uname -a"
+            kind create cluster --name ${{ env.clusterName }}
+            cilium install
+            curl https://raw.githubusercontent.com/helm/helm/main/scripts/get-helm-3 | bash
 
-      - name: Attempt to pull the FGS image
+      - name: Attempt To Pull Docker Images
         uses: nick-invision/retry@v2
         with:
           timeout_minutes: 2
@@ -161,130 +109,46 @@ jobs:
             docker pull ${{ steps.vars.outputs.agentImage }}
             docker pull ${{ steps.vars.outputs.operatorImage }}
 
-      - name: Set up kind cluster
+      - name: Load Docker Images Into LVH
         run: |
-          # Check if the image is already loaded and, if so, break out early
-          if [[ "$(ssh -p 3000 root@localhost 'docker images -q ${{ steps.vars.outputs.agentImage }}')" != "" ]]; then
-            exit 0
-          fi
+            docker save ${{ steps.vars.outputs.agentImage }} ${{ steps.vars.outputs.operatorImage }} | ssh -p 2222 root@localhost -o "StrictHostKeyChecking=no" "docker load"
 
-          docker save ${{ steps.vars.outputs.agentImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
-          docker save ${{ steps.vars.outputs.operatorImage }} | bzip2 | ssh -p 3000 root@localhost "docker load"
+      - name: Run Tests
+        uses: willfindlay/little-vm-helper-action@10a59636e89103bbec4f986d1965374876464aae
+        with:
+          provision: 'false'
+          cmd: |
+            set -eux
+            cd /host/hubble-fgs
 
-          # Create kind cluster
-          cat <<-EOF | ssh -p 3000 root@localhost
-            kind create cluster --name ${{ env.clusterName }}
             kind --name ${{ env.clusterName }} load docker-image ${{ steps.vars.outputs.agentImage }}
             kind --name ${{ env.clusterName }} load docker-image ${{ steps.vars.outputs.operatorImage }}
-            cilium install
-          EOF
 
-      - name: Build BTF image
-        if: ${{ matrix.kernel == '4.19.179' }}
-        run: |
-          cat <<-EOF | ssh ${{ env.vmHost }}
-            set -x
-            cd /home/fgs/btf
-            docker build -t btf:latest -f - . <<-EOF2
-              FROM docker.io/library/busybox:1.34.1
+            # copy btf file
+            docker cp /boot/btf-\$(uname -r) ${{ env.clusterName }}-control-plane:/btf
 
-              WORKDIR /var/run/hubble-fgs/
-              COPY vmlinux-${{ matrix.kernel }} .
-          EOF2
-            docker save btf:latest | bzip2 | ssh -p 3000 root@localhost "docker load"
-          EOF
-
-          cat <<-EOF | ssh -p 3000 root@localhost
-            kind --name ${{ env.clusterName }} load docker-image btf:latest
-          EOF
-
-      - name: Run e2e tests
-        if: ${{ matrix.kernel == '4.19.179' }}
-        run: |
-          cat <<-EOF | ssh -p 3000 root@localhost
-            export PATH="$PATH:/usr/local/go/bin"
-            cd /fgs
             go test -p 1 -parallel 1 -timeout 20m -failfast ./tests/e2e/tests/... \
               -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
               -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
-              -tetragon.helm.set enterprise.metadataImage.override="btf:latest" \
-              -tetragon.helm.set enterprise.metadataImage.imagePullPolicy="Never" \
+              -tetragon.helm.set enterprise.btf="/btf" \
+              -tetragon.helm.set 'extraHostPathMounts[0].name=btf' \
+              -tetragon.helm.set 'extraHostPathMounts[0].mountPath=/btf' \
+              -tetragon.helm.set 'extraHostPathMounts[0].readOnly=true' \
               -cluster-name ${{ env.clusterName }} \
-              -kubeconfig ~/.kube/config
-          EOF
-
-      - name: Run e2e tests
-        if: ${{ matrix.kernel != '4.19.179' }}
-        run: |
-          cat <<-EOF | ssh -p 3000 root@localhost
-            export PATH="$PATH:/usr/local/go/bin"
-            cd /fgs
-            go test -p 1 -parallel 1 -timeout 20m -failfast ./tests/e2e/tests/... \
-              -tetragon.helm.set enterprise.image.override=${{ steps.vars.outputs.agentImage }} \
-              -tetragon.helm.set hubbleEnterpriseOperator.image.override=${{ steps.vars.outputs.operatorImage }} \
-              -tetragon.helm.set enterprise.btf="/sys/kernel/btf/vmlinux" \
-              -cluster-name ${{ env.clusterName }} \
-              -kubeconfig ~/.kube/config
-          EOF
-
-      - name: Dump cluster info
-        if: ${{ failure() || cancelled() }}
-        run: |
-          cat <<-EOF | ssh -p 3000 root@localhost
-            echo "pods in the cluster -------------------------------------------------"
-            kubectl get pods -A || true
-
-            echo "enterprise-init -----------------------------------------------------"
-            kubectl logs ds/hubble-enterprise -n kube-system -c enterprise-init || true
-            echo "enterprise-init (previous) ------------------------------------------"
-            kubectl logs ds/hubble-enterprise -n kube-system -c enterprise-init -p || true
-
-            echo "enterprise-operator -------------------------------------------------"
-            kubectl logs ds/hubble-enterprise -n kube-system -c enterprise-operator || true
-            echo "enterprise-operator (previous) --------------------------------------"
-            kubectl logs ds/hubble-enterprise -n kube-system -c enterprise-operator -p || true
-          EOF
+              -kubeconfig ~/.kube/config \
+              -v
 
       - name: Copy out e2e test logs
         if: ${{ failure() || cancelled() }}
         run: |
           rm -rf logs/e2e
           mkdir -p logs/e2e
-          scp -r -P 3000 'root@localhost:/tmp/tetragon.e2e.*' logs/e2e/
-
-      - name: Shut off KVM
-        timeout-minutes: 5
-        run: |
-          ssh ${{ env.vmHost }} "hubble-fgs/contrib/kvm/stop.sh"
-          sleep 10
+          scp -r -P 2222 'root@localhost:/tmp/tetragon.e2e.*' logs/e2e/
 
       - name: Upload end-to-end test logs
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
         with:
-          name: fgs-end-to-end-tests-${{ matrix.kernel }}
+          name: tetragon-e2e-${{ matrix.kernel }}
           path: logs/e2e
           retention-days: 5
-
-  cleanup:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [run-tests]
-    if: always()
-    steps:
-      - name: Authenticate with gcloud
-        uses: 'google-github-actions/auth@v0'
-        with:
-          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-          credentials_json: '${{ secrets.CILIUM_PR_GCP_SA_KEY }}'
-          create_credentials_file: true
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v0
-        with:
-          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-
-      - name: Destroy VM
-        if: ${{ always() }}
-        run: |
-          gcloud compute instances delete ${{ env.vmName }} --quiet --zone ${{ env.zone }}
