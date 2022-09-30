@@ -4,6 +4,7 @@ import (
 	"testing"
 
 	api "github.com/isovalent/hubble-fgs/pkg/api/tlsapi"
+	"github.com/stretchr/testify/assert"
 )
 
 func TestGetTLSSupportedVersions(t *testing.T) {
@@ -91,4 +92,32 @@ func TestGetTLSSupportedVersions(t *testing.T) {
 	if s != ex {
 		t.Errorf("GetTLSSupportedVersions([4, TLS13, TLS10], true) = %s, expected \"%s\"", s, ex)
 	}
+}
+
+func Test_GetNegotiatedVersion(t *testing.T) {
+	version := GetTLSNegotitatedVersion12("unknown(1337)", tlsVersion1_2)
+	assert.Equal(t, "unknown(1337)", version)
+	version = GetTLSNegotitatedVersion12(tlsVersion1_1, "unknown(2112)")
+	assert.Equal(t, "unknown(2112)", version)
+	// Test TLS 1.2 negotiated version
+	version = GetTLSNegotitatedVersion12(tlsVersion1_2, tlsVersion1_2)
+	assert.Equal(t, tlsVersion1_2, version)
+	// Test TLS 1.1 negotiated versions
+	version = GetTLSNegotitatedVersion12(tlsVersion1_2, tlsVersion1_1)
+	assert.Equal(t, tlsVersion1_1, version)
+	version = GetTLSNegotitatedVersion12(tlsVersion1_1, tlsVersion1_2)
+	assert.Equal(t, tlsVersion1_1, version)
+	version = GetTLSNegotitatedVersion12(tlsVersion1_1, tlsVersion1_1)
+	assert.Equal(t, tlsVersion1_1, version)
+	// Test TLS 1.0 negotiated versions
+	version = GetTLSNegotitatedVersion12(tlsVersion1_0, tlsVersion1_2)
+	assert.Equal(t, tlsVersion1_0, version)
+	version = GetTLSNegotitatedVersion12(tlsVersion1_2, tlsVersion1_0)
+	assert.Equal(t, tlsVersion1_0, version)
+	version = GetTLSNegotitatedVersion12(tlsVersion1_1, tlsVersion1_0)
+	assert.Equal(t, tlsVersion1_0, version)
+	version = GetTLSNegotitatedVersion12(tlsVersion1_0, tlsVersion1_1)
+	assert.Equal(t, tlsVersion1_0, version)
+	version = GetTLSNegotitatedVersion12(tlsVersion1_0, tlsVersion1_0)
+	assert.Equal(t, tlsVersion1_0, version)
 }

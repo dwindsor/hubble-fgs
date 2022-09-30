@@ -103,21 +103,30 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 		proc = processInt.UnsafeGetProcess()
 	}
 	typeSNI, nameSNI := readertls.GetTLSSNI(event.ClientHello.SNI.Value)
+
+	clientVersion := readertls.GetTLSVersion(event.ClientHello.Version)
+	serverVersion := readertls.GetTLSVersion(event.ServerHello.Version)
+	negotiatedVersion := readertls.GetTLSSupportedVersions(&event.ServerHello.SupportedVersions, false)
+	// For TLS <1.3, this will not be set. So do version discovery here instead.
+	if negotiatedVersion == "" {
+		negotiatedVersion = readertls.GetTLSNegotitatedVersion12(clientVersion, serverVersion)
+	}
+
 	fgsEvent := &tetragon.Tls{
 		Process:             proc,
 		SourceIp:            network.GetIPv4(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:          sourcePort,
 		DestinationIp:       network.GetIPv4(event.Tuple.DAddr, event.Common.Op).String(),
 		DestinationPort:     destinationPort,
-		NegotiatedVersion:   readertls.GetTLSSupportedVersions(&event.ServerHello.SupportedVersions, false),
+		NegotiatedVersion:   negotiatedVersion,
 		SupportedVersions:   readertls.GetTLSSupportedVersions(&event.ClientHello.SupportedVersions, true),
 		SniName:             nameSNI,
 		SniType:             typeSNI,
 		Cipher:              ciphers.GetTLSCiphers(&event.ServerHello.Cipher),
 		ClientFlags:         readertls.GetTLSFlags(event.ClientHello.Flags),
 		ServerFlags:         readertls.GetTLSFlags(event.ServerHello.Flags),
-		ClientVersion:       readertls.GetTLSVersion(event.ClientHello.Version),
-		ServerVersion:       readertls.GetTLSVersion(event.ServerHello.Version),
+		ClientVersion:       clientVersion,
+		ServerVersion:       serverVersion,
 		ClientAlert:         readertls.GetTLSAlert(event.ClientHello.AlertLevel, event.ClientHello.AlertDescription),
 		ServerAlert:         readertls.GetTLSAlert(event.ServerHello.AlertLevel, event.ServerHello.AlertDescription),
 		ClientSession:       readertls.GetTLSSession(&event.ClientHello.Session),

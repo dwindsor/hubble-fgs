@@ -13,6 +13,13 @@ import (
 	"github.com/yalue/native_endian"
 )
 
+var (
+	tlsVersion1_0 = "TLS1.0"
+	tlsVersion1_1 = "TLS1.1"
+	tlsVersion1_2 = "TLS1.2"
+	tlsVersion1_3 = "TLS1.3"
+)
+
 func GetTLSSession(flv *api.FLV64) (s string) {
 	session, _ := flv.Bytes()
 	//       ^ TODO handle truncation?
@@ -102,13 +109,13 @@ func GetTLSFlags(flags uint32) string {
 func GetTLSVersion(version uint16) string {
 	switch version {
 	case api.TLSVersion13:
-		return "TLS1.3"
+		return tlsVersion1_3
 	case api.TLSVersion12:
-		return "TLS1.2"
+		return tlsVersion1_2
 	case api.TLSVersion11:
-		return "TLS1.1"
+		return tlsVersion1_1
 	case api.TLSVersion10:
-		return "TLS1.0"
+		return tlsVersion1_0
 	case api.TLSNone:
 		return ""
 	default:
@@ -136,6 +143,9 @@ func GetTLSSupportedVersions(flv *api.FLV16, hasLength bool) string {
 		logger.GetLogger().WithError(err).Debug("TLS versions vector truncated")
 	}
 
+	// Dump FLV and bytes to logs when run with --log-level trace
+	logger.GetLogger().WithField("flv", flv).WithField("bytes", vers).Trace("GetTLSSupportedVersions called")
+
 	if len(vers) < 2 {
 		return ""
 	} else if hasLength {
@@ -156,6 +166,31 @@ func GetTLSSupportedVersions(flv *api.FLV16, hasLength bool) string {
 		s = append(s, GetTLSVersion(t))
 	}
 	return strings.Join(s, " ")
+}
+
+// Version discovery for TLS <1.3 where negotiated version is not set.
+func GetTLSNegotitatedVersion12(clientVersion, serverVersion string) string {
+	// TLS version degrade to lowest common protocol support, so
+	// walk through TLS versions starting at lowest and working
+	// up checking if either client or server indicate the version.
+	// If c or s have an unknown protocol we report that to ensure
+	// we don't make an incorrect assumption.
+	if strings.Contains(clientVersion, "unknown") {
+		return clientVersion
+	} else if strings.Contains(serverVersion, "unknown") {
+		return serverVersion
+	} else if clientVersion == tlsVersion1_0 || serverVersion == tlsVersion1_0 {
+		return tlsVersion1_0
+	} else if clientVersion == tlsVersion1_1 || serverVersion == tlsVersion1_1 {
+		return tlsVersion1_1
+	} else if clientVersion == tlsVersion1_2 || serverVersion == tlsVersion1_2 {
+		return tlsVersion1_2
+	} else {
+		// We should never get here if we do lets use the
+		// code below and we can count it in metrics because
+		// it is unique from grpc layers unknown(#) syntax.
+		return fmt.Sprintf("unknown(%s|%s)", clientVersion, serverVersion)
+	}
 }
 
 //func GetTLSRdns(rdns []byte) []string {
