@@ -240,6 +240,19 @@ func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	return EnableTcp(), nil
 }
 
+func tcpDiffRtt(last, curr *api.Histogram) api.Histogram {
+	return api.Histogram{
+		B99: curr.B99 - last.B99,
+		B90: curr.B90 - last.B90,
+		B75: curr.B75 - last.B75,
+		B50: curr.B50 - last.B50,
+		B25: curr.B25 - last.B25,
+		B10: curr.B10 - last.B10,
+		B01: curr.B01 - last.B01,
+		B00: curr.B00 - last.B00,
+	}
+}
+
 func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, error) {
 	if curr.BytesReceived < last.BytesReceived {
 		logger.GetLogger().Warnf("RX TCP stats underflow: %d < %d", curr.BytesReceived, last.BytesReceived)
@@ -264,7 +277,7 @@ func tcpDiffValues(last, curr *api.MsgSocketStatsUnix) (api.MsgSocketStatsUnix, 
 		ToZeroWindow:     curr.ToZeroWindow - last.ToZeroWindow,
 		SkDrop:           curr.SkDrop - last.SkDrop,
 		SkbConsumeMisses: 0,
-		Rtt:              curr.Rtt,
+		Rtt:              tcpDiffRtt(&last.Rtt, &curr.Rtt),
 	}, nil
 }
 

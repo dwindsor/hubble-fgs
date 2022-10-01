@@ -64,3 +64,39 @@ var (
 		Help: "TCP socket socket drops statistics",
 	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
 )
+
+// TCP Latency Histogram
+var (
+	SocketStatsRttLatencyB00 = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rtt_b00",
+		Help: "TCP socket RTT bucket 00 counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsRttLatencyB01 = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rtt_b01",
+		Help: "TCP socket RTT bucket 01 counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsRttLatencyB10 = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rtt_b10",
+		Help: "TCP socket RTT bucket 10 counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsRttLatencyB25 = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rtt_b25",
+		Help: "TCP socket RTT bucket 25 counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsRttLatencyB50 = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rtt_b50",
+		Help: "TCP socket RTT bucket 50 counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsRttLatencyB75 = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rtt_b75",
+		Help: "TCP socket RTT bucket 75 counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsRttLatencyB90 = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rtt_b90",
+		Help: "TCP socket RTT bucket 90 counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+	SocketStatsRttLatencyB99 = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_rtt_b99",
+		Help: "TCP socket RTT bucket 99 counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns"})
+)

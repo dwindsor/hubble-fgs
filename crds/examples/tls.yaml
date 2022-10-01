@@ -25,3 +25,7 @@ spec:
       enable: true
     tcp:
       enable: true
+      histogram:
+        enable: true
+        min: 0
+        max: 100000
