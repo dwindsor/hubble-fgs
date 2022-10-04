@@ -87,6 +87,23 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 			connect.DestinationPort,
 			connect.DestinationNames)
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, destination), caps), nil
+	case *tetragon.GetEventsResponse_ProcessFile:
+		file := response.GetProcessFile()
+		if file.Process == nil {
+			return "", fmt.Errorf("process field is not set")
+		}
+		event := p.colorer.Blue.Sprintf(" 📁 %-7s", "file")
+		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, file.Process)
+		processFileAction := p.colorer.Cyan.Sprint(file.Action)
+		functionHook := p.colorer.Cyan.Sprintf(file.Hook)
+		args := p.colorer.Cyan.Sprint(file.Process.Arguments)
+		arg := file.GetArgs().Arg
+		switch v := arg.(type) {
+		case *tetragon.FileArgument_GenericArg:
+			fileName := p.colorer.Cyan.Sprintf("%s", v.GenericArg.GetFile().Filename)
+			inodeNumber := p.colorer.Cyan.Sprintf("%d", v.GenericArg.File.Inode.Number)
+			return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s %s %s %s %s", event, processInfo, args, processFileAction, functionHook, fileName, inodeNumber), caps), nil
+		}
 	case *tetragon.GetEventsResponse_ProcessListen:
 		listen := response.GetProcessListen()
 		if listen.Process == nil {
