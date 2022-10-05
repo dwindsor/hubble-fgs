@@ -24,7 +24,7 @@ spec:
         enable: true
         min: 0
         max: 4000
-    burstPoll:
+    burstExitGen:
       enable: true
       interval: 1000
     dns:

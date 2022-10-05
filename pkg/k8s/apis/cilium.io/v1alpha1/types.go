@@ -180,8 +180,8 @@ type ParserPolicySpec struct {
 	// TCP policy specification
 	Tcp TcpPolicySpec `json:"tcp"`
 	// +kubebuilder:validation:Optional
-	// UDP and TCP burst poll policy specification
-	BurstPoll BurstPollPolicySpec `json:"burstPoll"`
+	// UDP and TCP burst exit checking policy specification
+	BurstExitGen BurstExitGenPolicySpec `json:"burstExitGen"`
 }
 
 type TcpRttHistogram struct {
@@ -259,13 +259,13 @@ type UdpBurstPolicySpec struct {
 	TriggerPercent uint32 `json:"triggerPercent"`
 }
 
-type BurstPollPolicySpec struct {
-	// Enable burst polling for end events from userland
+type BurstExitGenPolicySpec struct {
+	// Enable burst checks for end events from userland
 	// +kubebuilder:default=true
 	// +kubebuilder:validation:Optional
 	Enable bool `json:"enable"`
 	// +kubebuilder:default=1000
 	// +kubebuilder:validation:Optional
-	// Configures the polling interval in milliseconds
+	// Configures the checking interval in milliseconds
 	Interval uint32 `json:"interval"`
 }

@@ -447,16 +447,16 @@ spec:
               parser:
                 description: Parser policy specification.
                 properties:
-                  burstPoll:
-                    description: UDP and TCP burst poll policy specification
+                  burstExitGen:
+                    description: UDP and TCP burst exit checking policy specification
                     properties:
                       enable:
                         default: true
-                        description: Enable burst polling for end events from userland
+                        description: Enable burst checks for end events from userland
                         type: boolean
                       interval:
                         default: 1000
-                        description: Configures the polling interval in milliseconds
+                        description: Configures the checking interval in milliseconds
                         format: int32
                         type: integer
                     type: object

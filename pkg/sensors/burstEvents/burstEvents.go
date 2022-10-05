@@ -8,7 +8,7 @@
 //  or reproduction of this material is strictly forbidden unless prior written
 //  permission is obtained from Isovalent Inc.
 
-package burstEventsPoll
+package burstEvents
 
 import (
 	"bytes"
@@ -43,10 +43,10 @@ const (
 )
 
 var (
-	pollTimer  = timer.NewPeriodicTimer("Burst event poll", checkAndAddBurstEndEvents, true)
-	burstMap   *ebpf.Map
-	refCount   = 0
-	refCountMu sync.Mutex
+	burstExitTimer = timer.NewPeriodicTimer("Burst event exit gen", checkAndAddBurstEndEvents, true)
+	burstMap       *ebpf.Map
+	refCount       = 0
+	refCountMu     sync.Mutex
 )
 
 type ProcessNetworkBurstKey struct {
@@ -82,7 +82,7 @@ func HandleProcessNetworkBurst(r *bytes.Reader) ([]observer.Event, error) {
 }
 
 func Start(spec *v1alpha1.TracingPolicySpec) {
-	if !spec.Parser.BurstPoll.Enable {
+	if !spec.Parser.BurstExitGen.Enable {
 		return
 	}
 	var err error
@@ -97,12 +97,12 @@ func Start(spec *v1alpha1.TracingPolicySpec) {
 	}
 
 	// Attempting to start an already running timer is a NOP.
-	pollTimer.Start(time.Duration(spec.Parser.BurstPoll.Interval) * time.Millisecond)
+	burstExitTimer.Start(time.Duration(spec.Parser.BurstExitGen.Interval) * time.Millisecond)
 	refCount++
 }
 
 func Stop() {
-	// We reference count the number of sensors that start and stop the burstEventPoll
+	// We reference count the number of sensors that start and stop the burstEvent exit generator
 	// and only stop it if the count reaches 0.
 	refCountMu.Lock()
 	defer refCountMu.Unlock()
@@ -110,7 +110,7 @@ func Stop() {
 		refCount--
 	}
 	if refCount == 0 {
-		pollTimer.Stop()
+		burstExitTimer.Stop()
 	}
 }
 

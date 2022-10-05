@@ -16,7 +16,7 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/sirupsen/logrus"
 )
@@ -138,12 +138,12 @@ var (
 
 	// Maps for burst detection
 	SendCheckSampler       = program.MapBuilder("tcp_send_check_sampler", SendCheck4)
-	ProcessNetworkBurstMap = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, SendCheck4)
+	ProcessNetworkBurstMap = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, SendCheck4)
 )
 
 func unloadTcpSensor() error {
 	if watermarkEnabled {
-		burstEventsPoll.Stop()
+		burstEvents.Stop()
 	}
 	return nil
 }
@@ -221,7 +221,7 @@ func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 		tcpBurstEnable = true
 		tcpBurstWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
 		tcpBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
-		go burstEventsPoll.Start(spec)
+		go burstEvents.Start(spec)
 	} else {
 		tcpBurstEnable = false
 		tcpBurstWindowSize = 0
@@ -390,5 +390,5 @@ func AddTCP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_BIND, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_LISTEN, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEventsPoll.HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEvents.HandleProcessNetworkBurst)
 }

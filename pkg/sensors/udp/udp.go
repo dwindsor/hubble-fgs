@@ -40,7 +40,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 )
@@ -261,10 +261,10 @@ var (
 	UdpPayloadBloomMapKprobe     = program.MapBuilder(UdpPayloadBloomMapName, InetSendRecvLazy)
 
 	// Burst and watermark maps
-	ProcessNetworkBurstMap           = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSend)
-	ProcessNetworkBurstMapLazy       = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendLazy)
-	ProcessNetworkBurstMapLazyKprobe = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstMapName, InetSendRecvLazy)
-	PNBurstMapStats                  = program.MapBuilder(burstEventsPoll.ProcessNetworkBurstStatsMapName, base.Exit)
+	ProcessNetworkBurstMap           = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, InetSend)
+	ProcessNetworkBurstMapLazy       = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, InetSendLazy)
+	ProcessNetworkBurstMapLazyKprobe = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, InetSendRecvLazy)
+	PNBurstMapStats                  = program.MapBuilder(burstEvents.ProcessNetworkBurstStatsMapName, base.Exit)
 )
 
 type udpInfoKey struct {
@@ -612,7 +612,7 @@ func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) erro
 func unloadUdpSensor() error {
 	gcTimer.Stop()
 	if watermarkEnabled {
-		burstEventsPoll.Stop()
+		burstEvents.Stop()
 	}
 	return nil
 }
@@ -776,7 +776,7 @@ func AddUDP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCONNECT, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPSTATS, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEventsPoll.HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEvents.HandleProcessNetworkBurst)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)

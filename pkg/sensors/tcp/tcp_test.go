@@ -29,7 +29,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEventsPoll"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -60,7 +60,7 @@ spec:
         enable: true
         windowSize: 1000
         triggerPercent: 50
-    burstPoll:
+    burstExitGen:
       enable: true
       interval: 1000
     dns:
@@ -812,15 +812,15 @@ func TestTcpBurst(t *testing.T) {
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
-	burstMapFile := filepath.Join(bpf.MapPrefixPath(), burstEventsPoll.ProcessNetworkBurstMapName)
+	burstMapFile := filepath.Join(bpf.MapPrefixPath(), burstEvents.ProcessNetworkBurstMapName)
 	m, err := ebpf.LoadPinnedMap(burstMapFile, nil)
 	if err != nil {
 		fmt.Printf("ERROR Cannot open map file\n")
 		panic(err)
 	}
 	defer m.Close()
-	processKey := &burstEventsPoll.ProcessNetworkBurstKey{Key: burstEventsPoll.PidToBurstKey(serverPid, syscall.IPPROTO_TCP, 0)}
-	var processValue burstEventsPoll.ProcessNetworkBurstValue
+	processKey := &burstEvents.ProcessNetworkBurstKey{Key: burstEvents.PidToBurstKey(serverPid, syscall.IPPROTO_TCP, 0)}
+	var processValue burstEvents.ProcessNetworkBurstValue
 	err = m.Lookup(processKey, &processValue)
 	if err == nil {
 		fmt.Printf("ERROR Server process in burst map before traffic\n")
