@@ -277,7 +277,7 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 				}
 			}
 		} else {
-			if (skb_head + e->ip_off + 2 >= data_end) {
+			if (skb_head + e->ip_off + 2 > data_end) {
 				if (err) {
 					*err = IP_ERROR_READ_SKB_DIRECT;
 				}
