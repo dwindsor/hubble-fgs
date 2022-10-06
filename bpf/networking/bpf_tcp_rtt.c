@@ -34,7 +34,8 @@ int tcp_rcv_established(struct pt_regs *ctx)
 	}
 
 	probe_read(&rtt, sizeof(rtt), _(&(skp->rcv_rtt_est)));
-	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(&tcp_send_check_sampler, &zero);
+	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
+		&tcp_send_check_sampler, &zero);
 	if (!cfg) {
 		return 0;
 	}
@@ -46,26 +47,26 @@ int tcp_rcv_established(struct pt_regs *ctx)
 		return 0;
 	delta = tcp_mstamp - rtt.time;
 
-	/* Mimic tcp_rcv_rtt_measure_ts here */
-	#define USEC_PER_SEC 1000000L
-	#define TCP_TS_HZ 1000
+/* Mimic tcp_rcv_rtt_measure_ts here */
+#define USEC_PER_SEC 1000000L
+#define TCP_TS_HZ    1000
 	delta_us = delta * (USEC_PER_SEC / TCP_TS_HZ);
 
 	if (cfg->bucket00 > delta_us)
-	       process->buckets[0]++;
+		process->buckets[0]++;
 	else if (cfg->bucket01 > delta_us)
-	       process->buckets[1]++;
+		process->buckets[1]++;
 	else if (cfg->bucket10 > delta_us)
-	       process->buckets[2]++;
+		process->buckets[2]++;
 	else if (cfg->bucket25 > delta_us)
-	       process->buckets[3]++;
+		process->buckets[3]++;
 	else if (cfg->bucket50 > delta_us)
-	       process->buckets[4]++;
+		process->buckets[4]++;
 	else if (cfg->bucket75 > delta_us)
-	       process->buckets[5]++;
+		process->buckets[5]++;
 	else if (cfg->bucket90 > delta_us)
-	       process->buckets[6]++;
+		process->buckets[6]++;
 	else
-	       process->buckets[7]++;
+		process->buckets[7]++;
 	return 0;
 }
