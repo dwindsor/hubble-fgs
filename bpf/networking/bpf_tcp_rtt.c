@@ -43,7 +43,7 @@ int tcp_rcv_established(struct pt_regs *ctx)
 	probe_read(&tcp_mstamp, sizeof(tcp_mstamp), _(&(skp->tcp_mstamp)));
 
 	/* Test for underflow */
-	if (tcp_mstamp >= rtt.time)
+	if (tcp_mstamp <= rtt.time)
 		return 0;
 	delta = tcp_mstamp - rtt.time;
 
