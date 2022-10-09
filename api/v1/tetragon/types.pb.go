@@ -340,3 +340,48 @@ func (event *ProcessDns) SetProcess(p *Process) {
 func (event *ProcessDns) SetParent(p *Process) {
 	event.Parent = p
 }
+
+// UnwrapGetEventsResponse gets the inner event type from a GetEventsResponse
+func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
+	event := response.GetEvent()
+	if event == nil {
+		return nil
+	}
+	switch ev := event.(type) {
+	case *GetEventsResponse_ProcessExec:
+		return ev.ProcessExec
+	case *GetEventsResponse_ProcessExit:
+		return ev.ProcessExit
+	case *GetEventsResponse_ProcessKprobe:
+		return ev.ProcessKprobe
+	case *GetEventsResponse_ProcessTracepoint:
+		return ev.ProcessTracepoint
+	case *GetEventsResponse_Test:
+		return ev.Test
+	case *GetEventsResponse_InterfaceStats:
+		return ev.InterfaceStats
+	case *GetEventsResponse_ProcessConnect:
+		return ev.ProcessConnect
+	case *GetEventsResponse_ProcessClose:
+		return ev.ProcessClose
+	case *GetEventsResponse_ProcessListen:
+		return ev.ProcessListen
+	case *GetEventsResponse_ProcessAccept:
+		return ev.ProcessAccept
+	case *GetEventsResponse_ProcessIpError:
+		return ev.ProcessIpError
+	case *GetEventsResponse_ProcessFile:
+		return ev.ProcessFile
+	case *GetEventsResponse_ProcessSockStats:
+		return ev.ProcessSockStats
+	case *GetEventsResponse_Tls:
+		return ev.Tls
+	case *GetEventsResponse_ProcessHttp:
+		return ev.ProcessHttp
+	case *GetEventsResponse_ProcessNetworkBurst:
+		return ev.ProcessNetworkBurst
+	case *GetEventsResponse_ProcessDns:
+		return ev.ProcessDns
+	}
+	return nil
+}

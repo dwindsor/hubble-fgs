@@ -103,6 +103,19 @@ func (m MsgGenericKprobeArgInt) IsReturnArg() bool {
 	return m.Index == ReturnArgIndex
 }
 
+type MsgGenericKprobeArgUInt struct {
+	Index uint64
+	Value uint32
+}
+
+func (m MsgGenericKprobeArgUInt) GetIndex() uint64 {
+	return m.Index
+}
+
+func (m MsgGenericKprobeArgUInt) IsReturnArg() bool {
+	return m.Index == ReturnArgIndex
+}
+
 type MsgGenericKprobeArgSize struct {
 	Index uint64
 	Value uint64
@@ -205,6 +218,48 @@ func (m MsgGenericKprobeArgCred) GetIndex() uint64 {
 }
 
 func (m MsgGenericKprobeArgCred) IsReturnArg() bool {
+	return m.Index == ReturnArgIndex
+}
+
+type MsgGenericKprobeCapability struct {
+	Value int32
+	Pad   int32
+}
+
+type MsgGenericKprobeArgCapability struct {
+	Index uint64
+	Value int32
+	Pad   int32
+}
+
+func (m MsgGenericKprobeArgCapability) GetIndex() uint64 {
+	return m.Index
+}
+
+func (m MsgGenericKprobeArgCapability) IsReturnArg() bool {
+	return m.Index == ReturnArgIndex
+}
+
+type MsgGenericKprobeUserNamespace struct {
+	Level  int32
+	Owner  uint32
+	Group  uint32
+	NsInum uint32
+}
+
+type MsgGenericKprobeArgUserNamespace struct {
+	Index  uint64
+	Level  int32
+	Owner  uint32
+	Group  uint32
+	NsInum uint32
+}
+
+func (m MsgGenericKprobeArgUserNamespace) GetIndex() uint64 {
+	return m.Index
+}
+
+func (m MsgGenericKprobeArgUserNamespace) IsReturnArg() bool {
 	return m.Index == ReturnArgIndex
 }
 

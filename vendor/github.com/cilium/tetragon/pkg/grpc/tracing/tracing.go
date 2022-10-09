@@ -73,6 +73,8 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 		switch e := arg.(type) {
 		case api.MsgGenericKprobeArgInt:
 			a.Arg = &tetragon.KprobeArgument_IntArg{IntArg: e.Value}
+		case api.MsgGenericKprobeArgUInt:
+			a.Arg = &tetragon.KprobeArgument_UintArg{UintArg: e.Value}
 		case api.MsgGenericKprobeArgSize:
 			a.Arg = &tetragon.KprobeArgument_SizeArg{SizeArg: e.Value}
 		case api.MsgGenericKprobeArgString:
@@ -159,6 +161,25 @@ func GetProcessKprobe(event *MsgGenericKprobeUnix) *tetragon.ProcessKprobe {
 				MapName:    e.MapName,
 			}
 			a.Arg = &tetragon.KprobeArgument_BpfMapArg{BpfMapArg: bpfMapArg}
+		case api.MsgGenericKprobeArgUserNamespace:
+			nsArg := &tetragon.KprobeUserNamespace{
+				Level: &wrapperspb.Int32Value{Value: e.Level},
+				Owner: &wrapperspb.UInt32Value{Value: e.Owner},
+				Group: &wrapperspb.UInt32Value{Value: e.Group},
+				Ns: &tetragon.Namespace{
+					Inum: e.NsInum,
+				},
+			}
+			if e.Level == 0 {
+				nsArg.Ns.IsHost = true
+			}
+			a.Arg = &tetragon.KprobeArgument_UserNamespaceArg{UserNamespaceArg: nsArg}
+		case api.MsgGenericKprobeArgCapability:
+			cArg := &tetragon.KprobeCapability{
+				Value: &wrapperspb.Int32Value{Value: e.Value},
+			}
+			cArg.Name, _ = caps.GetCapability(e.Value)
+			a.Arg = &tetragon.KprobeArgument_CapabilityArg{CapabilityArg: cArg}
 		default:
 			logger.GetLogger().WithField("arg", e).Warnf("unexpected type: %T", e)
 		}
