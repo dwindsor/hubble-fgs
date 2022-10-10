@@ -428,7 +428,6 @@ udp_set_info(struct udp_info_value *value, struct sk_buff *skb)
 static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 							  bool lazy)
 {
-	u64 pid_tgid = get_current_pid_tgid();
 	struct udp_info_value *value;
 	int zero = 0;
 	struct sock *sk = (void *)ctx->di;
@@ -437,10 +436,8 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 	u64 cookie;
 
 	/* Disregard peeks */
-	if (len <= 0) {
-		map_delete_elem(&udp_retprobe_map, &pid_tgid);
+	if (len <= 0)
 		return 0;
-	}
 
 	/* We need a cookie to attach this datagram to */
 	write_cookie_from_sk(&cookie, sk, lazy);
@@ -455,10 +452,8 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 		 * Should be a rare occurrence.
 		 */
 		value = map_lookup_elem(&udp_value_heap, &zero);
-		if (!value) {
-			map_delete_elem(&udp_retprobe_map, &pid_tgid);
+		if (!value)
 			return 0;
-		}
 
 		udp_info_consumed_reset(value, len);
 		value->skb_consume_misses = 0;
@@ -481,6 +476,5 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 	 */
 	update_socketmap(&cookie, 0, value->pid);
 
-	map_delete_elem(&udp_retprobe_map, &pid_tgid);
 	return 0;
 }

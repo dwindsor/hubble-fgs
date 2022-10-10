@@ -662,7 +662,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{3, 4, 5, 6, 7}},
+			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{3, 4, 5, 6}},
 
 			// inet_lazy_send_kp, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
 			// udp_recv_lazy_kprobe
@@ -696,7 +696,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7, 8}},
+			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7}},
 
 			// inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
 			// udp_recv_lazy_kprobe
@@ -733,7 +733,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// udp4_send_lazy_kprobe, udp4_sendret_lazy_kprobe, udp6_send_lazy_kprobe,
 			// udp6_sendret_lazy_kprobe, udp_recv_lazy_kprobe
-			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7, 8}},
+			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7}},
 
 			// inet_lazy_send, inet_lazy_recv, udp4_sendret_lazy_kprobe, udp6_sendret_lazy_kprobe,
 			// udp_recv_lazy_kprobe
@@ -774,7 +774,7 @@ func TestLoadUdpSensor(t *testing.T) {
 
 			// udp4_send_kprobe, udp4_sendret_kprobe, udp6_send_kprobe,
 			// udp6_sendret_kprobe, udp_recv_kprobe
-			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7, 8}},
+			tus.SensorMap{Name: "udp_retprobe_map", Progs: []uint{4, 5, 6, 7}},
 
 			// inet_send, inet_recv, udp4_sendret_kprobe, udp6_sendret_kprobe,
 			// udp_recv_kprobe
