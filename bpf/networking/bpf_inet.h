@@ -153,18 +153,14 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		}
 		value->sport = (*info)->sport;
 		value->dport = (*info)->dport;
-		value->skb_consume_misses = 0;
 
 		/* If process was found, fill in the PID */
 		if (process) {
 			value->pid = process->key.pid;
 			value->pid_ktime = process->key.ktime;
-		} else {
-			value->pid = 0;
+			emit_udp_connect_event(skb, value);
 		}
 
-		if (value->pid)
-			emit_udp_connect_event(skb, value);
 		map_update_elem(&udp_map, cookie, value, 0);
 	} else if (process && value->pid != process->key.pid) {
 		/* PID doesn't match, so this must be a new socket */
@@ -188,7 +184,6 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 		}
 		value->sport = (*info)->sport;
 		value->dport = (*info)->dport;
-		value->skb_consume_misses = 0;
 		value->pid = process->key.pid;
 		value->pid_ktime = process->key.ktime;
 

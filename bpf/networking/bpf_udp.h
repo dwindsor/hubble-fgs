@@ -389,8 +389,35 @@ emit_udp_connect_event(void *ctx, struct udp_info_value *v)
 }
 
 static inline __attribute__((always_inline)) void
+udp_info_init(struct udp_info_value *v)
+{
+	v->pid = 0;
+	v->pid_ktime = 0;
+	v->sk_drops = 0;
+	v->saddr[0] = 0;
+	v->saddr[1] = 0;
+	/* Technically, daddr, sport and dport don't need initialising
+	 * because if saddr is 0 then we know that the full tuple needs
+	 * to be filled in. However, to avoid a bug where the entry is
+	 * read from user space and treated as valid, even if the tuple
+	 * has yet to be completed, let's initialise them all. These
+	 * *_reset() functions only get called once per new socket so
+	 * the additional instructions shouldn't be a big overhead.
+	 */
+	v->daddr[0] = 0;
+	v->daddr[1] = 0;
+	v->sport = 0;
+	v->dport = 0;
+	v->skb_consume_misses = 0;
+	v->ipv6 = 0;
+	v->ktime = ktime_get_ns();
+}
+
+static inline __attribute__((always_inline)) void
 udp_info_tx_reset(struct udp_info_value *v, int len)
 {
+	udp_info_init(v);
+
 	v->submitted_bytes = 0;
 	v->tx_bytes = len;
 	v->consumed_bytes = 0;
@@ -400,13 +427,13 @@ udp_info_tx_reset(struct udp_info_value *v, int len)
 	v->segs_out = len ? 1 : 0;
 	v->consumed_segs = 0;
 	v->segs_in = 0;
-
-	v->ktime = ktime_get_ns();
 }
 
 static inline __attribute__((always_inline)) void
 udp_info_rx_reset(struct udp_info_value *v, int len)
 {
+	udp_info_init(v);
+
 	v->submitted_bytes = 0;
 	v->tx_bytes = 0;
 	v->consumed_bytes = 0;
@@ -416,8 +443,6 @@ udp_info_rx_reset(struct udp_info_value *v, int len)
 	v->segs_out = 0;
 	v->consumed_segs = 0;
 	v->segs_in = 1;
-
-	v->ktime = ktime_get_ns();
 }
 
 static inline __attribute__((always_inline)) void
@@ -439,6 +464,8 @@ update_rx_value(struct udp_info_value *v, u32 len)
 static inline __attribute__((always_inline)) void
 udp_info_submitted_reset(struct udp_info_value *v, int len)
 {
+	udp_info_init(v);
+
 	v->submitted_bytes = len;
 	v->tx_bytes = 0;
 	v->consumed_bytes = 0;
@@ -448,13 +475,13 @@ udp_info_submitted_reset(struct udp_info_value *v, int len)
 	v->segs_out = 0;
 	v->consumed_segs = 0;
 	v->segs_in = 0;
-
-	v->ktime = ktime_get_ns();
 }
 
 static inline __attribute__((always_inline)) void
 udp_info_consumed_reset(struct udp_info_value *v, int len)
 {
+	udp_info_init(v);
+
 	v->submitted_bytes = 0;
 	v->tx_bytes = 0;
 	v->consumed_bytes = len;
@@ -464,8 +491,6 @@ udp_info_consumed_reset(struct udp_info_value *v, int len)
 	v->segs_out = 0;
 	v->consumed_segs = len ? 1 : 0;
 	v->segs_in = 0;
-
-	v->ktime = ktime_get_ns();
 }
 
 static inline __attribute__((always_inline)) void
