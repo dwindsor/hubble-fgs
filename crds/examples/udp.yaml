@@ -19,3 +19,8 @@ spec:
     dns:
       enable: true
       ports: [53]
+    heartbeat:
+      enable: true
+      interval: 3
+      udpPort: 6399
+      tcpPort: 6399

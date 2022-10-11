@@ -1,7 +1,7 @@
 apiVersion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
-  name: "udp"
+  name: "tcp"
 spec:
   parser:
     udp:
@@ -29,3 +29,8 @@ spec:
       interval: 1000
     dns:
       enable: true
+    heartbeat:
+      enable: true
+      interval: 3
+      udpPort: 6399
+      tcpPort: 6399

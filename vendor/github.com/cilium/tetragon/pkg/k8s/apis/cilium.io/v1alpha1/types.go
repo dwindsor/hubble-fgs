@@ -182,6 +182,9 @@ type ParserPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// UDP and TCP burst exit checking policy specification
 	BurstExitGen BurstExitGenPolicySpec `json:"burstExitGen"`
+	// +kubebuilder:validation:Optional
+	// UDP and TCP heartbeat policy specification
+	Heartbeat HeartbeatPolicySpec `json:"heartbeat"`
 }
 
 type TcpRttHistogram struct {
@@ -268,4 +271,23 @@ type BurstExitGenPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the checking interval in milliseconds
 	Interval uint32 `json:"interval"`
+}
+
+type HeartbeatPolicySpec struct {
+	// Enable heartbeat
+	// +kubebuilder:default=true
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:default=60
+	// +kubebuilder:validation:Optional
+	// Configures the heartbeat interval in seconds
+	Interval uint32 `json:"interval"`
+	// +kubebuilder:default=6399
+	// +kubebuilder:validation:Optional
+	// Configures the UDP port
+	UdpPort uint32 `json:"udpPort"`
+	// +kubebuilder:default=6399
+	// +kubebuilder:validation:Optional
+	// Configures the TCP port
+	TcpPort uint32 `json:"tcpPort"`
 }

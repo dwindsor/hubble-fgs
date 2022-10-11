@@ -7,6 +7,7 @@ import (
 	// Import sensor handlers
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/file"
+	_ "github.com/isovalent/hubble-fgs/pkg/sensors/heartbeat"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/http"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/kfree"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/network"

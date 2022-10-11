@@ -474,6 +474,29 @@ spec:
                     required:
                     - enable
                     type: object
+                  heartbeat:
+                    description: UDP and TCP heartbeat policy specification
+                    properties:
+                      enable:
+                        default: true
+                        description: Enable heartbeat
+                        type: boolean
+                      interval:
+                        default: 60
+                        description: Configures the heartbeat interval in seconds
+                        format: int32
+                        type: integer
+                      tcpPort:
+                        default: 6399
+                        description: Configures the TCP port
+                        format: int32
+                        type: integer
+                      udpPort:
+                        default: 6399
+                        description: Configures the UDP port
+                        format: int32
+                        type: integer
+                    type: object
                   http:
                     description: A Http spec.
                     properties:
