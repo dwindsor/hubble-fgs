@@ -25,7 +25,8 @@ type MsgProcessNetworkBurstEventUnix struct {
 }
 
 func (msg *MsgProcessNetworkBurstEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, timestamp)
+	p := ev.GetProcess()
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, timestamp)
 }
 
 func (msg *MsgProcessNetworkBurstEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {

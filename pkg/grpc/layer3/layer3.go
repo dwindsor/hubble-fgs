@@ -93,10 +93,8 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
 	}
-	if parent == nil {
-		fgsParent = &tetragon.Process{}
-	} else {
-		fgsParent = parent.GetProcessCopy()
+	if parent != nil {
+		fgsParent = parent.UnsafeGetProcess()
 	}
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
@@ -126,7 +124,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -135,6 +133,7 @@ func GetProcessConnect(event *MsgIPEventUnix) *tetragon.ProcessConnect {
 	}
 	if parent != nil {
 		parent.RefInc()
+		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -175,10 +174,8 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
 	}
-	if parent == nil {
-		fgsParent = &tetragon.Process{}
-	} else {
-		fgsParent = parent.GetProcessCopy()
+	if parent != nil {
+		fgsParent = parent.UnsafeGetProcess()
 	}
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
@@ -213,7 +210,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -222,6 +219,7 @@ func GetProcessClose(event *MsgIPEventUnix) *tetragon.ProcessClose {
 	}
 	if parent != nil {
 		parent.RefDec()
+		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 	return fgsEvent
 }
@@ -248,7 +246,7 @@ func GetProcessListen(
 		}
 	}
 	if parent != nil {
-		fgsParent = parent.GetProcessCopy()
+		fgsParent = parent.UnsafeGetProcess()
 	}
 	fgsEvent := &tetragon.ProcessListen{
 		Process:  fgsProcess,
@@ -264,7 +262,7 @@ func GetProcessListen(
 
 	ec := eventcache.Get()
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
@@ -274,6 +272,7 @@ func GetProcessListen(
 	}
 	if parent != nil {
 		parent.RefInc()
+		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 
 	return fgsEvent
@@ -304,10 +303,8 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
 	}
-	if parent == nil {
-		fgsParent = &tetragon.Process{}
-	} else {
-		fgsParent = parent.GetProcessCopy()
+	if parent != nil {
+		fgsParent = parent.UnsafeGetProcess()
 	}
 
 	destinationIP := reader.GetIP(event.Tuple.DAddr, event.Common.Op, event.Tuple.IPv6 != 0)
@@ -340,7 +337,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	}
 
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
@@ -349,6 +346,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	}
 	if parent != nil {
 		parent.RefInc()
+		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 
 	return fgsEvent
@@ -367,10 +365,8 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
 	}
-	if parent == nil {
-		fgsParent = &tetragon.Process{}
-	} else {
-		fgsParent = parent.GetProcessCopy()
+	if parent != nil {
+		fgsParent = parent.UnsafeGetProcess()
 	}
 
 	fgsTuple := sockinfo.GetTuple(&event.Tuple, event.SockCookie, event.Common.Op)
@@ -397,11 +393,14 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 	}
 
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
 		fgsEvent.Process = process.GetProcessCopy()
+	}
+	if parent != nil {
+		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 	eventmetrics.HandleSocketEvent(fgsEvent)
 	return fgsEvent
@@ -453,7 +452,10 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 		err = eventcache.ErrFailedToGetProcessInfo
 	}
 
-	return process, err
+	if err == nil {
+		return process, err
+	}
+	return nil, err
 }
 
 func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -549,10 +551,8 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	} else {
 		fgsProcess = process.UnsafeGetProcess()
 	}
-	if parent == nil {
-		fgsParent = &tetragon.Process{}
-	} else {
-		fgsParent = parent.GetProcessCopy()
+	if parent != nil {
+		fgsParent = parent.UnsafeGetProcess()
 	}
 
 	sourceIP := reader.GetIP(event.Tuple.SAddr, event.Common.Op, event.Tuple.IPv6 != 0)
@@ -605,11 +605,14 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 
 	ec := eventcache.Get()
 	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if process != nil {
 		fgsEvent.Process = process.GetProcessCopy()
+	}
+	if parent != nil {
+		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 	eventmetrics.HandleIpErrorEvent(fgsEvent)
 	return fgsEvent

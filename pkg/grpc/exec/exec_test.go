@@ -40,8 +40,8 @@ func TestGrpcExecCloneOutOfOrder(t *testing.T) {
 	execOSS.GrpcExecCloneOutOfOrder[*MsgExecveEventUnix, *MsgCloneEventUnix, *MsgExitEventUnix](t)
 }
 
-func TestGrpcParentRefcntInOrder(t *testing.T) {
-	execOSS.GrpcParentRefcntInOrder[*MsgExecveEventUnix, *MsgExitEventUnix](t)
+func TestGrpcParentInOrder(t *testing.T) {
+	execOSS.GrpcParentInOrder[*MsgExecveEventUnix, *MsgExitEventUnix](t)
 }
 
 func TestGrpcExecPodInfoInOrder(t *testing.T) {

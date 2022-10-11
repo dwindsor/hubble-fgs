@@ -2,7 +2,6 @@ package exec
 
 import (
 	"fmt"
-	"strings"
 
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/api/processapi"
@@ -29,41 +28,57 @@ const (
 	ProcessRefCnt = 1
 )
 
+func execCleanup(msg *MsgExecveEventUnix) {
+	if msg.CleanupProcess.Ktime != 0 {
+		ev := &MsgProcessCleanupEventUnix{
+			PID:   msg.CleanupProcess.Pid,
+			Ktime: msg.CleanupProcess.Ktime,
+		}
+		ev.HandleMessage()
+	}
+}
+
 // GetProcessExec returns Exec protobuf message for a given process, including the ancestor list.
-func GetProcessExec(proc *process.ProcessInternal) *tetragon.ProcessExec {
+func GetProcessExec(event *MsgExecveEventUnix) *tetragon.ProcessExec {
 	var fgsParent *tetragon.Process
 
+	proc := process.AddExecEvent(&event.MsgExecveEventUnix)
 	fgsProcess := proc.UnsafeGetProcess()
 
 	parentId := fgsProcess.ParentExecId
-	processId := fgsProcess.ExecId
-
 	parent, err := process.Get(parentId)
 	if err == nil {
 		parent.RefInc()
+		fgsParent = parent.GetProcessCopy()
 	}
 
 	// Set the cap field only if --enable-process-cred flag is set.
 	if err := proc.AnnotateProcess(option.Config.EnableProcessCred, option.Config.EnableProcessNs); err != nil {
-		logger.GetLogger().WithError(err).WithField("processId", processId).WithField("parentId", parentId).Debugf("Failed to annotate process with capabilities and namespaces info")
-	}
-	if parent != nil {
-		fgsParent = parent.GetProcessCopy()
+		logger.GetLogger().WithError(err).WithField("processId", fgsProcess.ExecId).WithField("parentId", parentId).Debugf("Failed to annotate process with capabilities and namespaces info")
 	}
 
-	// If this is not a clone we need to decrement parent refcnt because
-	// the parent has been replaced and will not get its own exit event.
-	// The new process will hold needed refcnts until it is destroyed.
-	if strings.Contains(fgsProcess.Flags, "clone") == false &&
-		strings.Contains(fgsProcess.Flags, "procFS") == false &&
-		parent != nil {
-		parent.RefDec()
-	}
-
-	return &tetragon.ProcessExec{
+	fgsEvent := &tetragon.ProcessExec{
 		Process: fgsProcess,
 		Parent:  fgsParent,
 	}
+
+	if ec := eventcache.Get(); ec != nil &&
+		(ec.Needed(fgsEvent.Process) || (fgsProcess.Pid.Value > 1 && fgsEvent.Parent == nil)) {
+		ec.Add(proc, fgsEvent, event.Common.Ktime, event)
+		return nil
+	}
+
+	fgsEvent.Process = proc.GetProcessCopy()
+
+	netinum := event.Namespaces.NetInum
+	if netinum != 0 && fgsEvent.Process.Pod != nil {
+		nscache.AddNetNs(uint64(netinum), fgsEvent.Process.Pod)
+	}
+
+	// do we need to cleanup anything?
+	execCleanup(event)
+
+	return fgsEvent
 }
 
 type MsgExecveEventUnix struct {
@@ -112,10 +127,12 @@ func (msg *MsgExecveEventUnix) Retry(internal *process.ProcessInternal, ev notif
 		if parent == nil {
 			return err
 		}
-		if strings.Contains(proc.Flags, "clone") == true {
-			parent.RefInc()
-		}
+		parent.RefInc()
+		ev.SetParent(parent.GetProcessCopy())
 	}
+
+	// do we need to cleanup anything?
+	execCleanup(msg)
 
 	return nil
 }
@@ -128,22 +145,9 @@ func (msg *MsgExecveEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 	var res *tetragon.GetEventsResponse
 	switch msg.Common.Op {
 	case ops.MSG_OP_EXECVE:
-		proc := process.AddExecEvent(&msg.MsgExecveEventUnix)
-		procEvent := GetProcessExec(proc)
-
-		ec := eventcache.Get()
-		if ec != nil &&
-			(ec.Needed(procEvent.Process) ||
-				(procEvent.Process.Pid.Value > 1 && ec.Needed(procEvent.Parent))) {
-			ec.Add(proc, procEvent, msg.MsgExecveEventUnix.Process.Ktime, msg)
-		} else {
-			netinum := msg.Namespaces.NetInum
-			if netinum != 0 && procEvent.Process.Pod != nil {
-				nscache.AddNetNs(uint64(netinum), procEvent.Process.Pod)
-			}
-			procEvent.Process = proc.GetProcessCopy()
+		if e := GetProcessExec(msg); e != nil {
 			res = &tetragon.GetEventsResponse{
-				Event:    &tetragon.GetEventsResponse_ProcessExec{ProcessExec: procEvent},
+				Event:    &tetragon.GetEventsResponse_ProcessExec{ProcessExec: e},
 				NodeName: nodeName,
 				Time:     ktime.ToProto(msg.Common.Ktime),
 			}
@@ -210,7 +214,7 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 		}
 	}
 	if parent != nil {
-		fgsParent = parent.GetProcessCopy()
+		fgsParent = parent.UnsafeGetProcess()
 	}
 
 	code := event.Info.Code >> 8
@@ -227,11 +231,12 @@ func GetProcessExit(event *MsgExitEventUnix) *tetragon.ProcessExit {
 	if ec != nil &&
 		(ec.Needed(fgsProcess) ||
 			(fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
-		ec.Add(process, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if parent != nil {
 		parent.RefDec()
+		fgsEvent.Parent = parent.GetProcessCopy()
 	}
 	if process != nil {
 		process.RefDec()
@@ -275,7 +280,10 @@ func (msg *MsgExitEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*
 		err = eventcache.ErrFailedToGetProcessInfo
 	}
 
-	return internal, err
+	if err == nil {
+		return internal, err
+	}
+	return nil, err
 }
 
 func (msg *MsgExitEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -304,4 +312,63 @@ func (msg *MsgExitEventUnix) HandleMessage() *tetragon.GetEventsResponse {
 func (msg *MsgExitEventUnix) Cast(o interface{}) notify.Message {
 	t := o.(processapi.MsgExitEvent)
 	return &MsgExitEventUnix{MsgExitEvent: t}
+}
+
+type MsgProcessCleanupEventUnix struct {
+	PID        uint32
+	Ktime      uint64
+	RefCntDone [2]bool
+}
+
+func (msg *MsgProcessCleanupEventUnix) Notify() bool {
+	return false
+}
+
+func (msg *MsgProcessCleanupEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
+	internal, parent := process.GetParentProcessInternal(msg.PID, timestamp)
+	var err error
+
+	if parent != nil {
+		if !msg.RefCntDone[ParentRefCnt] {
+			parent.RefDec()
+			msg.RefCntDone[ParentRefCnt] = true
+		}
+	} else {
+		err = eventcache.ErrFailedToGetParentInfo
+	}
+
+	if internal != nil {
+		if !msg.RefCntDone[ProcessRefCnt] {
+			internal.RefDec()
+			msg.RefCntDone[ProcessRefCnt] = true
+		}
+	} else {
+		err = eventcache.ErrFailedToGetProcessInfo
+	}
+
+	if err == nil {
+		return internal, err
+	}
+	return nil, err
+}
+
+func (msg *MsgProcessCleanupEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
+	return nil
+}
+
+func (msg *MsgProcessCleanupEventUnix) HandleMessage() *tetragon.GetEventsResponse {
+	msg.RefCntDone = [2]bool{false, false}
+	if process, parent := process.GetParentProcessInternal(msg.PID, msg.Ktime); process != nil && parent != nil {
+		parent.RefDec()
+		process.RefDec()
+	} else {
+		if ec := eventcache.Get(); ec != nil {
+			ec.Add(nil, nil, msg.Ktime, msg)
+		}
+	}
+	return nil
+}
+
+func (msg *MsgProcessCleanupEventUnix) Cast(o interface{}) notify.Message {
+	return &MsgProcessCleanupEventUnix{}
 }

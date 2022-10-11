@@ -165,18 +165,14 @@ func TestGrpcL3InOrder(t *testing.T) {
 	exitEv.Process.Refcnt = 0
 	connectEv.Process.Refcnt = 0
 	closeEv.Process.Refcnt = 0
-	assert.Equal(t, execEv.Process, exitEv.Process)
-	assert.Equal(t, execEv.Process, connectEv.Process)
-	assert.Equal(t, execEv.Process, closeEv.Process)
+	execOSS.CheckProcessEqual(t, execEv.Process, exitEv.Process)
+	execOSS.CheckProcessEqual(t, execEv.Process, connectEv.Process)
+	execOSS.CheckProcessEqual(t, execEv.Process, closeEv.Process)
 
 	// check that all events have the same parent info
-	execEv.Parent.Refcnt = 0
-	exitEv.Parent.Refcnt = 0
-	connectEv.Parent.Refcnt = 0
-	closeEv.Parent.Refcnt = 0
-	assert.Equal(t, execEv.Parent, exitEv.Parent)
-	assert.Equal(t, execEv.Parent, connectEv.Parent)
-	assert.Equal(t, execEv.Parent, closeEv.Parent)
+	execOSS.CheckProcessEqual(t, execEv.Parent, exitEv.Parent)
+	execOSS.CheckProcessEqual(t, execEv.Parent, connectEv.Parent)
+	execOSS.CheckProcessEqual(t, execEv.Parent, closeEv.Parent)
 }
 
 func createExecEvent(Pid uint32, Ktime uint64, ParentPid uint32, ParentKtime uint64, Filename string) *exec.MsgExecveEventUnix {
@@ -426,26 +422,14 @@ func TestGrpcL3CloseFirst(t *testing.T) {
 	assert.Equal(t, closeEv.Process.Pid.Value, uint32(2000))
 	assert.Equal(t, closeEv.Process.Binary, "/usr/bin/nc")
 
-	execNcEv.Process.Refcnt = 0
-	exitNcEv.Process.Refcnt = 0
-	connectEv.Process.Refcnt = 0
-	closeEv.Process.Refcnt = 0
-	//
-	assert.Equal(t, execNcEv.Process, exitNcEv.Process)
-	assert.Equal(t, execNcEv.Process, connectEv.Process)
-	assert.Equal(t, execNcEv.Process, closeEv.Process)
+	execOSS.CheckProcessEqual(t, execNcEv.Process, exitNcEv.Process)
+	execOSS.CheckProcessEqual(t, execNcEv.Process, connectEv.Process)
+	execOSS.CheckProcessEqual(t, execNcEv.Process, closeEv.Process)
 
-	execNcEv.Parent.Refcnt = 0
-	exitNcEv.Parent.Refcnt = 0
-	connectEv.Parent.Refcnt = 0
-	closeEv.Parent.Refcnt = 0
-	execParentEv.Process.Refcnt = 0
-	exitParentEv.Process.Refcnt = 0
+	execOSS.CheckProcessEqual(t, execParentEv.Process, exitParentEv.Process)
 	//
-	assert.Equal(t, execParentEv.Process, exitParentEv.Process)
-	//
-	assert.Equal(t, execNcEv.Parent, execParentEv.Process)
-	assert.Equal(t, exitNcEv.Parent, execParentEv.Process)
-	assert.Equal(t, connectEv.Parent, execParentEv.Process)
-	assert.Equal(t, closeEv.Parent, execParentEv.Process)
+	execOSS.CheckProcessEqual(t, execNcEv.Parent, execParentEv.Process)
+	execOSS.CheckProcessEqual(t, exitNcEv.Parent, execParentEv.Process)
+	execOSS.CheckProcessEqual(t, connectEv.Parent, execParentEv.Process)
+	execOSS.CheckProcessEqual(t, closeEv.Parent, execParentEv.Process)
 }

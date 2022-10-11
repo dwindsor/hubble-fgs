@@ -7,6 +7,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -84,7 +85,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) {
-		ec.Add(processInt, fgsEvent, msg.ProcessKey.Ktime, msg)
+		ec.Add(nil, fgsEvent, msg.ProcessKey.Ktime, msg)
 		return nil
 	}
 	if processInt != nil {
@@ -95,7 +96,13 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 }
 
 func (msg *MsgDnsUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, timestamp)
+	p := ev.GetProcess()
+	internal, _ := process.GetParentProcessInternal(p.Pid.Value, timestamp)
+	if internal != nil {
+		return internal, nil
+	}
+	errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+	return nil, eventcache.ErrFailedToGetProcessInfo
 }
 
 func (msg *MsgDnsUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {

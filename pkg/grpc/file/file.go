@@ -139,10 +139,8 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	} else {
 		tetragonProcess = process.UnsafeGetProcess()
 	}
-	if parent == nil {
-		tetragonParent = &tetragon.Process{}
-	} else {
-		tetragonParent = parent.GetProcessCopy()
+	if parent != nil {
+		tetragonParent = parent.UnsafeGetProcess()
 	}
 
 	action := tetragon.FileAction(event.Action)
@@ -179,10 +177,13 @@ func GetProcessFile(event *MsgFileEventUnix) *tetragon.ProcessFile {
 	ec := eventcache.Get()
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) || (tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		ec.Add(process, tetragonEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
+	if parent != nil {
+		tetragonEvent.Parent = parent.GetProcessCopy()
+	}
 	if process != nil {
 		tetragonEvent.Process = process.GetProcessCopy()
 	}
@@ -216,7 +217,8 @@ type MsgFileEventUnix struct {
 }
 
 func (msg *MsgFileEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, timestamp)
+	p := ev.GetProcess()
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, timestamp)
 }
 
 func (msg *MsgFileEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
@@ -321,10 +323,8 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	} else {
 		tetragonProcess = process.UnsafeGetProcess()
 	}
-	if parent == nil {
-		tetragonParent = &tetragon.Process{}
-	} else {
-		tetragonParent = parent.GetProcessCopy()
+	if parent != nil {
+		tetragonParent = parent.UnsafeGetProcess()
 	}
 
 	action := tetragon.FileAction(event.Action)
@@ -342,10 +342,13 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 	if ec != nil &&
 		(ec.Needed(tetragonProcess) ||
 			(tetragonProcess.Pid.Value > 1 && ec.Needed(tetragonParent))) {
-		ec.Add(process, tetragonEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, tetragonEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 
+	if parent != nil {
+		tetragonEvent.Parent = parent.GetProcessCopy()
+	}
 	if process != nil {
 		tetragonEvent.Process = process.GetProcessCopy()
 	}
@@ -354,7 +357,8 @@ func GetProcessFileRename(event *MsgFileRenameEventUnix) *tetragon.ProcessFile {
 }
 
 func (msg *MsgFileRenameEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, timestamp)
+	p := ev.GetProcess()
+	return eventcache.HandleGenericInternal(ev, p.Pid.Value, timestamp)
 }
 
 func (msg *MsgFileRenameEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {

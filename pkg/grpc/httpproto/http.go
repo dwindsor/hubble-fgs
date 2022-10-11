@@ -10,6 +10,7 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
@@ -131,7 +132,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	}
 	ec := eventcache.Get()
 	if ec != nil && ec.Needed(proc) {
-		ec.Add(processInt, fgsEvent, event.ProcessKey.Ktime, event)
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
 	if processInt != nil {
@@ -149,7 +150,13 @@ type MsgHttpEventUnix struct {
 }
 
 func (msg *MsgHttpEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
-	return eventcache.HandleGenericInternal(ev, timestamp)
+	p := ev.GetProcess()
+	internal, _ := process.GetParentProcessInternal(p.Pid.Value, timestamp)
+	if internal != nil {
+		return internal, nil
+	}
+	errormetrics.ErrorTotalInc(errormetrics.EventCacheProcessInfoFailed)
+	return nil, eventcache.ErrFailedToGetProcessInfo
 }
 
 func (msg *MsgHttpEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
