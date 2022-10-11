@@ -114,6 +114,10 @@ func TestDemoApp(t *testing.T) {
 	run := features.New("Setup Demo App").
 		Assess("Wait For Checker", demoChecker.Wait(30*time.Second)).
 		Assess("Run Workload", installDemoApp()).
+		Assess("Wait for events", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			time.Sleep(60 * time.Second)
+			return ctx
+		}).
 		Feature()
 
 	cleanup := features.New("Cleanup").

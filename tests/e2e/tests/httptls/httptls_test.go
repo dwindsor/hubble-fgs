@@ -130,6 +130,10 @@ func TestHttp(t *testing.T) {
 
 			return ctx
 		}).
+		Assess("Wait for events", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			time.Sleep(60 * time.Second)
+			return ctx
+		}).
 		Feature()
 
 	runner.TestInParallel(t, checkHttp, testHttp)
@@ -170,6 +174,10 @@ func TestTls(t *testing.T) {
 				return ctx
 			}
 
+			return ctx
+		}).
+		Assess("Wait for events", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
+			time.Sleep(60 * time.Second)
 			return ctx
 		}).
 		Feature()
