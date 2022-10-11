@@ -37,6 +37,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/dns"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/metrics/lrumetrics"
+	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
@@ -501,6 +502,7 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 }
 
 func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
+	socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeTotalRetrieve)
 	udpValue := v.(*udpInfoValue)
 	udpKey := k.(*udpInfoKey)
 
@@ -508,12 +510,14 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 	// that are not yet associated to a process between IP stack and
 	// socket handling of the UDP data.
 	if udpValue.Pid == 0 {
+		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypePidIsZero)
 		return
 	}
 
 	t, err := ktime.NanoTimeSince(int64(udpValue.Ktime))
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("time", udpValue.Ktime).Warn("UDP NanoTimeSince failed.")
+		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeNanoTimeSinceFailure)
 		return
 	}
 
@@ -528,6 +532,8 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 				stats.Add(*udpKey, *mapUpdate)
 				emitStatEvent(udpKey, &diffValue)
 				lrumetrics.LruMapSizeSet("lru_udp_stats_map", stataCacheSize, float64(stats.Len()))
+			} else {
+				socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeDiffValuesFailure)
 			}
 		}
 	} else {
@@ -545,11 +551,13 @@ func udpGcCb(m *bpf.Map, k bpf.MapKey, v bpf.MapValue) {
 }
 
 func runUdpGC() {
+	socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeTicker)
 	file := filepath.Join(bpf.MapPrefixPath(), UdpMapName)
 
 	m, err := bpf.OpenMap(file)
 	if err != nil {
 		logger.GetLogger().WithError(err).WithField("file", file).Warn("UDP GC failed to open file")
+		socketmetrics.UDPGCMetricInc(socketmetrics.UDPGCTypeFailedToOpenMap)
 		return
 	}
 	defer m.Close()

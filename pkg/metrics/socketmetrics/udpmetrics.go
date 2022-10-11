@@ -95,3 +95,37 @@ var (
 		Help: "UDP socket consume packet misses",
 	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast"})
 )
+
+// UDP metrics collection errors
+var (
+	SocketStatsUDPGC = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name:        consts.MetricNamePrefix + "socket_stats_udp_retrieve",
+		Help:        "UDP socket retrieval stats. For internal use only.",
+		ConstLabels: nil,
+	}, []string{"count"})
+)
+
+type UDPGCType int
+
+const (
+	UDPGCTypeTicker UDPGCType = iota
+	UDPGCTypeFailedToOpenMap
+	UDPGCTypeTotalRetrieve
+	UDPGCTypePidIsZero
+	UDPGCTypeNanoTimeSinceFailure
+	UDPGCTypeDiffValuesFailure
+)
+
+var UDPGCTypeStrings = map[UDPGCType]string{
+	UDPGCTypeTicker:               "Ticker",
+	UDPGCTypeFailedToOpenMap:      "Failed To Open Map",
+	UDPGCTypeTotalRetrieve:        "Total Retrieved",
+	UDPGCTypePidIsZero:            "Pid Is Zero",
+	UDPGCTypeNanoTimeSinceFailure: "NanoTimeSince Failure",
+	UDPGCTypeDiffValuesFailure:    "DiffValues Failure",
+}
+
+// Increment a UDP GC metric for a retrieval type
+func UDPGCMetricInc(ty UDPGCType) {
+	SocketStatsUDPGC.WithLabelValues(UDPGCTypeStrings[ty]).Inc()
+}
