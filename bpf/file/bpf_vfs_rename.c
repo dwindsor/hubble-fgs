@@ -485,6 +485,9 @@ BPF_KRETPROBE(vfs_rename_exit, long ret)
 	msg->mnt_ns = val->msg.mnt_ns;
 	msg->flags = val->msg.flags;
 
+	// we are done with 'val' so we can delete than entry
+	map_delete_elem(&rename_retprobe_map, &k);
+
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, msg,
 			  sizeof(struct msg_file_rename_ops));
 

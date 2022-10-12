@@ -69,6 +69,9 @@ BPF_KRETPROBE(vfs_mkdir_exit, long ret)
 	inode = val->inode;
 	dentry = val->dentry;
 
+	// we are done with 'val' so we can delete than entry
+	map_delete_elem(&mkdir_retprobe_map, &rkey);
+
 	msg = get_msg_init();
 	if (!msg)
 		return 0;
