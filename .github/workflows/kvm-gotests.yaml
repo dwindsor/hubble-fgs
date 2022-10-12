@@ -12,190 +12,72 @@ concurrency:
   group: ${{ github.ref }}-kvm-gotests
   cancel-in-progress: true
 
-env:
-  zone: us-west2-a
-  vmName: fgs-ci-gotests-${{ github.run_id }}
-  vmHost: fgs@fgs-ci-gotests-${{ github.run_id }}.us-west2-a.${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-  machineImage: projects/${{ secrets.CILIUM_DEV_GCP_PROJECT_ID }}/global/machineImages/fgs-kvm-ci-v5
-
 jobs:
   run-tests:
-    runs-on: ubuntu-latest
+    runs-on:
+    - majestic-ketchup
     timeout-minutes: 90
     strategy:
-      max-parallel: 1
+      fail-fast: false
       matrix:
         kernel:
-          - '5.15.47'
-          - '5.10.122'
-          - '5.4.198'
-          - '4.19.179'
-    outputs:
-      job_status: ${{ job.status }}
+          - '5.15'
+          - '5.10'
+          - '5.4'
+          - '4.19'
     steps:
-      - uses: actions/checkout@v3
+      - name: Install Dependencies
+        run: |
+          sudo apt update -y
+          sudo apt install -y cpu-checker qemu-kvm libvirt-daemon-system libvirt-clients bridge-utils virtinst virt-manager
+
+      - name: Dump KVM Info
+        run: |
+          cat /sys/module/kvm_intel/parameters/nested
+          egrep -c '(vmx|svm)' /proc/cpuinfo
+          echo "${{ matrix.kernel }}"
+          kvm-ok
+          sudo systemctl is-active libvirtd
+
+      - name: Checkout Git Repo
+        uses: actions/checkout@v3
         with:
           path: hubble-fgs
           submodules: true
 
-      - name: Set up ssh client
-        run: |
-            sudo apt-get -y install openssh-client
-            mkdir -p ~/.ssh && chmod 700 ~/.ssh
-            echo "${{ secrets.KVM_SSH_FINGERPRINT }}" >> ~/.ssh/known_hosts
-            chmod 600 ~/.ssh/known_hosts
-
-      - uses: webfactory/ssh-agent@v0.5.4
+      - name: Provision LVH VM
+        uses: willfindlay/little-vm-helper-action@10a59636e89103bbec4f986d1965374876464aae
         with:
-            ssh-private-key: ${{ secrets.SSH_PRIVATE_KEY }}
+          test-name: tetragon-unit-tests
+          image: kind
+          image-version: '${{ matrix.kernel }}'
+          lvh-version: 'v0.0.1'
+          host-mount: ./
+          ssh-port: 2222
+          cmd: |
+            set -eux
+            cd /host/hubble-fgs
 
-      - name: Set up job variables
-        id: vars
-        run: |
-          if [ ${{ github.event.issue.pull_request || github.event.pull_request }} ]; then
-            PR_API_JSON=$(curl \
-              -H "Accept: application/vnd.github.v3+json" \
-              -H "Authorization: Bearer ${{ secrets.GITHUB_TOKEN }}" \
-              ${{ github.event.issue.pull_request.url || github.event.pull_request.url }})
-            SHA=$(echo "$PR_API_JSON" | jq -r ".head.sha")
-          else
-            SHA=${{ github.sha }}
-          fi
-          echo ::set-output name=sha::${SHA}
-          echo ::set-output name=agentImage::quay.io/isovalent-dev/hubble-enterprise-ci:${SHA}
-          echo ::set-output name=operatorImage::quay.io/isovalent-dev/hubble-enterprise-operator-ci:${SHA}
+            systemd-detect-virt
+            (systemd-detect-virt | grep -q -i kvm) || { echo 'No KVM support detected! Bailing out...'; exit 1; }
 
-      - name: Authenticate with gcloud
-        uses: 'google-github-actions/auth@v0'
+            # copy btf file
+            mkdir -p bpf/objs
+            ln -vsnf /boot/btf-\$(uname -r) bpf/objs/btf
+
+            # install test deps
+            apt update -y
+            apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd
+
+      - name: Run Tests
+        uses: willfindlay/little-vm-helper-action@10a59636e89103bbec4f986d1965374876464aae
         with:
-          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-          credentials_json: '${{ secrets.CILIUM_PR_GCP_SA_KEY }}'
-          create_credentials_file: true
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v0
-        with:
-          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-
-      - name: Install beta component
-        run: gcloud components install beta && gcloud info
-
-      - name: Create VM if needed
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            # Probe to see if VM already exists and, if so, exit early
-            # Otherwise let's keep going
-            gcloud compute ssh --quiet fgs@${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a" && exit 0 || true
-
-            # Create the vm
-            gcloud beta compute instances create ${{ env.vmName }} --quiet --zone ${{ env.zone }} \
-              --machine-type n1-standard-4 --min-cpu-platform "Intel Haswell" \
-              --enable-nested-virtualization \
-              --source-machine-image ${{ env.machineImage }} \
-              --preemptible --no-restart-on-failure --maintenance-policy=terminate \
-              --service-account isovalent-hubble-fgs-sa@cilium-pr.iam.gserviceaccount.com
-
-      - name: Set up ssh into VM
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            gcloud compute ssh --quiet fgs@${{ env.vmName }} --zone ${{ env.zone }} --command="uname -a"
-            gcloud compute config-ssh --quiet
-            ssh ${{ env.vmHost }} 'whoami && uname -a'
-
-      - name: Copy over FGS
-        run: |
-          # Break out early if hubble-fgs directory already exists
-          ssh ${{ env.vmHost }} "ls hubble-fgs" && exit 0 || true
-
-          # Copy over FGS
-          tar cz hubble-fgs | ssh ${{ env.vmHost }} 'tar xz'
-
-      - name: Spin up KVM
-        uses: nick-invision/retry@v2
-        with:
-          timeout_minutes: 1
-          max_attempts: 10
-          command: |
-            # Setup custom config file for contrib/kvm so that it points to the right disk
-            # image and kernel
-            cat <<-EOF | ssh ${{ env.vmHost }} 'cat >> hubble-fgs/contrib/kvm/conf'
-              ROOTIMG="/home/fgs/img/kvm.img"
-              BZIMAGE="/home/fgs/kernels/${{ matrix.kernel }}"
-              FGSDIR="/home/fgs/hubble-fgs"
-            EOF
-
-            # Spin up KVM
-            cat <<-EOF | ssh ${{ env.vmHost }}
-              hubble-fgs/contrib/kvm/run.sh
-            EOF
-
-            # Ensure VM is running. If not, back off for 10 seconds and exit with a bad
-            # status code so we can try again.
-            if ! ssh ${{ env.vmHost }} 'ps ax | grep "qemu-system"'; then
-              sleep 10
-              exit 1
-            fi
-
-            # Set up an ssh tunnel into the VM
-            ssh ${{ env.vmHost }} -NL 3000:localhost:3000 & sleep 10
-
-            # Verify we can login via the tunnel
-            ssh -p 3000 root@localhost "uname -a"
-
-      - name: Copy over BTF info
-        run: |
-          # Copy over BTF file if one exists
-          BTF_FILE="/home/fgs/btf/vmlinux-${{ matrix.kernel }}"
-          cat <<-EOF | ssh ${{ env.vmHost }}
-            if [ -f "$BTF_FILE" ]; then
-              echo "Copying over $BTF_FILE"
-              ssh -p 3000 root@localhost "mkdir -p /fgs/bpf/objs"
-              scp -P 3000 "$BTF_FILE" root@localhost:/fgs/bpf/objs/btf
-            fi
-          EOF
-
-      - name: Install liburing and libaio
-        run: |
-          cat <<-EOF | ssh -p 3000 root@localhost
-            set -e
-
-            apt install libaio-dev -y
-
-            rm -rf liburing
-            git clone https://github.com/axboe/liburing.git
-            cd liburing
-            ./configure
-            make
-            sudo make install
-          EOF
-
-      - name: Install Go 1.18
-        run: |
-          cat <<-EOF | ssh -p 3000 root@localhost
-            set -e
-
-            wget https://go.dev/dl/go1.18.6.linux-amd64.tar.gz
-            rm -rf /usr/local/go && tar -C /usr/local -xzf go1.18.6.linux-amd64.tar.gz
-            rm -f go1.18.6.linux-amd64.tar.gz
-          EOF
-
-      - name: Run unit tests
-        timeout-minutes: 30
-        run: |
-          cat <<-EOF | ssh -p 3000 root@localhost
-            set -e
-
-            cd /fgs
-            export PATH="$PATH:/usr/local/go/bin"
+          provision: 'false'
+          cmd: |
+            set -eux
+            cd /host/hubble-fgs
 
             make hubble-bpf tester-progs test
-          EOF
 
       - name: Copy out FGS logs
         if: ${{ failure() || cancelled() }}
@@ -205,43 +87,14 @@ jobs:
           mkdir -p logs/unit-tests
 
           # Copy logs over
-          scp -P 3000 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
-          scp -P 3000 'root@localhost:/tmp/*.json' logs/unit-tests || true
-          scp -P 3000 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
-
-      - name: Shut off KVM
-        timeout-minutes: 5
-        run: |
-          ssh ${{ env.vmHost }} "hubble-fgs/contrib/kvm/stop.sh"
-          sleep 10
+          scp -P 2222 'root@localhost:/tmp/*.yaml' logs/unit-tests || true
+          scp -P 2222 'root@localhost:/tmp/*.json' logs/unit-tests || true
+          scp -P 2222 'root@localhost:/tmp/*bugtool*' logs/unit-tests || true
 
       - name: Upload unit test logs
         if: ${{ failure() || cancelled() }}
         uses: actions/upload-artifact@3cea5372237819ed00197afe530f5a7ea3e805c8
         with:
-          name: fgs-unit-tests-${{ matrix.kernel }}
+          name: tetragon-unit-tests-${{ matrix.kernel }}
           path: logs/unit-tests
           retention-days: 5
-
-  cleanup:
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    needs: [run-tests]
-    if: always()
-    steps:
-      - name: Authenticate with gcloud
-        uses: 'google-github-actions/auth@v0'
-        with:
-          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-          credentials_json: '${{ secrets.CILIUM_PR_GCP_SA_KEY }}'
-          create_credentials_file: true
-
-      - name: Set up gcloud
-        uses: google-github-actions/setup-gcloud@v0
-        with:
-          project_id: ${{ secrets.CILIUM_PR_GCP_PROJECT_ID }}
-
-      - name: Destroy VM
-        if: ${{ always() }}
-        run: |
-          gcloud compute instances delete ${{ env.vmName }} --quiet --zone ${{ env.zone }}
