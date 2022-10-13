@@ -130,7 +130,7 @@ func getCWD(pid uint32) (string, uint32) {
 	return cwd, flags
 }
 
-func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
+func pushExecveEvents(p Procs) {
 	var err error
 
 	args, filename := procsFilename(p.args)
@@ -180,9 +180,7 @@ func pushExecveEvents(p Procs, pushExecve, writeMaps bool) {
 	m.Process.Filename = filename
 	m.Process.Args = args
 
-	if pushExecve {
-		observer.AllListeners(&m)
-	}
+	observer.AllListeners(&m)
 }
 
 func writeExecveMap(procs []Procs) {
@@ -242,20 +240,19 @@ func writeExecveMap(procs []Procs) {
 	m.Close()
 }
 
-func pushEvents(procs []Procs, pushExecve, writeMaps bool) {
-	if writeMaps {
-		writeExecveMap(procs)
-	}
+func pushEvents(procs []Procs) {
+	writeExecveMap(procs)
+
 	sort.Slice(procs, func(i, j int) bool {
 		return procs[i].ppid < procs[j].ppid
 	})
 	procs = append(procs, procKernel())
 	for _, p := range procs {
-		pushExecveEvents(p, pushExecve, writeMaps)
+		pushExecveEvents(p)
 	}
 }
 
-func GetRunningProcs(write, push bool) []Procs {
+func GetRunningProcs() []Procs {
 	var procs []Procs
 
 	procFS, err := ioutil.ReadDir(option.Config.ProcFS)
@@ -448,6 +445,6 @@ func GetRunningProcs(write, push bool) []Procs {
 	}
 	logger.GetLogger().Infof("Enterprise Read ProcFS %s appended %d/%d entries", option.Config.ProcFS, len(procs), len(procFS))
 
-	pushEvents(procs, push, write)
+	pushEvents(procs)
 	return procs
 }
