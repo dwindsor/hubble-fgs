@@ -100,7 +100,7 @@ func TestHttp(t *testing.T) {
 		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
 	}
 
-	httpChecker := checker.NewRPCChecker(HttpChecker(kversion), "httpChecker").WithEventLimit(1000).WithTimeLimit(2 * time.Minute)
+	httpChecker := checker.NewRPCChecker(HttpChecker(kversion), "httpChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
 	checkHttp := features.New("Check Http Events").
 		Assess("Run Event Checks", httpChecker.CheckInNamespace(30*time.Second, "curl")).
 		Feature()
@@ -142,7 +142,7 @@ func TestTls(t *testing.T) {
 		t.Skipf("HTTP and TLS tests need kernel >= 5.10, got %s", kversion)
 	}
 
-	tlsChecker := checker.NewRPCChecker(TlsChecker(kversion), "tlsChecker").WithEventLimit(1000).WithTimeLimit(2 * time.Minute)
+	tlsChecker := checker.NewRPCChecker(TlsChecker(kversion), "tlsChecker").WithEventLimit(1000).WithTimeLimit(3 * time.Minute)
 	checkTls := features.New("Check Tls Events").
 		Assess("Run Event Checks", tlsChecker.CheckInNamespace(30*time.Second, "curl")).
 		Feature()
