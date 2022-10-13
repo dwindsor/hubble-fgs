@@ -14,14 +14,14 @@ struct network_key {
 
 /* Qdisc qlen historgram with 8 buckets */
 struct qdisc_qlen_hist {
-	u32 b99;
-	u32 b90;
-	u32 b75;
-	u32 b50;
-	u32 b25;
-	u32 b10;
-	u32 b01;
-	u32 b00;
+	u64 b99;
+	u64 b90;
+	u64 b75;
+	u64 b50;
+	u64 b25;
+	u64 b10;
+	u64 b01;
+	u64 b00;
 };
 
 struct network_value {
