@@ -132,7 +132,11 @@ interface_stats(struct sk_buff *skb, bool xmit)
 		probe_read(&value->name, NAME_STRING, _(&(dev->name)));
 		value->txbytes = value->rxbytes = value->txpackets =
 			value->rxpackets = 0;
+
 		map_update_elem(&network_map, key, value, BPF_NOEXIST);
+		value = map_lookup_elem(&network_map, key);
+		if (!value)
+			return 1;
 	}
 
 	probe_read(&len, sizeof(len), _(&(skb->len)));
