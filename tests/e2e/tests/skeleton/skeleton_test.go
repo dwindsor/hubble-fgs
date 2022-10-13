@@ -121,10 +121,6 @@ func TestSkeletonBasic(t *testing.T) {
 				t.Fail()
 			}
 			return ctx
-		}).
-		Assess("Wait for events", func(ctx context.Context, t *testing.T, cfg *envconf.Config) context.Context {
-			time.Sleep(60 * time.Second)
-			return ctx
 		}).Feature()
 
 	// We run our features using testenv.Test() or testenv.TestInParallel(). These take
