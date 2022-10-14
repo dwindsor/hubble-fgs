@@ -134,61 +134,6 @@ in the comments. See [`tests/e2e/tests/skeleton`](./tests/e2e/tests/skeleton).
 [docker]: https://docs.docker.com/engine/install/
 [kind]: https://kind.sigs.k8s.io/docs/user/quick-start/
 
-### Dependencies to compile / run / test FGS locally
-
-Run
-
-    make tools-install
-
-Then you can proceed to the below instructions.
-
----
-
-To build a docker image for running go tests, (note below 'docker run' pulls
-in current code directory this just gets us golang and some tools needed to
-run hubble-fgs go tests)
-
-    docker build --label katafgs --tag katafgs:latest .
-
-To test locally:
-
-    go test .
-
-To run tests in docker:
-
-    docker run -ti --name test --privileged -v $GOPATH/src/github.com/isovalent/hubble-fgs:/go/src/github.com/isovalent/hubble-fgs isovalent/hubble-fgs-test
-
-To use kata containers for testing, please have a look at
-[`hubble-builder/kata-tester`](https://github.com/isovalent/hubble-builder/tree/master/kata-tester),
-which is also where the [`kata-img`
-script](https://github.com/isovalent/hubble-builder/blob/master/kata-tester/contrib/kata-img)
-can be found.
-
-To run tests in kata-container with hosted kernel we can use kata-img to see
-which kernel is currently selected:
-
-    $ kata-img
-    * vmlinuz-bpf-next_hubble
-      vmlinuz-kata-linux-4.19.125-79_hubble
-      vmlinuz-kata-linux-5.4.44-79_hubble
-
-Then the following 'docker run' command will launch above kernel and run go
-tests,
-
-    docker run --runtime=kata-runtime -ti --name test --cap-add all --ulimit memlock=-1:-1 \
-        -v /var/lib/kata-containers/images/btf:/var/lib/hubble-fgs/btf \
-        -v $GOPATH/src/github.com/isovalent/hubble-fgs:/go/src/github.com/isovalent/hubble-fgs \
-        -v /proc:/procRoot isovalent/hubble-fgs-test
-
-Some environment variables impact where fgs will look for procFS and BTF data.
-The defaults are,
-
-    export FGS_BTF=/var/lib/hubble-fgs/btf
-    export FGS_PROCFS=/procRoot/
-
-These are set from Dockerfile.test and will work with above 'docker run' command
-but can be reconfigured if needed. Happy testing.
-
 ## Adding Events
 
 Adding new events should be straight forward. We may not be there yet, but it should be
