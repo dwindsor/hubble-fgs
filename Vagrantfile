@@ -15,7 +15,6 @@ Vagrant.configure("2") do |config|
       apt-get update
       apt-get install -y build-essential clang conntrack libelf-dev net-tools
       snap install go --channel=1.16/stable --classic
-      make tools-install LIBBPF_INSTALL_DIR=/usr/local/lib CLANG_INSTALL_DIR=/usr/bin
       ldconfig /usr/local/
 
       # Install crictl
