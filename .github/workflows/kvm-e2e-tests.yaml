@@ -18,7 +18,7 @@ env:
 jobs:
   run-tests:
     runs-on:
-    - majestic-ketchup
+    - majestic-ketchup-light
     timeout-minutes: 90
     strategy:
       fail-fast: false
