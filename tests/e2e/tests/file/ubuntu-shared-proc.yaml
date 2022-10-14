@@ -1,0 +1,31 @@
+kind: Deployment
+apiVersion: apps/v1
+metadata:
+  name: ubuntu
+  namespace: ubuntu
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ubuntu
+  template:
+    metadata:
+      labels:
+        app: ubuntu
+    spec:
+      containers:
+      - name: ubuntu
+        image: ubuntu:20.04
+        imagePullPolicy: Always
+        command: ["sleep"]
+        args: ["infinity"]
+        securityContext:
+          privileged: true
+        volumeMounts:
+        - name: host-proc
+          mountPath: /procRoot
+      restartPolicy: Always
+      volumes:
+      - name: host-proc
+        hostPath:
+          path: /proc
