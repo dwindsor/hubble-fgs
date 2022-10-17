@@ -1,0 +1,58 @@
+KERNEL  ?=
+KERNEL_URL  ?=
+IMAGE   ?= kind.qcow2
+SSHPORT ?= 3333
+SSHARGS ?=
+
+ifeq ($(KERNEL),)
+__kernel_flags =
+else
+__kernel_flags = --kernel _data/kernels/${KERNEL}/tar-install/boot/vmlinuz*
+endif
+
+.PHONY: run
+run:
+	sudo lvh run --image _data/images/${IMAGE} -p ${SSHPORT}:22 --daemonize --host-mount ../../ ${__kernel_flags}
+
+.PHONY: start
+start: run
+
+.PHONY: ssh
+ssh:
+	@test ${SSHPORT}
+	ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p ${SSHPORT} root@localhost ${SSHARGS}
+
+.PHONY: stop
+stop:
+	@echo "Attempting to gracefully shut down VM..."
+	${MAKE} ssh SSHARGS="shutdown now -P"
+
+.PHONY: kill
+kill:
+	@echo "Forcefully shutting down QEMU process..."
+	sudo kill $(shell pgrep "qemu-system" | head -n 1)
+
+.PHONY: install-lvh
+install-lvh:
+	go install github.com/cilium/little-vm-helper@latest
+
+.PHONY: fetch-kernel
+fetch-kernel:
+	@test ${KERNEL}
+	lvh kernels fetch --dir _data ${KERNEL}
+
+.PHONY: build-kernel
+build-kernel:
+	@test ${KERNEL}
+	lvh kernels configure --dir _data ${KERNEL}
+	lvh kernels build --dir _data ${KERNEL}
+
+.PHONY: add-kernel
+add-kernel:
+	@test ${KERNEL}
+	@test ${KERNEL_URL}
+	lvh kernels --dir _data add ${KERNEL} ${KERNEL_URL} --fetch
+
+.PHONY: build-images
+build-images:
+	./helpers/build-image.sh

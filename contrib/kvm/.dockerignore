@@ -1,5 +1,2 @@
-.ksrc/
-kout/
-mnt/
-img/
-modules/
+_data/images
+_data/kernels

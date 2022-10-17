@@ -1,101 +1,63 @@
-# KVM Workflow for CI and Local Dev
+# Little VM Helper Scripts for Testing Tetragon
 
-The scripts in contrib/kvm enable you to quickly and easily compile a new kernel and build
-a root filesystem image for local FGS development and testing in KVM.
+This directory contains LVH (Little VM Helper) scripts that help to test Tetragon on
+multiple kernels. These are exposed through a Makefile that has targets for installing
+LVH, building a kernel, building a disk image, and spinning up a KVM virtual machine with
+this kernel and disk image.
 
-This workflow consists of the following basic components:
+## Supported Kernels
 
-1. A script (contrib/kvm/build-image.sh) and Dockerfile to generate a new Ubuntu 20.04 image.
-2. A script (contrib/kvm/build-kernel.sh) to compile a new version of the Linux kernel.
-3. A script (contrib/kvm/run.sh) to spin up a new KVM virtual machine using the generated image and kernel.
+Currently, these scripts ship with the following kernels supported by default:
 
-## Limitations
+- bpf-next
+- 5.15
+- 5.10
+- 5.4
+- 4.19
 
-In order to run FGS in KinD, the VM disk image needs to be at least 10GiB to fit all the
-necessary Docker container images. Without KinD, the image can be as small as 4GiB.
+Should you wish to add a new kernel, you can do so with `make add-kernel KERNEL=name
+KERNEL_URL=giturl`. Alternatively, you can run the `lvh` command directly or just edit
+`_data/kernels.json`.
 
-## Configuring Your Environment
+## Workflow
 
-The values in `contrib/kvm/conf` should be sufficient to work on most Linux systems.
-However, you can edit them as necessary:
+0. The first time you run this on your system, you will need to install LVH to your
+   GOPATH. You can do this using `make install-lvh`.
 
-- PUBKEY: The local path to a public key that should be copied into the VM image to enable ssh access.
-- ROOTIMG: The path where the generated VM image should be stored.
-- MNTDIR: Directory that should be used for mounting the root filesystem image.
-- PACKAGES: A list of base packages that should be installed into the VM.
-- VMDISK: Size of the VM disk in GB.
-- VMRAM: Size of the VM's RAM in GB.
-- VMCPUS: Number of CPUs to allocate to the VM.
-- MACADDR: MAC address to use for the VM's NIC.
-- SSHPORT: Port to forward on the local machine for ssh into the VM.
-- KCONFIG: Path to the kernel config file that should be used when building the kernel
-- KSRDIR: Path to clone kernel sources.
-- KOUT: Directory to store compiled kernel artifacts.
-- MODULESDIR: Directory to install kernel modules.
+1. Build your desired kernel. You can do this using `make build-kernel KERNEL=5.15`,
+   replacing `5.15` with whatever kernel you want from `_data/kernels.json`. If this is
+   your first time running these scripts, you will likely need to fetch the kernel first,
+   which you can do with `make fetch-kernel KERNEL=5.15`.
 
-## Quick Start
+2. Build your disk image (only needed if it's your first time, or you want to update the
+   image). You can do this with `make build-images`.
 
-1. Compile the latest bpf/bpf kernel:
+3. Spin up the VM. You can do this with `make run KERNEL=5.15`. You can also omit the
+   `KERNEL` argument if you just want to run the image's stock kernel.
 
-        contrib/kvm/build-kernel.sh
+4. Run your tests. SSH into the VM with `make ssh` and navigate to `/host`. This directory
+   will contain all the files in this git repository where you can then run whatever
+   tests you need (e.g. `make test` or `make e2e-test`).
 
-2. Build the VM image:
+5. When you're done, run `make stop` on the host to shut down the VM.
 
-        contrib/kvm/build-image.sh
+## Makefile Variables
 
-3. Run the VM:
+- `KERNEL`: name of the kernel to use. Default is empty, implies no custom kernel.
+- `KERNEL_URL`: git URL of the kernel to download when using `make add-kernel`.
+- `IMAGE`: disk image to use from `_data/images`. Default is `kind.qcow2` (must be built with `make build-images`).
+- `SSHPORT`: port to forward for SSH. Default is 3333.
+- `SSHARGS`: extra argument to pass to SSH. Default is empty.
 
-        contrib/kvm/run.sh
+## Makefile Targets
 
-4. SSH into the VM:
-
-        contrib/kvm/ssh.sh
-
-## Building and Testing FGS
-
-After SSHing into the VM, run `cd /fgs` to navigate to the path where the FGS project is
-mounted via network share. To build FGS, you can run `make`. The correct version of libbpf
-and clang were already installed when building the VM image. To test FGS, you can
-similarly run `make test`. To run FGS locally, `./hubble-fgs --hubble-lib bpf/objs`.
-
-## Running End-To-End Tests
-
-TODO: This will be further automated in a follow-up patch.
-
-1. Ensure that your VM image has at least 13GiB of space.
-2. Create your k8s cluster with `kind create cluster`.
-3. Install Cilium with `cilium install && cilium hubble enable`.
-4. Build the FGS image with `make image`.
-5. Register the image with KinD by running `kind load docker-image isovalent/hubble-fgs`.
-6. Install FGS into your cluster as follows:
-
-          helm repo add isovalent https://helm.isovalent.com
-          helm repo update
-          helm install hubble-enterprise isovalent/hubble-enterprise \
-                 --version 9999.9999.9999-dev \
-                 --set enterprise.image.repository=isovalent/hubble-fgs \
-                 --set enterprise.image.tag=latest \
-                 --set enterprise.exportAllowList="" \
-                 --namespace kube-system
-
-7. Deploy the demo application as follows:
-
-          kubectl create namespace tenant-jobs
-          kubectl -n tenant-jobs apply -f https://docs.isovalent.com/public/jobs-app-attack.yaml
-          kubectl wait -n tenant-jobs --for=condition=Ready --all pod --timeout=30s
-
-8. Allow events to generate:
-
-          kubectl exec -n tenant-jobs deployment/jobposting -- curl localhost:9080 -m 1 || true
-          sleep 60
-
-9. Extract FGS logs:
-
-          kubectl get pods --selector=app.kubernetes.io/name=hubble-enterprise \
-              -n kube-system -o custom-columns=name:metadata.name --no-headers \
-              | xargs -I{} kubectl cp -c enterprise -n kube-system {}:/var/run/cilium/hubble/fgs.log ./hubble-fgs-{}-fgs.log
-          cat ./hubble-fgs*.log >> fgs.log
-
-10. Run the event checker tests on `fgs.log`:
-
-          go run ./tests/jobs.trace.go fgs.log
+- `run`: spin up the VM.
+- `start`: alias for `run`.
+- `ssh`: SSH into the VM.
+- `stop`: shut down the VM.
+- `kill`: forcefully kill the VM. Prefer `stop` when possible.
+- `install-lvh`: install lvh to the GOPATH.
+- `fetch-kernel`: fetch `$KERNEL` from its git repo.
+- `build-kernel`: configure and build `$KERNEL`.
+- `add-kernel`: add `$KERNEL` with URL `$KERNEL_URL` to `_data/kernels.json`.
+- `build-images`: build root filesystem images from `_data/images.json`.

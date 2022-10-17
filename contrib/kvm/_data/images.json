@@ -1,0 +1,131 @@
+[
+    {
+        "name": "kind.qcow2",
+        "image_size": "40G",
+        "packages": [
+            "bpftool",
+            "ca-certificates",
+            "curl",
+            "iproute2",
+            "less",
+            "openssh-server",
+            "sudo",
+            "util-linux",
+            "vim",
+            "build-essential",
+            "git",
+            "golang-1.19-go",
+            "gpg",
+            "libarchive-tools"
+        ],
+        "actions": [
+            {
+                "comment": "disable password for root",
+                "op": {
+                    "Cmd": "passwd -d root"
+                },
+                "type": "run-command"
+            },
+            {
+                "comment": "disable systemd timers",
+                "op": {
+                    "Cmd": "rm /lib/systemd/system/*.timer"
+                },
+                "type": "run-command"
+            },
+            {
+                "op": {
+                    "File": "/etc/systemd/system.conf",
+                    "Line": "DefaultLimitNOFILE=65535"
+                },
+                "type": "append-line"
+            },
+            {
+                "op": {
+                    "File": "/etc/sysctl.conf",
+                    "Line": "fs.inotify.max_user_watches = 524288"
+                },
+                "type": "append-line"
+            },
+            {
+                "op": {
+                    "File": "/etc/sysctl.conf",
+                    "Line": "fs.inotify.max_user_instances = 512"
+                },
+                "type": "append-line"
+            },
+            {
+                "comment": "env",
+                "op": {
+                    "File": "/host/_data/env.sh",
+                    "Dest": "/etc/profile.d/path.sh"
+                },
+                "type": "upload"
+            },
+            {
+                "comment": "copy-in bootstrap dir",
+                "op": {
+                    "LocalPath": "/host/_data/bootstrap",
+                    "RemoteDir": "/"
+                },
+                "type": "copy-in"
+            },
+            {
+                "comment": "enable networking",
+                "op": {
+                    "Cmd": "/bootstrap/networkd.sh"
+                },
+                "type": "run-command"
+            },
+            {
+                "comment": "configure sshd",
+                "op": {
+                    "Cmd": "/bootstrap/sshd.sh"
+                },
+                "type": "run-command"
+            },
+            {
+                "comment": "configure mounts",
+                "op": {
+                    "Cmd": "/bootstrap/fstab.sh"
+                },
+                "type": "run-command"
+            },
+            {
+                "comment": "install docker",
+                "op": {
+                    "Cmd": "/bootstrap/deb-docker.sh"
+                },
+                "type": "run-command"
+            },
+            {
+                "comment": "install kind",
+                "op": {
+                    "Cmd": "/bootstrap/kind.sh"
+                },
+                "type": "run-command"
+            },
+            {
+                "comment": "install kubectl",
+                "op": {
+                    "Cmd": "/bootstrap/deb-k8s.sh"
+                },
+                "type": "run-command"
+            },
+            {
+                "comment": "install cilium cli",
+                "op": {
+                    "Cmd": "/bootstrap/cilium-cli.sh"
+                },
+                "type": "run-command"
+            },
+            {
+                "comment": "install helm",
+                "op": {
+                    "Cmd": "/bootstrap/helm.sh"
+                },
+                "type": "run-command"
+            }
+        ]
+    }
+]

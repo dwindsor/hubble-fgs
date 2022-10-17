@@ -78,41 +78,9 @@ To run image in docker,
 
 ### Running FGS in KVM
 
-The directory `contrib/kvm` has some scripts to facilitate running FGS via qemu and KVM.
-
-Building the VM image requires only Docker to be installed on the host system, and running
-the VM requires a working installation of qemu on a KVM-enabled Linux kernel. The scripts
-are set up in such a way that you can run the same VM image with any version of the Linux
-kernel, meaning that it is possible to easily locally test FGS against multiple versions
-of the Linux kernel.
-
-By default, the VM image will implicitly include a copy of `~/.ssh/id_rsa.pub` in the
-root user's `authorized_keys` file, meaning that ssh should just work.
-
-If you like, you can also edit the configuration values stored in `contrib/kvm/conf`.
-Here, you can tune parameters like which public key should be copied over, what port
-should be exposed on the host system for ssh, etc.
-
-To build a version of the Linux kernel (by default the latest commit in the bpf tree):
-
-    contrib/kvm/build-kernel.sh
-
-To build the root filesystem for the VM:
-
-    contrib/kvm/build-image.sh
-
-Then you can run and ssh into the VM as follows:
-
-    contrib/kvm/run.sh
-    contrib/kvm/ssh.sh
-
-Alternatively, you can run the VM in the foreground and login as `root` without a password:
-
-    FOREGROUND=1 contrib/kvm/run.sh
-
-The VM image comes with all the tools required to build FGS, run FGS locally, run unit
-tests, install FGS into a KinD-based k8s cluster, and run end-to-end tests. You can consult
-[contrib/kvm/README.md](contrib/kvm/README.md) for more information.
+The `contrib/kvm` directory contains a Makefile to help you run Tetragon inside
+a little-vm-helper KVM virtual machine. Consult [contrib/kvm/README.md](contrib/kvm/README.md)
+for more information.
 
 ### Running FGS Locally in KinD
 
