@@ -91,18 +91,21 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 		}
 	}
 
-	processID := process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	var proc *tetragon.Process
-	processInt, err := process.Get(processID)
-	if err != nil {
+	var proc, parent *tetragon.Process
+	processInt, parentInt := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
+	if processInt == nil {
 		proc = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
-		logger.GetLogger().WithField("id in TLS event", processID).Debug("process not found in cache")
+		logger.GetLogger().WithField("id in TLS event", process.GetProcessID(event.ProcessKey.Pid, event.ProcessKey.Ktime)).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()
 	}
+	if parentInt != nil {
+		parent = parentInt.GetProcessCopy()
+	}
+
 	typeSNI, nameSNI := readertls.GetTLSSNI(event.ClientHello.SNI.Value)
 
 	clientVersion := readertls.GetTLSVersion(event.ClientHello.Version)
@@ -115,6 +118,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 
 	fgsEvent := &tetragon.Tls{
 		Process:             proc,
+		Parent:              parent,
 		SourceIp:            network.GetIPv4(event.Tuple.SAddr, event.Common.Op).String(),
 		SourcePort:          sourcePort,
 		DestinationIp:       network.GetIPv4(event.Tuple.DAddr, event.Common.Op).String(),
@@ -137,7 +141,7 @@ func getTLS(event *MsgTLSEventUnix) *tetragon.Tls {
 		ParserInternalState: event.ServerCert.ParserState.String(),
 	}
 	ec := eventcache.Get()
-	if ec != nil && ec.Needed(proc) {
+	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
 		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}

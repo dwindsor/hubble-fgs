@@ -98,6 +98,7 @@ func TestTLS13(t *testing.T) {
 
 	tlsChecker := ec.NewTlsChecker().
 		WithProcess(curlChecker).
+		WithParent(selfChecker).
 		WithNegotiatedVersion(sm.Full("TLS1.3")).
 		WithClientVersion(sm.Full("TLS1.2")).
 		WithServerVersion(sm.Full("TLS1.2")).
@@ -161,6 +162,7 @@ func TestTLS12(t *testing.T) {
 
 	tlsChecker := ec.NewTlsChecker().
 		WithProcess(curlChecker).
+		WithParent(selfChecker).
 		WithClientVersion(sm.Full("TLS1.2")).
 		WithServerVersion(sm.Full("TLS1.2")).
 		WithSniType(sm.Full("host_name")).
@@ -280,6 +282,7 @@ func TestCGTLS13(t *testing.T) {
 
 	tlsChecker := ec.NewTlsChecker().
 		WithProcess(curlChecker).
+		WithParent(selfChecker).
 		WithNegotiatedVersion(sm.Full("TLS1.3")).
 		WithClientVersion(sm.Full("TLS1.2")).
 		WithServerVersion(sm.Full("TLS1.2")).
@@ -343,6 +346,7 @@ func TestCGTLS12(t *testing.T) {
 
 	tlsChecker := ec.NewTlsChecker().
 		WithProcess(curlChecker).
+		WithParent(selfChecker).
 		WithClientVersion(sm.Full("TLS1.2")).
 		WithServerVersion(sm.Full("TLS1.2")).
 		WithSniType(sm.Full("host_name")).
