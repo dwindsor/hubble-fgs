@@ -41,29 +41,34 @@ func getRequest(namespaces []string, host bool, processes, pods, IPs, sourceIPs,
 		// Host events can be matched by an empty namespace string.
 		namespaces = append(namespaces, "")
 	}
+
 	return &tetragon.GetEventsRequest{
 		AllowList: []*tetragon.Filter{{
-			BinaryRegex: processes,
-			Namespace:   namespaces,
-			PodRegex:    pods,
-			IpCidr: []*tetragon.IPFilter{{
-				EventSet: []tetragon.EventType{},
-				Cidr:     IPs,
-			}},
-			SourceIpCidr: []*tetragon.IPFilter{{
-				EventSet: []tetragon.EventType{},
-				Cidr:     sourceIPs,
-			}},
-			DestinationIpCidr: []*tetragon.IPFilter{{
-				EventSet: []tetragon.EventType{},
-				Cidr:     destIPs,
-			}},
+			BinaryRegex:           processes,
+			Namespace:             namespaces,
+			PodRegex:              pods,
+			IpCidr:                newIPFilter(IPs),
+			SourceIpCidr:          newIPFilter(sourceIPs),
+			DestinationIpCidr:     newIPFilter(destIPs),
 			DesintationNamesRegex: destNames,
 			SniRegex:              SNINames,
 			UriRegex:              URIs,
 			DestinationPodRegex:   destPods,
 		}},
 	}
+}
+
+// This is needed because an empty filter will cause _no_ events to be matched.
+// Instead, we need to return nil if there are no IPs to match over.
+func newIPFilter(ips []string) []*tetragon.IPFilter {
+	if len(ips) == 0 {
+		return nil
+	}
+
+	return []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{},
+		Cidr:     ips,
+	}}
 }
 
 func getEvents(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
