@@ -238,7 +238,8 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 				 * later to sat verifier constraint that skb_load_bytes
 				 * must be nonzero.
 				 */
-				emit_udp_payload_event(skb, value, payload_off,
+				emit_udp_payload_event(skb, ip, cookie, ipv6,
+						       value, payload_off,
 						       payload_sz - 1);
 			} else {
 				/* The PID is empty because we couldn't look up
@@ -252,11 +253,10 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 
 				// Check payload offset is valid.
 				if (payload_off != -1)
-					store_udp_payload_event(skb, skb_head,
-								cookie, value,
-								payload_off,
-								payload_sz - 1,
-								kp);
+					store_udp_payload_event(
+						skb, ip, cookie, ipv6, skb_head,
+						value, payload_off,
+						payload_sz - 1, kp);
 			}
 		}
 	}
@@ -289,8 +289,16 @@ udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
 	 * process and kernel >=5.10, then it would have been remapped from
 	 * the socket cookie by __udp_send() already.
 	 */
-	if (!process || !process->key.pid)
+	if (!process) {
+		emit_ip_error_event(ctx, 0, cookie, 0,
+				    IP_ERROR_INET_BURST_NO_PROCESS);
 		return;
+	}
+	if (!process->key.pid) {
+		emit_ip_error_event(ctx, 0, cookie, 0,
+				    IP_ERROR_INET_BURST_NO_PID);
+		return;
+	}
 
 	process_network_burst(ctx, process, IPPROTO_UDP, send, vol, c);
 }
@@ -308,15 +316,21 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	if (!cookie)
 		return;
 	write_cookie_from_sk(cookie, (struct sock *)skb->sk, true);
-	if (!*cookie)
+	if (!*cookie) {
+		emit_ip_error_event(skb, 0, cookie, false,
+				    IP_ERROR_INET_NO_COOKIE);
 		return;
+	}
 
 	packet = map_lookup_elem(&udp_header_heap, &zero);
 	if (!packet)
 		return;
 
-	if (skb_load_bytes(skb, 0, &packet->ip, sizeof(struct iphdr)) < 0)
+	if (skb_load_bytes(skb, 0, &packet->ip, sizeof(struct iphdr)) < 0) {
+		emit_ip_error_event(skb, 0, cookie, false,
+				    IP_ERROR_INET_READ_VER);
 		return;
+	}
 
 	switch (packet->ip.ip4.version) {
 	case 4:
@@ -327,8 +341,11 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 		break;
 	case 6:
 		if (skb_load_bytes(skb, 0, &packet->ip,
-				   sizeof(struct ipv6hdr)) < 0)
+				   sizeof(struct ipv6hdr)) < 0) {
+			emit_ip_error_event(skb, 0, cookie, true,
+					    IP_ERROR_INET_READ_IP);
 			return;
+		}
 		packet->ipv6 = true;
 		proto = get_ip6_proto(&packet->udp_off, &packet->ip.ip6, 0, skb,
 				      0, true, false, &err);
@@ -339,15 +356,23 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 		} else if (proto != IPPROTO_UDP) {
 			return;
 		}
-		if (!packet->udp_off)
+		if (!packet->udp_off) {
+			emit_ip_error_event(skb, &packet->ip, cookie, true,
+					    IP_ERROR_INET_NO_PAYLOAD_OFFSET);
 			return;
+		}
 		break;
 	default:
+		emit_ip_error_event(skb, 0, cookie, false,
+				    IP_ERROR_INET_NO_VERSION);
 		return;
 	}
 	if (skb_load_bytes(skb, packet->udp_off, &packet->udp,
-			   sizeof(struct udphdr)) < 0)
+			   sizeof(struct udphdr)) < 0) {
+		emit_ip_error_event(skb, &packet->ip, cookie, packet->ipv6,
+				    IP_ERROR_INET_READ_UDP);
 		return;
+	}
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
 	packet->payload_off = packet->udp_off + sizeof(struct udphdr);
 	udp_send(skb, 0, &packet->ip.ip4, packet->ipv6, &packet->udp, cookie,
@@ -365,8 +390,10 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	unsigned long int err = 0;
 
 	cookie = (u64)sk;
-	if (!cookie)
+	if (!cookie) {
+		emit_ip_error_event(ctx, 0, 0, false, IP_ERROR_INET_NO_COOKIE);
 		return;
+	}
 	packet = map_lookup_elem(&udp_header_heap, &zero);
 	if (!packet)
 		return;
@@ -376,19 +403,28 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	switch (packet->version) {
 	case 4:
 		if (!get_ip4_header(&packet->ip.ip4, packet->network_header_off,
-				    packet->skb_head))
+				    packet->skb_head)) {
+			emit_ip_error_event(ctx, 0, &cookie, false,
+					    IP_ERROR_INET_READ_IP);
 			return;
+		}
 		packet->ipv6 = false;
 		if (packet->ip.ip4.protocol != IPPROTO_UDP)
 			return;
 		if (!get_udp_header(&packet->udp, &packet->payload_off,
-				    packet->skb_head, skb))
+				    packet->skb_head, skb)) {
+			emit_ip_error_event(ctx, &packet->ip, &cookie, false,
+					    IP_ERROR_INET_READ_UDP);
 			return;
+		}
 		break;
 	case 6:
 		if (!get_ip6_header(&packet->ip.ip6, packet->network_header_off,
-				    packet->skb_head))
+				    packet->skb_head)) {
+			emit_ip_error_event(ctx, 0, &cookie, true,
+					    IP_ERROR_INET_READ_IP);
 			return;
+		}
 		packet->ipv6 = true;
 		proto = get_ip6_proto(0, &packet->ip.ip6,
 				      packet->network_header_off,
@@ -401,10 +437,15 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 			return;
 		}
 		if (!get_udp_header(&packet->udp, &packet->payload_off,
-				    packet->skb_head, skb))
+				    packet->skb_head, skb)) {
+			emit_ip_error_event(ctx, &packet->ip, &cookie, true,
+					    IP_ERROR_INET_READ_UDP);
 			return;
+		}
 		break;
 	default:
+		emit_ip_error_event(ctx, 0, &cookie, false,
+				    IP_ERROR_INET_NO_VERSION);
 		return;
 	}
 
@@ -442,21 +483,30 @@ inet_handler(struct __sk_buff *skb, bool send)
 	if (!packet)
 		return;
 
-	if (data + 1 > data_end)
+	if (data + 1 > data_end) {
+		emit_ip_error_event(skb, 0, &cookie, false,
+				    IP_ERROR_INET_READ_VER);
 		return;
+	}
 
 	ip = (struct iphdr *)data;
 
 	switch (ip->version) {
 	case 4:
-		if (data + sizeof(struct iphdr) > data_end)
+		if (data + sizeof(struct iphdr) > data_end) {
+			emit_ip_error_event(skb, 0, &cookie, false,
+					    IP_ERROR_INET_READ_IP);
 			return;
+		}
 		if (ip->protocol != IPPROTO_UDP)
 			return;
 		packet->udp_off = ip_payload_off(ip);
 		udp = (struct udphdr *)(data + packet->udp_off);
-		if (data + packet->udp_off + sizeof(struct udphdr) > data_end)
+		if (data + packet->udp_off + sizeof(struct udphdr) > data_end) {
+			emit_ip_error_event(skb, ip, &cookie, false,
+					    IP_ERROR_INET_READ_UDP);
 			return;
+		}
 		packet->payload_sz =
 			bpf_ntohs(udp->len) - sizeof(struct udphdr);
 		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
@@ -464,8 +514,11 @@ inet_handler(struct __sk_buff *skb, bool send)
 			 packet->payload_sz, send, false, false);
 		break;
 	case 6:
-		if (data + sizeof(struct ipv6hdr) > data_end)
+		if (data + sizeof(struct ipv6hdr) > data_end) {
+			emit_ip_error_event(skb, 0, &cookie, true,
+					    IP_ERROR_INET_READ_IP);
 			return;
+		}
 		proto = get_ip6_proto(&packet->udp_off, (struct ipv6hdr *)ip, 0,
 				      data, data_end, false, false, &err);
 		if (proto == IP_HEADER_ERROR) {
@@ -475,11 +528,17 @@ inet_handler(struct __sk_buff *skb, bool send)
 		} else if (proto != IPPROTO_UDP) {
 			return;
 		}
-		if (!packet->udp_off)
+		if (!packet->udp_off) {
+			emit_ip_error_event(skb, ip, &cookie, true,
+					    IP_ERROR_INET_NO_PAYLOAD_OFFSET);
 			return;
+		}
 		udp = (struct udphdr *)(data + packet->udp_off);
-		if (data + packet->udp_off + sizeof(struct udphdr) > data_end)
+		if (data + packet->udp_off + sizeof(struct udphdr) > data_end) {
+			emit_ip_error_event(skb, ip, &cookie, true,
+					    IP_ERROR_INET_READ_UDP);
 			return;
+		}
 		packet->payload_sz =
 			bpf_ntohs(udp->len) - sizeof(struct udphdr);
 		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
@@ -487,6 +546,8 @@ inet_handler(struct __sk_buff *skb, bool send)
 			 packet->payload_sz, send, false, false);
 		break;
 	default:
+		emit_ip_error_event(skb, 0, &cookie, false,
+				    IP_ERROR_INET_NO_VERSION);
 		return;
 	}
 

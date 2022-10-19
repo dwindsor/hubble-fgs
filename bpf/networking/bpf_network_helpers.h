@@ -4,6 +4,32 @@
 #include "../lib/bpf_helpers.h"
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
+#include "cookie.h"
+
+#define IP_HEADER_ERROR			0
+#define IP_ERROR_NO_HEAP		1
+#define IP_ERROR_IPV6_READ_PROBE	2
+#define IP_ERROR_IPV6_READ_SKB_LOAD	3
+#define IP_ERROR_IPV6_READ_SKB_DIRECT	4
+#define IP_ERROR_IPV6_UNKNOWN_EXT	5
+#define IP_ERROR_IPV6_TOO_MANY_EXT	6
+#define IP_ERROR_INET_NO_COOKIE		7
+#define IP_ERROR_INET_READ_VER		8
+#define IP_ERROR_INET_READ_IP		9
+#define IP_ERROR_INET_READ_UDP		10
+#define IP_ERROR_INET_NO_PAYLOAD_OFFSET 11
+#define IP_ERROR_INET_NO_VERSION	12
+#define IP_ERROR_INET_BURST_NO_PROCESS	13
+#define IP_ERROR_INET_BURST_NO_PID	14
+#define IP_ERROR_INET_READ_PAYLOAD	15
+#define IP_ERROR_UDP_SEND_NO_SOCK_INFO	16
+#define IP_ERROR_UDP_SEND_NO_COOKIE	17
+#define IP_ERROR_UDP_RECV_NO_COOKIE	18
+#define IP_ERROR_UDP_RECV_READ_IP	19
+#define IP_ERROR_UDP_RECV_READ_UDP	20
+#define IP_ERROR_UDP_RECV_NO_VERSION	21
+#define IP_ERROR_SOCK_CREATE_NO_COOKIE	22
+#define IP_ERROR_SOCK_RELEASE_NO_COOKIE 23
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -171,14 +197,6 @@ get_ip6_header(struct ipv6hdr *ip6_header, u16 network_header_off,
  * payload.
  */
 
-#define IP_HEADER_ERROR		   0
-#define IP_ERROR_NO_HEAP	   1
-#define IP_ERROR_READ_PROBE	   2
-#define IP_ERROR_READ_SKB_LOAD	   3
-#define IP_ERROR_READ_SKB_DIRECT   4
-#define IP_ERROR_IPV6_UNKNOWN_EXT  5
-#define IP_ERROR_IPV6_TOO_MANY_EXT 6
-
 #define IPPROTO_ICMP6 58
 
 struct ipv6ext {
@@ -266,7 +284,7 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 				if (probe_read(&e->next, 2,
 					       skb_head + e->ip_off) < 0) {
 					if (err) {
-						*err = IP_ERROR_READ_PROBE;
+						*err = IP_ERROR_IPV6_READ_PROBE;
 					}
 					return IP_HEADER_ERROR;
 				}
@@ -275,7 +293,7 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 				if (skb_load_bytes(skb_head, e->ip_off,
 						   &e->next, 2) < 0) {
 					if (err) {
-						*err = IP_ERROR_READ_SKB_LOAD;
+						*err = IP_ERROR_IPV6_READ_SKB_LOAD;
 					}
 					return IP_HEADER_ERROR;
 				}
@@ -283,7 +301,7 @@ get_ip6_proto(u16 *payload_off, struct ipv6hdr *ip, u16 network_header_off,
 		} else {
 			if (skb_head + e->ip_off + 2 > data_end) {
 				if (err) {
-					*err = IP_ERROR_READ_SKB_DIRECT;
+					*err = IP_ERROR_IPV6_READ_SKB_DIRECT;
 				}
 				return IP_HEADER_ERROR;
 			}
@@ -334,14 +352,16 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 		    unsigned long int err)
 {
 	struct msg_ip_event *val;
-	struct socketmap_value *process;
+	struct socketmap_value *process = 0;
 	int zero = 0;
 
 	val = map_lookup_elem(&ip_error_event_heap, &zero);
 	if (!val)
 		return;
 
-	process = lookup_socketmap(cookie);
+	if (cookie) {
+		process = lookup_socketmap(cookie);
+	}
 
 	val->common.op = ISO_MSG_OP_IP_ERROR;
 	val->common.size = sizeof(struct msg_ip_event);
@@ -354,14 +374,19 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 		val->key.ktime = 0;
 	}
 	val->tuple.ipv6 = ipv6;
-	if (!ipv6) {
-		struct iphdr *ip4 = ip;
-		set_ipv6_addr_from_ipv4(val->tuple.saddr, ip4->saddr);
-		set_ipv6_addr_from_ipv4(val->tuple.daddr, ip4->daddr);
+	if (ip) {
+		if (!ipv6) {
+			struct iphdr *ip4 = ip;
+			set_ipv6_addr_from_ipv4(val->tuple.saddr, ip4->saddr);
+			set_ipv6_addr_from_ipv4(val->tuple.daddr, ip4->daddr);
+		} else {
+			struct ipv6hdr *ip6 = ip;
+			copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6->saddr);
+			copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6->daddr);
+		}
 	} else {
-		struct ipv6hdr *ip6 = ip;
-		copy_ipv6_addr(val->tuple.saddr, (u64 *)&ip6->saddr);
-		copy_ipv6_addr(val->tuple.daddr, (u64 *)&ip6->daddr);
+		set_ipv6_addr_from_ipv4(val->tuple.saddr, 0);
+		set_ipv6_addr_from_ipv4(val->tuple.daddr, 0);
 	}
 	val->tuple.sport = 0;
 	val->tuple.dport = 0;
@@ -371,7 +396,11 @@ emit_ip_error_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
 	val->stats.bytes_received = 0;
 	val->stats.sk_drops = 0;
 	val->stats.skb_consume_misses = 0;
-	val->socket_cookie = *cookie;
+	if (cookie) {
+		val->socket_cookie = *cookie;
+	} else {
+		val->socket_cookie = 0;
+	}
 	val->ret = err;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,

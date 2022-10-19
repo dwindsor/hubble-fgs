@@ -19,7 +19,13 @@ __sk_allocret(struct pt_regs *ctx, bool pre56)
 	u16 family;
 	struct socketmap_value process = { 0 };
 
-	if (cookie == 0 || pid <= 1) {
+	if (!cookie) {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_SOCK_CREATE_NO_COOKIE);
+		return 0;
+	}
+
+	if (pid <= 1) {
 		return 0;
 	}
 

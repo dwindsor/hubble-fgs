@@ -224,12 +224,17 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 	}
 
 	sock_info = map_lookup_elem(&udp_retprobe_map, &pid_tgid);
-	if (!sock_info)
+	if (!sock_info) {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_UDP_SEND_NO_SOCK_INFO);
 		return 0;
+	}
 
 	write_cookie_from_sk(&cookie, sock_info->sk, lazy);
 	if (!cookie) {
 		map_delete_elem(&udp_retprobe_map, &pid_tgid);
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_UDP_SEND_NO_COOKIE);
 		return 0;
 	}
 
@@ -292,7 +297,7 @@ udp_sendret(struct pt_regs *ctx, bool lazy, bool ipv6)
 }
 
 static inline __attribute__((always_inline)) struct udp_info *
-udp_get_skb_info(struct sk_buff *skb)
+udp_get_skb_info(void *ctx, u64 *cookie, struct sk_buff *skb)
 {
 	struct udp_info *info;
 	int zero = 0;
@@ -314,6 +319,8 @@ udp_get_skb_info(struct sk_buff *skb)
 	case 4:
 		if (!get_ip4_header(&packet->ip.ip4, network_header_off,
 				    skb_head)) {
+			emit_ip_error_event(ctx, 0, cookie, false,
+					    IP_ERROR_UDP_RECV_READ_IP);
 			return 0;
 		}
 		info->ipv6 = false;
@@ -321,16 +328,23 @@ udp_get_skb_info(struct sk_buff *skb)
 	case 6:
 		if (!get_ip6_header(&packet->ip.ip6, network_header_off,
 				    skb_head)) {
+			emit_ip_error_event(ctx, 0, cookie, true,
+					    IP_ERROR_UDP_RECV_READ_IP);
 			return 0;
 		}
 		info->ipv6 = true;
 		break;
 	default:
+		emit_ip_error_event(ctx, 0, cookie, false,
+				    IP_ERROR_UDP_RECV_NO_VERSION);
 		return 0;
 	}
 
-	if (!get_udp_header(&packet->udp, 0, skb_head, skb))
+	if (!get_udp_header(&packet->udp, 0, skb_head, skb)) {
+		emit_ip_error_event(ctx, &packet->ip, cookie, info->ipv6,
+				    IP_ERROR_UDP_RECV_NO_VERSION);
 		return 0;
+	}
 
 	/* skb values are in network byte order and to be consistent across
 	 * sock generated keys and packet generated values we byte swap the
@@ -357,7 +371,8 @@ udp_get_skb_info(struct sk_buff *skb)
  * Returns true if a connect event should now be sent.
  */
 static inline __attribute__((always_inline)) bool
-udp_set_info(struct udp_info_value *value, struct sk_buff *skb)
+udp_set_info(void *ctx, u64 *cookie, struct udp_info_value *value,
+	     struct sk_buff *skb)
 {
 	struct udp_info *info;
 	int hasctx = 1;
@@ -367,7 +382,7 @@ udp_set_info(struct udp_info_value *value, struct sk_buff *skb)
 	}
 
 	if (value->saddr[0] == 0 && value->saddr[1] == 0) {
-		info = udp_get_skb_info(skb);
+		info = udp_get_skb_info(ctx, cookie, skb);
 		if (info) {
 			value->ipv6 = info->ipv6;
 			if (!info->ipv6) {
@@ -442,6 +457,8 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 	/* We need a cookie to attach this datagram to */
 	write_cookie_from_sk(&cookie, sk, lazy);
 	if (!cookie) {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_UDP_RECV_NO_COOKIE);
 		return 0;
 	}
 
@@ -458,7 +475,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 		udp_info_consumed_reset(value, len);
 		value->skb_consume_misses = 0;
 
-		if (udp_set_info(value, skb)) {
+		if (udp_set_info(ctx, &cookie, value, skb)) {
 			emit_udp_connect_event(ctx, value);
 		}
 		map_update_elem(&udp_map, &cookie, value, 0);
@@ -466,7 +483,7 @@ static inline __attribute__((always_inline)) int udp_recv(struct pt_regs *ctx,
 		update_consumed_value(value, len);
 		if ((value->saddr[0] == 0 && value->saddr[1] == 0) ||
 		    value->pid == 0) {
-			if (udp_set_info(value, skb)) {
+			if (udp_set_info(ctx, &cookie, value, skb)) {
 				emit_udp_connect_event(ctx, value);
 			}
 		}

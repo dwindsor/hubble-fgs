@@ -3,6 +3,7 @@
 
 #include "../lib/iso_msg_types.h"
 #include "../lib/networkmsg.h"
+#include "bpf_network_helpers.h"
 
 /* Applying 'packed' attribute to structs causes clang to write to the
  * members byte-by-byte, as offsets may not be aligned. This is bad for
@@ -272,8 +273,9 @@ remove_from_udp_payload_bloom(u64 cookie)
 }
 
 static inline __attribute__((always_inline)) struct msg_udp_event *
-create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
-			 int off, int payload_size, size_t *size, bool kp)
+create_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
+			 void *skb_head, struct udp_info_value *v, int off,
+			 int payload_size, size_t *size, bool kp)
 {
 	struct __sk_buff *skb = (struct __sk_buff *)ctx;
 	struct msg_udp_event *val;
@@ -314,24 +316,31 @@ create_udp_payload_event(void *ctx, void *skb_head, struct udp_info_value *v,
 		"%[payload_size] += 1;\n" ::[payload_size] "+r"(payload_size)
 		:);
 	if (!kp) {
-		if (skb_load_bytes(skb, off, &val->payload, payload_size) < 0)
+		if (skb_load_bytes(skb, off, &val->payload, payload_size) < 0) {
+			emit_ip_error_event(ctx, ip, cookie, ipv6,
+					    IP_ERROR_INET_READ_PAYLOAD);
 			return 0;
+		}
 	} else {
-		if (probe_read(&val->payload, payload_size, skb_head + off) < 0)
+		if (probe_read(&val->payload, payload_size, skb_head + off) <
+		    0) {
+			emit_ip_error_event(ctx, ip, cookie, ipv6,
+					    IP_ERROR_INET_READ_PAYLOAD);
 			return 0;
+		}
 	}
 	return val;
 }
 
 static inline __attribute__((always_inline)) void
-emit_udp_payload_event(void *ctx, struct udp_info_value *v, int off,
-		       int payload_size)
+emit_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
+		       struct udp_info_value *v, int off, int payload_size)
 {
 	struct msg_udp_event *val;
 	size_t size;
 
-	val = create_udp_payload_event(ctx, 0, v, off, payload_size, &size,
-				       false);
+	val = create_udp_payload_event(ctx, ip, cookie, ipv6, 0, v, off,
+				       payload_size, &size, false);
 	if (!val)
 		return;
 
@@ -364,15 +373,15 @@ static inline __attribute__((always_inline)) void dec_udp_payload_map()
 }
 
 static inline __attribute__((always_inline)) void
-store_udp_payload_event(void *ctx, void *skb_head, u64 *cookie,
-			struct udp_info_value *v, int off, int payload_size,
-			bool kp)
+store_udp_payload_event(void *ctx, void *ip, u64 *cookie, bool ipv6,
+			void *skb_head, struct udp_info_value *v, int off,
+			int payload_size, bool kp)
 {
 	struct msg_udp_event *val;
 	size_t size;
 
-	val = create_udp_payload_event(ctx, skb_head, v, off, payload_size,
-				       &size, kp);
+	val = create_udp_payload_event(ctx, ip, cookie, ipv6, skb_head, v, off,
+				       payload_size, &size, kp);
 	if (!val)
 		return;
 

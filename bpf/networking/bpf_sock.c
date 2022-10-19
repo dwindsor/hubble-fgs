@@ -3,6 +3,7 @@
 #include "api.h"
 #include "hubble_msg.h"
 #include "bpf_events.h"
+#include "bpf_udp.h"
 #include "cookie.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
@@ -24,6 +25,12 @@ sock_create(struct bpf_sock *ctx)
 	 */
 	if (ctx->type != SOCK_DGRAM)
 		return 1;
+
+	if (!sock) {
+		emit_ip_error_event(ctx, 0, 0, false,
+				    IP_ERROR_SOCK_CREATE_NO_COOKIE);
+		return 1;
+	}
 
 	/* Ideally we would be able to bind the socket to create early,
 	 * but its possible that we don't have an entry for the thread

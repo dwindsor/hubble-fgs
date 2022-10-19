@@ -47,6 +47,35 @@ const (
 	refDec
 )
 
+var ipErrorToString = []string{
+	0:  "Header error",
+	1:  "No heap available",
+	2:  "Read IPv6 next failed (probe)",
+	3:  "Read IPv6 next failed (skb_load)",
+	4:  "Read IPv6 next failed (skb)",
+	5:  "Unknown IPv6 extension",
+	6:  "Too many IPv6 extensions",
+	7:  "UDP stack no cookie",
+	8:  "UDP stack read version failed",
+	9:  "UDP stack read IP header failed",
+	10: "UDP stack read UDP header failed",
+	11: "UDP stack no payload offset",
+	12: "UDP stack invalid IP version",
+	13: "UDP stack burst no process",
+	14: "UDP stack burst no PID",
+	15: "UDP stack read payload failed",
+	16: "UDP send no socket info",
+	17: "UDP send no cookie",
+	18: "UDP recv no cookie",
+	19: "UDP recv read IP header failed",
+	20: "UDP recv read UDP header failed",
+	21: "UDP recv invalid IP version",
+	22: "UDP sock create no cookie",
+	23: "UDP sock release no cookie",
+}
+
+const ipErrorMax = 23
+
 func SocketFlagsDnsEnabled(t uint32) bool {
 	return (t & api.SOCKFLAGS_TYPE_DNSREADY) != 0
 }
@@ -568,20 +597,13 @@ func GetProcessIPError(event *MsgIPEventUnix) *tetragon.ProcessIpError {
 	var details string
 
 	// Lower 32 bits is error code, upper 32 bits is data if required.
-	switch event.Return & 0xffffffff {
-	case 1:
-		details = "No heap available"
-	case 2:
-		details = "Read next failed (probe)"
-	case 3:
-		details = "Read next failed (skb_load)"
-	case 4:
-		details = "Read next failed (skb)"
-	case 5:
-		details = "Unknown IPv6 extension: " + fmt.Sprintf("%d", event.Return>>32)
-	case 6:
-		details = "Too many IPv6 extensions"
-	default:
+	errorCode := event.Return & 0xffffffff
+	if errorCode <= ipErrorMax {
+		details = ipErrorToString[errorCode]
+		if errorCode == 5 {
+			details = details + fmt.Sprintf(": %d", event.Return>>32)
+		}
+	} else {
 		details = "Unknown error"
 	}
 
