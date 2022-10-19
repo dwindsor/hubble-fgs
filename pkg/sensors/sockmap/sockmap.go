@@ -275,6 +275,7 @@ func enableTLSParser(tls, cg bool) *sensors.Sensor {
 			HTTPMap,
 			HTTPTailCalls,
 			HTTPFilterMap,
+			tcp.TlsSocketMap,
 		)
 	}
 
