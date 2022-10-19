@@ -2,15 +2,18 @@
 #include "hubble_msg.h"
 #include "cookie.h"
 
-#define FD_LOOKUP_SIGNAL 1024
-#define S_IFMT		 00170000
-#define S_IFSOCK	 0140000
-#define AF_INET		 2
-#define AF_INET6	 10
+#define FD_LOOKUP_SIGNAL    1024
+#define S_IFMT		    00170000
+#define S_IFSOCK	    0140000
+#define AF_INET		    2
+#define AF_INET6	    10
+#define PROTO_SHIFT_FALSE   0
+#define PROTO_SHIFT_TRUE    1
+#define PROTO_SHIFT_UNKNOWN 2
 
 static inline __attribute__((always_inline)) struct sock *
 fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol, bool pre56,
-	 bool *read_ok, u16 *family)
+	 bool *read_ok, u16 *family, u8 discover_proto_shift, u8 *proto_shift)
 {
 	struct files_struct *files;
 	struct fdtable *fdt;
@@ -62,7 +65,7 @@ fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol, bool pre56,
 		return 0;
 
 	/* We only return the socket for the required protocol, but we also return
-	* the socket if we can't read the protocol for some reason.
+	 * the socket if we can't read the protocol for some reason.
 	 */
 	proto_ret = probe_read(&read_protocol, sizeof(read_protocol),
 			       _(&(sk->sk_protocol)));
@@ -70,14 +73,31 @@ fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol, bool pre56,
 	/* On kernels >=5.6, sk_protocol is a u16 and correctly maps to a protocol number.
 	 * On kernels <5.6, sk_protocol is 8 bits of a u32 and incorrectly points at the
 	 * byte before the protocol number. Therefore, to fix this, we read it as a u16 as
-	 * on later kernels, but then shift the upper byte (second byte) to the lower
+	 * on earlier kernels, but then shift the upper byte (second byte) to the lower
 	 * (first) byte, resulting in a valid protocol number.
+	 * To handle the cases where distributions have patched their kernel to the new
+	 * struct layout, but have failed to update their version number, instead of
+	 * relying on the kernel version number, we instead test whether we need to shift
+	 * the protocol number against a known FD.
 	 */
-	if (pre56)
-		read_protocol >>= 8;
-
-	if (proto_ret == 0 && read_protocol != required_protocol)
-		return 0;
+	if (!discover_proto_shift) {
+		if (pre56) {
+			read_protocol >>= 8;
+		}
+		if (proto_ret == 0 && read_protocol != required_protocol) {
+			return 0;
+		}
+	} else if (proto_shift) {
+		// Check if we need to shift the protocol to match the required_protocol
+		if (read_protocol == required_protocol) {
+			*proto_shift = PROTO_SHIFT_FALSE;
+		} else if (read_protocol >> 8 == required_protocol) {
+			*proto_shift = PROTO_SHIFT_TRUE;
+			read_protocol >>= 8;
+		} else {
+			*proto_shift = PROTO_SHIFT_UNKNOWN;
+		}
+	}
 
 	if (family_ret == 0 && proto_ret == 0)
 		*read_ok = true;

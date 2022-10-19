@@ -47,16 +47,20 @@ type FdLookupKey struct {
 }
 
 type FdLookupValue struct {
-	Pid      uint32
-	Fd       uint32
-	Sockaddr uint64
-	Saddr    [2]uint64
-	Daddr    [2]uint64
-	Sport    uint16
-	Dport    uint16
-	Protocol uint16
-	State    uint8
-	IPv6     uint8
+	Pid                uint32
+	Fd                 uint32
+	Sockaddr           uint64
+	Saddr              [2]uint64
+	Daddr              [2]uint64
+	Sport              uint16
+	Dport              uint16
+	Protocol           uint16
+	State              uint8
+	IPv6               uint8
+	DiscoverProtoShift uint8
+	ProtoShift         uint8
+	Pad1               uint16
+	Pad2               uint32
 }
 
 type FdCallback func(*FdLookupValue, uint32)
@@ -296,9 +300,10 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 		for _, fd := range fds {
 			k := &FdLookupKey{Zero: 0}
 			v := &FdLookupValue{
-				Pid:      pid,
-				Fd:       fd,
-				Protocol: protocol,
+				Pid:                pid,
+				Fd:                 fd,
+				Protocol:           protocol,
+				DiscoverProtoShift: 0,
 			}
 			m.Update(k, v)
 			syscall.Syscall(syscall.SYS_KILL, uintptr(pid), fdLookupSignal, 0)
@@ -333,9 +338,10 @@ func GetSocketForFD(protocol uint16, pid int, fd int) uint64 {
 
 	k := &FdLookupKey{Zero: 0}
 	v := &FdLookupValue{
-		Pid:      uint32(pid),
-		Fd:       uint32(fd),
-		Protocol: protocol,
+		Pid:                uint32(pid),
+		Fd:                 uint32(fd),
+		Protocol:           protocol,
+		DiscoverProtoShift: 0,
 	}
 	m.Update(k, v)
 	syscall.Syscall(syscall.SYS_KILL, uintptr(pid), fdLookupSignal, 0)

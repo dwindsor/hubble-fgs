@@ -20,6 +20,10 @@ struct fd_lookup_config {
 	uint16_t protocol;
 	uint8_t state;
 	uint8_t ipv6;
+	uint8_t discover_proto_shift;
+	uint8_t proto_shift;
+	uint16_t pad1;
+	uint32_t pad2;
 };
 
 struct {
@@ -66,7 +70,8 @@ __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
 		return 0;
 
 	sk = fd_to_sk(p, config->fd, required_protocol, pre56, &read_ok,
-		      &family);
+		      &family, config->discover_proto_shift,
+		      &config->proto_shift);
 	if (!sk)
 		return 0;
 
@@ -76,12 +81,14 @@ __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
 	if (!value)
 		return 0;
 
-	sockmap_process.key.pid = value->key.pid;
-	sockmap_process.key.ktime = value->key.ktime;
+	if (!config->discover_proto_shift) {
+		sockmap_process.key.pid = value->key.pid;
+		sockmap_process.key.ktime = value->key.ktime;
 
-	/* Store the socket even if family or protocol couldn't be read.
-	 */
-	add_socketmap(&cookie, 0, &sockmap_process);
+		/* Store the socket even if family or protocol couldn't be read.
+		*/
+		add_socketmap(&cookie, 0, &sockmap_process);
+	}
 
 	if (!read_ok)
 		return 0;
@@ -99,6 +106,10 @@ __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
 		   (const void *)_(&(sk->__sk_common.skc_state)));
 	config->protocol = required_protocol;
 	config->sockaddr = cookie;
+	// If this request was to discover the protocol shift, zero the entry
+	// to indicate that it has been actioned. If it was a regular request,
+	// discover_proto_shift will already be zero.
+	config->discover_proto_shift = 0;
 	if (family == AF_INET) {
 		config->ipv6 = 0;
 		config->saddr[0] = 0;
