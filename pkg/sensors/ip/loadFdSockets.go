@@ -97,6 +97,10 @@ var (
 	SocketCookieStatsV56  = program.MapBuilder(SocketMapStatsName, FdLookupV56)
 	TlsSocketCookieMap    = program.MapBuilder(TlsSocketMapName, FdLookup)
 	TlsSocketCookieMapV56 = program.MapBuilder(TlsSocketMapName, FdLookupV56)
+
+	// Detection of protocol shift
+	protocolShiftDetected = false
+	protocolShift         = false
 )
 
 func (k *FdLookupKey) String() string             { return fmt.Sprintf("key=%d", k.Zero) }
@@ -270,6 +274,85 @@ func LoadSockets(callback FdCallback, protocol uint16) error {
 	}
 
 	return nil
+}
+
+func ProtocolShift() (bool, error) {
+	/* Detects whether the protocol field in struct sock needs shifting or not.
+	 * This is detected by loading the FD lookup on a specific known FD.
+	 */
+	loading.Lock()
+	defer loading.Unlock()
+
+	if protocolShiftDetected {
+		return protocolShift, nil
+	}
+
+	logger.GetLogger().Info("Detecting protocol shift with FD Lookup")
+
+	fdLoadSensor, err := loadFdLookup(option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Unable to load FD Lookup program")
+		return false, fmt.Errorf("unable to load FD Lookup program")
+	}
+
+	defer unloadFdLookup(fdLoadSensor, option.Config.BpfDir, option.Config.MapDir, option.Config.CiliumDir)
+
+	m := openConfigMap()
+	if m == nil {
+		return false, fmt.Errorf("unable to open FD Lookup map")
+	}
+
+	// Create a listener
+	syscall.ForkLock.Lock()
+	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, 0)
+	syscall.ForkLock.Unlock()
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Unable to create socket for FD Lookup")
+		return false, fmt.Errorf("unable to create socket for FD Lookup")
+	}
+	defer syscall.Close(fd)
+
+	sa := &syscall.SockaddrInet4{Port: 7112, Addr: [4]byte{0, 0, 0, 0}}
+	err = syscall.Bind(fd, sa)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("Unable to bind socket for FD Lookup")
+		return false, fmt.Errorf("unable to bind socket for FD Lookup")
+	}
+
+	pid := os.Getpid()
+
+	k := &FdLookupKey{Zero: 0}
+	v := &FdLookupValue{
+		Pid:                uint32(pid),
+		Fd:                 uint32(fd),
+		Protocol:           syscall.IPPROTO_UDP,
+		DiscoverProtoShift: 1,
+	}
+	m.Update(k, v)
+	syscall.Syscall(syscall.SYS_KILL, uintptr(pid), fdLookupSignal, 0)
+	ret, err := m.Lookup(k)
+	if err != nil {
+		logger.GetLogger().WithError(err).Warn("FD Lookup could not access config map")
+		return false, fmt.Errorf("fd lookup could not access config map")
+	}
+	v = ret.(*FdLookupValue)
+
+	if v.DiscoverProtoShift != 0 {
+		logger.GetLogger().WithField("DiscoverProtoShift", v.DiscoverProtoShift).Warn("FD Lookup could not detect protocol shift")
+		return false, fmt.Errorf("fd lookup could not detect protocol shift")
+
+	}
+
+	if v.ProtoShift != 0 && v.ProtoShift != 1 {
+		logger.GetLogger().WithError(err).Warn("FD Lookup protocol shift could not be determined")
+		return false, fmt.Errorf("fd lookup protocol shift could not be determined")
+	}
+	protocolShift = v.ProtoShift == 1
+	protocolShiftDetected = true
+
+	logger.GetLogger().Infof("Protocol shift detected: %v", protocolShift)
+
+	return protocolShift, nil
 }
 
 func openConfigMap() *bpf.Map {

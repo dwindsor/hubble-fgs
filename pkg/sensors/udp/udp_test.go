@@ -40,6 +40,7 @@ import (
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/cilium/tetragon/pkg/sensors"
@@ -394,6 +395,30 @@ func killAndWaitCommand(t *testing.T, cmd *exec.Cmd) {
 			t.Logf("Command %q process disappeared, skipping kill", cmd.Args[0])
 		}
 		_ = cmd.Wait()
+	}
+}
+
+func TestGetProtocolShift(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	obs := getBasicUdpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+
+	protocolShift, err := ip.ProtocolShift()
+	assert.NoError(t, err)
+	protocolShift2, err := ip.ProtocolShift()
+	assert.NoError(t, err)
+	assert.Equal(t, protocolShift, protocolShift2)
+	if !kernels.MinKernelVersion("5.6.0") {
+		assert.Equal(t, protocolShift, true)
+	} else {
+		assert.Equal(t, protocolShift, false)
 	}
 }
 
