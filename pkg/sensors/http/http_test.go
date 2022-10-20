@@ -262,8 +262,8 @@ func TestLoadHttpSensor(t *testing.T) {
 		14: tus.SensorProg{Name: "bpf_sockmap", Type: ebpf.SockOps},
 
 		// new accept sensor
-		15: tus.SensorProg{Name: "event_tcp_acceptret56", Type: ebpf.TracePoint},
-		16: tus.SensorProg{Name: "event_tcp_accept4ret56", Type: ebpf.TracePoint},
+		15: tus.SensorProg{Name: "event_tcp_acceptret", Type: ebpf.TracePoint},
+		16: tus.SensorProg{Name: "event_tcp_accept4ret", Type: ebpf.TracePoint},
 
 		// IPv6 sensor
 		17: tus.SensorProg{Name: "event_tcp_v6_send_check", Type: ebpf.Kprobe},
@@ -281,6 +281,9 @@ func TestLoadHttpSensor(t *testing.T) {
 
 		// all but bpf_sockmap
 		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 17}},
+
+		// event_tcp_acceptret, event_tcp_accept4ret
+		tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{15, 16}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)

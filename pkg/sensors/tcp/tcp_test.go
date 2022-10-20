@@ -30,6 +30,7 @@ import (
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -135,6 +136,30 @@ func getNCCommand(t *testing.T, orig string) string {
 	t.Logf("Using %q instead of original program %q", server, orig)
 
 	return server
+}
+
+func TestGetProtocolShift(t *testing.T) {
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	obs := getBasicTcpObserver(t, ctx)
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+
+	readyWG.Wait()
+
+	protocolShift, err := ip.ProtocolShift()
+	assert.NoError(t, err)
+	protocolShift2, err := ip.ProtocolShift()
+	assert.NoError(t, err)
+	assert.Equal(t, protocolShift, protocolShift2)
+	if !kernels.MinKernelVersion("5.6.0") {
+		assert.Equal(t, protocolShift, true)
+	} else {
+		assert.Equal(t, protocolShift, false)
+	}
 }
 
 func TestConnectEvent4(t *testing.T) {
@@ -918,34 +943,18 @@ func TestLoadTcpSensor(t *testing.T) {
 
 	var sensorProgs []tus.SensorProg
 
-	if !kernels.MinKernelVersion("5.6.0") {
-		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "event_tcp_connect", Type: ebpf.Kprobe},
-			1: tus.SensorProg{Name: "event_tcp_close", Type: ebpf.Kprobe},
-			2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
-			3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
+	sensorProgs = []tus.SensorProg{
+		0: tus.SensorProg{Name: "event_tcp_connect", Type: ebpf.Kprobe},
+		1: tus.SensorProg{Name: "event_tcp_close", Type: ebpf.Kprobe},
+		2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
+		3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
 
-			// new accept sensor
-			4: tus.SensorProg{Name: "event_tcp_acceptret", Type: ebpf.TracePoint},
-			5: tus.SensorProg{Name: "event_tcp_accept4ret", Type: ebpf.TracePoint},
+		// new accept sensor
+		4: tus.SensorProg{Name: "event_tcp_acceptret", Type: ebpf.TracePoint},
+		5: tus.SensorProg{Name: "event_tcp_accept4ret", Type: ebpf.TracePoint},
 
-			// IPv6 sensor
-			6: tus.SensorProg{Name: "event_tcp_v6_send_check", Type: ebpf.Kprobe},
-		}
-	} else {
-		sensorProgs = []tus.SensorProg{
-			0: tus.SensorProg{Name: "event_tcp_connect", Type: ebpf.Kprobe},
-			1: tus.SensorProg{Name: "event_tcp_close", Type: ebpf.Kprobe},
-			2: tus.SensorProg{Name: "event_sys_listen", Type: ebpf.Kprobe},
-			3: tus.SensorProg{Name: "event_tcp_v4_send_check", Type: ebpf.Kprobe},
-
-			// new accept sensor
-			4: tus.SensorProg{Name: "event_tcp_acceptret56", Type: ebpf.TracePoint},
-			5: tus.SensorProg{Name: "event_tcp_accept4ret56", Type: ebpf.TracePoint},
-
-			// IPv6 sensor
-			6: tus.SensorProg{Name: "event_tcp_v6_send_check", Type: ebpf.Kprobe},
-		}
+		// IPv6 sensor
+		6: tus.SensorProg{Name: "event_tcp_v6_send_check", Type: ebpf.Kprobe},
 	}
 	var sensorMaps = []tus.SensorMap{
 		// all but base
@@ -959,6 +968,9 @@ func TestLoadTcpSensor(t *testing.T) {
 
 		// all but event_tcp4_close, event_tcp_v4_send_check and event_tcp_v6_send_check
 		tus.SensorMap{Name: "execve_map", Progs: []uint{0, 2, 4, 5}},
+
+		// event_tcp_acceptret, event_tcp_accept4ret
+		tus.SensorMap{Name: "fd_lookup_config_map", Progs: []uint{4, 5}},
 	}
 
 	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)

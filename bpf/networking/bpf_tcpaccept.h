@@ -4,8 +4,8 @@
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "cookie.h"
-#include "bpf_fd_to_sk.h"
 #include "netns.h"
+#include "bpf_fd_lookup.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_PERCPU_ARRAY);
@@ -22,7 +22,7 @@ struct accept_args {
 };
 
 static inline __attribute__((always_inline)) int
-__event_tcp_acceptret(struct accept_args *ctx, bool pre56)
+__event_tcp_acceptret(struct accept_args *ctx)
 {
 	struct msg_ip_event *val;
 	struct execve_map_value *process;
@@ -39,14 +39,19 @@ __event_tcp_acceptret(struct accept_args *ctx, bool pre56)
 	u16 family = 0;
 	bool walker;
 	u32 ppid;
-	u8 proto_shift = pre56;
+	struct fd_lookup_config *config;
 
 	fd = ctx->ret;
 	if (fd < 0)
 		return 0;
 
+	config = (struct fd_lookup_config *)map_lookup_elem(
+		&fd_lookup_config_map, &zero);
+	if (!config)
+		return 0;
+
 	skp = fd_to_sk(current, fd, IPPROTO_TCP, &read_ok, &family, 0,
-		       &proto_shift);
+		       &config->proto_shift);
 	if (!skp)
 		return 0;
 

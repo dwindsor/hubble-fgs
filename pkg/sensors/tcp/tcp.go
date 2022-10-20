@@ -7,7 +7,6 @@ import (
 	"time"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -77,22 +76,6 @@ var (
 		"tracepoint",
 	)
 
-	AcceptV56 = program.Builder(
-		"bpf_tcpaccept_v56.o",
-		"syscalls/sys_exit_accept",
-		"tracepoint/syscalls/sys_exit_accept",
-		"tracepoint_syscalls_sys_exit_accept",
-		"tracepoint",
-	)
-
-	Accept4V56 = program.Builder(
-		"bpf_tcpaccept_v56.o",
-		"syscalls/sys_exit_accept4",
-		"tracepoint/syscalls/sys_exit_accept4",
-		"tracepoint_syscalls_sys_exit_accept4",
-		"tracepoint",
-	)
-
 	SendCheck4 = program.Builder(
 		"bpf_tcp_send_check.o",
 		"tcp_v4_send_check",
@@ -125,9 +108,10 @@ var (
 		"kprobe")
 
 	// Maps for TCP Sockets
-	SocketMap    = program.MapBuilder("socket_map", Connect)
-	TlsSocketMap = program.MapBuilder("tls_socket_map", Connect)
-	SocketStats  = program.MapBuilder("socket_map_stats", Connect)
+	SocketMap         = program.MapBuilder("socket_map", Connect)
+	TlsSocketMap      = program.MapBuilder("tls_socket_map", Connect)
+	SocketStats       = program.MapBuilder("socket_map_stats", Connect)
+	FdLookupConfigMap = program.MapBuilder(ip.FdLookupConfigMapName, Accept)
 
 	// Parser maps
 	HTTPContext    = program.MapBuilder("http_map", Close)
@@ -151,26 +135,14 @@ func unloadTcpSensor() error {
 func EnableTcp() *sensors.Sensor {
 	var progs []*program.Program
 
-	if !kernels.MinKernelVersion("5.6.0") {
-		progs = []*program.Program{
-			Connect,
-			Close,
-			Listen,
-			Accept,
-			Accept4,
-			SendCheck4,
-			SendCheck6,
-		}
-	} else {
-		progs = []*program.Program{
-			Connect,
-			Close,
-			Listen,
-			AcceptV56,
-			Accept4V56,
-			SendCheck4,
-			SendCheck6,
-		}
+	progs = []*program.Program{
+		Connect,
+		Close,
+		Listen,
+		Accept,
+		Accept4,
+		SendCheck4,
+		SendCheck6,
 	}
 
 	if tcpRttHistogramMax != 0 {
@@ -188,6 +160,7 @@ func EnableTcp() *sensors.Sensor {
 		TLSBottleStats,
 		SendCheckSampler,
 		ProcessNetworkBurstMap,
+		FdLookupConfigMap,
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
 		"statsInterval":    tcpInterval,
@@ -360,6 +333,9 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	err = nil
 
 	getRunningSockets(true, true)
+	if err := ip.ConfigureProtocolShift(args.MapDir); err != nil {
+		return err
+	}
 
 	if tcpInterval > 0 {
 		configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
