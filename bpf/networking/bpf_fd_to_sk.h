@@ -12,7 +12,7 @@
 #define PROTO_SHIFT_UNKNOWN 2
 
 static inline __attribute__((always_inline)) struct sock *
-fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol, bool pre56,
+fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol,
 	 bool *read_ok, u16 *family, u8 discover_proto_shift, u8 *proto_shift)
 {
 	struct files_struct *files;
@@ -81,7 +81,7 @@ fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol, bool pre56,
 	 * the protocol number against a known FD.
 	 */
 	if (!discover_proto_shift) {
-		if (pre56) {
+		if (*proto_shift) {
 			read_protocol >>= 8;
 		}
 		if (proto_ret == 0 && read_protocol != required_protocol) {

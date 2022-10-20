@@ -9,6 +9,6 @@ int _version __attribute__((section(("version")), used)) =
 __attribute__((section("kprobe/inet_release"), used)) int
 sock_release(struct pt_regs *ctx)
 {
-	__sock_release(ctx, false, false);
+	__sock_release(ctx, false);
 	return 0;
 }

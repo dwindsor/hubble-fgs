@@ -93,13 +93,6 @@ var (
 		"kprobe_sock_release",
 		"kprobe")
 
-	SockReleaseLazyV56 = program.Builder(
-		"bpf_sock_release_lazy_v56.o",
-		"inet_release",
-		"kprobe/inet_release",
-		"kprobe_sock_release",
-		"kprobe")
-
 	InetSend = program.Builder(
 		"bpf_inet_send.o",
 		"inet_send",
@@ -118,14 +111,6 @@ var (
 
 	SkAllocRetLazy = program.Builder(
 		"bpf_sock_create.o",
-		"sk_alloc",
-		"kretprobe/sk_alloc",
-		"kretprobe_sk_alloc",
-		"kprobe",
-	).SetRetProbe(true)
-
-	SkAllocRetLazyV56 = program.Builder(
-		"bpf_sock_create_v56.o",
 		"sk_alloc",
 		"kretprobe/sk_alloc",
 		"kretprobe_sk_alloc",
@@ -260,6 +245,8 @@ var (
 	UdpPayloadBloomMap           = program.MapBuilder(UdpPayloadBloomMapName, InetSend)
 	UdpPayloadBloomMapLazy       = program.MapBuilder(UdpPayloadBloomMapName, InetSendLazy)
 	UdpPayloadBloomMapKprobe     = program.MapBuilder(UdpPayloadBloomMapName, InetSendRecvLazy)
+	FdLookupConfigMap            = program.MapBuilder(ip.FdLookupConfigMapName, SockRelease)
+	FdLookupConfigMapLazy        = program.MapBuilder(ip.FdLookupConfigMapName, SockReleaseLazy)
 
 	// Burst and watermark maps
 	ProcessNetworkBurstMap           = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, InetSend)
@@ -579,6 +566,11 @@ func FdCallback(socket *ip.FdLookupValue, pid uint32) {
 
 func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	if !configured {
+		// As well as loading the existing UDP sockets, ip.LoadSockets will also set the
+		// proto_shift field in the fd_lookup_config_map which indicates whether the
+		// protocol field of struct sock needs shifting or not.
+		// If ip.LoadSockets is disabled or moved, then add a call to ip.ProtocolShift
+		// to cause the proto_shift field to be set.
 		ip.LoadSockets(FdCallback, IPPROTO_UDP)
 	}
 
@@ -594,7 +586,10 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		}
 	}
 	if !configured {
-		if err := configureUdpSensor(args.MapDir, "udp_config_map", Config); err != nil {
+		if err := configureUdpSensor(args.MapDir, UdpConfigMapName, Config); err != nil {
+			return err
+		}
+		if err := ip.ConfigureProtocolShift(args.MapDir); err != nil {
 			return err
 		}
 		configured = true
@@ -650,10 +645,11 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpPayloadBloomMapKprobe,
 			SocketCookieMapLazy,
 			SocketCookieStatsLazy,
+			FdLookupConfigMapLazy,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
-	} else if !kernels.MinKernelVersion("5.6.0") || !cgroup {
+	} else if !kernels.MinKernelVersion("5.10.0") || !cgroup {
 		progs = []*program.Program{
 			SkAllocRetLazy,
 			SockReleaseLazy,
@@ -674,30 +670,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpPayloadBloomMapLazy,
 			SocketCookieMapLazy,
 			SocketCookieStatsLazy,
-		}
-		dns.LazyDns = true
-		versionStr = "__udp_sensor_probe__"
-	} else if !kernels.MinKernelVersion("5.10.0") || !cgroup {
-		progs = []*program.Program{
-			SkAllocRetLazyV56,
-			SockReleaseLazyV56,
-			InetSendLazy,
-			InetRecvLazy,
-			Udp4SendLazy,
-			Udp4RetSendLazy,
-			Udp6SendLazy,
-			Udp6RetSendLazy,
-			UdpRecvLazy,
-		}
-		maps = []*program.Map{
-			UdpMapLazy,
-			UdpRetprobeMapLazy,
-			UdpConfigLazyMap,
-			UdpPayloadLazyMap,
-			UdpPayloadLazyMapStats,
-			UdpPayloadBloomMapLazy,
-			SocketCookieMapLazy,
-			SocketCookieStatsLazy,
+			FdLookupConfigMapLazy,
 		}
 		dns.LazyDns = true
 		versionStr = "__udp_sensor_probe__"
@@ -722,9 +695,11 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			UdpPayloadBloomMap,
 			SocketCookieMap,
 			SocketCookieStats,
+			FdLookupConfigMap,
 		}
 		versionStr = "__udp_sensor_cgroup__"
 	}
+
 	gcTimer.Start(interval)
 	logger.GetLogger().WithFields(logrus.Fields{
 		"sensorName":     versionStr,

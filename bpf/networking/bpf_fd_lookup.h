@@ -34,7 +34,7 @@ struct {
 } fd_lookup_config_map SEC(".maps");
 
 static inline __attribute__((always_inline)) int
-__kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
+__kprobe_check_kill_permission(struct pt_regs *ctx)
 {
 	struct task_struct *p = (struct task_struct *)ctx->dx;
 	struct fd_lookup_config *config;
@@ -69,9 +69,8 @@ __kprobe_check_kill_permission(struct pt_regs *ctx, bool pre56)
 	if (config->pid != pid)
 		return 0;
 
-	sk = fd_to_sk(p, config->fd, required_protocol, pre56, &read_ok,
-		      &family, config->discover_proto_shift,
-		      &config->proto_shift);
+	sk = fd_to_sk(p, config->fd, required_protocol, &read_ok, &family,
+		      config->discover_proto_shift, &config->proto_shift);
 	if (!sk)
 		return 0;
 

@@ -5,12 +5,13 @@
 #include "bpf_events.h"
 #include "bpf_udp.h"
 #include "cookie.h"
+#include "bpf_fd_lookup.h"
 
 #define AF_INET	 2
 #define AF_INET6 10
 
 static inline __attribute__((always_inline)) int
-__sk_allocret(struct pt_regs *ctx, bool pre56)
+__sk_allocret(struct pt_regs *ctx)
 {
 	u64 pid = get_current_pid_tgid() >> 32;
 	u64 cookie = ctx->ax;

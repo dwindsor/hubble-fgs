@@ -24,7 +24,6 @@ import (
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/bpf"
-	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/proc"
@@ -78,29 +77,18 @@ var (
 		"kprobe",
 	)
 
-	FdLookupV56 = program.Builder(
-		"bpf_fd_lookup_v56.o",
-		"check_kill_permission",
-		"kprobe/check_kill_permission",
-		"kprobe_check_kill_permission",
-		"kprobe",
-	)
-
 	// Socket lookup config map
-	FdLookupConfigMap    = program.MapBuilder(FdLookupConfigMapName, FdLookup)
-	FdLookupConfigMapV56 = program.MapBuilder(FdLookupConfigMapName, FdLookupV56)
+	FdLookupConfigMap = program.MapBuilder(FdLookupConfigMapName, FdLookup)
 
 	// Shared socket cookie infrastructure
-	SocketCookieMap       = program.MapBuilder(SocketMapName, FdLookup)
-	SocketCookieMapV56    = program.MapBuilder(SocketMapName, FdLookupV56)
-	SocketCookieStats     = program.MapBuilder(SocketMapStatsName, FdLookup)
-	SocketCookieStatsV56  = program.MapBuilder(SocketMapStatsName, FdLookupV56)
-	TlsSocketCookieMap    = program.MapBuilder(TlsSocketMapName, FdLookup)
-	TlsSocketCookieMapV56 = program.MapBuilder(TlsSocketMapName, FdLookupV56)
+	SocketCookieMap    = program.MapBuilder(SocketMapName, FdLookup)
+	SocketCookieStats  = program.MapBuilder(SocketMapStatsName, FdLookup)
+	TlsSocketCookieMap = program.MapBuilder(TlsSocketMapName, FdLookup)
 
 	// Detection of protocol shift
 	protocolShiftDetected = false
 	protocolShift         = false
+	gettingProtocolShift  = false
 )
 
 func (k *FdLookupKey) String() string             { return fmt.Sprintf("key=%d", k.Zero) }
@@ -184,34 +172,32 @@ func getExistingSockets() (map[uint32][]uint32, error) {
 
 func getFdLookupPrograms() []*program.Program {
 	var progs []*program.Program
-	if !kernels.MinKernelVersion("5.6.0") {
-		progs = append(progs, FdLookup)
-	} else {
-		progs = append(progs, FdLookupV56)
+
+	progs = append(progs, FdLookup)
+
+	if !gettingProtocolShift {
+		// Ensure we have already got the protocol shift value, or use this
+		// opportunity to go and get it before doing anything else.
+		_, err := getProtocolShift()
+
+		if err != nil {
+			logger.GetLogger().Warn("Could not detect protocol shift")
+		}
 	}
+
 	return progs
 }
 
 func getFdLookupMaps() []*program.Map {
 	var maps []*program.Map
 
-	if !kernels.MinKernelVersion("5.6.0") {
-		maps = append(maps, FdLookupConfigMap, SocketCookieMap, TlsSocketCookieMap, SocketCookieStats)
-	} else {
-		maps = append(maps, FdLookupConfigMapV56, SocketCookieMapV56, TlsSocketCookieMapV56, SocketCookieStatsV56)
-	}
+	maps = append(maps, FdLookupConfigMap, SocketCookieMap, TlsSocketCookieMap, SocketCookieStats)
 
 	return maps
 }
 
 func getOnlyFdLookupMaps() []*program.Map {
 	var maps []*program.Map
-
-	if !kernels.MinKernelVersion("5.6.0") {
-		maps = append(maps, FdLookupConfigMap)
-	} else {
-		maps = append(maps, FdLookupConfigMapV56)
-	}
 
 	return maps
 }
@@ -283,9 +269,20 @@ func ProtocolShift() (bool, error) {
 	loading.Lock()
 	defer loading.Unlock()
 
+	return getProtocolShift()
+}
+
+func getProtocolShift() (bool, error) {
+	/* Detects whether the protocol field in struct sock needs shifting or not.
+	 * This is detected by loading the FD lookup on a specific known FD.
+	 * Internal version that doesn't need a lock because we should already be
+	 * locked. ONLY call from a function that gets the loading.Lock()
+	 */
 	if protocolShiftDetected {
 		return protocolShift, nil
 	}
+
+	gettingProtocolShift = true
 
 	logger.GetLogger().Info("Detecting protocol shift with FD Lookup")
 
@@ -352,6 +349,8 @@ func ProtocolShift() (bool, error) {
 
 	logger.GetLogger().Infof("Protocol shift detected: %v", protocolShift)
 
+	gettingProtocolShift = false
+
 	return protocolShift, nil
 }
 
@@ -387,6 +386,9 @@ func writeSocketCookies(procSocketFds map[uint32][]uint32, callback FdCallback, 
 				Fd:                 fd,
 				Protocol:           protocol,
 				DiscoverProtoShift: 0,
+			}
+			if protocolShift {
+				v.ProtoShift = 1
 			}
 			m.Update(k, v)
 			syscall.Syscall(syscall.SYS_KILL, uintptr(pid), fdLookupSignal, 0)
@@ -426,6 +428,9 @@ func GetSocketForFD(protocol uint16, pid int, fd int) uint64 {
 		Protocol:           protocol,
 		DiscoverProtoShift: 0,
 	}
+	if protocolShift {
+		v.ProtoShift = 1
+	}
 	m.Update(k, v)
 	syscall.Syscall(syscall.SYS_KILL, uintptr(pid), fdLookupSignal, 0)
 	ret, err := m.Lookup(k)
@@ -440,4 +445,23 @@ func GetSocketForFD(protocol uint16, pid int, fd int) uint64 {
 	}
 
 	return socket
+}
+
+func ConfigureProtocolShift(mapDir string) error {
+	m, err := bpf.OpenMap(filepath.Join(mapDir, FdLookupConfigMapName))
+	if err != nil {
+		return err
+	}
+	defer m.Close()
+
+	key := &FdLookupKey{
+		Zero: uint32(0),
+	}
+	config := &FdLookupValue{}
+	if protocolShift {
+		config.ProtoShift = 1
+	}
+	m.Update(key, config)
+	logger.GetLogger().WithField("config", config.String()).Info("Configured protocol shift: ")
+	return nil
 }

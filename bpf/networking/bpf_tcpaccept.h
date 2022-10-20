@@ -39,13 +39,14 @@ __event_tcp_acceptret(struct accept_args *ctx, bool pre56)
 	u16 family = 0;
 	bool walker;
 	u32 ppid;
+	u8 proto_shift = pre56;
 
 	fd = ctx->ret;
 	if (fd < 0)
 		return 0;
 
-	skp = fd_to_sk(current, fd, IPPROTO_TCP, pre56, &read_ok, &family, 0,
-		       0);
+	skp = fd_to_sk(current, fd, IPPROTO_TCP, &read_ok, &family, 0,
+		       &proto_shift);
 	if (!skp)
 		return 0;
 
