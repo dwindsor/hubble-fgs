@@ -130,7 +130,6 @@ jobs:
             cd /host/hubble-fgs
 
             mv /host/cilium /bin/cilium
-            echo 'nameserver 1.1.1.1' > /etc/resolv.conf
 
             kind create cluster --name ${{ env.clusterName }}
             cilium install
