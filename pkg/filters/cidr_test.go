@@ -377,3 +377,95 @@ func TestFilterEventTypeMatch(t *testing.T) {
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "filter should match")
 }
+
+func TestCidrFiltersHttpDns(t *testing.T) {
+	ev := &v1.Event{
+		Event: &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessHttp{
+				ProcessHttp: &tetragon.ProcessHttp{
+					Socket: &tetragon.SockInfo{
+						SourceIp:      "1.1.1.1",
+						DestinationIp: "2.2.2.2",
+					},
+				},
+			},
+		},
+	}
+
+	f := []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_HTTP},
+		Cidr:     []string{"2.2.0.0/16"},
+	}}}}
+	fl, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
+	require.NoError(t, err)
+	assert.True(t, fl.MatchOne(ev), "filter should match")
+
+	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_HTTP},
+		Cidr:     []string{"0.0.0.0"},
+	}}}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
+	require.NoError(t, err)
+	assert.False(t, fl.MatchOne(ev), "filter should not match")
+
+	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_HTTP},
+		Cidr:     []string{"1.1.0.0/16"},
+	}}}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
+	require.NoError(t, err)
+	assert.True(t, fl.MatchOne(ev), "filter should match")
+
+	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_HTTP},
+		Cidr:     []string{"0.0.0.0"},
+	}}}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
+	require.NoError(t, err)
+	assert.False(t, fl.MatchOne(ev), "filter should not match")
+
+	ev = &v1.Event{
+		Event: &tetragon.GetEventsResponse{
+			Event: &tetragon.GetEventsResponse_ProcessDns{
+				ProcessDns: &tetragon.ProcessDns{
+					Socket: &tetragon.SockInfo{
+						SourceIp:      "1.1.1.1",
+						DestinationIp: "2.2.2.2",
+					},
+				},
+			},
+		},
+	}
+
+	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_DNS},
+		Cidr:     []string{"2.2.0.0/16"},
+	}}}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
+	require.NoError(t, err)
+	assert.True(t, fl.MatchOne(ev), "filter should match")
+
+	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_DNS},
+		Cidr:     []string{"0.0.0.0"},
+	}}}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
+	require.NoError(t, err)
+	assert.False(t, fl.MatchOne(ev), "filter should not match")
+
+	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_DNS},
+		Cidr:     []string{"1.1.0.0/16"},
+	}}}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
+	require.NoError(t, err)
+	assert.True(t, fl.MatchOne(ev), "filter should match")
+
+	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
+		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_DNS},
+		Cidr:     []string{"0.0.0.0"},
+	}}}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
+	require.NoError(t, err)
+	assert.False(t, fl.MatchOne(ev), "filter should not match")
+}
