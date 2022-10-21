@@ -77,6 +77,7 @@ jobs:
             set -eux
             cd /host/hubble-fgs
 
+            export KVM_CI=true
             make hubble-bpf tester-progs test
 
       - name: Copy out FGS logs

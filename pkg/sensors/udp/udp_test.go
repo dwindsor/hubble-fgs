@@ -66,6 +66,13 @@ func init() {
 }
 
 func TestMain(m *testing.M) {
+	// FIXME: we need to skip these tests in kvm ci kernels <5.10 due to extreme flakiness
+	// in CI. Once we have a chance to debug the issue, let's drop this check.
+	if v := "5.10.0"; !kernels.MinKernelVersion(v) && os.Getenv("KVM_CI") != "" {
+		fmt.Fprintf(os.Stderr, "Minimum kernel version (%v) for UDP tests in KVM CI not met, skipping", v)
+		return
+	}
+
 	flag.Parse()
 	if server {
 		udpServer()
@@ -186,7 +193,6 @@ func udpClient() {
 }
 
 func TestUdpBurst(t *testing.T) {
-
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
