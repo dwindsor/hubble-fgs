@@ -175,11 +175,15 @@ type GetDestinationNames interface {
 }
 
 type GetDestinationPod interface {
-	GetDestinationPod() string
+	GetDestinationPod() *tetragon.Pod
 }
 
 type GetDnsInfo interface {
 	GetDns() *tetragon.DnsInfo
+}
+
+type GetSocket interface {
+	GetSocket() *tetragon.SockInfo
 }
 
 func getSNIName(event *v1.Event) (string, bool) {
@@ -220,13 +224,18 @@ func getDestinationNames(event *v1.Event) ([]string, bool) {
 	if !ok {
 		return nil, false
 	}
+
+	// If the event has socket info, use that instead
+	if _, ok := tetragon.UnwrapGetEventsResponse(response).(GetSocket); ok {
+		sockInfo, ok := getSockInfo(event)
+		if !ok {
+			return nil, false
+		}
+		return sockInfo.DestinationNames, ok
+	}
+
 	ev, ok := tetragon.UnwrapGetEventsResponse(response).(GetDestinationNames)
 	if !ok {
-		return nil, false
-	}
-	// ProcessHttp provides a DestnationNames field but it's deprecated so don't match it
-	// on this filter
-	if _, ok := ev.(*tetragon.ProcessHttp); ok {
 		return nil, false
 	}
 	return ev.GetDestinationNames(), true
@@ -240,11 +249,28 @@ func getDestinationPod(event *v1.Event) (string, bool) {
 	if !ok {
 		return "", false
 	}
+
+	// If the event has socket info, use that instead
+	if _, ok := tetragon.UnwrapGetEventsResponse(response).(GetSocket); ok {
+		sockInfo, ok := getSockInfo(event)
+		if !ok {
+			return "", false
+		}
+		if sockInfo.DestinationPod == nil {
+			return "", false
+		}
+		return sockInfo.DestinationPod.Name, ok
+	}
+
 	ev, ok := tetragon.UnwrapGetEventsResponse(response).(GetDestinationPod)
 	if !ok {
 		return "", false
 	}
-	return ev.GetDestinationPod(), true
+	pod := ev.GetDestinationPod()
+	if pod == nil {
+		return "", false
+	}
+	return pod.Name, true
 }
 
 func getDnsNames(event *v1.Event) ([]string, bool) {
@@ -264,4 +290,23 @@ func getDnsNames(event *v1.Event) ([]string, bool) {
 		return nil, false
 	}
 	return dns.Names, true
+}
+
+func getSockInfo(event *v1.Event) (*tetragon.SockInfo, bool) {
+	if event == nil {
+		return nil, false
+	}
+	response, ok := event.Event.(*tetragon.GetEventsResponse)
+	if !ok {
+		return nil, false
+	}
+	ev, ok := tetragon.UnwrapGetEventsResponse(response).(GetSocket)
+	if !ok {
+		return nil, false
+	}
+	socket := ev.GetSocket()
+	if socket == nil {
+		return nil, false
+	}
+	return socket, true
 }

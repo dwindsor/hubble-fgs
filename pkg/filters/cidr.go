@@ -248,6 +248,15 @@ func getIP(res *tetragon.GetEventsResponse) (string, bool) {
 }
 
 func getSourceIP(res *tetragon.GetEventsResponse) (string, bool) {
+	// If the event has socket info, use that instead
+	if _, ok := tetragon.UnwrapGetEventsResponse(res).(GetSocket); ok {
+		sockInfo, ok := getSockInfo(&v1.Event{Event: res})
+		if !ok {
+			return "", false
+		}
+		return sockInfo.SourceIp, ok
+	}
+
 	ev, ok := tetragon.UnwrapGetEventsResponse(res).(GetSourceIP)
 	if !ok {
 		return "", false
@@ -256,6 +265,15 @@ func getSourceIP(res *tetragon.GetEventsResponse) (string, bool) {
 }
 
 func getDestinationIP(res *tetragon.GetEventsResponse) (string, bool) {
+	// If the event has socket info, use that instead
+	if _, ok := tetragon.UnwrapGetEventsResponse(res).(GetSocket); ok {
+		sockInfo, ok := getSockInfo(&v1.Event{Event: res})
+		if !ok {
+			return "", false
+		}
+		return sockInfo.DestinationIp, ok
+	}
+
 	ev, ok := tetragon.UnwrapGetEventsResponse(res).(GetDestinationIP)
 	if !ok {
 		return "", false
