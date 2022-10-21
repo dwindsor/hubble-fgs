@@ -101,6 +101,9 @@ message Filter {
     // Filter by process_dns.dns.names field using RE2 regular expression syntax:
     // https://github.com/google/re2/wiki/Syntax
     repeated string dns_names_regex = 1007;
+    // Filter by process_http.http.request.host field using RE2 regular expression syntax:
+    // https://github.com/google/re2/wiki/Syntax
+    repeated string host_regex = 1008;
 }
 
 message IPFilter {

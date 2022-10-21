@@ -92,6 +92,22 @@ func (f *DnsNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filt
 	return fs, nil
 }
 
+type HostRegexFilter struct{}
+
+func (f *HostRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
+	var fs []hubbleFilters.FilterFunc
+
+	if ff.HostRegex != nil {
+		filter, err := filterByURIRegex(ff.HostRegex, f)
+		if err != nil {
+			return nil, err
+		}
+		fs = append(fs, filter)
+	}
+
+	return fs, nil
+}
+
 func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilters.FilterFunc, error) {
 	var URIs []*regexp.Regexp
 
@@ -142,6 +158,13 @@ func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilt
 				return true
 			}
 			URIStrings = append(URIStrings, dnsNames...)
+		case *HostRegexFilter:
+			request, ok := getHttpRequest(ev)
+			if !ok {
+				// Event has no Http.Request field
+				return true
+			}
+			URIStrings = append(URIStrings, request.Host)
 		default:
 			logger.GetLogger().WithField("filter_type", fmt.Sprintf("%T", f)).Error("Unsupported URI / Pod filter type")
 			return true
@@ -184,6 +207,10 @@ type GetDnsInfo interface {
 
 type GetSocket interface {
 	GetSocket() *tetragon.SockInfo
+}
+
+type GetHttp interface {
+	GetHttp() *tetragon.HttpInfo
 }
 
 func getSNIName(event *v1.Event) (string, bool) {
@@ -309,4 +336,26 @@ func getSockInfo(event *v1.Event) (*tetragon.SockInfo, bool) {
 		return nil, false
 	}
 	return socket, true
+}
+
+func getHttpRequest(event *v1.Event) (*tetragon.HttpRequest, bool) {
+	if event == nil {
+		return nil, false
+	}
+	response, ok := event.Event.(*tetragon.GetEventsResponse)
+	if !ok {
+		return nil, false
+	}
+	ev, ok := tetragon.UnwrapGetEventsResponse(response).(GetHttp)
+	if !ok {
+		return nil, false
+	}
+	http := ev.GetHttp()
+	if http == nil {
+		return nil, false
+	}
+	if http.Request == nil {
+		return nil, false
+	}
+	return http.Request, true
 }
