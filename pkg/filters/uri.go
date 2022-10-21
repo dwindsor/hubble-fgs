@@ -76,6 +76,22 @@ func (f *DestinationPodRegexFilter) OnBuildFilter(_ context.Context, ff *tetrago
 	return fs, nil
 }
 
+type DnsNamesRegexFilter struct{}
+
+func (f *DnsNamesRegexFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) ([]hubbleFilters.FilterFunc, error) {
+	var fs []hubbleFilters.FilterFunc
+
+	if ff.DnsNamesRegex != nil {
+		filter, err := filterByURIRegex(ff.DnsNamesRegex, f)
+		if err != nil {
+			return nil, err
+		}
+		fs = append(fs, filter)
+	}
+
+	return fs, nil
+}
+
 func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilters.FilterFunc, error) {
 	var URIs []*regexp.Regexp
 
@@ -119,6 +135,13 @@ func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilt
 				return true
 			}
 			URIStrings = append(URIStrings, pod)
+		case *DnsNamesRegexFilter:
+			dnsNames, ok := getDnsNames(ev)
+			if !ok {
+				// Event has no DestinationNames name field
+				return true
+			}
+			URIStrings = append(URIStrings, dnsNames...)
 		default:
 			logger.GetLogger().WithField("filter_type", fmt.Sprintf("%T", f)).Error("Unsupported URI / Pod filter type")
 			return true
@@ -153,6 +176,10 @@ type GetDestinationNames interface {
 
 type GetDestinationPod interface {
 	GetDestinationPod() string
+}
+
+type GetDnsInfo interface {
+	GetDns() *tetragon.DnsInfo
 }
 
 func getSNIName(event *v1.Event) (string, bool) {
@@ -218,4 +245,23 @@ func getDestinationPod(event *v1.Event) (string, bool) {
 		return "", false
 	}
 	return ev.GetDestinationPod(), true
+}
+
+func getDnsNames(event *v1.Event) ([]string, bool) {
+	if event == nil {
+		return nil, false
+	}
+	response, ok := event.Event.(*tetragon.GetEventsResponse)
+	if !ok {
+		return nil, false
+	}
+	ev, ok := tetragon.UnwrapGetEventsResponse(response).(GetDnsInfo)
+	if !ok {
+		return nil, false
+	}
+	dns := ev.GetDns()
+	if dns == nil {
+		return nil, false
+	}
+	return dns.Names, true
 }

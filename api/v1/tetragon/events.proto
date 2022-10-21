@@ -98,6 +98,9 @@ message Filter {
     // Filter by destination_pod.name field using RE2 regular expression syntax:
     // https://github.com/google/re2/wiki/Syntax
     repeated string destination_pod_regex = 1006;
+    // Filter by process_dns.dns.names field using RE2 regular expression syntax:
+    // https://github.com/google/re2/wiki/Syntax
+    repeated string dns_names_regex = 1007;
 }
 
 message IPFilter {

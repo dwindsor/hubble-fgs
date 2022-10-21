@@ -24,5 +24,6 @@ func init() {
 		&SNIRegexFilter{},
 		&DestinationNamesRegexFilter{},
 		&DestinationPodRegexFilter{},
+		&DnsNamesRegexFilter{},
 	}...)
 }
