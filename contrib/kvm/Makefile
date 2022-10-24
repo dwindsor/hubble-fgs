@@ -3,6 +3,9 @@ KERNEL_URL ?=
 IMAGE      ?= kind.qcow2
 SSH_PORT   ?= 3333
 SSH_ARGS   ?=
+HOST_MOUNT ?= ../..
+MEMORY     ?= 4G
+CPU        ?= 2
 
 ifeq ($(KERNEL),)
 __kernel_flags =
@@ -12,7 +15,7 @@ endif
 
 .PHONY: run
 run:
-	sudo lvh run --image _data/images/${IMAGE} -p ${SSH_PORT}:22 --daemonize --host-mount ../../ ${__kernel_flags}
+	sudo lvh run --image _data/images/${IMAGE} -p ${SSH_PORT}:22 --daemonize --host-mount ${HOST_MOUNT} ${__kernel_flags} --mem ${MEMORY} --cpu ${CPU}
 
 .PHONY: start
 start: run

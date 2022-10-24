@@ -48,6 +48,9 @@ KERNEL_URL=giturl`. Alternatively, you can run the `lvh` command directly or jus
 - `IMAGE`: disk image to use from `_data/images`. Default is `kind.qcow2` (must be built with `make build-images`).
 - `SSH_PORT`: port to forward for SSH. Default is 3333.
 - `SSH_ARGS`: extra argument to pass to SSH. Default is empty.
+- `HOST_MOUNT`: directory on the host to mount under /host in the guest. Default is ../.. (root of this repo).
+- `MEMORY`: memory to give to the VM. Default is 4G.
+- `CPU`: number of CPUs to assign to the VM. Default is 2.
 
 ## Makefile Targets
 
