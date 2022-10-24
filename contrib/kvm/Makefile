@@ -1,8 +1,8 @@
-KERNEL  ?=
-KERNEL_URL  ?=
-IMAGE   ?= kind.qcow2
-SSHPORT ?= 3333
-SSHARGS ?=
+KERNEL     ?=
+KERNEL_URL ?=
+IMAGE      ?= kind.qcow2
+SSH_PORT   ?= 3333
+SSH_ARGS   ?=
 
 ifeq ($(KERNEL),)
 __kernel_flags =
@@ -12,15 +12,15 @@ endif
 
 .PHONY: run
 run:
-	sudo lvh run --image _data/images/${IMAGE} -p ${SSHPORT}:22 --daemonize --host-mount ../../ ${__kernel_flags}
+	sudo lvh run --image _data/images/${IMAGE} -p ${SSH_PORT}:22 --daemonize --host-mount ../../ ${__kernel_flags}
 
 .PHONY: start
 start: run
 
 .PHONY: ssh
 ssh:
-	@test ${SSHPORT}
-	ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p ${SSHPORT} root@localhost ${SSHARGS}
+	@test ${SSH_PORT}
+	ssh -o UserKnownHostsFile=/dev/null -o StrictHostKeyChecking=no -p ${SSH_PORT} root@localhost ${SSH_ARGS}
 
 .PHONY: stop
 stop:

@@ -46,8 +46,8 @@ KERNEL_URL=giturl`. Alternatively, you can run the `lvh` command directly or jus
 - `KERNEL`: name of the kernel to use. Default is empty, implies no custom kernel.
 - `KERNEL_URL`: git URL of the kernel to download when using `make add-kernel`.
 - `IMAGE`: disk image to use from `_data/images`. Default is `kind.qcow2` (must be built with `make build-images`).
-- `SSHPORT`: port to forward for SSH. Default is 3333.
-- `SSHARGS`: extra argument to pass to SSH. Default is empty.
+- `SSH_PORT`: port to forward for SSH. Default is 3333.
+- `SSH_ARGS`: extra argument to pass to SSH. Default is empty.
 
 ## Makefile Targets
 
