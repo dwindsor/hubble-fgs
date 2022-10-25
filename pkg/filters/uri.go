@@ -127,47 +127,47 @@ func filterByURIRegex(uriPatterns []string, f filters.OnBuildFilter) (hubbleFilt
 			URI, ok := getURI(ev)
 			if !ok {
 				// Event has no URI field
-				return true
+				return false
 			}
 			URIStrings = append(URIStrings, URI)
 		case *SNIRegexFilter:
 			SNI, ok := getSNIName(ev)
 			if !ok {
 				// Event has no SNI name field
-				return true
+				return false
 			}
 			URIStrings = append(URIStrings, SNI)
 		case *DestinationNamesRegexFilter:
 			destinationNames, ok := getDestinationNames(ev)
 			if !ok {
 				// Event has no DestinationNames name field
-				return true
+				return false
 			}
 			URIStrings = append(URIStrings, destinationNames...)
 		case *DestinationPodRegexFilter:
 			pod, ok := getDestinationPod(ev)
 			if !ok {
 				// Event has no DestinationPod field
-				return true
+				return false
 			}
 			URIStrings = append(URIStrings, pod)
 		case *DnsNamesRegexFilter:
 			dnsNames, ok := getDnsNames(ev)
 			if !ok {
 				// Event has no DestinationNames name field
-				return true
+				return false
 			}
 			URIStrings = append(URIStrings, dnsNames...)
 		case *HostRegexFilter:
 			request, ok := getHttpRequest(ev)
 			if !ok {
 				// Event has no Http.Request field
-				return true
+				return false
 			}
 			URIStrings = append(URIStrings, request.Host)
 		default:
 			logger.GetLogger().WithField("filter_type", fmt.Sprintf("%T", f)).Error("Unsupported URI / Pod filter type")
-			return true
+			return false
 		}
 
 		// Nested for loop to handle the case where we have more than one URI string, e.g.
