@@ -5,6 +5,7 @@
 
 version: 2
 updates:
+  # master branch
   - package-ecosystem: "gomod"
     directory: "/"
     schedule:
@@ -25,6 +26,62 @@ updates:
     directory: "/"
     schedule:
       interval: "weekly"
+    labels:
+    - enhancement
+    - release-blocker
+
+  # v1.9 branch
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "v1.9"
+    labels:
+    - enhancement
+    - release-blocker
+
+  - package-ecosystem: "docker"
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    target-branch: "v1.9"
+    labels:
+    - enhancement
+    - release-blocker
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "v1.9"
+    labels:
+    - enhancement
+    - release-blocker
+
+  # v1.8 branch
+  - package-ecosystem: "gomod"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "v1.8"
+    labels:
+    - enhancement
+    - release-blocker
+
+  - package-ecosystem: "docker"
+    directory: "/" # Location of package manifests
+    schedule:
+      interval: "weekly"
+    target-branch: "v1.8"
+    labels:
+    - enhancement
+    - release-blocker
+
+  - package-ecosystem: "github-actions"
+    directory: "/"
+    schedule:
+      interval: "weekly"
+    target-branch: "v1.8"
     labels:
     - enhancement
     - release-blocker
