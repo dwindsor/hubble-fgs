@@ -78,19 +78,6 @@ func (f *DestCIDRFilter) OnBuildFilter(_ context.Context, ff *tetragon.Filter) (
 type cidrFilter struct {
 	filterType filters.OnBuildFilter
 	cidrs      []*stdNet.IPNet
-	event_set  []tetragon.EventType
-}
-
-// Match the event type of a GetEventsResponse
-func (f *cidrFilter) MatchEventType(res *tetragon.GetEventsResponse) bool {
-	eventType := res.EventType()
-	for _, t := range f.event_set {
-		if eventType == t {
-			return true
-		}
-	}
-	// If event_set is empty, default to true, otherwise false
-	return len(f.event_set) == 0
 }
 
 // Get the IP field out of the event depending on the filter type
@@ -136,10 +123,10 @@ func (f *cidrFilter) getIPField(res *tetragon.GetEventsResponse) ([]string, bool
 
 // Match CIDR based on list of CIDR strings and the event's IP field if it exists
 func (f *cidrFilter) MatchCIDR(res *tetragon.GetEventsResponse) bool {
-	// Events that don't have any IP field should always return true here
+	// Events that don't have any IP field shouldn't match, so we return false here
 	ips, ok := f.getIPField(res)
 	if !ok {
-		return true
+		return false
 	}
 
 	// Parse IPs
@@ -159,44 +146,38 @@ func (f *cidrFilter) MatchCIDR(res *tetragon.GetEventsResponse) bool {
 	return false
 }
 
-func filterByCIDR(fs []*tetragon.IPFilter, f filters.OnBuildFilter) (hubbleFilters.FilterFunc, error) {
-	var filters []cidrFilter
-
+func filterByCIDR(fs []string, f filters.OnBuildFilter) (hubbleFilters.FilterFunc, error) {
 	const V6_CIDR_MASK = "/128"
 	const V4_CIDR_MASK = "/32"
 
-	for _, protoFilter := range fs {
-		f := cidrFilter{
-			filterType: f,
-			cidrs:      []*stdNet.IPNet{},
-			event_set:  protoFilter.EventSet,
-		}
+	cf := cidrFilter{
+		filterType: f,
+		cidrs:      []*stdNet.IPNet{},
+	}
 
-		for _, cidrString := range protoFilter.Cidr {
-			// Check if IP and no cidr is provided, and if so convert into a full cidr
-			if ip := net.ParseIPSloppy(cidrString); ip != nil {
-				var mask string
-				if ip.To4() != nil {
-					mask = V4_CIDR_MASK
-				} else {
-					mask = V6_CIDR_MASK
-				}
-				_, cidr, err := net.ParseCIDRSloppy(cidrString + mask)
-				if err != nil {
-					return nil, err
-				}
-				f.cidrs = append(f.cidrs, cidr)
+	for _, cidrString := range fs {
+		// Check if IP and no cidr is provided, and if so convert into a full cidr
+		if ip := net.ParseIPSloppy(cidrString); ip != nil {
+			var mask string
+			if ip.To4() != nil {
+				mask = V4_CIDR_MASK
 			} else {
-				// Otherwise just try to parse the cidr
-				_, cidr, err := net.ParseCIDRSloppy(cidrString)
-				if err != nil {
-					return nil, err
-				}
-				f.cidrs = append(f.cidrs, cidr)
+				mask = V6_CIDR_MASK
 			}
+			_, cidr, err := net.ParseCIDRSloppy(cidrString + mask)
+			if err != nil {
+				return nil, err
+			}
+			cf.cidrs = append(cf.cidrs, cidr)
+		} else {
+			// Otherwise just try to parse the cidr
+			_, cidr, err := net.ParseCIDRSloppy(cidrString)
+			if err != nil {
+				return nil, err
+			}
+			cf.cidrs = append(cf.cidrs, cidr)
 		}
 
-		filters = append(filters, f)
 	}
 
 	return func(ev *v1.Event) bool {
@@ -205,25 +186,11 @@ func filterByCIDR(fs []*tetragon.IPFilter, f filters.OnBuildFilter) (hubbleFilte
 			return false
 		}
 
-		var hasMatchedEventType bool
-		for _, f := range filters {
-			if f.MatchEventType(res) {
-				hasMatchedEventType = true
-			} else {
-				// No event type matches, try next filter
-				continue
-			}
-
-			if f.MatchCIDR(res) {
-				return true
-			}
+		if cf.MatchCIDR(res) {
+			return true
 		}
 
-		// If we never matched a single event type, just return true here since we don't
-		// want to apply the filter to events that don't have an IP field. Otherwise we
-		// can just return false as normal since we had no matches over the desired event
-		// type.
-		return !hasMatchedEventType
+		return false
 	}, nil
 }
 

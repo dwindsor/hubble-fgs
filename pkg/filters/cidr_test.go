@@ -74,32 +74,20 @@ func TestFilterByCIDR(t *testing.T) {
 	}
 
 	// Full mask should match here
-	ff, err := filterByCIDR([]*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2/32"},
-	}}, &IPCIDRFilter{})
+	ff, err := filterByCIDR([]string{"134.20.1.2/32"}, &IPCIDRFilter{})
 	require.NoError(t, err)
 	assert.True(t, ff(ev), "filter should pass")
 
 	// A bare IP without a mask should produce a filter equivalent to a full mask
-	ff, err = filterByCIDR([]*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2"},
-	}}, &IPCIDRFilter{})
+	ff, err = filterByCIDR([]string{"134.20.1.2"}, &IPCIDRFilter{})
 	require.NoError(t, err)
 	assert.True(t, ff(ev), "filter should pass")
 
-	ff, err = filterByCIDR([]*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.0"},
-	}}, &IPCIDRFilter{})
+	ff, err = filterByCIDR([]string{"134.20.1.0"}, &IPCIDRFilter{})
 	require.NoError(t, err)
 	assert.False(t, ff(ev), "filter should fail")
 
-	ff, err = filterByCIDR([]*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"0.0.0.0"},
-	}}, &IPCIDRFilter{})
+	ff, err = filterByCIDR([]string{"0.0.0.0"}, &IPCIDRFilter{})
 	require.NoError(t, err)
 	assert.False(t, ff(ev), "filter should fail")
 
@@ -114,18 +102,12 @@ func TestFilterByCIDR(t *testing.T) {
 	}
 
 	// Full mask should fail to match here
-	ff, err = filterByCIDR([]*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2/32"},
-	}}, &IPCIDRFilter{})
+	ff, err = filterByCIDR([]string{"134.20.1.2/32"}, &IPCIDRFilter{})
 	require.NoError(t, err)
 	assert.False(t, ff(ev), "filter should fail")
 
 	// A bare IP without a mask should produce a filter equivalent to a full mask
-	ff, err = filterByCIDR([]*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2"},
-	}}, &IPCIDRFilter{})
+	ff, err = filterByCIDR([]string{"134.20.1.2"}, &IPCIDRFilter{})
 	require.NoError(t, err)
 	assert.False(t, ff(ev), "filter should fail")
 }
@@ -139,14 +121,10 @@ func TestFilterWithNoField(t *testing.T) {
 		},
 	}
 
-	// f := []*tetragon.Filter{{IpCidr: map[string]string{"PROCESS_EXEC": "134.20.1.2/32"}}}
-	f := []*tetragon.Filter{{IpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2"},
-	}}}}
+	f := []*tetragon.Filter{{IpCidr: []string{"134.20.1.2"}}}
 	fl, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&IPCIDRFilter{}})
 	require.NoError(t, err)
-	assert.True(t, fl.MatchOne(ev), "filter should always match events without an IP field")
+	assert.False(t, fl.MatchOne(ev), "filter not match events without an IP field")
 }
 
 func TestIPCIDRFilter(t *testing.T) {
@@ -160,35 +138,22 @@ func TestIPCIDRFilter(t *testing.T) {
 		},
 	}
 
-	// f := []*tetragon.Filter{{IpCidr: map[string]string{"PROCESS_LISTEN": "134.20.1.2/8"}}}
-	f := []*tetragon.Filter{{IpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2/8"},
-	}}}}
+	f := []*tetragon.Filter{{IpCidr: []string{"134.20.1.2/8"}}}
 	fl, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&IPCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "CIDR should match first 8 bits of IP")
 
-	f = []*tetragon.Filter{{IpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2/16"},
-	}}}}
+	f = []*tetragon.Filter{{IpCidr: []string{"134.20.1.2/16"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&IPCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "CIDR should match first 16 bits of IP")
 
-	f = []*tetragon.Filter{{IpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2/24"},
-	}}}}
+	f = []*tetragon.Filter{{IpCidr: []string{"134.20.1.2/24"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&IPCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "CIDR should not match first 24 bits of IP")
 
-	f = []*tetragon.Filter{{IpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.1.2/32"},
-	}}}}
+	f = []*tetragon.Filter{{IpCidr: []string{"134.20.1.2/32"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&IPCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "CIDR should not match full IP")
@@ -205,34 +170,22 @@ func TestSourceCIDRFilter(t *testing.T) {
 		},
 	}
 
-	f := []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.1.2/8"},
-	}}}}
+	f := []*tetragon.Filter{{SourceIpCidr: []string{"134.20.1.2/8"}}}
 	fl, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "CIDR should match first 8 bits of IP")
 
-	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.1.2/16"},
-	}}}}
+	f = []*tetragon.Filter{{SourceIpCidr: []string{"134.20.1.2/16"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "CIDR should match first 16 bits of IP")
 
-	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.1.2/24"},
-	}}}}
+	f = []*tetragon.Filter{{SourceIpCidr: []string{"134.20.1.2/24"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "CIDR should not match first 24 bits of IP")
 
-	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.1.2/32"},
-	}}}}
+	f = []*tetragon.Filter{{SourceIpCidr: []string{"134.20.1.2/32"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "CIDR should not match full IP")
@@ -249,34 +202,22 @@ func TestDestinationCIDRFilter(t *testing.T) {
 		},
 	}
 
-	f := []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.1.2/8"},
-	}}}}
+	f := []*tetragon.Filter{{DestinationIpCidr: []string{"134.20.1.2/8"}}}
 	fl, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "CIDR should match first 8 bits of IP")
 
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.1.2/16"},
-	}}}}
+	f = []*tetragon.Filter{{DestinationIpCidr: []string{"134.20.1.2/16"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "CIDR should match first 16 bits of IP")
 
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.1.2/24"},
-	}}}}
+	f = []*tetragon.Filter{{DestinationIpCidr: []string{"134.20.1.2/24"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "CIDR should not match first 24 bits of IP")
 
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.1.2/32"},
-	}}}}
+	f = []*tetragon.Filter{{DestinationIpCidr: []string{"134.20.1.2/32"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "CIDR should not match full IP")
@@ -293,87 +234,27 @@ func TestFilterEventTypeMatch(t *testing.T) {
 		},
 	}
 
-	f := []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"134.20.137.137/32"},
-	}}}}
-	fl, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
+	f := []*tetragon.Filter{{
+		EventSet:          []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
+		DestinationIpCidr: []string{"134.20.137.137/32"},
+	}}
+	fl, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&filters.EventTypeFilter{}, &DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "filter should match")
 
-	// No connect filter defined for connect but we try to match a connect event.
-	// Therefore we should get a match.
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"0.0.0.0/32"},
-	}}}}
-	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
+	f = []*tetragon.Filter{{
+		EventSet:          []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
+		DestinationIpCidr: []string{"134.20.137.137/32"},
+	}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&filters.EventTypeFilter{}, &DestCIDRFilter{}})
 	require.NoError(t, err)
-	assert.True(t, fl.MatchOne(ev), "filter should match")
+	assert.False(t, fl.MatchOne(ev), "filter should not match wrong event type")
 
-	// Connect filter defined with the wrong IP.
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-		Cidr:     []string{"0.0.0.0/32"},
-	}}}}
-	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
-	require.NoError(t, err)
-	assert.False(t, fl.MatchOne(ev), "filter should not match")
-
-	// Untyped filter defined with the wrong IP.
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{},
-		Cidr:     []string{"0.0.0.0/32"},
-	}}}}
-	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
-	require.NoError(t, err)
-	assert.False(t, fl.MatchOne(ev), "filter should not match")
-
-	// Multi-type filter defined with the wrong IP.
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT, tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"0.0.0.0/32"},
-	}}}}
-	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
-	require.NoError(t, err)
-	assert.False(t, fl.MatchOne(ev), "filter should not match")
-
-	// Multi-type filter defined with the correct IP.
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT, tetragon.EventType_PROCESS_LISTEN},
-		Cidr:     []string{"134.20.137.137/32"},
-	}}}}
-	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
-	require.NoError(t, err)
-	assert.True(t, fl.MatchOne(ev), "filter should match")
-
-	// Define both a connect and listen filter with the wrong IP.
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{
-		{
-			EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-			Cidr:     []string{"0.0.0.0/32"},
-		},
-		{
-			EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-			Cidr:     []string{"0.0.0.0/32"},
-		},
-	}}}
-	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
-	require.NoError(t, err)
-	assert.False(t, fl.MatchOne(ev), "filter should not match")
-
-	// Define both a connect and listen filter but connect has the right IP.
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{
-		{
-			EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN},
-			Cidr:     []string{"0.0.0.0/32"},
-		},
-		{
-			EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_CONNECT},
-			Cidr:     []string{"134.20.137.137/32"},
-		},
-	}}}
-	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
+	f = []*tetragon.Filter{{
+		EventSet:          []tetragon.EventType{tetragon.EventType_PROCESS_LISTEN, tetragon.EventType_PROCESS_CONNECT},
+		DestinationIpCidr: []string{"134.20.137.137/32"},
+	}}
+	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&filters.EventTypeFilter{}, &DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "filter should match")
 }
@@ -392,34 +273,22 @@ func TestCidrFiltersHttpDns(t *testing.T) {
 		},
 	}
 
-	f := []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_HTTP},
-		Cidr:     []string{"2.2.0.0/16"},
-	}}}}
+	f := []*tetragon.Filter{{DestinationIpCidr: []string{"2.2.0.0/16"}}}
 	fl, err := filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "filter should match")
 
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_HTTP},
-		Cidr:     []string{"0.0.0.0"},
-	}}}}
+	f = []*tetragon.Filter{{DestinationIpCidr: []string{"0.0.0.0"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "filter should not match")
 
-	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_HTTP},
-		Cidr:     []string{"1.1.0.0/16"},
-	}}}}
+	f = []*tetragon.Filter{{SourceIpCidr: []string{"1.1.0.0/16"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "filter should match")
 
-	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_HTTP},
-		Cidr:     []string{"0.0.0.0"},
-	}}}}
+	f = []*tetragon.Filter{{SourceIpCidr: []string{"0.0.0.0"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "filter should not match")
@@ -437,34 +306,22 @@ func TestCidrFiltersHttpDns(t *testing.T) {
 		},
 	}
 
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_DNS},
-		Cidr:     []string{"2.2.0.0/16"},
-	}}}}
+	f = []*tetragon.Filter{{DestinationIpCidr: []string{"2.2.0.0/16"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "filter should match")
 
-	f = []*tetragon.Filter{{DestinationIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_DNS},
-		Cidr:     []string{"0.0.0.0"},
-	}}}}
+	f = []*tetragon.Filter{{DestinationIpCidr: []string{"0.0.0.0"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&DestCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "filter should not match")
 
-	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_DNS},
-		Cidr:     []string{"1.1.0.0/16"},
-	}}}}
+	f = []*tetragon.Filter{{SourceIpCidr: []string{"1.1.0.0/16"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
 	require.NoError(t, err)
 	assert.True(t, fl.MatchOne(ev), "filter should match")
 
-	f = []*tetragon.Filter{{SourceIpCidr: []*tetragon.IPFilter{{
-		EventSet: []tetragon.EventType{tetragon.EventType_PROCESS_DNS},
-		Cidr:     []string{"0.0.0.0"},
-	}}}}
+	f = []*tetragon.Filter{{SourceIpCidr: []string{"0.0.0.0"}}}
 	fl, err = filters.BuildFilterList(context.Background(), f, []filters.OnBuildFilter{&SourceCIDRFilter{}})
 	require.NoError(t, err)
 	assert.False(t, fl.MatchOne(ev), "filter should not match")
