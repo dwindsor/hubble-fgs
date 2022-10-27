@@ -34,7 +34,7 @@ kill:
 
 .PHONY: install-lvh
 install-lvh:
-	go install github.com/cilium/little-vm-helper@latest
+	go install github.com/cilium/little-vm-helper/cmd/lvh@latest
 
 .PHONY: fetch-kernel
 fetch-kernel:
