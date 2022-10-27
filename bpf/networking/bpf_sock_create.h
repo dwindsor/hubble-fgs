@@ -18,7 +18,6 @@ __sk_allocret(struct pt_regs *ctx, bool pre56)
 	struct execve_map_value *value;
 	u16 family;
 	struct socketmap_value process = { 0 };
-	u16 protocol;
 
 	if (cookie == 0 || pid <= 1) {
 		return 0;
@@ -28,16 +27,10 @@ __sk_allocret(struct pt_regs *ctx, bool pre56)
 	if (family != AF_INET && family != AF_INET6)
 		return 0;
 
-	/* We only want to create sockets for UDP as TCP is handled via
-	 * calls to listen and accept.
+	/* There is no guarantee that the protocol has been set so we cannot
+	 * check it. We will store all socket allocations for all IPv4 and IPv6
+	 * protocols.
 	 */
-	probe_read(&protocol, sizeof(protocol), _(&(sk->sk_protocol)));
-	if (pre56) {
-		protocol >>= 8;
-	}
-	if (protocol != IPPROTO_UDP) {
-		return 0;
-	}
 
 	/* Ideally we would be able to bind the socket to create early,
 	 * but its possible that we don't have an entry for the thread
