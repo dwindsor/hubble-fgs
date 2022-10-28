@@ -61,6 +61,8 @@ const (
 	keyExportAllowlist = "export-allowlist"
 	keyExportDenylist  = "export-denylist"
 
+	keyFieldFilters = "field-filters"
+
 	keyNetnsDir = "netns-dir"
 
 	keyEventQueueSize = "event-queue-size"
