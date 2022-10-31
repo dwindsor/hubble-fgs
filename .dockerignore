@@ -1,6 +1,3 @@
-# Ignore VCS
-.git/
-
 # Ignore contrib/kvm and all subdirs
 contrib/kvm
 
