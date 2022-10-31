@@ -235,6 +235,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key,
 	struct socketmap_value *execve;
 	struct msg_tls *event;
 	int zero = 0;
+	u64 *cookie;
 
 	event = map_lookup_elem(&tls_map, key);
 	if (!event)
@@ -285,7 +286,13 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key,
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
 
-		execve = lookup_tls_socketmap(key);
+		cookie = map_lookup_elem(&tls_cookie_heap, &zero);
+		if (!cookie)
+			return;
+		write_cookie_from_sk(cookie, (struct sock *)skb->sk, true);
+		if (!*cookie)
+			return;
+		execve = lookup_socketmap(cookie);
 		if (execve)
 			post->execve = execve->key;
 

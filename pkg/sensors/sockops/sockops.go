@@ -62,7 +62,7 @@ func builder(name string) (*sensors.Sensor, error) {
 		progs = append(progs, SockopsEstablished)
 		maps = append(maps,
 			HttpSockMap, TlsSockMap, NopSockMap,
-			HttpFilterMap, TlsFilterMap, NopFilterMap, tcp.TlsSocketMap)
+			HttpFilterMap, TlsFilterMap, NopFilterMap, tcp.TlsSocketMap, tcp.SocketMap)
 
 		return sensors.SensorBuilder("__sockops_sensors__", progs, maps), nil
 	}
