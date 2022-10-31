@@ -21,8 +21,7 @@ import (
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/client"
 	k8sversion "github.com/cilium/tetragon/pkg/k8s/version"
-
-	"github.com/isovalent/hubble-fgs/pkg/version"
+	"github.com/cilium/tetragon/pkg/version"
 
 	operatorOption "github.com/isovalent/hubble-fgs/operator/option"
 	"k8s.io/client-go/kubernetes"
