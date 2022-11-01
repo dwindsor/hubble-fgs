@@ -149,14 +149,14 @@ struct msg_http {
 
 struct msg_http_event {
 	struct msg_common common;
-	struct msg_tls_ipv4 tuple;
+	struct msg_tls_ip tuple;
 	struct msg_execve_key execve;
 	struct msg_http request;
 } __attribute__((packed));
 
 struct __msg_http_event {
 	struct msg_common common;
-	struct msg_tls_ipv4 tuple;
+	struct msg_tls_ip tuple;
 	struct msg_execve_key execve;
 	struct __msg_http request;
 } __attribute__((packed));
@@ -164,7 +164,7 @@ struct __msg_http_event {
 #ifndef ALIGNCHECKER
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct msg_tls_ipv4);
+	__type(key, struct msg_tls_ip);
 	__type(value, struct msg_http_event);
 	__uint(max_entries, 1000);
 } http_map SEC(".maps");

@@ -90,7 +90,7 @@ event_sys_listen(struct pt_regs *ctx)
 	v.received = 0;
 
 	if (family != AF_INET6) {
-		struct msg_tls_ipv4 tuple;
+		struct msg_tls_ip tuple;
 
 		tuple.saddr = val->tuple.saddr[0];
 		tuple.daddr = 0;

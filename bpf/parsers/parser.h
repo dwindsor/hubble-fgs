@@ -340,7 +340,7 @@ static inline int large_ctx_copy(ctx_md *ctx, __u64 next, __u64 offset,
 #ifdef SK_MSG
 
 static inline __attribute__((always_inline)) void
-msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ipv4 *key)
+msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ip *key)
 {
 	key->daddr = msg->remote_ip4;
 	key->saddr = msg->local_ip4;

@@ -28,7 +28,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__type(key, struct msg_tls_ipv4);
+	__type(key, struct msg_tls_ip);
 	__type(value, struct bottle);
 	__uint(max_entries, 1024);
 } bottles SEC(".maps");
@@ -53,7 +53,7 @@ bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 }
 
 static inline __attribute__((always_inline)) void
-bottle_drop(struct msg_tls_ipv4 *key)
+bottle_drop(struct msg_tls_ip *key)
 {
 	int err = map_delete_elem(&bottles, key);
 	int zero = 0;
@@ -63,7 +63,7 @@ bottle_drop(struct msg_tls_ipv4 *key)
 }
 
 static inline __attribute__((always_inline)) struct bottle *
-bottle_fill(ctx_md *ctx, struct msg_tls_ipv4 *key, int payload_off)
+bottle_fill(ctx_md *ctx, struct msg_tls_ip *key, int payload_off)
 {
 	struct bottle *bottle = map_lookup_elem(&bottles, key);
 

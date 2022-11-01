@@ -11,7 +11,7 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct msg_tls_ipv4);
+	__type(key, struct msg_tls_ip);
 	__type(value, struct msg_tls);
 	__uint(max_entries, 32000);
 } tls_map SEC(".maps");
@@ -28,7 +28,7 @@ struct {
 __attribute__((section("kprobe/tcp_v4_fill_cb"), used)) int
 event_ingress_tcp(struct pt_regs *ctx)
 {
-	struct msg_tls_ipv4 key = { 0 };
+	struct msg_tls_ip key = { 0 };
 	struct msg_tls *event;
 	struct tcphdr *tcphdr;
 	struct iphdr *iphdr;

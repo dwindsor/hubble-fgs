@@ -30,7 +30,7 @@ event_tcp_close(struct pt_regs *ctx)
 {
 	struct msg_ip_event *val;
 	struct socketmap_value *process;
-	struct msg_tls_ipv4 tuple;
+	struct msg_tls_ip tuple;
 	struct net *netns;
 	struct sock *skp;
 	size_t size;

@@ -61,7 +61,7 @@ struct {
 } cilium_snat_v4_external SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-skb_tls_key_ct_xchg(struct msg_tls_ipv4 *key)
+skb_tls_key_ct_xchg(struct msg_tls_ip *key)
 {
 	struct ipv4_ct_tuple ct = { 0 };
 	struct ipv4_nat_entry *nat;
@@ -171,7 +171,7 @@ tls_find_handshake_end(struct bottle *bottle, int offset, int *type,
 
 static inline __attribute__((always_inline)) int
 bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
-		   struct msg_tls_ipv4 *key, u32 offset)
+		   struct msg_tls_ip *key, u32 offset)
 {
 	struct msg_tls_cont_event *event;
 	int type = 0, subtype = 0;
@@ -229,8 +229,7 @@ fail:
 }
 
 static inline __attribute__((always_inline)) void
-bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ipv4 *key,
-		      int offset)
+bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
 {
 	struct socketmap_value *execve;
 	struct msg_tls *event;
@@ -351,7 +350,7 @@ static inline __attribute__((always_inline)) void
 event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		     struct tcphdr *tcp, u64 *cookie, int payload_off)
 {
-	struct msg_tls_ipv4 key = { 0 };
+	struct msg_tls_ip key = { 0 };
 
 	/* IPv6 not currently supported. Coming in later commit.
 	 */

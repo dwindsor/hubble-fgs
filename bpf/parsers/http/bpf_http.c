@@ -19,7 +19,7 @@
 __attribute__((section("sk_msg/fgs"), used)) int
 bpf_http_sk_msg_fgs(struct sk_msg_md *msg)
 {
-	struct msg_tls_ipv4 tuple = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 
 	/* Workaround to clear any applied bytes from
          * previous execution on the same message. */
@@ -32,7 +32,7 @@ bpf_http_sk_msg_fgs(struct sk_msg_md *msg)
 __attribute__((section("sk_msg/0"), used)) int
 bpf_http_sk_msg_fgs_response(struct sk_msg_md *msg)
 {
-	struct msg_tls_ipv4 tuple = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *http;
 
 	msg_tls_key(msg, &tuple);
@@ -52,7 +52,7 @@ bpf_http_sk_msg_fgs_response(struct sk_msg_md *msg)
 __attribute__((section("sk_msg/1"), used)) int
 bpf_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 {
-	struct msg_tls_ipv4 tuple = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *http;
 
 	msg_tls_key(msg, &tuple);
@@ -72,7 +72,7 @@ bpf_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 __attribute__((section("sk_msg/2"), used)) int
 bpf_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 {
-	struct msg_tls_ipv4 tuple = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *http;
 
 	msg_tls_key(msg, &tuple);
@@ -92,7 +92,7 @@ bpf_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 __attribute__((section("sk_msg/3"), used)) int
 bpf_skmsg_http2(struct sk_msg_md *msg)
 {
-	struct msg_tls_ipv4 tuple = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 
 	msg_tls_key(msg, &tuple);
 	return http2_do_parser(msg, &tuple);

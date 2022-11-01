@@ -99,7 +99,7 @@ event_tcp_connect(struct pt_regs *ctx)
 		* if its not initialized. Alternatively, without padding we are not
 		* 32-bit aligned so we really do want it there.
 		*/
-		struct msg_tls_ipv4 tuple;
+		struct msg_tls_ip tuple;
 
 		tuple.saddr = val->tuple.saddr[0];
 		tuple.daddr = val->tuple.daddr[0];

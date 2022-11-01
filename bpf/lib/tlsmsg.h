@@ -62,7 +62,7 @@ struct msg_tls {
 
 #define SOCKET_TLS_DONE 0x0001
 
-struct msg_tls_ipv4 {
+struct msg_tls_ip {
 	__u32 saddr;
 	__u32 daddr;
 	/* Both ports are in host byte-order */
@@ -74,7 +74,7 @@ struct msg_tls_ipv4 {
 
 struct msg_tls_event {
 	struct msg_common common;
-	struct msg_tls_ipv4 tuple;
+	struct msg_tls_ip tuple;
 	struct msg_tls clienthello;
 	struct msg_tls serverhello;
 	struct msg_execve_key execve;
@@ -82,13 +82,13 @@ struct msg_tls_event {
 
 struct msg_tls_cont_event {
 	__u8 op;
-	struct msg_tls_ipv4 tuple;
+	struct msg_tls_ip tuple;
 	__u32 payload_size; /* Payload size, or if zero an error follows */
 	__u8 payload[0];
 } __attribute__((packed));
 
 static inline __attribute__((always_inline)) int
-is_tuple_local(struct msg_tls_ipv4 *tuple)
+is_tuple_local(struct msg_tls_ip *tuple)
 {
 	return (tuple->daddr & 0xff) == 127 || // daddr lo addr
 	       (tuple->saddr & 0xff) == 127 || // saddr lo addr

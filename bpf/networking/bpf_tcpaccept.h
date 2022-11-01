@@ -27,7 +27,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	struct msg_ip_event *val;
 	struct execve_map_value *process;
 	struct socketmap_value *acc_process;
-	struct msg_tls_ipv4 tuple;
+	struct msg_tls_ip tuple;
 	size_t size;
 	u32 zero = 0;
 	u64 cookie;

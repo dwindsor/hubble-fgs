@@ -11,7 +11,7 @@
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct msg_tls_ipv4);
+	__type(key, struct msg_tls_ip);
 	__type(value, struct msg_tls);
 	__uint(max_entries, 32000);
 } tls_map SEC(".maps");
@@ -20,7 +20,7 @@ struct {
 __attribute__((section("cgroup_skb/ingress"), used)) int
 bpf_cgroup_skb_ingress_tls(struct __sk_buff *skb)
 {
-	struct msg_tls_ipv4 key = { 0 };
+	struct msg_tls_ip key = { 0 };
 	struct msg_tls *event;
 
 	key.daddr = skb->remote_ip4;

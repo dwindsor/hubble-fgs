@@ -58,7 +58,7 @@ ctx_pull_data(struct __sk_buff *ctx, __u32 len)
 #endif
 
 static inline __attribute__((always_inline)) void
-post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key,
+post_http_event(ctx_md *msg, struct msg_tls_ip *key,
 		struct msg_http_event *http);
 
 static inline __attribute__((always_inline)) char *
@@ -210,7 +210,7 @@ static inline __attribute__((always_inline)) bool is_digit(int c)
 }
 
 static inline __attribute__((always_inline)) void
-get_string(ctx_md *msg, struct msg_tls_ipv4 *key, struct msg_http_event *event,
+get_string(ctx_md *msg, struct msg_tls_ip *key, struct msg_http_event *event,
 	   struct msg_http *http, char *dst, int ty, __u64 max, char term)
 {
 	int do_push = (ty == http_request_content_length);
@@ -305,7 +305,7 @@ get_string(ctx_md *msg, struct msg_tls_ipv4 *key, struct msg_http_event *event,
 }
 
 static inline __attribute__((always_inline)) void
-method_get_url(ctx_md *msg, struct msg_tls_ipv4 *key,
+method_get_url(ctx_md *msg, struct msg_tls_ip *key,
 	       struct msg_http_event *event, struct msg_http *http)
 {
 	get_string(msg, key, event, http, http->url, http_request_url, 256,
@@ -313,7 +313,7 @@ method_get_url(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) void
-method_get_protocol(ctx_md *msg, struct msg_tls_ipv4 *key,
+method_get_protocol(ctx_md *msg, struct msg_tls_ip *key,
 		    struct msg_http_event *event, struct msg_http *http)
 {
 	get_string(msg, key, event, http, http->url, http_request_protocol, 256,
@@ -389,7 +389,7 @@ static inline __attribute__((always_inline)) void get_more_headers(ctx_md *msg)
 }
 
 static inline __attribute__((always_inline)) void
-continue_header_string(ctx_md *msg, struct msg_tls_ipv4 *key,
+continue_header_string(ctx_md *msg, struct msg_tls_ip *key,
 		       struct msg_http_event *event, struct msg_http *http)
 {
 	int t = map_header_to_type(msg, http);
@@ -403,7 +403,7 @@ continue_header_string(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) void
-find_host_header(ctx_md *msg, struct msg_tls_ipv4 *key,
+find_host_header(ctx_md *msg, struct msg_tls_ip *key,
 		 struct msg_http_event *event, struct msg_http *http)
 {
 	int t;
@@ -450,7 +450,7 @@ out:
 }
 
 static inline __attribute__((always_inline)) void
-method_get_headers(ctx_md *msg, struct msg_tls_ipv4 *key,
+method_get_headers(ctx_md *msg, struct msg_tls_ip *key,
 		   struct msg_http_event *event, struct msg_http *http)
 {
 	http->state = http_get_headers;
@@ -458,7 +458,7 @@ method_get_headers(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) void
-http_parse_request(ctx_md *msg, struct msg_tls_ipv4 *key,
+http_parse_request(ctx_md *msg, struct msg_tls_ip *key,
 		   struct msg_http_event *http)
 {
 	http->request.url_offset = 0;
@@ -468,7 +468,7 @@ http_parse_request(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) void
-response_get_protocol(ctx_md *msg, struct msg_tls_ipv4 *key,
+response_get_protocol(ctx_md *msg, struct msg_tls_ip *key,
 		      struct msg_http_event *event, struct msg_http *http)
 {
 	get_string(msg, key, event, http, http->url, http_response_protocol,
@@ -476,7 +476,7 @@ response_get_protocol(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) void
-response_get_code(ctx_md *msg, struct msg_tls_ipv4 *key,
+response_get_code(ctx_md *msg, struct msg_tls_ip *key,
 		  struct msg_http_event *event, struct msg_http *http)
 {
 	get_string(msg, key, event, http, http->url, http_response_code, 256,
@@ -484,7 +484,7 @@ response_get_code(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) void
-response_get_reason(ctx_md *msg, struct msg_tls_ipv4 *key,
+response_get_reason(ctx_md *msg, struct msg_tls_ip *key,
 		    struct msg_http_event *event, struct msg_http *http)
 {
 	get_string(msg, key, event, http, http->url, http_response_reason, 256,
@@ -492,7 +492,7 @@ response_get_reason(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) void
-http_parse_response(ctx_md *msg, struct msg_tls_ipv4 *key,
+http_parse_response(ctx_md *msg, struct msg_tls_ip *key,
 		    struct msg_http_event *event, struct msg_http *http)
 {
 	http->url_offset = 0;
@@ -503,10 +503,10 @@ http_parse_response(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) int
-put_reverse_http_context(struct msg_tls_ipv4 *key, struct msg_http_event *event)
+put_reverse_http_context(struct msg_tls_ip *key, struct msg_http_event *event)
 {
 	/* Add the reverse context, so that we'll process the other direction as HTTP/2 */
-	struct msg_tls_ipv4 rkey = {
+	struct msg_tls_ip rkey = {
 		.saddr = key->saddr,
 		.daddr = key->daddr,
 		.dport = key->dport,
@@ -519,7 +519,7 @@ put_reverse_http_context(struct msg_tls_ipv4 *key, struct msg_http_event *event)
 }
 
 static inline __attribute__((always_inline)) void
-http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ipv4 *key)
+http_parse(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key)
 {
 	struct msg_http *http = &event->request;
 
@@ -589,7 +589,7 @@ is_expected_request(struct msg_http *http)
 }
 
 static inline __attribute__((always_inline)) struct msg_http_event *
-get_http_context(struct msg_tls_ipv4 *key)
+get_http_context(struct msg_tls_ip *key)
 {
 	struct msg_http_event *http;
 
@@ -622,7 +622,7 @@ out:
  */
 static inline __attribute__((always_inline)) void
 sk_skb_eat_bytes(ctx_md *skb, struct msg_http_event *event,
-		 struct msg_tls_ipv4 *key, __u32 skip)
+		 struct msg_tls_ip *key, __u32 skip)
 {
 	struct msg_http *http = &event->request;
 
@@ -652,7 +652,7 @@ http_reset_state(struct msg_http *http)
 }
 
 static inline __attribute__((always_inline)) void
-post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key,
+post_http_event(ctx_md *msg, struct msg_tls_ip *key,
 		struct msg_http_event *http)
 {
 	__u32 remaining = key->remaining;
@@ -715,7 +715,7 @@ post_http_event(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) int
-http_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
+http_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 {
 	struct msg_http_event *http;
 

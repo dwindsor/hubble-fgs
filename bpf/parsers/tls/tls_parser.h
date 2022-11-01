@@ -353,7 +353,7 @@ bpf_parse_tls(struct bottle *bottle, struct msg_tls *tls)
 
 #if defined(SK_MSG)
 static inline __attribute__((always_inline)) void
-skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key)
+skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ip *key)
 {
 	key->daddr = skmsg->remote_ip4;
 	key->saddr = skmsg->local_ip4;
@@ -370,7 +370,7 @@ skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ipv4 *key)
 }
 #elif defined(SK_SKB)
 static inline __attribute__((always_inline)) void
-skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
+skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ip *key)
 {
 	struct bpf_sock *sk;
 
@@ -387,7 +387,7 @@ skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ipv4 *key)
 }
 #else
 static inline __attribute__((always_inline)) void *
-skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ipv4 *key)
+skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ip *key)
 {
 	void *data, *data_end;
 	struct tcphdr *tcphdr;

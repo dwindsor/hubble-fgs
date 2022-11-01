@@ -14,7 +14,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct msg_tls_ipv4);
+	__type(key, struct msg_tls_ip);
 	__type(value, struct msg_tls);
 	__uint(max_entries, 32000);
 } tls_map SEC(".maps");
@@ -34,7 +34,7 @@ tls_mark_complete(struct msg_tls *tls)
 }
 
 static inline __attribute__((always_inline)) void
-add_tlsmap(struct msg_tls_ipv4 *tuple, struct msg_tls *v)
+add_tlsmap(struct msg_tls_ip *tuple, struct msg_tls *v)
 {
 	int err = map_update_elem(&tls_map, tuple, v, 0);
 	int zero = 0;
@@ -45,7 +45,7 @@ add_tlsmap(struct msg_tls_ipv4 *tuple, struct msg_tls *v)
 }
 
 static inline __attribute__((always_inline)) void
-del_tlsmap(struct msg_tls_ipv4 *tuple)
+del_tlsmap(struct msg_tls_ip *tuple)
 {
 	int err = map_delete_elem(&tls_map, tuple);
 	int zero = 0;

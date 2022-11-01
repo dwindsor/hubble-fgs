@@ -24,7 +24,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__type(key, struct msg_tls_ipv4);
+	__type(key, struct msg_tls_ip);
 	__type(value, struct socketmap_value);
 	__uint(max_entries, 32768);
 } tls_socket_map SEC(".maps");
@@ -118,7 +118,7 @@ write_cookie_from_sk(u64 *cookie, struct sock *sk, bool lazy)
 }
 
 static inline __attribute__((always_inline)) void
-add_socketmap(u64 *cookie, struct msg_tls_ipv4 *t, struct socketmap_value *v)
+add_socketmap(u64 *cookie, struct msg_tls_ip *t, struct socketmap_value *v)
 {
 	int err = map_update_elem(&socket_map, cookie, v, 0);
 	int zero = 0;
@@ -132,7 +132,7 @@ add_socketmap(u64 *cookie, struct msg_tls_ipv4 *t, struct socketmap_value *v)
 }
 
 static inline __attribute__((always_inline)) void
-del_socketmap(u64 *cookie, struct sock *sk, struct msg_tls_ipv4 *t, bool lazy)
+del_socketmap(u64 *cookie, struct sock *sk, struct msg_tls_ip *t, bool lazy)
 {
 	int err = map_delete_elem(&socket_map, cookie);
 	int zero = 0;
@@ -156,7 +156,7 @@ lookup_socketmap(u64 *cookie)
 }
 
 static inline __attribute__((always_inline)) struct socketmap_value *
-lookup_tls_socketmap(struct msg_tls_ipv4 *t)
+lookup_tls_socketmap(struct msg_tls_ip *t)
 {
 	return map_lookup_elem(&tls_socket_map, t);
 }
@@ -166,7 +166,7 @@ lookup_tls_socketmap(struct msg_tls_ipv4 *t)
  * mapping from cookie to process(pid).
  */
 static inline __attribute__((always_inline)) void
-update_socketmap(u64 *cookie, struct msg_tls_ipv4 *t, u32 pid)
+update_socketmap(u64 *cookie, struct msg_tls_ip *t, u32 pid)
 {
 	struct execve_map_value *value;
 	struct socketmap_value *process;

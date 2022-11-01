@@ -11,7 +11,7 @@
 #include "../http/http_parser.h"
 
 static inline __attribute__((always_inline)) void
-egress_post_event(ctx_md *ctx, struct msg_tls_ipv4 *key,
+egress_post_event(ctx_md *ctx, struct msg_tls_ip *key,
 		  struct msg_tls_event *post)
 {
 	post->tuple = *key;
@@ -31,7 +31,7 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 		     struct tcphdr *tcp, u64 *cookie, int payload_off)
 #endif
 {
-	struct msg_tls_ipv4 tuple = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 	struct msg_tls_event *event;
 	struct msg_tls *clienthello;
 	struct msg_tls *state;

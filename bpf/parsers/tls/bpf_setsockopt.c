@@ -38,7 +38,7 @@ struct {
 } https_filter_map SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key)
+sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ip *key)
 {
 	struct bpf_sock *sk = ctx->sk;
 
@@ -53,7 +53,7 @@ sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ipv4 *key)
 __attribute__((section("cgroup/setsockopt"), used)) int
 setsockopt(struct bpf_sockopt *ctx)
 {
-	struct msg_tls_ipv4 key;
+	struct msg_tls_ip key;
 	struct msg_tls *event;
 
 	/* In order to bypass kernel drop on optval>PAGE_SIZE set optlen = 0. */

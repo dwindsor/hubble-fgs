@@ -218,7 +218,7 @@ append_to_chunk(ctx_md *skb, struct msg_http *http, u32 len)
 }
 
 static inline __attribute__((always_inline)) void
-post_http2_event(ctx_md *msg, struct msg_tls_ipv4 *key,
+post_http2_event(ctx_md *msg, struct msg_tls_ip *key,
 		 struct msg_http_event *event)
 {
 	struct msg_http *http = &event->request;
@@ -275,8 +275,8 @@ post_http2_event(ctx_md *msg, struct msg_tls_ipv4 *key,
 }
 
 static inline __attribute__((always_inline)) int
-emit_headers(ctx_md *msg, struct msg_http_event *event,
-	     struct msg_tls_ipv4 *key, u32 payload_length)
+emit_headers(ctx_md *msg, struct msg_http_event *event, struct msg_tls_ip *key,
+	     u32 payload_length)
 {
 	struct msg_http *http = &event->request;
 
@@ -307,7 +307,7 @@ emit_headers(ctx_md *msg, struct msg_http_event *event,
 
 static inline __attribute__((always_inline)) bool
 http2_parse_frame(ctx_md *msg, struct msg_http_event *event,
-		  struct msg_tls_ipv4 *key)
+		  struct msg_tls_ip *key)
 {
 	struct msg_http *http = &event->request;
 
@@ -401,7 +401,7 @@ http2_is_preface(ctx_md *msg, struct msg_http *http)
 }
 
 static inline __attribute__((always_inline)) int
-http2_do_parser(ctx_md *msg, struct msg_tls_ipv4 *tuple)
+http2_do_parser(ctx_md *msg, struct msg_tls_ip *tuple)
 {
 	struct msg_http_event *event;
 	struct msg_http *http;
