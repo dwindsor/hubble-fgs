@@ -18,6 +18,7 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/pkg/encoder"
 	"github.com/dustin/go-humanize"
+	"github.com/miekg/dns"
 )
 
 const rfc3339Nano = "2006-01-02T15:04:05.000000000Z07:00"
@@ -168,7 +169,7 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		}
 		event := p.colorer.Blue.Sprintf("📖 %-7s", "dns")
 		processInfo, caps := p.colorer.ProcessInfo(response.NodeName, dns.Process)
-		args := p.colorer.Cyan.Sprint(dns.GetDns().Names, " => ", dns.GetDns().Ips)
+		args := p.colorer.Cyan.Sprint(dnsToString(dns.Dns))
 		return encoder.CapTrailorPrinter(fmt.Sprintf("%s %s %s", event, processInfo, args), caps), nil
 	case *tetragon.GetEventsResponse_ProcessSockStats:
 		stats := response.GetProcessSockStats()
@@ -202,4 +203,22 @@ func (p *EnterpriseEncoder) eventToString(response *tetragon.GetEventsResponse) 
 		return fmt.Sprintf("%s %s tx %s rx %s", event, interfaceInfo, txBytes, rxBytes), nil
 	}
 	return "", encoder.ErrUnknownEventType
+}
+
+func dnsToString(dnsInfo *tetragon.DnsInfo) string {
+	if dnsInfo.Response {
+		var answerTypes []string
+		for _, answerType := range dnsInfo.AnswerTypes {
+			answerTypes = append(answerTypes, dns.TypeToString[uint16(answerType)])
+		}
+
+		rcode := dns.RcodeToString[int(dnsInfo.Rcode)]
+		return fmt.Sprintf("%s %s %s %s", rcode, dnsInfo.Names, answerTypes, dnsInfo.Ips)
+	}
+	var questionTypes []string
+	for _, questionType := range dnsInfo.QuestionTypes {
+		questionTypes = append(questionTypes, dns.TypeToString[uint16(questionType)])
+	}
+
+	return fmt.Sprintf("%s %s", dnsInfo.Names, questionTypes)
 }

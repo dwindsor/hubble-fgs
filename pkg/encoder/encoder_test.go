@@ -370,15 +370,57 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 					Binary: "/usr/bin/curl",
 				},
 				Dns: &tetragon.DnsInfo{
-					Names: []string{"isovalent.com"},
-					Ips:   []string{"1.2.3.4"},
+					Names:       []string{"isovalent.com"},
+					Rcode:       0,
+					Ips:         []string{"1.2.3.4"},
+					AnswerTypes: []uint32{1},
+					Response:    true,
 				},
 			},
 		},
 		NodeName: "my-node",
 	})
 	assert.NoError(t, err)
-	assert.Equal(t, "📖 dns     my-node /usr/bin/curl [isovalent.com] => [1.2.3.4]", result)
+	assert.Equal(t, "📖 dns     my-node /usr/bin/curl NOERROR [isovalent.com] [A] [1.2.3.4]", result)
+
+	// multiple answers
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessDns{
+			ProcessDns: &tetragon.ProcessDns{
+				Process: &tetragon.Process{
+					Binary: "/usr/bin/curl",
+				},
+				Dns: &tetragon.DnsInfo{
+					Names:       []string{"cloudtrace.googleapis.com."},
+					Rcode:       0,
+					Ips:         []string{"142.250.72.234", "142.250.68.106", "142.250.72.138", "142.250.72.170"},
+					AnswerTypes: []uint32{1, 1, 1, 1},
+					Response:    true,
+				},
+			},
+		},
+		NodeName: "my-node",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "📖 dns     my-node /usr/bin/curl NOERROR [cloudtrace.googleapis.com.] [A A A A] [142.250.72.234 142.250.68.106 142.250.72.138 142.250.72.170]", result)
+
+	// DNS request
+	result, err = p.eventToString(&tetragon.GetEventsResponse{
+		Event: &tetragon.GetEventsResponse_ProcessDns{
+			ProcessDns: &tetragon.ProcessDns{
+				Process: &tetragon.Process{
+					Binary: "/usr/bin/curl",
+				},
+				Dns: &tetragon.DnsInfo{
+					Names:         []string{"isovalent.com."},
+					QuestionTypes: []uint32{1},
+				},
+			},
+		},
+		NodeName: "my-node",
+	})
+	assert.NoError(t, err)
+	assert.Equal(t, "📖 dns     my-node /usr/bin/curl [isovalent.com.] [A]", result)
 }
 
 func TestCompactEncoder_TlsEventToString(t *testing.T) {
