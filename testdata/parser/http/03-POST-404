@@ -9,16 +9,20 @@ END
 # Event from the client socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  $ 5C 04 00 00 # size
+  $ 7C 04 00 00 # size
   NZ 8          # ktime
 
   ## tuple
-  A CLI_ADDR
-  A SRV_ADDR
-  A SRV_PORT
-  A CLI_PORT_HOST
-  $ 00 00 00 00 # direction (egress)
-  NZ 8          # netns id
+  A CLI_ADDR                # saddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A SRV_ADDR                # daddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A SRV_PORT                # dport
+  A CLI_PORT_HOST           # sport (host-order)
+  $ 00 00 00 00             # direction (egress)
+  NZ 8                      # netns id should be set.
+  $ 00                      # IPv6
+  $ 00 00 00 00 00 00 00    # pad
 
   ## process
   NZ 4          # pid
@@ -58,16 +62,20 @@ END
 # Event from the server socket.
 EVENT http
   $ 10 00 00 00 # op + pad
-  $ 5C 04 00 00 # size
+  $ 7C 04 00 00 # size
   NZ 8          # ktime
 
   ## tuple
-  A SRV_ADDR
-  A CLI_ADDR
-  A CLI_PORT
-  A SRV_PORT_HOST
-  $ 01 00 00 00    # direction (egress)
-  NZ 8             # netns id
+  A SRV_ADDR                # saddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A CLI_ADDR                # daddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A CLI_PORT                # dport
+  A SRV_PORT_HOST           # sport (host-order)
+  $ 01 00 00 00             # direction (ingress)
+  NZ 8                      # netns id should be set.
+  $ 00                      # IPv6
+  $ 00 00 00 00 00 00 00    # pad
 
   ## process
   NZ 4          # pid
@@ -114,16 +122,20 @@ END
 # Event from client socket
 EVENT http
   $ 10 00 00 00 # op + pad
-  $ 5C 04 00 00 # size
+  $ 7C 04 00 00 # size
   NZ 8          # ktime
 
   ## tuple
-  A SRV_ADDR
-  A CLI_ADDR
-  A CLI_PORT
-  A SRV_PORT_HOST
-  $ 00 00 00 00   # direction (egress)
-  NZ 8            # netns id
+  A SRV_ADDR                # saddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A CLI_ADDR                # daddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A CLI_PORT                # dport
+  A SRV_PORT_HOST           # sport (host-order)
+  $ 00 00 00 00             # direction (egress)
+  NZ 8                      # netns id should be set.
+  $ 00                      # IPv6
+  $ 00 00 00 00 00 00 00    # pad
 
   ## process
   NZ 4          # pid
@@ -168,16 +180,20 @@ END
 # Event from server socket
 EVENT http
   $ 10 00 00 00 # op + pad
-  $ 5C 04 00 00 # size
+  $ 7C 04 00 00 # size
   NZ 8          # ktime
 
   ## tuple
-  A CLI_ADDR
-  A SRV_ADDR
-  A SRV_PORT
-  A CLI_PORT_HOST
-  $ 01 00 00 00   # direction (egress)
-  NZ 8            # netns id
+  A CLI_ADDR                # saddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A SRV_ADDR                # daddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A SRV_PORT                # dport
+  A CLI_PORT_HOST           # sport (host-order)
+  $ 01 00 00 00             # direction (ingress)
+  NZ 8                      # netns id should be set.
+  $ 00                      # IPv6
+  $ 00 00 00 00 00 00 00    # pad
 
   ## process
   NZ 4           # pid

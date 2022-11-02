@@ -27,7 +27,7 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	struct msg_ip_event *val;
 	struct execve_map_value *process;
 	struct socketmap_value *acc_process;
-	struct msg_tls_ip tuple;
+	struct msg_tls_ip tuple = { 0 };
 	size_t size;
 	u32 zero = 0;
 	u64 cookie;
@@ -123,8 +123,9 @@ __event_tcp_acceptret(struct accept_args *ctx)
 	acc_process->zero_window = 0;
 
 	if (family != AF_INET6) {
-		tuple.saddr = val->tuple.saddr[0];
-		tuple.daddr = val->tuple.daddr[0];
+		tuple.saddr[0] = val->tuple.saddr[0];
+		tuple.daddr[0] = val->tuple.daddr[0];
+		tuple.ipv6 = 0;
 		tuple.sport = val->tuple.sport;
 		tuple.dport = val->tuple.dport;
 		tuple.remaining = 0;

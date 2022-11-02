@@ -507,8 +507,11 @@ put_reverse_http_context(struct msg_tls_ip *key, struct msg_http_event *event)
 {
 	/* Add the reverse context, so that we'll process the other direction as HTTP/2 */
 	struct msg_tls_ip rkey = {
-		.saddr = key->saddr,
-		.daddr = key->daddr,
+		.saddr[0] = key->saddr[0],
+		.saddr[1] = key->saddr[1],
+		.daddr[0] = key->daddr[0],
+		.daddr[1] = key->daddr[1],
+		.ipv6 = key->ipv6,
 		.dport = key->dport,
 		.sport = key->sport,
 		.remaining = !key->remaining,

@@ -11,7 +11,7 @@ END
 
 EVENT TCPACCEPT
   $ 09 00 00 00 # op+pad
-  h4 228        # size
+  h4 240        # size
   ? 8           # ktime
 
   ## tuple
@@ -22,24 +22,38 @@ EVENT TCPACCEPT
   A CLI_PORT
   A SRV_PORT_HOST
   $ 00                      # proto
+  $ 00 00 00                # pad
   $ 00 00 00 00             # post daddr
   $ 00 00                   # post dport
-  $ 00 00 00 00 00          # pad
+  $ 00 00                   # pad
+  $ 00                      # ipv6
+  $ 00 00 00 00 00 00 00    # pad
+
+  ## ret
   $ 00 00 00 00 00 00 00 00 # ret
 
   ## process key
   $ ?? ?? ?? ??         # pid
   $ 00 00 00 00         # pad
   h8 0x01020304deadbeef # ktime
+  
+  ## socket cookie
   ? 8                   # socket cookie
 
   ## socket stats, zeroes for ACCEPT
   $ ?? ?? ?? ?? ?? ?? ?? ?? # Ktime
-  $ 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00 00 00 00 00
-  $ 00 00 00 00 00 00 00 00
+  $ 00 00 00 00 00 00 00 00 # bytes sent
+  $ 00 00 00 00 00 00 00 00 # bytes recv
+  $ 00 00 00 00             # segs in
+  $ 00 00 00 00             # segs out
+  $ 00 00 00 00             # srtt
+  $ 00 00 00 00             # retrans segs
+  $ 00 00 00 00 00 00 00 00 # retrans bytes
+  $ 00 00 00 00             # to zero win
+  $ 00 00 00 00             # sk drops
+  $ 00 00 00 00             # skb consume misses
+  $ 00 00 00 00             # pad
+  $ 00 00 00 00 00 00 00 00 # buckets X 8
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
   $ 00 00 00 00 00 00 00 00
@@ -52,11 +66,14 @@ EVENT TCPACCEPT
   h4 0x00
 
   h4 0x00 # pad
+  h4 0x00 # pad
+  # ^ Where is the extra 4 byte padding coming from?
+
 END
 
 EVENT TCPCONNECTRET
   $ 02 00 00 00 # op+pad
-  h4 228        # size
+  h4 240        # size
   ? 8           # ktime
 
   ## tuple
@@ -67,9 +84,14 @@ EVENT TCPCONNECTRET
   A SRV_PORT
   A CLI_PORT_HOST
   $ 00                      # proto
+  $ 00 00 00                # pad
   $ 00 00 00 00             # post daddr
   $ 00 00                   # post dport
-  $ 00 00 00 00 00          # pad
+  $ 00 00                   # pad
+  $ 00                      # ipv6
+  $ 00 00 00 00 00 00 00    # pad
+
+  ## ret
   $ 00 00 00 00 00 00 00 00 # ret
 
   ## process key
@@ -89,6 +111,8 @@ EVENT TCPCONNECTRET
   h8 0 # retransmitted bytes
   h4 0 # to zero window
   h4 0 # skdrop
+  h4 0 # skb consume misses
+  h4 0 # pad
   h8 0 # bucket0
   h8 0 # bucket1
   h8 0 # bucket2
@@ -112,7 +136,7 @@ CLOSE SERVER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 228       # size
+  h4 240       # size
   ? 8           # ktime
 
   ## tuple
@@ -123,9 +147,14 @@ EVENT TCPCLOSE
   A CLI_PORT
   A SRV_PORT_HOST
   $ 00                      # proto
+  $ 00 00 00                # pad
   $ 00 00 00 00             # post daddr
   $ 00 00                   # post dport
-  $ 00 00 00 00 00          # pad
+  $ 00 00                   # pad
+  $ 00                      # ipv6
+  $ 00 00 00 00 00 00 00    # pad
+
+  ## ret
   $ 00 00 00 00 00 00 00 00 # ret
 
   ## process key
@@ -146,6 +175,7 @@ EVENT TCPCLOSE
   h4 0 # to zero window
   h4 0 # skdrop
   h4 0 # skbconsumemisses
+  h4 0 # pad
   h8 0 # bucket0
   h8 0 # bucket1
   h8 0 # bucket2
@@ -159,6 +189,8 @@ EVENT TCPCLOSE
   h4 0x02 # accept
 
   h4 0x00 # pad
+  h4 0x00 # pad
+  # ^ Where is the extra 4 byte padding coming from?
 END
 
 # Close the client socket and verify the sockets have been removed.
@@ -166,7 +198,7 @@ CLOSE CLIENT
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 228        # size
+  h4 240        # size
   ? 8           # ktime
 
   ## tuple
@@ -177,9 +209,14 @@ EVENT TCPCLOSE
   A SRV_PORT
   A CLI_PORT_HOST
   $ 00                      # proto
+  $ 00 00 00                # pad
   $ 00 00 00 00             # post daddr
   $ 00 00                   # post dport
-  $ 00 00 00 00 00          # pad
+  $ 00 00                   # pad
+  $ 00                      # ipv6
+  $ 00 00 00 00 00 00 00    # pad
+
+  ## ret
   $ 00 00 00 00 00 00 00 00 # ret
 
   ## process key
@@ -200,6 +237,7 @@ EVENT TCPCLOSE
   h4 0 # to zero window
   h4 0 # skdrop
   h4 0 # skbconsumemisses
+  h4 0 # pad
   h8 0 # bucket0
   h8 0 # bucket1
   h8 0 # bucket2
@@ -213,13 +251,15 @@ EVENT TCPCLOSE
   h4 0x01 # connect
 
   h4 0x00 # pad
+  h4 0x00 # pad
+  # ^ Where is the extra 4 byte padding coming from?
 END
 
 CLOSE LISTENER
 
 EVENT TCPCLOSE
   $ 08 00 00 00 # op+pad
-  h4 228        # size
+  h4 240        # size
   ? 8           # ktime
 
   ## tuple
@@ -231,9 +271,14 @@ EVENT TCPCLOSE
   A SRV_PORT_HOST
 
   $ 00                      # proto
+  $ 00 00 00                # pad
   $ 00 00 00 00             # post daddr
   $ 00 00                   # post dport
-  $ 00 00 00 00 00          # pad
+  $ 00 00                   # pad
+  $ 00                      # ipv6
+  $ 00 00 00 00 00 00 00    # pad
+
+  ## ret
   $ 00 00 00 00 00 00 00 00 # ret
 
   ## process key
@@ -254,6 +299,7 @@ EVENT TCPCLOSE
   h4 0 # to zero window
   h4 0 # skdrop
   h4 0 # skbconsumemisses
+  h4 0 # pad
   h8 0 # bucket0
   h8 0 # bucket1
   h8 0 # bucket2
@@ -267,5 +313,7 @@ EVENT TCPCLOSE
   h4 0x04 # listen
 
   h4 0x00 # pad
+  h4 0x00 # pad
+  # ^ Where is the extra 4 byte padding coming from?
 END
 

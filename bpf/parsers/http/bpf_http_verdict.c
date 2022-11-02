@@ -23,8 +23,9 @@ skskb_http_key(struct __sk_buff *skb, struct msg_tls_ip *key)
 {
 	struct bpf_sock *sk;
 
-	key->daddr = skb->remote_ip4;
-	key->saddr = skb->local_ip4;
+	key->daddr[0] = skb->remote_ip4;
+	key->saddr[0] = skb->local_ip4;
+	key->ipv6 = 0;
 
 	sk = skb->sk;
 	if (sk) {

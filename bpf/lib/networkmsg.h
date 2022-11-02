@@ -9,17 +9,23 @@
 
 #define SOCKFLAGS_TYPE_MASK 0x7
 
+// These fields are specified and aligned to roughly match up with
+// struct msg_tls_ip in tlsmsg.h.
+// proto + pad = 32bit remaining
+// post_daddr + post_dport + pad2 = 64 bit uid
 struct msg_ip_tuple {
 	__u64 saddr[2];
 	__u64 daddr[2];
 	__u16 dport;
 	__u16 sport;
 	__u8 proto;
+	__u8 pad[3];
 	__u32 post_daddr;
 	__u16 post_dport;
+	__u16 pad2;
 	__u8 ipv6;
-	__u8 pad[4];
-} __attribute__((packed));
+	__u8 pad3[7];
+}; // All fields aligned so no 'packed' attribute.
 
 struct msg_socket_stats {
 	__u64 ktime;
@@ -33,8 +39,9 @@ struct msg_socket_stats {
 	__u32 tozerowin;
 	__u32 sk_drops;
 	__u32 skb_consume_misses;
+	__u32 pad;
 	__u64 buckets[8];
-} __attribute__((packed));
+}; // All fields aligned so no 'packed' attribute.
 
 // harmonise data structs for ipv4 and ipv6
 struct msg_ip_event {
@@ -46,14 +53,14 @@ struct msg_ip_event {
 	struct msg_socket_stats stats;
 	__u32 socket_flags;
 	__u32 pad;
-} __attribute__((packed));
+}; // All fields aligned so no 'packed' attribute.
 
 struct msg_ipv4_key {
 	__u32 pid;
 	__u32 saddr;
 	__u16 sport;
-	__u16 pad;
-} __attribute__((packed));
+	__u8 pad[6];
+}; // All fields aligned so no 'packed' attribute.
 
 struct msg_process_network_burst_event {
 	struct msg_common common;

@@ -137,7 +137,7 @@ NEXTEVENT:
 					if failedEvents == maxEventsToSearch {
 						return &TestStepError{m.Position, "match", err}
 					}
-					ctx.t.Logf("Retrying ConnAddrMatcher attempt=%d/%d kind=%d isClient=%t", failedEvents, maxEventsToSearch, matcher.kind, matcher.isClient)
+					ctx.t.Logf("Retrying ConnAddrMatcher attempt=%d/%d kind=%d isClient=%t err='%s'", failedEvents, maxEventsToSearch, matcher.kind, matcher.isClient, err)
 					continue NEXTEVENT
 				}
 				return &TestStepError{m.Position, "match", err}

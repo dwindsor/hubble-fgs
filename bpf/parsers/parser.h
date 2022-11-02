@@ -342,8 +342,9 @@ static inline int large_ctx_copy(ctx_md *ctx, __u64 next, __u64 offset,
 static inline __attribute__((always_inline)) void
 msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ip *key)
 {
-	key->daddr = msg->remote_ip4;
-	key->saddr = msg->local_ip4;
+	key->daddr[0] = msg->remote_ip4;
+	key->saddr[0] = msg->local_ip4;
+	key->ipv6 = 0;
 	/* Compiler generated code verifier could not pass with if/else
 	 * construct so we just reset {s|d}port for now.
 	 */

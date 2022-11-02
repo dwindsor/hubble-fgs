@@ -73,8 +73,8 @@ skb_tls_key_ct_xchg(struct msg_tls_ip *key)
 	 * SNAT so the TCP key is before NAT and needs to be translated using
 	 * the BPF map.
 	 */
-	ct.daddr = key->daddr;
-	ct.saddr = key->saddr;
+	ct.daddr = key->daddr[0];
+	ct.saddr = key->saddr[0];
 	ct.dport = bpf_htons(key->dport);
 	ct.sport = bpf_htons(key->sport);
 	ct.nexthdr = IPPROTO_TCP;
@@ -82,14 +82,14 @@ skb_tls_key_ct_xchg(struct msg_tls_ip *key)
 
 	nat = map_lookup_elem(&cilium_snat_v4_external, &ct);
 	if (nat) {
-		key->daddr = nat->to_daddr;
+		key->daddr[0] = nat->to_daddr;
 		key->dport = bpf_ntohs(nat->to_dport);
 	}
 
 	/* Swap key to match egress side */
-	addr = key->saddr;
-	key->saddr = key->daddr;
-	key->daddr = addr;
+	addr = key->saddr[0];
+	key->saddr[0] = key->daddr[0];
+	key->daddr[0] = addr;
 
 	port = key->sport;
 	key->sport = key->dport;
@@ -357,8 +357,9 @@ event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 	if (ipv6)
 		return;
 
-	key.daddr = ip->daddr;
-	key.saddr = ip->saddr;
+	key.daddr[0] = ip->daddr;
+	key.saddr[0] = ip->saddr;
+	key.ipv6 = 0;
 	key.dport = tcp->dest;
 	key.sport = tcp->source;
 

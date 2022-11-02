@@ -27,7 +27,7 @@ import (
 
 var (
 	/* Runtime Containers */
-	tlsInProgress map[api.MsgTLSIPv4]*MsgTLSEventCert = make(map[api.MsgTLSIPv4]*MsgTLSEventCert)
+	tlsInProgress map[api.MsgTLSIP]*MsgTLSEventCert = make(map[api.MsgTLSIP]*MsgTLSEventCert)
 	tlsSelectors  [128]byte
 )
 
@@ -97,7 +97,7 @@ func HandleTLSCont(r *bytes.Reader) ([]observer.Event, error) {
 	if err := binary.Read(r, native_endian.NativeEndian(), &op); err != nil {
 		return nil, err
 	}
-	key := api.MsgTLSIPv4{}
+	key := api.MsgTLSIP{}
 	if err := binary.Read(r, native_endian.NativeEndian(), &key); err != nil {
 		return nil, err
 	}

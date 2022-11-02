@@ -42,8 +42,9 @@ sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ip *key)
 {
 	struct bpf_sock *sk = ctx->sk;
 
-	key->saddr = sk->src_ip4;
-	key->daddr = sk->dst_ip4;
+	key->saddr[0] = sk->src_ip4;
+	key->daddr[0] = sk->dst_ip4;
+	key->ipv6 = 0;
 	key->dport = sk->dst_port;
 	key->sport = sk->src_port;
 	key->remaining = 0;
@@ -53,7 +54,7 @@ sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ip *key)
 __attribute__((section("cgroup/setsockopt"), used)) int
 setsockopt(struct bpf_sockopt *ctx)
 {
-	struct msg_tls_ip key;
+	struct msg_tls_ip key = { 0 };
 	struct msg_tls *event;
 
 	/* In order to bypass kernel drop on optval>PAGE_SIZE set optlen = 0. */

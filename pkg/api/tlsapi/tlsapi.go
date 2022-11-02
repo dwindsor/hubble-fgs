@@ -81,13 +81,15 @@ const (
 	TlsCertificateErrorSpuriousCerts = 0x2000
 )
 
-type MsgTLSIPv4 struct {
-	SAddr     uint32
-	DAddr     uint32
+type MsgTLSIP struct {
+	SAddr     [2]uint64
+	DAddr     [2]uint64
 	DPort     uint16
 	SPort     uint16
 	Remaining uint32
 	Uid       uint64
+	IPv6      uint8
+	Pad       [7]uint8
 }
 
 type MsgTLS struct {
@@ -135,7 +137,7 @@ type MsgTLSAlert struct {
 
 type MsgTLSEvent struct {
 	Common      processapi.MsgCommon    `align:"common"`
-	Tuple       MsgTLSIPv4              `align:"tuple"`
+	Tuple       MsgTLSIP                `align:"tuple"`
 	ClientHello MsgTLS                  `align:"clienthello"`
 	ServerHello MsgTLS                  `align:"serverhello"`
 	ProcessKey  processapi.MsgExecveKey `align:"execve"`

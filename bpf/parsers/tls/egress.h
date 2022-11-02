@@ -49,8 +49,9 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 #ifdef SK_MSG
 	msg_tls_key(ctx, &tuple);
 #else
-	tuple.daddr = ip->daddr;
-	tuple.saddr = ip->saddr;
+	tuple.daddr[0] = ip->daddr;
+	tuple.saddr[0] = ip->saddr;
+	tuple.ipv6 = 0;
 	tuple.dport = tcp->dest;
 	tuple.sport = tcp->source;
 

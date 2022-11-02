@@ -355,8 +355,11 @@ bpf_parse_tls(struct bottle *bottle, struct msg_tls *tls)
 static inline __attribute__((always_inline)) void
 skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ip *key)
 {
-	key->daddr = skmsg->remote_ip4;
-	key->saddr = skmsg->local_ip4;
+	key->daddr[0] = skmsg->remote_ip4;
+	key->daddr[1] = 0;
+	key->saddr[0] = skmsg->local_ip4;
+	key->saddr[1] = 0;
+	key->ipv6 = 0;
 	key->dport = bpf_htons(TLS_REMOTE_PORT);
 	key->sport = skmsg->local_port;
 
@@ -374,8 +377,9 @@ skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ip *key)
 {
 	struct bpf_sock *sk;
 
-	key->daddr = skb->remote_ip4;
-	key->saddr = skb->local_ip4;
+	key->daddr[0] = skb->remote_ip4;
+	key->saddr[0] = skb->local_ip4;
+	key->ipv6 = 0;
 	sk = skb->sk;
 	if (sk) {
 		key->dport = skb->sk->dst_port;
@@ -415,8 +419,9 @@ skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ip *key)
 		return 0;
 
 	iphdr = (void *)eth + sizeof(struct ethhdr);
-	key->daddr = iphdr->daddr;
-	key->saddr = iphdr->saddr;
+	key->daddr[0] = iphdr->daddr;
+	key->saddr[0] = iphdr->saddr;
+	key->ipv6 = 0;
 
 	if (iphdr->protocol != IPPROTO_TCP)
 		return 0;

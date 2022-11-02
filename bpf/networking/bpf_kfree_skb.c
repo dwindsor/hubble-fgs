@@ -35,9 +35,7 @@ set_tuple_from_skb(struct msg_ip_tuple *tuple, struct sk_buff *skb)
 		tuple->ipv6 = false;
 
 		probe_read(&tuple->saddr[0], sizeof(ip->saddr), _(&ip->saddr));
-		tuple->saddr[1] = 0;
 		probe_read(&tuple->daddr[0], sizeof(ip->daddr), _(&ip->daddr));
-		tuple->daddr[1] = 0;
 		typeof(skb->transport_header) l4_off;
 		probe_read(&l4_off, sizeof(l4_off), _(&skb->transport_header));
 		if (v4_prot == 0x06) { // TCP

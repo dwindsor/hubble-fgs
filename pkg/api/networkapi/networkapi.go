@@ -21,27 +21,18 @@ const (
 	MsgUnixSize uint32 = 640
 )
 
-type MsgIPv4HTTPTuple struct {
-	SAddr uint32
-	DAddr uint32
-	DPort uint16
-	SPort uint16
-	Proto uint8
-	// define as uint8 otherwise padding in struct breaks
-	PostData [6]uint8
-	Pad      [5]uint8
-}
-
 type MsgIPTuple struct {
 	SAddr [2]uint64
 	DAddr [2]uint64
 	DPort uint16
 	SPort uint16
 	Proto uint8
+	Pad   [3]uint8
 	// define as uint8 otherwise padding in struct breaks
 	PostData [6]uint8
+	Pad2     [2]uint8
 	IPv6     uint8
-	Pad      [4]uint8
+	Pad3     [7]uint8
 }
 
 func (m *MsgIPTuple) GetPostDAddr() uint32 {
@@ -94,6 +85,7 @@ type MsgSocketStats struct {
 	ToZeroWindow     uint32
 	SkDrop           uint32
 	SkbConsumeMisses uint32
+	Pad              uint32
 	Buckets          [8]uint64
 }
 

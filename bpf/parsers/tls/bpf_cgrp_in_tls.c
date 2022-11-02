@@ -23,11 +23,11 @@ bpf_cgroup_skb_ingress_tls(struct __sk_buff *skb)
 	struct msg_tls_ip key = { 0 };
 	struct msg_tls *event;
 
-	key.daddr = skb->remote_ip4;
-	key.saddr = skb->local_ip4;
+	key.daddr[0] = skb->remote_ip4;
+	key.saddr[0] = skb->local_ip4;
+	key.ipv6 = 0;
 	key.dport = skb->remote_port;
 	key.sport = skb->local_port;
-	key.proto = 0;
 
 	event = map_lookup_elem(&tls_map, &key);
 	if (event && event->type == TLS_TYPE_HELLO)

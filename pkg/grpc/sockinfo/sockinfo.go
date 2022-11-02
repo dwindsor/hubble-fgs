@@ -13,7 +13,7 @@ import (
 	"google.golang.org/protobuf/types/known/wrapperspb"
 )
 
-func GetTupleV4(tuple *api.MsgIPv4HTTPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
+func GetTupleV4(tuple *api.MsgIPTuple, cookie uint64, op uint8) *tetragon.SockInfo {
 	var sourcePort, destinationPort *wrapperspb.UInt32Value
 
 	if tuple.SPort != 0 {
@@ -27,11 +27,11 @@ func GetTupleV4(tuple *api.MsgIPv4HTTPTuple, cookie uint64, op uint8) *tetragon.
 		}
 	}
 
-	destinationIP := network.GetIPv4(tuple.DAddr, op)
+	destinationIP := network.GetIP(tuple.DAddr, op, false)
 
 	return &tetragon.SockInfo{
 		SourcePort:      sourcePort,
-		SourceIp:        network.GetIPv4(tuple.SAddr, op).String(),
+		SourceIp:        network.GetIP(tuple.SAddr, op, false).String(),
 		DestinationIp:   destinationIP.String(),
 		DestinationPort: destinationPort,
 		SockCookie:      cookie,

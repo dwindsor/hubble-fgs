@@ -51,7 +51,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 		proc = processInt.UnsafeGetProcess()
 
 	}
-	fgsTuple := sockinfo.GetTupleV4(&event.Tuple, 0, event.Common.Op)
+	fgsTuple := sockinfo.GetTuple(&event.Tuple, 0, event.Common.Op)
 
 	if len(event.Request.Code) != 0 {
 		code, err = GetHttpCode(event.Request.Code)
@@ -127,7 +127,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 	// is missing and enableEventCache is enabled we push event into the
 	// cache where a retry will happen.
 	if option.Config.EnableCilium && proc != nil {
-		destinationIP := network.GetIPv4(event.Tuple.DAddr, ops.MSG_OP_HTTP)
+		destinationIP := network.GetIP(event.Tuple.DAddr, ops.MSG_OP_HTTP, event.Tuple.IPv6 != 0)
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	ec := eventcache.Get()
@@ -144,7 +144,7 @@ func GetHttp(event *MsgHttpEventUnix) *tetragon.ProcessHttp {
 
 type MsgHttpEventUnix struct {
 	Common     processapi.MsgCommon
-	Tuple      networkapi.MsgIPv4HTTPTuple
+	Tuple      networkapi.MsgIPTuple
 	ProcessKey processapi.MsgExecveKey
 	Request    httpapi.MsgHttpUnix
 }

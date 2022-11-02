@@ -6,6 +6,7 @@
 #include "bpf_events.h"
 #include "../bpf_sockops.h"
 #include "tlsmsg.h"
+#include "../../lib/iso_msg_types.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
 
@@ -32,12 +33,16 @@ event_ingress_tcp(struct pt_regs *ctx)
 	struct msg_tls *event;
 	struct tcphdr *tcphdr;
 	struct iphdr *iphdr;
+	u32 addr;
 
 	iphdr = (void *)((ctx)->si);
 	tcphdr = (void *)((ctx)->dx);
 
-	probe_read(&key.saddr, sizeof(key.saddr), _(&(iphdr->daddr)));
-	probe_read(&key.daddr, sizeof(key.daddr), _(&(iphdr->saddr)));
+	probe_read(&addr, sizeof(addr), _(&(iphdr->daddr)));
+	key.saddr[0] = addr;
+	probe_read(&addr, sizeof(addr), _(&(iphdr->saddr)));
+	key.daddr[0] = addr;
+	key.ipv6 = 0;
 
 	probe_read(&key.sport, sizeof(key.sport), _(&(tcphdr->dest)));
 	probe_read(&key.dport, sizeof(key.dport), _(&(tcphdr->source)));
@@ -54,7 +59,7 @@ event_ingress_tcp(struct pt_regs *ctx)
 			return 0;
 		post->clienthello = *event;
 		post->tuple = key;
-		post->common.op = MSG_OP_TLS;
+		post->common.op = ISO_MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
 
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, post,

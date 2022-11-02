@@ -419,14 +419,18 @@ END
 
 EVENT tls
   $ 06 00 00 00             # op + pad
-  h4 516 # size
+  h4 548 # size
   $ ?? ?? ?? ?? ?? ?? ?? ?? # ktime
   A CLI_ADDR                # saddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A SRV_ADDR                # daddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
   A SRV_PORT                # dport
   A CLI_PORT_HOST           # sport (host-order)
   $ 00 00 00 00             # remaining
-  NZ 8                      # netns id
+  NZ 8                      # uid
+  $ 00                      # IPv6
+  $ 00 00 00 00 00 00 00    # pad
 
   ## Client hello
   $ 03 03       # version v1.2
@@ -509,12 +513,16 @@ EVENT tlscont
   $ 0c
 
   ## tuple
-  A CLI_ADDR                  # saddr
-  A SRC_ADDR                  # daddr
-  A SRV_PORT                  # dport
-  A CLI_PORT_HOST             # sport
-  $ 00 00 00 00               # remaining
-  NZ 8                        # netns id
+  A CLI_ADDR                # saddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A SRV_ADDR                # daddr
+  $ 00 00 00 00 00 00 00 00 00 00 00 00 # pad to IPv6
+  A SRV_PORT                # dport
+  A CLI_PORT_HOST           # sport (host-order)
+  $ 00 00 00 00             # remaining
+  NZ 8                      # netns id
+  $ 00                      # IPv6
+  $ 00 00 00 00 00 00 00    # pad
 
   ## length
   h4 3837
