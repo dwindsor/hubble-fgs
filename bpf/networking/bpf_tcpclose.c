@@ -129,7 +129,7 @@ event_tcp_close(struct pt_regs *ctx)
 			tuple.uid = sock_netns(skp);
 		del_socketmap(&cookie, skp, &tuple, false);
 
-		map_delete_elem(&tls_map, &tuple);
+		del_tlsmap(&cookie);
 		map_delete_elem(&http_map, &tuple);
 		tuple.remaining = 1;
 		map_delete_elem(&http_map, &tuple);

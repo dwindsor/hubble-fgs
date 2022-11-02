@@ -24,7 +24,7 @@ egress_post_event(ctx_md *ctx, struct msg_tls_ip *key,
 
 #if defined(SK_MSG) || defined(SK_SKB)
 static inline __attribute__((always_inline)) void
-bpf_parse_tls_egress(ctx_md *ctx)
+bpf_parse_tls_egress(ctx_md *ctx, u64 *cookie)
 #else
 static inline __attribute__((always_inline)) void
 bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
@@ -61,7 +61,7 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 	tuple.sport = bpf_ntohs(tuple.sport);
 #endif
 
-	state = map_lookup_elem(&tls_map, &tuple);
+	state = map_lookup_elem(&tls_map, cookie);
 	if (state) {
 #if defined(SK_MSG) || defined(SK_SKB)
 		struct sk_msg_md *msg = 0;
@@ -115,7 +115,7 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 		break;
 	}
 	bottle_drop(&tuple);
-	add_tlsmap(&tuple, clienthello);
+	add_tlsmap(cookie, clienthello);
 }
 
 #endif // egress_h_INCLUDED

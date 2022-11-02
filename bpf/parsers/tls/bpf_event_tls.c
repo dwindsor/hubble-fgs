@@ -7,15 +7,9 @@
 #include "../bpf_sockops.h"
 #include "tlsmsg.h"
 #include "../../lib/iso_msg_types.h"
+#include "tls_map.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
-
-struct {
-	__uint(type, BPF_MAP_TYPE_HASH);
-	__type(key, struct msg_tls_ip);
-	__type(value, struct msg_tls);
-	__uint(max_entries, 32000);
-} tls_map SEC(".maps");
 
 struct {
 	__uint(type, BPF_MAP_TYPE_HASH);
@@ -34,9 +28,22 @@ event_ingress_tcp(struct pt_regs *ctx)
 	struct tcphdr *tcphdr;
 	struct iphdr *iphdr;
 	u32 addr;
+	struct sk_buff *skb;
+	struct sock *sk;
+	int zero = 0;
+	u64 *cookie;
 
 	iphdr = (void *)((ctx)->si);
 	tcphdr = (void *)((ctx)->dx);
+	skb = (void *)((ctx)->di);
+
+	probe_read(&sk, sizeof(sk), _(&(skb->sk)));
+	cookie = map_lookup_elem(&tls_cookie_heap, &zero);
+	if (!cookie)
+		return;
+	*cookie = (u64)sk;
+	if (!*cookie)
+		return;
 
 	probe_read(&addr, sizeof(addr), _(&(iphdr->daddr)));
 	key.saddr[0] = addr;
@@ -50,7 +57,7 @@ event_ingress_tcp(struct pt_regs *ctx)
 	key.dport = 0; //bpf_htons(key.dport);
 	key.sport = bpf_htons(key.sport);
 
-	event = map_lookup_elem(&tls_map, &key);
+	event = map_lookup_elem(&tls_map, cookie);
 	if (event && event->type) {
 		int zero = 0;
 		struct msg_tls_event *post = map_lookup_elem(&heap, &zero);

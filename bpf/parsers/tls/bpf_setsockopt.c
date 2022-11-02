@@ -37,25 +37,13 @@ struct {
 	__uint(max_entries, 1);
 } https_filter_map SEC(".maps");
 
-static inline __attribute__((always_inline)) void
-sockopt_tls_key(struct bpf_sockopt *ctx, struct msg_tls_ip *key)
-{
-	struct bpf_sock *sk = ctx->sk;
-
-	key->saddr[0] = sk->src_ip4;
-	key->daddr[0] = sk->dst_ip4;
-	key->ipv6 = 0;
-	key->dport = sk->dst_port;
-	key->sport = sk->src_port;
-	key->remaining = 0;
-	key->uid = 0;
-}
-
 __attribute__((section("cgroup/setsockopt"), used)) int
 setsockopt(struct bpf_sockopt *ctx)
 {
-	struct msg_tls_ip key = { 0 };
 	struct msg_tls *event;
+	struct bpf_sock *sk = ctx->sk;
+	u64 *cookie;
+	int zero = 0;
 
 	/* In order to bypass kernel drop on optval>PAGE_SIZE set optlen = 0. */
 	ctx->optlen = 0;
@@ -63,8 +51,15 @@ setsockopt(struct bpf_sockopt *ctx)
 	if (ctx->level != SOL_TLS || ctx->optname != TLS_TX)
 		return 1;
 
-	sockopt_tls_key(ctx, &key);
-	event = map_lookup_elem(&tls_map, &key);
+	cookie = map_lookup_elem(&tls_cookie_heap, &zero);
+	if (!cookie)
+		return 1;
+
+	*cookie = (u64)sk;
+	if (!*cookie)
+		return 1;
+
+	event = map_lookup_elem(&tls_map, cookie);
 	if (event) {
 		struct sock_key filter_key = { 0 };
 		int result;
@@ -74,8 +69,8 @@ setsockopt(struct bpf_sockopt *ctx)
 		 * Remembering to convert sport from network order to
 		 * byte order to match filter format.
 		 */
-		filter_key.sport = bpf_ntohs(key.sport);
-		filter_key.dport = key.dport;
+		filter_key.sport = bpf_ntohs(sk->src_port);
+		filter_key.dport = sk->dst_port;
 		result = tls_filter(&filter_key);
 		if (result & TLS_HTTPS)
 			event->version = TLS_HTTP_VERSION;
