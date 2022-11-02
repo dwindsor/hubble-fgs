@@ -264,7 +264,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
 		if (!post)
 			return;
 
-		bottle = bottle_fill(skb, key, offset);
+		bottle = bottle_fill(skb, cookie, offset);
 		if (!bottle) {
 			tls_inc_bottle_fill_failed();
 			tls_mark_complete(event);
@@ -320,13 +320,13 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
 				tls_inc_ingress_ok();
 
 			tls_mark_complete(event);
-			bottle_drop(key);
+			bottle_drop(cookie);
 		}
 	} else if (is_expected_tls_data(event)) {
 		struct bottle *bottle;
 		int err;
 
-		bottle = bottle_fill(skb, key, offset);
+		bottle = bottle_fill(skb, cookie, offset);
 		if (!bottle) {
 			tls_inc_bottle_fill_failed();
 			return;
@@ -342,7 +342,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
 			else
 				tls_inc_ingress_ok();
 			tls_mark_complete(event);
-			bottle_drop(key);
+			bottle_drop(cookie);
 		}
 	}
 }

@@ -79,7 +79,7 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 		return;
 	}
 
-	bottle = bottle_fill(ctx, &tuple, payload_off);
+	bottle = bottle_fill(ctx, cookie, payload_off);
 	if (!bottle) {
 		tls_inc_bottle_fill_failed();
 		return;
@@ -114,7 +114,7 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 		tls_inc_egress_ok();
 		break;
 	}
-	bottle_drop(&tuple);
+	bottle_drop(cookie);
 	add_tlsmap(cookie, clienthello);
 }
 

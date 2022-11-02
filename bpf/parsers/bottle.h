@@ -28,7 +28,7 @@ struct {
 
 struct {
 	__uint(type, BPF_MAP_TYPE_LRU_HASH);
-	__type(key, struct msg_tls_ip);
+	__type(key, __u64);
 	__type(value, struct bottle);
 	__uint(max_entries, 1024);
 } bottles SEC(".maps");
@@ -52,10 +52,9 @@ bottle_get_data(struct bottle *bottle, u32 off, u32 len)
 	return bottle->data + off;
 }
 
-static inline __attribute__((always_inline)) void
-bottle_drop(struct msg_tls_ip *key)
+static inline __attribute__((always_inline)) void bottle_drop(u64 *cookie)
 {
-	int err = map_delete_elem(&bottles, key);
+	int err = map_delete_elem(&bottles, cookie);
 	int zero = 0;
 	s64 *cntr;
 	if (!err && (cntr = map_lookup_elem(&bottle_map_stats, &zero)))
@@ -63,9 +62,9 @@ bottle_drop(struct msg_tls_ip *key)
 }
 
 static inline __attribute__((always_inline)) struct bottle *
-bottle_fill(ctx_md *ctx, struct msg_tls_ip *key, int payload_off)
+bottle_fill(ctx_md *ctx, u64 *cookie, int payload_off)
 {
-	struct bottle *bottle = map_lookup_elem(&bottles, key);
+	struct bottle *bottle = map_lookup_elem(&bottles, cookie);
 
 	if (!bottle) {
 		int zero = 0;
@@ -77,7 +76,7 @@ bottle_fill(ctx_md *ctx, struct msg_tls_ip *key, int payload_off)
 
 		bottle->len = 0;
 
-		err = map_update_elem(&bottles, key, bottle, 0);
+		err = map_update_elem(&bottles, cookie, bottle, 0);
 		if (err) {
 			return 0;
 		} else {
@@ -86,7 +85,7 @@ bottle_fill(ctx_md *ctx, struct msg_tls_ip *key, int payload_off)
 				*cntr = *cntr + 1;
 		}
 
-		bottle = map_lookup_elem(&bottles, key);
+		bottle = map_lookup_elem(&bottles, cookie);
 		if (!bottle)
 			return 0;
 	}
@@ -144,7 +143,7 @@ bottle_fill(ctx_md *ctx, struct msg_tls_ip *key, int payload_off)
 	return bottle;
 
 discard:
-	map_delete_elem(&bottles, key);
+	map_delete_elem(&bottles, cookie);
 	return 0;
 }
 

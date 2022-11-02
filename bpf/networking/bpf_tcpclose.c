@@ -133,7 +133,7 @@ event_tcp_close(struct pt_regs *ctx)
 		map_delete_elem(&http_map, &tuple);
 		tuple.remaining = 1;
 		map_delete_elem(&http_map, &tuple);
-		bottle_drop(&tuple);
+		bottle_drop(&cookie);
 	} else {
 		del_socketmap(&cookie, skp, 0, false);
 	}
