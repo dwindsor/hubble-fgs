@@ -216,13 +216,10 @@ spec:
 			},
 			numConnections: 10_000,
 		},
-		// Note: this test case is commented out for the time being due to a kernel bug
-		// that causes it to consistently fail.
-		/*
-					{
-						name: "tls with tetragon tls sensor parser running",
-						tracingPolicy: &tracingPolicy{
-							fmt.Sprintf(`
+		{
+			name: "tls with tetragon tls sensor parser running",
+			tracingPolicy: &tracingPolicy{
+				fmt.Sprintf(`
 			apiVersion: cilium.io/v1alpha1
 			kind: TracingPolicy
 			metadata:
@@ -238,10 +235,9 @@ spec:
 			    tcp:
 			      enable: true
 			                `),
-						},
-						numConnections: 10_000,
-					},
-		*/
+			},
+			numConnections: 10_000,
+		},
 		{
 			name: "tls with tetragon nop sensor parser running",
 			tracingPolicy: &tracingPolicy{
