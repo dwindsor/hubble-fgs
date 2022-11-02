@@ -12,6 +12,7 @@ RUN apt-get install --quiet -y --no-install-recommends \
         qemu-utils \
         extlinux \
         linux-image-amd64 \
+        netcat-openbsd \
         zstd
 RUN apt-get clean autoclean
 

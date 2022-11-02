@@ -16,7 +16,8 @@
             "git",
             "golang-1.19-go",
             "gpg",
-            "libarchive-tools"
+            "libarchive-tools",
+            "netcat-openbsd"
         ],
         "actions": [
             {
