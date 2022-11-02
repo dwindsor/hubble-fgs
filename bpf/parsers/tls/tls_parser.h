@@ -353,45 +353,45 @@ bpf_parse_tls(struct bottle *bottle, struct msg_tls *tls)
 
 #if defined(SK_MSG)
 static inline __attribute__((always_inline)) void
-skmsg_tls_key(struct sk_msg_md *skmsg, struct msg_tls_ip *key)
+skmsg_tls_tuple(struct sk_msg_md *skmsg, struct msg_tls_ip *tuple)
 {
-	key->daddr[0] = skmsg->remote_ip4;
-	key->daddr[1] = 0;
-	key->saddr[0] = skmsg->local_ip4;
-	key->saddr[1] = 0;
-	key->ipv6 = 0;
-	key->dport = bpf_htons(TLS_REMOTE_PORT);
-	key->sport = skmsg->local_port;
+	tuple->daddr[0] = skmsg->remote_ip4;
+	tuple->daddr[1] = 0;
+	tuple->saddr[0] = skmsg->local_ip4;
+	tuple->saddr[1] = 0;
+	tuple->ipv6 = 0;
+	tuple->dport = bpf_htons(TLS_REMOTE_PORT);
+	tuple->sport = skmsg->local_port;
 
 	if (bpf_core_field_exists(skmsg->sk)) {
-		key->dport = skmsg->sk->dst_port;
-		key->sport = skmsg->sk->src_port;
+		tuple->dport = skmsg->sk->dst_port;
+		tuple->sport = skmsg->sk->src_port;
 
-		if (is_tuple_local(key))
-			key->uid = msg_netns(skmsg);
+		if (is_tuple_local(tuple))
+			tuple->uid = msg_netns(skmsg);
 	}
 }
 #elif defined(SK_SKB)
 static inline __attribute__((always_inline)) void
-skskb_tls_key(struct __sk_buff *skb, struct msg_tls_ip *key)
+skskb_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *tuple)
 {
 	struct bpf_sock *sk;
 
-	key->daddr[0] = skb->remote_ip4;
-	key->saddr[0] = skb->local_ip4;
-	key->ipv6 = 0;
+	tuple->daddr[0] = skb->remote_ip4;
+	tuple->saddr[0] = skb->local_ip4;
+	tuple->ipv6 = 0;
 	sk = skb->sk;
 	if (sk) {
-		key->dport = skb->sk->dst_port;
-		key->sport = skb->sk->src_port;
+		tuple->dport = skb->sk->dst_port;
+		tuple->sport = skb->sk->src_port;
 
-		if (is_tuple_local(key))
-			key->uid = skskb_netns(skb);
+		if (is_tuple_local(tuple))
+			tuple->uid = skskb_netns(skb);
 	}
 }
 #else
 static inline __attribute__((always_inline)) void *
-skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ip *key)
+skb_tls_tuple(struct __sk_buff *skb, int *off, struct msg_tls_ip *tuple)
 {
 	void *data, *data_end;
 	struct tcphdr *tcphdr;
@@ -419,9 +419,9 @@ skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ip *key)
 		return 0;
 
 	iphdr = (void *)eth + sizeof(struct ethhdr);
-	key->daddr[0] = iphdr->daddr;
-	key->saddr[0] = iphdr->saddr;
-	key->ipv6 = 0;
+	tuple->daddr[0] = iphdr->daddr;
+	tuple->saddr[0] = iphdr->saddr;
+	tuple->ipv6 = 0;
 
 	if (iphdr->protocol != IPPROTO_TCP)
 		return 0;
@@ -438,8 +438,8 @@ skb_tls_key(struct __sk_buff *skb, int *off, struct msg_tls_ip *key)
 		data_end = (void *)(long)skb->data_end;
 	}
 
-	key->dport = tcphdr->dest;
-	key->sport = tcphdr->source;
+	tuple->dport = tcphdr->dest;
+	tuple->sport = tcphdr->source;
 	*off = tcp_off + sizeof(struct ethhdr);
 	return (void *)tcphdr;
 }

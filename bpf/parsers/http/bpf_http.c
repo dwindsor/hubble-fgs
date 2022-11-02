@@ -25,7 +25,7 @@ bpf_http_sk_msg_fgs(struct sk_msg_md *msg)
          * previous execution on the same message. */
 	msg_apply_bytes(msg, 0);
 
-	msg_tls_key(msg, &tuple);
+	msg_tls_tuple(msg, &tuple);
 	return http_do_parser(msg, &tuple);
 }
 
@@ -35,7 +35,7 @@ bpf_http_sk_msg_fgs_response(struct sk_msg_md *msg)
 	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *http;
 
-	msg_tls_key(msg, &tuple);
+	msg_tls_tuple(msg, &tuple);
 	http = get_http_context(&tuple);
 	if (unlikely(!http))
 		return SK_PASS;
@@ -55,7 +55,7 @@ bpf_http_sk_msg_fgs_request(struct sk_msg_md *msg)
 	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *http;
 
-	msg_tls_key(msg, &tuple);
+	msg_tls_tuple(msg, &tuple);
 	http = get_http_context(&tuple);
 	if (unlikely(!http))
 		return SK_PASS;
@@ -75,7 +75,7 @@ bpf_http_sk_msg_get_more_headers(struct sk_msg_md *msg)
 	struct msg_tls_ip tuple = { 0 };
 	struct msg_http_event *http;
 
-	msg_tls_key(msg, &tuple);
+	msg_tls_tuple(msg, &tuple);
 	http = get_http_context(&tuple);
 	if (unlikely(!http))
 		return SK_PASS;
@@ -94,7 +94,7 @@ bpf_skmsg_http2(struct sk_msg_md *msg)
 {
 	struct msg_tls_ip tuple = { 0 };
 
-	msg_tls_key(msg, &tuple);
+	msg_tls_tuple(msg, &tuple);
 	return http2_do_parser(msg, &tuple);
 }
 

@@ -23,7 +23,7 @@ struct {
 __attribute__((section("kprobe/tcp_v4_fill_cb"), used)) int
 event_ingress_tcp(struct pt_regs *ctx)
 {
-	struct msg_tls_ip key = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 	struct msg_tls *event;
 	struct tcphdr *tcphdr;
 	struct iphdr *iphdr;
@@ -46,16 +46,16 @@ event_ingress_tcp(struct pt_regs *ctx)
 		return;
 
 	probe_read(&addr, sizeof(addr), _(&(iphdr->daddr)));
-	key.saddr[0] = addr;
+	tuple.saddr[0] = addr;
 	probe_read(&addr, sizeof(addr), _(&(iphdr->saddr)));
-	key.daddr[0] = addr;
-	key.ipv6 = 0;
+	tuple.daddr[0] = addr;
+	tuple.ipv6 = 0;
 
-	probe_read(&key.sport, sizeof(key.sport), _(&(tcphdr->dest)));
-	probe_read(&key.dport, sizeof(key.dport), _(&(tcphdr->source)));
+	probe_read(&tuple.sport, sizeof(tuple.sport), _(&(tcphdr->dest)));
+	probe_read(&tuple.dport, sizeof(tuple.dport), _(&(tcphdr->source)));
 
-	key.dport = 0; //bpf_htons(key.dport);
-	key.sport = bpf_htons(key.sport);
+	tuple.dport = 0; //bpf_htons(tuple.dport);
+	tuple.sport = bpf_htons(tuple.sport);
 
 	event = map_lookup_elem(&tls_map, cookie);
 	if (event && event->type) {
@@ -65,7 +65,7 @@ event_ingress_tcp(struct pt_regs *ctx)
 		if (!post) // should not be possible
 			return 0;
 		post->clienthello = *event;
-		post->tuple = key;
+		post->tuple = tuple;
 		post->common.op = ISO_MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
 

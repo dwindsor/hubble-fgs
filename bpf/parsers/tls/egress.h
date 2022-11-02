@@ -11,10 +11,10 @@
 #include "../http/http_parser.h"
 
 static inline __attribute__((always_inline)) void
-egress_post_event(ctx_md *ctx, struct msg_tls_ip *key,
+egress_post_event(ctx_md *ctx, struct msg_tls_ip *tuple,
 		  struct msg_tls_event *post)
 {
-	post->tuple = *key;
+	post->tuple = *tuple;
 	post->common.op = ISO_MSG_OP_TLS;
 	post->common.size = sizeof(struct msg_tls_event);
 	post->common.ktime = ktime_get_ns();
@@ -47,7 +47,7 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 #endif
 
 #ifdef SK_MSG
-	msg_tls_key(ctx, &tuple);
+	msg_tls_tuple(ctx, &tuple);
 #else
 	tuple.daddr[0] = ip->daddr;
 	tuple.saddr[0] = ip->saddr;

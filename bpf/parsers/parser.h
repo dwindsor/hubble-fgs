@@ -340,24 +340,24 @@ static inline int large_ctx_copy(ctx_md *ctx, __u64 next, __u64 offset,
 #ifdef SK_MSG
 
 static inline __attribute__((always_inline)) void
-msg_tls_key(struct sk_msg_md *msg, struct msg_tls_ip *key)
+msg_tls_tuple(struct sk_msg_md *msg, struct msg_tls_ip *tuple)
 {
-	key->daddr[0] = msg->remote_ip4;
-	key->saddr[0] = msg->local_ip4;
-	key->ipv6 = 0;
+	tuple->daddr[0] = msg->remote_ip4;
+	tuple->saddr[0] = msg->local_ip4;
+	tuple->ipv6 = 0;
 	/* Compiler generated code verifier could not pass with if/else
 	 * construct so we just reset {s|d}port for now.
 	 */
-	key->dport = 0;
-	key->sport = msg->local_port;
+	tuple->dport = 0;
+	tuple->sport = msg->local_port;
 	if (bpf_core_field_exists(msg->sk)) {
-		key->dport = msg->sk->dst_port;
-		key->sport = msg->sk->src_port;
+		tuple->dport = msg->sk->dst_port;
+		tuple->sport = msg->sk->src_port;
 
-		if (is_tuple_local(key))
-			key->uid = msg_netns(msg);
+		if (is_tuple_local(tuple))
+			tuple->uid = msg_netns(msg);
 	}
-	key->remaining = HTTP_SEND;
+	tuple->remaining = HTTP_SEND;
 }
 
 #endif

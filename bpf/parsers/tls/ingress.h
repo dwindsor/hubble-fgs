@@ -61,7 +61,7 @@ struct {
 } cilium_snat_v4_external SEC(".maps");
 
 static inline __attribute__((always_inline)) void
-skb_tls_key_ct_xchg(struct msg_tls_ip *key)
+skb_tls_tuple_ct_xchg(struct msg_tls_ip *tuple)
 {
 	struct ipv4_ct_tuple ct = { 0 };
 	struct ipv4_nat_entry *nat;
@@ -70,30 +70,30 @@ skb_tls_key_ct_xchg(struct msg_tls_ip *key)
 
 	/* Egress hook runs in-front of Cilium SNAT, so it used same IP addr pairs
 	 * as seen by socket. But, ingress hook is also running in front Cilium
-	 * SNAT so the TCP key is before NAT and needs to be translated using
+	 * SNAT so the TCP tuple is before NAT and needs to be translated using
 	 * the BPF map.
 	 */
-	ct.daddr = key->daddr[0];
-	ct.saddr = key->saddr[0];
-	ct.dport = bpf_htons(key->dport);
-	ct.sport = bpf_htons(key->sport);
+	ct.daddr = tuple->daddr[0];
+	ct.saddr = tuple->saddr[0];
+	ct.dport = bpf_htons(tuple->dport);
+	ct.sport = bpf_htons(tuple->sport);
 	ct.nexthdr = IPPROTO_TCP;
 	ct.flags = 1;
 
 	nat = map_lookup_elem(&cilium_snat_v4_external, &ct);
 	if (nat) {
-		key->daddr[0] = nat->to_daddr;
-		key->dport = bpf_ntohs(nat->to_dport);
+		tuple->daddr[0] = nat->to_daddr;
+		tuple->dport = bpf_ntohs(nat->to_dport);
 	}
 
-	/* Swap key to match egress side */
-	addr = key->saddr[0];
-	key->saddr[0] = key->daddr[0];
-	key->daddr[0] = addr;
+	/* Swap tuple to match egress side */
+	addr = tuple->saddr[0];
+	tuple->saddr[0] = tuple->daddr[0];
+	tuple->daddr[0] = addr;
 
-	port = key->sport;
-	key->sport = key->dport;
-	key->dport = port;
+	port = tuple->sport;
+	tuple->sport = tuple->dport;
+	tuple->dport = port;
 }
 
 static inline __attribute__((always_inline)) void
@@ -171,7 +171,7 @@ tls_find_handshake_end(struct bottle *bottle, int offset, int *type,
 
 static inline __attribute__((always_inline)) int
 bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
-		   struct msg_tls_ip *key, u32 offset)
+		   struct msg_tls_ip *tuple, u32 offset)
 {
 	struct msg_tls_cont_event *event;
 	int type = 0, subtype = 0;
@@ -204,7 +204,7 @@ bpf_parse_tls_cert(ctx_md *ctx, struct bottle *bottle, struct msg_tls *tls,
 	}
 
 	event->op = ISO_MSG_OP_TLS_CONT;
-	event->tuple = *key;
+	event->tuple = *tuple;
 	event->payload_size = end_offset - offset;
 
 	perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, event,
@@ -217,7 +217,7 @@ fail:
 		return TLS_PARSE_ERROR;
 
 	event->op = ISO_MSG_OP_TLS_CONT;
-	event->tuple = *key;
+	event->tuple = *tuple;
 	event->payload_size = 0;
 
 	errout_pack((int *)event->payload, errcode, bottle->len, type, subtype,
@@ -229,7 +229,8 @@ fail:
 }
 
 static inline __attribute__((always_inline)) void
-bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
+bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
+		      int offset)
 {
 	struct socketmap_value *execve;
 	struct msg_tls *event;
@@ -251,7 +252,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
 		/* Disabled ingress parsing waiting for upstream kernel bugfix to
 		 * land in backports stable kernels.
 		 */
-		//	http_do_parser(skb, key);
+		//	http_do_parser(skb, tuple);
 		return;
 	}
 
@@ -287,7 +288,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
 		if (!(post->serverhello.flags & TLS_VERSION))
 			post->serverhello.flags |= TLS_CERT;
 
-		post->tuple = *key;
+		post->tuple = *tuple;
 		post->common.op = ISO_MSG_OP_TLS;
 		post->common.size = sizeof(struct msg_tls_event);
 		post->common.ktime = ktime_get_ns();
@@ -303,7 +304,7 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
 
 		if (post->serverhello.flags & TLS_CERT) {
 			event->bytes = next;
-			next = bpf_parse_tls_cert(skb, bottle, event, key,
+			next = bpf_parse_tls_cert(skb, bottle, event, tuple,
 						  next);
 			if (next == TLS_PARSE_OUT_OF_DATA) {
 				event->type = TLS_TYPE_MORE_DATA;
@@ -332,7 +333,8 @@ bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *key, int offset)
 			return;
 		}
 
-		err = bpf_parse_tls_cert(skb, bottle, event, key, event->bytes);
+		err = bpf_parse_tls_cert(skb, bottle, event, tuple,
+					 event->bytes);
 		if (err == TLS_PARSE_OUT_OF_DATA) {
 			tls_inc_ingress_out_of_data();
 			event->type = TLS_TYPE_MORE_DATA;
@@ -351,20 +353,20 @@ static inline __attribute__((always_inline)) void
 event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		     struct tcphdr *tcp, u64 *cookie, int payload_off)
 {
-	struct msg_tls_ip key = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 
 	/* IPv6 not currently supported. Coming in later commit.
 	 */
 	if (ipv6)
 		return;
 
-	key.daddr[0] = ip->daddr;
-	key.saddr[0] = ip->saddr;
-	key.ipv6 = 0;
-	key.dport = tcp->dest;
-	key.sport = tcp->source;
+	tuple.daddr[0] = ip->daddr;
+	tuple.saddr[0] = ip->saddr;
+	tuple.ipv6 = 0;
+	tuple.dport = tcp->dest;
+	tuple.sport = tcp->source;
 
-	skb_tls_key_ct_xchg(&key);
+	skb_tls_tuple_ct_xchg(&tuple);
 	/* Hooks read sport in network order, but rest of stack
 	 * expects host order for sport so we do conversion here after
 	 * xchg to get correct sport/dports. We do not need to do
@@ -372,8 +374,8 @@ event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 	 * was in network byte order being read directly from packet
 	 * data.
 	 */
-	key.sport = bpf_ntohs(key.sport);
-	bpf_parse_ingress_skb(skb, &key, payload_off);
+	tuple.sport = bpf_ntohs(tuple.sport);
+	bpf_parse_ingress_skb(skb, &tuple, payload_off);
 
 	return;
 }

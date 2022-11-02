@@ -15,9 +15,9 @@ char _license[] __attribute__((section("license"), used)) = "GPL";
 __attribute__((section("sk_skb/stream_verdict/fgs_tls"), used)) int
 bpf_tls_skskb_verdict(struct __sk_buff *skb)
 {
-	struct msg_tls_ip key = { 0 };
+	struct msg_tls_ip tuple = { 0 };
 
-	skskb_tls_key(skb, &key);
-	bpf_parse_ingress_skb(skb, &key, 0);
+	skskb_tls_tuple(skb, &tuple);
+	bpf_parse_ingress_skb(skb, &tuple, 0);
 	return SK_PASS;
 }
