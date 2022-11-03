@@ -23,15 +23,15 @@
 #ifdef SK_MSG
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
-	__type(key, __u32);
-	__type(value, __u32);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
 	__uint(max_entries, 4);
 } http1_calls SEC(".maps");
 #else
 struct {
 	__uint(type, BPF_MAP_TYPE_PROG_ARRAY);
-	__type(key, __u32);
-	__type(value, __u32);
+	__uint(key_size, sizeof(__u32));
+	__uint(value_size, sizeof(__u32));
 	__uint(max_entries, 4);
 } http1_calls_skb SEC(".maps");
 #endif
