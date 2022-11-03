@@ -178,6 +178,12 @@
         [ "--enable", "CONFIG_IP_VS_RR" ],
         [ "--enable", "CONFIG_SECURITY_APPARMOR" ],
 
+	[ "--enable", "CONFIG_KASAN" ],
+	[ "--enable", "CONFIG_PROVE_LOCKING" ],
+	[ "--enable", "CONFIG_DEBUG_KMEMLEAK" ],
+	[ "--enable", "CONFIG_DEBUG_ATOMIC_SLEEP" ],
+	[ "--enable", "CONFIG_RCU_TRACE" ],
+
         [ "--enable", "CONFIG_KVM_GUEST" ]
     ]
 }
