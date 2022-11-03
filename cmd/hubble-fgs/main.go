@@ -7,6 +7,7 @@ import (
 	"net"
 	"os"
 	"os/signal"
+	"path/filepath"
 	"strings"
 	"sync"
 	"syscall"
@@ -134,6 +135,20 @@ func hubbleFGSExecute() error {
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
 	var cancelWg sync.WaitGroup
+
+	// Remove old tcpmon BPF directory
+	//
+	// commit https://github.com/cilium/tetragon/commit/f1a37fc2dfbf5827611ad5b9db966502ecdb0db9
+	// in OSS, changed the prefix where the bpf maps and programs should be pinned from "tcpmon"
+	// to "tetragon".
+	// commit https://github.com/isovalent/hubble-fgs/commit/642115d3b8d2283f4463bbc2208f4a959e93ba24
+	// imported that change in v1.9.0-rc3.
+	// Users upgrading from older (e.g., v1.8 versions) might end up with duplicated maps and
+	// programs. We have no upgrade method, so completely remove the directory.
+	oldBpfDir := filepath.Join(bpf.GetMapRoot(), "tcpmon")
+	if err := os.RemoveAll(oldBpfDir); err != nil {
+		log.Warnf("faied to clean %s. Consider removing it manually", oldBpfDir)
+	}
 
 	/* Remove any stale programs, otherwise feature set change can cause
 	 * old programs to linger resulting in undefined behavior. And because
