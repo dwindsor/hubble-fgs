@@ -69,6 +69,7 @@ func handleUdpDns(m *api.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) 
 
 	for _, q := range qs {
 		names = append(names, q.Name.String())
+		qTypes = append(qTypes, uint32(q.Type))
 	}
 
 	for {
