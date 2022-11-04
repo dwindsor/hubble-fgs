@@ -32,6 +32,7 @@ import (
 	ec "github.com/cilium/tetragon/api/v1/tetragon/codegen/eventchecker"
 	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/kernels"
+	"github.com/cilium/tetragon/pkg/matchers/listmatcher"
 	sm "github.com/cilium/tetragon/pkg/matchers/stringmatcher"
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -1027,4 +1028,108 @@ func TestConnectAfterStartEvent6(t *testing.T) {
 
 	killAndWaitCommand(t, cmdServer)
 	killAndWaitCommand(t, cmdClient)
+}
+
+func TestDnsEvents(t *testing.T) {
+	if !kernels.MinKernelVersion("5.4.0") {
+		t.Skipf("dns requires kernel >= 5.4")
+	}
+
+	var doneWG, readyWG sync.WaitGroup
+	defer doneWG.Wait()
+
+	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
+	defer cancel()
+
+	bpf.CheckOrMountCgroup2()
+
+	if err := observer.WriteConfigFile(testConfigFile, udpConfig); err != nil {
+		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	}
+
+	obs, err := observer.GetDefaultObserverWithLib(t, ctx, testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultObserver error: %s", err)
+	}
+
+	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
+	readyWG.Wait()
+
+	selfChecker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix(runner.Conf().SelfBinary))
+
+	curl4Checker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("-4 https://www.google.com"))
+
+	curl6Checker := ec.NewProcessChecker().
+		WithBinary(sm.Suffix("curl")).
+		WithArguments(sm.Full("-6 https://www.google.com"))
+
+	checker := ec.NewUnorderedEventChecker(
+		ec.NewProcessExecChecker().
+			WithProcess(curl4Checker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curl4Checker).
+			WithParent(selfChecker).
+			WithDestinationPort(53).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		ec.NewProcessDnsChecker().
+			WithProcess(curl4Checker).
+			WithParent(selfChecker).
+			WithDns(ec.NewDnsInfoChecker().
+				WithRcode(0).
+				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1))),
+		ec.NewProcessDnsChecker().
+			WithProcess(curl4Checker).
+			WithParent(selfChecker).
+			WithDns(ec.NewDnsInfoChecker().
+				WithRcode(0).
+				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(1)).
+				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(1)).
+				WithIps(ec.NewStringListMatcher().
+					WithOperator(listmatcher.Subset).
+					// Match a valid IPv4 address
+					WithValues(sm.Regex(`^((25[0-5]|(2[0-4]|1\d|[1-9]|)\d)\.?\b){4}$`)))),
+		ec.NewProcessExecChecker().
+			WithProcess(curl6Checker).
+			WithParent(selfChecker),
+		ec.NewProcessConnectChecker().
+			WithProcess(curl6Checker).
+			WithParent(selfChecker).
+			WithDestinationPort(53).
+			WithProtocol(tetragon.SocketProtocol_UDP),
+		ec.NewProcessDnsChecker().
+			WithProcess(curl6Checker).
+			WithParent(selfChecker).
+			WithDns(ec.NewDnsInfoChecker().
+				WithRcode(0).
+				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(28))),
+		ec.NewProcessDnsChecker().
+			WithProcess(curl6Checker).
+			WithParent(selfChecker).
+			WithDns(ec.NewDnsInfoChecker().
+				WithRcode(0).
+				WithNames(ec.NewStringListMatcher().WithValues(sm.Full("www.google.com."))).
+				WithQuestionTypes(ec.NewUint32ListMatcher().WithValues(28)).
+				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(28)).
+				WithIps(ec.NewStringListMatcher().
+					WithOperator(listmatcher.Subset).
+					// Full IPv6 regex is probably too complicated, let's just see if it
+					// contains a ::
+					WithValues(sm.Contains(`::`)))),
+	)
+
+	curl4 := exec.Command("curl", "-4", "https://www.google.com")
+	assert.NoError(t, curl4.Start())
+
+	curl6 := exec.Command("curl", "-6", "https://www.google.com")
+	assert.NoError(t, curl6.Start())
+
+	err = jsonchecker.JsonTestCheck(t, checker)
+	assert.NoError(t, err)
 }
