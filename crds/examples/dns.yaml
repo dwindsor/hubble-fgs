@@ -1,0 +1,12 @@
+apiVersion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "dns"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+      deleteIdleSocketInterval: 60
+    dns:
+      enable: true
