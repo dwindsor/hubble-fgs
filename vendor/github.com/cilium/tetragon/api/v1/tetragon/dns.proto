@@ -18,15 +18,17 @@ package tetragon;
 
 import "tetragon/tetragon.proto";
 import "tetragon/fgs.proto";
+import "google/protobuf/wrappers.proto";
 
 message DnsInfo {
     repeated uint32 question_types = 1;
     repeated uint32 answer_types = 2;
-    int32 rcode = 3;
+    int32 rcode = 3 [deprecated=true]; // deprecated in favor of return_code
     repeated string names = 4;
     repeated string ips = 5;
     string query = 6;
     bool response = 7;
+    google.protobuf.Int32Value return_code = 8;
 }
 
 message ProcessDns {

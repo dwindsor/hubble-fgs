@@ -20,6 +20,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/metrics/fixuposs"
 	"github.com/prometheus/client_golang/prometheus"
 	"github.com/prometheus/client_golang/prometheus/promauto"
+	"google.golang.org/protobuf/types/known/wrapperspb"
 
 	v1 "github.com/cilium/hubble/pkg/api/v1"
 	"github.com/cilium/tetragon/api/v1/tetragon"
@@ -57,8 +58,11 @@ var rCodeNames = map[uint16]string{
 	RCodeRefused:        "Refused",
 }
 
-func getRCodeString(r uint16) string {
-	return rCodeNames[r]
+func getRCodeString(rc *wrapperspb.Int32Value) string {
+	if rc != nil {
+		return rCodeNames[uint16(rc.Value)]
+	}
+	return "Unknown"
 }
 
 func HandleOriginalEvent(originalEvent interface{}) {
@@ -86,7 +90,7 @@ func postDnsMetric(res *tetragon.ProcessDns) {
 
 	dns := res.Dns
 	names := strings.Join(dns.GetNames(), ",")
-	codes := getRCodeString(uint16(dns.GetRcode()))
+	codes := getRCodeString(dns.GetReturnCode())
 
 	if dns.Response {
 		rr = "Response"

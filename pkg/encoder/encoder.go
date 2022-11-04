@@ -212,7 +212,10 @@ func dnsToString(dnsInfo *tetragon.DnsInfo) string {
 			answerTypes = append(answerTypes, dns.TypeToString[uint16(answerType)])
 		}
 
-		rcode := dns.RcodeToString[int(dnsInfo.Rcode)]
+		rcode := "unknown"
+		if dnsInfo.ReturnCode != nil {
+			rcode = dns.RcodeToString[int(dnsInfo.ReturnCode.Value)]
+		}
 		return fmt.Sprintf("%s %s %s %s", rcode, dnsInfo.Names, answerTypes, dnsInfo.Ips)
 	}
 	var questionTypes []string

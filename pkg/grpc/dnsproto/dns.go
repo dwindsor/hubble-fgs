@@ -55,8 +55,11 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 	fgsTuple := sockinfo.GetTuple(&msg.Tuple, 0, msg.Common.Op)
 
 	fgsDns := &tetragon.DnsInfo{
-		Response:      msg.Dns.Response,
-		Rcode:         int32(msg.Dns.RCode),
+		Response: msg.Dns.Response,
+		Rcode:    int32(msg.Dns.RCode),
+		ReturnCode: &wrapperspb.Int32Value{
+			Value: int32(msg.Dns.RCode),
+		},
 		Ips:           msg.Dns.IPs,
 		Names:         msg.Dns.Names,
 		QuestionTypes: msg.Dns.QuestionTypes,

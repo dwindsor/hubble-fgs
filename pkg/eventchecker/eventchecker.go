@@ -2441,10 +2441,13 @@ func DNSHasRcode(rcode int32) DNSChecker {
 		if t == nil {
 			return fmt.Errorf("DNS is nil and cannot match Rcode: %d", rcode)
 		}
-		if t.Dns.Rcode != rcode {
-			return fmt.Errorf("expecting Dns Rcode to be %d but got %d", rcode, t.Dns.Rcode)
+		if t.Dns.ReturnCode == nil {
+			return fmt.Errorf("DNS return code is nil and cannot match Rcode: %d", rcode)
 		}
-		log.Logf("**** MATCH DNS on Rcode: %t", t.Dns.Rcode)
+		if t.Dns.ReturnCode.Value != rcode {
+			return fmt.Errorf("expecting Dns Rcode to be %d but got %d", rcode, t.Dns.ReturnCode.Value)
+		}
+		log.Logf("**** MATCH DNS on Rcode: %t", t.Dns.ReturnCode.Value)
 		return nil
 	})
 }

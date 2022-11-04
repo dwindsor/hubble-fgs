@@ -7725,6 +7725,7 @@ type DnsInfoChecker struct {
 	Ips           *StringListMatcher           `json:"ips,omitempty"`
 	Query         *stringmatcher.StringMatcher `json:"query,omitempty"`
 	Response      *bool                        `json:"response,omitempty"`
+	ReturnCode    *int32                       `json:"returnCode,omitempty"`
 }
 
 // NewDnsInfoChecker creates a new DnsInfoChecker
@@ -7773,6 +7774,14 @@ func (checker *DnsInfoChecker) Check(event *tetragon.DnsInfo) error {
 			return fmt.Errorf("DnsInfoChecker: Response has value %t which does not match expected value %t", event.Response, *checker.Response)
 		}
 	}
+	if checker.ReturnCode != nil {
+		if event.ReturnCode == nil {
+			return fmt.Errorf("DnsInfoChecker: ReturnCode is nil and does not match expected value %v", *checker.ReturnCode)
+		}
+		if *checker.ReturnCode != event.ReturnCode.Value {
+			return fmt.Errorf("DnsInfoChecker: ReturnCode has value %v which does not match expected value %v", event.ReturnCode.Value, *checker.ReturnCode)
+		}
+	}
 	return nil
 }
 
@@ -7815,6 +7824,12 @@ func (checker *DnsInfoChecker) WithQuery(check *stringmatcher.StringMatcher) *Dn
 // WithResponse adds a Response check to the DnsInfoChecker
 func (checker *DnsInfoChecker) WithResponse(check bool) *DnsInfoChecker {
 	checker.Response = &check
+	return checker
+}
+
+// WithReturnCode adds a ReturnCode check to the DnsInfoChecker
+func (checker *DnsInfoChecker) WithReturnCode(check int32) *DnsInfoChecker {
+	checker.ReturnCode = &check
 	return checker
 }
 
@@ -7875,6 +7890,10 @@ func (checker *DnsInfoChecker) FromDnsInfo(event *tetragon.DnsInfo) *DnsInfoChec
 	{
 		val := event.Response
 		checker.Response = &val
+	}
+	if event.ReturnCode != nil {
+		val := event.ReturnCode.Value
+		checker.ReturnCode = &val
 	}
 	return checker
 }

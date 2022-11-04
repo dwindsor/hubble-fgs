@@ -370,8 +370,10 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 					Binary: "/usr/bin/curl",
 				},
 				Dns: &tetragon.DnsInfo{
-					Names:       []string{"isovalent.com"},
-					Rcode:       0,
+					Names: []string{"isovalent.com"},
+					ReturnCode: &wrapperspb.Int32Value{
+						Value: 0,
+					},
 					Ips:         []string{"1.2.3.4"},
 					AnswerTypes: []uint32{1},
 					Response:    true,
@@ -391,8 +393,10 @@ func TestCompactEncoder_DnsEventToString(t *testing.T) {
 					Binary: "/usr/bin/curl",
 				},
 				Dns: &tetragon.DnsInfo{
-					Names:       []string{"cloudtrace.googleapis.com."},
-					Rcode:       0,
+					Names: []string{"cloudtrace.googleapis.com."},
+					ReturnCode: &wrapperspb.Int32Value{
+						Value: 0,
+					},
 					Ips:         []string{"142.250.72.234", "142.250.68.106", "142.250.72.138", "142.250.72.170"},
 					AnswerTypes: []uint32{1, 1, 1, 1},
 					Response:    true,

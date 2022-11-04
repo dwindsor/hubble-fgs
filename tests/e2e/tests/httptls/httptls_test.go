@@ -210,6 +210,7 @@ func TlsChecker(kernelVersion string) ec.MultiEventChecker {
 			WithDns(ec.NewDnsInfoChecker().
 				WithAnswerTypes(ec.NewUint32ListMatcher().WithValues(1)).
 				WithNames(ec.NewStringListMatcher().WithValues(sm.Contains("google.com"))).
+				WithReturnCode(0).
 				WithResponse(true),
 			),
 		ec.NewProcessConnectChecker().
