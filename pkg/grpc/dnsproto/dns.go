@@ -37,21 +37,23 @@ type MsgDnsUnix struct {
 }
 
 func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
-	var proc *tetragon.Process
-	var err error
+	var proc, parent *tetragon.Process
 
-	processID := process.GetProcessID(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
-	processInt, err := process.Get(processID)
-	if err != nil {
+	processInt, parentInt := process.GetParentProcessInternal(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)
+	if processInt == nil {
 		proc = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: msg.ProcessKey.Pid},
 			StartTime: ktime.ToProto(msg.ProcessKey.Ktime),
 		}
-		logger.GetLogger().WithField("id in DNS event", processID).Debug("process not found in cache")
+		logger.GetLogger().WithField("id in DNS event", process.GetProcessID(msg.ProcessKey.Pid, msg.ProcessKey.Ktime)).Debug("process not found in cache")
 	} else {
 		proc = processInt.UnsafeGetProcess()
 
 	}
+	if parentInt != nil {
+		parent = parentInt.GetProcessCopy()
+	}
+
 	fgsTuple := sockinfo.GetTuple(&msg.Tuple, 0, msg.Common.Op)
 
 	fgsDns := &tetragon.DnsInfo{
@@ -73,6 +75,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 
 	fgsEvent := &tetragon.ProcessDns{
 		Process: proc,
+		Parent:  parent,
 		Socket:  fgsTuple,
 		Dns:     fgsDns,
 	}
@@ -87,7 +90,7 @@ func get(msg *MsgDnsUnix) *tetragon.ProcessDns {
 		fgsEvent.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 	ec := eventcache.Get()
-	if ec != nil && ec.Needed(proc) {
+	if ec != nil && ec.Needed(proc) || (proc.Pid.Value > 1 && ec.Needed(parent)) {
 		ec.Add(nil, fgsEvent, msg.ProcessKey.Ktime, msg)
 		return nil
 	}
