@@ -253,29 +253,34 @@ func enableTLSParser(tls, cg bool) *sensors.Sensor {
 	var maps []*program.Map
 
 	if tls {
-		logger.GetLogger().Infof("Enable TLS")
-		progs = append(progs,
-			Skmsg,
-			SkSkbVerdict,
-			SockoptSet,
-		)
-		if utils.SkSkbParserRequired() {
-			progs = append(progs, SkSkbParser)
-		}
+		// Socket mode only work on 5.10 onwards
+		if kernels.MinKernelVersion("5.10.0") {
+			logger.GetLogger().Infof("Enable TLS")
+			progs = append(progs,
+				Skmsg,
+				SkSkbVerdict,
+				SockoptSet,
+			)
+			if utils.SkSkbParserRequired() {
+				progs = append(progs, SkSkbParser)
+			}
 
-		maps = append(maps,
-			TailCalls,
-			Map, MapStats,
-			Bottle, BottleStats,
-			FilterMap, ParserStats,
-			SocketMap, SocketStats,
-			sockops.TlsSockMap,
-			sockops.HttpSockMap,
-			sockops.NopSockMap,
-			HTTPMap,
-			HTTPTailCalls,
-			HTTPFilterMap,
-		)
+			maps = append(maps,
+				TailCalls,
+				Map, MapStats,
+				Bottle, BottleStats,
+				FilterMap, ParserStats,
+				SocketMap, SocketStats,
+				sockops.TlsSockMap,
+				sockops.HttpSockMap,
+				sockops.NopSockMap,
+				HTTPMap,
+				HTTPTailCalls,
+				HTTPFilterMap,
+			)
+		} else {
+			logger.GetLogger().Warnf("Cannot Enable TLS Socket mode on kernel <5.10")
+		}
 	}
 
 	if cg {

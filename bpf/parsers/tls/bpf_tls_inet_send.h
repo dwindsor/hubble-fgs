@@ -52,6 +52,8 @@ tls_inet_send_handler(struct __sk_buff *skb, bool send)
 	int zero = 0;
 	u8 proto;
 	unsigned long int err = 0;
+	struct sock_key filter_key = { 0 };
+	int result;
 
 	cookie = map_lookup_elem(&tls_cookie_heap, &zero);
 	if (!cookie)
@@ -97,6 +99,13 @@ tls_inet_send_handler(struct __sk_buff *skb, bool send)
 	if (skb_load_bytes(skb, packet->tcp_off, &packet->tcp,
 			   sizeof(struct tcphdr)) < 0)
 		return;
+
+	filter_key.sport = packet->tcp.source;
+	filter_key.dport = packet->tcp.dest;
+	result = tls_filter(&filter_key);
+	if (result == PROTO_SKIP)
+		return;
+
 	packet->payload_off = (packet->tcp.doff * 4) + packet->tcp_off;
 
 	if (send) {

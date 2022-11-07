@@ -266,6 +266,63 @@ spec:
 	assert.NoError(t, err)
 }
 
+func TestLoadTlsCGSensor(t *testing.T) {
+	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
+		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
+	}
+
+	bpf.CheckOrMountCgroup2()
+
+	config := `
+apiVersion: hubble-enterprise.io/v1
+metadata:
+  name: "tls"
+spec:
+  parser:
+    tls:
+      enable: true
+      mode: "cgroup"
+      selectors:
+      - matchports:
+        - 443
+`
+
+	if err := observer.WriteConfigFile(testConfigFile, config); err != nil {
+		t.Fatalf("writeFile(%s): err %s", testConfigFile, err)
+	}
+
+	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), testConfigFile, runner.Conf().TetragonLib)
+	if err != nil {
+		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
+	}
+
+	var sensorProgs = []tus.SensorProg{
+		0: tus.SensorProg{Name: "tls_inet_send", Type: ebpf.CGroupSKB},
+		1: tus.SensorProg{Name: "tls_inet_recv", Type: ebpf.CGroupSKB},
+	}
+
+	var sensorMaps = []tus.SensorMap{
+		// send and recv
+		tus.SensorMap{Name: "tls_map", Progs: []uint{0, 1}},
+
+		// send only
+		tus.SensorMap{Name: "tls_filter_map", Progs: []uint{0, 1}},
+
+		// send and recv
+		tus.SensorMap{Name: "bottles", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "bottle_map_stats", Progs: []uint{0, 1}},
+		tus.SensorMap{Name: "tls_parser_stats", Progs: []uint{0, 1}},
+
+		// send and recv
+		tus.SensorMap{Name: "tcpmon_map", Progs: []uint{0, 1}},
+	}
+
+	tus.CheckSensorLoad(sens, sensorMaps, sensorProgs, t)
+
+	sensors.UnloadAll(tus.Conf().TetragonLib)
+	assert.NoError(t, err)
+}
+
 func TestCGTLS13(t *testing.T) {
 	if v := "5.4.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)

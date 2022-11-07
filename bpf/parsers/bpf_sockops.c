@@ -4,6 +4,7 @@
 #include "hubble_msg.h"
 #include "bpf_sockops.h"
 #include "./tls/tls_map.h"
+#include "../lib/address_family.h"
 
 /* Hard coding policy until we have policy map in place. */
 #define TLS_PORT 443
@@ -30,13 +31,13 @@ struct {
 	__uint(max_entries, SOCKOPS_NOP_MAP_SIZE);
 } nop_sock_map SEC(".maps");
 
-static inline void bpf_sock_ops_ipv4(struct bpf_sock_ops *skops)
+static inline void bpf_sock_ops_ip(struct bpf_sock_ops *skops)
 {
 	struct sock_key filter_key;
 	struct sock_key key = {};
 	int result;
 
-	sk_extract4_key(skops, &key);
+	sk_extract_key(skops, &key);
 
 	/* Filtering requires network byte-order for both sport and dport. */
 	filter_key = key;
@@ -65,8 +66,8 @@ __section("sockops/fgs_sockops") int bpf_sockmap(struct bpf_sock_ops *skops)
 	switch (op) {
 	case BPF_SOCK_OPS_PASSIVE_ESTABLISHED_CB:
 	case BPF_SOCK_OPS_ACTIVE_ESTABLISHED_CB:
-		if (family == AF_INET)
-			bpf_sock_ops_ipv4(skops);
+		if (family == AF_INET || family == AF_INET6)
+			bpf_sock_ops_ip(skops);
 		break;
 	default:
 		break;

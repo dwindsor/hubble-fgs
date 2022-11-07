@@ -68,6 +68,11 @@ skb_tls_tuple_ct_xchg(struct msg_tls_ip *tuple)
 	__u32 addr;
 	__u16 port;
 
+	if (tuple->ipv6) {
+		/* Only do NAT translation on IPv4 tuples.
+		 */
+		return;
+	}
 	/* Egress hook runs in-front of Cilium SNAT, so it used same IP addr pairs
 	 * as seen by socket. But, ingress hook is also running in front Cilium
 	 * SNAT so the TCP tuple is before NAT and needs to be translated using
@@ -355,17 +360,27 @@ event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 {
 	struct msg_tls_ip tuple = { 0 };
 
-	/* IPv6 not currently supported. Coming in later commit.
-	 */
-	if (ipv6)
-		return;
-
-	tuple.daddr[0] = ip->daddr;
-	tuple.saddr[0] = ip->saddr;
-	tuple.ipv6 = 0;
+	if (!ipv6) {
+		tuple.daddr[0] = ip->daddr;
+		tuple.saddr[0] = ip->saddr;
+		tuple.ipv6 = 0;
+	} else {
+		struct ipv6hdr *ip6 = (struct ipv6hdr *)ip;
+		u32 *addr = (u32 *)&tuple.daddr;
+		addr[0] = ip6->daddr.in6_u.u6_addr32[0];
+		addr[1] = ip6->daddr.in6_u.u6_addr32[1];
+		addr[2] = ip6->daddr.in6_u.u6_addr32[2];
+		addr[3] = ip6->daddr.in6_u.u6_addr32[3];
+		addr = (u32 *)&tuple.saddr;
+		addr[0] = ip6->saddr.in6_u.u6_addr32[0];
+		addr[1] = ip6->saddr.in6_u.u6_addr32[1];
+		addr[2] = ip6->saddr.in6_u.u6_addr32[2];
+		addr[3] = ip6->saddr.in6_u.u6_addr32[3];
+		tuple.ipv6 = 1;
+	}
 	tuple.dport = tcp->dest;
 	tuple.sport = tcp->source;
-
+	tuple.uid = get_socket_cookie(skb);
 	skb_tls_tuple_ct_xchg(&tuple);
 	/* Hooks read sport in network order, but rest of stack
 	 * expects host order for sport so we do conversion here after

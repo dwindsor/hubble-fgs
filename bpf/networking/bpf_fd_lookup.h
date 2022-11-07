@@ -2,12 +2,11 @@
 #include "hubble_msg.h"
 #include "cookie.h"
 #include "bpf_fd_to_sk.h"
+#include "../lib/address_family.h"
 
 #define FD_LOOKUP_SIGNAL 1024
 #define S_IFMT		 00170000
 #define S_IFSOCK	 0140000
-#define AF_INET		 2
-#define AF_INET6	 10
 
 struct fd_lookup_config {
 	uint32_t pid;

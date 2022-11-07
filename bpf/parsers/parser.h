@@ -5,6 +5,7 @@
 #include "../networking/netns.h"
 #include "../lib/tlsmsg.h"
 #include "../lib/httpmsg.h"
+#include "../lib/address_family.h"
 
 #ifdef SK_MSG
 typedef struct sk_msg_md ctx_md;
@@ -342,21 +343,29 @@ static inline int large_ctx_copy(ctx_md *ctx, __u64 next, __u64 offset,
 static inline __attribute__((always_inline)) void
 msg_tls_tuple(struct sk_msg_md *msg, struct msg_tls_ip *tuple)
 {
-	tuple->daddr[0] = msg->remote_ip4;
-	tuple->saddr[0] = msg->local_ip4;
-	tuple->ipv6 = 0;
+	if (msg->family == AF_INET) {
+		tuple->daddr[0] = msg->remote_ip4;
+		tuple->saddr[0] = msg->local_ip4;
+		tuple->ipv6 = 0;
+	} else if (msg->family == AF_INET6) {
+		probe_read_kernel(&tuple->daddr, sizeof(tuple->daddr),
+				  _(&(msg->remote_ip6)));
+		probe_read_kernel(&tuple->saddr, sizeof(tuple->saddr),
+				  _(&(msg->local_ip6)));
+		tuple->ipv6 = 1;
+	} else {
+		return;
+	}
 	/* Compiler generated code verifier could not pass with if/else
 	 * construct so we just reset {s|d}port for now.
 	 */
 	tuple->dport = 0;
 	tuple->sport = msg->local_port;
-	if (bpf_core_field_exists(msg->sk)) {
-		tuple->dport = msg->sk->dst_port;
-		tuple->sport = msg->sk->src_port;
+	tuple->dport = msg->sk->dst_port;
+	tuple->sport = msg->sk->src_port;
 
-		if (is_tuple_local(tuple))
-			tuple->uid = msg_netns(msg);
-	}
+	if (is_tuple_local(tuple))
+		tuple->uid = msg_netns(msg);
 	tuple->remaining = HTTP_SEND;
 }
 

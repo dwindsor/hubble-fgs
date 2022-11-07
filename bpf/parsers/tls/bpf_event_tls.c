@@ -21,19 +21,33 @@ struct {
 #define TLS_TYPE_HELLO 22
 
 __attribute__((section("kprobe/tcp_v4_fill_cb"), used)) int
-event_ingress_tcp(struct pt_regs *ctx)
+event_ingress_tcp4(struct pt_regs *ctx)
+{
+	return event_ingress_tcp(ctx, false);
+}
+
+__attribute__((section("kprobe/tcp_v6_fill_cb"), used)) int
+event_ingress_tcp6(struct pt_regs *ctx)
+{
+	return event_ingress_tcp(ctx, true);
+}
+
+static inline __attribute__((always_inline)) int
+event_ingress_tcp(struct pt_regs *ctx, bool ipv6)
 {
 	struct msg_tls_ip tuple = { 0 };
 	struct msg_tls *event;
 	struct tcphdr *tcphdr;
-	struct iphdr *iphdr;
+	struct iphdr *ip4hdr;
+	struct ipv6hdr *ip6hdr;
 	u32 addr;
 	struct sk_buff *skb;
 	struct sock *sk;
 	int zero = 0;
 	u64 *cookie;
 
-	iphdr = (void *)((ctx)->si);
+	ip4hdr = (void *)((ctx)->si);
+	ip6hdr = (void *)((ctx)->si);
 	tcphdr = (void *)((ctx)->dx);
 	skb = (void *)((ctx)->di);
 
@@ -45,12 +59,19 @@ event_ingress_tcp(struct pt_regs *ctx)
 	if (!*cookie)
 		return;
 
-	probe_read(&addr, sizeof(addr), _(&(iphdr->daddr)));
-	tuple.saddr[0] = addr;
-	probe_read(&addr, sizeof(addr), _(&(iphdr->saddr)));
-	tuple.daddr[0] = addr;
-	tuple.ipv6 = 0;
-
+	if (!ipv6) {
+		probe_read(&addr, sizeof(addr), _(&(ip4hdr->daddr)));
+		tuple.saddr[0] = addr;
+		probe_read(&addr, sizeof(addr), _(&(ip4hdr->saddr)));
+		tuple.daddr[0] = addr;
+		tuple.ipv6 = 0;
+	} else {
+		probe_read(&tuple.saddr, sizeof(tuple.saddr),
+			   _(&(ip6hdr->daddr)));
+		probe_read(&tuple.daddr, sizeof(tuple.daddr),
+			   _(&(ip6hdr->saddr)));
+		tuple.ipv6 = 1;
+	}
 	probe_read(&tuple.sport, sizeof(tuple.sport), _(&(tcphdr->dest)));
 	probe_read(&tuple.dport, sizeof(tuple.dport), _(&(tcphdr->source)));
 

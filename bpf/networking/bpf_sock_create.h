@@ -6,9 +6,7 @@
 #include "bpf_udp.h"
 #include "cookie.h"
 #include "bpf_fd_lookup.h"
-
-#define AF_INET	 2
-#define AF_INET6 10
+#include "../lib/address_family.h"
 
 static inline __attribute__((always_inline)) int
 __sk_allocret(struct pt_regs *ctx)

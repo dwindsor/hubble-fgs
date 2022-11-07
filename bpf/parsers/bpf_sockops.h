@@ -25,8 +25,8 @@ struct sock_key {
 #include "bpf_core_read.h"
 #include "../lib/bpf_helpers.h"
 
-__attribute__((unused)) static void sk_extract4_key(struct bpf_sock_ops *ops,
-						    struct sock_key *key)
+__attribute__((unused)) static void sk_extract_key(struct bpf_sock_ops *ops,
+						   struct sock_key *key)
 {
 	key->cookie = get_socket_cookie(ops);
 	if (ops->sk) {

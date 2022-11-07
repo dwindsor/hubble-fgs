@@ -6,6 +6,7 @@
 #include "../bottle.h"
 #include "tls_map.h"
 #include "bpf_helpers.h"
+#include "../../lib/address_family.h"
 
 struct {
 	__uint(type, BPF_MAP_TYPE_ARRAY);
@@ -355,11 +356,23 @@ bpf_parse_tls(struct bottle *bottle, struct msg_tls *tls)
 static inline __attribute__((always_inline)) void
 skmsg_tls_tuple(struct sk_msg_md *skmsg, struct msg_tls_ip *tuple)
 {
-	tuple->daddr[0] = skmsg->remote_ip4;
-	tuple->daddr[1] = 0;
-	tuple->saddr[0] = skmsg->local_ip4;
-	tuple->saddr[1] = 0;
-	tuple->ipv6 = 0;
+	if (skmsg->family == AF_INET) {
+		tuple->daddr[0] = skmsg->remote_ip4;
+		tuple->saddr[0] = skmsg->local_ip4;
+		tuple->ipv6 = 0;
+	} else if (skmsg->family == AF_INET6) {
+		u32 *addr = (u32 *)&tuple->daddr;
+		addr[0] = skmsg->remote_ip6[0];
+		addr[1] = skmsg->remote_ip6[1];
+		addr[2] = skmsg->remote_ip6[2];
+		addr[3] = skmsg->remote_ip6[3];
+		addr = (u32 *)&tuple->saddr;
+		addr[0] = skmsg->local_ip6[0];
+		addr[1] = skmsg->local_ip6[1];
+		addr[2] = skmsg->local_ip6[2];
+		addr[3] = skmsg->local_ip6[3];
+		tuple->ipv6 = 1;
+	}
 	tuple->dport = bpf_htons(TLS_REMOTE_PORT);
 	tuple->sport = skmsg->local_port;
 
@@ -377,9 +390,23 @@ skskb_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *tuple)
 {
 	struct bpf_sock *sk;
 
-	tuple->daddr[0] = skb->remote_ip4;
-	tuple->saddr[0] = skb->local_ip4;
-	tuple->ipv6 = 0;
+	if (skb->family == AF_INET) {
+		tuple->daddr[0] = skb->remote_ip4;
+		tuple->saddr[0] = skb->local_ip4;
+		tuple->ipv6 = 0;
+	} else if (skb->family == AF_INET6) {
+		u32 *addr = (u32 *)&tuple->daddr;
+		addr[0] = skb->remote_ip6[0];
+		addr[1] = skb->remote_ip6[1];
+		addr[2] = skb->remote_ip6[2];
+		addr[3] = skb->remote_ip6[3];
+		addr = (u32 *)&tuple->saddr;
+		addr[0] = skb->local_ip6[0];
+		addr[1] = skb->local_ip6[1];
+		addr[2] = skb->local_ip6[2];
+		addr[3] = skb->local_ip6[3];
+		tuple->ipv6 = 1;
+	}
 	sk = skb->sk;
 	if (sk) {
 		tuple->dport = skb->sk->dst_port;
@@ -390,6 +417,12 @@ skskb_tls_tuple(struct __sk_buff *skb, struct msg_tls_ip *tuple)
 	}
 }
 #else
+
+/* Following 2 functions are unused currently.
+ * If they need to be used, then they will need to be converted to
+ * handle IPv6. See bpf/networking/bpf_network_helpers.h for a good
+ * starting point.
+ */
 static inline __attribute__((always_inline)) void *
 skb_tls_tuple(struct __sk_buff *skb, int *off, struct msg_tls_ip *tuple)
 {

@@ -22,7 +22,7 @@ egress_post_event(ctx_md *ctx, struct msg_tls_ip *tuple,
 			  sizeof(struct msg_tls_event));
 }
 
-#if defined(SK_MSG) || defined(SK_SKB)
+#ifdef SK_MSG
 static inline __attribute__((always_inline)) void
 bpf_parse_tls_egress(ctx_md *ctx, u64 *cookie)
 #else
@@ -37,21 +37,27 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 	struct msg_tls *state;
 	struct bottle *bottle;
 	int zero = 0;
-#if defined(SK_MSG) || defined(SK_SKB)
+#ifdef SK_MSG
 	int payload_off = 0;
-#else
-	/* Not currently supporting IPv6 - this will come in a future commit.
-	 */
-	if (ipv6)
-		return;
 #endif
 
 #ifdef SK_MSG
 	msg_tls_tuple(ctx, &tuple);
 #else
-	tuple.daddr[0] = ip->daddr;
-	tuple.saddr[0] = ip->saddr;
-	tuple.ipv6 = 0;
+	if (!ipv6) {
+		tuple.daddr[0] = ip->daddr;
+		tuple.saddr[0] = ip->saddr;
+		tuple.ipv6 = 0;
+	} else {
+		struct ipv6hdr *ip6 = (struct ipv6hdr *)ip;
+		u64 *addr = (u64 *)&ip6->daddr;
+		tuple.daddr[0] = addr[0];
+		tuple.daddr[1] = addr[1];
+		addr = (u64 *)&ip6->saddr;
+		tuple.saddr[0] = addr[0];
+		tuple.saddr[1] = addr[1];
+		tuple.ipv6 = 1;
+	}
 	tuple.dport = tcp->dest;
 	tuple.sport = tcp->source;
 
@@ -59,22 +65,25 @@ bpf_parse_tls_egress(ctx_md *ctx, struct iphdr *ip, bool ipv6,
 	 * expects host order for sport so we do conversion here.
 	 */
 	tuple.sport = bpf_ntohs(tuple.sport);
+	tuple.uid = get_socket_cookie(ctx);
 #endif
 
 	state = map_lookup_elem(&tls_map, cookie);
 	if (state) {
-#if defined(SK_MSG) || defined(SK_SKB)
-		struct sk_msg_md *msg = 0;
+#ifdef SK_MSG
 
-		if (bpf_core_field_exists(msg->sk)) {
-			/* An event here indicates we have TLS state associated
-			 * with this socket and/or we have aborted parsing on the
-			 * TLS socket. If it is a KTLS socket we can also pass to
-			 * HTTP parser for handling
-			 */
-			if (state->version == TLS_HTTP_VERSION)
-				http_do_parser(ctx, &tuple);
-		}
+		/* An event here indicates we have TLS state associated
+		 * with this socket and/or we have aborted parsing on the
+		 * TLS socket. If it is a KTLS socket we can also pass to
+		 * HTTP parser for handling
+		 */
+		/* Currently disabled due to verifier not liking the complexity
+		 * it brings.
+		 */
+		/*
+		if (state->version == TLS_HTTP_VERSION)
+			http_do_parser(ctx, &tuple);
+		*/
 #endif
 		return;
 	}
