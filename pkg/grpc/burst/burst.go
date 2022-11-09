@@ -7,6 +7,8 @@ import (
 	"github.com/cilium/tetragon/pkg/eventcache"
 	"github.com/cilium/tetragon/pkg/ktime"
 	"github.com/cilium/tetragon/pkg/logger"
+	"github.com/cilium/tetragon/pkg/metrics/errormetrics"
+	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/process"
 	"github.com/cilium/tetragon/pkg/reader/node"
 	"github.com/cilium/tetragon/pkg/reader/notify"
@@ -30,7 +32,22 @@ func (msg *MsgProcessNetworkBurstEventUnix) RetryInternal(ev notify.Event, times
 }
 
 func (msg *MsgProcessNetworkBurstEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev)
+	p := internal.UnsafeGetProcess()
+	if option.Config.EnableK8s && p.Pod == nil {
+		errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
+		return eventcache.ErrFailedToGetPodInfo
+	}
+
+	ev.SetProcess(internal.GetProcessCopy())
+
+	// For burst events we need to account for metrics skipped
+	// by original handling of event
+	switch msg.Common.Op {
+	case ops.MSG_OP_PROCESS_NETWORK_BURST:
+		createProcessNetworkBurst(msg, false)
+	}
+
+	return nil
 }
 
 func (msg *MsgProcessNetworkBurstEventUnix) Notify() bool {
@@ -61,23 +78,24 @@ func (msg *MsgProcessNetworkBurstEventUnix) Cast(o interface{}) notify.Message {
 }
 
 // getProcessNetworkBurst returns ProcessNetworkBurst protobuf message for a given process.
-func getProcessNetworkBurst(
-	event *MsgProcessNetworkBurstEventUnix,
+func createProcessNetworkBurst(
+	event *MsgProcessNetworkBurstEventUnix, cache bool,
 ) *tetragon.ProcessNetworkBurst {
 	var fgsProcess, fgsParent *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
-	if process != nil {
-		fgsProcess = process.GetProcessCopy()
-	} else {
+	if process == nil {
 		fgsProcess = &tetragon.Process{
 			Pid:       &wrapperspb.UInt32Value{Value: event.ProcessKey.Pid},
 			StartTime: ktime.ToProto(event.ProcessKey.Ktime),
 		}
+	} else {
+		fgsProcess = process.UnsafeGetProcess()
 	}
 	if parent != nil {
-		fgsParent = parent.GetProcessCopy()
+		fgsParent = parent.UnsafeGetProcess()
 	}
+
 	fgsEvent := &tetragon.ProcessNetworkBurst{
 		Process: fgsProcess,
 		Parent:  fgsParent,
@@ -106,6 +124,24 @@ func getProcessNetworkBurst(
 	fgsEvent.HistTrigger = event.HistTrigger
 	fgsEvent.WindowAvg = event.WindowAvg
 
+	ec := eventcache.Get()
+	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
+		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
+		return nil
+	}
+	if process != nil {
+		fgsEvent.Process = process.GetProcessCopy()
+	}
+	if parent != nil {
+		fgsEvent.Parent = parent.GetProcessCopy()
+	}
+
 	eventmetrics.HandleProcessBurstEvent(fgsEvent)
 	return fgsEvent
+}
+
+func getProcessNetworkBurst(
+	event *MsgProcessNetworkBurstEventUnix,
+) *tetragon.ProcessNetworkBurst {
+	return createProcessNetworkBurst(event, true)
 }
