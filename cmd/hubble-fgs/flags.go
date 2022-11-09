@@ -62,6 +62,8 @@ const (
 	keyExportDenylist  = "export-denylist"
 
 	keyNetnsDir = "netns-dir"
+
+	keyEventQueueSize = "event-queue-size"
 )
 
 var (
@@ -123,4 +125,6 @@ func readAndSetFlags() {
 	enableExportAggregation = viper.GetBool(keyEnableExportAggregation)
 	exportAggregationWindowSize = viper.GetDuration(keyExportAggregationWindowSize)
 	exportAggregationBufferSize = viper.GetUint64(keyExportAggregationBufferSize)
+
+	option.Config.EventQueueSize = viper.GetUint(keyEventQueueSize)
 }
