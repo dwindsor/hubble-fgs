@@ -26,8 +26,3 @@ func CreateExportFile(t *testing.T) (*testutils.ExportFile, error) {
 func GetExportFilename(t *testing.T) (string, error) {
 	return testutils.GetExportFilename(t)
 }
-
-// KeepExportFile marks export file to be kept
-func KeepExportFile(t *testing.T) error {
-	return testutils.KeepExportFile(t)
-}
