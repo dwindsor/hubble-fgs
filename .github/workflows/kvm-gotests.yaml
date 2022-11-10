@@ -67,7 +67,7 @@ jobs:
 
             # install test deps
             apt update -y
-            apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd
+            DEBIAN_FRONTEND=noninteractive apt install -y libcap-dev libaio-dev liburing-dev libelf-dev iptables software-properties-common netcat-openbsd
 
       - name: Run Tests
         uses: willfindlay/little-vm-helper-action@10a59636e89103bbec4f986d1965374876464aae
