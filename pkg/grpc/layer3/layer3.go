@@ -381,8 +381,7 @@ func GetProcessAccept(event *MsgIPEventUnix) *tetragon.ProcessAccept {
 	return fgsEvent
 }
 
-// GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
-func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
+func createProcessSockStats(event *MsgIPEventUnix, cache bool) *tetragon.ProcessSockStats {
 	var fgsParent, fgsProcess *tetragon.Process
 
 	process, parent := process.GetParentProcessInternal(event.ProcessKey.Pid, event.ProcessKey.Ktime)
@@ -421,7 +420,7 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 		fgsEvent.Socket.DestinationPod = podinfo.GetPodInfoOfIp(destinationIP)
 	}
 
-	if ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
+	if cache && ec != nil && (ec.Needed(fgsProcess) || (fgsProcess.Pid.Value > 1 && ec.Needed(fgsParent))) {
 		ec.Add(nil, fgsEvent, event.ProcessKey.Ktime, event)
 		return nil
 	}
@@ -433,6 +432,12 @@ func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
 	}
 	eventmetrics.HandleSocketEvent(fgsEvent)
 	return fgsEvent
+
+}
+
+// GetProcessSockStats converts KprobeEvent from hubble-fgs to protobuf message.
+func GetProcessSockStats(event *MsgIPEventUnix) *tetragon.ProcessSockStats {
+	return createProcessSockStats(event, true)
 }
 
 func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*process.ProcessInternal, error) {
@@ -488,7 +493,22 @@ func (msg *MsgIPEventUnix) RetryInternal(ev notify.Event, timestamp uint64) (*pr
 }
 
 func (msg *MsgIPEventUnix) Retry(internal *process.ProcessInternal, ev notify.Event) error {
-	return eventcache.HandleGenericEvent(internal, ev)
+	p := internal.UnsafeGetProcess()
+	if option.Config.EnableK8s && p.Pod == nil {
+		errormetrics.ErrorTotalInc(errormetrics.EventCachePodInfoRetryFailed)
+		return eventcache.ErrFailedToGetPodInfo
+	}
+
+	ev.SetProcess(internal.GetProcessCopy())
+
+	// For SockStats events we need to account for metrics skipped
+	// by original handling of event.
+	switch msg.Common.Op {
+	case ops.MSG_OP_TCPSTATS, ops.MSG_OP_UDPSTATS:
+		createProcessSockStats(msg, false)
+	}
+
+	return nil
 }
 
 func (msg *MsgIPEventUnix) Notify() bool {
