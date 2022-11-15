@@ -48,6 +48,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/require"
 
 	tus "github.com/cilium/tetragon/pkg/testutils/sensors"
 )
@@ -255,21 +256,11 @@ func TestUdpBurst(t *testing.T) {
 
 	serverCmd := exec.Command(os.Args[0], "-server")
 	serverOutput, err := serverCmd.StdoutPipe()
-	if err != nil {
-		fmt.Printf("ERROR Could not connect to server output pipe\n")
-		panic(err)
-	}
+	require.NoError(t, err, "could not connect to server output pipe")
 	serverCmd.Stderr = os.Stderr
-	if err != nil {
-		fmt.Printf("ERROR Could not connect to server input pipe\n")
-		panic(err)
-	}
 
 	err = serverCmd.Start()
-	if err != nil {
-		fmt.Printf("ERROR Cannot start server\n")
-		panic(err)
-	}
+	require.NoError(t, err, "cannot start server")
 
 	serverBuf := bufio.NewReader(serverOutput)
 	serverBuf.ReadLine()
@@ -278,51 +269,31 @@ func TestUdpBurst(t *testing.T) {
 
 	burstMapFile := filepath.Join(bpf.MapPrefixPath(), burstEvents.ProcessNetworkBurstMapName)
 	m, err := ebpf.LoadPinnedMap(burstMapFile, nil)
-	if err != nil {
-		fmt.Printf("ERROR Cannot open map file\n")
-		panic(err)
-	}
+	require.NoError(t, err, "cannot open map file")
 	defer m.Close()
 	processKey := &burstEvents.ProcessNetworkBurstKey{Key: burstEvents.PidToBurstKey(serverPid, syscall.IPPROTO_UDP, 0)}
 	var processValue burstEvents.ProcessNetworkBurstValue
+
 	err = m.Lookup(processKey, &processValue)
-	if err == nil {
-		fmt.Printf("ERROR Server process in burst map before traffic\n")
-		os.Exit(-1)
-	}
+	require.Error(t, err, "server process in burst map before traffic")
 
 	clientCmd := exec.Command(os.Args[0], "-client")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
-	if err != nil {
-		fmt.Printf("ERROR Cannot start client\n")
-		panic(err)
-	}
+	require.NoError(t, err, "cannot start client")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
-	if err != nil {
-		fmt.Printf("ERROR Server process not in burst map\n")
-		burstEvents.Stop()
-		panic(err)
-	}
+	require.NoError(t, err, "server process must be in burst map")
 
-	if serverCmd != nil {
-		serverProcess := serverCmd.Process
-		if serverProcess != nil {
-			serverProcess.Kill()
-			serverProcess.Wait()
-		} else {
-			fmt.Printf("ERROR serverProcess is nil\n")
-			os.Exit(-1)
-		}
-	} else {
-		fmt.Printf("ERROR serverCmd is nil\n")
-		os.Exit(-1)
-	}
+	err = m.Lookup(processKey, &processValue)
+	require.NoError(t, err, "client process must be in burst map")
+
+	require.NotNil(t, serverCmd.Process, "server process is nil")
+	killAndWaitCommand(t, serverCmd)
 
 	quit := false
 	for !quit {
@@ -334,12 +305,8 @@ func TestUdpBurst(t *testing.T) {
 	}
 
 	err = m.Lookup(processKey, &processValue)
-	if err == nil {
-		fmt.Printf("ERROR Server process in burst map after exit\n")
-		os.Exit(-1)
-	}
+	require.Error(t, err, "server process in burst map after exit")
 
-	killAndWaitCommand(t, serverCmd)
 	killAndWaitCommand(t, clientCmd)
 }
 
