@@ -31,25 +31,76 @@ import "C"
 import (
 	"flag"
 	"fmt"
+	"log"
+	"net"
+	"net/rpc"
 	"os"
+	"os/signal"
 	"path/filepath"
 	"strconv"
 	"strings"
+	"syscall"
 
 	"github.com/cilium/tetragon/pkg/logger"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
+
+	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 )
 
 var (
-	paths        = flag.String("paths", "", "paths separated by ':'")
-	mapDir       = flag.String("mapDir", "", "directory of maps")
-	pinPath      = flag.String("pinPath", "", "prefix of maps")
-	checkPrefix  = flag.String("checkPrefix", "", "checkPrefix for WalkPath (should be true or false)")
-	walkOp       = flag.Uint("walkOp", 0, "walkOp for WalkPath")
-	filterAction = flag.Uint("filterAction", 0, "filterAction for WalkPath")
-	hostMntNs    = flag.Uint("hostMntNs", 0, "host mnt namespace for sanity check")
-	help         = flag.Bool("help", false, "Show help")
+	hostMntNs       = flag.Uint("hostMntNs", 0, "host mnt namespace to check that the scanner is indeed running on the host mount namespace (sanity check).")
+	scannerFifoPath = flag.String("scannerFifoPath", "", "path to create the scanner FIFO (for communication with the agent)")
+	help            = flag.Bool("help", false, "Show help")
 )
+
+var stopChan = make(chan os.Signal, 2)
+
+type FsScannerRpc struct{}
+
+func (f *FsScannerRpc) Terminate(_, _ *struct{}) error {
+	stopChan <- syscall.SIGTERM
+	return nil
+}
+
+func (f *FsScannerRpc) TracingPolicyInit(args *fm.FsScannerInit, _ *struct{}) error {
+	maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	for _, p := range args.Spec.Paths {
+		if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterMatch, false); err != nil {
+			logger.GetLogger().WithField("path", p).WithError(err).Warnf("Adding files/directories failed")
+		} else {
+			logger.GetLogger().WithField("path", p).Infof("Added %d file(s) and %d directorie(s)", fNum, dNum)
+		}
+	}
+
+	for _, p := range args.Spec.PathsExclude {
+		if fNum, dNum, err := fm.WalkPathRaw(p, maps, fm.AddToMap, fm.FilterIgnore, false); err != nil {
+			logger.GetLogger().WithField("path", p).WithError(err).Warnf("Excluding files/directories failed")
+		} else {
+			logger.GetLogger().WithField("path", p).Infof("Excluded %d file(s) and %d directorie(s)", fNum, dNum)
+		}
+	}
+
+	return nil
+}
+
+func (f *FsScannerRpc) RenameDir(args *fm.FsScannerRename, _ *struct{}) error {
+	maps, cleanup, err := fm.OpenFIMMaps(args.MapDir, args.PinPath)
+	if err != nil {
+		return err
+	}
+	defer cleanup()
+
+	if fNum, dNum, err := fm.WalkPathRaw(args.Path, maps, args.Op, args.Action, true); err != nil {
+		logger.GetLogger().WithField("path", args.Path).WithError(err).Warnf("Renaming files/directories failed")
+	} else {
+		logger.GetLogger().WithField("path", args.Path).Infof("Renamed %d file(s) and %d directorie(s)", fNum, dNum)
+	}
+	return nil
+}
 
 func isFlagPassed(name string) bool {
 	found := false
@@ -89,39 +140,36 @@ func main() {
 		os.Exit(0)
 	}
 
-	l := logger.GetLogger()
-	if !isFlagPassed("paths") ||
-		!isFlagPassed("mapDir") ||
-		!isFlagPassed("pinPath") ||
-		!isFlagPassed("walkOp") ||
-		!isFlagPassed("hostMntNs") ||
-		!isFlagPassed("filterAction") ||
-		!isFlagPassed("checkPrefix") {
-		l.Warnf("One of more flags are not passed in fs-scanner")
+	if !isFlagPassed("hostMntNs") {
+		logger.GetLogger().Warnf("hostMntNs flag is not passed in fs-scanner")
+		os.Exit(1)
+	}
+
+	if !isFlagPassed("scannerFifoPath") {
+		logger.GetLogger().Warnf("scannerFifoPath flag is not passed in fs-scanner")
 		os.Exit(1)
 	}
 
 	inum, err := GetMntNsInode()
 	if err != nil {
-		l.WithError(err).Warn("GetPidNsInode")
+		logger.GetLogger().WithError(err).Warn("GetPidNsInode")
 		os.Exit(2)
 	}
 	if inum != *hostMntNs {
-		l.Warnf("Mnt namespace of fs-scanner (%d) does not match host mnt namespace", inum)
+		logger.GetLogger().Warnf("Mnt namespace of fs-scanner (%d) does not match host mnt namespace", inum)
 		os.Exit(3)
 	}
 
-	cPrefix, err := strconv.ParseBool(*checkPrefix)
+	fs := new(FsScannerRpc)
+	rpc.Register(fs)
+
+	listener, err := net.Listen("unix", *scannerFifoPath)
 	if err != nil {
-		l.Warnf("checkPrefix should be true or false (%s)", *checkPrefix)
-		os.Exit(4)
+		log.Fatalf("unable to listen: path: %s error: %s", *scannerFifoPath, err)
 	}
+	defer os.Remove(*scannerFifoPath)
+	go rpc.Accept(listener)
 
-	pathSplit := strings.Split(*paths, ":")
-	for _, p := range pathSplit {
-		l.Infof("Path = %s", p)
-		file.WalkPath(p, *mapDir, *pinPath, uint32(*walkOp), uint32(*filterAction), cPrefix)
-	}
-
-	os.Exit(0)
+	signal.Notify(stopChan, os.Interrupt, syscall.SIGTERM, syscall.SIGINT)
+	<-stopChan
 }

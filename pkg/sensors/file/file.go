@@ -12,18 +12,20 @@ package file
 
 import (
 	"bytes"
+	"context"
+	"embed"
 	"encoding/binary"
+	"errors"
 	"fmt"
-	"io/fs"
+	"net/rpc"
 	"os"
 	"os/exec"
 	"path"
 	"path/filepath"
 	"strconv"
-	"strings"
 	"sync"
 	"sync/atomic"
-	"syscall"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/ebpf"
@@ -33,6 +35,7 @@ import (
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+
 	"github.com/cilium/tetragon/pkg/option"
 	"github.com/cilium/tetragon/pkg/reader/namespace"
 	"github.com/cilium/tetragon/pkg/sensors"
@@ -42,17 +45,12 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	fgsBTF "github.com/isovalent/hubble-fgs/pkg/btf"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/file"
+	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 
 	"github.com/google/uuid"
 )
 
 const (
-	filterIgnore = 0
-	filterMatch  = 1
-
-	AddToMap      = 0
-	RemoveFromMap = 1
-
 	maxLPMpaths     = 4096
 	maxWatchedDirs  = 128 * 1024 // 128K
 	maxWatchedFiles = 128 * 1024 // 128K
@@ -81,11 +79,12 @@ const (
 	DST_INVALID     = (1 << 19)
 )
 
-const (
-	dirMapName  = "hash_map_dir_alloc"
-	fileMapName = "hash_map_file_alloc"
-	lpmMapName  = "lpm_trie_map_alloc"
-)
+//go:embed scanner/*
+var embededFiles embed.FS
+
+var fsScannerCmd *exec.Cmd
+var fsScannerCancelFn context.CancelFunc
+var fsScannerCancelFnMtx sync.Mutex
 
 type FimFunc struct {
 	proto, progName string
@@ -142,6 +141,152 @@ var (
 		"hash_map_dir_alloc",
 	}
 )
+
+func TerminateFsScanner() error {
+	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if err := client.Call("FsScannerRpc.Terminate", struct{}{}, &struct{}{}); err != nil {
+		return err
+	}
+
+	// wait for fifo to be removed
+	retry := 0
+	for {
+		if _, err := os.Stat(fm.ScannerFifoPath); err != nil {
+			break
+		}
+		if retry > 10 {
+			logger.GetLogger().Warnf("Failed to wait for fifo to be removed")
+			break
+		}
+		time.Sleep(time.Second)
+		retry++
+	}
+
+	fsScannerCmd = nil
+
+	return killFsScanner() // to cleanup leftovers in the case of failures
+}
+
+func TracingPolicyInitFsScanner(s v1alpha1.FileSpec, m string, pin string) error {
+	f := fm.FsScannerInit{
+		Spec:    s,
+		MapDir:  m,
+		PinPath: pin,
+	}
+
+	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if err := client.Call("FsScannerRpc.TracingPolicyInit", &f, &struct{}{}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func RenameFsScanner(p string, m string, o uint32, a uint32, pin string) error {
+	f := fm.FsScannerRename{
+		Path:    p,
+		MapDir:  m,
+		Op:      o,
+		Action:  a,
+		PinPath: pin,
+	}
+
+	client, err := rpc.Dial("unix", fm.ScannerFifoPath)
+	if err != nil {
+		return err
+	}
+	defer client.Close()
+
+	if err := client.Call("FsScannerRpc.RenameDir", &f, &struct{}{}); err != nil {
+		return err
+	}
+	return nil
+}
+
+func startFsScanner() (*exec.Cmd, error) {
+	fsScannerPayload, err := embededFiles.ReadFile("scanner/fs-scanner")
+	if err != nil {
+		return nil, err
+	}
+
+	fsScannerCommand := "./fs-scanner.bin"
+	if err := os.WriteFile(fsScannerCommand, fsScannerPayload, 0700); err != nil {
+		return nil, err
+	}
+	defer os.Remove(fsScannerCommand)
+
+	if fm.ScannerFifoPath == "" {
+		if option.Config.EnableK8s {
+			fm.ScannerFifoPath = path.Join(fm.K8sScannerFifoPath, fm.ScannerFifoName)
+		} else {
+			fm.ScannerFifoPath = path.Join(fm.LocalScannerFifoPath, fm.ScannerFifoName)
+		}
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	fsScannerCmd := exec.CommandContext(ctx, fsScannerCommand,
+		"-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10),
+		"-scannerFifoPath", fm.ScannerFifoPath,
+	)
+	fsScannerCancelFnMtx.Lock()
+	fsScannerCancelFn = cancel
+	fsScannerCancelFnMtx.Unlock()
+
+	logger.GetLogger().WithField("args", fsScannerCmd.Args).Info("Agent starting fs-scanner")
+
+	fsScannerCmd.Stdout = os.Stdout
+	fsScannerCmd.Stderr = os.Stderr
+
+	if err := fsScannerCmd.Start(); err != nil {
+		return nil, err
+	}
+
+	// wait for fifo to appear
+	retry := 0
+	for {
+		if _, err := os.Stat(fm.ScannerFifoPath); err == nil {
+			break
+		}
+		if retry > 10 {
+			return nil, fmt.Errorf("failed to start fs-scanner")
+		}
+		logger.GetLogger().Warnf("fs-scanner fifo does not exist [retry = %d]", retry)
+		time.Sleep(2 * time.Second)
+		retry++
+	}
+
+	// We should wait here for the process to stop. Otherwise the FsScanner becomes a zombie.
+	go func() {
+		if err := fsScannerCmd.Wait(); err != nil {
+			logger.GetLogger().WithError(err).Warnf("fsScannerCmd.Wait() failed with '%s'", err)
+		}
+	}()
+
+	return fsScannerCmd, nil
+}
+
+func killFsScanner() error {
+	fsScannerCancelFnMtx.Lock()
+	if fsScannerCancelFn != nil {
+		fsScannerCancelFn()
+		fsScannerCancelFn = nil
+	}
+	fsScannerCancelFnMtx.Unlock()
+
+	// remove the fifo (if any)
+	os.Remove(fm.ScannerFifoPath)
+
+	return nil
+}
 
 type observerFileSensor struct {
 	name string
@@ -261,6 +406,7 @@ func hasFlag(flags, flag uint32) bool {
 }
 
 func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
+	l := logger.GetLogger()
 	m := fileapi.MsgFileRenameEvent{}
 	err := binary.Read(r, binary.LittleEndian, &m)
 	if err != nil {
@@ -292,11 +438,11 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 
 		path := filepath.Join(dstDir, dstName)
 		if hasFlag(m.Flags, MOVE_INSIDE) || hasFlag(m.Flags, MOVE_INTERNALLY) {
-			op = AddToMap
-			action = filterMatch
+			op = fm.AddToMap
+			action = fm.FilterMatch
 		} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
-			op = RemoveFromMap
-			action = filterIgnore
+			op = fm.RemoveFromMap
+			action = fm.FilterIgnore
 		}
 
 		s, err := fileMonitoringTable.getFIM(m.TcId)
@@ -304,16 +450,13 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			return nil, fmt.Errorf("failed to get fim table index: %w", err)
 		}
 
-		if option.Config.EnableK8s {
-			ExecWalkPath(path, option.Config.MapDir, s.pinPathPrefix, op, action, true)
-		} else {
-			WalkPath(path, option.Config.MapDir, s.pinPathPrefix, op, action, true)
+		if err := RenameFsScanner(path, option.Config.MapDir, op, action, s.pinPathPrefix); err != nil {
+			l.WithError(err).Warnf("RenameFsScanner failed!")
 		}
 	}
 
 	// The following should not be possible to happen. If we catch any of these we should handle them
 	// (not difficult to implement)
-	l := logger.GetLogger()
 	if hasFlag(m.Flags, SRC_DIRECTORY) {
 		if hasFlag(m.Flags, DST_REG_FILE) {
 			if hasFlag(m.Flags, MOVE_INSIDE) {
@@ -327,11 +470,11 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	} else if hasFlag(m.Flags, SRC_REG_FILE) {
 		if hasFlag(m.Flags, DST_DIRECTORY) {
 			if hasFlag(m.Flags, MOVE_INSIDE) {
-				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INSIDE - DST_DIRECTORY]\n")
+				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INSIDE - DST_DIRECTORY]")
 			} else if hasFlag(m.Flags, MOVE_OUTSIDE) {
-				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_OUTSIDE - DST_DIRECTORY]\n")
+				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_OUTSIDE - DST_DIRECTORY]")
 			} else if hasFlag(m.Flags, MOVE_INTERNALLY) {
-				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INTERNALLY - DST_DIRECTORY]\n")
+				l.Warnf("[NOOP][SRC_REG_FILE - MOVE_INTERNALLY - DST_DIRECTORY]")
 			}
 		}
 	}
@@ -363,16 +506,6 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	return []observer.Event{unix}, nil
 }
 
-func getDevMajor(dev uint64) uint32 {
-	sDev := int64(dev)
-	return uint32(((sDev >> 8) & 0xfff) | ((sDev >> 32) & ^0xfff))
-}
-
-func getDevMinor(dev uint64) uint32 {
-	sDev := int64(dev)
-	return uint32((sDev & 0xff) | ((sDev >> 12) & ^0xff))
-}
-
 func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
 	var k fileapi.LPMMapKey
 
@@ -384,246 +517,6 @@ func addFilter(handle *ebpf.Map, filter string, val fileapi.LPMMapValue) error {
 		return fmt.Errorf("failed handle.Update: %w", err)
 	}
 	return nil
-}
-
-func lookupFilter(handle *ebpf.Map, filter string) fileapi.LPMMapValue {
-	var k fileapi.LPMMapKey
-	var v fileapi.LPMMapValue
-
-	k.Prefixlen = uint32(len(filter)) * 8
-	copy(k.Data[:], filter)
-
-	err := handle.Lookup(k, &v)
-	if err != nil { // key does not exist so ignore
-		return filterIgnore
-	}
-	return v
-}
-
-func addFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey, val fileapi.HashMapFileVal) error {
-	err := handle.Update(key, val, ebpf.UpdateAny)
-	if err != nil {
-		return fmt.Errorf("failed handle.Update: %w", err)
-	}
-	return nil
-}
-
-func removeFilePath(handle *ebpf.Map, key fileapi.HashMapFileKey) error {
-	err := handle.Delete(key)
-	if err != nil {
-		return fmt.Errorf("failed handle.Update: %w", err)
-	}
-	return nil
-}
-
-func IsSymlink(m fs.FileMode) bool {
-	return m&fs.ModeSymlink != 0
-}
-
-func IsBlockDevice(m fs.FileMode) bool {
-	return m&fs.ModeDevice != 0
-}
-
-func IsNamedPipe(m fs.FileMode) bool {
-	return m&fs.ModeNamedPipe != 0
-}
-
-func IsSocket(m fs.FileMode) bool {
-	return m&fs.ModeSocket != 0
-}
-
-func IsCharDevice(m fs.FileMode) bool {
-	return m&fs.ModeCharDevice != 0
-}
-
-func CheckFileMode(mode fs.FileMode, path string) {
-	l := logger.GetLogger()
-	if IsBlockDevice(mode) {
-		l.Infof("Ignoring block device %s", path)
-	} else if IsNamedPipe(mode) {
-		l.Infof("Ignoring named pipe %s", path)
-	} else if IsSocket(mode) {
-		l.Infof("Ignoring socket %s", path)
-	} else if IsCharDevice(mode) {
-		l.Infof("Ignoring character device %s", path)
-	} else if IsSymlink(mode) {
-		l.Infof("Ignoring symbolic link %s", path)
-	} else {
-		l.Warnf("Unknown file type %s -> %d", path, mode)
-	}
-}
-
-func ExecWalkPath(paths string, mapDir string, pinPath string, op uint32, action uint32, checkPrefix bool) {
-	cmd := exec.Command("fs-scanner",
-		"-paths", paths,
-		"-mapDir", mapDir,
-		"-pinPath", pinPath,
-		"-walkOp", strconv.FormatUint(uint64(op), 10),
-		"-filterAction", strconv.FormatUint(uint64(action), 10),
-		"-checkPrefix", strconv.FormatBool(checkPrefix),
-		"-hostMntNs", strconv.FormatUint(uint64(namespace.GetPidNsInode(1, "mnt")), 10),
-	)
-	cmd.Stdout = os.Stdout
-	cmd.Stderr = os.Stderr
-	if err := cmd.Run(); err != nil {
-		if exitError, ok := err.(*exec.ExitError); ok {
-			logger.GetLogger().Warnf("fs-scanner exit code is %d", exitError.ExitCode())
-		} else {
-			logger.GetLogger().Warnf("cmd.run: %v", err)
-		}
-	}
-}
-
-func WalkPath(path string, mapDir string, pinPath string, op uint32, action uint32, checkPrefix bool) {
-	l := logger.GetLogger()
-	totalFiles := 0
-	totalDirectories := 0
-
-	fileHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, fileMapName)), nil)
-	if err != nil {
-		return
-	}
-	defer fileHandle.Close()
-
-	dirHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, dirMapName)), nil)
-	if err != nil {
-		return
-	}
-	defer dirHandle.Close()
-
-	lpmHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, lpmMapName)), nil)
-	if err != nil {
-		return
-	}
-	defer fileHandle.Close()
-
-	errWalk := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			if option.Config.Debug || option.Config.Verbosity >= 2 {
-				l.Infof("%s", err.Error())
-			}
-			return nil
-		}
-
-		mode := info.Mode()
-		if !mode.IsRegular() && !mode.IsDir() && !IsSymlink(mode) {
-			if option.Config.Debug || option.Config.Verbosity >= 2 {
-				CheckFileMode(mode, path)
-			}
-			return nil
-		}
-
-		if IsSymlink(mode) {
-			link, err := filepath.EvalSymlinks(path)
-			if err != nil {
-				if option.Config.Debug || option.Config.Verbosity >= 2 {
-					l.WithError(err).Infof("Cannot resolve symlink %s", link)
-				}
-				return nil
-			}
-			path = link
-		}
-
-		fileinfo, err := os.Stat(path)
-		if err != nil {
-			return err
-		}
-
-		stat, ok := fileinfo.Sys().(*syscall.Stat_t)
-		if !ok {
-			return fmt.Errorf("stat is not a syscall.Stat_t")
-		}
-
-		switch mode := fileinfo.Mode(); {
-		case mode.IsRegular():
-			key := fileapi.HashMapFileKey{
-				Ino:      stat.Ino,
-				DevMajor: getDevMajor(stat.Dev),
-				DevMinor: getDevMinor(stat.Dev),
-			}
-
-			if op == AddToMap {
-				var val fileapi.HashMapFileVal
-
-				val.Action = action
-				val.PathSize = uint32(len(path))
-				copy(val.FullPath[:], path)
-
-				addToMap := true
-				if checkPrefix {
-					if lookupFilter(lpmHandle, path) == filterIgnore {
-						addToMap = false
-					}
-				}
-				if addToMap {
-					err := addFilePath(fileHandle, key, val)
-					if err != nil {
-						return fmt.Errorf("failed to call addFilePath: %w", err)
-					}
-				}
-			} else if op == RemoveFromMap {
-				err := removeFilePath(fileHandle, key)
-				if err != nil {
-					return fmt.Errorf("failed to call removeFilePath: %w", err)
-				}
-			}
-
-			totalFiles++
-		case mode.IsDir():
-			key := fileapi.HashMapFileKey{
-				Ino:      stat.Ino,
-				DevMajor: getDevMajor(stat.Dev),
-				DevMinor: getDevMinor(stat.Dev),
-			}
-
-			if op == AddToMap {
-				var val fileapi.HashMapFileVal
-
-				// We should habe all directory names to end with "/"
-				// Check if this is the case, otherwise add it.
-				if path[len(path)-1:] != "/" {
-					path += "/"
-				}
-
-				val.Action = action
-				val.PathSize = uint32(len(path))
-				copy(val.FullPath[:], path)
-
-				addToMap := true
-				if checkPrefix {
-					if lookupFilter(lpmHandle, path) == filterIgnore {
-						addToMap = false
-					}
-				}
-				if addToMap {
-					err := addFilePath(dirHandle, key, val)
-					if err != nil {
-						return fmt.Errorf("failed to call addDirPath: %w", err)
-					}
-				}
-			} else if op == RemoveFromMap {
-				err := removeFilePath(fileHandle, key)
-				if err != nil {
-					return fmt.Errorf("failed to call removeFilePath: %w", err)
-				}
-			}
-
-			totalDirectories++
-		case IsSymlink(mode):
-			l.Warnf("%s is still a symlink\n", path)
-		default:
-			if option.Config.Debug || option.Config.Verbosity >= 2 {
-				CheckFileMode(mode, path)
-			}
-		}
-
-		return nil
-	})
-
-	if errWalk != nil {
-		l.WithError(errWalk).Warnf("filepath.Walk")
-	}
-	l.Infof("Added %d file(s) and %d directorie(s)\n", totalFiles, totalDirectories)
 }
 
 func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg) (*sensors.Sensor, error) {
@@ -662,13 +555,13 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 	}
 
 	for _, str := range kprobes.Paths {
-		if err := addFilter(lpmMap, str, filterMatch); err != nil {
+		if err := addFilter(lpmMap, str, fm.FilterMatch); err != nil {
 			return nil, fmt.Errorf("failed to add WatchPath: %w", err)
 		}
 	}
 
 	for _, str := range kprobes.PathsExclude {
-		if err := addFilter(lpmMap, str, filterIgnore); err != nil {
+		if err := addFilter(lpmMap, str, fm.FilterIgnore); err != nil {
 			return nil, fmt.Errorf("failed to add ExcludePath: %w", err)
 		}
 	}
@@ -699,7 +592,7 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 		Action: uint32(tcID),
 	}
 
-	if err := addFilePath(fileHandle, tableKey, tableVal); err != nil {
+	if err := fm.AddFilePath(fileHandle, tableKey, tableVal); err != nil {
 		return nil, fmt.Errorf("failed to add entry <ino,dev> = <0,0> : %w", err)
 	}
 
@@ -722,35 +615,8 @@ func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile
 		return nil, fmt.Errorf("failed dirHandle.Pin: %w", err)
 	}
 
-	if option.Config.EnableK8s {
-		if len(kprobes.Paths) > 0 {
-			l.Infof("WatchPaths:")
-			for _, p := range kprobes.Paths {
-				if strings.Contains(p, ":") {
-					return nil, fmt.Errorf("watchPath %s cannot contain a ':'", p)
-				}
-			}
-			ExecWalkPath(strings.Join(kprobes.Paths[:], ":"), option.Config.MapDir, e.pinPathPrefix, AddToMap, filterMatch, false)
-		}
-		if len(kprobes.PathsExclude) > 0 {
-			l.Infof("ExcludePaths:")
-			for _, p := range kprobes.PathsExclude {
-				if strings.Contains(p, ":") {
-					return nil, fmt.Errorf("excludePath %s cannot include a ':'", p)
-				}
-			}
-			ExecWalkPath(strings.Join(kprobes.PathsExclude[:], ":"), option.Config.MapDir, e.pinPathPrefix, AddToMap, filterIgnore, false)
-		}
-	} else {
-		for _, str := range kprobes.Paths {
-			l.Infof("WatchPath = %s", str)
-			WalkPath(str, option.Config.MapDir, e.pinPathPrefix, AddToMap, filterMatch, false)
-		}
-
-		for _, str := range kprobes.PathsExclude {
-			l.Infof("ExcludePaths = %s", str)
-			WalkPath(str, option.Config.MapDir, e.pinPathPrefix, AddToMap, filterIgnore, false)
-		}
+	if err := TracingPolicyInitFsScanner(kprobes, option.Config.MapDir, e.pinPathPrefix); err != nil {
+		l.WithError(err).Warnf("TracingPolicyInitFsScanner failed!")
 	}
 
 	for _, h := range fimProgs {
@@ -838,6 +704,18 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 			return nil, nil
 		}
 		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))
+
+		// start fs-scanner if it hasn't started yet
+		if _, serr := os.Stat(fm.ScannerFifoPath); fsScannerCmd == nil || errors.Is(serr, os.ErrNotExist) {
+			var err error
+			fsScannerCmd, err = startFsScanner()
+			if err != nil {
+				logger.GetLogger().WithError(err).Warnf("Failed to start fs-scanner")
+				return nil, nil
+			}
+
+		}
+
 		progs, err := findHooks()
 		if err != nil {
 			logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")

@@ -20,6 +20,7 @@ import (
 	"os"
 	"os/exec"
 	"os/user"
+	"path"
 	"path/filepath"
 	"reflect"
 	"strconv"
@@ -42,6 +43,7 @@ import (
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/api/fileapi"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
+	fm "github.com/isovalent/hubble-fgs/pkg/sensors/file/utils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
@@ -164,7 +166,7 @@ func getInodeInfo(t *testing.T, fileName string) (uint64, string) {
 		return 0, ""
 	}
 
-	return stat.Ino, fmt.Sprintf("%d:%d", getDevMajor(stat.Dev), getDevMinor(stat.Dev))
+	return stat.Ino, fmt.Sprintf("%d:%d", fm.GetDevMajor(stat.Dev), fm.GetDevMinor(stat.Dev))
 }
 
 func genericArgFilenameChecker(fileName string, ino uint64, dev string) *ec.FileArgumentChecker {
@@ -204,10 +206,12 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 
 	specFname := createSpecFile(t, test_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -261,10 +265,12 @@ func runCopyTest(t *testing.T, exec_path string) {
 
 	specFname := createSpecFile(t, test_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -323,10 +329,12 @@ func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
 
 	specFname := createSpecFile(t, test_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -514,10 +522,12 @@ func TestFileDelete(t *testing.T) {
 
 	specFname := createSpecFile(t, test_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -635,10 +645,12 @@ func TestFileCreate(t *testing.T) {
 
 	specFname := createSpecFile(t, test_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -696,10 +708,12 @@ func TestLoadFileSensor(t *testing.T) {
 	test_path := filepath.Join(workingDir, "fim_test_dir")
 	specFname := createSpecFile(t, test_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	sens, err := observer.GetDefaultSensorsWithFile(t, context.TODO(), specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultSensorsWithFile error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 
 	sensorProgs := []tus.SensorProg{
 		0:  tus.SensorProg{Name: "vfs_fallocate", Type: ebpf.Kprobe},
@@ -850,10 +864,12 @@ func TestFileRename1(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NO
 
 	specFname := createSpecFile(t, test_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -896,10 +912,12 @@ func TestFileRename2(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_RE
 
 	specFname := createSpecFile(t, test_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -944,10 +962,12 @@ func TestFileRename3(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EX
 
 	specFname := createSpecFile(t, inside_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -993,10 +1013,12 @@ func TestFileRename4(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_REG_FI
 
 	specFname := createSpecFile(t, inside_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1041,10 +1063,12 @@ func TestFileRename5(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_E
 
 	specFname := createSpecFile(t, inside_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1092,10 +1116,12 @@ func TestFileRename6(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_F
 
 	specFname := createSpecFile(t, inside_path)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1152,10 +1178,12 @@ func TestFileRename7(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_E
 
 	specFname := createSpecFile(t, in1)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1216,10 +1244,12 @@ func TestFileRename8(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIREC
 
 	specFname := createSpecFile(t, in1)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1279,10 +1309,12 @@ func TestFileRename9(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_
 
 	specFname := createSpecFile(t, out1)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1348,10 +1380,12 @@ func TestFileRename10(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIR
 
 	specFname := createSpecFile(t, out1)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1413,10 +1447,12 @@ func TestFileRename11(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_
 
 	specFname := createSpecFile(t, out1)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1474,10 +1510,12 @@ func TestFileRename12(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_
 
 	specFname := createSpecFile(t, out1)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1527,10 +1565,12 @@ func TestFileRmdir(t *testing.T) {
 
 	specFname := createSpecFile(t, out)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 
@@ -1566,10 +1606,12 @@ func TestFileMkdir(t *testing.T) {
 
 	specFname := createSpecFile(t, out)
 
+	fm.ScannerFifoPath = path.Join(t.TempDir(), fm.ScannerFifoName)
 	obs, err := observer.GetDefaultObserverWithLib(t, ctx, specFname, runner.Conf().TetragonLib)
 	if err != nil {
 		t.Fatalf("GetDefaultObserverWithLib error: %s", err)
 	}
+	t.Cleanup(func() { TerminateFsScanner() })
 	observer.LoopEvents(ctx, t, &doneWG, &readyWG, obs)
 	readyWG.Wait()
 

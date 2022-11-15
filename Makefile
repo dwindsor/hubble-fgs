@@ -23,6 +23,7 @@ GO_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)'
 GO_OPERATOR_IMAGE_LDFLAGS="-X 'github.com/cilium/tetragon/pkg/version.Version=$(VERSION)' -s -w"
 
 OSS_DIR=./modules/tetragon-oss
+FS_SCANNER_BIN=./pkg/sensors/file/scanner/fs-scanner
 
 GOLANGCILINT_WANT_VERSION = $(shell grep docker.io/golangci/golangci-lint Dockerfile.golangci-lint | cut -f 2 -d ":" | cut -c2-)
 GOLANGCILINT_VERSION = $(shell golangci-lint version 2>/dev/null)
@@ -111,7 +112,7 @@ hubble-bpf-container:
 	$(CONTAINER_ENGINE) run -v $(CURDIR):/hubble-fgs -u $$(id -u) --name hubble-clang $(CLANG_IMAGE) $(MAKE) -C /hubble-fgs/bpf
 	$(CONTAINER_ENGINE) rm hubble-clang
 
-hubble-fgs:
+hubble-fgs: fs-scanner
 	$(GO) build -tags enterprise -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/hubble-fgs/
 
 hubble-enterprise:
@@ -120,12 +121,12 @@ hubble-enterprise:
 hubble-enterprise-operator:
 	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor -o $@ ./operator
 
+fs-scanner:
+	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -buildvcs=false -mod=vendor -o $(FS_SCANNER_BIN) ./cmd/fs-scanner/
+
 fgs-alignchecker:
 	make -C $(OSS_DIR) tetragon-alignchecker
 	cp $(OSS_DIR)/tetragon-alignchecker fgs-alignchecker
-
-fs-scanner: cmd/fs-scanner/fs-scanner.go
-	$(GO) build -gcflags=$(GO_GCFLAGS) -ldflags=$(GO_LDFLAGS) -mod=vendor ./cmd/fs-scanner/
 
 .PHONY: ksyms
 ksyms:
@@ -133,9 +134,9 @@ ksyms:
 	cp $(OSS_DIR)/ksyms ksyms
 
 hubble-fgs-image:
+	GOOS=linux GOARCH=amd64 $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) -o $(FS_SCANNER_BIN) ./cmd/fs-scanner/
 	GOOS=linux GOARCH=amd64 $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-fgs/
 	GOOS=linux GOARCH=amd64 $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/hubble-enterprise/
-	GOOS=linux GOARCH=amd64 $(GO) build -tags enterprise,netgo -mod=vendor -ldflags=$(GO_IMAGE_LDFLAGS) ./cmd/fs-scanner/
 
 hubble-enterprise-operator-image:
 	CGO_ENABLED=0 $(GO) build -ldflags=$(GO_OPERATOR_IMAGE_LDFLAGS) -mod=vendor -o hubble-enterprise-operator ./operator

@@ -39,6 +39,7 @@ import (
 
 	// Imported to allow sensors to be initialized inside init().
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/file"
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/sockmap"
 
 	// Add enterprise-specific filters to the global registry
@@ -139,6 +140,7 @@ func hubbleFGSExecute() error {
 	// Get observer from configFile
 	obs := observer.NewObserver(configFile)
 	defer func() {
+		file.TerminateFsScanner()
 		obs.PrintStats()
 		obs.RemovePrograms()
 	}()
