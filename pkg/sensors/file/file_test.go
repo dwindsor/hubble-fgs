@@ -142,6 +142,12 @@ func createSpecFile(t *testing.T, test_path string) string {
 		t.Fatal(err)
 	}
 
+	t.Cleanup(func() {
+		if err := os.Remove(specFname); err != nil {
+			t.Log(err)
+		}
+	})
+
 	return specFname
 }
 
