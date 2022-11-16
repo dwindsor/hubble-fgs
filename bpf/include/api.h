@@ -224,6 +224,8 @@ static int BPF_FUNC(send_signal, uint32_t sig);
 
 static int BPF_FUNC(override_return, void *regs, uint64_t rc);
 
+static long BPF_FUNC(loop, __u32 nr_loops, void *callback_fn, void *callback_ctx, __u64 flags);
+
 /** LLVM built-ins, mem*() routines work for constant size */
 
 #ifndef lock_xadd
