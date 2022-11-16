@@ -417,6 +417,7 @@ func execute() error {
 	flags.Bool(keyEnableProcessCred, false, "Enable process_cred events")
 	flags.Bool(keyEnableProcessNs, false, "Enable namespace information in process_exec and process_kprobe events")
 	flags.Uint(keyEventQueueSize, 10000, "Set the size of the internal event queue.")
+	flags.String(keyProtocolShift, "auto", "Shfit the socket protocol field (true) or not (false), or discover automatically (auto)")
 
 	// Config files
 	flags.String(keyConfigFile, "", "Configuration file to load from")

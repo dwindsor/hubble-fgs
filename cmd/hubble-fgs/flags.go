@@ -66,6 +66,8 @@ const (
 	keyEventQueueSize = "event-queue-size"
 
 	keyReleasePinnedBPF = "release-pinned-bpf"
+
+	keyProtocolShift = "protocol-shift"
 )
 
 var (
@@ -131,4 +133,13 @@ func readAndSetFlags() {
 	option.Config.EventQueueSize = viper.GetUint(keyEventQueueSize)
 
 	option.Config.ReleasePinned = viper.GetBool(keyReleasePinnedBPF)
+
+	protocolShift := viper.GetString(keyProtocolShift)
+	if protocolShift == "false" {
+		enterpriseOption.Config.ProtocolShift = enterpriseOption.ShiftFalse
+	} else if protocolShift == "true" {
+		enterpriseOption.Config.ProtocolShift = enterpriseOption.ShiftTrue
+	} else {
+		enterpriseOption.Config.ProtocolShift = enterpriseOption.ShiftAuto
+	}
 }

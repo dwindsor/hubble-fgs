@@ -29,6 +29,7 @@ import (
 	"github.com/cilium/tetragon/pkg/reader/proc"
 	"github.com/cilium/tetragon/pkg/sensors"
 	"github.com/cilium/tetragon/pkg/sensors/program"
+	enterpriseOption "github.com/isovalent/hubble-fgs/pkg/option"
 )
 
 const (
@@ -278,8 +279,23 @@ func getProtocolShift() (bool, error) {
 	 * Internal version that doesn't need a lock because we should already be
 	 * locked. ONLY call from a function that gets the loading.Lock()
 	 */
+
+	/* First, has it already been detected?
+	 */
 	if protocolShiftDetected {
 		return protocolShift, nil
+	}
+
+	/* Next, check if we have overriden the discovery.
+	 */
+	if enterpriseOption.Config.ProtocolShift == enterpriseOption.ShiftTrue {
+		protocolShift = true
+		protocolShiftDetected = true
+		return true, nil
+	} else if enterpriseOption.Config.ProtocolShift == enterpriseOption.ShiftFalse {
+		protocolShift = false
+		protocolShiftDetected = true
+		return false, nil
 	}
 
 	gettingProtocolShift = true
@@ -462,6 +478,6 @@ func ConfigureProtocolShift(mapDir string) error {
 		config.ProtoShift = 1
 	}
 	m.Update(key, config)
-	logger.GetLogger().WithField("config", config.String()).Info("Configured protocol shift: ")
+	logger.GetLogger().Infof("Configured protocol shift: %t", protocolShift)
 	return nil
 }
