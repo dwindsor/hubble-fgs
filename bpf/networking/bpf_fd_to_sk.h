@@ -78,21 +78,28 @@ fd_to_sk(struct task_struct *p, int filedesc, u16 required_protocol,
 	 * struct layout, but have failed to update their version number, instead of
 	 * relying on the kernel version number, we instead test whether we need to shift
 	 * the protocol number against a known FD.
+	 * 
+	 * As a consequence of the BTF correctly identifying the location of an 8 bit
+	 * protocol field, we would actually have a set of flags occupying our upper 8
+	 * bits, causing direct comparisons to known protocol numbers to fail. As we do
+	 * not intend to support protocol numbers > 255 currently, we shall simply mask
+	 * off these upper 8 bits to prevent these from upsetting our comparison.
 	 */
 	if (!discover_proto_shift) {
 		if (*proto_shift) {
 			read_protocol >>= 8;
+		} else {
+			read_protocol &= 0xff;
 		}
 		if (proto_ret == 0 && read_protocol != required_protocol) {
 			return 0;
 		}
 	} else if (proto_shift) {
 		// Check if we need to shift the protocol to match the required_protocol
-		if (read_protocol == required_protocol) {
+		if ((read_protocol & 0xff) == required_protocol) {
 			*proto_shift = PROTO_SHIFT_FALSE;
 		} else if (read_protocol >> 8 == required_protocol) {
 			*proto_shift = PROTO_SHIFT_TRUE;
-			read_protocol >>= 8;
 		} else {
 			*proto_shift = PROTO_SHIFT_UNKNOWN;
 		}
