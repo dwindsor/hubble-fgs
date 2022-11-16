@@ -64,6 +64,8 @@ const (
 	keyNetnsDir = "netns-dir"
 
 	keyEventQueueSize = "event-queue-size"
+
+	keyReleasePinnedBPF = "release-pinned-bpf"
 )
 
 var (
@@ -127,4 +129,6 @@ func readAndSetFlags() {
 	exportAggregationBufferSize = viper.GetUint64(keyExportAggregationBufferSize)
 
 	option.Config.EventQueueSize = viper.GetUint(keyEventQueueSize)
+
+	option.Config.ReleasePinned = viper.GetBool(keyReleasePinnedBPF)
 }

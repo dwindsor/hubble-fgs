@@ -133,6 +133,11 @@ func hubbleFGSExecute() error {
 	option.Config.BpfDir = observerDir
 	option.Config.MapDir = observerDir
 
+	// Check if option to remove old BPF and maps is enabled.
+	if option.Config.ReleasePinned {
+		os.RemoveAll(observerDir)
+	}
+
 	// Get observer from configFile
 	obs := observer.NewObserver(configFile)
 	defer func() {
@@ -427,6 +432,10 @@ func execute() error {
 
 	// Network namespace options
 	flags.String(keyNetnsDir, "/var/run/docker/netns/", "Network namespace dir")
+
+	// Provide option to remove existing pinned BPF programs and maps in
+	// Tetragon's observer dir. Useful for doing upgrades/downgrades.
+	flags.Bool(keyReleasePinnedBPF, false, "Release all pinned BPF programs and maps in Tetragon BPF directory")
 
 	viper.BindPFlags(flags)
 	return rootCmd.Execute()
