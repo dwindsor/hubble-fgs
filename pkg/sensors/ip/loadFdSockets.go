@@ -286,7 +286,7 @@ func getProtocolShift() (bool, error) {
 		return protocolShift, nil
 	}
 
-	/* Next, check if we have overriden the discovery.
+	/* Next, check if we have overridden the discovery.
 	 */
 	if enterpriseOption.Config.ProtocolShift == enterpriseOption.ShiftTrue {
 		protocolShift = true
