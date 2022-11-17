@@ -73,21 +73,33 @@ __kprobe_check_kill_permission(struct pt_regs *ctx)
 	if (!sk)
 		return 0;
 
+	if (config->discover_proto_shift) {
+		/* Reset config->discover_proto_shift to indicate that we have
+		 * at least attempted to discover the protocol shift. If we failed
+		 * the proto_shift will be set to PROTO_SHIFT_UNKNOWN.
+		 */
+		config->discover_proto_shift = 0;
+		/* Nothing else to do!
+		 */
+		return 0;
+	}
+
 	cookie = (u64)sk;
 
 	value = execve_map_get_noinit(pid);
 	if (!value)
 		return 0;
 
-	if (!config->discover_proto_shift) {
-		sockmap_process.key.pid = value->key.pid;
-		sockmap_process.key.ktime = value->key.ktime;
+	sockmap_process.key.pid = value->key.pid;
+	sockmap_process.key.ktime = value->key.ktime;
 
-		/* Store the socket even if family or protocol couldn't be read.
-		*/
-		add_socketmap(&cookie, 0, &sockmap_process);
-	}
+	/* Store the socket even if family or protocol couldn't be read.
+	*/
+	add_socketmap(&cookie, 0, &sockmap_process);
 
+	/* If we can't read the address family or protocol, then we can't
+	 * report the socket.
+	 */
 	if (!read_ok)
 		return 0;
 
@@ -104,10 +116,6 @@ __kprobe_check_kill_permission(struct pt_regs *ctx)
 		   (const void *)_(&(sk->__sk_common.skc_state)));
 	config->protocol = required_protocol;
 	config->sockaddr = cookie;
-	// If this request was to discover the protocol shift, zero the entry
-	// to indicate that it has been actioned. If it was a regular request,
-	// discover_proto_shift will already be zero.
-	config->discover_proto_shift = 0;
 	if (family == AF_INET) {
 		config->ipv6 = 0;
 		config->saddr[0] = 0;

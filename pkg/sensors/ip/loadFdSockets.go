@@ -317,7 +317,7 @@ func getProtocolShift() (bool, error) {
 
 	// Create a listener
 	syscall.ForkLock.Lock()
-	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, 0)
+	fd, err := syscall.Socket(syscall.AF_INET, syscall.SOCK_DGRAM, syscall.IPPROTO_UDP)
 	syscall.ForkLock.Unlock()
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Unable to create socket for FD Lookup")
