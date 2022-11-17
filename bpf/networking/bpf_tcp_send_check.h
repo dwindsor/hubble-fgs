@@ -5,16 +5,16 @@
 #include "bpf_events.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
-#include "bpf_burst_process.h"
+#include "bpf_process_network_watermarks.h"
 #include "netns.h"
 #include "tlsmsg.h"
 
 struct tcp_send_check_sample_cfg {
 	__u64 ktime;
-	__u64 burstEnable;
-	__u64 burstAvgWindowSize;
-	__u64 burstWindowSizeNs;
-	__u64 burstTriggerMult;
+	__u64 watermarksEnable;
+	__u64 watermarksAvgWindowSize;
+	__u64 watermarksWindowSizeNs;
+	__u64 watermarksBurstTriggerMult;
 	__u32 bucket00;
 	__u32 bucket01;
 	__u32 bucket10;
@@ -165,13 +165,13 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 		perf_event_output(ctx, &tcpmon_map, BPF_F_CURRENT_CPU, val,
 				  size);
 	out:
-		if (cfg->burstEnable) {
+		if (cfg->watermarksEnable) {
 			if (process->key.pid != 0) {
-				struct process_network_burst_config c = {
+				struct process_network_watermarks_config c = {
 					.avg_window_size_ms =
-						cfg->burstAvgWindowSize,
-					.window_size = cfg->burstWindowSizeNs,
-					.trigger_mult = cfg->burstTriggerMult,
+						cfg->watermarksAvgWindowSize,
+					.window_size = cfg->watermarksWindowSizeNs,
+					.burst_trigger_mult = cfg->watermarksBurstTriggerMult,
 				};
 				u64 tcp_bytes_sent, tcp_bytes_received;
 				probe_read(&tcp_bytes_sent, sizeof(__u64),
@@ -179,17 +179,17 @@ __event_tcp_send_check(struct pt_regs *ctx, struct sock *skp, bool ipv6)
 				probe_read(&tcp_bytes_received, sizeof(__u64),
 					   _(&(tcp->bytes_received)));
 				if (tcp_bytes_sent > process->sent) {
-					process_network_burst(
+					process_network_watermarks(
 						ctx, process, IPPROTO_TCP,
-						BURST_KEY_SEND_EGRESS,
+						WATERMARKS_KEY_SEND_EGRESS,
 						tcp_bytes_sent - process->sent,
 						&c);
 					process->sent = tcp_bytes_sent;
 				}
 				if (tcp_bytes_received > process->received) {
-					process_network_burst(
+					process_network_watermarks(
 						ctx, process, IPPROTO_TCP,
-						BURST_KEY_SEND_INGRESS,
+						WATERMARKS_KEY_SEND_INGRESS,
 						tcp_bytes_received -
 							process->received,
 						&c);

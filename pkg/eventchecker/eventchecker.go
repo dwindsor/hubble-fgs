@@ -295,7 +295,7 @@ func eventGetProcess(ev fgsEvent) *tetragon.Process {
 		return v.Process
 	case *tetragon.ProcessHttp:
 		return v.Process
-	case *tetragon.ProcessNetworkBurst:
+	case *tetragon.ProcessNetworkWatermark:
 		return v.Process
 	case *tetragon.ProcessExit:
 		return v.Process
@@ -324,7 +324,7 @@ func eventGetParent(ev fgsEvent) *tetragon.Process {
 		return nil
 	case *tetragon.ProcessHttp:
 		return nil
-	case *tetragon.ProcessNetworkBurst:
+	case *tetragon.ProcessNetworkWatermark:
 		return v.Parent
 	case *tetragon.ProcessDns:
 		return nil
@@ -479,11 +479,11 @@ func checkEvent(r *tetragon.GetEventsResponse, l Logger, types ...tetragon.Event
 		}
 		return ev.InterfaceStats, nil
 
-	case *tetragon.GetEventsResponse_ProcessNetworkBurst:
-		if err := checkTypes(tetragon.EventType_PROCESS_NETWORK_BURST); err != nil {
+	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
+		if err := checkTypes(tetragon.EventType_PROCESS_NETWORK_WATERMARK); err != nil {
 			return nil, err
 		}
-		return ev.ProcessNetworkBurst, nil
+		return ev.ProcessNetworkWatermark, nil
 
 	case *tetragon.GetEventsResponse_Test:
 		if err := checkTypes(tetragon.EventType_TEST); err != nil {
@@ -615,11 +615,11 @@ func NewHTTPEventChecker() *EventChainChecker {
 	}
 }
 
-// NewProcessNetworkBurstEventChecker creates a new EventChainChecker for Process Network Burst events
-func NewProcessNetworkBurstEventChecker() *EventChainChecker {
+// NewProcessNetworkWatermarksEventChecker creates a new EventChainChecker for Process Network Watermarks events
+func NewProcessNetworkWatermarksEventChecker() *EventChainChecker {
 	return &EventChainChecker{
 		responseCheck: func(r *tetragon.GetEventsResponse, l Logger) (fgsEvent, error) {
-			return checkEvent(r, l, tetragon.EventType_PROCESS_NETWORK_BURST)
+			return checkEvent(r, l, tetragon.EventType_PROCESS_NETWORK_WATERMARK)
 		},
 		eventCheck: func(ev fgsEvent, l Logger) error {
 			return nil
@@ -1813,68 +1813,68 @@ func (o *ContainerCheckerAND) WithImageName(arg StringArg) *ContainerCheckerAND 
 	return o
 }
 
-// ProcessNetworkBurstChecker checks the fields of a ProcessNetworkBurst event
-type ProcessNetworkBurstChecker interface {
-	// Check checks a ProcessNetworkBurst event
-	Check(*tetragon.ProcessNetworkBurst, Logger) error
+// ProcessNetworkWatermarksChecker checks the fields of a ProcessNetworkWatermarks event
+type ProcessNetworkWatermarksChecker interface {
+	// Check checks a ProcessNetworkWatermarks event
+	Check(*tetragon.ProcessNetworkWatermark, Logger) error
 }
 
-// ProcessNetworkBurstCheckerFn wraps a function that checks the fields of a ProcessNetworkBurst event
-type ProcessNetworkBurstCheckerFn func(*tetragon.ProcessNetworkBurst, Logger) error
+// ProcessNetworkWatermarksCheckerFn wraps a function that checks the fields of a ProcessNetworkWatermarks event
+type ProcessNetworkWatermarksCheckerFn func(*tetragon.ProcessNetworkWatermark, Logger) error
 
 // Check implements ResponseChecker interface
-func (f ProcessNetworkBurstCheckerFn) Check(c *tetragon.ProcessNetworkBurst, log Logger) error {
+func (f ProcessNetworkWatermarksCheckerFn) Check(c *tetragon.ProcessNetworkWatermark, log Logger) error {
 	return f(c, log)
 }
 
-// ProcessNetworkBurstWithBurstDirection verifies that the burst direction field matches the StringMatcher
-func ProcessNetworkBurstWithBurstDirection(sm StringMatcher) ProcessNetworkBurstChecker {
-	return ProcessNetworkBurstWithString(
+// ProcessNetworkWatermarksWithWatermarksDirection verifies that the watermarks direction field matches the StringMatcher
+func ProcessNetworkWatermarksWithWatermarksDirection(sm StringMatcher) ProcessNetworkWatermarksChecker {
+	return ProcessNetworkWatermarksWithString(
 		sm,
-		func(t *tetragon.ProcessNetworkBurst) string {
+		func(t *tetragon.ProcessNetworkWatermark) string {
 			return t.Direction
 		},
 		"Direction",
 	)
 }
 
-// ProcessNetworkBurstWithBurstState verifies that the burst state field matches the StringMatcher
-func ProcessNetworkBurstWithBurstState(sm StringMatcher) ProcessNetworkBurstChecker {
-	return ProcessNetworkBurstWithString(
+// ProcessNetworkWatermarksWithWatermarksState verifies that the watermarks state field matches the StringMatcher
+func ProcessNetworkWatermarksWithWatermarksState(sm StringMatcher) ProcessNetworkWatermarksChecker {
+	return ProcessNetworkWatermarksWithString(
 		sm,
-		func(t *tetragon.ProcessNetworkBurst) string {
-			return t.BurstState
+		func(t *tetragon.ProcessNetworkWatermark) string {
+			return t.WatermarksState
 		},
-		"BurstState",
+		"WatermarksState",
 	)
 }
 
-// ProcessNetworkBurstWithProtocol verifies that the protocol field matches the StringMatcher
-func ProcessNetworkBurstWithProtocol(sm StringMatcher) ProcessNetworkBurstChecker {
-	return ProcessNetworkBurstWithString(
+// ProcessNetworkWatermarksWithProtocol verifies that the protocol field matches the StringMatcher
+func ProcessNetworkWatermarksWithProtocol(sm StringMatcher) ProcessNetworkWatermarksChecker {
+	return ProcessNetworkWatermarksWithString(
 		sm,
-		func(t *tetragon.ProcessNetworkBurst) string {
+		func(t *tetragon.ProcessNetworkWatermark) string {
 			return t.Protocol
 		},
 		"Protocol",
 	)
 }
 
-func ProcessNetworkBurstWithString(
+func ProcessNetworkWatermarksWithString(
 	sm StringMatcher,
-	getter func(*tetragon.ProcessNetworkBurst) string,
+	getter func(*tetragon.ProcessNetworkWatermark) string,
 	desc string, // desc is used for helpful error messages
-) ProcessNetworkBurstChecker {
+) ProcessNetworkWatermarksChecker {
 	matcher := sm.GetMatcher()
-	return ProcessNetworkBurstCheckerFn(func(t *tetragon.ProcessNetworkBurst, log Logger) error {
+	return ProcessNetworkWatermarksCheckerFn(func(t *tetragon.ProcessNetworkWatermark, log Logger) error {
 		if t == nil {
-			return fmt.Errorf("ProcessNetworkBurst is nil and cannot match %s using %v", desc, sm)
+			return fmt.Errorf("ProcessNetworkWatermarks is nil and cannot match %s using %v", desc, sm)
 		}
 		s := getter(t)
 		if err := matcher(s); err != nil {
-			return fmt.Errorf("failed ProcessNetworkBurst check on %s: %w", desc, err)
+			return fmt.Errorf("failed ProcessNetworkWatermarks check on %s: %w", desc, err)
 		}
-		log.Logf("**** MATCH ProcessNetworkBurst on %s: %s", desc, s)
+		log.Logf("**** MATCH ProcessNetworkWatermarks on %s: %s", desc, s)
 		return nil
 	})
 }
@@ -2094,19 +2094,19 @@ func (e *EventChainChecker) HasHTTP(httpcheck HTTPChecker) *EventChainChecker {
 	return e
 }
 
-// ProcessNetworkBurstCheckerAND can be used to build a check that is a conjunction of other checkers
-type ProcessNetworkBurstCheckerAND struct {
-	checks []ProcessNetworkBurstChecker
+// ProcessNetworkWatermarksCheckerAND can be used to build a check that is a conjunction of other checkers
+type ProcessNetworkWatermarksCheckerAND struct {
+	checks []ProcessNetworkWatermarksChecker
 }
 
-// NewProcessNetworkBurstChecker creates a new ProcessNetworkBurstCheckerAND to verify a series of checks on
-// a ProcessNetworkBurst event
-func NewProcessNetworkBurstChecker() *ProcessNetworkBurstCheckerAND {
-	return &ProcessNetworkBurstCheckerAND{}
+// NewProcessNetworkWatermarksChecker creates a new ProcessNetworkWatermarksCheckerAND to verify a series of checks on
+// a ProcessNetworkWatermarks event
+func NewProcessNetworkWatermarksChecker() *ProcessNetworkWatermarksCheckerAND {
+	return &ProcessNetworkWatermarksCheckerAND{}
 }
 
 // Check implements ResponseChecker interface
-func (o *ProcessNetworkBurstCheckerAND) Check(t *tetragon.ProcessNetworkBurst, l Logger) error {
+func (o *ProcessNetworkWatermarksCheckerAND) Check(t *tetragon.ProcessNetworkWatermark, l Logger) error {
 	for i := range o.checks {
 		if err := o.checks[i].Check(t, l); err != nil {
 			return err
@@ -2115,37 +2115,37 @@ func (o *ProcessNetworkBurstCheckerAND) Check(t *tetragon.ProcessNetworkBurst, l
 	return nil
 }
 
-// WithBurstDirection adds a burst direction check to a ProcessNetworkBurstCheckerAND
-func (o *ProcessNetworkBurstCheckerAND) WithBurstDirection(arg StringArg) *ProcessNetworkBurstCheckerAND {
+// WithWatermarksDirection adds a watermarks direction check to a ProcessNetworkWatermarksCheckerAND
+func (o *ProcessNetworkWatermarksCheckerAND) WithWatermarksDirection(arg StringArg) *ProcessNetworkWatermarksCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, ProcessNetworkBurstWithBurstDirection(sm))
+	o.checks = append(o.checks, ProcessNetworkWatermarksWithWatermarksDirection(sm))
 	return o
 }
 
-// WithBurstState adds a burst state check to a ProcessNetworkBurstCheckerAND
-func (o *ProcessNetworkBurstCheckerAND) WithBurstState(arg StringArg) *ProcessNetworkBurstCheckerAND {
+// WithWatermarksState adds a watermarks state check to a ProcessNetworkWatermarksCheckerAND
+func (o *ProcessNetworkWatermarksCheckerAND) WithWatermarksState(arg StringArg) *ProcessNetworkWatermarksCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, ProcessNetworkBurstWithBurstState(sm))
+	o.checks = append(o.checks, ProcessNetworkWatermarksWithWatermarksState(sm))
 	return o
 }
 
-// WithBurstProtocol adds a burst protocol check to a ProcessNetworkBurstCheckerAND
-func (o *ProcessNetworkBurstCheckerAND) WithBurstProtocol(arg StringArg) *ProcessNetworkBurstCheckerAND {
+// WithWatermarksProtocol adds a watermarks protocol check to a ProcessNetworkWatermarksCheckerAND
+func (o *ProcessNetworkWatermarksCheckerAND) WithWatermarksProtocol(arg StringArg) *ProcessNetworkWatermarksCheckerAND {
 	sm := stringMatcherFromArg(arg)
-	o.checks = append(o.checks, ProcessNetworkBurstWithProtocol(sm))
+	o.checks = append(o.checks, ProcessNetworkWatermarksWithProtocol(sm))
 	return o
 }
 
-// HasProcessNetworkBurst adds a Response.ProcessNetworkBurst check to a ProcessNetworkBurst checker
-func (e *EventChainChecker) HasProcessNetworkBurst(ProcessNetworkBurstcheck ProcessNetworkBurstChecker) *EventChainChecker {
+// HasProcessNetworkWatermarks adds a Response.ProcessNetworkWatermarks check to a ProcessNetworkWatermarks checker
+func (e *EventChainChecker) HasProcessNetworkWatermarks(ProcessNetworkWatermarkscheck ProcessNetworkWatermarksChecker) *EventChainChecker {
 	oldEventCheck := e.eventCheck
 	e.eventCheck = func(e fgsEvent, l Logger) error {
 		if err := oldEventCheck(e, l); err != nil {
 			return err
 		}
 
-		if ProcessNetworkBurstEv, ok := e.(*tetragon.ProcessNetworkBurst); ok {
-			return ProcessNetworkBurstcheck.Check(ProcessNetworkBurstEv, l)
+		if ProcessNetworkWatermarksEv, ok := e.(*tetragon.ProcessNetworkWatermark); ok {
+			return ProcessNetworkWatermarkscheck.Check(ProcessNetworkWatermarksEv, l)
 		}
 		return fmt.Errorf("event has type %T: not a http event", e)
 

@@ -20,7 +20,6 @@ import (
 	_ "github.com/cilium/tetragon/pkg/sensors/tracing"
 
 	// Import GRPC layer sensor handlers
-	_ "github.com/isovalent/hubble-fgs/pkg/grpc/burst"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/exec"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/file"
@@ -28,6 +27,7 @@ import (
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/iface"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/kfree"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
+	_ "github.com/isovalent/hubble-fgs/pkg/grpc/networkWatermarks"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/sockinfo"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/test"
 	_ "github.com/isovalent/hubble-fgs/pkg/grpc/tls"

@@ -67,11 +67,14 @@ struct msg_ipv4_key {
 	__u8 pad[6];
 }; // All fields aligned so no 'packed' attribute.
 
-struct msg_process_network_burst_event {
+struct msg_process_network_watermarks_event {
 	struct msg_common common;
 	struct msg_execve_key key;
 	__u32 protocol;
-	__u32 burst_start_dir;
+	__u8 direction;
+	__u8 state;
+	__u8 type;
+	__u8 pad;
 	__u64 window_size;
 	__u64 hist_avg;
 	__u64 hist_trigger;

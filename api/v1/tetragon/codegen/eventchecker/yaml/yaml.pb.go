@@ -140,24 +140,25 @@ func (conf *EventCheckerConf) WriteYamlFile(file string) error {
 }
 
 type eventCheckerHelper struct {
-	ProcessExec         *eventchecker.ProcessExecChecker         `json:"exec,omitempty"`
-	ProcessExit         *eventchecker.ProcessExitChecker         `json:"exit,omitempty"`
-	ProcessKprobe       *eventchecker.ProcessKprobeChecker       `json:"kprobe,omitempty"`
-	ProcessTracepoint   *eventchecker.ProcessTracepointChecker   `json:"tracepoint,omitempty"`
-	Test                *eventchecker.TestChecker                `json:"test,omitempty"`
-	ProcessLoader       *eventchecker.ProcessLoaderChecker       `json:"loader,omitempty"`
-	InterfaceStats      *eventchecker.InterfaceStatsChecker      `json:"interfaceStats,omitempty"`
-	ProcessConnect      *eventchecker.ProcessConnectChecker      `json:"connect,omitempty"`
-	ProcessClose        *eventchecker.ProcessCloseChecker        `json:"close,omitempty"`
-	ProcessListen       *eventchecker.ProcessListenChecker       `json:"listen,omitempty"`
-	ProcessAccept       *eventchecker.ProcessAcceptChecker       `json:"accept,omitempty"`
-	ProcessIpError      *eventchecker.ProcessIpErrorChecker      `json:"ipError,omitempty"`
-	ProcessFile         *eventchecker.ProcessFileChecker         `json:"file,omitempty"`
-	ProcessSockStats    *eventchecker.ProcessSockStatsChecker    `json:"sockStats,omitempty"`
-	Tls                 *eventchecker.TlsChecker                 `json:"tls,omitempty"`
-	ProcessHttp         *eventchecker.ProcessHttpChecker         `json:"http,omitempty"`
-	ProcessNetworkBurst *eventchecker.ProcessNetworkBurstChecker `json:"networkBurst,omitempty"`
-	ProcessDns          *eventchecker.ProcessDnsChecker          `json:"dns,omitempty"`
+	ProcessExec             *eventchecker.ProcessExecChecker             `json:"exec,omitempty"`
+	ProcessExit             *eventchecker.ProcessExitChecker             `json:"exit,omitempty"`
+	ProcessKprobe           *eventchecker.ProcessKprobeChecker           `json:"kprobe,omitempty"`
+	ProcessTracepoint       *eventchecker.ProcessTracepointChecker       `json:"tracepoint,omitempty"`
+	Test                    *eventchecker.TestChecker                    `json:"test,omitempty"`
+	ProcessLoader           *eventchecker.ProcessLoaderChecker           `json:"loader,omitempty"`
+	InterfaceStats          *eventchecker.InterfaceStatsChecker          `json:"interfaceStats,omitempty"`
+	ProcessConnect          *eventchecker.ProcessConnectChecker          `json:"connect,omitempty"`
+	ProcessClose            *eventchecker.ProcessCloseChecker            `json:"close,omitempty"`
+	ProcessListen           *eventchecker.ProcessListenChecker           `json:"listen,omitempty"`
+	ProcessAccept           *eventchecker.ProcessAcceptChecker           `json:"accept,omitempty"`
+	ProcessIpError          *eventchecker.ProcessIpErrorChecker          `json:"ipError,omitempty"`
+	ProcessFile             *eventchecker.ProcessFileChecker             `json:"file,omitempty"`
+	ProcessSockStats        *eventchecker.ProcessSockStatsChecker        `json:"sockStats,omitempty"`
+	Tls                     *eventchecker.TlsChecker                     `json:"tls,omitempty"`
+	ProcessHttp             *eventchecker.ProcessHttpChecker             `json:"http,omitempty"`
+	ProcessNetworkBurst     *eventchecker.ProcessNetworkBurstChecker     `json:"networkBurst,omitempty"`
+	ProcessNetworkWatermark *eventchecker.ProcessNetworkWatermarkChecker `json:"networkWatermark,omitempty"`
+	ProcessDns              *eventchecker.ProcessDnsChecker              `json:"dns,omitempty"`
 }
 
 // EventChecker is a wrapper around the EventChecker interface to help unmarshaling
@@ -274,6 +275,12 @@ func (checker *EventChecker) UnmarshalJSON(b []byte) error {
 		}
 		eventChecker = helper.ProcessNetworkBurst
 	}
+	if helper.ProcessNetworkWatermark != nil {
+		if eventChecker != nil {
+			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessNetworkWatermark, eventChecker)
+		}
+		eventChecker = helper.ProcessNetworkWatermark
+	}
 	if helper.ProcessDns != nil {
 		if eventChecker != nil {
 			return fmt.Errorf("EventChecker: cannot define more than one checker, got %T but already had %T", helper.ProcessDns, eventChecker)
@@ -322,6 +329,8 @@ func (checker EventChecker) MarshalJSON() ([]byte, error) {
 		helper.ProcessHttp = c
 	case *eventchecker.ProcessNetworkBurstChecker:
 		helper.ProcessNetworkBurst = c
+	case *eventchecker.ProcessNetworkWatermarkChecker:
+		helper.ProcessNetworkWatermark = c
 	case *eventchecker.ProcessDnsChecker:
 		helper.ProcessDns = c
 	default:

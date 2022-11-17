@@ -145,7 +145,7 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 			Tcp: v1alpha1.TcpPolicySpec{
 				Enable:        true,
 				StatsInterval: 0,
-				Burst:         v1alpha1.TcpBurstPolicySpec{},
+				Watermarks:    v1alpha1.TcpWatermarksPolicySpec{},
 			},
 		}
 	case SENS_HTTP:
@@ -168,12 +168,12 @@ func startSensors(cfg int, t *testing.T) SensorsHandle {
 				Cgroup:                   true,
 				StatsInterval:            0,
 				DeleteIdleSocketInterval: 0,
-				Burst:                    v1alpha1.UdpBurstPolicySpec{},
+				Watermarks:               v1alpha1.UdpWatermarksPolicySpec{},
 			},
 			Tcp: v1alpha1.TcpPolicySpec{
 				Enable:        true,
 				StatsInterval: 0,
-				Burst:         v1alpha1.TcpBurstPolicySpec{},
+				Watermarks:    v1alpha1.TcpWatermarksPolicySpec{},
 			},
 		}
 	case SENS_INITIAL:

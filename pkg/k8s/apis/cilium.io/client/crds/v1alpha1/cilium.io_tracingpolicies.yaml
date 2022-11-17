@@ -460,7 +460,8 @@ spec:
                     properties:
                       enable:
                         default: true
-                        description: Enable burst checks for end events from userland
+                        description: Enable watermarks checks for end events from
+                          userland
                         type: boolean
                       interval:
                         default: 1000
@@ -565,6 +566,20 @@ spec:
                     required:
                     - enable
                     type: object
+                  networkWatermarksExitGen:
+                    description: UDP and TCP watermarks exit checking policy specification
+                    properties:
+                      enable:
+                        default: true
+                        description: Enable watermarks checks for end events from
+                          userland
+                        type: boolean
+                      interval:
+                        default: 1000
+                        description: Configures the checking interval in milliseconds
+                        format: int32
+                        type: integer
+                    type: object
                   nop:
                     description: Network policy specification
                     properties:
@@ -593,9 +608,15 @@ spec:
                       burst:
                         description: Network policy specification
                         properties:
+                          burstTriggerPercent:
+                            default: 100
+                            description: Configures the percent over average deemed
+                              to be a burst
+                            format: int32
+                            type: integer
                           enable:
                             default: false
-                            description: Enable TCP burst observability
+                            description: Enable TCP watermarks observability
                             type: boolean
                           triggerPercent:
                             default: 100
@@ -605,7 +626,8 @@ spec:
                             type: integer
                           windowSize:
                             default: 1000
-                            description: Configures the burst window size in milliseconds
+                            description: Configures the watermarks window size in
+                              milliseconds
                             format: int32
                             type: integer
                         type: object
@@ -633,6 +655,32 @@ spec:
                         description: Configures the Stat collection interval in seconds
                         format: int32
                         type: integer
+                      watermarks:
+                        description: Network policy specification
+                        properties:
+                          burstTriggerPercent:
+                            default: 100
+                            description: Configures the percent over average deemed
+                              to be a burst
+                            format: int32
+                            type: integer
+                          enable:
+                            default: false
+                            description: Enable TCP watermarks observability
+                            type: boolean
+                          triggerPercent:
+                            default: 100
+                            description: Configures the percent over average deemed
+                              to be a burst
+                            format: int32
+                            type: integer
+                          windowSize:
+                            default: 1000
+                            description: Configures the watermarks window size in
+                              milliseconds
+                            format: int32
+                            type: integer
+                        type: object
                     required:
                     - enable
                     type: object
@@ -670,11 +718,18 @@ spec:
                     description: UDP policy specification
                     properties:
                       burst:
-                        description: Network policy specification
+                        description: Network policy specification kubebuilder:deprecatedversion:warning="burst
+                          is deprecated. Use watermarks instead"
                         properties:
+                          burstTriggerPercent:
+                            default: 100
+                            description: Configures the percent over average deemed
+                              to be a burst
+                            format: int32
+                            type: integer
                           enable:
                             default: false
-                            description: Enable UDP burst observability
+                            description: Enable UDP watermarks observability
                             type: boolean
                           triggerPercent:
                             default: 100
@@ -742,6 +797,31 @@ spec:
                         description: Configures the Stat collection interval in seconds
                         format: int32
                         type: integer
+                      watermarks:
+                        description: Network policy specification
+                        properties:
+                          burstTriggerPercent:
+                            default: 100
+                            description: Configures the percent over average deemed
+                              to be a burst
+                            format: int32
+                            type: integer
+                          enable:
+                            default: false
+                            description: Enable UDP watermarks observability
+                            type: boolean
+                          triggerPercent:
+                            default: 100
+                            description: Configures the percent over average deemed
+                              to be a burst
+                            format: int32
+                            type: integer
+                          windowSize:
+                            default: 1000
+                            description: Configures the burst window size in milliseconds
+                            format: int32
+                            type: integer
+                        type: object
                     required:
                     - enable
                     type: object

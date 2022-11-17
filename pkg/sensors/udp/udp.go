@@ -42,8 +42,8 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/tc"
 )
@@ -359,23 +359,23 @@ type SubnetSelector struct {
 }
 
 type ConfigValue struct {
-	dnsPorts                 [maxDnsPorts]uint16
-	watermarkEnable          uint64
-	watermarkAvgWindowSizeMs uint64
-	watermarkWindowSize      uint64
-	watermarkTriggerPercent  uint64
-	bootNs                   uint64
-	latencyEnable            uint64
-	latencySubnets           [maxLatencySubnets]SubnetSelector
-	latencyPorts             [maxLatencyPorts]uint16
-	latBucket00              uint32
-	latBucket01              uint32
-	latBucket10              uint32
-	latBucket25              uint32
-	latBucket50              uint32
-	latBucket75              uint32
-	latBucket90              uint32
-	latBucket99              uint32
+	dnsPorts                      [maxDnsPorts]uint16
+	watermarksEnable              uint64
+	watermarksAvgWindowSizeMs     uint64
+	watermarksWindowSize          uint64
+	watermarksBurstTriggerPercent uint64
+	bootNs                        uint64
+	latencyEnable                 uint64
+	latencySubnets                [maxLatencySubnets]SubnetSelector
+	latencyPorts                  [maxLatencyPorts]uint16
+	latBucket00                   uint32
+	latBucket01                   uint32
+	latBucket10                   uint32
+	latBucket25                   uint32
+	latBucket50                   uint32
+	latBucket75                   uint32
+	latBucket90                   uint32
+	latBucket99                   uint32
 }
 
 func (v *ConfigValue) String() string {
@@ -383,7 +383,7 @@ func (v *ConfigValue) String() string {
 		"watermarkEnable: %d, "+
 		"watermarkAvgWindowSizeMs: %d, "+
 		"watermarkWindowSize: %d, "+
-		"watermarkTriggerPercent: %d", v.dnsPorts, v.watermarkEnable, v.watermarkAvgWindowSizeMs, v.watermarkWindowSize, v.watermarkTriggerPercent)
+		"watermarkTriggerPercent: %d", v.dnsPorts, v.watermarksEnable, v.watermarksAvgWindowSizeMs, v.watermarksWindowSize, v.watermarksBurstTriggerPercent)
 }
 func (v *ConfigValue) GetValuePtr() unsafe.Pointer { return unsafe.Pointer(v) }
 func (v *ConfigValue) DeepCopyMapValue() bpf.MapValue {
@@ -714,7 +714,7 @@ func unloadUdpSensor() error {
 
 	gcTimer.Stop()
 	if watermarkEnabled {
-		burstEvents.Stop()
+		networkWatermarksEvents.Stop(IPPROTO_UDP)
 	}
 	return nil
 }
@@ -930,7 +930,7 @@ func AddUDP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPSTATS, handleUdp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPPAYLOAD, handleUdpPayload)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_UDPCLOSE, handleUdp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEvents.HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_WATERMARK, networkWatermarksEvents.HandleProcessNetworkWatermarks)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_IP_ERROR, ip.HandleIpError)
 
 	sensors.RegisterProbeType("cgrp_ingress", udp)

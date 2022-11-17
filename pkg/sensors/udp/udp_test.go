@@ -41,8 +41,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/cilium/tetragon/pkg/sensors"
@@ -90,7 +90,7 @@ func TestMain(m *testing.M) {
 	os.Exit(ec)
 }
 
-const udpConfig = `
+const udpConfigLegacy = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -107,6 +107,30 @@ spec:
         windowSize: 1000
         triggerPercent: 50
     burstExitGen:
+      enable: true
+      interval: 1000
+    dns:
+      enable: true
+      ports: [53]
+`
+
+const udpConfig = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "udp"
+spec:
+  parser:
+    udp:
+      enable: true
+      cgroup: true
+      statsInterval: 20
+      deleteIdleSocketInterval: 60
+      watermarks:
+        enable: true
+        windowSize: 1000
+        burstTriggerPercent: 50
+    networkWatermarksExitGen:
       enable: true
       interval: 1000
     dns:
@@ -196,7 +220,7 @@ func udpClient() {
 	}
 }
 
-func TestUdpBurst(t *testing.T) {
+func testUdpBurst(t *testing.T, legacy bool) {
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
 	}
@@ -211,38 +235,75 @@ func TestUdpBurst(t *testing.T) {
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-server"))
 
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("clientExec").
-			WithProcess(clientProcess),
-		ec.NewProcessNetworkBurstChecker("egressStart").
-			WithProcess(clientProcess).
-			WithProtocol(sm.Full("UDP")).
-			WithDirection(sm.Full("egress")).
-			WithBurstState(sm.Full("start")),
-		ec.NewProcessNetworkBurstChecker("egressEnd").
-			WithProcess(clientProcess).
-			WithProtocol(sm.Full("UDP")).
-			WithDirection(sm.Full("egress")).
-			WithBurstState(sm.Full("end")),
-		ec.NewProcessExecChecker("severStart").
-			WithProcess(serverProcess),
-		ec.NewProcessNetworkBurstChecker("ingressStart").
-			WithProcess(serverProcess).
-			WithProtocol(sm.Full("UDP")).
-			WithDirection(sm.Full("ingress")).
-			WithBurstState(sm.Full("start")),
-		ec.NewProcessNetworkBurstChecker("ingressEnd").
-			WithProcess(serverProcess).
-			WithProtocol(sm.Full("UDP")).
-			WithDirection(sm.Full("ingress")).
-			WithBurstState(sm.Full("end")),
-		ec.NewProcessCloseChecker("serverClose").
-			WithProcess(serverProcess).
-			WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(1 * time.Second)},
-				&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
-		ec.NewProcessExitChecker("serverExit").
-			WithProcess(serverProcess),
-	)
+	var checker *ec.UnorderedEventChecker
+
+	if legacy {
+		checker = ec.NewUnorderedEventChecker(
+			ec.NewProcessExecChecker("clientExec").
+				WithProcess(clientProcess),
+			ec.NewProcessNetworkBurstChecker("egressStart").
+				WithProcess(clientProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithDirection(sm.Full("egress")).
+				WithBurstState(sm.Full("start")),
+			ec.NewProcessNetworkBurstChecker("egressEnd").
+				WithProcess(clientProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithDirection(sm.Full("egress")).
+				WithBurstState(sm.Full("end")),
+			ec.NewProcessExecChecker("serverStart").
+				WithProcess(serverProcess),
+			ec.NewProcessNetworkBurstChecker("ingressStart").
+				WithProcess(serverProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithDirection(sm.Full("ingress")).
+				WithBurstState(sm.Full("start")),
+			ec.NewProcessNetworkBurstChecker("ingressEnd").
+				WithProcess(serverProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithDirection(sm.Full("ingress")).
+				WithBurstState(sm.Full("end")),
+			ec.NewProcessCloseChecker("serverClose").
+				WithProcess(serverProcess).
+				WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(1 * time.Second)},
+					&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
+			ec.NewProcessExitChecker("serverExit").
+				WithProcess(serverProcess),
+		)
+	} else {
+		checker = ec.NewUnorderedEventChecker(
+			ec.NewProcessExecChecker("clientExec").
+				WithProcess(clientProcess),
+			ec.NewProcessNetworkWatermarkChecker("egressStart").
+				WithProcess(clientProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithDirection(sm.Full("egress")).
+				WithWatermarksState(sm.Full("start")),
+			ec.NewProcessNetworkWatermarkChecker("egressEnd").
+				WithProcess(clientProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithDirection(sm.Full("egress")).
+				WithWatermarksState(sm.Full("end")),
+			ec.NewProcessExecChecker("serverStart").
+				WithProcess(serverProcess),
+			ec.NewProcessNetworkWatermarkChecker("ingressStart").
+				WithProcess(serverProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithDirection(sm.Full("ingress")).
+				WithWatermarksState(sm.Full("start")),
+			ec.NewProcessNetworkWatermarkChecker("ingressEnd").
+				WithProcess(serverProcess).
+				WithProtocol(sm.Full("UDP")).
+				WithDirection(sm.Full("ingress")).
+				WithWatermarksState(sm.Full("end")),
+			ec.NewProcessCloseChecker("serverClose").
+				WithProcess(serverProcess).
+				WithDuration(durationmatcher.Between(&durationmatcher.Duration{Duration: time.Duration(1 * time.Second)},
+					&durationmatcher.Duration{Duration: time.Duration(20 * time.Second)})),
+			ec.NewProcessExitChecker("serverExit").
+				WithProcess(serverProcess),
+		)
+	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -250,8 +311,14 @@ func TestUdpBurst(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, udpConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	if legacy {
+		if err := observer.WriteConfigFile(testConfigFile, udpConfigLegacy); err != nil {
+			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+		}
+	} else {
+		if err := observer.WriteConfigFile(testConfigFile, udpConfig); err != nil {
+			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+		}
 	}
 
 	base := base.GetInitialSensor()
@@ -275,15 +342,14 @@ func TestUdpBurst(t *testing.T) {
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
-	burstMapFile := filepath.Join(bpf.MapPrefixPath(), burstEvents.ProcessNetworkBurstMapName)
-	m, err := ebpf.LoadPinnedMap(burstMapFile, nil)
+	watermarksMapFile := filepath.Join(bpf.MapPrefixPath(), networkWatermarksEvents.ProcessNetworkWatermarksMapName)
+	m, err := ebpf.LoadPinnedMap(watermarksMapFile, nil)
 	require.NoError(t, err, "cannot open map file")
 	defer m.Close()
-	processKey := &burstEvents.ProcessNetworkBurstKey{Key: burstEvents.PidToBurstKey(serverPid, syscall.IPPROTO_UDP, 0)}
-	var processValue burstEvents.ProcessNetworkBurstValue
-
+	processKey := &networkWatermarksEvents.ProcessNetworkWatermarksKey{Key: networkWatermarksEvents.PidToWatermarksKey(serverPid, syscall.IPPROTO_UDP, 0)}
+	var processValue networkWatermarksEvents.ProcessNetworkWatermarksValue
 	err = m.Lookup(processKey, &processValue)
-	assert.Error(t, err, "server process in burst map before traffic")
+	assert.Error(t, err, "server process in watermarks map before traffic")
 
 	clientCmd := exec.Command(os.Args[0], "-client")
 	clientCmd.Stdout = os.Stderr
@@ -292,7 +358,7 @@ func TestUdpBurst(t *testing.T) {
 	assert.NoError(t, err, "cannot start client")
 
 	err = m.Lookup(processKey, &processValue)
-	assert.NoError(t, err, "server process must be in burst map")
+	assert.NoError(t, err, "server process must be in watermarks map")
 
 	err = m.Lookup(processKey, &processValue)
 	assert.NoError(t, err, "client process must be in burst map")
@@ -315,9 +381,17 @@ func TestUdpBurst(t *testing.T) {
 	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
-	assert.Error(t, err, "server process in burst map after exit")
+	assert.Error(t, err, "server process in watermarks map after exit")
 
 	killAndWaitCommand(t, clientCmd)
+}
+
+func TestUdpBurst(t *testing.T) {
+	testUdpBurst(t, true)
+}
+
+func TestUdpWatermarks(t *testing.T) {
+	testUdpBurst(t, false)
 }
 
 // Note 20.0.0.0/8 is the DoD and isn't routable on the Internet

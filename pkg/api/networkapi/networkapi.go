@@ -140,15 +140,18 @@ type MsgInterface struct {
 	ContainerName string
 }
 
-type MsgProcessNetworkBurstEvent struct {
-	Common        processapi.MsgCommon
-	ProcessKey    processapi.MsgExecveKey
-	Protocol      uint32 // IP protocol
-	BurstStartDir uint32 // b0=start of burst, otherwise end of burst, b16=egress, otherwise ingress
-	WindowSize    uint64 // Nanoseconds
-	HistAvg       uint64 // Bytes per WindowSize
-	HistTrigger   uint64 // Bytes per WindowSize trigger level
-	WindowAvg     uint64 // Bytes seen in WindowSize
+type MsgProcessNetworkWatermarkEvent struct {
+	Common      processapi.MsgCommon
+	ProcessKey  processapi.MsgExecveKey
+	Protocol    uint32 // IP protocol
+	Direction   uint8  // ingress = 0, egress = 1
+	State       uint8  // end = 0, start = 1
+	Type        uint8  // burst = 0, dip = 1
+	Pad         uint8
+	WindowSize  uint64 // Nanoseconds
+	HistAvg     uint64 // Bytes per WindowSize
+	HistTrigger uint64 // Bytes per WindowSize trigger level
+	WindowAvg   uint64 // Bytes seen in WindowSize
 }
 
-type MsgProcessNetworkBurstEventUnix = MsgProcessNetworkBurstEvent
+type MsgProcessNetworkWatermarksEventUnix = MsgProcessNetworkWatermarkEvent

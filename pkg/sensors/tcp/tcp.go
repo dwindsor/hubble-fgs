@@ -17,18 +17,18 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/layer3"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/sirupsen/logrus"
 )
 
 var (
-	TcpIntervalDefault  = time.Duration(60 * time.Second)
-	tcpInterval         time.Duration
-	tcpBurstEnable      bool
-	tcpBurstWindowSize  uint64
-	tcpBurstTriggerMult uint64
-	watermarkEnabled    = false
+	TcpIntervalDefault            = time.Duration(60 * time.Second)
+	tcpInterval                   time.Duration
+	tcpWatermarksEnable           bool
+	tcpWatermarksWindowSize       uint64
+	tcpWatermarksBurstTriggerMult uint64
+	watermarkEnabled              = false
 
 	tcpRttHistogramMax uint32
 	tcpRttHistogramMin uint32
@@ -115,9 +115,9 @@ var (
 	TLSBottles     = program.MapBuilder("bottles", Close)
 	TLSBottleStats = program.MapBuilder("bottle_map_stats", Close)
 
-	// Maps for burst detection
-	SendCheckSampler       = program.MapBuilder("tcp_send_check_sampler", SendCheck4)
-	ProcessNetworkBurstMap = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, SendCheck4)
+	// Maps for watermarks detection
+	SendCheckSampler            = program.MapBuilder("tcp_send_check_sampler", SendCheck4)
+	ProcessNetworkWatermarksMap = program.MapBuilder(networkWatermarksEvents.ProcessNetworkWatermarksMapName, SendCheck4)
 )
 
 type tcpStatsKey struct {
@@ -127,7 +127,7 @@ type tcpStatsKey struct {
 
 func unloadTcpSensor() error {
 	if watermarkEnabled {
-		burstEvents.Stop()
+		networkWatermarksEvents.Stop(IPPROTO_TCP)
 	}
 	return nil
 }
@@ -159,16 +159,16 @@ func EnableTcp() *sensors.Sensor {
 		TLSBottles,
 		TLSBottleStats,
 		SendCheckSampler,
-		ProcessNetworkBurstMap,
+		ProcessNetworkWatermarksMap,
 		FdLookupConfigMap,
 	}
 	logger.GetLogger().WithFields(logrus.Fields{
-		"statsInterval":    tcpInterval,
-		"burstEnable":      tcpBurstEnable,
-		"burstWindowSize":  tcpBurstWindowSize,
-		"burstTriggerMult": tcpBurstTriggerMult,
-		"maxRttHistogram":  tcpRttHistogramMax,
-		"minRttHistogram":  tcpRttHistogramMin,
+		"statsInterval":              tcpInterval,
+		"watermarksEnable":           tcpWatermarksEnable,
+		"watermarksWindowSize":       tcpWatermarksWindowSize,
+		"watermarksBurstTriggerMult": tcpWatermarksBurstTriggerMult,
+		"maxRttHistogram":            tcpRttHistogramMax,
+		"minRttHistogram":            tcpRttHistogramMin,
 	}).Infof("Enable TCP")
 	tcpSensor := sensors.SensorBuilder("tcp_sensors", progs, maps)
 	tcpSensor.UnloadHook = unloadTcpSensor
@@ -189,16 +189,22 @@ func (tcp *tcpSensor) SpecHandler(raw interface{}) (*sensors.Sensor, error) {
 	if spec.Parser.Tcp.StatsInterval > 0 {
 		tcpInterval = time.Duration(spec.Parser.Tcp.StatsInterval) * time.Second
 	}
-	if spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
+	if spec.Parser.Tcp.Watermarks.Enable && spec.Parser.Tcp.Watermarks.WindowSize > 0 && spec.Parser.Tcp.Watermarks.BurstTriggerPercent > 0 {
 		watermarkEnabled = true
-		tcpBurstEnable = true
-		tcpBurstWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
-		tcpBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
-		go burstEvents.Start(spec)
+		tcpWatermarksEnable = true
+		tcpWatermarksWindowSize = uint64(spec.Parser.Tcp.Watermarks.WindowSize)
+		tcpWatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Watermarks.BurstTriggerPercent)
+		go networkWatermarksEvents.Start(spec, IPPROTO_TCP, false)
+	} else if spec.Parser.Tcp.Burst.Enable && spec.Parser.Tcp.Burst.WindowSize > 0 && spec.Parser.Tcp.Burst.TriggerPercent > 0 {
+		watermarkEnabled = true
+		tcpWatermarksEnable = true
+		tcpWatermarksWindowSize = uint64(spec.Parser.Tcp.Burst.WindowSize)
+		tcpWatermarksBurstTriggerMult = uint64(spec.Parser.Tcp.Burst.TriggerPercent)
+		go networkWatermarksEvents.Start(spec, IPPROTO_TCP, true)
 	} else {
-		tcpBurstEnable = false
-		tcpBurstWindowSize = 0
-		tcpBurstTriggerMult = 0
+		tcpWatermarksEnable = false
+		tcpWatermarksWindowSize = 0
+		tcpWatermarksBurstTriggerMult = 0
 	}
 	if spec.Parser.Tcp.RttHistogram.Enable {
 		tcpRttHistogramMax = spec.Parser.Tcp.RttHistogram.Max
@@ -345,7 +351,7 @@ func (tcp *tcpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 	}
 
 	if tcpInterval > 0 {
-		configureSockStatSampler(tcpInterval, tcpBurstEnable, tcpBurstWindowSize, tcpBurstTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
+		configureSockStatSampler(tcpInterval, tcpWatermarksEnable, tcpWatermarksWindowSize, tcpWatermarksBurstTriggerMult, tcpRttHistogramMax, tcpRttHistogramMin)
 		err = program.LoadKprobeProgram(args.BPFDir, args.MapDir, args.Load, args.Verbose)
 	}
 	return err
@@ -379,5 +385,5 @@ func AddTCP() {
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_BIND, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_LISTEN, handleTcp)
 	observer.RegisterEventHandlerAtInit(ops.MSG_OP_ACCEPT, handleTcp)
-	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_BURST, burstEvents.HandleProcessNetworkBurst)
+	observer.RegisterEventHandlerAtInit(ops.MSG_OP_PROCESS_NETWORK_WATERMARK, networkWatermarksEvents.HandleProcessNetworkWatermarks)
 }

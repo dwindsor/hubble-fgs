@@ -6,7 +6,7 @@
 #include "hubble_msg.h"
 #include "bpf_events.h"
 #include "bpf_udp.h"
-#include "bpf_burst_process.h"
+#include "bpf_process_network_watermarks.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
 #include "bpf_tracing.h"
@@ -366,10 +366,10 @@ udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
 }
 
 static inline __attribute__((always_inline)) void
-udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
+udp_watermarks(void *ctx, u64 *cookie, int vol, u64 send)
 {
 	struct udp_sensor_config *config;
-	struct process_network_burst_config *c;
+	struct process_network_watermarks_config *c;
 	struct socketmap_value *process;
 	int zero = 0;
 
@@ -377,15 +377,15 @@ udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
 	if (!config || !config->watermark_enable)
 		return;
 
-	c = (struct process_network_burst_config *)map_lookup_elem(&pn_burst_config_heap, &zero);
+	c = (struct process_network_watermarks_config *)map_lookup_elem(&pn_watermarks_config_heap, &zero);
 	if (!c)
 		return;
 	c->avg_window_size_ms = config->watermark_avg_window_size_ms;
 	c->window_size = config->watermark_window_size;
-	c->trigger_mult = config->watermark_trigger_percent;
+	c->burst_trigger_mult = config->watermark_trigger_percent;
 
 	process = lookup_socketmap(cookie);
-	/* If we don't have a process then we can't assign the burst information
+	/* If we don't have a process then we can't assign the watermarks information
 	 * to it, and there is little else we can do.
 	 * Additionally, if the sk address had previously been mapped to the
 	 * process and kernel >=5.10, then it would have been remapped from
@@ -393,16 +393,16 @@ udp_burst(void *ctx, u64 *cookie, int vol, u64 send)
 	 */
 	if (!process) {
 		emit_ip_error_event(ctx, 0, cookie, 0,
-				    IP_ERROR_INET_BURST_NO_PROCESS);
+				    IP_ERROR_INET_WATERMARK_NO_PROCESS);
 		return;
 	}
 	if (!process->key.pid) {
 		emit_ip_error_event(ctx, 0, cookie, 0,
-				    IP_ERROR_INET_BURST_NO_PID);
+				    IP_ERROR_INET_WATERMARK_NO_PID);
 		return;
 	}
 
-	process_network_burst(ctx, process, IPPROTO_UDP, send, vol, c);
+	process_network_watermarks(ctx, process, IPPROTO_UDP, send, vol, c);
 }
 
 static inline __attribute__((always_inline)) void
@@ -504,7 +504,7 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	udp_send(skb, 0, &packet->ip.ip4, packet->ipv6, ts_opt, &packet->udp,
 		 cookie, packet->payload_off, packet->payload_sz, send, true,
 		 false);
-	udp_burst(skb, cookie, packet->payload_sz, send);
+	udp_watermarks(skb, cookie, packet->payload_sz, send);
 }
 
 static inline __attribute__((always_inline)) void
@@ -616,7 +616,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6, ts_opt,
 		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz,
 		 send, true, true);
-	udp_burst(ctx, &cookie, packet->payload_sz, send);
+	udp_watermarks(ctx, &cookie, packet->payload_sz, send);
 }
 
 static inline __attribute__((always_inline)) void
@@ -731,7 +731,7 @@ inet_handler(struct __sk_buff *skb, bool send)
 		return;
 	}
 
-	udp_burst(skb, &cookie, packet->payload_sz, send);
+	udp_watermarks(skb, &cookie, packet->payload_sz, send);
 }
 
 #endif //__BPF_INET_H_

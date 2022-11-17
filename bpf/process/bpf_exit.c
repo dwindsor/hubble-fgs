@@ -1,6 +1,6 @@
 #include "vmlinux.h"
 #include "../../modules/tetragon-oss/bpf/process/bpf_exit.h"
-#include "../networking/bpf_burst_process.h"
+#include "../networking/bpf_process_network_watermarks.h"
 #include "bpf_tracing.h"
 
 char _license[] __attribute__((section("license"), used)) = "GPL";
@@ -21,7 +21,7 @@ event_exit(struct pt_regs *ctx)
 	 * would otherwise occur.
 	 */
 	if (pid == tgid) {
-		process_burst_map_delete(ctx, tgid);
+		process_watermarks_map_delete(ctx, tgid);
 		event_exit_send(ctx, tgid, task);
 	}
 	return 0;

@@ -197,7 +197,11 @@ type ParserPolicySpec struct {
 	Tcp TcpPolicySpec `json:"tcp"`
 	// +kubebuilder:validation:Optional
 	// UDP and TCP burst exit checking policy specification
-	BurstExitGen BurstExitGenPolicySpec `json:"burstExitGen"`
+	// +kubebuilder:deprecatedversion:warning="burstExitGen is deprecated. Use networkWatermarksExitGen instead"
+	BurstExitGen NetworkWatermarksExitGenPolicySpec `json:"burstExitGen"`
+	// +kubebuilder:validation:Optional
+	// UDP and TCP watermarks exit checking policy specification
+	NetworkWatermarksExitGen NetworkWatermarksExitGenPolicySpec `json:"networkWatermarksExitGen"`
 	// +kubebuilder:validation:Optional
 	// UDP and TCP heartbeat policy specification
 	Heartbeat HeartbeatPolicySpec `json:"heartbeat"`
@@ -222,25 +226,34 @@ type TcpPolicySpec struct {
 	StatsInterval uint32 `json:"statsInterval"`
 	// +kubebuilder:validation:Optional
 	// Network policy specification
-	Burst TcpBurstPolicySpec `json:"burst"`
+	// +kubebuilder:deprecatedversion:warning="burst is deprecated. Use watermarks instead"
+	Burst TcpWatermarksPolicySpec `json:"burst"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Watermarks TcpWatermarksPolicySpec `json:"watermarks"`
 	// +kubebuilder:validation:Optional
 	// Rtt Histogram
 	RttHistogram TcpRttHistogram `json:"histogram"`
 }
 
-type TcpBurstPolicySpec struct {
-	// Enable TCP burst observability
+type TcpWatermarksPolicySpec struct {
+	// Enable TCP watermarks observability
 	// +kubebuilder:default=false
 	// +kubebuilder:validation:Optional
 	Enable bool `json:"enable"`
 	// +kubebuilder:default=1000
 	// +kubebuilder:validation:Optional
-	// Configures the burst window size in milliseconds
+	// Configures the watermarks window size in milliseconds
 	WindowSize uint32 `json:"windowSize"`
 	// +kubebuilder:default=100
 	// +kubebuilder:validation:Optional
 	// Configures the percent over average deemed to be a burst
+	// +kubebuilder:deprecatedversion:warning="triggerPercent is deprecated. Use burstTriggerPercent instead"
 	TriggerPercent uint32 `json:"triggerPercent"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent over average deemed to be a burst
+	BurstTriggerPercent uint32 `json:"burstTriggerPercent"`
 }
 
 type UdpPolicySpec struct {
@@ -260,14 +273,18 @@ type UdpPolicySpec struct {
 	DeleteIdleSocketInterval uint32 `json:"deleteIdleSocketInterval"`
 	// +kubebuilder:validation:Optional
 	// Network policy specification
-	Burst UdpBurstPolicySpec `json:"burst"`
+	// kubebuilder:deprecatedversion:warning="burst is deprecated. Use watermarks instead"
+	Burst UdpWatermarksPolicySpec `json:"burst"`
+	// +kubebuilder:validation:Optional
+	// Network policy specification
+	Watermarks UdpWatermarksPolicySpec `json:"watermarks"`
 	// +kubebuilder:validation:Optional
 	// UDP latency observability policy specification
 	Latency UdpLatencyPolicySpec `json:"latency"`
 }
 
-type UdpBurstPolicySpec struct {
-	// Enable UDP burst observability
+type UdpWatermarksPolicySpec struct {
+	// Enable UDP watermarks observability
 	// +kubebuilder:default=false
 	// +kubebuilder:validation:Optional
 	Enable bool `json:"enable"`
@@ -278,7 +295,12 @@ type UdpBurstPolicySpec struct {
 	// +kubebuilder:default=100
 	// +kubebuilder:validation:Optional
 	// Configures the percent over average deemed to be a burst
+	// +kubebuilder:deprecatedversion:warning="triggerPercent is deprecated. Use burstTriggerPercent instead"
 	TriggerPercent uint32 `json:"triggerPercent"`
+	// +kubebuilder:default=100
+	// +kubebuilder:validation:Optional
+	// Configures the percent over average deemed to be a burst
+	BurstTriggerPercent uint32 `json:"burstTriggerPercent"`
 }
 
 type UdpLatencyPolicySpec struct {
@@ -306,8 +328,8 @@ type UdpLatencyPolicySpec struct {
 	ClockMaxSkew uint32 `json:"clockMaxSkew"`
 }
 
-type BurstExitGenPolicySpec struct {
-	// Enable burst checks for end events from userland
+type NetworkWatermarksExitGenPolicySpec struct {
+	// Enable watermarks checks for end events from userland
 	// +kubebuilder:default=true
 	// +kubebuilder:validation:Optional
 	Enable bool `json:"enable"`

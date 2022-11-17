@@ -24,8 +24,8 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 	"github.com/isovalent/hubble-fgs/pkg/api/ops"
 	"github.com/isovalent/hubble-fgs/pkg/grpc/dnsproto"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 )
 
 const (
@@ -148,7 +148,7 @@ func handleUdpDns(m *api.MsgIPEvent, r *bytes.Reader) ([]observer.Event, error) 
 func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*ConfigValue, error) {
 	config := ConfigValue{}
 	ParseDnsSpec(&config, spec)
-	ParseUdpBurstSpec(&config, spec)
+	ParseUdpWatermarksSpec(&config, spec)
 	ConfigureBootTime(&config)
 	ParseLatencySpec(&config, spec)
 
@@ -182,27 +182,40 @@ func ParseDnsSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	}
 }
 
-// ParseUdpBurst parses the input yaml/crd and outputs the kernel selectors
-// needed for BPF to identify UDP bursts and run the monitor on it.
-func ParseUdpBurstSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
-	if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
+// ParseUdpWatermarksSpec parses the input yaml/crd and outputs the kernel selectors
+// needed for BPF to identify UDP watermarks and run the monitor on it.
+func ParseUdpWatermarksSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
+	if spec.Parser.Udp.Watermarks.Enable && spec.Parser.Udp.Watermarks.WindowSize > 0 && spec.Parser.Udp.Watermarks.BurstTriggerPercent > 0 {
 		watermarkEnabled = true
-		config.watermarkEnable = 1
+		config.watermarksEnable = 1
 		// WindowSize is in milliseconds
-		config.watermarkAvgWindowSizeMs = uint64(spec.Parser.Udp.Burst.WindowSize)
+		config.watermarksAvgWindowSizeMs = uint64(spec.Parser.Udp.Watermarks.WindowSize)
 		// The actual window size we use in calculations is a) in nanoseconds;
 		// and b) is 2/3 of the provided window size because the measurement window
 		// varies between 1 window (2/3 window size) and 2 windows (4/3 window size), meaning
 		// the average measurement window == window size.
-		config.watermarkWindowSize = (uint64(spec.Parser.Udp.Burst.WindowSize) * 2 * 1000000) / 3
+		config.watermarksWindowSize = (uint64(spec.Parser.Udp.Watermarks.WindowSize) * 2 * 1000000) / 3
 		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
-		config.watermarkTriggerPercent = uint64(spec.Parser.Udp.Burst.TriggerPercent) + 100
-		go burstEvents.Start(spec)
+		config.watermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Watermarks.BurstTriggerPercent) + 100
+		go networkWatermarksEvents.Start(spec, IPPROTO_UDP, false)
+	} else if spec.Parser.Udp.Burst.Enable && spec.Parser.Udp.Burst.WindowSize > 0 && spec.Parser.Udp.Burst.TriggerPercent > 0 {
+		watermarkEnabled = true
+		config.watermarksEnable = 1
+		// WindowSize is in milliseconds
+		config.watermarksAvgWindowSizeMs = uint64(spec.Parser.Udp.Burst.WindowSize)
+		// The actual window size we use in calculations is a) in nanoseconds;
+		// and b) is 2/3 of the provided window size because the measurement window
+		// varies between 1 window (2/3 window size) and 2 windows (4/3 window size), meaning
+		// the average measurement window == window size.
+		config.watermarksWindowSize = (uint64(spec.Parser.Udp.Burst.WindowSize) * 2 * 1000000) / 3
+		// TriggerPercent is the percent above the average; we supply it as a percentage multiplier.
+		config.watermarksBurstTriggerPercent = uint64(spec.Parser.Udp.Burst.TriggerPercent) + 100
+		go networkWatermarksEvents.Start(spec, IPPROTO_UDP, true)
 	} else {
-		config.watermarkEnable = 0
-		config.watermarkAvgWindowSizeMs = 0
-		config.watermarkWindowSize = 0
-		config.watermarkTriggerPercent = 0
+		config.watermarksEnable = 0
+		config.watermarksAvgWindowSizeMs = 0
+		config.watermarksWindowSize = 0
+		config.watermarksBurstTriggerPercent = 0
 	}
 }
 

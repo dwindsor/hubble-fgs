@@ -29,8 +29,8 @@ import (
 
 	"github.com/cilium/tetragon/pkg/jsonchecker"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/networkWatermarksEvents"
 	"github.com/isovalent/hubble-fgs/pkg/testutils/runner"
 
 	_ "github.com/isovalent/hubble-fgs/pkg/sensors/exec"
@@ -47,7 +47,7 @@ const (
 	testConfigFile = "/tmp/hubble-tetragon.gotest.yaml"
 )
 
-const tcpConfig = `
+const tcpConfigLegacy = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
 metadata:
@@ -62,6 +62,27 @@ spec:
         windowSize: 1000
         triggerPercent: 50
     burstExitGen:
+      enable: true
+      interval: 1000
+    dns:
+      enable: true
+`
+
+const tcpConfig = `
+apiversion: cilium.io/v1alpha1
+kind: TracingPolicy
+metadata:
+  name: "tcp"
+spec:
+  parser:
+    tcp:
+      enable: true
+      statsInterval: 20
+      watermarks:
+        enable: true
+        windowSize: 1000
+        burstTriggerPercent: 50
+    networkWatermarksExitGen:
       enable: true
       interval: 1000
     dns:
@@ -641,13 +662,13 @@ const hostname = "127.0.0.1"
 const portno = 31337
 const protocol = "tcp4"
 
-var burstQuit = false
+var watermarksQuit = false
 
 func handleSes(ses net.Conn) {
 	buf := make([]byte, 2*BUFSIZE)
 	quit := false
 	ses.SetDeadline(time.Now().Add(200 * time.Millisecond))
-	for !quit && !burstQuit {
+	for !quit && !watermarksQuit {
 		_, err := ses.Read(buf)
 		if err != nil {
 			opErr, ok := err.(*net.OpError)
@@ -670,7 +691,7 @@ func tcpServer() {
 		sig := <-sigs
 		if sig == syscall.SIGTERM {
 			conn.Close()
-			burstQuit = true
+			watermarksQuit = true
 			// Give chance for sockets to gracefully close
 			time.Sleep(500 * time.Millisecond)
 			os.Exit(0)
@@ -742,7 +763,7 @@ func tcpClient() {
 	socket.Close()
 }
 
-func TestTcpBurst(t *testing.T) {
+func testTcpBurst(t *testing.T, legacy bool) {
 
 	if v := "4.19.0"; !kernels.MinKernelVersion(v) {
 		t.Skipf("Minimum kernel version (%v) not met, skipping", v)
@@ -759,46 +780,81 @@ func TestTcpBurst(t *testing.T) {
 		WithBinary(sm.Suffix(runner.Conf().SelfBinary)).
 		WithArguments(sm.Full("-server"))
 
-	burstEgressStart := ec.NewProcessNetworkBurstChecker("burstEgressStart").
-		WithProcess(clientProcess).
-		WithParent(selfChecker).
-		WithProtocol(sm.Full("TCP")).
-		WithDirection(sm.Full("egress")).
-		WithBurstState(sm.Full("start"))
-	burstEgressEnd := ec.NewProcessNetworkBurstChecker("burstEgressEnd").
-		WithProcess(clientProcess).
-		WithParent(selfChecker).
-		WithProtocol(sm.Full("TCP")).
-		WithDirection(sm.Full("egress")).
-		WithBurstState(sm.Full("end"))
-	burstIngressStart := ec.NewProcessNetworkBurstChecker("burstIngressStart").
-		WithProcess(serverProcess).
-		WithParent(selfChecker).
-		WithProtocol(sm.Full("TCP")).
-		WithDirection(sm.Full("ingress")).
-		WithBurstState(sm.Full("start"))
-	burstIngressEnd := ec.NewProcessNetworkBurstChecker("burstIngressEnd").
-		WithProcess(serverProcess).
-		WithParent(selfChecker).
-		WithProtocol(sm.Full("TCP")).
-		WithDirection(sm.Full("ingress")).
-		WithBurstState(sm.Full("end"))
+	var checker *ec.UnorderedEventChecker
 
-	checker := ec.NewUnorderedEventChecker(
-		ec.NewProcessExecChecker("clientExec").
-			WithProcess(clientProcess).
-			WithParent(selfChecker),
-		burstEgressStart,
-		burstEgressEnd,
-		ec.NewProcessExecChecker("serverExec").
-			WithProcess(serverProcess).
-			WithParent(selfChecker),
-		ec.NewProcessExitChecker("serverExit").
-			WithProcess(serverProcess).
-			WithParent(selfChecker),
-		burstIngressStart,
-		burstIngressEnd,
-	)
+	if legacy {
+		checker = ec.NewUnorderedEventChecker(
+			ec.NewProcessExecChecker("clientExec").
+				WithProcess(clientProcess).
+				WithParent(selfChecker),
+			ec.NewProcessNetworkBurstChecker("burstEgressStart").
+				WithProcess(clientProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithDirection(sm.Full("egress")).
+				WithBurstState(sm.Full("start")),
+			ec.NewProcessNetworkBurstChecker("burstEgressEnd").
+				WithProcess(clientProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithDirection(sm.Full("egress")).
+				WithBurstState(sm.Full("end")),
+			ec.NewProcessExecChecker("serverExec").
+				WithProcess(serverProcess).
+				WithParent(selfChecker),
+			ec.NewProcessExitChecker("serverExit").
+				WithProcess(serverProcess).
+				WithParent(selfChecker),
+			ec.NewProcessNetworkBurstChecker("burstIngressStart").
+				WithProcess(serverProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithDirection(sm.Full("ingress")).
+				WithBurstState(sm.Full("start")),
+			ec.NewProcessNetworkBurstChecker("burstIngressEnd").
+				WithProcess(serverProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithDirection(sm.Full("ingress")).
+				WithBurstState(sm.Full("end")),
+		)
+	} else {
+		checker = ec.NewUnorderedEventChecker(
+			ec.NewProcessExecChecker("clientExec").
+				WithProcess(clientProcess).
+				WithParent(selfChecker),
+			ec.NewProcessNetworkWatermarkChecker("burstEgressStart").
+				WithProcess(clientProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithDirection(sm.Full("egress")).
+				WithWatermarksState(sm.Full("start")),
+			ec.NewProcessNetworkWatermarkChecker("burstEgressEnd").
+				WithProcess(clientProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithDirection(sm.Full("egress")).
+				WithWatermarksState(sm.Full("end")),
+			ec.NewProcessExecChecker("serverExec").
+				WithProcess(serverProcess).
+				WithParent(selfChecker),
+			ec.NewProcessExitChecker("serverExit").
+				WithProcess(serverProcess).
+				WithParent(selfChecker),
+			ec.NewProcessNetworkWatermarkChecker("burstIngressStart").
+				WithProcess(serverProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithDirection(sm.Full("ingress")).
+				WithWatermarksState(sm.Full("start")),
+			ec.NewProcessNetworkWatermarkChecker("burstIngressEnd").
+				WithProcess(serverProcess).
+				WithParent(selfChecker).
+				WithProtocol(sm.Full("TCP")).
+				WithDirection(sm.Full("ingress")).
+				WithWatermarksState(sm.Full("end")),
+		)
+	}
 
 	var doneWG, readyWG sync.WaitGroup
 	defer doneWG.Wait()
@@ -806,9 +862,16 @@ func TestTcpBurst(t *testing.T) {
 	ctx, cancel := context.WithTimeout(context.Background(), runner.Conf().CmdWaitTime)
 	defer cancel()
 
-	if err := observer.WriteConfigFile(testConfigFile, tcpConfig); err != nil {
-		t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+	if legacy {
+		if err := observer.WriteConfigFile(testConfigFile, tcpConfigLegacy); err != nil {
+			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+		}
+	} else {
+		if err := observer.WriteConfigFile(testConfigFile, tcpConfig); err != nil {
+			t.Fatalf("WriteFile(%s): err %s", testConfigFile, err)
+		}
 	}
+
 	dfltBase := base.GetInitialSensor()
 	obs, err := observer.GetDefaultObserverWithBase(t, ctx, dfltBase, testConfigFile, runner.Conf().TetragonLib)
 	if err != nil {
@@ -840,18 +903,18 @@ func TestTcpBurst(t *testing.T) {
 
 	serverPid := uint32(serverCmd.Process.Pid)
 
-	burstMapFile := filepath.Join(bpf.MapPrefixPath(), burstEvents.ProcessNetworkBurstMapName)
-	m, err := ebpf.LoadPinnedMap(burstMapFile, nil)
+	watermarksMapFile := filepath.Join(bpf.MapPrefixPath(), networkWatermarksEvents.ProcessNetworkWatermarksMapName)
+	m, err := ebpf.LoadPinnedMap(watermarksMapFile, nil)
 	if err != nil {
 		fmt.Printf("ERROR Cannot open map file\n")
 		panic(err)
 	}
 	defer m.Close()
-	processKey := &burstEvents.ProcessNetworkBurstKey{Key: burstEvents.PidToBurstKey(serverPid, syscall.IPPROTO_TCP, 0)}
-	var processValue burstEvents.ProcessNetworkBurstValue
+	processKey := &networkWatermarksEvents.ProcessNetworkWatermarksKey{Key: networkWatermarksEvents.PidToWatermarksKey(serverPid, syscall.IPPROTO_TCP, 0)}
+	var processValue networkWatermarksEvents.ProcessNetworkWatermarksValue
 	err = m.Lookup(processKey, &processValue)
 	if err == nil {
-		fmt.Printf("ERROR Server process in burst map before traffic\n")
+		fmt.Printf("ERROR Server process in network watermarks map before traffic\n")
 		os.Exit(-1)
 	}
 
@@ -866,7 +929,7 @@ func TestTcpBurst(t *testing.T) {
 
 	err = m.Lookup(processKey, &processValue)
 	if err != nil {
-		fmt.Printf("ERROR Server process not in burst map\n")
+		fmt.Printf("ERROR Server process not in network watermarks map\n")
 		panic(err)
 	}
 
@@ -901,7 +964,7 @@ func TestTcpBurst(t *testing.T) {
 
 	err = m.Lookup(processKey, &processValue)
 	if err == nil {
-		fmt.Printf("ERROR Server process in burst map after exit\n")
+		fmt.Printf("ERROR Server process in network watermarks map after exit\n")
 		os.Exit(-1)
 	}
 }

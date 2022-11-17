@@ -66,10 +66,10 @@ var (
 	TCPMonMapV60 = program.MapBuilder("tcpmon_map", ExecveV60)
 
 	/* Networking and Process Monitoring maps */
-	ExecveMap              = program.MapBuilder("execve_map", Execve)
-	ExecveMapV53           = program.MapBuilder("execve_map", ExecveV53)
-	ExecveMapV60           = program.MapBuilder("execve_map", ExecveV60)
-	ProcessNetworkBurstMap = program.MapBuilder("pn_burst_map", Exit)
+	ExecveMap                   = program.MapBuilder("execve_map", Execve)
+	ExecveMapV53                = program.MapBuilder("execve_map", ExecveV53)
+	ExecveMapV60                = program.MapBuilder("execve_map", ExecveV60)
+	ProcessNetworkWatermarksMap = program.MapBuilder("pn_watermarks_map", Exit)
 
 	ExecveTailCallsMap    = program.MapBuilderPin("execve_calls", "execve_calls", Execve)
 	ExecveTailCallsMapV53 = program.MapBuilderPin("execve_calls", "execve_calls", ExecveV53)
@@ -86,10 +86,10 @@ var (
 	TetragonConfMapV60 = program.MapBuilder("tg_conf_map", ExecveV60)
 
 	/* Internal statistics for debugging */
-	ExecveStats     = program.MapBuilder("execve_map_stats", Execve)
-	ExecveStatsV53  = program.MapBuilder("execve_map_stats", ExecveV53)
-	ExecveStatsV60  = program.MapBuilder("execve_map_stats", ExecveV60)
-	PNBurstMapStats = program.MapBuilder("pn_burst_map_stats", Exit)
+	ExecveStats          = program.MapBuilder("execve_map_stats", Execve)
+	ExecveStatsV53       = program.MapBuilder("execve_map_stats", ExecveV53)
+	ExecveStatsV60       = program.MapBuilder("execve_map_stats", ExecveV60)
+	PNWatermarksMapStats = program.MapBuilder("pn_watermarks_map_stats", Exit)
 )
 
 func GetExecveMap() *program.Map {
@@ -136,8 +136,8 @@ func GetDefaultPrograms() []*program.Program {
 
 func GetDefaultMaps() []*program.Map {
 	maps := []*program.Map{
-		PNBurstMapStats,
-		ProcessNetworkBurstMap,
+		PNWatermarksMapStats,
+		ProcessNetworkWatermarksMap,
 	}
 
 	if kernels.EnableV60Progs() {

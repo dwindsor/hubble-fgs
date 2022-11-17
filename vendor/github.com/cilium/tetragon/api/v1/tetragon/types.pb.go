@@ -341,6 +341,26 @@ func (event *ProcessNetworkBurst) SetParent(p *Process) {
 
 // Encapsulate implements the Event interface.
 // Returns the event wrapped by its GetEventsResponse_* type.
+func (event *ProcessNetworkWatermark) Encapsulate() IsGetEventsResponse_Event {
+	return &GetEventsResponse_ProcessNetworkWatermark{
+		ProcessNetworkWatermark: event,
+	}
+}
+
+// SetProcess implements the ProcessEvent interface.
+// Sets the Process field of an event.
+func (event *ProcessNetworkWatermark) SetProcess(p *Process) {
+	event.Process = p
+}
+
+// SetParent implements the ParentEvent interface.
+// Sets the Parent field of an event.
+func (event *ProcessNetworkWatermark) SetParent(p *Process) {
+	event.Parent = p
+}
+
+// Encapsulate implements the Event interface.
+// Returns the event wrapped by its GetEventsResponse_* type.
 func (event *ProcessDns) Encapsulate() IsGetEventsResponse_Event {
 	return &GetEventsResponse_ProcessDns{
 		ProcessDns: event,
@@ -400,6 +420,8 @@ func UnwrapGetEventsResponse(response *GetEventsResponse) interface{} {
 		return ev.ProcessHttp
 	case *GetEventsResponse_ProcessNetworkBurst:
 		return ev.ProcessNetworkBurst
+	case *GetEventsResponse_ProcessNetworkWatermark:
+		return ev.ProcessNetworkWatermark
 	case *GetEventsResponse_ProcessDns:
 		return ev.ProcessDns
 	}

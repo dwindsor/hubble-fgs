@@ -91,77 +91,81 @@ const (
 	MSG_OP_IP_ERROR = 130
 
 	MSG_OP_FILE_RENAME = 131
+
+	MSG_OP_PROCESS_NETWORK_WATERMARK = 132
 )
 
 type OpCode int
 
 const (
-	MsgOpUndef               = iota
-	MsgOpTCPConnect          = 1
-	MsgOpTCPConnectReturn    = 2
-	MsgOpBind                = 3
-	MsgOpListen              = 4
-	MsgOpExecve              = 5
-	MsgOpTLS                 = 6
-	MsgOpExit                = 7
-	MsgOpTCPClose            = 8
-	MsgOpAccept              = 9
-	MsgOpCred                = 10
-	MsgOpKfreeSkb            = 11
-	MsgOpTLSCont             = 12
-	MsgOpGenericKprobe       = 13
-	MsgOpGeneric_Tracepoint  = 14
-	MsgOpTCPStats            = 15
-	MsgOpHTTP                = 16
-	MsgOpUDPClose            = 17
-	MsgOpUDPConnect          = 18
-	MsgOpUDPStats            = 19
-	MsgOpInterfaceStats      = 20
-	MsgOpUDPPayload          = 21
-	MsgOpProcessNetworkBurst = 22
-	MsgOpClone               = 23
-	MsgOpData                = 24
-	MsgOpNetnsExit           = 25
-	MsgOpTest                = 254
-	MsgOpDNS                 = 128
-	MsgOpFile                = 129
-	MsgOpIpError             = 130
-	MsgOpFileRename          = 131
+	MsgOpUndef                   = iota
+	MsgOpTCPConnect              = 1
+	MsgOpTCPConnectReturn        = 2
+	MsgOpBind                    = 3
+	MsgOpListen                  = 4
+	MsgOpExecve                  = 5
+	MsgOpTLS                     = 6
+	MsgOpExit                    = 7
+	MsgOpTCPClose                = 8
+	MsgOpAccept                  = 9
+	MsgOpCred                    = 10
+	MsgOpKfreeSkb                = 11
+	MsgOpTLSCont                 = 12
+	MsgOpGenericKprobe           = 13
+	MsgOpGeneric_Tracepoint      = 14
+	MsgOpTCPStats                = 15
+	MsgOpHTTP                    = 16
+	MsgOpUDPClose                = 17
+	MsgOpUDPConnect              = 18
+	MsgOpUDPStats                = 19
+	MsgOpInterfaceStats          = 20
+	MsgOpUDPPayload              = 21
+	MsgOpProcessNetworkBurst     = 22
+	MsgOpClone                   = 23
+	MsgOpData                    = 24
+	MsgOpNetnsExit               = 25
+	MsgOpTest                    = 254
+	MsgOpDNS                     = 128
+	MsgOpFile                    = 129
+	MsgOpIpError                 = 130
+	MsgOpFileRename              = 131
+	MsgOpProcessNetworkWatermark = 132
 )
 
 func (op OpCode) String() string {
 	opCodeMap := map[OpCode]string{
-		MsgOpUndef:               "Undef",
-		MsgOpTCPConnect:          "TCPConnect",
-		MsgOpTCPConnectReturn:    "TCPConnectReturn",
-		MsgOpBind:                "TCPBind",
-		MsgOpListen:              "TCPListen",
-		MsgOpExecve:              "Execve",
-		MsgOpTLS:                 "TLS",
-		MsgOpExit:                "Exit",
-		MsgOpTCPClose:            "TCPClose",
-		MsgOpAccept:              "TCPAccept",
-		MsgOpCred:                "Cred",
-		MsgOpKfreeSkb:            "KfreeSkb",
-		MsgOpTLSCont:             "TLSCont",
-		MsgOpGenericKprobe:       "GenericKprobe",
-		MsgOpGeneric_Tracepoint:  "GenericTracepoint",
-		MsgOpTCPStats:            "TCPStats",
-		MsgOpHTTP:                "HTTP",
-		MsgOpUDPClose:            "UDPClose",
-		MsgOpUDPConnect:          "UDPConnect",
-		MsgOpUDPStats:            "UDPStats",
-		MsgOpInterfaceStats:      "InterfaceStats",
-		MsgOpUDPPayload:          "UDPPayload",
-		MsgOpProcessNetworkBurst: "ProcessNetworkBurst",
-		MsgOpClone:               "Clone",
-		MsgOpData:                "Data",
-		MsgOpNetnsExit:           "NetNsExit",
-		MsgOpTest:                "Test",
-		MsgOpDNS:                 "DNS",
-		MsgOpFile:                "File",
-		MsgOpIpError:             "IPError",
-		MsgOpFileRename:          "FileRename",
+		MsgOpUndef:                   "Undef",
+		MsgOpTCPConnect:              "TCPConnect",
+		MsgOpTCPConnectReturn:        "TCPConnectReturn",
+		MsgOpBind:                    "TCPBind",
+		MsgOpListen:                  "TCPListen",
+		MsgOpExecve:                  "Execve",
+		MsgOpTLS:                     "TLS",
+		MsgOpExit:                    "Exit",
+		MsgOpTCPClose:                "TCPClose",
+		MsgOpAccept:                  "TCPAccept",
+		MsgOpCred:                    "Cred",
+		MsgOpKfreeSkb:                "KfreeSkb",
+		MsgOpTLSCont:                 "TLSCont",
+		MsgOpGenericKprobe:           "GenericKprobe",
+		MsgOpGeneric_Tracepoint:      "GenericTracepoint",
+		MsgOpTCPStats:                "TCPStats",
+		MsgOpHTTP:                    "HTTP",
+		MsgOpUDPClose:                "UDPClose",
+		MsgOpUDPConnect:              "UDPConnect",
+		MsgOpUDPStats:                "UDPStats",
+		MsgOpInterfaceStats:          "InterfaceStats",
+		MsgOpUDPPayload:              "UDPPayload",
+		MsgOpProcessNetworkBurst:     "ProcessNetworkBurst",
+		MsgOpClone:                   "Clone",
+		MsgOpData:                    "Data",
+		MsgOpNetnsExit:               "NetNsExit",
+		MsgOpTest:                    "Test",
+		MsgOpDNS:                     "DNS",
+		MsgOpFile:                    "File",
+		MsgOpIpError:                 "IPError",
+		MsgOpFileRename:              "FileRename",
+		MsgOpProcessNetworkWatermark: "ProcessNetworkWatermark",
 	}
 	if val, ok := opCodeMap[op]; ok {
 		return val

@@ -299,6 +299,8 @@ func CheckerFromEvent(event Event) (EventChecker, error) {
 		return NewProcessHttpChecker("").FromProcessHttp(ev), nil
 	case *tetragon.ProcessNetworkBurst:
 		return NewProcessNetworkBurstChecker("").FromProcessNetworkBurst(ev), nil
+	case *tetragon.ProcessNetworkWatermark:
+		return NewProcessNetworkWatermarkChecker("").FromProcessNetworkWatermark(ev), nil
 	case *tetragon.ProcessDns:
 		return NewProcessDnsChecker("").FromProcessDns(ev), nil
 
@@ -379,6 +381,8 @@ func EventFromResponse(response *tetragon.GetEventsResponse) (Event, error) {
 		return ev.ProcessHttp, nil
 	case *tetragon.GetEventsResponse_ProcessNetworkBurst:
 		return ev.ProcessNetworkBurst, nil
+	case *tetragon.GetEventsResponse_ProcessNetworkWatermark:
+		return ev.ProcessNetworkWatermark, nil
 	case *tetragon.GetEventsResponse_ProcessDns:
 		return ev.ProcessDns, nil
 
@@ -3838,6 +3842,199 @@ func (checker *ProcessNetworkBurstChecker) FromProcessNetworkBurst(event *tetrag
 	checker.Protocol = stringmatcher.Full(event.Protocol)
 	checker.Direction = stringmatcher.Full(event.Direction)
 	checker.BurstState = stringmatcher.Full(event.BurstState)
+	{
+		val := event.WindowSize
+		checker.WindowSize = &val
+	}
+	{
+		val := event.HistAvg
+		checker.HistAvg = &val
+	}
+	{
+		val := event.HistTrigger
+		checker.HistTrigger = &val
+	}
+	{
+		val := event.WindowAvg
+		checker.WindowAvg = &val
+	}
+	return checker
+}
+
+// ProcessNetworkWatermarkChecker implements a checker struct to check a ProcessNetworkWatermark event
+type ProcessNetworkWatermarkChecker struct {
+	CheckerName     string                       `json:"checkerName"`
+	Process         *ProcessChecker              `json:"process,omitempty"`
+	Parent          *ProcessChecker              `json:"parent,omitempty"`
+	Protocol        *stringmatcher.StringMatcher `json:"protocol,omitempty"`
+	Direction       *stringmatcher.StringMatcher `json:"direction,omitempty"`
+	WatermarksState *stringmatcher.StringMatcher `json:"watermarksState,omitempty"`
+	WindowSize      *uint64                      `json:"windowSize,omitempty"`
+	HistAvg         *uint64                      `json:"histAvg,omitempty"`
+	HistTrigger     *uint64                      `json:"histTrigger,omitempty"`
+	WindowAvg       *uint64                      `json:"windowAvg,omitempty"`
+}
+
+// CheckEvent checks a single event and implements the EventChecker interface
+func (checker *ProcessNetworkWatermarkChecker) CheckEvent(event Event) error {
+	if ev, ok := event.(*tetragon.ProcessNetworkWatermark); ok {
+		return checker.Check(ev)
+	}
+	return fmt.Errorf("%T is not a ProcessNetworkWatermark event", event)
+}
+
+// CheckResponse checks a single gRPC response and implements the EventChecker interface
+func (checker *ProcessNetworkWatermarkChecker) CheckResponse(response *tetragon.GetEventsResponse) error {
+	event, err := EventFromResponse(response)
+	if err != nil {
+		return err
+	}
+	return checker.CheckEvent(event)
+}
+
+// NewProcessNetworkWatermarkChecker creates a new ProcessNetworkWatermarkChecker
+func NewProcessNetworkWatermarkChecker(name string) *ProcessNetworkWatermarkChecker {
+	return &ProcessNetworkWatermarkChecker{CheckerName: name}
+}
+
+// Get the name associated with the checker
+func (checker *ProcessNetworkWatermarkChecker) GetCheckerName() string {
+	return checker.CheckerName
+}
+
+// Get the type of the checker as a string
+func (checker *ProcessNetworkWatermarkChecker) GetCheckerType() string {
+	return "ProcessNetworkWatermarkChecker"
+}
+
+// Check checks a ProcessNetworkWatermark event
+func (checker *ProcessNetworkWatermarkChecker) Check(event *tetragon.ProcessNetworkWatermark) error {
+	if event == nil {
+		return fmt.Errorf("%s: ProcessNetworkWatermark event is nil", CheckerLogPrefix(checker))
+	}
+
+	fieldChecks := func() error {
+		if checker.Process != nil {
+			if err := checker.Process.Check(event.Process); err != nil {
+				return fmt.Errorf("Process check failed: %w", err)
+			}
+		}
+		if checker.Parent != nil {
+			if err := checker.Parent.Check(event.Parent); err != nil {
+				return fmt.Errorf("Parent check failed: %w", err)
+			}
+		}
+		if checker.Protocol != nil {
+			if err := checker.Protocol.Match(event.Protocol); err != nil {
+				return fmt.Errorf("Protocol check failed: %w", err)
+			}
+		}
+		if checker.Direction != nil {
+			if err := checker.Direction.Match(event.Direction); err != nil {
+				return fmt.Errorf("Direction check failed: %w", err)
+			}
+		}
+		if checker.WatermarksState != nil {
+			if err := checker.WatermarksState.Match(event.WatermarksState); err != nil {
+				return fmt.Errorf("WatermarksState check failed: %w", err)
+			}
+		}
+		if checker.WindowSize != nil {
+			if *checker.WindowSize != event.WindowSize {
+				return fmt.Errorf("WindowSize has value %d which does not match expected value %d", event.WindowSize, *checker.WindowSize)
+			}
+		}
+		if checker.HistAvg != nil {
+			if *checker.HistAvg != event.HistAvg {
+				return fmt.Errorf("HistAvg has value %d which does not match expected value %d", event.HistAvg, *checker.HistAvg)
+			}
+		}
+		if checker.HistTrigger != nil {
+			if *checker.HistTrigger != event.HistTrigger {
+				return fmt.Errorf("HistTrigger has value %d which does not match expected value %d", event.HistTrigger, *checker.HistTrigger)
+			}
+		}
+		if checker.WindowAvg != nil {
+			if *checker.WindowAvg != event.WindowAvg {
+				return fmt.Errorf("WindowAvg has value %d which does not match expected value %d", event.WindowAvg, *checker.WindowAvg)
+			}
+		}
+		return nil
+	}
+	if err := fieldChecks(); err != nil {
+		return fmt.Errorf("%s: %w", CheckerLogPrefix(checker), err)
+	}
+	return nil
+}
+
+// WithProcess adds a Process check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithProcess(check *ProcessChecker) *ProcessNetworkWatermarkChecker {
+	checker.Process = check
+	return checker
+}
+
+// WithParent adds a Parent check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithParent(check *ProcessChecker) *ProcessNetworkWatermarkChecker {
+	checker.Parent = check
+	return checker
+}
+
+// WithProtocol adds a Protocol check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithProtocol(check *stringmatcher.StringMatcher) *ProcessNetworkWatermarkChecker {
+	checker.Protocol = check
+	return checker
+}
+
+// WithDirection adds a Direction check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithDirection(check *stringmatcher.StringMatcher) *ProcessNetworkWatermarkChecker {
+	checker.Direction = check
+	return checker
+}
+
+// WithWatermarksState adds a WatermarksState check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithWatermarksState(check *stringmatcher.StringMatcher) *ProcessNetworkWatermarkChecker {
+	checker.WatermarksState = check
+	return checker
+}
+
+// WithWindowSize adds a WindowSize check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithWindowSize(check uint64) *ProcessNetworkWatermarkChecker {
+	checker.WindowSize = &check
+	return checker
+}
+
+// WithHistAvg adds a HistAvg check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithHistAvg(check uint64) *ProcessNetworkWatermarkChecker {
+	checker.HistAvg = &check
+	return checker
+}
+
+// WithHistTrigger adds a HistTrigger check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithHistTrigger(check uint64) *ProcessNetworkWatermarkChecker {
+	checker.HistTrigger = &check
+	return checker
+}
+
+// WithWindowAvg adds a WindowAvg check to the ProcessNetworkWatermarkChecker
+func (checker *ProcessNetworkWatermarkChecker) WithWindowAvg(check uint64) *ProcessNetworkWatermarkChecker {
+	checker.WindowAvg = &check
+	return checker
+}
+
+//FromProcessNetworkWatermark populates the ProcessNetworkWatermarkChecker using data from a ProcessNetworkWatermark event
+func (checker *ProcessNetworkWatermarkChecker) FromProcessNetworkWatermark(event *tetragon.ProcessNetworkWatermark) *ProcessNetworkWatermarkChecker {
+	if event == nil {
+		return checker
+	}
+	if event.Process != nil {
+		checker.Process = NewProcessChecker().FromProcess(event.Process)
+	}
+	if event.Parent != nil {
+		checker.Parent = NewProcessChecker().FromProcess(event.Parent)
+	}
+	checker.Protocol = stringmatcher.Full(event.Protocol)
+	checker.Direction = stringmatcher.Full(event.Direction)
+	checker.WatermarksState = stringmatcher.Full(event.WatermarksState)
 	{
 		val := event.WindowSize
 		checker.WindowSize = &val

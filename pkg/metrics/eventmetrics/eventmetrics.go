@@ -325,6 +325,38 @@ func HandleProcessBurstEvent(res *tetragon.ProcessNetworkBurst) {
 	postProcessNetworkBurstEventStats(res)
 }
 
+func postUDPWatermarksStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+	if s.Direction == "egress" {
+		socketmetrics.SocketStatsUDPTxBursts.WithLabelValues(ns, pod, binary).Inc()
+	} else {
+		socketmetrics.SocketStatsUDPRxBursts.WithLabelValues(ns, pod, binary).Inc()
+	}
+}
+
+func postTCPWatermarksStats(ns, pod, binary string, s *tetragon.ProcessNetworkWatermark) {
+	if s.Direction == "egress" {
+		socketmetrics.SocketStatsTxBursts.WithLabelValues(ns, pod, binary).Inc()
+	} else {
+		socketmetrics.SocketStatsRxBursts.WithLabelValues(ns, pod, binary).Inc()
+	}
+}
+
+func postProcessNetworkWatermarksEventStats(res *tetragon.ProcessNetworkWatermark) {
+	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
+	if res.WatermarksState == "start" {
+		switch res.Protocol {
+		case tetragon.SocketProtocol_UDP.String():
+			postUDPWatermarksStats(ns, pod, binary, res)
+		case tetragon.SocketProtocol_TCP.String():
+			postTCPWatermarksStats(ns, pod, binary, res)
+		}
+	}
+}
+
+func HandleProcessWatermarksEvent(res *tetragon.ProcessNetworkWatermark) {
+	postProcessNetworkWatermarksEventStats(res)
+}
+
 func postHttpStats(res *tetragon.ProcessHttp) {
 	binary, pod, ns := eventmetrics.GetProcessInfo(res.Process)
 	dstPod := res.GetDestinationPod()
