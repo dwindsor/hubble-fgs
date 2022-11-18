@@ -17,7 +17,6 @@ import (
 	"fmt"
 	"os"
 
-	"github.com/isovalent/hubble-fgs/cmd/hubble-enterprise/cliflags"
 	"github.com/isovalent/hubble-fgs/pkg/recorder"
 	"github.com/isovalent/hubble-fgs/pkg/recorder/config"
 	"github.com/spf13/cobra"
@@ -29,6 +28,15 @@ import (
 	"github.com/cilium/tetragon/api/v1/tetragon"
 	"github.com/cilium/tetragon/cmd/tetra/common"
 	"github.com/cilium/tetragon/pkg/logger"
+)
+
+var (
+	jsonFile    string
+	outFileName string
+	host        bool
+	namespaces  []string
+	processes   []string
+	pods        []string
 )
 
 // recordJSON records an event checker from a JSON export file.
@@ -78,11 +86,6 @@ func getRequest(namespaces []string, host bool, processes []string, pods []strin
 // recordGRPC records an event checker from a gRPC event stream.
 func recordGRPC(ctx context.Context, client tetragon.FineGuidanceSensorsClient, conf *config.GenericRecorderConf, out *os.File) error {
 	rec := recorder.NewRecorder(&conf.Spec)
-
-	host := viper.GetBool("host")
-	namespaces := viper.GetStringSlice("namespace")
-	processes := viper.GetStringSlice("process")
-	pods := viper.GetStringSlice("pod")
 
 	request := getRequest(namespaces, host, processes, pods)
 	stream, err := client.GetEvents(ctx, request)
@@ -136,7 +139,6 @@ func New() *cobra.Command {
 		},
 		PreRunE: func(cmd *cobra.Command, args []string) error {
 			// Validate json file argument
-			jsonFile := viper.GetString(cliflags.KeyJSON)
 			if jsonFile != "" {
 				if err := validateFileArg(jsonFile); err != nil {
 					return fmt.Errorf("invalid JSON file argument: %w", err)
@@ -151,7 +153,6 @@ func New() *cobra.Command {
 			}
 
 			var outFile *os.File
-			outFileName := viper.GetString(cliflags.KeyOut)
 			if outFileName == "" {
 				outFile = os.Stdout
 			} else {
@@ -164,7 +165,6 @@ func New() *cobra.Command {
 
 			// If jsonFile is provided then don't try to connect to gRPC, just record
 			// using the json file instead
-			jsonFile := viper.GetString(cliflags.KeyJSON)
 			if jsonFile != "" {
 				err := recordJSON(jsonFile, config, outFile)
 				if err != nil {
@@ -177,12 +177,12 @@ func New() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringP(cliflags.KeyJSON, "j", "", "Use JSON export file as the event source. Default is to use gRPC event stream instead.")
-	flags.StringP(cliflags.KeyOut, "o", "", "Output file. Default is stdout")
-	flags.StringSliceP("namespace", "n", nil, "Get events by Kubernetes namespaces")
-	flags.StringSlice("process", nil, "Get events by process name regex")
-	flags.StringSlice("pod", nil, "Get events by pod name regex")
-	flags.Bool("host", false, "Get host events")
+	flags.StringVarP(&jsonFile, "json", "j", "", "Use JSON export file as the event source. Default is to use gRPC event stream instead.")
+	flags.StringVarP(&outFileName, "out", "o", "", "Output file. Default is stdout")
+	flags.StringSliceVarP(&namespaces, "namespace", "n", nil, "Get events by Kubernetes namespaces")
+	flags.StringSliceVar(&processes, "process", nil, "Get events by process name regex")
+	flags.StringSliceVar(&pods, "pod", nil, "Get events by pod name regex")
+	flags.BoolVar(&host, "host", false, "Get host events")
 	viper.BindPFlags(flags)
 	return &cmd
 }

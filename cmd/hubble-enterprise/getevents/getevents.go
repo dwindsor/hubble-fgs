@@ -58,21 +58,26 @@ func getRequest(namespaces []string, host bool, processes, pods, IPs, sourceIPs,
 	}
 }
 
+var (
+	host       bool
+	namespaces []string
+	processes  []string
+	pods       []string
+	IPs        []string
+	sourceIPs  []string
+	destIPs    []string
+	destNames  []string
+	SNINames   []string
+	URIs       []string
+	destPods   []string
+	timestamps bool
+	output     string
+	color      string
+)
+
 func getEvents(ctx context.Context, client tetragon.FineGuidanceSensorsClient) {
-	host := viper.GetBool("host")
-	namespaces := viper.GetStringSlice("namespace")
-	processes := viper.GetStringSlice("process")
-	pods := viper.GetStringSlice("pod")
-	IPs := viper.GetStringSlice("ip-cidr")
-	sourceIPs := viper.GetStringSlice("source-ip-cidr")
-	destIPs := viper.GetStringSlice("dest-ip-cidr")
-	destNames := viper.GetStringSlice("dest-name")
-	SNINames := viper.GetStringSlice("sni-name")
-	URIs := viper.GetStringSlice("uri")
-	destPods := viper.GetStringSlice("dest-pod")
-	timestamps := viper.GetBool("timestamps")
-	compact := viper.GetString(common.KeyOutput) == "compact"
-	colorMode := ossEncoder.ColorMode(viper.GetString(common.KeyColor))
+	compact := output == "compact"
+	colorMode := ossEncoder.ColorMode(color)
 
 	request := getRequest(namespaces, host, processes, pods, IPs, sourceIPs, destIPs, destNames, SNINames, URIs, destPods)
 	stream, err := client.GetEvents(ctx, request)
@@ -104,20 +109,20 @@ func New() *cobra.Command {
 	}
 
 	flags := cmd.Flags()
-	flags.StringP("output", "o", "json", "Output format. json or compact")
-	flags.String("color", "auto", "Colorize compact output. auto, always, or never")
-	flags.StringSliceP("namespace", "n", nil, "Get events by Kubernetes namespaces")
-	flags.StringSlice("process", nil, "Get events by process name regex")
-	flags.StringSlice("pod", nil, "Get events by pod name regex")
-	flags.StringSlice("ip-cidr", nil, "Get ProcessListen events by IP CIDR")
-	flags.StringSlice("source-ip-cidr", nil, "Get network events by source IP CIDR")
-	flags.StringSlice("dest-ip-cidr", nil, "Get network events by destination IP CIDR")
-	flags.StringSlice("dest-name", nil, "Get network events by destination names field regex")
-	flags.StringSlice("sni-name", nil, "Get network events by SNI name field regex")
-	flags.StringSlice("uri", nil, "Get network events by URI field regex")
-	flags.StringSlice("dest-pod", nil, "Get network events by destination pod field regex")
-	flags.Bool("host", false, "Get host events")
-	flags.Bool("timestamps", false, "Include timestamps in compact output")
+	flags.StringVarP(&output, "output", "o", "json", "Output format. json or compact")
+	flags.StringVar(&color, "color", "auto", "Colorize compact output. auto, always, or never")
+	flags.StringSliceVarP(&namespaces, "namespace", "n", nil, "Get events by Kubernetes namespaces")
+	flags.StringSliceVar(&processes, "process", nil, "Get events by process name regex")
+	flags.StringSliceVar(&pods, "pod", nil, "Get events by pod name regex")
+	flags.StringSliceVar(&IPs, "ip-cidr", nil, "Get ProcessListen events by IP CIDR")
+	flags.StringSliceVar(&sourceIPs, "source-ip-cidr", nil, "Get network events by source IP CIDR")
+	flags.StringSliceVar(&destIPs, "dest-ip-cidr", nil, "Get network events by destination IP CIDR")
+	flags.StringSliceVar(&destNames, "dest-name", nil, "Get network events by destination names field regex")
+	flags.StringSliceVar(&SNINames, "sni-name", nil, "Get network events by SNI name field regex")
+	flags.StringSliceVar(&URIs, "uri", nil, "Get network events by URI field regex")
+	flags.StringSliceVar(&destPods, "dest-pod", nil, "Get network events by destination pod field regex")
+	flags.BoolVar(&host, "host", false, "Get host events")
+	flags.BoolVar(&timestamps, "timestamps", false, "Include timestamps in compact output")
 	viper.BindPFlags(flags)
 
 	return &cmd
