@@ -90,21 +90,15 @@ var (
 		"kprobe_inet6_csk_xmit",
 		"tcp_sensor")
 
-	// RTT Tracer uses kprobe because its most general solution for optimization
-	// reassons on kernels 5.4+ we might consider using OPS_RTT hook. This is
-	// going to collect the timestamp from the received skb. A couple thinigs are
-	// worth mentioning. (i) we only collect these on established TCP state where
-	// segs_in includes the syn,ack and other friends so expecting counts to add
-	// up to segs_in is not valid. Also segs_in accounts for gro segs where here
-	// we only do single inc on the bucket for entire skb even if it has many segs.
-	// I think this makes some sense but open to discuss it. Anyways, segs_in != sum(count)
-	// (ii) TCP will toss out some RTTs when calculating the relevant function is
-	// tcp_rcv_rtt_measture_ts, typically this is to deal with underflow.
+	// RTT Tracer uses kprobe on the TCP RTT estimator to get the seq_rtt_us value
+	// as that is readily available and is a raw RTT calculation on the first
+	// transmission of a packet. This is probably as good as we can easily get,
+	// although open to improvements and discussion.
 	RttTracer = program.Builder(
 		"bpf_tcp_rtt.o",
-		"__tcp_ack_snd_check",
-		"kprobe/__tcp_ack_snd_check",
-		"kprobe_tcp_ack_snd_check",
+		"tcp_rtt_estimator",
+		"kprobe/tcp_rtt_estimator",
+		"kprobe_tcp_rtt_estimator",
 		"kprobe")
 
 	// Maps for TCP Sockets

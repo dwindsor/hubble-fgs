@@ -205,21 +205,21 @@ func postTCPSocketStats(ns, pod, binary, dstns, dstpod, dstLabels string, s *tet
 	// Post TCP Latency numbers
 	if s.Rtt != nil && s.Rtt.Buckets != nil {
 		c = float64(s.Rtt.Buckets[0].Count)
-		socketmetrics.SocketStatsRttLatencyB00.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B00").Add(c)
 		c = float64(s.Rtt.Buckets[1].Count)
-		socketmetrics.SocketStatsRttLatencyB01.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B01").Add(c)
 		c = float64(s.Rtt.Buckets[2].Count)
-		socketmetrics.SocketStatsRttLatencyB10.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B10").Add(c)
 		c = float64(s.Rtt.Buckets[3].Count)
-		socketmetrics.SocketStatsRttLatencyB25.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B25").Add(c)
 		c = float64(s.Rtt.Buckets[4].Count)
-		socketmetrics.SocketStatsRttLatencyB50.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B50").Add(c)
 		c = float64(s.Rtt.Buckets[5].Count)
-		socketmetrics.SocketStatsRttLatencyB75.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B75").Add(c)
 		c = float64(s.Rtt.Buckets[6].Count)
-		socketmetrics.SocketStatsRttLatencyB90.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B90").Add(c)
 		c = float64(s.Rtt.Buckets[7].Count)
-		socketmetrics.SocketStatsRttLatencyB99.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels).Add(c)
+		socketmetrics.SocketStatsRttLatency.WithLabelValues(ns, pod, binary, dstns, dstpod, dstLabels, "B99").Add(c)
 	}
 }
 
