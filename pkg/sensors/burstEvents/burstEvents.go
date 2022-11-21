@@ -120,6 +120,11 @@ func checkAndAddBurstEndEvents() {
 		burstLogValue ProcessNetworkBurstValue
 	)
 
+	if burstMap == nil {
+		logger.GetLogger().Warn("Nil burst map, skipping burst update round")
+		return
+	}
+
 	burstLogEntries := burstMap.Iterate()
 
 	for burstLogEntries.Next(&burstLogKey, &burstLogValue) {
