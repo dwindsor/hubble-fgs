@@ -40,7 +40,6 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/metrics/socketmetrics"
 	"github.com/isovalent/hubble-fgs/pkg/reader/network"
 	reader "github.com/isovalent/hubble-fgs/pkg/reader/network"
-	"github.com/isovalent/hubble-fgs/pkg/sensors/base"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
@@ -247,12 +246,6 @@ var (
 	UdpPayloadBloomMapKprobe     = program.MapBuilder(UdpPayloadBloomMapName, InetSendRecvLazy)
 	FdLookupConfigMap            = program.MapBuilder(ip.FdLookupConfigMapName, SockRelease)
 	FdLookupConfigMapLazy        = program.MapBuilder(ip.FdLookupConfigMapName, SockReleaseLazy)
-
-	// Burst and watermark maps
-	ProcessNetworkBurstMap           = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, InetSend)
-	ProcessNetworkBurstMapLazy       = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, InetSendLazy)
-	ProcessNetworkBurstMapLazyKprobe = program.MapBuilder(burstEvents.ProcessNetworkBurstMapName, InetSendRecvLazy)
-	PNBurstMapStats                  = program.MapBuilder(burstEvents.ProcessNetworkBurstStatsMapName, base.Exit)
 )
 
 type udpInfoKey struct {
@@ -613,6 +606,9 @@ func configureUdpSensor(mapDir string, mapName string, config *ConfigValue) erro
 }
 
 func unloadUdpSensor() error {
+	// We want to make sure we stand configuration up when loading/unloading the sensor.
+	configured = false
+
 	gcTimer.Stop()
 	if watermarkEnabled {
 		burstEvents.Stop()
@@ -624,6 +620,9 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 	var progs []*program.Program
 	var maps []*program.Map
 	var versionStr string
+
+	// We want to make sure we stand configuration up when loading/unloading the sensor.
+	configured = false
 
 	if !kernels.MinKernelVersion("5.4.0") || !cgroup {
 		progs = []*program.Program{
