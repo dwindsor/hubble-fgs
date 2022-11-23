@@ -276,24 +276,23 @@ func TestUdpBurst(t *testing.T) {
 	var processValue burstEvents.ProcessNetworkBurstValue
 
 	err = m.Lookup(processKey, &processValue)
-	require.Error(t, err, "server process in burst map before traffic")
+	assert.Error(t, err, "server process in burst map before traffic")
 
 	clientCmd := exec.Command(os.Args[0], "-client")
 	clientCmd.Stdout = os.Stderr
 	clientCmd.Stderr = os.Stderr
 	err = clientCmd.Run()
-	require.NoError(t, err, "cannot start client")
+	assert.NoError(t, err, "cannot start client")
 
 	err = jsonchecker.JsonTestCheck(t, checker)
 	assert.NoError(t, err)
 
 	err = m.Lookup(processKey, &processValue)
-	require.NoError(t, err, "server process must be in burst map")
+	assert.NoError(t, err, "server process must be in burst map")
 
 	err = m.Lookup(processKey, &processValue)
-	require.NoError(t, err, "client process must be in burst map")
+	assert.NoError(t, err, "client process must be in burst map")
 
-	require.NotNil(t, serverCmd.Process, "server process is nil")
 	killAndWaitCommand(t, serverCmd)
 
 	quit := false
@@ -306,7 +305,7 @@ func TestUdpBurst(t *testing.T) {
 	}
 
 	err = m.Lookup(processKey, &processValue)
-	require.Error(t, err, "server process in burst map after exit")
+	assert.Error(t, err, "server process in burst map after exit")
 
 	killAndWaitCommand(t, clientCmd)
 }
