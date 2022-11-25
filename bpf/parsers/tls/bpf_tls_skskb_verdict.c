@@ -16,8 +16,9 @@ __attribute__((section("sk_skb/stream_verdict/fgs_tls"), used)) int
 bpf_tls_skskb_verdict(struct __sk_buff *skb)
 {
 	struct msg_tls_ip tuple = { 0 };
+	u64 cookie_val = (u64)skb->sk;
 
 	skskb_tls_tuple(skb, &tuple);
-	bpf_parse_ingress_skb(skb, &tuple, 0);
+	bpf_parse_ingress_skb(skb, &tuple, 0, cookie_val);
 	return SK_PASS;
 }

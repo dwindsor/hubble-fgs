@@ -235,19 +235,20 @@ fail:
 
 static inline __attribute__((always_inline)) void
 bpf_parse_ingress_skb(struct __sk_buff *skb, struct msg_tls_ip *tuple,
-		      int offset)
+		      int offset, u64 cookie_val)
 {
 	struct socketmap_value *execve;
 	struct msg_tls *event;
 	int zero = 0;
 	u64 *cookie;
 
+	if (!cookie_val)
+		return;
+
 	cookie = map_lookup_elem(&tls_cookie_heap, &zero);
 	if (!cookie)
 		return;
-	*cookie = (u64)skb->sk;
-	if (!*cookie)
-		return;
+	*cookie = cookie_val;
 
 	event = map_lookup_elem(&tls_map, cookie);
 	if (!event)
@@ -359,6 +360,7 @@ event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 		     struct tcphdr *tcp, u64 *cookie, int payload_off)
 {
 	struct msg_tls_ip tuple = { 0 };
+	u64 cookie_val = (u64)skb->sk;
 
 	if (!ipv6) {
 		tuple.daddr[0] = ip->daddr;
@@ -390,7 +392,7 @@ event_tc_ingress_tcp(struct __sk_buff *skb, struct iphdr *ip, bool ipv6,
 	 * data.
 	 */
 	tuple.sport = bpf_ntohs(tuple.sport);
-	bpf_parse_ingress_skb(skb, &tuple, payload_off);
+	bpf_parse_ingress_skb(skb, &tuple, payload_off, cookie_val);
 
 	return;
 }
