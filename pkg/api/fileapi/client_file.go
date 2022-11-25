@@ -94,4 +94,6 @@ type MsgFileRenameEvent struct {
 	Dst        MsgRenameElem           `align:"dst"`
 	MntNs      uint32                  `align:"mnt_ns"`
 	Flags      uint32                  `align:"flags"`
+	TcId       uint32                  `align:"tc_id"`
+	Pad        uint32                  `align:"pad"`
 }

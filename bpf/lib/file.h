@@ -114,6 +114,8 @@ struct msg_file_rename_ops {
 	struct msg_rename_elem dst;
 	__u32 mnt_ns;
 	__u32 flags;
+	__u32 tc_id;
+	__u32 pad;
 };
 
 struct vfs_rename_info {

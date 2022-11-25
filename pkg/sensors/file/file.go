@@ -21,6 +21,8 @@ import (
 	"path/filepath"
 	"strconv"
 	"strings"
+	"sync"
+	"sync/atomic"
 	"syscall"
 	"unsafe"
 
@@ -145,6 +147,45 @@ type observerFileSensor struct {
 	name string
 }
 
+var (
+	fileMonitoringTable = fimTable{
+		mp: make(map[uint32]*fileMonitoring),
+	}
+
+	sensorCounter uint32
+)
+
+type fileMonitoring struct {
+	Spec          *v1alpha1.FileSpec
+	pinPathPrefix string
+}
+
+type fimTable struct {
+	mu sync.Mutex
+	mp map[uint32]*fileMonitoring
+}
+
+func (t *fimTable) addFIM(id uint32, tp *fileMonitoring) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	t.mp[id] = tp
+}
+
+func (t *fimTable) getFIM(id uint32) (*fileMonitoring, error) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	if val, ok := t.mp[id]; ok {
+		return val, nil
+	}
+	return nil, fmt.Errorf("fim table: invalid id:%d", id)
+}
+
+func (t *fimTable) rmFIM(id uint32) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	delete(t.mp, id)
+}
+
 func init() {
 	file := &observerFileSensor{
 		name: "file sensor",
@@ -225,7 +266,6 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, fmt.Errorf("failed to read file operation: %w", err)
 	}
-
 	srcDir := string(m.Src.Path.Dir[:])
 	if uint32(len(srcDir)) > m.Src.Path.DirSize {
 		srcDir = srcDir[:m.Src.Path.DirSize]
@@ -259,10 +299,15 @@ func handleFileRenameOps(r *bytes.Reader) ([]observer.Event, error) {
 			action = filterIgnore
 		}
 
+		s, err := fileMonitoringTable.getFIM(m.TcId)
+		if err != nil {
+			return nil, fmt.Errorf("failed to get fim table index: %w", err)
+		}
+
 		if option.Config.EnableK8s {
-			ExecWalkPath(path, option.Config.MapDir, op, action, true)
+			ExecWalkPath(path, option.Config.MapDir, s.pinPathPrefix, op, action, true)
 		} else {
-			WalkPath(path, option.Config.MapDir, op, action, true)
+			WalkPath(path, option.Config.MapDir, s.pinPathPrefix, op, action, true)
 		}
 	}
 
@@ -408,10 +453,11 @@ func CheckFileMode(mode fs.FileMode, path string) {
 	}
 }
 
-func ExecWalkPath(paths string, mapDir string, op uint32, action uint32, checkPrefix bool) {
+func ExecWalkPath(paths string, mapDir string, pinPath string, op uint32, action uint32, checkPrefix bool) {
 	cmd := exec.Command("fs-scanner",
 		"-paths", paths,
 		"-mapDir", mapDir,
+		"-pinPath", pinPath,
 		"-walkOp", strconv.FormatUint(uint64(op), 10),
 		"-filterAction", strconv.FormatUint(uint64(action), 10),
 		"-checkPrefix", strconv.FormatBool(checkPrefix),
@@ -428,24 +474,24 @@ func ExecWalkPath(paths string, mapDir string, op uint32, action uint32, checkPr
 	}
 }
 
-func WalkPath(path string, mapDir string, op uint32, action uint32, checkPrefix bool) {
+func WalkPath(path string, mapDir string, pinPath string, op uint32, action uint32, checkPrefix bool) {
 	l := logger.GetLogger()
 	totalFiles := 0
 	totalDirectories := 0
 
-	fileHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, fileMapName), nil)
+	fileHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, fileMapName)), nil)
 	if err != nil {
 		return
 	}
 	defer fileHandle.Close()
 
-	dirHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, dirMapName), nil)
+	dirHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, dirMapName)), nil)
 	if err != nil {
 		return
 	}
 	defer dirHandle.Close()
 
-	lpmHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, lpmMapName), nil)
+	lpmHandle, err := ebpf.LoadPinnedMap(filepath.Join(mapDir, sensors.PathJoin(pinPath, lpmMapName)), nil)
 	if err != nil {
 		return
 	}
@@ -580,10 +626,17 @@ func WalkPath(path string, mapDir string, op uint32, action uint32, checkPrefix 
 	l.Infof("Added %d file(s) and %d directorie(s)\n", totalFiles, totalDirectories)
 }
 
-func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg) (*sensors.Sensor, error) {
+func addFileMonitoringSensor(tcID uint32, kprobes v1alpha1.FileSpec, btfBaseFile string, fimProgs []FimProg) (*sensors.Sensor, error) {
 	var progs []*program.Program
 	var maps []*program.Map
 	var err error
+
+	name := fmt.Sprintf("fim_sensor_%d", tcID)
+	e := &fileMonitoring{
+		Spec:          &kprobes,
+		pinPathPrefix: name,
+	}
+	fileMonitoringTable.addFIM(tcID, e)
 
 	l := logger.GetLogger()
 	mapDir := bpf.MapPrefixPath()
@@ -596,17 +649,16 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		ValueSize:  uint32(unsafe.Sizeof(fileapi.LPMMapValue(0))),
 		MaxEntries: maxLPMpaths,
 		Flags:      bpf.BPF_F_NO_PREALLOC,
-		Pinning:    ebpf.PinByName,
 	}
 
-	mo := ebpf.MapOptions{
-		PinPath:        mapDir,
-		LoadPinOptions: ebpf.LoadPinOptions{},
-	}
-
-	lpmMap, err := ebpf.NewMapWithOptions(ms, mo)
+	lpmMap, err := ebpf.NewMapWithOptions(ms, ebpf.MapOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
+	}
+	defer lpmMap.Close()
+
+	if err := lpmMap.Pin(path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "lpm_trie_map_alloc"))); err != nil {
+		return nil, fmt.Errorf("failed lpmMap.Pin: %w", err)
 	}
 
 	for _, str := range kprobes.Paths {
@@ -628,12 +680,27 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
 		MaxEntries: maxWatchedFiles,
 		Flags:      0,
-		Pinning:    ebpf.PinByName,
 	}
 
-	_, err = ebpf.NewMapWithOptions(hs, mo)
+	fileHandle, err := ebpf.NewMapWithOptions(hs, ebpf.MapOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
+	}
+	defer fileHandle.Close()
+
+	if err := fileHandle.Pin(path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "hash_map_file_alloc"))); err != nil {
+		return nil, fmt.Errorf("failed fileHandle.Pin: %w", err)
+	}
+
+	// special (zero) value to store the policy index
+	tableKey := fileapi.HashMapFileKey{}
+
+	tableVal := fileapi.HashMapFileVal{
+		Action: uint32(tcID),
+	}
+
+	if err := addFilePath(fileHandle, tableKey, tableVal); err != nil {
+		return nil, fmt.Errorf("failed to add entry <ino,dev> = <0,0> : %w", err)
 	}
 
 	ds := &ebpf.MapSpec{
@@ -643,12 +710,16 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		ValueSize:  uint32(unsafe.Sizeof(fileapi.HashMapFileVal{})),
 		MaxEntries: maxWatchedDirs,
 		Flags:      0,
-		Pinning:    ebpf.PinByName,
 	}
 
-	_, err = ebpf.NewMapWithOptions(ds, mo)
+	dirHandle, err := ebpf.NewMapWithOptions(ds, ebpf.MapOptions{})
 	if err != nil {
 		return nil, fmt.Errorf("failed ebpf.NewMapWithOptions: %w", err)
+	}
+	defer dirHandle.Close()
+
+	if err := dirHandle.Pin(path.Join(mapDir, sensors.PathJoin(e.pinPathPrefix, "hash_map_dir_alloc"))); err != nil {
+		return nil, fmt.Errorf("failed dirHandle.Pin: %w", err)
 	}
 
 	if option.Config.EnableK8s {
@@ -659,7 +730,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 					return nil, fmt.Errorf("watchPath %s cannot contain a ':'", p)
 				}
 			}
-			ExecWalkPath(strings.Join(kprobes.Paths[:], ":"), option.Config.MapDir, AddToMap, filterMatch, false)
+			ExecWalkPath(strings.Join(kprobes.Paths[:], ":"), option.Config.MapDir, e.pinPathPrefix, AddToMap, filterMatch, false)
 		}
 		if len(kprobes.PathsExclude) > 0 {
 			l.Infof("ExcludePaths:")
@@ -668,17 +739,17 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 					return nil, fmt.Errorf("excludePath %s cannot include a ':'", p)
 				}
 			}
-			ExecWalkPath(strings.Join(kprobes.PathsExclude[:], ":"), option.Config.MapDir, AddToMap, filterIgnore, false)
+			ExecWalkPath(strings.Join(kprobes.PathsExclude[:], ":"), option.Config.MapDir, e.pinPathPrefix, AddToMap, filterIgnore, false)
 		}
 	} else {
 		for _, str := range kprobes.Paths {
 			l.Infof("WatchPath = %s", str)
-			WalkPath(str, option.Config.MapDir, AddToMap, filterMatch, false)
+			WalkPath(str, option.Config.MapDir, e.pinPathPrefix, AddToMap, filterMatch, false)
 		}
 
 		for _, str := range kprobes.PathsExclude {
 			l.Infof("ExcludePaths = %s", str)
-			WalkPath(str, option.Config.MapDir, AddToMap, filterIgnore, false)
+			WalkPath(str, option.Config.MapDir, e.pinPathPrefix, AddToMap, filterIgnore, false)
 		}
 	}
 
@@ -687,7 +758,7 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 			path.Join(option.Config.HubbleLib, h.progName),
 			h.name,
 			fmt.Sprintf("%s/%s", h.tp, h.name),
-			fmt.Sprintf("%s_%s", h.tp, h.name),
+			sensors.PathJoin(e.pinPathPrefix, fmt.Sprintf("%s_%s", h.tp, h.name)),
 			"kprobe")
 		if h.tp == "kretprobe" {
 			load = load.SetRetProbe(true)
@@ -697,15 +768,19 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 		for _, m := range SharedMaps {
 			maps = append(
 				maps,
-				program.MapBuilder(m, load),
+				program.MapBuilderPin(m, sensors.PathJoin(e.pinPathPrefix, m), load),
 			)
 		}
 	}
 
 	return &sensors.Sensor{
-		Name:  "file_monitoring_sensor",
+		Name:  name,
 		Progs: progs,
 		Maps:  maps,
+		UnloadHook: func() error {
+			fileMonitoringTable.rmFIM(tcID)
+			return nil
+		},
 	}, nil
 }
 
@@ -768,7 +843,8 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 			logger.GetLogger().WithError(err).Warnf("FileMonitoring fails to find the appropriate hooks")
 			return nil, nil
 		}
-		return addFileMonitoringSensor(spec.FileMonitoring, option.Config.BTF, progs)
+		tcID := atomic.AddUint32(&sensorCounter, 1)
+		return addFileMonitoringSensor(tcID, spec.FileMonitoring, option.Config.BTF, progs)
 	}
 	return nil, nil
 }

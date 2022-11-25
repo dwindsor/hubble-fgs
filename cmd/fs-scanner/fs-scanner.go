@@ -43,6 +43,7 @@ import (
 var (
 	paths        = flag.String("paths", "", "paths separated by ':'")
 	mapDir       = flag.String("mapDir", "", "directory of maps")
+	pinPath      = flag.String("pinPath", "", "prefix of maps")
 	checkPrefix  = flag.String("checkPrefix", "", "checkPrefix for WalkPath (should be true or false)")
 	walkOp       = flag.Uint("walkOp", 0, "walkOp for WalkPath")
 	filterAction = flag.Uint("filterAction", 0, "filterAction for WalkPath")
@@ -91,6 +92,7 @@ func main() {
 	l := logger.GetLogger()
 	if !isFlagPassed("paths") ||
 		!isFlagPassed("mapDir") ||
+		!isFlagPassed("pinPath") ||
 		!isFlagPassed("walkOp") ||
 		!isFlagPassed("hostMntNs") ||
 		!isFlagPassed("filterAction") ||
@@ -118,7 +120,7 @@ func main() {
 	pathSplit := strings.Split(*paths, ":")
 	for _, p := range pathSplit {
 		l.Infof("Path = %s", p)
-		file.WalkPath(p, *mapDir, uint32(*walkOp), uint32(*filterAction), cPrefix)
+		file.WalkPath(p, *mapDir, *pinPath, uint32(*walkOp), uint32(*filterAction), cPrefix)
 	}
 
 	os.Exit(0)
