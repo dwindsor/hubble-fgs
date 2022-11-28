@@ -25,8 +25,8 @@ import (
 	"unsafe"
 
 	"github.com/cilium/ebpf"
-	"github.com/cilium/ebpf/btf"
 	"github.com/cilium/tetragon/pkg/bpf"
+	ossBTF "github.com/cilium/tetragon/pkg/btf"
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/kernels"
 	"github.com/cilium/tetragon/pkg/logger"
@@ -698,10 +698,17 @@ func addFileMonitoringSensor(kprobes v1alpha1.FileSpec, btfBaseFile string, fimP
 	}, nil
 }
 
+func fixProgName(p string) string {
+	if p == "bpf_vfs_rename.o" && kernels.IsKernelVersionLessThan("5.3.0") {
+		return "bpf_vfs_rename_v419.o"
+	}
+	return p
+}
+
 func findHooks() ([]FimProg, error) {
-	spec, err := btf.LoadKernelSpec()
-	if err != nil {
-		return nil, fmt.Errorf("LoadKernelSpec %w", err)
+	spec := ossBTF.GetCachedBTF()
+	if spec == nil {
+		return nil, fmt.Errorf("GetCachedBTF returns nil")
 	}
 
 	fimProgs := make([]FimProg, 0)
@@ -716,7 +723,7 @@ func findHooks() ([]FimProg, error) {
 		for _, f := range h.prog {
 			if f.proto == p {
 				progFound = true
-				fimProgs = append(fimProgs, FimProg{h.tp, h.name, f.progName})
+				fimProgs = append(fimProgs, FimProg{h.tp, h.name, fixProgName(f.progName)})
 				break
 			}
 		}
@@ -736,8 +743,8 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 		return nil, nil
 	}
 	if len(spec.FileMonitoring.Paths) > 0 {
-		if !kernels.MinKernelVersion("5.4.0") {
-			logger.GetLogger().Warnf("FileMonitoring requires at least 5.4.0 version")
+		if !kernels.MinKernelVersion("4.19.0") {
+			logger.GetLogger().Warnf("FileMonitoring requires at least 4.19.0 version")
 			return nil, nil
 		}
 		logger.GetLogger().Infof("FileMonitoring is enabled with %d paths to watch and %d exclude paths!", len(spec.FileMonitoring.Paths), len(spec.FileMonitoring.PathsExclude))

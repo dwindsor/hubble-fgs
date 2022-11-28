@@ -255,28 +255,28 @@ static inline __attribute__((always_inline)) void
 resolve_missed_paths(struct vfs_rename_info *val)
 {
 	const struct path *res_path = 0;
-	struct msg_rename_elem *pth = 0;
+	int buflen = 0, error = 0;
+	char *buf;
 
 	// if none is 1 then res_path == 0 and we don't need to resolve any paths
 	// there will be no case where both (need_old == 1) && (need_new == 1)
-	if (val->need_old) {
+	if (val->need_old)
 		res_path = val->old_dir;
-		pth = &(val->msg.src);
-	} else if (val->need_new) {
+	else if (val->need_new)
 		res_path = val->new_dir;
-		pth = &(val->msg.dst);
-	}
 
-	if (res_path) {
-		int buflen, error;
-		char *buf = d_path_local(res_path, &buflen, &error);
-		if (buf == 0)
-			return;
+	if (!res_path)
+		return;
 
-		memcpy(pth->path.dir, buf, 256);
-		pth->path.dir_size = buflen;
-		pth->path.flags = error;
-	}
+	buf = d_path_local(res_path, &buflen, &error);
+	if (buf == 0)
+		return;
+
+	struct msg_file_split_path *path =
+		val->need_old ? &val->msg.src.path : &val->msg.dst.path;
+	memcpy(path->dir, buf, 256);
+	path->dir_size = buflen;
+	path->flags = error;
 }
 
 static inline __attribute__((always_inline)) void
