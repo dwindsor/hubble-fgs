@@ -170,8 +170,8 @@ func genericArgFilenameChecker(fileName string, ino uint64, dev string) *ec.File
 }
 
 func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetragon.FileAction) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, "fim_test_dir")
@@ -227,8 +227,8 @@ func runReadWriteTest(t *testing.T, exec_path string, create_file bool, act tetr
 }
 
 func runCopyTest(t *testing.T, exec_path string) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, "fim_test_dir")
@@ -291,8 +291,8 @@ func runCopyTest(t *testing.T, exec_path string) {
 }
 
 func runMmapTest(t *testing.T, exec_path string, act tetragon.FileAction) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, "fim_test_dir")
@@ -437,14 +437,29 @@ func TestFileSplice(t *testing.T) {
 // tests in hubble-fgs/contrib/tester-progs/io_uring
 
 func TestFileCatIouring(t *testing.T) {
+	// io_uring introduced in kernel 5.1: https://lwn.net/Articles/810414/
+	if !kernels.MinKernelVersion("5.1.0") {
+		t.Skip("File monitoring (io_uring) requires at least 5.1.0 version")
+	}
+
 	runReadWriteTest(t, "tester-progs/io_uring/cat_liburing", true, tetragon.FileAction_FILE_READ)
 }
 
 func TestFileWriteIouring(t *testing.T) {
+	// io_uring introduced in kernel 5.1: https://lwn.net/Articles/810414/
+	if !kernels.MinKernelVersion("5.1.0") {
+		t.Skip("File monitoring (io_uring) requires at least 5.1.0 version")
+	}
+
 	runReadWriteTest(t, "tester-progs/io_uring/write_liburing", false, tetragon.FileAction_FILE_WRITE)
 }
 
 func TestFileCpIouring(t *testing.T) {
+	// io_uring introduced in kernel 5.1: https://lwn.net/Articles/810414/
+	if !kernels.MinKernelVersion("5.1.0") {
+		t.Skip("File monitoring (io_uring) requires at least 5.1.0 version")
+	}
+
 	runCopyTest(t, "tester-progs/io_uring/cp_liburing")
 }
 
@@ -475,8 +490,8 @@ func TestFileMmapWriteRead(t *testing.T) {
 }
 
 func TestFileDelete(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, "fim_test_dir")
@@ -599,8 +614,8 @@ func getFilePermsUidGui(t *testing.T, fileName string) (string, string, string) 
 }
 
 func TestFileCreate(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, "fim_test_dir")
@@ -668,8 +683,8 @@ func TestFileCreate(t *testing.T) {
 }
 
 func TestLoadFileSensor(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, "fim_test_dir")
@@ -809,8 +824,8 @@ func renameRenameChecker(file_a, file_b, mv, src, dst string) *ec.ProcessFileChe
 // Rename operations that handled in kernel-space (eBPF)
 
 func TestFileRename1(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, "fim_test_dir")
@@ -854,8 +869,8 @@ func TestFileRename1(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_NO
 }
 
 func TestFileRename2(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_REG_FILE]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	test_path := filepath.Join(workingDir, "fim_test_dir")
@@ -900,8 +915,8 @@ func TestFileRename2(t *testing.T) { // [SRC_REG_FILE - MOVE_INTERNALLY - DST_RE
 }
 
 func TestFileRename3(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	inside_path := filepath.Join(workingDir, "fim_test_indir")
@@ -948,8 +963,8 @@ func TestFileRename3(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_NOT_EX
 }
 
 func TestFileRename4(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_REG_FILE]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	inside_path := filepath.Join(workingDir, "fim_test_indir")
@@ -997,8 +1012,8 @@ func TestFileRename4(t *testing.T) { // [SRC_REG_FILE - MOVE_INSIDE - DST_REG_FI
 }
 
 func TestFileRename5(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	inside_path := filepath.Join(workingDir, "fim_test_indir")
@@ -1047,8 +1062,8 @@ func TestFileRename5(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_NOT_E
 }
 
 func TestFileRename6(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_FILE]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	inside_path := filepath.Join(workingDir, "fim_test_indir")
@@ -1100,8 +1115,8 @@ func TestFileRename6(t *testing.T) { // [SRC_REG_FILE - MOVE_OUTSIDE - DST_REG_F
 // Rename operations that handled in user-space
 
 func TestFileRename7(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	out1 := filepath.Join(workingDir, "fim_test_outdir")
@@ -1162,8 +1177,8 @@ func TestFileRename7(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_NOT_E
 }
 
 func TestFileRename8(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIRECTORY]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	out1 := filepath.Join(workingDir, "fim_test_outdir")
@@ -1226,8 +1241,8 @@ func TestFileRename8(t *testing.T) { // [SRC_DIRECTORY - MOVE_INSIDE - DST_DIREC
 }
 
 func TestFileRename9(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	out1 := filepath.Join(workingDir, "fim_test_outdir")
@@ -1294,8 +1309,8 @@ func TestFileRename9(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_NOT_
 }
 
 func TestFileRename10(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIRECTORY]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	out1 := filepath.Join(workingDir, "fim_test_outdir")
@@ -1363,8 +1378,8 @@ func TestFileRename10(t *testing.T) { // [SRC_DIRECTORY - MOVE_OUTSIDE - DST_DIR
 }
 
 func TestFileRename11(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_NOT_EXISTS]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	out1 := filepath.Join(workingDir, "fim_test_outdir")
@@ -1423,8 +1438,8 @@ func TestFileRename11(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_
 }
 
 func TestFileRename12(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_DIRECTORY]
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	out1 := filepath.Join(workingDir, "fim_test_outdir")
@@ -1484,8 +1499,8 @@ func TestFileRename12(t *testing.T) { // [SRC_DIRECTORY - MOVE_INTERNALLY - DST_
 }
 
 func TestFileRmdir(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	out := filepath.Join(workingDir, "fim_test_outdir")
@@ -1528,8 +1543,8 @@ func TestFileRmdir(t *testing.T) {
 }
 
 func TestFileMkdir(t *testing.T) {
-	if !kernels.MinKernelVersion("5.4.0") {
-		t.Skip("File monitoring requires at least 5.4.0 version")
+	if !kernels.MinKernelVersion("4.19.0") {
+		t.Skip("File monitoring requires at least 4.19.0 version")
 	}
 
 	out := filepath.Join(workingDir, "fim_test_outdir")
