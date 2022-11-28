@@ -90,15 +90,14 @@ var (
 		"kprobe_inet6_csk_xmit",
 		"tcp_sensor")
 
-	// RTT Tracer uses kprobe on the TCP RTT estimator to get the seq_rtt_us value
-	// as that is readily available and is a raw RTT calculation on the first
-	// transmission of a packet. This is probably as good as we can easily get,
+	// RTT Tracer uses kprobe on the TCP ACK Send Check to get the rtt_us value
+	// as that is easily obtained. This is probably as good as we can easily get,
 	// although open to improvements and discussion.
 	RttTracer = program.Builder(
 		"bpf_tcp_rtt.o",
-		"tcp_rtt_estimator",
-		"kprobe/tcp_rtt_estimator",
-		"kprobe_tcp_rtt_estimator",
+		"__tcp_ack_snd_check",
+		"kprobe/__tcp_ack_snd_check",
+		"kprobe_tcp_ack_snd_check",
 		"kprobe")
 
 	// Maps for TCP Sockets

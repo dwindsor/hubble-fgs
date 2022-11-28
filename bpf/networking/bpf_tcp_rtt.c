@@ -13,15 +13,23 @@ struct rcv_rtt_est {
 	u64 time;
 };
 
-__attribute__((section("kprobe/tcp_rtt_estimator"), used)) int
-tcp_rtt_estimator(struct pt_regs *ctx)
+#define FLAG_DATA_ACKED 0x04
+#define FLAG_SYN_ACKED	0x10
+#define FLAG_ACKED	(FLAG_DATA_ACKED | FLAG_SYN_ACKED)
+#define USEC_PER_SEC	1000000L
+#define TCP_TS_HZ	1000
+#define INT_MAX		((int)(~0U >> 1))
+
+__attribute__((section("kprobe/__tcp_ack_snd_check"), used)) int
+tcp_ack_snd_check(struct pt_regs *ctx)
 {
 	struct tcp_sock *skp = (struct tcp_sock *)((ctx)->di);
 	struct tcp_send_check_sample_cfg *cfg;
 	struct socketmap_value *process;
-	u64 rtt_us = (u64)((ctx)->si);
+	struct rcv_rtt_est rtt;
 	int zero = 0;
 	u64 cookie;
+	u64 rtt_us;
 
 	/* In TCP we use the struct sock address as the socket cookie.
 	 */
@@ -32,11 +40,17 @@ tcp_rtt_estimator(struct pt_regs *ctx)
 		return 0;
 	}
 
+	probe_read(&rtt, sizeof(rtt), _(&(skp->rcv_rtt_est)));
 	cfg = (struct tcp_send_check_sample_cfg *)map_lookup_elem(
 		&tcp_send_check_sampler, &zero);
 	if (!cfg) {
 		return 0;
 	}
+
+	rtt_us = rtt.rtt_us;
+
+	if (rtt_us <= 0)
+		return 0;
 
 	if (cfg->bucket00 > rtt_us)
 		process->buckets[0]++;
