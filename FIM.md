@@ -196,7 +196,7 @@ This event contains ```rename_arg``` instead of ```generic_arg``` in order to pr
 6. ### ```FILE_RENAME```
     These are events for renaming (mv) files/directories inside/outside a watched path.
 
-FIM requires a kernel version of 5.4 or later. Our tests cover all above on 5.4, 5.10, and 5.15 kernels (longterm releases).
+FIM requires a kernel version of 4.19 or later. Our tests cover all above on 4.19, 5.4, 5.10, and 5.15 kernels (longterm releases).
 
 ## mmap events
 
@@ -222,5 +222,5 @@ As memory-mapped files is a very common operation when a new process starts (i.e
 6. Only path prefixes are supported for matching files.
 7. We do not track mount/unmount inside/outside of watched directory (i.e. if we monitor ```/etc``` and we mount a new tree at ```/etc/test/``` we will not get any events from ```/etc/test/```).
 8. There is no way to monitor files inside a K8s Pod (we only monitor files in the host).
-9. Kernels ```< 5.4``` are not currently supported.
+9. Kernels ```< 4.19``` are not currently supported.
 10. Calling truncate to shrink or extend the size of a file to the specified size will not generate any events.
