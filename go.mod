@@ -17,7 +17,7 @@ require (
 	github.com/google/gops v0.3.25
 	github.com/google/uuid v1.3.0
 	github.com/hashicorp/golang-lru v0.5.4
-	github.com/mennanov/fieldmask-utils v0.6.0
+	github.com/mennanov/fieldmask-utils v0.7.1
 	github.com/miekg/dns v1.1.43
 	github.com/prometheus/client_golang v1.12.2
 	github.com/prometheus/client_model v0.2.1-0.20210607210712-147c58e9608a
