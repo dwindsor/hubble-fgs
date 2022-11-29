@@ -261,6 +261,9 @@ type UdpPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Network policy specification
 	Burst UdpBurstPolicySpec `json:"burst"`
+	// +kubebuilder:validation:Optional
+	// UDP latency observability policy specification
+	Latency UdpLatencyPolicySpec `json:"latency"`
 }
 
 type UdpBurstPolicySpec struct {
@@ -276,6 +279,19 @@ type UdpBurstPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the percent over average deemed to be a burst
 	TriggerPercent uint32 `json:"triggerPercent"`
+}
+
+type UdpLatencyPolicySpec struct {
+	// Enable UDP latency observability
+	// +kubebuilder:default=false
+	// +kubebuilder:validation:Optional
+	Enable bool `json:"enable"`
+	// +kubebuilder:validation:Optional
+	// Configures the subnets to enable on
+	MatchSubnets []string `json:"matchSubnets"`
+	// +kubebuilder:validation:Optional
+	// Configures the ports to enable on
+	MatchPorts []uint16 `json:"matchPorts"`
 }
 
 type BurstExitGenPolicySpec struct {

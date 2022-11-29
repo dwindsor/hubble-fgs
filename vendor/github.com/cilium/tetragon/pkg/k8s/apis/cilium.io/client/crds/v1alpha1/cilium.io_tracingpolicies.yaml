@@ -703,6 +703,24 @@ spec:
                       enable:
                         description: Enable UDP observability
                         type: boolean
+                      latency:
+                        description: UDP latency observability policy specification
+                        properties:
+                          enable:
+                            default: false
+                            description: Enable UDP latency observability
+                            type: boolean
+                          matchPorts:
+                            description: Configures the ports to enable on
+                            items:
+                              type: integer
+                            type: array
+                          matchSubnets:
+                            description: Configures the subnets to enable on
+                            items:
+                              type: string
+                            type: array
+                        type: object
                       statsInterval:
                         description: Configures the Stat collection interval in seconds
                         format: int32

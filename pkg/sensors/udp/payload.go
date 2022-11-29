@@ -5,6 +5,7 @@ import (
 	"encoding/binary"
 	"errors"
 	"net"
+	"time"
 	"unsafe"
 
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
@@ -12,6 +13,7 @@ import (
 	"github.com/cilium/tetragon/pkg/observer"
 	"github.com/yalue/native_endian"
 	"golang.org/x/net/dns/dnsmessage"
+	"golang.org/x/sys/unix"
 
 	"github.com/isovalent/hubble-fgs/pkg/api/dnsapi"
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
@@ -22,8 +24,10 @@ import (
 )
 
 const (
-	defaultDnsPort = 53
-	maxDnsPorts    = 4
+	defaultDnsPort    = 53
+	maxDnsPorts       = 4
+	maxLatencySubnets = 4
+	maxLatencyPorts   = 4
 )
 
 func handleUdpPayload(r *bytes.Reader) ([]observer.Event, error) {
@@ -134,6 +138,8 @@ func ParseUdpSpec(spec *v1alpha1.TracingPolicySpec) (*ConfigValue, error) {
 	config := ConfigValue{}
 	ParseDnsSpec(&config, spec)
 	ParseUdpBurstSpec(&config, spec)
+	ConfigureBootTime(&config)
+	ParseLatencySpec(&config, spec)
 
 	return &config, nil
 }
@@ -187,4 +193,82 @@ func ParseUdpBurstSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 		config.watermarkWindowSize = 0
 		config.watermarkTriggerPercent = 0
 	}
+}
+
+// ParseLatencySpec parses the input yaml/crd and outputs the kernel selectors
+// needed for BPF to observe UDP latency.
+func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
+	if spec.Parser.Udp.Latency.Enable {
+		config.latencyEnable = 1
+		if len(spec.Parser.Udp.Latency.MatchSubnets) == 0 {
+			// Do not enable latency if subnets not specified as packet mangling
+			// has the opportunity to break networks.
+			logger.GetLogger().Warn("UDP latency disabled due to no valid subnets")
+			config.latencyEnable = 0
+			return
+		}
+		index := 0
+		for _, subnet := range spec.Parser.Udp.Latency.MatchSubnets {
+			if index >= maxLatencySubnets {
+				break
+			}
+			ip, ipnet, err := net.ParseCIDR(subnet)
+			if err != nil {
+				logger.GetLogger().WithField("subnet", subnet).Warn("Error parsing UDP latency subnet")
+				continue
+			}
+			if ip.To4() == nil {
+				logger.GetLogger().WithField("subnet", subnet).Warn("UDP latency only supported on IPv4")
+				continue
+			}
+			prefixLen, _ := ipnet.Mask.Size()
+			if prefixLen == 0 {
+				logger.GetLogger().WithField("subnet", subnet).Warn("UDP latency only supports canonical subnets")
+				continue
+			}
+			ipv4 := ipnet.IP.To4()
+			config.latencySubnets[index].addr[0] = uint64(binary.LittleEndian.Uint32(ipv4))
+			config.latencySubnets[index].ipv6 = 0
+			config.latencySubnets[index].prefixLen = uint8(prefixLen)
+			logger.GetLogger().Infof("UDP latency subnet: IP(uint32)=0x%x, prefixLen=%d", config.latencySubnets[index].addr[0], config.latencySubnets[index].prefixLen)
+			index++
+		}
+		if index == 0 {
+			// Do not enable latency if subnets not specified as packet mangling
+			// has the opportunity to break networks.
+			logger.GetLogger().Warn("UDP latency disabled due to no valid subnets")
+			config.latencyEnable = 0
+			return
+		}
+
+		// MatchPorts are strictly optional, as we have constrained the packet mangling
+		// to the specified subnets, or refused to enable latency.
+		if len(spec.Parser.Udp.Latency.MatchPorts) == 0 {
+			config.latencyPorts[0] = 0
+			return
+		}
+		if len(spec.Parser.Udp.Latency.MatchPorts) <= maxLatencyPorts {
+			copy(config.latencyPorts[:], spec.Parser.Udp.Latency.MatchPorts)
+		} else {
+			copy(config.latencyPorts[:], spec.Parser.Dns.Ports[0:maxLatencyPorts])
+		}
+	} else {
+		config.latencyEnable = 0
+		config.latencySubnets[0].addr[0] = 0
+		config.latencySubnets[0].ipv6 = 0
+		config.latencyPorts[0] = 0
+	}
+}
+
+// ConfigureBootTime sets the boot time in nanoseconds, which is used in latency calculations
+// between nodes.
+func ConfigureBootTime(config *ConfigValue) {
+	clk := int32(unix.CLOCK_MONOTONIC)
+	currentTime := unix.Timespec{}
+	if err := unix.ClockGettime(clk, &currentTime); err != nil {
+		logger.GetLogger().Warn("UDP sensor failed to get current monotonic time")
+		return
+	}
+	t := time.Now().Add(-time.Duration(currentTime.Nano()))
+	config.bootNs = uint64(t.UnixNano())
 }

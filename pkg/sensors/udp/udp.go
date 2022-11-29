@@ -45,6 +45,7 @@ import (
 	"github.com/isovalent/hubble-fgs/pkg/sensors/burstEvents"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/ip"
 	"github.com/isovalent/hubble-fgs/pkg/sensors/program/cgroup"
+	"github.com/isovalent/hubble-fgs/pkg/sensors/program/tc"
 )
 
 const (
@@ -229,6 +230,14 @@ var (
 		"kprobe",
 	)
 
+	TCEgressTimestamp = program.Builder(
+		"bpf_udp_timestamp.o",
+		"udp_egress_timestamp",
+		"classifier/udp_egress_timestamp",
+		"classifier_udp_egress_timestamp",
+		"tc_egress",
+	)
+
 	// Shared socket cookie infrastructure
 	SocketCookieMap       = program.MapBuilder(SocketMapName, Udp4Send)
 	SocketCookieStats     = program.MapBuilder("socket_map_stats", Udp4Send)
@@ -338,12 +347,23 @@ func (k *udpSensorConfigKey) NewValue() bpf.MapValue     { return &ConfigValue{}
 func (k *udpSensorConfigKey) GetKeyPtr() unsafe.Pointer  { return unsafe.Pointer(k) }
 func (k *udpSensorConfigKey) DeepCopyMapKey() bpf.MapKey { return &udpSensorConfigKey{} }
 
+type SubnetSelector struct {
+	addr      [2]uint64
+	ipv6      uint8
+	prefixLen uint8
+	Padding   [6]uint8
+}
+
 type ConfigValue struct {
 	dnsPorts                 [maxDnsPorts]uint16
 	watermarkEnable          uint64
 	watermarkAvgWindowSizeMs uint64
 	watermarkWindowSize      uint64
 	watermarkTriggerPercent  uint64
+	bootNs                   uint64
+	latencyEnable            uint64
+	latencySubnets           [maxLatencySubnets]SubnetSelector
+	latencyPorts             [maxLatencyPorts]uint16
 }
 
 func (v *ConfigValue) String() string {
@@ -616,6 +636,11 @@ func (udp *udpSensor) LoadProbe(args sensors.LoadProbeArgs) error {
 		if err != nil {
 			return err
 		}
+	} else if args.Load.Type == "tc_egress" {
+		err := tc.LoadTC(args.BPFDir, args.MapDir, args.CiliumDir, args.Load, args.Version, args.Verbose, [128]byte{})
+		if err != nil {
+			return err
+		}
 	}
 	if !configured {
 		if err := configureUdpSensor(args.MapDir, UdpConfigMapName, Config); err != nil {
@@ -673,6 +698,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			Udp6SendLazy,
 			Udp6RetSendLazy,
 			UdpRecvLazy,
+			TCEgressTimestamp,
 		}
 		maps = []*program.Map{
 			UdpMapLazyKprobe,
@@ -696,6 +722,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			Udp6SendLazy,
 			Udp6RetSendLazy,
 			UdpRecvLazy,
+			TCEgressTimestamp,
 		}
 		maps = []*program.Map{
 			UdpMapLazy,
@@ -719,6 +746,7 @@ func EnableUdpParser(cgroup bool, interval time.Duration) *sensors.Sensor {
 			Udp6Send,
 			Udp6RetSend,
 			UdpRecv,
+			TCEgressTimestamp,
 		}
 		maps = []*program.Map{
 			UdpMap,
@@ -866,4 +894,5 @@ func AddUDP() {
 	sensors.RegisterProbeType("cgrp_ingress", udp)
 	sensors.RegisterProbeType("cgrp_egress", udp)
 	sensors.RegisterProbeType("kprobe_udp", udp)
+	sensors.RegisterProbeType("tc_egress", udp)
 }

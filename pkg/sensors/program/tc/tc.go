@@ -1,36 +1,93 @@
 package tc
 
 import (
+	"fmt"
+
 	"github.com/cilium/ebpf"
-	"github.com/cilium/tetragon/pkg/bpf"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/sensors/program"
 	"github.com/cilium/tetragon/pkg/sensors/unloader"
 	"github.com/vishvananda/netlink"
+	"golang.org/x/sys/unix"
 )
 
-func getDefaultRouteLinks() ([]netlink.Link, error) {
-	var links []netlink.Link
-
-	nilDst := &netlink.Route{Dst: nil}
-	routes, err := netlink.RouteListFiltered(netlink.FAMILY_V4, nilDst, netlink.RT_FILTER_DST)
-	if err != nil {
-		logger.GetLogger().WithError(err).Warn("Failed to list selectored routes")
-		return nil, err
-	}
+func getAllRouteLinks() ([]netlink.Link, error) {
 	allLinks, err := netlink.LinkList()
 	if err != nil {
 		logger.GetLogger().WithError(err).Warn("Failed to list links")
 		return nil, err
 	}
-	for _, route := range routes {
-		for _, link := range allLinks {
-			if link.Attrs().Index == route.LinkIndex {
-				links = append(links, link)
-			}
+	return allLinks, nil
+}
+
+func QdiscTCInsert(linkName string, ingress bool) error {
+	link, err := netlink.LinkByName(linkName)
+	if err != nil {
+		return fmt.Errorf("LinkByName failed (%s): %w", linkName, err)
+	}
+
+	qdiscs, err := netlink.QdiscList(link)
+	if err != nil {
+		return fmt.Errorf("QdiscList failed (%s): %w", linkName, err)
+	}
+	// If the qdisc exists nothing to do so return nil
+	for _, qdisc := range qdiscs {
+		_, clsact := qdisc.(*netlink.Clsact)
+		if clsact {
+			return nil
 		}
 	}
-	return links, nil
+
+	qdisc := &netlink.Clsact{
+		QdiscAttrs: netlink.QdiscAttrs{
+			LinkIndex: link.Attrs().Index,
+			Handle:    netlink.MakeHandle(0xffff, 0),
+			Parent:    netlink.HANDLE_INGRESS,
+		},
+	}
+	if err := netlink.QdiscAdd(qdisc); err != nil {
+		return fmt.Errorf("QdiscAdd failed (%s): %w", linkName, err)
+	}
+	return nil
+}
+
+func AttachTCIngress(progFd int, linkName string, ingress bool) error {
+	var parent uint32
+	var name string
+
+	link, err := netlink.LinkByName(linkName)
+	if err != nil {
+		return fmt.Errorf("LinkByName failed (%s): %w", linkName, err)
+	}
+
+	if ingress {
+		parent = netlink.HANDLE_MIN_INGRESS
+		name = "fgs-ingress"
+	} else {
+		parent = netlink.HANDLE_MIN_EGRESS
+		name = "fgs-egress"
+	}
+
+	filterAttrs := netlink.FilterAttrs{
+		LinkIndex: link.Attrs().Index,
+		Parent:    parent,
+		Handle:    netlink.MakeHandle(0, 2),
+		Protocol:  unix.ETH_P_ALL,
+		Priority:  1,
+	}
+	filter := &netlink.BpfFilter{
+		FilterAttrs:  filterAttrs,
+		Fd:           progFd,
+		Name:         name,
+		DirectAction: true,
+	}
+	if filter.Fd < 0 {
+		return fmt.Errorf("BpfFilter failed (%s): %d", linkName, filter.Fd)
+	}
+	if err = netlink.FilterAdd(filter); err != nil {
+		return fmt.Errorf("FilterAdd failed (%s): %w", linkName, err)
+	}
+	return err
 }
 
 func LoadTC(
@@ -40,7 +97,7 @@ func LoadTC(
 	selectors [128]byte,
 ) error {
 	attach := func(prog *ebpf.Program, spec *ebpf.ProgramSpec) (unloader.Unloader, error) {
-		attachLinks, err := getDefaultRouteLinks()
+		attachLinks, err := getAllRouteLinks()
 		if err != nil {
 			return nil, err
 		}
@@ -49,11 +106,11 @@ func LoadTC(
 			// NOTE: Set outer 'err' and break on error to rewind.
 			logger.GetLogger().Infof("Attaching %s to device %s", load.Type, link.Attrs().Name)
 			isIngress := "tc_ingress" == load.Type
-			if err = bpf.QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
+			if err = QdiscTCInsert(link.Attrs().Name, isIngress); err != nil {
 				logger.GetLogger().WithError(err).Warn("QdiscTCInsert Failed")
 				break
 			}
-			if err = bpf.AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
+			if err = AttachTCIngress(prog.FD(), link.Attrs().Name, isIngress); err != nil {
 				logger.GetLogger().WithError(err).Warn("AttachTC Failed")
 				break
 			}
@@ -69,7 +126,13 @@ func LoadTC(
 			}
 			return nil, err
 		}
-		return un, nil
+		chainUn := unloader.ChainUnloader{
+			unloader.PinUnloader{
+				Prog: prog,
+			},
+			&un,
+		}
+		return chainUn, nil
 	}
 	return program.LoadProgram(bpfDir, []string{mapDir, ciliumDir}, load, attach, verbose)
 }
