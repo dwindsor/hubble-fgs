@@ -451,7 +451,7 @@ func WalkPath(path string, mapDir string, op uint32, action uint32, checkPrefix 
 	}
 	defer fileHandle.Close()
 
-	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
+	errWalk := filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
 			if option.Config.Debug || option.Config.Verbosity >= 2 {
 				l.Infof("%s", err.Error())
@@ -574,6 +574,9 @@ func WalkPath(path string, mapDir string, op uint32, action uint32, checkPrefix 
 		return nil
 	})
 
+	if errWalk != nil {
+		l.WithError(errWalk).Warnf("filepath.Walk")
+	}
 	l.Infof("Added %d file(s) and %d directorie(s)\n", totalFiles, totalDirectories)
 }
 
