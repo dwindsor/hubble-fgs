@@ -453,20 +453,26 @@ func WalkPath(path string, mapDir string, op uint32, action uint32, checkPrefix 
 
 	filepath.Walk(path, func(path string, info os.FileInfo, err error) error {
 		if err != nil {
-			l.Infof("%s", err.Error())
+			if option.Config.Debug || option.Config.Verbosity >= 2 {
+				l.Infof("%s", err.Error())
+			}
 			return nil
 		}
 
 		mode := info.Mode()
 		if !mode.IsRegular() && !mode.IsDir() && !IsSymlink(mode) {
-			CheckFileMode(mode, path)
+			if option.Config.Debug || option.Config.Verbosity >= 2 {
+				CheckFileMode(mode, path)
+			}
 			return nil
 		}
 
 		if IsSymlink(mode) {
 			link, err := filepath.EvalSymlinks(path)
 			if err != nil {
-				l.WithError(err).Infof("Cannot resolve symlink %s", link)
+				if option.Config.Debug || option.Config.Verbosity >= 2 {
+					l.WithError(err).Infof("Cannot resolve symlink %s", link)
+				}
 				return nil
 			}
 			path = link
@@ -560,7 +566,9 @@ func WalkPath(path string, mapDir string, op uint32, action uint32, checkPrefix 
 		case IsSymlink(mode):
 			l.Warnf("%s is still a symlink\n", path)
 		default:
-			CheckFileMode(mode, path)
+			if option.Config.Debug || option.Config.Verbosity >= 2 {
+				CheckFileMode(mode, path)
+			}
 		}
 
 		return nil
