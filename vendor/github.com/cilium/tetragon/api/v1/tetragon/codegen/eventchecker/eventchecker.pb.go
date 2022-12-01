@@ -6936,6 +6936,7 @@ type SocketStatsChecker struct {
 	SegsSubmitted    *uint32           `json:"segsSubmitted,omitempty"`
 	SkbConsumeMisses *uint32           `json:"skbConsumeMisses,omitempty"`
 	Rtt              *HistogramChecker `json:"rtt,omitempty"`
+	UdpLatency       *HistogramChecker `json:"udpLatency,omitempty"`
 }
 
 // NewSocketStatsChecker creates a new SocketStatsChecker
@@ -7028,6 +7029,11 @@ func (checker *SocketStatsChecker) Check(event *tetragon.SocketStats) error {
 		if checker.Rtt != nil {
 			if err := checker.Rtt.Check(event.Rtt); err != nil {
 				return fmt.Errorf("Rtt check failed: %w", err)
+			}
+		}
+		if checker.UdpLatency != nil {
+			if err := checker.UdpLatency.Check(event.UdpLatency); err != nil {
+				return fmt.Errorf("UdpLatency check failed: %w", err)
 			}
 		}
 		return nil
@@ -7128,6 +7134,12 @@ func (checker *SocketStatsChecker) WithRtt(check *HistogramChecker) *SocketStats
 	return checker
 }
 
+// WithUdpLatency adds a UdpLatency check to the SocketStatsChecker
+func (checker *SocketStatsChecker) WithUdpLatency(check *HistogramChecker) *SocketStatsChecker {
+	checker.UdpLatency = check
+	return checker
+}
+
 //FromSocketStats populates the SocketStatsChecker using data from a SocketStats field
 func (checker *SocketStatsChecker) FromSocketStats(event *tetragon.SocketStats) *SocketStatsChecker {
 	if event == nil {
@@ -7191,6 +7203,9 @@ func (checker *SocketStatsChecker) FromSocketStats(event *tetragon.SocketStats) 
 	}
 	if event.Rtt != nil {
 		checker.Rtt = NewHistogramChecker().FromHistogram(event.Rtt)
+	}
+	if event.UdpLatency != nil {
+		checker.UdpLatency = NewHistogramChecker().FromHistogram(event.UdpLatency)
 	}
 	return checker
 }

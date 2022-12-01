@@ -11,6 +11,7 @@ import (
 	"github.com/cilium/tetragon/pkg/k8s/apis/cilium.io/v1alpha1"
 	"github.com/cilium/tetragon/pkg/logger"
 	"github.com/cilium/tetragon/pkg/observer"
+	"github.com/sirupsen/logrus"
 	"github.com/yalue/native_endian"
 	"golang.org/x/net/dns/dnsmessage"
 	"golang.org/x/sys/unix"
@@ -200,6 +201,24 @@ func ParseUdpBurstSpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 	if spec.Parser.Udp.Latency.Enable {
 		config.latencyEnable = 1
+		latencyMin := spec.Parser.Udp.Latency.Min
+		latencyMax := spec.Parser.Udp.Latency.Max
+		if latencyMax <= latencyMin {
+			logger.GetLogger().Warn("Misconfigured UDP Latency Histogram: Min value must be less than Max")
+			config.latencyEnable = 0
+			return
+		}
+		latencyRange := float64(latencyMax - latencyMin)
+		fLatencyMin := float64(latencyMin)
+		config.latBucket00 = latencyMin
+		config.latBucket01 = uint32((latencyRange * .01) + fLatencyMin)
+		config.latBucket10 = uint32((latencyRange * .10) + fLatencyMin)
+		config.latBucket25 = uint32((latencyRange * .25) + fLatencyMin)
+		config.latBucket50 = uint32((latencyRange * .50) + fLatencyMin)
+		config.latBucket75 = uint32((latencyRange * .75) + fLatencyMin)
+		config.latBucket90 = uint32((latencyRange * .90) + fLatencyMin)
+		config.latBucket99 = uint32((latencyRange * .99) + fLatencyMin)
+
 		if len(spec.Parser.Udp.Latency.MatchSubnets) == 0 {
 			// Do not enable latency if subnets not specified as packet mangling
 			// has the opportunity to break networks.
@@ -240,6 +259,16 @@ func ParseLatencySpec(config *ConfigValue, spec *v1alpha1.TracingPolicySpec) {
 			config.latencyEnable = 0
 			return
 		}
+
+		logger.GetLogger().WithFields(logrus.Fields{"Min": latencyMin, "Range": latencyRange,
+			"bucket00": config.latBucket00,
+			"bucket01": config.latBucket01,
+			"bucket10": config.latBucket10,
+			"bucket25": config.latBucket25,
+			"bucket50": config.latBucket50,
+			"bucket75": config.latBucket75,
+			"bucket90": config.latBucket90,
+			"bucket99": config.latBucket99}).Info("Configured Latency buckets: ")
 
 		// MatchPorts are strictly optional, as we have constrained the packet mangling
 		// to the specified subnets, or refused to enable latency.

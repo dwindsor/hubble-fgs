@@ -286,7 +286,7 @@ func handleTcpStats(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp, err := correctedStatsEvent(ip.MsgToIPUnix(&m, true))
+	tcp, err := correctedStatsEvent(ip.MsgToIPUnix(&m, true, false))
 	if err != nil {
 		return nil, nil
 	}
@@ -299,7 +299,7 @@ func handleTcpClose(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	tcp := ip.MsgToIPUnix(&m, true)
+	tcp := ip.MsgToIPUnix(&m, true, false)
 	if tcpInterval > 0 {
 		cp := *tcp
 		c, err := correctedStatsEvent(&cp)
@@ -322,7 +322,7 @@ func handleTcp(r *bytes.Reader) ([]observer.Event, error) {
 		return nil, err
 	}
 	// Do not include RTT in open, listen, binds
-	tcp := ip.MsgToIPUnix(&m, false)
+	tcp := ip.MsgToIPUnix(&m, false, false)
 	return []observer.Event{tcp}, nil
 }
 

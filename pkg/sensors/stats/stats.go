@@ -4,11 +4,11 @@ import (
 	api "github.com/isovalent/hubble-fgs/pkg/api/networkapi"
 )
 
-func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool) api.MsgSocketStatsUnix {
-	var rttHistogram api.Histogram
+func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool, udpLatency bool) api.MsgSocketStatsUnix {
+	var histogram api.Histogram
 
-	if rtt {
-		rttHistogram = api.Histogram{
+	if rtt || udpLatency {
+		histogram = api.Histogram{
 			B00: m.Buckets[0],
 			B01: m.Buckets[1],
 			B10: m.Buckets[2],
@@ -20,7 +20,7 @@ func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool) api.MsgSocketStatsUni
 		}
 	}
 
-	return api.MsgSocketStatsUnix{
+	message := api.MsgSocketStatsUnix{
 		BytesSubmitted:   m.BytesSubmitted,
 		BytesSent:        m.BytesSent,
 		BytesConsumed:    m.BytesConsumed,
@@ -35,7 +35,14 @@ func MsgToSocketStatsUnix(m *api.MsgSocketStats, rtt bool) api.MsgSocketStatsUni
 		ToZeroWindow:     m.ToZeroWindow,
 		SkDrop:           m.SkDrop,
 		SkbConsumeMisses: m.SkbConsumeMisses,
-		Rtt:              rttHistogram,
 		Ktime:            m.Ktime,
 	}
+
+	if rtt {
+		message.Rtt = histogram
+	} else if udpLatency {
+		message.UdpLatency = histogram
+	}
+
+	return message
 }

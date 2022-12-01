@@ -292,6 +292,12 @@ type UdpLatencyPolicySpec struct {
 	// +kubebuilder:validation:Optional
 	// Configures the ports to enable on
 	MatchPorts []uint16 `json:"matchPorts"`
+	// +kubebuilder:validation:Optional
+	// Configures the expected Max Latency value
+	Max uint32 `json:"max"`
+	// +kubebuilder:validation:Optional
+	// Configures the expected Min Latency value
+	Min uint32 `json:"min"`
 }
 
 type BurstExitGenPolicySpec struct {

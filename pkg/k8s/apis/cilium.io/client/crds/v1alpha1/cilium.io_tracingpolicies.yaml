@@ -720,6 +720,14 @@ spec:
                             items:
                               type: string
                             type: array
+                          max:
+                            description: Configures the expected Max Latency value
+                            format: int32
+                            type: integer
+                          min:
+                            description: Configures the expected Min Latency value
+                            format: int32
+                            type: integer
                         type: object
                       statsInterval:
                         description: Configures the Stat collection interval in seconds

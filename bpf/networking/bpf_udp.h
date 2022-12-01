@@ -86,6 +86,7 @@ struct udp_info_value {
 	u16 sport;
 	u16 dport; // retain (and complete) as useful for debugging
 	u32 skb_consume_misses;
+	u64 buckets[8];
 	u8 ipv6;
 	u8 padding[7];
 	u64 create_time;
@@ -117,6 +118,7 @@ struct udp_packet_details {
 		struct ipv6hdr ip6;
 	} ip;
 	struct udphdr udp;
+	struct timestamp_option ipopt;
 	u16 udp_off;
 	int payload_sz;
 	int payload_off;
@@ -144,6 +146,14 @@ struct udp_sensor_config {
 	u64 latency_enable;
 	struct subnet_selector latency_subnets[4];
 	u16 latency_ports[4];
+	u32 bucket00;
+	u32 bucket01;
+	u32 bucket10;
+	u32 bucket25;
+	u32 bucket50;
+	u32 bucket75;
+	u32 bucket90;
+	u32 bucket99;
 };
 
 struct {
@@ -396,6 +406,10 @@ udp_info_init(struct udp_info_value *v)
 	v->ipv6 = 0;
 	WRITE_ONCE(v->ktime, ktime_get_ns());
 	v->create_time = 0;
+#pragma unroll
+	for (int i = 0; i < 8; i++) {
+		v->buckets[i] = 0;
+	}
 }
 
 static inline __attribute__((always_inline)) void

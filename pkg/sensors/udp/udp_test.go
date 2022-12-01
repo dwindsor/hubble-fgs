@@ -320,6 +320,7 @@ func TestUdpBurst(t *testing.T) {
 	killAndWaitCommand(t, clientCmd)
 }
 
+// Note 20.0.0.0/8 is the DoD and isn't routable on the Internet
 const udpBasicConfig = `
 apiversion: cilium.io/v1alpha1
 kind: TracingPolicy
@@ -331,6 +332,11 @@ spec:
       enable: true
       cgroup: true
       statsInterval: 2
+      latency:
+        enable: true
+        matchSubnets: [20.0.0.0/8]
+        min: 0
+        max: 10000
 `
 
 // NB(kkourt): Function(t *testing.T, ctx context.Context) is the reasonable

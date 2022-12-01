@@ -286,6 +286,7 @@ type udpInfoValue struct {
 	SPort            uint16
 	DPort            uint16
 	SkbConsumeMisses uint32
+	Buckets          [8]uint64
 	IPv6             uint8
 	Padding          [7]uint8
 	CreateTime       uint64
@@ -364,6 +365,14 @@ type ConfigValue struct {
 	latencyEnable            uint64
 	latencySubnets           [maxLatencySubnets]SubnetSelector
 	latencyPorts             [maxLatencyPorts]uint16
+	latBucket00              uint32
+	latBucket01              uint32
+	latBucket10              uint32
+	latBucket25              uint32
+	latBucket50              uint32
+	latBucket75              uint32
+	latBucket90              uint32
+	latBucket99              uint32
 }
 
 func (v *ConfigValue) String() string {
@@ -413,6 +422,16 @@ func createUdpEvent(k *udpInfoKey, v *udpInfoValue, duration time.Duration) *lay
 		SegsOut:          uint32(v.SegsOut),
 		SkDrop:           v.SkDrops,
 		SkbConsumeMisses: v.SkbConsumeMisses,
+		UdpLatency: api.Histogram{
+			B00: v.Buckets[0],
+			B01: v.Buckets[1],
+			B10: v.Buckets[2],
+			B25: v.Buckets[3],
+			B50: v.Buckets[4],
+			B75: v.Buckets[5],
+			B90: v.Buckets[6],
+			B99: v.Buckets[7],
+		},
 	}
 	unix.Duration = duration
 	return &unix
@@ -488,6 +507,19 @@ func udpResetEvent(curr, last *udpInfoValue) bool {
 	return false
 }
 
+func udpDiffLatency(last, curr *[8]uint64) [8]uint64 {
+	return [8]uint64{
+		curr[0] - last[0],
+		curr[1] - last[1],
+		curr[2] - last[2],
+		curr[3] - last[3],
+		curr[4] - last[4],
+		curr[5] - last[5],
+		curr[6] - last[6],
+		curr[7] - last[7],
+	}
+}
+
 func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, error) {
 	// The ktime check is to handle a small but observed race condition where
 	// we can read a ktime earlier than a ktime we just read. It requires some
@@ -534,6 +566,7 @@ func udpDiffValues(key *udpInfoKey, last, curr *udpInfoValue) (udpInfoValue, err
 		DAddr:            curr.DAddr,
 		SPort:            curr.SPort,
 		DPort:            curr.DPort,
+		Buckets:          udpDiffLatency(&last.Buckets, &curr.Buckets),
 	}, nil
 }
 
@@ -794,7 +827,7 @@ func handleUdp(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	msgUnix := ip.MsgToIPUnix(&m, false)
+	msgUnix := ip.MsgToIPUnix(&m, false, true)
 
 	if m.Common.Op == ops.MSG_OP_UDPCONNECT {
 		// Store the pseudo-socket against this cookie

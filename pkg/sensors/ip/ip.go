@@ -25,7 +25,7 @@ func DisableDns() {
 	enableDns = false
 }
 
-func MsgToIPUnix(m *api.MsgIPEvent, rtt bool) *layer3.MsgIPEventUnix {
+func MsgToIPUnix(m *api.MsgIPEvent, rtt bool, udpLatency bool) *layer3.MsgIPEventUnix {
 	unix := &layer3.MsgIPEventUnix{}
 
 	unix.Common = m.Common
@@ -33,7 +33,7 @@ func MsgToIPUnix(m *api.MsgIPEvent, rtt bool) *layer3.MsgIPEventUnix {
 	unix.Return = m.Return
 	unix.ProcessKey = m.ProcessKey
 	unix.SockCookie = m.SockCookie
-	unix.SocketStats = stats.MsgToSocketStatsUnix(&m.SocketStats, rtt)
+	unix.SocketStats = stats.MsgToSocketStatsUnix(&m.SocketStats, rtt, udpLatency)
 	unix.SocketFlags = m.SocketFlags
 	unix.Duration = time.Duration(m.Duration * uint64(time.Nanosecond))
 	// no need to copy the pad here
@@ -50,6 +50,6 @@ func HandleIpError(r *bytes.Reader) ([]observer.Event, error) {
 	if err != nil {
 		return nil, err
 	}
-	msgUnix := MsgToIPUnix(&m, false)
+	msgUnix := MsgToIPUnix(&m, false, false)
 	return []observer.Event{msgUnix}, nil
 }

@@ -72,6 +72,7 @@ type MsgSocketStatsUnix struct {
 	ToZeroWindow     uint32
 	SkDrop           uint32
 	SkbConsumeMisses uint32
+	UdpLatency       Histogram
 	Rtt              Histogram
 }
 

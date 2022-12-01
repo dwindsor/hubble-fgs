@@ -9,6 +9,7 @@
 #include "bpf_burst_process.h"
 #include "cookie.h"
 #include "bpf_network_helpers.h"
+#include "bpf_tracing.h"
 
 static inline __attribute__((always_inline)) u8 ip_payload_off(struct iphdr *ip)
 {
@@ -118,6 +119,36 @@ udp_port_info(struct udphdr *udp, bool send)
 	return info;
 }
 
+/* Allocate the latency to a histogram bucket.
+ */
+static inline __attribute__((always_inline)) void
+add_latency(struct udp_sensor_config *cfg, struct udp_info_value *value,
+	    s64 latency)
+{
+	/* Negative latency is a clock sync error.
+	 * Zero latency indicates latency wasn't provided.
+	 */
+	if (latency <= 0)
+		return;
+
+	if (cfg->bucket00 > latency)
+		value->buckets[0]++;
+	else if (cfg->bucket01 > latency)
+		value->buckets[1]++;
+	else if (cfg->bucket10 > latency)
+		value->buckets[2]++;
+	else if (cfg->bucket25 > latency)
+		value->buckets[3]++;
+	else if (cfg->bucket50 > latency)
+		value->buckets[4]++;
+	else if (cfg->bucket75 > latency)
+		value->buckets[5]++;
+	else if (cfg->bucket90 > latency)
+		value->buckets[6]++;
+	else
+		value->buckets[7]++;
+}
+
 /* This logic is a bit racy, but we can handle it. Thinking through the
  * cases. Multiple sends may happen concurrently on the same key. If
  * the key is not in the map we may have multiple cores in the !value
@@ -147,8 +178,9 @@ udp_port_info(struct udphdr *udp, bool send)
  */
 static inline __attribute__((always_inline)) struct udp_info_value *
 __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
-	   struct iphdr *ip, bool ipv6, struct udphdr *udp, int payload_sz,
-	   bool send, bool lazy)
+	   struct iphdr *ip, bool ipv6, s64 latency, struct udphdr *udp,
+	   int payload_sz, struct udp_sensor_config *config, bool send,
+	   bool lazy)
 {
 	struct udp_info_value *value;
 	struct socketmap_value *process;
@@ -170,6 +202,7 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 			udp_info_tx_reset(value, payload_sz);
 		else
 			udp_info_rx_reset(value, payload_sz);
+		add_latency(config, value, latency);
 
 		/* Store the info in the entry for later use,
 		 * and potentially for searching from userland
@@ -211,6 +244,7 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 			udp_info_tx_reset(value, payload_sz);
 		else
 			udp_info_rx_reset(value, payload_sz);
+		add_latency(config, value, latency);
 		*info = udp_info(ip, ipv6, udp, send);
 		if (!*info)
 			return 0;
@@ -241,8 +275,21 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
 			update_tx_value(value, payload_sz);
 		else
 			update_rx_value(value, payload_sz);
+		add_latency(config, value, latency);
 	}
 	return value;
+}
+
+/* Calculate latency from packet send time stamp.
+ */
+static inline __attribute__((always_inline)) s64
+calc_latency(u64 bootns, u64 ts_low, u64 ts_high)
+{
+	/* Get time in microseconds. */
+	u64 curr_time = (ktime_get_ns() + bootns + 500) / 1000;
+	/* Clear bit 31 on both timestamps. High needs shifting by 31 bits */
+	u64 ts = (ts_low & 0x7fffffff) | ((ts_high & 0x7fffffff) << 31);
+	return curr_time - ts;
 }
 
 /* Lazy versions of udp send do not support copying the payload to
@@ -255,21 +302,28 @@ __udp_send(struct __sk_buff *skb, struct udp_info **info, u64 *cookie,
  */
 static inline __attribute__((always_inline)) int
 udp_send(struct __sk_buff *skb, void *skb_head, struct iphdr *ip, bool ipv6,
-	 struct udphdr *udp, u64 *cookie, int payload_off, int payload_sz,
-	 bool send, bool lazy, bool kp)
+	 struct timestamp_option *ts_opt, struct udphdr *udp, u64 *cookie,
+	 int payload_off, int payload_sz, bool send, bool lazy, bool kp)
 {
 	struct udp_info_value *value;
 	struct udp_info *info = 0;
 	struct udp_sensor_config *config;
 	int zero = 0;
-
-	value = __udp_send(skb, &info, cookie, ip, ipv6, udp, payload_sz, send,
-			   lazy);
-	if (!value)
-		return 1;
+	s64 latency = 0;
 
 	config = (struct udp_sensor_config *)map_lookup_elem(&udp_config_map, &zero);
 	if (!config)
+		return 1;
+
+	if (ts_opt) {
+		latency = calc_latency(config->boot_ns,
+				       bpf_ntohl(ts_opt->timestamp_low),
+				       bpf_ntohl(ts_opt->timestamp_high));
+	}
+
+	value = __udp_send(skb, &info, cookie, ip, ipv6, latency, udp,
+			   payload_sz, config, send, lazy);
+	if (!value)
 		return 1;
 
 	if (config->dnsPorts[0] != 0) {
@@ -359,6 +413,7 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	int zero = 0;
 	u8 proto;
 	unsigned long int err = 0;
+	struct timestamp_option *ts_opt = 0;
 
 	cookie = (u64 *)map_lookup_elem(&udp_cookie_heap, &zero);
 	if (!cookie)
@@ -386,6 +441,29 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 			return;
 		packet->ipv6 = false;
 		packet->udp_off = ip_payload_off(&packet->ip.ip4);
+		if (packet->ip.ip4.ihl >=
+		    ((sizeof(struct iphdr) + sizeof(struct timestamp_option)) /
+		     sizeof(u32))) {
+			/* Packet has at least enough space for the Timestamp IP Option,
+			 * so check if the first option is the Timestamp option that we
+			 * add to detect UDP latency.
+			 */
+			if (skb_load_bytes(
+				    skb, sizeof(struct iphdr), &packet->ipopt,
+				    sizeof(struct timestamp_option)) < 0) {
+				emit_ip_error_event(
+					skb, &packet->ip, cookie, false,
+					IP_ERROR_INET_READ_IP_OPTION);
+			} else {
+				if (packet->ipopt.type == IPO_TYPE &&
+				    packet->ipopt.magic ==
+					    bpf_ntohl(IPO_MAGIC_W) &&
+				    packet->ipopt.magic ==
+					    packet->ipopt.magic2) {
+					ts_opt = &packet->ipopt;
+				}
+			}
+		}
 		break;
 	case 6:
 		if (skb_load_bytes(skb, 0, &packet->ip,
@@ -423,8 +501,9 @@ inet_handler_lazy(struct __sk_buff *skb, bool send)
 	}
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
 	packet->payload_off = packet->udp_off + sizeof(struct udphdr);
-	udp_send(skb, 0, &packet->ip.ip4, packet->ipv6, &packet->udp, cookie,
-		 packet->payload_off, packet->payload_sz, send, true, false);
+	udp_send(skb, 0, &packet->ip.ip4, packet->ipv6, ts_opt, &packet->udp,
+		 cookie, packet->payload_off, packet->payload_sz, send, true,
+		 false);
 	udp_burst(skb, cookie, packet->payload_sz, send);
 }
 
@@ -436,6 +515,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	u64 cookie;
 	u8 proto;
 	unsigned long int err = 0;
+	struct timestamp_option *ts_opt = 0;
 
 	cookie = (u64)sk;
 	if (!cookie) {
@@ -457,8 +537,34 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 			return;
 		}
 		packet->ipv6 = false;
+
 		if (packet->ip.ip4.protocol != IPPROTO_UDP)
 			return;
+		if (packet->ip.ip4.ihl >=
+		    ((sizeof(struct iphdr) + sizeof(struct timestamp_option)) /
+		     sizeof(u32))) {
+			/* Packet has at least enough space for the Timestamp IP Option,
+			 * so check if the first option is the Timestamp option that we
+			 * add to detect UDP latency.
+			 */
+			if (probe_read(&packet->ipopt,
+				       sizeof(struct timestamp_option),
+				       packet->skb_head +
+					       packet->network_header_off +
+					       sizeof(struct iphdr)) < 0) {
+				emit_ip_error_event(
+					ctx, &packet->ip, &cookie, false,
+					IP_ERROR_INET_READ_IP_OPTION);
+			} else {
+				if (packet->ipopt.type == IPO_TYPE &&
+				    packet->ipopt.magic ==
+					    bpf_ntohl(IPO_MAGIC_W) &&
+				    packet->ipopt.magic ==
+					    packet->ipopt.magic2) {
+					ts_opt = &packet->ipopt;
+				}
+			}
+		}
 		if (!get_udp_header(&packet->udp, &packet->payload_off,
 				    packet->skb_head, skb)) {
 			emit_ip_error_event(ctx, &packet->ip, &cookie, false,
@@ -507,7 +613,7 @@ inet_handler_lazy_kp(void *ctx, struct sock *sk, struct sk_buff *skb, bool send)
 	packet->payload_off = -1;
 
 	packet->payload_sz = bpf_ntohs(packet->udp.len) - sizeof(struct udphdr);
-	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6,
+	udp_send((struct __sk_buff *)ctx, packet->skb_head, &packet->ip.ip4, packet->ipv6, ts_opt,
 		 &packet->udp, &cookie, packet->payload_off, packet->payload_sz,
 		 send, true, true);
 	udp_burst(ctx, &cookie, packet->payload_sz, send);
@@ -525,6 +631,7 @@ inet_handler(struct __sk_buff *skb, bool send)
 	u64 cookie;
 	u8 proto;
 	unsigned long int err = 0;
+	struct timestamp_option *ts_opt = 0;
 
 	cookie = get_socket_cookie(skb);
 	packet = (struct udp_packet_details *)map_lookup_elem(&udp_header_heap, &zero);
@@ -548,6 +655,30 @@ inet_handler(struct __sk_buff *skb, bool send)
 		}
 		if (ip->protocol != IPPROTO_UDP)
 			return;
+		if (ip->ihl >=
+		    ((sizeof(struct iphdr) + sizeof(struct timestamp_option)) /
+		     sizeof(u32))) {
+			/* Packet has at least enough space for the Timestamp IP Option,
+			 * so check if the first option is the Timestamp option that we
+			 * add to detect UDP latency.
+			 */
+			if (data + sizeof(struct iphdr) +
+				    sizeof(struct timestamp_option) >
+			    data_end) {
+				emit_ip_error_event(
+					skb, ip, &cookie, false,
+					IP_ERROR_INET_READ_IP_OPTION);
+			} else {
+				ts_opt = (struct timestamp_option
+						  *)(data +
+						     sizeof(struct iphdr));
+				if (ts_opt->type != IPO_TYPE ||
+				    ts_opt->magic != bpf_ntohl(IPO_MAGIC_W) ||
+				    ts_opt->magic != ts_opt->magic2) {
+					ts_opt = 0;
+				}
+			}
+		}
 		packet->udp_off = ip_payload_off(ip);
 		udp = (struct udphdr *)(data + packet->udp_off);
 		if (data + packet->udp_off + sizeof(struct udphdr) > data_end) {
@@ -558,8 +689,9 @@ inet_handler(struct __sk_buff *skb, bool send)
 		packet->payload_sz =
 			bpf_ntohs(udp->len) - sizeof(struct udphdr);
 		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
-		udp_send(skb, 0, ip, false, udp, &cookie, packet->payload_off,
-			 packet->payload_sz, send, false, false);
+		udp_send(skb, 0, ip, false, ts_opt, udp, &cookie,
+			 packet->payload_off, packet->payload_sz, send, false,
+			 false);
 		break;
 	case 6:
 		if (data + sizeof(struct ipv6hdr) > data_end) {
@@ -590,7 +722,7 @@ inet_handler(struct __sk_buff *skb, bool send)
 		packet->payload_sz =
 			bpf_ntohs(udp->len) - sizeof(struct udphdr);
 		packet->payload_off = packet->udp_off + sizeof(struct udphdr);
-		udp_send(skb, 0, ip, true, udp, &cookie, packet->payload_off,
+		udp_send(skb, 0, ip, true, 0, udp, &cookie, packet->payload_off,
 			 packet->payload_sz, send, false, false);
 		break;
 	default:
