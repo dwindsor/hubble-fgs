@@ -34,19 +34,23 @@ jobs:
           skip-pkg-cache: true
           skip-build-cache: true
       - name: Check gofmt formatting
+        if: success() || failure()
         run: |
           go fmt ./...
           git diff --exit-code || (echo "gofmt checks failed. Please run 'go -w fmt ./...', and submit your changes"; exit 1)
       - name: Check module vendoring
+        if: success() || failure()
         run: |
           go mod tidy -compat=1.17
           go mod vendor
           go mod verify
           test -z "$(git status --porcelain)" || (echo "Module vendoring checks failed. Please run 'make vendor', and submit your changes"; exit 1)
       - name: Build clang-format Docker image
+        if: success() || failure()
         run: |
           docker build -f Dockerfile.clang-format -t "isovalent/clang-format:latest" .
       - name: Verify clang-format on BPF code
+        if: success() || failure()
         id: clang_format
         run: |
           set -o pipefail
