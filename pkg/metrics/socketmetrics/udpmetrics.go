@@ -105,6 +105,22 @@ var (
 	}, []string{"count"})
 )
 
+// UDP Latency Histogram
+var (
+	SocketStatsUdpLatency = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_udp_latency",
+		Help: "UDP socket latency bucket counter",
+	}, []string{"namespace", "pod", "binary", "dstnamespace", "dstpod", "dstdns", "bucket"})
+)
+
+// UDP Multicast Latency Histogram
+var (
+	SocketStatsUdpMulticastLatency = promauto.NewCounterVec(prometheus.CounterOpts{
+		Name: consts.MetricNamePrefix + "socket_stats_udp_mcast_latency",
+		Help: "UDP socket latency bucket counter",
+	}, []string{"namespace", "pod", "binary", "srcmcast", "dstnamespace", "dstpod", "dstmcast", "bucket"})
+)
+
 type UDPGCType int
 
 const (
