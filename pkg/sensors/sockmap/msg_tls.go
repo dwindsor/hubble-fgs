@@ -77,6 +77,10 @@ func HandleTLS(r *bytes.Reader) ([]observer.Event, error) {
 		v := &MsgTLSEventCert{}
 		v.tls = m
 		v.cert = make([]byte, 0)
+		/* We hide a completion bit in the struct, but is not used to
+		 * as part of the key lookup.
+		 */
+		m.Tuple.Remaining = 0
 		tlsInProgress[m.Tuple] = v
 		return nil, nil
 	}
