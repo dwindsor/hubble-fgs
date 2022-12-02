@@ -66,6 +66,9 @@ type FileSpec struct {
 	// +kubebuilder:validation:Optional
 	// What paths to exclude from monitored paths
 	PathsExclude []string `json:"file_paths_exclude"`
+	// +kubebuilder:validation:Optional
+	// Config flags to enable/disable specific functionality
+	Config map[string]string `json:"file_config"`
 }
 
 // +k8s:deepcopy-gen:interfaces=k8s.io/apimachinery/pkg/runtime.Object

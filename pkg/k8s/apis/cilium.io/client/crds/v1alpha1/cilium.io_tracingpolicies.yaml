@@ -38,6 +38,11 @@ spec:
               file:
                 description: File monitoring policy specification.
                 properties:
+                  file_config:
+                    additionalProperties:
+                      type: string
+                    description: Config flags to enable/disable specific functionality
+                    type: object
                   file_paths:
                     description: What paths to monitor
                     items:

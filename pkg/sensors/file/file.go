@@ -754,7 +754,11 @@ func (k *observerFileSensor) SpecHandler(raw interface{}) (*sensors.Sensor, erro
 		return nil, nil
 	}
 	if len(spec.FileMonitoring.Paths) > 0 {
-		if !kernels.MinKernelVersion("4.19.0") {
+		forceLoad := false
+		if val, ok := spec.FileMonitoring.Config["forceLoad"]; ok && val == "true" {
+			forceLoad = true
+		}
+		if !forceLoad && !kernels.MinKernelVersion("4.19.0") {
 			logger.GetLogger().Warnf("FileMonitoring requires at least 4.19.0 version")
 			return nil, nil
 		}
